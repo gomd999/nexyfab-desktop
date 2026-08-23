@@ -11,19 +11,20 @@ function toDate(v: DateInput): Date | null {
   return isNaN(d.getTime()) ? null : d;
 }
 
-/** 2026. 04. 16. 형식 */
-export function formatDate(v?: DateInput): string {
+import { formatDate as formatLocalizedDate } from './i18n/format';
+
+/** 2026. 04. 16. 형식. `lang`을 넘기지 않는 기존 호출은 한국어를 유지한다. */
+export function formatDate(v?: DateInput, lang: string = 'ko'): string {
   const d = toDate(v);
   if (!d) return '-';
-  return d.toLocaleDateString('ko-KR', { year: 'numeric', month: '2-digit', day: '2-digit' });
+  return formatLocalizedDate(d, lang, { year: 'numeric', month: '2-digit', day: '2-digit' }) ?? '-';
 }
 
-/** 2026. 04. 16. 14:30 형식 */
-export function formatDateTime(v?: DateInput): string {
+/** 2026. 04. 16. 14:30 형식. `lang`을 넘기지 않는 기존 호출은 한국어를 유지한다. */
+export function formatDateTime(v?: DateInput, lang: string = 'ko'): string {
   const d = toDate(v);
   if (!d) return '-';
-  return d.toLocaleDateString('ko-KR', { year: 'numeric', month: '2-digit', day: '2-digit' }) +
-    ' ' + d.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' });
+  return formatLocalizedDate(d, lang, { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }) ?? '-';
 }
 
 /** 오늘로부터 D±N 또는 "오늘", "지남" */

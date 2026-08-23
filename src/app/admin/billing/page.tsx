@@ -1,6 +1,8 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useMemo } from 'react';
+import { useAdminI18n } from '../AdminI18nProvider';
+import { createCommercialLocalizer } from '@/lib/i18n/commercialLocalizer';
 import { formatDate } from '@/lib/formatDate';
 import { useToast } from '@/hooks/useToast';
 
@@ -55,47 +57,43 @@ const STATUS_COLOR: Record<string, string> = {
   uncollectible: 'bg-gray-200 text-gray-500',
   void:          'bg-gray-100 text-gray-400',
 };
-const STATUS_KO: Record<string, string> = {
-  open: '미결제', paid: '결제완료', past_due: '연체',
-  uncollectible: '수금불가', void: '취소됨',
-};
 const PRODUCT_COLOR: Record<string, string> = {
   nexyfab:  'bg-blue-100 text-blue-700',
   nexyflow: 'bg-purple-100 text-purple-700',
   nexywise: 'bg-teal-100 text-teal-700',
 };
 
-function fmtAmount(amount: number, currency: string) {
+function fmtAmount(amount: number, currency: string, locale: string) {
   try {
-    return new Intl.NumberFormat('en-US', { style: 'currency', currency, maximumFractionDigits: 2 }).format(amount);
+    return new Intl.NumberFormat(locale, { style: 'currency', currency, maximumFractionDigits: 2 }).format(amount);
   } catch {
-    return `${amount.toLocaleString()} ${currency}`;
+    return `${amount.toLocaleString(locale)} ${currency}`;
   }
 }
 
-function fmtKrw(n: number) {
-  return n.toLocaleString('ko-KR') + '원';
+function fmtKrw(n: number, locale: string) {
+  return new Intl.NumberFormat(locale, { style: 'currency', currency: 'KRW', maximumFractionDigits: 0 }).format(n);
 }
 
-function TrendBadge({ cur, prev }: { cur: number; prev: number }) {
+function TrendBadge({ cur, prev, locale }: { cur: number; prev: number; locale: string }) {
   if (prev === 0) return null;
   const pct = Math.round(((cur - prev) / prev) * 100);
   const up = pct >= 0;
   return (
     <span className={`text-xs font-bold ${up ? 'text-green-600' : 'text-red-500'}`}>
-      {up ? '▲' : '▼'} {Math.abs(pct)}%
+      {up ? '▲' : '▼'} {Math.abs(pct).toLocaleString(locale)}%
     </span>
   );
 }
 
-function SummaryCard({ icon, label, value, cur, prev }: {
-  icon: string; label: string; value: string; cur: number; prev: number;
+function SummaryCard({ icon, label, value, cur, prev, locale }: {
+  icon: string; label: string; value: string; cur: number; prev: number; locale: string;
 }) {
   return (
     <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
       <div className="flex items-start justify-between mb-3">
         <span className="text-2xl">{icon}</span>
-        <TrendBadge cur={cur} prev={prev} />
+        <TrendBadge cur={cur} prev={prev} locale={locale} />
       </div>
       <p className="text-xs text-gray-400 font-medium mb-1">{label}</p>
       <p className="text-xl font-black text-gray-900">{value}</p>
@@ -115,17 +113,17 @@ function SkeletonRow() {
   );
 }
 
-function exportCsv(invoices: Invoice[]) {
-  const header = ['ID', '이메일', '이름', '제품', '플랜', '금액(KRW)', '상태', '일시'];
+function exportCsv(invoices: Invoice[], L: (ko: string, en: string) => string, locale: string) {
+  const header = ['ID', L('이메일', 'Email'), L('이름', 'Name'), L('제품', 'Product'), L('플랜', 'Plan'), L('금액(KRW)', 'Amount (KRW)'), L('상태', 'Status'), L('일시', 'Date')];
   const rows = invoices.map(inv => [
     inv.id,
     inv.email,
     inv.name,
     inv.product,
     inv.plan,
-    inv.total_amount_krw,
+    inv.total_amount_krw.toLocaleString(locale),
     inv.status,
-    formatDate(inv.created_at),
+    formatDate(inv.created_at, locale),
   ].map(v => `"${String(v).replace(/"/g, '""')}"`).join(','));
   const csv = [header.join(','), ...rows].join('\n');
   const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8' });
@@ -140,6 +138,8 @@ function exportCsv(invoices: Invoice[]) {
 // ── Page ─────────────────────────────────────────────────────────────────────
 
 export default function AdminBillingPage() {
+  const { copy, locale } = useAdminI18n();
+  const L = useMemo(() => createCommercialLocalizer(locale), [locale]);
   const [authed, setAuthed]   = useState(false);
   const [pw, setPw]           = useState('');
   const [pwError, setPwError] = useState(false);
@@ -168,6 +168,14 @@ export default function AdminBillingPage() {
   const [voiding,  setVoiding]  = useState<string | null>(null);
   const [runningRetries, setRunningRetries] = useState(false);
 
+  const statusLabel = (status: string) => ({
+    open: L('미결제', 'Open'),
+    paid: L('결제완료', 'Paid'),
+    past_due: L('연체', 'Past due'),
+    uncollectible: L('수금불가', 'Uncollectible'),
+    void: L('취소됨', 'Voided'),
+  }[status] ?? status);
+
   async function login() {
     const res = await fetch('/api/admin/auth', {
       method: 'POST',
@@ -188,7 +196,7 @@ export default function AdminBillingPage() {
       if (filterCountry) params.set('country', filterCountry);
       if (filterQ)       params.set('q',       filterQ);
       const res = await fetch(`/api/admin/billing?${params}`);
-      if (!res.ok) { setError('데이터를 불러오지 못했습니다.'); return; }
+      if (!res.ok) { setError(L('데이터를 불러오지 못했습니다.', 'Could not load billing data.')); return; }
       const data = await res.json() as { invoices: Invoice[]; total: number; retryQueue: number; summary?: BillingSummary };
       setInvoices(data.invoices);
       setTotal(data.total);
@@ -211,7 +219,7 @@ export default function AdminBillingPage() {
         });
       }
     } finally { setLoading(false); }
-  }, [page, filterStatus, filterProduct, filterCountry, filterQ]);
+  }, [L, page, filterStatus, filterProduct, filterCountry, filterQ]);
 
   useEffect(() => { if (authed) void load(); }, [authed, load]);
 
@@ -225,14 +233,14 @@ export default function AdminBillingPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ invoiceId }),
       });
-      const d = await res.json() as { message?: string; error?: string };
-      if (res.ok) showToast(d.message ?? '재시도 예약 완료');
-      else showToast(`오류: ${d.error}`);
+      await res.json();
+      if (res.ok) showToast(L('재시도 예약 완료', 'Retry scheduled.'));
+      else showToast(L('재시도 예약에 실패했습니다.', 'Could not schedule the retry.'));
     } finally { setRetrying(null); void load(); }
   }
 
   async function handleVoid(invoiceId: string) {
-    if (!confirm('이 인보이스를 void 처리하시겠습니까?')) return;
+    if (!confirm(L('이 인보이스를 취소 처리하시겠습니까?', 'Void this invoice?'))) return;
     setVoiding(invoiceId);
     try {
       const res = await fetch('/api/admin/billing', {
@@ -240,8 +248,8 @@ export default function AdminBillingPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ invoiceId }),
       });
-      if (res.ok) showToast('Void 처리 완료');
-      else showToast('오류 발생');
+      if (res.ok) showToast(L('Void 처리 완료', 'Invoice voided.'));
+      else showToast(L('처리에 실패했습니다.', 'The operation failed.'));
     } finally { setVoiding(null); void load(); }
   }
 
@@ -254,7 +262,7 @@ export default function AdminBillingPage() {
         body: JSON.stringify({ action: 'run-retries' }),
       });
       const d = await res.json() as { processed?: number; succeeded?: number; failed?: number };
-      showToast(`재시도 실행: 처리 ${d.processed}건 · 성공 ${d.succeeded}건 · 실패 ${d.failed}건`);
+      showToast(`${L('재시도 실행:', 'Retries run:')} ${d.processed?.toLocaleString(locale) ?? 0}${L('건 처리 · 성공 ', ' processed · success ')}${d.succeeded?.toLocaleString(locale) ?? 0}${L('건 · 실패 ', ' · failed ')}${d.failed?.toLocaleString(locale) ?? 0}${L('건', ' items')}`);
     } finally { setRunningRetries(false); void load(); }
   }
 
@@ -265,18 +273,18 @@ export default function AdminBillingPage() {
         <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-8 w-full max-w-sm">
           <div className="text-center mb-6">
             <div className="text-3xl mb-2">💳</div>
-            <h1 className="text-xl font-black text-gray-900">청구 관리</h1>
-            <p className="text-xs text-gray-400 mt-1">관리자 인증 필요</p>
+            <h1 className="text-xl font-black text-gray-900">{copy.pageTitles.billing}</h1>
+            <p className="text-xs text-gray-400 mt-1">{L('관리자 인증 필요', 'Administrator authentication required')}</p>
           </div>
           <input type="password" value={pw} onChange={e => setPw(e.target.value)}
             onKeyDown={e => e.key === 'Enter' && void login()}
-            placeholder="관리자 비밀번호"
+            placeholder={L('관리자 비밀번호', 'Administrator password')}
             className={`w-full px-4 py-2.5 rounded-xl border text-sm mb-3 outline-none ${pwError ? 'border-red-400 bg-red-50' : 'border-gray-200 focus:border-blue-400'}`} />
           <button onClick={() => void login()}
             className="w-full py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl text-sm transition">
-            로그인
+            {L('로그인', 'Log in')}
           </button>
-          {pwError && <p className="text-red-500 text-xs text-center mt-2">비밀번호가 틀렸습니다</p>}
+          {pwError && <p className="text-red-500 text-xs text-center mt-2">{L('비밀번호가 틀렸습니다', 'Incorrect password')}</p>}
         </div>
       </div>
     );
@@ -288,68 +296,68 @@ export default function AdminBillingPage() {
       {/* Header */}
       <div className="flex items-start justify-between flex-wrap gap-4">
         <div>
-          <h1 className="text-2xl font-black text-gray-900">청구 관리</h1>
+          <h1 className="text-2xl font-black text-gray-900">{copy.pageTitles.billing}</h1>
           <p className="text-sm text-gray-500 mt-0.5">
-            전체 {total.toLocaleString()}건
+            {L('전체 ', 'Total ')}{total.toLocaleString(locale)}{L('건', ' invoices')}
             {retryQueue > 0 && (
-              <span className="ml-2 text-red-600 font-semibold">재시도 대기 {retryQueue}건</span>
+              <span className="ml-2 text-red-600 font-semibold">{L('재시도 대기 ', 'Retry queue: ')}{retryQueue.toLocaleString(locale)}{L('건', ' pending')}</span>
             )}
           </p>
         </div>
         <div className="flex gap-2 flex-wrap">
-          <button onClick={() => exportCsv(invoices)} disabled={invoices.length === 0}
+          <button onClick={() => exportCsv(invoices, L, locale)} disabled={invoices.length === 0}
             className="flex items-center gap-1.5 px-4 py-2 text-sm font-semibold rounded-xl border border-gray-200 bg-white hover:bg-gray-50 disabled:opacity-40 transition">
             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
             </svg>
-            CSV 내보내기
+            {L('CSV 내보내기', 'Export CSV')}
           </button>
           <button onClick={() => void handleRunRetries()} disabled={runningRetries}
             className="flex items-center gap-2 px-4 py-2 text-sm font-bold rounded-xl bg-amber-500 hover:bg-amber-600 text-white disabled:opacity-50 transition">
-            {runningRetries ? <Spinner /> : '🔄'} 재시도 큐 실행
+            {runningRetries ? <Spinner /> : '🔄'} {L('재시도 큐 실행', 'Run retry queue')}
           </button>
           <button onClick={() => void load()}
             className="px-4 py-2 text-sm font-semibold rounded-xl border border-gray-200 bg-white hover:bg-gray-50">
-            새로고침
+            {L('새로고침', 'Refresh')}
           </button>
         </div>
       </div>
 
       {/* Summary cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <SummaryCard icon="💰" label="이번달 총 수입" value={fmtKrw(summary.thisMonthRevenue)}
-          cur={summary.thisMonthRevenue} prev={summary.prevMonthRevenue} />
-        <SummaryCard icon="⏳" label="미결제 금액" value={fmtKrw(summary.unpaidAmount)}
-          cur={summary.unpaidAmount} prev={summary.prevMonthUnpaid} />
-        <SummaryCard icon="↩️" label="환불 금액" value={fmtKrw(summary.refundAmount)}
-          cur={summary.refundAmount} prev={summary.prevMonthRefund} />
-        <SummaryCard icon="👥" label="활성 구독자 수" value={summary.activeSubscribers.toLocaleString() + '명'}
-          cur={summary.activeSubscribers} prev={summary.prevMonthSubscribers} />
+        <SummaryCard icon="💰" label={L('이번달 총 수입', 'Revenue this month')} value={fmtKrw(summary.thisMonthRevenue, locale)}
+          cur={summary.thisMonthRevenue} prev={summary.prevMonthRevenue} locale={locale} />
+        <SummaryCard icon="⏳" label={L('미결제 금액', 'Unpaid amount')} value={fmtKrw(summary.unpaidAmount, locale)}
+          cur={summary.unpaidAmount} prev={summary.prevMonthUnpaid} locale={locale} />
+        <SummaryCard icon="↩️" label={L('환불 금액', 'Refund amount')} value={fmtKrw(summary.refundAmount, locale)}
+          cur={summary.refundAmount} prev={summary.prevMonthRefund} locale={locale} />
+        <SummaryCard icon="👥" label={L('활성 구독자 수', 'Active subscribers')} value={`${summary.activeSubscribers.toLocaleString(locale)}${L('명', ' people')}`}
+          cur={summary.activeSubscribers} prev={summary.prevMonthSubscribers} locale={locale} />
       </div>
 
       {/* Filters */}
       <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 flex flex-wrap gap-3">
         <select value={filterStatus} onChange={e => { setFilterStatus(e.target.value); setPage(1); }}
           className="px-3 py-2 text-sm border border-gray-200 rounded-lg outline-none focus:border-blue-400">
-          <option value="">전체 상태</option>
-          <option value="open">미결제</option>
-          <option value="paid">결제완료</option>
-          <option value="past_due">연체</option>
-          <option value="uncollectible">수금불가</option>
-          <option value="void">취소됨</option>
+          <option value="">{L('전체 상태', 'All statuses')}</option>
+          <option value="open">{statusLabel('open')}</option>
+          <option value="paid">{statusLabel('paid')}</option>
+          <option value="past_due">{statusLabel('past_due')}</option>
+          <option value="uncollectible">{statusLabel('uncollectible')}</option>
+          <option value="void">{statusLabel('void')}</option>
         </select>
         <select value={filterProduct} onChange={e => { setFilterProduct(e.target.value); setPage(1); }}
           className="px-3 py-2 text-sm border border-gray-200 rounded-lg outline-none focus:border-blue-400">
-          <option value="">전체 제품</option>
+          <option value="">{L('전체 제품', 'All products')}</option>
           <option value="nexyfab">NexyFab</option>
           <option value="nexyflow">NexyFlow</option>
           <option value="nexywise">NexyWise</option>
         </select>
         <input value={filterCountry} onChange={e => { setFilterCountry(e.target.value.toUpperCase()); setPage(1); }}
-          placeholder="국가 (KR, US...)"
+          placeholder={L('국가 (KR, US...)', 'Country (KR, US...)')}
           className="px-3 py-2 text-sm border border-gray-200 rounded-lg outline-none focus:border-blue-400 w-32" />
         <input value={filterQ} onChange={e => { setFilterQ(e.target.value); setPage(1); }}
-          placeholder="이메일 / 이름 / ID 검색"
+          placeholder={L('이메일 / 이름 / ID 검색', 'Search email / name / ID')}
           className="px-3 py-2 text-sm border border-gray-200 rounded-lg outline-none focus:border-blue-400 flex-1 min-w-[180px]" />
       </div>
 
@@ -360,14 +368,14 @@ export default function AdminBillingPage() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-gray-100 text-xs font-semibold text-gray-500 uppercase tracking-wide">
-                  <th className="px-4 py-3 text-left">사용자</th>
-                  <th className="px-4 py-3 text-left">제품/플랜</th>
-                  <th className="px-4 py-3 text-left">금액</th>
-                  <th className="px-4 py-3 text-left">상태</th>
-                  <th className="px-4 py-3 text-left">국가</th>
-                  <th className="px-4 py-3 text-left">시도</th>
-                  <th className="px-4 py-3 text-left">일시</th>
-                  <th className="px-4 py-3 text-left">액션</th>
+                  <th className="px-4 py-3 text-left">{L('사용자', 'User')}</th>
+                  <th className="px-4 py-3 text-left">{L('제품/플랜', 'Product/plan')}</th>
+                  <th className="px-4 py-3 text-left">{L('금액', 'Amount')}</th>
+                  <th className="px-4 py-3 text-left">{L('상태', 'Status')}</th>
+                  <th className="px-4 py-3 text-left">{L('국가', 'Country')}</th>
+                  <th className="px-4 py-3 text-left">{L('시도', 'Attempts')}</th>
+                  <th className="px-4 py-3 text-left">{L('일시', 'Date')}</th>
+                  <th className="px-4 py-3 text-left">{L('액션', 'Actions')}</th>
                 </tr>
               </thead>
               <tbody>
@@ -386,28 +394,28 @@ export default function AdminBillingPage() {
               onClick={() => void load()}
               className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-xl transition-colors"
             >
-              다시 시도
+              {L('다시 시도', 'Try again')}
             </button>
           </div>
         ) : invoices.length === 0 ? (
           <div className="text-center py-16">
             <div className="text-4xl mb-3">💳</div>
-            <p className="text-sm font-semibold text-gray-500 mb-1">인보이스가 없습니다</p>
-            <p className="text-xs text-gray-400">조건을 변경하거나 필터를 확인해 보세요.</p>
+            <p className="text-sm font-semibold text-gray-500 mb-1">{L('인보이스가 없습니다', 'No invoices found')}</p>
+            <p className="text-xs text-gray-400">{L('조건을 변경하거나 필터를 확인해 보세요.', 'Change the criteria or check your filters.')}</p>
           </div>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-gray-100 text-xs font-semibold text-gray-500 uppercase tracking-wide">
-                  <th className="px-4 py-3 text-left">사용자</th>
-                  <th className="px-4 py-3 text-left">제품/플랜</th>
-                  <th className="px-4 py-3 text-left">금액</th>
-                  <th className="px-4 py-3 text-left">상태</th>
-                  <th className="px-4 py-3 text-left">국가</th>
-                  <th className="px-4 py-3 text-left">시도</th>
-                  <th className="px-4 py-3 text-left">일시</th>
-                  <th className="px-4 py-3 text-left">액션</th>
+                  <th className="px-4 py-3 text-left">{L('사용자', 'User')}</th>
+                  <th className="px-4 py-3 text-left">{L('제품/플랜', 'Product/plan')}</th>
+                  <th className="px-4 py-3 text-left">{L('금액', 'Amount')}</th>
+                  <th className="px-4 py-3 text-left">{L('상태', 'Status')}</th>
+                  <th className="px-4 py-3 text-left">{L('국가', 'Country')}</th>
+                  <th className="px-4 py-3 text-left">{L('시도', 'Attempts')}</th>
+                  <th className="px-4 py-3 text-left">{L('일시', 'Date')}</th>
+                  <th className="px-4 py-3 text-left">{L('액션', 'Actions')}</th>
                 </tr>
               </thead>
               <tbody>
@@ -427,25 +435,25 @@ export default function AdminBillingPage() {
                         <p className="text-xs text-gray-500 mt-0.5 capitalize">{inv.plan}</p>
                       </td>
                       <td className="px-4 py-3 font-semibold text-gray-900">
-                        {fmtAmount(inv.display_amount, inv.currency)}
+                        {fmtAmount(inv.display_amount, inv.currency, locale)}
                         <p className="text-xs font-normal text-gray-400">
-                          {inv.total_amount_krw.toLocaleString('ko-KR')}원
+                          {fmtKrw(inv.total_amount_krw, locale)}
                         </p>
                       </td>
                       <td className="px-4 py-3">
                         <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${STATUS_COLOR[inv.status] ?? 'bg-gray-100 text-gray-500'}`}>
-                          {STATUS_KO[inv.status] ?? inv.status}
+                          {statusLabel(inv.status)}
                         </span>
                       </td>
                       <td className="px-4 py-3 text-gray-600">{inv.country}</td>
                       <td className="px-4 py-3">
                         <span className={`text-xs font-bold ${inv.attempt_count > 1 ? 'text-amber-600' : 'text-gray-400'}`}>
-                          {inv.attempt_count}회
+                          {inv.attempt_count.toLocaleString(locale)}{L('회', ' attempts')}
                         </span>
                       </td>
                       <td className="px-4 py-3 text-xs text-gray-400">
-                        {formatDate(inv.created_at)}
-                        {inv.paid_at && <p className="text-green-600">결제 {formatDate(inv.paid_at)}</p>}
+                        {formatDate(inv.created_at, locale)}
+                        {inv.paid_at && <p className="text-green-600">{L('결제 ', 'Paid ')}{formatDate(inv.paid_at, locale)}</p>}
                       </td>
                       <td className="px-4 py-3" onClick={e => e.stopPropagation()}>
                         <div className="flex flex-col gap-1.5">
@@ -454,7 +462,7 @@ export default function AdminBillingPage() {
                               onClick={() => void handleRetry(inv.id)}
                               disabled={retrying === inv.id}
                               className="flex items-center gap-1 px-2.5 py-1 text-xs font-bold rounded-lg bg-amber-500 hover:bg-amber-600 text-white disabled:opacity-50 transition">
-                              {retrying === inv.id ? <Spinner /> : '🔄'} 재시도
+                              {retrying === inv.id ? <Spinner /> : '🔄'} {L('재시도', 'Retry')}
                             </button>
                           )}
                           {inv.status !== 'paid' && inv.status !== 'void' && (
@@ -467,12 +475,12 @@ export default function AdminBillingPage() {
                           )}
                           {inv.status === 'paid' && (
                             <button
-                              onClick={() => exportCsv([inv])}
+                              onClick={() => exportCsv([inv], L, locale)}
                               className="flex items-center gap-1 px-2.5 py-1 text-xs font-semibold rounded-lg border border-gray-200 text-gray-500 hover:bg-gray-50 transition">
                               <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                                 <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
                               </svg>
-                              영수증
+                              {L('영수증', 'Receipt')}
                             </button>
                           )}
                         </div>
@@ -484,23 +492,23 @@ export default function AdminBillingPage() {
                         <td colSpan={8} className="px-6 py-4">
                           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
                             <div>
-                              <p className="font-semibold text-gray-700 mb-1">인보이스 ID</p>
+                              <p className="font-semibold text-gray-700 mb-1">{L('인보이스 ID', 'Invoice ID')}</p>
                               <p className="font-mono text-gray-500">{inv.id}</p>
                             </div>
                             <div>
-                              <p className="font-semibold text-gray-700 mb-1">설명</p>
+                              <p className="font-semibold text-gray-700 mb-1">{L('설명', 'Description')}</p>
                               <p className="text-gray-500">{inv.description || '—'}</p>
                             </div>
                             {inv.last_error && (
                               <div className="sm:col-span-2">
-                                <p className="font-semibold text-red-600 mb-1">마지막 오류</p>
+                                <p className="font-semibold text-red-600 mb-1">{L('마지막 오류', 'Last error')}</p>
                                 <p className="font-mono text-red-500 bg-red-50 rounded-lg px-3 py-2">{inv.last_error}</p>
                               </div>
                             )}
                             {inv.last_attempt_at && (
                               <div>
-                                <p className="font-semibold text-gray-700 mb-1">마지막 시도</p>
-                                <p className="text-gray-500">{formatDate(inv.last_attempt_at)}</p>
+                                <p className="font-semibold text-gray-700 mb-1">{L('마지막 시도', 'Last attempt')}</p>
+                                <p className="text-gray-500">{formatDate(inv.last_attempt_at, locale)}</p>
                               </div>
                             )}
                           </div>
@@ -518,15 +526,15 @@ export default function AdminBillingPage() {
       {/* Pagination */}
       {total > 50 && (
         <div className="flex items-center justify-between text-sm">
-          <p className="text-gray-400">{(page - 1) * 50 + 1}–{Math.min(page * 50, total)} / {total}건</p>
+          <p className="text-gray-400">{((page - 1) * 50 + 1).toLocaleString(locale)}–{Math.min(page * 50, total).toLocaleString(locale)} / {total.toLocaleString(locale)}{L('건', ' invoices')}</p>
           <div className="flex gap-2">
             <button disabled={page === 1} onClick={() => setPage(p => p - 1)}
               className="px-4 py-2 rounded-xl border border-gray-200 bg-white disabled:opacity-40 hover:bg-gray-50 transition">
-              이전
+              {L('이전', 'Previous')}
             </button>
             <button disabled={page * 50 >= total} onClick={() => setPage(p => p + 1)}
               className="px-4 py-2 rounded-xl border border-gray-200 bg-white disabled:opacity-40 hover:bg-gray-50 transition">
-              다음
+              {L('다음', 'Next')}
             </button>
           </div>
         </div>

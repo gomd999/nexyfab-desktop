@@ -2,8 +2,10 @@
 
 import React, { useState, useMemo, useEffect, useCallback as _useCallback, Suspense } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
-import { simDict, RISK_SCENARIO_I18N } from './simulatorDict';
+import { simDict, INDUSTRY_SPECIAL_I18N, RISK_SCENARIO_I18N } from './simulatorDict';
 import { useToast } from '@/components/ToastProvider';
+import { formatDate } from '@/lib/i18n/format';
+import { loc } from '@/lib/i18n/loc';
 
 // ─── 공급망 리스크 시나리오 ──────────────────────────────────
 interface RiskScenario {
@@ -21,12 +23,12 @@ interface RiskScenario {
 }
 
 const RISK_SCENARIOS: RiskScenario[] = [
-    { id: 'us_china_tariff', name: '미중 관세전쟁', icon: '⚔️', description: '미국이 중국산 제품에 추가 25% 관세 부과', impacts: { tariff_delta: 25, shipping_delta: 10, labor_delta: 0, material_delta: 5, lead_time_delta: 0 } },
-    { id: 'port_strike', name: '항만 파업', icon: '⚓', description: '부산/상하이 항만 2주 파업으로 물류 대란', impacts: { tariff_delta: 0, shipping_delta: 80, labor_delta: 0, material_delta: 0, lead_time_delta: 21 } },
-    { id: 'energy_crisis', name: '에너지 위기', icon: '⚡', description: '전기료 50% 급등 (우크라이나 사태급)', impacts: { tariff_delta: 0, shipping_delta: 30, labor_delta: 0, material_delta: 15, lead_time_delta: 0 } },
-    { id: 'supply_shortage', name: '부품 공급 부족', icon: '💾', description: '핵심 부품 공급 차질, 원자재 30% 상승', impacts: { tariff_delta: 0, shipping_delta: 0, labor_delta: 0, material_delta: 30, lead_time_delta: 60 } },
-    { id: 'currency_shock', name: '환율 급변동', icon: '💱', description: 'KRW/USD 20% 절하 (외환위기 시나리오)', impacts: { tariff_delta: 0, shipping_delta: 0, labor_delta: 20, material_delta: 20, lead_time_delta: 0 } },
-    { id: 'climate_disaster', name: '자연재해', icon: '🌊', description: '주요 생산지 자연재해로 공장 2개월 가동 중단', impacts: { tariff_delta: 0, shipping_delta: 40, labor_delta: 0, material_delta: 25, lead_time_delta: 90 } },
+    { id: 'us_china_tariff', name: 'US-China Tariff War', icon: '⚔️', description: 'US imposes an additional 25% tariff on Chinese-made goods', impacts: { tariff_delta: 25, shipping_delta: 10, labor_delta: 0, material_delta: 5, lead_time_delta: 0 } },
+    { id: 'port_strike', name: 'Port Strike', icon: '⚓', description: 'Two-week strike at Busan/Shanghai ports disrupts logistics', impacts: { tariff_delta: 0, shipping_delta: 80, labor_delta: 0, material_delta: 0, lead_time_delta: 21 } },
+    { id: 'energy_crisis', name: 'Energy Crisis', icon: '⚡', description: 'Electricity prices surge 50% at Ukraine-crisis scale', impacts: { tariff_delta: 0, shipping_delta: 30, labor_delta: 0, material_delta: 15, lead_time_delta: 0 } },
+    { id: 'supply_shortage', name: 'Parts Shortage', icon: '💾', description: 'Key component disruption raises raw-material costs 30%', impacts: { tariff_delta: 0, shipping_delta: 0, labor_delta: 0, material_delta: 30, lead_time_delta: 60 } },
+    { id: 'currency_shock', name: 'Currency Shock', icon: '💱', description: 'KRW/USD devalues 20% in an FX-crisis scenario', impacts: { tariff_delta: 0, shipping_delta: 0, labor_delta: 20, material_delta: 20, lead_time_delta: 0 } },
+    { id: 'climate_disaster', name: 'Natural Disaster', icon: '🌊', description: 'A disaster at a key production site halts the plant for two months', impacts: { tariff_delta: 0, shipping_delta: 40, labor_delta: 0, material_delta: 25, lead_time_delta: 90 } },
 ];
 
 // ─── 산업별 특화 프리셋 ──────────────────────────────────────
@@ -36,9 +38,9 @@ const INDUSTRY_SPECIAL_PRESETS: Record<string, {
     special_certifications: string[]; certification_costs: Record<string, number>;
     special_fields?: Record<string, string[]>;
 }> = {
-    semiconductor: { name: '반도체 패키징', yield_rate: 0.92, special_certifications: ['AEC-Q100', 'IATF-16949'], certification_costs: { 'AEC-Q100': 45000000, 'IATF-16949': 30000000 }, special_fields: { package_type: ['QFN', 'BGA', 'LGA', 'DIP'] } },
-    medical_device: { name: '의료기기', traceability_cost_per_unit: 500, validation_cost: 50000000, special_certifications: ['FDA-510k', 'CE-MDR', 'ISO-13485', 'KFDA'], certification_costs: { 'FDA-510k': 80000000, 'CE-MDR': 60000000, 'ISO-13485': 25000000, 'KFDA': 20000000 }, special_fields: { device_class: ['Class I', 'Class II', 'Class III'], sterilization_method: ['EO', 'Gamma', 'Autoclave', 'None'] } },
-    automotive_tier: { name: '자동차 부품 (Tier)', ppap_cost: 15000000, special_certifications: ['IATF-16949', 'VDA-6.3', 'PPAP'], certification_costs: { 'IATF-16949': 30000000, 'VDA-6.3': 12000000, 'PPAP': 15000000 }, special_fields: { oem_target: ['Hyundai/Kia', 'GM', 'Toyota', 'BMW', 'Tesla'], tier_level: ['Tier 1', 'Tier 2', 'Tier 3'] } }
+    semiconductor: { name: 'Semiconductor Packaging', yield_rate: 0.92, special_certifications: ['AEC-Q100', 'IATF-16949'], certification_costs: { 'AEC-Q100': 45000000, 'IATF-16949': 30000000 }, special_fields: { package_type: ['QFN', 'BGA', 'LGA', 'DIP'] } },
+    medical_device: { name: 'Medical Devices', traceability_cost_per_unit: 500, validation_cost: 50000000, special_certifications: ['FDA-510k', 'CE-MDR', 'ISO-13485', 'KFDA'], certification_costs: { 'FDA-510k': 80000000, 'CE-MDR': 60000000, 'ISO-13485': 25000000, 'KFDA': 20000000 }, special_fields: { device_class: ['Class I', 'Class II', 'Class III'], sterilization_method: ['EO', 'Gamma', 'Autoclave', 'None'] } },
+    automotive_tier: { name: 'Automotive Parts (Tier)', ppap_cost: 15000000, special_certifications: ['IATF-16949', 'VDA-6.3', 'PPAP'], certification_costs: { 'IATF-16949': 30000000, 'VDA-6.3': 12000000, 'PPAP': 15000000 }, special_fields: { oem_target: ['Hyundai/Kia', 'GM', 'Toyota', 'BMW', 'Tesla'], tier_level: ['Tier 1', 'Tier 2', 'Tier 3'] } }
 };
 
 const db = {
@@ -1116,6 +1118,11 @@ function SimulatorPageInner() {
     const t: SimDictLocale = simDict[langKey];
     /** 리스크 시나리오 이름/설명 지역화 — 표에 없으면(있을 수 없지만) 원본 한국어로 되돌아간다. */
     const riskLabel = (r: RiskScenario) => RISK_SCENARIO_I18N[r.id]?.[langKey] ?? { name: r.name, description: r.description };
+    // Route all simulator-only legacy copy through the shared six-language selector.
+    const simText = (ko: string, translated?: Partial<Record<'en' | 'ja' | 'zh' | 'es' | 'ar', string>>) =>
+        loc(lang, { ko, en: translated?.en ?? ko, ja: translated?.ja ?? translated?.en ?? ko, zh: translated?.zh ?? translated?.en ?? ko, es: translated?.es ?? translated?.en ?? ko, ar: translated?.ar ?? translated?.en ?? ko });
+    const specialIndustryLabel = (id: string) =>
+        INDUSTRY_SPECIAL_I18N[id]?.[langKey] ?? INDUSTRY_SPECIAL_PRESETS[id]?.name ?? id;
     const { toast } = useToast();
     // Mobile 감지 및 PC 모드
     const [mobilePrompt, setMobilePrompt] = useState(false);
@@ -1402,7 +1409,7 @@ function SimulatorPageInner() {
                 if (st.activeRisks) setActiveRisks(st.activeRisks);
                 if (st.specialIndustry) setSpecialIndustry(st.specialIndustry);
                 if (st.selectedSpecialCerts) setSelectedSpecialCerts(st.selectedSpecialCerts);
-                setLoadBanner(`"${data.name}" 시뮬레이션을 불러왔습니다. (저장일: ${new Date(data.createdAt).toLocaleDateString('ko-KR')})`);
+                setLoadBanner(`"${data.name}" 시뮬레이션을 불러왔습니다. (저장일: ${formatDate(data.createdAt, lang) ?? ''})`);
                 setTimeout(() => setLoadBanner(''), 5000);
             })
             .catch(() => { });
@@ -2627,11 +2634,11 @@ function SimulatorPageInner() {
                                     cursor: 'pointer'
                                 }}
                             >
-                                모바일로 그냥 보기
+                                {simText('모바일로 그냥 보기', { en: 'View anyway on mobile', ja: 'モバイルで表示', zh: '仍在移动端查看', es: 'Ver en móvil', ar: 'المشاهدة على الهاتف' })}
                             </button>
                         </div>
                         <p style={{ fontSize: '0.6rem', color: '#cbd5e1', marginTop: '1rem' }}>
-                            이번 세션에서는 다시 묻지 않습니다
+                            {simText('이번 세션에서는 다시 묻지 않습니다', { en: 'Do not ask again this session', ja: 'このセッションでは再表示しない', zh: '本次会话不再询问', es: 'No volver a preguntar en esta sesión', ar: 'لا تسأل مرة أخرى في هذه الجلسة' })}
                         </p>
                     </div>
                 </div>
@@ -2708,22 +2715,22 @@ function SimulatorPageInner() {
                     <div style={{ marginTop: '1rem', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
                         {marketDataLoading ? (
                             <span style={{ fontSize: '0.72rem', color: '#64748b', fontWeight: 700 }}>
-                                <i className="fas fa-spinner fa-spin" style={{ marginRight: 4 }}></i> 실시간 환율 로드 중...
+                                <i className="fas fa-spinner fa-spin" style={{ marginRight: 4 }}></i> {simText('실시간 환율 로드 중...', { en: 'Loading live exchange rates...', ja: 'リアルタイム為替を読み込み中…', zh: '正在加载实时汇率…', es: 'Cargando tipos de cambio en tiempo real…', ar: 'جارٍ تحميل أسعار الصرف المباشرة…' })}
                             </span>
                         ) : marketData ? (
                             <>
                                 <span style={{ fontSize: '0.72rem', color: '#10b981', fontWeight: 800, display: 'flex', alignItems: 'center', gap: '5px', padding: '4px 10px', background: '#f0fdf4', borderRadius: '20px', border: '1px solid #bbf7d0' }}>
                                     <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#10b981', display: 'inline-block' }}></span>
-                                    📡 실시간 환율 적용 중 — 1 USD = {marketData.rates.USD_KRW.toLocaleString()}원
+                                    📡 {simText('실시간 환율 적용 중 — 1 USD =', { en: 'Live rate — 1 USD =', ja: 'リアルタイム為替 — 1 USD =', zh: '实时汇率 — 1 USD =', es: 'Tipo en vivo — 1 USD =', ar: 'السعر المباشر — 1 USD = ' })} {marketData.rates.USD_KRW.toLocaleString()} {simText('원', { en: 'KRW', ja: 'KRW', zh: '韩元', es: 'KRW', ar: 'وون' })}
                                 </span>
                                 <span style={{ fontSize: '0.65rem', color: '#94a3b8', fontWeight: 600 }}>
-                                    마지막 업데이트: {new Date(marketData.lastUpdated).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })}
+                                    {simText('마지막 업데이트:', { en: 'Last updated:', ja: '最終更新:', zh: '最后更新：', es: 'Última actualización:', ar: 'آخر تحديث:' })} {formatDate(marketData.lastUpdated, lang, { hour: '2-digit', minute: '2-digit' }) ?? ''}
                                 </span>
                                 <button
                                     onClick={() => setUseRealtime(v => !v)}
                                     style={{ fontSize: '0.65rem', fontWeight: 800, padding: '3px 10px', borderRadius: '20px', border: '1.5px solid #e2e8f0', background: useRealtime ? '#eff6ff' : '#fff', color: useRealtime ? '#3b82f6' : '#94a3b8', cursor: 'pointer' }}
                                 >
-                                    {useRealtime ? '수동 입력으로 전환' : '실시간 환율 사용'}
+                                    {useRealtime ? simText('수동 입력으로 전환', { en: 'Switch to manual input', ja: '手動入力に切替', zh: '切换为手动输入', es: 'Cambiar a entrada manual', ar: 'التبديل إلى الإدخال اليدوي' }) : simText('실시간 환율 사용', { en: 'Use live exchange rate', ja: 'リアルタイム為替を使用', zh: '使用实时汇率', es: 'Usar tipo de cambio en vivo', ar: 'استخدام سعر الصرف المباشر' })}
                                 </button>
                             </>
                         ) : null}
@@ -2763,7 +2770,7 @@ function SimulatorPageInner() {
                                 {marketData && useRealtime && (
                                     <span style={{ fontSize: '0.65rem', color: '#10b981', fontWeight: 800, display: 'flex', alignItems: 'center', gap: '4px' }}>
                                         <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#10b981', display: 'inline-block', animation: 'pulse 2s infinite' }}></span>
-                                        실시간 환율 적용
+                                        {simText('실시간 환율 적용', { en: 'Live exchange rate', ja: 'リアルタイム為替を適用', zh: '应用实时汇率', es: 'Tipo de cambio en vivo', ar: 'سعر الصرف المباشر' })}
                                     </span>
                                 )}
                             </label>
@@ -2813,13 +2820,13 @@ function SimulatorPageInner() {
                         <div className="sim-input-group" style={{ marginTop: '1.5rem' }}>
                             <label>{t.targetMarket}</label>
                             <select className="sim-select" value={dest} onChange={(e) => handleDestChange(e.target.value)}>
-                                <option value="US">USA (미국/FCC)</option>
-                                <option value="EU">EU (유럽/CE)</option>
-                                <option value="JP">JAPAN (일본/PSE)</option>
-                                <option value="KR">KOREA (내수/KC)</option>
-                                <option value="TW">TAIWAN (대만/BSMI)</option>
-                                <option value="VN">VIETNAM (베트남/CR)</option>
-                                <option value="CA">CANADA (캐나다/UL)</option>
+                                <option value="US">{simText('USA (미국/FCC)', { en: 'USA (FCC)', ja: 'USA（米国/FCC）', zh: '美国（FCC）', es: 'EE. UU. (FCC)', ar: 'الولايات المتحدة (FCC)' })}</option>
+                                <option value="EU">{simText('EU (유럽/CE)', { en: 'EU (CE)', ja: 'EU（欧州/CE）', zh: '欧盟（CE）', es: 'UE (CE)', ar: 'الاتحاد الأوروبي (CE)' })}</option>
+                                <option value="JP">{simText('JAPAN (일본/PSE)', { en: 'JAPAN (PSE)', ja: '日本（PSE）', zh: '日本（PSE）', es: 'JAPÓN (PSE)', ar: 'اليابان (PSE)' })}</option>
+                                <option value="KR">{simText('KOREA (내수/KC)', { en: 'KOREA (KC domestic)', ja: '韓国（国内/KC）', zh: '韩国（内销/KC）', es: 'COREA (KC nacional)', ar: 'كوريا (KC محلي)' })}</option>
+                                <option value="TW">{simText('TAIWAN (대만/BSMI)', { en: 'TAIWAN (BSMI)', ja: '台湾（BSMI）', zh: '台湾（BSMI）', es: 'TAIWÁN (BSMI)', ar: 'تايوان (BSMI)' })}</option>
+                                <option value="VN">{simText('VIETNAM (베트남/CR)', { en: 'VIETNAM (CR)', ja: 'ベトナム（CR）', zh: '越南（CR）', es: 'VIETNAM (CR)', ar: 'فيتنام (CR)' })}</option>
+                                <option value="CA">{simText('CANADA (캐나다/UL)', { en: 'CANADA (UL)', ja: 'カナダ（UL）', zh: '加拿大（UL）', es: 'CANADÁ (UL)', ar: 'كندا (UL)' })}</option>
                             </select>
                         </div>
 
@@ -2973,7 +2980,7 @@ function SimulatorPageInner() {
                                             </div>
                                         ))}
                                         {industryOptions.filter(o => o.label.toLowerCase().includes(industryQuery.toLowerCase()) || o.value.toLowerCase().includes(industryQuery.toLowerCase())).length === 0 && (
-                                            <div style={{ padding: '8px 12px', fontSize: '0.85rem', color: '#94a3b8', textAlign: 'center' }}>검색 결과가 없습니다.</div>
+                                            <div style={{ padding: '8px 12px', fontSize: '0.85rem', color: '#94a3b8', textAlign: 'center' }}>{simText('검색 결과가 없습니다.', { en: 'No results found.', ja: '検索結果がありません。', zh: '未找到结果。', es: 'No se encontraron resultados.', ar: 'لم يتم العثور على نتائج.' })}</div>
                                         )}
                                     </div>
                                 )}
@@ -2986,10 +2993,10 @@ function SimulatorPageInner() {
                                     return toolingRow && industry !== 'none' && (
                                     <>
                                         <span style={{ fontSize: '0.65rem', padding: '2px 6px', background: '#f1f5f9', borderRadius: '4px', fontWeight: 700, color: '#64748b' }}>
-                                            정밀도: {toolingRow.precision.toUpperCase()}
+                                            {simText('정밀도:', { en: 'Precision:', ja: '精度:', zh: '精度：', es: 'Precisión:', ar: 'الدقة:' })} {toolingRow.precision.toUpperCase()}
                                         </span>
                                         <span style={{ fontSize: '0.65rem', padding: '2px 6px', background: '#f1f5f9', borderRadius: '4px', fontWeight: 700, color: '#64748b' }}>
-                                            오버헤드: {Math.round(toolingRow.overhead * 100)}%
+                                            {simText('오버헤드:', { en: 'Overhead:', ja: 'オーバーヘッド:', zh: '间接费用：', es: 'Sobrecoste:', ar: 'التكاليف غير المباشرة:' })} {Math.round(toolingRow.overhead * 100)}%
                                         </span>
                                         <span style={{
                                             fontSize: '0.65rem', padding: '2px 6px',
@@ -2997,7 +3004,7 @@ function SimulatorPageInner() {
                                             borderRadius: '4px', fontWeight: 700,
                                             color: toolingRow.risk === 'high' || toolingRow.risk === 'ultra_high' ? '#e11d48' : '#166534'
                                         }}>
-                                            리스크: {toolingRow.risk.toUpperCase()}
+                                            {simText('리스크:', { en: 'Risk:', ja: 'リスク:', zh: '风险：', es: 'Riesgo:', ar: 'المخاطر:' })} {toolingRow.risk.toUpperCase()}
                                         </span>
                                     </>
                                     );
@@ -3014,7 +3021,7 @@ function SimulatorPageInner() {
                                         style={{ fontSize: '0.65rem', color: '#3b82f6', fontWeight: 800, marginBottom: showIndustryItems ? '6px' : '0', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}
                                     >
                                         <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                                            <i className="fas fa-tag"></i> 해당 업종 대표 품목 및 HS Code 예시
+                                            <i className="fas fa-tag"></i> {simText('해당 업종 대표 품목 및 HS Code 예시', { en: 'Representative items and HS Code examples', ja: '業種の代表品目とHSコード例', zh: '该行业代表产品及HS编码示例', es: 'Artículos representativos y ejemplos de códigos HS', ar: 'أمثلة على المنتجات ورموز HS للصناعة' })}
                                         </div>
                                         <i className={`fas fa-chevron-${showIndustryItems ? 'up' : 'down'}`} style={{ fontSize: '0.6rem' }}></i>
                                     </div>
@@ -3033,9 +3040,9 @@ function SimulatorPageInner() {
 
                         <div className="sim-input-group" style={{ marginTop: '1.5rem' }} id="bom-details">
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.8rem' }}>
-                                <label style={{ margin: 0 }}>물류/원산지 최적화 (HS 기반)</label>
+                            <label style={{ margin: 0 }}>{simText('물류/원산지 최적화 (HS 기반)', { en: 'Logistics/origin optimization (HS-based)', ja: '物流・原産地最適化（HSベース）', zh: '物流/原产地优化（基于HS）', es: 'Optimización logística/origen (basada en HS)', ar: 'تحسين الخدمات اللوجستية/المنشأ (حسب HS)' })}</label>
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                                    <i className="fas fa-info-circle" style={{ color: '#3b82f6', fontSize: '0.7rem', cursor: 'help' }} title="부품의 원산지(KR/CN)와 조립국가의 부가가치(RVC)를 결합하여 최종 원산지를 판정합니다."></i>
+                                    <i className="fas fa-info-circle" style={{ color: '#3b82f6', fontSize: '0.7rem', cursor: 'help' }} title={simText('부품의 원산지(KR/CN)와 조립국가의 부가가치(RVC)를 결합하여 최종 원산지를 판정합니다.', { en: 'Combines component origin (KR/CN) with assembly-country RVC to determine final origin.', ja: '部品原産地（KR/CN）と組立国RVCから最終原産地を判定します。', zh: '结合部件原产地（KR/CN）与组装国RVC判定最终原产地。', es: 'Combina el origen de las piezas (KR/CN) con el RVC del país de montaje para determinar el origen final.', ar: 'يدمج منشأ المكونات (KR/CN) مع RVC بلد التجميع لتحديد المنشأ النهائي.' })}></i>
                                     <button
                                         onClick={() => {
                                             if (customComponents.length > 0 && !confirm("현재 작성 중인 BOM 자재가 모두 삭제되고 산업별 예시 템플릿으로 대체됩니다. 계속하시겠습니까?")) return;
@@ -3043,31 +3050,31 @@ function SimulatorPageInner() {
                                         }}
                                         style={{ fontSize: '0.65rem', padding: '2px 8px', borderRadius: '4px', background: '#f1f5f9', color: '#64748b', border: 'none', cursor: 'pointer', fontWeight: 800 }}
                                     >
-                                        템플릿 로드
+                                        {simText('템플릿 로드', { en: 'Load template', ja: 'テンプレートを読み込む', zh: '加载模板', es: 'Cargar plantilla', ar: 'تحميل القالب' })}
                                     </button>
                                     <button
                                         onClick={() => setShowAddForm(!showAddForm)}
                                         style={{ fontSize: '0.65rem', padding: '2px 8px', borderRadius: '4px', background: '#3b82f6', color: 'white', border: 'none', cursor: 'pointer', fontWeight: 800 }}
                                     >
-                                        {showAddForm ? '닫기' : '+ 추가'}
+                                        {showAddForm ? simText('닫기', { en: 'Close', ja: '閉じる', zh: '关闭', es: 'Cerrar', ar: 'إغلاق' }) : simText('+ 추가', { en: '+ Add', ja: '+ 追加', zh: '+ 添加', es: '+ Añadir', ar: '+ إضافة' })}
                                     </button>
                                 </div>
                             </div>
 
                             {showAddForm && (
                                 <div style={{ background: '#fff', border: '1px solid #3b82f6', padding: '1rem', borderRadius: '0.75rem', marginBottom: '1rem', display: 'flex', flexDirection: 'column', gap: '8px', boxShadow: '0 4px 12px rgba(59, 130, 246, 0.08)' }}>
-                                    <input className="sim-input" style={{ fontSize: '0.85rem', padding: '0.6rem' }} placeholder="부품명 (ex. Heat Sink)" value={newComp.name} onChange={e => setNewComp({ ...newComp, name: e.target.value })} />
+                                    <input className="sim-input" style={{ fontSize: '0.85rem', padding: '0.6rem' }} placeholder={simText('부품명 (ex. Heat Sink)', { en: 'Part name (e.g. Heat Sink)', ja: '部品名（例：Heat Sink）', zh: '部件名称（例如 Heat Sink）', es: 'Nombre de pieza (ej. Heat Sink)', ar: 'اسم الجزء (مثال: Heat Sink)' })} value={newComp.name} onChange={e => setNewComp({ ...newComp, name: e.target.value })} />
 
                                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
-                                        <input type="number" className="sim-input" style={{ fontSize: '0.85rem', padding: '0.6rem' }} placeholder="단가 (₩)" value={newComp.price || ''} onChange={e => setNewComp({ ...newComp, price: parseInt(e.target.value) || 0 })} />
-                                        <input type="number" step="0.01" className="sim-input" style={{ fontSize: '0.85rem', padding: '0.6rem' }} placeholder="무게 (kg)" value={newComp.weight || ''} onChange={e => setNewComp({ ...newComp, weight: parseFloat(e.target.value) || 0 })} />
+                                        <input type="number" className="sim-input" style={{ fontSize: '0.85rem', padding: '0.6rem' }} placeholder={simText('단가 (₩)', { en: 'Unit price (₩)', ja: '単価（₩）', zh: '单价（₩）', es: 'Precio unitario (₩)', ar: 'سعر الوحدة (₩)' })} value={newComp.price || ''} onChange={e => setNewComp({ ...newComp, price: parseInt(e.target.value) || 0 })} />
+                                        <input type="number" step="0.01" className="sim-input" style={{ fontSize: '0.85rem', padding: '0.6rem' }} placeholder={simText('무게 (kg)', { en: 'Weight (kg)', ja: '重量（kg）', zh: '重量（kg）', es: 'Peso (kg)', ar: 'الوزن (كجم)' })} value={newComp.weight || ''} onChange={e => setNewComp({ ...newComp, weight: parseFloat(e.target.value) || 0 })} />
                                     </div>
 
                                     <div style={{ position: 'relative' }}>
                                         <input
                                             className="sim-input"
                                             style={{ fontSize: '0.85rem', padding: '0.6rem', width: '100%', paddingRight: '2rem' }}
-                                            placeholder="HS Code 직접 입력 또는 검색 🔍"
+                                            placeholder={simText('HS Code 직접 입력 또는 검색 🔍', { en: 'Enter or search HS Code 🔍', ja: 'HSコードを入力または検索 🔍', zh: '直接输入或搜索HS编码 🔍', es: 'Introducir o buscar código HS 🔍', ar: 'أدخل أو ابحث عن رمز HS 🔍' })}
                                             value={newComp.hs}
                                             onChange={e => {
                                                 const val = e.target.value;
@@ -3114,7 +3121,7 @@ function SimulatorPageInner() {
                                                             onMouseLeave={(e) => (e.currentTarget.style.background = '#f8faff')}
                                                         >
                                                             <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
-                                                            <span><strong>&quot;{hsQuery}&quot;</strong> 직접 입력으로 사용 (검색 결과 없음)</span>
+                                                            <span><strong>&quot;{hsQuery}&quot;</strong> {simText('직접 입력으로 사용 (검색 결과 없음)', { en: 'Use as direct input (no results)', ja: '直接入力として使用（結果なし）', zh: '作为直接输入使用（无结果）', es: 'Usar como entrada directa (sin resultados)', ar: 'استخدام كإدخال مباشر (لا نتائج)' })}</span>
                                                         </div>
                                                     )}
                                                     {/* 검색 결과 있을 때도: 현재 입력값 그대로 사용 옵션 */}
@@ -3129,7 +3136,7 @@ function SimulatorPageInner() {
                                                             onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
                                                         >
                                                             <svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
-                                                            <span>&quot;{hsQuery}&quot; 입력값 그대로 사용</span>
+                                                            <span>&quot;{hsQuery}&quot; {simText('입력값 그대로 사용', { en: 'Use entered value', ja: '入力値をそのまま使用', zh: '使用输入值', es: 'Usar el valor introducido', ar: 'استخدام القيمة المدخلة' })}</span>
                                                         </div>
                                                     )}
                                                 </div>
@@ -3140,7 +3147,7 @@ function SimulatorPageInner() {
                                             target="_blank"
                                             rel="noreferrer"
                                             style={{ position: 'absolute', right: '8px', top: '50%', transform: 'translateY(-50%)', color: '#3b82f6', fontSize: '0.8rem' }}
-                                            title="조회"
+                                            title={simText('조회', { en: 'Lookup', ja: '検索', zh: '查询', es: 'Consultar', ar: 'بحث' })}
                                         >
                                             <i className="fas fa-search"></i>
                                         </a >
@@ -3148,10 +3155,10 @@ function SimulatorPageInner() {
 
                                     <div style={{ display: 'flex', gap: '8px' }}>
                                         <select className="sim-select" style={{ fontSize: '0.85rem', padding: '0.6rem', flex: 1 }} value={newComp.origin} onChange={e => setNewComp({ ...newComp, origin: e.target.value as 'KR' | 'CN' })}>
-                                            <option value="CN">CN (중국)</option>
-                                            <option value="KR">KR (한국)</option>
+                                            <option value="CN">{simText('CN (중국)', { en: 'CN (China)', ja: 'CN（中国）', zh: 'CN（中国）', es: 'CN (China)', ar: 'CN (الصين)' })}</option>
+                                            <option value="KR">{simText('KR (한국)', { en: 'KR (Korea)', ja: 'KR（韓国）', zh: 'KR（韩国）', es: 'KR (Corea)', ar: 'KR (كوريا)' })}</option>
                                         </select>
-                                        <button className="btn-primary" style={{ flex: 1.5, fontSize: '0.85rem', padding: '0.6rem' }} onClick={addCustomComponent}>등록</button>
+                                        <button className="btn-primary" style={{ flex: 1.5, fontSize: '0.85rem', padding: '0.6rem' }} onClick={addCustomComponent}>{simText('등록', { en: 'Add', ja: '登録', zh: '登记', es: 'Registrar', ar: 'تسجيل' })}</button>
                                     </div>
                                 </div >
                             )}
@@ -3173,7 +3180,7 @@ function SimulatorPageInner() {
                                                             HS: <input value={c.hs} onChange={(e) => updateCustomComponent(c.id, 'hs', e.target.value)} style={{ width: '45px', border: '1px solid transparent', background: 'white', borderRadius: '4px', padding: '1px 3px', fontSize: '0.65rem', color: '#64748b', outline: 'none', transition: 'border 0.2s' }} onFocus={e => e.target.style.border = '1px solid #cbd5e1'} onBlur={e => e.target.style.border = '1px solid transparent'} />
                                                             | ₩<input type="number" value={c.price} onChange={(e) => updateCustomComponent(c.id, 'price', parseInt(e.target.value) || 0)} style={{ width: '60px', border: '1px solid transparent', background: 'white', borderRadius: '4px', padding: '1px 3px', fontSize: '0.65rem', color: '#64748b', outline: 'none', transition: 'border 0.2s' }} onFocus={e => e.target.style.border = '1px solid #cbd5e1'} onBlur={e => e.target.style.border = '1px solid transparent'} />
                                                             | <input type="number" step="0.01" value={c.weight || 0.1} onChange={(e) => updateCustomComponent(c.id, 'weight', parseFloat(e.target.value) || 0)} style={{ width: '40px', border: '1px solid transparent', background: 'white', borderRadius: '4px', padding: '1px 3px', fontSize: '0.65rem', color: '#64748b', outline: 'none', transition: 'border 0.2s' }} onFocus={e => e.target.style.border = '1px solid #cbd5e1'} onBlur={e => e.target.style.border = '1px solid transparent'} />kg
-                                                            <button onClick={() => setEditingCompId(null)} style={{ border: 'none', background: '#3b82f6', color: 'white', borderRadius: '4px', padding: '2px 6px', fontSize: '0.6rem', cursor: 'pointer', marginLeft: 'auto' }}>완료</button>
+                                                            <button onClick={() => setEditingCompId(null)} style={{ border: 'none', background: '#3b82f6', color: 'white', borderRadius: '4px', padding: '2px 6px', fontSize: '0.6rem', cursor: 'pointer', marginLeft: 'auto' }}>{simText('완료', { en: 'Done', ja: '完了', zh: '完成', es: 'Hecho', ar: 'تم' })}</button>
                                                         </div>
                                                     </>
                                                 ) : (
@@ -3202,12 +3209,12 @@ function SimulatorPageInner() {
 
                         <div className="sim-input-group" style={{ marginTop: '1.5rem' }}>
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.8rem' }}>
-                                <label style={{ margin: 0 }}>상세 설정 (인증/수익/환급)</label>
+                                <label style={{ margin: 0 }}>{simText('상세 설정 (인증/수익/환급)', { en: 'Advanced settings (certification/profit/drawback)', ja: '詳細設定（認証・利益・還付）', zh: '详细设置（认证/利润/退税）', es: 'Ajustes avanzados (certificación/beneficio/reembolso)', ar: 'الإعدادات المتقدمة (الشهادة/الربح/الاسترداد)' })}</label>
                                 <button
                                     onClick={() => setShowCertPanel(!showCertPanel)}
                                     style={{ fontSize: '0.65rem', padding: '2px 8px', borderRadius: '4px', background: showCertPanel ? '#64748b' : '#3b82f6', color: 'white', border: 'none', cursor: 'pointer', fontWeight: 800 }}
                                 >
-                                    {showCertPanel ? '간편 설정 모드' : '+ 추가 설정'}
+                                    {showCertPanel ? simText('간편 설정 모드', { en: 'Simple settings', ja: '簡易設定モード', zh: '简易设置模式', es: 'Ajustes simples', ar: 'إعدادات بسيطة' }) : simText('+ 추가 설정', { en: '+ More settings', ja: '+ 追加設定', zh: '+ 更多设置', es: '+ Más ajustes', ar: '+ إعدادات إضافية' })}
                                 </button>
                             </div>
 
@@ -3216,13 +3223,13 @@ function SimulatorPageInner() {
                                     {/* Profit Margin */}
                                     <div style={{ padding: '0.75rem', background: '#f8fafc', borderRadius: '0.75rem', border: '1px solid #e2e8f0' }}>
                                         <div style={{ fontSize: '0.7rem', fontWeight: 700, color: '#64748b', marginBottom: '0.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                            <span>목표 수익률 (Profit Margin): {Math.round(profitMargin * 100)}%</span>
+                                            <span>{simText('목표 수익률 (Profit Margin):', { en: 'Target profit margin:', ja: '目標利益率（Profit Margin）：', zh: '目标利润率：', es: 'Margen de beneficio objetivo:', ar: 'هامش الربح المستهدف:' })} {Math.round(profitMargin * 100)}%</span>
                                             <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
-                                                <i className="fas fa-info-circle" style={{ color: '#3b82f6', cursor: 'pointer' }} title="최종 제안가 산출을 위한 마진율입니다."></i>
+                                                <i className="fas fa-info-circle" style={{ color: '#3b82f6', cursor: 'pointer' }} title={simText('최종 제안가 산출을 위한 마진율입니다.', { en: 'Margin used to calculate the final quote.', ja: '最終見積額の算出に使用する利益率です。', zh: '用于计算最终报价的利润率。', es: 'Margen utilizado para calcular la cotización final.', ar: 'الهامش المستخدم لحساب عرض السعر النهائي.' })}></i>
                                             </div>
                                         </div>
                                         <div style={{ fontSize: '0.6rem', color: '#94a3b8', marginBottom: '0.8rem', lineHeight: 1.4 }}>
-                                            선택된 상업 조건(현재: <strong>{incoterm}</strong>) 기준 원가에 마진을 더해 최종 제안가(Quote)를 계산합니다.
+                                            {simText('선택된 상업 조건(현재:', { en: 'The final quote adds this margin to the cost under the selected commercial term (currently:', ja: '選択した取引条件（現在：', zh: '根据所选商业条款（当前：', es: 'La cotización final suma este margen al coste según el término comercial seleccionado (actualmente:', ar: 'يُضاف هذا الهامش إلى التكلفة وفق الشرط التجاري المحدد (حالياً:' })} <strong>{incoterm}</strong>{simText(') 기준 원가에 마진을 더해 최종 제안가(Quote)를 계산합니다.', { en: ').', ja: '）を基準に最終見積（Quote）を計算します。', zh: '）计算最终报价。', es: ') para calcular la cotización final.', ar: ') لحساب عرض السعر النهائي.' })}
                                         </div>
                                         <input type="range" min="0" max="0.5" step="0.01" value={profitMargin} onChange={(e) => setProfitMargin(parseFloat(e.target.value))} style={{ width: '100%', cursor: 'pointer' }} />
                                         <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '4px', fontSize: '0.6rem', color: '#cbd5e1', fontWeight: 700 }}>
@@ -3235,8 +3242,8 @@ function SimulatorPageInner() {
                                     {/* Certifications */}
                                     <div style={{ border: '1px solid #f1f5f9', padding: '0.75rem', borderRadius: '0.75rem' }}>
                                         <div style={{ fontSize: '0.7rem', fontWeight: 700, color: '#94a3b8', marginBottom: '0.5rem', display: 'flex', justifyContent: 'space-between' }}>
-                                            <span>글로벌 인증 항목</span>
-                                            <span style={{ color: '#3b82f6' }}>{selectedCerts.length}개 선택됨</span>
+                                            <span>{simText('글로벌 인증 항목', { en: 'Global certifications', ja: 'グローバル認証項目', zh: '全球认证项目', es: 'Certificaciones globales', ar: 'الشهادات العالمية' })}</span>
+                                            <span style={{ color: '#3b82f6' }}>{selectedCerts.length}{simText('개 선택됨', { en: ' selected', ja: '件を選択', zh: '项已选择', es: ' seleccionados', ar: ' محدد' })}</span>
                                         </div>
                                         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
                                             {Object.entries(db.certifications).map(([id, cert]) => (
@@ -3257,11 +3264,11 @@ function SimulatorPageInner() {
                                     <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', padding: '0.75rem', background: '#eff6ff', borderRadius: '0.75rem' }}>
                                         <label style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer' }}>
                                             <input type="checkbox" checked={useDrawback} onChange={(e) => handleDrawbackChange(e.target.checked)} style={{ transform: 'scale(1.1)' }} />
-                                            <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#1d4ed8' }}>관세 환급(Drawback)</span>
+                                            <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#1d4ed8' }}>{simText('관세 환급(Drawback)', { en: 'Duty drawback', ja: '関税還付（Drawback）', zh: '关税退税（Drawback）', es: 'Devolución de aranceles (Drawback)', ar: 'استرداد الرسوم الجمركية (Drawback)' })}</span>
                                         </label>
                                         <label style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer' }}>
                                             <input type="checkbox" checked={includeTooling} onChange={(e) => setIncludeTooling(e.target.checked)} style={{ transform: 'scale(1.1)' }} />
-                                            <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#1d4ed8' }}>금형/지그 비용 포함</span>
+                                            <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#1d4ed8' }}>{simText('금형/지그 비용 포함', { en: 'Include tooling costs', ja: '金型・治具費を含む', zh: '包含模具/夹具成本', es: 'Incluir costes de utillaje', ar: 'تضمين تكاليف القوالب والتجهيزات' })}</span>
                                         </label>
                                     </div>
                                 </div>
@@ -3271,7 +3278,7 @@ function SimulatorPageInner() {
                         <div className="sim-input-group" style={{ marginTop: '1.5rem' }}>
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.8rem' }}>
                                 <label style={{ margin: 0 }}>{t.freightMode}</label>
-                                <span style={{ fontSize: '0.7rem', color: '#64748b', fontWeight: 600 }}>단품 무게 합계: <span style={{ color: '#3b82f6', fontWeight: 800 }}>{simData.totalWeight.toFixed(2)}kg</span></span>
+                                <span style={{ fontSize: '0.7rem', color: '#64748b', fontWeight: 600 }}>{simText('단품 무게 합계:', { en: 'Total unit weight:', ja: '単品重量合計：', zh: '单件重量合计：', es: 'Peso unitario total:', ar: 'إجمالي وزن الوحدة:' })} <span style={{ color: '#3b82f6', fontWeight: 800 }}>{simData.totalWeight.toFixed(2)}kg</span></span>
                             </div>
                             <div style={{ display: 'flex', gap: '0.5rem' }}>
                                 <button className={`sim-toggle-btn ${freightMode === 'sea' ? 'active' : ''}`} onClick={() => { setFreightMode('sea'); setCustomBaseFreight(null); setCustomWeightRate(null); }}>SEA (Ocean)</button>
@@ -3293,12 +3300,12 @@ function SimulatorPageInner() {
                                         />
                                         <span>₩</span>
                                         <span style={{ color: '#94a3b8', fontWeight: 600, fontSize: '0.65rem', marginLeft: '2px' }}>
-                                            = {((customBaseFreight !== null ? customBaseFreight : simData.baseFinalShip) / Math.max(simData.volume, 1)).toLocaleString(undefined, { maximumFractionDigits: 0 })}₩/개
+                                            = {((customBaseFreight !== null ? customBaseFreight : simData.baseFinalShip) / Math.max(simData.volume, 1)).toLocaleString(undefined, { maximumFractionDigits: 0 })}₩/{simText('개', { en: 'unit', ja: '個', zh: '件', es: 'unidad', ar: 'وحدة' })}
                                         </span>
                                     </div>
                                 </div>
                                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px', alignItems: 'center', gap: '8px' }}>
-                                    <span style={{ lineHeight: '1.2' }}>무게 비례 단가 (<i className="fas fa-weight-hanging" style={{ marginRight: '2px' }}></i>{simData.totalWeight.toFixed(2)}kg)</span>
+                                    <span style={{ lineHeight: '1.2' }}>{simText('무게 비례 단가', { en: 'Weight-based unit price', ja: '重量比例単価', zh: '按重量计价', es: 'Precio proporcional al peso', ar: 'سعر الوحدة حسب الوزن' })} (<i className="fas fa-weight-hanging" style={{ marginRight: '2px' }}></i>{simData.totalWeight.toFixed(2)}kg)</span>
                                     <div style={{ display: 'flex', alignItems: 'center', gap: '4px', whiteSpace: 'nowrap' }}>
                                         <input
                                             type="number"
@@ -3311,13 +3318,13 @@ function SimulatorPageInner() {
                                         />
                                         <span>₩/kg</span>
                                         <span style={{ color: '#94a3b8', fontWeight: 600, fontSize: '0.65rem', marginLeft: '2px' }}>
-                                            = {((customWeightRate !== null ? customWeightRate : simData.weightRate) * simData.totalWeight).toLocaleString(undefined, { maximumFractionDigits: 0 })}₩/개
+                                            = {((customWeightRate !== null ? customWeightRate : simData.weightRate) * simData.totalWeight).toLocaleString(undefined, { maximumFractionDigits: 0 })}₩/{simText('개', { en: 'unit', ja: '個', zh: '件', es: 'unidad', ar: 'وحدة' })}
                                         </span>
                                     </div>
                                 </div>
                                 <div style={{ display: 'flex', justifyContent: 'space-between', paddingTop: '8px', borderTop: '1px dashed #cbd5e1', fontWeight: 800, color: '#0f172a' }}>
                                     <span>{t.expectedFreight}</span>
-                                    <span>{((simData.baseFinalShip / simData.volume) + (simData.totalWeight * simData.weightRate)).toLocaleString(undefined, { maximumFractionDigits: 0 })} ₩/개</span>
+                                    <span>{((simData.baseFinalShip / simData.volume) + (simData.totalWeight * simData.weightRate)).toLocaleString(undefined, { maximumFractionDigits: 0 })} ₩/{simText('개', { en: 'unit', ja: '個', zh: '件', es: 'unidad', ar: 'وحدة' })}</span>
                                 </div>
                             </div>
                         </div>
@@ -3325,16 +3332,16 @@ function SimulatorPageInner() {
                         {/* ─── 산업 특화 계산기 ─── */}
                         <div className="sim-input-group" style={{ marginTop: '1.5rem', padding: '1rem', background: '#faf5ff', border: '1px solid #e9d5ff', borderRadius: '0.75rem' }}>
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
-                                <span style={{ fontSize: '0.8rem', fontWeight: 800, color: '#7c3aed' }}>산업 특화 모드</span>
+                                <span style={{ fontSize: '0.8rem', fontWeight: 800, color: '#7c3aed' }}>{simText('산업 특화 모드', { en: 'Industry-specific mode', ja: '業界特化モード', zh: '行业专用模式', es: 'Modo específico de industria', ar: 'وضع خاص بالصناعة' })}</span>
                                 <select
                                     value={specialIndustry}
                                     onChange={e => { setSpecialIndustry(e.target.value); setSelectedSpecialCerts([]); setSpecialFields({}); }}
                                     style={{ fontSize: '0.7rem', padding: '3px 6px', border: '1px solid #c4b5fd', borderRadius: '6px', background: 'white', color: '#7c3aed', fontWeight: 700 }}
                                 >
-                                    <option value="none">선택 안함</option>
-                                    <option value="semiconductor">반도체 패키징</option>
-                                    <option value="medical_device">의료기기</option>
-                                    <option value="automotive_tier">자동차 부품 (Tier)</option>
+                                    <option value="none">{simText('선택 안함', { en: 'None', ja: '選択なし', zh: '不选择', es: 'Ninguno', ar: 'لا شيء' })}</option>
+                                    <option value="semiconductor">{specialIndustryLabel('semiconductor')}</option>
+                                    <option value="medical_device">{specialIndustryLabel('medical_device')}</option>
+                                    <option value="automotive_tier">{specialIndustryLabel('automotive_tier')}</option>
                                 </select>
                             </div>
                             {specialIndustry !== 'none' && INDUSTRY_SPECIAL_PRESETS[specialIndustry] && (() => {
@@ -3347,17 +3354,17 @@ function SimulatorPageInner() {
                                     <div style={{ fontSize: '0.72rem', color: '#6d28d9' }}>
                                         {yieldRate && (
                                             <div style={{ background: '#ede9fe', padding: '6px 10px', borderRadius: '6px', marginBottom: '8px', fontWeight: 700 }}>
-                                                수율 {(yieldRate * 100).toFixed(0)}% 적용: {volume.toLocaleString()}개 목표 → 실제 <span style={{ color: '#dc2626', fontWeight: 900 }}>{actualNeeded.toLocaleString()}개</span> 제조 필요
+                                                {simText('수율', { en: 'Yield', ja: '歩留まり', zh: '良率', es: 'Rendimiento', ar: 'العائد' })} {(yieldRate * 100).toFixed(0)}% {simText('적용:', { en: 'applied:', ja: '適用：', zh: '应用：', es: 'aplicado:', ar: 'مطبق:' })} {volume.toLocaleString()}{simText('개 목표 → 실제', { en: ' target → actual ', ja: '個目標 → 実際', zh: '个目标 → 实际', es: ' objetivo → real ', ar: ' هدف → فعلي ' })}<span style={{ color: '#dc2626', fontWeight: 900 }}>{actualNeeded.toLocaleString()}</span>{simText('개 제조 필요', { en: ' units needed', ja: '個を製造', zh: '个需制造', es: ' unidades necesarias', ar: ' وحدة مطلوبة' })}
                                             </div>
                                         )}
                                         {preset.validation_cost && (
-                                            <div style={{ marginBottom: '4px' }}>임상 검증비: <span style={{ fontWeight: 900 }}>{preset.validation_cost.toLocaleString()}원</span> (고정)</div>
+                                            <div style={{ marginBottom: '4px' }}>{simText('임상 검증비:', { en: 'Clinical validation:', ja: '臨床検証費：', zh: '临床验证费用：', es: 'Validación clínica:', ar: 'التحقق السريري:' })} <span style={{ fontWeight: 900 }}>{preset.validation_cost.toLocaleString()}{simText('원', { en: ' KRW', ja: 'ウォン', zh: '韩元', es: ' KRW', ar: ' وون' })}</span> ({simText('고정', { en: 'fixed', ja: '固定', zh: '固定', es: 'fijo', ar: 'ثابت' })})</div>
                                         )}
                                         {preset.traceability_cost_per_unit && (
-                                            <div style={{ marginBottom: '4px' }}>추적성 비용: <span style={{ fontWeight: 900 }}>{preset.traceability_cost_per_unit.toLocaleString()}원/개</span></div>
+                                            <div style={{ marginBottom: '4px' }}>{simText('추적성 비용:', { en: 'Traceability cost:', ja: 'トレーサビリティ費：', zh: '可追溯成本：', es: 'Coste de trazabilidad:', ar: 'تكلفة التتبع:' })} <span style={{ fontWeight: 900 }}>{preset.traceability_cost_per_unit.toLocaleString()}{simText('원/개', { en: ' KRW/unit', ja: 'ウォン/個', zh: '韩元/件', es: ' KRW/unidad', ar: ' وون/وحدة' })}</span></div>
                                         )}
                                         {preset.ppap_cost && (
-                                            <div style={{ marginBottom: '4px' }}>PPAP 비용: <span style={{ fontWeight: 900 }}>{preset.ppap_cost.toLocaleString()}원</span> (고정)</div>
+                                            <div style={{ marginBottom: '4px' }}>{simText('PPAP 비용:', { en: 'PPAP cost:', ja: 'PPAP費：', zh: 'PPAP成本：', es: 'Coste PPAP:', ar: 'تكلفة PPAP:' })} <span style={{ fontWeight: 900 }}>{preset.ppap_cost.toLocaleString()}{simText('원', { en: ' KRW', ja: 'ウォン', zh: '韩元', es: ' KRW', ar: ' وون' })}</span> ({simText('고정', { en: 'fixed', ja: '固定', zh: '固定', es: 'fijo', ar: 'ثابت' })})</div>
                                         )}
                                         {preset.special_fields && Object.entries(preset.special_fields).map(([key, vals]) => (
                                             Array.isArray(vals) && (
@@ -3368,14 +3375,14 @@ function SimulatorPageInner() {
                                                         onChange={e => setSpecialFields(prev => ({ ...prev, [key]: e.target.value }))}
                                                         style={{ fontSize: '0.68rem', padding: '2px 4px', border: '1px solid #c4b5fd', borderRadius: '4px', background: 'white', flex: 1 }}
                                                     >
-                                                        <option value="">선택</option>
+                                                        <option value="">{simText('선택', { en: 'Select', ja: '選択', zh: '选择', es: 'Seleccionar', ar: 'اختيار' })}</option>
                                                         {vals.map((v: string) => <option key={v} value={v}>{v}</option>)}
                                                     </select>
                                                 </div>
                                             )
                                         ))}
                                         <div style={{ marginTop: '8px', borderTop: '1px solid #c4b5fd', paddingTop: '8px' }}>
-                                            <div style={{ fontWeight: 800, marginBottom: '4px' }}>필수 인증 선택:</div>
+                                            <div style={{ fontWeight: 800, marginBottom: '4px' }}>{simText('필수 인증 선택:', { en: 'Required certifications:', ja: '必須認証を選択：', zh: '选择必需认证：', es: 'Certificaciones obligatorias:', ar: 'الشهادات المطلوبة:' })}</div>
                                             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
                                                 {preset.special_certifications.map(cert => (
                                                     <label key={cert} style={{ display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer', padding: '2px 6px', background: selectedSpecialCerts.includes(cert) ? '#7c3aed' : 'white', color: selectedSpecialCerts.includes(cert) ? 'white' : '#7c3aed', borderRadius: '4px', border: '1px solid #c4b5fd', fontSize: '0.68rem', fontWeight: 700 }}>
@@ -3386,7 +3393,7 @@ function SimulatorPageInner() {
                                             </div>
                                             {totalCertCost > 0 && (
                                                 <div style={{ marginTop: '6px', fontWeight: 900, color: '#dc2626' }}>
-                                                    인증비 합계: {totalCertCost.toLocaleString()}원
+                                                    {simText('인증비 합계:', { en: 'Total certification cost:', ja: '認証費合計：', zh: '认证费用合计：', es: 'Coste total de certificación:', ar: 'إجمالي تكلفة الشهادة:' })} {totalCertCost.toLocaleString()}{simText('원', { en: ' KRW', ja: 'ウォン', zh: '韩元', es: ' KRW', ar: ' وون' })}
                                                 </div>
                                             )}
                                         </div>
@@ -3396,10 +3403,10 @@ function SimulatorPageInner() {
                         </div>
 
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', marginTop: '2rem' }}>
-                            <button className="btn-primary" onClick={runWhatIf}><i className="fas fa-microchip"></i> AI 분석 및 리포트 생성</button>
-                            <button className="btn-outline" onClick={() => { addScenario(); setActiveTab(1); }}><i className="fas fa-save"></i> 시나리오 데이터 저장</button>
+                            <button className="btn-primary" onClick={runWhatIf}><i className="fas fa-microchip"></i> {simText('AI 분석 및 리포트 생성', { en: 'Generate AI analysis & report', ja: 'AI分析とレポートを生成', zh: '生成AI分析和报告', es: 'Generar análisis e informe de IA', ar: 'إنشاء تحليل وتقرير بالذكاء الاصطناعي' })}</button>
+                            <button className="btn-outline" onClick={() => { addScenario(); setActiveTab(1); }}><i className="fas fa-save"></i> {simText('시나리오 데이터 저장', { en: 'Save scenario data', ja: 'シナリオデータを保存', zh: '保存场景数据', es: 'Guardar datos del escenario', ar: 'حفظ بيانات السيناريو' })}</button>
                             <button className="btn-outline" onClick={() => { setIsSaveModalOpen(true); setSavedShareUrl(''); setSaveSimName(projectTitle || '제조 시뮬레이션'); }} style={{ borderColor: '#a5b4fc', color: '#6366f1' }}>
-                                <i className="fas fa-cloud-upload-alt"></i> 저장 & 공유 링크 생성
+                                <i className="fas fa-cloud-upload-alt"></i> {simText('저장 & 공유 링크 생성', { en: 'Save & create share link', ja: '保存して共有リンクを作成', zh: '保存并创建共享链接', es: 'Guardar y crear enlace compartido', ar: 'حفظ وإنشاء رابط مشاركة' })}
                             </button>
                         </div>
                     </div >
@@ -3439,14 +3446,14 @@ function SimulatorPageInner() {
                                         {/* ─── 저장/공유 빠른 액션 바 ─── */}
                                         <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center', padding: '0.75rem 1rem', background: 'white', border: '1px solid #e2e8f0', borderRadius: '0.75rem' }}>
                                             <button onClick={() => { setIsSaveModalOpen(true); setSavedShareUrl(''); setSaveSimName(projectTitle || '제조 시뮬레이션'); setShowRecentList(false); }} style={{ display: 'flex', alignItems: 'center', gap: '5px', padding: '6px 12px', background: '#eff6ff', color: '#2563eb', border: '1px solid #bfdbfe', borderRadius: '6px', fontSize: '0.75rem', fontWeight: 800, cursor: 'pointer' }}>
-                                                <i className="fas fa-cloud-upload-alt"></i> 저장 &amp; 공유
+                                                <i className="fas fa-cloud-upload-alt"></i> {simText('저장 & 공유', { en: 'Save & share', ja: '保存して共有', zh: '保存并分享', es: 'Guardar y compartir', ar: 'حفظ ومشاركة' })}
                                             </button>
                                             <button onClick={() => { setIsSaveModalOpen(true); setShowRecentList(true); setSavedShareUrl(''); }} style={{ display: 'flex', alignItems: 'center', gap: '5px', padding: '6px 12px', background: '#faf5ff', color: '#7c3aed', border: '1px solid #e9d5ff', borderRadius: '6px', fontSize: '0.75rem', fontWeight: 800, cursor: 'pointer' }}>
-                                                <i className="fas fa-folder-open"></i> 불러오기
+                                                <i className="fas fa-folder-open"></i> {simText('불러오기', { en: 'Load', ja: '読み込む', zh: '加载', es: 'Cargar', ar: 'تحميل' })}
                                             </button>
                                             <span style={{ marginLeft: 'auto', fontSize: '0.65rem', color: '#94a3b8', fontWeight: 600 }}>
-                                                현재 도착가 <span style={{ color: '#0f172a', fontWeight: 900 }}>{formatVal(simData.landedCost)}</span>/개
-                                                {activeRisks.length > 0 && <span style={{ marginLeft: '6px', color: '#f59e0b', fontWeight: 800 }}>⚠️ 리스크 {activeRisks.length}개 적용</span>}
+                                                {simText('현재 도착가', { en: 'Current landed cost', ja: '現在の着地価格', zh: '当前到岸价', es: 'Coste puesto actual', ar: 'التكلفة الحالية عند الوصول' })} <span style={{ color: '#0f172a', fontWeight: 900 }}>{formatVal(simData.landedCost)}</span>/{simText('개', { en: 'unit', ja: '個', zh: '件', es: 'unidad', ar: 'وحدة' })}
+                                                {activeRisks.length > 0 && <span style={{ marginLeft: '6px', color: '#f59e0b', fontWeight: 800 }}>⚠️ {simText('리스크', { en: 'Risk', ja: 'リスク', zh: '风险', es: 'Riesgo', ar: 'مخاطر' })} {activeRisks.length}{simText('개 적용', { en: ' applied', ja: '件を適用', zh: '项已应用', es: ' aplicados', ar: ' مطبقة' })}</span>}
                                             </span>
                                         </div>
 
@@ -3478,18 +3485,18 @@ function SimulatorPageInner() {
                                                 return (
                                                     <div>
                                                         <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginBottom: '8px' }}>
-                                                            {ri.tariff_delta > 0 && <span style={{ padding: '2px 7px', background: '#fee2e2', color: '#dc2626', borderRadius: '4px', fontSize: '0.65rem', fontWeight: 800 }}>관세 +{ri.tariff_delta}%</span>}
-                                                            {ri.shipping_delta > 0 && <span style={{ padding: '2px 7px', background: '#fef3c7', color: '#92400e', borderRadius: '4px', fontSize: '0.65rem', fontWeight: 800 }}>물류비 +{ri.shipping_delta}%</span>}
-                                                            {ri.labor_delta > 0 && <span style={{ padding: '2px 7px', background: '#f3e8ff', color: '#7c3aed', borderRadius: '4px', fontSize: '0.65rem', fontWeight: 800 }}>인건비 +{ri.labor_delta}%</span>}
-                                                            {ri.material_delta > 0 && <span style={{ padding: '2px 7px', background: '#ffe4e6', color: '#e11d48', borderRadius: '4px', fontSize: '0.65rem', fontWeight: 800 }}>원자재 +{ri.material_delta}%</span>}
-                                                            {ri.lead_time_delta > 0 && <span style={{ padding: '2px 7px', background: '#f1f5f9', color: '#475569', borderRadius: '4px', fontSize: '0.65rem', fontWeight: 800 }}>납기 +{ri.lead_time_delta}일</span>}
+                                                            {ri.tariff_delta > 0 && <span style={{ padding: '2px 7px', background: '#fee2e2', color: '#dc2626', borderRadius: '4px', fontSize: '0.65rem', fontWeight: 800 }}>{simText('관세', { en: 'Tariff', ja: '関税', zh: '关税', es: 'Arancel', ar: 'تعرفة' })} +{ri.tariff_delta}%</span>}
+                                                            {ri.shipping_delta > 0 && <span style={{ padding: '2px 7px', background: '#fef3c7', color: '#92400e', borderRadius: '4px', fontSize: '0.65rem', fontWeight: 800 }}>{simText('물류비', { en: 'Logistics', ja: '物流費', zh: '物流费', es: 'Logística', ar: 'لوجستيات' })} +{ri.shipping_delta}%</span>}
+                                                            {ri.labor_delta > 0 && <span style={{ padding: '2px 7px', background: '#f3e8ff', color: '#7c3aed', borderRadius: '4px', fontSize: '0.65rem', fontWeight: 800 }}>{simText('인건비', { en: 'Labor', ja: '人件費', zh: '人工', es: 'Mano de obra', ar: 'عمالة' })} +{ri.labor_delta}%</span>}
+                                                            {ri.material_delta > 0 && <span style={{ padding: '2px 7px', background: '#ffe4e6', color: '#e11d48', borderRadius: '4px', fontSize: '0.65rem', fontWeight: 800 }}>{simText('원자재', { en: 'Materials', ja: '原材料', zh: '原材料', es: 'Materiales', ar: 'مواد' })} +{ri.material_delta}%</span>}
+                                                            {ri.lead_time_delta > 0 && <span style={{ padding: '2px 7px', background: '#f1f5f9', color: '#475569', borderRadius: '4px', fontSize: '0.65rem', fontWeight: 800 }}>{simText('납기', { en: 'Lead time', ja: '納期', zh: '交期', es: 'Plazo', ar: 'مهلة' })} +{ri.lead_time_delta}{simText('일', { en: ' days', ja: '日', zh: '天', es: ' días', ar: ' يوم' })}</span>}
                                                         </div>
                                                         <div style={{ padding: '8px 12px', background: '#fffbeb', border: '1px solid #fde68a', borderRadius: '8px', fontSize: '0.75rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                                            <span style={{ color: '#92400e', fontWeight: 700 }}>시나리오 적용 도착가</span>
-                                                            <span style={{ fontSize: '1rem', fontWeight: 900, color: '#dc2626' }}>{formatVal(simData.landedCost)} <span style={{ fontSize: '0.6rem', opacity: 0.8 }}>반영됨</span></span>
+                                                            <span style={{ color: '#92400e', fontWeight: 700 }}>{simText('시나리오 적용 도착가', { en: 'Scenario landed cost', ja: 'シナリオ適用着地価格', zh: '应用场景到岸价', es: 'Coste puesto del escenario', ar: 'التكلفة عند الوصول للسيناريو' })}</span>
+                                                            <span style={{ fontSize: '1rem', fontWeight: 900, color: '#dc2626' }}>{formatVal(simData.landedCost)} <span style={{ fontSize: '0.6rem', opacity: 0.8 }}>{simText('반영됨', { en: 'applied', ja: '反映済み', zh: '已应用', es: 'aplicado', ar: 'مطبق' })}</span></span>
                                                         </div>
                                                         <div style={{ marginTop: '6px', fontSize: '0.68rem', color: '#78350f', padding: '5px 10px', background: '#fefce8', borderRadius: '6px' }}>
-                                                            대응 전략: 공급망 분산 및 대체 루트 확보로 원가 충격을 최소화하세요.
+                                                            {simText('대응 전략: 공급망 분산 및 대체 루트 확보로 원가 충격을 최소화하세요.', { en: 'Response: diversify the supply chain and secure alternate routes to minimize cost shocks.', ja: '対応策：サプライチェーンを分散し代替ルートを確保してコストショックを抑えます。', zh: '应对策略：分散供应链并确保替代路线，以降低成本冲击。', es: 'Respuesta: diversifique la cadena de suministro y asegure rutas alternativas para minimizar los impactos de costes.', ar: 'الاستجابة: نوّع سلسلة التوريد وأمّن مسارات بديلة لتقليل صدمات التكلفة.' })}
                                                         </div>
                                                     </div>
                                                 );
@@ -3521,27 +3528,27 @@ function SimulatorPageInner() {
                                                     <>
                                                         <div className="chart-bar-container" style={{ height: '32px', background: '#f1f5f9', borderRadius: '16px', overflow: 'hidden', display: 'flex', marginBottom: '1.5rem', boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.05)' }}>
                                                             {pBOM > 0 && (
-                                                                <div className="chart-segment" style={{ width: `${pBOM}%`, background: '#3b82f6', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '10px', color: 'white', fontWeight: 800 }} title="자재비 상세">
+                                                                <div className="chart-segment" style={{ width: `${pBOM}%`, background: '#3b82f6', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '10px', color: 'white', fontWeight: 800 }} title={simText('자재비 상세', { en: 'Materials detail', ja: '材料費詳細', zh: '材料费明细', es: 'Detalle de materiales', ar: 'تفاصيل المواد' })}>
                                                                     {pBOM >= 4 && `${pBOM}%`}
                                                                 </div>
                                                             )}
                                                             {pVA > 0 && (
-                                                                <div className="chart-segment" style={{ width: `${pVA}%`, background: '#60a5fa', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '10px', color: 'white', fontWeight: 800 }} title="가공비 상세">
+                                                                <div className="chart-segment" style={{ width: `${pVA}%`, background: '#60a5fa', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '10px', color: 'white', fontWeight: 800 }} title={simText('가공비 상세', { en: 'Processing detail', ja: '加工費詳細', zh: '加工费明细', es: 'Detalle de procesamiento', ar: 'تفاصيل المعالجة' })}>
                                                                     {pVA >= 4 && `${pVA}%`}
                                                                 </div>
                                                             )}
                                                             {pFix > 0 && (
-                                                                <div className="chart-segment" style={{ width: `${pFix}%`, background: '#94a3b8', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '10px', color: 'white', fontWeight: 800 }} title="고정비 상세">
+                                                                <div className="chart-segment" style={{ width: `${pFix}%`, background: '#94a3b8', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '10px', color: 'white', fontWeight: 800 }} title={simText('고정비 상세', { en: 'Fixed cost detail', ja: '固定費詳細', zh: '固定成本明细', es: 'Detalle de costes fijos', ar: 'تفاصيل التكاليف الثابتة' })}>
                                                                     {pFix >= 4 && `${pFix}%`}
                                                                 </div>
                                                             )}
                                                             {pShip > 0 && (
-                                                                <div className="chart-segment" style={{ width: `${pShip}%`, background: '#fbbf24', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '10px', color: 'white', fontWeight: 800 }} title="물류비 상세">
+                                                                <div className="chart-segment" style={{ width: `${pShip}%`, background: '#fbbf24', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '10px', color: 'white', fontWeight: 800 }} title={simText('물류비 상세', { en: 'Logistics detail', ja: '物流費詳細', zh: '物流费明细', es: 'Detalle de logística', ar: 'تفاصيل الخدمات اللوجستية' })}>
                                                                     {pShip >= 4 && `${pShip}%`}
                                                                 </div>
                                                             )}
                                                             {pTax > 0 && (
-                                                                <div className="chart-segment" style={{ width: `${pTax}%`, background: '#f87171', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '10px', color: 'white', fontWeight: 800 }} title="세금/관세 상세">
+                                                                <div className="chart-segment" style={{ width: `${pTax}%`, background: '#f87171', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '10px', color: 'white', fontWeight: 800 }} title={simText('세금/관세 상세', { en: 'Tax/duty detail', ja: '税・関税詳細', zh: '税费/关税明细', es: 'Detalle de impuestos/aranceles', ar: 'تفاصيل الضرائب/الرسوم' })}>
                                                                     {pTax >= 4 && `${pTax}%`}
                                                                 </div>
                                                             )}
@@ -3590,9 +3597,9 @@ function SimulatorPageInner() {
                                                             onChange={(e) => setIncoterm(e.target.value as 'EXW' | 'FOB' | 'DDP')}
                                                             style={{ border: 'none', background: 'transparent', fontSize: '0.65rem', fontWeight: 800, color: '#3b82f6', cursor: 'pointer', outline: 'none' }}
                                                         >
-                                                            <option value="EXW">EXW (공장 인도)</option>
-                                                            <option value="FOB">FOB (본선 인도)</option>
-                                                            <option value="DDP">DDP (도착 인도)</option>
+                                                                    <option value="EXW">{simText('EXW (공장 인도)', { en: 'EXW (ex works)', ja: 'EXW（工場渡し）', zh: 'EXW（工厂交货）', es: 'EXW (en fábrica)', ar: 'EXW (تسليم المصنع)' })}</option>
+                                                                    <option value="FOB">{simText('FOB (본선 인도)', { en: 'FOB (free on board)', ja: 'FOB（本船渡し）', zh: 'FOB（船上交货）', es: 'FOB (franco a bordo)', ar: 'FOB (تسليم على ظهر السفينة)' })}</option>
+                                                                    <option value="DDP">{simText('DDP (도착 인도)', { en: 'DDP (delivered duty paid)', ja: 'DDP（関税込み持込渡し）', zh: 'DDP（完税后交货）', es: 'DDP (entregado con derechos pagados)', ar: 'DDP (تسليم مع دفع الرسوم)' })}</option>
                                                         </select>
                                                     </div>
                                                     <div className="value" style={{ color: '#3b82f6' }}>{formatVal(simData.finalPrice)}</div>
@@ -3624,7 +3631,7 @@ function SimulatorPageInner() {
                                                                 boxShadow: '0 4px 16px rgba(0,0,0,0.3)', lineHeight: '1.6',
                                                                 pointerEvents: 'none'
                                                             }} className="fta-tooltip">
-                                                                <div style={{ marginBottom: '6px', color: '#60a5fa', fontSize: '0.6rem', fontWeight: 900 }}>FTA별 RVC 기준치 (역내부가가치)</div>
+                                                                <div style={{ marginBottom: '6px', color: '#60a5fa', fontSize: '0.6rem', fontWeight: 900 }}>{simText('FTA별 RVC 기준치 (역내부가가치)', { en: 'FTA RVC thresholds (regional value content)', ja: 'FTA別RVC基準（域内付加価値）', zh: '各FTA RVC标准（区域价值含量）', es: 'Umbrales RVC por FTA (valor regional)', ar: 'حدود RVC لكل اتفاقية FTA (القيمة الإقليمية)' })}</div>
                                                                 {[
                                                                     { name: '한-미 FTA', val: 35, color: '#34d399' },
                                                                     { name: 'RCEP / 한-중', val: 40, color: '#60a5fa' },
@@ -3637,7 +3644,7 @@ function SimulatorPageInner() {
                                                                         <span style={{ color: item.color, fontWeight: 900 }}>{item.val}%↑</span>
                                                                     </div>
                                                                 ))}
-                                                                <div style={{ marginTop: '6px', fontSize: '0.55rem', color: '#64748b', borderTop: '1px solid rgba(255,255,255,0.08)', paddingTop: '4px' }}>※ 시뮬레이션 추정치 (실제 PSR 검토 필요)</div>
+                                                                <div style={{ marginTop: '6px', fontSize: '0.55rem', color: '#64748b', borderTop: '1px solid rgba(255,255,255,0.08)', paddingTop: '4px' }}>{simText('※ 시뮬레이션 추정치 (실제 PSR 검토 필요)', { en: '※ Simulation estimate (actual PSR review required)', ja: '※ シミュレーション推定値（実際のPSR確認が必要）', zh: '※ 模拟估算值（需审核实际PSR）', es: '※ Estimación de simulación (requiere revisión PSR)', ar: '※ تقدير المحاكاة (يلزم مراجعة PSR الفعلية)' })}</div>
                                                             </div>
                                                         </div>
                                                     </div>
@@ -3647,23 +3654,23 @@ function SimulatorPageInner() {
                                                             value={ftaThreshold}
                                                             onChange={e => setFtaThreshold(Number(e.target.value))}
                                                             style={{ fontSize: '0.55rem', fontWeight: 800, color: '#64748b', background: '#f1f5f9', border: '1px solid #e2e8f0', borderRadius: '4px', padding: '2px 4px', cursor: 'pointer', outline: 'none', width: '100%' }}
-                                                            title="FTA 협정별 RVC 기준치"
+                                                            title={simText('FTA 협정별 RVC 기준치', { en: 'RVC threshold by FTA', ja: 'FTA別RVC基準', zh: '各FTA RVC标准', es: 'Umbral RVC por FTA', ar: 'حد RVC حسب FTA' })}
                                                         >
-                                                            <option value={35}>한-미 FTA (RVC 35%)</option>
-                                                            <option value={40}>RCEP / 한-중 FTA (RVC 40%)</option>
-                                                            <option value={45}>한-EU FTA (RVC 45%)</option>
-                                                            <option value={50}>ASEAN 일반 (RVC 50%)</option>
-                                                            <option value={60}>엄격 기준 (RVC 60%)</option>
+                                                            <option value={35}>{simText('한-미 FTA (RVC 35%)', { en: 'Korea-US FTA (RVC 35%)', ja: '韓米FTA（RVC 35%）', zh: '韩美FTA（RVC 35%）', es: 'FTA Corea-EE. UU. (RVC 35%)', ar: 'اتفاقية كوريا-الولايات المتحدة (RVC 35%)' })}</option>
+                                                            <option value={40}>{simText('RCEP / 한-중 FTA (RVC 40%)', { en: 'RCEP / Korea-China FTA (RVC 40%)', ja: 'RCEP／韓中FTA（RVC 40%）', zh: 'RCEP/中韩FTA（RVC 40%）', es: 'RCEP / FTA Corea-China (RVC 40%)', ar: 'RCEP / اتفاقية كوريا-الصين (RVC 40%)' })}</option>
+                                                            <option value={45}>{simText('한-EU FTA (RVC 45%)', { en: 'Korea-EU FTA (RVC 45%)', ja: '韓EU FTA（RVC 45%）', zh: '韩欧FTA（RVC 45%）', es: 'FTA Corea-UE (RVC 45%)', ar: 'اتفاقية كوريا-الاتحاد الأوروبي (RVC 45%)' })}</option>
+                                                            <option value={50}>{simText('ASEAN 일반 (RVC 50%)', { en: 'ASEAN general (RVC 50%)', ja: 'ASEAN一般（RVC 50%）', zh: '东盟一般（RVC 50%）', es: 'ASEAN general (RVC 50%)', ar: 'آسيان عام (RVC 50%)' })}</option>
+                                                            <option value={60}>{simText('엄격 기준 (RVC 60%)', { en: 'Strict threshold (RVC 60%)', ja: '厳格基準（RVC 60%）', zh: '严格标准（RVC 60%）', es: 'Umbral estricto (RVC 60%)', ar: 'حد صارم (RVC 60%)' })}</option>
                                                         </select>
                                                     </div>
                                                     <div style={{ fontSize: '0.5rem', color: '#94a3b8', marginTop: '4px', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '3px' }}>
                                                         <svg viewBox="0 0 24 24" width="9" height="9" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" /></svg>
-                                                        {simData.isOriginMatch ? `시뮬레이션 추정치 (${ftaThreshold}% 기준 충족)` : `비원산지 재료 과다 (RVC < ${ftaThreshold}%)`}
+                                                        {simData.isOriginMatch ? simText('시뮬레이션 추정치', { en: 'Simulation estimate', ja: 'シミュレーション推定値', zh: '模拟估算值', es: 'Estimación de simulación', ar: 'تقدير المحاكاة' }) + ` (${ftaThreshold}% ${simText('기준 충족', { en: 'threshold met', ja: '基準を満たす', zh: '达到标准', es: 'umbral cumplido', ar: 'استيفاء الحد' })})` : simText('비원산지 재료 과다', { en: 'Excess non-originating materials', ja: '非原産材料過多', zh: '非原产材料过多', es: 'Exceso de materiales no originarios', ar: 'مواد غير منشأ زائدة' }) + ` (RVC < ${ftaThreshold}%)`}
                                                     </div>
                                                 </div>
                                                 <div className="stat-box">
                                                     <div className="label">{t.leadTimeLabel}</div>
-                                                    <div className="value" style={{ fontSize: '0.9rem' }}>{simData.ltDays}일 / <span style={{ color: '#e11d48' }}>{formatVal(simData.invCost)}</span></div>
+                                                    <div className="value" style={{ fontSize: '0.9rem' }}>{simData.ltDays}{simText('일', { en: ' days', ja: '日', zh: '天', es: ' días', ar: ' يوم' })} / <span style={{ color: '#e11d48' }}>{formatVal(simData.invCost)}</span></div>
                                                     {/* Carbon Footprint removed as per user request */}
                                                 </div>
                                             </div>
@@ -3674,7 +3681,7 @@ function SimulatorPageInner() {
                                                     <button
                                                         onClick={() => setIsTimelineEditing(!isTimelineEditing)}
                                                         style={{ background: isTimelineEditing ? '#e0f2fe' : 'none', border: isTimelineEditing ? '1px solid #3b82f6' : 'none', color: isTimelineEditing ? '#3b82f6' : '#94a3b8', fontSize: '0.75rem', cursor: 'pointer', transition: 'all 0.2s', padding: '4px 8px', borderRadius: '6px', display: 'flex', alignItems: 'center', gap: '4px' }}
-                                                        title="타임라인 기간 편집"
+                                                        title={simText('타임라인 기간 편집', { en: 'Edit timeline duration', ja: 'タイムライン期間を編集', zh: '编辑时间线周期', es: 'Editar duración de la línea de tiempo', ar: 'تحرير مدة الخط الزمني' })}
                                                     >
                                                         <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-10" /><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" /></svg>
                                                         {isTimelineEditing ? <span style={{ fontWeight: 800 }}>{t.save}</span> : <span>{t.edit}</span>}
@@ -3717,9 +3724,9 @@ function SimulatorPageInner() {
                                                                     cursor: 'pointer',
                                                                     transition: 'all 0.2s ease-in-out'
                                                                 }}
-                                                                title={`${step.label} 세부일정 편집`}
+                                                                title={simText('세부일정 편집', { en: 'Edit details', ja: '詳細を編集', zh: '编辑详情', es: 'Editar detalles', ar: 'تحرير التفاصيل' })}
                                                             >
-                                                                <span style={{ position: 'relative', zIndex: 1 }}>{step.days}일</span>
+                                                                <span style={{ position: 'relative', zIndex: 1 }}>{step.days}{simText('일', { en: ' days', ja: '日', zh: '天', es: ' días', ar: ' يوم' })}</span>
                                                             </div>
                                                         );
                                                     })}
@@ -3728,35 +3735,35 @@ function SimulatorPageInner() {
                                                 {isTimelineEditing ? (
                                                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '1rem', alignItems: 'end', background: '#fff', padding: '1rem', borderRadius: '0.75rem', border: '1px dashed #cbd5e1' }}>
                                                         <div>
-                                                            <label style={{ fontSize: '0.65rem', color: '#64748b', fontWeight: 700, marginBottom: '4px', display: 'block' }}>Production (일)</label>
+                                                            <label style={{ fontSize: '0.65rem', color: '#64748b', fontWeight: 700, marginBottom: '4px', display: 'block' }}>Production ({simText('일', { en: 'days', ja: '日', zh: '天', es: 'días', ar: 'يوم' })})</label>
                                                             <input type="number" min="0" className="sim-input" style={{ fontSize: '0.75rem', padding: '0.4rem', borderColor: customMfgDays !== null ? '#3b82f6' : '#e2e8f0' }} value={customMfgDays !== null ? customMfgDays : simData.timeline.mfg} onChange={(e) => setCustomMfgDays(parseInt(e.target.value) || 0)} onKeyDown={(e) => e.key === 'Enter' && setIsTimelineEditing(false)} />
                                                         </div>
                                                         <div>
-                                                            <label style={{ fontSize: '0.65rem', color: '#94a3b8', fontWeight: 700, marginBottom: '4px', display: 'block' }}>QC/Test (일)</label>
+                                                            <label style={{ fontSize: '0.65rem', color: '#94a3b8', fontWeight: 700, marginBottom: '4px', display: 'block' }}>QC/Test ({simText('일', { en: 'days', ja: '日', zh: '天', es: 'días', ar: 'يوم' })})</label>
                                                             <input type="number" min="0" className="sim-input" style={{ fontSize: '0.75rem', padding: '0.4rem', borderColor: customQcDays !== null ? '#3b82f6' : '#e2e8f0' }} value={customQcDays !== null ? customQcDays : simData.timeline.qc} onChange={(e) => setCustomQcDays(parseInt(e.target.value) || 0)} onKeyDown={(e) => e.key === 'Enter' && setIsTimelineEditing(false)} />
                                                         </div>
                                                         <div>
-                                                            <label style={{ fontSize: '0.65rem', color: '#3b82f6', fontWeight: 700, marginBottom: '4px', display: 'block' }}>Logistics (일)</label>
+                                                            <label style={{ fontSize: '0.65rem', color: '#3b82f6', fontWeight: 700, marginBottom: '4px', display: 'block' }}>Logistics ({simText('일', { en: 'days', ja: '日', zh: '天', es: 'días', ar: 'يوم' })})</label>
                                                             <input type="number" min="0" className="sim-input" style={{ fontSize: '0.75rem', padding: '0.4rem', borderColor: customLtDays !== null ? '#3b82f6' : '#e2e8f0' }} value={customLtDays !== null ? customLtDays : simData.timeline.logistics} onChange={(e) => setCustomLtDays(parseInt(e.target.value) || 0)} onKeyDown={(e) => e.key === 'Enter' && setIsTimelineEditing(false)} />
                                                         </div>
                                                         <div style={{ textAlign: 'right' }}>
                                                             <button onClick={() => { setCustomMfgDays(null); setCustomQcDays(null); setCustomLtDays(null); }} style={{ fontSize: '0.65rem', background: '#f1f5f9', border: 'none', color: '#64748b', padding: '6px 10px', borderRadius: '4px', cursor: 'pointer', fontWeight: 700 }}>
-                                                                초기화
+                                                                {simText('초기화', { en: 'Reset', ja: 'リセット', zh: '重置', es: 'Restablecer', ar: 'إعادة ضبط' })}
                                                             </button>
                                                         </div>
                                                     </div>
                                                 ) : (
                                                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr) 80px', gap: '8px', fontSize: '0.7rem', color: '#64748b', fontWeight: 700 }}>
                                                         <div className="timeline-legend" onClick={() => setIsTimelineEditing(true)}>
-                                                            <div style={{ color: '#94a3b8', fontSize: '0.6rem' }}>Production</div>{simData.timeline.mfg}일
+                                                            <div style={{ color: '#94a3b8', fontSize: '0.6rem' }}>Production</div>{simData.timeline.mfg}{simText('일', { en: ' days', ja: '日', zh: '天', es: ' días', ar: ' يوم' })}
                                                         </div>
                                                         <div className="timeline-legend" onClick={() => setIsTimelineEditing(true)}>
-                                                            <div style={{ color: '#94a3b8', fontSize: '0.6rem' }}>QC/Test</div>{simData.timeline.qc}일
+                                                            <div style={{ color: '#94a3b8', fontSize: '0.6rem' }}>QC/Test</div>{simData.timeline.qc}{simText('일', { en: ' days', ja: '日', zh: '天', es: ' días', ar: ' يوم' })}
                                                         </div>
                                                         <div className="timeline-legend" onClick={() => setIsTimelineEditing(true)}>
-                                                            <div style={{ color: '#94a3b8', fontSize: '0.6rem' }}>Logistics</div>{simData.timeline.logistics}일
+                                                            <div style={{ color: '#94a3b8', fontSize: '0.6rem' }}>Logistics</div>{simData.timeline.logistics}{simText('일', { en: ' days', ja: '日', zh: '天', es: ' días', ar: ' يوم' })}
                                                         </div>
-                                                        <div style={{ textAlign: 'right', borderLeft: '1px solid #e2e8f0' }}><div style={{ color: '#0f172a', fontSize: '0.65rem' }}>TOTAL</div><span style={{ fontSize: '0.9rem', color: '#0f172a' }}>{simData.totalLT}일</span></div>
+                                                        <div style={{ textAlign: 'right', borderLeft: '1px solid #e2e8f0' }}><div style={{ color: '#0f172a', fontSize: '0.65rem' }}>TOTAL</div><span style={{ fontSize: '0.9rem', color: '#0f172a' }}>{simData.totalLT}{simText('일', { en: ' days', ja: '日', zh: '天', es: ' días', ar: ' يوم' })}</span></div>
                                                     </div>
                                                 )}
                                             </div>
@@ -3766,17 +3773,17 @@ function SimulatorPageInner() {
                                                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: showExwDetails ? '0.8rem' : '0' }}>
                                                     <h4 style={{ fontSize: '0.85rem', fontWeight: 800, color: '#475569', margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
                                                         <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="#3b82f6" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><rect x="4" y="2" width="16" height="20" rx="2" ry="2" /><line x1="8" y1="10" x2="16" y2="10" /><line x1="8" y1="14" x2="16" y2="14" /><line x1="8" y1="18" x2="16" y2="18" /><line x1="8" y1="6" x2="16" y2="6" /></svg>
-                                                        제조 원가(EXW) 상세 산출 내역 예시
+                                                        {simText('제조 원가(EXW) 상세 산출 내역 예시', { en: 'Manufacturing cost (EXW) breakdown example', ja: '製造原価（EXW）詳細内訳例', zh: '制造成本（EXW）明细示例', es: 'Ejemplo de desglose del coste de fabricación (EXW)', ar: 'مثال تفصيلي لتكلفة التصنيع (EXW)' })}
                                                     </h4>
                                                     <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                                                         {showExwDetails && (
                                                             <button
                                                                 onClick={() => setIsExwEditing(!isExwEditing)}
                                                                 style={{ background: isExwEditing ? '#eff6ff' : 'none', border: isExwEditing ? '1px solid #3b82f6' : 'none', color: isExwEditing ? '#3b82f6' : '#94a3b8', fontSize: '0.85rem', cursor: 'pointer', transition: 'all 0.2s', padding: '6px', borderRadius: '6px', display: 'flex', alignItems: 'center', gap: '4px' }}
-                                                                title="수동 편집"
+                                                                title={simText('수동 편집', { en: 'Manual edit', ja: '手動編集', zh: '手动编辑', es: 'Edición manual', ar: 'تحرير يدوي' })}
                                                             >
                                                                 <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-10" /><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" /></svg>
-                                                                {isExwEditing && <span style={{ fontSize: '0.7rem', fontWeight: 800 }}>편집 중</span>}
+                                                                {isExwEditing && <span style={{ fontSize: '0.7rem', fontWeight: 800 }}>{simText('편집 중', { en: 'Editing', ja: '編集中', zh: '编辑中', es: 'Editando', ar: 'جارٍ التحرير' })}</span>}
                                                             </button>
                                                         )}
                                                         <button
@@ -3791,7 +3798,7 @@ function SimulatorPageInner() {
                                                     <>
                                                         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '0.8rem', textAlign: 'center' }}>
                                                             <div>
-                                                                <div style={{ fontSize: '0.65rem', color: '#94a3b8', marginBottom: '4px' }}>자재(BOM)</div>
+                                                                <div style={{ fontSize: '0.65rem', color: '#94a3b8', marginBottom: '4px' }}>{simText('자재(BOM)', { en: 'Materials (BOM)', ja: '材料（BOM）', zh: '材料（BOM）', es: 'Materiales (BOM)', ar: 'المواد (BOM)' })}</div>
                                                                 {isExwEditing ? (
                                                                     <input type="text" className="sim-input" style={{ fontSize: '0.75rem', padding: '4px', textAlign: 'center', width: '100%', borderColor: mParts !== null ? '#3b82f6' : '#e2e8f0' }} value={Math.round(simData.partsCost).toLocaleString()} onChange={e => setMParts(parseInt(e.target.value.replace(/[^0-9]/g, '')) || 0)} onKeyDown={e => e.key === 'Enter' && setIsExwEditing(false)} />
                                                                 ) : (
@@ -3799,7 +3806,7 @@ function SimulatorPageInner() {
                                                                 )}
                                                             </div>
                                                             <div>
-                                                                <div style={{ fontSize: '0.65rem', color: '#94a3b8', marginBottom: '4px' }}>인건비/공임</div>
+                                                                <div style={{ fontSize: '0.65rem', color: '#94a3b8', marginBottom: '4px' }}>{simText('인건비/공임', { en: 'Labor', ja: '人件費・工賃', zh: '人工/加工费', es: 'Mano de obra', ar: 'العمالة' })}</div>
                                                                 {isExwEditing ? (
                                                                     <input type="text" className="sim-input" style={{ fontSize: '0.75rem', padding: '4px', textAlign: 'center', width: '100%', borderColor: mLabor !== null ? '#3b82f6' : '#e2e8f0' }} value={Math.round(simData.labor).toLocaleString()} onChange={e => setMLabor(parseInt(e.target.value.replace(/[^0-9]/g, '')) || 0)} onKeyDown={e => e.key === 'Enter' && setIsExwEditing(false)} />
                                                                 ) : (
@@ -3807,7 +3814,7 @@ function SimulatorPageInner() {
                                                                 )}
                                                             </div>
                                                             <div>
-                                                                <div style={{ fontSize: '0.65rem', color: '#94a3b8', marginBottom: '6px' }}>QC/불량(Scrap)</div>
+                                                                <div style={{ fontSize: '0.65rem', color: '#94a3b8', marginBottom: '6px' }}>{simText('QC/불량(Scrap)', { en: 'QC/scrap', ja: 'QC・不良（スクラップ）', zh: 'QC/不良（报废）', es: 'QC/desperdicio', ar: 'الجودة/الخردة' })}</div>
                                                                 {isExwEditing ? (
                                                                     <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
                                                                         <input
@@ -3817,7 +3824,7 @@ function SimulatorPageInner() {
                                                                             value={Math.round(simData.qcCost + simData.scrapCost).toLocaleString()}
                                                                             onChange={e => setMScrap(parseInt(e.target.value.replace(/[^0-9]/g, '')) || 0)}
                                                                             onKeyDown={e => e.key === 'Enter' && setIsExwEditing(false)}
-                                                                            placeholder="금액"
+                                                                            placeholder={simText('금액', { en: 'Amount', ja: '金額', zh: '金额', es: 'Importe', ar: 'المبلغ' })}
                                                                         />
                                                                         <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
                                                                             <input
@@ -3830,7 +3837,7 @@ function SimulatorPageInner() {
                                                                                     setMScrap((simData.mfgBase * (val / 100)) + simData.qcCost);
                                                                                 }}
                                                                                 onKeyDown={e => e.key === 'Enter' && setIsExwEditing(false)}
-                                                                                placeholder="비율"
+                                                                                placeholder={simText('비율', { en: 'Rate', ja: '比率', zh: '比例', es: 'Proporción', ar: 'النسبة' })}
                                                                             />
                                                                             <span style={{ position: 'absolute', right: '6px', fontSize: '0.65rem', color: '#94a3b8' }}>%</span>
                                                                         </div>
@@ -3845,7 +3852,7 @@ function SimulatorPageInner() {
                                                                 )}
                                                             </div>
                                                             <div>
-                                                                <div style={{ fontSize: '0.65rem', color: '#94a3b8', marginBottom: '4px' }}>고정비(인증/금형)</div>
+                                                                <div style={{ fontSize: '0.65rem', color: '#94a3b8', marginBottom: '4px' }}>{simText('고정비(인증/금형)', { en: 'Fixed costs (certification/tooling)', ja: '固定費（認証・金型）', zh: '固定成本（认证/模具）', es: 'Costes fijos (certificación/utillaje)', ar: 'التكاليف الثابتة (الشهادة/القوالب)' })}</div>
                                                                 {isExwEditing ? (
                                                                     <input type="text" className="sim-input" style={{ fontSize: '0.75rem', padding: '4px', textAlign: 'center', width: '100%', borderColor: mFixed !== null ? '#3b82f6' : '#e2e8f0' }} value={Math.round(simData.amortizedFixedCost).toLocaleString()} onChange={e => setMFixed(parseInt(e.target.value.replace(/[^0-9]/g, '')) || 0)} onKeyDown={e => e.key === 'Enter' && setIsExwEditing(false)} />
                                                                 ) : (
@@ -3855,7 +3862,7 @@ function SimulatorPageInner() {
                                                         </div>
                                                         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '0.8rem', textAlign: 'center', marginTop: '0.8rem', paddingTop: '0.8rem', borderTop: '1px dashed #e2e8f0' }}>
                                                             <div>
-                                                                <div style={{ fontSize: '0.65rem', color: '#94a3b8', marginBottom: '4px' }}>유틸리티/임차</div>
+                                                                <div style={{ fontSize: '0.65rem', color: '#94a3b8', marginBottom: '4px' }}>{simText('유틸리티/임차', { en: 'Utilities/rent', ja: '光熱費・賃貸', zh: '公用事业/租赁', es: 'Suministros/alquiler', ar: 'المرافق/الإيجار' })}</div>
                                                                 {isExwEditing ? (
                                                                     <input type="text" className="sim-input" style={{ fontSize: '0.75rem', padding: '4px', textAlign: 'center', width: '100%', borderColor: mUtil !== null ? '#3b82f6' : '#e2e8f0' }} value={Math.round(simData.utilityTotal).toLocaleString()} onChange={e => setMUtil(parseInt(e.target.value.replace(/[^0-9]/g, '')) || 0)} onKeyDown={e => e.key === 'Enter' && setIsExwEditing(false)} />
                                                                 ) : (
@@ -3863,7 +3870,7 @@ function SimulatorPageInner() {
                                                                 )}
                                                             </div>
                                                             <div>
-                                                                <div style={{ fontSize: '0.65rem', color: '#94a3b8', marginBottom: '4px' }}>간접비(Overhead)</div>
+                                                                <div style={{ fontSize: '0.65rem', color: '#94a3b8', marginBottom: '4px' }}>{simText('간접비(Overhead)', { en: 'Overhead', ja: '間接費（Overhead）', zh: '间接费用', es: 'Gastos generales', ar: 'التكاليف غير المباشرة' })}</div>
                                                                 {isExwEditing ? (
                                                                     <input type="text" className="sim-input" style={{ fontSize: '0.75rem', padding: '4px', textAlign: 'center', width: '100%', borderColor: mOverhead !== null ? '#3b82f6' : '#e2e8f0' }} value={Math.round(simData.overhead).toLocaleString()} onChange={e => setMOverhead(parseInt(e.target.value.replace(/[^0-9]/g, '')) || 0)} onKeyDown={e => e.key === 'Enter' && setIsExwEditing(false)} />
                                                                 ) : (
@@ -3871,11 +3878,11 @@ function SimulatorPageInner() {
                                                                 )}
                                                             </div>
                                                             <div>
-                                                                <div style={{ fontSize: '0.65rem', color: '#94a3b8', marginBottom: '4px' }}>부품 조달 물류/관세</div>
+                                                                <div style={{ fontSize: '0.65rem', color: '#94a3b8', marginBottom: '4px' }}>{simText('부품 조달 물류/관세', { en: 'Parts logistics/duty', ja: '部品調達物流・関税', zh: '零件采购物流/关税', es: 'Logística/aranceles de piezas', ar: 'لوجستيات/رسوم الأجزاء' })}</div>
                                                                 <div style={{ fontWeight: 700, fontSize: '0.85rem', color: '#1e293b' }}>{formatVal((simData.interShip || 0) + (simData.interDuty || 0) - (simData.drawback || 0))}</div>
                                                             </div>
                                                             <div style={{ background: '#eff6ff', borderRadius: '0.75rem', padding: '8px 0', border: '1px solid #dbeafe' }}>
-                                                                <div style={{ fontSize: '0.65rem', color: '#3b82f6', fontWeight: 800, marginBottom: '2px' }}>총 제조원가</div>
+                                                                <div style={{ fontSize: '0.65rem', color: '#3b82f6', fontWeight: 800, marginBottom: '2px' }}>{simText('총 제조원가', { en: 'Total manufacturing cost', ja: '総製造原価', zh: '总制造成本', es: 'Coste total de fabricación', ar: 'إجمالي تكلفة التصنيع' })}</div>
                                                                 <div style={{ fontWeight: 900, fontSize: '0.95rem', color: '#1d4ed8' }}>{formatVal(simData.exw)}</div>
                                                             </div>
                                                         </div>
@@ -3887,7 +3894,7 @@ function SimulatorPageInner() {
                                                                     }}
                                                                     style={{ fontSize: '0.6rem', padding: '4px 8px', borderRadius: '4px', background: '#e2e8f0', color: '#64748b', border: 'none', cursor: 'pointer', fontWeight: 800 }}
                                                                 >
-                                                                    오버라이드 초기화
+                                                                    {simText('오버라이드 초기화', { en: 'Reset overrides', ja: '上書きをリセット', zh: '重置覆盖值', es: 'Restablecer cambios', ar: 'إعادة ضبط التجاوزات' })}
                                                                 </button>
                                                             </div>
                                                         )}
@@ -3900,15 +3907,15 @@ function SimulatorPageInner() {
                                                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
                                                     <h4 style={{ fontSize: '0.9rem', fontWeight: 800, color: '#475569', margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
                                                         <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="#10b981" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z" /><line x1="4" y1="22" x2="4" y2="15" /></svg>
-                                                        원가 상승 요인 분석 (EXW → DDP Bridge)
+                                                        {simText('원가 상승 요인 분석 (EXW → DDP Bridge)', { en: 'Cost increase analysis (EXW → DDP bridge)', ja: 'コスト上昇要因分析（EXW → DDPブリッジ）', zh: '成本上升因素分析（EXW → DDP桥）', es: 'Análisis de aumento de costes (puente EXW → DDP)', ar: 'تحليل عوامل زيادة التكلفة (جسر EXW → DDP)' })}
                                                     </h4>
                                                     <button
                                                         onClick={() => setIsBridgeEditing(!isBridgeEditing)}
                                                         style={{ background: isBridgeEditing ? '#ecfdf5' : 'none', border: isBridgeEditing ? '1px solid #10b981' : 'none', color: isBridgeEditing ? '#10b981' : '#94a3b8', fontSize: '0.85rem', cursor: 'pointer', transition: 'all 0.2s', padding: '6px', borderRadius: '6px', display: 'flex', alignItems: 'center', gap: '4px' }}
-                                                        title="브릿지 수동 편집"
+                                                        title={simText('브릿지 수동 편집', { en: 'Edit bridge manually', ja: 'ブリッジを手動編集', zh: '手动编辑桥接', es: 'Editar puente manualmente', ar: 'تحرير الجسر يدوياً' })}
                                                     >
                                                         <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-10" /><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" /></svg>
-                                                        {isBridgeEditing && <span style={{ fontSize: '0.7rem', fontWeight: 800 }}>편집 중</span>}
+                                                        {isBridgeEditing && <span style={{ fontSize: '0.7rem', fontWeight: 800 }}>{simText('편집 중', { en: 'Editing', ja: '編集中', zh: '编辑中', es: 'Editando', ar: 'جارٍ التحرير' })}</span>}
                                                     </button>
                                                 </div>
                                                 <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
@@ -3965,7 +3972,7 @@ function SimulatorPageInner() {
                                                                 }}
                                                                 style={{ fontSize: '0.65rem', padding: '4px 10px', background: '#f1f5f9', border: '1px solid #e2e8f0', borderRadius: '4px', cursor: 'pointer', color: '#64748b', fontWeight: 800 }}
                                                             >
-                                                                브릿지 오버라이드 초기화
+                                                                 {simText('브릿지 오버라이드 초기화', { en: 'Reset bridge overrides', ja: 'ブリッジ上書きをリセット', zh: '重置桥接覆盖值', es: 'Restablecer cambios del puente', ar: 'إعادة ضبط تجاوزات الجسر' })}
                                                             </button>
                                                         </div>
                                                     )}
@@ -3974,7 +3981,7 @@ function SimulatorPageInner() {
 
                                                     {/* Total Sum Row */}
                                                     <div style={{ display: 'grid', gridTemplateColumns: '120px 1fr 100px', gap: '12px', alignItems: 'center', marginTop: '12px', paddingTop: '12px', borderTop: '2px solid #f1f5f9' }}>
-                                                        <span style={{ fontSize: '0.75rem', fontWeight: 800, color: '#0f172a' }}>최종 도착가 (DDP)</span>
+                                                         <span style={{ fontSize: '0.75rem', fontWeight: 800, color: '#0f172a' }}>{simText('최종 도착가 (DDP)', { en: 'Final landed cost (DDP)', ja: '最終着地価格（DDP）', zh: '最终到岸价（DDP）', es: 'Coste puesto final (DDP)', ar: 'التكلفة النهائية عند الوصول (DDP)' })}</span>
                                                         <div style={{ height: '10px', background: '#3b82f6', borderRadius: '5px' }} />
                                                         <span style={{ fontSize: '0.85rem', fontWeight: 900, textAlign: 'right', color: '#0f172a' }}>
                                                             {formatVal(Math.round(simData.ddp))}
@@ -3986,7 +3993,7 @@ function SimulatorPageInner() {
                                                         {/* Row 1: Margin pills + editable amount */}
                                                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '8px' }}>
                                                             <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
-                                                                <span style={{ fontSize: '0.6rem', fontWeight: 800, color: '#059669', whiteSpace: 'nowrap' }}>📈 마진</span>
+                                                                 <span style={{ fontSize: '0.6rem', fontWeight: 800, color: '#059669', whiteSpace: 'nowrap' }}>📈 {simText('마진', { en: 'Margin', ja: 'マージン', zh: '利润', es: 'Margen', ar: 'الهامش' })}</span>
                                                                 {[5, 10, 15, 20, 25, 30].map(v => (
                                                                     <button key={v} onClick={() => setProfitMargin(v / 100)}
                                                                         style={{
@@ -4025,7 +4032,7 @@ function SimulatorPageInner() {
                                                                     <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M12 1v22M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" /></svg>
                                                                 </div>
                                                                 <div>
-                                                                    <div style={{ fontSize: '0.6rem', color: '#374151', fontWeight: 800 }}>최종 제안가</div>
+                                                                     <div style={{ fontSize: '0.6rem', color: '#374151', fontWeight: 800 }}>{simText('최종 제안가', { en: 'Final quote', ja: '最終見積', zh: '最终报价', es: 'Cotización final', ar: 'عرض السعر النهائي' })}</div>
                                                                     <div style={{ fontSize: '0.5rem', color: '#94a3b8', fontWeight: 600 }}>DDP + {(profitMargin * 100).toFixed(1)}%</div>
                                                                 </div>
                                                             </div>
@@ -4036,31 +4043,31 @@ function SimulatorPageInner() {
                                                     </div>
                                                 </div>
                                                 <div style={{ marginTop: '1.5rem', background: '#f0fdf4', padding: '0.75rem', borderRadius: '0.75rem', fontSize: '0.75rem', color: '#166534', border: '1px solid #bbf7d0' }}>
-                                                    <i className="fas fa-info-circle"></i> <strong>분석 의견:</strong>
-                                                    {simData.finalDuty > simData.exw * 0.15 ? ' 수입국 고율 관세가 제조 원가 우위를 대부분 상쇄하고 있습니다.' : ' 국제 물류비와 리드타임 금융 비용이 주요 지출원입니다.'}
+                                                     <i className="fas fa-info-circle"></i> <strong>{simText('분석 의견:', { en: 'Analysis:', ja: '分析：', zh: '分析意见：', es: 'Análisis:', ar: 'التحليل:' })}</strong>
+                                                     {simData.finalDuty > simData.exw * 0.15 ? simText(' 수입국 고율 관세가 제조 원가 우위를 대부분 상쇄하고 있습니다.', { en: ' High import-country duties offset most of the manufacturing cost advantage.', ja: ' 輸入国の高関税が製造原価の優位性をほぼ相殺しています。', zh: ' 进口国高关税抵消了大部分制造成本优势。', es: ' Los aranceles altos del país importador compensan gran parte de la ventaja de costes.', ar: ' تعوّض الرسوم المرتفعة في بلد الاستيراد معظم ميزة تكلفة التصنيع.' }) : simText(' 국제 물류비와 리드타임 금융 비용이 주요 지출원입니다.', { en: ' International logistics and lead-time financing are the main cost drivers.', ja: ' 国際物流費とリードタイム金融費用が主な支出です。', zh: ' 国际物流和交期融资成本是主要支出。', es: ' La logística internacional y la financiación del plazo son los principales costes.', ar: ' تكاليف الخدمات اللوجستية الدولية وتمويل مدة التوريد هي مصادر الإنفاق الرئيسية.' })}
                                                 </div>
                                             </div>
 
                                             {/* ─── 문의 연결 CTA ─── */}
                                             <div style={{ marginTop: '1.5rem', padding: '1rem 1.25rem', background: 'linear-gradient(135deg, #eff6ff, #f0fdf4)', borderRadius: '1rem', border: '1px solid #bfdbfe' }}>
                                                 <p style={{ fontSize: '0.82rem', color: '#1e40af', fontWeight: 800, marginBottom: '0.75rem', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                                                    <i className="fas fa-clipboard-list"></i> 이 시뮬레이션 결과로 실제 제조 견적을 받아보세요
+                                                     <i className="fas fa-clipboard-list"></i> {simText('이 시뮬레이션 결과로 실제 제조 견적을 받아보세요', { en: 'Get a real manufacturing quote from this simulation', ja: 'このシミュレーション結果で実際の製造見積を取得', zh: '根据此模拟结果获取真实制造报价', es: 'Obtenga una cotización real de fabricación con esta simulación', ar: 'احصل على عرض تصنيع حقيقي من هذه المحاكاة' })}
                                                 </p>
                                                 <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
                                                     <button
                                                         onClick={handleRequestQuote}
                                                         style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '0.65rem 1.1rem', background: 'linear-gradient(135deg, #3b82f6, #2563eb)', color: 'white', border: 'none', borderRadius: '0.75rem', fontWeight: 800, fontSize: '0.82rem', cursor: 'pointer', boxShadow: '0 4px 12px rgba(59,130,246,0.3)' }}
                                                     >
-                                                        <i className="fas fa-industry"></i> 제조 견적 요청하기
+                                                         <i className="fas fa-industry"></i> {simText('제조 견적 요청하기', { en: 'Request manufacturing quote', ja: '製造見積を依頼', zh: '请求制造报价', es: 'Solicitar cotización de fabricación', ar: 'طلب عرض تصنيع' })}
                                                     </button>
                                                     <button
                                                         onClick={handleFindPartner}
                                                         style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '0.65rem 1.1rem', background: 'white', color: '#1e40af', border: '1.5px solid #bfdbfe', borderRadius: '0.75rem', fontWeight: 800, fontSize: '0.82rem', cursor: 'pointer' }}
                                                     >
-                                                        <i className="fas fa-search"></i> 최적 공장 찾기
+                                                         <i className="fas fa-search"></i> {simText('최적 공장 찾기', { en: 'Find the best factory', ja: '最適な工場を探す', zh: '寻找最佳工厂', es: 'Buscar la mejor fábrica', ar: 'العثور على أفضل مصنع' })}
                                                     </button>
                                                 </div>
-                                                <p style={{ fontSize: '0.65rem', color: '#64748b', marginTop: '0.5rem' }}>예상 예산 {formatVal(simData.landedCost)} · {industry} · {assy} 생산 · {parseInt(volumeStr, 10).toLocaleString()}개</p>
+                                                <p style={{ fontSize: '0.65rem', color: '#64748b', marginTop: '0.5rem' }}>{simText('예상 예산', { en: 'Estimated budget', ja: '予算見込み', zh: '预计预算', es: 'Presupuesto estimado', ar: 'الميزانية المتوقعة' })} {formatVal(simData.landedCost)} · {industry} · {assy} {simText('생산', { en: 'production', ja: '生産', zh: '生产', es: 'producción', ar: 'إنتاج' })} · {parseInt(volumeStr, 10).toLocaleString()}{simText('개', { en: ' units', ja: '個', zh: '件', es: ' unidades', ar: ' وحدة' })}</p>
                                             </div>
                                         </div>
 
@@ -4071,7 +4078,7 @@ function SimulatorPageInner() {
                                                     {aiPanelState === 'loading' ? (
                                                         <div style={{ textAlign: 'center', padding: '2rem', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '12px' }}>
                                                             <div style={{ width: 40, height: 40, border: '3px solid #3b82f6', borderTopColor: 'transparent', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
-                                                            <span style={{ color: '#94a3b8', fontSize: '0.9rem' }}>원가 구조 분석 중...</span>
+                                                            <span style={{ color: '#94a3b8', fontSize: '0.9rem' }}>{simText('원가 구조 분석 중...', { en: 'Analyzing cost structure...', ja: 'コスト構造を分析中…', zh: '正在分析成本结构…', es: 'Analizando la estructura de costes…', ar: 'جارٍ تحليل هيكل التكلفة…' })}</span>
                                                         </div>
                                                     ) : (() => {
                                                         const ins: MatchedInsight | null = matchedInsight;
@@ -4111,9 +4118,9 @@ function SimulatorPageInner() {
                                                                     </div>
                                                                     <div style={{ display: 'flex', gap: '12px', fontSize: '0.6rem', color: '#94a3b8', fontWeight: 700, flexWrap: 'wrap' }}>
                                                                         {ins.bomRatio > 0 && <span><span style={{ color: '#3b82f6' }}>■</span> BOM {(ins.bomRatio * 100).toFixed(0)}%</span>}
-                                                                        {ins.vaddRatio > 0 && <span><span style={{ color: '#60a5fa' }}>■</span> 가공비 {(ins.vaddRatio * 100).toFixed(0)}%</span>}
-                                                                        {ins.shipRatio > 0 && <span><span style={{ color: '#fbbf24' }}>■</span> 물류 {(ins.shipRatio * 100).toFixed(0)}%</span>}
-                                                                        {ins.taxRatio > 0 && <span><span style={{ color: '#f87171' }}>■</span> 세금 {(ins.taxRatio * 100).toFixed(0)}%</span>}
+                                                                        {ins.vaddRatio > 0 && <span><span style={{ color: '#60a5fa' }}>■</span> {simText('가공비', { en: 'Processing', ja: '加工費', zh: '加工费', es: 'Procesamiento', ar: 'معالجة' })} {(ins.vaddRatio * 100).toFixed(0)}%</span>}
+                                                                        {ins.shipRatio > 0 && <span><span style={{ color: '#fbbf24' }}>■</span> {simText('물류', { en: 'Logistics', ja: '物流', zh: '物流', es: 'Logística', ar: 'لوجستيات' })} {(ins.shipRatio * 100).toFixed(0)}%</span>}
+                                                                        {ins.taxRatio > 0 && <span><span style={{ color: '#f87171' }}>■</span> {simText('세금', { en: 'Tax', ja: '税金', zh: '税费', es: 'Impuestos', ar: 'ضريبة' })} {(ins.taxRatio * 100).toFixed(0)}%</span>}
                                                                     </div>
                                                                 </div>
 
@@ -4140,8 +4147,8 @@ function SimulatorPageInner() {
 
                                                                 {/* 푸터 */}
                                                                 <div style={{ marginTop: '1.5rem', paddingTop: '1rem', borderTop: '1px solid rgba(255,255,255,0.06)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.6rem', color: '#475569' }}>
-                                                                    <span>※ 시뮬레이션 추정치 기반 분석. 실제 FTA 원산지 판정은 관세사 검토 필요.</span>
-                                                                    <span>{new Date().toLocaleDateString('ko-KR')} 생성</span>
+                                                                     <span>{simText('※ 시뮬레이션 추정치 기반 분석. 실제 FTA 원산지 판정은 관세사 검토 필요.', { en: '※ Analysis based on simulation estimates. Actual FTA origin determination requires a customs review.', ja: '※ シミュレーション推定に基づく分析。実際のFTA原産地判定は通関士の確認が必要です。', zh: '※ 基于模拟估算的分析。实际FTA原产地判定需海关顾问审核。', es: '※ Análisis basado en estimaciones. La determinación real del origen FTA requiere revisión aduanera.', ar: '※ تحليل يستند إلى تقديرات المحاكاة. يتطلب تحديد منشأ FTA الفعلي مراجعة جمركية.' })}</span>
+                                                                     <span>{formatDate(new Date(), lang) ?? ''} {simText('생성', { en: 'generated', ja: '生成', zh: '生成', es: 'generado', ar: 'تم الإنشاء' })}</span>
                                                                 </div>
                                                             </div>
                                                         );
@@ -4160,8 +4167,8 @@ function SimulatorPageInner() {
                                                         <i className="fas fa-sliders-h" style={{ color: 'white', fontSize: '0.8rem' }}></i>
                                                     </div>
                                                     <div>
-                                                        <div style={{ fontWeight: 900, fontSize: '0.95rem', color: '#0f172a' }}>민감도 분석 (What-if 시뮬레이션)</div>
-                                                        <div style={{ fontSize: '0.7rem', color: '#94a3b8', fontWeight: 600 }}>변수별 슬라이더로 도착원가 변화를 즉시 확인</div>
+                                                        <div style={{ fontWeight: 900, fontSize: '0.95rem', color: '#0f172a' }}>{simText('민감도 분석 (What-if 시뮬레이션)', { en: 'Sensitivity analysis (What-if simulation)', ja: '感度分析（What-ifシミュレーション）', zh: '敏感性分析（What-if模拟）', es: 'Análisis de sensibilidad (simulación What-if)', ar: 'تحليل الحساسية (محاكاة ماذا لو)' })}</div>
+                                                        <div style={{ fontSize: '0.7rem', color: '#94a3b8', fontWeight: 600 }}>{simText('변수별 슬라이더로 도착원가 변화를 즉시 확인', { en: 'See landed-cost changes instantly with variable sliders', ja: '変数スライダーで着地価格の変化を即時確認', zh: '通过变量滑块即时查看到岸成本变化', es: 'Vea al instante los cambios del coste puesto con los controles', ar: 'شاهد تغيّر تكلفة الوصول فوراً عبر أشرطة المتغيرات' })}</div>
                                                     </div>
                                                 </div>
                                                 <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
@@ -4183,11 +4190,11 @@ function SimulatorPageInner() {
                                                     {/* 요약 카드 */}
                                                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1.5rem' }}>
                                                         <div style={{ padding: '1rem', background: '#f8fafc', borderRadius: '0.75rem', border: '1px solid #e2e8f0' }}>
-                                                            <div style={{ fontSize: '0.65rem', color: '#94a3b8', fontWeight: 800, marginBottom: '4px' }}>기준 도착원가</div>
+                                                            <div style={{ fontSize: '0.65rem', color: '#94a3b8', fontWeight: 800, marginBottom: '4px' }}>{simText('기준 도착원가', { en: 'Baseline landed cost', ja: '基準着地価格', zh: '基准到岸成本', es: 'Coste puesto de referencia', ar: 'التكلفة الأساسية عند الوصول' })}</div>
                                                             <div style={{ fontSize: '1.1rem', fontWeight: 900, color: '#0f172a' }}>{formatVal(simData.landedCost)}</div>
                                                         </div>
                                                         <div style={{ padding: '1rem', background: sensitivityResult && sensitivityResult.delta > 0 ? '#fef2f2' : '#f0fdf4', borderRadius: '0.75rem', border: `1px solid ${sensitivityResult && sensitivityResult.delta > 0 ? '#fecaca' : '#bbf7d0'}` }}>
-                                                            <div style={{ fontSize: '0.65rem', color: '#94a3b8', fontWeight: 800, marginBottom: '4px' }}>현재 설정 도착원가</div>
+                                                            <div style={{ fontSize: '0.65rem', color: '#94a3b8', fontWeight: 800, marginBottom: '4px' }}>{simText('현재 설정 도착원가', { en: 'Current configured landed cost', ja: '現在設定の着地価格', zh: '当前设置到岸成本', es: 'Coste puesto configurado', ar: 'التكلفة المهيأة عند الوصول' })}</div>
                                                             <div style={{ fontSize: '1.1rem', fontWeight: 900, color: sensitivityResult && sensitivityResult.delta > 0 ? '#dc2626' : '#16a34a' }}>
                                                                 {sensitivityResult ? formatVal(sensitivityResult.adjTotal) : formatVal(simData.landedCost)}
                                                                 {sensitivityResult && sensitivityResult.delta !== 0 && (
@@ -4248,7 +4255,7 @@ function SimulatorPageInner() {
                                                             onClick={() => setSensitivity({ exchangeRate: 0, laborCost: 0, materialCost: 0, volume: 0, tariffRate: 0, shippingCost: 0 })}
                                                             style={{ fontSize: '0.75rem', fontWeight: 800, padding: '6px 14px', borderRadius: '8px', border: '1.5px solid #e2e8f0', background: '#f8fafc', color: '#64748b', cursor: 'pointer' }}
                                                         >
-                                                            모두 초기화
+                                                            {simText('모두 초기화', { en: 'Reset all', ja: 'すべてリセット', zh: '全部重置', es: 'Restablecer todo', ar: 'إعادة ضبط الكل' })}
                                                         </button>
                                                     </div>
                                                 </div>
@@ -4311,10 +4318,10 @@ function SimulatorPageInner() {
                                         <div className="glass-card" style={{ background: 'white', marginBottom: '1.5rem' }}>
                                             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1rem' }}>
                                                 <h3 style={{ fontSize: '1rem', fontWeight: 800, color: '#475569', display: 'flex', alignItems: 'center', gap: '8px', margin: 0 }}>
-                                                    <i className="fas fa-chart-bar" style={{ color: '#6366f1' }}></i> 비용 구조 분석
+                                                    <i className="fas fa-chart-bar" style={{ color: '#6366f1' }}></i> {simText('비용 구조 분석', { en: 'Cost structure analysis', ja: 'コスト構造分析', zh: '成本结构分析', es: 'Análisis de estructura de costes', ar: 'تحليل هيكل التكلفة' })}
                                                 </h3>
                                                 <div style={{ display: 'flex', gap: '4px' }}>
-                                                    {['워터폴', 'Sankey'].map((lb, idx) => (
+                                                    {[simText('워터폴', { en: 'Waterfall', ja: 'ウォーターフォール', zh: '瀑布图', es: 'Cascada', ar: 'شلال' }), 'Sankey'].map((lb, idx) => (
                                                         <button key={idx} onClick={() => setVizTab2(idx)}
                                                             style={{ fontSize: '0.72rem', fontWeight: 700, padding: '4px 12px', borderRadius: '6px', border: '1.5px solid', borderColor: vizTab2 === idx ? '#6366f1' : '#e2e8f0', background: vizTab2 === idx ? '#6366f1' : '#f8fafc', color: vizTab2 === idx ? '#fff' : '#64748b', cursor: 'pointer' }}>
                                                             {lb}
@@ -4338,7 +4345,7 @@ function SimulatorPageInner() {
                                                             ))}
                                                             <rect x={finalX} y={finalY} width={barW} height={finalH} fill="#10b981" rx={3}/>
                                                             <text x={finalX + barW/2} y={finalY - 4} textAnchor="middle" fontSize={9} fill="#10b981" fontWeight={800}>{fmtKv(wfTotal)}</text>
-                                                            <text x={finalX + barW/2} y={BH + 14} textAnchor="middle" fontSize={9} fill="#10b981" fontWeight={800}>최종원가</text>
+                                                            <text x={finalX + barW/2} y={BH + 14} textAnchor="middle" fontSize={9} fill="#10b981" fontWeight={800}>{simText('최종원가', { en: 'Final cost', ja: '最終原価', zh: '最终成本', es: 'Coste final', ar: 'التكلفة النهائية' })}</text>
                                                             <line x1={0} y1={BH} x2={BW + BG * 2} y2={BH} stroke="#e2e8f0" strokeWidth={1}/>
                                                         </g>
                                                     </svg>
@@ -4440,7 +4447,7 @@ function SimulatorPageInner() {
                                     return (
                                         <div className="glass-card" style={{ background: 'white', marginBottom: '1.5rem' }}>
                                             <h3 style={{ fontSize: '1rem', fontWeight: 800, color: '#475569', display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '1rem' }}>
-                                                <i className="fas fa-leaf" style={{ color: '#10b981' }}></i> GHG Protocol Scope 1/2/3 탄소발자국
+                                                 <i className="fas fa-leaf" style={{ color: '#10b981' }}></i> {simText('GHG Protocol Scope 1/2/3 탄소발자국', { en: 'GHG Protocol Scope 1/2/3 carbon footprint', ja: 'GHGプロトコルScope 1/2/3カーボンフットプリント', zh: 'GHG协议范围1/2/3碳足迹', es: 'Huella de carbono GHG Protocol Scope 1/2/3', ar: 'البصمة الكربونية وفق بروتوكول GHG للنطاقات 1/2/3' })}
                                             </h3>
                                             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '1rem' }}>
                                                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px' }}>
@@ -4459,37 +4466,37 @@ function SimulatorPageInner() {
                                                     ))}
                                                 </div>
                                                 <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                                                    <div style={{ fontSize: '0.75rem', fontWeight: 800, color: '#475569', marginBottom: '4px' }}>SBTi 1.5°C 감축 경로</div>
-                                                    <div style={{ fontSize: '0.7rem', color: '#64748b' }}>목표: 2030년까지 -42% (대비 2019)</div>
+                                                     <div style={{ fontSize: '0.75rem', fontWeight: 800, color: '#475569', marginBottom: '4px' }}>{simText('SBTi 1.5°C 감축 경로', { en: 'SBTi 1.5°C reduction pathway', ja: 'SBTi 1.5°C削減経路', zh: 'SBTi 1.5°C减排路径', es: 'Trayectoria de reducción SBTi de 1,5 °C', ar: 'مسار خفض SBTi بمقدار 1.5°م' })}</div>
+                                                     <div style={{ fontSize: '0.7rem', color: '#64748b' }}>{simText('목표: 2030년까지 -42% (대비 2019)', { en: 'Target: -42% by 2030 (vs. 2019)', ja: '目標：2030年までに-42%（2019年比）', zh: '目标：到2030年减少42%（相对2019年）', es: 'Objetivo: -42% para 2030 (frente a 2019)', ar: 'الهدف: خفض 42% بحلول 2030 (مقارنة بـ2019)' })}</div>
                                                     <div style={{ background: '#f1f5f9', borderRadius: '8px', padding: '8px' }}>
-                                                        <div style={{ fontSize: '0.65rem', color: '#94a3b8', marginBottom: '4px' }}>현재 달성 필요 수준</div>
+                                                         <div style={{ fontSize: '0.65rem', color: '#94a3b8', marginBottom: '4px' }}>{simText('현재 달성 필요 수준', { en: 'Current required progress', ja: '現在必要な達成レベル', zh: '当前需达到水平', es: 'Progreso necesario actual', ar: 'التقدم المطلوب حالياً' })}</div>
                                                         <div style={{ fontSize: '1rem', fontWeight: 800, color: '#10b981' }}>{expectedNow.toFixed(1)}%</div>
                                                         <div style={{ fontSize: '0.65rem', color: '#94a3b8' }}>of baseline</div>
                                                     </div>
                                                     <div style={{ background: '#fef3c7', borderRadius: '8px', padding: '8px' }}>
-                                                        <div style={{ fontSize: '0.65rem', color: '#92400e', marginBottom: '2px' }}>현재 배출 강도</div>
+                                                         <div style={{ fontSize: '0.65rem', color: '#92400e', marginBottom: '2px' }}>{simText('현재 배출 강도', { en: 'Current emission intensity', ja: '現在の排出強度', zh: '当前排放强度', es: 'Intensidad de emisiones actual', ar: 'كثافة الانبعاث الحالية' })}</div>
                                                         <div style={{ fontSize: '0.85rem', fontWeight: 800, color: '#b45309' }}>{totalScope.toFixed(1)} kgCO₂e/unit</div>
                                                     </div>
                                                 </div>
                                                 <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                                                    <div style={{ fontSize: '0.75rem', fontWeight: 800, color: '#475569', marginBottom: '4px' }}>CBAM 비용 영향</div>
+                                                     <div style={{ fontSize: '0.75rem', fontWeight: 800, color: '#475569', marginBottom: '4px' }}>{simText('CBAM 비용 영향', { en: 'CBAM cost impact', ja: 'CBAMコスト影響', zh: 'CBAM成本影响', es: 'Impacto del coste CBAM', ar: 'تأثير تكلفة CBAM' })}</div>
                                                     {cbamCost > 0 ? (
                                                         <>
                                                             <div style={{ background: '#fef2f2', border: '1px solid #fecaca', borderRadius: '8px', padding: '8px' }}>
-                                                                <div style={{ fontSize: '0.65rem', color: '#dc2626', marginBottom: '2px' }}>EU CBAM 부담금</div>
-                                                                <div style={{ fontSize: '0.9rem', fontWeight: 800, color: '#ef4444' }}>{(cbamCost/10000).toFixed(0)}만원</div>
-                                                                <div style={{ fontSize: '0.65rem', color: '#94a3b8' }}>/ 단위</div>
+                                                                 <div style={{ fontSize: '0.65rem', color: '#dc2626', marginBottom: '2px' }}>{simText('EU CBAM 부담금', { en: 'EU CBAM charge', ja: 'EU CBAM負担金', zh: '欧盟CBAM费用', es: 'Cargo CBAM de la UE', ar: 'رسوم CBAM الأوروبية' })}</div>
+                                                                 <div style={{ fontSize: '0.9rem', fontWeight: 800, color: '#ef4444' }}>{(cbamCost/10000).toFixed(0)}{simText('만원', { en: ' ten-thousand KRW', ja: '万ウォン', zh: '万韩元', es: ' diez mil KRW', ar: ' عشرة آلاف وون' })}</div>
+                                                                 <div style={{ fontSize: '0.65rem', color: '#94a3b8' }}>/{simText('단위', { en: 'unit', ja: '単位', zh: '单位', es: 'unidad', ar: 'وحدة' })}</div>
                                                             </div>
-                                                            <div style={{ fontSize: '0.65rem', color: '#64748b' }}>탄소 감축 시 절감 가능: <span style={{ color: '#10b981', fontWeight: 700 }}>{(cbamCost * 0.42 / 10000).toFixed(0)}만원</span></div>
+                                                             <div style={{ fontSize: '0.65rem', color: '#64748b' }}>{simText('탄소 감축 시 절감 가능:', { en: 'Potential savings from carbon reduction:', ja: '炭素削減による削減可能額：', zh: '减碳可节省：', es: 'Ahorro potencial por reducción de carbono:', ar: 'التوفير المحتمل من خفض الكربون:' })} <span style={{ color: '#10b981', fontWeight: 700 }}>{(cbamCost * 0.42 / 10000).toFixed(0)}{simText('만원', { en: ' ten-thousand KRW', ja: '万ウォン', zh: '万韩元', es: ' diez mil KRW', ar: ' عشرة آلاف وون' })}</span></div>
                                                         </>
                                                     ) : (
                                                         <div style={{ background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: '8px', padding: '8px' }}>
-                                                            <div style={{ fontSize: '0.65rem', color: '#16a34a' }}>현재 목적지는 CBAM 적용 없음</div>
-                                                            <div style={{ fontSize: '0.7rem', color: '#15803d', marginTop: '4px' }}>EU 수출 시 탄소비용 발생</div>
+                                                             <div style={{ fontSize: '0.65rem', color: '#16a34a' }}>{simText('현재 목적지는 CBAM 적용 없음', { en: 'CBAM does not apply to the current destination', ja: '現在の目的地にはCBAMは適用されません', zh: '当前目的地不适用CBAM', es: 'CBAM no se aplica al destino actual', ar: 'لا ينطبق CBAM على الوجهة الحالية' })}</div>
+                                                             <div style={{ fontSize: '0.7rem', color: '#15803d', marginTop: '4px' }}>{simText('EU 수출 시 탄소비용 발생', { en: 'Carbon costs apply when exporting to the EU', ja: 'EU輸出時に炭素コストが発生します', zh: '出口到欧盟时会产生碳成本', es: 'Se generan costes de carbono al exportar a la UE', ar: 'تنشأ تكاليف الكربون عند التصدير إلى الاتحاد الأوروبي' })}</div>
                                                         </div>
                                                     )}
                                                     <div style={{ background: '#f8fafc', borderRadius: '8px', padding: '8px' }}>
-                                                        <div style={{ fontSize: '0.65rem', color: '#94a3b8', marginBottom: '4px' }}>Scope별 비중</div>
+                                                         <div style={{ fontSize: '0.65rem', color: '#94a3b8', marginBottom: '4px' }}>{simText('Scope별 비중', { en: 'Share by scope', ja: 'Scope別比率', zh: '各范围占比', es: 'Proporción por alcance', ar: 'الحصة حسب النطاق' })}</div>
                                                         {scopeItems.map((s, i) => (
                                                             <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '4px', marginBottom: '3px' }}>
                                                                 <div style={{ flex: 1, height: '6px', background: '#e2e8f0', borderRadius: '3px', overflow: 'hidden' }}>
@@ -4534,15 +4541,15 @@ function SimulatorPageInner() {
                                     return (
                                         <div className="glass-card" style={{ background: 'white', marginBottom: '1.5rem' }}>
                                             <h3 style={{ fontSize: '1rem', fontWeight: 800, color: '#475569', display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '1rem' }}>
-                                                <i className="fas fa-chart-line" style={{ color: '#3b82f6' }}></i> 규모의 경제 &amp; 손익분기점
+                                                 <i className="fas fa-chart-line" style={{ color: '#3b82f6' }}></i> {simText('규모의 경제 & 손익분기점', { en: 'Economies of scale & break-even', ja: '規模の経済と損益分岐点', zh: '规模经济与盈亏平衡点', es: 'Economías de escala y punto de equilibrio', ar: 'اقتصاديات الحجم ونقطة التعادل' })}
                                             </h3>
                                             <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: '1.5rem', alignItems: 'start' }}>
                                                 <div>
                                                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
-                                                        <label style={{ fontSize: '0.75rem', color: '#64748b', fontWeight: 700 }}>판매가 설정:</label>
+                                                         <label style={{ fontSize: '0.75rem', color: '#64748b', fontWeight: 700 }}>{simText('판매가 설정:', { en: 'Set selling price:', ja: '販売価格設定：', zh: '设置售价：', es: 'Fijar precio de venta:', ar: 'تعيين سعر البيع:' })}</label>
                                                         <input type="number" value={spInput} onChange={e => setSpInput(Number(e.target.value))}
                                                             style={{ width: '100px', padding: '4px 8px', border: '1.5px solid #e2e8f0', borderRadius: '6px', fontSize: '0.8rem', fontWeight: 700 }}/>
-                                                        <span style={{ fontSize: '0.7rem', color: '#94a3b8' }}>원</span>
+                                                         <span style={{ fontSize: '0.7rem', color: '#94a3b8' }}>{simText('원', { en: 'KRW', ja: 'ウォン', zh: '韩元', es: 'KRW', ar: 'وون' })}</span>
                                                     </div>
                                                     <div style={{ overflowX: 'auto' }}>
                                                         <svg width={GW + 20} height={GH + 40} style={{ display: 'block' }}>
@@ -4559,7 +4566,7 @@ function SimulatorPageInner() {
                                                                 {bepX > 0 && <line x1={bepX} y1={0} x2={bepX} y2={GH} stroke="#ef4444" strokeWidth={1.5} strokeDasharray="5,3"/>}
                                                                 {bepX > 0 && <text x={bepX + 4} y={16} fontSize={9} fill="#ef4444" fontWeight={800}>BEP</text>}
                                                                 {spY > 0 && <line x1={0} y1={spY} x2={GW} y2={spY} stroke="#10b981" strokeWidth={1.5} strokeDasharray="5,3"/>}
-                                                                {spY > 0 && <text x={4} y={spY - 3} fontSize={9} fill="#10b981" fontWeight={800}>판매가</text>}
+                                                                 {spY > 0 && <text x={4} y={spY - 3} fontSize={9} fill="#10b981" fontWeight={800}>{simText('판매가', { en: 'Selling price', ja: '販売価格', zh: '售价', es: 'Precio de venta', ar: 'سعر البيع' })}</text>}
                                                                 {scalePoints.map((p, i) => (
                                                                     i % 2 === 0 && <text key={i} x={toX(p.vol)} y={GH + 14} textAnchor="middle" fontSize={8} fill="#94a3b8">{p.vol >= 10000 ? (p.vol/10000).toFixed(0)+'만' : p.vol >= 1000 ? (p.vol/1000).toFixed(0)+'천' : p.vol}</text>
                                                                 ))}
@@ -4569,22 +4576,22 @@ function SimulatorPageInner() {
                                                 </div>
                                                 <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', minWidth: '160px' }}>
                                                     <div style={{ background: '#f8fafc', borderRadius: '8px', padding: '10px' }}>
-                                                        <div style={{ fontSize: '0.65rem', color: '#94a3b8', marginBottom: '2px' }}>현재 단위원가</div>
-                                                        <div style={{ fontSize: '0.95rem', fontWeight: 800, color: '#334155' }}>{(basePoint.unitCost/10000).toFixed(1)}만원</div>
+                                                         <div style={{ fontSize: '0.65rem', color: '#94a3b8', marginBottom: '2px' }}>{simText('현재 단위원가', { en: 'Current unit cost', ja: '現在の単位原価', zh: '当前单位成本', es: 'Coste unitario actual', ar: 'تكلفة الوحدة الحالية' })}</div>
+                                                         <div style={{ fontSize: '0.95rem', fontWeight: 800, color: '#334155' }}>{(basePoint.unitCost/10000).toFixed(1)}{simText('만원', { en: ' ten-thousand KRW', ja: '万ウォン', zh: '万韩元', es: ' diez mil KRW', ar: ' عشرة آلاف وون' })}</div>
                                                     </div>
                                                     <div style={{ background: bepVol > 0 ? '#fef2f2' : '#f0fdf4', borderRadius: '8px', padding: '10px', border: `1px solid ${bepVol > 0 ? '#fecaca' : '#bbf7d0'}` }}>
-                                                        <div style={{ fontSize: '0.65rem', color: bepVol > 0 ? '#dc2626' : '#16a34a', marginBottom: '2px' }}>손익분기 수량</div>
+                                                         <div style={{ fontSize: '0.65rem', color: bepVol > 0 ? '#dc2626' : '#16a34a', marginBottom: '2px' }}>{simText('손익분기 수량', { en: 'Break-even quantity', ja: '損益分岐数量', zh: '盈亏平衡数量', es: 'Cantidad de equilibrio', ar: 'كمية التعادل' })}</div>
                                                         <div style={{ fontSize: '0.95rem', fontWeight: 800, color: bepVol > 0 ? '#ef4444' : '#10b981' }}>
                                                             {bepVol > 0 ? `${bepVol.toLocaleString()}개` : '수익 없음'}
                                                         </div>
                                                     </div>
                                                     <div style={{ background: '#f0fdf4', borderRadius: '8px', padding: '10px' }}>
-                                                        <div style={{ fontSize: '0.65rem', color: '#16a34a', marginBottom: '2px' }}>10x 규모 시 원가</div>
-                                                        <div style={{ fontSize: '0.95rem', fontWeight: 800, color: '#10b981' }}>{(scalePoints[6].unitCost/10000).toFixed(1)}만원</div>
-                                                        <div style={{ fontSize: '0.65rem', color: '#94a3b8' }}>({(((basePoint.unitCost - scalePoints[6].unitCost)/basePoint.unitCost)*100).toFixed(0)}% 절감)</div>
+                                                         <div style={{ fontSize: '0.65rem', color: '#16a34a', marginBottom: '2px' }}>{simText('10x 규모 시 원가', { en: 'Cost at 10x scale', ja: '10倍規模の原価', zh: '10倍规模成本', es: 'Coste a escala 10x', ar: 'التكلفة عند مقياس 10 أضعاف' })}</div>
+                                                         <div style={{ fontSize: '0.95rem', fontWeight: 800, color: '#10b981' }}>{(scalePoints[6].unitCost/10000).toFixed(1)}{simText('만원', { en: ' ten-thousand KRW', ja: '万ウォン', zh: '万韩元', es: ' diez mil KRW', ar: ' عشرة آلاف وون' })}</div>
+                                                         <div style={{ fontSize: '0.65rem', color: '#94a3b8' }}>({(((basePoint.unitCost - scalePoints[6].unitCost)/basePoint.unitCost)*100).toFixed(0)}% {simText('절감', { en: 'savings', ja: '削減', zh: '节省', es: 'ahorro', ar: 'توفير' })})</div>
                                                     </div>
                                                     <div style={{ background: '#eff6ff', borderRadius: '8px', padding: '10px' }}>
-                                                        <div style={{ fontSize: '0.65rem', color: '#3b82f6', marginBottom: '2px' }}>현재 마진율</div>
+                                                         <div style={{ fontSize: '0.65rem', color: '#3b82f6', marginBottom: '2px' }}>{simText('현재 마진율', { en: 'Current margin', ja: '現在の利益率', zh: '当前利润率', es: 'Margen actual', ar: 'الهامش الحالي' })}</div>
                                                         <div style={{ fontSize: '0.95rem', fontWeight: 800, color: '#3b82f6' }}>{sp > 0 ? (((sp - basePoint.unitCost)/sp)*100).toFixed(1) : '0'}%</div>
                                                     </div>
                                                 </div>
@@ -4593,7 +4600,7 @@ function SimulatorPageInner() {
                                                 <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.72rem' }}>
                                                     <thead>
                                                         <tr style={{ background: '#f8fafc' }}>
-                                                            {['배수', '수량', '단위원가', '고정비/단위', '변동비/단위', '마진율'].map(h => (
+                                                            {[simText('배수', { en: 'Multiple', ja: '倍率', zh: '倍数', es: 'Múltiplo', ar: 'المضاعف' }), simText('수량', { en: 'Quantity', ja: '数量', zh: '数量', es: 'Cantidad', ar: 'الكمية' }), simText('단위원가', { en: 'Unit cost', ja: '単位原価', zh: '单位成本', es: 'Coste unitario', ar: 'تكلفة الوحدة' }), simText('고정비/단위', { en: 'Fixed/unit', ja: '固定費/単位', zh: '固定成本/单位', es: 'Fijo/unidad', ar: 'ثابت/وحدة' }), simText('변동비/단위', { en: 'Variable/unit', ja: '変動費/単位', zh: '变动成本/单位', es: 'Variable/unidad', ar: 'متغير/وحدة' }), simText('마진율', { en: 'Margin', ja: '利益率', zh: '利润率', es: 'Margen', ar: 'الهامش' })].map(h => (
                                                                 <th key={h} style={{ padding: '6px 8px', textAlign: 'right', fontWeight: 700, color: '#475569', borderBottom: '2px solid #e2e8f0' }}>{h}</th>
                                                             ))}
                                                         </tr>
@@ -4603,9 +4610,9 @@ function SimulatorPageInner() {
                                                             <tr key={i} style={{ background: i === 3 ? '#eff6ff' : i % 2 === 0 ? '#f8fafc' : 'white', fontWeight: i === 3 ? 800 : 400 }}>
                                                                 <td style={{ padding: '5px 8px', textAlign: 'right', color: '#64748b' }}>{p.mult}x</td>
                                                                 <td style={{ padding: '5px 8px', textAlign: 'right' }}>{p.vol.toLocaleString()}</td>
-                                                                <td style={{ padding: '5px 8px', textAlign: 'right', color: '#334155' }}>{(p.unitCost/10000).toFixed(1)}만</td>
-                                                                <td style={{ padding: '5px 8px', textAlign: 'right', color: '#6366f1' }}>{(p.unitFixed/10000).toFixed(1)}만</td>
-                                                                <td style={{ padding: '5px 8px', textAlign: 'right', color: '#3b82f6' }}>{(p.unitVar/10000).toFixed(1)}만</td>
+                                                                <td style={{ padding: '5px 8px', textAlign: 'right', color: '#334155' }}>{(p.unitCost/10000).toFixed(1)}{simText('만', { en: '0k', ja: '万', zh: '万', es: '0 mil', ar: 'عشرة آلاف' })}</td>
+                                                                <td style={{ padding: '5px 8px', textAlign: 'right', color: '#6366f1' }}>{(p.unitFixed/10000).toFixed(1)}{simText('만', { en: '0k', ja: '万', zh: '万', es: '0 mil', ar: 'عشرة آلاف' })}</td>
+                                                                <td style={{ padding: '5px 8px', textAlign: 'right', color: '#3b82f6' }}>{(p.unitVar/10000).toFixed(1)}{simText('만', { en: '0k', ja: '万', zh: '万', es: '0 mil', ar: 'عشرة آلاف' })}</td>
                                                                 <td style={{ padding: '5px 8px', textAlign: 'right', color: sp > p.unitCost ? '#10b981' : '#ef4444' }}>{sp > 0 ? (((sp - p.unitCost)/sp)*100).toFixed(1) : '-'}%</td>
                                                             </tr>
                                                         ))}
@@ -4620,12 +4627,12 @@ function SimulatorPageInner() {
                                 {activeTab === 1 && (
                                     <div className="glass-card" style={{ background: 'white' }}>
                                         <h3 style={{ fontSize: '1rem', fontWeight: 800, marginBottom: '1.5rem', color: '#475569', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                            <i className="fas fa-list-ul" style={{ color: '#3b82f6' }}></i> {t.savedScenarios} 목록
+                                            <i className="fas fa-list-ul" style={{ color: '#3b82f6' }}></i> {t.savedScenarios} {simText('목록', { en: 'list', ja: '一覧', zh: '列表', es: 'lista', ar: 'قائمة' })}
                                         </h3>
                                         {scenarios.length === 0 ? (
                                             <div style={{ textAlign: 'center', padding: '4rem 2rem', color: '#94a3b8' }}>
                                                 <i className="fas fa-folder-open" style={{ fontSize: '2rem', marginBottom: '1rem', opacity: 0.3 }}></i>
-                                                <p style={{ fontSize: '0.85rem' }}>{t.emptyScenario}<br />왼쪽 하단의 {t.saveScenario} 버튼을 눌러보세요.</p>
+                                                <p style={{ fontSize: '0.85rem' }}>{t.emptyScenario}<br />{simText('왼쪽 하단의', { en: 'Try the', ja: '左下の', zh: '请点击左下方的', es: 'Pruebe el botón', ar: 'جرّب زر' })} {t.saveScenario} {simText('버튼을 눌러보세요.', { en: 'button at the bottom left.', ja: 'ボタンを押してください。', zh: '按钮。', es: 'en la parte inferior izquierda.', ar: 'في أسفل اليسار.' })}</p>
                                             </div>
                                         ) : (
                                             <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
@@ -4675,7 +4682,7 @@ function SimulatorPageInner() {
                                                                     onClick={(e) => { e.stopPropagation(); removeScenario(s.id); }}
                                                                     style={{ background: '#fff1f2', border: '1px solid #ffe4e6', color: '#e11d48', fontSize: '0.6rem', fontWeight: 800, cursor: 'pointer', padding: '4px 8px', borderRadius: '6px' }}
                                                                 >
-                                                                    삭제
+                                                                    {simText('삭제', { en: 'Delete', ja: '削除', zh: '删除', es: 'Eliminar', ar: 'حذف' })}
                                                                 </button>
                                                                 <div style={{ fontSize: '0.55rem', color: '#94a3b8', fontWeight: 700 }}>LOAD <i className="fas fa-chevron-right" style={{ fontSize: '0.5rem' }}></i></div>
                                                             </div>
@@ -4690,7 +4697,7 @@ function SimulatorPageInner() {
                                                         boxShadow: '0 4px 12px rgba(59,130,246,0.3)', cursor: 'pointer'
                                                     }}
                                                 >
-                                                    시나리오 정밀 비교 분석 가기 &rarr;
+                                                    {simText('시나리오 정밀 비교 분석 가기', { en: 'Go to detailed scenario comparison', ja: 'シナリオ詳細比較へ', zh: '进入场景详细比较', es: 'Ir a la comparación detallada', ar: 'الانتقال إلى مقارنة السيناريو التفصيلية' })} &rarr;
                                                 </button>
                                             </div>
                                         )}
@@ -4703,8 +4710,8 @@ function SimulatorPageInner() {
                                         {scenarios.length === 0 ? (
                                             <div className="glass-card" style={{ textAlign: 'center', padding: '4rem 2rem', color: '#94a3b8' }}>
                                                 <i className="fas fa-chart-bar" style={{ fontSize: '2rem', marginBottom: '1rem', opacity: 0.3 }}></i>
-                                                <p style={{ fontSize: '0.85rem' }}>비교할 시나리오가 충분하지 않습니다.<br />먼저 최소 1개 이상의 시나리오를 저장해주세요.</p>
-                                                <button onClick={() => setActiveTab(0)} style={{ marginTop: '1.5rem', padding: '0.6rem 1.2rem', borderColor: '#e2e8f0', color: '#64748b', background: 'white', border: '1px solid', borderRadius: '0.5rem', fontSize: '0.75rem', fontWeight: 700, cursor: 'pointer' }}>시뮬레이션으로 돌아가기</button>
+                                                <p style={{ fontSize: '0.85rem' }}>{simText('비교할 시나리오가 충분하지 않습니다.', { en: 'Not enough scenarios to compare.', ja: '比較するシナリオが十分ではありません。', zh: '没有足够的场景可比较。', es: 'No hay suficientes escenarios para comparar.', ar: 'لا توجد سيناريوهات كافية للمقارنة.' })}<br />{simText('먼저 최소 1개 이상의 시나리오를 저장해주세요.', { en: 'Save at least one scenario first.', ja: 'まず1つ以上のシナリオを保存してください。', zh: '请先保存至少一个场景。', es: 'Guarde primero al menos un escenario.', ar: 'احفظ سيناريو واحداً على الأقل أولاً.' })}</p>
+                                                <button onClick={() => setActiveTab(0)} style={{ marginTop: '1.5rem', padding: '0.6rem 1.2rem', borderColor: '#e2e8f0', color: '#64748b', background: 'white', border: '1px solid', borderRadius: '0.5rem', fontSize: '0.75rem', fontWeight: 700, cursor: 'pointer' }}>{simText('시뮬레이션으로 돌아가기', { en: 'Back to simulator', ja: 'シミュレーターに戻る', zh: '返回模拟器', es: 'Volver al simulador', ar: 'العودة إلى المحاكي' })}</button>
                                             </div>
                                         ) : (
                                             scenarios.length > 0 && (() => {
@@ -4794,8 +4801,8 @@ function SimulatorPageInner() {
                                                             {/* 헤더 */}
                                                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
                                                                 <div>
-                                                                    <h3 style={{ fontSize: '1.1rem', fontWeight: 900, color: '#0f172a', margin: 0 }}>시나리오별 다각도 비교</h3>
-                                                                    <p style={{ fontSize: '0.75rem', color: '#64748b', marginTop: '4px', fontWeight: 600 }}>비용, 리드타임, 탄소 배출량을 종합 시각화합니다.</p>
+                                                                     <h3 style={{ fontSize: '1.1rem', fontWeight: 900, color: '#0f172a', margin: 0 }}>{simText('시나리오별 다각도 비교', { en: 'Multi-angle scenario comparison', ja: 'シナリオ多角比較', zh: '场景多维比较', es: 'Comparación multidimensional de escenarios', ar: 'مقارنة السيناريوهات متعددة الجوانب' })}</h3>
+                                                                     <p style={{ fontSize: '0.75rem', color: '#64748b', marginTop: '4px', fontWeight: 600 }}>{simText('비용, 리드타임, 탄소 배출량을 종합 시각화합니다.', { en: 'Visualize cost, lead time, and carbon emissions together.', ja: 'コスト、リードタイム、炭素排出量を総合可視化します。', zh: '综合可视化成本、交期和碳排放。', es: 'Visualice conjuntamente costes, plazos y emisiones de carbono.', ar: 'اعرض التكلفة ومدة التوريد وانبعاثات الكربون معاً.' })}</p>
                                                                 </div>
                                                                 <div style={{ textAlign: 'right' }}>
                                                                     <span style={{ fontSize: '0.7rem', color: '#94a3b8', fontWeight: 700, display: 'block' }}>COMPARING {scenarios.length} SCENARIOS</span>
@@ -4942,8 +4949,8 @@ function SimulatorPageInner() {
                                                                 </div>
                                                                 <div style={{ display: 'grid', gridTemplateColumns: '1.5fr 1fr', gap: '2rem' }}>
                                                                     <div style={{ fontSize: '0.85rem', color: '#94a3b8', lineHeight: 1.6 }}>
-                                                                        현재 시뮬레이션된 {scenarios.length}개의 옵션 중, <strong style={{ color: '#fff' }}>{bestPriceScenario?.name}</strong> 시나리오가 가장 낮은 Landed Cost를 제공합니다.
-                                                                        만약 리드타임이 비즈니스의 핵심 요소라면 <strong style={{ color: '#fff' }}>{bestLtScenario?.name}</strong>({bestLtScenario?.lt}일) 옵션이 전략적 우위에 있습니다.
+                                                                        {simText('현재 시뮬레이션된', { en: 'Of the', ja: '現在シミュレーション中の', zh: '在当前模拟的', es: 'De las', ar: 'من بين' })} {scenarios.length}{simText('개의 옵션 중,', { en: ' options,', ja: '個のオプションのうち、', zh: '个选项中，', es: ' opciones,', ar: ' خيارات،' })} <strong style={{ color: '#fff' }}>{bestPriceScenario?.name}</strong> {simText('시나리오가 가장 낮은 Landed Cost를 제공합니다.', { en: 'has the lowest landed cost.', ja: 'シナリオが最も低い着地価格です。', zh: '场景提供最低到岸成本。', es: 'ofrece el menor coste puesto.', ar: 'يوفر أقل تكلفة عند الوصول.' })}
+                                                                        {simText('만약 리드타임이 비즈니스의 핵심 요소라면', { en: 'If lead time is critical,', ja: 'リードタイムが重要なら', zh: '如果交期是关键因素，', es: 'Si el plazo es crítico,', ar: 'إذا كانت مدة التوريد حاسمة،' })} <strong style={{ color: '#fff' }}>{bestLtScenario?.name}</strong>({bestLtScenario?.lt}{simText('일) 옵션이 전략적 우위에 있습니다.', { en: ' days) offers a strategic advantage.', ja: '日）のオプションが戦略的に有利です。', zh: '天）选项具有战略优势。', es: ' días) ofrece ventaja estratégica.', ar: ' يوم) يوفر ميزة استراتيجية.' })}
                                                                     </div>
                                                                     <div style={{ background: 'rgba(255,255,255,0.05)', borderRadius: '1rem', padding: '1rem' }}>
                                                                         <div style={{ fontSize: '0.65rem', fontWeight: 800, color: '#3b82f6', marginBottom: '10px' }}>PROFITABILITY FORECAST</div>
@@ -5004,14 +5011,14 @@ function SimulatorPageInner() {
                     <div className="glass-card" style={{ width: '100%', maxWidth: '480px', background: 'white', padding: '2rem', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)', borderRadius: '1.25rem' }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
                             <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 900, color: '#0f172a', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                <i className="fas fa-cloud-upload-alt" style={{ color: '#3b82f6' }}></i> 시뮬레이션 저장 &amp; 공유
+                                <i className="fas fa-cloud-upload-alt" style={{ color: '#3b82f6' }}></i> {simText('시뮬레이션 저장 & 공유', { en: 'Save & share simulation', ja: 'シミュレーションを保存・共有', zh: '保存并分享模拟', es: 'Guardar y compartir simulación', ar: 'حفظ ومشاركة المحاكاة' })}
                             </h3>
                             <button onClick={() => { setIsSaveModalOpen(false); setShowRecentList(false); setSavedShareUrl(''); }} style={{ background: 'none', border: 'none', fontSize: '1.5rem', color: '#94a3b8', cursor: 'pointer' }}>&times;</button>
                         </div>
 
                         {/* 탭: 저장 / 불러오기 */}
                         <div style={{ display: 'flex', gap: '4px', marginBottom: '1.5rem', background: '#f8fafc', padding: '4px', borderRadius: '0.75rem' }}>
-                            {[{ label: '저장 & 공유', val: false }, { label: '불러오기', val: true }].map(tab => (
+                            {[{ label: simText('저장 & 공유', { en: 'Save & share', ja: '保存・共有', zh: '保存并分享', es: 'Guardar y compartir', ar: 'حفظ ومشاركة' }), val: false }, { label: simText('불러오기', { en: 'Load', ja: '読み込む', zh: '加载', es: 'Cargar', ar: 'تحميل' }), val: true }].map(tab => (
                                 <button key={String(tab.val)} onClick={() => setShowRecentList(tab.val)}
                                     style={{ flex: 1, padding: '8px', borderRadius: '0.6rem', border: 'none', fontWeight: 800, fontSize: '0.8rem', cursor: 'pointer', background: showRecentList === tab.val ? 'white' : 'transparent', color: showRecentList === tab.val ? '#3b82f6' : '#94a3b8', boxShadow: showRecentList === tab.val ? '0 2px 6px rgba(0,0,0,0.08)' : 'none', transition: 'all 0.15s' }}
                                 >{tab.label}</button>
@@ -5024,23 +5031,23 @@ function SimulatorPageInner() {
                                 {!savedShareUrl ? (
                                     <>
                                         <div style={{ marginBottom: '1rem' }}>
-                                            <label style={{ fontSize: '0.8rem', fontWeight: 800, color: '#475569', display: 'block', marginBottom: '6px' }}>시뮬레이션 이름</label>
+                                            <label style={{ fontSize: '0.8rem', fontWeight: 800, color: '#475569', display: 'block', marginBottom: '6px' }}>{simText('시뮬레이션 이름', { en: 'Simulation name', ja: 'シミュレーション名', zh: '模拟名称', es: 'Nombre de simulación', ar: 'اسم المحاكاة' })}</label>
                                             <input
                                                 type="text" value={saveSimName} onChange={e => setSaveSimName(e.target.value)}
-                                                placeholder="예: 전자제품 KR→US 최적화 시나리오"
+                                                placeholder={simText('예: 전자제품 KR→US 최적화 시나리오', { en: 'e.g. Electronics KR→US optimization', ja: '例：電子製品KR→US最適化', zh: '例如：电子产品韩美优化场景', es: 'p. ej., optimización electrónica KR→US', ar: 'مثال: تحسين الإلكترونيات KR→US' })}
                                                 style={{ width: '100%', padding: '0.7rem 1rem', border: '1.5px solid #e2e8f0', borderRadius: '0.75rem', fontSize: '0.9rem', outline: 'none', boxSizing: 'border-box' }}
                                             />
                                         </div>
                                         <div style={{ padding: '0.75rem', background: '#f8fafc', borderRadius: '0.75rem', fontSize: '0.72rem', color: '#64748b', marginBottom: '1.25rem' }}>
-                                            <div>업종: <strong>{industry}</strong> · 생산지: <strong>{assy}</strong> → 목적지: <strong>{dest}</strong> · 물량: <strong>{parseInt(volumeStr).toLocaleString()}개</strong></div>
-                                            <div style={{ marginTop: '4px' }}>도착가: <strong style={{ color: '#3b82f6' }}>{formatVal(simData.landedCost)}/개</strong> · 리드타임: <strong>{simData.totalLT}일</strong></div>
+                                            <div>{simText('업종:', { en: 'Industry:', ja: '業種：', zh: '行业：', es: 'Industria:', ar: 'الصناعة:' })} <strong>{industry}</strong> · {simText('생산지:', { en: 'Origin:', ja: '生産地：', zh: '生产地：', es: 'Origen:', ar: 'المنشأ:' })} <strong>{assy}</strong> → {simText('목적지:', { en: 'Destination:', ja: '目的地：', zh: '目的地：', es: 'Destino:', ar: 'الوجهة:' })} <strong>{dest}</strong> · {simText('물량:', { en: 'Volume:', ja: '数量：', zh: '数量：', es: 'Volumen:', ar: 'الكمية:' })} <strong>{parseInt(volumeStr).toLocaleString()}{simText('개', { en: ' units', ja: '個', zh: '件', es: ' unidades', ar: ' وحدة' })}</strong></div>
+                                            <div style={{ marginTop: '4px' }}>{simText('도착가:', { en: 'Landed cost:', ja: '着地価格：', zh: '到岸价：', es: 'Coste puesto:', ar: 'التكلفة عند الوصول:' })} <strong style={{ color: '#3b82f6' }}>{formatVal(simData.landedCost)}/{simText('개', { en: 'unit', ja: '個', zh: '件', es: 'unidad', ar: 'وحدة' })}</strong> · {simText('리드타임:', { en: 'Lead time:', ja: 'リードタイム：', zh: '交期：', es: 'Plazo:', ar: 'مدة التوريد:' })} <strong>{simData.totalLT}{simText('일', { en: ' days', ja: '日', zh: '天', es: ' días', ar: ' يوم' })}</strong></div>
                                         </div>
                                         <button
                                             onClick={handleSaveSimulation}
                                             disabled={saveLoading || !saveSimName.trim()}
                                             style={{ width: '100%', padding: '0.8rem', background: saveLoading || !saveSimName.trim() ? '#e2e8f0' : 'linear-gradient(135deg,#3b82f6,#2563eb)', color: saveLoading || !saveSimName.trim() ? '#94a3b8' : 'white', border: 'none', borderRadius: '0.75rem', fontWeight: 800, fontSize: '0.9rem', cursor: saveLoading || !saveSimName.trim() ? 'not-allowed' : 'pointer' }}
                                         >
-                                            {saveLoading ? <><i className="fas fa-spinner fa-spin"></i> 저장 중...</> : <><i className="fas fa-save"></i> 저장하기</>}
+                                            {saveLoading ? <><i className="fas fa-spinner fa-spin"></i> {simText('저장 중...', { en: 'Saving...', ja: '保存中…', zh: '保存中…', es: 'Guardando…', ar: 'جارٍ الحفظ…' })}</> : <><i className="fas fa-save"></i> {simText('저장하기', { en: 'Save', ja: '保存', zh: '保存', es: 'Guardar', ar: 'حفظ' })}</>}
                                         </button>
                                     </>
                                 ) : (
@@ -5050,8 +5057,8 @@ function SimulatorPageInner() {
                                             <div style={{ width: 48, height: 48, background: '#f0fdf4', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 0.75rem' }}>
                                                 <i className="fas fa-check-circle" style={{ color: '#10b981', fontSize: '1.5rem' }}></i>
                                             </div>
-                                            <div style={{ fontWeight: 900, color: '#0f172a', marginBottom: '4px' }}>저장 완료!</div>
-                                            <div style={{ fontSize: '0.75rem', color: '#64748b' }}>30일간 유효합니다</div>
+                                            <div style={{ fontWeight: 900, color: '#0f172a', marginBottom: '4px' }}>{simText('저장 완료!', { en: 'Saved!', ja: '保存完了！', zh: '保存完成！', es: '¡Guardado!', ar: 'تم الحفظ!' })}</div>
+                                            <div style={{ fontSize: '0.75rem', color: '#64748b' }}>{simText('30일간 유효합니다', { en: 'Valid for 30 days', ja: '30日間有効です', zh: '有效期30天', es: 'Válido durante 30 días', ar: 'صالح لمدة 30 يوماً' })}</div>
                                         </div>
                                         <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '0.75rem', padding: '0.75rem 1rem', marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
                                             <i className="fas fa-link" style={{ color: '#3b82f6', flexShrink: 0 }}></i>
@@ -5059,10 +5066,10 @@ function SimulatorPageInner() {
                                         </div>
                                         <div style={{ display: 'flex', gap: '8px' }}>
                                             <button onClick={handleCopyShareUrl} style={{ flex: 1, padding: '0.7rem', background: '#eff6ff', color: '#2563eb', border: '1px solid #bfdbfe', borderRadius: '0.75rem', fontWeight: 800, fontSize: '0.82rem', cursor: 'pointer' }}>
-                                                <i className="fas fa-copy"></i> 링크 복사
+                                                <i className="fas fa-copy"></i> {simText('링크 복사', { en: 'Copy link', ja: 'リンクをコピー', zh: '复制链接', es: 'Copiar enlace', ar: 'نسخ الرابط' })}
                                             </button>
                                             <button onClick={() => { setSavedShareUrl(''); setSaveSimName(''); }} style={{ flex: 1, padding: '0.7rem', background: 'white', color: '#64748b', border: '1px solid #e2e8f0', borderRadius: '0.75rem', fontWeight: 800, fontSize: '0.82rem', cursor: 'pointer' }}>
-                                                새로 저장
+                                                {simText('새로 저장', { en: 'Save new', ja: '新規保存', zh: '另存为新项', es: 'Guardar nuevo', ar: 'حفظ جديد' })}
                                             </button>
                                         </div>
                                     </div>
@@ -5073,16 +5080,16 @@ function SimulatorPageInner() {
                             <div>
                                 {/* 코드로 불러오기 */}
                                 <div style={{ marginBottom: '1.25rem' }}>
-                                    <label style={{ fontSize: '0.8rem', fontWeight: 800, color: '#475569', display: 'block', marginBottom: '6px' }}>공유 코드로 불러오기</label>
+                                    <label style={{ fontSize: '0.8rem', fontWeight: 800, color: '#475569', display: 'block', marginBottom: '6px' }}>{simText('공유 코드로 불러오기', { en: 'Load by share code', ja: '共有コードで読み込む', zh: '通过共享代码加载', es: 'Cargar con código compartido', ar: 'التحميل برمز المشاركة' })}</label>
                                     <div style={{ display: 'flex', gap: '8px' }}>
                                         <input
                                             type="text" value={shareCodeInput} onChange={e => setShareCodeInput(e.target.value)}
-                                            placeholder="8자리 공유 코드 입력"
+                                            placeholder={simText('8자리 공유 코드 입력', { en: 'Enter 8-character share code', ja: '8文字の共有コードを入力', zh: '输入8位共享代码', es: 'Introduzca el código de 8 caracteres', ar: 'أدخل رمز المشاركة المكون من 8 أحرف' })}
                                             style={{ flex: 1, padding: '0.65rem 0.85rem', border: '1.5px solid #e2e8f0', borderRadius: '0.75rem', fontSize: '0.85rem', outline: 'none', fontFamily: 'monospace', letterSpacing: '0.05em' }}
                                             onKeyDown={e => e.key === 'Enter' && handleLoadByCode()}
                                         />
                                         <button onClick={handleLoadByCode} style={{ padding: '0.65rem 1rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: '0.75rem', fontWeight: 800, fontSize: '0.8rem', cursor: 'pointer' }}>
-                                            불러오기
+                                            {simText('불러오기', { en: 'Load', ja: '読み込む', zh: '加载', es: 'Cargar', ar: 'تحميل' })}
                                         </button>
                                     </div>
                                 </div>
@@ -5090,7 +5097,7 @@ function SimulatorPageInner() {
                                 {/* 최근 저장 목록 */}
                                 {recentSims.length > 0 ? (
                                     <div>
-                                        <div style={{ fontSize: '0.8rem', fontWeight: 800, color: '#475569', marginBottom: '10px' }}>최근 저장 내역 (최대 5개)</div>
+                                        <div style={{ fontSize: '0.8rem', fontWeight: 800, color: '#475569', marginBottom: '10px' }}>{simText('최근 저장 내역 (최대 5개)', { en: 'Recent saves (up to 5)', ja: '最近の保存（最大5件）', zh: '最近保存（最多5项）', es: 'Guardados recientes (hasta 5)', ar: 'آخر عمليات الحفظ (حتى 5)' })}</div>
                                         <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                                             {recentSims.map((sim, i) => (
                                                 <button key={i} onClick={() => handleLoadRecent(sim)}
@@ -5101,7 +5108,7 @@ function SimulatorPageInner() {
                                                     <div>
                                                         <div style={{ fontWeight: 800, fontSize: '0.85rem', color: '#0f172a' }}>{sim.name}</div>
                                                         <div style={{ fontSize: '0.65rem', color: '#94a3b8', marginTop: '2px' }}>
-                                                            저장일: {new Date(sim.savedAt).toLocaleDateString('ko-KR')} · 코드: <span style={{ fontFamily: 'monospace', color: '#3b82f6' }}>{sim.shareCode}</span>
+                                                            {simText('저장일:', { en: 'Saved:', ja: '保存日：', zh: '保存日期：', es: 'Guardado:', ar: 'محفوظ:' })} {formatDate(sim.savedAt, lang) ?? ''} · {simText('코드:', { en: 'Code:', ja: 'コード：', zh: '代码：', es: 'Código:', ar: 'الرمز:' })} <span style={{ fontFamily: 'monospace', color: '#3b82f6' }}>{sim.shareCode}</span>
                                                         </div>
                                                     </div>
                                                     <i className="fas fa-chevron-right" style={{ color: '#94a3b8', fontSize: '0.75rem' }}></i>
@@ -5112,7 +5119,7 @@ function SimulatorPageInner() {
                                 ) : (
                                     <div style={{ textAlign: 'center', padding: '2rem', color: '#94a3b8', fontSize: '0.82rem' }}>
                                         <i className="fas fa-history" style={{ fontSize: '1.5rem', marginBottom: '0.5rem', display: 'block', opacity: 0.3 }}></i>
-                                        아직 저장된 시뮬레이션이 없습니다.
+                                        {simText('아직 저장된 시뮬레이션이 없습니다.', { en: 'No saved simulations yet.', ja: '保存されたシミュレーションはありません。', zh: '尚无保存的模拟。', es: 'Aún no hay simulaciones guardadas.', ar: 'لا توجد محاكاة محفوظة بعد.' })}
                                     </div>
                                 )}
                             </div>
@@ -5128,13 +5135,13 @@ function SimulatorPageInner() {
                         <div className="glass-card" style={{ width: '100%', maxWidth: '500px', background: 'white', padding: '2rem', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)' }}>
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
                                 <h3 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 900, color: '#0f172a' }}>
-                                    리포트 출력 설정
+                                    {simText('리포트 출력 설정', { en: 'Report export settings', ja: 'レポート出力設定', zh: '报告输出设置', es: 'Ajustes de exportación del informe', ar: 'إعدادات تصدير التقرير' })}
                                 </h3>
                                 <button onClick={() => setIsExportModalOpen(false)} style={{ background: 'none', border: 'none', fontSize: '1.5rem', color: '#94a3b8', cursor: 'pointer' }}>&times;</button>
                             </div>
 
                             <p style={{ color: '#64748b', fontSize: '0.85rem', marginBottom: '1.5rem', lineHeight: 1.5 }}>
-                                출력할 시나리오를 선택해주세요. 선택된 항목들이 {exportType.toUpperCase()} 리포트에 포함됩니다.
+                                {simText('출력할 시나리오를 선택해주세요. 선택된 항목들이', { en: 'Select scenarios to export. Selected items will be included in the', ja: '出力するシナリオを選択してください。選択項目は', zh: '请选择要输出的场景。所选项目将包含在', es: 'Seleccione escenarios para exportar. Los elementos seleccionados se incluirán en el informe', ar: 'حدد السيناريوهات لتصديرها. ستتضمن العناصر المحددة' })} {exportType.toUpperCase()} {simText('리포트에 포함됩니다.', { en: 'report.', ja: 'レポートに含まれます。', zh: '报告中。', es: '.', ar: ' في التقرير.' })}
                             </p>
 
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '2rem' }}>
@@ -5146,8 +5153,8 @@ function SimulatorPageInner() {
                                         style={{ width: '18px', height: '18px' }}
                                     />
                                     <div style={{ flex: 1 }}>
-                                        <div style={{ fontWeight: 800, fontSize: '0.9rem', color: exportSelections.includes('current') ? '#1e40af' : '#1e293b' }}>현재 시뮬레이션 상세</div>
-                                        <div style={{ fontSize: '0.7rem', color: '#64748b' }}>BOM 상세 분석 및 원가 구조 포함</div>
+                                        <div style={{ fontWeight: 800, fontSize: '0.9rem', color: exportSelections.includes('current') ? '#1e40af' : '#1e293b' }}>{simText('현재 시뮬레이션 상세', { en: 'Current simulation details', ja: '現在のシミュレーション詳細', zh: '当前模拟详情', es: 'Detalles de simulación actual', ar: 'تفاصيل المحاكاة الحالية' })}</div>
+                                        <div style={{ fontSize: '0.7rem', color: '#64748b' }}>{simText('BOM 상세 분석 및 원가 구조 포함', { en: 'Includes BOM analysis and cost structure', ja: 'BOM詳細分析とコスト構造を含む', zh: '包含BOM详细分析和成本结构', es: 'Incluye análisis BOM y estructura de costes', ar: 'يتضمن تحليل BOM وهيكل التكلفة' })}</div>
                                     </div>
                                 </label>
 
@@ -5159,8 +5166,8 @@ function SimulatorPageInner() {
                                         style={{ width: '18px', height: '18px' }}
                                     />
                                     <div style={{ flex: 1 }}>
-                                        <div style={{ fontWeight: 800, fontSize: '0.9rem', color: exportSelections.includes('comparison') ? '#1e40af' : '#1e293b' }}>시나리오 비교 분석</div>
-                                        <div style={{ fontSize: '0.7rem', color: '#64748b' }}>선택된 모든 시나리오 데이터 간 효율성 종합 요약 비교표</div>
+                                        <div style={{ fontWeight: 800, fontSize: '0.9rem', color: exportSelections.includes('comparison') ? '#1e40af' : '#1e293b' }}>{simText('시나리오 비교 분석', { en: 'Scenario comparison analysis', ja: 'シナリオ比較分析', zh: '场景比较分析', es: 'Análisis comparativo de escenarios', ar: 'تحليل مقارنة السيناريوهات' })}</div>
+                                        <div style={{ fontSize: '0.7rem', color: '#64748b' }}>{simText('선택된 모든 시나리오 데이터 간 효율성 종합 요약 비교표', { en: 'Summary table comparing efficiency across selected scenarios', ja: '選択シナリオ間の効率を総合比較する概要表', zh: '比较所选场景效率的综合摘要表', es: 'Tabla resumen de eficiencia entre escenarios seleccionados', ar: 'جدول ملخص شامل لمقارنة الكفاءة بين السيناريوهات المحددة' })}</div>
                                     </div>
                                 </label>
 
@@ -5174,7 +5181,7 @@ function SimulatorPageInner() {
                                         />
                                         <div style={{ flex: 1 }}>
                                             <div style={{ fontWeight: 800, fontSize: '0.9rem', color: exportSelections.includes(s.id) ? '#1e40af' : '#1e293b' }}>{s.name}</div>
-                                            <div style={{ fontSize: '0.7rem', color: '#64748b' }}>저장된 시나리오 데이터</div>
+                                            <div style={{ fontSize: '0.7rem', color: '#64748b' }}>{simText('저장된 시나리오 데이터', { en: 'Saved scenario data', ja: '保存されたシナリオデータ', zh: '已保存的场景数据', es: 'Datos de escenario guardados', ar: 'بيانات السيناريو المحفوظة' })}</div>
                                         </div>
                                         <div style={{ fontWeight: 900, fontSize: '0.8rem', color: '#3b82f6' }}>{formatVal(s.landedCost)}</div>
                                     </label>
@@ -5182,14 +5189,14 @@ function SimulatorPageInner() {
                             </div>
 
                             <div style={{ display: 'flex', gap: '10px' }}>
-                                <button className="btn-outline" style={{ flex: 1 }} onClick={() => setIsExportModalOpen(false)}>취소</button>
+                                <button className="btn-outline" style={{ flex: 1 }} onClick={() => setIsExportModalOpen(false)}>{simText('취소', { en: 'Cancel', ja: 'キャンセル', zh: '取消', es: 'Cancelar', ar: 'إلغاء' })}</button>
                                 <button
                                     className="btn-primary"
                                     style={{ flex: 2, background: exportType === 'excel' ? '#059669' : '#e11d48' }}
                                     onClick={exportType === 'excel' ? exportToExcel : exportToPdf}
                                     disabled={exportSelections.length === 0}
                                 >
-                                    <i className={`fas fa-file-${exportType}`}></i> {exportSelections.length}개 항목 {exportType.toUpperCase()} 출력
+                                    <i className={`fas fa-file-${exportType}`}></i> {exportSelections.length}{simText('개 항목', { en: ' items', ja: '件', zh: '项', es: ' elementos', ar: ' عناصر' })} {exportType.toUpperCase()} {simText('출력', { en: 'export', ja: '出力', zh: '输出', es: 'exportar', ar: 'تصدير' })}
                                 </button>
                             </div>
                         </div>

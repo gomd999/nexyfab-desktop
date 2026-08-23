@@ -5,9 +5,11 @@ import { applyAssemblyAnimationCommand } from '@/lib/assembly/assemblyAnimationC
 import type { AssemblyState } from '@/lib/assembly/assemblyState';
 import { getTrustedClientIp } from '@/lib/client-ip';
 import { rateLimit } from '@/lib/rate-limit';
+import { boundedJsonError, readBoundedJson } from '@/lib/boundedJsonBody';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
+const MAX_BODY_BYTES = 32 * 1024 * 1024;
 
 export async function POST(req: NextRequest) {
   const ip = getTrustedClientIp(req.headers);
@@ -15,11 +17,16 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ok: false, code: 'RATE_LIMIT' }, { status: 429 });
   }
 
-  const body = await req.json().catch(() => null) as {
+  let body: {
     state?: AssemblyState;
     animation?: AssemblyAnimation;
     command?: string;
   } | null;
+  try { body = await readBoundedJson(req, MAX_BODY_BYTES); }
+  catch (error) {
+    if (boundedJsonError(error)?.code === 'PAYLOAD_TOO_LARGE') return NextResponse.json({ ok: false, code: 'PAYLOAD_TOO_LARGE' }, { status: 413 });
+    body = null;
+  }
   if (!body?.state || !body.animation || typeof body.command !== 'string' || !body.command.trim()) {
     return NextResponse.json(
       { ok: false, code: 'BAD_REQUEST', message: 'state, animation and command are required' },

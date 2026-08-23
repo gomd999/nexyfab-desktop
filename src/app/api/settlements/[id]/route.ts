@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { verifyAdmin } from '@/lib/admin-auth';
 import { checkOrigin } from '@/lib/csrf';
 import { getDbAdapter } from '@/lib/db-adapter';
+import { readBoundedJson } from '@/lib/boundedJsonBody';
 
 export const dynamic = 'force-dynamic';
 
@@ -44,7 +45,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   if (!checkOrigin(req)) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   if (!(await verifyAdmin(req))) return NextResponse.json({ error: 'Admin only' }, { status: 403 });
   const { id } = await params;
-  const body = await req.json();
+  const body = await readBoundedJson<{ status?: string; notes?: string }>(req, 256 * 1024);
   const { status, notes } = body;
 
   const db = getDbAdapter();

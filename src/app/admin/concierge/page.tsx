@@ -12,6 +12,9 @@
 // library (Q5).
 
 import React, { useCallback, useEffect, useState } from 'react';
+import { useAdminI18n } from '../AdminI18nProvider';
+import { createCommercialLocalizer } from '@/lib/i18n/commercialLocalizer';
+import { formatDate } from '@/lib/i18n/format';
 
 interface RfqSummary {
   rfqId: string;
@@ -42,17 +45,19 @@ interface FactorySearchResult {
   industry: string | null;
 }
 
-const STATUS_LABELS: Record<string, string> = {
-  recommended:    '📋 추천됨',
-  contacted:      '📞 컨택 시도',
-  responded:      '💬 응답 받음',
-  quote_drafting: '📨 견적 작성 중',
-  quote_received: '✅ 견적 도착',
-  partner_signup: '🔓 가입 완료',
-  declined:       '✋ 거절',
+const STATUS_LABELS: Record<string, { ko: string; en: string }> = {
+  recommended:    { ko: '📋 추천됨', en: '📋 Recommended' },
+  contacted:      { ko: '📞 컨택 시도', en: '📞 Contact attempted' },
+  responded:      { ko: '💬 응답 받음', en: '💬 Response received' },
+  quote_drafting: { ko: '📨 견적 작성 중', en: '📨 Drafting quote' },
+  quote_received: { ko: '✅ 견적 도착', en: '✅ Quote received' },
+  partner_signup: { ko: '🔓 가입 완료', en: '🔓 Partner signed up' },
+  declined:       { ko: '✋ 거절', en: '✋ Declined' },
 };
 
 export default function ConciergeAdminPage() {
+  const { locale } = useAdminI18n();
+  const L = createCommercialLocalizer(locale);
   const [rfqs, setRfqs] = useState<RfqSummary[]>([]);
   const [selected, setSelected] = useState<string | null>(null);
   const [entries, setEntries] = useState<ConciergeEntry[]>([]);
@@ -132,7 +137,10 @@ export default function ConciergeAdminPage() {
     <div style={pageStyle}>
       <h1 style={titleStyle}>📞 Concierge Admin</h1>
       <p style={subtitleStyle}>
-        진행 중 RFQ에 추천 공장을 추가하고, 컨택 상황을 갱신합니다. 고객은 공장명 블러 + 상태만 봅니다.
+        {L(
+          '진행 중 RFQ에 추천 공장을 추가하고, 컨택 상황을 갱신합니다. 고객은 공장명 블러 + 상태만 봅니다.',
+          'Add recommended factories to active RFQs and update their contact status. Customers see only blurred factory names and statuses.',
+        )}
       </p>
 
       <div style={{ display: 'grid', gridTemplateColumns: '320px 1fr', gap: 16, marginTop: 20 }}>
@@ -140,7 +148,7 @@ export default function ConciergeAdminPage() {
         <div style={panelStyle}>
           <h3 style={panelTitleStyle}>RFQ ({rfqs.length})</h3>
           {loading && <div style={mutedStyle}>…</div>}
-          {!loading && rfqs.length === 0 && <div style={mutedStyle}>대기 중인 RFQ 없음</div>}
+          {!loading && rfqs.length === 0 && <div style={mutedStyle}>{L('대기 중인 RFQ 없음', 'No pending RFQs')}</div>}
           <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
             {rfqs.map(r => (
               <button
@@ -156,11 +164,11 @@ export default function ConciergeAdminPage() {
                   {r.shapeName ?? r.rfqId.slice(0, 8)}
                 </div>
                 <div style={{ fontSize: 10, color: '#8b949e', marginTop: 2 }}>
-                  {r.rfqId.slice(0, 12)} · {r.status} · {new Date(r.createdAt).toLocaleDateString()}
+                  {r.rfqId.slice(0, 12)} · {r.status} · {formatDate(r.createdAt, locale) ?? '-'}
                 </div>
                 {r.conciergeCount > 0 && (
                   <div style={{ fontSize: 10, color: '#79c0ff', marginTop: 2 }}>
-                    Concierge {r.conciergeCount}건
+                    {L(`Concierge ${r.conciergeCount}건`, `Concierge: ${r.conciergeCount}`)}
                   </div>
                 )}
               </button>
@@ -171,11 +179,11 @@ export default function ConciergeAdminPage() {
         {/* Right — Concierge editor */}
         <div style={panelStyle}>
           {!selected ? (
-            <div style={mutedStyle}>← 좌측에서 RFQ를 선택하세요</div>
+            <div style={mutedStyle}>{L('← 좌측에서 RFQ를 선택하세요', '← Select an RFQ from the left')}</div>
           ) : (
             <>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-                <h3 style={panelTitleStyle}>RFQ {selected.slice(0, 12)} — 추천 공장</h3>
+                <h3 style={panelTitleStyle}>{L(`RFQ ${selected.slice(0, 12)} — 추천 공장`, `RFQ ${selected.slice(0, 12)} — Recommended factories`)}</h3>
                 <a href={`/api/nexyfab/concierge/${selected}`} target="_blank" rel="noreferrer" style={miniLinkStyle}>raw JSON</a>
               </div>
 
@@ -184,7 +192,7 @@ export default function ConciergeAdminPage() {
                 <input
                   value={search}
                   onChange={e => void searchFactories(e.target.value)}
-                  placeholder="공장명 검색 (2자 이상)"
+                  placeholder={L('공장명 검색 (2자 이상)', 'Search factories (2 or more characters)')}
                   style={inputStyle}
                 />
                 {searchResults.length > 0 && (
@@ -205,13 +213,13 @@ export default function ConciergeAdminPage() {
 
               {/* Entries */}
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 12 }}>
-                {entries.length === 0 && <div style={mutedStyle}>아직 추천된 공장이 없습니다</div>}
+                {entries.length === 0 && <div style={mutedStyle}>{L('아직 추천된 공장이 없습니다', 'No factories have been recommended yet')}</div>}
                 {entries.map(e => (
                   <div key={e.id} style={entryRowStyle}>
                     <div style={{ flex: 1 }}>
                       <div style={{ fontSize: 12, fontWeight: 700, color: '#e6edf3' }}>{e.displayName}</div>
                       <div style={{ fontSize: 10, color: '#8b949e' }}>
-                        {e.region ?? '-'} · {e.lastActionAt ? new Date(e.lastActionAt).toLocaleString() : '-'}
+                        {e.region ?? '-'} · {e.lastActionAt ? formatDate(e.lastActionAt, locale, { dateStyle: 'medium', timeStyle: 'short' }) ?? '-' : '-'}
                       </div>
                       {e.note && <div style={{ fontSize: 11, color: '#c9d1d9', marginTop: 2 }}>📝 {e.note}</div>}
                     </div>
@@ -221,7 +229,7 @@ export default function ConciergeAdminPage() {
                       style={selectStyle}
                     >
                       {Object.entries(STATUS_LABELS).map(([k, v]) => (
-                        <option key={k} value={k}>{v}</option>
+                        <option key={k} value={k}>{L(v.ko, v.en)}</option>
                       ))}
                     </select>
                   </div>

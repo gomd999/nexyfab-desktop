@@ -14,6 +14,7 @@ export const DEFAULT_LANG: RouteLang = 'en';
 const LEGACY_ROUTE_LANGS: Readonly<Record<string, RouteLang>> = {
   ko: 'kr',
   zh: 'cn',
+  jp: 'ja',
 };
 
 const ROUTE_TO_ISO: Record<RouteLang, IsoLang> = {
@@ -30,8 +31,15 @@ export function isSupportedLang(value: string): value is RouteLang {
 
 export function toRouteLang(value: string | undefined | null): RouteLang {
   if (!value) return DEFAULT_LANG;
-  if (isSupportedLang(value)) return value;
-  if (value in ISO_TO_ROUTE) return ISO_TO_ROUTE[value as IsoLang];
+  // Accept values from browser/OS locale APIs as well as URL segments. The
+  // public URL is always the six-segment route vocabulary, while persisted
+  // users and OAuth providers commonly send ko-KR/zh-Hans style values.
+  const normalized = value.trim().toLowerCase().replace(/_/g, '-');
+  if (isSupportedLang(normalized)) return normalized;
+  if (normalized in LEGACY_ROUTE_LANGS) return LEGACY_ROUTE_LANGS[normalized];
+  if (normalized in ISO_TO_ROUTE) return ISO_TO_ROUTE[normalized as IsoLang];
+  const base = normalized.split('-')[0];
+  if (base in ISO_TO_ROUTE) return ISO_TO_ROUTE[base as IsoLang];
   return DEFAULT_LANG;
 }
 
@@ -40,7 +48,7 @@ export function toRouteLang(value: string | undefined | null): RouteLang {
  * caller so this helper stays usable in Edge middleware and unit tests.
  */
 export function canonicalizeLocalePath(pathname: string): string {
-  const match = pathname.match(/^\/(ko|zh)(?=\/|$)/);
+  const match = pathname.match(/^\/(ko|zh|jp)(?=\/|$)/);
   if (!match) return pathname;
   return `/${LEGACY_ROUTE_LANGS[match[1]]}${pathname.slice(match[0].length)}`;
 }

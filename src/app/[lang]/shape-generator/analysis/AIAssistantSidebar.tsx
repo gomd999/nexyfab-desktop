@@ -11,6 +11,7 @@ import { useUIStore } from '../store/uiStore';
 import { useSceneStore } from '../store/sceneStore';
 import SidebarResizer from '../SidebarResizer';
 import { RAIL_WIDTH } from '../hooks/useSidebarLayout';
+import { loc } from '@/lib/i18n/loc';
 
 const DimensionAdvisorPanelInner = dynamic(() => import('./DimensionAdvisorPanel'), { ssr: false });
 const AIAdvisorInner = dynamic(() => import('./AIAdvisor'), { ssr: false });
@@ -252,7 +253,7 @@ function AIAssistantSidebar(props: AIAssistantSidebarProps) {
         <button
           onClick={onToggleCollapse}
           aria-label="Expand"
-          title="Expand (펼치기)"
+          title={loc(lang, { ko: '펼치기', en: 'Expand', ja: '展開', zh: '展开', es: 'Expandir', ar: 'توسيع' })}
           style={{
             width: 32, height: 32, borderRadius: 6, border: `1px solid ${theme.border}`,
             background: 'transparent', color: theme.text, cursor: 'pointer',
@@ -302,7 +303,7 @@ function AIAssistantSidebar(props: AIAssistantSidebarProps) {
         <button
           onClick={onToggleCollapse}
           aria-label="Collapse"
-          title="Collapse (접기)"
+          title={loc(lang, { ko: '접기', en: 'Collapse', ja: '折りたたむ', zh: '折叠', es: 'Contraer', ar: 'طي' })}
           style={{
             position: 'absolute', top: 4,
             [side === 'left' ? 'right' : 'left']: 4,

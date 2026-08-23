@@ -9,16 +9,16 @@ import { chatCompletion, AiNotConfiguredError, AiProviderError } from '@/lib/ai'
 import { estimateCost, compareCost, costCurve, type CostProcess, type CostRegion, type DfmSignals, type Tolerance, type Finish } from '@/lib/costModel';
 import { getCalibrationFactor } from '@/lib/quoteHistory';
 import { getAuthUser } from '@/lib/auth-middleware';
+import { guardStudioAi } from '@/lib/studio-ai-guard';
+import { localizedApiMessage, resolveServerLocale } from '@/lib/i18n/serverLocale';
+import { boundedJsonError, readBoundedJson } from '@/lib/boundedJsonBody';
+
+const MAX_BODY_BYTES = 256 * 1024;
 
 const PAID_PLANS = new Set(['pro', 'team', 'enterprise']);
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
-
-const LANG_NAME: Record<string, string> = {
-  ko: 'Korean', kr: 'Korean', en: 'English', ja: 'Japanese', jp: 'Japanese',
-  cn: 'Chinese', zh: 'Chinese', es: 'Spanish', ar: 'Arabic',
-};
 
 const SYSTEM = `You are a senior manufacturing / design-for-manufacturing (DFM) engineer reviewing a finished 3D part for production. You are given measured geometry metrics plus the intended material and process. Produce a concise, honest, practical evaluation.
 Output ONLY valid minified JSON (no markdown, no prose around it) with EXACTLY this shape:
@@ -49,7 +49,11 @@ Rules:
 - Write ALL string values in {LANG}.`;
 
 export async function POST(req: NextRequest) {
-  const body = (await req.json().catch(() => null)) as {
+  const declaredBytes = Number(req.headers.get('content-length') ?? 0);
+  if (Number.isFinite(declaredBytes) && declaredBytes > MAX_BODY_BYTES) {
+    return NextResponse.json({ error: 'Request too large', code: 'PAYLOAD_TOO_LARGE' }, { status: 413 });
+  }
+  type EvaluateReportBody = {
     metrics?: Record<string, unknown>;
     material?: string;
     process?: string;
@@ -66,11 +70,23 @@ export async function POST(req: NextRequest) {
     dfmSignals?: DfmSignals;
     tolerance?: Tolerance;
     finish?: Finish;
-  } | null;
-  if (!body?.metrics) {
-    return NextResponse.json({ error: 'metrics required' }, { status: 400 });
+  };
+  let body: EvaluateReportBody | null = null;
+  try { body = await readBoundedJson<EvaluateReportBody>(req, MAX_BODY_BYTES); }
+  catch (error) {
+    if (boundedJsonError(error)?.code === 'PAYLOAD_TOO_LARGE') return NextResponse.json({ error: 'Request too large', code: 'PAYLOAD_TOO_LARGE' }, { status: 413 });
   }
-  const langName = LANG_NAME[body.lang ?? 'ko'] ?? 'English';
+  const locale = resolveServerLocale(req, body?.lang ?? req.nextUrl.searchParams.get('lang'));
+  if (!body?.metrics || typeof body.metrics !== 'object' || Array.isArray(body.metrics)) {
+    return NextResponse.json({ error: localizedApiMessage(locale, 'badRequest'), code: 'METRICS_REQUIRED', outputLanguage: locale.route }, { status: 400 });
+  }
+  const serializedBody = JSON.stringify(body);
+  if (Buffer.byteLength(serializedBody, 'utf8') > MAX_BODY_BYTES || Object.keys(body.metrics).length > 128) {
+    return NextResponse.json({ error: 'Request too large', code: 'PAYLOAD_TOO_LARGE', outputLanguage: locale.route }, { status: 413 });
+  }
+  const planGuard = await guardStudioAi(req);
+  if (planGuard) return planGuard;
+  const langName = locale.languageName;
   // Real DFM findings (computed client-side by analyzeDFM) are GROUND TRUTH —
   // thin_wall / undercut / aspect_ratio / sharp_corner are the structural &
   // manufacturability risk signals the AI must base its scores and issues on.
@@ -144,6 +160,8 @@ ${compareLine}`;
       ],
       maxTokens: 1200,
       temperature: 0.3,
+      task: 'evaluate-report',
+      signal: req.signal,
     });
     let raw = (text || '').trim();
     const m = raw.match(/\{[\s\S]*\}/);
@@ -152,12 +170,12 @@ ${compareLine}`;
     try {
       report = JSON.parse(raw);
     } catch {
-      return NextResponse.json({ error: 'AI returned non-JSON', raw: (text || '').slice(0, 300) }, { status: 502 });
+      return NextResponse.json({ error: localizedApiMessage(locale, 'invalidAiResponse'), outputLanguage: locale.route }, { status: 502 });
     }
-    return NextResponse.json({ report, costEstimate, costComparison, costCurve: costCurvePoints, costLocked: !isPro });
+    return NextResponse.json({ report, costEstimate, costComparison, costCurve: costCurvePoints, costLocked: !isPro, outputLanguage: locale.route });
   } catch (e) {
-    if (e instanceof AiNotConfiguredError) return NextResponse.json({ error: 'AI not configured' }, { status: 500 });
-    if (e instanceof AiProviderError) return NextResponse.json({ error: 'AI provider error' }, { status: 502 });
-    return NextResponse.json({ error: 'evaluate failed' }, { status: 500 });
+    if (e instanceof AiNotConfiguredError) return NextResponse.json({ error: localizedApiMessage(locale, 'providerNotConfigured'), outputLanguage: locale.route }, { status: 500 });
+    if (e instanceof AiProviderError) return NextResponse.json({ error: localizedApiMessage(locale, 'providerFailed'), outputLanguage: locale.route }, { status: 502 });
+    return NextResponse.json({ error: localizedApiMessage(locale, 'providerFailed'), outputLanguage: locale.route }, { status: 500 });
   }
 }

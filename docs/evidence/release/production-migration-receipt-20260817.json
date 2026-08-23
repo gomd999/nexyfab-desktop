@@ -1,0 +1,24 @@
+{
+  "schema": "nexyfab.postgres-migration-receipt.v1",
+  "generatedAt": "2026-08-17T11:56:44.171Z",
+  "ok": true,
+  "target": "railway-production",
+  "migration": {
+    "ok": true,
+    "version": 2026081701,
+    "name": "cad_artifacts_handoffs_spatial_20260817",
+    "checksum": "700b2db4b0d1370f1d694cbcd02142dcb48530d5ba7040a0ad61f6394af7f45e",
+    "decision": "apply"
+  },
+  "before": {
+    "tableCount": 118,
+    "totalRows": 291408,
+    "businessRowCountSha256": "2fd7fc3f835196e172b9f3c20241b2616006076f45f0965903460e79cd80ee32"
+  },
+  "after": {
+    "tableCount": 130,
+    "totalRows": 291409,
+    "businessRowCountSha256": "e1fe799132e6ce3fe7583ea49dd096b2d9955dfaecf548f51846acae10c42cab"
+  },
+  "changedBusinessTables": []
+}

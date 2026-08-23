@@ -14,10 +14,11 @@
 // 56px rail with icon-only entries.
 
 import { useEffect, useRef, useState } from 'react';
+import type { ReactNode } from 'react';
 import Link from 'next/link';
-import { usePathname, useRouter } from 'next/navigation';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useAuthStore } from '@/hooks/useAuth';
-import { isKorean } from '@/lib/i18n/normalize';
+import { toIsoLang, toRouteLang, type IsoLang } from '@/lib/i18n/normalize';
 import NotificationBell from './NotificationBell';
 import NexysysAppSwitcher from './NexysysAppSwitcher';
 
@@ -27,11 +28,14 @@ interface UnifiedSidebarProps {
 
 interface NavItem {
   icon: string;
-  labelKo: string;
-  labelEn: string;
+  labels: Record<IsoLang, string>;
   href: string;
-  badge?: 'NEW' | 'PRO' | 'TEAM';
+  badge?: 'NEW' | 'BETA' | 'PRO' | 'TEAM';
   comingSoon?: boolean;
+  /** Domains that make a grouped destination visually active. */
+  activeDomains?: string[];
+  /** Existing domain routes exposed as subordinate project types. */
+  children?: NavItem[];
   /**
    * If true, the href is used verbatim (no `/${lang}` prefix). Use for
    * cross-surface links like the partner portal that lives outside the
@@ -41,36 +45,47 @@ interface NavItem {
 }
 
 interface NavSection {
-  titleKo: string;
-  titleEn: string;
+  titles: Record<IsoLang, string>;
   items: NavItem[];
 }
 
-// 2026-07-16 IA 결정: 분야-우선 7항목으로 축소(사용자 멘탈 모델 = "무엇을 설계하러 왔나").
-// - 계산기·설계 검토 → 스튜디오 4탭(생성|검증|계산기|출력)이 정식 진입로
-// - 가설·랙 → 기계 페이지 안의 세부분야 칩으로 흡수(isActive에서 rack도 기계로 판정)
-// - 자유형 Studio·전문가형 CAD·종이레이저컷·부품 → 기계 페이지의 전문 도구 카드
-// - 공유된 항목 → 내 프로젝트 페이지의 '공유됨' 탭
-// 2026-07-16 AI 설계+스튜디오 통합 IA: [분야] + 채팅 내역 + 내 프로젝트.
-// 채팅 섹션은 동적(nf_chat_threads_v1 — 랜딩 챗·스튜디오 도크와 같은 저장소)이라
-// SECTIONS 밖에서 렌더한다. 분야와 채팅 사이에 끼워 넣기 위해 섹션을 둘로 나눈다.
-// 2026-07-16 재배치(사용자): 최상단='＋ 새 채팅' CTA(별도 렌더), 홈(허브)은 하단으로.
+const localized = (ko: string, en: string, ja: string, zh: string, es: string, ar: string): Record<IsoLang, string> => ({ ko, en, ja, zh, es, ar });
+
+// 2026-08 commercial IA: AI mechanical CAD + precision CAD are the product.
+// Spatial disciplines retain their route contracts in a separately labelled
+// Labs surface; they are not peers of the commercial mechanical product.
 const SECTION_MAIN: NavSection = {
-  titleKo: '', titleEn: '',
+  titles: localized('', '', '', '', '', ''),
   items: [
-    { icon: '🔧', labelKo: '기계',     labelEn: 'Mechanical',   href: '/nexyfab/design?domain=mech' },
-    { icon: '🏢', labelKo: '건축',     labelEn: 'Architecture', href: '/nexyfab/design?domain=building' },
-    { icon: '🌉', labelKo: '토목',     labelEn: 'Civil',        href: '/nexyfab/design?domain=civil' },
-    { icon: '🌳', labelKo: '조경',     labelEn: 'Landscape',    href: '/nexyfab/design?domain=landscape' },
-    { icon: '🪑', labelKo: '인테리어', labelEn: 'Interior',     href: '/nexyfab/design?domain=interior' },
+    { icon: '⚙️', labels: localized('AI 기계 CAD', 'AI Mechanical CAD', 'AI機械CAD', 'AI机械CAD', 'CAD mecánico con IA', 'CAD ميكانيكي بالذكاء الاصطناعي'), href: '/nexyfab/ai' },
+    { icon: '📐', labels: localized('정밀 CAD', 'Precision CAD', '精密CAD', '精密CAD', 'CAD de precisión', 'CAD دقيق'), href: '/shape-generator?expert=1&mode=expert&domain=mech&workMode=precision_cad' },
+    { icon: '🔎', labels: localized('설계 검토·제조', 'Review & Manufacturing', '設計レビュー・製造', '设计审查与制造', 'Revisión y fabricación', 'مراجعة وتصنيع'), href: '/nexyfab/evaluate' },
   ],
 };
 const SECTION_BOTTOM: NavSection = {
-  titleKo: '', titleEn: '',
+  titles: localized('', '', '', '', '', ''),
   items: [
-    { icon: '🧊', labelKo: '예시 갤러리', labelEn: 'Examples',    href: '/examples' },
-    { icon: '🏠', labelKo: '홈 (허브)',   labelEn: 'Home (Hub)',  href: '/nexyfab/hub' },
-    { icon: '📁', labelKo: '내 프로젝트', labelEn: 'My Projects', href: '/nexyfab/projects' },
+    { icon: '📁', labels: localized('내 프로젝트', 'My Projects', 'マイプロジェクト', '我的项目', 'Mis proyectos', 'مشاريعي'), href: '/nexyfab/projects' },
+    { icon: '🧊', labels: localized('예제 및 템플릿', 'Examples & Templates', '例とテンプレート', '示例与模板', 'Ejemplos y plantillas', 'أمثلة وقوالب'), href: '/examples' },
+  ],
+};
+
+const SECTION_LABS: NavSection = {
+  titles: localized('부가 서비스', 'Additional services', '追加サービス', '附加服务', 'Servicios adicionales', 'خدمات إضافية'),
+  items: [
+    {
+      icon: '🧪',
+      labels: localized('Space Design Labs', 'Space Design Labs', '空間設計ラボ', '空间设计实验室', 'Laboratorio de diseño espacial', 'مختبر تصميم المساحات'),
+      href: '/nexyfab/design?domain=building',
+      badge: 'BETA',
+      activeDomains: ['building', 'civil', 'bridge', 'landscape', 'interior'],
+      children: [
+        { icon: '🏢', labels: localized('건축', 'Architecture', '建築', '建筑', 'Arquitectura', 'عمارة'), href: '/nexyfab/design?domain=building' },
+        { icon: '🌉', labels: localized('토목', 'Civil', '土木', '土木工程', 'Ingeniería civil', 'هندسة مدنية'), href: '/nexyfab/design?domain=civil' },
+        { icon: '🌳', labels: localized('조경', 'Landscape', 'ランドスケープ', '景观', 'Paisajismo', 'تنسيق حدائق'), href: '/nexyfab/design?domain=landscape' },
+        { icon: '🪑', labels: localized('인테리어', 'Interior', 'インテリア', '室内设计', 'Interiorismo', 'تصميم داخلي'), href: '/nexyfab/design?domain=interior' },
+      ],
+    },
   ],
 };
 
@@ -79,15 +94,30 @@ interface ChatThreadLite { id: string; title: string; domain?: string; updated?:
 const THREAD_EMOJI: Record<string, string> = { mechanical: '🔧', civil: '🌉', architecture: '🏢', landscape: '🌳', interior: '🪑' };
 
 // Avatar dropdown items (replaces the old Account sidebar section).
-interface MenuItem { icon: string; labelKo: string; labelEn: string; href: string; external?: boolean; }
+interface MenuItem { icon: string; labels: Record<IsoLang, string>; href: string; external?: boolean; }
 const AVATAR_MENU: MenuItem[] = [
-  { icon: '💳', labelKo: '결제 & 구독',  labelEn: 'Billing',  href: '/nexyfab/billing' },
-  { icon: '🔧', labelKo: '설정',          labelEn: 'Settings', href: '/nexyfab/settings' },
-  { icon: '📖', labelKo: '사용 가이드',  labelEn: 'Guide',    href: '/help' },
+  { icon: '💳', labels: localized('결제 및 구독', 'Billing', '請求と契約', '账单与订阅', 'Facturación', 'الفوترة والاشتراك'), href: '/nexyfab/billing' },
+  { icon: '🔧', labels: localized('설정', 'Settings', '設定', '设置', 'Configuración', 'الإعدادات'), href: '/nexyfab/settings' },
+  { icon: '📖', labels: localized('사용 가이드', 'Guide', '利用ガイド', '使用指南', 'Guía', 'دليل الاستخدام'), href: '/help' },
 ];
 
+type SidebarCopy = {
+  visitor: string; guest: string; chats: string; mainNavigation: string; newDesign: string;
+  pin: string; unpin: string; deleteChat: string; login: string; createAccount: string; logout: string;
+  guestInfo: string; projectTypes: (label: string) => string; deleteConfirm: (title: string) => string;
+};
+
+const SIDEBAR_COPY: Record<IsoLang, SidebarCopy> = {
+  ko: { visitor: '비회원', guest: '게스트', chats: '채팅', mainNavigation: '주요 메뉴', newDesign: '새 기계 설계', pin: '고정', unpin: '고정 해제', deleteChat: '대화 삭제', login: '로그인', createAccount: '가입하기', logout: '로그아웃', guestInfo: '게스트는 AI·CAD를 체험하고 이 브라우저에 임시 저장할 수 있습니다. 클라우드 저장·내보내기·협업·제조 요청은 로그인이 필요합니다.', projectTypes: (label) => `${label} 세부 유형`, deleteConfirm: (title) => `“${title}” 대화를 삭제할까요?` },
+  en: { visitor: 'GUEST', guest: 'Guest', chats: 'Chats', mainNavigation: 'Main navigation', newDesign: 'New mechanical design', pin: 'Pin', unpin: 'Unpin', deleteChat: 'Delete chat', login: 'Log in', createAccount: 'Create account', logout: 'Log out', guestInfo: 'Guests can try AI and CAD with temporary browser storage. Sign in for cloud save, export, collaboration, and manufacturing requests.', projectTypes: (label) => `${label} project types`, deleteConfirm: (title) => `Delete “${title}”?` },
+  ja: { visitor: 'ゲスト', guest: 'ゲスト', chats: 'チャット', mainNavigation: 'メインナビゲーション', newDesign: '新しい機械設計', pin: '固定', unpin: '固定解除', deleteChat: 'チャットを削除', login: 'ログイン', createAccount: 'アカウント作成', logout: 'ログアウト', guestInfo: 'ゲストはAIとCADを試し、このブラウザに一時保存できます。クラウド保存、エクスポート、共同作業、製造依頼にはログインが必要です。', projectTypes: (label) => `${label}のプロジェクト種別`, deleteConfirm: (title) => `「${title}」を削除しますか？` },
+  zh: { visitor: '访客', guest: '访客', chats: '聊天', mainNavigation: '主导航', newDesign: '新建机械设计', pin: '固定', unpin: '取消固定', deleteChat: '删除聊天', login: '登录', createAccount: '创建账户', logout: '退出登录', guestInfo: '访客可以试用 AI 和 CAD，并临时保存在此浏览器中。云端保存、导出、协作和制造请求需要登录。', projectTypes: (label) => `${label}项目类型`, deleteConfirm: (title) => `要删除“${title}”聊天吗？` },
+  es: { visitor: 'INVITADO', guest: 'Invitado', chats: 'Chats', mainNavigation: 'Navegación principal', newDesign: 'Nuevo diseño mecánico', pin: 'Fijar', unpin: 'Desfijar', deleteChat: 'Eliminar chat', login: 'Iniciar sesión', createAccount: 'Crear cuenta', logout: 'Cerrar sesión', guestInfo: 'Los invitados pueden probar IA y CAD con almacenamiento temporal en este navegador. Inicia sesión para guardar en la nube, exportar, colaborar y solicitar fabricación.', projectTypes: (label) => `Tipos de proyecto de ${label}`, deleteConfirm: (title) => `¿Eliminar el chat “${title}”?` },
+  ar: { visitor: 'ضيف', guest: 'ضيف', chats: 'المحادثات', mainNavigation: 'التنقل الرئيسي', newDesign: 'تصميم ميكانيكي جديد', pin: 'تثبيت', unpin: 'إلغاء التثبيت', deleteChat: 'حذف المحادثة', login: 'تسجيل الدخول', createAccount: 'إنشاء حساب', logout: 'تسجيل الخروج', guestInfo: 'يمكن للضيوف تجربة الذكاء الاصطناعي وCAD مع حفظ مؤقت في هذا المتصفح. يلزم تسجيل الدخول للحفظ السحابي والتصدير والتعاون وطلبات التصنيع.', projectTypes: (label) => `أنواع مشاريع ${label}`, deleteConfirm: (title) => `هل تريد حذف المحادثة «${title}»؟` },
+};
+
 const PLAN_BADGE: Record<string, { label: string; color: string }> = {
-  free:       { label: 'FREE', color: 'var(--nx-text-3)' },
+  free:       { label: 'FREE', color: 'var(--nx-text-2)' },
   pro:        { label: 'PRO',  color: 'var(--nx-accent)' },
   team:       { label: 'TEAM', color: '#a371f7' },
   enterprise: { label: 'ENT',  color: '#d29922' },
@@ -95,9 +125,13 @@ const PLAN_BADGE: Record<string, { label: string; color: string }> = {
 
 export default function NexyfabUnifiedSidebar({ lang }: UnifiedSidebarProps) {
   const pathname = usePathname();
+  const searchParams = useSearchParams();
   const router = useRouter();
-  const { user, token, logout } = useAuthStore();
-  const isKo = isKorean(lang);
+  const { user, token, sessionStatus, logout } = useAuthStore();
+  const isAuthenticated = sessionStatus === 'authenticated' && Boolean(user);
+  const routeLang = toRouteLang(lang);
+  const locale = toIsoLang(routeLang);
+  const copy = SIDEBAR_COPY[locale];
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement | null>(null);
 
@@ -121,6 +155,20 @@ export default function NexyfabUnifiedSidebar({ lang }: UnifiedSidebarProps) {
     return () => { window.removeEventListener('storage', load); window.removeEventListener('focus', load); window.removeEventListener('nf-threads-updated', load); };
   }, []);
 
+  const updateThread = (id: string, change: Partial<ChatThreadLite> | null) => {
+    try {
+      const current = JSON.parse(localStorage.getItem('nf_chat_threads_v1') ?? '[]') as ChatThreadLite[];
+      const next = change === null ? current.filter((t) => t.id !== id) : current.map((t) => t.id === id ? { ...t, ...change, updated: Date.now() } : t);
+      localStorage.setItem('nf_chat_threads_v1', JSON.stringify(next));
+      window.dispatchEvent(new Event('nf-threads-updated'));
+    } catch { /* local storage may be unavailable */ }
+  };
+
+  const toggleThreadPin = (thread: ChatThreadLite) => updateThread(thread.id, { pinned: !thread.pinned });
+  const removeThread = (thread: ChatThreadLite) => {
+    if (window.confirm(copy.deleteConfirm(thread.title))) updateThread(thread.id, null);
+  };
+
   // Close avatar dropdown on outside click / Escape.
   useEffect(() => {
     if (!menuOpen) return;
@@ -139,28 +187,97 @@ export default function NexyfabUnifiedSidebar({ lang }: UnifiedSidebarProps) {
   // Hide on the modeler / sketch routes — those have their own shell-v2 chrome.
   if (pathname?.includes('/shape-generator')) return null;
 
-  const isActive = (href: string): boolean => {
+  const currentDomain = searchParams.get('domain');
+
+  const isActive = (href: string, activeDomains?: string[]): boolean => {
     const [path, query] = href.split('?');
-    const full = `/${lang}${path}`;
+    const full = `/${routeLang}${path}`;
     // Don't activate Hub for every nexyfab child route.
     if (path === '/nexyfab/hub') return pathname === full || pathname === full + '/';
     if (path === '/nexyfab/design') {
       // 분야(?domain=X) 판정. 가설·랙(rack)은 기계에 흡수(2026-07-16 IA).
       const matches = pathname === full || pathname.startsWith(full + '/');
       if (!matches) return false;
-      const sp = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : null;
-      const cur = sp?.get('domain') ?? null;
+      const cur = currentDomain;
+      if (activeDomains) return cur !== null && activeDomains.includes(cur);
       const own = query?.startsWith('domain=') ? query.slice('domain='.length) : null;
       if (!own) return !cur;
-      if (own === 'mech') return cur === 'mech' || cur === 'rack';
+      // The canonical design route defaults to the product/mechanical journey.
+      // Keep that default visible to assistive technology as well as visually.
+      if (own === 'mech') return cur === null || cur === 'mech' || cur === 'rack';
       if (own === 'civil') return cur === 'civil' || cur === 'bridge'; // 교량은 토목에 흡수(2026-07-16)
       return own === cur;
     }
     return pathname === full || pathname?.startsWith(full + '/');
   };
 
-  const badge = PLAN_BADGE[user?.plan ?? 'free'] ?? PLAN_BADGE.free;
-  const initials = user ? user.name.slice(0, 2).toUpperCase() : '?';
+  const badge = isAuthenticated
+    ? (PLAN_BADGE[user?.plan ?? 'free'] ?? PLAN_BADGE.free)
+    : { label: copy.visitor, color: 'var(--nx-text-2)' };
+  const initials = isAuthenticated && user ? user.name.slice(0, 2).toUpperCase() : '?';
+
+  const renderNavItem = (item: NavItem, nested = false): ReactNode => {
+    const active = item.external ? false : isActive(item.href, item.activeDomains);
+    const hasChildren = Boolean(item.children?.length);
+    const linkHref = item.external
+      ? `${item.href}${item.href.includes('?') ? '&' : '?'}lang=${routeLang}`
+      : `/${routeLang}${item.href}`;
+    const label = item.labels[locale];
+    const accessibleLabel = item.badge ? `${label} ${item.badge}` : label;
+
+    return (
+      <div key={`${nested ? 'child' : 'parent'}-${item.href}`}>
+        <Link
+          href={linkHref}
+          aria-current={active && !hasChildren ? 'page' : undefined}
+          aria-label={accessibleLabel}
+          data-active={active ? 'true' : undefined}
+          style={{
+            display: 'flex', alignItems: 'center', gap: 10,
+            padding: nested ? '6px 14px' : '8px 14px',
+            paddingInlineStart: nested ? 42 : 14,
+            textDecoration: 'none',
+            color: active ? 'var(--nx-accent-2)' : nested ? 'var(--nx-text-2)' : 'var(--nx-text)',
+            background: active && !hasChildren ? 'var(--nx-accent-soft)' : 'transparent',
+            borderInlineStart: active ? '2px solid var(--nx-accent)' : '2px solid transparent',
+            fontSize: nested ? 12 : 13,
+            fontWeight: active ? 600 : 500,
+            lineHeight: 1.2,
+          }}
+          onMouseEnter={(e) => {
+            if (!active) (e.currentTarget as HTMLAnchorElement).style.background = 'var(--nx-hover)';
+          }}
+          onMouseLeave={(e) => {
+            if (!active) (e.currentTarget as HTMLAnchorElement).style.background = 'transparent';
+          }}
+        >
+          <span aria-hidden="true" style={{ fontSize: nested ? 13 : 16, flex: '0 0 18px', textAlign: 'center' }}>{item.icon}</span>
+          <span className="nf-uni-label" style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+            {label}
+          </span>
+          {item.badge && (
+            <span
+              className="nf-uni-label"
+              aria-hidden="true"
+              style={{
+                fontSize: 9, fontWeight: 700, padding: '2px 5px',
+                borderRadius: 3, letterSpacing: '0.04em',
+                background: item.badge === 'NEW' ? 'var(--nx-accent)' : item.badge === 'PRO' ? '#a371f7' : item.badge === 'BETA' ? '#2563eb' : '#d29922',
+                color: '#fff',
+              }}
+            >
+              {item.badge}
+            </span>
+          )}
+        </Link>
+        {hasChildren && (
+          <div role="group" aria-label={copy.projectTypes(label)}>
+            {item.children?.map((child) => renderNavItem(child, true))}
+          </div>
+        )}
+      </div>
+    );
+  };
 
   return (
     <>
@@ -176,14 +293,15 @@ export default function NexyfabUnifiedSidebar({ lang }: UnifiedSidebarProps) {
           .nf-uni-brand-text { display: none !important; }
         }
       `}</style>
-      <aside
-        className="nf-uni-nav"
-        role="navigation"
-        aria-label={isKo ? '주요 메뉴' : 'Main navigation'}
+        <aside
+          className="nf-uni-nav"
+          role="navigation"
+          aria-label={copy.mainNavigation}
+          dir={routeLang === 'ar' ? 'rtl' : 'ltr'}
         style={{
           flex: '0 0 auto',
           background: 'var(--nx-panel)',
-          borderRight: '1px solid var(--nx-border)',
+          borderInlineEnd: '1px solid var(--nx-border)',
           color: 'var(--nx-text)',
           display: 'flex',
           flexDirection: 'column',
@@ -196,7 +314,7 @@ export default function NexyfabUnifiedSidebar({ lang }: UnifiedSidebarProps) {
             "NexyFab" is one word; the colored spans must not have any gap
             between them. */}
         <Link
-          href={`/${lang}`}
+          href={`/${routeLang}`}
           style={{
             display: 'flex', alignItems: 'center', gap: 0,
             padding: '14px 14px 10px',
@@ -206,48 +324,49 @@ export default function NexyfabUnifiedSidebar({ lang }: UnifiedSidebarProps) {
             borderBottom: '1px solid var(--nx-border)',
           }}
         >
-          {/* 메인 사이트 헤더와 동일 팔레트: Nexy=본문색 · Fab=#0b5cff (2026-07-16 통일) */}
+          {/* Semantic accent preserves the Nexy/Fab split with AA contrast in both themes. */}
           <span style={{ color: 'var(--nx-text)' }}>Nexy</span>
-          <span className="nf-uni-brand-text" style={{ color: '#0b5cff' }}>Fab</span>
+          <span className="nf-uni-brand-text" style={{ color: 'var(--nx-accent)' }}>Fab</span>
         </Link>
 
-        {/* ＋ 새 채팅 — 최상단 CTA(Gemini 문법, 2026-07-16 사용자 결정) */}
+        {/* New design is the single primary entry into the AI-guided workflow. */}
         <div style={{ padding: '10px 10px 4px' }}>
-          <a href={`/${lang}/nexyfab/ai/`}
+          <Link
+            href={`/${routeLang}/nexyfab/ai?new=1`}
+            onClick={() => { try { window.dispatchEvent(new CustomEvent('nexyfab:new-chat')); } catch { /* non-browser */ } }}
+            aria-label={copy.newDesign}
             style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7, padding: '9px 0', borderRadius: 10, textDecoration: 'none', fontSize: 13, fontWeight: 800, color: 'var(--nx-accent)', border: '1.5px dashed var(--nx-accent)', background: 'var(--nx-accent-soft, rgba(37,99,235,0.08))' }}>
             <span aria-hidden="true">＋</span>
-            <span className="nf-uni-label">{isKo ? '새 채팅' : 'New chat'}</span>
-          </a>
+            <span className="nf-uni-label">{copy.newDesign}</span>
+          </Link>
         </div>
 
         {/* Sections */}
         <div style={{ flex: 1, overflow: 'auto', padding: '8px 0' }}>
-          {([SECTION_MAIN, 'CHAT', SECTION_BOTTOM] as Array<NavSection | 'CHAT'>).map((sec) => sec === 'CHAT' ? (chatThreads.length === 0 ? null : (
+          {([SECTION_MAIN, 'CHAT', SECTION_BOTTOM, SECTION_LABS] as Array<NavSection | 'CHAT'>).map((sec) => sec === 'CHAT' ? (chatThreads.length === 0 ? null : (
             /* 채팅 내역 — AI 설계(랜딩 챗)와 스튜디오 통합 IA(2026-07-16): 대화 재진입 경로 */
             <div key="chat" style={{ marginBottom: 8 }}>
               <div className="nf-uni-section-title" style={{ fontSize: 10, fontWeight: 700, color: 'var(--nx-text-3)', textTransform: 'uppercase', letterSpacing: '0.08em', padding: '10px 14px 4px' }}>
-                {isKo ? '채팅' : 'Chats'}
+                {copy.chats}
               </div>
               {/* 새 채팅은 최상단 CTA로 승격(중복 제거) — 여기는 스레드 목록만.
                   <a> 사용: 같은 라우트에서 ?t=만 바뀌면 Link는 재마운트하지 않아 스레드 전환이 안 됨 */}
               {chatThreads.map((th) => (
-                <a key={th.id} className="nf-uni-chat-item" href={`/${lang}/nexyfab/ai/?t=${th.id}`} title={th.title}
-                  style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '6px 14px', textDecoration: 'none', color: 'var(--nx-text)', fontSize: 12, borderLeft: '2px solid transparent', lineHeight: 1.2 }}
-                  onMouseEnter={(e) => { (e.currentTarget as HTMLAnchorElement).style.background = 'var(--nx-hover)'; }}
-                  onMouseLeave={(e) => { (e.currentTarget as HTMLAnchorElement).style.background = 'transparent'; }}>
-                  <span aria-hidden="true" style={{ fontSize: 12, flex: '0 0 18px', textAlign: 'center' }}>{th.pinned ? '📌' : (THREAD_EMOJI[th.domain ?? ''] ?? '💬')}</span>
-                  <span className="nf-uni-label" style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{th.title}</span>
-                  {th.badge && (
-                    <span className="nf-uni-label" style={{ fontSize: 9, fontWeight: 800, color: th.badge === 'PASS' || th.badge === '✓' ? '#16a34a' : th.badge === 'FAIL' || th.badge === '✗' ? '#dc2626' : 'var(--nx-text-3)' }}>
-                      {th.badge === 'PASS' ? '✓' : th.badge === 'FAIL' ? '✗' : th.badge}
-                    </span>
-                  )}
-                </a>
+                <div key={th.id} className="nf-uni-chat-item" style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '2px 8px 2px 14px', borderInlineStart: '2px solid transparent', lineHeight: 1.2 }}>
+                  <a href={`/${routeLang}/nexyfab/ai/?t=${th.id}`} title={th.title}
+                    style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0, flex: 1, padding: '4px 0', textDecoration: 'none', color: 'var(--nx-text)', fontSize: 12 }}>
+                    <span aria-hidden="true" style={{ fontSize: 12, flex: '0 0 18px', textAlign: 'center' }}>{th.pinned ? '📌' : (THREAD_EMOJI[th.domain ?? ''] ?? '💬')}</span>
+                    <span className="nf-uni-label" style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{th.title}</span>
+                    {th.badge && <span className="nf-uni-label" style={{ fontSize: 9, fontWeight: 800, color: th.badge === 'PASS' || th.badge === '✓' ? '#16a34a' : th.badge === 'FAIL' || th.badge === '✗' ? '#dc2626' : 'var(--nx-text-3)' }}>{th.badge === 'PASS' ? '✓' : th.badge === 'FAIL' ? '✗' : th.badge}</span>}
+                  </a>
+                  <button type="button" aria-label={th.pinned ? copy.unpin : copy.pin} title={th.pinned ? copy.unpin : copy.pin} onClick={() => toggleThreadPin(th)} style={{ border: 'none', background: 'transparent', color: th.pinned ? 'var(--nx-accent)' : 'var(--nx-text-3)', cursor: 'pointer', padding: 2, fontSize: 11 }}>{th.pinned ? '📌' : '☆'}</button>
+                  <button type="button" aria-label={copy.deleteChat} title={copy.deleteChat} onClick={() => removeThread(th)} style={{ border: 'none', background: 'transparent', color: 'var(--nx-text-3)', cursor: 'pointer', padding: 2, fontSize: 11 }}>🗑</button>
+                </div>
               ))}
             </div>
           )) : (
-            <div key={sec.items[0]?.href ?? sec.titleEn} style={{ marginBottom: 8 }}>
-              {(isKo ? sec.titleKo : sec.titleEn) !== '' && (
+            <div key={sec.items[0]?.href ?? sec.titles.en} style={{ marginBottom: 8 }}>
+              {sec.titles[locale] !== '' && (
                 <div
                   className="nf-uni-section-title"
                   style={{
@@ -258,61 +377,10 @@ export default function NexyfabUnifiedSidebar({ lang }: UnifiedSidebarProps) {
                     padding: '10px 14px 4px',
                   }}
                 >
-                  {isKo ? sec.titleKo : sec.titleEn}
+                  {sec.titles[locale]}
                 </div>
               )}
-              {sec.items.map((item) => {
-                const active = item.external ? false : isActive(item.href);
-                // External (cross-surface) links — append ?lang to preserve
-                // the customer's language preference into surfaces that don't
-                // share our [lang] segment (e.g. partner portal).
-                const linkHref = item.external
-                  ? `${item.href}${item.href.includes('?') ? '&' : '?'}lang=${lang}`
-                  : `/${lang}${item.href}`;
-                return (
-                  <Link
-                    key={item.href}
-                    href={linkHref}
-                    aria-current={active ? 'page' : undefined}
-                    aria-label={isKo ? item.labelKo : item.labelEn}
-                    style={{
-                      display: 'flex', alignItems: 'center', gap: 10,
-                      padding: '8px 14px',
-                      textDecoration: 'none',
-                      color: active ? 'var(--nx-accent-2)' : 'var(--nx-text)',
-                      background: active ? 'var(--nx-accent-soft)' : 'transparent',
-                      borderLeft: active ? '2px solid var(--nx-accent)' : '2px solid transparent',
-                      fontSize: 13,
-                      fontWeight: active ? 600 : 500,
-                      lineHeight: 1.2,
-                    }}
-                    onMouseEnter={(e) => {
-                      if (!active) (e.currentTarget as HTMLAnchorElement).style.background = 'var(--nx-hover)';
-                    }}
-                    onMouseLeave={(e) => {
-                      if (!active) (e.currentTarget as HTMLAnchorElement).style.background = 'transparent';
-                    }}
-                  >
-                    <span aria-hidden="true" style={{ fontSize: 16, flex: '0 0 18px', textAlign: 'center' }}>{item.icon}</span>
-                    <span className="nf-uni-label" style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                      {isKo ? item.labelKo : item.labelEn}
-                    </span>
-                    {item.badge && (
-                      <span
-                        className="nf-uni-label"
-                        style={{
-                          fontSize: 9, fontWeight: 700, padding: '2px 5px',
-                          borderRadius: 3, letterSpacing: '0.04em',
-                          background: item.badge === 'NEW' ? 'var(--nx-accent)' : item.badge === 'PRO' ? '#a371f7' : '#d29922',
-                          color: '#fff',
-                        }}
-                      >
-                        {item.badge}
-                      </span>
-                    )}
-                  </Link>
-                );
-              })}
+              {sec.items.map((item) => renderNavItem(item))}
             </div>
           ))}
         </div>
@@ -360,7 +428,7 @@ export default function NexyfabUnifiedSidebar({ lang }: UnifiedSidebarProps) {
             </div>
             <div className="nf-uni-label" style={{ flex: 1, minWidth: 0 }}>
               <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--nx-text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                {user?.name ?? (isKo ? '게스트' : 'Guest')}
+                {isAuthenticated ? user?.name : copy.guest}
               </div>
               <div style={{ fontSize: 9, color: badge.color, fontWeight: 700 }}>
                 {badge.label}
@@ -368,7 +436,7 @@ export default function NexyfabUnifiedSidebar({ lang }: UnifiedSidebarProps) {
             </div>
           </button>
           <div className="nf-uni-label" style={{ display: 'flex', gap: 4 }}>
-            {token && <NotificationBell token={token} lang={lang} />}
+            {isAuthenticated && token && <NotificationBell token={token} lang={routeLang} />}
             <NexysysAppSwitcher />
           </div>
 
@@ -388,10 +456,10 @@ export default function NexyfabUnifiedSidebar({ lang }: UnifiedSidebarProps) {
                 zIndex: 50,
               }}
             >
-              {AVATAR_MENU.map(item => (
+              {isAuthenticated ? AVATAR_MENU.map(item => (
                 <Link
                   key={item.href}
-                  href={`/${lang}${item.href}`}
+                  href={`/${routeLang}${item.href}`}
                   role="menuitem"
                   onClick={() => setMenuOpen(false)}
                   style={{
@@ -406,9 +474,22 @@ export default function NexyfabUnifiedSidebar({ lang }: UnifiedSidebarProps) {
                   onMouseLeave={e => { (e.currentTarget as HTMLAnchorElement).style.background = 'transparent'; }}
                 >
                   <span aria-hidden="true" style={{ fontSize: 14, width: 16, textAlign: 'center' }}>{item.icon}</span>
-                  <span>{isKo ? item.labelKo : item.labelEn}</span>
+                  <span>{item.labels[locale]}</span>
                 </Link>
-              ))}
+              )) : (
+                <>
+                  <div role="note" style={{ padding: '8px 10px', color: 'var(--nx-text-2)', fontSize: 10, lineHeight: 1.45, borderBottom: '1px solid var(--nx-border)', marginBottom: 4 }}>
+                    {copy.guestInfo}
+                  </div>
+                  <Link href={`/login?lang=${routeLang}`} role="menuitem" onClick={() => setMenuOpen(false)} style={{ display: 'block', padding: '8px 10px', borderRadius: 6, textDecoration: 'none', color: 'var(--nx-text)', fontSize: 12, fontWeight: 700 }}>
+                    {copy.login}
+                  </Link>
+                  <Link href={`/register?lang=${routeLang}`} role="menuitem" onClick={() => setMenuOpen(false)} style={{ display: 'block', padding: '8px 10px', borderRadius: 6, textDecoration: 'none', color: 'var(--nx-accent)', fontSize: 12, fontWeight: 700 }}>
+                    {copy.createAccount}
+                  </Link>
+                </>
+              )}
+              {isAuthenticated && <>
               <div style={{ height: 1, background: 'var(--nx-border)', margin: '4px 0' }} />
               <button
                 type="button"
@@ -418,7 +499,7 @@ export default function NexyfabUnifiedSidebar({ lang }: UnifiedSidebarProps) {
                   // ⚠ 260802: `await` 없이 이동하면 **쿠키가 지워지기 전에** 페이지가 바뀌어
                   //   요청이 취소될 수 있다 — 그러면 로그아웃한 줄 알고 로그인 상태로 남는다.
                   await logout();
-                  router.push(`/${lang}`);
+                  router.push(`/${routeLang}`);
                 }}
                 style={{
                   display: 'flex', alignItems: 'center', gap: 8,
@@ -436,8 +517,9 @@ export default function NexyfabUnifiedSidebar({ lang }: UnifiedSidebarProps) {
                 onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = 'transparent'; }}
               >
                 <span aria-hidden="true" style={{ fontSize: 14, width: 16, textAlign: 'center' }}>🚪</span>
-                <span>{isKo ? '로그아웃' : 'Log out'}</span>
+                <span>{copy.logout}</span>
               </button>
+              </>}
             </div>
           )}
         </div>

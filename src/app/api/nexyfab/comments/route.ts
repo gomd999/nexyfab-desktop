@@ -4,24 +4,29 @@ import { getDbAdapter } from '@/lib/db-adapter';
 import { checkOrigin } from '@/lib/csrf';
 import { getAuthUser } from '@/lib/auth-middleware';
 import { type MeshComment as _MeshComment, rowToComment } from './comments-types';
+import { resolveProjectAccess } from '@/lib/nfProjectAccess';
+import { resolveRequestOrgContext, resourceBelongsToOrgContext } from '@/lib/org-context';
+import { boundedJsonError, readBoundedJson } from '@/lib/boundedJsonBody';
+
+const MAX_COMMENT_BODY_BYTES = 64 * 1024;
 
 // ─── GET /api/nexyfab/comments?projectId=xxx ─────────────────────────────────
 
 export async function GET(req: NextRequest) {
   const authUser = await getAuthUser(req);
   if (!authUser) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  const context = resolveRequestOrgContext(authUser);
+  if (!context.ok) return NextResponse.json({ error: 'Select a valid workspace', code: context.code }, { status: 409 });
 
   const projectId = req.nextUrl.searchParams.get('projectId');
   if (!projectId) {
     return NextResponse.json({ error: 'projectId required' }, { status: 400 });
   }
 
-  // 프로젝트 소유권 확인
   const db = getDbAdapter();
-  const project = await db.queryOne<{ user_id: string }>(
-    'SELECT user_id FROM nf_projects WHERE id = ?', projectId,
-  );
-  if (!project || project.user_id !== authUser.userId) {
+  await db.execute('ALTER TABLE nf_projects ADD COLUMN org_id TEXT').catch(() => {});
+  const access = await resolveProjectAccess(db, projectId, authUser);
+  if (!access || !resourceBelongsToOrgContext(access.row.org_id, context)) {
     return NextResponse.json({ error: 'Project not found' }, { status: 404 });
   }
 
@@ -49,8 +54,19 @@ export async function POST(req: NextRequest) {
   if (!checkOrigin(req)) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   const authUser = await getAuthUser(req);
   if (!authUser) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  const context = resolveRequestOrgContext(authUser);
+  if (!context.ok) return NextResponse.json({ error: 'Select a valid workspace', code: context.code }, { status: 409 });
 
-  const raw = await req.json().catch(() => ({}));
+  let raw: unknown;
+  try {
+    raw = await readBoundedJson(req, MAX_COMMENT_BODY_BYTES);
+  } catch (error) {
+    const bounded = boundedJsonError(error) ?? { code: 'BAD_REQUEST' as const, status: 400 as const };
+    if (bounded.code === 'PAYLOAD_TOO_LARGE') {
+      return NextResponse.json({ error: 'Request too large', code: bounded.code }, { status: bounded.status });
+    }
+    raw = {};
+  }
   const parsed = commentSchema.safeParse(raw);
   if (!parsed.success) {
     return NextResponse.json(
@@ -69,11 +85,9 @@ export async function POST(req: NextRequest) {
   try {
     const db = getDbAdapter();
 
-    // 프로젝트 소유권 확인
-    const project = await db.queryOne<{ user_id: string }>(
-      'SELECT user_id FROM nf_projects WHERE id = ?', projectId,
-    );
-    if (!project || project.user_id !== authUser.userId) {
+    await db.execute('ALTER TABLE nf_projects ADD COLUMN org_id TEXT').catch(() => {});
+    const access = await resolveProjectAccess(db, projectId, authUser);
+    if (!access || !access.canEdit || !resourceBelongsToOrgContext(access.row.org_id, context)) {
       return NextResponse.json({ error: 'Project not found' }, { status: 404 });
     }
 

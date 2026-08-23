@@ -2,16 +2,23 @@ import { NextRequest, NextResponse } from 'next/server';
 import { verifyCrossDomainDesign, type CrossDomainVerificationInput } from '@/lib/ai/crossDomainVerification';
 import { getTrustedClientIp } from '@/lib/client-ip';
 import { rateLimit } from '@/lib/rate-limit';
+import { boundedJsonError, readBoundedJson } from '@/lib/boundedJsonBody';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
+const MAX_BODY_BYTES = 1024 * 1024;
 
 export async function POST(req: NextRequest) {
   const ip = getTrustedClientIp(req.headers);
   if (!rateLimit(`cad-v1-project-verify:${ip}`, 60, 60_000).allowed) {
     return NextResponse.json({ ok: false, code: 'RATE_LIMIT', message: 'Too many project verification requests' }, { status: 429 });
   }
-  const body = await req.json().catch(() => null) as CrossDomainVerificationInput | null;
+  let body: CrossDomainVerificationInput | null;
+  try { body = await readBoundedJson<CrossDomainVerificationInput>(req, MAX_BODY_BYTES); }
+  catch (error) {
+    if (boundedJsonError(error)?.code === 'PAYLOAD_TOO_LARGE') return NextResponse.json({ ok: false, code: 'PAYLOAD_TOO_LARGE', message: 'Project verification request is too large' }, { status: 413 });
+    body = null;
+  }
   if (!body || typeof body !== 'object' || !body.structure || !body.placement) {
     return NextResponse.json({ ok: false, code: 'INVALID_INPUT', message: 'structure and placement evidence are required' }, { status: 400 });
   }

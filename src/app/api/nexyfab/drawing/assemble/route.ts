@@ -29,6 +29,7 @@ import {
   type GenerationDomainId,
 } from '@/lib/ai/domainGenerationRequest';
 import { assemblyUnifiedProject } from '@/lib/ai/assemblyUnifiedProjectAdapter';
+import { boundedJsonError, readBoundedJson } from '@/lib/boundedJsonBody';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -41,18 +42,15 @@ type FromTextModule = {
   VOCAB_SPEC: () => string;
   ASSEMBLY_SCHEMA: unknown;
 };
-// 260803 — Gemini 로 되돌린다(260802 OpenAI 전환의 역방향). 아래 두 상수의
-// `thinkingBudget` 은 **Gemini 전용 실측값**이라 백엔드와 함께 되돌려야 한다 —
-// OpenAI 배선일 때는 ai-json.mjs 가 이 값을 무시한다.
-//
-// MAX_TOKENS 원인은 2.5 "thinking"(출력토큰 소진) → thinkingBudget:0 으로 차단.
-// + response_schema 없이 free-form(플랫 스키마 토큰폭주 회피). flash 고정(속도).
-const AI_OPTS = { models: ['gemini-2.5-flash'], maxOutputTokens: 12000, thinkingBudget: 0 };
+// 기계 CAD JSON 생성은 DeepSeek가 기본. OpenAI/Gemini는 제공자 장애 시만 폴백.
+// thinkingBudget는 Gemini 폴백에서만 적용되고 DeepSeek/OpenAI는 무시한다.
+const AI_OPTS = { models: ['deepseek-chat', 'gpt-4o-mini', 'gemini-2.5-flash'], maxOutputTokens: 12000, thinkingBudget: 0 };
 // claims 추출용: thinkingBudget:0 이면 flash 가 조용히 빈 claims 를 낸다(260717 라이브 프로브 확인)
 // — 출력이 작아 MAX_TOKENS 위험이 없으므로 thinking 기본값으로 호출.
 // thinking 은 **유계 512**: 0=빈 claims(무력화)·무제한=1/3 확률 폭주 MAX_TOKENS(둘 다 실측).
 // tb=512 는 2개 설명문 × 3회 반복 전부 성공 + 핵심 클레임(연장·R·수량·존재) 보존 확인.
-const CLAIMS_OPTS = { models: ['gemini-2.5-flash'], maxOutputTokens: 8192, thinkingBudget: 512 };
+const CLAIMS_OPTS = { models: ['deepseek-chat', 'gpt-4o-mini', 'gemini-2.5-flash'], maxOutputTokens: 8192, thinkingBudget: 512 };
+const MAX_BODY_BYTES = 64 * 1024;
 type AssemblyModule = { buildAssembly: (asm: Assembly) => BuiltAssembly; autoPlaceCorrect: (asm: Assembly) => { assembly: Assembly; corrections: Array<Record<string, unknown>> }; autoTagAssembly: (asm: Assembly) => Assembly; assemblyAtLevel: (asm: Assembly, level: number) => Assembly };
 
 function canonicalizeAssembly(assembly: Assembly, domain: GenerationDomainId | null) {
@@ -283,7 +281,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
    */
   let wantStream = false;
   try {
-    const body = (await req.json()) as { description?: string; domain?: string; stream?: boolean };
+    const body = await readBoundedJson<{ description?: string; domain?: string; stream?: boolean }>(req, MAX_BODY_BYTES);
     description = (body.description ?? '').trim();
     if (body.domain !== undefined) {
       requestedDomain = normalizeGenerationDomain(body.domain);
@@ -292,7 +290,8 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       }
     }
     wantStream = body.stream === true || (req.headers.get('accept') ?? '').includes('text/event-stream');
-  } catch {
+  } catch (error) {
+    if (boundedJsonError(error)?.code === 'PAYLOAD_TOO_LARGE') return NextResponse.json({ ok: false, error: 'description이 너무 깁니다(2000자 이하).' }, { status: 413 });
     return NextResponse.json({ ok: false, error: 'invalid json' }, { status: 400 });
   }
   if (!description || description.length < 4) {
@@ -378,14 +377,25 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 
     emit(PROG.event('catalog'));
     const catalog = await templateCatalog(requestedDomain).catch(() => '');
+    const deterministicTemplate = await (async () => {
+      try {
+        const jp = join(process.cwd(), 'scripts', 'drawing-to-3d', 'jet-engine-template.mjs');
+        const jm = (await import(/* webpackIgnore: true */ pathToFileURL(jp).href)) as {
+          inferJetEngineTemplate: (description: string) => Assembly | null;
+        };
+        return jm.inferJetEngineTemplate(generationDescription);
+      } catch { return null; }
+    })();
     // ⚠ 어휘는 ALL_TYPES 에서 생성한다 — 라우트가 자기 목록을 들면 또 갈린다(§단일소스).
     const vocab = mods.ft.VOCAB_SPEC();
     for (let round = 0; round < MAX_ROUNDS; round++) {
       const prompt = (round === 0 || !assembly
         ? BASE_PROMPT(generationDescription, vocab)
         : FIX_PROMPT(generationDescription, lastErrors, assembly, vocab)).replace('{{CATALOG}}', catalog);
-      emit(PROG.event('ai', { round: round + 1 }));
-      const { data } = await mods.ft.callAiJson(prompt, null, AI_OPTS);
+      emit(PROG.event('ai', { round: round + 1, deterministicTemplate: !!(round === 0 && deterministicTemplate) }));
+      const data = round === 0 && deterministicTemplate
+        ? deterministicTemplate
+        : (await mods.ft.callAiJson(prompt, null, AI_OPTS)).data;
       const hasCA = !!(data && typeof (data as { civilAlignment?: unknown }).civilAlignment === 'object');
       const tpl = (data as { template?: { domain?: string; id?: string; params?: Record<string, unknown> } })?.template;
       const hasTpl = !!(tpl && typeof tpl === 'object' && typeof tpl.domain === 'string' && typeof tpl.id === 'string');

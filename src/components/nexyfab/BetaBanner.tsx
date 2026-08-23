@@ -11,6 +11,7 @@
  * UI. Users can keep using the feature; they just know what to expect.
  */
 import React, { useEffect, useState } from 'react';
+import { createCommercialLocalizer } from '@/lib/i18n/commercialLocalizer';
 
 interface BetaFeature {
   feature: string;
@@ -25,7 +26,7 @@ interface ApiResp {
 
 const DISMISS_KEY_PREFIX = 'beta-banner-dismissed:';
 
-export default function BetaBanner({ feature, lang = 'ko' }: { feature: string; lang?: 'ko' | 'en' }) {
+export default function BetaBanner({ feature, lang = 'ko' }: { feature: string; lang?: string }) {
   const [info, setInfo] = useState<BetaFeature | null>(null);
   const [dismissed, setDismissed] = useState(true);
 
@@ -52,16 +53,12 @@ export default function BetaBanner({ feature, lang = 'ko' }: { feature: string; 
     setDismissed(true);
   };
 
-  const t = lang === 'ko' ? {
+  const L = createCommercialLocalizer(lang);
+  const t = {
     badge: 'BETA',
-    limitations: '알려진 제약',
-    workaround: '대안',
-    dismiss: '닫기',
-  } : {
-    badge: 'BETA',
-    limitations: 'Known limitations',
-    workaround: 'Workaround',
-    dismiss: 'Dismiss',
+    limitations: L('알려진 제약', 'Known limitations'),
+    workaround: L('대안', 'Workaround'),
+    dismiss: L('닫기', 'Dismiss'),
   };
 
   return (

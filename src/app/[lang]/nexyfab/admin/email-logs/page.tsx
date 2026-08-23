@@ -3,7 +3,9 @@
 import { use, useCallback, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/hooks/useAuth';
-import { isKorean, toIsoLang } from '@/lib/i18n/normalize';
+import { toIsoLang } from '@/lib/i18n/normalize';
+import { formatDate } from '@/lib/i18n/format';
+import { createCommercialLocalizer } from '@/lib/i18n/commercialLocalizer';
 
 interface EmailLog {
   id: string;
@@ -170,6 +172,7 @@ export default function AdminEmailLogsPage({
   const { lang } = use(params);
   // ⚠ 260802: 2분기라 ja·zh·es·ar 이 영어로 떨어졌다.
   const t = T[toIsoLang(lang)] ?? T.en;
+  const L = createCommercialLocalizer(lang);
 
   const router = useRouter();
   const { user, isLoading: authLoading } = useAuthStore();
@@ -216,7 +219,7 @@ export default function AdminEmailLogsPage({
     void fetchLogs(page, statusFilter);
   }, [fetchLogs, page, statusFilter, authLoading, user]);
 
-  if (authLoading) return <div className="p-8 text-center text-gray-400">확인 중...</div>;
+  if (authLoading) return <div className="p-8 text-center text-gray-400">{L('확인 중...', 'Checking...')}</div>;
   if (!user || user.role !== 'admin') return null;
 
   const handleFilterChange = (val: 'all' | 'sent' | 'failed') => {
@@ -225,7 +228,7 @@ export default function AdminEmailLogsPage({
   };
 
   const handleClearOld = async () => {
-    if (!confirm(isKorean(lang) ? '30일 이상 된 로그를 삭제할까요?' : 'Delete logs older than 30 days?')) return;
+    if (!confirm(createCommercialLocalizer(lang)('30일 이상 된 로그를 삭제할까요?', 'Delete logs older than 30 days?'))) return;
     setClearing(true);
     setMsg('');
     try {
@@ -244,11 +247,10 @@ export default function AdminEmailLogsPage({
 
   const totalPages = Math.max(1, Math.ceil(total / LIMIT));
 
-  const fmtDate = (ms: number) =>
-    new Date(ms).toLocaleString(isKorean(lang) ? 'ko-KR' : 'en-US', {
-      year: 'numeric', month: '2-digit', day: '2-digit',
-      hour: '2-digit', minute: '2-digit',
-    });
+  const fmtDate = (ms: number) => formatDate(ms, lang, {
+    year: 'numeric', month: '2-digit', day: '2-digit',
+    hour: '2-digit', minute: '2-digit',
+  }) ?? '';
 
   const truncate = (s: string | null, n: number) =>
     !s ? '—' : s.length > n ? s.slice(0, n) + '…' : s;

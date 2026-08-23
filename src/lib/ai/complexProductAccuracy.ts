@@ -1,4 +1,5 @@
 import type { CadFailureCode } from '@/lib/reference/cadFailureTaxonomy';
+import { isRuntimeIssuedRepairScopeVerification, type RepairScopeVerification } from './repairScopeVerification';
 
 export type ProductComplexityClass = 'standard' | 'complex' | 'very_complex';
 
@@ -18,6 +19,8 @@ export interface ComplexProductEvidence {
     regeneratedPartIds: string[];
     preservedVerifiedPartIds: string[];
     upstreamIntentChanged: boolean;
+    /** Must be the in-process result returned by verifyRepairScope, never a client boolean. */
+    verification?: RepairScopeVerification;
   };
 }
 
@@ -64,6 +67,10 @@ export function assessComplexProductAccuracy(input: ComplexProductEvidence): Com
 
   const repair = input.repairIsolation;
   const repairPassed = !repair?.applicable || (!repair.upstreamIntentChanged
+    && isRuntimeIssuedRepairScopeVerification(repair.verification)
+    && repair.verification.passed
+    && sameIds(repair.verification.permittedPartIds, repair.failedPartIds)
+    && sameIds(repair.verification.changedPartIds, repair.regeneratedPartIds)
     && new Set(repair.failedPartIds).size === repair.failedPartIds.length
     && new Set(repair.regeneratedPartIds).size === repair.regeneratedPartIds.length
     && repair.regeneratedPartIds.length === repair.failedPartIds.length
@@ -72,4 +79,8 @@ export function assessComplexProductAccuracy(input: ComplexProductEvidence): Com
   add('repair-isolation', repairPassed,
     repairPassed ? 'Repair is absent or limited to failed parts while verified parts remain preserved.' : 'Repair regenerated unrelated verified geometry or changed upstream intent.', 'GEOMETRY_INCOMPLETE');
   return { complexity, gates, releaseReady: gates.every(gate => gate.passed) };
+}
+
+function sameIds(a: readonly string[], b: readonly string[]): boolean {
+  return a.length === b.length && [...a].sort().every((id, index) => id === [...b].sort()[index]);
 }

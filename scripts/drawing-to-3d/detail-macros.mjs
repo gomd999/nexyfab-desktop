@@ -8,12 +8,13 @@
  *
  * 배치 규약(assembly.mjs 검증 규약): box=min 모서리 · cylinder=단면 중심+축 시작.
  */
-import { readFileSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { readJsonAsset } from './runtime-assets.mjs';
 import { snapPipe, snapFlange10k } from './std-snap.mjs';
 
-const CAL = JSON.parse(readFileSync(join(dirname(fileURLToPath(import.meta.url)), 'detail-calibration.json'), 'utf8'));
+const moduleDir = typeof __dirname === 'string' ? __dirname : dirname(fileURLToPath(import.meta.url));
+const CAL = readJsonAsset('detail-calibration.json', join(moduleDir, 'detail-calibration.json'));
 
 let seq = 0;
 const uid = (p) => `${p}_${++seq}`;

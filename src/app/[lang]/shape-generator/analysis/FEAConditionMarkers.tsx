@@ -2,6 +2,7 @@
 
 import React, { useMemo } from 'react';
 import * as THREE from 'three';
+import { GL_COLOR } from '../lib/glColors';
 import { Html } from '@react-three/drei';
 import type { FEABoundaryCondition } from './simpleFEA';
 
@@ -92,8 +93,8 @@ export default function FEAConditionMarkers({
     <group>
       {markers.map(m => {
         const isHighlighted = highlightedIdx === m.idx;
-        const baseColor = m.type === 'fixed' ? 'var(--nx-ok)' : 'var(--nx-warn)';
-        const color = isHighlighted ? 'var(--nx-accent-2)' : baseColor;
+        const baseColor = m.type === 'fixed' ? GL_COLOR.ok : GL_COLOR.warn;
+        const color = isHighlighted ? GL_COLOR.accent2 : baseColor;
         const scale = isHighlighted ? markerScale * 1.4 : markerScale;
         if (m.type === 'fixed') {
           // Anchor: small octahedron with cone "spikes" pointing into the surface

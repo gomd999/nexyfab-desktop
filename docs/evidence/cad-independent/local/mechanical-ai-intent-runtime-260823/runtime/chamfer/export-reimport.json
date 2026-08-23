@@ -1,0 +1,54 @@
+{
+  "schema": "nexyfab.mechanical-core-feature-local-runtime.v1",
+  "feature": "chamfer",
+  "axis": "export",
+  "status": "PASS",
+  "executedAt": "2026-08-23T06:51:51.379Z",
+  "stepBytes": 63074,
+  "stepSha256": "23a63d4c2f0050c7555957d32eacc0c57b657991d642a40363425215082887b4",
+  "before": {
+    "handle": "occt:33",
+    "kernelKind": "Solid",
+    "nativeShapeType": 0,
+    "solidCount": 1,
+    "singleSolid": true,
+    "volumeMm3": 36515.17588470834,
+    "edgeCount": 48,
+    "faceCount": 26,
+    "boundsMm": [
+      [
+        -50.000000100000015,
+        -3.1750001000000183,
+        -30.000000100000015
+      ],
+      [
+        50.000000100000015,
+        3.1750001000000183,
+        30.000000100000015
+      ]
+    ]
+  },
+  "after": {
+    "handle": "occt:42",
+    "kernelKind": "Solid",
+    "nativeShapeType": 2,
+    "solidCount": 1,
+    "singleSolid": true,
+    "volumeMm3": 36515.17588470834,
+    "edgeCount": 48,
+    "faceCount": 26,
+    "boundsMm": [
+      [
+        -50.000000100000015,
+        -3.175000100000012,
+        -30.000000100000012
+      ],
+      [
+        50.000000100000015,
+        3.175000100000012,
+        30.000000100000012
+      ]
+    ]
+  },
+  "relativeVolumeDrift": 0
+}

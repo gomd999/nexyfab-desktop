@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { verifyAdmin } from '@/lib/admin-auth';
 import { getDbAdapter } from '@/lib/db-adapter';
+import { boundedJsonError, readBoundedJson } from '@/lib/boundedJsonBody';
 
 export const dynamic = 'force-dynamic';
 
@@ -62,7 +63,12 @@ export async function PATCH(
   }
   const { id } = await params;
 
-  const raw = await req.json().catch(() => ({}));
+  let raw: unknown;
+  try { raw = await readBoundedJson(req, 64 * 1024); }
+  catch (error) {
+    if (boundedJsonError(error)?.status === 413) return NextResponse.json({ error: 'Payload too large' }, { status: 413 });
+    raw = {};
+  }
   const parsed = patchSchema.safeParse(raw);
   if (!parsed.success) {
     return NextResponse.json({ error: parsed.error.issues[0]?.message ?? '입력값 오류' }, { status: 400 });

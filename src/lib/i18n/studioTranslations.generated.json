@@ -1,0 +1,758 @@
+{
+  "Choose AI model": {
+    "ja": "AIモデルを選択",
+    "zh": "选择AI模型",
+    "es": "Elegir modelo de IA",
+    "ar": "اختر نموذج الذكاء الاصطناعي"
+  },
+  "Unconfigured models fall back automatically.": {
+    "ja": "未設定のモデルは自動的に置き換えられます。",
+    "zh": "未配置的模型会自动回退。",
+    "es": "Los modelos no configurados se sustituyen automáticamente.",
+    "ar": "يتم استبدال النماذج غير المهيأة تلقائيًا."
+  },
+  "network error": {
+    "ja": "ネットワークエラー",
+    "zh": "网络错误",
+    "es": "error de red",
+    "ar": "خطأ في الشبكة"
+  },
+  "empty render result": {
+    "ja": "レンダリング結果が空です",
+    "zh": "渲染结果为空",
+    "es": "resultado de renderizado vacío",
+    "ar": "نتيجة العرض فارغة"
+  },
+  "(image)": {
+    "ja": "(画像)",
+    "zh": "(图片)",
+    "es": "(imagen)",
+    "ar": "(صورة)"
+  },
+  "Reading the image…": {
+    "ja": "画像を解析中…",
+    "zh": "正在读取图片…",
+    "es": "Leyendo la imagen…",
+    "ar": "جارٍ قراءة الصورة…"
+  },
+  "Planning precise features…": {
+    "ja": "精密フィーチャーを設計中…",
+    "zh": "正在规划精密特征…",
+    "es": "Planificando características precisas…",
+    "ar": "جارٍ تخطيط الميزات الدقيقة…"
+  },
+  "Designing…": {
+    "ja": "設計中…",
+    "zh": "正在设计…",
+    "es": "Diseñando…",
+    "ar": "جارٍ التصميم…"
+  },
+  "Please provide the missing dimensions.": {
+    "ja": "不足している寸法を教えてください。",
+    "zh": "请提供缺失的尺寸。",
+    "es": "Proporcione las dimensiones que faltan.",
+    "ar": "يرجى توفير الأبعاد المفقودة."
+  },
+  "I will not invent manufacturing dimensions. Please confirm:": {
+    "ja": "製造寸法を勝手に決めません。以下を確認してください:",
+    "zh": "我不会随意设定制造尺寸。请确认：",
+    "es": "No inventaré dimensiones de fabricación. Por favor confirme:",
+    "ar": "لن أخترع أبعاد التصنيع. يرجى التأكيد:"
+  },
+  "Rendering…": {
+    "ja": "レンダリング中…",
+    "zh": "正在渲染…",
+    "es": "Renderizando…",
+    "ar": "جارٍ العرض…"
+  },
+  "Done! Built to exact dimensions. Tune with the sliders, or keep chatting (e.g. holes to 8mm, taller ribs).": {
+    "ja": "完了！正確な寸法で作成しました。右のスライダーで調整するか、続けて話して修正してください（例: 穴を8mmに、リブを高く）。",
+    "zh": "完成！已按精确尺寸构建。使用右侧滑块调整，或继续对话修改（例如：孔改为8mm，加强筋更高）。",
+    "es": "¡Listo! Construido con dimensiones exactas. Ajuste con los controles deslizantes o siga conversando (p. ej., agujeros a 8 mm, nervaduras más altas).",
+    "ar": "تم! تم البناء بأبعاد دقيقة. اضبط باستخدام أشرطة التمرير، أو تابع المحادثة (مثل: ثقوب 8 مم، أضلاع أطول)."
+  },
+  "Precise didn't fit — switching to free-form…": {
+    "ja": "精密に合わないため、自由形式に切り替えます…",
+    "zh": "精确模式不适用，正在切换到自由形式…",
+    "es": "Preciso no encajó: cambiando a forma libre…",
+    "ar": "الدقة لم تناسب — التحويل إلى الشكل الحر…"
+  },
+  "Retrying…": {
+    "ja": "生成を再試行中…",
+    "zh": "正在重试…",
+    "es": "Reintentando…",
+    "ar": "جارٍ إعادة المحاولة…"
+  },
+  "You used your 1 free design. Log in (free) to keep going.": {
+    "ja": "無料設計を1つ使用しました。無料ログインすると続行できます。",
+    "zh": "您已使用1次免费设计。免费登录即可继续。",
+    "es": "Usó su 1 diseño gratuito. Inicie sesión (gratis) para continuar.",
+    "ar": "لقد استخدمت تصميمك المجاني الواحد. سجل الدخول (مجانًا) للمتابعة."
+  },
+  "Image analysis is busy — your photo is kept, just send again.": {
+    "ja": "画像分析が混雑しています。写真はそのまま保持されているので、もう一度送信してください。",
+    "zh": "图像分析正忙——您的照片已保留，请重新发送。",
+    "es": "El análisis de imágenes está ocupado: su foto se conserva, solo envíela de nuevo.",
+    "ar": "تحليل الصور مشغول — تم الاحتفاظ بصورتك، فقط أرسلها مرة أخرى."
+  },
+  "Could not read the image — try another photo or describe it in words.": {
+    "ja": "画像を理解できませんでした。別の写真を試すか、言葉で説明してください。",
+    "zh": "无法读取图片——请尝试其他照片或用文字描述。",
+    "es": "No se pudo leer la imagen: pruebe con otra foto o descríbala con palabras.",
+    "ar": "تعذر قراءة الصورة — جرب صورة أخرى أو صفها بالكلمات."
+  },
+  "no code returned": {
+    "ja": "コード生成に失敗しました",
+    "zh": "未返回代码",
+    "es": "no se devolvió código",
+    "ar": "لم يتم إرجاع أي كود"
+  },
+  "Auto-fixing a code error…": {
+    "ja": "コードエラーを自動修正中…",
+    "zh": "正在自动修复代码错误…",
+    "es": "Corrigiendo automáticamente un error de código…",
+    "ar": "جارٍ الإصلاح التلقائي لخطأ في الكود…"
+  },
+  "3D preview & STL need a free login.": {
+    "ja": "3Dプレビュー・STLには無料ログインが必要です。",
+    "zh": "3D预览和STL需要免费登录。",
+    "es": "La vista previa 3D y STL requieren un inicio de sesión gratuito.",
+    "ar": "المعاينة ثلاثية الأبعاد وSTL تتطلب تسجيل دخول مجاني."
+  },
+  "Could not render the model — please try again or describe it a little differently.": {
+    "ja": "生成したモデルをレンダリングできませんでした。もう一度試すか、少し変えて説明してください。",
+    "zh": "无法渲染模型——请重试或稍微改变描述。",
+    "es": "No se pudo renderizar el modelo: intente de nuevo o descríbalo de forma un poco diferente.",
+    "ar": "تعذر عرض النموذج — يرجى المحاولة مرة أخرى أو وصفه بشكل مختلف قليلاً."
+  },
+  "Done! Tune dimensions on the right, or keep chatting to refine.": {
+    "ja": "完了！右のスライダーで寸法を調整するか、続けて話して修正してください。",
+    "zh": "完成！使用右侧滑块调整尺寸，或继续对话修改。",
+    "es": "¡Listo! Ajuste las dimensiones a la derecha o siga conversando para refinar.",
+    "ar": "تم! اضبط الأبعاد على اليمين، أو تابع المحادثة للتحسين."
+  },
+  "Done! Polishing the shape… ({{0}}/{{1}})": {
+    "ja": "完了！形状をさらに仕上げています… ({{0}}/{{1}})",
+    "zh": "完成！正在优化形状… ({{0}}/{{1}})",
+    "es": "¡Listo! Pulindo la forma… ({{0}}/{{1}})",
+    "ar": "تم! جارٍ تحسين الشكل… ({{0}}/{{1}})"
+  },
+  "Done! Refined the shape by looking at the render. Tune with sliders or keep chatting.": {
+    "ja": "完了！レンダーを見ながら形状を仕上げました。スライダーで調整するか、続けて話して修正してください。",
+    "zh": "完成！已通过查看渲染优化形状。使用滑块调整或继续对话。",
+    "es": "¡Listo! Refiné la forma mirando el render. Ajuste con los controles deslizantes o siga conversando.",
+    "ar": "تم! قمت بتحسين الشكل بالنظر إلى العرض. اضبط باستخدام أشرطة التمرير أو تابع المحادثة."
+  },
+  "Brought in from the expert modeler — keep editing with AI (e.g. holes to 8mm, 2× bigger).": {
+    "ja": "エキスパートモードから取り込みました。AIで編集を続けてください（例: 穴を8mmに、2倍に）。",
+    "zh": "从专家模式导入。继续使用AI编辑（例如：孔改为8mm，放大2倍）。",
+    "es": "Importado del modelador experto: continúe editando con IA (p. ej., agujeros a 8 mm, 2× más grande).",
+    "ar": "تم الاستيراد من النمذجة الخبيرة — تابع التحرير بالذكاء الاصطناعي (مثل: ثقوب 8 مم، أكبر مرتين)."
+  },
+  "Brought in the expert model. What should I change? (e.g. a 10mm centre hole, 2× bigger)": {
+    "ja": "エキスパートモデルを取り込みました。何を変更しますか？ (例: 中央に10mmの穴、2倍に)",
+    "zh": "已导入专家模型。需要更改什么？（例如：中心10mm孔，放大2倍）",
+    "es": "Importé el modelo experto. ¿Qué debo cambiar? (p. ej., un agujero central de 10 mm, 2× más grande)",
+    "ar": "تم استيراد النموذج الخبير. ماذا تريد أن أغيّر؟ (مثل: ثقب مركزي 10 مم، أكبر مرتين)"
+  },
+  "Loaded your STL. What should I change? (e.g. a 10mm hole through the center, 2× bigger, flatten the base)": {
+    "ja": "STLを読み込みました。何を変更しますか？ (例: 中央に10mmの穴を開ける、2倍に、底面を平らに)",
+    "zh": "已加载您的STL。需要更改什么？（例如：中心穿透10mm孔，放大2倍，底部平整）",
+    "es": "Cargué su STL. ¿Qué debo cambiar? (p. ej., un agujero de 10 mm a través del centro, 2× más grande, aplanar la base)",
+    "ar": "تم تحميل ملف STL الخاص بك. ماذا تريد أن أغيّر؟ (مثل: ثقب 10 مم عبر المركز، أكبر مرتين، تسطيح القاعدة)"
+  },
+  "Converting your STEP…": {
+    "ja": "STEPを変換中…",
+    "zh": "正在转换您的STEP…",
+    "es": "Convirtiendo su STEP…",
+    "ar": "جارٍ تحويل ملف STEP الخاص بك…"
+  },
+  "Could not import that STEP.": {
+    "ja": "そのSTEPを読み込めませんでした。",
+    "zh": "无法导入该STEP。",
+    "es": "No se pudo importar ese STEP.",
+    "ar": "تعذر استيراد ملف STEP هذا."
+  },
+  "Loaded your STEP. What should I change? (e.g. a 10mm hole through the center, 2× bigger, flatten the base)": {
+    "ja": "STEPを読み込みました。何を変更しますか？ (例: 中央に10mmの穴、2倍に、底面を平らに)",
+    "zh": "已加载您的STEP。需要更改什么？（例如：中心10mm孔，放大2倍，底部平整）",
+    "es": "Cargué su STEP. ¿Qué debo cambiar? (p. ej., un agujero de 10 mm a través del centro, 2× más grande, aplanar la base)",
+    "ar": "تم تحميل ملف STEP الخاص بك. ماذا تريد أن أغيّر؟ (مثل: ثقب 10 مم عبر المركز، أكبر مرتين، تسطيح القاعدة)"
+  },
+  "STEP conversion failed": {
+    "ja": "STEP変換に失敗しました",
+    "zh": "STEP转换失败",
+    "es": "La conversión de STEP falló",
+    "ar": "فشل تحويل STEP"
+  },
+  "Features not applied: {{0}}": {
+    "ja": "未反映のフィーチャー: {{0}}",
+    "zh": "未应用的特征：{{0}}",
+    "es": "Características no aplicadas: {{0}}",
+    "ar": "الميزات غير المطبقة: {{0}}"
+  },
+  "Clamped: {{0}}": {
+    "ja": "寸法調整: {{0}}",
+    "zh": "已限制：{{0}}",
+    "es": "Limitado: {{0}}",
+    "ar": "تم التقييد: {{0}}"
+  },
+  "Manufacturing verification blocked at {{0}}": {
+    "ja": "製造検証が{{0}}でブロックされました",
+    "zh": "制造验证在{{0}}处受阻",
+    "es": "La verificación de fabricación se bloqueó en {{0}}",
+    "ar": "تم حظر التحقق من التصنيع عند {{0}}"
+  },
+  "STEP exported.\n": {
+    "ja": "STEPをエクスポートしました。\n",
+    "zh": "STEP已导出。\n",
+    "es": "STEP exportado.\n",
+    "ar": "تم تصدير STEP.\n"
+  },
+  "Exact B-Rep verification failed, so no STEP was exported. Repair it in Precision CAD.": {
+    "ja": "精密B-Rep検証に失敗したため、STEPをエクスポートしませんでした。精密CADでエラーを修正してください。",
+    "zh": "精确B-Rep验证失败，因此未导出STEP。请在精密CAD中修复。",
+    "es": "La verificación exacta de B-Rep falló, por lo que no se exportó STEP. Repárelo en CAD de precisión.",
+    "ar": "فشل التحقق الدقيق من B-Rep، لذلك لم يتم تصدير STEP. أصلحه في CAD الدقيق."
+  },
+  "Free-form mesh models are not converted into manufacturing STEP. Rebuild as an editable feature model in Precision CAD.": {
+    "ja": "自由形式・メッシュモデルは製造用STEPに変換しません。精密CADで編集可能なフィーチャーモデルとして再生成してください。",
+    "zh": "自由形式网格模型不会转换为制造STEP。请在精密CAD中重建为可编辑特征模型。",
+    "es": "Los modelos de malla de forma libre no se convierten en STEP de fabricación. Reconstruya como un modelo de características editable en CAD de precisión.",
+    "ar": "لا يتم تحويل نماذج الشبكة الحرة إلى STEP للتصنيع. أعد البناء كنموذج ميزات قابل للتحرير في CAD الدقيق."
+  },
+  "STEP export failed.": {
+    "ja": "STEPエクスポートに失敗しました。",
+    "zh": "STEP导出失败。",
+    "es": "La exportación de STEP falló.",
+    "ar": "فشل تصدير STEP."
+  },
+  "Unlock: later AI edits may change this value": {
+    "ja": "ロック解除: 以降のAI編集でこの値を変更できます",
+    "zh": "解锁：后续AI编辑可更改此值",
+    "es": "Desbloquear: las ediciones posteriores de IA pueden cambiar este valor",
+    "ar": "إلغاء القفل: قد تغير التعديلات اللاحقة بالذكاء الاصطناعي هذه القيمة"
+  },
+  "Lock user value across later AI edits": {
+    "ja": "ユーザー値をロック: 以降のAI編集でも維持",
+    "zh": "锁定用户值：在后续AI编辑中保持",
+    "es": "Bloquear valor de usuario: mantener en ediciones posteriores de IA",
+    "ar": "قفل قيمة المستخدم: الاحتفاظ بها عبر التعديلات اللاحقة بالذكاء الاصطناعي"
+  },
+  "AI + manual design": {
+    "ja": "AI + 手動設計",
+    "zh": "AI + 手动设计",
+    "es": "IA + diseño manual",
+    "ar": "الذكاء الاصطناعي + التصميم اليدوي"
+  },
+  "Edit directly with sliders or exact numbers. Changed values are auto-locked across later AI edits and expert CAD handoff.": {
+    "ja": "スライダーや数値で直接修正してください。修正した値は自動ロックされ、以降のAI編集とエキスパートCAD引き継ぎでも維持されます。",
+    "zh": "使用滑块或精确数字直接编辑。更改的值将自动锁定，并在后续AI编辑和专家CAD交接中保持。",
+    "es": "Edite directamente con controles deslizantes o números exactos. Los valores modificados se bloquean automáticamente en ediciones posteriores de IA y en la transferencia a CAD experto.",
+    "ar": "قم بالتحرير مباشرة باستخدام أشرطة التمرير أو الأرقام الدقيقة. يتم قفل القيم التي تم تغييرها تلقائيًا عبر التعديلات اللاحقة بالذكاء الاصطناعي وتسليم CAD الخبير."
+  },
+  "{{0}} user value(s) locked": {
+    "ja": "ユーザー値 {{0}}個をロック",
+    "zh": "已锁定{{0}}个用户值",
+    "es": "{{0}} valor(es) de usuario bloqueado(s)",
+    "ar": "تم قفل {{0}} قيمة مستخدم"
+  },
+  "Actual rendered size (compare with the requested dimensions)": {
+    "ja": "実際にレンダリングされたサイズ (要求寸法との比較用)",
+    "zh": "实际渲染尺寸（与请求尺寸比较）",
+    "es": "Tamaño real renderizado (comparar con las dimensiones solicitadas)",
+    "ar": "الحجم الفعلي المعروض (للمقارنة مع الأبعاد المطلوبة)"
+  },
+  "Adjustable dimensions appear here.": {
+    "ja": "調整可能な寸法がここに表示されます。",
+    "zh": "可调尺寸显示在此处。",
+    "es": "Las dimensiones ajustables aparecen aquí.",
+    "ar": "تظهر الأبعاد القابلة للضبط هنا."
+  },
+  "Quick fixes": {
+    "ja": "クイック修正",
+    "zh": "快速修复",
+    "es": "Correcciones rápidas",
+    "ar": "إصلاحات سريعة"
+  },
+  "⬇ Flatten base": {
+    "ja": "⬇ 底面を平らにする",
+    "zh": "⬇ 平整底部",
+    "es": "⬇ Aplanar base",
+    "ar": "⬇ تسطيح القاعدة"
+  },
+  "🫙 Hollow": {
+    "ja": "🫙 中空にする",
+    "zh": "🫙 掏空",
+    "es": "🫙 Ahuecar",
+    "ar": "🫙 تجويف"
+  },
+  "Wall thickness (mm)": {
+    "ja": "壁の厚さ (mm)",
+    "zh": "壁厚 (mm)",
+    "es": "Grosor de pared (mm)",
+    "ar": "سماكة الجدار (مم)"
+  },
+  "🕳 Mount holes": {
+    "ja": "🕳 取り付け穴",
+    "zh": "🕳 安装孔",
+    "es": "🕳 Agujeros de montaje",
+    "ar": "🕳 فتحات التثبيت"
+  },
+  "🔵 Round edges": {
+    "ja": "🔵 角を丸める",
+    "zh": "🔵 圆角",
+    "es": "🔵 Redondear bordes",
+    "ar": "🔵 تدوير الحواف"
+  },
+  "⟋ Chamfer": {
+    "ja": "⟋ 面取り",
+    "zh": "⟋ 倒角",
+    "es": "⟋ Chaflán",
+    "ar": "⟋ شطف"
+  },
+  "🔤 Engrave text": {
+    "ja": "🔤 テキスト刻印",
+    "zh": "🔤 雕刻文字",
+    "es": "🔤 Grabar texto",
+    "ar": "🔤 نقش نص"
+  },
+  "Text to engrave": {
+    "ja": "刻印するテキスト",
+    "zh": "要雕刻的文字",
+    "es": "Texto a grabar",
+    "ar": "النص المراد نقشه"
+  },
+  "⤢ 2× size": {
+    "ja": "⤢ 2倍",
+    "zh": "⤢ 2倍大小",
+    "es": "⤢ 2× tamaño",
+    "ar": "⤢ ضعف الحجم"
+  },
+  "⤡ Half": {
+    "ja": "⤡ 半分",
+    "zh": "⤡ 一半",
+    "es": "⤡ Mitad",
+    "ar": "⤡ النصف"
+  },
+  "a 120×80×8 bracket, 40mm centre hole, 4× M6 on PCD60": {
+    "ja": "120×80×8 ブラケット、中央40mm穴、M6×4 PCD60",
+    "zh": "120×80×8 支架，中心40mm孔，4×M6 PCD60",
+    "es": "un soporte de 120×80×8, agujero central de 40mm, 4× M6 en PCD60",
+    "ar": "قوس 120×80×8، فتحة مركزية 40مم، 4× M6 على PCD60"
+  },
+  "a 100×100×10 mounting plate with 4× M5 corner holes": {
+    "ja": "100×100×10 マウントプレート、角にM5穴×4",
+    "zh": "100×100×10 安装板，四角有4个M5孔",
+    "es": "una placa de montaje de 100×100×10 con 4 agujeros M5 en las esquinas",
+    "ar": "لوحة تثبيت 100×100×10 مع 4 فتحات M5 في الزوايا"
+  },
+  "a Ø60×6 flange, 25mm bore, C2 chamfer": {
+    "ja": "Ø60×6 フランジ、25mmボア、C2面取り",
+    "zh": "Ø60×6 法兰，25mm内孔，C2倒角",
+    "es": "una brida de Ø60×6, agujero de 25mm, chaflán C2",
+    "ar": "شفة Ø60×6، تجويف 25مم، شطف C2"
+  },
+  "a 50×50×30 box, 3mm walls, open top": {
+    "ja": "50×50×30 ボックス、壁厚3、上面開放",
+    "zh": "50×50×30 盒子，壁厚3，顶部开口",
+    "es": "una caja de 50×50×30, paredes de 3mm, parte superior abierta",
+    "ar": "صندوق 50×50×30، جدران 3مم، مفتوح من الأعلى"
+  },
+  "a toy car with four wheels": {
+    "ja": "車輪が4つのおもちゃの車",
+    "zh": "一辆有四个轮子的玩具车",
+    "es": "un coche de juguete con cuatro ruedas",
+    "ar": "سيارة لعبة بأربع عجلات"
+  },
+  "an L-bracket for M8 screws": {
+    "ja": "M8ネジ用L字ブラケット",
+    "zh": "用于M8螺丝的L型支架",
+    "es": "un soporte en L para tornillos M8",
+    "ar": "قوس على شكل L لبراغي M8"
+  },
+  "a mug with a handle": {
+    "ja": "取っ手付きマグカップ",
+    "zh": "带把手的马克杯",
+    "es": "una taza con asa",
+    "ar": "كوب بمقبض"
+  },
+  "a 24-tooth spur gear": {
+    "ja": "24歯の平歯車",
+    "zh": "一个24齿直齿轮",
+    "es": "un engranaje recto de 24 dientes",
+    "ar": "ترس مستقيم بـ 24 سنًا"
+  },
+  ", what precise part shall we build?": {
+    "ja": "さん、どんな精密部品を作りましょうか？",
+    "zh": "，您想制造什么精密零件？",
+    "es": ", ¿qué pieza de precisión construiremos?",
+    "ar": "، ما الجزء الدقيق الذي سنصنعه؟"
+  },
+  ", what should we build?": {
+    "ja": "さん、何を作りましょうか？",
+    "zh": "，您想制造什么？",
+    "es": ", ¿qué deberíamos construir?",
+    "ar": "، ماذا يجب أن نصنع؟"
+  },
+  "What precise part shall we build?": {
+    "ja": "どんな精密部品を作りましょうか？",
+    "zh": "您想制造什么精密零件？",
+    "es": "¿Qué pieza de precisión construiremos?",
+    "ar": "ما الجزء الدقيق الذي سنصنعه؟"
+  },
+  "What should we build?": {
+    "ja": "何を作りましょうか？",
+    "zh": "您想制造什么？",
+    "es": "¿Qué deberíamos construir?",
+    "ar": "ماذا يجب أن نصنع؟"
+  },
+  "Home": {
+    "ja": "ホーム",
+    "zh": "首页",
+    "es": "Inicio",
+    "ar": "الرئيسية"
+  },
+  "Drop the photo": {
+    "ja": "写真をドロップ",
+    "zh": "拖放照片",
+    "es": "Suelta la foto",
+    "ar": "أسقط الصورة"
+  },
+  "AI automatically operates the precision CAD engine for every user": {
+    "ja": "一般ユーザーでもAIが精密CADエンジンを自動操作します",
+    "zh": "AI为每位用户自动操作精密CAD引擎",
+    "es": "La IA opera automáticamente el motor CAD de precisión para cada usuario",
+    "ar": "يعمل الذكاء الاصطناعي تلقائيًا على تشغيل محرك CAD الدقيق لكل مستخدم"
+  },
+  "AI Auto Design": {
+    "ja": "AI自動設計",
+    "zh": "AI自动设计",
+    "es": "Diseño automático con IA",
+    "ar": "تصميم تلقائي بالذكاء الاصطناعي"
+  },
+  "Use for fast free-form or organic geometry": {
+    "ja": "高速フリーフォームや有機的形状に使用",
+    "zh": "用于快速自由形式或有机几何体",
+    "es": "Úselo para geometría orgánica o de forma libre rápida",
+    "ar": "استخدمه للأشكال الحرة السريعة أو الهندسة العضوية"
+  },
+  "Fast Free-form": {
+    "ja": "高速フリーフォーム",
+    "zh": "快速自由形式",
+    "es": "Forma libre rápida",
+    "ar": "شكل حر سريع"
+  },
+  "Describe it with dimensions for an exact part — holes, chamfers, fillets, patterns.": {
+    "ja": "寸法を指定して説明すると、正確な寸法の部品を作成します（穴・面取り・フィレット・パターン）。",
+    "zh": "用尺寸描述，即可获得精确的零件——孔、倒角、圆角、阵列。",
+    "es": "Descríbalo con dimensiones para obtener una pieza exacta: agujeros, chaflanes, redondeos, patrones.",
+    "ar": "صفه بالأبعاد للحصول على جزء دقيق — فتحات، شطف، استدارة، أنماط."
+  },
+  "Describe it — or drop a photo — to get an adjustable 3D model.": {
+    "ja": "言葉で説明するか写真をアップロードすると、調整可能な3Dモデルになります。",
+    "zh": "描述它——或上传照片——即可获得可调整的3D模型。",
+    "es": "Descríbalo — o suba una foto — para obtener un modelo 3D ajustable.",
+    "ar": "صفه — أو ارفع صورة — للحصول على نموذج ثلاثي الأبعاد قابل للتعديل."
+  },
+  "e.g. a toy car with four wheels…  (drag or paste a photo with Ctrl+V)": {
+    "ja": "例: 車輪が4つのおもちゃの車… (写真はドラッグ＆ドロップまたはCtrl+Vで貼り付け)",
+    "zh": "例如：一辆有四个轮子的玩具车…（拖放或按Ctrl+V粘贴照片）",
+    "es": "p. ej. un coche de juguete con cuatro ruedas… (arrastre o pegue una foto con Ctrl+V)",
+    "ar": "مثال: سيارة لعبة بأربع عجلات… (اسحب أو الصق صورة باستخدام Ctrl+V)"
+  },
+  "Upload photo / STL": {
+    "ja": "写真・STLをアップロード",
+    "zh": "上传照片/STL",
+    "es": "Subir foto / STL",
+    "ar": "رفع صورة / STL"
+  },
+  "Refine into a precise OpenSCAD brief": {
+    "ja": "OpenSCAD用の精密プロンプトに変換",
+    "zh": "精炼为精确的OpenSCAD提示",
+    "es": "Refinar en un resumen preciso de OpenSCAD",
+    "ar": "تحسين إلى موجز OpenSCAD دقيق"
+  },
+  "Refining…": {
+    "ja": "変換中…",
+    "zh": "正在精炼…",
+    "es": "Refinando…",
+    "ar": "جارٍ التحسين…"
+  },
+  "✨ Refine": {
+    "ja": "✨ 変換",
+    "zh": "✨ 精炼",
+    "es": "✨ Refinar",
+    "ar": "✨ تحسين"
+  },
+  "Working…": {
+    "ja": "生成中…",
+    "zh": "正在生成…",
+    "es": "Trabajando…",
+    "ar": "جارٍ الإنشاء…"
+  },
+  "Generate": {
+    "ja": "生成",
+    "zh": "生成",
+    "es": "Generar",
+    "ar": "إنشاء"
+  },
+  "1. Describe / photo": {
+    "ja": "1. 説明 / 写真",
+    "zh": "1. 描述/照片",
+    "es": "1. Describir / foto",
+    "ar": "1. الوصف / الصورة"
+  },
+  "2. Auto 3D model": {
+    "ja": "2. 3D自動生成",
+    "zh": "2. 自动3D模型",
+    "es": "2. Modelo 3D automático",
+    "ar": "2. نموذج ثلاثي الأبعاد تلقائي"
+  },
+  "3. Tune with sliders": {
+    "ja": "3. スライダーで調整",
+    "zh": "3. 用滑块调整",
+    "es": "3. Ajustar con controles deslizantes",
+    "ar": "3. ضبط باستخدام المنزلقات"
+  },
+  "New design": {
+    "ja": "新規デザイン",
+    "zh": "新设计",
+    "es": "Nuevo diseño",
+    "ar": "تصميم جديد"
+  },
+  "New": {
+    "ja": "新規",
+    "zh": "新建",
+    "es": "Nuevo",
+    "ar": "جديد"
+  },
+  "View in 3D": {
+    "ja": "3Dで表示",
+    "zh": "3D查看",
+    "es": "Ver en 3D",
+    "ar": "عرض ثلاثي الأبعاد"
+  },
+  "AI-managed precision CAD": {
+    "ja": "AI管理の精密CAD",
+    "zh": "AI管理的精密CAD",
+    "es": "CAD de precisión gestionado por IA",
+    "ar": "CAD دقيق مُدار بالذكاء الاصطناعي"
+  },
+  "AI Auto": {
+    "ja": "AI自動",
+    "zh": "AI自动",
+    "es": "AI Auto",
+    "ar": "AI تلقائي"
+  },
+  "Fast Free": {
+    "ja": "高速フリーフォーム",
+    "zh": "快速自由形式",
+    "es": "Forma libre rápida",
+    "ar": "حر سريع"
+  },
+  "Hole": {
+    "ja": "穴",
+    "zh": "孔",
+    "es": "Agujero",
+    "ar": "ثقب"
+  },
+  "Drill a 10mm hole straight through the center": {
+    "ja": "中心に直径10mmの穴を貫通で開けてください",
+    "zh": "在中心钻一个10毫米的通孔",
+    "es": "Perfore un agujero de 10 mm en el centro",
+    "ar": "احفر ثقبًا بقطر 10 مم في المركز"
+  },
+  "2× bigger": {
+    "ja": "2倍の大きさ",
+    "zh": "2倍大",
+    "es": "2 veces más grande",
+    "ar": "أكبر بمرتين"
+  },
+  "Make the whole thing 2× bigger": {
+    "ja": "全体を2倍の大きさにしてください",
+    "zh": "把整个东西放大2倍",
+    "es": "Haz todo 2 veces más grande",
+    "ar": "اجعل كل شيء أكبر بمرتين"
+  },
+  "Thicker walls": {
+    "ja": "壁を厚く",
+    "zh": "加厚壁",
+    "es": "Paredes más gruesas",
+    "ar": "جدران أكثر سمكًا"
+  },
+  "Make the walls thicker (3mm)": {
+    "ja": "壁を3mm厚くしてください",
+    "zh": "把壁加厚到3毫米",
+    "es": "Haz las paredes más gruesas (3 mm)",
+    "ar": "اجعل الجدران أكثر سمكًا (3 مم)"
+  },
+  "Round edges": {
+    "ja": "角を丸く",
+    "zh": "圆角",
+    "es": "Bordes redondeados",
+    "ar": "حواف دائرية"
+  },
+  "Round the outer edges by 3mm": {
+    "ja": "外側の角を3mm丸めてください",
+    "zh": "把外边缘倒圆3毫米",
+    "es": "Redondea los bordes exteriores 3 mm",
+    "ar": "دور الحواف الخارجية بمقدار 3 مم"
+  },
+  "Flat base": {
+    "ja": "底面を平らに",
+    "zh": "平底",
+    "es": "Base plana",
+    "ar": "قاعدة مسطحة"
+  },
+  "Flatten the base": {
+    "ja": "底面を平らにしてください",
+    "zh": "把底部弄平",
+    "es": "Aplana la base",
+    "ar": "سطح القاعدة"
+  },
+  "Mount holes": {
+    "ja": "取り付け穴",
+    "zh": "安装孔",
+    "es": "Agujeros de montaje",
+    "ar": "فتحات تثبيت"
+  },
+  "Add 4mm mounting holes at the four corners": {
+    "ja": "四隅に直径4mmの取り付け穴を追加してください",
+    "zh": "在四个角添加4毫米的安装孔",
+    "es": "Agregue agujeros de montaje de 4 mm en las cuatro esquinas",
+    "ar": "أضف فتحات تثبيت بقطر 4 مم في الزوايا الأربع"
+  },
+  "Attach photo": {
+    "ja": "写真を添付",
+    "zh": "附加照片",
+    "es": "Adjuntar foto",
+    "ar": "إرفاق صورة"
+  },
+  "Keep iterating (e.g. make it taller)…": {
+    "ja": "さらに修正を続ける（例: 高くする）…",
+    "zh": "继续迭代（例如：做得更高）…",
+    "es": "Sigue iterando (p. ej., hazlo más alto)…",
+    "ar": "استمر في التكرار (مثل: اجعله أطول)…"
+  },
+  "Send": {
+    "ja": "送信",
+    "zh": "发送",
+    "es": "Enviar",
+    "ar": "إرسال"
+  },
+  "Verified for manufacturing": {
+    "ja": "製造検証済み",
+    "zh": "已验证可制造",
+    "es": "Verificado para fabricación",
+    "ar": "تم التحقق منه للتصنيع"
+  },
+  "Review required": {
+    "ja": "レビューが必要",
+    "zh": "需要审查",
+    "es": "Revisión requerida",
+    "ar": "مراجعة مطلوبة"
+  },
+  "Concept only": {
+    "ja": "コンセプトのみ",
+    "zh": "仅概念",
+    "es": "Solo concepto",
+    "ar": "مفهوم فقط"
+  },
+  "Analytic STEP handoff passed.": {
+    "ja": "解析用STEP受け渡しチェックに合格しました。",
+    "zh": "解析用STEP交接检查通过。",
+    "es": "La transferencia STEP analítica pasó.",
+    "ar": "اجتاز فحص تسليم STEP التحليلي."
+  },
+  "STEP and feature-loss checks are required before manufacturing use.": {
+    "ja": "製造データとして使用するには、STEPチェックとフィーチャー欠落チェックが必要です。",
+    "zh": "在用于制造之前，需要进行STEP检查和特征丢失检查。",
+    "es": "Se requieren verificaciones de STEP y pérdida de características antes del uso en fabricación.",
+    "ar": "يلزم إجراء فحوصات STEP وفقدان الميزات قبل استخدام التصنيع."
+  },
+  "A successful render does not prove manufacturability.": {
+    "ja": "レンダリングが成功しても、製造可能性が保証されるわけではありません。",
+    "zh": "渲染成功并不证明可制造性。",
+    "es": "Una representación exitosa no prueba la fabricabilidad.",
+    "ar": "العرض الناجح لا يثبت قابلية التصنيع."
+  },
+  "Analytic STEP for manufacturing (CAD interchange)": {
+    "ja": "製造用解析STEP（CAD互換）",
+    "zh": "用于制造的解析STEP（CAD交换）",
+    "es": "STEP analítico para fabricación (intercambio CAD)",
+    "ar": "STEP تحليلي للتصنيع (تبادل CAD)"
+  },
+  "STEP for manufacturing (tessellated, CAD interchange)": {
+    "ja": "製造用STEP（テッセレーション、CAD互換）",
+    "zh": "用于制造的STEP（曲面细分，CAD交换）",
+    "es": "STEP para fabricación (teselado, intercambio CAD)",
+    "ar": "STEP للتصنيع (مثلثي، تبادل CAD)"
+  },
+  "Optional direct feature and dimension editing for experts": {
+    "ja": "専門家向けのフィーチャーと寸法の直接編集（必要な場合のみ）",
+    "zh": "可选的直接特征和尺寸编辑，供专家使用",
+    "es": "Edición directa opcional de características y dimensiones para expertos",
+    "ar": "تحرير مباشر اختياري للميزات والأبعاد للخبراء"
+  },
+  "Expert CAD editing (optional) →": {
+    "ja": "専門家向けCAD直接編集（オプション）→",
+    "zh": "专家CAD编辑（可选）→",
+    "es": "Edición CAD experta (opcional) →",
+    "ar": "تحرير CAD للخبراء (اختياري) ←"
+  },
+  "AI continues for general users": {
+    "ja": "一般ユーザーはAIで続行可能",
+    "zh": "AI继续为普通用户服务",
+    "es": "La IA continúa para usuarios generales",
+    "ar": "يستمر الذكاء الاصطناعي للمستخدمين العاديين"
+  },
+  "3D preview & STL need a (free) login": {
+    "ja": "3Dプレビュー・STLには（無料）ログインが必要です",
+    "zh": "3D预览和STL需要（免费）登录",
+    "es": "La vista previa 3D y STL necesitan un inicio de sesión (gratuito)",
+    "ar": "المعاينة ثلاثية الأبعاد وSTL تتطلب تسجيل دخول (مجاني)"
+  },
+  "Free login": {
+    "ja": "無料ログイン",
+    "zh": "免费登录",
+    "es": "Inicio de sesión gratuito",
+    "ar": "تسجيل دخول مجاني"
+  },
+  "Updating…": {
+    "ja": "更新中…",
+    "zh": "更新中…",
+    "es": "Actualizando…",
+    "ar": "جارٍ التحديث…"
+  },
+  "AI + Manual": {
+    "ja": "AI + 手動調整",
+    "zh": "AI + 手动",
+    "es": "IA + Manual",
+    "ar": "ذكاء اصطناعي + يدوي"
+  },
+  "Chat": {
+    "ja": "チャット",
+    "zh": "聊天",
+    "es": "Chat",
+    "ar": "دردشة"
+  },
+  "Tune": {
+    "ja": "調整",
+    "zh": "调整",
+    "es": "Ajustar",
+    "ar": "ضبط"
+  },
+  "Reused cached design result": {
+    "ja": "保存済みの設計結果を再利用",
+    "zh": "已复用缓存的设计结果",
+    "es": "Se reutilizó el resultado de diseño almacenado",
+    "ar": "تمت إعادة استخدام نتيجة التصميم المخزنة مؤقتًا"
+  },
+  "Input cache hit": {
+    "ja": "入力キャッシュを使用",
+    "zh": "已使用输入缓存",
+    "es": "Se utilizó la caché de entrada",
+    "ar": "تم استخدام ذاكرة التخزين المؤقت للإدخال"
+  }
+}

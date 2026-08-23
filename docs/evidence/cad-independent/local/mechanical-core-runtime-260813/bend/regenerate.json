@@ -1,0 +1,88 @@
+{
+  "schema": "nexyfab.mechanical-core-feature-local-runtime.v1",
+  "feature": "bend",
+  "axis": "regenerate",
+  "status": "PASS",
+  "executedAt": "2026-08-22T07:13:30.564Z",
+  "initial": {
+    "handle": "occt:225",
+    "kernelKind": "Solid",
+    "nativeShapeType": 2,
+    "solidCount": 1,
+    "singleSolid": true,
+    "volumeMm3": 3600.000000000002,
+    "edgeCount": 24,
+    "faceCount": 10,
+    "boundsMm": [
+      [
+        -30.006022818974138,
+        -1.0060228189741387,
+        -15.006022818974138
+      ],
+      [
+        22.53331869142412,
+        20.876464441931738,
+        15.006022818974138
+      ]
+    ]
+  },
+  "edited": {
+    "handle": "occt:227",
+    "kernelKind": "Solid",
+    "nativeShapeType": 2,
+    "solidCount": 1,
+    "singleSolid": true,
+    "volumeMm3": 3600.000000000001,
+    "edgeCount": 24,
+    "faceCount": 10,
+    "boundsMm": [
+      [
+        -30.00566340408496,
+        -1.0056634040849604,
+        -15.005663404084961
+      ],
+      [
+        17.241395320613965,
+        24.858826789149685,
+        15.005663404084961
+      ]
+    ]
+  },
+  "repeated": {
+    "handle": "occt:229",
+    "kernelKind": "Solid",
+    "nativeShapeType": 2,
+    "solidCount": 1,
+    "singleSolid": true,
+    "volumeMm3": 3600.000000000001,
+    "edgeCount": 24,
+    "faceCount": 10,
+    "boundsMm": [
+      [
+        -30.00566340408496,
+        -1.0056634040849604,
+        -15.005663404084961
+      ],
+      [
+        17.241395320613965,
+        24.858826789149685,
+        15.005663404084961
+      ]
+    ]
+  },
+  "featureMeaning": {
+    "assertion": "actual product bend preserves constant sheet volume and uses concentric analytic cylindrical faces around the R+T/2 geometric neutral axis",
+    "angleDeg": 60,
+    "radiusMm": 3,
+    "thicknessMm": 2,
+    "neutralRadiusMm": 4,
+    "neutralArcLengthMm": 4.1887902047863905,
+    "straightLengthMm": 25.81120979521361,
+    "cylindricalFaces": 2,
+    "expectedVolumeMm3": 3600,
+    "actualVolumeMm3": 3600.000000000001,
+    "expectedTopMm": 24.853163385064725,
+    "actualTopMm": 24.858826789149685
+  },
+  "assertion": "edited parameter changed the exact signature and a fresh native regeneration reproduced topology, bounds, and volume"
+}

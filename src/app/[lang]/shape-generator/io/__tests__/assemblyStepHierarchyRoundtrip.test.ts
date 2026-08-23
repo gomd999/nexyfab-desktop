@@ -32,6 +32,9 @@ DATA;
 #5=PRODUCT('${productName}','${productName}','',(#3));
 #6=PRODUCT_DEFINITION_FORMATION('','',#5);
 #${partDefId}=PRODUCT_DEFINITION('design','',#6,#3);
+#80=PRODUCT_DEFINITION_SHAPE('','',#${partDefId});
+#81=SHAPE_REPRESENTATION('${productName}',(),#1);
+#82=SHAPE_DEFINITION_REPRESENTATION(#80,#81);
 ENDSEC;
 END-ISO-10303-21;
 `;
@@ -48,6 +51,14 @@ function definedIds(step: string): Set<number> {
     out.add(Number(m[1]));
   }
   return out;
+}
+
+function entityTypes(step: string): Map<number, string> {
+  const result = new Map<number, string>();
+  for (const match of step.matchAll(/^#(\d+)\s*=\s*([A-Z_]+)/gm)) {
+    result.set(Number(match[1]), match[2]);
+  }
+  return result;
 }
 
 /** Extract NAUO entries: `(name, label, '', parentRef, childRef, ...)`. */
@@ -69,6 +80,7 @@ describe('Assembly STEP v2 self-consistency', () => {
     );
 
     const ids = definedIds(stitched.stepText);
+    const types = entityTypes(stitched.stepText);
     const edges = nauoEdges(stitched.stepText);
 
     expect(edges.length).toBe(3);
@@ -76,6 +88,8 @@ describe('Assembly STEP v2 self-consistency', () => {
     for (const e of edges) {
       expect(ids.has(e.parent), `NAUO parent #${e.parent} undefined`).toBe(true);
       expect(ids.has(e.child), `NAUO child #${e.child} undefined`).toBe(true);
+      expect(types.get(e.parent), `NAUO parent #${e.parent} must be PRODUCT_DEFINITION`).toBe('PRODUCT_DEFINITION');
+      expect(types.get(e.child), `NAUO child #${e.child} must be PRODUCT_DEFINITION`).toBe('PRODUCT_DEFINITION');
     }
     // All 3 NAUO edges should share the SAME parent (single-root flat hierarchy).
     const uniqueParents = new Set(edges.map((e) => e.parent));
@@ -104,8 +118,12 @@ describe('Assembly STEP v2 self-consistency', () => {
     );
     const nauoCount = (stitched.stepText.match(/NEXT_ASSEMBLY_USAGE_OCCURRENCE/g) || []).length;
     const idtCount = (stitched.stepText.match(/ITEM_DEFINED_TRANSFORMATION/g) || []).length;
+    const cdsrCount = (stitched.stepText.match(/CONTEXT_DEPENDENT_SHAPE_REPRESENTATION/g) || []).length;
+    const rrwtCount = (stitched.stepText.match(/REPRESENTATION_RELATIONSHIP_WITH_TRANSFORMATION/g) || []).length;
     expect(nauoCount).toBe(4);
     expect(idtCount).toBe(4);
+    expect(cdsrCount).toBe(4);
+    expect(rrwtCount).toBe(4);
     expect(stitched.partCount).toBe(4);
   });
 

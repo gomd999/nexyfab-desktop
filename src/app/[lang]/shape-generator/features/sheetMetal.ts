@@ -2,6 +2,14 @@ import * as THREE from 'three';
 import type { FeatureDefinition } from './types';
 import { mergeAligned } from './meshMerge';
 import {
+  isBboxFaithfulBox,
+  occtRegisteredShapeEvidence,
+  occtSheetMetalBendSolid,
+  occtSheetMetalJogSolid,
+} from './occtEngine';
+import { shouldUseOcctEngine } from './engineSelection';
+import { noteMeshFallback } from './downgradeNotice';
+import {
   type SheetMetalMaterial,
   SHEET_METAL_MATERIALS,
   DEFAULT_MATERIAL,
@@ -77,6 +85,12 @@ export interface BendHistoryEntry extends BendParams {
   flatAdded?: number;
   /** True when the op appends material instead of folding the blank. */
   addsMaterial?: boolean;
+}
+
+/** Tracks which mesh vertices have already crossed a bend. Sequential bend
+ * features use this to keep a prior flange from being folded a second time. */
+interface BendVertexState {
+  folded: boolean;
 }
 
 /** Hem types per ASM Handbook / press-brake conventions:
@@ -174,6 +188,10 @@ export function applyBend(
   const bendLinePos = primaryMin + primarySize * Math.max(0, Math.min(1, position));
   const angleRad = (angle * Math.PI) / 180;
   const sign = direction === 'up' ? 1 : -1;
+  const priorStates = (geometry.userData as { __bendVertexState?: BendVertexState[] } | undefined)?.__bendVertexState;
+  const states: BendVertexState[] = Array.from({ length: geo.attributes.position.count }, (_, i) => ({
+    folded: priorStates?.[i]?.folded ?? false,
+  }));
 
   const pos = geo.attributes.position;
   for (let i = 0; i < pos.count; i++) {
@@ -184,7 +202,9 @@ export function applyBend(
     const primaryCoord = bendAlongX ? z : x;
     const dist = primaryCoord - bendLinePos;
 
-    if (dist > 0) {
+    // A subsequent bend owns only the still-flat web. Re-folding vertices
+    // already transformed by an earlier bend creates an invalid U-channel.
+    if (dist > 0 && !states[i]!.folded) {
       // Arc region: vertices within the bend zone get rotated
       const bendArcLen = radius * angleRad;
       if (dist <= bendArcLen && radius > 0) {
@@ -201,6 +221,7 @@ export function applyBend(
           pos.setX(i, newPrimary);
         }
         pos.setY(i, newY);
+        states[i]!.folded = angleRad > 0;
       } else {
         // Beyond the arc: rotate rigidly
         const localY = y - bb.min.y;
@@ -219,6 +240,7 @@ export function applyBend(
           pos.setX(i, newPrimary);
         }
         pos.setY(i, newY);
+        states[i]!.folded = angleRad > 0;
       }
     }
   }
@@ -247,9 +269,68 @@ export function applyBend(
   };
   geo.userData = {
     ...(geo.userData ?? {}),
+    __bendVertexState: states,
     __bendHistory: [...parentHistory, entry],
   };
   return geo;
+}
+
+/** Exact OCCT path for a constant-thickness rectangular sheet bend. */
+export function applyBendOcct(
+  geometry: THREE.BufferGeometry,
+  params: BendParams,
+): THREE.BufferGeometry | null {
+  const parentHandle = geometry.userData?.occtHandle as string | undefined;
+  if (!parentHandle || !occtRegisteredShapeEvidence(parentHandle)?.singleSolid
+    || !isBboxFaithfulBox(geometry) || params.direction !== 'up') return null;
+  geometry.computeBoundingBox();
+  const bb = geometry.boundingBox;
+  if (!bb) return null;
+  const sizeX = bb.max.x - bb.min.x;
+  const sizeZ = bb.max.z - bb.min.z;
+  const thickness = bb.max.y - bb.min.y;
+  const bendAlongX = sizeZ >= sizeX;
+  const primarySize = bendAlongX ? sizeZ : sizeX;
+  const position = Math.max(0, Math.min(1, params.position));
+  const fixedLength = primarySize * position;
+  const movingDevelopedLength = primarySize - fixedLength;
+  const neutralArcLength = (params.radius + thickness / 2) * params.angle * Math.PI / 180;
+  const straightLength = movingDevelopedLength - neutralArcLength;
+  if (!(thickness > 0) || !(params.radius > 0) || !(fixedLength > 0) || !(straightLength >= 0)) return null;
+  const primaryAxis = bendAlongX ? 'Z' : 'X';
+  const primaryMin = bendAlongX ? bb.min.z : bb.min.x;
+  const width = bendAlongX ? sizeX : sizeZ;
+  const widthCenter = bendAlongX ? (bb.min.x + bb.max.x) / 2 : (bb.min.z + bb.max.z) / 2;
+  const bendLine = primaryMin + fixedLength;
+  const exact = occtSheetMetalBendSolid({
+    fixedLength,
+    straightLength,
+    width,
+    thickness,
+    radius: params.radius,
+    angleDeg: params.angle,
+    primaryAxis,
+    bendLine,
+    baseY: bb.min.y,
+    widthCenter,
+  });
+  if (!exact.handle) return null;
+  const history =
+    (geometry.userData as { __bendHistory?: BendHistoryEntry[] } | undefined)?.__bendHistory ?? [];
+  exact.geometry.userData = {
+    ...(geometry.userData ?? {}),
+    occtHandle: exact.handle,
+    __bendHistory: [...history, {
+      ...params,
+      source: 'bend' as const,
+      lineAxis: bendAlongX ? 'x' as const : 'z' as const,
+      linePos: bendLine,
+      blankLength: primarySize,
+      flatBefore: fixedLength,
+      addsMaterial: false,
+    }],
+  };
+  return exact.geometry;
 }
 
 // ─── Apply Flange ──────────────────────────────────────────────────────────────
@@ -449,6 +530,70 @@ export function applyFlange(
   return merged;
 }
 
+/** Exact OCCT path for an analytic circular edge flange on a box-faithful sheet. */
+export function applyFlangeOcct(
+  geometry: THREE.BufferGeometry,
+  params: FlangeParams,
+): THREE.BufferGeometry | null {
+  const parentHandle = geometry.userData?.occtHandle as string | undefined;
+  if (!parentHandle || !occtRegisteredShapeEvidence(parentHandle)?.singleSolid
+    || !isBboxFaithfulBox(geometry)) return null;
+  geometry.computeBoundingBox();
+  const bb = geometry.boundingBox;
+  if (!bb) return null;
+  const sizeX = bb.max.x - bb.min.x;
+  const sizeZ = bb.max.z - bb.min.z;
+  const thickness = bb.max.y - bb.min.y;
+  const edgeIndex = Math.round(params.edgeIndex);
+  if (!(thickness > 0) || !(params.radius > 0) || !(params.height >= params.radius)
+    || !(params.angle > 0 && params.angle <= 180) || edgeIndex < 0 || edgeIndex > 3) return null;
+  const primaryAxis = edgeIndex <= 1 ? 'Z' as const : 'X' as const;
+  const fixedLength = edgeIndex <= 1 ? sizeZ : sizeX;
+  const width = edgeIndex <= 1 ? sizeX : sizeZ;
+  const widthCenter = edgeIndex <= 1
+    ? (bb.min.x + bb.max.x) / 2
+    : (bb.min.z + bb.max.z) / 2;
+  const positive = edgeIndex === 0 || edgeIndex === 2;
+  const bendLine = edgeIndex === 0 ? bb.max.z
+    : edgeIndex === 1 ? bb.min.z
+    : edgeIndex === 2 ? bb.max.x
+    : bb.min.x;
+  const straightLength = params.height - params.radius;
+  const exact = occtSheetMetalBendSolid({
+    fixedLength,
+    straightLength,
+    width,
+    thickness,
+    radius: params.radius,
+    angleDeg: params.angle,
+    primaryAxis,
+    outwardSign: positive ? 1 : -1,
+    bendLine,
+    baseY: bb.min.y,
+    widthCenter,
+  });
+  if (!exact.handle) return null;
+  const history =
+    (geometry.userData as { __bendHistory?: BendHistoryEntry[] } | undefined)?.__bendHistory ?? [];
+  exact.geometry.userData = {
+    ...(geometry.userData ?? {}),
+    occtHandle: exact.handle,
+    __bendHistory: [...history, {
+      angle: params.angle,
+      radius: params.radius,
+      position: positive ? 1 : 0,
+      direction: 'up' as const,
+      source: 'flange' as const,
+      lineAxis: edgeIndex <= 1 ? 'x' as const : 'z' as const,
+      linePos: bendLine,
+      blankLength: fixedLength,
+      flatAdded: straightLength,
+      addsMaterial: true,
+    }],
+  };
+  return exact.geometry;
+}
+
 // ─── Apply Hem ─────────────────────────────────────────────────────────────────
 
 /** Inner-radius picker per hem type. Closed hems set R to half the
@@ -495,6 +640,30 @@ export function applyHem(
     },
     { historySource: 'hem' },
   );
+}
+
+/** Exact OCCT 180-degree hem; unsupported/self-overlapping cases refuse. */
+export function applyHemOcct(
+  geometry: THREE.BufferGeometry,
+  params: HemParams,
+): THREE.BufferGeometry | null {
+  geometry.computeBoundingBox();
+  const bb = geometry.boundingBox;
+  if (!bb) return null;
+  const thickness = bb.max.y - bb.min.y;
+  if (!(thickness > 0) || !(params.length > 0)) return null;
+  const radius = hemInnerRadius(params.type, thickness);
+  const exact = applyFlangeOcct(geometry, {
+    height: params.length + radius,
+    angle: 180,
+    radius,
+    edgeIndex: params.edgeIndex,
+  });
+  if (!exact) return null;
+  const history = (exact.userData as { __bendHistory?: BendHistoryEntry[] }).__bendHistory;
+  const last = history?.at(-1);
+  if (last) last.source = 'hem';
+  return exact;
 }
 
 // ─── Apply Jog (Z-bend) ────────────────────────────────────────────────────────
@@ -573,6 +742,90 @@ export function applyJog(
     ],
   };
   return geo;
+}
+
+/** Exact OCCT volume-conserving two-bend jog for a rectangular sheet. */
+export function applyJogOcct(
+  geometry: THREE.BufferGeometry,
+  params: JogParams,
+): THREE.BufferGeometry | null {
+  const parentHandle = geometry.userData?.occtHandle as string | undefined;
+  if (!parentHandle || !occtRegisteredShapeEvidence(parentHandle)?.singleSolid
+    || !isBboxFaithfulBox(geometry)) return null;
+  geometry.computeBoundingBox();
+  const bb = geometry.boundingBox;
+  if (!bb) return null;
+  const sizeX = bb.max.x - bb.min.x;
+  const sizeZ = bb.max.z - bb.min.z;
+  const thickness = bb.max.y - bb.min.y;
+  const bendAlongX = sizeZ >= sizeX;
+  const primarySize = bendAlongX ? sizeZ : sizeX;
+  const primaryMin = bendAlongX ? bb.min.z : bb.min.x;
+  const position = Math.max(0, Math.min(1, params.position));
+  const fixedLength = primarySize * position;
+  const developedSpacing = params.spacing ?? thickness;
+  const remainingLength = primarySize - fixedLength - developedSpacing;
+  const radius = params.radius ?? Math.max(0.5, thickness);
+  const width = bendAlongX ? sizeX : sizeZ;
+  const widthCenter = bendAlongX ? (bb.min.x + bb.max.x) / 2 : (bb.min.z + bb.max.z) / 2;
+  const bendLine = primaryMin + fixedLength;
+  const exact = occtSheetMetalJogSolid({
+    fixedLength,
+    developedSpacing,
+    remainingLength,
+    offset: params.offset,
+    width,
+    thickness,
+    radius,
+    primaryAxis: bendAlongX ? 'Z' : 'X',
+    bendLine,
+    baseY: bb.min.y,
+    widthCenter,
+  });
+  if (!exact.handle || exact.angleDeg === undefined) return null;
+  const history =
+    (geometry.userData as { __bendHistory?: BendHistoryEntry[] } | undefined)?.__bendHistory ?? [];
+  exact.geometry.userData = {
+    ...(geometry.userData ?? {}),
+    occtHandle: exact.handle,
+    __exactJog: {
+      developedSpacing,
+      projectedSpacing: exact.projectedSpacing,
+      straightLength: exact.straightLength,
+      angleDeg: exact.angleDeg,
+      offset: params.offset,
+      radius,
+      thickness,
+    },
+    __bendHistory: [
+      ...history,
+      {
+        angle: exact.angleDeg,
+        radius,
+        position,
+        direction: 'up' as const,
+        source: 'jog' as const,
+        lineAxis: bendAlongX ? 'x' as const : 'z' as const,
+        linePos: bendLine,
+        blankLength: primarySize,
+        flatBefore: fixedLength,
+        addsMaterial: false,
+      },
+      {
+        angle: exact.angleDeg,
+        radius,
+        position: (fixedLength + developedSpacing) / primarySize,
+        direction: 'down' as const,
+        source: 'jog' as const,
+        lineAxis: bendAlongX ? 'x' as const : 'z' as const,
+        linePos: bendLine + (exact.projectedSpacing ?? 0),
+        blankLength: primarySize,
+        flatBefore: fixedLength + developedSpacing,
+        addsMaterial: false,
+      },
+    ],
+  };
+  return exact.geometry;
 }
 
 /** Validate hem feasibility per material + thickness. Closed hems are
@@ -858,6 +1111,18 @@ export const bendFeature: FeatureDefinition = {
       direction: params.direction === 0 ? 'up' : 'down',
     });
   },
+  async applyAsync(geometry, params) {
+    if (shouldUseOcctEngine()) {
+      const exact = applyBendOcct(geometry, {
+        angle: params.angle,
+        radius: params.radius,
+        position: params.position / 100,
+        direction: params.direction === 0 ? 'up' : 'down',
+      });
+      if (exact) return exact;
+    }
+    return noteMeshFallback(bendFeature.apply(geometry, params), { op: 'Sheet metal bend' });
+  },
 };
 
 export const flangeFeature: FeatureDefinition = {
@@ -877,6 +1142,18 @@ export const flangeFeature: FeatureDefinition = {
       edgeIndex: Math.round(params.edgeIndex),
     });
   },
+  async applyAsync(geometry, params) {
+    if (shouldUseOcctEngine()) {
+      const exact = applyFlangeOcct(geometry, {
+        height: params.height,
+        angle: params.angle,
+        radius: params.radius,
+        edgeIndex: Math.round(params.edgeIndex),
+      });
+      if (exact) return exact;
+    }
+    return noteMeshFallback(flangeFeature.apply(geometry, params), { op: 'Sheet metal flange' });
+  },
 };
 
 export const jogFeature: FeatureDefinition = {
@@ -895,6 +1172,18 @@ export const jogFeature: FeatureDefinition = {
       spacing: params.spacing,
       radius: params.radius,
     });
+  },
+  async applyAsync(geometry, params) {
+    if (shouldUseOcctEngine()) {
+      const exact = applyJogOcct(geometry, {
+        offset: params.offset,
+        position: params.position / 100,
+        spacing: params.spacing,
+        radius: params.radius,
+      });
+      if (exact) return exact;
+    }
+    return noteMeshFallback(jogFeature.apply(geometry, params), { op: 'Sheet metal jog' });
   },
 };
 
@@ -929,6 +1218,18 @@ export const hemFeature: FeatureDefinition = {
       length: params.length,
       edgeIndex: Math.round(params.edgeIndex),
     });
+  },
+  async applyAsync(geometry, params) {
+    if (shouldUseOcctEngine()) {
+      const types: HemType[] = ['closed', 'open', 'teardrop'];
+      const exact = applyHemOcct(geometry, {
+        type: types[Math.round(params.hemType ?? 0)] ?? 'closed',
+        length: params.length,
+        edgeIndex: Math.round(params.edgeIndex),
+      });
+      if (exact) return exact;
+    }
+    return noteMeshFallback(hemFeature.apply(geometry, params), { op: 'Sheet metal hem' });
   },
 };
 

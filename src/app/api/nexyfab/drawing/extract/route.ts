@@ -19,6 +19,9 @@ import { pathToFileURL } from 'node:url';
 import { rateLimit } from '@/lib/rate-limit';
 import { getTrustedClientIp } from '@/lib/client-ip';
 import { guardStudioAi } from '@/lib/studio-ai-guard';
+import { boundedJsonError, readBoundedJson } from '@/lib/boundedJsonBody';
+
+const MAX_BODY_BYTES = 13 * 1024 * 1024;
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -65,12 +68,13 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 
   let imageBase64: string, mimeType: string, dxfText = '';
   try {
-    const body = (await req.json()) as { imageBase64?: string; mimeType?: string; dxfText?: string };
+    const body = await readBoundedJson<{ imageBase64?: string; mimeType?: string; dxfText?: string }>(req, MAX_BODY_BYTES);
     imageBase64 = (body.imageBase64 ?? '').replace(/^data:[^,]+,/, '').trim(); // data: 접두 있으면 제거
     mimeType = (body.mimeType ?? 'image/png').toLowerCase();
     // P1-b(260719b): 같은 부품의 벡터 도면(DXF) 동봉 시 T3 실측값 직사용 — 비전 추론→판독 격상
     if (typeof body.dxfText === 'string' && body.dxfText.length >= 20 && body.dxfText.length <= 4_000_000) dxfText = body.dxfText;
-  } catch {
+  } catch (error) {
+    if (boundedJsonError(error)?.code === 'PAYLOAD_TOO_LARGE') return NextResponse.json({ ok: false, error: '입력 이미지 또는 DXF가 너무 큽니다.' }, { status: 413 });
     return NextResponse.json({ ok: false, error: 'invalid json' }, { status: 400 });
   }
   if (!imageBase64 || imageBase64.length < 100) {

@@ -2,8 +2,7 @@ name = "nexyfab"
 compatibility_date = "2024-09-23"
 compatibility_flags = ["nodejs_compat"]
 
-[pages_build_output_dir]
-directory = ".vercel/output"
+pages_build_output_dir = ".vercel/output"
 
 [vars]
 # 환경 변수는 여기 또는 Cloudflare Dashboard에서 설정

@@ -1,0 +1,1029 @@
+{
+  "schema": "nexyfab.independent-domain-review-kit.v3",
+  "generatedAt": "2026-08-22T05:08:02.892Z",
+  "releaseChannel": "verified-interior",
+  "requiredDomains": [
+    "interior"
+  ],
+  "policy": {
+    "casesPerDomain": 20,
+    "independentReviewersPerCase": 2,
+    "sourceMayNotComeFromSyntheticLane": true,
+    "sourceMayNotComeFromReferenceLane": true,
+    "reviewerMayNotBeReplacedByAi": true,
+    "signedDecisionRequired": true,
+    "cryptographicSignatureRequired": true,
+    "trustedReviewerRegistryRequired": true,
+    "sourceOrArtifactMutationInvalidatesReview": true,
+    "spatialEvidenceMaySatisfyMechanicalCore": false
+  },
+  "summary": {
+    "requiredCases": 20,
+    "acquiredCases": 0,
+    "approvedCases": 0,
+    "requiredSignedReviews": 40,
+    "completedSignedReviews": 0
+  },
+  "cases": [
+    {
+      "caseId": "interior-independent-01",
+      "domain": "interior",
+      "status": "source_required",
+      "requiredAxes": [
+        "space boundary",
+        "egress",
+        "door swing",
+        "MEP interference",
+        "quantity"
+      ],
+      "source": {
+        "organizationId": null,
+        "lineageId": null,
+        "sourceSha256": null,
+        "licenseDecision": null,
+        "independentOfTrainingAndReferenceCorpus": null,
+        "acquisitionAttestation": null
+      },
+      "blindedRun": {
+        "inputSha256": null,
+        "outputArtifactHashes": [],
+        "automaticValidationReceipt": {
+          "schema": null,
+          "path": null,
+          "sha256": null
+        },
+        "executedAt": null
+      },
+      "reviews": {
+        "domainReviewer": {
+          "reviewerId": null,
+          "independentFromBuild": null,
+          "decision": null,
+          "reviewedAt": null,
+          "targetHash": null,
+          "signature": null
+        },
+        "independentReviewer": {
+          "reviewerId": null,
+          "independentFromBuild": null,
+          "decision": null,
+          "reviewedAt": null,
+          "targetHash": null,
+          "signature": null
+        },
+        "disagreementResolution": null
+      },
+      "releaseEligible": false
+    },
+    {
+      "caseId": "interior-independent-02",
+      "domain": "interior",
+      "status": "source_required",
+      "requiredAxes": [
+        "space boundary",
+        "egress",
+        "door swing",
+        "MEP interference",
+        "quantity"
+      ],
+      "source": {
+        "organizationId": null,
+        "lineageId": null,
+        "sourceSha256": null,
+        "licenseDecision": null,
+        "independentOfTrainingAndReferenceCorpus": null,
+        "acquisitionAttestation": null
+      },
+      "blindedRun": {
+        "inputSha256": null,
+        "outputArtifactHashes": [],
+        "automaticValidationReceipt": {
+          "schema": null,
+          "path": null,
+          "sha256": null
+        },
+        "executedAt": null
+      },
+      "reviews": {
+        "domainReviewer": {
+          "reviewerId": null,
+          "independentFromBuild": null,
+          "decision": null,
+          "reviewedAt": null,
+          "targetHash": null,
+          "signature": null
+        },
+        "independentReviewer": {
+          "reviewerId": null,
+          "independentFromBuild": null,
+          "decision": null,
+          "reviewedAt": null,
+          "targetHash": null,
+          "signature": null
+        },
+        "disagreementResolution": null
+      },
+      "releaseEligible": false
+    },
+    {
+      "caseId": "interior-independent-03",
+      "domain": "interior",
+      "status": "source_required",
+      "requiredAxes": [
+        "space boundary",
+        "egress",
+        "door swing",
+        "MEP interference",
+        "quantity"
+      ],
+      "source": {
+        "organizationId": null,
+        "lineageId": null,
+        "sourceSha256": null,
+        "licenseDecision": null,
+        "independentOfTrainingAndReferenceCorpus": null,
+        "acquisitionAttestation": null
+      },
+      "blindedRun": {
+        "inputSha256": null,
+        "outputArtifactHashes": [],
+        "automaticValidationReceipt": {
+          "schema": null,
+          "path": null,
+          "sha256": null
+        },
+        "executedAt": null
+      },
+      "reviews": {
+        "domainReviewer": {
+          "reviewerId": null,
+          "independentFromBuild": null,
+          "decision": null,
+          "reviewedAt": null,
+          "targetHash": null,
+          "signature": null
+        },
+        "independentReviewer": {
+          "reviewerId": null,
+          "independentFromBuild": null,
+          "decision": null,
+          "reviewedAt": null,
+          "targetHash": null,
+          "signature": null
+        },
+        "disagreementResolution": null
+      },
+      "releaseEligible": false
+    },
+    {
+      "caseId": "interior-independent-04",
+      "domain": "interior",
+      "status": "source_required",
+      "requiredAxes": [
+        "space boundary",
+        "egress",
+        "door swing",
+        "MEP interference",
+        "quantity"
+      ],
+      "source": {
+        "organizationId": null,
+        "lineageId": null,
+        "sourceSha256": null,
+        "licenseDecision": null,
+        "independentOfTrainingAndReferenceCorpus": null,
+        "acquisitionAttestation": null
+      },
+      "blindedRun": {
+        "inputSha256": null,
+        "outputArtifactHashes": [],
+        "automaticValidationReceipt": {
+          "schema": null,
+          "path": null,
+          "sha256": null
+        },
+        "executedAt": null
+      },
+      "reviews": {
+        "domainReviewer": {
+          "reviewerId": null,
+          "independentFromBuild": null,
+          "decision": null,
+          "reviewedAt": null,
+          "targetHash": null,
+          "signature": null
+        },
+        "independentReviewer": {
+          "reviewerId": null,
+          "independentFromBuild": null,
+          "decision": null,
+          "reviewedAt": null,
+          "targetHash": null,
+          "signature": null
+        },
+        "disagreementResolution": null
+      },
+      "releaseEligible": false
+    },
+    {
+      "caseId": "interior-independent-05",
+      "domain": "interior",
+      "status": "source_required",
+      "requiredAxes": [
+        "space boundary",
+        "egress",
+        "door swing",
+        "MEP interference",
+        "quantity"
+      ],
+      "source": {
+        "organizationId": null,
+        "lineageId": null,
+        "sourceSha256": null,
+        "licenseDecision": null,
+        "independentOfTrainingAndReferenceCorpus": null,
+        "acquisitionAttestation": null
+      },
+      "blindedRun": {
+        "inputSha256": null,
+        "outputArtifactHashes": [],
+        "automaticValidationReceipt": {
+          "schema": null,
+          "path": null,
+          "sha256": null
+        },
+        "executedAt": null
+      },
+      "reviews": {
+        "domainReviewer": {
+          "reviewerId": null,
+          "independentFromBuild": null,
+          "decision": null,
+          "reviewedAt": null,
+          "targetHash": null,
+          "signature": null
+        },
+        "independentReviewer": {
+          "reviewerId": null,
+          "independentFromBuild": null,
+          "decision": null,
+          "reviewedAt": null,
+          "targetHash": null,
+          "signature": null
+        },
+        "disagreementResolution": null
+      },
+      "releaseEligible": false
+    },
+    {
+      "caseId": "interior-independent-06",
+      "domain": "interior",
+      "status": "source_required",
+      "requiredAxes": [
+        "space boundary",
+        "egress",
+        "door swing",
+        "MEP interference",
+        "quantity"
+      ],
+      "source": {
+        "organizationId": null,
+        "lineageId": null,
+        "sourceSha256": null,
+        "licenseDecision": null,
+        "independentOfTrainingAndReferenceCorpus": null,
+        "acquisitionAttestation": null
+      },
+      "blindedRun": {
+        "inputSha256": null,
+        "outputArtifactHashes": [],
+        "automaticValidationReceipt": {
+          "schema": null,
+          "path": null,
+          "sha256": null
+        },
+        "executedAt": null
+      },
+      "reviews": {
+        "domainReviewer": {
+          "reviewerId": null,
+          "independentFromBuild": null,
+          "decision": null,
+          "reviewedAt": null,
+          "targetHash": null,
+          "signature": null
+        },
+        "independentReviewer": {
+          "reviewerId": null,
+          "independentFromBuild": null,
+          "decision": null,
+          "reviewedAt": null,
+          "targetHash": null,
+          "signature": null
+        },
+        "disagreementResolution": null
+      },
+      "releaseEligible": false
+    },
+    {
+      "caseId": "interior-independent-07",
+      "domain": "interior",
+      "status": "source_required",
+      "requiredAxes": [
+        "space boundary",
+        "egress",
+        "door swing",
+        "MEP interference",
+        "quantity"
+      ],
+      "source": {
+        "organizationId": null,
+        "lineageId": null,
+        "sourceSha256": null,
+        "licenseDecision": null,
+        "independentOfTrainingAndReferenceCorpus": null,
+        "acquisitionAttestation": null
+      },
+      "blindedRun": {
+        "inputSha256": null,
+        "outputArtifactHashes": [],
+        "automaticValidationReceipt": {
+          "schema": null,
+          "path": null,
+          "sha256": null
+        },
+        "executedAt": null
+      },
+      "reviews": {
+        "domainReviewer": {
+          "reviewerId": null,
+          "independentFromBuild": null,
+          "decision": null,
+          "reviewedAt": null,
+          "targetHash": null,
+          "signature": null
+        },
+        "independentReviewer": {
+          "reviewerId": null,
+          "independentFromBuild": null,
+          "decision": null,
+          "reviewedAt": null,
+          "targetHash": null,
+          "signature": null
+        },
+        "disagreementResolution": null
+      },
+      "releaseEligible": false
+    },
+    {
+      "caseId": "interior-independent-08",
+      "domain": "interior",
+      "status": "source_required",
+      "requiredAxes": [
+        "space boundary",
+        "egress",
+        "door swing",
+        "MEP interference",
+        "quantity"
+      ],
+      "source": {
+        "organizationId": null,
+        "lineageId": null,
+        "sourceSha256": null,
+        "licenseDecision": null,
+        "independentOfTrainingAndReferenceCorpus": null,
+        "acquisitionAttestation": null
+      },
+      "blindedRun": {
+        "inputSha256": null,
+        "outputArtifactHashes": [],
+        "automaticValidationReceipt": {
+          "schema": null,
+          "path": null,
+          "sha256": null
+        },
+        "executedAt": null
+      },
+      "reviews": {
+        "domainReviewer": {
+          "reviewerId": null,
+          "independentFromBuild": null,
+          "decision": null,
+          "reviewedAt": null,
+          "targetHash": null,
+          "signature": null
+        },
+        "independentReviewer": {
+          "reviewerId": null,
+          "independentFromBuild": null,
+          "decision": null,
+          "reviewedAt": null,
+          "targetHash": null,
+          "signature": null
+        },
+        "disagreementResolution": null
+      },
+      "releaseEligible": false
+    },
+    {
+      "caseId": "interior-independent-09",
+      "domain": "interior",
+      "status": "source_required",
+      "requiredAxes": [
+        "space boundary",
+        "egress",
+        "door swing",
+        "MEP interference",
+        "quantity"
+      ],
+      "source": {
+        "organizationId": null,
+        "lineageId": null,
+        "sourceSha256": null,
+        "licenseDecision": null,
+        "independentOfTrainingAndReferenceCorpus": null,
+        "acquisitionAttestation": null
+      },
+      "blindedRun": {
+        "inputSha256": null,
+        "outputArtifactHashes": [],
+        "automaticValidationReceipt": {
+          "schema": null,
+          "path": null,
+          "sha256": null
+        },
+        "executedAt": null
+      },
+      "reviews": {
+        "domainReviewer": {
+          "reviewerId": null,
+          "independentFromBuild": null,
+          "decision": null,
+          "reviewedAt": null,
+          "targetHash": null,
+          "signature": null
+        },
+        "independentReviewer": {
+          "reviewerId": null,
+          "independentFromBuild": null,
+          "decision": null,
+          "reviewedAt": null,
+          "targetHash": null,
+          "signature": null
+        },
+        "disagreementResolution": null
+      },
+      "releaseEligible": false
+    },
+    {
+      "caseId": "interior-independent-10",
+      "domain": "interior",
+      "status": "source_required",
+      "requiredAxes": [
+        "space boundary",
+        "egress",
+        "door swing",
+        "MEP interference",
+        "quantity"
+      ],
+      "source": {
+        "organizationId": null,
+        "lineageId": null,
+        "sourceSha256": null,
+        "licenseDecision": null,
+        "independentOfTrainingAndReferenceCorpus": null,
+        "acquisitionAttestation": null
+      },
+      "blindedRun": {
+        "inputSha256": null,
+        "outputArtifactHashes": [],
+        "automaticValidationReceipt": {
+          "schema": null,
+          "path": null,
+          "sha256": null
+        },
+        "executedAt": null
+      },
+      "reviews": {
+        "domainReviewer": {
+          "reviewerId": null,
+          "independentFromBuild": null,
+          "decision": null,
+          "reviewedAt": null,
+          "targetHash": null,
+          "signature": null
+        },
+        "independentReviewer": {
+          "reviewerId": null,
+          "independentFromBuild": null,
+          "decision": null,
+          "reviewedAt": null,
+          "targetHash": null,
+          "signature": null
+        },
+        "disagreementResolution": null
+      },
+      "releaseEligible": false
+    },
+    {
+      "caseId": "interior-independent-11",
+      "domain": "interior",
+      "status": "source_required",
+      "requiredAxes": [
+        "space boundary",
+        "egress",
+        "door swing",
+        "MEP interference",
+        "quantity"
+      ],
+      "source": {
+        "organizationId": null,
+        "lineageId": null,
+        "sourceSha256": null,
+        "licenseDecision": null,
+        "independentOfTrainingAndReferenceCorpus": null,
+        "acquisitionAttestation": null
+      },
+      "blindedRun": {
+        "inputSha256": null,
+        "outputArtifactHashes": [],
+        "automaticValidationReceipt": {
+          "schema": null,
+          "path": null,
+          "sha256": null
+        },
+        "executedAt": null
+      },
+      "reviews": {
+        "domainReviewer": {
+          "reviewerId": null,
+          "independentFromBuild": null,
+          "decision": null,
+          "reviewedAt": null,
+          "targetHash": null,
+          "signature": null
+        },
+        "independentReviewer": {
+          "reviewerId": null,
+          "independentFromBuild": null,
+          "decision": null,
+          "reviewedAt": null,
+          "targetHash": null,
+          "signature": null
+        },
+        "disagreementResolution": null
+      },
+      "releaseEligible": false
+    },
+    {
+      "caseId": "interior-independent-12",
+      "domain": "interior",
+      "status": "source_required",
+      "requiredAxes": [
+        "space boundary",
+        "egress",
+        "door swing",
+        "MEP interference",
+        "quantity"
+      ],
+      "source": {
+        "organizationId": null,
+        "lineageId": null,
+        "sourceSha256": null,
+        "licenseDecision": null,
+        "independentOfTrainingAndReferenceCorpus": null,
+        "acquisitionAttestation": null
+      },
+      "blindedRun": {
+        "inputSha256": null,
+        "outputArtifactHashes": [],
+        "automaticValidationReceipt": {
+          "schema": null,
+          "path": null,
+          "sha256": null
+        },
+        "executedAt": null
+      },
+      "reviews": {
+        "domainReviewer": {
+          "reviewerId": null,
+          "independentFromBuild": null,
+          "decision": null,
+          "reviewedAt": null,
+          "targetHash": null,
+          "signature": null
+        },
+        "independentReviewer": {
+          "reviewerId": null,
+          "independentFromBuild": null,
+          "decision": null,
+          "reviewedAt": null,
+          "targetHash": null,
+          "signature": null
+        },
+        "disagreementResolution": null
+      },
+      "releaseEligible": false
+    },
+    {
+      "caseId": "interior-independent-13",
+      "domain": "interior",
+      "status": "source_required",
+      "requiredAxes": [
+        "space boundary",
+        "egress",
+        "door swing",
+        "MEP interference",
+        "quantity"
+      ],
+      "source": {
+        "organizationId": null,
+        "lineageId": null,
+        "sourceSha256": null,
+        "licenseDecision": null,
+        "independentOfTrainingAndReferenceCorpus": null,
+        "acquisitionAttestation": null
+      },
+      "blindedRun": {
+        "inputSha256": null,
+        "outputArtifactHashes": [],
+        "automaticValidationReceipt": {
+          "schema": null,
+          "path": null,
+          "sha256": null
+        },
+        "executedAt": null
+      },
+      "reviews": {
+        "domainReviewer": {
+          "reviewerId": null,
+          "independentFromBuild": null,
+          "decision": null,
+          "reviewedAt": null,
+          "targetHash": null,
+          "signature": null
+        },
+        "independentReviewer": {
+          "reviewerId": null,
+          "independentFromBuild": null,
+          "decision": null,
+          "reviewedAt": null,
+          "targetHash": null,
+          "signature": null
+        },
+        "disagreementResolution": null
+      },
+      "releaseEligible": false
+    },
+    {
+      "caseId": "interior-independent-14",
+      "domain": "interior",
+      "status": "source_required",
+      "requiredAxes": [
+        "space boundary",
+        "egress",
+        "door swing",
+        "MEP interference",
+        "quantity"
+      ],
+      "source": {
+        "organizationId": null,
+        "lineageId": null,
+        "sourceSha256": null,
+        "licenseDecision": null,
+        "independentOfTrainingAndReferenceCorpus": null,
+        "acquisitionAttestation": null
+      },
+      "blindedRun": {
+        "inputSha256": null,
+        "outputArtifactHashes": [],
+        "automaticValidationReceipt": {
+          "schema": null,
+          "path": null,
+          "sha256": null
+        },
+        "executedAt": null
+      },
+      "reviews": {
+        "domainReviewer": {
+          "reviewerId": null,
+          "independentFromBuild": null,
+          "decision": null,
+          "reviewedAt": null,
+          "targetHash": null,
+          "signature": null
+        },
+        "independentReviewer": {
+          "reviewerId": null,
+          "independentFromBuild": null,
+          "decision": null,
+          "reviewedAt": null,
+          "targetHash": null,
+          "signature": null
+        },
+        "disagreementResolution": null
+      },
+      "releaseEligible": false
+    },
+    {
+      "caseId": "interior-independent-15",
+      "domain": "interior",
+      "status": "source_required",
+      "requiredAxes": [
+        "space boundary",
+        "egress",
+        "door swing",
+        "MEP interference",
+        "quantity"
+      ],
+      "source": {
+        "organizationId": null,
+        "lineageId": null,
+        "sourceSha256": null,
+        "licenseDecision": null,
+        "independentOfTrainingAndReferenceCorpus": null,
+        "acquisitionAttestation": null
+      },
+      "blindedRun": {
+        "inputSha256": null,
+        "outputArtifactHashes": [],
+        "automaticValidationReceipt": {
+          "schema": null,
+          "path": null,
+          "sha256": null
+        },
+        "executedAt": null
+      },
+      "reviews": {
+        "domainReviewer": {
+          "reviewerId": null,
+          "independentFromBuild": null,
+          "decision": null,
+          "reviewedAt": null,
+          "targetHash": null,
+          "signature": null
+        },
+        "independentReviewer": {
+          "reviewerId": null,
+          "independentFromBuild": null,
+          "decision": null,
+          "reviewedAt": null,
+          "targetHash": null,
+          "signature": null
+        },
+        "disagreementResolution": null
+      },
+      "releaseEligible": false
+    },
+    {
+      "caseId": "interior-independent-16",
+      "domain": "interior",
+      "status": "source_required",
+      "requiredAxes": [
+        "space boundary",
+        "egress",
+        "door swing",
+        "MEP interference",
+        "quantity"
+      ],
+      "source": {
+        "organizationId": null,
+        "lineageId": null,
+        "sourceSha256": null,
+        "licenseDecision": null,
+        "independentOfTrainingAndReferenceCorpus": null,
+        "acquisitionAttestation": null
+      },
+      "blindedRun": {
+        "inputSha256": null,
+        "outputArtifactHashes": [],
+        "automaticValidationReceipt": {
+          "schema": null,
+          "path": null,
+          "sha256": null
+        },
+        "executedAt": null
+      },
+      "reviews": {
+        "domainReviewer": {
+          "reviewerId": null,
+          "independentFromBuild": null,
+          "decision": null,
+          "reviewedAt": null,
+          "targetHash": null,
+          "signature": null
+        },
+        "independentReviewer": {
+          "reviewerId": null,
+          "independentFromBuild": null,
+          "decision": null,
+          "reviewedAt": null,
+          "targetHash": null,
+          "signature": null
+        },
+        "disagreementResolution": null
+      },
+      "releaseEligible": false
+    },
+    {
+      "caseId": "interior-independent-17",
+      "domain": "interior",
+      "status": "source_required",
+      "requiredAxes": [
+        "space boundary",
+        "egress",
+        "door swing",
+        "MEP interference",
+        "quantity"
+      ],
+      "source": {
+        "organizationId": null,
+        "lineageId": null,
+        "sourceSha256": null,
+        "licenseDecision": null,
+        "independentOfTrainingAndReferenceCorpus": null,
+        "acquisitionAttestation": null
+      },
+      "blindedRun": {
+        "inputSha256": null,
+        "outputArtifactHashes": [],
+        "automaticValidationReceipt": {
+          "schema": null,
+          "path": null,
+          "sha256": null
+        },
+        "executedAt": null
+      },
+      "reviews": {
+        "domainReviewer": {
+          "reviewerId": null,
+          "independentFromBuild": null,
+          "decision": null,
+          "reviewedAt": null,
+          "targetHash": null,
+          "signature": null
+        },
+        "independentReviewer": {
+          "reviewerId": null,
+          "independentFromBuild": null,
+          "decision": null,
+          "reviewedAt": null,
+          "targetHash": null,
+          "signature": null
+        },
+        "disagreementResolution": null
+      },
+      "releaseEligible": false
+    },
+    {
+      "caseId": "interior-independent-18",
+      "domain": "interior",
+      "status": "source_required",
+      "requiredAxes": [
+        "space boundary",
+        "egress",
+        "door swing",
+        "MEP interference",
+        "quantity"
+      ],
+      "source": {
+        "organizationId": null,
+        "lineageId": null,
+        "sourceSha256": null,
+        "licenseDecision": null,
+        "independentOfTrainingAndReferenceCorpus": null,
+        "acquisitionAttestation": null
+      },
+      "blindedRun": {
+        "inputSha256": null,
+        "outputArtifactHashes": [],
+        "automaticValidationReceipt": {
+          "schema": null,
+          "path": null,
+          "sha256": null
+        },
+        "executedAt": null
+      },
+      "reviews": {
+        "domainReviewer": {
+          "reviewerId": null,
+          "independentFromBuild": null,
+          "decision": null,
+          "reviewedAt": null,
+          "targetHash": null,
+          "signature": null
+        },
+        "independentReviewer": {
+          "reviewerId": null,
+          "independentFromBuild": null,
+          "decision": null,
+          "reviewedAt": null,
+          "targetHash": null,
+          "signature": null
+        },
+        "disagreementResolution": null
+      },
+      "releaseEligible": false
+    },
+    {
+      "caseId": "interior-independent-19",
+      "domain": "interior",
+      "status": "source_required",
+      "requiredAxes": [
+        "space boundary",
+        "egress",
+        "door swing",
+        "MEP interference",
+        "quantity"
+      ],
+      "source": {
+        "organizationId": null,
+        "lineageId": null,
+        "sourceSha256": null,
+        "licenseDecision": null,
+        "independentOfTrainingAndReferenceCorpus": null,
+        "acquisitionAttestation": null
+      },
+      "blindedRun": {
+        "inputSha256": null,
+        "outputArtifactHashes": [],
+        "automaticValidationReceipt": {
+          "schema": null,
+          "path": null,
+          "sha256": null
+        },
+        "executedAt": null
+      },
+      "reviews": {
+        "domainReviewer": {
+          "reviewerId": null,
+          "independentFromBuild": null,
+          "decision": null,
+          "reviewedAt": null,
+          "targetHash": null,
+          "signature": null
+        },
+        "independentReviewer": {
+          "reviewerId": null,
+          "independentFromBuild": null,
+          "decision": null,
+          "reviewedAt": null,
+          "targetHash": null,
+          "signature": null
+        },
+        "disagreementResolution": null
+      },
+      "releaseEligible": false
+    },
+    {
+      "caseId": "interior-independent-20",
+      "domain": "interior",
+      "status": "source_required",
+      "requiredAxes": [
+        "space boundary",
+        "egress",
+        "door swing",
+        "MEP interference",
+        "quantity"
+      ],
+      "source": {
+        "organizationId": null,
+        "lineageId": null,
+        "sourceSha256": null,
+        "licenseDecision": null,
+        "independentOfTrainingAndReferenceCorpus": null,
+        "acquisitionAttestation": null
+      },
+      "blindedRun": {
+        "inputSha256": null,
+        "outputArtifactHashes": [],
+        "automaticValidationReceipt": {
+          "schema": null,
+          "path": null,
+          "sha256": null
+        },
+        "executedAt": null
+      },
+      "reviews": {
+        "domainReviewer": {
+          "reviewerId": null,
+          "independentFromBuild": null,
+          "decision": null,
+          "reviewedAt": null,
+          "targetHash": null,
+          "signature": null
+        },
+        "independentReviewer": {
+          "reviewerId": null,
+          "independentFromBuild": null,
+          "decision": null,
+          "reviewedAt": null,
+          "targetHash": null,
+          "signature": null
+        },
+        "disagreementResolution": null
+      },
+      "releaseEligible": false
+    }
+  ]
+}

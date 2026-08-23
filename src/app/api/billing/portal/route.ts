@@ -6,6 +6,7 @@
  * Create Airwallex payment intent for adding/updating payment method.
  */
 import { NextRequest, NextResponse } from 'next/server';
+import { boundedJsonError, readBoundedJson } from '@/lib/boundedJsonBody';
 import { getAuthUser } from '@/lib/auth-middleware';
 import { getDbAdapter } from '@/lib/db-adapter';
 import { checkOrigin } from '@/lib/csrf';
@@ -19,6 +20,12 @@ import {
   type Plan,
 } from '@/lib/billing-engine';
 import { createPaymentIntent, toAirwallexAmount } from '@/lib/airwallex-client';
+import { resolveRequestOrgContext } from '@/lib/org-context';
+import { denyIfPaymentCollectionDisabled } from '@/lib/payment-gate';
+
+function orgContextError(code: 'ORG_CONTEXT_REQUIRED' | 'ORG_CONTEXT_INVALID') {
+  return NextResponse.json({ error: 'Select a valid billing context', code }, { status: 409 });
+}
 
 export async function GET(req: NextRequest) {
   const authUser = await getAuthUser(req);
@@ -26,6 +33,8 @@ export async function GET(req: NextRequest) {
 
   const db = getDbAdapter();
   const product = (req.nextUrl.searchParams.get('product') ?? 'nexyfab') as Product;
+  const context = resolveRequestOrgContext(authUser);
+  if (!context.ok) return orgContextError(context.code);
 
   const user = await db.queryOne<{ plan: string; email: string; name: string; created_at: number }>(
     'SELECT plan, email, name, created_at FROM nf_users WHERE id = ?',
@@ -33,8 +42,7 @@ export async function GET(req: NextRequest) {
   );
   if (!user) return NextResponse.json({ error: 'User not found' }, { status: 404 });
 
-  // Org-level billing: if user belongs to an org, bill at org level
-  const orgId = authUser.orgIds[0] ?? null;
+  const orgId = context.orgId;
   const org = orgId
     ? await db.queryOne<{ id: string; name: string; plan: string }>(
         'SELECT id, name, plan FROM nf_orgs WHERE id = ?', orgId,
@@ -47,50 +55,46 @@ export async function GET(req: NextRequest) {
   // Billing queries: scope to org if org exists, otherwise to user
   const billingUserId = authUser.userId;
   const billingOrgId = orgId;
+  await db.execute('ALTER TABLE nf_files ADD COLUMN org_id TEXT').catch(() => {});
 
   const [subscription, invoices, usageItems, storageRow] = await Promise.all([
-    // Subscription: prefer org-level, fall back to user-level
+    // Never mix an organization's billing records with personal records.
     billingOrgId
       ? db.queryOne<{
           id: string; status: string; current_period_start: number; current_period_end: number;
         }>(
           "SELECT id, status, current_period_start, current_period_end FROM nf_aw_subscriptions WHERE org_id = ? AND product = ? AND status != 'cancelled' ORDER BY created_at DESC LIMIT 1",
           billingOrgId, product,
-        ).then(r => r ?? db.queryOne(
-          "SELECT id, status, current_period_start, current_period_end FROM nf_aw_subscriptions WHERE user_id = ? AND product = ? AND status != 'cancelled' ORDER BY created_at DESC LIMIT 1",
-          billingUserId, product,
-        ))
+        )
       : db.queryOne<{
           id: string; status: string; current_period_start: number; current_period_end: number;
         }>(
-          "SELECT id, status, current_period_start, current_period_end FROM nf_aw_subscriptions WHERE user_id = ? AND product = ? AND status != 'cancelled' ORDER BY created_at DESC LIMIT 1",
+          "SELECT id, status, current_period_start, current_period_end FROM nf_aw_subscriptions WHERE user_id = ? AND product = ? AND org_id IS NULL AND status != 'cancelled' ORDER BY created_at DESC LIMIT 1",
           billingUserId, product,
         ),
-    // Invoices: include both user-level and org-level
+    // Invoice history follows the selected context only.
     billingOrgId
       ? db.queryAll<{
           id: string; total_amount_krw: number; status: string; created_at: number; paid_at: number | null; description: string;
         }>(
-          'SELECT id, total_amount_krw, status, created_at, paid_at, description FROM nf_aw_invoices WHERE (user_id = ? OR org_id = ?) AND product = ? ORDER BY created_at DESC LIMIT 12',
-          billingUserId, billingOrgId, product,
+          'SELECT id, total_amount_krw, status, created_at, paid_at, description FROM nf_aw_invoices WHERE org_id = ? AND product = ? ORDER BY created_at DESC LIMIT 12',
+          billingOrgId, product,
         )
       : db.queryAll<{
           id: string; total_amount_krw: number; status: string; created_at: number; paid_at: number | null; description: string;
         }>(
-          'SELECT id, total_amount_krw, status, created_at, paid_at, description FROM nf_aw_invoices WHERE user_id = ? AND product = ? ORDER BY created_at DESC LIMIT 12',
+          'SELECT id, total_amount_krw, status, created_at, paid_at, description FROM nf_aw_invoices WHERE user_id = ? AND org_id IS NULL AND product = ? ORDER BY created_at DESC LIMIT 12',
           billingUserId, product,
         ),
-    calculateCycleUsage(billingUserId, product, plan),
+    calculateCycleUsage(billingUserId, product, plan, billingOrgId),
     // Storage: aggregate all org members' files if org exists
     billingOrgId
       ? db.queryOne<{ total_bytes: number }>(
-          `SELECT COALESCE(SUM(f.size_bytes), 0) as total_bytes FROM nf_files f
-           JOIN nf_org_members om ON om.user_id = f.user_id
-           WHERE om.org_id = ?`,
+          `SELECT COALESCE(SUM(size_bytes), 0) as total_bytes FROM nf_files WHERE org_id = ?`,
           billingOrgId,
         )
       : db.queryOne<{ total_bytes: number }>(
-          'SELECT COALESCE(SUM(size_bytes), 0) as total_bytes FROM nf_files WHERE user_id = ?',
+          'SELECT COALESCE(SUM(size_bytes), 0) as total_bytes FROM nf_files WHERE user_id = ? AND org_id IS NULL',
           billingUserId,
         ),
   ]);
@@ -155,12 +159,23 @@ export async function GET(req: NextRequest) {
   });
 }
 
+const BILLING_PORTAL_JSON_BYTES = 64 * 1024;
+
 export async function POST(req: NextRequest) {
+  const paymentDenied = denyIfPaymentCollectionDisabled();
+  if (paymentDenied) return paymentDenied;
   if (!checkOrigin(req)) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   const authUser = await getAuthUser(req);
   if (!authUser) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  const context = resolveRequestOrgContext(authUser);
+  if (!context.ok) return orgContextError(context.code);
 
-  const body = await req.json() as { action: string; returnUrl?: string };
+  let body: { action?: string; returnUrl?: string } = {};
+  try { body = await readBoundedJson(req, BILLING_PORTAL_JSON_BYTES); }
+  catch (error) {
+    const bodyError = boundedJsonError(error);
+    if (bodyError?.code === 'PAYLOAD_TOO_LARGE') return NextResponse.json({ error: 'Request body too large' }, { status: bodyError.status });
+  }
 
   if (body.action === 'setup-payment-method') {
     // Create a zero-amount payment intent for card setup
@@ -171,7 +186,11 @@ export async function POST(req: NextRequest) {
       customerId:  awCustomerId,
       description: 'Payment method setup',
       returnUrl:   body.returnUrl,
-      metadata: { nexysys_user_id: authUser.userId, type: 'setup' },
+      metadata: {
+        nexysys_user_id: authUser.userId,
+        nexysys_org_id: context.orgId ?? 'personal',
+        type: 'setup',
+      },
     });
 
     return NextResponse.json({

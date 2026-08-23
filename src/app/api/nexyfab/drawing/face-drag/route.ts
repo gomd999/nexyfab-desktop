@@ -10,6 +10,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { rateLimit } from '@/lib/rate-limit';
 import { getTrustedClientIp } from '@/lib/client-ip';
+import { boundedJsonError, readBoundedJson } from '@/lib/boundedJsonBody';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -23,10 +24,11 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 
   let body: { assembly?: { parts?: unknown[] }; partId?: string; normal?: number[]; face?: string; deltaMm?: number; targetMm?: number };
   try {
-    const raw = await req.text();
-    if (raw.length > 800_000) return NextResponse.json({ ok: false, error: 'assembly 가 너무 큽니다(≤800KB)' }, { status: 400 });
-    body = JSON.parse(raw) as typeof body;
-  } catch {
+    body = await readBoundedJson<typeof body>(req, 800_000);
+  } catch (error) {
+    if (boundedJsonError(error)?.code === 'PAYLOAD_TOO_LARGE') {
+      return NextResponse.json({ ok: false, error: 'assembly 가 너무 큽니다(≤800KB)' }, { status: 400 });
+    }
     return NextResponse.json({ ok: false, error: 'invalid json' }, { status: 400 });
   }
   const { assembly, partId, normal, deltaMm, targetMm } = body;

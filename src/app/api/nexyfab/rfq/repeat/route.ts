@@ -3,8 +3,10 @@ import { getAuthUser } from '@/lib/auth-middleware';
 import { getDbAdapter } from '@/lib/db-adapter';
 import { type RFQEntry as _RFQEntry, rowToRfq } from '../rfq-types';
 import { checkOrigin } from '@/lib/csrf';
+import { boundedJsonError, readBoundedJson } from '@/lib/boundedJsonBody';
 
 export const dynamic = 'force-dynamic';
+const RFQ_REPEAT_JSON_BYTES = 64 * 1024;
 
 // POST /api/nexyfab/rfq/repeat
 // Body: { rfqId: string }
@@ -15,7 +17,15 @@ export async function POST(req: NextRequest) {
   const authUser = await getAuthUser(req);
   if (!authUser) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-  const body = await req.json().catch(() => ({})) as { rfqId?: string; quantity?: number };
+  let body: { rfqId?: string; quantity?: number } = {};
+  try {
+    body = await readBoundedJson(req, RFQ_REPEAT_JSON_BYTES);
+  } catch (error) {
+    const bodyError = boundedJsonError(error);
+    if (bodyError?.code === 'PAYLOAD_TOO_LARGE') {
+      return NextResponse.json({ error: 'Request body too large' }, { status: bodyError.status });
+    }
+  }
   if (!body.rfqId) return NextResponse.json({ error: 'rfqId is required' }, { status: 400 });
 
   const db = getDbAdapter();

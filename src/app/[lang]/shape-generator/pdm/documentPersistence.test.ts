@@ -11,12 +11,16 @@
  */
 
 import { describe, it, expect, vi } from 'vitest';
+import * as Y from 'yjs';
 import type { Commit } from './versionBranch';
 import {
   encodeCommitEnvelope,
   decodeCommitEnvelope,
   pushCommitVersion,
   fetchVersionHistory,
+  fetchVersionSnapshot,
+  checkoutVersion,
+  decodeYjsSnapshotJson,
   reconstructGraph,
   PersistenceError,
   ENVELOPE_PREFIX,
@@ -177,5 +181,35 @@ describe('fetchVersionHistory (GET) + reconstructGraph', () => {
     const graph = reconstructGraph(rows);
     expect(graph.commits).toHaveLength(1);
     expect(graph.skipped).toBe(1);
+  });
+});
+
+describe('PDM checkout payload restore', () => {
+  it('downloads a signed JSON feature snapshot without treating it as a graph label', async () => {
+    const snapshot = JSON.stringify({ featureTrees: { body: { nodes: [{ id: 'sketch-1' }] } }, parts: [{ id: 'body' }] });
+    const fetchImpl = vi.fn().mockResolvedValue(new Response(snapshot, { status: 200, headers: { 'content-type': 'application/json' } }));
+    const out = await fetchVersionSnapshot(version({ id: 'v-json', blobUrl: 'https://signed/snapshot' }), { fetchImpl });
+    expect(out.versionId).toBe('v-json');
+    expect(out.contentType).toBe('json');
+    expect(out.json).toMatchObject({ featureTrees: { body: { nodes: [{ id: 'sketch-1' }] } } });
+  });
+
+  it('decodes the existing CRDT state/snapshot convention from Yjs bytes', () => {
+    const doc = new Y.Doc();
+    doc.getMap<string>('state').set('snapshot', JSON.stringify({ features: [{ id: 'hole-1', type: 'hole', params: { diameter: 8 } }] }));
+    const bytes = Y.encodeStateAsUpdate(doc);
+    doc.destroy();
+    expect(decodeYjsSnapshotJson(bytes)).toMatchObject({ features: [{ id: 'hole-1', params: { diameter: 8 } }] });
+  });
+
+  it('restores a version and refreshes the current document URL', async () => {
+    const restored = version({ id: 'v-restored', restoredFrom: 'v-source' });
+    const fetchImpl = vi.fn()
+      .mockResolvedValueOnce(resp(201, { version: restored }))
+      .mockResolvedValueOnce(new Response(JSON.stringify({ blobUrl: 'https://signed/current' }), { status: 200 }));
+    const out = await checkoutVersion('doc-1', 'v-source', { fetchImpl });
+    expect(out.version.id).toBe('v-restored');
+    expect(out.currentBlobUrl).toBe('https://signed/current');
+    expect(fetchImpl.mock.calls[0][0]).toContain('/versions/v-source/restore');
   });
 });

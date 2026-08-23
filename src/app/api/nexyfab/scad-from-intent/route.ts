@@ -10,14 +10,16 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { checkPlan } from '@/lib/plan-guard';
 import { intentToScad, type IntentInput } from '@/lib/openscad-render/intentToScad';
+import { readBoundedJson } from '@/lib/boundedJsonBody';
 
 export const dynamic = 'force-dynamic';
+const MAX_JSON_BODY_BYTES = 4 * 1024 * 1024;
 
 export async function POST(req: NextRequest) {
   const plan = await checkPlan(req, 'free');
   if (!plan.ok) return plan.response;
 
-  const body = await req.json().catch(() => ({}));
+  const body = await readBoundedJson(req, MAX_JSON_BODY_BYTES).catch(() => ({}));
   const intent = body as Partial<IntentInput>;
 
   if (!intent.shapeId || typeof intent.shapeId !== 'string') {

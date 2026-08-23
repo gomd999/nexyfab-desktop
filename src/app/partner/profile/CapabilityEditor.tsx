@@ -1,7 +1,7 @@
 'use client';
 
 import {
-  PROCESS_LABELS, PROCESS_CODES,
+  PROCESS_CODES, processLabel,
   type ProcessCapability, type ProcessCapabilitySpec, type ProcessCode,
 } from '@/lib/partner-pricebook';
 import { usePartnerLang } from '../_lib/partnerLang';
@@ -75,7 +75,7 @@ export default function CapabilityEditor({ value, onChange, onSave, saving }: Pr
                     onChange={e => toggle(code, e.target.checked)}
                     className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
                   />
-                  <span className="text-sm font-bold text-gray-800">{PROCESS_LABELS[code]}</span>
+                  <span className="text-sm font-bold text-gray-800">{processLabel(code, lang)}</span>
                 </label>
               </div>
 

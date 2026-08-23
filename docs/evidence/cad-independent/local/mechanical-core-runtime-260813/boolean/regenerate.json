@@ -1,0 +1,81 @@
+{
+  "schema": "nexyfab.mechanical-core-feature-local-runtime.v1",
+  "feature": "boolean",
+  "axis": "regenerate",
+  "status": "PASS",
+  "executedAt": "2026-08-22T07:13:30.564Z",
+  "initial": {
+    "handle": "occt:433",
+    "kernelKind": "Solid",
+    "nativeShapeType": 0,
+    "solidCount": 1,
+    "singleSolid": true,
+    "volumeMm3": 68000,
+    "edgeCount": 24,
+    "faceCount": 10,
+    "boundsMm": [
+      [
+        -30.000000100000005,
+        -20.000000100000005,
+        -15.000000100000003
+      ],
+      [
+        30.000000100000005,
+        20.000000100000005,
+        15.000000100000003
+      ]
+    ]
+  },
+  "edited": {
+    "handle": "occt:435",
+    "kernelKind": "Solid",
+    "nativeShapeType": 0,
+    "solidCount": 1,
+    "singleSolid": true,
+    "volumeMm3": 66400,
+    "edgeCount": 24,
+    "faceCount": 10,
+    "boundsMm": [
+      [
+        -30.000000100000005,
+        -20.000000100000005,
+        -15.000000100000003
+      ],
+      [
+        30.000000100000005,
+        20.000000100000005,
+        15.000000100000003
+      ]
+    ]
+  },
+  "repeated": {
+    "handle": "occt:437",
+    "kernelKind": "Solid",
+    "nativeShapeType": 0,
+    "solidCount": 1,
+    "singleSolid": true,
+    "volumeMm3": 66400,
+    "edgeCount": 24,
+    "faceCount": 10,
+    "boundsMm": [
+      [
+        -30.000000100000005,
+        -20.000000100000005,
+        -15.000000100000003
+      ],
+      [
+        30.000000100000005,
+        20.000000100000005,
+        15.000000100000003
+      ]
+    ]
+  },
+  "featureMeaning": {
+    "assertion": "actual product OCCT boolean subtracted a centered through-box with analytic removed volume",
+    "baselineVolumeMm3": 72000,
+    "removedVolumeMm3": 5600,
+    "expectedVolumeMm3": 66400,
+    "actualVolumeMm3": 66400
+  },
+  "assertion": "edited parameter changed the exact signature and a fresh native regeneration reproduced topology, bounds, and volume"
+}

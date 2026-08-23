@@ -6,6 +6,7 @@ import { fileURLToPath } from 'node:url';
 const option = name => process.argv.find(arg => arg.startsWith(`--${name}=`))?.slice(name.length + 3);
 const rootInput = option('root') ?? process.env.NEXYFAB_REFERENCE_CORPUS_ROOT?.trim(), queuesInput = option('queues'), outputInput = option('output');
 const text = bytes => new TextDecoder('latin1').decode(bytes);
+const ADMISSION_FORMATS = new Set(['step', 'stp', 'stl', 'dxf', 'ifc', 'x_t', 'xt', 'xmt_txt', 'iges', 'igs', 'sat', 'obj', '3mf', 'dae', 'wrl', 'vrml', 'scad', 'fbx', '3ds']);
 
 async function prefix(file, length = 65536) {
   const handle = await open(file, 'r');
@@ -34,11 +35,21 @@ export function probeReferenceSignature(extension, bytes, sizeBytes) {
   return sizeBytes > 0;
 }
 
-export function referenceProbeFailureReason(extension, bytes) {
+export function referenceProbeFailureReason(extension, bytes, sizeBytes = bytes.byteLength) {
   const source = text(bytes);
-  if ((extension === 'step' || extension === 'stp') && /^STL file generated/i.test(source)) return 'extension_mismatch_detected_stl';
-  if ((extension === 'step' || extension === 'stp') && /^#UGC:/i.test(source)) return 'extension_mismatch_detected_creo_native';
+  if ((extension === 'step' || extension === 'stp') && (/^STL file generated/i.test(source) || /^\s*solid\b/i.test(source) || (sizeBytes >= 84 && (sizeBytes - 84) % 50 === 0 && bytes.byteLength >= 84 && new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength).getUint32(80, true) * 50 + 84 === sizeBytes))) return 'extension_mismatch_detected_stl';
+  if ((extension === 'step' || extension === 'stp') && /^\s*#UGC:/i.test(source)) return 'extension_mismatch_detected_creo_native';
   return 'format_signature_not_recognized';
+}
+
+/** Importer admission is a separate fail-closed boundary: an extension match alone never admits bytes. */
+export function admitReferenceImport(extension, bytes, sizeBytes = bytes.byteLength) {
+  const normalized = String(extension ?? '').toLowerCase().replace(/^\./, '');
+  if (!ADMISSION_FORMATS.has(normalized)) return { admitted: false, reason: 'unsupported_extension' };
+  const mismatch = referenceProbeFailureReason(normalized, bytes, sizeBytes);
+  if (mismatch !== 'format_signature_not_recognized') return { admitted: false, reason: mismatch };
+  const admitted = probeReferenceSignature(normalized, bytes, sizeBytes);
+  return { admitted, reason: admitted ? 'recognized_format_signature' : mismatch };
 }
 
 async function main() {
@@ -49,7 +60,7 @@ async function main() {
     const item = queues.automated[index], absolute = path.resolve(root, item.relativePath);
     if (path.relative(root, absolute).startsWith('..')) throw new Error('source_path_escape');
     let status = 'pass', reason = 'recognized_format_signature';
-    try { const bytes = await prefix(absolute); if (!probeReferenceSignature(item.extension, bytes, item.sizeBytes)) { status = 'fail'; reason = referenceProbeFailureReason(item.extension, bytes); } }
+    try { const bytes = await prefix(absolute); const admission = admitReferenceImport(item.extension, bytes, item.sizeBytes); if (!admission.admitted) { status = 'fail'; reason = admission.reason; } }
     catch { status = 'fail'; reason = 'source_read_failed'; }
     results.push({ artifactId: item.artifactId, relativePath: item.relativePath, lineageId: item.lineageId, extension: item.extension, check: item.check, status, reason, accuracyGranted: false, sourceModified: false });
     const key = `${item.check}:${status}`; byCheck[key] = (byCheck[key] ?? 0) + 1;

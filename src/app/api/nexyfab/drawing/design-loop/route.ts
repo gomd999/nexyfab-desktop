@@ -9,6 +9,9 @@ import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { rateLimit } from '@/lib/rate-limit';
 import { getTrustedClientIp } from '@/lib/client-ip';
+import { boundedJsonError, readBoundedJson } from '@/lib/boundedJsonBody';
+
+const MAX_BODY_BYTES = 32 * 1024 * 1024;
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -93,7 +96,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   const rl = rateLimit(`design-loop:${ip}`, 20, 60_000);
   if (!rl.allowed) return NextResponse.json({ ok: false, error: '요청이 너무 많습니다.' }, { status: 429 });
   try {
-    const body = (await req.json()) as { assembly?: unknown; params?: Record<string, unknown>; format?: string; title?: string; mode?: string };
+    const body = await readBoundedJson<{ assembly?: unknown; params?: Record<string, unknown>; format?: string; title?: string; mode?: string }>(req, MAX_BODY_BYTES);
     if (!body.assembly) return NextResponse.json({ ok: false, error: 'assembly 필요' }, { status: 400 });
     const mod = await load();
     if (body.mode === 'suggest') {
@@ -107,6 +110,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     }
     return NextResponse.json(result);
   } catch (e) {
+    if (boundedJsonError(e)?.code === 'PAYLOAD_TOO_LARGE') return NextResponse.json({ ok: false, error: 'assembly가 너무 큽니다.' }, { status: 413 });
     return NextResponse.json({ ok: false, error: 'design-loop failed: ' + (e instanceof Error ? e.message : String(e)) }, { status: 502 });
   }
 }

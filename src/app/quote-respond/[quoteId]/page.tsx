@@ -6,8 +6,10 @@
 
 'use client';
 
-import { useEffect, useState, use } from 'react';
+import { Suspense, useEffect, useState, use, useMemo } from 'react';
 import { useSearchParams } from 'next/navigation';
+import { useClientLocale } from '@/lib/i18n/clientLocale';
+import { createCommercialLocalizer } from '@/lib/i18n/commercialLocalizer';
 
 interface QuoteInfo {
   quoteId: string;
@@ -22,8 +24,18 @@ interface QuoteInfo {
 }
 
 export default function QuoteRespondPage({ params }: { params: Promise<{ quoteId: string }> }) {
+  return (
+    <Suspense fallback={null}>
+      <QuoteRespondContent params={params} />
+    </Suspense>
+  );
+}
+
+function QuoteRespondContent({ params }: { params: Promise<{ quoteId: string }> }) {
   const { quoteId } = use(params);
   const searchParams = useSearchParams();
+  const lang = useClientLocale();
+  const L = useMemo(() => createCommercialLocalizer(lang), [lang]);
   const token = searchParams?.get('t') ?? '';
 
   const [info, setInfo] = useState<QuoteInfo | null>(null);
@@ -36,14 +48,14 @@ export default function QuoteRespondPage({ params }: { params: Promise<{ quoteId
   const [submitError, setSubmitError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!token) { setLoadError('유효하지 않은 링크입니다 (토큰 누락)'); return; }
+    if (!token) { setLoadError(L('유효하지 않은 링크입니다 (토큰 누락)', 'This link is invalid (missing token).')); return; }
     fetch(`/api/nexyfab/quote-response/${encodeURIComponent(quoteId)}?t=${encodeURIComponent(token)}`)
       .then(async (r) => {
         if (!r.ok) {
           const data = await r.json().catch(() => ({}));
-          const msg = data.error === 'not_found' ? '견적을 찾을 수 없습니다'
-            : data.error === 'invalid_token' ? '유효하지 않은 접근 토큰'
-            : data.error || '불러오기 실패';
+          const msg = data.error === 'not_found' ? L('견적을 찾을 수 없습니다', 'Quote not found.')
+            : data.error === 'invalid_token' ? L('유효하지 않은 접근 토큰', 'Invalid access token.')
+            : data.error || L('불러오기 실패', 'Failed to load.');
           setLoadError(msg);
           return;
         }
@@ -55,16 +67,16 @@ export default function QuoteRespondPage({ params }: { params: Promise<{ quoteId
           setNote(data.existing.note ?? '');
         }
       })
-      .catch(() => setLoadError('네트워크 오류'));
-  }, [quoteId, token]);
+      .catch(() => setLoadError(L('네트워크 오류', 'Network error.')));
+  }, [quoteId, token, L]);
 
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setSubmitError(null);
     const amt = Number(amount);
     const d = Number(days);
-    if (!Number.isFinite(amt) || amt <= 0) { setSubmitError('견적 금액을 확인해 주세요'); return; }
-    if (!Number.isFinite(d) || d < 1 || d > 365) { setSubmitError('납기는 1~365일'); return; }
+    if (!Number.isFinite(amt) || amt <= 0) { setSubmitError(L('견적 금액을 확인해 주세요', 'Please check the quote amount.')); return; }
+    if (!Number.isFinite(d) || d < 1 || d > 365) { setSubmitError(L('납기는 1~365일', 'Lead time must be 1–365 days.')); return; }
 
     setSubmitting(true);
     try {
@@ -77,10 +89,10 @@ export default function QuoteRespondPage({ params }: { params: Promise<{ quoteId
         },
       );
       const data = await r.json().catch(() => ({}));
-      if (!r.ok) { setSubmitError(data.error || '제출 실패'); return; }
+      if (!r.ok) { setSubmitError(data.error || L('제출 실패', 'Submission failed.')); return; }
       setSubmitted(true);
     } catch {
-      setSubmitError('네트워크 오류');
+      setSubmitError(L('네트워크 오류', 'Network error.'));
     } finally {
       setSubmitting(false);
     }
@@ -89,7 +101,7 @@ export default function QuoteRespondPage({ params }: { params: Promise<{ quoteId
   if (loadError) {
     return (
       <div style={{ maxWidth: 520, margin: '64px auto', padding: 24, fontFamily: 'system-ui' }}>
-        <h1 style={{ fontSize: 20, marginBottom: 12 }}>견적 제출</h1>
+        <h1 style={{ fontSize: 20, marginBottom: 12 }}>{L('견적 제출', 'Submit quote')}</h1>
         <div style={{ padding: 16, background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 8, color: '#991b1b' }}>
           {loadError}
         </div>
@@ -98,17 +110,17 @@ export default function QuoteRespondPage({ params }: { params: Promise<{ quoteId
   }
 
   if (!info) {
-    return <div style={{ maxWidth: 520, margin: '64px auto', padding: 24, fontFamily: 'system-ui', color: '#6b7280' }}>불러오는 중…</div>;
+    return <div style={{ maxWidth: 520, margin: '64px auto', padding: 24, fontFamily: 'system-ui', color: '#6b7280' }}>{L('불러오는 중…', 'Loading…')}</div>;
   }
 
   if (submitted || info.status === 'submitted' || info.status === 'accepted') {
     return (
       <div style={{ maxWidth: 520, margin: '64px auto', padding: 24, fontFamily: 'system-ui' }}>
-        <h1 style={{ fontSize: 20, marginBottom: 12 }}>견적 제출 완료</h1>
+        <h1 style={{ fontSize: 20, marginBottom: 12 }}>{L('견적 제출 완료', 'Quote submitted')}</h1>
         <div style={{ padding: 20, background: '#ecfdf5', border: '1px solid #a7f3d0', borderRadius: 10, color: '#065f46' }}>
-          <p style={{ margin: '0 0 8px' }}>✓ {info.factoryName} 귀사의 견적이 전달되었습니다.</p>
+          <p style={{ margin: '0 0 8px' }}>✓ {info.factoryName} {L('귀사의 견적이 전달되었습니다.', 'Your quote has been delivered.')}</p>
           <p style={{ margin: 0, fontSize: 13, color: '#047857' }}>
-            고객 검토 결과는 {info.partnerEmail ?? '등록된 이메일'} 로 알려드립니다.
+            {L('고객 검토 결과는', 'The customer review result will be sent to')} {info.partnerEmail ?? L('등록된 이메일', 'the registered email')}.
           </p>
         </div>
       </div>
@@ -118,9 +130,9 @@ export default function QuoteRespondPage({ params }: { params: Promise<{ quoteId
   if (info.status === 'rejected' || info.status === 'expired') {
     return (
       <div style={{ maxWidth: 520, margin: '64px auto', padding: 24, fontFamily: 'system-ui' }}>
-        <h1 style={{ fontSize: 20, marginBottom: 12 }}>마감된 견적</h1>
+        <h1 style={{ fontSize: 20, marginBottom: 12 }}>{L('마감된 견적', 'Closed quote')}</h1>
         <div style={{ padding: 16, background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: 8, color: '#4b5563' }}>
-          이 견적 요청은 더 이상 응답을 받지 않습니다 (상태: {info.status}).
+          {L('이 견적 요청은 더 이상 응답을 받지 않습니다', 'This quote request no longer accepts responses')} ({L('상태', 'status')}: {info.status}).
         </div>
       </div>
     );
@@ -128,31 +140,31 @@ export default function QuoteRespondPage({ params }: { params: Promise<{ quoteId
 
   return (
     <div style={{ maxWidth: 560, margin: '40px auto', padding: 24, fontFamily: 'system-ui' }}>
-      <h1 style={{ fontSize: 22, margin: '0 0 4px', fontWeight: 800 }}>견적 제출</h1>
+      <h1 style={{ fontSize: 22, margin: '0 0 4px', fontWeight: 800 }}>{L('견적 제출', 'Submit quote')}</h1>
       <p style={{ margin: '0 0 20px', color: '#6b7280', fontSize: 13 }}>
-        NexyFab 파트너 응답 — {info.factoryName}
+        {L('NexyFab 파트너 응답', 'NexyFab partner response')} — {info.factoryName}
       </p>
 
       <div style={{ padding: 16, background: '#f0f4ff', border: '1px solid #c7d7fe', borderRadius: 10, marginBottom: 20, fontSize: 13 }}>
-        <div><strong>부품:</strong> {info.projectName}</div>
-        {info.rfq?.quantity && <div><strong>수량:</strong> {info.rfq.quantity.toLocaleString()}개</div>}
-        {info.rfq?.materialId && <div><strong>소재:</strong> {info.rfq.materialId}</div>}
-        {info.validUntil && <div><strong>응답 유효:</strong> {info.validUntil} 까지</div>}
+        <div><strong>{L('부품:', 'Part:')}</strong> {info.projectName}</div>
+        {info.rfq?.quantity && <div><strong>{L('수량:', 'Quantity:')}</strong> {info.rfq.quantity.toLocaleString()} {L('개', 'pcs')}</div>}
+        {info.rfq?.materialId && <div><strong>{L('소재:', 'Material:')}</strong> {info.rfq.materialId}</div>}
+        {info.validUntil && <div><strong>{L('응답 유효:', 'Valid until:')}</strong> {info.validUntil}</div>}
       </div>
 
       <form onSubmit={onSubmit}>
         <label style={{ display: 'block', marginBottom: 14 }}>
-          <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 6 }}>견적 금액 (KRW)</div>
+          <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 6 }}>{L('견적 금액 (KRW)', 'Quote amount (KRW)')}</div>
           <input
             type="number" min={0} step={1000} required value={amount}
             onChange={(e) => setAmount(e.target.value)}
-            placeholder="예: 1250000"
+            placeholder={L('예: 1250000', 'e.g. 1250000')}
             style={{ width: '100%', padding: '10px 12px', border: '1px solid #d1d5db', borderRadius: 8, fontSize: 14 }}
           />
         </label>
 
         <label style={{ display: 'block', marginBottom: 14 }}>
-          <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 6 }}>납기 (일)</div>
+          <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 6 }}>{L('납기 (일)', 'Lead time (days)')}</div>
           <input
             type="number" min={1} max={365} required value={days}
             onChange={(e) => setDays(e.target.value)}
@@ -161,10 +173,10 @@ export default function QuoteRespondPage({ params }: { params: Promise<{ quoteId
         </label>
 
         <label style={{ display: 'block', marginBottom: 16 }}>
-          <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 6 }}>메모 (선택)</div>
+          <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 6 }}>{L('메모 (선택)', 'Note (optional)')}</div>
           <textarea
             value={note} onChange={(e) => setNote(e.target.value)} rows={4}
-            placeholder="추가 조건, 납기 근거, 필수 사양 확인 등"
+            placeholder={L('추가 조건, 납기 근거, 필수 사양 확인 등', 'Additional conditions, lead-time notes, required specifications, etc.')}
             style={{ width: '100%', padding: '10px 12px', border: '1px solid #d1d5db', borderRadius: 8, fontSize: 13, fontFamily: 'inherit', resize: 'vertical' }}
           />
         </label>
@@ -183,7 +195,7 @@ export default function QuoteRespondPage({ params }: { params: Promise<{ quoteId
             cursor: submitting ? 'default' : 'pointer',
           }}
         >
-          {submitting ? '제출 중…' : '견적 제출'}
+          {submitting ? L('제출 중…', 'Submitting…') : L('견적 제출', 'Submit quote')}
         </button>
 
         <p style={{ margin: '16px 0 0', color: '#9ca3af', fontSize: 12, textAlign: 'center' }}>

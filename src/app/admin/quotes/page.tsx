@@ -1,13 +1,19 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useAdminI18n } from '../AdminI18nProvider';
+import { createCommercialLocalizer } from '@/lib/i18n/commercialLocalizer';
 import { useToast, type ToastType } from '@/components/ToastProvider';
 
 // ─── CSV ──────────────────────────────────────────────────────────────────
 
-function downloadQuotesCSV(data: Quote[], toast?: (type: ToastType, message: string) => void) {
-  if (data.length === 0) { toast?.('warning', '내보낼 데이터가 없습니다.'); return; }
-  const headers = ['견적ID', '프로젝트명', '파트너사', '견적금액', '상태', '유효기간', '연결문의ID', '생성일'];
+function downloadQuotesCSV(data: Quote[], toast: ((type: ToastType, message: string) => void) | undefined, L: (korean: string, english: string) => string, locale: string) {
+  if (data.length === 0) { toast?.('warning', L('내보낼 데이터가 없습니다.', 'There is no data to export.')); return; }
+  const headers = [
+    L('견적ID', 'Quote ID'), L('프로젝트명', 'Project'), L('파트너사', 'Partner'),
+    L('견적금액', 'Quote amount'), L('상태', 'Status'), L('유효기간', 'Valid until'),
+    L('연결문의ID', 'Inquiry ID'), L('생성일', 'Created'),
+  ];
   const rows = data.map(q => [
     q.id,
     q.projectName,
@@ -16,7 +22,7 @@ function downloadQuotesCSV(data: Quote[], toast?: (type: ToastType, message: str
     q.status,
     q.validUntil || '',
     q.inquiryId || '',
-    q.createdAt?.slice(0, 10) || '',
+    q.createdAt ? new Intl.DateTimeFormat(locale).format(new Date(q.createdAt)) : '',
   ]);
   const csv = [headers, ...rows].map(r => r.map(v => `"${v}"`).join(',')).join('\n');
   const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
@@ -27,7 +33,6 @@ function downloadQuotesCSV(data: Quote[], toast?: (type: ToastType, message: str
   a.click();
   URL.revokeObjectURL(url);
 }
-
 // ─── 타입 ──────────────────────────────────────────────────────────────────
 
 interface Quote {
@@ -70,14 +75,6 @@ interface Inquiry {
 
 // ─── 상수 ──────────────────────────────────────────────────────────────────
 
-const STATUS_LABELS: Record<string, string> = {
-  pending: '검토중',
-  responded: '파트너응답',
-  accepted: '수락',
-  rejected: '거절',
-  expired: '만료',
-};
-
 const STATUS_COLORS: Record<string, string> = {
   pending: 'bg-amber-100 text-amber-700',
   responded: 'bg-blue-100 text-blue-700',
@@ -88,11 +85,20 @@ const STATUS_COLORS: Record<string, string> = {
 
 const TOKEN_KEY = 'nexyfab_admin_authed';
 
-const won = (n: number) => n.toLocaleString('ko-KR') + '원';
+const won = (n: number, locale: string) => `${n.toLocaleString(locale)} KRW`;
 
 // ─── 컴포넌트 ────────────────────────────────────────────────────────────
 
 export default function QuotesAdminPage() {
+  const { locale } = useAdminI18n();
+  const L = useMemo(() => createCommercialLocalizer(locale), [locale]);
+  const statusLabel = (status: string) => ({
+    pending: L('검토중', 'Pending review'),
+    responded: L('파트너응답', 'Partner response'),
+    accepted: L('수락', 'Accepted'),
+    rejected: L('거절', 'Rejected'),
+    expired: L('만료', 'Expired'),
+  }[status] ?? status);
   const { toast } = useToast();
   const [authed, setAuthed] = useState(false);
   const [pwInput, setPwInput] = useState('');
@@ -148,7 +154,7 @@ export default function QuotesAdminPage() {
       setAuthed(true);
       setPwError('');
     } else {
-      setPwError('비밀번호가 올바르지 않습니다.');
+      setPwError(L('비밀번호가 올바르지 않습니다.', 'Incorrect password.'));
     }
   }
 
@@ -169,11 +175,11 @@ export default function QuotesAdminPage() {
       const data = await res.json();
       setQuotes(data.quotes || []);
     } catch {
-      setError('견적 목록을 불러오지 못했습니다.');
+      setError(L('견적 목록을 불러오지 못했습니다.', 'Could not load quotes.'));
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [L]);
 
   const fetchInquiries = useCallback(async () => {
     try {
@@ -216,7 +222,7 @@ export default function QuotesAdminPage() {
       const data = await res.json();
       setQuotes(prev => prev.map(q => (q.id === id ? data.quote : q)));
     } catch {
-      toast('error', '상태 변경에 실패했습니다.');
+      toast('error', L('상태 변경에 실패했습니다.', 'Could not update quote status.'));
     } finally {
       setUpdating(null);
     }
@@ -242,7 +248,7 @@ export default function QuotesAdminPage() {
       setShowModal(false);
       setForm({ inquiryId: '', projectName: '', factoryName: '', estimatedAmount: '', details: '', validUntil: '', partnerEmail: '' });
     } catch {
-      toast('error', '견적 생성에 실패했습니다.');
+      toast('error', L('견적 생성에 실패했습니다.', 'Could not create quote.'));
     } finally {
       setSubmitting(false);
     }
@@ -278,13 +284,13 @@ export default function QuotesAdminPage() {
       });
       const data = await res.json();
       if (data.contract) {
-        toast('success', `계약이 생성되었습니다. 계약 ID: ${data.contract.id} / 최종 수수료: ${data.contract.finalCharge.toLocaleString('ko-KR')}원`);
+        toast('success', `${L('계약이 생성되었습니다.', 'Contract created.')} ${L('계약 ID:', 'Contract ID:')} ${data.contract.id} / ${L('최종 수수료:', 'Final fee:')} ${data.contract.finalCharge.toLocaleString(locale)} KRW`);
         setConvertQuote(null);
         setConvertForm({ contractAmount: '', plan: 'standard', customerEmail: '', lang: 'ko' });
         fetchQuotes();
       }
     } catch {
-      toast('error', '계약 전환에 실패했습니다.');
+      toast('error', L('계약 전환에 실패했습니다.', 'Could not convert quote to contract.'));
     } finally {
       setConverting(false);
     }
@@ -293,7 +299,7 @@ export default function QuotesAdminPage() {
   // ─── 견적 선택 (비교 모달에서) ──────────────────────────────────────────
 
   async function handleSelectQuote(selectedQuote: Quote, allProjectQuotes: Quote[]) {
-    if (!confirm(`"${selectedQuote.factoryName || selectedQuote.partnerEmail}"의 견적을 채택하시겠습니까?`)) return;
+    if (!confirm(`"${selectedQuote.factoryName || selectedQuote.partnerEmail}" — ${L('견적을 채택하시겠습니까?', 'Accept this quote?')}`)) return;
     setSelectingQuote(selectedQuote.id);
     try {
       // 1. 계약 생성
@@ -309,7 +315,7 @@ export default function QuotesAdminPage() {
           partnerEmail: selectedQuote.partnerEmail || '',
         }),
       });
-      if (!contractRes.ok) throw new Error('계약 생성 실패');
+      if (!contractRes.ok) throw new Error(L('계약 생성 실패', 'Contract creation failed'));
       const contractData = await contractRes.json();
 
       // 2. 선택된 견적 → accepted
@@ -333,11 +339,11 @@ export default function QuotesAdminPage() {
 
       // 알림은 /api/quotes PATCH 핸들러(accepted/rejected)에서 자동 발송됨
 
-      toast('success', `계약이 생성되었습니다. 계약 ID: ${contractData.contract?.id || ''} / 최종 수수료: ${contractData.contract?.finalCharge?.toLocaleString('ko-KR') || 0}원`);
+      toast('success', `${L('계약이 생성되었습니다.', 'Contract created.')} ${L('계약 ID:', 'Contract ID:')} ${contractData.contract?.id || ''} / ${L('최종 수수료:', 'Final fee:')} ${contractData.contract?.finalCharge?.toLocaleString(locale) || 0} KRW`);
       setCompareProject(null);
       fetchQuotes();
-    } catch (e: unknown) {
-      toast('error', e instanceof Error ? e.message : '처리 중 오류가 발생했습니다.');
+    } catch {
+      toast('error', L('견적 선택 처리에 실패했습니다.', 'Could not select this quote.'));
     } finally {
       setSelectingQuote(null);
     }
@@ -349,12 +355,12 @@ export default function QuotesAdminPage() {
     return (
       <div className="min-h-[80vh] flex items-center justify-center">
         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-10 w-full max-w-sm">
-          <h1 className="text-2xl font-black text-gray-900 mb-1">관리자 인증</h1>
-          <p className="text-sm text-gray-500 mb-8">견적 관리 페이지에 접근하려면 비밀번호를 입력하세요.</p>
+          <h1 className="text-2xl font-black text-gray-900 mb-1">{L('관리자 인증', 'Administrator authentication')}</h1>
+          <p className="text-sm text-gray-500 mb-8">{L('견적 관리 페이지에 접근하려면 비밀번호를 입력하세요.', 'Enter your password to access quote management.')}</p>
           <form onSubmit={handleLogin} className="flex flex-col gap-4">
             <input
               type="password"
-              placeholder="비밀번호"
+              placeholder={L('비밀번호', 'Password')}
               value={pwInput}
               onChange={e => setPwInput(e.target.value)}
               autoFocus
@@ -365,7 +371,7 @@ export default function QuotesAdminPage() {
               type="submit"
               className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-xl transition text-sm"
             >
-              로그인
+              {L('로그인', 'Log in')}
             </button>
           </form>
         </div>
@@ -420,48 +426,48 @@ export default function QuotesAdminPage() {
       {/* 헤더 */}
       <div className="flex items-center justify-between mb-6 flex-wrap gap-3">
         <div>
-          <h1 className="text-2xl font-black text-gray-900">견적 관리</h1>
-          <p className="text-sm text-gray-500 mt-1">NexyFab Admin — 전체 견적 현황</p>
+          <h1 className="text-2xl font-black text-gray-900">{L('견적 관리', 'Quote management')}</h1>
+          <p className="text-sm text-gray-500 mt-1">NexyFab Admin — {L('전체 견적 현황', 'All quotes')}</p>
         </div>
         <div className="flex items-center gap-3 flex-wrap">
           <button
             onClick={() => setHideExpired(v => !v)}
             className={`px-3 py-1.5 text-sm rounded-lg border transition ${hideExpired ? 'border-gray-400 bg-gray-100 text-gray-700 font-semibold' : 'border-gray-200 text-gray-500 hover:bg-gray-50'}`}
           >
-            {hideExpired ? '만료 견적 표시' : '만료 견적 숨기기'}
+            {hideExpired ? L('만료 견적 표시', 'Show expired quotes') : L('만료 견적 숨기기', 'Hide expired quotes')}
           </button>
           <button
-            onClick={() => downloadQuotesCSV(quotes, toast)}
+            onClick={() => downloadQuotesCSV(quotes, toast, L, locale)}
             className="px-3 py-1.5 text-sm rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50"
           >
-            CSV 내보내기
+            {L('CSV 내보내기', 'Export CSV')}
           </button>
           <button
             onClick={fetchQuotes}
             disabled={loading}
             className="px-4 py-2 bg-white border border-gray-200 text-gray-700 text-sm font-semibold rounded-lg hover:bg-gray-50 transition disabled:opacity-50"
           >
-            {loading ? '새로고침 중...' : '새로고침'}
+            {loading ? L('새로고침 중...', 'Refreshing...') : L('새로고침', 'Refresh')}
           </button>
           {comparableProjects.length > 0 && (
             <button
               onClick={() => setCompareProject(comparableProjects[0][0])}
               className="px-4 py-2 bg-violet-600 hover:bg-violet-700 text-white text-sm font-bold rounded-lg transition"
             >
-              견적 비교 ({comparableProjects.length})
+              {L('견적 비교', 'Compare quotes')} ({comparableProjects.length})
             </button>
           )}
           <button
             onClick={() => setShowModal(true)}
             className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-bold rounded-lg transition"
           >
-            + 새 견적 작성
+            {L('+ 새 견적 작성', '+ Create quote')}
           </button>
           <button
             onClick={handleLogout}
             className="px-4 py-2 bg-gray-100 text-gray-600 text-sm font-semibold rounded-lg hover:bg-gray-200 transition"
           >
-            로그아웃
+            {L('로그아웃', 'Log out')}
           </button>
         </div>
       </div>
@@ -469,11 +475,11 @@ export default function QuotesAdminPage() {
       {/* 통계 */}
       <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6">
         {[
-          { label: '전체', value: stats.total, color: 'text-gray-900' },
-          { label: '검토중', value: stats.pending, color: 'text-amber-600' },
-          { label: '수락', value: stats.accepted, color: 'text-green-600' },
-          { label: '거절', value: stats.rejected, color: 'text-red-500' },
-          { label: '만료', value: stats.expired, color: 'text-gray-400' },
+          { label: L('전체', 'All'), value: stats.total, color: 'text-gray-900' },
+          { label: L('검토중', 'Pending review'), value: stats.pending, color: 'text-amber-600' },
+          { label: L('수락', 'Accepted'), value: stats.accepted, color: 'text-green-600' },
+          { label: L('거절', 'Rejected'), value: stats.rejected, color: 'text-red-500' },
+          { label: L('만료', 'Expired'), value: stats.expired, color: 'text-gray-400' },
         ].map(s => (
           <div key={s.label} className="bg-white rounded-xl border border-gray-100 shadow-sm p-5 text-center">
             <p className={`text-2xl font-black ${s.color}`}>{s.value}</p>
@@ -490,7 +496,7 @@ export default function QuotesAdminPage() {
             onClick={fetchQuotes}
             className="shrink-0 px-3 py-1.5 text-xs font-bold rounded-lg bg-red-600 hover:bg-red-700 text-white transition-colors"
           >
-            다시 시도
+            {L('다시 시도', 'Try again')}
           </button>
         </div>
       )}
@@ -512,23 +518,23 @@ export default function QuotesAdminPage() {
         ) : displayedQuotes.length === 0 ? (
           <div className="py-20 text-center">
             <div className="text-4xl mb-3">📝</div>
-            <p className="text-sm font-semibold text-gray-500 mb-1">등록된 견적이 없습니다</p>
-            <p className="text-xs text-gray-400">새 견적을 작성하거나 필터를 확인해 보세요.</p>
+            <p className="text-sm font-semibold text-gray-500 mb-1">{L('등록된 견적이 없습니다', 'No quotes registered')}</p>
+            <p className="text-xs text-gray-400">{L('새 견적을 작성하거나 필터를 확인해 보세요.', 'Create a quote or check your filters.')}</p>
           </div>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-gray-100 bg-gray-50">
-                  <th className="text-left px-4 py-3 text-xs font-bold text-gray-500 uppercase tracking-wide whitespace-nowrap">견적ID</th>
-                  <th className="text-left px-4 py-3 text-xs font-bold text-gray-500 uppercase tracking-wide whitespace-nowrap">프로젝트명</th>
-                  <th className="text-left px-4 py-3 text-xs font-bold text-gray-500 uppercase tracking-wide whitespace-nowrap">파트너사</th>
-                  <th className="text-right px-4 py-3 text-xs font-bold text-gray-500 uppercase tracking-wide whitespace-nowrap">견적금액</th>
-                  <th className="text-center px-4 py-3 text-xs font-bold text-gray-500 uppercase tracking-wide whitespace-nowrap">상태</th>
-                  <th className="text-center px-4 py-3 text-xs font-bold text-gray-500 uppercase tracking-wide whitespace-nowrap">유효기간</th>
-                  <th className="text-center px-4 py-3 text-xs font-bold text-gray-500 uppercase tracking-wide whitespace-nowrap">파트너 응답</th>
-                  <th className="text-center px-4 py-3 text-xs font-bold text-gray-500 uppercase tracking-wide whitespace-nowrap">생성일</th>
-                  <th className="text-center px-4 py-3 text-xs font-bold text-gray-500 uppercase tracking-wide whitespace-nowrap">액션</th>
+                  <th className="text-left px-4 py-3 text-xs font-bold text-gray-500 uppercase tracking-wide whitespace-nowrap">{L('견적ID', 'Quote ID')}</th>
+                  <th className="text-left px-4 py-3 text-xs font-bold text-gray-500 uppercase tracking-wide whitespace-nowrap">{L('프로젝트명', 'Project')}</th>
+                  <th className="text-left px-4 py-3 text-xs font-bold text-gray-500 uppercase tracking-wide whitespace-nowrap">{L('파트너사', 'Partner')}</th>
+                  <th className="text-right px-4 py-3 text-xs font-bold text-gray-500 uppercase tracking-wide whitespace-nowrap">{L('견적금액', 'Quote amount')}</th>
+                  <th className="text-center px-4 py-3 text-xs font-bold text-gray-500 uppercase tracking-wide whitespace-nowrap">{L('상태', 'Status')}</th>
+                  <th className="text-center px-4 py-3 text-xs font-bold text-gray-500 uppercase tracking-wide whitespace-nowrap">{L('유효기간', 'Valid until')}</th>
+                  <th className="text-center px-4 py-3 text-xs font-bold text-gray-500 uppercase tracking-wide whitespace-nowrap">{L('파트너 응답', 'Partner response')}</th>
+                  <th className="text-center px-4 py-3 text-xs font-bold text-gray-500 uppercase tracking-wide whitespace-nowrap">{L('생성일', 'Created')}</th>
+                  <th className="text-center px-4 py-3 text-xs font-bold text-gray-500 uppercase tracking-wide whitespace-nowrap">{L('액션', 'Actions')}</th>
                 </tr>
               </thead>
               <tbody>
@@ -549,32 +555,32 @@ export default function QuotesAdminPage() {
                             onClick={e => { e.stopPropagation(); setCompareProject(q.projectName); }}
                             className="shrink-0 px-1.5 py-0.5 text-[10px] font-bold bg-violet-100 text-violet-700 rounded-full hover:bg-violet-200 transition"
                           >
-                            {respondedByProject[q.projectName].length}개 응답
+                            {respondedByProject[q.projectName].length}{L('개 응답', ' responses')}
                           </button>
                         )}
                       </div>
                     </td>
                     <td className="px-4 py-3 text-gray-600 whitespace-nowrap">{q.factoryName || '—'}</td>
-                    <td className="px-4 py-3 text-right font-semibold text-gray-800 whitespace-nowrap">{won(q.estimatedAmount)}</td>
+                    <td className="px-4 py-3 text-right font-semibold text-gray-800 whitespace-nowrap">{won(q.estimatedAmount, locale)}</td>
                     <td className="px-4 py-3 text-center whitespace-nowrap">
                       <div className="flex flex-col items-center gap-1">
                         <span className={`inline-block px-2.5 py-0.5 rounded-full text-xs font-bold ${q.status === 'expired' ? 'bg-gray-100 text-gray-500' : STATUS_COLORS[q.status] || 'bg-gray-100 text-gray-500'}`}>
-                          {q.status === 'expired' ? '만료됨' : STATUS_LABELS[q.status] || q.status}
+                          {q.status === 'expired' ? L('만료됨', 'Expired') : statusLabel(q.status)}
                         </span>
                         {nearExpiry && (
                           <span className="inline-block px-2 py-0.5 rounded-full text-xs font-bold bg-orange-100 text-orange-600">
-                            ⚠ {daysLeft}일 후 만료
+                            ⚠ {daysLeft}{L('일 후 만료', ' days until expiry')}
                           </span>
                         )}
                       </div>
                     </td>
-                    <td className="px-4 py-3 text-center text-gray-500 text-xs whitespace-nowrap">{q.validUntil || '—'}</td>
+                    <td className="px-4 py-3 text-center text-gray-500 text-xs whitespace-nowrap">{q.validUntil ? new Intl.DateTimeFormat(locale).format(new Date(q.validUntil)) : '—'}</td>
                     <td className="px-4 py-3 text-center whitespace-nowrap">
                       {q.partnerResponse ? (
                         <div className="text-xs text-left">
-                          <div className="font-semibold text-gray-800">{won(q.partnerResponse.estimatedAmount)}</div>
+                          <div className="font-semibold text-gray-800">{won(q.partnerResponse.estimatedAmount, locale)}</div>
                           {q.partnerResponse.estimatedDays && (
-                            <div className="text-gray-500">{q.partnerResponse.estimatedDays}일</div>
+                            <div className="text-gray-500">{q.partnerResponse.estimatedDays}{L('일', ' days')}</div>
                           )}
                           <div className="text-gray-400">{q.partnerResponse.respondedBy}</div>
                         </div>
@@ -582,7 +588,7 @@ export default function QuotesAdminPage() {
                         <span className="text-gray-300 text-xs">—</span>
                       )}
                     </td>
-                    <td className="px-4 py-3 text-center text-gray-500 text-xs whitespace-nowrap">{q.createdAt?.slice(0, 10)}</td>
+                    <td className="px-4 py-3 text-center text-gray-500 text-xs whitespace-nowrap">{q.createdAt ? new Intl.DateTimeFormat(locale).format(new Date(q.createdAt)) : '—'}</td>
                     <td className="px-4 py-3 text-center whitespace-nowrap">
                       <div className="flex items-center justify-center gap-1.5 flex-wrap">
                         {q.status === 'pending' && (
@@ -595,21 +601,21 @@ export default function QuotesAdminPage() {
                               disabled={updating === q.id}
                               className="px-2.5 py-1 text-xs font-bold rounded-lg bg-green-600 hover:bg-green-700 text-white transition disabled:opacity-50 whitespace-nowrap"
                             >
-                              계약 전환
+                              {L('계약 전환', 'Convert to contract')}
                             </button>
                             <button
                               onClick={() => updateStatus(q.id, 'rejected')}
                               disabled={updating === q.id}
                               className="px-2.5 py-1 text-xs font-bold rounded-lg bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 transition disabled:opacity-50"
                             >
-                              거절
+                              {L('거절', 'Reject')}
                             </button>
                             <button
                               onClick={() => updateStatus(q.id, 'expired')}
                               disabled={updating === q.id}
                               className="px-2.5 py-1 text-xs font-bold rounded-lg bg-gray-50 hover:bg-gray-100 text-gray-500 border border-gray-200 transition disabled:opacity-50"
                             >
-                              만료
+                              {L('만료', 'Expire')}
                             </button>
                           </>
                         )}
@@ -632,11 +638,11 @@ export default function QuotesAdminPage() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" onClick={() => setShowModal(false)}>
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden" onClick={e => e.stopPropagation()}>
             <div className="bg-gray-900 text-white px-6 py-4">
-              <h2 className="text-lg font-bold">새 견적 작성</h2>
+              <h2 className="text-lg font-bold">{L('새 견적 작성', 'Create quote')}</h2>
             </div>
             <form onSubmit={handleSubmit} className="p-6 space-y-4">
               <div>
-                <label className="block text-xs font-semibold text-gray-600 mb-1">문의 연결 (선택)</label>
+                <label className="block text-xs font-semibold text-gray-600 mb-1">{L('문의 연결 (선택)', 'Link inquiry (optional)')}</label>
                 <select
                   value={form.inquiryId}
                   onChange={e => {
@@ -650,47 +656,47 @@ export default function QuotesAdminPage() {
                   }}
                   className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:border-blue-400 bg-white"
                 >
-                  <option value="">— 직접 입력 —</option>
+                  <option value="">— {L('직접 입력', 'Enter manually')} —</option>
                   {inquiries.map(inq => (
                     <option key={inq.id} value={inq.id}>
-                      {inq.company || inq.name || '이름없음'} — {inq.date?.slice(0, 10)}
+                      {inq.company || inq.name || L('이름없음', 'Unnamed')} — {inq.date ? new Intl.DateTimeFormat(locale).format(new Date(inq.date)) : ''}
                     </option>
                   ))}
                 </select>
               </div>
               <div>
-                <label className="block text-xs font-semibold text-gray-600 mb-1">프로젝트명 *</label>
+                <label className="block text-xs font-semibold text-gray-600 mb-1">{L('프로젝트명 *', 'Project name *')}</label>
                 <input
                   value={form.projectName}
                   onChange={e => setForm(f => ({ ...f, projectName: e.target.value }))}
                   required
-                  placeholder="프로젝트명 입력"
+                  placeholder={L('프로젝트명 입력', 'Enter project name')}
                   className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:border-blue-400"
                 />
               </div>
               <div>
-                <label className="block text-xs font-semibold text-gray-600 mb-1">파트너사명</label>
+                <label className="block text-xs font-semibold text-gray-600 mb-1">{L('파트너사명', 'Partner name')}</label>
                 <input
                   value={form.factoryName}
                   onChange={e => setForm(f => ({ ...f, factoryName: e.target.value }))}
-                  placeholder="담당 파트너사명"
+                  placeholder={L('담당 파트너사명', 'Assigned partner name')}
                   className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:border-blue-400"
                 />
               </div>
               <div>
-                <label className="block text-xs font-semibold text-gray-600 mb-1">견적금액 (원) *</label>
+                <label className="block text-xs font-semibold text-gray-600 mb-1">{L('견적금액 (원) *', 'Quote amount (KRW) *')}</label>
                 <input
                   value={form.estimatedAmount}
                   onChange={e => setForm(f => ({ ...f, estimatedAmount: e.target.value }))}
                   required
-                  placeholder="예: 50000000"
+                  placeholder={L('예: 50000000', 'e.g. 50000000')}
                   type="number"
                   min={0}
                   className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:border-blue-400"
                 />
               </div>
               <div>
-                <label className="block text-xs font-semibold text-gray-600 mb-1">유효기간</label>
+                <label className="block text-xs font-semibold text-gray-600 mb-1">{L('유효기간', 'Valid until')}</label>
                 <input
                   type="date"
                   value={form.validUntil}
@@ -699,27 +705,27 @@ export default function QuotesAdminPage() {
                 />
               </div>
               <div>
-                <label className="block text-xs font-semibold text-gray-600 mb-1">파트너 지정 (선택)</label>
+                <label className="block text-xs font-semibold text-gray-600 mb-1">{L('파트너 지정 (선택)', 'Assign partner (optional)')}</label>
                 <select
                   value={form.partnerEmail}
                   onChange={e => setForm(f => ({ ...f, partnerEmail: e.target.value }))}
                   className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:border-blue-400 bg-white"
                 >
-                  <option value="">— 파트너 없음 —</option>
+                  <option value="">— {L('파트너 없음', 'No partner')} —</option>
                   {approvedPartners.map(p => (
                     <option key={p.id} value={p.email || ''}>
-                      {p.company || p.name || '이름없음'} ({p.email || '이메일없음'})
+                      {p.company || p.name || L('이름없음', 'Unnamed')} ({p.email || L('이메일없음', 'No email')})
                     </option>
                   ))}
                 </select>
               </div>
               <div>
-                <label className="block text-xs font-semibold text-gray-600 mb-1">견적 내용</label>
+                <label className="block text-xs font-semibold text-gray-600 mb-1">{L('견적 내용', 'Quote details')}</label>
                 <textarea
                   value={form.details}
                   onChange={e => setForm(f => ({ ...f, details: e.target.value }))}
                   rows={3}
-                  placeholder="견적 상세 내용 입력..."
+                  placeholder={L('견적 상세 내용 입력...', 'Enter quote details...')}
                   className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:border-blue-400 resize-none"
                 />
               </div>
@@ -729,14 +735,14 @@ export default function QuotesAdminPage() {
                   disabled={submitting || !form.projectName || !form.estimatedAmount}
                   className="flex-1 py-2.5 text-sm font-bold rounded-lg bg-blue-600 hover:bg-blue-700 text-white disabled:opacity-50 transition"
                 >
-                  {submitting ? '생성 중...' : '견적 생성'}
+                  {submitting ? L('생성 중...', 'Creating...') : L('견적 생성', 'Create quote')}
                 </button>
                 <button
                   type="button"
                   onClick={() => setShowModal(false)}
                   className="px-5 py-2.5 text-sm font-semibold rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50"
                 >
-                  취소
+                  {L('취소', 'Cancel')}
                 </button>
               </div>
             </form>
@@ -748,15 +754,15 @@ export default function QuotesAdminPage() {
       {convertQuote && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" onClick={() => setConvertQuote(null)}>
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6" onClick={e => e.stopPropagation()}>
-            <h2 className="text-lg font-bold text-gray-900 mb-1">계약 전환</h2>
+            <h2 className="text-lg font-bold text-gray-900 mb-1">{L('계약 전환', 'Convert to contract')}</h2>
             <p className="text-sm text-gray-500 mb-4">
-              견적 <span className="font-mono text-xs">{convertQuote.id}</span> → 계약 생성
+              {L('견적', 'Quote')} <span className="font-mono text-xs">{convertQuote.id}</span> → {L('계약 생성', 'Create contract')}
             </p>
             <p className="text-sm font-semibold text-gray-800 mb-4">{convertQuote.projectName}</p>
 
             <div className="space-y-3">
               <div>
-                <label className="block text-xs font-semibold text-gray-600 mb-1">최종 계약금액 (원) *</label>
+                <label className="block text-xs font-semibold text-gray-600 mb-1">{L('최종 계약금액 (원) *', 'Final contract amount (KRW) *')}</label>
                 <input
                   value={convertForm.contractAmount}
                   onChange={e => setConvertForm(f => ({ ...f, contractAmount: e.target.value }))}
@@ -767,18 +773,18 @@ export default function QuotesAdminPage() {
                 />
               </div>
               <div>
-                <label className="block text-xs font-semibold text-gray-600 mb-1">플랜</label>
+                <label className="block text-xs font-semibold text-gray-600 mb-1">{L('플랜', 'Plan')}</label>
                 <select
                   value={convertForm.plan}
                   onChange={e => setConvertForm(f => ({ ...f, plan: e.target.value }))}
                   className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:border-blue-400 bg-white"
                 >
-                  <option value="standard">Standard (수수료 공제 50만원)</option>
-                  <option value="premium">Premium (수수료 공제 100만원)</option>
+                  <option value="standard">Standard ({L('수수료 공제 50만원', '500,000 KRW fee deduction')})</option>
+                  <option value="premium">Premium ({L('수수료 공제 100만원', '1,000,000 KRW fee deduction')})</option>
                 </select>
               </div>
               <div>
-                <label className="block text-xs font-semibold text-gray-600 mb-1">고객 이메일 (계약 알림 발송)</label>
+                <label className="block text-xs font-semibold text-gray-600 mb-1">{L('고객 이메일 (계약 알림 발송)', 'Customer email (contract notification)')}</label>
                 <input
                   type="email"
                   value={convertForm.customerEmail}
@@ -788,23 +794,23 @@ export default function QuotesAdminPage() {
                 />
               </div>
               <div>
-                <label className="block text-xs font-semibold text-gray-600 mb-1">이메일 언어</label>
+                <label className="block text-xs font-semibold text-gray-600 mb-1">{L('이메일 언어', 'Email language')}</label>
                 <select
                   value={convertForm.lang}
                   onChange={e => setConvertForm(f => ({ ...f, lang: e.target.value }))}
                   className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:border-blue-400 bg-white"
                 >
-                  <option value="ko">한국어</option>
+                  <option value="ko">{L('한국어', 'Korean')}</option>
                   <option value="en">English</option>
                 </select>
               </div>
               {(convertForm.customerEmail || convertQuote.partnerEmail) && (
                 <p className="text-xs text-blue-600 bg-blue-50 rounded-lg p-2">
-                  계약 생성 시
+                  {L('계약 생성 시', 'When the contract is created')}
                   {convertForm.customerEmail && <> <strong>{convertForm.customerEmail}</strong></>}
-                  {convertForm.customerEmail && convertQuote.partnerEmail && ' 및'}
+                  {convertForm.customerEmail && convertQuote.partnerEmail && <> {L('및', 'and')} </>}
                   {convertQuote.partnerEmail && <> <strong>{convertQuote.partnerEmail}</strong></>}
-                  에 계약 체결 이메일이 자동 발송됩니다.
+                  {L('에 계약 체결 이메일이 자동 발송됩니다.', 'the contract confirmation email will be sent automatically.')}
                 </p>
               )}
             </div>
@@ -815,13 +821,13 @@ export default function QuotesAdminPage() {
                 disabled={!convertForm.contractAmount || converting}
                 className="flex-1 py-2.5 text-sm font-bold rounded-lg bg-blue-600 hover:bg-blue-700 text-white disabled:opacity-50 transition"
               >
-                {converting ? '처리 중...' : '계약 생성'}
+                {converting ? L('처리 중...', 'Processing...') : L('계약 생성', 'Create contract')}
               </button>
               <button
                 onClick={() => setConvertQuote(null)}
                 className="px-4 py-2.5 text-sm font-semibold rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50"
               >
-                취소
+                {L('취소', 'Cancel')}
               </button>
             </div>
           </div>
@@ -838,8 +844,8 @@ export default function QuotesAdminPage() {
               {/* 모달 헤더 */}
               <div className="bg-gray-900 text-white px-6 py-4 flex items-center justify-between shrink-0">
                 <div>
-                  <p className="text-xs text-gray-400 mb-0.5">견적 비교</p>
-                  <h2 className="text-lg font-bold">프로젝트명: {compareProject}</h2>
+                  <p className="text-xs text-gray-400 mb-0.5">{L('견적 비교', 'Quote comparison')}</p>
+                  <h2 className="text-lg font-bold">{L('프로젝트명:', 'Project:')} {compareProject}</h2>
                 </div>
                 {comparableProjects.length > 1 && (
                   <div className="flex items-center gap-2">
@@ -861,7 +867,7 @@ export default function QuotesAdminPage() {
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="border-b border-gray-100 bg-gray-50">
-                      <th className="text-left px-5 py-3 text-xs font-bold text-gray-500 uppercase tracking-wide w-36">항목</th>
+                      <th className="text-left px-5 py-3 text-xs font-bold text-gray-500 uppercase tracking-wide w-36">{L('항목', 'Item')}</th>
                       {projectQuotes.map(q => (
                         <th key={q.id} className="text-center px-4 py-3 text-xs font-bold text-gray-700 uppercase tracking-wide whitespace-nowrap">
                           {q.factoryName || q.partnerEmail || q.id}
@@ -871,23 +877,23 @@ export default function QuotesAdminPage() {
                   </thead>
                   <tbody>
                     <tr className="border-b border-gray-50">
-                      <td className="px-5 py-3 text-xs font-semibold text-gray-500">견적 금액</td>
+                      <td className="px-5 py-3 text-xs font-semibold text-gray-500">{L('견적 금액', 'Quote amount')}</td>
                       {projectQuotes.map(q => (
                         <td key={q.id} className="px-4 py-3 text-center font-bold text-gray-900 whitespace-nowrap">
-                          {won(q.partnerResponse!.estimatedAmount)}
+                          {won(q.partnerResponse!.estimatedAmount, locale)}
                         </td>
                       ))}
                     </tr>
                     <tr className="border-b border-gray-50 bg-gray-50/40">
-                      <td className="px-5 py-3 text-xs font-semibold text-gray-500">납기일 (일수)</td>
+                      <td className="px-5 py-3 text-xs font-semibold text-gray-500">{L('납기일 (일수)', 'Delivery time (days)')}</td>
                       {projectQuotes.map(q => (
                         <td key={q.id} className="px-4 py-3 text-center text-gray-700 whitespace-nowrap">
-                          {q.partnerResponse!.estimatedDays ? `${q.partnerResponse!.estimatedDays}일` : '—'}
+                          {q.partnerResponse!.estimatedDays ? [q.partnerResponse!.estimatedDays, L('일', ' days')].join('') : '—'}
                         </td>
                       ))}
                     </tr>
                     <tr className="border-b border-gray-50">
-                      <td className="px-5 py-3 text-xs font-semibold text-gray-500">메모</td>
+                      <td className="px-5 py-3 text-xs font-semibold text-gray-500">{L('메모', 'Note')}</td>
                       {projectQuotes.map(q => (
                         <td key={q.id} className="px-4 py-3 text-center text-gray-600 text-xs max-w-[160px]">
                           {q.partnerResponse!.note || '—'}
@@ -895,15 +901,15 @@ export default function QuotesAdminPage() {
                       ))}
                     </tr>
                     <tr className="border-b border-gray-50 bg-gray-50/40">
-                      <td className="px-5 py-3 text-xs font-semibold text-gray-500">응답일</td>
+                      <td className="px-5 py-3 text-xs font-semibold text-gray-500">{L('응답일', 'Response date')}</td>
                       {projectQuotes.map(q => (
                         <td key={q.id} className="px-4 py-3 text-center text-gray-500 text-xs whitespace-nowrap">
-                          {q.partnerResponse!.respondedAt?.slice(0, 10) || '—'}
+                          {q.partnerResponse!.respondedAt ? new Intl.DateTimeFormat(locale).format(new Date(q.partnerResponse!.respondedAt)) : '—'}
                         </td>
                       ))}
                     </tr>
                     <tr>
-                      <td className="px-5 py-3 text-xs font-semibold text-gray-500">선택</td>
+                      <td className="px-5 py-3 text-xs font-semibold text-gray-500">{L('선택', 'Select')}</td>
                       {projectQuotes.map(q => (
                         <td key={q.id} className="px-4 py-4 text-center">
                           <button
@@ -911,7 +917,7 @@ export default function QuotesAdminPage() {
                             disabled={selectingQuote !== null}
                             className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white text-xs font-bold rounded-lg transition disabled:opacity-50 whitespace-nowrap"
                           >
-                            {selectingQuote === q.id ? '처리 중...' : '이 견적 선택'}
+                            {selectingQuote === q.id ? L('처리 중...', 'Processing...') : L('이 견적 선택', 'Select this quote')}
                           </button>
                         </td>
                       ))}
@@ -925,7 +931,7 @@ export default function QuotesAdminPage() {
                   onClick={() => setCompareProject(null)}
                   className="w-full py-2.5 text-sm font-semibold rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 transition"
                 >
-                  닫기
+                  {L('닫기', 'Close')}
                 </button>
               </div>
             </div>

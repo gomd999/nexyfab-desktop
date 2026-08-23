@@ -1,16 +1,19 @@
 import type { Redis } from 'ioredis';
 import { createHash } from 'node:crypto';
 import type { GenerationRunState } from './generationRunState';
+import { evidenceHashMatches, serverEvidenceSha256 } from './serverEvidence';
 
 type StoredGenerationRun = {
-  schema: 'nexyfab.server-generation-state.v1';
+  schema: 'nexyfab.server-generation-state.v2';
   ownerKey: string;
   state: GenerationRunState;
+  stateSha256: string;
   createdAt: string;
   updatedAt: string;
 };
 
 const DEFAULT_TTL_SECONDS = 7 * 24 * 60 * 60;
+export const MAX_GENERATION_STATE_BYTES = 4 * 1024 * 1024;
 const memory = new Map<string, StoredGenerationRun>();
 let redisClient: Redis | null | undefined;
 
@@ -34,27 +37,45 @@ async function redis(): Promise<Redis | null> {
 }
 
 function requireDurableStore(): void {
-  if (process.env.NEXYFAB_COMMERCIAL_MODE === '1' && !process.env.REDIS_URL?.trim()) {
-    throw new Error('GENERATION_STATE_REDIS_REQUIRED');
+  if (process.env.NEXYFAB_COMMERCIAL_MODE === '1') {
+    // Redis is a cache and has neither the tenant/project/workspace identity
+    // nor the immutable revision/receipt bindings required by migration 2207.
+    // Commercial callers must use the PostgreSQL authoritative store through
+    // a server-owned project binding; silently falling back here would make a
+    // Redis record look like commercial release evidence.
+    throw new Error('GENERATION_STATE_POSTGRES_AUTHORITATIVE_REQUIRED');
   }
 }
 
 function parseStored(raw: string | null): StoredGenerationRun | null {
   if (!raw) return null;
+  if (Buffer.byteLength(raw, 'utf8') > MAX_GENERATION_STATE_BYTES * 2) throw new Error('GENERATION_STATE_TOO_LARGE');
   try {
     const value = JSON.parse(raw) as Partial<StoredGenerationRun>;
-    if (value.schema !== 'nexyfab.server-generation-state.v1' || !value.ownerKey || value.state?.schema !== 'nexyfab.generation-run.v1') return null;
+    if (value.schema !== 'nexyfab.server-generation-state.v2' || !value.ownerKey || value.state?.schema !== 'nexyfab.generation-run.v1' || !value.stateSha256) return null;
+    if (!evidenceHashMatches(value.state, value.stateSha256)) throw new Error('GENERATION_STATE_INTEGRITY_FAILED');
     return value as StoredGenerationRun;
-  } catch {
+  } catch (error) {
+    if (error instanceof Error && error.message === 'GENERATION_STATE_INTEGRITY_FAILED') throw error;
     return null;
   }
 }
 
+function assertStateSize(state: GenerationRunState): void {
+  let serialized: string;
+  try { serialized = JSON.stringify(state); }
+  catch { throw new Error('GENERATION_STATE_NOT_SERIALIZABLE'); }
+  if (Buffer.byteLength(serialized, 'utf8') > MAX_GENERATION_STATE_BYTES) throw new Error('GENERATION_STATE_TOO_LARGE');
+  // This also rejects NaN, Infinity, cycles, class instances, functions and other ambiguous evidence.
+  serverEvidenceSha256(state);
+}
+
 export async function createServerGenerationState(ownerKey: string, state: GenerationRunState): Promise<GenerationRunState> {
   requireDurableStore();
+  assertStateSize(state);
   const key = storageKey(ownerKey, state.runId);
   const now = new Date().toISOString();
-  const record: StoredGenerationRun = { schema: 'nexyfab.server-generation-state.v1', ownerKey, state: structuredClone(state), createdAt: now, updatedAt: now };
+  const record: StoredGenerationRun = { schema: 'nexyfab.server-generation-state.v2', ownerKey, state: structuredClone(state), stateSha256: serverEvidenceSha256(state), createdAt: now, updatedAt: now };
   const client = await redis();
   if (client) {
     const result = await client.set(key, JSON.stringify(record), 'EX', DEFAULT_TTL_SECONDS, 'NX');
@@ -83,6 +104,7 @@ export async function saveServerGenerationState(
   expectedRevision: number,
 ): Promise<GenerationRunState> {
   requireDurableStore();
+  assertStateSize(state);
   if (!Number.isInteger(state.revision) || state.revision <= expectedRevision) throw new Error('GENERATION_REVISION_TRANSITION_INVALID');
   const key = storageKey(ownerKey, state.runId);
   const client = await redis();
@@ -90,7 +112,7 @@ export async function saveServerGenerationState(
     const current = parseStored(await client.get(key));
     if (!current || current.ownerKey !== ownerKey) throw new Error('GENERATION_RUN_NOT_FOUND');
     if (current.state.revision !== expectedRevision) throw new Error('GENERATION_REVISION_CONFLICT');
-    const next: StoredGenerationRun = { ...current, state: structuredClone(state), updatedAt: new Date().toISOString() };
+    const next: StoredGenerationRun = { ...current, state: structuredClone(state), stateSha256: serverEvidenceSha256(state), updatedAt: new Date().toISOString() };
     const result = await client.eval(
       `local current=redis.call('GET',KEYS[1]); if not current then return 0 end; local decoded=cjson.decode(current); if decoded.state.revision~=tonumber(ARGV[1]) then return -1 end; redis.call('SET',KEYS[1],ARGV[2],'EX',ARGV[3]); return 1`,
       1,
@@ -105,7 +127,7 @@ export async function saveServerGenerationState(
     const current = memory.get(key);
     if (!current || current.ownerKey !== ownerKey) throw new Error('GENERATION_RUN_NOT_FOUND');
     if (current.state.revision !== expectedRevision) throw new Error('GENERATION_REVISION_CONFLICT');
-    memory.set(key, { ...current, state: structuredClone(state), updatedAt: new Date().toISOString() });
+    memory.set(key, { ...current, state: structuredClone(state), stateSha256: serverEvidenceSha256(state), updatedAt: new Date().toISOString() });
   }
   return structuredClone(state);
 }

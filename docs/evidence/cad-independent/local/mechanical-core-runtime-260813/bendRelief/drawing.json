@@ -1,0 +1,27 @@
+{
+  "schema": "nexyfab.mechanical-core-feature-local-runtime.v1",
+  "feature": "bendRelief",
+  "axis": "drawing",
+  "status": "PASS",
+  "executedAt": "2026-08-22T07:13:30.564Z",
+  "kernel": "OCCT HLRBRep via replicad drawProjection",
+  "views": {
+    "front": {
+      "visible": 7,
+      "hidden": 7,
+      "viewBox": "-32.000001 -17.000000999999997 64.000002 34.000001999999995"
+    },
+    "top": {
+      "visible": 1,
+      "hidden": 11,
+      "viewBox": "-32.000001 -3.000001 64.000002 6.000002"
+    },
+    "right": {
+      "visible": 6,
+      "hidden": 7,
+      "viewBox": "-3.000001 -17.000000999999997 6.000002 34.000001999999995"
+    }
+  },
+  "svgBytes": 4727,
+  "svgSha256": "92be0a010330ffd59272f48e1a93a6b3ba2dcf8e638aad612502943f96907639"
+}

@@ -30,10 +30,26 @@
  * nexyfab package --file assembly.json --out ./out
  * ```
  */
-import { readFileSync, writeFileSync, mkdirSync } from "node:fs";
-import { resolve, dirname } from "node:path";
+import {
+  readFileSync,
+  writeFileSync,
+  mkdirSync,
+  statSync,
+} from "node:fs";
+import { resolve, dirname, relative, isAbsolute, sep } from "node:path";
 
 const VERSION = "0.1.0";
+const MAX_PACKAGE_FILES = 128;
+const MAX_PACKAGE_FILE_BYTES = 64 * 1024 * 1024;
+const MAX_PACKAGE_TOTAL_BYTES = 256 * 1024 * 1024;
+// Keep local inputs and remote responses bounded before any request is made.
+const MAX_CLI_JSON_INPUT_BYTES = 16 * 1024 * 1024;
+const MAX_CLI_TEXT_INPUT_BYTES = 64 * 1024 * 1024;
+const MAX_CLI_RESPONSE_BYTES = 8 * 1024 * 1024;
+const DEFAULT_CALL_TIMEOUT_MS = 30_000;
+const MIN_CALL_TIMEOUT_MS = 25;
+const MAX_CALL_TIMEOUT_MS = 120_000;
+const BASE64 = /^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/;
 const BASE = (process.env.NEXYFAB_API_URL ?? "https://nexyfab.com").replace(
   /\/$/,
   "",
@@ -62,7 +78,69 @@ const EXIT = {
   elevation: 5,
   server: 6,
   network: 7,
+  response: 8,
 };
+
+function callTimeoutMs() {
+  const parsed = Number(process.env.NEXYFAB_CLI_TIMEOUT_MS);
+  if (!Number.isFinite(parsed)) return DEFAULT_CALL_TIMEOUT_MS;
+  return Math.min(MAX_CALL_TIMEOUT_MS, Math.max(MIN_CALL_TIMEOUT_MS, Math.floor(parsed)));
+}
+
+function responseTooLarge() {
+  return {
+    kind: "response_too_large",
+    error: "server response exceeds the local size limit",
+  };
+}
+
+function responseInvalid() {
+  return {
+    kind: "response_invalid",
+    error: "server returned invalid JSON",
+  };
+}
+
+async function readResponseBody(res) {
+  const declared = res.headers?.get?.("content-length");
+  if (declared && /^\d+$/.test(declared) && Number(declared) > MAX_CLI_RESPONSE_BYTES) {
+    return responseTooLarge();
+  }
+  if (!res.body?.getReader) {
+    const text = await res.text();
+    return Buffer.byteLength(text, "utf8") > MAX_CLI_RESPONSE_BYTES
+      ? responseTooLarge()
+      : { ok: true, text };
+  }
+  const reader = res.body.getReader();
+  const chunks = [];
+  let total = 0;
+  try {
+    while (true) {
+      const part = await reader.read();
+      if (part.done) break;
+      const chunk = part.value instanceof Uint8Array
+        ? part.value
+        : new Uint8Array(part.value ?? []);
+      total += chunk.byteLength;
+      if (total > MAX_CLI_RESPONSE_BYTES) {
+        await reader.cancel().catch(() => {});
+        return responseTooLarge();
+      }
+      chunks.push(Buffer.from(chunk));
+    }
+  } finally {
+    reader.releaseLock?.();
+  }
+  try {
+    return {
+      ok: true,
+      text: new TextDecoder("utf-8", { fatal: true }).decode(Buffer.concat(chunks)),
+    };
+  } catch {
+    return responseInvalid();
+  }
+}
 
 async function call(path, { method = "GET", body, key, verbose } = {}) {
   const url = BASE + path;
@@ -70,32 +148,52 @@ async function call(path, { method = "GET", body, key, verbose } = {}) {
   if (key) headers.authorization = `Bearer ${key}`;
   if (body !== undefined) headers["content-type"] = "application/json";
   if (verbose) {
-    // ⚠ 키는 마스킹한다 — CI 로그는 오래 남는다.
-    process.stderr.write(`→ ${method} ${url}  auth=${mask(key)}\n`);
+    // Keep endpoint details out of logs as well as the credential itself.
+    process.stderr.write(`→ ${method} request  auth=${mask(key)}\n`);
   }
   let res;
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), callTimeoutMs());
   try {
     res = await fetch(url, {
       method,
       headers,
       body: body === undefined ? undefined : JSON.stringify(body),
+      redirect: "error",
+      signal: controller.signal,
     });
-  } catch (e) {
+  } catch {
+    clearTimeout(timer);
     return {
       kind: "network",
-      error: `연결 실패: ${String(e?.message ?? e)} (${url})`,
+      error: controller.signal.aborted
+        ? "request timed out"
+        : "network request failed",
     };
   }
-  const text = await res.text();
+  let response;
+  try {
+    response = await readResponseBody(res);
+  } catch {
+    clearTimeout(timer);
+    return {
+      kind: "network",
+      error: controller.signal.aborted
+        ? "request timed out"
+        : "network response could not be read",
+    };
+  }
+  clearTimeout(timer);
+  if (!response.ok) return response;
+  const { text } = response;
   let json = null;
   try {
     json = text ? JSON.parse(text) : null;
   } catch {
-    /* 아래에서 원문으로 보고 */
+    if (res.ok) return responseInvalid();
   }
   if (!res.ok) {
-    const msg = json?.error ?? json?.message ?? text.slice(0, 300);
-    return { kind: "http", status: res.status, error: msg, json };
+    return { kind: "http", status: res.status, error: "server request failed", json };
   }
   return { kind: "ok", status: res.status, json: json ?? {} };
 }
@@ -105,6 +203,10 @@ function reportFailure(r) {
   if (r.kind === "network") {
     process.stderr.write(`✗ ${r.error}\n`);
     return EXIT.network;
+  }
+  if (r.kind === "response_too_large" || r.kind === "response_invalid") {
+    process.stderr.write(`✗ ${r.error}\n`);
+    return EXIT.response;
   }
   const { status, error } = r;
   if (status === 401) {
@@ -264,6 +366,39 @@ function writeJsonResult(value, outFile) {
   process.stdout.write(`saved: ${out}\n`);
 }
 
+/**
+ * Package file names come from the API response, not from the CLI user.
+ * Keep those names inside the requested output directory even if a broken or
+ * compromised response contains an absolute path or `..` segments.
+ */
+function packageOutputPath(dir, name) {
+  if (typeof name !== "string" || !name || name.includes("\0")) {
+    return { ok: false, error: "server returned an invalid package filename" };
+  }
+  // Check both separators so the guard behaves the same on Windows and Unix.
+  if (
+    isAbsolute(name) ||
+    /^[A-Za-z]:[\\/]/.test(name) ||
+    /^[\\/]{1,2}/.test(name) ||
+    name.split(/[\\/]+/).includes("..")
+  ) {
+    return {
+      ok: false,
+      error: `server returned an unsafe package filename: ${name}`,
+    };
+  }
+  const root = resolve(dir);
+  const output = resolve(root, name);
+  const outside = relative(root, output);
+  if (!outside || outside === ".." || outside.startsWith(`..${sep}`) || isAbsolute(outside)) {
+    return {
+      ok: false,
+      error: `server returned an unsafe package filename: ${name}`,
+    };
+  }
+  return { ok: true, path: output };
+}
+
 /** Canonical multi-part AI CAD entry point (same contract as web and MCP). */
 async function cmdDesign(argv) {
   const text = argv._.slice(1).join(" ").trim();
@@ -333,15 +468,12 @@ async function cmdTopology(argv) {
     );
     return EXIT.usage;
   }
-  let body;
-  try {
-    body = JSON.parse(readFileSync(resolve(String(file)), "utf8"));
-  } catch (e) {
-    process.stderr.write(
-      `cannot read topology payload: ${String(e?.message ?? e)}\n`,
-    );
+  const parsed = readJsonFile(file, "topology payload");
+  if (!parsed.ok) {
+    process.stderr.write(parsed.error + "\n");
     return EXIT.usage;
   }
+  const body = parsed.value;
   const r = await call("/api/cad/v1/topology/reconcile", {
     method: "POST",
     body,
@@ -353,17 +485,62 @@ async function cmdTopology(argv) {
   return EXIT.ok;
 }
 
-function readJsonFile(file, label) {
+function safeInputPath(file) {
+  if (typeof file !== "string" || !file.trim() || file.includes("\u0000")) {
+    return { ok: false, error: "input path is invalid" };
+  }
+  const normalized = file.replaceAll("\\", "/");
+  if (normalized.split("/").includes("..")) {
+    return { ok: false, error: "input path traversal is not allowed" };
+  }
+  return { ok: true, path: resolve(file) };
+}
+
+function readInputBytes(file, label, maxBytes) {
+  const safe = safeInputPath(String(file));
+  if (!safe.ok) return safe;
+  let stats;
+  try {
+    stats = statSync(safe.path);
+  } catch {
+    return { ok: false, error: `cannot read ${label}` };
+  }
+  if (!stats.isFile()) return { ok: false, error: `cannot read ${label}` };
+  if (stats.size > maxBytes) {
+    return { ok: false, error: `${label} exceeds the local size limit` };
+  }
+  let bytes;
+  try {
+    bytes = readFileSync(safe.path);
+  } catch {
+    return { ok: false, error: `cannot read ${label}` };
+  }
+  if (bytes.byteLength > maxBytes) {
+    return { ok: false, error: `${label} exceeds the local size limit` };
+  }
+  return { ok: true, bytes };
+}
+
+function readInputText(file, label, maxBytes = MAX_CLI_TEXT_INPUT_BYTES) {
+  const input = readInputBytes(file, label, maxBytes);
+  if (!input.ok) return input;
   try {
     return {
       ok: true,
-      value: JSON.parse(readFileSync(resolve(String(file)), "utf8")),
+      text: new TextDecoder("utf-8", { fatal: true }).decode(input.bytes),
     };
-  } catch (e) {
-    return {
-      ok: false,
-      error: `cannot read ${label}: ${String(e?.message ?? e)}`,
-    };
+  } catch {
+    return { ok: false, error: `${label} is not valid UTF-8` };
+  }
+}
+
+function readJsonFile(file, label, maxBytes = MAX_CLI_JSON_INPUT_BYTES) {
+  const input = readInputText(file, label, maxBytes);
+  if (!input.ok) return input;
+  try {
+    return { ok: true, value: JSON.parse(input.text) };
+  } catch {
+    return { ok: false, error: `${label} is invalid JSON` };
   }
 }
 
@@ -636,7 +813,12 @@ async function cmdReference(argv) {
       );
       return EXIT.usage;
     }
-    const resolved = resolve(String(file)),
+    const safe = safeInputPath(String(file));
+    if (!safe.ok) {
+      process.stderr.write(safe.error + "\n");
+      return EXIT.usage;
+    }
+    const resolved = safe.path,
       extension = resolved.split(".").pop()?.toLowerCase();
     if (!["step", "stp"].includes(extension)) {
       process.stderr.write(
@@ -644,15 +826,12 @@ async function cmdReference(argv) {
       );
       return EXIT.usage;
     }
-    let step;
-    try {
-      step = readFileSync(resolved, "utf8");
-    } catch (error) {
-      process.stderr.write(
-        `cannot read STEP input: ${String(error?.message ?? error)}\n`,
-      );
+    const input = readInputText(file, "STEP input");
+    if (!input.ok) {
+      process.stderr.write(input.error + "\n");
       return EXIT.usage;
     }
+    const step = input.text;
     const body = {
       step,
       ...(argv["angular-tolerance"] === undefined
@@ -688,7 +867,12 @@ async function cmdReference(argv) {
     process.stderr.write(unit.error + "\n");
     return EXIT.usage;
   }
-  const resolved = resolve(String(file));
+  const safe = safeInputPath(String(file));
+  if (!safe.ok) {
+    process.stderr.write(safe.error + "\n");
+    return EXIT.usage;
+  }
+  const resolved = safe.path;
   const extension = resolved.split(".").pop()?.toLowerCase();
   if (extension !== "step" && extension !== "stp") {
     process.stderr.write(
@@ -696,15 +880,12 @@ async function cmdReference(argv) {
     );
     return EXIT.usage;
   }
-  let source;
-  try {
-    source = readFileSync(resolved, "utf8");
-  } catch (e) {
-    process.stderr.write(
-      `cannot read STEP input: ${String(e?.message ?? e)}\n`,
-    );
+  const stepInput = readInputText(file, "STEP input");
+  if (!stepInput.ok) {
+    process.stderr.write(stepInput.error + "\n");
     return EXIT.usage;
   }
+  const source = stepInput.text;
   if (!source.trim()) {
     process.stderr.write("STEP input is empty\n");
     return EXIT.usage;
@@ -749,20 +930,16 @@ async function cmdIfc(argv) {
     after = argv.after,
     file = argv.file ?? argv._[2];
   const readIfc = (file, label) => {
-    const resolved = resolve(String(file));
+    const safe = safeInputPath(String(file));
+    if (!safe.ok) return safe;
+    const resolved = safe.path;
     if (resolved.split(".").pop()?.toLowerCase() !== "ifc")
       return { ok: false, error: `${label} must be an .ifc file` };
-    try {
-      const source = readFileSync(resolved, "utf8");
-      return source.trim()
-        ? { ok: true, source }
-        : { ok: false, error: `${label} IFC is empty` };
-    } catch (error) {
-      return {
-        ok: false,
-        error: `cannot read ${label} IFC: ${String(error?.message ?? error)}`,
-      };
-    }
+    const input = readInputText(file, `${label} IFC`);
+    if (!input.ok) return input;
+    return input.text.trim()
+      ? { ok: true, source: input.text }
+      : { ok: false, error: `${label} IFC is empty` };
   };
   if (sub === "domain-ir") {
     if (
@@ -781,16 +958,12 @@ async function cmdIfc(argv) {
     }
     let vienneseBendInputs;
     if (argv.inputs) {
-      try {
-        vienneseBendInputs = JSON.parse(
-          readFileSync(resolve(String(argv.inputs)), "utf8"),
-        );
-      } catch (error) {
-        process.stderr.write(
-          `cannot read Viennese inputs JSON: ${String(error?.message ?? error)}\n`,
-        );
+      const parsed = readJsonFile(argv.inputs, "Viennese inputs JSON");
+      if (!parsed.ok) {
+        process.stderr.write(parsed.error + "\n");
         return EXIT.usage;
       }
+      vienneseBendInputs = parsed.value;
       if (
         !vienneseBendInputs ||
         typeof vienneseBendInputs !== "object" ||
@@ -878,17 +1051,12 @@ async function cmdIfc(argv) {
       process.stderr.write(input.error + "\n");
       return EXIT.usage;
     }
-    let authoritativeInputs;
-    try {
-      authoritativeInputs = JSON.parse(
-        readFileSync(resolve(String(argv.inputs)), "utf8"),
-      );
-    } catch (error) {
-      process.stderr.write(
-        `cannot read authoritative inputs JSON: ${String(error?.message ?? error)}\n`,
-      );
+    const parsed = readJsonFile(argv.inputs, "authoritative inputs JSON");
+    if (!parsed.ok) {
+      process.stderr.write(parsed.error + "\n");
       return EXIT.usage;
     }
+    const authoritativeInputs = parsed.value;
     if (!Array.isArray(authoritativeInputs)) {
       process.stderr.write("authoritative inputs JSON must be an array\n");
       return EXIT.usage;
@@ -1063,13 +1231,11 @@ async function cmdAnimation(argv) {
     : EXIT.ok;
 }
 
-async function cmdSpecialVerify(argv, command, route, label, wrapSpec = true) {
+async function cmdSpecialVerify(argv, command, route, label, wrapSpec = true, expectedSub = "verify") {
   const sub = argv._[1];
   const file = argv.file ?? argv._[2];
-  if (sub !== "verify" || !file) {
-    process.stderr.write(
-      `usage: nexyfab ${command} verify --file spec.json [--out result.json] [--strict]\n`,
-    );
+  if (sub !== expectedSub || !file) {
+    process.stderr.write(`usage: nexyfab ${command} ${expectedSub} --file spec.json [--out result.json] [--strict]\n`);
     return EXIT.usage;
   }
   const parsed = readJsonFile(file, label);
@@ -1103,15 +1269,12 @@ async function cmdPackage(argv) {
     );
     return EXIT.usage;
   }
-  let assembly;
-  try {
-    assembly = JSON.parse(readFileSync(resolve(String(file)), "utf8"));
-  } catch (e) {
-    process.stderr.write(
-      `✗ 어셈블리 파일을 읽지 못했습니다: ${String(e?.message ?? e)}\n`,
-    );
+  const parsed = readJsonFile(file, "assembly file");
+  if (!parsed.ok) {
+    process.stderr.write(`✗ ${parsed.error}\n`);
     return EXIT.usage;
   }
+  const assembly = parsed.value;
 
   const options = {};
   if (argv.lang) options.lang = String(argv.lang);
@@ -1126,18 +1289,68 @@ async function cmdPackage(argv) {
   if (r.kind !== "ok") return reportFailure(r);
 
   const dir = resolve(String(argv.out ?? "./nexyfab-out"));
-  mkdirSync(dir, { recursive: true });
+  if (r.json?.files !== undefined && !Array.isArray(r.json.files)) {
+    process.stderr.write("server returned malformed package files\n");
+    return EXIT.server;
+  }
   const files = r.json?.files ?? [];
-  let written = 0;
+  if (files.length > MAX_PACKAGE_FILES) {
+    process.stderr.write("server returned too many package files\n");
+    return EXIT.server;
+  }
+  const packageEntries = [];
+  const seenPackagePaths = new Set();
+  let totalBytes = 0;
   for (const f of files) {
-    if (typeof f?.content !== "string") continue;
-    writeFileSync(resolve(dir, f.name), f.content);
+    if (!f || typeof f !== "object" || typeof f.name !== "string" || typeof f.content !== "string") {
+      process.stderr.write("server returned a malformed package file entry\n");
+      return EXIT.server;
+    }
+    const target = packageOutputPath(dir, f.name);
+    if (!target.ok) {
+      process.stderr.write(`${target.error}\n`);
+      return EXIT.server;
+    }
+    const pathKey = process.platform === "win32" ? target.path.toLowerCase() : target.path;
+    if (seenPackagePaths.has(pathKey)) {
+      process.stderr.write(`server returned a duplicate package filename: ${f.name}\n`);
+      return EXIT.server;
+    }
+    seenPackagePaths.add(pathKey);
+    const bytes = Buffer.byteLength(f.content, "utf8");
+    totalBytes += bytes;
+    if (bytes > MAX_PACKAGE_FILE_BYTES || totalBytes > MAX_PACKAGE_TOTAL_BYTES) {
+      process.stderr.write("server package output exceeds the local size limit\n");
+      return EXIT.server;
+    }
+    packageEntries.push({ file: f, path: target.path });
+  }
+  let zipBytes = null;
+  if (r.json?.zipBase64 !== undefined && r.json.zipBase64 !== null && r.json.zipBase64 !== "") {
+    const encoded = r.json.zipBase64;
+    if (typeof encoded !== "string" || !BASE64.test(encoded)) {
+      process.stderr.write("server returned malformed package zip data\n");
+      return EXIT.server;
+    }
+    zipBytes = Buffer.from(encoded, "base64");
+    const zipPath = resolve(dir, "package.zip");
+    const zipPathKey = process.platform === "win32" ? zipPath.toLowerCase() : zipPath;
+    if (zipBytes.length === 0 || zipBytes.length > MAX_PACKAGE_TOTAL_BYTES || totalBytes + zipBytes.length > MAX_PACKAGE_TOTAL_BYTES || seenPackagePaths.has(zipPathKey)) {
+      process.stderr.write("server package zip is empty, oversized, or conflicts with a package file\n");
+      return EXIT.server;
+    }
+  }
+  mkdirSync(dir, { recursive: true });
+  let written = 0;
+  for (const { file: f, path } of packageEntries) {
+    mkdirSync(dirname(path), { recursive: true });
+    writeFileSync(path, f.content);
     written++;
   }
-  if (r.json?.zipBase64) {
+  if (zipBytes) {
     writeFileSync(
       resolve(dir, "package.zip"),
-      Buffer.from(r.json.zipBase64, "base64"),
+      zipBytes,
     );
     written++;
   }
@@ -1191,7 +1404,58 @@ function parseArgv(args) {
   return out;
 }
 
+/**
+ * Exact command labels advertised by GET /api/cad/v1/capabilities.
+ *
+ * Keep these as user-invocable spellings, including required flag hints.  The
+ * capability parity test rejects a server entry that is absent here, and also
+ * rejects a CLI-only claim that the server does not advertise.
+ */
+export const CAD_V1_CLI_COMMANDS = Object.freeze([
+  "design",
+  "part",
+  "mesh",
+  "step",
+  "release decision",
+  "reference analyze",
+  "ifc semantic-roundtrip",
+  "ifc domain-ir",
+  "ifc spatial-ir",
+  "reference mechanical-relations",
+  "ifc recovery-plan",
+  "ifc recover-geometry",
+  "topology reconcile",
+  "assembly verify",
+  "project verify",
+  "interior door-swing --file",
+  "interior space-boundary --file",
+  "interior egress --file",
+  "interior mep-interference --file",
+  "animation evaluate",
+  "animation command",
+  "assembly edit --verify-brep",
+  "brep push-pull",
+  "animation verify",
+  "generation verify",
+  "generation state --file",
+  "generation advance --file",
+  "generation finalize --file",
+  "robot generate",
+  "manufacturing verify",
+  "sheet-metal verify",
+  "weldment verify",
+  "tolerance analyze",
+  "pmi verify",
+]);
+
+const CAD_V1_CLI_COMMAND_LIST = CAD_V1_CLI_COMMANDS
+  .map((command) => `  nexyfab ${command}`)
+  .join("\n");
+
 const USAGE = `nexyfab ${VERSION}
+
+CAD v1 capability commands (exact spellings; run "nexyfab capabilities" for schemas):
+${CAD_V1_CLI_COMMAND_LIST}
 
   nexyfab reference analyze --file m.step --scenario id --unit mm  exact CAD evidence JSON
   nexyfab ifc semantic-roundtrip --before a.ifc --after b.ifc [--strict]  IFC semantic preservation evidence
@@ -1200,8 +1464,8 @@ const USAGE = `nexyfab ${VERSION}
   nexyfab interior egress --file f [--strict]  governed route and clear-width check
   nexyfab interior mep-interference --file f [--strict]  continuous MEP collision check
   nexyfab generation state --file action.json  staged generation checkpoint transition
-  nexyfab generation advance --file run.json  kernelÂ·topologyÂ·assembly evidence advancement
-  nexyfab generation finalize --file evidence.json  motionÂ·G0-G9Â·STEP roundtrip finalization
+  nexyfab generation advance --file run.json  kernel·topology·assembly evidence advancement
+  nexyfab generation finalize --file evidence.json  motion·G0-G9·STEP roundtrip finalization
   nexyfab whoami                        키가 유효한지 확인
   nexyfab keys list                     내 API 키 목록
   nexyfab keys create <이름> [--days N] 키 발급 (평문은 1회만 출력)
@@ -1302,6 +1566,7 @@ export async function main(args = process.argv.slice(2)) {
         "/api/cad/v1/tolerance/analyze",
         "tolerance chain",
         false,
+        "analyze",
       );
     case "pmi":
       return cmdSpecialVerify(

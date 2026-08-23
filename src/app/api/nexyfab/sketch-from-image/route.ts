@@ -17,12 +17,15 @@ import { checkUserBudget } from '@/lib/ai/userBudget';
 import { recordPromptCall, classifyAiError } from '@/lib/ai/telemetry';
 import { captureServerError } from '@/lib/error-capture';
 import { runSketchFromImage } from '@/lib/ai/sketchFromImageService';
+import { readBoundedJson } from '@/lib/boundedJsonBody';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 /** Per (ip,user) hourly cap. Vision is expensive — cap tightly, like intent-from-image. */
 const RATE_LIMIT_PER_HOUR = 20;
+// 5 MiB decoded raster expands to about 6.7 MiB base64, plus the data URL and JSON envelope.
+const MAX_JSON_BODY_BYTES = 8 * 1024 * 1024;
 
 const HTTP_FOR_CODE: Record<string, number> = {
   IMAGE_REQUIRED: 400,
@@ -53,11 +56,11 @@ export async function POST(req: NextRequest) {
   }
 
   // (3) Body.
-  const body = (await req.json().catch(() => ({}))) as Record<string, unknown>;
+  const body = (await readBoundedJson(req, MAX_JSON_BODY_BYTES).catch(() => ({}))) as Record<string, unknown>;
   const imageBase64 = typeof body.imageBase64 === 'string' ? body.imageBase64 : '';
 
   // (4) Budget gate — block before the (paid) vision call.
-  const budget = await checkUserBudget(userId);
+  const budget = await checkUserBudget(userId, planCheck.orgId);
   if (!budget.ok) {
     return NextResponse.json(
       {
@@ -87,7 +90,7 @@ export async function POST(req: NextRequest) {
   if (!result.ok) {
     if (result.code === 'INFER_FAILED') {
       recordPromptCall({
-        userId, promptId: 'vision-sketch-detect', promptVersion: '1',
+        userId, orgId: planCheck.orgId, promptId: 'vision-sketch-detect', promptVersion: '1',
         provider: 'unknown', model: 'unknown', latencyMs: Date.now() - t0,
         success: false, errorClass: classifyAiError(new Error(result.error ?? 'infer failed')),
       });
@@ -100,7 +103,7 @@ export async function POST(req: NextRequest) {
 
   // (6) Telemetry — successful vision round-trip.
   recordPromptCall({
-    userId, promptId: 'vision-sketch-detect', promptVersion: '1',
+    userId, orgId: planCheck.orgId, promptId: 'vision-sketch-detect', promptVersion: '1',
     provider: 'anthropic', model: 'vision', latencyMs: Date.now() - t0, success: true,
   });
 

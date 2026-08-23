@@ -266,6 +266,14 @@ export async function verifyBackupRestore({
   receiptPath,
 }) {
   const startedAtMs = Date.now();
+  const release = {
+    buildId: process.env.RESTORE_RELEASE_BUILD_ID?.trim() ?? '',
+    deploymentId: process.env.RESTORE_RELEASE_DEPLOYMENT_ID?.trim() ?? '',
+    gitHead: process.env.RESTORE_RELEASE_GIT_HEAD?.trim() ?? '',
+  };
+  if (!release.buildId || !release.deploymentId || !/^[a-f0-9]{64}$/.test(release.gitHead)) {
+    throw new Error('RESTORE_RELEASE_BUILD_ID, RESTORE_RELEASE_DEPLOYMENT_ID, and RESTORE_RELEASE_GIT_HEAD are required for a bound restore receipt');
+  }
   const safety = assertRestoreDrillSafety({
     sourceDatabaseUrl,
     restoreDatabaseUrl,
@@ -317,8 +325,12 @@ export async function verifyBackupRestore({
     schema: 'nexyfab.backup-isolated-restore-drill.v2',
     generatedAt: new Date(completedAtMs).toISOString(),
     ok: true,
+    target: 'production',
+    release,
     safety: {
       environment: 'staging',
+      sourceEnvironment: 'production',
+      restoredEnvironment: 'staging',
       sourceDatabase: safety.source.database,
       restoreDatabase: safety.target.database,
       isolatedDatabaseIdentity: safety.source.identity !== safety.target.identity,
@@ -330,19 +342,30 @@ export async function verifyBackupRestore({
       reused: backup.reused,
       bytes: backupBytes,
       sha256: backupSha256,
+      objectSha256: backupSha256,
+      sourceSnapshotSha256: source.tableContentSha256,
       completedAt: backup.completedAt,
     },
     source,
     restored: {
       ...restored,
       exactSourceMatch: exactRestore.ok,
+      businessDataSha256: restored.tableContentSha256,
       differences: exactRestore.differences,
     },
     migration,
+    migrationTarget: 2026082208,
     migrated: {
       ...migrated,
       businessRowsPreserved: businessPreservation.ok,
+      businessDataSha256: migrated.tableContentSha256,
       businessDifferences: businessPreservation.differences,
+    },
+    timing: {
+      drillStartedAt: new Date(startedAtMs).toISOString(),
+      backupCapturedAt: backup.completedAt,
+      restoreStartedAt: new Date(restoreStartedAtMs).toISOString(),
+      completedAt: new Date(completedAtMs).toISOString(),
     },
     objectives: {
       rpoAgeAtDrillStartMs: Math.max(0, startedAtMs - backupCapturedAtMs),
@@ -351,6 +374,9 @@ export async function verifyBackupRestore({
       measurement: 'wall_clock',
     },
   };
+  receipt.migration.targetVersion = 2026082208;
+  receipt.migration.targetChecksum = receipt.migration.migrations.find(item => item.version === 2026082208)?.checksum ?? null;
+  receipt.sha256 = sha256(JSON.stringify(receipt));
   mkdirSync(path.dirname(receiptPath), { recursive: true });
   writeFileSync(receiptPath, `${JSON.stringify(receipt, null, 2)}\n`, { flag: 'wx' });
   return receipt;

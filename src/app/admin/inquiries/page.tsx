@@ -1,6 +1,8 @@
 'use client';
+import { useAdminI18n } from '../AdminI18nProvider';
+import { createCommercialLocalizer } from '@/lib/i18n/commercialLocalizer';
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useMemo } from 'react';
 import Link from 'next/link';
 import { useToast, type ToastType } from '@/components/ToastProvider';
 import { formatDateTime } from '@/lib/formatDate';
@@ -16,6 +18,8 @@ interface MatchScore {
 }
 
 function ScoreBar({ score }: { score: number }) {
+  const { locale } = useAdminI18n();
+  const L = useMemo(() => createCommercialLocalizer(locale), [locale]);
   const pct = Math.min(100, Math.max(0, score));
   const color = pct >= 70 ? 'bg-green-500' : pct >= 40 ? 'bg-amber-400' : 'bg-gray-300';
   return (
@@ -23,7 +27,7 @@ function ScoreBar({ score }: { score: number }) {
       <div className="flex-1 h-2 bg-gray-100 rounded-full overflow-hidden">
         <div className={`h-2 rounded-full ${color}`} style={{ width: `${pct}%` }} />
       </div>
-      <span className="text-xs font-bold text-gray-700 w-8 text-right">{pct}점</span>
+      <span className="text-xs font-bold text-gray-700 w-8 text-right">{L(pct + '점', pct + ' pts')}</span>
     </div>
   );
 }
@@ -37,10 +41,12 @@ function MatchModal({
   onClose: () => void;
   onSendQuote: (email: string, company: string) => void;
 }) {
+  const { locale } = useAdminI18n();
+  const L = useMemo(() => createCommercialLocalizer(locale), [locale]);
   const [matches, setMatches] = useState<MatchScore[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const RANK_ICONS = ['🥇', '🥈', '🥉', '4위', '5위'];
+  const RANK_ICONS = ['🥇', '🥈', '🥉'];
 
   useEffect(() => {
     fetch(`/api/match?inquiryId=${encodeURIComponent(inquiryId)}`)
@@ -49,31 +55,31 @@ function MatchModal({
         if (data.error) throw new Error(data.error);
         setMatches(data.matches || []);
       })
-      .catch((e) => setError(e.message || '오류가 발생했습니다.'))
+      .catch((e) => setError(e.message || L('오류가 발생했습니다.', 'An error occurred.')))
       .finally(() => setLoading(false));
-  }, [inquiryId]);
+  }, [inquiryId, L]);
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onClick={onClose}>
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg mx-4 max-h-[85vh] flex flex-col" onClick={(e) => e.stopPropagation()}>
         <div className="px-6 py-4 border-b flex items-center justify-between">
           <div>
-            <h2 className="text-lg font-bold text-gray-900">🎯 추천 파트너</h2>
-            <p className="text-xs text-gray-400">문의 분야·예산·평점·완료 건수 기반 상위 5개</p>
+            <h2 className="text-lg font-bold text-gray-900">{L('🎯 추천 파트너', '🎯 Recommended partners')}</h2>
+            <p className="text-xs text-gray-400">{L('문의 분야·예산·평점·완료 건수 기반 상위 5개', 'Top five based on inquiry field, budget, rating, and completed jobs')}</p>
           </div>
           <button onClick={onClose} className="text-gray-400 hover:text-gray-600 text-xl leading-none">×</button>
         </div>
 
         <div className="px-6 py-4 overflow-y-auto flex-1 space-y-4">
-          {loading && <div className="text-center text-gray-400 py-8">분석 중...</div>}
+          {loading && <div className="text-center text-gray-400 py-8">{L('분석 중...', 'Analyzing…')}</div>}
           {error && <div className="text-center text-red-500 py-8">{error}</div>}
           {!loading && !error && matches.length === 0 && (
-            <div className="text-center text-gray-400 py-8">매칭 결과가 없습니다.<br /><span className="text-xs">승인된 파트너가 없거나 조건이 맞지 않습니다.</span></div>
+            <div className="text-center text-gray-400 py-8">{L('매칭 결과가 없습니다.', 'No matching results.')}<br /><span className="text-xs">{L('승인된 파트너가 없거나 조건이 맞지 않습니다.', 'No approved partner matches the criteria.')}</span></div>
           )}
           {matches.map((m, idx) => (
             <div key={m.partnerId} className="bg-gray-50 rounded-xl p-4 space-y-2">
               <div className="flex items-center gap-3">
-                <span className="text-lg">{RANK_ICONS[idx] || `${idx + 1}위`}</span>
+                <span className="text-lg">{RANK_ICONS[idx] || L((idx + 1) + '위', String(idx + 1))}</span>
                 <div className="flex-1 min-w-0">
                   <p className="font-semibold text-gray-900 truncate">{m.company}</p>
                   <p className="text-xs text-gray-400 truncate">{m.email}</p>
@@ -94,7 +100,7 @@ function MatchModal({
                   onClick={() => onSendQuote(m.email, m.company)}
                   className="text-xs px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-semibold transition-colors"
                 >
-                  견적 요청 보내기
+                  {L('견적 요청 보내기', 'Send quote request')}
                 </button>
               </div>
             </div>
@@ -102,7 +108,7 @@ function MatchModal({
         </div>
 
         <div className="px-6 py-4 border-t">
-          <button onClick={onClose} className="w-full py-2 text-sm font-semibold rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50">닫기</button>
+          <button onClick={onClose} className="w-full py-2 text-sm font-semibold rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50">{L('닫기', 'Close')}</button>
         </div>
       </div>
     </div>
@@ -124,6 +130,8 @@ function QuickQuoteModal({
   partnerCompany: string;
   onClose: () => void;
 }) {
+  const { locale } = useAdminI18n();
+  const L = createCommercialLocalizer(locale);
   const { toast } = useToast();
   const [projectName, setProjectName] = useState(inquiryName);
   const [details, setDetails] = useState('');
@@ -149,13 +157,13 @@ function QuickQuoteModal({
       });
       const data = await res.json();
       if (data.quote) {
-        toast('success', `견적 요청이 발송되었습니다. 파트너: ${partnerCompany} / 견적 ID: ${data.quote.id}`);
+        toast('success', L('견적 요청이 발송되었습니다. 파트너: ' + partnerCompany + ' / 견적 ID: ' + data.quote.id, 'Quote request sent. Partner: ' + partnerCompany + ' / Quote ID: ' + data.quote.id));
         onClose();
       } else {
-        toast('error', '견적 요청 발송에 실패했습니다.');
+        toast('error', L('견적 요청 발송에 실패했습니다.', 'Failed to send the quote request.'));
       }
     } catch {
-      toast('error', '오류가 발생했습니다.');
+      toast('error', L('오류가 발생했습니다.', 'An error occurred.'));
     } finally {
       setSending(false);
     }
@@ -164,12 +172,12 @@ function QuickQuoteModal({
   return (
     <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50" onClick={onClose}>
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md mx-4 p-6" onClick={(e) => e.stopPropagation()}>
-        <h2 className="text-base font-bold text-gray-900 mb-1">견적 요청 보내기</h2>
+        <h2 className="text-base font-bold text-gray-900 mb-1">{L('견적 요청 보내기', 'Send quote request')}</h2>
         <p className="text-xs text-gray-400 mb-4">→ {partnerCompany} ({partnerEmail})</p>
 
         <div className="space-y-3">
           <div>
-            <label className="block text-xs font-semibold text-gray-600 mb-1">프로젝트명 *</label>
+            <label className="block text-xs font-semibold text-gray-600 mb-1">{L('프로젝트명 *', 'Project name *')}</label>
             <input
               value={projectName}
               onChange={(e) => setProjectName(e.target.value)}
@@ -177,17 +185,17 @@ function QuickQuoteModal({
             />
           </div>
           <div>
-            <label className="block text-xs font-semibold text-gray-600 mb-1">요청 상세</label>
+            <label className="block text-xs font-semibold text-gray-600 mb-1">{L('요청 상세', 'Request details')}</label>
             <textarea
               value={details}
               onChange={(e) => setDetails(e.target.value)}
               rows={3}
-              placeholder="요청 내용을 입력하세요..."
+              placeholder={L('요청 내용을 입력하세요...', 'Enter request details...')}
               className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:border-blue-400 resize-none"
             />
           </div>
           <div>
-            <label className="block text-xs font-semibold text-gray-600 mb-1">견적 유효기간</label>
+            <label className="block text-xs font-semibold text-gray-600 mb-1">{L('견적 유효기간', 'Quote validity period')}</label>
             <input
               type="date"
               value={validUntil}
@@ -203,13 +211,13 @@ function QuickQuoteModal({
             disabled={!projectName.trim() || sending}
             className="flex-1 py-2.5 text-sm font-bold rounded-lg bg-blue-600 hover:bg-blue-700 text-white disabled:opacity-50 transition-colors"
           >
-            {sending ? '발송 중...' : '발송'}
+            {sending ? L('발송 중...', 'Sending...') : L('발송', 'Send')}
           </button>
           <button
             onClick={onClose}
             className="px-4 py-2.5 text-sm font-semibold rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50"
           >
-            취소
+            {L('취소', 'Cancel')}
           </button>
         </div>
       </div>
@@ -217,9 +225,11 @@ function QuickQuoteModal({
   );
 }
 
-function downloadCSV(data: Inquiry[], filename: string, toast?: (type: ToastType, message: string) => void) {
-  if (data.length === 0) { toast?.('warning', '내보낼 데이터가 없습니다.'); return; }
-  const headers = ['날짜', '상태', '이름', '회사', '이메일', '전화', '요청분야', '범위', '예산', '내용'];
+function downloadCSV(data: Inquiry[], filename: string, L: (ko: string, en: string) => string, toast?: (type: ToastType, message: string) => void) {
+  if (data.length === 0) { toast?.('warning', L('내보낼 데이터가 없습니다.', 'There is no data to export.')); return; }
+  const headers = ['날짜', '상태', '이름', '회사', '이메일', '전화', '요청분야', '범위', '예산', '내용'].map(label => L(label, {
+    날짜: 'Date', 상태: 'Status', 이름: 'Name', 회사: 'Company', 이메일: 'Email', 전화: 'Phone', 요청분야: 'Request field', 범위: 'Scope', 예산: 'Budget', 내용: 'Message',
+  }[label] ?? label));
   const rows = data.map(inq => [
     inq.date?.slice(0, 16) || '',
     inq.status || 'new',
@@ -268,13 +278,6 @@ interface Inquiry {
   contractId?: string; // 이미 계약이 생성된 경우
 }
 
-const STATUS_LABELS: Record<Status, string> = {
-  new: '신규',
-  reviewing: '검토중',
-  contacted: '연락완료',
-  closed: '종료',
-};
-
 const STATUS_COLORS: Record<Status, string> = {
   new: 'bg-blue-100 text-blue-700 border-blue-300',
   reviewing: 'bg-amber-100 text-amber-700 border-amber-300',
@@ -291,15 +294,23 @@ function StatusBadge({
   status: Status;
   onChange: (s: Status) => void;
 }) {
+  const { locale } = useAdminI18n();
+  const L = createCommercialLocalizer(locale);
+  const statusLabels: Record<Status, string> = {
+    new: L('신규', 'New'),
+    reviewing: L('검토중', 'Reviewing'),
+    contacted: L('연락완료', 'Contacted'),
+    closed: L('종료', 'Closed'),
+  };
   const [open, setOpen] = useState(false);
   return (
     <div className="relative inline-block">
       <button
         onClick={() => setOpen((v) => !v)}
         className={`text-xs font-semibold px-2 py-1 rounded border cursor-pointer select-none ${STATUS_COLORS[status]}`}
-        title="클릭하여 상태 변경"
+        title={L('클릭하여 상태 변경', 'Click to change status')}
       >
-        {STATUS_LABELS[status]}
+        {statusLabels[status]}
       </button>
       {open && (
         <div className="absolute z-10 mt-1 bg-white border rounded shadow-lg min-w-[100px]">
@@ -314,7 +325,7 @@ function StatusBadge({
                 s === status ? 'font-bold' : ''
               }`}
             >
-              {STATUS_LABELS[s]}
+              {statusLabels[s]}
             </button>
           ))}
         </div>
@@ -336,6 +347,8 @@ function InlineConvertForm({
   onClose: () => void;
   onSuccess: (contractId: string) => void;
 }) {
+  const { locale } = useAdminI18n();
+  const L = createCommercialLocalizer(locale);
   const [projectName, setProjectName] = useState(
     inquiry.request_field || inquiry.message?.slice(0, 50) || ''
   );
@@ -356,7 +369,7 @@ function InlineConvertForm({
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!projectName || !contractAmount) {
-      setError('프로젝트명과 계약금액은 필수입니다.');
+      setError(L('프로젝트명과 계약금액은 필수입니다.', 'Project name and contract amount are required.'));
       return;
     }
     setConverting(true);
@@ -379,7 +392,7 @@ function InlineConvertForm({
       });
       const data = await res.json();
       if (!data.contract) {
-        setError(data.error || '계약 생성에 실패했습니다.');
+        setError(data.error || L('계약 생성에 실패했습니다.', 'Failed to create the contract.'));
         return;
       }
       const contractId = data.contract.id;
@@ -391,7 +404,7 @@ function InlineConvertForm({
         body: JSON.stringify({
           id: inquiry.id,
           status: 'contacted',
-          note: `계약 전환 완료: ${contractId}`,
+          note: L('계약 전환 완료: ' + contractId, 'Contract conversion complete: ' + contractId),
           contractId,
         }),
       });
@@ -399,7 +412,7 @@ function InlineConvertForm({
       setSuccessContractId(contractId);
       onSuccess(contractId);
     } catch {
-      setError('오류가 발생했습니다. 다시 시도해 주세요.');
+      setError(L('오류가 발생했습니다. 다시 시도해 주세요.', 'An error occurred. Please try again.'));
     } finally {
       setConverting(false);
     }
@@ -409,21 +422,21 @@ function InlineConvertForm({
   if (successContractId) {
     return (
       <div className="mt-3 p-4 bg-green-50 border border-green-200 rounded-xl space-y-2">
-        <p className="text-sm font-bold text-green-700">계약이 생성되었습니다!</p>
-        <p className="text-xs text-green-600">계약 ID: <span className="font-mono font-bold">{successContractId}</span></p>
+        <p className="text-sm font-bold text-green-700">{L('계약이 생성되었습니다!', 'Contract created!')}</p>
+        <p className="text-xs text-green-600">{L('계약 ID:', 'Contract ID:')} <span className="font-mono font-bold">{successContractId}</span></p>
         <div className="flex gap-2 mt-2">
           <Link
             href="/admin/contracts"
             prefetch={false}
             className="px-3 py-1.5 text-xs font-semibold rounded-lg bg-green-600 hover:bg-green-700 text-white transition-colors"
           >
-            계약 관리로 이동 →
+            {L('계약 관리로 이동 →', 'Go to contracts →')}
           </Link>
           <button
             onClick={onClose}
             className="px-3 py-1.5 text-xs font-semibold rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50"
           >
-            닫기
+            {L('닫기', 'Close')}
           </button>
         </div>
       </div>
@@ -437,28 +450,28 @@ function InlineConvertForm({
       onClick={e => e.stopPropagation()}
     >
       <div className="flex items-center justify-between mb-1">
-        <p className="text-xs font-bold text-blue-700">📄 계약 전환</p>
+        <p className="text-xs font-bold text-blue-700">{L('📄 계약 전환', '📄 Convert to contract')}</p>
         <button type="button" onClick={onClose} className="text-gray-400 hover:text-gray-600 text-sm">✕</button>
       </div>
 
       {/* 프로젝트명 */}
       <div>
-        <label className="block text-xs font-semibold text-gray-600 mb-1">프로젝트명 *</label>
+        <label className="block text-xs font-semibold text-gray-600 mb-1">{L('프로젝트명 *', 'Project name *')}</label>
         <input
           value={projectName}
           onChange={e => setProjectName(e.target.value)}
-          placeholder="프로젝트명 입력"
+          placeholder={L('프로젝트명 입력', 'Enter project name')}
           className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:border-blue-400 bg-white"
         />
       </div>
 
       {/* 계약금액 */}
       <div>
-        <label className="block text-xs font-semibold text-gray-600 mb-1">계약금액 (원) *</label>
+        <label className="block text-xs font-semibold text-gray-600 mb-1">{L('계약금액 (원) *', 'Contract amount (KRW) *')}</label>
         <input
           value={contractAmount}
           onChange={e => setContractAmount(e.target.value)}
-          placeholder="예: 50000000"
+          placeholder={L('예: 50000000', 'e.g. 50000000')}
           type="number"
           min="0"
           className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:border-blue-400 bg-white"
@@ -467,27 +480,27 @@ function InlineConvertForm({
 
       {/* 플랜 */}
       <div>
-        <label className="block text-xs font-semibold text-gray-600 mb-1">플랜</label>
+        <label className="block text-xs font-semibold text-gray-600 mb-1">{L('플랜', 'Plan')}</label>
         <select
           value={plan}
           onChange={e => setPlan(e.target.value)}
           className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:border-blue-400 bg-white"
         >
-          <option value="standard">Standard (수수료 공제 50만원)</option>
-          <option value="premium">Premium (수수료 공제 100만원)</option>
+          <option value="standard">{L('Standard (수수료 공제 50만원)', 'Standard (KRW 500,000 fee deduction)')}</option>
+          <option value="premium">{L('Premium (수수료 공제 100만원)', 'Premium (KRW 1,000,000 fee deduction)')}</option>
         </select>
       </div>
 
       {/* 파트너사 선택 */}
       <div>
-        <label className="block text-xs font-semibold text-gray-600 mb-1">파트너사</label>
+        <label className="block text-xs font-semibold text-gray-600 mb-1">{L('파트너사', 'Partner')}</label>
         {partners.length > 0 ? (
           <select
             value={selectedPartnerId}
             onChange={e => setSelectedPartnerId(e.target.value)}
             className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:border-blue-400 bg-white"
           >
-            <option value="">-- 직접 입력 --</option>
+            <option value="">-- {L('직접 입력', 'enter manually')} --</option>
             {partners.map(p => (
               <option key={p.id} value={p.id}>
                 {p.company} ({p.email})
@@ -500,7 +513,7 @@ function InlineConvertForm({
           <input
             value={factoryNameManual}
             onChange={e => setFactoryNameManual(e.target.value)}
-            placeholder="파트너사명 직접 입력"
+            placeholder={L('파트너사명 직접 입력', 'Enter partner name')}
             className="w-full mt-1 px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:border-blue-400 bg-white"
           />
         )}
@@ -508,7 +521,7 @@ function InlineConvertForm({
 
       {/* 납기일 */}
       <div>
-        <label className="block text-xs font-semibold text-gray-600 mb-1">납기일</label>
+        <label className="block text-xs font-semibold text-gray-600 mb-1">{L('납기일', 'Delivery date')}</label>
         <input
           type="date"
           value={deadline}
@@ -525,14 +538,14 @@ function InlineConvertForm({
           disabled={!projectName || !contractAmount || converting}
           className="flex-1 py-2.5 text-sm font-bold rounded-lg bg-blue-600 hover:bg-blue-700 text-white disabled:opacity-50 transition-colors"
         >
-          {converting ? '처리 중...' : '계약 생성'}
+          {converting ? L('처리 중...', 'Processing...') : L('계약 생성', 'Create contract')}
         </button>
         <button
           type="button"
           onClick={onClose}
           className="px-4 py-2.5 text-sm font-semibold rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50"
         >
-          취소
+          {L('취소', 'Cancel')}
         </button>
       </div>
     </form>
@@ -550,6 +563,8 @@ function InquiryCard({
   onUpdate: (id: string, status: Status, note: string, contractId?: string) => Promise<void>;
   onMatch: (inq: Inquiry) => void;
 }) {
+  const { locale } = useAdminI18n();
+  const L = createCommercialLocalizer(locale);
   const status: Status = (inquiry.status as Status) || 'new';
   const [note, setNote] = useState(inquiry.adminNote || '');
   const [expanded, setExpanded] = useState(false);
@@ -579,14 +594,14 @@ function InquiryCard({
       <div className="flex items-center justify-between flex-wrap gap-2">
         <div className="flex items-center gap-3 flex-wrap">
           <StatusBadge status={status} onChange={handleStatusChange} />
-          <span className="text-xs text-gray-400">{formatDateTime(inquiry.date)}</span>
+          <span className="text-xs text-gray-400">{formatDateTime(inquiry.date, locale)}</span>
           {inquiry.updatedAt && (
-            <span className="text-xs text-gray-300">수정: {formatDateTime(inquiry.updatedAt)}</span>
+            <span className="text-xs text-gray-300">{L('수정:', 'Updated:')} {formatDateTime(inquiry.updatedAt, locale)}</span>
           )}
           {/* 계약됨 배지 */}
           {alreadyConverted && (
             <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-green-100 text-green-700">
-              ✓ 계약됨
+              ✓ {L('계약됨', 'Contracted')}
             </span>
           )}
         </div>
@@ -596,21 +611,21 @@ function InquiryCard({
       {/* Contact info */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-sm">
         <div>
-          <span className="text-gray-400 text-xs block">이름</span>
+          <span className="text-gray-400 text-xs block">{L('이름', 'Name')}</span>
           <span className="font-medium">{inquiry.name || '-'}</span>
         </div>
         <div>
-          <span className="text-gray-400 text-xs block">회사</span>
+          <span className="text-gray-400 text-xs block">{L('회사', 'Company')}</span>
           <span>{inquiry.company || '-'}</span>
         </div>
         <div>
-          <span className="text-gray-400 text-xs block">이메일</span>
+          <span className="text-gray-400 text-xs block">{L('이메일', 'Email')}</span>
           <a href={`mailto:${inquiry.email}`} className="text-blue-600 hover:underline break-all">
             {inquiry.email || '-'}
           </a>
         </div>
         <div>
-          <span className="text-gray-400 text-xs block">전화</span>
+          <span className="text-gray-400 text-xs block">{L('전화', 'Phone')}</span>
           <span>{inquiry.phone || '-'}</span>
         </div>
       </div>
@@ -618,15 +633,15 @@ function InquiryCard({
       {/* Inquiry details */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-sm">
         <div>
-          <span className="text-gray-400 text-xs block">요청 분야</span>
+          <span className="text-gray-400 text-xs block">{L('요청 분야', 'Request field')}</span>
           <span>{inquiry.request_field || '-'}</span>
         </div>
         <div>
-          <span className="text-gray-400 text-xs block">범위</span>
+          <span className="text-gray-400 text-xs block">{L('범위', 'Scope')}</span>
           <span>{inquiry.scope || '-'}</span>
         </div>
         <div>
-          <span className="text-gray-400 text-xs block">예산</span>
+          <span className="text-gray-400 text-xs block">{L('예산', 'Budget')}</span>
           <span>{inquiry.budget_range || '-'}</span>
         </div>
       </div>
@@ -635,7 +650,7 @@ function InquiryCard({
       {inquiry.factoryId && (
         <div className="flex items-center gap-2 rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 text-sm">
           <span className="text-base">🏭</span>
-          <span className="text-gray-500 text-xs">요청 공장(디렉터리)</span>
+          <span className="text-gray-500 text-xs">{L('요청 공장(디렉터리)', 'Requested factory (directory)')}</span>
           <code className="font-mono text-xs text-blue-800 break-all">{inquiry.factoryId}</code>
           <a
             href={`/api/factories/?id=${encodeURIComponent(inquiry.factoryId)}`}
@@ -643,7 +658,7 @@ function InquiryCard({
             rel="noopener noreferrer"
             className="ml-auto shrink-0 rounded-md bg-blue-600 px-2.5 py-1 text-xs font-semibold text-white hover:bg-blue-700"
           >
-            공장 보기 →
+            {L('공장 보기 →', 'View factory →')}
           </a>
         </div>
       )}
@@ -651,7 +666,7 @@ function InquiryCard({
       {/* Message */}
       {message && (
         <div className="text-sm">
-          <span className="text-gray-400 text-xs block mb-1">메시지</span>
+          <span className="text-gray-400 text-xs block mb-1">{L('메시지', 'Message')}</span>
           <p className="text-gray-700 whitespace-pre-line bg-gray-50 rounded p-2 text-xs leading-relaxed">
             {expanded || !isLong ? message : message.slice(0, 100) + '…'}
           </p>
@@ -660,7 +675,7 @@ function InquiryCard({
               onClick={() => setExpanded((v) => !v)}
               className="text-xs text-blue-500 hover:underline mt-1"
             >
-              {expanded ? '접기' : '더 보기'}
+              {expanded ? L('접기', 'Collapse') : L('더 보기', 'View more')}
             </button>
           )}
         </div>
@@ -668,13 +683,13 @@ function InquiryCard({
 
       {/* Admin note */}
       <div className="text-sm">
-        <span className="text-gray-400 text-xs block mb-1">관리자 메모</span>
+        <span className="text-gray-400 text-xs block mb-1">{L('관리자 메모', 'Admin note')}</span>
         <div className="flex gap-2 items-start">
           <textarea
             value={note}
             onChange={(e) => setNote(e.target.value)}
             rows={2}
-            placeholder="내부 메모를 입력하세요..."
+            placeholder={L('내부 메모를 입력하세요...', 'Enter an internal note...')}
             className="flex-1 text-xs border rounded p-2 resize-none focus:outline-none focus:ring-1 focus:ring-blue-300"
           />
           <button
@@ -682,7 +697,7 @@ function InquiryCard({
             disabled={saving}
             className="text-xs bg-blue-600 text-white px-3 py-1.5 rounded hover:bg-blue-700 disabled:opacity-50 whitespace-nowrap"
           >
-            {saving ? '저장중…' : '저장'}
+            {saving ? L('저장중…', 'Saving…') : L('저장', 'Save')}
           </button>
         </div>
       </div>
@@ -695,7 +710,7 @@ function InquiryCard({
               onClick={() => onMatch(inquiry)}
               className="px-3 py-1.5 text-xs font-semibold rounded-lg bg-amber-500 hover:bg-amber-600 text-white transition-colors"
             >
-              🎯 파트너 추천
+              {L('🎯 파트너 추천', '🎯 Recommend partners')}
             </button>
           )}
           {canConvert && !alreadyConverted && !showConvertForm && (
@@ -703,7 +718,7 @@ function InquiryCard({
               onClick={() => setShowConvertForm(true)}
               className="px-3 py-1.5 text-xs font-semibold rounded-lg bg-blue-600 hover:bg-blue-700 text-white transition-colors"
             >
-              📄 계약 전환
+              {L('📄 계약 전환', '📄 Convert to contract')}
             </button>
           )}
           {alreadyConverted && (
@@ -712,7 +727,7 @@ function InquiryCard({
               prefetch={false}
               className="px-3 py-1.5 text-xs font-semibold rounded-lg bg-green-50 border border-green-200 text-green-700 hover:bg-green-100 transition-colors"
             >
-              계약 보기 →
+              {L('계약 보기 →', 'View contract →')}
             </Link>
           )}
         </div>
@@ -735,6 +750,8 @@ function InquiryCard({
 }
 
 export default function InquiriesPage() {
+  const { locale } = useAdminI18n();
+  const L = useMemo(() => createCommercialLocalizer(locale), [locale]);
   const { toast } = useToast();
   const [inquiries, setInquiries] = useState<Inquiry[]>([]);
   const [loading, setLoading] = useState(true);
@@ -762,11 +779,11 @@ export default function InquiriesPage() {
       const data = await res.json();
       setInquiries(data.inquiries || []);
     } catch {
-      setError('문의 데이터를 불러오지 못했습니다.');
+      setError(L('문의 데이터를 불러오지 못했습니다.', 'Unable to load inquiries.'));
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [L]);
 
   useEffect(() => {
     fetchInquiries();
@@ -837,29 +854,29 @@ export default function InquiriesPage() {
   });
 
   const FILTER_BUTTONS: { key: Status | 'all'; label: string }[] = [
-    { key: 'all', label: '전체' },
-    { key: 'new', label: '신규' },
-    { key: 'reviewing', label: '검토중' },
-    { key: 'contacted', label: '연락완료' },
-    { key: 'closed', label: '종료' },
+    { key: 'all', label: L('전체', 'All') },
+    { key: 'new', label: L('신규', 'New') },
+    { key: 'reviewing', label: L('검토중', 'Reviewing') },
+    { key: 'contacted', label: L('연락완료', 'Contacted') },
+    { key: 'closed', label: L('종료', 'Closed') },
   ];
 
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-xl font-bold text-gray-800">문의 관리</h1>
+        <h1 className="text-xl font-bold text-gray-800">{L('문의 관리', 'Inquiry management')}</h1>
         <div className="flex items-center gap-2">
           <button
-            onClick={() => downloadCSV(filtered, `inquiries_${new Date().toISOString().slice(0,10)}.csv`, toast)}
+            onClick={() => downloadCSV(filtered, `inquiries_${new Date().toISOString().slice(0,10)}.csv`, L, toast)}
             className="px-3 py-1.5 text-sm rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50"
           >
-            CSV 내보내기
+            {L('CSV 내보내기', 'Export CSV')}
           </button>
           <button
             onClick={fetchInquiries}
             className="text-sm text-gray-500 hover:text-gray-700 border px-3 py-1.5 rounded hover:bg-gray-50"
           >
-            새로고침
+            {L('새로고침', 'Refresh')}
           </button>
         </div>
       </div>
@@ -867,11 +884,11 @@ export default function InquiriesPage() {
       {/* Stats row */}
       <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
         {[
-          { label: '전체', value: stats.total, color: 'text-gray-700' },
-          { label: '신규', value: stats.new, color: 'text-blue-600' },
-          { label: '검토중', value: stats.reviewing, color: 'text-amber-600' },
-          { label: '연락완료', value: stats.contacted, color: 'text-green-600' },
-          { label: '종료', value: stats.closed, color: 'text-gray-400' },
+          { label: L('전체', 'All'), value: stats.total, color: 'text-gray-700' },
+          { label: L('신규', 'New'), value: stats.new, color: 'text-blue-600' },
+          { label: L('검토중', 'Reviewing'), value: stats.reviewing, color: 'text-amber-600' },
+          { label: L('연락완료', 'Contacted'), value: stats.contacted, color: 'text-green-600' },
+          { label: L('종료', 'Closed'), value: stats.closed, color: 'text-gray-400' },
         ].map((s) => (
           <div key={s.label} className="bg-white border rounded-lg p-3 text-center shadow-sm">
             <div className={`text-2xl font-bold ${s.color}`}>{s.value}</div>
@@ -901,34 +918,34 @@ export default function InquiriesPage() {
           type="text"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          placeholder="이름 / 이메일 / 회사 검색..."
+          placeholder={L('이름 / 이메일 / 회사 검색...', 'Search name / email / company...')}
           className="text-sm border rounded px-3 py-1.5 focus:outline-none focus:ring-1 focus:ring-blue-300 min-w-[200px]"
         />
       </div>
       <div className="flex items-center gap-2 mt-3">
-        <span className="text-xs text-gray-500">기간</span>
+        <span className="text-xs text-gray-500">{L('기간', 'Period')}</span>
         <input type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)}
           className="px-2 py-1.5 text-xs border border-gray-200 rounded-lg" />
         <span className="text-xs text-gray-400">~</span>
         <input type="date" value={dateTo} onChange={e => setDateTo(e.target.value)}
           className="px-2 py-1.5 text-xs border border-gray-200 rounded-lg" />
         {(dateFrom || dateTo) && (
-          <button onClick={() => { setDateFrom(''); setDateTo(''); }} className="text-xs text-gray-400 hover:text-gray-600">초기화</button>
+          <button onClick={() => { setDateFrom(''); setDateTo(''); }} className="text-xs text-gray-400 hover:text-gray-600">{L('초기화', 'Reset')}</button>
         )}
       </div>
 
       {/* Content */}
       {loading ? (
-        <div className="text-center text-gray-400 py-12">불러오는 중...</div>
+        <div className="text-center text-gray-400 py-12">{L('불러오는 중...', 'Loading…')}</div>
       ) : error ? (
         <div className="text-center text-red-500 py-12">{error}</div>
       ) : filtered.length === 0 ? (
         <div className="text-center text-gray-400 py-12">
-          {search || filter !== 'all' ? '검색 결과가 없습니다.' : '문의 내역이 없습니다.'}
+          {search || filter !== 'all' ? L('검색 결과가 없습니다.', 'No search results.') : L('문의 내역이 없습니다.', 'No inquiries found.')}
         </div>
       ) : (
         <div className="space-y-4">
-          <p className="text-xs text-gray-400">{filtered.length}건 표시 중</p>
+          <p className="text-xs text-gray-400">{L(filtered.length + '건 표시 중', filtered.length + ' shown')}</p>
           {filtered.map((inq) => (
             <InquiryCard
               key={inq.id}

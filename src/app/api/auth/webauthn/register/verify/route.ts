@@ -5,6 +5,10 @@ import { getAuthUser } from '@/lib/auth-middleware';
 import { getDbAdapter } from '@/lib/db-adapter';
 import { checkOrigin } from '@/lib/csrf';
 import { getRpConfig, readChallenge, CHALLENGE_COOKIE, challengeCookieOptions } from '@/lib/webauthn';
+import { boundedJsonError, readBoundedJson } from '@/lib/boundedJsonBody';
+
+// Attestation objects may contain certificate chains; keep a finite 1 MiB envelope.
+const MAX_WEBAUTHN_REGISTRATION_BODY_BYTES = 1024 * 1024;
 
 export const dynamic = 'force-dynamic';
 
@@ -14,7 +18,9 @@ export async function POST(req: NextRequest) {
   const authUser = await getAuthUser(req);
   if (!authUser) return NextResponse.json({ error: '로그인이 필요합니다.' }, { status: 401 });
 
-  const body = await req.json().catch(() => ({})) as { response?: RegistrationResponseJSON; label?: string };
+  let body: { response?: RegistrationResponseJSON; label?: string } = {};
+  try { body = await readBoundedJson(req, MAX_WEBAUTHN_REGISTRATION_BODY_BYTES); }
+  catch (error) { if (boundedJsonError(error)?.code === 'PAYLOAD_TOO_LARGE') return NextResponse.json({ error: 'Request too large', code: 'PAYLOAD_TOO_LARGE' }, { status: 413 }); }
   const response = body.response;
   if (!response?.id) return NextResponse.json({ error: '잘못된 요청입니다.' }, { status: 400 });
 

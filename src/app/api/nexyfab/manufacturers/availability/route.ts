@@ -10,8 +10,10 @@ import { getAuthUser } from '@/lib/auth-middleware';
 import { getDbAdapter } from '@/lib/db-adapter';
 import { checkOrigin } from '@/lib/csrf';
 import { findFactoryForPartnerEmail } from '@/lib/partner-factory-access';
+import { boundedJsonError, readBoundedJson } from '@/lib/boundedJsonBody';
 
 export const dynamic = 'force-dynamic';
+const AVAILABILITY_JSON_BYTES = 64 * 1024;
 
 const VALID_DAYS = new Set(['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun']);
 const TIME_RE = /^\d{2}:\d{2}$/;
@@ -64,8 +66,12 @@ export async function PATCH(req: NextRequest) {
 
   let body: { schedule?: Record<string, DaySchedule> };
   try {
-    body = await req.json();
-  } catch {
+    body = await readBoundedJson(req, AVAILABILITY_JSON_BYTES);
+  } catch (error) {
+    const bodyError = boundedJsonError(error);
+    if (bodyError?.code === 'PAYLOAD_TOO_LARGE') {
+      return NextResponse.json({ error: 'Request body too large' }, { status: bodyError.status });
+    }
     return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 });
   }
 

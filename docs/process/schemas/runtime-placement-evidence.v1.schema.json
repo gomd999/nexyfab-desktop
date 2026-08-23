@@ -1,0 +1,73 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "nexyfab.runtime-placement-evidence.v1",
+  "title": "NexyFab runtime placement live evidence",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "observedFrom",
+    "observedThrough",
+    "lastSampleAt",
+    "unexplainedGaps",
+    "activeRailwayServices",
+    "cost",
+    "checks"
+  ],
+  "properties": {
+    "schema": { "const": "nexyfab.runtime-placement-evidence.v1" },
+    "observedFrom": { "type": "string", "format": "date-time" },
+    "observedThrough": { "type": "string", "format": "date-time" },
+    "lastSampleAt": { "type": "string", "format": "date-time" },
+    "unexplainedGaps": { "type": "integer", "minimum": 0 },
+    "activeRailwayServices": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": { "enum": ["core-api", "native-fallback"] }
+    },
+    "cost": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["railwayMonthlyUsdBefore", "railwayMonthlyUsdAfter", "totalMonthlyUsdAfter"],
+      "properties": {
+        "railwayMonthlyUsdBefore": { "type": "number", "minimum": 0 },
+        "railwayMonthlyUsdAfter": { "type": "number", "minimum": 0 },
+        "totalMonthlyUsdAfter": { "type": "number", "minimum": 0 }
+      }
+    },
+    "checks": {
+      "type": "array",
+      "minItems": 10,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "status", "reason"],
+        "properties": {
+          "id": {
+            "enum": [
+              "cloudflare-staging-deploy",
+              "railway-minimal-staging-deploy",
+              "authenticated-project-e2e",
+              "cloudflare-railway-same-corpus-parity",
+              "postgres-backup-restore",
+              "r2-artifact-restore",
+              "queue-dead-letter-recovery",
+              "collaboration-snapshot-recovery",
+              "independent-rollback",
+              "thirty-day-cost-performance-error-observation"
+            ]
+          },
+          "status": { "enum": ["PASS", "FAIL", "BLOCKED", "NOT_RUN"] },
+          "receipt": { "type": "string", "pattern": "^sha256:[0-9a-fA-F]{64}$" },
+          "reason": { "type": "string", "minLength": 1 }
+        },
+        "allOf": [
+          {
+            "if": { "properties": { "status": { "const": "PASS" } } },
+            "then": { "required": ["receipt"] }
+          }
+        ]
+      }
+    }
+  }
+}

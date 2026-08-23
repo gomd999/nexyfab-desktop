@@ -1,0 +1,388 @@
+{
+  "schema": "nexyfab.mechanical-single-part-candidate-receipt.v1",
+  "generatedAt": "2026-08-13T17:44:16.388Z",
+  "status": "HOLD",
+  "source": {
+    "path": "docs/evidence/cad-independent/local/mechanical-core-feature-axis-evidence.json",
+    "sha256": "79d9344b7d101580b7e1574759a8eff652cbe942e6a389056b488aba28a77930",
+    "designRevisionSha256": "3cf6a0f9c8efcf153a2cfefde087a2112c086fc412d2feeaeb9ce52542838564"
+  },
+  "summary": {
+    "featuresAssessed": 30,
+    "candidatePass": 30,
+    "notRun": 0,
+    "manufacturingReleaseEligible": 0
+  },
+  "claimBoundary": {
+    "localExactCandidateOnly": true,
+    "commercialReceiptModified": false,
+    "runtimeLiveEvidenceCreated": false,
+    "drawingDimensionsRun": false,
+    "gdtRun": false,
+    "pmiRun": false,
+    "humanApprovalRun": false,
+    "manufacturingReleaseApproved": false
+  },
+  "verifierBinding": {
+    "sources": [
+      {
+        "path": "src/lib/cad/mechanicalSinglePartCandidate.ts",
+        "sha256": "b68a566ad3c61930fc0047d5e5cfc85798c3fee518395d9855a08e7384baf561",
+        "bytes": 2665,
+        "assertionId": "single-part-candidate.verifier-source.1"
+      },
+      {
+        "path": "scripts/build-mechanical-single-part-candidates.ts",
+        "sha256": "fa91c896d72de76e4da515b4170f30d6cf334b84846b4be5c0cd4296dffb6263",
+        "bytes": 24966,
+        "assertionId": "single-part-candidate.verifier-source.2"
+      }
+    ],
+    "tests": [
+      {
+        "path": "src/lib/cad/mechanicalSinglePartCandidate.test.ts",
+        "sha256": "95c49e6525c82c0b3966af08651a40a00e162684968d20aeafda4321b9f41afd",
+        "bytes": 1736,
+        "assertionId": "single-part-candidate.verifier-test.1"
+      },
+      {
+        "path": "scripts/build-mechanical-single-part-candidates.test.ts",
+        "sha256": "305130904b3546f3ae489b74f1f84a85fccfb3fe4e000c9c972aaf594741c87a",
+        "bytes": 8884,
+        "assertionId": "single-part-candidate.verifier-test.2"
+      }
+    ]
+  },
+  "records": [
+    {
+      "feature": "hole",
+      "candidateStatus": "PASS",
+      "reasons": [],
+      "candidateManifest": {
+        "path": "docs/evidence/cad-independent/local/mechanical-single-part-candidates-260813/hole/candidate.json",
+        "sha256": "3f6213e40dad6a81e96090614ba0ce257f99c764eda133468544598b07124c81",
+        "bytes": 2804,
+        "assertionId": "hole.candidate.manifest"
+      }
+    },
+    {
+      "feature": "fillet",
+      "candidateStatus": "PASS",
+      "reasons": [],
+      "candidateManifest": {
+        "path": "docs/evidence/cad-independent/local/mechanical-single-part-candidates-260813/fillet/candidate.json",
+        "sha256": "7e207a470e8d90a40be7ffa7e6bcd0709ab6a6fa4852f317020bef8f847ceb85",
+        "bytes": 2838,
+        "assertionId": "fillet.candidate.manifest"
+      }
+    },
+    {
+      "feature": "chamfer",
+      "candidateStatus": "PASS",
+      "reasons": [],
+      "candidateManifest": {
+        "path": "docs/evidence/cad-independent/local/mechanical-single-part-candidates-260813/chamfer/candidate.json",
+        "sha256": "dcbfd375b825559a2968413d3255c442dfb70dc85930d6518293217a1ced4bd6",
+        "bytes": 2852,
+        "assertionId": "chamfer.candidate.manifest"
+      }
+    },
+    {
+      "feature": "shell",
+      "candidateStatus": "PASS",
+      "reasons": [],
+      "candidateManifest": {
+        "path": "docs/evidence/cad-independent/local/mechanical-single-part-candidates-260813/shell/candidate.json",
+        "sha256": "bf31ec7ed22e9c4c79b8c9fced648bf1fb09bf539f8d04b6dea264e9f845fc36",
+        "bytes": 2820,
+        "assertionId": "shell.candidate.manifest"
+      }
+    },
+    {
+      "feature": "rib",
+      "candidateStatus": "PASS",
+      "reasons": [],
+      "candidateManifest": {
+        "path": "docs/evidence/cad-independent/local/mechanical-single-part-candidates-260813/rib/candidate.json",
+        "sha256": "bf319cd4f06fc1ee4b07a37217c816728c553cadb3a0443a70ac76847057235e",
+        "bytes": 2788,
+        "assertionId": "rib.candidate.manifest"
+      }
+    },
+    {
+      "feature": "linearPattern",
+      "candidateStatus": "PASS",
+      "reasons": [],
+      "candidateManifest": {
+        "path": "docs/evidence/cad-independent/local/mechanical-single-part-candidates-260813/linearPattern/candidate.json",
+        "sha256": "d3473a27b86ec12224833b638e9437414fabd8fafbebb30c60618936ea9234f6",
+        "bytes": 2948,
+        "assertionId": "linearPattern.candidate.manifest"
+      }
+    },
+    {
+      "feature": "circularPattern",
+      "candidateStatus": "PASS",
+      "reasons": [],
+      "candidateManifest": {
+        "path": "docs/evidence/cad-independent/local/mechanical-single-part-candidates-260813/circularPattern/candidate.json",
+        "sha256": "e670a0e750ed41df39c1ca3c2ae5f03c069e170a46e21b4e54ed2d05ef59932c",
+        "bytes": 2980,
+        "assertionId": "circularPattern.candidate.manifest"
+      }
+    },
+    {
+      "feature": "draft",
+      "candidateStatus": "PASS",
+      "reasons": [],
+      "candidateManifest": {
+        "path": "docs/evidence/cad-independent/local/mechanical-single-part-candidates-260813/draft/candidate.json",
+        "sha256": "7f44c4407e5d7e19cdd331af9ed15d8bb35adb69c3da21cee799067b2f706924",
+        "bytes": 2820,
+        "assertionId": "draft.candidate.manifest"
+      }
+    },
+    {
+      "feature": "scale",
+      "candidateStatus": "PASS",
+      "reasons": [],
+      "candidateManifest": {
+        "path": "docs/evidence/cad-independent/local/mechanical-single-part-candidates-260813/scale/candidate.json",
+        "sha256": "a65f698205176d3189c546caa8719236c70a1de139565aa025d76cee8bfd975b",
+        "bytes": 2819,
+        "assertionId": "scale.candidate.manifest"
+      }
+    },
+    {
+      "feature": "moveCopy",
+      "candidateStatus": "PASS",
+      "reasons": [],
+      "candidateManifest": {
+        "path": "docs/evidence/cad-independent/local/mechanical-single-part-candidates-260813/moveCopy/candidate.json",
+        "sha256": "61fd983f56d64292d933974732aa05af695591a45d3b16befa529e4b59b0ce4f",
+        "bytes": 2868,
+        "assertionId": "moveCopy.candidate.manifest"
+      }
+    },
+    {
+      "feature": "variableFillet",
+      "candidateStatus": "PASS",
+      "reasons": [],
+      "candidateManifest": {
+        "path": "docs/evidence/cad-independent/local/mechanical-single-part-candidates-260813/variableFillet/candidate.json",
+        "sha256": "79c10520c6c4b710ac5a89a16325ddb9b3951d9986601c37acf6cc27bce4e031",
+        "bytes": 2964,
+        "assertionId": "variableFillet.candidate.manifest"
+      }
+    },
+    {
+      "feature": "offsetFace",
+      "candidateStatus": "PASS",
+      "reasons": [],
+      "candidateManifest": {
+        "path": "docs/evidence/cad-independent/local/mechanical-single-part-candidates-260813/offsetFace/candidate.json",
+        "sha256": "47dad133f20e4773649fb61677f81fc86a883b72c17b16b7ae31cd2df2981c45",
+        "bytes": 2899,
+        "assertionId": "offsetFace.candidate.manifest"
+      }
+    },
+    {
+      "feature": "thread",
+      "candidateStatus": "PASS",
+      "reasons": [],
+      "candidateManifest": {
+        "path": "docs/evidence/cad-independent/local/mechanical-single-part-candidates-260813/thread/candidate.json",
+        "sha256": "3346065b3699a8995e6fda99231f42dd990785352e06dff0c6dcc47f4138101a",
+        "bytes": 2839,
+        "assertionId": "thread.candidate.manifest"
+      }
+    },
+    {
+      "feature": "helix",
+      "candidateStatus": "PASS",
+      "reasons": [],
+      "candidateManifest": {
+        "path": "docs/evidence/cad-independent/local/mechanical-single-part-candidates-260813/helix/candidate.json",
+        "sha256": "218bd4da00bb8b1786d92db2e07d7e46fd4559ff6b5d9c96d1e2f13aadbc54e4",
+        "bytes": 2825,
+        "assertionId": "helix.candidate.manifest"
+      }
+    },
+    {
+      "feature": "bend",
+      "candidateStatus": "PASS",
+      "reasons": [],
+      "candidateManifest": {
+        "path": "docs/evidence/cad-independent/local/mechanical-single-part-candidates-260813/bend/candidate.json",
+        "sha256": "99987009a3e9c80ed6bdf2ea33c4c6b8b4ba7b718c21560a9f5d39cd7bbad474",
+        "bytes": 2804,
+        "assertionId": "bend.candidate.manifest"
+      }
+    },
+    {
+      "feature": "flange",
+      "candidateStatus": "PASS",
+      "reasons": [],
+      "candidateManifest": {
+        "path": "docs/evidence/cad-independent/local/mechanical-single-part-candidates-260813/flange/candidate.json",
+        "sha256": "f5662ad4e9f6ec7704257fef57a7bb733ffb8f866346423b43ce8594f07e7356",
+        "bytes": 2836,
+        "assertionId": "flange.candidate.manifest"
+      }
+    },
+    {
+      "feature": "hem",
+      "candidateStatus": "PASS",
+      "reasons": [],
+      "candidateManifest": {
+        "path": "docs/evidence/cad-independent/local/mechanical-single-part-candidates-260813/hem/candidate.json",
+        "sha256": "67eb9a84ad07fd72523083af6c72b151bddb3062e6c542efb53558f25a1c8b19",
+        "bytes": 2788,
+        "assertionId": "hem.candidate.manifest"
+      }
+    },
+    {
+      "feature": "jog",
+      "candidateStatus": "PASS",
+      "reasons": [],
+      "candidateManifest": {
+        "path": "docs/evidence/cad-independent/local/mechanical-single-part-candidates-260813/jog/candidate.json",
+        "sha256": "28988e45fd24b4e8d341366d605cb266df00892726f11f201087312a062986da",
+        "bytes": 2788,
+        "assertionId": "jog.candidate.manifest"
+      }
+    },
+    {
+      "feature": "tab",
+      "candidateStatus": "PASS",
+      "reasons": [],
+      "candidateManifest": {
+        "path": "docs/evidence/cad-independent/local/mechanical-single-part-candidates-260813/tab/candidate.json",
+        "sha256": "aab9fedf61c1da2e4c93dd9b1f4dde5c608b4b7a71c6cde248ba8100bf5bebf9",
+        "bytes": 2787,
+        "assertionId": "tab.candidate.manifest"
+      }
+    },
+    {
+      "feature": "cut",
+      "candidateStatus": "PASS",
+      "reasons": [],
+      "candidateManifest": {
+        "path": "docs/evidence/cad-independent/local/mechanical-single-part-candidates-260813/cut/candidate.json",
+        "sha256": "5fd47836f7690deb8f068709dda49c0f950668ab0688c9755b28ddf18a53d64e",
+        "bytes": 2787,
+        "assertionId": "cut.candidate.manifest"
+      }
+    },
+    {
+      "feature": "bendRelief",
+      "candidateStatus": "PASS",
+      "reasons": [],
+      "candidateManifest": {
+        "path": "docs/evidence/cad-independent/local/mechanical-single-part-candidates-260813/bendRelief/candidate.json",
+        "sha256": "15064a01bf7c11730770832ca6a08810750229e34f02a15b698860d73f918016",
+        "bytes": 2900,
+        "assertionId": "bendRelief.candidate.manifest"
+      }
+    },
+    {
+      "feature": "cornerRelief",
+      "candidateStatus": "PASS",
+      "reasons": [],
+      "candidateManifest": {
+        "path": "docs/evidence/cad-independent/local/mechanical-single-part-candidates-260813/cornerRelief/candidate.json",
+        "sha256": "43e6b0d5cdfdd52fc73696bb8fa3a69624c86b1a22c498b8eb3cf2bf1f92b588",
+        "bytes": 2932,
+        "assertionId": "cornerRelief.candidate.manifest"
+      }
+    },
+    {
+      "feature": "variableShell",
+      "candidateStatus": "PASS",
+      "reasons": [],
+      "candidateManifest": {
+        "path": "docs/evidence/cad-independent/local/mechanical-single-part-candidates-260813/variableShell/candidate.json",
+        "sha256": "c61ad08d3940b3fce542e51538a4634ce56974b781f766d80d191399ce919e71",
+        "bytes": 2948,
+        "assertionId": "variableShell.candidate.manifest"
+      }
+    },
+    {
+      "feature": "sketchExtrude",
+      "candidateStatus": "PASS",
+      "reasons": [],
+      "candidateManifest": {
+        "path": "docs/evidence/cad-independent/local/mechanical-single-part-candidates-260813/sketchExtrude/candidate.json",
+        "sha256": "c0fa21f3a113361c0b0ff74d959450de610bcf44e0ed3ff273b00dfa1254fa88",
+        "bytes": 2948,
+        "assertionId": "sketchExtrude.candidate.manifest"
+      }
+    },
+    {
+      "feature": "revolve",
+      "candidateStatus": "PASS",
+      "reasons": [],
+      "candidateManifest": {
+        "path": "docs/evidence/cad-independent/local/mechanical-single-part-candidates-260813/revolve/candidate.json",
+        "sha256": "ae8398c93185b32bbef815f77d3a4e6669506225cbda58dd401fa98ac84124da",
+        "bytes": 2852,
+        "assertionId": "revolve.candidate.manifest"
+      }
+    },
+    {
+      "feature": "sweep",
+      "candidateStatus": "PASS",
+      "reasons": [],
+      "candidateManifest": {
+        "path": "docs/evidence/cad-independent/local/mechanical-single-part-candidates-260813/sweep/candidate.json",
+        "sha256": "da8c94c176c82b02d01ebba5ef9120b1c9bba90d4291fea9881b34c51a20d988",
+        "bytes": 2819,
+        "assertionId": "sweep.candidate.manifest"
+      }
+    },
+    {
+      "feature": "loft",
+      "candidateStatus": "PASS",
+      "reasons": [],
+      "candidateManifest": {
+        "path": "docs/evidence/cad-independent/local/mechanical-single-part-candidates-260813/loft/candidate.json",
+        "sha256": "413905ce798c3e4a4ba526d05c3e5d2bf01f59761b24c4f615e373b4d9696830",
+        "bytes": 2804,
+        "assertionId": "loft.candidate.manifest"
+      }
+    },
+    {
+      "feature": "mirror",
+      "candidateStatus": "PASS",
+      "reasons": [],
+      "candidateManifest": {
+        "path": "docs/evidence/cad-independent/local/mechanical-single-part-candidates-260813/mirror/candidate.json",
+        "sha256": "d4468d8dc2f83373c0b87e3862a0c8de43a44d00fde6027a026e380630e09c9b",
+        "bytes": 2835,
+        "assertionId": "mirror.candidate.manifest"
+      }
+    },
+    {
+      "feature": "boolean",
+      "candidateStatus": "PASS",
+      "reasons": [],
+      "candidateManifest": {
+        "path": "docs/evidence/cad-independent/local/mechanical-single-part-candidates-260813/boolean/candidate.json",
+        "sha256": "c5c6e15c62c31da81117e8ebec73272cd7f7b036d1de330a759de1fdee24c4c0",
+        "bytes": 2852,
+        "assertionId": "boolean.candidate.manifest"
+      }
+    },
+    {
+      "feature": "splitBody",
+      "candidateStatus": "PASS",
+      "reasons": [],
+      "candidateManifest": {
+        "path": "docs/evidence/cad-independent/local/mechanical-single-part-candidates-260813/splitBody/candidate.json",
+        "sha256": "cd20ccd32a1533d9a91e63b18870c880cc0612101ae8f537cceec3d17b6331a4",
+        "bytes": 2883,
+        "assertionId": "splitBody.candidate.manifest"
+      }
+    }
+  ]
+}

@@ -35,6 +35,7 @@
  *   { ok: false, code: 'BAD_REQUEST' | 'EMPTY_SKETCH' | 'PIPELINE_ERROR' | 'RENDER_ERROR' | 'TOO_LARGE' | 'ENOENT' | ..., message: string }
  */
 import { NextRequest, NextResponse } from 'next/server';
+import { boundedJsonError, readBoundedJson } from '@/lib/boundedJsonBody';
 import { holesFromSketch, type HoleRequest } from '@/lib/sketch/holesFromSketch';
 import { renderScadToPng } from '@/lib/openscad-render/renderPng';
 import { renderScadToStl } from '@/lib/openscad-render/renderStl';
@@ -57,6 +58,7 @@ const MAX_LINES = 5000;
 const MAX_DEPTH = 10_000;
 /** Hole count cap mirrors sketch caps — keeps OpenSCAD render bounded. */
 const MAX_HOLES = 200;
+const MAX_BODY_BYTES = 4 * 1024 * 1024;
 
 function isFiniteNum(n: unknown): n is number {
   return typeof n === 'number' && Number.isFinite(n);
@@ -114,8 +116,9 @@ function validateHoles(
 export async function POST(req: NextRequest): Promise<NextResponse> {
   let body: HoleRenderBody;
   try {
-    body = (await req.json()) as HoleRenderBody;
-  } catch {
+    body = await readBoundedJson<HoleRenderBody>(req, MAX_BODY_BYTES);
+  } catch (error) {
+    if (boundedJsonError(error)?.code === 'PAYLOAD_TOO_LARGE') return NextResponse.json({ ok: false, code: 'TOO_LARGE', message: `Body exceeds ${MAX_BODY_BYTES} bytes` }, { status: 413 });
     return NextResponse.json(
       { ok: false, code: 'BAD_REQUEST', message: 'Body must be valid JSON' },
       { status: 400 },

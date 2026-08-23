@@ -47,6 +47,19 @@ describe('applyBend — geometry stability', () => {
     expect(history).toHaveLength(2);
   });
 
+  it('does not refold the first flange in a two-bend U-channel', () => {
+    const plate = makePlate(80, 2, 160);
+    const first = applyBend(plate, { angle: 90, radius: 3, position: 0.75, direction: 'up' });
+    const channel = applyBend(first, { angle: 90, radius: 3, position: 0.25, direction: 'up' });
+    channel.computeBoundingBox();
+    // The old dist>0 rule rotated the first flange again, producing a
+    // 70mm-tall hook. Both flanges should remain close to the requested 30mm.
+    expect(channel.boundingBox!.max.y - channel.boundingBox!.min.y).toBeLessThan(45);
+    expect((channel.userData as { __bendVertexState?: unknown[] }).__bendVertexState).toHaveLength(
+      channel.attributes.position.count,
+    );
+  });
+
   it('zero-angle bend is a no-op on the geometry bbox', () => {
     const plate = makePlate(50, 1, 30);
     const bent = applyBend(plate, { angle: 0, radius: 1, position: 0.5, direction: 'up' });

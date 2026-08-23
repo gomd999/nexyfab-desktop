@@ -3,6 +3,8 @@
 import React, { useState, useMemo, useCallback } from 'react';
 import { usePathname } from 'next/navigation';
 import { COTS_PARTS, type COTSPart } from './cotsData';
+import { createCommercialLocalizer } from '@/lib/i18n/commercialLocalizer';
+import { formatNumber } from '@/lib/i18n/format';
 
 // ─── i18n dict ────────────────────────────────────────────────────────────────
 
@@ -141,8 +143,8 @@ const CATEGORY_COLOR: Record<COTSPart['category'], string> = {
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-function formatKRW(n: number): string {
-  return `₩${n.toLocaleString('ko-KR')}`;
+function formatKRW(n: number, lang: string): string {
+  return `₩${formatNumber(n, lang) ?? '0'}`;
 }
 
 function formatWeight(g: number): string {
@@ -243,14 +245,14 @@ const footerStyle: React.CSSProperties = {
 interface PartCardProps {
   part: COTSPart;
   onInsert: (part: COTSPart) => void;
-  isKo: boolean;
+  lang: string;
   tt: (typeof dict)[keyof typeof dict];
 }
 
-function PartCard({ part, onInsert, isKo, tt }: PartCardProps) {
+function PartCard({ part, onInsert, lang, tt }: PartCardProps) {
   const [hovered, setHovered] = useState(false);
   const color = CATEGORY_COLOR[part.category];
-  const label = isKo ? part.nameKo : part.name;
+  const label = createCommercialLocalizer(lang)(part.nameKo, part.name);
 
   return (
     <div
@@ -308,7 +310,7 @@ function PartCard({ part, onInsert, isKo, tt }: PartCardProps) {
           {tt.weight}: <span style={{ color: C.text }}>{formatWeight(part.unitWeightG)}</span>
         </span>
         <span style={{ fontSize: 11, color: C.dim }}>
-          {tt.price}: <span style={{ color: C.success }}>{formatKRW(part.unitPriceKRW)}</span>
+          {tt.price}: <span style={{ color: C.success }}>{formatKRW(part.unitPriceKRW, lang)}</span>
         </span>
         <span style={{ fontSize: 10, color: C.dim, flex: 1, textAlign: 'right' }}>
           {part.suppliers.join(' · ')}
@@ -342,9 +344,9 @@ export default function COTSPanel({ open, onClose, onInsert, lang }: COTSPanelPr
   const langMap: Record<string, keyof typeof dict> = {
     kr: 'ko', ko: 'ko', en: 'en', ja: 'ja', cn: 'zh', zh: 'zh', es: 'es', ar: 'ar',
   };
-  const resolvedLang: keyof typeof dict = langMap[seg] ?? (lang === 'ko' ? 'ko' : 'en');
+  const resolvedLang: keyof typeof dict = langMap[seg] ?? 'en';
   const tt = dict[resolvedLang];
-  const isKo = resolvedLang === 'ko';
+  const L = createCommercialLocalizer(lang);
   const [search, setSearch] = useState('');
   const [activeCategory, setActiveCategory] = useState<CategoryFilter>('all');
 
@@ -428,7 +430,7 @@ export default function COTSPanel({ open, onClose, onInsert, lang }: COTSPanelPr
                   transition: 'all 0.15s',
                 }}
               >
-                {tt.cat[tab.key as CatKey] ?? (isKo ? tab.labelKo : tab.labelEn)}
+                {tt.cat[tab.key as CatKey] ?? L(tab.labelKo, tab.labelEn)}
               </button>
             );
           })}
@@ -442,7 +444,7 @@ export default function COTSPanel({ open, onClose, onInsert, lang }: COTSPanelPr
             </div>
           ) : (
             filtered.map((part) => (
-              <PartCard key={part.id} part={part} onInsert={handleInsert} isKo={isKo} tt={tt} />
+              <PartCard key={part.id} part={part} onInsert={handleInsert} lang={lang ?? resolvedLang} tt={tt} />
             ))
           )}
         </div>

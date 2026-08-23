@@ -58,6 +58,8 @@ export default function CadWorkspaceSwitcher({
     >
       <span style={{ whiteSpace: 'nowrap' }}>{heading}</span>
       <select
+        id="cad-workspace-switcher"
+        name="cadWorkspace"
         value={cadWorkspace}
         onChange={onChange}
         disabled={!!readOnly}

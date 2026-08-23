@@ -8,8 +8,17 @@ import { assertIfMatchUpdatedAt } from '@/lib/nfProjectConcurrency';
 import type { NexyfabProject } from '../projects-types';
 import { getTrustedClientIpOrUndefined } from '@/lib/client-ip';
 import { ensureProjectMembersTable as _ensureProjectMembersTable, resolveProjectAccess, type NfProjectAccess } from '@/lib/nfProjectAccess';
+import { boundedJsonError, readBoundedJson } from '@/lib/boundedJsonBody';
 
 type ProjectAccess = NfProjectAccess;
+type ProjectPatchBody = Partial<NexyfabProject> & {
+  restoreVersionId?: string;
+  archived?: boolean;
+  ifMatchUpdatedAt?: number | string;
+};
+
+// Keep parity with project creation: escaped 5M-code-unit sceneData plus envelope.
+const MAX_PROJECT_PATCH_BODY_BYTES = 32 * 1024 * 1024;
 
 function rowToProject(row: Record<string, unknown>, access?: Pick<ProjectAccess, 'role' | 'canEdit'>): NexyfabProject {
   return {
@@ -100,7 +109,7 @@ export async function GET(
 
   // versions 쿼리 파라미터가 있으면 버전 목록 반환
   if (req.nextUrl.searchParams.has('versions')) {
-    const access = await resolveProjectAccess(db, id, authUser.userId);
+    const access = await resolveProjectAccess(db, id, authUser);
     if (!access) return NextResponse.json({ error: 'Not found' }, { status: 404 });
     await ensureVersionsTable();
     const rows = await db.queryAll<{
@@ -115,7 +124,7 @@ export async function GET(
     return NextResponse.json({ versions: rows });
   }
 
-  const access = await resolveProjectAccess(db, id, authUser.userId);
+  const access = await resolveProjectAccess(db, id, authUser);
   if (!access) return NextResponse.json({ error: 'Not found' }, { status: 404 });
   return NextResponse.json({ project: rowToProject(access.row, access) });
 }
@@ -132,18 +141,22 @@ export async function PATCH(
 
   const { id } = await params;
   // Guard: an empty/garbled body (e.g. dropped on a 308 redirect) must not 500.
-  const body = (await req.json().catch(() => null)) as (Partial<NexyfabProject> & {
-    restoreVersionId?: string;
-    archived?: boolean;
-    /** Optional — when set, must equal row `updated_at` or 409 (optimistic concurrency). */
-    ifMatchUpdatedAt?: number | string;
-  }) | null;
+  let body: ProjectPatchBody | null;
+  try {
+    body = await readBoundedJson<ProjectPatchBody>(req, MAX_PROJECT_PATCH_BODY_BYTES);
+  } catch (error) {
+    const bounded = boundedJsonError(error) ?? { code: 'BAD_REQUEST' as const, status: 400 as const };
+    if (bounded.code === 'PAYLOAD_TOO_LARGE') {
+      return NextResponse.json({ error: 'Request too large', code: bounded.code }, { status: bounded.status });
+    }
+    body = null;
+  }
   if (!body) return NextResponse.json({ error: 'Invalid or empty request body' }, { status: 400 });
 
   const db = getDbAdapter();
   const now = Date.now();
 
-  const access = await resolveProjectAccess(db, id, authUser.userId);
+  const access = await resolveProjectAccess(db, id, authUser);
   if (!access) return NextResponse.json({ error: 'Not found' }, { status: 404 });
 
   // ── 보관/복원 요청 — 소유자만 ─────────────────────────────────────────────
@@ -374,7 +387,7 @@ export async function DELETE(
   const { id } = await params;
 
   const db = getDbAdapter();
-  const access = await resolveProjectAccess(db, id, authUser.userId);
+  const access = await resolveProjectAccess(db, id, authUser);
   if (!access) return NextResponse.json({ error: 'Not found' }, { status: 404 });
   if (access.role !== 'owner') {
     return NextResponse.json(

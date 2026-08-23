@@ -12,6 +12,7 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
+import { toIsoLang, toRouteLang } from '@/lib/i18n/normalize';
 
 type Lang = 'en' | 'ko' | 'ja' | 'zh' | 'es' | 'ar';
 
@@ -102,21 +103,23 @@ const dict: Record<Lang, {
 };
 
 function detectLang(): Lang {
-  if (typeof window === 'undefined') return 'ko';
+  if (typeof window === 'undefined') return 'en';
   try {
-    const stored = localStorage.getItem('app_language');
-    if (stored && dict[stored as Lang]) return stored as Lang;
-    const fab = localStorage.getItem('nexyfab_language');
-    if (fab === 'kr' || fab === 'ko') return 'ko';
-    if (fab && dict[fab as Lang]) return fab as Lang;
+    const query = new URLSearchParams(window.location.search).get('lang');
+    if (query) return toIsoLang(query);
+    const stored = localStorage.getItem('app_language')
+      || localStorage.getItem('nf_lang')
+      || localStorage.getItem('nexyfab_language');
+    if (stored) return toIsoLang(stored);
   } catch { /* ignore */ }
-  return 'ko';
+  return 'en';
 }
 
 export default function RegisterChooserPage() {
-  const [lang, setLang] = useState<Lang>('ko');
+  const [lang, setLang] = useState<Lang>('en');
   useEffect(() => { setLang(detectLang()); }, []);
   const t = dict[lang];
+  const routeLang = toRouteLang(lang);
   const rtl = lang === 'ar';
 
   return (
@@ -144,7 +147,7 @@ export default function RegisterChooserPage() {
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: 16 }}>
           {/* Customer card */}
           <Link
-            href="/register/customer"
+            href={`/register/customer?lang=${routeLang}`}
             prefetch={false}
             style={{
               display: 'block',
@@ -185,7 +188,7 @@ export default function RegisterChooserPage() {
 
           {/* Partner card */}
           <Link
-            href="/partner/register"
+            href={`/partner/register?lang=${routeLang}`}
             prefetch={false}
             style={{
               display: 'block',
@@ -229,7 +232,7 @@ export default function RegisterChooserPage() {
           <span style={{ fontSize: 13, color: '#6b7280' }}>
             {t.haveAccount}{' '}
           </span>
-          <Link href="/login" prefetch={false} style={{ fontSize: 13, color: '#0b5cff', textDecoration: 'none', fontWeight: 700 }}>
+          <Link href={`/login?lang=${routeLang}`} prefetch={false} style={{ fontSize: 13, color: '#0b5cff', textDecoration: 'none', fontWeight: 700 }}>
             {t.signIn}
           </Link>
         </div>

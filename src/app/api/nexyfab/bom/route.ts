@@ -3,8 +3,10 @@ import { getAuthUser } from '@/lib/auth-middleware';
 import { getDbAdapter } from '@/lib/db-adapter';
 import { checkOrigin } from '@/lib/csrf';
 import { z } from 'zod';
+import { boundedJsonError, readBoundedJson } from '@/lib/boundedJsonBody';
 
 export const dynamic = 'force-dynamic';
+const BOM_CREATE_JSON_BYTES = 64 * 1024;
 
 // GET — list BOMs (own + optional team BOMs)
 export async function GET(req: NextRequest) {
@@ -59,7 +61,16 @@ export async function POST(req: NextRequest) {
     description: z.string().max(1000).optional(),
     teamId: z.string().optional(),
   });
-  const parsed = schema.safeParse(await req.json().catch(() => ({})));
+  let rawBody: unknown = {};
+  try {
+    rawBody = await readBoundedJson(req, BOM_CREATE_JSON_BYTES);
+  } catch (error) {
+    const bodyError = boundedJsonError(error);
+    if (bodyError?.code === 'PAYLOAD_TOO_LARGE') {
+      return NextResponse.json({ error: 'Request body too large' }, { status: bodyError.status });
+    }
+  }
+  const parsed = schema.safeParse(rawBody);
   if (!parsed.success) return NextResponse.json({ error: 'name is required' }, { status: 400 });
 
   const db = getDbAdapter();

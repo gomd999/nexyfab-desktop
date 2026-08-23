@@ -9,6 +9,7 @@ const DEFAULT_OUTPUT = 'docs/evidence/release/commercial-release-baseline-curren
 const MUTABLE_CURRENT_RECEIPTS = [
   'docs/evidence/release/commercial-release-baseline-current.json',
   'docs/evidence/release/commercialization-readiness-current.json',
+  'docs/evidence/release/commercialization-readiness-full-product-current.json',
 ];
 
 const normalize = value => value.replaceAll('\\', '/').replace(/^\.\//, '');
@@ -18,6 +19,19 @@ const digestRows = rows => createHash('sha256')
   .digest('hex');
 
 const startsWithAny = (value, prefixes) => prefixes.some(prefix => value === prefix || value.startsWith(`${prefix}/`));
+const ROOT_GENERATED_ARTIFACTS = new Set([
+  '_eslint_tmp.json',
+  'build_log.txt',
+  'eslint-stats.json',
+  'lint.txt',
+  'patch_context.txt',
+  'temp.html',
+  'tmp.txt',
+]);
+const QUARANTINED_HISTORICAL_EVIDENCE = new Set([
+  'docs/evidence/cad-independent/local/mechanical-single-part-candidates-260813/receipt.json',
+  'docs/evidence/cad-independent/local/mechanical-single-part-candidates-260813/receipt.sha256',
+]);
 
 export function classifyReleasePath(input) {
   const value = normalize(input);
@@ -25,16 +39,17 @@ export function classifyReleasePath(input) {
 
   if (
     (/^\.env(?:\.|$)/i.test(value) && lower !== '.env.example')
-    || /(?:^|\/)[^/]+\.(?:db|db-shm|db-wal)$/i.test(value)
-    || startsWithAny(lower, ['data', 'backups'])
+    || /(?:^|\/)[^/]+\.(?:db|db-shm|db-wal|sqlite|sqlite-shm|sqlite-wal)$/i.test(value)
+    || startsWithAny(lower, ['data', 'backups', '.codex-runtime'])
     || /^validation-reports\/closed-beta-integrity-/i.test(value)
   ) return 'protected';
 
-  if (startsWithAny(lower, [
+  if (QUARANTINED_HISTORICAL_EVIDENCE.has(lower)
+    || ROOT_GENERATED_ARTIFACTS.has(lower) || startsWithAny(lower, [
     '.git', '.next', '.tmp', '.runtime-wp20', 'node_modules', 'out', 'out2',
     'src-tauri/target', 'src-tauri/gen', '.claude', '.vercel', 'coverage',
-    'playwright-report', 'test-results', 'adminlink',
-  ]) || /(?:^|\/)[^/]+\.(?:log|zip)$/i.test(value)) return 'temporary';
+    'playwright-report', 'test-results', 'adminlink', 'artifacts',
+  ]) || /^\.tmp(?:[-_].+)?$/i.test(value) || /(?:^|\/)[^/]+\.(?:log|zip)$/i.test(value)) return 'temporary';
 
   if (
     startsWithAny(lower, ['docs/evidence', 'validation-reports', 'scripts/knowledge-crawler'])
@@ -92,7 +107,10 @@ function verifyRailwayIgnore() {
   const required = [
     'node_modules', '.next', '.git', '.env.local', '.env', '*.log', '*.db', '*.zip',
     'data', 'docs', 'scripts/knowledge-crawler', 'validation-reports', 'test-results',
-    '.tmp', 'src-tauri', 'occt-collab-worker', 'occt-worker', 'out', 'out2', '.claude',
+    '.tmp', '/.codex-runtime', '/artifacts', '/backups', 'src-tauri',
+    // occt-worker is source for the browser worker copied into public/ by
+    // scripts/copy-occt.js; it must remain in the Docker build context.
+    'occt-collab-worker', 'out', 'out2', '.claude',
   ];
   const missing = required.filter(item => !ignore.includes(item));
   if (missing.length) throw new Error(`railwayignore_required_entries_missing:${missing.join(',')}`);
@@ -128,7 +146,10 @@ export function buildReleaseBaseline({ files, root = ROOT, metadata = {} }) {
         '.tmp', '.runtime-wp20', '.next', 'node_modules', 'out', 'out2',
         'src-tauri/target', 'src-tauri/gen', '.claude', 'playwright-report',
         'test-results', 'coverage',
+        '_eslint_tmp.json', 'build_log.txt', 'eslint-stats.json', 'lint.txt',
+        'patch_context.txt', 'temp.html', 'tmp.txt',
       ],
+      quarantinedHistoricalEvidence: [...QUARANTINED_HISTORICAL_EVIDENCE],
     },
     summary: Object.fromEntries(Object.entries(groups).map(([key, rows]) => [key, summarize(rows)])),
     groups,

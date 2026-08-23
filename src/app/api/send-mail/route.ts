@@ -1,15 +1,22 @@
 export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
 import nodemailer from 'nodemailer';
-import crypto from 'crypto';
-import fs from 'fs';
-import path from 'path';
 import { checkOrigin } from '@/lib/csrf';
 import { getDbAdapter } from '@/lib/db-adapter';
 import { screenSanctions } from '@/lib/compliance';
 import { rateLimit, rateLimitHeaders } from '@/lib/rate-limit';
 import { getTrustedClientIp } from '@/lib/client-ip';
 import type { CountryCode } from '@/lib/country-pricing';
+import { readBoundedMultipartForm } from '@/lib/boundedMultipartForm';
+import {
+  cleanupPrivateSpoolDirectory,
+  createPrivateSpoolDirectory,
+  SEND_MAIL_MAX_ATTACHMENT_BYTES,
+  SEND_MAIL_MAX_ATTACHMENT_COUNT,
+  SEND_MAIL_MAX_MULTIPART_BODY_BYTES,
+  SEND_MAIL_MAX_TOTAL_ATTACHMENT_BYTES,
+  spoolAttachmentFile,
+} from '@/lib/send-mail-private-spool';
 
 function escapeHtml(str: string): string {
   return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
@@ -88,24 +95,38 @@ export async function POST(req: NextRequest) {
         );
     }
 
-    const formData = await req.formData();
+    let formData: FormData;
+    try {
+      const boundedForm = await readBoundedMultipartForm(req, SEND_MAIL_MAX_MULTIPART_BODY_BYTES);
+      if (boundedForm.tooLarge) {
+        return NextResponse.json({ success: false, error: 'Payload too large' }, { status: 413 });
+      }
+      if (!boundedForm.form) throw new Error('invalid multipart body');
+      formData = boundedForm.form;
+    } catch {
+      return NextResponse.json({ success: false, error: 'Invalid form data' }, { status: 400 });
+    }
     const data: Record<string, string> = {};
-    const attachments: { filename: string; content: Buffer; path?: string }[] = [];
-    const attachmentPaths: string[] = [];
+    const attachments: { filename: string; file: File; path?: string }[] = [];
+    let attachmentCount = 0;
+    let totalAttachmentBytes = 0;
 
     // Separate files from text fields
     for (const [key, value] of formData.entries()) {
       if (value instanceof File && value.size > 0) {
-        const maxSize = 50 * 1024 * 1024; // 50MB
-        if (value.size > maxSize) continue;
-        const buffer = Buffer.from(await value.arrayBuffer());
+        attachmentCount += 1;
+        totalAttachmentBytes += value.size;
+        if (attachmentCount > SEND_MAIL_MAX_ATTACHMENT_COUNT || totalAttachmentBytes > SEND_MAIL_MAX_TOTAL_ATTACHMENT_BYTES) {
+          return NextResponse.json({ success: false, error: 'Payload too large' }, { status: 413 });
+        }
+        if (value.size > SEND_MAIL_MAX_ATTACHMENT_BYTES) continue;
         const safeName = value.name.replace(/[^a-zA-Z0-9._-]/g, '_');
         const ALLOWED_UPLOAD_EXTS = ['pdf', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'txt', 'jpg', 'jpeg', 'png', 'gif', 'zip', 'step', 'stp', 'stl', 'dxf'];
         const ext = safeName.split('.').pop()?.toLowerCase() || '';
         if (!ALLOWED_UPLOAD_EXTS.includes(ext)) {
           continue; // Skip disallowed file types
         }
-        attachments.push({ filename: safeName, content: buffer });
+        attachments.push({ filename: safeName, file: value });
       } else if (typeof value === 'string') {
         data[key] = value;
       }
@@ -127,18 +148,18 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ success: false, error: 'reCAPTCHA verification failed' }, { status: 403 });
     }
 
-    // Persist only after anti-abuse verification succeeds. Writing before the
-    // CAPTCHA check allowed unauthenticated requests to consume local disk.
-    if (attachments.length > 0) {
-      const uploadDir = path.join(process.cwd(), 'data', 'uploads', 'inquiries', crypto.randomUUID());
-      if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true });
-      for (const att of attachments) {
-        const filePath = path.join(uploadDir, att.filename);
-        fs.writeFileSync(filePath, att.content);
-        att.path = filePath;
-        attachmentPaths.push(`data/uploads/inquiries/${path.basename(uploadDir)}/${att.filename}`);
+    let spoolDir: string | null = null;
+    try {
+      // FormData has already materialized each File. This is not incremental
+      // ingress streaming; spooling only avoids the additional arrayBuffer +
+      // Buffer copy and lets Nodemailer read attachments from private paths.
+      if (attachments.length > 0 && process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASS) {
+        spoolDir = createPrivateSpoolDirectory();
+        for (const att of attachments) {
+          const spooled = await spoolAttachmentFile(att.file, spoolDir);
+          att.path = spooled.path;
+        }
       }
-    }
 
     // 2a. Sanctions screening — fail-closed for supplier onboarding.
     // Optional `country` / `bank_country` fields (ISO-3166 alpha-2). When
@@ -194,7 +215,7 @@ export async function POST(req: NextRequest) {
     saveInquiry(data);
 
     // 6. Send Emails
-    try {
+      try {
         // Only attempt sending if SMTP is configured
         if (process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASS) {
             // Admin Email (with attachments if any)
@@ -203,7 +224,7 @@ export async function POST(req: NextRequest) {
                 to: ADMIN_EMAILS,
                 subject: adminSubject,
                 html: adminHtml,
-                attachments: attachments.map(a => ({ filename: a.filename, content: a.content })),
+                attachments: attachments.map(a => ({ filename: a.filename, path: a.path })),
             });
 
             // User Auto-reply logic would go here (Similar to PHP dictionary)
@@ -213,9 +234,12 @@ export async function POST(req: NextRequest) {
         }
 
         return NextResponse.json({ success: true, message: 'Inquiry processed successfully' });
-    } catch (err) {
+      } catch (err) {
         console.error('Email sending failed:', err);
         return NextResponse.json({ success: false, error: 'Failed to send notification' }, { status: 500 });
+      }
+    } finally {
+      if (spoolDir) await cleanupPrivateSpoolDirectory(spoolDir);
     }
 }
 

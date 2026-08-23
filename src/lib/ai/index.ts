@@ -55,8 +55,7 @@ function parseProviderList(raw: string | undefined, fallback: ProviderName[]): P
     .filter((s): s is ProviderName => s in REGISTRY);
 }
 
-function resolveChain(req: ChatCompletionRequest): ProviderName[] {
-  if (req.provider) return [req.provider];
+function resolveDefaultChain(req: ChatCompletionRequest): ProviderName[] {
   // DB override wins over env when present. Lazy-load so env-only deployments
   // never pay the lookup cost; cache is in-process so this is trivial.
   let dbOverride: ProviderName[] | null = null;
@@ -85,9 +84,18 @@ function resolveChain(req: ChatCompletionRequest): ProviderName[] {
   return Array.from(new Set([...prefer, ...primary, ...fallbacks]));
 }
 
+function resolveChain(req: ChatCompletionRequest): ProviderName[] {
+  if (req.provider && !req.allowProviderFallback) return [req.provider];
+  const defaults = resolveDefaultChain(req);
+  return req.provider
+    ? Array.from(new Set([req.provider, ...defaults]))
+    : defaults;
+}
+
 export async function chatCompletion(req: ChatCompletionRequest): Promise<ChatCompletionResponse> {
   const chain = resolveChain(req);
   const errors: string[] = [];
+  const failures: Array<{ provider: ProviderName; model?: string; status?: number; message: string }> = [];
 
   // Lazy imports so the unit tests don't need to mock these modules.
   const { recordApiUsage } = await import('../api-meter');
@@ -114,22 +122,34 @@ export async function chatCompletion(req: ChatCompletionRequest): Promise<ChatCo
     }
     const adapter = REGISTRY[name];
     if (!adapter) {
-      errors.push(`${name}: no chat adapter (vision-only?)`);
+      const message = 'no chat adapter (vision-only?)';
+      errors.push(`${name}: ${message}`);
+      failures.push({ provider: name, model: name === chain[0] ? req.model : undefined, message });
       continue;
     }
     if (!adapter.isConfigured()) {
-      errors.push(`${name}: not configured`);
+      const message = 'not configured';
+      errors.push(`${name}: ${message}`);
+      failures.push({ provider: name, model: name === chain[0] ? req.model : undefined, message });
       continue;
     }
     // Skip providers in cooldown — chain.ts already orders by preference,
     // so the degraded one is jumped over and we go straight to the fallback.
     if (isProviderDegraded(name)) {
-      errors.push(`${name}: degraded (cooldown)`);
+      const message = 'degraded (cooldown)';
+      errors.push(`${name}: ${message}`);
+      failures.push({ provider: name, model: name === chain[0] ? req.model : undefined, message });
       continue;
     }
     const t0 = Date.now();
     try {
-      const res = await adapter.complete(req);
+      // A model identifier is vendor-specific. Keep it only for the selected
+      // first provider and let fallback adapters resolve their own configured
+      // defaults. This also prevents invalid-model 400s during failover.
+      const attemptReq: ChatCompletionRequest = name === chain[0]
+        ? req
+        : { ...req, provider: undefined, preferProvider: undefined, model: undefined };
+      const res = await adapter.complete(attemptReq);
       // Successful provider call — record cost / latency / tokens to the
       // unified nf_api_usage table for the admin observability dashboard.
       recordApiUsage({
@@ -140,10 +160,23 @@ export async function chatCompletion(req: ChatCompletionRequest): Promise<ChatCo
         latencyMs: res.latencyMs ?? (Date.now() - t0),
         tokensIn: res.promptTokens,
         tokensOut: res.completionTokens,
-        costUsd: estimateCostCents(name, res.model, res.promptTokens, res.completionTokens) / 100,
+        cachedPromptTokens: res.cachedPromptTokens,
+        cacheWriteTokens: res.cacheWriteTokens,
+        cacheMissTokens: res.cacheMissTokens,
+        cacheProfile: res.cacheProfile,
+        costUsd: estimateCostCents(name, res.model, res.promptTokens, res.completionTokens, {
+          cachedPromptTokens: res.cachedPromptTokens,
+          cacheWriteTokens: res.cacheWriteTokens,
+        }) / 100,
         userId: req.userId,
       });
       recordProviderOutcome(name, true);
+      if (failures.length > 0) {
+        void reportAiFailures(failures, {
+          task: req.task,
+          recoveredBy: { provider: res.provider, model: res.model },
+        });
+      }
       return res;
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
@@ -161,10 +194,20 @@ export async function chatCompletion(req: ChatCompletionRequest): Promise<ChatCo
       });
       recordProviderOutcome(name, false, msg);
       errors.push(`${name}: ${msg}`);
+      failures.push({
+        provider: name,
+        model: name === chain[0] ? req.model : undefined,
+        status: status || undefined,
+        message: msg,
+      });
       if (e instanceof AiProviderError) {
         // Bail out fallback for client errors (4xx other than 429) — those
-        // indicate a bug in our request, not a provider outage.
-        if (e.status && e.status >= 400 && e.status < 500 && e.status !== 429) {
+        // normally indicate a request/configuration bug. A user-selected model
+        // with governed fallback enabled is the exception: model retirement,
+        // regional unavailability, or a stale deployment id often surfaces as
+        // 400/404, and must not make the CAD workspace unusable. Exact admin
+        // probes still fail on the first 4xx.
+        if (!req.allowProviderFallback && e.status && e.status >= 400 && e.status < 500 && e.status !== 429) {
           throw e;
         }
       }
@@ -173,7 +216,30 @@ export async function chatCompletion(req: ChatCompletionRequest): Promise<ChatCo
   }
 
   if (errors.length === 0) throw new AiNotConfiguredError();
+  void reportAiFailures(failures, { task: req.task });
   throw new AiProviderError(chain[0] ?? 'deepseek', undefined, `All providers failed: ${errors.join(' | ')}`);
+}
+
+async function reportAiFailures(
+  failures: Array<{ provider: ProviderName; model?: string; status?: number; message: string }>,
+  outcome: { task?: string; recoveredBy?: { provider: ProviderName; model: string } },
+): Promise<void> {
+  if (failures.length === 0) return;
+  try {
+    const { notifyAiProviderFailure } = await import('./providerFailureAlert');
+    await notifyAiProviderFailure({
+      provider: failures[0].provider,
+      model: failures[0].model,
+      status: failures[0].status,
+      errorMessage: failures[0].message,
+      task: outcome.task,
+      attemptedProviders: failures.map(item => item.provider),
+      recoveredBy: outcome.recoveredBy,
+    });
+  } catch (error) {
+    // Alert delivery must never turn a successful fallback into a user error.
+    console.warn('[ai] provider failure alert could not be dispatched:', error);
+  }
 }
 
 export { AiProviderError, AiNotConfiguredError };

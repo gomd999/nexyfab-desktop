@@ -41,6 +41,7 @@
 import { readFileSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { callTool, tools } from './mcp-server.mjs';
+import { isPathInsideProjectRoot } from './agent-policy.mjs';
 
 const argv = process.argv.slice(2);
 const cmd = argv[0];
@@ -81,7 +82,7 @@ const DOMAINS = ['civil', 'interior', 'construction', 'landscape'];
 const API_KEY = process.env.NEXYFAB_API_KEY;
 const API_URL = (process.env.NEXYFAB_API_URL ?? 'https://nexyfab.com').replace(/\/$/, '');
 // TTY 프리티 출력(파이프=순수 JSON 유지 — 기계 파싱 불변). --raw 로 강제 순수.
-const useTty = process.stdout.isTTY && !argv.includes('--raw');
+const useTty = process.stdout.isTTY && !argv.includes('--raw') && !argv.includes('--json') && !argv.includes('--json-file');
 const C = useTty
   ? { g: '\x1b[32m', r: '\x1b[31m', b: '\x1b[36m', y: '\x1b[33m', d: '\x1b[2m', x: '\x1b[0m', B: '\x1b[1m' }
   : { g: '', r: '', b: '', y: '', d: '', x: '', B: '' };
@@ -115,13 +116,43 @@ const flag = (name, def = undefined) => {
   return i >= 0 ? argv[i + 1] : def;
 };
 const has = (name) => argv.includes(`--${name}`);
-const out = (obj) => process.stdout.write(JSON.stringify(obj, null, 2) + '\n');
-const loadAsm = (p) => JSON.parse(readFileSync(resolve(p), 'utf8'));
+// Machine output is one JSON object per line. Human summaries remain separate
+// TTY output, so a pipe never receives a mixed pretty/status transcript.
+const out = (obj) => process.stdout.write(`${JSON.stringify(obj)}\n`);
+const loadAsm = (p) => JSON.parse(readFileSync(requireCliInputPath(p), 'utf8'));
+const CLI_WRITE_APPROVAL_ERROR = 'CLI_WRITE_APPROVAL_REQUIRED';
+const CLI_REMOTE_APPROVAL_ERROR = 'CLI_REMOTE_APPROVAL_REQUIRED';
+const CLI_PROJECT_ROOT = process.env.NEXYFAB_PROJECT_ROOT;
+const CLI_WRITE_TOOLS = new Set(['export_step', 'html_render', 'generate_package', 'generate_domain_package', 'render_preview']);
+const CLI_REMOTE_TOOLS = new Set(Object.keys(REMOTE_ROUTE));
+
+class CliContractError extends Error {
+  constructor(code, message) {
+    super(message);
+    this.code = code;
+  }
+}
+
+function requireCliWriteApproval(target, tool) {
+  if (!has('confirm-write')) throw new CliContractError(CLI_WRITE_APPROVAL_ERROR, `--confirm-write is required before ${tool} writes output.`);
+  return requireCliInputPath(target, 'output');
+}
+
+function requireCliInputPath(target, label = 'input') {
+  if (!CLI_PROJECT_ROOT) throw new CliContractError('PROJECT_ROOT_REQUIRED', `NEXYFAB_PROJECT_ROOT is required for CLI ${label} paths.`);
+  const absolute = resolve(target);
+  if (!isPathInsideProjectRoot(absolute, CLI_PROJECT_ROOT)) {
+    throw new CliContractError('PATH_OUTSIDE_PROJECT_ROOT', `CLI ${label} path must stay inside NEXYFAB_PROJECT_ROOT.`);
+  }
+  return absolute;
+}
+
 const saveAsmMaybe = (r) => {
   const o = flag('out');
   if (!o) return {};
-  if (r?.package) { writeFileSync(resolve(o), JSON.stringify(r.package, null, 1)); return { savedPackage: resolve(o) }; }
-  if (r?.assembly) { writeFileSync(resolve(o), JSON.stringify(r.assembly, null, 1)); return { savedAssembly: resolve(o) }; }
+  const absolute = requireCliWriteApproval(o, 'CLI result export');
+  if (r?.package) { writeFileSync(absolute, JSON.stringify(r.package, null, 1)); return { savedPackage: absolute }; }
+  if (r?.assembly) { writeFileSync(absolute, JSON.stringify(r.assembly, null, 1)); return { savedAssembly: absolute }; }
   return {};
 };
 // 요약(대형 필드 절단 — 전체는 --full)
@@ -193,12 +224,24 @@ async function main() {
     args = { assembly: loadAsm(argv[1]), outDir: resolve(flag('out', 'nexyfab-preview')), ...(flag('views') ? { views: flag('views').split(',') } : {}) };
   } else if (cmd === 'loft') {
     name = 'loft_part';
-    args = JSON.parse(readFileSync(resolve(argv[1]), 'utf8')); // 로프트/스윕 스펙 JSON (단일 또는 {bodies:[...]})
-    if (flag('out')) { const r = await callTool(name, args); writeFileSync(resolve(flag('out')), JSON.stringify(r.assembly ?? r.part, null, 1)); out({ ok: r.ok, saved: resolve(flag('out')), parts: r.parts ?? 1, volumeMm3: r.volumeMm3, triCount: r.triCount }); return; }
+    args = JSON.parse(readFileSync(requireCliInputPath(argv[1]), 'utf8')); // 로프트/스윕 스펙 JSON (단일 또는 {bodies:[...]})
+    if (flag('out')) {
+      const outputPath = requireCliWriteApproval(flag('out'), name);
+      const r = await callTool(name, args);
+      writeFileSync(outputPath, JSON.stringify(r.assembly ?? r.part, null, 1));
+      out({ ok: r.ok, saved: outputPath, parts: r.parts ?? 1, volumeMm3: r.volumeMm3, triCount: r.triCount });
+      return;
+    }
   } else if (cmd === 'constraints') {
     name = 'resolve_constraints';
     args = { assembly: loadAsm(argv[1]) };
-    if (flag('out')) { const r = await callTool(name, args); writeFileSync(resolve(flag('out')), JSON.stringify(r.assembly, null, 1)); out({ ok: r.ok, savedAssembly: resolve(flag('out')), parts: r.assembly.parts.length }); return; }
+    if (flag('out')) {
+      const outputPath = requireCliWriteApproval(flag('out'), name);
+      const r = await callTool(name, args);
+      writeFileSync(outputPath, JSON.stringify(r.assembly, null, 1));
+      out({ ok: r.ok, savedAssembly: outputPath, parts: r.assembly.parts.length });
+      return;
+    }
   } else if (cmd === 'templates') {
     name = 'list_templates';
     args = argv[1] && !argv[1].startsWith('--') ? { domain: argv[1] } : {};
@@ -223,7 +266,7 @@ async function main() {
     const loadKg = parseFloat(flag('load') ?? flag('loadKg') ?? '');
     const base = { materialKey: flag('material', 'steel'), loadKg, precise: has('precise') };
     if (flag('scad')) {
-      args = { scad: readFileSync(resolve(flag('scad')), 'utf8'), ...base };
+      args = { scad: readFileSync(requireCliInputPath(flag('scad')), 'utf8'), ...base };
     } else if (argv[1] && !argv[1].startsWith('--')) {
       const { buildAssembly } = await import('./assembly.mjs');
       const built = buildAssembly(loadAsm(argv[1]));
@@ -251,15 +294,15 @@ async function main() {
   } else if (cmd === 'reconstruct') {
     name = 'reconstruct_verify';
     if (!argv[1] || argv[1].startsWith('--')) { out({ ok: false, error: 'usage: node cli.mjs reconstruct <file .stl|.step|.iges|.ifc|.dwg|.sat|.x_t> [--format stl]' }); process.exitCode = 1; return; }
-    args = { file: resolve(argv[1]), ...(flag('format') ? { format: flag('format') } : {}) };
+    args = { file: requireCliInputPath(argv[1]), ...(flag('format') ? { format: flag('format') } : {}) };
   } else if (cmd === 'fleet') {
     name = 'reconstruct_fleet';
     if (!argv[1] || argv[1].startsWith('--')) { out({ ok: false, error: 'usage: node cli.mjs fleet <file.stl> [--attempts 3]' }); process.exitCode = 1; return; }
-    args = { file: resolve(argv[1]), ...(flag('attempts') ? { attempts: parseInt(flag('attempts'), 10) } : {}) };
+    args = { file: requireCliInputPath(argv[1]), ...(flag('attempts') ? { attempts: parseInt(flag('attempts'), 10) } : {}) };
   } else if (cmd === 'codecheck') {
     name = 'code_check';
     if (has('list')) args = { list: true };
-    else if (argv[1] && !argv[1].startsWith('--')) args = { features: JSON.parse(readFileSync(resolve(argv[1]), 'utf8')) };
+    else if (argv[1] && !argv[1].startsWith('--')) args = { features: JSON.parse(readFileSync(requireCliInputPath(argv[1]), 'utf8')) };
     else if (flag('json')) args = { features: JSON.parse(flag('json')) };
     else { out({ ok: false, error: "usage: node cli.mjs codecheck <features.json> | --json '{...}' | --list" }); process.exitCode = 1; return; }
   } else if (cmd === 'interior' || cmd === 'landscape' || cmd === 'bridge') {
@@ -292,7 +335,7 @@ async function main() {
     };
   } else {
     // 임의 도구 직접 호출(MCP 동일)
-    const j = flag('json') ?? (flag('json-file') ? readFileSync(resolve(flag('json-file')), 'utf8') : null);
+    const j = flag('json') ?? (flag('json-file') ? readFileSync(requireCliInputPath(flag('json-file')), 'utf8') : null);
     if (!j) {
       // cmd 가 실제 도구명이면(예: code_check) --json 이 필요하거나 편의 verb 가 있다고 안내.
       const isTool = tools.some((t) => t.name === cmd);
@@ -308,6 +351,20 @@ async function main() {
     }
     args = JSON.parse(j);
   }
+  if (CLI_WRITE_TOOLS.has(name)) {
+    const outputTarget = args?.outPath ?? args?.outDir;
+    if (typeof outputTarget === 'string' && outputTarget.length > 0) requireCliWriteApproval(outputTarget, name);
+    if (has('confirm-write')) args = { ...args, confirmWrite: true };
+  } else if (flag('out')) {
+    // Convenience commands such as assemble/edit/domain write their returned
+    // assembly after the tool call. Preflight that destination before any
+    // remote quota is consumed, so approval cannot arrive too late.
+    requireCliWriteApproval(flag('out'), 'CLI result export');
+  }
+  const willCallRemote = CLI_REMOTE_TOOLS.has(name) && (Boolean(API_KEY) || REMOTE_ONLY.has(name));
+  if (willCallRemote && !has('confirm-call')) {
+    throw new CliContractError(CLI_REMOTE_APPROVAL_ERROR, `--confirm-call is required before consequential remote tool '${name}'.`);
+  }
   let r;
   if (REMOTE_ONLY.has(name) && !API_KEY) {
     out({ ok: false, error: `'${cmd}' 는 원격 전용 — NEXYFAB_API_KEY 설정 필요(Pro 이상, nexyfab.com → 계정 → API Keys)` });
@@ -315,11 +372,9 @@ async function main() {
     return;
   }
   if (API_KEY && REMOTE_ROUTE[name]) {
-    const res = await fetch(API_URL + REMOTE_ROUTE[name], {
-      method: 'POST', headers: { 'content-type': 'application/json', authorization: `Bearer ${API_KEY}` },
-      body: JSON.stringify(args),
-    });
-    r = await res.json().catch(() => ({ ok: false, error: `HTTP ${res.status}` }));
+    const remoteArgs = { ...args };
+    delete remoteArgs.confirmCall;
+    r = await callRemoteRoute(REMOTE_ROUTE[name], remoteArgs);
   } else {
     r = await callTool(name, args);
   }
@@ -329,4 +384,60 @@ async function main() {
   if (r && r.ok === false) process.exitCode = 1;
 }
 
-main().catch((e) => { out({ ok: false, error: String(e?.message ?? e) }); process.exit(1); });
+async function callRemoteRoute(route, body) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 60_000);
+  try {
+    const res = await fetch(API_URL + route, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', authorization: `Bearer ${API_KEY}` },
+      body: JSON.stringify(body),
+      redirect: 'error',
+      signal: controller.signal,
+    });
+    const bytes = await readBoundedRemoteResponse(res, 5_000_000);
+    let json;
+    try { json = JSON.parse(new TextDecoder('utf-8', { fatal: true }).decode(bytes)); }
+    catch { return { ok: false, code: `HTTP_${res.status}`, error: 'Remote response was not valid JSON.' }; }
+    if (!res.ok) return { ok: false, code: `HTTP_${res.status}`, error: 'Remote request failed.' };
+    if (json && typeof json === 'object' && json.ok === false) {
+      return { ok: false, ...(typeof json.code === 'string' ? { code: json.code } : {}), error: typeof json.error === 'string' && json.error.length <= 512 ? json.error : 'Remote tool failed.' };
+    }
+    return json;
+  } catch (error) {
+    if (error instanceof CliContractError) throw error;
+    throw new CliContractError('CLI_REMOTE_REQUEST_FAILED', 'Remote request failed or timed out.');
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+async function readBoundedRemoteResponse(response, maximumBytes) {
+  if (!response.body) return new Uint8Array();
+  const reader = response.body.getReader();
+  const chunks = [];
+  let total = 0;
+  try {
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      if (!value) continue;
+      total += value.byteLength;
+      if (total > maximumBytes) {
+        await reader.cancel('response_limit_exceeded').catch(() => {});
+        throw new CliContractError('REMOTE_RESPONSE_TOO_LARGE', 'Remote response exceeded the CLI safety limit.');
+      }
+      chunks.push(Buffer.from(value));
+    }
+    return new Uint8Array(Buffer.concat(chunks, total));
+  } finally {
+    reader.releaseLock();
+  }
+}
+
+main().catch((e) => {
+  const code = e?.code ?? 'CLI_FAILED';
+  const message = e instanceof CliContractError ? e.message : 'CLI operation failed.';
+  out({ ok: false, code, error: message });
+  process.exit(1);
+});

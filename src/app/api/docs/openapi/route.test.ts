@@ -17,4 +17,20 @@ describe('CAD OpenAPI authentication contract', () => {
       }
     }
   });
+
+  it('documents server-owned generation and strict Web/MCP physical-network parity', async () => {
+    const document = await (await GET()).json() as { paths: Record<string, unknown> };
+    const stateContract = JSON.stringify(document.paths['/api/cad/v1/generation/state']);
+    const refineContract = JSON.stringify(document.paths['/api/cad/v1/generation/refine']);
+    const diagnosticContract = JSON.stringify(document.paths['/api/cad/v1/generation/verify']);
+    const physicalContract = JSON.stringify(document.paths['/api/cad/v1/physical-network/verify']);
+
+    expect(stateContract).not.toContain('"record"');
+    expect(refineContract).toContain('server-owned');
+    expect(refineContract).not.toContain('maxAttempts');
+    expect(diagnosticContract).toContain('releaseReady=false');
+    expect(physicalContract).toContain('requirePhysicalRouteGeometry');
+    expect(physicalContract).toContain('analysis_only_internal_flow');
+    expect(physicalContract).toContain('additionalProperties');
+  });
 });

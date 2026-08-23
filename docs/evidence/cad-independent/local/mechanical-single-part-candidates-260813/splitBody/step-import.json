@@ -1,0 +1,37 @@
+{
+  "schema": "nexyfab.mechanical-single-part-step-import.v1",
+  "feature": "splitBody",
+  "partRevisionSha256": "bbf911629e96cb34b92ee2f55a2a404b9ea6ab20569d7b37f8a59e843462ae10",
+  "sourceDesignRevisionSha256": "3cf6a0f9c8efcf153a2cfefde087a2112c086fc412d2feeaeb9ce52542838564",
+  "sourceStep": {
+    "path": "docs/evidence/cad-independent/local/mechanical-core-runtime-260813/splitBody/splitBody-edited.step",
+    "sha256": "4a0eb79927543242fa64f6222c418afa76ab228b9d80a26e172929870f50f612",
+    "bytes": 16154,
+    "assertionId": "splitBody.export.native-step"
+  },
+  "exactKernel": "OCCT",
+  "units": {
+    "value": "mm",
+    "confidence": "high"
+  },
+  "solidCount": 1,
+  "singleSolid": true,
+  "volumeMm3": 26400,
+  "boundsMm": [
+    [
+      -30.0000001,
+      -20.0000001,
+      3.999999899999998
+    ],
+    [
+      30.0000001,
+      20.0000001,
+      15.000000100000001
+    ]
+  ],
+  "dimensionsMm": {
+    "x": 60.0000002,
+    "y": 40.0000002,
+    "z": 11.000000200000002
+  }
+}

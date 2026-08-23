@@ -15,6 +15,7 @@ import { checkOrigin } from '@/lib/csrf';
 import { CURRENT_DPA_VERSION, regimeForCountry, type DpaConsent } from '@/lib/compliance';
 import type { CountryCode } from '@/lib/country-pricing';
 import { getTrustedClientIpOrUndefined } from '@/lib/client-ip';
+import { boundedJsonError, readBoundedJson } from '@/lib/boundedJsonBody';
 
 export const dynamic = 'force-dynamic';
 
@@ -54,10 +55,15 @@ export async function POST(req: NextRequest) {
   const authUser = await getAuthUser(req);
   if (!authUser) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-  const body = await req.json().catch(() => ({})) as {
+  let body: {
     country?: string;
     version?: string;
   };
+  try { body = await readBoundedJson(req, 64 * 1024); }
+  catch (error) {
+    if (boundedJsonError(error)?.status === 413) return NextResponse.json({ error: 'Payload too large' }, { status: 413 });
+    body = {};
+  }
   const country = (body.country ?? 'KR') as CountryCode;
   const version = body.version ?? CURRENT_DPA_VERSION;
 

@@ -19,8 +19,11 @@ import {
 import { openscadApiLangFromRequest, openscadMsg } from '@/lib/openscad-render/openscadApiI18n';
 import { nfApiInfo } from '@/lib/nfApiLog';
 import { CadAuditAction, logCadPipelineAudit } from '@/lib/enterprise-cad-audit';
+import { readBoundedJson } from '@/lib/boundedJsonBody';
 
 export const dynamic = 'force-dynamic';
+// 20 MiB decoded import STL expands to about 26.7 MiB base64, plus SCAD and JSON overhead.
+const MAX_JSON_BODY_BYTES = 30 * 1024 * 1024;
 
 function parseFormat(v: unknown): OpenScadMeshFormat {
   if (v === 'off') return 'off';
@@ -47,7 +50,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Rate limit exceeded', code: 'RATE_LIMIT' }, { status: 429 });
   }
 
-  const body = await req.json().catch(() => ({}));
+  const body = (await readBoundedJson<Record<string, unknown>>(req, MAX_JSON_BODY_BYTES).catch(() => ({}))) as Record<string, unknown>;
   const scad = typeof body.scad === 'string' ? body.scad : '';
   const format = parseFormat(body.format);
   const asyncMode = body.async === true;
@@ -74,7 +77,7 @@ export async function POST(req: NextRequest) {
   }
 
   if (plan.ok) {
-    const quota = await checkMonthlyLimit(userId, planTier, 'openscad_render');
+    const quota = await checkMonthlyLimit(userId, planTier, 'openscad_render', plan.orgId);
     if (!quota.ok) {
       nfApiInfo('openscad.render', 'MONTHLY_LIMIT', {
         userId: userId,
@@ -135,7 +138,7 @@ export async function POST(req: NextRequest) {
         jobId: syncId,
         format,
         bytesOut: r.buffer.length,
-      });
+      }, plan.orgId);
       if (!consumed.ok) {
         nfApiInfo('openscad.render', 'MONTHLY_SLOT_RACE_AFTER_SYNC', {
           userId: userId,
@@ -166,7 +169,7 @@ export async function POST(req: NextRequest) {
     const reserved = await consumeMonthlyMetricSlot(userId, planTier, 'openscad_render', {
       mode: 'async',
       format,
-    });
+    }, plan.orgId);
     if (!reserved.ok) {
       nfApiInfo('openscad.render', 'MONTHLY_LIMIT_RESERVE', {
         userId: userId,

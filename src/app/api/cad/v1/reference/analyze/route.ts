@@ -5,6 +5,7 @@ import { createNodeOcctBridge } from '@/lib/occt/nodeOcctBridge';
 import { loadOcctNode } from '@/lib/occt/nodeOcctLoader';
 import { analyzeCadReference } from '@/lib/reference/cadReferenceAnalyze';
 import type { CadLengthUnit, DeclaredSourceTolerance } from '@/lib/reference/cadTolerancePolicy';
+import { boundedJsonError, readBoundedJson } from '@/lib/boundedJsonBody';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -62,11 +63,15 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ok: false, code: 'RATE_LIMIT' }, { status: 429 });
   }
 
-  const contentLength = Number(req.headers.get('content-length'));
-  if (Number.isFinite(contentLength) && contentLength > MAX_JSON_BYTES) {
-    return NextResponse.json({ ok: false, code: 'PAYLOAD_TOO_LARGE', maxStepBytes: MAX_STEP_BYTES }, { status: 413 });
+  let raw: unknown;
+  try {
+    raw = await readBoundedJson<unknown>(req, MAX_JSON_BYTES);
+  } catch (error) {
+    if (boundedJsonError(error)?.code === 'PAYLOAD_TOO_LARGE') {
+      return NextResponse.json({ ok: false, code: 'PAYLOAD_TOO_LARGE', maxStepBytes: MAX_STEP_BYTES }, { status: 413 });
+    }
+    raw = null;
   }
-  const raw = await req.json().catch(() => null);
   if (!isRecord(raw) || Object.keys(raw).some(key => !ALLOWED_FIELDS.has(key))) {
     return NextResponse.json({ ok: false, code: 'BAD_REQUEST', message: 'Only an inline STEP body and documented analysis fields are accepted; paths and URLs are forbidden.' }, { status: 400 });
   }

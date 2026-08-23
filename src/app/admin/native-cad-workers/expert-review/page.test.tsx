@@ -3,6 +3,8 @@ import React from 'react';
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import NativeCadExpertReviewPage from './page';
+import AdminI18nProvider from '../../AdminI18nProvider';
+import { adminCopy } from '@/lib/i18n/adminTranslations';
 
 const targetHash = 'e'.repeat(64);
 const packet = { schema: 'nexyfab.native-cad-expert-review-packet.v1', targetHash, target: { sourceHash: 'a'.repeat(64), artifactHashes: ['b'.repeat(64)], jointDefinitionHash: 'c'.repeat(64), verificationInputHash: 'd'.repeat(64), revision: 1 } };
@@ -11,9 +13,17 @@ const file = (name: string, value: unknown) => { const result = new File([JSON.s
 beforeEach(() => vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true, json: async () => ({ registry: { reviewerKeyCount: 2, domainEligibleCount: 1, independentEligibleCount: 1, distinctPairAvailable: true } }) })));
 afterEach(() => vi.unstubAllGlobals());
 
+function renderPage() {
+  return render(
+    <AdminI18nProvider locale="ko" copy={adminCopy('ko')}>
+      <NativeCadExpertReviewPage />
+    </AdminI18nProvider>,
+  );
+}
+
 describe('native CAD expert review administrator UI', () => {
   it('imports two role-bound response files and enables assembled review validation', async () => {
-    const { container } = render(<NativeCadExpertReviewPage />);
+    const { container } = renderPage();
     await waitFor(() => expect(screen.getByText(/역할 분리 검토자 등록부 준비 완료/)).toBeTruthy());
     await act(async () => { fireEvent.change(container.querySelector('input[type="file"]')!, { target: { files: [file('packet.json', packet)] } }); });
     await waitFor(() => expect(screen.getByText(/target e{64}/)).toBeTruthy());
@@ -24,7 +34,7 @@ describe('native CAD expert review administrator UI', () => {
     expect(screen.getAllByText(/서명 응답 준비됨/)).toHaveLength(2);
   });
   it('rejects a response issued for another target', async () => {
-    const { container } = render(<NativeCadExpertReviewPage />);
+    const { container } = renderPage();
     await act(async () => { fireEvent.change(container.querySelector('input[type="file"]')!, { target: { files: [file('packet.json', packet)] } }); });
     await waitFor(() => expect(container.querySelectorAll('input[type="file"]')).toHaveLength(3));
     await act(async () => { fireEvent.change(container.querySelectorAll('input[type="file"]')[1]!, { target: { files: [file('wrong.json', response('domain-reviewer', 'domain', 'f'.repeat(64)))] } }); });

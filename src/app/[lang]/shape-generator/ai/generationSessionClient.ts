@@ -12,7 +12,7 @@ import {
   type RefinementStage,
 } from "@/lib/ai/multiStageRefinement";
 import type { GenerationCanonicalResponse } from "@/lib/ai/generationCanonicalResponse";
-import type { GenerationTopologyRebindGate } from "@/lib/ai/advanceGenerationRun";
+import type { GenerationTopologyRebindConfirmation } from "@/lib/ai/advanceGenerationRun";
 import type { AdaptiveComplexProductExecutionPlan } from "@/lib/ai/adaptiveComplexProductExecution";
 import type { JointEvidenceClaim } from "@/lib/reference/jointEvidenceReleaseGate";
 
@@ -68,6 +68,7 @@ export async function refineGenerationSession(
     fetcher?: FetchLike;
     storage?: StorageLike;
     runId?: string;
+    /** @deprecated Refinement attempts are fixed by the server release policy. */
     maxAttemptsPerStage?: number;
   } = {},
 ): Promise<BrowserRefinementResult> {
@@ -82,7 +83,7 @@ export async function refineGenerationSession(
   let state = initialized.state;
   const priorOutputs: Partial<Record<RefinementStage, unknown>> = {};
   const immutableEvidence = new Set<string>();
-  const maxAttempts = Math.max(1, options.maxAttemptsPerStage ?? 3);
+  const maxAttempts = 3;
   for (const stage of REFINEMENT_STAGES) {
     let feedback: string[] = [];
     for (let attempt = 1; attempt <= maxAttempts; attempt++) {
@@ -98,7 +99,6 @@ export async function refineGenerationSession(
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
           state,
-          maxAttempts,
           context: {
             request,
             stage,
@@ -195,10 +195,14 @@ async function post(
   fetcher: FetchLike,
   body: unknown,
 ): Promise<{ ok?: boolean; state?: GenerationRunState; message?: string }> {
+  const projectId = typeof window !== 'undefined' ? new URLSearchParams(window.location.search).get('project') : null;
+  const requestBody = body && typeof body === 'object' && !Array.isArray(body) && projectId
+    ? { ...(body as Record<string, unknown>), projectId }
+    : body;
   const response = await fetcher("/api/cad/v1/generation/state", {
     method: "POST",
     headers: { "content-type": "application/json" },
-    body: JSON.stringify(body),
+    body: JSON.stringify(requestBody),
   });
   const json = (await response.json()) as {
     ok?: boolean;
@@ -290,7 +294,7 @@ export function advanceGenerationSession(
     fetcher?: FetchLike;
     storage?: StorageLike;
     allowedDoF?: number;
-    topologyRebind?: GenerationTopologyRebindGate;
+    topologyRebind?: GenerationTopologyRebindConfirmation;
   } = {},
 ): Promise<GenerationRunState> {
   const task = async () => {
@@ -323,10 +327,12 @@ export function advanceGenerationSession(
       executionPlan?: AdaptiveComplexProductExecutionPlan;
       message?: string;
     };
-    if (!response.ok || !json.ok || !json.state)
+    if (!response.ok || !json.ok || !json.state) {
+      if (json.state) storage.setItem(GENERATION_SESSION_KEY, JSON.stringify(json.state));
       throw new Error(
         json.message ?? `Generation advancement failed (${response.status}).`,
       );
+    }
     storage.setItem(GENERATION_SESSION_KEY, JSON.stringify(json.state));
     persistCanonical(storage, json.canonical, "Generation advancement");
     persistExecutionPlan(storage, json.executionPlan);

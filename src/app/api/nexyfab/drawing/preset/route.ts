@@ -11,6 +11,9 @@ import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { rateLimit } from '@/lib/rate-limit';
 import { getTrustedClientIp } from '@/lib/client-ip';
+import { boundedJsonError, readBoundedJson } from '@/lib/boundedJsonBody';
+
+const MAX_BODY_BYTES = 4 * 1024 * 1024;
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -60,8 +63,9 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 
   let body: { domain?: string; templateId?: string; params?: Record<string, number>; kind?: string };
   try {
-    body = (await req.json()) as typeof body;
-  } catch {
+    body = await readBoundedJson<typeof body>(req, MAX_BODY_BYTES);
+  } catch (error) {
+    if (boundedJsonError(error)?.code === 'PAYLOAD_TOO_LARGE') return NextResponse.json({ ok: false, error: '프리셋 입력이 너무 큽니다.' }, { status: 413 });
     return NextResponse.json({ ok: false, error: 'invalid json' }, { status: 400 });
   }
   if (!body.templateId) return NextResponse.json({ ok: false, error: 'templateId가 필요합니다.' }, { status: 400 });

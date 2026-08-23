@@ -2,6 +2,8 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { formatDateTime } from '@/lib/formatDate';
+import { useAdminI18n } from '../AdminI18nProvider';
+import { createCommercialLocalizer } from '@/lib/i18n/commercialLocalizer';
 
 interface ErrorLog {
   id: string;
@@ -27,6 +29,8 @@ const LEVEL_ICONS: Record<string, string> = {
 };
 
 export default function AdminLogsPage() {
+  const { locale } = useAdminI18n();
+  const L = createCommercialLocalizer(locale);
   const [logs, setLogs] = useState<ErrorLog[]>([]);
   const [filter, setFilter] = useState<'all' | 'error' | 'warn' | 'info'>('all');
   const [loading, setLoading] = useState(true);
@@ -54,7 +58,7 @@ export default function AdminLogsPage() {
   const filtered = filter === 'all' ? logs : logs.filter(l => l.level === filter);
 
   const handleClear = async () => {
-    if (!confirm('모든 로그를 삭제하시겠습니까?')) return;
+    if (!confirm(L('모든 로그를 삭제하시겠습니까?', 'Delete all logs?'))) return;
     await fetch('/api/admin/logs', { method: 'DELETE' });
     setLogs([]);
   };
@@ -84,27 +88,27 @@ export default function AdminLogsPage() {
     <div style={{ maxWidth: '1000px' }}>
       {/* 헤더 */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '20px', flexWrap: 'wrap', gap: '10px' }}>
-        <h1 style={{ fontSize: '22px', fontWeight: 700, color: '#111' }}>에러 로그</h1>
+        <h1 style={{ fontSize: '22px', fontWeight: 700, color: '#111' }}>{L('에러 로그', 'Error logs')}</h1>
         <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
           <button
             onClick={fetchLogs}
             style={{ padding: '6px 14px', borderRadius: '6px', border: '1px solid #d1d5db', background: '#fff', cursor: 'pointer', fontSize: '13px', fontWeight: 600 }}
           >
-            새로고침
+            {L('새로고침', 'Refresh')}
           </button>
           <button
             onClick={handleExportCSV}
             disabled={filtered.length === 0}
             style={{ padding: '6px 14px', borderRadius: '6px', border: '1px solid #d1d5db', background: '#fff', cursor: 'pointer', fontSize: '13px', fontWeight: 600, opacity: filtered.length === 0 ? 0.5 : 1 }}
           >
-            CSV 내보내기
+            {L('CSV 내보내기', 'Export CSV')}
           </button>
           <button
             onClick={handleClear}
             disabled={logs.length === 0}
             style={{ padding: '6px 14px', borderRadius: '6px', border: '1px solid #fca5a5', background: '#fff', color: '#dc2626', cursor: 'pointer', fontSize: '13px', fontWeight: 600, opacity: logs.length === 0 ? 0.5 : 1 }}
           >
-            로그 지우기
+            {L('로그 지우기', 'Clear logs')}
           </button>
         </div>
       </div>
@@ -127,17 +131,17 @@ export default function AdminLogsPage() {
               fontWeight: 600,
             }}
           >
-            {level === 'all' ? '전체' : level} ({counts[level]})
+            {level === 'all' ? L('전체', 'All') : level} ({counts[level]})
           </button>
         ))}
       </div>
 
       {/* 로그 목록 */}
       {loading ? (
-        <div style={{ textAlign: 'center', padding: '40px', color: '#6b7280' }}>로딩 중...</div>
+        <div style={{ textAlign: 'center', padding: '40px', color: '#6b7280' }}>{L('로딩 중...', 'Loading...')}</div>
       ) : filtered.length === 0 ? (
         <div style={{ textAlign: 'center', padding: '40px', color: '#6b7280', border: '1px dashed #d1d5db', borderRadius: '8px' }}>
-          로그가 없습니다.
+          {L('로그가 없습니다.', 'No logs found.')}
         </div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
@@ -158,7 +162,7 @@ export default function AdminLogsPage() {
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flex: 1, minWidth: 0 }}>
                   <span>{LEVEL_ICONS[log.level]}</span>
                   <span style={{ fontSize: '12px', color: '#6b7280', whiteSpace: 'nowrap' }}>
-                    {formatDateTime(log.timestamp)}
+                    {formatDateTime(log.timestamp, locale)}
                   </span>
                   {log.url && (
                     <span style={{ fontSize: '11px', color: '#9ca3af', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
@@ -172,7 +176,7 @@ export default function AdminLogsPage() {
               </div>
               <div style={{ marginTop: '6px', fontSize: '14px', color: '#111', fontWeight: 600 }}>{log.message}</div>
               {log.userId && (
-                <div style={{ marginTop: '4px', fontSize: '12px', color: '#6b7280' }}>사용자: {log.userId}</div>
+                <div style={{ marginTop: '4px', fontSize: '12px', color: '#6b7280' }}>{L(`사용자: ${log.userId}`, `User: ${log.userId}`)}</div>
               )}
               {expandedId === log.id && log.stack && (
                 <pre style={{
@@ -184,7 +188,9 @@ export default function AdminLogsPage() {
               )}
               {log.stack && (
                 <div style={{ marginTop: '6px', fontSize: '11px', color: '#9ca3af' }}>
-                  {expandedId === log.id ? '▲ 스택 트레이스 접기' : '▼ 스택 트레이스 펼치기'}
+                  {expandedId === log.id
+                    ? L('▲ 스택 트레이스 접기', '▲ Hide stack trace')
+                    : L('▼ 스택 트레이스 펼치기', '▼ Show stack trace')}
                 </div>
               )}
             </div>

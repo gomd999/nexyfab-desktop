@@ -1,0 +1,28 @@
+{
+  "schema": "nexyfab.agent-mcp-cli-local-command-result.v1",
+  "generatedAt": "2026-08-23T07:01:30.126Z",
+  "id": "focused_mcp_cli_parity",
+  "command": {
+    "executable": "node",
+    "args": [
+      "node_modules/vitest/vitest.mjs",
+      "run",
+      "scripts/agent-mcp-cli-runtime-parity.test.ts",
+      "scripts/mcp-stdio-transport.test.ts",
+      "scripts/drawing-to-3d/agent-mcp-server.test.ts",
+      "scripts/drawing-to-3d/capability-surface-manifest.test.ts",
+      "scripts/drawing-to-3d/cad-v1-mcp.test.ts",
+      "scripts/drawing-to-3d/downloadable-mcp.test.ts",
+      "scripts/drawing-to-3d/mcp-package-publish.test.ts",
+      "scripts/drawing-to-3d/mcp-honesty.test.ts",
+      "scripts/cli/nexyfab.test.ts",
+      "--reporter=dot"
+    ],
+    "timeoutMs": 120000
+  },
+  "exitCode": 0,
+  "signal": null,
+  "error": null,
+  "stdout": "\n RUN  v4.1.2 C:/Users/gomd9/Downloads/nexysys_1/nexyfab.com/new\n\n·················································································································································\n\n Test Files  9 passed (9)\n      Tests  145 passed (145)\n   Start at  16:01:30\n   Duration  6.01s (transform 5.29s, setup 6.07s, import 5.88s, tests 7.65s, environment 1ms)\n\n",
+  "stderr": ""
+}

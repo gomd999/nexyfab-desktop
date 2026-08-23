@@ -1,0 +1,27 @@
+{
+  "schema": "nexyfab.mechanical-core-feature-local-runtime.v1",
+  "feature": "chamfer",
+  "axis": "drawing",
+  "status": "PASS",
+  "executedAt": "2026-08-22T07:13:30.564Z",
+  "kernel": "OCCT HLRBRep via replicad drawProjection",
+  "views": {
+    "front": {
+      "visible": 12,
+      "hidden": 14,
+      "viewBox": "-32.000001 -17.000000999999997 64.000002 34.000001999999995"
+    },
+    "top": {
+      "visible": 11,
+      "hidden": 11,
+      "viewBox": "-32.000001 -22.000001 64.000002 44.000002"
+    },
+    "right": {
+      "visible": 17,
+      "hidden": 10,
+      "viewBox": "-22.000001 -17.000000999999997 44.000002 34.000001999999995"
+    }
+  },
+  "svgBytes": 7882,
+  "svgSha256": "b8cf3c254ccf6cb616690cdaa85969f2c5635d1d9b2756b9f2afcc9b3e05878a"
+}

@@ -9,6 +9,7 @@ import {
   linearPatternFromSketch,
   circularPatternFromSketch,
 } from './patternFromSketch';
+import { deserializeFeatureTree, serializeFeatureTree } from '@/lib/cad/featureTreePersist';
 import type { SolverViewState } from './solverToProfile';
 
 function rect(): SolverViewState {
@@ -29,6 +30,23 @@ function rect(): SolverViewState {
 }
 
 describe('linearPatternFromSketch', () => {
+  it('returns a persistable dependency tree for downstream editing', () => {
+    const r = linearPatternFromSketch(rect(), {
+      child: { depth: 10 },
+      count: 3,
+      direction: { x: 1, y: 0, z: 0 },
+      spacing: 20,
+    });
+    expect(r.ok).toBe(true);
+    if (r.ok) {
+      expect(r.tree.nodes[1]?.dependencies).toEqual(['linear_pattern_child']);
+      expect(r.tree.nodes[1]?.payload).toMatchObject({
+        kind: 'linear_pattern',
+        childId: 'linear_pattern_child',
+      });
+      expect(deserializeFeatureTree(serializeFeatureTree(r.tree))).toMatchObject({ ok: true });
+    }
+  });
   it('rect + count=4 along +X → SCAD with linear_extrude child + for loop translate', () => {
     const r = linearPatternFromSketch(rect(), {
       child: { depth: 5 },

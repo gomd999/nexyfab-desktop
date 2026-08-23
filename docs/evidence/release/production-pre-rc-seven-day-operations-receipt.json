@@ -1,0 +1,102 @@
+{
+  "schema": "nexyfab.seven-day-operations-receipt.v3",
+  "generatedAt": "2026-08-22T07:08:51.434Z",
+  "ok": false,
+  "services": {
+    "web": {
+      "samples": 1,
+      "observedSamples": 1,
+      "excludedSamples": 0,
+      "exclusionReasons": [],
+      "coverageHours": 6,
+      "spanHours": 6,
+      "invalidWindows": 0,
+      "uniqueWindows": 1,
+      "overlaps": 0,
+      "gaps": 0,
+      "durationMismatches": 0,
+      "maxMemoryMb": 294.486278144,
+      "memoryLimitMb": 768,
+      "minimumRuntimeMemoryLimitMb": 8192,
+      "totalRequests": 404,
+      "total5xx": 0,
+      "errorRatePercent": 0
+    },
+    "openscad-worker": {
+      "samples": 1,
+      "observedSamples": 1,
+      "excludedSamples": 0,
+      "exclusionReasons": [],
+      "coverageHours": 6,
+      "spanHours": 6,
+      "invalidWindows": 0,
+      "uniqueWindows": 1,
+      "overlaps": 0,
+      "gaps": 0,
+      "durationMismatches": 0,
+      "maxMemoryMb": 51.090817024,
+      "memoryLimitMb": 512,
+      "minimumRuntimeMemoryLimitMb": 8192,
+      "totalRequests": 0,
+      "total5xx": 0,
+      "errorRatePercent": 0
+    },
+    "fea-worker": {
+      "samples": 1,
+      "observedSamples": 1,
+      "excludedSamples": 0,
+      "exclusionReasons": [],
+      "coverageHours": 6,
+      "spanHours": 6,
+      "invalidWindows": 0,
+      "uniqueWindows": 1,
+      "overlaps": 0,
+      "gaps": 0,
+      "durationMismatches": 0,
+      "maxMemoryMb": 0,
+      "memoryLimitMb": 2048,
+      "minimumRuntimeMemoryLimitMb": null,
+      "totalRequests": 0,
+      "total5xx": 0,
+      "errorRatePercent": 0
+    }
+  },
+  "cost": {
+    "ok": false,
+    "blockers": [
+      "cost_samples_short"
+    ],
+    "samples": 1
+  },
+  "policy": {
+    "requiredCoverageHours": 168,
+    "requiredSampleCount": 28,
+    "expectedWindowHours": 6,
+    "http5xxMaxPercent": 1,
+    "memoryLimitsMb": {
+      "web": 768,
+      "openscad-worker": 512,
+      "fea-worker": 2048
+    },
+    "requireRuntimeMemoryLimitEvidence": false,
+    "monthlyCostBudgetUsd": 50
+  },
+  "release": null,
+  "blockers": [
+    "coverage_short:web:6.0h",
+    "sample_count_short:web:1",
+    "unique_window_count_short:web:1",
+    "coverage_short:openscad-worker:6.0h",
+    "sample_count_short:openscad-worker:1",
+    "unique_window_count_short:openscad-worker:1",
+    "coverage_short:fea-worker:6.0h",
+    "sample_count_short:fea-worker:1",
+    "unique_window_count_short:fea-worker:1",
+    "metrics_invalid:fea-worker:1",
+    "cost_samples_short"
+  ],
+  "evidenceBindings": {
+    "release": null,
+    "policy": null
+  }
+}

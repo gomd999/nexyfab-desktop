@@ -20,6 +20,16 @@ const request = (body: unknown, headers: Record<string, string> = {}) => new Nex
   'https://nexyfab.com/api/nexyfab/ses-notifications',
   { method: 'POST', headers: { 'content-type': 'application/json', ...headers }, body: JSON.stringify(body) },
 );
+const rawRequest = (body: BodyInit, headers: Record<string, string> = {}) => new NextRequest(
+  'https://nexyfab.com/api/nexyfab/ses-notifications',
+  { method: 'POST', headers: { 'content-type': 'application/json', ...headers }, body },
+);
+const streamedRequest = (body: ReadableStream<Uint8Array>, headers: Record<string, string> = {}) => new NextRequest(
+  'https://nexyfab.com/api/nexyfab/ses-notifications',
+  {
+    method: 'POST', headers: { 'content-type': 'application/json', ...headers }, body, duplex: 'half',
+  } as unknown as NonNullable<ConstructorParameters<typeof NextRequest>[1]>,
+);
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -64,5 +74,28 @@ describe('SES SNS ingress', () => {
     ));
     expect(response.status).toBe(413);
     expect(mocks.verify).not.toHaveBeenCalled();
+  });
+
+  it('does not trust false-small Content-Length and cancels actual overflow', async () => {
+    let cancelled = false;
+    const stream = new ReadableStream<Uint8Array>({
+      start(controller) {
+        controller.enqueue(new Uint8Array([0x7b]));
+        controller.enqueue(new Uint8Array(256 * 1024));
+      },
+      cancel() { cancelled = true; },
+    });
+    const response = await POST(streamedRequest(stream, { 'content-length': '1' }));
+    expect(response.status).toBe(413);
+    expect(cancelled).toBe(true);
+    expect(mocks.verify).not.toHaveBeenCalled();
+    expect(mocks.suppress).not.toHaveBeenCalled();
+  });
+
+  it('rejects invalid UTF-8 before signature or suppression work', async () => {
+    const response = await POST(rawRequest(new Uint8Array([0xff])));
+    expect(response.status).toBe(400);
+    expect(mocks.verify).not.toHaveBeenCalled();
+    expect(mocks.suppress).not.toHaveBeenCalled();
   });
 });

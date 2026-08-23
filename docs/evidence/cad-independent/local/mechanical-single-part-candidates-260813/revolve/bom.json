@@ -1,0 +1,26 @@
+{
+  "schema": "nexyfab.mechanical-single-part-bom-candidate.v1",
+  "partRevisionSha256": "ce6dedcced895b04bc6a6d85421b1e7a2774a601bbe2d6b1ebe400a4394a86d6",
+  "sourceDesignRevisionSha256": "3cf6a0f9c8efcf153a2cfefde087a2112c086fc412d2feeaeb9ce52542838564",
+  "sourceNfabSha256": "afe9e915234d2027ddbb7871affc44b30f549de0e345f53d2039f0b5fe42f2db",
+  "sourceStepSha256": "151b5d9aa3c975c78f5a0f53585c69f5793466f568ae7b81119932c8b264d7fa",
+  "units": "mm",
+  "items": [
+    {
+      "partNumber": "revolve",
+      "description": "Mechanical runtime revolve",
+      "quantity": 1,
+      "dimensionsMm": {
+        "x": 32.00994637597389,
+        "y": 20.00994637597389,
+        "z": 32.00000020000002
+      }
+    }
+  ],
+  "claimBoundary": {
+    "singlePartCandidateOnly": true,
+    "materialSpecified": false,
+    "massCalculated": false,
+    "manufacturingApproved": false
+  }
+}

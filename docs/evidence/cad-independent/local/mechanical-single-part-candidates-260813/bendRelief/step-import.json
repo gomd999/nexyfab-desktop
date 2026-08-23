@@ -1,0 +1,37 @@
+{
+  "schema": "nexyfab.mechanical-single-part-step-import.v1",
+  "feature": "bendRelief",
+  "partRevisionSha256": "f30b61985d1609372303ec257afa3cda52355f0425d5d87ce366f1731fe0f5af",
+  "sourceDesignRevisionSha256": "3cf6a0f9c8efcf153a2cfefde087a2112c086fc412d2feeaeb9ce52542838564",
+  "sourceStep": {
+    "path": "docs/evidence/cad-independent/local/mechanical-core-runtime-260813/bendRelief/bendRelief-edited.step",
+    "sha256": "e8d0fb80c46ef705e35000713f6e43e650ec54e3295a222a077931df16b44474",
+    "bytes": 44797,
+    "assertionId": "bendRelief.export.native-step"
+  },
+  "exactKernel": "OCCT",
+  "units": {
+    "value": "mm",
+    "confidence": "high"
+  },
+  "solidCount": 1,
+  "singleSolid": true,
+  "volumeMm3": 3480,
+  "boundsMm": [
+    [
+      -30.0000001,
+      -1.0000001000000018,
+      -15.000000100000001
+    ],
+    [
+      30.0000001,
+      1.0000001000000018,
+      15.000000100000001
+    ]
+  ],
+  "dimensionsMm": {
+    "x": 60.0000002,
+    "y": 2.0000002000000037,
+    "z": 30.000000200000002
+  }
+}

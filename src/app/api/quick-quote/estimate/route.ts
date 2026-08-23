@@ -4,6 +4,10 @@ import { NextRequest, NextResponse } from 'next/server';
 import { checkPlan } from '@/lib/plan-guard';
 import { validateQuoteInput, QuoteValidationError } from '@/lib/quote-validation';
 import { chatCompletion, AiNotConfiguredError, AiProviderError, type ChatMessage } from '@/lib/ai';
+import { localizedApiMessage, resolveServerLocale } from '@/lib/i18n/serverLocale';
+import { readBoundedJson } from '@/lib/boundedJsonBody';
+
+const MAX_JSON_BODY_BYTES = 64 * 1024;
 
 // ─── 재질 고정 데이터 (밀도, 가공성 — 가격은 실시간 API에서 주입) ───────────────
 
@@ -53,18 +57,18 @@ const PROCESSES: Record<string, { name: string; base_rate: number; setup: number
 // ─── POST Handler ────────────────────────────────────────────────────────────
 
 export async function POST(req: NextRequest) {
+    const rawBody = await readBoundedJson(req, MAX_JSON_BODY_BYTES).catch(() => ({})) as Record<string, unknown>;
+    const locale = resolveServerLocale(req, rawBody.lang ?? req.nextUrl.searchParams.get('lang'));
     const planCheck = await checkPlan(req, 'free');
     if (!planCheck.ok) return planCheck.response;
 
     try {
-        const rawBody = await req.json();
-
         let validated;
         try {
             validated = validateQuoteInput(rawBody);
         } catch (err) {
             if (err instanceof QuoteValidationError) {
-                return NextResponse.json({ error: err.message }, { status: 400 });
+                return NextResponse.json({ error: localizedApiMessage(locale, 'badRequest'), code: 'QUOTE_INPUT_INVALID', outputLanguage: locale.route }, { status: 400 });
             }
             throw err;
         }
@@ -90,7 +94,7 @@ export async function POST(req: NextRequest) {
 
         if (!mat || !proc) {
             // Should be unreachable after whitelist validation, but belt-and-braces.
-            return NextResponse.json({ error: 'Invalid material or process' }, { status: 400 });
+            return NextResponse.json({ error: localizedApiMessage(locale, 'badRequest'), code: 'MATERIAL_PROCESS_INVALID', outputLanguage: locale.route }, { status: 400 });
         }
 
         // ── 원가 계산 ──
@@ -179,7 +183,7 @@ JSON 형식으로만 답하고 다른 설명은 하지 마세요:
   "summary": "한 줄 종합 의견"
 }`;
 
-            const messages: ChatMessage[] = [{ role: 'user', content: prompt }];
+            const messages: ChatMessage[] = [{ role: 'system', content: `Write natural-language analysis fields in ${locale.languageName}; preserve material/process identifiers and numeric values.` }, { role: 'user', content: prompt }];
             const result = await chatCompletion({
                 messages,
                 maxTokens: 1024,
@@ -221,9 +225,10 @@ JSON 형식으로만 답하고 다른 설명은 하지 마세요:
                 usd_krw: livePriceData?.usd_krw ?? 1370,
                 material_price_per_kg: mat.price_per_kg,
             },
+            outputLanguage: locale.route,
         });
     } catch (err) {
         console.error('quick-quote estimate error:', err);
-        return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+        return NextResponse.json({ error: localizedApiMessage(locale, 'providerFailed'), outputLanguage: locale.route }, { status: 500 });
     }
 }

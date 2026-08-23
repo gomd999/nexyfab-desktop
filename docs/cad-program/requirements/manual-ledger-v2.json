@@ -1,0 +1,1310 @@
+{
+  "schema": "nexyfab.manual-ledger.v2",
+  "policy": {
+    "sourceReadOnly": true,
+    "sourceBytesCopied": false,
+    "pageOrSectionRequiredForVerified": true,
+    "missingLocatorTruth": "HOLD",
+    "noSourceGuessing": true
+  },
+  "sourceIndex": {
+    "path": "docs/cad-program/requirements/manual-index.json",
+    "sha256": "afe8f30bc414f6e2a38a7d8a7f328554e73a6701833c2dbdf4e77371a2c2656f",
+    "manualCount": 20
+  },
+  "sourceRequirements": {
+    "path": "docs/cad-program/requirements/manual-requirements.json",
+    "sha256": "33ddbf8a1c9153a5393b14a90f4a72a3120bc1f196a9ec1699ec4255242d640b",
+    "requirementCount": 46,
+    "atomicRequirementCount": 30,
+    "unmappedRequirementIds": [
+      "MAN-ASM-001",
+      "MAN-ASM-002",
+      "MAN-BIM-001",
+      "MAN-CCD-001",
+      "MAN-CIV-001",
+      "MAN-FT-001",
+      "MAN-HEAL-001",
+      "MAN-INT-001",
+      "MAN-IO-001",
+      "MAN-PMI-001",
+      "MAN-SEL-001",
+      "MAN-UX-001",
+      "MAN-WL-001"
+    ]
+  },
+  "summary": {
+    "manualCount": 20,
+    "mappedManualCount": 20,
+    "unmappedManualCount": 0,
+    "mappedManualIds": [
+      "MANUAL-01",
+      "MANUAL-02",
+      "MANUAL-03",
+      "MANUAL-04",
+      "MANUAL-05",
+      "MANUAL-06",
+      "MANUAL-07",
+      "MANUAL-08",
+      "MANUAL-09",
+      "MANUAL-10",
+      "MANUAL-11",
+      "MANUAL-12",
+      "MANUAL-13",
+      "MANUAL-14",
+      "MANUAL-15",
+      "MANUAL-16",
+      "MANUAL-17",
+      "MANUAL-18",
+      "MANUAL-19",
+      "MANUAL-20"
+    ],
+    "unmappedManualIds": [],
+    "verifiedManualIds": [
+      "MANUAL-04",
+      "MANUAL-07",
+      "MANUAL-11",
+      "MANUAL-19",
+      "MANUAL-20"
+    ],
+    "holdManualIds": [
+      "MANUAL-01",
+      "MANUAL-02",
+      "MANUAL-03",
+      "MANUAL-04",
+      "MANUAL-05",
+      "MANUAL-06",
+      "MANUAL-07",
+      "MANUAL-08",
+      "MANUAL-09",
+      "MANUAL-10",
+      "MANUAL-11",
+      "MANUAL-12",
+      "MANUAL-13",
+      "MANUAL-14",
+      "MANUAL-15",
+      "MANUAL-16",
+      "MANUAL-17",
+      "MANUAL-18",
+      "MANUAL-19",
+      "MANUAL-20"
+    ],
+    "allManualsScoreEligible": false
+  },
+  "manuals": [
+    {
+      "manualId": "MANUAL-01",
+      "fileName": "_DesignDivision_assistant_engineer_design_design_v8_MicroStation V8 Manual.pdf",
+      "sha256": "a17c7e44a657eab771d4eebab4dae59d43153b1c60cce989e214f13350c3efbe",
+      "family": "microstation",
+      "domains": [
+        "civil",
+        "drawing"
+      ],
+      "functionalCoverage": {
+        "status": "mapped",
+        "mappedRequirementIds": [
+          "AISC-ARC-OFFICE-001",
+          "AISC-ARC-OFFICE-002",
+          "MAN-ARC-001",
+          "MAN-ARC-002",
+          "MAN-ARC-003",
+          "MAN-ARC-004",
+          "MAN-ARC-005"
+        ],
+        "mappedRequirementCount": 7,
+        "unmappedRequirementIds": [],
+        "verifiedRequirementIds": [],
+        "verifiedRequirementCount": 0,
+        "unmappedRequirementCount": 0
+      },
+      "sourceAnchors": {
+        "status": "HOLD",
+        "locators": [
+          {
+            "requirementId": "AISC-ARC-OFFICE-001",
+            "documentId": "MANUAL-01",
+            "page": null,
+            "section": null,
+            "status": "HOLD"
+          },
+          {
+            "requirementId": "AISC-ARC-OFFICE-002",
+            "documentId": "MANUAL-01",
+            "page": null,
+            "section": null,
+            "status": "HOLD"
+          },
+          {
+            "requirementId": "MAN-ARC-001",
+            "documentId": "MANUAL-01",
+            "page": null,
+            "section": null,
+            "status": "HOLD"
+          },
+          {
+            "requirementId": "MAN-ARC-002",
+            "documentId": "MANUAL-01",
+            "page": null,
+            "section": null,
+            "status": "HOLD"
+          },
+          {
+            "requirementId": "MAN-ARC-003",
+            "documentId": "MANUAL-01",
+            "page": null,
+            "section": null,
+            "status": "HOLD"
+          },
+          {
+            "requirementId": "MAN-ARC-004",
+            "documentId": "MANUAL-01",
+            "page": null,
+            "section": null,
+            "status": "HOLD"
+          },
+          {
+            "requirementId": "MAN-ARC-005",
+            "documentId": "MANUAL-01",
+            "page": null,
+            "section": null,
+            "status": "HOLD"
+          }
+        ]
+      },
+      "review": {
+        "status": "HOLD",
+        "reason": "source_page_section_missing",
+        "scoreEligible": false
+      }
+    },
+    {
+      "manualId": "MANUAL-02",
+      "fileName": "AutoCAD Workbook for Architects and Engineers.pdf",
+      "sha256": "3296f610aec0a0e83fd67df2a1bb3d53eb22f2154dcfb969a718eda9c324e69a",
+      "family": "autocad",
+      "domains": [
+        "drafting",
+        "drawing"
+      ],
+      "functionalCoverage": {
+        "status": "mapped",
+        "mappedRequirementIds": [
+          "AISC-ARC-OFFICE-001",
+          "AISC-ARC-OFFICE-002",
+          "MAN-ARC-001",
+          "MAN-ARC-002",
+          "MAN-ARC-003",
+          "MAN-ARC-004",
+          "MAN-ARC-005",
+          "MAN-INT-013"
+        ],
+        "mappedRequirementCount": 8,
+        "unmappedRequirementIds": [],
+        "verifiedRequirementIds": [],
+        "verifiedRequirementCount": 0,
+        "unmappedRequirementCount": 0
+      },
+      "sourceAnchors": {
+        "status": "HOLD",
+        "locators": [
+          {
+            "requirementId": "AISC-ARC-OFFICE-001",
+            "documentId": "MANUAL-02",
+            "page": null,
+            "section": null,
+            "status": "HOLD"
+          },
+          {
+            "requirementId": "AISC-ARC-OFFICE-002",
+            "documentId": "MANUAL-02",
+            "page": null,
+            "section": null,
+            "status": "HOLD"
+          },
+          {
+            "requirementId": "MAN-ARC-001",
+            "documentId": "MANUAL-02",
+            "page": null,
+            "section": null,
+            "status": "HOLD"
+          },
+          {
+            "requirementId": "MAN-ARC-002",
+            "documentId": "MANUAL-02",
+            "page": null,
+            "section": null,
+            "status": "HOLD"
+          },
+          {
+            "requirementId": "MAN-ARC-003",
+            "documentId": "MANUAL-02",
+            "page": null,
+            "section": null,
+            "status": "HOLD"
+          },
+          {
+            "requirementId": "MAN-ARC-004",
+            "documentId": "MANUAL-02",
+            "page": null,
+            "section": null,
+            "status": "HOLD"
+          },
+          {
+            "requirementId": "MAN-ARC-005",
+            "documentId": "MANUAL-02",
+            "page": null,
+            "section": null,
+            "status": "HOLD"
+          },
+          {
+            "requirementId": "MAN-INT-013",
+            "documentId": "MANUAL-02",
+            "page": null,
+            "section": null,
+            "status": "HOLD"
+          }
+        ]
+      },
+      "review": {
+        "status": "HOLD",
+        "reason": "source_page_section_missing",
+        "scoreEligible": false
+      }
+    },
+    {
+      "manualId": "MANUAL-03",
+      "fileName": "Autodesk 3ds Max 2021 Fundamentals.pdf",
+      "sha256": "b3fefc0e859b94450aa6600763c6569e9bd0dda89bcd93b0b8003c5d67a96e98",
+      "family": "visualization",
+      "domains": [
+        "visualization"
+      ],
+      "functionalCoverage": {
+        "status": "mapped",
+        "mappedRequirementIds": [
+          "MAN-INT-008",
+          "MAN-INT-010"
+        ],
+        "mappedRequirementCount": 2,
+        "unmappedRequirementIds": [],
+        "verifiedRequirementIds": [],
+        "verifiedRequirementCount": 0,
+        "unmappedRequirementCount": 0
+      },
+      "sourceAnchors": {
+        "status": "HOLD",
+        "locators": [
+          {
+            "requirementId": "MAN-INT-008",
+            "documentId": "MANUAL-03",
+            "page": null,
+            "section": null,
+            "status": "HOLD"
+          },
+          {
+            "requirementId": "MAN-INT-010",
+            "documentId": "MANUAL-03",
+            "page": null,
+            "section": null,
+            "status": "HOLD"
+          }
+        ]
+      },
+      "review": {
+        "status": "HOLD",
+        "reason": "source_page_section_missing",
+        "scoreEligible": false
+      }
+    },
+    {
+      "manualId": "MANUAL-04",
+      "fileName": "Autodesk Civil 3D 2022 Fundamentals.pdf",
+      "sha256": "9a343d53b896e2fb68f3ce667cc4e87d98b5dd31686cd3fb27a24a73f62a6bc8",
+      "family": "civil3d",
+      "domains": [
+        "civil",
+        "alignment",
+        "survey"
+      ],
+      "functionalCoverage": {
+        "status": "mapped",
+        "mappedRequirementIds": [
+          "MAN-CIV-SURVEY-001"
+        ],
+        "mappedRequirementCount": 1,
+        "unmappedRequirementIds": [],
+        "verifiedRequirementIds": [
+          "MAN-CIV-SURVEY-001"
+        ],
+        "verifiedRequirementCount": 1,
+        "unmappedRequirementCount": 0
+      },
+      "sourceAnchors": {
+        "status": "BOUND",
+        "locators": [
+          {
+            "requirementId": "MAN-CIV-SURVEY-001",
+            "documentId": "MANUAL-04",
+            "page": 3,
+            "section": "Survey, Points, and Linework",
+            "status": "BOUND"
+          }
+        ]
+      },
+      "review": {
+        "status": "HOLD",
+        "reason": "reviewer_receipt_missing",
+        "scoreEligible": false
+      }
+    },
+    {
+      "manualId": "MANUAL-05",
+      "fileName": "autodesk-fusion-360 (1).pdf",
+      "sha256": "7e9cc059368d19ea1c2f4835a9192a1987f26b75f6e2017f3a32eff39d2e85bc",
+      "family": "fusion360",
+      "domains": [
+        "part",
+        "assembly",
+        "manufacturing"
+      ],
+      "functionalCoverage": {
+        "status": "mapped",
+        "mappedRequirementIds": [
+          "MAN-ARC-008",
+          "MAN-ARC-010"
+        ],
+        "mappedRequirementCount": 2,
+        "unmappedRequirementIds": [],
+        "verifiedRequirementIds": [],
+        "verifiedRequirementCount": 0,
+        "unmappedRequirementCount": 0
+      },
+      "sourceAnchors": {
+        "status": "HOLD",
+        "locators": [
+          {
+            "requirementId": "MAN-ARC-008",
+            "documentId": "MANUAL-05",
+            "page": null,
+            "section": null,
+            "status": "HOLD"
+          },
+          {
+            "requirementId": "MAN-ARC-010",
+            "documentId": "MANUAL-05",
+            "page": null,
+            "section": null,
+            "status": "HOLD"
+          }
+        ]
+      },
+      "review": {
+        "status": "HOLD",
+        "reason": "source_page_section_missing",
+        "scoreEligible": false
+      }
+    },
+    {
+      "manualId": "MANUAL-06",
+      "fileName": "Enscape.pdf",
+      "sha256": "caaa7de3ac814f81bab100d4c1946437397b5fa4ba96b9760d3b79af21e07e50",
+      "family": "visualization",
+      "domains": [
+        "visualization"
+      ],
+      "functionalCoverage": {
+        "status": "mapped",
+        "mappedRequirementIds": [
+          "MAN-INT-008",
+          "MAN-INT-010"
+        ],
+        "mappedRequirementCount": 2,
+        "unmappedRequirementIds": [],
+        "verifiedRequirementIds": [],
+        "verifiedRequirementCount": 0,
+        "unmappedRequirementCount": 0
+      },
+      "sourceAnchors": {
+        "status": "HOLD",
+        "locators": [
+          {
+            "requirementId": "MAN-INT-008",
+            "documentId": "MANUAL-06",
+            "page": null,
+            "section": null,
+            "status": "HOLD"
+          },
+          {
+            "requirementId": "MAN-INT-010",
+            "documentId": "MANUAL-06",
+            "page": null,
+            "section": null,
+            "status": "HOLD"
+          }
+        ]
+      },
+      "review": {
+        "status": "HOLD",
+        "reason": "source_page_section_missing",
+        "scoreEligible": false
+      }
+    },
+    {
+      "manualId": "MANUAL-07",
+      "fileName": "Getting_Started_Civil.pdf",
+      "sha256": "878d1c9a5afd238b772df1874734dcbd561909b4ccbd24019c58941f31f41e02",
+      "family": "midas-civil",
+      "domains": [
+        "civil",
+        "bridge",
+        "structural_analysis",
+        "fea"
+      ],
+      "functionalCoverage": {
+        "status": "mapped",
+        "mappedRequirementIds": [
+          "MAN-CIV-STRUCT-001"
+        ],
+        "mappedRequirementCount": 1,
+        "unmappedRequirementIds": [],
+        "verifiedRequirementIds": [
+          "MAN-CIV-STRUCT-001"
+        ],
+        "verifiedRequirementCount": 1,
+        "unmappedRequirementCount": 0
+      },
+      "sourceAnchors": {
+        "status": "BOUND",
+        "locators": [
+          {
+            "requirementId": "MAN-CIV-STRUCT-001",
+            "documentId": "MANUAL-07",
+            "page": 146,
+            "section": "Analysis — Finite Elements",
+            "status": "BOUND"
+          }
+        ]
+      },
+      "review": {
+        "status": "HOLD",
+        "reason": "reviewer_receipt_missing",
+        "scoreEligible": false
+      }
+    },
+    {
+      "manualId": "MANUAL-08",
+      "fileName": "Grasshopper Learning Material.pdf",
+      "sha256": "8a6b20c80c57fa3c7a19601bb8e4153626e1537d955a3e1b9226fec347906de3",
+      "family": "grasshopper",
+      "domains": [
+        "parametric_graph"
+      ],
+      "functionalCoverage": {
+        "status": "mapped",
+        "mappedRequirementIds": [
+          "MAN-ARC-008",
+          "MAN-ARC-009"
+        ],
+        "mappedRequirementCount": 2,
+        "unmappedRequirementIds": [],
+        "verifiedRequirementIds": [],
+        "verifiedRequirementCount": 0,
+        "unmappedRequirementCount": 0
+      },
+      "sourceAnchors": {
+        "status": "HOLD",
+        "locators": [
+          {
+            "requirementId": "MAN-ARC-008",
+            "documentId": "MANUAL-08",
+            "page": null,
+            "section": null,
+            "status": "HOLD"
+          },
+          {
+            "requirementId": "MAN-ARC-009",
+            "documentId": "MANUAL-08",
+            "page": null,
+            "section": null,
+            "status": "HOLD"
+          }
+        ]
+      },
+      "review": {
+        "status": "HOLD",
+        "reason": "source_page_section_missing",
+        "scoreEligible": false
+      }
+    },
+    {
+      "manualId": "MANUAL-09",
+      "fileName": "Grasshopper+Primer_Korean+Edition_rev.01.pdf",
+      "sha256": "f775306d992bebc4ecb5774677e30c6979a79a87735eb566675547297d83a9c7",
+      "family": "grasshopper",
+      "domains": [
+        "parametric_graph"
+      ],
+      "functionalCoverage": {
+        "status": "mapped",
+        "mappedRequirementIds": [
+          "MAN-ARC-008",
+          "MAN-ARC-009"
+        ],
+        "mappedRequirementCount": 2,
+        "unmappedRequirementIds": [],
+        "verifiedRequirementIds": [],
+        "verifiedRequirementCount": 0,
+        "unmappedRequirementCount": 0
+      },
+      "sourceAnchors": {
+        "status": "HOLD",
+        "locators": [
+          {
+            "requirementId": "MAN-ARC-008",
+            "documentId": "MANUAL-09",
+            "page": null,
+            "section": null,
+            "status": "HOLD"
+          },
+          {
+            "requirementId": "MAN-ARC-009",
+            "documentId": "MANUAL-09",
+            "page": null,
+            "section": null,
+            "status": "HOLD"
+          }
+        ]
+      },
+      "review": {
+        "status": "HOLD",
+        "reason": "source_page_section_missing",
+        "scoreEligible": false
+      }
+    },
+    {
+      "manualId": "MANUAL-10",
+      "fileName": "handout_5231_CD5231_20-_20Getting_20Started_20with_20Fusion_20360 (1).pdf",
+      "sha256": "972cedbf23d40b0a64c0eaa072a01705e5fa11a0229ce12f9996ccae846580e9",
+      "family": "fusion360",
+      "domains": [
+        "part",
+        "assembly",
+        "manufacturing"
+      ],
+      "functionalCoverage": {
+        "status": "mapped",
+        "mappedRequirementIds": [
+          "MAN-ARC-010"
+        ],
+        "mappedRequirementCount": 1,
+        "unmappedRequirementIds": [],
+        "verifiedRequirementIds": [],
+        "verifiedRequirementCount": 0,
+        "unmappedRequirementCount": 0
+      },
+      "sourceAnchors": {
+        "status": "HOLD",
+        "locators": [
+          {
+            "requirementId": "MAN-ARC-010",
+            "documentId": "MANUAL-10",
+            "page": null,
+            "section": null,
+            "status": "HOLD"
+          }
+        ]
+      },
+      "review": {
+        "status": "HOLD",
+        "reason": "source_page_section_missing",
+        "scoreEligible": false
+      }
+    },
+    {
+      "manualId": "MANUAL-11",
+      "fileName": "handout_7273_VI7273-L_Handlout.pdf",
+      "sha256": "0dedbe46507cdafddd30f1efa31aa4c49ee89cfd4746188f13d8947c3f6b190e",
+      "family": "visualization",
+      "domains": [
+        "architecture",
+        "interior",
+        "visualization"
+      ],
+      "functionalCoverage": {
+        "status": "mapped",
+        "mappedRequirementIds": [
+          "MAN-INT-008"
+        ],
+        "mappedRequirementCount": 1,
+        "unmappedRequirementIds": [],
+        "verifiedRequirementIds": [
+          "MAN-INT-008"
+        ],
+        "verifiedRequirementCount": 1,
+        "unmappedRequirementCount": 0
+      },
+      "sourceAnchors": {
+        "status": "BOUND",
+        "locators": [
+          {
+            "requirementId": "MAN-INT-008",
+            "documentId": "MANUAL-11",
+            "page": 8,
+            "section": "Enhancing Revit Families",
+            "status": "BOUND"
+          }
+        ]
+      },
+      "review": {
+        "status": "HOLD",
+        "reason": "reviewer_receipt_missing",
+        "scoreEligible": false
+      }
+    },
+    {
+      "manualId": "MANUAL-12",
+      "fileName": "moving-from-autocad-to-vectorworks-landmark-a-guide.pdf",
+      "sha256": "fa348f61549254da0d97bfcded4d9c7dee535c5a6c0a2f530f210e1576ac2653",
+      "family": "autocad",
+      "domains": [
+        "drafting",
+        "drawing"
+      ],
+      "functionalCoverage": {
+        "status": "mapped",
+        "mappedRequirementIds": [
+          "MAN-ARC-003",
+          "MAN-ARC-005"
+        ],
+        "mappedRequirementCount": 2,
+        "unmappedRequirementIds": [],
+        "verifiedRequirementIds": [],
+        "verifiedRequirementCount": 0,
+        "unmappedRequirementCount": 0
+      },
+      "sourceAnchors": {
+        "status": "HOLD",
+        "locators": [
+          {
+            "requirementId": "MAN-ARC-003",
+            "documentId": "MANUAL-12",
+            "page": null,
+            "section": null,
+            "status": "HOLD"
+          },
+          {
+            "requirementId": "MAN-ARC-005",
+            "documentId": "MANUAL-12",
+            "page": null,
+            "section": null,
+            "status": "HOLD"
+          }
+        ]
+      },
+      "review": {
+        "status": "HOLD",
+        "reason": "source_page_section_missing",
+        "scoreEligible": false
+      }
+    },
+    {
+      "manualId": "MANUAL-13",
+      "fileName": "Rhino 6 Level 1 Training (ko-kr).pdf",
+      "sha256": "7d387bb8201487216700dea8001835a964063f59726b9ee2b5374c7eb175b674",
+      "family": "rhino",
+      "domains": [
+        "surface",
+        "brep",
+        "drafting"
+      ],
+      "functionalCoverage": {
+        "status": "mapped",
+        "mappedRequirementIds": [
+          "MAN-ARC-006",
+          "MAN-ARC-007",
+          "MAN-ARC-008",
+          "MAN-ARC-009"
+        ],
+        "mappedRequirementCount": 4,
+        "unmappedRequirementIds": [],
+        "verifiedRequirementIds": [],
+        "verifiedRequirementCount": 0,
+        "unmappedRequirementCount": 0
+      },
+      "sourceAnchors": {
+        "status": "HOLD",
+        "locators": [
+          {
+            "requirementId": "MAN-ARC-006",
+            "documentId": "MANUAL-13",
+            "page": null,
+            "section": null,
+            "status": "HOLD"
+          },
+          {
+            "requirementId": "MAN-ARC-007",
+            "documentId": "MANUAL-13",
+            "page": null,
+            "section": null,
+            "status": "HOLD"
+          },
+          {
+            "requirementId": "MAN-ARC-008",
+            "documentId": "MANUAL-13",
+            "page": null,
+            "section": null,
+            "status": "HOLD"
+          },
+          {
+            "requirementId": "MAN-ARC-009",
+            "documentId": "MANUAL-13",
+            "page": null,
+            "section": null,
+            "status": "HOLD"
+          }
+        ]
+      },
+      "review": {
+        "status": "HOLD",
+        "reason": "source_page_section_missing",
+        "scoreEligible": false
+      }
+    },
+    {
+      "manualId": "MANUAL-14",
+      "fileName": "Rhino Level 1 v4.pdf",
+      "sha256": "2f6367d50683e5140b3d1f85f59f652125996ec23015447472b1b611ee951441",
+      "family": "rhino",
+      "domains": [
+        "surface",
+        "brep",
+        "drafting"
+      ],
+      "functionalCoverage": {
+        "status": "mapped",
+        "mappedRequirementIds": [
+          "MAN-ARC-006",
+          "MAN-ARC-007"
+        ],
+        "mappedRequirementCount": 2,
+        "unmappedRequirementIds": [],
+        "verifiedRequirementIds": [],
+        "verifiedRequirementCount": 0,
+        "unmappedRequirementCount": 0
+      },
+      "sourceAnchors": {
+        "status": "HOLD",
+        "locators": [
+          {
+            "requirementId": "MAN-ARC-006",
+            "documentId": "MANUAL-14",
+            "page": null,
+            "section": null,
+            "status": "HOLD"
+          },
+          {
+            "requirementId": "MAN-ARC-007",
+            "documentId": "MANUAL-14",
+            "page": null,
+            "section": null,
+            "status": "HOLD"
+          }
+        ]
+      },
+      "review": {
+        "status": "HOLD",
+        "reason": "source_page_section_missing",
+        "scoreEligible": false
+      }
+    },
+    {
+      "manualId": "MANUAL-15",
+      "fileName": "Rhino User's Guide for Windows.pdf",
+      "sha256": "19b45e5ef785434b82504d10058e1154a7e38798532c02f684c3859d422a22d4",
+      "family": "rhino",
+      "domains": [
+        "surface",
+        "brep",
+        "drafting"
+      ],
+      "functionalCoverage": {
+        "status": "mapped",
+        "mappedRequirementIds": [
+          "MAN-ARC-006",
+          "MAN-ARC-007"
+        ],
+        "mappedRequirementCount": 2,
+        "unmappedRequirementIds": [],
+        "verifiedRequirementIds": [],
+        "verifiedRequirementCount": 0,
+        "unmappedRequirementCount": 0
+      },
+      "sourceAnchors": {
+        "status": "HOLD",
+        "locators": [
+          {
+            "requirementId": "MAN-ARC-006",
+            "documentId": "MANUAL-15",
+            "page": null,
+            "section": null,
+            "status": "HOLD"
+          },
+          {
+            "requirementId": "MAN-ARC-007",
+            "documentId": "MANUAL-15",
+            "page": null,
+            "section": null,
+            "status": "HOLD"
+          }
+        ]
+      },
+      "review": {
+        "status": "HOLD",
+        "reason": "source_page_section_missing",
+        "scoreEligible": false
+      }
+    },
+    {
+      "manualId": "MANUAL-16",
+      "fileName": "SketchUp 2024 for Interior Designers.pdf",
+      "sha256": "aaa357a686d9380be65479ba2d052b72cdc8f1db88aa605dd79272fa04dc7652",
+      "family": "sketchup",
+      "domains": [
+        "concept_modeling"
+      ],
+      "functionalCoverage": {
+        "status": "mapped",
+        "mappedRequirementIds": [
+          "AISC-INT-APARTMENT-001",
+          "AISC-INT-APARTMENT-002",
+          "AISC-INT-CAFE-001",
+          "AISC-INT-CAFE-002",
+          "MAN-INT-002",
+          "MAN-INT-003",
+          "MAN-INT-004",
+          "MAN-INT-005",
+          "MAN-INT-006",
+          "MAN-INT-007",
+          "MAN-INT-008",
+          "MAN-INT-009",
+          "MAN-INT-010",
+          "MAN-INT-011",
+          "MAN-INT-012",
+          "MAN-INT-013"
+        ],
+        "mappedRequirementCount": 16,
+        "unmappedRequirementIds": [],
+        "verifiedRequirementIds": [],
+        "verifiedRequirementCount": 0,
+        "unmappedRequirementCount": 0
+      },
+      "sourceAnchors": {
+        "status": "HOLD",
+        "locators": [
+          {
+            "requirementId": "AISC-INT-APARTMENT-001",
+            "documentId": "MANUAL-16",
+            "page": null,
+            "section": null,
+            "status": "HOLD"
+          },
+          {
+            "requirementId": "AISC-INT-APARTMENT-002",
+            "documentId": "MANUAL-16",
+            "page": null,
+            "section": null,
+            "status": "HOLD"
+          },
+          {
+            "requirementId": "AISC-INT-CAFE-001",
+            "documentId": "MANUAL-16",
+            "page": null,
+            "section": null,
+            "status": "HOLD"
+          },
+          {
+            "requirementId": "AISC-INT-CAFE-002",
+            "documentId": "MANUAL-16",
+            "page": null,
+            "section": null,
+            "status": "HOLD"
+          },
+          {
+            "requirementId": "MAN-INT-002",
+            "documentId": "MANUAL-16",
+            "page": null,
+            "section": null,
+            "status": "HOLD"
+          },
+          {
+            "requirementId": "MAN-INT-003",
+            "documentId": "MANUAL-16",
+            "page": null,
+            "section": null,
+            "status": "HOLD"
+          },
+          {
+            "requirementId": "MAN-INT-004",
+            "documentId": "MANUAL-16",
+            "page": null,
+            "section": null,
+            "status": "HOLD"
+          },
+          {
+            "requirementId": "MAN-INT-005",
+            "documentId": "MANUAL-16",
+            "page": null,
+            "section": null,
+            "status": "HOLD"
+          },
+          {
+            "requirementId": "MAN-INT-006",
+            "documentId": "MANUAL-16",
+            "page": null,
+            "section": null,
+            "status": "HOLD"
+          },
+          {
+            "requirementId": "MAN-INT-007",
+            "documentId": "MANUAL-16",
+            "page": null,
+            "section": null,
+            "status": "HOLD"
+          },
+          {
+            "requirementId": "MAN-INT-008",
+            "documentId": "MANUAL-16",
+            "page": null,
+            "section": null,
+            "status": "HOLD"
+          },
+          {
+            "requirementId": "MAN-INT-009",
+            "documentId": "MANUAL-16",
+            "page": null,
+            "section": null,
+            "status": "HOLD"
+          },
+          {
+            "requirementId": "MAN-INT-010",
+            "documentId": "MANUAL-16",
+            "page": null,
+            "section": null,
+            "status": "HOLD"
+          },
+          {
+            "requirementId": "MAN-INT-011",
+            "documentId": "MANUAL-16",
+            "page": null,
+            "section": null,
+            "status": "HOLD"
+          },
+          {
+            "requirementId": "MAN-INT-012",
+            "documentId": "MANUAL-16",
+            "page": null,
+            "section": null,
+            "status": "HOLD"
+          },
+          {
+            "requirementId": "MAN-INT-013",
+            "documentId": "MANUAL-16",
+            "page": null,
+            "section": null,
+            "status": "HOLD"
+          }
+        ]
+      },
+      "review": {
+        "status": "HOLD",
+        "reason": "source_page_section_missing",
+        "scoreEligible": false
+      }
+    },
+    {
+      "manualId": "MANUAL-17",
+      "fileName": "SOLIDWORKS_Introduction_KO(1).pdf",
+      "sha256": "2cdc70e6deba8df9e9eb4f256508df36df4ecd97e349f98a1241b70af168abf1",
+      "family": "solidworks",
+      "domains": [
+        "part",
+        "assembly",
+        "drawing",
+        "manufacturing"
+      ],
+      "functionalCoverage": {
+        "status": "mapped",
+        "mappedRequirementIds": [
+          "MAN-ARC-004",
+          "MAN-ARC-009",
+          "MAN-ARC-010"
+        ],
+        "mappedRequirementCount": 3,
+        "unmappedRequirementIds": [],
+        "verifiedRequirementIds": [],
+        "verifiedRequirementCount": 0,
+        "unmappedRequirementCount": 0
+      },
+      "sourceAnchors": {
+        "status": "HOLD",
+        "locators": [
+          {
+            "requirementId": "MAN-ARC-004",
+            "documentId": "MANUAL-17",
+            "page": null,
+            "section": null,
+            "status": "HOLD"
+          },
+          {
+            "requirementId": "MAN-ARC-009",
+            "documentId": "MANUAL-17",
+            "page": null,
+            "section": null,
+            "status": "HOLD"
+          },
+          {
+            "requirementId": "MAN-ARC-010",
+            "documentId": "MANUAL-17",
+            "page": null,
+            "section": null,
+            "status": "HOLD"
+          }
+        ]
+      },
+      "review": {
+        "status": "HOLD",
+        "reason": "source_page_section_missing",
+        "scoreEligible": false
+      }
+    },
+    {
+      "manualId": "MANUAL-18",
+      "fileName": "Vectorworks Landmark.pdf",
+      "sha256": "b3dd7985703a330ed8216572d982ab0904a3dc176821f03ee0bfa1f0edac8838",
+      "family": "vectorworks",
+      "domains": [
+        "bim",
+        "landscape",
+        "drawing"
+      ],
+      "functionalCoverage": {
+        "status": "mapped",
+        "mappedRequirementIds": [
+          "AISC-INT-APARTMENT-001",
+          "AISC-INT-APARTMENT-002",
+          "AISC-INT-CAFE-001",
+          "AISC-INT-CAFE-002",
+          "MAN-INT-002",
+          "MAN-INT-003",
+          "MAN-INT-004",
+          "MAN-INT-005",
+          "MAN-INT-006",
+          "MAN-INT-009",
+          "MAN-INT-011",
+          "MAN-INT-012",
+          "MAN-INT-013"
+        ],
+        "mappedRequirementCount": 13,
+        "unmappedRequirementIds": [],
+        "verifiedRequirementIds": [],
+        "verifiedRequirementCount": 0,
+        "unmappedRequirementCount": 0
+      },
+      "sourceAnchors": {
+        "status": "HOLD",
+        "locators": [
+          {
+            "requirementId": "AISC-INT-APARTMENT-001",
+            "documentId": "MANUAL-18",
+            "page": null,
+            "section": null,
+            "status": "HOLD"
+          },
+          {
+            "requirementId": "AISC-INT-APARTMENT-002",
+            "documentId": "MANUAL-18",
+            "page": null,
+            "section": null,
+            "status": "HOLD"
+          },
+          {
+            "requirementId": "AISC-INT-CAFE-001",
+            "documentId": "MANUAL-18",
+            "page": null,
+            "section": null,
+            "status": "HOLD"
+          },
+          {
+            "requirementId": "AISC-INT-CAFE-002",
+            "documentId": "MANUAL-18",
+            "page": null,
+            "section": null,
+            "status": "HOLD"
+          },
+          {
+            "requirementId": "MAN-INT-002",
+            "documentId": "MANUAL-18",
+            "page": null,
+            "section": null,
+            "status": "HOLD"
+          },
+          {
+            "requirementId": "MAN-INT-003",
+            "documentId": "MANUAL-18",
+            "page": null,
+            "section": null,
+            "status": "HOLD"
+          },
+          {
+            "requirementId": "MAN-INT-004",
+            "documentId": "MANUAL-18",
+            "page": null,
+            "section": null,
+            "status": "HOLD"
+          },
+          {
+            "requirementId": "MAN-INT-005",
+            "documentId": "MANUAL-18",
+            "page": null,
+            "section": null,
+            "status": "HOLD"
+          },
+          {
+            "requirementId": "MAN-INT-006",
+            "documentId": "MANUAL-18",
+            "page": null,
+            "section": null,
+            "status": "HOLD"
+          },
+          {
+            "requirementId": "MAN-INT-009",
+            "documentId": "MANUAL-18",
+            "page": null,
+            "section": null,
+            "status": "HOLD"
+          },
+          {
+            "requirementId": "MAN-INT-011",
+            "documentId": "MANUAL-18",
+            "page": null,
+            "section": null,
+            "status": "HOLD"
+          },
+          {
+            "requirementId": "MAN-INT-012",
+            "documentId": "MANUAL-18",
+            "page": null,
+            "section": null,
+            "status": "HOLD"
+          },
+          {
+            "requirementId": "MAN-INT-013",
+            "documentId": "MANUAL-18",
+            "page": null,
+            "section": null,
+            "status": "HOLD"
+          }
+        ]
+      },
+      "review": {
+        "status": "HOLD",
+        "reason": "source_page_section_missing",
+        "scoreEligible": false
+      }
+    },
+    {
+      "manualId": "MANUAL-19",
+      "fileName": "whatsnew(1).pdf",
+      "sha256": "a0b8f612ba00b7a40ca91eb4c3b66496c5b4deb1915fb0c76e02266d0b7c104b",
+      "family": "solidworks",
+      "domains": [
+        "part",
+        "assembly",
+        "drawing",
+        "manufacturing",
+        "pdm"
+      ],
+      "functionalCoverage": {
+        "status": "mapped",
+        "mappedRequirementIds": [
+          "MAN-SM-001"
+        ],
+        "mappedRequirementCount": 1,
+        "unmappedRequirementIds": [],
+        "verifiedRequirementIds": [
+          "MAN-SM-001"
+        ],
+        "verifiedRequirementCount": 1,
+        "unmappedRequirementCount": 0
+      },
+      "sourceAnchors": {
+        "status": "BOUND",
+        "locators": [
+          {
+            "requirementId": "MAN-SM-001",
+            "documentId": "MANUAL-19",
+            "page": 17,
+            "section": "3DEXPERIENCE platform AI skills / Drawing Editor",
+            "status": "BOUND"
+          }
+        ]
+      },
+      "review": {
+        "status": "HOLD",
+        "reason": "reviewer_receipt_missing",
+        "scoreEligible": false
+      }
+    },
+    {
+      "manualId": "MANUAL-20",
+      "fileName": "woojsungcom-rhinograsshoppertutorial001200902181.pdf",
+      "sha256": "aea891e73964c4976e2c3f8f224493794de6e886e0bd4f0d0d879217ef406200",
+      "family": "grasshopper",
+      "domains": [
+        "parametric_graph",
+        "surface",
+        "brep"
+      ],
+      "functionalCoverage": {
+        "status": "mapped",
+        "mappedRequirementIds": [
+          "MAN-GRAPH-001",
+          "MAN-SURF-001"
+        ],
+        "mappedRequirementCount": 2,
+        "unmappedRequirementIds": [],
+        "verifiedRequirementIds": [
+          "MAN-GRAPH-001",
+          "MAN-SURF-001"
+        ],
+        "verifiedRequirementCount": 2,
+        "unmappedRequirementCount": 0
+      },
+      "sourceAnchors": {
+        "status": "BOUND",
+        "locators": [
+          {
+            "requirementId": "MAN-GRAPH-001",
+            "documentId": "MANUAL-20",
+            "page": 2,
+            "section": "Overview — graph variable controls repeated parametric components",
+            "status": "BOUND"
+          },
+          {
+            "requirementId": "MAN-SURF-001",
+            "documentId": "MANUAL-20",
+            "page": 15,
+            "section": "STEP 01 — loft profiles from ordered curves",
+            "status": "BOUND"
+          }
+        ]
+      },
+      "review": {
+        "status": "HOLD",
+        "reason": "reviewer_receipt_missing",
+        "scoreEligible": false
+      }
+    }
+  ]
+}

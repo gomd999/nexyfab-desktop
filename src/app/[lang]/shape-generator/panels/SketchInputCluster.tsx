@@ -44,6 +44,8 @@ export default function SketchInputCluster({
     <>
       {/* Hidden file input for sketch-reference image / STEP drop */}
       <input
+        id="sketch-reference-input"
+        name="sketchReference"
         ref={sketchRefInputRef}
         type="file"
         accept="image/*,.stl,.stp,.step,.dxf,model/stl,application/sla"

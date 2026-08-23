@@ -533,8 +533,10 @@ export default function AssemblyConstraintsPanel(
           paddingTop: 8,
         }}
       >
-        <label style={{ fontSize: 11, color: 'var(--nx-text-2)' }}>{t.addKindLabel}</label>
+        <label htmlFor="assembly-constraints-add-kind" style={{ fontSize: 11, color: 'var(--nx-text-2)' }}>{t.addKindLabel}</label>
         <select
+          id="assembly-constraints-add-kind"
+          name="assemblyConstraintKind"
           data-testid="assembly-constraints-add-kind"
           value={addKind}
           onChange={(e) => setAddKind(e.target.value as AssemblyConstraint['kind'])}

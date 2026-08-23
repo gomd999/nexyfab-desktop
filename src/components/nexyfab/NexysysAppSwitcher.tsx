@@ -80,7 +80,7 @@ export default function NexysysAppSwitcher({ collapsed }: { collapsed?: boolean 
             margin: 0,
             fontSize: 9,
             fontWeight: 700,
-            color: '#484f58',
+            color: 'var(--nx-text-2)',
             letterSpacing: '0.08em',
             textTransform: 'uppercase',
           }}
@@ -140,7 +140,7 @@ export default function NexysysAppSwitcher({ collapsed }: { collapsed?: boolean 
                     border: '1px solid #30363d',
                     fontSize: 9,
                     fontWeight: 700,
-                    color: '#484f58',
+                    color: 'var(--nx-text-2)',
                     letterSpacing: '0.04em',
                     textDecoration: 'none',
                     transition: 'all 0.12s',
@@ -155,7 +155,7 @@ export default function NexysysAppSwitcher({ collapsed }: { collapsed?: boolean 
                     e.currentTarget.style.background = `${p.color}0f`;
                   }}
                   onMouseLeave={e => {
-                    e.currentTarget.style.color = '#484f58';
+                    e.currentTarget.style.color = 'var(--nx-text-2)';
                     e.currentTarget.style.borderColor = '#30363d';
                     e.currentTarget.style.background = 'transparent';
                   }}

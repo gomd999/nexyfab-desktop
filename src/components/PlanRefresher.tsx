@@ -11,10 +11,11 @@ import { useAuthStore } from '@/hooks/useAuth';
 export default function PlanRefresher() {
   const refreshPlan = useAuthStore((s) => s.refreshPlan);
   const user = useAuthStore((s) => s.user);
+  const sessionStatus = useAuthStore((s) => s.sessionStatus);
   const lastRefresh = useRef(0);
 
   useEffect(() => {
-    if (!user) return;
+    if (!user || sessionStatus !== 'authenticated') return;
 
     // Check URL for post-checkout redirect
     const params = new URLSearchParams(window.location.search);
@@ -39,7 +40,7 @@ export default function PlanRefresher() {
 
     window.addEventListener('focus', onFocus);
     return () => window.removeEventListener('focus', onFocus);
-  }, [user, refreshPlan]);
+  }, [user, sessionStatus, refreshPlan]);
 
   return null;
 }

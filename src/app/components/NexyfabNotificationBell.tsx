@@ -1,6 +1,8 @@
 'use client';
 
 import { useState, useEffect, useCallback, useRef } from 'react';
+import { useAuthStore } from '@/hooks/useAuth';
+import { toIsoLang, type IsoLang } from '@/lib/i18n/normalize';
 
 interface NxNotification {
   id: string;
@@ -18,24 +20,45 @@ const TYPE_ICON: Record<string, string> = {
   version: '🕐', cots: '⚙️', system: '🔔',
 };
 
-function timeAgo(ts: number): string {
+const COPY: Record<IsoLang, { alerts: string; all: string; unread: string; empty: string; emptyUnread: string; clearRead: string; refresh: string; now: string; minute: string; hour: string; day: string; locale: string }> = {
+  ko: { alerts: 'NexyFab 알림', all: '전체', unread: '읽지 않음', empty: '알림이 없습니다', emptyUnread: '읽지 않은 알림이 없습니다', clearRead: '읽은 알림 지우기', refresh: '새로고침', now: '방금 전', minute: '분 전', hour: '시간 전', day: '일 전', locale: 'ko-KR' },
+  en: { alerts: 'NexyFab Notifications', all: 'All', unread: 'Unread', empty: 'No notifications', emptyUnread: 'No unread notifications', clearRead: 'Clear read', refresh: 'Refresh', now: 'Just now', minute: 'm ago', hour: 'h ago', day: 'd ago', locale: 'en-US' },
+  ja: { alerts: 'NexyFabのお知らせ', all: 'すべて', unread: '未読', empty: '通知はありません', emptyUnread: '未読の通知はありません', clearRead: '既読を削除', refresh: '更新', now: 'たった今', minute: '分前', hour: '時間前', day: '日前', locale: 'ja-JP' },
+  zh: { alerts: 'NexyFab 通知', all: '全部', unread: '未读', empty: '暂无通知', emptyUnread: '暂无未读通知', clearRead: '清除已读', refresh: '刷新', now: '刚刚', minute: '分钟前', hour: '小时前', day: '天前', locale: 'zh-CN' },
+  es: { alerts: 'Notificaciones de NexyFab', all: 'Todas', unread: 'No leídas', empty: 'No hay notificaciones', emptyUnread: 'No hay notificaciones sin leer', clearRead: 'Borrar leídas', refresh: 'Actualizar', now: 'Ahora', minute: ' min', hour: ' h', day: ' d', locale: 'es-ES' },
+  ar: { alerts: 'إشعارات NexyFab', all: 'الكل', unread: 'غير مقروءة', empty: 'لا توجد إشعارات', emptyUnread: 'لا توجد إشعارات غير مقروءة', clearRead: 'مسح المقروءة', refresh: 'تحديث', now: 'الآن', minute: ' د مضت', hour: ' س مضت', day: ' يوم مضى', locale: 'ar-SA' },
+};
+
+function timeAgo(ts: number, copy: typeof COPY[IsoLang]): string {
   const diff = Date.now() - ts;
   const m = Math.floor(diff / 60000);
-  if (m < 1) return '방금 전';
-  if (m < 60) return `${m}분 전`;
+  if (m < 1) return copy.now;
+  if (m < 60) return `${m}${copy.minute}`;
   const h = Math.floor(m / 60);
-  if (h < 24) return `${h}시간 전`;
+  if (h < 24) return `${h}${copy.hour}`;
   const d = Math.floor(h / 24);
-  if (d < 7) return `${d}일 전`;
-  return new Date(ts).toLocaleDateString('ko-KR', { month: 'short', day: 'numeric' });
+  if (d < 7) return `${d}${copy.day}`;
+  return new Date(ts).toLocaleDateString(copy.locale, { month: 'short', day: 'numeric' });
 }
 
 interface NexyfabNotificationBellProps {
-  /** e.g. header i18n — defaults to Korean */
+  /** Optional translated aria label; lang localizes the panel and relative dates. */
   ariaLabel?: string;
+  lang?: string;
 }
 
-export default function NexyfabNotificationBell({ ariaLabel = 'NexyFab 알림' }: NexyfabNotificationBellProps) {
+export default function NexyfabNotificationBell({ ariaLabel, lang }: NexyfabNotificationBellProps) {
+  const [storedLang, setStoredLang] = useState<string | undefined>();
+  useEffect(() => {
+    if (lang) return;
+    const saved = window.localStorage.getItem('nf_lang')
+      ?? window.localStorage.getItem('app_language')
+      ?? document.cookie.match(/(?:^|; )nf_lang=([^;]+)/)?.[1];
+    if (saved) queueMicrotask(() => setStoredLang(saved));
+  }, [lang]);
+  const copy = COPY[toIsoLang(lang ?? storedLang ?? 'ko')];
+  const sessionStatus = useAuthStore(state => state.sessionStatus);
+  const canLoadNotifications = sessionStatus === 'authenticated';
   const [notifications, setNotifications] = useState<NxNotification[]>([]);
   const [open, setOpen] = useState(false);
   const [filter, setFilter] = useState<'all' | 'unread'>('all');
@@ -43,23 +66,32 @@ export default function NexyfabNotificationBell({ ariaLabel = 'NexyFab 알림' }
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   const fetchNotifications = useCallback(async () => {
+    if (!canLoadNotifications) return;
     try {
       const res = await fetch('/api/nexyfab/notifications');
       if (!res.ok) return;
       const data = await res.json() as { notifications: NxNotification[] };
       setNotifications(data.notifications ?? []);
     } catch { /* silent */ }
-  }, []);
+  }, [canLoadNotifications]);
 
   useEffect(() => {
+    if (!canLoadNotifications) {
+      queueMicrotask(() => {
+        setNotifications([]);
+        setOpen(false);
+      });
+      return;
+    }
     queueMicrotask(() => { void fetchNotifications(); });
-  }, [fetchNotifications]);
+  }, [canLoadNotifications, fetchNotifications]);
 
   // 30초 폴링
   useEffect(() => {
+    if (!canLoadNotifications) return;
     const id = setInterval(fetchNotifications, 30_000);
     return () => clearInterval(id);
-  }, [fetchNotifications]);
+  }, [canLoadNotifications, fetchNotifications]);
 
   // 외부 클릭 시 닫기
   useEffect(() => {
@@ -76,29 +108,32 @@ export default function NexyfabNotificationBell({ ariaLabel = 'NexyFab 알림' }
   const unreadCount = notifications.filter(n => n.read === 0).length;
 
   const markRead = useCallback(async (id: string) => {
+    if (!canLoadNotifications) return;
     setNotifications(prev => prev.map(n => n.id === id ? { ...n, read: 1 } : n));
     await fetch('/api/nexyfab/notifications', {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ id }),
     }).catch(() => {});
-  }, []);
+  }, [canLoadNotifications]);
 
   const markAllRead = useCallback(async () => {
+    if (!canLoadNotifications) return;
     setNotifications(prev => prev.map(n => ({ ...n, read: 1 })));
     await fetch('/api/nexyfab/notifications', {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ all: true }),
     }).catch(() => {});
-  }, []);
+  }, [canLoadNotifications]);
 
   const clearRead = useCallback(async () => {
+    if (!canLoadNotifications) return;
     setClearing(true);
     await fetch('/api/nexyfab/notifications', { method: 'DELETE' }).catch(() => {});
     setNotifications(prev => prev.filter(n => n.read === 0));
     setClearing(false);
-  }, []);
+  }, [canLoadNotifications]);
 
   const handleItemClick = useCallback((n: NxNotification) => {
     if (n.read === 0) void markRead(n.id);
@@ -113,7 +148,7 @@ export default function NexyfabNotificationBell({ ariaLabel = 'NexyFab 알림' }
       {/* 벨 버튼 */}
       <button
         onClick={() => setOpen(p => !p)}
-        aria-label={ariaLabel}
+        aria-label={ariaLabel ?? copy.alerts}
         style={{
           position: 'relative', padding: '8px', borderRadius: '10px',
           border: open ? '1px solid #e0e7ff' : '1px solid transparent',
@@ -156,7 +191,7 @@ export default function NexyfabNotificationBell({ ariaLabel = 'NexyFab 알림' }
           {/* 헤더 */}
           <div style={{ padding: '14px 16px 10px', borderBottom: '1px solid #f0f0f0', display: 'flex', alignItems: 'center', gap: 8 }}>
             <span style={{ fontSize: 14, fontWeight: 900, color: '#111827', flex: 1 }}>
-              NexyFab 알림 {unreadCount > 0 && (
+              {copy.alerts} {unreadCount > 0 && (
                 <span style={{ marginLeft: 6, fontSize: 11, background: '#ef4444', color: '#fff', borderRadius: 8, padding: '1px 7px', fontWeight: 700 }}>
                   {unreadCount}
                 </span>
@@ -165,7 +200,7 @@ export default function NexyfabNotificationBell({ ariaLabel = 'NexyFab 알림' }
             {unreadCount > 0 && (
               <button onClick={markAllRead}
                 style={{ fontSize: 11, color: '#0b5cff', background: 'none', border: 'none', cursor: 'pointer', fontWeight: 600 }}>
-                모두 읽음
+                {copy.unread}
               </button>
             )}
           </div>
@@ -180,7 +215,7 @@ export default function NexyfabNotificationBell({ ariaLabel = 'NexyFab 알림' }
                   color: filter === f ? '#fff' : '#9ca3af',
                   fontSize: 11, fontWeight: 700, cursor: 'pointer',
                 }}>
-                {f === 'all' ? '전체' : `읽지 않음${unreadCount > 0 ? ` (${unreadCount})` : ''}`}
+                {f === 'all' ? copy.all : `${copy.unread}${unreadCount > 0 ? ` (${unreadCount})` : ''}`}
               </button>
             ))}
           </div>
@@ -191,7 +226,7 @@ export default function NexyfabNotificationBell({ ariaLabel = 'NexyFab 알림' }
               <div style={{ textAlign: 'center', padding: '40px 20px', color: '#9ca3af' }}>
                 <div style={{ fontSize: 36, marginBottom: 10 }}>🔔</div>
                 <div style={{ fontSize: 13, fontWeight: 600 }}>
-                  {filter === 'unread' ? '읽지 않은 알림이 없습니다' : '알림이 없습니다'}
+                  {filter === 'unread' ? copy.emptyUnread : copy.empty}
                 </div>
               </div>
             ) : (
@@ -222,7 +257,7 @@ export default function NexyfabNotificationBell({ ariaLabel = 'NexyFab 알림' }
                       {n.read === 0 && <span style={{ flexShrink: 0, width: 7, height: 7, borderRadius: '50%', background: '#0b5cff', marginTop: 5 }} />}
                     </div>
                     {n.body && <div style={{ fontSize: 11, color: '#6b7280', marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' as React.CSSProperties['WebkitBoxOrient'] }}>{n.body}</div>}
-                    <div style={{ fontSize: 10, color: '#9ca3af', marginTop: 4, fontWeight: 500 }}>{timeAgo(n.created_at)}</div>
+                    <div style={{ fontSize: 10, color: '#9ca3af', marginTop: 4, fontWeight: 500 }}>{timeAgo(n.created_at, copy)}</div>
                   </div>
                 </button>
               ))
@@ -233,11 +268,11 @@ export default function NexyfabNotificationBell({ ariaLabel = 'NexyFab 알림' }
           <div style={{ padding: '10px 16px', borderTop: '1px solid #f0f0f0', display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
             <button onClick={clearRead} disabled={clearing}
               style={{ fontSize: 11, color: '#9ca3af', background: 'none', border: 'none', cursor: 'pointer', fontWeight: 600 }}>
-              {clearing ? '…' : '읽은 알림 지우기'}
+              {clearing ? '…' : copy.clearRead}
             </button>
             <button onClick={() => { setOpen(false); void fetchNotifications(); }}
               style={{ fontSize: 11, color: '#6b7280', background: 'none', border: 'none', cursor: 'pointer', fontWeight: 600 }}>
-              새로고침
+              {copy.refresh}
             </button>
           </div>
         </div>

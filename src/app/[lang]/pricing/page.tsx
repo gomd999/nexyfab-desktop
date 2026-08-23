@@ -3,6 +3,7 @@
 import React, { useState } from 'react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
+import { getSsoCommercialCopy, isSsoIncludedInPlan } from '@/lib/i18n/ssoCommercialStatus';
 
 type LangKey = 'kr' | 'en' | 'ja' | 'cn' | 'es' | 'ar';
 
@@ -332,12 +333,28 @@ const dict: Record<LangKey, {
 
 const langMap: Record<string, LangKey> = { kr: 'kr', en: 'en', ja: 'ja', cn: 'cn', es: 'es', ar: 'ar' };
 
+const extraCopy: Record<LangKey, {
+    trialTitle: string; trialDesc: string; trialCta: string;
+    standardPrice: string; premiumPrice: string; period: string;
+    standardService: string; premiumService: string; lowestRate: string;
+    minCommission: string; contractValue: string; commissionRate: string;
+    ranges: string[];
+}> = {
+    kr: { trialTitle: '모든 플랜에 무료 체험 포함', trialDesc: '신용카드 없이 14일 무료 체험 가능. 언제든지 취소할 수 있습니다.', trialCta: '무료로 시작 →', standardPrice: '₩500,000', premiumPrice: '₩1,000,000', period: '/ 1회', standardService: 'AI 자동화 기반 제조 조달 서비스', premiumService: '전담 오퍼레이터 포함 전체 조달 서비스', lowestRate: '업계 최저 수수료', minCommission: '최소 수수료', contractValue: '최종 계약금', commissionRate: '수수료율', ranges: ['2,000만원 이하', '5,000만원 이하', '1억원 이하', '2억원 이하', '5억원 이하', '10억원 이하'] },
+    en: { trialTitle: 'All plans include a free trial', trialDesc: 'Try free for 14 days without a credit card. Cancel anytime.', trialCta: 'Try Free →', standardPrice: '$400', premiumPrice: '$800', period: '/ one-time', standardService: 'AI-powered manufacturing procurement', premiumService: 'Full procurement with a dedicated operator', lowestRate: 'Industry-low rates', minCommission: 'Minimum commission', contractValue: 'Contract value', commissionRate: 'Commission rate', ranges: ['≤ ₩20M', '≤ ₩50M', '≤ ₩100M', '≤ ₩200M', '≤ ₩500M', '≤ ₩1B'] },
+    ja: { trialTitle: '全プランに無料トライアル付き', trialDesc: 'クレジットカード不要で14日間無料。いつでもキャンセルできます。', trialCta: '無料で始める →', standardPrice: '¥60,000', premiumPrice: '¥120,000', period: '/ 1回', standardService: 'AI自動化による製造調達サービス', premiumService: '専任オペレーター付き総合調達サービス', lowestRate: '業界最低水準', minCommission: '最低手数料', contractValue: '最終契約金額', commissionRate: '手数料率', ranges: ['2,000万ウォン以下', '5,000万ウォン以下', '1億ウォン以下', '2億ウォン以下', '5億ウォン以下', '10億ウォン以下'] },
+    cn: { trialTitle: '所有计划均含免费试用', trialDesc: '无需信用卡，可免费试用14天并随时取消。', trialCta: '免费开始 →', standardPrice: '$400', premiumPrice: '$800', period: '/ 一次', standardService: 'AI 自动化制造采购服务', premiumService: '配备专属运营人员的完整采购服务', lowestRate: '行业低佣金', minCommission: '最低佣金', contractValue: '合同金额', commissionRate: '佣金率', ranges: ['不超过2,000万韩元', '不超过5,000万韩元', '不超过1亿韩元', '不超过2亿韩元', '不超过5亿韩元', '不超过10亿韩元'] },
+    es: { trialTitle: 'Todos los planes incluyen una prueba gratuita', trialDesc: 'Prueba gratuita de 14 días sin tarjeta. Cancele cuando quiera.', trialCta: 'Probar gratis →', standardPrice: '$400', premiumPrice: '$800', period: '/ pago único', standardService: 'Servicio de adquisición de fabricación con IA', premiumService: 'Adquisición completa con un operador dedicado', lowestRate: 'Comisiones entre las más bajas del sector', minCommission: 'Comisión mínima', contractValue: 'Valor del contrato', commissionRate: 'Tasa de comisión', ranges: ['≤ ₩20 M', '≤ ₩50 M', '≤ ₩100 M', '≤ ₩200 M', '≤ ₩500 M', '≤ ₩1.000 M'] },
+    ar: { trialTitle: 'تتضمن جميع الخطط تجربة مجانية', trialDesc: 'تجربة مجانية لمدة 14 يوماً دون بطاقة ائتمان، ويمكن الإلغاء في أي وقت.', trialCta: 'ابدأ مجاناً ←', standardPrice: '$400', premiumPrice: '$800', period: '/ دفعة واحدة', standardService: 'خدمة مشتريات تصنيع مدعومة بالذكاء الاصطناعي', premiumService: 'مشتريات متكاملة مع مشغّل مخصص', lowestRate: 'من أدنى العمولات في القطاع', minCommission: 'الحد الأدنى للعمولة', contractValue: 'قيمة العقد', commissionRate: 'نسبة العمولة', ranges: ['حتى 20 مليون وون', 'حتى 50 مليون وون', 'حتى 100 مليون وون', 'حتى 200 مليون وون', 'حتى 500 مليون وون', 'حتى مليار وون'] },
+};
+
 // ── 3D 모델링 요금제 데이터 ────────────────────────────────────────────────────
 
 function get3dPlans(lang: LangKey) {
     const isKr = lang === 'kr';
     const isJa = lang === 'ja';
     const isCn = lang === 'cn';
+    const ssoCopy = getSsoCommercialCopy(lang);
 
     const price = (kr: string, en: string, ja: string, cn: string) =>
         isKr ? kr : isJa ? ja : isCn ? cn : en;
@@ -436,9 +453,9 @@ function get3dPlans(lang: LangKey) {
             features: [
                 { label: price('팀 플랜 전 기능', 'All Team features', 'チームプランの全機能', '团队计划全部功能'), ok: check(true) },
                 { label: price('무제한 시트', 'Unlimited seats', 'シート無制限', '无限席位'), ok: check(true) },
-                { label: price('SSO / SAML', 'SSO / SAML', 'SSO / SAML', 'SSO / SAML'), ok: check(true) },
-                { label: price('전용 서버 배포', 'Dedicated deployment', '専用サーバー配備', '专用服务器部署'), ok: check(true) },
-                { label: price('SLA 보장', 'SLA guarantee', 'SLA保証', 'SLA保证'), ok: check(true) },
+                { label: ssoCopy.enterpriseSsoFeature, ok: check(isSsoIncludedInPlan('enterprise')) },
+                { label: ssoCopy.dedicatedDeploymentFeature, ok: check(false) },
+                { label: ssoCopy.slaFeature, ok: check(false) },
                 { label: price('전담 Customer Success', 'Dedicated CS manager', '専任CSマネージャー', '专属客户成功经理'), ok: check(true) },
                 { label: price('커스텀 통합 개발', 'Custom integrations', 'カスタム統合開発', '定制集成开发'), ok: check(true) },
                 { label: price('데이터 보존 정책 맞춤', 'Custom data retention', 'カスタムデータ保存', '自定义数据保留'), ok: check(true) },
@@ -454,6 +471,7 @@ export default function PricingPage() {
     const rawLang = (params?.lang as string) || 'en';
     const lang = langMap[rawLang] || 'en';
     const t = dict[lang];
+    const extra = extraCopy[lang];
     const isRtl = lang === 'ar';
 
     const [activeTab, setActiveTab] = useState<'3d' | 'procurement'>('3d');
@@ -630,10 +648,10 @@ export default function PricingPage() {
                             <div style={{ fontSize: '28px' }}>💡</div>
                             <div style={{ flex: 1 }}>
                                 <div style={{ fontWeight: 800, fontSize: '15px', color: '#111827', marginBottom: '4px' }}>
-                                    {lang === 'kr' ? '모든 플랜에 무료 체험 포함' : lang === 'ja' ? '全プランに無料トライアル付き' : lang === 'cn' ? '所有计划包含免费试用' : 'All plans include a free trial'}
+                                    {extra.trialTitle}
                                 </div>
                                 <div style={{ fontSize: '13px', color: '#6b7280' }}>
-                                    {lang === 'kr' ? '신용카드 없이 14일 무료 체험 가능. 언제든지 취소할 수 있습니다.' : lang === 'ja' ? 'クレジットカード不要で14日間無料トライアル。いつでもキャンセル可能。' : lang === 'cn' ? '无需信用卡，14天免费试用。随时可取消。' : '14-day free trial without a credit card. Cancel anytime.'}
+                                    {extra.trialDesc}
                                 </div>
                             </div>
                             <Link prefetch href={`/${rawLang}/shape-generator/`} style={{
@@ -641,7 +659,7 @@ export default function PricingPage() {
                                 color: '#fff', fontWeight: 800, fontSize: '13px', textDecoration: 'none',
                                 whiteSpace: 'nowrap', flexShrink: 0,
                             }}>
-                                {lang === 'kr' ? '무료로 시작 →' : lang === 'ja' ? '無料で始める →' : lang === 'cn' ? '免费开始 →' : 'Try Free →'}
+                                {extra.trialCta}
                             </Link>
                         </div>
                     </>
@@ -669,11 +687,11 @@ export default function PricingPage() {
                                 </div>
                                 <div style={{ marginBottom: '24px', paddingBottom: '24px', borderBottom: '1px solid #f0f0f0' }}>
                                     <div style={{ display: 'flex', alignItems: 'baseline', gap: '4px' }}>
-                                        <span style={{ fontSize: '38px', fontWeight: 900, color: '#111827', letterSpacing: '-0.03em' }}>{lang === 'kr' ? '₩500,000' : lang === 'ja' ? '¥60,000' : '$400'}</span>
+                                        <span style={{ fontSize: '38px', fontWeight: 900, color: '#111827', letterSpacing: '-0.03em' }}>{extra.standardPrice}</span>
                                     </div>
-                                    <span style={{ fontSize: '14px', color: '#9ca3af', fontWeight: 600 }}>{lang === 'kr' ? '/ 1회' : lang === 'ja' ? '/ 1回' : lang === 'cn' ? '/ 一次' : lang === 'ar' ? '/ مرة واحدة' : '/ one-time'}</span>
+                                    <span style={{ fontSize: '14px', color: '#9ca3af', fontWeight: 600 }}>{extra.period}</span>
                                     <p style={{ fontSize: '13px', color: '#6b7280', marginTop: '8px', lineHeight: 1.5 }}>
-                                        {lang === 'kr' ? 'AI 자동화 기반 제조 조달 서비스' : lang === 'en' ? 'AI-powered manufacturing procurement' : lang === 'ja' ? 'AI自動化ベースの製造調達サービス' : lang === 'cn' ? 'AI自动化制造采购服务' : lang === 'es' ? 'Servicio de adquisición basado en IA' : 'خدمة المشتريات المبنية على الذكاء الاصطناعي'}
+                                        {extra.standardService}
                                     </p>
                                 </div>
                                 <ul style={{ listStyle: 'none', padding: 0, margin: '0 0 32px', flex: 1 }}>
@@ -705,11 +723,11 @@ export default function PricingPage() {
                                 </div>
                                 <div style={{ marginBottom: '24px', paddingBottom: '24px', borderBottom: '1px solid #dbeafe' }}>
                                     <div style={{ display: 'flex', alignItems: 'baseline', gap: '4px' }}>
-                                        <span style={{ fontSize: '38px', fontWeight: 900, color: blue, letterSpacing: '-0.03em' }}>{lang === 'kr' ? '₩1,000,000' : lang === 'ja' ? '¥120,000' : '$800'}</span>
+                                        <span style={{ fontSize: '38px', fontWeight: 900, color: blue, letterSpacing: '-0.03em' }}>{extra.premiumPrice}</span>
                                     </div>
-                                    <span style={{ fontSize: '14px', color: '#93c5fd', fontWeight: 600 }}>{lang === 'kr' ? '/ 1회' : lang === 'ja' ? '/ 1回' : lang === 'cn' ? '/ 一次' : lang === 'ar' ? '/ مرة واحدة' : '/ one-time'}</span>
+                                    <span style={{ fontSize: '14px', color: '#93c5fd', fontWeight: 600 }}>{extra.period}</span>
                                     <p style={{ fontSize: '13px', color: '#6b7280', marginTop: '8px', lineHeight: 1.5 }}>
-                                        {lang === 'kr' ? '전담 오퍼레이터 포함 전체 조달 서비스' : lang === 'en' ? 'Full procurement with dedicated operator' : lang === 'ja' ? '専任オペレーター付き全調達サービス' : lang === 'cn' ? '含专属运营人员的完整采购服务' : lang === 'es' ? 'Adquisición completa con operador dedicado' : 'خدمة مشتريات كاملة مع مشغّل مخصص'}
+                                        {extra.premiumService}
                                     </p>
                                 </div>
                                 <ul style={{ listStyle: 'none', padding: 0, margin: '0 0 12px', flex: 1 }}>
@@ -735,7 +753,7 @@ export default function PricingPage() {
                         <div style={{ background: '#fff', borderRadius: '24px', padding: '40px', border: '1px solid #f0f0f0', boxShadow: '0 2px 16px rgba(0,0,0,0.04)', marginBottom: '32px' }}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap', marginBottom: '8px' }}>
                                 <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', background: 'linear-gradient(135deg, #dcfce7, #bbf7d0)', color: '#15803d', fontSize: '11px', fontWeight: 800, padding: '4px 12px', borderRadius: '20px', letterSpacing: '0.04em', border: '1px solid #86efac' }}>
-                                    ✓ {lang === 'kr' ? '업계 최저 수수료' : lang === 'ja' ? '業界最低水準' : lang === 'cn' ? '行业最低佣金' : lang === 'es' ? 'Comisión más baja del sector' : lang === 'ar' ? 'أدنى عمولة في القطاع' : 'Industry Lowest Rate'}
+                                    ✓ {extra.lowestRate}
                                 </span>
                                 <h2 style={{ fontSize: '22px', fontWeight: 900, color: '#111827', margin: 0, letterSpacing: '-0.02em' }}>{t.commissionTitle}</h2>
                             </div>
@@ -744,13 +762,13 @@ export default function PricingPage() {
                             {/* Plan min-fee cards */}
                             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px', marginBottom: '28px' }}>
                                 {[
-                                    { plan: t.standard, fee: lang === 'kr' ? '₩500,000 / 1회' : lang === 'ja' ? '¥60,000 / 1回' : '$400 / one-time', color: '#6b7280', bg: '#f9fafb', border: '#e5e7eb' },
-                                    { plan: t.premium, fee: lang === 'kr' ? '₩1,000,000 / 1회' : lang === 'ja' ? '¥120,000 / 1回' : '$800 / one-time', color: blue, bg: blue + '08', border: blue + '30' },
+                                    { plan: t.standard, fee: `${extra.standardPrice} ${extra.period}`, color: '#6b7280', bg: '#f9fafb', border: '#e5e7eb' },
+                                    { plan: t.premium, fee: `${extra.premiumPrice} ${extra.period}`, color: blue, bg: blue + '08', border: blue + '30' },
                                 ].map((p, i) => (
                                     <div key={i} style={{ background: p.bg, border: `1.5px solid ${p.border}`, borderRadius: '16px', padding: '18px 20px' }}>
                                         <div style={{ fontSize: '11px', fontWeight: 800, color: p.color, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '6px' }}>{p.plan}</div>
                                         <div style={{ fontSize: '18px', fontWeight: 900, color: p.color, marginBottom: '4px' }}>{p.fee}</div>
-                                        <div style={{ fontSize: '12px', color: '#6b7280' }}>= {lang === 'kr' ? '최소 수수료' : lang === 'ja' ? '最低手数料' : lang === 'cn' ? '最低佣金' : 'Min. commission'}</div>
+                                        <div style={{ fontSize: '12px', color: '#6b7280' }}>= {extra.minCommission}</div>
                                     </div>
                                 ))}
                             </div>
@@ -761,8 +779,8 @@ export default function PricingPage() {
                                     <thead>
                                         <tr style={{ background: '#f8fafc' }}>
                                             {[
-                                                lang === 'kr' ? '최종 계약금' : lang === 'en' ? 'Contract Value' : lang === 'ja' ? '最終契約金額' : lang === 'cn' ? '合同金额' : lang === 'es' ? 'Valor del contrato' : 'قيمة العقد',
-                                                lang === 'kr' ? '수수료율' : lang === 'en' ? 'Commission Rate' : lang === 'ja' ? '手数料率' : lang === 'cn' ? '佣金率' : lang === 'es' ? 'Tasa de comisión' : 'نسبة العمولة',
+                                                extra.contractValue,
+                                                extra.commissionRate,
                                             ].map(h => (
                                                 <th key={h} style={{ padding: '12px 20px', fontSize: '12px', fontWeight: 700, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.05em', textAlign: 'start', borderBottom: '2px solid #f0f0f0' }}>{h}</th>
                                             ))}
@@ -770,12 +788,12 @@ export default function PricingPage() {
                                     </thead>
                                     <tbody>
                                         {[
-                                            { range: lang === 'kr' ? '2,000만원 이하' : '≤ ₩20M', rate: 7 },
-                                            { range: lang === 'kr' ? '5,000만원 이하' : '≤ ₩50M', rate: 6 },
-                                            { range: lang === 'kr' ? '1억원 이하' : '≤ ₩100M', rate: 5.5 },
-                                            { range: lang === 'kr' ? '2억원 이하' : '≤ ₩200M', rate: 5 },
-                                            { range: lang === 'kr' ? '5억원 이하' : '≤ ₩500M', rate: 4.5 },
-                                            { range: lang === 'kr' ? '10억원 이하' : '≤ ₩1B', rate: 4 },
+                                            { range: extra.ranges[0], rate: 7 },
+                                            { range: extra.ranges[1], rate: 6 },
+                                            { range: extra.ranges[2], rate: 5.5 },
+                                            { range: extra.ranges[3], rate: 5 },
+                                            { range: extra.ranges[4], rate: 4.5 },
+                                            { range: extra.ranges[5], rate: 4 },
                                         ].map((row, i) => (
                                             <tr key={i} style={{ borderBottom: '1px solid #f9fafb', background: i % 2 === 0 ? '#fff' : '#fafafa' }}>
                                                 <td style={{ padding: '14px 20px', fontSize: '14px', color: '#374151', fontWeight: 600 }}>{row.range}</td>

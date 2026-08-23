@@ -2,6 +2,12 @@ import { NextRequest, NextResponse } from 'next/server';
 import { checkOrigin } from '@/lib/csrf';
 import { getDbAdapter } from '@/lib/db-adapter';
 import { type SSOConfig } from './sso-types';
+import { boundedJsonError, readBoundedJson } from '@/lib/boundedJsonBody';
+import { samlVerifierReadiness } from '@/lib/saml-sso-verifier';
+import { oidcSsoReadiness } from '@/lib/oidc-sso-readiness';
+
+// Certificates and IdP metadata can be substantially larger than account forms.
+const MAX_SSO_CONFIG_BODY_BYTES = 2 * 1024 * 1024;
 
 // ─── Auth helper ──────────────────────────────────────────────────────────────
 
@@ -108,8 +114,38 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const body = await req.json().catch(() => ({})) as Partial<SSOConfig>;
+  let body: Partial<SSOConfig> = {};
+  try { body = await readBoundedJson<Partial<SSOConfig>>(req, MAX_SSO_CONFIG_BODY_BYTES); }
+  catch (error) {
+    if (boundedJsonError(error)?.code === 'PAYLOAD_TOO_LARGE') return NextResponse.json({ error: 'Request too large', code: 'PAYLOAD_TOO_LARGE' }, { status: 413 });
+    return NextResponse.json({ error: 'Invalid request body' }, { status: 400 });
+  }
   const current = await loadConfig();
+
+  const requestedProvider = body.provider ?? current.provider;
+  const requestedEnabled = body.enabled ?? current.enabled;
+  if (requestedProvider === 'saml' && requestedEnabled) {
+    const readiness = samlVerifierReadiness();
+    return NextResponse.json(
+      {
+        error: 'SAML cannot be enabled until XML signature validation and replay protection are available.',
+        code: readiness.code,
+        blockers: readiness.blockers,
+      },
+      { status: 503 },
+    );
+  }
+  if (requestedProvider === 'oidc' && requestedEnabled) {
+    const readiness = oidcSsoReadiness();
+    return NextResponse.json(
+      {
+        error: 'OIDC cannot be enabled until the complete authorization-code and session flow is available.',
+        code: readiness.code,
+        blockers: readiness.blockers,
+      },
+      { status: 503 },
+    );
+  }
 
   const updated: SSOConfig = {
     ...current,

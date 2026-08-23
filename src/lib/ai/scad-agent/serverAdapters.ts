@@ -201,20 +201,74 @@ export const serverGeometryAdapter: GeometryAdapter = async (render) => {
   }
 };
 
-/**
- * DFM stub for now — full DFM analysis pipes through workers/dfmWorker
- * which is browser-only. Server-side path will need a Node-side DFM
- * harness; tracked in the M-track. Until then return a safe placeholder.
- */
+const SERVER_DFM_PROCESS_MAP = {
+  cnc: 'cnc-mill', cnc_mill: 'cnc-mill', cnc_milling: 'cnc-mill',
+  injection: 'injection-mold', injection_mold: 'injection-mold', injection_molding: 'injection-mold',
+  sheet: 'sheet-metal', sheet_metal: 'sheet-metal',
+  fdm: 'fdm', '3d_printing': 'fdm', sla: 'sla', sls: 'sla',
+} as const;
+
+/** Runs measurable mesh-based DFM rules on the server without claiming release evidence. */
+export async function runServerMeshDfmScreening(stats: GeometryStats, processes: string[]) {
+  const { runDfmChecks } = await import('../../../app/[lang]/shape-generator/dfm/dfmRules');
+  const bbox = stats.bbox;
+  if (!bbox) {
+    return {
+      summary: 'DFM screening unavailable: the rendered mesh has no measured bounding box. No pass is claimed.',
+      issuesCount: 0,
+      meta: { serverStub: false, screeningAvailable: false, releaseEvidence: false },
+    };
+  }
+  const span: [number, number, number] = [
+    bbox.max[0] - bbox.min[0], bbox.max[1] - bbox.min[1], bbox.max[2] - bbox.min[2],
+  ];
+  const mid: [number, number, number] = [
+    (bbox.min[0] + bbox.max[0]) / 2,
+    (bbox.min[1] + bbox.max[1]) / 2,
+    (bbox.min[2] + bbox.max[2]) / 2,
+  ];
+  const holes = (stats.detectedHoles ?? []).map(hole => {
+    const position: [number, number, number] = hole.axis === 'x'
+      ? [mid[0], hole.cx, hole.cy]
+      : hole.axis === 'y' ? [hole.cx, mid[1], hole.cy] : [hole.cx, hole.cy, mid[2]];
+    const depthMm = span[hole.axis === 'x' ? 0 : hole.axis === 'y' ? 1 : 2];
+    return { position, diameterMm: hole.diameter, depthMm };
+  });
+  const input = {
+    bbox,
+    ...(typeof stats.minWallThicknessMm === 'number' ? { minWallMm: stats.minWallThicknessMm } : {}),
+    ...(holes.length ? { holes } : {}),
+    ...(typeof stats.minWallThicknessMm === 'number' ? { sheetThicknessMm: stats.minWallThicknessMm } : {}),
+  };
+  const selected = [...new Set(processes.flatMap(process => {
+    const mapped = SERVER_DFM_PROCESS_MAP[process.toLowerCase() as keyof typeof SERVER_DFM_PROCESS_MAP];
+    return mapped ? [mapped] : [];
+  }))];
+  const findings = selected.flatMap(process => runDfmChecks(process, input));
+  const errors = findings.filter(finding => finding.severity === 'error').length;
+  const warnings = findings.filter(finding => finding.severity === 'warn').length;
+  return {
+    summary: `Server mesh DFM screening: ${errors} error(s), ${warnings} warning(s) across ${selected.join(', ') || 'no supported process'}. Screening only; not manufacturing release evidence.`,
+    issuesCount: findings.length,
+    meta: {
+      serverStub: false,
+      screeningAvailable: selected.length > 0,
+      releaseEvidence: false,
+      measuredFields: ['bbox', ...(stats.minWallThicknessMm != null ? ['minWallMm'] : []), ...(holes.length ? ['holes'] : [])],
+      findings: findings.map(finding => ({ code: finding.code, process: finding.process, severity: finding.severity, message: finding.message })),
+    },
+  };
+}
+
 export const serverDfmAdapter: DfmAdapter = async (render, processes) => {
   if (!render.ok || !render.triangles) {
-    return { summary: 'DFM analysis unavailable: no successful render.', issuesCount: 0 };
+    return {
+      summary: 'DFM screening unavailable: no successful rendered mesh. No pass is claimed.',
+      issuesCount: 0,
+      meta: { serverStub: false, screeningAvailable: false, releaseEvidence: false },
+    };
   }
-  return {
-    summary: `DFM heuristic skipped on server (processes=${processes.join('/')}). Run client-side DFM panel for full analysis.`,
-    issuesCount: 0,
-    meta: { serverStub: true },
-  };
+  return runServerMeshDfmScreening(await serverGeometryAdapter(render), processes);
 };
 
 /**
@@ -226,7 +280,11 @@ export const serverDfmAdapter: DfmAdapter = async (render, processes) => {
  * The tool layer surfaces that as a friendly "vision unavailable" error
  * so the agent can fall back to non-visual reasoning.
  */
-export const serverVisionAdapter: VisionAdapter = async (scad, prompt, opts) => {
+export function makeServerVisionAdapter(
+  selectedModel?: { provider: import('../types').ProviderName; model: string },
+  signal?: AbortSignal,
+): VisionAdapter {
+  return async (scad, prompt, opts) => {
   const { isVisionAvailable } = await import('../vision');
   if (!isVisionAvailable()) {
     return { ok: false, reason: 'No vision-capable AI provider configured (set ANTHROPIC_API_KEY or OPENAI_API_KEY).' };
@@ -246,7 +304,9 @@ export const serverVisionAdapter: VisionAdapter = async (scad, prompt, opts) => 
     const resp = await visionCompletion({
       prompt,
       images: png.views.map(v => ({ bytes: v.bytes, label: v.label })),
+      selectedModel,
       maxTokens: 600,
+      signal,
     });
     return {
       ok: true,
@@ -260,7 +320,10 @@ export const serverVisionAdapter: VisionAdapter = async (scad, prompt, opts) => 
   } catch (e) {
     return { ok: false, reason: `Vision API failed: ${(e as Error).message}` };
   }
-};
+  };
+}
+
+export const serverVisionAdapter: VisionAdapter = makeServerVisionAdapter();
 
 /**
  * A (Stage 3) — OCCT B-rep adapter wired to the existing

@@ -1,0 +1,31 @@
+{
+  "schema": "nexyfab.mechanical-core-feature-local-runtime.v1",
+  "feature": "bend",
+  "axis": "edit",
+  "status": "PASS",
+  "executedAt": "2026-08-22T07:13:30.564Z",
+  "commandId": "bend-runtime-param-edit",
+  "historyDepth": 1,
+  "before": {
+    "id": "runtime-feature",
+    "enabled": true,
+    "type": "bend",
+    "params": {
+      "angle": 45,
+      "radius": 3,
+      "position": 50,
+      "direction": 0
+    }
+  },
+  "after": {
+    "id": "runtime-feature",
+    "enabled": true,
+    "type": "bend",
+    "params": {
+      "angle": 60,
+      "radius": 3,
+      "position": 50,
+      "direction": 0
+    }
+  }
+}

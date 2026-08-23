@@ -53,6 +53,6 @@ describe('adaptive complex-product execution', () => {
 
   it('recognizes a fully completed AI product when every governed stage passes', () => {
     const state = pass(createGenerationRun('complex-complete'), 'release');
-    expect(buildAdaptiveComplexProductExecutionPlan(state)).toMatchObject({ status: 'ai_design_complete', activeStage: 'complete', designComplete: true, releaseReady: true, nextAction: 'complete' });
+    expect(buildAdaptiveComplexProductExecutionPlan(state)).toMatchObject({ status: 'expert_review_required', activeStage: 'release', designComplete: true, releaseReady: false, nextAction: 'request_expert_review' });
   });
 });

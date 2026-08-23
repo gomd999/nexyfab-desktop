@@ -178,11 +178,12 @@ const langMap: Record<string, keyof typeof dict> = {
 
 export interface ScadAgentPanelProps {
   lang: string;
+  modelId?: string;
   /** Fired when the agent produced a SCAD source the user wants to render in main viewport. */
   onApplyScad?: (scad: string) => void;
   /** W6 — Fired when the user clicks "Show in canvas" on a B-rep tool result.
    *  The host fetches /api/nexyfab/scad-agent/brep-mesh and renders it. */
-  onShowBrepHandle?: (handle: string) => void | Promise<void>;
+  onShowBrepHandle?: (handle: string, accessToken: string) => void | Promise<void>;
   /** UI variant — 'embedded' fits inside the AI sidebar; 'floating' is a standalone modal. */
   variant?: 'embedded' | 'floating';
 }
@@ -248,7 +249,7 @@ function summarizeToolArgs(name: string, args: Record<string, unknown>): string 
   return '';
 }
 
-export default function ScadAgentPanel({ lang, onApplyScad, onShowBrepHandle, variant = 'embedded' }: ScadAgentPanelProps) {
+export default function ScadAgentPanel({ lang, modelId, onApplyScad, onShowBrepHandle, variant = 'embedded' }: ScadAgentPanelProps) {
   const t = dict[langMap[lang] ?? 'en'];
 
   const [thread, setThread] = useState<ThreadEntry[]>([]);
@@ -324,6 +325,7 @@ export default function ScadAgentPanel({ lang, onApplyScad, onShowBrepHandle, va
 
     await streamScadAgent({
       userPrompt: prompt,
+      modelId,
       session,
       signal: controller.signal,
       onEvent: (ev: AgentEvent) => {
@@ -447,7 +449,7 @@ export default function ScadAgentPanel({ lang, onApplyScad, onShowBrepHandle, va
     abortRef.current = null;
     void assistantBuffer;
     void assistantId;
-  }, [input, busy, session, pushEntry, t]);
+  }, [input, busy, modelId, session, pushEntry, t, setLatestVerifySpecResult]);
 
   const handleCancel = useCallback(() => {
     abortRef.current?.abort();
@@ -556,7 +558,7 @@ export default function ScadAgentPanel({ lang, onApplyScad, onShowBrepHandle, va
         flex: 1, overflowY: 'auto', padding: 12, display: 'flex', flexDirection: 'column', gap: 8,
         fontSize: 12, color: 'var(--nx-text)',
       }}>
-        <BetaBanner feature="scad_agent" lang={lang === 'ko' ? 'ko' : 'en'} />
+        <BetaBanner feature="scad_agent" lang={lang} />
         {thread.length === 0 && (
           <div style={{ color: 'var(--nx-text-3)', fontSize: 11, padding: '24px 8px', textAlign: 'center' }}>
             {t.emptyHint}
@@ -695,7 +697,7 @@ export default function ScadAgentPanel({ lang, onApplyScad, onShowBrepHandle, va
   );
 }
 
-function ThreadRow({ entry, onShowBrepHandle }: { entry: ThreadEntry; onShowBrepHandle?: (handle: string) => void | Promise<void> }) {
+function ThreadRow({ entry, onShowBrepHandle }: { entry: ThreadEntry; onShowBrepHandle?: (handle: string, accessToken: string) => void | Promise<void> }) {
   const [previewOpen, setPreviewOpen] = React.useState(false);
   if (entry.kind === 'tool' && entry.tool) {
     const ok = entry.tool.ok;

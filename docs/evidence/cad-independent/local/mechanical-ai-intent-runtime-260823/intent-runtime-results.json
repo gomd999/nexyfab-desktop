@@ -1,0 +1,628 @@
+{
+  "schema": "nexyfab.mechanical-ai-intent-runtime-integration.v1",
+  "generatedAt": "2026-08-23T06:51:51.379Z",
+  "revision": "3aabe87739ff99d1730c5375bad2e67c6be3fb8b482a4aa88e070328cf84915b",
+  "executionBoundary": {
+    "aiModelCall": "NOT_RUN",
+    "canonicalCandidate": "EXECUTED",
+    "exactGeometry": "EXECUTED",
+    "featureTree": "EXECUTED",
+    "sevenAxisRuntime": "EXECUTED"
+  },
+  "cases": [
+    {
+      "caseId": "ko_practical-01-hole",
+      "category": "ko_practical",
+      "feature": "hole",
+      "candidate": {
+        "id": "intent-runtime:ko_practical-01-hole",
+        "baseRevision": "3aabe87739ff99d1730c5375bad2e67c6be3fb8b482a4aa88e070328cf84915b",
+        "status": "PASS"
+      },
+      "authoritativeInput": {
+        "caseId": "ko_practical-01-hole",
+        "candidateId": "intent-runtime:ko_practical-01-hole",
+        "candidateBaseRevision": "3aabe87739ff99d1730c5375bad2e67c6be3fb8b482a4aa88e070328cf84915b",
+        "promptSha256": "8e41f52aeb29df0d0db6a2cd2856af945033d319834c07c50b43326e4bce4d6a",
+        "inputSha256": "b781befa692abcd8dd7e823391cfe7b63c657e07f588fa3c504b4a3873663538",
+        "sourceUnits": [
+          "mm"
+        ],
+        "normalizedUnit": "mm",
+        "dimensionsMm": {
+          "width": 100,
+          "length": 60,
+          "thickness": 8
+        }
+      },
+      "runtimeAxes": {
+        "create": "PASS",
+        "edit": "PASS",
+        "regenerate": "PASS",
+        "save_reopen": "PASS",
+        "undo": "PASS",
+        "export": "PASS",
+        "drawing": "PASS"
+      },
+      "artifactBindings": [
+        {
+          "path": "docs/evidence/cad-independent/local/mechanical-ai-intent-runtime-260823/runtime/hole/create.json",
+          "sha256": "608952784e4f9b298e9679619b26ceceacd20ea9adc73ffbf5e0529a7354027a",
+          "bytes": 2371
+        },
+        {
+          "path": "docs/evidence/cad-independent/local/mechanical-ai-intent-runtime-260823/runtime/hole/edit.json",
+          "sha256": "b5e3fd2e4dbaf1bcf723b12c366fdc6bd237453b4bbd105bfff3d0d2a1dd8509",
+          "bytes": 1544
+        },
+        {
+          "path": "docs/evidence/cad-independent/local/mechanical-ai-intent-runtime-260823/runtime/hole/regenerate.json",
+          "sha256": "b69fb17edcf6c01f015f1204f33abc399912d62389e38278fb0249e0315cb113",
+          "bytes": 2360
+        },
+        {
+          "path": "docs/evidence/cad-independent/local/mechanical-ai-intent-runtime-260823/runtime/hole/saved-project.nfab",
+          "sha256": "33e4d2aac98154778867df0cc15896e7b2424a86207d56377e0ca93e35ff36ed",
+          "bytes": 1903
+        }
+      ],
+      "status": "PASS",
+      "issues": []
+    },
+    {
+      "caseId": "en_practical-02-fillet",
+      "category": "en_practical",
+      "feature": "fillet",
+      "candidate": {
+        "id": "intent-runtime:en_practical-02-fillet",
+        "baseRevision": "3aabe87739ff99d1730c5375bad2e67c6be3fb8b482a4aa88e070328cf84915b",
+        "status": "PASS"
+      },
+      "authoritativeInput": {
+        "caseId": "en_practical-02-fillet",
+        "candidateId": "intent-runtime:en_practical-02-fillet",
+        "candidateBaseRevision": "3aabe87739ff99d1730c5375bad2e67c6be3fb8b482a4aa88e070328cf84915b",
+        "promptSha256": "f201d7d4315c1a3f806cd3f3af2b6ef975c3a4015ef94e2ae015837727f0d17b",
+        "inputSha256": "e82e0c1155c35c624e04e93a890b20cb00d4c85b2d2e694bcf701cde51c05c7f",
+        "sourceUnits": [
+          "mm"
+        ],
+        "normalizedUnit": "mm",
+        "dimensionsMm": {
+          "width": 100,
+          "length": 60,
+          "thickness": 8
+        }
+      },
+      "runtimeAxes": {
+        "create": "PASS",
+        "edit": "PASS",
+        "regenerate": "PASS",
+        "save_reopen": "PASS",
+        "undo": "PASS",
+        "export": "PASS",
+        "drawing": "PASS"
+      },
+      "artifactBindings": [
+        {
+          "path": "docs/evidence/cad-independent/local/mechanical-ai-intent-runtime-260823/runtime/fillet/create.json",
+          "sha256": "941b0bdeb293a6a10e6670a8a2bd20e0eec7c65fa0ccb46cff0a95cf22b97d7d",
+          "bytes": 2294
+        },
+        {
+          "path": "docs/evidence/cad-independent/local/mechanical-ai-intent-runtime-260823/runtime/fillet/edit.json",
+          "sha256": "a6d71dacc2c6f8275249b04943ce595fa9a02f27c5a70d038a7651baaccfd039",
+          "bytes": 1371
+        },
+        {
+          "path": "docs/evidence/cad-independent/local/mechanical-ai-intent-runtime-260823/runtime/fillet/regenerate.json",
+          "sha256": "2e343bd26f1bffabd26ad3a77c037816b302b39200b264cdbec25d324b016280",
+          "bytes": 2378
+        },
+        {
+          "path": "docs/evidence/cad-independent/local/mechanical-ai-intent-runtime-260823/runtime/fillet/saved-project.nfab",
+          "sha256": "91a4d4f894c0954cb98617a318052c601a24b37918a7b719a94f7b8d32b2ebd6",
+          "bytes": 1798
+        }
+      ],
+      "status": "PASS",
+      "issues": []
+    },
+    {
+      "caseId": "mixed_units-03-chamfer",
+      "category": "mixed_units",
+      "feature": "chamfer",
+      "candidate": {
+        "id": "intent-runtime:mixed_units-03-chamfer",
+        "baseRevision": "3aabe87739ff99d1730c5375bad2e67c6be3fb8b482a4aa88e070328cf84915b",
+        "status": "PASS"
+      },
+      "authoritativeInput": {
+        "caseId": "mixed_units-03-chamfer",
+        "candidateId": "intent-runtime:mixed_units-03-chamfer",
+        "candidateBaseRevision": "3aabe87739ff99d1730c5375bad2e67c6be3fb8b482a4aa88e070328cf84915b",
+        "promptSha256": "50a5290d69b20f20f846644c5090aeab5a4a05032a8fdc661e7b8cc676c0b799",
+        "inputSha256": "83e52ee531c466b6e6f9297def0e729cef34d3f5fe74724fdbcf3c9c9c100687",
+        "sourceUnits": [
+          "mm",
+          "in"
+        ],
+        "normalizedUnit": "mm",
+        "dimensionsMm": {
+          "width": 100,
+          "length": 60,
+          "thickness": 6.35
+        }
+      },
+      "runtimeAxes": {
+        "create": "PASS",
+        "edit": "PASS",
+        "regenerate": "PASS",
+        "save_reopen": "PASS",
+        "undo": "PASS",
+        "export": "PASS",
+        "drawing": "PASS"
+      },
+      "artifactBindings": [
+        {
+          "path": "docs/evidence/cad-independent/local/mechanical-ai-intent-runtime-260823/runtime/chamfer/create.json",
+          "sha256": "ffbb1f796f1a3edb2cfa54227f99f8543c9a46befc2784efaf126c247059b74e",
+          "bytes": 2363
+        },
+        {
+          "path": "docs/evidence/cad-independent/local/mechanical-ai-intent-runtime-260823/runtime/chamfer/edit.json",
+          "sha256": "d5606e64999e32f1a316467107541b53fa209ace71c2e80e96f0151aff6c7845",
+          "bytes": 1499
+        },
+        {
+          "path": "docs/evidence/cad-independent/local/mechanical-ai-intent-runtime-260823/runtime/chamfer/regenerate.json",
+          "sha256": "87ea76549d01da914d3d33454ab16788022f1ba0da3e5827011dade21a7f07dc",
+          "bytes": 2399
+        },
+        {
+          "path": "docs/evidence/cad-independent/local/mechanical-ai-intent-runtime-260823/runtime/chamfer/saved-project.nfab",
+          "sha256": "ce7fab15229bfe0482b028036b5b729e283f8c0415456b5a85c8ffba00265642",
+          "bytes": 1861
+        }
+      ],
+      "status": "PASS",
+      "issues": []
+    },
+    {
+      "caseId": "ko_practical-04-shell",
+      "category": "ko_practical",
+      "feature": "shell",
+      "candidate": {
+        "id": "intent-runtime:ko_practical-04-shell",
+        "baseRevision": "3aabe87739ff99d1730c5375bad2e67c6be3fb8b482a4aa88e070328cf84915b",
+        "status": "PASS"
+      },
+      "authoritativeInput": {
+        "caseId": "ko_practical-04-shell",
+        "candidateId": "intent-runtime:ko_practical-04-shell",
+        "candidateBaseRevision": "3aabe87739ff99d1730c5375bad2e67c6be3fb8b482a4aa88e070328cf84915b",
+        "promptSha256": "52f0acadbaccba1af392291d411d56ba0d67064c973116a29151d164737a71e9",
+        "inputSha256": "e315ec859f4459bf7428df820f82a3f77efa3ebcc762be1f4a46db82ea0ed5fd",
+        "sourceUnits": [
+          "mm"
+        ],
+        "normalizedUnit": "mm",
+        "dimensionsMm": {
+          "width": 100,
+          "length": 60,
+          "thickness": 8
+        }
+      },
+      "runtimeAxes": {
+        "create": "PASS",
+        "edit": "PASS",
+        "regenerate": "PASS",
+        "save_reopen": "PASS",
+        "undo": "PASS",
+        "export": "PASS",
+        "drawing": "PASS"
+      },
+      "artifactBindings": [
+        {
+          "path": "docs/evidence/cad-independent/local/mechanical-ai-intent-runtime-260823/runtime/shell/create.json",
+          "sha256": "8efc1020bf1650854ec5e52852577e9e3c3962a4fc71cc742abf90a8a9bcc0ff",
+          "bytes": 2285
+        },
+        {
+          "path": "docs/evidence/cad-independent/local/mechanical-ai-intent-runtime-260823/runtime/shell/edit.json",
+          "sha256": "ce2334306c8a3478798d8b48b9b43af5ecb17d96e6dfd865442db40b74f273f9",
+          "bytes": 1362
+        },
+        {
+          "path": "docs/evidence/cad-independent/local/mechanical-ai-intent-runtime-260823/runtime/shell/regenerate.json",
+          "sha256": "a7dc2929c61df02db0225abdb69d7318d87128225d333246e451f92cf15e3c1f",
+          "bytes": 2343
+        },
+        {
+          "path": "docs/evidence/cad-independent/local/mechanical-ai-intent-runtime-260823/runtime/shell/saved-project.nfab",
+          "sha256": "8b1d29e4433fcd5c2120def944e0dead6b71a8fab64ffd95f4cb660506b0b3ee",
+          "bytes": 1792
+        }
+      ],
+      "status": "PASS",
+      "issues": []
+    },
+    {
+      "caseId": "en_practical-05-rib",
+      "category": "en_practical",
+      "feature": "rib",
+      "candidate": {
+        "id": "intent-runtime:en_practical-05-rib",
+        "baseRevision": "3aabe87739ff99d1730c5375bad2e67c6be3fb8b482a4aa88e070328cf84915b",
+        "status": "PASS"
+      },
+      "authoritativeInput": {
+        "caseId": "en_practical-05-rib",
+        "candidateId": "intent-runtime:en_practical-05-rib",
+        "candidateBaseRevision": "3aabe87739ff99d1730c5375bad2e67c6be3fb8b482a4aa88e070328cf84915b",
+        "promptSha256": "c4ea8c3d434d83998a5f9a6d473de54c9e06c0dac36e64dfb376020ed920c847",
+        "inputSha256": "f0c66336a3aeeab7b421962865bc27faa3efda9cc58778e67518179c178d2563",
+        "sourceUnits": [
+          "mm"
+        ],
+        "normalizedUnit": "mm",
+        "dimensionsMm": {
+          "width": 100,
+          "length": 60,
+          "thickness": 8
+        }
+      },
+      "runtimeAxes": {
+        "create": "PASS",
+        "edit": "PASS",
+        "regenerate": "PASS",
+        "save_reopen": "PASS",
+        "undo": "PASS",
+        "export": "PASS",
+        "drawing": "PASS"
+      },
+      "artifactBindings": [
+        {
+          "path": "docs/evidence/cad-independent/local/mechanical-ai-intent-runtime-260823/runtime/rib/create.json",
+          "sha256": "ff00ceee472bc7ce0fff6496916b9b34ed7f6d7211d1a4bfa2b07160f90fa26d",
+          "bytes": 2333
+        },
+        {
+          "path": "docs/evidence/cad-independent/local/mechanical-ai-intent-runtime-260823/runtime/rib/edit.json",
+          "sha256": "c64613307ccbe27461b644372ad3dc46e417ee496fddd5be3e2d7c6318f306c2",
+          "bytes": 1537
+        },
+        {
+          "path": "docs/evidence/cad-independent/local/mechanical-ai-intent-runtime-260823/runtime/rib/regenerate.json",
+          "sha256": "76893d63b2a55fdf297016d888aa1eca696d2cac0bb401036b0e7637442372d0",
+          "bytes": 2315
+        },
+        {
+          "path": "docs/evidence/cad-independent/local/mechanical-ai-intent-runtime-260823/runtime/rib/saved-project.nfab",
+          "sha256": "c02103a93dd0369fd243d28833f73df1983ff2c0e6a1eab8e0e721bc37723aa2",
+          "bytes": 1898
+        }
+      ],
+      "status": "PASS",
+      "issues": []
+    },
+    {
+      "caseId": "mixed_units-06-linearPattern",
+      "category": "mixed_units",
+      "feature": "linearPattern",
+      "candidate": {
+        "id": "intent-runtime:mixed_units-06-linearPattern",
+        "baseRevision": "3aabe87739ff99d1730c5375bad2e67c6be3fb8b482a4aa88e070328cf84915b",
+        "status": "PASS"
+      },
+      "authoritativeInput": {
+        "caseId": "mixed_units-06-linearPattern",
+        "candidateId": "intent-runtime:mixed_units-06-linearPattern",
+        "candidateBaseRevision": "3aabe87739ff99d1730c5375bad2e67c6be3fb8b482a4aa88e070328cf84915b",
+        "promptSha256": "8f62155c6bb4727f10a578add32473dde34493692d51cfc850f7a13215f9741d",
+        "inputSha256": "cfefb607d5bc6942325a7d5388e0edf2f50e7c2f5cb1a8aa12ed38eae9d209fe",
+        "sourceUnits": [
+          "mm",
+          "in"
+        ],
+        "normalizedUnit": "mm",
+        "dimensionsMm": {
+          "width": 100,
+          "length": 60,
+          "thickness": 6.35
+        }
+      },
+      "runtimeAxes": {
+        "create": "PASS",
+        "edit": "PASS",
+        "regenerate": "PASS",
+        "save_reopen": "PASS",
+        "undo": "PASS",
+        "export": "PASS",
+        "drawing": "PASS"
+      },
+      "artifactBindings": [
+        {
+          "path": "docs/evidence/cad-independent/local/mechanical-ai-intent-runtime-260823/runtime/linearPattern/create.json",
+          "sha256": "f5f44a668322baf128e1ffc51f679ba56ad97da1a34ed9f3cbadc461f8f99cc4",
+          "bytes": 2298
+        },
+        {
+          "path": "docs/evidence/cad-independent/local/mechanical-ai-intent-runtime-260823/runtime/linearPattern/edit.json",
+          "sha256": "fcd924f3940423066c616a380dac3e2532297d50a69e64dd5dbe7e4b4d6d5d51",
+          "bytes": 1499
+        },
+        {
+          "path": "docs/evidence/cad-independent/local/mechanical-ai-intent-runtime-260823/runtime/linearPattern/regenerate.json",
+          "sha256": "c91703eac73b3f14c1421945629f6bdda11781f669b477b3dce193c9949833e1",
+          "bytes": 2312
+        },
+        {
+          "path": "docs/evidence/cad-independent/local/mechanical-ai-intent-runtime-260823/runtime/linearPattern/saved-project.nfab",
+          "sha256": "57a04b9ae05e90e210e375a5421c14c511284ed19f76d8767ca81e73d66e9b8e",
+          "bytes": 1871
+        }
+      ],
+      "status": "PASS",
+      "issues": []
+    },
+    {
+      "caseId": "ko_practical-07-circularPattern",
+      "category": "ko_practical",
+      "feature": "circularPattern",
+      "candidate": {
+        "id": "intent-runtime:ko_practical-07-circularPattern",
+        "baseRevision": "3aabe87739ff99d1730c5375bad2e67c6be3fb8b482a4aa88e070328cf84915b",
+        "status": "PASS"
+      },
+      "authoritativeInput": {
+        "caseId": "ko_practical-07-circularPattern",
+        "candidateId": "intent-runtime:ko_practical-07-circularPattern",
+        "candidateBaseRevision": "3aabe87739ff99d1730c5375bad2e67c6be3fb8b482a4aa88e070328cf84915b",
+        "promptSha256": "84f55ad69bf21c90860c12e9206056ce47a7405104ba4caa2a8bcdb5173e589b",
+        "inputSha256": "42856994be07c22070fd35921cfe82295db7042c543d308b01fd61a235a18b6d",
+        "sourceUnits": [
+          "mm"
+        ],
+        "normalizedUnit": "mm",
+        "dimensionsMm": {
+          "width": 100,
+          "length": 60,
+          "thickness": 8
+        }
+      },
+      "runtimeAxes": {
+        "create": "PASS",
+        "edit": "PASS",
+        "regenerate": "PASS",
+        "save_reopen": "PASS",
+        "undo": "PASS",
+        "export": "PASS",
+        "drawing": "PASS"
+      },
+      "artifactBindings": [
+        {
+          "path": "docs/evidence/cad-independent/local/mechanical-ai-intent-runtime-260823/runtime/circularPattern/create.json",
+          "sha256": "044e7c084447469835d11b1a34bc07becb06666bc6b32bfec302f1becccd5ba6",
+          "bytes": 2363
+        },
+        {
+          "path": "docs/evidence/cad-independent/local/mechanical-ai-intent-runtime-260823/runtime/circularPattern/edit.json",
+          "sha256": "ea88a21579461c0f119902d4deca0dbe47aeb60bc3f026131b49142e99f92866",
+          "bytes": 1503
+        },
+        {
+          "path": "docs/evidence/cad-independent/local/mechanical-ai-intent-runtime-260823/runtime/circularPattern/regenerate.json",
+          "sha256": "c17d4de8fc3e1e2377141cc57f2af1737ca919d14f9f11fc044894a7008fe890",
+          "bytes": 2364
+        },
+        {
+          "path": "docs/evidence/cad-independent/local/mechanical-ai-intent-runtime-260823/runtime/circularPattern/saved-project.nfab",
+          "sha256": "db4e1a39c47597bbeca20c254ea3d3b654d2990d7d5fb7f7a6be645d22e2c71b",
+          "bytes": 1881
+        }
+      ],
+      "status": "PASS",
+      "issues": []
+    },
+    {
+      "caseId": "en_practical-08-draft",
+      "category": "en_practical",
+      "feature": "draft",
+      "candidate": {
+        "id": "intent-runtime:en_practical-08-draft",
+        "baseRevision": "3aabe87739ff99d1730c5375bad2e67c6be3fb8b482a4aa88e070328cf84915b",
+        "status": "PASS"
+      },
+      "authoritativeInput": {
+        "caseId": "en_practical-08-draft",
+        "candidateId": "intent-runtime:en_practical-08-draft",
+        "candidateBaseRevision": "3aabe87739ff99d1730c5375bad2e67c6be3fb8b482a4aa88e070328cf84915b",
+        "promptSha256": "7c5bdf3270f3e5bb30c2943b28d025504d89afeb536a178876a1c368dad23859",
+        "inputSha256": "d72ec0b4bd4d8a4349bb7df9adea28687d0ee293f3cd5bb29c63d2f9338e873a",
+        "sourceUnits": [
+          "mm"
+        ],
+        "normalizedUnit": "mm",
+        "dimensionsMm": {
+          "width": 100,
+          "length": 60,
+          "thickness": 8
+        }
+      },
+      "runtimeAxes": {
+        "create": "PASS",
+        "edit": "PASS",
+        "regenerate": "PASS",
+        "save_reopen": "PASS",
+        "undo": "PASS",
+        "export": "PASS",
+        "drawing": "PASS"
+      },
+      "artifactBindings": [
+        {
+          "path": "docs/evidence/cad-independent/local/mechanical-ai-intent-runtime-260823/runtime/draft/create.json",
+          "sha256": "c9f7547f4e701669d1b31815ae7e81bd8e3fe2ae15ca2683892dc55ae4cc07c5",
+          "bytes": 2279
+        },
+        {
+          "path": "docs/evidence/cad-independent/local/mechanical-ai-intent-runtime-260823/runtime/draft/edit.json",
+          "sha256": "aeb7261b6bfc1353608d3ce3e4fbfc7364cbfe3b3c5b613b6d38b750ef73cb98",
+          "bytes": 1351
+        },
+        {
+          "path": "docs/evidence/cad-independent/local/mechanical-ai-intent-runtime-260823/runtime/draft/regenerate.json",
+          "sha256": "b8a67dbe432d88368fc4216b5263eb3bf58ca26357f54d40ffa9da16cfd9518d",
+          "bytes": 2371
+        },
+        {
+          "path": "docs/evidence/cad-independent/local/mechanical-ai-intent-runtime-260823/runtime/draft/saved-project.nfab",
+          "sha256": "6c9e6929bf26b5bb701067223b2c00ded6f8c28200e637d1ae22f4759333ac6d",
+          "bytes": 1787
+        }
+      ],
+      "status": "PASS",
+      "issues": []
+    },
+    {
+      "caseId": "mixed_units-09-scale",
+      "category": "mixed_units",
+      "feature": "scale",
+      "candidate": {
+        "id": "intent-runtime:mixed_units-09-scale",
+        "baseRevision": "3aabe87739ff99d1730c5375bad2e67c6be3fb8b482a4aa88e070328cf84915b",
+        "status": "PASS"
+      },
+      "authoritativeInput": {
+        "caseId": "mixed_units-09-scale",
+        "candidateId": "intent-runtime:mixed_units-09-scale",
+        "candidateBaseRevision": "3aabe87739ff99d1730c5375bad2e67c6be3fb8b482a4aa88e070328cf84915b",
+        "promptSha256": "d7a5f4de842c9d485e4168cedb4dc8342495522d2f15d49676ad481353e1e2f2",
+        "inputSha256": "99e1b875e09e80603921b25953c657c2b1fd685dd349a85b56545f24025d3048",
+        "sourceUnits": [
+          "mm",
+          "in"
+        ],
+        "normalizedUnit": "mm",
+        "dimensionsMm": {
+          "width": 100,
+          "length": 60,
+          "thickness": 6.35
+        }
+      },
+      "runtimeAxes": {
+        "create": "PASS",
+        "edit": "PASS",
+        "regenerate": "PASS",
+        "save_reopen": "PASS",
+        "undo": "PASS",
+        "export": "PASS",
+        "drawing": "PASS"
+      },
+      "artifactBindings": [
+        {
+          "path": "docs/evidence/cad-independent/local/mechanical-ai-intent-runtime-260823/runtime/scale/create.json",
+          "sha256": "979d8d2b9006281ed2170055b1ffb4709ab8ae10f2f661e0b302a59ab1b0ec41",
+          "bytes": 2293
+        },
+        {
+          "path": "docs/evidence/cad-independent/local/mechanical-ai-intent-runtime-260823/runtime/scale/edit.json",
+          "sha256": "b5f55d1e48e1da7acd381b711d6b8029cbd4915326bfe8ab8f2a539a019914e0",
+          "bytes": 1416
+        },
+        {
+          "path": "docs/evidence/cad-independent/local/mechanical-ai-intent-runtime-260823/runtime/scale/regenerate.json",
+          "sha256": "26856aea7bedfddfec396062ca88535db3669179d0b6467ec1866be6b14fe3b2",
+          "bytes": 2342
+        },
+        {
+          "path": "docs/evidence/cad-independent/local/mechanical-ai-intent-runtime-260823/runtime/scale/saved-project.nfab",
+          "sha256": "36be45bbb758505f4c643111060351a3be8771116774b36e2a546a5f1ae03c87",
+          "bytes": 1819
+        }
+      ],
+      "status": "PASS",
+      "issues": []
+    },
+    {
+      "caseId": "ko_practical-10-moveCopy",
+      "category": "ko_practical",
+      "feature": "moveCopy",
+      "candidate": {
+        "id": "intent-runtime:ko_practical-10-moveCopy",
+        "baseRevision": "3aabe87739ff99d1730c5375bad2e67c6be3fb8b482a4aa88e070328cf84915b",
+        "status": "PASS"
+      },
+      "authoritativeInput": {
+        "caseId": "ko_practical-10-moveCopy",
+        "candidateId": "intent-runtime:ko_practical-10-moveCopy",
+        "candidateBaseRevision": "3aabe87739ff99d1730c5375bad2e67c6be3fb8b482a4aa88e070328cf84915b",
+        "promptSha256": "f5686b7277618027daa29b9863b58c65dbf50839788f65065567e6829bd49fee",
+        "inputSha256": "fc7de2e197b29ed47e048022a7f8a4287309ee676fd5cee96d1c1ec299ec00fe",
+        "sourceUnits": [
+          "mm"
+        ],
+        "normalizedUnit": "mm",
+        "dimensionsMm": {
+          "width": 100,
+          "length": 60,
+          "thickness": 8
+        }
+      },
+      "runtimeAxes": {
+        "create": "PASS",
+        "edit": "PASS",
+        "regenerate": "PASS",
+        "save_reopen": "PASS",
+        "undo": "PASS",
+        "export": "PASS",
+        "drawing": "PASS"
+      },
+      "artifactBindings": [
+        {
+          "path": "docs/evidence/cad-independent/local/mechanical-ai-intent-runtime-260823/runtime/moveCopy/create.json",
+          "sha256": "c7724baea02bdca1bf4b2ae8952e29b982f35918d07e2970e59cb9b80d22e69a",
+          "bytes": 2304
+        },
+        {
+          "path": "docs/evidence/cad-independent/local/mechanical-ai-intent-runtime-260823/runtime/moveCopy/edit.json",
+          "sha256": "7b3c768819c01295a2751791b91662e3d953281523dfb67cb99a026c3e47fabc",
+          "bytes": 1455
+        },
+        {
+          "path": "docs/evidence/cad-independent/local/mechanical-ai-intent-runtime-260823/runtime/moveCopy/regenerate.json",
+          "sha256": "60ad684618b6935da0e42f4ddc9839dc2a79fbcc5aefad7225371cd57e5c51ed",
+          "bytes": 2322
+        },
+        {
+          "path": "docs/evidence/cad-independent/local/mechanical-ai-intent-runtime-260823/runtime/moveCopy/saved-project.nfab",
+          "sha256": "6bbf3a4a7c8c85141461b9628091bfc304675a3e7113e1dac1a7c08bb1780d7d",
+          "bytes": 1850
+        }
+      ],
+      "status": "PASS",
+      "issues": []
+    }
+  ],
+  "summary": {
+    "requiredCases": 10,
+    "pass": 10,
+    "fail": 0,
+    "blocked": 0,
+    "requiredAxes": 70,
+    "axisPass": 70,
+    "axisFail": 0,
+    "axisNotRun": 0
+  },
+  "localIntegration": {
+    "status": "PASS"
+  },
+  "commercialCampaign": {
+    "status": "NOT_RUN",
+    "releaseEligible": false,
+    "blockers": [
+      "real_ai_model_campaign_not_run",
+      "external_commercial_receipt_not_evaluated"
+    ]
+  }
+}

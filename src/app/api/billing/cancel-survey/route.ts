@@ -4,6 +4,7 @@
 // row marked `winback_eligible = 1`.
 
 import { NextRequest, NextResponse } from 'next/server';
+import { boundedJsonError, readBoundedJson } from '@/lib/boundedJsonBody';
 import { z } from 'zod';
 import { getAuthUser } from '@/lib/auth-middleware';
 import { getDbAdapter } from '@/lib/db-adapter';
@@ -19,6 +20,7 @@ const REASONS = [
   'bugs_or_quality',
   'other',
 ] as const;
+const CANCEL_SURVEY_JSON_BYTES = 64 * 1024;
 
 const surveySchema = z.object({
   product: z.enum(['nexyfab', 'nexyflow', 'nexywise', 'nexyremote']).default('nexyfab'),
@@ -34,7 +36,12 @@ export async function POST(req: NextRequest) {
   const authUser = await getAuthUser(req);
   if (!authUser) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-  const raw = await req.json().catch(() => null);
+  let raw: unknown = null;
+  try { raw = await readBoundedJson(req, CANCEL_SURVEY_JSON_BYTES); }
+  catch (error) {
+    const bodyError = boundedJsonError(error);
+    if (bodyError?.code === 'PAYLOAD_TOO_LARGE') return NextResponse.json({ error: 'Request body too large' }, { status: bodyError.status });
+  }
   const parsed = surveySchema.safeParse(raw);
   if (!parsed.success) {
     return NextResponse.json({ error: parsed.error.issues[0]?.message ?? 'Invalid input' }, { status: 400 });

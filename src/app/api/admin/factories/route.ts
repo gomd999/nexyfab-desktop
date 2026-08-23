@@ -6,6 +6,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { verifyAdmin } from '@/lib/admin-auth';
 import { getDbAdapter } from '@/lib/db-adapter';
 import { randomUUID } from 'crypto';
+import { readBoundedJson } from '@/lib/boundedJsonBody';
 
 export const dynamic = 'force-dynamic';
 
@@ -78,7 +79,7 @@ export async function POST(req: NextRequest) {
   const isAdmin = await verifyAdmin(req);
   if (!isAdmin) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
 
-  const body = await req.json() as {
+  const body = await readBoundedJson(req, 256 * 1024) as {
     name: string;
     name_ko?: string;
     region?: string;

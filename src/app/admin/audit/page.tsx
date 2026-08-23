@@ -1,7 +1,10 @@
 'use client';
+import { useAdminI18n } from '../AdminI18nProvider';
+import { createCommercialLocalizer } from '@/lib/i18n/commercialLocalizer';
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useMemo } from 'react';
 import { formatDateTime } from '@/lib/formatDate';
+import { formatNumber } from '@/lib/i18n/format';
 
 interface AuditEntry {
   id: string;
@@ -39,6 +42,8 @@ function ActionBadge({ action }: { action: string }) {
 }
 
 export default function AdminAuditPage() {
+  const { locale } = useAdminI18n();
+  const L = useMemo(() => createCommercialLocalizer(locale), [locale]);
   const [entries, setEntries] = useState<AuditEntry[]>([]);
   const [total, setTotal] = useState(0);
   const [actions, setActions] = useState<string[]>([]);
@@ -73,12 +78,12 @@ export default function AdminAuditPage() {
     <div className="max-w-7xl mx-auto">
       <div className="flex items-start justify-between mb-6">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">감사 로그</h1>
-          <p className="text-sm text-gray-500 mt-1">사용자 활동 이력 (총 {total.toLocaleString()}건)</p>
+          <h1 className="text-2xl font-bold text-gray-900">{L('감사 로그', 'Audit log')}</h1>
+          <p className="text-sm text-gray-500 mt-1">{L(`사용자 활동 이력 (총 ${formatNumber(total, locale) ?? total}건)`, `User activity history (${formatNumber(total, locale) ?? total} total)`)}</p>
         </div>
         <button onClick={load} disabled={loading}
           className="px-3 py-1.5 text-sm rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 disabled:opacity-50">
-          새로고침
+          {L('새로고침', 'Refresh')}
         </button>
       </div>
 
@@ -87,7 +92,7 @@ export default function AdminAuditPage() {
         <input
           value={search}
           onChange={e => { setSearch(e.target.value); setOffset(0); }}
-          placeholder="검색 (액션 · 리소스ID · 사용자ID)"
+          placeholder={L('검색 (작업 · 리소스 ID · 사용자 ID)', 'Search (action · resource ID · user ID)')}
           className="text-sm px-3 py-2 border border-gray-200 rounded-xl outline-none focus:border-blue-400 w-72"
         />
         <select
@@ -95,7 +100,7 @@ export default function AdminAuditPage() {
           onChange={e => { setActionFilter(e.target.value); setOffset(0); }}
           className="text-sm px-3 py-2 border border-gray-200 rounded-xl outline-none focus:border-blue-400 bg-white"
         >
-          <option value="">전체 액션</option>
+          <option value="">{L('전체 작업', 'All actions')}</option>
           {actions.map(a => <option key={a} value={a}>{a}</option>)}
         </select>
       </div>
@@ -106,21 +111,21 @@ export default function AdminAuditPage() {
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-gray-100 bg-gray-50">
-                {['시각', '액션', '사용자', '리소스 ID', 'IP', '상세'].map(h => (
+                {[L('시각', 'Time'), L('작업', 'Action'), L('사용자', 'User'), L('리소스 ID', 'Resource ID'), 'IP', L('상세', 'Details')].map(h => (
                   <th key={h} className="px-4 py-3 text-left text-xs font-bold text-gray-500">{h}</th>
                 ))}
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-50">
               {loading ? (
-                <tr><td colSpan={6} className="px-4 py-12 text-center text-gray-400">불러오는 중...</td></tr>
+                <tr><td colSpan={6} className="px-4 py-12 text-center text-gray-400">{L('불러오는 중...', 'Loading…')}</td></tr>
               ) : entries.length === 0 ? (
-                <tr><td colSpan={6} className="px-4 py-12 text-center text-gray-400">감사 로그가 없습니다</td></tr>
+                <tr><td colSpan={6} className="px-4 py-12 text-center text-gray-400">{L('감사 로그가 없습니다.', 'No audit logs found.')}</td></tr>
               ) : (
                 entries.map(e => (
                   <>
                     <tr key={e.id} className="hover:bg-gray-50 transition-colors">
-                      <td className="px-4 py-2.5 text-xs text-gray-500 whitespace-nowrap font-mono">{formatDateTime(e.createdAt)}</td>
+                      <td className="px-4 py-2.5 text-xs text-gray-500 whitespace-nowrap font-mono">{formatDateTime(e.createdAt, locale)}</td>
                       <td className="px-4 py-2.5"><ActionBadge action={e.action} /></td>
                       <td className="px-4 py-2.5">
                         <div className="text-xs font-semibold text-gray-800 truncate max-w-[140px]">{e.userEmail ?? e.userId}</div>
@@ -134,7 +139,7 @@ export default function AdminAuditPage() {
                             onClick={() => setExpanded(expanded === e.id ? null : e.id)}
                             className="text-xs text-blue-600 hover:text-blue-800 font-semibold"
                           >
-                            {expanded === e.id ? '접기 ▲' : '보기 ▼'}
+                            {expanded === e.id ? L('접기 ▲', 'Hide ▲') : L('보기 ▼', 'View ▼')}
                           </button>
                         )}
                       </td>
@@ -162,11 +167,11 @@ export default function AdminAuditPage() {
             <div className="flex gap-2">
               <button onClick={() => setOffset(Math.max(0, offset - limit))} disabled={offset === 0}
                 className="px-3 py-1 text-xs border border-gray-200 rounded-lg disabled:opacity-40 hover:bg-gray-50">
-                이전
+                {L('이전', 'Previous')}
               </button>
               <button onClick={() => setOffset(offset + limit)} disabled={offset + limit >= total}
                 className="px-3 py-1 text-xs border border-gray-200 rounded-lg disabled:opacity-40 hover:bg-gray-50">
-                다음
+                {L('다음', 'Next')}
               </button>
             </div>
           </div>

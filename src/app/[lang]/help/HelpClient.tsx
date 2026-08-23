@@ -540,13 +540,53 @@ export const dict: Record<IsoLang, {
   },
 };
 
+const CURRENT_DESIGN_FLOW: Record<IsoLang, { title: string; description: string; steps: string[]; cta: string }> = {
+  ko: {
+    title: '현재 권장 설계 흐름',
+    description: 'AI 설계와 정밀 CAD는 같은 설계 이력에서 이어집니다.',
+    steps: ['원하는 제품과 용도를 자연어로 설명', 'AI가 표시한 필수 누락 치수에 답변', '생성 계획과 미리보기를 확인한 뒤 적용', '필요하면 정밀 CAD에서 피처·조립·치수를 수정', '검증에서 DFM·FEA 결과와 실패 위치를 확인', '도면·정확한 STEP·BOM을 생성', '로그인 후 견적을 요청하고 제조 단계로 이동'],
+    cta: 'AI 설계 시작',
+  },
+  en: {
+    title: 'Recommended design flow',
+    description: 'AI design and Precision CAD continue on the same design revision.',
+    steps: ['Describe the product and its use in natural language', 'Answer the required missing dimensions flagged by AI', 'Review the generation plan and preview, then apply it', 'Refine features, assemblies, and dimensions in Precision CAD when needed', 'Use Verify to review DFM, FEA, and exact failure locations', 'Generate drawings, an exact STEP file, and BOM', 'Sign in to request a quote and continue to manufacturing'],
+    cta: 'Start AI design',
+  },
+  ja: {
+    title: '現在の推奨設計フロー',
+    description: 'AI設計と精密CADは同じ設計履歴でつながります。',
+    steps: ['製品と用途を自然言語で説明', 'AIが示す必須の不足寸法に回答', '生成計画とプレビューを確認して適用', '必要に応じて精密CADでフィーチャー・アセンブリ・寸法を修正', '検証でDFM・FEA・正確な失敗位置を確認', '図面・正確なSTEP・BOMを生成', 'ログイン後に見積を依頼し製造へ進む'],
+    cta: 'AI設計を開始',
+  },
+  zh: {
+    title: '当前推荐设计流程',
+    description: 'AI设计与精密CAD在同一设计版本中连续工作。',
+    steps: ['用自然语言说明产品及用途', '回答AI标出的必填缺失尺寸', '检查生成计划和预览后应用', '需要时在精密CAD中修改特征、装配和尺寸', '在验证中检查DFM、FEA和精确失败位置', '生成工程图、精确STEP和BOM', '登录后申请报价并进入制造流程'],
+    cta: '开始AI设计',
+  },
+  es: {
+    title: 'Flujo de diseño recomendado',
+    description: 'El diseño con IA y el CAD de precisión continúan en la misma revisión.',
+    steps: ['Describa el producto y su uso en lenguaje natural', 'Responda las dimensiones obligatorias que falten', 'Revise el plan y la vista previa antes de aplicar', 'Ajuste operaciones, ensamblajes y cotas en CAD de precisión', 'Use Verificar para revisar DFM, FEA y la ubicación exacta de fallos', 'Genere planos, STEP exacto y BOM', 'Inicie sesión para solicitar cotización y pasar a fabricación'],
+    cta: 'Iniciar diseño con IA',
+  },
+  ar: {
+    title: 'مسار التصميم الموصى به حاليًا',
+    description: 'يستمر تصميم الذكاء الاصطناعي وCAD الدقيق ضمن مراجعة التصميم نفسها.',
+    steps: ['صف المنتج واستخدامه بلغة طبيعية', 'أجب عن الأبعاد الإلزامية الناقصة التي يحددها الذكاء الاصطناعي', 'راجع خطة التوليد والمعاينة ثم طبّقها', 'عدّل الميزات والتجميعات والأبعاد في CAD الدقيق عند الحاجة', 'استخدم التحقق لمراجعة DFM وFEA ومواقع الفشل الدقيقة', 'أنشئ الرسومات وملف STEP دقيقًا وقائمة BOM', 'سجّل الدخول لطلب عرض سعر والانتقال إلى التصنيع'],
+    cta: 'ابدأ التصميم بالذكاء الاصطناعي',
+  },
+};
+
 export default function HelpClient() {
   const params = useParams();
   const langRaw = (params?.lang as string) ?? 'ko';
   const lang = toIsoLang(langRaw);
   const routeLang = toRouteLang(langRaw);
   const t = dict[lang] ?? dict.en;
-  const [open, setOpen] = useState<Set<string>>(new Set([SECTIONS[0].id])); // first section open by default
+  const [open, setOpen] = useState<Set<string>>(new Set());
+  const currentFlow = CURRENT_DESIGN_FLOW[lang] ?? CURRENT_DESIGN_FLOW.en;
 
   const toggle = (id: string) => {
     setOpen(prev => {
@@ -563,8 +603,17 @@ export default function HelpClient() {
       <p style={subtitleStyle}>{t.subtitle}</p>
       <p style={introStyle}>{t.intro}</p>
 
+      <section aria-labelledby="current-design-flow" style={currentFlowStyle}>
+        <h2 id="current-design-flow" style={{ margin: 0, fontSize: 20 }}>{currentFlow.title}</h2>
+        <p style={{ margin: '6px 0 12px', color: '#475569', fontSize: 13 }}>{currentFlow.description}</p>
+        <ol style={{ ...stepListStyle, marginTop: 0 }}>
+          {currentFlow.steps.map(step => <li key={step} style={stepItemStyle}>{step}</li>)}
+        </ol>
+        <a href={`/${routeLang}/nexyfab/ai/`} style={ctaBtnStyle}>{currentFlow.cta} →</a>
+      </section>
+
       <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-        {SECTIONS.map(s => {
+        {SECTIONS.filter(s => s.id !== 'first-design' && s.id !== 'ai-agent').map(s => {
           const isOpen = open.has(s.id);
           return (
             <div key={s.id} style={cardStyle}>
@@ -621,6 +670,10 @@ const subtitleStyle: React.CSSProperties = { color: '#6b7280', marginTop: 0, mar
 const introStyle: React.CSSProperties = {
   color: '#475569', marginTop: 0, marginBottom: 32, fontSize: 13, lineHeight: 1.6,
   padding: '12px 16px', background: '#f8fafc', borderRadius: 8, borderLeft: '3px solid #3b82f6',
+};
+const currentFlowStyle: React.CSSProperties = {
+  marginBottom: 24, padding: '20px 22px', background: '#eff6ff',
+  border: '1px solid #93c5fd', borderRadius: 12, color: '#1e3a8a',
 };
 const cardStyle: React.CSSProperties = {
   background: '#fff', border: '1px solid #e5e7eb', borderRadius: 10,

@@ -21,10 +21,11 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { loc } from '@/lib/i18n/loc';
 import { isKorean } from '@/lib/i18n/normalize';
+import { designList, designPair } from './designI18n';
 
 // ─── API 응답 타입 (AssemblyPresetPanel.tsx 의 ParamSpec/Template 과 동일 형태) ──
 
-interface ParamSpec { name: string; labelKo: string; unit: string; default: number; min: number; max: number }
+interface ParamSpec { name: string; labelKo: string; labelEn?: string; unit: string; default: number; min: number; max: number }
 interface Template { domain: string; id: string; labelKo: string; labelEn: string; params: ParamSpec[] }
 
 interface BuildResp {
@@ -61,9 +62,7 @@ const CATEGORIES: Category[] = [
 
 interface EasyDesc { ko: string; en: string; ja: string; zh: string; es: string; ar: string }
 
-// ⚠ 260802: 예전에는 { ko, en } 만 있고 렌더 지점에서 `ko ? desc.ko : desc.en` 2분기라
-// ja·zh·es·ar 사용자에게 영어가 그대로 나갔다(CATEGORIES 와 동일한 결함 패턴, loc() 미사용).
-// 6언어 전부 채우고 loc() 으로 배선한다.
+// All category and description copy is defined in six locales and rendered through loc().
 export const EASY_DESC: Record<string, EasyDesc> = {
   // 조경
   pergola: { ko: '기둥과 서까래로 만든 그늘막 — 마당·테라스에', en: 'Shade structure with posts and rafters for yards', ja: '柱と垂木で作った日除け — 庭・テラスに', zh: '立柱和椽条搭建的遮阳棚 — 适用于庭院、露台', es: 'Estructura de sombra con postes y vigas para patios y terrazas', ar: 'مظلة مصنوعة من أعمدة وعوارض — للأفنية والشرفات' },
@@ -116,9 +115,9 @@ function showsMeters(p: ParamSpec): boolean {
   return p.unit === 'mm' && p.max >= 2000;
 }
 
-function unitLabel(p: ParamSpec, ko: boolean): string {
+function unitLabel(p: ParamSpec, lang: string): string {
   if (showsMeters(p)) return 'm';
-  if (p.unit === '') return ko ? '개' : 'ea';
+  if (p.unit === '') return designPair(lang, '개', 'ea');
   return p.unit;
 }
 
@@ -220,12 +219,12 @@ export default function EasyWizard({
       .then((lists) => {
         if (!alive) return;
         const merged = lists.flat();
-        if (!merged.length) { setLoadErr(ko ? '이 분야의 템플릿을 불러오지 못했습니다.' : 'Could not load templates for this field.'); return; }
+        if (!merged.length) { setLoadErr(designPair(lang, '이 분야의 템플릿을 불러오지 못했습니다.', 'Could not load templates for this field.')); return; }
         setTemplates(merged);
       })
       .catch((e: unknown) => {
         if (!alive) return;
-        setLoadErr((ko ? '불러오기 실패: ' : 'Load failed: ') + (e instanceof Error ? e.message : String(e)));
+      setLoadErr(designPair(lang, '불러오기 실패: ', 'Load failed: ') + (e instanceof Error ? e.message : String(e)));
       });
     return () => { alive = false; };
   }, [cat, ko]);
@@ -283,9 +282,9 @@ export default function EasyWizard({
         onClose();
         return;
       }
-      setBuildErr((ko ? '만들지 못했습니다: ' : 'Could not build: ') + (data.gateErrors?.join('; ') ?? data.error ?? ''));
+      setBuildErr(designPair(lang, '만들지 못했습니다: ', 'Could not build: ') + (data.gateErrors?.join('; ') ?? data.error ?? ''));
     } catch (e) {
-      setBuildErr((ko ? '만들지 못했습니다: ' : 'Could not build: ') + (e instanceof Error ? e.message : String(e)));
+      setBuildErr(designPair(lang, '만들지 못했습니다: ', 'Could not build: ') + (e instanceof Error ? e.message : String(e)));
     } finally {
       setBusy(false);
     }
@@ -293,9 +292,14 @@ export default function EasyWizard({
 
   if (!open) return null;
 
-  const stepTitles = ko
-    ? ['어떤 분야인가요?', '무엇을 만드나요?', '크기·수량을 정해주세요', '이대로 만들까요?']
-    : ['Which field?', 'What do you want to make?', 'Set the size & count', 'Ready to build?'];
+  const stepTitles = designList(lang, {
+    ko: ['어떤 분야인가요?', '무엇을 만드나요?', '크기·수량을 정해주세요', '이대로 만들까요?'],
+    en: ['Which field?', 'What do you want to make?', 'Set the size & count', 'Ready to build?'],
+    ja: ['分野を選択', '何を作りますか？', 'サイズと数量を設定', 'この内容で作成しますか？'],
+    zh: ['选择领域', '要制作什么？', '设置尺寸和数量', '按此内容创建？'],
+    es: ['¿Qué campo?', '¿Qué quieres fabricar?', 'Define tamaño y cantidad', '¿Listo para construir?'],
+    ar: ['ما المجال؟', 'ماذا تريد أن تصنع؟', 'حدد الحجم والكمية', 'هل أنت جاهز للبناء؟'],
+  });
 
   // 파라미터 입력 한 줄
   const renderParam = (p: ParamSpec) => {
@@ -303,22 +307,18 @@ export default function EasyWizard({
     const shown = typing[p.name] ?? toDisp(p, vals[p.name] ?? p.default);
     return (
       <div key={p.name} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '7px 0', flexWrap: 'wrap' }}>
-        <div style={{ flex: '1 1 160px', fontSize: 13, color: 'var(--nx-text, #1a2230)' }}>{p.labelKo}</div>
+        <div style={{ flex: '1 1 160px', fontSize: 13, color: 'var(--nx-text, #1a2230)' }}>{designPair(lang, p.labelKo, p.labelEn ?? p.labelKo)}</div>
         <input
           value={shown}
           inputMode="decimal"
           onChange={(e) => setParam(p, e.target.value)}
           style={{ ...inputStyle, borderColor: bad ? '#ef4444' : 'var(--nx-border, #dfe3e8)' }}
         />
-        <div style={{ width: 26, fontSize: 12, color: 'var(--nx-text-3, #6b7684)' }}>{unitLabel(p, ko)}</div>
+        <div style={{ width: 26, fontSize: 12, color: 'var(--nx-text-3, #6b7684)' }}>{unitLabel(p, lang)}</div>
         <div style={{ flexBasis: '100%', fontSize: 11, color: bad ? '#ef4444' : 'var(--nx-text-3, #6b7684)' }}>
           {bad
-            ? (ko
-              ? `${toDisp(p, p.min)} ~ ${toDisp(p, p.max)} ${unitLabel(p, ko)} 사이의 값을 입력해 주세요.`
-              : `Enter a value between ${toDisp(p, p.min)} and ${toDisp(p, p.max)} ${unitLabel(p, ko)}.`)
-            : (ko
-              ? `가능 범위 ${toDisp(p, p.min)} ~ ${toDisp(p, p.max)} ${unitLabel(p, ko)}`
-              : `Allowed ${toDisp(p, p.min)} – ${toDisp(p, p.max)} ${unitLabel(p, ko)}`)}
+            ? designPair(lang, `${toDisp(p, p.min)} ~ ${toDisp(p, p.max)} ${unitLabel(p, lang)} 사이의 값을 입력해 주세요.`, `Enter a value between ${toDisp(p, p.min)} and ${toDisp(p, p.max)} ${unitLabel(p, lang)}.`)
+            : designPair(lang, `가능 범위 ${toDisp(p, p.min)} ~ ${toDisp(p, p.max)} ${unitLabel(p, lang)}`, `Allowed ${toDisp(p, p.min)} – ${toDisp(p, p.max)} ${unitLabel(p, lang)}`)}
         </div>
       </div>
     );
@@ -343,11 +343,11 @@ export default function EasyWizard({
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
           <div>
             <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--nx-accent, #2563eb)' }}>
-              {ko ? `쉬운 설계 · ${step}/4단계` : `Easy design · step ${step}/4`}
+              {designPair(lang, `쉬운 설계 · ${step}/4단계`, `Easy design · step ${step}/4`)}
             </div>
             <div style={{ fontSize: 17, fontWeight: 800, marginTop: 2 }}>{stepTitles[step - 1]}</div>
           </div>
-          <button type="button" onClick={onClose} aria-label={ko ? '닫기' : 'Close'}
+          <button type="button" onClick={onClose} aria-label={designPair(lang, '닫기', 'Close')}
             style={{ ...ghostBtn, padding: '6px 11px' }}>✕</button>
         </div>
 
@@ -370,7 +370,7 @@ export default function EasyWizard({
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                   <span style={{ fontSize: 20 }}>{c.icon}</span>
                   <span>
-                    {/* ⚠ 260802: `ko ? … : …` 2분기라 ja·zh·es·ar 이 영어로 떨어졌다. */}
+                    {/* Category and template labels are localized through the shared helper. */}
                     <span style={{ fontWeight: 700, fontSize: 14 }}>{loc(lang, c)}</span>
                     <span style={{ fontSize: 12, color: 'var(--nx-text-3, #6b7684)' }}> — {loc(lang, { ko: c.koDesc, en: c.enDesc, ja: c.jaDesc, zh: c.zhDesc, es: c.esDesc, ar: c.arDesc })}</span>
                   </span>
@@ -385,14 +385,14 @@ export default function EasyWizard({
           <div>
             {loadErr && <div style={{ fontSize: 12.5, color: '#ef4444', marginBottom: 8 }}>{loadErr}</div>}
             {!templates && !loadErr && (
-              <div style={{ fontSize: 12.5, color: 'var(--nx-text-3, #6b7684)' }}>{ko ? '불러오는 중…' : 'Loading…'}</div>
+              <div style={{ fontSize: 12.5, color: 'var(--nx-text-3, #6b7684)' }}>{designPair(lang, '불러오는 중…', 'Loading…')}</div>
             )}
             <div style={{ display: 'grid', gap: 8 }}>
               {templates?.map((t) => {
                 const desc = EASY_DESC[t.id];
                 return (
                   <button key={`${t.domain}/${t.id}`} type="button" style={cardStyle} onClick={() => chooseTemplate(t)}>
-                    <div style={{ fontWeight: 700, fontSize: 14 }}>{ko ? t.labelKo : t.labelEn}</div>
+                    <div style={{ fontWeight: 700, fontSize: 14 }}>{designPair(lang, t.labelKo, t.labelEn)}</div>
                     {desc && (
                       <div style={{ fontSize: 12, color: 'var(--nx-text-3, #6b7684)', marginTop: 3 }}>{loc(lang, desc)}</div>
                     )}
@@ -401,7 +401,7 @@ export default function EasyWizard({
               })}
             </div>
             <div style={{ marginTop: 14 }}>
-              <button type="button" style={ghostBtn} onClick={() => setStep(1)}>{ko ? '← 이전' : '← Back'}</button>
+              <button type="button" style={ghostBtn} onClick={() => setStep(1)}>{designPair(lang, '← 이전', '← Back')}</button>
             </div>
           </div>
         )}
@@ -410,7 +410,7 @@ export default function EasyWizard({
         {step === 3 && tpl && (
           <div>
             <div style={{ fontSize: 12.5, color: 'var(--nx-text-3, #6b7684)', marginBottom: 6 }}>
-              {ko ? `${tpl.labelKo} — 아래 값만 정하면 됩니다. 나머지는 기본값을 사용합니다.` : `${tpl.labelEn} — set these values; the rest use defaults.`}
+              {designPair(lang, `${tpl.labelKo} — 아래 값만 정하면 됩니다. 나머지는 기본값을 사용합니다.`, `${tpl.labelEn} — set these values; the rest use defaults.`)}
             </div>
             {keyParams.map(renderParam)}
 
@@ -418,8 +418,8 @@ export default function EasyWizard({
               <div style={{ marginTop: 10, borderTop: '1px solid var(--nx-border, #dfe3e8)', paddingTop: 10 }}>
                 <button type="button" style={ghostBtn} onClick={() => setAdvanced((v) => !v)}>
                   {advanced
-                    ? (ko ? '고급 설정 접기' : 'Hide advanced')
-                    : (ko ? `고급 설정 펼치기 (나머지 ${tpl.params.length - keyParams.length}개)` : `Show advanced (${tpl.params.length - keyParams.length} more)`)}
+                    ? designPair(lang, '고급 설정 접기', 'Hide advanced')
+                    : designPair(lang, `고급 설정 펼치기 (나머지 ${tpl.params.length - keyParams.length}개)`, `Show advanced (${tpl.params.length - keyParams.length} more)`)}
                 </button>
                 {advanced && (
                   <div style={{ marginTop: 8 }}>
@@ -430,15 +430,15 @@ export default function EasyWizard({
             )}
 
             <div style={{ marginTop: 16, display: 'flex', gap: 8 }}>
-              <button type="button" style={ghostBtn} onClick={() => setStep(2)}>{ko ? '← 이전' : '← Back'}</button>
+              <button type="button" style={ghostBtn} onClick={() => setStep(2)}>{designPair(lang, '← 이전', '← Back')}</button>
               <button type="button" style={{ ...primaryBtn, opacity: violations.length ? 0.5 : 1, cursor: violations.length ? 'not-allowed' : 'pointer' }}
                 disabled={violations.length > 0} onClick={() => setStep(4)}>
-                {ko ? '다음 →' : 'Next →'}
+                {designPair(lang, '다음 →', 'Next →')}
               </button>
             </div>
             {violations.length > 0 && (
               <div style={{ marginTop: 8, fontSize: 11.5, color: '#ef4444' }}>
-                {ko ? '범위를 벗어난 값이 있습니다 — 위 안내대로 직접 고쳐주세요(자동으로 바꾸지 않습니다).' : 'Some values are out of range — please fix them yourself (nothing is auto-adjusted).'}
+                {designPair(lang, '범위를 벗어난 값이 있습니다 — 위 안내대로 직접 고쳐주세요(자동으로 바꾸지 않습니다).', 'Some values are out of range — please fix them yourself (nothing is auto-adjusted).')}
               </div>
             )}
           </div>
@@ -449,18 +449,18 @@ export default function EasyWizard({
           <div>
             <div style={{ border: '1px solid var(--nx-border, #dfe3e8)', borderRadius: 9, padding: 12 }}>
               <div style={{ fontSize: 12, color: 'var(--nx-text-3, #6b7684)' }}>
-                {cat.icon} {ko ? cat.ko : cat.en}
+                {cat.icon} {loc(lang, cat)}
               </div>
-              <div style={{ fontSize: 15, fontWeight: 800, margin: '3px 0 8px' }}>{ko ? tpl.labelKo : tpl.labelEn}</div>
+              <div style={{ fontSize: 15, fontWeight: 800, margin: '3px 0 8px' }}>{designPair(lang, tpl.labelKo, tpl.labelEn)}</div>
               {keyParams.map((p) => (
                 <div key={p.name} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12.5, padding: '3px 0' }}>
                   <span style={{ color: 'var(--nx-text-3, #6b7684)' }}>{p.labelKo}</span>
-                  <span style={{ fontWeight: 700 }}>{toDisp(p, vals[p.name] ?? p.default)} {unitLabel(p, ko)}</span>
+                  <span style={{ fontWeight: 700 }}>{toDisp(p, vals[p.name] ?? p.default)} {unitLabel(p, lang)}</span>
                 </div>
               ))}
               {tpl.params.length > keyParams.length && (
                 <div style={{ fontSize: 11.5, color: 'var(--nx-text-3, #6b7684)', marginTop: 6 }}>
-                  {ko ? `나머지 ${tpl.params.length - keyParams.length}개 값은 템플릿 기본값 또는 입력한 고급 설정값을 사용합니다.` : `The other ${tpl.params.length - keyParams.length} values use template defaults or your advanced entries.`}
+                  {designPair(lang, `나머지 ${tpl.params.length - keyParams.length}개 값은 템플릿 기본값 또는 입력한 고급 설정값을 사용합니다.`, `The other ${tpl.params.length - keyParams.length} values use template defaults or your advanced entries.`)}
                 </div>
               )}
             </div>
@@ -468,14 +468,14 @@ export default function EasyWizard({
             {buildErr && <div style={{ marginTop: 10, fontSize: 12.5, color: '#ef4444', whiteSpace: 'pre-wrap' }}>{buildErr}</div>}
 
             <div style={{ marginTop: 16, display: 'flex', gap: 8 }}>
-              <button type="button" style={ghostBtn} disabled={busy} onClick={() => setStep(3)}>{ko ? '← 수정' : '← Edit'}</button>
+              <button type="button" style={ghostBtn} disabled={busy} onClick={() => setStep(3)}>{designPair(lang, '← 수정', '← Edit')}</button>
               <button type="button" style={{ ...primaryBtn, cursor: busy ? 'wait' : 'pointer', opacity: busy ? 0.6 : 1 }}
                 disabled={busy} onClick={() => void build()}>
-                {busy ? (ko ? '만드는 중…' : 'Building…') : (ko ? '이대로 만들기' : 'Build it')}
+                {busy ? designPair(lang, '만드는 중…', 'Building…') : designPair(lang, '이대로 만들기', 'Build it')}
               </button>
             </div>
             <div style={{ marginTop: 8, fontSize: 11, color: 'var(--nx-text-3, #6b7684)' }}>
-              {ko ? '만든 뒤에도 오른쪽 화면에서 치수를 바로 고칠 수 있습니다.' : 'You can keep adjusting dimensions in the studio after building.'}
+              {designPair(lang, '만든 뒤에도 오른쪽 화면에서 치수를 바로 고칠 수 있습니다.', 'You can keep adjusting dimensions in the studio after building.')}
             </div>
           </div>
         )}

@@ -627,7 +627,7 @@ export interface SolverSketchEditorWithExtrudeProps extends SolverSketchEditorPr
   /**
    * Injectable LLM intent fetcher forwarded to FeatureTreePlannerPanel
    * (Phase 3.AI.UI). When omitted the wrapper provides a default that
-   * POSTs the prompt to `/api/featureTree-planner`; tests can replace it
+   * POSTs the prompt to `/api/featureTree-intent`; tests can replace it
    * with a deterministic mock OR pass `null` to opt out entirely (the
    * panel then runs the regex-only path).
    *
@@ -1115,7 +1115,7 @@ export default function SolverSketchEditorWithExtrude(
   // so the panel runs regex-only.
   const defaultPlannerLlmFetcher = useCallback(
     async (text: string): Promise<PlanIntent | null> => {
-      const res = await fetch('/api/featureTree-planner', {
+      const res = await fetch('/api/featureTree-intent', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({ text }),

@@ -437,6 +437,18 @@ export const POSTGRES_REQUIRED_TABLES = [
   'nf_projects',
   'nf_files',
   'nf_cad_workspace_revisions',
+  'nf_assembly_drawing_handoffs',
+  'nf_artifact_upload_sessions',
+  'nf_cad_artifacts',
+  'nf_cad_canonical_brep_mappings',
+  'nf_cad_job_registry',
+  'nf_cad_job_receipts',
+  'nf_admin_access_emails',
+  'nf_admin_login_codes',
+  'nf_admin_sessions',
+  'nf_spatial_cad_drafts',
+  'nf_spatial_cad_issues',
+  'nf_spatial_cad_jobs',
   'partner_applications',
 ] as const;
 

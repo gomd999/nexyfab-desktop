@@ -111,26 +111,31 @@ export async function ensureAwCustomer(userId: string, country?: string): Promis
 
 export async function recordUsage(params: {
   userId: string;
+  orgId?: string | null;
   product: Product;
   metric: string;         // e.g. 'rfq_submission', 'render_3d', 'team_seat'
   quantity?: number;      // default 1
   metadata?: string;      // JSON string of context
 }): Promise<void> {
   const db = getDbAdapter();
+  await db.execute('ALTER TABLE nf_usage_events ADD COLUMN org_id TEXT').catch(() => {});
   const now = Date.now();
   // Get current billing cycle start
   const sub = await db.queryOne<{ current_period_start: number }>(
-    "SELECT current_period_start FROM nf_aw_subscriptions WHERE user_id = ? AND status = 'active' ORDER BY created_at DESC LIMIT 1",
-    params.userId,
+    params.orgId
+      ? "SELECT current_period_start FROM nf_aw_subscriptions WHERE org_id = ? AND status = 'active' ORDER BY created_at DESC LIMIT 1"
+      : "SELECT current_period_start FROM nf_aw_subscriptions WHERE user_id = ? AND org_id IS NULL AND status = 'active' ORDER BY created_at DESC LIMIT 1",
+    params.orgId ?? params.userId,
   );
   const cycleStart = sub?.current_period_start ?? getCycleStart();
 
   await db.execute(
     `INSERT INTO nf_usage_events
-       (id, user_id, product, metric, quantity, cycle_start, metadata, created_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+       (id, user_id, org_id, product, metric, quantity, cycle_start, metadata, created_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     `ue-${crypto.randomUUID()}`,
     params.userId,
+    params.orgId ?? null,
     params.product,
     params.metric,
     params.quantity ?? 1,
@@ -145,17 +150,19 @@ export async function calculateCycleUsage(
   userId: string,
   product: Product,
   plan: Plan,
+  orgId?: string | null,
 ): Promise<{ metric: string; used: number; limit: number; overage: number; chargeKrw: number }[]> {
   const db = getDbAdapter();
+  await db.execute('ALTER TABLE nf_usage_events ADD COLUMN org_id TEXT').catch(() => {});
   const cycleStart = getCycleStart();
   const limits = PLAN_LIMITS[plan];
 
   const rows = await db.queryAll<{ metric: string; total: number }>(
     `SELECT metric, SUM(quantity) as total
      FROM nf_usage_events
-     WHERE user_id = ? AND product = ? AND cycle_start = ?
+     WHERE ${orgId ? 'org_id = ?' : 'user_id = ? AND org_id IS NULL'} AND product = ? AND cycle_start = ?
      GROUP BY metric`,
-    userId, product, cycleStart,
+    orgId ?? userId, product, cycleStart,
   );
 
   return rows.map(row => {
@@ -179,6 +186,7 @@ export async function generateCycleInvoice(
   product: Product,
   plan: Plan,
   country?: string,
+  orgId?: string | null,
 ): Promise<{ invoiceId: string; totalKrw: number; totalLocal: number; currency: string; skipped?: boolean }> {
   const db = getDbAdapter();
 
@@ -190,7 +198,7 @@ export async function generateCycleInvoice(
   const resolvedCountry = (country ?? profile?.country ?? 'KR') as CountryCode;
   const currency = (profile?.currency ?? getCurrencyForCountry(resolvedCountry)) as CurrencyCode;
 
-  const usageItems = await calculateCycleUsage(userId, product, plan);
+  const usageItems = await calculateCycleUsage(userId, product, plan, orgId);
   const usageTotal = usageItems.reduce((sum, i) => sum + i.chargeKrw, 0);
   const basePrice  = PLAN_PRICE_KRW[plan];
   const totalKrw   = basePrice + usageTotal;
@@ -227,6 +235,7 @@ export async function generateCycleInvoice(
     dueDays:     7,
     metadata: {
       nexysys_user_id: userId,
+      nexysys_org_id: orgId ?? 'personal',
       product,
       plan,
       base_price_krw:  String(basePrice),
@@ -240,11 +249,11 @@ export async function generateCycleInvoice(
   const now = Date.now();
   await db.execute(
     `INSERT INTO nf_aw_invoices
-       (id, user_id, product, aw_invoice_id, aw_customer_id, plan, base_amount_krw,
+       (id, user_id, org_id, product, aw_invoice_id, aw_customer_id, plan, base_amount_krw,
         usage_amount_krw, total_amount_krw, currency, status, description,
         country, display_currency, display_amount, created_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-    invoiceId, userId, product, awInvoice.id, awCustomerId, plan,
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    invoiceId, userId, orgId ?? null, product, awInvoice.id, awCustomerId, plan,
     basePrice, usageTotal, totalKrw, currency, 'open', description,
     resolvedCountry, currency, totalWithTax, now,
   );

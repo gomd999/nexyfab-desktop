@@ -1,0 +1,37 @@
+{
+  "schema": "nexyfab.mechanical-core-feature-local-runtime.v1",
+  "feature": "hole",
+  "axis": "edit",
+  "status": "PASS",
+  "executedAt": "2026-08-22T07:13:30.564Z",
+  "commandId": "hole-runtime-param-edit",
+  "historyDepth": 1,
+  "before": {
+    "id": "runtime-feature",
+    "enabled": true,
+    "type": "hole",
+    "params": {
+      "holeType": 0,
+      "diameter": 8,
+      "posX": 0,
+      "posZ": 0,
+      "depth": 40,
+      "endCondition": 1,
+      "engine": 1
+    }
+  },
+  "after": {
+    "id": "runtime-feature",
+    "enabled": true,
+    "type": "hole",
+    "params": {
+      "holeType": 0,
+      "diameter": 12,
+      "posX": 0,
+      "posZ": 0,
+      "depth": 40,
+      "endCondition": 1,
+      "engine": 1
+    }
+  }
+}

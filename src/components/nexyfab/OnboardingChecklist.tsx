@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
-import { isKorean } from '@/lib/i18n/normalize';
+import { toIsoLang, type IsoLang } from '@/lib/i18n/normalize';
 
 interface OnboardingChecklistProps {
   lang: string;
@@ -13,11 +13,19 @@ interface OnboardingChecklistProps {
 }
 
 interface ChecklistItem {
-  labelKo: string;
-  labelEn: string;
+  label: string;
   href: string;
   done: boolean;
 }
+
+const COPY: Record<IsoLang, { title: string; close: string; progress: string; complete: string; items: [string, string, string, string] }> = {
+  ko: { title: '시작하기', close: '닫기', progress: '진행 상황', complete: '🎉 모든 단계 완료! Pro 플랜으로 더 많은 기능을 경험하세요.', items: ['첫 3D 프로젝트 만들기', '첫 RFQ 견적 요청 보내기', '제조사 둘러보기', 'Pro 플랜 알아보기'] },
+  en: { title: 'Get Started', close: 'Close', progress: 'Progress', complete: '🎉 All done! Upgrade to Pro for more features.', items: ['Create your first 3D project', 'Send your first RFQ', 'Explore manufacturers', 'Learn about Pro plan'] },
+  ja: { title: 'はじめる', close: '閉じる', progress: '進捗', complete: '🎉 すべて完了しました！Proプランでさらに多くの機能を利用できます。', items: ['最初の3Dプロジェクトを作成', '最初のRFQを送信', 'メーカーを探す', 'Proプランを見る'] },
+  zh: { title: '开始使用', close: '关闭', progress: '进度', complete: '🎉 全部完成！升级至 Pro 可使用更多功能。', items: ['创建第一个3D项目', '发送第一个RFQ', '浏览制造商', '了解 Pro 方案'] },
+  es: { title: 'Primeros pasos', close: 'Cerrar', progress: 'Progreso', complete: '🎉 ¡Todo listo! Mejora a Pro para acceder a más funciones.', items: ['Crea tu primer proyecto 3D', 'Envía tu primera RFQ', 'Explora fabricantes', 'Conoce el plan Pro'] },
+  ar: { title: 'البدء', close: 'إغلاق', progress: 'التقدم', complete: '🎉 اكتملت جميع الخطوات! قم بالترقية إلى Pro للحصول على مزيد من الميزات.', items: ['أنشئ أول مشروع ثلاثي الأبعاد', 'أرسل أول طلب عرض سعر', 'استكشف المصنّعين', 'تعرّف على خطة Pro'] },
+};
 
 export default function OnboardingChecklist({
   lang,
@@ -26,7 +34,7 @@ export default function OnboardingChecklist({
   user,
   onDismiss,
 }: OnboardingChecklistProps) {
-  const isKo = isKorean(lang);
+  const copy = COPY[toIsoLang(lang)];
   const [visitedMarketplace, setVisitedMarketplace] = useState(false);
 
   useEffect(() => {
@@ -39,26 +47,22 @@ export default function OnboardingChecklist({
 
   const items: ChecklistItem[] = [
     {
-      labelKo: '첫 3D 프로젝트 만들기',
-      labelEn: 'Create your first 3D project',
+      label: copy.items[0],
       href: `/${lang}/shape-generator`,
       done: projects.length > 0,
     },
     {
-      labelKo: 'RFQ 견적 요청 보내기',
-      labelEn: 'Send your first RFQ',
+      label: copy.items[1],
       href: `/${lang}/nexyfab/rfq`,
       done: rfqCount > 0,
     },
     {
-      labelKo: '제조사 둘러보기',
-      labelEn: 'Explore manufacturers',
+      label: copy.items[2],
       href: `/${lang}/nexyfab/marketplace`,
       done: visitedMarketplace,
     },
     {
-      labelKo: 'Pro 플랜 알아보기',
-      labelEn: 'Learn about Pro plan',
+      label: copy.items[3],
       href: `/${lang}/nexyfab/pricing`,
       done: user != null && user.plan !== 'free',
     },
@@ -90,7 +94,7 @@ export default function OnboardingChecklist({
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'center', marginBottom: 14 }}>
         <span style={{ fontSize: 14, fontWeight: 700, color: 'var(--nx-text)' }}>
-          🚀 {isKo ? '시작하기' : 'Get Started'}
+          🚀 {copy.title}
         </span>
         <div style={{ flex: 1 }} />
         <button
@@ -104,7 +108,7 @@ export default function OnboardingChecklist({
             lineHeight: 1,
             padding: '2px 6px',
           }}
-          aria-label="닫기"
+          aria-label={copy.close}
         >
           ✕
         </button>
@@ -119,7 +123,7 @@ export default function OnboardingChecklist({
             marginBottom: 6,
           }}
         >
-          <span style={{ fontSize: 11, color: 'var(--nx-text-2)' }}>{isKo ? '진행 상황' : 'Progress'}</span>
+          <span style={{ fontSize: 11, color: 'var(--nx-text-2)' }}>{copy.progress}</span>
           <span style={{ fontSize: 11, color: 'var(--nx-text)', fontWeight: 700 }}>
             {doneCount} / {items.length}
           </span>
@@ -149,7 +153,7 @@ export default function OnboardingChecklist({
         {items.map((item) => (
           <Link
             prefetch={item.href.includes('shape-generator')}
-            key={item.labelKo}
+            key={item.label}
             href={item.href}
             style={{
               display: 'flex',
@@ -174,7 +178,7 @@ export default function OnboardingChecklist({
                 color: item.done ? 'var(--nx-text-3)' : 'var(--nx-text)',
               }}
             >
-              {isKo ? item.labelKo : item.labelEn}
+              {item.label}
             </span>
           </Link>
         ))}
@@ -194,7 +198,7 @@ export default function OnboardingChecklist({
             fontWeight: 600,
           }}
         >
-          {isKo ? '🎉 모든 단계 완료! Pro 플랜으로 더 많은 기능을 경험하세요.' : '🎉 All done! Upgrade to Pro for more features.'}
+          {copy.complete}
         </div>
       )}
     </div>

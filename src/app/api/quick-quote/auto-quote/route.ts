@@ -21,9 +21,11 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { checkPlan } from '@/lib/plan-guard';
+import { readBoundedJson } from '@/lib/boundedJsonBody';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
+const MAX_JSON_BODY_BYTES = 64 * 1024;
 
 interface AutoQuoteInput {
   geometry: {
@@ -172,7 +174,7 @@ export async function POST(req: NextRequest) {
 
   let body: AutoQuoteInput;
   try {
-    body = await req.json();
+    body = await readBoundedJson(req, MAX_JSON_BODY_BYTES);
   } catch {
     return NextResponse.json({ ok: false, error: 'invalid JSON' }, { status: 400 });
   }

@@ -17,7 +17,9 @@ const LAYER_COLORS: Record<string, number> = {
   ANNOTATE: 3,      // green — text / dimensions
 };
 
-function generateDXFText(entities: DXFEntity[]): string {
+/** Serialize DXF entities without touching the browser download APIs. This is
+ * the headless contract used by CI, server jobs, and release evidence. */
+export function buildDXFText(entities: readonly DXFEntity[]): string {
   const lines: string[] = [];
 
   // Collect every layer referenced by the entities so we can declare them
@@ -165,7 +167,7 @@ function generateDXFText(entities: DXFEntity[]): string {
  * Export DXF entities to a downloadable file.
  */
 export async function exportDXF(entities: DXFEntity[], filename = 'shape-design'): Promise<void> {
-  const text = generateDXFText(entities);
+  const text = buildDXFText(entities);
   const blob = new Blob([text], { type: 'application/dxf' });
   await downloadBlob(`${filename}.dxf`, blob);
 }
@@ -269,6 +271,14 @@ export function flatPatternToDXFEntities(pattern: FlatPatternResult): DXFEntity[
   return entities;
 }
 
+/** Build the complete flat-pattern DXF text in a UI-independent way. */
+export function buildFlatPatternDXFText(pattern: FlatPatternResult): string {
+  return buildDXFText(flatPatternToDXFEntities(pattern));
+}
+
+/** Alias with the naming used by the other drawing exporters. */
+export const buildFlatPatternDXFString = buildFlatPatternDXFText;
+
 /**
  * Convenience: serialize a flat pattern straight to a downloadable DXF.
  */
@@ -276,8 +286,7 @@ export async function exportSheetMetalDXF(
   pattern: FlatPatternResult,
   filename = 'flat-pattern',
 ): Promise<void> {
-  const entities = flatPatternToDXFEntities(pattern);
-  const text = generateDXFText(entities);
+  const text = buildFlatPatternDXFText(pattern);
   const blob = new Blob([text], { type: 'application/dxf' });
   await downloadBlob(`${filename}.dxf`, blob);
 }

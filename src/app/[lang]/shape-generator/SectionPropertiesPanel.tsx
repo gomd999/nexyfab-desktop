@@ -229,10 +229,10 @@ interface Props {
   isKo: boolean;
 }
 
-export default function SectionPropertiesPanel({ shapeId, params, isKo }: Props) {
+export default function SectionPropertiesPanel({ shapeId, params, isKo: _isKo }: Props) {
   const pathname = usePathname();
-  const seg = pathname?.split('/').filter(Boolean)[0] ?? (isKo ? 'ko' : 'en');
-  const t = dict[langMap[seg] ?? (isKo ? 'ko' : 'en')];
+  const seg = pathname?.split('/').filter(Boolean)[0] ?? 'en';
+  const t = dict[langMap[seg] ?? 'en'];
 
   const sp = useMemo<SectionProps | null>(() => {
     const calc = CALCULATORS[shapeId];

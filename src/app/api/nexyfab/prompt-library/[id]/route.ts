@@ -11,6 +11,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getAuthUser } from '@/lib/auth-middleware';
 import { getDbAdapter } from '@/lib/db-adapter';
 import { checkOrigin } from '@/lib/csrf';
+import { boundedJsonError, readBoundedJson } from '@/lib/boundedJsonBody';
+
+const MAX_PROMPT_LIBRARY_UPDATE_BODY_BYTES = 32 * 1024;
 
 export const dynamic = 'force-dynamic';
 
@@ -53,7 +56,11 @@ export async function PATCH(
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   }
 
-  const body = await req.json().catch(() => ({})) as UpdateBody;
+  let body = {} as UpdateBody;
+  try { body = await readBoundedJson<UpdateBody>(req, MAX_PROMPT_LIBRARY_UPDATE_BODY_BYTES); }
+  catch (error) {
+    if (boundedJsonError(error)?.code === 'PAYLOAD_TOO_LARGE') return NextResponse.json({ error: 'Request too large', code: 'PAYLOAD_TOO_LARGE' }, { status: 413 });
+  }
 
   const nextTitle = typeof body.title === 'string' ? body.title.trim() : null;
   const nextPrompt = typeof body.prompt === 'string' ? body.prompt.trim() : null;

@@ -1,0 +1,14 @@
+{
+  "schema": "nexyfab.holdout-archive-manifest.v1",
+  "slotId": "",
+  "family": "",
+  "sourceHash": "",
+  "generatedAt": "",
+  "scanner": {
+    "name": "",
+    "version": "",
+    "artifactHash": ""
+  },
+  "expandedBytes": 0,
+  "entries": []
+}

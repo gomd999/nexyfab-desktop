@@ -10,6 +10,15 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import React from 'react';
+
+// These are page/control-plane tests. The real WebGL viewer has dedicated
+// suites and jsdom cannot create a WebGL context, so isolate it here instead
+// of accepting repeated canvas "Not implemented" errors as test noise.
+vi.mock('@/app/[lang]/shape-generator/assembly/Assembly3DViewer', async importOriginal => {
+  const actual = await importOriginal<typeof import('@/app/[lang]/shape-generator/assembly/Assembly3DViewer')>();
+  return { ...actual, default: () => null };
+});
+
 import { AssemblyBrowserPageContent } from '@/app/[lang]/shape-generator/assembly/_content';
 import { IDENTITY_QUAT, type AssemblyState } from '@/lib/assembly/assemblyState';
 import type { FeatureTree } from '@/lib/cad/featureTree';
@@ -123,42 +132,41 @@ describe('AssemblyBrowserPageContent', () => {
       mates: [],
     };
 
-    const TINY_TREE: FeatureTree = { nodes: [] };
+    const TINY_TREE: FeatureTree = {
+      nodes: [{
+        id: 'p1-extrude',
+        name: 'P1 base extrude',
+        dependencies: [],
+        payload: {
+          kind: 'extrude',
+          loop: [
+            { x: 0, y: 0 },
+            { x: 10, y: 0 },
+            { x: 10, y: 10 },
+            { x: 0, y: 10 },
+          ],
+          depth: 10,
+          direction: 'one_sided',
+          mode: 'add',
+        },
+      }],
+    };
 
-    it('omits featureTrees from POST body when no tree has been entered (phase=stub)', async () => {
-      fetchMock.mockResolvedValue(
-        new Response(
-          JSON.stringify({
-            ok: true,
-            success: true,
-            iterations: 0,
-            finalMaxResidual: 0,
-            dof: 0,
-            residuals: [],
-            phase: 'stub',
-          }),
-          { status: 200, headers: { 'content-type': 'application/json' } },
-        ),
-      );
+    it('blocks an exact solve before POST when no FeatureTree has been entered', async () => {
       render(<AssemblyBrowserPageContent lang="en" initialState={seedOnePart} />);
       await screen.findByTestId('solver-assembly-modal');
-      fireEvent.click(screen.getByTestId('solver-assembly-solve'));
-      await waitFor(() => expect(fetchMock).toHaveBeenCalled());
-      const [, init] = fetchMock.mock.calls[0] as [string, RequestInit];
-      const body = JSON.parse(String(init.body)) as Record<string, unknown>;
-      expect(body).toHaveProperty('state');
-      expect(body).not.toHaveProperty('featureTrees');
-      // Phase badge surfaces.
-      await waitFor(() =>
-        expect(screen.getByTestId('solver-assembly-solve-phase')).toBeInTheDocument(),
+      expect(screen.getByTestId('solver-assembly-solve')).toBeDisabled();
+      expect(screen.getByTestId('solver-assembly-readiness-gate')).toHaveTextContent(
+        /Missing active geometry: p1/i,
       );
-      expect(screen.getByTestId('solver-assembly-solve-phase').textContent).toMatch(
-        /stub/i,
-      );
+      expect(fetchMock).not.toHaveBeenCalled();
     });
 
     it('includes featureTrees in POST body when initialFeatureTrees supplied (phase=real)', async () => {
-      fetchMock.mockResolvedValue(
+      // The 3D viewer also requests a mesh for the supplied tree. Return a
+      // fresh Response per call so that request cannot consume the solve
+      // response body before /api/assembly-solve reads it.
+      fetchMock.mockImplementation(() => Promise.resolve(
         new Response(
           JSON.stringify({
             ok: true,
@@ -171,7 +179,7 @@ describe('AssemblyBrowserPageContent', () => {
           }),
           { status: 200, headers: { 'content-type': 'application/json' } },
         ),
-      );
+      ));
       render(
         <AssemblyBrowserPageContent
           lang="en"
@@ -181,8 +189,12 @@ describe('AssemblyBrowserPageContent', () => {
       );
       await screen.findByTestId('solver-assembly-modal');
       fireEvent.click(screen.getByTestId('solver-assembly-solve'));
-      await waitFor(() => expect(fetchMock).toHaveBeenCalled());
-      const [, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+      await waitFor(() =>
+        expect(fetchMock.mock.calls.some(([url]) => url === '/api/assembly-solve/')).toBe(true),
+      );
+      const solveCall = fetchMock.mock.calls.find(([url]) => url === '/api/assembly-solve/');
+      expect(solveCall).toBeDefined();
+      const [, init] = solveCall as [string, RequestInit];
       const body = JSON.parse(String(init.body)) as Record<string, unknown>;
       expect(body).toHaveProperty('featureTrees');
       expect((body.featureTrees as Record<string, FeatureTree>).p1).toBeDefined();
@@ -204,7 +216,13 @@ describe('AssemblyBrowserPageContent', () => {
           { status: 400, headers: { 'content-type': 'application/json' } },
         ),
       );
-      render(<AssemblyBrowserPageContent lang="en" initialState={seedOnePart} />);
+      render(
+        <AssemblyBrowserPageContent
+          lang="en"
+          initialState={seedOnePart}
+          initialFeatureTrees={{ p1: TINY_TREE }}
+        />,
+      );
       await screen.findByTestId('solver-assembly-modal');
       fireEvent.click(screen.getByTestId('solver-assembly-solve'));
       await waitFor(() =>

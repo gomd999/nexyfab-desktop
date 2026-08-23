@@ -1,0 +1,26 @@
+{
+  "schema": "nexyfab.mechanical-single-part-bom-candidate.v1",
+  "partRevisionSha256": "a9497245c7679d9a3a6bb4d8aa1647a2743c62811d95c587d3f8347c80b0e563",
+  "sourceDesignRevisionSha256": "3cf6a0f9c8efcf153a2cfefde087a2112c086fc412d2feeaeb9ce52542838564",
+  "sourceNfabSha256": "a787e03e59160b6240446643f05d50306115e15106a168233d81d8650db1621b",
+  "sourceStepSha256": "8958d970d359ee70f5530b005ff5c073aef9c3d33a5a1c114414a38463a942df",
+  "units": "mm",
+  "items": [
+    {
+      "partNumber": "mirror",
+      "description": "Mechanical runtime mirror",
+      "quantity": 1,
+      "dimensionsMm": {
+        "x": 60.0000002,
+        "y": 40.0000002,
+        "z": 30.000000200000002
+      }
+    }
+  ],
+  "claimBoundary": {
+    "singlePartCandidateOnly": true,
+    "materialSpecified": false,
+    "massCalculated": false,
+    "manufacturingApproved": false
+  }
+}

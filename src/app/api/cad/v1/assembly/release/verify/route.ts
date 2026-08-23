@@ -8,9 +8,11 @@ import { getTrustedClientIp } from '@/lib/client-ip';
 import { rateLimit } from '@/lib/rate-limit';
 import { evaluateJointEvidenceRelease, type JointEvidenceClaim } from '@/lib/reference/jointEvidenceReleaseGate';
 import { hashNativeCadVerificationInput } from '@/lib/reference/nativeCadExpertReview';
+import { boundedJsonError, readBoundedJson } from '@/lib/boundedJsonBody';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
+const MAX_BODY_BYTES = 32 * 1024 * 1024;
 
 interface ReleaseVerifyBody {
   state?: AssemblyState;
@@ -104,7 +106,12 @@ export async function POST(req: NextRequest) {
   if (!rateLimit(`cad-v1-assembly-release-verify:${ip}`, 10, 60_000).allowed) {
     return NextResponse.json({ ok: false, code: 'RATE_LIMIT', message: 'Too many assembly release verification requests' }, { status: 429 });
   }
-  const body = (await req.json().catch(() => null)) as ReleaseVerifyBody | null;
+  let body: ReleaseVerifyBody | null;
+  try { body = await readBoundedJson<ReleaseVerifyBody>(req, MAX_BODY_BYTES); }
+  catch (error) {
+    if (boundedJsonError(error)?.code === 'PAYLOAD_TOO_LARGE') return NextResponse.json({ ok: false, code: 'PAYLOAD_TOO_LARGE' }, { status: 413 });
+    body = null;
+  }
   if (!body?.state || !body.featureTrees || body.state.parts.length === 0) {
     return NextResponse.json({ ok: false, code: 'BAD_REQUEST', message: 'state and exact featureTrees are required' }, { status: 400 });
   }

@@ -6,6 +6,8 @@ import { useState } from 'react';
 import { usePathname } from 'next/navigation';
 import type { UserPlan } from '@/hooks/useAuth';
 import { useColorScheme, dialogPalette } from '@/hooks/useColorScheme';
+import { loc } from '../lib/loc';
+import { createCommercialLocalizer } from '@/lib/i18n/commercialLocalizer';
 
 interface UpgradePromptProps {
   open: boolean;
@@ -108,7 +110,7 @@ export default function UpgradePrompt({
   const langKey = langMap[seg] ?? 'en';
   const t = dict[langKey];
   const isoLang = langKey;
-  const isKo = langKey === 'ko';
+  const L = createCommercialLocalizer(isoLang);
 
   const handleUpgrade = (plan: 'pro' | 'team') => {
     setCheckoutLoading(plan);
@@ -130,13 +132,15 @@ export default function UpgradePrompt({
     }
     // Paid tiers are quote-on-request ("별도 협의") — open an inquiry instead of
     // self-serve checkout.
-    window.location.href = `mailto:gomd99914@gmail.com?subject=${encodeURIComponent(`[NexyFab] 3D 툴 견적 문의 — ${plan}`)}`;
+    window.location.assign(`mailto:gomd99914@gmail.com?subject=${encodeURIComponent(`[NexyFab] 3D 툴 견적 문의 — ${plan}`)}`);
     setCheckoutLoading(null);
   };
 
   if (!open) return null;
 
-  const featureLabel = isKo ? (featureKo ?? feature) : feature;
+  // Feature names can be supplied by the server; localize the known pair and
+  // retain the original text when no catalog entry exists.
+  const featureLabel = L(featureKo ?? feature, feature);
   const planFeatures = PLAN_FEATURES[requiredPlan] ?? PLAN_FEATURES.pro;
 
   return (
@@ -212,7 +216,14 @@ export default function UpgradePrompt({
                 {checkoutLoading === item.plan ? '...' : item.label}
               </div>
               <div style={{ fontSize: 20, fontWeight: 800, color: p.textPrimary }}>
-                {isKo ? item.price : isoLang === 'ja' ? item.priceJa : item.priceEn}
+                {loc(isoLang, {
+                  ko: item.price,
+                  en: item.priceEn,
+                  ja: item.priceJa,
+                  zh: '联系我们',
+                  es: 'Contáctanos',
+                  ar: 'اتصل بنا',
+                })}
               </div>
               <div style={{ fontSize: 10, color: p.textSecondary }}>
                 {item.period}

@@ -1,0 +1,1029 @@
+{
+  "schema": "nexyfab.independent-domain-review-kit.v3",
+  "generatedAt": "2026-08-22T05:08:02.845Z",
+  "releaseChannel": "verified-building",
+  "requiredDomains": [
+    "building"
+  ],
+  "policy": {
+    "casesPerDomain": 20,
+    "independentReviewersPerCase": 2,
+    "sourceMayNotComeFromSyntheticLane": true,
+    "sourceMayNotComeFromReferenceLane": true,
+    "reviewerMayNotBeReplacedByAi": true,
+    "signedDecisionRequired": true,
+    "cryptographicSignatureRequired": true,
+    "trustedReviewerRegistryRequired": true,
+    "sourceOrArtifactMutationInvalidatesReview": true,
+    "spatialEvidenceMaySatisfyMechanicalCore": false
+  },
+  "summary": {
+    "requiredCases": 20,
+    "acquiredCases": 0,
+    "approvedCases": 0,
+    "requiredSignedReviews": 40,
+    "completedSignedReviews": 0
+  },
+  "cases": [
+    {
+      "caseId": "building-independent-01",
+      "domain": "building",
+      "status": "source_required",
+      "requiredAxes": [
+        "spatial hierarchy",
+        "placement",
+        "IFC semantics",
+        "openings",
+        "quantity"
+      ],
+      "source": {
+        "organizationId": null,
+        "lineageId": null,
+        "sourceSha256": null,
+        "licenseDecision": null,
+        "independentOfTrainingAndReferenceCorpus": null,
+        "acquisitionAttestation": null
+      },
+      "blindedRun": {
+        "inputSha256": null,
+        "outputArtifactHashes": [],
+        "automaticValidationReceipt": {
+          "schema": null,
+          "path": null,
+          "sha256": null
+        },
+        "executedAt": null
+      },
+      "reviews": {
+        "domainReviewer": {
+          "reviewerId": null,
+          "independentFromBuild": null,
+          "decision": null,
+          "reviewedAt": null,
+          "targetHash": null,
+          "signature": null
+        },
+        "independentReviewer": {
+          "reviewerId": null,
+          "independentFromBuild": null,
+          "decision": null,
+          "reviewedAt": null,
+          "targetHash": null,
+          "signature": null
+        },
+        "disagreementResolution": null
+      },
+      "releaseEligible": false
+    },
+    {
+      "caseId": "building-independent-02",
+      "domain": "building",
+      "status": "source_required",
+      "requiredAxes": [
+        "spatial hierarchy",
+        "placement",
+        "IFC semantics",
+        "openings",
+        "quantity"
+      ],
+      "source": {
+        "organizationId": null,
+        "lineageId": null,
+        "sourceSha256": null,
+        "licenseDecision": null,
+        "independentOfTrainingAndReferenceCorpus": null,
+        "acquisitionAttestation": null
+      },
+      "blindedRun": {
+        "inputSha256": null,
+        "outputArtifactHashes": [],
+        "automaticValidationReceipt": {
+          "schema": null,
+          "path": null,
+          "sha256": null
+        },
+        "executedAt": null
+      },
+      "reviews": {
+        "domainReviewer": {
+          "reviewerId": null,
+          "independentFromBuild": null,
+          "decision": null,
+          "reviewedAt": null,
+          "targetHash": null,
+          "signature": null
+        },
+        "independentReviewer": {
+          "reviewerId": null,
+          "independentFromBuild": null,
+          "decision": null,
+          "reviewedAt": null,
+          "targetHash": null,
+          "signature": null
+        },
+        "disagreementResolution": null
+      },
+      "releaseEligible": false
+    },
+    {
+      "caseId": "building-independent-03",
+      "domain": "building",
+      "status": "source_required",
+      "requiredAxes": [
+        "spatial hierarchy",
+        "placement",
+        "IFC semantics",
+        "openings",
+        "quantity"
+      ],
+      "source": {
+        "organizationId": null,
+        "lineageId": null,
+        "sourceSha256": null,
+        "licenseDecision": null,
+        "independentOfTrainingAndReferenceCorpus": null,
+        "acquisitionAttestation": null
+      },
+      "blindedRun": {
+        "inputSha256": null,
+        "outputArtifactHashes": [],
+        "automaticValidationReceipt": {
+          "schema": null,
+          "path": null,
+          "sha256": null
+        },
+        "executedAt": null
+      },
+      "reviews": {
+        "domainReviewer": {
+          "reviewerId": null,
+          "independentFromBuild": null,
+          "decision": null,
+          "reviewedAt": null,
+          "targetHash": null,
+          "signature": null
+        },
+        "independentReviewer": {
+          "reviewerId": null,
+          "independentFromBuild": null,
+          "decision": null,
+          "reviewedAt": null,
+          "targetHash": null,
+          "signature": null
+        },
+        "disagreementResolution": null
+      },
+      "releaseEligible": false
+    },
+    {
+      "caseId": "building-independent-04",
+      "domain": "building",
+      "status": "source_required",
+      "requiredAxes": [
+        "spatial hierarchy",
+        "placement",
+        "IFC semantics",
+        "openings",
+        "quantity"
+      ],
+      "source": {
+        "organizationId": null,
+        "lineageId": null,
+        "sourceSha256": null,
+        "licenseDecision": null,
+        "independentOfTrainingAndReferenceCorpus": null,
+        "acquisitionAttestation": null
+      },
+      "blindedRun": {
+        "inputSha256": null,
+        "outputArtifactHashes": [],
+        "automaticValidationReceipt": {
+          "schema": null,
+          "path": null,
+          "sha256": null
+        },
+        "executedAt": null
+      },
+      "reviews": {
+        "domainReviewer": {
+          "reviewerId": null,
+          "independentFromBuild": null,
+          "decision": null,
+          "reviewedAt": null,
+          "targetHash": null,
+          "signature": null
+        },
+        "independentReviewer": {
+          "reviewerId": null,
+          "independentFromBuild": null,
+          "decision": null,
+          "reviewedAt": null,
+          "targetHash": null,
+          "signature": null
+        },
+        "disagreementResolution": null
+      },
+      "releaseEligible": false
+    },
+    {
+      "caseId": "building-independent-05",
+      "domain": "building",
+      "status": "source_required",
+      "requiredAxes": [
+        "spatial hierarchy",
+        "placement",
+        "IFC semantics",
+        "openings",
+        "quantity"
+      ],
+      "source": {
+        "organizationId": null,
+        "lineageId": null,
+        "sourceSha256": null,
+        "licenseDecision": null,
+        "independentOfTrainingAndReferenceCorpus": null,
+        "acquisitionAttestation": null
+      },
+      "blindedRun": {
+        "inputSha256": null,
+        "outputArtifactHashes": [],
+        "automaticValidationReceipt": {
+          "schema": null,
+          "path": null,
+          "sha256": null
+        },
+        "executedAt": null
+      },
+      "reviews": {
+        "domainReviewer": {
+          "reviewerId": null,
+          "independentFromBuild": null,
+          "decision": null,
+          "reviewedAt": null,
+          "targetHash": null,
+          "signature": null
+        },
+        "independentReviewer": {
+          "reviewerId": null,
+          "independentFromBuild": null,
+          "decision": null,
+          "reviewedAt": null,
+          "targetHash": null,
+          "signature": null
+        },
+        "disagreementResolution": null
+      },
+      "releaseEligible": false
+    },
+    {
+      "caseId": "building-independent-06",
+      "domain": "building",
+      "status": "source_required",
+      "requiredAxes": [
+        "spatial hierarchy",
+        "placement",
+        "IFC semantics",
+        "openings",
+        "quantity"
+      ],
+      "source": {
+        "organizationId": null,
+        "lineageId": null,
+        "sourceSha256": null,
+        "licenseDecision": null,
+        "independentOfTrainingAndReferenceCorpus": null,
+        "acquisitionAttestation": null
+      },
+      "blindedRun": {
+        "inputSha256": null,
+        "outputArtifactHashes": [],
+        "automaticValidationReceipt": {
+          "schema": null,
+          "path": null,
+          "sha256": null
+        },
+        "executedAt": null
+      },
+      "reviews": {
+        "domainReviewer": {
+          "reviewerId": null,
+          "independentFromBuild": null,
+          "decision": null,
+          "reviewedAt": null,
+          "targetHash": null,
+          "signature": null
+        },
+        "independentReviewer": {
+          "reviewerId": null,
+          "independentFromBuild": null,
+          "decision": null,
+          "reviewedAt": null,
+          "targetHash": null,
+          "signature": null
+        },
+        "disagreementResolution": null
+      },
+      "releaseEligible": false
+    },
+    {
+      "caseId": "building-independent-07",
+      "domain": "building",
+      "status": "source_required",
+      "requiredAxes": [
+        "spatial hierarchy",
+        "placement",
+        "IFC semantics",
+        "openings",
+        "quantity"
+      ],
+      "source": {
+        "organizationId": null,
+        "lineageId": null,
+        "sourceSha256": null,
+        "licenseDecision": null,
+        "independentOfTrainingAndReferenceCorpus": null,
+        "acquisitionAttestation": null
+      },
+      "blindedRun": {
+        "inputSha256": null,
+        "outputArtifactHashes": [],
+        "automaticValidationReceipt": {
+          "schema": null,
+          "path": null,
+          "sha256": null
+        },
+        "executedAt": null
+      },
+      "reviews": {
+        "domainReviewer": {
+          "reviewerId": null,
+          "independentFromBuild": null,
+          "decision": null,
+          "reviewedAt": null,
+          "targetHash": null,
+          "signature": null
+        },
+        "independentReviewer": {
+          "reviewerId": null,
+          "independentFromBuild": null,
+          "decision": null,
+          "reviewedAt": null,
+          "targetHash": null,
+          "signature": null
+        },
+        "disagreementResolution": null
+      },
+      "releaseEligible": false
+    },
+    {
+      "caseId": "building-independent-08",
+      "domain": "building",
+      "status": "source_required",
+      "requiredAxes": [
+        "spatial hierarchy",
+        "placement",
+        "IFC semantics",
+        "openings",
+        "quantity"
+      ],
+      "source": {
+        "organizationId": null,
+        "lineageId": null,
+        "sourceSha256": null,
+        "licenseDecision": null,
+        "independentOfTrainingAndReferenceCorpus": null,
+        "acquisitionAttestation": null
+      },
+      "blindedRun": {
+        "inputSha256": null,
+        "outputArtifactHashes": [],
+        "automaticValidationReceipt": {
+          "schema": null,
+          "path": null,
+          "sha256": null
+        },
+        "executedAt": null
+      },
+      "reviews": {
+        "domainReviewer": {
+          "reviewerId": null,
+          "independentFromBuild": null,
+          "decision": null,
+          "reviewedAt": null,
+          "targetHash": null,
+          "signature": null
+        },
+        "independentReviewer": {
+          "reviewerId": null,
+          "independentFromBuild": null,
+          "decision": null,
+          "reviewedAt": null,
+          "targetHash": null,
+          "signature": null
+        },
+        "disagreementResolution": null
+      },
+      "releaseEligible": false
+    },
+    {
+      "caseId": "building-independent-09",
+      "domain": "building",
+      "status": "source_required",
+      "requiredAxes": [
+        "spatial hierarchy",
+        "placement",
+        "IFC semantics",
+        "openings",
+        "quantity"
+      ],
+      "source": {
+        "organizationId": null,
+        "lineageId": null,
+        "sourceSha256": null,
+        "licenseDecision": null,
+        "independentOfTrainingAndReferenceCorpus": null,
+        "acquisitionAttestation": null
+      },
+      "blindedRun": {
+        "inputSha256": null,
+        "outputArtifactHashes": [],
+        "automaticValidationReceipt": {
+          "schema": null,
+          "path": null,
+          "sha256": null
+        },
+        "executedAt": null
+      },
+      "reviews": {
+        "domainReviewer": {
+          "reviewerId": null,
+          "independentFromBuild": null,
+          "decision": null,
+          "reviewedAt": null,
+          "targetHash": null,
+          "signature": null
+        },
+        "independentReviewer": {
+          "reviewerId": null,
+          "independentFromBuild": null,
+          "decision": null,
+          "reviewedAt": null,
+          "targetHash": null,
+          "signature": null
+        },
+        "disagreementResolution": null
+      },
+      "releaseEligible": false
+    },
+    {
+      "caseId": "building-independent-10",
+      "domain": "building",
+      "status": "source_required",
+      "requiredAxes": [
+        "spatial hierarchy",
+        "placement",
+        "IFC semantics",
+        "openings",
+        "quantity"
+      ],
+      "source": {
+        "organizationId": null,
+        "lineageId": null,
+        "sourceSha256": null,
+        "licenseDecision": null,
+        "independentOfTrainingAndReferenceCorpus": null,
+        "acquisitionAttestation": null
+      },
+      "blindedRun": {
+        "inputSha256": null,
+        "outputArtifactHashes": [],
+        "automaticValidationReceipt": {
+          "schema": null,
+          "path": null,
+          "sha256": null
+        },
+        "executedAt": null
+      },
+      "reviews": {
+        "domainReviewer": {
+          "reviewerId": null,
+          "independentFromBuild": null,
+          "decision": null,
+          "reviewedAt": null,
+          "targetHash": null,
+          "signature": null
+        },
+        "independentReviewer": {
+          "reviewerId": null,
+          "independentFromBuild": null,
+          "decision": null,
+          "reviewedAt": null,
+          "targetHash": null,
+          "signature": null
+        },
+        "disagreementResolution": null
+      },
+      "releaseEligible": false
+    },
+    {
+      "caseId": "building-independent-11",
+      "domain": "building",
+      "status": "source_required",
+      "requiredAxes": [
+        "spatial hierarchy",
+        "placement",
+        "IFC semantics",
+        "openings",
+        "quantity"
+      ],
+      "source": {
+        "organizationId": null,
+        "lineageId": null,
+        "sourceSha256": null,
+        "licenseDecision": null,
+        "independentOfTrainingAndReferenceCorpus": null,
+        "acquisitionAttestation": null
+      },
+      "blindedRun": {
+        "inputSha256": null,
+        "outputArtifactHashes": [],
+        "automaticValidationReceipt": {
+          "schema": null,
+          "path": null,
+          "sha256": null
+        },
+        "executedAt": null
+      },
+      "reviews": {
+        "domainReviewer": {
+          "reviewerId": null,
+          "independentFromBuild": null,
+          "decision": null,
+          "reviewedAt": null,
+          "targetHash": null,
+          "signature": null
+        },
+        "independentReviewer": {
+          "reviewerId": null,
+          "independentFromBuild": null,
+          "decision": null,
+          "reviewedAt": null,
+          "targetHash": null,
+          "signature": null
+        },
+        "disagreementResolution": null
+      },
+      "releaseEligible": false
+    },
+    {
+      "caseId": "building-independent-12",
+      "domain": "building",
+      "status": "source_required",
+      "requiredAxes": [
+        "spatial hierarchy",
+        "placement",
+        "IFC semantics",
+        "openings",
+        "quantity"
+      ],
+      "source": {
+        "organizationId": null,
+        "lineageId": null,
+        "sourceSha256": null,
+        "licenseDecision": null,
+        "independentOfTrainingAndReferenceCorpus": null,
+        "acquisitionAttestation": null
+      },
+      "blindedRun": {
+        "inputSha256": null,
+        "outputArtifactHashes": [],
+        "automaticValidationReceipt": {
+          "schema": null,
+          "path": null,
+          "sha256": null
+        },
+        "executedAt": null
+      },
+      "reviews": {
+        "domainReviewer": {
+          "reviewerId": null,
+          "independentFromBuild": null,
+          "decision": null,
+          "reviewedAt": null,
+          "targetHash": null,
+          "signature": null
+        },
+        "independentReviewer": {
+          "reviewerId": null,
+          "independentFromBuild": null,
+          "decision": null,
+          "reviewedAt": null,
+          "targetHash": null,
+          "signature": null
+        },
+        "disagreementResolution": null
+      },
+      "releaseEligible": false
+    },
+    {
+      "caseId": "building-independent-13",
+      "domain": "building",
+      "status": "source_required",
+      "requiredAxes": [
+        "spatial hierarchy",
+        "placement",
+        "IFC semantics",
+        "openings",
+        "quantity"
+      ],
+      "source": {
+        "organizationId": null,
+        "lineageId": null,
+        "sourceSha256": null,
+        "licenseDecision": null,
+        "independentOfTrainingAndReferenceCorpus": null,
+        "acquisitionAttestation": null
+      },
+      "blindedRun": {
+        "inputSha256": null,
+        "outputArtifactHashes": [],
+        "automaticValidationReceipt": {
+          "schema": null,
+          "path": null,
+          "sha256": null
+        },
+        "executedAt": null
+      },
+      "reviews": {
+        "domainReviewer": {
+          "reviewerId": null,
+          "independentFromBuild": null,
+          "decision": null,
+          "reviewedAt": null,
+          "targetHash": null,
+          "signature": null
+        },
+        "independentReviewer": {
+          "reviewerId": null,
+          "independentFromBuild": null,
+          "decision": null,
+          "reviewedAt": null,
+          "targetHash": null,
+          "signature": null
+        },
+        "disagreementResolution": null
+      },
+      "releaseEligible": false
+    },
+    {
+      "caseId": "building-independent-14",
+      "domain": "building",
+      "status": "source_required",
+      "requiredAxes": [
+        "spatial hierarchy",
+        "placement",
+        "IFC semantics",
+        "openings",
+        "quantity"
+      ],
+      "source": {
+        "organizationId": null,
+        "lineageId": null,
+        "sourceSha256": null,
+        "licenseDecision": null,
+        "independentOfTrainingAndReferenceCorpus": null,
+        "acquisitionAttestation": null
+      },
+      "blindedRun": {
+        "inputSha256": null,
+        "outputArtifactHashes": [],
+        "automaticValidationReceipt": {
+          "schema": null,
+          "path": null,
+          "sha256": null
+        },
+        "executedAt": null
+      },
+      "reviews": {
+        "domainReviewer": {
+          "reviewerId": null,
+          "independentFromBuild": null,
+          "decision": null,
+          "reviewedAt": null,
+          "targetHash": null,
+          "signature": null
+        },
+        "independentReviewer": {
+          "reviewerId": null,
+          "independentFromBuild": null,
+          "decision": null,
+          "reviewedAt": null,
+          "targetHash": null,
+          "signature": null
+        },
+        "disagreementResolution": null
+      },
+      "releaseEligible": false
+    },
+    {
+      "caseId": "building-independent-15",
+      "domain": "building",
+      "status": "source_required",
+      "requiredAxes": [
+        "spatial hierarchy",
+        "placement",
+        "IFC semantics",
+        "openings",
+        "quantity"
+      ],
+      "source": {
+        "organizationId": null,
+        "lineageId": null,
+        "sourceSha256": null,
+        "licenseDecision": null,
+        "independentOfTrainingAndReferenceCorpus": null,
+        "acquisitionAttestation": null
+      },
+      "blindedRun": {
+        "inputSha256": null,
+        "outputArtifactHashes": [],
+        "automaticValidationReceipt": {
+          "schema": null,
+          "path": null,
+          "sha256": null
+        },
+        "executedAt": null
+      },
+      "reviews": {
+        "domainReviewer": {
+          "reviewerId": null,
+          "independentFromBuild": null,
+          "decision": null,
+          "reviewedAt": null,
+          "targetHash": null,
+          "signature": null
+        },
+        "independentReviewer": {
+          "reviewerId": null,
+          "independentFromBuild": null,
+          "decision": null,
+          "reviewedAt": null,
+          "targetHash": null,
+          "signature": null
+        },
+        "disagreementResolution": null
+      },
+      "releaseEligible": false
+    },
+    {
+      "caseId": "building-independent-16",
+      "domain": "building",
+      "status": "source_required",
+      "requiredAxes": [
+        "spatial hierarchy",
+        "placement",
+        "IFC semantics",
+        "openings",
+        "quantity"
+      ],
+      "source": {
+        "organizationId": null,
+        "lineageId": null,
+        "sourceSha256": null,
+        "licenseDecision": null,
+        "independentOfTrainingAndReferenceCorpus": null,
+        "acquisitionAttestation": null
+      },
+      "blindedRun": {
+        "inputSha256": null,
+        "outputArtifactHashes": [],
+        "automaticValidationReceipt": {
+          "schema": null,
+          "path": null,
+          "sha256": null
+        },
+        "executedAt": null
+      },
+      "reviews": {
+        "domainReviewer": {
+          "reviewerId": null,
+          "independentFromBuild": null,
+          "decision": null,
+          "reviewedAt": null,
+          "targetHash": null,
+          "signature": null
+        },
+        "independentReviewer": {
+          "reviewerId": null,
+          "independentFromBuild": null,
+          "decision": null,
+          "reviewedAt": null,
+          "targetHash": null,
+          "signature": null
+        },
+        "disagreementResolution": null
+      },
+      "releaseEligible": false
+    },
+    {
+      "caseId": "building-independent-17",
+      "domain": "building",
+      "status": "source_required",
+      "requiredAxes": [
+        "spatial hierarchy",
+        "placement",
+        "IFC semantics",
+        "openings",
+        "quantity"
+      ],
+      "source": {
+        "organizationId": null,
+        "lineageId": null,
+        "sourceSha256": null,
+        "licenseDecision": null,
+        "independentOfTrainingAndReferenceCorpus": null,
+        "acquisitionAttestation": null
+      },
+      "blindedRun": {
+        "inputSha256": null,
+        "outputArtifactHashes": [],
+        "automaticValidationReceipt": {
+          "schema": null,
+          "path": null,
+          "sha256": null
+        },
+        "executedAt": null
+      },
+      "reviews": {
+        "domainReviewer": {
+          "reviewerId": null,
+          "independentFromBuild": null,
+          "decision": null,
+          "reviewedAt": null,
+          "targetHash": null,
+          "signature": null
+        },
+        "independentReviewer": {
+          "reviewerId": null,
+          "independentFromBuild": null,
+          "decision": null,
+          "reviewedAt": null,
+          "targetHash": null,
+          "signature": null
+        },
+        "disagreementResolution": null
+      },
+      "releaseEligible": false
+    },
+    {
+      "caseId": "building-independent-18",
+      "domain": "building",
+      "status": "source_required",
+      "requiredAxes": [
+        "spatial hierarchy",
+        "placement",
+        "IFC semantics",
+        "openings",
+        "quantity"
+      ],
+      "source": {
+        "organizationId": null,
+        "lineageId": null,
+        "sourceSha256": null,
+        "licenseDecision": null,
+        "independentOfTrainingAndReferenceCorpus": null,
+        "acquisitionAttestation": null
+      },
+      "blindedRun": {
+        "inputSha256": null,
+        "outputArtifactHashes": [],
+        "automaticValidationReceipt": {
+          "schema": null,
+          "path": null,
+          "sha256": null
+        },
+        "executedAt": null
+      },
+      "reviews": {
+        "domainReviewer": {
+          "reviewerId": null,
+          "independentFromBuild": null,
+          "decision": null,
+          "reviewedAt": null,
+          "targetHash": null,
+          "signature": null
+        },
+        "independentReviewer": {
+          "reviewerId": null,
+          "independentFromBuild": null,
+          "decision": null,
+          "reviewedAt": null,
+          "targetHash": null,
+          "signature": null
+        },
+        "disagreementResolution": null
+      },
+      "releaseEligible": false
+    },
+    {
+      "caseId": "building-independent-19",
+      "domain": "building",
+      "status": "source_required",
+      "requiredAxes": [
+        "spatial hierarchy",
+        "placement",
+        "IFC semantics",
+        "openings",
+        "quantity"
+      ],
+      "source": {
+        "organizationId": null,
+        "lineageId": null,
+        "sourceSha256": null,
+        "licenseDecision": null,
+        "independentOfTrainingAndReferenceCorpus": null,
+        "acquisitionAttestation": null
+      },
+      "blindedRun": {
+        "inputSha256": null,
+        "outputArtifactHashes": [],
+        "automaticValidationReceipt": {
+          "schema": null,
+          "path": null,
+          "sha256": null
+        },
+        "executedAt": null
+      },
+      "reviews": {
+        "domainReviewer": {
+          "reviewerId": null,
+          "independentFromBuild": null,
+          "decision": null,
+          "reviewedAt": null,
+          "targetHash": null,
+          "signature": null
+        },
+        "independentReviewer": {
+          "reviewerId": null,
+          "independentFromBuild": null,
+          "decision": null,
+          "reviewedAt": null,
+          "targetHash": null,
+          "signature": null
+        },
+        "disagreementResolution": null
+      },
+      "releaseEligible": false
+    },
+    {
+      "caseId": "building-independent-20",
+      "domain": "building",
+      "status": "source_required",
+      "requiredAxes": [
+        "spatial hierarchy",
+        "placement",
+        "IFC semantics",
+        "openings",
+        "quantity"
+      ],
+      "source": {
+        "organizationId": null,
+        "lineageId": null,
+        "sourceSha256": null,
+        "licenseDecision": null,
+        "independentOfTrainingAndReferenceCorpus": null,
+        "acquisitionAttestation": null
+      },
+      "blindedRun": {
+        "inputSha256": null,
+        "outputArtifactHashes": [],
+        "automaticValidationReceipt": {
+          "schema": null,
+          "path": null,
+          "sha256": null
+        },
+        "executedAt": null
+      },
+      "reviews": {
+        "domainReviewer": {
+          "reviewerId": null,
+          "independentFromBuild": null,
+          "decision": null,
+          "reviewedAt": null,
+          "targetHash": null,
+          "signature": null
+        },
+        "independentReviewer": {
+          "reviewerId": null,
+          "independentFromBuild": null,
+          "decision": null,
+          "reviewedAt": null,
+          "targetHash": null,
+          "signature": null
+        },
+        "disagreementResolution": null
+      },
+      "releaseEligible": false
+    }
+  ]
+}

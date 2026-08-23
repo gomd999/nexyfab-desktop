@@ -7,6 +7,7 @@ import {
   protectManualEdit,
   releaseManualEditProtection,
   resetManualEditProtectionSession,
+  replaceManualEditProtectionLocks,
   useManualEditProtectionLocks,
 } from './manualEditProtectionStore';
 
@@ -27,5 +28,12 @@ describe('manual edit protection store', () => {
     expect(getManualEditProtectionLocks()).toMatchObject([{ source: 'expert', reason: 'Approved dimension' }]);
     expect(releaseManualEditProtection(second.id)).toBe(true);
     expect(getManualEditProtectionLocks()).toEqual([]);
+  });
+
+  it('replaces only an exact browser-session scope and fails closed on mismatch', () => {
+    const lock = protectManualEdit({ kind: 'parameter', objectId: 'doc-1', field: 'width' }, { scope: 'project:p:domain:building:document:doc-1' });
+    expect(replaceManualEditProtectionLocks(lock.scope, [lock])).toBe(true);
+    expect(replaceManualEditProtectionLocks('project:p:domain:civil:document:doc-1', [lock])).toBe(false);
+    expect(getManualEditProtectionLocks(lock.scope)).toHaveLength(1);
   });
 });

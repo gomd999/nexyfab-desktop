@@ -32,6 +32,13 @@ import type { BendHistoryEntry } from './sheetMetal';
 import { noteMeshFallback } from './downgradeNotice';
 import { stampFaceFeatureIdAll, propagateFeatureIdMap } from './faceProvenance';
 import { configureEvaluatorAttributes } from './meshMerge';
+import {
+  hostBoxFromGeometry,
+  occtBoxBooleanWithPrimitive,
+  resolveBrepHostHandle,
+} from './occtEngine';
+import { shouldUseOcctEngine } from './engineSelection';
+import { requireValidBrepResult } from './kernelOperationQuality';
 
 export type BendReliefShape = 'rectangular' | 'obround';
 export type CornerReliefShape = 'circular' | 'square';
@@ -56,6 +63,20 @@ export interface CornerReliefParams {
   size: number;
   /** Distance the cut center moves inward from the corner along BOTH axes, mm. */
   inset: number;
+}
+
+type ReliefToolSpec = Parameters<typeof occtBoxBooleanWithPrimitive>[2];
+
+function requireFinitePositive(value: number, message: string): void {
+  if (!Number.isFinite(value) || value <= 0) throw new Error(message);
+}
+
+function boundingBoxOf(geometry: THREE.BufferGeometry): THREE.Box3 {
+  geometry.computeBoundingBox();
+  if (!geometry.boundingBox || geometry.boundingBox.isEmpty()) {
+    throw new Error('Relief cut requires a non-empty solid body');
+  }
+  return geometry.boundingBox.clone();
 }
 
 function makeBrush(geo: THREE.BufferGeometry): Brush {
@@ -94,7 +115,7 @@ export function csgSubtract(
  *  (min edge) | +1 (max edge of the bend-line axis). Tools overshoot the
  *  sheet by `pad` on the open side + thickness axis so the boolean is
  *  clean. */
-function buildNotchTools(
+function buildNotchToolSpecs(
   bb: THREE.Box3,
   alongX: boolean,
   side: -1 | 1,
@@ -102,7 +123,7 @@ function buildNotchTools(
   width: number,
   depth: number,
   shape: BendReliefShape,
-): THREE.BufferGeometry[] {
+): ReliefToolSpec[] {
   const pad = 1;
   const thickness = bb.max.y - bb.min.y;
   const cy = (bb.min.y + bb.max.y) / 2;
@@ -115,7 +136,7 @@ function buildNotchTools(
     ? (side === 1 ? bb.max.x : bb.min.x)
     : (side === 1 ? bb.max.z : bb.min.z);
 
-  const parts: THREE.BufferGeometry[] = [];
+  const parts: ReliefToolSpec[] = [];
   // Rectangular body: spans [edge − side·boxDepth … edge + side·pad].
   // For obround, the box stops r short of full depth; a cylinder caps it.
   const boxDepth = shape === 'obround' ? Math.max(depth - r, 0) : depth;
@@ -123,30 +144,116 @@ function buildNotchTools(
     // Box spans from (edge + side·pad) outside to (edge − side·boxDepth) inside.
     const len = boxDepth + pad;
     const cAlong = edge + (side * pad - side * boxDepth) / 2;
-    const box = new THREE.BoxGeometry(
-      alongX ? len : width,
+    parts.push({
+      shape: 'box',
+      w: alongX ? len : width,
       h,
-      alongX ? width : len,
-    );
-    box.translate(
-      alongX ? cAlong : bendLinePos,
+      d: alongX ? width : len,
+      cx: alongX ? cAlong : bendLinePos,
       cy,
-      alongX ? bendLinePos : cAlong,
-    );
-    parts.push(box);
+      cz: alongX ? bendLinePos : cAlong,
+      rx: 0, ry: 0, rz: 0,
+    });
   }
   if (shape === 'obround') {
     // Round inner end: cylinder (Y axis) centered at the inner end of the box.
-    const cyl = new THREE.CylinderGeometry(r, r, h, 32);
     const cAlong = edge - side * Math.max(depth - r, 0);
-    cyl.translate(
-      alongX ? cAlong : bendLinePos,
+    parts.push({
+      shape: 'cylinder',
+      w: width,
+      h,
+      d: width,
+      cx: alongX ? cAlong : bendLinePos,
       cy,
-      alongX ? bendLinePos : cAlong,
-    );
-    parts.push(cyl);
+      cz: alongX ? bendLinePos : cAlong,
+      rx: 0, ry: 0, rz: 0,
+    });
   }
   return parts;
+}
+
+function meshToolFromSpec(spec: ReliefToolSpec): THREE.BufferGeometry {
+  const geometry = spec.shape === 'cylinder'
+    ? new THREE.CylinderGeometry(spec.w / 2, spec.w / 2, spec.h, 32)
+    : new THREE.BoxGeometry(spec.w, spec.h, spec.d);
+  geometry.translate(spec.cx, spec.cy, spec.cz);
+  return geometry;
+}
+
+function bendReliefToolPlan(
+  geometry: THREE.BufferGeometry,
+  params: BendReliefParams,
+): ReliefToolSpec[] {
+  const { width, depth, position, shape } = params;
+  requireFinitePositive(width, 'Bend relief width must be a finite number greater than 0');
+  requireFinitePositive(depth, 'Bend relief depth must be a finite number greater than 0');
+  if (!Number.isFinite(position)) throw new Error('Bend relief position must be finite');
+  if (shape !== 'rectangular' && shape !== 'obround') {
+    throw new Error(`Invalid bend relief shape: ${String(shape)}`);
+  }
+
+  const history =
+    (geometry.userData as { __bendHistory?: BendHistoryEntry[] } | undefined)?.__bendHistory ?? [];
+  if (history.length === 0) {
+    throw new Error(
+      'Bend relief requires a bend to relieve — add a bend, flange, or hem feature before the relief cut',
+    );
+  }
+
+  const bb = boundingBoxOf(geometry);
+  requireFinitePositive(
+    bb.max.y - bb.min.y,
+    'Bend relief requires a sheet body with positive thickness',
+  );
+  const sizeX = bb.max.x - bb.min.x;
+  const sizeZ = bb.max.z - bb.min.z;
+  const frac = Math.max(0, Math.min(1, position));
+  let target = history[0]!;
+  for (const entry of history) {
+    if (Math.abs((entry.position ?? 0.5) - frac) < Math.abs((target.position ?? 0.5) - frac)) {
+      target = entry;
+    }
+  }
+
+  const bendAlongX = target.lineAxis
+    ? target.lineAxis === 'x'
+    : sizeZ >= sizeX;
+  const bendLinePos = target.lineAxis && typeof target.linePos === 'number'
+    ? target.linePos
+    : (bendAlongX ? bb.min.z : bb.min.x)
+      + (bendAlongX ? sizeZ : sizeX)
+        * Math.max(0, Math.min(1, target.position ?? frac));
+
+  return ([-1, 1] as const).flatMap((side) =>
+    buildNotchToolSpecs(bb, bendAlongX, side, bendLinePos, width, depth, shape),
+  );
+}
+
+function exactReliefSubtract(
+  geometry: THREE.BufferGeometry,
+  toolPlan: ReliefToolSpec[],
+): THREE.BufferGeometry {
+  const hostBox = hostBoxFromGeometry(geometry);
+  let handle = resolveBrepHostHandle(geometry);
+  let current = geometry;
+  for (const tool of toolPlan) {
+    const result = requireValidBrepResult(
+      occtBoxBooleanWithPrimitive('subtract', hostBox, tool, undefined, handle),
+    );
+    if (!result.handle) throw new Error('Relief cut kernel returned no registered B-Rep handle');
+    handle = result.handle;
+    current = result.geometry;
+  }
+  current.userData = { ...(geometry.userData ?? {}), ...(current.userData ?? {}), occtHandle: handle };
+  return current;
+}
+
+/** Exact product path: sequential OCCT subtraction from the current B-Rep. */
+export function applyBendReliefExact(
+  geometry: THREE.BufferGeometry,
+  params: BendReliefParams,
+): THREE.BufferGeometry {
+  return exactReliefSubtract(geometry, bendReliefToolPlan(geometry, params));
 }
 
 /**
@@ -214,8 +321,8 @@ export function applyBendRelief(
 
   let result: THREE.BufferGeometry = geo;
   for (const side of [-1, 1] as const) {
-    for (const tool of buildNotchTools(bb, bendAlongX, side, bendLinePos, width, depth, shape)) {
-      result = csgSubtract(result, tool, featureId);
+    for (const spec of buildNotchToolSpecs(bb, bendAlongX, side, bendLinePos, width, depth, shape)) {
+      result = csgSubtract(result, meshToolFromSpec(spec), featureId);
     }
   }
   result.computeVertexNormals();
@@ -271,6 +378,46 @@ export function applyCornerRelief(
   return result;
 }
 
+/** Exact product path: one OCCT primitive subtraction from the current B-Rep. */
+export function applyCornerReliefExact(
+  geometry: THREE.BufferGeometry,
+  params: CornerReliefParams,
+): THREE.BufferGeometry {
+  const { corner, shape, size, inset } = params;
+  requireFinitePositive(size, 'Corner relief size must be a finite number greater than 0');
+  if (!Number.isFinite(inset) || inset < 0) {
+    throw new Error('Corner relief inset must be a finite number greater than or equal to 0');
+  }
+  if (!Number.isInteger(corner) || corner < 0 || corner > 3) {
+    throw new Error(`Invalid corner index: ${corner}`);
+  }
+  if (shape !== 'circular' && shape !== 'square') {
+    throw new Error(`Invalid corner relief shape: ${String(shape)}`);
+  }
+
+  const bb = boundingBoxOf(geometry);
+  const thickness = bb.max.y - bb.min.y;
+  requireFinitePositive(thickness, 'Corner relief requires a sheet body with positive thickness');
+  const signX = corner === 0 || corner === 1 ? 1 : -1;
+  const signZ = corner === 0 || corner === 2 ? 1 : -1;
+  const cx = (signX === 1 ? bb.max.x : bb.min.x) - signX * inset;
+  const cz = (signZ === 1 ? bb.max.z : bb.min.z) - signZ * inset;
+  const pad = 1;
+
+  return exactReliefSubtract(geometry, [{
+    shape: shape === 'circular' ? 'cylinder' : 'box',
+    w: size,
+    h: thickness + 2 * pad,
+    d: size,
+    cx,
+    cy: (bb.min.y + bb.max.y) / 2,
+    cz,
+    rx: 0,
+    ry: 0,
+    rz: 0,
+  }]);
+}
+
 // ─── Feature Definitions ───────────────────────────────────────────────────────
 
 export const bendReliefFeature: FeatureDefinition = {
@@ -299,6 +446,23 @@ export const bendReliefFeature: FeatureDefinition = {
       },
       ctx?.featureId,
     );
+    return noteMeshFallback(out, { op: 'Bend Relief', featureId: ctx?.featureId });
+  },
+  async applyAsync(geometry, params, ctx) {
+    const parsed: BendReliefParams = {
+      width: params.width,
+      depth: params.depth,
+      position: (params.position ?? 50) / 100,
+      shape: Math.round(params.shape ?? 0) === 1 ? 'obround' : 'rectangular',
+    };
+    if (shouldUseOcctEngine()) {
+      try {
+        return applyBendReliefExact(geometry, parsed);
+      } catch (error) {
+        console.warn('[NEXYCAD] Exact bend relief unavailable; using marked mesh fallback.', error);
+      }
+    }
+    const out = applyBendRelief(geometry, parsed, ctx?.featureId);
     return noteMeshFallback(out, { op: 'Bend Relief', featureId: ctx?.featureId });
   },
 };
@@ -337,6 +501,23 @@ export const cornerReliefFeature: FeatureDefinition = {
       },
       ctx?.featureId,
     );
+    return noteMeshFallback(out, { op: 'Corner Relief', featureId: ctx?.featureId });
+  },
+  async applyAsync(geometry, params, ctx) {
+    const parsed: CornerReliefParams = {
+      corner: Math.round(params.corner ?? 0),
+      shape: Math.round(params.shape ?? 0) === 1 ? 'square' : 'circular',
+      size: params.size,
+      inset: params.inset ?? 0,
+    };
+    if (shouldUseOcctEngine()) {
+      try {
+        return applyCornerReliefExact(geometry, parsed);
+      } catch (error) {
+        console.warn('[NEXYCAD] Exact corner relief unavailable; using marked mesh fallback.', error);
+      }
+    }
+    const out = applyCornerRelief(geometry, parsed, ctx?.featureId);
     return noteMeshFallback(out, { op: 'Corner Relief', featureId: ctx?.featureId });
   },
 };

@@ -1,6 +1,7 @@
 import { readFile } from 'node:fs/promises';
 import { cadTechnicalReleaseAuditV3Issues } from '../src/lib/cad-technical-release-audit-v3';
 import { domainAccuracyReleaseIssues, parseTrustedDomainReleaseReviewers } from '../src/lib/ai/domainAccuracyReleaseGate';
+import { releaseDomainsForChannel } from '../src/lib/ai/releaseChannel';
 
 async function main(): Promise<void> {
   const path = process.env.CAD_TECHNICAL_RELEASE_AUDIT_V3;
@@ -13,6 +14,8 @@ async function main(): Promise<void> {
     ...await domainAccuracyReleaseIssues(
       process.env.DOMAIN_ACCURACY_EVIDENCE_DIR,
       parseTrustedDomainReleaseReviewers(process.env.NEXYFAB_DOMAIN_REVIEWER_KEYS),
+      Date.now(),
+      releaseDomainsForChannel(process.env.NEXYFAB_RELEASE_CHANNEL),
     ),
   ];
   if (issues.length) {

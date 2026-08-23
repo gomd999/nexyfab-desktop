@@ -9,7 +9,8 @@
 
 import React from 'react';
 import type { FreemiumFeature } from '@/hooks/useFreemium';
-import { isKorean } from '@/lib/i18n/normalize';
+import { toIsoLang, toRouteLang, type IsoLang } from '@/lib/i18n/normalize';
+import { createCommercialLocalizer } from '@/lib/i18n/commercialLocalizer';
 
 interface UpgradeModalProps {
   open: boolean;
@@ -126,13 +127,37 @@ const PRO_BENEFITS_EN = [
   '📊 NexyFlow quote approval integration',
 ];
 
+const PRO_BENEFITS: Record<IsoLang, string[]> = {
+  ko: PRO_BENEFITS_KO, en: PRO_BENEFITS_EN,
+  ja: ['🤖 AI寸法・材料アドバイザー無制限', '⚙️ CAM Gコード出力（Fanuc / Mazak / Haas）', '🏭 サプライヤーマッチング無制限', '📦 RFQパッケージのダウンロード', '☁️ クラウドプロジェクト無制限保存', '📊 NexyFlow見積承認連携'],
+  zh: ['🤖 无限 AI 尺寸与材料顾问', '⚙️ CAM G 代码导出（Fanuc / Mazak / Haas）', '🏭 无限供应商匹配', '📦 下载 RFQ 包', '☁️ 无限云端项目存储', '📊 NexyFlow 报价审批集成'],
+  es: ['🤖 Asesor ilimitado de dimensiones y materiales con IA', '⚙️ Exportación de código G CAM (Fanuc / Mazak / Haas)', '🏭 Búsqueda ilimitada de proveedores', '📦 Descarga de paquetes RFQ', '☁️ Almacenamiento ilimitado de proyectos', '📊 Integración de aprobación de cotizaciones NexyFlow'],
+  ar: ['🤖 مستشار أبعاد ومواد بالذكاء الاصطناعي بلا حدود', '⚙️ تصدير رمز CAM G ‏(Fanuc / Mazak / Haas)', '🏭 مطابقة مورّدين بلا حدود', '📦 تنزيل حزمة RFQ', '☁️ تخزين مشاريع سحابية بلا حدود', '📊 تكامل اعتماد عروض NexyFlow'],
+};
+
+const COPY: Record<IsoLang, { title: string; subtitle: string; monthly: string; limitReached: (limit: number) => string; benefits: string; later: string; upgrade: string }> = {
+  ko: { title: 'Pro 플랜이 필요합니다', subtitle: 'Pro로 업그레이드하고 모든 기능을 사용하세요', monthly: '이번 달 사용량', limitReached: limit => `이번 달 무료 한도 ${limit}회를 모두 사용했습니다.`, benefits: '플랜 혜택', later: '나중에', upgrade: 'Pro 업그레이드' },
+  en: { title: 'Pro Plan Required', subtitle: 'Upgrade to Pro and unlock all features', monthly: 'Monthly usage', limitReached: limit => `You've used all ${limit} free uses this month.`, benefits: 'Plan includes', later: 'Later', upgrade: 'Upgrade to Pro' },
+  ja: { title: 'Proプランが必要です', subtitle: 'Proにアップグレードしてすべての機能を使いましょう', monthly: '今月の使用量', limitReached: limit => `今月の無料利用${limit}回をすべて使用しました。`, benefits: 'プランの特典', later: '後で', upgrade: 'Proにアップグレード' },
+  zh: { title: '需要 Pro 方案', subtitle: '升级到 Pro 以解锁全部功能', monthly: '本月用量', limitReached: limit => `您已用完本月的 ${limit} 次免费使用额度。`, benefits: '方案包含', later: '稍后', upgrade: '升级到 Pro' },
+  es: { title: 'Se necesita el plan Pro', subtitle: 'Actualiza a Pro para desbloquear todas las funciones', monthly: 'Uso mensual', limitReached: limit => `Has usado los ${limit} usos gratuitos de este mes.`, benefits: 'El plan incluye', later: 'Más tarde', upgrade: 'Actualizar a Pro' },
+  ar: { title: 'تتطلب هذه الميزة خطة Pro', subtitle: 'الترقية إلى Pro لفتح جميع الميزات', monthly: 'الاستخدام الشهري', limitReached: limit => `استخدمت جميع الاستخدامات المجانية (${limit}) لهذا الشهر.`, benefits: 'تتضمن الخطة', later: 'لاحقًا', upgrade: 'الترقية إلى Pro' },
+};
+
+function getFeatureCopy(info: typeof FEATURE_INFO[FreemiumFeature], lang: string) {
+  const L = createCommercialLocalizer(lang);
+  return { name: L(info.nameKo, info.nameEn), description: L(info.descKo, info.descEn) };
+}
+
 export default function UpgradeModal({
   open, feature, overLimit, used, limit, lang, onClose,
 }: UpgradeModalProps) {
   if (!open) return null;
-  const isKo = isKorean(lang);
+  const iso = toIsoLang(lang);
+  const copy = COPY[iso];
   const info = FEATURE_INFO[feature];
-  const benefits = isKo ? PRO_BENEFITS_KO : PRO_BENEFITS_EN;
+  const featureCopy = getFeatureCopy(info, lang);
+  const benefits = PRO_BENEFITS[iso];
 
   return (
     <div
@@ -162,10 +187,10 @@ export default function UpgradeModal({
         }}>
           <div style={{ fontSize: 36, marginBottom: 8 }}>⚡</div>
           <div style={{ fontSize: 18, fontWeight: 800, color: 'var(--nx-text)', marginBottom: 4 }}>
-            {isKo ? 'Pro 플랜이 필요합니다' : 'Pro Plan Required'}
+            {copy.title}
           </div>
           <div style={{ fontSize: 12, color: 'var(--nx-text-2)' }}>
-            {isKo ? 'Pro로 업그레이드하고 모든 기능을 사용하세요' : 'Upgrade to Pro and unlock all features'}
+            {copy.subtitle}
           </div>
         </div>
 
@@ -179,26 +204,24 @@ export default function UpgradeModal({
               <span style={{ fontSize: 20 }}>{info.icon}</span>
               <div>
                 <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--nx-text)' }}>
-                  {isKo ? info.nameKo : info.nameEn}
+                  {featureCopy.name}
                 </div>
                 <div style={{ fontSize: 11, color: 'var(--nx-text-2)', marginTop: 2 }}>
-                  {isKo ? info.descKo : info.descEn}
+                  {featureCopy.description}
                 </div>
               </div>
             </div>
             {overLimit && limit !== undefined && used !== undefined && (
               <div style={{ marginTop: 10 }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4, fontSize: 11, color: 'var(--nx-text-2)' }}>
-                  <span>{isKo ? '이번 달 사용량' : 'Monthly usage'}</span>
+                  <span>{copy.monthly}</span>
                   <span style={{ color: '#f85149', fontWeight: 700 }}>{used} / {limit}</span>
                 </div>
                 <div style={{ height: 4, background: 'var(--nx-border)', borderRadius: 2 }}>
                   <div style={{ height: '100%', width: '100%', background: '#f85149', borderRadius: 2 }} />
                 </div>
                 <div style={{ marginTop: 6, fontSize: 11, color: '#f85149' }}>
-                  {isKo
-                    ? `이번 달 무료 한도 ${limit}회를 모두 사용했습니다.`
-                    : `You've used all ${limit} free uses this month.`}
+                  {copy.limitReached(limit)}
                 </div>
               </div>
             )}
@@ -207,7 +230,7 @@ export default function UpgradeModal({
           {/* Pro benefits */}
           <div style={{ marginBottom: 16 }}>
             <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--nx-text-2)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 8 }}>
-              Pro {isKo ? '플랜 혜택' : 'Plan includes'}
+              Pro {copy.benefits}
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
               {benefits.map((b, i) => (
@@ -231,10 +254,10 @@ export default function UpgradeModal({
               onMouseEnter={e => { e.currentTarget.style.borderColor = '#58a6ff'; e.currentTarget.style.color = 'var(--nx-text)'; }}
               onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--nx-border)'; e.currentTarget.style.color = 'var(--nx-text-2)'; }}
             >
-              {isKo ? '나중에' : 'Later'}
+              {copy.later}
             </button>
             <a
-              href={`/${lang}/pricing`}
+              href={`/${toRouteLang(lang)}/pricing`}
               style={{
                 flex: 2, padding: '10px 0', borderRadius: 8, border: 'none',
                 background: 'linear-gradient(135deg, #388bfd, #8b5cf6)',
@@ -242,7 +265,7 @@ export default function UpgradeModal({
                 textDecoration: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
               }}
             >
-              ⚡ {isKo ? 'Pro 업그레이드' : 'Upgrade to Pro'}
+              ⚡ {copy.upgrade}
             </a>
           </div>
         </div>

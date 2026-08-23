@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { existsSync } from 'node:fs';
 import { join } from 'node:path';
+import { readBoundedJson } from '@/lib/boundedJsonBody';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -36,10 +37,14 @@ function getReplicad(): Promise<any> {
   return replicadReady;
 }
 
-const MAX_BYTES = 25 * 1024 * 1024;
+const MAX_BYTES = 15 * 1024 * 1024;
+// Match the generic API proxy ceiling. The synchronous OCCT path still
+// materializes JSON text, Blob and kernel state together; larger STEP files
+// use the objectKey/direct-upload BREP route instead.
+const MAX_JSON_BODY_BYTES = 16 * 1024 * 1024;
 
 export async function POST(req: NextRequest) {
-  const body = (await req.json().catch(() => ({}))) as { stepText?: string; tolerance?: number };
+  const body = (await readBoundedJson(req, MAX_JSON_BODY_BYTES).catch(() => ({}))) as { stepText?: string; tolerance?: number };
   const stepText = typeof body.stepText === 'string' ? body.stepText : '';
   if (!stepText || !stepText.includes('ISO-10303-21')) {
     return NextResponse.json({ error: 'not a STEP file' }, { status: 400 });

@@ -488,6 +488,7 @@ const MIGRATIONS: Array<{ version: number; name: string; sql: string }> = [
       CREATE TABLE IF NOT EXISTS nf_usage_events (
         id          TEXT PRIMARY KEY,
         user_id     TEXT NOT NULL,
+        org_id      TEXT,
         product     TEXT NOT NULL,
         metric      TEXT NOT NULL,
         quantity    INTEGER NOT NULL DEFAULT 1,
@@ -502,6 +503,7 @@ const MIGRATIONS: Array<{ version: number; name: string; sql: string }> = [
       CREATE TABLE IF NOT EXISTS nf_ai_history (
         id          TEXT PRIMARY KEY,
         user_id     TEXT NOT NULL,
+        org_id      TEXT,
         feature     TEXT NOT NULL,
         project_id  TEXT,
         title       TEXT NOT NULL,
@@ -635,6 +637,7 @@ const MIGRATIONS: Array<{ version: number; name: string; sql: string }> = [
       CREATE TABLE IF NOT EXISTS nf_files (
         id           TEXT PRIMARY KEY,
         user_id      TEXT NOT NULL,
+        org_id       TEXT,
         storage_key  TEXT NOT NULL,
         filename     TEXT NOT NULL,
         mime_type    TEXT NOT NULL DEFAULT 'application/octet-stream',
@@ -1759,6 +1762,311 @@ const MIGRATIONS: Array<{ version: number; name: string; sql: string }> = [
       CREATE INDEX IF NOT EXISTS idx_orders_lineage ON nf_orders(lineage_id);
     `,
   },
+  {
+    version: 79,
+    name: 'manufacturing_lineage_invalidation_and_inspection',
+    sql: `
+      CREATE TABLE IF NOT EXISTS nf_manufacturing_lineage_invalidations (
+        id TEXT PRIMARY KEY,
+        lineage_id TEXT NOT NULL,
+        project_id TEXT NOT NULL,
+        prior_document_version_id TEXT NOT NULL,
+        replacement_document_version_id TEXT NOT NULL,
+        reason TEXT NOT NULL,
+        invalidated_at INTEGER NOT NULL,
+        UNIQUE(lineage_id, replacement_document_version_id)
+      );
+      CREATE INDEX IF NOT EXISTS idx_mfg_invalidation_lineage
+        ON nf_manufacturing_lineage_invalidations(lineage_id, invalidated_at DESC);
+      CREATE TABLE IF NOT EXISTS nf_manufacturing_inspection_receipts (
+        receipt_id TEXT PRIMARY KEY,
+        order_id TEXT NOT NULL,
+        lineage_id TEXT NOT NULL,
+        artifact_id TEXT NOT NULL,
+        artifact_sha256 TEXT NOT NULL,
+        document_version_id TEXT NOT NULL,
+        release_package_sha256 TEXT NOT NULL,
+        inspection_report_sha256 TEXT NOT NULL,
+        receipt_sha256 TEXT NOT NULL UNIQUE,
+        result TEXT NOT NULL,
+        inspector_id TEXT NOT NULL,
+        inspected_at INTEGER NOT NULL,
+        submitted_by TEXT NOT NULL,
+        raw_json TEXT NOT NULL,
+        created_at INTEGER NOT NULL,
+        UNIQUE(order_id, inspection_report_sha256)
+      );
+      CREATE INDEX IF NOT EXISTS idx_mfg_inspection_order
+        ON nf_manufacturing_inspection_receipts(order_id, created_at DESC);
+    `,
+  },
+  {
+    version: 80,
+    name: 'organization_scoped_usage_events',
+    sql: `
+      ALTER TABLE nf_usage_events ADD COLUMN org_id TEXT;
+      ALTER TABLE nf_files ADD COLUMN org_id TEXT;
+      ALTER TABLE nf_ai_history ADD COLUMN org_id TEXT;
+      CREATE INDEX IF NOT EXISTS idx_usage_org_cycle
+        ON nf_usage_events(org_id, product, cycle_start, metric);
+      CREATE INDEX IF NOT EXISTS idx_usage_user_personal_cycle
+        ON nf_usage_events(user_id, product, cycle_start, metric) WHERE org_id IS NULL;
+      CREATE INDEX IF NOT EXISTS idx_files_org_created ON nf_files(org_id, created_at DESC);
+      CREATE INDEX IF NOT EXISTS idx_ai_history_org_feature
+        ON nf_ai_history(org_id, feature, created_at DESC);
+    `,
+  },
+  {
+    version: 81,
+    name: 'spatial_cad_project_drafts_and_issues',
+    sql: `
+      CREATE TABLE IF NOT EXISTS nf_spatial_cad_drafts (
+        id TEXT PRIMARY KEY,
+        project_id TEXT NOT NULL,
+        domain TEXT NOT NULL,
+        project_revision INTEGER NOT NULL,
+        document_revision INTEGER NOT NULL,
+        content_hash TEXT NOT NULL,
+        payload_json TEXT NOT NULL,
+        created_by TEXT NOT NULL,
+        created_at INTEGER NOT NULL,
+        UNIQUE(project_id, domain, project_revision)
+      );
+      CREATE INDEX IF NOT EXISTS idx_nf_spatial_draft_project_domain
+        ON nf_spatial_cad_drafts(project_id, domain, project_revision DESC);
+      CREATE TABLE IF NOT EXISTS nf_spatial_cad_draft_heads (
+        project_id TEXT NOT NULL,
+        domain TEXT NOT NULL,
+        project_revision INTEGER NOT NULL,
+        content_hash TEXT NOT NULL,
+        updated_at INTEGER NOT NULL,
+        PRIMARY KEY(project_id, domain)
+      );
+      CREATE TABLE IF NOT EXISTS nf_spatial_cad_issues (
+        id TEXT PRIMARY KEY,
+        project_id TEXT NOT NULL,
+        candidate_id TEXT NOT NULL,
+        model_a TEXT NOT NULL,
+        model_b TEXT NOT NULL,
+        overlap_json TEXT NOT NULL,
+        severity TEXT NOT NULL,
+        model_revision INTEGER NOT NULL,
+        evidence TEXT NOT NULL,
+        exact_verification TEXT NOT NULL,
+        status TEXT NOT NULL,
+        created_by TEXT NOT NULL,
+        created_at INTEGER NOT NULL,
+        updated_at INTEGER NOT NULL,
+        UNIQUE(project_id, candidate_id, model_revision)
+      );
+      CREATE INDEX IF NOT EXISTS idx_nf_spatial_issue_project
+        ON nf_spatial_cad_issues(project_id, updated_at DESC);
+      CREATE TABLE IF NOT EXISTS nf_spatial_cad_jobs (
+        id TEXT PRIMARY KEY,
+        project_id TEXT NOT NULL,
+        kind TEXT NOT NULL,
+        status TEXT NOT NULL,
+        execution TEXT NOT NULL,
+        release_verification TEXT NOT NULL,
+        request_json TEXT NOT NULL,
+        created_by TEXT NOT NULL,
+        created_at INTEGER NOT NULL
+      );
+      CREATE INDEX IF NOT EXISTS idx_nf_spatial_job_project
+        ON nf_spatial_cad_jobs(project_id, created_at DESC);
+    `,
+  },
+  {
+    version: 82,
+    name: 'spatial_cad_exact_job_leases_and_receipts',
+    sql: `
+      ALTER TABLE nf_spatial_cad_jobs ADD COLUMN attempts INTEGER NOT NULL DEFAULT 0;
+      ALTER TABLE nf_spatial_cad_jobs ADD COLUMN lease_token TEXT;
+      ALTER TABLE nf_spatial_cad_jobs ADD COLUMN leased_by TEXT;
+      ALTER TABLE nf_spatial_cad_jobs ADD COLUMN lease_expires_at INTEGER;
+      ALTER TABLE nf_spatial_cad_jobs ADD COLUMN started_at INTEGER;
+      ALTER TABLE nf_spatial_cad_jobs ADD COLUMN finished_at INTEGER;
+      ALTER TABLE nf_spatial_cad_jobs ADD COLUMN result_json TEXT;
+      ALTER TABLE nf_spatial_cad_jobs ADD COLUMN error_code TEXT;
+      ALTER TABLE nf_spatial_cad_jobs ADD COLUMN updated_at INTEGER NOT NULL DEFAULT 0;
+      CREATE INDEX IF NOT EXISTS idx_nf_spatial_job_claim
+        ON nf_spatial_cad_jobs(kind, status, lease_expires_at, created_at);
+    `,
+  },
+  {
+    version: 83,
+    name: 'project_scoped_resumable_cad_artifacts',
+    sql: `
+      CREATE TABLE IF NOT EXISTS nf_artifact_upload_sessions (
+        id TEXT PRIMARY KEY,
+        project_id TEXT NOT NULL,
+        tenant_id TEXT NOT NULL,
+        user_id TEXT NOT NULL,
+        object_key TEXT NOT NULL UNIQUE,
+        filename TEXT NOT NULL,
+        media_type TEXT NOT NULL,
+        format TEXT NOT NULL,
+        expected_size INTEGER NOT NULL,
+        expected_sha256 TEXT NOT NULL,
+        shape_identity_sha256 TEXT,
+        status TEXT NOT NULL,
+        created_at INTEGER NOT NULL,
+        expires_at INTEGER NOT NULL,
+        completed_at INTEGER,
+        artifact_id TEXT,
+        failure_code TEXT,
+        upload_mode TEXT NOT NULL DEFAULT 'SINGLE_PUT',
+        storage_upload_id TEXT,
+        part_size INTEGER,
+        total_parts INTEGER,
+        multipart_completed_at INTEGER
+      );
+      CREATE INDEX IF NOT EXISTS idx_nf_artifact_upload_project
+        ON nf_artifact_upload_sessions(project_id, created_at DESC);
+      CREATE INDEX IF NOT EXISTS idx_nf_artifact_upload_owner
+        ON nf_artifact_upload_sessions(user_id, status, expires_at);
+      CREATE TABLE IF NOT EXISTS nf_cad_artifacts (
+        id TEXT PRIMARY KEY,
+        contract_version TEXT NOT NULL,
+        project_id TEXT NOT NULL,
+        tenant_id TEXT NOT NULL,
+        object_key TEXT NOT NULL UNIQUE,
+        media_type TEXT NOT NULL,
+        format TEXT NOT NULL,
+        byte_length INTEGER NOT NULL,
+        content_sha256 TEXT NOT NULL,
+        shape_identity_sha256 TEXT,
+        producer_build_id TEXT NOT NULL,
+        kernel_identity TEXT NOT NULL,
+        created_by TEXT NOT NULL,
+        created_at INTEGER NOT NULL,
+        immutability_state TEXT NOT NULL
+      );
+      CREATE INDEX IF NOT EXISTS idx_nf_cad_artifact_project
+        ON nf_cad_artifacts(project_id, created_at DESC);
+      CREATE UNIQUE INDEX IF NOT EXISTS idx_nf_cad_artifact_project_hash
+        ON nf_cad_artifacts(project_id, content_sha256);
+    `,
+  },
+  {
+    version: 84,
+    name: 'cloudflare_cad_job_registry_and_receipts',
+    sql: `
+      CREATE TABLE IF NOT EXISTS nf_cad_job_registry (
+        job_id TEXT PRIMARY KEY,
+        tenant_id TEXT NOT NULL,
+        project_id TEXT NOT NULL,
+        kind TEXT NOT NULL,
+        message_sha256 TEXT NOT NULL,
+        message_json TEXT NOT NULL,
+        status TEXT NOT NULL,
+        requested_by TEXT NOT NULL,
+        created_at INTEGER NOT NULL,
+        updated_at INTEGER NOT NULL
+      );
+      CREATE INDEX IF NOT EXISTS idx_nf_cad_job_registry_project
+        ON nf_cad_job_registry(project_id, created_at DESC);
+      CREATE TABLE IF NOT EXISTS nf_cad_job_receipts (
+        job_id TEXT PRIMARY KEY,
+        message_sha256 TEXT NOT NULL,
+        receipt_sha256 TEXT NOT NULL UNIQUE,
+        receipt_json TEXT NOT NULL,
+        execution TEXT NOT NULL,
+        accepted_at INTEGER NOT NULL
+      );
+    `,
+  },
+  {
+    version: 85,
+    name: 'passwordless_admin_email_auth',
+    sql: `
+      CREATE TABLE IF NOT EXISTS nf_admin_access_emails (
+        id TEXT PRIMARY KEY,
+        email TEXT NOT NULL UNIQUE,
+        active INTEGER NOT NULL DEFAULT 1 CHECK (active IN (0, 1)),
+        added_by TEXT,
+        created_at INTEGER NOT NULL,
+        updated_at INTEGER NOT NULL
+      );
+      CREATE INDEX IF NOT EXISTS idx_nf_admin_access_active
+        ON nf_admin_access_emails(active, created_at);
+      CREATE TABLE IF NOT EXISTS nf_admin_login_codes (
+        id TEXT PRIMARY KEY,
+        email TEXT NOT NULL,
+        code_hash TEXT NOT NULL,
+        ip_hash TEXT NOT NULL,
+        attempts INTEGER NOT NULL DEFAULT 0,
+        expires_at INTEGER NOT NULL,
+        used_at INTEGER,
+        created_at INTEGER NOT NULL
+      );
+      CREATE INDEX IF NOT EXISTS idx_nf_admin_login_code_lookup
+        ON nf_admin_login_codes(email, used_at, expires_at, created_at);
+      CREATE INDEX IF NOT EXISTS idx_nf_admin_login_code_expiry
+        ON nf_admin_login_codes(expires_at);
+      CREATE TABLE IF NOT EXISTS nf_admin_sessions (
+        sid_hash TEXT PRIMARY KEY,
+        email TEXT NOT NULL,
+        ip_hash TEXT NOT NULL,
+        user_agent TEXT,
+        expires_at INTEGER NOT NULL,
+        revoked_at INTEGER,
+        created_at INTEGER NOT NULL
+      );
+      CREATE INDEX IF NOT EXISTS idx_nf_admin_session_email
+        ON nf_admin_sessions(email, revoked_at, expires_at);
+      CREATE INDEX IF NOT EXISTS idx_nf_admin_session_expiry
+        ON nf_admin_sessions(expires_at);
+    `,
+  },
+  {
+    version: 86,
+    name: 'spatial_cad_revision_identity_and_locks',
+    sql: `
+      ALTER TABLE nf_spatial_cad_draft_heads ADD COLUMN document_id TEXT NOT NULL DEFAULT '';
+      ALTER TABLE nf_spatial_cad_draft_heads ADD COLUMN locks_json TEXT NOT NULL DEFAULT '[]';
+    `,
+  },
+  {
+    version: 87,
+    name: 'interior_placement_documents',
+    sql: `
+      CREATE TABLE IF NOT EXISTS nf_interior_placement_draft_heads (
+        project_id TEXT NOT NULL,
+        document_id TEXT NOT NULL,
+        room_document_id TEXT NOT NULL,
+        project_revision INTEGER NOT NULL,
+        content_hash TEXT NOT NULL,
+        locks_json TEXT NOT NULL DEFAULT '[]',
+        updated_at INTEGER NOT NULL,
+        PRIMARY KEY(project_id, document_id)
+      );
+      CREATE TABLE IF NOT EXISTS nf_interior_placement_drafts (
+        id TEXT PRIMARY KEY,
+        project_id TEXT NOT NULL,
+        document_id TEXT NOT NULL,
+        room_document_id TEXT NOT NULL,
+        project_revision INTEGER NOT NULL,
+        document_revision INTEGER NOT NULL,
+        content_hash TEXT NOT NULL,
+        payload_json TEXT NOT NULL,
+        created_by TEXT NOT NULL,
+        created_at INTEGER NOT NULL,
+        UNIQUE(project_id, document_id, project_revision)
+      );
+      CREATE INDEX IF NOT EXISTS idx_nf_interior_placement_drafts_lookup
+        ON nf_interior_placement_drafts(project_id, document_id, project_revision DESC);
+    `,
+  },
+  {
+    version: 88,
+    name: 'partner_pro_grace_window',
+    sql: `
+      ALTER TABLE nf_users ADD COLUMN pro_grace_until INTEGER;
+      CREATE INDEX IF NOT EXISTS idx_users_pro_grace
+        ON nf_users(pro_grace_until) WHERE pro_grace_until IS NOT NULL;
+    `,
+  },
 ];
 
 function runMigrations(db: Database.Database): void {
@@ -1805,6 +2113,7 @@ function initSchema(db: Database.Database): void {
     CREATE TABLE IF NOT EXISTS nf_projects (
       id TEXT PRIMARY KEY,
       user_id TEXT NOT NULL,
+      org_id TEXT,
       name TEXT NOT NULL,
       shape_id TEXT,
       material_id TEXT,
@@ -1819,6 +2128,7 @@ function initSchema(db: Database.Database): void {
     CREATE TABLE IF NOT EXISTS nf_rfqs (
       id TEXT PRIMARY KEY,
       user_id TEXT NOT NULL,
+      org_id TEXT,
       user_email TEXT,
       shape_id TEXT,
       shape_name TEXT,
@@ -1863,6 +2173,7 @@ function initSchema(db: Database.Database): void {
       id TEXT PRIMARY KEY,
       rfq_id TEXT,
       user_id TEXT NOT NULL,
+      org_id TEXT,
       part_name TEXT NOT NULL,
       manufacturer_name TEXT NOT NULL,
       quantity INTEGER NOT NULL DEFAULT 1,

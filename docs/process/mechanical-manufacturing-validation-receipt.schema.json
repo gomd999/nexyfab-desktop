@@ -1,0 +1,119 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://nexyfab.com/schemas/mechanical-manufacturing-validation.v3.json",
+  "title": "NexyFab mechanical-core manufactured pilot validation receipt",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "releaseChannel", "generatedAt", "evidenceRootId", "ok", "summary", "cases"],
+  "$defs": {
+    "sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+    "artifact": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "sha256"],
+      "properties": {
+        "path": { "type": "string", "minLength": 1 },
+        "sha256": { "$ref": "#/$defs/sha256" }
+      }
+    },
+    "measurement": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["characteristic", "nominal", "actual", "minusTolerance", "plusTolerance", "unit", "result"],
+      "properties": {
+        "characteristic": { "type": "string", "minLength": 1 },
+        "nominal": { "type": "number" },
+        "actual": { "type": "number" },
+        "minusTolerance": { "type": "number", "minimum": 0 },
+        "plusTolerance": { "type": "number", "minimum": 0 },
+        "unit": { "type": "string", "minLength": 1 },
+        "result": { "const": "pass" }
+      }
+    }
+  },
+  "properties": {
+    "schema": { "const": "nexyfab.mechanical-manufacturing-validation.v3" },
+    "releaseChannel": { "const": "mechanical-core" },
+    "generatedAt": { "type": "string", "format": "date-time" },
+    "evidenceRootId": { "$ref": "#/$defs/sha256" },
+    "ok": { "const": true },
+    "summary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["cases", "passed", "failed", "pending", "measurements"],
+      "properties": {
+        "cases": { "const": 3 },
+        "passed": { "const": 3 },
+        "failed": { "const": 0 },
+        "pending": { "const": 0 },
+        "measurements": { "type": "integer", "minimum": 9 }
+      }
+    },
+    "cases": {
+      "type": "array",
+      "minItems": 3,
+      "maxItems": 3,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "caseId", "process", "result", "designRevision", "noUnapprovedCadChanges",
+          "stepRoundtripVerified", "drawingReleased", "bomReconciled", "inspectionDisposition",
+          "artifacts", "manufacturer", "measurements", "inspector"
+        ],
+        "properties": {
+          "caseId": { "type": "string", "minLength": 1 },
+          "process": { "enum": ["cnc_machining", "sheet_metal", "additive_manufacturing"] },
+          "result": { "const": "pass" },
+          "designRevision": { "$ref": "#/$defs/sha256" },
+          "noUnapprovedCadChanges": { "const": true },
+          "stepRoundtripVerified": { "const": true },
+          "drawingReleased": { "const": true },
+          "bomReconciled": { "const": true },
+          "inspectionDisposition": { "const": "accepted" },
+          "artifacts": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["nfab", "step", "drawing", "bom", "manufacturingReceipt", "inspectionReport", "photoEvidence"],
+            "properties": {
+              "nfab": { "$ref": "#/$defs/artifact" },
+              "step": { "$ref": "#/$defs/artifact" },
+              "drawing": { "$ref": "#/$defs/artifact" },
+              "bom": { "$ref": "#/$defs/artifact" },
+              "manufacturingReceipt": { "$ref": "#/$defs/artifact" },
+              "inspectionReport": { "$ref": "#/$defs/artifact" },
+              "photoEvidence": { "$ref": "#/$defs/artifact" }
+            }
+          },
+          "manufacturer": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["facilityId", "independentFromNexyfab", "completedAt"],
+            "properties": {
+              "facilityId": { "type": "string", "minLength": 1 },
+              "independentFromNexyfab": { "const": true },
+              "completedAt": { "type": "string", "format": "date-time" }
+            }
+          },
+          "measurements": {
+            "type": "array",
+            "minItems": 3,
+            "items": { "$ref": "#/$defs/measurement" }
+          },
+          "inspector": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["reviewerId", "independentFromBuild", "inspectedAt", "targetHash", "signature"],
+            "properties": {
+              "reviewerId": { "type": "string", "minLength": 1 },
+              "independentFromBuild": { "const": true },
+              "inspectedAt": { "type": "string", "format": "date-time" },
+              "targetHash": { "$ref": "#/$defs/sha256" },
+              "signature": { "type": "string", "minLength": 1 }
+            }
+          }
+        }
+      }
+    }
+  }
+}

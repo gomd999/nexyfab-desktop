@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import bcrypt from 'bcryptjs';
+import { boundedJsonError, readBoundedJson } from '@/lib/boundedJsonBody';
 import crypto from 'node:crypto';
 import { getDbAdapter } from '@/lib/db-adapter';
 
@@ -13,15 +14,64 @@ export const dynamic = 'force-dynamic';
  *
  * POST { email, password, plan? } with header `x-seed-key: <DEV_SEED_KEY>`.
  * Idempotent: updates the password_hash + plan if the user already exists.
- * Disabled entirely when DEV_SEED_KEY is unset.
+ * Disabled entirely in production (including Railway production) and when
+ * DEV_SEED_KEY is unset. Staging is explicitly allowed so a leaked key can
+ * never turn this route into a production mutation primitive.
  */
+const PRODUCTION_ENVIRONMENT_MARKERS = new Set(['production', 'prod', 'live']);
+const NON_PRODUCTION_ENVIRONMENT_MARKERS = new Set([
+  'staging', 'stage', 'preview', 'development', 'dev', 'test',
+]);
+
+/**
+ * Return true unless the runtime is unambiguously a non-production target.
+ *
+ * Railway runs Next with NODE_ENV=production in both production and staging,
+ * so the Railway/Vercel deployment marker takes precedence over NODE_ENV.
+ * Conflicting or unknown deployment markers fail closed as production.
+ */
+function isProductionRuntime(env: NodeJS.ProcessEnv = process.env): boolean {
+  const deploymentSignals = [
+    env.RAILWAY_ENVIRONMENT_NAME,
+    env.RAILWAY_ENVIRONMENT,
+    env.VERCEL_ENV,
+    env.NEXT_PUBLIC_VERCEL_ENV,
+  ]
+    .map(value => value?.trim().toLowerCase())
+    .filter((value): value is string => Boolean(value));
+  const uniqueSignals = [...new Set(deploymentSignals)];
+
+  if (uniqueSignals.length > 0) {
+    const hasProductionSignal = uniqueSignals.some(value => PRODUCTION_ENVIRONMENT_MARKERS.has(value));
+    const hasNonProductionSignal = uniqueSignals.some(value => NON_PRODUCTION_ENVIRONMENT_MARKERS.has(value));
+    const hasUnknownSignal = uniqueSignals.some(
+      value => !PRODUCTION_ENVIRONMENT_MARKERS.has(value) && !NON_PRODUCTION_ENVIRONMENT_MARKERS.has(value),
+    );
+    // Unknown, conflicting, or explicitly production deployment markers are
+    // all denied. Only a known non-production marker can open this route.
+    return hasProductionSignal || hasUnknownSignal || !hasNonProductionSignal;
+  }
+
+  const nodeEnvironment = env.NODE_ENV?.trim().toLowerCase();
+  // Local development/tests remain usable; an absent or unknown NODE_ENV is
+  // treated as production because the route is a mutating debug primitive.
+  return nodeEnvironment !== 'development' && nodeEnvironment !== 'dev' && nodeEnvironment !== 'test';
+}
+
 export async function POST(req: NextRequest) {
   const expected = process.env.DEV_SEED_KEY;
-  if (!expected) return NextResponse.json({ error: 'seeding disabled' }, { status: 404 });
+  if (isProductionRuntime() || !expected) {
+    return NextResponse.json({ error: 'seeding disabled' }, { status: 404 });
+  }
   if (req.headers.get('x-seed-key') !== expected) {
     return NextResponse.json({ error: 'forbidden' }, { status: 403 });
   }
-  const body = (await req.json().catch(() => ({}))) as { email?: string; password?: string; plan?: string };
+  let body: { email?: string; password?: string; plan?: string };
+  try { body = await readBoundedJson(req, 64 * 1024); }
+  catch (error) {
+    if (boundedJsonError(error)?.status === 413) return NextResponse.json({ error: 'payload too large' }, { status: 413 });
+    body = {};
+  }
   const email = (body.email ?? '').trim().toLowerCase();
   const password = body.password ?? '';
   const plan = body.plan ?? 'enterprise';

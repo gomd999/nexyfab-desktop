@@ -17,8 +17,12 @@ import { getDbAdapter } from '@/lib/db-adapter';
 import { checkOrigin } from '@/lib/csrf';
 import { sendEmail } from '@/lib/nexyfab-email';
 import { randomBytes } from 'crypto';
+import { resolveStoredManufacturingLineage } from '@/lib/manufacturingLineageDb';
+import { resolveRequestOrgContext } from '@/lib/org-context';
+import { boundedJsonError, readBoundedJson } from '@/lib/boundedJsonBody';
 
 export const dynamic = 'force-dynamic';
+const RFQ_DISPATCH_JSON_BYTES = 256 * 1024;
 
 interface Recipient {
   email: string;
@@ -45,21 +49,40 @@ export async function POST(
 
   const { id: rfqId } = await params;
   const db = getDbAdapter();
+  await db.execute('ALTER TABLE nf_rfqs ADD COLUMN org_id TEXT').catch(() => {});
+  const context = resolveRequestOrgContext(authUser);
+  if (!context.ok) return NextResponse.json({ error: 'Select a valid workspace', code: context.code }, { status: 409 });
 
   const rfq = await db.queryOne<{
     id: string; shape_name: string | null; material_id: string | null;
     quantity: number; volume_cm3: number | null; user_email: string | null;
+    user_id: string; org_id: string | null;
     lineage_id: string | null; artifact_id: string | null;
     artifact_sha256: string | null; document_version_id: string | null;
   }>(
-    `SELECT id, shape_name, material_id, quantity, volume_cm3, user_email,
+    `SELECT id, shape_name, material_id, quantity, volume_cm3, user_email, user_id, org_id,
             lineage_id, artifact_id, artifact_sha256, document_version_id
-     FROM nf_rfqs WHERE id = ? AND user_id = ?`,
-    rfqId, authUser.userId,
+     FROM nf_rfqs WHERE id = ? AND ${context.orgId ? 'org_id = ?' : 'user_id = ? AND org_id IS NULL'}`,
+    rfqId, context.orgId ?? authUser.userId,
   );
   if (!rfq) return NextResponse.json({ error: 'RFQ not found' }, { status: 404 });
+  const lineage = await resolveStoredManufacturingLineage(db, rfq.user_id, rfq);
+  if (!lineage.ok) {
+    return NextResponse.json(
+      { error: 'RFQ manufacturing release is missing, stale, or revoked.', code: lineage.code },
+      { status: 409 },
+    );
+  }
 
-  const body = await req.json().catch(() => ({})) as DispatchBody;
+  let body = {} as DispatchBody;
+  try {
+    body = await readBoundedJson(req, RFQ_DISPATCH_JSON_BYTES);
+  } catch (error) {
+    const bodyError = boundedJsonError(error);
+    if (bodyError?.code === 'PAYLOAD_TOO_LARGE') {
+      return NextResponse.json({ error: 'Request body too large' }, { status: bodyError.status });
+    }
+  }
   if (!Array.isArray(body.recipients) || body.recipients.length === 0) {
     return NextResponse.json({ error: 'recipients[] required' }, { status: 400 });
   }

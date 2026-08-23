@@ -1,10 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { readBoundedJson } from '@/lib/boundedJsonBody';
 import { z } from 'zod';
 import { rateLimit } from '@/lib/rate-limit';
-import { getAuthUser as _getAuthUser } from '@/lib/auth-middleware';
 import { getTrustedClientIp } from '@/lib/client-ip';
 import fs from 'fs';
 import path from 'path';
+
+const MAX_JSON_BODY_BYTES = 64 * 1024;
 
 export const dynamic = 'force-dynamic';
 
@@ -58,6 +60,11 @@ const WASTE_FACTORS: Record<string, number> = {
   pc:            1.1,
 };
 
+const PROCESS_IDS = [
+  'cnc', 'cnc_milling', 'cnc_turning', 'injection_molding',
+  'die_casting', 'sheet_metal', '3d_printing', 'forging',
+] as const;
+
 // Estimated machining time (hours) based on complexity and volume
 function estimateMachiningHours(volume_cm3: number, complexity: number, process: string): number {
   const baseTime = Math.pow(volume_cm3, 0.4) * 0.05; // empirical: larger = more time, diminishing
@@ -76,7 +83,7 @@ const estimateSchema = z.object({
   surface_area_cm2: z.number().min(0).optional(),
   complexity: z.number().min(1).max(10).default(5),
   quantity: z.number().int().min(1).max(100_000).default(1),
-  processes: z.array(z.string()).min(1).max(5).optional(),
+  processes: z.array(z.enum(PROCESS_IDS)).min(1).max(5).optional(),
 });
 
 export async function POST(req: NextRequest) {
@@ -84,7 +91,7 @@ export async function POST(req: NextRequest) {
   const rl = rateLimit(`estimate:${ip}`, 30, 60_000);
   if (!rl.allowed) return NextResponse.json({ error: 'Too many requests' }, { status: 429 });
 
-  const body = await req.json().catch(() => ({}));
+  const body = await readBoundedJson(req, MAX_JSON_BODY_BYTES).catch(() => ({}));
   const parsed = estimateSchema.safeParse(body);
   if (!parsed.success) {
     return NextResponse.json({ error: parsed.error.issues[0]?.message ?? 'Invalid input' }, { status: 400 });

@@ -1,0 +1,316 @@
+{
+  "schema": "nexyfab.mechanical-core-internal-verification.v1",
+  "generatedAt": "2026-08-22T22:32:40.135Z",
+  "releaseChannel": "mechanical-core",
+  "ok": true,
+  "git": {
+    "head": "3d6ba1ec461169d9d331b939e432483c3953b752",
+    "branch": "release/2026-08-10",
+    "workingTreeClean": false
+  },
+  "checks": {
+    "losslessDesignGraph": true,
+    "coreThirtyImplementationCoverage": true,
+    "threeCycleNfab": true,
+    "threeCycleStep": true,
+    "mechanicalAccuracy": true,
+    "intentIntakeQualification": true,
+    "intentExactRuntimeRepresentative": true,
+    "assemblyDrawingHandoffLocalReadiness": true,
+    "typecheck": true
+  },
+  "commands": [
+    {
+      "name": "direct-cad",
+      "command": "npm exec vitest run -- src/lib/ai/mechanicalDesignGraph.test.ts src/lib/ai/mechanicalCoreFeatureContract.test.ts scripts/mechanical-core-feature-local-closed-loop.test.ts scripts/mechanical-core-feature-local-runtime.test.ts src/app/[lang]/shape-generator/features/mechanicalCoreFeatureRuntimeCoverage.test.ts src/app/[lang]/shape-generator/features/featureApplyCoverage.test.ts src/app/api/featureTree-intent/route.test.ts src/lib/ai/mechanicalStepInteroperability.test.ts scripts/build-mechanical-commercial-contract-assessments.test.ts src/app/[lang]/shape-generator/ai/programFromNfab.test.ts src/lib/ai/guidedDesignBrief.test.ts src/lib/ai/aiCanonicalCandidate.test.ts src/app/[lang]/shape-generator/assembly/drawingHandoff.test.ts src/app/[lang]/shape-generator/io/manufacturingPackage.test.ts src/app/[lang]/shape-generator/io/__tests__/stepRoundtripReport.test.ts src/app/[lang]/shape-generator/io/__tests__/stepRoundtripWasm.feasibility.test.ts src/app/[lang]/shape-generator/io/__tests__/nfabMechanicalDesignGraphRoundtrip.test.ts",
+      "environment": {
+        "RUN_OCCT_FEASIBILITY": "1"
+      },
+      "exitCode": 0,
+      "durationMs": 74878
+    },
+    {
+      "name": "mechanical-accuracy",
+      "command": "npm run test:accuracy:mechanical",
+      "environment": {},
+      "exitCode": 0,
+      "durationMs": 23044
+    },
+    {
+      "name": "intent-qualification",
+      "command": "npm run mechanical:intents:local:check",
+      "environment": {},
+      "exitCode": 0,
+      "durationMs": 823
+    },
+    {
+      "name": "intent-runtime",
+      "command": "npm run mechanical:intents:runtime:check",
+      "environment": {},
+      "exitCode": 0,
+      "durationMs": 1085
+    },
+    {
+      "name": "assembly-handoff-readiness",
+      "command": "npm run assembly-handoff:readiness:check",
+      "environment": {},
+      "exitCode": 0,
+      "durationMs": 6608
+    },
+    {
+      "name": "typecheck",
+      "command": "npm run typecheck",
+      "environment": {},
+      "exitCode": 0,
+      "durationMs": 23808
+    }
+  ],
+  "sourceBindings": [
+    {
+      "path": "package.json",
+      "sha256": "446cd34404211bd41f70cb4d78e293a9298c93653a85b88e9288ddd578bb3121"
+    },
+    {
+      "path": "package-lock.json",
+      "sha256": "d27bddc997f10ade5cf94722b17c70a4e958b1e8f631f1e807a3ac4c51289f26"
+    },
+    {
+      "path": "scripts/run-mechanical-core-internal-verification.mjs",
+      "sha256": "ffd9cd478e4863c774e0b56e4456d9378693cf88639507dac659e8ffbd31fa50"
+    },
+    {
+      "path": "src/lib/ai/mechanicalDesignGraph.ts",
+      "sha256": "ac80c8b6d8709d74b6d70c3ea028dd8725cce399163f67d87a45d014abccd264"
+    },
+    {
+      "path": "src/lib/ai/mechanicalDesignGraph.test.ts",
+      "sha256": "c91fad4b8754e02d5242f2c25ba178212bb5691e35a286b347725f2740f9cfbe"
+    },
+    {
+      "path": "src/lib/ai/mechanicalCoreFeatureContract.ts",
+      "sha256": "a53d59fde828bca93ac903e961970be256fe83223733517dcef2bfb5b5f2bbfe"
+    },
+    {
+      "path": "src/lib/ai/mechanicalCoreFeatureContract.test.ts",
+      "sha256": "b2fa7840a53a0616bbbbc8e2d17f0ea39395a75810ef113af02e8555b2c762e3"
+    },
+    {
+      "path": "scripts/mechanical-core-feature-local-closed-loop.ts",
+      "sha256": "b4601fb8556a045afc9a482a7863243cc0f18b3e423558c48ded4998fb72e8ad"
+    },
+    {
+      "path": "scripts/mechanical-core-feature-local-closed-loop.test.ts",
+      "sha256": "1b4fe7a6ba7a0cc7b8502cf1b5aaeded6f6f78096caeff3910856fc4cfe11191"
+    },
+    {
+      "path": "scripts/mechanical-core-feature-local-runtime.ts",
+      "sha256": "e6633a788f34892ac95bb18b77b3abef2eb03d01e90cd45827e12f8cbb3ee760"
+    },
+    {
+      "path": "scripts/mechanical-core-feature-local-runtime.test.ts",
+      "sha256": "c946ebeba42b7bb5868b7b56bcacd9a0ef52fc800df28109c105c4c28ca0cc13"
+    },
+    {
+      "path": "scripts/mechanical-ai-intent-local-qualification.ts",
+      "sha256": "ea2ff0f55df572573312a634d95fda78e83a464c8b8dcfd3b390d380baf85cd2"
+    },
+    {
+      "path": "scripts/mechanical-ai-intent-local-qualification.test.ts",
+      "sha256": "f7408aafd023f1f41ee1caac908ed0d6ac62088550b6b216f738fa3b54f101d6"
+    },
+    {
+      "path": "scripts/verify-mechanical-ai-intent-local-qualification.ts",
+      "sha256": "d58ca857852e8776f69dd13d159e917e5c01d909052330c867cafe0a1112023b"
+    },
+    {
+      "path": "scripts/verify-mechanical-ai-intent-local-qualification.test.ts",
+      "sha256": "0f238d5c4a7481f03fc536cb35a5cca9f013591c93f10703197d41825f457580"
+    },
+    {
+      "path": "scripts/mechanical-ai-intent-runtime-harness.ts",
+      "sha256": "ad98eddde15d8e215ba41d7b341fef8c1c9879cf59040aac7ccec94060287fbd"
+    },
+    {
+      "path": "scripts/mechanical-ai-intent-runtime-harness.test.ts",
+      "sha256": "0b48b94e4b98bb22ecf9fea4da7b8954c9e2ca2027138f471215f48fc19e7b6c"
+    },
+    {
+      "path": "scripts/verify-mechanical-ai-intent-runtime-receipt.ts",
+      "sha256": "71e918420d9acb52ed5c5bb334d7ff4f27becb06e105c996d47a5e8131b77c0b"
+    },
+    {
+      "path": "scripts/verify-mechanical-ai-intent-runtime-receipt.test.ts",
+      "sha256": "878a58f5c882086ac095a001f27383d8fae0d03e07b30d5fb57f2737905881a2"
+    },
+    {
+      "path": "scripts/build-assembly-drawing-handoff-readiness.mjs",
+      "sha256": "e75116732ca02451b18f12bb24d694afa9fa1443e38af98ecf9fdb1ef747a82d"
+    },
+    {
+      "path": "scripts/build-assembly-drawing-handoff-readiness.test.mjs",
+      "sha256": "bbc271c6980e02176c3b86d0a33c21ac7518a6fa1a5ee0d8200152b571572e33"
+    },
+    {
+      "path": "src/lib/cad/assemblyDrawingHandoffStore.ts",
+      "sha256": "d5d6486e3c991f6ef5e9e44c6132d75ed0c2d62e4b6d9fb392cde981a8c876b8"
+    },
+    {
+      "path": "src/lib/cad/assemblyDrawingHandoffStore.test.ts",
+      "sha256": "95410d9772ea1c7b33439958013abe729a7cf229f548cf4d959296a34610fe52"
+    },
+    {
+      "path": "src/app/api/nexyfab/projects/[id]/drawing-handoffs/route.ts",
+      "sha256": "fd6930646309021e43af3c0b0b19582e8aaac3ede638d6baf5fe15d3e2b53e26"
+    },
+    {
+      "path": "src/app/api/nexyfab/projects/[id]/drawing-handoffs/route.sqlite.integration.test.ts",
+      "sha256": "b9d0d49e9541ffd23417347aaf11d5f30cad284a48b67742b2e5ef3d5d3ddd61"
+    },
+    {
+      "path": "src/app/api/nexyfab/projects/[id]/drawing-handoffs/[handoffId]/route.ts",
+      "sha256": "e23dca4efe61c826c5d22bdc1b3fa29ef313071397e0fd366cea06679e509173"
+    },
+    {
+      "path": "src/app/api/cron/assembly-drawing-handoff-prune/route.ts",
+      "sha256": "2bb1a064610349d548cfd24e8c3abb76435a5486d9e90dcbec57e8ef18e13ddd"
+    },
+    {
+      "path": "src/app/[lang]/shape-generator/assembly/serverDrawingHandoff.ts",
+      "sha256": "c325fa5bf66538e23e5508d1f04b44ddf6d049f3e078392a4dcaafd7e64b7fba"
+    },
+    {
+      "path": "src/app/[lang]/shape-generator/features/mechanicalCoreFeatureRuntimeCoverage.test.ts",
+      "sha256": "f87b605dceba46b9c638c19e07f8d950371c0fe5d1ac76d196eef451e4654c57"
+    },
+    {
+      "path": "src/app/[lang]/shape-generator/features/featureApplyCoverage.test.ts",
+      "sha256": "9977230f4da48042f56f70d42f3f8003cbefabecf32febf19b27cb8cd0002ae8"
+    },
+    {
+      "path": "src/app/api/featureTree-intent/handler.ts",
+      "sha256": "bae44e5ed7cef2590d125b350086a502623f1a3d430d37ff86e8ce9fccc248b8"
+    },
+    {
+      "path": "src/app/api/featureTree-intent/route.test.ts",
+      "sha256": "4dcc0d25b3d1dafacf12a6c1f6bfe4e975b9d44135375f68922c2d2083386f8f"
+    },
+    {
+      "path": "src/lib/ai/mechanicalStepInteroperability.ts",
+      "sha256": "c531cc23cf20fc16c476e9b36d5a5e4e3e33c266ad997eb665e6939ae9201be6"
+    },
+    {
+      "path": "src/lib/ai/mechanicalStepInteroperability.test.ts",
+      "sha256": "d214c4e7e407d0b7209a65a8825de78f10f3fa6b39eba89072c5164594d54efd"
+    },
+    {
+      "path": "scripts/run-mechanical-standalone-step-c4.mjs",
+      "sha256": "03789cedbcbeade8b68363588341596f0113054054283b792bc2e31976c55119"
+    },
+    {
+      "path": "scripts/run-mechanical-standalone-step-c4.test.mjs",
+      "sha256": "642d26341efe2e6647af73bb220d359c090d870d6f42c17e394967e155534e8c"
+    },
+    {
+      "path": "scripts/build-mechanical-commercial-contract-assessments.ts",
+      "sha256": "db3f4d9101e264a40834ee7da304c9bda929a0df4644b3acf6af0a3ca25cba1d"
+    },
+    {
+      "path": "scripts/build-mechanical-commercial-contract-assessments.test.ts",
+      "sha256": "6df3f4df58df270fd7f2e65870f700a71d19076f02199875cb8bfe95b0803d3a"
+    },
+    {
+      "path": "src/app/[lang]/shape-generator/ai/programFromNfab.ts",
+      "sha256": "13931cab7a5d94d2f252705b935984cb59054998c5fd325124b31d468860f08f"
+    },
+    {
+      "path": "src/app/[lang]/shape-generator/ai/programFromNfab.test.ts",
+      "sha256": "266df240036cfd3d92f4f2e7b6291483873457d7cd504569793bccde9781c802"
+    },
+    {
+      "path": "src/lib/ai/guidedDesignBrief.ts",
+      "sha256": "da3b9994bc91cc66f1069b537ae5ef295dd0aebeb1618c477cc5c9fdab346c13"
+    },
+    {
+      "path": "src/lib/ai/guidedDesignBrief.test.ts",
+      "sha256": "e303eea6e33491852058efcaa47543ec99564b13a6897f2d04f8b8c5ac4408a5"
+    },
+    {
+      "path": "src/lib/ai/aiCanonicalCandidate.ts",
+      "sha256": "509cf8d2247ceb72d8d8ada2589ca4a4a67dca228a650895356fe63e90c6d760"
+    },
+    {
+      "path": "src/lib/ai/aiCanonicalCandidate.test.ts",
+      "sha256": "62288dcfaffc638e9dd1003da8368909f3ff63bf579b775bbc0540d2baef0bbf"
+    },
+    {
+      "path": "src/app/[lang]/shape-generator/assembly/drawingHandoff.ts",
+      "sha256": "4716832985c4c61f2964598e36f321c674100f63350717417a6e302c34f7f6fb"
+    },
+    {
+      "path": "src/app/[lang]/shape-generator/assembly/drawingHandoff.test.ts",
+      "sha256": "28cb580f155b5a87e1086ed0c00051ae207fd4c3326acbefc56fbf38f56b49cf"
+    },
+    {
+      "path": "src/app/[lang]/shape-generator/io/manufacturingPackage.ts",
+      "sha256": "7997c1d69b71f52e9b50e6492204d7d9ae46781cca88b5d65791962d8792b782"
+    },
+    {
+      "path": "src/app/[lang]/shape-generator/io/manufacturingPackage.test.ts",
+      "sha256": "c46db6db07b2cdce571899cd791039938dd02890c95dabbf4caa259b2ed3b60c"
+    },
+    {
+      "path": "src/app/[lang]/shape-generator/io/stepRoundtripReport.ts",
+      "sha256": "6114d7414c79751703cc0cf4dca9073ca0fca77e2b8545270542a3ad7acaad6f"
+    },
+    {
+      "path": "src/app/[lang]/shape-generator/io/stepExporter.ts",
+      "sha256": "ba53753189ecb809bc8a7ecf35489cf6e1e526d4493cd37cbeb90cfd68a1c6a6"
+    },
+    {
+      "path": "src/app/[lang]/shape-generator/io/stepImporter.ts",
+      "sha256": "6148ac6c8741d45b5b72fb0b0aa3d3bb93cfd4a785ca2a0e9473d7a95eafa4dd"
+    },
+    {
+      "path": "src/app/[lang]/shape-generator/features/occtEngine.ts",
+      "sha256": "32ff70b38fe4634f1a1058319fbe0a782057df0aee95975ac1c6bdac41eb3084"
+    },
+    {
+      "path": "src/app/[lang]/shape-generator/__tests__/geometrySignature.ts",
+      "sha256": "4290b477a9b1d4e86a10d917e74306411c73fc7bd5e2cf980935a88435b5c290"
+    },
+    {
+      "path": "src/app/[lang]/shape-generator/io/__tests__/stepRoundtripReport.test.ts",
+      "sha256": "1dbd1db15ac6bdaaba2a14c3a393721d81e7edebbccec475cc89e13e9e65edeb"
+    },
+    {
+      "path": "src/app/[lang]/shape-generator/io/__tests__/stepRoundtripWasm.feasibility.test.ts",
+      "sha256": "336e9223f1d63a3eff5359b33f38c2fc404e7e408715be9d54b145d141936244"
+    },
+    {
+      "path": "src/app/[lang]/shape-generator/io/__tests__/nfabMechanicalDesignGraphRoundtrip.test.ts",
+      "sha256": "494079fe15e3889b45e734dbd7c5930f3727f3f60f674cfcdd3a858990ee3c61"
+    },
+    {
+      "path": "src/lib/ai/domainAccuracyReleaseGate.ts",
+      "sha256": "670c345388b39c9df34053335cbf9d923c7e6d52e7a5ddbe6b7130d7484de0a3"
+    },
+    {
+      "path": "src/lib/ai/domainAccuracyReleaseGate.test.ts",
+      "sha256": "2afb6bc39fb9fad7adba47edd5c265dd0be283fde8f5c82ba6513e0db7af2d97"
+    },
+    {
+      "path": "public/replicad_single.wasm",
+      "sha256": "2e07c45b83267b38d3102ec411fad11e7ce2ed71854084e461c5ab5fee94aaff"
+    },
+    {
+      "path": "public/occt-import-js.wasm",
+      "sha256": "33391fc9d94ea5c869a6718488bf0a9a464222bac9bdc764dfe1690cef281952"
+    }
+  ],
+  "claimBoundary": {
+    "internalOnly": true,
+    "independentHoldout": false,
+    "expertApproval": false,
+    "manufacturingValidation": false
+  }
+}

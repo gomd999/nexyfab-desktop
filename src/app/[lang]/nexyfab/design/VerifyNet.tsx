@@ -7,6 +7,8 @@
  * 은폐 없는 상태 표가 신뢰의 근거다(feedback_landing_no_mock 정합).
  */
 
+import { designLoc } from './designI18n';
+
 export type NetStatus = 'pass' | 'fail' | 'skip' | 'todo';
 
 const STATUS_UI: Record<NetStatus, { mark: string; color: string }> = {
@@ -18,13 +20,13 @@ const STATUS_UI: Record<NetStatus, { mark: string; color: string }> = {
 
 export interface NetItem { label: string; status: NetStatus; note?: string }
 
-export default function VerifyNet({ ko, items }: { ko: boolean; items: NetItem[] }) {
+export default function VerifyNet({ lang, items }: { lang: string; items: NetItem[] }) {
   return (
     <div style={{ marginBottom: 10, padding: '9px 11px', borderRadius: 8, border: '1px solid var(--nx-border, #dfe3e8)', background: 'var(--nx-panel, #fff)' }}>
       <div style={{ fontSize: 11, fontWeight: 800, marginBottom: 5 }}>
-        🕸 {ko ? '검증 그물' : 'Verification net'}
+        🕸 {designLoc(lang, { ko: '검증 그물', en: 'Verification net', ja: '検証ネット', zh: '验证网', es: 'Red de verificación', ar: 'شبكة التحقق' })}
         <span style={{ marginLeft: 6, fontSize: 9.5, fontWeight: 600, color: 'var(--nx-text-3, #6b7684)' }}>
-          {ko ? '통과·실패·미실행을 숨기지 않습니다' : 'pass / fail / not-run — nothing hidden'}
+          {designLoc(lang, { ko: '통과·실패·미실행을 숨기지 않습니다', en: 'pass / fail / not-run — nothing hidden', ja: '合格・不合格・未実行を隠しません', zh: '不隐藏通过、失败或未运行状态', es: 'No se ocultan estados aprobados, fallidos o no ejecutados', ar: 'لا نخفي حالات النجاح أو الفشل أو عدم التشغيل' })}
         </span>
       </div>
       <div style={{ display: 'grid', gap: 3 }}>

@@ -6,6 +6,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { verifyAdmin } from '@/lib/admin-auth';
 import { sendPushToUser } from '@/lib/web-push';
+import { boundedJsonError, readBoundedJson } from '@/lib/boundedJsonBody';
+
+const MAX_PUSH_SEND_BODY_BYTES = 16 * 1024;
 
 const sendSchema = z.object({
   userId: z.string().min(1).max(128),
@@ -24,7 +27,11 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   }
 
-  const raw = await req.json().catch(() => null);
+  let raw: unknown = null;
+  try { raw = await readBoundedJson(req, MAX_PUSH_SEND_BODY_BYTES); }
+  catch (error) {
+    if (boundedJsonError(error)?.code === 'PAYLOAD_TOO_LARGE') return NextResponse.json({ error: 'Request too large', code: 'PAYLOAD_TOO_LARGE' }, { status: 413 });
+  }
   const parsed = sendSchema.safeParse(raw);
   if (!parsed.success) {
     return NextResponse.json({ error: parsed.error.issues[0]?.message ?? 'Invalid input' }, { status: 400 });

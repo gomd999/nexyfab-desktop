@@ -1,6 +1,9 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
+import { useAdminI18n } from '../AdminI18nProvider';
+import { createCommercialLocalizer } from '@/lib/i18n/commercialLocalizer';
+import { formatDate, formatNumber } from '@/lib/i18n/format';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -26,13 +29,12 @@ interface PartnerApplication {
   status: AppStatus;
   created_at: number;
 }
-
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
-const STATUS_LABEL: Record<AppStatus, string> = {
-  pending: '검토대기',
-  approved: '승인',
-  rejected: '거절',
+const STATUS_LABEL: Record<AppStatus, { ko: string; en: string }> = {
+  pending: { ko: '검토 대기', en: 'Pending review' },
+  approved: { ko: '승인', en: 'Approved' },
+  rejected: { ko: '거절', en: 'Rejected' },
 };
 
 const STATUS_COLOR: Record<AppStatus, string> = {
@@ -41,13 +43,11 @@ const STATUS_COLOR: Record<AppStatus, string> = {
   rejected: 'bg-red-50 text-red-700 border-red-300',
 };
 
-function formatDate(ms: number): string {
-  return new Date(ms).toLocaleDateString('ko-KR', { year: 'numeric', month: '2-digit', day: '2-digit' });
-}
-
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function PartnerApplicationsPage() {
+  const { locale } = useAdminI18n();
+  const L = createCommercialLocalizer(locale);
   const [apps, setApps] = useState<PartnerApplication[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<AppStatus | 'all'>('pending');
@@ -80,12 +80,12 @@ export default function PartnerApplicationsPage() {
       const data = await res.json();
       if (res.ok) {
         setApps(prev => prev.map(a => a.id === id ? { ...a, status: data.status as AppStatus } : a));
-        setMsgs(prev => ({ ...prev, [id]: action === 'approve' ? '승인 완료. 환영 이메일을 발송했습니다.' : '거절 완료. 결과 이메일을 발송했습니다.' }));
+        setMsgs(prev => ({ ...prev, [id]: action === 'approve' ? L('승인 완료. 환영 이메일을 발송했습니다.', 'Approved. A welcome email was sent.') : L('거절 완료. 결과 이메일을 발송했습니다.', 'Rejected. A result email was sent.') }));
       } else {
-        setMsgs(prev => ({ ...prev, [id]: data.error || '처리 중 오류가 발생했습니다.' }));
+        setMsgs(prev => ({ ...prev, [id]: L('처리 중 오류가 발생했습니다.', 'An error occurred while processing the application.') }));
       }
     } catch {
-      setMsgs(prev => ({ ...prev, [id]: '서버 오류가 발생했습니다.' }));
+      setMsgs(prev => ({ ...prev, [id]: L('서버 오류가 발생했습니다.', 'A server error occurred.') }));
     } finally {
       setActioning(null);
     }
@@ -105,14 +105,14 @@ export default function PartnerApplicationsPage() {
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">파트너 신청 관리</h1>
-          <p className="text-gray-500 text-sm mt-1">파트너 등록 신청을 검토하고 승인/거절합니다</p>
+          <h1 className="text-2xl font-bold text-gray-900">{L('파트너 신청 관리', 'Partner application management')}</h1>
+          <p className="text-gray-500 text-sm mt-1">{L('파트너 등록 신청을 검토하고 승인 또는 거절합니다.', 'Review, approve, or reject partner registration applications.')}</p>
         </div>
         <button
           onClick={fetchApps}
           className="px-3 py-1.5 text-sm rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 transition-colors"
         >
-          새로고침
+          {L('새로고침', 'Refresh')}
         </button>
       </div>
 
@@ -126,9 +126,9 @@ export default function PartnerApplicationsPage() {
               filter === s ? 'ring-2 ring-blue-500' : 'hover:border-blue-300'
             } ${s === 'all' ? 'bg-gray-50 text-gray-700 border-gray-200' : STATUS_COLOR[s as AppStatus]}`}
           >
-            <div className="text-xl font-bold">{counts[s]}</div>
+            <div className="text-xl font-bold">{formatNumber(counts[s], locale)}</div>
             <div className="text-xs mt-0.5">
-              {s === 'all' ? '전체' : STATUS_LABEL[s as AppStatus]}
+              {s === 'all' ? L('전체', 'All') : L(STATUS_LABEL[s as AppStatus].ko, STATUS_LABEL[s as AppStatus].en)}
             </div>
           </button>
         ))}
@@ -136,10 +136,10 @@ export default function PartnerApplicationsPage() {
 
       {/* List */}
       {loading ? (
-        <div className="text-center py-16 text-gray-400">불러오는 중...</div>
+        <div className="text-center py-16 text-gray-400">{L('불러오는 중...', 'Loading...')}</div>
       ) : filtered.length === 0 ? (
         <div className="text-center py-16 text-gray-400">
-          {filter === 'pending' ? '검토 대기 중인 신청이 없습니다.' : '신청 목록이 없습니다.'}
+          {filter === 'pending' ? L('검토 대기 중인 신청이 없습니다.', 'There are no applications pending review.') : L('신청 목록이 없습니다.', 'There are no applications.')}
         </div>
       ) : (
         <div className="space-y-4">
@@ -157,7 +157,7 @@ export default function PartnerApplicationsPage() {
                       <div className="flex items-center gap-2 mb-1 flex-wrap">
                         <span className="font-bold text-gray-900 text-base">{app.company_name}</span>
                         <span className={`text-xs font-bold px-2 py-0.5 rounded-full border ${STATUS_COLOR[app.status]}`}>
-                          {STATUS_LABEL[app.status]}
+                          {L(STATUS_LABEL[app.status].ko, STATUS_LABEL[app.status].en)}
                         </span>
                       </div>
 
@@ -181,7 +181,7 @@ export default function PartnerApplicationsPage() {
                         )}
                       </div>
 
-                      <div className="text-xs text-gray-400 mt-1.5">신청일: {formatDate(app.created_at)}</div>
+                      <div className="text-xs text-gray-400 mt-1.5">{L('신청일:', 'Applied:')} {formatDate(app.created_at, locale) ?? '-'}</div>
                     </div>
 
                     {/* Action buttons */}
@@ -192,14 +192,14 @@ export default function PartnerApplicationsPage() {
                           disabled={!!isActioning}
                           className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white text-sm font-bold rounded-lg transition-colors disabled:opacity-50"
                         >
-                          {actioning === app.id + ':approve' ? '처리 중...' : '승인'}
+                          {actioning === app.id + ':approve' ? L('처리 중...', 'Processing...') : L('승인', 'Approve')}
                         </button>
                         <button
                           onClick={() => handleAction(app.id, 'reject')}
                           disabled={!!isActioning}
                           className="px-4 py-2 bg-red-50 hover:bg-red-100 text-red-700 border border-red-300 text-sm font-bold rounded-lg transition-colors disabled:opacity-50"
                         >
-                          {actioning === app.id + ':reject' ? '처리 중...' : '거절'}
+                          {actioning === app.id + ':reject' ? L('처리 중...', 'Processing...') : L('거절', 'Reject')}
                         </button>
                       </div>
                     )}
@@ -216,7 +216,7 @@ export default function PartnerApplicationsPage() {
                     onClick={() => setExpanded(isExpanded ? null : app.id)}
                     className="mt-3 text-xs text-blue-600 hover:underline flex items-center gap-1"
                   >
-                    {isExpanded ? '▲ 상세 접기' : '▼ 상세 보기'}
+                    {isExpanded ? L('▲ 상세 접기', '▲ Hide details') : L('▼ 상세 보기', '▼ View details')}
                   </button>
                 </div>
 
@@ -225,34 +225,34 @@ export default function PartnerApplicationsPage() {
                   <div className="border-t border-gray-100 px-5 py-4 bg-gray-50 space-y-4">
                     <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 text-sm">
                       <div>
-                        <div className="text-xs text-gray-400 mb-0.5">사업자등록번호</div>
+                        <div className="text-xs text-gray-400 mb-0.5">{L('사업자등록번호', 'Business registration number')}</div>
                         <div className="font-medium text-gray-800">{app.biz_number}</div>
                       </div>
                       <div>
-                        <div className="text-xs text-gray-400 mb-0.5">대표자</div>
+                        <div className="text-xs text-gray-400 mb-0.5">{L('대표자', 'Chief executive')}</div>
                         <div className="font-medium text-gray-800">{app.ceo_name}</div>
                       </div>
                       {app.founded_year && (
                         <div>
-                          <div className="text-xs text-gray-400 mb-0.5">설립연도</div>
-                          <div className="font-medium text-gray-800">{app.founded_year}년</div>
+                          <div className="text-xs text-gray-400 mb-0.5">{L('설립 연도', 'Founded')}</div>
+                          <div className="font-medium text-gray-800">{L(`${app.founded_year}년`, String(app.founded_year))}</div>
                         </div>
                       )}
                       {app.employee_count && (
                         <div>
-                          <div className="text-xs text-gray-400 mb-0.5">직원 수</div>
-                          <div className="font-medium text-gray-800">{app.employee_count}명</div>
+                          <div className="text-xs text-gray-400 mb-0.5">{L('직원 수', 'Employees')}</div>
+                          <div className="font-medium text-gray-800">{L(`${app.employee_count}명`, String(app.employee_count))}</div>
                         </div>
                       )}
                       {app.monthly_capacity && (
                         <div>
-                          <div className="text-xs text-gray-400 mb-0.5">월 생산 능력</div>
+                          <div className="text-xs text-gray-400 mb-0.5">{L('월 생산 능력', 'Monthly capacity')}</div>
                           <div className="font-medium text-gray-800">{app.monthly_capacity}</div>
                         </div>
                       )}
                       {app.homepage && (
                         <div>
-                          <div className="text-xs text-gray-400 mb-0.5">홈페이지</div>
+                          <div className="text-xs text-gray-400 mb-0.5">{L('홈페이지', 'Website')}</div>
                           <a href={app.homepage} target="_blank" rel="noopener noreferrer" className="font-medium text-blue-600 hover:underline truncate block">{app.homepage}</a>
                         </div>
                       )}
@@ -260,7 +260,7 @@ export default function PartnerApplicationsPage() {
 
                     {app.certifications.length > 0 && (
                       <div>
-                        <div className="text-xs text-gray-400 mb-1">보유 인증</div>
+                        <div className="text-xs text-gray-400 mb-1">{L('보유 인증', 'Certifications')}</div>
                         <div className="flex flex-wrap gap-1.5">
                           {app.certifications.map(c => (
                             <span key={c} className="text-[11px] bg-purple-50 text-purple-700 border border-purple-200 px-2 py-0.5 rounded-full font-medium">{c}</span>
@@ -271,7 +271,7 @@ export default function PartnerApplicationsPage() {
 
                     {app.industries.length > 0 && (
                       <div>
-                        <div className="text-xs text-gray-400 mb-1">주요 납품 산업</div>
+                        <div className="text-xs text-gray-400 mb-1">{L('주요 납품 산업', 'Primary industries served')}</div>
                         <div className="flex flex-wrap gap-1.5">
                           {app.industries.map(ind => (
                             <span key={ind} className="text-[11px] bg-orange-50 text-orange-700 border border-orange-200 px-2 py-0.5 rounded-full font-medium">{ind}</span>
@@ -282,7 +282,7 @@ export default function PartnerApplicationsPage() {
 
                     {app.bio && (
                       <div>
-                        <div className="text-xs text-gray-400 mb-1">회사 소개</div>
+                        <div className="text-xs text-gray-400 mb-1">{L('회사 소개', 'Company profile')}</div>
                         <p className="text-sm text-gray-700 whitespace-pre-wrap bg-white rounded-lg px-3 py-2 border border-gray-200">{app.bio}</p>
                       </div>
                     )}

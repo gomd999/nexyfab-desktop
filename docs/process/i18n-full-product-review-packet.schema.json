@@ -1,0 +1,59 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://nexyfab.com/schemas/commercial-i18n-full-product-artifact-review.v1.json",
+  "title": "Unsigned NexyFab six-locale full-product artifact review packet",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "packetType", "status", "releaseEligible", "buildId", "head", "generatedAt", "locales", "artifacts", "blockers", "signatureStatus", "receiptSha256", "receiptHmacSha256"],
+  "properties": {
+    "schema": { "const": "nexyfab.commercial-i18n-full-product-artifact-review.v1" },
+    "packetType": { "const": "unsigned_review_packet" },
+    "status": { "const": "HOLD" },
+    "releaseEligible": { "const": false },
+    "buildId": { "type": "string" },
+    "head": { "type": "string" },
+    "generatedAt": { "type": "string", "format": "date-time" },
+    "expiresAt": { "type": ["string", "null"] },
+    "locales": { "const": ["kr", "en", "ja", "cn", "es", "ar"] },
+    "artifacts": {
+      "type": "object",
+      "required": ["visual", "rtl", "email", "pdf", "export"],
+      "additionalProperties": false,
+      "properties": {
+        "visual": { "$ref": "#/$defs/artifact" },
+        "rtl": { "$ref": "#/$defs/artifact" },
+        "email": { "$ref": "#/$defs/artifact" },
+        "pdf": { "$ref": "#/$defs/artifact" },
+        "export": { "$ref": "#/$defs/artifact" }
+      }
+    },
+    "blockers": { "type": "array", "items": { "type": "string" } },
+    "signatureStatus": { "const": "UNSIGNED" },
+    "receiptSha256": { "type": "null" },
+    "receiptHmacSha256": { "type": "null" }
+  },
+  "$defs": {
+    "artifact": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "status", "reviewStatus", "synthetic", "buildId", "head", "locales", "artifactPath", "evidencePath", "artifactBytes", "evidenceBytes", "artifactSha256", "evidenceSha256", "execution", "reason"],
+      "properties": {
+        "kind": { "enum": ["visual", "rtl", "email", "pdf", "export"] },
+        "status": { "enum": ["PASS", "HOLD", "NOT_RUN"] },
+        "reviewStatus": { "const": "UNSIGNED" },
+        "synthetic": { "type": "boolean" },
+        "buildId": { "type": "string" },
+        "head": { "type": "string" },
+        "locales": { "const": ["kr", "en", "ja", "cn", "es", "ar"] },
+        "artifactPath": { "type": ["string", "null"] },
+        "evidencePath": { "type": ["string", "null"] },
+        "artifactBytes": { "type": ["integer", "null"] },
+        "evidenceBytes": { "type": ["integer", "null"] },
+        "artifactSha256": { "type": ["string", "null"] },
+        "evidenceSha256": { "type": ["string", "null"] },
+        "execution": { "type": "object" },
+        "reason": { "type": ["array", "string", "null"] }
+      }
+    }
+  }
+}

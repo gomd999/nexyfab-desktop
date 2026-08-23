@@ -5,12 +5,14 @@
 
 import { useState } from 'react';
 import type { CollabSession } from '@/hooks/useCollabPolling';
+import { loc } from '@/lib/i18n/loc';
 
 // ─── Props ────────────────────────────────────────────────────────────────────
 
 interface CollabAvatarsProps {
   sessions: CollabSession[];
   mySessionId: string;
+  lang?: string;
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -29,10 +31,12 @@ function Avatar({
   session,
   isMe,
   zIndex,
+  lang,
 }: {
   session: CollabSession;
   isMe: boolean;
   zIndex: number;
+  lang: string;
 }) {
   const [hovered, setHovered] = useState(false);
 
@@ -87,7 +91,7 @@ function Avatar({
             border: '1px solid #1f2937',
           }}
         >
-          나
+          {loc(lang, { ko: '나', en: 'me', ja: '自分', zh: '我', es: 'yo', ar: 'أنا' })}
         </span>
       )}
 
@@ -115,7 +119,7 @@ function Avatar({
           {session.userName}
           {isMe && (
             <span style={{ marginLeft: 4, color: '#60A5FA', fontSize: 11 }}>
-              (나 / me)
+              ({loc(lang, { ko: '나', en: 'me', ja: '自分', zh: '我', es: 'yo', ar: 'أنا' })})
             </span>
           )}
           {/* Tooltip arrow */}
@@ -140,7 +144,7 @@ function Avatar({
 
 // ─── Overflow badge ───────────────────────────────────────────────────────────
 
-function OverflowBadge({ count }: { count: number }) {
+function OverflowBadge({ count, lang }: { count: number; lang: string }) {
   const [hovered, setHovered] = useState(false);
 
   return (
@@ -187,7 +191,7 @@ function OverflowBadge({ count }: { count: number }) {
             zIndex: 9999,
           }}
         >
-          {count}명 더 접속 중 / {count} more online
+          {loc(lang, { ko: `${count}명 더 접속 중`, en: `${count} more online`, ja: `${count}人がオンライン`, zh: `还有 ${count} 人在线`, es: `${count} más en línea`, ar: `${count} متصلون إضافيون` })}
         </div>
       )}
     </div>
@@ -196,7 +200,7 @@ function OverflowBadge({ count }: { count: number }) {
 
 // ─── CollabAvatars ────────────────────────────────────────────────────────────
 
-export default function CollabAvatars({ sessions, mySessionId }: CollabAvatarsProps) {
+export default function CollabAvatars({ sessions, mySessionId, lang = 'en' }: CollabAvatarsProps) {
   if (!sessions || sessions.length === 0) return null;
 
   const visible = sessions.slice(0, MAX_VISIBLE);
@@ -209,8 +213,8 @@ export default function CollabAvatars({ sessions, mySessionId }: CollabAvatarsPr
         alignItems: 'center',
         paddingLeft: 8,
       }}
-      aria-label={`${sessions.length}명 접속 중`}
-      title={`${sessions.length}명 실시간 접속 중`}
+      aria-label={loc(lang, { ko: `${sessions.length}명 접속 중`, en: `${sessions.length} online`, ja: `${sessions.length}人がオンライン`, zh: `${sessions.length} 人在线`, es: `${sessions.length} conectados`, ar: `${sessions.length} متصلون` })}
+      title={loc(lang, { ko: `${sessions.length}명 실시간 접속 중`, en: `${sessions.length} online now`, ja: `${sessions.length}人がリアルタイムでオンライン`, zh: `${sessions.length} 人实时在线`, es: `${sessions.length} conectados ahora`, ar: `${sessions.length} متصلون الآن` })}
     >
       {visible.map((session, idx) => (
         <Avatar
@@ -218,9 +222,10 @@ export default function CollabAvatars({ sessions, mySessionId }: CollabAvatarsPr
           session={session}
           isMe={session.sessionId === mySessionId}
           zIndex={MAX_VISIBLE - idx}
+          lang={lang}
         />
       ))}
-      {overflow > 0 && <OverflowBadge count={overflow} />}
+      {overflow > 0 && <OverflowBadge count={overflow} lang={lang} />}
     </div>
   );
 }

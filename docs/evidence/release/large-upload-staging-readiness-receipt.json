@@ -1,0 +1,66 @@
+{
+  "schema": "nexyfab.large-upload-staging-readiness.v1",
+  "generatedAt": "2026-08-23T00:00:00.000Z",
+  "capturedAt": null,
+  "ok": false,
+  "status": "HOLD",
+  "releaseEligible": false,
+  "environment": "staging",
+  "target": null,
+  "evidenceDeploymentId": null,
+  "release": null,
+  "upload": {
+    "objectStorageRoundtrip": "NOT_RUN_OR_FAIL",
+    "multipartResume": "NOT_RUN_OR_FAIL",
+    "abortCleanup": "NOT_RUN_OR_FAIL",
+    "sha256Readback": "NOT_RUN_OR_FAIL",
+    "uploadedBytes": null,
+    "resumedBytes": null,
+    "readbackBytes": null,
+    "sourceSha256": null,
+    "readbackSha256": null,
+    "abortedObjectAbsent": null
+  },
+  "workerMemory": {
+    "status": "NOT_RUN",
+    "runtimeLimitObserved": false,
+    "peakRssMb": null,
+    "limitMb": null,
+    "sampleCount": 0
+  },
+  "attestation": null,
+  "sourceBindings": [
+    {
+      "path": "docs/evidence/release/large-upload-staging-observations-NOT_RUN.json",
+      "bytes": 557,
+      "sha256": "39027fd08fd6704176dd6b61d95944088bf6207bedeb37af721dae8c7f6afeb5"
+    }
+  ],
+  "blockers": [
+    "external_capture_mode_missing",
+    "observation_not_completed",
+    "isolated_staging_target_invalid",
+    "release_binding_mismatch",
+    "capture_freshness_invalid",
+    "object_storage_identity_invalid",
+    "large_upload_source_invalid",
+    "large_upload_roundtrip_resume_abort_hash_not_verified",
+    "operation_identifiers_not_unique",
+    "large_upload_worker_memory_not_verified",
+    "trusted_collector_attestation_invalid",
+    "staging_isolation_evidence_invalid"
+  ],
+  "inputs": {
+    "observationPath": "docs/evidence/release/large-upload-staging-observations-NOT_RUN.json",
+    "trustedCollectorsPath": null
+  },
+  "derivation": {
+    "observationSchema": "nexyfab.large-upload-staging-observations.v2",
+    "minimumUploadBytes": 67108864,
+    "callerPassFlagsTrusted": false,
+    "actualPayloadAndReadbacksBound": true,
+    "providerArtifactsBound": true,
+    "runtimeLimitSeparatelyBound": true
+  },
+  "receiptSha256": "9d9ae480958f6bcd3a008b5d653a7d7dce181a5b547489c7bcf6ec5baf729351"
+}

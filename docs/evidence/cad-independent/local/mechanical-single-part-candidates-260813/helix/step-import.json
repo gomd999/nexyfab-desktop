@@ -1,0 +1,37 @@
+{
+  "schema": "nexyfab.mechanical-single-part-step-import.v1",
+  "feature": "helix",
+  "partRevisionSha256": "c7b3de9781871e4e157b2553afaae6f1518d61a7265b4df694ee011a0f74cae0",
+  "sourceDesignRevisionSha256": "3cf6a0f9c8efcf153a2cfefde087a2112c086fc412d2feeaeb9ce52542838564",
+  "sourceStep": {
+    "path": "docs/evidence/cad-independent/local/mechanical-core-runtime-260813/helix/helix-edited.step",
+    "sha256": "cbff29a2cf6a45922c4ea17f96da0775066ccc35cd422a029dd537c466f85776",
+    "bytes": 178086,
+    "assertionId": "helix.export.native-step"
+  },
+  "exactKernel": "OCCT",
+  "units": {
+    "value": "mm",
+    "confidence": "high"
+  },
+  "solidCount": 1,
+  "singleSolid": true,
+  "volumeMm3": 230.39171707332298,
+  "boundsMm": [
+    [
+      -6.497525269292156,
+      -1.4344471486960944,
+      -6.501925719154116
+    ],
+    [
+      6.504294372805795,
+      11.422440760938095,
+      6.505111377696094
+    ]
+  ],
+  "dimensionsMm": {
+    "x": 13.001819642097951,
+    "y": 12.856887909634189,
+    "z": 13.00703709685021
+  }
+}

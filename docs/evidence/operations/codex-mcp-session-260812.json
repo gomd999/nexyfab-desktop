@@ -1,0 +1,57 @@
+{
+  "schemaVersion": 1,
+  "capturedAt": "2026-08-12T19:42:43+09:00",
+  "source": "interactive Codex MCP session",
+  "chromeDevtools": {
+    "connection": "PASS",
+    "toolExposure": "PASS",
+    "page": {
+      "url": "http://127.0.0.1:3333/kr/shape-generator/assembly/?expert=1",
+      "documentStatus": 200,
+      "sessionStatus": 200,
+      "manifestStatus": 200,
+      "dynamicAssemblyChunkStatus": 200,
+      "networkFailuresAfterReload": 0,
+      "consoleErrorsAfterReload": 0,
+      "consoleWarningsAfterReload": 0,
+      "consoleIssuesAfterRemediation": 0
+    },
+    "complexVerifiedSystems": {
+      "mounted": true,
+      "stageCount": 6,
+      "stageStatus": "not_run"
+    },
+    "formFieldRemediation": {
+      "initialIssueCount": 5,
+      "finalIssueCount": 0,
+      "namedFields": [
+        "assembly-viewport-pick-mode",
+        "assembly-animation-current-frame",
+        "assembly-animation-end-frame",
+        "assembly-animation-fps",
+        "assembly-animation-command"
+      ]
+    },
+    "observedLimitations": [
+      "The first request to unused port 3000 failed with ERR_CONNECTION_REFUSED.",
+      "The first cold navigation to the existing port 3333 exceeded the 120000 ms navigation timeout while Next.js compiled, but the page later reached HTTP 200.",
+      "A cache-bypassing reload then completed successfully."
+    ]
+  },
+  "figma": {
+    "connection": "PASS",
+    "oauthIdentityProbe": "PASS",
+    "seat": "View",
+    "planTier": "student",
+    "targetFileProvided": false,
+    "fileRead": "NOT_RUN",
+    "fileWrite": "NOT_RUN",
+    "reason": "No authorized target Figma file URL or node was present in the request or repository, and the authenticated seat reports View access."
+  },
+  "releaseImpact": {
+    "commercialReleaseState": "BLOCK",
+    "mcpConnectionBlockerCleared": true,
+    "figmaFileE2EBlockerCleared": false,
+    "notes": "This local session receipt does not replace deployment credentials, independent CAD evidence, manufacturing receipts, or Figma file read/write evidence."
+  }
+}

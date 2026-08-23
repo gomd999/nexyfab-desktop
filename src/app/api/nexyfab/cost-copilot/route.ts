@@ -12,9 +12,13 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
+import { readBoundedJson } from '@/lib/boundedJsonBody';
 import { chatCompletion, AiNotConfiguredError, AiProviderError, type ChatMessage } from '@/lib/ai';
 import { getPromptVariant } from '@/lib/ai/prompts';
 import { recordPromptCall, classifyAiError } from '@/lib/ai/telemetry';
+import { localizedApiMessage, resolveServerLocale } from '@/lib/i18n/serverLocale';
+
+const MAX_JSON_BODY_BYTES = 4 * 1024 * 1024;
 
 // ─── Types ─────────────────────────────────────────────────────────────────
 
@@ -185,18 +189,20 @@ function stripMarkdownJson(text: string): string {
 // ─── POST handler ──────────────────────────────────────────────────────────
 
 export async function POST(req: NextRequest) {
+  const requestBody = await readBoundedJson(req, MAX_JSON_BODY_BYTES).catch(() => ({})) as RequestBody;
+  const locale = resolveServerLocale(req, requestBody.lang ?? req.nextUrl.searchParams.get('lang'));
   const { checkPlan, checkMonthlyLimit, recordUsageEvent } = await import('@/lib/plan-guard');
   const planCheck = await checkPlan(req, 'free');
   if (!planCheck.ok) return planCheck.response;
 
-  const usageCheck = await checkMonthlyLimit(planCheck.userId, planCheck.plan, 'cost_copilot');
+  const usageCheck = await checkMonthlyLimit(planCheck.userId, planCheck.plan, 'cost_copilot', planCheck.orgId);
   if (!usageCheck.ok) {
     const isPro = usageCheck.limit === -2;
     return NextResponse.json(
       {
         error: isPro
-          ? 'Cost Copilot requires Pro plan or higher.'
-          : `Free plan limit reached (${usageCheck.limit}/month). Upgrade to Pro for unlimited Cost Copilot.`,
+          ? localizedApiMessage(locale, 'planUpgrade')
+          : localizedApiMessage(locale, 'planLimit', { limit: `${usageCheck.limit}/month` }),
         requiresPro: isPro,
         used: usageCheck.used,
         limit: usageCheck.limit,
@@ -205,16 +211,16 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const body = await req.json().catch(() => ({})) as RequestBody;
+  const body = requestBody;
   if (!body.userMessage || !body.materialId || !body.process) {
-    return NextResponse.json({ error: 'userMessage, materialId, and process are required' }, { status: 400 });
+    return NextResponse.json({ error: localizedApiMessage(locale, 'messageRequired'), code: 'COPILOT_INPUT_REQUIRED' }, { status: 400 });
   }
 
   const { recordAIHistory } = await import('@/lib/ai-history');
 
   const prompt = getPromptVariant('cost-copilot', planCheck.userId);
   const messages: ChatMessage[] = [
-    { role: 'system', content: prompt.template },
+    { role: 'system', content: `${prompt.template}\n\n[OUTPUT LANGUAGE CONTRACT]\nWrite primary reply, title, rationale, and caveat fields in ${locale.languageName}. Keep the *Ko fields as Korean legacy compatibility text.` },
     ...(body.history ?? []).slice(-6).map(h => ({ role: h.role, content: h.content })),
     { role: 'user', content: JSON.stringify({
       userMessage: body.userMessage,
@@ -224,7 +230,7 @@ export async function POST(req: NextRequest) {
         process: body.process,
         quantity: body.quantity,
       },
-      requestedLanguage: body.lang ?? 'en',
+      requestedLanguage: locale.languageName,
     }) },
   ];
 
@@ -240,6 +246,7 @@ export async function POST(req: NextRequest) {
     content = result.text;
     recordPromptCall({
       userId: planCheck.userId,
+      orgId: planCheck.orgId,
       promptId: prompt.id,
       promptVersion: prompt.version,
       provider: result.provider,
@@ -252,6 +259,7 @@ export async function POST(req: NextRequest) {
   } catch (e) {
     recordPromptCall({
       userId: planCheck.userId,
+      orgId: planCheck.orgId,
       promptId: prompt.id,
       promptVersion: prompt.version,
       provider: e instanceof AiProviderError ? e.provider : 'unknown',
@@ -261,33 +269,35 @@ export async function POST(req: NextRequest) {
       errorClass: classifyAiError(e),
     });
     if (e instanceof AiNotConfiguredError) {
-      recordUsageEvent(planCheck.userId, 'cost_copilot');
+      recordUsageEvent(planCheck.userId, 'cost_copilot', undefined, planCheck.orgId);
       const fallback = ruleBasedSuggest(body);
       recordAIHistory({
         userId: planCheck.userId,
+        orgId: planCheck.orgId,
         feature: 'cost_copilot',
         title: body.userMessage.slice(0, 120),
         payload: fallback,
         context: { params: body.params, materialId: body.materialId, process: body.process, quantity: body.quantity },
         projectId: body.projectId,
       });
-      return NextResponse.json(fallback);
+      return NextResponse.json({ ...fallback, outputLanguage: locale.route });
     }
     const detail = e instanceof AiProviderError
       ? `${e.provider}${e.status ? ` (${e.status})` : ''}: ${e.message}`
       : (e instanceof Error ? e.message : String(e));
     console.warn('[cost-copilot] AI provider failed, using rule-based fallback:', detail);
-    recordUsageEvent(planCheck.userId, 'cost_copilot');
+    recordUsageEvent(planCheck.userId, 'cost_copilot', undefined, planCheck.orgId);
     const fallback = ruleBasedSuggest(body);
     recordAIHistory({
       userId: planCheck.userId,
+      orgId: planCheck.orgId,
       feature: 'cost_copilot',
       title: body.userMessage.slice(0, 120),
       payload: fallback,
       context: { params: body.params, materialId: body.materialId, process: body.process, quantity: body.quantity },
       projectId: body.projectId,
     });
-    return NextResponse.json(fallback);
+    return NextResponse.json({ ...fallback, outputLanguage: locale.route });
   }
 
   try {
@@ -318,28 +328,30 @@ export async function POST(req: NextRequest) {
       }),
     };
 
-    recordUsageEvent(planCheck.userId, 'cost_copilot');
+    recordUsageEvent(planCheck.userId, 'cost_copilot', undefined, planCheck.orgId);
     recordAIHistory({
       userId: planCheck.userId,
+      orgId: planCheck.orgId,
       feature: 'cost_copilot',
       title: body.userMessage.slice(0, 120),
       payload: reply,
       context: { params: body.params, materialId: body.materialId, process: body.process, quantity: body.quantity },
       projectId: body.projectId,
     });
-    return NextResponse.json(reply);
+    return NextResponse.json({ ...reply, outputLanguage: locale.route });
   } catch (err) {
     console.warn('[cost-copilot] AI response parse failed, using rule-based fallback:', err);
-    recordUsageEvent(planCheck.userId, 'cost_copilot');
+    recordUsageEvent(planCheck.userId, 'cost_copilot', undefined, planCheck.orgId);
     const fallback = ruleBasedSuggest(body);
     recordAIHistory({
       userId: planCheck.userId,
+      orgId: planCheck.orgId,
       feature: 'cost_copilot',
       title: body.userMessage.slice(0, 120),
       payload: fallback,
       context: { params: body.params, materialId: body.materialId, process: body.process, quantity: body.quantity },
       projectId: body.projectId,
     });
-    return NextResponse.json(fallback);
+    return NextResponse.json({ ...fallback, outputLanguage: locale.route });
   }
 }

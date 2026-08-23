@@ -33,6 +33,7 @@
  */
 import { readdirSync, readFileSync, statSync } from 'node:fs';
 import { join } from 'node:path';
+import ts from 'typescript';
 
 /** 6언어 — `SUPPORTED_LANGS`(라우트)와 `ROUTE_TO_ISO`(사전 키) 양쪽 표기를 허용한다. */
 const NEEDED = [
@@ -110,6 +111,10 @@ export function findIncompleteLangFiles(root) {
   for (const f of listSourceFiles(root)) {
     let src;
     try { src = readFileSync(f, 'utf8'); } catch { continue; }
+    // Commercial pages can keep ko/en source pairs while resolving ja/zh/es/ar
+    // from the checked-in, runtime-network-free catalog. That path is verified
+    // by commercial-catalog.test.ts, including placeholder and legacy-branch checks.
+    if (/@\/lib\/i18n\/(?:commercial|studio)Localizer/.test(src)) continue;
     // 사전으로 보이지 않으면 대상이 아니다 — ko 와 en 이 둘 다 있어야 「사전」으로 본다.
     if (!hasAny(src, NEEDED[0]) || !hasAny(src, NEEDED[1])) continue;
     const missing = NEEDED.filter((keys) => !hasAny(src, keys)).map((keys) => keys[0]);
@@ -120,4 +125,202 @@ export function findIncompleteLangFiles(root) {
   }
   rows.sort((a, b) => a.file.localeCompare(b.file));
   return rows;
+}
+
+/**
+ * ko/en 전용 삼항 분기를 찾는다. 사전 키만 보던 기존 스캐너가 JSX fragment와
+ * `const T = (ko, en) => isKo ? ko : en` 헬퍼를 놓친 사각지대를 보완한다.
+ * 숫자·스타일·데이터 분기는 제외하고, 양쪽에 문자열/JSX 문구 또는 ko/en 인자가
+ * 있는 경우만 사용자 언어 분기 후보로 보고한다.
+ */
+export function findBinaryLocaleBranches(root) {
+  const rows = [];
+  for (const file of listSourceFiles(root)) {
+    let source;
+    try { source = readFileSync(file, 'utf8'); } catch { continue; }
+    const ast = ts.createSourceFile(file, source, ts.ScriptTarget.Latest, true,
+      file.endsWith('.tsx') ? ts.ScriptKind.TSX : ts.ScriptKind.TS);
+    const visit = (node) => {
+      if (ts.isConditionalExpression(node)) {
+        const condition = node.condition.getText(ast).replaceAll(/\s+/g, ' ');
+        const localeCondition = /^!?\s*(?:isKo|ko)\s*$/.test(condition)
+          || /\bisKorean\s*\(/.test(condition)
+          || /\b(?:lang|locale|language|resolvedLang|normalizedLang|strLang|iso|fam|l|c)\b[^?]{0,80}(?:===|==|!==|!=)[^?]{0,30}['"](?:ko|kr)['"]/.test(condition)
+          || /accept-language[^?]{0,80}(?:startsWith|includes)\(\s*['"]ko/.test(condition);
+        if (localeCondition) {
+          const yes = node.whenTrue.getText(ast);
+          const no = node.whenFalse.getText(ast);
+          const hasLiteralText = /[가-힣]/.test(`${yes}${no}`)
+            || (/['"`][^'"`]*[A-Za-z][^'"`]*['"`]/.test(yes)
+              && /['"`][^'"`]*[A-Za-z][^'"`]*['"`]/.test(no));
+          const isBinaryHelper = /^(?:\(?\s*)?ko\s*\)?$/.test(yes.trim())
+            && /^(?:\(?\s*)?en\s*\)?$/.test(no.trim());
+          const aliasNormalization = /^['"]ko['"]$/.test(yes.trim())
+            && /\blang\b/.test(no)
+            && !/[가-힣]/.test(no);
+          const multiLocaleChain = /\b(?:ja|zh|cn|es|ar)\b\s*\?/.test(no)
+            || (/\?/.test(no) && /['"](?:ja|zh|cn|es|ar)['"]/.test(no));
+          const businessCodePair = /^['"](?:KRW|USD)['"]$/.test(yes.trim())
+            && /^['"](?:KRW|USD)['"]$/.test(no.trim());
+          if (!aliasNormalization && !multiLocaleChain && !businessCodePair && (hasLiteralText || isBinaryHelper)) {
+            rows.push({
+              file: file.slice(root.length + 1).split(String.fromCharCode(92)).join('/'),
+              line: ast.getLineAndCharacterOfPosition(node.getStart(ast)).line + 1,
+              condition,
+              whenTrue: yes.length > 240 ? `${yes.slice(0, 237)}...` : yes,
+              whenFalse: no.length > 240 ? `${no.slice(0, 237)}...` : no,
+            });
+          }
+        }
+      }
+      ts.forEachChild(node, visit);
+    };
+    visit(ast);
+  }
+  return rows.sort((a, b) => a.file.localeCompare(b.file) || a.line - b.line);
+}
+
+/** JSX에 직접 박힌 한국어 문구를 찾는다. `loc()`/사전 밖의 단일언어 UI가
+ * 이진 분기조차 없이 누락되는 경우를 별도로 잡기 위한 보수적 검사다. */
+export function findDirectKoreanJsx(root) {
+  const rows = [];
+  for (const file of listSourceFiles(root).filter((f) => f.endsWith('.tsx'))) {
+    let source;
+    try { source = readFileSync(file, 'utf8'); } catch { continue; }
+    const ast = ts.createSourceFile(file, source, ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX);
+    const add = (node, text) => rows.push({
+      file: file.slice(root.length + 1).split(String.fromCharCode(92)).join('/'),
+      line: ast.getLineAndCharacterOfPosition(node.getStart(ast)).line + 1,
+      text: text.trim().replaceAll(/\s+/g, ' ').slice(0, 180),
+    });
+    const belongsToKoreanDictionary = (node) => {
+      for (let current = node.parent; current && !ts.isSourceFile(current); current = current.parent) {
+        if (ts.isJsxSelfClosingElement(current) && current.tagName.getText(ast) === 'AdminText') {
+          const hasEnglishPair = current.attributes.properties.some((attribute) => (
+            ts.isJsxAttribute(attribute) && attribute.name.getText(ast) === 'en' && attribute.initializer
+          ));
+          if (hasEnglishPair) return true;
+        }
+        if (ts.isJsxElement(current)
+          && current.openingElement.tagName.getText(ast) === 'option'
+          && current.openingElement.attributes.properties.some((attribute) => (
+            ts.isJsxAttribute(attribute)
+            && attribute.name.getText(ast) === 'value'
+            && attribute.initializer
+            && ts.isStringLiteral(attribute.initializer)
+            && ['ko', 'kr'].includes(attribute.initializer.text)
+          ))) return true;
+        if (ts.isPropertyAssignment(current)) {
+          const name = current.name && (ts.isIdentifier(current.name) || ts.isStringLiteral(current.name))
+            ? current.name.text
+            : '';
+          if (name === 'ko' || name === 'kr') return true;
+        }
+        if (ts.isVariableDeclaration(current) && ts.isIdentifier(current.name)
+          && /^(?:KO|KR)$/.test(current.name.text)) return true;
+      }
+      return false;
+    };
+    const visit = (node) => {
+      if (belongsToKoreanDictionary(node)) return;
+      if (ts.isJsxText(node) && /[가-힣]/.test(node.text)) add(node, node.text);
+      if (ts.isJsxAttribute(node) && !/Ko$/.test(node.name.getText(ast))
+        && node.initializer && ts.isStringLiteral(node.initializer)
+        && /[가-힣]/.test(node.initializer.text)) add(node, node.initializer.text);
+      if (ts.isJsxExpression(node) && node.expression) {
+        const e = node.expression;
+        if ((ts.isStringLiteral(e) || ts.isNoSubstitutionTemplateLiteral(e)) && /[가-힣]/.test(e.text)) add(node, e.text);
+        if (ts.isTemplateExpression(e) && /[가-힣]/.test(e.getText(ast))
+          && !/\b(?:loc|L|designPair)\s*\(/.test(e.getText(ast))) add(node, e.getText(ast));
+      }
+      ts.forEachChild(node, visit);
+    };
+    visit(ast);
+  }
+  return rows.sort((a, b) => a.file.localeCompare(b.file) || a.line - b.line);
+}
+
+/** URL-encoding Korean UI copy hides it from the AST hardcoding scan and can also
+ * make a Korean value masquerade as an English fallback. User-facing source must
+ * keep copy as readable literals so the catalog extractor and reviewers can audit it. */
+export function findEncodedKoreanLiterals(root) {
+  const rows = [];
+  for (const file of listSourceFiles(root)) {
+    let source;
+    try { source = readFileSync(file, 'utf8'); } catch { continue; }
+    const rel = file.slice(root.length + 1).split(String.fromCharCode(92)).join('/');
+    const ast = ts.createSourceFile(file, source, ts.ScriptTarget.Latest, true,
+      file.endsWith('.tsx') ? ts.ScriptKind.TSX : ts.ScriptKind.TS);
+    const visit = (node) => {
+      if (ts.isCallExpression(node) && node.expression.getText(ast) === 'decodeURIComponent'
+        && node.arguments.length === 1 && ts.isStringLiteral(node.arguments[0])) {
+        let decoded = '';
+        try { decoded = decodeURIComponent(node.arguments[0].text); } catch { /* invalid input is not this guard's concern */ }
+        if (/[가-힣]/.test(decoded)) {
+          rows.push({
+            file: rel,
+            line: ast.getLineAndCharacterOfPosition(node.getStart(ast)).line + 1,
+            text: decoded.trim().replaceAll(/\s+/g, ' ').slice(0, 180),
+          });
+        }
+      }
+      ts.forEachChild(node, visit);
+    };
+    visit(ast);
+  }
+  return rows.sort((a, b) => a.file.localeCompare(b.file) || a.line - b.line);
+}
+
+/** Find Korean string/template literals outside JSX that are likely to reach UI state,
+ * toasts, dialogs, labels, or client-side errors. Explicit Korean dictionary entries and
+ * arguments already wrapped by a locale resolver are excluded. API prompts are audited by
+ * the server-output pass rather than this UI-oriented check. */
+export function findUnlocalizedKoreanLiterals(root) {
+  const rows = [];
+  const localizerNames = new Set(['L', 'T', 'loc', 'localized', 'designPair']);
+  for (const file of listSourceFiles(root)) {
+    const rel = file.slice(root.length + 1).split(String.fromCharCode(92)).join('/');
+    if (rel.startsWith('app/api/')) continue;
+    let source;
+    try { source = readFileSync(file, 'utf8'); } catch { continue; }
+    const ast = ts.createSourceFile(file, source, ts.ScriptTarget.Latest, true,
+      file.endsWith('.tsx') ? ts.ScriptKind.TSX : ts.ScriptKind.TS);
+    const propertyName = (node) => node?.name && (ts.isIdentifier(node.name) || ts.isStringLiteral(node.name))
+      ? node.name.text
+      : '';
+    const isCovered = (node) => {
+      for (let current = node; current && !ts.isSourceFile(current); current = current.parent) {
+        if (ts.isJsxElement(current) || ts.isJsxFragment(current) || ts.isJsxAttribute(current)
+          || ts.isJsxExpression(current) || ts.isJsxText(current)) return true;
+        if (ts.isPropertyAssignment(current)) {
+          const name = propertyName(current);
+          if (name === 'ko' || name === 'kr' || /Ko$/.test(name)) return true;
+        }
+        if (ts.isVariableDeclaration(current) && ts.isIdentifier(current.name)
+          && /^(?:KO|KR)$/.test(current.name.text)) return true;
+        if (ts.isCallExpression(current) && ts.isIdentifier(current.expression)
+          && localizerNames.has(current.expression.text)) return true;
+      }
+      return false;
+    };
+    const visit = (node) => {
+      const isLiteral = ts.isStringLiteral(node) || ts.isNoSubstitutionTemplateLiteral(node)
+        || ts.isTemplateExpression(node);
+      if (isLiteral && /[가-힣]/.test(node.getText(ast)) && !isCovered(node)) {
+        if (ts.isImportDeclaration(node.parent) || ts.isExportDeclaration(node.parent)
+          || (ts.isPropertyAssignment(node.parent) && node.parent.name === node)) {
+          ts.forEachChild(node, visit);
+          return;
+        }
+        rows.push({
+          file: rel,
+          line: ast.getLineAndCharacterOfPosition(node.getStart(ast)).line + 1,
+          text: node.getText(ast).trim().replaceAll(/\s+/g, ' ').slice(0, 180),
+        });
+      }
+      ts.forEachChild(node, visit);
+    };
+    visit(ast);
+  }
+  return rows.sort((a, b) => a.file.localeCompare(b.file) || a.line - b.line);
 }

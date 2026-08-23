@@ -40,8 +40,10 @@ import { getTrustedClientIpOrUndefined } from '@/lib/client-ip';
 import { ensureCloudDocTables, resolveDocAccess } from '@/lib/cloudDoc/access';
 import { publicVersionShape, type VersionRow } from '@/lib/cloudDoc/versions';
 import { getLockHeldByOther, lockConflictPayload } from '@/lib/cloudDoc/locks';
+import { readBoundedJson } from '@/lib/boundedJsonBody';
 
 const MAX_LABEL_LEN = 100;
+const MAX_JSON_BODY_BYTES = 64 * 1024;
 
 export async function POST(
   req: NextRequest,
@@ -84,7 +86,8 @@ export async function POST(
 
   // Optional label override (same rules as versions POST).
   let body: { label?: unknown } = {};
-  try { body = await req.json().catch(() => ({})); } catch { body = {}; }
+  try { body = req.body ? await readBoundedJson<{ label?: unknown }>(req, MAX_JSON_BODY_BYTES) : {}; }
+  catch { return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 }); }
   let label: string | null = null;
   if (body.label !== undefined && body.label !== null) {
     if (typeof body.label !== 'string') {

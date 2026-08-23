@@ -19,6 +19,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { isKorean } from '@/lib/i18n/normalize';
+import { designLoc, designPair } from './designI18n';
 import {
   suggestFeaturesFromIr2d,
   suggestFeaturesFromSeed,
@@ -286,7 +287,7 @@ export default function CodeCheckPanel({ lang }: { lang: string }) {
     };
 
     if (/\.dwg$/i.test(f.name)) {
-      if (f.size > 60_000_000) { setImportErr(ko ? 'DWG 60MB 초과' : 'DWG over 60MB'); return; }
+      if (f.size > 60_000_000) { setImportErr(designPair(lang, 'DWG 60MB 초과', 'DWG over 60MB')); return; }
       void (async () => {
         setImportBusy(true);
         try {
@@ -298,7 +299,7 @@ export default function CodeCheckPanel({ lang }: { lang: string }) {
             body: JSON.stringify({ dwgBase64: btoa(bin) }),
           });
           const j = (await r.json()) as { ok?: boolean; ir2d?: Parameters<typeof suggestFeaturesFromIr2d>[0]; error?: string };
-          if (!j.ok || !j.ir2d) { setImportErr(j.error ?? (ko ? 'DWG에서 측정값을 찾지 못했어요.' : 'No measurements found in DWG.')); return; }
+          if (!j.ok || !j.ir2d) { setImportErr(j.error ?? designPair(lang, 'DWG에서 측정값을 찾지 못했어요.', 'No measurements found in DWG.')); return; }
           apply(suggestFeaturesFromIr2d(j.ir2d));
         } catch (err2) {
           setImportErr(err2 instanceof Error ? err2.message : String(err2));
@@ -317,7 +318,7 @@ export default function CodeCheckPanel({ lang }: { lang: string }) {
               body: JSON.stringify({ dxfText: String(tr.result ?? '') }),
             });
             const j = (await r.json()) as { ok?: boolean; seed?: Parameters<typeof suggestFeaturesFromSeed>[0]; error?: string };
-            if (!j.ok || !j.seed) { setImportErr(j.error ?? (ko ? 'DXF에서 측정값을 찾지 못했어요.' : 'No measurements found in DXF.')); return; }
+            if (!j.ok || !j.seed) { setImportErr(j.error ?? designPair(lang, 'DXF에서 측정값을 찾지 못했어요.', 'No measurements found in DXF.')); return; }
             apply(suggestFeaturesFromSeed(j.seed));
           } catch (err2) {
             setImportErr(err2 instanceof Error ? err2.message : String(err2));
@@ -327,7 +328,7 @@ export default function CodeCheckPanel({ lang }: { lang: string }) {
       tr.readAsText(f);
       return;
     }
-    setImportErr(ko ? 'DWG 또는 DXF 파일만 지원합니다.' : 'DWG or DXF files only.');
+    setImportErr(designPair(lang, 'DWG 또는 DXF 파일만 지원합니다.', 'DWG or DXF files only.'));
   }, [ko]);
 
   // apply auto-filled slots + user-assigned candidates into the measured-feature form
@@ -397,15 +398,13 @@ export default function CodeCheckPanel({ lang }: { lang: string }) {
   return (
     <div style={{ padding: '0 16px 16px', borderTop: '1px solid var(--nx-border, #dfe3e8)', paddingTop: 14 }}>
       <div style={{ fontSize: 12, fontWeight: 800, marginBottom: 4 }}>
-        {ko ? '코드체크 / 감리 (결정론)' : 'Code-check / design-review (deterministic)'}
+        {designPair(lang, '코드체크 / 감리 (결정론)', 'Code-check / design-review (deterministic)')}
         <span style={{ marginLeft: 6, fontSize: 10.5, fontWeight: 600, color: 'var(--nx-text-3, #6b7684)' }}>
-          {ko ? '실제 법령 조항 인용 — 학습모델 감리가 아님' : 'cites real statute clauses — not a learned model'}
+          {designPair(lang, '실제 법령 조항 인용 — 학습모델 감리가 아님', 'cites real statute clauses — not a learned model')}
         </span>
       </div>
       <div style={{ fontSize: 10.5, color: 'var(--nx-text-3, #6b7684)', marginBottom: 10, lineHeight: 1.5 }}>
-        {ko
-          ? '측정한 설계 피처를 입력하면 룰별 적합/위반/해당없음 + 인용 조항 + 실측 vs 요구를 반환합니다. 미입력 항목은 준수로 가정하지 않고 해당없음(NA)으로 둡니다.'
-          : 'Enter measured design features. Each rule returns PASS/FAIL/NA with the cited clause and actual-vs-required. Absent inputs are NA (never assumed compliant).'}
+        {designLoc(lang, { ko: '측정한 설계 피처를 입력하면 룰별 적합/위반/해당없음 + 인용 조항 + 실측 vs 요구를 반환합니다. 미입력 항목은 준수로 가정하지 않고 해당없음(NA)으로 둡니다.', en: 'Enter measured design features. Each rule returns PASS/FAIL/NA with the cited clause and actual-vs-required. Absent inputs are NA (never assumed compliant).', ja: '測定した設計フィーチャを入力すると、各ルールの適合・違反・該当なし、引用条項、実測値と要求値を返します。未入力は適合とみなしません。', zh: '输入测量的设计特征后，将返回各规则的通过/失败/不适用、引用条款及实际值与要求值。未输入项不会假定合规。', es: 'Introduce las características de diseño medidas para obtener PASS/FAIL/NA, la cláusula citada y los valores real y requerido. Los campos vacíos no se consideran conformes.', ar: 'أدخل ميزات التصميم المقاسة لعرض PASS/FAIL/NA مع البند المستشهد به والقيمة الفعلية مقابل المطلوبة. لا تُفترض مطابقة الحقول الفارغة.' })}
       </div>
 
       {/* ── 도면에서 불러오기 (후보 제안 — 사람이 슬롯 배정 확인) ─────────────── */}
@@ -413,10 +412,10 @@ export default function CodeCheckPanel({ lang }: { lang: string }) {
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
           <input ref={fileRef} type="file" accept=".dxf,.dwg" onChange={onPickDrawing} style={{ display: 'none' }} />
           <button type="button" onClick={() => fileRef.current?.click()} disabled={importBusy} style={importBtnStyle}>
-            {importBusy ? (ko ? '도면 읽는 중…' : 'Reading…') : ko ? '도면에서 불러오기 (DWG/DXF)' : 'Load from drawing (DWG/DXF)'}
+            {importBusy ? designPair(lang, '도면 읽는 중…', 'Reading…') : designPair(lang, '도면에서 불러오기 (DWG/DXF)', 'Load from drawing (DWG/DXF)')}
           </button>
           <span style={{ fontSize: 10, color: '#a15c00', fontWeight: 700 }}>
-            {ko ? '도면 추출은 후보 제안 — 사람이 슬롯 배정 확인' : 'extraction suggests candidates — you confirm slot assignment'}
+            {designPair(lang, '도면 추출은 후보 제안 — 사람이 슬롯 배정 확인', 'extraction suggests candidates — you confirm slot assignment')}
           </span>
         </div>
         {importErr && <div style={{ marginTop: 6, fontSize: 11, color: '#b42318' }}>{importErr}</div>}
@@ -426,13 +425,13 @@ export default function CodeCheckPanel({ lang }: { lang: string }) {
             {/* units + notes */}
             <div style={{ fontSize: 10.5, color: 'var(--nx-text-2, #46505e)', marginBottom: 6 }}>
               <span style={{ fontWeight: 700 }}>
-                {ko ? '도면 단위' : 'Drawing units'}: {suggestion.units ?? (ko ? '미선언' : 'undeclared')}
+                {designPair(lang, '도면 단위', 'Drawing units')}: {suggestion.units ?? designPair(lang, '미선언', 'undeclared')}
               </span>
               {suggestion.units === null && (
                 <span style={{ marginLeft: 8 }}>
-                  {ko ? '환산 단위 선택(추측 아님): ' : 'pick unit to convert (not a guess): '}
+                  {designPair(lang, '환산 단위 선택(추측 아님): ', 'pick unit to convert (not a guess): ')}
                   <select value={unitOverride} onChange={(ev) => setUnitOverride(ev.target.value as '' | 'mm' | 'in')} style={miniSel}>
-                    <option value="">{ko ? '선택 안 함' : 'none'}</option>
+                    <option value="">{designPair(lang, '선택 안 함', 'none')}</option>
                     <option value="mm">mm</option>
                     <option value="in">in</option>
                   </select>
@@ -447,12 +446,12 @@ export default function CodeCheckPanel({ lang }: { lang: string }) {
             {autoFilledKeys.length > 0 && (
               <div style={{ marginTop: 6, marginBottom: 6 }}>
                 <div style={{ fontSize: 10.5, fontWeight: 700, color: '#067647', marginBottom: 3 }}>
-                  {ko ? '자동배정(명백·편집 가능)' : 'Auto-filled (unambiguous, editable)'}
+                    {designPair(lang, '자동배정(명백·편집 가능)', 'Auto-filled (unambiguous, editable)')}
                 </div>
                 {autoFilledKeys.map((k) => (
                   <div key={String(k)} style={{ fontSize: 10.5, color: 'var(--nx-text-2, #46505e)' }}>
-                    <span style={{ display: 'inline-block', fontSize: 8.5, fontWeight: 700, padding: '0 3px', borderRadius: 3, marginRight: 4, background: '#dcfae6', color: '#067647' }}>{ko ? '자동' : 'auto'}</span>
-                    {(ko ? FIELD_LABEL_KO[String(k)] : FIELD_LABEL_EN[String(k)]) ?? String(k)} = {String(suggestion.autoFilled[k])} m
+                    <span style={{ display: 'inline-block', fontSize: 8.5, fontWeight: 700, padding: '0 3px', borderRadius: 3, marginRight: 4, background: '#dcfae6', color: '#067647' }}>{designPair(lang, '자동', 'auto')}</span>
+                    {FIELD_LABEL_KO[String(k)] ? designPair(lang, FIELD_LABEL_KO[String(k)], FIELD_LABEL_EN[String(k)] ?? String(k)) : String(k)} = {String(suggestion.autoFilled[k])} m
                   </div>
                 ))}
               </div>
@@ -460,17 +459,17 @@ export default function CodeCheckPanel({ lang }: { lang: string }) {
 
             {/* candidate pick-list — user maps each measured value to a slot (or 무시) */}
             <div style={{ fontSize: 10.5, fontWeight: 700, color: 'var(--nx-text-2, #46505e)', margin: '6px 0 4px' }}>
-              {ko ? '측정값 후보 — 슬롯 배정' : 'Measured-value candidates — assign a slot'}
+              {designPair(lang, '측정값 후보 — 슬롯 배정', 'Measured-value candidates — assign a slot')}
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 4, maxHeight: 220, overflowY: 'auto' }}>
               {suggestion.candidates.map((c, i) => {
                 const m = candMeters(c);
                 return (
                   <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 10.5 }}>
-                    <span style={{ minWidth: 30, fontSize: 9, fontWeight: 700, color: 'var(--nx-text-3, #6b7684)' }}>{ko ? SOURCE_LABEL_KO[c.source] : SOURCE_LABEL_EN[c.source]}</span>
+                    <span style={{ minWidth: 30, fontSize: 9, fontWeight: 700, color: 'var(--nx-text-3, #6b7684)' }}>{SOURCE_LABEL_KO[c.source] ? designPair(lang, SOURCE_LABEL_KO[c.source], SOURCE_LABEL_EN[c.source] ?? c.source) : c.source}</span>
                     <span style={{ minWidth: 96 }}>
                       {c.value}{c.unit ? c.unit : ''}
-                      {m !== null ? <span style={{ color: '#067647' }}> = {m}m</span> : <span style={{ color: '#a15c00' }}> ({ko ? 'm환산 불가' : 'no m'})</span>}
+                      {m !== null ? <span style={{ color: '#067647' }}> = {m}m</span> : <span style={{ color: '#a15c00' }}> ({designPair(lang, 'm환산 불가', 'no m')})</span>}
                       {c.label ? <span style={{ color: 'var(--nx-text-3, #6b7684)' }}> · {c.label}</span> : null}
                     </span>
                     <select
@@ -479,8 +478,8 @@ export default function CodeCheckPanel({ lang }: { lang: string }) {
                       onChange={(ev) => setAssign((p) => ({ ...p, [i]: ev.target.value }))}
                       style={{ ...miniSel, flex: 1 }}
                     >
-                      <option value="">{c.autoFilled ? (ko ? '자동배정됨' : 'auto-filled') : (ko ? '— 무시 —' : '— ignore —')}</option>
-                      {METRE_FIELDS.map((mf) => <option key={mf.key} value={mf.key}>{ko ? mf.labelKo : mf.labelEn}</option>)}
+                      <option value="">{c.autoFilled ? designPair(lang, '자동배정됨', 'auto-filled') : designPair(lang, '— 무시 —', '— ignore —')}</option>
+                      {METRE_FIELDS.map((mf) => <option key={mf.key} value={mf.key}>{designPair(lang, mf.labelKo, mf.labelEn)}</option>)}
                     </select>
                   </div>
                 );
@@ -488,7 +487,7 @@ export default function CodeCheckPanel({ lang }: { lang: string }) {
             </div>
 
             <button type="button" onClick={applyImported} style={{ ...importBtnStyle, marginTop: 8, width: '100%' }}>
-              {ko ? '선택한 값을 입력폼에 적용' : 'Apply selected values to the form'}
+              {designPair(lang, '선택한 값을 입력폼에 적용', 'Apply selected values to the form')}
             </button>
           </div>
         )}
@@ -496,11 +495,11 @@ export default function CodeCheckPanel({ lang }: { lang: string }) {
 
       {open && GROUPS.map((g) => (
         <div key={g.titleKo} style={{ marginBottom: 10 }}>
-          <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--nx-text-2, #46505e)', marginBottom: 4 }}>{ko ? g.titleKo : g.titleEn}</div>
+          <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--nx-text-2, #46505e)', marginBottom: 4 }}>{designPair(lang, g.titleKo, g.titleEn)}</div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
             {g.fields.map((fld) => (
               <label key={fld.key} style={{ fontSize: 11, display: 'flex', flexDirection: 'column', gap: 2 }}>
-                <span style={{ color: 'var(--nx-text-2, #46505e)' }}>{ko ? fld.labelKo : fld.labelEn}{fld.unit ? ` (${ko ? fld.unit : (fld.unitEn ?? fld.unit)})` : ''}</span>
+                <span style={{ color: 'var(--nx-text-2, #46505e)' }}>{designPair(lang, fld.labelKo, fld.labelEn)}{fld.unit ? ` (${designPair(lang, fld.unit, fld.unitEn ?? fld.unit)})` : ''}</span>
                 {fld.kind === 'number' && (
                   <input
                     type="number" inputMode="decimal"
@@ -511,13 +510,13 @@ export default function CodeCheckPanel({ lang }: { lang: string }) {
                 )}
                 {fld.kind === 'select' && (
                   <select value={(values[fld.key] as string) ?? fld.options?.[0].value ?? ''} onChange={(e) => setField(fld.key, e.target.value)} style={inpStyle}>
-                    {fld.options?.map((o) => <option key={o.value} value={o.value}>{ko ? o.labelKo : o.labelEn}</option>)}
+                    {fld.options?.map((o) => <option key={o.value} value={o.value}>{designPair(lang, o.labelKo, o.labelEn)}</option>)}
                   </select>
                 )}
                 {fld.kind === 'bool' && (
                   <span style={{ display: 'flex', alignItems: 'center', gap: 6, height: 28 }}>
                     <input type="checkbox" checked={Boolean(values[fld.key])} onChange={(e) => setField(fld.key, e.target.checked)} />
-                    <span style={{ color: 'var(--nx-text-3, #6b7684)', fontSize: 10.5 }}>{ko ? '예/아니오' : 'yes/no'}</span>
+                    <span style={{ color: 'var(--nx-text-3, #6b7684)', fontSize: 10.5 }}>{designPair(lang, '예/아니오', 'yes/no')}</span>
                   </span>
                 )}
               </label>
@@ -527,7 +526,7 @@ export default function CodeCheckPanel({ lang }: { lang: string }) {
       ))}
 
       <button type="button" onClick={run} disabled={loading} style={runStyle}>
-        {loading ? (ko ? '검사 중…' : 'Checking…') : ko ? '코드체크 실행' : 'Run code-check'}
+        {loading ? designPair(lang, '검사 중…', 'Checking…') : designPair(lang, '코드체크 실행', 'Run code-check')}
       </button>
 
       {err && <div style={{ marginTop: 8, padding: 8, borderRadius: 6, background: '#fdecec', color: '#b42318', fontSize: 11.5 }}>{err}</div>}
@@ -535,9 +534,9 @@ export default function CodeCheckPanel({ lang }: { lang: string }) {
       {report && report.ok && (
         <div style={{ marginTop: 12 }}>
           <div style={{ display: 'flex', gap: 8, marginBottom: 8, fontSize: 11.5, fontWeight: 700 }}>
-            <span style={{ color: '#f04438' }}>{ko ? '위반' : 'FAIL'} {report.failCount ?? 0}</span>
-            <span style={{ color: '#12b76a' }}>{ko ? '적합' : 'PASS'} {report.passCount ?? 0}</span>
-            <span style={{ color: '#9aa4b0' }}>{ko ? '해당없음' : 'NA'} {report.naCount ?? 0}</span>
+            <span style={{ color: '#f04438' }}>{designPair(lang, '위반', 'FAIL')} {report.failCount ?? 0}</span>
+            <span style={{ color: '#12b76a' }}>{designPair(lang, '적합', 'PASS')} {report.passCount ?? 0}</span>
+            <span style={{ color: '#9aa4b0' }}>{designPair(lang, '해당없음', 'NA')} {report.naCount ?? 0}</span>
           </div>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
@@ -545,14 +544,14 @@ export default function CodeCheckPanel({ lang }: { lang: string }) {
               <div key={r.id} style={{ padding: 8, borderRadius: 6, border: '1px solid var(--nx-border, #dfe3e8)', background: r.status === 'fail' ? '#fef3f2' : 'var(--nx-panel, #fff)' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 2 }}>
                   <span style={{ padding: '1px 7px', borderRadius: 5, fontSize: 10, fontWeight: 800, color: '#fff', background: STATUS_COLOR[r.status] }}>
-                    {ko ? STATUS_LABEL_KO[r.status] : STATUS_LABEL_EN[r.status]}
+                    {STATUS_LABEL_KO[r.status] ? designPair(lang, STATUS_LABEL_KO[r.status], STATUS_LABEL_EN[r.status] ?? r.status) : r.status}
                   </span>
                   <span style={{ fontSize: 11, fontWeight: 700 }}>{r.category}</span>
                   <span style={{ fontSize: 10.5, color: 'var(--nx-text-3, #6b7684)' }}>{r.required}</span>
                 </div>
                 <div style={{ fontSize: 11, color: 'var(--nx-text-2, #46505e)', lineHeight: 1.5 }}>{r.message}</div>
                 <div style={{ fontSize: 10, color: 'var(--nx-text-3, #6b7684)', marginTop: 2 }}>
-                  <span style={{ display: 'inline-block', fontSize: 8.5, fontWeight: 700, padding: '0 3px', borderRadius: 3, marginRight: 4, background: '#dcfae6', color: '#067647' }}>{ko ? '법령' : 'statute'}</span>
+                  <span style={{ display: 'inline-block', fontSize: 8.5, fontWeight: 700, padding: '0 3px', borderRadius: 3, marginRight: 4, background: '#dcfae6', color: '#067647' }}>{designPair(lang, '법령', 'statute')}</span>
                   {r.clause} · {r.source}
                 </div>
               </div>

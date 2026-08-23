@@ -69,7 +69,9 @@ export function convertUsd(usdAmount: number, toCurrency: string, rates: Record<
 }
 
 /** 표시용 포맷 (소수점 0~2자리 자동) */
-export function fmtConverted(amount: number, currency: string): string {
+import { formatMoney } from './i18n/format';
+
+export function fmtConverted(amount: number, currency: string, lang: string = 'en'): string {
   // 0-decimal currencies
   const zero = ['KRW','JPY','VND','IDR','NGN'];
   // 3-decimal currencies (이번 지원 국가에서는 제거했지만 안전 처리)
@@ -79,13 +81,11 @@ export function fmtConverted(amount: number, currency: string): string {
     : three.includes(currency) ? 3
     : 2;
 
-  return new Intl.NumberFormat('en-US', {
-    style:                 'currency',
-    currency,
+  return formatMoney(amount, lang, currency, {
     minimumFractionDigits: decimals,
     maximumFractionDigits: decimals,
-    currencyDisplay:       'symbol',
-  }).format(amount);
+    currencyDisplay: 'symbol',
+  }) ?? `${amount} ${currency}`;
 }
 
 // ─── Staleness info ───────────────────────────────────────────────────────────

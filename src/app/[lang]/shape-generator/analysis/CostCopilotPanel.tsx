@@ -14,6 +14,7 @@ import { usePathname } from 'next/navigation';
 import type { GeometryMetrics, CostEstimationContext } from '../estimation/CostEstimator';
 import { formatCost } from '../estimation/CostEstimator';
 import { askCostCopilot, type AskCopilotResult, type CopilotSuggestionWithDelta } from './costCopilot';
+import { createCommercialLocalizer } from '@/lib/i18n/commercialLocalizer';
 
 const C = {
   bg: 'var(--nx-panel)',
@@ -176,6 +177,7 @@ export default function CostCopilotPanel({
   const tt = dict[langMap[seg] ?? 'en'];
 
   const isKo = lang === 'ko';
+  const L = createCommercialLocalizer(lang);
 
   const [input, setInput] = useState('');
   const [history, setHistory] = useState<ChatMessage[]>([]);
@@ -209,7 +211,7 @@ export default function CostCopilotPanel({
         projectId,
       });
       setLatest(res);
-      setHistory([...nextHistory, { role: 'assistant', content: isKo ? res.replyKo : res.reply }]);
+      setHistory([...nextHistory, { role: 'assistant', content: L(res.replyKo, res.reply) }]);
       setAppliedIds(new Set());
     } catch (err) {
       if ((err as Error).name === 'AbortError') return;
@@ -357,7 +359,7 @@ export default function CostCopilotPanel({
                 }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, marginBottom: 6 }}>
                     <div style={{ fontSize: 12, fontWeight: 800, color: C.text, lineHeight: 1.3 }}>
-                      {isKo ? s.titleKo : s.title}
+                      {L(s.titleKo, s.title)}
                     </div>
                     {/* Prefer the REAL computed delta (costDelta) over the
                         model's rough guess. When no geometry/material is
@@ -369,13 +371,13 @@ export default function CostCopilotPanel({
                       </div>
                     ) : (
                       <div style={{ fontSize: 11, fontWeight: 800, color: s.estimatedSavingsPercent > 0 ? C.green : C.dim, flexShrink: 0 }}>
-                        ~{s.estimatedSavingsPercent > 0 ? '-' : '+'}{Math.abs(s.estimatedSavingsPercent)}% {isKo ? '추정' : 'est.'}
+                        ~{s.estimatedSavingsPercent > 0 ? '-' : '+'}{Math.abs(s.estimatedSavingsPercent)}% {L('추정', 'est.')}
                       </div>
                     )}
                   </div>
 
                   <div style={{ fontSize: 10, color: C.text, lineHeight: 1.5, marginBottom: 6 }}>
-                    {isKo ? s.rationaleKo : s.rationale}
+                    {L(s.rationaleKo, s.rationale)}
                   </div>
 
                   {/* Swap / delta chips */}
@@ -425,7 +427,7 @@ export default function CostCopilotPanel({
                   {/* Caveat */}
                   {(s.caveat || s.caveatKo) && (
                     <div style={{ fontSize: 9, color: C.gold, lineHeight: 1.4, marginBottom: 8 }}>
-                      ⚠️ {isKo ? (s.caveatKo ?? s.caveat) : s.caveat}
+                      ⚠️ {L((s.caveatKo ?? s.caveat), s.caveat)}
                     </div>
                   )}
 

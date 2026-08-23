@@ -26,10 +26,14 @@ import {
   applyConsolidation,
 } from '@/lib/ai/providerOverride';
 import type { ProviderName } from '@/lib/ai/types';
+import { boundedJsonError, readBoundedJson } from '@/lib/boundedJsonBody';
+
+const MAX_CONSOLIDATION_BODY_BYTES = 16 * 1024;
+type ConsolidationBody = { keep?: { provider?: unknown }; drop?: { provider?: unknown } };
 
 export const dynamic = 'force-dynamic';
 
-const VALID_PROVIDERS: ProviderName[] = ['deepseek', 'openai', 'anthropic', 'local'];
+const VALID_PROVIDERS: ProviderName[] = ['deepseek', 'qwen', 'openai', 'gemini', 'anthropic', 'openrouter', 'local'];
 
 interface AdminOk { kind: 'ok'; userId: string }
 interface AdminFail { kind: 'fail'; response: NextResponse }
@@ -46,7 +50,7 @@ async function requireAdmin(req: NextRequest): Promise<AdminOk | AdminFail> {
 function envChain(): ProviderName[] {
   const primary = (process.env.AI_PROVIDER_PRIMARY ?? 'deepseek')
     .split(',').map(s => s.trim().toLowerCase()).filter(Boolean);
-  const fallbacks = (process.env.AI_PROVIDER_FALLBACKS ?? 'anthropic,openai,local')
+  const fallbacks = (process.env.AI_PROVIDER_FALLBACKS ?? 'gemini,openai,local')
     .split(',').map(s => s.trim().toLowerCase()).filter(Boolean);
   const merged: ProviderName[] = [];
   const seen = new Set<string>();
@@ -63,7 +67,11 @@ export async function POST(req: NextRequest) {
   const auth = await requireAdmin(req);
   if (auth.kind === 'fail') return auth.response;
 
-  const body = await req.json().catch(() => ({}));
+  let body: ConsolidationBody = {};
+  try { body = await readBoundedJson<ConsolidationBody>(req, MAX_CONSOLIDATION_BODY_BYTES); }
+  catch (error) {
+    if (boundedJsonError(error)?.code === 'PAYLOAD_TOO_LARGE') return NextResponse.json({ error: 'Request too large', code: 'PAYLOAD_TOO_LARGE' }, { status: 413 });
+  }
   const keep = typeof body?.keep?.provider === 'string'
     ? body.keep.provider.toLowerCase() : '';
   const drop = typeof body?.drop?.provider === 'string'

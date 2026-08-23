@@ -5,6 +5,10 @@ import { getAuthUser } from '@/lib/auth-middleware';
 import { getDbAdapter } from '@/lib/db-adapter';
 import { checkOrigin } from '@/lib/csrf';
 import { addOrgMember, grantRole } from '@/lib/rbac';
+import { ACTIVE_ORG_COOKIE, activeOrgCookieOptions } from '@/lib/org-context';
+import { boundedJsonError, readBoundedJson } from '@/lib/boundedJsonBody';
+
+const ORG_JOIN_JSON_BYTES = 64 * 1024;
 
 /**
  * POST /api/nexyfab/orgs/join — 초대 수락
@@ -15,19 +19,19 @@ export async function POST(req: NextRequest) {
   const authUser = await getAuthUser(req);
   if (!authUser) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-  const { token } = await req.json() as { token: string };
+  let body: { token?: string } = {};
+  try {
+    body = await readBoundedJson(req, ORG_JOIN_JSON_BYTES);
+  } catch (error) {
+    const bodyError = boundedJsonError(error);
+    if (bodyError?.code === 'PAYLOAD_TOO_LARGE') {
+      return NextResponse.json({ error: 'Request body too large' }, { status: bodyError.status });
+    }
+  }
+  const { token } = body;
   if (!token) return NextResponse.json({ error: 'token이 필요합니다.' }, { status: 400 });
 
   const db = getDbAdapter();
-
-  // 이미 조직에 소속되어 있으면 거부 (DB에서 직접 확인 — race condition 방지)
-  const existingMembership = await db.queryOne<{ id: string }>(
-    'SELECT id FROM nf_org_members WHERE user_id = ? LIMIT 1',
-    authUser.userId,
-  );
-  if (existingMembership) {
-    return NextResponse.json({ error: '이미 다른 조직에 소속되어 있습니다.' }, { status: 409 });
-  }
 
   const invite = await db.queryOne<{
     id: string; org_id: string; email: string; role: string; status: string; expires_at: number;
@@ -49,6 +53,14 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: '초대된 이메일과 로그인 계정이 다릅니다.' }, { status: 403 });
   }
 
+  const existingMembership = await db.queryOne<{ id: string }>(
+    'SELECT id FROM nf_org_members WHERE org_id = ? AND user_id = ? LIMIT 1',
+    invite.org_id, authUser.userId,
+  );
+  if (existingMembership) {
+    return NextResponse.json({ error: '이미 이 조직의 멤버입니다.' }, { status: 409 });
+  }
+
   // Add to org
   await addOrgMember(invite.org_id, authUser.userId, invite.role);
 
@@ -61,18 +73,16 @@ export async function POST(req: NextRequest) {
     invite.id,
   );
 
-  // Sync user plan to org plan
   const org = await db.queryOne<{ plan: string; name: string }>(
     'SELECT plan, name FROM nf_orgs WHERE id = ?',
     invite.org_id,
   );
-  if (org && org.plan !== authUser.plan) {
-    await db.execute('UPDATE nf_users SET plan = ? WHERE id = ?', org.plan, authUser.userId);
-  }
 
-  return NextResponse.json({
+  const response = NextResponse.json({
     ok: true,
     org: { id: invite.org_id, name: org?.name },
     message: '조직에 합류했습니다.',
   });
+  response.cookies.set(ACTIVE_ORG_COOKIE, invite.org_id, activeOrgCookieOptions());
+  return response;
 }

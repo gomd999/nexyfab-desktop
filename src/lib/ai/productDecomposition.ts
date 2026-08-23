@@ -2,6 +2,7 @@ import { validateTree, type FeatureTree } from '@/lib/cad/featureTree';
 import { validateAssembly, IDENTITY_QUAT, type PartInstance } from '@/lib/assembly/assemblyState';
 import type { Mate } from '@/lib/assembly/mate';
 import type { AiAssemblyProgram, AiPartMetadata } from './aiAssemblyProgram';
+import { verifyMepConnections, type PhysicalNetworkModel } from './mepConnectionVerification';
 
 export type ProductRequirement = {
   id: string;
@@ -63,6 +64,8 @@ export type ProductDecompositionPlan = {
   instances: ComponentInstance[];
   mates: Mate[];
   subassemblies: ProductSubassembly[];
+  /** Required for products with fluid, air, power, data, sensor, or drain service paths. */
+  physicalNetworks?: PhysicalNetworkModel[];
   observations: string[];
   assumptions: string[];
   unresolved: string[];
@@ -118,6 +121,22 @@ export function validateProductDecomposition(plan: ProductDecompositionPlan): Pr
   });
   if (hasHierarchyCycle(plan.subassemblies)) issues.push({ path: 'subassemblies', message: 'subassembly hierarchy contains a cycle' });
 
+  const networkIds = new Set<string>();
+  for (const [index, network] of (plan.physicalNetworks ?? []).entries()) {
+    const path = `physicalNetworks[${index}]`;
+    if (!network.id.trim()) issues.push({ path: `${path}.id`, message: 'physical network id is required' });
+    if (networkIds.has(network.id)) issues.push({ path: `${path}.id`, message: `duplicate physical network id ${network.id}` });
+    networkIds.add(network.id);
+    for (const port of network.ports) if (!instanceIds.has(port.ownerObjectId)) issues.push({ path: `${path}.ports`, message: `port ${port.id} references unknown instance ${port.ownerObjectId}` });
+    try {
+      const verification = verifyMepConnections(network.ports, network.nodes, network.connections, network.runs, network.rules);
+      if (!verification.releaseReady) {
+        if (!verification.failures.length) issues.push({ path, message: 'physical network must enable strict measured-route release verification' });
+        for (const failure of verification.failures) issues.push({ path, message: `${failure.code}:${failure.objectId}` });
+      }
+    } catch (error) { issues.push({ path, message: error instanceof Error ? error.message : 'physical network verification failed' }); }
+  }
+
   try {
     validateAssembly({ parts: plan.instances.map(toPartInstance), mates: plan.mates });
   } catch (error) {
@@ -155,6 +174,7 @@ export function compileProductDecomposition(plan: ProductDecompositionPlan):
         };
       }),
       structure: plan.subassemblies.map(subassembly => ({ ...subassembly, instanceIds: [...subassembly.instanceIds] })),
+      physicalNetworks: plan.physicalNetworks ? structuredClone(plan.physicalNetworks) : undefined,
       unresolved: [...plan.unresolved],
     },
   };

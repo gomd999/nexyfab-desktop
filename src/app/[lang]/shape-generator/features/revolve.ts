@@ -64,20 +64,19 @@ function applyRevolveMesh(geometry: THREE.BufferGeometry, params: Record<string,
 }
 
 /**
- * Precise B-rep revolve via OCCT (replicad). Only used for a FULL 360° revolve —
- * occtRevolveProfile builds a full solid of revolution; partial sweeps fall back
- * to the LatheGeometry mesh. Returns null on any miss so the caller meshes.
+ * Precise B-rep revolve via OCCT (replicad), including partial sweep angles.
+ * Returns null on any miss so the caller meshes.
  */
-function applyRevolveOcct(geometry: THREE.BufferGeometry, params: Record<string, number>): THREE.BufferGeometry | null {
+export function applyRevolveOcct(geometry: THREE.BufferGeometry, params: Record<string, number>): THREE.BufferGeometry | null {
   try {
-    // The OCCT builder revolves a full turn; a partial angle can't be matched.
-    if (params.angle < 359.5) return null;
+    // Replicad/OCCT accepts a bounded partial or full revolution angle.
+    if (!(params.angle > 0) || params.angle > 360) return null;
     const axis = Math.round(params.axis);
     const filtered = extractProfile(geometry, axis);
     if (filtered.length < 3) return null; // builder needs ≥3 profile points
 
     const profile = filtered.map((v) => ({ x: v.x, y: v.y }));
-    const result = occtRevolveProfile(profile);
+    const result = occtRevolveProfile(profile, {}, 0, params.angle);
     if (!result.handle) return null;
 
     // occtRevolveProfile revolves about Y; match the mesh path's axis transform.

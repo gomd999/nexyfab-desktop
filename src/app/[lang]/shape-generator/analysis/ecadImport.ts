@@ -21,6 +21,52 @@ export interface PCBBoard {
   thickness: number; // mm (default 1.6)
 }
 
+export const PCB_READINESS_SCHEMA = 'nexyfab.ecad-pcb-readiness.v1' as const;
+export interface PcbReadiness {
+  schema: typeof PCB_READINESS_SCHEMA;
+  status: 'HOLD';
+  supported: readonly string[];
+  holds: readonly string[];
+  artifact: { format: 'pcb-import-json'; canonical: string; bytes: number; sha256: string };
+}
+
+function canonicalPcb(value: unknown): string {
+  if (value === null || typeof value === 'string' || typeof value === 'boolean') return JSON.stringify(value);
+  if (typeof value === 'number') return Number.isFinite(value) ? JSON.stringify(value) : 'null';
+  if (Array.isArray(value)) return `[${value.map(canonicalPcb).join(',')}]`;
+  if (typeof value === 'object') {
+    const record = value as Record<string, unknown>;
+    return `{${Object.keys(record).sort().map(key => `${JSON.stringify(key)}:${canonicalPcb(record[key])}`).join(',')}}`;
+  }
+  return 'null';
+}
+
+/** Build deterministic import evidence without implying a manufacturing release. */
+export async function buildPcbReadiness(board: PCBBoard): Promise<PcbReadiness> {
+  const canonical = canonicalPcb({
+    schema: PCB_READINESS_SCHEMA,
+    board: { width: board.width, height: board.height, thickness: board.thickness },
+    // Sort by the complete canonical component payload. Partial tuple sorts can
+    // still depend on input order when duplicate refs differ only by layer,
+    // footprint, or power, producing a non-deterministic artifact identity.
+    components: [...board.components].sort((a, b) => canonicalPcb(a).localeCompare(canonicalPcb(b))),
+  });
+  const bytes = new TextEncoder().encode(canonical);
+  const digest = await globalThis.crypto.subtle.digest('SHA-256', bytes);
+  const sha256 = Array.from(new Uint8Array(digest), value => value.toString(16).padStart(2, '0')).join('');
+  return {
+    schema: PCB_READINESS_SCHEMA,
+    status: 'HOLD',
+    supported: ['kicad_component_placement_import', 'thermal_clearance_envelope'],
+    holds: [
+      'HOLD: connectivity/netlist extraction is not implemented by the PCB import path',
+      'HOLD: ERC/DRC authority is not implemented by the PCB import path',
+      'HOLD: Gerber, Excellon drill, BOM, and pick-and-place manufacturing exports are not implemented',
+    ],
+    artifact: { format: 'pcb-import-json', canonical, bytes: bytes.byteLength, sha256 },
+  };
+}
+
 // Power estimates by component reference prefix (heuristic)
 const POWER_BY_TYPE: Record<string, number> = {
   // ICs
@@ -87,9 +133,10 @@ export function parseKicadPCB(text: string): PCBBoard {
     const atMatch = block.match(/\(at\s+([\d.-]+)\s+([\d.-]+)(?:\s+([\d.-]+))?\)/);
     if (!atMatch) continue;
 
-    const x = parseFloat(atMatch[1]);
-    const y = parseFloat(atMatch[2]);
-    const rotation = atMatch[3] ? parseFloat(atMatch[3]) : 0;
+    const x = Number(atMatch[1]);
+    const y = Number(atMatch[2]);
+    const rotation = atMatch[3] ? Number(atMatch[3]) : 0;
+    if (![x, y, rotation].every(Number.isFinite)) continue;
 
     // Layer
     const layerMatch = block.match(/\(layer\s+"([^"]*)"\)/);
@@ -116,12 +163,16 @@ export function parseKicadPCB(text: string): PCBBoard {
     let m: RegExpExecArray | null;
     while ((m = footprintRegex.exec(text)) !== null) {
       const ref = `U${components.length + 1}`;
+      const x = Number(m[3]);
+      const y = Number(m[4]);
+      const rotation = m[5] ? Number(m[5]) : 0;
+      if (![x, y, rotation].every(Number.isFinite)) continue;
       components.push({
         ref,
         value: m[1],
-        x: parseFloat(m[3]),
-        y: parseFloat(m[4]),
-        rotation: m[5] ? parseFloat(m[5]) : 0,
+        x,
+        y,
+        rotation,
         layer: m[2]?.includes('B.') ? 'B.Cu' : 'F.Cu',
         powerWatts: estimatePower(ref, m[1]),
         footprint: m[1],
@@ -145,9 +196,15 @@ export function parseComponentCSV(csv: string): PCBBoard {
     const parts = line.split(',').map(p => p.trim());
     if (parts.length < 4) continue;
     const [ref, value, xs, ys, ps] = parts;
-    const x = parseFloat(xs) || 0;
-    const y = parseFloat(ys) || 0;
-    const powerWatts = ps ? parseFloat(ps) : estimatePower(ref, value);
+    const parsedX = Number(xs);
+    const parsedY = Number(ys);
+    const x = Number.isFinite(parsedX) ? parsedX : 0;
+    const y = Number.isFinite(parsedY) ? parsedY : 0;
+    const parsedPower = ps?.trim() ? Number(ps) : Number.NaN;
+    // Do not let malformed CSV power become NaN and leak into thermal output.
+    const powerWatts = Number.isFinite(parsedPower) && parsedPower >= 0
+      ? parsedPower
+      : estimatePower(ref, value);
     maxX = Math.max(maxX, x);
     maxY = Math.max(maxY, y);
     components.push({ ref, value, x, y, rotation: 0, layer: 'F.Cu', powerWatts, footprint: '' });

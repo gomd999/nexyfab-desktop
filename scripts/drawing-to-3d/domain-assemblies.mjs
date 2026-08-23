@@ -16,6 +16,7 @@ import { buildTower } from './tower-template.mjs';
 import { buildBridge } from './bridge-template.mjs';
 import { buildMachineLine } from './machine-line-template.mjs';
 import { buildInteriorFloor } from './interior-floor-template.mjs';
+import { buildTurbojetConceptAssembly } from './jet-engine-template.mjs';
 
 const num = (v, d) => (Number.isFinite(v) ? v : d);
 const P = (id, type, params, at = {}, material, role) => ({ id, type, params, at, ...(material ? { material } : {}), ...(role ? { role } : {}) });
@@ -4449,6 +4450,18 @@ export const ASSEMBLY_TEMPLATES = {
     },
   ],
   mech: [
+    {
+      id: 'turbojet_concept', labelKo: '축류 터보제트 개념 조립체 (블레이드·환형 연소기·유로)', labelEn: 'Axial turbojet concept assembly (blades, annular combustor & flow path)', build: buildTurbojetConceptAssembly,
+      params: [
+        { name: 'overallLength', labelKo: '전체 길이', unit: 'mm', default: 1500, min: 700, max: 5000 },
+        { name: 'fanDiameter', labelKo: '팬 직경', unit: 'mm', default: 500, min: 180, max: 1800 },
+        { name: 'casingThickness', labelKo: '케이싱 두께', unit: 'mm', default: 3, min: 2, max: 20 },
+        { name: 'compressorStages', labelKo: '축류 압축기 단수', unit: '', default: 5, min: 2, max: 12 },
+        { name: 'compressorBlades', labelKo: '압축기 단당 블레이드 수', unit: '', default: 12, min: 6, max: 36 },
+        { name: 'turbineStages', labelKo: '터빈 단수', unit: '', default: 2, min: 1, max: 5 },
+        { name: 'turbineBlades', labelKo: '터빈 단당 블레이드 수', unit: '', default: 10, min: 6, max: 32 },
+      ],
+    },
     {
       id: 'modular_conveyor_line', labelKo: '모듈형 롤러 컨베이어 라인 (서브어셈블리×N)', labelEn: 'Modular roller conveyor line', build: modularConveyorLineAssembly,
       params: [

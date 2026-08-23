@@ -19,6 +19,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getDbAdapter } from '@/lib/db-adapter';
 import { getPartnerMetrics } from '@/lib/partner-metrics';
 import { normPartnerEmail } from '@/lib/partner-factory-access';
+import { resolveServerLocale } from '@/lib/i18n/serverLocale';
+import type { IsoLang } from '@/lib/i18n/normalize';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -46,7 +48,24 @@ interface ReviewSnippetRow {
   reviewed_at: string;
 }
 
-export async function GET(_req: NextRequest, { params }: { params: Promise<{ email: string }> }) {
+const COPY: Record<IsoLang, {
+  invalid: string;
+  notFound: string;
+  certification: (count: number) => string;
+  experience: (years: number) => string;
+  newPartner: string;
+}> = {
+  ko: { invalid: '유효한 이메일 또는 공장 ID가 필요합니다.', notFound: '파트너를 찾을 수 없습니다.', certification: n => `인증 ${n}개`, experience: n => `경력 ${n}년+`, newPartner: '신규 파트너' },
+  en: { invalid: 'A valid email or factory ID is required.', notFound: 'Partner not found.', certification: n => `${n} certification${n === 1 ? '' : 's'}`, experience: n => `${n}+ years of experience`, newPartner: 'New partner' },
+  ja: { invalid: '有効なメールアドレスまたは工場IDが必要です。', notFound: 'パートナーが見つかりません。', certification: n => `認証 ${n}件`, experience: n => `経験 ${n}年以上`, newPartner: '新規パートナー' },
+  zh: { invalid: '需要有效的电子邮件或工厂 ID。', notFound: '未找到合作伙伴。', certification: n => `${n} 项认证`, experience: n => `${n} 年以上经验`, newPartner: '新合作伙伴' },
+  es: { invalid: 'Se requiere un correo o ID de fábrica válido.', notFound: 'No se encontró el socio.', certification: n => `${n} certificación${n === 1 ? '' : 'es'}`, experience: n => `${n}+ años de experiencia`, newPartner: 'Socio nuevo' },
+  ar: { invalid: 'يلزم بريد إلكتروني أو معرّف مصنع صالح.', notFound: 'لم يتم العثور على الشريك.', certification: n => `${n} شهادة`, experience: n => `خبرة ${n}+ سنوات`, newPartner: 'شريك جديد' },
+};
+
+export async function GET(req: NextRequest, { params }: { params: Promise<{ email: string }> }) {
+  const locale = resolveServerLocale(req, req.nextUrl.searchParams.get('lang'));
+  const copy = COPY[locale.iso];
   const { email } = await params;
   const decoded = decodeURIComponent(email);
   const norm = normPartnerEmail(decoded);
@@ -57,7 +76,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ ema
   const looksLikeEmail = norm.includes('@');
   const looksLikeId = !looksLikeEmail && /^[a-zA-Z0-9_-]{4,80}$/.test(decoded);
   if (!looksLikeEmail && !looksLikeId) {
-    return NextResponse.json({ error: 'invalid identifier (need email or factory id)' }, { status: 400 });
+    return NextResponse.json({ error: copy.invalid }, { status: 400 });
   }
 
   const db = getDbAdapter();
@@ -71,7 +90,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ ema
   ).catch(() => null);
 
   if (!factory) {
-    return NextResponse.json({ error: 'partner not found' }, { status: 404 });
+    return NextResponse.json({ error: copy.notFound }, { status: 404 });
   }
 
   let processes: string[] = [];
@@ -101,9 +120,9 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ ema
   const isColdStart = metrics.reviewCount === 0 && metrics.onTimeCount === 0;
   const coldStartBadges: string[] = [];
   if (isColdStart) {
-    if (certs.length > 0) coldStartBadges.push(`인증 ${certs.length}개`);
-    if (ageDays >= 365) coldStartBadges.push(`경력 ${Math.floor(ageDays / 365)}년+`);
-    if (coldStartBadges.length === 0) coldStartBadges.push('신규 파트너');
+    if (certs.length > 0) coldStartBadges.push(copy.certification(certs.length));
+    if (ageDays >= 365) coldStartBadges.push(copy.experience(Math.floor(ageDays / 365)));
+    if (coldStartBadges.length === 0) coldStartBadges.push(copy.newPartner);
   }
 
   return NextResponse.json({

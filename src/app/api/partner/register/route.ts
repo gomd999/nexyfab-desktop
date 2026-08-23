@@ -9,6 +9,9 @@ import { checkOrigin } from '@/lib/csrf';
 import { getTrustedClientIp } from '@/lib/client-ip';
 import { rateLimitAsync, rateLimitHeaders } from '@/lib/rate-limit';
 import { verifyRecaptchaV3 } from '@/lib/recaptcha';
+import { boundedJsonError, readBoundedJson } from '@/lib/boundedJsonBody';
+
+const MAX_PARTNER_REGISTER_BODY_BYTES = 64 * 1024;
 
 export const dynamic = 'force-dynamic';
 
@@ -75,7 +78,12 @@ export async function POST(req: NextRequest) {
         { status: 429, headers: rateLimitHeaders(limit, 5) },
       );
     }
-    const body = await req.json() as RegisterBody;
+    let body: RegisterBody;
+    try { body = await readBoundedJson<RegisterBody>(req, MAX_PARTNER_REGISTER_BODY_BYTES); }
+    catch (error) {
+      if (boundedJsonError(error)?.code === 'PAYLOAD_TOO_LARGE') return NextResponse.json({ error: 'Request too large', code: 'PAYLOAD_TOO_LARGE' }, { status: 413 });
+      throw error;
+    }
 
     if (!process.env.RECAPTCHA_SECRET_KEY?.trim()) {
       return NextResponse.json({ error: 'registration verification unavailable' }, { status: 503 });

@@ -57,4 +57,17 @@ describe('product decomposition', () => {
     const invalid = { ...plan, definitions: plan.definitions.map((definition, index) => index === 0 ? { ...definition, featureTree: { nodes: [] } } : definition) };
     expect(validateProductDecomposition(invalid).some(issue => issue.message.includes('non-empty feature tree'))).toBe(true);
   });
+
+  it('rejects a declared physical network that is only a fake string path', () => {
+    const invalid: ProductDecompositionPlan = { ...structuredClone(plan), physicalNetworks: [{
+      id: 'sensor-process',
+      ports: [{ id: 'pt100', ownerObjectId: 'housing-1', system: 'hot_water', connector: 'DN25', positionMm: [0, 0, 0], required: true }],
+      nodes: [{ id: 'n0', system: 'hot_water', connector: 'DN25', positionMm: [0, 0, 0] }, { id: 'n1', system: 'hot_water', connector: 'DN25', positionMm: [100, 0, 0] }],
+      connections: [{ id: 'c0', portId: 'pt100', nodeId: 'n0' }],
+      runs: [{ id: 'fake', system: 'hot_water', fromNodeId: 'n0', toNodeId: 'n1', lengthMm: 100 }],
+      rules: { maximumConnectionDistanceMm: 1, minimumDrainSlopePercent: 0, requireMatchingConnector: true, requirePhysicalRouteGeometry: true },
+    }] };
+    const issues = validateProductDecomposition(invalid);
+    expect(issues.map(issue => issue.message)).toEqual(expect.arrayContaining([expect.stringContaining('TYPED_PORT_INCOMPLETE'), expect.stringContaining('ROUTE_GEOMETRY_MISSING')]));
+  });
 });

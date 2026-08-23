@@ -45,7 +45,7 @@ const GOLDEN: Record<string, Snapshot> = {
   'openscad-gen-fix':            { version: '1.0.0', templateHash: 'a2209c5faf82520657c67e2f3c836647e5e9d399f0e472b0dd2350518d6a42c3' },
   'openscad-gen-face-op':        { version: '1.0.0', templateHash: '59df450b47bde31ee70a8c5e5b32c43cb2ea91b74f760f8c1ca130b79b12c89e' },
   'compose':                     { version: '1.0.0', templateHash: 'fb1aee0a582ddf6d0c5b196b003be76ae8744cda41eb653f08be407c18a0a628' },
-  'intake-from-text':            { version: '1.0.0', templateHash: 'ba5e4374bb700373c2a23cf7887478d1c2105a0202eeb2f074ba4ec50322def7' },
+  'intake-from-text':            { version: '1.1.0', templateHash: 'f2a5366fe4373bbb2c90a2945563c65542320dde882c1b10a9b9967950185b4b' },
   'shape-to-jscad':              { version: '1.0.0', templateHash: 'e7caa19c70d6d8305fcd7a4d11d8fb258d007ba9111813b259d17632a968b8ce' },
   // 260731 v1.1.0 — ① 등각 단축 보정 지시(투영된 겉보기 길이를 실제 길이로 읽던 문제)
   //                  ② `dimensionSource` 필드(치수가 읽힌 값인지 추정된 값인지 신고)
@@ -53,15 +53,15 @@ const GOLDEN: Record<string, Snapshot> = {
   // Marketplace / RFQ / advisor prompts (added in earlier rounds without
   // snapshot updates — this block fixes the prior debt while landing
   // imageIntentFromSketch.v1).
-  'ai-advisor':                  { version: '1.1.0', templateHash: '468bb38d4dc68dbcb232c774b72c354a14028adfd56c0d0ac763e75e60512959' },
+  'ai-advisor':                  { version: '1.2.0', templateHash: 'd88ed9de85e450d5e033f4e125631226096d45536e709152402902996650162e' },
   'capacity-match':              { version: '1.0.0', templateHash: 'd0e329e57b8a2e1b40eeb036febbf79cad0a32bd66d27aed04164209a86437e9' },
   'cert-filter':                 { version: '1.0.0', templateHash: 'ae6bb41ef60f32a36dea2e2a7fa7ee8303e1cc8f36d5f706b77f37a6a225a84c' },
   'change-detector':             { version: '1.0.0', templateHash: '47afdc38244b64c309696fa720450392e5477ece34064bdbcb67d16376fb797e' },
-  'cost-copilot':                { version: '1.0.0', templateHash: '375fb465eb388bc4e351022a13d3810b5ef190de10f8026d7ea6136911da30c5' },
-  'cost-copilot:tighter':        { version: '1.1.0', templateHash: '375fb465eb388bc4e351022a13d3810b5ef190de10f8026d7ea6136911da30c5' },
-  'dfm-explainer':               { version: '1.0.0', templateHash: '7663140acfddeeeb2141da55c86fc0a7a4457b9d5e8fa7e1bbe5e48a77b12c0d' },
-  'order-priority':              { version: '1.0.0', templateHash: 'bcc70c456ef1bc51941a61de5a84e230f7bd08016b63e4b8fbe4bf786e2d460b' },
-  'process-router':              { version: '1.0.0', templateHash: '976bc40f50f39ac9100c4269633bcfc83ff65766312d3ae843a9783d34745c03' },
+  'cost-copilot':                { version: '1.1.0', templateHash: '4ce42fb754b30023c81b5e4e79757e4749115705e1b6444e967f3895f5681182' },
+  'cost-copilot:tighter':        { version: '1.1.0', templateHash: '4ce42fb754b30023c81b5e4e79757e4749115705e1b6444e967f3895f5681182' },
+  'dfm-explainer':               { version: '1.1.0', templateHash: '9e2507513e0172fd23dab51a2f3ca7cf0d3eb4e01050cd4128b646e951179036' },
+  'order-priority':              { version: '1.1.0', templateHash: '3392d6db7ac6e4971f429222725293d33f216a8ca9c669b202f799f2b838206c' },
+  'process-router':              { version: '1.1.0', templateHash: 'c074a28966f744df8265b443378ff9169c53108847d0072e367ad2cc8ff77431' },
   'quote-accuracy':              { version: '1.0.0', templateHash: 'df8a6610b03d9693f41e34f2d693075a7ffd7eb049e676fc75cdbf3e0f54c6a3' },
   'quote-negotiator':            { version: '1.0.0', templateHash: 'f1a8345e8db426d89e8adff60e95c2076f200dacfa7156cfd00a8cc4d66275c1' },
   'rfq-responder':               { version: '1.0.0', templateHash: '7856eff85f61c33df6ac8b83c8e06de7083a354f4b61bd16d629ba0a1a3dbf28' },

@@ -1,0 +1,12 @@
+{
+  "schema": "nexyfab.cad-domain.v1",
+  "id": "mechanical",
+  "contractVersion": "nexyfab.cad-contract.v1",
+  "workspaceRoute": "/[lang]/shape-generator",
+  "legacySourceRoots": ["src/app/[lang]/shape-generator"],
+  "targetRoot": "domains/mechanical",
+  "authoringState": "WORKING",
+  "exactExecutionState": "PARTIAL",
+  "releaseState": "BLOCKED",
+  "requiredExternalEvidence": ["30-feature-proof", "step-c4", "blind-review-20", "fabrication-pilot-3"]
+}

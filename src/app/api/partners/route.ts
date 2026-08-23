@@ -7,6 +7,7 @@ import { getDbAdapter } from '@/lib/db-adapter';
 import { enqueueJob } from '@/lib/job-queue';
 import { logAudit } from '@/lib/audit';
 import { normPartnerEmail } from '@/lib/partner-factory-access';
+import { readBoundedJson } from '@/lib/boundedJsonBody';
 
 export const dynamic = 'force-dynamic';
 
@@ -82,7 +83,7 @@ export async function PATCH(req: NextRequest) {
   if (!checkOrigin(req)) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   if (!(await verifyAdmin(req))) return NextResponse.json({ error: 'Admin only' }, { status: 403 });
 
-  const { id, status, note } = await req.json();
+  const { id, status, note } = await readBoundedJson<{ id?: string; status?: string; note?: string }>(req, 64 * 1024);
   if (!id || !status) return NextResponse.json({ error: 'id and status required' }, { status: 400 });
 
   const db = getDbAdapter();

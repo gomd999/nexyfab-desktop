@@ -10,11 +10,14 @@ import { z } from 'zod';
 import { createHash, randomBytes } from 'crypto';
 import type { UserRow } from '@/lib/db-types';
 import { SERVICE_NAME } from '@/lib/service-config';
-import { accessTokenCookie, refreshTokenCookie } from '@/lib/cookie-config';
+import { accessTokenCookie, browserSessionCookie, refreshTokenCookie } from '@/lib/cookie-config';
 import { tryClaimDemoOnAuth } from '@/lib/demo-session';
 import { parseUserStageColumn } from '@/lib/stage-engine';
 import { getTrustedClientIp } from '@/lib/client-ip';
 import * as OTPAuth from 'otpauth';
+import { boundedJsonError, readBoundedJson } from '@/lib/boundedJsonBody';
+
+const MAX_LOGIN_BODY_BYTES = 16 * 1024;
 
 const AUTH_URL = process.env.NEXYSYS_AUTH_URL || '';
 
@@ -37,7 +40,12 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const body = await req.json() as { email?: string; password?: string };
+  let body: { email?: string; password?: string };
+  try { body = await readBoundedJson(req, MAX_LOGIN_BODY_BYTES); }
+  catch (error) {
+    if (boundedJsonError(error)?.code === 'PAYLOAD_TOO_LARGE') return NextResponse.json({ error: 'Request too large', code: 'PAYLOAD_TOO_LARGE' }, { status: 413 });
+    throw error;
+  }
   if (typeof body.email === 'string') {
     const normalizedEmail = body.email.trim().toLowerCase();
     const emailKey = createHash('sha256').update(normalizedEmail).digest('hex');
@@ -319,6 +327,8 @@ export async function POST(req: NextRequest) {
     response.cookies.set(rc.name, rc.value, rc.options);
     const ac = accessTokenCookie(token);
     response.cookies.set(ac.name, ac.value, ac.options);
+    const bs = browserSessionCookie();
+    response.cookies.set(bs.name, bs.value, bs.options);
     // 데모 세션 쿠키가 있으면 데이터 이관 — 사용자가 데모 모드에서 RFQ 입력 후
     // 가입 안 하고 잠깐 자리 비웠다 로그인 한 케이스도 자동 합류 가능.
     await tryClaimDemoOnAuth(req, response, dbUser.id);

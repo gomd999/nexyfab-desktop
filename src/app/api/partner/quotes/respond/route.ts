@@ -15,6 +15,10 @@ import { getDbAdapter } from '@/lib/db-adapter';
 import { normPartnerEmail } from '@/lib/partner-factory-access';
 import { logAudit } from '@/lib/audit';
 import { recordMetric } from '@/lib/partner-metrics';
+import { loc } from '@/lib/i18n/loc';
+import { boundedJsonError, readBoundedJson } from '@/lib/boundedJsonBody';
+
+const MAX_QUOTE_RESPONSE_BODY_BYTES = 32 * 1024;
 
 export const dynamic = 'force-dynamic';
 
@@ -26,7 +30,13 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: '인증이 필요합니다.' }, { status: 401 });
   }
 
-  const { quoteId, estimatedAmount, estimatedDays, note } = await req.json();
+  let body: { quoteId?: string; estimatedAmount?: number; estimatedDays?: number; note?: string };
+  try { body = await readBoundedJson(req, MAX_QUOTE_RESPONSE_BODY_BYTES); }
+  catch (error) {
+    if (boundedJsonError(error)?.code === 'PAYLOAD_TOO_LARGE') return NextResponse.json({ error: 'Request too large', code: 'PAYLOAD_TOO_LARGE' }, { status: 413 });
+    throw error;
+  }
+  const { quoteId, estimatedAmount, estimatedDays, note } = body;
   if (!quoteId || !estimatedAmount) {
     return NextResponse.json({ error: 'quoteId와 estimatedAmount가 필요합니다.' }, { status: 400 });
   }
@@ -107,7 +117,9 @@ export async function POST(req: NextRequest) {
       if (rfqUser?.email) {
         const locale = nexyfabEmailLocaleFromLanguageTag(rfqUser.language);
         const langPath = nexyfabAppLangPathFromEmailLocale(locale);
-        const factoryLabel = partner.company || partner.email || (locale === 'ko' ? '제조사' : 'Manufacturer');
+        const factoryLabel = partner.company || partner.email || loc(locale, {
+          ko: '제조사', en: 'Manufacturer', ja: 'メーカー', zh: '制造商', es: 'Fabricante', ar: 'المصنّع',
+        });
         await enqueueJob('send_email', {
           to: rfqUser.email,
           subject: quoteReceivedEmailSubject(locale, quote.project_name),

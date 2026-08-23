@@ -8,6 +8,7 @@ import { useSceneStore } from '../store/sceneStore';
 import { useAnalysisStore } from '../store/analysisStore';
 import { useLang } from '../hooks/useLang';
 import { loc } from '../lib/loc';
+import { createCommercialLocalizer } from '@/lib/i18n/commercialLocalizer';
 
 /* ─── i18n dictionary ────────────────────────────────────────────────────── */
 
@@ -537,6 +538,7 @@ export default function DFMPanel({ results: propResults, onAnalyze, onClose, onH
   };
   const lang: Lang = langMap[seg] ?? 'en';
   const t = dict[lang];
+  const L = createCommercialLocalizer(lang);
   const [activeFixId, setActiveFixId] = useState<string | null>(null);
   // B1: when an issue has targetFeatureId (set by future face→feature
   // provenance work in pipelineManager), the existing 🌳 button highlights
@@ -1023,11 +1025,11 @@ export default function DFMPanel({ results: propResults, onAnalyze, onClose, onH
                                             <>
                                               <div style={{ fontSize: 10, color: C.text, lineHeight: 1.5, marginBottom: 6 }}>
                                                 <b style={{ color: C.purple }}>{t.rootCause}:</b>{' '}
-                                                {lang === 'ko' ? exp.rootCauseKo : exp.rootCause}
+                                                {L(exp.rootCauseKo, exp.rootCause)}
                                               </div>
                                               <div style={{ fontSize: 10, color: C.text, lineHeight: 1.5, marginBottom: 6 }}>
                                                 <b style={{ color: C.purple }}>{t.processImpact}:</b>{' '}
-                                                {lang === 'ko' ? exp.processImpactKo : exp.processImpact}
+                                                {L(exp.processImpactKo, exp.processImpact)}
                                               </div>
                                               {exp.alternatives.length > 0 && (
                                                 <div style={{ marginTop: 6 }}>
@@ -1042,10 +1044,10 @@ export default function DFMPanel({ results: propResults, onAnalyze, onClose, onH
                                                         background: C.card, border: `1px solid ${C.border}`,
                                                       }}>
                                                         <div style={{ fontSize: 10, fontWeight: 700, color: C.text, marginBottom: 2 }}>
-                                                          {lang === 'ko' ? alt.labelKo : alt.label}
+                                                          {L(alt.labelKo, alt.label)}
                                                         </div>
                                                         <div style={{ fontSize: 9, color: C.textDim, lineHeight: 1.4 }}>
-                                                          {lang === 'ko' ? alt.rationaleKo : alt.rationale}
+                                                          {L(alt.rationaleKo, alt.rationale)}
                                                         </div>
                                                         {costDelta && (
                                                           <div style={{
@@ -1061,7 +1063,7 @@ export default function DFMPanel({ results: propResults, onAnalyze, onClose, onH
                                                 </div>
                                               )}
                                               <div style={{ marginTop: 6, fontSize: 9, color: C.textDim, lineHeight: 1.4, fontStyle: 'italic' }}>
-                                                💰 {lang === 'ko' ? exp.costNoteKo : exp.costNote}
+                                                💰 {L(exp.costNoteKo, exp.costNote)}
                                               </div>
                                             </>
                                           );

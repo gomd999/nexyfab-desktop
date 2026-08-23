@@ -91,7 +91,61 @@ import { useTheme } from '../ThemeContext';
 import { I, type IconName } from './Icons';
 import { SAMPLE_PROJECTS, sampleHref } from './sampleProjects';
 import { fmtShell, pickShellDict } from './shellDict';
-import { toIsoLang } from '@/lib/i18n/normalize';
+import { loc } from '@/lib/i18n/loc';
+import { spatialHubEntries } from './spatial/spatialHub';
+
+type HubText = { ko: string; en: string; ja: string; zh: string; es: string; ar: string };
+
+const HUB_TEXT: Record<string, HubText> = {
+  'AI Design Studio': {
+    ko: 'AI 설계 스튜디오', en: 'AI Design Studio', ja: 'AI設計スタジオ', zh: 'AI设计工作室',
+    es: 'Estudio de diseño con IA', ar: 'استوديو التصميم بالذكاء الاصطناعي',
+  },
+  'Space & Infrastructure Precision CAD': {
+    ko: 'Space & Infrastructure 정밀 CAD', en: 'Space & Infrastructure Precision CAD',
+    ja: '宇宙・インフラ精密CAD', zh: '航天与基础设施精密 CAD',
+    es: 'CAD de precisión para espacio e infraestructura', ar: 'تصميم CAD دقيق للفضاء والبنية التحتية',
+  },
+  'Continue the same AI design discipline and revision. Server project persistence and release verification remain NOT_RUN before authentication.': {
+    ko: 'AI 설계 브리프와 같은 분야·리비전을 이어서 편집합니다. 서버 프로젝트 저장과 출시 검증은 인증 전 NOT_RUN입니다.',
+    en: 'Continue the same AI design discipline and revision. Server project persistence and release verification remain NOT_RUN before authentication.',
+    ja: '同じAI設計分野とリビジョンで編集を続けます。認証前は、サーバープロジェクトの保存とリリース検証は NOT_RUN のままです。',
+    zh: '继续编辑同一 AI 设计领域和修订版本。认证前，服务器项目保存和发布验证仍为 NOT_RUN。',
+    es: 'Continúa editando la misma disciplina y revisión de diseño con IA. Antes de la autenticación, la persistencia del proyecto en el servidor y la verificación de lanzamiento permanecen en NOT_RUN.',
+    ar: 'تابع تحرير نفس تخصص ومراجعة التصميم بالذكاء الاصطناعي. قبل المصادقة، يظل حفظ المشروع على الخادم والتحقق من الإصدار في حالة NOT_RUN.',
+  },
+  'SPATIAL BETA': {
+    ko: '공간 설계 BETA', en: 'SPATIAL BETA', ja: '空間設計 BETA', zh: '空间设计 BETA',
+    es: 'DISEÑO ESPACIAL BETA', ar: 'التصميم المكاني BETA',
+  },
+  'Aluminum Bracket': {
+    ko: '알루미늄 브라켓', en: 'Aluminum Bracket', ja: 'アルミブラケット', zh: '铝制支架',
+    es: 'Soporte de aluminio', ar: 'حامل من الألومنيوم',
+  },
+  '4× ∅6.5 holes · 5mm thick · 80×50mm': {
+    ko: '∅6.5 홀 4개 · 5mm 두께 · 80×50mm', en: '4× ∅6.5 holes · 5mm thick · 80×50mm',
+    ja: '∅6.5穴×4 · 厚さ5mm · 80×50mm', zh: '4个∅6.5孔 · 厚5mm · 80×50mm',
+    es: '4 orificios ∅6,5 · 5 mm de grosor · 80×50 mm', ar: '4 فتحات ∅6.5 · سُمك 5 مم · 80×50 مم',
+  },
+  'Spur Gear 24T': {
+    ko: '스퍼 기어 24T', en: 'Spur Gear 24T', ja: '平歯車 24T', zh: '24齿直齿轮',
+    es: 'Engranaje recto 24T', ar: 'ترس مستقيم 24 سنًا',
+  },
+  'Module 1 · 24 teeth · 5mm thick': {
+    ko: 'Module 1 · 24 teeth · 5mm 두께', en: 'Module 1 · 24 teeth · 5mm thick',
+    ja: 'モジュール1 · 24歯 · 厚さ5mm', zh: '模数1 · 24齿 · 厚5mm',
+    es: 'Módulo 1 · 24 dientes · 5 mm de grosor', ar: 'معامل 1 · 24 سنًا · سُمك 5 مم',
+  },
+  'PCB Enclosure': {
+    ko: '전자 부품 박스', en: 'PCB Enclosure', ja: 'PCBケース', zh: 'PCB外壳',
+    es: 'Caja para PCB', ar: 'علبة لوحة PCB',
+  },
+  '100×60×30mm · wall 2mm · R3 corners': {
+    ko: '100×60×30mm · 벽두께 2mm · 모서리 R3', en: '100×60×30mm · wall 2mm · R3 corners',
+    ja: '100×60×30mm · 壁厚2mm · 角R3', zh: '100×60×30mm · 壁厚2mm · R3圆角',
+    es: '100×60×30 mm · pared de 2 mm · esquinas R3', ar: '100×60×30 مم · جدار 2 مم · زوايا R3',
+  },
+};
 
 interface HubFrameProps {
   lang: string;
@@ -117,9 +171,9 @@ interface QuickStart {
 
 export function HubFrame({ lang, onShowAuth }: HubFrameProps) {
   const d = pickShellDict(lang);
-  // Sample-project titles/descriptions are ko/en data (sampleProjects.ts) —
-  // non-Korean locales fall back to the English strings there.
-  const isKo = toIsoLang(lang) === 'ko';
+  const L = (ko: string, en: string) => loc(lang, HUB_TEXT[en] ?? {
+    ko, en, ja: en, zh: en, es: en, ar: en,
+  });
   const router = useRouter();
   const { user } = useAuthStore();
   const { projects, isLoading, saveProject } = useProjectsStore();
@@ -163,11 +217,20 @@ export function HubFrame({ lang, onShowAuth }: HubFrameProps) {
     },
     {
       ico: 'doc',
-      lbl: lang === 'ko' ? '종이·레이저컷 키트' : 'Papercraft / Laser Kit',
-      sub: lang === 'ko' ? '글·사진·3D → 전개도/적층 DXF' : 'Text/photo/3D → net & DXF',
+      lbl: loc(lang, {
+        ko: '종이·레이저컷 키트', en: 'Papercraft / Laser Kit',
+        ja: 'ペーパークラフト／レーザーカットキット', zh: '纸艺／激光切割套件',
+        es: 'Kit de papel / corte láser', ar: 'طقم الورق / القطع بالليزر',
+      }),
+      sub: loc(lang, {
+        ko: '글·사진·3D → 전개도/적층 DXF', en: 'Text/photo/3D → net & DXF',
+        ja: 'テキスト・写真・3D → 展開図／積層DXF', zh: '文本／照片／3D → 展开图／分层DXF',
+        es: 'Texto/foto/3D → plantilla y DXF', ar: 'نص/صورة/3D ← شبكة وDXF',
+      }),
       href: `/${lang}/papercraft`,
     },
   ];
+  const spatialStarts = spatialHubEntries(lang);
 
   // Filtered projects driven by Hub search input.
   const filteredProjects = useMemo(() => {
@@ -336,7 +399,7 @@ export function HubFrame({ lang, onShowAuth }: HubFrameProps) {
               display: 'flex', alignItems: 'center', gap: 6,
             }}
           >
-            💬 {lang === 'kr' || lang === 'ko' ? 'AI 설계 스튜디오' : 'AI Design Studio'}
+            💬 {L('AI 설계 스튜디오', 'AI Design Studio')}
           </a>
         </div>
 
@@ -689,6 +752,42 @@ export function HubFrame({ lang, onShowAuth }: HubFrameProps) {
             })}
           </div>
 
+          <section aria-labelledby="space-infrastructure-heading" style={{ marginBottom: 32 }}>
+            <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12, marginBottom: 12 }}>
+              <div>
+                <h3 id="space-infrastructure-heading" style={{ margin: 0, fontSize: 14, color: 'var(--nx-text)' }}>
+                  {L('Space & Infrastructure 정밀 CAD', 'Space & Infrastructure Precision CAD')}
+                </h3>
+                <p style={{ margin: '4px 0 0', color: 'var(--nx-text-3)', fontSize: 11 }}>
+                  {L('AI 설계 브리프와 같은 분야·리비전을 이어서 편집합니다. 서버 프로젝트 저장과 출시 검증은 인증 전 NOT_RUN입니다.', 'Continue the same AI design discipline and revision. Server project persistence and release verification remain NOT_RUN before authentication.')}
+                </p>
+              </div>
+              <span style={{ marginLeft: 'auto', padding: '3px 7px', borderRadius: 9, background: 'rgba(245,158,11,.14)', color: 'var(--nx-warn)', fontSize: 9, fontWeight: 800, whiteSpace: 'nowrap' }}>
+                {L('공간 설계 BETA', 'SPATIAL BETA')}
+              </span>
+            </div>
+            <div data-testid="spatial-hub-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(190px, 1fr))', gap: 10 }}>
+              {spatialStarts.map(entry => {
+                const Icon = I[entry.icon] ?? I.cube;
+                return (
+                  <button
+                    type="button"
+                    key={entry.id}
+                    data-testid={`spatial-hub-${entry.id}`}
+                    onClick={() => startDesign(entry.href)}
+                    style={{ minHeight: 106, padding: '13px 14px', display: 'grid', gridTemplateRows: 'auto 1fr auto', gap: 7, textAlign: 'left', cursor: 'pointer', border: '1px solid var(--nx-border)', borderRadius: 8, background: 'var(--nx-panel)', color: 'var(--nx-text)' }}
+                  >
+                    <span style={{ display: 'flex', alignItems: 'center', gap: 7, fontSize: 12, fontWeight: 750 }}><Icon size={15}/>{entry.label}</span>
+                    <span style={{ color: 'var(--nx-text-3)', fontSize: 10.5, lineHeight: 1.45 }}>{entry.description}</span>
+                    <span style={{ color: entry.evidence === 'BOUNDS_PREVIEW' ? 'var(--nx-warn)' : 'var(--nx-accent)', fontSize: 9, fontWeight: 750 }}>
+                      {entry.evidence === 'BOUNDS_PREVIEW' ? 'BOUNDS PREVIEW · EXACT NOT_RUN' : 'SEMANTIC EDIT · RELEASE NOT_RUN'}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          </section>
+
           {/* Recently opened */}
           <div style={{ marginBottom: 32 }}>
             <div style={{ display: 'flex', alignItems: 'center', marginBottom: 12 }}>
@@ -757,10 +856,10 @@ export function HubFrame({ lang, onShowAuth }: HubFrameProps) {
                         {sample.titleEn.split(' ').map(w => w[0]).join('').slice(0, 2)}
                       </div>
                       <div style={{ fontSize: 12, fontWeight: 600 }}>
-                        {isKo ? sample.titleKo : sample.titleEn}
+                        {L(sample.titleKo, sample.titleEn)}
                       </div>
                       <div style={{ fontSize: 10, color: 'var(--nx-text-3)', lineHeight: 1.4 }}>
-                        {isKo ? sample.descKo : sample.descEn}
+                        {L(sample.descKo, sample.descEn)}
                       </div>
                     </a>
                   ))}

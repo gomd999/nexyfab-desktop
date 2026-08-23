@@ -1,0 +1,31 @@
+{
+  "schema": "nexyfab.mechanical-core-feature-local-runtime.v1",
+  "feature": "variableFillet",
+  "axis": "edit",
+  "status": "PASS",
+  "executedAt": "2026-08-22T07:13:30.564Z",
+  "commandId": "variableFillet-runtime-param-edit",
+  "historyDepth": 1,
+  "before": {
+    "id": "runtime-feature",
+    "enabled": true,
+    "type": "variableFillet",
+    "params": {
+      "startRadius": 2,
+      "endRadius": 4,
+      "segments": 3,
+      "engine": 1
+    }
+  },
+  "after": {
+    "id": "runtime-feature",
+    "enabled": true,
+    "type": "variableFillet",
+    "params": {
+      "startRadius": 2,
+      "endRadius": 6,
+      "segments": 3,
+      "engine": 1
+    }
+  }
+}

@@ -1,0 +1,82 @@
+{
+  "schema": "nexyfab.mechanical-core-feature-local-runtime.v1",
+  "feature": "tab",
+  "axis": "regenerate",
+  "status": "PASS",
+  "executedAt": "2026-08-22T07:13:30.564Z",
+  "initial": {
+    "handle": "occt:281",
+    "kernelKind": "Solid",
+    "nativeShapeType": 0,
+    "solidCount": 1,
+    "singleSolid": true,
+    "volumeMm3": 80640,
+    "edgeCount": 24,
+    "faceCount": 10,
+    "boundsMm": [
+      [
+        -30.0000001,
+        -20.0000001,
+        -15.000000100000001
+      ],
+      [
+        30.0000001,
+        20.0000001,
+        27.0000001
+      ]
+    ]
+  },
+  "edited": {
+    "handle": "occt:283",
+    "kernelKind": "Solid",
+    "nativeShapeType": 0,
+    "solidCount": 1,
+    "singleSolid": true,
+    "volumeMm3": 83520,
+    "edgeCount": 24,
+    "faceCount": 10,
+    "boundsMm": [
+      [
+        -30.0000001,
+        -20.0000001,
+        -15.000000100000001
+      ],
+      [
+        30.0000001,
+        20.0000001,
+        27.0000001
+      ]
+    ]
+  },
+  "repeated": {
+    "handle": "occt:285",
+    "kernelKind": "Solid",
+    "nativeShapeType": 0,
+    "solidCount": 1,
+    "singleSolid": true,
+    "volumeMm3": 83520,
+    "edgeCount": 24,
+    "faceCount": 10,
+    "boundsMm": [
+      [
+        -30.0000001,
+        -20.0000001,
+        -15.000000100000001
+      ],
+      [
+        30.0000001,
+        20.0000001,
+        27.0000001
+      ]
+    ]
+  },
+  "featureMeaning": {
+    "assertion": "exact coplanar tab adds width x sheet-thickness x outward-length volume and extends the selected edge by the requested length",
+    "widthMm": 24,
+    "lengthMm": 12,
+    "expectedVolumeMm3": 83520,
+    "actualVolumeMm3": 83520,
+    "outwardExtensionMm": 12.000000100000001
+  },
+  "assertion": "edited parameter changed the exact signature and a fresh native regeneration reproduced topology, bounds, and volume"
+}

@@ -71,6 +71,10 @@ interface ExpressionInputProps {
   unitSystem?: UnitSystem;
   /** i18n label for expression tooltip */
   expressionLabel?: string;
+  /** Accessible form identity supplied by the owning property row. */
+  inputId?: string;
+  inputName?: string;
+  ariaLabel?: string;
 }
 
 export default function ExpressionInput({
@@ -85,6 +89,9 @@ export default function ExpressionInput({
   unit,
   unitSystem,
   expressionLabel = 'Expression',
+  inputId,
+  inputName,
+  ariaLabel,
 }: ExpressionInputProps) {
   const pathname = usePathname();
   const seg = pathname?.split('/').filter(Boolean)[0] ?? 'en';
@@ -312,6 +319,9 @@ export default function ExpressionInput({
 
         <input
           ref={inputRef}
+          id={inputId}
+          name={inputName}
+          aria-label={ariaLabel ?? expressionLabel}
           type="text"
           value={localExpr}
           onChange={handleChange}

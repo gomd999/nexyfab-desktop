@@ -18,6 +18,13 @@ import { nfApiInfo } from '@/lib/nfApiLog';
 import { CadAuditAction, logCadPipelineAudit } from '@/lib/enterprise-cad-audit';
 import { getDbAdapter } from '@/lib/db-adapter';
 import { validateStepObjectAccess, type StepObjectRecord } from '@/lib/brep-bridge/objectKeyAccess';
+import { readBoundedJson } from '@/lib/boundedJsonBody';
+
+// Inline JSON shares the generic 16 MiB proxy ceiling. Larger STEP inputs use
+// the existing direct-upload + objectKey path, which avoids base64 ingress.
+const MAX_JSON_BODY_BYTES = 16 * 1024 * 1024;
+// Base64 adds 4/3 overhead; reserve the remainder for the JSON envelope.
+const MAX_INLINE_STEP_BYTES = 11 * 1024 * 1024;
 
 export const dynamic = 'force-dynamic';
 
@@ -33,7 +40,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Rate limit exceeded', code: 'RATE_LIMIT' }, { status: 429 });
   }
 
-  const body = await req.json().catch(() => ({}));
+  const body = (await readBoundedJson<Record<string, unknown>>(req, MAX_JSON_BODY_BYTES).catch(() => ({}))) as Record<string, unknown>;
   const asyncMode = body.async === true;
 
   let buffer: Buffer | null = null;
@@ -57,6 +64,12 @@ export async function POST(req: NextRequest) {
         : 'model.step';
     const b64 = typeof input.base64 === 'string' ? input.base64 : '';
     buffer = Buffer.from(b64, 'base64');
+    if (buffer.length > MAX_INLINE_STEP_BYTES) {
+      return NextResponse.json(
+        { error: brepMsg(lang, 'TOO_LARGE'), code: 'TOO_LARGE', maxBytes: MAX_INLINE_STEP_BYTES },
+        { status: 413 },
+      );
+    }
   } else if (kind === 'objectKey') {
     const key = typeof input.key === 'string' ? input.key : '';
     if (!key.trim()) {
@@ -129,7 +142,7 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const quota = await checkMonthlyLimit(plan.userId, plan.plan, 'brep_step_import');
+  const quota = await checkMonthlyLimit(plan.userId, plan.plan, 'brep_step_import', plan.orgId);
   if (!quota.ok) {
     nfApiInfo('brep.step-import', 'MONTHLY_LIMIT', {
       userId: plan.userId,
@@ -189,7 +202,7 @@ export async function POST(req: NextRequest) {
       mode: 'sync',
       jobId: syncId,
       filename,
-    });
+    }, plan.orgId);
     if (!consumed.ok) {
       nfApiInfo('brep.step-import', 'MONTHLY_SLOT_RACE_AFTER_SYNC', {
         userId: plan.userId,
@@ -235,7 +248,7 @@ export async function POST(req: NextRequest) {
   const reserved = await consumeMonthlyMetricSlot(plan.userId, plan.plan, 'brep_step_import', {
     mode: 'async',
     filename,
-  });
+  }, plan.orgId);
   if (!reserved.ok) {
     nfApiInfo('brep.step-import', 'MONTHLY_LIMIT_RESERVE', {
       userId: plan.userId,

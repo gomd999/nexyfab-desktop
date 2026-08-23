@@ -8,6 +8,9 @@ import { verifyAdmin } from '@/lib/admin-auth';
 import { getDbAdapter } from '@/lib/db-adapter';
 import { checkOrigin } from '@/lib/csrf';
 import { logAudit } from '@/lib/audit';
+import { boundedJsonError, readBoundedJson } from '@/lib/boundedJsonBody';
+
+const MAX_ADMIN_USER_BODY_BYTES = 64 * 1024;
 
 const searchSchema = z.object({
   q: z.string().max(200).optional(),
@@ -66,7 +69,11 @@ export async function PATCH(req: NextRequest) {
   const isAdmin = await verifyAdmin(req);
   if (!isAdmin) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
 
-  const raw = await req.json().catch(() => null);
+  let raw: unknown = null;
+  try { raw = await readBoundedJson(req, MAX_ADMIN_USER_BODY_BYTES); }
+  catch (error) {
+    if (boundedJsonError(error)?.code === 'PAYLOAD_TOO_LARGE') return NextResponse.json({ error: 'Request too large', code: 'PAYLOAD_TOO_LARGE' }, { status: 413 });
+  }
   const parsed = updateSchema.safeParse(raw);
   if (!parsed.success) {
     return NextResponse.json({ error: parsed.error.issues[0]?.message ?? 'Invalid input' }, { status: 400 });

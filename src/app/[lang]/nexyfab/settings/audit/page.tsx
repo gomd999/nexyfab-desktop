@@ -6,6 +6,8 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
 import { useAuthStore } from '@/hooks/useAuth';
+import { formatDate } from '@/lib/i18n/format';
+import { createCommercialLocalizer } from '@/lib/i18n/commercialLocalizer';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -76,12 +78,12 @@ const S = {
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-function fmtTime(ts: number): string {
-  return new Date(ts).toLocaleString('ko-KR', {
+function fmtTime(ts: number, lang: string): string {
+  return formatDate(ts, lang, {
     year: 'numeric', month: '2-digit', day: '2-digit',
     hour: '2-digit', minute: '2-digit', second: '2-digit',
     hour12: false,
-  });
+  }) ?? '—';
 }
 
 function actionBadgeColor(action: string): string {
@@ -110,18 +112,19 @@ function entriestoCSV(entries: AuditEntry[]): string {
 
 function NotEnterprise() {
   const { lang } = useParams<{ lang: string }>();
+  const L = createCommercialLocalizer(lang);
   return (
     <div style={{ ...S.page, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
       <div style={{ ...S.card, textAlign: 'center', maxWidth: 480 }}>
         <div style={{ fontSize: 40, marginBottom: 16 }}>🔒</div>
         <div style={{ fontSize: 18, fontWeight: 700, marginBottom: 8 }}>
-          Enterprise 플랜이 필요합니다
+          {L('Enterprise 플랜이 필요합니다', 'Enterprise plan required')}
         </div>
         <div style={{ fontSize: 14, color: '#6b7280' }}>
-          Enterprise plan required to access audit logs.
+          {L('감사 로그에 액세스하려면 Enterprise 플랜이 필요합니다.', 'An Enterprise plan is required to access audit logs.')}
         </div>
         <div style={{ marginTop: 16 }}>
-          <a href={`/${lang}/nexyfab/pricing`} style={{ color: '#3B82F6', fontSize: 13 }}>플랜 업그레이드 / Upgrade →</a>
+          <a href={`/${lang}/nexyfab/pricing`} style={{ color: '#3B82F6', fontSize: 13 }}>{L('플랜 업그레이드', 'Upgrade plan')} →</a>
         </div>
       </div>
     </div>
@@ -134,6 +137,8 @@ const AUDIT_PAGE_SIZE = 25;
 
 export default function AuditLogPage() {
   const { user } = useAuthStore();
+  const { lang } = useParams<{ lang: string }>();
+  const L = createCommercialLocalizer(lang);
 
   const [entries, setEntries] = useState<AuditEntry[]>([]);
   const [loading, setLoading] = useState(true);
@@ -179,7 +184,7 @@ export default function AuditLogPage() {
       setEntries(result);
       setAuditPage(1);
     } catch {
-      setError('네트워크 오류 / Network error');
+      setError(L('네트워크 오류', 'Network error'));
     } finally {
       setLoading(false);
     }
@@ -218,10 +223,10 @@ export default function AuditLogPage() {
         <div style={{ marginBottom: 28, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', flexWrap: 'wrap', gap: 12 }}>
           <div>
             <h1 style={{ fontSize: 24, fontWeight: 800, margin: 0, marginBottom: 4 }}>
-              감사 로그 / Audit Logs
+              {L('감사 로그', 'Audit Logs')}
             </h1>
             <p style={{ color: '#6b7280', fontSize: 13, margin: 0 }}>
-              Enterprise 계정의 모든 활동 기록 / Full activity history for your organization
+              {L('Enterprise 계정의 모든 활동 기록', 'Full activity history for your organization')}
             </p>
           </div>
           <button
@@ -232,14 +237,14 @@ export default function AuditLogPage() {
             onClick={exportCSV}
             disabled={entries.length === 0}
           >
-            CSV 내보내기 / Export CSV
+            {L('CSV 내보내기', 'Export CSV')}
           </button>
         </div>
 
         {/* Filters */}
         <div style={{ ...S.card, display: 'flex', gap: 16, flexWrap: 'wrap', alignItems: 'flex-end' }}>
           <div>
-            <label style={S.label}>액션 prefix / Action prefix</label>
+            <label style={S.label}>{L('액션 접두사', 'Action prefix')}</label>
             <input
               style={S.input}
               placeholder="project, rfq, export…"
@@ -248,7 +253,7 @@ export default function AuditLogPage() {
             />
           </div>
           <div>
-            <label style={S.label}>사용자 ID / User ID</label>
+            <label style={S.label}>{L('사용자 ID', 'User ID')}</label>
             <input
               style={S.input}
               placeholder="ent-user-001"
@@ -257,7 +262,7 @@ export default function AuditLogPage() {
             />
           </div>
           <div>
-            <label style={S.label}>날짜 시작 / Date from</label>
+            <label style={S.label}>{L('날짜 시작', 'Date from')}</label>
             <input
               type="date"
               style={S.input}
@@ -266,7 +271,7 @@ export default function AuditLogPage() {
             />
           </div>
           <div>
-            <label style={S.label}>날짜 종료 / Date to</label>
+            <label style={S.label}>{L('날짜 종료', 'Date to')}</label>
             <input
               type="date"
               style={S.input}
@@ -281,7 +286,7 @@ export default function AuditLogPage() {
             }}
             onClick={fetchLogs}
           >
-            필터 적용 / Apply
+            {L('필터 적용', 'Apply')}
           </button>
           <button
             style={{
@@ -295,7 +300,7 @@ export default function AuditLogPage() {
               setFilterDateTo('');
             }}
           >
-            초기화 / Reset
+            {L('초기화', 'Reset')}
           </button>
         </div>
 
@@ -310,23 +315,23 @@ export default function AuditLogPage() {
         <div style={{ ...S.card, padding: 0, overflow: 'hidden' }}>
           {loading ? (
             <div style={{ padding: 40, textAlign: 'center', color: '#6b7280' }}>
-              불러오는 중… / Loading…
+              {L('불러오는 중…', 'Loading…')}
             </div>
           ) : entries.length === 0 ? (
             <div style={{ padding: 40, textAlign: 'center', color: '#6b7280' }}>
-              로그가 없습니다 / No audit entries found.
+              {L('로그가 없습니다', 'No audit entries found.')}
             </div>
           ) : (
             <div style={{ overflowX: 'auto' }}>
               <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                 <thead>
                   <tr>
-                    <th style={S.th}>시간 / Time</th>
-                    <th style={S.th}>액션 / Action</th>
-                    <th style={S.th}>사용자 / User</th>
-                    <th style={S.th}>리소스 ID / Resource</th>
+                    <th style={S.th}>{L('시간', 'Time')}</th>
+                    <th style={S.th}>{L('액션', 'Action')}</th>
+                    <th style={S.th}>{L('사용자', 'User')}</th>
+                    <th style={S.th}>{L('리소스 ID', 'Resource')}</th>
                     <th style={S.th}>IP</th>
-                    <th style={S.th}>메타데이터 / Metadata</th>
+                    <th style={S.th}>{L('메타데이터', 'Metadata')}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -338,10 +343,10 @@ export default function AuditLogPage() {
                         key={e.id}
                         style={{ background: i % 2 === 0 ? 'transparent' : '#15182000', cursor: e.metadata ? 'pointer' : 'default' }}
                         onClick={() => e.metadata && setExpandedEntry(e)}
-                        title={e.metadata ? '클릭해 메타데이터 보기 / Click to view metadata' : undefined}
+                        title={e.metadata ? L('클릭해 메타데이터 보기', 'Click to view metadata') : undefined}
                       >
                         <td style={{ ...S.td, color: '#9ca3af', fontSize: 12, whiteSpace: 'nowrap' }}>
-                          {fmtTime(e.createdAt)}
+                          {fmtTime(e.createdAt, lang)}
                         </td>
                         <td style={S.td}>
                           <span style={{
@@ -378,7 +383,7 @@ export default function AuditLogPage() {
         {!loading && entries.length > 0 && (
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 10, flexWrap: 'wrap', gap: 8 }}>
             <div style={{ fontSize: 12, color: '#4b5563' }}>
-              총 {entries.length}개 / {entries.length} entries
+              {L(`총 ${entries.length}개`, `${entries.length} entries`)}
             </div>
             {Math.ceil(entries.length / AUDIT_PAGE_SIZE) > 1 && (
               <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
@@ -391,7 +396,7 @@ export default function AuditLogPage() {
                     color: auditPage <= 1 ? '#4b5563' : '#9ca3af',
                   }}
                 >
-                  ← 이전
+                  ← {L('이전', 'Previous')}
                 </button>
                 <span style={{ fontSize: 12, color: '#6b7280' }}>
                   {auditPage} / {Math.ceil(entries.length / AUDIT_PAGE_SIZE)}
@@ -406,7 +411,7 @@ export default function AuditLogPage() {
                     color: auditPage >= Math.ceil(entries.length / AUDIT_PAGE_SIZE) ? '#4b5563' : '#9ca3af',
                   }}
                 >
-                  다음 →
+                  {L('다음', 'Next')} →
                 </button>
               </div>
             )}
@@ -425,12 +430,12 @@ export default function AuditLogPage() {
             >
               <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16 }}>
                 <span style={{ fontWeight: 700, fontSize: 14, color: '#f3f4f6', flex: 1 }}>
-                  메타데이터 / Metadata — {expandedEntry.action}
+                  {L('메타데이터', 'Metadata')} — {expandedEntry.action}
                 </span>
                 <button onClick={() => setExpandedEntry(null)} style={{ background: 'none', border: 'none', color: '#9ca3af', cursor: 'pointer', fontSize: 18 }}>✕</button>
               </div>
               <div style={{ fontSize: 11, color: '#6b7280', marginBottom: 10 }}>
-                {fmtTime(expandedEntry.createdAt)} · {expandedEntry.userId}{expandedEntry.ip ? ` · ${expandedEntry.ip}` : ''}
+                {fmtTime(expandedEntry.createdAt, lang)} · {expandedEntry.userId}{expandedEntry.ip ? ` · ${expandedEntry.ip}` : ''}
               </div>
               <pre style={{
                 background: '#0f1117', borderRadius: 8, padding: '12px 14px',

@@ -17,7 +17,7 @@ export interface CivilReleaseCertificateInput {
   deliverables?: BoundCivilEvidence<CivilDeliverableEvidence>;
   repair?: BoundCivilEvidence<CivilAxisEvidence>;
 }
-export interface CivilReleaseCertificate { schema: 'nexyfab.civil-release-certificate.v1'; workspaceRevision: number; modelContentHash: string; status: CivilEvidenceStatus; releaseReady: boolean; assertions: DomainAccuracyAssertionResult[]; issues: string[] }
+export interface CivilReleaseCertificate { schema: 'nexyfab.civil-release-certificate.v1'; workspaceRevision: number; modelContentHash: string; status: CivilEvidenceStatus; internalReady: boolean; releaseReady: false; assertions: DomainAccuracyAssertionResult[]; issues: string[] }
 
 const SHA256 = /^[a-f0-9]{64}$/;
 const rank: Record<CivilEvidenceStatus, number> = { pass: 0, not_run: 1, fail: 2 };
@@ -81,5 +81,5 @@ export function buildCivilReleaseCertificate(input: CivilReleaseCertificateInput
   ];
   const assertions = merge(values), issues = [...workspaceIssues, ...documentIssues, ...assertions.filter(item => item.status !== 'pass').map(item => `${item.axis}:${item.status}`)];
   const status: CivilEvidenceStatus = assertions.length !== 22 ? 'fail' : assertions.some(item => item.status === 'fail') ? 'fail' : assertions.some(item => item.status === 'not_run') ? 'not_run' : 'pass';
-  return { schema: 'nexyfab.civil-release-certificate.v1', workspaceRevision: input.workspace.workspace.revision, modelContentHash: input.workspace.geometry.contentHash, status, releaseReady: status === 'pass', assertions, issues };
+  return { schema: 'nexyfab.civil-release-certificate.v1', workspaceRevision: input.workspace.workspace.revision, modelContentHash: input.workspace.geometry.contentHash, status, internalReady: status === 'pass', releaseReady: false, assertions, issues };
 }

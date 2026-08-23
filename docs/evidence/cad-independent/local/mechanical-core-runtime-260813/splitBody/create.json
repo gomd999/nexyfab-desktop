@@ -1,0 +1,50 @@
+{
+  "schema": "nexyfab.mechanical-core-feature-local-runtime.v1",
+  "feature": "splitBody",
+  "axis": "create",
+  "status": "PASS",
+  "executedAt": "2026-08-22T07:13:30.564Z",
+  "payload": {
+    "id": "runtime-feature",
+    "enabled": true,
+    "type": "splitBody",
+    "params": {
+      "plane": 0,
+      "offset": 0,
+      "keepSide": 0,
+      "engine": 1
+    }
+  },
+  "exact": {
+    "handle": "occt:447",
+    "kernelKind": "Solid",
+    "nativeShapeType": 0,
+    "solidCount": 1,
+    "singleSolid": true,
+    "volumeMm3": 36000,
+    "edgeCount": 12,
+    "faceCount": 6,
+    "boundsMm": [
+      [
+        -30.0000001,
+        -20.0000001,
+        -1.0000000088817842e-7
+      ],
+      [
+        30.0000001,
+        20.0000001,
+        15.000000100000001
+      ]
+    ]
+  },
+  "featureMeaning": {
+    "assertion": "actual product OCCT split retained the requested positive half-space at the edited XY-plane offset",
+    "splitOffsetMm": 0,
+    "retainedDepthMm": 15,
+    "expectedVolumeMm3": 36000,
+    "actualVolumeMm3": 36000,
+    "retainedMinZMm": -1.0000000088817842e-7
+  },
+  "exactScope": "declared numeric runtime case",
+  "assertion": "native OCCT produced one non-empty exact solid and changed the host geometry"
+}

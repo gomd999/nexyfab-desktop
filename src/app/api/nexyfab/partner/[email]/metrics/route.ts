@@ -12,6 +12,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getPartnerMetrics } from '@/lib/partner-metrics';
 import { getDbAdapter } from '@/lib/db-adapter';
+import { resolveServerLocale } from '@/lib/i18n/serverLocale';
+import type { IsoLang } from '@/lib/i18n/normalize';
 
 export const dynamic = 'force-dynamic';
 
@@ -23,13 +25,24 @@ interface FactoryPublicRow {
   created_at: number | null;
 }
 
+const COPY: Record<IsoLang, { emailRequired: string; certification: (count: number) => string; experience: (years: number) => string; newPartner: string }> = {
+  ko: { emailRequired: '이메일이 필요합니다.', certification: n => `인증 ${n}개 보유`, experience: n => `경력 ${n}년+`, newPartner: '신규 파트너' },
+  en: { emailRequired: 'Email is required.', certification: n => `${n} certification${n === 1 ? '' : 's'}`, experience: n => `${n}+ years of experience`, newPartner: 'New partner' },
+  ja: { emailRequired: 'メールアドレスが必要です。', certification: n => `認証 ${n}件`, experience: n => `経験 ${n}年以上`, newPartner: '新規パートナー' },
+  zh: { emailRequired: '需要电子邮件。', certification: n => `${n} 项认证`, experience: n => `${n} 年以上经验`, newPartner: '新合作伙伴' },
+  es: { emailRequired: 'Se requiere el correo.', certification: n => `${n} certificación${n === 1 ? '' : 'es'}`, experience: n => `${n}+ años de experiencia`, newPartner: 'Socio nuevo' },
+  ar: { emailRequired: 'البريد الإلكتروني مطلوب.', certification: n => `${n} شهادة`, experience: n => `خبرة ${n}+ سنوات`, newPartner: 'شريك جديد' },
+};
+
 export async function GET(
   req: NextRequest,
   { params }: { params: Promise<{ email: string }> },
 ) {
+  const locale = resolveServerLocale(req, req.nextUrl.searchParams.get('lang'));
+  const copy = COPY[locale.iso];
   const { email } = await params;
   if (!email) {
-    return NextResponse.json({ error: 'email required' }, { status: 400 });
+    return NextResponse.json({ error: copy.emailRequired }, { status: 400 });
   }
   const partnerEmail = decodeURIComponent(email);
 
@@ -60,9 +73,9 @@ export async function GET(
 
   const coldStartBadges: string[] = [];
   if (isColdStart) {
-    if (certs.length > 0) coldStartBadges.push(`인증 ${certs.length}개 보유`);
-    if (ageDays >= 365) coldStartBadges.push(`경력 ${Math.floor(ageDays / 365)}년+`);
-    if (coldStartBadges.length === 0) coldStartBadges.push('신규 파트너');
+    if (certs.length > 0) coldStartBadges.push(copy.certification(certs.length));
+    if (ageDays >= 365) coldStartBadges.push(copy.experience(Math.floor(ageDays / 365)));
+    if (coldStartBadges.length === 0) coldStartBadges.push(copy.newPartner);
   }
 
   return NextResponse.json({

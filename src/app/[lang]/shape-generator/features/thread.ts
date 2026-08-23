@@ -25,6 +25,9 @@ import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import type { FeatureDefinition } from './types';
 import { buildThreadCutterGeometry } from './threads/applyThreadGeometric';
+import { applyThreadOcctRegistered } from './threads/applyThreadOcct';
+import { shouldUseOcctEngine } from './engineSelection';
+import { noteMeshFallback } from './downgradeNotice';
 
 export const threadFeature: FeatureDefinition = {
   type: 'thread',
@@ -148,5 +151,32 @@ export const threadFeature: FeatureDefinition = {
       console.warn('[threadFeature] real-thread CSG failed — returning host unchanged', err);
     }
     return geometry;
+  },
+  async applyAsync(geometry, params) {
+    const cosmetic = Math.round(params.cosmetic) === 1;
+    if (!cosmetic && shouldUseOcctEngine()) {
+      geometry.computeBoundingBox();
+      const bb = geometry.boundingBox;
+      const parentHandle = geometry.userData?.occtHandle as string | undefined;
+      if (bb && parentHandle) {
+        const height = bb.max.y - bb.min.y;
+        const radius = Math.max(bb.max.x - bb.min.x, bb.max.z - bb.min.z) / 2;
+        const exact = applyThreadOcctRegistered(parentHandle, {
+          radius,
+          height,
+          pitch: params.pitch,
+          depth: params.depth,
+          includedAngleDeg: params.angle,
+          direction: 'right_hand',
+        });
+        if (exact.handle) {
+          exact.geometry.userData.occtHandle = exact.handle;
+          return exact.geometry;
+        }
+      }
+    }
+    return noteMeshFallback(threadFeature.apply(geometry, params), {
+      op: cosmetic ? 'Thread (cosmetic)' : 'Thread',
+    });
   },
 };

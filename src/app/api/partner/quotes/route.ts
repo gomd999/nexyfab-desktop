@@ -9,6 +9,9 @@ import { captureFxQuote, serializeFxQuote } from '@/lib/money';
 import type { CurrencyCode } from '@/lib/country-pricing';
 import { isIncoterm, isValidHsCode, normalizeHsCode } from '@/lib/shipping';
 import { normPartnerEmail, partnerOwnsAssignedFactory } from '@/lib/partner-factory-access';
+import { boundedJsonError, readBoundedJson } from '@/lib/boundedJsonBody';
+
+const MAX_PARTNER_QUOTE_BODY_BYTES = 64 * 1024;
 
 export const dynamic = 'force-dynamic';
 
@@ -83,7 +86,7 @@ export async function POST(req: NextRequest) {
   const partner = await getPartnerAuth(req);
   if (!partner) return NextResponse.json({ error: '인증이 필요합니다.' }, { status: 401 });
 
-  const body = await req.json() as {
+  let body: {
     rfqId?: string;
     estimatedAmount?: number;
     currency?: string;
@@ -93,6 +96,11 @@ export async function POST(req: NextRequest) {
     hsCode?: string;
     incoterm?: string;
   };
+  try { body = await readBoundedJson(req, MAX_PARTNER_QUOTE_BODY_BYTES); }
+  catch (error) {
+    if (boundedJsonError(error)?.code === 'PAYLOAD_TOO_LARGE') return NextResponse.json({ error: 'Request too large', code: 'PAYLOAD_TOO_LARGE' }, { status: 413 });
+    throw error;
+  }
 
   const { rfqId, estimatedAmount, estimatedDays, note, validUntil } = body;
   if (!rfqId || !estimatedAmount) {

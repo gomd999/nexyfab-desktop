@@ -1,0 +1,24 @@
+{
+  "schema": "nexyfab.postgres-migration-receipt.v1",
+  "generatedAt": "2026-08-17T18:50:53.954Z",
+  "ok": true,
+  "target": "railway-production",
+  "migration": {
+    "ok": true,
+    "version": 2026081801,
+    "name": "passwordless_admin_email_auth_20260818",
+    "checksum": "79c7b919da2f10fbc7d753048dbb165e330f3df00e0aa412b9527b0a1a428b3d",
+    "decision": "already_applied"
+  },
+  "before": {
+    "tableCount": 133,
+    "totalRows": 291439,
+    "businessRowCountSha256": "f104550e6fb1a3f32f9e86b034319afe0cfd574f56846da03a4486ee004c6e58"
+  },
+  "after": {
+    "tableCount": 133,
+    "totalRows": 291439,
+    "businessRowCountSha256": "f104550e6fb1a3f32f9e86b034319afe0cfd574f56846da03a4486ee004c6e58"
+  },
+  "changedBusinessTables": []
+}

@@ -27,12 +27,27 @@ export interface ChatCompletionRequest {
   timeoutMs?: number;
   /** Force a specific provider for this call (skips fallback chain) */
   provider?: ProviderName;
+  /**
+   * Keep `provider` as the first attempt, but continue through the governed
+   * provider chain for transient/provider failures. The explicit `model` is
+   * used only for the first provider; fallbacks use their own configured
+   * model so a Qwen model name is never sent to OpenAI (or vice versa).
+   */
+  allowProviderFallback?: boolean;
   /** Prefer this provider first but keep the normal chain as fallback. Use for
    *  task-specific routing (e.g. spatial CAD codegen → gemini, fall back to
    *  deepseek if gemini is unconfigured/degraded). */
   preferProvider?: ProviderName;
   /** Force a specific model name (otherwise provider default) */
   model?: string;
+  /** Optional strict JSON Schema output contract. Provider adapters that
+   * support native constrained decoding may enforce it; callers must still
+   * validate the returned value at their own trust boundary. */
+  jsonSchema?: {
+    name: string;
+    strict: true;
+    schema: Record<string, unknown>;
+  };
   /** Logical task name for telemetry / per-provider model routing */
   task?: string;
   /** Caller's user id for per-user observability in nf_api_usage */
@@ -54,6 +69,24 @@ export interface ChatCompletionResponse {
   promptTokens?: number;
   /** Approx completion tokens, when reported by the provider */
   completionTokens?: number;
+  /** Input tokens served from a provider prompt cache, when reported. */
+  cachedPromptTokens?: number;
+  /** Input tokens written into a provider prompt cache, when reported. */
+  cacheWriteTokens?: number;
+  /** Input tokens that missed a provider prefix cache, when reported. */
+  cacheMissTokens?: number;
+  /** Provider-native cache strategy used for the request. */
+  cacheProfile?:
+    | 'openai-explicit'
+    | 'qwen-explicit'
+    | 'deepseek-automatic'
+    | 'anthropic-explicit'
+    | 'gemini-explicit'
+    | 'gemini-implicit'
+    | 'openrouter-native'
+    | 'provider-default';
+  /** Opaque, content-free cache namespace used for this request. */
+  promptCacheKey?: string;
   /** Wall-clock latency in ms */
   latencyMs: number;
   /**

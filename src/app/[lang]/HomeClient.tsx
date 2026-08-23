@@ -18,7 +18,7 @@ const ChatHero = dynamic(() => import('./ChatHero'), {
       data-testid="chat-hero-loading"
       aria-busy="true"
       aria-label="Loading AI design assistant"
-      style={{ minHeight: 560, background: '#020617' }}
+      style={{ minHeight: '100dvh', boxSizing: 'border-box', background: '#020617' }}
     />
   ),
 });
@@ -226,7 +226,7 @@ const [featTab, setFeatTab] = useState<'design' | 'analysis' | 'mfg'>('design');
       <section style={{ background: '#f8fafc', padding: '90px 24px' }}>
         <div style={{ maxWidth: '960px', margin: '0 auto' }}>
           <header style={{ textAlign: 'center', marginBottom: '40px' }} className="reveal">
-            <p style={{ fontSize: '13px', fontWeight: 700, color: '#3b82f6', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: '12px' }}>{t.featKicker}</p>
+            <p style={{ fontSize: '13px', fontWeight: 700, color: '#1d4ed8', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: '12px' }}>{t.featKicker}</p>
             <h2 style={{ fontSize: 'clamp(24px, 3.5vw, 36px)', fontWeight: 900, color: '#0f172a', letterSpacing: '-0.02em' }}>{t.featTitle}</h2>
             <p style={{ fontSize: '16px', color: '#64748b', marginTop: '12px', maxWidth: '600px', margin: '12px auto 0' }}>{t.featSub}</p>
           </header>
@@ -313,14 +313,14 @@ const [featTab, setFeatTab] = useState<'design' | 'analysis' | 'mfg'>('design');
             <h2 className="hat-title">{t.caseTitle}</h2>
             <p className="hat-sub">{richText(t.caseSub)}</p>
           </header>
-          <div className="hat-grid" role="list">
+          <div className="hat-grid">
             {[
               { iconName: 'factory' as const, title: t.case1Title, desc: t.case1Desc, tags: [t.case1Tag1, t.case1Tag2, t.case1Tag3], pills: [t.case1Pill1, t.case1Pill2] },
               { iconName: 'puzzle' as const, title: t.case2Title, desc: t.case2Desc, tags: [t.case2Tag1, t.case2Tag2, t.case2Tag3], pills: [t.case2Pill1, t.case2Pill2] },
               { iconName: 'flask' as const, title: t.case3Title, desc: t.case3Desc, tags: [t.case3Tag1, t.case3Tag2, t.case3Tag3], pills: [t.case3Pill1, t.case3Pill2] },
               { iconName: 'crane' as const, title: t.case4Title, desc: t.case4Desc, tags: [t.case4Tag1, t.case4Tag2, t.case4Tag3], pills: [t.case4Pill1, t.case4Pill2] },
             ].map((c, i) => (
-              <article key={i} className="hat-case reveal" role="listitem">
+              <article key={i} className="hat-case reveal">
                 <div className="hat-case-top">
                   <div className="hat-case-ic" aria-hidden="true"><LineIcon name={c.iconName} size={24} /></div>
                   <div>
@@ -361,10 +361,10 @@ const [featTab, setFeatTab] = useState<'design' | 'analysis' | 'mfg'>('design');
           </header>
           <div className="nf-persona-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '20px' }}>
             {[
-              { iconName: 'tools' as const, title: t.persona1Title, desc: t.persona1Desc, cta: t.persona1Cta, href: '#nf-chat', color: '#3b82f6' },
+              { iconName: 'tools' as const, title: t.persona1Title, desc: t.persona1Desc, cta: t.persona1Cta, href: '#nf-chat', color: '#1d4ed8' },
               // persona2 견적 CTA도 챗 흐름으로(2026-07-16 IA — quick-quote 헤더 제거와 정합)
-              { iconName: 'clipboard' as const, title: t.persona2Title, desc: t.persona2Desc, cta: t.persona2Cta, href: '#nf-chat', color: '#8b5cf6' },
-              { iconName: 'rocket' as const, title: t.persona3Title, desc: t.persona3Desc, cta: t.persona3Cta, href: `/${langCode}/project-inquiry/`, color: '#10b981' },
+              { iconName: 'clipboard' as const, title: t.persona2Title, desc: t.persona2Desc, cta: t.persona2Cta, href: '#nf-chat', color: '#6d28d9' },
+              { iconName: 'rocket' as const, title: t.persona3Title, desc: t.persona3Desc, cta: t.persona3Cta, href: `/${langCode}/project-inquiry/`, color: '#047857' },
             ].map((p, i) => (
               <article key={i} className="reveal" style={{
                 background: 'rgba(255,255,255,0.05)', borderRadius: '20px', padding: '32px 28px',

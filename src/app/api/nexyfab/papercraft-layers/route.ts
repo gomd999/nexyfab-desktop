@@ -2,6 +2,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import { rateLimit } from '@/lib/rate-limit';
 import { getTrustedClientIp } from '@/lib/client-ip';
 import { executeOpenScad } from '@/lib/openscad-render/executeOpenScad';
+import { boundedJsonError, readBoundedJson } from '@/lib/boundedJsonBody';
+
+const MAX_BODY_BYTES = 2 * 1024 * 1024;
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -20,7 +23,11 @@ export async function POST(req: NextRequest) {
   if (!rateLimit(`papercraft-layers:${ip}`, 20, 3_600_000).allowed) {
     return NextResponse.json({ error: 'Too many requests', code: 'RATE_LIMIT' }, { status: 429 });
   }
-  const body = (await req.json().catch(() => ({}))) as { scad?: string; layers?: number; height?: number; thickness?: number };
+  let body: { scad?: string; layers?: number; height?: number; thickness?: number } = {};
+  try { body = await readBoundedJson(req, MAX_BODY_BYTES); }
+  catch (error) {
+    if (boundedJsonError(error)?.code === 'PAYLOAD_TOO_LARGE') return NextResponse.json({ error: 'SCAD request too large', code: 'TOO_LARGE' }, { status: 413 });
+  }
   const scad = (body.scad ?? '').trim();
   if (!scad) return NextResponse.json({ error: 'scad required' }, { status: 400 });
   const H = Math.min(Math.max(1, body.height ?? 50), 1000);

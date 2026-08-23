@@ -1,3 +1,5 @@
+// @vitest-environment jsdom
+
 /**
  * sessionRepoStore.persist.test.ts — G4 carry-over: opt-in server persistence.
  *
@@ -15,8 +17,10 @@
  */
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
+import * as Y from 'yjs';
 import { usePdmSessionStore } from './sessionRepoStore';
 import type { FeatureInstance } from '../features/types';
+import { encodeCommitEnvelope } from './documentPersistence';
 
 const f = (id: string, params: Record<string, number> = {}): FeatureInstance => ({
   id, type: 'fillet', params, enabled: true,
@@ -233,5 +237,40 @@ describe('persistence failures are surfaced, never silent', () => {
     const res = await store().persistCommit(store().repo!.current().commit);
     expect(res).toMatchObject({ ok: false, reason: 'offline' });
     expect(store().lastPersistError?.reason).toBe('offline');
+  });
+});
+
+describe('server checkout restores the immutable model payload', () => {
+  it('decodes Yjs features, performs server restore, and emits the live-model event', async () => {
+    store().init([f('base', { r: 2 })], 'alice');
+    const commit = store().repo!.current().commit;
+    const ydoc = new Y.Doc();
+    ydoc.getMap<string>('state').set('snapshot', JSON.stringify({ features: [f('restored-hole', { diameter: 8 })] }));
+    const bytes = Y.encodeStateAsUpdate(ydoc);
+    ydoc.destroy();
+    const version = {
+      id: 'v1', documentId: 'doc-1', parentVersionId: null, blobKey: 'k/v1', blobUrl: 'https://signed/v1',
+      oplogKey: null, label: encodeCommitEnvelope(commit, 'main'), branchName: null, isExplicit: true,
+      sizeBytes: bytes.length, restoredFrom: null, gateStatus: null, gateReport: null, createdBy: 'alice', createdAt: 1,
+    };
+    const fetchMock = vi.fn(async (url: string, init?: RequestInit) => {
+      if (url === 'https://signed/v1') return new Response(new Uint8Array(bytes).buffer, { status: 200, headers: { 'content-type': 'application/octet-stream' } });
+      if (url.endsWith('/versions') && (init?.method ?? 'GET') === 'GET') return new Response(JSON.stringify({ versions: [version] }), { status: 200 });
+      if (url.endsWith('/versions/v1/restore')) return new Response(JSON.stringify({ version: { ...version, id: 'v2', restoredFrom: 'v1' } }), { status: 201 });
+      if (url.endsWith('/api/documents/doc-1')) return new Response(JSON.stringify({ blobUrl: 'https://signed/current' }), { status: 200 });
+      return new Response('{}', { status: 404 });
+    });
+    const fetchImpl = fetchMock as unknown as typeof fetch;
+    store().bindDocument('doc-1', { fetchImpl });
+    usePdmSessionStore.setState({ versionIdByCommit: { [commit.id]: 'v1' } });
+    const events: Array<{ commit?: { features?: FeatureInstance[] }; snapshot?: { currentBlobUrl?: string } }> = [];
+    const listener = (event: Event) => events.push((event as CustomEvent).detail);
+    window.addEventListener('nexyfab:pdm-checkout-restore', listener);
+    const result = await store().checkoutServerVersion(commit.id);
+    window.removeEventListener('nexyfab:pdm-checkout-restore', listener);
+    expect(result).toMatchObject({ ok: true, versionId: 'v1' });
+    expect(events[0]?.commit?.features?.[0]?.id).toBe('restored-hole');
+    expect(events[0]?.snapshot?.currentBlobUrl).toBe('https://signed/current');
+    expect(fetchMock.mock.calls.some(call => String(call[0]).endsWith('/versions/v1/restore'))).toBe(true);
   });
 });

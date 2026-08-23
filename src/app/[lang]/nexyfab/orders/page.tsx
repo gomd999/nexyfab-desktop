@@ -13,6 +13,7 @@ import ReservationConfirmModal from '@/components/nexyfab/ReservationConfirmModa
 import { formatDate, formatDday } from '@/lib/formatDate';
 import { isKorean } from '@/lib/i18n/normalize';
 import { fmtKRW, getDemoOrders } from './orderHelpers';
+import { createCommercialLocalizer } from '@/lib/i18n/commercialLocalizer';
 
 /** Toss v1 CDN (`js.tosspayments.com/v1/payment`) — avoid augmenting global `Window` (billing CheckoutModal uses Toss v2). */
 type TossPaymentsV1 = (clientKey: string) => {
@@ -59,8 +60,8 @@ async function openTossPayment(opts: {
   onSuccess: () => void; onError: (msg: string) => void;
   onReserved?: () => void;
 }) {
-  const isKo = isKorean(opts.lang);
-  const t = (ko: string, en: string) => (isKo ? ko : en);
+  const L = createCommercialLocalizer(opts.lang);
+  const t = L;
   try {
     const res = await fetch(`/api/nexyfab/orders/${opts.orderId}/payment`, {
       method: 'POST',
@@ -227,14 +228,16 @@ const DEFECT_STATUS_COLOR: Record<DefectStatus, string> = {
 };
 
 function OrderDetailDrawer({
-  order, isKo, token, onClose, onReorder,
+  order, lang, isKo: _isKo, token, onClose, onReorder,
 }: {
   order: NexyfabOrder;
+  lang: string;
   isKo: boolean;
   token: string | null;
   onClose: () => void;
   onReorder: (orderId: string) => void;
 }) {
+  const L = createCommercialLocalizer(lang);
   const [tab, setTab] = useState<DrawerTab>('milestones');
   const [milestones, setMilestones] = useState<Milestone[]>([]);
   const [qcItems, setQcItems] = useState<QcItem[]>([]);
@@ -405,9 +408,9 @@ function OrderDetailDrawer({
   };
 
   const submitDefect = async () => {
-    if (isDemo) { setDefectMsg(isKo ? '데모 모드에서는 불량 제기를 할 수 없습니다.' : 'Cannot report defect in demo mode.'); return; }
+    if (isDemo) { setDefectMsg(L('데모 모드에서는 불량 제기를 할 수 없습니다.', 'Cannot report defect in demo mode.')); return; }
     if (defectDescription.trim().length < 10) {
-      setDefectMsg(isKo ? '설명을 10자 이상 입력해주세요.' : 'Description must be at least 10 characters.');
+      setDefectMsg(L('설명을 10자 이상 입력해주세요.', 'Description must be at least 10 characters.'));
       return;
     }
     setSubmittingDefect(true);
@@ -427,9 +430,9 @@ function OrderDetailDrawer({
         setDefects(prev => [d.defect!, ...prev]);
         setDefectDescription('');
         setShowDefectForm(false);
-        setDefectMsg(isKo ? '불량이 접수되었습니다. 공급사 응답을 기다려주세요.' : 'Defect submitted. Awaiting supplier response.');
+        setDefectMsg(L('불량이 접수되었습니다. 공급사 응답을 기다려주세요.', 'Defect submitted. Awaiting supplier response.'));
       } else {
-        setDefectMsg(d.error ?? (isKo ? '제출 실패' : 'Submit failed'));
+        setDefectMsg(d.error ?? (L('제출 실패', 'Submit failed')));
       }
     } finally { setSubmittingDefect(false); }
   };
@@ -487,14 +490,14 @@ function OrderDetailDrawer({
   const canReview = order.status === 'delivered' && !reviewData;
   const canReportDefect = order.status === 'delivered';
   const tabs: { id: DrawerTab; label: string }[] = [
-    { id: 'timeline', label: isKo ? '진행 타임라인' : 'Timeline' },
-    { id: 'milestones', label: isKo ? '마일스톤' : 'Milestones' },
-    { id: 'messages', label: isKo ? '💬 대화' : '💬 Messages' },
-    { id: 'qc', label: isKo ? 'QC 체크리스트' : 'QC Checklist' },
-    { id: 'shipment', label: isKo ? '배송 추적' : 'Shipment' },
-    { id: 'review', label: canReview ? (isKo ? '⭐ 리뷰 작성' : '⭐ Review') : (isKo ? '리뷰' : 'Review') },
+    { id: 'timeline', label: L('진행 타임라인', 'Timeline') },
+    { id: 'milestones', label: L('마일스톤', 'Milestones') },
+    { id: 'messages', label: L('💬 대화', '💬 Messages') },
+    { id: 'qc', label: L('QC 체크리스트', 'QC Checklist') },
+    { id: 'shipment', label: L('배송 추적', 'Shipment') },
+    { id: 'review', label: canReview ? (L('⭐ 리뷰 작성', '⭐ Review')) : (L('리뷰', 'Review')) },
     ...(canReportDefect
-      ? [{ id: 'defects' as DrawerTab, label: isKo ? '⚠ 이슈·RMA' : '⚠ Issues·RMA' }]
+      ? [{ id: 'defects' as DrawerTab, label: L('⚠ 이슈·RMA', '⚠ Issues·RMA') }]
       : []),
   ];
 
@@ -540,7 +543,7 @@ function OrderDetailDrawer({
               onClick={() => onReorder(order.id)}
               style={{ ...S.btn('#388bfd22'), color: 'var(--nx-accent)', border: '1px solid #388bfd55', marginRight: 4 }}
             >
-              {isKo ? '재발주' : 'Reorder'}
+              {L('재발주', 'Reorder')}
             </button>
           )}
           {!isDemo && (
@@ -559,7 +562,7 @@ function OrderDetailDrawer({
                 rel="noopener noreferrer"
                 style={{ ...S.btn('var(--nx-panel-2)'), color: '#e3b341', textDecoration: 'none', border: '1px solid #e3b34155' }}
               >
-                🧾 세금계산서
+                🧾 {L('세금계산서', 'Tax invoice')}
               </a>
             </>
           )}
@@ -582,11 +585,11 @@ function OrderDetailDrawer({
               display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8,
             }}>
               <span>{
-                drawerError === 'LOAD_FAILED' ? (isKo ? '데이터를 불러오지 못했습니다.' : 'Failed to load data.') :
-                drawerError === 'MS_ADD_FAILED' ? (isKo ? '마일스톤 추가에 실패했습니다.' : 'Failed to add milestone.') :
-                drawerError === 'MS_UPDATE_FAILED' ? (isKo ? '마일스톤 업데이트에 실패했습니다.' : 'Failed to update milestone.') :
-                drawerError === 'SHIP_ADD_FAILED' ? (isKo ? '배송 정보 등록에 실패했습니다.' : 'Failed to register tracking.') :
-                drawerError === 'SHIP_REFRESH_FAILED' ? (isKo ? '배송 정보 갱신에 실패했습니다.' : 'Failed to refresh shipment.') :
+                drawerError === 'LOAD_FAILED' ? (L('데이터를 불러오지 못했습니다.', 'Failed to load data.')) :
+                drawerError === 'MS_ADD_FAILED' ? (L('마일스톤 추가에 실패했습니다.', 'Failed to add milestone.')) :
+                drawerError === 'MS_UPDATE_FAILED' ? (L('마일스톤 업데이트에 실패했습니다.', 'Failed to update milestone.')) :
+                drawerError === 'SHIP_ADD_FAILED' ? (L('배송 정보 등록에 실패했습니다.', 'Failed to register tracking.')) :
+                drawerError === 'SHIP_REFRESH_FAILED' ? (L('배송 정보 갱신에 실패했습니다.', 'Failed to refresh shipment.')) :
                 drawerError
               }</span>
               <button onClick={() => setDrawerError(null)}
@@ -595,26 +598,24 @@ function OrderDetailDrawer({
           )}
           {loading && (
             <div style={{ color: 'var(--nx-text-3)', textAlign: 'center', padding: '40px 0', fontSize: 13 }}>
-              {isKo ? '불러오는 중...' : 'Loading...'}
+              {L('불러오는 중...', 'Loading...')}
             </div>
           )}
 
           {/* ── TIMELINE ── */}
           {tab === 'timeline' && (
-            <OrderTimeline orderId={order.id} lang={isKo ? 'ko' : 'en'} isDemo={isDemo} />
+            <OrderTimeline orderId={order.id} lang={L('ko', 'en')} isDemo={isDemo} />
           )}
 
           {/* ── MILESTONES ── */}
           {(!loading || isDemo) && tab === 'milestones' && (
             <div>
               <div style={{ fontSize: 12, color: 'var(--nx-text-2)', marginBottom: 12 }}>
-                {isKo
-                  ? `${displayMilestones.filter(m => m.status === 'completed').length} / ${displayMilestones.length} 완료`
-                  : `${displayMilestones.filter(m => m.status === 'completed').length} / ${displayMilestones.length} done`}
+                {L(`${displayMilestones.filter(m => m.status === 'completed').length} / ${displayMilestones.length} 완료`, `${displayMilestones.filter(m => m.status === 'completed').length} / ${displayMilestones.length} done`)}
               </div>
               {displayMilestones.length === 0 && (
                 <div style={{ color: 'var(--nx-border-strong)', fontSize: 12, padding: '20px 0' }}>
-                  {isKo ? '마일스톤이 없습니다.' : 'No milestones yet.'}
+                  {L('마일스톤이 없습니다.', 'No milestones yet.')}
                 </div>
               )}
               {displayMilestones.map(ms => (
@@ -632,10 +633,10 @@ function OrderDetailDrawer({
                     <div style={{ fontSize: 13, fontWeight: 600, textDecoration: ms.status === 'completed' ? 'line-through' : 'none' }}>
                       {ms.title}
                     </div>
-                    {ms.dueDate && <div style={{ fontSize: 10, color: 'var(--nx-text-3)' }}>{isKo ? '기한: ' : 'Due: '}{ms.dueDate}</div>}
+                    {ms.dueDate && <div style={{ fontSize: 10, color: 'var(--nx-text-3)' }}>{L('기한: ', 'Due: ')}{ms.dueDate}</div>}
                   </div>
                   <span style={S.statusBadge(ms.status === 'completed' ? 'var(--nx-ok)' : 'var(--nx-text-3)')}>
-                    {ms.status === 'completed' ? (isKo ? '완료' : 'Done') : (isKo ? '대기' : 'Pending')}
+                    {ms.status === 'completed' ? (L('완료', 'Done')) : (L('대기', 'Pending'))}
                   </span>
                 </div>
               ))}
@@ -644,13 +645,13 @@ function OrderDetailDrawer({
                   <input
                     value={newMsTitle}
                     onChange={e => setNewMsTitle(e.target.value)}
-                    placeholder={isKo ? '마일스톤 제목...' : 'Milestone title...'}
+                    placeholder={L('마일스톤 제목...', 'Milestone title...')}
                     style={S.input}
                     onKeyDown={e => e.key === 'Enter' && addMilestone()}
                   />
                   <button onClick={addMilestone} disabled={addingMs || !newMsTitle.trim()}
                     style={{ ...S.btn('var(--nx-accent)'), opacity: addingMs || !newMsTitle.trim() ? 0.5 : 1 }}>
-                    {isKo ? '추가' : 'Add'}
+                    {L('추가', 'Add')}
                   </button>
                 </div>
               )}
@@ -658,7 +659,7 @@ function OrderDetailDrawer({
               {/* M4 — Partner-uploaded progress feed (photos/notes per step). */}
               {!isDemo && (
                 <OrderMilestoneFeed
-                  lang={isKo ? 'ko' : 'en'}
+                  lang={L('ko', 'en')}
                   orderId={order.id}
                   isPartner={false}
                 />
@@ -671,12 +672,12 @@ function OrderDetailDrawer({
             <div>
               {isDemo ? (
                 <div style={{ padding: '12px 14px', background: 'var(--nx-bg)', borderRadius: 8, border: '1px solid var(--nx-panel-2)', fontSize: 12, color: 'var(--nx-text-3)' }}>
-                  {isKo ? '실제 계약 후 QC 체크리스트가 표시됩니다.' : 'QC checklist will be shown after a real order is placed.'}
+                  {L('실제 계약 후 QC 체크리스트가 표시됩니다.', 'QC checklist will be shown after a real order is placed.')}
                 </div>
               ) : (
                 <>
                   {qcItems.length === 0 && (
-                    <div style={{ color: 'var(--nx-border-strong)', fontSize: 12, padding: '20px 0' }}>{isKo ? 'QC 항목이 없습니다.' : 'No QC items.'}</div>
+                    <div style={{ color: 'var(--nx-border-strong)', fontSize: 12, padding: '20px 0' }}>{L('QC 항목이 없습니다.', 'No QC items.')}</div>
                   )}
                   {qcItems.map(item => (
                     <div key={item.id} style={{ padding: '10px 0', borderBottom: '1px solid var(--nx-panel-2)' }}>
@@ -684,7 +685,7 @@ function OrderDetailDrawer({
                         <span style={S.statusBadge(
                           item.status === 'passed' ? 'var(--nx-ok)' : item.status === 'failed' ? 'var(--nx-error)' : 'var(--nx-text-3)',
                         )}>
-                          {item.status === 'passed' ? (isKo ? '통과' : 'Pass') : item.status === 'failed' ? (isKo ? '실패' : 'Fail') : (isKo ? '대기' : 'Pending')}
+                          {item.status === 'passed' ? (L('통과', 'Pass')) : item.status === 'failed' ? (L('실패', 'Fail')) : (L('대기', 'Pending'))}
                         </span>
                         <span style={{ fontSize: 13, fontWeight: 600, flex: 1 }}>{item.title}</span>
                       </div>
@@ -692,7 +693,7 @@ function OrderDetailDrawer({
                       {item.inspector_note && <div style={{ fontSize: 11, color: 'var(--nx-text-2)', marginTop: 3 }}>📝 {item.inspector_note}</div>}
                       {item.checked_by && (
                         <div style={{ fontSize: 10, color: 'var(--nx-border-strong)', marginTop: 2 }}>
-                          {isKo ? '검사: ' : 'Inspector: '}{item.checked_by}
+                          {L('검사: ', 'Inspector: ')}{item.checked_by}
                         </div>
                       )}
                     </div>
@@ -700,15 +701,15 @@ function OrderDetailDrawer({
                   {qcItems.length > 0 && (
                     <div style={{ marginTop: 12, padding: '10px 14px', background: 'var(--nx-bg)', borderRadius: 8, fontSize: 12 }}>
                       <span style={{ color: 'var(--nx-ok)', fontWeight: 700 }}>
-                        {isKo ? '통과 ' : 'Pass '}{qcItems.filter(i => i.status === 'passed').length}
+                        {L('통과 ', 'Pass ')}{qcItems.filter(i => i.status === 'passed').length}
                       </span>
                       <span style={{ color: 'var(--nx-text-3)', margin: '0 6px' }}>/</span>
                       <span style={{ color: 'var(--nx-error)', fontWeight: 700 }}>
-                        {isKo ? '실패 ' : 'Fail '}{qcItems.filter(i => i.status === 'failed').length}
+                        {L('실패 ', 'Fail ')}{qcItems.filter(i => i.status === 'failed').length}
                       </span>
                       <span style={{ color: 'var(--nx-text-3)', margin: '0 6px' }}>/</span>
                       <span style={{ color: 'var(--nx-text-3)' }}>
-                        {isKo ? '대기 ' : 'Pending '}{qcItems.filter(i => i.status === 'pending').length}
+                        {L('대기 ', 'Pending ')}{qcItems.filter(i => i.status === 'pending').length}
                       </span>
                     </div>
                   )}
@@ -722,7 +723,7 @@ function OrderDetailDrawer({
             <div>
               {isDemo ? (
                 <div style={{ padding: '12px 14px', background: 'var(--nx-bg)', borderRadius: 8, border: '1px solid var(--nx-panel-2)', fontSize: 12, color: 'var(--nx-text-3)' }}>
-                  {isKo ? '배송 번호가 등록되면 실시간 추적이 가능합니다.' : 'Once a tracking number is added, real-time tracking will be available.'}
+                  {L('배송 번호가 등록되면 실시간 추적이 가능합니다.', 'Once a tracking number is added, real-time tracking will be available.')}
                 </div>
               ) : (
                 <>
@@ -739,7 +740,7 @@ function OrderDetailDrawer({
                       {shp.lastStatusText && <div style={{ fontSize: 11, color: 'var(--nx-text-2)', marginBottom: 6 }}>{shp.lastStatusText}</div>}
                       {shp.estimatedDelivery && (
                         <div style={{ fontSize: 11, color: 'var(--nx-text-3)', marginBottom: 6 }}>
-                          {isKo ? '예상 도착: ' : 'Est. delivery: '}{shp.estimatedDelivery}
+                          {L('예상 도착: ', 'Est. delivery: ')}{shp.estimatedDelivery}
                         </div>
                       )}
                       {shp.events.length > 0 && (
@@ -759,17 +760,17 @@ function OrderDetailDrawer({
                   {/* Add tracking */}
                   <div style={{ marginTop: 8, padding: '12px', background: 'var(--nx-bg)', borderRadius: 8, border: '1px solid var(--nx-panel-2)' }}>
                     <div style={{ fontSize: 12, color: 'var(--nx-text-2)', marginBottom: 8, fontWeight: 600 }}>
-                      {isKo ? '배송번호 등록' : 'Add Tracking'}
+                      {L('배송번호 등록', 'Add Tracking')}
                     </div>
                     <input value={newTracking} onChange={e => setNewTracking(e.target.value)}
-                      placeholder={isKo ? '운송장 번호' : 'Tracking number'}
+                      placeholder={L('운송장 번호', 'Tracking number')}
                       style={{ ...S.input, marginBottom: 6, display: 'block', width: '100%', boxSizing: 'border-box' }} />
                     <input value={newTrackingLabel} onChange={e => setNewTrackingLabel(e.target.value)}
-                      placeholder={isKo ? '메모 (선택)' : 'Label (optional)'}
+                      placeholder={L('메모 (선택)', 'Label (optional)')}
                       style={{ ...S.input, marginBottom: 8, display: 'block', width: '100%', boxSizing: 'border-box' }} />
                     <button onClick={addShipment} disabled={addingShipment || !newTracking.trim()}
                       style={{ ...S.btn('var(--nx-accent)'), opacity: addingShipment || !newTracking.trim() ? 0.5 : 1, width: '100%' }}>
-                      {isKo ? '등록' : 'Register'}
+                      {L('등록', 'Register')}
                     </button>
                   </div>
                 </>
@@ -786,9 +787,9 @@ function OrderDetailDrawer({
                     {'★'.repeat(reviewData.rating)}{'☆'.repeat(5 - reviewData.rating)} {reviewData.rating}/5
                   </div>
                   <div style={{ display: 'flex', gap: 12, marginBottom: 10, fontSize: 11, color: 'var(--nx-text-3)' }}>
-                    <span>{isKo ? '납기: ' : 'Deadline: '}{reviewData.categories?.deadline}/5</span>
-                    <span>{isKo ? '품질: ' : 'Quality: '}{reviewData.categories?.quality}/5</span>
-                    <span>{isKo ? '소통: ' : 'Comm.: '}{reviewData.categories?.communication}/5</span>
+                    <span>{L('납기: ', 'Deadline: ')}{reviewData.categories?.deadline}/5</span>
+                    <span>{L('품질: ', 'Quality: ')}{reviewData.categories?.quality}/5</span>
+                    <span>{L('소통: ', 'Comm.: ')}{reviewData.categories?.communication}/5</span>
                   </div>
                   {reviewData.comment && <p style={{ fontSize: 13, color: 'var(--nx-text)', margin: 0 }}>{reviewData.comment}</p>}
                   <div style={{ fontSize: 10, color: 'var(--nx-border-strong)', marginTop: 8 }}>{reviewData.reviewedAt?.slice(0, 10)}</div>
@@ -796,12 +797,12 @@ function OrderDetailDrawer({
               ) : order.status === 'delivered' ? (
                 <div>
                   <div style={{ fontSize: 13, color: 'var(--nx-text-2)', marginBottom: 16 }}>
-                    {isKo ? '이 주문에 대한 파트너 평가를 남겨주세요.' : 'Leave a review for this order.'}
+                    {L('이 주문에 대한 파트너 평가를 남겨주세요.', 'Leave a review for this order.')}
                   </div>
 
                   {/* Overall */}
                   <div style={{ marginBottom: 14 }}>
-                    <div style={{ fontSize: 11, color: 'var(--nx-text-3)', marginBottom: 6 }}>{isKo ? '종합 평점' : 'Overall'}</div>
+                    <div style={{ fontSize: 11, color: 'var(--nx-text-3)', marginBottom: 6 }}>{L('종합 평점', 'Overall')}</div>
                     <div style={{ display: 'flex', gap: 6 }}>
                       {[1,2,3,4,5].map(n => (
                         <button key={n} onClick={() => setRating(n)}
@@ -814,9 +815,9 @@ function OrderDetailDrawer({
 
                   {/* Category ratings */}
                   {[
-                    { label: isKo ? '납기 준수' : 'On-time delivery', val: ratingDeadline, set: setRatingDeadline },
-                    { label: isKo ? '품질' : 'Quality', val: ratingQuality, set: setRatingQuality },
-                    { label: isKo ? '소통' : 'Communication', val: ratingComm, set: setRatingComm },
+                    { label: L('납기 준수', 'On-time delivery'), val: ratingDeadline, set: setRatingDeadline },
+                    { label: L('품질', 'Quality'), val: ratingQuality, set: setRatingQuality },
+                    { label: L('소통', 'Communication'), val: ratingComm, set: setRatingComm },
                   ].map(c => (
                     <div key={c.label} style={{ marginBottom: 10 }}>
                       <div style={{ fontSize: 11, color: 'var(--nx-text-3)', marginBottom: 4 }}>{c.label}</div>
@@ -835,7 +836,7 @@ function OrderDetailDrawer({
                   <textarea
                     value={comment}
                     onChange={e => setComment(e.target.value)}
-                    placeholder={isKo ? '자세한 후기를 남겨주세요 (선택)' : 'Leave a detailed review (optional)'}
+                    placeholder={L('자세한 후기를 남겨주세요 (선택)', 'Leave a detailed review (optional)')}
                     rows={3}
                     style={{
                       ...S.input, display: 'block', width: '100%', boxSizing: 'border-box',
@@ -845,9 +846,9 @@ function OrderDetailDrawer({
 
                   {reviewMsg && (
                     <div style={{ fontSize: 12, color: reviewMsg === 'REVIEW_OK' ? 'var(--nx-ok)' : 'var(--nx-error)', marginBottom: 8 }}>
-                      {reviewMsg === 'REVIEW_OK' ? (isKo ? '리뷰가 등록되었습니다.' : 'Review submitted.') :
-                       reviewMsg === 'REVIEW_DEMO' ? (isKo ? '데모 모드에서는 리뷰를 제출할 수 없습니다.' : 'Cannot submit review in demo mode.') :
-                       reviewMsg === 'REVIEW_ERROR' ? (isKo ? '오류가 발생했습니다.' : 'Error occurred.') :
+                      {reviewMsg === 'REVIEW_OK' ? (L('리뷰가 등록되었습니다.', 'Review submitted.')) :
+                       reviewMsg === 'REVIEW_DEMO' ? (L('데모 모드에서는 리뷰를 제출할 수 없습니다.', 'Cannot submit review in demo mode.')) :
+                       reviewMsg === 'REVIEW_ERROR' ? (L('오류가 발생했습니다.', 'Error occurred.')) :
                        reviewMsg}
                     </div>
                   )}
@@ -857,12 +858,12 @@ function OrderDetailDrawer({
                     disabled={submittingReview}
                     style={{ ...S.btn('var(--nx-accent)'), width: '100%', opacity: submittingReview ? 0.6 : 1 }}
                   >
-                    {submittingReview ? (isKo ? '제출 중...' : 'Submitting...') : (isKo ? '리뷰 제출' : 'Submit Review')}
+                    {submittingReview ? (L('제출 중...', 'Submitting...')) : (L('리뷰 제출', 'Submit Review'))}
                   </button>
                 </div>
               ) : (
                 <div style={{ color: 'var(--nx-border-strong)', fontSize: 12, padding: '20px 0' }}>
-                  {isKo ? '배송 완료 후 리뷰를 작성할 수 있습니다.' : 'You can review after delivery is complete.'}
+                  {L('배송 완료 후 리뷰를 작성할 수 있습니다.', 'You can review after delivery is complete.')}
                 </div>
               )}
             </div>
@@ -871,7 +872,7 @@ function OrderDetailDrawer({
           {/* ── MESSAGES (M1) — buyer↔partner thread ── */}
           {!loading && tab === 'messages' && !isDemo && (
             <ThreadView
-              lang={isKo ? 'ko' : 'en'}
+              lang={L('ko', 'en')}
               threadKind="order"
               threadId={order.id}
               asRole="buyer"
@@ -884,14 +885,14 @@ function OrderDetailDrawer({
           {!loading && tab === 'milestones' && !isDemo &&
            order.status !== 'placed' && order.status !== 'delivered' && (
             <DisputeButton
-              lang={isKo ? 'ko' : 'en'}
+              lang={L('ko', 'en')}
               orderId={order.id}
               onDisputed={() => { /* drawer just closes; status reflected on next fetch */ }}
             />
           )}
           {!loading && tab === 'messages' && isDemo && (
             <div style={{ color: 'var(--nx-border-strong)', fontSize: 12, padding: '20px 0' }}>
-              {isKo ? '데모 주문에서는 메시지를 사용할 수 없습니다.' : 'Messages are not available in demo orders.'}
+              {L('데모 주문에서는 메시지를 사용할 수 없습니다.', 'Messages are not available in demo orders.')}
             </div>
           )}
 
@@ -903,11 +904,9 @@ function OrderDetailDrawer({
                   padding: '14px', background: 'var(--nx-bg)', borderRadius: 8, border: '1px solid var(--nx-panel-2)',
                   fontSize: 12, color: 'var(--nx-text-2)', marginBottom: 12,
                 }}>
-                  {isKo
-                    ? '접수된 불량·RMA 이슈가 없습니다. 받은 제품에 문제가 있으면 아래 버튼으로 제기할 수 있습니다.'
-                    : 'No defects or RMA issues. If the delivered part has a problem, report it below.'}
+                  {L('접수된 불량·RMA 이슈가 없습니다. 받은 제품에 문제가 있으면 아래 버튼으로 제기할 수 있습니다.', 'No defects or RMA issues. If the delivered part has a problem, report it below.')}
                   <div style={{ fontSize: 10, color: 'var(--nx-border-strong)', marginTop: 6 }}>
-                    {isKo ? '배송 후 30일 이내, 주문당 미해결 이슈 최대 3건.' : 'Within 30 days of delivery, max 3 open issues per order.'}
+                    {L('배송 후 30일 이내, 주문당 미해결 이슈 최대 3건.', 'Within 30 days of delivery, max 3 open issues per order.')}
                   </div>
                 </div>
               )}
@@ -967,7 +966,7 @@ function OrderDetailDrawer({
                       background: '#388bfd11', border: '1px solid #388bfd33',
                       fontSize: 11, color: 'var(--nx-text)', whiteSpace: 'pre-wrap',
                     }}>
-                      💬 <b style={{ color: 'var(--nx-accent)' }}>{isKo ? '공급사 응답' : 'Supplier response'}</b>
+                      💬 <b style={{ color: 'var(--nx-accent)' }}>{L('공급사 응답', 'Supplier response')}</b>
                       <div style={{ marginTop: 4 }}>{d.partnerResponse}</div>
                     </div>
                   )}
@@ -978,7 +977,7 @@ function OrderDetailDrawer({
                       background: '#3fb95011', border: '1px solid #3fb95033',
                       fontSize: 11, color: 'var(--nx-text)', whiteSpace: 'pre-wrap',
                     }}>
-                      ✓ <b style={{ color: 'var(--nx-ok)' }}>{isKo ? '해결 확인' : 'Resolved'}</b>
+                      ✓ <b style={{ color: 'var(--nx-ok)' }}>{L('해결 확인', 'Resolved')}</b>
                       <div style={{ marginTop: 4 }}>{d.resolutionNote}</div>
                     </div>
                   )}
@@ -987,12 +986,12 @@ function OrderDetailDrawer({
                   {d.status === 'approved' && (
                     <button
                       onClick={() => {
-                        const note = window.prompt(isKo ? '해결 내용을 간단히 입력하세요 (선택)' : 'Resolution note (optional)') ?? '';
+                        const note = window.prompt(L('해결 내용을 간단히 입력하세요 (선택)', 'Resolution note (optional)')) ?? '';
                         transitionDefect(d.id, 'resolved', { resolutionNote: note });
                       }}
                       style={{ ...S.btn('var(--nx-ok)'), marginTop: 8, width: '100%' }}
                     >
-                      ✓ {isKo ? '해결 확인' : 'Mark Resolved'}
+                      ✓ {L('해결 확인', 'Mark Resolved')}
                     </button>
                   )}
                   {d.status === 'rejected' && (
@@ -1000,19 +999,19 @@ function OrderDetailDrawer({
                       onClick={() => transitionDefect(d.id, 'disputed')}
                       style={{ ...S.btn('var(--nx-error)'), marginTop: 8, width: '100%' }}
                     >
-                      ⚠ {isKo ? '이의 제기' : 'Dispute'}
+                      ⚠ {L('이의 제기', 'Dispute')}
                     </button>
                   )}
                   {d.status === 'reported' && (
                     <button
                       onClick={() => {
-                        if (window.confirm(isKo ? '이 이슈를 철회하시겠습니까?' : 'Withdraw this issue?')) {
+                        if (window.confirm(L('이 이슈를 철회하시겠습니까?', 'Withdraw this issue?'))) {
                           transitionDefect(d.id, 'rejected');
                         }
                       }}
                       style={{ ...S.btn('var(--nx-border-strong)'), marginTop: 8, width: '100%', fontSize: 11 }}
                     >
-                      {isKo ? '철회' : 'Withdraw'}
+                      {L('철회', 'Withdraw')}
                     </button>
                   )}
                 </div>
@@ -1025,23 +1024,23 @@ function OrderDetailDrawer({
                   border: '1px solid var(--nx-border)', marginTop: 8,
                 }}>
                   <div style={{ fontSize: 12, fontWeight: 700, marginBottom: 10, color: 'var(--nx-text)' }}>
-                    {isKo ? '불량·이슈 제기' : 'Report a Defect'}
+                    {L('불량·이슈 제기', 'Report a Defect')}
                   </div>
 
                   <div style={{ marginBottom: 10 }}>
-                    <div style={{ fontSize: 10, color: 'var(--nx-text-3)', marginBottom: 4 }}>{isKo ? '유형' : 'Kind'}</div>
+                    <div style={{ fontSize: 10, color: 'var(--nx-text-3)', marginBottom: 4 }}>{L('유형', 'Kind')}</div>
                     <select value={defectKind} onChange={e => setDefectKind(e.target.value as DefectKind)} style={{ ...S.input, width: '100%' }}>
-                      <option value="wrong_part">{isKo ? '다른 부품' : 'Wrong part'}</option>
-                      <option value="damaged">{isKo ? '파손' : 'Damaged'}</option>
-                      <option value="out_of_spec">{isKo ? '규격 미달' : 'Out of spec'}</option>
-                      <option value="missing_quantity">{isKo ? '수량 부족' : 'Missing quantity'}</option>
-                      <option value="late_delivery">{isKo ? '지연 배송' : 'Late delivery'}</option>
-                      <option value="other">{isKo ? '기타' : 'Other'}</option>
+                      <option value="wrong_part">{L('다른 부품', 'Wrong part')}</option>
+                      <option value="damaged">{L('파손', 'Damaged')}</option>
+                      <option value="out_of_spec">{L('규격 미달', 'Out of spec')}</option>
+                      <option value="missing_quantity">{L('수량 부족', 'Missing quantity')}</option>
+                      <option value="late_delivery">{L('지연 배송', 'Late delivery')}</option>
+                      <option value="other">{L('기타', 'Other')}</option>
                     </select>
                   </div>
 
                   <div style={{ marginBottom: 10 }}>
-                    <div style={{ fontSize: 10, color: 'var(--nx-text-3)', marginBottom: 4 }}>{isKo ? '심각도' : 'Severity'}</div>
+                    <div style={{ fontSize: 10, color: 'var(--nx-text-3)', marginBottom: 4 }}>{L('심각도', 'Severity')}</div>
                     <div style={{ display: 'flex', gap: 6 }}>
                       {(['minor', 'major', 'critical'] as DefectSeverity[]).map(s => (
                         <button
@@ -1064,9 +1063,7 @@ function OrderDetailDrawer({
                   <textarea
                     value={defectDescription}
                     onChange={e => setDefectDescription(e.target.value)}
-                    placeholder={isKo
-                      ? '문제 내용을 최소 10자 이상 상세히 기술해주세요. 사진이 있다면 S3/R2 에 업로드 후 key 를 첨부할 수 있습니다.'
-                      : 'Describe the issue (min 10 chars). Photos can be attached by uploading to storage and providing the key.'}
+                    placeholder={L('문제 내용을 최소 10자 이상 상세히 기술해주세요. 사진이 있다면 S3/R2 에 업로드 후 key 를 첨부할 수 있습니다.', 'Describe the issue (min 10 chars). Photos can be attached by uploading to storage and providing the key.')}
                     rows={4}
                     style={{ ...S.input, display: 'block', width: '100%', boxSizing: 'border-box', resize: 'none', marginBottom: 10 }}
                   />
@@ -1085,14 +1082,14 @@ function OrderDetailDrawer({
                       onClick={() => { setShowDefectForm(false); setDefectDescription(''); setDefectMsg(''); }}
                       style={{ ...S.btn('var(--nx-border-strong)'), flex: 1 }}
                     >
-                      {isKo ? '취소' : 'Cancel'}
+                      {L('취소', 'Cancel')}
                     </button>
                     <button
                       onClick={submitDefect}
                       disabled={submittingDefect}
                       style={{ ...S.btn('var(--nx-error)'), flex: 2, opacity: submittingDefect ? 0.6 : 1 }}
                     >
-                      {submittingDefect ? (isKo ? '제출 중…' : 'Submitting…') : (isKo ? '제출' : 'Submit')}
+                      {submittingDefect ? (L('제출 중…', 'Submitting…')) : (L('제출', 'Submit'))}
                     </button>
                   </div>
                 </div>
@@ -1101,7 +1098,7 @@ function OrderDetailDrawer({
                   onClick={() => setShowDefectForm(true)}
                   style={{ ...S.btn('var(--nx-error)'), width: '100%', marginTop: 4 }}
                 >
-                  ⚠ {isKo ? '새 이슈 제기' : 'Report New Issue'}
+                  ⚠ {L('새 이슈 제기', 'Report New Issue')}
                 </button>
               )}
             </div>
@@ -1117,6 +1114,7 @@ function OrderDetailDrawer({
 function OrdersPageInner({ params }: { params: Promise<{ lang: string }> }) {
   const { lang } = use(params);
   const isKo = isKorean(lang);
+  const L = createCommercialLocalizer(lang);
 
   const { user, token } = useAuthStore();
   const [showAuth, setShowAuth] = useState(false);
@@ -1131,6 +1129,7 @@ function OrdersPageInner({ params }: { params: Promise<{ lang: string }> }) {
   const [reorderMsg, setReorderMsg] = useState('');
   const [paymentMsg, setPaymentMsg] = useState('');
   const [payingOrderId, setPayingOrderId] = useState<string | null>(null);
+  const [paymentsEnabled, setPaymentsEnabled] = useState(false);
   // Phase-1 fake-door: 결제 시도 시 backend가 'reserved' 응답하면 이 모달
   // 띄움. NEXYFAB_ESCROW_ENABLED=true로 flip되면 자연스레 발동 안 함.
   const [showReservationModal, setShowReservationModal] = useState(false);
@@ -1143,9 +1142,16 @@ function OrdersPageInner({ params }: { params: Promise<{ lang: string }> }) {
   // Whether we're showing demo data
   const isDemo = !user;
 
+  useEffect(() => {
+    fetch('/api/billing/beta-status', { credentials: 'same-origin' })
+      .then(r => r.ok ? r.json() : null)
+      .then((data: { paymentsEnabled?: boolean } | null) => setPaymentsEnabled(data?.paymentsEnabled === true))
+      .catch(() => setPaymentsEnabled(false));
+  }, []);
+
   const loadOrders = useCallback(async (silent = false, opts?: { status?: string; page?: number }) => {
     if (!user || !token) {
-      const demoOrders = getDemoOrders(isKo);
+      const demoOrders = getDemoOrders(lang);
       setOrders(demoOrders);
       setTotalOrders(demoOrders.length);
       setLoading(false);
@@ -1176,7 +1182,7 @@ function OrdersPageInner({ params }: { params: Promise<{ lang: string }> }) {
       setLoading(false);
       setRefreshing(false);
     }
-  }, [user, token, statusFilter, ordersPage, isKo]);
+  }, [user, token, statusFilter, ordersPage, lang]);
 
   useEffect(() => {
     loadOrders();
@@ -1259,7 +1265,7 @@ function OrdersPageInner({ params }: { params: Promise<{ lang: string }> }) {
           position: 'sticky', top: 0, background: 'var(--nx-bg)', zIndex: 10,
         }}>
           <span style={{ fontSize: 15, fontWeight: 700 }}>
-            {isKo ? '주문 추적' : 'Order Tracking'}
+            {L('주문 추적', 'Order Tracking')}
           </span>
           {isDemo && (
             <span style={{
@@ -1272,8 +1278,8 @@ function OrdersPageInner({ params }: { params: Promise<{ lang: string }> }) {
           <div style={{ flex: 1 }} />
           {lastUpdated && (
             <span style={{ fontSize: 11, color: 'var(--nx-border-strong)' }}>
-              {isKo ? '최근 갱신 ' : 'Updated '}
-              {lastUpdated.toLocaleTimeString(isKo ? 'ko-KR' : 'en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+              {L('최근 갱신 ', 'Updated ')}
+              {lastUpdated.toLocaleTimeString(L('ko-KR', 'en-US'), { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
             </span>
           )}
           {user && (
@@ -1286,7 +1292,7 @@ function OrdersPageInner({ params }: { params: Promise<{ lang: string }> }) {
                 color: refreshing ? 'var(--nx-border-strong)' : 'var(--nx-text-2)',
               }}
             >
-              {refreshing ? '↻' : '↺'} {isKo ? '새로고침' : 'Refresh'}
+              {refreshing ? '↻' : '↺'} {L('새로고침', 'Refresh')}
             </button>
           )}
           <a
@@ -1297,7 +1303,7 @@ function OrdersPageInner({ params }: { params: Promise<{ lang: string }> }) {
               background: '#388bfd11',
             }}
           >
-            {isKo ? '제조사 마켓' : 'Marketplace'}
+            {L('제조사 마켓', 'Marketplace')}
           </a>
         </div>
 
@@ -1310,24 +1316,24 @@ function OrdersPageInner({ params }: { params: Promise<{ lang: string }> }) {
               onMouseEnter={e => (e.currentTarget.style.color = 'var(--nx-accent)')}
               onMouseLeave={e => (e.currentTarget.style.color = 'var(--nx-text-3)')}
             >
-              {isKo ? '대시보드' : 'Dashboard'}
+              {L('대시보드', 'Dashboard')}
             </a>
             <span style={{ color: 'var(--nx-border)' }}>/</span>
-            <span style={{ color: 'var(--nx-text-2)' }}>{isKo ? '주문 추적' : 'Order Tracking'}</span>
+            <span style={{ color: 'var(--nx-text-2)' }}>{L('주문 추적', 'Order Tracking')}</span>
           </div>
 
           <div style={{ display: 'flex', alignItems: 'flex-end', gap: 12, marginBottom: 6 }}>
             <h1 style={{ margin: 0, fontSize: 22, fontWeight: 800 }}>
-              {isKo ? '주문 추적' : 'Order Tracking'}
+              {L('주문 추적', 'Order Tracking')}
             </h1>
             {!isDemo && (
               <span style={{ fontSize: 13, color: 'var(--nx-text-3)', marginBottom: 2 }}>
-                {isKo ? `총 ${orders.length}건` : `${orders.length} orders`}
+                {L(`총 ${orders.length}건`, `${orders.length} orders`)}
               </span>
             )}
           </div>
           <p style={{ margin: '0 0 16px', fontSize: 13, color: 'var(--nx-text-3)' }}>
-            {isKo ? '실시간 제조 진행 현황을 확인하세요' : 'Track your manufacturing orders in real time'}
+            {L('실시간 제조 진행 현황을 확인하세요', 'Track your manufacturing orders in real time')}
           </p>
 
           {/* Status filter */}
@@ -1352,7 +1358,7 @@ function OrdersPageInner({ params }: { params: Promise<{ lang: string }> }) {
                     transition: 'all 0.12s',
                   }}
                 >
-                  {isKo ? opt.labelKo : opt.labelEn}
+                  {L(opt.labelKo, opt.labelEn)}
                 </button>
               ))}
             </div>
@@ -1368,10 +1374,10 @@ function OrdersPageInner({ params }: { params: Promise<{ lang: string }> }) {
               <span style={{ fontSize: 20 }}>🔍</span>
               <div style={{ flex: 1 }}>
                 <div style={{ fontSize: 13, fontWeight: 700, color: '#e3b341', marginBottom: 2 }}>
-                  {isKo ? '데모 데이터입니다' : 'You are viewing demo data'}
+                  {L('데모 데이터입니다', 'You are viewing demo data')}
                 </div>
                 <div style={{ fontSize: 12, color: 'var(--nx-text-2)' }}>
-                  {isKo ? '로그인하면 실제 주문 내역을 확인할 수 있습니다.' : 'Log in to view your real orders.'}
+                  {L('로그인하면 실제 주문 내역을 확인할 수 있습니다.', 'Log in to view your real orders.')}
                 </div>
               </div>
               <button
@@ -1382,12 +1388,20 @@ function OrdersPageInner({ params }: { params: Promise<{ lang: string }> }) {
                   color: '#fff', fontSize: 13, fontWeight: 700,
                 }}
               >
-                {isKo ? '로그인' : 'Sign in'}
+                {L('로그인', 'Sign in')}
               </button>
             </div>
           )}
 
           {/* Payment message */}
+          {!isDemo && !paymentsEnabled && (
+            <div style={{
+              border: '1px solid #388bfd66', background: '#12233f', borderRadius: 8,
+              color: '#a5d6ff', padding: '12px 14px', marginBottom: 16, fontSize: 13,
+            }}>
+              {L('현재 결제를 받고 있지 않습니다. 서비스를 이용해도 실제 청구는 발생하지 않습니다.', 'Payments are not being accepted yet. You can use the service without being charged.')}
+            </div>
+          )}
           {paymentMsg && (
             <div style={{
               background: paymentMsg === 'PAYMENT_OK' ? '#388bfd22' : '#f8514918',
@@ -1398,9 +1412,9 @@ function OrdersPageInner({ params }: { params: Promise<{ lang: string }> }) {
               display: 'flex', alignItems: 'center', gap: 8,
             }}>
               <span style={{ flex: 1 }}>
-                {paymentMsg === 'PAYMENT_OK' ? (isKo ? '결제가 완료되었습니다. 주문이 생산 단계로 이동했습니다.' : 'Payment complete. Your order has moved to production.')
-                  : paymentMsg === 'PAYMENT_APPROVE_FAILED' ? (isKo ? '결제 승인 처리 중 오류가 발생했습니다.' : 'An error occurred while confirming payment.')
-                  : paymentMsg === 'PAYMENT_FAILED' ? (isKo ? '결제가 취소되었거나 실패했습니다.' : 'Payment was canceled or failed.')
+                {paymentMsg === 'PAYMENT_OK' ? (L('결제가 완료되었습니다. 주문이 생산 단계로 이동했습니다.', 'Payment complete. Your order has moved to production.'))
+                  : paymentMsg === 'PAYMENT_APPROVE_FAILED' ? (L('결제 승인 처리 중 오류가 발생했습니다.', 'An error occurred while confirming payment.'))
+                  : paymentMsg === 'PAYMENT_FAILED' ? (L('결제가 취소되었거나 실패했습니다.', 'Payment was canceled or failed.'))
                   : paymentMsg}
               </span>
               <button onClick={() => setPaymentMsg('')} style={{ background: 'none', border: 'none', color: 'inherit', cursor: 'pointer', fontSize: 16 }}>✕</button>
@@ -1427,10 +1441,10 @@ function OrdersPageInner({ params }: { params: Promise<{ lang: string }> }) {
             }}>
               <span style={{ flex: 1 }}>
                 {reorderMsg.startsWith('REORDER_OK:')
-                  ? (isKo ? `재발주 완료! RFQ ID: ${reorderMsg.slice(11)}` : `Reorder created: ${reorderMsg.slice(11)}`)
-                  : reorderMsg === 'REORDER_NO_RFQ' ? (isKo ? 'RFQ ID를 찾을 수 없습니다.' : 'RFQ ID not found.')
-                  : reorderMsg === 'REORDER_FAILED' ? (isKo ? '재발주 실패' : 'Reorder failed')
-                  : reorderMsg === 'REORDER_ERROR' ? (isKo ? '오류가 발생했습니다.' : 'Error occurred.')
+                  ? (L(`재발주 완료! RFQ ID: ${reorderMsg.slice(11)}`, `Reorder created: ${reorderMsg.slice(11)}`))
+                  : reorderMsg === 'REORDER_NO_RFQ' ? (L('RFQ ID를 찾을 수 없습니다.', 'RFQ ID not found.'))
+                  : reorderMsg === 'REORDER_FAILED' ? (L('재발주 실패', 'Reorder failed'))
+                  : reorderMsg === 'REORDER_ERROR' ? (L('오류가 발생했습니다.', 'Error occurred.'))
                   : reorderMsg}
               </span>
               <button onClick={() => setReorderMsg('')} style={{ background: 'none', border: 'none', color: 'inherit', cursor: 'pointer', fontSize: 16 }}>✕</button>
@@ -1453,7 +1467,7 @@ function OrdersPageInner({ params }: { params: Promise<{ lang: string }> }) {
               display: 'flex', alignItems: 'center', gap: 12,
             }}>
               <span style={{ flex: 1 }}>
-                {error === 'LOAD_FAILED' ? (isKo ? '불러오기 실패' : 'Failed to load orders') : error}
+                {error === 'LOAD_FAILED' ? (L('불러오기 실패', 'Failed to load orders')) : error}
               </span>
               <button
                 onClick={() => loadOrders()}
@@ -1462,7 +1476,7 @@ function OrdersPageInner({ params }: { params: Promise<{ lang: string }> }) {
                   border: '1px solid var(--nx-error)', background: 'transparent', color: 'var(--nx-error)', flexShrink: 0,
                 }}
               >
-                {isKo ? '다시 시도' : 'Retry'}
+                {L('다시 시도', 'Retry')}
               </button>
             </div>
           )}
@@ -1472,7 +1486,7 @@ function OrdersPageInner({ params }: { params: Promise<{ lang: string }> }) {
             <div style={{ textAlign: 'center', padding: '80px 0' }}>
               <div style={{ fontSize: 48, marginBottom: 12 }}>📦</div>
               <p style={{ color: 'var(--nx-text-3)', marginBottom: 16 }}>
-                {isKo ? '아직 주문 내역이 없습니다.' : 'No orders yet.'}
+                {L('아직 주문 내역이 없습니다.', 'No orders yet.')}
               </p>
               <div style={{ display: 'flex', gap: 8, justifyContent: 'center', flexWrap: 'wrap' }}>
                 <a
@@ -1483,7 +1497,7 @@ function OrdersPageInner({ params }: { params: Promise<{ lang: string }> }) {
                     fontSize: 13, fontWeight: 700, textDecoration: 'none',
                   }}
                 >
-                  {isKo ? '제조사 찾기' : 'Find Manufacturers'}
+                  {L('제조사 찾기', 'Find Manufacturers')}
                 </a>
                 {/* G3 — Empty-state guide link */}
                 <a
@@ -1495,7 +1509,7 @@ function OrdersPageInner({ params }: { params: Promise<{ lang: string }> }) {
                     fontSize: 13, fontWeight: 600, textDecoration: 'none',
                   }}
                 >
-                  {isKo ? '📖 주문 가이드' : '📖 Order guide'}
+                  {L('📖 주문 가이드', '📖 Order guide')}
                 </a>
               </div>
             </div>
@@ -1509,19 +1523,20 @@ function OrdersPageInner({ params }: { params: Promise<{ lang: string }> }) {
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
                   {orders.length === 0 && (
                     <div style={{ textAlign: 'center', padding: '40px 0', color: 'var(--nx-text-3)', fontSize: 13 }}>
-                      {isKo ? '해당 상태의 주문이 없습니다.' : 'No orders match the selected filter.'}
+                      {L('해당 상태의 주문이 없습니다.', 'No orders match the selected filter.')}
                     </div>
                   )}
                   {orders.map(order => (
                     <OrderCard
                       key={order.id}
                       order={order}
+                      lang={lang}
                       isKo={isKo}
                       isDemo={isDemo}
                       paying={payingOrderId === order.id}
                       token={token}
                       onClick={() => setSelectedOrder(order)}
-                      onPay={user && token && order.payment_status !== 'paid' && order.paymentStatus !== 'paid' && order.status === 'placed'
+                      onPay={paymentsEnabled && user && token && order.payment_status !== 'paid' && order.paymentStatus !== 'paid' && order.status === 'placed'
                         ? () => {
                         setPayingOrderId(order.id);
                         openTossPayment({
@@ -1545,7 +1560,7 @@ function OrdersPageInner({ params }: { params: Promise<{ lang: string }> }) {
                         color: ordersPage <= 1 ? 'var(--nx-border-strong)' : 'var(--nx-text-2)',
                       }}
                     >
-                      ← {isKo ? '이전' : 'Prev'}
+                      ← {L('이전', 'Prev')}
                     </button>
                     <span style={{ fontSize: 12, color: 'var(--nx-text-3)' }}>
                       {ordersPage} / {totalOrderPages}
@@ -1560,7 +1575,7 @@ function OrdersPageInner({ params }: { params: Promise<{ lang: string }> }) {
                         color: ordersPage >= totalOrderPages ? 'var(--nx-border-strong)' : 'var(--nx-text-2)',
                       }}
                     >
-                      {isKo ? '다음' : 'Next'} →
+                      {L('다음', 'Next')} →
                     </button>
                   </div>
                 )}
@@ -1574,6 +1589,7 @@ function OrdersPageInner({ params }: { params: Promise<{ lang: string }> }) {
       {selectedOrder && (
         <OrderDetailDrawer
           order={selectedOrder}
+          lang={lang}
           isKo={isKo}
           token={token}
           onClose={() => setSelectedOrder(null)}
@@ -1598,9 +1614,10 @@ export default function OrdersPage({ params }: { params: Promise<{ lang: string 
 // ─── OrderCard ────────────────────────────────────────────────────────────────
 
 function OrderCard({
-  order, isKo, isDemo, paying, onClick, onPay, token,
+  order, lang, isKo, isDemo, paying, onClick, onPay, token,
 }: {
   order: NexyfabOrder;
+  lang: string;
   isKo: boolean;
   isDemo: boolean;
   paying?: boolean;
@@ -1608,6 +1625,7 @@ function OrderCard({
   onPay?: () => void;
   token?: string | null;
 }) {
+  const L = createCommercialLocalizer(lang);
   const [showRefund, setShowRefund] = useState(false);
   const [refundReason, setRefundReason] = useState('');
   const [refunding, setRefunding] = useState(false);
@@ -1633,13 +1651,13 @@ function OrderCard({
       });
       const data = await res.json() as { ok?: boolean; error?: string };
       if (res.ok) {
-        setRefundMsg(isKo ? '환불 요청이 접수되었습니다. 영업일 기준 1-3일 내 처리됩니다.' : 'Refund request submitted. Processing takes 1-3 business days.');
+        setRefundMsg(L('환불 요청이 접수되었습니다. 영업일 기준 1-3일 내 처리됩니다.', 'Refund request submitted. Processing takes 1-3 business days.'));
         setShowRefund(false);
       } else {
-        setRefundMsg(data.error ?? (isKo ? '환불 요청 실패' : 'Refund request failed'));
+        setRefundMsg(data.error ?? (L('환불 요청 실패', 'Refund request failed')));
       }
     } catch {
-      setRefundMsg(isKo ? '요청 중 오류가 발생했습니다.' : 'An error occurred.');
+      setRefundMsg(L('요청 중 오류가 발생했습니다.', 'An error occurred.'));
     } finally {
       setRefunding(false);
     }
@@ -1649,7 +1667,7 @@ function OrderCard({
   const totalSteps = order.steps.length;
   const progressPct = totalSteps > 1 ? Math.round((currentStep / (totalSteps - 1)) * 100) : 100;
   const statusColor = STATUS_COLORS[order.status];
-  const statusLabel = STATUS_LABEL[order.status][isKo ? 'ko' : 'en'];
+  const statusLabel = L(STATUS_LABEL[order.status].ko, STATUS_LABEL[order.status].en);
 
   const dday = formatDday(new Date(order.estimatedDeliveryAt));
 
@@ -1692,12 +1710,12 @@ function OrderCard({
               color: '#fff', opacity: paying ? 0.7 : 1, marginRight: 6,
             }}
           >
-            {paying ? (isKo ? '처리 중...' : 'Processing...') : (isKo ? '결제하기' : 'Pay')}
+            {paying ? (L('처리 중...', 'Processing...')) : (L('결제하기', 'Pay'))}
           </button>
         )}
         {refundRequested && (
           <span style={{ fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 8, background: '#f8514922', color: 'var(--nx-error)', border: '1px solid #f8514944' }}>
-            {isKo ? '환불 요청 중' : 'Refund Pending'}
+            {L('환불 요청 중', 'Refund Pending')}
           </span>
         )}
         {canRefund && !showRefund && (
@@ -1709,11 +1727,11 @@ function OrderCard({
               color: 'var(--nx-error)', cursor: 'pointer', marginRight: 4,
             }}
           >
-            {isKo ? '환불 요청' : 'Refund'}
+            {L('환불 요청', 'Refund')}
           </button>
         )}
         <span style={{ fontSize: 10, color: 'var(--nx-border-strong)' }}>
-          {isKo ? '상세 보기 →' : 'Details →'}
+          {L('상세 보기 →', 'Details →')}
         </span>
         {/* 리뷰 미작성 뱃지 */}
         {order.status === 'delivered' && !(order as NexyfabOrder & { hasReview?: boolean }).hasReview && (
@@ -1721,7 +1739,7 @@ function OrderCard({
             fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 8,
             background: '#e3b34122', color: '#e3b341', border: '1px solid #e3b34144',
           }}>
-            ⭐ {isKo ? '리뷰 작성' : 'Review'}
+            ⭐ {L('리뷰 작성', 'Review')}
           </span>
         )}
         {/* Status badge */}
@@ -1740,12 +1758,12 @@ function OrderCard({
           style={{ padding: '12px 20px', borderBottom: '1px solid var(--nx-panel-2)', background: '#1a0d0d' }}
         >
           <p style={{ margin: '0 0 8px', fontSize: 12, color: 'var(--nx-error)', fontWeight: 600 }}>
-            {isKo ? '환불 요청 사유를 입력하세요' : 'Please enter your refund reason'}
+            {L('환불 요청 사유를 입력하세요', 'Please enter your refund reason')}
           </p>
           <textarea
             value={refundReason}
             onChange={e => setRefundReason(e.target.value)}
-            placeholder={isKo ? '사유 입력 (선택)' : 'Reason (optional)'}
+            placeholder={L('사유 입력 (선택)', 'Reason (optional)')}
             rows={2}
             style={{
               width: '100%', background: 'var(--nx-bg)', border: '1px solid var(--nx-border)',
@@ -1755,10 +1773,10 @@ function OrderCard({
           />
           <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
             <button onClick={submitRefundRequest} disabled={refunding} style={{ padding: '6px 14px', borderRadius: 6, fontSize: 12, fontWeight: 700, border: 'none', cursor: 'pointer', background: 'var(--nx-error)', color: '#fff', opacity: refunding ? 0.6 : 1 }}>
-              {refunding ? (isKo ? '요청 중...' : 'Submitting...') : (isKo ? '환불 요청 제출' : 'Submit Request')}
+              {refunding ? (L('요청 중...', 'Submitting...')) : (L('환불 요청 제출', 'Submit Request'))}
             </button>
             <button onClick={e => { e.stopPropagation(); setShowRefund(false); }} style={{ padding: '6px 14px', borderRadius: 6, fontSize: 12, fontWeight: 600, border: '1px solid var(--nx-border)', background: 'transparent', color: 'var(--nx-text-2)', cursor: 'pointer' }}>
-              {isKo ? '취소' : 'Cancel'}
+              {L('취소', 'Cancel')}
             </button>
           </div>
           {refundMsg && <p style={{ margin: '8px 0 0', fontSize: 11, color: 'var(--nx-error)' }}>{refundMsg}</p>}
@@ -1775,12 +1793,12 @@ function OrderCard({
         padding: '12px 20px', borderBottom: '1px solid var(--nx-panel-2)',
         display: 'flex', gap: 24, flexWrap: 'wrap', fontSize: 12,
       }}>
-        <MetaItem label={isKo ? '제조사' : 'Manufacturer'} value={order.manufacturerName} />
-        <MetaItem label={isKo ? '수량' : 'Qty'} value={`${order.quantity.toLocaleString()}${isKo ? '개' : ' pcs'}`} />
-        <MetaItem label={isKo ? '계약금액' : 'Amount'} value={fmtKRW(order.totalPriceKRW, isKo)} />
-        <MetaItem label={isKo ? '주문일' : 'Ordered'} value={formatDate(order.createdAt)} />
+        <MetaItem label={L('제조사', 'Manufacturer')} value={order.manufacturerName} />
+        <MetaItem label={L('수량', 'Qty')} value={`${order.quantity.toLocaleString()}${L('개', ' pcs')}`} />
+        <MetaItem label={L('계약금액', 'Amount')} value={fmtKRW(order.totalPriceKRW, lang)} />
+        <MetaItem label={L('주문일', 'Ordered')} value={formatDate(order.createdAt)} />
         <div>
-          <p style={{ margin: 0, fontSize: 10, color: 'var(--nx-text-3)' }}>{isKo ? '납기 예정' : 'Est. Delivery'}</p>
+          <p style={{ margin: 0, fontSize: 10, color: 'var(--nx-text-3)' }}>{L('납기 예정', 'Est. Delivery')}</p>
           <p style={{ margin: '2px 0 0', fontWeight: 600, color: 'var(--nx-ok)', display: 'flex', alignItems: 'center', gap: 6 }}>
             {formatDate(order.estimatedDeliveryAt)}
             {dday && (
@@ -1796,13 +1814,13 @@ function OrderCard({
       </div>
 
       {/* Carrier tracking strip — shown when shipping-webhook has posted events */}
-      {order.tracking && <TrackingStrip tracking={order.tracking} isKo={isKo} />}
+      {order.tracking && <TrackingStrip tracking={order.tracking} lang={lang} isKo={isKo} />}
 
       {/* Progress bar + stepper */}
       <div style={{ padding: '16px 20px 8px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
           <span style={{ fontSize: 11, color: 'var(--nx-text-2)' }}>
-            {isKo ? '진행률' : 'Progress'}
+            {L('진행률', 'Progress')}
           </span>
           <span style={{ fontSize: 11, fontWeight: 700, color: statusColor }}>
             {progressPct}%
@@ -1859,13 +1877,13 @@ function OrderCard({
                   color: active ? statusColor : done ? 'var(--nx-text-2)' : 'var(--nx-text-3)',
                   textAlign: 'center', lineHeight: 1.3, whiteSpace: 'nowrap',
                 }}>
-                  {isKo ? step.labelKo : step.label}
+                  {L(step.labelKo, step.label)}
                 </span>
                 {ts && (
                   <span style={{ fontSize: 8, color: 'var(--nx-text-3)', textAlign: 'center' }}>
                     {step.completedAt
-                      ? (isKo ? '완료 ' : 'Done ') + formatDate(ts)
-                      : (isKo ? '예정 ' : 'Est. ') + formatDate(ts)}
+                      ? (L('완료 ', 'Done ')) + formatDate(ts)
+                      : (L('예정 ', 'Est. ')) + formatDate(ts)}
                   </span>
                 )}
               </div>
@@ -1919,15 +1937,16 @@ const TRACKING_EVENT_LABEL: Record<string, { ko: string; en: string }> = {
 
 interface TrackingStripProps {
   tracking: NonNullable<NexyfabOrder['tracking']>;
+  lang: string;
   isKo: boolean;
 }
 
-function TrackingStrip({ tracking, isKo }: TrackingStripProps) {
+function TrackingStrip({ tracking, lang, isKo: _isKo }: TrackingStripProps) {
+  const L = createCommercialLocalizer(lang);
   const url = carrierTrackingUrl(tracking.carrier, tracking.number);
   const carrierName = CARRIER_LABEL[tracking.carrier] ?? tracking.carrier.toUpperCase();
-  const eventLabel = tracking.lastEvent
-    ? TRACKING_EVENT_LABEL[tracking.lastEvent]?.[isKo ? 'ko' : 'en'] ?? tracking.lastEvent
-    : null;
+  const eventCopy = tracking.lastEvent ? TRACKING_EVENT_LABEL[tracking.lastEvent] : null;
+  const eventLabel = eventCopy ? L(eventCopy.ko, eventCopy.en) : tracking.lastEvent ?? null;
   const updated = tracking.updatedAt ? formatDate(tracking.updatedAt) : null;
   const isDelivered = tracking.lastEvent === 'delivered';
   const accent = isDelivered ? 'var(--nx-ok)' : '#79c0ff';
@@ -1961,7 +1980,7 @@ function TrackingStrip({ tracking, isKo }: TrackingStripProps) {
       )}
       {updated && (
         <span style={{ fontSize: 10, color: 'var(--nx-text-3)' }}>
-          {isKo ? '업데이트 ' : 'Updated '}{updated}
+          {L('업데이트 ', 'Updated ')}{updated}
         </span>
       )}
       <div style={{ flex: 1 }} />
@@ -1976,7 +1995,7 @@ function TrackingStrip({ tracking, isKo }: TrackingStripProps) {
             border: `1px solid ${accent}66`, borderRadius: 6,
           }}
         >
-          {isKo ? '추적 열기 →' : 'Track →'}
+          {L('추적 열기 →', 'Track →')}
         </a>
       )}
     </div>

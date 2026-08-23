@@ -1,0 +1,50 @@
+{
+  "schema": "nexyfab.mechanical-core-feature-local-runtime.v1",
+  "feature": "tab",
+  "axis": "create",
+  "status": "PASS",
+  "executedAt": "2026-08-22T07:13:30.564Z",
+  "payload": {
+    "id": "runtime-feature",
+    "enabled": true,
+    "type": "tab",
+    "params": {
+      "width": 18,
+      "length": 12,
+      "position": 50,
+      "edgeIndex": 0
+    }
+  },
+  "exact": {
+    "handle": "occt:281",
+    "kernelKind": "Solid",
+    "nativeShapeType": 0,
+    "solidCount": 1,
+    "singleSolid": true,
+    "volumeMm3": 80640,
+    "edgeCount": 24,
+    "faceCount": 10,
+    "boundsMm": [
+      [
+        -30.0000001,
+        -20.0000001,
+        -15.000000100000001
+      ],
+      [
+        30.0000001,
+        20.0000001,
+        27.0000001
+      ]
+    ]
+  },
+  "featureMeaning": {
+    "assertion": "exact coplanar tab adds width x sheet-thickness x outward-length volume and extends the selected edge by the requested length",
+    "widthMm": 18,
+    "lengthMm": 12,
+    "expectedVolumeMm3": 80640,
+    "actualVolumeMm3": 80640,
+    "outwardExtensionMm": 12.000000100000001
+  },
+  "exactScope": "declared numeric runtime case",
+  "assertion": "native OCCT produced one non-empty exact solid and changed the host geometry"
+}

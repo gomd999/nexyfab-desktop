@@ -14,6 +14,10 @@ import { NextRequest, NextResponse } from 'next/server';
 import { chatCompletion, AiNotConfiguredError, AiProviderError, type ChatMessage } from '@/lib/ai';
 import { getPrompt } from '@/lib/ai/prompts';
 import { recordPromptCall, classifyAiError } from '@/lib/ai/telemetry';
+import { localizedApiMessage, resolveServerLocale } from '@/lib/i18n/serverLocale';
+import { boundedJsonError, readBoundedJson } from '@/lib/boundedJsonBody';
+
+const MAX_BODY_BYTES = 2 * 1024 * 1024;
 
 // ─── Types ────────────────────────────────────────────────────────────────
 
@@ -198,18 +202,23 @@ function stripMarkdownJson(text: string): string {
 // ─── POST handler ─────────────────────────────────────────────────────────
 
 export async function POST(req: NextRequest) {
+  let requestBody = {} as RouterRequest;
+  let requestBodyTooLarge = false;
+  try { requestBody = await readBoundedJson<RouterRequest>(req, MAX_BODY_BYTES); }
+  catch (error) { requestBodyTooLarge = boundedJsonError(error)?.code === 'PAYLOAD_TOO_LARGE'; }
+  const locale = resolveServerLocale(req, requestBody.lang ?? req.nextUrl.searchParams.get('lang'));
   const { checkPlan, checkMonthlyLimit, recordUsageEvent } = await import('@/lib/plan-guard');
   const planCheck = await checkPlan(req, 'free');
   if (!planCheck.ok) return planCheck.response;
 
-  const usageCheck = await checkMonthlyLimit(planCheck.userId, planCheck.plan, 'process_router');
+  const usageCheck = await checkMonthlyLimit(planCheck.userId, planCheck.plan, 'process_router', planCheck.orgId);
   if (!usageCheck.ok) {
     const isPro = usageCheck.limit === -2;
     return NextResponse.json(
       {
         error: isPro
-          ? 'AI Process Router requires Pro plan or higher.'
-          : `Free plan limit reached (${usageCheck.limit}/month). Upgrade to Pro for unlimited Process Router.`,
+          ? localizedApiMessage(locale, 'planUpgrade')
+          : localizedApiMessage(locale, 'planLimit', { limit: `${usageCheck.limit}/month` }),
         requiresPro: isPro,
         used: usageCheck.used,
         limit: usageCheck.limit,
@@ -218,10 +227,11 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const body = await req.json().catch(() => ({})) as RouterRequest;
+  if (requestBodyTooLarge) return NextResponse.json({ error: localizedApiMessage(locale, 'badRequest'), code: 'PAYLOAD_TOO_LARGE' }, { status: 413 });
+  const body = requestBody;
 
   if (!body.metrics || !body.material || !body.quantity || !Array.isArray(body.candidates) || body.candidates.length === 0) {
-    return NextResponse.json({ error: 'metrics, material, quantity, and candidates[] are required' }, { status: 400 });
+    return NextResponse.json({ error: localizedApiMessage(locale, 'messageRequired'), code: 'PROCESS_ROUTER_INPUT_REQUIRED' }, { status: 400 });
   }
 
   const { recordAIHistory } = await import('@/lib/ai-history');
@@ -237,8 +247,8 @@ export async function POST(req: NextRequest) {
 
   const prompt = getPrompt('process-router');
   const messages: ChatMessage[] = [
-    { role: 'system', content: prompt.template },
-    { role: 'user', content: JSON.stringify(body) },
+    { role: 'system', content: `${prompt.template}\n\n[OUTPUT LANGUAGE CONTRACT]\nWrite reasoning, pros, cons, and other natural-language fields in ${locale.languageName}. Keep the *Ko fields as Korean legacy compatibility text.` },
+    { role: 'user', content: JSON.stringify({ ...body, requestedLanguage: locale.languageName }) },
   ];
 
   let content = '';
@@ -253,6 +263,7 @@ export async function POST(req: NextRequest) {
     content = result.text;
     recordPromptCall({
       userId: planCheck.userId,
+      orgId: planCheck.orgId,
       promptId: prompt.id,
       promptVersion: prompt.version,
       provider: result.provider,
@@ -265,6 +276,7 @@ export async function POST(req: NextRequest) {
   } catch (e) {
     recordPromptCall({
       userId: planCheck.userId,
+      orgId: planCheck.orgId,
       promptId: prompt.id,
       promptVersion: prompt.version,
       provider: e instanceof AiProviderError ? e.provider : 'unknown',
@@ -274,33 +286,35 @@ export async function POST(req: NextRequest) {
       errorClass: classifyAiError(e),
     });
     if (e instanceof AiNotConfiguredError) {
-      recordUsageEvent(planCheck.userId, 'process_router');
+      recordUsageEvent(planCheck.userId, 'process_router', undefined, planCheck.orgId);
       const ranked = ruleBasedRank(body);
       recordAIHistory({
         userId: planCheck.userId,
+        orgId: planCheck.orgId,
         feature: 'process_router',
         title: historyTitle,
         payload: { ranked },
         context: historyContext,
         projectId: historyProjectId,
       });
-      return NextResponse.json({ ranked });
+      return NextResponse.json({ ranked, outputLanguage: locale.route });
     }
     const detail = e instanceof AiProviderError
       ? `${e.provider}${e.status ? ` (${e.status})` : ''}: ${e.message}`
       : (e instanceof Error ? e.message : String(e));
     console.warn('[process-router] AI provider failed, using rule-based fallback:', detail);
-    recordUsageEvent(planCheck.userId, 'process_router');
+    recordUsageEvent(planCheck.userId, 'process_router', undefined, planCheck.orgId);
     const fallback = ruleBasedRank(body);
     recordAIHistory({
       userId: planCheck.userId,
+      orgId: planCheck.orgId,
       feature: 'process_router',
       title: historyTitle,
       payload: { ranked: fallback },
       context: historyContext,
       projectId: historyProjectId,
     });
-    return NextResponse.json({ ranked: fallback });
+    return NextResponse.json({ ranked: fallback, outputLanguage: locale.route });
   }
 
   try {
@@ -323,28 +337,30 @@ export async function POST(req: NextRequest) {
         bestFor: Array.isArray(r.bestFor) ? r.bestFor.slice(0, 5) : [],
       }));
 
-    recordUsageEvent(planCheck.userId, 'process_router');
+    recordUsageEvent(planCheck.userId, 'process_router', undefined, planCheck.orgId);
     recordAIHistory({
       userId: planCheck.userId,
+      orgId: planCheck.orgId,
       feature: 'process_router',
       title: historyTitle,
       payload: { ranked },
       context: historyContext,
       projectId: historyProjectId,
     });
-    return NextResponse.json({ ranked });
+    return NextResponse.json({ ranked, outputLanguage: locale.route });
   } catch (err) {
     console.warn('[process-router] AI response parse failed, using rule-based fallback:', err);
-    recordUsageEvent(planCheck.userId, 'process_router');
+    recordUsageEvent(planCheck.userId, 'process_router', undefined, planCheck.orgId);
     const fallback = ruleBasedRank(body);
     recordAIHistory({
       userId: planCheck.userId,
+      orgId: planCheck.orgId,
       feature: 'process_router',
       title: historyTitle,
       payload: { ranked: fallback },
       context: historyContext,
       projectId: historyProjectId,
     });
-    return NextResponse.json({ ranked: fallback });
+    return NextResponse.json({ ranked: fallback, outputLanguage: locale.route });
   }
 }

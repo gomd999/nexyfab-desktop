@@ -1,0 +1,88 @@
+{
+  "schema": "nexyfab.mechanical-core-feature-local-runtime.v1",
+  "feature": "hem",
+  "axis": "regenerate",
+  "status": "PASS",
+  "executedAt": "2026-08-22T07:13:30.564Z",
+  "initial": {
+    "handle": "occt:253",
+    "kernelKind": "Solid",
+    "nativeShapeType": 2,
+    "solidCount": 1,
+    "singleSolid": true,
+    "volumeMm3": 5793.982236861551,
+    "edgeCount": 24,
+    "faceCount": 10,
+    "boundsMm": [
+      [
+        -30.003613731384487,
+        -1.0036137313844848,
+        -15.003613731384489
+      ],
+      [
+        30.003613731384483,
+        5.003613731384487,
+        18.00361373138449
+      ]
+    ]
+  },
+  "edited": {
+    "handle": "occt:255",
+    "kernelKind": "Solid",
+    "nativeShapeType": 2,
+    "solidCount": 1,
+    "singleSolid": true,
+    "volumeMm3": 6273.982236861552,
+    "edgeCount": 24,
+    "faceCount": 10,
+    "boundsMm": [
+      [
+        -30.003613731384487,
+        -1.0036137313844848,
+        -15.003613731384489
+      ],
+      [
+        30.003613731384483,
+        5.003613731384487,
+        18.00361373138449
+      ]
+    ]
+  },
+  "repeated": {
+    "handle": "occt:257",
+    "kernelKind": "Solid",
+    "nativeShapeType": 2,
+    "solidCount": 1,
+    "singleSolid": true,
+    "volumeMm3": 6273.982236861552,
+    "edgeCount": 24,
+    "faceCount": 10,
+    "boundsMm": [
+      [
+        -30.003613731384487,
+        -1.0036137313844848,
+        -15.003613731384489
+      ],
+      [
+        30.003613731384483,
+        5.003613731384487,
+        18.00361373138449
+      ]
+    ]
+  },
+  "featureMeaning": {
+    "assertion": "actual product exact closed hem adds its neutral-axis developed length through one analytic 180-degree annular bend while preserving constant thickness",
+    "hemType": 0,
+    "lengthMm": 16,
+    "radiusMm": 1,
+    "thicknessMm": 2,
+    "neutralRadiusMm": 2,
+    "addedDevelopedLengthMm": 22.283185307179586,
+    "cylindricalFaces": 2,
+    "expectedVolumeMm3": 6273.9822368615505,
+    "actualVolumeMm3": 6273.982236861552,
+    "expectedTopMm": 5,
+    "expectedOutwardMm": 18
+  },
+  "assertion": "edited parameter changed the exact signature and a fresh native regeneration reproduced topology, bounds, and volume"
+}

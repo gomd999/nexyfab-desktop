@@ -17,6 +17,9 @@ import {
   autoQuote, isPriceBook, isProcessCapability, DEFAULT_PRICEBOOK,
   type PriceBook, type ProcessCapability, type ProcessCode,
 } from '@/lib/partner-pricebook';
+import { boundedJsonError, readBoundedJson } from '@/lib/boundedJsonBody';
+
+const MAX_AUTO_QUOTE_BODY_BYTES = 64 * 1024;
 
 export const dynamic = 'force-dynamic';
 
@@ -56,7 +59,9 @@ export async function POST(req: NextRequest) {
   const partner = await getPartnerAuth(req);
   if (!partner) return NextResponse.json({ error: '인증이 필요합니다.' }, { status: 401 });
 
-  const body = await req.json().catch(() => ({}));
+  let body: Record<string, unknown> = {};
+  try { body = await readBoundedJson<Record<string, unknown>>(req, MAX_AUTO_QUOTE_BODY_BYTES); }
+  catch (error) { if (boundedJsonError(error)?.code === 'PAYLOAD_TOO_LARGE') return NextResponse.json({ error: 'Request too large', code: 'PAYLOAD_TOO_LARGE' }, { status: 413 }); }
   const { quoteId, processOverride, isRush } = body as {
     quoteId?: string; processOverride?: ProcessCode; isRush?: boolean;
   };

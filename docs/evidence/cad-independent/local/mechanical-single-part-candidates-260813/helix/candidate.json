@@ -1,0 +1,64 @@
+{
+  "schema": "nexyfab.mechanical-single-part-candidate.v1",
+  "feature": "helix",
+  "candidateStatus": "PASS",
+  "partRevisionSha256": "c7b3de9781871e4e157b2553afaae6f1518d61a7265b4df694ee011a0f74cae0",
+  "source": {
+    "receiptPath": "docs/evidence/cad-independent/local/mechanical-core-feature-axis-evidence.json",
+    "receiptSha256": "79d9344b7d101580b7e1574759a8eff652cbe942e6a389056b488aba28a77930",
+    "designRevisionSha256": "3cf6a0f9c8efcf153a2cfefde087a2112c086fc412d2feeaeb9ce52542838564",
+    "nfab": {
+      "path": "docs/evidence/cad-independent/local/mechanical-core-runtime-260813/helix/saved-project.nfab",
+      "sha256": "badf3d54ea839c52f7168ac6e7b8f9049764a71633bd1870427e476886a973a0",
+      "bytes": 1649,
+      "assertionId": "helix.save_reopen.saved-bytes",
+      "revisionSha256": "badf3d54ea839c52f7168ac6e7b8f9049764a71633bd1870427e476886a973a0",
+      "formatVersion": 3,
+      "createdAt": 1786643110799,
+      "updatedAt": 1786643110799
+    },
+    "step": {
+      "path": "docs/evidence/cad-independent/local/mechanical-core-runtime-260813/helix/helix-edited.step",
+      "sha256": "cbff29a2cf6a45922c4ea17f96da0775066ccc35cd422a029dd537c466f85776",
+      "bytes": 178086,
+      "assertionId": "helix.export.native-step"
+    },
+    "drawingSvg": {
+      "path": "docs/evidence/cad-independent/local/mechanical-core-runtime-260813/helix/helix-exact-hlr.svg",
+      "sha256": "4ab4748a5c08b1eb93273d6247c41a2f442b5270bcecb765f9f0515441aa7472",
+      "bytes": 100527,
+      "assertionId": "helix.drawing.exact-hlr-svg"
+    }
+  },
+  "artifacts": {
+    "stepImport": {
+      "path": "docs/evidence/cad-independent/local/mechanical-single-part-candidates-260813/helix/step-import.json",
+      "sha256": "112386d6cff6b9e5ee167317baf16054cde0e8e075591401a447f4c8c97c825c",
+      "bytes": 1029,
+      "assertionId": "helix.candidate.step-import"
+    },
+    "drawing": {
+      "path": "docs/evidence/cad-independent/local/mechanical-single-part-candidates-260813/helix/helix-three-axis-hlr.svg",
+      "sha256": "4ab4748a5c08b1eb93273d6247c41a2f442b5270bcecb765f9f0515441aa7472",
+      "bytes": 100527,
+      "assertionId": "helix.candidate.three-axis-hlr"
+    },
+    "bom": {
+      "path": "docs/evidence/cad-independent/local/mechanical-single-part-candidates-260813/helix/bom.json",
+      "sha256": "0c4f7cd04186b902c7b763e6f78643d5079c5efd6bf2db574e41be6c78476b85",
+      "bytes": 872,
+      "assertionId": "helix.candidate.one-part-bom"
+    }
+  },
+  "capabilityStatus": {
+    "stepImportSolidUnitsBounds": "PASS",
+    "threeAxisHlrDrawingCandidate": "PASS",
+    "onePartBomQuantityDimensions": "PASS",
+    "drawingDimensions": "NOT_RUN",
+    "gdt": "NOT_RUN",
+    "pmi": "NOT_RUN",
+    "humanApproval": "NOT_RUN",
+    "manufacturingRelease": "BLOCKED"
+  },
+  "commercialReleaseEligible": false
+}

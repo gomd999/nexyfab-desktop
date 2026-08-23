@@ -17,8 +17,8 @@
  */
 
 import { useState } from 'react';
-import { isKorean } from '@/lib/i18n/normalize';
 import { loc } from '@/lib/i18n/loc';
+import { designLoc } from './designI18n';
 
 interface BriefParam {
   key: string;
@@ -63,7 +63,7 @@ export default function BriefClarifier({
   /** Push the structured planner text back into the prompt box. */
   onUseRefined: (text: string) => void;
 }) {
-  const ko = isKorean(lang);
+  const t = (copy: Parameters<typeof designLoc>[1]) => designLoc(lang, copy);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const [resp, setResp] = useState<ExpandResp | null>(null);
@@ -79,7 +79,7 @@ export default function BriefClarifier({
         body: JSON.stringify({ text }),
       });
       const data = (await r.json()) as ExpandResp;
-      if (!data.ok) { setErr(data.error ?? (ko ? '정리에 실패했습니다.' : 'Failed to structure.')); return; }
+      if (!data.ok) { setErr(data.error ?? t({ ko: '정리에 실패했습니다.', en: 'Failed to structure.', ja: '整理に失敗しました。', zh: '整理失败。', es: 'No se pudo estructurar.', ar: 'تعذر تنظيم الطلب.' })); return; }
       setResp(data);
     } catch (e) {
       setErr(e instanceof Error ? e.message : String(e));
@@ -101,7 +101,7 @@ export default function BriefClarifier({
           border: '1px solid var(--nx-border, #dfe3e8)', background: 'var(--nx-panel, #fff)', color: 'var(--nx-text-2, #46505e)',
         }}
       >
-        {busy ? (ko ? '정리 중…' : 'Structuring…') : (ko ? '🧭 브리프 정리 (질문 먼저)' : '🧭 Clarify brief (ask first)')}
+        {busy ? t({ ko: '정리 중…', en: 'Structuring…', ja: '整理中…', zh: '整理中…', es: 'Estructurando…', ar: 'جارٍ التنظيم…' }) : t({ ko: '🧭 브리프 정리 (질문 먼저)', en: '🧭 Clarify brief (ask first)', ja: '🧭 ブリーフを整理（先に質問）', zh: '🧭 整理需求（先提问）', es: '🧭 Aclarar brief (preguntar primero)', ar: '🧭 تنظيم الطلب (اسأل أولاً)' })}
       </button>
 
       {err && <div style={{ marginTop: 8, fontSize: 12, color: '#ef4444' }}>{err}</div>}
@@ -113,7 +113,7 @@ export default function BriefClarifier({
           {brief.questions.length > 0 && (
             <div style={{ marginTop: 8 }}>
               <div style={{ fontSize: 11.5, fontWeight: 700, color: 'var(--nx-text-3, #6b7684)' }}>
-                {ko ? '먼저 확인이 필요해요' : 'A few things to confirm'}
+                {t({ ko: '먼저 확인이 필요해요', en: 'A few things to confirm', ja: '先に確認する項目があります', zh: '有几项需要先确认', es: 'Hay algunos datos que confirmar', ar: 'هناك بعض الأمور التي يجب تأكيدها' })}
               </div>
               <ul style={{ margin: '4px 0 0', paddingLeft: 18, fontSize: 12.5 }}>
                 {brief.questions.map((q, i) => <li key={i} style={{ marginTop: 2 }}>{q}</li>)}
@@ -128,13 +128,13 @@ export default function BriefClarifier({
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5, marginTop: 3 }}>
                   {c.params.map((p) => {
                     const s = SRC_STYLE[p.source];
-                    const val = p.value !== null ? `${p.value}${p.unit ?? ''}` : (ko ? '미정' : 'TBD');
+                    const val = p.value !== null ? `${p.value}${p.unit ?? ''}` : t({ ko: '미정', en: 'TBD', ja: '未定', zh: '待定', es: 'Pendiente', ar: 'غير محدد' });
                     return (
                       <span key={p.key} title={p.note ?? ''}
                         style={{ display: 'inline-flex', gap: 5, alignItems: 'center', padding: '3px 8px', borderRadius: 999, fontSize: 11.5, background: s.bg, color: s.fg }}>
                         <b style={{ fontWeight: 700 }}>{p.key}</b>
                         <span>{val}</span>
-                        {/* ⚠ 260802: `ko ? s.ko : s.en` 2분기라 ja·zh·es·ar 이 영어로 떨어졌다. */}
+                        {/* Source badges use the typed six-locale SRC_STYLE table. */}
                         <span style={{ opacity: 0.8 }}>· {loc(lang, s)}</span>
                       </span>
                     );
@@ -153,11 +153,11 @@ export default function BriefClarifier({
                 background: 'var(--nx-accent, #2563eb)', color: '#fff', fontSize: 13, fontWeight: 700,
               }}
             >
-              {ko ? '이 구조로 프롬프트 채우기' : 'Fill prompt with this structure'}
+              {t({ ko: '이 구조로 프롬프트 채우기', en: 'Fill prompt with this structure', ja: 'この構成でプロンプトを入力', zh: '用此结构填充提示词', es: 'Rellenar el prompt con esta estructura', ar: 'ملء الطلب بهذا الهيكل' })}
             </button>
           )}
           <div style={{ marginTop: 6, fontSize: 11, color: 'var(--nx-text-3, #6b7684)' }}>
-            {ko ? '가정값은 추정이며 실측이 아닙니다 — 생성 전에 확인해 주세요.' : 'Assumed values are defaults, not measurements — please confirm before generating.'}
+            {t({ ko: '가정값은 추정이며 실측이 아닙니다 — 생성 전에 확인해 주세요.', en: 'Assumed values are defaults, not measurements — please confirm before generating.', ja: '仮定値は推定で実測値ではありません。生成前に確認してください。', zh: '假定值是默认估计，并非实测值，请在生成前确认。', es: 'Los valores supuestos son predeterminados, no mediciones; confírmalos antes de generar.', ar: 'القيم المفترضة افتراضية وليست قياسات؛ يرجى تأكيدها قبل الإنشاء.' })}
           </div>
         </div>
       )}

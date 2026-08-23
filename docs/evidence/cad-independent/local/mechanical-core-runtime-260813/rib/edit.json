@@ -1,0 +1,37 @@
+{
+  "schema": "nexyfab.mechanical-core-feature-local-runtime.v1",
+  "feature": "rib",
+  "axis": "edit",
+  "status": "PASS",
+  "executedAt": "2026-08-22T07:13:30.564Z",
+  "commandId": "rib-runtime-param-edit",
+  "historyDepth": 1,
+  "before": {
+    "id": "runtime-feature",
+    "enabled": true,
+    "type": "rib",
+    "params": {
+      "startX": -20,
+      "startZ": 0,
+      "endX": 20,
+      "endZ": 0,
+      "thickness": 3,
+      "height": 14,
+      "direction": 0
+    }
+  },
+  "after": {
+    "id": "runtime-feature",
+    "enabled": true,
+    "type": "rib",
+    "params": {
+      "startX": -20,
+      "startZ": 0,
+      "endX": 20,
+      "endZ": 0,
+      "thickness": 5,
+      "height": 14,
+      "direction": 0
+    }
+  }
+}

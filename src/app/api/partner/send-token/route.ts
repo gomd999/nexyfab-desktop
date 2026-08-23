@@ -5,6 +5,9 @@ import { checkOrigin } from '@/lib/csrf';
 import { rateLimit } from '@/lib/rate-limit';
 import { getDbAdapter } from '@/lib/db-adapter';
 import { getTrustedClientIp } from '@/lib/client-ip';
+import { boundedJsonError, readBoundedJson } from '@/lib/boundedJsonBody';
+
+const MAX_SEND_TOKEN_BODY_BYTES = 16 * 1024;
 
 export const dynamic = 'force-dynamic';
 
@@ -18,7 +21,13 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: '요청이 너무 많습니다.' }, { status: 429 });
   }
 
-  const { partnerId, email, company } = await req.json() as { partnerId?: string; email?: string; company?: string };
+  let body: { partnerId?: string; email?: string; company?: string };
+  try { body = await readBoundedJson(req, MAX_SEND_TOKEN_BODY_BYTES); }
+  catch (error) {
+    if (boundedJsonError(error)?.code === 'PAYLOAD_TOO_LARGE') return NextResponse.json({ error: 'Request too large', code: 'PAYLOAD_TOO_LARGE' }, { status: 413 });
+    throw error;
+  }
+  const { partnerId, email, company } = body;
   if (!partnerId || !email) {
     return NextResponse.json({ error: 'partnerId와 email이 필요합니다.' }, { status: 400 });
   }

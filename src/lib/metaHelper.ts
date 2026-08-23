@@ -21,6 +21,19 @@ export const HREFLANG_ALTERNATES = {
     'x-default': `${BASE_URL}/en`,
 };
 
+function pageHrefLangAlternates(pageKey: PageKey) {
+    const suffix = pageKey === 'home' ? '' : `/${pageKey}`;
+    return {
+        'ko': `${BASE_URL}/kr${suffix}`,
+        'en': `${BASE_URL}/en${suffix}`,
+        'ja': `${BASE_URL}/ja${suffix}`,
+        'zh': `${BASE_URL}/cn${suffix}`,
+        'es': `${BASE_URL}/es${suffix}`,
+        'ar': `${BASE_URL}/ar${suffix}`,
+        'x-default': `${BASE_URL}/en${suffix}`,
+    };
+}
+
 export type PageKey =
     | 'home'
     | 'how-it-works'
@@ -45,6 +58,9 @@ export type PageKey =
     | 'rfq'
     | 'files'
     | 'projects'
+    | 'factories'
+    | 'help'
+    | 'trust'
     | 'settings';
 
 type PageMeta = { title: string; description: string };
@@ -234,6 +250,30 @@ export const PAGE_META: Record<PageKey, Record<Lang, PageMeta>> = {
         es: { title: 'Proyectos | Nexyfab', description: 'Cree proyectos de manufactura y colabore con socios.' },
         ar: { title: 'المشاريع | Nexyfab', description: 'أنشئ مشاريع التصنيع وتعاون مع الشركاء.' },
     },
+    'factories': {
+        kr: { title: '제조사 검색 | NexyFab', description: '한국·중국 공장 디렉터리를 검색하고 비교하세요. 공정별·지역별 필터로 후보를 좁혀보세요.' },
+        en: { title: 'Find Manufacturers | NexyFab', description: 'Search and compare our Korea-China factory directory. Filter by process and region to shortlist candidates.' },
+        ja: { title: 'メーカー検索 | NexyFab', description: '韓国・中国の工場ディレクトリを検索・比較し、工程や地域で候補を絞り込めます。' },
+        cn: { title: '查找制造商 | NexyFab', description: '搜索并比较韩国和中国的工厂目录，按工艺和地区筛选候选制造商。' },
+        es: { title: 'Buscar fabricantes | NexyFab', description: 'Busque y compare fábricas de Corea y China. Filtre por proceso y región para seleccionar candidatos.' },
+        ar: { title: 'البحث عن المصنّعين | NexyFab', description: 'ابحث وقارن بين مصانع كوريا والصين، وصفِّ النتائج حسب العملية والمنطقة.' },
+    },
+    'help': {
+        kr: { title: '사용 가이드 | NexyFab', description: '첫 설계부터 견적·주문·리뷰까지 NexyFab의 전체 흐름을 한눈에 확인하세요.' },
+        en: { title: 'User Guide | NexyFab', description: 'Follow the complete NexyFab workflow, from your first design to quote, order, and review.' },
+        ja: { title: 'ユーザーガイド | NexyFab', description: '最初の設計から見積もり、注文、レビューまで、NexyFabの全工程をご案内します。' },
+        cn: { title: '使用指南 | NexyFab', description: '了解从首次设计到报价、下单和评价的 NexyFab 完整流程。' },
+        es: { title: 'Guía de usuario | NexyFab', description: 'Conozca todo el flujo de NexyFab, desde el primer diseño hasta la cotización, el pedido y la reseña.' },
+        ar: { title: 'دليل المستخدم | NexyFab', description: 'تعرّف على سير عمل NexyFab الكامل، من التصميم الأول إلى عرض السعر والطلب والمراجعة.' },
+    },
+    'trust': {
+        kr: { title: '신뢰성 | NexyFab', description: '테스트 통과율, OCCT 정밀도 검증, 표준 규격 출처 등 NexyFab의 기술적 신뢰성을 확인하세요.' },
+        en: { title: 'Trust & Reliability | NexyFab', description: 'Review NexyFab technical reliability, including test pass rates, OCCT precision validation, and standards citations.' },
+        ja: { title: '信頼性 | NexyFab', description: 'テスト合格率、OCCT精度検証、標準規格の出典など、NexyFabの技術的信頼性をご確認ください。' },
+        cn: { title: '信任与可靠性 | NexyFab', description: '查看 NexyFab 的测试通过率、OCCT 精度验证和标准规范来源。' },
+        es: { title: 'Confianza y fiabilidad | NexyFab', description: 'Consulte las tasas de pruebas, la validación de precisión OCCT y las referencias de normas de NexyFab.' },
+        ar: { title: 'الثقة والموثوقية | NexyFab', description: 'اطّلع على معدلات نجاح الاختبارات والتحقق من دقة OCCT ومراجع المعايير في NexyFab.' },
+    },
     'settings': {
         kr: { title: '계정 설정 | Nexyfab', description: '프로필, 알림, 보안 설정을 관리하세요.' },
         en: { title: 'Account Settings | Nexyfab', description: 'Manage your profile, notifications, and security settings.' },
@@ -254,7 +294,7 @@ export function buildMetadata(lang: string, pageKey: PageKey) {
         description: m.description,
         alternates: {
             canonical: canonicalUrl,
-            languages: HREFLANG_ALTERNATES,
+            languages: pageHrefLangAlternates(pageKey),
         },
         verification: {
             other: {

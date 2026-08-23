@@ -1,0 +1,12 @@
+{
+  "schema": "nexyfab.deployable-unit.v1",
+  "id": "job-orchestrator",
+  "kind": "worker",
+  "targetRuntime": "cloudflare-queues-workflows",
+  "sourceMode": "legacy-control-plane-compatibility",
+  "legacySource": ["src/lib/cad/spatialCadJobStore.ts", "src/app/api/internal/spatial-cad/jobs"],
+  "implementationState": "PARTIAL",
+  "deployEnabled": false,
+  "verificationState": "PASS_UNIT_EXTERNAL_NOT_RUN",
+  "rollbackOwner": "railway-core-api"
+}

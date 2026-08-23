@@ -43,18 +43,18 @@ export const MATERIAL_PRESETS: MaterialPreset[] = [
 
 export interface UseCaseDef {
   id: MaterialUseCase;
-  label: { ko: string; en: string };
+  label: { ko: string; en: string; ja: string; zh: string; es: string; ar: string };
   icon: string;
-  hint: { ko: string; en: string };
+  hint: { ko: string; en: string; ja: string; zh: string; es: string; ar: string };
 }
 
 export const USE_CASE_DEFS: UseCaseDef[] = [
-  { id: 'outdoor',               label: { ko: '야외',       en: 'Outdoor'    }, icon: '☀️', hint: { ko: '부식·UV 저항',          en: 'Corrosion / UV resistant' } },
-  { id: 'structural',            label: { ko: '구조',       en: 'Structural' }, icon: '🏗️', hint: { ko: '하중 지지',              en: 'Load-bearing' } },
-  { id: 'food_contact',          label: { ko: '식품접촉',   en: 'Food-safe'  }, icon: '🍽️', hint: { ko: '무독·매끈한 표면',       en: 'Non-toxic, smooth' } },
-  { id: 'electrical_insulation', label: { ko: '전기절연',   en: 'Insulator'  }, icon: '⚡', hint: { ko: '비전도성',                en: 'Non-conductive' } },
-  { id: 'lightweight',           label: { ko: '경량',       en: 'Lightweight'}, icon: '🪶', hint: { ko: '저밀도',                  en: 'Low density' } },
-  { id: 'prototype_3dp',         label: { ko: '3D 프린팅',  en: '3D Print'   }, icon: '🖨️', hint: { ko: '빠른 시제품',             en: 'Rapid prototype' } },
+  { id: 'outdoor', label: { ko: '야외', en: 'Outdoor', ja: '屋外', zh: '户外', es: 'Exterior', ar: 'خارجي' }, icon: '☀️', hint: { ko: '부식·UV 저항', en: 'Corrosion / UV resistant', ja: '耐食・耐UV', zh: '耐腐蚀／耐紫外线', es: 'Resistente a corrosión y UV', ar: 'مقاوم للتآكل والأشعة فوق البنفسجية' } },
+  { id: 'structural', label: { ko: '구조', en: 'Structural', ja: '構造', zh: '结构', es: 'Estructural', ar: 'إنشائي' }, icon: '🏗️', hint: { ko: '하중 지지', en: 'Load-bearing', ja: '荷重支持', zh: '承载', es: 'Soporte de carga', ar: 'تحمل الأحمال' } },
+  { id: 'food_contact', label: { ko: '식품접촉', en: 'Food-safe', ja: '食品接触', zh: '食品接触', es: 'Apto para alimentos', ar: 'آمن للأغذية' }, icon: '🍽️', hint: { ko: '무독·매끈한 표면', en: 'Non-toxic, smooth', ja: '無毒・滑らかな表面', zh: '无毒、表面光滑', es: 'No tóxico y liso', ar: 'غير سام وسطح أملس' } },
+  { id: 'electrical_insulation', label: { ko: '전기절연', en: 'Insulator', ja: '電気絶縁', zh: '电气绝缘', es: 'Aislante', ar: 'عازل كهربائي' }, icon: '⚡', hint: { ko: '비전도성', en: 'Non-conductive', ja: '非導電性', zh: '不导电', es: 'No conductor', ar: 'غير موصل' } },
+  { id: 'lightweight', label: { ko: '경량', en: 'Lightweight', ja: '軽量', zh: '轻量', es: 'Ligero', ar: 'خفيف الوزن' }, icon: '🪶', hint: { ko: '저밀도', en: 'Low density', ja: '低密度', zh: '低密度', es: 'Baja densidad', ar: 'كثافة منخفضة' } },
+  { id: 'prototype_3dp', label: { ko: '3D 프린팅', en: '3D Print', ja: '3Dプリント', zh: '3D打印', es: 'Impresión 3D', ar: 'طباعة ثلاثية الأبعاد' }, icon: '🖨️', hint: { ko: '빠른 시제품', en: 'Rapid prototype', ja: '迅速な試作', zh: '快速原型', es: 'Prototipo rápido', ar: 'نموذج أولي سريع' } },
 ];
 
 export function getMaterialsForUseCase(useCase: MaterialUseCase): MaterialPreset[] {

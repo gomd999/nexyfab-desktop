@@ -11,9 +11,13 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
+import { readBoundedJson } from '@/lib/boundedJsonBody';
 import { chatCompletion, AiNotConfiguredError, AiProviderError, type ChatMessage } from '@/lib/ai';
 import { getPrompt } from '@/lib/ai/prompts';
 import { recordPromptCall, classifyAiError } from '@/lib/ai/telemetry';
+import { localizedApiMessage, resolveServerLocale } from '@/lib/i18n/serverLocale';
+
+const MAX_JSON_BODY_BYTES = 4 * 1024 * 1024;
 
 interface RfqBrief {
   quoteId?: string;
@@ -165,18 +169,20 @@ function ruleBasedDraft(body: RequestBody): ResponseDraft {
 }
 
 export async function POST(req: NextRequest) {
+  const requestBody = await readBoundedJson(req, MAX_JSON_BODY_BYTES).catch(() => ({})) as RequestBody;
+  const locale = resolveServerLocale(req, requestBody.lang ?? req.nextUrl.searchParams.get('lang'));
   const { checkPlan, checkMonthlyLimit, recordUsageEvent } = await import('@/lib/plan-guard');
   const planCheck = await checkPlan(req, 'free');
   if (!planCheck.ok) return planCheck.response;
 
-  const usageCheck = await checkMonthlyLimit(planCheck.userId, planCheck.plan, 'rfq_responder');
+  const usageCheck = await checkMonthlyLimit(planCheck.userId, planCheck.plan, 'rfq_responder', planCheck.orgId);
   if (!usageCheck.ok) {
     const isPro = usageCheck.limit === -2;
     return NextResponse.json(
       {
         error: isPro
-          ? 'RFQ Responder requires Pro plan or higher.'
-          : `Free plan limit reached (${usageCheck.limit}/month). Upgrade for unlimited RFQ Responder.`,
+          ? localizedApiMessage(locale, 'planUpgrade')
+          : localizedApiMessage(locale, 'planLimit', { limit: `${usageCheck.limit}/month` }),
         requiresPro: isPro,
         used: usageCheck.used,
         limit: usageCheck.limit,
@@ -185,9 +191,9 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const body = await req.json().catch(() => ({})) as RequestBody;
+  const body = requestBody;
   if (!body.rfq) {
-    return NextResponse.json({ error: 'rfq is required' }, { status: 400 });
+    return NextResponse.json({ error: localizedApiMessage(locale, 'messageRequired'), code: 'RFQ_RESPONDER_INPUT_REQUIRED' }, { status: 400 });
   }
 
   const { recordAIHistory } = await import('@/lib/ai-history');
@@ -203,11 +209,11 @@ export async function POST(req: NextRequest) {
 
   const prompt = getPrompt('rfq-responder');
   const messages: ChatMessage[] = [
-    { role: 'system', content: prompt.template },
+    { role: 'system', content: `${prompt.template}\n\n[OUTPUT LANGUAGE CONTRACT]\nWrite primary note, labels, and caveats in ${locale.languageName}. Keep the *Ko fields as Korean legacy compatibility text.` },
     { role: 'user', content: JSON.stringify({
       rfq: body.rfq,
       partner: body.partner,
-      requestedLanguage: body.lang ?? 'ko',
+      requestedLanguage: locale.languageName,
     }) },
   ];
 
@@ -223,6 +229,7 @@ export async function POST(req: NextRequest) {
     content = result.text;
     recordPromptCall({
       userId: planCheck.userId,
+      orgId: planCheck.orgId,
       promptId: prompt.id,
       promptVersion: prompt.version,
       provider: result.provider,
@@ -235,6 +242,7 @@ export async function POST(req: NextRequest) {
   } catch (e) {
     recordPromptCall({
       userId: planCheck.userId,
+      orgId: planCheck.orgId,
       promptId: prompt.id,
       promptVersion: prompt.version,
       provider: e instanceof AiProviderError ? e.provider : 'unknown',
@@ -244,33 +252,35 @@ export async function POST(req: NextRequest) {
       errorClass: classifyAiError(e),
     });
     if (e instanceof AiNotConfiguredError) {
-      recordUsageEvent(planCheck.userId, 'rfq_responder');
+      recordUsageEvent(planCheck.userId, 'rfq_responder', undefined, planCheck.orgId);
       const fallback = ruleBasedDraft(body);
       recordAIHistory({
         userId: planCheck.userId,
+        orgId: planCheck.orgId,
         feature: 'rfq_responder',
         title: historyTitle,
         payload: fallback,
         context: historyContext,
         projectId: body.projectId,
       });
-      return NextResponse.json(fallback);
+      return NextResponse.json({ ...fallback, outputLanguage: locale.route });
     }
     const detail = e instanceof AiProviderError
       ? `${e.provider}${e.status ? ` (${e.status})` : ''}: ${e.message}`
       : (e instanceof Error ? e.message : String(e));
     console.warn('[rfq-responder] AI provider failed, using rule-based fallback:', detail);
-    recordUsageEvent(planCheck.userId, 'rfq_responder');
+    recordUsageEvent(planCheck.userId, 'rfq_responder', undefined, planCheck.orgId);
     const fallback = ruleBasedDraft(body);
     recordAIHistory({
       userId: planCheck.userId,
+      orgId: planCheck.orgId,
       feature: 'rfq_responder',
       title: historyTitle,
       payload: fallback,
       context: historyContext,
       projectId: body.projectId,
     });
-    return NextResponse.json(fallback);
+    return NextResponse.json({ ...fallback, outputLanguage: locale.route });
   }
 
   try {
@@ -295,28 +305,30 @@ export async function POST(req: NextRequest) {
         : (Array.isArray(parsed.caveats) ? parsed.caveats.slice(0, 6) : []),
     };
 
-    recordUsageEvent(planCheck.userId, 'rfq_responder');
+    recordUsageEvent(planCheck.userId, 'rfq_responder', undefined, planCheck.orgId);
     recordAIHistory({
       userId: planCheck.userId,
+      orgId: planCheck.orgId,
       feature: 'rfq_responder',
       title: historyTitle,
       payload: draft,
       context: historyContext,
       projectId: body.projectId,
     });
-    return NextResponse.json(draft);
+    return NextResponse.json({ ...draft, outputLanguage: locale.route });
   } catch (err) {
     console.warn('[rfq-responder] AI response parse failed, using rule-based fallback:', err);
-    recordUsageEvent(planCheck.userId, 'rfq_responder');
+    recordUsageEvent(planCheck.userId, 'rfq_responder', undefined, planCheck.orgId);
     const fallback = ruleBasedDraft(body);
     recordAIHistory({
       userId: planCheck.userId,
+      orgId: planCheck.orgId,
       feature: 'rfq_responder',
       title: historyTitle,
       payload: fallback,
       context: historyContext,
       projectId: body.projectId,
     });
-    return NextResponse.json(fallback);
+    return NextResponse.json({ ...fallback, outputLanguage: locale.route });
   }
 }

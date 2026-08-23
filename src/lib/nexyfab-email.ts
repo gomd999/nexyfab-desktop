@@ -1,6 +1,7 @@
 import nodemailer from 'nodemailer';
 import { escapeHtml } from './sanitize';
 import { getDbAdapter } from './db-adapter';
+import { formatDate, formatMoney, formatNumber } from './i18n/format';
 
 // ─── DB-first template loader ─────────────────────────────────────────────────
 
@@ -64,13 +65,20 @@ export function nexyfabEmailLocaleFromLanguageTag(raw: string | null | undefined
   const primary = head.split('-')[0] ?? head;
   if (primary === 'kr' || primary === 'ko') return 'ko';
   if (primary === 'ja') return 'ja';
-  if (primary === 'zh' || head.startsWith('zh-')) return 'cn';
+  if (primary === 'zh' || primary === 'cn' || head.startsWith('zh-')) return 'cn';
   if (primary === 'es') return 'es';
   if (primary === 'ar') return 'ar';
   return 'en';
 }
 
-/** HTML copy family when a locale reuses another template (`es` / `ar` → English body). */
+function formatEmailDate(raw: string | undefined, locale: NexyfabEmailContentLocale): string | undefined {
+  if (!raw) return undefined;
+  const timestamp = Date.parse(raw);
+  if (!Number.isFinite(timestamp)) return raw;
+  return formatDate(timestamp, locale) ?? '';
+}
+
+/** Shared copy family for the remaining Korean/English/Japanese/Chinese template branches. */
 function nexyfabEmailCopyFamily(locale: NexyfabEmailContentLocale): 'ko' | 'en' | 'ja' | 'cn' {
   if (locale === 'ko') return 'ko';
   if (locale === 'ja') return 'ja';
@@ -232,11 +240,20 @@ export async function sendEmail(
 
 // ─── HTML wrapper ─────────────────────────────────────────────────────────────
 
-function emailWrapper(content: string, unsubscribeUrl?: string): string {
+const EMAIL_FOOTER: Record<NexyfabEmailContentLocale, string> = {
+  ko: '\uC218\uC2E0 \uAC70\uBD80 / Unsubscribe',
+  en: 'Unsubscribe',
+  ja: '\u914D\u4FE1\u505C\u6B62',
+  cn: '\u53D6\u6D88\u8BA2\u9605',
+  es: 'Cancelar suscripción',
+  ar: '\u0625\u0644\u063A\u0627\u0621 \u0627\u0644\u0627\u0634\u062A\u0631\u0627\u0643',
+};
+
+function emailWrapper(content: string, unsubscribeUrl?: string, locale: NexyfabEmailContentLocale = 'en'): string {
   const baseUrl = process.env.NEXTAUTH_URL || 'https://nexyfab.com';
   const unsub = unsubscribeUrl || `${baseUrl}/unsubscribe`;
   return `<!DOCTYPE html>
-<html lang="ko">
+<html lang="${locale === 'ko' ? 'ko' : locale}">
 <head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
 <body style="margin:0;padding:16px;background:#161b22;">
   <div style="background:#0d1117;color:#e6edf3;font-family:system-ui,-apple-system,sans-serif;max-width:560px;margin:0 auto;padding:32px;border-radius:12px;border:1px solid #30363d;">
@@ -245,7 +262,7 @@ function emailWrapper(content: string, unsubscribeUrl?: string): string {
     <hr style="border:none;border-top:1px solid #21262d;margin:32px 0 16px;">
     <p style="color:#6e7681;font-size:11px;margin:0;line-height:1.6;">
       NexyFab &middot; <a href="${baseUrl}" style="color:#6e7681;">nexyfab.com</a>
-      &middot; <a href="${unsub}" style="color:#6e7681;">수신 거부 / Unsubscribe</a>
+      &middot; <a href="${unsub}" style="color:#6e7681;">${EMAIL_FOOTER[locale]}</a>
     </p>
   </div>
 </body>
@@ -254,7 +271,19 @@ function emailWrapper(content: string, unsubscribeUrl?: string): string {
 
 // ─── RFQ helpers ──────────────────────────────────────────────────────────────
 
-function rfqDetailTable(rfq: RFQEmailData): string {
+function rfqDetailTable(rfq: RFQEmailData, locale: NexyfabEmailContentLocale = 'ko'): string {
+  if (locale !== 'ko') {
+    const copy: Record<Exclude<NexyfabEmailContentLocale, 'ko'>, { rfq: string; part: string; material: string; quantity: string; volume: string; cost: string; score: string }> = {
+      en: { rfq: 'RFQ number', part: 'Part', material: 'Material', quantity: 'Quantity', volume: 'Volume', cost: 'Estimated cost', score: 'DFM score' },
+      ja: { rfq: '\u898B\u7A4D\u3082\u308A\u756A\u53F7', part: '\u90E8\u54C1\u540D', material: '\u6750\u8CEA', quantity: '\u6570\u91CF', volume: '\u4F53\u7A4D', cost: '\u4E88\u60F3\u8CBB\u7528', score: 'DFM \u30B9\u30B3\u30A2' },
+      cn: { rfq: 'RFQ \u7F16\u53F7', part: '\u96F6\u4EF6\u540D\u79F0', material: '\u6750\u6599', quantity: '\u6570\u91CF', volume: '\u4F53\u79EF', cost: '\u9884\u8BA1\u8D39\u7528', score: 'DFM \u8BC4\u5206' },
+      es: { rfq: 'N\u00famero de RFQ', part: 'Pieza', material: 'Material', quantity: 'Cantidad', volume: 'Volumen', cost: 'Coste estimado', score: 'Puntuaci\u00f3n DFM' },
+      ar: { rfq: '\u0631\u0642\u0645 RFQ', part: '\u0627\u0644\u0642\u0637\u0639\u0629', material: '\u0627\u0644\u0645\u0627\u062f\u0629', quantity: '\u0627\u0644\u0643\u0645\u064a\u0629', volume: '\u0627\u0644\u062d\u062c\u0645', cost: '\u0627\u0644\u062a\u0643\u0644\u0641\u0629 \u0627\u0644\u062a\u0642\u062f\u064a\u0631\u064a\u0629', score: '\u062f\u0631\u062c\u0629 DFM' },
+    };
+    const c = copy[locale as Exclude<NexyfabEmailContentLocale, 'ko'>];
+    const quantity = formatNumber(rfq.quantity, locale) ?? String(rfq.quantity);
+    return `<table style="width:100%;border-collapse:collapse;margin:16px 0;"><tr><td>${c.rfq}</td><td>${escapeHtml(rfq.rfqId.slice(0, 8).toUpperCase())}</td></tr><tr><td>${c.part}</td><td>${escapeHtml(rfq.shapeName)}</td></tr><tr><td>${c.material}</td><td>${escapeHtml(rfq.materialId)}</td></tr><tr><td>${c.quantity}</td><td>${quantity}</td></tr><tr><td>${c.volume}</td><td>${rfq.volume_cm3.toFixed(2)} cm³</td></tr>${rfq.dfmScore != null ? `<tr><td>${c.score}</td><td>${rfq.dfmScore}/100</td></tr>` : ''}${rfq.estimatedCost != null ? `<tr><td>${c.cost}</td><td>$${rfq.estimatedCost.toFixed(2)}</td></tr>` : ''}</table>`;
+  }
   const costLine = rfq.estimatedCost != null
     ? `<tr><td style="padding:6px 0;color:#8b949e;font-size:13px;">예상 비용</td><td style="padding:6px 0;font-size:13px;text-align:right;color:#e6edf3;">$${rfq.estimatedCost.toFixed(2)}</td></tr>`
     : '';
@@ -278,7 +307,7 @@ function rfqDetailTable(rfq: RFQEmailData): string {
       </tr>
       <tr style="border-bottom:1px solid #21262d;">
         <td style="padding:6px 0;color:#8b949e;font-size:13px;">수량</td>
-        <td style="padding:6px 0;font-size:13px;text-align:right;color:#e6edf3;">${rfq.quantity.toLocaleString()} 개</td>
+        <td style="padding:6px 0;font-size:13px;text-align:right;color:#e6edf3;">${formatNumber(rfq.quantity, 'ko') ?? rfq.quantity} 개</td>
       </tr>
       <tr style="border-bottom:1px solid #21262d;">
         <td style="padding:6px 0;color:#8b949e;font-size:13px;">부피</td>
@@ -308,6 +337,14 @@ export function rfqConfirmationHtml(rfq: RFQEmailData, locale: NexyfabEmailConte
   const rfqUrl = `${baseUrl}/${langPath}/nexyfab/rfq/${rfq.rfqId}`;
 
   const safeUserName = rfq.userName ? escapeHtml(rfq.userName) : '';
+  if (locale === 'es' || locale === 'ar') {
+    const es = locale === 'es';
+    const title = es ? 'Solicitud de cotización recibida' : '\u062a\u0645 \u0627\u0633\u062a\u0644\u0627\u0645 \u0637\u0644\u0628 \u0627\u0644\u062a\u0633\u0639\u064a\u0631';
+    const greeting = es ? `Hola${safeUserName ? ` ${safeUserName}` : ''}. Tu solicitud se ha enviado correctamente.` : `\u0645\u0631\u062d\u0628\u0627${safeUserName ? ` ${safeUserName}` : ''}. \u062a\u0645 \u0625\u0631\u0633\u0627\u0644 \u0637\u0644\u0628\u0643 \u0628\u0646\u062c\u0627\u062d.`;
+    const cta = es ? 'Ver mi solicitud' : '\u0639\u0631\u0636 \u0637\u0644\u0628\u064a';
+    const content = `<h2>${title}</h2><p>${greeting}<br>${es ? 'Nuestro equipo se pondrá en contacto contigo en 24–48 horas.' : '\u0633\u064a\u062a\u0648\u0627\u0635\u0644 \u0641\u0631\u064a\u0642\u0646\u0627 \u0645\u0639\u0643 \u062e\u0644\u0627\u0644 24–48 \u0633\u0627\u0639\u0629.'}</p>${rfqDetailTable(rfq, locale)}<a href="${rfqUrl}">${cta}</a>`;
+    return emailWrapper(content, undefined, locale);
+  }
   const fam = nexyfabEmailCopyFamily(locale);
 
   let title: string;
@@ -344,14 +381,14 @@ export function rfqConfirmationHtml(rfq: RFQEmailData, locale: NexyfabEmailConte
     <p style="color:#8b949e;font-size:14px;margin:0 0 20px;line-height:1.6;">
       ${p1}
     </p>
-    ${rfqDetailTable(rfq)}
+    ${rfqDetailTable(rfq, locale)}
     <a href="${rfqUrl}"
        style="display:inline-block;margin-top:8px;padding:12px 24px;background:#388bfd;color:#ffffff;text-decoration:none;border-radius:8px;font-size:14px;font-weight:600;">
       ${cta}
     </a>
   `;
 
-  return emailWrapper(content);
+  return emailWrapper(content, undefined, locale);
 }
 
 /** Admin / ops transactional emails — default Korean unless `NEXYFAB_ADMIN_EMAIL_LOCALE` is set. */
@@ -397,8 +434,18 @@ export function rfqNotificationHtml(
   const baseUrl = process.env.NEXTAUTH_URL || 'https://nexyfab.com';
   const langPath = nexyfabAppLangPathFromEmailLocale(locale);
   const rfqUrl = `${baseUrl}/${langPath}/nexyfab/rfq/${rfq.rfqId}`;
-  const fam = nexyfabEmailCopyFamily(locale);
   const extra = opts?.afterIntroHtml ?? '';
+  if (locale === 'es' || locale === 'ar') {
+    const es = locale === 'es';
+    const accepted = variant === 'quote_accepted';
+    const title = es ? (accepted ? 'Cotización aceptada ✓' : 'Nueva solicitud de cotización') : (accepted ? '\u062a\u0645 \u0642\u0628\u0648\u0644 \u0627\u0644\u0639\u0631\u0636 ✓' : '\u0637\u0644\u0628 \u062a\u0633\u0639\u064a\u0631 \u062c\u062f\u064a\u062f');
+    const intro = es ? (accepted ? 'El cliente ha aceptado la cotización. Confirma la planificación de producción.' : 'Has recibido una nueva RFQ. Revisa los detalles y envía tu oferta.') : (accepted ? '\u0642\u0628\u0644 \u0627\u0644\u0639\u0645\u064a\u0644 \u0627\u0644\u0639\u0631\u0636. \u064a\u0631\u062c\u0649 \u062a\u0623\u0643\u064a\u062f \u062c\u062f\u0648\u0644 \u0627\u0644\u0625\u0646\u062a\u0627\u062c.' : '\u0648\u0635\u0644 \u0637\u0644\u0628 RFQ \u062c\u062f\u064a\u062f. \u0631\u0627\u062c\u0639 \u0627\u0644\u062a\u0641\u0627\u0635\u064a\u0644 \u0648\u0642\u062f\u0645 \u0639\u0631\u0636\u0643.');
+    const cta = es ? (accepted ? 'Abrir RFQ' : 'Enviar cotización') : (accepted ? '\u0641\u062a\u062d RFQ' : '\u062a\u0642\u062f\u064a\u0645 \u0627\u0644\u0639\u0631\u0636');
+    const reqLabel = es ? 'Correo del solicitante' : '\u0628\u0631\u064a\u062f \u0635\u0627\u062d\u0628 \u0627\u0644\u0637\u0644\u0628';
+    const content = `<h2>${title}</h2><p>${intro}</p>${extra}${rfqDetailTable(rfq, locale)}${rfq.userEmail ? `<p>${reqLabel}: ${escapeHtml(rfq.userEmail)}</p>` : ''}<a href="${rfqUrl}">${cta}</a>`;
+    return emailWrapper(content, undefined, locale);
+  }
+  const fam = nexyfabEmailCopyFamily(locale);
 
   let title: string;
   let intro: string;
@@ -465,7 +512,7 @@ export function rfqNotificationHtml(
       ${intro}
     </p>
     ${extra}
-    ${rfqDetailTable(rfq)}
+    ${rfqDetailTable(rfq, locale)}
     ${rfq.userEmail ? `<p style="color:#8b949e;font-size:13px;margin:4px 0;">${reqLabel}: <span style="color:#e6edf3;">${escapeHtml(rfq.userEmail)}</span></p>` : ''}
     <a href="${rfqUrl}"
        style="display:inline-block;margin-top:16px;padding:12px 24px;background:#388bfd;color:#ffffff;text-decoration:none;border-radius:8px;font-size:14px;font-weight:600;">
@@ -473,7 +520,7 @@ export function rfqNotificationHtml(
     </a>
   `;
 
-  return emailWrapper(content);
+  return emailWrapper(content, undefined, locale);
 }
 
 // ─── Template: 환영 이메일 ────────────────────────────────────────────────────
@@ -494,6 +541,14 @@ export function welcomeHtml(name: string, locale: NexyfabEmailContentLocale = 'k
   const langPath = nexyfabAppLangPathFromEmailLocale(locale);
   const ctaUrl = `${baseUrl}/${langPath}/shape-generator`;
   const safeName = escapeHtml(name);
+  if (locale === 'es' || locale === 'ar') {
+    const es = locale === 'es';
+    const title = es ? '¡Te damos la bienvenida a NexyFab! 🎉' : '\u0645\u0631\u062d\u0628\u0627 \u0628\u0643 \u0641\u064a NexyFab! 🎉';
+    const para = es ? `Hola <strong style="color:#e6edf3;">${safeName}</strong>. Gracias por unirte a NexyFab.<br>Descubre una fabricación más inteligente con nuestra plataforma impulsada por IA.` : `\u0645\u0631\u062d\u0628\u0627 <strong style="color:#e6edf3;">${safeName}</strong>. \u0634\u0643\u0631\u0627\u064b \u0644\u0627\u0646\u0636\u0645\u0627\u0645\u0643 \u0625\u0644\u064a\u0646\u0627.<br>\u0627\u062e\u062a\u0628\u0631 \u062a\u0635\u0646\u064a\u0639\u0627\u064b \u0623\u0630\u0643\u0649 \u0645\u0639 \u0645\u0646\u0635\u062a\u0646\u0627 \u0627\u0644\u0645\u062f\u0639\u0648\u0645\u0629 \u0628\u0627\u0644\u0630\u0643\u0627\u0621 \u0627\u0644\u0627\u0635\u0637\u0646\u0627\u0639\u064a.`;
+    const features = es ? ['Carga de diseños 3D — análisis de archivos STL/STEP', 'Análisis DFM — revisión de fabricabilidad con IA', 'Cotización automática — costes y plazos por proceso', 'Conexión con fabricantes — red global de socios'] : ['\u062a\u062d\u0645\u064a\u0644 \u062a\u0635\u0627\u0645\u064a\u0645 3D — \u062a\u062d\u0644\u064a\u0644 \u0645\u0644\u0641\u0627\u062a STL/STEP', '\u062a\u062d\u0644\u064a\u0644 DFM — \u0645\u0631\u0627\u062c\u0639\u0629 \u0627\u0644\u062a\u0635\u0646\u064a\u0639 \u0628\u0627\u0644\u0630\u0643\u0627\u0621 \u0627\u0644\u0627\u0635\u0637\u0646\u0627\u0639\u064a', '\u062a\u0633\u0639\u064a\u0631 \u062a\u0644\u0642\u0627\u0626\u064a — \u062a\u0642\u062f\u064a\u0631 \u0627\u0644\u062a\u0643\u0644\u0641\u0629 \u0648\u0627\u0644\u0645\u0647\u0644\u0629', '\u0627\u0644\u062a\u0648\u0627\u0635\u0644 \u0645\u0639 \u0627\u0644\u0645\u0635\u0646\u0639\u064a\u0646 — \u0634\u0628\u0643\u0629 \u0634\u0631\u0643\u0627\u0621 \u0639\u0627\u0644\u0645\u064a\u0629'];
+    const content = `<h2>${title}</h2><p>${para}</p><p> ${es ? 'Funciones principales' : '\u0627\u0644\u0645\u064a\u0632\u0627\u062a \u0627\u0644\u0631\u0626\u064a\u0633\u064a\u0629'}</p><ul>${features.map(f => `<li>${f}</li>`).join('')}</ul><a href="${ctaUrl}">${es ? 'Empezar ahora' : '\u0627\u0628\u062f\u0623 \u0627\u0644\u0622\u0646'}</a>`;
+    return emailWrapper(content, undefined, locale);
+  }
   const fam = nexyfabEmailCopyFamily(locale);
 
   let title: string;
@@ -566,7 +621,7 @@ export function welcomeHtml(name: string, locale: NexyfabEmailContentLocale = 'k
     </a>
   `;
 
-  return emailWrapper(content);
+  return emailWrapper(content, undefined, locale);
 }
 
 // ─── Template: 인증 코드 ──────────────────────────────────────────────────────
@@ -618,7 +673,7 @@ export function verificationHtml(code: string, locale: NexyfabEmailContentLocale
     <p style="color:#6e7681;font-size:12px;margin:0;">${foot}</p>
   `;
 
-  return emailWrapper(content);
+  return emailWrapper(content, undefined, locale);
 }
 
 // ─── Template: 드립 D+1 — 핵심 기능 소개 ──────────────────────────────────────
@@ -638,6 +693,14 @@ export function dripD1Html(name: string, locale: NexyfabEmailContentLocale = 'ko
   const baseUrl = process.env.NEXTAUTH_URL || 'https://nexyfab.com';
   const safeName = escapeHtml(name || '');
   const langPath = nexyfabAppLangPathFromEmailLocale(locale);
+  if (locale === 'es' || locale === 'ar') {
+    const es = locale === 'es';
+    const items = es
+      ? ['Diseño 3D en el navegador — importa STEP/IGES', 'Cotización rápida con IA — analiza costes por material y proceso', 'Matching de fabricantes — socios recomendados por IA']
+      : ['\u062a\u0635\u0645\u064a\u0645 3D \u0641\u064a \u0627\u0644\u0645\u062a\u0635\u0641\u062d — \u0627\u0633\u062a\u064a\u0631\u0627\u062f STEP/IGES', '\u062a\u0633\u0639\u064a\u0631 \u0633\u0631\u064a\u0639 \u0628\u0627\u0644\u0630\u0643\u0627\u0621 \u0627\u0644\u0627\u0635\u0637\u0646\u0627\u0639\u064a — \u062a\u062d\u0644\u064a\u0644 \u0627\u0644\u062a\u0643\u0644\u0641\u0629', '\u0645\u0637\u0627\u0628\u0642\u0629 \u0627\u0644\u0645\u0635\u0646\u0639\u064a\u0646 — \u0634\u0631\u0643\u0627\u0621 \u0645\u0648\u0635\u0649 \u0628\u0647\u0645'];
+    const content = `<h2>${es ? 'Tres funciones para probar hoy' : '\u062b\u0644\u0627\u062b \u0645\u064a\u0632\u0627\u062a \u0644\u062a\u062c\u0631\u0628\u062a\u0647\u0627 \u0627\u0644\u064a\u0648\u0645'}</h2><p>${es ? `Hola <strong>${safeName}</strong>. Descubre las funciones principales de NexyFab; cada una ofrece resultados en unos minutos.` : `\u0645\u0631\u062d\u0628\u0627 <strong>${safeName}</strong>. \u0627\u0643\u062a\u0634\u0641 \u0627\u0644\u0645\u064a\u0632\u0627\u062a \u0627\u0644\u0623\u0633\u0627\u0633\u064a\u0629 \u0641\u064a NexyFab.`}</p><ul>${items.map(item => `<li>${item}</li>`).join('')}</ul><a href="${baseUrl}/${langPath}/nexyfab">${es ? 'Abrir NexyFab' : '\u0641\u062a\u062d NexyFab'}</a>`;
+    return emailWrapper(content, unsubscribeUrl, locale);
+  }
   const fam = nexyfabEmailCopyFamily(locale);
 
   let h2: string;
@@ -723,7 +786,7 @@ export function dripD1Html(name: string, locale: NexyfabEmailContentLocale = 'ko
     </a>
   `;
 
-  return emailWrapper(content, unsubscribeUrl);
+  return emailWrapper(content, unsubscribeUrl, locale);
 }
 
 // ─── Template: 드립 D+7 — Pro 업그레이드 제안 ──────────────────────────────────
@@ -745,6 +808,12 @@ export function dripD7Html(name: string, locale: NexyfabEmailContentLocale = 'ko
   const langPath = nexyfabAppLangPathFromEmailLocale(locale);
   const fam = nexyfabEmailCopyFamily(locale);
   const pricingUrl = `${baseUrl}/${langPath}/nexyfab/pricing`;
+  if (locale === 'es' || locale === 'ar') {
+    const es = locale === 'es';
+    const benefits = es ? ['Proyectos 3D ilimitados — guarda y comparte', 'DFM avanzado con IA — incluye análisis FEA', 'Envío automático de RFQ — conexión directa con fábricas', 'Colaboración de equipo — invita a miembros y co-diseña', 'Soporte prioritario'] : ['\u0645\u0634\u0627\u0631\u064a\u0639 3D \u063a\u064a\u0631 \u0645\u062d\u062f\u0648\u062f\u0629', 'DFM \u0645\u062a\u0642\u062f\u0645 \u0628\u0627\u0644\u0630\u0643\u0627\u0621 \u0627\u0644\u0627\u0635\u0637\u0646\u0627\u0639\u064a', '\u0625\u0631\u0633\u0627\u0644 RFQ \u062a\u0644\u0642\u0627\u0626\u064a\u060c \u0648\u0635\u0644 \u0645\u0628\u0627\u0634\u0631 \u0628\u0627\u0644\u0645\u0635\u0627\u0646\u0639', '\u062a\u0639\u0627\u0648\u0646 \u0627\u0644\u0641\u0631\u064a\u0642', '\u062f\u0639\u0645 \u0645\u0648\u0644\u0649'];
+    const content = `<h2>${es ? 'Crea más con NexyFab Pro' : '\u0627\u0646\u062c\u0632 \u0627\u0644\u0645\u0632\u064a\u062f \u0645\u0639 NexyFab Pro'}</h2><p>${es ? `Hola <strong>${safeName}</strong>. Lleva tu fabricación al siguiente nivel con proyectos ilimitados y herramientas avanzadas.` : `\u0645\u0631\u062d\u0628\u0627 <strong>${safeName}</strong>. \u0627\u0631\u062a\u0642 \u0628\u062a\u0635\u0646\u064a\u0639\u0643 \u0645\u0639 \u0627\u0644\u0645\u0634\u0627\u0631\u064a\u0639 \u0648\u0627\u0644\u0623\u062f\u0648\u0627\u062a \u0627\u0644\u0645\u062a\u0642\u062f\u0645\u0629.`}</p><ul>${benefits.map(item => `<li>${item}</li>`).join('')}</ul><a href="${pricingUrl}">${es ? 'Empezar Pro' : '\u0627\u0628\u062f\u0623 Pro'}</a> <a href="${baseUrl}/${langPath}/nexyfab">${es ? 'Continuar gratis' : '\u0627\u0644\u0645\u062a\u0627\u0628\u0639\u0629 \u0645\u062c\u0627\u0646\u0627\u064b'}</a>`;
+    return emailWrapper(content, unsubscribeUrl, locale);
+  }
 
   let h2: string;
   let intro: string;
@@ -835,7 +904,7 @@ export function dripD7Html(name: string, locale: NexyfabEmailContentLocale = 'ko
     </div>
   `;
 
-  return emailWrapper(content, unsubscribeUrl);
+  return emailWrapper(content, unsubscribeUrl, locale);
 }
 
 // ─── Transactional: RFQ assigned to factory ──────────────────────────────────
@@ -850,8 +919,25 @@ export function rfqAssignedToFactoryHtml(opts: {
   materialId: string;
   quantity: number;
   note?: string;
+  lang?: string;
   adminDashboardUrl?: string;
 }): string {
+  const locale = nexyfabEmailLocaleFromLanguageTag(opts.lang);
+  if (locale !== 'ko') {
+    const copy: Record<Exclude<NexyfabEmailContentLocale, 'ko'>, { title: string; intro: string; part: string; material: string; quantity: string; note: string; cta: string; footer: string }> = {
+      en: { title: 'New quote request', intro: 'A new quote request has been assigned to your factory. Review the details and submit your quote.', part: 'Part', material: 'Material', quantity: 'Quantity', note: 'Note', cta: 'Submit quote', footer: 'Please respond within 48 hours.' },
+      ja: { title: '\u65b0\u3057\u3044\u898B\u7A4D\u3082\u308A\u4F9D\u983C', intro: '\u65B0\u3057\u3044\u898B\u7A4D\u3082\u308A\u4F9D\u983C\u304C\u5FA1\u793E\u306B\u5272\u308A\u5F53\u3066\u3089\u308C\u307E\u3057\u305F\u3002\u8A73\u7D30\u3092\u78BA\u8A8D\u3057\u3001\u898B\u7A4D\u3082\u308A\u3092\u63D0\u51FA\u3057\u3066\u304F\u3060\u3055\u3044\u3002', part: '\u90E8\u54C1', material: '\u6750\u8CEA', quantity: '\u6570\u91CF', note: '\u30E1\u30E2', cta: '\u898B\u7A4D\u3082\u308A\u3092\u63D0\u51FA', footer: '48\u6642\u9593\u4EE5\u5185\u306B\u3054\u56DE\u7B54\u304F\u3060\u3055\u3044\u3002' },
+      cn: { title: '\u65B0\u62A5\u4EF7\u8BF7\u6C42', intro: '\u65B0\u7684\u62A5\u4EF7\u8BF7\u6C42\u5DF2\u5206\u914D\u7ED9\u60A8\u7684\u5DE5\u5382\u3002\u8BF7\u67E5\u770B\u8BE6\u60C5\u5E76\u63D0\u4EA4\u62A5\u4EF7\u3002', part: '\u96F6\u4EF6', material: '\u6750\u6599', quantity: '\u6570\u91CF', note: '\u5907\u6CE8', cta: '\u63D0\u4EA4\u62A5\u4EF7', footer: '\u8BF7\u5728 48 \u5C0F\u65F6\u5185\u56DE\u590D\u3002' },
+      es: { title: 'Nueva solicitud de cotizaci\u00f3n', intro: 'Se ha asignado una nueva solicitud de cotizaci\u00f3n a tu f\u00e1brica. Revisa los datos y env\u00eda tu oferta.', part: 'Pieza', material: 'Material', quantity: 'Cantidad', note: 'Nota', cta: 'Enviar cotizaci\u00f3n', footer: 'Responde en un plazo de 48 horas.' },
+      ar: { title: '\u0637\u0644\u0628 \u062a\u0633\u0639\u064a\u0631 \u062c\u062f\u064a\u062f', intro: '\u062a\u0645 \u062a\u0639\u064a\u064a\u0646 \u0637\u0644\u0628 \u062a\u0633\u0639\u064a\u0631 \u062c\u062f\u064a\u062f \u0644\u0645\u0635\u0646\u0639\u0643. \u0631\u0627\u062c\u0639 \u0627\u0644\u062a\u0641\u0627\u0635\u064a\u0644 \u0648\u0642\u062f\u0645 \u0639\u0631\u0636\u0643.', part: '\u0627\u0644\u0642\u0637\u0639\u0629', material: '\u0627\u0644\u0645\u0627\u062f\u0629', quantity: '\u0627\u0644\u0643\u0645\u064a\u0629', note: '\u0645\u0644\u0627\u062d\u0638\u0629', cta: '\u062a\u0642\u062f\u064a\u0645 \u0627\u0644\u0639\u0631\u0636', footer: '\u064a\u0631\u062c\u0649 \u0627\u0644\u0631\u062f \u062e\u0644\u0627\u0644 48 \u0633\u0627\u0639\u0629.' },
+    };
+    const c = copy[locale];
+    const quantity = formatNumber(opts.quantity, locale) ?? String(opts.quantity);
+    const base = process.env.NEXT_PUBLIC_SITE_URL || 'https://nexyfab.com';
+    const dashUrl = opts.adminDashboardUrl || `${base}/partner/quotes`;
+    const content = `<h2>${c.title}</h2><p>${c.intro}</p><table><tr><td>RFQ ID</td><td>${escapeHtml(opts.rfqId)}</td></tr><tr><td>${c.part}</td><td>${escapeHtml(opts.shapeName)}</td></tr><tr><td>${c.material}</td><td>${escapeHtml(opts.materialId)}</td></tr><tr><td>${c.quantity}</td><td>${quantity}</td></tr>${opts.note ? `<tr><td>${c.note}</td><td>${escapeHtml(opts.note)}</td></tr>` : ''}</table><a href="${dashUrl}">${c.cta}</a><p>${c.footer}</p>`;
+    return emailWrapper(content, undefined, locale);
+  }
   const base = process.env.NEXT_PUBLIC_SITE_URL || 'https://nexyfab.com';
   const dashUrl = opts.adminDashboardUrl || `${base}/partner/quotes`;
 
@@ -866,7 +952,7 @@ export function rfqAssignedToFactoryHtml(opts: {
         <tr><td style="color:#8b949e;padding:6px 0;width:120px;">RFQ ID</td><td style="color:#e6edf3;font-weight:600;">${escapeHtml(opts.rfqId)}</td></tr>
         <tr><td style="color:#8b949e;padding:6px 0;">부품명</td><td style="color:#e6edf3;font-weight:600;">${escapeHtml(opts.shapeName)}</td></tr>
         <tr><td style="color:#8b949e;padding:6px 0;">소재</td><td style="color:#e6edf3;">${escapeHtml(opts.materialId)}</td></tr>
-        <tr><td style="color:#8b949e;padding:6px 0;">수량</td><td style="color:#e6edf3;">${opts.quantity.toLocaleString()}개</td></tr>
+        <tr><td style="color:#8b949e;padding:6px 0;">수량</td><td style="color:#e6edf3;">${formatNumber(opts.quantity, 'ko') ?? opts.quantity}개</td></tr>
         ${opts.note ? `<tr><td style="color:#8b949e;padding:6px 0;">메모</td><td style="color:#e6edf3;">${escapeHtml(opts.note)}</td></tr>` : ''}
       </table>
     </div>
@@ -878,7 +964,7 @@ export function rfqAssignedToFactoryHtml(opts: {
       48시간 내에 응답해 주시면 감사하겠습니다.
     </p>
   `;
-  return emailWrapper(content);
+  return emailWrapper(content, undefined, locale);
 }
 
 // ─── Transactional: Quote received by customer ───────────────────────────────
@@ -896,6 +982,8 @@ export function quoteReceivedEmailSubject(locale: NexyfabEmailContentLocale, pro
 
 /** In-app `nf_notifications` title for quote received (copy family, not per es/ar string). */
 export function quoteReceivedInAppTitle(locale: NexyfabEmailContentLocale, projectName: string): string {
+  if (locale === 'es') return `Cotización recibida: ${projectName}`;
+  if (locale === 'ar') return `\u062a\u0645 \u0627\u0633\u062a\u0644\u0627\u0645 \u0627\u0644\u0639\u0631\u0636: ${projectName}`;
   switch (nexyfabEmailCopyFamily(locale)) {
     case 'ko': return `견적 도착: ${projectName}`;
     case 'ja': return `見積もり到着: ${projectName}`;
@@ -906,8 +994,10 @@ export function quoteReceivedInAppTitle(locale: NexyfabEmailContentLocale, proje
 
 /** In-app notification body line (copy family). */
 export function quoteReceivedInAppBody(locale: NexyfabEmailContentLocale, factoryLabel: string): string {
+  if (locale === 'es') return `${factoryLabel || 'Fabricante'} ha enviado una cotización.`;
+  if (locale === 'ar') return `${factoryLabel || '\u0627\u0644\u0645\u0635\u0646\u0639'} \u0642\u062f\u0645 \u0639\u0631\u0636\u0627\u064b.`;
   const fam = nexyfabEmailCopyFamily(locale);
-  const fn = factoryLabel || (fam === 'ko' ? '제조사' : 'Manufacturer');
+  const fn = factoryLabel || ({ ko: '제조사', en: 'Manufacturer', ja: 'メーカー', cn: '制造商' } as const)[fam];
   switch (fam) {
     case 'ko': return `${fn}에서 견적을 제출했습니다.`;
     case 'ja': return `${fn}が見積もりを提出しました。`;
@@ -936,9 +1026,14 @@ export function quoteReceivedHtml(opts: {
   const rfqUrl = opts.rfqPageUrl || `${base}/${langPath}/nexyfab/rfq/${opts.rfqId}`;
   const currency = opts.currency || 'KRW';
   const fam = nexyfabEmailCopyFamily(locale);
-  const numLocale = fam === 'ko' ? 'ko-KR' : fam === 'ja' ? 'ja-JP' : fam === 'cn' ? 'zh-CN' : 'en-US';
-  const amount = opts.estimatedAmount.toLocaleString(numLocale);
+  const amount = formatNumber(opts.estimatedAmount, locale) ?? String(opts.estimatedAmount);
   const safeName = escapeHtml(opts.userName || '');
+  if (locale === 'es' || locale === 'ar') {
+    const es = locale === 'es';
+    const labels = es ? { title: '¡Has recibido una cotización! 💬', greeting: `Hola <strong>${safeName}</strong>,`, intro: 'ha enviado una cotización para tu solicitud.', part: 'Pieza', manufacturer: 'Fabricante', amount: 'Importe de la cotización', valid: 'Válida hasta', cta: 'Revisar y aceptar', footer: 'Acepta dentro del periodo de validez.' } : { title: '\u0648\u0635\u0644 \u0639\u0631\u0636 \u0633\u0639\u0631 💬', greeting: `\u0645\u0631\u062d\u0628\u0627 <strong>${safeName}</strong}`, intro: '\u0642\u062f\u0645 \u0639\u0631\u0636\u0627\u064b \u0644\u0637\u0644\u0628\u0643.', part: '\u0627\u0644\u0642\u0637\u0639\u0629', manufacturer: '\u0627\u0644\u0645\u0635\u0646\u0639', amount: '\u0642\u064a\u0645\u0629 \u0627\u0644\u0639\u0631\u0636', valid: '\u0635\u0627\u0644\u062d \u062d\u062a\u0649', cta: '\u0645\u0631\u0627\u062c\u0639\u0629 \u0648\u0642\u0628\u0648\u0644', footer: '\u064a\u0631\u062c\u0649 \u0627\u0644\u0642\u0628\u0648\u0644 \u062e\u0644\u0627\u0644 \u0645\u062f\u0629 \u0627\u0644\u0635\u0644\u0627\u062d\u064a\u0629.' };
+    const content = `<h2>${labels.title}</h2><p>${labels.greeting},<br><strong>${escapeHtml(opts.factoryName)}</strong> ${labels.intro}</p><table><tr><td>${labels.part}</td><td>${escapeHtml(opts.shapeName)}</td></tr><tr><td>${labels.manufacturer}</td><td>${escapeHtml(opts.factoryName)}</td></tr><tr><td>${labels.amount}</td><td>${amount} ${escapeHtml(currency)}</td></tr>${opts.validUntil ? `<tr><td>${labels.valid}</td><td>${escapeHtml(opts.validUntil)}</td></tr>` : ''}</table><a href="${rfqUrl}">${labels.cta}</a><p>${labels.footer}</p>`;
+    return emailWrapper(content, undefined, locale);
+  }
 
   let title: string;
   let p1: string;
@@ -1016,7 +1111,7 @@ export function quoteReceivedHtml(opts: {
       ${footer}
     </p>
   `;
-  return emailWrapper(content);
+  return emailWrapper(content, undefined, locale);
 }
 
 // ─── Transactional: Contract signed ──────────────────────────────────────────
@@ -1037,17 +1132,31 @@ export function contractSignedHtml(opts: {
   dashboardUrl?: string;
 }): string {
   const base = process.env.NEXT_PUBLIC_SITE_URL || 'https://nexyfab.com';
-  const lang = opts.lang?.startsWith('ko') ? 'ko' : 'en';
+  const locale = nexyfabEmailLocaleFromLanguageTag(opts.lang);
   const dashUrl = opts.dashboardUrl || (
     opts.recipientType === 'factory'
       ? `${base}/partner/projects`
-      : `${base}/${lang === 'ko' ? 'kr' : 'en'}/nexyfab/orders`
+      : `${base}/${nexyfabAppLangPathFromEmailLocale(locale)}/nexyfab/orders`
   );
   const currency = opts.currency || 'KRW';
-  const amount = opts.contractAmount.toLocaleString('ko-KR');
+  const amount = formatMoney(opts.contractAmount, locale, currency, { currencyDisplay: 'code' }) ?? `${opts.contractAmount} ${currency}`;
   const safeName = escapeHtml(opts.recipientName || '');
+  const deadline = formatEmailDate(opts.deadline, locale);
 
-  const content = lang === 'ko' ? `
+  if (['en', 'ja', 'cn', 'es', 'ar'].includes(locale)) {
+    const copy: Record<Exclude<NexyfabEmailContentLocale, 'ko'>, { title: string; greeting: string; customer: string; factory: string; id: string; project: string; manufacturer: string; amountLabel: string; deadline: string; customerCta: string; factoryCta: string }> = {
+      en: { title: 'Contract signed! 🎉', greeting: 'Hi', customer: `Your contract with <strong style="color:#3fb950;">${escapeHtml(opts.factoryName)}</strong> has been confirmed.`, factory: `The contract for <strong style="color:#3fb950;">${escapeHtml(opts.projectName)}</strong> has been signed.`, id: 'Contract ID', project: 'Project', manufacturer: 'Manufacturer', amountLabel: 'Contract amount', deadline: 'Deadline', customerCta: 'View order status', factoryCta: 'Manage project' },
+      ja: { title: '\u5951\u7D04\u304C\u7DE0\u7D50\u3055\u308C\u307E\u3057\u305F! 🎉', greeting: '\u3053\u3093\u306B\u3061\u306F', customer: `<strong style="color:#3fb950;">${escapeHtml(opts.factoryName)}</strong>\u3068\u306E\u5951\u7D04\u304C\u78BA\u5B9A\u3057\u307E\u3057\u305F\u3002`, factory: `<strong style="color:#3fb950;">${escapeHtml(opts.projectName)}</strong>\u306E\u5951\u7D04\u304C\u7DE0\u7D50\u3055\u308C\u307E\u3057\u305F\u3002`, id: '\u5951\u7D04ID', project: '\u30D7\u30ED\u30B8\u30A7\u30AF\u30C8', manufacturer: '\u88FD\u9020\u5143', amountLabel: '\u5951\u7D04\u91D1\u984D', deadline: '\u7D0D\u671F', customerCta: '\u6CE8\u6587\u72B6\u6CC1\u3092\u898B\u308B', factoryCta: '\u30D7\u30ED\u30B8\u30A7\u30AF\u30C8\u7BA1\u7406' },
+      cn: { title: '\u5408\u540C\u5DF2\u7B7E\u7F72! 🎉', greeting: '\u60A8\u597D', customer: `您与 <strong style="color:#3fb950;">${escapeHtml(opts.factoryName)}</strong> 的合同已确认。`, factory: `<strong style="color:#3fb950;">${escapeHtml(opts.projectName)}</strong> 的合同已签署。`, id: '\u5408\u540CID', project: '\u9879\u76EE', manufacturer: '\u5236\u9020\u5546', amountLabel: '\u5408\u540C\u91D1\u989D', deadline: '\u4EA4\u4ED8\u65E5\u671F', customerCta: '\u67E5\u770B\u8BA2\u5355\u72B6\u6001', factoryCta: '\u7BA1\u7406\u9879\u76EE' },
+      es: { title: '¡Contrato firmado! 🎉', greeting: 'Hola', customer: `Tu contrato con <strong style="color:#3fb950;">${escapeHtml(opts.factoryName)}</strong> ha sido confirmado.`, factory: `Se ha firmado el contrato del proyecto <strong style="color:#3fb950;">${escapeHtml(opts.projectName)}</strong>.`, id: 'ID del contrato', project: 'Proyecto', manufacturer: 'Fabricante', amountLabel: 'Importe del contrato', deadline: 'Fecha límite', customerCta: 'Ver estado del pedido', factoryCta: 'Gestionar proyecto' },
+      ar: { title: '\u062A\u0645 \u062A\u0648\u0642\u064A\u0639 \u0627\u0644\u0639\u0642\u062F! 🎉', greeting: '\u0645\u0631\u062D\u0628\u0627', customer: `تم تأكيد عقدك مع <strong style="color:#3fb950;">${escapeHtml(opts.factoryName)}</strong>.`, factory: `تم توقيع عقد مشروع <strong style="color:#3fb950;">${escapeHtml(opts.projectName)}</strong>.`, id: '\u0645\u0639\u0631\u0641 \u0627\u0644\u0639\u0642\u062F', project: '\u0627\u0644\u0645\u0634\u0631\u0648\u0639', manufacturer: '\u0627\u0644\u0645\u0635\u0646\u0639', amountLabel: '\u0642\u064A\u0645\u0629 \u0627\u0644\u0639\u0642\u062F', deadline: '\u0627\u0644\u0645\u0648\u0639\u062F \u0627\u0644\u0646\u0647\u0627\u0626\u064A', customerCta: '\u0639\u0631\u0636 \u062D\u0627\u0644\u0629 \u0627\u0644\u0637\u0644\u0628', factoryCta: '\u0625\u062F\u0627\u0631\u0629 \u0627\u0644\u0645\u0634\u0631\u0648\u0639' },
+    };
+    const c = copy[locale as Exclude<NexyfabEmailContentLocale, 'ko'>];
+    const content = `<h2 style="font-size:20px;font-weight:700;margin:0 0 8px;color:#e6edf3;">${c.title}</h2><p style="color:#8b949e;font-size:14px;line-height:1.6;">${c.greeting} <strong style="color:#e6edf3;">${safeName}</strong>,<br>${opts.recipientType === 'customer' ? c.customer : c.factory}</p><table style="width:100%;border-collapse:collapse;font-size:13px;"><tr><td>${c.id}</td><td>${escapeHtml(opts.contractId)}</td></tr><tr><td>${c.project}</td><td>${escapeHtml(opts.projectName)}</td></tr><tr><td>${c.manufacturer}</td><td>${escapeHtml(opts.factoryName)}</td></tr><tr><td>${c.amountLabel}</td><td>${amount}</td></tr>${deadline ? `<tr><td>${c.deadline}</td><td>${escapeHtml(deadline)}</td></tr>` : ''}</table><a href="${dashUrl}">${opts.recipientType === 'customer' ? c.customerCta : c.factoryCta}</a>`;
+    return emailWrapper(content, undefined, locale);
+  }
+
+  const content = ['ko'].includes(locale) ? `
     <h2 style="font-size:20px;font-weight:700;margin:0 0 8px;color:#e6edf3;">계약이 체결됐습니다! 🎉</h2>
     <p style="color:#8b949e;font-size:14px;margin:0 0 20px;line-height:1.6;">
       안녕하세요 <strong style="color:#e6edf3;">${safeName}</strong>님,<br>
@@ -1060,8 +1169,8 @@ export function contractSignedHtml(opts: {
         <tr><td style="color:#8b949e;padding:6px 0;width:120px;">계약 ID</td><td style="color:#e6edf3;font-weight:600;">${escapeHtml(opts.contractId)}</td></tr>
         <tr><td style="color:#8b949e;padding:6px 0;">프로젝트명</td><td style="color:#e6edf3;">${escapeHtml(opts.projectName)}</td></tr>
         <tr><td style="color:#8b949e;padding:6px 0;">제조사</td><td style="color:#e6edf3;">${escapeHtml(opts.factoryName)}</td></tr>
-        <tr><td style="color:#8b949e;padding:6px 0;">계약 금액</td><td style="color:#3fb950;font-weight:800;font-size:16px;">${amount} ${currency}</td></tr>
-        ${opts.deadline ? `<tr><td style="color:#8b949e;padding:6px 0;">납기일</td><td style="color:#e6edf3;">${escapeHtml(opts.deadline)}</td></tr>` : ''}
+        <tr><td style="color:#8b949e;padding:6px 0;">계약 금액</td><td style="color:#3fb950;font-weight:800;font-size:16px;">${amount}</td></tr>
+        ${deadline ? `<tr><td style="color:#8b949e;padding:6px 0;">납기일</td><td style="color:#e6edf3;">${escapeHtml(deadline)}</td></tr>` : ''}
       </table>
     </div>
     <a href="${dashUrl}"
@@ -1082,7 +1191,7 @@ export function contractSignedHtml(opts: {
         <tr><td style="color:#8b949e;padding:6px 0;">Project</td><td style="color:#e6edf3;">${escapeHtml(opts.projectName)}</td></tr>
         <tr><td style="color:#8b949e;padding:6px 0;">Manufacturer</td><td style="color:#e6edf3;">${escapeHtml(opts.factoryName)}</td></tr>
         <tr><td style="color:#8b949e;padding:6px 0;">Contract Amount</td><td style="color:#3fb950;font-weight:800;font-size:16px;">${amount} ${currency}</td></tr>
-        ${opts.deadline ? `<tr><td style="color:#8b949e;padding:6px 0;">Deadline</td><td style="color:#e6edf3;">${escapeHtml(opts.deadline)}</td></tr>` : ''}
+        ${deadline ? `<tr><td style="color:#8b949e;padding:6px 0;">Deadline</td><td style="color:#e6edf3;">${escapeHtml(deadline)}</td></tr>` : ''}
       </table>
     </div>
     <a href="${dashUrl}"
@@ -1090,7 +1199,7 @@ export function contractSignedHtml(opts: {
       ${opts.recipientType === 'customer' ? 'View Order Status' : 'Manage Project'}
     </a>
   `;
-  return emailWrapper(content);
+  return emailWrapper(content, undefined, locale);
 }
 
 // ─── Partner RFQ notification ─────────────────────────────────────────────────
@@ -1103,7 +1212,24 @@ export function partnerRfqNotificationHtml(opts: {
   dfmProcess?: string;
   note?: string;
   partnerDashUrl?: string;
+  lang?: string;
 }): string {
+  const locale = nexyfabEmailLocaleFromLanguageTag(opts.lang);
+  if (locale !== 'ko') {
+    const copy: Record<Exclude<NexyfabEmailContentLocale, 'ko'>, { title: string; intro: string; process: string; note: string; quantity: string; cta: string; footer: string }> = {
+      en: { title: 'New quote request', intro: 'A new RFQ matching your capabilities is available. Submit a quote to win the project.', process: 'Process', note: 'Note', quantity: 'Quantity', cta: 'Submit quote', footer: 'Review this RFQ in your partner dashboard.' },
+      ja: { title: '\u65b0\u3057\u3044\u898B\u7A4D\u3082\u308A\u4F9D\u983C', intro: '\u5BFE\u5FDC\u53EF\u80FD\u306A\u65B0\u3057\u3044 RFQ \u304C\u5C4A\u3044\u3066\u3044\u307E\u3059\u3002\u898B\u7A4D\u3082\u308A\u3092\u63D0\u51FA\u3057\u3066\u53D7\u6CE8\u6A5F\u4F1A\u3092\u7372\u5F97\u3057\u307E\u3057\u3087\u3046\u3002', process: '\u5DE5\u7A0B', note: '\u30E1\u30E2', quantity: '\u6570\u91CF', cta: '\u898B\u7A4D\u3082\u308A\u3092\u63D0\u51FA', footer: '\u30D1\u30FC\u30C8\u30CA\u30FC\u30C0\u30C3\u30B7\u30E5\u30DC\u30FC\u30C9\u3067 RFQ \u3092\u3054\u78BA\u8A8D\u304F\u3060\u3055\u3044\u3002' },
+      cn: { title: '\u65B0\u62A5\u4EF7\u8BF7\u6C42', intro: '\u6709\u4E00\u4E2A\u7B26\u5408\u60A8\u80FD\u529B\u7684\u65B0 RFQ\u3002\u8BF7\u63D0\u4EA4\u62A5\u4EF7\u4EE5\u83B7\u5F97\u9879\u76EE\u3002', process: '\u5DE5\u827A', note: '\u5907\u6CE8', quantity: '\u6570\u91CF', cta: '\u63D0\u4EA4\u62A5\u4EF7', footer: '\u8BF7\u5728\u5408\u4F5C\u4F19\u4F34\u4EEA\u8868\u677F\u4E2D\u67E5\u770B RFQ\u3002' },
+      es: { title: 'Nueva solicitud de cotizaci\u00f3n', intro: 'Hay una nueva RFQ que coincide con tus capacidades. Env\u00eda una oferta para optar al proyecto.', process: 'Proceso', note: 'Nota', quantity: 'Cantidad', cta: 'Enviar cotizaci\u00f3n', footer: 'Revisa esta RFQ en tu panel de socio.' },
+      ar: { title: '\u0637\u0644\u0628 \u062a\u0633\u0639\u064a\u0631 \u062c\u062f\u064a\u062f', intro: '\u0647\u0646\u0627\u0643 RFQ \u062c\u062f\u064a\u062f \u064a\u0646\u0627\u0633\u0628 \u0642\u062f\u0631\u0627\u062a\u0643. \u0642\u062f\u0645 \u0639\u0631\u0636\u0627\u064b \u0644\u0644\u0641\u0648\u0632 \u0628\u0627\u0644\u0645\u0634\u0631\u0648\u0639.', process: '\u0627\u0644\u0639\u0645\u0644\u064a\u0629', note: '\u0645\u0644\u0627\u062d\u0638\u0629', quantity: '\u0627\u0644\u0643\u0645\u064a\u0629', cta: '\u062a\u0642\u062f\u064a\u0645 \u0627\u0644\u0639\u0631\u0636', footer: '\u0631\u0627\u062c\u0639 RFQ \u0641\u064a \u0644\u0648\u062d\u0629 \u0627\u0644\u0634\u0631\u064a\u0643.' },
+    };
+    const c = copy[locale];
+    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://nexyfab.com';
+    const dashUrl = opts.partnerDashUrl || `${baseUrl}/partner/quotes`;
+    const rfqShort = opts.rfqId.slice(0, 8).toUpperCase();
+    const content = `<h2>${c.title}</h2><p>${c.intro}</p><table><tr><td>RFQ ID</td><td>${rfqShort}</td></tr><tr><td>Part</td><td>${escapeHtml(opts.shapeName || rfqShort)}</td></tr><tr><td>Material</td><td>${escapeHtml(opts.materialId)}</td></tr><tr><td>${c.quantity}</td><td>${formatNumber(opts.quantity, locale) ?? opts.quantity}</td></tr>${opts.dfmProcess ? `<tr><td>${c.process}</td><td>${escapeHtml(opts.dfmProcess)}</td></tr>` : ''}${opts.note ? `<tr><td>${c.note}</td><td>${escapeHtml(opts.note.slice(0, 200))}</td></tr>` : ''}</table><a href="${dashUrl}">${c.cta}</a><p>${c.footer}</p>`;
+    return emailWrapper(content, undefined, locale);
+  }
   const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://nexyfab.com';
   const dashUrl = opts.partnerDashUrl || `${baseUrl}/partner/quotes`;
   const rfqShort = opts.rfqId.slice(0, 8).toUpperCase();
@@ -1133,7 +1259,7 @@ export function partnerRfqNotificationHtml(opts: {
         </tr>
         <tr style="border-bottom:1px solid #21262d;">
           <td style="padding:6px 0;color:#8b949e;font-size:13px;">수량</td>
-          <td style="padding:6px 0;font-size:13px;text-align:right;color:#e6edf3;">${opts.quantity.toLocaleString()}개</td>
+          <td style="padding:6px 0;font-size:13px;text-align:right;color:#e6edf3;">${formatNumber(opts.quantity, 'ko') ?? opts.quantity}개</td>
         </tr>
         ${processLine}
         ${noteLine}
@@ -1147,5 +1273,47 @@ export function partnerRfqNotificationHtml(opts: {
       파트너 대시보드에서 이 RFQ를 확인하고 견적을 제출해 주세요. 빠른 응답이 수주 확률을 높입니다.
     </p>
   `;
-  return emailWrapper(content);
+  return emailWrapper(content, undefined, locale);
+}
+
+export function contractSignedEmailSubject(locale: NexyfabEmailContentLocale, projectName: string): string {
+  const subject = {
+    ko: '\uACC4\uC57D\uC774 \uCCB4\uACB0\uB410\uC2B5\uB2C8\uB2E4',
+    en: 'Contract signed',
+    ja: '\u5951\u7D04\u304C\u7DE0\u7D50\u3055\u308C\u307E\u3057\u305F',
+    cn: '\u5408\u540C\u5DF2\u7B7E\u7F72',
+    es: 'Contrato firmado',
+    ar: '\u062A\u0645 \u062A\u0648\u0642\u064A\u0639 \u0627\u0644\u0639\u0642\u062F',
+  } satisfies Record<NexyfabEmailContentLocale, string>;
+  return `[NexyFab] ${subject[locale]} \u2014 ${projectName}`;
+}
+
+export function contractSignedInAppCopy(locale: NexyfabEmailContentLocale, projectName: string, factoryName: string): { title: string; body: string } {
+  const copy = {
+    ko: { title: '\uACC4\uC57D \uCCB4\uACB0', body: `${factoryName}\uC640\uC758 \uACC4\uC57D\uC774 \uC131\uACF5\uC801\uC73C\uB85C \uCCB4\uACB0\uB410\uC2B5\uB2C8\uB2E4.` },
+    en: { title: 'Contract signed', body: `Your contract with ${factoryName} has been confirmed.` },
+    ja: { title: '\u5951\u7D04\u7DE0\u7D50', body: `${factoryName}\u3068\u306E\u5951\u7D04\u304C\u78BA\u5B9A\u3057\u307E\u3057\u305F\u3002` },
+    cn: { title: '\u5408\u540C\u5DF2\u7B7E\u7F72', body: `\u60A8\u4E0E${factoryName}\u7684\u5408\u540C\u5DF2\u786E\u8BA4\u3002` },
+    es: { title: 'Contrato firmado', body: `Tu contrato con ${factoryName} ha sido confirmado.` },
+    ar: { title: '\u062A\u0645 \u062A\u0648\u0642\u064A\u0639 \u0627\u0644\u0639\u0642\u062F', body: `\u062A\u0645 \u062A\u0623\u0643\u064A\u062F \u0639\u0642\u062F\u0643 \u0645\u0639 ${factoryName}.` },
+  } satisfies Record<NexyfabEmailContentLocale, { title: string; body: string }>;
+  return { title: `${copy[locale].title}: ${projectName}`, body: copy[locale].body };
+}
+
+export function contractAdminSummaryEmail(locale: NexyfabEmailContentLocale, opts: { contractId: string; projectName: string; factoryName?: string; contractAmount: number; feeRate: number; finalCharge: number; isFirstContract: boolean }): { subject: string; html: string } {
+  const copy = {
+    ko: { subject: '새 계약 생성', title: '새 계약이 생성되었습니다', id: '계약 ID', project: '프로젝트명', partner: '파트너사', amount: '계약금액', fee: '수수료율', first: '최초 계약', yes: '예', no: '아니오', note: 'NexyFab 어드민 자동 알림' },
+    en: { subject: 'New contract created', title: 'A new contract was created', id: 'Contract ID', project: 'Project', partner: 'Partner', amount: 'Contract amount', fee: 'Fee rate', first: 'First contract', yes: 'Yes', no: 'No', note: 'NexyFab admin notification' },
+    ja: { subject: '\u65B0\u3057\u3044\u5951\u7D04\u304C\u4F5C\u6210\u3055\u308C\u307E\u3057\u305F', title: '\u65B0\u3057\u3044\u5951\u7D04\u304C\u4F5C\u6210\u3055\u308C\u307E\u3057\u305F', id: '\u5951\u7D04 ID', project: '\u30D7\u30ED\u30B8\u30A7\u30AF\u30C8', partner: '\u30D1\u30FC\u30C8\u30CA\u30FC', amount: '\u5951\u7D04\u91D1\u984D', fee: '\u624B\u6570\u6599\u7387', first: '\u521D\u56DE\u5951\u7D04', yes: '\u306F\u3044', no: '\u3044\u3044\u3048', note: 'NexyFab \u7BA1\u7406\u901A\u77E5' },
+    cn: { subject: '\u65B0\u5408\u540C\u5DF2\u521B\u5EFA', title: '\u65B0\u5408\u540C\u5DF2\u521B\u5EFA', id: '合\u540C ID', project: '\u9879\u76EE', partner: '\u5408\u4F5C\u4F19\u4F34', amount: '\u5408\u540C\u91D1\u989D', fee: '\u8D39\u7387', first: '\u9996\u6B21\u5408\u540C', yes: '\u662F', no: '\u5426', note: 'NexyFab \u7BA1\u7406\u901A\u77E5' },
+    es: { subject: 'Nuevo contrato creado', title: 'Se ha creado un nuevo contrato', id: 'ID del contrato', project: 'Proyecto', partner: 'Socio', amount: 'Importe del contrato', fee: 'Tasa de comisión', first: 'Primer contrato', yes: 'Sí', no: 'No', note: 'Notificación de administración de NexyFab' },
+    ar: { subject: '\u062a\u0645 \u0625\u0646\u0634\u0627\u0621 \u0639\u0642\u062f \u062c\u062f\u064a\u062f', title: '\u062a\u0645 \u0625\u0646\u0634\u0627\u0621 \u0639\u0642\u062f \u062c\u062f\u064a\u062f', id: '\u0645\u0639\u0631\u0641 \u0627\u0644\u0639\u0642\u062f', project: '\u0627\u0644\u0645\u0634\u0631\u0648\u0639', partner: '\u0627\u0644\u0634\u0631\u064a\u0643', amount: '\u0642\u064a\u0645\u0629 \u0627\u0644\u0639\u0642\u062f', fee: '\u0645\u0639\u062f\u0644 \u0627\u0644\u0631\u0633\u0648\u0645', first: '\u0627\u0644\u0639\u0642\u062f \u0627\u0644\u0623\u0648\u0644', yes: '\u0646\u0639\u0645', no: '\u0644\u0627', note: '\u0625\u0634\u0639\u0627\u0631 \u0625\u062f\u0627\u0631\u0629 NexyFab' },
+  } satisfies Record<NexyfabEmailContentLocale, Record<string, string>>;
+  const c = copy[locale];
+  const amount = formatMoney(opts.contractAmount, locale, 'KRW', { currencyDisplay: 'code' }) ?? `${opts.contractAmount} KRW`;
+  const feeAmount = formatMoney(opts.finalCharge, locale, 'KRW', { currencyDisplay: 'code' }) ?? `${opts.finalCharge} KRW`;
+  const fee = `${opts.feeRate}% (${feeAmount})`;
+  const unassigned = { ko: '미배정', en: 'Unassigned', ja: '未割り当て', cn: '未分配', es: 'Sin asignar', ar: 'غير مخصص' }[locale];
+  const html = `<h2 style="color:#1a56db">${c.title}</h2><table><tr><td>${c.id}</td><td>${escapeHtml(opts.contractId)}</td></tr><tr><td>${c.project}</td><td>${escapeHtml(opts.projectName)}</td></tr><tr><td>${c.partner}</td><td>${escapeHtml(opts.factoryName || unassigned)}</td></tr><tr><td>${c.amount}</td><td>${amount}</td></tr><tr><td>${c.fee}</td><td>${fee}</td></tr><tr><td>${c.first}</td><td>${opts.isFirstContract ? c.yes : c.no}</td></tr></table><p>${c.note}</p>`;
+  return { subject: `[NexyFab] ${c.subject} - ${opts.projectName}`, html };
 }

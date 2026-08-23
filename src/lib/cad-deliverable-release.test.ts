@@ -19,8 +19,9 @@ const checks = {
   drawing: ['revision', 'views', 'dimensions'],
 } as const;
 
-const roundtrips = (): CadArtifactRoundtripReceipt[] => Object.entries(checks).map(([kind, ids], index) => ({
-  schema: 'nexyfab.cad-artifact-roundtrip.v1',
+const roundtrips = (domain: CadArtifactRoundtripReceipt['domain'] = 'mechanical'): CadArtifactRoundtripReceipt[] => Object.entries(checks).map(([kind, ids], index) => ({
+  schema: 'nexyfab.cad-artifact-roundtrip.v2',
+  domain,
   kind: kind as CadArtifactRoundtripReceipt['kind'],
   revisionSha256,
   exportedArtifactSha256: (index + 1).toString(16).repeat(64),
@@ -31,9 +32,10 @@ const roundtrips = (): CadArtifactRoundtripReceipt[] => Object.entries(checks).m
 }));
 
 describe('CAD deliverable release decision', () => {
-  it('blocks a claimed manufacturing status without four roundtrips and real registered signatures', () => {
+  it('blocks a claimed manufacturing status without its domain-required roundtrips and real registered signatures', () => {
     const receipts = roundtrips().slice(0, 3);
     const decision = evaluateCadDeliverableRelease({
+      schema: 'nexyfab.cad-deliverable-release-input.v2',
       workflowStatus: 'manufacturing_or_construction_approved',
       purpose: 'manufacturing_or_construction',
       domain: 'mechanical',
@@ -46,7 +48,7 @@ describe('CAD deliverable release decision', () => {
   });
 
   it('passes only with hash-bound roundtrips and distinct trusted reviewer signatures', () => {
-    const receipts = roundtrips();
+    const receipts = roundtrips('building');
     const packet = buildCadDeliverableReviewPacket({
       domain: 'building', revisionId: 'r-42', revisionSha256, roundtrips: receipts,
       requestedStatus: 'manufacturing_or_construction_approved',
@@ -59,7 +61,7 @@ describe('CAD deliverable release decision', () => {
       privateKey: typeof domain.privateKey,
     ): CadDeliverableSignoff => {
       const unsigned = {
-        schema: 'nexyfab.cad-deliverable-signoff.v1' as const,
+        schema: 'nexyfab.cad-deliverable-signoff.v2' as const,
         targetSha256: packet.targetSha256,
         reviewerId,
         role,
@@ -69,6 +71,7 @@ describe('CAD deliverable release decision', () => {
       return { ...unsigned, signature: sign(null, Buffer.from(cadDeliverableSignoffPayload(unsigned)), privateKey).toString('base64') };
     };
     const input = {
+      schema: 'nexyfab.cad-deliverable-release-input.v2' as const,
       workflowStatus: 'manufacturing_or_construction_approved' as const,
       purpose: 'manufacturing_or_construction' as const,
       domain: 'building' as const,
@@ -84,18 +87,69 @@ describe('CAD deliverable release decision', () => {
   });
 
   it('invalidates approval when any roundtrip evidence is changed after review', () => {
-    const receipts = roundtrips();
+    const receipts = roundtrips('interior');
     const packet = buildCadDeliverableReviewPacket({
       domain: 'interior', revisionId: 'r-9', revisionSha256, roundtrips: receipts,
       requestedStatus: 'expert_approved',
     });
     receipts[1] = { ...receipts[1]!, reimportedArtifactSha256: sha('f') };
     const decision = evaluateCadDeliverableRelease({
+      schema: 'nexyfab.cad-deliverable-release-input.v2',
       workflowStatus: 'expert_approved', purpose: 'expert_review', domain: 'interior',
       revisionId: 'r-9', revisionSha256, roundtrips: receipts, reviewPacket: packet, signoffs: [],
     });
     expect(packet.roundtripEvidenceSha256).not.toBe(cadRoundtripEvidenceSha256(receipts));
     expect(decision.blockers).toContain('review:roundtrip_evidence_mismatch');
     expect(decision.status).toBe('blocked');
+  });
+
+  it('requires STEP but not IFC for mechanical manufacturing release', () => {
+    const receipts = roundtrips('mechanical').filter(receipt => receipt.kind !== 'ifc');
+    const decision = evaluateCadDeliverableRelease({
+      schema: 'nexyfab.cad-deliverable-release-input.v2',
+      workflowStatus: 'auto_verified',
+      purpose: 'manufacturing_or_construction',
+      domain: 'mechanical',
+      revisionId: 'r-mechanical',
+      revisionSha256,
+      roundtrips: receipts,
+    });
+    expect(decision.profile).toBe('mechanical');
+    expect(decision.requiredRoundtrips).toEqual(['step', 'bom', 'drawing']);
+    expect(decision.blockers).not.toContain('roundtrip:ifc:missing');
+    expect(decision.blockers).not.toContain('roundtrip:step:missing');
+  });
+
+  it('requires IFC but not STEP for spatial manufacturing release', () => {
+    const receipts = roundtrips('building').filter(receipt => receipt.kind !== 'step');
+    const decision = evaluateCadDeliverableRelease({
+      schema: 'nexyfab.cad-deliverable-release-input.v2',
+      workflowStatus: 'auto_verified',
+      purpose: 'manufacturing_or_construction',
+      domain: 'building',
+      revisionId: 'r-spatial',
+      revisionSha256,
+      roundtrips: receipts,
+    });
+    expect(decision.profile).toBe('spatial');
+    expect(decision.requiredRoundtrips).toEqual(['ifc', 'bom', 'drawing']);
+    expect(decision.blockers).not.toContain('roundtrip:step:missing');
+    expect(decision.blockers).not.toContain('roundtrip:ifc:missing');
+  });
+
+  it('rejects every v1 receipt instead of reinterpreting it as v2 evidence', () => {
+    const receipts = roundtrips('mechanical').filter(receipt => receipt.kind !== 'ifc');
+    const legacy = { ...receipts[0]!, schema: 'nexyfab.cad-artifact-roundtrip.v1' } as unknown as CadArtifactRoundtripReceipt;
+    const decision = evaluateCadDeliverableRelease({
+      schema: 'nexyfab.cad-deliverable-release-input.v2',
+      workflowStatus: 'auto_verified',
+      purpose: 'manufacturing_or_construction',
+      domain: 'mechanical',
+      revisionId: 'r-legacy',
+      revisionSha256,
+      roundtrips: [legacy, ...receipts.slice(1)],
+    });
+    expect(decision.status).toBe('blocked');
+    expect(decision.blockers).toContain('roundtrip:step:schema');
   });
 });

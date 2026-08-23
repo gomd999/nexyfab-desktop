@@ -42,10 +42,16 @@ describe('shared studio AI guard', () => {
   });
 
   it('checks both user cost budget and monthly plan slot when authenticated', async () => {
-    mocks.checkPlan.mockResolvedValue({ ok: true, userId: 'beta-user', plan: 'free' });
+    mocks.checkPlan.mockResolvedValue({ ok: true, userId: 'beta-user', plan: 'free', orgId: 'org-beta' });
     expect(await guardStudioAi(request())).toBeNull();
-    expect(mocks.checkUserBudget).toHaveBeenCalledWith('beta-user');
-    expect(mocks.consumeMonthlyMetricSlot).toHaveBeenCalledWith('beta-user', 'free', 'shape_chat');
+    expect(mocks.checkUserBudget).toHaveBeenCalledWith('beta-user', 'org-beta');
+    expect(mocks.consumeMonthlyMetricSlot).toHaveBeenCalledWith(
+      'beta-user',
+      'free',
+      'shape_chat',
+      undefined,
+      'org-beta',
+    );
     expect(mocks.rateLimitAsync).not.toHaveBeenCalled();
   });
 });

@@ -5,6 +5,11 @@ export const CAD_FAILURE_CODES = [
   'PRECISE_INTERFERENCE_NOT_RUN', 'PMI_NOT_PRESENT', 'IFC_PLACEMENT_UNRESOLVED',
   'ROTATIONAL_CCD_UNRESOLVED', 'LINEAR_CCD_UNRESOLVED', 'COLLISION_GEOMETRY_MISSING', 'PRECISE_CCD_BUDGET_EXCEEDED', 'PRECISE_TOI_UNRESOLVED',
   'SPACE_BOUNDARY_OPEN', 'SEMANTIC_MAPPING_UNAVAILABLE', 'BYTE_BUDGET_EXCEEDED', 'GEOMETRY_INCOMPLETE', 'UNKNOWN_IMPORT_FAILURE',
+  'DECLARED_JOINT_GEOMETRY_MISMATCH', 'CONTINUOUS_SEGMENT_GEOMETRY_MISMATCH',
+  'GENERATION_PROGRAM_BINDING_MISMATCH', 'SEMANTIC_INVENTORY_MISMATCH', 'CLIENT_ASSERTED_MEASUREMENT_REJECTED',
+  'GENERATION_EXACT_CAD_CHECKPOINT_MISSING', 'GENERATION_EXACT_CAD_CHECKPOINT_MISMATCH',
+  'FALLBACK_NOT_RELEASE_ELIGIBLE', 'REPAIR_SCOPE_VIOLATION', 'RELEASE_EVIDENCE_SIGNATURE_INVALID',
+  'ROUTE_GEOMETRY_MISSING', 'TYPED_PORT_INCOMPLETE', 'TYPED_RUN_INCOMPLETE', 'DUPLICATE_INTERNAL_FLOW_SOLID', 'PHYSICAL_NETWORK_EMPTY',
 ] as const;
 
 export type CadFailureCode = typeof CAD_FAILURE_CODES[number];
@@ -42,6 +47,21 @@ const DISPOSITIONS: Record<CadFailureCode, Omit<CadFailureDisposition, 'code'>> 
   BYTE_BUDGET_EXCEEDED: { retryable: true, automaticRepair: null, releaseBlocking: true },
   GEOMETRY_INCOMPLETE: { retryable: true, automaticRepair: null, releaseBlocking: true },
   UNKNOWN_IMPORT_FAILURE: { retryable: false, automaticRepair: null, releaseBlocking: true },
+  DECLARED_JOINT_GEOMETRY_MISMATCH: { retryable: false, automaticRepair: null, releaseBlocking: true },
+  CONTINUOUS_SEGMENT_GEOMETRY_MISMATCH: { retryable: false, automaticRepair: null, releaseBlocking: true },
+  GENERATION_PROGRAM_BINDING_MISMATCH: { retryable: false, automaticRepair: null, releaseBlocking: true },
+  GENERATION_EXACT_CAD_CHECKPOINT_MISSING: { retryable: true, automaticRepair: null, releaseBlocking: true },
+  GENERATION_EXACT_CAD_CHECKPOINT_MISMATCH: { retryable: false, automaticRepair: null, releaseBlocking: true },
+  SEMANTIC_INVENTORY_MISMATCH: { retryable: false, automaticRepair: null, releaseBlocking: true },
+  CLIENT_ASSERTED_MEASUREMENT_REJECTED: { retryable: false, automaticRepair: null, releaseBlocking: true },
+  FALLBACK_NOT_RELEASE_ELIGIBLE: { retryable: false, automaticRepair: null, releaseBlocking: true },
+  REPAIR_SCOPE_VIOLATION: { retryable: false, automaticRepair: null, releaseBlocking: true },
+  RELEASE_EVIDENCE_SIGNATURE_INVALID: { retryable: false, automaticRepair: null, releaseBlocking: true },
+  ROUTE_GEOMETRY_MISSING: { retryable: true, automaticRepair: null, releaseBlocking: true },
+  TYPED_PORT_INCOMPLETE: { retryable: false, automaticRepair: null, releaseBlocking: true },
+  TYPED_RUN_INCOMPLETE: { retryable: false, automaticRepair: null, releaseBlocking: true },
+  DUPLICATE_INTERNAL_FLOW_SOLID: { retryable: false, automaticRepair: null, releaseBlocking: true },
+  PHYSICAL_NETWORK_EMPTY: { retryable: false, automaticRepair: null, releaseBlocking: true },
 };
 
 export function cadFailureDisposition(code: CadFailureCode): CadFailureDisposition {

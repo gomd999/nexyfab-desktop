@@ -2,8 +2,10 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getAuthUser } from '@/lib/auth-middleware';
 import { getDbAdapter } from '@/lib/db-adapter';
 import { checkOrigin } from '@/lib/csrf';
+import { boundedJsonError, readBoundedJson } from '@/lib/boundedJsonBody';
 
 export const dynamic = 'force-dynamic';
+const TEAM_TRANSFER_JSON_BYTES = 64 * 1024;
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ teamId: string }> }) {
   if (!checkOrigin(req)) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
@@ -13,7 +15,15 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ tea
 
   const { teamId } = await params;
 
-  const body = await req.json().catch(() => ({})) as { newOwnerId?: string };
+  let body: { newOwnerId?: string } = {};
+  try {
+    body = await readBoundedJson(req, TEAM_TRANSFER_JSON_BYTES);
+  } catch (error) {
+    const bodyError = boundedJsonError(error);
+    if (bodyError?.code === 'PAYLOAD_TOO_LARGE') {
+      return NextResponse.json({ error: 'Request body too large' }, { status: bodyError.status });
+    }
+  }
   if (!body.newOwnerId || typeof body.newOwnerId !== 'string') {
     return NextResponse.json({ error: 'newOwnerId is required' }, { status: 400 });
   }

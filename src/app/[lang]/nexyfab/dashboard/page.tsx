@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback, use, Suspense } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { isKorean } from '@/lib/i18n/normalize';
+import { toIsoLang } from '@/lib/i18n/normalize';
 import { useAuthStore } from '@/hooks/useAuth';
 import { useProjectsStore } from '@/hooks/useProjects';
 import AuthModal from '@/components/nexyfab/AuthModal';
@@ -11,6 +11,8 @@ import VerificationBanner from '@/components/nexyfab/VerificationBanner';
 import OnboardingChecklist from '@/components/nexyfab/OnboardingChecklist';
 import { useToast } from '@/components/ToastProvider';
 import { formatDateTime } from '@/lib/formatDate';
+import { createCommercialLocalizer } from '@/lib/i18n/commercialLocalizer';
+import { formatDate, formatMoney, formatNumber } from '@/lib/i18n/format';
 
 // ─── Client-side 5-min cache ──────────────────────────────────────────────────
 interface CachedActivity { id: string; type: 'rfq_submitted' | 'quote_received' | 'order_milestone' | 'contract_signed' | 'project_created'; message: string; createdAt: number }
@@ -61,11 +63,13 @@ const SHAPE_ICONS: Record<string, string> = {
 };
 
 // ─── AI Insight Panel ─────────────────────────────────────────────────────────
-function NexyfabAIInsight({ summary, isKo, token }: {
+function NexyfabAIInsight({ summary, lang, isKo, token }: {
   summary: { activeProjects: number; pendingRfqs: number; activeOrders: number; monthlySpend: number };
+  lang: string;
   isKo: boolean;
   token: string | null;
 }) {
+  const L = createCommercialLocalizer(lang);
   const [insight, setInsight] = useState('');
   const [loading, setLoading] = useState(false);
 
@@ -76,11 +80,11 @@ function NexyfabAIInsight({ summary, isKo, token }: {
       const res = await fetch('/api/nexyfab/ai-dashboard-insight', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
-        body: JSON.stringify({ summary, lang: isKo ? 'ko' : 'en' }),
+        body: JSON.stringify({ summary, lang: L('ko', 'en') }),
       });
       const data = await res.json();
       setInsight(data.insight || '');
-    } catch { setInsight(isKo ? '인사이트를 불러올 수 없습니다.' : 'Could not load insight.'); }
+    } catch { setInsight(L('인사이트를 불러올 수 없습니다.', 'Could not load insight.')); }
     finally { setLoading(false); }
   }
 
@@ -89,14 +93,14 @@ function NexyfabAIInsight({ summary, isKo, token }: {
       <span style={{ fontSize: 20 }}>✨</span>
       <div style={{ flex: 1, minWidth: 0 }}>
         <p style={{ margin: '0 0 2px', fontSize: 11, color: '#8b9cf4', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
-          AI {isKo ? '인사이트' : 'Insight'}
+          AI {L('인사이트', 'Insight')}
         </p>
         {insight ? (
           <p style={{ margin: 0, fontSize: 13, color: 'var(--nx-text)', lineHeight: 1.5 }}>{insight}</p>
         ) : loading ? (
-          <p style={{ margin: 0, fontSize: 13, color: 'var(--nx-text-3)' }}>{isKo ? 'AI가 분석 중…' : 'Analyzing…'}</p>
+          <p style={{ margin: 0, fontSize: 13, color: 'var(--nx-text-3)' }}>{L('AI가 분석 중…', 'Analyzing…')}</p>
         ) : (
-          <p style={{ margin: 0, fontSize: 13, color: 'var(--nx-text-3)' }}>{isKo ? '현황을 AI로 분석해보세요.' : 'Get AI analysis of your current status.'}</p>
+          <p style={{ margin: 0, fontSize: 13, color: 'var(--nx-text-3)' }}>{L('현황을 AI로 분석해보세요.', 'Get AI analysis of your current status.')}</p>
         )}
       </div>
       {!insight && !loading && (
@@ -104,7 +108,7 @@ function NexyfabAIInsight({ summary, isKo, token }: {
           onClick={fetchInsight}
           style={{ background: '#8b9cf4', color: '#fff', border: 'none', borderRadius: 10, padding: '7px 14px', fontSize: 12, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap' }}
         >
-          {isKo ? '분석 시작' : 'Analyze'}
+          {L('분석 시작', 'Analyze')}
         </button>
       )}
     </div>
@@ -135,7 +139,7 @@ function NexyfabDashboardInner({ params }: { params: Promise<{ lang: string }> }
     const plan = searchParams.get('plan') as 'pro' | 'team' | null;
     if (upgraded === 'true' && plan && user) {
       setUser({ ...user, plan }, token);
-      setUpgradeToast(isKorean(lang) ? `${plan.toUpperCase()} 플랜으로 업그레이드되었습니다! 🎉` : `Upgraded to ${plan.toUpperCase()}! 🎉`);
+      setUpgradeToast(createCommercialLocalizer(lang)(`${plan.toUpperCase()} 플랜으로 업그레이드되었습니다! 🎉`, `Upgraded to ${plan.toUpperCase()}! 🎉`));
       setTimeout(() => setUpgradeToast(''), 5000);
       router.replace(`/${lang}/nexyfab/dashboard`);
     }
@@ -219,7 +223,8 @@ function NexyfabDashboardInner({ params }: { params: Promise<{ lang: string }> }
   const [activity, setActivity] = useState<ActivityItem[]>([]);
   const [activityLoading, setActivityLoading] = useState(false);
 
-  const isKo = isKorean(lang);
+  const isKo = toIsoLang(lang) === 'ko';
+  const L = createCommercialLocalizer(lang);
 
   const fetchFiles = useCallback(async () => {
     if (!token) return;
@@ -234,10 +239,10 @@ function NexyfabDashboardInner({ params }: { params: Promise<{ lang: string }> }
         setFilesStorage(data.storage ?? null);
         setLastRefreshed(new Date());
       } else {
-        toast('error', isKo ? '파일 목록을 불러오지 못했습니다.' : 'Failed to load files.');
+        toast('error', L('파일 목록을 불러오지 못했습니다.', 'Failed to load files.'));
       }
     } catch {
-      toast('error', isKo ? '파일 목록을 불러오지 못했습니다.' : 'Failed to load files.');
+      toast('error', L('파일 목록을 불러오지 못했습니다.', 'Failed to load files.'));
     } finally {
       setFilesLoading(false);
     }
@@ -254,10 +259,10 @@ function NexyfabDashboardInner({ params }: { params: Promise<{ lang: string }> }
         setR2Files(prev => prev.filter(f => f.id !== id));
         setLastRefreshed(new Date());
       } else {
-        toast('error', isKo ? '파일 삭제에 실패했습니다.' : 'Failed to delete file.');
+        toast('error', L('파일 삭제에 실패했습니다.', 'Failed to delete file.'));
       }
     } catch {
-      toast('error', isKo ? '파일 삭제에 실패했습니다.' : 'Failed to delete file.');
+      toast('error', L('파일 삭제에 실패했습니다.', 'Failed to delete file.'));
     }
   }, [token, isKo, toast]);
 
@@ -277,10 +282,10 @@ function NexyfabDashboardInner({ params }: { params: Promise<{ lang: string }> }
           setSelectedTeamId(data.owned[0].id);
         }
       } else {
-        toast('error', isKo ? '팀 목록을 불러오지 못했습니다.' : 'Failed to load teams.');
+        toast('error', L('팀 목록을 불러오지 못했습니다.', 'Failed to load teams.'));
       }
     } catch {
-      toast('error', isKo ? '팀 목록을 불러오지 못했습니다.' : 'Failed to load teams.');
+      toast('error', L('팀 목록을 불러오지 못했습니다.', 'Failed to load teams.'));
     } finally {
       setTeamsLoading(false);
     }
@@ -316,14 +321,14 @@ function NexyfabDashboardInner({ params }: { params: Promise<{ lang: string }> }
       const data = await res.json();
       if (res.ok) {
         setNewTeamName('');
-        setTeamActionMsg({ text: isKo ? '팀이 생성되었습니다!' : 'Team created!', ok: true });
+        setTeamActionMsg({ text: L('팀이 생성되었습니다!', 'Team created!'), ok: true });
         await fetchTeams();
         if (data.team?.id) setSelectedTeamId(data.team.id);
       } else {
-        setTeamActionMsg({ text: data.error ?? (isKo ? '팀 생성 실패' : 'Failed to create team'), ok: false });
+        setTeamActionMsg({ text: data.error ?? (L('팀 생성 실패', 'Failed to create team')), ok: false });
       }
     } catch {
-      setTeamActionMsg({ text: isKo ? '팀 생성 중 오류가 발생했습니다.' : 'An error occurred.', ok: false });
+      setTeamActionMsg({ text: L('팀 생성 중 오류가 발생했습니다.', 'An error occurred.'), ok: false });
     } finally {
       setCreatingTeam(false);
     }
@@ -342,13 +347,13 @@ function NexyfabDashboardInner({ params }: { params: Promise<{ lang: string }> }
       const data = await res.json();
       if (res.ok) {
         setInviteEmail('');
-        setTeamActionMsg({ text: isKo ? `초대 이메일을 발송했습니다!` : 'Invite sent!', ok: true });
+        setTeamActionMsg({ text: L(`초대 이메일을 발송했습니다!`, 'Invite sent!'), ok: true });
         await fetchTeamMembers(selectedTeamId);
       } else {
-        setTeamActionMsg({ text: data.error ?? (isKo ? '초대 실패' : 'Invite failed'), ok: false });
+        setTeamActionMsg({ text: data.error ?? (L('초대 실패', 'Invite failed')), ok: false });
       }
     } catch {
-      setTeamActionMsg({ text: isKo ? '초대 중 오류가 발생했습니다.' : 'An error occurred.', ok: false });
+      setTeamActionMsg({ text: L('초대 중 오류가 발생했습니다.', 'An error occurred.'), ok: false });
     } finally {
       setInviting(false);
     }
@@ -365,10 +370,10 @@ function NexyfabDashboardInner({ params }: { params: Promise<{ lang: string }> }
       if (res.ok) {
         setTeamInvites(prev => prev.filter(i => i.id !== inviteId));
       } else {
-        toast('error', isKo ? '초대 취소에 실패했습니다.' : 'Failed to revoke invite.');
+        toast('error', L('초대 취소에 실패했습니다.', 'Failed to revoke invite.'));
       }
     } catch {
-      toast('error', isKo ? '초대 취소에 실패했습니다.' : 'Failed to revoke invite.');
+      toast('error', L('초대 취소에 실패했습니다.', 'Failed to revoke invite.'));
     }
   }, [token, selectedTeamId, isKo, toast]);
 
@@ -383,10 +388,10 @@ function NexyfabDashboardInner({ params }: { params: Promise<{ lang: string }> }
       if (res.ok) {
         setTeamMembers(prev => prev.filter(m => m.id !== memberId));
       } else {
-        toast('error', isKo ? '팀원 제거에 실패했습니다.' : 'Failed to remove member.');
+        toast('error', L('팀원 제거에 실패했습니다.', 'Failed to remove member.'));
       }
     } catch {
-      toast('error', isKo ? '팀원 제거에 실패했습니다.' : 'Failed to remove member.');
+      toast('error', L('팀원 제거에 실패했습니다.', 'Failed to remove member.'));
     }
   }, [token, selectedTeamId, isKo, toast]);
 
@@ -548,7 +553,7 @@ function NexyfabDashboardInner({ params }: { params: Promise<{ lang: string }> }
           <span style={{ color: '#8b9cf4' }}>Nexy</span>Fab
         </Link>
         <span style={{ color: 'var(--nx-border)' }}>|</span>
-        <span style={{ fontSize: 14, color: 'var(--nx-text-3)' }}>{isKo ? '내 프로젝트' : 'My Projects'}</span>
+        <span style={{ fontSize: 14, color: 'var(--nx-text-3)' }}>{L('내 프로젝트', 'My Projects')}</span>
         <div style={{ flex: 1 }} />
         {user && (
           <div style={{
@@ -574,10 +579,10 @@ function NexyfabDashboardInner({ params }: { params: Promise<{ lang: string }> }
               <span style={{ fontSize: 28 }}>🔒</span>
               <div style={{ flex: 1 }}>
                 <p style={{ margin: '0 0 4px', fontSize: 15, fontWeight: 800, color: 'var(--nx-text)' }}>
-                  {isKo ? '로그인 후 대시보드를 이용하세요' : 'Sign in to access your dashboard'}
+                  {L('로그인 후 대시보드를 이용하세요', 'Sign in to access your dashboard')}
                 </p>
                 <p style={{ margin: 0, fontSize: 12, color: 'var(--nx-text-3)' }}>
-                  {isKo ? '프로젝트, RFQ, 주문, 지출을 한 눈에 확인할 수 있습니다.' : 'Track your projects, RFQs, orders, and spending in one place.'}
+                  {L('프로젝트, RFQ, 주문, 지출을 한 눈에 확인할 수 있습니다.', 'Track your projects, RFQs, orders, and spending in one place.')}
                 </p>
               </div>
               <button onClick={() => setShowAuth(true)} style={{
@@ -586,17 +591,17 @@ function NexyfabDashboardInner({ params }: { params: Promise<{ lang: string }> }
                 border: 'none', color: '#fff', fontSize: 13, fontWeight: 700, cursor: 'pointer',
                 whiteSpace: 'nowrap',
               }}>
-                {isKo ? '무료로 시작' : 'Get started free'}
+                {L('무료로 시작', 'Get started free')}
               </button>
             </div>
 
             {/* Locked KPI cards */}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16, marginBottom: 28 }}>
               {[
-                { label: isKo ? '활성 프로젝트' : 'Active Projects', icon: '📁' },
-                { label: isKo ? '대기 중 RFQ' : 'Pending RFQs', icon: '📋' },
-                { label: isKo ? '진행 중 주문' : 'Active Orders', icon: '🏭' },
-                { label: isKo ? '이번달 지출' : 'Monthly Spend', icon: '💰' },
+                { label: L('활성 프로젝트', 'Active Projects'), icon: '📁' },
+                { label: L('대기 중 RFQ', 'Pending RFQs'), icon: '📋' },
+                { label: L('진행 중 주문', 'Active Orders'), icon: '🏭' },
+                { label: L('이번달 지출', 'Monthly Spend'), icon: '💰' },
               ].map(card => (
                 <div key={card.label} style={{
                   background: 'var(--nx-panel)', border: '1px solid var(--nx-border)',
@@ -607,7 +612,7 @@ function NexyfabDashboardInner({ params }: { params: Promise<{ lang: string }> }
                   </p>
                   <p style={{ margin: '0 0 6px', fontSize: 26, fontWeight: 800, color: 'var(--nx-border)' }}>—</p>
                   <p style={{ margin: 0, fontSize: 11, color: 'var(--nx-accent)', opacity: 0.7 }}>
-                    {isKo ? '로그인 후 확인' : 'Sign in to view'}
+                    {L('로그인 후 확인', 'Sign in to view')}
                   </p>
                   <div style={{
                     position: 'absolute', inset: 0, backdropFilter: 'blur(2px)',
@@ -623,14 +628,14 @@ function NexyfabDashboardInner({ params }: { params: Promise<{ lang: string }> }
             {/* Quick actions preview */}
             <div style={{ textAlign: 'center', padding: '40px 0' }}>
               <p style={{ color: 'var(--nx-text-3)', fontSize: 14, marginBottom: 20 }}>
-                {isKo ? 'NexyFab에서 설계부터 제조까지 한 번에' : 'From design to manufacturing — all in one place'}
+                {L('NexyFab에서 설계부터 제조까지 한 번에', 'From design to manufacturing — all in one place')}
               </p>
               <button onClick={() => setShowAuth(true)} style={{
                 padding: '10px 28px', borderRadius: 8,
                 background: 'linear-gradient(135deg, var(--nx-accent), #8b5cf6)',
                 border: 'none', color: '#fff', fontSize: 14, fontWeight: 700, cursor: 'pointer',
               }}>
-                {isKo ? '지금 시작하기 →' : 'Get started →'}
+                {L('지금 시작하기 →', 'Get started →')}
               </button>
             </div>
           </>
@@ -639,20 +644,20 @@ function NexyfabDashboardInner({ params }: { params: Promise<{ lang: string }> }
             {/* Top bar */}
             <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20 }}>
               <h1 style={{ margin: 0, fontSize: 20, fontWeight: 800 }}>
-                {isKo ? `${user.name}의 워크스페이스` : `${user.name}'s Workspace`}
+                {L(`${user.name}의 워크스페이스`, `${user.name}'s Workspace`)}
               </h1>
               <div style={{ flex: 1 }} />
               {/* Refresh button + timestamp */}
               <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                 {lastRefreshed && (
                   <span style={{ fontSize: 10, color: 'var(--nx-text-3)' }}>
-                    {isKo ? '최근 업데이트' : 'Updated'} {lastRefreshed.toLocaleTimeString()}
+                    {L('최근 업데이트', 'Updated')} {formatDate(lastRefreshed, lang, { hour: '2-digit', minute: '2-digit' })}
                   </span>
                 )}
                 <button
                   onClick={refreshAll}
                   disabled={isLoading || filesLoading}
-                  title={isKo ? '새로고침' : 'Refresh'}
+                  title={L('새로고침', 'Refresh')}
                   style={{
                     padding: '5px 10px', borderRadius: 6, border: '1px solid var(--nx-border)',
                     background: 'transparent', color: 'var(--nx-text-2)', fontSize: 13,
@@ -668,7 +673,7 @@ function NexyfabDashboardInner({ params }: { params: Promise<{ lang: string }> }
                 <input
                   value={search}
                   onChange={e => setSearch(e.target.value)}
-                  placeholder={isKo ? '프로젝트 검색...' : 'Search projects...'}
+                  placeholder={L('프로젝트 검색...', 'Search projects...')}
                   style={{
                     padding: '7px 12px', borderRadius: 8, width: 200,
                     background: 'var(--nx-panel)', border: '1px solid var(--nx-border)',
@@ -681,9 +686,7 @@ function NexyfabDashboardInner({ params }: { params: Promise<{ lang: string }> }
                 <button
                   onClick={() => {
                     if (atLimit) {
-                      toast('warning', isKo
-                        ? 'Free 플랜은 3개까지 저장 가능합니다. Pro로 업그레이드하세요.'
-                        : 'Upgrade to Pro for unlimited projects.');
+                      toast('warning', L('Free 플랜은 3개까지 저장 가능합니다. Pro로 업그레이드하세요.', 'Upgrade to Pro for unlimited projects.'));
                     } else {
                       router.push(`/${lang}/shape-generator`);
                     }
@@ -696,7 +699,7 @@ function NexyfabDashboardInner({ params }: { params: Promise<{ lang: string }> }
                     display: 'flex', alignItems: 'center', gap: 6,
                   }}
                 >
-                  + {isKo ? '새 프로젝트' : 'New Project'}
+                  + {L('새 프로젝트', 'New Project')}
                 </button>
               )}
             </div>
@@ -705,37 +708,37 @@ function NexyfabDashboardInner({ params }: { params: Promise<{ lang: string }> }
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16, marginBottom: 28 }}>
               {[
                 {
-                  label: isKo ? '활성 프로젝트' : 'Active Projects',
+                  label: L('활성 프로젝트', 'Active Projects'),
                   icon: '📁',
                   value: summaryLoading ? '...' : (summary?.activeProjects ?? 0).toString(),
                   trend: summaryLoading ? '' : (summary?.activeProjects ?? 0) > 0
-                    ? (isKo ? `총 ${summary?.activeProjects}개 프로젝트` : `${summary?.activeProjects} total`)
-                    : (isKo ? '아직 프로젝트 없음' : 'No projects yet'),
+                    ? (L(`총 ${summary?.activeProjects}개 프로젝트`, `${summary?.activeProjects} total`))
+                    : (L('아직 프로젝트 없음', 'No projects yet')),
                   trendColor: 'var(--nx-text-3)',
                 },
                 {
-                  label: isKo ? '대기 중 RFQ' : 'Pending RFQs',
+                  label: L('대기 중 RFQ', 'Pending RFQs'),
                   icon: '📋',
                   value: summaryLoading ? '...' : (summary?.pendingRfqs ?? 0).toString(),
                   trend: summaryLoading ? '' : (summary?.pendingRfqs ?? 0) > 0
-                    ? (isKo ? '검토 대기 중' : 'Awaiting review')
-                    : (isKo ? '없음' : 'None pending'),
+                    ? (L('검토 대기 중', 'Awaiting review'))
+                    : (L('없음', 'None pending')),
                   trendColor: (summary?.pendingRfqs ?? 0) > 0 ? 'var(--nx-warn)' : 'var(--nx-text-3)',
                 },
                 {
-                  label: isKo ? '진행 중 주문' : 'Active Orders',
+                  label: L('진행 중 주문', 'Active Orders'),
                   icon: '🏭',
                   value: summaryLoading ? '...' : (summary?.activeOrders ?? 0).toString(),
                   trend: summaryLoading ? '' : (summary?.activeOrders ?? 0) > 0
-                    ? (isKo ? '생산/배송 중' : 'In production/shipping')
-                    : (isKo ? '진행 중 없음' : 'None active'),
+                    ? (L('생산/배송 중', 'In production/shipping'))
+                    : (L('진행 중 없음', 'None active')),
                   trendColor: (summary?.activeOrders ?? 0) > 0 ? 'var(--nx-ok)' : 'var(--nx-text-3)',
                 },
                 {
-                  label: isKo ? '이번달 지출' : 'Monthly Spend',
+                  label: L('이번달 지출', 'Monthly Spend'),
                   icon: '💰',
-                  value: summaryLoading ? '...' : `₩${(summary?.monthlySpend ?? 0).toLocaleString('ko-KR')}`,
-                  trend: summaryLoading ? '' : (isKo ? '이번달 주문 합계' : 'Total this month'),
+                  value: summaryLoading ? '...' : (formatMoney(summary?.monthlySpend ?? 0, lang, 'KRW') ?? ''),
+                  trend: summaryLoading ? '' : (L('이번달 주문 합계', 'Total this month')),
                   trendColor: '#8b9cf4',
                 },
               ].map(card => (
@@ -760,6 +763,7 @@ function NexyfabDashboardInner({ params }: { params: Promise<{ lang: string }> }
             {summary && (summary.pendingRfqs > 0 || summary.activeOrders > 0 || summary.monthlySpend > 0) && (
               <NexyfabAIInsight
                 summary={summary}
+                lang={lang}
                 isKo={isKo}
                 token={token}
               />
@@ -771,15 +775,15 @@ function NexyfabDashboardInner({ params }: { params: Promise<{ lang: string }> }
               borderRadius: 16, padding: '18px 20px', marginBottom: 24,
             }}>
               <h2 style={{ margin: '0 0 14px', fontSize: 14, fontWeight: 800, color: 'var(--nx-text)' }}>
-                🕐 {isKo ? '최근 활동' : 'Recent Activity'}
+                🕐 {L('최근 활동', 'Recent Activity')}
               </h2>
               {activityLoading ? (
                 <p style={{ color: 'var(--nx-text-3)', fontSize: 13, margin: 0, padding: '12px 0' }}>
-                  {isKo ? '불러오는 중...' : 'Loading...'}
+                  {L('불러오는 중...', 'Loading...')}
                 </p>
               ) : activity.length === 0 ? (
                 <p style={{ color: 'var(--nx-text-3)', fontSize: 13, margin: 0, padding: '8px 0' }}>
-                  {isKo ? '아직 활동 내역이 없습니다.' : 'No recent activity yet.'}
+                  {L('아직 활동 내역이 없습니다.', 'No recent activity yet.')}
                 </p>
               ) : (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
@@ -820,10 +824,10 @@ function NexyfabDashboardInner({ params }: { params: Promise<{ lang: string }> }
             {/* ── Quick Actions ─────────────────────────────────────────── */}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12, marginBottom: 28 }}>
               {[
-                { icon: '✏️', title: isKo ? '새 설계 시작' : 'New Design', href: `/${lang}/shape-generator` },
-                { icon: '📋', title: isKo ? 'RFQ 요청' : 'Request RFQ', href: `/${lang}/nexyfab/rfq` },
-                { icon: '📦', title: isKo ? '주문 추적' : 'Track Orders', href: `/${lang}/nexyfab/orders` },
-                { icon: '🏭', title: isKo ? '제조사 찾기' : 'Find Manufacturers', href: `/${lang}/nexyfab/marketplace` },
+                { icon: '✏️', title: L('새 설계 시작', 'New Design'), href: `/${lang}/shape-generator` },
+                { icon: '📋', title: L('RFQ 요청', 'Request RFQ'), href: `/${lang}/nexyfab/rfq` },
+                { icon: '📦', title: L('주문 추적', 'Track Orders'), href: `/${lang}/nexyfab/orders` },
+                { icon: '🏭', title: L('제조사 찾기', 'Find Manufacturers'), href: `/${lang}/nexyfab/marketplace` },
               ].map(action => (
                 <Link
                   prefetch={action.href.includes('shape-generator')}
@@ -872,14 +876,14 @@ function NexyfabDashboardInner({ params }: { params: Promise<{ lang: string }> }
                   }}
                 >
                   {tab === 'projects'
-                    ? `📁 ${isKo ? '프로젝트' : 'Projects'} (${projects.length})`
+                    ? `📁 ${L('프로젝트', 'Projects')} (${projects.length})`
                     : tab === 'files'
-                    ? `🗄️ ${isKo ? '파일' : 'Files'} (${r2Files.length})`
+                    ? `🗄️ ${L('파일', 'Files')} (${r2Files.length})`
                     : tab === 'teams'
-                    ? `👥 ${isKo ? '팀' : 'Teams'} (${ownedTeams.length + memberTeams.length})`
+                    ? `👥 ${L('팀', 'Teams')} (${ownedTeams.length + memberTeams.length})`
                     : tab === 'rfqs'
-                    ? `📋 ${isKo ? '견적 요청' : 'RFQs'} (${rfqTotal})`
-                    : `📦 ${isKo ? '주문' : 'Orders'} (${orders.length})`}
+                    ? `📋 ${L('견적 요청', 'RFQs')} (${rfqTotal})`
+                    : `📦 ${L('주문', 'Orders')} (${orders.length})`}
                 </button>
               ))}
             </div>
@@ -909,7 +913,7 @@ function NexyfabDashboardInner({ params }: { params: Promise<{ lang: string }> }
                 <div style={{ flex: 1 }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
                     <span style={{ fontSize: 12, color: 'var(--nx-text-2)' }}>
-                      {isKo ? '프로젝트 사용량' : 'Project usage'}
+                      {L('프로젝트 사용량', 'Project usage')}
                     </span>
                     <span style={{ fontSize: 12, color: 'var(--nx-text)', fontWeight: 700 }}>
                       {projects.length} / {planInfo.projectLimit}
@@ -931,7 +935,7 @@ function NexyfabDashboardInner({ params }: { params: Promise<{ lang: string }> }
                     color: '#fff', fontSize: 11, fontWeight: 700, textDecoration: 'none',
                     whiteSpace: 'nowrap',
                   }}>
-                    ⚡ Pro {isKo ? '업그레이드' : 'Upgrade'}
+                    ⚡ Pro {L('업그레이드', 'Upgrade')}
                   </a>
                 )}
               </div>
@@ -948,7 +952,7 @@ function NexyfabDashboardInner({ params }: { params: Promise<{ lang: string }> }
                 <div style={{ flex: 1 }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
                     <span style={{ fontSize: 11, color: 'var(--nx-text-2)' }}>
-                      {isKo ? '클라우드 저장 용량' : 'Cloud storage'}
+                      {L('클라우드 저장 용량', 'Cloud storage')}
                     </span>
                     <span style={{ fontSize: 11, fontWeight: 700, color: storageNearLimit ? 'var(--nx-warn)' : 'var(--nx-text)' }}>
                       {storageUsedMB < 1 ? `${(storageUsedMB * 1024).toFixed(0)} KB` : `${storageUsedMB.toFixed(1)} MB`} / {storageLimitMB} MB
@@ -968,7 +972,7 @@ function NexyfabDashboardInner({ params }: { params: Promise<{ lang: string }> }
                     fontSize: 10, fontWeight: 700, color: 'var(--nx-warn)', textDecoration: 'none',
                     whiteSpace: 'nowrap',
                   }}>
-                    {isKo ? '용량 늘리기 →' : 'Increase →'}
+                    {L('용량 늘리기 →', 'Increase →')}
                   </a>
                 )}
               </div>
@@ -978,15 +982,15 @@ function NexyfabDashboardInner({ params }: { params: Promise<{ lang: string }> }
             {activeTab === 'projects' && (
               isLoading ? (
                 <div style={{ textAlign: 'center', padding: '60px 0', color: 'var(--nx-text-3)' }}>
-                  {isKo ? '불러오는 중...' : 'Loading...'}
+                  {L('불러오는 중...', 'Loading...')}
                 </div>
               ) : filtered.length === 0 ? (
                 <div style={{ textAlign: 'center', padding: '80px 0' }}>
                   <div style={{ fontSize: 48, marginBottom: 12 }}>✏️</div>
                   <p style={{ color: 'var(--nx-text-3)', fontSize: 14 }}>
                     {search
-                      ? (isKo ? '검색 결과가 없습니다' : 'No projects match your search')
-                      : (isKo ? '아직 저장된 프로젝트가 없습니다. 새 프로젝트를 시작하세요!' : 'No projects yet. Start a new one!')}
+                      ? (L('검색 결과가 없습니다', 'No projects match your search'))
+                      : (L('아직 저장된 프로젝트가 없습니다. 새 프로젝트를 시작하세요!', 'No projects yet. Start a new one!'))}
                   </p>
                   {!search && (
                     <button onClick={() => router.push(`/${lang}/shape-generator`)} style={{
@@ -994,7 +998,7 @@ function NexyfabDashboardInner({ params }: { params: Promise<{ lang: string }> }
                       background: 'var(--nx-accent)', border: 'none',
                       color: '#fff', fontSize: 13, fontWeight: 700, cursor: 'pointer',
                     }}>
-                      {isKo ? '첫 프로젝트 만들기' : 'Create your first project'}
+                      {L('첫 프로젝트 만들기', 'Create your first project')}
                     </button>
                   )}
                 </div>
@@ -1020,7 +1024,7 @@ function NexyfabDashboardInner({ params }: { params: Promise<{ lang: string }> }
                       onShare={() => {
                         const url = `${window.location.origin}/${lang}/shape-generator?share=${project.id}`;
                         navigator.clipboard.writeText(url).then(() => {
-                          setShareToast(isKo ? '공유 링크가 복사되었습니다!' : 'Share link copied!');
+                          setShareToast(L('공유 링크가 복사되었습니다!', 'Share link copied!'));
                           setTimeout(() => setShareToast(''), 3000);
                         });
                       }}
@@ -1036,13 +1040,13 @@ function NexyfabDashboardInner({ params }: { params: Promise<{ lang: string }> }
               <div>
                 {rfqsLoading ? (
                   <div style={{ textAlign: 'center', padding: '60px 0', color: 'var(--nx-text-3)' }}>
-                    {isKo ? '불러오는 중...' : 'Loading...'}
+                    {L('불러오는 중...', 'Loading...')}
                   </div>
                 ) : rfqs.length === 0 ? (
                   <div style={{ textAlign: 'center', padding: '80px 0' }}>
                     <div style={{ fontSize: 48, marginBottom: 12 }}>📋</div>
                     <p style={{ color: 'var(--nx-text-3)', fontSize: 14 }}>
-                      {isKo ? '아직 견적 요청이 없습니다.' : 'No quote requests yet.'}
+                      {L('아직 견적 요청이 없습니다.', 'No quote requests yet.')}
                     </p>
                     <button
                       onClick={() => router.push(`/${lang}/shape-generator`)}
@@ -1052,7 +1056,7 @@ function NexyfabDashboardInner({ params }: { params: Promise<{ lang: string }> }
                         color: '#fff', fontSize: 13, fontWeight: 700, cursor: 'pointer',
                       }}
                     >
-                      {isKo ? '설계 시작하기' : 'Start designing'}
+                      {L('설계 시작하기', 'Start designing')}
                     </button>
                   </div>
                 ) : (
@@ -1064,12 +1068,12 @@ function NexyfabDashboardInner({ params }: { params: Promise<{ lang: string }> }
                       borderBottom: '1px solid var(--nx-panel-2)',
                       fontSize: 11, fontWeight: 700, color: 'var(--nx-text-3)', letterSpacing: '0.04em',
                     }}>
-                      <span>{isKo ? '부품명' : 'Part'}</span>
-                      <span>{isKo ? '재질' : 'Material'}</span>
-                      <span>{isKo ? '수량' : 'Qty'}</span>
-                      <span>{isKo ? '상태' : 'Status'}</span>
-                      <span>{isKo ? '견적가' : 'Quote'}</span>
-                      <span>{isKo ? '요청일' : 'Date'}</span>
+                      <span>{L('부품명', 'Part')}</span>
+                      <span>{L('재질', 'Material')}</span>
+                      <span>{L('수량', 'Qty')}</span>
+                      <span>{L('상태', 'Status')}</span>
+                      <span>{L('견적가', 'Quote')}</span>
+                      <span>{L('요청일', 'Date')}</span>
                       <span></span>
                     </div>
                     {rfqs.map((rfq, i) => {
@@ -1102,7 +1106,7 @@ function NexyfabDashboardInner({ params }: { params: Promise<{ lang: string }> }
                             )}
                           </div>
                           <div style={{ fontSize: 11, color: 'var(--nx-text-2)' }}>{rfq.materialId}</div>
-                          <div style={{ fontSize: 12, color: 'var(--nx-text)', fontWeight: 600 }}>{rfq.quantity.toLocaleString()}</div>
+                          <div style={{ fontSize: 12, color: 'var(--nx-text)', fontWeight: 600 }}>{formatNumber(rfq.quantity, lang)}</div>
                           <div style={{
                             fontSize: 11, fontWeight: 700,
                             color: statusColor[rfq.status] ?? 'var(--nx-text-3)',
@@ -1110,15 +1114,15 @@ function NexyfabDashboardInner({ params }: { params: Promise<{ lang: string }> }
                             borderRadius: 4, padding: '2px 7px', textAlign: 'center',
                             display: 'inline-block',
                           }}>
-                            {(statusLabel[rfq.status]?.[isKo ? 'ko' : 'en']) ?? rfq.status}
+                            {statusLabel[rfq.status] ? L(statusLabel[rfq.status].ko, statusLabel[rfq.status].en) : rfq.status}
                           </div>
                           <div style={{ fontSize: 12, fontWeight: 700, color: rfq.quoteAmount ? 'var(--nx-ok)' : 'var(--nx-text-3)' }}>
                             {rfq.quoteAmount
-                              ? (isKo ? `₩${rfq.quoteAmount.toLocaleString()}` : `$${rfq.quoteAmount.toLocaleString()}`)
+                              ? (formatMoney(rfq.quoteAmount, lang, 'KRW') ?? '')
                               : '—'}
                           </div>
                           <div style={{ fontSize: 11, color: 'var(--nx-text-3)' }}>
-                            {new Date(rfq.createdAt).toLocaleDateString(isKo ? 'ko-KR' : 'en-US', { month: 'short', day: 'numeric' })}
+                            {formatDate(rfq.createdAt, lang, { month: 'short', day: 'numeric' })}
                           </div>
                           <div>
                             {rfq.status === 'quoted' && (
@@ -1136,12 +1140,12 @@ function NexyfabDashboardInner({ params }: { params: Promise<{ lang: string }> }
                                       setRfqs(prev => prev.map(r => r.rfqId === rfq.rfqId ? { ...r, status: 'accepted' } : r));
                                       delete _cache.summary;
                                       delete _cache.activity;
-                                      toast('success', isKo ? '견적을 수락했습니다.' : 'Quote accepted.');
+                                      toast('success', L('견적을 수락했습니다.', 'Quote accepted.'));
                                     } else {
-                                      toast('error', isKo ? '수락에 실패했습니다.' : 'Failed to accept quote.');
+                                      toast('error', L('수락에 실패했습니다.', 'Failed to accept quote.'));
                                     }
                                   } catch {
-                                    toast('error', isKo ? '수락에 실패했습니다.' : 'Failed to accept quote.');
+                                    toast('error', L('수락에 실패했습니다.', 'Failed to accept quote.'));
                                   } finally {
                                     setAcceptingRfq(null);
                                   }
@@ -1155,7 +1159,7 @@ function NexyfabDashboardInner({ params }: { params: Promise<{ lang: string }> }
                                   whiteSpace: 'nowrap',
                                 }}
                               >
-                                {isAccepting ? '...' : (isKo ? '✓ 수락' : '✓ Accept')}
+                                {isAccepting ? '...' : (L('✓ 수락', '✓ Accept'))}
                               </button>
                             )}
                           </div>
@@ -1166,7 +1170,7 @@ function NexyfabDashboardInner({ params }: { params: Promise<{ lang: string }> }
                 )}
                 {rfqTotal > rfqs.length && (
                   <p style={{ textAlign: 'center', marginTop: 12, fontSize: 12, color: 'var(--nx-text-3)' }}>
-                    {isKo ? `전체 ${rfqTotal}건 중 최근 50건 표시` : `Showing 50 of ${rfqTotal} total`}
+                    {L(`전체 ${rfqTotal}건 중 최근 50건 표시`, `Showing 50 of ${rfqTotal} total`)}
                   </p>
                 )}
               </div>
@@ -1186,13 +1190,13 @@ function NexyfabDashboardInner({ params }: { params: Promise<{ lang: string }> }
                 <div>
                   {ordersLoading ? (
                     <div style={{ textAlign: 'center', padding: '60px 0', color: 'var(--nx-text-3)' }}>
-                      {isKo ? '불러오는 중...' : 'Loading...'}
+                      {L('불러오는 중...', 'Loading...')}
                     </div>
                   ) : orders.length === 0 ? (
                     <div style={{ textAlign: 'center', padding: '80px 0' }}>
                       <div style={{ fontSize: 48, marginBottom: 12 }}>📦</div>
                       <p style={{ color: 'var(--nx-text-3)', fontSize: 14 }}>
-                        {isKo ? '아직 주문이 없습니다. 견적 요청을 수락하면 주문이 생성됩니다.' : 'No orders yet. Accept a quote to create an order.'}
+                        {L('아직 주문이 없습니다. 견적 요청을 수락하면 주문이 생성됩니다.', 'No orders yet. Accept a quote to create an order.')}
                       </p>
                       <button
                         onClick={() => setActiveTab('rfqs')}
@@ -1202,7 +1206,7 @@ function NexyfabDashboardInner({ params }: { params: Promise<{ lang: string }> }
                           color: '#fff', fontSize: 13, fontWeight: 700, cursor: 'pointer',
                         }}
                       >
-                        {isKo ? '견적 요청 보기' : 'View RFQs'}
+                        {L('견적 요청 보기', 'View RFQs')}
                       </button>
                     </div>
                   ) : (
@@ -1225,19 +1229,19 @@ function NexyfabDashboardInner({ params }: { params: Promise<{ lang: string }> }
                                   <span style={{
                                     fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 8,
                                     background: (sl?.color ?? 'var(--nx-text-3)') + '22', color: sl?.color ?? 'var(--nx-text-3)',
-                                  }}>{sl?.[isKo ? 'ko' : 'en'] ?? order.status}</span>
+                                  }}>{sl ? L(sl.ko, sl.en) : order.status}</span>
                                   {isPaid && (
                                     <span style={{ fontSize: 10, fontWeight: 700, padding: '2px 6px', borderRadius: 6, background: '#3fb95022', color: 'var(--nx-ok)' }}>
-                                      {isKo ? '결제완료' : 'Paid'}
+                                      {L('결제완료', 'Paid')}
                                     </span>
                                   )}
                                 </div>
                                 <div style={{ fontSize: 11, color: 'var(--nx-text-2)', marginBottom: 2 }}>
-                                  {order.manufacturerName} · {order.quantity.toLocaleString()}{isKo ? '개' : 'ea'} · ₩{order.totalPriceKRW.toLocaleString('ko-KR')}
+                                  {order.manufacturerName} · {formatNumber(order.quantity, lang)}{L('개', 'ea')} · {formatMoney(order.totalPriceKRW, lang, 'KRW')}
                                 </div>
                                 <div style={{ fontSize: 11, color: 'var(--nx-text-3)', marginBottom: 8 }}>
-                                  {isKo ? '납기 예정' : 'ETA'}:{' '}
-                                  {new Date(order.estimatedDeliveryAt).toLocaleDateString(isKo ? 'ko-KR' : 'en-US', { month: 'short', day: 'numeric' })}
+                                  {L('납기 예정', 'ETA')}:{' '}
+                                  {formatDate(order.estimatedDeliveryAt, lang, { month: 'short', day: 'numeric' })}
                                   {dday > 0
                                     ? <span style={{ marginLeft: 6, color: '#e3b341', fontWeight: 700 }}>D-{dday}</span>
                                     : dday === 0
@@ -1250,9 +1254,10 @@ function NexyfabDashboardInner({ params }: { params: Promise<{ lang: string }> }
                                   <div style={{ height: '100%', width: `${pct}%`, background: sl?.color ?? 'var(--nx-accent)', transition: 'width 0.4s' }} />
                                 </div>
                                 <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 9, color: 'var(--nx-border-strong)' }}>
-                                  {(isKo ? ['주문', '생산', 'QC', '배송', '완료'] : ['Order', 'Prod', 'QC', 'Ship', 'Done']).map((s, i) => (
-                                    <span key={i} style={{ color: i <= stepIdx ? sl?.color ?? 'var(--nx-accent)' : 'var(--nx-border-strong)', fontWeight: i === stepIdx ? 700 : 400 }}>{s}</span>
-                                  ))}
+                                  {['Order', 'Prod', 'QC', 'Ship', 'Done'].map((englishStep, i) => {
+                                    const s = L(['주문', '생산', 'QC', '배송', '완료'][i]!, englishStep);
+                                    return <span key={i} style={{ color: i <= stepIdx ? sl?.color ?? 'var(--nx-accent)' : 'var(--nx-border-strong)', fontWeight: i === stepIdx ? 700 : 400 }}>{s}</span>;
+                                  })}
                                 </div>
                               </div>
                               <div style={{ display: 'flex', flexDirection: 'column', gap: 5, flexShrink: 0 }}>
@@ -1264,7 +1269,7 @@ function NexyfabDashboardInner({ params }: { params: Promise<{ lang: string }> }
                                     border: '1px solid #388bfd44', textAlign: 'center', whiteSpace: 'nowrap',
                                   }}
                                 >
-                                  {isKo ? '상세 보기' : 'Details'}
+                                  {L('상세 보기', 'Details')}
                                 </a>
                                 <a
                                   href={`/api/nexyfab/orders/${order.id}/tax-invoice`}
@@ -1276,7 +1281,7 @@ function NexyfabDashboardInner({ params }: { params: Promise<{ lang: string }> }
                                     border: '1px solid #e3b34144', textAlign: 'center', whiteSpace: 'nowrap',
                                   }}
                                 >
-                                  🧾 {isKo ? '계산서' : 'Invoice'}
+                                  🧾 {L('계산서', 'Invoice')}
                                 </a>
                               </div>
                             </div>
@@ -1288,7 +1293,7 @@ function NexyfabDashboardInner({ params }: { params: Promise<{ lang: string }> }
                           href={`/${lang}/nexyfab/orders`}
                           style={{ fontSize: 12, color: 'var(--nx-accent)', textDecoration: 'none', fontWeight: 600 }}
                         >
-                          {isKo ? '전체 주문 관리 →' : 'Manage all orders →'}
+                          {L('전체 주문 관리 →', 'Manage all orders →')}
                         </a>
                       </div>
                     </div>
@@ -1309,12 +1314,10 @@ function NexyfabDashboardInner({ params }: { params: Promise<{ lang: string }> }
                   }}>
                     <div style={{ fontSize: 40, marginBottom: 12 }}>👥</div>
                     <h3 style={{ margin: '0 0 8px', color: 'var(--nx-text)', fontSize: 16, fontWeight: 800 }}>
-                      {isKo ? '팀 협업은 Team 플랜부터' : 'Team collaboration requires Team plan'}
+                      {L('팀 협업은 Team 플랜부터', 'Team collaboration requires Team plan')}
                     </h3>
                     <p style={{ margin: '0 0 20px', color: 'var(--nx-text-3)', fontSize: 13 }}>
-                      {isKo
-                        ? '팀원 초대, 공유 프로젝트, 실시간 협업 기능은 Team 플랜에서 사용 가능합니다.'
-                        : 'Invite members, share projects, and collaborate in real-time with Team plan.'}
+                      {L('팀원 초대, 공유 프로젝트, 실시간 협업 기능은 Team 플랜에서 사용 가능합니다.', 'Invite members, share projects, and collaborate in real-time with Team plan.')}
                     </p>
                     <a
                       href={`/${lang}/nexyfab/pricing`}
@@ -1324,7 +1327,7 @@ function NexyfabDashboardInner({ params }: { params: Promise<{ lang: string }> }
                         color: '#fff', fontSize: 14, fontWeight: 700, textDecoration: 'none',
                       }}
                     >
-                      ⚡ {isKo ? 'Team으로 업그레이드' : 'Upgrade to Team'}
+                      ⚡ {L('Team으로 업그레이드', 'Upgrade to Team')}
                     </a>
                   </div>
                 ) : (
@@ -1337,13 +1340,13 @@ function NexyfabDashboardInner({ params }: { params: Promise<{ lang: string }> }
                         borderRadius: 10, padding: '14px', marginBottom: 14,
                       }}>
                         <p style={{ margin: '0 0 8px', fontSize: 12, fontWeight: 700, color: 'var(--nx-text-2)' }}>
-                          {isKo ? '새 팀 만들기' : 'Create Team'}
+                          {L('새 팀 만들기', 'Create Team')}
                         </p>
                         <input
                           value={newTeamName}
                           onChange={e => setNewTeamName(e.target.value)}
                           onKeyDown={e => { if (e.key === 'Enter') void createTeam(); }}
-                          placeholder={isKo ? '팀 이름...' : 'Team name...'}
+                          placeholder={L('팀 이름...', 'Team name...')}
                           style={{
                             width: '100%', padding: '7px 10px', borderRadius: 6,
                             background: 'var(--nx-bg)', border: '1px solid var(--nx-border)',
@@ -1361,14 +1364,14 @@ function NexyfabDashboardInner({ params }: { params: Promise<{ lang: string }> }
                             fontSize: 12, fontWeight: 700, cursor: newTeamName.trim() ? 'pointer' : 'default',
                           }}
                         >
-                          {creatingTeam ? '...' : (isKo ? '+ 팀 생성' : '+ Create')}
+                          {creatingTeam ? '...' : (L('+ 팀 생성', '+ Create'))}
                         </button>
                       </div>
 
                       {/* Team list */}
                       {teamsLoading ? (
                         <div style={{ color: 'var(--nx-text-3)', fontSize: 12, textAlign: 'center', padding: '20px 0' }}>
-                          {isKo ? '불러오는 중...' : 'Loading...'}
+                          {L('불러오는 중...', 'Loading...')}
                         </div>
                       ) : (
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
@@ -1385,7 +1388,7 @@ function NexyfabDashboardInner({ params }: { params: Promise<{ lang: string }> }
                             >
                               <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--nx-text)' }}>👑 {t.name}</div>
                               <div style={{ fontSize: 10, color: 'var(--nx-text-3)', marginTop: 2 }}>
-                                {isKo ? '소유자' : 'Owner'}
+                                {L('소유자', 'Owner')}
                               </div>
                             </button>
                           ))}
@@ -1402,13 +1405,13 @@ function NexyfabDashboardInner({ params }: { params: Promise<{ lang: string }> }
                             >
                               <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--nx-text)' }}>🏢 {t.name}</div>
                               <div style={{ fontSize: 10, color: 'var(--nx-text-3)', marginTop: 2 }}>
-                                {t.role === 'manager' ? (isKo ? '매니저' : 'Manager') : (isKo ? '뷰어' : 'Viewer')}
+                                {t.role === 'manager' ? (L('매니저', 'Manager')) : (L('뷰어', 'Viewer'))}
                               </div>
                             </button>
                           ))}
                           {ownedTeams.length === 0 && memberTeams.length === 0 && (
                             <p style={{ color: 'var(--nx-text-3)', fontSize: 12, textAlign: 'center', padding: '12px 0' }}>
-                              {isKo ? '아직 팀이 없습니다' : 'No teams yet'}
+                              {L('아직 팀이 없습니다', 'No teams yet')}
                             </p>
                           )}
                         </div>
@@ -1425,15 +1428,15 @@ function NexyfabDashboardInner({ params }: { params: Promise<{ lang: string }> }
                           {/* Members section */}
                           <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--nx-panel-2)' }}>
                             <h3 style={{ margin: '0 0 14px', fontSize: 14, fontWeight: 800, color: 'var(--nx-text)' }}>
-                              👥 {isKo ? '팀원' : 'Members'}
+                              👥 {L('팀원', 'Members')}
                             </h3>
                             {membersLoading ? (
-                              <p style={{ color: 'var(--nx-text-3)', fontSize: 12 }}>{isKo ? '불러오는 중...' : 'Loading...'}</p>
+                              <p style={{ color: 'var(--nx-text-3)', fontSize: 12 }}>{L('불러오는 중...', 'Loading...')}</p>
                             ) : (
                               <div style={{ display: 'flex', flexDirection: 'column', gap: 0, borderRadius: 8, overflow: 'hidden', border: '1px solid var(--nx-panel-2)' }}>
                                 {teamMembers.length === 0 ? (
                                   <p style={{ padding: '12px 16px', color: 'var(--nx-text-3)', fontSize: 12, margin: 0 }}>
-                                    {isKo ? '팀원이 없습니다. 아래에서 초대하세요.' : 'No members yet. Invite below.'}
+                                    {L('팀원이 없습니다. 아래에서 초대하세요.', 'No members yet. Invite below.')}
                                   </p>
                                 ) : teamMembers.map((m, i) => (
                                   <div key={m.id} style={{
@@ -1456,12 +1459,12 @@ function NexyfabDashboardInner({ params }: { params: Promise<{ lang: string }> }
                                       {m.role === 'owner' ? '👑 Owner' : m.role === 'manager' ? 'Manager' : 'Viewer'}
                                     </div>
                                     <div style={{ fontSize: 10, color: 'var(--nx-text-3)', textAlign: 'center' }}>
-                                      {m.joined_at ? new Date(m.joined_at).toLocaleDateString(isKo ? 'ko-KR' : 'en-US', { month: 'short', day: 'numeric' }) : '-'}
+                                      {m.joined_at ? formatDate(m.joined_at, lang, { month: 'short', day: 'numeric' }) : '-'}
                                     </div>
                                     {m.role !== 'owner' && ownedTeams.some(t => t.id === selectedTeamId) ? (
                                       <button
                                         onClick={() => void removeMember(m.id)}
-                                        title={isKo ? '내보내기' : 'Remove'}
+                                        title={L('내보내기', 'Remove')}
                                         style={{
                                           padding: 0, width: 24, height: 24, borderRadius: 4,
                                           border: 'none', background: 'transparent',
@@ -1481,14 +1484,14 @@ function NexyfabDashboardInner({ params }: { params: Promise<{ lang: string }> }
                           {ownedTeams.some(t => t.id === selectedTeamId) && (
                             <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--nx-panel-2)' }}>
                               <h4 style={{ margin: '0 0 12px', fontSize: 13, fontWeight: 700, color: 'var(--nx-text-2)' }}>
-                                ✉️ {isKo ? '팀원 초대' : 'Invite member'}
+                                ✉️ {L('팀원 초대', 'Invite member')}
                               </h4>
                               <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
                                 <input
                                   value={inviteEmail}
                                   onChange={e => setInviteEmail(e.target.value)}
                                   onKeyDown={e => { if (e.key === 'Enter') void inviteMember(); }}
-                                  placeholder={isKo ? '이메일 주소...' : 'Email address...'}
+                                  placeholder={L('이메일 주소...', 'Email address...')}
                                   type="email"
                                   style={{
                                     flex: 1, padding: '8px 12px', borderRadius: 6,
@@ -1505,8 +1508,8 @@ function NexyfabDashboardInner({ params }: { params: Promise<{ lang: string }> }
                                     color: 'var(--nx-text)', fontSize: 12, outline: 'none',
                                   }}
                                 >
-                                  <option value="viewer">{isKo ? '뷰어' : 'Viewer'}</option>
-                                  <option value="manager">{isKo ? '매니저' : 'Manager'}</option>
+                                  <option value="viewer">{L('뷰어', 'Viewer')}</option>
+                                  <option value="manager">{L('매니저', 'Manager')}</option>
                                 </select>
                                 <button
                                   onClick={() => void inviteMember()}
@@ -1520,7 +1523,7 @@ function NexyfabDashboardInner({ params }: { params: Promise<{ lang: string }> }
                                     whiteSpace: 'nowrap',
                                   }}
                                 >
-                                  {inviting ? '...' : (isKo ? '초대' : 'Invite')}
+                                  {inviting ? '...' : (L('초대', 'Invite'))}
                                 </button>
                               </div>
                             </div>
@@ -1530,7 +1533,7 @@ function NexyfabDashboardInner({ params }: { params: Promise<{ lang: string }> }
                           {teamInvites.length > 0 && (
                             <div style={{ padding: '14px 20px', borderBottom: '1px solid var(--nx-panel-2)' }}>
                               <h4 style={{ margin: '0 0 10px', fontSize: 12, fontWeight: 700, color: 'var(--nx-text-2)' }}>
-                                ⏳ {isKo ? '대기 중인 초대' : 'Pending invites'} ({teamInvites.length})
+                                ⏳ {L('대기 중인 초대', 'Pending invites')} ({teamInvites.length})
                               </h4>
                               <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                                 {teamInvites.map(inv => (
@@ -1541,14 +1544,14 @@ function NexyfabDashboardInner({ params }: { params: Promise<{ lang: string }> }
                                   }}>
                                     <span style={{ flex: 1, fontSize: 12, color: 'var(--nx-text-2)' }}>{inv.email}</span>
                                     <span style={{ fontSize: 10, color: 'var(--nx-text-3)' }}>
-                                      {inv.role === 'manager' ? (isKo ? '매니저' : 'Manager') : (isKo ? '뷰어' : 'Viewer')}
+                                      {inv.role === 'manager' ? (L('매니저', 'Manager')) : (L('뷰어', 'Viewer'))}
                                     </span>
                                     <span style={{ fontSize: 10, color: 'var(--nx-text-3)' }}>
-                                      {isKo ? '만료' : 'Exp'}: {new Date(inv.expires_at).toLocaleDateString(isKo ? 'ko-KR' : 'en-US', { month: 'short', day: 'numeric' })}
+                                      {L('만료', 'Exp')}: {formatDate(inv.expires_at, lang, { month: 'short', day: 'numeric' })}
                                     </span>
                                     <button
                                       onClick={() => void revokeInvite(inv.id)}
-                                      title={isKo ? '초대 취소' : 'Revoke invite'}
+                                      title={L('초대 취소', 'Revoke invite')}
                                       style={{
                                         padding: 0, width: 22, height: 22, borderRadius: 4,
                                         border: 'none', background: 'transparent',
@@ -1567,7 +1570,7 @@ function NexyfabDashboardInner({ params }: { params: Promise<{ lang: string }> }
                           <div style={{ padding: '14px 20px' }}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
                               <h4 style={{ margin: 0, fontSize: 13, fontWeight: 700, color: 'var(--nx-text-2)' }}>
-                                📂 {isKo ? '팀 공유 설계' : 'Shared Designs'}
+                                📂 {L('팀 공유 설계', 'Shared Designs')}
                               </h4>
                               <button
                                 onClick={() => {
@@ -1580,15 +1583,15 @@ function NexyfabDashboardInner({ params }: { params: Promise<{ lang: string }> }
                                   cursor: 'pointer',
                                 }}
                               >
-                                {teamProjectsLoading ? '...' : (isKo ? '불러오기' : 'Load')}
+                                {teamProjectsLoading ? '...' : (L('불러오기', 'Load'))}
                               </button>
                             </div>
                             {showTeamProjects && (
                               teamProjectsLoading ? (
-                                <p style={{ color: 'var(--nx-text-3)', fontSize: 12 }}>{isKo ? '불러오는 중...' : 'Loading...'}</p>
+                                <p style={{ color: 'var(--nx-text-3)', fontSize: 12 }}>{L('불러오는 중...', 'Loading...')}</p>
                               ) : teamProjects.length === 0 ? (
                                 <p style={{ color: 'var(--nx-text-3)', fontSize: 12 }}>
-                                  {isKo ? '팀원 중 공유된 프로젝트가 없습니다.' : 'No shared projects from team members yet.'}
+                                  {L('팀원 중 공유된 프로젝트가 없습니다.', 'No shared projects from team members yet.')}
                                 </p>
                               ) : (
                                 <div style={{ display: 'flex', flexDirection: 'column', gap: 0, borderRadius: 8, overflow: 'hidden', border: '1px solid var(--nx-panel-2)' }}>
@@ -1607,7 +1610,7 @@ function NexyfabDashboardInner({ params }: { params: Promise<{ lang: string }> }
                                         <div style={{ fontSize: 10, color: 'var(--nx-text-3)' }}>{tp.ownerEmail}</div>
                                       </div>
                                       <div style={{ fontSize: 10, color: 'var(--nx-text-3)', textAlign: 'right' }}>
-                                        {new Date(tp.updatedAt).toLocaleDateString(isKo ? 'ko-KR' : 'en-US', { month: 'short', day: 'numeric' })}
+                                        {formatDate(tp.updatedAt, lang, { month: 'short', day: 'numeric' })}
                                       </div>
                                       <button
                                         onClick={() => router.push(`/${lang}/shape-generator?project=${tp.id}`)}
@@ -1617,7 +1620,7 @@ function NexyfabDashboardInner({ params }: { params: Promise<{ lang: string }> }
                                           fontSize: 11, cursor: 'pointer',
                                         }}
                                       >
-                                        {isKo ? '열기' : 'Open'}
+                                        {L('열기', 'Open')}
                                       </button>
                                     </div>
                                   ))}
@@ -1632,7 +1635,7 @@ function NexyfabDashboardInner({ params }: { params: Promise<{ lang: string }> }
                           borderRadius: 12, padding: '40px', textAlign: 'center',
                         }}>
                           <p style={{ color: 'var(--nx-text-3)', fontSize: 13 }}>
-                            {isKo ? '왼쪽에서 팀을 선택하거나 새 팀을 만드세요.' : 'Select a team or create a new one.'}
+                            {L('왼쪽에서 팀을 선택하거나 새 팀을 만드세요.', 'Select a team or create a new one.')}
                           </p>
                         </div>
                       )}
@@ -1669,7 +1672,7 @@ function NexyfabDashboardInner({ params }: { params: Promise<{ lang: string }> }
                     <div style={{ flex: 1 }}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
                         <span style={{ fontSize: 11, color: 'var(--nx-text-2)' }}>
-                          {isKo ? 'R2 저장소 사용량' : 'R2 Storage used'}
+                          {L('R2 저장소 사용량', 'R2 Storage used')}
                         </span>
                         <span style={{ fontSize: 11, fontWeight: 700, color: filesStorage.usage_percent >= 80 ? 'var(--nx-warn)' : 'var(--nx-text)' }}>
                           {filesStorage.used_gb < 0.001
@@ -1692,13 +1695,13 @@ function NexyfabDashboardInner({ params }: { params: Promise<{ lang: string }> }
 
                 {filesLoading ? (
                   <div style={{ textAlign: 'center', padding: '60px 0', color: 'var(--nx-text-3)' }}>
-                    {isKo ? '불러오는 중...' : 'Loading...'}
+                    {L('불러오는 중...', 'Loading...')}
                   </div>
                 ) : r2Files.length === 0 ? (
                   <div style={{ textAlign: 'center', padding: '80px 0' }}>
                     <div style={{ fontSize: 48, marginBottom: 12 }}>🗄️</div>
                     <p style={{ color: 'var(--nx-text-3)', fontSize: 14 }}>
-                      {isKo ? '업로드된 파일이 없습니다' : 'No files uploaded yet'}
+                      {L('업로드된 파일이 없습니다', 'No files uploaded yet')}
                     </p>
                   </div>
                 ) : (
@@ -1710,10 +1713,10 @@ function NexyfabDashboardInner({ params }: { params: Promise<{ lang: string }> }
                       borderBottom: '1px solid var(--nx-panel-2)',
                       fontSize: 11, fontWeight: 700, color: 'var(--nx-text-3)', letterSpacing: '0.05em',
                     }}>
-                      <span>{isKo ? '파일명' : 'Filename'}</span>
-                      <span>{isKo ? '종류' : 'Type'}</span>
-                      <span>{isKo ? '크기' : 'Size'}</span>
-                      <span>{isKo ? '업로드 일시' : 'Uploaded'}</span>
+                      <span>{L('파일명', 'Filename')}</span>
+                      <span>{L('종류', 'Type')}</span>
+                      <span>{L('크기', 'Size')}</span>
+                      <span>{L('업로드 일시', 'Uploaded')}</span>
                       <span></span>
                     </div>
 
@@ -1721,6 +1724,7 @@ function NexyfabDashboardInner({ params }: { params: Promise<{ lang: string }> }
                       <FileRow
                         key={file.id}
                         file={file}
+                        lang={lang}
                         isKo={isKo}
                         isEven={i % 2 === 0}
                         token={token}
@@ -1746,14 +1750,14 @@ function NexyfabDashboardInner({ params }: { params: Promise<{ lang: string }> }
             borderRadius: 12, padding: '24px', width: 320, textAlign: 'center',
           }}>
             <p style={{ margin: '0 0 16px', fontSize: 14, color: 'var(--nx-text)' }}>
-              {isKo ? '이 프로젝트를 삭제하시겠습니까?' : 'Delete this project?'}
+              {L('이 프로젝트를 삭제하시겠습니까?', 'Delete this project?')}
             </p>
             <div style={{ display: 'flex', gap: 8, justifyContent: 'center' }}>
               <button onClick={() => setDeleteConfirm(null)} style={{
                 padding: '8px 20px', borderRadius: 6, border: '1px solid var(--nx-border)',
                 background: 'transparent', color: 'var(--nx-text-2)', cursor: 'pointer',
               }}>
-                {isKo ? '취소' : 'Cancel'}
+                {L('취소', 'Cancel')}
               </button>
               <button
                 onClick={async () => {
@@ -1765,7 +1769,7 @@ function NexyfabDashboardInner({ params }: { params: Promise<{ lang: string }> }
                   background: 'var(--nx-error)', color: '#fff', fontWeight: 700, cursor: 'pointer',
                 }}
               >
-                {isKo ? '삭제' : 'Delete'}
+                {L('삭제', 'Delete')}
               </button>
             </div>
           </div>
@@ -1783,14 +1787,14 @@ function NexyfabDashboardInner({ params }: { params: Promise<{ lang: string }> }
             borderRadius: 12, padding: '24px', width: 320, textAlign: 'center',
           }}>
             <p style={{ margin: '0 0 16px', fontSize: 14, color: 'var(--nx-text)' }}>
-              {isKo ? '이 파일을 R2에서 영구 삭제하시겠습니까?' : 'Permanently delete this file from R2?'}
+              {L('이 파일을 R2에서 영구 삭제하시겠습니까?', 'Permanently delete this file from R2?')}
             </p>
             <div style={{ display: 'flex', gap: 8, justifyContent: 'center' }}>
               <button onClick={() => setDeleteFileConfirm(null)} style={{
                 padding: '8px 20px', borderRadius: 6, border: '1px solid var(--nx-border)',
                 background: 'transparent', color: 'var(--nx-text-2)', cursor: 'pointer',
               }}>
-                {isKo ? '취소' : 'Cancel'}
+                {L('취소', 'Cancel')}
               </button>
               <button
                 onClick={async () => {
@@ -1802,7 +1806,7 @@ function NexyfabDashboardInner({ params }: { params: Promise<{ lang: string }> }
                   background: 'var(--nx-error)', color: '#fff', fontWeight: 700, cursor: 'pointer',
                 }}
               >
-                {isKo ? '삭제' : 'Delete'}
+                {L('삭제', 'Delete')}
               </button>
             </div>
           </div>
@@ -1864,7 +1868,8 @@ interface ProjectCardProps {
   isDuplicating: boolean;
 }
 
-function ProjectCard({ project, lang: _lang, isKo, onOpen, onDelete, onDuplicate, onShare, isDuplicating }: ProjectCardProps) {
+function ProjectCard({ project, lang, isKo, onOpen, onDelete, onDuplicate, onShare, isDuplicating }: ProjectCardProps) {
+  const L = createCommercialLocalizer(lang);
   const [hovered, setHovered] = useState(false);
 
   return (
@@ -1899,7 +1904,7 @@ function ProjectCard({ project, lang: _lang, isKo, onOpen, onDelete, onDuplicate
           {project.name}
         </p>
         <p style={{ margin: 0, fontSize: 11, color: 'var(--nx-text-3)' }}>
-          {new Date(project.updatedAt).toLocaleDateString(isKo ? 'ko-KR' : 'en-US')}
+          {formatDate(project.updatedAt, lang) ?? ''}
           {project.materialId && <span style={{ marginLeft: 6, color: 'var(--nx-accent)' }}>· {project.materialId}</span>}
         </p>
         {project.tags && project.tags.length > 0 && (
@@ -1925,7 +1930,7 @@ function ProjectCard({ project, lang: _lang, isKo, onOpen, onDelete, onDuplicate
           <button
             onClick={onDuplicate}
             disabled={isDuplicating}
-            title={isKo ? '복제' : 'Duplicate'}
+            title={L('복제', 'Duplicate')}
             style={{
               flex: 1, padding: '4px 0', borderRadius: 5,
               border: '1px solid var(--nx-border)', background: 'transparent',
@@ -1935,11 +1940,11 @@ function ProjectCard({ project, lang: _lang, isKo, onOpen, onDelete, onDuplicate
             onMouseEnter={e => { if (!isDuplicating) e.currentTarget.style.borderColor = 'var(--nx-accent-2)'; e.currentTarget.style.color = 'var(--nx-accent-2)'; }}
             onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--nx-border)'; e.currentTarget.style.color = 'var(--nx-text-2)'; }}
           >
-            {isDuplicating ? '⏳' : '📋'} {isKo ? '복제' : 'Copy'}
+            {isDuplicating ? '⏳' : '📋'} {L('복제', 'Copy')}
           </button>
           <button
             onClick={onShare}
-            title={isKo ? '공유 링크 복사' : 'Copy share link'}
+            title={L('공유 링크 복사', 'Copy share link')}
             style={{
               flex: 1, padding: '4px 0', borderRadius: 5,
               border: '1px solid var(--nx-border)', background: 'transparent',
@@ -1948,11 +1953,11 @@ function ProjectCard({ project, lang: _lang, isKo, onOpen, onDelete, onDuplicate
             onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--nx-ok)'; e.currentTarget.style.color = 'var(--nx-ok)'; }}
             onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--nx-border)'; e.currentTarget.style.color = 'var(--nx-text-2)'; }}
           >
-            🔗 {isKo ? '공유' : 'Share'}
+            🔗 {L('공유', 'Share')}
           </button>
           <button
             onClick={onDelete}
-            title={isKo ? '삭제' : 'Delete'}
+            title={L('삭제', 'Delete')}
             style={{
               padding: '4px 10px', borderRadius: 5,
               border: '1px solid var(--nx-border)', background: 'transparent',
@@ -1995,13 +2000,15 @@ function formatBytes(bytes: number): string {
 
 interface FileRowProps {
   file: R2File;
+  lang: string;
   isKo: boolean;
   isEven: boolean;
   token: string | null;
   onDelete: () => void;
 }
 
-function FileRow({ file, isKo, isEven, token, onDelete }: FileRowProps) {
+function FileRow({ file, lang, isKo, isEven, token, onDelete }: FileRowProps) {
+  const L = createCommercialLocalizer(lang);
   const [hovered, setHovered] = useState(false);
   const [downloading, setDownloading] = useState(false);
   const ext = file.filename.split('.').pop()?.toLowerCase() ?? '';
@@ -2058,9 +2065,9 @@ function FileRow({ file, isKo, isEven, token, onDelete }: FileRowProps) {
       <span style={{ color: 'var(--nx-text-3)', fontSize: 11 }}>{ext.toUpperCase() || '—'}</span>
       <span style={{ color: 'var(--nx-text-3)', fontSize: 11 }}>{formatBytes(file.size_bytes)}</span>
       <span style={{ color: 'var(--nx-text-3)', fontSize: 11 }}>
-        {date.toLocaleDateString(isKo ? 'ko-KR' : 'en-US')}
+        {formatDate(date, lang) ?? ''}
         {' '}
-        <span style={{ color: 'var(--nx-border)' }}>{date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+        <span style={{ color: 'var(--nx-border)' }}>{formatDate(date, lang, { hour: '2-digit', minute: '2-digit' })}</span>
       </span>
       <div style={{ display: 'flex', gap: 4, justifyContent: 'flex-end' }}>
         <button
@@ -2073,7 +2080,7 @@ function FileRow({ file, isKo, isEven, token, onDelete }: FileRowProps) {
           }}
           onMouseEnter={e => { if (!downloading) { e.currentTarget.style.borderColor = 'var(--nx-accent-2)'; e.currentTarget.style.color = 'var(--nx-accent-2)'; }}}
           onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--nx-border)'; e.currentTarget.style.color = 'var(--nx-text-2)'; }}
-          title={isKo ? '다운로드' : 'Download'}
+          title={L('다운로드', 'Download')}
         >
           {downloading ? '⏳' : '↓'}
         </button>
@@ -2085,7 +2092,7 @@ function FileRow({ file, isKo, isEven, token, onDelete }: FileRowProps) {
           }}
           onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--nx-error)'; e.currentTarget.style.color = 'var(--nx-error)'; }}
           onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--nx-border)'; e.currentTarget.style.color = 'var(--nx-text-2)'; }}
-          title={isKo ? '삭제' : 'Delete'}
+          title={L('삭제', 'Delete')}
         >
           🗑
         </button>

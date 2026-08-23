@@ -1,9 +1,30 @@
 import { NextRequest, NextResponse } from 'next/server';
 import IORedis, { type Redis } from 'ioredis';
-import { verifyJWT } from './jwt';
+import { getAuthUser } from './auth-middleware';
 
 const CAD_PREFIX = '/api/cad/v1';
 const PUBLIC_CAPABILITY_PATH = '/api/cad/v1/capabilities';
+const CAD_WRITE_SCOPE_PATHS = new Set([
+  '/api/cad/v1/feature-tree-mesh',
+  '/api/cad/v1/part-step',
+  '/api/cad/v1/ifc/recover-geometry',
+  '/api/cad/v1/assembly/animation/command',
+  '/api/cad/v1/brep/push-pull',
+  '/api/cad/v1/architecture/daylight/package',
+  '/api/cad/v1/architecture/daylight/status',
+  '/api/cad/v1/architecture/interior/edit',
+  '/api/cad/v1/architecture/service-openings/sync',
+  '/api/cad/v1/generation/refine',
+  '/api/cad/v1/generation/state',
+  '/api/cad/v1/generation/advance',
+  '/api/cad/v1/generation/finalize',
+  '/api/cad/v1/generation/commercial-receipts/requests',
+  '/api/cad/v1/interior/layout/edit',
+  '/api/cad/v1/robot/integration/apply',
+  '/api/cad/v1/robot/generate',
+  '/api/cad/v1/robot/release/work-packet',
+  '/api/cad/v1/spatial/command',
+]);
 const quotaMemory = new Map<string, { count: number; resetAt: number }>();
 const MAX_MEMORY_KEYS = 20_000;
 
@@ -17,6 +38,23 @@ type CadQuotaResult = {
 
 let redisClient: Redis | null = null;
 let redisConnectPromise: Promise<void> | null = null;
+
+export type CadApiKeyScope = 'read:projects' | 'write:projects';
+
+/**
+ * This boundary is pathname-scoped (not method-scoped), so the daylight
+ * readiness path remains write-scoped even for GET: its status probe can
+ * spawn local Radiance executables and is not a safe read-only operation.
+ * Stateless verification/proposal routes are readable compute. Routes that
+ * create export bytes, apply geometry, persist commercial generation state,
+ * or advance durable generation state require an explicit write-capable API
+ * key. Cookie/JWT sessions continue to be governed by their account and
+ * downstream project/role checks.
+ */
+export function requiredCadApiKeyScope(pathname: string): CadApiKeyScope {
+  const canonicalPathname = pathname.replace(/\/+$/, '') || '/';
+  return CAD_WRITE_SCOPE_PATHS.has(canonicalPathname) ? 'write:projects' : 'read:projects';
+}
 
 function directRedis(): Redis | null {
   const url = process.env.REDIS_URL?.trim();
@@ -155,22 +193,33 @@ export async function enforceCadApiBoundary(request: NextRequest): Promise<NextR
   const canonicalPathname = pathname.replace(/\/+$/, '') || '/';
   if (canonicalPathname === PUBLIC_CAPABILITY_PATH && request.method === 'GET') return NextResponse.next();
 
-  const cookieToken = request.cookies.get('nf_access_token')?.value;
-  const authorization = request.headers.get('authorization');
-  const bearerToken = authorization?.startsWith('Bearer ') ? authorization.slice(7) : null;
-  const token = cookieToken || bearerToken;
-  if (!token) {
+  const hasCredential = Boolean(
+    request.cookies.get('nf_access_token')?.value
+    || request.headers.get('authorization')?.startsWith('Bearer '),
+  );
+  if (!hasCredential) {
     return NextResponse.json(
       { error: 'Authentication required' },
       { status: 401, headers: { 'WWW-Authenticate': 'Bearer' } },
     );
   }
 
-  const user = await verifyJWT(token);
-  if (!user?.sub) {
+  // Use the same account-backed verifier as the rest of the application.
+  // Besides JWT/SSO sessions this validates issued nf_live_* API keys,
+  // expiry, IP allowlists, account deletion/lock and current entitlements.
+  const user = await getAuthUser(request);
+  if (!user) {
     return NextResponse.json(
       { error: 'Invalid or expired token' },
       { status: 401, headers: { 'WWW-Authenticate': 'Bearer error="invalid_token"' } },
+    );
+  }
+
+  const requiredScope = requiredCadApiKeyScope(canonicalPathname);
+  if (user.apiKey && !user.apiKey.scopes.includes(requiredScope)) {
+    return NextResponse.json(
+      { error: 'Insufficient API key scope', code: 'INSUFFICIENT_API_KEY_SCOPE', requiredScope },
+      { status: 403 },
     );
   }
 
@@ -178,7 +227,7 @@ export async function enforceCadApiBoundary(request: NextRequest): Promise<NextR
   // verification is enforced only by actions whose business contract needs it.
   const normalizedPlan = (user.plan || 'free').trim().toLowerCase();
   const limit = normalizedPlan === 'free' ? 10 : 60;
-  const quota = await cadAccountQuota(`nexyfab:cad:v1:user:${user.sub}`, limit, 60_000);
+  const quota = await cadAccountQuota(`nexyfab:cad:v1:user:${user.userId}`, limit, 60_000);
   const headers = quotaHeaders(limit, quota);
   if (quota.unavailable) {
     return NextResponse.json(
@@ -198,16 +247,19 @@ export async function enforceCadApiBoundary(request: NextRequest): Promise<NextR
 
   const requestId = crypto.randomUUID();
   const requestHeaders = new Headers(request.headers);
-  requestHeaders.set('x-user-id', user.sub);
+  // Downstream CAD handlers use the verified identity headers below; do not
+  // propagate a raw JWT or nf_live_* API key beyond this authentication gate.
+  requestHeaders.delete('authorization');
+  requestHeaders.set('x-user-id', user.userId);
   requestHeaders.set('x-user-email', user.email);
   requestHeaders.set('x-user-plan', user.plan);
   requestHeaders.set('x-cad-request-id', requestId);
-  if (user.service) requestHeaders.set('x-user-service', user.service);
+  if (user.apiKey) requestHeaders.set('x-api-key-id', user.apiKey.id);
 
   if (process.env.NODE_ENV === 'production') {
     console.info('[CAD_API_ACCESS]', JSON.stringify({
       requestId,
-      userId: user.sub,
+      userId: user.userId,
       plan: normalizedPlan,
       method: request.method,
       path: pathname,

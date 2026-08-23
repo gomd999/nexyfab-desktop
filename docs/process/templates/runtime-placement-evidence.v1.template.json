@@ -1,0 +1,25 @@
+{
+  "schema": "nexyfab.runtime-placement-evidence.v1",
+  "observedFrom": "1970-01-01T00:00:00.000Z",
+  "observedThrough": "1970-01-01T00:00:00.000Z",
+  "lastSampleAt": "1970-01-01T00:00:00.000Z",
+  "unexplainedGaps": 0,
+  "activeRailwayServices": [],
+  "cost": {
+    "railwayMonthlyUsdBefore": 0,
+    "railwayMonthlyUsdAfter": 0,
+    "totalMonthlyUsdAfter": 0
+  },
+  "checks": [
+    { "id": "cloudflare-staging-deploy", "status": "NOT_RUN", "reason": "staging deploy has not been executed" },
+    { "id": "railway-minimal-staging-deploy", "status": "NOT_RUN", "reason": "minimal Railway staging has not been executed" },
+    { "id": "authenticated-project-e2e", "status": "NOT_RUN", "reason": "authenticated project account is not configured" },
+    { "id": "cloudflare-railway-same-corpus-parity", "status": "NOT_RUN", "reason": "both staging paths are required" },
+    { "id": "postgres-backup-restore", "status": "NOT_RUN", "reason": "live PostgreSQL recovery drill has not run" },
+    { "id": "r2-artifact-restore", "status": "NOT_RUN", "reason": "live R2 recovery drill has not run" },
+    { "id": "queue-dead-letter-recovery", "status": "NOT_RUN", "reason": "live Queue recovery drill has not run" },
+    { "id": "collaboration-snapshot-recovery", "status": "NOT_RUN", "reason": "live collaboration recovery drill has not run" },
+    { "id": "independent-rollback", "status": "NOT_RUN", "reason": "independent service rollback has not run" },
+    { "id": "thirty-day-cost-performance-error-observation", "status": "NOT_RUN", "reason": "thirty consecutive live days are not available" }
+  ]
+}

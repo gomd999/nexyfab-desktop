@@ -4,10 +4,20 @@ import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { authBaseUrl, nexysysBaseUrl } from '@/lib/auth-base-url';
+import { toIsoLang, toRouteLang } from '@/lib/i18n/normalize';
 
 const AUTH_BASE = authBaseUrl();
 
 type Lang = 'en' | 'ko' | 'ja' | 'zh' | 'es' | 'ar';
+
+const SESSION_NOTICE: Record<Lang, string> = {
+    ko: '보안을 위해 브라우저를 완전히 닫으면 로그아웃되며, 다음 방문 때 다시 로그인해야 합니다.',
+    en: 'For security, closing the browser signs you out. Sign in again on your next visit.',
+    ja: 'セキュリティのため、ブラウザを完全に閉じるとログアウトし、次回は再ログインが必要です。',
+    zh: '为确保安全，完全关闭浏览器后将退出登录，下次访问时需要重新登录。',
+    es: 'Por seguridad, al cerrar el navegador se cerrará la sesión. Deberás iniciar sesión de nuevo en la próxima visita.',
+    ar: 'لأمانك، يؤدي إغلاق المتصفح بالكامل إلى تسجيل الخروج، وستحتاج إلى تسجيل الدخول في الزيارة التالية.',
+};
 
 const loginDict: Record<Lang, Record<string, string>> = {
     en: {
@@ -154,19 +164,37 @@ const TEST_ACCOUNTS: Record<string, { password: string; user: Record<string, unk
 
 function detectLang(): Lang {
     try {
-        const stored = localStorage.getItem('currentUser');
+        const query = new URLSearchParams(window.location.search).get('lang');
+        if (query) return toIsoLang(query);
+        const stored = sessionStorage.getItem('currentUser');
         if (stored) {
             const u = JSON.parse(stored);
-            if (u.language && loginDict[u.language as Lang]) return u.language as Lang;
+            if (u.language) return toIsoLang(u.language);
         }
     } catch (err) { console.error('[page] caught', err); }
-    const saved = localStorage.getItem('app_language');
-    if (saved && loginDict[saved as Lang]) return saved as Lang;
-    const fabLang = localStorage.getItem('nexyfab_language');
-    if (fabLang === 'kr' || fabLang === 'ko') return 'ko';
-    if (fabLang && loginDict[fabLang as Lang]) return fabLang as Lang;
-    return 'ko';
+    const saved = localStorage.getItem('app_language')
+        || localStorage.getItem('nf_lang')
+        || localStorage.getItem('nexyfab_language');
+    if (saved) return toIsoLang(saved);
+    return 'en';
 }
+
+const LOGIN_EXTRA: Record<Lang, {
+    passkeyUnsupported: string; emailRequired: string; passkeyOptionsFailed: string;
+    passkeyVerifyFailed: string; passkeyLoginFailed: string; codeRequired: string;
+    twoFactorTitle: string; twoFactorPrompt: string; verifying: string; verify: string;
+    backToSignIn: string; continueWith: (name: string) => string; passkey: string;
+    or: string; sso: string; kakao: string; naver: string; demo: string;
+    customerDemo: string; partnerDemo: string; demoNote: string; testAccounts: string;
+    showPassword: string; hidePassword: string;
+}> = {
+    en: { passkeyUnsupported: 'Passkey not supported by this browser.', emailRequired: 'Enter your email first.', passkeyOptionsFailed: 'Passkey lookup failed', passkeyVerifyFailed: 'Passkey verify failed', passkeyLoginFailed: 'Passkey login failed', codeRequired: 'Enter the 6-digit code.', twoFactorTitle: 'Two-factor authentication', twoFactorPrompt: 'Enter the 6-digit code from your authenticator app.', verifying: 'Verifying…', verify: 'Verify', backToSignIn: 'Back to sign in', continueWith: n => `Continue with ${n}`, passkey: 'Sign in with passkey', or: 'or', sso: 'Sign in with Nexysys SSO', kakao: 'Kakao', naver: 'Naver', demo: 'Try Demo', customerDemo: 'Customer Demo', partnerDemo: 'Partner Demo', demoNote: 'Demo accounts are read-only and do not affect real data.', testAccounts: 'Test accounts', showPassword: 'Show password', hidePassword: 'Hide password' },
+    ko: { passkeyUnsupported: '이 브라우저는 패스키를 지원하지 않습니다.', emailRequired: '이메일을 먼저 입력해주세요.', passkeyOptionsFailed: '패스키 옵션 조회 실패', passkeyVerifyFailed: '패스키 검증 실패', passkeyLoginFailed: '패스키 로그인 실패', codeRequired: '6자리 코드를 입력해주세요.', twoFactorTitle: '2단계 인증', twoFactorPrompt: '인증 앱의 6자리 코드를 입력해 주세요.', verifying: '확인 중…', verify: '인증', backToSignIn: '로그인 화면으로', continueWith: n => `${n}으로 로그인`, passkey: '패스키로 로그인', or: '또는', sso: 'Nexysys SSO로 로그인', kakao: '카카오 로그인', naver: '네이버 로그인', demo: '데모 체험', customerDemo: '고객사 체험', partnerDemo: '파트너사 체험', demoNote: '데모 계정은 읽기 전용이며 실제 데이터에 영향을 주지 않습니다.', testAccounts: '테스트 계정', showPassword: '비밀번호 표시', hidePassword: '비밀번호 숨기기' },
+    ja: { passkeyUnsupported: 'このブラウザはパスキーに対応していません。', emailRequired: '先にメールアドレスを入力してください。', passkeyOptionsFailed: 'パスキーの取得に失敗しました', passkeyVerifyFailed: 'パスキーの検証に失敗しました', passkeyLoginFailed: 'パスキーでのログインに失敗しました', codeRequired: '6桁のコードを入力してください。', twoFactorTitle: '2段階認証', twoFactorPrompt: '認証アプリの6桁のコードを入力してください。', verifying: '確認中…', verify: '確認', backToSignIn: 'ログイン画面に戻る', continueWith: n => `${n}でログイン`, passkey: 'パスキーでログイン', or: 'または', sso: 'Nexysys SSOでログイン', kakao: 'Kakaoログイン', naver: 'Naverログイン', demo: 'デモを試す', customerDemo: '顧客デモ', partnerDemo: 'パートナーデモ', demoNote: 'デモアカウントは読み取り専用で、実際のデータには影響しません。', testAccounts: 'テストアカウント', showPassword: 'パスワードを表示', hidePassword: 'パスワードを隠す' },
+    zh: { passkeyUnsupported: '此浏览器不支持通行密钥。', emailRequired: '请先输入邮箱。', passkeyOptionsFailed: '获取通行密钥选项失败', passkeyVerifyFailed: '通行密钥验证失败', passkeyLoginFailed: '通行密钥登录失败', codeRequired: '请输入 6 位验证码。', twoFactorTitle: '双重身份验证', twoFactorPrompt: '请输入身份验证器应用中的 6 位验证码。', verifying: '验证中…', verify: '验证', backToSignIn: '返回登录', continueWith: n => `使用 ${n} 登录`, passkey: '使用通行密钥登录', or: '或者', sso: '使用 Nexysys SSO 登录', kakao: 'Kakao 登录', naver: 'Naver 登录', demo: '体验演示', customerDemo: '客户演示', partnerDemo: '合作伙伴演示', demoNote: '演示账户为只读，不会影响真实数据。', testAccounts: '测试账户', showPassword: '显示密码', hidePassword: '隐藏密码' },
+    es: { passkeyUnsupported: 'Este navegador no admite claves de acceso.', emailRequired: 'Introduce primero tu correo electrónico.', passkeyOptionsFailed: 'No se pudieron obtener las opciones de la clave de acceso', passkeyVerifyFailed: 'No se pudo verificar la clave de acceso', passkeyLoginFailed: 'No se pudo iniciar sesión con la clave de acceso', codeRequired: 'Introduce el código de 6 dígitos.', twoFactorTitle: 'Autenticación de dos factores', twoFactorPrompt: 'Introduce el código de 6 dígitos de tu aplicación de autenticación.', verifying: 'Verificando…', verify: 'Verificar', backToSignIn: 'Volver a iniciar sesión', continueWith: n => `Continuar con ${n}`, passkey: 'Iniciar sesión con clave de acceso', or: 'o', sso: 'Iniciar sesión con Nexysys SSO', kakao: 'Kakao', naver: 'Naver', demo: 'Probar demo', customerDemo: 'Demo de cliente', partnerDemo: 'Demo de socio', demoNote: 'Las cuentas demo son de solo lectura y no afectan a los datos reales.', testAccounts: 'Cuentas de prueba', showPassword: 'Mostrar contraseña', hidePassword: 'Ocultar contraseña' },
+    ar: { passkeyUnsupported: 'هذا المتصفح لا يدعم مفاتيح المرور.', emailRequired: 'أدخل بريدك الإلكتروني أولاً.', passkeyOptionsFailed: 'تعذر الحصول على خيارات مفتاح المرور', passkeyVerifyFailed: 'تعذر التحقق من مفتاح المرور', passkeyLoginFailed: 'تعذر تسجيل الدخول بمفتاح المرور', codeRequired: 'أدخل الرمز المكون من 6 أرقام.', twoFactorTitle: 'المصادقة الثنائية', twoFactorPrompt: 'أدخل الرمز المكون من 6 أرقام من تطبيق المصادقة.', verifying: 'جارٍ التحقق…', verify: 'تحقق', backToSignIn: 'العودة إلى تسجيل الدخول', continueWith: n => `المتابعة مع ${n}`, passkey: 'تسجيل الدخول بمفتاح المرور', or: 'أو', sso: 'الدخول عبر Nexysys SSO', kakao: 'تسجيل الدخول عبر Kakao', naver: 'تسجيل الدخول عبر Naver', demo: 'تجربة العرض', customerDemo: 'عرض العميل', partnerDemo: 'عرض الشريك', demoNote: 'حسابات العرض للقراءة فقط ولا تؤثر في البيانات الحقيقية.', testAccounts: 'حسابات الاختبار', showPassword: 'إظهار كلمة المرور', hidePassword: 'إخفاء كلمة المرور' },
+};
 
 type LoginStep = 'credentials' | '2fa';
 
@@ -177,7 +205,7 @@ export default function LoginPage() {
     const [showPw, setShowPw] = useState(false);
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
-    const [lang, setLang] = useState<Lang>('ko');
+    const [lang, setLang] = useState<Lang>('en');
     const [discoveredSso, setDiscoveredSso] = useState<{ name: string; loginUrl: string } | null>(null);
     // Phase ⑦ Passkey + 2FA — same auth-server endpoints NexyFlow already
     // talks to. Step state moves from 'credentials' to '2fa' when the
@@ -190,7 +218,7 @@ export default function LoginPage() {
 
     useEffect(() => {
         setLang(detectLang());
-        const stored = localStorage.getItem('currentUser');
+        const stored = sessionStorage.getItem('currentUser');
         if (stored) {
             router.push('/account');
         }
@@ -218,6 +246,8 @@ export default function LoginPage() {
     }, [email]);
 
     const t = loginDict[lang];
+    const x = LOGIN_EXTRA[lang];
+    const routeLang = toRouteLang(lang);
 
     const DEMO_USERS = {
         customer: {
@@ -237,7 +267,7 @@ export default function LoginPage() {
     const handleDemoLogin = (role: 'customer' | 'partner') => {
         setError('');
         const user = DEMO_USERS[role];
-        localStorage.setItem('currentUser', JSON.stringify(user));
+        sessionStorage.setItem('currentUser', JSON.stringify(user));
         window.dispatchEvent(new Event('storage'));
         if (role === 'partner') {
             localStorage.setItem('partnerSession', 'demo');
@@ -255,11 +285,11 @@ export default function LoginPage() {
      *  exactly so the same auth-server endpoints serve both products. */
     const handlePasskeyLogin = async () => {
         if (typeof navigator === 'undefined' || !navigator.credentials) {
-            setError(lang === 'ko' ? '이 브라우저는 패스키를 지원하지 않습니다.' : 'Passkey not supported by this browser.');
+            setError(x.passkeyUnsupported);
             return;
         }
         if (!email.trim()) {
-            setError(lang === 'ko' ? '이메일을 먼저 입력해주세요.' : 'Enter your email first.');
+            setError(x.emailRequired);
             return;
         }
         setPasskeyLoading(true); setError('');
@@ -275,7 +305,7 @@ export default function LoginPage() {
             const optsRes = await fetch(`${AUTH_BASE}/api/auth/webauthn/login/options?email=${encodeURIComponent(email.trim().toLowerCase())}`);
             if (!optsRes.ok) {
                 const e = await optsRes.json().catch(() => ({}));
-                throw new Error(e.error || (lang === 'ko' ? '패스키 옵션 조회 실패' : 'Passkey lookup failed'));
+                throw new Error(e.error || x.passkeyOptionsFailed);
             }
             const opts = await optsRes.json();
             const publicKey = {
@@ -305,13 +335,13 @@ export default function LoginPage() {
                 }),
             });
             const data = await verifyRes.json();
-            if (!verifyRes.ok) throw new Error(data.error || (lang === 'ko' ? '패스키 검증 실패' : 'Passkey verify failed'));
-            localStorage.setItem('currentUser', JSON.stringify(data.user));
+            if (!verifyRes.ok) throw new Error(data.error || x.passkeyVerifyFailed);
+            sessionStorage.setItem('currentUser', JSON.stringify(data.user));
             window.dispatchEvent(new Event('storage'));
             router.push('/account');
         } catch (e: unknown) {
             const err = e as { name?: string; message?: string };
-            if (err.name !== 'NotAllowedError') setError(err.message ?? (lang === 'ko' ? '패스키 로그인 실패' : 'Passkey login failed'));
+            if (err.name !== 'NotAllowedError') setError(err.message ?? x.passkeyLoginFailed);
         } finally {
             setPasskeyLoading(false);
         }
@@ -322,7 +352,7 @@ export default function LoginPage() {
     const handle2FA = async (e: React.FormEvent) => {
         e.preventDefault();
         if (totpCode.replace(/\s/g, '').length < 6) {
-            setError(lang === 'ko' ? '6자리 코드를 입력해주세요.' : 'Enter the 6-digit code.');
+            setError(x.codeRequired);
             return;
         }
         setError(''); setLoading(true);
@@ -333,13 +363,13 @@ export default function LoginPage() {
                 body: JSON.stringify({ temp_token: tempToken, code: totpCode.replace(/\s/g, '') }),
             });
             const data = await res.json();
-            if (!res.ok) throw new Error(data.error || data.message || (lang === 'ko' ? '2FA 인증 실패' : '2FA failed'));
-            localStorage.setItem('currentUser', JSON.stringify(data.user));
+            if (!res.ok) throw new Error(data.error || data.message || t.failed);
+            sessionStorage.setItem('currentUser', JSON.stringify(data.user));
             window.dispatchEvent(new Event('storage'));
             setStep('credentials'); setTotpCode(''); setTempToken('');
             router.push('/account');
         } catch (err: unknown) {
-            setError(err instanceof Error ? err.message : (lang === 'ko' ? '2FA 인증 실패' : '2FA failed'));
+            setError(err instanceof Error ? err.message : t.failed);
         } finally {
             setLoading(false);
         }
@@ -369,7 +399,7 @@ export default function LoginPage() {
                 return;
             }
 
-            localStorage.setItem('currentUser', JSON.stringify(data.user));
+            sessionStorage.setItem('currentUser', JSON.stringify(data.user));
 
             window.dispatchEvent(new Event('storage'));
             router.push('/account');
@@ -378,7 +408,7 @@ export default function LoginPage() {
             if (err instanceof TypeError && err.message.includes('fetch')) {
                 const testAccount = TEST_ACCOUNTS[email.toLowerCase()];
                 if (testAccount && testAccount.password === password) {
-                    localStorage.setItem('currentUser', JSON.stringify(testAccount.user));
+                    sessionStorage.setItem('currentUser', JSON.stringify(testAccount.user));
                     window.dispatchEvent(new Event('storage'));
                     router.push('/account');
                     return;
@@ -400,10 +430,10 @@ export default function LoginPage() {
                         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#2563eb" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" /></svg>
                     </div>
                     <h2 style={{ fontSize: 18, fontWeight: 900, color: '#111827', margin: '0 0 4px' }}>
-                        {lang === 'ko' ? '2단계 인증' : 'Two-factor authentication'}
+                        {x.twoFactorTitle}
                     </h2>
                     <p style={{ fontSize: 13, color: '#6b7280', margin: 0 }}>
-                        {lang === 'ko' ? '인증 앱의 6자리 코드를 입력해 주세요.' : 'Enter the 6-digit code from your authenticator app.'}
+                        {x.twoFactorPrompt}
                     </p>
                 </div>
                 <form onSubmit={handle2FA} style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
@@ -430,14 +460,14 @@ export default function LoginPage() {
                         disabled={loading || totpCode.length < 6}
                         style={{ width: '100%', padding: '12px', background: '#0b5cff', color: '#fff', fontWeight: 700, fontSize: 14, border: 'none', borderRadius: 12, cursor: loading ? 'not-allowed' : 'pointer', opacity: (loading || totpCode.length < 6) ? 0.5 : 1 }}
                     >
-                        {loading ? (lang === 'ko' ? '확인 중…' : 'Verifying…') : (lang === 'ko' ? '인증' : 'Verify')}
+                        {loading ? x.verifying : x.verify}
                     </button>
                     <button
                         type="button"
                         onClick={() => { setStep('credentials'); setError(''); setTotpCode(''); setTempToken(''); }}
                         style={{ width: '100%', padding: '8px', background: 'transparent', color: '#6b7280', fontSize: 13, border: 'none', cursor: 'pointer' }}
                     >
-                        ← {lang === 'ko' ? '로그인 화면으로' : 'Back to sign in'}
+                        ← {x.backToSignIn}
                     </button>
                 </form>
             </div>
@@ -461,6 +491,9 @@ export default function LoginPage() {
                     </div>
                     <h1 style={{ fontSize: '22px', fontWeight: '900', color: '#111827', margin: '0 0 8px' }}>{t.title}</h1>
                     <p style={{ fontSize: '14px', color: '#6b7280', margin: 0 }}>{t.subtitle}</p>
+                    <p role="note" style={{ fontSize: 12, color: '#64748b', margin: '10px 0 0', lineHeight: 1.5 }}>
+                        🔒 {SESSION_NOTICE[lang]}
+                    </p>
                 </div>
 
                 <form onSubmit={handleLogin} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
@@ -487,7 +520,7 @@ export default function LoginPage() {
                             type="button"
                             tabIndex={-1}
                             onClick={() => setShowPw(v => !v)}
-                            aria-label={showPw ? 'Hide password' : 'Show password'}
+                            aria-label={showPw ? x.hidePassword : x.showPassword}
                             aria-pressed={showPw}
                             style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', width: 28, height: 28, border: 'none', background: 'transparent', color: '#6b7280', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 }}
                         >
@@ -506,12 +539,7 @@ export default function LoginPage() {
                         >
                             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" /></svg>
                             <span>
-                                {lang === 'ko' ? `${discoveredSso.name}으로 로그인` :
-                                 lang === 'ja' ? `${discoveredSso.name}でログイン` :
-                                 lang === 'zh' ? `使用 ${discoveredSso.name} 登录` :
-                                 lang === 'es' ? `Continuar con ${discoveredSso.name}` :
-                                 lang === 'ar' ? `المتابعة مع ${discoveredSso.name}` :
-                                 `Continue with ${discoveredSso.name}`}
+                                {x.continueWith(discoveredSso.name)}
                             </span>
                             <span>→</span>
                         </a>
@@ -545,8 +573,8 @@ export default function LoginPage() {
                             <circle cx="7" cy="14" r="5" /><path d="M11 10l5-5 1 1-1 1 1 1-2 2 1 1-2 2" />
                         </svg>
                         {passkeyLoading
-                            ? (lang === 'ko' ? '인증 중…' : 'Authenticating…')
-                            : (lang === 'ko' ? '패스키로 로그인' : 'Sign in with passkey')}
+                            ? x.verifying
+                            : x.passkey}
                     </button>
                 )}
 
@@ -554,22 +582,22 @@ export default function LoginPage() {
                 <div style={{ display: 'flex', alignItems: 'center', gap: '12px', margin: '20px 0 16px' }}>
                     <div style={{ flex: 1, height: '1px', background: '#e5e7eb' }} />
                     <span style={{ fontSize: '12px', color: '#9ca3af', fontWeight: 500, whiteSpace: 'nowrap' }}>
-                        {lang === 'ko' ? '또는' : lang === 'ja' ? 'または' : lang === 'zh' ? '或者' : lang === 'es' ? 'o' : lang === 'ar' ? 'أو' : 'or'}
+                        {x.or}
                     </span>
                     <div style={{ flex: 1, height: '1px', background: '#e5e7eb' }} />
                 </div>
 
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                     <Link
-                        href="/api/auth/nexysys/start"
+                        href={`/api/auth/nexysys/start?return_to=${encodeURIComponent(`/account?lang=${lang}`)}`}
                         prefetch={false}
                         style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px', width: '100%', padding: '12px', background: '#0b5cff', border: 'none', borderRadius: '12px', fontSize: '14px', fontWeight: 700, color: '#fff', textDecoration: 'none', cursor: 'pointer', transition: '0.15s', boxSizing: 'border-box' }}
                     >
                         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
-                        {lang === 'ko' ? 'Nexysys SSO로 로그인' : lang === 'ja' ? 'Nexysys SSOでログイン' : lang === 'zh' ? '使用 Nexysys SSO 登录' : lang === 'es' ? 'Entrar con Nexysys SSO' : lang === 'ar' ? 'الدخول بـ Nexysys SSO' : 'Sign in with Nexysys SSO'}
+                        {x.sso}
                     </Link>
                     <Link
-                        href="/api/auth/oauth/google"
+                        href={`/api/auth/oauth/google?lang=${lang}`}
                         prefetch={false}
                         style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px', width: '100%', padding: '12px', background: '#fff', border: '1px solid #e5e7eb', borderRadius: '12px', fontSize: '14px', fontWeight: 600, color: '#374151', textDecoration: 'none', cursor: 'pointer', transition: '0.15s', boxSizing: 'border-box' }}
                     >
@@ -578,22 +606,22 @@ export default function LoginPage() {
                     </Link>
                     {process.env.NEXT_PUBLIC_KAKAO_CLIENT_ID && (
                     <Link
-                        href="/api/auth/oauth/kakao"
+                        href={`/api/auth/oauth/kakao?lang=${lang}`}
                         prefetch={false}
                         style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px', width: '100%', padding: '12px', background: '#FEE500', border: 'none', borderRadius: '12px', fontSize: '14px', fontWeight: 600, color: '#191919', textDecoration: 'none', cursor: 'pointer', transition: '0.15s', boxSizing: 'border-box' }}
                     >
                         <svg width="18" height="18" viewBox="0 0 24 24"><path d="M12 3C6.48 3 2 6.36 2 10.5c0 2.63 1.74 4.95 4.38 6.3l-1.12 4.1c-.1.35.31.63.6.42l4.82-3.2c.43.04.87.06 1.32.06 5.52 0 10-3.36 10-7.5S17.52 3 12 3z" fill="#191919"/></svg>
-                        {lang === 'ko' ? '카카오 로그인' : 'Kakao'}
+                        {x.kakao}
                     </Link>
                     )}
                     {process.env.NEXT_PUBLIC_NAVER_CLIENT_ID && (
                     <Link
-                        href="/api/auth/oauth/naver"
+                        href={`/api/auth/oauth/naver?lang=${lang}`}
                         prefetch={false}
                         style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px', width: '100%', padding: '12px', background: '#03C75A', border: 'none', borderRadius: '12px', fontSize: '14px', fontWeight: 600, color: '#fff', textDecoration: 'none', cursor: 'pointer', transition: '0.15s', boxSizing: 'border-box' }}
                     >
                         <svg width="18" height="18" viewBox="0 0 24 24"><path d="M16.27 3v8.46L7.73 3H3v18h4.73v-8.46L16.27 21H21V3h-4.73z" fill="#fff"/></svg>
-                        {lang === 'ko' ? '네이버 로그인' : 'Naver'}
+                        {x.naver}
                     </Link>
                     )}
                 </div>
@@ -609,7 +637,7 @@ export default function LoginPage() {
 
                 <div style={{ textAlign: 'center', marginTop: '10px' }}>
                     <Link
-                        href="/register"
+                        href={`/register?lang=${routeLang}`}
                         prefetch={false}
                         style={{ fontSize: '13px', color: '#0b5cff', textDecoration: 'none', fontWeight: '600' }}
                     >
@@ -622,7 +650,7 @@ export default function LoginPage() {
                     <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '12px' }}>
                         <div style={{ flex: 1, height: '1px', background: '#e5e7eb' }} />
                         <span style={{ fontSize: '11px', color: '#9ca3af', fontWeight: 600, whiteSpace: 'nowrap', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                            {lang === 'ko' ? '데모 체험' : 'Try Demo'}
+                            {x.demo}
                         </span>
                         <div style={{ flex: 1, height: '1px', background: '#e5e7eb' }} />
                     </div>
@@ -633,7 +661,7 @@ export default function LoginPage() {
                             style={{ padding: '10px 12px', background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: '10px', fontSize: '12px', fontWeight: 700, color: '#15803d', cursor: loading ? 'not-allowed' : 'pointer', opacity: loading ? 0.6 : 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px', transition: '0.15s' }}
                         >
                             <span style={{ fontSize: '18px' }}>🏭</span>
-                            <span>{lang === 'ko' ? '고객사 체험' : 'Customer Demo'}</span>
+                            <span>{x.customerDemo}</span>
                         </button>
                         <button
                             onClick={() => handleDemoLogin('partner')}
@@ -641,17 +669,17 @@ export default function LoginPage() {
                             style={{ padding: '10px 12px', background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: '10px', fontSize: '12px', fontWeight: 700, color: '#1d4ed8', cursor: loading ? 'not-allowed' : 'pointer', opacity: loading ? 0.6 : 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px', transition: '0.15s' }}
                         >
                             <span style={{ fontSize: '18px' }}>🔧</span>
-                            <span>{lang === 'ko' ? '파트너사 체험' : 'Partner Demo'}</span>
+                            <span>{x.partnerDemo}</span>
                         </button>
                     </div>
                     <p style={{ fontSize: '11px', color: '#9ca3af', textAlign: 'center', margin: '8px 0 0', lineHeight: 1.5 }}>
-                        {lang === 'ko' ? '데모 계정은 읽기 전용이며 실제 데이터에 영향을 주지 않습니다.' : 'Demo accounts are read-only and do not affect real data.'}
+                        {x.demoNote}
                     </p>
                 </div>
 
                 {process.env.NODE_ENV !== 'production' && (
                     <div style={{ marginTop: '20px', padding: '12px', background: '#f8faff', border: '1px solid #dbeafe', borderRadius: '10px' }}>
-                        <div style={{ fontWeight: 700, color: '#374151', fontSize: 11, textAlign: 'center', marginBottom: 8, letterSpacing: '0.05em', textTransform: 'uppercase' }}>테스트 계정</div>
+                        <div style={{ fontWeight: 700, color: '#374151', fontSize: 11, textAlign: 'center', marginBottom: 8, letterSpacing: '0.05em', textTransform: 'uppercase' }}>{x.testAccounts}</div>
                         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
                             {[
                                 { email: 'test@nexysys.com', password: 'Test1234!', label: 'Test' },

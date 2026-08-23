@@ -5,6 +5,9 @@ import { getDbAdapter } from '@/lib/db-adapter';
 import { enqueueJob } from '@/lib/job-queue';
 import { logAudit } from '@/lib/audit';
 import { normPartnerEmail } from '@/lib/partner-factory-access';
+import { boundedJsonError, readBoundedJson } from '@/lib/boundedJsonBody';
+
+const MAX_PARTNER_CONTRACT_BODY_BYTES = 64 * 1024;
 
 export const dynamic = 'force-dynamic';
 
@@ -92,7 +95,13 @@ export async function PATCH(req: NextRequest) {
     return NextResponse.json({ error: '인증이 필요합니다.' }, { status: 401 });
   }
 
-  const { id, status, note, completionRequested, progressPercent } = await req.json();
+  let body: { id?: string; status?: string; note?: string; completionRequested?: boolean; progressPercent?: number };
+  try { body = await readBoundedJson(req, MAX_PARTNER_CONTRACT_BODY_BYTES); }
+  catch (error) {
+    if (boundedJsonError(error)?.code === 'PAYLOAD_TOO_LARGE') return NextResponse.json({ error: 'Request too large', code: 'PAYLOAD_TOO_LARGE' }, { status: 413 });
+    throw error;
+  }
+  const { id, status, note, completionRequested, progressPercent } = body;
   if (!id) {
     return NextResponse.json({ error: 'id가 필요합니다.' }, { status: 400 });
   }

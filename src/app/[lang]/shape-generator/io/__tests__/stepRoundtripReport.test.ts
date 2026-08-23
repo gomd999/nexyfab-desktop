@@ -23,6 +23,7 @@ import type { GeometrySignature } from '../../__tests__/geometrySignature';
 import {
   computeRoundtripDrift,
   formatRoundtripDrift,
+  runStepRoundtripCycles,
 } from '../stepRoundtripReport';
 
 function sig(over: Partial<GeometrySignature> = {}): GeometrySignature {
@@ -152,5 +153,12 @@ describe('formatRoundtripDrift', () => {
     );
     const line = formatRoundtripDrift(drift);
     expect(line.startsWith('broken')).toBe(true);
+  });
+});
+
+describe('runStepRoundtripCycles contract', () => {
+  it('rejects invalid cycle counts before loading the CAD kernel', async () => {
+    await expect(runStepRoundtripCycles({} as never, 'invalid', 0)).rejects.toThrow('STEP_ROUNDTRIP_CYCLE_COUNT_INVALID');
+    await expect(runStepRoundtripCycles({} as never, 'invalid', 11)).rejects.toThrow('STEP_ROUNDTRIP_CYCLE_COUNT_INVALID');
   });
 });

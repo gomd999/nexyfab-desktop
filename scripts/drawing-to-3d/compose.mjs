@@ -266,6 +266,75 @@ const COMPOSE_PROMPT = (desc) => `기계/장비 부품 설명을 "범용 프리�
   · 원형 볼트배열은 pattern{type:"circular",count} + 반경만큼 at.translate.
 설명: "${desc}"`;
 
+const finiteInRange = (value, fallback, min, max) => {
+  const number = Number(value);
+  return Number.isFinite(number) ? Math.max(min, Math.min(max, number)) : fallback;
+};
+
+function firstMatchNumber(text, patterns) {
+  for (const pattern of patterns) {
+    const match = pattern.exec(text);
+    if (match) return Number(match[1]);
+  }
+  return undefined;
+}
+
+/**
+ * A scoop is a semantic product primitive, not merely "a cylinder plus a
+ * handle". Keep this deterministic so a geometrically valid but semantically
+ * wrong solid can never pass as an ice-cream scoop again.
+ */
+export function iceCreamScoopIntent(description = '') {
+  const text = String(description);
+  if (!/(?:아이스\s*크림[^\n]{0,20}(?:스쿱|스쿠프)|아이스크림[^\n]{0,20}(?:스쿱|스쿠프)|ice\s*cream\s*scoop)/i.test(text)) return null;
+  const bowlDiameter = finiteInRange(firstMatchNumber(text, [
+    /(?:보우|볼|머리|bowl|head)[^\dØϕ⌀]{0,24}[Øϕ⌀]?\s*(\d+(?:\.\d+)?)/i,
+    /[Øϕ⌀]\s*(\d+(?:\.\d+)?)\s*mm/i,
+  ]), 55, 30, 100);
+  const handleDiameter = finiteInRange(firstMatchNumber(text, [
+    /(?:손잡이|handle)[^\d]{0,24}(?:직경|diameter|dia|[Øϕ⌀])?\s*(\d+(?:\.\d+)?)/i,
+  ]), 18, 8, 35);
+  const handleLength = finiteInRange(firstMatchNumber(text, [
+    /(?:손잡이|handle)[^\d]{0,40}(?:길이|length|[x×])\s*(\d+(?:\.\d+)?)/i,
+    /(?:손잡이|handle)[^\d]{0,16}Ø?\s*\d+(?:\.\d+)?\s*[x×]\s*(\d+(?:\.\d+)?)/i,
+  ]), 120, 70, 240);
+  const thickness = finiteInRange(firstMatchNumber(text, [/(?:두께|thickness|wall)[^\d]{0,12}(\d+(?:\.\d+)?)/i]), 2, 1, 6);
+  const outerR = bowlDiameter / 2;
+  const innerR = Math.max(outerR - thickness, outerR * 0.72);
+  const segments = 16;
+  const outer = [];
+  const inner = [];
+  // Lower hemisphere: bottom z=0, open rim z=R. Traverse outer rim→bottom,
+  // then inner bottom→rim to form one closed, non-self-intersecting wall.
+  for (let index = segments; index >= 0; index--) {
+    const angle = (Math.PI / 2) * (index / segments);
+    outer.push([outerR * Math.sin(angle), outerR * (1 - Math.cos(angle))]);
+  }
+  for (let index = 0; index <= segments; index++) {
+    const angle = (Math.PI / 2) * (index / segments);
+    inner.push([innerR * Math.sin(angle), outerR - innerR * Math.cos(angle)]);
+  }
+  const attachZ = outerR * 0.72;
+  return {
+    name: `반구형 아이스크림 스쿱 ϴ${bowlDiameter}`,
+    productMeta: {
+      template: 'ice_cream_scoop_v1',
+      semanticShape: 'open-hemispherical-bowl',
+      bowlDiameterMm: bowlDiameter,
+      wallThicknessMm: thickness,
+      handleDiameterMm: handleDiameter,
+      handleLengthMm: handleLength,
+    },
+    features: [
+      { id: 'hemispherical_bowl', kind: 'revolve', profile: [...outer, ...inner], op: 'add' },
+      {
+        id: 'handle', kind: 'cylinder', diameter: handleDiameter, height: handleLength, op: 'add',
+        at: { translate: [outerR - 2, 0, attachZ], rotate: [0, 90, 0] },
+      },
+    ],
+  };
+}
+
 /**
  * ★260803 — **게이트에 걸린 피처만 빼고 나머지로 형상을 낸다.**
  *
@@ -321,9 +390,10 @@ export function resolveComposeIntent(intent) {
   return { intent: next, dropped, allFailed: false };
 }
 
-// 260803 — 기본 백엔드를 Gemini 로 되돌린다. pro 우선(폭주 거의 없음) → flash 폴백은
-// 260802 이전 이 함수의 기본값 그대로. `models: ['gpt-5.6-sol']` 을 주면 OpenAI 로 나간다.
-export async function composeFromText(description, { models = ['gemini-2.5-pro', 'gemini-2.5-flash'] } = {}) {
+// 기계 CAD 기본은 DeepSeek. 후순위는 운영 중 제공자 장애에 대비한 폴백이다.
+export async function composeFromText(description, { models = ['deepseek-chat', 'gpt-4o-mini', 'gemini-2.5-flash'] } = {}) {
+  const deterministic = iceCreamScoopIntent(description);
+  if (deterministic) return { intent: deterministic, model: 'deterministic:ice_cream_scoop_v1' };
   const { data, model } = await callAiJson(COMPOSE_PROMPT(description), COMPOSE_SCHEMA, { models, maxOutputTokens: 8192 });
   return { intent: data, model };
 }
@@ -345,7 +415,7 @@ export async function composeWithGate(description, { maxRounds = 2, models } = {
   while (errs.length && rounds <= maxRounds) {
     const fix = `아래 부품 조합 JSON이 기하 게이트에서 실패했다. 오류를 고쳐 같은 형식으로 다시 출력하라.\n오류: ${JSON.stringify(errs)}\n각 프리미티브 필수: revolve/extrude→profile(닫힌 단순 폴리곤, revolve는 x≥0), extrude→height, cylinder→diameter&height, box→size[3], sphere→diameter. 구멍은 op:'subtract' cylinder로 실체화하고 위치는 at.translate로 지정.\n현재 JSON: ${JSON.stringify(intent)}`;
     try {
-      const { data } = await callAiJson(fix, COMPOSE_SCHEMA, { models: models ?? ['gemini-2.5-pro'], maxOutputTokens: 8192 });
+      const { data } = await callAiJson(fix, COMPOSE_SCHEMA, { models: models ?? ['deepseek-chat', 'gpt-4o-mini', 'gemini-2.5-flash'], maxOutputTokens: 8192 });
       intent = data;
     } catch { break; }
     errs = gateAll(intent);

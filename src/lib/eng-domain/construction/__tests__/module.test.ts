@@ -11,6 +11,7 @@
 import { describe, it, expect } from 'vitest';
 import { runDomainDriver } from '@/lib/domain-driver';
 import { constructionModule, rcFramePlan } from '../module';
+import { bindConstructionPlan } from '../provenance';
 
 describe('Batch 3 — construction DomainModule runs end-to-end via the shared spine', () => {
   it('rc-frame fixture → concrete/rebar/schedule/formwork/cost/earthwork gates pass → verified package', async () => {
@@ -22,7 +23,7 @@ describe('Batch 3 — construction DomainModule runs end-to-end via the shared s
     if (!res.ok) return;
     expect(res.domain).toBe('construction');
     expect(res.gates.every((g) => g.pass), res.gates.filter((g) => !g.pass).map((g) => g.id).join(',')).toBe(true);
-    expect(res.gates).toHaveLength(6); // 어휘 확장: + formwork, cost, earthwork
+    expect(res.gates).toHaveLength(7); // provenance + formwork, cost, earthwork
 
     expect(res.package.concreteVolumeM3).toBeCloseTo(3.12, 6);
     expect(res.package.criticalPathDays).toBe(11);
@@ -30,13 +31,16 @@ describe('Batch 3 — construction DomainModule runs end-to-end via the shared s
     // formwork = beams 9×2 + columns 4.8×2 = 27.6 m²
     expect(res.gates.find((g) => g.id === 'quantity:formwork')!.metrics.computedArea_m2).toBeCloseTo(27.6, 4);
     expect(res.gates.find((g) => g.id === 'earthwork:cut-fill')!.pass).toBe(true);
+    expect(res.package.provenance.revisionBinding.revisionId).toBe('fixture-rc-frame:r1');
+    expect(res.package.provenance.quantityObjects.length).toBe(8);
     expect(res.package.disclaimer).toContain('구조기술사');
   });
 
   it('an over-budget cost rollup is REFUSED (어휘 확장)', async () => {
     const plan = rcFramePlan();
     plan.budget = 1_000_000; // total ≈ 2.89M > 1.0M
-    const res = await runDomainDriver({ id: 'over-budget' }, { ...constructionModule, plan: () => plan });
+    const rebound = bindConstructionPlan(plan, { revisionId: 'fixture-rc-frame:over-budget', revisionSha256: 'f'.repeat(64) });
+    const res = await runDomainDriver({ id: 'over-budget' }, { ...constructionModule, plan: () => rebound });
     expect(res.ok).toBe(false);
     if (res.ok) return;
     expect(res.refusal.stage).toBe('verify');

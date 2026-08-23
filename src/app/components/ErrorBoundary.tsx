@@ -1,6 +1,8 @@
 'use client';
 
 import React from 'react';
+import { readClientLocale } from '@/lib/i18n/clientLocale';
+import { createCommercialLocalizer } from '@/lib/i18n/commercialLocalizer';
 
 interface Props {
   children: React.ReactNode;
@@ -27,6 +29,7 @@ export default class ErrorBoundary extends React.Component<Props, State> {
   }
 
   override render() {
+    const L = createCommercialLocalizer(readClientLocale());
     if (this.state.hasError) {
       if (this.props.fallback) return this.props.fallback;
       return (
@@ -37,16 +40,16 @@ export default class ErrorBoundary extends React.Component<Props, State> {
         }}>
           <div style={{ fontSize: '36px', marginBottom: '12px' }}>⚠️</div>
           <h3 style={{ fontSize: '16px', fontWeight: 800, color: '#991b1b', margin: '0 0 6px' }}>
-            페이지 로드 중 오류가 발생했습니다
+            {L('페이지 로드 중 오류가 발생했습니다', 'An error occurred while loading the page')}
           </h3>
           <p style={{ fontSize: '13px', color: '#b91c1c', margin: '0 0 20px' }}>
-            {this.state.error?.message || '알 수 없는 오류'}
+            {this.state.error?.message || L('알 수 없는 오류', 'Unknown error')}
           </p>
           <button
             onClick={() => this.setState({ hasError: false, error: null })}
             style={{ padding: '10px 24px', borderRadius: '10px', background: '#dc2626', color: '#fff', fontWeight: 700, fontSize: '13px', border: 'none', cursor: 'pointer' }}
           >
-            다시 시도
+            {L('다시 시도', 'Try again')}
           </button>
         </div>
       );

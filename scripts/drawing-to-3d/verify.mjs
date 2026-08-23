@@ -11,16 +11,33 @@
  */
 import { readFileSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
-import { dirname, join } from 'node:path';
+import { dirname, isAbsolute, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { toOpenScad, partAabb } from './reconstruct.mjs';
 
-const OSDIR = join(dirname(fileURLToPath(import.meta.url)), '..', '..', 'public', 'openscad');
+const OSDIR = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..', 'public', 'openscad');
+const OPENSCAD_ASSETS = new Set(['openscad.js', 'openscad.wasm']);
+
+/** Fixed runtime assets only: never resolve a caller-controlled module specifier. */
+export function resolveOpenScadAsset(asset) {
+  if (!OPENSCAD_ASSETS.has(asset)) throw new Error('unsupported OpenSCAD runtime asset');
+  const candidate = resolve(OSDIR, asset);
+  const contained = relative(OSDIR, candidate);
+  if (!contained || contained.startsWith('..') || isAbsolute(contained)) {
+    throw new Error('OpenSCAD runtime asset escaped its fixed root');
+  }
+  return candidate;
+}
+
+const OPENSCAD_JS = resolveOpenScadAsset('openscad.js');
+const OPENSCAD_WASM = resolveOpenScadAsset('openscad.wasm');
 
 export async function renderStl(scad) {
-  const mod = await import(pathToFileURL(join(OSDIR, 'openscad.js')).href);
+  // Runtime-isolated on purpose: these reviewed Emscripten assets are copied
+  // into standalone deployments; the specifier is not caller-controlled.
+  const mod = await import(/* webpackIgnore: true */ pathToFileURL(OPENSCAD_JS).href);
   // Node에서는 브라우저 glue의 fetch가 실패 → wasmBinary 직접 주입.
-  const inst = await mod.default({ noInitialRun: true, wasmBinary: readFileSync(join(OSDIR, 'openscad.wasm')), print: () => {}, printErr: () => {} });
+  const inst = await mod.default({ noInitialRun: true, wasmBinary: readFileSync(OPENSCAD_WASM), print: () => {}, printErr: () => {} });
   inst.FS.writeFile('/in.scad', scad.replace(/\r\n?/g, '\n'));
   const code = inst.callMain(['/in.scad', '-o', '/out.stl', '--backend=manifold', '--export-format=binstl']);
   const stl = inst.FS.readFile('/out.stl', { encoding: 'binary' });

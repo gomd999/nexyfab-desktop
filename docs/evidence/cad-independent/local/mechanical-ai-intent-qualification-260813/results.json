@@ -1,0 +1,6359 @@
+{
+  "schema": "nexyfab.mechanical-ai-intent-local-results.v1",
+  "generatedAt": "2026-08-22T07:12:30.395Z",
+  "executionBoundary": {
+    "parser": "LOCAL_DETERMINISTIC",
+    "aiModelCall": "NOT_RUN",
+    "geometry": "NOT_RUN",
+    "verification": "NOT_RUN"
+  },
+  "cases": [
+    {
+      "caseId": "ko_practical-01-hole",
+      "category": "ko_practical",
+      "expectedFeature": "hole",
+      "parsedFeature": "hole",
+      "expectedRequirementOutcome": "READY",
+      "parse": {
+        "status": "PASS",
+        "issues": []
+      },
+      "requirementsGate": {
+        "status": "PASS",
+        "ready": true,
+        "issues": [],
+        "nextQuestion": null
+      },
+      "candidateValidation": {
+        "status": "PASS",
+        "state": "PREVIEW",
+        "issues": []
+      },
+      "geometry": {
+        "eligibility": "ELIGIBLE",
+        "execution": "NOT_RUN",
+        "blockers": []
+      },
+      "verification": {
+        "eligibility": "BLOCKED",
+        "execution": "NOT_RUN",
+        "blockers": [
+          "geometry_not_executed"
+        ]
+      },
+      "qualification": {
+        "status": "PASS",
+        "assertions": []
+      }
+    },
+    {
+      "caseId": "ko_practical-02-fillet",
+      "category": "ko_practical",
+      "expectedFeature": "fillet",
+      "parsedFeature": "fillet",
+      "expectedRequirementOutcome": "READY",
+      "parse": {
+        "status": "PASS",
+        "issues": []
+      },
+      "requirementsGate": {
+        "status": "PASS",
+        "ready": true,
+        "issues": [],
+        "nextQuestion": null
+      },
+      "candidateValidation": {
+        "status": "PASS",
+        "state": "PREVIEW",
+        "issues": []
+      },
+      "geometry": {
+        "eligibility": "ELIGIBLE",
+        "execution": "NOT_RUN",
+        "blockers": []
+      },
+      "verification": {
+        "eligibility": "BLOCKED",
+        "execution": "NOT_RUN",
+        "blockers": [
+          "geometry_not_executed"
+        ]
+      },
+      "qualification": {
+        "status": "PASS",
+        "assertions": []
+      }
+    },
+    {
+      "caseId": "ko_practical-03-chamfer",
+      "category": "ko_practical",
+      "expectedFeature": "chamfer",
+      "parsedFeature": "chamfer",
+      "expectedRequirementOutcome": "READY",
+      "parse": {
+        "status": "PASS",
+        "issues": []
+      },
+      "requirementsGate": {
+        "status": "PASS",
+        "ready": true,
+        "issues": [],
+        "nextQuestion": null
+      },
+      "candidateValidation": {
+        "status": "PASS",
+        "state": "PREVIEW",
+        "issues": []
+      },
+      "geometry": {
+        "eligibility": "ELIGIBLE",
+        "execution": "NOT_RUN",
+        "blockers": []
+      },
+      "verification": {
+        "eligibility": "BLOCKED",
+        "execution": "NOT_RUN",
+        "blockers": [
+          "geometry_not_executed"
+        ]
+      },
+      "qualification": {
+        "status": "PASS",
+        "assertions": []
+      }
+    },
+    {
+      "caseId": "ko_practical-04-shell",
+      "category": "ko_practical",
+      "expectedFeature": "shell",
+      "parsedFeature": "shell",
+      "expectedRequirementOutcome": "READY",
+      "parse": {
+        "status": "PASS",
+        "issues": []
+      },
+      "requirementsGate": {
+        "status": "PASS",
+        "ready": true,
+        "issues": [],
+        "nextQuestion": null
+      },
+      "candidateValidation": {
+        "status": "PASS",
+        "state": "PREVIEW",
+        "issues": []
+      },
+      "geometry": {
+        "eligibility": "ELIGIBLE",
+        "execution": "NOT_RUN",
+        "blockers": []
+      },
+      "verification": {
+        "eligibility": "BLOCKED",
+        "execution": "NOT_RUN",
+        "blockers": [
+          "geometry_not_executed"
+        ]
+      },
+      "qualification": {
+        "status": "PASS",
+        "assertions": []
+      }
+    },
+    {
+      "caseId": "ko_practical-05-rib",
+      "category": "ko_practical",
+      "expectedFeature": "rib",
+      "parsedFeature": "rib",
+      "expectedRequirementOutcome": "READY",
+      "parse": {
+        "status": "PASS",
+        "issues": []
+      },
+      "requirementsGate": {
+        "status": "PASS",
+        "ready": true,
+        "issues": [],
+        "nextQuestion": null
+      },
+      "candidateValidation": {
+        "status": "PASS",
+        "state": "PREVIEW",
+        "issues": []
+      },
+      "geometry": {
+        "eligibility": "ELIGIBLE",
+        "execution": "NOT_RUN",
+        "blockers": []
+      },
+      "verification": {
+        "eligibility": "BLOCKED",
+        "execution": "NOT_RUN",
+        "blockers": [
+          "geometry_not_executed"
+        ]
+      },
+      "qualification": {
+        "status": "PASS",
+        "assertions": []
+      }
+    },
+    {
+      "caseId": "ko_practical-06-linearPattern",
+      "category": "ko_practical",
+      "expectedFeature": "linearPattern",
+      "parsedFeature": "linearPattern",
+      "expectedRequirementOutcome": "READY",
+      "parse": {
+        "status": "PASS",
+        "issues": []
+      },
+      "requirementsGate": {
+        "status": "PASS",
+        "ready": true,
+        "issues": [],
+        "nextQuestion": null
+      },
+      "candidateValidation": {
+        "status": "PASS",
+        "state": "PREVIEW",
+        "issues": []
+      },
+      "geometry": {
+        "eligibility": "ELIGIBLE",
+        "execution": "NOT_RUN",
+        "blockers": []
+      },
+      "verification": {
+        "eligibility": "BLOCKED",
+        "execution": "NOT_RUN",
+        "blockers": [
+          "geometry_not_executed"
+        ]
+      },
+      "qualification": {
+        "status": "PASS",
+        "assertions": []
+      }
+    },
+    {
+      "caseId": "ko_practical-07-circularPattern",
+      "category": "ko_practical",
+      "expectedFeature": "circularPattern",
+      "parsedFeature": "circularPattern",
+      "expectedRequirementOutcome": "READY",
+      "parse": {
+        "status": "PASS",
+        "issues": []
+      },
+      "requirementsGate": {
+        "status": "PASS",
+        "ready": true,
+        "issues": [],
+        "nextQuestion": null
+      },
+      "candidateValidation": {
+        "status": "PASS",
+        "state": "PREVIEW",
+        "issues": []
+      },
+      "geometry": {
+        "eligibility": "ELIGIBLE",
+        "execution": "NOT_RUN",
+        "blockers": []
+      },
+      "verification": {
+        "eligibility": "BLOCKED",
+        "execution": "NOT_RUN",
+        "blockers": [
+          "geometry_not_executed"
+        ]
+      },
+      "qualification": {
+        "status": "PASS",
+        "assertions": []
+      }
+    },
+    {
+      "caseId": "ko_practical-08-draft",
+      "category": "ko_practical",
+      "expectedFeature": "draft",
+      "parsedFeature": "draft",
+      "expectedRequirementOutcome": "READY",
+      "parse": {
+        "status": "PASS",
+        "issues": []
+      },
+      "requirementsGate": {
+        "status": "PASS",
+        "ready": true,
+        "issues": [],
+        "nextQuestion": null
+      },
+      "candidateValidation": {
+        "status": "PASS",
+        "state": "PREVIEW",
+        "issues": []
+      },
+      "geometry": {
+        "eligibility": "ELIGIBLE",
+        "execution": "NOT_RUN",
+        "blockers": []
+      },
+      "verification": {
+        "eligibility": "BLOCKED",
+        "execution": "NOT_RUN",
+        "blockers": [
+          "geometry_not_executed"
+        ]
+      },
+      "qualification": {
+        "status": "PASS",
+        "assertions": []
+      }
+    },
+    {
+      "caseId": "ko_practical-09-scale",
+      "category": "ko_practical",
+      "expectedFeature": "scale",
+      "parsedFeature": "scale",
+      "expectedRequirementOutcome": "READY",
+      "parse": {
+        "status": "PASS",
+        "issues": []
+      },
+      "requirementsGate": {
+        "status": "PASS",
+        "ready": true,
+        "issues": [],
+        "nextQuestion": null
+      },
+      "candidateValidation": {
+        "status": "PASS",
+        "state": "PREVIEW",
+        "issues": []
+      },
+      "geometry": {
+        "eligibility": "ELIGIBLE",
+        "execution": "NOT_RUN",
+        "blockers": []
+      },
+      "verification": {
+        "eligibility": "BLOCKED",
+        "execution": "NOT_RUN",
+        "blockers": [
+          "geometry_not_executed"
+        ]
+      },
+      "qualification": {
+        "status": "PASS",
+        "assertions": []
+      }
+    },
+    {
+      "caseId": "ko_practical-10-moveCopy",
+      "category": "ko_practical",
+      "expectedFeature": "moveCopy",
+      "parsedFeature": "moveCopy",
+      "expectedRequirementOutcome": "READY",
+      "parse": {
+        "status": "PASS",
+        "issues": []
+      },
+      "requirementsGate": {
+        "status": "PASS",
+        "ready": true,
+        "issues": [],
+        "nextQuestion": null
+      },
+      "candidateValidation": {
+        "status": "PASS",
+        "state": "PREVIEW",
+        "issues": []
+      },
+      "geometry": {
+        "eligibility": "ELIGIBLE",
+        "execution": "NOT_RUN",
+        "blockers": []
+      },
+      "verification": {
+        "eligibility": "BLOCKED",
+        "execution": "NOT_RUN",
+        "blockers": [
+          "geometry_not_executed"
+        ]
+      },
+      "qualification": {
+        "status": "PASS",
+        "assertions": []
+      }
+    },
+    {
+      "caseId": "ko_practical-11-variableFillet",
+      "category": "ko_practical",
+      "expectedFeature": "variableFillet",
+      "parsedFeature": "variableFillet",
+      "expectedRequirementOutcome": "READY",
+      "parse": {
+        "status": "PASS",
+        "issues": []
+      },
+      "requirementsGate": {
+        "status": "PASS",
+        "ready": true,
+        "issues": [],
+        "nextQuestion": null
+      },
+      "candidateValidation": {
+        "status": "PASS",
+        "state": "PREVIEW",
+        "issues": []
+      },
+      "geometry": {
+        "eligibility": "ELIGIBLE",
+        "execution": "NOT_RUN",
+        "blockers": []
+      },
+      "verification": {
+        "eligibility": "BLOCKED",
+        "execution": "NOT_RUN",
+        "blockers": [
+          "geometry_not_executed"
+        ]
+      },
+      "qualification": {
+        "status": "PASS",
+        "assertions": []
+      }
+    },
+    {
+      "caseId": "ko_practical-12-offsetFace",
+      "category": "ko_practical",
+      "expectedFeature": "offsetFace",
+      "parsedFeature": "offsetFace",
+      "expectedRequirementOutcome": "READY",
+      "parse": {
+        "status": "PASS",
+        "issues": []
+      },
+      "requirementsGate": {
+        "status": "PASS",
+        "ready": true,
+        "issues": [],
+        "nextQuestion": null
+      },
+      "candidateValidation": {
+        "status": "PASS",
+        "state": "PREVIEW",
+        "issues": []
+      },
+      "geometry": {
+        "eligibility": "ELIGIBLE",
+        "execution": "NOT_RUN",
+        "blockers": []
+      },
+      "verification": {
+        "eligibility": "BLOCKED",
+        "execution": "NOT_RUN",
+        "blockers": [
+          "geometry_not_executed"
+        ]
+      },
+      "qualification": {
+        "status": "PASS",
+        "assertions": []
+      }
+    },
+    {
+      "caseId": "ko_practical-13-thread",
+      "category": "ko_practical",
+      "expectedFeature": "thread",
+      "parsedFeature": "thread",
+      "expectedRequirementOutcome": "READY",
+      "parse": {
+        "status": "PASS",
+        "issues": []
+      },
+      "requirementsGate": {
+        "status": "PASS",
+        "ready": true,
+        "issues": [],
+        "nextQuestion": null
+      },
+      "candidateValidation": {
+        "status": "PASS",
+        "state": "PREVIEW",
+        "issues": []
+      },
+      "geometry": {
+        "eligibility": "ELIGIBLE",
+        "execution": "NOT_RUN",
+        "blockers": []
+      },
+      "verification": {
+        "eligibility": "BLOCKED",
+        "execution": "NOT_RUN",
+        "blockers": [
+          "geometry_not_executed"
+        ]
+      },
+      "qualification": {
+        "status": "PASS",
+        "assertions": []
+      }
+    },
+    {
+      "caseId": "ko_practical-14-helix",
+      "category": "ko_practical",
+      "expectedFeature": "helix",
+      "parsedFeature": "helix",
+      "expectedRequirementOutcome": "READY",
+      "parse": {
+        "status": "PASS",
+        "issues": []
+      },
+      "requirementsGate": {
+        "status": "PASS",
+        "ready": true,
+        "issues": [],
+        "nextQuestion": null
+      },
+      "candidateValidation": {
+        "status": "PASS",
+        "state": "PREVIEW",
+        "issues": []
+      },
+      "geometry": {
+        "eligibility": "ELIGIBLE",
+        "execution": "NOT_RUN",
+        "blockers": []
+      },
+      "verification": {
+        "eligibility": "BLOCKED",
+        "execution": "NOT_RUN",
+        "blockers": [
+          "geometry_not_executed"
+        ]
+      },
+      "qualification": {
+        "status": "PASS",
+        "assertions": []
+      }
+    },
+    {
+      "caseId": "ko_practical-15-bend",
+      "category": "ko_practical",
+      "expectedFeature": "bend",
+      "parsedFeature": "bend",
+      "expectedRequirementOutcome": "READY",
+      "parse": {
+        "status": "PASS",
+        "issues": []
+      },
+      "requirementsGate": {
+        "status": "PASS",
+        "ready": true,
+        "issues": [],
+        "nextQuestion": null
+      },
+      "candidateValidation": {
+        "status": "PASS",
+        "state": "PREVIEW",
+        "issues": []
+      },
+      "geometry": {
+        "eligibility": "ELIGIBLE",
+        "execution": "NOT_RUN",
+        "blockers": []
+      },
+      "verification": {
+        "eligibility": "BLOCKED",
+        "execution": "NOT_RUN",
+        "blockers": [
+          "geometry_not_executed"
+        ]
+      },
+      "qualification": {
+        "status": "PASS",
+        "assertions": []
+      }
+    },
+    {
+      "caseId": "ko_practical-16-flange",
+      "category": "ko_practical",
+      "expectedFeature": "flange",
+      "parsedFeature": "flange",
+      "expectedRequirementOutcome": "READY",
+      "parse": {
+        "status": "PASS",
+        "issues": []
+      },
+      "requirementsGate": {
+        "status": "PASS",
+        "ready": true,
+        "issues": [],
+        "nextQuestion": null
+      },
+      "candidateValidation": {
+        "status": "PASS",
+        "state": "PREVIEW",
+        "issues": []
+      },
+      "geometry": {
+        "eligibility": "ELIGIBLE",
+        "execution": "NOT_RUN",
+        "blockers": []
+      },
+      "verification": {
+        "eligibility": "BLOCKED",
+        "execution": "NOT_RUN",
+        "blockers": [
+          "geometry_not_executed"
+        ]
+      },
+      "qualification": {
+        "status": "PASS",
+        "assertions": []
+      }
+    },
+    {
+      "caseId": "ko_practical-17-hem",
+      "category": "ko_practical",
+      "expectedFeature": "hem",
+      "parsedFeature": "hem",
+      "expectedRequirementOutcome": "READY",
+      "parse": {
+        "status": "PASS",
+        "issues": []
+      },
+      "requirementsGate": {
+        "status": "PASS",
+        "ready": true,
+        "issues": [],
+        "nextQuestion": null
+      },
+      "candidateValidation": {
+        "status": "PASS",
+        "state": "PREVIEW",
+        "issues": []
+      },
+      "geometry": {
+        "eligibility": "ELIGIBLE",
+        "execution": "NOT_RUN",
+        "blockers": []
+      },
+      "verification": {
+        "eligibility": "BLOCKED",
+        "execution": "NOT_RUN",
+        "blockers": [
+          "geometry_not_executed"
+        ]
+      },
+      "qualification": {
+        "status": "PASS",
+        "assertions": []
+      }
+    },
+    {
+      "caseId": "ko_practical-18-jog",
+      "category": "ko_practical",
+      "expectedFeature": "jog",
+      "parsedFeature": "jog",
+      "expectedRequirementOutcome": "READY",
+      "parse": {
+        "status": "PASS",
+        "issues": []
+      },
+      "requirementsGate": {
+        "status": "PASS",
+        "ready": true,
+        "issues": [],
+        "nextQuestion": null
+      },
+      "candidateValidation": {
+        "status": "PASS",
+        "state": "PREVIEW",
+        "issues": []
+      },
+      "geometry": {
+        "eligibility": "ELIGIBLE",
+        "execution": "NOT_RUN",
+        "blockers": []
+      },
+      "verification": {
+        "eligibility": "BLOCKED",
+        "execution": "NOT_RUN",
+        "blockers": [
+          "geometry_not_executed"
+        ]
+      },
+      "qualification": {
+        "status": "PASS",
+        "assertions": []
+      }
+    },
+    {
+      "caseId": "ko_practical-19-tab",
+      "category": "ko_practical",
+      "expectedFeature": "tab",
+      "parsedFeature": "tab",
+      "expectedRequirementOutcome": "READY",
+      "parse": {
+        "status": "PASS",
+        "issues": []
+      },
+      "requirementsGate": {
+        "status": "PASS",
+        "ready": true,
+        "issues": [],
+        "nextQuestion": null
+      },
+      "candidateValidation": {
+        "status": "PASS",
+        "state": "PREVIEW",
+        "issues": []
+      },
+      "geometry": {
+        "eligibility": "ELIGIBLE",
+        "execution": "NOT_RUN",
+        "blockers": []
+      },
+      "verification": {
+        "eligibility": "BLOCKED",
+        "execution": "NOT_RUN",
+        "blockers": [
+          "geometry_not_executed"
+        ]
+      },
+      "qualification": {
+        "status": "PASS",
+        "assertions": []
+      }
+    },
+    {
+      "caseId": "ko_practical-20-cut",
+      "category": "ko_practical",
+      "expectedFeature": "cut",
+      "parsedFeature": "cut",
+      "expectedRequirementOutcome": "READY",
+      "parse": {
+        "status": "PASS",
+        "issues": []
+      },
+      "requirementsGate": {
+        "status": "PASS",
+        "ready": true,
+        "issues": [],
+        "nextQuestion": null
+      },
+      "candidateValidation": {
+        "status": "PASS",
+        "state": "PREVIEW",
+        "issues": []
+      },
+      "geometry": {
+        "eligibility": "ELIGIBLE",
+        "execution": "NOT_RUN",
+        "blockers": []
+      },
+      "verification": {
+        "eligibility": "BLOCKED",
+        "execution": "NOT_RUN",
+        "blockers": [
+          "geometry_not_executed"
+        ]
+      },
+      "qualification": {
+        "status": "PASS",
+        "assertions": []
+      }
+    },
+    {
+      "caseId": "ko_practical-21-bendRelief",
+      "category": "ko_practical",
+      "expectedFeature": "bendRelief",
+      "parsedFeature": "bendRelief",
+      "expectedRequirementOutcome": "READY",
+      "parse": {
+        "status": "PASS",
+        "issues": []
+      },
+      "requirementsGate": {
+        "status": "PASS",
+        "ready": true,
+        "issues": [],
+        "nextQuestion": null
+      },
+      "candidateValidation": {
+        "status": "PASS",
+        "state": "PREVIEW",
+        "issues": []
+      },
+      "geometry": {
+        "eligibility": "ELIGIBLE",
+        "execution": "NOT_RUN",
+        "blockers": []
+      },
+      "verification": {
+        "eligibility": "BLOCKED",
+        "execution": "NOT_RUN",
+        "blockers": [
+          "geometry_not_executed"
+        ]
+      },
+      "qualification": {
+        "status": "PASS",
+        "assertions": []
+      }
+    },
+    {
+      "caseId": "ko_practical-22-cornerRelief",
+      "category": "ko_practical",
+      "expectedFeature": "cornerRelief",
+      "parsedFeature": "cornerRelief",
+      "expectedRequirementOutcome": "READY",
+      "parse": {
+        "status": "PASS",
+        "issues": []
+      },
+      "requirementsGate": {
+        "status": "PASS",
+        "ready": true,
+        "issues": [],
+        "nextQuestion": null
+      },
+      "candidateValidation": {
+        "status": "PASS",
+        "state": "PREVIEW",
+        "issues": []
+      },
+      "geometry": {
+        "eligibility": "ELIGIBLE",
+        "execution": "NOT_RUN",
+        "blockers": []
+      },
+      "verification": {
+        "eligibility": "BLOCKED",
+        "execution": "NOT_RUN",
+        "blockers": [
+          "geometry_not_executed"
+        ]
+      },
+      "qualification": {
+        "status": "PASS",
+        "assertions": []
+      }
+    },
+    {
+      "caseId": "ko_practical-23-variableShell",
+      "category": "ko_practical",
+      "expectedFeature": "variableShell",
+      "parsedFeature": "variableShell",
+      "expectedRequirementOutcome": "READY",
+      "parse": {
+        "status": "PASS",
+        "issues": []
+      },
+      "requirementsGate": {
+        "status": "PASS",
+        "ready": true,
+        "issues": [],
+        "nextQuestion": null
+      },
+      "candidateValidation": {
+        "status": "PASS",
+        "state": "PREVIEW",
+        "issues": []
+      },
+      "geometry": {
+        "eligibility": "ELIGIBLE",
+        "execution": "NOT_RUN",
+        "blockers": []
+      },
+      "verification": {
+        "eligibility": "BLOCKED",
+        "execution": "NOT_RUN",
+        "blockers": [
+          "geometry_not_executed"
+        ]
+      },
+      "qualification": {
+        "status": "PASS",
+        "assertions": []
+      }
+    },
+    {
+      "caseId": "ko_practical-24-sketchExtrude",
+      "category": "ko_practical",
+      "expectedFeature": "sketchExtrude",
+      "parsedFeature": "sketchExtrude",
+      "expectedRequirementOutcome": "READY",
+      "parse": {
+        "status": "PASS",
+        "issues": []
+      },
+      "requirementsGate": {
+        "status": "PASS",
+        "ready": true,
+        "issues": [],
+        "nextQuestion": null
+      },
+      "candidateValidation": {
+        "status": "PASS",
+        "state": "PREVIEW",
+        "issues": []
+      },
+      "geometry": {
+        "eligibility": "ELIGIBLE",
+        "execution": "NOT_RUN",
+        "blockers": []
+      },
+      "verification": {
+        "eligibility": "BLOCKED",
+        "execution": "NOT_RUN",
+        "blockers": [
+          "geometry_not_executed"
+        ]
+      },
+      "qualification": {
+        "status": "PASS",
+        "assertions": []
+      }
+    },
+    {
+      "caseId": "ko_practical-25-revolve",
+      "category": "ko_practical",
+      "expectedFeature": "revolve",
+      "parsedFeature": "revolve",
+      "expectedRequirementOutcome": "READY",
+      "parse": {
+        "status": "PASS",
+        "issues": []
+      },
+      "requirementsGate": {
+        "status": "PASS",
+        "ready": true,
+        "issues": [],
+        "nextQuestion": null
+      },
+      "candidateValidation": {
+        "status": "PASS",
+        "state": "PREVIEW",
+        "issues": []
+      },
+      "geometry": {
+        "eligibility": "ELIGIBLE",
+        "execution": "NOT_RUN",
+        "blockers": []
+      },
+      "verification": {
+        "eligibility": "BLOCKED",
+        "execution": "NOT_RUN",
+        "blockers": [
+          "geometry_not_executed"
+        ]
+      },
+      "qualification": {
+        "status": "PASS",
+        "assertions": []
+      }
+    },
+    {
+      "caseId": "ko_practical-26-sweep",
+      "category": "ko_practical",
+      "expectedFeature": "sweep",
+      "parsedFeature": "sweep",
+      "expectedRequirementOutcome": "READY",
+      "parse": {
+        "status": "PASS",
+        "issues": []
+      },
+      "requirementsGate": {
+        "status": "PASS",
+        "ready": true,
+        "issues": [],
+        "nextQuestion": null
+      },
+      "candidateValidation": {
+        "status": "PASS",
+        "state": "PREVIEW",
+        "issues": []
+      },
+      "geometry": {
+        "eligibility": "ELIGIBLE",
+        "execution": "NOT_RUN",
+        "blockers": []
+      },
+      "verification": {
+        "eligibility": "BLOCKED",
+        "execution": "NOT_RUN",
+        "blockers": [
+          "geometry_not_executed"
+        ]
+      },
+      "qualification": {
+        "status": "PASS",
+        "assertions": []
+      }
+    },
+    {
+      "caseId": "ko_practical-27-loft",
+      "category": "ko_practical",
+      "expectedFeature": "loft",
+      "parsedFeature": "loft",
+      "expectedRequirementOutcome": "READY",
+      "parse": {
+        "status": "PASS",
+        "issues": []
+      },
+      "requirementsGate": {
+        "status": "PASS",
+        "ready": true,
+        "issues": [],
+        "nextQuestion": null
+      },
+      "candidateValidation": {
+        "status": "PASS",
+        "state": "PREVIEW",
+        "issues": []
+      },
+      "geometry": {
+        "eligibility": "ELIGIBLE",
+        "execution": "NOT_RUN",
+        "blockers": []
+      },
+      "verification": {
+        "eligibility": "BLOCKED",
+        "execution": "NOT_RUN",
+        "blockers": [
+          "geometry_not_executed"
+        ]
+      },
+      "qualification": {
+        "status": "PASS",
+        "assertions": []
+      }
+    },
+    {
+      "caseId": "ko_practical-28-mirror",
+      "category": "ko_practical",
+      "expectedFeature": "mirror",
+      "parsedFeature": "mirror",
+      "expectedRequirementOutcome": "READY",
+      "parse": {
+        "status": "PASS",
+        "issues": []
+      },
+      "requirementsGate": {
+        "status": "PASS",
+        "ready": true,
+        "issues": [],
+        "nextQuestion": null
+      },
+      "candidateValidation": {
+        "status": "PASS",
+        "state": "PREVIEW",
+        "issues": []
+      },
+      "geometry": {
+        "eligibility": "ELIGIBLE",
+        "execution": "NOT_RUN",
+        "blockers": []
+      },
+      "verification": {
+        "eligibility": "BLOCKED",
+        "execution": "NOT_RUN",
+        "blockers": [
+          "geometry_not_executed"
+        ]
+      },
+      "qualification": {
+        "status": "PASS",
+        "assertions": []
+      }
+    },
+    {
+      "caseId": "ko_practical-29-boolean",
+      "category": "ko_practical",
+      "expectedFeature": "boolean",
+      "parsedFeature": "boolean",
+      "expectedRequirementOutcome": "READY",
+      "parse": {
+        "status": "PASS",
+        "issues": []
+      },
+      "requirementsGate": {
+        "status": "PASS",
+        "ready": true,
+        "issues": [],
+        "nextQuestion": null
+      },
+      "candidateValidation": {
+        "status": "PASS",
+        "state": "PREVIEW",
+        "issues": []
+      },
+      "geometry": {
+        "eligibility": "ELIGIBLE",
+        "execution": "NOT_RUN",
+        "blockers": []
+      },
+      "verification": {
+        "eligibility": "BLOCKED",
+        "execution": "NOT_RUN",
+        "blockers": [
+          "geometry_not_executed"
+        ]
+      },
+      "qualification": {
+        "status": "PASS",
+        "assertions": []
+      }
+    },
+    {
+      "caseId": "ko_practical-30-splitBody",
+      "category": "ko_practical",
+      "expectedFeature": "splitBody",
+      "parsedFeature": "splitBody",
+      "expectedRequirementOutcome": "READY",
+      "parse": {
+        "status": "PASS",
+        "issues": []
+      },
+      "requirementsGate": {
+        "status": "PASS",
+        "ready": true,
+        "issues": [],
+        "nextQuestion": null
+      },
+      "candidateValidation": {
+        "status": "PASS",
+        "state": "PREVIEW",
+        "issues": []
+      },
+      "geometry": {
+        "eligibility": "ELIGIBLE",
+        "execution": "NOT_RUN",
+        "blockers": []
+      },
+      "verification": {
+        "eligibility": "BLOCKED",
+        "execution": "NOT_RUN",
+        "blockers": [
+          "geometry_not_executed"
+        ]
+      },
+      "qualification": {
+        "status": "PASS",
+        "assertions": []
+      }
+    },
+    {
+      "caseId": "en_practical-01-hole",
+      "category": "en_practical",
+      "expectedFeature": "hole",
+      "parsedFeature": "hole",
+      "expectedRequirementOutcome": "READY",
+      "parse": {
+        "status": "PASS",
+        "issues": []
+      },
+      "requirementsGate": {
+        "status": "PASS",
+        "ready": true,
+        "issues": [],
+        "nextQuestion": null
+      },
+      "candidateValidation": {
+        "status": "PASS",
+        "state": "PREVIEW",
+        "issues": []
+      },
+      "geometry": {
+        "eligibility": "ELIGIBLE",
+        "execution": "NOT_RUN",
+        "blockers": []
+      },
+      "verification": {
+        "eligibility": "BLOCKED",
+        "execution": "NOT_RUN",
+        "blockers": [
+          "geometry_not_executed"
+        ]
+      },
+      "qualification": {
+        "status": "PASS",
+        "assertions": []
+      }
+    },
+    {
+      "caseId": "en_practical-02-fillet",
+      "category": "en_practical",
+      "expectedFeature": "fillet",
+      "parsedFeature": "fillet",
+      "expectedRequirementOutcome": "READY",
+      "parse": {
+        "status": "PASS",
+        "issues": []
+      },
+      "requirementsGate": {
+        "status": "PASS",
+        "ready": true,
+        "issues": [],
+        "nextQuestion": null
+      },
+      "candidateValidation": {
+        "status": "PASS",
+        "state": "PREVIEW",
+        "issues": []
+      },
+      "geometry": {
+        "eligibility": "ELIGIBLE",
+        "execution": "NOT_RUN",
+        "blockers": []
+      },
+      "verification": {
+        "eligibility": "BLOCKED",
+        "execution": "NOT_RUN",
+        "blockers": [
+          "geometry_not_executed"
+        ]
+      },
+      "qualification": {
+        "status": "PASS",
+        "assertions": []
+      }
+    },
+    {
+      "caseId": "en_practical-03-chamfer",
+      "category": "en_practical",
+      "expectedFeature": "chamfer",
+      "parsedFeature": "chamfer",
+      "expectedRequirementOutcome": "READY",
+      "parse": {
+        "status": "PASS",
+        "issues": []
+      },
+      "requirementsGate": {
+        "status": "PASS",
+        "ready": true,
+        "issues": [],
+        "nextQuestion": null
+      },
+      "candidateValidation": {
+        "status": "PASS",
+        "state": "PREVIEW",
+        "issues": []
+      },
+      "geometry": {
+        "eligibility": "ELIGIBLE",
+        "execution": "NOT_RUN",
+        "blockers": []
+      },
+      "verification": {
+        "eligibility": "BLOCKED",
+        "execution": "NOT_RUN",
+        "blockers": [
+          "geometry_not_executed"
+        ]
+      },
+      "qualification": {
+        "status": "PASS",
+        "assertions": []
+      }
+    },
+    {
+      "caseId": "en_practical-04-shell",
+      "category": "en_practical",
+      "expectedFeature": "shell",
+      "parsedFeature": "shell",
+      "expectedRequirementOutcome": "READY",
+      "parse": {
+        "status": "PASS",
+        "issues": []
+      },
+      "requirementsGate": {
+        "status": "PASS",
+        "ready": true,
+        "issues": [],
+        "nextQuestion": null
+      },
+      "candidateValidation": {
+        "status": "PASS",
+        "state": "PREVIEW",
+        "issues": []
+      },
+      "geometry": {
+        "eligibility": "ELIGIBLE",
+        "execution": "NOT_RUN",
+        "blockers": []
+      },
+      "verification": {
+        "eligibility": "BLOCKED",
+        "execution": "NOT_RUN",
+        "blockers": [
+          "geometry_not_executed"
+        ]
+      },
+      "qualification": {
+        "status": "PASS",
+        "assertions": []
+      }
+    },
+    {
+      "caseId": "en_practical-05-rib",
+      "category": "en_practical",
+      "expectedFeature": "rib",
+      "parsedFeature": "rib",
+      "expectedRequirementOutcome": "READY",
+      "parse": {
+        "status": "PASS",
+        "issues": []
+      },
+      "requirementsGate": {
+        "status": "PASS",
+        "ready": true,
+        "issues": [],
+        "nextQuestion": null
+      },
+      "candidateValidation": {
+        "status": "PASS",
+        "state": "PREVIEW",
+        "issues": []
+      },
+      "geometry": {
+        "eligibility": "ELIGIBLE",
+        "execution": "NOT_RUN",
+        "blockers": []
+      },
+      "verification": {
+        "eligibility": "BLOCKED",
+        "execution": "NOT_RUN",
+        "blockers": [
+          "geometry_not_executed"
+        ]
+      },
+      "qualification": {
+        "status": "PASS",
+        "assertions": []
+      }
+    },
+    {
+      "caseId": "en_practical-06-linearPattern",
+      "category": "en_practical",
+      "expectedFeature": "linearPattern",
+      "parsedFeature": "linearPattern",
+      "expectedRequirementOutcome": "READY",
+      "parse": {
+        "status": "PASS",
+        "issues": []
+      },
+      "requirementsGate": {
+        "status": "PASS",
+        "ready": true,
+        "issues": [],
+        "nextQuestion": null
+      },
+      "candidateValidation": {
+        "status": "PASS",
+        "state": "PREVIEW",
+        "issues": []
+      },
+      "geometry": {
+        "eligibility": "ELIGIBLE",
+        "execution": "NOT_RUN",
+        "blockers": []
+      },
+      "verification": {
+        "eligibility": "BLOCKED",
+        "execution": "NOT_RUN",
+        "blockers": [
+          "geometry_not_executed"
+        ]
+      },
+      "qualification": {
+        "status": "PASS",
+        "assertions": []
+      }
+    },
+    {
+      "caseId": "en_practical-07-circularPattern",
+      "category": "en_practical",
+      "expectedFeature": "circularPattern",
+      "parsedFeature": "circularPattern",
+      "expectedRequirementOutcome": "READY",
+      "parse": {
+        "status": "PASS",
+        "issues": []
+      },
+      "requirementsGate": {
+        "status": "PASS",
+        "ready": true,
+        "issues": [],
+        "nextQuestion": null
+      },
+      "candidateValidation": {
+        "status": "PASS",
+        "state": "PREVIEW",
+        "issues": []
+      },
+      "geometry": {
+        "eligibility": "ELIGIBLE",
+        "execution": "NOT_RUN",
+        "blockers": []
+      },
+      "verification": {
+        "eligibility": "BLOCKED",
+        "execution": "NOT_RUN",
+        "blockers": [
+          "geometry_not_executed"
+        ]
+      },
+      "qualification": {
+        "status": "PASS",
+        "assertions": []
+      }
+    },
+    {
+      "caseId": "en_practical-08-draft",
+      "category": "en_practical",
+      "expectedFeature": "draft",
+      "parsedFeature": "draft",
+      "expectedRequirementOutcome": "READY",
+      "parse": {
+        "status": "PASS",
+        "issues": []
+      },
+      "requirementsGate": {
+        "status": "PASS",
+        "ready": true,
+        "issues": [],
+        "nextQuestion": null
+      },
+      "candidateValidation": {
+        "status": "PASS",
+        "state": "PREVIEW",
+        "issues": []
+      },
+      "geometry": {
+        "eligibility": "ELIGIBLE",
+        "execution": "NOT_RUN",
+        "blockers": []
+      },
+      "verification": {
+        "eligibility": "BLOCKED",
+        "execution": "NOT_RUN",
+        "blockers": [
+          "geometry_not_executed"
+        ]
+      },
+      "qualification": {
+        "status": "PASS",
+        "assertions": []
+      }
+    },
+    {
+      "caseId": "en_practical-09-scale",
+      "category": "en_practical",
+      "expectedFeature": "scale",
+      "parsedFeature": "scale",
+      "expectedRequirementOutcome": "READY",
+      "parse": {
+        "status": "PASS",
+        "issues": []
+      },
+      "requirementsGate": {
+        "status": "PASS",
+        "ready": true,
+        "issues": [],
+        "nextQuestion": null
+      },
+      "candidateValidation": {
+        "status": "PASS",
+        "state": "PREVIEW",
+        "issues": []
+      },
+      "geometry": {
+        "eligibility": "ELIGIBLE",
+        "execution": "NOT_RUN",
+        "blockers": []
+      },
+      "verification": {
+        "eligibility": "BLOCKED",
+        "execution": "NOT_RUN",
+        "blockers": [
+          "geometry_not_executed"
+        ]
+      },
+      "qualification": {
+        "status": "PASS",
+        "assertions": []
+      }
+    },
+    {
+      "caseId": "en_practical-10-moveCopy",
+      "category": "en_practical",
+      "expectedFeature": "moveCopy",
+      "parsedFeature": "moveCopy",
+      "expectedRequirementOutcome": "READY",
+      "parse": {
+        "status": "PASS",
+        "issues": []
+      },
+      "requirementsGate": {
+        "status": "PASS",
+        "ready": true,
+        "issues": [],
+        "nextQuestion": null
+      },
+      "candidateValidation": {
+        "status": "PASS",
+        "state": "PREVIEW",
+        "issues": []
+      },
+      "geometry": {
+        "eligibility": "ELIGIBLE",
+        "execution": "NOT_RUN",
+        "blockers": []
+      },
+      "verification": {
+        "eligibility": "BLOCKED",
+        "execution": "NOT_RUN",
+        "blockers": [
+          "geometry_not_executed"
+        ]
+      },
+      "qualification": {
+        "status": "PASS",
+        "assertions": []
+      }
+    },
+    {
+      "caseId": "en_practical-11-variableFillet",
+      "category": "en_practical",
+      "expectedFeature": "variableFillet",
+      "parsedFeature": "variableFillet",
+      "expectedRequirementOutcome": "READY",
+      "parse": {
+        "status": "PASS",
+        "issues": []
+      },
+      "requirementsGate": {
+        "status": "PASS",
+        "ready": true,
+        "issues": [],
+        "nextQuestion": null
+      },
+      "candidateValidation": {
+        "status": "PASS",
+        "state": "PREVIEW",
+        "issues": []
+      },
+      "geometry": {
+        "eligibility": "ELIGIBLE",
+        "execution": "NOT_RUN",
+        "blockers": []
+      },
+      "verification": {
+        "eligibility": "BLOCKED",
+        "execution": "NOT_RUN",
+        "blockers": [
+          "geometry_not_executed"
+        ]
+      },
+      "qualification": {
+        "status": "PASS",
+        "assertions": []
+      }
+    },
+    {
+      "caseId": "en_practical-12-offsetFace",
+      "category": "en_practical",
+      "expectedFeature": "offsetFace",
+      "parsedFeature": "offsetFace",
+      "expectedRequirementOutcome": "READY",
+      "parse": {
+        "status": "PASS",
+        "issues": []
+      },
+      "requirementsGate": {
+        "status": "PASS",
+        "ready": true,
+        "issues": [],
+        "nextQuestion": null
+      },
+      "candidateValidation": {
+        "status": "PASS",
+        "state": "PREVIEW",
+        "issues": []
+      },
+      "geometry": {
+        "eligibility": "ELIGIBLE",
+        "execution": "NOT_RUN",
+        "blockers": []
+      },
+      "verification": {
+        "eligibility": "BLOCKED",
+        "execution": "NOT_RUN",
+        "blockers": [
+          "geometry_not_executed"
+        ]
+      },
+      "qualification": {
+        "status": "PASS",
+        "assertions": []
+      }
+    },
+    {
+      "caseId": "en_practical-13-thread",
+      "category": "en_practical",
+      "expectedFeature": "thread",
+      "parsedFeature": "thread",
+      "expectedRequirementOutcome": "READY",
+      "parse": {
+        "status": "PASS",
+        "issues": []
+      },
+      "requirementsGate": {
+        "status": "PASS",
+        "ready": true,
+        "issues": [],
+        "nextQuestion": null
+      },
+      "candidateValidation": {
+        "status": "PASS",
+        "state": "PREVIEW",
+        "issues": []
+      },
+      "geometry": {
+        "eligibility": "ELIGIBLE",
+        "execution": "NOT_RUN",
+        "blockers": []
+      },
+      "verification": {
+        "eligibility": "BLOCKED",
+        "execution": "NOT_RUN",
+        "blockers": [
+          "geometry_not_executed"
+        ]
+      },
+      "qualification": {
+        "status": "PASS",
+        "assertions": []
+      }
+    },
+    {
+      "caseId": "en_practical-14-helix",
+      "category": "en_practical",
+      "expectedFeature": "helix",
+      "parsedFeature": "helix",
+      "expectedRequirementOutcome": "READY",
+      "parse": {
+        "status": "PASS",
+        "issues": []
+      },
+      "requirementsGate": {
+        "status": "PASS",
+        "ready": true,
+        "issues": [],
+        "nextQuestion": null
+      },
+      "candidateValidation": {
+        "status": "PASS",
+        "state": "PREVIEW",
+        "issues": []
+      },
+      "geometry": {
+        "eligibility": "ELIGIBLE",
+        "execution": "NOT_RUN",
+        "blockers": []
+      },
+      "verification": {
+        "eligibility": "BLOCKED",
+        "execution": "NOT_RUN",
+        "blockers": [
+          "geometry_not_executed"
+        ]
+      },
+      "qualification": {
+        "status": "PASS",
+        "assertions": []
+      }
+    },
+    {
+      "caseId": "en_practical-15-bend",
+      "category": "en_practical",
+      "expectedFeature": "bend",
+      "parsedFeature": "bend",
+      "expectedRequirementOutcome": "READY",
+      "parse": {
+        "status": "PASS",
+        "issues": []
+      },
+      "requirementsGate": {
+        "status": "PASS",
+        "ready": true,
+        "issues": [],
+        "nextQuestion": null
+      },
+      "candidateValidation": {
+        "status": "PASS",
+        "state": "PREVIEW",
+        "issues": []
+      },
+      "geometry": {
+        "eligibility": "ELIGIBLE",
+        "execution": "NOT_RUN",
+        "blockers": []
+      },
+      "verification": {
+        "eligibility": "BLOCKED",
+        "execution": "NOT_RUN",
+        "blockers": [
+          "geometry_not_executed"
+        ]
+      },
+      "qualification": {
+        "status": "PASS",
+        "assertions": []
+      }
+    },
+    {
+      "caseId": "en_practical-16-flange",
+      "category": "en_practical",
+      "expectedFeature": "flange",
+      "parsedFeature": "flange",
+      "expectedRequirementOutcome": "READY",
+      "parse": {
+        "status": "PASS",
+        "issues": []
+      },
+      "requirementsGate": {
+        "status": "PASS",
+        "ready": true,
+        "issues": [],
+        "nextQuestion": null
+      },
+      "candidateValidation": {
+        "status": "PASS",
+        "state": "PREVIEW",
+        "issues": []
+      },
+      "geometry": {
+        "eligibility": "ELIGIBLE",
+        "execution": "NOT_RUN",
+        "blockers": []
+      },
+      "verification": {
+        "eligibility": "BLOCKED",
+        "execution": "NOT_RUN",
+        "blockers": [
+          "geometry_not_executed"
+        ]
+      },
+      "qualification": {
+        "status": "PASS",
+        "assertions": []
+      }
+    },
+    {
+      "caseId": "en_practical-17-hem",
+      "category": "en_practical",
+      "expectedFeature": "hem",
+      "parsedFeature": "hem",
+      "expectedRequirementOutcome": "READY",
+      "parse": {
+        "status": "PASS",
+        "issues": []
+      },
+      "requirementsGate": {
+        "status": "PASS",
+        "ready": true,
+        "issues": [],
+        "nextQuestion": null
+      },
+      "candidateValidation": {
+        "status": "PASS",
+        "state": "PREVIEW",
+        "issues": []
+      },
+      "geometry": {
+        "eligibility": "ELIGIBLE",
+        "execution": "NOT_RUN",
+        "blockers": []
+      },
+      "verification": {
+        "eligibility": "BLOCKED",
+        "execution": "NOT_RUN",
+        "blockers": [
+          "geometry_not_executed"
+        ]
+      },
+      "qualification": {
+        "status": "PASS",
+        "assertions": []
+      }
+    },
+    {
+      "caseId": "en_practical-18-jog",
+      "category": "en_practical",
+      "expectedFeature": "jog",
+      "parsedFeature": "jog",
+      "expectedRequirementOutcome": "READY",
+      "parse": {
+        "status": "PASS",
+        "issues": []
+      },
+      "requirementsGate": {
+        "status": "PASS",
+        "ready": true,
+        "issues": [],
+        "nextQuestion": null
+      },
+      "candidateValidation": {
+        "status": "PASS",
+        "state": "PREVIEW",
+        "issues": []
+      },
+      "geometry": {
+        "eligibility": "ELIGIBLE",
+        "execution": "NOT_RUN",
+        "blockers": []
+      },
+      "verification": {
+        "eligibility": "BLOCKED",
+        "execution": "NOT_RUN",
+        "blockers": [
+          "geometry_not_executed"
+        ]
+      },
+      "qualification": {
+        "status": "PASS",
+        "assertions": []
+      }
+    },
+    {
+      "caseId": "en_practical-19-tab",
+      "category": "en_practical",
+      "expectedFeature": "tab",
+      "parsedFeature": "tab",
+      "expectedRequirementOutcome": "READY",
+      "parse": {
+        "status": "PASS",
+        "issues": []
+      },
+      "requirementsGate": {
+        "status": "PASS",
+        "ready": true,
+        "issues": [],
+        "nextQuestion": null
+      },
+      "candidateValidation": {
+        "status": "PASS",
+        "state": "PREVIEW",
+        "issues": []
+      },
+      "geometry": {
+        "eligibility": "ELIGIBLE",
+        "execution": "NOT_RUN",
+        "blockers": []
+      },
+      "verification": {
+        "eligibility": "BLOCKED",
+        "execution": "NOT_RUN",
+        "blockers": [
+          "geometry_not_executed"
+        ]
+      },
+      "qualification": {
+        "status": "PASS",
+        "assertions": []
+      }
+    },
+    {
+      "caseId": "en_practical-20-cut",
+      "category": "en_practical",
+      "expectedFeature": "cut",
+      "parsedFeature": "cut",
+      "expectedRequirementOutcome": "READY",
+      "parse": {
+        "status": "PASS",
+        "issues": []
+      },
+      "requirementsGate": {
+        "status": "PASS",
+        "ready": true,
+        "issues": [],
+        "nextQuestion": null
+      },
+      "candidateValidation": {
+        "status": "PASS",
+        "state": "PREVIEW",
+        "issues": []
+      },
+      "geometry": {
+        "eligibility": "ELIGIBLE",
+        "execution": "NOT_RUN",
+        "blockers": []
+      },
+      "verification": {
+        "eligibility": "BLOCKED",
+        "execution": "NOT_RUN",
+        "blockers": [
+          "geometry_not_executed"
+        ]
+      },
+      "qualification": {
+        "status": "PASS",
+        "assertions": []
+      }
+    },
+    {
+      "caseId": "en_practical-21-bendRelief",
+      "category": "en_practical",
+      "expectedFeature": "bendRelief",
+      "parsedFeature": "bendRelief",
+      "expectedRequirementOutcome": "READY",
+      "parse": {
+        "status": "PASS",
+        "issues": []
+      },
+      "requirementsGate": {
+        "status": "PASS",
+        "ready": true,
+        "issues": [],
+        "nextQuestion": null
+      },
+      "candidateValidation": {
+        "status": "PASS",
+        "state": "PREVIEW",
+        "issues": []
+      },
+      "geometry": {
+        "eligibility": "ELIGIBLE",
+        "execution": "NOT_RUN",
+        "blockers": []
+      },
+      "verification": {
+        "eligibility": "BLOCKED",
+        "execution": "NOT_RUN",
+        "blockers": [
+          "geometry_not_executed"
+        ]
+      },
+      "qualification": {
+        "status": "PASS",
+        "assertions": []
+      }
+    },
+    {
+      "caseId": "en_practical-22-cornerRelief",
+      "category": "en_practical",
+      "expectedFeature": "cornerRelief",
+      "parsedFeature": "cornerRelief",
+      "expectedRequirementOutcome": "READY",
+      "parse": {
+        "status": "PASS",
+        "issues": []
+      },
+      "requirementsGate": {
+        "status": "PASS",
+        "ready": true,
+        "issues": [],
+        "nextQuestion": null
+      },
+      "candidateValidation": {
+        "status": "PASS",
+        "state": "PREVIEW",
+        "issues": []
+      },
+      "geometry": {
+        "eligibility": "ELIGIBLE",
+        "execution": "NOT_RUN",
+        "blockers": []
+      },
+      "verification": {
+        "eligibility": "BLOCKED",
+        "execution": "NOT_RUN",
+        "blockers": [
+          "geometry_not_executed"
+        ]
+      },
+      "qualification": {
+        "status": "PASS",
+        "assertions": []
+      }
+    },
+    {
+      "caseId": "en_practical-23-variableShell",
+      "category": "en_practical",
+      "expectedFeature": "variableShell",
+      "parsedFeature": "variableShell",
+      "expectedRequirementOutcome": "READY",
+      "parse": {
+        "status": "PASS",
+        "issues": []
+      },
+      "requirementsGate": {
+        "status": "PASS",
+        "ready": true,
+        "issues": [],
+        "nextQuestion": null
+      },
+      "candidateValidation": {
+        "status": "PASS",
+        "state": "PREVIEW",
+        "issues": []
+      },
+      "geometry": {
+        "eligibility": "ELIGIBLE",
+        "execution": "NOT_RUN",
+        "blockers": []
+      },
+      "verification": {
+        "eligibility": "BLOCKED",
+        "execution": "NOT_RUN",
+        "blockers": [
+          "geometry_not_executed"
+        ]
+      },
+      "qualification": {
+        "status": "PASS",
+        "assertions": []
+      }
+    },
+    {
+      "caseId": "en_practical-24-sketchExtrude",
+      "category": "en_practical",
+      "expectedFeature": "sketchExtrude",
+      "parsedFeature": "sketchExtrude",
+      "expectedRequirementOutcome": "READY",
+      "parse": {
+        "status": "PASS",
+        "issues": []
+      },
+      "requirementsGate": {
+        "status": "PASS",
+        "ready": true,
+        "issues": [],
+        "nextQuestion": null
+      },
+      "candidateValidation": {
+        "status": "PASS",
+        "state": "PREVIEW",
+        "issues": []
+      },
+      "geometry": {
+        "eligibility": "ELIGIBLE",
+        "execution": "NOT_RUN",
+        "blockers": []
+      },
+      "verification": {
+        "eligibility": "BLOCKED",
+        "execution": "NOT_RUN",
+        "blockers": [
+          "geometry_not_executed"
+        ]
+      },
+      "qualification": {
+        "status": "PASS",
+        "assertions": []
+      }
+    },
+    {
+      "caseId": "en_practical-25-revolve",
+      "category": "en_practical",
+      "expectedFeature": "revolve",
+      "parsedFeature": "revolve",
+      "expectedRequirementOutcome": "READY",
+      "parse": {
+        "status": "PASS",
+        "issues": []
+      },
+      "requirementsGate": {
+        "status": "PASS",
+        "ready": true,
+        "issues": [],
+        "nextQuestion": null
+      },
+      "candidateValidation": {
+        "status": "PASS",
+        "state": "PREVIEW",
+        "issues": []
+      },
+      "geometry": {
+        "eligibility": "ELIGIBLE",
+        "execution": "NOT_RUN",
+        "blockers": []
+      },
+      "verification": {
+        "eligibility": "BLOCKED",
+        "execution": "NOT_RUN",
+        "blockers": [
+          "geometry_not_executed"
+        ]
+      },
+      "qualification": {
+        "status": "PASS",
+        "assertions": []
+      }
+    },
+    {
+      "caseId": "en_practical-26-sweep",
+      "category": "en_practical",
+      "expectedFeature": "sweep",
+      "parsedFeature": "sweep",
+      "expectedRequirementOutcome": "READY",
+      "parse": {
+        "status": "PASS",
+        "issues": []
+      },
+      "requirementsGate": {
+        "status": "PASS",
+        "ready": true,
+        "issues": [],
+        "nextQuestion": null
+      },
+      "candidateValidation": {
+        "status": "PASS",
+        "state": "PREVIEW",
+        "issues": []
+      },
+      "geometry": {
+        "eligibility": "ELIGIBLE",
+        "execution": "NOT_RUN",
+        "blockers": []
+      },
+      "verification": {
+        "eligibility": "BLOCKED",
+        "execution": "NOT_RUN",
+        "blockers": [
+          "geometry_not_executed"
+        ]
+      },
+      "qualification": {
+        "status": "PASS",
+        "assertions": []
+      }
+    },
+    {
+      "caseId": "en_practical-27-loft",
+      "category": "en_practical",
+      "expectedFeature": "loft",
+      "parsedFeature": "loft",
+      "expectedRequirementOutcome": "READY",
+      "parse": {
+        "status": "PASS",
+        "issues": []
+      },
+      "requirementsGate": {
+        "status": "PASS",
+        "ready": true,
+        "issues": [],
+        "nextQuestion": null
+      },
+      "candidateValidation": {
+        "status": "PASS",
+        "state": "PREVIEW",
+        "issues": []
+      },
+      "geometry": {
+        "eligibility": "ELIGIBLE",
+        "execution": "NOT_RUN",
+        "blockers": []
+      },
+      "verification": {
+        "eligibility": "BLOCKED",
+        "execution": "NOT_RUN",
+        "blockers": [
+          "geometry_not_executed"
+        ]
+      },
+      "qualification": {
+        "status": "PASS",
+        "assertions": []
+      }
+    },
+    {
+      "caseId": "en_practical-28-mirror",
+      "category": "en_practical",
+      "expectedFeature": "mirror",
+      "parsedFeature": "mirror",
+      "expectedRequirementOutcome": "READY",
+      "parse": {
+        "status": "PASS",
+        "issues": []
+      },
+      "requirementsGate": {
+        "status": "PASS",
+        "ready": true,
+        "issues": [],
+        "nextQuestion": null
+      },
+      "candidateValidation": {
+        "status": "PASS",
+        "state": "PREVIEW",
+        "issues": []
+      },
+      "geometry": {
+        "eligibility": "ELIGIBLE",
+        "execution": "NOT_RUN",
+        "blockers": []
+      },
+      "verification": {
+        "eligibility": "BLOCKED",
+        "execution": "NOT_RUN",
+        "blockers": [
+          "geometry_not_executed"
+        ]
+      },
+      "qualification": {
+        "status": "PASS",
+        "assertions": []
+      }
+    },
+    {
+      "caseId": "en_practical-29-boolean",
+      "category": "en_practical",
+      "expectedFeature": "boolean",
+      "parsedFeature": "boolean",
+      "expectedRequirementOutcome": "READY",
+      "parse": {
+        "status": "PASS",
+        "issues": []
+      },
+      "requirementsGate": {
+        "status": "PASS",
+        "ready": true,
+        "issues": [],
+        "nextQuestion": null
+      },
+      "candidateValidation": {
+        "status": "PASS",
+        "state": "PREVIEW",
+        "issues": []
+      },
+      "geometry": {
+        "eligibility": "ELIGIBLE",
+        "execution": "NOT_RUN",
+        "blockers": []
+      },
+      "verification": {
+        "eligibility": "BLOCKED",
+        "execution": "NOT_RUN",
+        "blockers": [
+          "geometry_not_executed"
+        ]
+      },
+      "qualification": {
+        "status": "PASS",
+        "assertions": []
+      }
+    },
+    {
+      "caseId": "en_practical-30-splitBody",
+      "category": "en_practical",
+      "expectedFeature": "splitBody",
+      "parsedFeature": "splitBody",
+      "expectedRequirementOutcome": "READY",
+      "parse": {
+        "status": "PASS",
+        "issues": []
+      },
+      "requirementsGate": {
+        "status": "PASS",
+        "ready": true,
+        "issues": [],
+        "nextQuestion": null
+      },
+      "candidateValidation": {
+        "status": "PASS",
+        "state": "PREVIEW",
+        "issues": []
+      },
+      "geometry": {
+        "eligibility": "ELIGIBLE",
+        "execution": "NOT_RUN",
+        "blockers": []
+      },
+      "verification": {
+        "eligibility": "BLOCKED",
+        "execution": "NOT_RUN",
+        "blockers": [
+          "geometry_not_executed"
+        ]
+      },
+      "qualification": {
+        "status": "PASS",
+        "assertions": []
+      }
+    },
+    {
+      "caseId": "mixed_units-01-hole",
+      "category": "mixed_units",
+      "expectedFeature": "hole",
+      "parsedFeature": "hole",
+      "expectedRequirementOutcome": "READY",
+      "parse": {
+        "status": "PASS",
+        "issues": []
+      },
+      "requirementsGate": {
+        "status": "PASS",
+        "ready": true,
+        "issues": [],
+        "nextQuestion": null
+      },
+      "candidateValidation": {
+        "status": "PASS",
+        "state": "PREVIEW",
+        "issues": []
+      },
+      "geometry": {
+        "eligibility": "ELIGIBLE",
+        "execution": "NOT_RUN",
+        "blockers": []
+      },
+      "verification": {
+        "eligibility": "BLOCKED",
+        "execution": "NOT_RUN",
+        "blockers": [
+          "geometry_not_executed"
+        ]
+      },
+      "qualification": {
+        "status": "PASS",
+        "assertions": []
+      }
+    },
+    {
+      "caseId": "mixed_units-02-fillet",
+      "category": "mixed_units",
+      "expectedFeature": "fillet",
+      "parsedFeature": "fillet",
+      "expectedRequirementOutcome": "READY",
+      "parse": {
+        "status": "PASS",
+        "issues": []
+      },
+      "requirementsGate": {
+        "status": "PASS",
+        "ready": true,
+        "issues": [],
+        "nextQuestion": null
+      },
+      "candidateValidation": {
+        "status": "PASS",
+        "state": "PREVIEW",
+        "issues": []
+      },
+      "geometry": {
+        "eligibility": "ELIGIBLE",
+        "execution": "NOT_RUN",
+        "blockers": []
+      },
+      "verification": {
+        "eligibility": "BLOCKED",
+        "execution": "NOT_RUN",
+        "blockers": [
+          "geometry_not_executed"
+        ]
+      },
+      "qualification": {
+        "status": "PASS",
+        "assertions": []
+      }
+    },
+    {
+      "caseId": "mixed_units-03-chamfer",
+      "category": "mixed_units",
+      "expectedFeature": "chamfer",
+      "parsedFeature": "chamfer",
+      "expectedRequirementOutcome": "READY",
+      "parse": {
+        "status": "PASS",
+        "issues": []
+      },
+      "requirementsGate": {
+        "status": "PASS",
+        "ready": true,
+        "issues": [],
+        "nextQuestion": null
+      },
+      "candidateValidation": {
+        "status": "PASS",
+        "state": "PREVIEW",
+        "issues": []
+      },
+      "geometry": {
+        "eligibility": "ELIGIBLE",
+        "execution": "NOT_RUN",
+        "blockers": []
+      },
+      "verification": {
+        "eligibility": "BLOCKED",
+        "execution": "NOT_RUN",
+        "blockers": [
+          "geometry_not_executed"
+        ]
+      },
+      "qualification": {
+        "status": "PASS",
+        "assertions": []
+      }
+    },
+    {
+      "caseId": "mixed_units-04-shell",
+      "category": "mixed_units",
+      "expectedFeature": "shell",
+      "parsedFeature": "shell",
+      "expectedRequirementOutcome": "READY",
+      "parse": {
+        "status": "PASS",
+        "issues": []
+      },
+      "requirementsGate": {
+        "status": "PASS",
+        "ready": true,
+        "issues": [],
+        "nextQuestion": null
+      },
+      "candidateValidation": {
+        "status": "PASS",
+        "state": "PREVIEW",
+        "issues": []
+      },
+      "geometry": {
+        "eligibility": "ELIGIBLE",
+        "execution": "NOT_RUN",
+        "blockers": []
+      },
+      "verification": {
+        "eligibility": "BLOCKED",
+        "execution": "NOT_RUN",
+        "blockers": [
+          "geometry_not_executed"
+        ]
+      },
+      "qualification": {
+        "status": "PASS",
+        "assertions": []
+      }
+    },
+    {
+      "caseId": "mixed_units-05-rib",
+      "category": "mixed_units",
+      "expectedFeature": "rib",
+      "parsedFeature": "rib",
+      "expectedRequirementOutcome": "READY",
+      "parse": {
+        "status": "PASS",
+        "issues": []
+      },
+      "requirementsGate": {
+        "status": "PASS",
+        "ready": true,
+        "issues": [],
+        "nextQuestion": null
+      },
+      "candidateValidation": {
+        "status": "PASS",
+        "state": "PREVIEW",
+        "issues": []
+      },
+      "geometry": {
+        "eligibility": "ELIGIBLE",
+        "execution": "NOT_RUN",
+        "blockers": []
+      },
+      "verification": {
+        "eligibility": "BLOCKED",
+        "execution": "NOT_RUN",
+        "blockers": [
+          "geometry_not_executed"
+        ]
+      },
+      "qualification": {
+        "status": "PASS",
+        "assertions": []
+      }
+    },
+    {
+      "caseId": "mixed_units-06-linearPattern",
+      "category": "mixed_units",
+      "expectedFeature": "linearPattern",
+      "parsedFeature": "linearPattern",
+      "expectedRequirementOutcome": "READY",
+      "parse": {
+        "status": "PASS",
+        "issues": []
+      },
+      "requirementsGate": {
+        "status": "PASS",
+        "ready": true,
+        "issues": [],
+        "nextQuestion": null
+      },
+      "candidateValidation": {
+        "status": "PASS",
+        "state": "PREVIEW",
+        "issues": []
+      },
+      "geometry": {
+        "eligibility": "ELIGIBLE",
+        "execution": "NOT_RUN",
+        "blockers": []
+      },
+      "verification": {
+        "eligibility": "BLOCKED",
+        "execution": "NOT_RUN",
+        "blockers": [
+          "geometry_not_executed"
+        ]
+      },
+      "qualification": {
+        "status": "PASS",
+        "assertions": []
+      }
+    },
+    {
+      "caseId": "mixed_units-07-circularPattern",
+      "category": "mixed_units",
+      "expectedFeature": "circularPattern",
+      "parsedFeature": "circularPattern",
+      "expectedRequirementOutcome": "READY",
+      "parse": {
+        "status": "PASS",
+        "issues": []
+      },
+      "requirementsGate": {
+        "status": "PASS",
+        "ready": true,
+        "issues": [],
+        "nextQuestion": null
+      },
+      "candidateValidation": {
+        "status": "PASS",
+        "state": "PREVIEW",
+        "issues": []
+      },
+      "geometry": {
+        "eligibility": "ELIGIBLE",
+        "execution": "NOT_RUN",
+        "blockers": []
+      },
+      "verification": {
+        "eligibility": "BLOCKED",
+        "execution": "NOT_RUN",
+        "blockers": [
+          "geometry_not_executed"
+        ]
+      },
+      "qualification": {
+        "status": "PASS",
+        "assertions": []
+      }
+    },
+    {
+      "caseId": "mixed_units-08-draft",
+      "category": "mixed_units",
+      "expectedFeature": "draft",
+      "parsedFeature": "draft",
+      "expectedRequirementOutcome": "READY",
+      "parse": {
+        "status": "PASS",
+        "issues": []
+      },
+      "requirementsGate": {
+        "status": "PASS",
+        "ready": true,
+        "issues": [],
+        "nextQuestion": null
+      },
+      "candidateValidation": {
+        "status": "PASS",
+        "state": "PREVIEW",
+        "issues": []
+      },
+      "geometry": {
+        "eligibility": "ELIGIBLE",
+        "execution": "NOT_RUN",
+        "blockers": []
+      },
+      "verification": {
+        "eligibility": "BLOCKED",
+        "execution": "NOT_RUN",
+        "blockers": [
+          "geometry_not_executed"
+        ]
+      },
+      "qualification": {
+        "status": "PASS",
+        "assertions": []
+      }
+    },
+    {
+      "caseId": "mixed_units-09-scale",
+      "category": "mixed_units",
+      "expectedFeature": "scale",
+      "parsedFeature": "scale",
+      "expectedRequirementOutcome": "READY",
+      "parse": {
+        "status": "PASS",
+        "issues": []
+      },
+      "requirementsGate": {
+        "status": "PASS",
+        "ready": true,
+        "issues": [],
+        "nextQuestion": null
+      },
+      "candidateValidation": {
+        "status": "PASS",
+        "state": "PREVIEW",
+        "issues": []
+      },
+      "geometry": {
+        "eligibility": "ELIGIBLE",
+        "execution": "NOT_RUN",
+        "blockers": []
+      },
+      "verification": {
+        "eligibility": "BLOCKED",
+        "execution": "NOT_RUN",
+        "blockers": [
+          "geometry_not_executed"
+        ]
+      },
+      "qualification": {
+        "status": "PASS",
+        "assertions": []
+      }
+    },
+    {
+      "caseId": "mixed_units-10-moveCopy",
+      "category": "mixed_units",
+      "expectedFeature": "moveCopy",
+      "parsedFeature": "moveCopy",
+      "expectedRequirementOutcome": "READY",
+      "parse": {
+        "status": "PASS",
+        "issues": []
+      },
+      "requirementsGate": {
+        "status": "PASS",
+        "ready": true,
+        "issues": [],
+        "nextQuestion": null
+      },
+      "candidateValidation": {
+        "status": "PASS",
+        "state": "PREVIEW",
+        "issues": []
+      },
+      "geometry": {
+        "eligibility": "ELIGIBLE",
+        "execution": "NOT_RUN",
+        "blockers": []
+      },
+      "verification": {
+        "eligibility": "BLOCKED",
+        "execution": "NOT_RUN",
+        "blockers": [
+          "geometry_not_executed"
+        ]
+      },
+      "qualification": {
+        "status": "PASS",
+        "assertions": []
+      }
+    },
+    {
+      "caseId": "mixed_units-11-variableFillet",
+      "category": "mixed_units",
+      "expectedFeature": "variableFillet",
+      "parsedFeature": "variableFillet",
+      "expectedRequirementOutcome": "READY",
+      "parse": {
+        "status": "PASS",
+        "issues": []
+      },
+      "requirementsGate": {
+        "status": "PASS",
+        "ready": true,
+        "issues": [],
+        "nextQuestion": null
+      },
+      "candidateValidation": {
+        "status": "PASS",
+        "state": "PREVIEW",
+        "issues": []
+      },
+      "geometry": {
+        "eligibility": "ELIGIBLE",
+        "execution": "NOT_RUN",
+        "blockers": []
+      },
+      "verification": {
+        "eligibility": "BLOCKED",
+        "execution": "NOT_RUN",
+        "blockers": [
+          "geometry_not_executed"
+        ]
+      },
+      "qualification": {
+        "status": "PASS",
+        "assertions": []
+      }
+    },
+    {
+      "caseId": "mixed_units-12-offsetFace",
+      "category": "mixed_units",
+      "expectedFeature": "offsetFace",
+      "parsedFeature": "offsetFace",
+      "expectedRequirementOutcome": "READY",
+      "parse": {
+        "status": "PASS",
+        "issues": []
+      },
+      "requirementsGate": {
+        "status": "PASS",
+        "ready": true,
+        "issues": [],
+        "nextQuestion": null
+      },
+      "candidateValidation": {
+        "status": "PASS",
+        "state": "PREVIEW",
+        "issues": []
+      },
+      "geometry": {
+        "eligibility": "ELIGIBLE",
+        "execution": "NOT_RUN",
+        "blockers": []
+      },
+      "verification": {
+        "eligibility": "BLOCKED",
+        "execution": "NOT_RUN",
+        "blockers": [
+          "geometry_not_executed"
+        ]
+      },
+      "qualification": {
+        "status": "PASS",
+        "assertions": []
+      }
+    },
+    {
+      "caseId": "mixed_units-13-thread",
+      "category": "mixed_units",
+      "expectedFeature": "thread",
+      "parsedFeature": "thread",
+      "expectedRequirementOutcome": "READY",
+      "parse": {
+        "status": "PASS",
+        "issues": []
+      },
+      "requirementsGate": {
+        "status": "PASS",
+        "ready": true,
+        "issues": [],
+        "nextQuestion": null
+      },
+      "candidateValidation": {
+        "status": "PASS",
+        "state": "PREVIEW",
+        "issues": []
+      },
+      "geometry": {
+        "eligibility": "ELIGIBLE",
+        "execution": "NOT_RUN",
+        "blockers": []
+      },
+      "verification": {
+        "eligibility": "BLOCKED",
+        "execution": "NOT_RUN",
+        "blockers": [
+          "geometry_not_executed"
+        ]
+      },
+      "qualification": {
+        "status": "PASS",
+        "assertions": []
+      }
+    },
+    {
+      "caseId": "mixed_units-14-helix",
+      "category": "mixed_units",
+      "expectedFeature": "helix",
+      "parsedFeature": "helix",
+      "expectedRequirementOutcome": "READY",
+      "parse": {
+        "status": "PASS",
+        "issues": []
+      },
+      "requirementsGate": {
+        "status": "PASS",
+        "ready": true,
+        "issues": [],
+        "nextQuestion": null
+      },
+      "candidateValidation": {
+        "status": "PASS",
+        "state": "PREVIEW",
+        "issues": []
+      },
+      "geometry": {
+        "eligibility": "ELIGIBLE",
+        "execution": "NOT_RUN",
+        "blockers": []
+      },
+      "verification": {
+        "eligibility": "BLOCKED",
+        "execution": "NOT_RUN",
+        "blockers": [
+          "geometry_not_executed"
+        ]
+      },
+      "qualification": {
+        "status": "PASS",
+        "assertions": []
+      }
+    },
+    {
+      "caseId": "mixed_units-15-bend",
+      "category": "mixed_units",
+      "expectedFeature": "bend",
+      "parsedFeature": "bend",
+      "expectedRequirementOutcome": "READY",
+      "parse": {
+        "status": "PASS",
+        "issues": []
+      },
+      "requirementsGate": {
+        "status": "PASS",
+        "ready": true,
+        "issues": [],
+        "nextQuestion": null
+      },
+      "candidateValidation": {
+        "status": "PASS",
+        "state": "PREVIEW",
+        "issues": []
+      },
+      "geometry": {
+        "eligibility": "ELIGIBLE",
+        "execution": "NOT_RUN",
+        "blockers": []
+      },
+      "verification": {
+        "eligibility": "BLOCKED",
+        "execution": "NOT_RUN",
+        "blockers": [
+          "geometry_not_executed"
+        ]
+      },
+      "qualification": {
+        "status": "PASS",
+        "assertions": []
+      }
+    },
+    {
+      "caseId": "mixed_units-16-flange",
+      "category": "mixed_units",
+      "expectedFeature": "flange",
+      "parsedFeature": "flange",
+      "expectedRequirementOutcome": "READY",
+      "parse": {
+        "status": "PASS",
+        "issues": []
+      },
+      "requirementsGate": {
+        "status": "PASS",
+        "ready": true,
+        "issues": [],
+        "nextQuestion": null
+      },
+      "candidateValidation": {
+        "status": "PASS",
+        "state": "PREVIEW",
+        "issues": []
+      },
+      "geometry": {
+        "eligibility": "ELIGIBLE",
+        "execution": "NOT_RUN",
+        "blockers": []
+      },
+      "verification": {
+        "eligibility": "BLOCKED",
+        "execution": "NOT_RUN",
+        "blockers": [
+          "geometry_not_executed"
+        ]
+      },
+      "qualification": {
+        "status": "PASS",
+        "assertions": []
+      }
+    },
+    {
+      "caseId": "mixed_units-17-hem",
+      "category": "mixed_units",
+      "expectedFeature": "hem",
+      "parsedFeature": "hem",
+      "expectedRequirementOutcome": "READY",
+      "parse": {
+        "status": "PASS",
+        "issues": []
+      },
+      "requirementsGate": {
+        "status": "PASS",
+        "ready": true,
+        "issues": [],
+        "nextQuestion": null
+      },
+      "candidateValidation": {
+        "status": "PASS",
+        "state": "PREVIEW",
+        "issues": []
+      },
+      "geometry": {
+        "eligibility": "ELIGIBLE",
+        "execution": "NOT_RUN",
+        "blockers": []
+      },
+      "verification": {
+        "eligibility": "BLOCKED",
+        "execution": "NOT_RUN",
+        "blockers": [
+          "geometry_not_executed"
+        ]
+      },
+      "qualification": {
+        "status": "PASS",
+        "assertions": []
+      }
+    },
+    {
+      "caseId": "mixed_units-18-jog",
+      "category": "mixed_units",
+      "expectedFeature": "jog",
+      "parsedFeature": "jog",
+      "expectedRequirementOutcome": "READY",
+      "parse": {
+        "status": "PASS",
+        "issues": []
+      },
+      "requirementsGate": {
+        "status": "PASS",
+        "ready": true,
+        "issues": [],
+        "nextQuestion": null
+      },
+      "candidateValidation": {
+        "status": "PASS",
+        "state": "PREVIEW",
+        "issues": []
+      },
+      "geometry": {
+        "eligibility": "ELIGIBLE",
+        "execution": "NOT_RUN",
+        "blockers": []
+      },
+      "verification": {
+        "eligibility": "BLOCKED",
+        "execution": "NOT_RUN",
+        "blockers": [
+          "geometry_not_executed"
+        ]
+      },
+      "qualification": {
+        "status": "PASS",
+        "assertions": []
+      }
+    },
+    {
+      "caseId": "mixed_units-19-tab",
+      "category": "mixed_units",
+      "expectedFeature": "tab",
+      "parsedFeature": "tab",
+      "expectedRequirementOutcome": "READY",
+      "parse": {
+        "status": "PASS",
+        "issues": []
+      },
+      "requirementsGate": {
+        "status": "PASS",
+        "ready": true,
+        "issues": [],
+        "nextQuestion": null
+      },
+      "candidateValidation": {
+        "status": "PASS",
+        "state": "PREVIEW",
+        "issues": []
+      },
+      "geometry": {
+        "eligibility": "ELIGIBLE",
+        "execution": "NOT_RUN",
+        "blockers": []
+      },
+      "verification": {
+        "eligibility": "BLOCKED",
+        "execution": "NOT_RUN",
+        "blockers": [
+          "geometry_not_executed"
+        ]
+      },
+      "qualification": {
+        "status": "PASS",
+        "assertions": []
+      }
+    },
+    {
+      "caseId": "mixed_units-20-cut",
+      "category": "mixed_units",
+      "expectedFeature": "cut",
+      "parsedFeature": "cut",
+      "expectedRequirementOutcome": "READY",
+      "parse": {
+        "status": "PASS",
+        "issues": []
+      },
+      "requirementsGate": {
+        "status": "PASS",
+        "ready": true,
+        "issues": [],
+        "nextQuestion": null
+      },
+      "candidateValidation": {
+        "status": "PASS",
+        "state": "PREVIEW",
+        "issues": []
+      },
+      "geometry": {
+        "eligibility": "ELIGIBLE",
+        "execution": "NOT_RUN",
+        "blockers": []
+      },
+      "verification": {
+        "eligibility": "BLOCKED",
+        "execution": "NOT_RUN",
+        "blockers": [
+          "geometry_not_executed"
+        ]
+      },
+      "qualification": {
+        "status": "PASS",
+        "assertions": []
+      }
+    },
+    {
+      "caseId": "mixed_units-21-bendRelief",
+      "category": "mixed_units",
+      "expectedFeature": "bendRelief",
+      "parsedFeature": "bendRelief",
+      "expectedRequirementOutcome": "READY",
+      "parse": {
+        "status": "PASS",
+        "issues": []
+      },
+      "requirementsGate": {
+        "status": "PASS",
+        "ready": true,
+        "issues": [],
+        "nextQuestion": null
+      },
+      "candidateValidation": {
+        "status": "PASS",
+        "state": "PREVIEW",
+        "issues": []
+      },
+      "geometry": {
+        "eligibility": "ELIGIBLE",
+        "execution": "NOT_RUN",
+        "blockers": []
+      },
+      "verification": {
+        "eligibility": "BLOCKED",
+        "execution": "NOT_RUN",
+        "blockers": [
+          "geometry_not_executed"
+        ]
+      },
+      "qualification": {
+        "status": "PASS",
+        "assertions": []
+      }
+    },
+    {
+      "caseId": "mixed_units-22-cornerRelief",
+      "category": "mixed_units",
+      "expectedFeature": "cornerRelief",
+      "parsedFeature": "cornerRelief",
+      "expectedRequirementOutcome": "READY",
+      "parse": {
+        "status": "PASS",
+        "issues": []
+      },
+      "requirementsGate": {
+        "status": "PASS",
+        "ready": true,
+        "issues": [],
+        "nextQuestion": null
+      },
+      "candidateValidation": {
+        "status": "PASS",
+        "state": "PREVIEW",
+        "issues": []
+      },
+      "geometry": {
+        "eligibility": "ELIGIBLE",
+        "execution": "NOT_RUN",
+        "blockers": []
+      },
+      "verification": {
+        "eligibility": "BLOCKED",
+        "execution": "NOT_RUN",
+        "blockers": [
+          "geometry_not_executed"
+        ]
+      },
+      "qualification": {
+        "status": "PASS",
+        "assertions": []
+      }
+    },
+    {
+      "caseId": "mixed_units-23-variableShell",
+      "category": "mixed_units",
+      "expectedFeature": "variableShell",
+      "parsedFeature": "variableShell",
+      "expectedRequirementOutcome": "READY",
+      "parse": {
+        "status": "PASS",
+        "issues": []
+      },
+      "requirementsGate": {
+        "status": "PASS",
+        "ready": true,
+        "issues": [],
+        "nextQuestion": null
+      },
+      "candidateValidation": {
+        "status": "PASS",
+        "state": "PREVIEW",
+        "issues": []
+      },
+      "geometry": {
+        "eligibility": "ELIGIBLE",
+        "execution": "NOT_RUN",
+        "blockers": []
+      },
+      "verification": {
+        "eligibility": "BLOCKED",
+        "execution": "NOT_RUN",
+        "blockers": [
+          "geometry_not_executed"
+        ]
+      },
+      "qualification": {
+        "status": "PASS",
+        "assertions": []
+      }
+    },
+    {
+      "caseId": "mixed_units-24-sketchExtrude",
+      "category": "mixed_units",
+      "expectedFeature": "sketchExtrude",
+      "parsedFeature": "sketchExtrude",
+      "expectedRequirementOutcome": "READY",
+      "parse": {
+        "status": "PASS",
+        "issues": []
+      },
+      "requirementsGate": {
+        "status": "PASS",
+        "ready": true,
+        "issues": [],
+        "nextQuestion": null
+      },
+      "candidateValidation": {
+        "status": "PASS",
+        "state": "PREVIEW",
+        "issues": []
+      },
+      "geometry": {
+        "eligibility": "ELIGIBLE",
+        "execution": "NOT_RUN",
+        "blockers": []
+      },
+      "verification": {
+        "eligibility": "BLOCKED",
+        "execution": "NOT_RUN",
+        "blockers": [
+          "geometry_not_executed"
+        ]
+      },
+      "qualification": {
+        "status": "PASS",
+        "assertions": []
+      }
+    },
+    {
+      "caseId": "mixed_units-25-revolve",
+      "category": "mixed_units",
+      "expectedFeature": "revolve",
+      "parsedFeature": "revolve",
+      "expectedRequirementOutcome": "READY",
+      "parse": {
+        "status": "PASS",
+        "issues": []
+      },
+      "requirementsGate": {
+        "status": "PASS",
+        "ready": true,
+        "issues": [],
+        "nextQuestion": null
+      },
+      "candidateValidation": {
+        "status": "PASS",
+        "state": "PREVIEW",
+        "issues": []
+      },
+      "geometry": {
+        "eligibility": "ELIGIBLE",
+        "execution": "NOT_RUN",
+        "blockers": []
+      },
+      "verification": {
+        "eligibility": "BLOCKED",
+        "execution": "NOT_RUN",
+        "blockers": [
+          "geometry_not_executed"
+        ]
+      },
+      "qualification": {
+        "status": "PASS",
+        "assertions": []
+      }
+    },
+    {
+      "caseId": "mixed_units-26-sweep",
+      "category": "mixed_units",
+      "expectedFeature": "sweep",
+      "parsedFeature": "sweep",
+      "expectedRequirementOutcome": "READY",
+      "parse": {
+        "status": "PASS",
+        "issues": []
+      },
+      "requirementsGate": {
+        "status": "PASS",
+        "ready": true,
+        "issues": [],
+        "nextQuestion": null
+      },
+      "candidateValidation": {
+        "status": "PASS",
+        "state": "PREVIEW",
+        "issues": []
+      },
+      "geometry": {
+        "eligibility": "ELIGIBLE",
+        "execution": "NOT_RUN",
+        "blockers": []
+      },
+      "verification": {
+        "eligibility": "BLOCKED",
+        "execution": "NOT_RUN",
+        "blockers": [
+          "geometry_not_executed"
+        ]
+      },
+      "qualification": {
+        "status": "PASS",
+        "assertions": []
+      }
+    },
+    {
+      "caseId": "mixed_units-27-loft",
+      "category": "mixed_units",
+      "expectedFeature": "loft",
+      "parsedFeature": "loft",
+      "expectedRequirementOutcome": "READY",
+      "parse": {
+        "status": "PASS",
+        "issues": []
+      },
+      "requirementsGate": {
+        "status": "PASS",
+        "ready": true,
+        "issues": [],
+        "nextQuestion": null
+      },
+      "candidateValidation": {
+        "status": "PASS",
+        "state": "PREVIEW",
+        "issues": []
+      },
+      "geometry": {
+        "eligibility": "ELIGIBLE",
+        "execution": "NOT_RUN",
+        "blockers": []
+      },
+      "verification": {
+        "eligibility": "BLOCKED",
+        "execution": "NOT_RUN",
+        "blockers": [
+          "geometry_not_executed"
+        ]
+      },
+      "qualification": {
+        "status": "PASS",
+        "assertions": []
+      }
+    },
+    {
+      "caseId": "mixed_units-28-mirror",
+      "category": "mixed_units",
+      "expectedFeature": "mirror",
+      "parsedFeature": "mirror",
+      "expectedRequirementOutcome": "READY",
+      "parse": {
+        "status": "PASS",
+        "issues": []
+      },
+      "requirementsGate": {
+        "status": "PASS",
+        "ready": true,
+        "issues": [],
+        "nextQuestion": null
+      },
+      "candidateValidation": {
+        "status": "PASS",
+        "state": "PREVIEW",
+        "issues": []
+      },
+      "geometry": {
+        "eligibility": "ELIGIBLE",
+        "execution": "NOT_RUN",
+        "blockers": []
+      },
+      "verification": {
+        "eligibility": "BLOCKED",
+        "execution": "NOT_RUN",
+        "blockers": [
+          "geometry_not_executed"
+        ]
+      },
+      "qualification": {
+        "status": "PASS",
+        "assertions": []
+      }
+    },
+    {
+      "caseId": "mixed_units-29-boolean",
+      "category": "mixed_units",
+      "expectedFeature": "boolean",
+      "parsedFeature": "boolean",
+      "expectedRequirementOutcome": "READY",
+      "parse": {
+        "status": "PASS",
+        "issues": []
+      },
+      "requirementsGate": {
+        "status": "PASS",
+        "ready": true,
+        "issues": [],
+        "nextQuestion": null
+      },
+      "candidateValidation": {
+        "status": "PASS",
+        "state": "PREVIEW",
+        "issues": []
+      },
+      "geometry": {
+        "eligibility": "ELIGIBLE",
+        "execution": "NOT_RUN",
+        "blockers": []
+      },
+      "verification": {
+        "eligibility": "BLOCKED",
+        "execution": "NOT_RUN",
+        "blockers": [
+          "geometry_not_executed"
+        ]
+      },
+      "qualification": {
+        "status": "PASS",
+        "assertions": []
+      }
+    },
+    {
+      "caseId": "mixed_units-30-splitBody",
+      "category": "mixed_units",
+      "expectedFeature": "splitBody",
+      "parsedFeature": "splitBody",
+      "expectedRequirementOutcome": "READY",
+      "parse": {
+        "status": "PASS",
+        "issues": []
+      },
+      "requirementsGate": {
+        "status": "PASS",
+        "ready": true,
+        "issues": [],
+        "nextQuestion": null
+      },
+      "candidateValidation": {
+        "status": "PASS",
+        "state": "PREVIEW",
+        "issues": []
+      },
+      "geometry": {
+        "eligibility": "ELIGIBLE",
+        "execution": "NOT_RUN",
+        "blockers": []
+      },
+      "verification": {
+        "eligibility": "BLOCKED",
+        "execution": "NOT_RUN",
+        "blockers": [
+          "geometry_not_executed"
+        ]
+      },
+      "qualification": {
+        "status": "PASS",
+        "assertions": []
+      }
+    },
+    {
+      "caseId": "missing_required-01-hole",
+      "category": "missing_required",
+      "expectedFeature": "hole",
+      "parsedFeature": "hole",
+      "expectedRequirementOutcome": "BLOCKED",
+      "parse": {
+        "status": "PASS",
+        "issues": []
+      },
+      "requirementsGate": {
+        "status": "BLOCKED",
+        "ready": false,
+        "issues": [
+          "missing_authoritative_input:mechanical.critical_dimensions",
+          "missing_authoritative_input:mechanical.material_process"
+        ],
+        "nextQuestion": "Provide Critical dimensions and tolerances (mechanical.critical_dimensions)."
+      },
+      "candidateValidation": {
+        "status": "BLOCKED",
+        "state": "BLOCKED",
+        "issues": [
+          "missing_authoritative_input:mechanical.critical_dimensions",
+          "missing_authoritative_input:mechanical.material_process",
+          "candidate_not_in_preview"
+        ]
+      },
+      "geometry": {
+        "eligibility": "BLOCKED",
+        "execution": "NOT_RUN",
+        "blockers": [
+          "requirements_gate_blocked",
+          "candidate_validation_blocked"
+        ]
+      },
+      "verification": {
+        "eligibility": "BLOCKED",
+        "execution": "NOT_RUN",
+        "blockers": [
+          "geometry_not_executed"
+        ]
+      },
+      "qualification": {
+        "status": "PASS",
+        "assertions": []
+      }
+    },
+    {
+      "caseId": "missing_required-02-fillet",
+      "category": "missing_required",
+      "expectedFeature": "fillet",
+      "parsedFeature": "fillet",
+      "expectedRequirementOutcome": "BLOCKED",
+      "parse": {
+        "status": "PASS",
+        "issues": []
+      },
+      "requirementsGate": {
+        "status": "BLOCKED",
+        "ready": false,
+        "issues": [
+          "missing_authoritative_input:mechanical.critical_dimensions",
+          "missing_authoritative_input:mechanical.material_process"
+        ],
+        "nextQuestion": "Provide Critical dimensions and tolerances (mechanical.critical_dimensions)."
+      },
+      "candidateValidation": {
+        "status": "BLOCKED",
+        "state": "BLOCKED",
+        "issues": [
+          "missing_authoritative_input:mechanical.critical_dimensions",
+          "missing_authoritative_input:mechanical.material_process",
+          "candidate_not_in_preview"
+        ]
+      },
+      "geometry": {
+        "eligibility": "BLOCKED",
+        "execution": "NOT_RUN",
+        "blockers": [
+          "requirements_gate_blocked",
+          "candidate_validation_blocked"
+        ]
+      },
+      "verification": {
+        "eligibility": "BLOCKED",
+        "execution": "NOT_RUN",
+        "blockers": [
+          "geometry_not_executed"
+        ]
+      },
+      "qualification": {
+        "status": "PASS",
+        "assertions": []
+      }
+    },
+    {
+      "caseId": "missing_required-03-chamfer",
+      "category": "missing_required",
+      "expectedFeature": "chamfer",
+      "parsedFeature": "chamfer",
+      "expectedRequirementOutcome": "BLOCKED",
+      "parse": {
+        "status": "PASS",
+        "issues": []
+      },
+      "requirementsGate": {
+        "status": "BLOCKED",
+        "ready": false,
+        "issues": [
+          "missing_authoritative_input:mechanical.critical_dimensions",
+          "missing_authoritative_input:mechanical.material_process"
+        ],
+        "nextQuestion": "Provide Critical dimensions and tolerances (mechanical.critical_dimensions)."
+      },
+      "candidateValidation": {
+        "status": "BLOCKED",
+        "state": "BLOCKED",
+        "issues": [
+          "missing_authoritative_input:mechanical.critical_dimensions",
+          "missing_authoritative_input:mechanical.material_process",
+          "candidate_not_in_preview"
+        ]
+      },
+      "geometry": {
+        "eligibility": "BLOCKED",
+        "execution": "NOT_RUN",
+        "blockers": [
+          "requirements_gate_blocked",
+          "candidate_validation_blocked"
+        ]
+      },
+      "verification": {
+        "eligibility": "BLOCKED",
+        "execution": "NOT_RUN",
+        "blockers": [
+          "geometry_not_executed"
+        ]
+      },
+      "qualification": {
+        "status": "PASS",
+        "assertions": []
+      }
+    },
+    {
+      "caseId": "missing_required-04-shell",
+      "category": "missing_required",
+      "expectedFeature": "shell",
+      "parsedFeature": "shell",
+      "expectedRequirementOutcome": "BLOCKED",
+      "parse": {
+        "status": "PASS",
+        "issues": []
+      },
+      "requirementsGate": {
+        "status": "BLOCKED",
+        "ready": false,
+        "issues": [
+          "missing_authoritative_input:mechanical.critical_dimensions",
+          "missing_authoritative_input:mechanical.material_process"
+        ],
+        "nextQuestion": "Provide Critical dimensions and tolerances (mechanical.critical_dimensions)."
+      },
+      "candidateValidation": {
+        "status": "BLOCKED",
+        "state": "BLOCKED",
+        "issues": [
+          "missing_authoritative_input:mechanical.critical_dimensions",
+          "missing_authoritative_input:mechanical.material_process",
+          "candidate_not_in_preview"
+        ]
+      },
+      "geometry": {
+        "eligibility": "BLOCKED",
+        "execution": "NOT_RUN",
+        "blockers": [
+          "requirements_gate_blocked",
+          "candidate_validation_blocked"
+        ]
+      },
+      "verification": {
+        "eligibility": "BLOCKED",
+        "execution": "NOT_RUN",
+        "blockers": [
+          "geometry_not_executed"
+        ]
+      },
+      "qualification": {
+        "status": "PASS",
+        "assertions": []
+      }
+    },
+    {
+      "caseId": "missing_required-05-rib",
+      "category": "missing_required",
+      "expectedFeature": "rib",
+      "parsedFeature": "rib",
+      "expectedRequirementOutcome": "BLOCKED",
+      "parse": {
+        "status": "PASS",
+        "issues": []
+      },
+      "requirementsGate": {
+        "status": "BLOCKED",
+        "ready": false,
+        "issues": [
+          "missing_authoritative_input:mechanical.critical_dimensions",
+          "missing_authoritative_input:mechanical.material_process"
+        ],
+        "nextQuestion": "Provide Critical dimensions and tolerances (mechanical.critical_dimensions)."
+      },
+      "candidateValidation": {
+        "status": "BLOCKED",
+        "state": "BLOCKED",
+        "issues": [
+          "missing_authoritative_input:mechanical.critical_dimensions",
+          "missing_authoritative_input:mechanical.material_process",
+          "candidate_not_in_preview"
+        ]
+      },
+      "geometry": {
+        "eligibility": "BLOCKED",
+        "execution": "NOT_RUN",
+        "blockers": [
+          "requirements_gate_blocked",
+          "candidate_validation_blocked"
+        ]
+      },
+      "verification": {
+        "eligibility": "BLOCKED",
+        "execution": "NOT_RUN",
+        "blockers": [
+          "geometry_not_executed"
+        ]
+      },
+      "qualification": {
+        "status": "PASS",
+        "assertions": []
+      }
+    },
+    {
+      "caseId": "missing_required-06-linearPattern",
+      "category": "missing_required",
+      "expectedFeature": "linearPattern",
+      "parsedFeature": "linearPattern",
+      "expectedRequirementOutcome": "BLOCKED",
+      "parse": {
+        "status": "PASS",
+        "issues": []
+      },
+      "requirementsGate": {
+        "status": "BLOCKED",
+        "ready": false,
+        "issues": [
+          "missing_authoritative_input:mechanical.critical_dimensions",
+          "missing_authoritative_input:mechanical.material_process"
+        ],
+        "nextQuestion": "Provide Critical dimensions and tolerances (mechanical.critical_dimensions)."
+      },
+      "candidateValidation": {
+        "status": "BLOCKED",
+        "state": "BLOCKED",
+        "issues": [
+          "missing_authoritative_input:mechanical.critical_dimensions",
+          "missing_authoritative_input:mechanical.material_process",
+          "candidate_not_in_preview"
+        ]
+      },
+      "geometry": {
+        "eligibility": "BLOCKED",
+        "execution": "NOT_RUN",
+        "blockers": [
+          "requirements_gate_blocked",
+          "candidate_validation_blocked"
+        ]
+      },
+      "verification": {
+        "eligibility": "BLOCKED",
+        "execution": "NOT_RUN",
+        "blockers": [
+          "geometry_not_executed"
+        ]
+      },
+      "qualification": {
+        "status": "PASS",
+        "assertions": []
+      }
+    },
+    {
+      "caseId": "missing_required-07-circularPattern",
+      "category": "missing_required",
+      "expectedFeature": "circularPattern",
+      "parsedFeature": "circularPattern",
+      "expectedRequirementOutcome": "BLOCKED",
+      "parse": {
+        "status": "PASS",
+        "issues": []
+      },
+      "requirementsGate": {
+        "status": "BLOCKED",
+        "ready": false,
+        "issues": [
+          "missing_authoritative_input:mechanical.critical_dimensions",
+          "missing_authoritative_input:mechanical.material_process"
+        ],
+        "nextQuestion": "Provide Critical dimensions and tolerances (mechanical.critical_dimensions)."
+      },
+      "candidateValidation": {
+        "status": "BLOCKED",
+        "state": "BLOCKED",
+        "issues": [
+          "missing_authoritative_input:mechanical.critical_dimensions",
+          "missing_authoritative_input:mechanical.material_process",
+          "candidate_not_in_preview"
+        ]
+      },
+      "geometry": {
+        "eligibility": "BLOCKED",
+        "execution": "NOT_RUN",
+        "blockers": [
+          "requirements_gate_blocked",
+          "candidate_validation_blocked"
+        ]
+      },
+      "verification": {
+        "eligibility": "BLOCKED",
+        "execution": "NOT_RUN",
+        "blockers": [
+          "geometry_not_executed"
+        ]
+      },
+      "qualification": {
+        "status": "PASS",
+        "assertions": []
+      }
+    },
+    {
+      "caseId": "missing_required-08-draft",
+      "category": "missing_required",
+      "expectedFeature": "draft",
+      "parsedFeature": "draft",
+      "expectedRequirementOutcome": "BLOCKED",
+      "parse": {
+        "status": "PASS",
+        "issues": []
+      },
+      "requirementsGate": {
+        "status": "BLOCKED",
+        "ready": false,
+        "issues": [
+          "missing_authoritative_input:mechanical.critical_dimensions",
+          "missing_authoritative_input:mechanical.material_process"
+        ],
+        "nextQuestion": "Provide Critical dimensions and tolerances (mechanical.critical_dimensions)."
+      },
+      "candidateValidation": {
+        "status": "BLOCKED",
+        "state": "BLOCKED",
+        "issues": [
+          "missing_authoritative_input:mechanical.critical_dimensions",
+          "missing_authoritative_input:mechanical.material_process",
+          "candidate_not_in_preview"
+        ]
+      },
+      "geometry": {
+        "eligibility": "BLOCKED",
+        "execution": "NOT_RUN",
+        "blockers": [
+          "requirements_gate_blocked",
+          "candidate_validation_blocked"
+        ]
+      },
+      "verification": {
+        "eligibility": "BLOCKED",
+        "execution": "NOT_RUN",
+        "blockers": [
+          "geometry_not_executed"
+        ]
+      },
+      "qualification": {
+        "status": "PASS",
+        "assertions": []
+      }
+    },
+    {
+      "caseId": "missing_required-09-scale",
+      "category": "missing_required",
+      "expectedFeature": "scale",
+      "parsedFeature": "scale",
+      "expectedRequirementOutcome": "BLOCKED",
+      "parse": {
+        "status": "PASS",
+        "issues": []
+      },
+      "requirementsGate": {
+        "status": "BLOCKED",
+        "ready": false,
+        "issues": [
+          "missing_authoritative_input:mechanical.critical_dimensions",
+          "missing_authoritative_input:mechanical.material_process"
+        ],
+        "nextQuestion": "Provide Critical dimensions and tolerances (mechanical.critical_dimensions)."
+      },
+      "candidateValidation": {
+        "status": "BLOCKED",
+        "state": "BLOCKED",
+        "issues": [
+          "missing_authoritative_input:mechanical.critical_dimensions",
+          "missing_authoritative_input:mechanical.material_process",
+          "candidate_not_in_preview"
+        ]
+      },
+      "geometry": {
+        "eligibility": "BLOCKED",
+        "execution": "NOT_RUN",
+        "blockers": [
+          "requirements_gate_blocked",
+          "candidate_validation_blocked"
+        ]
+      },
+      "verification": {
+        "eligibility": "BLOCKED",
+        "execution": "NOT_RUN",
+        "blockers": [
+          "geometry_not_executed"
+        ]
+      },
+      "qualification": {
+        "status": "PASS",
+        "assertions": []
+      }
+    },
+    {
+      "caseId": "missing_required-10-moveCopy",
+      "category": "missing_required",
+      "expectedFeature": "moveCopy",
+      "parsedFeature": "moveCopy",
+      "expectedRequirementOutcome": "BLOCKED",
+      "parse": {
+        "status": "PASS",
+        "issues": []
+      },
+      "requirementsGate": {
+        "status": "BLOCKED",
+        "ready": false,
+        "issues": [
+          "missing_authoritative_input:mechanical.critical_dimensions",
+          "missing_authoritative_input:mechanical.material_process"
+        ],
+        "nextQuestion": "Provide Critical dimensions and tolerances (mechanical.critical_dimensions)."
+      },
+      "candidateValidation": {
+        "status": "BLOCKED",
+        "state": "BLOCKED",
+        "issues": [
+          "missing_authoritative_input:mechanical.critical_dimensions",
+          "missing_authoritative_input:mechanical.material_process",
+          "candidate_not_in_preview"
+        ]
+      },
+      "geometry": {
+        "eligibility": "BLOCKED",
+        "execution": "NOT_RUN",
+        "blockers": [
+          "requirements_gate_blocked",
+          "candidate_validation_blocked"
+        ]
+      },
+      "verification": {
+        "eligibility": "BLOCKED",
+        "execution": "NOT_RUN",
+        "blockers": [
+          "geometry_not_executed"
+        ]
+      },
+      "qualification": {
+        "status": "PASS",
+        "assertions": []
+      }
+    },
+    {
+      "caseId": "missing_required-11-variableFillet",
+      "category": "missing_required",
+      "expectedFeature": "variableFillet",
+      "parsedFeature": "variableFillet",
+      "expectedRequirementOutcome": "BLOCKED",
+      "parse": {
+        "status": "PASS",
+        "issues": []
+      },
+      "requirementsGate": {
+        "status": "BLOCKED",
+        "ready": false,
+        "issues": [
+          "missing_authoritative_input:mechanical.critical_dimensions",
+          "missing_authoritative_input:mechanical.material_process"
+        ],
+        "nextQuestion": "Provide Critical dimensions and tolerances (mechanical.critical_dimensions)."
+      },
+      "candidateValidation": {
+        "status": "BLOCKED",
+        "state": "BLOCKED",
+        "issues": [
+          "missing_authoritative_input:mechanical.critical_dimensions",
+          "missing_authoritative_input:mechanical.material_process",
+          "candidate_not_in_preview"
+        ]
+      },
+      "geometry": {
+        "eligibility": "BLOCKED",
+        "execution": "NOT_RUN",
+        "blockers": [
+          "requirements_gate_blocked",
+          "candidate_validation_blocked"
+        ]
+      },
+      "verification": {
+        "eligibility": "BLOCKED",
+        "execution": "NOT_RUN",
+        "blockers": [
+          "geometry_not_executed"
+        ]
+      },
+      "qualification": {
+        "status": "PASS",
+        "assertions": []
+      }
+    },
+    {
+      "caseId": "missing_required-12-offsetFace",
+      "category": "missing_required",
+      "expectedFeature": "offsetFace",
+      "parsedFeature": "offsetFace",
+      "expectedRequirementOutcome": "BLOCKED",
+      "parse": {
+        "status": "PASS",
+        "issues": []
+      },
+      "requirementsGate": {
+        "status": "BLOCKED",
+        "ready": false,
+        "issues": [
+          "missing_authoritative_input:mechanical.critical_dimensions",
+          "missing_authoritative_input:mechanical.material_process"
+        ],
+        "nextQuestion": "Provide Critical dimensions and tolerances (mechanical.critical_dimensions)."
+      },
+      "candidateValidation": {
+        "status": "BLOCKED",
+        "state": "BLOCKED",
+        "issues": [
+          "missing_authoritative_input:mechanical.critical_dimensions",
+          "missing_authoritative_input:mechanical.material_process",
+          "candidate_not_in_preview"
+        ]
+      },
+      "geometry": {
+        "eligibility": "BLOCKED",
+        "execution": "NOT_RUN",
+        "blockers": [
+          "requirements_gate_blocked",
+          "candidate_validation_blocked"
+        ]
+      },
+      "verification": {
+        "eligibility": "BLOCKED",
+        "execution": "NOT_RUN",
+        "blockers": [
+          "geometry_not_executed"
+        ]
+      },
+      "qualification": {
+        "status": "PASS",
+        "assertions": []
+      }
+    },
+    {
+      "caseId": "missing_required-13-thread",
+      "category": "missing_required",
+      "expectedFeature": "thread",
+      "parsedFeature": "thread",
+      "expectedRequirementOutcome": "BLOCKED",
+      "parse": {
+        "status": "PASS",
+        "issues": []
+      },
+      "requirementsGate": {
+        "status": "BLOCKED",
+        "ready": false,
+        "issues": [
+          "missing_authoritative_input:mechanical.critical_dimensions",
+          "missing_authoritative_input:mechanical.material_process"
+        ],
+        "nextQuestion": "Provide Critical dimensions and tolerances (mechanical.critical_dimensions)."
+      },
+      "candidateValidation": {
+        "status": "BLOCKED",
+        "state": "BLOCKED",
+        "issues": [
+          "missing_authoritative_input:mechanical.critical_dimensions",
+          "missing_authoritative_input:mechanical.material_process",
+          "candidate_not_in_preview"
+        ]
+      },
+      "geometry": {
+        "eligibility": "BLOCKED",
+        "execution": "NOT_RUN",
+        "blockers": [
+          "requirements_gate_blocked",
+          "candidate_validation_blocked"
+        ]
+      },
+      "verification": {
+        "eligibility": "BLOCKED",
+        "execution": "NOT_RUN",
+        "blockers": [
+          "geometry_not_executed"
+        ]
+      },
+      "qualification": {
+        "status": "PASS",
+        "assertions": []
+      }
+    },
+    {
+      "caseId": "missing_required-14-helix",
+      "category": "missing_required",
+      "expectedFeature": "helix",
+      "parsedFeature": "helix",
+      "expectedRequirementOutcome": "BLOCKED",
+      "parse": {
+        "status": "PASS",
+        "issues": []
+      },
+      "requirementsGate": {
+        "status": "BLOCKED",
+        "ready": false,
+        "issues": [
+          "missing_authoritative_input:mechanical.critical_dimensions",
+          "missing_authoritative_input:mechanical.material_process"
+        ],
+        "nextQuestion": "Provide Critical dimensions and tolerances (mechanical.critical_dimensions)."
+      },
+      "candidateValidation": {
+        "status": "BLOCKED",
+        "state": "BLOCKED",
+        "issues": [
+          "missing_authoritative_input:mechanical.critical_dimensions",
+          "missing_authoritative_input:mechanical.material_process",
+          "candidate_not_in_preview"
+        ]
+      },
+      "geometry": {
+        "eligibility": "BLOCKED",
+        "execution": "NOT_RUN",
+        "blockers": [
+          "requirements_gate_blocked",
+          "candidate_validation_blocked"
+        ]
+      },
+      "verification": {
+        "eligibility": "BLOCKED",
+        "execution": "NOT_RUN",
+        "blockers": [
+          "geometry_not_executed"
+        ]
+      },
+      "qualification": {
+        "status": "PASS",
+        "assertions": []
+      }
+    },
+    {
+      "caseId": "missing_required-15-bend",
+      "category": "missing_required",
+      "expectedFeature": "bend",
+      "parsedFeature": "bend",
+      "expectedRequirementOutcome": "BLOCKED",
+      "parse": {
+        "status": "PASS",
+        "issues": []
+      },
+      "requirementsGate": {
+        "status": "BLOCKED",
+        "ready": false,
+        "issues": [
+          "missing_authoritative_input:mechanical.critical_dimensions",
+          "missing_authoritative_input:mechanical.material_process"
+        ],
+        "nextQuestion": "Provide Critical dimensions and tolerances (mechanical.critical_dimensions)."
+      },
+      "candidateValidation": {
+        "status": "BLOCKED",
+        "state": "BLOCKED",
+        "issues": [
+          "missing_authoritative_input:mechanical.critical_dimensions",
+          "missing_authoritative_input:mechanical.material_process",
+          "candidate_not_in_preview"
+        ]
+      },
+      "geometry": {
+        "eligibility": "BLOCKED",
+        "execution": "NOT_RUN",
+        "blockers": [
+          "requirements_gate_blocked",
+          "candidate_validation_blocked"
+        ]
+      },
+      "verification": {
+        "eligibility": "BLOCKED",
+        "execution": "NOT_RUN",
+        "blockers": [
+          "geometry_not_executed"
+        ]
+      },
+      "qualification": {
+        "status": "PASS",
+        "assertions": []
+      }
+    },
+    {
+      "caseId": "missing_required-16-flange",
+      "category": "missing_required",
+      "expectedFeature": "flange",
+      "parsedFeature": "flange",
+      "expectedRequirementOutcome": "BLOCKED",
+      "parse": {
+        "status": "PASS",
+        "issues": []
+      },
+      "requirementsGate": {
+        "status": "BLOCKED",
+        "ready": false,
+        "issues": [
+          "missing_authoritative_input:mechanical.critical_dimensions",
+          "missing_authoritative_input:mechanical.material_process"
+        ],
+        "nextQuestion": "Provide Critical dimensions and tolerances (mechanical.critical_dimensions)."
+      },
+      "candidateValidation": {
+        "status": "BLOCKED",
+        "state": "BLOCKED",
+        "issues": [
+          "missing_authoritative_input:mechanical.critical_dimensions",
+          "missing_authoritative_input:mechanical.material_process",
+          "candidate_not_in_preview"
+        ]
+      },
+      "geometry": {
+        "eligibility": "BLOCKED",
+        "execution": "NOT_RUN",
+        "blockers": [
+          "requirements_gate_blocked",
+          "candidate_validation_blocked"
+        ]
+      },
+      "verification": {
+        "eligibility": "BLOCKED",
+        "execution": "NOT_RUN",
+        "blockers": [
+          "geometry_not_executed"
+        ]
+      },
+      "qualification": {
+        "status": "PASS",
+        "assertions": []
+      }
+    },
+    {
+      "caseId": "missing_required-17-hem",
+      "category": "missing_required",
+      "expectedFeature": "hem",
+      "parsedFeature": "hem",
+      "expectedRequirementOutcome": "BLOCKED",
+      "parse": {
+        "status": "PASS",
+        "issues": []
+      },
+      "requirementsGate": {
+        "status": "BLOCKED",
+        "ready": false,
+        "issues": [
+          "missing_authoritative_input:mechanical.critical_dimensions",
+          "missing_authoritative_input:mechanical.material_process"
+        ],
+        "nextQuestion": "Provide Critical dimensions and tolerances (mechanical.critical_dimensions)."
+      },
+      "candidateValidation": {
+        "status": "BLOCKED",
+        "state": "BLOCKED",
+        "issues": [
+          "missing_authoritative_input:mechanical.critical_dimensions",
+          "missing_authoritative_input:mechanical.material_process",
+          "candidate_not_in_preview"
+        ]
+      },
+      "geometry": {
+        "eligibility": "BLOCKED",
+        "execution": "NOT_RUN",
+        "blockers": [
+          "requirements_gate_blocked",
+          "candidate_validation_blocked"
+        ]
+      },
+      "verification": {
+        "eligibility": "BLOCKED",
+        "execution": "NOT_RUN",
+        "blockers": [
+          "geometry_not_executed"
+        ]
+      },
+      "qualification": {
+        "status": "PASS",
+        "assertions": []
+      }
+    },
+    {
+      "caseId": "missing_required-18-jog",
+      "category": "missing_required",
+      "expectedFeature": "jog",
+      "parsedFeature": "jog",
+      "expectedRequirementOutcome": "BLOCKED",
+      "parse": {
+        "status": "PASS",
+        "issues": []
+      },
+      "requirementsGate": {
+        "status": "BLOCKED",
+        "ready": false,
+        "issues": [
+          "missing_authoritative_input:mechanical.critical_dimensions",
+          "missing_authoritative_input:mechanical.material_process"
+        ],
+        "nextQuestion": "Provide Critical dimensions and tolerances (mechanical.critical_dimensions)."
+      },
+      "candidateValidation": {
+        "status": "BLOCKED",
+        "state": "BLOCKED",
+        "issues": [
+          "missing_authoritative_input:mechanical.critical_dimensions",
+          "missing_authoritative_input:mechanical.material_process",
+          "candidate_not_in_preview"
+        ]
+      },
+      "geometry": {
+        "eligibility": "BLOCKED",
+        "execution": "NOT_RUN",
+        "blockers": [
+          "requirements_gate_blocked",
+          "candidate_validation_blocked"
+        ]
+      },
+      "verification": {
+        "eligibility": "BLOCKED",
+        "execution": "NOT_RUN",
+        "blockers": [
+          "geometry_not_executed"
+        ]
+      },
+      "qualification": {
+        "status": "PASS",
+        "assertions": []
+      }
+    },
+    {
+      "caseId": "missing_required-19-tab",
+      "category": "missing_required",
+      "expectedFeature": "tab",
+      "parsedFeature": "tab",
+      "expectedRequirementOutcome": "BLOCKED",
+      "parse": {
+        "status": "PASS",
+        "issues": []
+      },
+      "requirementsGate": {
+        "status": "BLOCKED",
+        "ready": false,
+        "issues": [
+          "missing_authoritative_input:mechanical.critical_dimensions",
+          "missing_authoritative_input:mechanical.material_process"
+        ],
+        "nextQuestion": "Provide Critical dimensions and tolerances (mechanical.critical_dimensions)."
+      },
+      "candidateValidation": {
+        "status": "BLOCKED",
+        "state": "BLOCKED",
+        "issues": [
+          "missing_authoritative_input:mechanical.critical_dimensions",
+          "missing_authoritative_input:mechanical.material_process",
+          "candidate_not_in_preview"
+        ]
+      },
+      "geometry": {
+        "eligibility": "BLOCKED",
+        "execution": "NOT_RUN",
+        "blockers": [
+          "requirements_gate_blocked",
+          "candidate_validation_blocked"
+        ]
+      },
+      "verification": {
+        "eligibility": "BLOCKED",
+        "execution": "NOT_RUN",
+        "blockers": [
+          "geometry_not_executed"
+        ]
+      },
+      "qualification": {
+        "status": "PASS",
+        "assertions": []
+      }
+    },
+    {
+      "caseId": "missing_required-20-cut",
+      "category": "missing_required",
+      "expectedFeature": "cut",
+      "parsedFeature": "cut",
+      "expectedRequirementOutcome": "BLOCKED",
+      "parse": {
+        "status": "PASS",
+        "issues": []
+      },
+      "requirementsGate": {
+        "status": "BLOCKED",
+        "ready": false,
+        "issues": [
+          "missing_authoritative_input:mechanical.critical_dimensions",
+          "missing_authoritative_input:mechanical.material_process"
+        ],
+        "nextQuestion": "Provide Critical dimensions and tolerances (mechanical.critical_dimensions)."
+      },
+      "candidateValidation": {
+        "status": "BLOCKED",
+        "state": "BLOCKED",
+        "issues": [
+          "missing_authoritative_input:mechanical.critical_dimensions",
+          "missing_authoritative_input:mechanical.material_process",
+          "candidate_not_in_preview"
+        ]
+      },
+      "geometry": {
+        "eligibility": "BLOCKED",
+        "execution": "NOT_RUN",
+        "blockers": [
+          "requirements_gate_blocked",
+          "candidate_validation_blocked"
+        ]
+      },
+      "verification": {
+        "eligibility": "BLOCKED",
+        "execution": "NOT_RUN",
+        "blockers": [
+          "geometry_not_executed"
+        ]
+      },
+      "qualification": {
+        "status": "PASS",
+        "assertions": []
+      }
+    },
+    {
+      "caseId": "missing_required-21-bendRelief",
+      "category": "missing_required",
+      "expectedFeature": "bendRelief",
+      "parsedFeature": "bendRelief",
+      "expectedRequirementOutcome": "BLOCKED",
+      "parse": {
+        "status": "PASS",
+        "issues": []
+      },
+      "requirementsGate": {
+        "status": "BLOCKED",
+        "ready": false,
+        "issues": [
+          "missing_authoritative_input:mechanical.critical_dimensions",
+          "missing_authoritative_input:mechanical.material_process"
+        ],
+        "nextQuestion": "Provide Critical dimensions and tolerances (mechanical.critical_dimensions)."
+      },
+      "candidateValidation": {
+        "status": "BLOCKED",
+        "state": "BLOCKED",
+        "issues": [
+          "missing_authoritative_input:mechanical.critical_dimensions",
+          "missing_authoritative_input:mechanical.material_process",
+          "candidate_not_in_preview"
+        ]
+      },
+      "geometry": {
+        "eligibility": "BLOCKED",
+        "execution": "NOT_RUN",
+        "blockers": [
+          "requirements_gate_blocked",
+          "candidate_validation_blocked"
+        ]
+      },
+      "verification": {
+        "eligibility": "BLOCKED",
+        "execution": "NOT_RUN",
+        "blockers": [
+          "geometry_not_executed"
+        ]
+      },
+      "qualification": {
+        "status": "PASS",
+        "assertions": []
+      }
+    },
+    {
+      "caseId": "missing_required-22-cornerRelief",
+      "category": "missing_required",
+      "expectedFeature": "cornerRelief",
+      "parsedFeature": "cornerRelief",
+      "expectedRequirementOutcome": "BLOCKED",
+      "parse": {
+        "status": "PASS",
+        "issues": []
+      },
+      "requirementsGate": {
+        "status": "BLOCKED",
+        "ready": false,
+        "issues": [
+          "missing_authoritative_input:mechanical.critical_dimensions",
+          "missing_authoritative_input:mechanical.material_process"
+        ],
+        "nextQuestion": "Provide Critical dimensions and tolerances (mechanical.critical_dimensions)."
+      },
+      "candidateValidation": {
+        "status": "BLOCKED",
+        "state": "BLOCKED",
+        "issues": [
+          "missing_authoritative_input:mechanical.critical_dimensions",
+          "missing_authoritative_input:mechanical.material_process",
+          "candidate_not_in_preview"
+        ]
+      },
+      "geometry": {
+        "eligibility": "BLOCKED",
+        "execution": "NOT_RUN",
+        "blockers": [
+          "requirements_gate_blocked",
+          "candidate_validation_blocked"
+        ]
+      },
+      "verification": {
+        "eligibility": "BLOCKED",
+        "execution": "NOT_RUN",
+        "blockers": [
+          "geometry_not_executed"
+        ]
+      },
+      "qualification": {
+        "status": "PASS",
+        "assertions": []
+      }
+    },
+    {
+      "caseId": "missing_required-23-variableShell",
+      "category": "missing_required",
+      "expectedFeature": "variableShell",
+      "parsedFeature": "variableShell",
+      "expectedRequirementOutcome": "BLOCKED",
+      "parse": {
+        "status": "PASS",
+        "issues": []
+      },
+      "requirementsGate": {
+        "status": "BLOCKED",
+        "ready": false,
+        "issues": [
+          "missing_authoritative_input:mechanical.critical_dimensions",
+          "missing_authoritative_input:mechanical.material_process"
+        ],
+        "nextQuestion": "Provide Critical dimensions and tolerances (mechanical.critical_dimensions)."
+      },
+      "candidateValidation": {
+        "status": "BLOCKED",
+        "state": "BLOCKED",
+        "issues": [
+          "missing_authoritative_input:mechanical.critical_dimensions",
+          "missing_authoritative_input:mechanical.material_process",
+          "candidate_not_in_preview"
+        ]
+      },
+      "geometry": {
+        "eligibility": "BLOCKED",
+        "execution": "NOT_RUN",
+        "blockers": [
+          "requirements_gate_blocked",
+          "candidate_validation_blocked"
+        ]
+      },
+      "verification": {
+        "eligibility": "BLOCKED",
+        "execution": "NOT_RUN",
+        "blockers": [
+          "geometry_not_executed"
+        ]
+      },
+      "qualification": {
+        "status": "PASS",
+        "assertions": []
+      }
+    },
+    {
+      "caseId": "missing_required-24-sketchExtrude",
+      "category": "missing_required",
+      "expectedFeature": "sketchExtrude",
+      "parsedFeature": "sketchExtrude",
+      "expectedRequirementOutcome": "BLOCKED",
+      "parse": {
+        "status": "PASS",
+        "issues": []
+      },
+      "requirementsGate": {
+        "status": "BLOCKED",
+        "ready": false,
+        "issues": [
+          "missing_authoritative_input:mechanical.critical_dimensions",
+          "missing_authoritative_input:mechanical.material_process"
+        ],
+        "nextQuestion": "Provide Critical dimensions and tolerances (mechanical.critical_dimensions)."
+      },
+      "candidateValidation": {
+        "status": "BLOCKED",
+        "state": "BLOCKED",
+        "issues": [
+          "missing_authoritative_input:mechanical.critical_dimensions",
+          "missing_authoritative_input:mechanical.material_process",
+          "candidate_not_in_preview"
+        ]
+      },
+      "geometry": {
+        "eligibility": "BLOCKED",
+        "execution": "NOT_RUN",
+        "blockers": [
+          "requirements_gate_blocked",
+          "candidate_validation_blocked"
+        ]
+      },
+      "verification": {
+        "eligibility": "BLOCKED",
+        "execution": "NOT_RUN",
+        "blockers": [
+          "geometry_not_executed"
+        ]
+      },
+      "qualification": {
+        "status": "PASS",
+        "assertions": []
+      }
+    },
+    {
+      "caseId": "missing_required-25-revolve",
+      "category": "missing_required",
+      "expectedFeature": "revolve",
+      "parsedFeature": "revolve",
+      "expectedRequirementOutcome": "BLOCKED",
+      "parse": {
+        "status": "PASS",
+        "issues": []
+      },
+      "requirementsGate": {
+        "status": "BLOCKED",
+        "ready": false,
+        "issues": [
+          "missing_authoritative_input:mechanical.critical_dimensions",
+          "missing_authoritative_input:mechanical.material_process"
+        ],
+        "nextQuestion": "Provide Critical dimensions and tolerances (mechanical.critical_dimensions)."
+      },
+      "candidateValidation": {
+        "status": "BLOCKED",
+        "state": "BLOCKED",
+        "issues": [
+          "missing_authoritative_input:mechanical.critical_dimensions",
+          "missing_authoritative_input:mechanical.material_process",
+          "candidate_not_in_preview"
+        ]
+      },
+      "geometry": {
+        "eligibility": "BLOCKED",
+        "execution": "NOT_RUN",
+        "blockers": [
+          "requirements_gate_blocked",
+          "candidate_validation_blocked"
+        ]
+      },
+      "verification": {
+        "eligibility": "BLOCKED",
+        "execution": "NOT_RUN",
+        "blockers": [
+          "geometry_not_executed"
+        ]
+      },
+      "qualification": {
+        "status": "PASS",
+        "assertions": []
+      }
+    },
+    {
+      "caseId": "missing_required-26-sweep",
+      "category": "missing_required",
+      "expectedFeature": "sweep",
+      "parsedFeature": "sweep",
+      "expectedRequirementOutcome": "BLOCKED",
+      "parse": {
+        "status": "PASS",
+        "issues": []
+      },
+      "requirementsGate": {
+        "status": "BLOCKED",
+        "ready": false,
+        "issues": [
+          "missing_authoritative_input:mechanical.critical_dimensions",
+          "missing_authoritative_input:mechanical.material_process"
+        ],
+        "nextQuestion": "Provide Critical dimensions and tolerances (mechanical.critical_dimensions)."
+      },
+      "candidateValidation": {
+        "status": "BLOCKED",
+        "state": "BLOCKED",
+        "issues": [
+          "missing_authoritative_input:mechanical.critical_dimensions",
+          "missing_authoritative_input:mechanical.material_process",
+          "candidate_not_in_preview"
+        ]
+      },
+      "geometry": {
+        "eligibility": "BLOCKED",
+        "execution": "NOT_RUN",
+        "blockers": [
+          "requirements_gate_blocked",
+          "candidate_validation_blocked"
+        ]
+      },
+      "verification": {
+        "eligibility": "BLOCKED",
+        "execution": "NOT_RUN",
+        "blockers": [
+          "geometry_not_executed"
+        ]
+      },
+      "qualification": {
+        "status": "PASS",
+        "assertions": []
+      }
+    },
+    {
+      "caseId": "missing_required-27-loft",
+      "category": "missing_required",
+      "expectedFeature": "loft",
+      "parsedFeature": "loft",
+      "expectedRequirementOutcome": "BLOCKED",
+      "parse": {
+        "status": "PASS",
+        "issues": []
+      },
+      "requirementsGate": {
+        "status": "BLOCKED",
+        "ready": false,
+        "issues": [
+          "missing_authoritative_input:mechanical.critical_dimensions",
+          "missing_authoritative_input:mechanical.material_process"
+        ],
+        "nextQuestion": "Provide Critical dimensions and tolerances (mechanical.critical_dimensions)."
+      },
+      "candidateValidation": {
+        "status": "BLOCKED",
+        "state": "BLOCKED",
+        "issues": [
+          "missing_authoritative_input:mechanical.critical_dimensions",
+          "missing_authoritative_input:mechanical.material_process",
+          "candidate_not_in_preview"
+        ]
+      },
+      "geometry": {
+        "eligibility": "BLOCKED",
+        "execution": "NOT_RUN",
+        "blockers": [
+          "requirements_gate_blocked",
+          "candidate_validation_blocked"
+        ]
+      },
+      "verification": {
+        "eligibility": "BLOCKED",
+        "execution": "NOT_RUN",
+        "blockers": [
+          "geometry_not_executed"
+        ]
+      },
+      "qualification": {
+        "status": "PASS",
+        "assertions": []
+      }
+    },
+    {
+      "caseId": "missing_required-28-mirror",
+      "category": "missing_required",
+      "expectedFeature": "mirror",
+      "parsedFeature": "mirror",
+      "expectedRequirementOutcome": "BLOCKED",
+      "parse": {
+        "status": "PASS",
+        "issues": []
+      },
+      "requirementsGate": {
+        "status": "BLOCKED",
+        "ready": false,
+        "issues": [
+          "missing_authoritative_input:mechanical.critical_dimensions",
+          "missing_authoritative_input:mechanical.material_process"
+        ],
+        "nextQuestion": "Provide Critical dimensions and tolerances (mechanical.critical_dimensions)."
+      },
+      "candidateValidation": {
+        "status": "BLOCKED",
+        "state": "BLOCKED",
+        "issues": [
+          "missing_authoritative_input:mechanical.critical_dimensions",
+          "missing_authoritative_input:mechanical.material_process",
+          "candidate_not_in_preview"
+        ]
+      },
+      "geometry": {
+        "eligibility": "BLOCKED",
+        "execution": "NOT_RUN",
+        "blockers": [
+          "requirements_gate_blocked",
+          "candidate_validation_blocked"
+        ]
+      },
+      "verification": {
+        "eligibility": "BLOCKED",
+        "execution": "NOT_RUN",
+        "blockers": [
+          "geometry_not_executed"
+        ]
+      },
+      "qualification": {
+        "status": "PASS",
+        "assertions": []
+      }
+    },
+    {
+      "caseId": "missing_required-29-boolean",
+      "category": "missing_required",
+      "expectedFeature": "boolean",
+      "parsedFeature": "boolean",
+      "expectedRequirementOutcome": "BLOCKED",
+      "parse": {
+        "status": "PASS",
+        "issues": []
+      },
+      "requirementsGate": {
+        "status": "BLOCKED",
+        "ready": false,
+        "issues": [
+          "missing_authoritative_input:mechanical.critical_dimensions",
+          "missing_authoritative_input:mechanical.material_process"
+        ],
+        "nextQuestion": "Provide Critical dimensions and tolerances (mechanical.critical_dimensions)."
+      },
+      "candidateValidation": {
+        "status": "BLOCKED",
+        "state": "BLOCKED",
+        "issues": [
+          "missing_authoritative_input:mechanical.critical_dimensions",
+          "missing_authoritative_input:mechanical.material_process",
+          "candidate_not_in_preview"
+        ]
+      },
+      "geometry": {
+        "eligibility": "BLOCKED",
+        "execution": "NOT_RUN",
+        "blockers": [
+          "requirements_gate_blocked",
+          "candidate_validation_blocked"
+        ]
+      },
+      "verification": {
+        "eligibility": "BLOCKED",
+        "execution": "NOT_RUN",
+        "blockers": [
+          "geometry_not_executed"
+        ]
+      },
+      "qualification": {
+        "status": "PASS",
+        "assertions": []
+      }
+    },
+    {
+      "caseId": "missing_required-30-splitBody",
+      "category": "missing_required",
+      "expectedFeature": "splitBody",
+      "parsedFeature": "splitBody",
+      "expectedRequirementOutcome": "BLOCKED",
+      "parse": {
+        "status": "PASS",
+        "issues": []
+      },
+      "requirementsGate": {
+        "status": "BLOCKED",
+        "ready": false,
+        "issues": [
+          "missing_authoritative_input:mechanical.critical_dimensions",
+          "missing_authoritative_input:mechanical.material_process"
+        ],
+        "nextQuestion": "Provide Critical dimensions and tolerances (mechanical.critical_dimensions)."
+      },
+      "candidateValidation": {
+        "status": "BLOCKED",
+        "state": "BLOCKED",
+        "issues": [
+          "missing_authoritative_input:mechanical.critical_dimensions",
+          "missing_authoritative_input:mechanical.material_process",
+          "candidate_not_in_preview"
+        ]
+      },
+      "geometry": {
+        "eligibility": "BLOCKED",
+        "execution": "NOT_RUN",
+        "blockers": [
+          "requirements_gate_blocked",
+          "candidate_validation_blocked"
+        ]
+      },
+      "verification": {
+        "eligibility": "BLOCKED",
+        "execution": "NOT_RUN",
+        "blockers": [
+          "geometry_not_executed"
+        ]
+      },
+      "qualification": {
+        "status": "PASS",
+        "assertions": []
+      }
+    },
+    {
+      "caseId": "contradictory_or_unmanufacturable-01-hole",
+      "category": "contradictory_or_unmanufacturable",
+      "expectedFeature": "hole",
+      "parsedFeature": "hole",
+      "expectedRequirementOutcome": "BLOCKED",
+      "parse": {
+        "status": "PASS",
+        "issues": []
+      },
+      "requirementsGate": {
+        "status": "BLOCKED",
+        "ready": false,
+        "issues": [
+          "conflicting_authoritative_input:mechanical.critical_dimensions",
+          "conflicting_authoritative_input:mechanical.material_process"
+        ],
+        "nextQuestion": "Confirm one value for Critical dimensions and tolerances (mechanical.critical_dimensions)."
+      },
+      "candidateValidation": {
+        "status": "BLOCKED",
+        "state": "BLOCKED",
+        "issues": [
+          "conflicting_authoritative_input:mechanical.critical_dimensions",
+          "conflicting_authoritative_input:mechanical.material_process",
+          "candidate_not_in_preview"
+        ]
+      },
+      "geometry": {
+        "eligibility": "BLOCKED",
+        "execution": "NOT_RUN",
+        "blockers": [
+          "requirements_gate_blocked",
+          "candidate_validation_blocked"
+        ]
+      },
+      "verification": {
+        "eligibility": "BLOCKED",
+        "execution": "NOT_RUN",
+        "blockers": [
+          "geometry_not_executed"
+        ]
+      },
+      "qualification": {
+        "status": "PASS",
+        "assertions": []
+      }
+    },
+    {
+      "caseId": "contradictory_or_unmanufacturable-02-fillet",
+      "category": "contradictory_or_unmanufacturable",
+      "expectedFeature": "fillet",
+      "parsedFeature": "fillet",
+      "expectedRequirementOutcome": "BLOCKED",
+      "parse": {
+        "status": "PASS",
+        "issues": []
+      },
+      "requirementsGate": {
+        "status": "BLOCKED",
+        "ready": false,
+        "issues": [
+          "conflicting_authoritative_input:mechanical.critical_dimensions",
+          "conflicting_authoritative_input:mechanical.material_process"
+        ],
+        "nextQuestion": "Confirm one value for Critical dimensions and tolerances (mechanical.critical_dimensions)."
+      },
+      "candidateValidation": {
+        "status": "BLOCKED",
+        "state": "BLOCKED",
+        "issues": [
+          "conflicting_authoritative_input:mechanical.critical_dimensions",
+          "conflicting_authoritative_input:mechanical.material_process",
+          "candidate_not_in_preview"
+        ]
+      },
+      "geometry": {
+        "eligibility": "BLOCKED",
+        "execution": "NOT_RUN",
+        "blockers": [
+          "requirements_gate_blocked",
+          "candidate_validation_blocked"
+        ]
+      },
+      "verification": {
+        "eligibility": "BLOCKED",
+        "execution": "NOT_RUN",
+        "blockers": [
+          "geometry_not_executed"
+        ]
+      },
+      "qualification": {
+        "status": "PASS",
+        "assertions": []
+      }
+    },
+    {
+      "caseId": "contradictory_or_unmanufacturable-03-chamfer",
+      "category": "contradictory_or_unmanufacturable",
+      "expectedFeature": "chamfer",
+      "parsedFeature": "chamfer",
+      "expectedRequirementOutcome": "BLOCKED",
+      "parse": {
+        "status": "PASS",
+        "issues": []
+      },
+      "requirementsGate": {
+        "status": "BLOCKED",
+        "ready": false,
+        "issues": [
+          "conflicting_authoritative_input:mechanical.critical_dimensions",
+          "conflicting_authoritative_input:mechanical.material_process"
+        ],
+        "nextQuestion": "Confirm one value for Critical dimensions and tolerances (mechanical.critical_dimensions)."
+      },
+      "candidateValidation": {
+        "status": "BLOCKED",
+        "state": "BLOCKED",
+        "issues": [
+          "conflicting_authoritative_input:mechanical.critical_dimensions",
+          "conflicting_authoritative_input:mechanical.material_process",
+          "candidate_not_in_preview"
+        ]
+      },
+      "geometry": {
+        "eligibility": "BLOCKED",
+        "execution": "NOT_RUN",
+        "blockers": [
+          "requirements_gate_blocked",
+          "candidate_validation_blocked"
+        ]
+      },
+      "verification": {
+        "eligibility": "BLOCKED",
+        "execution": "NOT_RUN",
+        "blockers": [
+          "geometry_not_executed"
+        ]
+      },
+      "qualification": {
+        "status": "PASS",
+        "assertions": []
+      }
+    },
+    {
+      "caseId": "contradictory_or_unmanufacturable-04-shell",
+      "category": "contradictory_or_unmanufacturable",
+      "expectedFeature": "shell",
+      "parsedFeature": "shell",
+      "expectedRequirementOutcome": "BLOCKED",
+      "parse": {
+        "status": "PASS",
+        "issues": []
+      },
+      "requirementsGate": {
+        "status": "BLOCKED",
+        "ready": false,
+        "issues": [
+          "conflicting_authoritative_input:mechanical.critical_dimensions",
+          "conflicting_authoritative_input:mechanical.material_process"
+        ],
+        "nextQuestion": "Confirm one value for Critical dimensions and tolerances (mechanical.critical_dimensions)."
+      },
+      "candidateValidation": {
+        "status": "BLOCKED",
+        "state": "BLOCKED",
+        "issues": [
+          "conflicting_authoritative_input:mechanical.critical_dimensions",
+          "conflicting_authoritative_input:mechanical.material_process",
+          "candidate_not_in_preview"
+        ]
+      },
+      "geometry": {
+        "eligibility": "BLOCKED",
+        "execution": "NOT_RUN",
+        "blockers": [
+          "requirements_gate_blocked",
+          "candidate_validation_blocked"
+        ]
+      },
+      "verification": {
+        "eligibility": "BLOCKED",
+        "execution": "NOT_RUN",
+        "blockers": [
+          "geometry_not_executed"
+        ]
+      },
+      "qualification": {
+        "status": "PASS",
+        "assertions": []
+      }
+    },
+    {
+      "caseId": "contradictory_or_unmanufacturable-05-rib",
+      "category": "contradictory_or_unmanufacturable",
+      "expectedFeature": "rib",
+      "parsedFeature": "rib",
+      "expectedRequirementOutcome": "BLOCKED",
+      "parse": {
+        "status": "PASS",
+        "issues": []
+      },
+      "requirementsGate": {
+        "status": "BLOCKED",
+        "ready": false,
+        "issues": [
+          "conflicting_authoritative_input:mechanical.critical_dimensions",
+          "conflicting_authoritative_input:mechanical.material_process"
+        ],
+        "nextQuestion": "Confirm one value for Critical dimensions and tolerances (mechanical.critical_dimensions)."
+      },
+      "candidateValidation": {
+        "status": "BLOCKED",
+        "state": "BLOCKED",
+        "issues": [
+          "conflicting_authoritative_input:mechanical.critical_dimensions",
+          "conflicting_authoritative_input:mechanical.material_process",
+          "candidate_not_in_preview"
+        ]
+      },
+      "geometry": {
+        "eligibility": "BLOCKED",
+        "execution": "NOT_RUN",
+        "blockers": [
+          "requirements_gate_blocked",
+          "candidate_validation_blocked"
+        ]
+      },
+      "verification": {
+        "eligibility": "BLOCKED",
+        "execution": "NOT_RUN",
+        "blockers": [
+          "geometry_not_executed"
+        ]
+      },
+      "qualification": {
+        "status": "PASS",
+        "assertions": []
+      }
+    },
+    {
+      "caseId": "contradictory_or_unmanufacturable-06-linearPattern",
+      "category": "contradictory_or_unmanufacturable",
+      "expectedFeature": "linearPattern",
+      "parsedFeature": "linearPattern",
+      "expectedRequirementOutcome": "BLOCKED",
+      "parse": {
+        "status": "PASS",
+        "issues": []
+      },
+      "requirementsGate": {
+        "status": "BLOCKED",
+        "ready": false,
+        "issues": [
+          "conflicting_authoritative_input:mechanical.critical_dimensions",
+          "conflicting_authoritative_input:mechanical.material_process"
+        ],
+        "nextQuestion": "Confirm one value for Critical dimensions and tolerances (mechanical.critical_dimensions)."
+      },
+      "candidateValidation": {
+        "status": "BLOCKED",
+        "state": "BLOCKED",
+        "issues": [
+          "conflicting_authoritative_input:mechanical.critical_dimensions",
+          "conflicting_authoritative_input:mechanical.material_process",
+          "candidate_not_in_preview"
+        ]
+      },
+      "geometry": {
+        "eligibility": "BLOCKED",
+        "execution": "NOT_RUN",
+        "blockers": [
+          "requirements_gate_blocked",
+          "candidate_validation_blocked"
+        ]
+      },
+      "verification": {
+        "eligibility": "BLOCKED",
+        "execution": "NOT_RUN",
+        "blockers": [
+          "geometry_not_executed"
+        ]
+      },
+      "qualification": {
+        "status": "PASS",
+        "assertions": []
+      }
+    },
+    {
+      "caseId": "contradictory_or_unmanufacturable-07-circularPattern",
+      "category": "contradictory_or_unmanufacturable",
+      "expectedFeature": "circularPattern",
+      "parsedFeature": "circularPattern",
+      "expectedRequirementOutcome": "BLOCKED",
+      "parse": {
+        "status": "PASS",
+        "issues": []
+      },
+      "requirementsGate": {
+        "status": "BLOCKED",
+        "ready": false,
+        "issues": [
+          "conflicting_authoritative_input:mechanical.critical_dimensions",
+          "conflicting_authoritative_input:mechanical.material_process"
+        ],
+        "nextQuestion": "Confirm one value for Critical dimensions and tolerances (mechanical.critical_dimensions)."
+      },
+      "candidateValidation": {
+        "status": "BLOCKED",
+        "state": "BLOCKED",
+        "issues": [
+          "conflicting_authoritative_input:mechanical.critical_dimensions",
+          "conflicting_authoritative_input:mechanical.material_process",
+          "candidate_not_in_preview"
+        ]
+      },
+      "geometry": {
+        "eligibility": "BLOCKED",
+        "execution": "NOT_RUN",
+        "blockers": [
+          "requirements_gate_blocked",
+          "candidate_validation_blocked"
+        ]
+      },
+      "verification": {
+        "eligibility": "BLOCKED",
+        "execution": "NOT_RUN",
+        "blockers": [
+          "geometry_not_executed"
+        ]
+      },
+      "qualification": {
+        "status": "PASS",
+        "assertions": []
+      }
+    },
+    {
+      "caseId": "contradictory_or_unmanufacturable-08-draft",
+      "category": "contradictory_or_unmanufacturable",
+      "expectedFeature": "draft",
+      "parsedFeature": "draft",
+      "expectedRequirementOutcome": "BLOCKED",
+      "parse": {
+        "status": "PASS",
+        "issues": []
+      },
+      "requirementsGate": {
+        "status": "BLOCKED",
+        "ready": false,
+        "issues": [
+          "conflicting_authoritative_input:mechanical.critical_dimensions",
+          "conflicting_authoritative_input:mechanical.material_process"
+        ],
+        "nextQuestion": "Confirm one value for Critical dimensions and tolerances (mechanical.critical_dimensions)."
+      },
+      "candidateValidation": {
+        "status": "BLOCKED",
+        "state": "BLOCKED",
+        "issues": [
+          "conflicting_authoritative_input:mechanical.critical_dimensions",
+          "conflicting_authoritative_input:mechanical.material_process",
+          "candidate_not_in_preview"
+        ]
+      },
+      "geometry": {
+        "eligibility": "BLOCKED",
+        "execution": "NOT_RUN",
+        "blockers": [
+          "requirements_gate_blocked",
+          "candidate_validation_blocked"
+        ]
+      },
+      "verification": {
+        "eligibility": "BLOCKED",
+        "execution": "NOT_RUN",
+        "blockers": [
+          "geometry_not_executed"
+        ]
+      },
+      "qualification": {
+        "status": "PASS",
+        "assertions": []
+      }
+    },
+    {
+      "caseId": "contradictory_or_unmanufacturable-09-scale",
+      "category": "contradictory_or_unmanufacturable",
+      "expectedFeature": "scale",
+      "parsedFeature": "scale",
+      "expectedRequirementOutcome": "BLOCKED",
+      "parse": {
+        "status": "PASS",
+        "issues": []
+      },
+      "requirementsGate": {
+        "status": "BLOCKED",
+        "ready": false,
+        "issues": [
+          "conflicting_authoritative_input:mechanical.critical_dimensions",
+          "conflicting_authoritative_input:mechanical.material_process"
+        ],
+        "nextQuestion": "Confirm one value for Critical dimensions and tolerances (mechanical.critical_dimensions)."
+      },
+      "candidateValidation": {
+        "status": "BLOCKED",
+        "state": "BLOCKED",
+        "issues": [
+          "conflicting_authoritative_input:mechanical.critical_dimensions",
+          "conflicting_authoritative_input:mechanical.material_process",
+          "candidate_not_in_preview"
+        ]
+      },
+      "geometry": {
+        "eligibility": "BLOCKED",
+        "execution": "NOT_RUN",
+        "blockers": [
+          "requirements_gate_blocked",
+          "candidate_validation_blocked"
+        ]
+      },
+      "verification": {
+        "eligibility": "BLOCKED",
+        "execution": "NOT_RUN",
+        "blockers": [
+          "geometry_not_executed"
+        ]
+      },
+      "qualification": {
+        "status": "PASS",
+        "assertions": []
+      }
+    },
+    {
+      "caseId": "contradictory_or_unmanufacturable-10-moveCopy",
+      "category": "contradictory_or_unmanufacturable",
+      "expectedFeature": "moveCopy",
+      "parsedFeature": "moveCopy",
+      "expectedRequirementOutcome": "BLOCKED",
+      "parse": {
+        "status": "PASS",
+        "issues": []
+      },
+      "requirementsGate": {
+        "status": "BLOCKED",
+        "ready": false,
+        "issues": [
+          "conflicting_authoritative_input:mechanical.critical_dimensions",
+          "conflicting_authoritative_input:mechanical.material_process"
+        ],
+        "nextQuestion": "Confirm one value for Critical dimensions and tolerances (mechanical.critical_dimensions)."
+      },
+      "candidateValidation": {
+        "status": "BLOCKED",
+        "state": "BLOCKED",
+        "issues": [
+          "conflicting_authoritative_input:mechanical.critical_dimensions",
+          "conflicting_authoritative_input:mechanical.material_process",
+          "candidate_not_in_preview"
+        ]
+      },
+      "geometry": {
+        "eligibility": "BLOCKED",
+        "execution": "NOT_RUN",
+        "blockers": [
+          "requirements_gate_blocked",
+          "candidate_validation_blocked"
+        ]
+      },
+      "verification": {
+        "eligibility": "BLOCKED",
+        "execution": "NOT_RUN",
+        "blockers": [
+          "geometry_not_executed"
+        ]
+      },
+      "qualification": {
+        "status": "PASS",
+        "assertions": []
+      }
+    },
+    {
+      "caseId": "contradictory_or_unmanufacturable-11-variableFillet",
+      "category": "contradictory_or_unmanufacturable",
+      "expectedFeature": "variableFillet",
+      "parsedFeature": "variableFillet",
+      "expectedRequirementOutcome": "BLOCKED",
+      "parse": {
+        "status": "PASS",
+        "issues": []
+      },
+      "requirementsGate": {
+        "status": "BLOCKED",
+        "ready": false,
+        "issues": [
+          "conflicting_authoritative_input:mechanical.critical_dimensions",
+          "conflicting_authoritative_input:mechanical.material_process"
+        ],
+        "nextQuestion": "Confirm one value for Critical dimensions and tolerances (mechanical.critical_dimensions)."
+      },
+      "candidateValidation": {
+        "status": "BLOCKED",
+        "state": "BLOCKED",
+        "issues": [
+          "conflicting_authoritative_input:mechanical.critical_dimensions",
+          "conflicting_authoritative_input:mechanical.material_process",
+          "candidate_not_in_preview"
+        ]
+      },
+      "geometry": {
+        "eligibility": "BLOCKED",
+        "execution": "NOT_RUN",
+        "blockers": [
+          "requirements_gate_blocked",
+          "candidate_validation_blocked"
+        ]
+      },
+      "verification": {
+        "eligibility": "BLOCKED",
+        "execution": "NOT_RUN",
+        "blockers": [
+          "geometry_not_executed"
+        ]
+      },
+      "qualification": {
+        "status": "PASS",
+        "assertions": []
+      }
+    },
+    {
+      "caseId": "contradictory_or_unmanufacturable-12-offsetFace",
+      "category": "contradictory_or_unmanufacturable",
+      "expectedFeature": "offsetFace",
+      "parsedFeature": "offsetFace",
+      "expectedRequirementOutcome": "BLOCKED",
+      "parse": {
+        "status": "PASS",
+        "issues": []
+      },
+      "requirementsGate": {
+        "status": "BLOCKED",
+        "ready": false,
+        "issues": [
+          "conflicting_authoritative_input:mechanical.critical_dimensions",
+          "conflicting_authoritative_input:mechanical.material_process"
+        ],
+        "nextQuestion": "Confirm one value for Critical dimensions and tolerances (mechanical.critical_dimensions)."
+      },
+      "candidateValidation": {
+        "status": "BLOCKED",
+        "state": "BLOCKED",
+        "issues": [
+          "conflicting_authoritative_input:mechanical.critical_dimensions",
+          "conflicting_authoritative_input:mechanical.material_process",
+          "candidate_not_in_preview"
+        ]
+      },
+      "geometry": {
+        "eligibility": "BLOCKED",
+        "execution": "NOT_RUN",
+        "blockers": [
+          "requirements_gate_blocked",
+          "candidate_validation_blocked"
+        ]
+      },
+      "verification": {
+        "eligibility": "BLOCKED",
+        "execution": "NOT_RUN",
+        "blockers": [
+          "geometry_not_executed"
+        ]
+      },
+      "qualification": {
+        "status": "PASS",
+        "assertions": []
+      }
+    },
+    {
+      "caseId": "contradictory_or_unmanufacturable-13-thread",
+      "category": "contradictory_or_unmanufacturable",
+      "expectedFeature": "thread",
+      "parsedFeature": "thread",
+      "expectedRequirementOutcome": "BLOCKED",
+      "parse": {
+        "status": "PASS",
+        "issues": []
+      },
+      "requirementsGate": {
+        "status": "BLOCKED",
+        "ready": false,
+        "issues": [
+          "conflicting_authoritative_input:mechanical.critical_dimensions",
+          "conflicting_authoritative_input:mechanical.material_process"
+        ],
+        "nextQuestion": "Confirm one value for Critical dimensions and tolerances (mechanical.critical_dimensions)."
+      },
+      "candidateValidation": {
+        "status": "BLOCKED",
+        "state": "BLOCKED",
+        "issues": [
+          "conflicting_authoritative_input:mechanical.critical_dimensions",
+          "conflicting_authoritative_input:mechanical.material_process",
+          "candidate_not_in_preview"
+        ]
+      },
+      "geometry": {
+        "eligibility": "BLOCKED",
+        "execution": "NOT_RUN",
+        "blockers": [
+          "requirements_gate_blocked",
+          "candidate_validation_blocked"
+        ]
+      },
+      "verification": {
+        "eligibility": "BLOCKED",
+        "execution": "NOT_RUN",
+        "blockers": [
+          "geometry_not_executed"
+        ]
+      },
+      "qualification": {
+        "status": "PASS",
+        "assertions": []
+      }
+    },
+    {
+      "caseId": "contradictory_or_unmanufacturable-14-helix",
+      "category": "contradictory_or_unmanufacturable",
+      "expectedFeature": "helix",
+      "parsedFeature": "helix",
+      "expectedRequirementOutcome": "BLOCKED",
+      "parse": {
+        "status": "PASS",
+        "issues": []
+      },
+      "requirementsGate": {
+        "status": "BLOCKED",
+        "ready": false,
+        "issues": [
+          "conflicting_authoritative_input:mechanical.critical_dimensions",
+          "conflicting_authoritative_input:mechanical.material_process"
+        ],
+        "nextQuestion": "Confirm one value for Critical dimensions and tolerances (mechanical.critical_dimensions)."
+      },
+      "candidateValidation": {
+        "status": "BLOCKED",
+        "state": "BLOCKED",
+        "issues": [
+          "conflicting_authoritative_input:mechanical.critical_dimensions",
+          "conflicting_authoritative_input:mechanical.material_process",
+          "candidate_not_in_preview"
+        ]
+      },
+      "geometry": {
+        "eligibility": "BLOCKED",
+        "execution": "NOT_RUN",
+        "blockers": [
+          "requirements_gate_blocked",
+          "candidate_validation_blocked"
+        ]
+      },
+      "verification": {
+        "eligibility": "BLOCKED",
+        "execution": "NOT_RUN",
+        "blockers": [
+          "geometry_not_executed"
+        ]
+      },
+      "qualification": {
+        "status": "PASS",
+        "assertions": []
+      }
+    },
+    {
+      "caseId": "contradictory_or_unmanufacturable-15-bend",
+      "category": "contradictory_or_unmanufacturable",
+      "expectedFeature": "bend",
+      "parsedFeature": "bend",
+      "expectedRequirementOutcome": "BLOCKED",
+      "parse": {
+        "status": "PASS",
+        "issues": []
+      },
+      "requirementsGate": {
+        "status": "BLOCKED",
+        "ready": false,
+        "issues": [
+          "conflicting_authoritative_input:mechanical.critical_dimensions",
+          "conflicting_authoritative_input:mechanical.material_process"
+        ],
+        "nextQuestion": "Confirm one value for Critical dimensions and tolerances (mechanical.critical_dimensions)."
+      },
+      "candidateValidation": {
+        "status": "BLOCKED",
+        "state": "BLOCKED",
+        "issues": [
+          "conflicting_authoritative_input:mechanical.critical_dimensions",
+          "conflicting_authoritative_input:mechanical.material_process",
+          "candidate_not_in_preview"
+        ]
+      },
+      "geometry": {
+        "eligibility": "BLOCKED",
+        "execution": "NOT_RUN",
+        "blockers": [
+          "requirements_gate_blocked",
+          "candidate_validation_blocked"
+        ]
+      },
+      "verification": {
+        "eligibility": "BLOCKED",
+        "execution": "NOT_RUN",
+        "blockers": [
+          "geometry_not_executed"
+        ]
+      },
+      "qualification": {
+        "status": "PASS",
+        "assertions": []
+      }
+    },
+    {
+      "caseId": "contradictory_or_unmanufacturable-16-flange",
+      "category": "contradictory_or_unmanufacturable",
+      "expectedFeature": "flange",
+      "parsedFeature": "flange",
+      "expectedRequirementOutcome": "BLOCKED",
+      "parse": {
+        "status": "PASS",
+        "issues": []
+      },
+      "requirementsGate": {
+        "status": "BLOCKED",
+        "ready": false,
+        "issues": [
+          "conflicting_authoritative_input:mechanical.critical_dimensions",
+          "conflicting_authoritative_input:mechanical.material_process"
+        ],
+        "nextQuestion": "Confirm one value for Critical dimensions and tolerances (mechanical.critical_dimensions)."
+      },
+      "candidateValidation": {
+        "status": "BLOCKED",
+        "state": "BLOCKED",
+        "issues": [
+          "conflicting_authoritative_input:mechanical.critical_dimensions",
+          "conflicting_authoritative_input:mechanical.material_process",
+          "candidate_not_in_preview"
+        ]
+      },
+      "geometry": {
+        "eligibility": "BLOCKED",
+        "execution": "NOT_RUN",
+        "blockers": [
+          "requirements_gate_blocked",
+          "candidate_validation_blocked"
+        ]
+      },
+      "verification": {
+        "eligibility": "BLOCKED",
+        "execution": "NOT_RUN",
+        "blockers": [
+          "geometry_not_executed"
+        ]
+      },
+      "qualification": {
+        "status": "PASS",
+        "assertions": []
+      }
+    },
+    {
+      "caseId": "contradictory_or_unmanufacturable-17-hem",
+      "category": "contradictory_or_unmanufacturable",
+      "expectedFeature": "hem",
+      "parsedFeature": "hem",
+      "expectedRequirementOutcome": "BLOCKED",
+      "parse": {
+        "status": "PASS",
+        "issues": []
+      },
+      "requirementsGate": {
+        "status": "BLOCKED",
+        "ready": false,
+        "issues": [
+          "conflicting_authoritative_input:mechanical.critical_dimensions",
+          "conflicting_authoritative_input:mechanical.material_process"
+        ],
+        "nextQuestion": "Confirm one value for Critical dimensions and tolerances (mechanical.critical_dimensions)."
+      },
+      "candidateValidation": {
+        "status": "BLOCKED",
+        "state": "BLOCKED",
+        "issues": [
+          "conflicting_authoritative_input:mechanical.critical_dimensions",
+          "conflicting_authoritative_input:mechanical.material_process",
+          "candidate_not_in_preview"
+        ]
+      },
+      "geometry": {
+        "eligibility": "BLOCKED",
+        "execution": "NOT_RUN",
+        "blockers": [
+          "requirements_gate_blocked",
+          "candidate_validation_blocked"
+        ]
+      },
+      "verification": {
+        "eligibility": "BLOCKED",
+        "execution": "NOT_RUN",
+        "blockers": [
+          "geometry_not_executed"
+        ]
+      },
+      "qualification": {
+        "status": "PASS",
+        "assertions": []
+      }
+    },
+    {
+      "caseId": "contradictory_or_unmanufacturable-18-jog",
+      "category": "contradictory_or_unmanufacturable",
+      "expectedFeature": "jog",
+      "parsedFeature": "jog",
+      "expectedRequirementOutcome": "BLOCKED",
+      "parse": {
+        "status": "PASS",
+        "issues": []
+      },
+      "requirementsGate": {
+        "status": "BLOCKED",
+        "ready": false,
+        "issues": [
+          "conflicting_authoritative_input:mechanical.critical_dimensions",
+          "conflicting_authoritative_input:mechanical.material_process"
+        ],
+        "nextQuestion": "Confirm one value for Critical dimensions and tolerances (mechanical.critical_dimensions)."
+      },
+      "candidateValidation": {
+        "status": "BLOCKED",
+        "state": "BLOCKED",
+        "issues": [
+          "conflicting_authoritative_input:mechanical.critical_dimensions",
+          "conflicting_authoritative_input:mechanical.material_process",
+          "candidate_not_in_preview"
+        ]
+      },
+      "geometry": {
+        "eligibility": "BLOCKED",
+        "execution": "NOT_RUN",
+        "blockers": [
+          "requirements_gate_blocked",
+          "candidate_validation_blocked"
+        ]
+      },
+      "verification": {
+        "eligibility": "BLOCKED",
+        "execution": "NOT_RUN",
+        "blockers": [
+          "geometry_not_executed"
+        ]
+      },
+      "qualification": {
+        "status": "PASS",
+        "assertions": []
+      }
+    },
+    {
+      "caseId": "contradictory_or_unmanufacturable-19-tab",
+      "category": "contradictory_or_unmanufacturable",
+      "expectedFeature": "tab",
+      "parsedFeature": "tab",
+      "expectedRequirementOutcome": "BLOCKED",
+      "parse": {
+        "status": "PASS",
+        "issues": []
+      },
+      "requirementsGate": {
+        "status": "BLOCKED",
+        "ready": false,
+        "issues": [
+          "conflicting_authoritative_input:mechanical.critical_dimensions",
+          "conflicting_authoritative_input:mechanical.material_process"
+        ],
+        "nextQuestion": "Confirm one value for Critical dimensions and tolerances (mechanical.critical_dimensions)."
+      },
+      "candidateValidation": {
+        "status": "BLOCKED",
+        "state": "BLOCKED",
+        "issues": [
+          "conflicting_authoritative_input:mechanical.critical_dimensions",
+          "conflicting_authoritative_input:mechanical.material_process",
+          "candidate_not_in_preview"
+        ]
+      },
+      "geometry": {
+        "eligibility": "BLOCKED",
+        "execution": "NOT_RUN",
+        "blockers": [
+          "requirements_gate_blocked",
+          "candidate_validation_blocked"
+        ]
+      },
+      "verification": {
+        "eligibility": "BLOCKED",
+        "execution": "NOT_RUN",
+        "blockers": [
+          "geometry_not_executed"
+        ]
+      },
+      "qualification": {
+        "status": "PASS",
+        "assertions": []
+      }
+    },
+    {
+      "caseId": "contradictory_or_unmanufacturable-20-cut",
+      "category": "contradictory_or_unmanufacturable",
+      "expectedFeature": "cut",
+      "parsedFeature": "cut",
+      "expectedRequirementOutcome": "BLOCKED",
+      "parse": {
+        "status": "PASS",
+        "issues": []
+      },
+      "requirementsGate": {
+        "status": "BLOCKED",
+        "ready": false,
+        "issues": [
+          "conflicting_authoritative_input:mechanical.critical_dimensions",
+          "conflicting_authoritative_input:mechanical.material_process"
+        ],
+        "nextQuestion": "Confirm one value for Critical dimensions and tolerances (mechanical.critical_dimensions)."
+      },
+      "candidateValidation": {
+        "status": "BLOCKED",
+        "state": "BLOCKED",
+        "issues": [
+          "conflicting_authoritative_input:mechanical.critical_dimensions",
+          "conflicting_authoritative_input:mechanical.material_process",
+          "candidate_not_in_preview"
+        ]
+      },
+      "geometry": {
+        "eligibility": "BLOCKED",
+        "execution": "NOT_RUN",
+        "blockers": [
+          "requirements_gate_blocked",
+          "candidate_validation_blocked"
+        ]
+      },
+      "verification": {
+        "eligibility": "BLOCKED",
+        "execution": "NOT_RUN",
+        "blockers": [
+          "geometry_not_executed"
+        ]
+      },
+      "qualification": {
+        "status": "PASS",
+        "assertions": []
+      }
+    },
+    {
+      "caseId": "contradictory_or_unmanufacturable-21-bendRelief",
+      "category": "contradictory_or_unmanufacturable",
+      "expectedFeature": "bendRelief",
+      "parsedFeature": "bendRelief",
+      "expectedRequirementOutcome": "BLOCKED",
+      "parse": {
+        "status": "PASS",
+        "issues": []
+      },
+      "requirementsGate": {
+        "status": "BLOCKED",
+        "ready": false,
+        "issues": [
+          "conflicting_authoritative_input:mechanical.critical_dimensions",
+          "conflicting_authoritative_input:mechanical.material_process"
+        ],
+        "nextQuestion": "Confirm one value for Critical dimensions and tolerances (mechanical.critical_dimensions)."
+      },
+      "candidateValidation": {
+        "status": "BLOCKED",
+        "state": "BLOCKED",
+        "issues": [
+          "conflicting_authoritative_input:mechanical.critical_dimensions",
+          "conflicting_authoritative_input:mechanical.material_process",
+          "candidate_not_in_preview"
+        ]
+      },
+      "geometry": {
+        "eligibility": "BLOCKED",
+        "execution": "NOT_RUN",
+        "blockers": [
+          "requirements_gate_blocked",
+          "candidate_validation_blocked"
+        ]
+      },
+      "verification": {
+        "eligibility": "BLOCKED",
+        "execution": "NOT_RUN",
+        "blockers": [
+          "geometry_not_executed"
+        ]
+      },
+      "qualification": {
+        "status": "PASS",
+        "assertions": []
+      }
+    },
+    {
+      "caseId": "contradictory_or_unmanufacturable-22-cornerRelief",
+      "category": "contradictory_or_unmanufacturable",
+      "expectedFeature": "cornerRelief",
+      "parsedFeature": "cornerRelief",
+      "expectedRequirementOutcome": "BLOCKED",
+      "parse": {
+        "status": "PASS",
+        "issues": []
+      },
+      "requirementsGate": {
+        "status": "BLOCKED",
+        "ready": false,
+        "issues": [
+          "conflicting_authoritative_input:mechanical.critical_dimensions",
+          "conflicting_authoritative_input:mechanical.material_process"
+        ],
+        "nextQuestion": "Confirm one value for Critical dimensions and tolerances (mechanical.critical_dimensions)."
+      },
+      "candidateValidation": {
+        "status": "BLOCKED",
+        "state": "BLOCKED",
+        "issues": [
+          "conflicting_authoritative_input:mechanical.critical_dimensions",
+          "conflicting_authoritative_input:mechanical.material_process",
+          "candidate_not_in_preview"
+        ]
+      },
+      "geometry": {
+        "eligibility": "BLOCKED",
+        "execution": "NOT_RUN",
+        "blockers": [
+          "requirements_gate_blocked",
+          "candidate_validation_blocked"
+        ]
+      },
+      "verification": {
+        "eligibility": "BLOCKED",
+        "execution": "NOT_RUN",
+        "blockers": [
+          "geometry_not_executed"
+        ]
+      },
+      "qualification": {
+        "status": "PASS",
+        "assertions": []
+      }
+    },
+    {
+      "caseId": "contradictory_or_unmanufacturable-23-variableShell",
+      "category": "contradictory_or_unmanufacturable",
+      "expectedFeature": "variableShell",
+      "parsedFeature": "variableShell",
+      "expectedRequirementOutcome": "BLOCKED",
+      "parse": {
+        "status": "PASS",
+        "issues": []
+      },
+      "requirementsGate": {
+        "status": "BLOCKED",
+        "ready": false,
+        "issues": [
+          "conflicting_authoritative_input:mechanical.critical_dimensions",
+          "conflicting_authoritative_input:mechanical.material_process"
+        ],
+        "nextQuestion": "Confirm one value for Critical dimensions and tolerances (mechanical.critical_dimensions)."
+      },
+      "candidateValidation": {
+        "status": "BLOCKED",
+        "state": "BLOCKED",
+        "issues": [
+          "conflicting_authoritative_input:mechanical.critical_dimensions",
+          "conflicting_authoritative_input:mechanical.material_process",
+          "candidate_not_in_preview"
+        ]
+      },
+      "geometry": {
+        "eligibility": "BLOCKED",
+        "execution": "NOT_RUN",
+        "blockers": [
+          "requirements_gate_blocked",
+          "candidate_validation_blocked"
+        ]
+      },
+      "verification": {
+        "eligibility": "BLOCKED",
+        "execution": "NOT_RUN",
+        "blockers": [
+          "geometry_not_executed"
+        ]
+      },
+      "qualification": {
+        "status": "PASS",
+        "assertions": []
+      }
+    },
+    {
+      "caseId": "contradictory_or_unmanufacturable-24-sketchExtrude",
+      "category": "contradictory_or_unmanufacturable",
+      "expectedFeature": "sketchExtrude",
+      "parsedFeature": "sketchExtrude",
+      "expectedRequirementOutcome": "BLOCKED",
+      "parse": {
+        "status": "PASS",
+        "issues": []
+      },
+      "requirementsGate": {
+        "status": "BLOCKED",
+        "ready": false,
+        "issues": [
+          "conflicting_authoritative_input:mechanical.critical_dimensions",
+          "conflicting_authoritative_input:mechanical.material_process"
+        ],
+        "nextQuestion": "Confirm one value for Critical dimensions and tolerances (mechanical.critical_dimensions)."
+      },
+      "candidateValidation": {
+        "status": "BLOCKED",
+        "state": "BLOCKED",
+        "issues": [
+          "conflicting_authoritative_input:mechanical.critical_dimensions",
+          "conflicting_authoritative_input:mechanical.material_process",
+          "candidate_not_in_preview"
+        ]
+      },
+      "geometry": {
+        "eligibility": "BLOCKED",
+        "execution": "NOT_RUN",
+        "blockers": [
+          "requirements_gate_blocked",
+          "candidate_validation_blocked"
+        ]
+      },
+      "verification": {
+        "eligibility": "BLOCKED",
+        "execution": "NOT_RUN",
+        "blockers": [
+          "geometry_not_executed"
+        ]
+      },
+      "qualification": {
+        "status": "PASS",
+        "assertions": []
+      }
+    },
+    {
+      "caseId": "contradictory_or_unmanufacturable-25-revolve",
+      "category": "contradictory_or_unmanufacturable",
+      "expectedFeature": "revolve",
+      "parsedFeature": "revolve",
+      "expectedRequirementOutcome": "BLOCKED",
+      "parse": {
+        "status": "PASS",
+        "issues": []
+      },
+      "requirementsGate": {
+        "status": "BLOCKED",
+        "ready": false,
+        "issues": [
+          "conflicting_authoritative_input:mechanical.critical_dimensions",
+          "conflicting_authoritative_input:mechanical.material_process"
+        ],
+        "nextQuestion": "Confirm one value for Critical dimensions and tolerances (mechanical.critical_dimensions)."
+      },
+      "candidateValidation": {
+        "status": "BLOCKED",
+        "state": "BLOCKED",
+        "issues": [
+          "conflicting_authoritative_input:mechanical.critical_dimensions",
+          "conflicting_authoritative_input:mechanical.material_process",
+          "candidate_not_in_preview"
+        ]
+      },
+      "geometry": {
+        "eligibility": "BLOCKED",
+        "execution": "NOT_RUN",
+        "blockers": [
+          "requirements_gate_blocked",
+          "candidate_validation_blocked"
+        ]
+      },
+      "verification": {
+        "eligibility": "BLOCKED",
+        "execution": "NOT_RUN",
+        "blockers": [
+          "geometry_not_executed"
+        ]
+      },
+      "qualification": {
+        "status": "PASS",
+        "assertions": []
+      }
+    },
+    {
+      "caseId": "contradictory_or_unmanufacturable-26-sweep",
+      "category": "contradictory_or_unmanufacturable",
+      "expectedFeature": "sweep",
+      "parsedFeature": "sweep",
+      "expectedRequirementOutcome": "BLOCKED",
+      "parse": {
+        "status": "PASS",
+        "issues": []
+      },
+      "requirementsGate": {
+        "status": "BLOCKED",
+        "ready": false,
+        "issues": [
+          "conflicting_authoritative_input:mechanical.critical_dimensions",
+          "conflicting_authoritative_input:mechanical.material_process"
+        ],
+        "nextQuestion": "Confirm one value for Critical dimensions and tolerances (mechanical.critical_dimensions)."
+      },
+      "candidateValidation": {
+        "status": "BLOCKED",
+        "state": "BLOCKED",
+        "issues": [
+          "conflicting_authoritative_input:mechanical.critical_dimensions",
+          "conflicting_authoritative_input:mechanical.material_process",
+          "candidate_not_in_preview"
+        ]
+      },
+      "geometry": {
+        "eligibility": "BLOCKED",
+        "execution": "NOT_RUN",
+        "blockers": [
+          "requirements_gate_blocked",
+          "candidate_validation_blocked"
+        ]
+      },
+      "verification": {
+        "eligibility": "BLOCKED",
+        "execution": "NOT_RUN",
+        "blockers": [
+          "geometry_not_executed"
+        ]
+      },
+      "qualification": {
+        "status": "PASS",
+        "assertions": []
+      }
+    },
+    {
+      "caseId": "contradictory_or_unmanufacturable-27-loft",
+      "category": "contradictory_or_unmanufacturable",
+      "expectedFeature": "loft",
+      "parsedFeature": "loft",
+      "expectedRequirementOutcome": "BLOCKED",
+      "parse": {
+        "status": "PASS",
+        "issues": []
+      },
+      "requirementsGate": {
+        "status": "BLOCKED",
+        "ready": false,
+        "issues": [
+          "conflicting_authoritative_input:mechanical.critical_dimensions",
+          "conflicting_authoritative_input:mechanical.material_process"
+        ],
+        "nextQuestion": "Confirm one value for Critical dimensions and tolerances (mechanical.critical_dimensions)."
+      },
+      "candidateValidation": {
+        "status": "BLOCKED",
+        "state": "BLOCKED",
+        "issues": [
+          "conflicting_authoritative_input:mechanical.critical_dimensions",
+          "conflicting_authoritative_input:mechanical.material_process",
+          "candidate_not_in_preview"
+        ]
+      },
+      "geometry": {
+        "eligibility": "BLOCKED",
+        "execution": "NOT_RUN",
+        "blockers": [
+          "requirements_gate_blocked",
+          "candidate_validation_blocked"
+        ]
+      },
+      "verification": {
+        "eligibility": "BLOCKED",
+        "execution": "NOT_RUN",
+        "blockers": [
+          "geometry_not_executed"
+        ]
+      },
+      "qualification": {
+        "status": "PASS",
+        "assertions": []
+      }
+    },
+    {
+      "caseId": "contradictory_or_unmanufacturable-28-mirror",
+      "category": "contradictory_or_unmanufacturable",
+      "expectedFeature": "mirror",
+      "parsedFeature": "mirror",
+      "expectedRequirementOutcome": "BLOCKED",
+      "parse": {
+        "status": "PASS",
+        "issues": []
+      },
+      "requirementsGate": {
+        "status": "BLOCKED",
+        "ready": false,
+        "issues": [
+          "conflicting_authoritative_input:mechanical.critical_dimensions",
+          "conflicting_authoritative_input:mechanical.material_process"
+        ],
+        "nextQuestion": "Confirm one value for Critical dimensions and tolerances (mechanical.critical_dimensions)."
+      },
+      "candidateValidation": {
+        "status": "BLOCKED",
+        "state": "BLOCKED",
+        "issues": [
+          "conflicting_authoritative_input:mechanical.critical_dimensions",
+          "conflicting_authoritative_input:mechanical.material_process",
+          "candidate_not_in_preview"
+        ]
+      },
+      "geometry": {
+        "eligibility": "BLOCKED",
+        "execution": "NOT_RUN",
+        "blockers": [
+          "requirements_gate_blocked",
+          "candidate_validation_blocked"
+        ]
+      },
+      "verification": {
+        "eligibility": "BLOCKED",
+        "execution": "NOT_RUN",
+        "blockers": [
+          "geometry_not_executed"
+        ]
+      },
+      "qualification": {
+        "status": "PASS",
+        "assertions": []
+      }
+    },
+    {
+      "caseId": "contradictory_or_unmanufacturable-29-boolean",
+      "category": "contradictory_or_unmanufacturable",
+      "expectedFeature": "boolean",
+      "parsedFeature": "boolean",
+      "expectedRequirementOutcome": "BLOCKED",
+      "parse": {
+        "status": "PASS",
+        "issues": []
+      },
+      "requirementsGate": {
+        "status": "BLOCKED",
+        "ready": false,
+        "issues": [
+          "conflicting_authoritative_input:mechanical.critical_dimensions",
+          "conflicting_authoritative_input:mechanical.material_process"
+        ],
+        "nextQuestion": "Confirm one value for Critical dimensions and tolerances (mechanical.critical_dimensions)."
+      },
+      "candidateValidation": {
+        "status": "BLOCKED",
+        "state": "BLOCKED",
+        "issues": [
+          "conflicting_authoritative_input:mechanical.critical_dimensions",
+          "conflicting_authoritative_input:mechanical.material_process",
+          "candidate_not_in_preview"
+        ]
+      },
+      "geometry": {
+        "eligibility": "BLOCKED",
+        "execution": "NOT_RUN",
+        "blockers": [
+          "requirements_gate_blocked",
+          "candidate_validation_blocked"
+        ]
+      },
+      "verification": {
+        "eligibility": "BLOCKED",
+        "execution": "NOT_RUN",
+        "blockers": [
+          "geometry_not_executed"
+        ]
+      },
+      "qualification": {
+        "status": "PASS",
+        "assertions": []
+      }
+    },
+    {
+      "caseId": "contradictory_or_unmanufacturable-30-splitBody",
+      "category": "contradictory_or_unmanufacturable",
+      "expectedFeature": "splitBody",
+      "parsedFeature": "splitBody",
+      "expectedRequirementOutcome": "BLOCKED",
+      "parse": {
+        "status": "PASS",
+        "issues": []
+      },
+      "requirementsGate": {
+        "status": "BLOCKED",
+        "ready": false,
+        "issues": [
+          "conflicting_authoritative_input:mechanical.critical_dimensions",
+          "conflicting_authoritative_input:mechanical.material_process"
+        ],
+        "nextQuestion": "Confirm one value for Critical dimensions and tolerances (mechanical.critical_dimensions)."
+      },
+      "candidateValidation": {
+        "status": "BLOCKED",
+        "state": "BLOCKED",
+        "issues": [
+          "conflicting_authoritative_input:mechanical.critical_dimensions",
+          "conflicting_authoritative_input:mechanical.material_process",
+          "candidate_not_in_preview"
+        ]
+      },
+      "geometry": {
+        "eligibility": "BLOCKED",
+        "execution": "NOT_RUN",
+        "blockers": [
+          "requirements_gate_blocked",
+          "candidate_validation_blocked"
+        ]
+      },
+      "verification": {
+        "eligibility": "BLOCKED",
+        "execution": "NOT_RUN",
+        "blockers": [
+          "geometry_not_executed"
+        ]
+      },
+      "qualification": {
+        "status": "PASS",
+        "assertions": []
+      }
+    }
+  ],
+  "summary": {
+    "total": 150,
+    "categoryCounts": {
+      "ko_practical": 30,
+      "en_practical": 30,
+      "mixed_units": 30,
+      "missing_required": 30,
+      "contradictory_or_unmanufacturable": 30
+    },
+    "parsePass": 150,
+    "requirementsReady": 90,
+    "negativeCorrectlyBlocked": 60,
+    "candidatePass": 90,
+    "candidateBlocked": 60,
+    "geometryEligible": 90,
+    "geometryBlocked": 60,
+    "geometryExecution": {
+      "PASS": 0,
+      "FAIL": 0,
+      "NOT_RUN": 150
+    },
+    "verificationEligibility": {
+      "ELIGIBLE": 0,
+      "BLOCKED": 150
+    },
+    "verificationExecution": {
+      "PASS": 0,
+      "FAIL": 0,
+      "NOT_RUN": 150
+    },
+    "expectedOutcomePass": 150,
+    "expectedOutcomeFail": 0
+  },
+  "localQualification": {
+    "status": "PASS",
+    "scope": "parse_requirements_candidate_and_eligibility_only"
+  },
+  "commercialCampaign": {
+    "status": "NOT_RUN",
+    "releaseEligible": false,
+    "blockers": [
+      "real_ai_model_campaign_not_run",
+      "geometry_execution_not_run",
+      "verification_execution_not_run",
+      "external_commercial_receipt_not_evaluated"
+    ]
+  }
+}

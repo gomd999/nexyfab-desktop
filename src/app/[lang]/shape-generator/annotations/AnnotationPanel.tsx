@@ -348,7 +348,7 @@ export default function AnnotationPanel({
   placementMode,
   onPlacementModeChange,
   onClose,
-  isKo,
+  isKo: _isKo,
 }: AnnotationPanelProps) {
   const pathname = usePathname();
   const seg = pathname?.split('/').filter(Boolean)[0] ?? 'en';
@@ -789,7 +789,7 @@ export default function AnnotationPanel({
         {/* ── Tolerance Stack Analyzer ── */}
         <div style={{ ...sectionTitle, marginTop: 16 }}>{t.toleranceStack}</div>
         <ToleranceStackPanel
-          lang={isKo ? 'ko' : 'en'}
+          lang={lang}
           initialEntries={dimensionAnnotations.slice(0, 4).map((d) => ({
             id: d.id,
             label: d.label || `dim_${d.id.slice(0, 5)}`,

@@ -151,6 +151,7 @@ export function evaluateSevenDayOperations(samples, options = {}) {
   const memoryLimitsMb = { ...DEFAULT_MEMORY_LIMITS_MB, ...(options.memoryLimitsMb ?? {}) };
   const requireRuntimeMemoryLimitEvidence = options.requireRuntimeMemoryLimitEvidence === true;
   const releaseBinding = options.releaseBinding ?? null;
+  const now = Number.isFinite(options.now) ? options.now : Date.now();
   if (new Set(requiredServices).size !== requiredServices.length) blockers.push('required_services_duplicate');
   if (releaseBinding) {
     if (releaseBinding.environment !== (options.environment ?? 'production')) blockers.push('release_binding_environment_mismatch');
@@ -169,13 +170,23 @@ export function evaluateSevenDayOperations(samples, options = {}) {
     const excludedSet = new Set(excluded.map(item => item.sample));
     const rows = allRows.filter(sample => !excludedSet.has(sample));
     const windows = analyzeSampleWindows(rows, expectedWindowHours);
-    const invalidMetrics = rows.filter(row => row.schema !== 'nexyfab.railway-operations-sample.v1'
+    const invalidMetrics = rows.filter(row => {
+      const capturedAt = Date.parse(row?.capturedAt);
+      const windowUntil = Date.parse(row?.window?.until);
+      const httpInvalid = service === 'web' && (!row.http
+        || !Number.isFinite(row.http.total) || row.http.total < 0
+        || !Number.isFinite(row.http['5xx']) || row.http['5xx'] < 0
+        || row.http['5xx'] > row.http.total);
+      return row.schema !== 'nexyfab.railway-operations-sample.v1'
       || row.sourceService !== requiredServiceSources[service]
       || row.environment !== (options.environment ?? 'production')
-      || !Number.isFinite(Date.parse(row.capturedAt))
+      || !Number.isFinite(capturedAt) || !Number.isFinite(windowUntil)
+      || capturedAt < windowUntil || capturedAt > now + 5 * 60_000
       || !Array.isArray(row.deploymentIds) || !row.deploymentIds.length || row.deploymentIds.some(id => typeof id !== 'string' || !id)
-      || typeof row.memory?.max_mb !== 'number' || !Number.isFinite(row.memory.max_mb)
-      || typeof row.cpu?.max !== 'number' || !Number.isFinite(row.cpu.max));
+      || typeof row.memory?.max_mb !== 'number' || !Number.isFinite(row.memory.max_mb) || row.memory.max_mb < 0
+      || typeof row.cpu?.max !== 'number' || !Number.isFinite(row.cpu.max) || row.cpu.max < 0
+      || httpInvalid;
+    });
     const maxMemoryMb = Math.max(0, ...rows.map(row => Number(row.memory?.max_mb ?? 0)));
     const totalRequests = rows.reduce((sum, row) => sum + Number(row.http?.total ?? 0), 0);
     const total5xx = rows.reduce((sum, row) => sum + Number(row.http?.['5xx'] ?? 0), 0);
@@ -197,7 +208,8 @@ export function evaluateSevenDayOperations(samples, options = {}) {
     if (windows.durationMismatches) blockers.push(`window_duration_mismatch:${service}:${windows.durationMismatches}`);
     if (invalidMetrics.length) blockers.push(`metrics_invalid:${service}:${invalidMetrics.length}`);
     if (Number.isFinite(memoryLimit) && maxMemoryMb > memoryLimit) blockers.push(`memory_target_failed:${service}:${maxMemoryMb.toFixed(1)}mb`);
-    if (service === 'web' && (rows.some(row => !row.http || typeof row.http.total !== 'number' || typeof row.http['5xx'] !== 'number') || totalRequests <= 0)) {
+    if (service === 'web' && (rows.some(row => !row.http || !Number.isFinite(row.http.total) || !Number.isFinite(row.http['5xx'])
+      || row.http.total < 0 || row.http['5xx'] < 0 || row.http['5xx'] > row.http.total) || totalRequests <= 0)) {
       blockers.push('http_evidence_missing:web');
     }
     if (service === 'web' && errorRatePercent > http5xxMaxPercent) blockers.push(`http_5xx_target_failed:${errorRatePercent.toFixed(2)}pct`);
@@ -239,6 +251,7 @@ export function evaluateSevenDayOperations(samples, options = {}) {
     },
     release: releaseBinding ? {
       buildId: releaseBinding.buildId,
+      head: releaseBinding.head ?? releaseBinding.gitHead ?? null,
       qualifyingFrom: releaseBinding.qualifyingFrom,
       environment: releaseBinding.environment,
       deployments: Object.fromEntries(requiredServices.map(service => [service, releaseBinding.services?.[service]?.deploymentId ?? null])),
@@ -261,22 +274,113 @@ function loadJsonEvidence(envName) {
   };
 }
 
+function loadJsonDirectory(directory) {
+  if (!fs.existsSync(directory)) return { values: [], evidence: [] };
+  const files = fs.readdirSync(directory).filter(name => name.endsWith('.json')).sort();
+  const values = [];
+  const evidence = [];
+  for (const name of files) {
+    const absolute = path.join(directory, name);
+    const bytes = fs.readFileSync(absolute);
+    values.push(JSON.parse(bytes.toString('utf8')));
+    evidence.push({
+      file: path.relative(process.cwd(), absolute).replaceAll('\\', '/'),
+      sha256: crypto.createHash('sha256').update(bytes).digest('hex'),
+    });
+  }
+  return { values, evidence };
+}
+
+const canonical = value => {
+  if (Array.isArray(value)) return `[${value.map(canonical).join(',')}]`;
+  if (value && typeof value === 'object') return `{${Object.entries(value).sort(([a], [b]) => a.localeCompare(b)).map(([key, item]) => `${JSON.stringify(key)}:${canonical(item)}`).join(',')}}`;
+  return JSON.stringify(value);
+};
+
+export function signSevenDayOperationsReceipt(receipt, secret = process.env.GENERATION_EVIDENCE_SIGNING_SECRET ?? '') {
+  const payload = { ...(receipt ?? {}) };
+  delete payload.receiptSha256;
+  delete payload.receiptHmacSha256;
+  const receiptSha256 = crypto.createHash('sha256').update(canonical(payload)).digest('hex');
+  const receiptHmacSha256 = secret.length >= 32
+    ? crypto.createHmac('sha256', secret).update(canonical({ ...payload, receiptSha256 })).digest('hex')
+    : null;
+  return { ...payload, receiptSha256, receiptHmacSha256 };
+}
+
+export function verifySevenDayOperationsReceiptSignature(receipt, secret = process.env.GENERATION_EVIDENCE_SIGNING_SECRET ?? '') {
+  if (!receipt || typeof receipt !== 'object' || secret.length < 32
+    || !/^[a-f0-9]{64}$/.test(String(receipt.receiptSha256 ?? ''))
+    || !/^[a-f0-9]{64}$/.test(String(receipt.receiptHmacSha256 ?? ''))) return false;
+  const payload = { ...receipt };
+  delete payload.receiptSha256;
+  delete payload.receiptHmacSha256;
+  const receiptSha256 = crypto.createHash('sha256').update(canonical(payload)).digest('hex');
+  if (receiptSha256 !== receipt.receiptSha256) return false;
+  const expected = crypto.createHmac('sha256', secret).update(canonical({ ...payload, receiptSha256 })).digest('hex');
+  return crypto.timingSafeEqual(Buffer.from(expected, 'hex'), Buffer.from(receipt.receiptHmacSha256, 'hex'));
+}
+
+function loadBoundJson(binding, root) {
+  if (!binding || typeof binding.file !== 'string' || !/^[a-f0-9]{64}$/.test(String(binding.sha256 ?? ''))) return null;
+  const resolvedRoot = path.resolve(root);
+  const absolute = path.resolve(resolvedRoot, binding.file);
+  if (absolute !== resolvedRoot && !absolute.startsWith(`${resolvedRoot}${path.sep}`)) return null;
+  try {
+    if (!fs.statSync(absolute).isFile() || fs.lstatSync(absolute).isSymbolicLink()) return null;
+    const realRoot = fs.realpathSync(resolvedRoot);
+    const realFile = fs.realpathSync(absolute);
+    if (realFile !== realRoot && !realFile.startsWith(`${realRoot}${path.sep}`)) return null;
+    const bytes = fs.readFileSync(realFile);
+    if (crypto.createHash('sha256').update(bytes).digest('hex') !== binding.sha256) return null;
+    return JSON.parse(bytes.toString('utf8'));
+  } catch {
+    return null;
+  }
+}
+
+export function verifySevenDayOperationsReceiptBindings(receipt, root = process.cwd()) {
+  const bindings = receipt?.evidenceBindings;
+  if (!Array.isArray(bindings?.samples) || !bindings.samples.length
+    || !Array.isArray(bindings?.costSnapshots) || bindings.costSnapshots.length < 2) return false;
+  const samples = bindings.samples.map(binding => loadBoundJson(binding, root));
+  const costSnapshots = bindings.costSnapshots.map(binding => loadBoundJson(binding, root));
+  const releaseBinding = loadBoundJson(bindings.release, root);
+  const policy = loadBoundJson(bindings.policy, root);
+  if (samples.some(value => value === null) || costSnapshots.some(value => value === null) || !releaseBinding || !policy) return false;
+  const recomputed = evaluateSevenDayOperations(samples, {
+    costSnapshots,
+    environment: receipt?.release?.environment,
+    monthlyCostBudgetUsd: policy.monthlyCostBudgetUsd,
+    requiredCostServices: receipt?.cost?.scopedServices,
+    releaseBinding,
+    requiredCoverageHours: policy.requiredCoverageHours,
+    requiredSampleCount: policy.requiredSampleCount,
+    expectedWindowHours: policy.expectedWindowHours,
+    http5xxMaxPercent: policy.http5xxMaxPercent,
+    memoryLimitsMb: policy.memoryLimitsMb,
+    requireRuntimeMemoryLimitEvidence: policy.requireRuntimeMemoryLimitEvidence,
+    now: Date.parse(receipt.generatedAt),
+  });
+  const core = value => ({
+    schema: value?.schema, ok: value?.ok, services: value?.services, cost: value?.cost,
+    policy: value?.policy, release: value?.release, blockers: value?.blockers,
+  });
+  return canonical(core(recomputed)) === canonical(core(receipt));
+}
+
 function main() {
   const directory = path.resolve(process.env.OPERATIONS_SAMPLE_DIR ?? 'docs/evidence/operations/samples');
-  const samples = fs.existsSync(directory)
-    ? fs.readdirSync(directory).filter(name => name.endsWith('.json')).map(name => JSON.parse(fs.readFileSync(path.join(directory, name), 'utf8')))
-    : [];
+  const samples = loadJsonDirectory(directory);
   const costDirectory = path.resolve(process.env.OPERATIONS_COST_DIR ?? 'docs/evidence/operations/cost');
-  const costSnapshots = fs.existsSync(costDirectory)
-    ? fs.readdirSync(costDirectory).filter(name => name.endsWith('.json')).map(name => JSON.parse(fs.readFileSync(path.join(costDirectory, name), 'utf8')))
-    : [];
+  const costSnapshots = loadJsonDirectory(costDirectory);
   const requiredCostServices = String(process.env.RAILWAY_COST_SERVICES ?? REQUIRED_COST_SERVICES.join(','))
     .split(',').map(value => value.trim()).filter(Boolean);
   const release = loadJsonEvidence('OPERATIONS_RELEASE_BINDING_FILE');
   const policy = loadJsonEvidence('OPERATIONS_POLICY_FILE');
   const policyValue = policy.value ?? {};
-  const receipt = evaluateSevenDayOperations(samples, {
-    costSnapshots,
+  let receipt = evaluateSevenDayOperations(samples.values, {
+    costSnapshots: costSnapshots.values,
     environment: process.env.OPERATIONS_ENVIRONMENT ?? 'production',
     monthlyCostBudgetUsd: Number(process.env.RAILWAY_MONTHLY_COST_BUDGET_USD ?? policyValue.monthlyCostBudgetUsd ?? DEFAULT_MONTHLY_COST_BUDGET_USD),
     requiredCostServices,
@@ -288,7 +392,13 @@ function main() {
     memoryLimitsMb: policyValue.memoryLimitsMb,
     requireRuntimeMemoryLimitEvidence: policyValue.requireRuntimeMemoryLimitEvidence,
   });
-  receipt.evidenceBindings = { release: release.evidence, policy: policy.evidence };
+  receipt.evidenceBindings = {
+    release: release.evidence,
+    policy: policy.evidence,
+    samples: samples.evidence,
+    costSnapshots: costSnapshots.evidence,
+  };
+  receipt = signSevenDayOperationsReceipt(receipt);
   const output = path.resolve(process.env.SEVEN_DAY_OPERATIONS_OUTPUT ?? 'docs/evidence/release/seven-day-operations-receipt.json');
   fs.mkdirSync(path.dirname(output), { recursive: true });
   fs.writeFileSync(output, `${JSON.stringify(receipt, null, 2)}\n`);

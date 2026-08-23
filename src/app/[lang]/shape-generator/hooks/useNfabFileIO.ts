@@ -24,20 +24,19 @@ import { SHAPE_MAP, computeSceneParamApply } from '../shapes';
 import { useProjectsStore } from '@/hooks/useProjects';
 import type { FeatureHistory, HistoryNode } from '../useFeatureStack';
 import type { Toast } from '../useToast';
+import { createCommercialLocalizer } from '@/lib/i18n/commercialLocalizer';
 
 type AddToast = (type: Toast['type'], msg: string, duration?: number, action?: Toast['action']) => void;
 
 function notifyProjectVersionConflict(addToast: AddToast, lang: string, projectId: string) {
-  const isKo = lang === 'ko' || lang === 'kr';
-  const msg = isKo
-    ? '서버에 더 최신 프로젝트가 있습니다(다른 탭·기기에서 먼저 저장됨). 버튼을 누르면 이 탭을 서버 최신본으로 다시 불러옵니다. 이 탭에만 있는 변경은 사라집니다.'
-    : 'A newer version exists on the server (saved from another tab or device). Use the button to reload this tab from the server. Changes only in this tab will be lost.';
+  const L = createCommercialLocalizer(lang);
+  const msg = L('서버에 더 최신 프로젝트가 있습니다(다른 탭·기기에서 먼저 저장됨). 버튼을 누르면 이 탭을 서버 최신본으로 다시 불러옵니다. 이 탭에만 있는 변경은 사라집니다.', 'A newer version exists on the server (saved from another tab or device). Use the button to reload this tab from the server. Changes only in this tab will be lost.');
   addToast(
     'warning',
     msg,
     14_000,
     {
-      label: isKo ? '서버에서 다시 불러오기' : 'Reload from server',
+      label: L('서버에서 다시 불러오기', 'Reload from server'),
       onClick: () => {
         const u = new URL(window.location.href);
         u.searchParams.set('projectId', projectId);
@@ -98,6 +97,7 @@ export function useNfabFileIO(deps: Deps) {
     getGlobalVariables,
     restoreGlobalVariables,
   } = deps;
+  const L = createCommercialLocalizer(lang);
 
   const [desktopFilePath, setDesktopFilePath] = useState<string | null>(null);
   const [desktopDirty, setDesktopDirty] = useState(false);
@@ -206,7 +206,7 @@ export function useNfabFileIO(deps: Deps) {
       );
       if (savedPath) setDesktopFilePath(savedPath);
       setDesktopDirty(false);
-      addToast('success', lang === 'ko' ? '프로젝트 파일이 저장되었습니다 (.nfab)' : 'Project saved (.nfab)');
+      addToast('success', L('프로젝트 파일이 저장되었습니다 (.nfab)', 'Project saved (.nfab)'));
     } catch (err) {
       addToast('error', (err instanceof Error ? err.message : String(err)));
     }
@@ -219,7 +219,7 @@ export function useNfabFileIO(deps: Deps) {
     if (acc.hydrated && !acc.canEdit) {
       addToast(
         'warning',
-        lang === 'ko' ? '이 프로젝트는 보기 전용입니다. 클라우드에 저장할 수 없습니다.' : 'This project is read-only. Cloud save is disabled.',
+        L('이 프로젝트는 보기 전용입니다. 클라우드에 저장할 수 없습니다.', 'This project is read-only. Cloud save is disabled.'),
       );
       return;
     }
@@ -245,9 +245,7 @@ export function useNfabFileIO(deps: Deps) {
       }
       addToast(
         'info',
-        lang === 'ko'
-          ? '저장하려면 가입이 필요합니다 — 가입하시면 작업이 자동으로 저장됩니다'
-          : 'Sign up to save — your work will be saved automatically',
+        L('저장하려면 가입이 필요합니다 — 가입하시면 작업이 자동으로 저장됩니다', 'Sign up to save — your work will be saved automatically'),
       );
       return;
     }
@@ -272,7 +270,7 @@ export function useNfabFileIO(deps: Deps) {
         if (updated) {
           cloudServerUpdatedAtRef.current = updated.updatedAt;
           cloudDirtyRef.current = false;
-          addToast('success', lang === 'ko' ? `클라우드에 저장되었습니다: ${project.name}` : `Saved to cloud: ${project.name}`);
+          addToast('success', L(`클라우드에 저장되었습니다: ${project.name}`, `Saved to cloud: ${project.name}`));
         } else {
           const code = useProjectsStore.getState().lastErrorCode;
           const err = useProjectsStore.getState().error;
@@ -280,14 +278,14 @@ export function useNfabFileIO(deps: Deps) {
             useCloudProjectAccessStore.getState().setFromApiProject(existingId, { role: 'viewer', canEdit: false });
             addToast(
               'warning',
-              lang === 'ko' ? '이 프로젝트는 보기 전용입니다.' : 'This project is read-only.',
+              L('이 프로젝트는 보기 전용입니다.', 'This project is read-only.'),
             );
             useProjectsStore.getState().clearError();
           } else if (code === 'PROJECT_VERSION_CONFLICT') {
             notifyProjectVersionConflict(addToast, lang, existingId);
             useProjectsStore.getState().clearError();
           } else {
-            addToast('error', err ?? (lang === 'ko' ? '클라우드 저장 실패' : 'Cloud save failed'));
+            addToast('error', err ?? (L('클라우드 저장 실패', 'Cloud save failed')));
           }
         }
       } else {
@@ -301,9 +299,9 @@ export function useNfabFileIO(deps: Deps) {
           cloudProjectIdRef.current = saved.id;
           cloudServerUpdatedAtRef.current = saved.updatedAt;
           cloudDirtyRef.current = false;
-          addToast('success', lang === 'ko' ? `클라우드에 저장되었습니다: ${project.name}` : `Saved to cloud: ${project.name}`);
+          addToast('success', L(`클라우드에 저장되었습니다: ${project.name}`, `Saved to cloud: ${project.name}`));
         } else {
-          addToast('error', lang === 'ko' ? '클라우드 저장 실패' : 'Cloud save failed');
+          addToast('error', L('클라우드 저장 실패', 'Cloud save failed'));
         }
       }
     } catch (err) {
@@ -429,10 +427,10 @@ export function useNfabFileIO(deps: Deps) {
         setDesktopFilePath(project.__path);
         setDesktopDirty(false);
       }
-      addToast('success', lang === 'ko' ? `프로젝트를 불러왔습니다: ${project.name}` : `Loaded: ${project.name}`);
+      addToast('success', L(`프로젝트를 불러왔습니다: ${project.name}`, `Loaded: ${project.name}`));
     } catch (err) {
       if (err instanceof Error && err.message === 'No file selected') return;
-      addToast('error', lang === 'ko' ? `프로젝트 불러오기 실패: ${err instanceof Error ? err.message : String(err)}` : `Load failed: ${err instanceof Error ? err.message : String(err)}`);
+      addToast('error', L(`프로젝트 불러오기 실패: ${err instanceof Error ? err.message : String(err)}`, `Load failed: ${err instanceof Error ? err.message : String(err)}`));
     }
   }, [applyLoadedNfabProject, addToast, lang]);
 
@@ -444,9 +442,9 @@ export function useNfabFileIO(deps: Deps) {
       applyLoadedNfabProject(project);
       setDesktopFilePath(project.__path);
       setDesktopDirty(false);
-      addToast('success', lang === 'ko' ? `불러옴: ${project.name}` : `Opened: ${project.name}`);
+      addToast('success', L(`불러옴: ${project.name}`, `Opened: ${project.name}`));
     } catch {
-      addToast('error', lang === 'ko' ? `파일 열기 실패: ${path}` : `Failed to open: ${path}`);
+      addToast('error', L(`파일 열기 실패: ${path}`, `Failed to open: ${path}`));
     }
   }, [applyLoadedNfabProject, addToast, lang]);
 

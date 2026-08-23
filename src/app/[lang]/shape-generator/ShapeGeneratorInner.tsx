@@ -4,6 +4,8 @@
 
 import React, { useState, useMemo, useCallback, useRef, useEffect, useLayoutEffect } from 'react';
 import { isKorean } from '@/lib/i18n/normalize';
+import { createCommercialLocalizer } from '@/lib/i18n/commercialLocalizer';
+import { formatDate } from '@/lib/i18n/format';
 import { useUIStore } from './store/uiStore';
 import { useSelectionStore } from './store/selectionStore';
 import { useCanvasSelectionHandlers } from './hooks/useCanvasSelectionHandlers';
@@ -79,7 +81,7 @@ import { useFEAWorker } from './workers/useFEAWorker';
 import { useDFMWorker } from './workers/useDFMWorker';
 import { usePipelineWorker } from './workers/usePipelineWorker';
 import { useInterferenceWorker } from './workers/useInterferenceWorker';
-import { useFeatureStack, type FeatureHistory } from './useFeatureStack';
+import { useFeatureStack, type FeatureHistory, type HistoryNode } from './useFeatureStack';
 import { useShapeCart } from './useShapeCart';
 import { exportBomCSV, exportBomExcel, estimateWeight, type BomRow } from './io/bomExport';
 import { canExportStepViaBridge } from './io/stepExporter';
@@ -88,7 +90,7 @@ import ToastContainer from './ToastContainer';
 import SidebarResizer from './SidebarResizer';
 import type { OptimizeResult, ModifyResult, ChatMessage, ChatResult, SingleResult } from './ShapeChat';
 import { computeMassProperties, combineAssemblyMassProperties } from './analysis/massProperties';
-import type { ElementSelectionInfo, FaceSelectionInfo } from './editing/selectionInfo';
+import type { FaceSelectionInfo } from './editing/selectionInfo';
 import type { FeatureType } from './features/types';
 import type { EditableWorkspaceCandidate } from '@/lib/ai/design-driver/workspaceCandidate';
 import { workspaceCandidateToModelerDraft } from './design-brief/workspaceCandidateToModeler';
@@ -98,7 +100,10 @@ import {
   pendingWorkspaceRevisionVerification,
   type WorkspaceRevisionVerification,
 } from './design-brief/workspaceRevisionVerification';
-const HoleWizardModal = dynamic(() => import('./features/HoleWizardModal'), { ssr: false });
+const LegacyHoleWizardModal = dynamic(() => import('./features/HoleWizardModal'), { ssr: false });
+const HoleWizardModalV2 = dynamic(() => import('./features/HoleWizardModalV2'), { ssr: false });
+import type { AvailableSketch } from './features/HoleWizardModalV2';
+import { holeArrayToFeaturePlacements } from './features/holeWizardRuntime';
 const FeatureParams = dynamic(() => import('./FeatureParams'), { ssr: false });
 const CommandToolbar = dynamic(() => import('./CommandToolbar'), { ssr: false });
 const ShapeCart = dynamic(() => import('./ShapeCart'), { ssr: false });
@@ -129,6 +134,7 @@ import { useOptimizationState, RESOLUTION_MAP } from './hooks/useOptimizationSta
 import { useImportExport } from './hooks/useImportExport';
 import { useManufacturingFlow } from './hooks/useManufacturingFlow';
 import { useFreemiumGate } from './hooks/useFreemiumGate';
+import { AiModelSelector, useAiModelPreference } from '@/components/nexyfab/AiModelSelector';
 import { useAnalysisState } from './hooks/useAnalysisState';
 import { useSketchState } from './hooks/useSketchState';
 import { useFreemium } from '@/hooks/useFreemium';
@@ -139,6 +145,14 @@ import AiAssistantShell from './ai/AiAssistantShell';
 import { getManualEditProtectionLocks, protectManualEdit } from './ai/manualEditProtectionStore';
 import { resolveFeatureEditPrompt } from './ai/featureEditFromPrompt';
 import { modelContentRevision, selectionContextFromElement } from '@/lib/ai/selectionContext';
+import {
+  AI_CANONICAL_CANDIDATE_SCHEMA,
+  createAiCanonicalCandidate,
+  guardAiCanonicalCandidate,
+  markAiCanonicalCandidateApplied,
+  type AiCanonicalCandidate,
+  type AiCandidateKind,
+} from '@/lib/ai/aiCanonicalCandidate';
 import { useDomainWorkspaceSelection } from './_shell/domainWorkspaceStore';
 import { generationDomainFor } from '@/lib/ai/domainGenerationRequest';
 import { saveDomainDesignHandoff } from '@/lib/ai/domainDesignHandoff';
@@ -219,6 +233,7 @@ import AsyncWorkIndicator from './panels/AsyncWorkIndicator';
 import TopBanners from './panels/TopBanners';
 import OnboardingDock from './panels/OnboardingDock';
 import Phase4PanelDock from './panels/Phase4PanelDock';
+import PrecisionCadAgentWorkspace from './PrecisionCadAgentWorkspace';
 import { DirectEditHostBridge, type DirectEditSceneAdapter } from './directEdit/DirectEditHostBridge';
 import { AssemblyExportBridge } from './io/AssemblyExportBridge';
 import { ConfigurationsExportBridge } from './configurations/ConfigurationsExportBridge';
@@ -353,6 +368,7 @@ import { getToolCursor } from './hooks/useToolCursor';
 // Advanced analysis panels (still inline-mounted: ParametricSweep, AutoDrawing)
 const ParametricSweepPanel = dynamic(() => import('./analysis/ParametricSweepPanel'), { ssr: false });
 const AutoDrawingPanel = dynamic(() => import('./analysis/AutoDrawingPanel'), { ssr: false });
+const DrivingDimensionField = dynamic(() => import('./drawing/DrivingDimensionField'), { ssr: false });
 const ScadCodePanel = dynamic(() => import('./openscad/ScadCodePanel'), { ssr: false });
 const PushPullBanner = dynamic(() => import('./pushpull/PushPullBanner'), { ssr: false });
 const GdtPicker = dynamic(() => import('./drawing/GdtPicker'), { ssr: false });
@@ -427,9 +443,12 @@ function geometryToStlBase64(geo: BufferGeometry): string | null {
 
 // ─── Component ───────────────────────────────────────────────────────────────
 
-export function ShapeGeneratorInner() {
+export function ShapeGeneratorInner(
+  { embeddedInShell = false }: { embeddedInShell?: boolean } = {},
+) {
   const { theme, mode, toggleTheme } = useTheme();
   const lang = useLang();
+  const L = createCommercialLocalizer(lang);
   const [domainWorkspace] = useDomainWorkspaceSelection();
   const currentProjectId = useProjectsStore(s => s.projects[0]?.id ?? null);
   const manualProtectionScope = currentProjectId ?? 'local-workspace';
@@ -674,6 +693,9 @@ export function ShapeGeneratorInner() {
   // fresh parametric shape is started (handleSelectShape).
   const importStlRef = useRef<string | null>(null);
   const importScadRef = useRef<string>('import("model.stl");');
+  // Included in the optimistic-concurrency token so external SCAD and generic
+  // planner edits advance the same revision contract as FeatureTree edits.
+  const agentScadContentRef = useRef<string>('');
   // Tracks the geometry uuid we last showed the "too heavy for auto-DFM" hint
   // for, so the nudge fires once per heavy model rather than on every re-render.
   const heavyDfmHintRef = useRef<string | null>(null);
@@ -1497,8 +1519,8 @@ export function ShapeGeneratorInner() {
   // existing sketch-result slot. Errors surface through the standard
   // toast system so the user sees what went wrong without diving into
   // the agent panel.
-  const handleApplyAgentScad = useCallback(async (scad: string) => {
-    if (!scad.trim()) return;
+  const handleApplyAgentScad = useCallback(async (scad: string, options: { recordHistory?: boolean } = {}) => {
+    if (!scad.trim()) return false;
     try {
       const { renderScadToGeometry } = await import('@/lib/ai/scad-agent/renderToGeometry');
       // Pass the imported mesh (if any) so a SCAD program that does
@@ -1526,25 +1548,35 @@ export function ShapeGeneratorInner() {
       let prevSketchResult: typeof newSketchResult | null = null;
       let prevIsSketchMode = isSketchMode;
       let prevViewMode = viewMode;
-      commandHistory.execute({
-        id: `agent-apply-scad-${Date.now()}`,
-        label: 'Agent: apply SCAD',
-        labelKo: '에이전트: SCAD 적용',
-        execute: () => {
-          prevSketchResult = useSceneStore.getState().sketchResult as typeof newSketchResult | null;
-          prevIsSketchMode = isSketchMode;
-          prevViewMode = viewMode;
-          setSketchResult(newSketchResult);
-          setIsSketchMode(false);
-          setViewMode('workspace');
-        },
-        undo: () => {
-          setSketchResult(prevSketchResult);
-          setIsSketchMode(prevIsSketchMode);
-          setViewMode(prevViewMode);
-        },
-      });
+      if (options.recordHistory === false) {
+        // AiAssistantShell owns the revision-bound snapshot/rollback/Undo for
+        // this path. Avoid creating a second, conflicting command-history step.
+        setSketchResult(newSketchResult);
+        setIsSketchMode(false);
+        setViewMode('workspace');
+      } else {
+        commandHistory.execute({
+          id: `agent-apply-scad-${Date.now()}`,
+          label: 'Agent: apply SCAD',
+          labelKo: '에이전트: SCAD 적용',
+          execute: () => {
+            prevSketchResult = useSceneStore.getState().sketchResult as typeof newSketchResult | null;
+            prevIsSketchMode = isSketchMode;
+            prevViewMode = viewMode;
+            setSketchResult(newSketchResult);
+            setIsSketchMode(false);
+            setViewMode('workspace');
+          },
+          undo: () => {
+            setSketchResult(prevSketchResult);
+            setIsSketchMode(prevIsSketchMode);
+            setViewMode(prevViewMode);
+          },
+        });
+      }
+      agentScadContentRef.current = scad;
       addToast('success', `Agent: ${result.triangleCount.toLocaleString()} 삼각형 렌더링 완료`);
+      return true;
     } catch (e) {
       const err = e as Error;
       addToast('error', `렌더 실패: ${err.message}`);
@@ -1552,15 +1584,19 @@ export function ShapeGeneratorInner() {
         source: 'scad-agent',
         tags: { action: 'apply-agent-scad' },
       }));
+      return false;
     }
   }, [isSketchMode, viewMode]);
 
   /** W6 — Render an OCCT B-rep handle into the main viewport.
    *  Pulls the tessellated mesh from the agent's brep-mesh API and
    *  feeds it through the same setSketchResult pipeline as scad. */
-  const handleShowBrepHandle = useCallback(async (handle: string) => {
+  const handleShowBrepHandle = useCallback(async (handle: string, accessToken: string) => {
     try {
-      const res = await fetch(`/api/nexyfab/scad-agent/brep-mesh?handle=${encodeURIComponent(handle)}`);
+      const res = await fetch(`/api/nexyfab/scad-agent/brep-mesh?handle=${encodeURIComponent(handle)}`, {
+        headers: { 'x-nexyfab-brep-capability': accessToken },
+        cache: 'no-store',
+      });
       if (!res.ok) {
         const body = await res.json().catch(() => ({}));
         throw new Error(body?.error ?? `HTTP ${res.status}`);
@@ -1580,7 +1616,7 @@ export function ShapeGeneratorInner() {
       // lets the adopted body export STEP losslessly (brep-step endpoint) instead
       // of re-meshing, and upgrade to a live browser handle once K-series lands.
       const { tagBrepProvenance } = await import('./features/agentBrepAdoption');
-      tagBrepProvenance(geo, handle);
+      tagBrepProvenance(geo, handle, accessToken);
       const edgeGeo = makeEdges(geo);
       const vol = meshVolume(geo) / 1000;
       const sa = meshSurfaceArea(geo) / 100;
@@ -1985,10 +2021,11 @@ export function ShapeGeneratorInner() {
   const togglePanel = useUIStore(s => s.togglePanel);
   // Toolbar 🔍 버튼에서 dispatch하는 커스텀 이벤트 수신
   useEffect(() => {
+    if (embeddedInShell) return;
     const open = () => setShowCommandPalette(true);
     window.addEventListener('nexyfab:open-command-palette', open);
     return () => window.removeEventListener('nexyfab:open-command-palette', open);
-  }, [setShowCommandPalette]);
+  }, [embeddedInShell, setShowCommandPalette]);
   const showPlanes = useUIStore(s => s.showPlanes);
   const setShowPlanes = useUIStore(s => s.setShowPlanes);
   const showPerf = useUIStore(s => s.showPerf);
@@ -2073,6 +2110,20 @@ export function ShapeGeneratorInner() {
   const setShowLibrary = useUIStore(s => s.setShowLibrary);
   const showHoleWizard = useUIStore(s => s.showHoleWizard);
   const setShowHoleWizard = useUIStore(s => s.setShowHoleWizard);
+  const holeWizardSketches = useMemo<AvailableSketch[]>(() => featureHistory.nodes
+    .filter(node => node.sketchData?.profile)
+    .map(node => {
+      const seen = new Set<string>();
+      const points = node.sketchData!.profile.segments.flatMap((segment, segmentIndex) =>
+        segment.points.flatMap((point, pointIndex) => {
+          const key = point.id ?? `${point.x.toFixed(6)}:${point.y.toFixed(6)}`;
+          if (seen.has(key)) return [];
+          seen.add(key);
+          return [{ id: point.id ?? `${node.id}-${segmentIndex}-${pointIndex}`, x: point.x, y: point.y }];
+        }),
+      );
+      return { featureId: node.id, label: node.label, points };
+    }), [featureHistory]);
   // (selectedStandardPart, standardPartParams moved to useShapeGeneratorUI)
   // ── FEA condition selection (3D marker click ↔ panel highlight) ──
   const [feaHighlightedConditionIdx, setFeaHighlightedConditionIdx] = React.useState<number | null>(null);
@@ -2204,9 +2255,7 @@ export function ShapeGeneratorInner() {
       ]);
       const r = evaluateParamExpression(parsed.expression, scope);
       if (!r.ok) {
-        addToast('warning', lang === 'ko'
-          ? `수식 오류: ${r.error}`
-          : `Invalid expression: ${r.error}`);
+        addToast('warning', L(`수식 오류: ${r.error}`, `Invalid expression: ${r.error}`));
         return;
       }
       afterParams[key] = r.value;
@@ -2348,7 +2397,7 @@ export function ShapeGeneratorInner() {
     const node = featureHistory.nodes.find(n => n.id === id);
     const diag = classifyFeatureError(node?.featureType ?? 'sketchExtrude', raw, { nodeId: id });
     const label = node?.label ?? 'Feature';
-    addToast('error', lt.featureFailed(label, lang === 'ko' ? diag.hintKo : diag.hintEn));
+    addToast('error', lt.featureFailed(label, L(diag.hintKo, diag.hintEn)));
   }, [pipelineErrors]);
 
   // ── Auth modal ──
@@ -2361,10 +2410,10 @@ export function ShapeGeneratorInner() {
     showUpgradePrompt, setShowUpgradePrompt,
     upgradeFeature, setUpgradeFeature,
     promptUpgrade,
-    requirePro,
     requirePhotoReal,
     checkCartLimit,
     triggerProjectLimitPrompt } = useFreemiumGate();
+  const { modelId: aiModelId, pickModel: pickAiModel } = useAiModelPreference(authUser?.plan ?? 'free');
   useEffect(() => { authUserRef.current = authUser ?? null; }, [authUser]);
 
   // Lay-user AI front door → FREE NL→intent→render path (not the Pro agent).
@@ -2372,10 +2421,10 @@ export function ShapeGeneratorInner() {
   // (free plan, monthly-metered) and renders the resulting SCAD into the
   // viewport via the same apply path the agent uses. Quota/unsupported errors
   // surface as toasts (or the upgrade path) instead of a broken action.
-  const handleFreeAiPrompt = useCallback(async (prompt: string) => {
+  const handleFreeAiPrompt = useCallback(async (prompt: string, options: { recordHistory?: boolean } = {}) => {
     const p = prompt.trim();
-    if (!p) return;
-    addToast('info', lang === 'ko' ? 'AI가 모델을 만드는 중…' : 'AI is generating your model…');
+    if (!p) return false;
+    addToast('info', L('AI가 모델을 만드는 중…', 'AI is generating your model…'));
     try {
       // When a mesh has been imported, edit it: send the current wrapping
       // program as previousScad so the AI modifies `import("model.stl"); …`
@@ -2386,50 +2435,53 @@ export function ShapeGeneratorInner() {
         headers: { 'Content-Type': 'application/json', ...(useAuthStore.getState().token ? { Authorization: `Bearer ${useAuthStore.getState().token}` } : {}) },
         body: JSON.stringify(
           editingImport
-            ? { prompt: p, freeform: true, previousScad: importScadRef.current }
-            : { prompt: p },
+            ? { prompt: p, freeform: true, previousScad: importScadRef.current, modelId: aiModelId }
+            : { prompt: p, modelId: aiModelId },
         ),
       });
       if (!resp.ok) {
         const body = await resp.json().catch(() => ({} as Record<string, unknown>));
         const code = typeof body.code === 'string' ? body.code : '';
-        if (resp.status === 429 || code === 'MONTHLY_LIMIT') { promptUpgrade('AI 생성'); return; }
+        if (resp.status === 429 || code === 'MONTHLY_LIMIT') { promptUpgrade('AI 생성'); return false; }
         if (resp.status === 422 || code === 'UNSUPPORTED' || code === 'CONVERTER_REJECT') {
           addToast('error', (typeof body.reason === 'string' && body.reason) || (typeof body.error === 'string' && body.error) || 'AI가 이 요청을 지원 형상으로 표현하지 못했어요.');
-          return;
+          return false;
         }
         addToast('error', (typeof body.error === 'string' && body.error) || 'AI 생성에 실패했어요.');
-        return;
+        return false;
       }
       const body = await resp.json() as { scad?: string; summary?: string; usage?: { used: number; limit: number; remaining: number } };
-      if (!body.scad) { addToast('error', 'AI 응답에 모델이 없어요.'); return; }
-      // Chain edits: remember the updated program so the next prompt refines it.
+      if (!body.scad) { addToast('error', 'AI 응답에 모델이 없어요.'); return false; }
+      const applied = await handleApplyAgentScad(body.scad, options);
+      if (!applied) return false;
+      // Commit the imported-program lineage only after geometry application
+      // succeeds. A failed render must not poison the next repair prompt.
       if (editingImport) importScadRef.current = body.scad;
-      await handleApplyAgentScad(body.scad);
       if (body.summary) addToast('info', body.summary);
       // Soft-cap nudge: a gentle reminder as the generous free monthly
       // allowance runs low — never blocks generation (the hard cap's 429
       // upgrade prompt only fires once it's fully spent, well past the aha).
       const u = body.usage;
       if (u && u.limit > 0 && u.remaining <= 5) {
-        const ko = lang === 'ko';
         addToast('info', u.remaining > 0
-          ? (ko ? `이번 달 무료 AI 생성 ${u.remaining}회 남았어요 · 무제한은 Pro` : `${u.remaining} free AI generations left this month · upgrade for unlimited`)
-          : (ko ? '이번 달 무료 AI 생성을 다 썼어요 · 무제한은 Pro' : 'Free AI generations used up this month · upgrade for unlimited'));
+          ? (L(`이번 달 무료 AI 생성 ${u.remaining}회 남았어요 · 무제한은 Pro`, `${u.remaining} free AI generations left this month · upgrade for unlimited`))
+          : (L('이번 달 무료 AI 생성을 다 썼어요 · 무제한은 Pro', 'Free AI generations used up this month · upgrade for unlimited')));
       }
+      return true;
     } catch (e) {
       addToast('error', `AI 생성 실패: ${(e as Error).message}`);
+      return false;
     }
-  }, [addToast, promptUpgrade, handleApplyAgentScad, lang]);
+  }, [addToast, promptUpgrade, handleApplyAgentScad, lang, aiModelId]);
 
   // Building/civil/landscape/interior requests use the selected discipline's
   // deterministic template + gate pipeline. Invalid, degraded, or mismatched
   // results are never applied to the viewport as if they were approved CAD.
-  const handleDomainAiPrompt = useCallback(async (prompt: string) => {
+  const handleDomainAiPrompt = useCallback(async (prompt: string, options: { recordHistory?: boolean } = {}) => {
     const description = prompt.trim();
     if (!description) return;
     const domain = generationDomainFor(domainWorkspace.domain);
-    addToast('info', lang === 'ko' ? '선택한 설계 분야로 생성·검증 중…' : `Generating and validating in ${domainWorkspace.domain}…`);
+    addToast('info', L('선택한 설계 분야로 생성·검증 중…', `Generating and validating in ${domainWorkspace.domain}…`));
     try {
       const token = useAuthStore.getState().token;
       const resp = await fetch('/api/nexyfab/drawing/assemble/', {
@@ -2499,71 +2551,110 @@ export function ShapeGeneratorInner() {
           },
         });
       } catch {
-        addToast('warning', lang === 'ko' ? '수동 편집 작업공간 전달 상태를 저장하지 못했습니다.' : 'Could not save the manual-workspace handoff.');
+        addToast('warning', L('수동 편집 작업공간 전달 상태를 저장하지 못했습니다.', 'Could not save the manual-workspace handoff.'));
       }
-      await handleApplyAgentScad(body.openscad);
-      addToast('success', lang === 'ko' ? '분야별 형상 게이트를 통과한 모델을 적용했습니다.' : 'Applied a model that passed the domain geometry gates.');
+      const applied = await handleApplyAgentScad(body.openscad, options);
+      if (!applied) throw new Error('The governed domain model could not be applied.');
+      return true;
+      addToast('success', L('분야별 형상 게이트를 통과한 모델을 적용했습니다.', 'Applied a model that passed the domain geometry gates.'));
     } catch (error) {
-      addToast('error', lang === 'ko'
-        ? `분야별 AI 설계 적용 중단: ${(error as Error).message}`
-        : `Domain AI design was not applied: ${(error as Error).message}`);
+      addToast('error', L(`분야별 AI 설계 적용 중단: ${(error as Error).message}`, `Domain AI design was not applied: ${(error as Error).message}`));
     }
   }, [addToast, domainWorkspace.domain, domainWorkspace.workMode, features, handleApplyAgentScad, lang, manualProtectionScope, params, selectedId, sketchProfile.closed, sketchProfile.segments]);
 
-  // ── Shell-v2 AiChatPanel "Apply" bridge (orphan CustomEvents fixed) ──
-  // AiChatPanel dispatches 'nexyfab:apply-ai-intent' / 'nexyfab:apply-ai-pattern'
-  // which previously had no listener (the Apply button did nothing).
-  //  · intent  = an IntentInput ({ shapeId, params, features }) — run it through
-  //    the deterministic intentToScad converter and render via the same
-  //    handleApplyAgentScad path the SCAD agent panel uses.
-  //  · pattern = a design-pattern library reference ({ id, title }) — resolve
-  //    its seedPrompt and route through handleFreeAiPrompt, the same free
-  //    NL→intent→render front door the legacy chat flow uses.
+  // Shell-v2 AI canonical candidate bridge. Review is read-only. Apply rechecks
+  // the content revision and every current human/authority lock immediately
+  // before mutation, then uses the existing single-command Undo boundary.
   useEffect(() => {
-    const onApplyIntent = (e: Event) => {
-      const intent = (e as CustomEvent<Record<string, unknown> | undefined>).detail;
-      if (!intent || typeof intent !== 'object') {
-        addToast('warning', lang === 'ko' ? '적용할 AI 의도가 없습니다.' : 'No AI intent to apply.');
-        return;
-      }
-      void (async () => {
-        try {
-          const { intentToScad } = await import('@/lib/openscad-render/intentToScad');
-          const result = intentToScad(intent as unknown as Parameters<typeof intentToScad>[0]);
-          if (!result.ok) { addToast('error', result.reason); return; }
-          await handleApplyAgentScad(result.scad);
-        } catch (err) {
-          addToast('error', `AI intent apply failed: ${(err as Error).message}`);
-        }
-      })();
+    const currentRevision = () => modelContentRevision({
+      shapeId: selectedId,
+      params,
+      features: features.map(feature => ({ id: feature.id, type: feature.type, params: feature.params, enabled: feature.enabled })),
+      sketch: { segments: sketchProfile.segments, closed: sketchProfile.closed },
+    });
+    const respond = (eventName: string, detail: Record<string, unknown>) => {
+      window.dispatchEvent(new CustomEvent(eventName, { detail }));
     };
-    const onApplyPattern = (e: Event) => {
-      const detail = (e as CustomEvent<{ id?: string; title?: string } | undefined>).detail;
-      if (!detail?.id) {
-        addToast('warning', lang === 'ko' ? '적용할 디자인 패턴이 없습니다.' : 'No design pattern to apply.');
+
+    const onReview = (event: Event) => {
+      const detail = (event as CustomEvent<{ requestId?: string; candidateId?: string; kind?: AiCandidateKind; payload?: Record<string, unknown>; summary?: string; requirementGate?: import('@/lib/ai/guidedDesignBrief').GuidedRequirementGate }>).detail;
+      if (!detail?.requestId || !detail.candidateId || !detail.payload || (detail.kind !== 'intent' && detail.kind !== 'pattern' && detail.kind !== 'feature_batch')) {
+        if (detail?.requestId) respond('nexyfab:ai-candidate-reviewed', { requestId: detail.requestId, ok: false, error: 'invalid_ai_candidate_request' });
+        return;
+      }
+      const candidate = createAiCanonicalCandidate({
+        id: detail.candidateId,
+        kind: detail.kind,
+        baseRevision: currentRevision(),
+        summary: detail.summary?.trim() || 'AI change proposal',
+        payload: detail.payload,
+        locks: getManualEditProtectionLocks(manualProtectionScope),
+        requirementGate: detail.requirementGate,
+      });
+      if (candidate.state === 'PREVIEW') setIsPreviewMode(true);
+      respond('nexyfab:ai-candidate-reviewed', {
+        requestId: detail.requestId,
+        ok: candidate.state === 'PREVIEW',
+        candidate,
+        ...(candidate.state === 'BLOCKED' ? { error: candidate.issues.join(', ') } : {}),
+      });
+    };
+
+    const onApply = (event: Event) => {
+      const detail = (event as CustomEvent<{ requestId?: string; candidate?: AiCanonicalCandidate }>).detail;
+      if (!detail?.requestId || !detail.candidate || detail.candidate.schema !== AI_CANONICAL_CANDIDATE_SCHEMA) {
+        if (detail?.requestId) respond('nexyfab:ai-candidate-apply-result', { requestId: detail.requestId, ok: false, error: 'invalid_ai_candidate' });
         return;
       }
       void (async () => {
         try {
-          const { listPatterns } = await import('@/lib/ai/scad-agent/designPatternLibrary');
-          const pattern = listPatterns().find(p => p.id === detail.id);
-          if (!pattern) {
-            addToast('warning', `Unknown design pattern: ${detail.id}`);
+          const guard = guardAiCanonicalCandidate(detail.candidate!, currentRevision(), getManualEditProtectionLocks(manualProtectionScope));
+          if (!guard.allowed) {
+            respond('nexyfab:ai-candidate-apply-result', { requestId: detail.requestId!, ok: false, candidate: detail.candidate!, error: [...guard.issues, ...guard.blockedLockIds].join(', ') });
             return;
           }
-          await handleFreeAiPrompt(pattern.seedPrompt);
-        } catch (err) {
-          addToast('error', `AI pattern apply failed: ${(err as Error).message}`);
+          let applied = false;
+          if (detail.candidate!.kind === 'intent') {
+            const { intentToScad } = await import('@/lib/openscad-render/intentToScad');
+            const result = intentToScad(detail.candidate!.payload as unknown as Parameters<typeof intentToScad>[0]);
+            if (!result.ok) throw new Error(result.reason);
+            applied = await handleApplyAgentScad(result.scad);
+          } else if (detail.candidate!.kind === 'pattern') {
+            const { listPatterns } = await import('@/lib/ai/scad-agent/designPatternLibrary');
+            const patternId = typeof detail.candidate!.payload.id === 'string' ? detail.candidate!.payload.id : '';
+            const pattern = listPatterns().find(item => item.id === patternId);
+            if (!pattern) throw new Error(`Unknown design pattern: ${patternId || '(missing)'}`);
+            applied = await handleFreeAiPrompt(pattern.seedPrompt);
+          } else {
+            throw new Error('feature_batch_requires_typed_dispatcher');
+          }
+          if (!applied) throw new Error('ai_candidate_execution_failed');
+          const candidate = markAiCanonicalCandidateApplied(detail.candidate!);
+          setPreviewResult(null);
+          setIsPreviewMode(false);
+          respond('nexyfab:ai-candidate-apply-result', { requestId: detail.requestId!, ok: true, candidate });
+          addToast('warning', L('AI 변경을 새 리비전으로 적용했습니다. 형상·DFM 검증은 NOT_RUN 상태이며 다시 실행해야 합니다.', 'AI change applied as a new revision. Geometry and DFM verification are NOT_RUN and must be rerun.'));
+        } catch (error) {
+          const message = error instanceof Error ? error.message : String(error);
+          respond('nexyfab:ai-candidate-apply-result', { requestId: detail.requestId!, ok: false, candidate: detail.candidate!, error: message });
+          addToast('error', `AI candidate apply failed: ${message}`);
         }
       })();
     };
-    window.addEventListener('nexyfab:apply-ai-intent', onApplyIntent);
-    window.addEventListener('nexyfab:apply-ai-pattern', onApplyPattern);
-    return () => {
-      window.removeEventListener('nexyfab:apply-ai-intent', onApplyIntent);
-      window.removeEventListener('nexyfab:apply-ai-pattern', onApplyPattern);
+
+    const onDiscard = () => {
+      setPreviewResult(null);
+      setIsPreviewMode(false);
     };
-  }, [handleApplyAgentScad, handleFreeAiPrompt, addToast, lang]);
+    window.addEventListener('nexyfab:review-ai-candidate', onReview);
+    window.addEventListener('nexyfab:apply-ai-candidate', onApply);
+    window.addEventListener('nexyfab:discard-ai-candidate', onDiscard);
+    return () => {
+      window.removeEventListener('nexyfab:review-ai-candidate', onReview);
+      window.removeEventListener('nexyfab:apply-ai-candidate', onApply);
+      window.removeEventListener('nexyfab:discard-ai-candidate', onDiscard);
+    };
+  }, [addToast, features, handleApplyAgentScad, handleFreeAiPrompt, lang, manualProtectionScope, params, selectedId, setIsPreviewMode, setPreviewResult, sketchProfile.closed, sketchProfile.segments]);
 
   // ── Ctrl+\ split-screen toggle ──
   // Cycle splitMode: off → side-notes → side-spec → off. Skip when an input
@@ -2627,18 +2718,18 @@ export function ShapeGeneratorInner() {
       if (intent.kind !== 'cloud_save_project') {
         clearPendingIntent();
         const messages: Record<string, string> = {
-          run_dfm_analysis:   lang === 'ko' ? 'DFM 분석을 다시 실행하실 수 있습니다.' : 'You can now run DFM analysis.',
-          run_fea_analysis:   lang === 'ko' ? 'FEA 해석을 다시 실행하실 수 있습니다.' : 'You can now run FEA analysis.',
-          export_format:      lang === 'ko' ? '내보내기를 다시 시도해주세요.' : 'You can now retry the export.',
-          request_quote:      lang === 'ko' ? '견적 요청을 다시 시도해주세요.' : 'You can now request a quote.',
-          create_share_link:  lang === 'ko' ? '보호된 공유 링크를 다시 생성하실 수 있습니다.' : 'You can now create the protected share link.',
+          run_dfm_analysis:   L('DFM 분석을 다시 실행하실 수 있습니다.', 'You can now run DFM analysis.'),
+          run_fea_analysis:   L('FEA 해석을 다시 실행하실 수 있습니다.', 'You can now run FEA analysis.'),
+          export_format:      L('내보내기를 다시 시도해주세요.', 'You can now retry the export.'),
+          request_quote:      L('견적 요청을 다시 시도해주세요.', 'You can now request a quote.'),
+          create_share_link:  L('보호된 공유 링크를 다시 생성하실 수 있습니다.', 'You can now create the protected share link.'),
         };
         const msg = messages[intent.kind];
         if (msg) addToast?.('success', msg);
         return;
       }
       clearPendingIntent();
-      addToast?.('info', lang === 'ko' ? '업그레이드 완료 — 진행 중이던 저장을 재시도합니다.' : 'Upgrade complete — resuming your pending save.');
+      addToast?.('info', L('업그레이드 완료 — 진행 중이던 저장을 재시도합니다.', 'Upgrade complete — resuming your pending save.'));
       // syncNow는 useCloudSaveFlow에서 export. 직접 호출은 불가능하므로
       // autosave가 다음 사이클에 자연 발사되도록 dirty flag만 살짝 흔든다.
       try {
@@ -2771,7 +2862,6 @@ export function ShapeGeneratorInner() {
   // 40+ existing read/write sites compile unchanged.
   const selectedElement   = useSelectionStore(s => s.selectedElement);
   const setSelectedElement = useSelectionStore(s => s.setSelectedElement);
-  const mateFaceA          = useSelectionStore(s => s.mateFaceA);
   const setMateFaceA       = useSelectionStore(s => s.setMateFaceA);
   // Phase F (click-to-mate UX): pending pair surfaces the MatePickerOverlay.
   // Owned by the selection store so the canvas, the overlay, and the host
@@ -3211,9 +3301,7 @@ export function ShapeGeneratorInner() {
       if (window.localStorage.getItem('nexyfab_guest_save_hint_v1') === '1') return;
       window.localStorage.setItem('nexyfab_guest_save_hint_v1', '1');
     } catch { /* ignore */ }
-    addToast('info', lang === 'ko'
-      ? '게스트 작업은 이 브라우저에만 저장됩니다. 로그인하면 클라우드에 안전하게 저장되고, File → .nfab로 파일 내보내기도 됩니다.'
-      : 'Guest work is saved only in this browser. Sign in to save to the cloud, or export a file via File → .nfab.');
+    addToast('info', L('게스트 작업은 이 브라우저에만 저장됩니다. 로그인하면 클라우드에 안전하게 저장되고, File → .nfab로 파일 내보내기도 됩니다.', 'Guest work is saved only in this browser. Sign in to save to the cloud, or export a file via File → .nfab.'));
   }, [authUser, viewMode, desktopDirty, features.length, addToast, lang]);
 
 
@@ -3406,7 +3494,7 @@ export function ShapeGeneratorInner() {
           addToast(
             'error',
             e instanceof NfabParseError
-              ? (lang === 'ko' ? `프로젝트 형식 오류: ${e.message}` : `Invalid project: ${e.message}`)
+              ? (L(`프로젝트 형식 오류: ${e.message}`, `Invalid project: ${e.message}`))
               : lt.designLoadFailed,
           );
         }
@@ -3434,7 +3522,7 @@ export function ShapeGeneratorInner() {
           applySceneParamsToSetters(SHAPE_MAP[sid], intent.params, { setParams, setParamExpressions });
         }
         setViewMode('workspace');
-        addToast('success', lang === 'ko' ? '예제를 불러왔습니다.' : 'Sample loaded.');
+        addToast('success', L('예제를 불러왔습니다.', 'Sample loaded.'));
       } catch { /* ignore malformed intent */ }
     }
     const qs = new URLSearchParams(searchParams?.toString() ?? '');
@@ -3614,12 +3702,26 @@ export function ShapeGeneratorInner() {
   // ══════════════════════════════════════════════════════════════════════════
 
   const shape = useMemo(() => SHAPES.find(s => s.id === selectedId) ?? SHAPES[0], [selectedId]);
+  // D2 host wiring — the drawing dimension editor drives the LIVE base-shape
+  // parameter table. The EquationManager provides the invertible dimension
+  // binding contract; onCommitted writes through the same undoable command
+  // path as the Inspector, which immediately invalidates the geometry pipeline.
+  const drawingDimensionManager = useMemo(() => {
+    const manager = new EquationManager();
+    for (const def of shape.params) {
+      const value = params[def.key] ?? def.default;
+      try { manager.set(def.key, String(value)); } catch { /* invalid legacy key */ }
+    }
+    return manager;
+  }, [params, shape.params]);
 
   const handleSelectShape = useCallback((s: ShapeConfig) => {
     // Starting a fresh parametric shape — drop any imported model so it stops
     // taking precedence in effectiveResult (and stop AI-editing the import).
     setImportedResult(null);
     importStlRef.current = null;
+    importScadRef.current = 'import("model.stl");';
+    agentScadContentRef.current = '';
     // Undo Phase B: shape changes flow ONLY through commandHistory — the
     // legacy useHistory snapshot stack has been retired (single source of
     // truth for Ctrl+Z).
@@ -3738,6 +3840,64 @@ export function ShapeGeneratorInner() {
     if (paramDragTimerRef.current) { clearTimeout(paramDragTimerRef.current); paramDragTimerRef.current = null; }
     setParamDragging(false);
   }, [params, setParams, setParamExpressions]);
+
+  const baseShellEditRef = useRef<{
+    key: string;
+    before: number;
+    timer: ReturnType<typeof setTimeout> | null;
+  } | null>(null);
+  const commitBaseShellEdit = useCallback((edit: { key: string; before: number; timer: ReturnType<typeof setTimeout> | null }) => {
+    if (edit.timer) clearTimeout(edit.timer);
+    const after = useSceneStore.getState().params[edit.key];
+    if (typeof after !== 'number' || after === edit.before) return;
+    commandHistory.execute({
+      id: `base-param-${edit.key}-${Date.now()}`,
+      label: `Edit base parameter ${edit.key}`,
+      labelKo: `기본 형상 ${edit.key} 수정`,
+      execute: () => {
+        setParam(edit.key, after);
+        setParamExpression(edit.key, String(after));
+        collabSendParamChange({ [edit.key]: after });
+      },
+      undo: () => {
+        setParam(edit.key, edit.before);
+        setParamExpression(edit.key, String(edit.before));
+        collabSendParamChange({ [edit.key]: edit.before });
+      },
+    });
+  }, [collabSendParamChange, setParam, setParamExpression]);
+
+  // Coalesce sequential keystrokes (for example 5 -> 55) into one reversible
+  // CAD command while still rebuilding geometry after every valid value.
+  const updateBaseShapeParamCmd = useCallback((key: string, value: number) => {
+    if (!Number.isFinite(value)) return;
+    const liveParams = useSceneStore.getState().params;
+    const current = liveParams[key] ?? shape.params.find(def => def.key === key)?.default;
+    if (typeof current !== 'number' || current === value) return;
+    let edit = baseShellEditRef.current;
+    if (edit && edit.key !== key) {
+      baseShellEditRef.current = null;
+      commitBaseShellEdit(edit);
+      edit = null;
+    }
+    if (!edit) {
+      edit = { key, before: current, timer: null };
+      baseShellEditRef.current = edit;
+      protectManualEdit(
+        { kind: 'parameter', objectId: 'base_shape:main', field: key },
+        { scope: manualProtectionScope, source: domainWorkspace.experience === 'expert' ? 'expert' : 'human', reason: 'Manual base-shape parameter' },
+      );
+    }
+    setParam(key, value);
+    setParamExpression(key, String(value));
+    collabSendParamChange({ [key]: value });
+    if (edit.timer) clearTimeout(edit.timer);
+    edit.timer = setTimeout(() => {
+      if (baseShellEditRef.current !== edit) return;
+      baseShellEditRef.current = null;
+      commitBaseShellEdit(edit);
+    }, 400);
+  }, [collabSendParamChange, commitBaseShellEdit, domainWorkspace.experience, manualProtectionScope, setParam, setParamExpression, shape.params]);
 
   const handleShapeReset = useCallback(() => {
     // Phase 5: track shape resets in commandHistory so Ctrl+Z restores the
@@ -4052,9 +4212,7 @@ export function ShapeGeneratorInner() {
       if (id === 'bom.export' || id === 'bom.show') {
         const items = useShellBridge.getState().assemblyItems;
         if (!items || items.length === 0) {
-          addToast('info', isKorean(lang)
-            ? 'BOM은 어셈블리에 부품이 추가된 후에 내보낼 수 있습니다.'
-            : 'BOM export requires an assembly with at least one part.');
+          addToast('info', L('BOM은 어셈블리에 부품이 추가된 후에 내보낼 수 있습니다.', 'BOM export requires an assembly with at least one part.'));
           return;
         }
         if (id === 'bom.show') {
@@ -4079,7 +4237,7 @@ export function ShapeGeneratorInner() {
         a.click();
         document.body.removeChild(a);
         URL.revokeObjectURL(url);
-        addToast('success', isKorean(lang) ? 'BOM CSV 내보내기 완료' : 'BOM CSV exported');
+        addToast('success', L('BOM CSV 내보내기 완료', 'BOM CSV exported'));
         return;
       }
       // Direct-edit push/pull — Phase-2A: toggle a viewport edit mode so
@@ -4089,13 +4247,11 @@ export function ShapeGeneratorInner() {
       if (id === 'push-pull') {
         const next = !useUIStore.getState().pushPullMode;
         useUIStore.getState().setPushPullMode(next);
-        addToast('info', isKorean(lang)
-          ? (next
+        addToast('info', L((next
               ? 'Push/Pull 모드 ON — 면을 선택하면 법선 화살표가 표시됩니다. 다시 누르면 끄기.'
-              : 'Push/Pull 모드 OFF.')
-          : (next
+              : 'Push/Pull 모드 OFF.'), (next
               ? 'Push/Pull mode ON — select a face to see the normal arrow. Click again to turn off.'
-              : 'Push/Pull mode OFF.'));
+              : 'Push/Pull mode OFF.')));
         return;
       }
       // Drawing > Views — opens the same panel so the user can build sheet
@@ -4213,9 +4369,20 @@ export function ShapeGeneratorInner() {
   const bridgeUnits = useShellBridge(s => s.setUnits);
   const bridgeStats = useShellBridge(s => s.setStats);
   const bridgeCloud = useShellBridge(s => s.setCloud);
+  const bridgeBaseShapeItem = useShellBridge(s => s.setBaseShapeItem);
   const bridgeFeatureItems = useShellBridge(s => s.setFeatureItems);
   const bridgeAssemblyItems = useShellBridge(s => s.setAssemblyItems);
   const bridgeAssemblyMates = useShellBridge(s => s.setAssemblyMates);
+  const bridgeContentRevision = useShellBridge(s => s.setContentRevision);
+
+  useEffect(() => {
+    bridgeContentRevision(modelContentRevision({
+      shapeId: selectedId,
+      params,
+      features: features.map(feature => ({ id: feature.id, type: feature.type, params: feature.params, enabled: feature.enabled })),
+      sketch: { segments: sketchProfile.segments, closed: sketchProfile.closed },
+    }));
+  }, [bridgeContentRevision, features, params, selectedId, sketchProfile.closed, sketchProfile.segments]);
 
   useEffect(() => {
     const editMode: 'modeling' | 'sketch' | 'assembly' = isSketchMode
@@ -4627,9 +4794,7 @@ export function ShapeGeneratorInner() {
       useSelectionStore.getState().setSelectedElement(null);
       addToast(
         'error',
-        lang === 'ko'
-          ? '형상 재생성 후 선택한 면 참조가 끊겨 선택을 해제했습니다. 면을 다시 선택해 주세요.'
-          : 'The selected face reference was lost after regeneration. Please select the face again.',
+        L('형상 재생성 후 선택한 면 참조가 끊겨 선택을 해제했습니다. 면을 다시 선택해 주세요.', 'The selected face reference was lost after regeneration. Please select the face again.'),
       );
       return;
     }
@@ -4661,7 +4826,7 @@ export function ShapeGeneratorInner() {
     features,
     onApplyFeatureSelections: (featureId, edgeSelections) => {
       updateNode(featureId, { edgeSelections });
-      addToast('success', lang === 'ko' ? '참조 재지정 적용 — 재빌드합니다' : 'Reference relinked — rebuilding');
+      addToast('success', L('참조 재지정 적용 — 재빌드합니다', 'Reference relinked — rebuilding'));
     },
     onRefused: (reason) => addToast('error', reason),
   });
@@ -4673,12 +4838,16 @@ export function ShapeGeneratorInner() {
     const triangleCount = effectiveResult?.geometry?.index
       ? effectiveResult.geometry.index.count / 3
       : 0;
+    const selectedFeature = selectedFeatureId
+      ? (features ?? []).find(feature => feature.id === selectedFeatureId)
+      : null;
+    const baseShapeId = `base:${selectedId}`;
     bridgeStats({
       featureCount,
       mass: null,
       volume,
       triangleCount,
-      selectedLabel: selectedId,
+      selectedLabel: selectedFeature?.type ?? selectedId,
     });
     // Keep ref in sync for the early-declared tool listener.
     effectiveResultRef.current = effectiveResult;
@@ -4695,7 +4864,23 @@ export function ShapeGeneratorInner() {
         if (key !== 'local') writeGeometry('local', effectiveResult.geometry, selectedId ?? null);
       });
     }
-    // Publish the feature tree snapshot for the shell-v2 sidebar.
+    // Publish the real base solid separately from downstream features. This
+    // keeps PDM feature snapshots clean while giving the CAD tree a selectable
+    // root whose dimensions are editable in the Inspector.
+    bridgeBaseShapeItem({
+      id: baseShapeId,
+      label: String(shapeLabels[`shapeName_${selectedId}`] ?? selectedId),
+      type: 'baseShape',
+      params: Object.fromEntries(shape.params.map(def => [def.key, params[def.key] ?? def.default])),
+      paramDefs: Object.fromEntries(shape.params.map(def => [def.key, {
+        label: String(shapeLabels[def.labelKey] ?? def.key),
+        min: def.min,
+        max: def.max,
+        step: def.step,
+        unit: def.unit,
+      }])),
+    });
+    // Publish the downstream feature tree snapshot for the shell-v2 sidebar.
     bridgeFeatureItems(
       (features ?? []).map(f => ({
         id: f.id,
@@ -4704,6 +4889,12 @@ export function ShapeGeneratorInner() {
         muted: f.enabled === false,
         meta: undefined,
         params: { ...f.params },
+        ...(f.paramExpressions ? { paramExpressions: { ...f.paramExpressions } } : {}),
+        ...(f.sketchData ? { sketchData: f.sketchData } : {}),
+        ...(f.edgeSelections ? { edgeSelections: f.edgeSelections } : {}),
+        ...(f.faceSelections ? { faceSelections: f.faceSelections } : {}),
+        ...(f.targetEdgeIds ? { targetEdgeIds: [...f.targetEdgeIds] } : {}),
+        ...(f.targetFaceIds ? { targetFaceIds: [...f.targetFaceIds] } : {}),
         // Real click-time edge selections (fillet/chamfer/shell) so the
         // Inspector EDGES section lists actual edges, not placeholders.
         edges: (f.edgeSelections ?? []).map((sel, i) => ({
@@ -4711,7 +4902,7 @@ export function ShapeGeneratorInner() {
           meta: Number.isFinite(sel.length) ? `L ${sel.length.toFixed(1)} mm` : undefined,
         })),
       })),
-      selectedId ?? null,
+      selectedFeatureId ?? baseShapeId,
     );
     // Publish assembly parts snapshot — drives the v3 AssemblyLeftPane tree
     // and AssemblyRightPane BOM table. Density ~2.7 g/cm³ proxy for mass
@@ -4742,7 +4933,7 @@ export function ShapeGeneratorInner() {
         locked: m.locked,
       })),
     );
-  }, [features, effectiveResult, selectedId, bridgeStats, bridgeFeatureItems, bridgeAssemblyItems, bridgeAssemblyMates, bomParts, placedParts, assemblyMates, cloudProjectId]);
+  }, [features, effectiveResult, selectedId, selectedFeatureId, params, shape, shapeLabels, bridgeStats, bridgeBaseShapeItem, bridgeFeatureItems, bridgeAssemblyItems, bridgeAssemblyMates, bomParts, placedParts, assemblyMates, cloudProjectId]);
 
   // Shell-v2 Inspector → Inner bridge for parameter edits. Listener decoupled
   // from the visual chrome so the new sidebar can edit live params without
@@ -4752,12 +4943,13 @@ export function ShapeGeneratorInner() {
       const ce = e as CustomEvent<{ id: string; key: string; value: number }>;
       const { id, key, value } = ce.detail ?? {};
       if (id && typeof key === 'string' && Number.isFinite(value)) {
-        updateFeatureParamCmd(id, key, value);
+        if (id.startsWith('base:')) updateBaseShapeParamCmd(key, value);
+        else updateFeatureParamCmd(id, key, value);
       }
     };
     window.addEventListener('nexyfab:update-feature-param', onUpdate);
     return () => window.removeEventListener('nexyfab:update-feature-param', onUpdate);
-  }, [updateFeatureParamCmd]);
+  }, [updateBaseShapeParamCmd, updateFeatureParamCmd]);
 
   // Shell-v2 Inspector EDGES section → remove one edge selection from a
   // fillet/chamfer/shell feature. Undoable via commandHistory. Refuses to
@@ -4843,11 +5035,19 @@ export function ShapeGeneratorInner() {
   useEffect(() => {
     const onSelect = (e: Event) => {
       const ce = e as CustomEvent<{ id: string }>;
-      if (ce.detail?.id) setSelectedId(ce.detail.id);
+      if (ce.detail?.id) {
+        if (ce.detail.id.startsWith('base:')) {
+          setSelectedFeatureId(null);
+          setShowPropertyManager(false);
+        } else {
+          setSelectedFeatureId(ce.detail.id);
+          setShowPropertyManager(true);
+        }
+      }
     };
     window.addEventListener('nexyfab:select-feature', onSelect);
     return () => window.removeEventListener('nexyfab:select-feature', onSelect);
-  }, [setSelectedId]);
+  }, [setShowPropertyManager]);
 
   // SCAD apply-to-tree → push a feature with caller-supplied params. Lets
   // ScadCodePanel translate `translate([x,y,z]) cube(...)` into a base
@@ -4937,10 +5137,10 @@ export function ShapeGeneratorInner() {
         const size = bb
           ? { w: bb.max.x - bb.min.x, h: bb.max.y - bb.min.y, d: bb.max.z - bb.min.z }
           : { w: 0, h: 0, d: 0 };
-        const { EdgesGeometry, BufferGeometry } = await import('three');
+        const { EdgesGeometry } = await import('three');
         const result: ShapeResult = {
           geometry,
-          edgeGeometry: new EdgesGeometry(geometry, 15) as BufferGeometry,
+          edgeGeometry: new EdgesGeometry(geometry, 15),
           bbox: size,
           volume_cm3: 0,
           surface_area_cm2: 0,
@@ -5447,9 +5647,7 @@ export function ShapeGeneratorInner() {
       if (heavyDfmHintRef.current !== _geo.uuid) {
         heavyDfmHintRef.current = _geo.uuid;
         const k = Math.round(_tris / 1000);
-        addToast('info', lang === 'ko'
-          ? `무거운 모델(약 ${k}k 삼각형) — 자동 DFM은 건너뜁니다. 도구 모음의 DFM 버튼으로 직접 실행하세요.`
-          : `Heavy model (~${k}k triangles) — auto DFM is skipped. Run it manually from the DFM toolbar button.`);
+        addToast('info', L(`무거운 모델(약 ${k}k 삼각형) — 자동 DFM은 건너뜁니다. 도구 모음의 DFM 버튼으로 직접 실행하세요.`, `Heavy model (~${k}k triangles) — auto DFM is skipped. Run it manually from the DFM toolbar button.`));
       }
       return;
     }
@@ -5846,11 +6044,11 @@ export function ShapeGeneratorInner() {
     // Auto-save to cloud (fire-and-forget, only when logged in)
     if (useAuthStore.getState().user) {
       void useProjectsStore.getState().saveProject({
-        name: `Sketch ${new Date().toLocaleDateString('ko-KR')}`,
+        name: `Sketch ${formatDate(new Date(), lang) ?? ''}`,
         shapeId: 'sketch',
         tags: ['sketch'] });
     }
-  }, [sketchProfile, sketchProfiles, sketchConfig, sketchPlane, sketchHistory]);
+  }, [sketchProfile, sketchProfiles, sketchConfig, sketchPlane, sketchHistory, lang]);
 
   // #wf10: context-restore toast when exiting sketch mode without generating
   const prevIsSketchModeRef = useRef(false);
@@ -6833,8 +7031,8 @@ export function ShapeGeneratorInner() {
           const colorMap: Record<string, string> = {
             'part-color-yellow': '#e3b341',
             'part-color-orange': '#d97706',
-            'part-color-purple': 'var(--nx-accent)',
-            'part-color-white': 'var(--nx-text)'
+            'part-color-purple': '#3b82f6',
+            'part-color-white': '#f8fafc'
           };
           const color = colorMap[id];
           setAssemblyPartColors(prev => ({ ...prev, [highlightedPartId]: color }));
@@ -7147,9 +7345,7 @@ export function ShapeGeneratorInner() {
       const stored = writeAiAssemblyWorkspaceSeed(revisionId, candidate);
       if (!stored.ok) return { ok: false, reason: stored.reason };
       setShowDesignBrief(false);
-      addToast('warning', isKorean(lang)
-        ? '의미 기반 조립 리비전을 열었습니다. 이전 검증은 승계하지 않으며 파트 B-rep·도면·간섭·운동 재검증이 필요합니다.'
-        : 'Opened a semantic assembly revision. Prior verification was not inherited; part B-rep, drawing, interference and motion reverification are required.');
+      addToast('warning', L('의미 기반 조립 리비전을 열었습니다. 이전 검증은 승계하지 않으며 파트 B-rep·도면·간섭·운동 재검증이 필요합니다.', 'Opened a semantic assembly revision. Prior verification was not inherited; part B-rep, drawing, interference and motion reverification are required.'));
       router.push(`/${lang}/shape-generator/assembly?aiRevision=${encodeURIComponent(revisionId)}`);
       return { ok: true, revisionId };
     }
@@ -7183,9 +7379,7 @@ export function ShapeGeneratorInner() {
       ...pendingWorkspaceRevisionVerification(revisionId),
       requiredPipelineGeneration,
     });
-    addToast('warning', isKorean(lang)
-      ? '편집 가능한 새 리비전을 적용했습니다. 이전 게이트 결과는 승계하지 않았으며 정확 커널 재검증이 필요합니다.'
-      : 'Applied a new editable revision. Prior gate results were not inherited; exact-kernel reverification is required.');
+    addToast('warning', L('편집 가능한 새 리비전을 적용했습니다. 이전 게이트 결과는 승계하지 않았으며 정확 커널 재검증이 필요합니다.', 'Applied a new editable revision. Prior gate results were not inherited; exact-kernel reverification is required.'));
     return { ok: true, revisionId };
   }, [addToast, isMobile, lang, replaceHistory, router, setActiveBodyId, setAssemblyMates, setBodies, setImportedFilename, setImportedGeometry, setParams, setPlacedParts, setSelectedBodyIds, setSelectedId, setSketchResult, setViewMode, setOcctMode]);
 
@@ -7201,7 +7395,7 @@ export function ShapeGeneratorInner() {
       addToast('info', '사진 분석 중… / Reading the photo…');
       const res = await fetch('/api/nexyfab/scad-intent-from-nl', {
         method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
-        body: JSON.stringify({ prompt: prompt || 'Model this object as a clean parametric part', image: imageDataUrl, freeform: true }),
+        body: JSON.stringify({ prompt: prompt || 'Model this object as a clean parametric part', image: imageDataUrl, freeform: true, modelId: aiModelId }),
       });
       const data = await res.json().catch(() => ({})) as { scad?: string; code?: string; error?: string };
       if (data.code === 'VISION_BUSY') return '이미지 분석이 혼잡해요 — 잠시 후 다시 / Image analysis busy — try again';
@@ -7227,7 +7421,7 @@ export function ShapeGeneratorInner() {
     } catch (e) {
       return `AI error: ${(e as Error)?.message ?? e}`;
     }
-  }, [addToast, setImportedGeometry, setImportedFilename]);
+  }, [addToast, setImportedGeometry, setImportedFilename, aiModelId]);
 
   // ─── K-series Thicken (kernel-ceiling op) ────────────────────────────────
   // Thicken the active closed line-loop sketch (or a 10×10 demo when none)
@@ -7274,7 +7468,7 @@ export function ShapeGeneratorInner() {
     const onSendToChat = async () => {
       try {
         const { programFromNfab } = await import('./ai/programFromNfab');
-        const result = programFromNfab(getCloudSceneObject());
+        const result = await programFromNfab(getCloudSceneObject());
         if (!result) {
           addToast('error', '현재 모델은 챗 컨텍스트로 변환할 수 없습니다 (베이스가 역변환 어휘 밖)');
           return;
@@ -7389,11 +7583,18 @@ export function ShapeGeneratorInner() {
   // imported model survives view/tab/mode switches (sketchResult, where the
   // import first lands, gets cleared by many of those transitions).
   useEffect(() => {
-    if (!importedGeometry) { setImportedResult(null); importStlRef.current = null; return; }
+    if (!importedGeometry) {
+      setImportedResult(null);
+      importStlRef.current = null;
+      importScadRef.current = 'import("model.stl");';
+      agentScadContentRef.current = '';
+      return;
+    }
     // Serialize the import for AI editing (wrap as import("model.stl")).
     try {
       importStlRef.current = geometryToStlBase64(importedGeometry);
       importScadRef.current = 'import("model.stl");';
+      agentScadContentRef.current = importScadRef.current;
     } catch { importStlRef.current = null; }
     try {
       importedGeometry.computeBoundingBox();
@@ -7415,6 +7616,45 @@ export function ShapeGeneratorInner() {
   }, [importedGeometry]);
 
   // ── Studio → Expert handoff ──────────────────────────────────────────────
+  // PDM checkout restores the portable feature snapshot into the live modeler.
+  // Runtime OCCT handles are intentionally excluded from PDM snapshots.
+  useEffect(() => {
+    const onCheckout = (event: Event) => {
+      const detail = (event as CustomEvent<{ commit?: { id?: string; features?: unknown[] } }>).detail;
+      const commit = detail?.commit;
+      if (!commit || !Array.isArray(commit.features)) return;
+      const restored = commit.features.filter((item): item is {
+        id: string; type: string; params?: Record<string, number>; enabled?: boolean;
+        paramExpressions?: Record<string, string>; sketchData?: HistoryNode['sketchData'];
+        edgeSelections?: HistoryNode['edgeSelections']; faceSelections?: HistoryNode['faceSelections'];
+        targetEdgeIds?: string[]; targetFaceIds?: string[];
+      } => {
+        if (!item || typeof item !== 'object') return false;
+        const value = item as { id?: unknown; type?: unknown };
+        return typeof value.id === 'string' && typeof value.type === 'string' && value.type !== 'baseShape';
+      });
+      const rootId = `pdm-root-${String(commit.id ?? Date.now()).replace(/[^A-Za-z0-9_-]/g, '')}`;
+      const root = { id: rootId, type: 'baseShape' as const, label: 'PDM Checkout', icon: '📦', params: {}, enabled: true, expanded: true, parentId: null, children: restored.map(item => item.id), editingActive: false, timestamp: Date.now() };
+      const nodes = [root, ...restored.map((item, index) => ({
+        id: item.id, type: 'feature' as const, label: item.type, icon: '🔧', featureType: item.type as FeatureType,
+        params: { ...(item.params ?? {}) }, enabled: item.enabled !== false, expanded: true, parentId: rootId, children: [], editingActive: false,
+        ...(item.paramExpressions ? { paramExpressions: { ...item.paramExpressions } } : {}),
+        ...(item.sketchData ? { sketchData: item.sketchData } : {}),
+        ...(item.edgeSelections ? { edgeSelections: item.edgeSelections } : {}),
+        ...(item.faceSelections ? { faceSelections: item.faceSelections } : {}),
+        ...(item.targetEdgeIds ? { targetEdgeIds: [...item.targetEdgeIds] } : {}),
+        ...(item.targetFaceIds ? { targetFaceIds: [...item.targetFaceIds] } : {}),
+        timestamp: Date.now() + index, dependsOn: index > 0 ? [restored[index - 1]!.id] : [rootId],
+      }))];
+      replaceHistory(nodes, rootId, restored.at(-1)?.id ?? rootId);
+      setImportedGeometry(null);
+      setAiCadHandoff(null);
+      addToast('success', L('PDM 버전의 피처 트리와 3D 모델을 복원했습니다.', 'Restored the PDM feature tree and 3D model.'));
+    };
+    window.addEventListener('nexyfab:pdm-checkout-restore', onCheckout);
+    return () => window.removeEventListener('nexyfab:pdm-checkout-restore', onCheckout);
+  }, [addToast, lang, replaceHistory, setImportedGeometry]);
+
   // The free-form Studio stashes its OpenSCAD in sessionStorage. Render it to a
   // mesh and feed it into the import pipeline — which splits multi-body output
   // into shells and primitive-fits them into editable parts. Honest boundary:
@@ -7668,13 +7908,11 @@ export function ShapeGeneratorInner() {
         generatedAt,
       }, placedParts.length > 0 ? buildBomRows() : undefined, exactStepText ?? undefined);
       analytics.shapeDownload('STEP');
-      addToast('warning', lang === 'ko'
-        ? exactStepText
+      addToast('warning', L(exactStepText
           ? '증거 패키지를 내보냈습니다. 정밀 STEP은 포함됐지만 리비전·커널·도면·PMI 증거가 연결될 때까지 제조 릴리스는 차단됩니다.'
-          : '검토용 패키지를 내보냈습니다. 정밀 B-Rep STEP과 릴리스 증거가 없어 제조 승인은 차단됩니다.'
-        : exactStepText
+          : '검토용 패키지를 내보냈습니다. 정밀 B-Rep STEP과 릴리스 증거가 없어 제조 승인은 차단됩니다.', exactStepText
           ? 'Evidence package exported with exact STEP. Manufacturing release remains blocked until revision, kernel, drawing and PMI evidence are attached.'
-          : 'Review package exported. Manufacturing approval is blocked because exact B-Rep STEP and release evidence are missing.');
+          : 'Review package exported. Manufacturing approval is blocked because exact B-Rep STEP and release evidence are missing.'));
     } catch (err) {
       console.error('[Export STEP]', err);
       addToast('error', lt.stepExportFailed);
@@ -7779,7 +8017,7 @@ export function ShapeGeneratorInner() {
       await exportSheetMetalDXF({ geometry: geo, ...pattern }, 'flat-pattern');
       if (pattern.warnings.length > 0) {
         for (const w of pattern.warnings) {
-          addToast(w.severity, lang === 'ko' ? w.messageKo : w.messageEn); // messages come from analysis modules
+          addToast(w.severity, L(w.messageKo, w.messageEn)); // messages come from analysis modules
         }
       }
       addToast('success', lt.flatDxfExported);
@@ -8068,7 +8306,7 @@ export function ShapeGeneratorInner() {
     const onFileExport = (e: Event) => {
       const format = (e as CustomEvent<{ format?: string } | undefined>).detail?.format;
       if (!effectiveResult?.geometry) {
-        addToast('warning', lang === 'ko' ? '내보낼 형상이 없습니다 — 먼저 형상을 생성하세요.' : 'Nothing to export — generate a shape first.');
+        addToast('warning', L('내보낼 형상이 없습니다 — 먼저 형상을 생성하세요.', 'Nothing to export — generate a shape first.'));
         return;
       }
       if (format === 'stl') { void handleExportCurrentSTL(); return; }
@@ -8078,10 +8316,10 @@ export function ShapeGeneratorInner() {
         void (async () => {
           const geo = effectiveResult.geometry;
           const posAttr = geo.attributes.position;
-          if (!posAttr) { addToast('error', lang === 'ko' ? '형상에 정점이 없습니다.' : 'No vertices.'); return; }
+          if (!posAttr) { addToast('error', L('형상에 정점이 없습니다.', 'No vertices.')); return; }
           const positions = Array.from(posAttr.array as ArrayLike<number>);
           const indices = geo.index ? Array.from(geo.index.array as ArrayLike<number>) : null;
-          addToast('info', lang === 'ko' ? '종이 전개도를 만드는 중…' : 'Unfolding to papercraft…');
+          addToast('info', L('종이 전개도를 만드는 중…', 'Unfolding to papercraft…'));
           try {
             const res = await fetch('/api/nexyfab/papercraft-unfold', {
               method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -8093,19 +8331,15 @@ export function ShapeGeneratorInner() {
               // guide the user to a low-poly model or the layered-diorama path.
               const dense = j.code === 'UNFOLD_REJECT' || /dense/i.test(j.error ?? '');
               addToast('error', dense
-                ? (lang === 'ko'
-                  ? `모델이 너무 정밀해 종이접기 전개가 어렵습니다 (${j.faceCount ?? '?'}면). 곡면/고폴리 제품은 적층(레이어) 디오라마가 적합해요 — /papercraft 페이지를 이용하세요.`
-                  : `Model too detailed to fold into paper (${j.faceCount ?? '?'} faces). Curved/high-poly parts suit a layered diorama — use the /papercraft page.`)
-                : (j.error || (lang === 'ko' ? '펼치기에 실패했어요.' : 'Unfold failed.')));
+                ? (L(`모델이 너무 정밀해 종이접기 전개가 어렵습니다 (${j.faceCount ?? '?'}면). 곡면/고폴리 제품은 적층(레이어) 디오라마가 적합해요 — /papercraft 페이지를 이용하세요.`, `Model too detailed to fold into paper (${j.faceCount ?? '?'} faces). Curved/high-poly parts suit a layered diorama — use the /papercraft page.`))
+                : (j.error || (L('펼치기에 실패했어요.', 'Unfold failed.'))));
               return;
             }
             const blob = new Blob([j.dxf], { type: 'application/dxf' });
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a'); a.href = url; a.download = 'papercraft-net.dxf'; a.click();
             URL.revokeObjectURL(url);
-            addToast('success', lang === 'ko'
-              ? `종이 전개도 생성 — ${j.pieces}조각 · 면 ${j.faceCount}개${j.overlaps ? ` (겹침 ${j.overlaps})` : ''}`
-              : `Papercraft net — ${j.pieces} pieces · ${j.faceCount} faces`);
+            addToast('success', L(`종이 전개도 생성 — ${j.pieces}조각 · 면 ${j.faceCount}개${j.overlaps ? ` (겹침 ${j.overlaps})` : ''}`, `Papercraft net — ${j.pieces} pieces · ${j.faceCount} faces`));
           } catch (err) { addToast('error', String((err as Error).message)); }
         })();
         return;
@@ -8116,24 +8350,22 @@ export function ShapeGeneratorInner() {
         void (async () => {
           const geo = effectiveResult.geometry;
           const posAttr = geo.attributes.position;
-          if (!posAttr) { addToast('error', lang === 'ko' ? '형상에 정점이 없습니다.' : 'No vertices.'); return; }
+          if (!posAttr) { addToast('error', L('형상에 정점이 없습니다.', 'No vertices.')); return; }
           const positions = Array.from(posAttr.array as ArrayLike<number>);
           const indices = geo.index ? Array.from(geo.index.array as ArrayLike<number>) : null;
-          addToast('info', lang === 'ko' ? '적층 슬라이스를 만드는 중…' : 'Slicing into stacked layers…');
+          addToast('info', L('적층 슬라이스를 만드는 중…', 'Slicing into stacked layers…'));
           try {
             const res = await fetch('/api/nexyfab/papercraft-slice', {
               method: 'POST', headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({ positions, indices, thickness: 5 }),
             });
             const j = await res.json() as { ok?: boolean; dxf?: string; layerCount?: number; error?: string };
-            if (!res.ok || !j.ok || !j.dxf) { addToast('error', j.error || (lang === 'ko' ? '슬라이스에 실패했어요.' : 'Slice failed.')); return; }
+            if (!res.ok || !j.ok || !j.dxf) { addToast('error', j.error || (L('슬라이스에 실패했어요.', 'Slice failed.'))); return; }
             const blob = new Blob([j.dxf], { type: 'application/dxf' });
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a'); a.href = url; a.download = 'papercraft-layers.dxf'; a.click();
             URL.revokeObjectURL(url);
-            addToast('success', lang === 'ko'
-              ? `적층 슬라이스 생성 — ${j.layerCount}장 (5mm 보드 기준). 잘라서 쌓으세요.`
-              : `Sliced into ${j.layerCount} layers (5mm board). Cut & stack.`);
+            addToast('success', L(`적층 슬라이스 생성 — ${j.layerCount}장 (5mm 보드 기준). 잘라서 쌓으세요.`, `Sliced into ${j.layerCount} layers (5mm board). Cut & stack.`));
           } catch (err) { addToast('error', String((err as Error).message)); }
         })();
         return;
@@ -8146,7 +8378,7 @@ export function ShapeGeneratorInner() {
     const onCamExport = (e: Event) => {
       const detail = (e as CustomEvent<{ dialect?: string; machine?: string } | undefined>).detail;
       if (!effectiveResult?.geometry) {
-        addToast('warning', lang === 'ko' ? 'CAM 내보내기는 형상이 필요합니다 — 먼저 형상을 생성하세요.' : 'CAM export needs geometry — generate a shape first.');
+        addToast('warning', L('CAM 내보내기는 형상이 필요합니다 — 먼저 형상을 생성하세요.', 'CAM export needs geometry — generate a shape first.'));
         return;
       }
       if (detail?.dialect) setMfgCamPost(detail.dialect);
@@ -8293,7 +8525,7 @@ export function ShapeGeneratorInner() {
       return;
     }
     setParam(suggestion.paramKey, suggestion.value);
-    addToast('success', lt.autoFixApplied(lang === 'ko' ? suggestion.label.ko : suggestion.label.en));
+    addToast('success', lt.autoFixApplied(L(suggestion.label.ko, suggestion.label.en)));
   }, [setParam, addToast, lang, checkFreemium, setShowDFMFixUpgrade]);
 
   /**
@@ -8313,15 +8545,13 @@ export function ShapeGeneratorInner() {
       .flatMap(r => r.issues)
       .filter(i => i.type === 'draft_angle');
     if (draftIssues.length === 0) {
-      addToast('info', lang === 'ko' ? '구배 부족 영역이 없습니다.' : 'No draft-angle issues to fix.');
+      addToast('info', L('구배 부족 영역이 없습니다.', 'No draft-angle issues to fix.'));
       return;
     }
     addFeatureWithParams('draft', { angle: 1.5, direction: 0 });
     addToast(
       'success',
-      lang === 'ko'
-        ? `구배 1.5° 자동 적용 (영향: ${draftIssues.length}개 면)`
-        : `Applied 1.5° draft to ${draftIssues.length} face(s)`,
+      L(`구배 1.5° 자동 적용 (영향: ${draftIssues.length}개 면)`, `Applied 1.5° draft to ${draftIssues.length} face(s)`),
     );
   }, [dfmResults, addFeatureWithParams, addToast, lang, checkFreemium, setShowDFMFixUpgrade]);
 
@@ -8601,9 +8831,7 @@ export function ShapeGeneratorInner() {
     for (const w of graph.warnings) addToast('warning', w);
 
     const confirmMsg =
-      lang === 'ko'
-        ? '메이트 제약을 파트 배치(위치·회전)에 적용합니다. 계속할까요?'
-        : 'Apply mate constraints to part placement (position & rotation). Continue?';
+      L('메이트 제약을 파트 배치(위치·회전)에 적용합니다. 계속할까요?', 'Apply mate constraints to part placement (position & rotation). Continue?');
     if (typeof window !== 'undefined' && !window.confirm(confirmMsg)) return;
     try {
       const before = JSON.parse(JSON.stringify(placedParts)) as PlacedPart[];
@@ -8625,13 +8853,11 @@ export function ShapeGeneratorInner() {
       });
       addToast(
         'success',
-        lang === 'ko'
-          ? '메이트가 파트 배치에 적용되었습니다. (명령 히스토리에서 실행 취소 가능)'
-          : 'Mates applied to placement. (Undo via command history / toolbar)',
+        L('메이트가 파트 배치에 적용되었습니다. (명령 히스토리에서 실행 취소 가능)', 'Mates applied to placement. (Undo via command history / toolbar)'),
       );
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
-      addToast('error', lang === 'ko' ? `적용 실패: ${msg}` : `Apply failed: ${msg}`);
+      addToast('error', L(`적용 실패: ${msg}`, `Apply failed: ${msg}`));
     }
   }, [placedParts, assemblyMates, setPlacedParts, setAssemblySolverResyncNonce, addToast, lang]);
 
@@ -8830,7 +9056,7 @@ export function ShapeGeneratorInner() {
     setSketchResult({ geometry: geo, edgeGeometry, volume_cm3: meshVolume(geo) / 1000, surface_area_cm2: meshSurfaceArea(geo) / 100, bbox: { w: Math.round(s.x), h: Math.round(s.y), d: Math.round(s.z) } });
     if (pattern.warnings.length > 0) {
       for (const w of pattern.warnings) {
-        addToast(w.severity, lang === 'ko' ? w.messageKo : w.messageEn);
+        addToast(w.severity, L(w.messageKo, w.messageEn));
       }
     }
     addToast('success', lt.flatPatternGenerated);
@@ -9004,9 +9230,9 @@ export function ShapeGeneratorInner() {
       }));
 
       if (newMates.length > 0) {
-        addToast('success', lang === 'ko' ? `규격 부품 배치 및 자동 메이트 체결 완료` : `Standard part placed with smart mates`);
+        addToast('success', L(`규격 부품 배치 및 자동 메이트 체결 완료`, `Standard part placed with smart mates`));
       } else {
-        addToast('success', lang === 'ko' ? `규격 부품 배치 완료` : `Standard part placed`);
+        addToast('success', L(`규격 부품 배치 완료`, `Standard part placed`));
       }
     });
   }, [setPlacedParts, setAssemblyMates, addToast, lang]);
@@ -9382,16 +9608,12 @@ export function ShapeGeneratorInner() {
                       //   error   → "NO_GEOMETRY" | "RADIUS_INVALID" | "OCCT_FAILED"
                       //             | "IMPORT_FAILED: …" | raw error text
                       const opLabel = op === 'fillet'
-                        ? (lang === 'ko' ? '필렛' : 'Fillet')
-                        : (lang === 'ko' ? '챔퍼' : 'Chamfer');
+                        ? (L('필렛', 'Fillet'))
+                        : (L('챔퍼', 'Chamfer'));
                       if (status === 'success') {
-                        addToast('success', lang === 'ko'
-                          ? `${opLabel} 적용 (${detail})`
-                          : `${opLabel} applied (${detail})`);
+                        addToast('success', L(`${opLabel} 적용 (${detail})`, `${opLabel} applied (${detail})`));
                       } else {
-                        addToast('error', lang === 'ko'
-                          ? `${opLabel} 실패: ${detail}`
-                          : `${opLabel} failed: ${detail}`);
+                        addToast('error', L(`${opLabel} 실패: ${detail}`, `${opLabel} failed: ${detail}`));
                       }
                     }}
                     onFaceOperationStatus={(status, op, detail) => {
@@ -9400,16 +9622,12 @@ export function ShapeGeneratorInner() {
                       // error   → "NO_GEOMETRY" | "OFFSET_INVALID" | "THICKNESS_INVALID"
                       //           | "OCCT_FAILED" | raw error text
                       const opLabel = op === 'offset'
-                        ? (lang === 'ko' ? '면 오프셋' : 'Face Offset')
-                        : (lang === 'ko' ? '쉘' : 'Shell');
+                        ? (L('면 오프셋', 'Face Offset'))
+                        : (L('쉘', 'Shell'));
                       if (status === 'success') {
-                        addToast('success', lang === 'ko'
-                          ? `${opLabel} 적용 (${detail})`
-                          : `${opLabel} applied (${detail})`);
+                        addToast('success', L(`${opLabel} 적용 (${detail})`, `${opLabel} applied (${detail})`));
                       } else {
-                        addToast('error', lang === 'ko'
-                          ? `${opLabel} 실패: ${detail}`
-                          : `${opLabel} failed: ${detail}`);
+                        addToast('error', L(`${opLabel} 실패: ${detail}`, `${opLabel} failed: ${detail}`));
                       }
                     }}
                     faceEditViewportCallout={lt.faceEditViewportCallout}
@@ -9470,17 +9688,18 @@ export function ShapeGeneratorInner() {
   return (
     <div
       data-testid="shape-generator-workspace"
-      style={{ height: '100dvh', background: theme.bg, display: 'flex', flexDirection: 'column', userSelect: 'none', WebkitUserSelect: 'none', overflow: 'hidden' }}
+      data-embedded-in-shell={embeddedInShell ? 'true' : 'false'}
+      style={{ height: embeddedInShell ? '100%' : '100dvh', background: theme.bg, display: 'flex', flexDirection: 'column', userSelect: 'none', WebkitUserSelect: 'none', overflow: 'hidden' }}
       onDragStart={e => e.preventDefault()}
       onDragEnter={handleDragEnter}
       onDragLeave={handleDragLeave}
       onDragOver={handleDragOver}
       onDrop={handleDrop}>
 
-      <FullscreenAutoHide active={isFullscreen} />
+      {!embeddedInShell && <FullscreenAutoHide active={isFullscreen} />}
 
       {/* ════ Desktop Title Bar (Tauri only) ════ */}
-      <DesktopTitleBar
+      {!embeddedInShell && <DesktopTitleBar
         projectName={useSceneStore.getState().selectedId || 'nexyfab-project'}
         isDirty={desktopDirty}
         currentPath={desktopFilePath}
@@ -9492,13 +9711,13 @@ export function ShapeGeneratorInner() {
         onSave={() => void handleSaveNfab(false)}
         onSaveAs={() => void handleSaveNfab(true)}
         onReplayWelcome={handleReplayDesktopWelcome}
-      />
+      />}
 
-      {viewMode === 'workspace' && (
+      {!embeddedInShell && viewMode === 'workspace' && (
         <PdmMetaWorkspaceStrip isKo={lang === 'ko'} onFieldsEdited={markNfabDirty} />
       )}
 
-      {showDesktopFirstRun ? (
+      {!embeddedInShell && showDesktopFirstRun ? (
         <DesktopFirstRunWizard lang={lang} onClose={() => setShowDesktopFirstRun(false)} />
       ) : null}
 
@@ -9514,7 +9733,7 @@ export function ShapeGeneratorInner() {
       {aiCadHandoff && (
         <section
           data-testid="ai-cad-handoff-banner"
-          aria-label={isKorean(lang) ? 'AI CAD 인계 상태' : 'AI CAD handoff status'}
+          aria-label={L('AI CAD 인계 상태', 'AI CAD handoff status')}
           style={{
             display: 'flex', alignItems: 'center', gap: 12, padding: '8px 14px',
             background: 'linear-gradient(90deg, rgba(79,70,229,.18), rgba(37,99,235,.10))',
@@ -9523,23 +9742,23 @@ export function ShapeGeneratorInner() {
           }}
         >
           <span style={{ padding: '3px 8px', borderRadius: 999, background: 'rgba(99,102,241,.22)', color: '#a5b4fc', fontWeight: 800 }}>
-            AI → {isKorean(lang) ? '정밀 3D CAD' : 'Precision 3D CAD'}
+            AI → {L('정밀 3D CAD', 'Precision 3D CAD')}
           </span>
           <strong data-testid="ai-cad-handoff-title" style={{ fontSize: 12 }}>
-            {aiCadHandoff.part} · {aiCadHandoff.featureCount}{isKorean(lang) ? '개 피처 인계됨' : ' features transferred'}
+            {aiCadHandoff.part} · {aiCadHandoff.featureCount}{L('개 피처 인계됨', ' features transferred')}
           </strong>
           <span style={{ color: aiCadHandoff.skipped.length ? '#fbbf24' : '#86efac' }}>
             {aiCadHandoff.skipped.length
-              ? (isKorean(lang) ? `검토 필요: ${aiCadHandoff.skipped.join(', ')}` : `Review: ${aiCadHandoff.skipped.join(', ')}`)
-              : (isKorean(lang) ? '편집 가능한 B-rep · 피처와 치수 유지' : 'Editable B-rep · features and dimensions preserved')}
+              ? (L(`검토 필요: ${aiCadHandoff.skipped.join(', ')}`, `Review: ${aiCadHandoff.skipped.join(', ')}`))
+              : (L('편집 가능한 B-rep · 피처와 치수 유지', 'Editable B-rep · features and dimensions preserved'))}
           </span>
           <span style={{ color: theme.textMuted, marginInlineStart: 'auto' }}>
-            {isKorean(lang) ? '왼쪽 피처 선택 → 오른쪽 치수 수정 → 도면·STEP 확인' : 'Select a feature → edit dimensions → verify drawing & STEP'}
+            {L('왼쪽 피처 선택 → 오른쪽 치수 수정 → 도면·STEP 확인', 'Select a feature → edit dimensions → verify drawing & STEP')}
           </span>
           <button
             type="button"
             data-testid="dismiss-ai-cad-handoff"
-            aria-label={isKorean(lang) ? '인계 안내 닫기' : 'Dismiss handoff guidance'}
+            aria-label={L('인계 안내 닫기', 'Dismiss handoff guidance')}
             onClick={() => setAiCadHandoff(null)}
             style={{ border: 0, background: 'transparent', color: theme.textMuted, cursor: 'pointer', fontSize: 16, lineHeight: 1 }}
           >×</button>
@@ -9547,7 +9766,7 @@ export function ShapeGeneratorInner() {
       )}
 
       {/* ════════ TOP TOOLBAR ════════ */}
-      <ShapeGeneratorToolbar
+      {!embeddedInShell && <ShapeGeneratorToolbar
         theme={theme}
         mode={mode}
         toggleTheme={toggleTheme}
@@ -9674,10 +9893,10 @@ export function ShapeGeneratorInner() {
           onToggleRight: sidebarLayout.toggleRightCollapsed,
           onToggleSwap: sidebarLayout.toggleSwapSides,
           onCycleOverlay: sidebarLayout.cycleOverlayPref }}
-      />
+      />}
 
       {/* ════════ FUNNEL STEP BAR ════════ */}
-      {viewMode === 'workspace' && !isMobile && (
+      {!embeddedInShell && viewMode === 'workspace' && !isMobile && (
         <DesignFunnelBar
           lang={lang}
           sketchMode={isSketchMode && activeTab === 'design'}
@@ -9869,7 +10088,7 @@ export function ShapeGeneratorInner() {
         overflow: 'hidden', minHeight: 0, position: 'relative' }}>
 
         {/* ══════ LEFT PANEL — hidden on mobile, collapsible on tablet ══════ */}
-        {!isReadOnly && <ErrorBoundary><LeftPanel
+        {!embeddedInShell && !isReadOnly && <ErrorBoundary><LeftPanel
           lang={lang}
           t={shapeLabels}
           gt={gt}
@@ -9886,7 +10105,7 @@ export function ShapeGeneratorInner() {
           toggleExpanded={toggleExpanded}
           ensureExpanded={ensureExpanded}
           toggleFeature={toggleFeatureCmd}
-          removeNode={removeNode}
+          removeNode={handleRemoveFeatureCmd}
           updateFeatureParam={updateFeatureParamCmd}
           addFeature={addFeatureWithContext}
           moveFeatureByIds={handleMoveFeatureByIds}
@@ -10028,7 +10247,7 @@ export function ShapeGeneratorInner() {
         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0, overflow: 'hidden' }}>
 
           {/* CommandManager toolbar — hidden in readonly mode */}
-          {!isReadOnly && <div data-tour="command-toolbar">
+          {!embeddedInShell && !isReadOnly && <div data-tour="command-toolbar">
           <CommandToolbar
             activeTab={activeTab} isSketchMode={isSketchMode} editMode={editMode}
             hasResult={!!effectiveResult}
@@ -10127,7 +10346,7 @@ export function ShapeGeneratorInner() {
           </div>}
 
           {/* ── Workspace switcher + Breadcrumb ── */}
-          <div style={{ display: 'flex', alignItems: 'stretch', width: '100%', minWidth: 0 }}>
+          <div data-shell-v2-hide={embeddedInShell ? '' : undefined} style={{ display: 'flex', alignItems: 'stretch', width: '100%', minWidth: 0 }}>
             <CadWorkspaceSwitcher
               lang={lang}
               isSketchMode={isSketchMode}
@@ -10168,7 +10387,7 @@ export function ShapeGeneratorInner() {
           </div>
 
           {/* ── Selection Filter Bar ── */}
-          {!isSketchMode && (
+          {!embeddedInShell && !isSketchMode && (
             <SelectionFilterBar activeFilters={selectionFilters} onToggle={toggleSelectionFilter} lang={lang} />
           )}
 
@@ -10346,7 +10565,7 @@ export function ShapeGeneratorInner() {
           )}
 
           {/* ── Workflow Stepper (sketch mode) ── */}
-          {isSketchMode && activeTab === 'design' && (
+          {!embeddedInShell && isSketchMode && activeTab === 'design' && (
             <WorkflowStepper
               isSketchMode={isSketchMode}
               sketchClosed={(sketchProfiles[activeProfileIdx] ?? sketchProfile).closed}
@@ -10489,7 +10708,10 @@ export function ShapeGeneratorInner() {
                       onClick={() => setSketchViewMode(sketchViewMode === 'drawing' ? '3d' : 'drawing')}
                       title={sketchViewMode === 'drawing' ? '3D' : '2D Drawing'}
                       style={{
-                        position: 'absolute', top: 10, right: 12, zIndex: 30,
+                        // Keep this independent of ShapePreview's top-right
+                        // ViewCube; overlapping controls fail both pointer and
+                        // touch hit-testing on the precision-CAD surface.
+                        position: 'absolute', top: 16, right: 172, zIndex: 30,
                         padding: '5px 12px', borderRadius: 6,
                         border: `1px solid ${sketchViewMode === 'drawing' ? 'var(--nx-accent)' : 'var(--nx-border)'}`,
                         background: sketchViewMode === 'drawing' ? 'var(--nx-bg)' : 'var(--nx-panel-2)',
@@ -10784,7 +11006,7 @@ export function ShapeGeneratorInner() {
                 onMouseEnter={e => { e.currentTarget.style.background = 'var(--nx-border)'; e.currentTarget.style.color = 'var(--nx-text)'; }}
                 onMouseLeave={e => { e.currentTarget.style.background = 'var(--nx-panel-2)'; e.currentTarget.style.color = 'var(--nx-text-2)'; }}
               >
-                ◀ {lang === 'ko' ? '3D 미리보기' : '3D preview'}
+                ◀ {L('3D 미리보기', '3D preview')}
               </button>
             )}
 
@@ -11192,11 +11414,10 @@ export function ShapeGeneratorInner() {
                     // same recompute path as normal param edits → the solid re-extrudes.
                     const sd = editingNode.sketchData;
                     const depth = sd?.config?.depth ?? 50;
-                    const ko = lang === 'ko';
                     return (
                       <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                         <label style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: 12 }}>
-                          {ko ? '돌출 깊이 (mm)' : 'Extrude depth (mm)'}
+                          {L('돌출 깊이 (mm)', 'Extrude depth (mm)')}
                           <input
                             type="number" min={0.1} step={1} value={depth}
                             onChange={(e) => {
@@ -11207,7 +11428,7 @@ export function ShapeGeneratorInner() {
                           />
                         </label>
                         <div style={{ fontSize: 11, color: 'var(--nx-text-2)' }}>
-                          {ko ? '평면' : 'Plane'}: {sd?.plane ?? 'xy'} · {ko ? '작업' : 'Op'}: {sd?.operation ?? 'add'}
+                          {L('평면', 'Plane')}: {sd?.plane ?? 'xy'} · {L('작업', 'Op')}: {sd?.operation ?? 'add'}
                         </div>
                       </div>
                     );
@@ -11278,7 +11499,7 @@ export function ShapeGeneratorInner() {
           )}
 
           {/* ── Status Bar (VS Code-style bottom bar) ── */}
-          <StatusBar
+          {!embeddedInShell && <StatusBar
             lang={lang}
             cursor3D={cursor3DPos}
             unitSystem={unitSystem}
@@ -11304,10 +11525,13 @@ export function ShapeGeneratorInner() {
             progress={progress}
             onShowShortcuts={() => setShowShortcuts(true)}
             modelStats={statusBarStats}
-          />
+          />}
         </div>
 
         {/* ══════ RIGHT PANEL (extracted) ══════ */}
+        {/* Analysis panels are flag-driven overlays. They must remain mounted in
+            the shell layout as well, otherwise drawer actions such as “Open full
+            DFM” update the store but have no consumer to render the real panel. */}
         <ErrorBoundary><RightPanel
           lang={lang}
           t={shapeLabels}
@@ -11381,7 +11605,7 @@ export function ShapeGeneratorInner() {
       </div>
 
       {/* Hidden file input for scene load */}
-      <input ref={sceneFileInputRef} type="file" accept=".nexyfab,.json" style={{ display: 'none' }}
+      <input id="scene-file-input" name="sceneFile" ref={sceneFileInputRef} type="file" accept=".nexyfab,.json" style={{ display: 'none' }}
         onChange={handleSceneFileSelected} />
 
       {/* CAM Simulation Viewer */}
@@ -11400,14 +11624,14 @@ export function ShapeGeneratorInner() {
         onClose={() => setShowCOTSPanel(false)}
         lang={lang}
         onInsert={(part: COTSPart) => {
-          addToast('success', lt.cotsAddedToBom(lang === 'ko' ? part.nameKo : part.name));
+          addToast('success', lt.cotsAddedToBom(L(part.nameKo, part.name)));
           // Insert real (simplified) geometry into the assembly via the same
           // pipeline as the ISO standard-parts grid — was BOM-toast only.
           // (2026-06-09 P3)
           window.dispatchEvent(new CustomEvent('nexyfab:insert-standard-part', {
             detail: {
               id: part.id,
-              title: lang === 'ko' ? part.nameKo : part.name,
+              title: L(part.nameKo, part.name),
               standard: part.standard,
               params: part.params,
               scad: cotsToScad(part),
@@ -11442,15 +11666,46 @@ export function ShapeGeneratorInner() {
       />
 
       {/* ═══ Hole Wizard Modal ═══ */}
-      <HoleWizardModal
-        open={showHoleWizard}
-        lang={lang as 'ko' | 'en'}
-        onClose={() => setShowHoleWizard(false)}
-        onApply={(p) => {
-          addFeatureWithParams('hole', p);
-          addToast('success', lt.standardHoleAdded(p.diameter.toFixed(2)));
-        }}
-      />
+      {searchParams?.get('hole-wizard') === 'v1' ? (
+        <LegacyHoleWizardModal
+          open={showHoleWizard}
+          lang={lang}
+          onClose={() => setShowHoleWizard(false)}
+          onApply={(p) => {
+            addFeatureWithParams('hole', p);
+            addToast('success', lt.standardHoleAdded(p.diameter.toFixed(2)));
+          }}
+        />
+      ) : (
+        <HoleWizardModalV2
+          open={showHoleWizard}
+          lang={lang}
+          availableSketches={holeWizardSketches}
+          selectedFaceId={selectedElement?.type === 'face' ? selectedElement.persistentId : undefined}
+          onClose={() => setShowHoleWizard(false)}
+          onApply={(definition) => {
+            try {
+              const faceSelections = selectedElement?.type === 'face' ? [selectedElement] : undefined;
+              if (definition.terminationKind === 'upToFace' && !faceSelections?.length) {
+                throw new Error(L('면까지 홀을 만들려면 먼저 대상 면을 선택하세요.', 'Select a target face before applying an up-to-face hole.'));
+              }
+              const placements = holeArrayToFeaturePlacements(definition, {
+                resolveSketchPoints: featureId => holeWizardSketches.find(sketch => sketch.featureId === featureId)?.points,
+              });
+              for (const placement of placements) {
+                addFeatureWithParamsAndEdges('hole', placement.params, undefined, faceSelections);
+              }
+              const diameter = placements[0]?.params.diameter ?? 0;
+              addToast('success', `${lt.standardHoleAdded(diameter.toFixed(2))} × ${placements.length}`);
+            } catch (error) {
+      addToast('error', error instanceof Error ? error.message : String(error));
+      return false;
+              return false;
+            }
+            return true;
+          }}
+        />
+      )}
 
       {/* ═══ Standard Parts Library ═══ */}
       <StandardPartsLibrary
@@ -11643,9 +11898,7 @@ export function ShapeGeneratorInner() {
         onApply={(s, rows) => {
           addToast(
             'success',
-            lang === 'ko'
-              ? `${s.spec.name} 체결구 ${rows.length}개 BOM 추가됨`
-              : `Added ${rows.length} ${s.spec.name} fastener row(s) to BOM`,
+            L(`${s.spec.name} 체결구 ${rows.length}개 BOM 추가됨`, `Added ${rows.length} ${s.spec.name} fastener row(s) to BOM`),
           );
           // Real BOM integration is host-side — this surfaces the rows so a
           // future PR can pipe them into bomParts or PLM (F9) directly.
@@ -11680,6 +11933,15 @@ export function ShapeGeneratorInner() {
         setShowStockOptimizer={setShowStockOptimizer}
         captureFrame={() => captureRef.current?.() ?? null}
         onUserPartLoaded={(name) => addToast('success', lt.partLoaded(name))}
+      />
+
+      {/* Native installer-core precision CAD dock. It is fail-closed in web/source
+          mode and derives its root only from the authoritative native .nfab path. */}
+      <PrecisionCadAgentWorkspace
+        lang={lang}
+        desktopFilePath={desktopFilePath}
+        aiModelId={aiModelId}
+        cloudProjectId={cloudProjectId}
       />
 
       {/* ═══ Phase 5 bridges (flag-gated, minimal-invasive host wire) ═══
@@ -12002,16 +12264,16 @@ export function ShapeGeneratorInner() {
       />
 
       {/* ═══ Help cluster (shortcuts help / hint overlay / context help) ═══ */}
-      <HelpCluster
+      {!embeddedInShell && <HelpCluster
         lang={lang}
         showShortcuts={showShortcuts}
         setShowShortcuts={setShowShortcuts}
         contextHelp={contextHelp}
         onOpenShortcuts={() => useUIStore.getState().togglePanel('showShortcuts')}
-      />
+      />}
 
       {/* ═══ Command Palette (Ctrl+K) ═══ */}
-      <CommandPalette
+      {!embeddedInShell && <CommandPalette
         visible={showCommandPalette}
         onClose={() => setShowCommandPalette(false)}
         commands={paletteCommands}
@@ -12020,11 +12282,11 @@ export function ShapeGeneratorInner() {
           setPendingChatMsg(prompt);
           openAIAssistant('chat');
         }}
-      />
+      />}
 
       {/* ═══ Status footer (auto-save indicator + OCCT toggle) ═══ */}
       <StatusFooter
-        visible={viewMode === 'workspace'}
+        visible={!embeddedInShell && viewMode === 'workspace'}
         lang={lang}
         isSaving={isSaving}
         lastSavedAt={lastSavedAt}
@@ -12048,6 +12310,7 @@ export function ShapeGeneratorInner() {
       {!isMobile && !simpleMode && scadAuthoringMode === 'agent' && (
         <ScadAgentPanel
           lang={lang}
+          modelId={aiModelId}
           variant="floating"
           onApplyScad={handleApplyAgentScad}
           onShowBrepHandle={handleShowBrepHandle}
@@ -12059,7 +12322,14 @@ export function ShapeGeneratorInner() {
         <MobileAgentNotice lang={lang} />
       )}
       {!isMobile && !simpleMode && (
-        <div style={{ position: 'fixed', top: 56, right: 16, zIndex: 700 }}>
+        <div style={{ position: 'fixed', top: 56, right: 16, zIndex: 700, display: 'flex', alignItems: 'center', gap: 8 }}>
+          <AiModelSelector
+            modelId={aiModelId}
+            onChange={pickAiModel}
+            plan={authUser?.plan ?? 'free'}
+            lang={lang}
+            compact
+          />
           <ScadModeToggle
             lang={lang}
             agentUnlocked={isProPlan}
@@ -12141,16 +12411,14 @@ export function ShapeGeneratorInner() {
       {/* ═══ F6 — Change impact confirm before destructive feature removal ═══ */}
       <ConfirmModal
         open={removeConfirm !== null}
-        title={lang === 'ko' ? '피처 삭제 영향 확인' : 'Confirm feature deletion'}
+        title={L('피처 삭제 영향 확인', 'Confirm feature deletion')}
         message={
           removeConfirm
-            ? (lang === 'ko'
-                ? `이 피처를 삭제하면 다음에 영향을 줍니다: ${removeConfirm.summary}. 진행하시겠습니까?`
-                : `Deleting this feature will affect: ${removeConfirm.summary}. Continue?`)
+            ? (L(`이 피처를 삭제하면 다음에 영향을 줍니다: ${removeConfirm.summary}. 진행하시겠습니까?`, `Deleting this feature will affect: ${removeConfirm.summary}. Continue?`))
             : ''
         }
-        confirmLabel={lang === 'ko' ? '삭제' : 'Delete'}
-        cancelLabel={lang === 'ko' ? '취소' : 'Cancel'}
+        confirmLabel={L('삭제', 'Delete')}
+        cancelLabel={L('취소', 'Cancel')}
         destructive
         onConfirm={() => {
           if (removeConfirm) performRemoveFeature(removeConfirm.featureId);
@@ -12174,7 +12442,7 @@ export function ShapeGeneratorInner() {
       />
 
       {/* ═══ Split-screen + STL Export dock ═══ */}
-      <SplitExportDock
+      {!embeddedInShell && <SplitExportDock
         lang={lang}
         splitMode={splitMode}
         setSplitMode={setSplitMode}
@@ -12182,7 +12450,7 @@ export function ShapeGeneratorInner() {
         stlExportDialogOpen={stlExportDialogOpen}
         setStlExportDialogOpen={setStlExportDialogOpen}
         onExportSTL={(choice) => { void handleExportCurrentSTL(choice); }}
-      />
+      />}
 
       {/* ═══ G3: 참조 상실 재지정 패널 — 리빌드 margin-gate 거부를 액션화.
           items 가 비면 훅이 [] 를 주고 패널은 스스로 null 렌더(이중 안전). ═══ */}
@@ -12202,7 +12470,7 @@ export function ShapeGeneratorInner() {
       {/* Phase-2 first-time UX: sample template picker, 3-step tutorial,
           floating quick-export, modeler checklist. Single orchestrator
           keeps the wiring footprint tiny. */}
-      <FirstTimeOnboardingShell
+      {!embeddedInShell && <FirstTimeOnboardingShell
         lang={lang}
         featureCount={features.length}
         hasGeometry={!!effectiveResult?.geometry}
@@ -12239,7 +12507,7 @@ export function ShapeGeneratorInner() {
           }, 30);
         }}
         onExportStl={() => { setStlExportDialogOpen(true); }}
-      />
+      />}
 
       {/* Manufacturing/quote CTA removed (2026-06-12): the floating
           "make it real → quote" button duplicated the quote entry already in
@@ -12260,7 +12528,16 @@ export function ShapeGeneratorInner() {
         // edit, so route AI prompts through the SCAD path (handleFreeAiPrompt),
         // which wraps the import and edits it via OpenSCAD.
         scadEditActive={!!importedResult || domainWorkspace.domain !== 'mechanical'}
-        onScadEdit={importedResult ? handleFreeAiPrompt : handleDomainAiPrompt}
+        onScadEdit={importedResult
+          ? (prompt) => handleFreeAiPrompt(prompt, { recordHistory: false })
+          : (prompt) => handleDomainAiPrompt(prompt, { recordHistory: false })}
+        externalEditScope={importedResult ? {
+          id: importedGeometry?.uuid ?? 'imported-mesh',
+          label: importedFilename || (L('가져온 메시 전체', 'imported mesh body')),
+        } : undefined}
+        onGenericPlan={domainWorkspace.domain === 'mechanical'
+          ? (prompt) => handleFreeAiPrompt(prompt, { recordHistory: false })
+          : undefined}
         onImageGenerate={generateFromImage}
         store={{
           features,
@@ -12343,6 +12620,7 @@ export function ShapeGeneratorInner() {
           params,
           features: features.map(f => ({ id: f.id, type: f.type, params: f.params, enabled: f.enabled })),
           sketch: { segments: sketchProfile.segments, closed: sketchProfile.closed },
+          externalAgentScad: agentScadContentRef.current,
         })}
         captureEditSnapshot={() => ({
           selectedId,
@@ -12353,6 +12631,11 @@ export function ShapeGeneratorInner() {
             activeNodeId: featureHistory.activeNodeId,
           },
           placedParts: structuredClone(placedParts),
+          sketchResult: useSceneStore.getState().sketchResult,
+          isSketchMode,
+          viewMode,
+          importScad: importScadRef.current,
+          agentScadContent: agentScadContentRef.current,
         })}
         restoreEditSnapshot={(rawSnapshot) => {
           const snapshot = rawSnapshot as {
@@ -12360,11 +12643,21 @@ export function ShapeGeneratorInner() {
             params: Record<string, number>;
             history: { nodes: typeof featureHistory.nodes; rootId: string; activeNodeId: string };
             placedParts: typeof placedParts;
+            sketchResult: ReturnType<typeof useSceneStore.getState>['sketchResult'];
+            isSketchMode: boolean;
+            viewMode: typeof viewMode;
+            importScad: string;
+            agentScadContent: string;
           };
           if (snapshot.selectedId) setSelectedId(snapshot.selectedId);
           setParams(snapshot.params);
           replaceHistory(snapshot.history.nodes, snapshot.history.rootId, snapshot.history.activeNodeId);
           setPlacedParts(snapshot.placedParts);
+          setSketchResult(snapshot.sketchResult);
+          setIsSketchMode(snapshot.isSketchMode);
+          setViewMode(snapshot.viewMode);
+          importScadRef.current = snapshot.importScad;
+          agentScadContentRef.current = snapshot.agentScadContent;
         }}
       />
 
@@ -12490,6 +12783,7 @@ export function ShapeGeneratorInner() {
           </div>
           <div style={{ flex: 1, overflowY: 'auto' }}>
             <OpenScadPanel
+              modelId={aiModelId}
               onGeometryReady={(geo, description) => {
                 handleGeometryApply(geo);
                 addToast('success', lt.aiShapeGenerated(description.slice(0, 40)));
@@ -12546,7 +12840,7 @@ export function ShapeGeneratorInner() {
                         addToast('error', lt.networkError(`HTTP ${res.status}`));
                         return;
                       }
-                      addToast('success', lt.quoteRequestSent(lang === 'ko' ? m.nameKo : m.name));
+                      addToast('success', lt.quoteRequestSent(L(m.nameKo, m.name)));
                       const _shapeName = sketchResult ? 'Custom Sketch' : (selectedId ?? '');
                       const _qs = new URLSearchParams({
                         open: '1',
@@ -12687,6 +12981,7 @@ export function ShapeGeneratorInner() {
 
       {/* ═══ Floating analysis dock (Topological / Motion / Modal / Tolerance / Surface / MfgPipeline) ═══ */}
       <FloatingAnalysisDock
+        showTopologyMap={!embeddedInShell}
         lang={lang}
         dockInsetForPanel={(id) => col1RightInset(id)}
         effectiveResultGeometry={effectiveResult?.geometry ?? null}
@@ -12780,7 +13075,7 @@ export function ShapeGeneratorInner() {
           }}
         >
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, fontWeight: 700, color: 'var(--nx-text)' }}>
-            <span style={{ flex: 1 }}>{isKorean(lang) ? 'OpenSCAD 코드' : 'OpenSCAD code'}</span>
+            <span style={{ flex: 1 }}>{L('OpenSCAD 코드', 'OpenSCAD code')}</span>
             <button
               type="button"
               onClick={() => setShowScadPanel(false)}
@@ -12803,17 +13098,18 @@ export function ShapeGeneratorInner() {
 
       {/* ═══ Auto Drawing Panel ═══ */}
       {showAutoDrawing && (
-        <div style={{ position: 'fixed', top: 60, right: 336 + col1RightInset('draw'), zIndex: 500 }}>
-          <AutoDrawingPanel
-            lang={lang}
-            geometry={effectiveResult?.geometry ?? null}
-            partName={selectedId || 'Part'}
-            material={materialId}
-            onClose={() => setShowAutoDrawing(false)}
+        <>
+          <div style={{ position: 'fixed', top: 60, right: 336 + col1RightInset('draw'), zIndex: 500 }}>
+            <AutoDrawingPanel
+              lang={lang}
+              geometry={effectiveResult?.geometry ?? null}
+              partName={selectedId || 'Part'}
+              material={materialId}
+              onClose={() => setShowAutoDrawing(false)}
             // G8 — feed BOM parts so the panel can render an exploded view
             // with auto-numbered balloons. We compute each part's centre
             // from its bbox + position offset.
-            explodedParts={bomParts.length >= 2 ? bomParts.map(bp => {
+              explodedParts={bomParts.length >= 2 ? bomParts.map(bp => {
               bp.result.geometry.computeBoundingBox();
               const bb = bp.result.geometry.boundingBox;
               const localCx = bb ? (bb.min.x + bb.max.x) / 2 : 0;
@@ -12829,9 +13125,61 @@ export function ShapeGeneratorInner() {
                   localCz + offset[2],
                 ] as [number, number, number],
               };
-            }) : undefined}
-          />
-        </div>
+              }) : undefined}
+            />
+          </div>
+          {shape.params.length > 0 && (
+            <section
+              data-testid="drawing-driving-dimensions"
+              aria-label={L('모델 구동 치수', 'Model driving dimensions')}
+              style={{
+                position: 'fixed', top: 70, right: 16, zIndex: 501, width: 300,
+                padding: 12, borderRadius: 10, border: '1px solid var(--nx-border)',
+                background: 'var(--nx-panel)', color: 'var(--nx-text)',
+                boxShadow: '0 8px 24px rgba(0,0,0,.28)',
+                display: 'flex', flexDirection: 'column', gap: 9,
+              }}
+            >
+              <strong style={{ fontSize: 12 }}>
+                {({
+                  ko: '모델 구동 치수', en: 'Model driving dimensions', ja: 'モデル駆動寸法',
+                  zh: '模型驱动尺寸', es: 'Cotas que controlan el modelo', ar: 'أبعاد قيادة النموذج',
+                } as Record<string, string>)[lang] ?? 'Model driving dimensions'}
+              </strong>
+              <span style={{ fontSize: 10, color: 'var(--nx-text-2)', lineHeight: 1.45 }}>
+                {({
+                  ko: '값을 입력하면 3D 형상과 관련 도면이 즉시 재생성됩니다.',
+                  en: 'Editing a value rebuilds the 3D model and its drawing immediately.',
+                  ja: '値を変更すると、3Dモデルと図面が直ちに再生成されます。',
+                  zh: '修改数值后会立即重建三维模型及其图纸。',
+                  es: 'Al editar un valor se reconstruyen de inmediato el modelo 3D y el plano.',
+                  ar: 'يؤدي تعديل القيمة إلى إعادة بناء النموذج ثلاثي الأبعاد والرسم فورًا.',
+                } as Record<string, string>)[lang] ?? 'Editing a value rebuilds the 3D model and its drawing immediately.'}
+              </span>
+              {shape.params.map((def) => {
+                const value = params[def.key] ?? def.default;
+                return (
+                  <DrivingDimensionField
+                    key={`${def.key}:${value}`}
+                    lang={lang}
+                    em={drawingDimensionManager}
+                    binding={{ dimensionId: `base:${selectedId}:${def.key}`, variable: def.key }}
+                    label={`${String(shapeLabels[def.labelKey] ?? def.key)} (${def.unit})`}
+                    onCommitted={(nextValue) => updateBaseShapeParamCmd(def.key, nextValue)}
+                    onRebuild={() => addToast('success', ({
+                      ko: '치수 변경을 적용해 형상을 재생성했습니다.',
+                      en: 'Dimension applied; model rebuilt.',
+                      ja: '寸法を適用し、モデルを再生成しました。',
+                      zh: '尺寸已应用，模型已重建。',
+                      es: 'Cota aplicada; modelo reconstruido.',
+                      ar: 'تم تطبيق البُعد وإعادة بناء النموذج.',
+                    } as Record<string, string>)[lang] ?? 'Dimension applied; model rebuilt.')}
+                  />
+                );
+              })}
+            </section>
+          )}
+        </>
       )}
 
 

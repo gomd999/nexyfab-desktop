@@ -25,10 +25,14 @@ interface HubSummary {
   company?: string | null;
 }
 
-function formatKrw(n: number): string {
-  if (n >= 100_000_000) return `${(n / 100_000_000).toFixed(1)}억`;
-  if (n >= 10_000) return `${(n / 10_000).toFixed(0)}만`;
-  return n.toLocaleString('ko-KR');
+const LOCALE_FOR_LANG: Record<string, string> = {
+  ko: 'ko-KR', en: 'en-US', ja: 'ja-JP', cn: 'zh-CN', es: 'es-ES', ar: 'ar-SA',
+};
+
+function formatKrw(n: number, lang: string): string {
+  return new Intl.NumberFormat(LOCALE_FOR_LANG[lang] ?? 'en-US', {
+    style: 'currency', currency: 'KRW', maximumFractionDigits: 0,
+  }).format(n);
 }
 
 export default function PartnerHubPage() {
@@ -72,7 +76,6 @@ export default function PartnerHubPage() {
     };
   }, []);
 
-  const isKo = lang === 'ko';
   const funnelSteps = [
     { label: t.funnelStep1, done: summary?.funnel.step1 ?? false, href: '/partner/register' },
     { label: t.funnelStep2, done: summary?.funnel.step2 ?? false, href: '/partner/profile' },
@@ -130,11 +133,7 @@ export default function PartnerHubPage() {
             {t.cardSettlementTitle}
           </p>
           <p className="text-3xl font-extrabold text-gray-900 mt-2">
-            {loading
-              ? '·'
-              : isKo
-                ? `${formatKrw(summary?.upcomingSettlementKrw ?? 0)}원`
-                : `₩${(summary?.upcomingSettlementKrw ?? 0).toLocaleString()}`}
+            {loading ? '·' : formatKrw(summary?.upcomingSettlementKrw ?? 0, lang)}
           </p>
           <p className="text-xs text-gray-500 mt-2 leading-relaxed">{t.cardSettlementDesc}</p>
         </Link>

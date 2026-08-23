@@ -12,6 +12,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { verifyAdmin } from '@/lib/admin-auth';
 import { getDbAdapter } from '@/lib/db-adapter';
 import { checkOrigin } from '@/lib/csrf';
+import { boundedJsonError, readBoundedJson } from '@/lib/boundedJsonBody';
 
 export const dynamic = 'force-dynamic';
 
@@ -84,8 +85,9 @@ export async function POST(req: NextRequest) {
   };
 
   try {
-    body = await req.json();
-  } catch {
+    body = await readBoundedJson(req, 1024 * 1024);
+  } catch (error) {
+    if (boundedJsonError(error)?.status === 413) return NextResponse.json({ error: 'Payload too large' }, { status: 413 });
     return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 });
   }
 
@@ -151,8 +153,9 @@ export async function PATCH(req: NextRequest) {
   };
 
   try {
-    body = await req.json();
-  } catch {
+    body = await readBoundedJson(req, 1024 * 1024);
+  } catch (error) {
+    if (boundedJsonError(error)?.status === 413) return NextResponse.json({ error: 'Payload too large' }, { status: 413 });
     return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 });
   }
 

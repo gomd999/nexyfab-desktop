@@ -7,6 +7,8 @@
  * (the API filters on those Korean keys — a separate data-i18n concern).
  */
 
+import { manufacturingTerm } from '@/lib/i18n/manufacturingTerms';
+
 export type FactLang = 'ko' | 'en' | 'ja' | 'cn' | 'es' | 'ar';
 
 export interface FactDict {
@@ -46,7 +48,7 @@ export const FACT_DICT: Record<FactLang, FactDict> = {
     industryLabel: '업종', regionLabel: '지역', all: '전체',
     resultTotal: (n) => `총 ${n}개 공장`,
     pageOf: (p, t) => `${p}/${t} 페이지`,
-    emptyTitle: (c, ko, cn) => `${c === 'ko' ? `국내 ${ko}개` : `중국 ${cn}개`} 공장을 검색해보세요`,
+    emptyTitle: (c, ko, cn) => `${({ ko: `국내 ${ko}개`, cn: `중국 ${cn}개` }[c])} 공장을 검색해보세요`,
     emptySub: '공장명, 제품명, 업종으로 검색하거나 위 필터를 선택하세요',
     loadError: '공장 정보를 불러오지 못했습니다.',
     noResults: '조건에 맞는 공장이 없습니다',
@@ -65,7 +67,7 @@ export const FACT_DICT: Record<FactLang, FactDict> = {
     industryLabel: 'Industry', regionLabel: 'Region', all: 'All',
     resultTotal: (n) => `${n} factories`,
     pageOf: (p, t) => `page ${p}/${t}`,
-    emptyTitle: (c, ko, cn) => `Search ${c === 'ko' ? `${ko} Korean` : `${cn} Chinese`} factories`,
+    emptyTitle: (c, ko, cn) => `Search ${({ ko: `${ko} Korean`, cn: `${cn} Chinese` }[c])} factories`,
     emptySub: 'Search by factory name, product, or industry — or pick a filter above',
     loadError: 'Failed to load factory data.',
     noResults: 'No factories match your criteria',
@@ -84,7 +86,7 @@ export const FACT_DICT: Record<FactLang, FactDict> = {
     industryLabel: '業種', regionLabel: '地域', all: 'すべて',
     resultTotal: (n) => `全 ${n} 社`,
     pageOf: (p, t) => `${p}/${t} ページ`,
-    emptyTitle: (c, ko, cn) => `${c === 'ko' ? `韓国 ${ko}社` : `中国 ${cn}社`}の工場を検索`,
+    emptyTitle: (c, ko, cn) => `${({ ko: `韓国 ${ko}社`, cn: `中国 ${cn}社` }[c])}の工場を検索`,
     emptySub: '工場名・製品名・業種で検索するか、上のフィルターを選んでください',
     loadError: '工場情報を読み込めませんでした。',
     noResults: '条件に合う工場がありません',
@@ -103,7 +105,7 @@ export const FACT_DICT: Record<FactLang, FactDict> = {
     industryLabel: '行业', regionLabel: '地区', all: '全部',
     resultTotal: (n) => `共 ${n} 家工厂`,
     pageOf: (p, t) => `第 ${p}/${t} 页`,
-    emptyTitle: (c, ko, cn) => `搜索${c === 'ko' ? `韩国 ${ko} 家` : `中国 ${cn} 家`}工厂`,
+    emptyTitle: (c, ko, cn) => `搜索${({ ko: `韩国 ${ko} 家`, cn: `中国 ${cn} 家` }[c])}工厂`,
     emptySub: '按工厂名称、产品或行业搜索，或选择上方筛选条件',
     loadError: '无法加载工厂信息。',
     noResults: '没有符合条件的工厂',
@@ -122,7 +124,7 @@ export const FACT_DICT: Record<FactLang, FactDict> = {
     industryLabel: 'Sector', regionLabel: 'Región', all: 'Todos',
     resultTotal: (n) => `${n} fábricas`,
     pageOf: (p, t) => `página ${p}/${t}`,
-    emptyTitle: (c, ko, cn) => `Busca ${c === 'ko' ? `${ko} fábricas coreanas` : `${cn} fábricas chinas`}`,
+    emptyTitle: (c, ko, cn) => `Busca ${({ ko: `${ko} fábricas coreanas`, cn: `${cn} fábricas chinas` }[c])}`,
     emptySub: 'Busca por nombre, producto o sector, o elige un filtro arriba',
     loadError: 'No se pudo cargar la información de fábricas.',
     noResults: 'Ninguna fábrica coincide con los criterios',
@@ -141,7 +143,7 @@ export const FACT_DICT: Record<FactLang, FactDict> = {
     industryLabel: 'الصناعة', regionLabel: 'المنطقة', all: 'الكل',
     resultTotal: (n) => `${n} مصنعًا`,
     pageOf: (p, t) => `صفحة ${p}/${t}`,
-    emptyTitle: (c, ko, cn) => `ابحث في ${c === 'ko' ? `${ko} مصنعًا كوريًا` : `${cn} مصنعًا صينيًا`}`,
+    emptyTitle: (c, ko, cn) => `ابحث في ${({ ko: `${ko} مصنعًا كوريًا`, cn: `${cn} مصنعًا صينيًا` }[c])}`,
     emptySub: 'ابحث بالاسم أو المنتج أو الصناعة، أو اختر فلترًا من الأعلى',
     loadError: 'تعذّر تحميل بيانات المصانع.',
     noResults: 'لا توجد مصانع مطابقة للمعايير',
@@ -172,6 +174,15 @@ export const REGION_LABELS: Partial<Record<FactLang, Record<string, string>>> = 
   es: { '수도권': 'Área de Seúl', '경상': 'Gyeongsang', '전라': 'Jeolla', '충청': 'Chungcheong', '강원': 'Gangwon', '제주': 'Jeju', '광둥': 'Guangdong', '산둥': 'Shandong', '장쑤': 'Jiangsu', '저장': 'Zhejiang', '허베이': 'Hebei', '상하이': 'Shanghái', '베이징': 'Pekín', '쓰촨': 'Sichuan' },
   ar: { '수도권': 'منطقة سيول', '경상': 'غيونغسانغ', '전라': 'جيولا', '충청': 'تشونغتشيونغ', '강원': 'غانغوون', '제주': 'جيجو', '광둥': 'غوانغدونغ', '산둥': 'شاندونغ', '장쑤': 'جيانغسو', '저장': 'تشجيانغ', '허베이': 'خبي', '상하이': 'شنغهاي', '베이징': 'بكين', '쓰촨': 'سيتشوان' },
 };
+
+/** Localize DB-backed taxonomy values without changing API/filter identifiers. */
+export function factoryDisplayLabel(value: string | undefined, lang: FactLang): string {
+  if (!value) return '';
+  return INDUSTRY_LABELS[lang]?.[value]
+    ?? REGION_LABELS[lang]?.[value]
+    ?? manufacturingTerm(value, lang)
+    ?? value;
+}
 
 const SEG_TO_LANG: Record<string, FactLang> = {
   kr: 'ko', ko: 'ko', en: 'en', ja: 'ja', cn: 'cn', es: 'es', ar: 'ar',

@@ -20,6 +20,9 @@ function clearVisionEnv() {
   delete process.env.LOCAL_VISION_BASE_URL;
   delete process.env.LOCAL_VISION_MODEL;
   delete process.env.LOCAL_VISION_API_KEY;
+  delete process.env.QWEN_API_KEY;
+  delete process.env.DASHSCOPE_API_KEY;
+  delete process.env.QWEN_BASE_URL;
 }
 
 function pngStub(): Uint8Array {
@@ -41,6 +44,7 @@ beforeEach(() => {
 });
 
 afterEach(() => {
+  vi.useRealTimers();
   Object.assign(process.env, OG_ENV);
   vi.unstubAllGlobals();
 });
@@ -50,7 +54,7 @@ describe('isVisionAvailable', () => {
     expect(isVisionAvailable()).toBe(false);
   });
 
-  it('true when any of the 5 supported keys is set', () => {
+  it('true when any supported provider key is set', () => {
     process.env.ANTHROPIC_API_KEY = 'k'; expect(isVisionAvailable()).toBe(true);
     clearVisionEnv();
     process.env.OPENAI_API_KEY = 'k'; expect(isVisionAvailable()).toBe(true);
@@ -58,6 +62,8 @@ describe('isVisionAvailable', () => {
     process.env.GEMINI_API_KEY = 'k'; expect(isVisionAvailable()).toBe(true);
     clearVisionEnv();
     process.env.GOOGLE_API_KEY = 'k'; expect(isVisionAvailable()).toBe(true);
+    clearVisionEnv();
+    process.env.QWEN_API_KEY = 'k'; expect(isVisionAvailable()).toBe(true);
     clearVisionEnv();
     process.env.LOCAL_VISION_BASE_URL = 'http://localhost:11434/v1'; expect(isVisionAvailable()).toBe(true);
   });
@@ -70,33 +76,40 @@ describe('visionCompletion auto-select priority', () => {
     })).rejects.toBeInstanceOf(VisionNotConfiguredError);
   });
 
-  it('Anthropic wins when multiple keys present', async () => {
+  it('OpenAI Luna wins when multiple keys are present', async () => {
     process.env.ANTHROPIC_API_KEY = 'a';
     process.env.OPENAI_API_KEY = 'b';
     process.env.GEMINI_API_KEY = 'c';
     process.env.LOCAL_VISION_BASE_URL = 'http://localhost:11434/v1';
-    const fetchSpy = fetchOk({ content: [{ type: 'text', text: 'ok' }] });
-    vi.stubGlobal('fetch', fetchSpy);
-
-    const r = await visionCompletion({ prompt: 'p', images: [{ bytes: pngStub() }] });
-    expect(r.provider).toBe('anthropic');
-    expect(fetchSpy.mock.calls[0][0]).toContain('api.anthropic.com');
-  });
-
-  it('Gemini wins over OpenAI / Local', async () => {
-    process.env.GEMINI_API_KEY = 'g';
-    process.env.OPENAI_API_KEY = 'o';
-    process.env.LOCAL_VISION_BASE_URL = 'http://localhost:11434/v1';
     const fetchSpy = fetchOk({
-      candidates: [{ content: { parts: [{ text: 'gemini reply' }] } }],
-      usageMetadata: { promptTokenCount: 10, candidatesTokenCount: 5 },
+      choices: [{ message: { content: 'luna reply' } }],
+      usage: { prompt_tokens: 10, completion_tokens: 5 },
     });
     vi.stubGlobal('fetch', fetchSpy);
 
     const r = await visionCompletion({ prompt: 'p', images: [{ bytes: pngStub() }] });
-    expect(r.provider).toBe('gemini');
-    expect(r.text).toBe('gemini reply');
-    expect(fetchSpy.mock.calls[0][0]).toContain('generativelanguage.googleapis.com');
+    expect(r.provider).toBe('openai');
+    expect(r.model).toBe('gpt-5.6-luna');
+    expect(fetchSpy.mock.calls[0][0]).toContain('api.openai.com');
+    const body = JSON.parse((fetchSpy.mock.calls[0][1] as RequestInit).body as string);
+    expect(body.model).toBe('gpt-5.6-luna');
+    expect(body.max_completion_tokens).toBe(600);
+  });
+
+  it('OpenAI Luna wins over Gemini / Local', async () => {
+    process.env.GEMINI_API_KEY = 'g';
+    process.env.OPENAI_API_KEY = 'o';
+    process.env.LOCAL_VISION_BASE_URL = 'http://localhost:11434/v1';
+    const fetchSpy = fetchOk({
+      choices: [{ message: { content: 'luna reply' } }],
+      usage: { prompt_tokens: 10, completion_tokens: 5 },
+    });
+    vi.stubGlobal('fetch', fetchSpy);
+
+    const r = await visionCompletion({ prompt: 'p', images: [{ bytes: pngStub() }] });
+    expect(r.provider).toBe('openai');
+    expect(r.text).toBe('luna reply');
+    expect(fetchSpy.mock.calls[0][0]).toContain('api.openai.com');
   });
 
   it('OpenAI wins over Local when no Anthropic / Gemini', async () => {
@@ -127,6 +140,68 @@ describe('visionCompletion auto-select priority', () => {
 });
 
 describe('Adapter request shapes', () => {
+  it('uses selected Qwen 3.8 Max native VL on the configured region endpoint', async () => {
+    process.env.QWEN_API_KEY = 'q';
+    process.env.QWEN_BASE_URL = 'https://dashscope-intl.aliyuncs.com/compatible-mode/v1';
+    process.env.OPENAI_API_KEY = 'o';
+    const fetchSpy = fetchOk({
+      choices: [{ message: { content: 'qwen vision' }, finish_reason: 'stop' }],
+      usage: { prompt_tokens: 12, completion_tokens: 3 },
+    });
+    vi.stubGlobal('fetch', fetchSpy);
+
+    const result = await visionCompletion({
+      prompt: 'analyze',
+      images: [{ bytes: pngStub(), mimeType: 'image/png' }],
+      selectedModel: { provider: 'qwen', model: 'qwen3.8-max-preview' },
+    });
+    expect(result).toMatchObject({ provider: 'qwen', model: 'qwen3.8-max-preview', visionAutoRouted: false });
+    expect(fetchSpy.mock.calls[0][0]).toContain('dashscope-intl.aliyuncs.com');
+    const body = JSON.parse((fetchSpy.mock.calls[0][1] as RequestInit).body as string);
+    expect(body.messages[1].content.some((part: { type: string }) => part.type === 'image_url')).toBe(true);
+  });
+
+  it('routes a selected text-only model visual stage to Luna', async () => {
+    process.env.QWEN_API_KEY = 'q';
+    process.env.OPENAI_API_KEY = 'o';
+    const fetchSpy = fetchOk({ choices: [{ message: { content: 'luna vision' } }] });
+    vi.stubGlobal('fetch', fetchSpy);
+
+    const result = await visionCompletion({
+      prompt: 'analyze',
+      images: [{ bytes: pngStub() }],
+      selectedModel: { provider: 'qwen', model: 'qwen3.7-max' },
+    });
+    expect(result).toMatchObject({ provider: 'openai', model: 'gpt-5.6-luna', visionAutoRouted: true });
+  });
+
+  it('falls back to Luna only after a selected native VL model has transient failures', async () => {
+    vi.useFakeTimers();
+    process.env.QWEN_API_KEY = 'q';
+    process.env.OPENAI_API_KEY = 'o';
+    const fetchSpy = vi.fn(async (input: string | URL | Request) => {
+      if (String(input).includes('dashscope')) {
+        return new Response(JSON.stringify({ error: { message: 'temporarily unavailable' } }), { status: 503 });
+      }
+      return new Response(JSON.stringify({ choices: [{ message: { content: 'luna fallback' } }] }), { status: 200 });
+    });
+    vi.stubGlobal('fetch', fetchSpy);
+
+    const pending = visionCompletion({
+      prompt: 'analyze',
+      images: [{ bytes: pngStub() }],
+      selectedModel: { provider: 'qwen', model: 'qwen3.8-max-preview' },
+    });
+    await vi.runAllTimersAsync();
+    await expect(pending).resolves.toMatchObject({
+      provider: 'openai',
+      model: 'gpt-5.6-luna',
+      visionAutoRouted: true,
+      visionFallbackReason: 'selected_model_transient_failure',
+    });
+    expect(fetchSpy).toHaveBeenCalledTimes(4);
+  });
+
   it('Anthropic — sends image as base64 source block', async () => {
     process.env.ANTHROPIC_API_KEY = 'k';
     const fetchSpy = fetchOk({ content: [{ type: 'text', text: 'ok' }] });

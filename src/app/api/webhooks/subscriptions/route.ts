@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { boundedJsonError, readBoundedJson } from '@/lib/boundedJsonBody';
 import { getAuthUser } from '@/lib/auth-middleware';
 import { getDbAdapter } from '@/lib/db-adapter';
 import { checkOrigin } from '@/lib/csrf';
@@ -8,6 +9,12 @@ import { deliverWebhook as _deliverWebhook } from '@/lib/webhook-delivery';
 import type { WebhookEvent } from '@/lib/webhook-delivery';
 
 export const dynamic = 'force-dynamic';
+const WEBHOOK_SUBSCRIPTION_JSON_BYTES = 64 * 1024;
+
+async function readSubscriptionBody(req: NextRequest): Promise<{ value: unknown; tooLarge: boolean }> {
+  try { return { value: await readBoundedJson(req, WEBHOOK_SUBSCRIPTION_JSON_BYTES), tooLarge: false }; }
+  catch (error) { return { value: {}, tooLarge: boundedJsonError(error)?.code === 'PAYLOAD_TOO_LARGE' }; }
+}
 
 const VALID_EVENTS: WebhookEvent[] = [
   'rfq.created','rfq.quoted','rfq.accepted','rfq.rejected',
@@ -58,7 +65,9 @@ export async function POST(req: NextRequest) {
     events: z.array(z.string()).max(20).default([]),
     description: z.string().max(200).optional(),
   });
-  const parsed = schema.safeParse(await req.json().catch(() => ({})));
+  const requestBody = await readSubscriptionBody(req);
+  if (requestBody.tooLarge) return NextResponse.json({ error: 'Request body too large' }, { status: 413 });
+  const parsed = schema.safeParse(requestBody.value);
   if (!parsed.success) return NextResponse.json({ error: parsed.error.issues[0]?.message }, { status: 400 });
 
   // Max 10 webhooks per user
@@ -89,7 +98,9 @@ export async function DELETE(req: NextRequest) {
   const authUser = await getAuthUser(req);
   if (!authUser) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-  const { id } = await req.json().catch(() => ({})) as { id?: string };
+  const requestBody = await readSubscriptionBody(req);
+  if (requestBody.tooLarge) return NextResponse.json({ error: 'Request body too large' }, { status: 413 });
+  const { id } = requestBody.value as { id?: string };
   if (!id) return NextResponse.json({ error: 'id required' }, { status: 400 });
 
   const db = getDbAdapter();

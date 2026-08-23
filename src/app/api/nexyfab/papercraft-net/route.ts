@@ -5,6 +5,10 @@ import { buildingNetSegments, gableHouseNetSegments, roomNetSegments, segmentsTo
 import { chatCompletion } from '@/lib/ai';
 import { visionCompletion } from '@/lib/ai/vision';
 import { guardStudioAi } from '@/lib/studio-ai-guard';
+import { localizedApiMessage, resolveServerLocale } from '@/lib/i18n/serverLocale';
+import { boundedJsonError, readBoundedJson } from '@/lib/boundedJsonBody';
+
+const MAX_BODY_BYTES = 16 * 1024 * 1024;
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -22,11 +26,16 @@ const clamp = (v: unknown, d: number) => {
 };
 
 export async function POST(req: NextRequest) {
+  let b: { width?: number; depth?: number; height?: number; tab?: number; prompt?: string; roof?: string; gableHeight?: number; type?: string; image?: string; thickness?: number; lang?: string } = {};
+  try { b = await readBoundedJson(req, MAX_BODY_BYTES); }
+  catch (error) {
+    if (boundedJsonError(error)?.code === 'PAYLOAD_TOO_LARGE') return NextResponse.json({ error: 'Image request too large', code: 'TOO_LARGE' }, { status: 413 });
+  }
+  const locale = resolveServerLocale(req, b.lang ?? req.nextUrl.searchParams.get('lang'));
   const ip = getTrustedClientIp(req.headers);
   if (!rateLimit(`papercraft-net:${ip}`, 30, 3_600_000).allowed) {
-    return NextResponse.json({ error: 'Too many requests', code: 'RATE_LIMIT' }, { status: 429 });
+    return NextResponse.json({ error: localizedApiMessage(locale, 'rateLimited'), code: 'RATE_LIMIT', outputLanguage: locale.route }, { status: 429 });
   }
-  const b = (await req.json().catch(() => ({}))) as { width?: number; depth?: number; height?: number; tab?: number; prompt?: string; roof?: string; gableHeight?: number; type?: string; image?: string; thickness?: number };
   let { width, depth, height } = b;
   let roof = b.roof === 'gable' ? 'gable' : b.roof === 'flat' ? 'flat' : '';
   let type = b.type === 'room' ? 'room' : b.type === 'building' ? 'building' : '';
@@ -117,6 +126,7 @@ export async function POST(req: NextRequest) {
     bytes: Buffer.byteLength(dxf, 'utf8'),
     svg,
     dxf,
+    outputLanguage: locale.route,
   });
 }
 

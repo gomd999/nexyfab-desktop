@@ -48,7 +48,11 @@ export const localProvider: ProviderAdapter = {
     const data = await res.json() as {
       // ★260731 — 절단 신호를 읽는다. 종전엔 버려서 잘린 응답이 「형식 오류」로만 보였다.
       choices?: Array<{ message?: { content?: string }; finish_reason?: string }>;
-      usage?: { prompt_tokens?: number; completion_tokens?: number };
+      usage?: {
+        prompt_tokens?: number;
+        completion_tokens?: number;
+        prompt_tokens_details?: { cached_tokens?: number; cache_write_tokens?: number };
+      };
     };
     const content = data.choices?.[0]?.message?.content ?? '';
 
@@ -59,6 +63,10 @@ export const localProvider: ProviderAdapter = {
       model,
       promptTokens: data.usage?.prompt_tokens,
       completionTokens: data.usage?.completion_tokens,
+      cachedPromptTokens: data.usage?.prompt_tokens_details?.cached_tokens,
+      cacheWriteTokens: data.usage?.prompt_tokens_details?.cache_write_tokens,
+      cacheMissTokens: Math.max(0, (data.usage?.prompt_tokens ?? 0) - (data.usage?.prompt_tokens_details?.cached_tokens ?? 0)),
+      cacheProfile: 'provider-default',
       latencyMs: Date.now() - startedAt,
     };
   },

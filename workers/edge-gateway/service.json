@@ -1,0 +1,12 @@
+{
+  "schema": "nexyfab.deployable-unit.v1",
+  "id": "edge-gateway",
+  "kind": "worker",
+  "targetRuntime": "cloudflare-workers",
+  "sourceMode": "new-unit",
+  "legacySource": [],
+  "implementationState": "PARTIAL",
+  "deployEnabled": false,
+  "verificationState": "PASS_UNIT_EXTERNAL_NOT_RUN",
+  "rollbackOwner": "cloudflare-dns-origin-route"
+}

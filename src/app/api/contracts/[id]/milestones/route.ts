@@ -4,6 +4,9 @@ import { getAuthUser } from '@/lib/auth-middleware';
 import { checkOrigin } from '@/lib/csrf';
 import { z } from 'zod';
 import { onMilestoneCreated, onMilestoneCompleted } from '@/lib/nexyflow-triggers';
+import { boundedJsonError, readBoundedJson } from '@/lib/boundedJsonBody';
+
+const MAX_MILESTONE_BODY_BYTES = 32 * 1024;
 
 export const dynamic = 'force-dynamic';
 
@@ -53,7 +56,10 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     dueDate: z.string().optional(),
     sortOrder: z.number().int().min(0).default(0),
   });
-  const parsed = schema.safeParse(await req.json().catch(() => ({})));
+  let raw: unknown = {};
+  try { raw = await readBoundedJson(req, MAX_MILESTONE_BODY_BYTES); }
+  catch (error) { if (boundedJsonError(error)?.code === 'PAYLOAD_TOO_LARGE') return NextResponse.json({ error: 'Request too large', code: 'PAYLOAD_TOO_LARGE' }, { status: 413 }); }
+  const parsed = schema.safeParse(raw);
   if (!parsed.success) return NextResponse.json({ error: 'title is required' }, { status: 400 });
 
   const db = getDbAdapter();
@@ -93,7 +99,10 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     photoUrl: z.string().url().max(500).optional(),
     description: z.string().max(1000).optional(),
   });
-  const parsed = schema.safeParse(await req.json().catch(() => ({})));
+  let raw: unknown = {};
+  try { raw = await readBoundedJson(req, MAX_MILESTONE_BODY_BYTES); }
+  catch (error) { if (boundedJsonError(error)?.code === 'PAYLOAD_TOO_LARGE') return NextResponse.json({ error: 'Request too large', code: 'PAYLOAD_TOO_LARGE' }, { status: 413 }); }
+  const parsed = schema.safeParse(raw);
   if (!parsed.success) return NextResponse.json({ error: 'milestoneId required' }, { status: 400 });
 
   const { milestoneId, status, photoUrl, description } = parsed.data;

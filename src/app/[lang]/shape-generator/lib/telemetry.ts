@@ -56,7 +56,7 @@ const SESSION_ID = (() => {
 const buffer: TelemetryEvent[] = [];
 const MAX_BUFFER = 100;
 const FLUSH_INTERVAL_MS = 15_000;
-const ENDPOINT = '/api/nexyfab/telemetry';
+const ENDPOINT = '/api/nexyfab/telemetry/';
 
 let flushTimer: ReturnType<typeof setInterval> | null = null;
 const listeners = new Set<(e: TelemetryEvent) => void>();

@@ -41,6 +41,10 @@ export interface MeterResultEnvelope<T> {
   tokensOut?: number;
   costUsd?: number;
   statusCode?: number;       // override default 200/0
+  cachedPromptTokens?: number;
+  cacheWriteTokens?: number;
+  cacheMissTokens?: number;
+  cacheProfile?: string;
 }
 
 let usageTableEnsured = false;
@@ -56,12 +60,22 @@ async function ensureUsageTable(db: ReturnType<typeof getDbAdapter>): Promise<vo
       latency_ms    INTEGER NOT NULL,
       tokens_in     INTEGER,
       tokens_out    INTEGER,
+      cached_tokens INTEGER,
+      cache_write_tokens INTEGER,
+      cache_miss_tokens INTEGER,
+      cache_profile TEXT,
       cost_usd      REAL,
       user_id       TEXT,
       error_message TEXT,
       called_at     BIGINT NOT NULL
     )
   `).catch(() => {});
+  // Existing installations predate cache accounting. Keep migrations
+  // idempotent across SQLite and Postgres; duplicate-column errors are safe.
+  await db.execute('ALTER TABLE nf_api_usage ADD COLUMN cached_tokens INTEGER').catch(() => {});
+  await db.execute('ALTER TABLE nf_api_usage ADD COLUMN cache_write_tokens INTEGER').catch(() => {});
+  await db.execute('ALTER TABLE nf_api_usage ADD COLUMN cache_miss_tokens INTEGER').catch(() => {});
+  await db.execute('ALTER TABLE nf_api_usage ADD COLUMN cache_profile TEXT').catch(() => {});
   await db.execute('CREATE INDEX IF NOT EXISTS idx_api_usage_provider_time ON nf_api_usage(provider, called_at DESC)').catch(() => {});
   usageTableEnsured = true;
 }
@@ -70,6 +84,7 @@ async function recordUsage(row: {
   provider: string; endpoint?: string; feature?: string;
   statusCode: number; latencyMs: number;
   tokensIn?: number; tokensOut?: number; costUsd?: number;
+  cachedPromptTokens?: number; cacheWriteTokens?: number; cacheMissTokens?: number; cacheProfile?: string;
   userId?: string; errorMessage?: string;
 }): Promise<void> {
   const db = getDbAdapter();
@@ -77,12 +92,15 @@ async function recordUsage(row: {
   await db.execute(
     `INSERT INTO nf_api_usage
       (id, provider, endpoint, feature, status_code, latency_ms,
-       tokens_in, tokens_out, cost_usd, user_id, error_message, called_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+       tokens_in, tokens_out, cached_tokens, cache_write_tokens,
+       cache_miss_tokens, cache_profile, cost_usd, user_id, error_message, called_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     `apu_${randomUUID()}`, row.provider,
     row.endpoint ?? null, row.feature ?? null,
     row.statusCode, row.latencyMs,
-    row.tokensIn ?? null, row.tokensOut ?? null, row.costUsd ?? null,
+    row.tokensIn ?? null, row.tokensOut ?? null,
+    row.cachedPromptTokens ?? null, row.cacheWriteTokens ?? null,
+    row.cacheMissTokens ?? null, row.cacheProfile ?? null, row.costUsd ?? null,
     row.userId ?? null,
     row.errorMessage ? row.errorMessage.slice(0, 500) : null,
     Date.now(),
@@ -146,6 +164,10 @@ export async function meterAiCall<T>(
       tokensIn: env.tokensIn,
       tokensOut: env.tokensOut,
       costUsd: env.costUsd,
+      cachedPromptTokens: env.cachedPromptTokens,
+      cacheWriteTokens: env.cacheWriteTokens,
+      cacheMissTokens: env.cacheMissTokens,
+      cacheProfile: env.cacheProfile,
       userId: ctx.userId,
     });
     return env.value;
@@ -172,6 +194,7 @@ export function recordApiUsage(args: {
   provider: string; endpoint?: string; feature?: string;
   statusCode: number; latencyMs: number;
   tokensIn?: number; tokensOut?: number; costUsd?: number;
+  cachedPromptTokens?: number; cacheWriteTokens?: number; cacheMissTokens?: number; cacheProfile?: string;
   userId?: string; errorMessage?: string;
 }): void {
   void recordUsage(args);

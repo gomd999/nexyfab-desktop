@@ -1,0 +1,107 @@
+{
+  "schema": "nexyfab.mechanical-core-feature-local-runtime.v1",
+  "feature": "sketchExtrude",
+  "axis": "undo",
+  "status": "PASS",
+  "executedAt": "2026-08-22T07:13:30.564Z",
+  "restoredPayload": {
+    "id": "runtime-feature",
+    "enabled": true,
+    "type": "sketchExtrude",
+    "params": {
+      "depth": 12
+    },
+    "sketchData": {
+      "profile": {
+        "closed": true,
+        "segments": [
+          {
+            "type": "line",
+            "points": [
+              {
+                "x": 0,
+                "y": 0
+              },
+              {
+                "x": 36,
+                "y": 0
+              }
+            ]
+          },
+          {
+            "type": "line",
+            "points": [
+              {
+                "x": 36,
+                "y": 0
+              },
+              {
+                "x": 36,
+                "y": 22
+              }
+            ]
+          },
+          {
+            "type": "line",
+            "points": [
+              {
+                "x": 36,
+                "y": 22
+              },
+              {
+                "x": 0,
+                "y": 22
+              }
+            ]
+          },
+          {
+            "type": "line",
+            "points": [
+              {
+                "x": 0,
+                "y": 22
+              },
+              {
+                "x": 0,
+                "y": 0
+              }
+            ]
+          }
+        ]
+      },
+      "config": {
+        "mode": "extrude",
+        "depth": 12,
+        "revolveAngle": 360,
+        "revolveAxis": "y",
+        "segments": 32
+      },
+      "plane": "xy",
+      "planeOffset": 0,
+      "operation": "add"
+    }
+  },
+  "restoredExact": {
+    "handle": "occt:365",
+    "kernelKind": "Solid",
+    "nativeShapeType": 2,
+    "solidCount": 1,
+    "singleSolid": true,
+    "volumeMm3": 9504,
+    "edgeCount": 12,
+    "faceCount": 6,
+    "boundsMm": [
+      [
+        -1.0000000177635683e-7,
+        -1.0000000177635683e-7,
+        -6.000000100000002
+      ],
+      [
+        36.0000001,
+        22.0000001,
+        6.000000100000002
+      ]
+    ]
+  },
+  "futureDepth": 1
+}

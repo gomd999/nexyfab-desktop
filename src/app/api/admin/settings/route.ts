@@ -16,6 +16,7 @@ import { getDbAdapter } from '@/lib/db-adapter';
 import {
   getSetting, setSetting, deleteSetting, maskSecret,
 } from '@/lib/admin-settings';
+import { boundedJsonError, readBoundedJson } from '@/lib/boundedJsonBody';
 import { recordAdminAudit } from '@/lib/admin-audit';
 
 export const runtime = 'nodejs';
@@ -30,9 +31,18 @@ const KNOWN_SETTINGS: Array<{
 }> = [
   // AI provider keys
   { key: 'deepseek.api_key',  scope: 'api_key', description: 'DeepSeek API key (chat fallback chain)' },
+  { key: 'qwen.api_key',      scope: 'api_key', description: 'Alibaba DashScope / Qwen API key' },
+  { key: 'qwen.base_url',     scope: 'config', description: 'DashScope OpenAI-compatible base URL. China: dashscope.aliyuncs.com; Singapore: dashscope-intl.aliyuncs.com' },
   { key: 'anthropic.api_key', scope: 'api_key', description: 'Anthropic Claude API key' },
   { key: 'openai.api_key',    scope: 'api_key', description: 'OpenAI API key (vision + chat fallback)' },
   { key: 'gemini.api_key',    scope: 'api_key', description: 'Google Gemini API key' },
+  // Stable product slug -> provider model mapping. These are identifiers, not secrets.
+  { key: 'ai.model.gpt_luna',       scope: 'config', description: 'Free + automatic vision model (default: gpt-5.6-luna)' },
+  { key: 'ai.model.qwen_3_7_plus',  scope: 'config', description: 'Pro Qwen 3.7 Plus provider model ID' },
+  { key: 'ai.model.qwen_3_7_max',   scope: 'config', description: 'Pro Qwen 3.7 Max provider model ID' },
+  { key: 'ai.model.deepseek_pro',   scope: 'config', description: 'Pro DeepSeek provider model ID' },
+  { key: 'ai.model.qwen_3_8_max',   scope: 'config', description: 'Enterprise Qwen 3.8 Max runtime ID. Preview/Token Plan availability is account-specific; default: qwen3.8-max-preview' },
+  { key: 'ai.model.gpt_terra',      scope: 'config', description: 'Enterprise GPT Terra provider model ID (default: gpt-5.6-terra)' },
   // Payment
   { key: 'toss.secret_key',     scope: 'api_key', description: 'Toss Payments server-side secret' },
   { key: 'toss.webhook_secret', scope: 'api_key', description: 'Toss webhook signature verification key' },
@@ -47,6 +57,7 @@ const KNOWN_SETTINGS: Array<{
   // Feature flag overrides (true/false; absent = code default)
   { key: 'feature.complex_product_design.enabled', scope: 'feature_flag', description: 'Complex Product AI closed-beta access (absent/false returns 503 for free-text runs)' },
   { key: 'feature.complex_product_design.beta',    scope: 'feature_flag', description: 'Complex Product AI beta disclosure visibility' },
+  { key: 'feature.ai_luna_parallel.enabled', scope: 'feature_flag', description: 'Run one structured GPT Luna preflight for complex or ambiguous CAD requests' },
   { key: 'feature.scad_agent.enabled', scope: 'feature_flag', description: 'AI SCAD Agent 활성화 (false 면 503 반환)' },
   { key: 'feature.scad_agent.beta',    scope: 'feature_flag', description: 'BetaBanner 표시 여부 (false 면 숨김)' },
 ];
@@ -108,7 +119,8 @@ export async function POST(req: NextRequest) {
   }
 
   let body: { key?: unknown; value?: unknown; description?: unknown };
-  try { body = await req.json(); } catch {
+  try { body = await readBoundedJson(req, 256 * 1024); } catch (error) {
+    if (boundedJsonError(error)?.status === 413) return NextResponse.json({ error: 'payload too large' }, { status: 413 });
     return NextResponse.json({ error: 'invalid JSON' }, { status: 400 });
   }
   const key = typeof body.key === 'string' ? body.key.trim() : '';
@@ -132,6 +144,16 @@ export async function POST(req: NextRequest) {
   }
   if (catalog.scope === 'api_key' && value.length < 8) {
     return NextResponse.json({ error: 'api_key value too short' }, { status: 400 });
+  }
+  if (key === 'qwen.base_url') {
+    try {
+      const parsed = new URL(value);
+      if (parsed.protocol !== 'https:' || !(parsed.hostname === 'aliyuncs.com' || parsed.hostname.endsWith('.aliyuncs.com'))) {
+        throw new Error('host');
+      }
+    } catch {
+      return NextResponse.json({ error: 'qwen.base_url must be an official HTTPS aliyuncs.com endpoint' }, { status: 400 });
+    }
   }
 
   const description = typeof body.description === 'string' ? body.description.slice(0, 300) : catalog.description;

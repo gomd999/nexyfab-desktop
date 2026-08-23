@@ -3,6 +3,9 @@ import { getDbAdapter } from '@/lib/db-adapter';
 import { getAuthUser } from '@/lib/auth-middleware';
 import { checkOrigin } from '@/lib/csrf';
 import { z } from 'zod';
+import { boundedJsonError, readBoundedJson } from '@/lib/boundedJsonBody';
+
+const MAX_QC_BODY_BYTES = 32 * 1024;
 
 export const dynamic = 'force-dynamic';
 
@@ -60,7 +63,10 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     title: z.string().min(1).max(200),
     criteria: z.string().max(500).optional(),
   });
-  const parsed = schema.safeParse(await req.json().catch(() => ({})));
+  let raw: unknown = {};
+  try { raw = await readBoundedJson(req, MAX_QC_BODY_BYTES); }
+  catch (error) { if (boundedJsonError(error)?.code === 'PAYLOAD_TOO_LARGE') return NextResponse.json({ error: 'Request too large', code: 'PAYLOAD_TOO_LARGE' }, { status: 413 }); }
+  const parsed = schema.safeParse(raw);
   if (!parsed.success) return NextResponse.json({ error: 'title required' }, { status: 400 });
 
   const db = getDbAdapter();
@@ -88,7 +94,10 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     inspectorNote: z.string().max(1000).optional(),
     photoUrl: z.string().url().max(500).optional(),
   });
-  const parsed = schema.safeParse(await req.json().catch(() => ({})));
+  let raw: unknown = {};
+  try { raw = await readBoundedJson(req, MAX_QC_BODY_BYTES); }
+  catch (error) { if (boundedJsonError(error)?.code === 'PAYLOAD_TOO_LARGE') return NextResponse.json({ error: 'Request too large', code: 'PAYLOAD_TOO_LARGE' }, { status: 413 }); }
+  const parsed = schema.safeParse(raw);
   if (!parsed.success) return NextResponse.json({ error: 'itemId and status required' }, { status: 400 });
 
   const db = getDbAdapter();

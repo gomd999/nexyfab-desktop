@@ -4,7 +4,7 @@ import { useMemo, useState } from 'react';
 import { usePathname } from 'next/navigation';
 import { useAuthStore } from '@/hooks/useAuth';
 import { useEscapeKey } from '@/hooks/useEscapeKey';
-import { isKorean, toRouteLang } from '@/lib/i18n/normalize';
+import { toIsoLang, toRouteLang } from '@/lib/i18n/normalize';
 
 interface AuthModalProps {
   open: boolean;
@@ -38,9 +38,13 @@ type Dict = {
   errEmail: string;
   errPasswordShort: string;
   close: string;
+  or: string;
+  continueGoogle: string;
+  continueKakao: string;
+  continueNaver: string;
 };
 
-const DICT: Record<'ko' | 'en', Dict> = {
+const DICT: Record<'ko' | 'en' | 'ja' | 'zh' | 'es' | 'ar', Dict> = {
   ko: {
     loginTitle: '로그인하여 계속하기',
     signupTitle: '무료로 시작하기',
@@ -65,6 +69,7 @@ const DICT: Record<'ko' | 'en', Dict> = {
     errEmail: '올바른 이메일 주소를 입력하세요.',
     errPasswordShort: '비밀번호는 8자 이상이어야 합니다.',
     close: '닫기',
+    or: '또는', continueGoogle: 'Google로 계속하기', continueKakao: '카카오로 계속하기', continueNaver: '네이버로 계속하기',
   },
   en: {
     loginTitle: 'Log in to continue',
@@ -90,6 +95,49 @@ const DICT: Record<'ko' | 'en', Dict> = {
     errEmail: 'Enter a valid email address.',
     errPasswordShort: 'Password must be at least 8 characters.',
     close: 'Close',
+    or: 'or', continueGoogle: 'Continue with Google', continueKakao: 'Continue with Kakao', continueNaver: 'Continue with Naver',
+  },
+  ja: {
+    loginTitle: 'ログインして続行', signupTitle: '無料で始める', name: '名前', namePlaceholder: '山田 太郎',
+    email: 'メールアドレス', emailPlaceholder: 'you@company.com', password: 'パスワード',
+    passwordHintSignup: '8文字以上', passwordPlaceholder: '••••••••', show: '表示', hide: '隠す',
+    submitLogin: 'ログイン', submitSignup: '無料で始める', submitting: '処理中…',
+    noAccount: 'アカウントをお持ちでないですか？', hasAccount: 'すでにアカウントをお持ちですか？',
+    signupCta: '無料登録', loginCta: 'ログイン', planSummaryHeader: '無料プランに含まれるもの：',
+    planItems: ['3件のプロジェクト', '基本形状＋スケッチ', 'STLエクスポート'],
+    errEmail: '有効なメールアドレスを入力してください。', errPasswordShort: 'パスワードは8文字以上必要です。', close: '閉じる',
+    or: 'または', continueGoogle: 'Googleで続行', continueKakao: 'Kakaoで続行', continueNaver: 'Naverで続行',
+  },
+  zh: {
+    loginTitle: '登录后继续', signupTitle: '免费开始', name: '姓名', namePlaceholder: '张三',
+    email: '电子邮箱', emailPlaceholder: 'you@company.com', password: '密码', passwordHintSignup: '至少8个字符',
+    passwordPlaceholder: '••••••••', show: '显示', hide: '隐藏', submitLogin: '登录', submitSignup: '免费开始',
+    submitting: '处理中…', noAccount: '还没有账户？', hasAccount: '已有账户？', signupCta: '免费注册',
+    loginCta: '登录', planSummaryHeader: '免费方案包含：', planItems: ['3个项目', '基本形状和草图', 'STL 导出'],
+    errEmail: '请输入有效的电子邮箱地址。', errPasswordShort: '密码至少需要8个字符。', close: '关闭',
+    or: '或', continueGoogle: '使用 Google 继续', continueKakao: '使用 Kakao 继续', continueNaver: '使用 Naver 继续',
+  },
+  es: {
+    loginTitle: 'Inicia sesión para continuar', signupTitle: 'Empieza gratis', name: 'Nombre', namePlaceholder: 'Ana García',
+    email: 'Correo electrónico', emailPlaceholder: 'you@company.com', password: 'Contraseña',
+    passwordHintSignup: 'Al menos 8 caracteres', passwordPlaceholder: '••••••••', show: 'Mostrar', hide: 'Ocultar',
+    submitLogin: 'Iniciar sesión', submitSignup: 'Empezar gratis', submitting: 'Procesando…',
+    noAccount: '¿No tienes una cuenta?', hasAccount: '¿Ya tienes una cuenta?', signupCta: 'Registro gratuito',
+    loginCta: 'Iniciar sesión', planSummaryHeader: 'El plan gratuito incluye:',
+    planItems: ['3 proyectos', 'Formas básicas y bocetos', 'Exportación STL'],
+    errEmail: 'Introduce una dirección de correo válida.', errPasswordShort: 'La contraseña debe tener al menos 8 caracteres.', close: 'Cerrar',
+    or: 'o', continueGoogle: 'Continuar con Google', continueKakao: 'Continuar con Kakao', continueNaver: 'Continuar con Naver',
+  },
+  ar: {
+    loginTitle: 'سجّل الدخول للمتابعة', signupTitle: 'ابدأ مجانًا', name: 'الاسم', namePlaceholder: 'أحمد علي',
+    email: 'البريد الإلكتروني', emailPlaceholder: 'you@company.com', password: 'كلمة المرور',
+    passwordHintSignup: '8 أحرف على الأقل', passwordPlaceholder: '••••••••', show: 'إظهار', hide: 'إخفاء',
+    submitLogin: 'تسجيل الدخول', submitSignup: 'ابدأ مجانًا', submitting: 'جارٍ المعالجة…',
+    noAccount: 'ليس لديك حساب؟', hasAccount: 'لديك حساب بالفعل؟', signupCta: 'تسجيل مجاني',
+    loginCta: 'تسجيل الدخول', planSummaryHeader: 'تتضمن الخطة المجانية:',
+    planItems: ['3 مشاريع', 'أشكال أساسية ورسم تخطيطي', 'تصدير STL'],
+    errEmail: 'أدخل عنوان بريد إلكتروني صالحًا.', errPasswordShort: 'يجب ألا تقل كلمة المرور عن 8 أحرف.', close: 'إغلاق',
+    or: 'أو', continueGoogle: 'المتابعة باستخدام Google', continueKakao: 'المتابعة باستخدام Kakao', continueNaver: 'المتابعة باستخدام Naver',
   },
 };
 
@@ -104,7 +152,7 @@ export default function AuthModal({
     const seg = pathname?.split('/').filter(Boolean)[0] ?? '';
     return toRouteLang(seg);
   }, [lang, pathname]);
-  const t = isKorean(resolvedLang) ? DICT.ko : DICT.en;
+  const t = DICT[toIsoLang(resolvedLang)] ?? DICT.en;
 
   const [mode, setMode] = useState<'login' | 'signup'>(defaultMode);
   const [email, setEmail] = useState('');
@@ -288,24 +336,24 @@ export default function AuthModal({
             NEXT_PUBLIC_*_CLIENT_ID is set (same gating as the /login page). */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, margin: '16px 0 12px' }}>
           <div style={{ flex: 1, height: 1, background: 'var(--nx-panel-2)' }} />
-          <span style={{ fontSize: 12, color: 'var(--nx-text-3)', whiteSpace: 'nowrap' }}>{isKorean(resolvedLang) ? '또는' : 'or'}</span>
+          <span style={{ fontSize: 12, color: 'var(--nx-text-3)', whiteSpace: 'nowrap' }}>{t.or}</span>
           <div style={{ flex: 1, height: 1, background: 'var(--nx-panel-2)' }} />
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
           <a href="/api/auth/oauth/google" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10, width: '100%', padding: 12, background: '#fff', border: '1px solid #e5e7eb', borderRadius: 10, fontSize: 14, fontWeight: 600, color: '#374151', textDecoration: 'none', boxSizing: 'border-box' }}>
             <svg width="18" height="18" viewBox="0 0 24 24"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z" fill="#4285F4"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/></svg>
-            {isKorean(resolvedLang) ? 'Google로 계속하기' : 'Continue with Google'}
+            {t.continueGoogle}
           </a>
           {process.env.NEXT_PUBLIC_KAKAO_CLIENT_ID && (
             <a href="/api/auth/oauth/kakao" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10, width: '100%', padding: 12, background: '#FEE500', border: 'none', borderRadius: 10, fontSize: 14, fontWeight: 600, color: '#191919', textDecoration: 'none', boxSizing: 'border-box' }}>
               <svg width="18" height="18" viewBox="0 0 24 24"><path d="M12 3C6.48 3 2 6.36 2 10.5c0 2.63 1.74 4.95 4.38 6.3l-1.12 4.1c-.1.35.31.63.6.42l4.82-3.2c.43.04.87.06 1.32.06 5.52 0 10-3.36 10-7.5S17.52 3 12 3z" fill="#191919"/></svg>
-              {isKorean(resolvedLang) ? '카카오로 계속하기' : 'Continue with Kakao'}
+              {t.continueKakao}
             </a>
           )}
           {process.env.NEXT_PUBLIC_NAVER_CLIENT_ID && (
             <a href="/api/auth/oauth/naver" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10, width: '100%', padding: 12, background: '#03C75A', border: 'none', borderRadius: 10, fontSize: 14, fontWeight: 600, color: '#fff', textDecoration: 'none', boxSizing: 'border-box' }}>
               <svg width="18" height="18" viewBox="0 0 24 24"><path d="M16.27 3v8.46L7.73 3H3v18h4.73v-8.46L16.27 21H21V3h-4.73z" fill="#fff"/></svg>
-              {isKorean(resolvedLang) ? '네이버로 계속하기' : 'Continue with Naver'}
+              {t.continueNaver}
             </a>
           )}
         </div>

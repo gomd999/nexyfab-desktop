@@ -1,0 +1,95 @@
+{
+  "schema": "nexyfab.mechanical-core-feature-local-runtime.v1",
+  "feature": "rib",
+  "axis": "regenerate",
+  "status": "PASS",
+  "executedAt": "2026-08-22T07:13:00.871Z",
+  "initial": {
+    "handle": "occt:59",
+    "kernelKind": "Solid",
+    "nativeShapeType": 0,
+    "solidCount": 1,
+    "singleSolid": true,
+    "volumeMm3": 48720,
+    "edgeCount": 24,
+    "faceCount": 11,
+    "boundsMm": [
+      [
+        -50.0000001,
+        -4.000000100000004,
+        -30.000000100000005
+      ],
+      [
+        50.0000001,
+        10.000000100000003,
+        30.000000100000005
+      ]
+    ]
+  },
+  "edited": {
+    "handle": "occt:61",
+    "kernelKind": "Solid",
+    "nativeShapeType": 0,
+    "solidCount": 1,
+    "singleSolid": true,
+    "volumeMm3": 49200.00000000001,
+    "edgeCount": 24,
+    "faceCount": 11,
+    "boundsMm": [
+      [
+        -50.0000001,
+        -4.000000100000005,
+        -30.000000100000005
+      ],
+      [
+        50.0000001,
+        10.000000100000005,
+        30.000000100000005
+      ]
+    ]
+  },
+  "repeated": {
+    "handle": "occt:63",
+    "kernelKind": "Solid",
+    "nativeShapeType": 0,
+    "solidCount": 1,
+    "singleSolid": true,
+    "volumeMm3": 49200.00000000001,
+    "edgeCount": 24,
+    "faceCount": 11,
+    "boundsMm": [
+      [
+        -50.0000001,
+        -4.000000100000005,
+        -30.000000100000005
+      ],
+      [
+        50.0000001,
+        10.000000100000005,
+        30.000000100000005
+      ]
+    ]
+  },
+  "featureMeaning": {
+    "assertion": "exact feature added material relative to its exact seed",
+    "baselineVolumeMm3": 48000,
+    "actualVolumeMm3": 49200.00000000001
+  },
+  "intentBinding": {
+    "caseId": "en_practical-05-rib",
+    "candidateId": "intent-runtime:en_practical-05-rib",
+    "candidateBaseRevision": "7c3a02e2da7fbee88dac5533efea39eac2ec0114cde1b70936d41992d83dbbe1",
+    "promptSha256": "c4ea8c3d434d83998a5f9a6d473de54c9e06c0dac36e64dfb376020ed920c847",
+    "inputSha256": "f0c66336a3aeeab7b421962865bc27faa3efda9cc58778e67518179c178d2563",
+    "sourceUnits": [
+      "mm"
+    ],
+    "normalizedUnit": "mm",
+    "dimensionsMm": {
+      "width": 100,
+      "length": 60,
+      "thickness": 8
+    }
+  },
+  "assertion": "edited parameter changed the exact signature and a fresh native regeneration reproduced topology, bounds, and volume"
+}

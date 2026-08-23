@@ -7,6 +7,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { verifyAdmin } from '@/lib/admin-auth';
 import { getDbAdapter } from '@/lib/db-adapter';
 import { updateSubscriptionPlan, cancelSubscription } from '@/lib/airwallex-client';
+import { denyIfPaymentCollectionDisabled } from '@/lib/payment-gate';
+import { readBoundedJson } from '@/lib/boundedJsonBody';
 
 export const dynamic = 'force-dynamic';
 
@@ -61,7 +63,7 @@ export async function GET(req: NextRequest) {
        LIMIT ? OFFSET ?`,
       ...params, limit, offset,
     ),
-    db.queryOne<{ total: number }>(
+    db.queryOne<{ total: number | string }>(
       `SELECT COUNT(*) AS total
        FROM nf_aw_subscriptions sub
        LEFT JOIN nf_users u ON u.id = sub.user_id
@@ -69,7 +71,7 @@ export async function GET(req: NextRequest) {
       ...params,
     ),
     // Summary stats
-    db.queryAll<{ status: string; plan: string; count: number }>(
+    db.queryAll<{ status: string; plan: string; count: number | string }>(
       `SELECT status, plan, COUNT(*) AS count
        FROM nf_aw_subscriptions
        GROUP BY status, plan`,
@@ -78,17 +80,19 @@ export async function GET(req: NextRequest) {
 
   return NextResponse.json({
     subscriptions,
-    total:  countRow?.total ?? 0,
+    total: Number(countRow?.total ?? 0),
     page,
     limit,
-    summary,
+    summary: summary.map((row) => ({ ...row, count: Number(row.count) || 0 })),
   });
 }
 
 export async function PUT(req: NextRequest) {
+  const paymentDenied = denyIfPaymentCollectionDisabled();
+  if (paymentDenied) return paymentDenied;
   if (!(await verifyAdmin(req))) return unauthorized();
 
-  const { subscriptionId, plan } = await req.json() as {
+  const { subscriptionId, plan } = await readBoundedJson(req, 64 * 1024) as {
     subscriptionId?: string;
     plan?: string;
   };
@@ -135,7 +139,7 @@ export async function PUT(req: NextRequest) {
 export async function DELETE(req: NextRequest) {
   if (!(await verifyAdmin(req))) return unauthorized();
 
-  const { subscriptionId } = await req.json() as { subscriptionId?: string };
+  const { subscriptionId } = await readBoundedJson(req, 64 * 1024) as { subscriptionId?: string };
   if (!subscriptionId) return NextResponse.json({ error: 'subscriptionId required' }, { status: 400 });
 
   const db = getDbAdapter();

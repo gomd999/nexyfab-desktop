@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback, useMemo } from 'react';
 import dynamic from 'next/dynamic';
 import { usePathname } from 'next/navigation';
 import { isKorean } from '@/lib/i18n/normalize';
+import { loc } from '@/lib/i18n/loc';
 import PartnerMetricsBar from './PartnerMetricsBar';
 import { submitRfqOrder } from './rfqSubmitter';
 
@@ -640,7 +641,7 @@ export default function ManufacturerMatch({
         const res = await fetch('/api/nexyfab/partner/metrics-batch', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ emails, windowDays: 90 }),
+          body: JSON.stringify({ emails, windowDays: 90, lang }),
         });
         if (!res.ok || cancelled) return;
         const data = await res.json() as { partners: Array<{ partnerEmail: string; metrics: import('./PartnerMetricsBar').PartnerMetrics }> };
@@ -673,7 +674,7 @@ export default function ManufacturerMatch({
     );
     const r = await submitRfqOrder({
       partName,
-      manufacturerName: isKo ? mfr.nameKo : mfr.name,
+      manufacturerName: loc(lang, { ko: mfr.nameKo, en: mfr.name, ja: mfr.name, zh: mfr.name, es: mfr.name, ar: mfr.name }),
       quantity: quoteState.quantity,
       totalPriceKRW,
       estimatedLeadDays: mfr.minLeadTime,
@@ -719,7 +720,7 @@ export default function ManufacturerMatch({
                   {t.quoteDone}
                 </p>
                 <p style={{ fontSize: 12, color: 'var(--nx-text-2)', marginBottom: 20, lineHeight: 1.5 }}>
-                  {t.quoteDoneDesc(isKo ? quoteState.manufacturer.nameKo : quoteState.manufacturer.name)}
+                  {t.quoteDoneDesc(loc(lang, { ko: quoteState.manufacturer.nameKo, en: quoteState.manufacturer.name, ja: quoteState.manufacturer.name, zh: quoteState.manufacturer.name, es: quoteState.manufacturer.name, ar: quoteState.manufacturer.name }))}
                 </p>
                 <div style={{ display: 'flex', gap: 8, justifyContent: 'center' }}>
                   <a
@@ -750,7 +751,7 @@ export default function ManufacturerMatch({
                   {t.quoteTitle}
                 </div>
                 <div style={{ fontSize: 11, color: 'var(--nx-text-2)', marginBottom: 18 }}>
-                  {isKo ? quoteState.manufacturer.nameKo : quoteState.manufacturer.name}
+                  {loc(lang, { ko: quoteState.manufacturer.nameKo, en: quoteState.manufacturer.name, ja: quoteState.manufacturer.name, zh: quoteState.manufacturer.name, es: quoteState.manufacturer.name, ar: quoteState.manufacturer.name })}
                   {partName && <> · {partName}</>}
                 </div>
 
@@ -1075,7 +1076,7 @@ function ManufacturerCard({ manufacturer: m, matchScore, scoreBreakdown, partner
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 3, flexWrap: 'wrap' }}>
           <span style={{ fontWeight: 700, fontSize: 13, color: C.text }}>
-            {isKo ? m.nameKo : m.name}
+            {loc(lang, { ko: m.nameKo, en: m.name, ja: m.name, zh: m.name, es: m.name, ar: m.name })}
           </span>
           {isTopMatch && (
             <span style={{
@@ -1133,7 +1134,7 @@ function ManufacturerCard({ manufacturer: m, matchScore, scoreBreakdown, partner
 
         {/* Description */}
         <p style={{ margin: 0, fontSize: 11, color: C.textMuted, lineHeight: 1.5 }}>
-          {isKo ? m.descriptionKo : m.description}
+          {loc(lang, { ko: m.descriptionKo, en: m.description, ja: m.description, zh: m.description, es: m.description, ar: m.description })}
         </p>
 
         {/* B3 — Multi-dim operational metrics. Each axis stays separate

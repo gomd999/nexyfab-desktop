@@ -15,6 +15,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { toIsoLang } from '@/lib/i18n/normalize';
+import { bcp47 } from '@/lib/i18n/format';
 
 export interface OfflineModeBannerProps {
   lang: string;
@@ -87,8 +88,6 @@ export default function OfflineModeBanner({
   }, [isOffline, prevOffline]);
 
   if (!isOffline && !showReconnectedFlash) return null;
-  const ko = lang === 'ko' || lang === 'kr';
-  // ⚠ 260802: 2분기라 ja·zh·es·ar 이 영어로 떨어졌다.
   const t = COPY[toIsoLang(lang)] ?? COPY.en;
 
   const message = isOffline
@@ -96,7 +95,7 @@ export default function OfflineModeBanner({
     : t.reconnect;
 
   const sinceText = lastOnlineAt
-    ? `${t.sinceLabel}: ${new Date(lastOnlineAt).toLocaleTimeString(ko ? 'ko-KR' : 'en-US')}`
+    ? `${t.sinceLabel}: ${new Date(lastOnlineAt).toLocaleTimeString(bcp47(lang))}`
     : null;
 
   return (

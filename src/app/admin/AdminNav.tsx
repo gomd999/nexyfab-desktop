@@ -3,10 +3,15 @@
 import { usePathname } from 'next/navigation';
 import Link from 'next/link';
 import NotificationBell from '@/app/components/NotificationBell';
+import AdminSessionControls from './AdminSessionControls';
+import { useAdminI18n } from './AdminI18nProvider';
+import type { AdminLocale } from '@/lib/i18n/adminTranslations';
+import { createCommercialLocalizer } from '@/lib/i18n/commercialLocalizer';
 
 interface NavItem {
   href: string;
-  label: string;
+  labelKo: string;
+  labelEn: string;
   exact?: boolean;
   danger?: boolean;
   /** Logical grouping — renders a faint divider between groups so the long
@@ -15,55 +20,58 @@ interface NavItem {
 }
 
 const NAV_ITEMS: NavItem[] = [
-  { href: '/admin', label: '대시보드', exact: true, group: 'core' },
-  { href: '/admin/users', label: '회원 관리', group: 'core' },
-  { href: '/admin/subscriptions', label: '구독 관리', group: 'billing' },
-  { href: '/admin/billing', label: '청구 관리', group: 'billing' },
-  { href: '/admin/refund-queue', label: '환불 큐', group: 'billing' },     // ← Round 29
-  { href: '/admin/analytics', label: '매출 분석', group: 'billing' },
-  { href: '/admin/rfq', label: 'RFQ 관리', group: 'mfg' },
-  { href: '/admin/factories', label: '제조사 관리', group: 'mfg' },
-  { href: '/admin/quotes', label: '견적 관리', group: 'mfg' },
-  { href: '/admin/contracts', label: '계약 관리', group: 'mfg' },
-  { href: '/admin/inquiries', label: '문의 관리', group: 'mfg' },
-  { href: '/admin/partners', label: '파트너 관리', group: 'partner' },
-  { href: '/admin/partner-applications', label: '파트너 신청', group: 'partner' },
-  { href: '/admin/partner-kpi', label: '파트너 KPI', group: 'partner' },
-  { href: '/admin/partner-cutover', label: '파트너 SSO 컷오버', group: 'partner' },
-  { href: '/admin/settlements', label: '정산 관리', group: 'partner' },
-  { href: '/admin/templates', label: '템플릿 관리', group: 'ops' },
-  { href: '/admin/sla', label: 'SLA 모니터링', group: 'ops' },
-  { href: '/admin/manufacturing-kpi', label: '제조 KPI', group: 'ops' },
-  { href: '/admin/releases', label: '릴리즈 관리', group: 'ops' },
-  { href: '/admin/jobs', label: 'Job Queue', group: 'ops' },
+  { href: '/admin', labelKo: '대시보드', labelEn: 'Dashboard', exact: true, group: 'core' },
+  { href: '/admin/users', labelKo: '회원 관리', labelEn: 'Users', group: 'core' },
+  { href: '/admin/subscriptions', labelKo: '구독 관리', labelEn: 'Subscriptions', group: 'billing' },
+  { href: '/admin/billing', labelKo: '청구 관리', labelEn: 'Billing', group: 'billing' },
+  { href: '/admin/refund-queue', labelKo: '환불 큐', labelEn: 'Refund queue', group: 'billing' },
+  { href: '/admin/analytics', labelKo: '매출 분석', labelEn: 'Revenue analytics', group: 'billing' },
+  { href: '/admin/rfq', labelKo: 'RFQ 관리', labelEn: 'RFQ management', group: 'mfg' },
+  { href: '/admin/factories', labelKo: '제조사 관리', labelEn: 'Manufacturers', group: 'mfg' },
+  { href: '/admin/quotes', labelKo: '견적 관리', labelEn: 'Quotes', group: 'mfg' },
+  { href: '/admin/contracts', labelKo: '계약 관리', labelEn: 'Contracts', group: 'mfg' },
+  { href: '/admin/inquiries', labelKo: '문의 관리', labelEn: 'Inquiries', group: 'mfg' },
+  { href: '/admin/partners', labelKo: '파트너 관리', labelEn: 'Partners', group: 'partner' },
+  { href: '/admin/partner-applications', labelKo: '파트너 신청', labelEn: 'Partner applications', group: 'partner' },
+  { href: '/admin/partner-kpi', labelKo: '파트너 KPI', labelEn: 'Partner KPI', group: 'partner' },
+  { href: '/admin/partner-cutover', labelKo: '파트너 SSO 컷오버', labelEn: 'Partner SSO cutover', group: 'partner' },
+  { href: '/admin/settlements', labelKo: '정산 관리', labelEn: 'Settlements', group: 'partner' },
+  { href: '/admin/templates', labelKo: '템플릿 관리', labelEn: 'Templates', group: 'ops' },
+  { href: '/admin/sla', labelKo: 'SLA 모니터링', labelEn: 'SLA monitoring', group: 'ops' },
+  { href: '/admin/manufacturing-kpi', labelKo: '제조 KPI', labelEn: 'Manufacturing KPI', group: 'ops' },
+  { href: '/admin/releases', labelKo: '릴리즈 관리', labelEn: 'Releases', group: 'ops' },
+  { href: '/admin/jobs', labelKo: 'Job Queue', labelEn: 'Job Queue', group: 'ops' },
   // AI / Funnel — added in Rounds 16-29.
-  { href: '/admin/funnel', label: '깔때기', group: 'ai' },
-  { href: '/admin/cost-overshoot', label: 'AI 비용', group: 'ai' },
-  { href: '/admin/ai-usage', label: 'AI 시계열', group: 'ai' },
+  { href: '/admin/funnel', labelKo: '깔때기', labelEn: 'Funnel', group: 'ai' },
+  { href: '/admin/cost-overshoot', labelKo: 'AI 비용', labelEn: 'AI cost', group: 'ai' },
+  { href: '/admin/ai-usage', labelKo: 'AI 시계열', labelEn: 'AI time series', group: 'ai' },
 
-  { href: '/admin/prompt-stats', label: 'Prompt 통계', group: 'ai' },
-  { href: '/admin/prompt-compare', label: 'Prompt 비교', group: 'ai' },
-  { href: '/admin/prompt-compare-history', label: 'Prompt 비교 기록', group: 'ai' },
-  { href: '/admin/disabled-variants', label: 'Variant Kill Switch', group: 'ai' },
-  { href: '/admin/email-logs', label: '이메일 로그', group: 'logs' },
-  { href: '/admin/audit', label: '감사 로그 (legacy)', group: 'logs' },
-  { href: '/admin/audit-log', label: '감사 로그 (admin actions)', group: 'logs' },
-  { href: '/admin/webhooks', label: '웹훅 이벤트', group: 'logs' },
-  { href: '/admin/search', label: '검색', group: 'logs' },
-  { href: '/admin/logs', label: '로그', group: 'logs' },
+  { href: '/admin/prompt-stats', labelKo: 'Prompt 통계', labelEn: 'Prompt statistics', group: 'ai' },
+  { href: '/admin/prompt-compare', labelKo: 'Prompt 비교', labelEn: 'Prompt comparison', group: 'ai' },
+  { href: '/admin/prompt-compare-history', labelKo: 'Prompt 비교 기록', labelEn: 'Prompt history', group: 'ai' },
+  { href: '/admin/disabled-variants', labelKo: 'Variant Kill Switch', labelEn: 'Variant Kill Switch', group: 'ai' },
+  { href: '/admin/email-logs', labelKo: '이메일 로그', labelEn: 'Email logs', group: 'logs' },
+  { href: '/admin/audit', labelKo: '감사 로그 (legacy)', labelEn: 'Audit log (legacy)', group: 'logs' },
+  { href: '/admin/audit-log', labelKo: '감사 로그 (admin actions)', labelEn: 'Audit log (admin actions)', group: 'logs' },
+  { href: '/admin/webhooks', labelKo: '웹훅 이벤트', labelEn: 'Webhook events', group: 'logs' },
+  { href: '/admin/search', labelKo: '검색', labelEn: 'Search', group: 'logs' },
+  { href: '/admin/logs', labelKo: '로그', labelEn: 'Logs', group: 'logs' },
   // Concierge / matchmaking ops console
-  { href: '/admin/concierge', label: 'Concierge 매칭', group: 'concierge' },
-  { href: '/admin/anti-poach', label: '거래우회 감시', group: 'concierge' },
+  { href: '/admin/concierge', labelKo: 'Concierge 매칭', labelEn: 'Concierge matching', group: 'concierge' },
+  { href: '/admin/anti-poach', labelKo: '거래우회 감시', labelEn: 'Transaction bypass watch', group: 'concierge' },
   // Platform observability + runtime config
-  { href: '/admin/api-health', label: '🔌 API Health', group: 'platform' },
-  { href: '/admin/native-cad-workers', label: 'CAD Workers', exact: true, group: 'platform' },
-  { href: '/admin/native-cad-workers/expert-review', label: 'CAD Review', group: 'platform' },
-  { href: '/admin/settings', label: '🔐 Settings', group: 'platform' },
-  { href: '/admin/security', label: '보안', danger: true, group: 'security' },
+  { href: '/admin/api-health', labelKo: '🔌 API 상태', labelEn: '🔌 API health', group: 'platform' },
+  { href: '/admin/native-cad-workers', labelKo: 'CAD 작업자', labelEn: 'CAD workers', exact: true, group: 'platform' },
+  { href: '/admin/native-cad-workers/expert-review', labelKo: 'CAD 검토', labelEn: 'CAD review', group: 'platform' },
+  { href: '/admin/settings', labelKo: '🔐 설정', labelEn: '🔐 Settings', group: 'platform' },
+  { href: '/admin/access-emails', labelKo: '관리자 이메일', labelEn: 'Administrator emails', group: 'security' },
+  { href: '/admin/security', labelKo: '보안', labelEn: 'Security', danger: true, group: 'security' },
 ];
 
 export default function AdminNav() {
   const pathname = usePathname();
+  const { copy, locale } = useAdminI18n();
+  const L = createCommercialLocalizer(locale);
 
   function isActive(href: string, exact?: boolean) {
     if (exact) return pathname === href;
@@ -96,16 +104,28 @@ export default function AdminNav() {
                     : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900',
               ].join(' ')}
             >
-              {item.label}
+              {L(item.labelKo, item.labelEn)}
             </Link>
           </span>
         );
       })}
       <div className="ml-auto flex items-center gap-2 shrink-0">
         <NotificationBell recipient="admin" />
-        <Link href="/partner/dashboard" className="text-xs text-gray-400 hover:text-gray-600 px-2 py-1 rounded-lg hover:bg-gray-100 transition-colors">파트너 포털</Link>
-        <Link href="/" className="text-xs text-gray-400 hover:text-gray-600 px-2 py-1 rounded-lg hover:bg-gray-100 transition-colors">← 사이트로</Link>
+        <AdminSessionControls />
+        <label className="flex items-center gap-1 text-xs text-gray-500">
+          <span className="sr-only">{copy.language}</span>
+          <select aria-label={copy.language} value={locale} onChange={(event) => changeAdminLocale(event.target.value as AdminLocale)} className="border border-gray-200 rounded-md px-1.5 py-1 bg-white">
+            <option value="ko">한국어</option><option value="en">English</option><option value="ja">日本語</option><option value="zh">中文</option><option value="es">Español</option><option value="ar">العربية</option>
+          </select>
+        </label>
+        <Link href="/partner/dashboard" className="text-xs text-gray-400 hover:text-gray-600 px-2 py-1 rounded-lg hover:bg-gray-100 transition-colors">{copy.partnerPortal}</Link>
+        <Link href="/" className="text-xs text-gray-400 hover:text-gray-600 px-2 py-1 rounded-lg hover:bg-gray-100 transition-colors">← {copy.site}</Link>
       </div>
     </nav>
   );
+}
+
+function changeAdminLocale(locale: AdminLocale) {
+  document.cookie = `nf_admin_locale=${locale}; Path=/; Max-Age=31536000; SameSite=Lax`;
+  window.location.reload();
 }

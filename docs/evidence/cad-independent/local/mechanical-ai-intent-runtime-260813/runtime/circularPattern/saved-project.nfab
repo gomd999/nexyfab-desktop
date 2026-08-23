@@ -1,0 +1,78 @@
+{
+  "magic": "nfab",
+  "version": 3,
+  "createdAt": 1787382785211,
+  "updatedAt": 1787382785211,
+  "name": "Mechanical runtime circularPattern",
+  "tree": {
+    "nodes": [
+      {
+        "id": "runtime-root",
+        "type": "baseShape",
+        "label": "Base exact box",
+        "icon": "base",
+        "params": {},
+        "enabled": true,
+        "expanded": true,
+        "parentId": null,
+        "children": [
+          "runtime-feature"
+        ],
+        "timestamp": 1,
+        "editingActive": false
+      },
+      {
+        "id": "runtime-feature",
+        "type": "feature",
+        "label": "Runtime circularPattern",
+        "icon": "feature",
+        "featureType": "circularPattern",
+        "params": {
+          "axis": 1,
+          "count": 4,
+          "totalAngle": 360,
+          "patternTarget": 0
+        },
+        "enabled": true,
+        "expanded": true,
+        "parentId": "runtime-root",
+        "children": [],
+        "timestamp": 2,
+        "editingActive": false
+      }
+    ],
+    "rootId": "runtime-root",
+    "activeNodeId": "runtime-feature"
+  },
+  "scene": {
+    "selectedId": "box",
+    "params": {
+      "width": 100,
+      "height": 8,
+      "depth": 60
+    },
+    "paramExpressions": {},
+    "materialId": "aluminum",
+    "color": "#cccccc",
+    "isSketchMode": false,
+    "sketchPlane": "xy",
+    "sketchProfile": {
+      "segments": [],
+      "closed": false
+    },
+    "sketchConfig": {
+      "mode": "extrude",
+      "depth": 60,
+      "revolveAngle": 360,
+      "revolveAxis": "y",
+      "segments": 32
+    }
+  },
+  "meta": {
+    "evidenceOnly": true,
+    "exactKernel": "OCCT",
+    "intentCaseId": "ko_practical-07-circularPattern",
+    "intentInputSha256": "42856994be07c22070fd35921cfe82295db7042c543d308b01fd61a235a18b6d",
+    "candidateBaseRevision": "7c3a02e2da7fbee88dac5533efea39eac2ec0114cde1b70936d41992d83dbbe1"
+  }
+}

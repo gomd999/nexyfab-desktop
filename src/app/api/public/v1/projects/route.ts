@@ -19,6 +19,7 @@ import { rateLimit, rateLimitHeaders } from '@/lib/rate-limit';
 import { logAudit } from '@/lib/audit';
 import { getTrustedClientIp } from '@/lib/client-ip';
 import type { AuthUser } from '@/lib/auth-middleware';
+import { boundedJsonError, readBoundedJson } from '@/lib/boundedJsonBody';
 
 const CORS_HEADERS = {
   'Access-Control-Allow-Origin': '*',
@@ -83,7 +84,12 @@ export async function POST(req: NextRequest) {
   const access = await authorize(req, 'write:projects');
   if (!access.ok) return access.response;
   const auth = access.user;
-  const raw = await req.json().catch(() => null);
+  let raw: unknown;
+  try { raw = await readBoundedJson(req, 32 * 1024 * 1024); }
+  catch (error) {
+    if (boundedJsonError(error)?.status === 413) return NextResponse.json({ error: 'Payload too large' }, { status: 413, headers: CORS_HEADERS });
+    raw = null;
+  }
   const parsed = createSchema.safeParse(raw);
   if (!parsed.success) {
     return NextResponse.json({ error: parsed.error.issues[0]?.message ?? 'Invalid input' }, { status: 400, headers: CORS_HEADERS });

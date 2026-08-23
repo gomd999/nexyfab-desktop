@@ -157,6 +157,25 @@ describe('feature-unit linear pattern (patternTarget=1)', () => {
   });
 });
 
+describe('feature-unit side-axis pattern (patternTarget=1)', () => {
+  it('re-applies an X-axis hole along an in-plane direction without copying the body', () => {
+    const g = box(60, 20, 40);
+    const v0 = meshVolume(g);
+    const seed = holeFeature.apply(g, {
+      holeType: 0, diameter: 6, axis: 0, posX: 0, posY: -5, posZ: 0,
+      depth: 999, endCondition: 1, engine: 0,
+    }, { featureId: 'side-seed' });
+    const one = v0 - meshVolume(seed);
+    const out = linearPatternFeature.apply(seed, {
+      axis: 1, count: 2, spacing: 10, patternTarget: 1,
+    }, { featureId: 'side-pattern' });
+    expect(v0 - meshVolume(out)).toBeCloseTo(2 * one, 0);
+    out.computeBoundingBox();
+    expect(out.boundingBox!.max.x - out.boundingBox!.min.x).toBeCloseTo(60, 5);
+    expect(out.boundingBox!.max.y - out.boundingBox!.min.y).toBeCloseTo(20, 5);
+  });
+});
+
 describe('feature-unit circular pattern (patternTarget=1)', () => {
   it('re-drills the seed hole at Y-rotated positions: bolt circle on ONE body', () => {
     const g = box(100, 20, 100); // 200000 mm³

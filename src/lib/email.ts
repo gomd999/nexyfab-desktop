@@ -23,6 +23,37 @@ export interface SendEmailOptions {
 
 let _transporter: nodemailer.Transporter | null = null;
 
+function fromIdentity(): string {
+  const address = process.env.SMTP_FROM || process.env.MAIL_FROM || 'noreply@nexyfab.com';
+  if (address.includes('<') && address.includes('>')) return address;
+  return `"${process.env.SMTP_FROM_NAME || 'NexyFab'}" <${address}>`;
+}
+
+async function sendWithResendApi(
+  apiKey: string,
+  opts: SendEmailOptions,
+): Promise<{ messageId?: string }> {
+  const response = await fetch('https://api.resend.com/emails', {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${apiKey}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      from: fromIdentity(),
+      to: [opts.to],
+      subject: opts.subject,
+      html: opts.html,
+      text: opts.text ?? opts.html.replace(/<[^>]+>/g, ''),
+      ...(opts.replyTo ? { reply_to: opts.replyTo } : {}),
+    }),
+    signal: AbortSignal.timeout(15_000),
+  });
+  const body = await response.json().catch(() => ({})) as { id?: string; message?: string; name?: string };
+  if (!response.ok) throw new Error(`resend_http_${response.status}:${body.message ?? body.name ?? 'request_failed'}`);
+  return { messageId: body.id };
+}
+
 function getTransporter(): nodemailer.Transporter {
   if (_transporter) return _transporter;
 
@@ -41,6 +72,9 @@ function getTransporter(): nodemailer.Transporter {
       user: process.env.SMTP_USER,
       pass: process.env.SMTP_PASS,
     },
+    connectionTimeout: 10_000,
+    greetingTimeout: 10_000,
+    socketTimeout: 20_000,
   });
   return _transporter;
 }
@@ -58,21 +92,19 @@ export async function sendEmail(
       console.warn('[email] skipped suppressed recipient:', opts.to);
       return { ok: false, error: 'recipient_suppressed' };
     }
-    const fromAddress = process.env.SMTP_FROM || process.env.MAIL_FROM || 'noreply@nexyfab.com';
-    const fromName = process.env.SMTP_FROM_NAME || 'NexyFab';
-    const from = `"${fromName}" <${fromAddress}>`;
-    const transporter = getTransporter();
+    const resendKey = process.env.RESEND_API_KEY?.trim();
+    const info = resendKey
+      ? await sendWithResendApi(resendKey, opts)
+      : await getTransporter().sendMail({
+        from: fromIdentity(),
+        to: opts.to,
+        subject: opts.subject,
+        html: opts.html,
+        text: opts.text ?? opts.html.replace(/<[^>]+>/g, ''),
+        ...(opts.replyTo ? { replyTo: opts.replyTo } : {}),
+      });
 
-    const info = await transporter.sendMail({
-      from,
-      to: opts.to,
-      subject: opts.subject,
-      html: opts.html,
-      text: opts.text ?? opts.html.replace(/<[^>]+>/g, ''),
-      ...(opts.replyTo ? { replyTo: opts.replyTo } : {}),
-    });
-
-    if (!process.env.SMTP_HOST) {
+    if (!process.env.SMTP_HOST && !resendKey) {
       console.log('[email] DEV MODE - would send:', { to: opts.to, subject: opts.subject });
       const testUrl = nodemailer.getTestMessageUrl(info);
       if (testUrl) console.log('[email] Preview:', testUrl);

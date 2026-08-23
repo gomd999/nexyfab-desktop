@@ -8,6 +8,7 @@
 import { useState } from 'react';
 import { Grp, Ribbon, Tool, type RibbonTabDef } from './Ribbon';
 import type { IconName } from './Icons';
+import type { UserExperienceLevel } from '@/lib/ai/domainProfile';
 
 export type ShellMode = 'modeling' | 'sketch' | 'assembly' | 'drawing' | 'render' | 'sheetmetal';
 
@@ -22,12 +23,21 @@ export interface RibbonAction {
   adv?: boolean;
 }
 
+export interface RibbonActionGroup {
+  title: string;
+  rows: RibbonAction[][];
+}
+
 // Parent supplies handler/active-state for any tool id it cares about.
 export type RibbonHandler = (id: string) => void;
 export type RibbonActiveCheck = (id: string) => boolean;
 
 export interface ModeRibbonProps {
   mode: ShellMode;
+  experienceLevel?: UserExperienceLevel;
+  /** Domain-specific, already-tiered actions. Supplying these prevents the
+   * mechanical ribbon from leaking into Space Design Labs workspaces. */
+  groups?: RibbonActionGroup[];
   tabs: RibbonTabDef[];
   activeTab: string;
   onTabChange: (id: string) => void;
@@ -195,8 +205,6 @@ const ASSEMBLY_GROUPS: { title: string; rows: RibbonAction[][] }[] = [
     rows: [
       [
         { id: 'asm.insert', lbl: 'Insert', ico: 'plus', hasCaret: true },
-        { id: 'asm.replace', lbl: 'Replace', ico: 'cube' },
-        { id: 'asm.subassembly', lbl: 'Sub-asm', ico: 'cube' },
       ],
     ],
   },
@@ -218,17 +226,16 @@ const ASSEMBLY_GROUPS: { title: string; rows: RibbonAction[][] }[] = [
     ],
   },
   {
-    title: 'Motion',
-    rows: [[{ id: 'motion.drive', lbl: 'Drive', ico: 'rotate', hasCaret: true }]],
+    title: 'Solve & Motion',
+    rows: [[
+      { id: 'asm.solve', lbl: 'Solve', ico: 'check' },
+      { id: 'motion.drive', lbl: 'Drive', ico: 'rotate', hasCaret: true },
+    ]],
   },
   {
     title: 'Inspect',
     rows: [
       [{ id: 'asm.interference', lbl: 'Interference', ico: 'bolt' }],
-      [
-        { id: 'asm.section', lbl: 'Section view', ico: 'section', big: false },
-        { id: 'asm.measure', lbl: 'Measure', ico: 'ruler', big: false },
-      ],
     ],
   },
   {
@@ -341,6 +348,15 @@ const GROUPS_BY_MODE: Record<ShellMode, { title: string; rows: RibbonAction[][] 
   sheetmetal: SHEET_METAL_GROUPS,
 };
 
+const GUIDED_ACTIONS_BY_MODE: Record<ShellMode, ReadonlySet<string>> = {
+  modeling: new Set(['sketch', 'extrude', 'hole', 'fillet', 'measure', 'section', 'ai.suggest']),
+  sketch: new Set(['sketch.line', 'sketch.rect', 'sketch.circle', 'sketch.dim', 'sketch.constraint', 'sketch.finish']),
+  assembly: new Set(['asm.insert', 'mate.coincident', 'mate.concentric', 'mate.distance', 'asm.solve', 'motion.drive']),
+  drawing: new Set(['sheet.new', 'output.pdf']),
+  render: new Set(['render.final']),
+  sheetmetal: new Set(['sm.edge-flange', 'sm.bend', 'sm.tab', 'sm.flatten', 'sm.export-dxf']),
+};
+
 // Per-tab filtering for sketch mode — splits the SKETCH_GROUPS into three
 // subsets so each top-tab shows only the relevant tools.
 const SKETCH_TAB_GROUPS: Record<string, string[]> = {
@@ -349,21 +365,28 @@ const SKETCH_TAB_GROUPS: Record<string, string[]> = {
   'sketch.finish': ['Project', 'Body', 'Finish'],
 };
 
-export function ModeRibbon({ mode, tabs, activeTab, onTabChange, onTool, isActive }: ModeRibbonProps) {
+export function ModeRibbon({ mode, experienceLevel = 'standard', groups: suppliedGroups, tabs, activeTab, onTabChange, onTool, isActive }: ModeRibbonProps) {
   const [showAdvanced, setShowAdvanced] = useState(false);
-  let groups = GROUPS_BY_MODE[mode];
-  if (mode === 'sketch' && SKETCH_TAB_GROUPS[activeTab]) {
+  let groups = suppliedGroups ?? GROUPS_BY_MODE[mode];
+  if (!suppliedGroups && mode === 'sketch' && SKETCH_TAB_GROUPS[activeTab]) {
     const titles = new Set(SKETCH_TAB_GROUPS[activeTab]);
     groups = groups.filter(g => titles.has(g.title));
   }
   // Modeling shows ~30 tools — hide advanced ones behind a toggle so beginners
   // see only the essentials (reduces choice overload). Other modes unchanged.
-  const tiered = mode === 'modeling' && !showAdvanced;
-  const shown = tiered
+  const filterActions = (allowed: ReadonlySet<string>) => groups
+    .map(g => ({ ...g, rows: g.rows.map(row => row.filter(action => allowed.has(action.id))).filter(row => row.length > 0) }))
+    .filter(g => g.rows.length > 0);
+  const standardEssentials = !suppliedGroups && mode === 'modeling' && experienceLevel === 'standard' && !showAdvanced;
+  const shown = suppliedGroups
     ? groups
+    : experienceLevel === 'guided'
+    ? filterActions(GUIDED_ACTIONS_BY_MODE[mode])
+    : standardEssentials
+      ? groups
         .map(g => ({ ...g, rows: g.rows.map(r => r.filter(a => !a.adv)).filter(r => r.length > 0) }))
         .filter(g => g.rows.length > 0)
-    : groups;
+      : groups;
   return (
     <Ribbon tabs={tabs} activeTab={activeTab} onTabChange={onTabChange}>
       {shown.map(g => (
@@ -392,7 +415,7 @@ export function ModeRibbon({ mode, tabs, activeTab, onTabChange, onTool, isActiv
           })}
         </Grp>
       ))}
-      {mode === 'modeling' && (
+      {!suppliedGroups && mode === 'modeling' && experienceLevel === 'standard' && (
         <Grp key="__tier" title={showAdvanced ? 'Less' : 'More'}>
           <Tool
             ico="plus"

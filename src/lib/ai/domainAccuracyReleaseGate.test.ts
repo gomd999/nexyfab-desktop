@@ -28,6 +28,12 @@ describe('domain accuracy commercial release gate', () => {
     ]));
   });
 
+  it('checks only the domains declared by a product release channel', async () => {
+    const dir = await mkdtemp(join(tmpdir(), 'nexyfab-mechanical-accuracy-'));
+    const issues = await domainAccuracyReleaseIssues(dir, {}, Date.now(), ['mechanical']);
+    expect(issues.map(item => item.code)).toEqual(['domain_accuracy.mechanical.evidence_unreadable']);
+  });
+
   it('requires distinct trusted signatures bound to the exact cases and runs bytes', () => {
     const cases = new TextEncoder().encode('[]\n');
     const runs = new TextEncoder().encode('[]\n');

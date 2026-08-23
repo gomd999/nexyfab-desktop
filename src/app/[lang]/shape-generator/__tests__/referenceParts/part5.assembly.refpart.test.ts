@@ -317,15 +317,13 @@ describeMaybe('REF-PART 5 · bracket + pin + lever assembly', () => {
     const svgPrims = renderBomTableSvg(table, 10, 10);
     expect(svgPrims.length).toBeGreaterThan(12);
     expect(tableMetrics(table).rowCount).toBe(3);
-    recordFinding({
-      part: 'P5 assembly',
-      severity: 'minor',
-      title: 'three disconnected BOM row models, no balloon→view anchoring',
-      detail: 'analysis/assemblyDrawing.BomRow, standardParts/bomAggregation.BomRow and io/bomExport.BomRow are '
-        + 'separate shapes with no production bridge; balloon NUMBERS exist (drawing/balloonAutoNumbering) but '
-        + 'nothing computes balloon anchor coordinates on the generated assembly view — balloons never appear '
-        + 'on the exported sheet.',
-    });
+    expect(asm.balloons).toHaveLength(3);
+    for (const balloon of asm.balloons) {
+      expect(Number.isFinite(balloon.anchor.x)).toBe(true);
+      expect(Number.isFinite(balloon.anchor.y)).toBe(true);
+      expect(Number.isFinite(balloon.balloonCentre.x)).toBe(true);
+      expect(Number.isFinite(balloon.balloonCentre.y)).toBe(true);
+    }
 
     // Real exporters, headless.
     const svg = buildDrawingSvgString(asm);
@@ -336,19 +334,10 @@ describeMaybe('REF-PART 5 · bracket + pin + lever assembly', () => {
     expect(pdf.byteLength).toBeGreaterThan(2000);
     console.log(`[REF-PART 5] SCORECARD sheet: bom=3 rows, svg=${svg.length}B, dxf=${dxf.length}B, pdf=${pdf.byteLength}B`);
 
-    // The PDF/DXF sheets contain the FIRST part's view + title block but no BOM
-    // table or balloons — verify and document honestly.
+    // BOM rows and anchored balloons must reach the headless exporters.
+    expect(svg).toContain('data-export="assembly-bom-balloon"');
     const bomInPdfPath = dxf.includes('Pivot Pin');
-    if (!bomInPdfPath) {
-      recordFinding({
-        part: 'P5 assembly',
-        severity: 'major',
-        title: 'assembly BOM rows are not rendered into the exported PDF/DXF sheet',
-        detail: 'generateAssemblyDrawing returns `bom` as supplemental data ("renderers add the rows"), but '
-          + 'buildDrawingDxfString/buildDrawingPdfArrayBuffer render only views + title block — the shipped '
-          + 'sheet has no parts list. Roadmap Phase 3 acceptance ("BOM+벌룬 → PDF") is not met end-to-end.',
-      });
-    }
+    expect(bomInPdfPath).toBe(true);
   }, 120_000);
 
   it('.nfab assembly snapshot round-trip preserves hinge + limitAngle mates', () => {

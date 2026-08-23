@@ -5,6 +5,10 @@ import { getAuthUser } from '@/lib/auth-middleware';
 import { getDbAdapter } from '@/lib/db-adapter';
 import { checkOrigin } from '@/lib/csrf';
 import { createOrg, grantRole, getUserOrgs } from '@/lib/rbac';
+import { ACTIVE_ORG_COOKIE, activeOrgCookieOptions } from '@/lib/org-context';
+import { boundedJsonError, readBoundedJson } from '@/lib/boundedJsonBody';
+
+const ORG_CREATE_JSON_BYTES = 64 * 1024;
 
 /**
  * GET  /api/nexyfab/orgs — 내 조직 목록
@@ -29,16 +33,19 @@ export async function POST(req: NextRequest) {
   const authUser = await getAuthUser(req);
   if (!authUser) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-  // 이미 조직에 소속되어 있으면 거부
-  if (authUser.orgIds.length > 0) {
-    return NextResponse.json({ error: '이미 조직에 소속되어 있습니다.' }, { status: 409 });
-  }
-
-  const body = await req.json().catch(() => ({})) as {
-    name: string;
+  let body: {
+    name?: string;
     businessNumber?: string;
     country?: string;
-  };
+  } = {};
+  try {
+    body = await readBoundedJson(req, ORG_CREATE_JSON_BYTES);
+  } catch (error) {
+    const bodyError = boundedJsonError(error);
+    if (bodyError?.code === 'PAYLOAD_TOO_LARGE') {
+      return NextResponse.json({ error: 'Request body too large' }, { status: bodyError.status });
+    }
+  }
 
   if (!body.name || body.name.trim().length < 2) {
     return NextResponse.json({ error: '조직명은 2자 이상이어야 합니다.' }, { status: 400 });
@@ -58,24 +65,31 @@ export async function POST(req: NextRequest) {
   // 2. org_admin role 부여
   await grantRole(authUser.userId, 'nexyfab', 'org_admin', orgId);
 
-  // 3. 기존 개인 구독 → org로 이관
-  await db.execute(
-    "UPDATE nf_aw_subscriptions SET org_id = ? WHERE user_id = ? AND org_id IS NULL AND status = 'active'",
-    orgId, authUser.userId,
-  );
-
-  // 4. 기존 인보이스도 org로 이관
-  await db.execute(
-    'UPDATE nf_aw_invoices SET org_id = ? WHERE user_id = ? AND org_id IS NULL',
-    orgId, authUser.userId,
-  );
+  // 첫 조직만 기존 개인 결제를 이관한다. 이후 조직은 독립된 결제
+  // 컨텍스트로 시작하여 서로 다른 고객사의 내역이 섞이지 않는다.
+  const migratedPersonalBilling = authUser.orgIds.length === 0;
+  if (migratedPersonalBilling) {
+    await db.execute(
+      "UPDATE nf_aw_subscriptions SET org_id = ? WHERE user_id = ? AND org_id IS NULL AND status = 'active'",
+      orgId, authUser.userId,
+    );
+    await db.execute(
+      'UPDATE nf_aw_invoices SET org_id = ? WHERE user_id = ? AND org_id IS NULL',
+      orgId, authUser.userId,
+    );
+  }
 
   // 5. org plan 동기화
   await db.execute('UPDATE nf_orgs SET plan = ? WHERE id = ?', authUser.plan, orgId);
 
-  return NextResponse.json({
+  const response = NextResponse.json({
     ok: true,
     org: { id: orgId, name: body.name.trim() },
-    message: '조직이 생성되었습니다. 기존 구독이 조직으로 이관되었습니다.',
+    migratedPersonalBilling,
+    message: migratedPersonalBilling
+      ? '조직이 생성되고 기존 개인 결제가 이관되었습니다.'
+      : '조직이 독립 결제 컨텍스트로 생성되었습니다.',
   }, { status: 201 });
+  response.cookies.set(ACTIVE_ORG_COOKIE, orgId, activeOrgCookieOptions());
+  return response;
 }

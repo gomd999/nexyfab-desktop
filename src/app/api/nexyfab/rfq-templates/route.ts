@@ -20,9 +20,11 @@ import { getAuthUser } from '@/lib/auth-middleware';
 import { getDbAdapter } from '@/lib/db-adapter';
 import { randomBytes } from 'crypto';
 import { RFQ_SYSTEM_TEMPLATES } from '@/lib/nexyfab/rfqSystemTemplates';
+import { boundedJsonError, readBoundedJson } from '@/lib/boundedJsonBody';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
+const RFQ_TEMPLATE_JSON_BYTES = 256 * 1024;
 
 interface UserTemplateRow {
   id: string;
@@ -80,8 +82,12 @@ export async function POST(req: NextRequest) {
 
   let body: { name?: unknown; sourceRfqId?: unknown; fields?: unknown };
   try {
-    body = await req.json();
-  } catch {
+    body = await readBoundedJson(req, RFQ_TEMPLATE_JSON_BYTES);
+  } catch (error) {
+    const bodyError = boundedJsonError(error);
+    if (bodyError?.code === 'PAYLOAD_TOO_LARGE') {
+      return NextResponse.json({ error: 'Request body too large' }, { status: bodyError.status });
+    }
     return NextResponse.json({ error: 'invalid JSON' }, { status: 400 });
   }
   const name = typeof body.name === 'string' ? body.name.trim().slice(0, 80) : '';

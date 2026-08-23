@@ -8,6 +8,9 @@
  * status_change / note / photo / shipment / delay.
  */
 import { useEffect, useState } from 'react';
+import { formatDate } from '@/lib/i18n/format';
+import { toIsoLang } from '@/lib/i18n/normalize';
+import { createCommercialLocalizer } from '@/lib/i18n/commercialLocalizer';
 
 interface OrderEvent {
   id: string;
@@ -62,26 +65,25 @@ const KIND_LABEL_EN: Record<OrderEvent['kind'], string> = {
   delay: 'Delay notice',
 };
 
-function relTime(ts: number, lang: 'ko' | 'en') {
+function relTime(ts: number, lang: string) {
   const diff = Date.now() - ts;
   const day = 86_400_000;
-  if (lang === 'ko') {
-    if (diff < 60_000) return '방금';
-    if (diff < 3_600_000) return `${Math.round(diff / 60_000)}분 전`;
-    if (diff < day) return `${Math.round(diff / 3_600_000)}시간 전`;
-    if (diff < 7 * day) return `${Math.round(diff / day)}일 전`;
-    return new Date(ts).toLocaleDateString('ko-KR');
+  if (diff < 7 * day) {
+    const [value, unit]: [number, Intl.RelativeTimeFormatUnit] =
+      diff < 60_000 ? [0, 'second']
+        : diff < 3_600_000 ? [-Math.round(diff / 60_000), 'minute']
+          : diff < day ? [-Math.round(diff / 3_600_000), 'hour']
+            : [-Math.round(diff / day), 'day'];
+    try {
+      return new Intl.RelativeTimeFormat(toIsoLang(lang), { numeric: 'auto' }).format(value, unit);
+    } catch { /* fall through to the locale-aware date formatter */ }
   }
-  if (diff < 60_000) return 'just now';
-  if (diff < 3_600_000) return `${Math.round(diff / 60_000)}m ago`;
-  if (diff < day) return `${Math.round(diff / 3_600_000)}h ago`;
-  if (diff < 7 * day) return `${Math.round(diff / day)}d ago`;
-  return new Date(ts).toLocaleDateString();
+  return formatDate(ts, lang) ?? '';
 }
 
 export default function OrderTimeline({ orderId, lang, isDemo }: {
   orderId: string;
-  lang: 'ko' | 'en';
+  lang: string;
   isDemo?: boolean;
 }) {
   const [events, setEvents] = useState<OrderEvent[]>([]);
@@ -115,10 +117,11 @@ export default function OrderTimeline({ orderId, lang, isDemo }: {
     return () => { cancelled = true; };
   }, [orderId, isDemo]);
 
-  const empty = lang === 'ko' ? '아직 진행 업데이트가 없습니다.' : 'No updates yet.';
-  const errMsg = lang === 'ko' ? '타임라인을 불러오지 못했습니다.' : 'Failed to load timeline.';
-  const loadingMsg = lang === 'ko' ? '불러오는 중…' : 'Loading…';
-  const titleMsg = lang === 'ko' ? '진행 타임라인' : 'Progress Timeline';
+  const L = createCommercialLocalizer(lang);
+  const empty = L('아직 진행 업데이트가 없습니다.', 'No updates yet.');
+  const errMsg = L('타임라인을 불러오지 못했습니다.', 'Failed to load timeline.');
+  const loadingMsg = L('불러오는 중…', 'Loading…');
+  const titleMsg = L('진행 타임라인', 'Progress Timeline');
 
   return (
     <div className="bg-white rounded-xl border border-gray-200 p-4">
@@ -131,8 +134,11 @@ export default function OrderTimeline({ orderId, lang, isDemo }: {
       {!loading && events.length > 0 && (
         <ol className="space-y-3">
           {events.map(ev => {
-            const label = lang === 'ko' ? KIND_LABEL_KO[ev.kind] : KIND_LABEL_EN[ev.kind];
-            const stmap = lang === 'ko' ? STATUS_LABEL_KO : STATUS_LABEL_EN;
+            const label = L(KIND_LABEL_KO[ev.kind], KIND_LABEL_EN[ev.kind]);
+            const stmap = Object.fromEntries(Object.keys(STATUS_LABEL_EN).map(status => [
+              status,
+              L(STATUS_LABEL_KO[status], STATUS_LABEL_EN[status]),
+            ]));
             return (
               <li key={ev.id} className="flex gap-3 text-sm">
                 <div className="w-6 shrink-0 text-center pt-0.5">{KIND_ICON[ev.kind]}</div>

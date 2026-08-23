@@ -1,0 +1,31 @@
+{
+  "schema": "nexyfab.mechanical-core-feature-local-runtime.v1",
+  "feature": "cornerRelief",
+  "axis": "save_reopen",
+  "status": "PASS",
+  "executedAt": "2026-08-22T07:13:30.564Z",
+  "savedBytes": 1613,
+  "savedSha256": "8d40ac6577301f4e3d0e3aefd5fcc58a91e6fba89c8d2838fc96219eecc8ffe1",
+  "reopened": {
+    "handle": "occt:335",
+    "kernelKind": "Solid",
+    "nativeShapeType": 0,
+    "solidCount": 1,
+    "singleSolid": true,
+    "volumeMm3": 3574.8672587712813,
+    "edgeCount": 15,
+    "faceCount": 7,
+    "boundsMm": [
+      [
+        -30.004818275179314,
+        -1.0048182751793133,
+        -15.004818275179312
+      ],
+      [
+        30.004818275179314,
+        1.0048182751793133,
+        15.004818275179312
+      ]
+    ]
+  }
+}

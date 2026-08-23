@@ -1,0 +1,40 @@
+{
+  "schema": "nexyfab.mechanical-core-feature-local-runtime.v1",
+  "feature": "chamfer",
+  "axis": "undo",
+  "status": "PASS",
+  "executedAt": "2026-08-22T07:13:30.564Z",
+  "restoredPayload": {
+    "id": "runtime-feature",
+    "enabled": true,
+    "type": "chamfer",
+    "params": {
+      "distance": 2,
+      "radius": 2,
+      "edgeSelection": 0
+    }
+  },
+  "restoredExact": {
+    "handle": "occt:39",
+    "kernelKind": "Solid",
+    "nativeShapeType": 0,
+    "solidCount": 1,
+    "singleSolid": true,
+    "volumeMm3": 71002.66666666666,
+    "edgeCount": 48,
+    "faceCount": 26,
+    "boundsMm": [
+      [
+        -30.000000100000012,
+        -20.000000100000015,
+        -15.000000100000014
+      ],
+      [
+        30.000000100000012,
+        20.000000100000015,
+        15.000000100000014
+      ]
+    ]
+  },
+  "futureDepth": 1
+}

@@ -1,0 +1,57 @@
+{
+  "schema": "nexyfab.railway-operations-sample.v1",
+  "capturedAt": "2026-08-22T07:08:34.921Z",
+  "service": "openscad-worker",
+  "sourceService": "nexyfab-openscad-worker",
+  "environment": "production",
+  "window": {
+    "since": "2026-08-22T01:08:31.546+00:00",
+    "until": "2026-08-22T07:08:31.546+00:00"
+  },
+  "deploymentIds": [
+    "ea245e9f-518e-4d30-bb3c-e67ed00b73ab",
+    "622c667a-2f4c-40f6-bd7b-579378098818",
+    "58cfd2fe-12c3-4696-84cc-75327fcbe54b",
+    "67778594-cc5d-4fba-9cc6-525b17a4b06a",
+    "ee62ed92-03b1-4cfa-9cea-83ca29d47c31"
+  ],
+  "deploymentStatuses": [
+    {
+      "id": "ea245e9f-518e-4d30-bb3c-e67ed00b73ab",
+      "status": "SUCCESS"
+    },
+    {
+      "id": "622c667a-2f4c-40f6-bd7b-579378098818",
+      "status": "REMOVED"
+    },
+    {
+      "id": "58cfd2fe-12c3-4696-84cc-75327fcbe54b",
+      "status": "REMOVED"
+    },
+    {
+      "id": "67778594-cc5d-4fba-9cc6-525b17a4b06a",
+      "status": "REMOVED"
+    },
+    {
+      "id": "ee62ed92-03b1-4cfa-9cea-83ca29d47c31",
+      "status": "REMOVED"
+    }
+  ],
+  "cpu": {
+    "average": 0.000047467636195752524,
+    "current": 0.0000281,
+    "limit": 8,
+    "max": 0.00006484999999999999,
+    "unit": "vCPU",
+    "utilization_pct": 0
+  },
+  "memory": {
+    "average_mb": 50.82942242180584,
+    "current_mb": 50.822381568,
+    "limit_mb": 8192,
+    "max_mb": 51.090817024,
+    "utilization_pct": 0.6
+  },
+  "http": null,
+  "volumes": []
+}

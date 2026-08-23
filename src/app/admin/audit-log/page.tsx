@@ -7,6 +7,9 @@
 // investigation ("who rotated this key", "all breaker trips this week").
 
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useAdminI18n } from '../AdminI18nProvider';
+import { createCommercialLocalizer } from '@/lib/i18n/commercialLocalizer';
+import { formatDate } from '@/lib/i18n/format';
 
 interface AuditRow {
   id: string;
@@ -30,6 +33,8 @@ const WINDOW_OPTIONS = [
 ];
 
 export default function AuditLogPage() {
+  const { locale } = useAdminI18n();
+  const L = createCommercialLocalizer(locale);
   const [rows, setRows] = useState<AuditRow[]>([]);
   const [windowH, setWindowH] = useState<number>(24 * 7);
   const [actionFilter, setActionFilter] = useState('');
@@ -66,7 +71,10 @@ export default function AuditLogPage() {
     <div style={pageStyle}>
       <h1 style={titleStyle}>📜 Admin Audit Log</h1>
       <p style={subtitleStyle}>
-        모든 admin mutation 의 영구 기록. 최근 30일 검색 가능. 값 자체는 sha256 해시로만 기록 — 평문 누출 없음.
+        {L(
+          '모든 관리자 변경 작업의 영구 기록입니다. 최근 30일을 검색할 수 있으며 값은 SHA-256 해시로만 기록되어 평문이 노출되지 않습니다.',
+          'Permanent record of all admin mutations. Search the last 30 days; values are stored only as SHA-256 hashes, never as plaintext.',
+        )}
       </p>
 
       <div style={filterRowStyle}>
@@ -84,13 +92,13 @@ export default function AuditLogPage() {
           onChange={e => setActionFilter(e.target.value)}
           style={selectStyle}
         >
-          <option value="">전체 action</option>
+          <option value="">{L('전체 작업', 'All actions')}</option>
           {distinctActions.map(a => <option key={a} value={a}>{a}</option>)}
         </select>
         <input
           value={targetFilter}
           onChange={e => setTargetFilter(e.target.value)}
-          placeholder="target (예: toss.secret_key)"
+          placeholder={L('대상 (예: toss.secret_key)', 'Target (e.g. toss.secret_key)')}
           style={inputStyle}
         />
         <input
@@ -103,21 +111,21 @@ export default function AuditLogPage() {
       </div>
 
       <div style={summaryStyle}>
-        총 <b>{rows.length}</b>건 · 윈도우 last {windowH}h
-        {loading && <span style={{ color: '#6e7681', marginLeft: 8 }}>· 불러오는 중…</span>}
+        {L(`총 ${rows.length}건 · 최근 ${windowH}시간`, `${rows.length} total · last ${windowH}h`)}
+        {loading && <span style={{ color: '#6e7681', marginLeft: 8 }}>{L('· 불러오는 중…', '· Loading…')}</span>}
       </div>
 
       <div style={panelStyle}>
         {rows.length === 0 && !loading && (
           <div style={emptyStyle}>
             <div style={{ fontSize: 36, marginBottom: 8 }}>📭</div>
-            <div>해당 조건에 일치하는 로그가 없습니다.</div>
+            <div>{L('해당 조건에 일치하는 로그가 없습니다.', 'No logs match these filters.')}</div>
           </div>
         )}
         <table style={tableStyle}>
           <thead>
             <tr>
-              <th style={thStyle}>시각</th>
+              <th style={thStyle}>{L('시각', 'Time')}</th>
               <th style={thStyle}>Action</th>
               <th style={thStyle}>Target</th>
               <th style={thStyle}>Admin</th>
@@ -129,7 +137,7 @@ export default function AuditLogPage() {
           <tbody>
             {rows.map(r => (
               <tr key={r.id} style={trStyle}>
-                <td style={tdStyle}>{new Date(r.createdAt).toLocaleString('ko-KR')}</td>
+                <td style={tdStyle}>{formatDate(r.createdAt, locale, { dateStyle: 'medium', timeStyle: 'short' }) ?? '-'}</td>
                 <td style={tdStyle}>
                   <code style={{ background: '#0d1117', padding: '1px 6px', borderRadius: 3, color: '#79c0ff' }}>
                     {r.action}

@@ -1,0 +1,53 @@
+{
+  "schema": "nexyfab.mechanical-core-feature-local-runtime.v1",
+  "feature": "loft",
+  "axis": "create",
+  "status": "PASS",
+  "executedAt": "2026-08-22T07:13:30.564Z",
+  "payload": {
+    "id": "runtime-feature",
+    "enabled": true,
+    "type": "loft",
+    "params": {
+      "sections": 3,
+      "height": 30,
+      "startShape": 1,
+      "endShape": 1,
+      "startSize": 10,
+      "endSize": 6,
+      "twist": 0
+    }
+  },
+  "exact": {
+    "handle": "occt:399",
+    "kernelKind": "Solid",
+    "nativeShapeType": 2,
+    "solidCount": 1,
+    "singleSolid": true,
+    "volumeMm3": 7840.000000000001,
+    "edgeCount": 96,
+    "faceCount": 34,
+    "boundsMm": [
+      [
+        -10.082955440520177,
+        -15.082955440520179,
+        -10.082955440520179
+      ],
+      [
+        10.082955440520179,
+        15.082955440520177,
+        10.082955440520177
+      ]
+    ]
+  },
+  "featureMeaning": {
+    "assertion": "actual product OCCT loft between square sections satisfies the analytic square-frustum volume identity",
+    "startHalfSizeMm": 10,
+    "endHalfSizeMm": 6,
+    "heightMm": 30,
+    "expectedVolumeMm3": 7840,
+    "actualVolumeMm3": 7840.000000000001
+  },
+  "exactScope": "declared numeric runtime case",
+  "assertion": "native OCCT produced one non-empty exact solid and changed the host geometry"
+}

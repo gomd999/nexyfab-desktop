@@ -11,6 +11,7 @@ const output = option('output');
 const digest = value => createHash('sha256').update(JSON.stringify(value)).digest('hex');
 const pick = item => ({
   artifactId: digest([item.relativePath, item.sha256]),
+  ...(item.sourceId ? { sourceId: item.sourceId, sourceRelativePath: item.sourceRelativePath } : {}),
   relativePath: item.relativePath,
   lineageId: item.lineageId,
   extension: item.extension,
@@ -39,6 +40,9 @@ export function buildReferenceUtilizationQueues(manifest) {
   const p0 = manifest.lineages.filter(lineage => p0Patterns.some(rule => rule.test(lineage.lineageId)))
     .map(lineage => ({ ...lineage, workflow: ['ai_generate_or_import', 'manual_parameter_or_placement_change', 'ai_refine_with_user_locks', 'expert_handoff_if_needed', 'step_roundtrip_and_evidence'] }));
   const queued = automated.length + nativeReview.length + humanContext.length + derivedReuse.length + backlog.length;
+  const queuedIds = [...automated, ...nativeReview, ...humanContext, ...derivedReuse, ...backlog].map(item => item.artifactId);
+  const expectedIds = new Set(manifest.artifacts.map(item => digest([item.relativePath, item.sha256])));
+  if (queuedIds.length !== expectedIds.size || new Set(queuedIds).size !== queuedIds.length || queuedIds.some(id => !expectedIds.has(id))) throw new Error('queue_coverage_mismatch');
   return {
     schema: 'nexyfab.reference-utilization-queues.v1',
     generatedAt: new Date().toISOString(),
@@ -64,13 +68,28 @@ export function buildReferenceUtilizationQueues(manifest) {
 }
 export function validateReferenceUtilizationQueues(value) {
   const arrays = ['automated', 'nativeReview', 'humanContext', 'derivedReuse', 'backlog'];
+  const missingArrays = arrays.filter(key => !Array.isArray(value?.[key]));
   const items = arrays.flatMap(key => Array.isArray(value?.[key]) ? value[key] : []);
   const ids = new Set(items.map(item => item.artifactId));
+  const paths = new Set(items.map(item => item.relativePath));
   const errors = [];
   if (value?.schema !== 'nexyfab.reference-utilization-queues.v1') errors.push('schema_invalid');
+  if (value?.sourceManifestSchema !== 'nexyfab.reference-utilization-manifest.v1'
+    || !/^[a-f0-9]{64}$/.test(value?.sourceManifestArtifactHash ?? '')) errors.push('source_manifest_binding_invalid');
+  if (missingArrays.length > 0) errors.push('queue_arrays_missing');
   if (value?.policy?.sourceReadOnly !== true || value?.policy?.allAssignedArtifactsQueued !== true) errors.push('coverage_policy_invalid');
-  if (items.length !== value?.summary?.queued || ids.size !== items.length) errors.push('queue_count_or_identity_invalid');
-  if (items.some(item => !item.relativePath || !item.sha256 || !item.status)) errors.push('queue_item_incomplete');
+  if (items.length !== value?.summary?.queued || ids.size !== items.length || paths.size !== items.length) errors.push('queue_count_or_identity_invalid');
+  if (items.some(item => !item.relativePath || path.isAbsolute(item.relativePath)
+    || item.relativePath.replaceAll('\\', '/').split('/').some(segment => !segment || segment === '.' || segment === '..')
+    || (item.sha256 !== null && !/^[a-f0-9]{64}$/.test(item.sha256 ?? '')) || !item.status
+    || item.artifactId !== digest([item.relativePath, item.sha256]))) errors.push('queue_item_incomplete');
+  if (items.some(item => (item.sourceId === undefined) !== (item.sourceRelativePath === undefined)
+    || (item.sourceId !== undefined && (!/^[A-Za-z][A-Za-z0-9._-]{0,63}$/.test(item.sourceId)
+      || item.relativePath !== `${item.sourceId}/${item.sourceRelativePath}`)))) errors.push('queue_source_binding_invalid');
+  const expectedSummary = Object.fromEntries(arrays.map(key => [key, Array.isArray(value?.[key]) ? value[key].length : 0]));
+  if (expectedSummary.automated !== value?.summary?.automated || expectedSummary.nativeReview !== value?.summary?.nativeReview
+    || expectedSummary.humanContext !== value?.summary?.humanContext || expectedSummary.derivedReuse !== value?.summary?.derivedReuse
+    || expectedSummary.backlog !== value?.summary?.backlog) errors.push('queue_summary_mismatch');
   return { ok: errors.length === 0, errors, queued: items.length };
 }
 

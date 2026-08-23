@@ -10,8 +10,8 @@
  *  1. `DEMO_ORDERS` (the unauthenticated fallback demo dataset) had its
  *     `partName`/`manufacturerName` hardcoded in Korean with no English
  *     counterpart, so en/ja/cn/es/ar visitors browsing without an account
- *     saw raw Korean product/company names. Fixed via `getDemoOrders(isKo)`,
- *     which swaps in `DEMO_ORDER_NAMES_EN` for non-Korean locales.
+ *     saw raw Korean product/company names. `getDemoOrders(lang)` now selects
+ *     a locale-specific demo product/manufacturer set.
  *  2. `OrderCard`'s `fmtKRW()` unconditionally appended the Korean word '원'
  *     to every amount (same bug class already fixed once in
  *     nexyfab/billing/page.tsx's own `fmtKRW`). Fixed the same way, and
@@ -74,5 +74,12 @@ describe('getDemoOrders — demo part/manufacturer names are language-branched',
     const en = getDemoOrders(false);
     expect(en.map(o => ({ ...o, partName: undefined, manufacturerName: undefined })))
       .toEqual(ko.map(o => ({ ...o, partName: undefined, manufacturerName: undefined })));
+  });
+
+  it('localizes product names for every supported non-English locale', () => {
+    expect(getDemoOrders('ja')[0]?.partName).toBe('アルミブラケット A-100');
+    expect(getDemoOrders('cn')[1]?.partName).toBe('不锈钢法兰 SUS304');
+    expect(getDemoOrders('es')[2]?.partName).toBe('Eje torneado CNC φ25×300');
+    expect(getDemoOrders('ar')[0]?.partName).toBe('حامل ألمنيوم A-100');
   });
 });

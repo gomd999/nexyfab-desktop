@@ -7,6 +7,7 @@ import { SHAPES, type ShapeConfig, type ShapeResult, buildShapeResult } from './
 import { COTS_PARTS, type COTSPart } from './cots/cotsData';
 import { getShapeCategory, getCategoryLabel, type ShapeCategory } from './shapes/categories';
 import { getShapeUsageHint } from './shapes/usageHints';
+import { createCommercialLocalizer } from '@/lib/i18n/commercialLocalizer';
 
 // ─── i18n dict (6 languages) ───────────────────────────────────────────────
 const dict = {
@@ -328,11 +329,12 @@ interface CartItem { part: COTSPart; qty: number }
 
 async function exportCotsCsv(cart: CartItem[], lang: string) {
   const { downloadBlob } = await import('@/lib/platform');
+  const L = createCommercialLocalizer(lang);
   const tt = dict[langMap[lang] ?? 'en'];
   const header = tt.csvHeader;
   const rows = cart.map(({ part, qty }) =>
     [
-      lang === 'ko' ? part.nameKo : part.name,
+      L(part.nameKo, part.name),
       part.standard,
       qty,
       part.unitPriceKRW,
@@ -348,6 +350,7 @@ async function exportCotsCsv(cart: CartItem[], lang: string) {
 }
 
 function CotsBomActions({ cart, total, lang, onClear: _onClear }: { cart: CartItem[]; total: number; lang: string; onClear: () => void }) {
+  const L = createCommercialLocalizer(lang);
   const [sending, setSending] = useState(false);
   const [sent, setSent] = useState(false);
   const [errMsg, setErrMsg] = useState<string | null>(null);
@@ -358,7 +361,7 @@ function CotsBomActions({ cart, total, lang, onClear: _onClear }: { cart: CartIt
     setErrMsg(null);
     try {
       const noteLines = cart.map(({ part, qty }) =>
-        `${lang === 'ko' ? part.nameKo : part.name} (${part.standard}) × ${qty}ea — ₩${(part.unitPriceKRW * qty).toLocaleString()}`
+        `${L(part.nameKo, part.name)} (${part.standard}) × ${qty}ea — ₩${(part.unitPriceKRW * qty).toLocaleString()}`
       );
       noteLines.push(`\n${tt.totalLine}: ₩${total.toLocaleString()}`);
 
@@ -432,6 +435,7 @@ export default function GalleryView({ lang, t, onEnterWorkspace, onChatDesign, o
   const seg = pathname?.split('/').filter(Boolean)[0] ?? lang ?? 'en';
   const resolvedLang = langMap[seg] ?? (langMap[lang] ?? 'en');
   const tt = dict[resolvedLang];
+  const L = createCommercialLocalizer(lang);
 
   const [hoveredId, setHoveredId] = useState<string | null>(null);
   const [selectedId, setSelectedId] = useState<string>(SHAPES[0].id);
@@ -677,7 +681,7 @@ export default function GalleryView({ lang, t, onEnterWorkspace, onChatDesign, o
                   transition: 'background 0.15s',
                 }}
               >
-                {c === 'all' ? (lang === 'ko' ? '전체' : 'All') : getCategoryLabel(c, lang)}
+                {c === 'all' ? (L('전체', 'All')) : getCategoryLabel(c, lang)}
               </button>
             ))}
           </div>
@@ -822,7 +826,7 @@ export default function GalleryView({ lang, t, onEnterWorkspace, onChatDesign, o
                     <span style={{ fontSize: 20, flexShrink: 0 }}>{COTS_ICONS[part.category] ?? '⚙️'}</span>
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{ fontSize: 12, fontWeight: 700, color: isActive ? '#fbbf24' : 'var(--nx-text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                        {lang === 'ko' ? part.nameKo : part.name}
+                        {L(part.nameKo, part.name)}
                       </div>
                       <div style={{ fontSize: 10, color: 'var(--nx-text-3)' }}>{part.standard}</div>
                     </div>
@@ -853,7 +857,7 @@ export default function GalleryView({ lang, t, onEnterWorkspace, onChatDesign, o
                     <span style={{ fontSize: 36 }}>{COTS_ICONS[selectedCots.category] ?? '⚙️'}</span>
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{ fontSize: 17, fontWeight: 900, color: '#fde68a', lineHeight: 1.3 }}>
-                        {lang === 'ko' ? selectedCots.nameKo : selectedCots.name}
+                        {L(selectedCots.nameKo, selectedCots.name)}
                       </div>
                       <div style={{ fontSize: 11, color: '#92400e', background: 'rgba(251,191,36,0.15)', display: 'inline-block', padding: '2px 8px', borderRadius: 6, marginTop: 4, fontWeight: 700 }}>
                         {selectedCots.standard}
@@ -1102,7 +1106,7 @@ export default function GalleryView({ lang, t, onEnterWorkspace, onChatDesign, o
                     <span style={{ fontSize: 18, flexShrink: 0 }}>{COTS_ICONS[part.category] ?? '⚙️'}</span>
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--nx-text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                        {lang === 'ko' ? part.nameKo : part.name}
+                        {L(part.nameKo, part.name)}
                       </div>
                       <div style={{ fontSize: 10, color: 'var(--nx-text-3)' }}>{part.standard} · ₩{part.unitPriceKRW}/ea</div>
                     </div>

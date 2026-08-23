@@ -33,7 +33,7 @@
  * honest "did not pass" verdict + feedback — never a fabricated pass.
  */
 
-import type { AgentSession, AiClient, AgentEvent, ToolExecutorMap, GeometryStats } from './types';
+import type { AgentSession, AgentRunOptions, AiClient, AgentEvent, ToolExecutorMap, GeometryStats } from './types';
 import { runScadAgent } from './runScadAgent';
 import { makeInitialBudget } from './budget';
 import { verifyAgainstSpec, formatSpecCritique, type ProcessForDfm } from './specVerification';
@@ -138,6 +138,14 @@ export interface RepairLoopOptions {
   signal?: AbortSignal;
   /** Set false for provider-orchestration runs that must exercise the model even when the prompt matches the deterministic catalog. */
   fastPath?: boolean;
+  /** Production capability gate evaluated before each internal CAD tool. */
+  authorizeToolCall?: AgentRunOptions['authorizeToolCall'];
+  /** Require a concrete CAD artifact and successful render before an attempt may hand back. */
+  requireSuccessfulRenderBeforeDone?: boolean;
+  /** Return immediately once the required rendered artifact is complete. */
+  stopAfterSuccessfulRender?: boolean;
+  /** Compact a narration-only stalled attempt before asking the model to continue. */
+  resetHistoryOnIncompleteArtifact?: boolean;
 }
 
 export interface AttemptRecord {
@@ -271,6 +279,10 @@ export async function runRepairLoop(opts: RepairLoopOptions): Promise<RepairLoop
         // prompt is free text that would never match a catalog pattern anyway,
         // and we always want the model to actually re-reason on a fix.
         fastPath: attempt === 1 ? opts.fastPath : false,
+        authorizeToolCall: opts.authorizeToolCall,
+        requireSuccessfulRenderBeforeDone: opts.requireSuccessfulRenderBeforeDone,
+        stopAfterSuccessfulRender: opts.stopAfterSuccessfulRender,
+        resetHistoryOnIncompleteArtifact: opts.resetHistoryOnIncompleteArtifact,
         onEvent: emit,
         signal: opts.signal,
         ...budgetCaps,
@@ -598,7 +610,13 @@ export function makeVisionCritic(vision: VisionAdapter | undefined): VisionCriti
  * Server-side only — the provider adapters read env vars / API keys.
  */
 export async function makeServerAiFamilies(
-  opts: { task?: string; temperature?: number; maxTokens?: number } = {},
+  opts: {
+    task?: string;
+    temperature?: number;
+    maxTokens?: number;
+    selectedModel?: { id: string; provider: import('../types').ProviderName; model: string };
+    advisoryContext?: string;
+  } = {},
 ): Promise<AiFamily[]> {
   const { chatCompletion } = await import('../index');
   type ProviderName = import('../types').ProviderName;
@@ -651,13 +669,19 @@ export async function makeServerAiFamilies(
     return 0;
   });
 
-  return configured.map(p => ({
-    family: p.name,
+  const providerFamily = (p: { name: ProviderName }, model?: string, family?: string): AiFamily => ({
+    family: family ?? p.name,
     client: {
       async complete(messages, callOpts) {
+        const routedMessages = opts.advisoryContext
+          ? messages.map((message, index) => index === messages.length - 1 && message.role === 'user'
+            ? { ...message, content: `${message.content}\n\n---\nGPT Luna parallel preflight (advisory; explicit user instructions remain authoritative):\n${opts.advisoryContext}` }
+            : message)
+          : messages;
         const resp = await chatCompletion({
-          messages,
+          messages: routedMessages,
           provider: p.name,
+          ...(model ? { model } : {}),
           task: opts.task ?? 'scad-agent-repair',
           temperature: opts.temperature ?? 0.2,
           maxTokens: opts.maxTokens ?? 2048,
@@ -670,5 +694,22 @@ export async function makeServerAiFamilies(
         };
       },
     } satisfies AiClient,
-  }));
+  });
+
+  const selected = opts.selectedModel
+    ? providerFamily({ name: opts.selectedModel.provider }, opts.selectedModel.model, opts.selectedModel.id)
+    : null;
+  // Keep the user's selected model first, then expose other configured model
+  // families to the repair loop. The loop switches only after a provider or
+  // verification failure, and geometry side effects remain governed by the
+  // same single repair session/tool transaction rather than being duplicated.
+  if (selected) {
+    return [
+      selected,
+      ...configured
+        .filter(p => p.name !== opts.selectedModel?.provider)
+        .map(p => providerFamily(p)),
+    ];
+  }
+  return configured.map(p => providerFamily(p));
 }

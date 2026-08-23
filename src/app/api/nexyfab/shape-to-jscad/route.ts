@@ -8,15 +8,26 @@ import { NextRequest, NextResponse } from 'next/server';
 import { checkPlan } from '@/lib/plan-guard';
 import { chatCompletion, AiNotConfiguredError, AiProviderError, type ChatMessage } from '@/lib/ai';
 import { getPrompt } from '@/lib/ai/prompts';
+import { localizedApiMessage, resolveServerLocale } from '@/lib/i18n/serverLocale';
+import { readBoundedJson } from '@/lib/boundedJsonBody';
 
 export const dynamic = 'force-dynamic';
+const MAX_JSON_BODY_BYTES = 4 * 1024 * 1024;
 
 
 export async function POST(req: NextRequest) {
+  const body = await readBoundedJson(req, MAX_JSON_BODY_BYTES).catch(() => ({})) as {
+    lang?: string;
+    shapeId?: string;
+    params?: Record<string, number>;
+    features?: Array<{ type: string; params: Record<string, number> }>;
+    bbox?: { w: number; h: number; d: number };
+  };
+  const locale = resolveServerLocale(req, body.lang ?? req.nextUrl.searchParams.get('lang'));
   const plan = await checkPlan(req, 'free');
   if (!plan.ok) return plan.response;
 
-  const { shapeId, params, features, bbox } = await req.json().catch(() => ({}));
+  const { shapeId, params, features, bbox } = body;
 
   const featureList = Array.isArray(features) && features.length > 0
     ? `\nApplied features: ${features.map((f: { type: string; params: Record<string, number> }) => `${f.type}(${JSON.stringify(f.params)})`).join(', ')}`
@@ -32,7 +43,7 @@ Generate accurate JSCAD code that recreates this geometry with the exact same di
 
   const promptDef = getPrompt('shape-to-jscad');
   const messages: ChatMessage[] = [
-    { role: 'system', content: promptDef.template },
+    { role: 'system', content: `${promptDef.template}\n\n[OUTPUT LANGUAGE CONTRACT]\nWrite description in ${locale.languageName}; preserve shape IDs, parameter keys, JSCAD code, and standard identifiers.` },
     { role: 'user', content: userMessage },
   ];
 
@@ -48,13 +59,13 @@ Generate accurate JSCAD code that recreates this geometry with the exact same di
     raw = result.text;
   } catch (e) {
     if (e instanceof AiNotConfiguredError) {
-      return NextResponse.json({ error: 'AI provider not configured' }, { status: 500 });
+      return NextResponse.json({ error: localizedApiMessage(locale, 'providerNotConfigured'), outputLanguage: locale.route }, { status: 500 });
     }
     const detail = e instanceof AiProviderError
       ? `${e.provider}${e.status ? ` (${e.status})` : ''}: ${e.message}`
       : (e instanceof Error ? e.message : String(e));
     console.error('shape-to-jscad AI provider error:', detail);
-    return NextResponse.json({ error: 'AI request failed' }, { status: 502 });
+    return NextResponse.json({ error: localizedApiMessage(locale, 'providerFailed'), outputLanguage: locale.route }, { status: 502 });
   }
 
   try {
@@ -64,8 +75,8 @@ Generate accurate JSCAD code that recreates this geometry with the exact same di
     if (first !== -1 && last > first) jsonStr = jsonStr.slice(first, last + 1);
     const parsed = JSON.parse(jsonStr.trim());
     if (!parsed.code) throw new Error('No code');
-    return NextResponse.json({ code: parsed.code, description: parsed.description ?? '' });
+    return NextResponse.json({ code: parsed.code, description: parsed.description ?? '', outputLanguage: locale.route });
   } catch {
-    return NextResponse.json({ error: 'AI 응답 파싱 실패', raw }, { status: 500 });
+    return NextResponse.json({ error: localizedApiMessage(locale, 'invalidAiResponse'), outputLanguage: locale.route }, { status: 500 });
   }
 }

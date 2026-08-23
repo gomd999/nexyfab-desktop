@@ -7,6 +7,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { verifyAdmin } from '@/lib/admin-auth';
 import { getDbAdapter } from '@/lib/db-adapter';
 import { processSmartRetries } from '@/lib/billing-engine';
+import { denyIfPaymentCollectionDisabled } from '@/lib/payment-gate';
+import { readBoundedJson } from '@/lib/boundedJsonBody';
 
 export const dynamic = 'force-dynamic';
 
@@ -93,9 +95,11 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
+  const paymentDenied = denyIfPaymentCollectionDisabled();
+  if (paymentDenied) return paymentDenied;
   if (!(await verifyAdmin(req))) return unauthorized();
 
-  const body = await req.json() as { invoiceId?: string; paymentMethodId?: string; action?: string };
+  const body = await readBoundedJson(req, 64 * 1024) as { invoiceId?: string; paymentMethodId?: string; action?: string };
 
   // Run all pending smart retries (cron-style manual trigger)
   if (body.action === 'run-retries') {
@@ -133,7 +137,7 @@ export async function POST(req: NextRequest) {
 export async function DELETE(req: NextRequest) {
   if (!(await verifyAdmin(req))) return unauthorized();
 
-  const { invoiceId } = await req.json() as { invoiceId?: string };
+  const { invoiceId } = await readBoundedJson(req, 64 * 1024) as { invoiceId?: string };
   if (!invoiceId) return NextResponse.json({ error: 'invoiceId required' }, { status: 400 });
 
   const db = getDbAdapter();

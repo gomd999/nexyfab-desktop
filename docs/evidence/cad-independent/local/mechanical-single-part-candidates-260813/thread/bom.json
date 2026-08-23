@@ -1,0 +1,26 @@
+{
+  "schema": "nexyfab.mechanical-single-part-bom-candidate.v1",
+  "partRevisionSha256": "d5a9b702ed59bc3b4f7990a6d89606ec17cf43119ab68454030531074775724b",
+  "sourceDesignRevisionSha256": "3cf6a0f9c8efcf153a2cfefde087a2112c086fc412d2feeaeb9ce52542838564",
+  "sourceNfabSha256": "d72e851234969a6e5aa3cd857c7dcd145e4cd971e9e8c5b8d489e1c9c752b4de",
+  "sourceStepSha256": "8b41cd5504ed2268d4c9d800a62e85cb39f8ee9efde4cb4dbcb898b32adf145e",
+  "units": "mm",
+  "items": [
+    {
+      "partNumber": "thread",
+      "description": "Mechanical runtime thread",
+      "quantity": 1,
+      "dimensionsMm": {
+        "x": 20.023418926923313,
+        "y": 8.025628009032655,
+        "z": 20.025628009032655
+      }
+    }
+  ],
+  "claimBoundary": {
+    "singlePartCandidateOnly": true,
+    "materialSpecified": false,
+    "massCalculated": false,
+    "manufacturingApproved": false
+  }
+}

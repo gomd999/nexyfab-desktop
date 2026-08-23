@@ -33,7 +33,7 @@ export async function GET(req: NextRequest) {
   const limit = Math.min(100, Math.max(1, parseInt(searchParams.get('limit') ?? '30', 10) || 30));
 
   const { listAIHistory } = await import('@/lib/ai-history');
-  const records = await listAIHistory({ userId: planCheck.userId, feature, projectId, limit });
+  const records = await listAIHistory({ userId: planCheck.userId, orgId: planCheck.orgId, feature, projectId, limit });
   return NextResponse.json({ records });
 }
 
@@ -47,7 +47,7 @@ export async function DELETE(req: NextRequest) {
   if (!id) return NextResponse.json({ error: 'id is required' }, { status: 400 });
 
   const { deleteAIHistory } = await import('@/lib/ai-history');
-  const removed = await deleteAIHistory(planCheck.userId, id);
+  const removed = await deleteAIHistory(planCheck.userId, id, planCheck.orgId);
   if (!removed) return NextResponse.json({ error: 'not found' }, { status: 404 });
   return NextResponse.json({ ok: true });
 }

@@ -4,8 +4,11 @@ import { checkOrigin } from '@/lib/csrf';
 import { getAuthUser } from '@/lib/auth-middleware';
 import { verifyAdmin } from '@/lib/admin-auth';
 import { enqueueJob } from '@/lib/job-queue';
-import { contractSignedHtml } from '@/lib/nexyfab-email';
+import { contractAdminSummaryEmail, contractSignedEmailSubject, contractSignedHtml, nexyfabEmailLocaleFromLanguageTag } from '@/lib/nexyfab-email';
 import { getDbAdapter } from '@/lib/db-adapter';
+import { boundedJsonError, readBoundedJson } from '@/lib/boundedJsonBody';
+
+const MAX_CONTRACT_CREATE_BODY_BYTES = 64 * 1024;
 
 export const dynamic = 'force-dynamic';
 
@@ -48,7 +51,9 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   }
 
-  const raw = await req.json().catch(() => ({}));
+  let raw: unknown = {};
+  try { raw = await readBoundedJson(req, MAX_CONTRACT_CREATE_BODY_BYTES); }
+  catch (error) { if (boundedJsonError(error)?.code === 'PAYLOAD_TOO_LARGE') return NextResponse.json({ error: 'Request too large', code: 'PAYLOAD_TOO_LARGE' }, { status: 413 }); }
   const parsed = contractSchema.safeParse(raw);
   if (!parsed.success) {
     return NextResponse.json(
@@ -132,14 +137,12 @@ export async function POST(req: NextRequest) {
   );
 
   // ── 양측 이메일 자동 발송 ──────────────────────────────────────────────────
-  const resolvedLang = lang?.startsWith('ko') ? 'ko' : 'en';
+  const resolvedLang = nexyfabEmailLocaleFromLanguageTag(lang);
 
   if (customerEmail) {
     enqueueJob('send_email', {
       to: customerEmail,
-      subject: resolvedLang === 'ko'
-        ? `[NexyFab] 계약이 체결됐습니다 — ${projectName}`
-        : `[NexyFab] Contract Signed — ${projectName}`,
+      subject: contractSignedEmailSubject(resolvedLang, projectName),
       html: contractSignedHtml({
         recipientName: customerName || customerEmail,
         recipientType: 'customer',
@@ -156,11 +159,11 @@ export async function POST(req: NextRequest) {
   if (partnerEmail) {
     enqueueJob('send_email', {
       to: partnerEmail,
-      subject: `[NexyFab] 계약 체결 확인 — ${projectName}`,
+      subject: contractSignedEmailSubject(resolvedLang, projectName),
       html: contractSignedHtml({
         recipientName: factoryName || partnerEmail,
         recipientType: 'factory',
-        lang: 'ko',
+        lang: resolvedLang,
         contractId: id,
         projectName,
         factoryName: factoryName || '제조사',
@@ -170,19 +173,19 @@ export async function POST(req: NextRequest) {
     }).catch(e => console.error('[contracts POST] 파트너 이메일 발송 실패:', e));
   }
 
+  const adminSummary = contractAdminSummaryEmail(resolvedLang, {
+    contractId: id,
+    projectName,
+    factoryName,
+    contractAmount,
+    feeRate: rate,
+    finalCharge,
+    isFirstContract,
+  });
   await enqueueJob('send_email', {
     to: ADMIN_EMAIL,
-    subject: `[NexyFab] 새 계약 생성 - ${projectName}`,
-    html: `<h2 style="color:#1a56db">새 계약이 생성되었습니다</h2>
-<table style="border-collapse:collapse;width:100%;font-size:14px">
-  <tr><td style="padding:8px;border:1px solid #e5e7eb;font-weight:bold;background:#f9fafb;width:130px">계약 ID</td><td style="padding:8px;border:1px solid #e5e7eb">${id}</td></tr>
-  <tr><td style="padding:8px;border:1px solid #e5e7eb;font-weight:bold;background:#f9fafb">프로젝트명</td><td style="padding:8px;border:1px solid #e5e7eb">${projectName}</td></tr>
-  <tr><td style="padding:8px;border:1px solid #e5e7eb;font-weight:bold;background:#f9fafb">파트너사</td><td style="padding:8px;border:1px solid #e5e7eb">${factoryName || '미배정'}</td></tr>
-  <tr><td style="padding:8px;border:1px solid #e5e7eb;font-weight:bold;background:#f9fafb">계약금액</td><td style="padding:8px;border:1px solid #e5e7eb">${contractAmount.toLocaleString('ko-KR')}원</td></tr>
-  <tr><td style="padding:8px;border:1px solid #e5e7eb;font-weight:bold;background:#f9fafb">수수료율</td><td style="padding:8px;border:1px solid #e5e7eb">${rate}% (최종 수수료: ${finalCharge.toLocaleString('ko-KR')}원)</td></tr>
-  <tr><td style="padding:8px;border:1px solid #e5e7eb;font-weight:bold;background:#f9fafb">최초 계약</td><td style="padding:8px;border:1px solid #e5e7eb">${isFirstContract ? '예 (1% 우대 할인 적용)' : '아니오'}</td></tr>
-</table>
-<p style="margin-top:16px;color:#6b7280;font-size:12px">— NexyFab 어드민 자동 알림</p>`,
+    subject: adminSummary.subject,
+    html: adminSummary.html,
   }).catch(e => console.error('[contracts POST] 어드민 알림 발송 실패:', e));
 
   return NextResponse.json({ contract }, { status: 201 });

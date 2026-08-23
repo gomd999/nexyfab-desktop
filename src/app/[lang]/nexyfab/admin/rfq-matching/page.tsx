@@ -3,7 +3,7 @@
 import { use, useCallback, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/hooks/useAuth';
-import { isKorean } from '@/lib/i18n/normalize';
+import { createCommercialLocalizer, localizeCommercialDictionary } from '@/lib/i18n/commercialLocalizer';
 
 interface RfqRow {
   id: string;
@@ -127,7 +127,8 @@ export default function AdminRfqMatchingPage({
   params: Promise<{ lang: string }>;
 }) {
   const { lang } = use(params);
-  const t = isKorean(lang) ? T.ko : T.en;
+  const L = createCommercialLocalizer(lang);
+  const t = localizeCommercialDictionary(lang, T.ko, T.en);
 
   const router = useRouter();
   const { user, isLoading: authLoading } = useAuthStore();
@@ -178,7 +179,7 @@ export default function AdminRfqMatchingPage({
     void fetchRfqs();
   }, [fetchRfqs, authLoading, user]);
 
-  if (authLoading) return <div className="p-8 text-center text-gray-400">확인 중...</div>;
+  if (authLoading) return <div className="p-8 text-center text-gray-400">{L('확인 중...', 'Checking...')}</div>;
   if (!user || user.role !== 'admin') return null;
 
   const runAutoMatch = async (rfqId: string): Promise<boolean> => {
@@ -229,7 +230,7 @@ export default function AdminRfqMatchingPage({
   };
 
   const fmtDate = (ms: number) =>
-    new Date(ms).toLocaleDateString(isKorean(lang) ? 'ko-KR' : 'en-US', {
+    new Date(ms).toLocaleDateString(L('ko-KR', 'en-US'), {
       year: 'numeric', month: '2-digit', day: '2-digit',
     });
 
@@ -243,7 +244,7 @@ export default function AdminRfqMatchingPage({
           <h1 style={{ margin: 0, fontSize: 22, fontWeight: 700, color: '#f0f6fc' }}>{t.title}</h1>
           {!loading && (
             <span style={{ fontSize: 13, color: '#8b949e', marginTop: 4, display: 'block' }}>
-              {isKorean(lang) ? `대기 중: ${pendingCount}건` : `Pending: ${pendingCount}`}
+              {L(`대기 중: ${pendingCount}건`, `Pending: ${pendingCount}`)}
             </span>
           )}
         </div>
@@ -306,7 +307,7 @@ export default function AdminRfqMatchingPage({
                     </th>
                   ))}
                   <th style={{ padding: '10px 14px', textAlign: 'left', fontWeight: 600, color: '#8b949e', whiteSpace: 'nowrap' }}>
-                    {isKorean(lang) ? '매칭 결과' : 'Match Result'}
+                    {L('매칭 결과', 'Match Result')}
                   </th>
                 </tr>
               </thead>
@@ -370,7 +371,7 @@ export default function AdminRfqMatchingPage({
                             opacity: ms?.loading ? 0.6 : 1,
                           }}
                         >
-                          {ms?.loading ? t.matching : rfq.status === 'assigned' ? (isKorean(lang) ? '완료' : 'Done') : t.autoMatch}
+                          {ms?.loading ? t.matching : rfq.status === 'assigned' ? L('완료', 'Done') : t.autoMatch}
                         </button>
                       </td>
                       {/* Match result */}

@@ -1,0 +1,84 @@
+{
+  "schema": "nexyfab.mechanical-core-feature-local-runtime.v1",
+  "feature": "cornerRelief",
+  "axis": "regenerate",
+  "status": "PASS",
+  "executedAt": "2026-08-22T07:13:30.564Z",
+  "initial": {
+    "handle": "occt:329",
+    "kernelKind": "Solid",
+    "nativeShapeType": 0,
+    "solidCount": 1,
+    "singleSolid": true,
+    "volumeMm3": 3590.1825229575315,
+    "edgeCount": 15,
+    "faceCount": 7,
+    "boundsMm": [
+      [
+        -30.00301145948707,
+        -1.0030114594870712,
+        -15.003011459487071
+      ],
+      [
+        30.00301145948707,
+        1.0030114594870712,
+        15.003011459487071
+      ]
+    ]
+  },
+  "edited": {
+    "handle": "occt:331",
+    "kernelKind": "Solid",
+    "nativeShapeType": 0,
+    "solidCount": 1,
+    "singleSolid": true,
+    "volumeMm3": 3574.8672587712813,
+    "edgeCount": 15,
+    "faceCount": 7,
+    "boundsMm": [
+      [
+        -30.004818275179314,
+        -1.0048182751793133,
+        -15.004818275179312
+      ],
+      [
+        30.004818275179314,
+        1.0048182751793133,
+        15.004818275179312
+      ]
+    ]
+  },
+  "repeated": {
+    "handle": "occt:333",
+    "kernelKind": "Solid",
+    "nativeShapeType": 0,
+    "solidCount": 1,
+    "singleSolid": true,
+    "volumeMm3": 3574.8672587712813,
+    "edgeCount": 15,
+    "faceCount": 7,
+    "boundsMm": [
+      [
+        -30.004818275179314,
+        -1.0048182751793133,
+        -15.004818275179312
+      ],
+      [
+        30.004818275179314,
+        1.0048182751793133,
+        15.004818275179312
+      ]
+    ]
+  },
+  "featureMeaning": {
+    "assertion": "actual product exact circular corner relief subtracts one analytic quarter-cylinder from the selected sheet corner",
+    "exactScope": "axis-aligned constant-thickness box host",
+    "corner": 0,
+    "sizeMm": 8,
+    "cylindricalFaces": 1,
+    "removedVolumeMm3": 25.132741228718345,
+    "expectedVolumeMm3": 3574.8672587712817,
+    "actualVolumeMm3": 3574.8672587712813
+  },
+  "assertion": "edited parameter changed the exact signature and a fresh native regeneration reproduced topology, bounds, and volume"
+}

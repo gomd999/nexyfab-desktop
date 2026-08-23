@@ -3,4 +3,6 @@
 import ShapeGeneratorClientPage from '../ShapeGeneratorClientPage';
 
 /** Sketch-first entry; URL stays under `/shape-generator/sketch` (see ShapeGeneratorInner path routing). */
-export default ShapeGeneratorClientPage;
+export default function SketchPage() {
+  return <ShapeGeneratorClientPage initialMode="expert" />;
+}

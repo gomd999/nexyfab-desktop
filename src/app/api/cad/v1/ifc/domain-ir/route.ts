@@ -1,14 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getTrustedClientIp } from "@/lib/client-ip";
 import { rateLimit } from "@/lib/rate-limit";
+import { boundedJsonError, readBoundedJson } from "@/lib/boundedJsonBody";
 import {
   buildIfcAlignmentIr,
   buildIfcStructuralIr,
 } from "@/lib/reference/ifcDomainIr";
+import { MAX_INLINE_IFC_BYTES, MAX_SINGLE_IFC_JSON_BYTES } from "../bodyLimits";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
-const MAX_IFC_BYTES = 20 * 1024 * 1024;
 export async function POST(req: NextRequest) {
   const ip = getTrustedClientIp(req.headers);
   if (!rateLimit(`cad-v1-ifc-domain-ir:${ip}`, 20, 60_000).allowed)
@@ -16,7 +17,16 @@ export async function POST(req: NextRequest) {
       { ok: false, code: "RATE_LIMIT" },
       { status: 429 },
     );
-  const body = (await req.json().catch(() => null)) as unknown;
+  let body: unknown;
+  try {
+    body = await readBoundedJson(req, MAX_SINGLE_IFC_JSON_BYTES);
+  } catch (error) {
+    const boundary = boundedJsonError(error);
+    return NextResponse.json(
+      { ok: false, code: boundary?.code ?? "BAD_REQUEST" },
+      { status: boundary?.status ?? 400 },
+    );
+  }
   if (
     !body ||
     typeof body !== "object" ||
@@ -47,9 +57,9 @@ export async function POST(req: NextRequest) {
       },
       { status: 400 },
     );
-  if (Buffer.byteLength(input.ifc, "utf8") > MAX_IFC_BYTES)
+  if (Buffer.byteLength(input.ifc, "utf8") > MAX_INLINE_IFC_BYTES)
     return NextResponse.json(
-      { ok: false, code: "PAYLOAD_TOO_LARGE", maxIfcBytes: MAX_IFC_BYTES },
+      { ok: false, code: "PAYLOAD_TOO_LARGE", maxIfcBytes: MAX_INLINE_IFC_BYTES },
       { status: 413 },
     );
   try {
@@ -113,7 +123,9 @@ export async function POST(req: NextRequest) {
         : buildIfcStructuralIr(input.ifc);
     return NextResponse.json({
       ok: true,
-      releaseReady: ir.valid,
+      verificationPassed: ir.valid,
+      releaseReady: false,
+      releaseBlocker: "SIGNED_INDEPENDENT_RELEASE_EVIDENCE_REQUIRED",
       ir,
       sourceReturned: false,
       quoteOrRfqSideEffects: false,

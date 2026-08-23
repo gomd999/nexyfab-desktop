@@ -1,0 +1,72 @@
+{
+  "schema": "nexyfab.platform-wave-verification.v1",
+  "capturedAt": "2026-08-13T21:36:00+09:00",
+  "waves": ["wave9"],
+  "overallState": "PARTIAL",
+  "releaseDecision": "HOLD",
+  "gateState": {
+    "G9LocalPolicy": "PASS_LOCAL",
+    "G9LiveMigration": "NOT_RUN",
+    "G9ThirtyDayObservation": "NOT_RUN",
+    "productionRelease": "NOT_RUN"
+  },
+  "implementation": {
+    "cloudflareTargetUnits": 9,
+    "railwayTargetServices": ["core-api", "native-fallback"],
+    "railwayDataAuthorities": ["relational-system-of-record"],
+    "railwayRetirementStages": 5,
+    "failClosedRuntimeGate": "PASS_LOCAL",
+    "independentCanaryPolicy": [1, 10, 50, 100],
+    "automaticProductionPromotion": false,
+    "migrationRunbook": "PASS_LOCAL"
+  },
+  "verification": {
+    "runtimePolicyTests": "PASS_6_OF_6",
+    "architectureBoundaryTest": "PASS_1_OF_1",
+    "architectureInventory": "PASS_11_SERVICES_5_STORES_69_API_GROUPS_22_CRON_GROUPS_6_DOMAINS_4_CONTRACT_PACKAGES",
+    "currentLiveGate": "HOLD_10_REQUIRED_CHECKS_NOT_RUN",
+    "nextProductionBuild": "PASS_COMPILE_TYPESCRIPT_STATIC_290_OF_290_POSTBUILD",
+    "bundleBudget": "PASS_SHARED_723_1_OF_781_3_KB_WORST_1584_1_OF_1660_2_KB",
+    "edgeRuntimeDeprecation": "OPEN_WARNING",
+    "multiInstanceRateLimit": "BLOCKED_REDIS_URL_ABSENT",
+    "technicalReleaseGate": "BLOCKED_MISSING_AUDIT_AND_APPROVED_MECHANICAL_CAMPAIGN",
+    "commercialReleaseGate": "BLOCKED_MECHANICAL_0_OF_30_AND_EXTERNAL_CAD_INTEROP",
+    "commercializationPrivateBeta": "BLOCKED_4_ITEMS",
+    "commercializationGa": "BLOCKED_13_ITEMS",
+    "productionChanges": "NONE"
+  },
+  "observedFailuresAndAdjustments": [
+    {
+      "stage": "Node test runner in sandbox",
+      "result": "FAIL",
+      "reason": "spawn EPERM",
+      "adjustment": "reran identical two-file Node test scope with approved process execution",
+      "final": "PASS_7_OF_7"
+    },
+    {
+      "stage": "full Next.js production build",
+      "result": "FAIL",
+      "reason": "three App Router page files directly re-exported a client component whose optional initialMode prop is not a valid PageProps field",
+      "adjustment": "replaced direct component re-exports with zero-argument page wrappers that select expert mode internally",
+      "final": "PASS_PRODUCTION_BUILD"
+    }
+  ],
+  "externalVerification": {
+    "cloudflareStagingDeploy": "NOT_RUN",
+    "railwayMinimalStagingDeploy": "NOT_RUN",
+    "authenticatedProjectE2E": "NOT_RUN",
+    "cloudflareRailwaySameCorpusParity": "NOT_RUN",
+    "postgresBackupRestore": "NOT_RUN",
+    "r2ArtifactRestore": "NOT_RUN",
+    "queueDeadLetterRecovery": "NOT_RUN",
+    "collaborationSnapshotRecovery": "NOT_RUN",
+    "independentRollback": "NOT_RUN",
+    "thirtyDayObservation": "NOT_RUN"
+  },
+  "nonClaims": [
+    "A target placement manifest does not mean services were deployed or retired.",
+    "No Railway service, Redis instance, cron, or production web origin was removed.",
+    "The 30-day gate cannot be satisfied by synthetic or backdated evidence.",
+    "The commercial release remains HOLD."
+  ]
+}

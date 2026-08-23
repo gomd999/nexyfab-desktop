@@ -1,0 +1,41 @@
+{
+  "schema": "nexyfab.mechanical-core-feature-local-runtime.v1",
+  "feature": "splitBody",
+  "axis": "undo",
+  "status": "PASS",
+  "executedAt": "2026-08-22T07:13:30.564Z",
+  "restoredPayload": {
+    "id": "runtime-feature",
+    "enabled": true,
+    "type": "splitBody",
+    "params": {
+      "plane": 0,
+      "offset": 0,
+      "keepSide": 0,
+      "engine": 1
+    }
+  },
+  "restoredExact": {
+    "handle": "occt:455",
+    "kernelKind": "Solid",
+    "nativeShapeType": 0,
+    "solidCount": 1,
+    "singleSolid": true,
+    "volumeMm3": 36000,
+    "edgeCount": 12,
+    "faceCount": 6,
+    "boundsMm": [
+      [
+        -30.0000001,
+        -20.0000001,
+        -1.0000000088817842e-7
+      ],
+      [
+        30.0000001,
+        20.0000001,
+        15.000000100000001
+      ]
+    ]
+  },
+  "futureDepth": 1
+}

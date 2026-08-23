@@ -71,6 +71,12 @@ function makeReq(method: string, body?: unknown, query?: string) {
   });
 }
 
+function streamedPost(body: ReadableStream<Uint8Array>) {
+  return new NextRequest('http://test/api/documents', {
+    method: 'POST', body, headers: { 'content-type': 'application/json', 'content-length': '1' }, duplex: 'half',
+  } as unknown as NonNullable<ConstructorParameters<typeof NextRequest>[1]>);
+}
+
 // ─── GET ─────────────────────────────────────────────────────────────────────
 
 describe('GET /api/documents', () => {
@@ -188,6 +194,32 @@ describe('POST /api/documents', () => {
     });
     const res = await POST(req);
     expect(res.status).toBe(400);
+  });
+
+  it('rejects invalid UTF-8 before document DB or storage mutation', async () => {
+    vi.mocked(getAuthUser).mockResolvedValue(authedUser as never);
+    const req = new NextRequest('http://test/api/documents', {
+      method: 'POST', body: new Uint8Array([0xff]), headers: { 'content-type': 'application/json' },
+    });
+    const res = await POST(req);
+    expect(res.status).toBe(400);
+    expect(getDbAdapter).not.toHaveBeenCalled();
+  });
+
+  it('cancels false-length overflow before document DB or storage mutation', async () => {
+    vi.mocked(getAuthUser).mockResolvedValue(authedUser as never);
+    let cancelled = false;
+    const stream = new ReadableStream<Uint8Array>({
+      start(controller) {
+        controller.enqueue(new Uint8Array([0x7b]));
+        controller.enqueue(new Uint8Array(64 * 1024));
+      },
+      cancel() { cancelled = true; },
+    });
+    const res = await POST(streamedPost(stream));
+    expect(res.status).toBe(400);
+    expect(cancelled).toBe(true);
+    expect(getDbAdapter).not.toHaveBeenCalled();
   });
 
   it('201 happy path — creates document in Personal workspace by default', async () => {

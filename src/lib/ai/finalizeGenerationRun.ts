@@ -18,6 +18,12 @@ import {
   type StepManufacturingEvidenceReport,
   type StepManufacturingRequirement,
 } from "./stepManufacturingEvidence";
+import {
+  verifyAgenticCommercialQualificationReceipt,
+  type AgenticCommercialQualificationReceipt,
+  type AgenticCommercialQualificationVerification,
+  type AgenticCommercialQualificationVerificationContext,
+} from './agenticCommercialQualificationReceipt';
 
 export interface PartFinalizationEvidence {
   partId: string;
@@ -50,6 +56,10 @@ export interface MotionFinalizationEvidence {
 export interface FinalizeGenerationInput {
   motion: MotionFinalizationEvidence;
   parts: PartFinalizationEvidence[];
+  commercialReceipt?: AgenticCommercialQualificationReceipt;
+  commercialReceiptRef?: { receiptId: string; receiptSha256: string };
+  commercialReceiptContext?: AgenticCommercialQualificationVerificationContext;
+  expectedPartIds?: readonly string[];
 }
 export interface FinalizeGenerationResult {
   state: GenerationRunState;
@@ -57,6 +67,8 @@ export interface FinalizeGenerationResult {
   manufacturingReports: Record<string, ManufacturingGateReport>;
   roundtripComparisons: Record<string, StepRoundtripComparison>;
   stepManufacturingReports: Record<string, StepManufacturingEvidenceReport>;
+  commercialReleaseReady: boolean;
+  commercialReceiptVerification: AgenticCommercialQualificationVerification;
 }
 
 const gateFailures = (
@@ -76,6 +88,10 @@ export function finalizeGenerationRun(
 ): FinalizeGenerationResult {
   if (initial.stages.assembly_solve.status !== "passed")
     throw new Error("assembly_solve must pass before finalization.");
+  if (input.expectedPartIds) { const expected = [...input.expectedPartIds].sort(); const actual = input.parts.map(part => part.partId).sort(); if (expected.length !== actual.length || expected.some((id, index) => id !== actual[index])) throw new Error('FINALIZE_PART_EXACT_SET_MISMATCH'); }
+  const commercialReceiptVerification = input.commercialReceiptContext
+    ? verifyAgenticCommercialQualificationReceipt(input.commercialReceipt, input.commercialReceiptContext)
+    : { ok: false, releaseReady: false, status: 'HOLD' as const, targetSha256: '', issues: ['commercial_receipt_context_missing'] };
   let state = initial;
   const motionPassed =
     input.motion.required === false ||
@@ -106,6 +122,8 @@ export function finalizeGenerationRun(
       manufacturingReports: {},
       roundtripComparisons: {},
       stepManufacturingReports: {},
+      commercialReleaseReady: false,
+      commercialReceiptVerification,
     };
 
   const comparisons: Record<string, StepRoundtripComparison> = {};
@@ -226,6 +244,8 @@ export function finalizeGenerationRun(
       manufacturingReports: reports,
       roundtripComparisons: comparisons,
       stepManufacturingReports,
+      commercialReleaseReady: false,
+      commercialReceiptVerification,
     };
 
   const roundtripErrors = input.parts.flatMap((part) => {
@@ -257,18 +277,23 @@ export function finalizeGenerationRun(
       manufacturingReports: reports,
       roundtripComparisons: comparisons,
       stepManufacturingReports,
+      commercialReleaseReady: false,
+      commercialReceiptVerification,
     };
 
-  const releaseErrors = Object.entries(reports).flatMap(([partId, report]) =>
+  const releaseErrors = [
+    ...Object.entries(reports).flatMap(([partId, report]) =>
     gateFailures(report, ["G9"]).map((error) => `${partId}: ${error}`),
-  );
+    ),
+    ...(commercialReceiptVerification.releaseReady ? [] : ['Commercial qualification receipt is missing, untrusted, stale, or mismatched.']),
+  ];
   state = recordGenerationStage(state, {
     stage: "release",
     input: input.parts.map((part) => ({
       partId: part.partId,
       release: part.manufacturing.release,
     })),
-    output: { authorizedParts: input.parts.length - releaseErrors.length },
+    output: { authorizedParts: input.parts.length - releaseErrors.length, commercialReceiptVerification },
     status: releaseErrors.length ? "blocked" : "passed",
     errorCodes: releaseErrors.length
       ? ["EXACT_ARTIFACT_AUTHORIZATION_REQUIRED"]
@@ -279,11 +304,30 @@ export function finalizeGenerationRun(
       .map((part) => part.partId),
     metrics: { parts: input.parts.length },
   });
+  if (!releaseErrors.length && commercialReceiptVerification.releaseReady && input.commercialReceipt) {
+    state = {
+      ...state,
+      commercialHashes: {
+        generationProgramSha256: input.commercialReceipt.generationProgramSha256,
+        targetSha256: input.commercialReceipt.targetSha256,
+        receiptSha256: input.commercialReceipt.receiptSha256,
+        artifactManifestSha256: input.commercialReceipt.artifactManifestSha256,
+        parserReceiptSha256: input.commercialReceipt.parser.receiptSha256,
+        executionJournalSha256: input.commercialReceipt.executionJournal.sha256,
+        persistenceReceiptSha256: input.commercialReceipt.persistenceReceipt.sha256,
+        verificationReceiptSha256: input.commercialReceipt.verificationReceipt.sha256,
+        ...(input.commercialReceiptRef ? { finalEnvelopeSha256: input.commercialReceiptRef.receiptSha256 } : {}),
+      },
+      revision: state.revision + 1,
+    };
+  }
   return {
     state,
     stoppedAt: releaseErrors.length ? "release" : "complete",
     manufacturingReports: reports,
     roundtripComparisons: comparisons,
     stepManufacturingReports,
+    commercialReleaseReady: releaseErrors.length === 0 && commercialReceiptVerification.releaseReady,
+    commercialReceiptVerification,
   };
 }

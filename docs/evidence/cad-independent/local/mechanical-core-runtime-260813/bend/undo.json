@@ -1,0 +1,41 @@
+{
+  "schema": "nexyfab.mechanical-core-feature-local-runtime.v1",
+  "feature": "bend",
+  "axis": "undo",
+  "status": "PASS",
+  "executedAt": "2026-08-22T07:13:30.564Z",
+  "restoredPayload": {
+    "id": "runtime-feature",
+    "enabled": true,
+    "type": "bend",
+    "params": {
+      "angle": 45,
+      "radius": 3,
+      "position": 50,
+      "direction": 0
+    }
+  },
+  "restoredExact": {
+    "handle": "occt:233",
+    "kernelKind": "Solid",
+    "nativeShapeType": 2,
+    "solidCount": 1,
+    "singleSolid": true,
+    "volumeMm3": 3600.000000000002,
+    "edgeCount": 24,
+    "faceCount": 10,
+    "boundsMm": [
+      [
+        -30.006022818974138,
+        -1.0060228189741387,
+        -15.006022818974138
+      ],
+      [
+        22.53331869142412,
+        20.876464441931738,
+        15.006022818974138
+      ]
+    ]
+  },
+  "futureDepth": 1
+}

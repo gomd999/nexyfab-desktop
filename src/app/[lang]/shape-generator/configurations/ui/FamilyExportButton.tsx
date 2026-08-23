@@ -6,30 +6,9 @@
  *
  * Wave 2 Phase 2 Track A Week 4 (A4). Spec §8.1 family export.
  *
- * **W4 scope decision** — the spec §8.1 flow re-activates each config
- * in sequence and round-trips through the OCCT worker. The worker call
- * (`applyFeaturePipelineDetailedAsync` → `exportToStepAsync`) is the
- * *full* path; doing it from a UI component requires injecting the
- * pipeline runner + the geometry result from the host, which is a
- * bigger surface change than W4 allows. **Per the W4 spec** ("Wire the
- * STEP export only if the existing path is straightforward to call;
- * otherwise emit placeholder zips and log the deferred work"), we ship
- * the UI + modal + a placeholder zip emitter.
- *
- * The placeholder zip contains:
- *   - One `.step` text file per selected config — content is a stub
- *     manifest (config id, name, resolved param overrides, suppress
- *     flags, expression vars). This is *not* a valid STEP file, but
- *     it's recognisably a per-config payload so the UX (download, save,
- *     unzip, count files) works end-to-end. The header marks it as
- *     a placeholder so users know.
- *   - `manifest.json` summarising the family.
- *
- * Wiring the real STEP path is one or two PRs down the road — it
- * requires (a) hoisting `exportToStepAsync` access into a hook the
- * panel can read, and (b) a fresh `applyFeaturePipelineDetailedAsync`
- * per config (handled by the W5 CRDT-soak harness anyway). For W4 the
- * UI shape is the deliverable.
+ * Commercial safety rule: this control produces an archive only when the
+ * host injects a real kernel-backed STEP exporter. It never disguises a
+ * text manifest as a `.step` file.
  */
 
 import React, { useCallback, useMemo, useState } from 'react';
@@ -44,9 +23,8 @@ export interface FamilyExportButtonProps {
   lang: Lang | string;
   /** Optional project name for the zip filename. */
   projectName?: string;
-  /** Optional STEP exporter — when provided, we use it; otherwise the
-   *  placeholder path. Lets the host wire the real worker later
-   *  without touching this file's shape. The provider returns the
+  /** Optional STEP exporter. Without it, the export action stays disabled
+   *  and the UI explains that exact family export is unavailable. It returns the
    *  STEP text body for the resolved feature list of a given config. */
   stepExporter?: (configId: string, resolved: FeatureInstance[]) => Promise<string>;
 }
@@ -91,6 +69,12 @@ export default function FamilyExportButton(props: FamilyExportButtonProps): Reac
 
   const handleExport = useCallback(async () => {
     if (selected.size === 0) return;
+    // Never download a text manifest with a .step extension. A family export
+    // is available only when the host has wired the exact STEP kernel path.
+    if (!stepExporter) {
+      setDeferredNotice(t.familyExportDeferred);
+      return;
+    }
     setProgress({ done: 0, total: selected.size });
 
     // Preserve the original active id so a soak run doesn't lose it.
@@ -100,7 +84,7 @@ export default function FamilyExportButton(props: FamilyExportButtonProps): Reac
     const manifest: FamilyManifest = {
       project: projectName,
       generatedAt: new Date().toISOString(),
-      placeholder: !stepExporter,
+      placeholder: false,
       configs: [],
     };
 
@@ -110,9 +94,7 @@ export default function FamilyExportButton(props: FamilyExportButtonProps): Reac
       const resolved = table.resolveActive(features);
       const safeName = sanitizeFilename(`${projectName}_${cfg.name || cfg.id}`);
       try {
-        const body = stepExporter
-          ? await stepExporter(cfg.id, resolved)
-          : buildPlaceholderStep(cfg, resolved);
+        const body = await stepExporter(cfg.id, resolved);
         filesToZip[`${safeName}.step`] = strToU8(body);
         manifest.configs.push({
           id: cfg.id,
@@ -156,9 +138,6 @@ export default function FamilyExportButton(props: FamilyExportButtonProps): Reac
       }
     }
 
-    if (!stepExporter) {
-      setDeferredNotice(t.familyExportDeferred);
-    }
     setProgress(null);
   }, [table, features, configs, selected, projectName, stepExporter, t.familyExportDeferred]);
 
@@ -246,9 +225,9 @@ export default function FamilyExportButton(props: FamilyExportButtonProps): Reac
                 </div>
               )}
 
-              {deferredNotice && (
+              {(!stepExporter || deferredNotice) && (
                 <div data-testid="family-export-deferred-notice" style={deferredNoticeStyle}>
-                  {deferredNotice}
+                  {deferredNotice || t.familyExportDeferred}
                 </div>
               )}
             </div>
@@ -267,8 +246,8 @@ export default function FamilyExportButton(props: FamilyExportButtonProps): Reac
               <button
                 data-testid="family-export-go"
                 onClick={handleExport}
-                disabled={selected.size === 0 || progress !== null}
-                style={primaryBtnStyle(selected.size > 0 && progress === null)}
+                disabled={!stepExporter || selected.size === 0 || progress !== null}
+                style={primaryBtnStyle(Boolean(stepExporter) && selected.size > 0 && progress === null)}
               >
                 {t.familyExportGo}
               </button>
@@ -305,36 +284,6 @@ function sanitizeFilename(s: string): string {
     .replace(/_+/g, '_')
     .replace(/^_+|_+$/g, '')
     .slice(0, 80) || 'config';
-}
-
-/** Build a placeholder STEP file body. NOT a valid STEP — it's a
- *  human-readable manifest so the user can verify the round-trip.
- *  The real STEP geometry path lands in W5+ (master tracker). */
-function buildPlaceholderStep(cfg: import('../types').ConfigEntry, resolved: FeatureInstance[]): string {
-  const lines = [
-    '!! NEXYFAB FAMILY EXPORT — PLACEHOLDER STEP !!',
-    `!! config.id   : ${cfg.id}`,
-    `!! config.name : ${cfg.name}`,
-    `!! parentId    : ${cfg.parentId ?? '(none)'}`,
-    `!! featureCount: ${resolved.length}`,
-    '',
-    'ISO-10303-21;',
-    'HEADER;',
-    `FILE_DESCRIPTION(('${cfg.name} family export placeholder'),'2;1');`,
-    `FILE_NAME('${cfg.id}','${new Date().toISOString()}',('NexyFab'),('NexyFab'),'NexyFab Wave 2 Phase 2 A4','','');`,
-    "FILE_SCHEMA(('AUTOMOTIVE_DESIGN'));",
-    'ENDSEC;',
-    'DATA;',
-    '!! Resolved features:',
-  ];
-  for (const f of resolved) {
-    const paramSummary = Object.entries(f.params)
-      .map(([k, v]) => `${k}=${v}`)
-      .join(', ');
-    lines.push(`!! - ${f.type}#${f.id} { ${paramSummary} }`);
-  }
-  lines.push('ENDSEC;', 'END-ISO-10303-21;');
-  return lines.join('\n');
 }
 
 // ── Styles ─────────────────────────────────────────────────────────

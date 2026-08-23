@@ -13,6 +13,7 @@ import { usePathname } from 'next/navigation';
 import type { GeometryMetrics, ProcessType } from './CostEstimator';
 import { formatCost, getProcessName, PROCESS_ICONS } from './CostEstimator';
 import { routeProcesses, type ProcessRouterResult, type ProcessRouterUseCase } from './processRouter';
+import { createCommercialLocalizer } from '@/lib/i18n/commercialLocalizer';
 
 const C = {
   bg: 'var(--nx-panel)',
@@ -252,7 +253,7 @@ export default function ProcessRouterPanel({
     }
   }, [metrics, materialId, rows, loading, error, runRouter]);
 
-  const isKo = resolvedLang === 'ko';
+  const L = createCommercialLocalizer(lang);
 
   return (
     <div style={{
@@ -374,7 +375,7 @@ export default function ProcessRouterPanel({
             {rows.map((row, idx) => {
               const { estimate, ranking } = row;
               const icon = PROCESS_ICONS[estimate.process] ?? '🏭';
-              const procName = getProcessName(estimate.process, isKo ? 'ko' : 'en');
+              const procName = getProcessName(estimate.process, resolvedLang);
               const isExpanded = expandedIdx === idx;
               return (
                 <div key={estimate.process} style={{
@@ -402,7 +403,7 @@ export default function ProcessRouterPanel({
                   {isExpanded && (
                     <div style={{ padding: '0 12px 12px 12px', borderTop: `1px solid ${C.border}` }}>
                       <div style={{ marginTop: 10, fontSize: 11, color: C.text, lineHeight: 1.5 }}>
-                        {isKo ? ranking.reasoningKo : ranking.reasoning}
+                        {L(ranking.reasoningKo, ranking.reasoning)}
                       </div>
 
                       {ranking.bestFor.length > 0 && (
@@ -423,7 +424,7 @@ export default function ProcessRouterPanel({
                           <div style={{ fontSize: 9, fontWeight: 700, color: C.green, textTransform: 'uppercase', marginBottom: 4 }}>
                             ✓ {t.pros}
                           </div>
-                          {(isKo ? ranking.prosKo : ranking.pros).map((p, i) => (
+                          {(L(ranking.prosKo, ranking.pros)).map((p, i) => (
                             <div key={i} style={{ fontSize: 10, color: C.text, lineHeight: 1.4, marginBottom: 3 }}>
                               • {p}
                             </div>
@@ -433,7 +434,7 @@ export default function ProcessRouterPanel({
                           <div style={{ fontSize: 9, fontWeight: 700, color: C.yellow, textTransform: 'uppercase', marginBottom: 4 }}>
                             ✕ {t.cons}
                           </div>
-                          {(isKo ? ranking.consKo : ranking.cons).map((c, i) => (
+                          {(L(ranking.consKo, ranking.cons)).map((c, i) => (
                             <div key={i} style={{ fontSize: 10, color: C.text, lineHeight: 1.4, marginBottom: 3 }}>
                               • {c}
                             </div>

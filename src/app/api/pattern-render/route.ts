@@ -35,7 +35,7 @@
  *     }
  *
  * Response (success):
- *   { ok: true, scad: string, pngs: { label, base64 }[], stl?: string }
+ *   { ok: true, scad: string, featureTree: FeatureTree, pngs: { label, base64 }[], stl?: string }
  *
  * Response (error):
  *   { ok: false, code: 'BAD_REQUEST' | 'EMPTY_SKETCH' | 'PIPELINE_ERROR' | 'TOO_LARGE' | ..., message: string }
@@ -46,6 +46,7 @@
  * user-facing cap conservative.
  */
 import { NextRequest, NextResponse } from 'next/server';
+import { boundedJsonError, readBoundedJson } from '@/lib/boundedJsonBody';
 import {
   linearPatternFromSketch,
   circularPatternFromSketch,
@@ -87,6 +88,7 @@ const MAX_LINES = 5000;
 const MAX_DEPTH = 10_000;
 /** Lower than IR cap (1000) — openscad CLI scales poorly past ~100 copies. */
 const MAX_COUNT = 100;
+const MAX_BODY_BYTES = 4 * 1024 * 1024;
 
 function isFiniteNum(n: unknown): n is number {
   return typeof n === 'number' && Number.isFinite(n);
@@ -109,8 +111,9 @@ function badRequest(message: string): NextResponse {
 export async function POST(req: NextRequest): Promise<NextResponse> {
   let body: PatternRenderBody;
   try {
-    body = (await req.json()) as PatternRenderBody;
-  } catch {
+    body = await readBoundedJson<PatternRenderBody>(req, MAX_BODY_BYTES);
+  } catch (error) {
+    if (boundedJsonError(error)?.code === 'PAYLOAD_TOO_LARGE') return NextResponse.json({ ok: false, code: 'TOO_LARGE', message: `Body exceeds ${MAX_BODY_BYTES} bytes` }, { status: 413 });
     return badRequest('Body must be valid JSON');
   }
 
@@ -242,6 +245,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   return NextResponse.json({
     ok: true,
     scad: pipeline.scad,
+    featureTree: pipeline.tree,
     danglingLines: pipeline.danglingLines,
     pngs: render.views.map((v) => ({ label: v.label, base64: v.bytes.toString('base64') })),
     ...(stlBase64 ? { stl: stlBase64 } : {}),

@@ -6,7 +6,9 @@
 // rotate values via inline form. All mutations write to nf_admin_audit
 // so we can answer "who rotated this and when" for any incident.
 
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { createCommercialLocalizer } from '@/lib/i18n/commercialLocalizer';
+import { useAdminI18n } from '../AdminI18nProvider';
 
 interface Setting {
   key: string;
@@ -51,6 +53,8 @@ const SOURCE_LABEL: Record<Setting['source'], { label: string; color: string }> 
 };
 
 export default function AdminSettingsPage() {
+  const { locale } = useAdminI18n();
+  const L = useMemo(() => createCommercialLocalizer(locale), [locale]);
   const [data, setData] = useState<SettingsResp | null>(null);
   const [auditRows, setAuditRows] = useState<AuditRow[]>([]);
   const [editingKey, setEditingKey] = useState<string | null>(null);
@@ -58,6 +62,8 @@ export default function AdminSettingsPage() {
   const [submitting, setSubmitting] = useState(false);
   const [submitErr, setSubmitErr] = useState<string | null>(null);
   const [filterTarget, setFilterTarget] = useState<string | null>(null);
+  const qwen38Setting = data?.settings.find(setting => setting.key === 'ai.model.qwen_3_8_max');
+  const lunaFlag = data?.settings.find(setting => setting.key === 'feature.ai_luna_parallel.enabled');
 
   const load = useCallback(async () => {
     const [sRes, aRes] = await Promise.all([
@@ -75,7 +81,7 @@ export default function AdminSettingsPage() {
 
   const submit = async (key: string) => {
     if (submitting) return;
-    if (!editValue.trim()) { setSubmitErr('값을 입력하세요'); return; }
+    if (!editValue.trim()) { setSubmitErr(L('값을 입력하세요', 'Enter a value.')); return; }
     setSubmitting(true); setSubmitErr(null);
     try {
       const res = await fetch('/api/admin/settings', {
@@ -100,18 +106,44 @@ export default function AdminSettingsPage() {
 
   return (
     <div style={pageStyle}>
-      <h1 style={titleStyle}>🔐 Admin Settings</h1>
+      <h1 style={titleStyle}>🔐 {L('관리자 설정', 'Admin settings')}</h1>
       <p style={subtitleStyle}>
-        런타임 설정 + API 키. {data?.isSuper ? <span style={{ color: '#3fb950' }}>● super_admin (수정 가능)</span> : <span style={{ color: '#d29922' }}>● admin (read-only)</span>}.
-        모든 변경은 audit log 에 기록됩니다.
+        {L('런타임 설정 + API 키.', 'Runtime settings + API keys.')} {data?.isSuper ? <span style={{ color: '#3fb950' }}>{L('● super_admin (수정 가능)', '● super_admin (editable)')}</span> : <span style={{ color: '#d29922' }}>{L('● admin (읽기 전용)', '● admin (read-only)')}</span>}.
+        {' '}{L('모든 변경은 감사 로그에 기록됩니다.', 'All changes are recorded in the audit log.')}
       </p>
+
+      <div style={{ ...panelStyle, marginBottom: 16 }}>
+        <h3 style={panelTitleStyle}>{L('AI 설계 실행 정책', 'AI design execution policy')}</h3>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(210px, 1fr))', gap: 10 }}>
+          <div style={settingRowStyle}>
+            <strong style={{ color: '#e6edf3', fontSize: 12 }}>{L('기본 모델', 'Default model')}</strong>
+            <div style={mutedStyle}>{L('Free: GPT Luna · Pro/Team: DeepSeek Pro · Enterprise: GPT Terra', 'Free: GPT Luna · Pro/Team: DeepSeek Pro · Enterprise: GPT Terra')}</div>
+          </div>
+          <div style={settingRowStyle}>
+            <strong style={{ color: '#e6edf3', fontSize: 12 }}>{L('VL 라우팅', 'VL routing')}</strong>
+            <div style={mutedStyle}>{L('선택 모델의 native VL 우선 · 일시 장애/미지원 시 GPT Luna', 'Prefer native VL for the selected model; fall back to GPT Luna during outages or when unsupported.')}</div>
+          </div>
+          <div style={settingRowStyle}>
+            <strong style={{ color: '#e6edf3', fontSize: 12 }}>{L('입력 캐시', 'Input cache')}</strong>
+            <div style={mutedStyle}>{L('긴 안정 prefix만 명시적 캐시 · 짧은 요청은 provider 자동 캐시', 'Cache only long, stable prefixes explicitly; providers cache short requests automatically.')}</div>
+          </div>
+          <div style={settingRowStyle}>
+            <strong style={{ color: '#e6edf3', fontSize: 12 }}>{L('Luna 보조', 'Luna assistant')}</strong>
+            <div style={mutedStyle}>{L('복잡/모호 요청만 1회 구조화 점검 · 설정:', 'One structured review for complex or ambiguous requests · setting:')} {lunaFlag?.source ?? L('미설정', 'Unset')}</div>
+          </div>
+          <div style={{ ...settingRowStyle, borderInlineStart: '3px solid #d29922' }}>
+            <strong style={{ color: '#f0b429', fontSize: 12 }}>Qwen 3.8 Max Preview</strong>
+            <div style={mutedStyle}>{L('Token Plan/계정별 가용성 검증 필요 · runtime mapping:', 'Token Plan/account availability must be verified · runtime mapping:')} {qwen38Setting?.source ?? L('기본 preview ID', 'Default preview ID')}</div>
+          </div>
+        </div>
+      </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 2fr) minmax(0, 1fr)', gap: 16 }}>
 
         {/* Settings table */}
         <div style={panelStyle}>
-          <h3 style={panelTitleStyle}>설정 ({data?.settings.length ?? 0})</h3>
-          {!data && <div style={mutedStyle}>불러오는 중…</div>}
+          <h3 style={panelTitleStyle}>{L(`설정 (${data?.settings.length ?? 0})`, `Settings (${data?.settings.length ?? 0})`)}</h3>
+          {!data && <div style={mutedStyle}>{L('불러오는 중…', 'Loading…')}</div>}
           {data && data.settings.map(s => {
             const src = SOURCE_LABEL[s.source];
             const isEditing = editingKey === s.key;
@@ -126,14 +158,14 @@ export default function AdminSettingsPage() {
                     padding: '1px 6px', fontSize: 9, fontWeight: 700,
                     background: `${SCOPE_COLOR[s.scope] ?? '#30363d'}33`,
                     color: SCOPE_COLOR[s.scope] ?? '#9ca3af', borderRadius: 3,
-                  }}>{s.scope}</span>
+                  }}>{s.scope === 'api_key' ? L('API 키', 'API key') : s.scope === 'feature_flag' ? L('기능 플래그', 'Feature flag') : s.scope === 'budget' ? L('예산', 'Budget') : L('설정', 'Config')}</span>
                   <span style={{
                     padding: '1px 6px', fontSize: 9, fontWeight: 700,
                     background: `${src.color}22`, color: src.color, borderRadius: 3,
-                  }}>{src.label}</span>
+                  }}>{src.label === 'unset' ? L('미설정', 'Unset') : src.label}</span>
                   <span style={{ flex: 1 }} />
                   <span style={{ fontSize: 10, color: '#6e7681' }}>
-                    {s.updatedAt ? new Date(s.updatedAt).toLocaleString('ko-KR') : '-'}
+                    {s.updatedAt ? new Date(s.updatedAt).toLocaleString(locale === 'ko' ? 'ko-KR' : locale === 'zh' ? 'zh-CN' : locale) : '-'}
                   </span>
                 </div>
                 <div style={{ fontSize: 11, color: '#8b949e', marginBottom: 6 }}>{s.description}</div>
@@ -144,15 +176,15 @@ export default function AdminSettingsPage() {
                         type={s.scope === 'api_key' ? 'password' : 'text'}
                         value={editValue}
                         onChange={e => setEditValue(e.target.value)}
-                        placeholder={s.scope === 'api_key' ? '새 키 입력' : '새 값 입력'}
+                        placeholder={s.scope === 'api_key' ? L('새 키 입력', 'Enter new key') : L('새 값 입력', 'Enter new value')}
                         style={inputStyle}
                         autoFocus
                       />
                       <button onClick={() => void submit(s.key)} disabled={submitting} style={confirmBtnStyle}>
-                        {submitting ? '저장 중…' : '저장'}
+                        {submitting ? L('저장 중…', 'Saving…') : L('저장', 'Save')}
                       </button>
                       <button onClick={() => { setEditingKey(null); setEditValue(''); setSubmitErr(null); }} style={cancelBtnStyle}>
-                        취소
+                        {L('취소', 'Cancel')}
                       </button>
                     </>
                   ) : (
@@ -166,13 +198,13 @@ export default function AdminSettingsPage() {
                           onClick={() => { setEditingKey(s.key); setEditValue(''); setSubmitErr(null); }}
                           style={rotateBtnStyle}
                         >
-                          {s.hasValue ? '🔄 회전' : '+ 설정'}
+                          {s.hasValue ? L('🔄 회전', '🔄 Rotate') : L('+ 설정', '+ Set')}
                         </button>
                       )}
                       <button
                         onClick={() => setFilterTarget(filterTarget === s.key ? null : s.key)}
                         style={historyBtnStyle}
-                        title="이 설정의 변경 이력만 보기"
+title={L('이 설정의 변경 이력만 보기', 'Show history for this setting only')}
                       >
                         📜
                       </button>
@@ -189,25 +221,25 @@ export default function AdminSettingsPage() {
         <div style={panelStyle}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
             <h3 style={panelTitleStyle}>
-              감사 로그 (7일)
+              {L('감사 로그 (7일)', 'Audit log (7 days)')}
               {filterTarget && <span style={{ fontSize: 11, color: '#79c0ff', marginLeft: 6 }}>· {filterTarget}</span>}
             </h3>
             {filterTarget && (
-              <button onClick={() => setFilterTarget(null)} style={{ ...cancelBtnStyle, padding: '2px 8px' }}>전체</button>
+              <button onClick={() => setFilterTarget(null)} style={{ ...cancelBtnStyle, padding: '2px 8px' }}>{L('전체', 'All')}</button>
             )}
           </div>
-          {auditRows.length === 0 && <div style={mutedStyle}>변경 이력 없음</div>}
+          {auditRows.length === 0 && <div style={mutedStyle}>{L('변경 이력 없음', 'No change history')}</div>}
           <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
             {auditRows.map(r => (
               <div key={r.id} style={auditRowStyle}>
                 <div style={{ display: 'flex', alignItems: 'baseline', gap: 6, marginBottom: 2 }}>
                   <code style={{ fontSize: 10, color: '#79c0ff', fontWeight: 700 }}>{r.action}</code>
                   <span style={{ flex: 1 }} />
-                  <span style={{ fontSize: 9, color: '#6e7681' }}>{new Date(r.createdAt).toLocaleString('ko-KR')}</span>
+                  <span style={{ fontSize: 9, color: '#6e7681' }}>{new Date(r.createdAt).toLocaleString(locale === 'ko' ? 'ko-KR' : locale === 'zh' ? 'zh-CN' : locale)}</span>
                 </div>
                 {r.target && <div style={{ fontSize: 11, color: '#c9d1d9', marginBottom: 2 }}>{r.target}</div>}
                 <div style={{ fontSize: 9, color: '#6e7681', fontFamily: 'monospace' }}>
-                  by {r.adminUserId.slice(0, 12)}
+                  {L('작업자', 'by')} {r.adminUserId.slice(0, 12)}
                   {r.oldValueHash && ` · ${r.oldValueHash.slice(0, 8)} → ${r.newValueHash?.slice(0, 8) ?? 'null'}`}
                   {r.ipAddress && ` · ${r.ipAddress}`}
                 </div>

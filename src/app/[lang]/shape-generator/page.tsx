@@ -22,5 +22,5 @@ export default async function ShapeGeneratorPage({
   const enabled = flag === '1' || flag === 'true';
   // 1차 차단은 middleware(엣지 307). 이 서버 게이트는 방어적 백스톱이다.
   if (!enabled) redirect(`/${lang}#nf-chat`);
-  return <ShapeGeneratorClientPage />;
+  return <ShapeGeneratorClientPage initialMode="expert" />;
 }

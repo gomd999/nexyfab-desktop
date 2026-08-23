@@ -1,0 +1,26 @@
+{
+  "schema": "nexyfab.mechanical-single-part-bom-candidate.v1",
+  "partRevisionSha256": "b3711c40417092e0ee192f818ec38307dba54377164c9b2fbeaa804dbc8509cd",
+  "sourceDesignRevisionSha256": "3cf6a0f9c8efcf153a2cfefde087a2112c086fc412d2feeaeb9ce52542838564",
+  "sourceNfabSha256": "c7c48113c80b3d2621778d940366a65303b6ac653fb0dc7164797352377b9b25",
+  "sourceStepSha256": "cae1cee42d8d0440bfde4857c671036db0aa0067b6b5890b0c9a6b4069d948e1",
+  "units": "mm",
+  "items": [
+    {
+      "partNumber": "flange",
+      "description": "Mechanical runtime flange",
+      "quantity": 1,
+      "dimensionsMm": {
+        "x": 60.00301201303797,
+        "y": 26.003012013037967,
+        "z": 35.00301201303797
+      }
+    }
+  ],
+  "claimBoundary": {
+    "singlePartCandidateOnly": true,
+    "materialSpecified": false,
+    "massCalculated": false,
+    "manufacturingApproved": false
+  }
+}

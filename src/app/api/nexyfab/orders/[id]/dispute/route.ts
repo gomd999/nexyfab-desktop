@@ -21,11 +21,14 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getAuthUser } from '@/lib/auth-middleware';
 import { getDbAdapter } from '@/lib/db-adapter';
 import { checkOrigin } from '@/lib/csrf';
+import { canManageOrderInActiveWorkspace } from '@/lib/nfOrderAccess';
+import { boundedJsonError, readBoundedJson } from '@/lib/boundedJsonBody';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 const DISPUTABLE_STATUSES = new Set(['received', 'held']);
+const ORDER_DISPUTE_JSON_BYTES = 64 * 1024;
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   if (!checkOrigin(req)) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
@@ -36,8 +39,12 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 
   let body: { reason?: unknown; evidence?: unknown };
   try {
-    body = await req.json();
-  } catch {
+    body = await readBoundedJson(req, ORDER_DISPUTE_JSON_BYTES);
+  } catch (error) {
+    const bodyError = boundedJsonError(error);
+    if (bodyError?.code === 'PAYLOAD_TOO_LARGE') {
+      return NextResponse.json({ error: 'Request body too large' }, { status: bodyError.status });
+    }
     return NextResponse.json({ error: 'invalid JSON' }, { status: 400 });
   }
   const reason = typeof body.reason === 'string' ? body.reason.trim().slice(0, 500) : '';
@@ -51,13 +58,13 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   const db = getDbAdapter();
 
   const order = await db.queryOne<{
-    user_id: string; partner_email: string | null;
+    user_id: string; org_id: string | null; partner_email: string | null;
   }>(
-    'SELECT user_id, partner_email FROM nf_orders WHERE id = ?',
+    'SELECT user_id, org_id, partner_email FROM nf_orders WHERE id = ?',
     orderId,
   );
   if (!order) return NextResponse.json({ error: 'Order not found' }, { status: 404 });
-  if (order.user_id !== auth.userId) {
+  if (!canManageOrderInActiveWorkspace(auth, order)) {
     return NextResponse.json({ error: 'Forbidden — only the buyer can open a dispute' }, { status: 403 });
   }
 

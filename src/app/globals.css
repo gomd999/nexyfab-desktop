@@ -1,5 +1,12 @@
 @import "tailwindcss";
 
+/* Spatial workspaces use logical layout names and keep the civil review usable on mobile. */
+@media (max-width: 800px) {
+  .nx-civil-workbench { grid-template-columns: minmax(0, 1fr) !important; }
+  .nx-civil-side { display: none !important; }
+  .nx-civil-mobile { display: block !important; }
+}
+
 /* ── 공통 애니메이션 keyframes ── */
 @keyframes toast-slide-in {
   from { opacity: 0; transform: translateX(40px); }
@@ -430,6 +437,68 @@ body.sg-fs-hide::before {
    Shell's TitleBar / Ribbon / StatusBar render on top without duplication.
    Inner's panels (Feature tree, viewport canvas, Inspector) remain visible. */
 body.sg-shell-v2 [data-shell-v2-hide] { display: none !important; }
+
+.nx-context-strip {
+  flex: 0 0 auto;
+  display: flex;
+  min-width: 0;
+  min-height: 33px;
+  overflow-x: auto;
+  border-bottom: 1px solid var(--nx-border);
+  background: var(--nx-panel);
+}
+
+.nx-context-strip > [data-testid='domain-workspace-bar'] {
+  flex: 0 0 auto;
+}
+
+.nx-context-strip > [data-testid='cad-workflow-rail'] {
+  flex: 1 0 auto !important;
+  border-bottom: 0 !important;
+  border-left: 1px solid var(--nx-border);
+}
+
+[data-testid='domain-workspace-bar'][data-compact='true'] [data-testid='same-design-revision'],
+[data-testid='domain-workspace-bar'][data-compact='true'] > span:last-child,
+[data-testid='cad-workflow-rail'][data-compact='true'] button > span,
+[data-testid='cad-workflow-rail'][data-compact='true'] > span {
+  display: none !important;
+}
+
+.nx-embedded-assembly {
+  position: absolute;
+  inset: 0;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+  background: #090c11;
+}
+
+.nx-assembly-loading {
+  height: 100%;
+  display: grid;
+  place-items: center;
+  color: var(--nx-text-2);
+  background: #090c11;
+}
+
+.nx-assembly-bridge-gate {
+  position: absolute;
+  top: 52px;
+  right: 12px;
+  z-index: 80;
+  max-width: min(440px, calc(100% - 24px));
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  padding: 7px 10px;
+  border: 1px solid #f59e0b;
+  border-radius: 6px;
+  background: #422006;
+  color: #fef3c7;
+  font-size: 11px;
+  box-shadow: 0 8px 22px rgb(0 0 0 / 35%);
+}
 body.sg-shell-v2 .sg-topbar { display: none !important; }
 body.sg-shell-v2 .sg-autohide { display: none !important; }
 
@@ -592,6 +661,7 @@ html[data-theme="light"] [data-testid="shape-generator-workspace"] {
   --nx-text-3: #5b6373;
   --nx-accent: #4f8bff;
   --nx-accent-2: #7aa9ff;
+  --nx-on-accent: #071a17;
   --nx-accent-soft: rgba(79, 139, 255, 0.13);
   --nx-accent-line: rgba(79, 139, 255, 0.45);
   --nx-select: #ff9b3d;
@@ -626,6 +696,7 @@ html[data-theme="light"] [data-testid="shape-generator-workspace"] {
   --nx-text-3: #7d8693;
   --nx-accent: #1d6fef;
   --nx-accent-2: #3b82f6;
+  --nx-on-accent: #ffffff;
   --nx-accent-soft: rgba(29, 111, 239, 0.10);
   --nx-accent-line: rgba(29, 111, 239, 0.4);
   --nx-select: #e26a00;
@@ -645,6 +716,7 @@ html[data-theme="light"] [data-testid="shape-generator-workspace"] {
 
 .nx-app {
   width: 100%;
+  min-width: 0;
   height: 100%;
   display: flex;
   flex-direction: column;
@@ -657,6 +729,15 @@ html[data-theme="light"] [data-testid="shape-generator-workspace"] {
   -webkit-font-smoothing: antialiased;
   overflow: hidden;
   user-select: none;
+}
+
+/* Compact precision-CAD labels require AA semantic colors at 10–11px. */
+[data-theme="light"] .nx-app {
+  --nx-text-3: #596273;
+  --nx-accent: #1557b0;
+  --nx-accent-2: #1557b0;
+  --nx-ok: #06756d;
+  --nx-warn: #8a4b00;
 }
 .nx-app .mono {
   font-family: var(--font-jetbrains-mono), "JetBrains Mono", "SF Mono", ui-monospace, Menlo, monospace;
@@ -686,6 +767,14 @@ html[data-theme="light"] [data-testid="shape-generator-workspace"] {
 .nx-pillbtn:hover { background: var(--nx-hover); }
 .nx-pillbtn.primary { background: var(--nx-accent); color: #ffffff; border-color: transparent; font-weight: 600; }
 .nx-pillbtn.primary:hover { filter: brightness(1.06); }
+.nx-title-utility b { min-width: 16px; height: 16px; padding: 0 4px; border-radius: 8px; display: inline-flex; align-items: center; justify-content: center; background: var(--nx-warn); color: #111827; font-size: 9px; }
+
+@media (max-width: 1440px) {
+  .nx-title { gap: 7px; padding-inline: 7px; }
+  .nx-title .nx-search { width: 180px; }
+  .nx-title .file .saved { display: none; }
+  .nx-title-utility { padding-inline: 7px; }
+}
 
 /* Ribbon */
 .nx-ribbon { background: var(--nx-panel); border-bottom: 1px solid var(--nx-border); flex: 0 0 auto; }
@@ -694,7 +783,7 @@ html[data-theme="light"] [data-testid="shape-generator-workspace"] {
 .nx-ribbon .tab:hover { color: var(--nx-text); }
 .nx-ribbon .tab.active { color: var(--nx-text); border-bottom-color: var(--nx-accent); }
 .nx-ribbon .tab.mode { background: var(--nx-accent-soft); color: var(--nx-accent); border-radius: 4px 4px 0 0; border-bottom-color: var(--nx-accent); padding: 0 14px; font-weight: 600; }
-.nx-ribbon .row { height: 78px; display: flex; align-items: stretch; padding: 4px 6px; gap: 1px; overflow-x: auto; overflow-y: hidden; }
+.nx-ribbon .row { height: 86px; display: flex; align-items: stretch; padding: 4px 6px; gap: 1px; overflow-x: auto; overflow-y: hidden; }
 .nx-ribbon .grp { display: flex; flex-direction: column; align-items: stretch; padding: 2px 8px 0 8px; border-right: 1px solid var(--nx-border); gap: 2px; position: relative; flex: 0 0 auto; }
 .nx-ribbon .grp:last-child { border-right: none; }
 .nx-ribbon .grp .title { font-size: 10px; color: var(--nx-text-3); text-align: center; padding-top: 1px; letter-spacing: 0.02em; }
@@ -713,17 +802,42 @@ html[data-theme="light"] [data-testid="shape-generator-workspace"] {
 .nx-ribbon .tool .caret { position: absolute; right: 3px; bottom: 1px; font-size: 7px; color: var(--nx-text-3); }
 
 /* Body / Panels */
-.nx-body { flex: 1 1 auto; display: flex; min-height: 0; }
+.nx-body { flex: 1 1 auto; display: flex; min-width: 0; min-height: 0; overflow: hidden; }
 .nx-panel { background: var(--nx-panel); border-right: 1px solid var(--nx-border); display: flex; flex-direction: column; flex: 0 0 auto; }
 .nx-panel.right { border-right: 0; border-left: 1px solid var(--nx-border); }
+.nx-panel-resizer { position: absolute; top: 0; bottom: 0; width: 9px; z-index: 12; cursor: col-resize; touch-action: none; outline: none; }
+.nx-panel-resizer.left { right: -5px; }
+.nx-panel-resizer.right { left: -5px; }
+.nx-panel-resizer span { position: absolute; top: 0; bottom: 0; left: 4px; width: 1px; background: transparent; transition: background 120ms ease, box-shadow 120ms ease; }
+.nx-panel-resizer:hover span,
+.nx-panel-resizer:focus-visible span,
+body[data-nx-panel-resizing] .nx-panel-resizer span { background: var(--nx-accent); box-shadow: 0 0 0 1px var(--nx-accent-soft); }
+body[data-nx-panel-resizing] { cursor: col-resize !important; user-select: none !important; }
+.nx-spatial-pane-resizers { position: absolute; inset: 0; z-index: 14; pointer-events: none; }
+.nx-spatial-resizable-grid { --nx-spatial-left: 220px; --nx-spatial-right: 292px; position: relative; grid-template-columns: var(--nx-spatial-left) minmax(0, 1fr) var(--nx-spatial-right) !important; }
+.nx-spatial-resizable-host { position: relative; width: 100%; height: 100%; min-width: 0; min-height: 0; overflow: hidden; }
+.nx-spatial-resizable-host > .nx-civil-workbench { grid-template-columns: var(--nx-spatial-left) minmax(0, 1fr) var(--nx-spatial-right) !important; }
+.nx-spatial-pane-resizer { position: absolute; top: 0; bottom: 0; width: 9px; cursor: col-resize; touch-action: none; pointer-events: auto; outline: none; }
+.nx-spatial-pane-resizer span { position: absolute; inset-block: 0; left: 4px; width: 1px; background: transparent; transition: background 120ms ease, box-shadow 120ms ease; }
+.nx-spatial-pane-resizer:hover span,
+.nx-spatial-pane-resizer:focus-visible span,
+body[data-nx-panel-resizing] .nx-spatial-pane-resizer span { background: var(--nx-accent); box-shadow: 0 0 0 1px var(--nx-accent-soft); }
 .nx-panel-h { height: 28px; flex: 0 0 28px; display: flex; align-items: center; padding: 0 8px; border-bottom: 1px solid var(--nx-border); font-size: 11px; font-weight: 600; color: var(--nx-text); letter-spacing: 0.02em; gap: 6px; }
 .nx-panel-h .ico { color: var(--nx-text-2); }
 .nx-panel-h .actions { margin-left: auto; display: flex; gap: 1px; }
 .nx-panel-h .actions button { width: 18px; height: 18px; border-radius: 3px; border: 0; background: transparent; cursor: pointer; color: var(--nx-text-2); display: inline-flex; align-items: center; justify-content: center; }
 .nx-panel-h .actions button:hover { background: var(--nx-hover); color: var(--nx-text); }
 .nx-panel-tabs { height: 26px; flex: 0 0 26px; display: flex; align-items: stretch; border-bottom: 1px solid var(--nx-border); background: var(--nx-panel-2); }
+.nx-panel:not(.right) .nx-panel-tabs { padding-right: 28px; }
+.nx-panel.right .nx-panel-tabs { padding-left: 28px; }
 .nx-panel-tabs .t { padding: 0 10px; display: inline-flex; align-items: center; font-size: 11px; color: var(--nx-text-2); cursor: pointer; border-right: 1px solid var(--nx-border); gap: 5px; background: transparent; border-top: 0; border-left: 0; }
 .nx-panel-tabs .t.active { background: var(--nx-panel); color: var(--nx-text); border-bottom: 2px solid var(--nx-accent); margin-bottom: -1px; }
+
+@media (max-width: 800px) {
+  .nx-panel-resizer,
+  .nx-spatial-pane-resizers { display: none; }
+  .nx-spatial-resizable-host > .nx-civil-workbench { grid-template-columns: minmax(0, 1fr) !important; }
+}
 
 /* Viewport overlays */
 .nx-viewport { flex: 1 1 auto; position: relative; background: radial-gradient(ellipse at 50% 35%, var(--nx-viewport-bg-top) 0%, var(--nx-viewport-bg-bot) 80%); overflow: hidden; }

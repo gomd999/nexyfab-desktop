@@ -1,4 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { boundedJsonError, readBoundedJson } from '@/lib/boundedJsonBody';
+
+const MAX_DEMO_AUTH_BODY_BYTES = 8 * 1024;
 
 const DEMO_USERS = {
   customer: {
@@ -30,7 +33,13 @@ const DEMO_USERS = {
 };
 
 export async function POST(req: NextRequest) {
-  const { role } = await req.json() as { role: string };
+  let body: { role?: string };
+  try { body = await readBoundedJson(req, MAX_DEMO_AUTH_BODY_BYTES); }
+  catch (error) {
+    if (boundedJsonError(error)?.code === 'PAYLOAD_TOO_LARGE') return NextResponse.json({ error: 'Request too large', code: 'PAYLOAD_TOO_LARGE' }, { status: 413 });
+    throw error;
+  }
+  const { role } = body;
 
   const user = DEMO_USERS[role as keyof typeof DEMO_USERS];
   if (!user) {

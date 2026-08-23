@@ -33,4 +33,14 @@ describe('CAD v1 server-owned generation state machine', () => {
     const response = await POST(request({ action: 'plan', state: initialized.state }));
     expect(await response.json()).toMatchObject({ ok: true, state: { revision: 0 }, executionPlan: { status: 'ai_building', nextAction: 'continue_ai_pipeline', externalCadInstallationRequired: false } });
   });
+
+  it('issues a project/revision/hash binding for precision task consumers', async () => {
+    const initialized = await (await POST(request({ action: 'initialize', runId: 'bound-run', projectId: 'project-1' }))).json();
+    expect(initialized.executionPlan.generationBinding).toMatchObject({
+      projectId: 'project-1',
+      runId: 'bound-run',
+      revision: 0,
+      stateSha256: expect.stringMatching(/^[a-f0-9]{64}$/),
+    });
+  });
 });

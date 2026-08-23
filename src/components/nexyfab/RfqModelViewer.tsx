@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useEffect, useRef as _useRef, useState } from 'react';
 import DfmScoreBadge from './DfmScoreBadge';
+import { loc } from '@/lib/i18n/loc';
 
 interface _ModelMeta {
   name?: string;
@@ -24,6 +25,7 @@ interface RfqModelViewerProps {
   autoFetch?: boolean;
   /** 3D 설계기 진입 경로 (파트너 포털 등 [lang] 밖에서도 사용) */
   studioHref?: string;
+  lang?: string;
 }
 
 export default function RfqModelViewer({
@@ -37,6 +39,7 @@ export default function RfqModelViewer({
   variant = 'compact',
   autoFetch = false,
   studioHref = '/kr/shape-generator',
+  lang = 'en',
 }: RfqModelViewerProps) {
   const [shareToken, setShareToken] = useState(initialShareToken ?? null);
   const [dfmScore, setDfmScore] = useState(initialDfmScore ?? null);
@@ -78,7 +81,7 @@ export default function RfqModelViewer({
       }}>
         <span style={{ fontSize: 28 }}>⬡</span>
         <p style={{ margin: 0, fontSize: 12, textAlign: 'center', lineHeight: 1.4 }}>
-          3D 모델 없음
+          {loc(lang, { ko: '3D 모델 없음', en: 'No 3D model', ja: '3Dモデルなし', zh: '没有 3D 模型', es: 'No hay modelo 3D', ar: 'لا يوجد نموذج ثلاثي الأبعاد' })}
           {rfqId && (
             <>
               <br />
@@ -87,7 +90,7 @@ export default function RfqModelViewer({
                 href={studioHref}
                 style={{ color: '#8b9cf4', textDecoration: 'none', fontSize: 11 }}
               >
-                설계 시작 →
+                {loc(lang, { ko: '설계 시작 →', en: 'Start designing →', ja: '設計を開始 →', zh: '开始设计 →', es: 'Comenzar diseño →', ar: 'ابدأ التصميم ←' })}
               </Link>
             </>
           )}
@@ -113,7 +116,7 @@ export default function RfqModelViewer({
             fontSize: 12, fontWeight: 600, color: 'var(--nx-text)',
             overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
           }}>
-            {shapeName ?? '3D 모델'}
+            {shapeName ?? loc(lang, { ko: '3D 모델', en: '3D model', ja: '3Dモデル', zh: '3D 模型', es: 'Modelo 3D', ar: 'نموذج ثلاثي الأبعاد' })}
           </span>
           {materialId && (
             <span style={{ fontSize: 10, color: 'var(--nx-text-2)', flexShrink: 0 }}>{materialId}</span>
@@ -133,7 +136,7 @@ export default function RfqModelViewer({
                 whiteSpace: 'nowrap',
               }}
             >
-              전체 화면 ↗
+              {loc(lang, { ko: '전체 화면 ↗', en: 'Full screen ↗', ja: '全画面 ↗', zh: '全屏 ↗', es: 'Pantalla completa ↗', ar: 'ملء الشاشة ↗' })}
             </a>
           )}
         </div>
@@ -149,7 +152,7 @@ export default function RfqModelViewer({
             position: 'absolute', inset: 0, display: 'flex', alignItems: 'center',
             justifyContent: 'center', color: 'var(--nx-text-3)', fontSize: 12,
           }}>
-            <span>모델 로딩 중...</span>
+            <span>{loc(lang, { ko: '모델 로딩 중...', en: 'Loading model...', ja: 'モデルを読み込み中...', zh: '正在加载模型...', es: 'Cargando modelo...', ar: 'جارٍ تحميل النموذج...' })}</span>
           </div>
         )}
 
@@ -171,7 +174,7 @@ export default function RfqModelViewer({
             </div>
             <div style={{ textAlign: 'center' }}>
               <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: 'var(--nx-text)' }}>
-                3D 뷰어 열기
+                {loc(lang, { ko: '3D 뷰어 열기', en: 'Open 3D viewer', ja: '3Dビューアを開く', zh: '打开 3D 查看器', es: 'Abrir visor 3D', ar: 'فتح عارض ثلاثي الأبعاد' })}
               </p>
               {bboxStr && (
                 <p style={{ margin: '2px 0 0', fontSize: 11, color: 'var(--nx-text-2)' }}>{bboxStr}</p>
@@ -182,7 +185,7 @@ export default function RfqModelViewer({
               border: '1px solid #8b9cf433', borderRadius: 20,
               padding: '4px 14px', fontWeight: 600,
             }}>
-              클릭하여 인터랙티브 3D 보기
+              {loc(lang, { ko: '클릭하여 인터랙티브 3D 보기', en: 'Click to view interactively in 3D', ja: 'クリックして3Dで表示', zh: '点击查看交互式 3D', es: 'Haz clic para ver en 3D', ar: 'انقر للعرض التفاعلي ثلاثي الأبعاد' })}
             </div>
           </div>
         )}
@@ -194,7 +197,7 @@ export default function RfqModelViewer({
                 position: 'absolute', inset: 0, display: 'flex', alignItems: 'center',
                 justifyContent: 'center', color: 'var(--nx-text-3)', fontSize: 12, zIndex: 1,
               }}>
-                3D 렌더링 중...
+                {loc(lang, { ko: '3D 렌더링 중...', en: 'Rendering 3D...', ja: '3Dをレンダリング中...', zh: '正在渲染 3D...', es: 'Renderizando 3D...', ar: 'جارٍ تصيير ثلاثي الأبعاد...' })}
               </div>
             )}
             <iframe
@@ -218,7 +221,7 @@ export default function RfqModelViewer({
           display: 'flex', alignItems: 'center', justifyContent: 'space-between',
           background: 'var(--nx-bg)',
         }}>
-          <span style={{ fontSize: 10, color: 'var(--nx-text-2)' }}>DFM 분석</span>
+          <span style={{ fontSize: 10, color: 'var(--nx-text-2)' }}>{loc(lang, { ko: 'DFM 분석', en: 'DFM analysis', ja: 'DFM分析', zh: 'DFM 分析', es: 'Análisis DFM', ar: 'تحليل DFM' })}</span>
           <DfmScoreBadge score={dfmScore} process={dfmProcess} size="sm" showLabel />
         </div>
       )}

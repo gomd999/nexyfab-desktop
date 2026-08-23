@@ -1,5 +1,5 @@
 /**
- * tab.ts — Sheet-metal Tab feature (mesh mode).
+ * tab.ts — Sheet-metal Tab feature (OCCT B-rep primary, mesh fallback).
  *
  * A tab is a rectangular IN-PLANE protrusion extending outward from a
  * selected edge of the sheet body — unlike a flange it is not bent: the
@@ -13,10 +13,9 @@
  * tab is positioned by a 0–1 fraction along the selected edge (its
  * CENTER), clamped so the tab never overhangs the edge ends.
  *
- * Mesh-only: the result is a merged triangle mesh (same approach as
- * applyFlange). When the user's engine intent is B-rep (OCCT global
- * mode), the mesh fallback is stamped as an `approximated` downgrade
- * notice via noteMeshFallback — same honesty contract as shell/hole.
+ * OCCT mode fuses an exact rectangular B-rep tool to the registered host.
+ * Mesh mode keeps the established merged-triangle implementation. If the
+ * exact path is unavailable, the fallback is stamped as `approximated`.
  */
 
 import * as THREE from 'three';
@@ -26,6 +25,13 @@ import { noteMeshFallback } from './downgradeNotice';
 // Shared attribute/index unification (formerly a tab-local helper — now the
 // common layer every merge-based feature uses; see meshMerge.ts).
 import { alignForMerge } from './meshMerge';
+import {
+  hostBoxFromGeometry,
+  occtBoxBooleanWithPrimitive,
+  resolveBrepHostHandleAsync,
+  type OcctBooleanResult,
+} from './occtEngine';
+import { shouldUseOcctEngine } from './engineSelection';
 
 export interface TabParams {
   /** Tab width along the selected edge, mm. Clamped to the edge length. */
@@ -36,6 +42,60 @@ export interface TabParams {
   position: number;
   /** Edge to attach to — same indexing as FlangeParams (0=+Z,1=-Z,2=+X,3=-X). */
   edgeIndex: number;
+}
+
+export interface TabOcctHostBox {
+  w: number;
+  h: number;
+  d: number;
+  cx: number;
+  cy: number;
+  cz: number;
+}
+
+/** Exact rectangular in-plane tab, fused to the current registered B-Rep. */
+export function applyTabOcct(
+  hostHandle: string | null | undefined,
+  hostBox: TabOcctHostBox,
+  params: TabParams,
+  tessellation: { tolerance?: number; angularTolerance?: number } = {},
+): OcctBooleanResult {
+  const { width, length, position, edgeIndex } = params;
+  if (!(width > 0) || !(length > 0) || !(hostBox.h > 0)) {
+    throw new Error('Exact Tab requires positive width, length, and sheet thickness');
+  }
+  const edgeLen = edgeIndex <= 1 ? hostBox.w : hostBox.d;
+  if (![0, 1, 2, 3].includes(edgeIndex)) throw new Error(`Invalid edgeIndex: ${edgeIndex}`);
+  const tabWidth = Math.min(width, edgeLen);
+  const half = tabWidth / 2;
+  const fraction = Math.max(0, Math.min(1, position));
+  const along = Math.max(-edgeLen / 2 + half, Math.min(edgeLen / 2 - half, (fraction - 0.5) * edgeLen));
+  const overlap = Math.min(0.05, length * 0.1);
+  const outwardCenter = (length - overlap) / 2;
+  let toolW = tabWidth;
+  let toolD = length + overlap;
+  let cx = hostBox.cx + along;
+  let cz = hostBox.cz;
+  if (edgeIndex === 0) cz = hostBox.cz + hostBox.d / 2 + outwardCenter;
+  else if (edgeIndex === 1) cz = hostBox.cz - hostBox.d / 2 - outwardCenter;
+  else {
+    toolW = length + overlap;
+    toolD = tabWidth;
+    cx = hostBox.cx + (edgeIndex === 2 ? hostBox.w / 2 + outwardCenter : -hostBox.w / 2 - outwardCenter);
+    cz = hostBox.cz + along;
+  }
+  return occtBoxBooleanWithPrimitive('union', hostBox, {
+    shape: 'box',
+    w: toolW,
+    h: hostBox.h,
+    d: toolD,
+    cx,
+    cy: hostBox.cy,
+    cz,
+    rx: 0,
+    ry: 0,
+    rz: 0,
+  }, tessellation, hostHandle);
 }
 
 /**
@@ -155,5 +215,27 @@ export const tabFeature: FeatureDefinition = {
       edgeIndex: Math.round(params.edgeIndex ?? 0),
     });
     return noteMeshFallback(out, { op: 'Tab', featureId: ctx?.featureId });
+  },
+  async applyAsync(geometry, params, ctx) {
+    const tabParams: TabParams = {
+      width: params.width,
+      length: params.length,
+      position: (params.position ?? 50) / 100,
+      edgeIndex: Math.round(params.edgeIndex ?? 0),
+    };
+    if (shouldUseOcctEngine()) {
+      try {
+        const hostBox = hostBoxFromGeometry(geometry);
+        const hostHandle = await resolveBrepHostHandleAsync(geometry);
+        const result = applyTabOcct(hostHandle, hostBox, tabParams);
+        if (result.handle) {
+          result.geometry.userData = { ...(geometry.userData ?? {}), occtHandle: result.handle };
+          return result.geometry;
+        }
+      } catch (err) {
+        console.warn('[tab] OCCT path failed, falling back to mesh:', err);
+      }
+    }
+    return noteMeshFallback(applyTab(geometry, tabParams), { op: 'Tab', featureId: ctx?.featureId });
   },
 };

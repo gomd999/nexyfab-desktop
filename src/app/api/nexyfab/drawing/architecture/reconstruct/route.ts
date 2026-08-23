@@ -3,6 +3,9 @@ import { z } from 'zod';
 import { getTrustedClientIp } from '@/lib/client-ip';
 import { rateLimit } from '@/lib/rate-limit';
 import { architectureReconstructionUnifiedProject, reconstructArchitectureDrawing } from '@/lib/ai/architectureDrawingReconstruction';
+import { boundedJsonError, readBoundedJson } from '@/lib/boundedJsonBody';
+
+const MAX_BODY_BYTES = 15_000_000;
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -43,14 +46,17 @@ const requestSchema = z.object({
 
 export async function POST(req: NextRequest): Promise<NextResponse> {
   const contentLength = Number(req.headers.get('content-length') ?? 0);
-  if (contentLength > 15_000_000) return NextResponse.json({ ok: false, error: 'payload_too_large' }, { status: 413 });
+  if (contentLength > MAX_BODY_BYTES) return NextResponse.json({ ok: false, error: 'payload_too_large' }, { status: 413 });
   const ip = getTrustedClientIp(req.headers);
   const limit = rateLimit(`architecture-reconstruct:${ip}`, 20, 60_000);
   if (!limit.allowed) return NextResponse.json({ ok: false, error: 'rate_limited' }, { status: 429 });
 
   let unknownBody: unknown;
-  try { unknownBody = await req.json(); }
-  catch { return NextResponse.json({ ok: false, error: 'invalid_json' }, { status: 400 }); }
+  try { unknownBody = await readBoundedJson<unknown>(req, MAX_BODY_BYTES); }
+  catch (error) {
+    if (boundedJsonError(error)?.code === 'PAYLOAD_TOO_LARGE') return NextResponse.json({ ok: false, error: 'payload_too_large' }, { status: 413 });
+    return NextResponse.json({ ok: false, error: 'invalid_json' }, { status: 400 });
+  }
   const parsed = requestSchema.safeParse(unknownBody);
   if (!parsed.success) return NextResponse.json({ ok: false, error: 'invalid_request', issues: parsed.error.issues.map(issue => ({ path: issue.path.join('.'), message: issue.message })) }, { status: 400 });
 

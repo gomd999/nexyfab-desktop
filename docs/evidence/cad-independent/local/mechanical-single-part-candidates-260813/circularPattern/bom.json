@@ -1,0 +1,26 @@
+{
+  "schema": "nexyfab.mechanical-single-part-bom-candidate.v1",
+  "partRevisionSha256": "6d28ee413480688b6fc6a29adab45bc384397e378e0e3389e4ad2bc8f597fa7a",
+  "sourceDesignRevisionSha256": "3cf6a0f9c8efcf153a2cfefde087a2112c086fc412d2feeaeb9ce52542838564",
+  "sourceNfabSha256": "771c0080e2c91e268f7a54fd3a945081d158f8ec87fde60eacdda1a5bf3069b7",
+  "sourceStepSha256": "832267a3349857f5388add95ad0a6821f2b5d32befc49ddd5a72b6da8b4ae98e",
+  "units": "mm",
+  "items": [
+    {
+      "partNumber": "circularPattern",
+      "description": "Mechanical runtime circularPattern",
+      "quantity": 1,
+      "dimensionsMm": {
+        "x": 50.00000020000001,
+        "y": 20.00000020000001,
+        "z": 50.00000020000001
+      }
+    }
+  ],
+  "claimBoundary": {
+    "singlePartCandidateOnly": true,
+    "materialSpecified": false,
+    "massCalculated": false,
+    "manufacturingApproved": false
+  }
+}

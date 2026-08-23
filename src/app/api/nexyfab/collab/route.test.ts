@@ -27,6 +27,15 @@ vi.mock('@/lib/db-adapter', () => ({
 
 import { GET, POST } from './route';
 
+function streamedRequest(body: ReadableStream<Uint8Array>, headers: Record<string, string>) {
+  return new NextRequest('http://localhost/api/nexyfab/collab', {
+    method: 'POST',
+    body,
+    headers: { origin: 'http://localhost', 'content-type': 'application/json', ...headers },
+    duplex: 'half',
+  } as unknown as NonNullable<ConstructorParameters<typeof NextRequest>[1]>);
+}
+
 beforeEach(() => {
   state.access = null;
   state.existing = null;
@@ -72,5 +81,40 @@ describe('collaboration project boundary', () => {
     }));
     expect(response.status).toBe(404);
   });
-});
 
+  it('rejects a declared oversized body and cancels before database access', async () => {
+    let cancelled = false;
+    const stream = new ReadableStream<Uint8Array>({ cancel() { cancelled = true; } });
+    const response = await POST(streamedRequest(stream, { 'content-length': '65537' }));
+    expect(response.status).toBe(413);
+    expect(await response.json()).toMatchObject({ code: 'PAYLOAD_TOO_LARGE' });
+    expect(cancelled).toBe(true);
+    expect(state.executed).toHaveLength(0);
+  });
+
+  it('does not trust a false-small Content-Length and cancels actual overflow', async () => {
+    let cancelled = false;
+    const stream = new ReadableStream<Uint8Array>({
+      start(controller) {
+        controller.enqueue(new Uint8Array([0x7b]));
+        controller.enqueue(new Uint8Array(64 * 1024));
+      },
+      cancel() { cancelled = true; },
+    });
+    const response = await POST(streamedRequest(stream, { 'content-length': '1' }));
+    expect(response.status).toBe(413);
+    expect(await response.json()).toMatchObject({ code: 'PAYLOAD_TOO_LARGE' });
+    expect(cancelled).toBe(true);
+    expect(state.executed).toHaveLength(0);
+  });
+
+  it('preserves the malformed-body contract for invalid UTF-8', async () => {
+    const response = await POST(new NextRequest('http://localhost/api/nexyfab/collab', {
+      method: 'POST',
+      headers: { origin: 'http://localhost', 'content-type': 'application/json' },
+      body: new Uint8Array([0xff]),
+    }));
+    expect(response.status).toBe(400);
+    expect(state.executed).toHaveLength(0);
+  });
+});

@@ -13,15 +13,16 @@ describe('DomainWorkspaceBar', () => {
     resetManualEditProtectionSession();
   });
 
-  it('switches domain, audience and precision mode on the same design revision', () => {
+  it('keeps Space Design Labs in a separately labelled beta selector', () => {
     const dispatch = vi.spyOn(window, 'dispatchEvent');
+    window.history.replaceState({}, '', '/ko/shape-generator?expert=1&domain=building');
     render(<DomainWorkspaceBar lang="ko" />);
-    fireEvent.change(screen.getByRole('combobox', { name: '설계 분야' }), { target: { value: 'civil' } });
+    expect(screen.getByTestId('space-labs-beta')).toHaveTextContent('부가 Beta');
+    fireEvent.change(screen.getByRole('combobox', { name: 'Space Design Labs' }), { target: { value: 'civil' } });
     expect(screen.getByText('선형 수정')).toBeTruthy();
-    fireEvent.click(screen.getByRole('button', { name: '전문가' }));
+    fireEvent.click(screen.getByRole('button', { name: '정밀 CAD' }));
     expect(screen.getByText('surface breakline')).toBeTruthy();
     expect(screen.queryByText('sketch')).toBeNull();
-    fireEvent.click(screen.getByRole('button', { name: '정밀 CAD' }));
     expect(screen.getByTestId('same-design-revision').textContent).toContain('같은 설계 이력');
     expect(getDomainWorkspaceSelection()).toEqual({ domain: 'civil', experience: 'expert', workMode: 'precision_cad' });
     expect(JSON.parse(window.sessionStorage.getItem('nexyfab:domain-workspace:v1') ?? 'null')).toEqual({ domain: 'civil', experience: 'expert', workMode: 'precision_cad' });
@@ -34,22 +35,41 @@ describe('DomainWorkspaceBar', () => {
     window.history.replaceState({}, '', '/ko/shape-generator?expert=1&mode=expert&domain=interior&experience=expert&workMode=precision_cad');
     render(<DomainWorkspaceBar lang="ko" />);
     expect(getDomainWorkspaceSelection()).toEqual({ domain: 'interior', experience: 'expert', workMode: 'precision_cad' });
-    expect(screen.getByRole('combobox', { name: '설계 분야' })).toHaveValue('interior');
+    expect(screen.getByRole('combobox', { name: 'Space Design Labs' })).toHaveValue('interior');
     expect(screen.getByText(/인테리어 모델/)).toBeTruthy();
   });
 
   it('keeps the public Korean route segment on the return link', () => {
     window.history.replaceState({}, '', '/kr/shape-generator?expert=1&domain=landscape');
     render(<DomainWorkspaceBar lang="kr" />);
-    expect(screen.getByRole('combobox', { name: '설계 분야' })).toHaveValue('landscape');
+    expect(screen.getByRole('combobox', { name: 'Space Design Labs' })).toHaveValue('landscape');
     expect(screen.getByTestId('guided-domain-return')).toHaveAttribute('href', '/kr/nexyfab/design/?domain=landscape&handoff=1');
   });
 
   it('keeps read-only selections immutable', () => {
     render(<DomainWorkspaceBar lang="en" readOnly />);
-    expect(screen.getByRole('combobox', { name: 'Design domain' })).toBeDisabled();
-    expect(screen.getByRole('button', { name: 'Expert' })).toBeDisabled();
+    expect(screen.getByTestId('mechanical-core-domain')).toHaveTextContent('AI Mechanical CAD');
+    expect(screen.queryByRole('combobox')).toBeNull();
+    expect(screen.getByRole('button', { name: 'AI design' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Manual edit' })).toBeDisabled();
     expect(screen.getByRole('button', { name: 'Precision CAD' })).toBeDisabled();
+  });
+
+  it('restores the standard level and shows honest workspace truth states', () => {
+    window.history.replaceState({}, '', '/en/shape-generator?experience=standard&workMode=manual');
+    render(<DomainWorkspaceBar lang="en" />);
+    expect(screen.getByRole('button', { name: 'Manual edit' })).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.getByTestId('workspace-truth-strip')).toHaveTextContent('CAD PREVIEW');
+    expect(screen.getByTestId('workspace-truth-strip')).toHaveTextContent('CHECK NOT_RUN');
+    expect(screen.getByTestId('workspace-truth-strip')).toHaveTextContent('RELEASE BLOCKED');
+  });
+
+  it('does not expose spatial disciplines as peers in the mechanical workspace', () => {
+    render(<DomainWorkspaceBar lang="ko" />);
+    expect(screen.getByTestId('mechanical-core-domain')).toHaveTextContent('AI 기계 CAD');
+    expect(screen.queryByRole('combobox')).toBeNull();
+    expect(screen.queryByText('건축')).toBeNull();
+    expect(screen.queryByText('토목')).toBeNull();
   });
 
   it('surfaces protected user values and only releases them after confirmation', () => {

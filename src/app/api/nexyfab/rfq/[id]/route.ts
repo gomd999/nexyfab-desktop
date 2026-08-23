@@ -6,6 +6,9 @@ import { checkOrigin } from '@/lib/csrf';
 import { createNotification } from '@/app/lib/notify';
 import { rowToRfq, type RFQEntry as _RFQEntry } from '../rfq-types';
 import { normPartnerEmail } from '@/lib/partner-factory-access';
+import { boundedJsonError, readBoundedJson } from '@/lib/boundedJsonBody';
+
+const RFQ_UPDATE_JSON_BYTES = 64 * 1024;
 
 // ─── GET /api/nexyfab/rfq/[id] ────────────────────────────────────────────────
 
@@ -56,11 +59,20 @@ export async function PATCH(
     return NextResponse.json({ error: 'RFQ not found' }, { status: 404 });
   }
 
-  const body = await req.json() as {
+  let body: {
     status?: 'accepted' | 'rejected';
     quoteAmount?: number;
     manufacturerNote?: string;
-  };
+  } = {};
+  try {
+    body = await readBoundedJson(req, RFQ_UPDATE_JSON_BYTES);
+  } catch (error) {
+    const bodyError = boundedJsonError(error);
+    if (bodyError?.code === 'PAYLOAD_TOO_LARGE') {
+      return NextResponse.json({ error: 'Request body too large' }, { status: bodyError.status });
+    }
+    return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 });
+  }
 
   const USER_ALLOWED_STATUSES = ['accepted', 'rejected'] as const;
   if (body.status && !USER_ALLOWED_STATUSES.includes(body.status)) {

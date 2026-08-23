@@ -5,6 +5,9 @@ import { rateLimitAsync } from '@/lib/rate-limit';
 import { getTrustedClientIp } from '@/lib/client-ip';
 import * as OTPAuth from 'otpauth';
 import type { UserRow } from '@/lib/db-types';
+import { boundedJsonError, readBoundedJson } from '@/lib/boundedJsonBody';
+
+const MAX_2FA_BODY_BYTES = 16 * 1024;
 
 export const dynamic = 'force-dynamic';
 
@@ -55,7 +58,12 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: '시도 횟수 초과. 1분 후 다시 시도하세요.' }, { status: 429 });
   }
 
-  const body = await req.json() as { code?: string };
+  let body: { code?: string };
+  try { body = await readBoundedJson(req, MAX_2FA_BODY_BYTES); }
+  catch (error) {
+    if (boundedJsonError(error)?.code === 'PAYLOAD_TOO_LARGE') return NextResponse.json({ error: 'Request too large', code: 'PAYLOAD_TOO_LARGE' }, { status: 413 });
+    throw error;
+  }
   const { code } = body;
 
   if (!code || !/^\d{6}$/.test(code)) {
@@ -97,7 +105,12 @@ export async function DELETE(req: NextRequest) {
     return NextResponse.json({ error: '시도 횟수 초과. 1분 후 다시 시도하세요.' }, { status: 429 });
   }
 
-  const body = await req.json() as { code?: string; password?: string };
+  let body: { code?: string; password?: string };
+  try { body = await readBoundedJson(req, MAX_2FA_BODY_BYTES); }
+  catch (error) {
+    if (boundedJsonError(error)?.code === 'PAYLOAD_TOO_LARGE') return NextResponse.json({ error: 'Request too large', code: 'PAYLOAD_TOO_LARGE' }, { status: 413 });
+    throw error;
+  }
   if (!body.code || !/^\d{6}$/.test(body.code)) {
     return NextResponse.json({ error: 'Current 2FA code required to disable' }, { status: 400 });
   }

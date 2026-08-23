@@ -12,43 +12,56 @@
  * process, so this must run on the long-running Railway server (not serverless).
  */
 
+// Security: this registry is process-local; replica/restart/load-balancing
+// invalidates handles. Long-running Railway alone is not production
+// authority, so this legacy path stays capability-gated until durable
+// artifact hydration replaces it.
 import { NextRequest, NextResponse } from 'next/server';
 import { getShape, exportOcctStep } from '../../../../[lang]/shape-generator/features/occtEngine';
 import { getAuthUser } from '@/lib/auth-middleware';
+import { verifyBrepHandleAccessToken } from '@/lib/ai/scad-agent/brepHandleAccessToken';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
+const NO_STORE = { 'Cache-Control': 'private, no-store' } as const;
+function json(body: unknown, status = 200) {
+  return NextResponse.json(body, { status, headers: NO_STORE });
+}
 
 export async function GET(req: Request) {
   // Auth required — STEP is the user's design output.
   const auth = await getAuthUser(req as unknown as NextRequest);
-  if (!auth) return NextResponse.json({ ok: false, error: 'Unauthorized' }, { status: 401 });
+  if (!auth) return json({ ok: false, error: 'Unauthorized' }, 401);
 
   const url = new URL(req.url);
   const handle = url.searchParams.get('handle');
   if (!handle) {
-    return NextResponse.json({ ok: false, error: 'handle query param required' }, { status: 400 });
+    return json({ ok: false, error: 'handle query param required' }, 400);
+  }
+  const accessToken = req.headers.get('x-nexyfab-brep-capability');
+  if (!verifyBrepHandleAccessToken({ token: accessToken, userId: auth.userId, handle })) {
+    return json({ ok: false, status: 'HOLD', releaseReady: false, error: 'short-lived BRep handle capability required' }, 403);
   }
 
   // Distinguish "unknown handle" (404) from "known but not STEP-exportable" (422)
   // so the client can message precisely — mirrors brep-mesh's contract.
   if (!getShape(handle)) {
-    return NextResponse.json({ ok: false, error: `unknown handle ${handle}` }, { status: 404 });
+    return json({ ok: false, error: `unknown handle ${handle}` }, 404);
   }
 
   try {
     const step = await exportOcctStep(handle);
     if (!step) {
-      return NextResponse.json(
+      return json(
         { ok: false, error: `handle ${handle} is not STEP-exportable (no B-rep)` },
-        { status: 422 },
+        422,
       );
     }
-    return NextResponse.json({ ok: true, handle, step, bytes: step.length });
+    return json({ ok: true, handle, step, bytes: step.length });
   } catch (e) {
-    return NextResponse.json(
+    return json(
       { ok: false, error: `STEP export failed: ${(e as Error).message}` },
-      { status: 500 },
+      500,
     );
   }
 }

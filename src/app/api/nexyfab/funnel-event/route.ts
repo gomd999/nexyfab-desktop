@@ -16,6 +16,7 @@ import { getAuthUser } from '@/lib/auth-middleware';
 import { checkOrigin } from '@/lib/csrf';
 import { logFunnelEvent, type FunnelEventType } from '@/lib/funnel-logger';
 import { getDemoSession, DEMO_USER_ID } from '@/lib/demo-session';
+import { boundedJsonError, readBoundedJson } from '@/lib/boundedJsonBody';
 
 export const dynamic = 'force-dynamic';
 
@@ -33,6 +34,7 @@ const CLIENT_ALLOWED: ReadonlySet<FunnelEventType> = new Set<FunnelEventType>([
 ]);
 
 const MAX_METADATA_BYTES = 2_000;
+const MAX_FUNNEL_BODY_BYTES = 16 * 1024;
 
 export async function POST(req: NextRequest) {
   if (!checkOrigin(req)) {
@@ -46,12 +48,16 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  const body = await req.json().catch(() => null) as {
+  let body: {
     eventType?:   string;
     contextType?: string;
     contextId?:   string;
     metadata?:    Record<string, unknown>;
-  } | null;
+  } | null = null;
+  try { body = await readBoundedJson(req, MAX_FUNNEL_BODY_BYTES); }
+  catch (error) {
+    if (boundedJsonError(error)?.code === 'PAYLOAD_TOO_LARGE') return NextResponse.json({ error: 'metadata too large', code: 'PAYLOAD_TOO_LARGE' }, { status: 413 });
+  }
   if (!body || typeof body.eventType !== 'string') {
     return NextResponse.json({ error: 'eventType required' }, { status: 400 });
   }

@@ -37,7 +37,7 @@ describe('landscape release certificate', () => {
     const certificate = buildLandscapeReleaseCertificate(completeInput());
     expect(certificate.assertions).toHaveLength(20);
     expect(certificate.assertions.every(item => item.status === 'pass')).toBe(true);
-    expect(certificate.releaseReady).toBe(true);
+    expect(certificate).toMatchObject({ internalReady: true, releaseReady: false });
   });
   it('fails when the civil terrain revision is stale', () => {
     const input = completeInput(), stale = terrain(); stale.civilRevision = 1; input.terrainAuthority = bound(stale);

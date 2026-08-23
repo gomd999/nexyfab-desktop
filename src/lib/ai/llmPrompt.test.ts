@@ -12,12 +12,27 @@
 import { describe, it, expect } from 'vitest';
 import {
   BUILD_INTENT_PROMPT,
+  BUILD_INTENT_SYSTEM_PROMPT,
+  BUILD_INTENT_USER_PROMPT,
   SCHEMA_SKETCH,
   INTENT_EXAMPLES,
 } from './llmPrompt';
 import { INTENT_KINDS } from './featureTreeIntentDetector';
 
 describe('BUILD_INTENT_PROMPT — basic shape', () => {
+  it('separates the stable cache prefix from dynamic context and user text', () => {
+    const system = BUILD_INTENT_SYSTEM_PROMPT();
+    const user = BUILD_INTENT_USER_PROMPT('make it 20mm', {
+      baseShape: 'box',
+      features: [],
+      selection: null,
+    });
+    expect(system).toContain('## Allowed intent kinds');
+    expect(system).not.toContain('make it 20mm');
+    expect(user).toContain('make it 20mm');
+    expect(user).toContain('## Current model');
+  });
+
   it('returns a non-empty string', () => {
     const out = BUILD_INTENT_PROMPT('box 50x50x30');
     expect(typeof out).toBe('string');

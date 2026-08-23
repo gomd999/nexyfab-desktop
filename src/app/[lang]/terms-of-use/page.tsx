@@ -8,6 +8,48 @@ import {
   resolveGlobalTerms,
 } from '@/content/globalTerms';
 import { formatDate } from '@/lib/i18n/format';
+import { toIsoLang, type IsoLang } from '@/lib/i18n/normalize';
+
+const TERMS_CHROME: Record<IsoLang, {
+  summaryNote: string;
+  tocAria: string;
+  contents: string;
+  related: string;
+  privacy: string;
+  security: string;
+  report: string;
+}> = {
+  ko: {
+    summaryNote: '이 요약은 이해를 돕기 위한 것이며, 아래 약관 본문이 적용됩니다.',
+    tocAria: '약관 목차', contents: '목차', related: '관련 정책',
+    privacy: '개인정보 처리방침', security: '보안 정책', report: '권리침해·법무·보안 신고',
+  },
+  en: {
+    summaryNote: 'This summary is for convenience. The complete Terms below govern.',
+    tocAria: 'Terms table of contents', contents: 'Contents', related: 'Related policies',
+    privacy: 'Privacy Policy', security: 'Security Policy', report: 'IP, legal, or security notice',
+  },
+  ja: {
+    summaryNote: 'この要約は理解を助けるためのものです。以下の利用規約全文が適用されます。',
+    tocAria: '利用規約の目次', contents: '目次', related: '関連ポリシー',
+    privacy: 'プライバシーポリシー', security: 'セキュリティポリシー', report: '知的財産・法務・セキュリティの通知',
+  },
+  zh: {
+    summaryNote: '本摘要仅为便于理解，以下完整条款具有约束力。',
+    tocAria: '条款目录', contents: '目录', related: '相关政策',
+    privacy: '隐私政策', security: '安全政策', report: '知识产权、法律或安全通知',
+  },
+  es: {
+    summaryNote: 'Este resumen se ofrece por comodidad. Los Términos completos que figuran a continuación son los aplicables.',
+    tocAria: 'Índice de los términos', contents: 'Contenido', related: 'Políticas relacionadas',
+    privacy: 'Política de privacidad', security: 'Política de seguridad', report: 'Aviso de propiedad intelectual, legal o de seguridad',
+  },
+  ar: {
+    summaryNote: 'هذا الملخص للتيسير، وتظل الشروط الكاملة أدناه هي الحاكمة.',
+    tocAria: 'جدول محتويات الشروط', contents: 'المحتويات', related: 'السياسات ذات الصلة',
+    privacy: 'سياسة الخصوصية', security: 'سياسة الأمان', report: 'إشعار ملكية فكرية أو قانوني أو أمني',
+  },
+};
 
 const formatEffectiveDate = (date: string, locale: string): string => {
   const parsed = new Date(`${date}T00:00:00Z`);
@@ -23,7 +65,7 @@ export default function TermsOfUsePage() {
   const pathname = usePathname() || '/en/terms-of-use';
   const routeLocale = pathname.split('/').filter(Boolean)[0] || 'en';
   const { document, translationNotice } = resolveGlobalTerms(routeLocale);
-  const isKorean = routeLocale === 'kr' || routeLocale === 'ko';
+  const chrome = TERMS_CHROME[toIsoLang(routeLocale)];
 
   return (
     <main
@@ -98,18 +140,16 @@ export default function TermsOfUsePage() {
             {document.summary.map((item) => <li key={item}>{item}</li>)}
           </ul>
           <p style={{ margin: '16px 0 0', color: '#526581', fontSize: 12, lineHeight: 1.55 }}>
-            {isKorean
-              ? '이 요약은 이해를 돕기 위한 것이며, 아래 약관 본문이 적용됩니다.'
-              : 'This summary is for convenience. The complete Terms below govern.'}
+            {chrome.summaryNote}
           </p>
         </section>
 
         <nav
-          aria-label={isKorean ? '약관 목차' : 'Terms table of contents'}
+          aria-label={chrome.tocAria}
           style={{ marginBottom: 40, padding: '22px 24px', border: '1px solid #e5e7eb', borderRadius: 14, background: '#fafafa' }}
         >
           <h2 style={{ margin: '0 0 14px', fontSize: 17, color: '#111827' }}>
-            {isKorean ? '목차' : 'Contents'}
+            {chrome.contents}
           </h2>
           <ol style={{ margin: 0, paddingLeft: 22, columns: '260px 2', columnGap: 36, lineHeight: 1.65 }}>
             {document.sections.map((section) => (
@@ -160,16 +200,16 @@ export default function TermsOfUsePage() {
             lineHeight: 1.7,
           }}
         >
-          <strong style={{ color: '#1f2937' }}>{isKorean ? '관련 정책' : 'Related policies'}</strong>
+          <strong style={{ color: '#1f2937' }}>{chrome.related}</strong>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 14, marginTop: 8 }}>
             <Link href={`/${routeLocale}/privacy-policy/`} style={{ color: '#0b5cff', fontWeight: 700 }}>
-              {isKorean ? '개인정보 처리방침' : 'Privacy Policy'}
+              {chrome.privacy}
             </Link>
             <Link href={`/${routeLocale}/security-policy/`} style={{ color: '#0b5cff', fontWeight: 700 }}>
-              {isKorean ? '보안 정책' : 'Security Policy'}
+              {chrome.security}
             </Link>
             <a href="mailto:nexyfab@nexysys.com" style={{ color: '#0b5cff', fontWeight: 700 }}>
-              {isKorean ? '권리침해·법무·보안 신고' : 'IP, legal, or security notice'}
+              {chrome.report}
             </a>
           </div>
         </aside>

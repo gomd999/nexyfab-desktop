@@ -29,6 +29,7 @@ import { getDefaultProvider, getProvider } from '@/lib/quoting/registry';
 import type { Material } from '@/lib/ai/scad-agent/costEstimation';
 import type { ProcessForDfm } from '@/lib/ai/scad-agent/specVerification';
 import type { QuoteRequest } from '@/lib/quoting/types';
+import { readBoundedJson } from '@/lib/boundedJsonBody';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -36,6 +37,7 @@ export const dynamic = 'force-dynamic';
 /** Per (ip,user) hourly cap. Quoting is cheap relative to vision; 60/hr
  *  matches the cost-copilot / dfm-explainer tier. */
 const RATE_LIMIT_PER_HOUR = 60;
+const MAX_JSON_BODY_BYTES = 64 * 1024;
 
 const VALID_PROCESSES: readonly ProcessForDfm[] = [
   'fdm', 'sla', 'cnc_mill', 'sheet', 'injection_molding', 'die_cast',
@@ -77,7 +79,7 @@ export async function POST(req: NextRequest) {
   }
 
   // (3) Body + validation.
-  const body = (await req.json().catch(() => ({}))) as Record<string, unknown>;
+  const body = (await readBoundedJson(req, MAX_JSON_BODY_BYTES).catch(() => ({}))) as Record<string, unknown>;
   const process = typeof body.process === 'string' ? body.process : '';
   if (!process || !(VALID_PROCESSES as readonly string[]).includes(process)) {
     return NextResponse.json(
@@ -140,7 +142,7 @@ export async function POST(req: NextRequest) {
   // partner integration isn't live, which is fair and prevents a script
   // probing every provider for free.
   let usage: { used: number; limit: number; remaining: number } | undefined;
-  const slot = await consumeMonthlyMetricSlot(userId, plan, 'quote_request');
+  const slot = await consumeMonthlyMetricSlot(userId, plan, 'quote_request', undefined, planCheck.orgId);
   if (!slot.ok) {
     return NextResponse.json(
       {

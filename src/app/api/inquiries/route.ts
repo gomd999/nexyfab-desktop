@@ -6,6 +6,7 @@ import { verifyAdmin } from '@/lib/admin-auth';
 import { getDbAdapter } from '@/lib/db-adapter';
 import { enqueueJob } from '@/lib/job-queue';
 import { getTrustedClientIp } from '@/lib/client-ip';
+import { boundedJsonError, readBoundedJson } from '@/lib/boundedJsonBody';
 
 export const dynamic = 'force-dynamic';
 
@@ -111,7 +112,12 @@ export async function PATCH(req: NextRequest) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  const raw = await req.json().catch(() => ({}));
+  let raw: unknown;
+  try { raw = await readBoundedJson(req, 64 * 1024); }
+  catch (error) {
+    if (boundedJsonError(error)?.status === 413) return NextResponse.json({ error: 'Payload too large' }, { status: 413 });
+    raw = {};
+  }
   const parsed = patchSchema.safeParse(raw);
   if (!parsed.success) {
     return NextResponse.json({ error: parsed.error.issues[0]?.message ?? '입력값 오류' }, { status: 400 });
@@ -187,7 +193,12 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: '요청이 너무 많습니다. 1시간 후 다시 시도하세요.' }, { status: 429 });
   }
 
-  const raw = await req.json().catch(() => ({}));
+  let raw: unknown;
+  try { raw = await readBoundedJson(req, 64 * 1024); }
+  catch (error) {
+    if (boundedJsonError(error)?.status === 413) return NextResponse.json({ error: 'Payload too large' }, { status: 413 });
+    raw = {};
+  }
   const parsed = inquirySchema.safeParse(raw);
   if (!parsed.success) {
     return NextResponse.json(

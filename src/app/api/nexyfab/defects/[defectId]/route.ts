@@ -17,12 +17,15 @@ import { checkOrigin } from '@/lib/csrf';
 import { getDbAdapter } from '@/lib/db-adapter';
 import { sanitizeText } from '@/app/lib/sanitize';
 import { recordMetric } from '@/lib/partner-metrics';
+import { canManageOrderInActiveWorkspace } from '@/lib/nfOrderAccess';
+import { boundedJsonError, readBoundedJson } from '@/lib/boundedJsonBody';
 import {
   ensureDefectsTable, rowToDefect, isValidTransition, generateRmaNumber,
   type DefectRow, type DefectStatus,
 } from '@/lib/partner-defects';
 
 export const dynamic = 'force-dynamic';
+const DEFECT_UPDATE_JSON_BYTES = 64 * 1024;
 
 const BUYER_ALLOWED_TRANSITIONS: Array<{ from: DefectStatus; to: DefectStatus }> = [
   { from: 'reported', to: 'rejected' },  // 구매자 철회 → rejected 로 처리
@@ -53,20 +56,32 @@ export async function PATCH(
 
   const authUser = await getAuthUser(req);
   const partner = await getPartnerAuth(req);
-  const isBuyer = authUser && authUser.email === row.reporter_email;
+  const order = await db.queryOne<{ user_id: string; org_id: string | null }>(
+    'SELECT user_id, org_id FROM nf_orders WHERE id = ?',
+    row.order_id,
+  ).catch(() => null);
+  const isBuyer = !!authUser && !!order && canManageOrderInActiveWorkspace(authUser, order);
   const isPartner = partner && row.partner_email && partner.email === row.partner_email;
-  const isAdmin = authUser?.roles?.some(r => r.role === 'super_admin' || r.role === 'org_admin');
+  const isAdmin = authUser?.globalRole === 'super_admin';
 
   if (!isBuyer && !isPartner && !isAdmin) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   }
 
-  const body = await req.json().catch(() => ({})) as {
+  let body: {
     status?: unknown;
     partnerResponse?: unknown;
     resolutionNote?: unknown;
     rmaInstructions?: unknown;
-  };
+  } = {};
+  try {
+    body = await readBoundedJson(req, DEFECT_UPDATE_JSON_BYTES);
+  } catch (error) {
+    const bodyError = boundedJsonError(error);
+    if (bodyError?.code === 'PAYLOAD_TOO_LARGE') {
+      return NextResponse.json({ error: 'Request body too large' }, { status: bodyError.status });
+    }
+  }
 
   if (typeof body.status !== 'string') {
     return NextResponse.json({ error: 'status is required' }, { status: 400 });

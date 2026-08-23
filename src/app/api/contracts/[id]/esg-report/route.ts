@@ -8,6 +8,9 @@ import {
   getProcessLabel, getMaterialLabel,
   type ManufacturingProcess, type MaterialType,
 } from '@/lib/esg-calculator';
+import { boundedJsonError, readBoundedJson } from '@/lib/boundedJsonBody';
+
+const MAX_ESG_REPORT_BODY_BYTES = 32 * 1024;
 
 export const dynamic = 'force-dynamic';
 
@@ -88,7 +91,10 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     electricityKwhPerKg: z.number().positive().optional(),
   });
 
-  const parsed = schema.safeParse(await req.json().catch(() => ({})));
+  let raw: unknown = {};
+  try { raw = await readBoundedJson(req, MAX_ESG_REPORT_BODY_BYTES); }
+  catch (error) { if (boundedJsonError(error)?.code === 'PAYLOAD_TOO_LARGE') return NextResponse.json({ error: 'Request too large', code: 'PAYLOAD_TOO_LARGE' }, { status: 413 }); }
+  const parsed = schema.safeParse(raw);
   if (!parsed.success) return NextResponse.json({ error: parsed.error.issues[0]?.message }, { status: 400 });
 
   const result = calculateCO2({

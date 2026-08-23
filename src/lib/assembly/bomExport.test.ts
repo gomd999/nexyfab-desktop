@@ -642,8 +642,9 @@ describe('estimatePartStats — pattern features (Phase 1 multiplier)', () => {
       } satisfies LinearPatternFeature,
     };
     const tree: FeatureTree = { nodes: [base, pattern] };
-    // Aggregate: base 1000 + pattern 4×1000 = 5000.
-    expect(estimatePartVolume(tree)).toBeCloseTo(5000, 4);
+    // The pattern consumes its seed and emits four total instances. Counting
+    // the standalone seed again would make the BOM disagree with replayTree.
+    expect(estimatePartVolume(tree)).toBeCloseTo(4000, 4);
   });
 
   it('circular_pattern: BOM volume = base × count', () => {
@@ -662,8 +663,8 @@ describe('estimatePartStats — pattern features (Phase 1 multiplier)', () => {
       } satisfies CircularPatternFeature,
     };
     const tree: FeatureTree = { nodes: [base, pattern] };
-    // base 1000 + pattern 6×1000 = 7000.
-    expect(estimatePartVolume(tree)).toBeCloseTo(7000, 4);
+    // The six pattern instances already include the seed at angle 0.
+    expect(estimatePartVolume(tree)).toBeCloseTo(6000, 4);
   });
 });
 

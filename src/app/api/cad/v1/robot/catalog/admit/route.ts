@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { admitRobotCatalogBytes } from '@/lib/ai/robot/robotCatalogAdmission';
 import { getTrustedClientIp } from '@/lib/client-ip';
 import { rateLimitAsync } from '@/lib/rate-limit';
+import { readBoundedMultipartForm } from '@/lib/boundedMultipartForm';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -13,7 +14,9 @@ const MAX_TOTAL_ARTIFACT_BYTES = 250_000_000;
 export async function POST(req: NextRequest) {
   const ip = getTrustedClientIp(req.headers);
   if (!(await rateLimitAsync(`cad-v1-robot-catalog-admit:${ip}`, 5, 60_000)).allowed) return NextResponse.json({ ok: false, code: 'RATE_LIMIT' }, { status: 429 });
-  const form = await req.formData().catch(() => null);
+  const multipart = await readBoundedMultipartForm(req, 256_000_000);
+  if (multipart.tooLarge) return NextResponse.json({ ok: false, code: 'TOO_LARGE', message: 'artifact byte limits exceeded' }, { status: 413 });
+  const form = multipart.form;
   const manifest = form?.get('manifest'); const artifacts = form?.getAll('artifact') ?? [];
   if (!(manifest instanceof File) || artifacts.length < 1 || artifacts.some(item => !(item instanceof File))) return NextResponse.json({ ok: false, code: 'BAD_REQUEST', message: 'one manifest and at least one artifact file are required' }, { status: 400 });
   if (manifest.size < 1 || manifest.size > MAX_MANIFEST_BYTES || artifacts.length > MAX_ARTIFACTS) return NextResponse.json({ ok: false, code: 'TOO_LARGE', message: 'manifest or artifact count exceeds admission limits' }, { status: 413 });

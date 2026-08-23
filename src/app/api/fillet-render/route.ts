@@ -22,12 +22,13 @@
  *   }
  *
  * Response (success):
- *   { ok: true, scad: string, pngs: { label, base64 }[], stl?: string }
+ *   { ok: true, scad: string, featureTree: FeatureTree, pngs: { label, base64 }[], stl?: string }
  *
  * Response (error):
  *   { ok: false, code: 'BAD_REQUEST' | 'EMPTY_SKETCH' | 'PIPELINE_ERROR' | 'RENDER_ERROR' | 'TOO_LARGE' | ..., message: string }
  */
 import { NextRequest, NextResponse } from 'next/server';
+import { boundedJsonError, readBoundedJson } from '@/lib/boundedJsonBody';
 import { filletFromSketch } from '@/lib/sketch/filletFromSketch';
 import type { FilletEdgeSelection } from '@/lib/cad/filletProfile';
 import { renderScadToPng } from '@/lib/openscad-render/renderPng';
@@ -54,6 +55,7 @@ interface FilletRenderBody {
 const MAX_POINTS = 5000;
 const MAX_LINES = 5000;
 const MAX_DEPTH = 10_000;
+const MAX_BODY_BYTES = 4 * 1024 * 1024;
 const ALLOWED_EDGES: readonly FilletEdgeSelection[] = ['all', 'top', 'bottom', 'vertical'];
 
 function isFiniteNum(n: unknown): n is number {
@@ -63,8 +65,9 @@ function isFiniteNum(n: unknown): n is number {
 export async function POST(req: NextRequest): Promise<NextResponse> {
   let body: FilletRenderBody;
   try {
-    body = (await req.json()) as FilletRenderBody;
-  } catch {
+    body = await readBoundedJson<FilletRenderBody>(req, MAX_BODY_BYTES);
+  } catch (error) {
+    if (boundedJsonError(error)?.code === 'PAYLOAD_TOO_LARGE') return NextResponse.json({ ok: false, code: 'TOO_LARGE', message: `Body exceeds ${MAX_BODY_BYTES} bytes` }, { status: 413 });
     return NextResponse.json(
       { ok: false, code: 'BAD_REQUEST', message: 'Body must be valid JSON' },
       { status: 400 },
@@ -212,6 +215,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   return NextResponse.json({
     ok: true,
     scad: pipeline.scad,
+    featureTree: pipeline.tree,
     danglingLines: pipeline.danglingLines,
     pngs: render.views.map((v) => ({ label: v.label, base64: v.bytes.toString('base64') })),
     ...(stlBase64 ? { stl: stlBase64 } : {}),

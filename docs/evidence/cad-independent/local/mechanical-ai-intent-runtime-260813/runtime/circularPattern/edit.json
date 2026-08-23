@@ -1,0 +1,57 @@
+{
+  "schema": "nexyfab.mechanical-core-feature-local-runtime.v1",
+  "feature": "circularPattern",
+  "axis": "edit",
+  "status": "PASS",
+  "executedAt": "2026-08-22T07:13:00.871Z",
+  "commandId": "circularPattern-runtime-param-edit",
+  "historyDepth": 1,
+  "before": {
+    "id": "runtime-feature",
+    "enabled": true,
+    "type": "circularPattern",
+    "params": {
+      "axis": 1,
+      "count": 3,
+      "totalAngle": 360,
+      "patternTarget": 0
+    }
+  },
+  "after": {
+    "id": "runtime-feature",
+    "enabled": true,
+    "type": "circularPattern",
+    "params": {
+      "axis": 1,
+      "count": 4,
+      "totalAngle": 360,
+      "patternTarget": 0
+    }
+  },
+  "intentBinding": {
+    "caseId": "ko_practical-07-circularPattern",
+    "candidateId": "intent-runtime:ko_practical-07-circularPattern",
+    "candidateBaseRevision": "7c3a02e2da7fbee88dac5533efea39eac2ec0114cde1b70936d41992d83dbbe1",
+    "promptSha256": "84f55ad69bf21c90860c12e9206056ce47a7405104ba4caa2a8bcdb5173e589b",
+    "inputSha256": "42856994be07c22070fd35921cfe82295db7042c543d308b01fd61a235a18b6d",
+    "sourceUnits": [
+      "mm"
+    ],
+    "normalizedUnit": "mm",
+    "dimensionsMm": {
+      "width": 100,
+      "length": 60,
+      "thickness": 8
+    }
+  },
+  "intentDimensionAssertion": {
+    "status": "PASS",
+    "inputSha256": "42856994be07c22070fd35921cfe82295db7042c543d308b01fd61a235a18b6d",
+    "dimensionsMm": {
+      "width": 100,
+      "length": 60,
+      "thickness": 8
+    },
+    "normalizedUnit": "mm"
+  }
+}

@@ -1,48 +1,148 @@
 import type { ProviderName } from './types';
 
+export type AiModelTier = 'free' | 'pro' | 'enterprise';
+export type AiAccessPlan = 'free' | 'pro' | 'team' | 'enterprise';
+
 /**
- * The user-selectable models for CAD codegen (free-form + precise). One entry
- * = a label shown in the Studio's model picker mapped to a concrete
- * provider + model name. The route validates the chosen id against this list
- * (never trusts a raw provider/model from the client) and routes the call,
- * keeping the normal fallback chain behind the preferred provider.
- *
- * Availability depends on which API keys are configured:
- *   deepseek→ DEEPSEEK_API_KEY       (default model, deepseek-reasoner)
- *   gemini  → GEMINI_API_KEY        (also powers vision)
- *   openai  → OPENAI_API_KEY
- *   qwen    → DASHSCOPE_API_KEY      (qwen / glm / deepseek-v4 via Bailian)
- * An unconfigured provider is skipped at request time and the chain falls
- * back, so listing a model here is always safe.
+ * Public, client-safe model catalog. `model` is the deployment default only;
+ * server-side admin settings may map the stable `id` to another provider model
+ * identifier without exposing credentials or mutable configuration.
  */
 export interface CodegenModel {
   id: string;
   label: string;
   provider: ProviderName;
   model: string;
-  /** Short hint shown under the label. */
-  note?: string;
+  tier: AiModelTier;
+  note: string;
+  vision?: boolean;
+  recommended?: boolean;
+  availability?: 'preview';
 }
 
-// Ordered best-first. A head-to-head car test (2026-06-25) put DeepSeek
-// Reasoner clearly ahead: fast (~17s), reliable, and the only model whose car
-// read as a real car. 2026-08-02 briefly made OpenAI's gpt-5.6-sol the default;
-// 2026-08-03 reverted to DeepSeek per explicit product decision — gpt-5.6-sol
-// stays in the picker as a user-selectable alternative (nothing was unwired).
-export const CODEGEN_MODELS: CodegenModel[] = [
-  { id: 'deepseek-reasoner', label: 'DeepSeek Reasoner',  provider: 'deepseek',   model: 'deepseek-reasoner', note: '기본 · 추천' },
-  { id: 'gemini-pro',        label: 'Gemini 2.5 Pro',     provider: 'gemini',     model: 'gemini-2.5-pro',  note: '사진 이해 강함' },
-  { id: 'gpt-5.6-sol',       label: 'GPT-5.6 Sol',        provider: 'openai',     model: 'gpt-5.6-sol',     note: 'OpenAI · 추론' },
-  { id: 'qwen-max',          label: 'Qwen3 Max',          provider: 'openrouter', model: 'qwen/qwen3-max',  note: 'OpenRouter · 빠름' },
-  { id: 'glm-5.2',           label: 'GLM 5.2',            provider: 'openrouter', model: 'z-ai/glm-5.2',    note: 'OpenRouter · 추론' },
-];
+/**
+ * Product entitlement matrix requested for NexyFab. `team` inherits Pro
+ * models; Enterprise alone receives the Enterprise catalog.
+ */
+export const CODEGEN_MODELS: readonly CodegenModel[] = [
+  {
+    id: 'gpt-luna',
+    label: 'GPT-5.6 Luna',
+    provider: 'openai',
+    model: 'gpt-5.6-luna',
+    tier: 'free',
+    note: 'Free · 빠른 설계 · 이미지 자동 분석',
+    vision: true,
+    recommended: true,
+  },
+  {
+    id: 'qwen-3.7-plus',
+    label: 'Qwen 3.7 Plus',
+    provider: 'qwen',
+    model: 'qwen3.7-plus',
+    tier: 'pro',
+    note: 'Pro · 빠른 반복 설계',
+    vision: true,
+  },
+  {
+    id: 'qwen-3.7-max',
+    label: 'Qwen 3.7 Max',
+    provider: 'qwen',
+    model: 'qwen3.7-max',
+    tier: 'pro',
+    note: 'Pro · 복잡 형상 추론',
+  },
+  {
+    id: 'deepseek-pro',
+    label: 'DeepSeek Pro',
+    provider: 'qwen',
+    model: 'deepseek-v4-pro',
+    tier: 'pro',
+    note: 'Pro · 정밀 설계 추론',
+    recommended: true,
+  },
+  {
+    id: 'qwen-3.8-max',
+    label: 'Qwen 3.8 Max Preview',
+    provider: 'qwen',
+    model: 'qwen3.8-max-preview',
+    tier: 'enterprise',
+    note: 'Enterprise · Token Plan/계정 가용성 확인 필요',
+    vision: true,
+    availability: 'preview',
+  },
+  {
+    id: 'gpt-terra',
+    label: 'GPT-5.6 Terra',
+    provider: 'openai',
+    model: 'gpt-5.6-terra',
+    tier: 'enterprise',
+    note: 'Enterprise · 고난도 정밀 설계',
+    vision: true,
+    recommended: true,
+  },
+] as const;
 
-export const DEFAULT_CODEGEN_MODEL = 'deepseek-reasoner';
+export const DEFAULT_CODEGEN_MODEL = 'gpt-luna';
+export const VISION_CODEGEN_MODEL = 'gpt-luna';
 
-/** Map a (possibly client-supplied) model id to a provider + model, defaulting
- *  safely. Returns the preferred provider (chain keeps fallback behind it). */
-export function resolveCodegenModel(id?: string): { preferProvider: ProviderName; model: string; id: string } {
-  const m = CODEGEN_MODELS.find(x => x.id === id)
-    ?? CODEGEN_MODELS.find(x => x.id === DEFAULT_CODEGEN_MODEL)!;
-  return { preferProvider: m.provider, model: m.model, id: m.id };
+const TIER_RANK: Record<AiModelTier, number> = { free: 0, pro: 1, enterprise: 2 };
+
+export function modelTierForPlan(plan: string | null | undefined): AiModelTier {
+  if (plan === 'enterprise') return 'enterprise';
+  if (plan === 'pro' || plan === 'team') return 'pro';
+  return 'free';
+}
+
+export function canUseCodegenModel(model: CodegenModel, plan: string | null | undefined): boolean {
+  return TIER_RANK[modelTierForPlan(plan)] >= TIER_RANK[model.tier];
+}
+
+export function defaultCodegenModelForPlan(plan: string | null | undefined): string {
+  const tier = modelTierForPlan(plan);
+  if (tier === 'enterprise') return 'gpt-terra';
+  if (tier === 'pro') return 'deepseek-pro';
+  return DEFAULT_CODEGEN_MODEL;
+}
+
+export function findCodegenModel(id: string | null | undefined): CodegenModel | undefined {
+  return CODEGEN_MODELS.find(model => model.id === id);
+}
+
+export type CodegenModelAuthorization =
+  | { ok: true; model: CodegenModel }
+  | { ok: false; code: 'MODEL_NOT_FOUND' | 'MODEL_PLAN_LOCKED'; requestedId: string; requiredTier?: AiModelTier };
+
+/** Server-side allowlist + entitlement check. Never accept a raw model ID. */
+export function authorizeCodegenModel(
+  id: string | null | undefined,
+  plan: string | null | undefined,
+): CodegenModelAuthorization {
+  const requestedId = id?.trim() || defaultCodegenModelForPlan(plan);
+  const model = findCodegenModel(requestedId);
+  if (!model) return { ok: false, code: 'MODEL_NOT_FOUND', requestedId };
+  if (!canUseCodegenModel(model, plan)) {
+    return { ok: false, code: 'MODEL_PLAN_LOCKED', requestedId, requiredTier: model.tier };
+  }
+  return { ok: true, model };
+}
+
+/**
+ * Backward-compatible resolver for internal callers. API routes handling a
+ * client-selected ID must call `authorizeCodegenModel` first.
+ */
+export function resolveCodegenModel(
+  id?: string,
+  plan: string = 'free',
+): { preferProvider: ProviderName; model: string; id: string; tier: AiModelTier } {
+  const auth = authorizeCodegenModel(id, plan);
+  const selected = auth.ok
+    ? auth.model
+    : findCodegenModel(defaultCodegenModelForPlan(plan))!;
+  return {
+    preferProvider: selected.provider,
+    model: selected.model,
+    id: selected.id,
+    tier: selected.tier,
+  };
 }

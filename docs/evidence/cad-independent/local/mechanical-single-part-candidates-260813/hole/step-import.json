@@ -1,0 +1,37 @@
+{
+  "schema": "nexyfab.mechanical-single-part-step-import.v1",
+  "feature": "hole",
+  "partRevisionSha256": "d3620657cdf36bd05b0b6e909c544c2389ba8f4a9275e58fda8aba3838eec638",
+  "sourceDesignRevisionSha256": "3cf6a0f9c8efcf153a2cfefde087a2112c086fc412d2feeaeb9ce52542838564",
+  "sourceStep": {
+    "path": "docs/evidence/cad-independent/local/mechanical-core-runtime-260813/hole/hole-edited.step",
+    "sha256": "53f0703dbc7a30d467bf77922dadcf83906853ac42ff36880a72aad10086d148",
+    "bytes": 19782,
+    "assertionId": "hole.export.native-step"
+  },
+  "exactKernel": "OCCT",
+  "units": {
+    "value": "mm",
+    "confidence": "high"
+  },
+  "solidCount": 1,
+  "singleSolid": true,
+  "volumeMm3": 67476.10657883054,
+  "boundsMm": [
+    [
+      -30.001865007995104,
+      -20.001865007995104,
+      -15.001865007995104
+    ],
+    [
+      30.001865007995104,
+      20.001865007995104,
+      15.001865007995104
+    ]
+  ],
+  "dimensionsMm": {
+    "x": 60.00373001599021,
+    "y": 40.00373001599021,
+    "z": 30.003730015990207
+  }
+}

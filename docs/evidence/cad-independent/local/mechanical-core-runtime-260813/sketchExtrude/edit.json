@@ -1,0 +1,163 @@
+{
+  "schema": "nexyfab.mechanical-core-feature-local-runtime.v1",
+  "feature": "sketchExtrude",
+  "axis": "edit",
+  "status": "PASS",
+  "executedAt": "2026-08-22T07:13:30.564Z",
+  "commandId": "sketchExtrude-runtime-param-edit",
+  "historyDepth": 1,
+  "before": {
+    "id": "runtime-feature",
+    "enabled": true,
+    "type": "sketchExtrude",
+    "params": {
+      "depth": 12
+    },
+    "sketchData": {
+      "profile": {
+        "closed": true,
+        "segments": [
+          {
+            "type": "line",
+            "points": [
+              {
+                "x": 0,
+                "y": 0
+              },
+              {
+                "x": 36,
+                "y": 0
+              }
+            ]
+          },
+          {
+            "type": "line",
+            "points": [
+              {
+                "x": 36,
+                "y": 0
+              },
+              {
+                "x": 36,
+                "y": 22
+              }
+            ]
+          },
+          {
+            "type": "line",
+            "points": [
+              {
+                "x": 36,
+                "y": 22
+              },
+              {
+                "x": 0,
+                "y": 22
+              }
+            ]
+          },
+          {
+            "type": "line",
+            "points": [
+              {
+                "x": 0,
+                "y": 22
+              },
+              {
+                "x": 0,
+                "y": 0
+              }
+            ]
+          }
+        ]
+      },
+      "config": {
+        "mode": "extrude",
+        "depth": 12,
+        "revolveAngle": 360,
+        "revolveAxis": "y",
+        "segments": 32
+      },
+      "plane": "xy",
+      "planeOffset": 0,
+      "operation": "add"
+    }
+  },
+  "after": {
+    "id": "runtime-feature",
+    "enabled": true,
+    "type": "sketchExtrude",
+    "params": {
+      "depth": 18
+    },
+    "sketchData": {
+      "profile": {
+        "closed": true,
+        "segments": [
+          {
+            "type": "line",
+            "points": [
+              {
+                "x": 0,
+                "y": 0
+              },
+              {
+                "x": 36,
+                "y": 0
+              }
+            ]
+          },
+          {
+            "type": "line",
+            "points": [
+              {
+                "x": 36,
+                "y": 0
+              },
+              {
+                "x": 36,
+                "y": 22
+              }
+            ]
+          },
+          {
+            "type": "line",
+            "points": [
+              {
+                "x": 36,
+                "y": 22
+              },
+              {
+                "x": 0,
+                "y": 22
+              }
+            ]
+          },
+          {
+            "type": "line",
+            "points": [
+              {
+                "x": 0,
+                "y": 22
+              },
+              {
+                "x": 0,
+                "y": 0
+              }
+            ]
+          }
+        ]
+      },
+      "config": {
+        "mode": "extrude",
+        "depth": 18,
+        "revolveAngle": 360,
+        "revolveAxis": "y",
+        "segments": 32
+      },
+      "plane": "xy",
+      "planeOffset": 0,
+      "operation": "add"
+    }
+  }
+}

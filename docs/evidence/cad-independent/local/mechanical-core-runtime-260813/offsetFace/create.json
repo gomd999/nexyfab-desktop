@@ -1,0 +1,47 @@
+{
+  "schema": "nexyfab.mechanical-core-feature-local-runtime.v1",
+  "feature": "offsetFace",
+  "axis": "create",
+  "status": "PASS",
+  "executedAt": "2026-08-22T07:13:30.564Z",
+  "payload": {
+    "id": "runtime-feature",
+    "enabled": true,
+    "type": "offsetFace",
+    "params": {
+      "distance": 3
+    }
+  },
+  "exact": {
+    "handle": "occt:171",
+    "kernelKind": "Solid",
+    "nativeShapeType": 0,
+    "solidCount": 1,
+    "singleSolid": true,
+    "volumeMm3": 77400,
+    "edgeCount": 12,
+    "faceCount": 6,
+    "boundsMm": [
+      [
+        -30.0000001,
+        -20.0000001,
+        -15.000000100000001
+      ],
+      [
+        30.0000001,
+        23.0000001,
+        15.000000100000001
+      ]
+    ]
+  },
+  "featureMeaning": {
+    "assertion": "planar +Y face push obeys delta-volume = face-area x distance and moves the selected face by the requested distance",
+    "distanceMm": 3,
+    "expectedVolumeMm3": 77400,
+    "actualVolumeMm3": 77400,
+    "expectedTopMm": 23,
+    "actualTopMm": 23.0000001
+  },
+  "exactScope": "declared numeric runtime case",
+  "assertion": "native OCCT produced one non-empty exact solid and changed the host geometry"
+}

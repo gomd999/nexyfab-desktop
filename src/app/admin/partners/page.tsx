@@ -1,7 +1,10 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
+import { useAdminI18n } from '../AdminI18nProvider';
+import { createCommercialLocalizer } from '@/lib/i18n/commercialLocalizer';
 import { formatDateTime } from '@/lib/formatDate';
+import { formatMoney, formatNumber } from '@/lib/i18n/format';
 
 type PartnerStatus = 'pending' | 'approved' | 'rejected' | 'contacted';
 
@@ -15,7 +18,6 @@ async function sendAccessCode(partnerId: string, email: string, company: string)
   });
   return res.json();
 }
-
 interface Partner {
   id: string;
   date: string;
@@ -53,15 +55,17 @@ interface PartnerKPI {
 interface TrustAggRow {
   id: string;
   labelKo: string;
+  labelEn: string;
   displayKo: string;
+  displayEn: string;
   sampleSize: number;
 }
 
-const STATUS_LABELS: Record<PartnerStatus, string> = {
-  pending: '검토대기',
-  approved: '승인',
-  rejected: '거절',
-  contacted: '연락완료',
+const STATUS_LABELS: Record<PartnerStatus, { ko: string; en: string }> = {
+  pending: { ko: '검토 대기', en: 'Pending review' },
+  approved: { ko: '승인', en: 'Approved' },
+  rejected: { ko: '거절', en: 'Rejected' },
+  contacted: { ko: '연락 완료', en: 'Contacted' },
 };
 
 const STATUS_COLORS: Record<PartnerStatus, string> = {
@@ -84,6 +88,8 @@ function _StarDisplay({ value }: { value: number }) {
 }
 
 export default function PartnersPage() {
+  const { locale } = useAdminI18n();
+  const L = createCommercialLocalizer(locale);
   const [partners, setPartners] = useState<Partner[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<PartnerStatus | 'all'>('all');
@@ -207,10 +213,10 @@ export default function PartnersPage() {
     <div className="max-w-5xl mx-auto">
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">파트너 관리</h1>
-          <p className="text-gray-500 text-sm mt-1">파트너 등록 신청 검토 및 승인</p>
+          <h1 className="text-2xl font-bold text-gray-900">{L('파트너 관리', 'Partner management')}</h1>
+          <p className="text-gray-500 text-sm mt-1">{L('파트너 등록 신청 검토 및 승인', 'Review and approve partner registrations')}</p>
         </div>
-        <button onClick={fetchPartners} className="px-3 py-1.5 text-sm rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50">새로고침</button>
+        <button onClick={fetchPartners} className="px-3 py-1.5 text-sm rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50">{L('새로고침', 'Refresh')}</button>
       </div>
 
       {/* Stats */}
@@ -218,8 +224,8 @@ export default function PartnersPage() {
         {(['pending', 'approved', 'contacted', 'rejected'] as const).map(s => (
           <button key={s} onClick={() => setFilter(s === filter ? 'all' : s)}
             className={`p-3 rounded-xl border text-center transition-all ${filter === s ? 'ring-2 ring-blue-500' : 'hover:border-blue-300'} ${STATUS_COLORS[s]}`}>
-            <div className="text-xl font-bold">{counts[s]}</div>
-            <div className="text-xs mt-0.5">{STATUS_LABELS[s]}</div>
+            <div className="text-xl font-bold">{formatNumber(counts[s], locale)}</div>
+            <div className="text-xs mt-0.5">{L(STATUS_LABELS[s].ko, STATUS_LABELS[s].en)}</div>
           </button>
         ))}
       </div>
@@ -227,16 +233,16 @@ export default function PartnersPage() {
       {/* Search */}
       <div className="flex gap-2 mb-4">
         <input value={search} onChange={e => setSearch(e.target.value)}
-          placeholder="이름, 회사, 이메일, 분야 검색..."
+          placeholder={L('이름, 회사, 이메일, 분야 검색...', 'Search name, company, email, or field...')}
           className="flex-1 px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:border-blue-400" />
         <button onClick={() => { setFilter('all'); setSearch(''); }}
-          className="px-3 py-2 text-sm rounded-lg border border-gray-200 text-gray-500 hover:bg-gray-50">초기화</button>
+          className="px-3 py-2 text-sm rounded-lg border border-gray-200 text-gray-500 hover:bg-gray-50">{L('초기화', 'Reset')}</button>
       </div>
 
       {loading ? (
-        <div className="text-center py-16 text-gray-400">불러오는 중...</div>
+        <div className="text-center py-16 text-gray-400">{L('불러오는 중...', 'Loading...')}</div>
       ) : filtered.length === 0 ? (
-        <div className="text-center py-16 text-gray-400">파트너 신청이 없습니다</div>
+        <div className="text-center py-16 text-gray-400">{L('파트너 신청이 없습니다.', 'There are no partner applications.')}</div>
       ) : (
         <div className="space-y-4">
           {filtered.map(partner => {
@@ -256,7 +262,7 @@ export default function PartnersPage() {
                         {/* 평점 배지 */}
                         {review && review.count > 0 && (
                           <span className="flex items-center gap-1 text-xs bg-yellow-50 border border-yellow-200 text-yellow-700 px-2 py-0.5 rounded-full font-semibold">
-                            ★ {review.avgRating.toFixed(1)} / 리뷰 {review.count}건
+                            ★ {formatNumber(review.avgRating, locale, { maximumFractionDigits: 1 })} / {L(`리뷰 ${review.count}건`, `${formatNumber(review.count, locale)} reviews`)}
                           </span>
                         )}
                       </div>
@@ -265,10 +271,10 @@ export default function PartnersPage() {
                         {partner.email && <a href={`mailto:${partner.email}`} className="ml-2 text-blue-600 hover:underline">{partner.email}</a>}
                         {partner.phone && <span className="ml-2 text-gray-400">{partner.phone}</span>}
                       </div>
-                      <div className="text-xs text-gray-400 mt-1">신청일: {formatDateTime(partner.date)}</div>
+                      <div className="text-xs text-gray-400 mt-1">{L('신청일:', 'Applied:')} {formatDateTime(partner.date, locale)}</div>
                     </div>
                     <span className={`text-xs font-bold px-2.5 py-1 rounded-full border shrink-0 ${STATUS_COLORS[partner.partnerStatus]}`}>
-                      {STATUS_LABELS[partner.partnerStatus]}
+                      {L(STATUS_LABELS[partner.partnerStatus].ko, STATUS_LABELS[partner.partnerStatus].en)}
                     </span>
                   </div>
 
@@ -276,13 +282,13 @@ export default function PartnersPage() {
                   {kpi && (
                     <div className="flex flex-wrap gap-2 mt-3">
                       {[
-                        { label: '견적', value: kpi.quoteCount + '건', color: 'text-blue-700 bg-blue-50 border-blue-200' },
-                        { label: '응답', value: kpi.avgResponseHours != null ? kpi.avgResponseHours + 'h' : '—', color: 'text-gray-700 bg-gray-50 border-gray-200' },
-                        { label: '승률', value: kpi.winRate != null ? kpi.winRate + '%' : '—', color: kpi.winRate != null && kpi.winRate >= 50 ? 'text-green-700 bg-green-50 border-green-200' : 'text-orange-700 bg-orange-50 border-orange-200' },
-                        { label: '완료율', value: kpi.completionRate != null ? kpi.completionRate + '%' : '—', color: 'text-purple-700 bg-purple-50 border-purple-200' },
-                        { label: '진행', value: kpi.activeCount + '건', color: 'text-amber-700 bg-amber-50 border-amber-200' },
-                        { label: '완료', value: kpi.completedCount + '건', color: 'text-green-700 bg-green-50 border-green-200' },
-                        ...(kpi.avgDaysOverdue ? [{ label: '평균연체', value: '+' + kpi.avgDaysOverdue + '일', color: 'text-red-700 bg-red-50 border-red-200' }] : []),
+                        { label: L('견적', 'Quotes'), value: L(`${formatNumber(kpi.quoteCount, locale)}건`, `${formatNumber(kpi.quoteCount, locale)} records`), color: 'text-blue-700 bg-blue-50 border-blue-200' },
+                        { label: L('응답', 'Response'), value: kpi.avgResponseHours != null ? `${formatNumber(kpi.avgResponseHours, locale)}h` : '—', color: 'text-gray-700 bg-gray-50 border-gray-200' },
+                        { label: L('승률', 'Win rate'), value: kpi.winRate != null ? `${formatNumber(kpi.winRate, locale)}%` : '—', color: kpi.winRate != null && kpi.winRate >= 50 ? 'text-green-700 bg-green-50 border-green-200' : 'text-orange-700 bg-orange-50 border-orange-200' },
+                        { label: L('완료율', 'Completion rate'), value: kpi.completionRate != null ? `${formatNumber(kpi.completionRate, locale)}%` : '—', color: 'text-purple-700 bg-purple-50 border-purple-200' },
+                        { label: L('진행', 'Active'), value: formatNumber(kpi.activeCount, locale) ?? '0', color: 'text-amber-700 bg-amber-50 border-amber-200' },
+                        { label: L('완료', 'Completed'), value: formatNumber(kpi.completedCount, locale) ?? '0', color: 'text-green-700 bg-green-50 border-green-200' },
+                        ...(kpi.avgDaysOverdue ? [{ label: L('평균 연체', 'Avg overdue'), value: L(`+${formatNumber(kpi.avgDaysOverdue, locale)}일`, `+${formatNumber(kpi.avgDaysOverdue, locale)} days`), color: 'text-red-700 bg-red-50 border-red-200' }] : []),
                       ].map(c => (
                         <span key={c.label} className={`inline-flex items-center gap-1 text-[11px] font-semibold px-2 py-0.5 rounded-full border ${c.color}`}>
                           {c.label} {c.value}
@@ -290,7 +296,7 @@ export default function PartnersPage() {
                       ))}
                       {kpi.totalRevenue > 0 && (
                         <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full border text-teal-700 bg-teal-50 border-teal-200">
-                          매출 {kpi.totalRevenue >= 1_000_000 ? (kpi.totalRevenue / 1_000_000).toFixed(0) + '만' : kpi.totalRevenue.toLocaleString()}원
+                          {L('매출', 'Revenue')} {formatMoney(kpi.totalRevenue, locale, 'KRW', { notation: 'compact', maximumFractionDigits: 1 })}
                         </span>
                       )}
                     </div>
@@ -300,19 +306,19 @@ export default function PartnersPage() {
                   <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 mt-3">
                     {partner.match_field && (
                       <div className="bg-gray-50 rounded-lg px-3 py-2">
-                        <div className="text-xs text-gray-400">매칭분야</div>
+                        <div className="text-xs text-gray-400">{L('매칭 분야', 'Matching field')}</div>
                         <div className="text-sm font-medium text-gray-800 truncate">{partner.match_field}</div>
                       </div>
                     )}
                     {partner.ref_count && (
                       <div className="bg-gray-50 rounded-lg px-3 py-2">
-                        <div className="text-xs text-gray-400">레퍼런스</div>
-                        <div className="text-sm font-medium text-gray-800">{partner.ref_count}건</div>
+                        <div className="text-xs text-gray-400">{L('레퍼런스', 'References')}</div>
+                        <div className="text-sm font-medium text-gray-800">{L(`${partner.ref_count}건`, String(partner.ref_count))}</div>
                       </div>
                     )}
                     {partner.amount && (
                       <div className="bg-gray-50 rounded-lg px-3 py-2">
-                        <div className="text-xs text-gray-400">누적금액</div>
+                        <div className="text-xs text-gray-400">{L('누적 금액', 'Cumulative amount')}</div>
                         <div className="text-sm font-medium text-gray-800">{partner.amount}</div>
                       </div>
                     )}
@@ -322,7 +328,7 @@ export default function PartnersPage() {
                   {partner.tech_exp && (
                     <button onClick={() => setExpanded(expanded === partner.id ? null : partner.id)}
                       className="flex items-center gap-1 mt-3 text-xs text-blue-600 hover:underline">
-                      {expanded === partner.id ? '▲ 기술/경험 접기' : '▼ 기술/경험 보기'}
+                      {expanded === partner.id ? L('▲ 기술/경험 접기', '▲ Hide capabilities') : L('▼ 기술/경험 보기', '▼ View capabilities')}
                     </button>
                   )}
                   {expanded === partner.id && partner.tech_exp && (
@@ -339,7 +345,7 @@ export default function PartnersPage() {
                             ? STATUS_COLORS[s] + ' border'
                             : 'border border-gray-200 text-gray-600 hover:bg-gray-50'
                         }`}>
-                        {STATUS_LABELS[s]}
+                        {L(STATUS_LABELS[s].ko, STATUS_LABELS[s].en)}
                       </button>
                     ))}
                     {/* 액세스 코드 발송 — 승인된 파트너에게만 */}
@@ -350,7 +356,7 @@ export default function PartnersPage() {
                           onClick={() => void openTrustModal(partner.email!, partner.company || partner.name || partner.email!)}
                           className="px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors border border-indigo-200 bg-indigo-50 text-indigo-800 hover:bg-indigo-100"
                         >
-                          차원별 신뢰 (7-5)
+                          {L('차원별 신뢰 (7-5)', 'Trust by dimension (7-5)')}
                         </button>
                         <button
                           onClick={async () => {
@@ -360,12 +366,12 @@ export default function PartnersPage() {
                               const result = await sendAccessCode(partner.id, partner.email!, partner.company || partner.name || '');
                               if (result.ok) {
                                 const msg = result.devCode
-                                  ? `코드를 발송했습니다. [개발] 코드: ${result.devCode}`
-                                  : '코드를 발송했습니다.';
+                                  ? L(`코드를 발송했습니다. [개발] 코드: ${result.devCode}`, `Code sent. [Development] Code: ${result.devCode}`)
+                                  : L('코드를 발송했습니다.', 'Code sent.');
                                 setCodeMsg(prev => ({ ...prev, [partner.id]: msg }));
                               }
                             } catch {
-                              setCodeMsg(prev => ({ ...prev, [partner.id]: '발송에 실패했습니다.' }));
+                              setCodeMsg(prev => ({ ...prev, [partner.id]: L('발송에 실패했습니다.', 'Failed to send the code.') }));
                             } finally {
                               setSendingCode(null);
                             }
@@ -373,7 +379,7 @@ export default function PartnersPage() {
                           disabled={sendingCode === partner.id}
                           className="px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors border border-blue-300 bg-blue-50 text-blue-700 hover:bg-blue-100 disabled:opacity-50"
                         >
-                          {sendingCode === partner.id ? '발송 중...' : '액세스 코드 발송'}
+                          {sendingCode === partner.id ? L('발송 중...', 'Sending...') : L('액세스 코드 발송', 'Send access code')}
                         </button>
                       </>
                     )}
@@ -385,11 +391,11 @@ export default function PartnersPage() {
                   {/* Admin note */}
                   <div className="mt-3 flex gap-2">
                     <input value={notes[partner.id] || ''} onChange={e => setNotes(n => ({ ...n, [partner.id]: e.target.value }))}
-                      placeholder="관리자 메모..."
+                      placeholder={L('관리자 메모...', 'Admin note...')}
                       className="flex-1 px-3 py-1.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:border-blue-400" />
                     <button onClick={() => saveNote(partner.id)} disabled={saving === partner.id + '_note'}
                       className="px-3 py-1.5 text-xs font-semibold rounded-lg bg-gray-800 hover:bg-gray-700 text-white disabled:opacity-50">
-                      저장
+                      {L('저장', 'Save')}
                     </button>
                   </div>
                 </div>
@@ -415,7 +421,7 @@ export default function PartnersPage() {
           >
             <div className="flex items-start justify-between gap-2 mb-3">
               <div>
-                <h2 id="trust-modal-title" className="text-base font-bold text-gray-900">차원별 신뢰 (Phase 7-5)</h2>
+                <h2 id="trust-modal-title" className="text-base font-bold text-gray-900">{L('차원별 신뢰 (Phase 7-5)', 'Trust by dimension (Phase 7-5)')}</h2>
                 <p className="text-xs text-gray-500 mt-0.5 truncate">{trustModal.label}</p>
                 <p className="text-[11px] text-gray-400 mt-0.5 font-mono truncate">{trustModal.email}</p>
               </div>
@@ -424,23 +430,23 @@ export default function PartnersPage() {
                 onClick={() => { setTrustModal(null); setTrustRows(null); }}
                 className="shrink-0 px-2 py-1 text-xs font-semibold rounded-lg border border-gray-200 text-gray-500 hover:bg-gray-50"
               >
-                닫기
+                {L('닫기', 'Close')}
               </button>
             </div>
             <p className="text-[11px] text-indigo-800 bg-indigo-50 border border-indigo-100 rounded-lg px-2 py-1.5 mb-3">
-              단일 신용점수 없음 — 축별로만 표시합니다.
+              {L('단일 신용점수 없음 — 축별로만 표시합니다.', 'No single credit score — each dimension is shown separately.')}
             </p>
             {trustLoading || trustRows === null ? (
-              <p className="text-sm text-gray-400 py-6 text-center">불러오는 중...</p>
+              <p className="text-sm text-gray-400 py-6 text-center">{L('불러오는 중...', 'Loading...')}</p>
             ) : trustRows.length === 0 ? (
-              <p className="text-sm text-gray-400 py-6 text-center">집계 데이터가 없습니다.</p>
+              <p className="text-sm text-gray-400 py-6 text-center">{L('집계 데이터가 없습니다.', 'No aggregate data is available.')}</p>
             ) : (
               <ul className="space-y-2 max-h-[60vh] overflow-y-auto">
                 {trustRows.map(row => (
                   <li key={row.id} className="border border-gray-100 rounded-xl px-3 py-2">
-                    <p className="text-xs font-bold text-gray-700">{row.labelKo}</p>
-                    <p className="text-sm text-gray-900 mt-0.5">{row.displayKo}</p>
-                    <p className="text-[10px] text-gray-400 mt-1">샘플 {row.sampleSize}건</p>
+                    <p className="text-xs font-bold text-gray-700">{L(row.labelKo, row.labelEn)}</p>
+                    <p className="text-sm text-gray-900 mt-0.5">{L(row.displayKo, row.displayEn)}</p>
+                    <p className="text-[10px] text-gray-400 mt-1">{L(`샘플 ${formatNumber(row.sampleSize, locale)}건`, `${formatNumber(row.sampleSize, locale)} samples`)}</p>
                   </li>
                 ))}
               </ul>

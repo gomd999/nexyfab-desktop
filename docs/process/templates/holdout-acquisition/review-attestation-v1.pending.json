@@ -1,0 +1,18 @@
+{
+  "schema": "nexyfab.holdout-review-attestation.v1",
+  "kind": "",
+  "slotId": "",
+  "family": "",
+  "sourceHash": "",
+  "subjectHash": "",
+  "decision": "pending",
+  "reviewerId": "",
+  "reviewedAt": "",
+  "signatureVerification": {
+    "status": "pending",
+    "algorithm": "",
+    "keyId": "",
+    "verifiedAt": "",
+    "receiptHash": ""
+  }
+}

@@ -22,6 +22,7 @@
  *   { ok: false, code: 'BAD_REQUEST' | 'EMPTY_SKETCH' | 'PIPELINE_ERROR' | 'RENDER_ERROR' | 'TOO_LARGE' | ..., message: string }
  */
 import { NextRequest, NextResponse } from 'next/server';
+import { boundedJsonError, readBoundedJson } from '@/lib/boundedJsonBody';
 import { chamferFromSketch } from '@/lib/sketch/chamferFromSketch';
 import type { ChamferEdgeSelection } from '@/lib/cad/chamferProfile';
 import { renderScadToPng } from '@/lib/openscad-render/renderPng';
@@ -47,6 +48,7 @@ interface ChamferRenderBody {
 const MAX_POINTS = 5000;
 const MAX_LINES = 5000;
 const MAX_DEPTH = 10_000;
+const MAX_BODY_BYTES = 4 * 1024 * 1024;
 const ALLOWED_EDGES: readonly ChamferEdgeSelection[] = ['all', 'top', 'bottom', 'vertical'];
 
 function isFiniteNum(n: unknown): n is number {
@@ -56,8 +58,9 @@ function isFiniteNum(n: unknown): n is number {
 export async function POST(req: NextRequest): Promise<NextResponse> {
   let body: ChamferRenderBody;
   try {
-    body = (await req.json()) as ChamferRenderBody;
-  } catch {
+    body = await readBoundedJson<ChamferRenderBody>(req, MAX_BODY_BYTES);
+  } catch (error) {
+    if (boundedJsonError(error)?.code === 'PAYLOAD_TOO_LARGE') return NextResponse.json({ ok: false, code: 'TOO_LARGE', message: `Body exceeds ${MAX_BODY_BYTES} bytes` }, { status: 413 });
     return NextResponse.json(
       { ok: false, code: 'BAD_REQUEST', message: 'Body must be valid JSON' },
       { status: 400 },

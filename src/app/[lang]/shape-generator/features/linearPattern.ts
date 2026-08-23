@@ -39,12 +39,6 @@ function applyFeatureModeLinear(
   ctx?: FeatureApplyContext,
 ): THREE.BufferGeometry {
   const { axis, count, spacing } = sanitizeLinear(params);
-  if (axis === 1) {
-    throw new Error(
-      'Feature-mode linear pattern rejected: cut/hole are positioned in the XZ plane and advance along Y — '
-      + 'a Y-axis pattern cannot re-place them; use the X or Z axis, or body mode (patternTarget=0)',
-    );
-  }
   const seeds = readPatternSeeds(geometry);
   if (seeds.length === 0) {
     throw new Error(
@@ -58,7 +52,17 @@ function applyFeatureModeLinear(
     Math.max(0, Math.round(Number.isFinite(params.seedBack) ? params.seedBack : 0)),
   );
   const seed = seeds[seeds.length - 1 - back]!;
+  const holeAxis = seed.type === 'hole'
+    ? Math.min(2, Math.max(0, Math.round(Number.isFinite(seed.params.axis) ? seed.params.axis : 1)))
+    : 1;
+  if (axis === holeAxis) {
+    throw new Error(
+      'Feature-mode linear pattern rejected: pattern direction is the hole drill axis and cannot create distinct '
+      + 'instances; Y-axis pattern cannot re-place a legacy Y-axis hole; choose an in-plane direction',
+    );
+  }
   const baseX = Number.isFinite(seed.params.posX) ? seed.params.posX : 0;
+  const baseY = Number.isFinite(seed.params.posY) ? seed.params.posY : 0;
   const baseZ = Number.isFinite(seed.params.posZ) ? seed.params.posZ : 0;
 
   // Instance 0 is the seed itself (already on the body); re-apply 1..count-1.
@@ -66,7 +70,8 @@ function applyFeatureModeLinear(
   for (let i = 1; i < count; i++) {
     const px = baseX + (axis === 0 ? i * spacing : 0);
     const pz = baseZ + (axis === 2 ? i * spacing : 0);
-    geo = reapplySeedAt(geo, seed, px, pz, ctx?.featureId);
+    const py = baseY + (axis === 1 ? i * spacing : 0);
+    geo = reapplySeedAt(geo, seed, px, pz, ctx?.featureId, py);
   }
   // The instance re-applications appended themselves to the seed log; restore
   // the incoming log so a later pattern's seedBack indexing is unaffected.

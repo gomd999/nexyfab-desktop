@@ -13,9 +13,14 @@
  * matches NexyFab's deploy topology.
  */
 
+// Security: this registry is process-local; replica/restart/load-balancing
+// invalidates handles. Long-running Railway alone is not production
+// authority, so this legacy path stays capability-gated until durable
+// artifact hydration replaces it.
 import { NextRequest, NextResponse } from 'next/server';
 import { getShape } from '../../../../[lang]/shape-generator/features/occtEngine';
 import { getAuthUser } from '@/lib/auth-middleware';
+import { verifyBrepHandleAccessToken } from '@/lib/ai/scad-agent/brepHandleAccessToken';
 
 interface MeshShape {
   mesh?: (opts?: { tolerance?: number; angularTolerance?: number }) => {
@@ -27,24 +32,32 @@ interface MeshShape {
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
+const NO_STORE = { 'Cache-Control': 'private, no-store' } as const;
+function json(body: unknown, status = 200) {
+  return NextResponse.json(body, { status, headers: NO_STORE });
+}
 
 export async function GET(req: Request) {
   // P2 — auth required (mesh data is the user's design output)
   const auth = await getAuthUser(req as unknown as NextRequest);
-  if (!auth) return NextResponse.json({ ok: false, error: 'Unauthorized' }, { status: 401 });
+  if (!auth) return json({ ok: false, error: 'Unauthorized' }, 401);
 
   const url = new URL(req.url);
   const handle = url.searchParams.get('handle');
   if (!handle) {
-    return NextResponse.json({ ok: false, error: 'handle query param required' }, { status: 400 });
+    return json({ ok: false, error: 'handle query param required' }, 400);
+  }
+  const accessToken = req.headers.get('x-nexyfab-brep-capability');
+  if (!verifyBrepHandleAccessToken({ token: accessToken, userId: auth.userId, handle })) {
+    return json({ ok: false, status: 'HOLD', releaseReady: false, error: 'short-lived BRep handle capability required' }, 403);
   }
 
   const shape = getShape(handle) as MeshShape | null;
   if (!shape) {
-    return NextResponse.json({ ok: false, error: `unknown handle ${handle}` }, { status: 404 });
+    return json({ ok: false, error: `unknown handle ${handle}` }, 404);
   }
   if (typeof shape.mesh !== 'function') {
-    return NextResponse.json({ ok: false, error: `handle ${handle} is not tessellatable` }, { status: 422 });
+    return json({ ok: false, error: `handle ${handle} is not tessellatable` }, 422);
   }
 
   try {
@@ -54,7 +67,7 @@ export async function GET(req: Request) {
     if (typeof shape.boundingBox === 'function') {
       try { bbox = shape.boundingBox(); } catch { bbox = null; }
     }
-    return NextResponse.json({
+    return json({
       ok: true,
       handle,
       vertices: m.vertices,
@@ -62,9 +75,9 @@ export async function GET(req: Request) {
       bbox,
     });
   } catch (e) {
-    return NextResponse.json(
+    return json(
       { ok: false, error: `tessellation failed: ${(e as Error).message}` },
-      { status: 500 },
+      500,
     );
   }
 }

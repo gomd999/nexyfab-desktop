@@ -6,9 +6,11 @@ import { resolveProjectAccess } from '@/lib/nfProjectAccess';
 import { rateLimitAsync, rateLimitHeaders } from '@/lib/rate-limit';
 import { enqueueFeaJob } from '@/lib/fea-jobs/redisFeaJobs';
 import { publicFeaJob } from '@/lib/fea-jobs/contracts';
+import { boundedJsonError, readBoundedJson } from '@/lib/boundedJsonBody';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
+const MAX_BODY_BYTES = 2 * 1024 * 1024;
 
 function statusForCode(code: string): number {
   if (code === 'FEA_PENDING_LIMIT' || code === 'FEA_IDEMPOTENCY_PAYLOAD_CONFLICT') return 409;
@@ -31,7 +33,12 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       { status: 429, headers: rateLimitHeaders(limited, 10) },
     );
   }
-  const body = await req.json().catch(() => null) as (Record<string, unknown> & { projectId?: unknown }) | null;
+  type FeaRequestBody = Record<string, unknown> & { projectId?: unknown };
+  let body: FeaRequestBody | null = null;
+  try { body = await readBoundedJson<FeaRequestBody>(req, MAX_BODY_BYTES); }
+  catch (error) {
+    if (boundedJsonError(error)?.code === 'PAYLOAD_TOO_LARGE') return NextResponse.json({ error: 'FEA request too large' }, { status: 413 });
+  }
   if (!body) return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 });
 
   let projectId: string | undefined;
@@ -41,7 +48,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       return NextResponse.json({ error: 'Invalid projectId' }, { status: 400 });
     }
     projectId = body.projectId;
-    const access = await resolveProjectAccess(getDbAdapter(), projectId, user.userId);
+    const access = await resolveProjectAccess(getDbAdapter(), projectId, user);
     // Do not disclose whether another tenant's project exists.
     if (!access) return NextResponse.json({ error: 'Project not found' }, { status: 404 });
     if (!access.canEdit) return NextResponse.json({ error: 'Project edit permission required' }, { status: 403 });

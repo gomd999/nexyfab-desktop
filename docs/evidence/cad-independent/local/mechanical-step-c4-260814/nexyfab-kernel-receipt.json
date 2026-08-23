@@ -1,0 +1,83 @@
+{
+  "schema": "nexyfab.mechanical-local-step-kernel-readiness.v1",
+  "executedAt": "2026-08-22T07:15:23.168Z",
+  "status": "PASS_LOCAL",
+  "scope": "NexyFab OCCT open-export-reopen and three-view HLR for the bounded two-box AP242 assembly",
+  "commerciallyVerified": false,
+  "commercialStatus": "NOT_RUN",
+  "productStructurePreserved": "NOT_RUN",
+  "productStructureCapability": {
+    "status": "HOLD",
+    "code": "XCAF_STEP_READER_UNAVAILABLE",
+    "reason": "The local OCCT binding exposes STEPControl_Reader/Writer and STEPCAFControl_Writer, but not STEPCAFControl_Reader; product/occurrence identity cannot be independently reopened and verified.",
+    "required": "STEPCAFControl_Reader plus XCAFDoc_ShapeTool traversal bound to the reopened document"
+  },
+  "releaseEligible": false,
+  "sourceBinding": {
+    "path": "source.step",
+    "sha256": "c5cec6b3a1f345a61ad076852c0508bd8c296b552ae62841299da91f36fde99b",
+    "bytes": 15351
+  },
+  "returnedBinding": {
+    "path": "nexyfab-kernel-returned.step",
+    "sha256": "7aae6b01843714e2eb074ae71497489a987a7b6455b03fb82841a21132659bd7",
+    "bytes": 32626
+  },
+  "sourceBindings": [
+    {
+      "path": "scripts/verify-mechanical-local-step-kernel.ts",
+      "sha256": "1866426f4199e520ee6692557cd6cc3befb2979c5a9fc131adf1dc019dd5a924",
+      "bytes": 10760
+    },
+    {
+      "path": "src/app/[lang]/shape-generator/features/occtEngine.ts",
+      "sha256": "32ff70b38fe4634f1a1058319fbe0a782057df0aee95975ac1c6bdac41eb3084",
+      "bytes": 133719
+    },
+    {
+      "path": "src/app/[lang]/shape-generator/io/assemblyStepHierarchy.ts",
+      "sha256": "aa46183122605dafed3762ba3958d87dc77e99c2c1cf620d9394970b64101272",
+      "bytes": 29730
+    }
+  ],
+  "measurements": {
+    "first": {
+      "bounds": [
+        0,
+        0,
+        0,
+        100,
+        60,
+        20
+      ],
+      "solidCount": 2,
+      "volumeMm3": 57600,
+      "views": [
+        "front",
+        "top",
+        "right"
+      ]
+    },
+    "second": {
+      "bounds": [
+        0,
+        0,
+        0,
+        100,
+        60,
+        20
+      ],
+      "solidCount": 2,
+      "volumeMm3": 57600,
+      "views": [
+        "front",
+        "top",
+        "right"
+      ]
+    }
+  },
+  "blockers": [
+    "external_operator_signature_not_run",
+    "product_structure_xcaf_reopen_hold"
+  ]
+}

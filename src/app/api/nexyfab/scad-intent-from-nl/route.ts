@@ -22,7 +22,8 @@ import {
   retrieveReferenceParts,
   formatReferencePartsBlock,
 } from '@/lib/ai/reference/retrieveReferenceParts';
-import { resolveCodegenModel } from '@/lib/ai/codegenModels';
+import { resolveRuntimeCodegenModel } from '@/lib/ai/codegenModelRuntime';
+import { appendLunaDesignContext, runLunaDesignPreflight } from '@/lib/ai/lunaDesignSidecars';
 import { visionCompletion, VisionNotConfiguredError, VisionProviderError } from '@/lib/ai/vision';
 import { getPromptVariant } from '@/lib/ai/prompts';
 import { recordPromptCall, classifyAiError } from '@/lib/ai/telemetry';
@@ -40,8 +41,12 @@ import { detectShapeFromText } from '@/lib/openscad-render/shapeAliases';
 import { extractDimensions, reconcileIntent } from '@/lib/ai/dimensionExtractor';
 import { getCachedIntent, setCachedIntent } from '@/lib/ai/intentCache';
 import { captureServerError } from '@/lib/error-capture';
+import { localizedApiMessage, resolveServerLocale } from '@/lib/i18n/serverLocale';
+import { readBoundedJson } from '@/lib/boundedJsonBody';
 
 export const dynamic = 'force-dynamic';
+// Allows a 5 MiB-class reference image after base64 expansion plus prompt/context fields.
+const MAX_JSON_BODY_BYTES = 8 * 1024 * 1024;
 
 // Single-sourced from intentToScad so the runtime whitelist can never reject a
 // shape the converter actually supports (nor accept one it doesn't).
@@ -130,17 +135,26 @@ function meterAiUsage(req: NextRequest): void {
 }
 
 export async function POST(req: NextRequest) {
+  let body: Record<string, unknown>;
+  try {
+    const parsed = await readBoundedJson(req, MAX_JSON_BODY_BYTES);
+    body = parsed && typeof parsed === 'object' ? parsed as Record<string, unknown> : {};
+  } catch {
+    const locale = resolveServerLocale(req);
+    return NextResponse.json({ error: localizedApiMessage(locale, 'badRequest'), code: 'BAD_REQUEST' }, { status: 400 });
+  }
+  const locale = resolveServerLocale(req, body.lang);
+  const outputLanguage = locale.languageName;
   const planCheck = await checkPlan(req, 'free');
   const userPlan = planCheck.ok ? planCheck.plan : 'free';
 
-  const body = await req.json().catch(() => ({}));
   const prompt = typeof body.prompt === 'string' ? body.prompt.trim() : '';
   const hasImageInput = typeof body.image === 'string' && body.image.length > 0;
   if (!prompt && !hasImageInput) {
-    return NextResponse.json({ error: 'prompt or image is required' }, { status: 400 });
+    return NextResponse.json({ error: localizedApiMessage(locale, 'promptRequired'), code: 'PROMPT_REQUIRED' }, { status: 400 });
   }
   if (prompt.length > 4000) {
-    return NextResponse.json({ error: 'prompt too long (max 4000 chars)' }, { status: 413 });
+    return NextResponse.json({ error: localizedApiMessage(locale, 'promptTooLong'), code: 'PROMPT_TOO_LONG' }, { status: 413 });
   }
 
   // Refine mode: the client passes the previously-generated intent so the
@@ -158,6 +172,9 @@ export async function POST(req: NextRequest) {
   const imageB64 = typeof body.image === 'string' && body.image.length > 0
     ? body.image.replace(/^data:image\/\w+;base64,/, '')
     : null;
+  const imageMime = typeof body.image === 'string'
+    ? (body.image.match(/^data:(image\/(?:png|jpeg|webp));base64,/)?.[1] as 'image/png' | 'image/jpeg' | 'image/webp' | undefined)
+    : undefined;
   const hasImage = !!imageB64;
 
   // Free-form mode (CADAM-style): the model writes a COMPLETE OpenSCAD program
@@ -167,7 +184,6 @@ export async function POST(req: NextRequest) {
   const freeform = body.freeform === true || hasImage;
   // User-selected codegen model (Studio model picker) → preferred provider +
   // model, validated against the allowlist (never trust raw provider/model).
-  const codegen = resolveCodegenModel(typeof body.modelId === 'string' ? body.modelId : undefined);
   // Free-form chat iteration: the prior OpenSCAD program to modify in place
   // ("make it taller", "add a hole") instead of starting fresh.
   const previousScad = typeof body.previousScad === 'string' && body.previousScad.trim().length > 0
@@ -177,6 +193,18 @@ export async function POST(req: NextRequest) {
   // generated design. This is not a NEW design, so it must not burn the guest
   // freebie (it carries previousScad and is rate-limited by the general gate).
   const isRepair = body.repair === true && !!previousScad;
+  const requestedModelId = isRepair
+    ? (userPlan === 'free' ? 'gpt-luna' : 'deepseek-pro')
+    : (typeof body.modelId === 'string' ? body.modelId : undefined);
+  const codegen = await resolveRuntimeCodegenModel(requestedModelId, userPlan);
+  if (!codegen.ok) {
+    return NextResponse.json({
+      error: localizedApiMessage(locale, codegen.code === 'MODEL_PLAN_LOCKED' ? 'planUpgrade' : 'unknownModel'),
+      code: codegen.code,
+      requestedModel: codegen.requestedId,
+      ...(codegen.requiredTier ? { requiredTier: codegen.requiredTier } : {}),
+    }, { status: codegen.code === 'MODEL_PLAN_LOCKED' ? 403 : 400 });
+  }
 
   // Cache lookup — same prompt → same intent → same SCAD. A hit avoids the
   // paid AI round-trip AND does NOT consume a monthly quota slot, which is
@@ -189,6 +217,15 @@ export async function POST(req: NextRequest) {
       warnings: cached.warnings,
       summary: cached.summary,
       cached: true,
+      aiExecution: {
+        selectedModelId: codegen.catalog.id,
+        selectedModelLabel: codegen.catalog.label,
+        textModel: null,
+        visionModel: null,
+        visionAutoRouted: false,
+        resultCacheHit: true,
+        cacheProfile: codegen.cacheProfile,
+      },
     });
   }
 
@@ -197,11 +234,11 @@ export async function POST(req: NextRequest) {
   // "N free generations left this month" nudge before the hard cap.
   let usage: { used: number; limit: number; remaining: number } | undefined;
   if (planCheck.ok) {
-    const budget = await checkUserBudget(planCheck.userId);
+    const budget = await checkUserBudget(planCheck.userId, planCheck.orgId);
     if (!budget.ok) {
       return NextResponse.json(
         {
-          error: `Daily AI spend limit reached ($${budget.limitUsd}). Try again later.`,
+          error: localizedApiMessage(locale, 'costBudget', { limit: budget.limitUsd }),
           code: 'COST_BUDGET',
           usedCents: budget.usedCents,
           limitUsd: budget.limitUsd,
@@ -210,16 +247,18 @@ export async function POST(req: NextRequest) {
         { status: 402 },
       );
     }
-    const slot = await consumeMonthlyMetricSlot(planCheck.userId, userPlan, 'shape_chat');
-    if (!slot.ok) {
-      return NextResponse.json(
-        { error: `Free plan limit reached (${slot.limit}/month).`, code: 'MONTHLY_LIMIT', limit: slot.limit },
-        { status: 429 },
-      );
-    }
-    // limit === -1 means unlimited (paid plans) — leave usage undefined there.
-    if (slot.limit > 0) {
-      usage = { used: slot.used, limit: slot.limit, remaining: Math.max(0, slot.limit - slot.used) };
+    if (!isRepair) {
+      const slot = await consumeMonthlyMetricSlot(planCheck.userId, userPlan, 'shape_chat', undefined, planCheck.orgId);
+      if (!slot.ok) {
+        return NextResponse.json(
+          { error: localizedApiMessage(locale, 'planLimit', { limit: `${slot.limit}/month` }), code: 'MONTHLY_LIMIT', limit: slot.limit },
+          { status: 429 },
+        );
+      }
+      // limit === -1 means unlimited (paid plans) — leave usage undefined there.
+      if (slot.limit > 0) {
+        usage = { used: slot.used, limit: slot.limit, remaining: Math.max(0, slot.limit - slot.used) };
+      }
     }
   }
 
@@ -256,8 +295,8 @@ export async function POST(req: NextRequest) {
       ? `${prompt}\n\n[The shape is "${detectedShape}". Set shapeId to exactly "${detectedShape}" and extract that shape's params from the request.]`
       : prompt);
   const messages: ChatMessage[] = [
-    { role: 'system', content: promptDef.template },
-    { role: 'user', content: userContent },
+    { role: 'system', content: `${promptDef.template}\n\n[OUTPUT LANGUAGE CONTRACT]\nWrite every user-facing natural-language field (especially summary and warnings) in ${outputLanguage}. Keep JSON keys, shape IDs, units, and OpenSCAD code unchanged.` },
+    { role: 'user', content: `[output-language:${outputLanguage}]\n${userContent}` },
   ];
 
   // Guest funnel: anonymous users get 1 free design/day. After that they must
@@ -268,19 +307,45 @@ export async function POST(req: NextRequest) {
     const guestRl = rateLimit(`scad-gen-guest:${guestIp}`, 3, 24 * 3_600_000);
     if (!guestRl.allowed) {
       return NextResponse.json(
-        { error: 'Free design used — log in (free) to keep designing.', code: 'GUEST_LIMIT' },
+        { error: localizedApiMessage(locale, 'guestLimit'), code: 'GUEST_LIMIT' },
         { status: 401 },
       );
     }
+  }
+
+  const lunaPreflight = await runLunaDesignPreflight({
+    prompt,
+    selectedProvider: codegen.provider,
+    selectedModel: codegen.model,
+    userId: planCheck.ok ? planCheck.userId : undefined,
+    signal: req.signal,
+  });
+  if (lunaPreflight.context) {
+    messages[1] = { ...messages[1]!, content: appendLunaDesignContext(messages[1]!.content, lunaPreflight) };
   }
 
   let raw = '';
   /** ★260731 — 절단 신호를 파싱 실패 시점까지 들고 간다(대응이 정반대이므로). */
   let truncated: boolean | undefined;
   let finishReason: string | undefined;
-  const used: { provider?: string; model?: string } = {};
+  const used: {
+    provider?: string;
+    model?: string;
+    cachedPromptTokens?: number;
+    cacheWriteTokens?: number;
+    visionModel?: string;
+    visionAutoRouted?: boolean;
+  } = {};
   try {
-    let meta: { provider: string; model: string; latencyMs: number; promptTokens?: number; completionTokens?: number };
+    let meta: {
+      provider: string;
+      model: string;
+      latencyMs: number;
+      promptTokens?: number;
+      completionTokens?: number;
+      cachedPromptTokens?: number;
+      cacheWriteTokens?: number;
+    };
     if (hasImage && imageB64) {
       // Image-to-3D HYBRID: the vision model PERCEIVES the object (describe
       // only), then DeepSeek writes the parametric OpenSCAD from that
@@ -296,7 +361,8 @@ export async function POST(req: NextRequest) {
 ${prompt ? 'User note: ' + prompt : ''}`;
       const v = await visionCompletion({
         prompt: describePrompt,
-        images: [{ bytes }],
+        images: [{ bytes, mimeType: imageMime }],
+        selectedModel: { provider: codegen.provider, model: codegen.model },
         maxTokens: 700,
         timeoutMs: 40_000,
       });
@@ -309,7 +375,8 @@ ${prompt ? 'User note: ' + prompt : ''}`;
         // Free-form geometry quality is much better from a strong spatial model.
         // Route to the user-picked model (default Gemini), with the normal chain
         // as fallback when that provider isn't configured/healthy.
-        preferProvider: codegen.preferProvider,
+        provider: codegen.provider,
+        allowProviderFallback: true,
         model: codegen.model,
         maxTokens: 8000,
         temperature: promptDef.defaults.temperature,
@@ -317,19 +384,23 @@ ${prompt ? 'User note: ' + prompt : ''}`;
         task: promptDef.id,
       });
       raw = codeResult.text;
+      used.visionModel = v.model;
+      used.visionAutoRouted = v.visionAutoRouted ?? false;
       meta = {
         provider: `${v.provider}+${codeResult.provider}`,
         model: `${v.model}+${codeResult.model}`,
         latencyMs: v.latencyMs + codeResult.latencyMs,
         promptTokens: (v.promptTokens ?? 0) + (codeResult.promptTokens ?? 0),
         completionTokens: (v.completionTokens ?? 0) + (codeResult.completionTokens ?? 0),
+        cachedPromptTokens: codeResult.cachedPromptTokens,
+        cacheWriteTokens: codeResult.cacheWriteTokens,
       };
     } else {
       const result = await chatCompletion({
         messages,
         // Free-form geometry: route to the user-picked model (default Gemini),
         // fall back via the normal chain. Whitelist path keeps the cheap chat model.
-        ...(freeform ? { preferProvider: codegen.preferProvider, model: codegen.model } : {}),
+        ...(freeform ? { provider: codegen.provider, allowProviderFallback: true, model: codegen.model } : {}),
         maxTokens: freeform ? 8000 : promptDef.defaults.maxTokens,
         temperature: promptDef.defaults.temperature,
         timeoutMs: freeform ? 180_000 : promptDef.defaults.timeoutMs,
@@ -338,10 +409,19 @@ ${prompt ? 'User note: ' + prompt : ''}`;
       raw = result.text;
       truncated = result.truncated;
       finishReason = result.finishReason;
-      meta = { provider: result.provider, model: result.model, latencyMs: result.latencyMs, promptTokens: result.promptTokens, completionTokens: result.completionTokens };
+      meta = {
+        provider: result.provider,
+        model: result.model,
+        latencyMs: result.latencyMs,
+        promptTokens: result.promptTokens,
+        completionTokens: result.completionTokens,
+        cachedPromptTokens: result.cachedPromptTokens,
+        cacheWriteTokens: result.cacheWriteTokens,
+      };
     }
     recordPromptCall({
       userId: planCheck.ok ? planCheck.userId : undefined,
+      orgId: planCheck.ok ? planCheck.orgId : null,
       promptId: promptDef.id,
       promptVersion: promptDef.version,
       provider: meta.provider,
@@ -349,24 +429,29 @@ ${prompt ? 'User note: ' + prompt : ''}`;
       latencyMs: meta.latencyMs,
       promptTokens: meta.promptTokens,
       completionTokens: meta.completionTokens,
+      cachedPromptTokens: meta.cachedPromptTokens,
+      cacheWriteTokens: meta.cacheWriteTokens,
       success: true,
     });
     used.provider = meta.provider;
     used.model = meta.model;
+    used.cachedPromptTokens = meta.cachedPromptTokens;
+    used.cacheWriteTokens = meta.cacheWriteTokens;
   } catch (e) {
     if (e instanceof VisionNotConfiguredError) {
-      return NextResponse.json({ error: 'No vision provider configured for image input' }, { status: 500 });
+      return NextResponse.json({ error: localizedApiMessage(locale, 'visionNotConfigured'), code: 'VISION_NOT_CONFIGURED' }, { status: 500 });
     }
     if (e instanceof VisionProviderError) {
       console.error('scad-intent-from-nl vision error:', e.message);
       const busy = e.status === 429 || e.status === 503 || /high demand|overload|unavailable|try again|temporarily|rate.?limit/i.test(e.message);
       return NextResponse.json(
-        { error: busy ? 'Image analysis is busy right now — please try again in a moment.' : 'Image understanding failed', code: busy ? 'VISION_BUSY' : 'VISION_FAILED' },
+        { error: localizedApiMessage(locale, busy ? 'visionBusy' : 'visionFailed'), code: busy ? 'VISION_BUSY' : 'VISION_FAILED' },
         { status: busy ? 503 : 502 },
       );
     }
     recordPromptCall({
       userId: planCheck.ok ? planCheck.userId : undefined,
+      orgId: planCheck.ok ? planCheck.orgId : null,
       promptId: promptDef.id,
       promptVersion: promptDef.version,
       provider: e instanceof AiProviderError ? e.provider : 'unknown',
@@ -376,7 +461,7 @@ ${prompt ? 'User note: ' + prompt : ''}`;
       errorClass: classifyAiError(e),
     });
     if (e instanceof AiNotConfiguredError) {
-      return NextResponse.json({ error: 'AI provider not configured' }, { status: 500 });
+      return NextResponse.json({ error: localizedApiMessage(locale, 'providerNotConfigured'), code: 'AI_NOT_CONFIGURED' }, { status: 500 });
     }
     const detail = e instanceof AiProviderError
       ? `${e.provider}${e.status ? ` (${e.status})` : ''}: ${e.message}`
@@ -389,7 +474,7 @@ ${prompt ? 'User note: ' + prompt : ''}`;
       userId: planCheck.ok ? planCheck.userId : undefined,
       tags: e instanceof AiProviderError ? { provider: e.provider } : {},
     });
-    return NextResponse.json({ error: 'AI request failed' }, { status: 502 });
+    return NextResponse.json({ error: localizedApiMessage(locale, 'providerFailed'), code: 'AI_REQUEST_FAILED' }, { status: 502 });
   }
 
   // Free-form mode: the model returned a complete .scad program. Strip any
@@ -409,10 +494,30 @@ ${prompt ? 'User note: ' + prompt : ''}`;
     // cyl/tube/prismoid/rotate_extrude that a narrow list would wrongly reject).
     const looksLikeScad = /include\s*<BOSL2|\b(module|function|cube|cylinder|cyl|cuboid|sphere|spheroid|polyhedron|polygon|linear_extrude|rotate_extrude|hull|minkowski|union|difference|intersection|translate|rotate|scale|mirror|prismoid|tube|torus|wedge|text)\b/i.test(scad);
     if (!looksLikeScad) {
-      return NextResponse.json({ error: 'AI did not return OpenSCAD code', raw: raw.slice(0, 400) }, { status: 502 });
+      return NextResponse.json({ error: localizedApiMessage(locale, 'invalidAiResponse'), code: 'SCAD_FORMAT_INVALID' }, { status: 502 });
     }
     meterAiUsage(req); // measure AI usage (non-cached, real AI call)
-    return NextResponse.json({ scad, freeform: true, summary: 'Free-form OpenSCAD', usedProvider: used.provider, usedModel: used.model });
+    return NextResponse.json({
+      scad,
+      freeform: true,
+      summary: localizedApiMessage(locale, 'freeformSummary'),
+      outputLanguage: locale.route,
+      usedProvider: used.provider,
+      usedModel: used.model,
+      aiExecution: {
+        selectedModelId: codegen.catalog.id,
+        selectedModelLabel: codegen.catalog.label,
+        textModel: used.model ?? codegen.model,
+        visionModel: hasImage ? used.visionModel ?? null : null,
+        visionAutoRouted: hasImage ? used.visionAutoRouted ?? false : false,
+        parallelAssistantModel: lunaPreflight.model,
+        parallelAssistantTasks: lunaPreflight.completedTasks,
+        cacheProfile: codegen.cacheProfile,
+        inputCacheHit: (used.cachedPromptTokens ?? 0) > 0,
+        cachedPromptTokens: used.cachedPromptTokens ?? 0,
+        cacheWriteTokens: used.cacheWriteTokens ?? 0,
+      },
+    });
   }
 
   // Extract JSON from response — strip markdown fences and find first/last brace.
@@ -434,23 +539,22 @@ ${prompt ? 'User note: ' + prompt : ''}`;
      */
     const note = truncationNote({ truncated, finishReason }, promptDef.defaults.maxTokens);
     return NextResponse.json({
-      error: note ? 'AI response was cut off by the output limit' : 'AI returned non-JSON response',
+      error: localizedApiMessage(locale, 'invalidAiResponse'),
       code: note ? 'TRUNCATED' : 'NON_JSON',
       ...(note ? { detail: note } : {}),
       ...(finishReason ? { finishReason } : {}),
-      raw: raw.slice(0, 400),
     }, { status: 502 });
   }
 
   if (!parsedRaw || typeof parsedRaw !== 'object' || Array.isArray(parsedRaw)) {
-    return NextResponse.json({ error: 'AI returned invalid JSON object', raw: raw.slice(0, 400) }, { status: 502 });
+    return NextResponse.json({ error: localizedApiMessage(locale, 'invalidAiResponse'), code: 'INVALID_JSON_OBJECT' }, { status: 502 });
   }
 
   const parsed = parsedRaw as Record<string, unknown>;
 
   if (parsed.error === 'unsupported') {
     return NextResponse.json(
-      { error: 'unsupported', reason: parsed.reason ?? 'AI declined to express this as a supported shape', code: 'UNSUPPORTED' },
+      { error: localizedApiMessage(locale, 'unsupportedShape'), reason: parsed.reason, code: 'UNSUPPORTED' },
       { status: 422 },
     );
   }
@@ -464,7 +568,7 @@ ${prompt ? 'User note: ' + prompt : ''}`;
     // ── Assembly: heterogeneous parts → union() of placed parts ───────────
     const parts = parseAssemblyParts(parsed.parts);
     if (parts.length < 2) {
-      return NextResponse.json({ error: 'assembly needs ≥2 valid parts', raw: raw.slice(0, 400) }, { status: 502 });
+      return NextResponse.json({ error: localizedApiMessage(locale, 'invalidAssembly'), code: 'ASSEMBLY_INVALID' }, { status: 502 });
     }
     intent = { kind: 'assembly', parts };
     conv = assemblyToScad(parts);
@@ -472,7 +576,7 @@ ${prompt ? 'User note: ' + prompt : ''}`;
     // ── Free-form sketch → linear_extrude(polygon) ────────────────────────
     const profile = parseProfile(parsed.profile);
     if (profile.length < 3) {
-      return NextResponse.json({ error: 'sketch needs a profile of ≥3 points', raw: raw.slice(0, 400) }, { status: 502 });
+      return NextResponse.json({ error: localizedApiMessage(locale, 'invalidSketch'), code: 'SKETCH_INVALID' }, { status: 502 });
     }
     intent = { shapeId: 'sketch', params: numParams(parsed.params), features: parseFeatures(parsed.features), profile };
     conv = intentToScad(intent);
@@ -482,7 +586,7 @@ ${prompt ? 'User note: ' + prompt : ''}`;
     if (detectedShape && parsed.shapeId !== detectedShape) parsed.shapeId = detectedShape;
     if (typeof parsed.shapeId !== 'string' || !(SUPPORTED_SHAPES as readonly string[]).includes(parsed.shapeId)) {
       return NextResponse.json(
-        { error: `AI picked an unsupported shapeId: ${parsed.shapeId}`, raw: raw.slice(0, 400) },
+        { error: localizedApiMessage(locale, 'unsupportedShape'), code: 'UNSUPPORTED_SHAPE' },
         { status: 502 },
       );
     }
@@ -511,7 +615,7 @@ ${prompt ? 'User note: ' + prompt : ''}`;
   }
 
   if (!conv.ok) {
-    return NextResponse.json({ error: conv.reason, code: 'CONVERTER_REJECT', intent }, { status: 422 });
+    return NextResponse.json({ error: localizedApiMessage(locale, 'converterRejected'), code: 'CONVERTER_REJECT', intent }, { status: 422 });
   }
 
   const summary = typeof parsed.summary === 'string' ? parsed.summary.slice(0, 200) : undefined;
@@ -532,7 +636,7 @@ ${prompt ? 'User note: ' + prompt : ''}`;
   let budgetWarning: { usedCents: number; limitUsd: number | null; fraction: number } | undefined;
   if (planCheck.ok) {
     try {
-      const post = await checkUserBudget(planCheck.userId);
+      const post = await checkUserBudget(planCheck.userId, planCheck.orgId);
       if (post.approaching) {
         budgetWarning = { usedCents: post.usedCents, limitUsd: post.limitUsd, fraction: post.fraction };
       }
@@ -544,7 +648,21 @@ ${prompt ? 'User note: ' + prompt : ''}`;
     scad: conv.scad,
     warnings,
     summary,
+    outputLanguage: locale.route,
     cached: false,
+    aiExecution: {
+      selectedModelId: codegen.catalog.id,
+      selectedModelLabel: codegen.catalog.label,
+      textModel: used.model ?? codegen.model,
+      visionModel: null,
+      visionAutoRouted: false,
+      parallelAssistantModel: lunaPreflight.model,
+      parallelAssistantTasks: lunaPreflight.completedTasks,
+      cacheProfile: codegen.cacheProfile,
+      inputCacheHit: (used.cachedPromptTokens ?? 0) > 0,
+      cachedPromptTokens: used.cachedPromptTokens ?? 0,
+      cacheWriteTokens: used.cacheWriteTokens ?? 0,
+    },
     ...(usage ? { usage } : {}),
     ...(budgetWarning ? { budgetWarning } : {}),
   });

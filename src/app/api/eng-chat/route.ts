@@ -7,6 +7,12 @@ import { checkUserBudget } from '@/lib/ai/userBudget';
 import { captureServerError } from '@/lib/error-capture';
 import { getSetting } from '@/lib/admin-settings';
 import { streamChat, deepseekDeltaExtractor } from '@/lib/ai/streamingChat';
+import { localizedApiMessage, resolveServerLocale } from '@/lib/i18n/serverLocale';
+import { boundedJsonError, readBoundedJson } from '@/lib/boundedJsonBody';
+import {
+  consumeEngineeringChatGuestQuota,
+  GUEST_ENGINEERING_CHAT_DAILY_LIMIT,
+} from '@/lib/ai/engineeringChatGuestQuota';
 
 /* ══════════════════════════════════════════════════════════════════════════════
    /api/eng-chat — 랜딩 채팅-우선 히어로의 도메인 인식 대화 엔드포인트.
@@ -21,6 +27,8 @@ import { streamChat, deepseekDeltaExtractor } from '@/lib/ai/streamingChat';
    ══════════════════════════════════════════════════════════════════════════════ */
 
 export type EngDomain = 'mechanical' | 'civil' | 'architecture' | 'landscape' | 'interior';
+type EngLang = 'kr' | 'en' | 'ja' | 'cn' | 'es' | 'ar';
+const ENG_LANGUAGE_NAME: Record<EngLang, string> = { kr: 'Korean', en: 'English', ja: 'Japanese', cn: 'Simplified Chinese', es: 'Spanish', ar: 'Arabic' };
 
 const DOMAIN_PROMPTS: Record<EngDomain, string> = {
   mechanical: `당신은 NexyFab의 기계설계 AI 어시스턴트입니다. 부품/기구 설계, DFM(제조성),
@@ -42,6 +50,7 @@ const DOMAIN_PROMPTS: Record<EngDomain, string> = {
 };
 
 const DOMAINS = Object.keys(DOMAIN_PROMPTS) as EngDomain[];
+const MAX_BODY_BYTES = 512 * 1024;
 
 const COMMON_RULES = `
 공통 지침:
@@ -52,23 +61,35 @@ const COMMON_RULES = `
   한 줄로 밝히세요.`;
 
 export async function POST(req: NextRequest) {
+  let body: Record<string, unknown>;
+  try {
+    const parsed = await readBoundedJson<unknown>(req, MAX_BODY_BYTES);
+    body = parsed && typeof parsed === 'object' ? parsed as Record<string, unknown> : {};
+  } catch (error) {
+    const locale = resolveServerLocale(req);
+    if (boundedJsonError(error)?.code === 'PAYLOAD_TOO_LARGE') return NextResponse.json({ error: localizedApiMessage(locale, 'badRequest'), code: 'PAYLOAD_TOO_LARGE' }, { status: 413 });
+    return NextResponse.json({ error: localizedApiMessage(locale, 'badRequest'), code: 'BAD_REQUEST' }, { status: 400 });
+  }
+  // Resolve the requested language before every rate, plan, quota, and budget gate.
+  const locale = resolveServerLocale(req, body.lang);
+  const lang: EngLang = locale.route;
   // IP 레이트리밋 — 익명 경로(특히 mode:'title')의 무가드 반복 호출 차단(감사 2026-07-16)
   const ip = getTrustedClientIp(req.headers);
   const rl = rateLimit(`eng-chat:${ip}`, 30, 60_000);
-  if (!rl.allowed) return NextResponse.json({ error: '요청이 너무 많습니다. 잠시 후 다시 시도하세요.' }, { status: 429 });
+  if (!rl.allowed) return NextResponse.json({ error: localizedApiMessage(locale, 'rateLimited'), code: 'RATE_LIMITED' }, { status: 429 });
 
   const planCheck = await checkPlan(req, 'free');
   const userPlan = planCheck.ok ? planCheck.plan : 'free';
 
   try {
-    const body = await req.json();
     const message: unknown = body?.message;
     const history: unknown = body?.history;
     const domainRaw: unknown = body?.domain;
     const wantStream = body?.stream === true;
+    const languageRule = `\nMandatory output language: ${ENG_LANGUAGE_NAME[lang]}. Do not switch languages because of earlier chat history. Keep technical identifiers unchanged.`;
 
     if (!message || typeof message !== 'string') {
-      return NextResponse.json({ error: 'message is required' }, { status: 400 });
+      return NextResponse.json({ error: localizedApiMessage(locale, 'messageRequired'), code: 'MESSAGE_REQUIRED' }, { status: 400 });
     }
     const domain: EngDomain = DOMAINS.includes(domainRaw as EngDomain)
       ? (domainRaw as EngDomain)
@@ -84,7 +105,7 @@ export async function POST(req: NextRequest) {
       try {
         const result = await chatCompletion({
           messages: [
-            { role: 'system', content: '대화의 주제를 사용자가 쓴 언어로 5단어 이내 명사구 제목으로 요약하라. 따옴표·마침표·접두어 없이 제목만 출력.' },
+            { role: 'system', content: `Summarize the chat as a noun-phrase title of at most five words in ${ENG_LANGUAGE_NAME[lang]}. Output only the title without quotes, punctuation or a prefix.` },
             { role: 'user', content: message.slice(0, 1200) },
           ],
           maxTokens: 24, temperature: 0.2, timeoutMs: 10_000, task: 'eng-chat-title',
@@ -96,28 +117,47 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // 로그인 사용자에 한해 예산/쿼터 가드 (익명은 shape-chat 과 동일하게 무슬롯).
-    // 슬롯은 shape_chat 과 공유해 별도 한도 신설을 피함.
+    if (!planCheck.ok) {
+      const guestQuota = await consumeEngineeringChatGuestQuota(req, ip);
+      if (!guestQuota.allowed) {
+        if (guestQuota.unavailable) {
+          return NextResponse.json({
+            error: localizedApiMessage(locale, 'quotaUnavailable'),
+            code: 'GUEST_CHAT_QUOTA_UNAVAILABLE',
+            resetAtMs: guestQuota.resetAt,
+          }, { status: 503 });
+        }
+        return NextResponse.json({
+          error: localizedApiMessage(locale, 'quotaReached', { limit: GUEST_ENGINEERING_CHAT_DAILY_LIMIT }),
+          code: 'GUEST_CHAT_QUOTA',
+          limit: GUEST_ENGINEERING_CHAT_DAILY_LIMIT,
+          resetAtMs: guestQuota.resetAt,
+        }, { status: 429 });
+      }
+    }
+
+    // 로그인 사용자는 계정의 shape_chat 월 한도, 게스트는 위의 공용 일일
+    // 한도를 적용한다. 클라이언트 스레드를 새로 만들어도 서버 사용량은 리셋되지 않는다.
     if (planCheck.ok) {
-      const budget = await checkUserBudget(planCheck.userId);
+      const budget = await checkUserBudget(planCheck.userId, planCheck.orgId);
       if (!budget.ok) {
         return NextResponse.json(
-          { error: `오늘의 AI 사용 한도($${budget.limitUsd})에 도달했어요. 내일 다시 이용할 수 있습니다.`, code: 'COST_BUDGET', resetAtMs: budget.resetAtMs },
+          { error: localizedApiMessage(locale, 'costBudget', { limit: budget.limitUsd }), code: 'COST_BUDGET', resetAtMs: budget.resetAtMs },
           { status: 402 },
         );
       }
       const { consumeMonthlyMetricSlot } = await import('@/lib/plan-guard');
-      const slot = await consumeMonthlyMetricSlot(planCheck.userId, userPlan, 'shape_chat');
+      const slot = await consumeMonthlyMetricSlot(planCheck.userId, userPlan, 'shape_chat', undefined, planCheck.orgId);
       if (!slot.ok) {
         return NextResponse.json(
-          { error: `무료 플랜 월 한도(${slot.limit}회)에 도달했어요. Pro로 업그레이드하면 무제한입니다.`, code: 'PLAN_LIMIT' },
+          { error: localizedApiMessage(locale, 'planLimit', { limit: slot.limit }), code: 'PLAN_LIMIT' },
           { status: 429 },
         );
       }
     }
 
     const messages: ChatMessage[] = [
-      { role: 'system', content: `${DOMAIN_PROMPTS[domain]}\n${COMMON_RULES}` },
+      { role: 'system', content: `${DOMAIN_PROMPTS[domain]}\n${COMMON_RULES}${languageRule}` },
     ];
     const historyLimit = userPlan === 'free' ? 4 : 10;
     if (Array.isArray(history)) {
@@ -134,7 +174,7 @@ export async function POST(req: NextRequest) {
     try {
       const { getActiveBreaker } = await import('@/lib/cost-breaker');
       if (await getActiveBreaker()) {
-        return NextResponse.json({ error: 'AI is temporarily paused. Please try again later.' }, { status: 503 });
+        return NextResponse.json({ error: localizedApiMessage(locale, 'breaker'), code: 'AI_PAUSED' }, { status: 503 });
       }
     } catch { /* breaker 조회 실패는 무시하고 진행 */ }
 
@@ -147,7 +187,17 @@ export async function POST(req: NextRequest) {
           const upstream = await fetch(`${baseUrl}/chat/completions`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
-            body: JSON.stringify({ model: 'deepseek-chat', messages, max_tokens: maxTokens, temperature: 0.5, stream: true }),
+            // DeepSeek prefix caching is automatic. The stable system message
+            // stays first; include the terminal usage chunk for cache
+            // accounting as the stream pipeline evolves.
+            body: JSON.stringify({
+              model: 'deepseek-chat',
+              messages,
+              max_tokens: maxTokens,
+              temperature: 0.5,
+              stream: true,
+              stream_options: { include_usage: true },
+            }),
             signal: req.signal ? AbortSignal.any([req.signal, AbortSignal.timeout(45_000)]) : AbortSignal.timeout(45_000),
           });
           if (upstream.ok && upstream.body) {
@@ -178,16 +228,16 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ reply: result.text, domain, provider: result.provider });
     } catch (e) {
       if (e instanceof AiNotConfiguredError) {
-        return NextResponse.json({ error: 'AI provider not configured' }, { status: 500 });
+        return NextResponse.json({ error: localizedApiMessage(locale, 'providerNotConfigured'), code: 'AI_NOT_CONFIGURED' }, { status: 500 });
       }
       const detail = e instanceof AiProviderError
         ? `${e.provider}${e.status ? ` (${e.status})` : ''}: ${e.message}`
         : (e instanceof Error ? e.message : String(e));
       console.error('eng-chat AI provider error:', detail);
-      return NextResponse.json({ error: 'AI request failed' }, { status: 502 });
+      return NextResponse.json({ error: localizedApiMessage(locale, 'providerFailed'), code: 'AI_REQUEST_FAILED' }, { status: 502 });
     }
   } catch (e) {
     captureServerError(e, { route: 'eng-chat' });
-    return NextResponse.json({ error: 'Bad request' }, { status: 400 });
+    return NextResponse.json({ error: localizedApiMessage(locale, 'badRequest'), code: 'BAD_REQUEST' }, { status: 400 });
   }
 }

@@ -8,6 +8,10 @@ import {
   DEFAULT_PRICEBOOK, DEFAULT_CAPABILITY,
   type PriceBook, type ProcessCapability,
 } from '@/lib/partner-pricebook';
+import { boundedJsonError, readBoundedJson } from '@/lib/boundedJsonBody';
+
+// Price books and process capability matrices may contain many bounded rows.
+const MAX_PARTNER_PROFILE_BODY_BYTES = 1024 * 1024;
 
 export const dynamic = 'force-dynamic';
 
@@ -134,7 +138,9 @@ export async function PATCH(req: NextRequest) {
   const db = getDbAdapter();
   await ensureColumns(db);
 
-  const body = await req.json().catch(() => ({}));
+  let body: unknown = {};
+  try { body = await readBoundedJson(req, MAX_PARTNER_PROFILE_BODY_BYTES); }
+  catch (error) { if (boundedJsonError(error)?.code === 'PAYLOAD_TOO_LARGE') return NextResponse.json({ error: 'Request too large', code: 'PAYLOAD_TOO_LARGE' }, { status: 413 }); }
   const {
     company, phone, homepage, bio, processes, certifications,
     tech_exp, match_field, amount, partner_type, aiPrefs,

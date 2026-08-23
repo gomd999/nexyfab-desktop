@@ -1,0 +1,37 @@
+{
+  "schema": "nexyfab.mechanical-single-part-step-import.v1",
+  "feature": "hem",
+  "partRevisionSha256": "91f1ebf0957bbad71dadea601bfa1da48c7864078abc8259694861da2d666354",
+  "sourceDesignRevisionSha256": "3cf6a0f9c8efcf153a2cfefde087a2112c086fc412d2feeaeb9ce52542838564",
+  "sourceStep": {
+    "path": "docs/evidence/cad-independent/local/mechanical-core-runtime-260813/hem/hem-edited.step",
+    "sha256": "4a76bb64b3f28002864dc156d7178945d3ce8f551bab82ce9d833f3f3f7dc335",
+    "bytes": 31886,
+    "assertionId": "hem.export.native-step"
+  },
+  "exactKernel": "OCCT",
+  "units": {
+    "value": "mm",
+    "confidence": "high"
+  },
+  "solidCount": 1,
+  "singleSolid": true,
+  "volumeMm3": 6273.982236861584,
+  "boundsMm": [
+    [
+      -30.000932553997558,
+      -1.0009325539975573,
+      -15.000932553997558
+    ],
+    [
+      30.000932553997558,
+      5.000932553997557,
+      18.00000010000001
+    ]
+  ],
+  "dimensionsMm": {
+    "x": 60.001865107995116,
+    "y": 6.001865107995114,
+    "z": 33.000932653997566
+  }
+}

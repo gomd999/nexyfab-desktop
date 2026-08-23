@@ -1,0 +1,82 @@
+{
+  "schema": "nexyfab.mechanical-core-feature-local-runtime.v1",
+  "feature": "loft",
+  "axis": "regenerate",
+  "status": "PASS",
+  "executedAt": "2026-08-22T07:13:30.564Z",
+  "initial": {
+    "handle": "occt:399",
+    "kernelKind": "Solid",
+    "nativeShapeType": 2,
+    "solidCount": 1,
+    "singleSolid": true,
+    "volumeMm3": 7840.000000000001,
+    "edgeCount": 96,
+    "faceCount": 34,
+    "boundsMm": [
+      [
+        -10.082955440520177,
+        -15.082955440520179,
+        -10.082955440520179
+      ],
+      [
+        10.082955440520179,
+        15.082955440520177,
+        10.082955440520177
+      ]
+    ]
+  },
+  "edited": {
+    "handle": "occt:401",
+    "kernelKind": "Solid",
+    "nativeShapeType": 2,
+    "solidCount": 1,
+    "singleSolid": true,
+    "volumeMm3": 10840,
+    "edgeCount": 96,
+    "faceCount": 34,
+    "boundsMm": [
+      [
+        -10.082955440520177,
+        -15.082955440520179,
+        -10.082955440520179
+      ],
+      [
+        10.082955440520179,
+        15.082955440520179,
+        10.082955440520177
+      ]
+    ]
+  },
+  "repeated": {
+    "handle": "occt:403",
+    "kernelKind": "Solid",
+    "nativeShapeType": 2,
+    "solidCount": 1,
+    "singleSolid": true,
+    "volumeMm3": 10840,
+    "edgeCount": 96,
+    "faceCount": 34,
+    "boundsMm": [
+      [
+        -10.082955440520177,
+        -15.082955440520179,
+        -10.082955440520179
+      ],
+      [
+        10.082955440520179,
+        15.082955440520179,
+        10.082955440520177
+      ]
+    ]
+  },
+  "featureMeaning": {
+    "assertion": "actual product OCCT loft between square sections satisfies the analytic square-frustum volume identity",
+    "startHalfSizeMm": 10,
+    "endHalfSizeMm": 9,
+    "heightMm": 30,
+    "expectedVolumeMm3": 10840,
+    "actualVolumeMm3": 10840
+  },
+  "assertion": "edited parameter changed the exact signature and a fresh native regeneration reproduced topology, bounds, and volume"
+}

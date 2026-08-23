@@ -1,9 +1,23 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { mkdtemp, rm, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { callTool, tools } from "./mcp-server.mjs";
 
-afterEach(() => {
+const tempDirs: string[] = [];
+
+async function evidenceFile(name: string, contents = "{}") {
+  const dir = await mkdtemp(join(tmpdir(), "nexyfab-complex-mcp-"));
+  tempDirs.push(dir);
+  const file = join(dir, name);
+  await writeFile(file, contents);
+  return file;
+}
+
+afterEach(async () => {
   vi.restoreAllMocks();
   delete process.env.NEXYFAB_API_KEY;
+  await Promise.all(tempDirs.splice(0).map((dir) => rm(dir, { recursive: true, force: true })));
 });
 
 describe("CAD v1 MCP tools", () => {
@@ -21,16 +35,24 @@ describe("CAD v1 MCP tools", () => {
     expect(names).toContain("verify_space_boundary_closure");
     expect(names).toContain("verify_egress_routes");
     expect(names).toContain("verify_mep_interference");
+    expect(names).toContain("verify_physical_network");
     expect(names).toContain("verify_manufacturing_evidence");
     expect(names).toContain("decide_cad_release");
     expect(names).toContain("verify_ai_generation");
     expect(names).toContain("transition_ai_generation_state");
+    expect(names).toContain("refine_ai_generation");
     expect(names).toContain("advance_ai_generation");
     expect(names).toContain("finalize_ai_generation");
     expect(names).toContain("generate_robot_6axis");
     expect(names).toContain("apply_assembly_animation_command");
     expect(names).toContain("preview_assembly_selection_edit");
     expect(names).toContain("push_pull_step_face");
+    expect(names).toContain("verify_complex_system_graph");
+    expect(names).toContain("verify_gearbox_system_contract");
+    expect(names).toContain("verify_machine_skid_system_contract");
+    expect(names).toContain("verify_welded_enclosure_system_contract");
+    expect(names).toContain("analyze_complex_system_change_impact");
+    expect(names).toContain("verify_complex_assembly_scale");
     expect(names).toContain("analyze_cad_reference");
     expect(names).toContain("verify_ifc_semantic_roundtrip");
     expect(names).toContain("build_ifc_domain_ir");
@@ -45,6 +67,76 @@ describe("CAD v1 MCP tools", () => {
     expect(selectionEdit?.inputSchema.properties.generationState).toMatchObject(
       { type: "object" },
     );
+    const transition = tools.find(tool => tool.name === 'transition_ai_generation_state');
+    expect(transition?.inputSchema.properties.action?.enum).not.toContain('record');
+    expect(transition?.inputSchema.properties.action?.enum).toContain('plan');
+    expect(transition?.inputSchema.properties).not.toHaveProperty('previousFingerprints');
+    expect(transition?.inputSchema.properties).not.toHaveProperty('maxAttempts');
+    expect(tools.find(tool => tool.name === 'refine_ai_generation')?.inputSchema.properties).not.toHaveProperty('maxAttempts');
+    expect(tools.find(tool => tool.name === 'finalize_ai_generation')?.inputSchema.properties).toHaveProperty('evidenceReceipts');
+    expect(tools.find(tool => tool.name === 'verify_physical_network')?.inputSchema.properties.rules).toMatchObject({ required: expect.arrayContaining(['requirePhysicalRouteGeometry', 'requireDiameterMatch', 'requireRunFromConnectedPort']) });
+  });
+
+  it('routes MCP physical-network input to the same strict web verifier and never forwards a caller verdict field', async () => {
+    process.env.NEXYFAB_API_KEY = 'nf_test';
+    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response(JSON.stringify({ ok: true, releaseReady: false, verification: { status: 'failed' } }), { status: 200 }));
+    const input = { id: 'pt100', ports: [], nodes: [], connections: [], runs: [], rules: { maximumConnectionDistanceMm: 1, minimumDrainSlopePercent: 0, requireMatchingConnector: true, requirePhysicalRouteGeometry: true, requireDiameterMatch: true, requireRunFromConnectedPort: true } };
+    expect(await callTool('verify_physical_network', input)).toMatchObject({ ok: true, releaseReady: false });
+    const [, init] = fetchSpy.mock.calls.at(-1)!;
+    const forwarded = JSON.parse(String(init?.body));
+    expect(forwarded).toEqual({ network: input });
+    expect(forwarded).not.toHaveProperty('releaseReady');
+  });
+
+  it('routes refinement through the server-owned context endpoint without flattening state', async () => {
+    process.env.NEXYFAB_API_KEY = 'nf_test';
+    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response(JSON.stringify({ ok: true, decision: { disposition: 'advance' } }), { status: 200 }));
+    const input = { state: { schema: 'nexyfab.generation-run.v1', runId: 'r', revision: 0 }, context: { request: 'PT100 skid', stage: 'intent', attempt: 1, priorOutputs: {}, priorCheckpointHashes: {}, feedback: [], immutableEvidenceRefs: [] } };
+    expect(await callTool('refine_ai_generation', { ...input, confirmWrite: true })).toMatchObject({ ok: true });
+    const [url, init] = fetchSpy.mock.calls.at(-1)!;
+    expect(String(url)).toContain('/api/cad/v1/generation/refine');
+    expect(JSON.parse(String(init?.body))).toEqual(input);
+  });
+
+  it("routes all complex-product tools as authenticated multipart evidence", async () => {
+    process.env.NEXYFAB_API_KEY = `nf_live_${"a".repeat(64)}`;
+    const graphFile = await evidenceFile("graph.json");
+    const targetGraphFile = await evidenceFile("target-graph.json", '{"revision":2}');
+    const contractFile = await evidenceFile("contract.json");
+    const artifactFile = await evidenceFile("evidence.bin", "evidence");
+    const benchmarkFile = await evidenceFile("benchmark.json");
+    const fetchSpy = vi.spyOn(globalThis, "fetch").mockImplementation(async () =>
+      new Response(JSON.stringify({ ok: true, report: { releaseReady: false } }), { status: 200 }),
+    );
+    const cases: Array<[string, string, Record<string, unknown>, string[]]> = [
+      ["verify_complex_system_graph", "/api/cad/v1/system/verify", { graphFile, artifactFiles: [artifactFile] }, ["graph", "artifact"]],
+      ["verify_gearbox_system_contract", "/api/cad/v1/system/gearbox/verify", { graphFile, contractFile, artifactFiles: [artifactFile] }, ["graph", "contract", "artifact"]],
+      ["verify_machine_skid_system_contract", "/api/cad/v1/system/machine-skid/verify", { graphFile, contractFile, artifactFiles: [artifactFile] }, ["graph", "contract", "artifact"]],
+      ["verify_welded_enclosure_system_contract", "/api/cad/v1/system/welded-enclosure/verify", { graphFile, contractFile, artifactFiles: [artifactFile] }, ["graph", "contract", "artifact"]],
+      ["analyze_complex_system_change_impact", "/api/cad/v1/system/change-impact/verify", { baseGraphFile: graphFile, targetGraphFile, baseArtifactFiles: [artifactFile], targetArtifactFiles: [artifactFile] }, ["baseGraph", "targetGraph", "baseArtifact", "targetArtifact"]],
+      ["verify_complex_assembly_scale", "/api/cad/v1/system/scale/verify", { benchmarkFile, artifactFiles: [artifactFile] }, ["benchmark", "artifact"]],
+    ];
+    for (const [toolName, route, args, fields] of cases) {
+      expect(await callTool(toolName, args)).toMatchObject({ ok: true, report: { releaseReady: false } });
+      const [url, init] = fetchSpy.mock.calls.at(-1)!;
+      expect(String(url)).toContain(route);
+      expect(init?.headers).toEqual({ authorization: `Bearer ${process.env.NEXYFAB_API_KEY}` });
+      expect(init?.body).toBeInstanceOf(FormData);
+      const form = init?.body as FormData;
+      expect([...form.keys()]).toEqual(fields);
+    }
+  });
+
+  it("rejects unreadable complex evidence before any remote request", async () => {
+    process.env.NEXYFAB_API_KEY = `nf_live_${"b".repeat(64)}`;
+    const fetchSpy = vi.spyOn(globalThis, "fetch");
+    const result = await callTool("verify_complex_system_graph", {
+      graphFile: join(tmpdir(), "missing-complex-graph.json"),
+      artifactFiles: [join(tmpdir(), "missing-complex-evidence.bin")],
+    });
+    expect(result).toMatchObject({ ok: false });
+    expect(result.error).toContain("Local evidence input rejected");
+    expect(fetchSpy).not.toHaveBeenCalled();
   });
 
   it("routes reference analysis through CAD v1 and returns only sanitized evidence", async () => {
@@ -719,7 +811,7 @@ describe("CAD v1 MCP tools", () => {
     );
     const request = { action: "initialize", runId: "mcp-run" };
     expect(
-      await callTool("transition_ai_generation_state", request),
+      await callTool("transition_ai_generation_state", { ...request, confirmWrite: true }),
     ).toMatchObject({ ok: true, state: { revision: 0 } });
     expect(String(fetchSpy.mock.calls[0]?.[0])).toContain(
       "/api/cad/v1/generation/state",
@@ -756,7 +848,7 @@ describe("CAD v1 MCP tools", () => {
       state: { schema: "nexyfab.generation-run.v1" },
       program: { version: 1 },
     };
-    expect(await callTool("advance_ai_generation", request)).toMatchObject({
+    expect(await callTool("advance_ai_generation", { ...request, confirmWrite: true })).toMatchObject({
       ok: true,
       stoppedAt: "motion",
       canonical,
@@ -801,7 +893,7 @@ describe("CAD v1 MCP tools", () => {
         },
       ],
     };
-    expect(await callTool("finalize_ai_generation", request)).toMatchObject({
+    expect(await callTool("finalize_ai_generation", { ...request, confirmWrite: true })).toMatchObject({
       ok: true,
       stoppedAt: "complete",
       canonical,

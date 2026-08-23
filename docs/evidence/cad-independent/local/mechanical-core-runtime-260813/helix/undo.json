@@ -1,0 +1,43 @@
+{
+  "schema": "nexyfab.mechanical-core-feature-local-runtime.v1",
+  "feature": "helix",
+  "axis": "undo",
+  "status": "PASS",
+  "executedAt": "2026-08-22T07:13:30.564Z",
+  "restoredPayload": {
+    "id": "runtime-feature",
+    "enabled": true,
+    "type": "helix",
+    "params": {
+      "radius": 5,
+      "pitch": 8,
+      "turns": 1,
+      "wireRadius": 1.5,
+      "axis": 1,
+      "handedness": 0
+    }
+  },
+  "restoredExact": {
+    "handle": "occt:219",
+    "kernelKind": "Solid",
+    "nativeShapeType": 2,
+    "solidCount": 1,
+    "singleSolid": true,
+    "volumeMm3": 226.54412847434168,
+    "edgeCount": 72,
+    "faceCount": 26,
+    "boundsMm": [
+      [
+        -6.499089360126216,
+        -1.465346266293448,
+        -6.507754266670864
+      ],
+      [
+        6.497372689764324,
+        9.464718657952124,
+        6.511736114472506
+      ]
+    ]
+  },
+  "futureDepth": 1
+}

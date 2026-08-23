@@ -1,0 +1,31 @@
+{
+  "schema": "nexyfab.mechanical-core-feature-local-runtime.v1",
+  "feature": "moveCopy",
+  "axis": "edit",
+  "status": "PASS",
+  "executedAt": "2026-08-22T07:13:30.564Z",
+  "commandId": "moveCopy-runtime-param-edit",
+  "historyDepth": 1,
+  "before": {
+    "id": "runtime-feature",
+    "enabled": true,
+    "type": "moveCopy",
+    "params": {
+      "offsetX": 15,
+      "offsetY": 0,
+      "offsetZ": 0,
+      "operation": 1
+    }
+  },
+  "after": {
+    "id": "runtime-feature",
+    "enabled": true,
+    "type": "moveCopy",
+    "params": {
+      "offsetX": 25,
+      "offsetY": 0,
+      "offsetZ": 0,
+      "operation": 1
+    }
+  }
+}

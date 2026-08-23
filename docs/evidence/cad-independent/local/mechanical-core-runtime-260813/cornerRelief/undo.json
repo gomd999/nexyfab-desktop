@@ -1,0 +1,41 @@
+{
+  "schema": "nexyfab.mechanical-core-feature-local-runtime.v1",
+  "feature": "cornerRelief",
+  "axis": "undo",
+  "status": "PASS",
+  "executedAt": "2026-08-22T07:13:30.564Z",
+  "restoredPayload": {
+    "id": "runtime-feature",
+    "enabled": true,
+    "type": "cornerRelief",
+    "params": {
+      "corner": 0,
+      "shape": 0,
+      "size": 5,
+      "inset": 0
+    }
+  },
+  "restoredExact": {
+    "handle": "occt:337",
+    "kernelKind": "Solid",
+    "nativeShapeType": 0,
+    "solidCount": 1,
+    "singleSolid": true,
+    "volumeMm3": 3590.1825229575315,
+    "edgeCount": 15,
+    "faceCount": 7,
+    "boundsMm": [
+      [
+        -30.00301145948707,
+        -1.0030114594870712,
+        -15.003011459487071
+      ],
+      [
+        30.00301145948707,
+        1.0030114594870712,
+        15.003011459487071
+      ]
+    ]
+  },
+  "futureDepth": 1
+}

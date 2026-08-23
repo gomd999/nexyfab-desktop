@@ -1,14 +1,25 @@
-export const DESIGN_DOMAIN_IDS = [
-  'mechanical',
+export const MECHANICAL_CORE_DOMAIN_ID = 'mechanical' as const;
+
+export const SPACE_DESIGN_LAB_DOMAIN_IDS = [
   'building',
   'civil',
   'landscape',
   'interior',
 ] as const;
 
+export const DESIGN_DOMAIN_IDS = [
+  MECHANICAL_CORE_DOMAIN_ID,
+  ...SPACE_DESIGN_LAB_DOMAIN_IDS,
+] as const;
+
 export type DesignDomainId = (typeof DESIGN_DOMAIN_IDS)[number];
+export type SpaceDesignLabDomainId = (typeof SPACE_DESIGN_LAB_DOMAIN_IDS)[number];
 export type DomainFamily = 'product' | 'spatial-bim' | 'site-infrastructure';
-export type UserExperienceLevel = 'guided' | 'expert';
+export type UserExperienceLevel = 'guided' | 'standard' | 'expert';
+
+export function isSpaceDesignLabDomain(domain: DesignDomainId): domain is SpaceDesignLabDomainId {
+  return (SPACE_DESIGN_LAB_DOMAIN_IDS as readonly DesignDomainId[]).includes(domain);
+}
 
 export const COMMON_DOMAIN_EVIDENCE_AXES = [
   'requirements',

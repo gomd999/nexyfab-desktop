@@ -3,6 +3,7 @@ import { checkOrigin } from '@/lib/csrf';
 import { verifyAdmin } from '@/lib/admin-auth';
 import { getDbAdapter } from '@/lib/db-adapter';
 import { handleBillingEvent, type AwWebhookEvent } from '@/lib/billing-webhook-handler';
+import { boundedJsonError, readBoundedJson } from '@/lib/boundedJsonBody';
 
 export const dynamic = 'force-dynamic';
 
@@ -18,8 +19,9 @@ export async function POST(req: NextRequest) {
 
   let body: { eventId?: string };
   try {
-    body = await req.json();
-  } catch {
+    body = await readBoundedJson(req, 64 * 1024);
+  } catch (error) {
+    if (boundedJsonError(error)?.status === 413) return NextResponse.json({ error: 'Payload too large' }, { status: 413 });
     return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 });
   }
 

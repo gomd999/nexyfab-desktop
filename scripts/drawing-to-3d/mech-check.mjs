@@ -447,7 +447,7 @@ function withTipover(result, assembly, params) {
 export function mechCheck(assembly, params = {}) {
   if (!assembly || typeof assembly !== 'object') return null;
   // 전도는 **모든 기계 어셈블리**에 해당한다 — 메타 유무와 무관하게 붙인다.
-  return withStack(withFit(withBolted(withTipover(mechCheckInner(assembly, params), assembly, params), assembly, params), assembly, params), assembly);
+  return withStack(withFit(withBolted(withTipover(mechCheckInner(assembly), assembly, params), assembly, params), assembly, params), assembly);
 }
 
 /**
@@ -516,7 +516,84 @@ function withBolted(r, assembly, params) {
   };
 }
 
-function mechCheckInner(assembly, params = {}) {
+/**
+ * Turbojet concept geometry can be judged without inventing CFD or material
+ * allowables. These checks prove the deterministic CAD contract only: declared
+ * rotor rows exist as blade meshes, the annular flow stations are physically
+ * ordered, and the module chain is coaxial. Performance, combustion and
+ * certification remain explicit non-claims in `notChecked`.
+ */
+function checkJetEngine(assembly) {
+  const meta = assembly.jetEngineMeta;
+  if (!meta || !Array.isArray(assembly.parts)) return null;
+  const compressorRows = assembly.parts.filter((part) => /^compressor_rotor_\d+$/.test(String(part.id ?? '')));
+  const turbineRows = assembly.parts.filter((part) => /^turbine_rotor_\d+$/.test(String(part.id ?? '')));
+  const bladeRows = [...compressorRows, ...turbineRows];
+  const flowPath = Array.isArray(meta.flowPath) ? meta.flowPath : [];
+  const axialIds = ['inlet_cowl', 'compressor_casing', 'combustor_casing', 'turbine_casing', 'exhaust_nozzle'];
+  const axialModules = axialIds.map((id) => assembly.parts.find((part) => part.id === id));
+  const checks = {
+    declaredRotorRows: {
+      labelKo: '선언 압축기·터빈 단수와 실제 블레이드 링 수 일치',
+      pass: compressorRows.length === Number(meta.compressorStages)
+        && turbineRows.length === Number(meta.turbineStages),
+      detail: [
+        `compressor ${compressorRows.length}/${meta.compressorStages}`,
+        `turbine ${turbineRows.length}/${meta.turbineStages}`,
+      ],
+    },
+    bladeMeshGeometry: {
+      labelKo: '모든 회전자 행이 실제 블레이드 메시 형상 보유',
+      pass: bladeRows.length > 0 && bladeRows.every((part) =>
+        part.type === 'mesh'
+        && part.gen?.kind === 'blade_ring'
+        && Array.isArray(part.params?.verts)
+        && part.params.verts.length > 0
+        && Array.isArray(part.params?.faces)
+        && part.params.faces.length > 0),
+      detail: [`blade-ring meshes ${bladeRows.length}`],
+    },
+    annularFlowPath: {
+      labelKo: '유로 스테이션의 외경·허브경·환형 면적 자기정합',
+      pass: flowPath.length >= 4 && flowPath.every((station) => {
+        const outer = Number(station.outerDiaMm);
+        const inner = Number(station.hubDiaMm ?? station.innerDiaMm);
+        const declaredArea = Number(station.annulusAreaMm2);
+        const computedArea = Math.PI * (outer ** 2 - inner ** 2) / 4;
+        return outer > inner && inner >= 0 && declaredArea > 0
+          && Math.abs(declaredArea - computedArea) <= Math.max(0.2, computedArea * 1e-5);
+      }),
+      detail: [`flow stations ${flowPath.length}`],
+    },
+    axialModuleChain: {
+      labelKo: '흡입구→압축기→연소기→터빈→노즐 축방향 모듈 연속성',
+      pass: axialModules.every(Boolean)
+        && axialModules.every((part) => Math.abs(Math.abs(Number(part?.at?.ry ?? 0)) - 90) < 1e-9)
+        && axialModules.every((part, index) => index === 0 || Number(part?.at?.tx) >= Number(axialModules[index - 1]?.at?.tx)),
+      detail: axialModules.map((part, index) => `${axialIds[index]}@x=${part?.at?.tx ?? 'missing'}`),
+    },
+    analysisBoundaryDeclared: {
+      labelKo: '개념 CAD와 미검증 해석·인증 범위 명시',
+      pass: meta.analysisLevel === 'preliminary-1D-geometry'
+        && Array.isArray(meta.notVerified)
+        && ['CFD pressure/temperature field', 'combustion stability', 'blade stress/creep', 'rotordynamics', 'containment', 'airworthiness']
+          .every((claim) => meta.notVerified.includes(claim)),
+      detail: Array.isArray(meta.notVerified) ? meta.notVerified : [],
+    },
+  };
+  return {
+    ok: Object.values(checks).every((check) => check.pass),
+    label: '터보제트 개념 CAD 형상·유로 자기정합 검토',
+    checks,
+    notChecked: (meta.notVerified ?? []).map((claim) => ({
+      labelKo: String(claim),
+      messageKo: '개념 형상 검토 범위 밖이며 실제 해석·시험·전문가 승인이 필요합니다.',
+    })),
+  };
+}
+
+function mechCheckInner(assembly) {
+  if (assembly.jetEngineMeta) return checkJetEngine(assembly);
   if (assembly.gearMeta) return checkGear(assembly.gearMeta);
   if (assembly.hxMeta) return checkHeatExchanger(assembly.hxMeta);
   if (assembly.robotMeta) return checkRobot(assembly.robotMeta);

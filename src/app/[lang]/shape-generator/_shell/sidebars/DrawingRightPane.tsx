@@ -16,7 +16,7 @@ import { loc } from '../../lib/loc';
 function Soon({ children, lang }: { children: ReactNode; lang: string }) {
   return (
     <span
-      title={loc(lang, { ko: '준비 중 — 아직 적용되지 않습니다', en: 'Coming soon — not yet wired', ja: '近日対応 — 未接続です', zh: '即将推出 — 尚未接入', es: 'Próximamente — aún no conectado', ar: 'قريبًا — غير مفعّل بعد' })}
+      title={loc(lang, { ko: 'Closed Beta에서 제공되지 않는 기능입니다', en: 'Unavailable in Closed Beta', ja: 'クローズドベータでは利用できません', zh: 'Closed Beta 暂不可用', es: 'No disponible en la beta cerrada', ar: 'غير متاح في النسخة التجريبية المغلقة' })}
       style={{ display: 'block', opacity: 0.4, pointerEvents: 'none' }}
     >
       {children}
@@ -24,23 +24,26 @@ function Soon({ children, lang }: { children: ReactNode; lang: string }) {
   );
 }
 
-const CATALOG_DICT_KO: CatalogPanelDict = {
-  catalogTitle: 'GD&T 평가기', catalogLoading: '불러오는 중…', catalogReady: '준비됨',
-  catalogRun: '실행', catalogFailed: '불러오기 실패', catalogEmpty: '해당 기능이 없습니다',
-};
-const CATALOG_DICT_EN: CatalogPanelDict = {
-  catalogTitle: 'GD&T Evaluators', catalogLoading: 'Loading…', catalogReady: 'Ready',
-  catalogRun: 'Run', catalogFailed: 'Load failed', catalogEmpty: 'No matching feature',
-};
+function drawingCatalogDict(lang: string): CatalogPanelDict {
+  return {
+    catalogTitle: loc(lang, { ko: 'GD&T 평가기', en: 'GD&T Evaluators', ja: 'GD&T 評価器', zh: 'GD&T 评估器', es: 'Evaluadores GD&T', ar: 'مقيّمات GD&T' }),
+    catalogLoading: loc(lang, { ko: '불러오는 중…', en: 'Loading…', ja: '読み込み中…', zh: '加载中…', es: 'Cargando…', ar: 'جارٍ التحميل…' }),
+    catalogReady: loc(lang, { ko: '준비됨', en: 'Ready', ja: '準備完了', zh: '就绪', es: 'Listo', ar: 'جاهز' }),
+    catalogRun: loc(lang, { ko: '실행', en: 'Run', ja: '実行', zh: '运行', es: 'Ejecutar', ar: 'تشغيل' }),
+    catalogFailed: loc(lang, { ko: '불러오기 실패', en: 'Load failed', ja: '読み込みに失敗しました', zh: '加载失败', es: 'Error de carga', ar: 'فشل التحميل' }),
+    catalogEmpty: loc(lang, { ko: '해당 기능이 없습니다', en: 'No matching feature', ja: '該当する機能はありません', zh: '没有匹配的功能', es: 'No hay funciones coincidentes', ar: 'لا توجد ميزة مطابقة' }),
+  };
+}
 
 export interface DrawingRightPaneProps {
-  isKo: boolean;
+  /** Legacy caller compatibility; display strings use `lang` exclusively. */
+  isKo?: boolean;
   lang: string;
   onExportPdf: () => void;
   onExportDxf: () => void;
 }
 
-export function DrawingRightPane({ isKo, lang, onExportPdf, onExportDxf }: DrawingRightPaneProps) {
+export function DrawingRightPane({ lang, onExportPdf, onExportDxf }: DrawingRightPaneProps) {
   return (
     <SidePanel
       side="right"
@@ -113,7 +116,7 @@ export function DrawingRightPane({ isKo, lang, onExportPdf, onExportDxf }: Drawi
             drawing: loc(lang, { ko: '도면', en: 'Drawing', ja: '図面', zh: '图纸', es: 'Plano', ar: 'الرسم' }),
           }}
           license="pro"
-          dict={isKo ? CATALOG_DICT_KO : CATALOG_DICT_EN}
+          dict={drawingCatalogDict(lang)}
           onRun={(featureId, entryFn) => {
              
             console.info(`[catalog] run ${featureId} via ${entryFn}()`);
@@ -121,7 +124,7 @@ export function DrawingRightPane({ isKo, lang, onExportPdf, onExportDxf }: Drawi
         />
       </PropSection>
 
-      <ToleranceStackSection isKo={isKo} />
+      <ToleranceStackSection isKo={false} />
 
       <PropSection title={loc(lang, { ko: '표제란', en: 'Title Block', ja: '表題欄', zh: '标题栏', es: 'Cajetín', ar: 'خانة العنوان' })}>
         <PropRow label={loc(lang, { ko: '제작자', en: 'Drawn by', ja: '作成者', zh: '制图', es: 'Dibujado por', ar: 'رسمه' })}>

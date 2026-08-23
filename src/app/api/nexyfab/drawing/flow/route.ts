@@ -28,6 +28,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { rateLimit } from '@/lib/rate-limit';
 import { getTrustedClientIp } from '@/lib/client-ip';
+import { boundedJsonError, readBoundedJson } from '@/lib/boundedJsonBody';
+
+const MAX_BODY_BYTES = 17 * 1024 * 1024;
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 300;
@@ -73,7 +76,10 @@ export async function POST(req: NextRequest) {
   if (!rl.allowed) return NextResponse.json({ ok: false, error: '요청이 많습니다 — 잠시 후 다시 시도하세요.' }, { status: 429 });
 
   let body: { text?: string; stepText?: string; options?: Json; name?: string };
-  try { body = await req.json(); } catch { return NextResponse.json({ ok: false, error: 'invalid json' }, { status: 400 }); }
+  try { body = await readBoundedJson(req, MAX_BODY_BYTES); } catch (error) {
+    if (boundedJsonError(error)?.code === 'PAYLOAD_TOO_LARGE') return NextResponse.json({ ok: false, error: '설계 흐름 입력이 너무 큽니다.' }, { status: 413 });
+    return NextResponse.json({ ok: false, error: 'invalid json' }, { status: 400 });
+  }
 
   const text = typeof body.text === 'string' ? body.text.trim() : '';
   const stepText = typeof body.stepText === 'string' ? body.stepText : '';

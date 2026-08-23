@@ -22,7 +22,10 @@ import { rateLimitAsync } from '@/lib/rate-limit';
 import { getTrustedClientIp } from '@/lib/client-ip';
 import { logAudit } from '@/lib/audit';
 import { sendEmail } from '@/lib/email';
-import { refreshTokenCookie } from '@/lib/cookie-config';
+import { browserSessionCookie, refreshTokenCookie } from '@/lib/cookie-config';
+import { boundedJsonError, readBoundedJson } from '@/lib/boundedJsonBody';
+
+const MAX_CHANGE_PASSWORD_BODY_BYTES = 16 * 1024;
 
 export const dynamic = 'force-dynamic';
 
@@ -40,7 +43,9 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: '요청이 너무 많습니다. 잠시 후 다시 시도하세요.' }, { status: 429 });
   }
 
-  const body = await req.json().catch(() => ({})) as { currentPassword?: string; newPassword?: string };
+  let body: { currentPassword?: string; newPassword?: string } = {};
+  try { body = await readBoundedJson(req, MAX_CHANGE_PASSWORD_BODY_BYTES); }
+  catch (error) { if (boundedJsonError(error)?.code === 'PAYLOAD_TOO_LARGE') return NextResponse.json({ error: 'Request too large', code: 'PAYLOAD_TOO_LARGE' }, { status: 413 }); }
   const current = String(body.currentPassword ?? '');
   const next = String(body.newPassword ?? '');
   if (!current || !next) return NextResponse.json({ error: '현재 비밀번호와 새 비밀번호를 모두 입력하세요.' }, { status: 400 });
@@ -104,5 +109,7 @@ export async function POST(req: NextRequest) {
   });
   const c = refreshTokenCookie(rawRefresh);
   res.cookies.set(c.name, c.value, c.options);
+  const bs = browserSessionCookie();
+  res.cookies.set(bs.name, bs.value, bs.options);
   return res;
 }

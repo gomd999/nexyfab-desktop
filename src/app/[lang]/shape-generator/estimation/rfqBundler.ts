@@ -16,6 +16,9 @@
  */
 
 import { formatCost, getProcessName, type CostEstimate, type GeometryMetrics, type CostCurrency } from './CostEstimator';
+import { formatDate, formatNumber } from '@/lib/i18n/format';
+import { loc } from '@/lib/i18n/loc';
+import { toIsoLang } from '@/lib/i18n/normalize';
 import type { FlatPatternResult } from '../features/sheetMetal';
 
 // ─── Public types ─────────────────────────────────────────────────────────────
@@ -150,7 +153,27 @@ function zipStore(files: Array<{ name: string; data: Uint8Array }>): Uint8Array 
 
 function buildQuoteHTML(data: RFQBundleData): string {
   const { lang, estimates, metrics, materialId, quantity, currency, partName, flatPattern: _flatPattern, dfmIssues, companyName, notes } = data;
-  function tl(ko: string, en: string) { return lang === 'ko' ? ko : en; }
+  function tl(ko: string, en: string, ja: string, zh: string, es: string, ar: string) {
+    return loc(lang, { ko, en, ja, zh, es, ar });
+  }
+  function confidenceLabel(confidence: CostEstimate['confidence']) {
+    return loc(lang, {
+      ko: confidence === 'high' ? '높음' : confidence === 'medium' ? '보통' : '낮음',
+      en: confidence === 'high' ? 'High' : confidence === 'medium' ? 'Medium' : 'Low',
+      ja: confidence === 'high' ? '高い' : confidence === 'medium' ? '普通' : '低い',
+      zh: confidence === 'high' ? '高' : confidence === 'medium' ? '中' : '低',
+      es: confidence === 'high' ? 'Alta' : confidence === 'medium' ? 'Media' : 'Baja',
+      ar: confidence === 'high' ? 'مرتفع' : confidence === 'medium' ? 'متوسط' : 'منخفض',
+    });
+  }
+  const severityLabel = (severity: DFMIssueSummary['severity']) => loc(lang, {
+    ko: severity === 'error' ? '오류' : severity === 'warning' ? '경고' : '정보',
+    en: severity === 'error' ? 'Error' : severity === 'warning' ? 'Warning' : 'Info',
+    ja: severity === 'error' ? 'エラー' : severity === 'warning' ? '警告' : '情報',
+    zh: severity === 'error' ? '错误' : severity === 'warning' ? '警告' : '信息',
+    es: severity === 'error' ? 'Error' : severity === 'warning' ? 'Advertencia' : 'Información',
+    ar: severity === 'error' ? 'خطأ' : severity === 'warning' ? 'تحذير' : 'معلومات',
+  });
 
   const bestEstimate = estimates.reduce<CostEstimate | null>((best, e) => {
     if (!best) return e;
@@ -160,22 +183,22 @@ function buildQuoteHTML(data: RFQBundleData): string {
   const rows = estimates.map(e => `
     <tr>
       <td>${getProcessName(e.process, lang)}</td>
-      <td>${formatCost(e.unitCost * quantity, currency)}</td>
-      <td>${formatCost(e.unitCost, currency)}</td>
-      <td style="color:${e.confidence === 'high' ? 'var(--nx-ok)' : e.confidence === 'medium' ? 'var(--nx-warn)' : 'var(--nx-error)'}">${tl(e.confidence === 'high' ? '높음' : e.confidence === 'medium' ? '보통' : '낮음', e.confidence)}</td>
+      <td>${formatCost(e.unitCost * quantity, currency, lang)}</td>
+      <td>${formatCost(e.unitCost, currency, lang)}</td>
+      <td style="color:${e.confidence === 'high' ? 'var(--nx-ok)' : e.confidence === 'medium' ? 'var(--nx-warn)' : 'var(--nx-error)'}">${confidenceLabel(e.confidence)}</td>
       <td>${e.leadTime}</td>
     </tr>`).join('');
 
   const dfmRows = dfmIssues && dfmIssues.length > 0 ? dfmIssues.map(i => `
     <tr>
-      <td style="color:${i.severity === 'error' ? 'var(--nx-error)' : i.severity === 'warning' ? 'var(--nx-warn)' : 'var(--nx-accent-2)'}">${i.severity.toUpperCase()}</td>
+      <td style="color:${i.severity === 'error' ? 'var(--nx-error)' : i.severity === 'warning' ? 'var(--nx-warn)' : 'var(--nx-accent-2)'}">${severityLabel(i.severity)}</td>
       <td>${i.code}</td>
       <td>${i.description}</td>
       <td>${i.recommendation}</td>
-    </tr>`).join('') : `<tr><td colspan="4" style="color:var(--nx-ok)">${tl('DfM 이슈 없음', 'No DfM issues found')}</td></tr>`;
+    </tr>`).join('') : `<tr><td colspan="4" style="color:var(--nx-ok)">${tl('DfM 이슈 없음', 'No DfM issues found', 'DfMの問題はありません', '未发现 DfM 问题', 'No se encontraron problemas de DfM', 'لم يتم العثور على مشكلات DfM')}</td></tr>`;
 
   return `<!DOCTYPE html>
-<html lang="${lang}">
+<html lang="${toIsoLang(lang)}">
 <head>
 <meta charset="UTF-8">
 <title>RFQ — ${partName}</title>
@@ -200,56 +223,56 @@ function buildQuoteHTML(data: RFQBundleData): string {
 <body>
 <div class="header">
   <div>
-    <div style="font-size:11px;color:var(--nx-text-2);margin-bottom:4px">${tl('견적 요청서 (RFQ)', 'Request for Quotation (RFQ)')}</div>
+    <div style="font-size:11px;color:var(--nx-text-2);margin-bottom:4px">${tl('견적 요청서 (RFQ)', 'Request for Quotation (RFQ)', '見積依頼書 (RFQ)', '报价请求 (RFQ)', 'Solicitud de cotización (RFQ)', 'طلب عرض سعر (RFQ)')}</div>
     <h1>${partName}</h1>
-    <div class="meta">${companyName ? companyName + ' · ' : ''}${new Date().toLocaleDateString(lang === 'ko' ? 'ko-KR' : 'en-US')} · Qty: ${quantity}</div>
+    <div class="meta">${companyName ? companyName + ' · ' : ''}${formatDate(new Date(), lang) ?? ''} · ${tl('수량', 'Qty', '数量', '数量', 'Cant.', 'الكمية')}: ${formatNumber(quantity, lang) ?? quantity}</div>
   </div>
-  ${bestEstimate ? `<div style="text-align:right"><div style="font-size:10px;color:var(--nx-text-2);margin-bottom:4px">${tl('최저 견적', 'Best Quote')}</div><div style="font-size:28px;font-weight:800;color:var(--nx-ok)">${formatCost(bestEstimate.unitCost * quantity, currency)}</div><div style="font-size:11px;color:var(--nx-text-2)">${getProcessName(bestEstimate.process, lang)}</div></div>` : ''}
+  ${bestEstimate ? `<div style="text-align:right"><div style="font-size:10px;color:var(--nx-text-2);margin-bottom:4px">${tl('최저 견적', 'Best Quote', '最安見積', '最低报价', 'Mejor cotización', 'أفضل عرض')}</div><div style="font-size:28px;font-weight:800;color:var(--nx-ok)">${formatCost(bestEstimate.unitCost * quantity, currency, lang)}</div><div style="font-size:11px;color:var(--nx-text-2)">${getProcessName(bestEstimate.process, lang)}</div></div>` : ''}
 </div>
 
 <div class="section">
-  <h2>📐 ${tl('형상 정보', 'Geometry')}</h2>
+  <h2>📐 ${tl('형상 정보', 'Geometry', '形状', '几何信息', 'Geometría', 'الشكل')}</h2>
   <div class="kv">
-    <div class="kv-item"><label>${tl('재질', 'Material')}</label><span>${materialId}</span></div>
-    <div class="kv-item"><label>${tl('체적', 'Volume')}</label><span>${metrics.volume_cm3.toFixed(2)} cm³</span></div>
-    <div class="kv-item"><label>${tl('표면적', 'Surface Area')}</label><span>${metrics.surfaceArea_cm2.toFixed(1)} cm²</span></div>
-    <div class="kv-item"><label>${tl('치수 W', 'Dim W')}</label><span>${metrics.boundingBox.w.toFixed(1)} mm</span></div>
-    <div class="kv-item"><label>${tl('치수 H', 'Dim H')}</label><span>${metrics.boundingBox.h.toFixed(1)} mm</span></div>
-    <div class="kv-item"><label>${tl('치수 D', 'Dim D')}</label><span>${metrics.boundingBox.d.toFixed(1)} mm</span></div>
+    <div class="kv-item"><label>${tl('재질', 'Material', '材質', '材料', 'Material', 'المادة')}</label><span>${materialId}</span></div>
+    <div class="kv-item"><label>${tl('체적', 'Volume', '体積', '体积', 'Volumen', 'الحجم')}</label><span>${metrics.volume_cm3.toFixed(2)} cm³</span></div>
+    <div class="kv-item"><label>${tl('표면적', 'Surface Area', '表面積', '表面积', 'Área superficial', 'مساحة السطح')}</label><span>${metrics.surfaceArea_cm2.toFixed(1)} cm²</span></div>
+    <div class="kv-item"><label>${tl('치수 W', 'Dim W', '寸法 W', '尺寸 W', 'Dim W', 'البعد W')}</label><span>${metrics.boundingBox.w.toFixed(1)} mm</span></div>
+    <div class="kv-item"><label>${tl('치수 H', 'Dim H', '寸法 H', '尺寸 H', 'Dim H', 'البعد H')}</label><span>${metrics.boundingBox.h.toFixed(1)} mm</span></div>
+    <div class="kv-item"><label>${tl('치수 D', 'Dim D', '寸法 D', '尺寸 D', 'Dim D', 'البعد D')}</label><span>${metrics.boundingBox.d.toFixed(1)} mm</span></div>
   </div>
 </div>
 
 <div class="section">
-  <h2>💰 ${tl('공정별 견적', 'Process Estimates')} (${quantity}${tl('개 기준', ' pcs')})</h2>
+  <h2>💰 ${tl('공정별 견적', 'Process Estimates', '工程別見積', '工艺估算', 'Estimaciones por proceso', 'تقديرات العمليات')} (${quantity}${tl('개 기준', ' pcs', '個基準', '件基准', ' uds.', ' قطعة')})</h2>
   <table>
     <thead><tr>
-      <th>${tl('공정', 'Process')}</th>
-      <th>${tl('총액', 'Total')}</th>
-      <th>${tl('단가', 'Unit')}</th>
-      <th>${tl('신뢰도', 'Confidence')}</th>
-      <th>${tl('납기', 'Lead Time')}</th>
+      <th>${tl('공정', 'Process', '工程', '工艺', 'Proceso', 'العملية')}</th>
+      <th>${tl('총액', 'Total', '合計', '总计', 'Total', 'الإجمالي')}</th>
+      <th>${tl('단가', 'Unit', '単価', '单价', 'Unitario', 'سعر الوحدة')}</th>
+      <th>${tl('신뢰도', 'Confidence', '信頼度', '置信度', 'Confianza', 'الثقة')}</th>
+      <th>${tl('납기', 'Lead Time', '納期', '交期', 'Plazo', 'المهلة')}</th>
     </tr></thead>
     <tbody>${rows}</tbody>
   </table>
 </div>
 
 <div class="section">
-  <h2>🔍 ${tl('DfM 검토', 'DfM Review')}</h2>
+  <h2>🔍 ${tl('DfM 검토', 'DfM Review', 'DfMレビュー', 'DfM审查', 'Revisión DfM', 'مراجعة DfM')}</h2>
   <table>
     <thead><tr>
-      <th>${tl('등급', 'Level')}</th>
-      <th>${tl('코드', 'Code')}</th>
-      <th>${tl('설명', 'Description')}</th>
-      <th>${tl('권고사항', 'Recommendation')}</th>
+      <th>${tl('등급', 'Level', 'レベル', '级别', 'Nivel', 'المستوى')}</th>
+      <th>${tl('코드', 'Code', 'コード', '代码', 'Código', 'الرمز')}</th>
+      <th>${tl('설명', 'Description', '説明', '描述', 'Descripción', 'الوصف')}</th>
+      <th>${tl('권고사항', 'Recommendation', '推奨事項', '建议', 'Recomendación', 'التوصية')}</th>
     </tr></thead>
     <tbody>${dfmRows}</tbody>
   </table>
 </div>
 
-${notes ? `<div class="section"><h2>📝 ${tl('특이사항', 'Notes')}</h2><p style="font-size:13px;color:#444;white-space:pre-wrap;">${notes}</p></div>` : ''}
+${notes ? `<div class="section"><h2>📝 ${tl('특이사항', 'Notes', '備考', '备注', 'Notas', 'ملاحظات')}</h2><p style="font-size:13px;color:#444;white-space:pre-wrap;">${notes}</p></div>` : ''}
 
 <div style="text-align:center;font-size:10px;color:var(--nx-text-2);margin-top:20px">
-  ${tl('본 견적서는 NexyFab 자동 견적 시스템으로 생성되었습니다. 실제 거래 전 제조사 확인이 필요합니다.', 'This quotation was generated by NexyFab automated estimation. Verify with manufacturer before placing orders.')}
+  ${tl('본 견적서는 NexyFab 자동 견적 시스템으로 생성되었습니다. 실제 거래 전 제조사 확인이 필요합니다.', 'This quotation was generated by NexyFab automated estimation. Verify with manufacturer before placing orders.', 'この見積書はNexyFab自動見積システムで生成されました。注文前にメーカーへご確認ください。', '本报价由 NexyFab 自动估算系统生成。下单前请向制造商确认。', 'Esta cotización fue generada por el sistema automático de NexyFab. Verifique con el fabricante antes de realizar pedidos.', 'تم إنشاء عرض السعر هذا بواسطة نظام NexyFab الآلي. يرجى التحقق من الشركة المصنعة قبل الطلب.')}
 </div>
 </body>
 </html>`;

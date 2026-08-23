@@ -1,0 +1,58 @@
+{
+  "schema": "nexyfab.mechanical-core-feature-local-runtime.v1",
+  "feature": "linearPattern",
+  "axis": "edit",
+  "status": "PASS",
+  "executedAt": "2026-08-23T06:51:51.379Z",
+  "commandId": "linearPattern-runtime-param-edit",
+  "historyDepth": 1,
+  "before": {
+    "id": "runtime-feature",
+    "enabled": true,
+    "type": "linearPattern",
+    "params": {
+      "axis": 0,
+      "count": 2,
+      "spacing": 20,
+      "patternTarget": 0
+    }
+  },
+  "after": {
+    "id": "runtime-feature",
+    "enabled": true,
+    "type": "linearPattern",
+    "params": {
+      "axis": 0,
+      "count": 3,
+      "spacing": 20,
+      "patternTarget": 0
+    }
+  },
+  "intentBinding": {
+    "caseId": "mixed_units-06-linearPattern",
+    "candidateId": "intent-runtime:mixed_units-06-linearPattern",
+    "candidateBaseRevision": "3aabe87739ff99d1730c5375bad2e67c6be3fb8b482a4aa88e070328cf84915b",
+    "promptSha256": "8f62155c6bb4727f10a578add32473dde34493692d51cfc850f7a13215f9741d",
+    "inputSha256": "cfefb607d5bc6942325a7d5388e0edf2f50e7c2f5cb1a8aa12ed38eae9d209fe",
+    "sourceUnits": [
+      "mm",
+      "in"
+    ],
+    "normalizedUnit": "mm",
+    "dimensionsMm": {
+      "width": 100,
+      "length": 60,
+      "thickness": 6.35
+    }
+  },
+  "intentDimensionAssertion": {
+    "status": "PASS",
+    "inputSha256": "cfefb607d5bc6942325a7d5388e0edf2f50e7c2f5cb1a8aa12ed38eae9d209fe",
+    "dimensionsMm": {
+      "width": 100,
+      "length": 60,
+      "thickness": 6.35
+    },
+    "normalizedUnit": "mm"
+  }
+}

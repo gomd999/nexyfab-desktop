@@ -1,0 +1,64 @@
+{
+  "schema": "nexyfab.mechanical-single-part-candidate.v1",
+  "feature": "chamfer",
+  "candidateStatus": "PASS",
+  "partRevisionSha256": "6611c6ace2857b2a3ac5ad1f46c7289c71c33037de7f054cbcf4953e1370d77b",
+  "source": {
+    "receiptPath": "docs/evidence/cad-independent/local/mechanical-core-feature-axis-evidence.json",
+    "receiptSha256": "79d9344b7d101580b7e1574759a8eff652cbe942e6a389056b488aba28a77930",
+    "designRevisionSha256": "3cf6a0f9c8efcf153a2cfefde087a2112c086fc412d2feeaeb9ce52542838564",
+    "nfab": {
+      "path": "docs/evidence/cad-independent/local/mechanical-core-runtime-260813/chamfer/saved-project.nfab",
+      "sha256": "553ff7f3149db8c34f2d58cf7a93cca3b4cc5537f0776cc561b9690b3c3debe9",
+      "bytes": 1588,
+      "assertionId": "chamfer.save_reopen.saved-bytes",
+      "revisionSha256": "553ff7f3149db8c34f2d58cf7a93cca3b4cc5537f0776cc561b9690b3c3debe9",
+      "formatVersion": 3,
+      "createdAt": 1786643058879,
+      "updatedAt": 1786643058879
+    },
+    "step": {
+      "path": "docs/evidence/cad-independent/local/mechanical-core-runtime-260813/chamfer/chamfer-edited.step",
+      "sha256": "85254b2871d0355fbf06d1e939f3551b4bdeb74b7f5a555e194cb2b81ec1d1a8",
+      "bytes": 61670,
+      "assertionId": "chamfer.export.native-step"
+    },
+    "drawingSvg": {
+      "path": "docs/evidence/cad-independent/local/mechanical-core-runtime-260813/chamfer/chamfer-exact-hlr.svg",
+      "sha256": "b8cf3c254ccf6cb616690cdaa85969f2c5635d1d9b2756b9f2afcc9b3e05878a",
+      "bytes": 7882,
+      "assertionId": "chamfer.drawing.exact-hlr-svg"
+    }
+  },
+  "artifacts": {
+    "stepImport": {
+      "path": "docs/evidence/cad-independent/local/mechanical-single-part-candidates-260813/chamfer/step-import.json",
+      "sha256": "944caa51f17eaa2a2bae647b18ba01505e5d3d90e8a5fcbcbf1058edef713572",
+      "bytes": 1037,
+      "assertionId": "chamfer.candidate.step-import"
+    },
+    "drawing": {
+      "path": "docs/evidence/cad-independent/local/mechanical-single-part-candidates-260813/chamfer/chamfer-three-axis-hlr.svg",
+      "sha256": "b8cf3c254ccf6cb616690cdaa85969f2c5635d1d9b2756b9f2afcc9b3e05878a",
+      "bytes": 7882,
+      "assertionId": "chamfer.candidate.three-axis-hlr"
+    },
+    "bom": {
+      "path": "docs/evidence/cad-independent/local/mechanical-single-part-candidates-260813/chamfer/bom.json",
+      "sha256": "146e19f0548dd8f4a1531d4b2e36355677784c2bca3615170c8e9f30bd3af45e",
+      "bytes": 874,
+      "assertionId": "chamfer.candidate.one-part-bom"
+    }
+  },
+  "capabilityStatus": {
+    "stepImportSolidUnitsBounds": "PASS",
+    "threeAxisHlrDrawingCandidate": "PASS",
+    "onePartBomQuantityDimensions": "PASS",
+    "drawingDimensions": "NOT_RUN",
+    "gdt": "NOT_RUN",
+    "pmi": "NOT_RUN",
+    "humanApproval": "NOT_RUN",
+    "manufacturingRelease": "BLOCKED"
+  },
+  "commercialReleaseEligible": false
+}

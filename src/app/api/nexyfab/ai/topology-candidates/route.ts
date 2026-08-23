@@ -2,6 +2,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { getAuthUser } from '@/lib/auth-middleware';
 import { generateTopologyCandidates, type TopologyGoal } from '@/lib/ai/topologyCandidates';
+import { readBoundedJson } from '@/lib/boundedJsonBody';
+
+const MAX_JSON_BODY_BYTES = 4 * 1024 * 1024;
 
 const goalSchema = z.object({
   massReductionTarget: z.number().min(0).max(0.95),
@@ -17,7 +20,7 @@ export async function POST(req: NextRequest) {
   const authUser = await getAuthUser(req);
   if (!authUser) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-  const raw = await req.json().catch(() => null);
+  const raw = await readBoundedJson(req, MAX_JSON_BODY_BYTES).catch(() => null);
   const parsed = goalSchema.safeParse(raw);
   if (!parsed.success) {
     return NextResponse.json(

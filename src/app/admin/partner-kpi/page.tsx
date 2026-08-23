@@ -1,6 +1,9 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
+import { useAdminI18n } from '../AdminI18nProvider';
+import { createCommercialLocalizer } from '@/lib/i18n/commercialLocalizer';
+import { formatMoney } from '@/lib/i18n/format';
 interface PartnerKPI {
   factoryId: string;
   factoryName: string;
@@ -18,10 +21,8 @@ interface PartnerKPI {
 
 // ─── helpers ──────────────────────────────────────────────────────────────────
 
-function fmtKRW(n: number) {
-  if (n >= 1_000_000_000) return (n / 1_000_000_000).toFixed(1) + '억원';
-  if (n >= 1_000_000) return (n / 1_000_000).toFixed(0) + '만원';
-  return n.toLocaleString('ko-KR') + '원';
+function fmtKRW(n: number, locale: string) {
+  return formatMoney(n, locale, 'KRW', { notation: 'compact', maximumFractionDigits: 1 }) ?? '-';
 }
 
 function RateBar({ value, color }: { value: number | null; color: string }) {
@@ -52,6 +53,8 @@ function KpiChip({ label, value, unit = '', color = '#6b7280' }: { label: string
 // ─── Main Page ─────────────────────────────────────────────────────────────────
 
 export default function PartnerKpiPage() {
+  const { copy, locale } = useAdminI18n();
+  const L = createCommercialLocalizer(locale);
   const [kpis, setKpis] = useState<PartnerKPI[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -114,8 +117,8 @@ export default function PartnerKpiPage() {
       {/* Title */}
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">파트너 성과 분석</h1>
-          <p className="text-sm text-gray-500 mt-1">공장별 응답 속도 · 승률 · 완료율 · 매출 KPI</p>
+          <h1 className="text-2xl font-bold text-gray-900">{copy.pageTitles.partnerKpi}</h1>
+          <p className="text-sm text-gray-500 mt-1">{L('공장별 응답 속도 · 승률 · 완료율 · 매출 KPI', 'Factory response speed · win rate · completion · revenue KPIs')}</p>
         </div>
         <button onClick={load} disabled={loading}
           className="px-3 py-1.5 text-sm rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 disabled:opacity-50">
@@ -141,18 +144,18 @@ export default function PartnerKpiPage() {
         ))}
       </div>
       <div className="bg-white rounded-xl border border-gray-200 p-4 mb-6 flex items-center gap-4 shadow-sm">
-        <div className="text-xs text-gray-400">누적 매출 (비취소 계약)</div>
-        <div className="text-xl font-extrabold text-green-700">{fmtKRW(totalRevenue)}</div>
+        <div className="text-xs text-gray-400">{L('누적 매출 (비취소 계약)', 'Revenue to date (non-cancelled contracts)')}</div>
+        <div className="text-xl font-extrabold text-green-700">{fmtKRW(totalRevenue, locale)}</div>
       </div>
 
       {/* Search */}
       <div className="flex gap-2 mb-4">
         <input value={search} onChange={e => setSearch(e.target.value)}
-          placeholder="공장명 또는 이메일 검색..."
+          placeholder={L('공장명 또는 이메일 검색...', 'Search factory or email...')}
           className="flex-1 px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:border-blue-400" />
         {search && (
           <button onClick={() => setSearch('')}
-            className="px-3 py-2 text-sm rounded-lg border border-gray-200 text-gray-500 hover:bg-gray-50">초기화</button>
+            className="px-3 py-2 text-sm rounded-lg border border-gray-200 text-gray-500 hover:bg-gray-50">{L('초기화', 'Reset')}</button>
         )}
       </div>
 
@@ -165,7 +168,7 @@ export default function PartnerKpiPage() {
           .slice(0, 3);
         return (
           <div className="mb-6">
-            <h2 className="text-sm font-bold text-gray-700 mb-3">Top Performers — 승률 TOP 3</h2>
+            <h2 className="text-sm font-bold text-gray-700 mb-3">{L('Top Performers — 승률 TOP 3', 'Top Performers — Top 3 win rates')}</h2>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               {top3.map((k, i) => (
                 <div key={k.factoryId} className="bg-white rounded-xl border border-gray-200 shadow-sm p-4 flex items-center gap-3">
@@ -175,9 +178,9 @@ export default function PartnerKpiPage() {
                     {k.partnerEmail && <div className="text-xs text-gray-400 truncate">{k.partnerEmail}</div>}
                     <div className="mt-1 flex items-center gap-2">
                       <span className="text-lg font-extrabold text-pink-600">{k.winRate}%</span>
-                      <span className="text-xs text-gray-400">승률</span>
+                      <span className="text-xs text-gray-400">{L('승률', 'Win rate')}</span>
                     </div>
-                    <div className="text-xs text-gray-400 mt-0.5">완료 {k.completedCount}건 · 견적 {k.quoteCount}건</div>
+                    <div className="text-xs text-gray-400 mt-0.5">{L(`완료 ${k.completedCount}건 · 견적 ${k.quoteCount}건`, `Completed ${k.completedCount} · Quotes ${k.quoteCount}`)}</div>
                   </div>
                 </div>
               ))}
@@ -192,7 +195,7 @@ export default function PartnerKpiPage() {
           .sort((a, b) => (b.avgDaysOverdue ?? 0) - (a.avgDaysOverdue ?? 0));
         return (
           <div className="mb-6">
-            <h2 className="text-sm font-bold text-red-700 mb-3">Needs Attention — 연체 파트너</h2>
+            <h2 className="text-sm font-bold text-red-700 mb-3">{L('Needs Attention — 연체 파트너', 'Needs Attention — Overdue partners')}</h2>
             <div className="bg-red-50 border border-red-200 rounded-xl overflow-hidden shadow-sm">
               {overdue.map((k, i) => (
                 <div key={k.factoryId}
@@ -203,10 +206,10 @@ export default function PartnerKpiPage() {
                   </div>
                   <div className="text-right">
                     <span className="text-xs font-bold text-red-600 bg-red-100 border border-red-300 px-2.5 py-1 rounded-full">
-                      평균 +{k.avgDaysOverdue}일 연체
+                      {L(`평균 +${k.avgDaysOverdue}일 연체`, `Average +${k.avgDaysOverdue} days overdue`)}
                     </span>
                   </div>
-                  <div className="text-xs text-red-400">진행 {k.activeCount}건</div>
+                  <div className="text-xs text-red-400">{L(`진행 ${k.activeCount}건`, `${k.activeCount} active`)}</div>
                 </div>
               ))}
             </div>
@@ -221,15 +224,15 @@ export default function PartnerKpiPage() {
           .sort((a, b) => (a.avgResponseHours ?? 0) - (b.avgResponseHours ?? 0));
         return (
           <div className="mb-6">
-            <h2 className="text-sm font-bold text-gray-700 mb-3">Response Time Leaderboard — 응답 속도 순위</h2>
+            <h2 className="text-sm font-bold text-gray-700 mb-3">{L('Response Time Leaderboard — 응답 속도 순위', 'Response Time Leaderboard — Response speed ranking')}</h2>
             <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
               <div style={{ display: 'grid', gridTemplateColumns: '40px 2fr 1fr 1fr 1fr' }}
                 className="bg-gray-50 border-b px-4 py-2 text-xs font-semibold text-gray-500">
                 <div>#</div>
-                <div>공장 / 파트너</div>
-                <div style={{ textAlign: 'right' }}>평균 응답</div>
-                <div style={{ textAlign: 'right' }}>견적 수</div>
-                <div style={{ textAlign: 'right' }}>승률</div>
+                <div>{L('공장 / 파트너', 'Factory / Partner')}</div>
+                <div style={{ textAlign: 'right' }}>{L('평균 응답', 'Avg. response')}</div>
+                <div style={{ textAlign: 'right' }}>{L('견적 수', 'Quotes')}</div>
+                <div style={{ textAlign: 'right' }}>{L('승률', 'Win rate')}</div>
               </div>
               {ranked.map((k, i) => {
                 const isFastest = i === 0;
@@ -250,7 +253,7 @@ export default function PartnerKpiPage() {
                     <div style={{ textAlign: 'right' }}>
                       <span className="font-bold text-sm" style={{ color: barColor }}>{k.avgResponseHours}h</span>
                     </div>
-                    <div style={{ textAlign: 'right' }} className="text-gray-600">{k.quoteCount}건</div>
+                    <div style={{ textAlign: 'right' }} className="text-gray-600">{L(`${k.quoteCount}건`, `${k.quoteCount} quotes`)}</div>
                     <div style={{ textAlign: 'right' }}>
                       {k.winRate != null
                         ? <span className="font-semibold text-pink-600">{k.winRate}%</span>
@@ -266,15 +269,15 @@ export default function PartnerKpiPage() {
 
       {/* Table */}
       {loading ? (
-        <div className="text-center py-16 text-gray-400">불러오는 중...</div>
+        <div className="text-center py-16 text-gray-400">{L('불러오는 중...', 'Loading…')}</div>
       ) : filtered.length === 0 ? (
-        <div className="text-center py-16 text-gray-400">데이터 없음</div>
+        <div className="text-center py-16 text-gray-400">{L('데이터 없음', 'No data')}</div>
       ) : (
         <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
           {/* Header */}
           <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 1fr 1fr 1fr 1fr 1fr 80px', gap: 0 }}
             className="border-b bg-gray-50 px-4 py-2.5 text-xs font-semibold text-gray-500">
-            <div>공장 / 파트너</div>
+            <div>{L('공장 / 파트너', 'Factory / Partner')}</div>
             <div style={{ textAlign: 'right' }}>{colBtn('quoteCount', '견적')}</div>
             <div style={{ textAlign: 'right' }}>{colBtn('avgResponseHours', '응답h')}</div>
             <div style={{ paddingLeft: 8 }}>{colBtn('winRate', '승률')}</div>
@@ -282,7 +285,7 @@ export default function PartnerKpiPage() {
             <div style={{ textAlign: 'right' }}>{colBtn('activeCount', '진행')}</div>
             <div style={{ textAlign: 'right' }}>{colBtn('completedCount', '완료')}</div>
             <div style={{ textAlign: 'right' }}>{colBtn('totalRevenue', '매출')}</div>
-            <div style={{ textAlign: 'center' }}>연체</div>
+            <div style={{ textAlign: 'center' }}>{L('연체', 'Overdue')}</div>
           </div>
 
           {filtered.map(k => (
@@ -315,12 +318,12 @@ export default function PartnerKpiPage() {
                 {/* Completed */}
                 <div style={{ textAlign: 'right' }} className="text-green-700 font-semibold">{k.completedCount}</div>
                 {/* Revenue */}
-                <div style={{ textAlign: 'right' }} className="text-xs text-gray-700 font-semibold">{fmtKRW(k.totalRevenue)}</div>
+                <div style={{ textAlign: 'right' }} className="text-xs text-gray-700 font-semibold">{fmtKRW(k.totalRevenue, locale)}</div>
                 {/* Overdue */}
                 <div style={{ textAlign: 'center' }}>
                   {k.avgDaysOverdue != null ? (
                     <span className="text-xs font-bold text-red-600 bg-red-50 border border-red-200 px-2 py-0.5 rounded-full">
-                      +{k.avgDaysOverdue}일
+                      {L(`+${k.avgDaysOverdue}일`, `+${k.avgDaysOverdue} days`)}
                     </span>
                   ) : (
                     <span className="text-xs text-gray-300">—</span>
@@ -332,41 +335,41 @@ export default function PartnerKpiPage() {
               {expanded === k.factoryId && (
                 <div className="bg-blue-50 border-b px-6 py-4">
                   <div className="flex flex-wrap gap-3 mb-3">
-                    <KpiChip label="총 견적" value={k.quoteCount} unit="건" color="#1d4ed8" />
-                    <KpiChip label="평균 응답" value={k.avgResponseHours} unit="h" color="#0284c7" />
-                    <KpiChip label="승률" value={k.winRate} unit="%" color="#db2777" />
-                    <KpiChip label="완료율" value={k.completionRate} unit="%" color="#16a34a" />
-                    <KpiChip label="진행 계약" value={k.activeCount} unit="건" color="#d97706" />
-                    <KpiChip label="완료 계약" value={k.completedCount} unit="건" color="#16a34a" />
-                    <KpiChip label="취소 계약" value={k.cancelledCount} unit="건" color="#6b7280" />
-                    <KpiChip label="평균 연체" value={k.avgDaysOverdue} unit="일" color="#dc2626" />
+                    <KpiChip label={L('총 견적', 'Total quotes')} value={k.quoteCount} unit={L('건', ' quotes')} color="#1d4ed8" />
+                    <KpiChip label={L('평균 응답', 'Avg. response')} value={k.avgResponseHours} unit="h" color="#0284c7" />
+                    <KpiChip label={L('승률', 'Win rate')} value={k.winRate} unit="%" color="#db2777" />
+                    <KpiChip label={L('완료율', 'Completion rate')} value={k.completionRate} unit="%" color="#16a34a" />
+                    <KpiChip label={L('진행 계약', 'Active contracts')} value={k.activeCount} unit={L('건', ' contracts')} color="#d97706" />
+                    <KpiChip label={L('완료 계약', 'Completed contracts')} value={k.completedCount} unit={L('건', ' contracts')} color="#16a34a" />
+                    <KpiChip label={L('취소 계약', 'Cancelled contracts')} value={k.cancelledCount} unit={L('건', ' contracts')} color="#6b7280" />
+                    <KpiChip label={L('평균 연체', 'Avg. overdue')} value={k.avgDaysOverdue} unit={L('일', ' days')} color="#dc2626" />
                   </div>
                   <div className="flex gap-4 mt-3 flex-wrap">
                     <div>
-                      <div className="text-xs text-gray-500 mb-1">승률</div>
+                      <div className="text-xs text-gray-500 mb-1">{L('승률', 'Win rate')}</div>
                       <RateBar value={k.winRate} color="#db2777" />
                     </div>
                     <div style={{ flex: 1, minWidth: 160 }}>
-                      <div className="text-xs text-gray-500 mb-1">완료율</div>
+                      <div className="text-xs text-gray-500 mb-1">{L('완료율', 'Completion rate')}</div>
                       <RateBar value={k.completionRate} color="#16a34a" />
                     </div>
                   </div>
                   <div className="mt-3 text-sm font-semibold text-green-800">
-                    누적 매출: {fmtKRW(k.totalRevenue)}
+                    {L('누적 매출:', 'Revenue to date:')} {fmtKRW(k.totalRevenue, locale)}
                   </div>
                   <div className="mt-2 flex gap-2">
                     <a
                       href={`/admin/contracts?factory=${encodeURIComponent(k.factoryName)}`}
                       className="text-xs text-blue-600 hover:underline"
                     >
-                      계약 목록 →
+                      {L('계약 목록 →', 'View contracts →')}
                     </a>
                     {k.partnerEmail && (
                       <a
                         href={`/admin/partners?search=${encodeURIComponent(k.partnerEmail)}`}
                         className="text-xs text-blue-600 hover:underline"
                       >
-                        파트너 상세 →
+                        {L('파트너 상세 →', 'Partner details →')}
                       </a>
                     )}
                   </div>
@@ -398,6 +401,8 @@ export default function PartnerKpiPage() {
 // ─── Sub-components ───────────────────────────────────────────────────────────
 
 function DeliveryRankingSection({ kpis }: { kpis: PartnerKPI[] }) {
+  const { locale } = useAdminI18n();
+  const L = createCommercialLocalizer(locale);
   const rows = [...kpis]
     .filter(k => k.completedCount + k.activeCount > 0)
     .sort((a, b) => (b.completionRate ?? 0) - (a.completionRate ?? 0))
@@ -414,18 +419,18 @@ function DeliveryRankingSection({ kpis }: { kpis: PartnerKPI[] }) {
 
   return (
     <div className="mt-8">
-      <h2 className="text-base font-bold text-gray-800 mb-1">납기 준수율 랭킹</h2>
-      <p className="text-xs text-gray-400 mb-4">파트너별 완료 계약 기준 준수율</p>
+      <h2 className="text-base font-bold text-gray-800 mb-1">{L('납기 준수율 랭킹', 'Delivery compliance ranking')}</h2>
+      <p className="text-xs text-gray-400 mb-4">{L('파트너별 완료 계약 기준 준수율', 'Compliance rate by partner based on completed contracts')}</p>
       <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
         <div
           style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 1fr 1fr' }}
           className="bg-gray-50 border-b px-4 py-2.5 text-xs font-semibold text-gray-500"
         >
-          <div>파트너명</div>
-          <div style={{ textAlign: 'right' }}>총 계약</div>
-          <div style={{ textAlign: 'right' }}>완료</div>
-          <div style={{ textAlign: 'right' }}>준수율 (%)</div>
-          <div style={{ textAlign: 'right' }}>평균 지연일</div>
+          <div>{L('파트너명', 'Partner')}</div>
+          <div style={{ textAlign: 'right' }}>{L('총 계약', 'Total contracts')}</div>
+          <div style={{ textAlign: 'right' }}>{L('완료', 'Completed')}</div>
+          <div style={{ textAlign: 'right' }}>{L('준수율 (%)', 'Compliance (%)')}</div>
+          <div style={{ textAlign: 'right' }}>{L('평균 지연일', 'Avg. delay days')}</div>
         </div>
         {rows.map((row, i) => {
           const rateColor = row.rate >= 90 ? '#16a34a' : row.rate >= 75 ? '#d97706' : '#dc2626';
@@ -446,7 +451,7 @@ function DeliveryRankingSection({ kpis }: { kpis: PartnerKPI[] }) {
               </div>
               <div style={{ textAlign: 'right' }}>
                 {row.avgDelayDays != null
-                  ? <span className="text-red-500 font-semibold">+{row.avgDelayDays}일</span>
+                  ? <span className="text-red-500 font-semibold">{L(`+${row.avgDelayDays}일`, `+${row.avgDelayDays} days`)}</span>
                   : <span className="text-gray-300">—</span>
                 }
               </div>
@@ -465,6 +470,8 @@ interface ChartsData {
 }
 
 function MonthlyOrderChart() {
+  const { locale } = useAdminI18n();
+  const L = createCommercialLocalizer(locale);
   const [data, setData] = useState<ChartsData | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -476,7 +483,7 @@ function MonthlyOrderChart() {
       .finally(() => setLoading(false));
   }, []);
 
-  if (loading) return <div className="mt-8 text-sm text-gray-400">차트 로딩 중…</div>;
+  if (loading) return <div className="mt-8 text-sm text-gray-400">{L('차트 로딩 중…', 'Loading chart…')}</div>;
   if (!data || data.monthly.length === 0) return null;
 
   const partners = Object.keys(data.partnerColors);
@@ -492,8 +499,8 @@ function MonthlyOrderChart() {
 
   return (
     <div className="mt-8">
-      <h2 className="text-base font-bold text-gray-800 mb-1">월별 수주 추이 (Top {partners.length} 파트너)</h2>
-      <p className="text-xs text-gray-400 mb-4">최근 6개월 계약 건수</p>
+      <h2 className="text-base font-bold text-gray-800 mb-1">{L(`월별 수주 추이 (Top ${partners.length} 파트너)`, `Monthly wins (Top ${partners.length} partners)`)}</h2>
+      <p className="text-xs text-gray-400 mb-4">{L('최근 6개월 계약 건수', 'Contract count over the last 6 months')}</p>
       <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-5 overflow-x-auto">
         <div className="flex gap-4 mb-4 flex-wrap">
           {partners.map(p => (
@@ -506,7 +513,7 @@ function MonthlyOrderChart() {
         <svg
           viewBox={`0 0 ${totalWidth} ${chartH + topPad + 28}`}
           style={{ width: '100%', minWidth: 480, height: chartH + topPad + 36 }}
-          aria-label="월별 수주 추이 차트"
+          aria-label={L('월별 수주 추이 차트', 'Monthly wins chart')}
         >
           {[0, 0.25, 0.5, 0.75, 1].map(frac => {
             const y = topPad + chartH - frac * chartH;
@@ -546,6 +553,8 @@ function MonthlyOrderChart() {
 }
 
 function ContractStatusChart() {
+  const { locale } = useAdminI18n();
+  const L = createCommercialLocalizer(locale);
   const [data, setData] = useState<ChartsData | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -565,8 +574,8 @@ function ContractStatusChart() {
 
   return (
     <div className="mt-8 mb-8">
-      <h2 className="text-base font-bold text-gray-800 mb-1">계약 상태 분포</h2>
-      <p className="text-xs text-gray-400 mb-4">전체 계약 상태별 건수</p>
+      <h2 className="text-base font-bold text-gray-800 mb-1">{L('계약 상태 분포', 'Contract status distribution')}</h2>
+      <p className="text-xs text-gray-400 mb-4">{L('전체 계약 상태별 건수', 'Counts by contract status')}</p>
       <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-5">
         <div className="space-y-3">
           {data.statusDist.map(q => {
@@ -585,7 +594,7 @@ function ContractStatusChart() {
           })}
         </div>
         <div className="mt-4 pt-3 border-t border-gray-100 text-xs text-gray-400 text-right">
-          전체 {total}건
+          {L(`전체 ${total}건`, `Total ${total}`)}
         </div>
       </div>
     </div>

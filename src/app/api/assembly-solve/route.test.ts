@@ -20,6 +20,18 @@ function makeReq(body: unknown): Request {
   });
 }
 
+describe('POST /api/assembly-solve - bounded JSON ingress', () => {
+  it('rejects declared input beyond the assembly and feature-tree envelope', async () => {
+    const r = await POST(new Request('http://localhost/api/assembly-solve', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', 'content-length': String(32 * 1024 * 1024 + 1) },
+      body: '{}',
+    }) as never);
+    expect(r.status).toBe(413);
+    await expect(r.json()).resolves.toMatchObject({ ok: false, code: 'TOO_LARGE' });
+  });
+});
+
 const validState: AssemblyState = {
   parts: [
     {

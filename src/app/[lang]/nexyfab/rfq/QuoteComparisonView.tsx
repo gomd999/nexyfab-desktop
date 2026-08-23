@@ -15,6 +15,7 @@
 
 import React, { useState } from 'react';
 import { toIsoLang } from '@/lib/i18n/normalize';
+import { formatMoney } from '@/lib/i18n/format';
 
 interface QuoteForRFQ {
   id: string;
@@ -210,7 +211,7 @@ export default function QuoteComparisonView({ lang, quotes, acting, onAction }: 
                 return (
                   <td key={q.id} style={{ ...tdCellStyle, background: best ? '#0d3819' : 'transparent' }}>
                     <div style={{ fontWeight: 700, color: best ? '#7ee787' : 'var(--nx-text)' }}>
-                      {q.estimatedAmount.toLocaleString('ko-KR')}원
+                      {formatMoney(q.estimatedAmount, lang, 'KRW') ?? '—'}
                     </div>
                     {best && <div style={badgeStyle}>{t.bestPrice}</div>}
                   </td>

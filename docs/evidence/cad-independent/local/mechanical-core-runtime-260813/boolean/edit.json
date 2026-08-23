@@ -1,0 +1,47 @@
+{
+  "schema": "nexyfab.mechanical-core-feature-local-runtime.v1",
+  "feature": "boolean",
+  "axis": "edit",
+  "status": "PASS",
+  "executedAt": "2026-08-22T07:13:30.564Z",
+  "commandId": "boolean-runtime-param-edit",
+  "historyDepth": 1,
+  "before": {
+    "id": "runtime-feature",
+    "enabled": true,
+    "type": "boolean",
+    "params": {
+      "operation": 1,
+      "toolShape": 0,
+      "toolWidth": 10,
+      "toolHeight": 50,
+      "toolDepth": 10,
+      "posX": 0,
+      "posY": 0,
+      "posZ": 0,
+      "rotX": 0,
+      "rotY": 0,
+      "rotZ": 0,
+      "engine": 1
+    }
+  },
+  "after": {
+    "id": "runtime-feature",
+    "enabled": true,
+    "type": "boolean",
+    "params": {
+      "operation": 1,
+      "toolShape": 0,
+      "toolWidth": 14,
+      "toolHeight": 50,
+      "toolDepth": 10,
+      "posX": 0,
+      "posY": 0,
+      "posZ": 0,
+      "rotX": 0,
+      "rotY": 0,
+      "rotZ": 0,
+      "engine": 1
+    }
+  }
+}

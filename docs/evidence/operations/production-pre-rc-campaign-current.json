@@ -1,0 +1,39 @@
+{
+  "schema": "nexyfab.railway-operations-campaign.v1",
+  "startedAt": "2026-08-22T07:08:37.772Z",
+  "targetEndsAt": "2026-08-29T07:08:37.772Z",
+  "lastCapturedAt": "2026-08-22T07:08:37.772Z",
+  "project": "eaf82c54-1a51-449a-8e60-f3bd29a089e4",
+  "environment": "production",
+  "windowHours": 6,
+  "requiredServices": [
+    {
+      "alias": "web",
+      "source": "nexyfab.com"
+    },
+    {
+      "alias": "openscad-worker",
+      "source": "nexyfab-openscad-worker"
+    },
+    {
+      "alias": "fea-worker",
+      "source": "nexyfab-fea-worker"
+    }
+  ],
+  "costServices": [
+    "nexyfab.com",
+    "nexyfab-openscad-worker",
+    "nexyfab-fea-worker",
+    "Postgres-KN2x",
+    "Redis-IrVt"
+  ],
+  "releaseBinding": null,
+  "written": [
+    "docs/evidence/operations/production-pre-rc-samples/web-2026-08-22T07-08-31-546Z.json",
+    "docs/evidence/operations/production-pre-rc-samples/openscad-worker-2026-08-22T07-08-31-546Z.json",
+    "docs/evidence/operations/production-pre-rc-samples/fea-worker-2026-08-22T07-08-31-546Z.json",
+    "docs/evidence/operations/production-pre-rc-cost/railway-cost-2026-08-22T07-08-37-771Z.json"
+  ],
+  "failures": [],
+  "status": "collecting"
+}

@@ -1,0 +1,88 @@
+{
+  "schema": "nexyfab.platform-wave-verification.v1",
+  "capturedAt": "2026-08-13T21:36:00+09:00",
+  "waves": ["wave7"],
+  "overallState": "PARTIAL",
+  "releaseDecision": "HOLD",
+  "gateState": {
+    "G7LocalImplementation": "PASS_LOCAL",
+    "G7SameCorpusCloudflareRailway": "NOT_RUN",
+    "productionRelease": "NOT_RUN"
+  },
+  "implementation": {
+    "immutableArtifactInputGateway": "PASS_LOCAL",
+    "hashVerifiedOutputCommit": "PASS_LOCAL",
+    "hmacJobAuthorization": "PASS_LOCAL",
+    "queueWorkflowLedger": "PASS_LOCAL",
+    "cloudflareContainerBindings": "PASS_LOCAL_DRY_RUN",
+    "railwayNativeFallbackRouter": "PASS_LOCAL",
+    "occtExactExecutor": "PASS_LOCAL_REAL_KERNEL",
+    "openscadExecutor": "PASS_LOCAL_ISOLATED_CLI",
+    "feaExecutor": "PASS_LOCAL_FAIL_CLOSED",
+    "ifcStepExecutor": "PASS_LOCAL",
+    "timeoutCancellationRetryRecovery": "PASS_LOCAL",
+    "cloudflareDeployment": "NOT_RUN",
+    "railwayFallbackDeployment": "NOT_RUN",
+    "cloudflareRailwaySameCorpusParity": "NOT_RUN"
+  },
+  "verification": {
+    "typescript": "PASS",
+    "targetedRegression": "PASS",
+    "dockerImages": "PASS_LOCAL_5_IMAGES",
+    "wranglerDryRun": "PASS_LOCAL_4_CONTAINER_IMAGES_76_25_KIB",
+    "latestIfcStepImageDigest": "sha256:16c86df6a96b7ff360f15d0e5e35e8a2789016933b0d7f301b3e9b2c4779d133",
+    "latestIfcStepHealth": "PASS_LOCAL_EXECUTION_NOT_RUN",
+    "npmAuditDuringImageBuild": "PASS_0_VULNERABILITIES",
+    "wranglerVersionWarning": "OPEN_UPDATE_4_85_0_TO_4_122_0"
+  },
+  "observedFailuresAndAdjustments": [
+    {
+      "stage": "Vitest sandbox startup",
+      "result": "FAIL",
+      "reason": "spawn EPERM",
+      "adjustment": "reran the identical scope with approved process execution",
+      "final": "PASS"
+    },
+    {
+      "stage": "initial container test discovery",
+      "result": "FAIL",
+      "reason": "Vitest include did not collect containers and packages",
+      "adjustment": "added containers/**/*.test.ts and packages/**/*.test.ts",
+      "final": "PASS"
+    },
+    {
+      "stage": "Cloudflare Container class typecheck",
+      "result": "FAIL",
+      "reason": "SDK constructor/env assumptions did not match @cloudflare/containers 0.3.7",
+      "adjustment": "stored the binding env from the base constructor and used its inferred constructor parameter",
+      "final": "PASS"
+    },
+    {
+      "stage": "first multi-image health smoke",
+      "result": "FAIL",
+      "reason": "worker build identity environment was absent and the wait window was too short",
+      "adjustment": "provided the mandatory identity and used a bounded readiness loop",
+      "final": "PASS_LOCAL"
+    },
+    {
+      "stage": "final Wrangler dry-run first attempt",
+      "result": "FAIL",
+      "reason": "Docker npm registry connection reset during the runtime dependency layer",
+      "adjustment": "retried the unchanged dry-run; cached and fresh layers completed",
+      "final": "PASS_LOCAL_DRY_RUN"
+    },
+    {
+      "stage": "latest IFC/STEP health first attempt",
+      "result": "FAIL",
+      "reason": "worker and kernel SHA-256 identity environment was omitted",
+      "adjustment": "supplied all mandatory identity variables and retained execution=NOT_RUN in health",
+      "final": "PASS_LOCAL_HEALTH"
+    }
+  ],
+  "nonClaims": [
+    "Wrangler dry-run is not a Cloudflare deployment.",
+    "A healthy container is not evidence that a CAD job executed.",
+    "Cloudflare and Railway parity remains NOT_RUN.",
+    "No production resource was created, changed, or removed."
+  ]
+}

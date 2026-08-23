@@ -1,0 +1,3126 @@
+{
+  "schema": "nexyfab.holdout-acquisition-submission.v2",
+  "queueBinding": {
+    "sha256": "bf72a9cf79efd17c51c868e896d1ebf412ae41a3050aebfed1a8144c293b28a0",
+    "slotCount": 32
+  },
+  "existingCorpusBinding": {
+    "sha256": "9c6d387b919ca198557951aef8aaa9332239663098207b07dcaeff0b72d3d48b",
+    "caseCount": 88
+  },
+  "modelFreeze": {
+    "releaseHead": "",
+    "frozenAt": "",
+    "receipt": {
+      "relativePath": "",
+      "bytes": 0,
+      "sha256": ""
+    }
+  },
+  "records": [
+    {
+      "slotId": "robot-acquire-10",
+      "family": "robot",
+      "lineageGroup": "",
+      "relativePath": "",
+      "extension": "",
+      "sourceHash": "",
+      "bytes": 0,
+      "sourceAcquiredAt": "",
+      "provenance": {
+        "sourceUrl": "",
+        "provider": "",
+        "productId": "",
+        "licenseId": "",
+        "licenseUrl": "",
+        "commercialUseStatus": "pending",
+        "licenseEvidence": {
+          "relativePath": "",
+          "bytes": 0,
+          "sha256": ""
+        },
+        "review": {
+          "decision": "pending",
+          "reviewerId": "",
+          "reviewedAt": "",
+          "subjectHash": "",
+          "signedArtifact": {
+            "relativePath": "",
+            "bytes": 0,
+            "sha256": ""
+          }
+        }
+      },
+      "holdoutIsolation": {
+        "excludedFromTraining": false,
+        "excludedFromFineTuning": false,
+        "excludedFromPromptDevelopment": false,
+        "evaluationAccessRestricted": false,
+        "accessControlReceipt": {
+          "relativePath": "",
+          "bytes": 0,
+          "sha256": ""
+        },
+        "review": {
+          "decision": "pending",
+          "reviewerId": "",
+          "reviewedAt": "",
+          "subjectHash": "",
+          "signedArtifact": {
+            "relativePath": "",
+            "bytes": 0,
+            "sha256": ""
+          }
+        }
+      },
+      "nativeStructure": {
+        "definitions": 0,
+        "occurrences": 0,
+        "transforms": 0,
+        "joints": 0,
+        "extractor": "",
+        "extractorVersion": "",
+        "extractorArtifactHash": "",
+        "receipt": {
+          "relativePath": "",
+          "bytes": 0,
+          "sha256": ""
+        },
+        "review": {
+          "decision": "pending",
+          "reviewerId": "",
+          "reviewedAt": "",
+          "subjectHash": "",
+          "signedArtifact": {
+            "relativePath": "",
+            "bytes": 0,
+            "sha256": ""
+          }
+        }
+      },
+      "archiveManifest": {
+        "relativePath": "",
+        "bytes": 0,
+        "sha256": ""
+      },
+      "conditionalFormatReview": {
+        "decision": "pending",
+        "reviewerId": "",
+        "reviewedAt": "",
+        "subjectHash": "",
+        "signedArtifact": {
+          "relativePath": "",
+          "bytes": 0,
+          "sha256": ""
+        }
+      }
+    },
+    {
+      "slotId": "robot-acquire-11",
+      "family": "robot",
+      "lineageGroup": "",
+      "relativePath": "",
+      "extension": "",
+      "sourceHash": "",
+      "bytes": 0,
+      "sourceAcquiredAt": "",
+      "provenance": {
+        "sourceUrl": "",
+        "provider": "",
+        "productId": "",
+        "licenseId": "",
+        "licenseUrl": "",
+        "commercialUseStatus": "pending",
+        "licenseEvidence": {
+          "relativePath": "",
+          "bytes": 0,
+          "sha256": ""
+        },
+        "review": {
+          "decision": "pending",
+          "reviewerId": "",
+          "reviewedAt": "",
+          "subjectHash": "",
+          "signedArtifact": {
+            "relativePath": "",
+            "bytes": 0,
+            "sha256": ""
+          }
+        }
+      },
+      "holdoutIsolation": {
+        "excludedFromTraining": false,
+        "excludedFromFineTuning": false,
+        "excludedFromPromptDevelopment": false,
+        "evaluationAccessRestricted": false,
+        "accessControlReceipt": {
+          "relativePath": "",
+          "bytes": 0,
+          "sha256": ""
+        },
+        "review": {
+          "decision": "pending",
+          "reviewerId": "",
+          "reviewedAt": "",
+          "subjectHash": "",
+          "signedArtifact": {
+            "relativePath": "",
+            "bytes": 0,
+            "sha256": ""
+          }
+        }
+      },
+      "nativeStructure": {
+        "definitions": 0,
+        "occurrences": 0,
+        "transforms": 0,
+        "joints": 0,
+        "extractor": "",
+        "extractorVersion": "",
+        "extractorArtifactHash": "",
+        "receipt": {
+          "relativePath": "",
+          "bytes": 0,
+          "sha256": ""
+        },
+        "review": {
+          "decision": "pending",
+          "reviewerId": "",
+          "reviewedAt": "",
+          "subjectHash": "",
+          "signedArtifact": {
+            "relativePath": "",
+            "bytes": 0,
+            "sha256": ""
+          }
+        }
+      },
+      "archiveManifest": {
+        "relativePath": "",
+        "bytes": 0,
+        "sha256": ""
+      },
+      "conditionalFormatReview": {
+        "decision": "pending",
+        "reviewerId": "",
+        "reviewedAt": "",
+        "subjectHash": "",
+        "signedArtifact": {
+          "relativePath": "",
+          "bytes": 0,
+          "sha256": ""
+        }
+      }
+    },
+    {
+      "slotId": "robot-acquire-12",
+      "family": "robot",
+      "lineageGroup": "",
+      "relativePath": "",
+      "extension": "",
+      "sourceHash": "",
+      "bytes": 0,
+      "sourceAcquiredAt": "",
+      "provenance": {
+        "sourceUrl": "",
+        "provider": "",
+        "productId": "",
+        "licenseId": "",
+        "licenseUrl": "",
+        "commercialUseStatus": "pending",
+        "licenseEvidence": {
+          "relativePath": "",
+          "bytes": 0,
+          "sha256": ""
+        },
+        "review": {
+          "decision": "pending",
+          "reviewerId": "",
+          "reviewedAt": "",
+          "subjectHash": "",
+          "signedArtifact": {
+            "relativePath": "",
+            "bytes": 0,
+            "sha256": ""
+          }
+        }
+      },
+      "holdoutIsolation": {
+        "excludedFromTraining": false,
+        "excludedFromFineTuning": false,
+        "excludedFromPromptDevelopment": false,
+        "evaluationAccessRestricted": false,
+        "accessControlReceipt": {
+          "relativePath": "",
+          "bytes": 0,
+          "sha256": ""
+        },
+        "review": {
+          "decision": "pending",
+          "reviewerId": "",
+          "reviewedAt": "",
+          "subjectHash": "",
+          "signedArtifact": {
+            "relativePath": "",
+            "bytes": 0,
+            "sha256": ""
+          }
+        }
+      },
+      "nativeStructure": {
+        "definitions": 0,
+        "occurrences": 0,
+        "transforms": 0,
+        "joints": 0,
+        "extractor": "",
+        "extractorVersion": "",
+        "extractorArtifactHash": "",
+        "receipt": {
+          "relativePath": "",
+          "bytes": 0,
+          "sha256": ""
+        },
+        "review": {
+          "decision": "pending",
+          "reviewerId": "",
+          "reviewedAt": "",
+          "subjectHash": "",
+          "signedArtifact": {
+            "relativePath": "",
+            "bytes": 0,
+            "sha256": ""
+          }
+        }
+      },
+      "archiveManifest": {
+        "relativePath": "",
+        "bytes": 0,
+        "sha256": ""
+      },
+      "conditionalFormatReview": {
+        "decision": "pending",
+        "reviewerId": "",
+        "reviewedAt": "",
+        "subjectHash": "",
+        "signedArtifact": {
+          "relativePath": "",
+          "bytes": 0,
+          "sha256": ""
+        }
+      }
+    },
+    {
+      "slotId": "robot-acquire-13",
+      "family": "robot",
+      "lineageGroup": "",
+      "relativePath": "",
+      "extension": "",
+      "sourceHash": "",
+      "bytes": 0,
+      "sourceAcquiredAt": "",
+      "provenance": {
+        "sourceUrl": "",
+        "provider": "",
+        "productId": "",
+        "licenseId": "",
+        "licenseUrl": "",
+        "commercialUseStatus": "pending",
+        "licenseEvidence": {
+          "relativePath": "",
+          "bytes": 0,
+          "sha256": ""
+        },
+        "review": {
+          "decision": "pending",
+          "reviewerId": "",
+          "reviewedAt": "",
+          "subjectHash": "",
+          "signedArtifact": {
+            "relativePath": "",
+            "bytes": 0,
+            "sha256": ""
+          }
+        }
+      },
+      "holdoutIsolation": {
+        "excludedFromTraining": false,
+        "excludedFromFineTuning": false,
+        "excludedFromPromptDevelopment": false,
+        "evaluationAccessRestricted": false,
+        "accessControlReceipt": {
+          "relativePath": "",
+          "bytes": 0,
+          "sha256": ""
+        },
+        "review": {
+          "decision": "pending",
+          "reviewerId": "",
+          "reviewedAt": "",
+          "subjectHash": "",
+          "signedArtifact": {
+            "relativePath": "",
+            "bytes": 0,
+            "sha256": ""
+          }
+        }
+      },
+      "nativeStructure": {
+        "definitions": 0,
+        "occurrences": 0,
+        "transforms": 0,
+        "joints": 0,
+        "extractor": "",
+        "extractorVersion": "",
+        "extractorArtifactHash": "",
+        "receipt": {
+          "relativePath": "",
+          "bytes": 0,
+          "sha256": ""
+        },
+        "review": {
+          "decision": "pending",
+          "reviewerId": "",
+          "reviewedAt": "",
+          "subjectHash": "",
+          "signedArtifact": {
+            "relativePath": "",
+            "bytes": 0,
+            "sha256": ""
+          }
+        }
+      },
+      "archiveManifest": {
+        "relativePath": "",
+        "bytes": 0,
+        "sha256": ""
+      },
+      "conditionalFormatReview": {
+        "decision": "pending",
+        "reviewerId": "",
+        "reviewedAt": "",
+        "subjectHash": "",
+        "signedArtifact": {
+          "relativePath": "",
+          "bytes": 0,
+          "sha256": ""
+        }
+      }
+    },
+    {
+      "slotId": "robot-acquire-14",
+      "family": "robot",
+      "lineageGroup": "",
+      "relativePath": "",
+      "extension": "",
+      "sourceHash": "",
+      "bytes": 0,
+      "sourceAcquiredAt": "",
+      "provenance": {
+        "sourceUrl": "",
+        "provider": "",
+        "productId": "",
+        "licenseId": "",
+        "licenseUrl": "",
+        "commercialUseStatus": "pending",
+        "licenseEvidence": {
+          "relativePath": "",
+          "bytes": 0,
+          "sha256": ""
+        },
+        "review": {
+          "decision": "pending",
+          "reviewerId": "",
+          "reviewedAt": "",
+          "subjectHash": "",
+          "signedArtifact": {
+            "relativePath": "",
+            "bytes": 0,
+            "sha256": ""
+          }
+        }
+      },
+      "holdoutIsolation": {
+        "excludedFromTraining": false,
+        "excludedFromFineTuning": false,
+        "excludedFromPromptDevelopment": false,
+        "evaluationAccessRestricted": false,
+        "accessControlReceipt": {
+          "relativePath": "",
+          "bytes": 0,
+          "sha256": ""
+        },
+        "review": {
+          "decision": "pending",
+          "reviewerId": "",
+          "reviewedAt": "",
+          "subjectHash": "",
+          "signedArtifact": {
+            "relativePath": "",
+            "bytes": 0,
+            "sha256": ""
+          }
+        }
+      },
+      "nativeStructure": {
+        "definitions": 0,
+        "occurrences": 0,
+        "transforms": 0,
+        "joints": 0,
+        "extractor": "",
+        "extractorVersion": "",
+        "extractorArtifactHash": "",
+        "receipt": {
+          "relativePath": "",
+          "bytes": 0,
+          "sha256": ""
+        },
+        "review": {
+          "decision": "pending",
+          "reviewerId": "",
+          "reviewedAt": "",
+          "subjectHash": "",
+          "signedArtifact": {
+            "relativePath": "",
+            "bytes": 0,
+            "sha256": ""
+          }
+        }
+      },
+      "archiveManifest": {
+        "relativePath": "",
+        "bytes": 0,
+        "sha256": ""
+      },
+      "conditionalFormatReview": {
+        "decision": "pending",
+        "reviewerId": "",
+        "reviewedAt": "",
+        "subjectHash": "",
+        "signedArtifact": {
+          "relativePath": "",
+          "bytes": 0,
+          "sha256": ""
+        }
+      }
+    },
+    {
+      "slotId": "robot-acquire-15",
+      "family": "robot",
+      "lineageGroup": "",
+      "relativePath": "",
+      "extension": "",
+      "sourceHash": "",
+      "bytes": 0,
+      "sourceAcquiredAt": "",
+      "provenance": {
+        "sourceUrl": "",
+        "provider": "",
+        "productId": "",
+        "licenseId": "",
+        "licenseUrl": "",
+        "commercialUseStatus": "pending",
+        "licenseEvidence": {
+          "relativePath": "",
+          "bytes": 0,
+          "sha256": ""
+        },
+        "review": {
+          "decision": "pending",
+          "reviewerId": "",
+          "reviewedAt": "",
+          "subjectHash": "",
+          "signedArtifact": {
+            "relativePath": "",
+            "bytes": 0,
+            "sha256": ""
+          }
+        }
+      },
+      "holdoutIsolation": {
+        "excludedFromTraining": false,
+        "excludedFromFineTuning": false,
+        "excludedFromPromptDevelopment": false,
+        "evaluationAccessRestricted": false,
+        "accessControlReceipt": {
+          "relativePath": "",
+          "bytes": 0,
+          "sha256": ""
+        },
+        "review": {
+          "decision": "pending",
+          "reviewerId": "",
+          "reviewedAt": "",
+          "subjectHash": "",
+          "signedArtifact": {
+            "relativePath": "",
+            "bytes": 0,
+            "sha256": ""
+          }
+        }
+      },
+      "nativeStructure": {
+        "definitions": 0,
+        "occurrences": 0,
+        "transforms": 0,
+        "joints": 0,
+        "extractor": "",
+        "extractorVersion": "",
+        "extractorArtifactHash": "",
+        "receipt": {
+          "relativePath": "",
+          "bytes": 0,
+          "sha256": ""
+        },
+        "review": {
+          "decision": "pending",
+          "reviewerId": "",
+          "reviewedAt": "",
+          "subjectHash": "",
+          "signedArtifact": {
+            "relativePath": "",
+            "bytes": 0,
+            "sha256": ""
+          }
+        }
+      },
+      "archiveManifest": {
+        "relativePath": "",
+        "bytes": 0,
+        "sha256": ""
+      },
+      "conditionalFormatReview": {
+        "decision": "pending",
+        "reviewerId": "",
+        "reviewedAt": "",
+        "subjectHash": "",
+        "signedArtifact": {
+          "relativePath": "",
+          "bytes": 0,
+          "sha256": ""
+        }
+      }
+    },
+    {
+      "slotId": "robot-acquire-16",
+      "family": "robot",
+      "lineageGroup": "",
+      "relativePath": "",
+      "extension": "",
+      "sourceHash": "",
+      "bytes": 0,
+      "sourceAcquiredAt": "",
+      "provenance": {
+        "sourceUrl": "",
+        "provider": "",
+        "productId": "",
+        "licenseId": "",
+        "licenseUrl": "",
+        "commercialUseStatus": "pending",
+        "licenseEvidence": {
+          "relativePath": "",
+          "bytes": 0,
+          "sha256": ""
+        },
+        "review": {
+          "decision": "pending",
+          "reviewerId": "",
+          "reviewedAt": "",
+          "subjectHash": "",
+          "signedArtifact": {
+            "relativePath": "",
+            "bytes": 0,
+            "sha256": ""
+          }
+        }
+      },
+      "holdoutIsolation": {
+        "excludedFromTraining": false,
+        "excludedFromFineTuning": false,
+        "excludedFromPromptDevelopment": false,
+        "evaluationAccessRestricted": false,
+        "accessControlReceipt": {
+          "relativePath": "",
+          "bytes": 0,
+          "sha256": ""
+        },
+        "review": {
+          "decision": "pending",
+          "reviewerId": "",
+          "reviewedAt": "",
+          "subjectHash": "",
+          "signedArtifact": {
+            "relativePath": "",
+            "bytes": 0,
+            "sha256": ""
+          }
+        }
+      },
+      "nativeStructure": {
+        "definitions": 0,
+        "occurrences": 0,
+        "transforms": 0,
+        "joints": 0,
+        "extractor": "",
+        "extractorVersion": "",
+        "extractorArtifactHash": "",
+        "receipt": {
+          "relativePath": "",
+          "bytes": 0,
+          "sha256": ""
+        },
+        "review": {
+          "decision": "pending",
+          "reviewerId": "",
+          "reviewedAt": "",
+          "subjectHash": "",
+          "signedArtifact": {
+            "relativePath": "",
+            "bytes": 0,
+            "sha256": ""
+          }
+        }
+      },
+      "archiveManifest": {
+        "relativePath": "",
+        "bytes": 0,
+        "sha256": ""
+      },
+      "conditionalFormatReview": {
+        "decision": "pending",
+        "reviewerId": "",
+        "reviewedAt": "",
+        "subjectHash": "",
+        "signedArtifact": {
+          "relativePath": "",
+          "bytes": 0,
+          "sha256": ""
+        }
+      }
+    },
+    {
+      "slotId": "robot-acquire-17",
+      "family": "robot",
+      "lineageGroup": "",
+      "relativePath": "",
+      "extension": "",
+      "sourceHash": "",
+      "bytes": 0,
+      "sourceAcquiredAt": "",
+      "provenance": {
+        "sourceUrl": "",
+        "provider": "",
+        "productId": "",
+        "licenseId": "",
+        "licenseUrl": "",
+        "commercialUseStatus": "pending",
+        "licenseEvidence": {
+          "relativePath": "",
+          "bytes": 0,
+          "sha256": ""
+        },
+        "review": {
+          "decision": "pending",
+          "reviewerId": "",
+          "reviewedAt": "",
+          "subjectHash": "",
+          "signedArtifact": {
+            "relativePath": "",
+            "bytes": 0,
+            "sha256": ""
+          }
+        }
+      },
+      "holdoutIsolation": {
+        "excludedFromTraining": false,
+        "excludedFromFineTuning": false,
+        "excludedFromPromptDevelopment": false,
+        "evaluationAccessRestricted": false,
+        "accessControlReceipt": {
+          "relativePath": "",
+          "bytes": 0,
+          "sha256": ""
+        },
+        "review": {
+          "decision": "pending",
+          "reviewerId": "",
+          "reviewedAt": "",
+          "subjectHash": "",
+          "signedArtifact": {
+            "relativePath": "",
+            "bytes": 0,
+            "sha256": ""
+          }
+        }
+      },
+      "nativeStructure": {
+        "definitions": 0,
+        "occurrences": 0,
+        "transforms": 0,
+        "joints": 0,
+        "extractor": "",
+        "extractorVersion": "",
+        "extractorArtifactHash": "",
+        "receipt": {
+          "relativePath": "",
+          "bytes": 0,
+          "sha256": ""
+        },
+        "review": {
+          "decision": "pending",
+          "reviewerId": "",
+          "reviewedAt": "",
+          "subjectHash": "",
+          "signedArtifact": {
+            "relativePath": "",
+            "bytes": 0,
+            "sha256": ""
+          }
+        }
+      },
+      "archiveManifest": {
+        "relativePath": "",
+        "bytes": 0,
+        "sha256": ""
+      },
+      "conditionalFormatReview": {
+        "decision": "pending",
+        "reviewerId": "",
+        "reviewedAt": "",
+        "subjectHash": "",
+        "signedArtifact": {
+          "relativePath": "",
+          "bytes": 0,
+          "sha256": ""
+        }
+      }
+    },
+    {
+      "slotId": "robot-acquire-18",
+      "family": "robot",
+      "lineageGroup": "",
+      "relativePath": "",
+      "extension": "",
+      "sourceHash": "",
+      "bytes": 0,
+      "sourceAcquiredAt": "",
+      "provenance": {
+        "sourceUrl": "",
+        "provider": "",
+        "productId": "",
+        "licenseId": "",
+        "licenseUrl": "",
+        "commercialUseStatus": "pending",
+        "licenseEvidence": {
+          "relativePath": "",
+          "bytes": 0,
+          "sha256": ""
+        },
+        "review": {
+          "decision": "pending",
+          "reviewerId": "",
+          "reviewedAt": "",
+          "subjectHash": "",
+          "signedArtifact": {
+            "relativePath": "",
+            "bytes": 0,
+            "sha256": ""
+          }
+        }
+      },
+      "holdoutIsolation": {
+        "excludedFromTraining": false,
+        "excludedFromFineTuning": false,
+        "excludedFromPromptDevelopment": false,
+        "evaluationAccessRestricted": false,
+        "accessControlReceipt": {
+          "relativePath": "",
+          "bytes": 0,
+          "sha256": ""
+        },
+        "review": {
+          "decision": "pending",
+          "reviewerId": "",
+          "reviewedAt": "",
+          "subjectHash": "",
+          "signedArtifact": {
+            "relativePath": "",
+            "bytes": 0,
+            "sha256": ""
+          }
+        }
+      },
+      "nativeStructure": {
+        "definitions": 0,
+        "occurrences": 0,
+        "transforms": 0,
+        "joints": 0,
+        "extractor": "",
+        "extractorVersion": "",
+        "extractorArtifactHash": "",
+        "receipt": {
+          "relativePath": "",
+          "bytes": 0,
+          "sha256": ""
+        },
+        "review": {
+          "decision": "pending",
+          "reviewerId": "",
+          "reviewedAt": "",
+          "subjectHash": "",
+          "signedArtifact": {
+            "relativePath": "",
+            "bytes": 0,
+            "sha256": ""
+          }
+        }
+      },
+      "archiveManifest": {
+        "relativePath": "",
+        "bytes": 0,
+        "sha256": ""
+      },
+      "conditionalFormatReview": {
+        "decision": "pending",
+        "reviewerId": "",
+        "reviewedAt": "",
+        "subjectHash": "",
+        "signedArtifact": {
+          "relativePath": "",
+          "bytes": 0,
+          "sha256": ""
+        }
+      }
+    },
+    {
+      "slotId": "robot-acquire-19",
+      "family": "robot",
+      "lineageGroup": "",
+      "relativePath": "",
+      "extension": "",
+      "sourceHash": "",
+      "bytes": 0,
+      "sourceAcquiredAt": "",
+      "provenance": {
+        "sourceUrl": "",
+        "provider": "",
+        "productId": "",
+        "licenseId": "",
+        "licenseUrl": "",
+        "commercialUseStatus": "pending",
+        "licenseEvidence": {
+          "relativePath": "",
+          "bytes": 0,
+          "sha256": ""
+        },
+        "review": {
+          "decision": "pending",
+          "reviewerId": "",
+          "reviewedAt": "",
+          "subjectHash": "",
+          "signedArtifact": {
+            "relativePath": "",
+            "bytes": 0,
+            "sha256": ""
+          }
+        }
+      },
+      "holdoutIsolation": {
+        "excludedFromTraining": false,
+        "excludedFromFineTuning": false,
+        "excludedFromPromptDevelopment": false,
+        "evaluationAccessRestricted": false,
+        "accessControlReceipt": {
+          "relativePath": "",
+          "bytes": 0,
+          "sha256": ""
+        },
+        "review": {
+          "decision": "pending",
+          "reviewerId": "",
+          "reviewedAt": "",
+          "subjectHash": "",
+          "signedArtifact": {
+            "relativePath": "",
+            "bytes": 0,
+            "sha256": ""
+          }
+        }
+      },
+      "nativeStructure": {
+        "definitions": 0,
+        "occurrences": 0,
+        "transforms": 0,
+        "joints": 0,
+        "extractor": "",
+        "extractorVersion": "",
+        "extractorArtifactHash": "",
+        "receipt": {
+          "relativePath": "",
+          "bytes": 0,
+          "sha256": ""
+        },
+        "review": {
+          "decision": "pending",
+          "reviewerId": "",
+          "reviewedAt": "",
+          "subjectHash": "",
+          "signedArtifact": {
+            "relativePath": "",
+            "bytes": 0,
+            "sha256": ""
+          }
+        }
+      },
+      "archiveManifest": {
+        "relativePath": "",
+        "bytes": 0,
+        "sha256": ""
+      },
+      "conditionalFormatReview": {
+        "decision": "pending",
+        "reviewerId": "",
+        "reviewedAt": "",
+        "subjectHash": "",
+        "signedArtifact": {
+          "relativePath": "",
+          "bytes": 0,
+          "sha256": ""
+        }
+      }
+    },
+    {
+      "slotId": "robot-acquire-20",
+      "family": "robot",
+      "lineageGroup": "",
+      "relativePath": "",
+      "extension": "",
+      "sourceHash": "",
+      "bytes": 0,
+      "sourceAcquiredAt": "",
+      "provenance": {
+        "sourceUrl": "",
+        "provider": "",
+        "productId": "",
+        "licenseId": "",
+        "licenseUrl": "",
+        "commercialUseStatus": "pending",
+        "licenseEvidence": {
+          "relativePath": "",
+          "bytes": 0,
+          "sha256": ""
+        },
+        "review": {
+          "decision": "pending",
+          "reviewerId": "",
+          "reviewedAt": "",
+          "subjectHash": "",
+          "signedArtifact": {
+            "relativePath": "",
+            "bytes": 0,
+            "sha256": ""
+          }
+        }
+      },
+      "holdoutIsolation": {
+        "excludedFromTraining": false,
+        "excludedFromFineTuning": false,
+        "excludedFromPromptDevelopment": false,
+        "evaluationAccessRestricted": false,
+        "accessControlReceipt": {
+          "relativePath": "",
+          "bytes": 0,
+          "sha256": ""
+        },
+        "review": {
+          "decision": "pending",
+          "reviewerId": "",
+          "reviewedAt": "",
+          "subjectHash": "",
+          "signedArtifact": {
+            "relativePath": "",
+            "bytes": 0,
+            "sha256": ""
+          }
+        }
+      },
+      "nativeStructure": {
+        "definitions": 0,
+        "occurrences": 0,
+        "transforms": 0,
+        "joints": 0,
+        "extractor": "",
+        "extractorVersion": "",
+        "extractorArtifactHash": "",
+        "receipt": {
+          "relativePath": "",
+          "bytes": 0,
+          "sha256": ""
+        },
+        "review": {
+          "decision": "pending",
+          "reviewerId": "",
+          "reviewedAt": "",
+          "subjectHash": "",
+          "signedArtifact": {
+            "relativePath": "",
+            "bytes": 0,
+            "sha256": ""
+          }
+        }
+      },
+      "archiveManifest": {
+        "relativePath": "",
+        "bytes": 0,
+        "sha256": ""
+      },
+      "conditionalFormatReview": {
+        "decision": "pending",
+        "reviewerId": "",
+        "reviewedAt": "",
+        "subjectHash": "",
+        "signedArtifact": {
+          "relativePath": "",
+          "bytes": 0,
+          "sha256": ""
+        }
+      }
+    },
+    {
+      "slotId": "gearbox-acquire-18",
+      "family": "gearbox",
+      "lineageGroup": "",
+      "relativePath": "",
+      "extension": "",
+      "sourceHash": "",
+      "bytes": 0,
+      "sourceAcquiredAt": "",
+      "provenance": {
+        "sourceUrl": "",
+        "provider": "",
+        "productId": "",
+        "licenseId": "",
+        "licenseUrl": "",
+        "commercialUseStatus": "pending",
+        "licenseEvidence": {
+          "relativePath": "",
+          "bytes": 0,
+          "sha256": ""
+        },
+        "review": {
+          "decision": "pending",
+          "reviewerId": "",
+          "reviewedAt": "",
+          "subjectHash": "",
+          "signedArtifact": {
+            "relativePath": "",
+            "bytes": 0,
+            "sha256": ""
+          }
+        }
+      },
+      "holdoutIsolation": {
+        "excludedFromTraining": false,
+        "excludedFromFineTuning": false,
+        "excludedFromPromptDevelopment": false,
+        "evaluationAccessRestricted": false,
+        "accessControlReceipt": {
+          "relativePath": "",
+          "bytes": 0,
+          "sha256": ""
+        },
+        "review": {
+          "decision": "pending",
+          "reviewerId": "",
+          "reviewedAt": "",
+          "subjectHash": "",
+          "signedArtifact": {
+            "relativePath": "",
+            "bytes": 0,
+            "sha256": ""
+          }
+        }
+      },
+      "nativeStructure": {
+        "definitions": 0,
+        "occurrences": 0,
+        "transforms": 0,
+        "joints": 0,
+        "extractor": "",
+        "extractorVersion": "",
+        "extractorArtifactHash": "",
+        "receipt": {
+          "relativePath": "",
+          "bytes": 0,
+          "sha256": ""
+        },
+        "review": {
+          "decision": "pending",
+          "reviewerId": "",
+          "reviewedAt": "",
+          "subjectHash": "",
+          "signedArtifact": {
+            "relativePath": "",
+            "bytes": 0,
+            "sha256": ""
+          }
+        }
+      },
+      "archiveManifest": {
+        "relativePath": "",
+        "bytes": 0,
+        "sha256": ""
+      },
+      "conditionalFormatReview": {
+        "decision": "pending",
+        "reviewerId": "",
+        "reviewedAt": "",
+        "subjectHash": "",
+        "signedArtifact": {
+          "relativePath": "",
+          "bytes": 0,
+          "sha256": ""
+        }
+      }
+    },
+    {
+      "slotId": "gearbox-acquire-19",
+      "family": "gearbox",
+      "lineageGroup": "",
+      "relativePath": "",
+      "extension": "",
+      "sourceHash": "",
+      "bytes": 0,
+      "sourceAcquiredAt": "",
+      "provenance": {
+        "sourceUrl": "",
+        "provider": "",
+        "productId": "",
+        "licenseId": "",
+        "licenseUrl": "",
+        "commercialUseStatus": "pending",
+        "licenseEvidence": {
+          "relativePath": "",
+          "bytes": 0,
+          "sha256": ""
+        },
+        "review": {
+          "decision": "pending",
+          "reviewerId": "",
+          "reviewedAt": "",
+          "subjectHash": "",
+          "signedArtifact": {
+            "relativePath": "",
+            "bytes": 0,
+            "sha256": ""
+          }
+        }
+      },
+      "holdoutIsolation": {
+        "excludedFromTraining": false,
+        "excludedFromFineTuning": false,
+        "excludedFromPromptDevelopment": false,
+        "evaluationAccessRestricted": false,
+        "accessControlReceipt": {
+          "relativePath": "",
+          "bytes": 0,
+          "sha256": ""
+        },
+        "review": {
+          "decision": "pending",
+          "reviewerId": "",
+          "reviewedAt": "",
+          "subjectHash": "",
+          "signedArtifact": {
+            "relativePath": "",
+            "bytes": 0,
+            "sha256": ""
+          }
+        }
+      },
+      "nativeStructure": {
+        "definitions": 0,
+        "occurrences": 0,
+        "transforms": 0,
+        "joints": 0,
+        "extractor": "",
+        "extractorVersion": "",
+        "extractorArtifactHash": "",
+        "receipt": {
+          "relativePath": "",
+          "bytes": 0,
+          "sha256": ""
+        },
+        "review": {
+          "decision": "pending",
+          "reviewerId": "",
+          "reviewedAt": "",
+          "subjectHash": "",
+          "signedArtifact": {
+            "relativePath": "",
+            "bytes": 0,
+            "sha256": ""
+          }
+        }
+      },
+      "archiveManifest": {
+        "relativePath": "",
+        "bytes": 0,
+        "sha256": ""
+      },
+      "conditionalFormatReview": {
+        "decision": "pending",
+        "reviewerId": "",
+        "reviewedAt": "",
+        "subjectHash": "",
+        "signedArtifact": {
+          "relativePath": "",
+          "bytes": 0,
+          "sha256": ""
+        }
+      }
+    },
+    {
+      "slotId": "gearbox-acquire-20",
+      "family": "gearbox",
+      "lineageGroup": "",
+      "relativePath": "",
+      "extension": "",
+      "sourceHash": "",
+      "bytes": 0,
+      "sourceAcquiredAt": "",
+      "provenance": {
+        "sourceUrl": "",
+        "provider": "",
+        "productId": "",
+        "licenseId": "",
+        "licenseUrl": "",
+        "commercialUseStatus": "pending",
+        "licenseEvidence": {
+          "relativePath": "",
+          "bytes": 0,
+          "sha256": ""
+        },
+        "review": {
+          "decision": "pending",
+          "reviewerId": "",
+          "reviewedAt": "",
+          "subjectHash": "",
+          "signedArtifact": {
+            "relativePath": "",
+            "bytes": 0,
+            "sha256": ""
+          }
+        }
+      },
+      "holdoutIsolation": {
+        "excludedFromTraining": false,
+        "excludedFromFineTuning": false,
+        "excludedFromPromptDevelopment": false,
+        "evaluationAccessRestricted": false,
+        "accessControlReceipt": {
+          "relativePath": "",
+          "bytes": 0,
+          "sha256": ""
+        },
+        "review": {
+          "decision": "pending",
+          "reviewerId": "",
+          "reviewedAt": "",
+          "subjectHash": "",
+          "signedArtifact": {
+            "relativePath": "",
+            "bytes": 0,
+            "sha256": ""
+          }
+        }
+      },
+      "nativeStructure": {
+        "definitions": 0,
+        "occurrences": 0,
+        "transforms": 0,
+        "joints": 0,
+        "extractor": "",
+        "extractorVersion": "",
+        "extractorArtifactHash": "",
+        "receipt": {
+          "relativePath": "",
+          "bytes": 0,
+          "sha256": ""
+        },
+        "review": {
+          "decision": "pending",
+          "reviewerId": "",
+          "reviewedAt": "",
+          "subjectHash": "",
+          "signedArtifact": {
+            "relativePath": "",
+            "bytes": 0,
+            "sha256": ""
+          }
+        }
+      },
+      "archiveManifest": {
+        "relativePath": "",
+        "bytes": 0,
+        "sha256": ""
+      },
+      "conditionalFormatReview": {
+        "decision": "pending",
+        "reviewerId": "",
+        "reviewedAt": "",
+        "subjectHash": "",
+        "signedArtifact": {
+          "relativePath": "",
+          "bytes": 0,
+          "sha256": ""
+        }
+      }
+    },
+    {
+      "slotId": "pressure_vessel-acquire-12",
+      "family": "pressure_vessel",
+      "lineageGroup": "",
+      "relativePath": "",
+      "extension": "",
+      "sourceHash": "",
+      "bytes": 0,
+      "sourceAcquiredAt": "",
+      "provenance": {
+        "sourceUrl": "",
+        "provider": "",
+        "productId": "",
+        "licenseId": "",
+        "licenseUrl": "",
+        "commercialUseStatus": "pending",
+        "licenseEvidence": {
+          "relativePath": "",
+          "bytes": 0,
+          "sha256": ""
+        },
+        "review": {
+          "decision": "pending",
+          "reviewerId": "",
+          "reviewedAt": "",
+          "subjectHash": "",
+          "signedArtifact": {
+            "relativePath": "",
+            "bytes": 0,
+            "sha256": ""
+          }
+        }
+      },
+      "holdoutIsolation": {
+        "excludedFromTraining": false,
+        "excludedFromFineTuning": false,
+        "excludedFromPromptDevelopment": false,
+        "evaluationAccessRestricted": false,
+        "accessControlReceipt": {
+          "relativePath": "",
+          "bytes": 0,
+          "sha256": ""
+        },
+        "review": {
+          "decision": "pending",
+          "reviewerId": "",
+          "reviewedAt": "",
+          "subjectHash": "",
+          "signedArtifact": {
+            "relativePath": "",
+            "bytes": 0,
+            "sha256": ""
+          }
+        }
+      },
+      "nativeStructure": {
+        "definitions": 0,
+        "occurrences": 0,
+        "transforms": 0,
+        "joints": 0,
+        "extractor": "",
+        "extractorVersion": "",
+        "extractorArtifactHash": "",
+        "receipt": {
+          "relativePath": "",
+          "bytes": 0,
+          "sha256": ""
+        },
+        "review": {
+          "decision": "pending",
+          "reviewerId": "",
+          "reviewedAt": "",
+          "subjectHash": "",
+          "signedArtifact": {
+            "relativePath": "",
+            "bytes": 0,
+            "sha256": ""
+          }
+        }
+      },
+      "archiveManifest": {
+        "relativePath": "",
+        "bytes": 0,
+        "sha256": ""
+      },
+      "conditionalFormatReview": {
+        "decision": "pending",
+        "reviewerId": "",
+        "reviewedAt": "",
+        "subjectHash": "",
+        "signedArtifact": {
+          "relativePath": "",
+          "bytes": 0,
+          "sha256": ""
+        }
+      }
+    },
+    {
+      "slotId": "pressure_vessel-acquire-13",
+      "family": "pressure_vessel",
+      "lineageGroup": "",
+      "relativePath": "",
+      "extension": "",
+      "sourceHash": "",
+      "bytes": 0,
+      "sourceAcquiredAt": "",
+      "provenance": {
+        "sourceUrl": "",
+        "provider": "",
+        "productId": "",
+        "licenseId": "",
+        "licenseUrl": "",
+        "commercialUseStatus": "pending",
+        "licenseEvidence": {
+          "relativePath": "",
+          "bytes": 0,
+          "sha256": ""
+        },
+        "review": {
+          "decision": "pending",
+          "reviewerId": "",
+          "reviewedAt": "",
+          "subjectHash": "",
+          "signedArtifact": {
+            "relativePath": "",
+            "bytes": 0,
+            "sha256": ""
+          }
+        }
+      },
+      "holdoutIsolation": {
+        "excludedFromTraining": false,
+        "excludedFromFineTuning": false,
+        "excludedFromPromptDevelopment": false,
+        "evaluationAccessRestricted": false,
+        "accessControlReceipt": {
+          "relativePath": "",
+          "bytes": 0,
+          "sha256": ""
+        },
+        "review": {
+          "decision": "pending",
+          "reviewerId": "",
+          "reviewedAt": "",
+          "subjectHash": "",
+          "signedArtifact": {
+            "relativePath": "",
+            "bytes": 0,
+            "sha256": ""
+          }
+        }
+      },
+      "nativeStructure": {
+        "definitions": 0,
+        "occurrences": 0,
+        "transforms": 0,
+        "joints": 0,
+        "extractor": "",
+        "extractorVersion": "",
+        "extractorArtifactHash": "",
+        "receipt": {
+          "relativePath": "",
+          "bytes": 0,
+          "sha256": ""
+        },
+        "review": {
+          "decision": "pending",
+          "reviewerId": "",
+          "reviewedAt": "",
+          "subjectHash": "",
+          "signedArtifact": {
+            "relativePath": "",
+            "bytes": 0,
+            "sha256": ""
+          }
+        }
+      },
+      "archiveManifest": {
+        "relativePath": "",
+        "bytes": 0,
+        "sha256": ""
+      },
+      "conditionalFormatReview": {
+        "decision": "pending",
+        "reviewerId": "",
+        "reviewedAt": "",
+        "subjectHash": "",
+        "signedArtifact": {
+          "relativePath": "",
+          "bytes": 0,
+          "sha256": ""
+        }
+      }
+    },
+    {
+      "slotId": "pressure_vessel-acquire-14",
+      "family": "pressure_vessel",
+      "lineageGroup": "",
+      "relativePath": "",
+      "extension": "",
+      "sourceHash": "",
+      "bytes": 0,
+      "sourceAcquiredAt": "",
+      "provenance": {
+        "sourceUrl": "",
+        "provider": "",
+        "productId": "",
+        "licenseId": "",
+        "licenseUrl": "",
+        "commercialUseStatus": "pending",
+        "licenseEvidence": {
+          "relativePath": "",
+          "bytes": 0,
+          "sha256": ""
+        },
+        "review": {
+          "decision": "pending",
+          "reviewerId": "",
+          "reviewedAt": "",
+          "subjectHash": "",
+          "signedArtifact": {
+            "relativePath": "",
+            "bytes": 0,
+            "sha256": ""
+          }
+        }
+      },
+      "holdoutIsolation": {
+        "excludedFromTraining": false,
+        "excludedFromFineTuning": false,
+        "excludedFromPromptDevelopment": false,
+        "evaluationAccessRestricted": false,
+        "accessControlReceipt": {
+          "relativePath": "",
+          "bytes": 0,
+          "sha256": ""
+        },
+        "review": {
+          "decision": "pending",
+          "reviewerId": "",
+          "reviewedAt": "",
+          "subjectHash": "",
+          "signedArtifact": {
+            "relativePath": "",
+            "bytes": 0,
+            "sha256": ""
+          }
+        }
+      },
+      "nativeStructure": {
+        "definitions": 0,
+        "occurrences": 0,
+        "transforms": 0,
+        "joints": 0,
+        "extractor": "",
+        "extractorVersion": "",
+        "extractorArtifactHash": "",
+        "receipt": {
+          "relativePath": "",
+          "bytes": 0,
+          "sha256": ""
+        },
+        "review": {
+          "decision": "pending",
+          "reviewerId": "",
+          "reviewedAt": "",
+          "subjectHash": "",
+          "signedArtifact": {
+            "relativePath": "",
+            "bytes": 0,
+            "sha256": ""
+          }
+        }
+      },
+      "archiveManifest": {
+        "relativePath": "",
+        "bytes": 0,
+        "sha256": ""
+      },
+      "conditionalFormatReview": {
+        "decision": "pending",
+        "reviewerId": "",
+        "reviewedAt": "",
+        "subjectHash": "",
+        "signedArtifact": {
+          "relativePath": "",
+          "bytes": 0,
+          "sha256": ""
+        }
+      }
+    },
+    {
+      "slotId": "pressure_vessel-acquire-15",
+      "family": "pressure_vessel",
+      "lineageGroup": "",
+      "relativePath": "",
+      "extension": "",
+      "sourceHash": "",
+      "bytes": 0,
+      "sourceAcquiredAt": "",
+      "provenance": {
+        "sourceUrl": "",
+        "provider": "",
+        "productId": "",
+        "licenseId": "",
+        "licenseUrl": "",
+        "commercialUseStatus": "pending",
+        "licenseEvidence": {
+          "relativePath": "",
+          "bytes": 0,
+          "sha256": ""
+        },
+        "review": {
+          "decision": "pending",
+          "reviewerId": "",
+          "reviewedAt": "",
+          "subjectHash": "",
+          "signedArtifact": {
+            "relativePath": "",
+            "bytes": 0,
+            "sha256": ""
+          }
+        }
+      },
+      "holdoutIsolation": {
+        "excludedFromTraining": false,
+        "excludedFromFineTuning": false,
+        "excludedFromPromptDevelopment": false,
+        "evaluationAccessRestricted": false,
+        "accessControlReceipt": {
+          "relativePath": "",
+          "bytes": 0,
+          "sha256": ""
+        },
+        "review": {
+          "decision": "pending",
+          "reviewerId": "",
+          "reviewedAt": "",
+          "subjectHash": "",
+          "signedArtifact": {
+            "relativePath": "",
+            "bytes": 0,
+            "sha256": ""
+          }
+        }
+      },
+      "nativeStructure": {
+        "definitions": 0,
+        "occurrences": 0,
+        "transforms": 0,
+        "joints": 0,
+        "extractor": "",
+        "extractorVersion": "",
+        "extractorArtifactHash": "",
+        "receipt": {
+          "relativePath": "",
+          "bytes": 0,
+          "sha256": ""
+        },
+        "review": {
+          "decision": "pending",
+          "reviewerId": "",
+          "reviewedAt": "",
+          "subjectHash": "",
+          "signedArtifact": {
+            "relativePath": "",
+            "bytes": 0,
+            "sha256": ""
+          }
+        }
+      },
+      "archiveManifest": {
+        "relativePath": "",
+        "bytes": 0,
+        "sha256": ""
+      },
+      "conditionalFormatReview": {
+        "decision": "pending",
+        "reviewerId": "",
+        "reviewedAt": "",
+        "subjectHash": "",
+        "signedArtifact": {
+          "relativePath": "",
+          "bytes": 0,
+          "sha256": ""
+        }
+      }
+    },
+    {
+      "slotId": "pressure_vessel-acquire-16",
+      "family": "pressure_vessel",
+      "lineageGroup": "",
+      "relativePath": "",
+      "extension": "",
+      "sourceHash": "",
+      "bytes": 0,
+      "sourceAcquiredAt": "",
+      "provenance": {
+        "sourceUrl": "",
+        "provider": "",
+        "productId": "",
+        "licenseId": "",
+        "licenseUrl": "",
+        "commercialUseStatus": "pending",
+        "licenseEvidence": {
+          "relativePath": "",
+          "bytes": 0,
+          "sha256": ""
+        },
+        "review": {
+          "decision": "pending",
+          "reviewerId": "",
+          "reviewedAt": "",
+          "subjectHash": "",
+          "signedArtifact": {
+            "relativePath": "",
+            "bytes": 0,
+            "sha256": ""
+          }
+        }
+      },
+      "holdoutIsolation": {
+        "excludedFromTraining": false,
+        "excludedFromFineTuning": false,
+        "excludedFromPromptDevelopment": false,
+        "evaluationAccessRestricted": false,
+        "accessControlReceipt": {
+          "relativePath": "",
+          "bytes": 0,
+          "sha256": ""
+        },
+        "review": {
+          "decision": "pending",
+          "reviewerId": "",
+          "reviewedAt": "",
+          "subjectHash": "",
+          "signedArtifact": {
+            "relativePath": "",
+            "bytes": 0,
+            "sha256": ""
+          }
+        }
+      },
+      "nativeStructure": {
+        "definitions": 0,
+        "occurrences": 0,
+        "transforms": 0,
+        "joints": 0,
+        "extractor": "",
+        "extractorVersion": "",
+        "extractorArtifactHash": "",
+        "receipt": {
+          "relativePath": "",
+          "bytes": 0,
+          "sha256": ""
+        },
+        "review": {
+          "decision": "pending",
+          "reviewerId": "",
+          "reviewedAt": "",
+          "subjectHash": "",
+          "signedArtifact": {
+            "relativePath": "",
+            "bytes": 0,
+            "sha256": ""
+          }
+        }
+      },
+      "archiveManifest": {
+        "relativePath": "",
+        "bytes": 0,
+        "sha256": ""
+      },
+      "conditionalFormatReview": {
+        "decision": "pending",
+        "reviewerId": "",
+        "reviewedAt": "",
+        "subjectHash": "",
+        "signedArtifact": {
+          "relativePath": "",
+          "bytes": 0,
+          "sha256": ""
+        }
+      }
+    },
+    {
+      "slotId": "pressure_vessel-acquire-17",
+      "family": "pressure_vessel",
+      "lineageGroup": "",
+      "relativePath": "",
+      "extension": "",
+      "sourceHash": "",
+      "bytes": 0,
+      "sourceAcquiredAt": "",
+      "provenance": {
+        "sourceUrl": "",
+        "provider": "",
+        "productId": "",
+        "licenseId": "",
+        "licenseUrl": "",
+        "commercialUseStatus": "pending",
+        "licenseEvidence": {
+          "relativePath": "",
+          "bytes": 0,
+          "sha256": ""
+        },
+        "review": {
+          "decision": "pending",
+          "reviewerId": "",
+          "reviewedAt": "",
+          "subjectHash": "",
+          "signedArtifact": {
+            "relativePath": "",
+            "bytes": 0,
+            "sha256": ""
+          }
+        }
+      },
+      "holdoutIsolation": {
+        "excludedFromTraining": false,
+        "excludedFromFineTuning": false,
+        "excludedFromPromptDevelopment": false,
+        "evaluationAccessRestricted": false,
+        "accessControlReceipt": {
+          "relativePath": "",
+          "bytes": 0,
+          "sha256": ""
+        },
+        "review": {
+          "decision": "pending",
+          "reviewerId": "",
+          "reviewedAt": "",
+          "subjectHash": "",
+          "signedArtifact": {
+            "relativePath": "",
+            "bytes": 0,
+            "sha256": ""
+          }
+        }
+      },
+      "nativeStructure": {
+        "definitions": 0,
+        "occurrences": 0,
+        "transforms": 0,
+        "joints": 0,
+        "extractor": "",
+        "extractorVersion": "",
+        "extractorArtifactHash": "",
+        "receipt": {
+          "relativePath": "",
+          "bytes": 0,
+          "sha256": ""
+        },
+        "review": {
+          "decision": "pending",
+          "reviewerId": "",
+          "reviewedAt": "",
+          "subjectHash": "",
+          "signedArtifact": {
+            "relativePath": "",
+            "bytes": 0,
+            "sha256": ""
+          }
+        }
+      },
+      "archiveManifest": {
+        "relativePath": "",
+        "bytes": 0,
+        "sha256": ""
+      },
+      "conditionalFormatReview": {
+        "decision": "pending",
+        "reviewerId": "",
+        "reviewedAt": "",
+        "subjectHash": "",
+        "signedArtifact": {
+          "relativePath": "",
+          "bytes": 0,
+          "sha256": ""
+        }
+      }
+    },
+    {
+      "slotId": "pressure_vessel-acquire-18",
+      "family": "pressure_vessel",
+      "lineageGroup": "",
+      "relativePath": "",
+      "extension": "",
+      "sourceHash": "",
+      "bytes": 0,
+      "sourceAcquiredAt": "",
+      "provenance": {
+        "sourceUrl": "",
+        "provider": "",
+        "productId": "",
+        "licenseId": "",
+        "licenseUrl": "",
+        "commercialUseStatus": "pending",
+        "licenseEvidence": {
+          "relativePath": "",
+          "bytes": 0,
+          "sha256": ""
+        },
+        "review": {
+          "decision": "pending",
+          "reviewerId": "",
+          "reviewedAt": "",
+          "subjectHash": "",
+          "signedArtifact": {
+            "relativePath": "",
+            "bytes": 0,
+            "sha256": ""
+          }
+        }
+      },
+      "holdoutIsolation": {
+        "excludedFromTraining": false,
+        "excludedFromFineTuning": false,
+        "excludedFromPromptDevelopment": false,
+        "evaluationAccessRestricted": false,
+        "accessControlReceipt": {
+          "relativePath": "",
+          "bytes": 0,
+          "sha256": ""
+        },
+        "review": {
+          "decision": "pending",
+          "reviewerId": "",
+          "reviewedAt": "",
+          "subjectHash": "",
+          "signedArtifact": {
+            "relativePath": "",
+            "bytes": 0,
+            "sha256": ""
+          }
+        }
+      },
+      "nativeStructure": {
+        "definitions": 0,
+        "occurrences": 0,
+        "transforms": 0,
+        "joints": 0,
+        "extractor": "",
+        "extractorVersion": "",
+        "extractorArtifactHash": "",
+        "receipt": {
+          "relativePath": "",
+          "bytes": 0,
+          "sha256": ""
+        },
+        "review": {
+          "decision": "pending",
+          "reviewerId": "",
+          "reviewedAt": "",
+          "subjectHash": "",
+          "signedArtifact": {
+            "relativePath": "",
+            "bytes": 0,
+            "sha256": ""
+          }
+        }
+      },
+      "archiveManifest": {
+        "relativePath": "",
+        "bytes": 0,
+        "sha256": ""
+      },
+      "conditionalFormatReview": {
+        "decision": "pending",
+        "reviewerId": "",
+        "reviewedAt": "",
+        "subjectHash": "",
+        "signedArtifact": {
+          "relativePath": "",
+          "bytes": 0,
+          "sha256": ""
+        }
+      }
+    },
+    {
+      "slotId": "pressure_vessel-acquire-19",
+      "family": "pressure_vessel",
+      "lineageGroup": "",
+      "relativePath": "",
+      "extension": "",
+      "sourceHash": "",
+      "bytes": 0,
+      "sourceAcquiredAt": "",
+      "provenance": {
+        "sourceUrl": "",
+        "provider": "",
+        "productId": "",
+        "licenseId": "",
+        "licenseUrl": "",
+        "commercialUseStatus": "pending",
+        "licenseEvidence": {
+          "relativePath": "",
+          "bytes": 0,
+          "sha256": ""
+        },
+        "review": {
+          "decision": "pending",
+          "reviewerId": "",
+          "reviewedAt": "",
+          "subjectHash": "",
+          "signedArtifact": {
+            "relativePath": "",
+            "bytes": 0,
+            "sha256": ""
+          }
+        }
+      },
+      "holdoutIsolation": {
+        "excludedFromTraining": false,
+        "excludedFromFineTuning": false,
+        "excludedFromPromptDevelopment": false,
+        "evaluationAccessRestricted": false,
+        "accessControlReceipt": {
+          "relativePath": "",
+          "bytes": 0,
+          "sha256": ""
+        },
+        "review": {
+          "decision": "pending",
+          "reviewerId": "",
+          "reviewedAt": "",
+          "subjectHash": "",
+          "signedArtifact": {
+            "relativePath": "",
+            "bytes": 0,
+            "sha256": ""
+          }
+        }
+      },
+      "nativeStructure": {
+        "definitions": 0,
+        "occurrences": 0,
+        "transforms": 0,
+        "joints": 0,
+        "extractor": "",
+        "extractorVersion": "",
+        "extractorArtifactHash": "",
+        "receipt": {
+          "relativePath": "",
+          "bytes": 0,
+          "sha256": ""
+        },
+        "review": {
+          "decision": "pending",
+          "reviewerId": "",
+          "reviewedAt": "",
+          "subjectHash": "",
+          "signedArtifact": {
+            "relativePath": "",
+            "bytes": 0,
+            "sha256": ""
+          }
+        }
+      },
+      "archiveManifest": {
+        "relativePath": "",
+        "bytes": 0,
+        "sha256": ""
+      },
+      "conditionalFormatReview": {
+        "decision": "pending",
+        "reviewerId": "",
+        "reviewedAt": "",
+        "subjectHash": "",
+        "signedArtifact": {
+          "relativePath": "",
+          "bytes": 0,
+          "sha256": ""
+        }
+      }
+    },
+    {
+      "slotId": "pressure_vessel-acquire-20",
+      "family": "pressure_vessel",
+      "lineageGroup": "",
+      "relativePath": "",
+      "extension": "",
+      "sourceHash": "",
+      "bytes": 0,
+      "sourceAcquiredAt": "",
+      "provenance": {
+        "sourceUrl": "",
+        "provider": "",
+        "productId": "",
+        "licenseId": "",
+        "licenseUrl": "",
+        "commercialUseStatus": "pending",
+        "licenseEvidence": {
+          "relativePath": "",
+          "bytes": 0,
+          "sha256": ""
+        },
+        "review": {
+          "decision": "pending",
+          "reviewerId": "",
+          "reviewedAt": "",
+          "subjectHash": "",
+          "signedArtifact": {
+            "relativePath": "",
+            "bytes": 0,
+            "sha256": ""
+          }
+        }
+      },
+      "holdoutIsolation": {
+        "excludedFromTraining": false,
+        "excludedFromFineTuning": false,
+        "excludedFromPromptDevelopment": false,
+        "evaluationAccessRestricted": false,
+        "accessControlReceipt": {
+          "relativePath": "",
+          "bytes": 0,
+          "sha256": ""
+        },
+        "review": {
+          "decision": "pending",
+          "reviewerId": "",
+          "reviewedAt": "",
+          "subjectHash": "",
+          "signedArtifact": {
+            "relativePath": "",
+            "bytes": 0,
+            "sha256": ""
+          }
+        }
+      },
+      "nativeStructure": {
+        "definitions": 0,
+        "occurrences": 0,
+        "transforms": 0,
+        "joints": 0,
+        "extractor": "",
+        "extractorVersion": "",
+        "extractorArtifactHash": "",
+        "receipt": {
+          "relativePath": "",
+          "bytes": 0,
+          "sha256": ""
+        },
+        "review": {
+          "decision": "pending",
+          "reviewerId": "",
+          "reviewedAt": "",
+          "subjectHash": "",
+          "signedArtifact": {
+            "relativePath": "",
+            "bytes": 0,
+            "sha256": ""
+          }
+        }
+      },
+      "archiveManifest": {
+        "relativePath": "",
+        "bytes": 0,
+        "sha256": ""
+      },
+      "conditionalFormatReview": {
+        "decision": "pending",
+        "reviewerId": "",
+        "reviewedAt": "",
+        "subjectHash": "",
+        "signedArtifact": {
+          "relativePath": "",
+          "bytes": 0,
+          "sha256": ""
+        }
+      }
+    },
+    {
+      "slotId": "turbomachinery-acquire-12",
+      "family": "turbomachinery",
+      "lineageGroup": "",
+      "relativePath": "",
+      "extension": "",
+      "sourceHash": "",
+      "bytes": 0,
+      "sourceAcquiredAt": "",
+      "provenance": {
+        "sourceUrl": "",
+        "provider": "",
+        "productId": "",
+        "licenseId": "",
+        "licenseUrl": "",
+        "commercialUseStatus": "pending",
+        "licenseEvidence": {
+          "relativePath": "",
+          "bytes": 0,
+          "sha256": ""
+        },
+        "review": {
+          "decision": "pending",
+          "reviewerId": "",
+          "reviewedAt": "",
+          "subjectHash": "",
+          "signedArtifact": {
+            "relativePath": "",
+            "bytes": 0,
+            "sha256": ""
+          }
+        }
+      },
+      "holdoutIsolation": {
+        "excludedFromTraining": false,
+        "excludedFromFineTuning": false,
+        "excludedFromPromptDevelopment": false,
+        "evaluationAccessRestricted": false,
+        "accessControlReceipt": {
+          "relativePath": "",
+          "bytes": 0,
+          "sha256": ""
+        },
+        "review": {
+          "decision": "pending",
+          "reviewerId": "",
+          "reviewedAt": "",
+          "subjectHash": "",
+          "signedArtifact": {
+            "relativePath": "",
+            "bytes": 0,
+            "sha256": ""
+          }
+        }
+      },
+      "nativeStructure": {
+        "definitions": 0,
+        "occurrences": 0,
+        "transforms": 0,
+        "joints": 0,
+        "extractor": "",
+        "extractorVersion": "",
+        "extractorArtifactHash": "",
+        "receipt": {
+          "relativePath": "",
+          "bytes": 0,
+          "sha256": ""
+        },
+        "review": {
+          "decision": "pending",
+          "reviewerId": "",
+          "reviewedAt": "",
+          "subjectHash": "",
+          "signedArtifact": {
+            "relativePath": "",
+            "bytes": 0,
+            "sha256": ""
+          }
+        }
+      },
+      "archiveManifest": {
+        "relativePath": "",
+        "bytes": 0,
+        "sha256": ""
+      },
+      "conditionalFormatReview": {
+        "decision": "pending",
+        "reviewerId": "",
+        "reviewedAt": "",
+        "subjectHash": "",
+        "signedArtifact": {
+          "relativePath": "",
+          "bytes": 0,
+          "sha256": ""
+        }
+      }
+    },
+    {
+      "slotId": "turbomachinery-acquire-13",
+      "family": "turbomachinery",
+      "lineageGroup": "",
+      "relativePath": "",
+      "extension": "",
+      "sourceHash": "",
+      "bytes": 0,
+      "sourceAcquiredAt": "",
+      "provenance": {
+        "sourceUrl": "",
+        "provider": "",
+        "productId": "",
+        "licenseId": "",
+        "licenseUrl": "",
+        "commercialUseStatus": "pending",
+        "licenseEvidence": {
+          "relativePath": "",
+          "bytes": 0,
+          "sha256": ""
+        },
+        "review": {
+          "decision": "pending",
+          "reviewerId": "",
+          "reviewedAt": "",
+          "subjectHash": "",
+          "signedArtifact": {
+            "relativePath": "",
+            "bytes": 0,
+            "sha256": ""
+          }
+        }
+      },
+      "holdoutIsolation": {
+        "excludedFromTraining": false,
+        "excludedFromFineTuning": false,
+        "excludedFromPromptDevelopment": false,
+        "evaluationAccessRestricted": false,
+        "accessControlReceipt": {
+          "relativePath": "",
+          "bytes": 0,
+          "sha256": ""
+        },
+        "review": {
+          "decision": "pending",
+          "reviewerId": "",
+          "reviewedAt": "",
+          "subjectHash": "",
+          "signedArtifact": {
+            "relativePath": "",
+            "bytes": 0,
+            "sha256": ""
+          }
+        }
+      },
+      "nativeStructure": {
+        "definitions": 0,
+        "occurrences": 0,
+        "transforms": 0,
+        "joints": 0,
+        "extractor": "",
+        "extractorVersion": "",
+        "extractorArtifactHash": "",
+        "receipt": {
+          "relativePath": "",
+          "bytes": 0,
+          "sha256": ""
+        },
+        "review": {
+          "decision": "pending",
+          "reviewerId": "",
+          "reviewedAt": "",
+          "subjectHash": "",
+          "signedArtifact": {
+            "relativePath": "",
+            "bytes": 0,
+            "sha256": ""
+          }
+        }
+      },
+      "archiveManifest": {
+        "relativePath": "",
+        "bytes": 0,
+        "sha256": ""
+      },
+      "conditionalFormatReview": {
+        "decision": "pending",
+        "reviewerId": "",
+        "reviewedAt": "",
+        "subjectHash": "",
+        "signedArtifact": {
+          "relativePath": "",
+          "bytes": 0,
+          "sha256": ""
+        }
+      }
+    },
+    {
+      "slotId": "turbomachinery-acquire-14",
+      "family": "turbomachinery",
+      "lineageGroup": "",
+      "relativePath": "",
+      "extension": "",
+      "sourceHash": "",
+      "bytes": 0,
+      "sourceAcquiredAt": "",
+      "provenance": {
+        "sourceUrl": "",
+        "provider": "",
+        "productId": "",
+        "licenseId": "",
+        "licenseUrl": "",
+        "commercialUseStatus": "pending",
+        "licenseEvidence": {
+          "relativePath": "",
+          "bytes": 0,
+          "sha256": ""
+        },
+        "review": {
+          "decision": "pending",
+          "reviewerId": "",
+          "reviewedAt": "",
+          "subjectHash": "",
+          "signedArtifact": {
+            "relativePath": "",
+            "bytes": 0,
+            "sha256": ""
+          }
+        }
+      },
+      "holdoutIsolation": {
+        "excludedFromTraining": false,
+        "excludedFromFineTuning": false,
+        "excludedFromPromptDevelopment": false,
+        "evaluationAccessRestricted": false,
+        "accessControlReceipt": {
+          "relativePath": "",
+          "bytes": 0,
+          "sha256": ""
+        },
+        "review": {
+          "decision": "pending",
+          "reviewerId": "",
+          "reviewedAt": "",
+          "subjectHash": "",
+          "signedArtifact": {
+            "relativePath": "",
+            "bytes": 0,
+            "sha256": ""
+          }
+        }
+      },
+      "nativeStructure": {
+        "definitions": 0,
+        "occurrences": 0,
+        "transforms": 0,
+        "joints": 0,
+        "extractor": "",
+        "extractorVersion": "",
+        "extractorArtifactHash": "",
+        "receipt": {
+          "relativePath": "",
+          "bytes": 0,
+          "sha256": ""
+        },
+        "review": {
+          "decision": "pending",
+          "reviewerId": "",
+          "reviewedAt": "",
+          "subjectHash": "",
+          "signedArtifact": {
+            "relativePath": "",
+            "bytes": 0,
+            "sha256": ""
+          }
+        }
+      },
+      "archiveManifest": {
+        "relativePath": "",
+        "bytes": 0,
+        "sha256": ""
+      },
+      "conditionalFormatReview": {
+        "decision": "pending",
+        "reviewerId": "",
+        "reviewedAt": "",
+        "subjectHash": "",
+        "signedArtifact": {
+          "relativePath": "",
+          "bytes": 0,
+          "sha256": ""
+        }
+      }
+    },
+    {
+      "slotId": "turbomachinery-acquire-15",
+      "family": "turbomachinery",
+      "lineageGroup": "",
+      "relativePath": "",
+      "extension": "",
+      "sourceHash": "",
+      "bytes": 0,
+      "sourceAcquiredAt": "",
+      "provenance": {
+        "sourceUrl": "",
+        "provider": "",
+        "productId": "",
+        "licenseId": "",
+        "licenseUrl": "",
+        "commercialUseStatus": "pending",
+        "licenseEvidence": {
+          "relativePath": "",
+          "bytes": 0,
+          "sha256": ""
+        },
+        "review": {
+          "decision": "pending",
+          "reviewerId": "",
+          "reviewedAt": "",
+          "subjectHash": "",
+          "signedArtifact": {
+            "relativePath": "",
+            "bytes": 0,
+            "sha256": ""
+          }
+        }
+      },
+      "holdoutIsolation": {
+        "excludedFromTraining": false,
+        "excludedFromFineTuning": false,
+        "excludedFromPromptDevelopment": false,
+        "evaluationAccessRestricted": false,
+        "accessControlReceipt": {
+          "relativePath": "",
+          "bytes": 0,
+          "sha256": ""
+        },
+        "review": {
+          "decision": "pending",
+          "reviewerId": "",
+          "reviewedAt": "",
+          "subjectHash": "",
+          "signedArtifact": {
+            "relativePath": "",
+            "bytes": 0,
+            "sha256": ""
+          }
+        }
+      },
+      "nativeStructure": {
+        "definitions": 0,
+        "occurrences": 0,
+        "transforms": 0,
+        "joints": 0,
+        "extractor": "",
+        "extractorVersion": "",
+        "extractorArtifactHash": "",
+        "receipt": {
+          "relativePath": "",
+          "bytes": 0,
+          "sha256": ""
+        },
+        "review": {
+          "decision": "pending",
+          "reviewerId": "",
+          "reviewedAt": "",
+          "subjectHash": "",
+          "signedArtifact": {
+            "relativePath": "",
+            "bytes": 0,
+            "sha256": ""
+          }
+        }
+      },
+      "archiveManifest": {
+        "relativePath": "",
+        "bytes": 0,
+        "sha256": ""
+      },
+      "conditionalFormatReview": {
+        "decision": "pending",
+        "reviewerId": "",
+        "reviewedAt": "",
+        "subjectHash": "",
+        "signedArtifact": {
+          "relativePath": "",
+          "bytes": 0,
+          "sha256": ""
+        }
+      }
+    },
+    {
+      "slotId": "turbomachinery-acquire-16",
+      "family": "turbomachinery",
+      "lineageGroup": "",
+      "relativePath": "",
+      "extension": "",
+      "sourceHash": "",
+      "bytes": 0,
+      "sourceAcquiredAt": "",
+      "provenance": {
+        "sourceUrl": "",
+        "provider": "",
+        "productId": "",
+        "licenseId": "",
+        "licenseUrl": "",
+        "commercialUseStatus": "pending",
+        "licenseEvidence": {
+          "relativePath": "",
+          "bytes": 0,
+          "sha256": ""
+        },
+        "review": {
+          "decision": "pending",
+          "reviewerId": "",
+          "reviewedAt": "",
+          "subjectHash": "",
+          "signedArtifact": {
+            "relativePath": "",
+            "bytes": 0,
+            "sha256": ""
+          }
+        }
+      },
+      "holdoutIsolation": {
+        "excludedFromTraining": false,
+        "excludedFromFineTuning": false,
+        "excludedFromPromptDevelopment": false,
+        "evaluationAccessRestricted": false,
+        "accessControlReceipt": {
+          "relativePath": "",
+          "bytes": 0,
+          "sha256": ""
+        },
+        "review": {
+          "decision": "pending",
+          "reviewerId": "",
+          "reviewedAt": "",
+          "subjectHash": "",
+          "signedArtifact": {
+            "relativePath": "",
+            "bytes": 0,
+            "sha256": ""
+          }
+        }
+      },
+      "nativeStructure": {
+        "definitions": 0,
+        "occurrences": 0,
+        "transforms": 0,
+        "joints": 0,
+        "extractor": "",
+        "extractorVersion": "",
+        "extractorArtifactHash": "",
+        "receipt": {
+          "relativePath": "",
+          "bytes": 0,
+          "sha256": ""
+        },
+        "review": {
+          "decision": "pending",
+          "reviewerId": "",
+          "reviewedAt": "",
+          "subjectHash": "",
+          "signedArtifact": {
+            "relativePath": "",
+            "bytes": 0,
+            "sha256": ""
+          }
+        }
+      },
+      "archiveManifest": {
+        "relativePath": "",
+        "bytes": 0,
+        "sha256": ""
+      },
+      "conditionalFormatReview": {
+        "decision": "pending",
+        "reviewerId": "",
+        "reviewedAt": "",
+        "subjectHash": "",
+        "signedArtifact": {
+          "relativePath": "",
+          "bytes": 0,
+          "sha256": ""
+        }
+      }
+    },
+    {
+      "slotId": "turbomachinery-acquire-17",
+      "family": "turbomachinery",
+      "lineageGroup": "",
+      "relativePath": "",
+      "extension": "",
+      "sourceHash": "",
+      "bytes": 0,
+      "sourceAcquiredAt": "",
+      "provenance": {
+        "sourceUrl": "",
+        "provider": "",
+        "productId": "",
+        "licenseId": "",
+        "licenseUrl": "",
+        "commercialUseStatus": "pending",
+        "licenseEvidence": {
+          "relativePath": "",
+          "bytes": 0,
+          "sha256": ""
+        },
+        "review": {
+          "decision": "pending",
+          "reviewerId": "",
+          "reviewedAt": "",
+          "subjectHash": "",
+          "signedArtifact": {
+            "relativePath": "",
+            "bytes": 0,
+            "sha256": ""
+          }
+        }
+      },
+      "holdoutIsolation": {
+        "excludedFromTraining": false,
+        "excludedFromFineTuning": false,
+        "excludedFromPromptDevelopment": false,
+        "evaluationAccessRestricted": false,
+        "accessControlReceipt": {
+          "relativePath": "",
+          "bytes": 0,
+          "sha256": ""
+        },
+        "review": {
+          "decision": "pending",
+          "reviewerId": "",
+          "reviewedAt": "",
+          "subjectHash": "",
+          "signedArtifact": {
+            "relativePath": "",
+            "bytes": 0,
+            "sha256": ""
+          }
+        }
+      },
+      "nativeStructure": {
+        "definitions": 0,
+        "occurrences": 0,
+        "transforms": 0,
+        "joints": 0,
+        "extractor": "",
+        "extractorVersion": "",
+        "extractorArtifactHash": "",
+        "receipt": {
+          "relativePath": "",
+          "bytes": 0,
+          "sha256": ""
+        },
+        "review": {
+          "decision": "pending",
+          "reviewerId": "",
+          "reviewedAt": "",
+          "subjectHash": "",
+          "signedArtifact": {
+            "relativePath": "",
+            "bytes": 0,
+            "sha256": ""
+          }
+        }
+      },
+      "archiveManifest": {
+        "relativePath": "",
+        "bytes": 0,
+        "sha256": ""
+      },
+      "conditionalFormatReview": {
+        "decision": "pending",
+        "reviewerId": "",
+        "reviewedAt": "",
+        "subjectHash": "",
+        "signedArtifact": {
+          "relativePath": "",
+          "bytes": 0,
+          "sha256": ""
+        }
+      }
+    },
+    {
+      "slotId": "turbomachinery-acquire-18",
+      "family": "turbomachinery",
+      "lineageGroup": "",
+      "relativePath": "",
+      "extension": "",
+      "sourceHash": "",
+      "bytes": 0,
+      "sourceAcquiredAt": "",
+      "provenance": {
+        "sourceUrl": "",
+        "provider": "",
+        "productId": "",
+        "licenseId": "",
+        "licenseUrl": "",
+        "commercialUseStatus": "pending",
+        "licenseEvidence": {
+          "relativePath": "",
+          "bytes": 0,
+          "sha256": ""
+        },
+        "review": {
+          "decision": "pending",
+          "reviewerId": "",
+          "reviewedAt": "",
+          "subjectHash": "",
+          "signedArtifact": {
+            "relativePath": "",
+            "bytes": 0,
+            "sha256": ""
+          }
+        }
+      },
+      "holdoutIsolation": {
+        "excludedFromTraining": false,
+        "excludedFromFineTuning": false,
+        "excludedFromPromptDevelopment": false,
+        "evaluationAccessRestricted": false,
+        "accessControlReceipt": {
+          "relativePath": "",
+          "bytes": 0,
+          "sha256": ""
+        },
+        "review": {
+          "decision": "pending",
+          "reviewerId": "",
+          "reviewedAt": "",
+          "subjectHash": "",
+          "signedArtifact": {
+            "relativePath": "",
+            "bytes": 0,
+            "sha256": ""
+          }
+        }
+      },
+      "nativeStructure": {
+        "definitions": 0,
+        "occurrences": 0,
+        "transforms": 0,
+        "joints": 0,
+        "extractor": "",
+        "extractorVersion": "",
+        "extractorArtifactHash": "",
+        "receipt": {
+          "relativePath": "",
+          "bytes": 0,
+          "sha256": ""
+        },
+        "review": {
+          "decision": "pending",
+          "reviewerId": "",
+          "reviewedAt": "",
+          "subjectHash": "",
+          "signedArtifact": {
+            "relativePath": "",
+            "bytes": 0,
+            "sha256": ""
+          }
+        }
+      },
+      "archiveManifest": {
+        "relativePath": "",
+        "bytes": 0,
+        "sha256": ""
+      },
+      "conditionalFormatReview": {
+        "decision": "pending",
+        "reviewerId": "",
+        "reviewedAt": "",
+        "subjectHash": "",
+        "signedArtifact": {
+          "relativePath": "",
+          "bytes": 0,
+          "sha256": ""
+        }
+      }
+    },
+    {
+      "slotId": "turbomachinery-acquire-19",
+      "family": "turbomachinery",
+      "lineageGroup": "",
+      "relativePath": "",
+      "extension": "",
+      "sourceHash": "",
+      "bytes": 0,
+      "sourceAcquiredAt": "",
+      "provenance": {
+        "sourceUrl": "",
+        "provider": "",
+        "productId": "",
+        "licenseId": "",
+        "licenseUrl": "",
+        "commercialUseStatus": "pending",
+        "licenseEvidence": {
+          "relativePath": "",
+          "bytes": 0,
+          "sha256": ""
+        },
+        "review": {
+          "decision": "pending",
+          "reviewerId": "",
+          "reviewedAt": "",
+          "subjectHash": "",
+          "signedArtifact": {
+            "relativePath": "",
+            "bytes": 0,
+            "sha256": ""
+          }
+        }
+      },
+      "holdoutIsolation": {
+        "excludedFromTraining": false,
+        "excludedFromFineTuning": false,
+        "excludedFromPromptDevelopment": false,
+        "evaluationAccessRestricted": false,
+        "accessControlReceipt": {
+          "relativePath": "",
+          "bytes": 0,
+          "sha256": ""
+        },
+        "review": {
+          "decision": "pending",
+          "reviewerId": "",
+          "reviewedAt": "",
+          "subjectHash": "",
+          "signedArtifact": {
+            "relativePath": "",
+            "bytes": 0,
+            "sha256": ""
+          }
+        }
+      },
+      "nativeStructure": {
+        "definitions": 0,
+        "occurrences": 0,
+        "transforms": 0,
+        "joints": 0,
+        "extractor": "",
+        "extractorVersion": "",
+        "extractorArtifactHash": "",
+        "receipt": {
+          "relativePath": "",
+          "bytes": 0,
+          "sha256": ""
+        },
+        "review": {
+          "decision": "pending",
+          "reviewerId": "",
+          "reviewedAt": "",
+          "subjectHash": "",
+          "signedArtifact": {
+            "relativePath": "",
+            "bytes": 0,
+            "sha256": ""
+          }
+        }
+      },
+      "archiveManifest": {
+        "relativePath": "",
+        "bytes": 0,
+        "sha256": ""
+      },
+      "conditionalFormatReview": {
+        "decision": "pending",
+        "reviewerId": "",
+        "reviewedAt": "",
+        "subjectHash": "",
+        "signedArtifact": {
+          "relativePath": "",
+          "bytes": 0,
+          "sha256": ""
+        }
+      }
+    },
+    {
+      "slotId": "turbomachinery-acquire-20",
+      "family": "turbomachinery",
+      "lineageGroup": "",
+      "relativePath": "",
+      "extension": "",
+      "sourceHash": "",
+      "bytes": 0,
+      "sourceAcquiredAt": "",
+      "provenance": {
+        "sourceUrl": "",
+        "provider": "",
+        "productId": "",
+        "licenseId": "",
+        "licenseUrl": "",
+        "commercialUseStatus": "pending",
+        "licenseEvidence": {
+          "relativePath": "",
+          "bytes": 0,
+          "sha256": ""
+        },
+        "review": {
+          "decision": "pending",
+          "reviewerId": "",
+          "reviewedAt": "",
+          "subjectHash": "",
+          "signedArtifact": {
+            "relativePath": "",
+            "bytes": 0,
+            "sha256": ""
+          }
+        }
+      },
+      "holdoutIsolation": {
+        "excludedFromTraining": false,
+        "excludedFromFineTuning": false,
+        "excludedFromPromptDevelopment": false,
+        "evaluationAccessRestricted": false,
+        "accessControlReceipt": {
+          "relativePath": "",
+          "bytes": 0,
+          "sha256": ""
+        },
+        "review": {
+          "decision": "pending",
+          "reviewerId": "",
+          "reviewedAt": "",
+          "subjectHash": "",
+          "signedArtifact": {
+            "relativePath": "",
+            "bytes": 0,
+            "sha256": ""
+          }
+        }
+      },
+      "nativeStructure": {
+        "definitions": 0,
+        "occurrences": 0,
+        "transforms": 0,
+        "joints": 0,
+        "extractor": "",
+        "extractorVersion": "",
+        "extractorArtifactHash": "",
+        "receipt": {
+          "relativePath": "",
+          "bytes": 0,
+          "sha256": ""
+        },
+        "review": {
+          "decision": "pending",
+          "reviewerId": "",
+          "reviewedAt": "",
+          "subjectHash": "",
+          "signedArtifact": {
+            "relativePath": "",
+            "bytes": 0,
+            "sha256": ""
+          }
+        }
+      },
+      "archiveManifest": {
+        "relativePath": "",
+        "bytes": 0,
+        "sha256": ""
+      },
+      "conditionalFormatReview": {
+        "decision": "pending",
+        "reviewerId": "",
+        "reviewedAt": "",
+        "subjectHash": "",
+        "signedArtifact": {
+          "relativePath": "",
+          "bytes": 0,
+          "sha256": ""
+        }
+      }
+    }
+  ]
+}

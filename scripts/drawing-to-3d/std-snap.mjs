@@ -5,11 +5,12 @@
  * 정직 경고(발주 불가 치수임을 목록화 — 좌표·형상을 조용히 바꾸지 않는다:
  * 스냅 적용 여부는 호출측 선택, 기본은 보고만).
  */
-import { readFileSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { readJsonAsset } from './runtime-assets.mjs';
 
-export const STD = JSON.parse(readFileSync(join(dirname(fileURLToPath(import.meta.url)), 'std-catalog.json'), 'utf8'));
+const moduleDir = typeof __dirname === 'string' ? __dirname : dirname(fileURLToPath(import.meta.url));
+export const STD = readJsonAsset('std-catalog.json', join(moduleDir, 'std-catalog.json'));
 
 /** 외경(또는 호칭경) → 배관 규격. dn 직접 지정 시 정확 일치만. */
 export function snapPipe(diaOrDn, { asDn = false, tolPct = 12 } = {}) {

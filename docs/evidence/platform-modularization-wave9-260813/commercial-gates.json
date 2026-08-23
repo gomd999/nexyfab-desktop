@@ -1,0 +1,105 @@
+{
+  "schema": "nexyfab.platform-commercial-gate-observation.v1",
+  "capturedAt": "2026-08-13T22:06:26+09:00",
+  "releaseDecision": "HOLD",
+  "technicalRelease": {
+    "status": "BLOCKED",
+    "blockers": [
+      "CAD technical release audit v3 is required",
+      "DOMAIN_ACCURACY_EVIDENCE_DIR must point to approved mechanical campaign evidence"
+    ]
+  },
+  "commercialRelease": {
+    "status": "BLOCKED",
+    "passedBeforeBlock": [
+      "third-party notices: 685 packages",
+      "kernel stack identity",
+      "CAD API controls: 81 routes and handlers, 0 issues"
+    ],
+    "blockers": [
+      "mechanical feature closed-loop receipts: 0/30",
+      "NexyFab STEP interoperability target receipt missing",
+      "SolidWorks STEP reopen target receipt missing",
+      "Fusion STEP reopen target receipt missing",
+      "Onshape STEP reopen target receipt missing",
+      "interoperability revision matrix mismatch",
+      "interoperability source artifact mismatch"
+    ]
+  },
+  "commercializationReadiness": {
+    "releaseChannel": "mechanical-core",
+    "privateBeta": {
+      "eligible": false,
+      "blockers": [
+        "release_candidate_not_committed",
+        "current_release_working_tree_dirty",
+        "mechanical_scope_ten_direct_designs_incomplete",
+        "mechanical_product_private_beta_not_eligible"
+      ]
+    },
+    "commercialGa": {
+      "eligible": false,
+      "blockers": [
+        "release_candidate_not_committed",
+        "current_release_working_tree_dirty",
+        "mechanical_scope_ten_direct_designs_incomplete",
+        "mechanical_product_private_beta_not_eligible",
+        "mechanical_scope_30_feature_closed_loop_incomplete",
+        "mechanical_scope_thirty_direct_designs_incomplete",
+        "mechanical_scope_intent_campaign_150_incomplete",
+        "mechanical_scope_standard_step_conformance_incomplete",
+        "mechanical_scope_blind_product_challenge_incomplete",
+        "mechanical_scope_manufacturing_receipt_incomplete",
+        "mechanical_product_self_service_not_eligible",
+        "mechanical_manufacturing_release_not_verified",
+        "seven_day_operations_receipt_missing"
+      ]
+    },
+    "passingEvidence": {
+      "routeSecurityMatrix": "PASS",
+      "cadApiControls": "PASS",
+      "secretFindings": 0,
+      "dependencyVulnerabilities": 0,
+      "mechanicalInternalRegressionVerified": true,
+      "mechanicalRevisionConsistencyVerified": true,
+      "distributedQuotaEnvironmentVerified": true
+    }
+  },
+  "observedFailuresAndAdjustments": [
+    {
+      "stage": "commercialization gate sandbox run",
+      "result": "FAIL",
+      "reason": "spawnSync git EPERM",
+      "adjustment": "reran outside the sandbox and wrote its generated report only to the OS temporary directory",
+      "final": "BLOCKED_WITH_ACTUAL_GATE_RESULTS"
+    },
+    {
+      "stage": "commercial release first run",
+      "result": "BLOCKED",
+      "reason": "third-party notices were stale after dependency changes",
+      "adjustment": "regenerated and checked the notice inventory",
+      "final": "PASS_685_PACKAGES"
+    },
+    {
+      "stage": "commercial release second run",
+      "result": "BLOCKED",
+      "reason": "kernel identity evidence was stale",
+      "adjustment": "regenerated and checked kernel stack identity",
+      "final": "PASS"
+    },
+    {
+      "stage": "commercial release third run",
+      "result": "BLOCKED",
+      "reason": "CAD API control evidence was stale",
+      "adjustment": "regenerated and checked 81 routes and handlers",
+      "final": "PASS_0_ISSUES"
+    },
+    {
+      "stage": "commercial release fourth run",
+      "result": "BLOCKED",
+      "reason": "mechanical feature and external CAD interoperability receipts are absent",
+      "adjustment": "none; external evidence was not fabricated",
+      "final": "BLOCKED"
+    }
+  ]
+}

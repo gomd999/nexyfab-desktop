@@ -1,9 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { validateGdt, type GdtCallout } from '@/lib/drawing/dimension';
+import { boundedJsonError, readBoundedJson } from '@/lib/boundedJsonBody';
+
+const MAX_BODY_BYTES = 1024 * 1024;
 
 export const runtime = 'nodejs';
 export async function POST(req: NextRequest) {
-  const body = (await req.json().catch(() => null)) as { callouts?: GdtCallout[]; validTopologyRefs?: string[] } | null;
+  let body: { callouts?: GdtCallout[]; validTopologyRefs?: string[] } | null;
+  try { body = await readBoundedJson(req, MAX_BODY_BYTES); }
+  catch (error) {
+    if (boundedJsonError(error)?.code === 'PAYLOAD_TOO_LARGE') return NextResponse.json({ ok: false, code: 'PAYLOAD_TOO_LARGE' }, { status: 413 });
+    body = null;
+  }
   if (!Array.isArray(body?.callouts) || !Array.isArray(body.validTopologyRefs)) return NextResponse.json({ ok: false, code: 'INVALID_PMI_INPUT' }, { status: 400 });
   const refs = new Set(body.validTopologyRefs);
   const verified: GdtCallout[] = [];

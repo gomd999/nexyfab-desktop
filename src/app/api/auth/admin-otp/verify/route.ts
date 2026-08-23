@@ -16,6 +16,9 @@ import { rateLimitAsync } from '@/lib/rate-limit';
 import { getTrustedClientIp } from '@/lib/client-ip';
 import { readAccessToken, verifyOtpAndElevate, isAdminOtpRequired } from '@/lib/admin-elevation';
 import { ELEV_COOKIE, mintElevToken, sha256Hex } from '@/lib/admin-elev-token';
+import { boundedJsonError, readBoundedJson } from '@/lib/boundedJsonBody';
+
+const MAX_ADMIN_OTP_BODY_BYTES = 16 * 1024;
 
 export const dynamic = 'force-dynamic';
 
@@ -43,7 +46,11 @@ export async function POST(req: NextRequest) {
   }
 
   let body: { code?: unknown };
-  try { body = await req.json(); } catch { return NextResponse.json({ ok: false, error: 'invalid json' }, { status: 400 }); }
+  try { body = await readBoundedJson(req, MAX_ADMIN_OTP_BODY_BYTES); }
+  catch (error) {
+    if (boundedJsonError(error)?.code === 'PAYLOAD_TOO_LARGE') return NextResponse.json({ ok: false, error: 'request too large', code: 'PAYLOAD_TOO_LARGE' }, { status: 413 });
+    return NextResponse.json({ ok: false, error: 'invalid json' }, { status: 400 });
+  }
   const code = String(body.code ?? '').trim();
   // 형식 검사는 **길이만** 본다 — 여기서 문자를 걸러도 보안이 늘지 않고 오답만 늘린다.
   if (!/^\d{6}$/.test(code)) {

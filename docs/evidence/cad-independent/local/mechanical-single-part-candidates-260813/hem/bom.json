@@ -1,0 +1,26 @@
+{
+  "schema": "nexyfab.mechanical-single-part-bom-candidate.v1",
+  "partRevisionSha256": "91f1ebf0957bbad71dadea601bfa1da48c7864078abc8259694861da2d666354",
+  "sourceDesignRevisionSha256": "3cf6a0f9c8efcf153a2cfefde087a2112c086fc412d2feeaeb9ce52542838564",
+  "sourceNfabSha256": "265b1e163f6afbe246032299884b2f7c096ae3eb8ed3ff17b6a2d355aed89390",
+  "sourceStepSha256": "4a76bb64b3f28002864dc156d7178945d3ce8f551bab82ce9d833f3f3f7dc335",
+  "units": "mm",
+  "items": [
+    {
+      "partNumber": "hem",
+      "description": "Mechanical runtime hem",
+      "quantity": 1,
+      "dimensionsMm": {
+        "x": 60.001865107995116,
+        "y": 6.001865107995114,
+        "z": 33.000932653997566
+      }
+    }
+  ],
+  "claimBoundary": {
+    "singlePartCandidateOnly": true,
+    "materialSpecified": false,
+    "massCalculated": false,
+    "manufacturingApproved": false
+  }
+}

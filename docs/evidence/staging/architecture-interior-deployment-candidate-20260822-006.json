@@ -1,0 +1,87 @@
+{
+  "schema": "nexyfab.staging-architecture-interior-deployment.v1",
+  "generatedAt": "2026-08-21T21:52:27.0994128Z",
+  "environment": "staging",
+  "target": "https://nexyfabcom-staging.up.railway.app",
+  "candidateBuildId": "candidate-20260822-006",
+  "deployment": {
+    "service": "nexyfab.com",
+    "deploymentId": "49971020-f1ab-4d5f-b13d-96b2420b5849",
+    "status": "SUCCESS",
+    "createdAt": "2026-08-21T21:42:58.476Z",
+    "imageDigest": "sha256:8085ceb72a5312bf9755a129b59607566531b9a8a6562178f4b63b3cca3abab1"
+  },
+  "previousDeployment": {
+    "candidateBuildId": "candidate-20260822-005",
+    "deploymentId": "19a974ca-bd7c-4b43-a01e-98ef8ffe48c0",
+    "imageDigest": "sha256:632b4ac21582e0b02b045fce87affe6ecdaca91527833f16cd1fbf0e60ab180c",
+    "recordedAsRollbackTarget": true,
+    "rollbackExecuted": false,
+    "rollbackVerification": "not_run"
+  },
+  "health": {
+    "live": {
+      "status": "ok",
+      "build": "candidate-20260822-006",
+      "observedAt": "2026-08-21T21:51:15.783Z"
+    },
+    "ready": {
+      "status": "ok",
+      "observedAt": "2026-08-21T21:51:16.061Z",
+      "db": {
+        "status": "ok",
+        "required": true,
+        "backend": "postgres",
+        "responseMs": 23
+      },
+      "redis": {
+        "status": "ok",
+        "required": true,
+        "responseMs": 14
+      }
+    }
+  },
+  "validation": {
+    "focusedExactTests": {
+      "status": "passed",
+      "files": 4,
+      "tests": 21
+    },
+    "platformUuidApprovalTests": {
+      "status": "passed",
+      "files": 2,
+      "tests": 9
+    },
+    "architectureInteriorAndProviderSuite": {
+      "status": "passed",
+      "files": 36,
+      "tests": 192,
+      "realOcctStep": "passed"
+    },
+    "eslint": "passed",
+    "typescript": "passed",
+    "productionBuild": {
+      "status": "passed",
+      "staticPages": "292/292",
+      "sharedChunksKb": 723.5,
+      "sharedChunksBudgetKb": 795.7,
+      "worstFirstPaintKb": 1757.5,
+      "worstFirstPaintBudgetKb": 1851.5
+    },
+    "stagingLifecycleReceipt": "docs/evidence/staging/architecture-interior-lifecycle-candidate-20260822-006.json",
+    "stagingLifecycle": "passed"
+  },
+  "safety": {
+    "productionMutated": false,
+    "credentialsPersisted": false,
+    "transientProjectRetained": false,
+    "quoteOrRfqSideEffects": false
+  },
+  "releaseReady": false,
+  "notRun": [
+    "code_compliance",
+    "release_and_manufacturing",
+    "production_deployment",
+    "rollback_execution"
+  ]
+}

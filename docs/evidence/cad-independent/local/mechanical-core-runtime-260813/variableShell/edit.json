@@ -1,0 +1,31 @@
+{
+  "schema": "nexyfab.mechanical-core-feature-local-runtime.v1",
+  "feature": "variableShell",
+  "axis": "edit",
+  "status": "PASS",
+  "executedAt": "2026-08-22T07:13:30.564Z",
+  "commandId": "variableShell-runtime-param-edit",
+  "historyDepth": 1,
+  "before": {
+    "id": "runtime-feature",
+    "enabled": true,
+    "type": "variableShell",
+    "params": {
+      "topThickness": 2,
+      "sideThickness": 1.5,
+      "bottomThickness": 2.5,
+      "openFace": 1
+    }
+  },
+  "after": {
+    "id": "runtime-feature",
+    "enabled": true,
+    "type": "variableShell",
+    "params": {
+      "topThickness": 2,
+      "sideThickness": 2.5,
+      "bottomThickness": 2.5,
+      "openFace": 1
+    }
+  }
+}

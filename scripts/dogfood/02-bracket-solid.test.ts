@@ -13,7 +13,7 @@ import { describe, it, expect } from 'vitest';
 import { buildExtrudeFromLoop, type ExtrudeFeature } from '@/lib/cad/extrudeProfile';
 import { buildFilletFeatureRef } from '@/lib/cad/filletProfile';
 import { buildChamferFeatureRef } from '@/lib/cad/chamferProfile';
-import { buildLinearPatternRef, linearPatternToScad } from '@/lib/cad/pattern';
+import { buildLinearPatternRef } from '@/lib/cad/pattern';
 import { buildHoleFeature, holeToScad } from '@/lib/cad/holeProfile';
 import { replayTree, type FeatureTree, type FeatureNode } from '@/lib/cad/featureTree';
 import { applyEdit } from '@/lib/cad/featureTreeEdit';
@@ -46,15 +46,15 @@ function seedHole(depth: number) {
 /** Correctly-composed bracket: fillet(plate) MINUS pattern(hole). */
 function solidBracket(base: ExtrudeFeature): FeatureTree {
   const fillet = buildFilletFeatureRef('extrude_plate', base, 8, 'vertical');
-  const hole = seedHole(base.depth);
+  const hole = { ...seedHole(base.depth), childId: 'extrude_plate' };
   const pat = buildLinearPatternRef('hole_seed', {
-    childScad: holeToScad(hole),
+    childScad: holeToScad(hole, base.depth),
     count: 4, spacing: 30, direction: { x: 1, y: 0, z: 0 },
   });
   const nodes: FeatureNode[] = [
     { id: 'extrude_plate', name: 'Plate', dependencies: [], payload: base },
     { id: 'fillet_corners', name: 'Corner fillet', dependencies: ['extrude_plate'], payload: fillet },
-    { id: 'hole_seed', name: 'Hole seed', dependencies: [], payload: hole },
+    { id: 'hole_seed', name: 'Hole seed', dependencies: ['extrude_plate'], payload: hole },
     { id: 'holes_row', name: 'Hole row', dependencies: ['hole_seed'], payload: pat },
     {
       id: 'cut',
@@ -148,8 +148,9 @@ describe('DOGFOOD 02 — bracket as a real solid', () => {
     // The hole was built with depth = ORIGINAL thickness. After thickening the
     // plate to 25 the hole is still 10 deep — a blind hole where the user
     // expects a through hole. Nothing warns.
+    expect(holeAfter).toContain('h=25.02');
     console.log('C >>> does hole depth track plate thickness?',
-      holeAfter.includes('h=25.01') ? 'YES' : 'NO — still h=10.01');
+      holeAfter.includes('h=25.02') ? 'YES' : 'NO');
   });
 
   it('D: stats volume vs the SCAD that is actually emitted', () => {
@@ -167,5 +168,7 @@ describe('DOGFOOD 02 — bracket as a real solid', () => {
     console.log('D plate volume:', 96000);
     console.log('D implied holes removed by stats:', (96000 - stats.volume) / oneHole);
     console.log('D one hole volume:', oneHole);
+    expect(instances).toBe(4);
+    expect((96000 - stats.volume) / (Math.PI * 4.5 * 4.5 * 10)).toBeCloseTo(4, 5);
   });
 });

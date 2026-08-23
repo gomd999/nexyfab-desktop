@@ -64,6 +64,49 @@ describe('AssemblyBrowserModal', () => {
     expect(screen.getByTestId('solver-assembly-mates-empty')).toBeInTheDocument();
   });
 
+  it('renders the guided workspace start actions and explicit NOT_RUN statuses', () => {
+    render(<AssemblyBrowserModal lang="en" onClose={vi.fn()} />);
+    const shell = screen.getByTestId('solver-assembly-modal').firstElementChild;
+    expect(shell).toHaveAttribute('data-experience', 'guided');
+    expect(shell).toHaveAttribute('data-pristine', 'true');
+    expect(screen.getByTestId('solver-assembly-empty-start')).toHaveTextContent(
+      'Import an assembly or add the first part',
+    );
+    expect(screen.getByTestId('solver-assembly-solver-status')).toHaveTextContent(
+      'Solve: NOT_RUN',
+    );
+    expect(screen.getByTestId('solver-assembly-release-status')).toHaveTextContent(
+      'Release verification: NOT_RUN',
+    );
+  });
+
+  it('switches between AI, verification, and history workspaces without losing assembly state', () => {
+    render(<AssemblyBrowserModal lang="en" initialState={seedState()} onClose={vi.fn()} />);
+    fireEvent.click(screen.getByTestId('solver-assembly-workspace-ai'));
+    expect(screen.getByTestId('solver-assembly-ai-panel-host')).toBeInTheDocument();
+    fireEvent.click(screen.getByTestId('solver-assembly-workspace-verify'));
+    expect(screen.getByTestId('solver-assembly-constraints-host')).toBeInTheDocument();
+    fireEvent.click(screen.getByTestId('solver-assembly-workspace-history'));
+    expect(screen.getByTestId('solver-assembly-history-panel')).toBeInTheDocument();
+    expect(screen.getByTestId('solver-assembly-part-row-p_base')).toBeInTheDocument();
+  });
+
+  it('lets the route opt into a persistent central 3D workspace', () => {
+    render(
+      <AssemblyBrowserModal
+        lang="en"
+        initialState={seedState()}
+        onClose={vi.fn()}
+        default3DView
+      />,
+    );
+    expect(screen.getByTestId('solver-assembly-3d-toggle')).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    );
+    expect(screen.getByTestId('solver-assembly-3d-panel')).toBeInTheDocument();
+  });
+
   it('renders seeded parts and mates from initialState', () => {
     render(
       <AssemblyBrowserModal lang="en" initialState={seedState()} onClose={vi.fn()} />,
@@ -187,21 +230,21 @@ describe('AssemblyBrowserModal', () => {
     ).toBe('45');
   });
 
-  it('editing ref A partId / refId / refKind updates the inputs', () => {
+  it('editing ref A selects a real part / stable ref / ref kind', () => {
     render(
       <AssemblyBrowserModal lang="en" initialState={seedState()} onClose={vi.fn()} />,
     );
-    const partId = screen.getByTestId('solver-assembly-mate-a-partid-m1') as HTMLInputElement;
-    fireEvent.change(partId, { target: { value: 'new_part' } });
+    const partId = screen.getByTestId('solver-assembly-mate-a-partid-m1') as HTMLSelectElement;
+    fireEvent.change(partId, { target: { value: 'p_arm' } });
     expect(
-      (screen.getByTestId('solver-assembly-mate-a-partid-m1') as HTMLInputElement).value,
-    ).toBe('new_part');
+      (screen.getByTestId('solver-assembly-mate-a-partid-m1') as HTMLSelectElement).value,
+    ).toBe('p_arm');
 
-    const refId = screen.getByTestId('solver-assembly-mate-a-refid-m1') as HTMLInputElement;
-    fireEvent.change(refId, { target: { value: 'new_ref' } });
+    const refId = screen.getByTestId('solver-assembly-mate-a-refid-m1') as HTMLSelectElement;
+    fireEvent.change(refId, { target: { value: 'z_axis' } });
     expect(
-      (screen.getByTestId('solver-assembly-mate-a-refid-m1') as HTMLInputElement).value,
-    ).toBe('new_ref');
+      (screen.getByTestId('solver-assembly-mate-a-refid-m1') as HTMLSelectElement).value,
+    ).toBe('z_axis');
 
     const refKind = screen.getByTestId('solver-assembly-mate-a-refkind-m1') as HTMLSelectElement;
     fireEvent.change(refKind, { target: { value: 'axis' } });
@@ -259,7 +302,10 @@ describe('AssemblyBrowserModal', () => {
     const callArg = onSolve.mock.calls[0][0] as AssemblyState;
     expect(callArg.parts.length).toBe(2);
     expect(callArg.mates.length).toBe(1);
-    expect(screen.getByTestId('solver-assembly-solve-success')).toHaveTextContent(/success/i);
+    expect(screen.getByTestId('solver-assembly-solve-success')).toHaveTextContent(/blocked/i);
+    expect(screen.getByTestId('solver-assembly-solve-gate-blockers')).toHaveTextContent(
+      /authoritative_real_solver_required.*remaining_dof_5_exceeds_allowed_0/i,
+    );
     expect(screen.getByTestId('solver-assembly-solve-dof')).toHaveTextContent(/5/);
     expect(screen.getByTestId('solver-assembly-solve-iterations')).toHaveTextContent(/7/);
     expect(screen.getByTestId('solver-assembly-solve-residual-m1')).toBeInTheDocument();
@@ -535,6 +581,12 @@ describe('AssemblyBrowserModal', () => {
       );
       expect(screen.getByTestId('solver-assembly-solve-phase').textContent).toMatch(
         /stub/i,
+      );
+      expect(screen.getByTestId('solver-assembly-solver-status')).toHaveTextContent(
+        /blocked/i,
+      );
+      expect(screen.getByTestId('solver-assembly-solve-gate-blockers')).toHaveTextContent(
+        /authoritative_real_solver_required/i,
       );
     });
 
@@ -2688,6 +2740,9 @@ describe('AssemblyBrowserModal', () => {
       const input = screen.getByTestId('solver-assembly-ai-input') as HTMLInputElement;
       fireEvent.change(input, { target: { value: '3 stacked plates' } });
       fireEvent.click(screen.getByTestId('solver-assembly-ai-submit'));
+      expect(screen.getByTestId('solver-assembly-ai-preview')).toBeInTheDocument();
+      expect(screen.queryAllByTestId(/^solver-assembly-part-row-/)).toHaveLength(0);
+      fireEvent.click(screen.getByTestId('solver-assembly-ai-apply'));
       const partRows = screen.getAllByTestId(/^solver-assembly-part-row-/);
       expect(partRows.length).toBe(3);
       const mateRows = screen.getAllByTestId(/^solver-assembly-mate-row-/);
@@ -2707,6 +2762,7 @@ describe('AssemblyBrowserModal', () => {
       const input = screen.getByTestId('solver-assembly-ai-input') as HTMLInputElement;
       fireEvent.change(input, { target: { value: '2 x 3 grid' } });
       fireEvent.click(screen.getByTestId('solver-assembly-ai-submit'));
+      fireEvent.click(screen.getByTestId('solver-assembly-ai-apply'));
       const partRows = screen.getAllByTestId(/^solver-assembly-part-row-/);
       expect(partRows.length).toBe(6);
       // Grid produces no mates (only positions).
@@ -2745,6 +2801,7 @@ describe('AssemblyBrowserModal', () => {
         target: { value: '2 stacked' },
       });
       fireEvent.click(screen.getByTestId('solver-assembly-ai-submit'));
+      fireEvent.click(screen.getByTestId('solver-assembly-ai-apply'));
       expect(screen.getAllByTestId(/^solver-assembly-part-row-/).length).toBe(4);
       // Original m1 + 1 new = 2 mate rows.
       expect(screen.getAllByTestId(/^solver-assembly-mate-row-/).length).toBe(2);
@@ -2759,6 +2816,7 @@ describe('AssemblyBrowserModal', () => {
       const input = screen.getByTestId('solver-assembly-ai-input') as HTMLInputElement;
       fireEvent.change(input, { target: { value: '3 stacked' } });
       fireEvent.click(screen.getByTestId('solver-assembly-ai-submit'));
+      fireEvent.click(screen.getByTestId('solver-assembly-ai-apply'));
       // After success the input value is wiped.
       expect(
         (screen.getByTestId('solver-assembly-ai-input') as HTMLInputElement).value,
@@ -2771,6 +2829,7 @@ describe('AssemblyBrowserModal', () => {
       const input = screen.getByTestId('solver-assembly-ai-input') as HTMLInputElement;
       fireEvent.change(input, { target: { value: '3 stacked' } });
       fireEvent.keyDown(input, { key: 'Enter', code: 'Enter' });
+      fireEvent.click(screen.getByTestId('solver-assembly-ai-apply'));
       expect(screen.getAllByTestId(/^solver-assembly-part-row-/).length).toBe(3);
     });
 
@@ -2781,6 +2840,7 @@ describe('AssemblyBrowserModal', () => {
         target: { value: '3 stacked' },
       });
       fireEvent.click(screen.getByTestId('solver-assembly-ai-submit'));
+      fireEvent.click(screen.getByTestId('solver-assembly-ai-apply'));
       expect(screen.getAllByTestId(/^solver-assembly-part-row-/).length).toBe(3);
       // Toggle off — builder UI hides but the 3 parts stay.
       fireEvent.click(screen.getByTestId('solver-assembly-ai-toggle'));
@@ -2795,6 +2855,7 @@ describe('AssemblyBrowserModal', () => {
         target: { value: '2x3 grid' },
       });
       fireEvent.click(screen.getByTestId('solver-assembly-ai-submit'));
+      fireEvent.click(screen.getByTestId('solver-assembly-ai-apply'));
       expect(screen.getAllByTestId(/^solver-assembly-part-row-/).length).toBe(6);
     });
 
@@ -4093,7 +4154,7 @@ describe('AssemblyBrowserModal commercial exact verification', () => {
     expect(screen.getByTestId('solver-assembly-commercial-exact-count')).toHaveTextContent('1/1');
     expect(fetchMock).toHaveBeenCalledTimes(1);
     const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit];
-    expect(url).toBe('/api/cad/v1/assembly/release/verify');
+    expect(url).toBe('/api/cad/v1/assembly/release/verify/');
     const body = JSON.parse(String(init.body));
     expect(body).toMatchObject({ state, featureTrees: { part: tree }, allowedDoF: 0, intendedContacts: [] });
     expect(body).not.toHaveProperty('localBoxes');
@@ -4146,7 +4207,7 @@ describe('AssemblyBrowserModal commercial exact verification', () => {
     expect(screen.getByTestId('solver-assembly-motion-verify-result')).toHaveTextContent('exact parts 1/1');
     expect(screen.getByTestId('solver-assembly-motion-review-hash')).toHaveTextContent(reviewHash);
     const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit];
-    expect(url).toBe('/api/cad/v1/assembly/animation/verify');
+    expect(url).toBe('/api/cad/v1/assembly/animation/verify/');
     const body = JSON.parse(String(init.body));
     expect(body).toMatchObject({ state, featureTrees: { part: tree }, jointEvidence: claim });
     expect(body).not.toHaveProperty('localBoxes');

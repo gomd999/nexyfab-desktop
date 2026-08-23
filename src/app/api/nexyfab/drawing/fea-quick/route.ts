@@ -18,6 +18,9 @@ import { getAuthUser } from '@/lib/auth-middleware';
 import { checkOrigin } from '@/lib/csrf';
 import { enqueueFeaJob } from '@/lib/fea-jobs/redisFeaJobs';
 import { publicFeaJob } from '@/lib/fea-jobs/contracts';
+import { boundedJsonError, readBoundedJson } from '@/lib/boundedJsonBody';
+
+const MAX_BODY_BYTES = 2 * 1024 * 1024;
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -37,14 +40,15 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 
   let scad: string, materialKey: string, loadKg: number, precise: boolean;
   try {
-    const body = (await req.json()) as { scad?: string; materialKey?: string; loadKg?: number; precise?: boolean };
+    const body = await readBoundedJson<{ scad?: string; materialKey?: string; loadKg?: number; precise?: boolean }>(req, MAX_BODY_BYTES);
     scad = String(body.scad ?? '');
     materialKey = typeof body.materialKey === 'string' && body.materialKey in FEA_MATERIALS ? body.materialKey : 'steel';
     loadKg = Number(body.loadKg);
     // 옵트인 정밀 해석: 곡률 응력집중부면 A5-급 refine+IC(0)(실측 ~24s). 동기 요청이 길어지므로
     // 명시 요청일 때만 수행 — 무음 타임아웃 금지.
     precise = body.precise === true;
-  } catch {
+  } catch (error) {
+    if (boundedJsonError(error)?.code === 'PAYLOAD_TOO_LARGE') return NextResponse.json({ ok: false, error: 'scad가 너무 큽니다(1MB 이하).' }, { status: 413 });
     return NextResponse.json({ ok: false, error: 'invalid json' }, { status: 400 });
   }
   if (scad.length < 10) return NextResponse.json({ ok: false, error: 'scad가 필요합니다.' }, { status: 400 });

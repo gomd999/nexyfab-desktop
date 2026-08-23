@@ -5,6 +5,7 @@ import { verifyAdmin } from '@/lib/admin-auth';
 import { getDbAdapter } from '@/lib/db-adapter';
 import { chargeWithBillingKey } from '@/lib/toss-client';
 import { recordBillingAnalytics, PLAN_PRICE_KRW, type Plan } from '@/lib/billing-engine';
+import { denyIfPaymentCollectionDisabled } from '@/lib/payment-gate';
 
 /**
  * POST /api/jobs/toss-renewal
@@ -15,6 +16,8 @@ import { recordBillingAnalytics, PLAN_PRICE_KRW, type Plan } from '@/lib/billing
  * Auth: CRON_SECRET header OR admin session
  */
 export async function POST(req: NextRequest) {
+  const paymentDenied = denyIfPaymentCollectionDisabled();
+  if (paymentDenied) return paymentDenied;
   const cronSecret = req.headers.get('x-cron-secret');
   const expected = process.env.CRON_SECRET;
   const isAdmin = await verifyAdmin(req);

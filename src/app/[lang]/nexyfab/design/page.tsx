@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import { redirect } from 'next/navigation';
 import DesignInner from './DesignInner';
 
 export const metadata: Metadata = {
@@ -13,9 +14,12 @@ export default async function DesignPage({
   searchParams,
 }: {
   params: Promise<{ lang: string }>;
-  searchParams: Promise<{ domain?: string; tab?: string }>;
+  searchParams: Promise<{ domain?: string; tab?: string; t?: string }>;
 }) {
   const { lang } = await params;
-  const { domain, tab } = await searchParams;
+  const { domain, tab, t } = await searchParams;
+  if (!domain || domain === 'mech' || domain === 'mechanical' || domain === 'rack') {
+    redirect(`/${lang}/nexyfab/ai${t ? `?t=${encodeURIComponent(t)}` : ''}`);
+  }
   return <DesignInner lang={lang} initialDomain={domain ?? null} initialTab={tab ?? null} />;
 }

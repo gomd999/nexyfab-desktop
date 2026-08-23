@@ -3,6 +3,7 @@
 // helper straight from page.tsx fails `next build`'s TypeScript route-type
 // check even though local `tsc --noEmit` doesn't catch it.
 import type { NexyfabOrder } from '@/types/nexyfab-orders';
+import { toIsoLang, type IsoLang } from '@/lib/i18n/normalize';
 
 // ─── Demo data ────────────────────────────────────────────────────────────────
 
@@ -73,24 +74,53 @@ const DEMO_ORDERS: NexyfabOrder[] = [
 // DEMO_ORDERS above is authored in Korean; English display names for the same
 // three demo rows (index-aligned) so non-Korean users don't see raw Korean
 // product/manufacturer names in the fallback demo view.
-const DEMO_ORDER_NAMES_EN: { partName: string; manufacturerName: string }[] = [
-  { partName: 'Aluminum Bracket A-100', manufacturerName: 'Daewoo Precision Co., Ltd.' },
-  { partName: 'Stainless Flange SUS304', manufacturerName: 'Korea Precision Machining Cooperative' },
-  { partName: 'CNC Turned Shaft φ25×300', manufacturerName: 'Samsung Precision Machinery' },
-];
+const DEMO_ORDER_NAMES: Record<IsoLang, { partName: string; manufacturerName: string }[]> = {
+  ko: DEMO_ORDERS.map(({ partName, manufacturerName }) => ({ partName, manufacturerName })),
+  en: [
+    { partName: 'Aluminum Bracket A-100', manufacturerName: 'Daewoo Precision Co., Ltd.' },
+    { partName: 'Stainless Flange SUS304', manufacturerName: 'Korea Precision Machining Cooperative' },
+    { partName: 'CNC Turned Shaft φ25×300', manufacturerName: 'Samsung Precision Machinery' },
+  ],
+  ja: [
+    { partName: 'アルミブラケット A-100', manufacturerName: '大宇精密株式会社' },
+    { partName: 'ステンレスフランジ SUS304', manufacturerName: '韓国精密加工協同組合' },
+    { partName: 'CNC旋削シャフト φ25×300', manufacturerName: '三星精密機械' },
+  ],
+  zh: [
+    { partName: '铝制支架 A-100', manufacturerName: '大宇精密株式会社' },
+    { partName: '不锈钢法兰 SUS304', manufacturerName: '韩国精密加工合作社' },
+    { partName: 'CNC 车削轴 φ25×300', manufacturerName: '三星精密机械' },
+  ],
+  es: [
+    { partName: 'Soporte de aluminio A-100', manufacturerName: 'Daewoo Precision Co., Ltd.' },
+    { partName: 'Brida inoxidable SUS304', manufacturerName: 'Korea Precision Machining Cooperative' },
+    { partName: 'Eje torneado CNC φ25×300', manufacturerName: 'Samsung Precision Machinery' },
+  ],
+  ar: [
+    { partName: 'حامل ألمنيوم A-100', manufacturerName: 'دايو للصناعات الدقيقة' },
+    { partName: 'شفة فولاذ مقاوم للصدأ SUS304', manufacturerName: 'تعاونية كوريا للتشغيل الدقيق' },
+    { partName: 'عمود مخروّط CNC ‏φ25×300', manufacturerName: 'سامسونغ للآلات الدقيقة' },
+  ],
+};
 
 /** Unit suffix must follow the isKo branch: this used to append the Korean
  * word '원' unconditionally, so non-Korean users saw prices like "49,000원"
  * with no English rendering of the currency unit at all. */
-export function fmtKRW(n: number, isKo: boolean): string {
-  return isKo ? n.toLocaleString('ko-KR') + '원' : n.toLocaleString() + ' KRW';
+export function fmtKRW(n: number, language: boolean | string): string {
+  const iso = typeof language === 'boolean' ? (language ? 'ko' : 'en') : toIsoLang(language);
+  const locale: Record<IsoLang, string> = { ko: 'ko-KR', en: 'en-US', ja: 'ja-JP', zh: 'zh-CN', es: 'es-ES', ar: 'ar-SA' };
+  const value = new Intl.NumberFormat(locale[iso], { maximumFractionDigits: 0 }).format(n);
+  const suffix: Record<IsoLang, string> = { ko: '원', en: ' KRW', ja: ' KRW', zh: ' 韩元', es: ' KRW', ar: ' وون كوري' };
+  return value + suffix[iso];
 }
 
-export function getDemoOrders(isKo: boolean): NexyfabOrder[] {
-  if (isKo) return DEMO_ORDERS;
+export function getDemoOrders(language: boolean | string): NexyfabOrder[] {
+  const iso = typeof language === 'boolean' ? (language ? 'ko' : 'en') : toIsoLang(language);
+  if (iso === 'ko') return DEMO_ORDERS;
+  const names = DEMO_ORDER_NAMES[iso];
   return DEMO_ORDERS.map((o, i) => ({
     ...o,
-    partName: DEMO_ORDER_NAMES_EN[i]?.partName ?? o.partName,
-    manufacturerName: DEMO_ORDER_NAMES_EN[i]?.manufacturerName ?? o.manufacturerName,
+    partName: names[i]?.partName ?? o.partName,
+    manufacturerName: names[i]?.manufacturerName ?? o.manufacturerName,
   }));
 }

@@ -1,0 +1,26 @@
+{
+  "schema": "nexyfab.mechanical-single-part-bom-candidate.v1",
+  "partRevisionSha256": "6d58064bb2a2c81bff00fd376eff4239d8e5fe9ba83836b789ada0c3facf622b",
+  "sourceDesignRevisionSha256": "3cf6a0f9c8efcf153a2cfefde087a2112c086fc412d2feeaeb9ce52542838564",
+  "sourceNfabSha256": "fc5d5633af82eaedc4257831d26d330f25541c0b1ba35477cd87c1dcf3b64198",
+  "sourceStepSha256": "9f7d1b3328a2604eadd69ff3f3b680fb504797a895963a31ec6bf7f23b569731",
+  "units": "mm",
+  "items": [
+    {
+      "partNumber": "rib",
+      "description": "Mechanical runtime rib",
+      "quantity": 1,
+      "dimensionsMm": {
+        "x": 60.00000020000001,
+        "y": 14.000000200000006,
+        "z": 30.000000200000006
+      }
+    }
+  ],
+  "claimBoundary": {
+    "singlePartCandidateOnly": true,
+    "materialSpecified": false,
+    "massCalculated": false,
+    "manufacturingApproved": false
+  }
+}

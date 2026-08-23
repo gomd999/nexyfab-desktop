@@ -3,6 +3,7 @@ import { matchPartners } from '@/app/lib/matching';
 import { verifyAdmin } from '@/lib/admin-auth';
 import { getDbAdapter } from '@/lib/db-adapter';
 import { chatCompletion, AiNotConfiguredError, type ChatMessage } from '@/lib/ai';
+import { localizedApiMessage, resolveServerLocale } from '@/lib/i18n/serverLocale';
 
 function maskEmail(email: string): string {
   if (!email) return '';
@@ -21,8 +22,9 @@ export const dynamic = 'force-dynamic';
 
 // GET /api/match?inquiryId=xxx  (admin-only)
 export async function GET(req: NextRequest) {
+  const locale = resolveServerLocale(req, req.nextUrl.searchParams.get('lang'));
   if (!(await verifyAdmin(req))) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    return NextResponse.json({ error: localizedApiMessage(locale, 'unauthorized'), outputLanguage: locale.route }, { status: 401 });
   }
 
   const { searchParams } = req.nextUrl;
@@ -30,7 +32,7 @@ export async function GET(req: NextRequest) {
   const rfqId     = searchParams.get('rfqId');
 
   if (!inquiryId && !rfqId) {
-    return NextResponse.json({ error: 'inquiryId or rfqId is required' }, { status: 400 });
+    return NextResponse.json({ error: localizedApiMessage(locale, 'badRequest'), code: 'INQUIRY_OR_RFQ_REQUIRED', outputLanguage: locale.route }, { status: 400 });
   }
 
   const db = getDbAdapter();
@@ -198,6 +200,7 @@ Do not include partners not in the list. Raw JSON only, no markdown.`;
             request_field: inquiryForMatch.request_field,
             budget_range: inquiryForMatch.budget_range,
           },
+          outputLanguage: locale.route,
         });
       }
     } catch {
@@ -213,5 +216,6 @@ Do not include partners not in the list. Raw JSON only, no markdown.`;
       request_field: inquiryForMatch.request_field,
       budget_range: inquiryForMatch.budget_range,
     },
+    outputLanguage: locale.route,
   });
 }

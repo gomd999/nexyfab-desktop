@@ -1,0 +1,55 @@
+{
+  "schema": "nexyfab.commercialization-readiness.v2",
+  "releaseChannel": "mechanical-core",
+  "requiredDomains": [
+    "mechanical"
+  ],
+  "requiredComplexFamilies": [],
+  "privateBeta": {
+    "eligible": false,
+    "blockers": [
+      "current_release_working_tree_dirty"
+    ]
+  },
+  "commercialGa": {
+    "eligible": false,
+    "blockers": [
+      "current_release_working_tree_dirty",
+      "independent_holdout_not_eligible:mechanical",
+      "mechanical_scope_independent_holdout_incomplete",
+      "mechanical_scope_30_feature_closed_loop_incomplete",
+      "mechanical_scope_commercial_step_c4_incomplete",
+      "mechanical_scope_expert_dual_approval_incomplete",
+      "mechanical_scope_manufacturing_receipt_incomplete",
+      "mechanical_product_self_service_not_eligible",
+      "mechanical_manufacturing_release_not_verified",
+      "seven_day_operations_receipt_missing",
+      "expert_review_receipt_missing"
+    ]
+  },
+  "generatedAt": "2026-08-11T12:39:19.821Z",
+  "evidence": {
+    "routeSecurityMatrix": "pass",
+    "cadApiControls": "pass",
+    "secretFindings": 0,
+    "dependencyVulnerabilities": 0,
+    "complexHoldoutCases": 88,
+    "complexGroundTruthApproved": 0,
+    "complexProductSelfServiceEligible": false,
+    "complexManufacturingReleaseVerified": false,
+    "mechanicalScopeStatus": "internal_validation_pending",
+    "mechanicalIndependentHoldoutEligible": false,
+    "mechanicalCoreThirtyFeatureClosedLoopVerified": false,
+    "mechanicalCommercialCadStepC4Verified": false,
+    "mechanicalStepRoundtripVerified": true,
+    "mechanicalRevisionConsistencyVerified": true,
+    "mechanicalExpertDualApprovalComplete": false,
+    "mechanicalManufacturingReceiptVerified": false,
+    "releaseChannel": "mechanical-core",
+    "requiredDomains": [
+      "mechanical"
+    ],
+    "requiredComplexFamilies": [],
+    "distributedQuotaEnvironmentVerified": true
+  }
+}

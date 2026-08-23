@@ -533,6 +533,15 @@ const dict = {
 
 type LangKey = keyof typeof dict;
 
+const LANGUAGE_LABELS: Record<LangKey, string> = {
+    ko: '한국어',
+    en: 'English',
+    ja: '日本語',
+    zh: '中文',
+    es: 'Español',
+    ar: 'العربية',
+};
+
 export default function PrivacyPolicyPage() {
     const pathname = usePathname();
     const langCode = pathname.split('/')[1] || 'en';
@@ -574,7 +583,7 @@ export default function PrivacyPolicyPage() {
                                 fontWeight: lang === l ? 700 : 400,
                             }}
                         >
-                            {l === 'ko' ? '한국어' : l === 'en' ? 'English' : l === 'ja' ? '日本語' : '中文'}
+                            {LANGUAGE_LABELS[l]}
                         </button>
                     ))}
                 </div>

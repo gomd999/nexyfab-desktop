@@ -62,6 +62,13 @@ function applyFeatureModeCircular(
       + 'that rotation would change, and CutParams carries no rotation yet; use a hole seed, a linear pattern, or body mode',
     );
   }
+  const holeAxis = Math.min(2, Math.max(0, Math.round(Number.isFinite(seed.params.axis) ? seed.params.axis : 1)));
+  if (holeAxis !== 1) {
+    throw new Error(
+      'Feature-mode circular pattern rejected: only Y-axis holes can be rotated about Y; '
+      + 'a side-axis hole needs an axis-aware pattern plane',
+    );
+  }
   const baseX = Number.isFinite(seed.params.posX) ? seed.params.posX : 0;
   const baseZ = Number.isFinite(seed.params.posZ) ? seed.params.posZ : 0;
   const step = (totalAngleDeg * Math.PI) / 180 / count;

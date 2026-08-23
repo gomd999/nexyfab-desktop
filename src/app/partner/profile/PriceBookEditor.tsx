@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import {
-  PROCESS_LABELS, PROCESS_CODES, DEFAULT_PRICEBOOK,
+  PROCESS_CODES, DEFAULT_PRICEBOOK, processLabel,
   type PriceBook, type ProcessCode, type VolumeTier,
 } from '@/lib/partner-pricebook';
 import { usePartnerLang } from '../_lib/partnerLang';
@@ -146,7 +146,7 @@ export default function PriceBookEditor({ value, onChange, onSave, saving }: Pro
                       }}
                       className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
                     />
-                    <span className="text-sm font-semibold text-gray-700">{PROCESS_LABELS[code]}</span>
+                    <span className="text-sm font-semibold text-gray-700">{processLabel(code, lang)}</span>
                   </label>
                   <div className="flex-1 grid grid-cols-2 gap-2">
                     <div className="flex items-center gap-1.5">

@@ -7,7 +7,7 @@ export type FederatedEvidenceStatus = 'pass' | 'fail' | 'not_run';
 export type FederatedReleaseGateId = 'project_integrity' | 'deep_domain_validation' | 'coordinate_transforms' | 'domain_certificates' | 'reference_revision' | 'change_propagation' | 'clash_clearance' | 'quantity_reconciliation' | 'permission_isolation' | 'recovery_performance';
 export interface BoundFederatedEvidence<T> { projectRevision: number; projectContentHash: string; contentHash: string; payload: T }
 export interface FederatedAxisEvidence { status: FederatedEvidenceStatus; expected: number; checked: number; issues: string[]; artifactHashes: string[] }
-export interface FederatedDomainCertificateSummary { domain: 'mechanical' | 'building' | 'civil' | 'landscape' | 'interior'; documentId: string; documentRevision: number; documentContentHash: string; certificateContentHash: string; certificate: { schema: string; workspaceRevision: number; modelContentHash: string; status: FederatedEvidenceStatus; releaseReady: boolean; assertions: unknown[]; issues: string[] } }
+export interface FederatedDomainCertificateSummary { domain: 'mechanical' | 'building' | 'civil' | 'landscape' | 'interior'; documentId: string; documentRevision: number; documentContentHash: string; certificateContentHash: string; certificate: { schema: string; workspaceRevision: number; modelContentHash: string; status: FederatedEvidenceStatus; internalReady?: boolean; releaseReady: boolean; assertions: unknown[]; issues: string[] } }
 export interface FederatedDomainCertificatesEvidence extends FederatedAxisEvidence { certificates: FederatedDomainCertificateSummary[] }
 export interface FederatedCoordinateEvidence extends FederatedAxisEvidence { coordinateSystemIds: string[]; transformPathsChecked: number; unitConversionsChecked: number }
 export interface FederatedReferenceEvidence extends FederatedAxisEvidence { referenceCount: number; revisionPinnedCount: number }
@@ -23,7 +23,7 @@ export interface FederatedProjectReleaseCertificateInput {
   permissions?: BoundFederatedEvidence<FederatedAxisEvidence>;
   recoveryPerformance?: BoundFederatedEvidence<FederatedAxisEvidence>;
 }
-export interface FederatedProjectReleaseCertificate { schema: 'nexyfab.federated-project-release-certificate.v1'; projectRevision: number; projectContentHash: string; status: FederatedEvidenceStatus; releaseReady: boolean; gates: FederatedReleaseGate[]; issues: string[] }
+export interface FederatedProjectReleaseCertificate { schema: 'nexyfab.federated-project-release-certificate.v1'; projectRevision: number; projectContentHash: string; status: FederatedEvidenceStatus; internalReady: boolean; releaseReady: false; gates: FederatedReleaseGate[]; issues: string[] }
 
 const SHA256 = /^[a-f0-9]{64}$/;
 function bind<T>(name: string, value: BoundFederatedEvidence<T> | undefined, project: UnifiedDesignProject, projectContentHash: string) {
@@ -55,7 +55,11 @@ export function buildFederatedProjectReleaseCertificate(input: FederatedProjectR
     const summary = byDomain.get(domain), document = input.project.documents.find(item => item.id === summary?.documentId && item.profileId === domain);
     return !!summary && !!document && summary.documentRevision === document.revision && summary.documentContentHash === hashCadPayload(document.payload) && SHA256.test(summary.documentContentHash)
       && SHA256.test(summary.certificateContentHash) && summary.certificateContentHash === hashCadPayload(summary.certificate) && summary.certificate.workspaceRevision === document.revision
-      && summary.certificate.releaseReady && summary.certificate.status === 'pass' && summary.certificate.assertions.length > 0;
+      && summary.certificate.schema === `nexyfab.${summary.domain}-release-certificate.v1`
+      && (summary.domain === 'mechanical'
+        ? summary.certificate.status === 'pass'
+        : summary.certificate.internalReady === true && summary.certificate.releaseReady === false && summary.certificate.status === 'pass')
+      && summary.certificate.assertions.length > 0;
   }) && summaries.length === required.length && new Set(summaries.map(item => item.domain)).size === required.length;
   const certificateResult = explicit('domain_certificates', certificateBound, certificateEvidence, certificatesValid);
   const referenceBound = bind('reference_revision', input.references, input.project, input.projectContentHash), reference = referenceBound.payload;
@@ -69,5 +73,5 @@ export function buildFederatedProjectReleaseCertificate(input: FederatedProjectR
     { id: 'recovery_performance', ...named('recovery_performance', input.recoveryPerformance) },
   ];
   const status: FederatedEvidenceStatus = gates.some(item => item.status === 'fail') ? 'fail' : gates.some(item => item.status === 'not_run') ? 'not_run' : 'pass';
-  return { schema: 'nexyfab.federated-project-release-certificate.v1', projectRevision: input.project.revision, projectContentHash: input.projectContentHash, status, releaseReady: status === 'pass', gates, issues: [...projectIssues, ...deepIssues, ...gates.filter(item => item.status !== 'pass').map(item => `${item.id}:${item.status}`)] };
+  return { schema: 'nexyfab.federated-project-release-certificate.v1', projectRevision: input.project.revision, projectContentHash: input.projectContentHash, status, internalReady: status === 'pass', releaseReady: false, gates, issues: [...projectIssues, ...deepIssues, ...gates.filter(item => item.status !== 'pass').map(item => `${item.id}:${item.status}`)] };
 }

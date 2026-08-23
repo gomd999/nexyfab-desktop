@@ -1,0 +1,11 @@
+{
+  "schema": "nexyfab.deployable-unit.v1",
+  "id": "openscad",
+  "kind": "container",
+  "targetRuntime": "cloudflare-containers",
+  "sourceMode": "new-unit-with-legacy-kernel",
+  "legacySource": ["services/openscad-worker"],
+  "implementationState": "PARTIAL",
+  "deployEnabled": false,
+  "rollbackOwner": "railway-openscad-worker"
+}

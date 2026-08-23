@@ -37,6 +37,8 @@ import {
   removeAiAssemblyWorkspaceSeed,
   type AiAssemblyWorkspaceSeed,
 } from '../design-brief/assemblyWorkspaceSeed';
+import workspaceStyles from './AssemblyWorkspace.module.css';
+import type { AssemblyDrawingHandoff } from './drawingHandoff';
 
 // The assembly editor pulls in the 3D viewer, constraint solvers and the
 // optional expert tooling. Keep that graph out of the route's hydration
@@ -48,12 +50,7 @@ const AssemblyBrowserModal = dynamic(() => import('./AssemblyBrowserModal'), {
       aria-busy="true"
       aria-live="polite"
       data-testid="assembly-browser-loading"
-      style={{
-        minHeight: '100vh',
-        display: 'grid',
-        placeItems: 'center',
-        color: 'var(--nx-text-2)',
-      }}
+      className={workspaceStyles.workspaceLoading}
     >
       Loading assembly workspace…
     </div>
@@ -80,34 +77,32 @@ function normalizeLang(raw: string): AssemblyBrowserLang {
  * Default solve fetcher — POSTs the AssemblyState + per-part FeatureTrees
  * to /api/assembly-solve.
  *
- * - When `featureTrees` is empty (no part has a tree yet), we OMIT the
- *   `featureTrees` field from the body so the API route stays on its
- *   Phase-1 'stub' path (preserves existing UI behaviour for users who
- *   haven't opened any tree editor).
- * - When `featureTrees` has at least one entry, we forward it so the
- *   route flips to the Phase-4 'real' iterativeSolve path and the
- *   response carries `phase: 'real'` + actual residuals.
+ * Production authoring is fail-closed: every part needs a non-empty tree and
+ * the route must report `phase: real`. The compatibility stub remains an API
+ * test fixture, not a user-visible precision-CAD result.
  *
  * Tests inject `onSolve` directly so we never hit the network from jsdom.
  */
-const defaultOnSolve: AssemblyBrowserOnSolve = async (
+export const defaultAssemblyOnSolve: AssemblyBrowserOnSolve = async (
   state,
   featureTrees,
   solver,
   groupOptions,
 ) => {
+  const incompletePartIds = state.parts
+    .filter(part => !featureTrees[part.id] || featureTrees[part.id]!.nodes.length === 0)
+    .map(part => part.id);
+  if (state.parts.length === 0) throw new Error('[ASSEMBLY_EMPTY] Add at least one part before solving.');
+  if (incompletePartIds.length > 0) {
+    throw new Error(`[FEATURE_TREES_INCOMPLETE] Active FeatureTree required for: ${incompletePartIds.join(', ')}`);
+  }
   const body: {
     state: AssemblyState;
-    featureTrees?: Record<string, FeatureTree>;
+    featureTrees: Record<string, FeatureTree>;
     solver?: AssemblySolverSelection;
     useGroups?: boolean;
     maxParallel?: number;
-  } = {
-    state,
-  };
-  if (featureTrees && Object.keys(featureTrees).length > 0) {
-    body.featureTrees = featureTrees;
-  }
+  } = { state, featureTrees };
   // Forward the solver picker selection so the API can pick / dispatch.
   // Defaults to 'auto' inside the modal — we still send it explicitly so
   // the server's recommendSolver pipeline runs instead of falling back to
@@ -123,7 +118,7 @@ const defaultOnSolve: AssemblyBrowserOnSolve = async (
     body.useGroups = true;
     body.maxParallel = groupOptions.maxParallel;
   }
-  const res = await fetch('/api/assembly-solve', {
+  const res = await fetch('/api/assembly-solve/', {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
     body: JSON.stringify(body),
@@ -133,6 +128,9 @@ const defaultOnSolve: AssemblyBrowserOnSolve = async (
     | { ok: false; code: string; message: string };
   if ('ok' in data && data.ok === false) {
     throw new Error(`[${data.code}] ${data.message}`);
+  }
+  if (data.phase !== 'real') {
+    throw new Error('[AUTHORITATIVE_SOLVER_REQUIRED] The server did not run the real FeatureTree solver.');
   }
   return data;
 };
@@ -144,13 +142,21 @@ const defaultOnSolve: AssemblyBrowserOnSolve = async (
  * modal's dict) because the dropdown is page-shell chrome — the modal
  * itself stays sample-agnostic.
  */
-const SAMPLE_LABELS: Record<AssemblyBrowserLang, { picker: string; blank: string }> = {
-  ko: { picker: '샘플 불러오기', blank: '빈 어셈블리' },
-  en: { picker: 'Load sample', blank: 'Blank assembly' },
-  ja: { picker: 'サンプル読み込み', blank: '空のアセンブリ' },
-  zh: { picker: '加载示例', blank: '空装配' },
-  es: { picker: 'Cargar muestra', blank: 'Ensamblaje vacío' },
-  ar: { picker: 'تحميل عينة', blank: 'تجميع فارغ' },
+const SAMPLE_LABELS: Record<AssemblyBrowserLang, {
+  picker: string;
+  blank: string;
+  drawing: string;
+  drawingBusy: string;
+  drawingError: string;
+  solvePassed: string;
+  solveNotRun: string;
+}> = {
+  ko: { picker: '샘플 불러오기', blank: '빈 어셈블리', drawing: '현재 리비전으로 도면 만들기', drawingBusy: '도면 전달 준비 중…', drawingError: '도면 전달 실패', solvePassed: '정밀 풀이 PASS', solveNotRun: '정밀 풀이 NOT_RUN' },
+  en: { picker: 'Load sample', blank: 'Blank assembly', drawing: 'Create drawings from current revision', drawingBusy: 'Preparing drawing handoff…', drawingError: 'Drawing handoff failed', solvePassed: 'exact solve PASS', solveNotRun: 'exact solve NOT_RUN' },
+  ja: { picker: 'サンプル読み込み', blank: '空のアセンブリ', drawing: '現在のリビジョンから図面を作成', drawingBusy: '図面引き渡しを準備中…', drawingError: '図面引き渡しに失敗', solvePassed: '精密ソルブ PASS', solveNotRun: '精密ソルブ NOT_RUN' },
+  zh: { picker: '加载示例', blank: '空装配', drawing: '从当前修订创建图纸', drawingBusy: '正在准备图纸交接…', drawingError: '图纸交接失败', solvePassed: '精确求解 PASS', solveNotRun: '精确求解 NOT_RUN' },
+  es: { picker: 'Cargar muestra', blank: 'Ensamblaje vacío', drawing: 'Crear planos desde la revisión actual', drawingBusy: 'Preparando entrega de planos…', drawingError: 'Falló la entrega de planos', solvePassed: 'solución exacta PASS', solveNotRun: 'solución exacta NOT_RUN' },
+  ar: { picker: 'تحميل عينة', blank: 'تجميع فارغ', drawing: 'إنشاء رسومات من المراجعة الحالية', drawingBusy: 'جارٍ تجهيز تسليم الرسم…', drawingError: 'فشل تسليم الرسم', solvePassed: 'الحل الدقيق PASS', solveNotRun: 'الحل الدقيق NOT_RUN' },
 };
 
 /** Sentinel value the <option value=""> uses for the "blank" entry. */
@@ -175,8 +181,16 @@ export interface AssemblyBrowserPageContentProps {
    * stays on its in-memory state path.
    */
   projectId?: string;
+  /** Durable CAD head binding required before the server may own a handoff. */
+  projectRevision?: number;
+  projectRevisionHash?: string;
   /** One-shot session handoff from the AI design-brief workspace. */
   aiRevisionId?: string;
+  /** Test/host navigation hook; storage is always written before this runs. */
+  onDrawingHandoff?: (
+    handoff: AssemblyDrawingHandoff,
+    href: string,
+  ) => void | Promise<void>;
 }
 
 export function AssemblyBrowserPageContent({
@@ -185,7 +199,10 @@ export function AssemblyBrowserPageContent({
   initialFeatureTrees,
   onSolve,
   projectId,
+  projectRevision,
+  projectRevisionHash,
   aiRevisionId,
+  onDrawingHandoff,
 }: AssemblyBrowserPageContentProps): React.ReactElement {
   const editorLang = normalizeLang(lang);
   const labels = SAMPLE_LABELS[editorLang];
@@ -206,6 +223,24 @@ export function AssemblyBrowserPageContent({
   const [sample, setSample] = useState<SampleSelection>(BLANK_SENTINEL);
   const [modalKey, setModalKey] = useState(0);
   const [aiSeed, setAiSeed] = useState<AiAssemblyWorkspaceSeed | null>(null);
+  const [currentState, setCurrentState] = useState<AssemblyState>(
+    initialState ?? { parts: [], mates: [] },
+  );
+  const [currentFeatureTrees, setCurrentFeatureTrees] = useState<Record<string, FeatureTree>>(
+    initialFeatureTrees ?? {},
+  );
+  const [lastSolve, setLastSolve] = useState<{
+    result: AssemblyBrowserSolveResult;
+    workspaceFingerprint: string;
+  } | null>(null);
+  const [drawingHandoffBusy, setDrawingHandoffBusy] = useState(false);
+  const [drawingHandoffError, setDrawingHandoffError] = useState<string | null>(null);
+  const [drawingHandoffPersistence, setDrawingHandoffPersistence] = useState<'PASS' | 'NOT_RUN'>('NOT_RUN');
+
+  const fingerprintWorkspace = useCallback(
+    (state: AssemblyState, trees: Record<string, FeatureTree>) => JSON.stringify({ state, trees }),
+    [],
+  );
 
   useEffect(() => {
     if (!aiRevisionId || initialState || initialFeatureTrees) return;
@@ -241,40 +276,121 @@ export function AssemblyBrowserPageContent({
     // dropped. Even when the value is "blank" we still want a fresh
     // mount — the user explicitly asked to clear.
     setModalKey((k) => k + 1);
+    setLastSolve(null);
+    setDrawingHandoffError(null);
   }, []);
+
+  const handleSolve = useCallback<AssemblyBrowserOnSolve>(async (
+    state,
+    trees,
+    solver,
+    groupOptions,
+  ) => {
+    // A fresh attempt invalidates the prior solve receipt immediately. If
+    // this request fails, the drawing handoff must not inherit an older PASS
+    // merely because the editable state bytes happened to stay unchanged.
+    setLastSolve(null);
+    const result = await (onSolve ?? defaultAssemblyOnSolve)(state, trees, solver, groupOptions);
+    const solvedState = result.phase === 'real' && result.success && result.state
+      ? result.state
+      : state;
+    setLastSolve({
+      result,
+      workspaceFingerprint: fingerprintWorkspace(solvedState, trees),
+    });
+    return result;
+  }, [fingerprintWorkspace, onSolve]);
+
+  const currentFingerprint = fingerprintWorkspace(currentState, currentFeatureTrees);
+  const currentSolveResult = lastSolve?.workspaceFingerprint === currentFingerprint
+    ? lastSolve.result
+    : null;
+  const currentSolvePassed = currentSolveResult?.phase === 'real'
+    && currentSolveResult.success === true;
+
+  const handleDrawingHandoff = useCallback(async () => {
+    if (drawingHandoffBusy || currentState.parts.length === 0) return;
+    setDrawingHandoffBusy(true);
+    setDrawingHandoffError(null);
+    try {
+      const {
+        buildAssemblyDrawingHandoff,
+        writeAssemblyDrawingHandoff,
+      } = await import('./drawingHandoff');
+      const handoff = await buildAssemblyDrawingHandoff({
+        state: currentState,
+        featureTrees: currentFeatureTrees,
+        solveResult: currentSolveResult,
+        projectId,
+        ...(Number.isSafeInteger(projectRevision) && projectRevisionHash
+          ? { workspaceRevision: projectRevision, workspaceContentSha256: projectRevisionHash }
+          : {}),
+        upstreamRevisionId: aiSeed?.revisionId,
+      });
+      const langSegment = editorLang === 'ko' ? 'kr' : editorLang;
+      let href: string;
+      if (
+        projectId
+        && Number.isSafeInteger(projectRevision)
+        && typeof projectRevisionHash === 'string'
+        && /^[a-f0-9]{64}$/.test(projectRevisionHash)
+      ) {
+        const { saveServerDrawingHandoff } = await import('./serverDrawingHandoff');
+        const stored = await saveServerDrawingHandoff({
+          projectId,
+          expectedRevision: projectRevision!,
+          expectedContentSha256: projectRevisionHash,
+          handoff,
+        });
+        if (stored.ok) {
+          setDrawingHandoffPersistence('PASS');
+          href = `/${langSegment}/shape-generator/drawing?expert=1&handoff=${encodeURIComponent(stored.handoffId)}&project=${encodeURIComponent(projectId)}&storage=server`;
+        } else {
+          writeAssemblyDrawingHandoff(handoff);
+          setDrawingHandoffPersistence('NOT_RUN');
+          href = `/${langSegment}/shape-generator/drawing?expert=1&handoff=${encodeURIComponent(handoff.handoffId)}&storage=session`;
+        }
+      } else {
+        writeAssemblyDrawingHandoff(handoff);
+        setDrawingHandoffPersistence('NOT_RUN');
+        href = `/${langSegment}/shape-generator/drawing?expert=1&handoff=${encodeURIComponent(handoff.handoffId)}&storage=session`;
+      }
+      if (onDrawingHandoff) {
+        await onDrawingHandoff(handoff, href);
+      } else if (typeof window !== 'undefined') {
+        window.location.assign(href);
+      }
+    } catch (error) {
+      setDrawingHandoffError(error instanceof Error ? error.message : String(error));
+    } finally {
+      setDrawingHandoffBusy(false);
+    }
+  }, [
+    aiSeed?.revisionId,
+    currentFeatureTrees,
+    currentSolveResult,
+    currentState,
+    drawingHandoffBusy,
+    editorLang,
+    onDrawingHandoff,
+    projectId,
+    projectRevision,
+    projectRevisionHash,
+  ]);
 
   return (
     <main
       data-testid="solver-assembly-page"
-      style={{
-        minHeight: '100vh',
-        background: 'var(--nx-panel-2)',
-        fontFamily: 'system-ui, sans-serif',
-      }}
+      className={workspaceStyles.workspacePage}
     >
       {/* Sample picker — page-shell chrome above the modal. */}
       <div
         data-testid="solver-assembly-sample-picker"
-        style={{
-          position: 'fixed',
-          top: 12,
-          left: 12,
-          zIndex: 1100,
-          display: 'flex',
-          alignItems: 'center',
-          gap: 6,
-          padding: '6px 10px',
-          background: 'var(--nx-panel)',
-          border: '1px solid var(--nx-border)',
-          borderRadius: 4,
-          fontSize: 12,
-          fontFamily: 'system-ui, sans-serif',
-          boxShadow: '0 1px 2px rgba(0,0,0,0.05)',
-        }}
+        className={workspaceStyles.samplePicker}
       >
         <label
           htmlFor="solver-assembly-sample-select"
-          style={{ color: 'var(--nx-text-2)' }}
+          className={workspaceStyles.sampleLabel}
         >
           {labels.picker}
         </label>
@@ -283,13 +399,7 @@ export function AssemblyBrowserPageContent({
           data-testid="solver-assembly-sample-select"
           value={sample}
           onChange={(e) => handleSampleChange(e.target.value)}
-          style={{
-            fontSize: 12,
-            padding: '2px 6px',
-            border: '1px solid var(--nx-border)',
-            borderRadius: 3,
-            background: 'var(--nx-panel)',
-          }}
+          className={workspaceStyles.sampleSelect}
         >
           <option value={BLANK_SENTINEL}>{labels.blank}</option>
           {SAMPLE_ASSEMBLY_NAMES.map((n) => (
@@ -298,27 +408,48 @@ export function AssemblyBrowserPageContent({
             </option>
           ))}
         </select>
+        <button
+          type="button"
+          data-testid="assembly-create-drawing-handoff"
+          disabled={currentState.parts.length === 0 || drawingHandoffBusy}
+          aria-describedby="assembly-drawing-handoff-status"
+          onClick={() => { void handleDrawingHandoff(); }}
+          className={workspaceStyles.drawingHandoffButton}
+        >
+          {drawingHandoffBusy ? labels.drawingBusy : labels.drawing}
+        </button>
+        <span
+          id="assembly-drawing-handoff-status"
+          data-testid="assembly-drawing-handoff-status"
+          className={workspaceStyles.drawingHandoffStatus}
+          data-status={currentSolvePassed ? 'pass' : 'not-run'}
+        >
+          {currentSolvePassed ? labels.solvePassed : labels.solveNotRun}
+        </span>
+        <span
+          data-testid="assembly-drawing-handoff-persistence"
+          className={workspaceStyles.drawingHandoffStatus}
+          data-status={drawingHandoffPersistence === 'PASS' ? 'pass' : 'not-run'}
+        >
+          Server persistence {drawingHandoffPersistence}{drawingHandoffPersistence === 'NOT_RUN' ? ' · session-only fallback' : ''}
+        </span>
       </div>
+
+      {drawingHandoffError ? (
+        <div
+          role="alert"
+          data-testid="assembly-drawing-handoff-error"
+          className={workspaceStyles.drawingHandoffError}
+        >
+          {labels.drawingError}: {drawingHandoffError}
+        </div>
+      ) : null}
 
       {aiSeed && (
         <div
           data-testid="ai-assembly-revision-warning"
           role="status"
-          style={{
-            position: 'fixed',
-            top: 12,
-            left: '50%',
-            transform: 'translateX(-50%)',
-            zIndex: 1100,
-            maxWidth: 620,
-            padding: '7px 12px',
-            border: '1px solid #b45309',
-            borderRadius: 4,
-            background: '#2b2112',
-            color: '#fcd34d',
-            fontSize: 11,
-            textAlign: 'center',
-          }}
+          className={workspaceStyles.revisionWarning}
         >
           AI revision {aiSeed.revisionId} · semantic mates preserved · prior verification not inherited · run Manufacturing verify for exact OCCT/STEP, static interference and DoF evidence; motion still requires a governed timeline
         </div>
@@ -330,7 +461,10 @@ export function AssemblyBrowserPageContent({
         initialState={loadedState}
         initialFeatureTrees={loadedTrees}
         onClose={onClose}
-        onSolve={onSolve ?? defaultOnSolve}
+        onSolve={handleSolve}
+        onStateChange={setCurrentState}
+        onFeatureTreesChange={setCurrentFeatureTrees}
+        exactSolveRequired
         projectId={projectId}
         // Phase 5.2.4 — fire the modal's auto-infer pass whenever the
         // seed came from a non-blank sample. Blank assemblies keep their
@@ -338,6 +472,7 @@ export function AssemblyBrowserPageContent({
         // Suggested-Mates panel and toast on mount (subject to the
         // user's localStorage `nexyfab:autoInfer` preference).
         autoInferOnMount={sample !== BLANK_SENTINEL}
+        default3DView
       />
     </main>
   );

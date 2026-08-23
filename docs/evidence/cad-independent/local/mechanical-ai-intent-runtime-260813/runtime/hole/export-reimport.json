@@ -1,0 +1,54 @@
+{
+  "schema": "nexyfab.mechanical-core-feature-local-runtime.v1",
+  "feature": "hole",
+  "axis": "export",
+  "status": "PASS",
+  "executedAt": "2026-08-22T07:13:00.871Z",
+  "stepBytes": 19745,
+  "stepSha256": "353ddd392c6a1fbf7995dbfc2e0552d7316afa441fab44589640cbe900dad334",
+  "before": {
+    "handle": "occt:5",
+    "kernelKind": "Solid",
+    "nativeShapeType": 0,
+    "solidCount": 1,
+    "singleSolid": true,
+    "volumeMm3": 47095.22131576614,
+    "edgeCount": 13,
+    "faceCount": 6,
+    "boundsMm": [
+      [
+        -50.0018650079951,
+        -4.001865007995104,
+        -30.001865007995104
+      ],
+      [
+        50.0018650079951,
+        4.001865007995104,
+        30.001865007995104
+      ]
+    ]
+  },
+  "after": {
+    "handle": "occt:14",
+    "kernelKind": "Solid",
+    "nativeShapeType": 2,
+    "solidCount": 1,
+    "singleSolid": true,
+    "volumeMm3": 47095.2213157661,
+    "edgeCount": 13,
+    "faceCount": 6,
+    "boundsMm": [
+      [
+        -50.0018650079951,
+        -4.001865007995104,
+        -30.001865007995104
+      ],
+      [
+        50.0018650079951,
+        4.001865007995104,
+        30.001865007995104
+      ]
+    ]
+  },
+  "relativeVolumeDrift": 7.724730249592906e-16
+}

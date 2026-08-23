@@ -169,6 +169,14 @@ describe('holeToScad', () => {
     expect(cylinderCount).toBe(1);
   });
 
+  it('host-aware auto cutter overlaps the full one-sided host thickness', () => {
+    const f = buildHoleFeature({
+      center: { x: 5, y: 5 }, holeType: 'drilled', diameter: 4, depth: 2,
+    });
+    const scad = holeToScad(f, 10);
+    expect(scad).toMatch(/translate\(\[0, 0, -0\.01\]\) cylinder\(h=10\.02, d=4/);
+  });
+
   it('counterbore emits two stacked cylinders (bore + cbore)', () => {
     const f = buildHoleFeature({
       center: { x: 0, y: 0 },

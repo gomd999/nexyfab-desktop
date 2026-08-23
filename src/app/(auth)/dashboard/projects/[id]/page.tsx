@@ -1,14 +1,21 @@
 'use client';
 
-import React, { useState, useEffect, use, useRef, useCallback } from 'react';
+import React, { useState, useEffect, use, useRef, useCallback, useMemo } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import ErrorBoundary from '@/app/components/ErrorBoundary';
 import { useRouter } from 'next/navigation';
 import { useEscapeKey } from '@/hooks/useEscapeKey';
+import { formatDate, formatMoney } from '@/lib/i18n/format';
+import { toRouteLang } from '@/lib/i18n/normalize';
+import { loc } from '@/lib/i18n/loc';
+import { createCommercialLocalizer } from '@/lib/i18n/commercialLocalizer';
+import { useClientLocale } from '@/lib/i18n/clientLocale';
 
 // ── 전자서명 모달 ─────────────────────────────────────────────────────────────
 function SignatureModal({ blue, onSign, onClose }: { blue: string; onSign: (data: string) => void; onClose: () => void }) {
+    const lang = useClientLocale();
+    const L = createCommercialLocalizer(lang);
     useEscapeKey(onClose);
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const [drawing, setDrawing] = useState(false);
@@ -49,10 +56,10 @@ function SignatureModal({ blue, onSign, onClose }: { blue: string; onSign: (data
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.55)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }} onClick={onClose}>
             <div style={{ background: '#fff', borderRadius: '20px', padding: '28px', width: '480px', maxWidth: '100%', boxShadow: '0 20px 60px rgba(0,0,0,0.25)' }} onClick={e => e.stopPropagation()}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
-                    <h2 style={{ fontFamily: "'Pretendard',sans-serif", fontSize: '18px', fontWeight: 900, color: '#111827', margin: 0 }}>✍️ 전자서명</h2>
+                    <h2 style={{ fontFamily: "'Pretendard',sans-serif", fontSize: '18px', fontWeight: 900, color: '#111827', margin: 0 }}>✍️ {L('전자서명', 'Electronic signature')}</h2>
                     <button onClick={onClose} style={{ border: 'none', background: 'none', fontSize: '22px', cursor: 'pointer', color: '#9ca3af', lineHeight: 1 }}>✕</button>
                 </div>
-                <p style={{ fontFamily: "'Pretendard',sans-serif", fontSize: '12px', color: '#9ca3af', marginBottom: '14px' }}>아래 영역에 서명해주세요. 계약 동의에 법적 효력을 갖습니다.</p>
+                <p style={{ fontFamily: "'Pretendard',sans-serif", fontSize: '12px', color: '#9ca3af', marginBottom: '14px' }}>{L('아래 영역에 서명해주세요. 계약 동의에 법적 효력을 갖습니다.', 'Sign in the area below. Your signature gives legal effect to the contract agreement.')}</p>
                 <div style={{ border: '2px solid #e5e7eb', borderRadius: '12px', background: '#fafafa', overflow: 'hidden', marginBottom: '16px' }}>
                     <canvas ref={canvasRef} width={440} height={160}
                         style={{ display: 'block', cursor: 'crosshair', touchAction: 'none', width: '100%', height: '160px' }}
@@ -62,10 +69,10 @@ function SignatureModal({ blue, onSign, onClose }: { blue: string; onSign: (data
                         onTouchEnd={endDraw} />
                 </div>
                 <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
-                    <button onClick={clear} style={{ padding: '10px 18px', borderRadius: '10px', border: '1px solid #e5e7eb', background: '#fff', color: '#374151', fontWeight: 700, fontSize: '13px', cursor: 'pointer', fontFamily: "'Pretendard',sans-serif" }}>지우기</button>
+                    <button onClick={clear} style={{ padding: '10px 18px', borderRadius: '10px', border: '1px solid #e5e7eb', background: '#fff', color: '#374151', fontWeight: 700, fontSize: '13px', cursor: 'pointer', fontFamily: "'Pretendard',sans-serif" }}>{L('지우기', 'Clear')}</button>
                     <button onClick={() => onSign(canvasRef.current!.toDataURL('image/png'))} disabled={!hasDrawn}
                         style={{ padding: '10px 24px', borderRadius: '10px', border: 'none', background: hasDrawn ? blue : '#e5e7eb', color: hasDrawn ? '#fff' : '#9ca3af', fontWeight: 800, fontSize: '13px', cursor: hasDrawn ? 'pointer' : 'default', fontFamily: "'Pretendard',sans-serif" }}>
-                        서명 완료
+                        {L('서명 완료', 'Complete signature')}
                     </button>
                 </div>
             </div>
@@ -110,7 +117,7 @@ interface CustomerContractRow {
     factoryName?: string;
 }
 
-function inquiryToProject(inq: InquiryPayload) {
+function inquiryToProject(inq: InquiryPayload, lang = 'en') {
     const statusMap: Record<string, ProjectStatus> = {
         pending: 'submitted',
         contacted: 'matching',
@@ -128,7 +135,7 @@ function inquiryToProject(inq: InquiryPayload) {
     return {
         id: inq.id,
         name: inq.projectName,
-        category: inq.category || inq.shapeId || '제조 부품',
+        category: inq.category || inq.shapeId || loc(lang, { ko: '제조 부품', en: 'Manufactured part', ja: '製造部品', zh: '制造零件', es: 'Pieza fabricada', ar: 'قطعة مصنّعة' }),
         status: mappedStatus as ProjectStatus,
         submittedAt: inq.createdAt?.slice(0, 10) || inq.date?.slice(0, 10) || '',
         updatedAt: inq.updatedAt?.slice(0, 10) || inq.date?.slice(0, 10) || '',
@@ -148,20 +155,20 @@ interface NexysysUser {
 
 // ── Status helpers ───────────────────────────────────────────────────────────
 const STATUS_STEPS: ProjectStatus[] = ['submitted', 'matching', 'rfp_sent', 'quotes_received', 'confirmed', 'contracted'];
-const STATUS_LABEL: Record<ProjectStatus, string> = {
-    submitted: '접수 완료', matching: '공장 매칭 중', rfp_sent: 'RFP 발송 완료',
-    quotes_received: '견적 수신 완료', confirmed: '최종 확정', contracted: '계약 완료',
+const STATUS_LABEL: Record<ProjectStatus, { ko: string; en: string }> = {
+    submitted: { ko: '접수 완료', en: 'Submitted' }, matching: { ko: '공장 매칭 중', en: 'Factory matching' }, rfp_sent: { ko: 'RFP 발송 완료', en: 'RFP sent' },
+    quotes_received: { ko: '견적 수신 완료', en: 'Quotes received' }, confirmed: { ko: '최종 확정', en: 'Confirmed' }, contracted: { ko: '계약 완료', en: 'Contract complete' },
 };
 const STATUS_COLOR: Record<ProjectStatus, string> = {
     submitted: '#6b7280', matching: '#f59e0b', rfp_sent: '#3b82f6',
     quotes_received: '#8b5cf6', confirmed: '#10b981', contracted: '#059669',
 };
 
-function StatusBadge({ status }: { status: ProjectStatus }) {
+function StatusBadge({ status, lang }: { status: ProjectStatus; lang: string }) {
     return (
         <span style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', background: STATUS_COLOR[status] + '18', color: STATUS_COLOR[status], borderRadius: '20px', padding: '3px 12px', fontSize: '12px', fontWeight: 700 }}>
             <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: STATUS_COLOR[status], display: 'inline-block' }} />
-            {STATUS_LABEL[status]}
+            {loc(lang, { ...STATUS_LABEL[status], ja: STATUS_LABEL[status].en, zh: STATUS_LABEL[status].en, es: STATUS_LABEL[status].en, ar: STATUS_LABEL[status].en })}
         </span>
     );
 }
@@ -194,6 +201,9 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
     const [reviewText, setReviewText] = useState('');
     const [reviewSubmitted, setReviewSubmitted] = useState(false);
     const [reviewLoading, setReviewLoading] = useState(false);
+    const userLang = user?.language || 'en';
+    const routeLang = toRouteLang(userLang);
+    const L = useMemo(() => createCommercialLocalizer(userLang), [userLang]);
 
     const addToast = (type: 'success' | 'error', msg: string) => {
         setToastMsg({ type, msg });
@@ -208,30 +218,30 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ signedAt: new Date().toISOString(), signatureData }),
             });
-            setSignedAt(new Date().toLocaleString('ko-KR'));
-            addToast('success', '전자서명이 완료되었습니다. 계약이 최종 확정되었습니다.');
+            setSignedAt(formatDate(new Date(), userLang, { dateStyle: 'medium', timeStyle: 'short' }) ?? '');
+            addToast('success', L('전자서명이 완료되었습니다. 계약이 최종 확정되었습니다.', 'Electronic signature completed. The contract is now confirmed.'));
         } catch {
-            addToast('error', '서명 저장 중 오류가 발생했습니다.');
+            addToast('error', L('서명 저장 중 오류가 발생했습니다.', 'An error occurred while saving the signature.'));
         }
-    }, [id]);
+    }, [id, userLang, L]);
 
     useEffect(() => {
-        const stored = localStorage.getItem('currentUser');
+        const stored = sessionStorage.getItem('currentUser');
         if (stored) {
             try {
                 setUser(JSON.parse(stored));
-            } catch { router.push('/login'); }
+            } catch { router.push(`/login?lang=${routeLang}`); }
         } else {
-            router.push('/login');
+            router.push(`/login?lang=${routeLang}`);
         }
-    }, [router]);
+    }, [router, routeLang]);
 
     useEffect(() => {
         fetch(`/api/messages?contractId=${id}`)
             .then(r => r.ok ? r.json() : { messages: [] })
             .then(d => setMsgCount((d.messages || []).length))
             .catch(() => {});
-    }, [id]);
+    }, [id, userLang]);
 
     // 계약 연동 및 서명 상태 조회
     useEffect(() => {
@@ -252,12 +262,12 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
             .then(res => res.ok ? res.json() : null)
             .then(data => {
                 if (data?.inquiry) {
-                    setProject(inquiryToProject(data.inquiry));
+                    setProject(inquiryToProject(data.inquiry, userLang));
                     setQuotes(data.quotes || []);
                 }
             })
             .catch(() => {});
-    }, [id]);
+    }, [id, userLang]);
 
     const handleSelectQuote = async (quoteId: string, factoryName: string, amount: number) => {
         try {
@@ -288,18 +298,18 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
                 body: JSON.stringify({ status: 'contracted', contractId: contractData.contract?.id }),
             });
             if (contractData.contract) setLinkedContract(contractData.contract);
-            addToast('success', `계약이 생성되었습니다! 파트너사와 메시지를 시작해보세요.`);
+            addToast('success', L('계약이 생성되었습니다! 파트너사와 메시지를 시작해보세요.', 'Contract created! You can now message the partner.'));
             setProject(prev => prev ? { ...prev, status: 'contracted' as ProjectStatus } : prev);
             setTimeout(() => setTab('messages'), 1800);
         } catch {
-            addToast('error', '계약 생성 중 오류가 발생했습니다.');
+            addToast('error', L('계약 생성 중 오류가 발생했습니다.', 'An error occurred while creating the contract.'));
         }
     };
 
     if (!user) return null;
     if (!project) return (
         <div style={{ fontFamily: "'Pretendard', sans-serif", display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh', color: '#6b7280' }}>
-            프로젝트를 찾을 수 없습니다. <Link href="/dashboard" style={{ marginLeft: '8px', color: blue }}>대시보드로 돌아가기</Link>
+            {L('프로젝트를 찾을 수 없습니다.', 'Project not found.')} <Link href="/dashboard" style={{ marginLeft: '8px', color: blue }}>{L('대시보드로 돌아가기', 'Back to dashboard')}</Link>
         </div>
     );
 
@@ -328,29 +338,29 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
                         <div>
                             <h1 style={{ fontSize: '22px', fontWeight: 900, color: '#111827', margin: '0 0 8px' }}>{project.name}</h1>
                             <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', alignItems: 'center' }}>
-                                <StatusBadge status={project.status} />
+                                <StatusBadge status={project.status} lang={userLang} />
                                 <PlanBadge plan={project.plan} />
                                 <span style={{ fontSize: '13px', color: '#9ca3af' }}>{project.category}</span>
                             </div>
                         </div>
                         {project.status === 'quotes_received' && (
                             <button onClick={() => setTab('quotes')} style={{ padding: '10px 22px', borderRadius: '12px', background: blue, color: '#fff', fontWeight: 800, fontSize: '13px', border: 'none', cursor: 'pointer' }}>
-                                📊 견적 비교 →
+                                📊 {L('견적 비교 →', 'Compare quotes →')}
                             </button>
                         )}
                     </div>
 
                     {/* Progress Bar */}
                     <div style={{ marginBottom: '8px' }}>
-                        <div style={{ fontSize: '12px', fontWeight: 700, color: '#9ca3af', marginBottom: '12px', textTransform: 'uppercase', letterSpacing: '0.06em' }}>진행 단계</div>
+                        <div style={{ fontSize: '12px', fontWeight: 700, color: '#9ca3af', marginBottom: '12px', textTransform: 'uppercase', letterSpacing: '0.06em' }}>{L('진행 단계', 'Progress steps')}</div>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '2px' }}>
                             {STATUS_STEPS.map((step, i) => {
                                 const done = i <= stepIdx;
                                 return (
                                     <React.Fragment key={step}>
                                         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px', flex: i < STATUS_STEPS.length - 1 ? 'none' : 'none' }}>
-                                            <div title={STATUS_LABEL[step]} style={{ width: '14px', height: '14px', borderRadius: '50%', background: done ? STATUS_COLOR[project.status] : '#e5e7eb', flexShrink: 0, transition: '0.2s', border: i === stepIdx ? `2px solid ${STATUS_COLOR[project.status]}` : 'none' }} />
-                                            <span style={{ fontSize: '10px', color: done ? STATUS_COLOR[project.status] : '#9ca3af', fontWeight: done ? 700 : 400, whiteSpace: 'nowrap', maxWidth: '70px', textAlign: 'center', lineHeight: 1.2 }}>{STATUS_LABEL[step]}</span>
+                                            <div title={loc(userLang, { ...STATUS_LABEL[step], ja: STATUS_LABEL[step].en, zh: STATUS_LABEL[step].en, es: STATUS_LABEL[step].en, ar: STATUS_LABEL[step].en })} style={{ width: '14px', height: '14px', borderRadius: '50%', background: done ? STATUS_COLOR[project.status] : '#e5e7eb', flexShrink: 0, transition: '0.2s', border: i === stepIdx ? `2px solid ${STATUS_COLOR[project.status]}` : 'none' }} />
+                                            <span style={{ fontSize: '10px', color: done ? STATUS_COLOR[project.status] : '#9ca3af', fontWeight: done ? 700 : 400, whiteSpace: 'nowrap', maxWidth: '70px', textAlign: 'center', lineHeight: 1.2 }}>{loc(userLang, { ...STATUS_LABEL[step], ja: STATUS_LABEL[step].en, zh: STATUS_LABEL[step].en, es: STATUS_LABEL[step].en, ar: STATUS_LABEL[step].en })}</span>
                                         </div>
                                         {i < STATUS_STEPS.length - 1 && <div style={{ flex: 1, height: '2px', background: i < stepIdx ? STATUS_COLOR[project.status] : '#e5e7eb', marginBottom: '18px' }} />}
                                     </React.Fragment>
@@ -363,12 +373,12 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
                 {/* Detail Cards */}
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: '12px', marginBottom: '20px' }}>
                     {[
-                        { label: '카테고리', value: project.category, icon: '🏷️' },
-                        { label: '플랜', value: project.plan === 'premium' ? '⭐ Premium' : 'Standard', icon: '📋' },
-                        { label: '접수일', value: project.submittedAt, icon: '📅' },
-                        { label: '최종 업데이트', value: project.updatedAt, icon: '🔄' },
-                        { label: '매칭 공장', value: project.factories ? `${project.factories}개` : '분석 중', icon: '🏭' },
-                        { label: '수신 견적', value: project.quotesReceived ? `${project.quotesReceived}개` : '대기 중', icon: '💬' },
+                        { label: L('카테고리', 'Category'), value: project.category, icon: '🏷️' },
+                        { label: L('플랜', 'Plan'), value: project.plan === 'premium' ? '⭐ Premium' : 'Standard', icon: '📋' },
+                        { label: L('접수일', 'Submitted'), value: project.submittedAt, icon: '📅' },
+                        { label: L('최종 업데이트', 'Last updated'), value: project.updatedAt, icon: '🔄' },
+                        { label: L('매칭 공장', 'Matched factories'), value: project.factories ? `${project.factories} ${L('개', 'factories')}` : L('분석 중', 'Analyzing'), icon: '🏭' },
+                        { label: L('수신 견적', 'Quotes received'), value: project.quotesReceived ? `${project.quotesReceived} ${L('개', 'quotes')}` : L('대기 중', 'Pending'), icon: '💬' },
                     ].map((item, i) => (
                         <div key={i} style={{ background: '#fff', borderRadius: '14px', padding: '16px', boxShadow: '0 1px 6px rgba(0,0,0,0.04)', border: '1px solid #f0f0f0' }}>
                             <div style={{ fontSize: '18px', marginBottom: '6px' }}>{item.icon}</div>
@@ -382,14 +392,14 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
                 {linkedContract?.progressPercent !== undefined && (
                     <div style={{ ...s.card, marginBottom: '20px' }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
-                            <div style={{ fontSize: '14px', fontWeight: 700, color: '#111827' }}>🏭 제조 진행률</div>
+                            <div style={{ fontSize: '14px', fontWeight: 700, color: '#111827' }}>🏭 {L('제조 진행률', 'Manufacturing progress')}</div>
                             <span style={{ fontSize: '18px', fontWeight: 900, color: '#10b981' }}>{linkedContract.progressPercent}%</span>
                         </div>
                         <div style={{ height: '10px', background: '#f3f4f6', borderRadius: '99px', overflow: 'hidden' }}>
                             <div style={{ height: '100%', width: `${linkedContract.progressPercent}%`, background: 'linear-gradient(90deg, #10b981, #34d399)', borderRadius: '99px', transition: 'width 0.6s ease' }} />
                         </div>
                         <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '6px', fontSize: '11px', color: '#9ca3af' }}>
-                            <span>시작</span><span>완료</span>
+                            <span>{L('시작', 'Start')}</span><span>{L('완료', 'Complete')}</span>
                         </div>
                     </div>
                 )}
@@ -400,16 +410,16 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
                         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '10px' }}>
                             <div>
                                 <div style={{ fontSize: '14px', fontWeight: 800, color: signedAt ? '#15803d' : '#92400e' }}>
-                                    {signedAt ? '✅ 전자서명 완료' : '✍️ 전자서명 대기 중'}
+                                    {signedAt ? L('✅ 전자서명 완료', '✅ Signature complete') : L('✍️ 전자서명 대기 중', '✍️ Signature pending')}
                                 </div>
                                 <div style={{ fontSize: '12px', color: signedAt ? '#16a34a' : '#a16207', marginTop: '2px' }}>
-                                    {signedAt ? `서명일: ${signedAt}` : '계약서에 서명하여 제조를 공식 시작하세요'}
+                                    {signedAt ? `${L('서명일:', 'Signed:')} ${signedAt}` : L('계약서에 서명하여 제조를 공식 시작하세요', 'Sign the contract to officially start manufacturing')}
                                 </div>
                             </div>
                             {!signedAt && (
                                 <button onClick={() => setShowSignature(true)}
                                     style={{ padding: '10px 22px', borderRadius: '12px', background: '#f59e0b', color: '#fff', fontWeight: 800, fontSize: '13px', border: 'none', cursor: 'pointer' }}>
-                                    ✍️ 서명하기
+                                    ✍️ {L('서명하기', 'Sign')}
                                 </button>
                             )}
                         </div>
@@ -419,7 +429,7 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
                 {/* 파트너 평점 리뷰 */}
                 {linkedContract?.status === 'completed' && !reviewSubmitted && (
                     <div style={{ ...s.card, marginBottom: '20px', background: '#faf5ff', border: '1px solid #e9d5ff' }}>
-                        <div style={{ fontSize: '14px', fontWeight: 800, color: '#6d28d9', marginBottom: '12px' }}>⭐ 파트너 평점을 남겨주세요</div>
+                        <div style={{ fontSize: '14px', fontWeight: 800, color: '#6d28d9', marginBottom: '12px' }}>⭐ {L('파트너 평점을 남겨주세요', 'Rate your manufacturing partner')}</div>
                         <div style={{ display: 'flex', gap: '6px', marginBottom: '12px' }}>
                             {[1,2,3,4,5].map(star => (
                                 <button key={star} onClick={() => setReviewRating(star)}
@@ -430,7 +440,7 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
                             <span style={{ fontSize: '13px', color: '#6b7280', alignSelf: 'center', marginLeft: '4px', fontWeight: 700 }}>{reviewRating}.0</span>
                         </div>
                         <textarea value={reviewText} onChange={e => setReviewText(e.target.value)}
-                            placeholder="제조 품질, 납기, 소통 등에 대한 의견을 남겨주세요..."
+                            placeholder={L('제조 품질, 납기, 소통 등에 대한 의견을 남겨주세요...', 'Share your thoughts on quality, lead time, and communication...')}
                             rows={3}
                             style={{ width: '100%', padding: '10px 14px', borderRadius: '10px', border: '1.5px solid #e5e7eb', fontSize: '13px', resize: 'none', fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box' }} />
                         <button disabled={reviewLoading} onClick={async () => {
@@ -448,47 +458,47 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
                                     }),
                                 });
                                 setReviewSubmitted(true);
-                                addToast('success', '리뷰가 제출되었습니다. 감사합니다!');
-                            } catch { addToast('error', '리뷰 제출 중 오류가 발생했습니다.'); }
+                                addToast('success', L('리뷰가 제출되었습니다. 감사합니다!', 'Review submitted. Thank you!'));
+                            } catch { addToast('error', L('리뷰 제출 중 오류가 발생했습니다.', 'An error occurred while submitting the review.')); }
                             finally { setReviewLoading(false); }
                         }}
                             style={{ marginTop: '10px', padding: '10px 24px', borderRadius: '12px', background: '#7c3aed', color: '#fff', fontWeight: 800, fontSize: '13px', border: 'none', cursor: reviewLoading ? 'default' : 'pointer', opacity: reviewLoading ? 0.7 : 1 }}>
-                            {reviewLoading ? '제출 중...' : '리뷰 제출'}
+                            {reviewLoading ? L('제출 중...', 'Submitting...') : L('리뷰 제출', 'Submit review')}
                         </button>
                     </div>
                 )}
                 {linkedContract?.status === 'completed' && reviewSubmitted && (
                     <div style={{ ...s.card, marginBottom: '20px', background: '#f0fdf4', border: '1px solid #bbf7d0', textAlign: 'center', padding: '20px' }}>
                         <div style={{ fontSize: '24px', marginBottom: '6px' }}>✅</div>
-                        <div style={{ fontSize: '14px', fontWeight: 700, color: '#15803d' }}>리뷰가 제출되었습니다. 감사합니다!</div>
+                        <div style={{ fontSize: '14px', fontWeight: 700, color: '#15803d' }}>{L('리뷰가 제출되었습니다. 감사합니다!', 'Review submitted. Thank you!')}</div>
                     </div>
                 )}
 
                 {/* Quick Actions */}
                 <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', marginBottom: '20px' }}>
                     <button onClick={() => setTab('files')} style={{ padding: '10px 20px', borderRadius: '12px', background: '#f3f4f6', color: '#374151', fontWeight: 700, fontSize: '13px', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                        📁 파일 업로드
+                        📁 {L('파일 업로드', 'Files')}
                     </button>
                     <button onClick={() => setTab('messages')} style={{ padding: '10px 20px', borderRadius: '12px', background: '#f3f4f6', color: '#374151', fontWeight: 700, fontSize: '13px', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                        💬 담당자 메시지
+                        💬 {L('담당자 메시지', 'Messages')}
                     </button>
                     {project.status === 'quotes_received' && (
                         <button onClick={() => setTab('quotes')} style={{ padding: '10px 20px', borderRadius: '12px', background: blue, color: '#fff', fontWeight: 700, fontSize: '13px', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                            📊 견적 비교 분석
+                            📊 {L('견적 비교 분석', 'Quote analysis')}
                         </button>
                     )}
                 </div>
 
                 {/* ⑨ Status Timeline */}
                 <div style={{ ...s.card }}>
-                    <div style={{ fontSize: '12px', fontWeight: 700, color: '#9ca3af', marginBottom: '16px', textTransform: 'uppercase', letterSpacing: '0.06em' }}>진행 타임라인</div>
+                    <div style={{ fontSize: '12px', fontWeight: 700, color: '#9ca3af', marginBottom: '16px', textTransform: 'uppercase', letterSpacing: '0.06em' }}>{L('진행 타임라인', 'Progress timeline')}</div>
                     <div>
                         {[
-                            { label: '접수 완료', date: project.submittedAt, done: true, icon: '✅' },
-                            { label: '공장 매칭 중', date: STATUS_STEPS.indexOf(project.status) >= 1 ? project.updatedAt : null, done: STATUS_STEPS.indexOf(project.status) >= 1, icon: '🤖' },
-                            { label: 'RFP 발송 완료', date: STATUS_STEPS.indexOf(project.status) >= 2 ? project.updatedAt : null, done: STATUS_STEPS.indexOf(project.status) >= 2, icon: '📤' },
-                            { label: '견적 수신', date: STATUS_STEPS.indexOf(project.status) >= 3 ? project.updatedAt : null, done: STATUS_STEPS.indexOf(project.status) >= 3, icon: '📊' },
-                            { label: '계약 완료', date: project.status === 'contracted' ? project.updatedAt : null, done: project.status === 'contracted' || project.status === 'confirmed', icon: '🤝' },
+                            { label: L('접수 완료', 'Submitted'), date: project.submittedAt, done: true, icon: '✅' },
+                            { label: L('공장 매칭 중', 'Factory matching'), date: STATUS_STEPS.indexOf(project.status) >= 1 ? project.updatedAt : null, done: STATUS_STEPS.indexOf(project.status) >= 1, icon: '🤖' },
+                            { label: L('RFP 발송 완료', 'RFP sent'), date: STATUS_STEPS.indexOf(project.status) >= 2 ? project.updatedAt : null, done: STATUS_STEPS.indexOf(project.status) >= 2, icon: '📤' },
+                            { label: L('견적 수신', 'Quotes received'), date: STATUS_STEPS.indexOf(project.status) >= 3 ? project.updatedAt : null, done: STATUS_STEPS.indexOf(project.status) >= 3, icon: '📊' },
+                            { label: L('계약 완료', 'Contract complete'), date: project.status === 'contracted' ? project.updatedAt : null, done: project.status === 'contracted' || project.status === 'confirmed', icon: '🤝' },
                         ].map((event, i) => (
                             <div key={i} style={{ display: 'flex', gap: '12px' }}>
                                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', paddingTop: '2px' }}>
@@ -529,7 +539,7 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
                         const sizeKB = file.size / 1024;
                         const sizeStr = sizeKB > 1024 ? `${(sizeKB / 1024).toFixed(1)} MB` : `${sizeKB.toFixed(0)} KB`;
                         const ext = file.name.split('.').pop()?.toUpperCase() || 'FILE';
-                        setFiles(prev => [...prev, { name: file.name, size: sizeStr, type: ext, date: new Date().toLocaleDateString('ko-KR') }]);
+                        setFiles(prev => [...prev, { name: file.name, size: sizeStr, type: ext, date: formatDate(new Date(), userLang) ?? '' }]);
                     }
                 } catch { /* ignore */ }
             }
@@ -541,9 +551,9 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
         return (
             <div>
                 <div style={{ marginBottom: '24px' }}>
-                    <h1 style={{ fontSize: '22px', fontWeight: 900, color: '#111827', margin: '0 0 4px' }}>📁 파일 업로드</h1>
+                    <h1 style={{ fontSize: '22px', fontWeight: 900, color: '#111827', margin: '0 0 4px' }}>📁 {L('파일 업로드', 'File uploads')}</h1>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                        <StatusBadge status={project.status} />
+                        <StatusBadge status={project.status} lang={userLang} />
                         <span style={{ fontSize: '14px', color: '#6b7280' }}>{project.name}</span>
                     </div>
                 </div>
@@ -557,9 +567,9 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
                     style={{ border: `2px dashed ${dragOver ? blue : '#d1d5db'}`, borderRadius: '20px', padding: '40px 32px', textAlign: 'center', cursor: 'pointer', background: dragOver ? blue + '06' : '#fafafa', transition: '0.2s', marginBottom: '20px' }}
                 >
                     <div style={{ fontSize: '36px', marginBottom: '10px' }}>📂</div>
-                    <div style={{ fontSize: '15px', fontWeight: 800, color: '#374151', marginBottom: '4px' }}>파일을 드래그하거나 클릭해서 업로드</div>
-                    <div style={{ fontSize: '12px', color: '#9ca3af' }}>STEP, STP, STL, OBJ, IGES, DXF, PDF, JPG, PNG · 최대 50MB</div>
-                    {uploading && <div style={{ marginTop: '12px', fontSize: '13px', color: blue, fontWeight: 700 }}>⏳ 업로드 중...</div>}
+                    <div style={{ fontSize: '15px', fontWeight: 800, color: '#374151', marginBottom: '4px' }}>{L('파일을 드래그하거나 클릭해서 업로드', 'Drag files here or click to upload')}</div>
+                    <div style={{ fontSize: '12px', color: '#9ca3af' }}>STEP, STP, STL, OBJ, IGES, DXF, PDF, JPG, PNG · {L('최대 50MB', 'up to 50MB')}</div>
+                    {uploading && <div style={{ marginTop: '12px', fontSize: '13px', color: blue, fontWeight: 700 }}>⏳ {L('업로드 중...', 'Uploading...')}</div>}
                     <input ref={inputRef} type="file" multiple accept={ALLOWED.join(',')} style={{ display: 'none' }} onChange={e => handleFiles(e.target.files)} />
                 </div>
 
@@ -567,7 +577,7 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
                 {files.length > 0 && (
                     <div style={{ ...s.card, padding: 0, marginBottom: '20px' }}>
                         <div style={{ padding: '16px 24px', borderBottom: '1px solid #f0f0f0', fontWeight: 800, fontSize: '14px', color: '#111827' }}>
-                            업로드된 파일 ({files.length}개)
+                            {L('업로드된 파일', 'Uploaded files')} ({files.length})
                         </div>
                         {files.map((f, i) => (
                             <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '16px', padding: '14px 24px', borderBottom: i < files.length - 1 ? '1px solid #f9fafb' : 'none' }}>
@@ -578,7 +588,7 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
                                     <div style={{ fontWeight: 700, fontSize: '13px', color: '#111827' }}>{f.name}</div>
                                     <div style={{ fontSize: '11px', color: '#9ca3af', marginTop: '2px' }}>{f.type} · {f.size} · {f.date}</div>
                                 </div>
-                                <span style={{ background: '#d1fae5', color: '#059669', borderRadius: '20px', padding: '3px 10px', fontSize: '11px', fontWeight: 700 }}>✓ 완료</span>
+                                <span style={{ background: '#d1fae5', color: '#059669', borderRadius: '20px', padding: '3px 10px', fontSize: '11px', fontWeight: 700 }}>✓ {L('완료', 'Complete')}</span>
                             </div>
                         ))}
                     </div>
@@ -586,12 +596,12 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
 
                 {/* Guide */}
                 <div style={{ ...s.card, background: blue + '06', border: `1px solid ${blue}20` }}>
-                    <div style={{ fontWeight: 800, color: blue, fontSize: '14px', marginBottom: '10px' }}>📌 업로드 가이드</div>
+                    <div style={{ fontWeight: 800, color: blue, fontSize: '14px', marginBottom: '10px' }}>📌 {L('업로드 가이드', 'Upload guide')}</div>
                     {[
-                        'STEP(.step, .stp) 파일을 권장합니다 — 가장 정확한 견적이 가능합니다.',
-                        '여러 파트가 있는 경우 어셈블리 파일 또는 각 파트를 모두 업로드해주세요.',
-                        '파일 업로드 후 담당자가 24시간 내 검토 후 연락드립니다.',
-                        '도면(PDF/DXF)이 있으면 함께 올려주시면 더 정확한 견적이 가능합니다.',
+                        L('STEP(.step, .stp) 파일을 권장합니다 — 가장 정확한 견적이 가능합니다.', 'STEP (.step, .stp) files are recommended for the most accurate quote.'),
+                        L('여러 파트가 있는 경우 어셈블리 파일 또는 각 파트를 모두 업로드해주세요.', 'For multiple parts, upload the assembly file or every part.'),
+                        L('파일 업로드 후 담당자가 24시간 내 검토 후 연락드립니다.', 'A coordinator will review your files and contact you within 24 hours.'),
+                        L('도면(PDF/DXF)이 있으면 함께 올려주시면 더 정확한 견적이 가능합니다.', 'Include drawings (PDF/DXF) for a more accurate quote.'),
                     ].map((tip, i) => (
                         <div key={i} style={{ display: 'flex', gap: '8px', marginBottom: '6px', fontSize: '13px', color: '#374151' }}>
                             <span style={{ color: blue, flexShrink: 0 }}>•</span>{tip}
@@ -610,8 +620,8 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
             return (
                 <div style={{ textAlign: 'center', paddingTop: '60px', color: '#9ca3af' }}>
                     <div style={{ fontSize: '36px', marginBottom: '12px' }}>📬</div>
-                    <div style={{ fontWeight: 700, fontSize: '15px', marginBottom: '6px' }}>아직 수신된 견적이 없습니다</div>
-                    <div style={{ fontSize: '13px' }}>파트너가 견적을 제출하면 여기서 비교할 수 있습니다</div>
+                    <div style={{ fontWeight: 700, fontSize: '15px', marginBottom: '6px' }}>{L('아직 수신된 견적이 없습니다', 'No quotes received yet')}</div>
+                    <div style={{ fontSize: '13px' }}>{L('파트너가 견적을 제출하면 여기서 비교할 수 있습니다', 'Compare quotes here when partners submit them')}</div>
                 </div>
             );
         }
@@ -623,9 +633,9 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
         <div>
             <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: '24px', flexWrap: 'wrap', gap: '12px' }}>
                 <div>
-                    <h1 style={{ fontSize: '22px', fontWeight: 900, color: '#111827', margin: '0 0 4px' }}>📊 견적 비교 분석</h1>
+                    <h1 style={{ fontSize: '22px', fontWeight: 900, color: '#111827', margin: '0 0 4px' }}>📊 {L('견적 비교 분석', 'Quote analysis')}</h1>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                        <StatusBadge status={project.status} />
+                        <StatusBadge status={project.status} lang={userLang} />
                         <span style={{ fontSize: '13px', color: '#6b7280' }}>{project.name}</span>
                     </div>
                 </div>
@@ -634,9 +644,9 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
             {/* Summary Badges */}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '12px', marginBottom: '20px' }}>
                 {[
-                    { label: '수신 견적', value: `${quotes.length}개`, color: '#8b5cf6', icon: '📬' },
-                    { label: '최저 견적', value: unitPrices.length ? `₩${Math.min(...unitPrices).toLocaleString()}` : '-', color: '#059669', icon: '💰' },
-                    { label: '최단 납기', value: leadTimes.length ? `${Math.min(...leadTimes)}일` : '-', color: blue, icon: '⚡' },
+                    { label: L('수신 견적', 'Quotes received'), value: `${quotes.length}`, color: '#8b5cf6', icon: '📬' },
+                    { label: L('최저 견적', 'Lowest quote'), value: unitPrices.length ? (formatMoney(Math.min(...unitPrices), userLang, 'KRW') ?? '-') : '-', color: '#059669', icon: '💰' },
+                    { label: L('최단 납기', 'Shortest lead time'), value: leadTimes.length ? `${Math.min(...leadTimes)} ${L('일', 'days')}` : '-', color: blue, icon: '⚡' },
                 ].map((b, i) => (
                     <div key={i} style={{ background: '#fff', borderRadius: '14px', padding: '14px 18px', boxShadow: '0 2px 8px rgba(0,0,0,0.04)', border: `1px solid ${b.color}18`, display: 'flex', alignItems: 'center', gap: '12px' }}>
                         <span style={{ fontSize: '20px' }}>{b.icon}</span>
@@ -651,7 +661,7 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
             {/* Visual Bar Chart comparison */}
             {quotes.length >= 2 && unitPrices.length >= 2 && (
                 <div style={{ ...s.card, marginBottom: '20px' }}>
-                    <h2 style={{ ...s.h2, margin: '0 0 16px', fontSize: '15px' }}>📊 견적가 시각 비교</h2>
+                    <h2 style={{ ...s.h2, margin: '0 0 16px', fontSize: '15px' }}>📊 {L('견적가 시각 비교', 'Quote price comparison')}</h2>
                     {(() => {
                         const maxPrice = Math.max(...unitPrices);
                         const sorted = [...quotes]
@@ -664,17 +674,17 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
                                 <div key={q.id || i} style={{ marginBottom: '10px' }}>
                                     <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '5px' }}>
                                         <span style={{ fontSize: '12px', fontWeight: 700, color: isBest ? '#059669' : '#374151', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                                            {isBest && <span style={{ background: '#d1fae5', color: '#059669', borderRadius: '20px', padding: '1px 7px', fontSize: '10px', fontWeight: 800 }}>최저</span>}
-                                            {q.factoryName || '공장 미정'}
+                                            {isBest && <span style={{ background: '#d1fae5', color: '#059669', borderRadius: '20px', padding: '1px 7px', fontSize: '10px', fontWeight: 800 }}>{L('최저', 'Lowest')}</span>}
+                                            {q.factoryName || L('공장 미정', 'Factory TBD')}
                                         </span>
                                         <span style={{ fontSize: '13px', fontWeight: 900, color: isBest ? '#059669' : '#374151' }}>
-                                            ₩{q.estimatedAmount.toLocaleString()}
+                                            {formatMoney(q.estimatedAmount, userLang, 'KRW')}
                                         </span>
                                     </div>
                                     <div style={{ height: '10px', background: '#f3f4f6', borderRadius: '99px', overflow: 'hidden' }}>
                                         <div style={{ height: '100%', width: `${pct}%`, borderRadius: '99px', background: isBest ? '#10b981' : i === sorted.length - 1 ? '#ef4444' : '#6366f1', transition: '0.6s cubic-bezier(0.4,0,0.2,1)' }} />
                                     </div>
-                                    {q.leadTimeDays && <div style={{ fontSize: '11px', color: '#9ca3af', marginTop: '3px', textAlign: 'right' }}>납기 {q.leadTimeDays}일</div>}
+                                    {q.leadTimeDays && <div style={{ fontSize: '11px', color: '#9ca3af', marginTop: '3px', textAlign: 'right' }}>{L('납기', 'Lead time')} {q.leadTimeDays} {L('일', 'days')}</div>}
                                 </div>
                             );
                         });
@@ -686,27 +696,27 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
             {unitPrices.length > 0 && (
             <div style={{ ...s.card, marginBottom: '20px' }}>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px', flexWrap: 'wrap', gap: '12px' }}>
-                    <h2 style={{ ...s.h2, margin: 0, fontSize: '15px' }}>💡 수량별 예상 비용 계산기</h2>
+                    <h2 style={{ ...s.h2, margin: 0, fontSize: '15px' }}>💡 {L('수량별 예상 비용 계산기', 'Estimated cost by quantity')}</h2>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                        <span style={{ fontSize: '13px', color: '#6b7280', fontWeight: 600 }}>발주 수량</span>
+                        <span style={{ fontSize: '13px', color: '#6b7280', fontWeight: 600 }}>{L('발주 수량', 'Order quantity')}</span>
                         <input type="number" value={qty} onChange={e => setQty(Math.max(1, Number(e.target.value)))}
                             style={{ width: '100px', padding: '8px 12px', borderRadius: '10px', border: '1.5px solid #e5e7eb', fontSize: '14px', fontWeight: 700, textAlign: 'right', outline: 'none' }} />
-                        <span style={{ fontSize: '13px', color: '#6b7280' }}>개</span>
+                        <span style={{ fontSize: '13px', color: '#6b7280' }}>{L('개', 'pcs')}</span>
                     </div>
                 </div>
                 <div style={{ overflowX: 'auto' }}>
                     <table style={s.table}>
-                        <thead><tr>{['공장', '견적가', '총 비용(추정)', '납기', '상태'].map(h => <th key={h} style={s.th}>{h}</th>)}</tr></thead>
+                        <thead><tr>{[L('공장', 'Factory'), L('견적가', 'Quote price'), L('총 비용(추정)', 'Estimated total'), L('납기', 'Lead time'), L('상태', 'Status')].map(h => <th key={h} style={s.th}>{h}</th>)}</tr></thead>
                         <tbody>
                             {[...quotes].sort((a, b) => (a.estimatedAmount || 0) - (b.estimatedAmount || 0)).map((q, i: number) => {
                                 const total = (q.estimatedAmount || 0) * qty;
                                 return (
                                     <tr key={i} style={{ background: q.status === 'accepted' ? '#eff6ff' : '' }}>
-                                        <td style={{ ...s.td, fontWeight: 700, color: q.status === 'accepted' ? blue : '#111827' }}>{q.status === 'accepted' && <span style={{ marginRight: '5px' }}>✓</span>}{q.factoryName || '공장 미정'}</td>
-                                        <td style={{ ...s.td, fontWeight: 700 }}>₩{(q.estimatedAmount || 0).toLocaleString()}</td>
-                                        <td style={{ ...s.td, fontWeight: 900, color: i === 0 ? '#10b981' : '#111827', fontSize: '14px' }}>₩{total.toLocaleString()}</td>
-                                        <td style={{ ...s.td, color: (q.leadTimeDays || 0) <= 21 ? '#10b981' : '#374151' }}>{q.leadTimeDays ? `${q.leadTimeDays}일` : '-'}</td>
-                                        <td style={s.td}><span style={{ fontSize: '11px', fontWeight: 700, padding: '2px 8px', borderRadius: '20px', background: q.status === 'accepted' ? '#d1fae5' : '#f3f4f6', color: q.status === 'accepted' ? '#059669' : '#6b7280' }}>{q.status === 'accepted' ? '채택' : q.status === 'rejected' ? '거절' : q.status === 'expired' ? '만료' : '검토 중'}</span></td>
+                                        <td style={{ ...s.td, fontWeight: 700, color: q.status === 'accepted' ? blue : '#111827' }}>{q.status === 'accepted' && <span style={{ marginRight: '5px' }}>✓</span>}{q.factoryName || L('공장 미정', 'Factory TBD')}</td>
+                                        <td style={{ ...s.td, fontWeight: 700 }}>{formatMoney(q.estimatedAmount || 0, userLang, 'KRW')}</td>
+                                        <td style={{ ...s.td, fontWeight: 900, color: i === 0 ? '#10b981' : '#111827', fontSize: '14px' }}>{formatMoney(total, userLang, 'KRW')}</td>
+                                        <td style={{ ...s.td, color: (q.leadTimeDays || 0) <= 21 ? '#10b981' : '#374151' }}>{q.leadTimeDays ? `${q.leadTimeDays} ${L('일', 'days')}` : '-'}</td>
+                                        <td style={s.td}><span style={{ fontSize: '11px', fontWeight: 700, padding: '2px 8px', borderRadius: '20px', background: q.status === 'accepted' ? '#d1fae5' : '#f3f4f6', color: q.status === 'accepted' ? '#059669' : '#6b7280' }}>{q.status === 'accepted' ? L('채택', 'Accepted') : q.status === 'rejected' ? L('거절', 'Rejected') : q.status === 'expired' ? L('만료', 'Expired') : L('검토 중', 'Under review')}</span></td>
                                     </tr>
                                 );
                             })}
@@ -720,12 +730,12 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
             <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
                 {sortedQuotes.map((q, i: number) => (
                     <div key={i} style={{ background: '#fff', borderRadius: '18px', border: q.status === 'accepted' ? `2px solid ${blue}` : '1px solid #f0f0f0', boxShadow: '0 2px 12px rgba(0,0,0,0.05)', padding: '22px 24px', position: 'relative' }}>
-                        {q.status === 'accepted' && <div style={{ position: 'absolute', top: '16px', right: '20px', background: blue, color: '#fff', fontSize: '11px', fontWeight: 800, padding: '4px 12px', borderRadius: '20px' }}>✓ 채택됨</div>}
+                        {q.status === 'accepted' && <div style={{ position: 'absolute', top: '16px', right: '20px', background: blue, color: '#fff', fontSize: '11px', fontWeight: 800, padding: '4px 12px', borderRadius: '20px' }}>✓ {L('채택됨', 'Accepted')}</div>}
                         <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px', marginBottom: '14px' }}>
                             <div style={{ width: '42px', height: '42px', borderRadius: '12px', background: q.status === 'accepted' ? blue + '12' : '#f8fafc', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '18px', flexShrink: 0 }}>🏭</div>
                             <div style={{ flex: 1 }}>
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', marginBottom: '4px' }}>
-                                    <span style={{ fontSize: '15px', fontWeight: 800, color: '#111827' }}>{q.factoryName || '공장 미정'}</span>
+                                    <span style={{ fontSize: '15px', fontWeight: 800, color: '#111827' }}>{q.factoryName || L('공장 미정', 'Factory TBD')}</span>
                                     {q.partnerEmail && <span style={{ fontSize: '12px', color: '#6b7280' }}>{q.partnerEmail}</span>}
                                 </div>
                                 {q.details && (
@@ -735,23 +745,23 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
                         </div>
                         {/* 파트너 신뢰 배지 */}
                         <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginBottom: '12px' }}>
-                            {q.partnerEmail && <span style={{ fontSize: '11px', fontWeight: 700, padding: '3px 8px', borderRadius: '20px', background: '#eff6ff', color: blue }}>✓ NexyFab 인증</span>}
+                            {q.partnerEmail && <span style={{ fontSize: '11px', fontWeight: 700, padding: '3px 8px', borderRadius: '20px', background: '#eff6ff', color: blue }}>✓ {L('NexyFab 인증', 'NexyFab verified')}</span>}
                             <span style={{ fontSize: '11px', fontWeight: 700, padding: '3px 8px', borderRadius: '20px', background: '#f0fdf4', color: '#15803d' }}>★ 4.{(Math.floor(Math.random() * 3) + 7)} / 5.0</span>
-                            <span style={{ fontSize: '11px', fontWeight: 700, padding: '3px 8px', borderRadius: '20px', background: '#f5f3ff', color: '#6d28d9' }}>응답 24h 이내</span>
+                            <span style={{ fontSize: '11px', fontWeight: 700, padding: '3px 8px', borderRadius: '20px', background: '#f5f3ff', color: '#6d28d9' }}>{L('응답 24h 이내', 'Response within 24h')}</span>
                         </div>
                         <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap', marginBottom: '16px' }}>
-                            {q.estimatedAmount && <div style={{ background: '#f8fafc', borderRadius: '10px', padding: '10px 16px', textAlign: 'center' }}><div style={{ fontSize: '10px', color: '#9ca3af', fontWeight: 700, marginBottom: '3px', textTransform: 'uppercase' }}>견적가</div><div style={{ fontSize: '16px', fontWeight: 900, color: '#111827' }}>₩{q.estimatedAmount.toLocaleString()}</div></div>}
-                            {q.leadTimeDays && <div style={{ background: '#f8fafc', borderRadius: '10px', padding: '10px 16px', textAlign: 'center' }}><div style={{ fontSize: '10px', color: '#9ca3af', fontWeight: 700, marginBottom: '3px', textTransform: 'uppercase' }}>납기</div><div style={{ fontSize: '16px', fontWeight: 900, color: '#111827' }}>{q.leadTimeDays}일</div></div>}
+                            {q.estimatedAmount && <div style={{ background: '#f8fafc', borderRadius: '10px', padding: '10px 16px', textAlign: 'center' }}><div style={{ fontSize: '10px', color: '#9ca3af', fontWeight: 700, marginBottom: '3px', textTransform: 'uppercase' }}>{L('견적가', 'Quote price')}</div><div style={{ fontSize: '16px', fontWeight: 900, color: '#111827' }}>{formatMoney(q.estimatedAmount, userLang, 'KRW')}</div></div>}
+                            {q.leadTimeDays && <div style={{ background: '#f8fafc', borderRadius: '10px', padding: '10px 16px', textAlign: 'center' }}><div style={{ fontSize: '10px', color: '#9ca3af', fontWeight: 700, marginBottom: '3px', textTransform: 'uppercase' }}>{L('납기', 'Lead time')}</div><div style={{ fontSize: '16px', fontWeight: 900, color: '#111827' }}>{q.leadTimeDays} {L('일', 'days')}</div></div>}
                             {q.validUntil && (() => {
                                 const today = new Date(); today.setHours(0,0,0,0);
                                 const exp = new Date(q.validUntil); exp.setHours(0,0,0,0);
                                 const diff = Math.round((exp.getTime() - today.getTime()) / 86400000);
                                 return (
                                     <div style={{ background: diff <= 3 ? '#fef2f2' : '#f8fafc', borderRadius: '10px', padding: '10px 16px', textAlign: 'center' }}>
-                                        <div style={{ fontSize: '10px', color: '#9ca3af', fontWeight: 700, marginBottom: '3px', textTransform: 'uppercase' }}>유효기간</div>
+                                        <div style={{ fontSize: '10px', color: '#9ca3af', fontWeight: 700, marginBottom: '3px', textTransform: 'uppercase' }}>{L('유효기간', 'Valid until')}</div>
                                         <div style={{ fontSize: '14px', fontWeight: 700, color: diff <= 3 ? '#ef4444' : '#374151' }}>{q.validUntil}</div>
                                         <div style={{ fontSize: '11px', fontWeight: 700, color: diff <= 0 ? '#ef4444' : diff <= 3 ? '#f97316' : '#9ca3af', marginTop: '2px' }}>
-                                            {diff <= 0 ? '⚠️ 만료됨' : diff <= 3 ? `⏰ ${diff}일 후 만료` : `D-${diff}`}
+                                            {diff <= 0 ? L('⚠️ 만료됨', '⚠️ Expired') : diff <= 3 ? `⏰ ${diff} ${L('일 후 만료', 'days until expiry')}` : `D-${diff}`}
                                         </div>
                                     </div>
                                 );
@@ -759,12 +769,12 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
                         </div>
                         <div style={{ marginTop: '16px', display: 'flex', justifyContent: 'flex-end' }}>
                             {q.status === 'accepted' ? (
-                                <span style={{ padding: '8px 22px', borderRadius: '10px', background: '#d1fae5', color: '#059669', fontWeight: 700, fontSize: '13px' }}>✓ 채택됨</span>
+                                <span style={{ padding: '8px 22px', borderRadius: '10px', background: '#d1fae5', color: '#059669', fontWeight: 700, fontSize: '13px' }}>✓ {L('채택됨', 'Accepted')}</span>
                             ) : q.status === 'pending' && project.status !== 'contracted' ? (
                                 <button
-                                    onClick={() => handleSelectQuote(q.id ?? '', q.factoryName || '공장', q.estimatedAmount || 0)}
+                                    onClick={() => handleSelectQuote(q.id ?? '', q.factoryName || L('공장', 'factory'), q.estimatedAmount || 0)}
                                     style={{ padding: '8px 22px', borderRadius: '10px', background: blue, color: '#fff', fontWeight: 700, fontSize: '13px', border: 'none', cursor: 'pointer' }}>
-                                    이 공장 선택 →
+                                    {L('이 공장 선택 →', 'Choose this factory →')}
                                 </button>
                             ) : null}
                         </div>
@@ -835,9 +845,9 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
         return (
             <div style={{ display: 'flex', flexDirection: 'column', height: 'calc(100vh - 180px)' }}>
                 <div style={{ marginBottom: '20px', flexShrink: 0 }}>
-                    <h1 style={{ fontSize: '22px', fontWeight: 900, color: '#111827', margin: '0 0 4px' }}>💬 메시지</h1>
+                    <h1 style={{ fontSize: '22px', fontWeight: 900, color: '#111827', margin: '0 0 4px' }}>💬 {L('메시지', 'Messages')}</h1>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                        <StatusBadge status={project.status} />
+                        <StatusBadge status={project.status} lang={userLang} />
                         <span style={{ fontSize: '14px', color: '#6b7280' }}>{project.name}</span>
                     </div>
                 </div>
@@ -845,20 +855,20 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
                     {messages.length === 0 ? (
                         <div style={{ textAlign: 'center', color: '#9ca3af', paddingTop: '60px' }}>
                             <div style={{ fontSize: '36px', marginBottom: '12px' }}>💬</div>
-                            <div style={{ fontWeight: 700, fontSize: '15px', marginBottom: '6px' }}>아직 메시지가 없습니다</div>
-                            <div style={{ fontSize: '13px' }}>담당자에게 첫 메시지를 보내보세요</div>
+                            <div style={{ fontWeight: 700, fontSize: '15px', marginBottom: '6px' }}>{L('아직 메시지가 없습니다', 'No messages yet')}</div>
+                            <div style={{ fontSize: '13px' }}>{L('담당자에게 첫 메시지를 보내보세요', 'Send your first message to the coordinator')}</div>
                         </div>
                     ) : messages.map((m, i) => {
                         const isMe = m.senderType === 'customer';
                         const isFile = m.text?.startsWith('📎 파일:');
                         const fileUrl = isFile ? m.text.replace('📎 파일:', '').trim() : null;
-                        const fileName = fileUrl ? decodeURIComponent(fileUrl.split('/').pop() || '파일') : null;
+                        const fileName = fileUrl ? decodeURIComponent(fileUrl.split('/').pop() || L('파일', 'file')) : null;
                         return (
                             <div key={i} style={{ display: 'flex', justifyContent: isMe ? 'flex-end' : 'flex-start', marginBottom: '12px' }}>
                                 {!isMe && <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: blue, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '14px', marginRight: '8px', flexShrink: 0 }}>🏭</div>}
                                 <div style={{ maxWidth: '65%' }}>
                                     <div style={{ fontSize: '11px', color: '#9ca3af', marginBottom: '4px', textAlign: isMe ? 'right' : 'left' }}>
-                                        {isMe ? '나' : 'NexyFab 담당자'} · {new Date(m.createdAt).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })}
+                        {isMe ? L('나', 'Me') : L('NexyFab 담당자', 'NexyFab coordinator')} · {formatDate(m.createdAt, userLang, { hour: '2-digit', minute: '2-digit' })}
                                     </div>
                                     <div style={{ background: isMe ? blue : '#fff', color: isMe ? '#fff' : '#374151', borderRadius: isMe ? '18px 18px 4px 18px' : '18px 18px 18px 4px', padding: '10px 16px', fontSize: '14px', lineHeight: 1.5, boxShadow: '0 1px 4px rgba(0,0,0,0.08)', border: isMe ? 'none' : '1px solid #f0f0f0' }}>
                                         {isFile && fileUrl ? (
@@ -895,17 +905,17 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
                             } catch { /* silent */ } finally { setAttachUploading(false); if (fileInputRef.current) fileInputRef.current.value = ''; }
                         }} />
                     <button onClick={() => fileInputRef.current?.click()} disabled={attachUploading}
-                        title="파일 첨부"
+                        title={L('파일 첨부', 'Attach file')}
                         style={{ padding: '12px', borderRadius: '14px', background: '#f3f4f6', border: '1px solid #e5e7eb', fontSize: '18px', cursor: 'pointer', flexShrink: 0, opacity: attachUploading ? 0.5 : 1 }}>
                         {attachUploading ? '⏳' : '📎'}
                     </button>
                     <input value={newMsg} onChange={e => setNewMsg(e.target.value)}
                         onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); } }}
-                        placeholder="메시지를 입력하세요... (Enter로 전송)"
+                        placeholder={L('메시지를 입력하세요... (Enter로 전송)', 'Type a message... (Enter to send)')}
                         style={{ flex: 1, padding: '12px 18px', borderRadius: '14px', border: '1px solid #e5e7eb', fontSize: '14px', outline: 'none', fontFamily: 'inherit' }} />
                     <button onClick={sendMessage} disabled={sending || !newMsg.trim()}
                         style={{ padding: '12px 24px', borderRadius: '14px', background: newMsg.trim() ? blue : '#e5e7eb', color: newMsg.trim() ? '#fff' : '#9ca3af', fontWeight: 800, fontSize: '14px', border: 'none', cursor: newMsg.trim() ? 'pointer' : 'default', transition: '0.15s' }}>
-                        {sending ? '전송 중...' : '전송 ↑'}
+                        {sending ? L('전송 중...', 'Sending...') : L('전송 ↑', 'Send ↑')}
                     </button>
                 </div>
             </div>
@@ -914,10 +924,10 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
 
     // ── Sidebar items ─────────────────────────────────────────────────────────
     const navItems: { id: ProjectTab; label: string; icon: string; badge?: number }[] = [
-        { id: 'overview', label: '프로젝트 개요', icon: '📋' },
-        { id: 'files', label: '파일 업로드', icon: '📁' },
-        { id: 'quotes', label: '견적 비교', icon: '💰', badge: quotes.length > 0 ? quotes.length : undefined },
-        { id: 'messages', label: '메시지', icon: '💬', badge: msgCount > 0 ? msgCount : undefined },
+        { id: 'overview', label: L('프로젝트 개요', 'Project overview'), icon: '📋' },
+        { id: 'files', label: L('파일 업로드', 'File uploads'), icon: '📁' },
+        { id: 'quotes', label: L('견적 비교', 'Compare quotes'), icon: '💰', badge: quotes.length > 0 ? quotes.length : undefined },
+        { id: 'messages', label: L('메시지', 'Messages'), icon: '💬', badge: msgCount > 0 ? msgCount : undefined },
     ];
 
     // ── Render ────────────────────────────────────────────────────────────────
@@ -936,7 +946,7 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
             <div style={s.topbar}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
                     <Link href="/dashboard" style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px', color: '#6b7280', textDecoration: 'none', fontWeight: 600, padding: '6px 12px', borderRadius: '8px', border: '1px solid #e5e7eb', background: '#fff' }}>
-                        ← 대시보드
+                        ← {L('대시보드', 'Dashboard')}
                     </Link>
                     <span style={{ color: '#e5e7eb' }}>|</span>
                     <Link href="/kr" style={{ fontSize: '18px', fontWeight: 900, letterSpacing: '-0.03em', textDecoration: 'none' }}>
@@ -957,11 +967,11 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
                     <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                         <span style={{ fontSize: '20px' }}>🎉</span>
                         <span style={{ fontWeight: 700, color: '#5b21b6', fontSize: '14px' }}>
-                            {quotes.length}개의 제조 견적이 도착했습니다! 지금 비교해보세요.
+                            {L(`${quotes.length}개의 제조 견적이 도착했습니다! 지금 비교해보세요.`, `${quotes.length} manufacturing quotes have arrived! Compare them now.`)}
                         </span>
                     </div>
                     <button onClick={() => setTab('quotes')} style={{ padding: '8px 20px', borderRadius: '10px', background: '#7c3aed', color: '#fff', fontWeight: 800, fontSize: '13px', border: 'none', cursor: 'pointer', flexShrink: 0 }}>
-                        견적 비교 →
+                        {L('견적 비교 →', 'Compare quotes →')}
                     </button>
                 </div>
             )}
@@ -969,7 +979,7 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
             <div style={s.body}>
                 {/* Sidebar */}
                 <div style={s.sidebar}>
-                    <div style={{ fontSize: '11px', fontWeight: 800, color: '#9ca3af', letterSpacing: '0.08em', textTransform: 'uppercase', padding: '0 14px', marginBottom: '8px' }}>프로젝트</div>
+                    <div style={{ fontSize: '11px', fontWeight: 800, color: '#9ca3af', letterSpacing: '0.08em', textTransform: 'uppercase', padding: '0 14px', marginBottom: '8px' }}>{L('프로젝트', 'Project')}</div>
                     {navItems.map(item => (
                         <button key={item.id} onClick={() => setTab(item.id)} style={s.sideBtn(tab === item.id)}>
                             <span style={{ fontSize: '16px' }}>{item.icon}</span>
@@ -982,9 +992,9 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
                         </button>
                     ))}
                     <div style={{ marginTop: '20px', paddingTop: '16px', borderTop: '1px solid #f0f0f0' }}>
-                        <div style={{ fontSize: '11px', fontWeight: 700, color: '#9ca3af', padding: '0 14px', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>상태</div>
+                        <div style={{ fontSize: '11px', fontWeight: 700, color: '#9ca3af', padding: '0 14px', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{L('상태', 'Status')}</div>
                         <div style={{ padding: '10px 14px' }}>
-                            <StatusBadge status={project.status} />
+                            <StatusBadge status={project.status} lang={userLang} />
                         </div>
                     </div>
                 </div>

@@ -3,14 +3,19 @@ import { chatCompletion } from '@/lib/ai';
 import { getPrompt } from '@/lib/ai/prompts';
 import { rateLimit } from '@/lib/rate-limit';
 import { getTrustedClientIp } from '@/lib/client-ip';
-import { resolveCodegenModel } from '@/lib/ai/codegenModels';
+import { resolveRuntimeCodegenModel } from '@/lib/ai/codegenModelRuntime';
+import { getAuthUser } from '@/lib/auth-middleware';
 import { clarificationQuestions, findUngroundedProgramDimensions, validateCadFeatureProgram, type CadFeatureProgram } from '@/lib/ai/cadFeatureProgram';
 import { extractManufacturingContext } from '@/lib/ai/manufacturingContext';
 import type { SelectionContext } from '@/lib/ai/selectionContext';
 import { guardStudioAi } from '@/lib/studio-ai-guard';
+import { appendLunaDesignContext, runLunaDesignPreflight } from '@/lib/ai/lunaDesignSidecars';
+import { localizedApiMessage, resolveServerLocale } from '@/lib/i18n/serverLocale';
+import { readBoundedJson } from '@/lib/boundedJsonBody';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
+const MAX_JSON_BODY_BYTES = 4 * 1024 * 1024;
 
 /**
  * POST /api/nexyfab/cad-feature-program — the PRECISE (expert) path. Turns a
@@ -23,33 +28,57 @@ export const dynamic = 'force-dynamic';
 interface FeatureProgram { part?: string; features?: unknown[]; questions?: unknown[] }
 
 export async function POST(req: NextRequest) {
+  const body = (await readBoundedJson(req, MAX_JSON_BODY_BYTES).catch(() => ({}))) as { prompt?: string; previousProgram?: FeatureProgram; modelId?: string; selectionContext?: SelectionContext; lang?: string };
+  const locale = resolveServerLocale(req, body.lang ?? req.nextUrl.searchParams.get('lang'));
   const ip = getTrustedClientIp(req.headers);
   if (!rateLimit(`cad-feature-program:${ip}`, 20, 3_600_000).allowed) {
-    return NextResponse.json({ error: 'Too many requests — try again shortly.', code: 'RATE_LIMIT' }, { status: 429 });
+    return NextResponse.json({ error: localizedApiMessage(locale, 'rateLimited'), code: 'RATE_LIMIT', outputLanguage: locale.route }, { status: 429 });
   }
-  const body = (await req.json().catch(() => ({}))) as { prompt?: string; previousProgram?: FeatureProgram; modelId?: string; selectionContext?: SelectionContext };
   const prompt = (body.prompt ?? '').trim();
-  if (!prompt) return NextResponse.json({ error: 'prompt required' }, { status: 400 });
+  if (!prompt) return NextResponse.json({ error: localizedApiMessage(locale, 'promptRequired'), outputLanguage: locale.route }, { status: 400 });
   const planGuard = await guardStudioAi(req);
   if (planGuard) return planGuard;
-  const codegen = resolveCodegenModel(typeof body.modelId === 'string' ? body.modelId : undefined);
+  const authUser = await getAuthUser(req).catch(() => null);
+  const codegen = await resolveRuntimeCodegenModel(
+    typeof body.modelId === 'string' ? body.modelId : undefined,
+    authUser?.plan ?? 'free',
+  );
+  if (!codegen.ok) {
+    return NextResponse.json({
+      error: codegen.code === 'MODEL_PLAN_LOCKED' ? localizedApiMessage(locale, 'planUpgrade') : localizedApiMessage(locale, 'unknownModel'),
+      code: codegen.code,
+      requestedModel: codegen.requestedId,
+      ...(codegen.requiredTier ? { requiredTier: codegen.requiredTier } : {}),
+    }, { status: codegen.code === 'MODEL_PLAN_LOCKED' ? 403 : 400 });
+  }
 
   const def = getPrompt('cad-feature-program');
   const selectionBlock = body.selectionContext
     ? `\n\nThe user explicitly selected this CAD context. Modify only this target unless the request clearly requires a broader dependency update:\n\`\`\`json\n${JSON.stringify(body.selectionContext)}\n\`\`\``
     : '';
-  const userContent = (body.previousProgram
+  const rawUserContent = (body.previousProgram
     ? `Here is the current feature program:\n\`\`\`json\n${JSON.stringify(body.previousProgram)}\n\`\`\`\n\nApply this change and return the COMPLETE updated program (keep features not mentioned): ${prompt}`
     : prompt) + selectionBlock;
+  const lunaPreflight = await runLunaDesignPreflight({
+    prompt,
+    selectedProvider: codegen.provider,
+    selectedModel: codegen.model,
+    userId: authUser?.userId,
+    signal: req.signal,
+  });
+  const userContent = appendLunaDesignContext(rawUserContent, lunaPreflight);
 
   let text: string;
+  let cachedPromptTokens = 0;
+  let cacheWriteTokens = 0;
   try {
     const res = await chatCompletion({
       messages: [
-        { role: 'system', content: def.template },
+        { role: 'system', content: `${def.template}\n\n[OUTPUT LANGUAGE CONTRACT]\nWrite natural-language part names, questions, and explanations in ${locale.languageName}; preserve feature types, parameter keys, identifiers, and dimensions.` },
         { role: 'user', content: userContent },
       ],
-      preferProvider: codegen.preferProvider,
+      provider: codegen.provider,
+      allowProviderFallback: true,
       model: codegen.model,
       maxTokens: def.defaults.maxTokens,
       temperature: def.defaults.temperature,
@@ -57,22 +86,26 @@ export async function POST(req: NextRequest) {
       task: def.id,
     });
     text = res.text;
+    cachedPromptTokens = res.cachedPromptTokens ?? 0;
+    cacheWriteTokens = res.cacheWriteTokens ?? 0;
   } catch (e) {
-    return NextResponse.json({ error: e instanceof Error ? e.message : 'generation failed' }, { status: 502 });
+    console.error('cad-feature-program provider error:', e);
+    return NextResponse.json({ error: localizedApiMessage(locale, 'providerFailed'), outputLanguage: locale.route }, { status: 502 });
   }
 
   // Extract the JSON object from the response.
   const m = text.match(/\{[\s\S]*\}/);
-  if (!m) return NextResponse.json({ error: 'no program returned' }, { status: 502 });
+  if (!m) return NextResponse.json({ error: localizedApiMessage(locale, 'invalidAiResponse'), outputLanguage: locale.route }, { status: 502 });
   let program: FeatureProgram;
-  try { program = JSON.parse(m[0]); } catch { return NextResponse.json({ error: 'invalid program JSON' }, { status: 502 }); }
+  try { program = JSON.parse(m[0]); } catch { return NextResponse.json({ error: localizedApiMessage(locale, 'invalidAiResponse'), outputLanguage: locale.route }, { status: 502 }); }
   if (!Array.isArray(program.features) || program.features.length === 0) {
     const questions = Array.isArray(program.questions)
       ? program.questions.filter((item): item is string => typeof item === 'string' && item.trim().length > 0).slice(0, 5)
       : [];
     return NextResponse.json({
-      error: 'dimensions need clarification', code: 'CLARIFICATION_REQUIRED',
-      questions: questions.length > 0 ? questions : ['Please provide the missing base dimensions.'],
+      error: localizedApiMessage(locale, 'badRequest'), code: 'CLARIFICATION_REQUIRED',
+      questions: questions.length > 0 ? questions : [localizedApiMessage(locale, 'promptRequired')],
+      outputLanguage: locale.route,
     }, { status: 422 });
   }
   const extractedContext = extractManufacturingContext(prompt);
@@ -89,22 +122,40 @@ export async function POST(req: NextRequest) {
   const validation = validateCadFeatureProgram(candidate);
   if (!validation.ok) {
     return NextResponse.json({
-      error: 'feature program needs clarification',
+      error: localizedApiMessage(locale, 'badRequest'),
       code: 'FEATURE_PROGRAM_INVALID',
       details: validation.errors,
       questions: clarificationQuestions(validation.errors),
+      outputLanguage: locale.route,
     }, { status: 422 });
   }
   if (!body.previousProgram) {
     const ungrounded = findUngroundedProgramDimensions(prompt, candidate);
     if (ungrounded.length > 0) {
       return NextResponse.json({
-        error: 'dimensions need clarification',
+        error: localizedApiMessage(locale, 'badRequest'),
         code: 'UNGROUNDED_DIMENSIONS',
         details: ungrounded,
         questions: clarificationQuestions(ungrounded),
+        outputLanguage: locale.route,
       }, { status: 422 });
     }
   }
-  return NextResponse.json(candidate);
+  return NextResponse.json({
+    ...candidate,
+    aiExecution: {
+      selectedModelId: codegen.catalog.id,
+      selectedModelLabel: codegen.catalog.label,
+      textModel: codegen.model,
+      visionModel: null,
+      visionAutoRouted: false,
+      cacheProfile: codegen.cacheProfile,
+      inputCacheHit: cachedPromptTokens > 0,
+      cachedPromptTokens,
+      cacheWriteTokens,
+      parallelAssistantModel: lunaPreflight.model,
+      parallelAssistantTasks: lunaPreflight.completedTasks,
+    },
+    outputLanguage: locale.route,
+  });
 }

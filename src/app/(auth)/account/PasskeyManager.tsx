@@ -1,6 +1,8 @@
 'use client';
 
 import { useState } from 'react';
+import { useClientLocale } from '@/lib/i18n/clientLocale';
+import { createCommercialLocalizer } from '@/lib/i18n/commercialLocalizer';
 
 /**
  * Register a passkey for the signed-in user. Uses the native WebAuthn API
@@ -9,6 +11,8 @@ import { useState } from 'react';
  * "패스키로 로그인" button works for this account.
  */
 export default function PasskeyManager() {
+  const lang = useClientLocale();
+  const L = createCommercialLocalizer(lang);
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<{ type: 'ok' | 'err'; text: string } | null>(null);
 
@@ -22,7 +26,7 @@ export default function PasskeyManager() {
 
   async function register() {
     if (typeof navigator === 'undefined' || !navigator.credentials) {
-      setMsg({ type: 'err', text: '이 브라우저는 패스키를 지원하지 않습니다.' });
+      setMsg({ type: 'err', text: L('이 브라우저는 패스키를 지원하지 않습니다.', 'This browser does not support passkeys.') });
       return;
     }
     setBusy(true);
@@ -32,7 +36,7 @@ export default function PasskeyManager() {
         method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' }, body: '{}',
       });
       const opts = await optRes.json();
-      if (!optRes.ok) throw new Error(opts.error || '패스키 옵션 조회 실패');
+      if (!optRes.ok) throw new Error(opts.error || L('패스키 옵션 조회 실패', 'Failed to load passkey options.'));
 
       const publicKey: PublicKeyCredentialCreationOptions = {
         ...opts,
@@ -61,11 +65,11 @@ export default function PasskeyManager() {
         }),
       });
       const data = await verifyRes.json();
-      if (!verifyRes.ok) throw new Error(data.error || '패스키 등록 실패');
-      setMsg({ type: 'ok', text: '✓ 패스키가 등록되었습니다. 이제 로그인 화면에서 "패스키로 로그인"을 쓸 수 있어요.' });
+      if (!verifyRes.ok) throw new Error(data.error || L('패스키 등록 실패', 'Failed to register passkey.'));
+      setMsg({ type: 'ok', text: L('✓ 패스키가 등록되었습니다. 이제 로그인 화면에서 "패스키로 로그인"을 쓸 수 있어요.', '✓ Passkey registered. You can now use “Sign in with passkey” on the login screen.') });
     } catch (e) {
       const err = e as { name?: string; message?: string };
-      if (err.name !== 'NotAllowedError') setMsg({ type: 'err', text: err.message ?? '패스키 등록 실패' });
+      if (err.name !== 'NotAllowedError') setMsg({ type: 'err', text: err.message ?? L('패스키 등록 실패', 'Failed to register passkey.') });
     } finally {
       setBusy(false);
     }
@@ -73,16 +77,16 @@ export default function PasskeyManager() {
 
   return (
     <div style={{ background: '#fff', borderRadius: 16, padding: 28, boxShadow: '0 1px 3px rgba(0,0,0,0.06)', border: '1px solid #f0f0f0', marginTop: 20 }}>
-      <h3 style={{ fontSize: 16, fontWeight: 800, color: '#111827', margin: '0 0 6px' }}>패스키 (Passkey)</h3>
+      <h3 style={{ fontSize: 16, fontWeight: 800, color: '#111827', margin: '0 0 6px' }}>{L('패스키 (Passkey)', 'Passkey')}</h3>
       <p style={{ fontSize: 13, color: '#6b7280', margin: '0 0 16px', lineHeight: 1.5 }}>
-        지문·얼굴·기기 PIN으로 비밀번호 없이 로그인하세요. 이 기기/계정에 패스키를 추가합니다.
+        {L('지문·얼굴·기기 PIN으로 비밀번호 없이 로그인하세요. 이 기기/계정에 패스키를 추가합니다.', 'Sign in without a password using your fingerprint, face, or device PIN. Add a passkey to this device and account.')}
       </p>
       <button
         onClick={() => void register()}
         disabled={busy}
         style={{ padding: '11px 18px', borderRadius: 10, background: '#7c3aed', color: '#fff', fontWeight: 700, fontSize: 14, border: 'none', cursor: 'pointer', opacity: busy ? 0.6 : 1 }}
       >
-        {busy ? '등록 중…' : '🔑 패스키 등록'}
+        {busy ? L('등록 중…', 'Registering…') : L('🔑 패스키 등록', '🔑 Register passkey')}
       </button>
       {msg && (
         <div style={{ marginTop: 14, fontSize: 13, fontWeight: 600, color: msg.type === 'ok' ? '#059669' : '#dc2626' }}>

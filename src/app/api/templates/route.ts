@@ -2,8 +2,10 @@ import { NextRequest, NextResponse } from 'next/server';
 import { verifyAdmin } from '@/lib/admin-auth';
 import { checkOrigin } from '@/lib/csrf';
 import { getDbAdapter } from '@/lib/db-adapter';
+import { readBoundedJson } from '@/lib/boundedJsonBody';
 
 export const dynamic = 'force-dynamic';
+const MAX_JSON_BODY_BYTES = 1024 * 1024;
 
 type TemplateRow = {
   id: string; name: string; category: string; content: string;
@@ -38,7 +40,7 @@ export async function GET() {
 export async function POST(req: NextRequest) {
   if (!checkOrigin(req)) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   if (!(await verifyAdmin(req))) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  const body = await req.json();
+  const body = await readBoundedJson<{ name?: string; category?: string; content?: string }>(req, MAX_JSON_BODY_BYTES);
   const { name, category, content } = body;
 
   if (!name || !content) {
@@ -65,7 +67,7 @@ export async function POST(req: NextRequest) {
 export async function PATCH(req: NextRequest) {
   if (!checkOrigin(req)) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   if (!(await verifyAdmin(req))) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  const body = await req.json();
+  const body = await readBoundedJson<{ id?: string; name?: string; category?: string; content?: string }>(req, MAX_JSON_BODY_BYTES);
   const { id, name, category, content } = body;
 
   if (!id) {

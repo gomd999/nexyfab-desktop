@@ -10,6 +10,7 @@
 
 import React, { useCallback, useEffect, useState } from 'react';
 import { usePathname } from 'next/navigation';
+import { createCommercialLocalizer } from '@/lib/i18n/commercialLocalizer';
 import { writeRfq, type RfqDraft, type RfqSupplierBrief } from './rfqWriter';
 import QuickCostPreview from './QuickCostPreview';
 import type { ProcessType } from '../estimation/CostEstimator';
@@ -193,6 +194,7 @@ export default function RfqWriterPanel({
   const resolvedLang = langMap[seg] ?? 'en';
   const t = dict[resolvedLang];
   const isKo = resolvedLang === 'ko';
+  const L = createCommercialLocalizer(lang);
 
   const [tone, setTone] = useState<'formal' | 'concise' | 'collaborative'>('formal');
   const [draft, setDraft] = useState<RfqDraft | null>(null);
@@ -288,7 +290,7 @@ export default function RfqWriterPanel({
               {t.title}
             </div>
             <div style={{ fontSize: 10, color: C.dim }}>
-              {(supplier.nameKo ?? supplier.name ?? 'Supplier')} · {material} · {quantity}{t.pcsSuffix}
+              {L(supplier.nameKo ?? supplier.name ?? 'Supplier', supplier.name ?? supplier.nameKo ?? 'Supplier')} · {material} · {quantity}{t.pcsSuffix}
             </div>
           </div>
         </div>

@@ -23,7 +23,12 @@ import { getDbAdapter } from '@/lib/db-adapter';
 import { runDfmChecks, type DfmCheckResult } from '@/lib/dfm-rules';
 import { logCadAccess } from '@/lib/shadow-logger';
 import { ensureDemoSession, DEMO_USER_ID } from '@/lib/demo-session';
-import { getTrustedClientIpOrUndefined } from '@/lib/client-ip';
+import { getTrustedClientIp, getTrustedClientIpOrUndefined } from '@/lib/client-ip';
+import { rateLimit } from '@/lib/rate-limit';
+import { readBoundedJson } from '@/lib/boundedJsonBody';
+
+const MAX_JSON_BODY_BYTES = 4 * 1024 * 1024;
+import { validateDfmRequest } from '@/lib/dfm-request-validation';
 
 export interface DfmCheckResponse extends DfmCheckResult {
   /** 영속화 ID — DB 저장 실패 시 undefined. */
@@ -38,24 +43,23 @@ interface RequestBody {
 }
 
 export async function POST(req: NextRequest): Promise<NextResponse<DfmCheckResponse>> {
+  const ip = getTrustedClientIp(req.headers);
+  if (!rateLimit(`dfm-check:${ip}`, 60, 60_000).allowed) {
+    return NextResponse.json({ issues: 0, warnings: 0, items: [] }, { status: 429 });
+  }
   let body: RequestBody = {};
   try {
-    body = (await req.json()) as RequestBody;
+    body = await readBoundedJson<RequestBody>(req, MAX_JSON_BODY_BYTES);
   } catch {
-    return NextResponse.json({ issues: 0, warnings: 0, items: [] });
+    return NextResponse.json({ issues: 0, warnings: 0, items: [] }, { status: 400 });
   }
 
   // 새 스키마 우선, 없으면 평면 객체 전체를 params로 간주.
-  const params = (body.params && typeof body.params === 'object')
-    ? body.params
-    : Object.fromEntries(
-        Object.entries(body)
-          .filter(([k, v]) => k !== 'fileId' && typeof v === 'number'),
-      ) as Record<string, number>;
-
-  const fileId = typeof body.fileId === 'string' && body.fileId.trim()
-    ? body.fileId.trim()
-    : undefined;
+  const validated = validateDfmRequest(body);
+  if (!validated.ok) {
+    return NextResponse.json({ issues: 0, warnings: 0, items: [] }, { status: 400 });
+  }
+  const { params, fileId } = validated.value;
 
   const result = runDfmChecks(params);
   const auth = await getAuthUser(req).catch(() => null);
@@ -118,12 +122,12 @@ export async function POST(req: NextRequest): Promise<NextResponse<DfmCheckRespo
 
   // CAD 파일을 함께 검증한 경우 접근 로그 (로그인 사용자만 — 익명 view 로그는 노이즈).
   if (fileId && auth) {
-    const ip = getTrustedClientIpOrUndefined(req.headers);
+    const auditIp = getTrustedClientIpOrUndefined(req.headers);
     const userAgent = req.headers.get('user-agent') ?? undefined;
     await logCadAccess(fileId, {
       userId:     auth.userId,
       accessType: 'view',
-      ip,
+      ip: auditIp,
       userAgent,
     });
   }

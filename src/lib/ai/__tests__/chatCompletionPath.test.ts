@@ -19,7 +19,14 @@ import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
-const ENV_KEYS = ['NEXYFAB_DB_PATH', 'LOCAL_AI_BASE_URL', 'LOCAL_AI_MODEL', 'DATABASE_URL'] as const;
+vi.mock('@/lib/ai/providerFailureAlert', () => ({
+  notifyAiProviderFailure: vi.fn().mockResolvedValue({ status: 'suppressed' }),
+}));
+
+const ENV_KEYS = [
+  'NEXYFAB_DB_PATH', 'LOCAL_AI_BASE_URL', 'LOCAL_AI_MODEL', 'DATABASE_URL',
+  'OPENAI_API_KEY', 'OPENAI_BASE_URL', 'AI_PROVIDER_PRIMARY', 'AI_PROVIDER_FALLBACKS',
+] as const;
 let saved: Partial<Record<(typeof ENV_KEYS)[number], string | undefined>> = {};
 let tmp = '';
 
@@ -38,6 +45,8 @@ describe('chatCompletion — 실 프로바이더 체인이 vitest에서 실행�
     delete process.env.DATABASE_URL; // SQLite 어댑터(문제의 경로)를 강제로 태운다
     process.env.LOCAL_AI_BASE_URL = 'http://127.0.0.1:59999/v1';
     process.env.LOCAL_AI_MODEL = 'stub-model';
+    process.env.AI_PROVIDER_PRIMARY = 'openai';
+    process.env.AI_PROVIDER_FALLBACKS = 'local';
   });
 
   afterEach(() => {
@@ -79,5 +88,59 @@ describe('chatCompletion — 실 프로바이더 체인이 vitest에서 실행�
     await expect(
       chatCompletion({ messages: [{ role: 'user', content: 'ping' }], provider: 'local', task: 'a5-harness-check', timeoutMs: 5_000 }),
     ).rejects.not.toThrow(/Cannot find module/);
+  });
+  it('selected provider failure falls back without leaking its model id to the next vendor', async () => {
+    process.env.OPENAI_API_KEY = 'test-openai-key';
+    process.env.OPENAI_BASE_URL = 'https://openai.invalid/v1';
+    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => {
+      const url = String(input);
+      if (url.includes('127.0.0.1:59999')) {
+        return new Response('local down', { status: 503 });
+      }
+      const body = JSON.parse(String(init?.body ?? '{}')) as { model?: string };
+      expect(body.model).not.toBe('selected-local-model');
+      return okResponse('FALLBACK_OK');
+    });
+    const { resetProviderHealth } = await import('@/lib/provider-health');
+    resetProviderHealth();
+    const { chatCompletion } = await import('@/lib/ai');
+
+    const result = await chatCompletion({
+      messages: [{ role: 'user', content: 'continue the CAD plan' }],
+      provider: 'local',
+      model: 'selected-local-model',
+      allowProviderFallback: true,
+      task: 'selected-model-fallback-test',
+    });
+
+    expect(result.provider).toBe('openai');
+    expect(result.text).toBe('FALLBACK_OK');
+    expect(fetchSpy).toHaveBeenCalledTimes(2);
+  });
+
+  it('selected model 4xx falls back while exact provider probes remain strict', async () => {
+    process.env.OPENAI_API_KEY = 'test-openai-key';
+    process.env.OPENAI_BASE_URL = 'https://openai.invalid/v1';
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) => {
+      if (String(input).includes('127.0.0.1:59999')) {
+        return new Response('model deployment not found', { status: 404 });
+      }
+      return okResponse('MODEL_FALLBACK_OK');
+    });
+    const { resetProviderHealth } = await import('@/lib/provider-health');
+    resetProviderHealth();
+    const { chatCompletion } = await import('@/lib/ai');
+
+    await expect(chatCompletion({
+      messages: [{ role: 'user', content: 'continue' }],
+      provider: 'local', model: 'retired-model', task: 'strict-probe',
+    })).rejects.toThrow(/404/);
+
+    const recovered = await chatCompletion({
+      messages: [{ role: 'user', content: 'continue' }],
+      provider: 'local', model: 'retired-model', allowProviderFallback: true,
+      task: 'selected-model-404-fallback',
+    });
+    expect(recovered).toMatchObject({ provider: 'openai', text: 'MODEL_FALLBACK_OK' });
   });
 });

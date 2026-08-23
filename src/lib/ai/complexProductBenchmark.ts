@@ -1,5 +1,10 @@
-export const COMPLEX_PRODUCT_FAMILIES = ['robot', 'gearbox', 'pressure_vessel', 'turbomachinery', 'factory_equipment', 'interior'] as const;
+/** Product families that can be promoted as the primary AI mechanical-CAD offer. */
+export const CORE_MECHANICAL_PRODUCT_FAMILIES = ['robot', 'gearbox', 'pressure_vessel', 'turbomachinery', 'factory_equipment', 'machine_skid', 'welded_enclosure'] as const;
+/** Secondary spatial services are measured, but never block the mechanical-CAD launch gate. */
+export const AUXILIARY_PRODUCT_FAMILIES = ['interior'] as const;
+export const COMPLEX_PRODUCT_FAMILIES = [...CORE_MECHANICAL_PRODUCT_FAMILIES, ...AUXILIARY_PRODUCT_FAMILIES] as const;
 export type ComplexBenchmarkFamily = typeof COMPLEX_PRODUCT_FAMILIES[number];
+export type CoreMechanicalBenchmarkFamily = typeof CORE_MECHANICAL_PRODUCT_FAMILIES[number];
 
 export interface ComplexBenchmarkCase {
   caseId: string;
@@ -40,7 +45,14 @@ export interface ComplexFamilyBenchmarkReport {
   blockers: string[];
 }
 
-export interface ComplexBenchmarkReport { families: ComplexFamilyBenchmarkReport[]; eligibleFamilies: ComplexBenchmarkFamily[]; allFamiliesEligible: boolean }
+export interface ComplexBenchmarkReport {
+  families: ComplexFamilyBenchmarkReport[];
+  eligibleFamilies: ComplexBenchmarkFamily[];
+  coreMechanicalEligible: boolean;
+  auxiliaryServicesEligible: boolean;
+  /** Legacy portfolio-wide signal. Prefer coreMechanicalEligible for the primary commercial release. */
+  allFamiliesEligible: boolean;
+}
 
 const SHA = /^[a-f0-9]{64}$/;
 const ratio = (passed: number, total: number) => total > 0 ? passed / total : null;
@@ -70,7 +82,6 @@ export function buildComplexBenchmarkReport(cases: readonly ComplexBenchmarkCase
     const familyCases = cases.filter(item => item.family === family), ids = new Set(familyCases.map(item => item.caseId));
     const familyRuns = validRuns.filter(run => ids.has(run.caseId));
     const byCase = new Map<string, ComplexBenchmarkRun[]>(); for (const run of familyRuns) byCase.set(run.caseId, [...(byCase.get(run.caseId) ?? []), run]);
-    const uniqueRepeats = [...byCase.values()].map(items => new Set(items.map(item => item.repeat)).size);
     const sum = (key: 'dimensions' | 'features' | 'parts' | 'assembly', field: 'passed' | 'total') => familyRuns.reduce((total, run) => total + run[key][field], 0);
     const gatePassRate = ratio(familyRuns.filter(run => run.requiredGatesPassed).length, familyRuns.length);
     const metrics = {
@@ -89,5 +100,12 @@ export function buildComplexBenchmarkReport(cases: readonly ComplexBenchmarkCase
     if (falseVerified) blockers.push(`False verified must be zero; current is ${falseVerified}.`);
     return { family, independentCases: familyCases.length, measuredCases: byCase.size, minimumRepeats, gatePassRate, ...metrics, falseVerified, eligible: blockers.length === 0, blockers };
   });
-  return { families, eligibleFamilies: families.filter(item => item.eligible).map(item => item.family), allFamiliesEligible: families.every(item => item.eligible) };
+  const eligibleFamilies = families.filter(item => item.eligible).map(item => item.family);
+  return {
+    families,
+    eligibleFamilies,
+    coreMechanicalEligible: CORE_MECHANICAL_PRODUCT_FAMILIES.every(family => eligibleFamilies.includes(family)),
+    auxiliaryServicesEligible: AUXILIARY_PRODUCT_FAMILIES.every(family => eligibleFamilies.includes(family)),
+    allFamiliesEligible: families.every(item => item.eligible),
+  };
 }

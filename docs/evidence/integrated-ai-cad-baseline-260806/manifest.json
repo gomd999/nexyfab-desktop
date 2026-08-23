@@ -1,9 +1,9 @@
 {
   "schema": "nexyfab.integrated-ai-cad-baseline.v1",
-  "generatedAt": "2026-08-09T14:16:02.280Z",
+  "generatedAt": "2026-08-23T03:07:33.359Z",
   "status": "pass",
   "scope": "Four calibrated SCAD assembly scenarios plus 160 topology fixtures through occurrence-qualified patterns; not a general 95% accuracy claim.",
-  "artifactSetSha256": "ae9560d1e183397a9a1da1126c47a1f8d71764ea58d9d8bed81008d408db0baf",
+  "artifactSetSha256": "23457d296e9e136ad56f844982f7a42d63d6e2ad20aec69204fe9d42064c1fe4",
   "checks": [
     {
       "id": "file:validation-reports/scad-agent-2026-08-06T09-10-47-repaired-3.json",
@@ -2368,8 +2368,8 @@
     },
     {
       "path": "docs/evidence/external-step-structure-coverage-260806/ifc-fidelity-run-1.json",
-      "bytes": 4919,
-      "sha256": "bef3a776973287dc18ab11a442edf33f4c528321024d70b2551701ea62ad860a"
+      "bytes": 5955,
+      "sha256": "badb9eeeece6ac500e4818bf56e2c9b0439ca22c5cc5ae656ac6d463dee40eca"
     },
     {
       "path": "docs/evidence/external-step-structure-coverage-260806/ifc-collision-capability-run-1.json",
@@ -2673,8 +2673,8 @@
     },
     {
       "path": "src/lib/ai/manufacturingGates.ts",
-      "bytes": 10026,
-      "sha256": "fd4778b281fd496f1e695cfad85ced9f24ab0e837dee58743328bcb73ea55701"
+      "bytes": 10059,
+      "sha256": "602b99cd0b18da6d85601ba066f3789483527681b999a1dd094f1280632edae4"
     },
     {
       "path": "src/lib/ai/stepRoundtripVerification.ts",
@@ -2688,8 +2688,8 @@
     },
     {
       "path": "src/lib/ai/advanceGenerationRun.ts",
-      "bytes": 9540,
-      "sha256": "be2fc3a7a9f1f3372821ad9c301014288872a7df99671dfc3eac55f45867a01a"
+      "bytes": 25089,
+      "sha256": "53b057c614874249a81725d955024e475ec3a2c6636a917de0efee3f13e2d0e6"
     },
     {
       "path": "src/lib/ai/generationCanonicalResponse.ts",
@@ -2788,8 +2788,8 @@
     },
     {
       "path": "scripts/reference/run-ifc-native-extractions.ts",
-      "bytes": 8454,
-      "sha256": "f4d1284f8220de36fefb16f6b3cbc8015d4a29925028c10ca4434ca985270382"
+      "bytes": 8686,
+      "sha256": "293adfd42b8ace039b6aa813c3d3b9b55b1d93b698b7ba78b4dddbc676d784fd"
     },
     {
       "path": "scripts/reference/run-dwg-native-extractions.ts",
@@ -2823,8 +2823,8 @@
     },
     {
       "path": "scripts/reference/run-exact-cad-workers.ts",
-      "bytes": 5869,
-      "sha256": "9d848eaefa667a9d2f4abc7637de726b8ab0ea59356f7b6f085d23d7c35a773a"
+      "bytes": 11188,
+      "sha256": "af81163fd3ac5c20b7ba17310371a1e03e75542df28134c9017544609276c18c"
     },
     {
       "path": "src/lib/reference/promoteExactCadWorkerResult.ts",
@@ -2978,8 +2978,8 @@
     },
     {
       "path": "scripts/create-workspace-checkpoint.mjs",
-      "bytes": 5367,
-      "sha256": "c3f1880617289e5be75a26d16accad6a8b9fbf64874eaa9bb7d47ea8828423c6"
+      "bytes": 5873,
+      "sha256": "7f2cdf10799a26c51dd1caeefc3c9ceecd80c104eb96b603316fd9c11771a935"
     },
     {
       "path": "scripts/reference/build-ground-truth-review-priority.ts",
@@ -3013,8 +3013,8 @@
     },
     {
       "path": "scripts/build-ifc-fidelity-evidence.ts",
-      "bytes": 5145,
-      "sha256": "d10be1ecb97d425946ed3832ed5abdadb21964838a3668295cee23465dfa237f"
+      "bytes": 5701,
+      "sha256": "1b4df2ad291f0483a5724cfb12ec7fd78aeedc861c07377d08ff1b4e7549c740"
     },
     {
       "path": "src/lib/reference/indexedMeshCollision.ts",
@@ -3033,28 +3033,28 @@
     },
     {
       "path": "src/app/api/cad/v1/generation/advance/route.ts",
-      "bytes": 3819,
-      "sha256": "07eb3844669d18ef442fbdb5fe0f1ffa2d9357e04ef155155a9c0f5dead5cd4d"
+      "bytes": 13893,
+      "sha256": "823ab0c0ca105efbe4fca41687a114445af90a95b669f48baae3d15db15b5110"
     },
     {
       "path": "src/app/api/cad/v1/generation/finalize/route.ts",
-      "bytes": 5878,
-      "sha256": "d171b252e3e390157b2ce465d6a8e1b4c8ba4694dc871368a32e69f7d6786f34"
+      "bytes": 13972,
+      "sha256": "ebfde2af24d81e4398e4f56185c7392ae1e1fc0fc71ecc5279cc23fa66b710df"
     },
     {
       "path": "src/app/[lang]/shape-generator/ai/generationSessionClient.ts",
-      "bytes": 14277,
-      "sha256": "c3532186862cc1450a4d303d22520eb8c3a65278cad7ca4adbfb2cf8d6c310ce"
+      "bytes": 14293,
+      "sha256": "55a2a5872837c75d86d9803bc586e014db3ea10f3223c5c7cf8328b51d5de144"
     },
     {
       "path": "scripts/cli/nexyfab.mjs",
-      "bytes": 41163,
-      "sha256": "d6198ef7337391c7b7ba062f4ce75dc9f058b9b827abfbf44ee4d7aff277a9f8"
+      "bytes": 51117,
+      "sha256": "ff34086a2760a787bae9e8ce04a82c3ed08a0fd840cfb3ae1a81eeb340104d67"
     },
     {
       "path": "scripts/drawing-to-3d/mcp-server.mjs",
-      "bytes": 139287,
-      "sha256": "23f67781a1d58d504ae4442ad9853d042719438923035b3f191ca4542f521ebf"
+      "bytes": 153708,
+      "sha256": "ed65c33053877487d3ccf04938aaaac40cf185aee914f4462850aa99ad34c9fe"
     },
     {
       "path": "scripts/build-scad-native-flow-evidence.mjs",

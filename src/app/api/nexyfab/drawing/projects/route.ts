@@ -11,12 +11,14 @@ import { getDbAdapter } from '@/lib/db-adapter';
 import { getAuthUser } from '@/lib/auth-middleware';
 import { rateLimit } from '@/lib/rate-limit';
 import { getTrustedClientIp } from '@/lib/client-ip';
+import { boundedJsonError, readBoundedJson } from '@/lib/boundedJsonBody';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 
 const MAX_SNAPSHOT = 64 * 1024; // 64KB — 스냅샷은 파라미터 JSON(대형 형상 아님)
 const MAX_PROJECTS = 100;
+const MAX_BODY_BYTES = 512 * 1024;
 
 let schemaReady = false;
 async function ensureSchema(): Promise<void> {
@@ -56,8 +58,9 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 
   let body: { id?: string; name?: string; domain?: string; snapshot?: unknown; loadId?: string };
   try {
-    body = (await req.json()) as typeof body;
-  } catch {
+    body = await readBoundedJson<typeof body>(req, MAX_BODY_BYTES);
+  } catch (error) {
+    if (boundedJsonError(error)?.code === 'PAYLOAD_TOO_LARGE') return NextResponse.json({ ok: false, error: '스냅샷 요청이 너무 큽니다.' }, { status: 413 });
     return NextResponse.json({ ok: false, error: 'invalid json' }, { status: 400 });
   }
   await ensureSchema();

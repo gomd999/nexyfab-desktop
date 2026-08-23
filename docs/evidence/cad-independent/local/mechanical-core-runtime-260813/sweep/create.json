@@ -1,0 +1,55 @@
+{
+  "schema": "nexyfab.mechanical-core-feature-local-runtime.v1",
+  "feature": "sweep",
+  "axis": "create",
+  "status": "PASS",
+  "executedAt": "2026-08-22T07:13:30.564Z",
+  "payload": {
+    "id": "runtime-feature",
+    "enabled": true,
+    "type": "sweep",
+    "params": {
+      "pathType": 0,
+      "length": 30,
+      "arcAngle": 90,
+      "arcRadius": 40,
+      "helixPitch": 10,
+      "helixTurns": 1,
+      "twist": 0,
+      "guideMode": 0,
+      "guideStart": 20,
+      "guideEnd": 20
+    }
+  },
+  "exact": {
+    "handle": "occt:385",
+    "kernelKind": "Solid",
+    "nativeShapeType": 2,
+    "solidCount": 1,
+    "singleSolid": true,
+    "volumeMm3": 1440,
+    "edgeCount": 12,
+    "faceCount": 6,
+    "boundsMm": [
+      [
+        -4.0000001,
+        -3.0000001000000003,
+        -1.000000002220446e-7
+      ],
+      [
+        4.0000001,
+        3.0000001000000003,
+        30.0000001
+      ]
+    ]
+  },
+  "featureMeaning": {
+    "assertion": "actual product straight-path sweep preserved the exact rectangular section along the requested path length",
+    "sectionAreaMm2": 48,
+    "pathLengthMm": 30,
+    "expectedVolumeMm3": 1440,
+    "actualVolumeMm3": 1440
+  },
+  "exactScope": "declared numeric runtime case",
+  "assertion": "native OCCT produced one non-empty exact solid and changed the host geometry"
+}

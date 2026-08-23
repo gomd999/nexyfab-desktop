@@ -3,9 +3,11 @@
 import { useState, useEffect, Suspense } from 'react';
 import { useParams, useSearchParams, useRouter } from 'next/navigation';
 import { useAuthStore } from '@/hooks/useAuth';
+import { createCommercialLocalizer } from '@/lib/i18n/commercialLocalizer';
 
 function OrgJoinInner() {
   const { lang } = useParams<{ lang: string }>();
+  const L = createCommercialLocalizer(lang);
   const searchParams = useSearchParams();
   const router = useRouter();
   const { token: authToken } = useAuthStore();
@@ -16,18 +18,19 @@ function OrgJoinInner() {
   const [joining, setJoining] = useState(false);
 
   useEffect(() => {
+    const localize = createCommercialLocalizer(lang);
     if (!inviteToken) {
       setStatus('error');
-      setMessage('초대 링크가 유효하지 않습니다.');
+      setMessage(localize('초대 링크가 유효하지 않습니다.', 'This invitation link is invalid.'));
       return;
     }
     if (!authToken) {
       setStatus('error');
-      setMessage('로그인이 필요합니다. 로그인 후 다시 시도해주세요.');
+      setMessage(localize('로그인이 필요합니다. 로그인 후 다시 시도해주세요.', 'Please sign in and try again.'));
       return;
     }
     setStatus('ready');
-  }, [inviteToken, authToken]);
+  }, [inviteToken, authToken, lang]);
 
   async function handleJoin() {
     if (!inviteToken) return;
@@ -41,15 +44,15 @@ function OrgJoinInner() {
       const data = await res.json();
       if (!res.ok) {
         setStatus('error');
-        setMessage(data.error || '초대 수락에 실패했습니다.');
+        setMessage(data.error || L('초대 수락에 실패했습니다.', 'Failed to accept the invitation.'));
         return;
       }
       setStatus('success');
-      setMessage(`${data.org?.name ?? '조직'}에 합류했습니다!`);
+      setMessage(`${data.org?.name ?? L('조직', 'organization')} ${L('에 합류했습니다!', 'joined successfully!')}`);
       setTimeout(() => router.push(`/${lang}/nexyfab/settings/billing`), 2000);
     } catch {
       setStatus('error');
-      setMessage('네트워크 오류가 발생했습니다.');
+      setMessage(L('네트워크 오류가 발생했습니다.', 'A network error occurred.'));
     } finally {
       setJoining(false);
     }
@@ -62,12 +65,12 @@ function OrgJoinInner() {
           {status === 'success' ? '🎉' : status === 'error' ? '⚠️' : '📨'}
         </div>
         <h1 style={{ fontSize: 18, fontWeight: 700, color: '#111827', marginBottom: 8 }}>
-          {status === 'success' ? '합류 완료' : status === 'error' ? '오류' : '조직 초대'}
+          {status === 'success' ? L('합류 완료', 'Joined') : status === 'error' ? L('오류', 'Error') : L('조직 초대', 'Organization invitation')}
         </h1>
         {status === 'ready' && (
           <>
             <p style={{ fontSize: 14, color: '#6b7280', marginBottom: 24 }}>
-              조직에 초대되었습니다. 아래 버튼을 클릭하여 합류하세요.
+              {L('조직에 초대되었습니다. 아래 버튼을 클릭하여 합류하세요.', 'You have been invited to an organization. Click below to join.')}
             </p>
             <button
               onClick={() => void handleJoin()}
@@ -79,7 +82,7 @@ function OrgJoinInner() {
                 transition: 'background 0.15s',
               }}
             >
-              {joining ? '처리 중...' : '초대 수락'}
+              {joining ? L('처리 중...', 'Processing...') : L('초대 수락', 'Accept invitation')}
             </button>
           </>
         )}
@@ -90,7 +93,7 @@ function OrgJoinInner() {
         )}
         {status === 'error' && !authToken && (
           <a href={`/${lang}/nexyfab`} style={{ display: 'inline-block', marginTop: 16, fontSize: 13, color: '#3b82f6' }}>
-            로그인 페이지로 이동
+            {L('로그인 페이지로 이동', 'Go to sign-in')}
           </a>
         )}
       </div>

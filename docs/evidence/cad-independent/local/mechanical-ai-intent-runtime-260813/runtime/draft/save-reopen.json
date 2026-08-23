@@ -1,0 +1,31 @@
+{
+  "schema": "nexyfab.mechanical-core-feature-local-runtime.v1",
+  "feature": "draft",
+  "axis": "save_reopen",
+  "status": "PASS",
+  "executedAt": "2026-08-22T07:13:00.871Z",
+  "savedBytes": 1787,
+  "savedSha256": "cb7eb603d6974f6229da6a2837fa4213f504f156983a0d7c613ca6de6d813e4c",
+  "reopened": {
+    "handle": "occt:113",
+    "kernelKind": "Solid",
+    "nativeShapeType": 2,
+    "solidCount": 1,
+    "singleSolid": true,
+    "volumeMm3": 48002.57297892627,
+    "edgeCount": 12,
+    "faceCount": 6,
+    "boundsMm": [
+      [
+        -50.49113834361163,
+        -4.000000100000016,
+        -30.49113834361163
+      ],
+      [
+        50.491138343611645,
+        4.000000100000016,
+        30.491138343611624
+      ]
+    ]
+  }
+}

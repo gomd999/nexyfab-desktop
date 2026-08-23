@@ -1,4 +1,4 @@
-import { use } from 'react';
+import { Suspense, use } from 'react';
 import type { Metadata } from 'next';
 import NexyfabUnifiedSidebar from '@/components/nexyfab/NexyfabUnifiedSidebar';
 import ToastProvider from '@/components/ToastProvider';
@@ -45,7 +45,15 @@ export default function NexyfabLayout({ children, params }: NexyfabLayoutProps) 
           fontFamily: 'system-ui, -apple-system, sans-serif',
         }}
       >
-        <NexyfabUnifiedSidebar lang={lang} />
+        <style>{`
+          .nf-uni-nav-fallback { width: 220px; min-width: 220px; }
+          @media (max-width: 768px) {
+            .nf-uni-nav-fallback { width: 56px; min-width: 56px; }
+          }
+        `}</style>
+        <Suspense fallback={<aside className="nf-uni-nav-fallback" aria-hidden="true" style={{ flex: '0 0 auto', background: 'var(--nx-panel)', borderRight: '1px solid var(--nx-border)' }} />}>
+          <NexyfabUnifiedSidebar lang={routeLang} />
+        </Suspense>
         <main
           style={{
             flex: 1,
@@ -71,11 +79,11 @@ export default function NexyfabLayout({ children, params }: NexyfabLayoutProps) 
           >
             <span>© 2026 Nexysys Lab Co., Ltd.</span>
             {' | '}
-            <a href={`/${lang}/terms-of-use`} style={{ color: 'var(--nx-text-3)', textDecoration: 'underline' }}>
+            <a href={`/${routeLang}/terms-of-use`} style={{ color: 'var(--nx-text-3)', textDecoration: 'underline' }}>
               {t.terms}
             </a>
             {' | '}
-            <a href={`/${lang}/privacy-policy`} style={{ color: 'var(--nx-text-3)', textDecoration: 'underline' }}>
+            <a href={`/${routeLang}/privacy-policy`} style={{ color: 'var(--nx-text-3)', textDecoration: 'underline' }}>
               {t.privacy}
             </a>
           </footer>

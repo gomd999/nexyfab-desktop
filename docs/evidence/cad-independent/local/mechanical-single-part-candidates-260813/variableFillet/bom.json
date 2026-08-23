@@ -1,0 +1,26 @@
+{
+  "schema": "nexyfab.mechanical-single-part-bom-candidate.v1",
+  "partRevisionSha256": "34b4ac4b770e75eaa36205844de30f8d88658fea425d61c1a30eb46b2713a526",
+  "sourceDesignRevisionSha256": "3cf6a0f9c8efcf153a2cfefde087a2112c086fc412d2feeaeb9ce52542838564",
+  "sourceNfabSha256": "f8af203c640d92790492f1d05cfd3835683ed9acd040caa55163bcecbcdcf7b7",
+  "sourceStepSha256": "6debd23488611d536dbd1b9a22ea3bfd28ec73c4332da50890586eaf00cdeaa9",
+  "units": "mm",
+  "items": [
+    {
+      "partNumber": "variableFillet",
+      "description": "Mechanical runtime variableFillet",
+      "quantity": 1,
+      "dimensionsMm": {
+        "x": 60.070884357557404,
+        "y": 40.070884357557404,
+        "z": 30.070884357557404
+      }
+    }
+  ],
+  "claimBoundary": {
+    "singlePartCandidateOnly": true,
+    "materialSpecified": false,
+    "massCalculated": false,
+    "manufacturingApproved": false
+  }
+}

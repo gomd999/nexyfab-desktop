@@ -1,4 +1,5 @@
 import type { Lang } from '@/lib/metaHelper';
+import { toIsoLang, type IsoLang } from '@/lib/i18n/normalize';
 
 const BASE_URL = 'https://nexyfab.com';
 
@@ -12,6 +13,7 @@ const _SEARCH_PLACEHOLDERS: Record<Lang, string> = {
 };
 
 export default function JsonLd({ lang }: { lang: Lang }) {
+    const iso = toIsoLang(lang);
     const descriptions: Record<Lang, string> = {
         kr: 'AI 3D 모델링부터 AI 견적까지. 28만+ 공장 DB 기반으로 최적의 제조 파트너를 매칭하는 올인원 플랫폼입니다.',
         en: 'From AI 3D modeling to instant quoting. Match with manufacturers from our 286,000+ factory database.',
@@ -32,7 +34,7 @@ export default function JsonLd({ lang }: { lang: Lang }) {
         contactPoint: {
             '@type': 'ContactPoint',
             contactType: 'customer service',
-            availableLanguage: ['Korean', 'English', 'Japanese', 'Chinese'],
+            availableLanguage: ['Korean', 'English', 'Japanese', 'Chinese', 'Spanish', 'Arabic'],
         },
     };
 
@@ -54,14 +56,14 @@ export default function JsonLd({ lang }: { lang: Lang }) {
     const service = {
         '@context': 'https://schema.org',
         '@type': 'Service',
-        name: lang === 'kr' ? '제조 파트너 매칭 서비스' : 'Manufacturing Partner Matching',
+        name: ({ ko: '제조 파트너 매칭 서비스', en: 'Manufacturing Partner Matching', ja: '製造パートナーマッチングサービス', zh: '制造合作伙伴匹配服务', es: 'Servicio de emparejamiento de socios de fabricación', ar: 'خدمة مطابقة شركاء التصنيع' } satisfies Record<IsoLang, string>)[iso],
         serviceType: 'B2B Matching',
         provider: {
             '@type': 'Organization',
             name: 'Nexyfab',
         },
         areaServed: ['KR', 'CN', 'JP', 'US', 'GB'],
-        availableLanguage: ['Korean', 'English', 'Japanese', 'Chinese'],
+        availableLanguage: ['Korean', 'English', 'Japanese', 'Chinese', 'Spanish', 'Arabic'],
         description: descriptions[lang],
     };
 
@@ -72,13 +74,13 @@ export default function JsonLd({ lang }: { lang: Lang }) {
             {
                 '@type': 'ListItem',
                 position: 1,
-                name: lang === 'kr' ? '홈' : 'Home',
+                name: ({ ko: '홈', en: 'Home', ja: 'ホーム', zh: '首页', es: 'Inicio', ar: 'الرئيسية' } satisfies Record<IsoLang, string>)[iso],
                 item: `${BASE_URL}/${lang}`,
             },
             {
                 '@type': 'ListItem',
                 position: 2,
-                name: lang === 'kr' ? '회사소개' : 'About',
+                name: ({ ko: '회사소개', en: 'About', ja: '会社概要', zh: '关于我们', es: 'Acerca de', ar: 'من نحن' } satisfies Record<IsoLang, string>)[iso],
                 item: `${BASE_URL}/${lang}/company-introduction`,
             },
         ],
@@ -88,10 +90,10 @@ export default function JsonLd({ lang }: { lang: Lang }) {
         '@context': 'https://schema.org',
         '@type': 'SiteNavigationElement',
         name: [
-            lang === 'kr' ? '이용방법' : 'How It Works',
-            lang === 'kr' ? '파트너 등록' : 'Partners',
-            lang === 'kr' ? '회사소개' : 'About',
-            lang === 'kr' ? '프로젝트 문의' : 'Inquiry',
+            ({ ko: '이용방법', en: 'How It Works', ja: '使い方', zh: '使用方法', es: 'Cómo funciona', ar: 'كيفية الاستخدام' } satisfies Record<IsoLang, string>)[iso],
+            ({ ko: '파트너 등록', en: 'Partners', ja: 'パートナー登録', zh: '合作伙伴注册', es: 'Socios', ar: 'الشركاء' } satisfies Record<IsoLang, string>)[iso],
+            ({ ko: '회사소개', en: 'About', ja: '会社概要', zh: '关于我们', es: 'Acerca de', ar: 'من نحن' } satisfies Record<IsoLang, string>)[iso],
+            ({ ko: '프로젝트 문의', en: 'Inquiry', ja: 'プロジェクト相談', zh: '项目咨询', es: 'Consulta de proyecto', ar: 'استفسار عن مشروع' } satisfies Record<IsoLang, string>)[iso],
         ],
         url: [
             `${BASE_URL}/${lang}/how-it-works`,

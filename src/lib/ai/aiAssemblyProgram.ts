@@ -9,6 +9,7 @@ import { validateTree, type FeatureTree } from '@/lib/cad/featureTree';
 import { validateAssembly } from '@/lib/assembly/assemblyState';
 import type { NestedAssemblyState } from '@/lib/assembly/subAssembly';
 import { generationArtifactHash } from './generationRunState';
+import { verifyMepConnections, type PhysicalNetworkModel } from './mepConnectionVerification';
 
 export type AiPartMetadata = {
   partNumber: string;
@@ -38,6 +39,8 @@ export type AiAssemblyProgram = {
   assembly: NestedAssemblyState;
   parts: AiAssemblyPart[];
   structure?: Array<{ id: string; name: string; instanceIds: string[]; rigid: boolean; parentId?: string }>;
+  /** Explicit typed physical service networks. Declared networks are strict release gates. */
+  physicalNetworks?: PhysicalNetworkModel[];
   unresolved: string[];
 };
 
@@ -142,6 +145,19 @@ export function validateAiAssemblyProgram(program: AiAssemblyProgram): AiAssembl
       visited.add(cursor.id);
       cursor = structureById.get(cursor.parentId);
     }
+  }
+  const networkIds = new Set<string>();
+  for (const [index, network] of (program.physicalNetworks ?? []).entries()) {
+    const path = `physicalNetworks[${index}]`;
+    if (!network.id.trim()) issues.push({ path: `${path}.id`, message: 'physical network id is required' });
+    if (networkIds.has(network.id)) issues.push({ path: `${path}.id`, message: `duplicate physical network id ${network.id}` });
+    networkIds.add(network.id);
+    for (const port of network.ports) if (!instanceIds.has(port.ownerObjectId)) issues.push({ path: `${path}.ports`, message: `port ${port.id} references unknown owner ${port.ownerObjectId}` });
+    try {
+      const verification = verifyMepConnections(network.ports, network.nodes, network.connections, network.runs, network.rules);
+      if (!verification.releaseReady) for (const failure of verification.failures) issues.push({ path, message: `${failure.code}:${failure.objectId}` });
+      if (verification.status === 'passed' && !verification.releaseReady) issues.push({ path, message: 'physical network rules must require measured route geometry for release' });
+    } catch (error) { issues.push({ path, message: error instanceof Error ? error.message : 'physical network verification failed' }); }
   }
   return issues;
 }

@@ -7,6 +7,7 @@ import { verifyAdmin, verifySuperAdmin } from '@/lib/admin-auth';
 import { getDbAdapter } from '@/lib/db-adapter';
 import { processJobQueue } from '@/lib/job-queue';
 import { recordAdminAudit } from '@/lib/admin-audit';
+import { boundedJsonError, readBoundedJson } from '@/lib/boundedJsonBody';
 
 export const dynamic = 'force-dynamic';
 
@@ -80,7 +81,12 @@ export async function POST(req: NextRequest) {
   const superAdmin = await verifySuperAdmin(req);
   if (!superAdmin) return NextResponse.json({ error: 'Forbidden — super_admin required' }, { status: 403 });
 
-  const body = await req.json().catch(() => ({})) as { action?: string };
+  let body: { action?: string };
+  try { body = await readBoundedJson(req, 64 * 1024); }
+  catch (error) {
+    if (boundedJsonError(error)?.status === 413) return NextResponse.json({ error: 'Payload too large' }, { status: 413 });
+    body = {};
+  }
   const action = body.action ?? 'process_queue';
 
   if (action === 'process_queue') {

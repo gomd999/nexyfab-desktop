@@ -1,0 +1,99 @@
+{
+  "schema": "nexyfab.mechanical-core-feature-local-runtime.v1",
+  "feature": "linearPattern",
+  "axis": "create",
+  "status": "PASS",
+  "executedAt": "2026-08-23T06:51:51.379Z",
+  "payload": {
+    "id": "runtime-feature",
+    "enabled": true,
+    "type": "linearPattern",
+    "params": {
+      "axis": 0,
+      "count": 2,
+      "spacing": 20,
+      "patternTarget": 0
+    }
+  },
+  "intentBinding": {
+    "caseId": "mixed_units-06-linearPattern",
+    "candidateId": "intent-runtime:mixed_units-06-linearPattern",
+    "candidateBaseRevision": "3aabe87739ff99d1730c5375bad2e67c6be3fb8b482a4aa88e070328cf84915b",
+    "promptSha256": "8f62155c6bb4727f10a578add32473dde34493692d51cfc850f7a13215f9741d",
+    "inputSha256": "cfefb607d5bc6942325a7d5388e0edf2f50e7c2f5cb1a8aa12ed38eae9d209fe",
+    "sourceUnits": [
+      "mm",
+      "in"
+    ],
+    "normalizedUnit": "mm",
+    "dimensionsMm": {
+      "width": 100,
+      "length": 60,
+      "thickness": 6.35
+    }
+  },
+  "intentBaseExact": {
+    "handle": "occt:71",
+    "kernelKind": "Solid",
+    "nativeShapeType": 2,
+    "solidCount": 1,
+    "singleSolid": true,
+    "volumeMm3": 38100,
+    "edgeCount": 12,
+    "faceCount": 6,
+    "boundsMm": [
+      [
+        -50.0000001,
+        -3.175000100000003,
+        -30.000000100000005
+      ],
+      [
+        50.0000001,
+        3.175000100000003,
+        30.000000100000005
+      ]
+    ]
+  },
+  "intentDimensionAssertion": {
+    "status": "PASS",
+    "extentsMm": [
+      100.0000002,
+      6.350000200000006,
+      60.00000020000001
+    ],
+    "expectedExtentsMm": [
+      100,
+      6.35,
+      60
+    ]
+  },
+  "exact": {
+    "handle": "occt:73",
+    "kernelKind": "Solid",
+    "nativeShapeType": 0,
+    "solidCount": 1,
+    "singleSolid": true,
+    "volumeMm3": 45720,
+    "edgeCount": 12,
+    "faceCount": 6,
+    "boundsMm": [
+      [
+        -50.0000001,
+        -3.1750001,
+        -30.0000001
+      ],
+      [
+        70.0000001,
+        3.1750001,
+        30.0000001
+      ]
+    ]
+  },
+  "featureMeaning": {
+    "assertion": "exact feature added material relative to its exact seed",
+    "baselineVolumeMm3": 38100,
+    "actualVolumeMm3": 45720
+  },
+  "exactScope": "declared numeric runtime case",
+  "assertion": "native OCCT produced one non-empty exact solid and changed the host geometry"
+}

@@ -6,7 +6,8 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import LanguageSelector from './LanguageSelector';
 import NexyfabNotificationBell from '@/app/components/NexyfabNotificationBell';
-import { toRouteLang, toIsoLang, isSupportedLang, DEFAULT_LANG, type IsoLang } from '@/lib/i18n/normalize';
+import { toRouteLang, toIsoLang, DEFAULT_LANG, type IsoLang } from '@/lib/i18n/normalize';
+import { useAuthStore } from '@/hooks/useAuth';
 
 function readLangCookie(): string | null {
     if (typeof document === 'undefined') return null;
@@ -14,13 +15,13 @@ function readLangCookie(): string | null {
     return match ? decodeURIComponent(match[1]) : null;
 }
 
-const dict: Record<IsoLang, { pricing: string; factories: string; login: string; dashboard: string; quickQuote: string; shapeGen: string; download: string; logout: string; notifications: string; papercraft: string; aiDesign: string; studio: string }> = {
-    ko: { pricing: '요금', factories: '공장 찾기', login: '로그인', dashboard: '대시보드', quickQuote: '빠른 견적', shapeGen: '3D 모델링', download: '다운로드', logout: '로그아웃', notifications: '알림', papercraft: '종이·레이저컷' , aiDesign: 'AI 설계 스튜디오', studio: '디자인 스튜디오' },
-    en: { pricing: 'Pricing', factories: 'Find Factories', login: 'Sign In', dashboard: 'Dashboard', quickQuote: 'Quick Quote', shapeGen: '3D Modeler', download: 'Download', logout: 'Sign Out', notifications: 'Notifications', papercraft: 'Papercraft' , aiDesign: 'AI Design Studio', studio: 'Design Studio' },
-    ja: { pricing: '料金', factories: '工場を探す', login: 'ログイン', dashboard: 'ダッシュボード', quickQuote: 'クイック見積もり', shapeGen: '3Dモデリング', download: 'ダウンロード', logout: 'ログアウト', notifications: '通知', papercraft: 'ペーパークラフト' , aiDesign: 'AI設計スタジオ', studio: 'デザインスタジオ' },
-    zh: { pricing: '价格', factories: '找工厂', login: '登录', dashboard: '控制台', quickQuote: '快速报价', shapeGen: '3D建模', download: '下载', logout: '退出', notifications: '通知', papercraft: '纸艺切割' , aiDesign: 'AI设计工作室', studio: '设计工作室' },
-    es: { pricing: 'Precios', factories: 'Fábricas', login: 'Iniciar Sesión', dashboard: 'Panel', quickQuote: 'Cotización Rápida', shapeGen: 'Modelado 3D', download: 'Descargar', logout: 'Cerrar Sesión', notifications: 'Avisos', papercraft: 'Papercraft' , aiDesign: 'Estudio de Diseño IA', studio: 'Estudio de Diseño' },
-    ar: { pricing: 'الأسعار', factories: 'ابحث عن مصنع', login: 'تسجيل الدخول', dashboard: 'لوحة التحكم', quickQuote: 'عرض سعر سريع', shapeGen: 'نمذجة ثلاثية الأبعاد', download: 'تنزيل', logout: 'خروج', notifications: 'إشعارات', papercraft: 'ورق وليزر' , aiDesign: 'استوديو التصميم AI', studio: 'استوديو التصميم' },
+const dict: Record<IsoLang, { pricing: string; factories: string; login: string; dashboard: string; quickQuote: string; shapeGen: string; download: string; logout: string; notifications: string; papercraft: string; aiDesign: string; studio: string; mainNavigation: string; openMenu: string; closeMenu: string; navigationMenu: string }> = {
+    ko: { pricing: '요금', factories: '공장 찾기', login: '로그인', dashboard: '대시보드', quickQuote: '빠른 견적', shapeGen: '3D 모델링', download: '다운로드', logout: '로그아웃', notifications: '알림', papercraft: '종이·레이저컷' , aiDesign: 'AI 설계 스튜디오', studio: '디자인 스튜디오', mainNavigation: '주요 메뉴', openMenu: '메뉴 열기', closeMenu: '메뉴 닫기', navigationMenu: '탐색 메뉴' },
+    en: { pricing: 'Pricing', factories: 'Find Factories', login: 'Sign In', dashboard: 'Dashboard', quickQuote: 'Quick Quote', shapeGen: '3D Modeler', download: 'Download', logout: 'Sign Out', notifications: 'Notifications', papercraft: 'Papercraft' , aiDesign: 'AI Design Studio', studio: 'Design Studio', mainNavigation: 'Main navigation', openMenu: 'Open menu', closeMenu: 'Close menu', navigationMenu: 'Navigation menu' },
+    ja: { pricing: '料金', factories: '工場を探す', login: 'ログイン', dashboard: 'ダッシュボード', quickQuote: 'クイック見積もり', shapeGen: '3Dモデリング', download: 'ダウンロード', logout: 'ログアウト', notifications: '通知', papercraft: 'ペーパークラフト' , aiDesign: 'AI設計スタジオ', studio: 'デザインスタジオ', mainNavigation: 'メインナビゲーション', openMenu: 'メニューを開く', closeMenu: 'メニューを閉じる', navigationMenu: 'ナビゲーションメニュー' },
+    zh: { pricing: '价格', factories: '找工厂', login: '登录', dashboard: '控制台', quickQuote: '快速报价', shapeGen: '3D建模', download: '下载', logout: '退出', notifications: '通知', papercraft: '纸艺切割' , aiDesign: 'AI设计工作室', studio: '设计工作室', mainNavigation: '主导航', openMenu: '打开菜单', closeMenu: '关闭菜单', navigationMenu: '导航菜单' },
+    es: { pricing: 'Precios', factories: 'Fábricas', login: 'Iniciar Sesión', dashboard: 'Panel', quickQuote: 'Cotización Rápida', shapeGen: 'Modelado 3D', download: 'Descargar', logout: 'Cerrar Sesión', notifications: 'Avisos', papercraft: 'Papercraft' , aiDesign: 'Estudio de Diseño IA', studio: 'Estudio de Diseño', mainNavigation: 'Navegación principal', openMenu: 'Abrir menú', closeMenu: 'Cerrar menú', navigationMenu: 'Menú de navegación' },
+    ar: { pricing: 'الأسعار', factories: 'ابحث عن مصنع', login: 'تسجيل الدخول', dashboard: 'لوحة التحكم', quickQuote: 'عرض سعر سريع', shapeGen: 'نمذجة ثلاثية الأبعاد', download: 'تنزيل', logout: 'خروج', notifications: 'إشعارات', papercraft: 'ورق وليزر' , aiDesign: 'استوديو التصميم AI', studio: 'استوديو التصميم', mainNavigation: 'التنقل الرئيسي', openMenu: 'فتح القائمة', closeMenu: 'إغلاق القائمة', navigationMenu: 'قائمة التنقل' },
 };
 
 const IconZap = () => (
@@ -66,40 +67,14 @@ export default function Header() {
 
     // ── 모든 hooks는 early return 앞에 선언 (Rules of Hooks) ─────────────────
     const [isMobileOpen, setIsMobileOpen] = useState(false);
-    const [currentUser, setCurrentUser] = useState<{ name?: string; avatar?: string } | null>(null);
+    const { user, sessionStatus, logout } = useAuthStore();
+    const currentUser = sessionStatus === 'authenticated' ? user : null;
     const [scrolled, setScrolled] = useState(false);
 
     useEffect(() => {
         const onScroll = () => setScrolled(window.scrollY > 20);
         window.addEventListener('scroll', onScroll);
         return () => window.removeEventListener('scroll', onScroll);
-    }, []);
-
-    useEffect(() => {
-        const load = () => {
-            let stored: string | null = null;
-            try {
-                stored = localStorage.getItem('currentUser');
-            } catch (err) {
-                if (process.env.NODE_ENV !== 'production') {
-                    console.warn('[Header] localStorage unavailable:', err);
-                }
-                setCurrentUser(null);
-                return;
-            }
-            try {
-                setCurrentUser(stored ? JSON.parse(stored) : null);
-            } catch (err) {
-                if (process.env.NODE_ENV !== 'production') {
-                    console.warn('[Header] currentUser parse failed, clearing:', err);
-                }
-                try { localStorage.removeItem('currentUser'); } catch { /* ignore */ }
-                setCurrentUser(null);
-            }
-        };
-        load();
-        window.addEventListener('storage', load);
-        return () => window.removeEventListener('storage', load);
     }, []);
 
     useEffect(() => {
@@ -126,13 +101,16 @@ export default function Header() {
     // Without #2, the header on /dashboard would always render in English even
     // if the user selected Korean — that was the visible "split language" bug.
     const cookieLang = readLangCookie();
-    const rawFirst = isAdmin
-        ? 'kr'
-        : (parts[0] && isSupportedLang(parts[0]))
-            ? parts[0]
-            : (cookieLang || DEFAULT_LANG);
+    const hasRouteLang = Boolean(parts[0] && ['en', 'kr', 'ja', 'cn', 'ko', 'zh', 'jp', 'es', 'ar'].includes(parts[0]));
+    const rawFirst = isAdmin ? 'kr' : (hasRouteLang ? parts[0] : (cookieLang || DEFAULT_LANG));
     const lang = toRouteLang(rawFirst);
     const t = dict[toIsoLang(rawFirst)];
+    const authHref = (path: '/login' | '/dashboard') => `${path}?lang=${lang}`;
+
+    const handleLogout = async () => {
+        await logout();
+        window.location.href = `/${lang}/`;
+    };
 
     const isActive = (href: string) => pathname?.includes(href.replace(/\/$/, '')) ?? false;
     const isRtl = lang === 'ar';
@@ -157,7 +135,7 @@ export default function Header() {
 
     return (
         <>
-            <header dir={isRtl ? 'rtl' : undefined} role="banner" style={{
+            <header dir={isRtl ? 'rtl' : 'ltr'} role="banner" style={{
                 position: 'fixed', top: 0, left: 0, width: '100%', zIndex: 100,
                 background: headerBg,
                 backdropFilter: scrolled ? 'blur(20px)' : 'none',
@@ -179,12 +157,6 @@ export default function Header() {
                         <span>
                             <span style={{ color: '#111827' }}>Nexy</span><span style={{ color: '#0b5cff' }}>Fab</span>
                         </span>
-                        <span aria-label="Beta version" style={{
-                            fontSize: '10px', fontWeight: 800, letterSpacing: '0.05em',
-                            color: '#0b5cff', background: 'rgba(11,92,255,0.1)',
-                            border: '1px solid rgba(11,92,255,0.25)', borderRadius: '6px',
-                            padding: '2px 6px', lineHeight: 1, textTransform: 'uppercase',
-                        }}>BETA</span>
                     </Link>
 
                     {/* Desktop Pill Nav — a flex child (NOT absolutely centered):
@@ -192,7 +164,7 @@ export default function Header() {
                         when signed in (Studio + Dashboard + Sign Out) the pill
                         overlapped the language selector. In-flow + space-between
                         keeps logo · nav · controls apart at every width. */}
-                    <nav aria-label="Main navigation" style={{
+                    <nav aria-label={t.mainNavigation} style={{
                         margin: '0 12px', flexShrink: 1, minWidth: 0,
                         display: 'flex', alignItems: 'center', gap: '1px',
                         flexWrap: 'nowrap',
@@ -276,7 +248,7 @@ export default function Header() {
                     <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexShrink: 0 }}>
                         {currentUser && (
                             <div style={{ display: 'flex', alignItems: 'center', flexShrink: 0 }}>
-                                <NexyfabNotificationBell ariaLabel={t.notifications} />
+                                <NexyfabNotificationBell ariaLabel={t.notifications} lang={lang} />
                             </div>
                         )}
                         <div className="desktop-only" style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
@@ -285,7 +257,7 @@ export default function Header() {
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                                     {/* 구 '✨ Studio'(/studio) 버튼 제거(2026-07-16 IA 감사): 'AI 설계 스튜디오'
                                         nav와 명칭 충돌 + 모바일 비대칭. 자유형 Studio는 허브·기계 페이지 카드로 진입. */}
-                                    <Link href="/dashboard" style={{
+                                <Link href={authHref('/dashboard')} style={{
                                         display: 'flex', alignItems: 'center', gap: '10px',
                                         background: '#111827', color: '#fff',
                                         padding: '9px 18px', borderRadius: '16px',
@@ -302,7 +274,7 @@ export default function Header() {
                                         </div>
                                     </Link>
                                     <button
-                                        onClick={() => { localStorage.removeItem('currentUser'); setCurrentUser(null); window.location.href = `/${lang}/`; }}
+                                        onClick={() => { void handleLogout(); }}
                                         title={t.logout}
                                         style={{
                                             display: 'flex', alignItems: 'center', gap: '5px',
@@ -320,7 +292,7 @@ export default function Header() {
                                     </button>
                                 </div>
                             ) : (
-                                <Link href="/login" style={{
+                                <Link href={authHref('/login')} style={{
                                     display: 'flex', alignItems: 'center', gap: '8px',
                                     background: '#0b5cff', color: '#fff',
                                     padding: '10px 22px', borderRadius: '16px',
@@ -348,7 +320,7 @@ export default function Header() {
                                 gap: isMobileOpen ? '0px' : '5px', cursor: 'pointer', padding: '0',
                                 transition: 'all 0.2s',
                             }}
-                            aria-label={isMobileOpen ? 'Close menu' : 'Open menu'}
+                            aria-label={isMobileOpen ? t.closeMenu : t.openMenu}
                             aria-expanded={isMobileOpen}
                             aria-controls="mobile-menu"
                         >
@@ -365,7 +337,7 @@ export default function Header() {
                 <div
                     role="button"
                     tabIndex={0}
-                    aria-label="Close menu"
+                    aria-label={t.closeMenu}
                     onClick={() => setIsMobileOpen(false)}
                     onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setIsMobileOpen(false); } }}
                     style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.3)', zIndex: 98, backdropFilter: 'blur(4px)' }}
@@ -375,7 +347,7 @@ export default function Header() {
             {/* Mobile Dropdown */}
             <div id="mobile-menu"
                 role="dialog"
-                aria-label="Navigation menu"
+                aria-label={t.navigationMenu}
                 style={{
                 position: 'fixed', top: scrolled ? '60px' : '72px', left: '16px', right: '16px',
                 background: 'rgba(255,255,255,0.95)', backdropFilter: 'blur(20px)',
@@ -428,7 +400,7 @@ export default function Header() {
 
                     {currentUser ? (
                         <>
-                        <Link href="/dashboard" style={{
+                        <Link href={authHref('/dashboard')} style={{
                             display: 'flex', alignItems: 'center', gap: '10px',
                             padding: '14px 16px', borderRadius: '14px',
                             color: '#374151', fontWeight: 700, fontSize: '15px', textDecoration: 'none',
@@ -445,7 +417,7 @@ export default function Header() {
                             {t.dashboard}
                         </Link>
                         <button
-                            onClick={() => { localStorage.removeItem('currentUser'); setCurrentUser(null); window.location.href = `/${lang}/`; }}
+                            onClick={() => { void handleLogout(); }}
                             style={{
                                 display: 'flex', alignItems: 'center', gap: '10px',
                                 padding: '14px 16px', borderRadius: '14px',
@@ -459,7 +431,7 @@ export default function Header() {
                         </button>
                         </>
                     ) : (
-                        <Link href="/login" style={{
+                        <Link href={authHref('/login')} style={{
                             display: 'flex', alignItems: 'center', gap: '8px',
                             padding: '14px 16px', borderRadius: '14px',
                             color: '#0b5cff', fontWeight: 700, fontSize: '15px', textDecoration: 'none',

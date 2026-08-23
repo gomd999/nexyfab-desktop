@@ -75,6 +75,8 @@ export function buildCorridor(spec = {}) {
     const segLen = Math.min(step, s1 - s);
     const mid = s + segLen / 2;
     const at = chainAt(elements, mid);
+    const segmentStart = chainAt(elements, s);
+    const segmentEnd = chainAt(elements, s + segLen);
     const headingDeg = (Math.atan2(at.dir[1], at.dir[0]) * 180) / Math.PI;
     // 곡선 구간 현 근사 오차: 요소 반경을 알면 폐형으로 낸다(직선이면 0)
     const el = elements.find((e) => mid <= e.ch0 + e.len + 1e-6) ?? elements[elements.length - 1];
@@ -104,6 +106,13 @@ export function buildCorridor(spec = {}) {
          * 이 선언이 없으면 간섭 판정이 구간 수만큼 오탐한다(실측: 48부품에서 34건).
          */
         continuousWith: `corridor:${sec.id ?? 'sec'}`,
+        continuousSegment: {
+          order: Math.round((s - s0) / step),
+          start: [segmentStart.p[0], segmentStart.p[1], 0],
+          end: [segmentEnd.p[0], segmentEnd.p[1], 0],
+          startAxis: [segmentStart.dir[0], segmentStart.dir[1], 0],
+          endAxis: [segmentEnd.dir[0], segmentEnd.dir[1], 0],
+        },
       });
       volumeMm3 += polygonArea(profile) * segLen;
       if (si === 0) stations.push({ staMm: Math.round(mid), x: +at.p[0].toFixed(1), y: +at.p[1].toFixed(1), headingDeg: +headingDeg.toFixed(3), superPct: +supPct.toFixed(2) });

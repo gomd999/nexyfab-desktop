@@ -1,0 +1,37 @@
+{
+  "schema": "nexyfab.mechanical-single-part-step-import.v1",
+  "feature": "bend",
+  "partRevisionSha256": "5687622fc81b71a3b0fbd97dd9bc37e39950cb6fe8d074709321c489c5f1c195",
+  "sourceDesignRevisionSha256": "3cf6a0f9c8efcf153a2cfefde087a2112c086fc412d2feeaeb9ce52542838564",
+  "sourceStep": {
+    "path": "docs/evidence/cad-independent/local/mechanical-core-runtime-260813/bend/bend-edited.step",
+    "sha256": "de39d9552a7b52f6f6e1164769dba66479a4282b533bdb3a7de50ed88fe95a0e",
+    "bytes": 31981,
+    "assertionId": "bend.export.native-step"
+  },
+  "exactKernel": "OCCT",
+  "units": {
+    "value": "mm",
+    "confidence": "high"
+  },
+  "solidCount": 1,
+  "singleSolid": true,
+  "volumeMm3": 3600.0000000020445,
+  "boundsMm": [
+    [
+      -30.001554189996003,
+      -1.0015541899960017,
+      -15.001554189996002
+    ],
+    [
+      17.237286106525005,
+      24.854717575061002,
+      15.001554189996002
+    ]
+  ],
+  "dimensionsMm": {
+    "x": 47.238840296521005,
+    "y": 25.856271765057002,
+    "z": 30.003108379992003
+  }
+}

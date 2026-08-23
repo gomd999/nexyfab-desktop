@@ -9,7 +9,7 @@
  * ```
  *   1 초안(draft)   개념 배치 · 치수 추정 포함    → 말로 고친다(되돌릴 수 있다)
  *   2 상세(detail)  치수 확정 · 게이트 통과       → 여기서 「확정」한다
- *   3 제작(make)    STEP · 도면 · 물량            → 확정한 뒤에만 만든다
+ *   3 산출물(make)  STEP · 도면 · 물량            → 확정한 뒤에만 만든다
  * ```
  *
  * ⚠ **확정은 스냅샷을 남긴다.** 남기지 않으면 다음 수정이 확정본을 덮어써서, 사용자는
@@ -25,22 +25,34 @@ export const DESIGN_STAGES: Array<{
   id: DesignStage;
   ko: string; en: string; zh: string; ja: string; es: string; ar: string;
   /** 이 단계에서 **무엇이 확정되지 않았는지** — 사용자가 뭘 더 말해야 하는지 알 수 있게. */
-  pendingKo: string; pendingEn: string;
+  pendingKo: string; pendingEn: string; pendingZh: string; pendingJa: string; pendingEs: string; pendingAr: string;
 }> = [
   {
     id: 'draft', ko: '초안', en: 'Draft', zh: '草案', ja: '初案', es: 'Borrador', ar: 'مسودة',
     pendingKo: '치수 일부는 추정입니다 — 다르면 말로 고쳐 주세요.',
     pendingEn: 'Some dimensions are estimated — tell me if they are wrong.',
+    pendingZh: '部分尺寸为估算值——如有不符，请直接说明修改。',
+    pendingJa: '一部の寸法は推定値です。異なる場合は修正内容を伝えてください。',
+    pendingEs: 'Algunas cotas son estimadas; indícame cuáles deben corregirse.',
+    pendingAr: 'بعض الأبعاد تقديرية — أخبرني بما يجب تصحيحه.',
   },
   {
     id: 'detail', ko: '상세', en: 'Detail', zh: '深化', ja: '詳細', es: 'Detalle', ar: 'تفصيل',
     pendingKo: '치수가 확정됐습니다. 이대로 확정하면 제작물을 만듭니다.',
     pendingEn: 'Dimensions are settled. Confirm to produce manufacturing outputs.',
+    pendingZh: '尺寸已确定。确认后将生成制造输出。',
+    pendingJa: '寸法が確定しました。確認すると製造用出力を生成します。',
+    pendingEs: 'Las cotas están definidas. Confirma para generar los entregables de fabricación.',
+    pendingAr: 'تم تثبيت الأبعاد. أكّد لإنشاء مخرجات التصنيع.',
   },
   {
-    id: 'make', ko: '제작', en: 'Manufacturing', zh: '制造', ja: '製作', es: 'Fabricación', ar: 'التصنيع',
-    pendingKo: 'STEP·도면·물량이 확정본 기준으로 나갑니다.',
-    pendingEn: 'STEP, drawings and quantities are produced from the confirmed version.',
+    id: 'make', ko: '제작 산출물', en: 'Manufacturing outputs', zh: '制造输出', ja: '製造出力', es: 'Entregables', ar: 'مخرجات التصنيع',
+    pendingKo: 'STEP·도면·물량이 확정본 기준으로 생성됩니다. 실제 제작 전에는 제조 검증이 필요합니다.',
+    pendingEn: 'STEP, drawings and quantities use the confirmed version. Manufacturing verification is still required.',
+    pendingZh: 'STEP、图纸和工程量均基于确认版本生成；实际制造前仍需制造验证。',
+    pendingJa: 'STEP・図面・数量は確定版から生成されます。実製造前には製造検証が必要です。',
+    pendingEs: 'STEP, planos y cantidades se generan desde la versión confirmada. Aún se requiere verificación antes de fabricar.',
+    pendingAr: 'تُنشأ ملفات STEP والرسومات والكميات من النسخة المؤكدة، ولا يزال التحقق التصنيعي مطلوبًا قبل الإنتاج.',
   },
 ];
 

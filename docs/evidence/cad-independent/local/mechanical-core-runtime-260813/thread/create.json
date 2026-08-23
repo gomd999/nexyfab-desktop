@@ -1,0 +1,57 @@
+{
+  "schema": "nexyfab.mechanical-core-feature-local-runtime.v1",
+  "feature": "thread",
+  "axis": "create",
+  "status": "PASS",
+  "executedAt": "2026-08-22T07:13:30.564Z",
+  "payload": {
+    "id": "runtime-feature",
+    "enabled": true,
+    "type": "thread",
+    "params": {
+      "pitch": 2,
+      "depth": 1,
+      "angle": 60,
+      "cosmetic": 0
+    }
+  },
+  "exact": {
+    "handle": "occt:187",
+    "kernelKind": "Solid",
+    "nativeShapeType": 0,
+    "solidCount": 1,
+    "singleSolid": true,
+    "volumeMm3": 2364.8897842716124,
+    "edgeCount": 25,
+    "faceCount": 11,
+    "boundsMm": [
+      [
+        -10.027878607474912,
+        -4.027931747984248,
+        -10.027931747984248
+      ],
+      [
+        10.027879058040494,
+        4.027931747984248,
+        10.027931747984248
+      ]
+    ]
+  },
+  "featureMeaning": {
+    "assertion": "actual product thread registry path subtracted an exact triangular helical cutter while retaining the cylindrical host envelope",
+    "pitchMm": 2,
+    "depthMm": 1,
+    "includedAngleDeg": 60,
+    "turns": 4,
+    "baselineVolumeMm3": 2513.2741228718346,
+    "removedVolumeMm3": 148.38433860022224,
+    "actualVolumeMm3": 2364.8897842716124,
+    "radialSpansMm": [
+      20.055757665515408,
+      20.055863495968495
+    ],
+    "axialSpanMm": 8.055863495968495
+  },
+  "exactScope": "declared numeric runtime case",
+  "assertion": "native OCCT produced one non-empty exact solid and changed the host geometry"
+}

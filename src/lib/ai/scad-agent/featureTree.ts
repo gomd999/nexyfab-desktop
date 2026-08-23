@@ -19,6 +19,8 @@
 export interface FeatureNode {
   /** Stable internal id. */
   id: string;
+  /** Optional server-bound canonical part occurrence. */
+  partId?: string;
   /** User/agent-friendly name. Optional but recommended for refs. */
   name?: string;
   /** Operation kind. Matches the brep_* tool name minus the prefix. */

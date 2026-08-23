@@ -1,0 +1,31 @@
+{
+  "schema": "nexyfab.mechanical-core-feature-local-runtime.v1",
+  "feature": "thread",
+  "axis": "edit",
+  "status": "PASS",
+  "executedAt": "2026-08-22T07:13:30.564Z",
+  "commandId": "thread-runtime-param-edit",
+  "historyDepth": 1,
+  "before": {
+    "id": "runtime-feature",
+    "enabled": true,
+    "type": "thread",
+    "params": {
+      "pitch": 2,
+      "depth": 1,
+      "angle": 60,
+      "cosmetic": 0
+    }
+  },
+  "after": {
+    "id": "runtime-feature",
+    "enabled": true,
+    "type": "thread",
+    "params": {
+      "pitch": 2.5,
+      "depth": 1,
+      "angle": 60,
+      "cosmetic": 0
+    }
+  }
+}

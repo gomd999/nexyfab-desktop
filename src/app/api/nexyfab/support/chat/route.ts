@@ -9,7 +9,10 @@ import { getAuthUser } from '@/lib/auth-middleware';
 import { getDbAdapter } from '@/lib/db-adapter';
 import { checkOrigin } from '@/lib/csrf';
 import { sanitizeText } from '@/lib/sanitize';
-import { withRateLimit, RATE_LIMITS } from '@/lib/with-rate-limit';
+import { withRateLimit } from '@/lib/with-rate-limit';
+import { boundedJsonError, readBoundedJson } from '@/lib/boundedJsonBody';
+
+const MAX_SUPPORT_CHAT_BODY_BYTES = 16 * 1024;
 
 const sendSchema = z.object({
   message: z.string().min(1).max(2000),
@@ -35,7 +38,11 @@ async function ensureTable() {
 export const POST = withRateLimit({ key: 'support-chat', max: 20, windowMs: 60_000 }, async (req: NextRequest) => {
   if (!checkOrigin(req)) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
 
-  const raw = await req.json().catch(() => null);
+  let raw: unknown = null;
+  try { raw = await readBoundedJson(req, MAX_SUPPORT_CHAT_BODY_BYTES); }
+  catch (error) {
+    if (boundedJsonError(error)?.code === 'PAYLOAD_TOO_LARGE') return NextResponse.json({ error: 'Request too large', code: 'PAYLOAD_TOO_LARGE' }, { status: 413 });
+  }
   const parsed = sendSchema.safeParse(raw);
   if (!parsed.success) {
     return NextResponse.json({ error: parsed.error.issues[0]?.message ?? 'Invalid input' }, { status: 400 });

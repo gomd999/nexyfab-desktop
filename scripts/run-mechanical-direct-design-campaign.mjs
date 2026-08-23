@@ -1,0 +1,253 @@
+#!/usr/bin/env node
+import crypto from 'node:crypto';
+import fs from 'node:fs';
+import path from 'node:path';
+import { pathToFileURL, fileURLToPath } from 'node:url';
+import {
+  assessMechanicalDesignCampaign,
+  parseTrustedMechanicalDesignVerifiers,
+  validateMechanicalDesignVerificationReceipt,
+} from './mechanical-commercial-evidence-v3.mjs';
+
+const ARTIFACT_ROLES = Object.freeze(['requirements', 'nfab', 'step', 'drawing', 'bom', 'manifest', 'intentEvaluation', 'verificationReceipt']);
+const REQUIRED_CHECKS = Object.freeze([
+  'kernelValid', 'nonEmpty', 'stableFeatureIds', 'lockedDimensionsPreserved',
+  'nfabThreeCycles', 'stepThreeCycles', 'drawingReleased', 'bomReconciled', 'revisionBound',
+]);
+const SHA256 = /^[a-f0-9]{64}$/;
+
+const canonical = value => {
+  if (Array.isArray(value)) return `[${value.map(canonical).join(',')}]`;
+  if (value && typeof value === 'object') return `{${Object.entries(value).filter(([, item]) => item !== undefined).sort(([a], [b]) => a.localeCompare(b)).map(([key, item]) => `${JSON.stringify(key)}:${canonical(item)}`).join(',')}}`;
+  return JSON.stringify(value);
+};
+const hash = bytes => crypto.createHash('sha256').update(bytes).digest('hex');
+const stateHash = state => hash(Buffer.from(canonical({ ...state, stateSha256: undefined })));
+
+function resolveInside(root, relative) {
+  if (typeof relative !== 'string' || !relative.trim() || path.isAbsolute(relative)) return null;
+  const parts = relative.replaceAll('\\', '/').split('/');
+  if (parts.includes('..')) return null;
+  const resolvedRoot = path.resolve(root);
+  const resolved = path.resolve(resolvedRoot, ...parts);
+  return resolved.startsWith(`${resolvedRoot}${path.sep}`) ? resolved : null;
+}
+
+function assertWorkbook(workbook) {
+  const cases = workbook?.cases;
+  if (workbook?.schema !== 'nexyfab.mechanical-direct-design-workbook.v1'
+    || workbook?.releaseChannel !== 'mechanical-core'
+    || !SHA256.test(String(workbook?.evidenceRootId ?? ''))
+    || !Array.isArray(cases)
+    || cases.length !== 30) throw new Error('DIRECT_DESIGN_WORKBOOK_INVALID');
+  if (new Set(cases.map(item => item?.caseId)).size !== 30
+    || new Set(cases.map(item => item?.primaryFeature)).size !== 30) throw new Error('DIRECT_DESIGN_WORKBOOK_CASES_INVALID');
+  for (const item of cases) {
+    if (!item?.caseId || !item?.family || !item?.primaryFeature || item?.status !== 'evidence_required'
+      || item?.releaseEligible !== false
+      || ARTIFACT_ROLES.some(role => !resolveInside('', item?.artifactPaths?.[role]))) {
+      throw new Error(`DIRECT_DESIGN_WORKBOOK_CASE_INVALID:${item?.caseId ?? 'unknown'}`);
+    }
+  }
+}
+
+export function createMechanicalDirectDesignState(workbook, generatedAt = new Date().toISOString()) {
+  assertWorkbook(workbook);
+  const state = {
+    schema: 'nexyfab.mechanical-direct-design-campaign-state.v1',
+    releaseChannel: 'mechanical-core',
+    evidenceRootId: workbook.evidenceRootId,
+    workbookSha256: hash(Buffer.from(canonical(workbook))),
+    generatedAt,
+    updatedAt: generatedAt,
+    slots: workbook.cases.map(item => ({ caseId: item.caseId, status: 'pending', attempts: 0, error: null, result: null })),
+  };
+  return { ...state, stateSha256: stateHash(state) };
+}
+
+export function resumeMechanicalDirectDesignState(workbook, state) {
+  assertWorkbook(workbook);
+  if (state?.schema !== 'nexyfab.mechanical-direct-design-campaign-state.v1'
+    || state?.releaseChannel !== 'mechanical-core'
+    || state?.evidenceRootId !== workbook.evidenceRootId
+    || state?.workbookSha256 !== hash(Buffer.from(canonical(workbook)))
+    || state?.stateSha256 !== stateHash(state)
+    || !Array.isArray(state?.slots)
+    || state.slots.length !== 30
+    || state.slots.some((slot, index) => slot?.caseId !== workbook.cases[index]?.caseId)) {
+    throw new Error('DIRECT_DESIGN_CAMPAIGN_RESUME_MISMATCH');
+  }
+  return structuredClone(state);
+}
+
+function collectArtifacts(evidenceRoot, caseValue) {
+  const artifacts = {};
+  const normalizedPaths = new Set();
+  for (const role of ARTIFACT_ROLES) {
+    const relative = caseValue.artifactPaths[role];
+    const normalized = relative.replaceAll('\\', '/');
+    if (normalizedPaths.has(normalized)) throw new Error(`DIRECT_DESIGN_ARTIFACT_ROLE_COLLISION:${caseValue.caseId}:${role}`);
+    const absolute = resolveInside(evidenceRoot, relative);
+    if (!absolute || !fs.existsSync(absolute) || !fs.statSync(absolute).isFile() || fs.lstatSync(absolute).isSymbolicLink()) {
+      throw new Error(`DIRECT_DESIGN_ARTIFACT_MISSING:${caseValue.caseId}:${role}`);
+    }
+    const realRoot = fs.realpathSync(evidenceRoot);
+    const real = fs.realpathSync(absolute);
+    if (!real.startsWith(`${realRoot}${path.sep}`)) throw new Error(`DIRECT_DESIGN_ARTIFACT_OUTSIDE_ROOT:${caseValue.caseId}:${role}`);
+    artifacts[role] = { path: normalized, sha256: hash(fs.readFileSync(real)) };
+    normalizedPaths.add(normalized);
+  }
+  return artifacts;
+}
+
+function finalizeCase(evidenceRoot, caseValue, execution, trustedDesignVerifiers, now) {
+  if (!execution || execution.cycles?.nfab !== 3 || execution.cycles?.step !== 3
+    || REQUIRED_CHECKS.some(check => execution.checks?.[check] !== true)) {
+    throw new Error(`DIRECT_DESIGN_RUNTIME_CHECKS_INCOMPLETE:${caseValue.caseId}`);
+  }
+  const artifacts = collectArtifacts(evidenceRoot, caseValue);
+  let manifest;
+  try {
+    manifest = JSON.parse(fs.readFileSync(resolveInside(evidenceRoot, caseValue.artifactPaths.manifest), 'utf8'));
+  } catch {
+    throw new Error(`DIRECT_DESIGN_MANIFEST_INVALID:${caseValue.caseId}`);
+  }
+  const requirementsSha256 = artifacts.requirements.sha256;
+  if (manifest?.schema !== 'nexyfab.mechanical-design-case-manifest.v1'
+    || manifest?.caseId !== caseValue.caseId
+    || !SHA256.test(String(manifest?.designRevisionSha256 ?? ''))
+    || manifest?.requirementsSha256 !== requirementsSha256
+    || ARTIFACT_ROLES.filter(role => role !== 'manifest').some(role => manifest?.artifacts?.[role] !== artifacts[role].sha256)) {
+    throw new Error(`DIRECT_DESIGN_MANIFEST_BINDING_INVALID:${caseValue.caseId}`);
+  }
+  let verificationReceipt;
+  try {
+    verificationReceipt = JSON.parse(fs.readFileSync(resolveInside(evidenceRoot, caseValue.artifactPaths.verificationReceipt), 'utf8'));
+  } catch {
+    throw new Error(`DIRECT_DESIGN_VERIFICATION_RECEIPT_INVALID:${caseValue.caseId}`);
+  }
+  const verificationItem = {
+    caseId: caseValue.caseId,
+    designRevisionSha256: manifest.designRevisionSha256,
+    requirementsSha256,
+    artifacts,
+  };
+  if (!validateMechanicalDesignVerificationReceipt(
+    verificationReceipt,
+    verificationItem,
+    trustedDesignVerifiers,
+    now,
+  )) {
+    throw new Error(`DIRECT_DESIGN_VERIFICATION_RECEIPT_INVALID:${caseValue.caseId}`);
+  }
+  return {
+    caseId: caseValue.caseId,
+    family: caseValue.family,
+    primaryFeature: caseValue.primaryFeature,
+    status: 'pass',
+    designRevisionSha256: manifest.designRevisionSha256,
+    requirementsSha256,
+    cycles: { nfab: 3, step: 3 },
+    checks: Object.fromEntries(REQUIRED_CHECKS.map(check => [check, true])),
+    artifacts,
+  };
+}
+
+function verifyCompletedArtifacts(evidenceRoot, workbook, state) {
+  for (const slot of state.slots.filter(item => item.status === 'completed')) {
+    const caseValue = workbook.cases.find(item => item.caseId === slot.caseId);
+    const current = collectArtifacts(evidenceRoot, caseValue);
+    if (ARTIFACT_ROLES.some(role => current[role].sha256 !== slot.result?.artifacts?.[role]?.sha256)) {
+      throw new Error(`DIRECT_DESIGN_CAMPAIGN_ARTIFACT_TAMPERED:${slot.caseId}`);
+    }
+  }
+}
+
+export function buildMechanicalDirectDesignReceipt(workbook, state, evidenceRoot, generatedAt = new Date().toISOString()) {
+  const byId = new Map(state.slots.map(slot => [slot.caseId, slot]));
+  const cases = workbook.cases.map(item => {
+    const slot = byId.get(item.caseId);
+    if (slot?.status === 'completed') return slot.result;
+    return { caseId: item.caseId, family: item.family, primaryFeature: item.primaryFeature, status: slot?.status === 'failed' ? 'fail' : 'pending' };
+  });
+  const intents = cases.filter(item => item.status === 'pass').reduce((count, item) => {
+    try {
+      const evaluation = JSON.parse(fs.readFileSync(resolveInside(evidenceRoot, item.artifacts.intentEvaluation.path), 'utf8'));
+      return count + (Array.isArray(evaluation?.entries) ? evaluation.entries.length : 0);
+    } catch { return count; }
+  }, 0);
+  const passed = cases.filter(item => item.status === 'pass').length;
+  const failed = cases.filter(item => item.status === 'fail').length;
+  return {
+    schema: 'nexyfab.mechanical-direct-design-campaign.v1', releaseChannel: 'mechanical-core',
+    evidenceRootId: workbook.evidenceRootId, generatedAt, ok: passed === 30 && failed === 0,
+    cases, summary: { cases: 30, passed, pending: 30 - passed - failed, failed, intents, falseVerified: 0 },
+  };
+}
+
+function atomicJson(file, value) {
+  fs.mkdirSync(path.dirname(file), { recursive: true });
+  const temporary = `${file}.${process.pid}.tmp`;
+  fs.writeFileSync(temporary, `${JSON.stringify(value, null, 2)}\n`, { flag: 'wx' });
+  fs.renameSync(temporary, file);
+}
+
+export async function runMechanicalDirectDesignCampaign({ workbook, evidenceRoot, state, executeCase, caseIds, maximumAttempts = 3, onCheckpoint, trustedDesignVerifiers = parseTrustedMechanicalDesignVerifiers(), now = Date.now() }) {
+  const next = resumeMechanicalDirectDesignState(workbook, state);
+  verifyCompletedArtifacts(evidenceRoot, workbook, next);
+  const selected = caseIds ? new Set(caseIds) : null;
+  for (const slot of next.slots) {
+    if (slot.status === 'completed' || (selected && !selected.has(slot.caseId)) || slot.attempts >= maximumAttempts) continue;
+    const caseValue = workbook.cases.find(item => item.caseId === slot.caseId);
+    slot.status = 'running'; slot.attempts += 1; slot.error = null; next.updatedAt = new Date().toISOString();
+    next.stateSha256 = stateHash(next); await onCheckpoint?.(structuredClone(next));
+    try {
+      const execution = await executeCase({ caseValue: structuredClone(caseValue), evidenceRoot, attempt: slot.attempts });
+      slot.result = finalizeCase(evidenceRoot, caseValue, execution, trustedDesignVerifiers, now);
+      slot.status = 'completed';
+      const receipt = buildMechanicalDirectDesignReceipt(workbook, next, evidenceRoot, new Date(now).toISOString());
+      const assessment = assessMechanicalDesignCampaign(receipt, { evidenceRoot, trustedDesignVerifiers, now });
+      const completed = next.slots.filter(item => item.status === 'completed').length;
+      if (!assessment.summaryValid || assessment.passedCases !== completed || assessment.intents < completed * 5) {
+        throw new Error(`DIRECT_DESIGN_CASE_EVIDENCE_INVALID:${caseValue.caseId}`);
+      }
+    } catch (error) {
+      slot.status = 'failed'; slot.result = null; slot.error = error instanceof Error ? error.message : String(error);
+    }
+    next.updatedAt = new Date().toISOString(); next.stateSha256 = stateHash(next); await onCheckpoint?.(structuredClone(next));
+  }
+  return next;
+}
+
+const option = (args, name) => args.find(item => item.startsWith(`--${name}=`))?.slice(name.length + 3);
+async function main(args = process.argv.slice(2)) {
+  const workbookPath = option(args, 'workbook');
+  const statePath = option(args, 'state');
+  const adapterPath = option(args, 'adapter');
+  if (!workbookPath || !statePath || !adapterPath) throw new Error('Usage: --workbook=<workbook.json> --state=<state.json> --adapter=<adapter.mjs> [--receipt=<receipt.json>] [--cases=id,id] [--resume]');
+  const resolvedWorkbook = path.resolve(workbookPath);
+  const workbook = JSON.parse(fs.readFileSync(resolvedWorkbook, 'utf8'));
+  const evidenceRoot = path.dirname(resolvedWorkbook);
+  const resolvedState = path.resolve(statePath);
+  if (!args.includes('--resume') && fs.existsSync(resolvedState)) throw new Error('DIRECT_DESIGN_CAMPAIGN_STATE_ALREADY_EXISTS');
+  const state = args.includes('--resume')
+    ? JSON.parse(fs.readFileSync(resolvedState, 'utf8'))
+    : createMechanicalDirectDesignState(workbook);
+  const adapter = await import(pathToFileURL(path.resolve(adapterPath)).href);
+  if (typeof adapter.executeMechanicalDesignCase !== 'function') throw new Error('DIRECT_DESIGN_CAMPAIGN_ADAPTER_EXPORT_MISSING');
+  const next = await runMechanicalDirectDesignCampaign({
+    workbook, evidenceRoot, state, executeCase: adapter.executeMechanicalDesignCase,
+    caseIds: option(args, 'cases')?.split(',').map(item => item.trim()).filter(Boolean),
+    onCheckpoint: checkpoint => atomicJson(resolvedState, checkpoint),
+  });
+  atomicJson(resolvedState, next);
+  const receiptPath = path.resolve(option(args, 'receipt') ?? `${resolvedState}.receipt.json`);
+  atomicJson(receiptPath, buildMechanicalDirectDesignReceipt(workbook, next, evidenceRoot));
+  const counts = Object.fromEntries(['pending', 'running', 'completed', 'failed'].map(status => [status, next.slots.filter(slot => slot.status === status).length]));
+  process.stdout.write(`${JSON.stringify({ state: resolvedState, receipt: receiptPath, counts })}\n`);
+  if (counts.failed > 0 || counts.completed < 30) process.exitCode = 4;
+}
+
+if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+  main().catch(error => { process.stderr.write(`[mechanical-direct-design] ${error instanceof Error ? error.message : String(error)}\n`); process.exitCode = 2; });
+}

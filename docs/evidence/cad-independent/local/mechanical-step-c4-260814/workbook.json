@@ -1,0 +1,44 @@
+{
+  "schema": "nexyfab.mechanical-standalone-step-c4-workbook.v1",
+  "releaseChannel": "mechanical-core",
+  "designRevisionSha256": "d3af68117bd55dec3d5f750078fee7a562e6b62515264bf9aac5c0fbab5176d8",
+  "source": {
+    "path": "source.step",
+    "sha256": "c5cec6b3a1f345a61ad076852c0508bd8c296b552ae62841299da91f36fde99b"
+  },
+  "design": {
+    "schema": "nexyfab.local-step-c4-design.v1",
+    "units": "mm",
+    "assembly": "NexyFab_C4_Box_Assembly",
+    "parts": [
+      {
+        "id": "base-plate",
+        "label": "Base Plate",
+        "dimensionsMm": [
+          100,
+          60,
+          8
+        ],
+        "translationMm": [
+          0,
+          0,
+          0
+        ]
+      },
+      {
+        "id": "mount-block",
+        "label": "Mount Block",
+        "dimensionsMm": [
+          40,
+          20,
+          12
+        ],
+        "translationMm": [
+          20,
+          15,
+          8
+        ]
+      }
+    ]
+  }
+}

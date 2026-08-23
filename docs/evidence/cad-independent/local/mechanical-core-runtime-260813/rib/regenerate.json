@@ -1,0 +1,79 @@
+{
+  "schema": "nexyfab.mechanical-core-feature-local-runtime.v1",
+  "feature": "rib",
+  "axis": "regenerate",
+  "status": "PASS",
+  "executedAt": "2026-08-22T07:13:30.564Z",
+  "initial": {
+    "handle": "occt:59",
+    "kernelKind": "Solid",
+    "nativeShapeType": 0,
+    "solidCount": 1,
+    "singleSolid": true,
+    "volumeMm3": 15120,
+    "edgeCount": 24,
+    "faceCount": 11,
+    "boundsMm": [
+      [
+        -30.000000100000005,
+        -4.000000100000004,
+        -15.000000100000003
+      ],
+      [
+        30.000000100000005,
+        10.000000100000003,
+        15.000000100000003
+      ]
+    ]
+  },
+  "edited": {
+    "handle": "occt:61",
+    "kernelKind": "Solid",
+    "nativeShapeType": 0,
+    "solidCount": 1,
+    "singleSolid": true,
+    "volumeMm3": 15600,
+    "edgeCount": 24,
+    "faceCount": 11,
+    "boundsMm": [
+      [
+        -30.000000100000005,
+        -4.000000100000004,
+        -15.000000100000003
+      ],
+      [
+        30.000000100000005,
+        10.000000100000003,
+        15.000000100000003
+      ]
+    ]
+  },
+  "repeated": {
+    "handle": "occt:63",
+    "kernelKind": "Solid",
+    "nativeShapeType": 0,
+    "solidCount": 1,
+    "singleSolid": true,
+    "volumeMm3": 15600,
+    "edgeCount": 24,
+    "faceCount": 11,
+    "boundsMm": [
+      [
+        -30.000000100000005,
+        -4.000000100000004,
+        -15.000000100000003
+      ],
+      [
+        30.000000100000005,
+        10.000000100000003,
+        15.000000100000003
+      ]
+    ]
+  },
+  "featureMeaning": {
+    "assertion": "exact feature added material relative to its exact seed",
+    "baselineVolumeMm3": 14400,
+    "actualVolumeMm3": 15600
+  },
+  "assertion": "edited parameter changed the exact signature and a fresh native regeneration reproduced topology, bounds, and volume"
+}

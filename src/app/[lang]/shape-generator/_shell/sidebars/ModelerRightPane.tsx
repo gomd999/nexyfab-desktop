@@ -24,6 +24,7 @@ import { FeatureCatalogPanel, type CatalogPanelDict } from '../../featureCatalog
 import type { FeatureRoute } from '../../featureCatalog/registry';
 import { fmtShell, pickShellDict, type ShellDict } from '../shellDict';
 import { toIsoLang } from '@/lib/i18n/normalize';
+import { useDomainWorkspaceSelection } from '../domainWorkspaceStore';
 
 export interface ModelerRightPaneProps {
   lang: string;
@@ -71,16 +72,33 @@ export function ModelerRightPane({ lang }: ModelerRightPaneProps) {
   // Deferred sub-panels (AiChatPanel / CommentsPanel) are still ko/en-binary.
   const isKo = toIsoLang(lang) === 'ko';
   const [activeTab, setActiveTab] = useState<Tab>('inspector');
+  const [domainWorkspace] = useDomainWorkspaceSelection();
   const selectedLabel = useShellBridge(s => s.selectedLabel);
   const selectionCount = useShellBridge(s => s.selectionCount);
   const volume = useShellBridge(s => s.volume);
   const triangleCount = useShellBridge(s => s.triangleCount);
+  const baseShapeItem = useShellBridge(s => s.baseShapeItem);
   const featureItems = useShellBridge(s => s.featureItems);
   const selectedFeatureId = useShellBridge(s => s.selectedFeatureId);
   const openComments = useOpenCommentCount(activeTab);
   const selectedFeature = selectedFeatureId
-    ? featureItems.find(f => f.id === selectedFeatureId)
+    ? (baseShapeItem?.id === selectedFeatureId
+        ? baseShapeItem
+        : featureItems.find(f => f.id === selectedFeatureId))
     : null;
+
+  useEffect(() => {
+    setActiveTab(domainWorkspace.experience === 'guided' ? 'ai' : 'inspector');
+  }, [domainWorkspace.experience]);
+
+  useEffect(() => {
+    const openPane = (event: Event) => {
+      const tab = (event as CustomEvent<{ tab?: Tab }>).detail?.tab;
+      if (tab === 'inspector' || tab === 'engineering' || tab === 'ai' || tab === 'comments') setActiveTab(tab);
+    };
+    window.addEventListener('nexyfab:open-right-pane', openPane);
+    return () => window.removeEventListener('nexyfab:open-right-pane', openPane);
+  }, []);
 
   return (
     <SidePanel
@@ -106,6 +124,7 @@ export function ModelerRightPane({ lang }: ModelerRightPaneProps) {
           featureId={selectedFeature?.id ?? null}
           featureType={selectedFeature?.type ?? null}
           featureParams={selectedFeature?.params ?? null}
+          featureParamDefs={selectedFeature?.paramDefs ?? null}
           featureEdges={selectedFeature?.edges ?? null}
         />
       )}
@@ -126,6 +145,7 @@ const GEOMETRY_FEATURE_TYPES = new Set(['fillet', 'chamfer', 'variableFillet']);
 function InspectorTab({
   d, isKo, lang, selectedLabel, selectionCount, volume, triangleCount,
   featureId, featureType, featureParams, featureEdges,
+  featureParamDefs,
 }: {
   d: ShellDict;
   isKo: boolean;
@@ -138,6 +158,7 @@ function InspectorTab({
   featureId: string | null;
   featureType: string | null;
   featureParams: Record<string, number> | null;
+  featureParamDefs: Record<string, { label?: string; min?: number; max?: number; step?: number; unit?: string }> | null;
   featureEdges: { id: string; meta?: string }[] | null;
 }) {
   const dfmWarningCount = useShellBridge(s => s.dfmWarningCount);
@@ -200,12 +221,17 @@ function InspectorTab({
         ? `${d.geometryTitle} · ${featureType}`
         : `${d.paramsTitle}${featureType ? ` · ${featureType}` : ''}`}>
         {featureId && featureParams && Object.keys(featureParams).length > 0 ? (
-          Object.entries(featureParams).map(([key, value]) => (
-            <PropRow key={key} label={key}>
+          Object.entries(featureParams).map(([key, value]) => {
+            const def = featureParamDefs?.[key];
+            const fieldId = `inspector-${featureId}-${key}`.replace(/[^a-zA-Z0-9_-]/g, '-');
+            return (
+            <PropRow key={key} label={def?.label ?? key}>
               <PropNumber
                 value={value}
                 ariaLabel={`${featureType ?? 'feature'} ${key}`}
                 testId={`inspector-param-${key}`}
+                inputId={fieldId}
+                inputName={`${featureId}.${key}`}
                 onChange={(v) => {
                   if (typeof window !== 'undefined') {
                     window.dispatchEvent(new CustomEvent('nexyfab:update-feature-param', {
@@ -213,11 +239,14 @@ function InspectorTab({
                     }));
                   }
                 }}
-                suffix={paramSuffix(key)}
-                step={paramStep(key)}
+                suffix={def?.unit ?? paramSuffix(key)}
+                min={def?.min}
+                max={def?.max}
+                step={def?.step ?? paramStep(key)}
               />
             </PropRow>
-          ))
+            );
+          })
         ) : (
           <div style={{ fontSize: 11, color: 'var(--nx-text-3)', padding: '4px 0' }}>
             {d.noEditableParams}

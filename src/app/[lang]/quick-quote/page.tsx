@@ -7,6 +7,8 @@ import dynamic from 'next/dynamic';
 import { analytics } from '@/lib/analytics';
 import AutoQuoteCard from './AutoQuoteCard';
 import { MATERIALS, PROCESSES } from './quickQuoteDict';
+import { formatDate, formatNumber } from '@/lib/i18n/format';
+import { loc } from '@/lib/i18n/loc';
 
 // ModelViewer는 client-side only (three.js)
 const ModelViewer = dynamic(() => import('@/app/components/ModelViewer'), { ssr: false });
@@ -451,7 +453,7 @@ const TOLERANCES = [
 
 // ─── 숫자 포맷 ──────────────────────────────────────────────────────────────
 
-const fmtKRW = (n: number) => n.toLocaleString('ko-KR') + '원';
+const fmtKRW = (n: number, lang: string) => `${formatNumber(n, lang) ?? '0'}원`;
 
 // ─── 상수 ──────────────────────────────────────────────────────────────────
 
@@ -542,7 +544,7 @@ function QuickQuotePageInner() {
     // 로그인 상태
     const [isLoggedIn, setIsLoggedIn] = useState(false);
     useEffect(() => {
-        const user = localStorage.getItem('currentUser');
+        const user = sessionStorage.getItem('currentUser');
         setIsLoggedIn(!!user);
     }, []);
 
@@ -983,7 +985,9 @@ function QuickQuotePageInner() {
         const procLabel = PROCESSES.find(p => p.id === process)?.label.ko || process;
         const finLabel = FINISHES.find(f => f.id === finishType)?.label?.ko || finishType;
         const tolLabel = TOLERANCES.find(t => t.id === tolerance)?.label?.ko || tolerance;
-        const now = new Date().toLocaleString('ko-KR');
+        const now = formatDate(new Date(), lang, {
+            year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit',
+        }) ?? '';
 
         const aiSummary = aiReport?.summary ? String(aiReport.summary) : '';
         const difficulty = aiReport?.difficulty ? String(aiReport.difficulty) : '-';
@@ -1057,11 +1061,11 @@ function QuickQuotePageInner() {
   </tr>
   <tr>
     <td style="padding:8px 14px;border:1px solid #e5e7eb;color:#6b7280;font-weight:600;">단가 (1개)</td>
-    <td style="padding:8px 14px;border:1px solid #e5e7eb;font-size:18px;font-weight:900;color:#0b5cff;">${estimates.unit_cost.toLocaleString('ko-KR')}원</td>
+    <td style="padding:8px 14px;border:1px solid #e5e7eb;font-size:18px;font-weight:900;color:#0b5cff;">${formatNumber(estimates.unit_cost, lang) ?? '0'}원</td>
   </tr>
   <tr>
     <td style="padding:8px 14px;border:1px solid #e5e7eb;color:#6b7280;font-weight:600;">총액 (${quantity}개)</td>
-    <td style="padding:8px 14px;border:1px solid #e5e7eb;font-size:18px;font-weight:900;color:#059669;">${estimates.total_cost.toLocaleString('ko-KR')}원</td>
+    <td style="padding:8px 14px;border:1px solid #e5e7eb;font-size:18px;font-weight:900;color:#059669;">${formatNumber(estimates.total_cost, lang) ?? '0'}원</td>
   </tr>
   <tr>
     <td style="padding:8px 14px;border:1px solid #e5e7eb;color:#6b7280;font-weight:600;">무게</td>
@@ -1070,9 +1074,9 @@ function QuickQuotePageInner() {
   <tr>
     <td style="padding:8px 14px;border:1px solid #e5e7eb;color:#6b7280;font-weight:600;">원가 구성</td>
     <td style="padding:8px 14px;border:1px solid #e5e7eb;font-weight:700;">
-      재료비 ${estimates.breakdown.material.pct}% (${estimates.breakdown.material.amount.toLocaleString('ko-KR')}원) &nbsp;|&nbsp;
-      가공비 ${estimates.breakdown.machining.pct}% (${estimates.breakdown.machining.amount.toLocaleString('ko-KR')}원) &nbsp;|&nbsp;
-      셋업비 ${estimates.breakdown.setup.pct}% (${estimates.breakdown.setup.amount.toLocaleString('ko-KR')}원)
+      재료비 ${estimates.breakdown.material.pct}% (${formatNumber(estimates.breakdown.material.amount, lang) ?? '0'}원) &nbsp;|&nbsp;
+      가공비 ${estimates.breakdown.machining.pct}% (${formatNumber(estimates.breakdown.machining.amount, lang) ?? '0'}원) &nbsp;|&nbsp;
+      셋업비 ${estimates.breakdown.setup.pct}% (${formatNumber(estimates.breakdown.setup.amount, lang) ?? '0'}원)
     </td>
   </tr>
 </table>
@@ -1249,7 +1253,7 @@ ${aiReport ? `
                                 <>
                                     <div style={{ fontSize: '28px', marginBottom: '8px' }}>✅</div>
                                     <div style={{ fontWeight: 700, color: '#111827', marginBottom: '10px' }}>
-                                        {selectedFiles.length}개 파일 선택됨
+                                        {selectedFiles.length} {loc(lang, { ko: '개 파일 선택됨', en: 'file(s) selected', ja: 'ファイル選択済み', zh: '个文件已选择', es: 'archivo(s) seleccionado(s)', ar: 'ملف محدد' })}
                                     </div>
                                     <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', maxHeight: '140px', overflowY: 'auto' }} onClick={e => e.stopPropagation()}>
                                         {selectedFiles.map(f => (
@@ -1264,7 +1268,7 @@ ${aiReport ? `
                                             </div>
                                         ))}
                                     </div>
-                                    <div style={{ color: '#6b7280', fontSize: '12px', marginTop: '8px' }}>클릭하여 파일 추가</div>
+                                    <div style={{ color: '#6b7280', fontSize: '12px', marginTop: '8px' }}>{loc(lang, { ko: '클릭하여 파일 추가', en: 'Click to add files', ja: 'クリックしてファイルを追加', zh: '点击添加文件', es: 'Haz clic para añadir archivos', ar: 'انقر لإضافة ملفات' })}</div>
                                 </>
                             ) : (
                                 <>
@@ -1291,23 +1295,13 @@ ${aiReport ? `
                         {fileMode === 'step' && extracting && !extractedGeometry && (
                             <div style={{ marginTop: '12px', padding: '12px 16px', background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: '10px', color: '#1d4ed8', fontSize: '13px', display: 'flex', alignItems: 'center', gap: '8px' }}>
                                 <span style={{ display: 'inline-block', animation: 'spin 1s linear infinite' }}>🔄</span>
-                                {lang === 'kr' ? '브라우저에서 형상 자동 분석 중… (치수·부피 추출)'
-                                    : lang === 'ja' ? 'ブラウザで形状を自動解析中…'
-                                    : lang === 'cn' ? '正在浏览器中自动分析形状…'
-                                    : lang === 'es' ? 'Analizando la geometría en el navegador…'
-                                    : lang === 'ar' ? 'جارٍ تحليل الشكل في المتصفح…'
-                                    : 'Auto-analyzing geometry in your browser…'}
+                                {loc(lang, { ko: '브라우저에서 형상 자동 분석 중… (치수·부피 추출)', en: 'Auto-analyzing geometry in your browser…', ja: 'ブラウザで形状を自動解析中…', zh: '正在浏览器中自动分析形状…', es: 'Analizando la geometría en el navegador…', ar: 'جارٍ تحليل الشكل في المتصفح…' })}
                             </div>
                         )}
                         {extractedGeometry && (
                             <div style={{ marginTop: '12px', padding: '14px 16px', background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: '12px' }}>
                                 <div style={{ fontSize: '13px', fontWeight: 700, color: '#166534', marginBottom: '10px', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                                    ✅ {lang === 'kr' ? '치수·부피 자동 추출 완료'
-                                        : lang === 'ja' ? '寸法・体積を自動抽出しました'
-                                        : lang === 'cn' ? '已自动提取尺寸和体积'
-                                        : lang === 'es' ? 'Dimensiones y volumen extraídos'
-                                        : lang === 'ar' ? 'تم استخراج الأبعاد والحجم'
-                                        : 'Dimensions & volume auto-extracted'}
+                                    ✅ {loc(lang, { ko: '치수·부피 자동 추출 완료', en: 'Dimensions & volume auto-extracted', ja: '寸法・体積を自動抽出しました', zh: '已自动提取尺寸和体积', es: 'Dimensiones y volumen extraídos', ar: 'تم استخراج الأبعاد والحجم' })}
                                 </div>
                                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '8px' }}>
                                     {[
@@ -1338,11 +1332,11 @@ ${aiReport ? `
                                 }}
                             >
                                 <div style={{ fontWeight: 700, color: dimRequired ? '#c2410c' : '#374151', marginBottom: dimRequired ? '6px' : '12px', fontSize: '14px', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                                    📐 {dimRequired ? (lang === 'kr' ? '치수를 입력해야 분석이 가능합니다' : lang === 'ja' ? '寸法を入力してください' : lang === 'cn' ? '请输入尺寸以继续分析' : lang === 'es' ? 'Ingresa las dimensiones para continuar' : lang === 'ar' ? 'أدخل الأبعاد للمتابعة' : 'Dimensions required to continue') : t.dimTitle}
+                                    📐 {dimRequired ? loc(lang, { ko: '치수를 입력해야 분석이 가능합니다', en: 'Dimensions required to continue', ja: '寸法を入力してください', zh: '请输入尺寸以继续分析', es: 'Ingresa las dimensiones para continuar', ar: 'أدخل الأبعاد للمتابعة' }) : t.dimTitle}
                                 </div>
                                 {dimRequired && (
                                     <div style={{ fontSize: '12px', color: '#92400e', marginBottom: '12px', padding: '8px 10px', background: '#fef3c7', borderRadius: '8px' }}>
-                                        {lang === 'kr' ? '파일에서 치수를 자동 추출하지 못했습니다. 도면이나 실측값을 직접 입력해 주세요.' : lang === 'ja' ? 'ファイルから寸法を自動抽出できませんでした。図面や実測値を入力してください。' : lang === 'cn' ? '无法从文件自动提取尺寸，请手动输入图纸或实测值。' : lang === 'es' ? 'No se pudieron extraer automáticamente las dimensiones. Ingrésalas manualmente.' : lang === 'ar' ? 'تعذّر استخراج الأبعاد تلقائياً. يرجى إدخالها يدوياً.' : 'Could not auto-extract dimensions from the file. Please enter them manually.'}
+                                        {loc(lang, { ko: '파일에서 치수를 자동 추출하지 못했습니다. 도면이나 실측값을 직접 입력해 주세요.', en: 'Could not auto-extract dimensions from the file. Please enter them manually.', ja: 'ファイルから寸法を自動抽出できませんでした。図面や実測値を入力してください。', zh: '无法从文件自动提取尺寸，请手动输入图纸或实测值。', es: 'No se pudieron extraer automáticamente las dimensiones. Ingrésalas manualmente.', ar: 'تعذّر استخراج الأبعاد تلقائياً. يرجى إدخالها يدوياً.' })}
                                     </div>
                                 )}
                                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '10px' }}>
@@ -1371,7 +1365,7 @@ ${aiReport ? `
                                                     />
                                                     <span style={{ color: '#9ca3af', fontSize: '12px', whiteSpace: 'nowrap' }}>{t.dimUnit}</span>
                                                 </div>
-                                                {hasErr && <div style={{ fontSize: '11px', color: '#dc2626', marginTop: '3px' }}>필수 입력</div>}
+                                                {hasErr && <div style={{ fontSize: '11px', color: '#dc2626', marginTop: '3px' }}>{loc(lang, { ko: '필수 입력', en: 'Required', ja: '必須入力', zh: '必填', es: 'Obligatorio', ar: 'مطلوب' })}</div>}
                                             </div>
                                         );
                                     })}
@@ -1453,7 +1447,7 @@ ${aiReport ? `
                     <>
                         {/* B4 — Auto-quote card (instant AI estimate before manual picker) */}
                         <AutoQuoteCard
-                            lang={lang === 'kr' ? 'ko' : 'en'}
+                            lang={lang}
                             geometry={geometry}
                             quantity={quantity}
                             onApply={(p, m) => { setProcess(p); setMaterial(m); }}
@@ -1566,11 +1560,11 @@ ${aiReport ? `
                                                 {priceSource === 'live' ? '📡 실시간 시세' : '📋 기준값'}
                                             </span>
                                             {liveUsdKrw && (
-                                                <span style={{ color: '#6b7280' }}>USD/KRW {liveUsdKrw.toLocaleString()}원</span>
+                                                <span style={{ color: '#6b7280' }}>USD/KRW {formatNumber(liveUsdKrw, lang) ?? '0'} {loc(lang, { ko: '원', en: 'KRW', ja: 'KRW', zh: '韩元', es: 'KRW', ar: 'وون' })}</span>
                                             )}
                                             {priceUpdatedAt && (
                                                 <span style={{ color: '#9ca3af' }}>
-                                                    {new Date(priceUpdatedAt).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })} 기준
+                                                    {formatDate(priceUpdatedAt, lang, { hour: '2-digit', minute: '2-digit' }) ?? ''} {loc(lang, { ko: '기준', en: 'as of', ja: '時点', zh: '截至', es: 'a fecha de', ar: 'بتاريخ' })}
                                                 </span>
                                             )}
                                         </div>
@@ -1624,14 +1618,14 @@ ${aiReport ? `
                                                             <td style={{ padding: '8px 10px', fontWeight: 700, color: isCheapest ? '#065f46' : isSelected ? '#0b5cff' : '#111827' }}>
                                                                 <span>{row.label}</span>
                                                                 {row.isAI && <span style={{ marginLeft: '4px', fontSize: '10px', color: '#0b5cff' }}>⭐</span>}
-                                                                {isCheapest && <span style={{ marginLeft: '4px', fontSize: '10px', background: '#d1fae5', color: '#065f46', padding: '1px 5px', borderRadius: '8px', fontWeight: 700 }}>최저가</span>}
+                                                                {isCheapest && <span style={{ marginLeft: '4px', fontSize: '10px', background: '#d1fae5', color: '#065f46', padding: '1px 5px', borderRadius: '8px', fontWeight: 700 }}>{loc(lang, { ko: '최저가', en: 'Lowest', ja: '最安', zh: '最低价', es: 'Más bajo', ar: 'الأدنى' })}</span>}
                                                             </td>
                                                             <td style={{ padding: '8px 10px', textAlign: 'right', color: '#6b7280' }}>{row.density}</td>
                                                             <td style={{ padding: '8px 10px', textAlign: 'right', color: '#6b7280' }}>{row.pricePerKg.toLocaleString()}</td>
                                                             <td style={{ padding: '8px 10px', textAlign: 'right', color: '#6b7280' }}>{row.weight_kg.toFixed(3)}kg</td>
-                                                            <td style={{ padding: '8px 10px', textAlign: 'right', color: '#6b7280' }}>{Math.round(row.material_cost).toLocaleString()}원</td>
+                                                            <td style={{ padding: '8px 10px', textAlign: 'right', color: '#6b7280' }}>{Math.round(row.material_cost).toLocaleString()} {loc(lang, { ko: '원', en: 'KRW', ja: 'KRW', zh: '韩元', es: 'KRW', ar: 'وون' })}</td>
                                                             <td style={{ padding: '8px 10px', textAlign: 'right', fontWeight: 800, color: isCheapest ? '#059669' : '#111827', fontSize: '13px' }}>
-                                                                {row.unitCost.toLocaleString()}원
+                                                                {row.unitCost.toLocaleString()} {loc(lang, { ko: '원', en: 'KRW', ja: 'KRW', zh: '韩元', es: 'KRW', ar: 'وون' })}
                                                             </td>
                                                             <td style={{ padding: '8px 10px', textAlign: 'center' }}>
                                                                 <span style={{
@@ -1646,7 +1640,7 @@ ${aiReport ? `
                                             </tbody>
                                         </table>
                                         <div style={{ fontSize: '11px', color: '#9ca3af', marginTop: '6px', textAlign: 'right' }}>
-                                            * 현재 선택된 공정({PROCESSES.find(p => p.id === process)?.label.ko}), 수량({quantity}개), 공차({tolerance.toUpperCase()}) 기준 계산
+                                            * {loc(lang, { ko: '현재 선택된 공정', en: 'Selected process' })} ({locLabel(PROCESSES.find(p => p.id === process) ?? { label: { ko: process } })}), {loc(lang, { ko: '수량', en: 'Quantity' })} ({quantity}), {loc(lang, { ko: '공차', en: 'Tolerance' })} ({tolerance.toUpperCase()}) {loc(lang, { ko: '기준 계산', en: 'calculated' })}
                                         </div>
                                     </div>
                                 );
@@ -1759,12 +1753,7 @@ ${aiReport ? `
                         <div style={{ background: '#fffbeb', border: '1px solid #fde68a', borderRadius: '12px', padding: '10px 16px', marginBottom: '12px', display: 'flex', alignItems: 'flex-start', gap: '8px', fontSize: '13px', color: '#92400e', lineHeight: 1.5 }}>
                             <span style={{ flexShrink: 0 }}>⚠️</span>
                             <span>
-                                {lang === 'kr' ? '아래 견적은 AI가 추정한 예상값으로, 실제 제조 비용과 차이가 있을 수 있습니다. 정확한 견적은 파트너 공장의 공식 견적서를 통해 확인하세요.'
-                                    : lang === 'ja' ? '以下の見積もりはAIによる推定値です。実際の製造費用とは異なる場合があります。正確な見積もりはパートナー工場の公式見積もりをご確認ください。'
-                                    : lang === 'cn' ? '以下报价为AI估算值，可能与实际制造成本有所不同。请通过合作工厂的正式报价确认准确金额。'
-                                    : lang === 'es' ? 'La siguiente cotización es una estimación de IA y puede diferir del costo real de fabricación. Consulte la cotización oficial del fabricante para valores precisos.'
-                                    : lang === 'ar' ? 'الأسعار التالية هي تقديرات بالذكاء الاصطناعي وقد تختلف عن تكاليف التصنيع الفعلية.'
-                                    : 'The following quote is an AI-estimated value and may differ from actual manufacturing costs. Please confirm with an official factory quote for precise figures.'}
+                                {loc(lang, { ko: '아래 견적은 AI가 추정한 예상값으로, 실제 제조 비용과 차이가 있을 수 있습니다. 정확한 견적은 파트너 공장의 공식 견적서를 통해 확인하세요.', en: 'The following quote is an AI-estimated value and may differ from actual manufacturing costs. Please confirm with an official factory quote for precise figures.', ja: '以下の見積もりはAIによる推定値です。実際の製造費用とは異なる場合があります。正確な見積もりはパートナー工場の公式見積もりをご確認ください。', zh: '以下报价为AI估算值，可能与实际制造成本有所不同。请通过合作工厂的正式报价确认准确金额。', es: 'La siguiente cotización es una estimación de IA y puede diferir del costo real de fabricación. Consulte la cotización oficial del fabricante para valores precisos.', ar: 'الأسعار التالية هي تقديرات بالذكاء الاصطناعي وقد تختلف عن تكاليف التصنيع الفعلية.'})}
                             </span>
                         </div>
 
@@ -1788,13 +1777,13 @@ ${aiReport ? `
                             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '24px' }}>
                                 <div style={{ background: '#eff6ff', borderRadius: '16px', padding: '20px', border: '1px solid #bfdbfe' }}>
                                     <div style={{ fontSize: '13px', color: '#3b82f6', fontWeight: 700, marginBottom: '6px' }}>{t.unitPrice} (1{t.pcs})</div>
-                                    <div style={{ fontSize: '28px', fontWeight: 900, color: '#0b5cff' }}>{fmtKRW(estimates.unit_cost)}</div>
+                                    <div style={{ fontSize: '28px', fontWeight: 900, color: '#0b5cff' }}>{fmtKRW(estimates.unit_cost, lang)}</div>
                                 </div>
                                 <div style={{ background: '#f0fdf4', borderRadius: '16px', padding: '20px', border: '1px solid #bbf7d0' }}>
                                     <div style={{ fontSize: '13px', color: '#10b981', fontWeight: 700, marginBottom: '6px' }}>
                                         {t.totalPrice} ({quantity}{t.pcs})
                                     </div>
-                                    <div style={{ fontSize: '28px', fontWeight: 900, color: '#059669' }}>{fmtKRW(estimates.total_cost)}</div>
+                                    <div style={{ fontSize: '28px', fontWeight: 900, color: '#059669' }}>{fmtKRW(estimates.total_cost, lang)}</div>
                                 </div>
                             </div>
 
@@ -1808,7 +1797,7 @@ ${aiReport ? `
                                 <span style={{ fontSize: '13px', color: '#6b7280' }}>{t.pcs}</span>
                                 {quantity >= 10 && (
                                     <span style={{ fontSize: '12px', color: '#10b981', fontWeight: 700 }}>
-                                        {quantity >= 500 ? '-32%' : quantity >= 100 ? '-25%' : quantity >= 50 ? '-18%' : '-10%'} 할인
+                                        {quantity >= 500 ? '-32%' : quantity >= 100 ? '-25%' : quantity >= 50 ? '-18%' : '-10%'} {loc(lang, { ko: '할인', en: 'discount', ja: '割引', zh: '折扣', es: 'descuento', ar: 'خصم' })}
                                     </span>
                                 )}
                             </div>
@@ -1816,7 +1805,7 @@ ${aiReport ? `
                             {/* 무게 */}
                             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', color: '#6b7280', padding: '8px 0' }}>
                                 <span>⚖️</span>
-                                <span style={{ fontWeight: 600 }}>예상 무게</span>
+                                <span style={{ fontWeight: 600 }}>{loc(lang, { ko: '예상 무게', en: 'Estimated weight', ja: '推定重量', zh: '预计重量', es: 'Peso estimado', ar: 'الوزن المقدر' })}</span>
                                 <span style={{ fontWeight: 700, color: '#374151' }}>{estimates.weight_kg.toFixed(3)} kg</span>
                             </div>
                         </div>
@@ -1897,7 +1886,7 @@ ${aiReport ? `
                                         <span style={{ fontSize: '13px', color: '#374151', fontWeight: 600 }}>{label}</span>
                                         <div style={{ display: 'flex', gap: '12px' }}>
                                             <span style={{ fontSize: '13px', color: '#6b7280' }}>{data.pct}%</span>
-                                            <span style={{ fontSize: '13px', fontWeight: 700, color: '#111827' }}>{fmtKRW(data.amount)}</span>
+                                            <span style={{ fontSize: '13px', fontWeight: 700, color: '#111827' }}>{fmtKRW(data.amount, lang)}</span>
                                         </div>
                                     </div>
                                     <div style={{ height: '8px', background: '#f3f4f6', borderRadius: '4px', overflow: 'hidden' }}>
@@ -2008,15 +1997,15 @@ ${aiReport ? `
 
                             return (
                                 <div style={card}>
-                                    <h3 style={{ margin: '0 0 12px', fontWeight: 800, fontSize: '16px', color: '#111827' }}>📈 LME 원자재 시세 추이 (12개월)</h3>
+                                    <h3 style={{ margin: '0 0 12px', fontWeight: 800, fontSize: '16px', color: '#111827' }}>📈 {loc(lang, { ko: 'LME 원자재 시세 추이 (12개월)', en: 'LME commodity prices (12 months)', ja: 'LME商品価格の推移（12か月）', zh: 'LME原材料价格走势（12个月）', es: 'Precios LME de materias primas (12 meses)', ar: 'اتجاه أسعار سلع LME (12 شهراً)' })}</h3>
                                     <div style={{ display: 'flex', gap: '16px', marginBottom: '10px', fontSize: '12px' }}>
                                         <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                                             <div style={{ width: '20px', height: '3px', background: aluHL ? '#0b5cff' : '#93c5fd', borderRadius: '2px' }} />
-                                            <span style={{ fontWeight: aluHL ? 700 : 400, color: aluHL ? '#0b5cff' : '#6b7280' }}>알루미늄 (USD/ton)</span>
+                                            <span style={{ fontWeight: aluHL ? 700 : 400, color: aluHL ? '#0b5cff' : '#6b7280' }}>{loc(lang, { ko: '알루미늄 (USD/ton)', en: 'Aluminum (USD/ton)', ja: 'アルミニウム (USD/ton)', zh: '铝 (USD/ton)', es: 'Aluminio (USD/ton)', ar: 'ألمنيوم (USD/ton)' })}</span>
                                         </div>
                                         <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                                             <div style={{ width: '20px', height: '3px', background: copHL ? '#f97316' : '#fdba74', borderRadius: '2px' }} />
-                                            <span style={{ fontWeight: copHL ? 700 : 400, color: copHL ? '#f97316' : '#6b7280' }}>구리 (USD/ton)</span>
+                                            <span style={{ fontWeight: copHL ? 700 : 400, color: copHL ? '#f97316' : '#6b7280' }}>{loc(lang, { ko: '구리 (USD/ton)', en: 'Copper (USD/ton)', ja: '銅 (USD/ton)', zh: '铜 (USD/ton)', es: 'Cobre (USD/ton)', ar: 'نحاس (USD/ton)' })}</span>
                                         </div>
                                     </div>
                                     <div style={{ overflowX: 'auto' }}>
@@ -2074,7 +2063,7 @@ ${aiReport ? `
                                     </div>
                                     {chartData.lastUpdated && (
                                         <div style={{ fontSize: '11px', color: '#9ca3af', marginTop: '6px', textAlign: 'right' }}>
-                                            업데이트: {new Date(chartData.lastUpdated).toLocaleString('ko-KR', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })}
+                                            {loc(lang, { ko: '업데이트', en: 'Updated', ja: '更新', zh: '更新', es: 'Actualizado', ar: 'آخر تحديث' })}: {formatDate(chartData.lastUpdated, lang, { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }) ?? ''}
                                         </div>
                                     )}
                                 </div>
@@ -2132,21 +2121,21 @@ ${aiReport ? `
 
                             return (
                                 <div style={card}>
-                                    <h3 style={{ margin: '0 0 12px', fontWeight: 800, fontSize: '16px', color: '#111827' }}>📊 수량별 단가 & 손익분기점</h3>
+                                    <h3 style={{ margin: '0 0 12px', fontWeight: 800, fontSize: '16px', color: '#111827' }}>📊 {loc(lang, { ko: '수량별 단가 & 손익분기점', en: 'Unit price & break-even by quantity', ja: '数量別単価と損益分岐点', zh: '按数量的单价和盈亏平衡点', es: 'Precio unitario y punto de equilibrio por cantidad', ar: 'سعر الوحدة ونقطة التعادل حسب الكمية' })}</h3>
                                     <div style={{ display: 'flex', gap: '16px', marginBottom: '10px', fontSize: '12px', flexWrap: 'wrap' }}>
                                         <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                                             <div style={{ width: '20px', height: '3px', background: '#0b5cff', borderRadius: '2px' }} />
-                                            <span style={{ color: '#0b5cff', fontWeight: 700 }}>단가 곡선</span>
+                                            <span style={{ color: '#0b5cff', fontWeight: 700 }}>{loc(lang, { ko: '단가 곡선', en: 'Unit price curve', ja: '単価曲線', zh: '单价曲线', es: 'Curva de precio unitario', ar: 'منحنى سعر الوحدة' })}</span>
                                         </div>
                                         {procData.setup > 0 && (
                                             <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                                                 <div style={{ width: '20px', height: '3px', background: '#f59e0b', borderRadius: '2px', borderTop: '2px dashed #f59e0b' }} />
-                                                <span style={{ color: '#f59e0b', fontWeight: 700 }}>셋업비 분산</span>
+                                                <span style={{ color: '#f59e0b', fontWeight: 700 }}>{loc(lang, { ko: '셋업비 분산', en: 'Setup cost allocation', ja: '段取り費配分', zh: '设置费分摊', es: 'Distribución del coste de preparación', ar: 'توزيع تكلفة الإعداد' })}</span>
                                             </div>
                                         )}
                                         <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                                             <div style={{ width: '2px', height: '16px', background: '#10b981', borderLeft: '2px dashed #10b981' }} />
-                                            <span style={{ color: '#10b981', fontWeight: 700 }}>현재 수량</span>
+                                            <span style={{ color: '#10b981', fontWeight: 700 }}>{loc(lang, { ko: '현재 수량', en: 'Current quantity', ja: '現在の数量', zh: '当前数量', es: 'Cantidad actual', ar: 'الكمية الحالية' })}</span>
                                         </div>
                                     </div>
                                     <div style={{ overflowX: 'auto' }}>
@@ -2189,9 +2178,9 @@ ${aiReport ? `
                                     </div>
                                     {/* 현재 수량 요약 */}
                                     <div style={{ marginTop: '10px', padding: '12px 16px', background: '#f0fdf4', borderRadius: '10px', border: '1px solid #bbf7d0', fontSize: '13px', color: '#065f46', fontWeight: 600 }}>
-                                        현재 수량 <strong>{quantity}개</strong>에서 단가 <strong>{currentUnitCost.toLocaleString()}원</strong>
-                                        {procData.setup > 0 && ` · 셋업 ${currentSetup.toLocaleString()}원 분산`}
-                                        {` · 총 ${currentTotalCost.toLocaleString()}원`}
+                                        {loc(lang, { ko: '현재 수량', en: 'At quantity', ja: '数量', zh: '当前数量', es: 'En cantidad', ar: 'عند الكمية' })} <strong>{quantity}</strong> {loc(lang, { ko: '개에서 단가', en: 'units, unit price', ja: '個の単価', zh: '个，单价', es: 'unidades, precio unitario', ar: 'وحدة، سعر الوحدة' })} <strong>{currentUnitCost.toLocaleString()} {loc(lang, { ko: '원', en: 'KRW', ja: 'KRW', zh: '韩元', es: 'KRW', ar: 'وون' })}</strong>
+                                        {procData.setup > 0 && ` · ${loc(lang, { ko: '셋업', en: 'Setup', ja: '段取り', zh: '设置', es: 'Preparación', ar: 'الإعداد' })} ${currentSetup.toLocaleString()} ${loc(lang, { ko: '원 분산', en: 'KRW allocated', ja: 'KRW配分', zh: '韩元分摊', es: 'KRW distribuido', ar: 'وون موزع' })}`}
+                                        {` · ${loc(lang, { ko: '총', en: 'Total', ja: '合計', zh: '总计', es: 'Total', ar: 'الإجمالي' })} ${currentTotalCost.toLocaleString()} ${loc(lang, { ko: '원', en: 'KRW', ja: 'KRW', zh: '韩元', es: 'KRW', ar: 'وون' })}`}
                                     </div>
                                 </div>
                             );
@@ -2224,12 +2213,7 @@ ${aiReport ? `
                                 onMouseEnter={e => { e.currentTarget.style.background = '#ede9fe'; }}
                                 onMouseLeave={e => { e.currentTarget.style.background = '#f5f3ff'; }}
                             >
-                                🔬 {lang === 'kr' ? '이 부품 정밀 DFM·구조 평가 받기 (완제품 평가)'
-                                    : lang === 'ja' ? '精密DFM・構造評価を受ける（完成品評価）'
-                                    : lang === 'cn' ? '获取精密DFM·结构评估（成品评估）'
-                                    : lang === 'es' ? 'Análisis DFM y estructural completo (Design Review)'
-                                    : lang === 'ar' ? 'مراجعة DFM والهيكل الكاملة'
-                                    : 'Run full DFM & structural review'}
+                                🔬 {loc(lang, { ko: '이 부품 정밀 DFM·구조 평가 받기 (완제품 평가)', en: 'Run full DFM & structural review', ja: '精密DFM・構造評価を受ける（完成品評価）', zh: '获取精密DFM·结构评估（成品评估）', es: 'Análisis DFM y estructural completo (Design Review)', ar: 'مراجعة DFM والهيكل الكاملة' })}
                                 <span style={{ opacity: 0.6 }}>→</span>
                             </button>
                         )}
@@ -2308,7 +2292,7 @@ ${aiReport ? `
                                 border: '1px solid #e5e7eb', borderRadius: '12px',
                                 fontSize: '14px', cursor: 'pointer',
                             }}>
-                            ← 처음으로
+                            ← {loc(lang, { ko: '처음으로', en: 'Start over', ja: '最初に戻る', zh: '重新开始', es: 'Empezar de nuevo', ar: 'البدء من جديد' })}
                         </button>
                     </>
                 )}

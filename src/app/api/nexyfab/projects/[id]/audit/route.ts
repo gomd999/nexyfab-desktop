@@ -52,7 +52,7 @@ export async function GET(
 
   const { id: projectId } = await params;
   const db = getDbAdapter();
-  const access = await resolveProjectAccess(db, projectId, authUser.userId);
+  const access = await resolveProjectAccess(db, projectId, authUser);
   if (!access) return NextResponse.json({ error: 'Not found' }, { status: 404 });
   if (access.role !== 'owner') {
     return NextResponse.json(

@@ -21,3 +21,9 @@ tauri-plugin-os = "2"
 tauri-plugin-updater = "2"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
+# Deliberately use native OS credential stores on all desktop targets. The
+# persistent Linux backend uses Secret Service/libsecret rather than a file.
+keyring = { version = "3.6", default-features = false, features = ["apple-native", "windows-native", "linux-native-sync-persistent", "crypto-rust"] }
+reqwest = { version = "0.13.2", default-features = false, features = ["json", "rustls"] }
+zeroize = "1.8"
+uuid = { version = "1", features = ["v4"] }

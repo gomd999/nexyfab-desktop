@@ -9,6 +9,14 @@ import type { DomainAccuracyDomain } from './ai/domainAccuracyProgram';
 export const CAD_ROUNDTRIP_KINDS = ['step', 'ifc', 'bom', 'drawing'] as const;
 export type CadRoundtripKind = typeof CAD_ROUNDTRIP_KINDS[number];
 
+export const CAD_RELEASE_PROFILES = ['mechanical', 'spatial'] as const;
+export type CadReleaseProfile = typeof CAD_RELEASE_PROFILES[number];
+
+export const CAD_RELEASE_PROFILE_REQUIRED_KINDS: Record<CadReleaseProfile, readonly CadRoundtripKind[]> = {
+  mechanical: ['step', 'bom', 'drawing'],
+  spatial: ['ifc', 'bom', 'drawing'],
+};
+
 export const CAD_ROUNDTRIP_REQUIRED_CHECKS: Record<CadRoundtripKind, readonly string[]> = {
   step: ['geometry', 'topology', 'dimensions'],
   ifc: ['guid', 'spatial_hierarchy', 'placement', 'properties', 'quantities'],
@@ -25,7 +33,8 @@ export interface CadRoundtripCheck {
 }
 
 export interface CadArtifactRoundtripReceipt {
-  schema: 'nexyfab.cad-artifact-roundtrip.v1';
+  schema: 'nexyfab.cad-artifact-roundtrip.v2';
+  domain: DomainAccuracyDomain;
   kind: CadRoundtripKind;
   revisionSha256: string;
   exportedArtifactSha256: string;
@@ -36,7 +45,7 @@ export interface CadArtifactRoundtripReceipt {
 }
 
 export interface CadDeliverableReviewPacket {
-  schema: 'nexyfab.cad-deliverable-review-packet.v1';
+  schema: 'nexyfab.cad-deliverable-review-packet.v2';
   domain: DomainAccuracyDomain;
   revisionId: string;
   revisionSha256: string;
@@ -47,7 +56,7 @@ export interface CadDeliverableReviewPacket {
 
 export type CadDeliverableReviewerRole = 'domain-reviewer' | 'independent-reviewer';
 export interface CadDeliverableSignoff {
-  schema: 'nexyfab.cad-deliverable-signoff.v1';
+  schema: 'nexyfab.cad-deliverable-signoff.v2';
   targetSha256: string;
   reviewerId: string;
   role: CadDeliverableReviewerRole;
@@ -63,6 +72,7 @@ export interface TrustedCadDeliverableReviewer {
 export type TrustedCadDeliverableReviewers = Record<string, TrustedCadDeliverableReviewer>;
 
 export interface CadDeliverableReleaseInput {
+  schema: 'nexyfab.cad-deliverable-release-input.v2';
   workflowStatus: CadReleaseStatus;
   purpose: CadExportPurpose;
   domain: DomainAccuracyDomain;
@@ -75,6 +85,9 @@ export interface CadDeliverableReleaseInput {
 
 export interface CadDeliverableReleaseDecision {
   status: 'pass' | 'blocked';
+  schema: 'nexyfab.cad-deliverable-release-decision.v2';
+  profile: CadReleaseProfile;
+  requiredRoundtrips: readonly CadRoundtripKind[];
   workflowStatus: CadReleaseStatus;
   purpose: CadExportPurpose;
   roundtripEvidenceSha256: string;
@@ -97,7 +110,11 @@ function canonical(value: unknown): string {
 
 const sha256 = (value: string) => createHash('sha256').update(value).digest('hex');
 
-/** Digest of the exact four receipts. Order in the submitted JSON cannot alter the signed target. */
+export function cadReleaseProfileForDomain(domain: DomainAccuracyDomain): CadReleaseProfile {
+  return domain === 'mechanical' ? 'mechanical' : 'spatial';
+}
+
+/** Digest of the exact submitted receipts. Order in the submitted JSON cannot alter the signed target. */
 export function cadRoundtripEvidenceSha256(receipts: readonly CadArtifactRoundtripReceipt[]): string {
   return sha256(canonical([...receipts].sort((a, b) => a.kind.localeCompare(b.kind))));
 }
@@ -116,7 +133,7 @@ export function buildCadDeliverableReviewPacket(input: {
   requestedStatus: CadDeliverableReviewPacket['requestedStatus'];
 }): CadDeliverableReviewPacket {
   const core = {
-    schema: 'nexyfab.cad-deliverable-review-packet.v1' as const,
+    schema: 'nexyfab.cad-deliverable-review-packet.v2' as const,
     domain: input.domain,
     revisionId: input.revisionId,
     revisionSha256: input.revisionSha256,
@@ -133,10 +150,13 @@ export function cadDeliverableSignoffPayload(
 }
 
 export function cadRoundtripIssues(
+  domain: DomainAccuracyDomain,
   revisionSha256: string,
   receipts: readonly CadArtifactRoundtripReceipt[],
 ): string[] {
   const issues: string[] = [];
+  const profile = cadReleaseProfileForDomain(domain);
+  const requiredKinds = CAD_RELEASE_PROFILE_REQUIRED_KINDS[profile];
   if (!SHA256.test(revisionSha256)) issues.push('roundtrip:revision_hash_invalid');
   const grouped = new Map<CadRoundtripKind, CadArtifactRoundtripReceipt[]>();
   for (const receipt of receipts) {
@@ -145,25 +165,33 @@ export function cadRoundtripIssues(
     grouped.set(receipt.kind, values);
   }
 
-  for (const kind of CAD_ROUNDTRIP_KINDS) {
+  for (const kind of requiredKinds) {
     const matches = grouped.get(kind) ?? [];
     if (matches.length !== 1) {
       issues.push(`roundtrip:${kind}:${matches.length ? 'duplicate' : 'missing'}`);
+    }
+  }
+  for (const [kind, matches] of grouped) {
+    if (!CAD_ROUNDTRIP_KINDS.includes(kind)) {
+      issues.push(`roundtrip:${kind}:unsupported`);
       continue;
     }
-    const receipt = matches[0]!;
-    if (receipt.schema !== 'nexyfab.cad-artifact-roundtrip.v1') issues.push(`roundtrip:${kind}:schema`);
-    if (receipt.revisionSha256 !== revisionSha256) issues.push(`roundtrip:${kind}:revision_mismatch`);
-    if (!SHA256.test(receipt.exportedArtifactSha256) || !SHA256.test(receipt.reimportedArtifactSha256)) {
-      issues.push(`roundtrip:${kind}:artifact_hash_invalid`);
+    if (matches.length > 1) issues.push(`roundtrip:${kind}:duplicate`);
+    for (const receipt of matches) {
+      if (receipt.schema !== 'nexyfab.cad-artifact-roundtrip.v2') issues.push(`roundtrip:${kind}:schema`);
+      if (receipt.domain !== domain) issues.push(`roundtrip:${kind}:domain_mismatch`);
+      if (receipt.revisionSha256 !== revisionSha256) issues.push(`roundtrip:${kind}:revision_mismatch`);
+      if (!SHA256.test(receipt.exportedArtifactSha256) || !SHA256.test(receipt.reimportedArtifactSha256)) {
+        issues.push(`roundtrip:${kind}:artifact_hash_invalid`);
+      }
+      if (receipt.status !== 'pass') issues.push(`roundtrip:${kind}:${receipt.status}`);
+      if (!Number.isFinite(Date.parse(receipt.executedAt))) issues.push(`roundtrip:${kind}:executed_at_invalid`);
+      const checks = new Map((Array.isArray(receipt.checks) ? receipt.checks : []).map(check => [check.id, check]));
+      for (const required of CAD_ROUNDTRIP_REQUIRED_CHECKS[kind]) {
+        if (checks.get(required)?.status !== 'pass') issues.push(`roundtrip:${kind}:check:${required}`);
+      }
+      if ((receipt.checks ?? []).some(check => check.status === 'fail')) issues.push(`roundtrip:${kind}:failed_check_present`);
     }
-    if (receipt.status !== 'pass') issues.push(`roundtrip:${kind}:${receipt.status}`);
-    if (!Number.isFinite(Date.parse(receipt.executedAt))) issues.push(`roundtrip:${kind}:executed_at_invalid`);
-    const checks = new Map(receipt.checks.map(check => [check.id, check]));
-    for (const required of CAD_ROUNDTRIP_REQUIRED_CHECKS[kind]) {
-      if (checks.get(required)?.status !== 'pass') issues.push(`roundtrip:${kind}:check:${required}`);
-    }
-    if (receipt.checks.some(check => check.status === 'fail')) issues.push(`roundtrip:${kind}:failed_check_present`);
   }
   return [...new Set(issues)];
 }
@@ -177,7 +205,7 @@ function reviewIssues(
   const issues: string[] = [];
   const packet = input.reviewPacket;
   if (!packet) return { issues: ['review:packet_missing'], validReviewerIds: [] };
-  if (packet.schema !== 'nexyfab.cad-deliverable-review-packet.v1') issues.push('review:packet_schema');
+  if (packet.schema !== 'nexyfab.cad-deliverable-review-packet.v2') issues.push('review:packet_schema');
   if (packet.domain !== input.domain || packet.revisionId !== input.revisionId || packet.revisionSha256 !== input.revisionSha256) {
     issues.push('review:packet_revision_mismatch');
   }
@@ -194,7 +222,7 @@ function reviewIssues(
   ]);
   for (const signoff of input.signoffs ?? []) {
     const code = `review:signoff:${signoff.reviewerId || 'missing'}`;
-    if (signoff.schema !== 'nexyfab.cad-deliverable-signoff.v1' || signoff.targetSha256 !== packet.targetSha256) {
+    if (signoff.schema !== 'nexyfab.cad-deliverable-signoff.v2' || signoff.targetSha256 !== packet.targetSha256) {
       issues.push(`${code}:target`);
       continue;
     }
@@ -233,16 +261,18 @@ function reviewIssues(
 
 /**
  * One fail-closed decision used by API and exporters. Expert/manufacturing
- * status is never trusted as a label alone: the exact revision, all four
- * roundtrips and two distinct registered signatures must agree.
+ * status is never trusted as a label alone: the exact revision, every
+ * domain-required roundtrip and two distinct registered signatures must agree.
  */
 export function evaluateCadDeliverableRelease(
   input: CadDeliverableReleaseInput,
   trustedReviewers: TrustedCadDeliverableReviewers = {},
   now = Date.now(),
 ): CadDeliverableReleaseDecision {
+  const profile = cadReleaseProfileForDomain(input.domain);
   const evidenceSha256 = cadRoundtripEvidenceSha256(input.roundtrips);
   const blockers = [...cadExportBlockers(input.workflowStatus, input.purpose)];
+  if (input.schema !== 'nexyfab.cad-deliverable-release-input.v2') blockers.push('release:input_schema');
   let validReviewerIds: string[] = [];
   if (input.workflowStatus === 'expert_approved' || input.workflowStatus === 'manufacturing_or_construction_approved') {
     const approval = reviewIssues(input, evidenceSha256, trustedReviewers, now);
@@ -250,11 +280,14 @@ export function evaluateCadDeliverableRelease(
     validReviewerIds = approval.validReviewerIds;
   }
   if (input.purpose === 'manufacturing_or_construction' || input.workflowStatus === 'manufacturing_or_construction_approved') {
-    blockers.push(...cadRoundtripIssues(input.revisionSha256, input.roundtrips));
+    blockers.push(...cadRoundtripIssues(input.domain, input.revisionSha256, input.roundtrips));
   }
   const uniqueBlockers = [...new Set(blockers)];
   return {
+    schema: 'nexyfab.cad-deliverable-release-decision.v2',
     status: uniqueBlockers.length ? 'blocked' : 'pass',
+    profile,
+    requiredRoundtrips: CAD_RELEASE_PROFILE_REQUIRED_KINDS[profile],
     workflowStatus: input.workflowStatus,
     purpose: input.purpose,
     roundtripEvidenceSha256: evidenceSha256,

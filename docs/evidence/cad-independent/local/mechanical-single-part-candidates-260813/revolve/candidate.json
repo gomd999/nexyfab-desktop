@@ -1,0 +1,64 @@
+{
+  "schema": "nexyfab.mechanical-single-part-candidate.v1",
+  "feature": "revolve",
+  "candidateStatus": "PASS",
+  "partRevisionSha256": "ce6dedcced895b04bc6a6d85421b1e7a2774a601bbe2d6b1ebe400a4394a86d6",
+  "source": {
+    "receiptPath": "docs/evidence/cad-independent/local/mechanical-core-feature-axis-evidence.json",
+    "receiptSha256": "79d9344b7d101580b7e1574759a8eff652cbe942e6a389056b488aba28a77930",
+    "designRevisionSha256": "3cf6a0f9c8efcf153a2cfefde087a2112c086fc412d2feeaeb9ce52542838564",
+    "nfab": {
+      "path": "docs/evidence/cad-independent/local/mechanical-core-runtime-260813/revolve/saved-project.nfab",
+      "sha256": "afe9e915234d2027ddbb7871affc44b30f549de0e345f53d2039f0b5fe42f2db",
+      "bytes": 1581,
+      "assertionId": "revolve.save_reopen.saved-bytes",
+      "revisionSha256": "afe9e915234d2027ddbb7871affc44b30f549de0e345f53d2039f0b5fe42f2db",
+      "formatVersion": 3,
+      "createdAt": 1786643133348,
+      "updatedAt": 1786643133348
+    },
+    "step": {
+      "path": "docs/evidence/cad-independent/local/mechanical-core-runtime-260813/revolve/revolve-edited.step",
+      "sha256": "151b5d9aa3c975c78f5a0f53585c69f5793466f568ae7b81119932c8b264d7fa",
+      "bytes": 16041,
+      "assertionId": "revolve.export.native-step"
+    },
+    "drawingSvg": {
+      "path": "docs/evidence/cad-independent/local/mechanical-core-runtime-260813/revolve/revolve-exact-hlr.svg",
+      "sha256": "fada63157fb22832ff69a87bf0fd66b90a1304a77419a054d1809bc1eababd03",
+      "bytes": 7288,
+      "assertionId": "revolve.drawing.exact-hlr-svg"
+    }
+  },
+  "artifacts": {
+    "stepImport": {
+      "path": "docs/evidence/cad-independent/local/mechanical-single-part-candidates-260813/revolve/step-import.json",
+      "sha256": "69951edb270ac1391c7a1114a92d8e0f9e48fdbd19a3fe61f8f5ca733cf8cee1",
+      "bytes": 1036,
+      "assertionId": "revolve.candidate.step-import"
+    },
+    "drawing": {
+      "path": "docs/evidence/cad-independent/local/mechanical-single-part-candidates-260813/revolve/revolve-three-axis-hlr.svg",
+      "sha256": "fada63157fb22832ff69a87bf0fd66b90a1304a77419a054d1809bc1eababd03",
+      "bytes": 7288,
+      "assertionId": "revolve.candidate.three-axis-hlr"
+    },
+    "bom": {
+      "path": "docs/evidence/cad-independent/local/mechanical-single-part-candidates-260813/revolve/bom.json",
+      "sha256": "8133ed891b85fcf1e9bc2e90144cf7f417aad15154e23480b97b3960fb437e43",
+      "bytes": 874,
+      "assertionId": "revolve.candidate.one-part-bom"
+    }
+  },
+  "capabilityStatus": {
+    "stepImportSolidUnitsBounds": "PASS",
+    "threeAxisHlrDrawingCandidate": "PASS",
+    "onePartBomQuantityDimensions": "PASS",
+    "drawingDimensions": "NOT_RUN",
+    "gdt": "NOT_RUN",
+    "pmi": "NOT_RUN",
+    "humanApproval": "NOT_RUN",
+    "manufacturingRelease": "BLOCKED"
+  },
+  "commercialReleaseEligible": false
+}

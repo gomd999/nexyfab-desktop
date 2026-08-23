@@ -1,0 +1,2336 @@
+{
+  "schema": "nexyfab.mechanical-core-feature-local-readiness.v1",
+  "assessedAt": "2026-08-22T07:13:30.564Z",
+  "releaseChannel": "mechanical-core-local",
+  "status": "LOCAL_CANDIDATE",
+  "eligible": true,
+  "claimBoundary": {
+    "localExecutionOnly": true,
+    "commercialReleaseApproved": false,
+    "externalCadValidated": false,
+    "candidateTestsCountAsAxisPass": false
+  },
+  "sourceEvidence": {
+    "path": "docs/evidence/cad-independent/local/mechanical-core-feature-axis-evidence.json",
+    "sha256": "2fce7ffc6cb769cd37ee480b7a5b41e31d1a51ca816933072e025aadc43a85a5"
+  },
+  "inputErrors": [],
+  "implementation": {
+    "schema": "nexyfab.mechanical-core-feature-implementation-inventory.v1",
+    "required": 30,
+    "wired": 30,
+    "missing": [],
+    "records": [
+      {
+        "feature": "hole",
+        "status": "WIRED",
+        "runtimeBinding": "FEATURE_MAP",
+        "registryBinding": true,
+        "localRuntimeBinding": true,
+        "sourceFiles": [
+          {
+            "path": "src/app/[lang]/shape-generator/features/hole.ts",
+            "exists": true,
+            "sha256": "511452668e7f8caad6f1c082caf00f8ebf3a564321ceaaf5af930424af61b8c7"
+          }
+        ],
+        "candidateTests": [
+          "src/app/[lang]/shape-generator/features/__tests__/F-HW-AGG-01.burn-in.test.ts",
+          "src/app/[lang]/shape-generator/features/__tests__/HoleWizardModalV2.test.tsx",
+          "src/app/[lang]/shape-generator/features/__tests__/edgeMatchMarginGate.test.ts",
+          "src/app/[lang]/shape-generator/features/__tests__/featureParamSchema.test.ts",
+          "src/app/[lang]/shape-generator/features/__tests__/holeArray.test.ts",
+          "src/app/[lang]/shape-generator/features/__tests__/holeFeatureMigration.test.ts",
+          "src/app/[lang]/shape-generator/features/__tests__/holeMeta.test.ts",
+          "src/app/[lang]/shape-generator/features/__tests__/holeSectionSvg.test.ts",
+          "src/app/[lang]/shape-generator/features/__tests__/holeSketchPropagation.test.ts",
+          "src/app/[lang]/shape-generator/features/__tests__/registryCompleteness.test.ts",
+          "src/app/[lang]/shape-generator/features/booleanVolume.test.ts",
+          "src/app/[lang]/shape-generator/features/deleteFace.test.ts",
+          "src/app/[lang]/shape-generator/features/endCondition.test.ts",
+          "src/app/[lang]/shape-generator/features/featureGraph.test.ts",
+          "src/app/[lang]/shape-generator/features/featureGraphLayout.test.ts",
+          "src/app/[lang]/shape-generator/features/featureGuards.test.ts",
+          "src/app/[lang]/shape-generator/features/featurePattern.test.ts",
+          "src/app/[lang]/shape-generator/features/featureRecognition.test.ts",
+          "src/app/[lang]/shape-generator/features/hole.advanced.test.ts",
+          "src/app/[lang]/shape-generator/features/hole.brep-chain.test.ts",
+          "src/app/[lang]/shape-generator/features/holeFill.test.ts",
+          "src/app/[lang]/shape-generator/features/holePatternRecognizer.test.ts",
+          "src/app/[lang]/shape-generator/features/holeStandards.test.ts",
+          "src/app/[lang]/shape-generator/features/holeWizardRuntime.test.ts",
+          "src/app/[lang]/shape-generator/features/meshHealingDiagnostic.test.ts",
+          "src/app/[lang]/shape-generator/features/pipelineChainCoverage.test.ts",
+          "src/app/[lang]/shape-generator/features/sdfModeling.test.ts",
+          "src/app/[lang]/shape-generator/features/threads/__tests__/HoleWizardThreadsSection.test.tsx",
+          "src/app/[lang]/shape-generator/features/threads/__tests__/threadCatalog.test.ts"
+        ],
+        "note": "Candidate tests are discovery metadata only; they do not set any closed-loop axis to PASS."
+      },
+      {
+        "feature": "fillet",
+        "status": "WIRED",
+        "runtimeBinding": "FEATURE_MAP",
+        "registryBinding": true,
+        "localRuntimeBinding": true,
+        "sourceFiles": [
+          {
+            "path": "src/app/[lang]/shape-generator/features/fillet.ts",
+            "exists": true,
+            "sha256": "357f32e298a008e7bfc73e586da6154b321aa66e7ce5f604791c0c14b469f3da"
+          }
+        ],
+        "candidateTests": [
+          "src/app/[lang]/shape-generator/features/__tests__/featureParamSchema.test.ts",
+          "src/app/[lang]/shape-generator/features/__tests__/registryCompleteness.test.ts",
+          "src/app/[lang]/shape-generator/features/brepHostContract.test.ts",
+          "src/app/[lang]/shape-generator/features/consumerFeatures.test.ts",
+          "src/app/[lang]/shape-generator/features/csgAttributeAlignment.test.ts",
+          "src/app/[lang]/shape-generator/features/featureGraph.test.ts",
+          "src/app/[lang]/shape-generator/features/featureGraphLayout.test.ts",
+          "src/app/[lang]/shape-generator/features/featureGuards.test.ts",
+          "src/app/[lang]/shape-generator/features/featureRecognition.test.ts",
+          "src/app/[lang]/shape-generator/features/kernelCorpus.test.ts",
+          "src/app/[lang]/shape-generator/features/meshRounding.test.ts",
+          "src/app/[lang]/shape-generator/features/meshRoundingManifold.test.ts",
+          "src/app/[lang]/shape-generator/features/occtFilletAvoidance.test.ts",
+          "src/app/[lang]/shape-generator/features/occtTopoNames.test.ts",
+          "src/app/[lang]/shape-generator/features/pipelineChainCoverage.test.ts",
+          "src/app/[lang]/shape-generator/features/roundingClosedForm.test.ts",
+          "src/app/[lang]/shape-generator/features/roundingGuard.test.ts",
+          "src/app/[lang]/shape-generator/features/solidKernel.test.ts",
+          "src/app/[lang]/shape-generator/features/solidKernelBindings.test.ts",
+          "src/app/[lang]/shape-generator/features/stepBurnIn.test.ts",
+          "src/app/[lang]/shape-generator/features/topologyEdgeFinder.spike.test.ts",
+          "src/app/[lang]/shape-generator/features/variableFillet.test.ts",
+          "src/app/[lang]/shape-generator/features/variableFilletPath.test.ts"
+        ],
+        "note": "Candidate tests are discovery metadata only; they do not set any closed-loop axis to PASS."
+      },
+      {
+        "feature": "chamfer",
+        "status": "WIRED",
+        "runtimeBinding": "FEATURE_MAP",
+        "registryBinding": true,
+        "localRuntimeBinding": true,
+        "sourceFiles": [
+          {
+            "path": "src/app/[lang]/shape-generator/features/chamfer.ts",
+            "exists": true,
+            "sha256": "2e282b83234431080aaa5088eaa060bba4ffaae4deaf7e674d572eb054fb7a64"
+          }
+        ],
+        "candidateTests": [
+          "src/app/[lang]/shape-generator/features/__tests__/featureParamSchema.test.ts",
+          "src/app/[lang]/shape-generator/features/__tests__/registryCompleteness.test.ts",
+          "src/app/[lang]/shape-generator/features/brepHostContract.test.ts",
+          "src/app/[lang]/shape-generator/features/edgeChamferVariable.test.ts",
+          "src/app/[lang]/shape-generator/features/featureGraph.test.ts",
+          "src/app/[lang]/shape-generator/features/featureGraphLayout.test.ts",
+          "src/app/[lang]/shape-generator/features/featureRecognition.test.ts",
+          "src/app/[lang]/shape-generator/features/meshRounding.test.ts",
+          "src/app/[lang]/shape-generator/features/meshRoundingManifold.test.ts",
+          "src/app/[lang]/shape-generator/features/occtTopoNames.test.ts",
+          "src/app/[lang]/shape-generator/features/pipelineChainCoverage.test.ts",
+          "src/app/[lang]/shape-generator/features/roundingClosedForm.test.ts",
+          "src/app/[lang]/shape-generator/features/roundingGuard.test.ts",
+          "src/app/[lang]/shape-generator/features/solidKernel.test.ts",
+          "src/app/[lang]/shape-generator/features/stepBurnIn.test.ts",
+          "src/app/[lang]/shape-generator/features/threads/__tests__/threadProfile.test.ts"
+        ],
+        "note": "Candidate tests are discovery metadata only; they do not set any closed-loop axis to PASS."
+      },
+      {
+        "feature": "shell",
+        "status": "WIRED",
+        "runtimeBinding": "FEATURE_MAP",
+        "registryBinding": true,
+        "localRuntimeBinding": true,
+        "sourceFiles": [
+          {
+            "path": "src/app/[lang]/shape-generator/features/shell.ts",
+            "exists": true,
+            "sha256": "c52ad1b1f068a0a72b94914e084fca1448f49de51091f2715f8da44699ee5f87"
+          }
+        ],
+        "candidateTests": [
+          "src/app/[lang]/shape-generator/features/__tests__/featureParamSchema.test.ts",
+          "src/app/[lang]/shape-generator/features/__tests__/registryCompleteness.test.ts",
+          "src/app/[lang]/shape-generator/features/brepBoolean.test.ts",
+          "src/app/[lang]/shape-generator/features/brepClosedShell.test.ts",
+          "src/app/[lang]/shape-generator/features/brepHostContract.test.ts",
+          "src/app/[lang]/shape-generator/features/brepIo.test.ts",
+          "src/app/[lang]/shape-generator/features/brepTessellator.test.ts",
+          "src/app/[lang]/shape-generator/features/featureApplyCoverage.test.ts",
+          "src/app/[lang]/shape-generator/features/featureGuards.test.ts",
+          "src/app/[lang]/shape-generator/features/halfEdgeBrep.test.ts",
+          "src/app/[lang]/shape-generator/features/kernelCorpus.test.ts",
+          "src/app/[lang]/shape-generator/features/pipelineChainCoverage.test.ts",
+          "src/app/[lang]/shape-generator/features/reliefCuts.variableShell.product.test.ts",
+          "src/app/[lang]/shape-generator/features/sdfModeling.test.ts",
+          "src/app/[lang]/shape-generator/features/sheetmetal/ui/__tests__/AutoDrawingDialog.test.tsx",
+          "src/app/[lang]/shape-generator/features/shell.exactCavity.test.ts"
+        ],
+        "note": "Candidate tests are discovery metadata only; they do not set any closed-loop axis to PASS."
+      },
+      {
+        "feature": "rib",
+        "status": "WIRED",
+        "runtimeBinding": "FEATURE_MAP",
+        "registryBinding": true,
+        "localRuntimeBinding": true,
+        "sourceFiles": [
+          {
+            "path": "src/app/[lang]/shape-generator/features/rib.ts",
+            "exists": true,
+            "sha256": "f458ab44c37fe9599cfd7f8a97461c83807db49f8c50bda754d58e774b8a1f6b"
+          }
+        ],
+        "candidateTests": [
+          "src/app/[lang]/shape-generator/features/__tests__/registryCompleteness.test.ts",
+          "src/app/[lang]/shape-generator/features/consumerFeatures.test.ts",
+          "src/app/[lang]/shape-generator/features/csgAttributeAlignment.test.ts",
+          "src/app/[lang]/shape-generator/features/pipelineChainCoverage.test.ts"
+        ],
+        "note": "Candidate tests are discovery metadata only; they do not set any closed-loop axis to PASS."
+      },
+      {
+        "feature": "linearPattern",
+        "status": "WIRED",
+        "runtimeBinding": "FEATURE_MAP",
+        "registryBinding": true,
+        "localRuntimeBinding": true,
+        "sourceFiles": [
+          {
+            "path": "src/app/[lang]/shape-generator/features/linearPattern.ts",
+            "exists": true,
+            "sha256": "bf16ce96132430868562d3dd35e754ba0240d1de7d9eade81a7b57a3e178dc7a"
+          }
+        ],
+        "candidateTests": [
+          "src/app/[lang]/shape-generator/features/__tests__/registryCompleteness.test.ts",
+          "src/app/[lang]/shape-generator/features/featureGuards.test.ts",
+          "src/app/[lang]/shape-generator/features/featurePattern.test.ts",
+          "src/app/[lang]/shape-generator/features/meshFallbackHandleHygiene.test.ts",
+          "src/app/[lang]/shape-generator/features/patternHelpers/__tests__/linearPattern.test.ts",
+          "src/app/[lang]/shape-generator/features/pipelineChainCoverage.test.ts"
+        ],
+        "note": "Candidate tests are discovery metadata only; they do not set any closed-loop axis to PASS."
+      },
+      {
+        "feature": "circularPattern",
+        "status": "WIRED",
+        "runtimeBinding": "FEATURE_MAP",
+        "registryBinding": true,
+        "localRuntimeBinding": true,
+        "sourceFiles": [
+          {
+            "path": "src/app/[lang]/shape-generator/features/circularPattern.ts",
+            "exists": true,
+            "sha256": "95a5252fea241f31a36f5f1f5ac202e88284fc91db56acd4bbf7697680ad5302"
+          }
+        ],
+        "candidateTests": [
+          "src/app/[lang]/shape-generator/features/__tests__/registryCompleteness.test.ts",
+          "src/app/[lang]/shape-generator/features/featurePattern.test.ts",
+          "src/app/[lang]/shape-generator/features/meshFallbackHandleHygiene.test.ts",
+          "src/app/[lang]/shape-generator/features/patternHelpers/__tests__/circularPattern.test.ts",
+          "src/app/[lang]/shape-generator/features/pipelineChainCoverage.test.ts"
+        ],
+        "note": "Candidate tests are discovery metadata only; they do not set any closed-loop axis to PASS."
+      },
+      {
+        "feature": "draft",
+        "status": "WIRED",
+        "runtimeBinding": "FEATURE_MAP",
+        "registryBinding": true,
+        "localRuntimeBinding": true,
+        "sourceFiles": [
+          {
+            "path": "src/app/[lang]/shape-generator/features/draft.ts",
+            "exists": true,
+            "sha256": "89a12fa2da80b4fcfec95fda420ae5ed754bc7e4093860fbb2514c86b4a7d3c5"
+          }
+        ],
+        "candidateTests": [
+          "src/app/[lang]/shape-generator/features/__tests__/registryCompleteness.test.ts",
+          "src/app/[lang]/shape-generator/features/brepHostContract.test.ts",
+          "src/app/[lang]/shape-generator/features/consumerFeatures.test.ts",
+          "src/app/[lang]/shape-generator/features/draft.faceSelect.test.ts",
+          "src/app/[lang]/shape-generator/features/draft.test.ts",
+          "src/app/[lang]/shape-generator/features/featureGuards.test.ts",
+          "src/app/[lang]/shape-generator/features/kernelCorpus.test.ts",
+          "src/app/[lang]/shape-generator/features/meshFallbackHandleHygiene.test.ts",
+          "src/app/[lang]/shape-generator/features/pipelineChainCoverage.test.ts",
+          "src/app/[lang]/shape-generator/features/solidKernel.test.ts"
+        ],
+        "note": "Candidate tests are discovery metadata only; they do not set any closed-loop axis to PASS."
+      },
+      {
+        "feature": "scale",
+        "status": "WIRED",
+        "runtimeBinding": "FEATURE_MAP",
+        "registryBinding": true,
+        "localRuntimeBinding": true,
+        "sourceFiles": [
+          {
+            "path": "src/app/[lang]/shape-generator/features/scale.ts",
+            "exists": true,
+            "sha256": "48b3a1566cc720d24d066a82765de3528a87306d44f261b60f30b20f49029437"
+          }
+        ],
+        "candidateTests": [
+          "src/app/[lang]/shape-generator/features/__tests__/edgeMatchMarginGate.test.ts",
+          "src/app/[lang]/shape-generator/features/__tests__/registryCompleteness.test.ts",
+          "src/app/[lang]/shape-generator/features/featureApplyCoverage.test.ts",
+          "src/app/[lang]/shape-generator/features/meshFallbackHandleHygiene.test.ts",
+          "src/app/[lang]/shape-generator/features/modelingExtras.test.ts",
+          "src/app/[lang]/shape-generator/features/multiSectionSweep.test.ts",
+          "src/app/[lang]/shape-generator/features/pipelineChainCoverage.test.ts",
+          "src/app/[lang]/shape-generator/features/refRelink.test.ts",
+          "src/app/[lang]/shape-generator/features/scale.test.ts",
+          "src/app/[lang]/shape-generator/features/sdfModeling.test.ts",
+          "src/app/[lang]/shape-generator/features/sweep.test.ts"
+        ],
+        "note": "Candidate tests are discovery metadata only; they do not set any closed-loop axis to PASS."
+      },
+      {
+        "feature": "moveCopy",
+        "status": "WIRED",
+        "runtimeBinding": "FEATURE_MAP",
+        "registryBinding": true,
+        "localRuntimeBinding": true,
+        "sourceFiles": [
+          {
+            "path": "src/app/[lang]/shape-generator/features/moveCopy.ts",
+            "exists": true,
+            "sha256": "dbb209bd819157de56fea5777e988215e0ce8fc733c288dfa28fe9fed015bc1d"
+          }
+        ],
+        "candidateTests": [
+          "src/app/[lang]/shape-generator/features/__tests__/registryCompleteness.test.ts",
+          "src/app/[lang]/shape-generator/features/meshFallbackHandleHygiene.test.ts",
+          "src/app/[lang]/shape-generator/features/moveCopy.test.ts"
+        ],
+        "note": "Candidate tests are discovery metadata only; they do not set any closed-loop axis to PASS."
+      },
+      {
+        "feature": "variableFillet",
+        "status": "WIRED",
+        "runtimeBinding": "FEATURE_MAP",
+        "registryBinding": true,
+        "localRuntimeBinding": true,
+        "sourceFiles": [
+          {
+            "path": "src/app/[lang]/shape-generator/features/variableFillet.ts",
+            "exists": true,
+            "sha256": "afe690a2b7bcfb006760de09e609f25a124113ec8cc1b0901a80726b3916fe0b"
+          }
+        ],
+        "candidateTests": [
+          "src/app/[lang]/shape-generator/features/__tests__/registryCompleteness.test.ts",
+          "src/app/[lang]/shape-generator/features/solidKernel.test.ts",
+          "src/app/[lang]/shape-generator/features/variableFillet.test.ts",
+          "src/app/[lang]/shape-generator/features/variableFilletPath.test.ts"
+        ],
+        "note": "Candidate tests are discovery metadata only; they do not set any closed-loop axis to PASS."
+      },
+      {
+        "feature": "offsetFace",
+        "status": "WIRED",
+        "runtimeBinding": "FEATURE_MAP",
+        "registryBinding": true,
+        "localRuntimeBinding": true,
+        "sourceFiles": [
+          {
+            "path": "src/app/[lang]/shape-generator/features/offsetFace.ts",
+            "exists": true,
+            "sha256": "8ea98c75163f9476c30424bf555eea2377c96686fb9d79bd45f5ce140a1b86d7"
+          }
+        ],
+        "candidateTests": [
+          "src/app/[lang]/shape-generator/features/__tests__/registryCompleteness.test.ts",
+          "src/app/[lang]/shape-generator/features/featureApplyCoverage.test.ts",
+          "src/app/[lang]/shape-generator/features/offsetFace.test.ts"
+        ],
+        "note": "Candidate tests are discovery metadata only; they do not set any closed-loop axis to PASS."
+      },
+      {
+        "feature": "thread",
+        "status": "WIRED",
+        "runtimeBinding": "FEATURE_MAP",
+        "registryBinding": true,
+        "localRuntimeBinding": true,
+        "sourceFiles": [
+          {
+            "path": "src/app/[lang]/shape-generator/features/thread.ts",
+            "exists": true,
+            "sha256": "622e2b22146ebf24443550aede6b5c7ed220b6b3960149e3711321ba5d8ae59d"
+          }
+        ],
+        "candidateTests": [
+          "src/app/[lang]/shape-generator/features/__tests__/holeSectionSvg.test.ts",
+          "src/app/[lang]/shape-generator/features/__tests__/registryCompleteness.test.ts",
+          "src/app/[lang]/shape-generator/features/featureGuards.test.ts",
+          "src/app/[lang]/shape-generator/features/holeStandards.test.ts",
+          "src/app/[lang]/shape-generator/features/threads/__tests__/HoleWizardThreadsSection.test.tsx",
+          "src/app/[lang]/shape-generator/features/threads/__tests__/StandaloneThreadModal.test.tsx",
+          "src/app/[lang]/shape-generator/features/threads/__tests__/ThreadCosmeticIndicator.test.tsx",
+          "src/app/[lang]/shape-generator/features/threads/__tests__/applyThreadCosmetic.test.ts",
+          "src/app/[lang]/shape-generator/features/threads/__tests__/applyThreadGeometric.test.ts",
+          "src/app/[lang]/shape-generator/features/threads/__tests__/applyThreadOcct.test.ts",
+          "src/app/[lang]/shape-generator/features/threads/__tests__/formatThreadCallout.extension.test.ts",
+          "src/app/[lang]/shape-generator/features/threads/__tests__/helixGeometry.test.ts",
+          "src/app/[lang]/shape-generator/features/threads/__tests__/i18n.test.ts",
+          "src/app/[lang]/shape-generator/features/threads/__tests__/selectThreadRenderMode.test.ts",
+          "src/app/[lang]/shape-generator/features/threads/__tests__/threadCapWarnings.test.ts",
+          "src/app/[lang]/shape-generator/features/threads/__tests__/threadCatalog.test.ts",
+          "src/app/[lang]/shape-generator/features/threads/__tests__/threadDrawingRep.test.ts",
+          "src/app/[lang]/shape-generator/features/threads/__tests__/threadFeature.test.ts",
+          "src/app/[lang]/shape-generator/features/threads/__tests__/threadFeatureUpdate.test.ts",
+          "src/app/[lang]/shape-generator/features/threads/__tests__/threadGeometricCut.test.ts",
+          "src/app/[lang]/shape-generator/features/threads/__tests__/threadProfile.test.ts",
+          "src/app/[lang]/shape-generator/features/threads/__tests__/threadStepIo.test.ts"
+        ],
+        "note": "Candidate tests are discovery metadata only; they do not set any closed-loop axis to PASS."
+      },
+      {
+        "feature": "helix",
+        "status": "WIRED",
+        "runtimeBinding": "FEATURE_MAP",
+        "registryBinding": true,
+        "localRuntimeBinding": true,
+        "sourceFiles": [
+          {
+            "path": "src/app/[lang]/shape-generator/features/helix.ts",
+            "exists": true,
+            "sha256": "718b3c8eea925c07f1d1329759b6e5523adb58574d580c1aa02cf2c2acc4fde6"
+          }
+        ],
+        "candidateTests": [
+          "src/app/[lang]/shape-generator/features/__tests__/registryCompleteness.test.ts",
+          "src/app/[lang]/shape-generator/features/curveFeatures.test.ts",
+          "src/app/[lang]/shape-generator/features/helicalBevelGears.test.ts",
+          "src/app/[lang]/shape-generator/features/helix.test.ts",
+          "src/app/[lang]/shape-generator/features/sweep.test.ts",
+          "src/app/[lang]/shape-generator/features/threads/__tests__/helixGeometry.test.ts",
+          "src/app/[lang]/shape-generator/features/threads/__tests__/threadGeometricCut.test.ts"
+        ],
+        "note": "Candidate tests are discovery metadata only; they do not set any closed-loop axis to PASS."
+      },
+      {
+        "feature": "bend",
+        "status": "WIRED",
+        "runtimeBinding": "FEATURE_MAP",
+        "registryBinding": true,
+        "localRuntimeBinding": true,
+        "sourceFiles": [
+          {
+            "path": "src/app/[lang]/shape-generator/features/sheetMetal.ts",
+            "exists": true,
+            "sha256": "bec21b1a37183a6a12fb4bb1a2f4bb17ffb0dd2a2fdecbc0f3083bf8b480b614"
+          }
+        ],
+        "candidateTests": [
+          "src/app/[lang]/shape-generator/features/__tests__/registryCompleteness.test.ts",
+          "src/app/[lang]/shape-generator/features/bendSequence.test.ts",
+          "src/app/[lang]/shape-generator/features/bendTable.test.ts",
+          "src/app/[lang]/shape-generator/features/cornerRelief.test.ts",
+          "src/app/[lang]/shape-generator/features/flatPatternBend.test.ts",
+          "src/app/[lang]/shape-generator/features/pipelineChainCoverage.test.ts",
+          "src/app/[lang]/shape-generator/features/reliefCuts.test.ts",
+          "src/app/[lang]/shape-generator/features/reliefCuts.variableShell.product.test.ts",
+          "src/app/[lang]/shape-generator/features/sheetMetal.test.ts",
+          "src/app/[lang]/shape-generator/features/sheetMetalExtended.test.ts",
+          "src/app/[lang]/shape-generator/features/sheetMetalFlatPattern.test.ts",
+          "src/app/[lang]/shape-generator/features/sheetMetalTables.test.ts",
+          "src/app/[lang]/shape-generator/features/sheetmetal/__tests__/sheetMetalI18n.test.ts",
+          "src/app/[lang]/shape-generator/features/sheetmetal/ui/__tests__/BendTableDock.test.tsx",
+          "src/app/[lang]/shape-generator/features/sheetmetal/ui/__tests__/SheetMetalRightPane.test.tsx",
+          "src/app/[lang]/shape-generator/features/tab.test.ts"
+        ],
+        "note": "Candidate tests are discovery metadata only; they do not set any closed-loop axis to PASS."
+      },
+      {
+        "feature": "flange",
+        "status": "WIRED",
+        "runtimeBinding": "FEATURE_MAP",
+        "registryBinding": true,
+        "localRuntimeBinding": true,
+        "sourceFiles": [
+          {
+            "path": "src/app/[lang]/shape-generator/features/sheetMetal.ts",
+            "exists": true,
+            "sha256": "bec21b1a37183a6a12fb4bb1a2f4bb17ffb0dd2a2fdecbc0f3083bf8b480b614"
+          }
+        ],
+        "candidateTests": [
+          "src/app/[lang]/shape-generator/features/__tests__/registryCompleteness.test.ts",
+          "src/app/[lang]/shape-generator/features/bendSequence.test.ts",
+          "src/app/[lang]/shape-generator/features/pipelineChainCoverage.test.ts",
+          "src/app/[lang]/shape-generator/features/sheetMetal.test.ts",
+          "src/app/[lang]/shape-generator/features/sheetMetalExtended.test.ts",
+          "src/app/[lang]/shape-generator/features/sheetMetalFlatPattern.test.ts",
+          "src/app/[lang]/shape-generator/features/tab.test.ts"
+        ],
+        "note": "Candidate tests are discovery metadata only; they do not set any closed-loop axis to PASS."
+      },
+      {
+        "feature": "hem",
+        "status": "WIRED",
+        "runtimeBinding": "FEATURE_MAP",
+        "registryBinding": true,
+        "localRuntimeBinding": true,
+        "sourceFiles": [
+          {
+            "path": "src/app/[lang]/shape-generator/features/sheetMetal.ts",
+            "exists": true,
+            "sha256": "bec21b1a37183a6a12fb4bb1a2f4bb17ffb0dd2a2fdecbc0f3083bf8b480b614"
+          }
+        ],
+        "candidateTests": [
+          "src/app/[lang]/shape-generator/features/__tests__/featureParamSchema.test.ts",
+          "src/app/[lang]/shape-generator/features/__tests__/registryCompleteness.test.ts",
+          "src/app/[lang]/shape-generator/features/sheetMetal.test.ts"
+        ],
+        "note": "Candidate tests are discovery metadata only; they do not set any closed-loop axis to PASS."
+      },
+      {
+        "feature": "jog",
+        "status": "WIRED",
+        "runtimeBinding": "FEATURE_MAP",
+        "registryBinding": true,
+        "localRuntimeBinding": true,
+        "sourceFiles": [
+          {
+            "path": "src/app/[lang]/shape-generator/features/sheetMetal.ts",
+            "exists": true,
+            "sha256": "bec21b1a37183a6a12fb4bb1a2f4bb17ffb0dd2a2fdecbc0f3083bf8b480b614"
+          }
+        ],
+        "candidateTests": [
+          "src/app/[lang]/shape-generator/features/__tests__/registryCompleteness.test.ts",
+          "src/app/[lang]/shape-generator/features/cornerRelief.test.ts",
+          "src/app/[lang]/shape-generator/features/sheetMetal.test.ts"
+        ],
+        "note": "Candidate tests are discovery metadata only; they do not set any closed-loop axis to PASS."
+      },
+      {
+        "feature": "tab",
+        "status": "WIRED",
+        "runtimeBinding": "FEATURE_MAP",
+        "registryBinding": true,
+        "localRuntimeBinding": true,
+        "sourceFiles": [
+          {
+            "path": "src/app/[lang]/shape-generator/features/tab.ts",
+            "exists": true,
+            "sha256": "9dd870859810b41415dc39805ee735507ee77297af0894d54336ac24eeda9d2e"
+          }
+        ],
+        "candidateTests": [
+          "src/app/[lang]/shape-generator/features/__tests__/HoleWizardModalV2.test.tsx",
+          "src/app/[lang]/shape-generator/features/__tests__/csvPaste.test.ts",
+          "src/app/[lang]/shape-generator/features/__tests__/holeArray.test.ts",
+          "src/app/[lang]/shape-generator/features/__tests__/registryCompleteness.test.ts",
+          "src/app/[lang]/shape-generator/features/bendTable.test.ts",
+          "src/app/[lang]/shape-generator/features/parametricJoint.test.ts",
+          "src/app/[lang]/shape-generator/features/sheetMetalExtended.test.ts",
+          "src/app/[lang]/shape-generator/features/sheetMetalTables.test.ts",
+          "src/app/[lang]/shape-generator/features/sheetmetal/ui/__tests__/BendTableDock.test.tsx",
+          "src/app/[lang]/shape-generator/features/tab.test.ts"
+        ],
+        "note": "Candidate tests are discovery metadata only; they do not set any closed-loop axis to PASS."
+      },
+      {
+        "feature": "cut",
+        "status": "WIRED",
+        "runtimeBinding": "FEATURE_MAP",
+        "registryBinding": true,
+        "localRuntimeBinding": true,
+        "sourceFiles": [
+          {
+            "path": "src/app/[lang]/shape-generator/features/cut.ts",
+            "exists": true,
+            "sha256": "115f96068beec6684e9ba861abf95ad862386d74958647a43f74e6a0973c4152"
+          }
+        ],
+        "candidateTests": [
+          "src/app/[lang]/shape-generator/features/__tests__/edgeMatchMarginGate.test.ts",
+          "src/app/[lang]/shape-generator/features/__tests__/holeSketchPropagation.test.ts",
+          "src/app/[lang]/shape-generator/features/__tests__/registryCompleteness.test.ts",
+          "src/app/[lang]/shape-generator/features/brepFaceSplit.test.ts",
+          "src/app/[lang]/shape-generator/features/cut.test.ts",
+          "src/app/[lang]/shape-generator/features/endCondition.test.ts",
+          "src/app/[lang]/shape-generator/features/featurePattern.test.ts",
+          "src/app/[lang]/shape-generator/features/hole.advanced.test.ts",
+          "src/app/[lang]/shape-generator/features/reliefCuts.test.ts",
+          "src/app/[lang]/shape-generator/features/reliefCuts.variableShell.product.test.ts",
+          "src/app/[lang]/shape-generator/features/sheetMetalExtended.test.ts",
+          "src/app/[lang]/shape-generator/features/solidKernel.test.ts",
+          "src/app/[lang]/shape-generator/features/stepBurnIn.test.ts",
+          "src/app/[lang]/shape-generator/features/threads/__tests__/threadGeometricCut.test.ts"
+        ],
+        "note": "Candidate tests are discovery metadata only; they do not set any closed-loop axis to PASS."
+      },
+      {
+        "feature": "bendRelief",
+        "status": "WIRED",
+        "runtimeBinding": "FEATURE_MAP",
+        "registryBinding": true,
+        "localRuntimeBinding": true,
+        "sourceFiles": [
+          {
+            "path": "src/app/[lang]/shape-generator/features/reliefCuts.ts",
+            "exists": true,
+            "sha256": "a9c566da3c3e48314b72df3e3a03f7eb662ee67b2cfb8a642e37e381c49a5a32"
+          }
+        ],
+        "candidateTests": [
+          "src/app/[lang]/shape-generator/features/__tests__/registryCompleteness.test.ts",
+          "src/app/[lang]/shape-generator/features/featureApplyCoverage.test.ts"
+        ],
+        "note": "Candidate tests are discovery metadata only; they do not set any closed-loop axis to PASS."
+      },
+      {
+        "feature": "cornerRelief",
+        "status": "WIRED",
+        "runtimeBinding": "FEATURE_MAP",
+        "registryBinding": true,
+        "localRuntimeBinding": true,
+        "sourceFiles": [
+          {
+            "path": "src/app/[lang]/shape-generator/features/reliefCuts.ts",
+            "exists": true,
+            "sha256": "a9c566da3c3e48314b72df3e3a03f7eb662ee67b2cfb8a642e37e381c49a5a32"
+          }
+        ],
+        "candidateTests": [
+          "src/app/[lang]/shape-generator/features/__tests__/registryCompleteness.test.ts",
+          "src/app/[lang]/shape-generator/features/cornerRelief.test.ts"
+        ],
+        "note": "Candidate tests are discovery metadata only; they do not set any closed-loop axis to PASS."
+      },
+      {
+        "feature": "variableShell",
+        "status": "WIRED",
+        "runtimeBinding": "FEATURE_MAP",
+        "registryBinding": true,
+        "localRuntimeBinding": true,
+        "sourceFiles": [
+          {
+            "path": "src/app/[lang]/shape-generator/features/variableShell.ts",
+            "exists": true,
+            "sha256": "a4ed100cd7e56db936a8bb1362b301e29495cf6c5901a28306250b65e17d1d34"
+          }
+        ],
+        "candidateTests": [
+          "src/app/[lang]/shape-generator/features/__tests__/registryCompleteness.test.ts",
+          "src/app/[lang]/shape-generator/features/reliefCuts.variableShell.product.test.ts",
+          "src/app/[lang]/shape-generator/features/shell.exactCavity.test.ts"
+        ],
+        "note": "Candidate tests are discovery metadata only; they do not set any closed-loop axis to PASS."
+      },
+      {
+        "feature": "sketchExtrude",
+        "status": "WIRED",
+        "runtimeBinding": "INLINE_PIPELINE",
+        "registryBinding": true,
+        "localRuntimeBinding": true,
+        "sourceFiles": [
+          {
+            "path": "src/app/[lang]/shape-generator/features/sketch.ts",
+            "exists": true,
+            "sha256": "28d2b9612cfccbcd8774c1dadc21225ff67255b96f7d49cfa93d3bcb6e19a8ad"
+          },
+          {
+            "path": "src/app/[lang]/shape-generator/features/pipelineManager.ts",
+            "exists": true,
+            "sha256": "66284ece9ce6a6206f28e99b97b86be755669169e470a25462fbb8daae09201e"
+          }
+        ],
+        "candidateTests": [
+          "src/app/[lang]/shape-generator/features/__tests__/featureParamSchema.test.ts",
+          "src/app/[lang]/shape-generator/features/__tests__/registryCompleteness.test.ts",
+          "src/app/[lang]/shape-generator/features/emptyBasePipeline.test.ts",
+          "src/app/[lang]/shape-generator/features/featureContext.test.ts",
+          "src/app/[lang]/shape-generator/features/featureGuards.test.ts",
+          "src/app/[lang]/shape-generator/features/kernelCorpus.test.ts",
+          "src/app/[lang]/shape-generator/features/mechanicalCoreFeatureRuntimeCoverage.test.ts"
+        ],
+        "note": "Candidate tests are discovery metadata only; they do not set any closed-loop axis to PASS."
+      },
+      {
+        "feature": "revolve",
+        "status": "WIRED",
+        "runtimeBinding": "FEATURE_MAP",
+        "registryBinding": true,
+        "localRuntimeBinding": true,
+        "sourceFiles": [
+          {
+            "path": "src/app/[lang]/shape-generator/features/revolve.ts",
+            "exists": true,
+            "sha256": "24cb93461f736406d49172082dad7318c887e279ca596c8b820530f89a29539b"
+          }
+        ],
+        "candidateTests": [
+          "src/app/[lang]/shape-generator/features/__tests__/registryCompleteness.test.ts",
+          "src/app/[lang]/shape-generator/features/featureRecognition.test.ts",
+          "src/app/[lang]/shape-generator/features/revolve.test.ts",
+          "src/app/[lang]/shape-generator/features/solidKernel.test.ts",
+          "src/app/[lang]/shape-generator/features/solidKernelBindings.test.ts",
+          "src/app/[lang]/shape-generator/features/stepBurnIn.test.ts"
+        ],
+        "note": "Candidate tests are discovery metadata only; they do not set any closed-loop axis to PASS."
+      },
+      {
+        "feature": "sweep",
+        "status": "WIRED",
+        "runtimeBinding": "FEATURE_MAP",
+        "registryBinding": true,
+        "localRuntimeBinding": true,
+        "sourceFiles": [
+          {
+            "path": "src/app/[lang]/shape-generator/features/sweep.ts",
+            "exists": true,
+            "sha256": "0cdaf7ae7e8bc67c32be47db6267d46049b0f4e76da1a571ccebd099ae3bfc8a"
+          }
+        ],
+        "candidateTests": [
+          "src/app/[lang]/shape-generator/features/__tests__/edgeMatchMarginGate.test.ts",
+          "src/app/[lang]/shape-generator/features/__tests__/featureParamSchema.test.ts",
+          "src/app/[lang]/shape-generator/features/__tests__/holeMeta.test.ts",
+          "src/app/[lang]/shape-generator/features/__tests__/registryCompleteness.test.ts",
+          "src/app/[lang]/shape-generator/features/advancedSweepFeatures.test.ts",
+          "src/app/[lang]/shape-generator/features/featureRecognition.test.ts",
+          "src/app/[lang]/shape-generator/features/multiSectionSweep.test.ts",
+          "src/app/[lang]/shape-generator/features/patternHelpers/__tests__/circularPattern.test.ts",
+          "src/app/[lang]/shape-generator/features/sweep.test.ts",
+          "src/app/[lang]/shape-generator/features/threads/__tests__/helixGeometry.test.ts",
+          "src/app/[lang]/shape-generator/features/threads/__tests__/threadProfile.test.ts",
+          "src/app/[lang]/shape-generator/features/triangleToTopoMap.test.ts",
+          "src/app/[lang]/shape-generator/features/variableSectionSweep.test.ts"
+        ],
+        "note": "Candidate tests are discovery metadata only; they do not set any closed-loop axis to PASS."
+      },
+      {
+        "feature": "loft",
+        "status": "WIRED",
+        "runtimeBinding": "FEATURE_MAP",
+        "registryBinding": true,
+        "localRuntimeBinding": true,
+        "sourceFiles": [
+          {
+            "path": "src/app/[lang]/shape-generator/features/loft.ts",
+            "exists": true,
+            "sha256": "245a7392ef59774a532e1c7bc9272de223b95f05a630a3febca2cfbcf7cdc785"
+          }
+        ],
+        "candidateTests": [
+          "src/app/[lang]/shape-generator/features/__tests__/registryCompleteness.test.ts",
+          "src/app/[lang]/shape-generator/features/advancedSweepFeatures.test.ts",
+          "src/app/[lang]/shape-generator/features/loft.test.ts",
+          "src/app/[lang]/shape-generator/features/sweep.test.ts"
+        ],
+        "note": "Candidate tests are discovery metadata only; they do not set any closed-loop axis to PASS."
+      },
+      {
+        "feature": "mirror",
+        "status": "WIRED",
+        "runtimeBinding": "FEATURE_MAP",
+        "registryBinding": true,
+        "localRuntimeBinding": true,
+        "sourceFiles": [
+          {
+            "path": "src/app/[lang]/shape-generator/features/mirror.ts",
+            "exists": true,
+            "sha256": "d1c0d22acba7205bd95a47504b3628a6e721334c9c9771b0f31b6345ce621209"
+          }
+        ],
+        "candidateTests": [
+          "src/app/[lang]/shape-generator/features/__tests__/featureParamSchema.test.ts",
+          "src/app/[lang]/shape-generator/features/__tests__/registryCompleteness.test.ts",
+          "src/app/[lang]/shape-generator/features/meshFallbackHandleHygiene.test.ts",
+          "src/app/[lang]/shape-generator/features/pipelineChainCoverage.test.ts"
+        ],
+        "note": "Candidate tests are discovery metadata only; they do not set any closed-loop axis to PASS."
+      },
+      {
+        "feature": "boolean",
+        "status": "WIRED",
+        "runtimeBinding": "FEATURE_MAP",
+        "registryBinding": true,
+        "localRuntimeBinding": true,
+        "sourceFiles": [
+          {
+            "path": "src/app/[lang]/shape-generator/features/boolean.ts",
+            "exists": true,
+            "sha256": "3c35a39072725586df6e2a761acc8a04084d5818666ed3e7121322a90f802e9f"
+          }
+        ],
+        "candidateTests": [
+          "src/app/[lang]/shape-generator/features/__tests__/F-HW-AGG-01.burn-in.test.ts",
+          "src/app/[lang]/shape-generator/features/__tests__/edgeMatchMarginGate.test.ts",
+          "src/app/[lang]/shape-generator/features/__tests__/registryCompleteness.test.ts",
+          "src/app/[lang]/shape-generator/features/booleanAsyncQuality.test.ts",
+          "src/app/[lang]/shape-generator/features/booleanRobust.test.ts",
+          "src/app/[lang]/shape-generator/features/booleanStressTest.test.ts",
+          "src/app/[lang]/shape-generator/features/booleanVolume.test.ts",
+          "src/app/[lang]/shape-generator/features/brepBoolean.test.ts",
+          "src/app/[lang]/shape-generator/features/brepHostContract.test.ts",
+          "src/app/[lang]/shape-generator/features/csgAttributeAlignment.test.ts",
+          "src/app/[lang]/shape-generator/features/edgeSemanticTagging.test.ts",
+          "src/app/[lang]/shape-generator/features/kernelCorpus.test.ts",
+          "src/app/[lang]/shape-generator/features/levelSet.test.ts",
+          "src/app/[lang]/shape-generator/features/loft.test.ts",
+          "src/app/[lang]/shape-generator/features/meshBooleanGuard.test.ts",
+          "src/app/[lang]/shape-generator/features/meshRounding.test.ts",
+          "src/app/[lang]/shape-generator/features/meshValidation.test.ts",
+          "src/app/[lang]/shape-generator/features/pipelineChainCoverage.test.ts",
+          "src/app/[lang]/shape-generator/features/reliefCuts.variableShell.product.test.ts",
+          "src/app/[lang]/shape-generator/features/sdfModeling.test.ts",
+          "src/app/[lang]/shape-generator/features/solidKernel.test.ts",
+          "src/app/[lang]/shape-generator/features/solidKernelBindings.test.ts",
+          "src/app/[lang]/shape-generator/features/stepBurnIn.test.ts",
+          "src/app/[lang]/shape-generator/features/threads/__tests__/applyThreadGeometric.test.ts",
+          "src/app/[lang]/shape-generator/features/threads/__tests__/applyThreadOcct.test.ts",
+          "src/app/[lang]/shape-generator/features/threads/__tests__/threadGeometricCut.test.ts"
+        ],
+        "note": "Candidate tests are discovery metadata only; they do not set any closed-loop axis to PASS."
+      },
+      {
+        "feature": "splitBody",
+        "status": "WIRED",
+        "runtimeBinding": "FEATURE_MAP",
+        "registryBinding": true,
+        "localRuntimeBinding": true,
+        "sourceFiles": [
+          {
+            "path": "src/app/[lang]/shape-generator/features/splitBody.ts",
+            "exists": true,
+            "sha256": "753229973784c9de8181d2d4791f8ae151bbdb71f55d7dadbf5dd8cff4faecd7"
+          }
+        ],
+        "candidateTests": [
+          "src/app/[lang]/shape-generator/features/__tests__/registryCompleteness.test.ts"
+        ],
+        "note": "Candidate tests are discovery metadata only; they do not set any closed-loop axis to PASS."
+      }
+    ]
+  },
+  "closedLoop": {
+    "schema": "nexyfab.mechanical-core-feature-local-assessment.v1",
+    "eligible": true,
+    "requiredFeatures": 30,
+    "passedFeatures": 30,
+    "requiredAxesPerFeature": 7,
+    "axisTotals": {
+      "PASS": 210,
+      "FAIL": 0,
+      "NOT_RUN": 0
+    },
+    "cases": [
+      {
+        "feature": "hole",
+        "status": "PASS",
+        "passedAxes": 7,
+        "requiredAxes": 7,
+        "axes": [
+          {
+            "axis": "create",
+            "status": "PASS",
+            "evidenceCount": 1,
+            "blockers": []
+          },
+          {
+            "axis": "edit",
+            "status": "PASS",
+            "evidenceCount": 1,
+            "blockers": []
+          },
+          {
+            "axis": "regenerate",
+            "status": "PASS",
+            "evidenceCount": 1,
+            "blockers": []
+          },
+          {
+            "axis": "save_reopen",
+            "status": "PASS",
+            "evidenceCount": 2,
+            "blockers": []
+          },
+          {
+            "axis": "undo",
+            "status": "PASS",
+            "evidenceCount": 1,
+            "blockers": []
+          },
+          {
+            "axis": "export",
+            "status": "PASS",
+            "evidenceCount": 2,
+            "blockers": []
+          },
+          {
+            "axis": "drawing",
+            "status": "PASS",
+            "evidenceCount": 2,
+            "blockers": []
+          }
+        ]
+      },
+      {
+        "feature": "fillet",
+        "status": "PASS",
+        "passedAxes": 7,
+        "requiredAxes": 7,
+        "axes": [
+          {
+            "axis": "create",
+            "status": "PASS",
+            "evidenceCount": 1,
+            "blockers": []
+          },
+          {
+            "axis": "edit",
+            "status": "PASS",
+            "evidenceCount": 1,
+            "blockers": []
+          },
+          {
+            "axis": "regenerate",
+            "status": "PASS",
+            "evidenceCount": 1,
+            "blockers": []
+          },
+          {
+            "axis": "save_reopen",
+            "status": "PASS",
+            "evidenceCount": 2,
+            "blockers": []
+          },
+          {
+            "axis": "undo",
+            "status": "PASS",
+            "evidenceCount": 1,
+            "blockers": []
+          },
+          {
+            "axis": "export",
+            "status": "PASS",
+            "evidenceCount": 2,
+            "blockers": []
+          },
+          {
+            "axis": "drawing",
+            "status": "PASS",
+            "evidenceCount": 2,
+            "blockers": []
+          }
+        ]
+      },
+      {
+        "feature": "chamfer",
+        "status": "PASS",
+        "passedAxes": 7,
+        "requiredAxes": 7,
+        "axes": [
+          {
+            "axis": "create",
+            "status": "PASS",
+            "evidenceCount": 1,
+            "blockers": []
+          },
+          {
+            "axis": "edit",
+            "status": "PASS",
+            "evidenceCount": 1,
+            "blockers": []
+          },
+          {
+            "axis": "regenerate",
+            "status": "PASS",
+            "evidenceCount": 1,
+            "blockers": []
+          },
+          {
+            "axis": "save_reopen",
+            "status": "PASS",
+            "evidenceCount": 2,
+            "blockers": []
+          },
+          {
+            "axis": "undo",
+            "status": "PASS",
+            "evidenceCount": 1,
+            "blockers": []
+          },
+          {
+            "axis": "export",
+            "status": "PASS",
+            "evidenceCount": 2,
+            "blockers": []
+          },
+          {
+            "axis": "drawing",
+            "status": "PASS",
+            "evidenceCount": 2,
+            "blockers": []
+          }
+        ]
+      },
+      {
+        "feature": "shell",
+        "status": "PASS",
+        "passedAxes": 7,
+        "requiredAxes": 7,
+        "axes": [
+          {
+            "axis": "create",
+            "status": "PASS",
+            "evidenceCount": 1,
+            "blockers": []
+          },
+          {
+            "axis": "edit",
+            "status": "PASS",
+            "evidenceCount": 1,
+            "blockers": []
+          },
+          {
+            "axis": "regenerate",
+            "status": "PASS",
+            "evidenceCount": 1,
+            "blockers": []
+          },
+          {
+            "axis": "save_reopen",
+            "status": "PASS",
+            "evidenceCount": 2,
+            "blockers": []
+          },
+          {
+            "axis": "undo",
+            "status": "PASS",
+            "evidenceCount": 1,
+            "blockers": []
+          },
+          {
+            "axis": "export",
+            "status": "PASS",
+            "evidenceCount": 2,
+            "blockers": []
+          },
+          {
+            "axis": "drawing",
+            "status": "PASS",
+            "evidenceCount": 2,
+            "blockers": []
+          }
+        ]
+      },
+      {
+        "feature": "rib",
+        "status": "PASS",
+        "passedAxes": 7,
+        "requiredAxes": 7,
+        "axes": [
+          {
+            "axis": "create",
+            "status": "PASS",
+            "evidenceCount": 1,
+            "blockers": []
+          },
+          {
+            "axis": "edit",
+            "status": "PASS",
+            "evidenceCount": 1,
+            "blockers": []
+          },
+          {
+            "axis": "regenerate",
+            "status": "PASS",
+            "evidenceCount": 1,
+            "blockers": []
+          },
+          {
+            "axis": "save_reopen",
+            "status": "PASS",
+            "evidenceCount": 2,
+            "blockers": []
+          },
+          {
+            "axis": "undo",
+            "status": "PASS",
+            "evidenceCount": 1,
+            "blockers": []
+          },
+          {
+            "axis": "export",
+            "status": "PASS",
+            "evidenceCount": 2,
+            "blockers": []
+          },
+          {
+            "axis": "drawing",
+            "status": "PASS",
+            "evidenceCount": 2,
+            "blockers": []
+          }
+        ]
+      },
+      {
+        "feature": "linearPattern",
+        "status": "PASS",
+        "passedAxes": 7,
+        "requiredAxes": 7,
+        "axes": [
+          {
+            "axis": "create",
+            "status": "PASS",
+            "evidenceCount": 1,
+            "blockers": []
+          },
+          {
+            "axis": "edit",
+            "status": "PASS",
+            "evidenceCount": 1,
+            "blockers": []
+          },
+          {
+            "axis": "regenerate",
+            "status": "PASS",
+            "evidenceCount": 1,
+            "blockers": []
+          },
+          {
+            "axis": "save_reopen",
+            "status": "PASS",
+            "evidenceCount": 2,
+            "blockers": []
+          },
+          {
+            "axis": "undo",
+            "status": "PASS",
+            "evidenceCount": 1,
+            "blockers": []
+          },
+          {
+            "axis": "export",
+            "status": "PASS",
+            "evidenceCount": 2,
+            "blockers": []
+          },
+          {
+            "axis": "drawing",
+            "status": "PASS",
+            "evidenceCount": 2,
+            "blockers": []
+          }
+        ]
+      },
+      {
+        "feature": "circularPattern",
+        "status": "PASS",
+        "passedAxes": 7,
+        "requiredAxes": 7,
+        "axes": [
+          {
+            "axis": "create",
+            "status": "PASS",
+            "evidenceCount": 1,
+            "blockers": []
+          },
+          {
+            "axis": "edit",
+            "status": "PASS",
+            "evidenceCount": 1,
+            "blockers": []
+          },
+          {
+            "axis": "regenerate",
+            "status": "PASS",
+            "evidenceCount": 1,
+            "blockers": []
+          },
+          {
+            "axis": "save_reopen",
+            "status": "PASS",
+            "evidenceCount": 2,
+            "blockers": []
+          },
+          {
+            "axis": "undo",
+            "status": "PASS",
+            "evidenceCount": 1,
+            "blockers": []
+          },
+          {
+            "axis": "export",
+            "status": "PASS",
+            "evidenceCount": 2,
+            "blockers": []
+          },
+          {
+            "axis": "drawing",
+            "status": "PASS",
+            "evidenceCount": 2,
+            "blockers": []
+          }
+        ]
+      },
+      {
+        "feature": "draft",
+        "status": "PASS",
+        "passedAxes": 7,
+        "requiredAxes": 7,
+        "axes": [
+          {
+            "axis": "create",
+            "status": "PASS",
+            "evidenceCount": 1,
+            "blockers": []
+          },
+          {
+            "axis": "edit",
+            "status": "PASS",
+            "evidenceCount": 1,
+            "blockers": []
+          },
+          {
+            "axis": "regenerate",
+            "status": "PASS",
+            "evidenceCount": 1,
+            "blockers": []
+          },
+          {
+            "axis": "save_reopen",
+            "status": "PASS",
+            "evidenceCount": 2,
+            "blockers": []
+          },
+          {
+            "axis": "undo",
+            "status": "PASS",
+            "evidenceCount": 1,
+            "blockers": []
+          },
+          {
+            "axis": "export",
+            "status": "PASS",
+            "evidenceCount": 2,
+            "blockers": []
+          },
+          {
+            "axis": "drawing",
+            "status": "PASS",
+            "evidenceCount": 2,
+            "blockers": []
+          }
+        ]
+      },
+      {
+        "feature": "scale",
+        "status": "PASS",
+        "passedAxes": 7,
+        "requiredAxes": 7,
+        "axes": [
+          {
+            "axis": "create",
+            "status": "PASS",
+            "evidenceCount": 1,
+            "blockers": []
+          },
+          {
+            "axis": "edit",
+            "status": "PASS",
+            "evidenceCount": 1,
+            "blockers": []
+          },
+          {
+            "axis": "regenerate",
+            "status": "PASS",
+            "evidenceCount": 1,
+            "blockers": []
+          },
+          {
+            "axis": "save_reopen",
+            "status": "PASS",
+            "evidenceCount": 2,
+            "blockers": []
+          },
+          {
+            "axis": "undo",
+            "status": "PASS",
+            "evidenceCount": 1,
+            "blockers": []
+          },
+          {
+            "axis": "export",
+            "status": "PASS",
+            "evidenceCount": 2,
+            "blockers": []
+          },
+          {
+            "axis": "drawing",
+            "status": "PASS",
+            "evidenceCount": 2,
+            "blockers": []
+          }
+        ]
+      },
+      {
+        "feature": "moveCopy",
+        "status": "PASS",
+        "passedAxes": 7,
+        "requiredAxes": 7,
+        "axes": [
+          {
+            "axis": "create",
+            "status": "PASS",
+            "evidenceCount": 1,
+            "blockers": []
+          },
+          {
+            "axis": "edit",
+            "status": "PASS",
+            "evidenceCount": 1,
+            "blockers": []
+          },
+          {
+            "axis": "regenerate",
+            "status": "PASS",
+            "evidenceCount": 1,
+            "blockers": []
+          },
+          {
+            "axis": "save_reopen",
+            "status": "PASS",
+            "evidenceCount": 2,
+            "blockers": []
+          },
+          {
+            "axis": "undo",
+            "status": "PASS",
+            "evidenceCount": 1,
+            "blockers": []
+          },
+          {
+            "axis": "export",
+            "status": "PASS",
+            "evidenceCount": 2,
+            "blockers": []
+          },
+          {
+            "axis": "drawing",
+            "status": "PASS",
+            "evidenceCount": 2,
+            "blockers": []
+          }
+        ]
+      },
+      {
+        "feature": "variableFillet",
+        "status": "PASS",
+        "passedAxes": 7,
+        "requiredAxes": 7,
+        "axes": [
+          {
+            "axis": "create",
+            "status": "PASS",
+            "evidenceCount": 1,
+            "blockers": []
+          },
+          {
+            "axis": "edit",
+            "status": "PASS",
+            "evidenceCount": 1,
+            "blockers": []
+          },
+          {
+            "axis": "regenerate",
+            "status": "PASS",
+            "evidenceCount": 1,
+            "blockers": []
+          },
+          {
+            "axis": "save_reopen",
+            "status": "PASS",
+            "evidenceCount": 2,
+            "blockers": []
+          },
+          {
+            "axis": "undo",
+            "status": "PASS",
+            "evidenceCount": 1,
+            "blockers": []
+          },
+          {
+            "axis": "export",
+            "status": "PASS",
+            "evidenceCount": 2,
+            "blockers": []
+          },
+          {
+            "axis": "drawing",
+            "status": "PASS",
+            "evidenceCount": 2,
+            "blockers": []
+          }
+        ]
+      },
+      {
+        "feature": "offsetFace",
+        "status": "PASS",
+        "passedAxes": 7,
+        "requiredAxes": 7,
+        "axes": [
+          {
+            "axis": "create",
+            "status": "PASS",
+            "evidenceCount": 1,
+            "blockers": []
+          },
+          {
+            "axis": "edit",
+            "status": "PASS",
+            "evidenceCount": 1,
+            "blockers": []
+          },
+          {
+            "axis": "regenerate",
+            "status": "PASS",
+            "evidenceCount": 1,
+            "blockers": []
+          },
+          {
+            "axis": "save_reopen",
+            "status": "PASS",
+            "evidenceCount": 2,
+            "blockers": []
+          },
+          {
+            "axis": "undo",
+            "status": "PASS",
+            "evidenceCount": 1,
+            "blockers": []
+          },
+          {
+            "axis": "export",
+            "status": "PASS",
+            "evidenceCount": 2,
+            "blockers": []
+          },
+          {
+            "axis": "drawing",
+            "status": "PASS",
+            "evidenceCount": 2,
+            "blockers": []
+          }
+        ]
+      },
+      {
+        "feature": "thread",
+        "status": "PASS",
+        "passedAxes": 7,
+        "requiredAxes": 7,
+        "axes": [
+          {
+            "axis": "create",
+            "status": "PASS",
+            "evidenceCount": 1,
+            "blockers": []
+          },
+          {
+            "axis": "edit",
+            "status": "PASS",
+            "evidenceCount": 1,
+            "blockers": []
+          },
+          {
+            "axis": "regenerate",
+            "status": "PASS",
+            "evidenceCount": 1,
+            "blockers": []
+          },
+          {
+            "axis": "save_reopen",
+            "status": "PASS",
+            "evidenceCount": 2,
+            "blockers": []
+          },
+          {
+            "axis": "undo",
+            "status": "PASS",
+            "evidenceCount": 1,
+            "blockers": []
+          },
+          {
+            "axis": "export",
+            "status": "PASS",
+            "evidenceCount": 2,
+            "blockers": []
+          },
+          {
+            "axis": "drawing",
+            "status": "PASS",
+            "evidenceCount": 2,
+            "blockers": []
+          }
+        ]
+      },
+      {
+        "feature": "helix",
+        "status": "PASS",
+        "passedAxes": 7,
+        "requiredAxes": 7,
+        "axes": [
+          {
+            "axis": "create",
+            "status": "PASS",
+            "evidenceCount": 1,
+            "blockers": []
+          },
+          {
+            "axis": "edit",
+            "status": "PASS",
+            "evidenceCount": 1,
+            "blockers": []
+          },
+          {
+            "axis": "regenerate",
+            "status": "PASS",
+            "evidenceCount": 1,
+            "blockers": []
+          },
+          {
+            "axis": "save_reopen",
+            "status": "PASS",
+            "evidenceCount": 2,
+            "blockers": []
+          },
+          {
+            "axis": "undo",
+            "status": "PASS",
+            "evidenceCount": 1,
+            "blockers": []
+          },
+          {
+            "axis": "export",
+            "status": "PASS",
+            "evidenceCount": 2,
+            "blockers": []
+          },
+          {
+            "axis": "drawing",
+            "status": "PASS",
+            "evidenceCount": 2,
+            "blockers": []
+          }
+        ]
+      },
+      {
+        "feature": "bend",
+        "status": "PASS",
+        "passedAxes": 7,
+        "requiredAxes": 7,
+        "axes": [
+          {
+            "axis": "create",
+            "status": "PASS",
+            "evidenceCount": 1,
+            "blockers": []
+          },
+          {
+            "axis": "edit",
+            "status": "PASS",
+            "evidenceCount": 1,
+            "blockers": []
+          },
+          {
+            "axis": "regenerate",
+            "status": "PASS",
+            "evidenceCount": 1,
+            "blockers": []
+          },
+          {
+            "axis": "save_reopen",
+            "status": "PASS",
+            "evidenceCount": 2,
+            "blockers": []
+          },
+          {
+            "axis": "undo",
+            "status": "PASS",
+            "evidenceCount": 1,
+            "blockers": []
+          },
+          {
+            "axis": "export",
+            "status": "PASS",
+            "evidenceCount": 2,
+            "blockers": []
+          },
+          {
+            "axis": "drawing",
+            "status": "PASS",
+            "evidenceCount": 2,
+            "blockers": []
+          }
+        ]
+      },
+      {
+        "feature": "flange",
+        "status": "PASS",
+        "passedAxes": 7,
+        "requiredAxes": 7,
+        "axes": [
+          {
+            "axis": "create",
+            "status": "PASS",
+            "evidenceCount": 1,
+            "blockers": []
+          },
+          {
+            "axis": "edit",
+            "status": "PASS",
+            "evidenceCount": 1,
+            "blockers": []
+          },
+          {
+            "axis": "regenerate",
+            "status": "PASS",
+            "evidenceCount": 1,
+            "blockers": []
+          },
+          {
+            "axis": "save_reopen",
+            "status": "PASS",
+            "evidenceCount": 2,
+            "blockers": []
+          },
+          {
+            "axis": "undo",
+            "status": "PASS",
+            "evidenceCount": 1,
+            "blockers": []
+          },
+          {
+            "axis": "export",
+            "status": "PASS",
+            "evidenceCount": 2,
+            "blockers": []
+          },
+          {
+            "axis": "drawing",
+            "status": "PASS",
+            "evidenceCount": 2,
+            "blockers": []
+          }
+        ]
+      },
+      {
+        "feature": "hem",
+        "status": "PASS",
+        "passedAxes": 7,
+        "requiredAxes": 7,
+        "axes": [
+          {
+            "axis": "create",
+            "status": "PASS",
+            "evidenceCount": 1,
+            "blockers": []
+          },
+          {
+            "axis": "edit",
+            "status": "PASS",
+            "evidenceCount": 1,
+            "blockers": []
+          },
+          {
+            "axis": "regenerate",
+            "status": "PASS",
+            "evidenceCount": 1,
+            "blockers": []
+          },
+          {
+            "axis": "save_reopen",
+            "status": "PASS",
+            "evidenceCount": 2,
+            "blockers": []
+          },
+          {
+            "axis": "undo",
+            "status": "PASS",
+            "evidenceCount": 1,
+            "blockers": []
+          },
+          {
+            "axis": "export",
+            "status": "PASS",
+            "evidenceCount": 2,
+            "blockers": []
+          },
+          {
+            "axis": "drawing",
+            "status": "PASS",
+            "evidenceCount": 2,
+            "blockers": []
+          }
+        ]
+      },
+      {
+        "feature": "jog",
+        "status": "PASS",
+        "passedAxes": 7,
+        "requiredAxes": 7,
+        "axes": [
+          {
+            "axis": "create",
+            "status": "PASS",
+            "evidenceCount": 1,
+            "blockers": []
+          },
+          {
+            "axis": "edit",
+            "status": "PASS",
+            "evidenceCount": 1,
+            "blockers": []
+          },
+          {
+            "axis": "regenerate",
+            "status": "PASS",
+            "evidenceCount": 1,
+            "blockers": []
+          },
+          {
+            "axis": "save_reopen",
+            "status": "PASS",
+            "evidenceCount": 2,
+            "blockers": []
+          },
+          {
+            "axis": "undo",
+            "status": "PASS",
+            "evidenceCount": 1,
+            "blockers": []
+          },
+          {
+            "axis": "export",
+            "status": "PASS",
+            "evidenceCount": 2,
+            "blockers": []
+          },
+          {
+            "axis": "drawing",
+            "status": "PASS",
+            "evidenceCount": 2,
+            "blockers": []
+          }
+        ]
+      },
+      {
+        "feature": "tab",
+        "status": "PASS",
+        "passedAxes": 7,
+        "requiredAxes": 7,
+        "axes": [
+          {
+            "axis": "create",
+            "status": "PASS",
+            "evidenceCount": 1,
+            "blockers": []
+          },
+          {
+            "axis": "edit",
+            "status": "PASS",
+            "evidenceCount": 1,
+            "blockers": []
+          },
+          {
+            "axis": "regenerate",
+            "status": "PASS",
+            "evidenceCount": 1,
+            "blockers": []
+          },
+          {
+            "axis": "save_reopen",
+            "status": "PASS",
+            "evidenceCount": 2,
+            "blockers": []
+          },
+          {
+            "axis": "undo",
+            "status": "PASS",
+            "evidenceCount": 1,
+            "blockers": []
+          },
+          {
+            "axis": "export",
+            "status": "PASS",
+            "evidenceCount": 2,
+            "blockers": []
+          },
+          {
+            "axis": "drawing",
+            "status": "PASS",
+            "evidenceCount": 2,
+            "blockers": []
+          }
+        ]
+      },
+      {
+        "feature": "cut",
+        "status": "PASS",
+        "passedAxes": 7,
+        "requiredAxes": 7,
+        "axes": [
+          {
+            "axis": "create",
+            "status": "PASS",
+            "evidenceCount": 1,
+            "blockers": []
+          },
+          {
+            "axis": "edit",
+            "status": "PASS",
+            "evidenceCount": 1,
+            "blockers": []
+          },
+          {
+            "axis": "regenerate",
+            "status": "PASS",
+            "evidenceCount": 1,
+            "blockers": []
+          },
+          {
+            "axis": "save_reopen",
+            "status": "PASS",
+            "evidenceCount": 2,
+            "blockers": []
+          },
+          {
+            "axis": "undo",
+            "status": "PASS",
+            "evidenceCount": 1,
+            "blockers": []
+          },
+          {
+            "axis": "export",
+            "status": "PASS",
+            "evidenceCount": 2,
+            "blockers": []
+          },
+          {
+            "axis": "drawing",
+            "status": "PASS",
+            "evidenceCount": 2,
+            "blockers": []
+          }
+        ]
+      },
+      {
+        "feature": "bendRelief",
+        "status": "PASS",
+        "passedAxes": 7,
+        "requiredAxes": 7,
+        "axes": [
+          {
+            "axis": "create",
+            "status": "PASS",
+            "evidenceCount": 1,
+            "blockers": []
+          },
+          {
+            "axis": "edit",
+            "status": "PASS",
+            "evidenceCount": 1,
+            "blockers": []
+          },
+          {
+            "axis": "regenerate",
+            "status": "PASS",
+            "evidenceCount": 1,
+            "blockers": []
+          },
+          {
+            "axis": "save_reopen",
+            "status": "PASS",
+            "evidenceCount": 2,
+            "blockers": []
+          },
+          {
+            "axis": "undo",
+            "status": "PASS",
+            "evidenceCount": 1,
+            "blockers": []
+          },
+          {
+            "axis": "export",
+            "status": "PASS",
+            "evidenceCount": 2,
+            "blockers": []
+          },
+          {
+            "axis": "drawing",
+            "status": "PASS",
+            "evidenceCount": 2,
+            "blockers": []
+          }
+        ]
+      },
+      {
+        "feature": "cornerRelief",
+        "status": "PASS",
+        "passedAxes": 7,
+        "requiredAxes": 7,
+        "axes": [
+          {
+            "axis": "create",
+            "status": "PASS",
+            "evidenceCount": 1,
+            "blockers": []
+          },
+          {
+            "axis": "edit",
+            "status": "PASS",
+            "evidenceCount": 1,
+            "blockers": []
+          },
+          {
+            "axis": "regenerate",
+            "status": "PASS",
+            "evidenceCount": 1,
+            "blockers": []
+          },
+          {
+            "axis": "save_reopen",
+            "status": "PASS",
+            "evidenceCount": 2,
+            "blockers": []
+          },
+          {
+            "axis": "undo",
+            "status": "PASS",
+            "evidenceCount": 1,
+            "blockers": []
+          },
+          {
+            "axis": "export",
+            "status": "PASS",
+            "evidenceCount": 2,
+            "blockers": []
+          },
+          {
+            "axis": "drawing",
+            "status": "PASS",
+            "evidenceCount": 2,
+            "blockers": []
+          }
+        ]
+      },
+      {
+        "feature": "variableShell",
+        "status": "PASS",
+        "passedAxes": 7,
+        "requiredAxes": 7,
+        "axes": [
+          {
+            "axis": "create",
+            "status": "PASS",
+            "evidenceCount": 1,
+            "blockers": []
+          },
+          {
+            "axis": "edit",
+            "status": "PASS",
+            "evidenceCount": 1,
+            "blockers": []
+          },
+          {
+            "axis": "regenerate",
+            "status": "PASS",
+            "evidenceCount": 1,
+            "blockers": []
+          },
+          {
+            "axis": "save_reopen",
+            "status": "PASS",
+            "evidenceCount": 2,
+            "blockers": []
+          },
+          {
+            "axis": "undo",
+            "status": "PASS",
+            "evidenceCount": 1,
+            "blockers": []
+          },
+          {
+            "axis": "export",
+            "status": "PASS",
+            "evidenceCount": 2,
+            "blockers": []
+          },
+          {
+            "axis": "drawing",
+            "status": "PASS",
+            "evidenceCount": 2,
+            "blockers": []
+          }
+        ]
+      },
+      {
+        "feature": "sketchExtrude",
+        "status": "PASS",
+        "passedAxes": 7,
+        "requiredAxes": 7,
+        "axes": [
+          {
+            "axis": "create",
+            "status": "PASS",
+            "evidenceCount": 1,
+            "blockers": []
+          },
+          {
+            "axis": "edit",
+            "status": "PASS",
+            "evidenceCount": 1,
+            "blockers": []
+          },
+          {
+            "axis": "regenerate",
+            "status": "PASS",
+            "evidenceCount": 1,
+            "blockers": []
+          },
+          {
+            "axis": "save_reopen",
+            "status": "PASS",
+            "evidenceCount": 2,
+            "blockers": []
+          },
+          {
+            "axis": "undo",
+            "status": "PASS",
+            "evidenceCount": 1,
+            "blockers": []
+          },
+          {
+            "axis": "export",
+            "status": "PASS",
+            "evidenceCount": 2,
+            "blockers": []
+          },
+          {
+            "axis": "drawing",
+            "status": "PASS",
+            "evidenceCount": 2,
+            "blockers": []
+          }
+        ]
+      },
+      {
+        "feature": "revolve",
+        "status": "PASS",
+        "passedAxes": 7,
+        "requiredAxes": 7,
+        "axes": [
+          {
+            "axis": "create",
+            "status": "PASS",
+            "evidenceCount": 1,
+            "blockers": []
+          },
+          {
+            "axis": "edit",
+            "status": "PASS",
+            "evidenceCount": 1,
+            "blockers": []
+          },
+          {
+            "axis": "regenerate",
+            "status": "PASS",
+            "evidenceCount": 1,
+            "blockers": []
+          },
+          {
+            "axis": "save_reopen",
+            "status": "PASS",
+            "evidenceCount": 2,
+            "blockers": []
+          },
+          {
+            "axis": "undo",
+            "status": "PASS",
+            "evidenceCount": 1,
+            "blockers": []
+          },
+          {
+            "axis": "export",
+            "status": "PASS",
+            "evidenceCount": 2,
+            "blockers": []
+          },
+          {
+            "axis": "drawing",
+            "status": "PASS",
+            "evidenceCount": 2,
+            "blockers": []
+          }
+        ]
+      },
+      {
+        "feature": "sweep",
+        "status": "PASS",
+        "passedAxes": 7,
+        "requiredAxes": 7,
+        "axes": [
+          {
+            "axis": "create",
+            "status": "PASS",
+            "evidenceCount": 1,
+            "blockers": []
+          },
+          {
+            "axis": "edit",
+            "status": "PASS",
+            "evidenceCount": 1,
+            "blockers": []
+          },
+          {
+            "axis": "regenerate",
+            "status": "PASS",
+            "evidenceCount": 1,
+            "blockers": []
+          },
+          {
+            "axis": "save_reopen",
+            "status": "PASS",
+            "evidenceCount": 2,
+            "blockers": []
+          },
+          {
+            "axis": "undo",
+            "status": "PASS",
+            "evidenceCount": 1,
+            "blockers": []
+          },
+          {
+            "axis": "export",
+            "status": "PASS",
+            "evidenceCount": 2,
+            "blockers": []
+          },
+          {
+            "axis": "drawing",
+            "status": "PASS",
+            "evidenceCount": 2,
+            "blockers": []
+          }
+        ]
+      },
+      {
+        "feature": "loft",
+        "status": "PASS",
+        "passedAxes": 7,
+        "requiredAxes": 7,
+        "axes": [
+          {
+            "axis": "create",
+            "status": "PASS",
+            "evidenceCount": 1,
+            "blockers": []
+          },
+          {
+            "axis": "edit",
+            "status": "PASS",
+            "evidenceCount": 1,
+            "blockers": []
+          },
+          {
+            "axis": "regenerate",
+            "status": "PASS",
+            "evidenceCount": 1,
+            "blockers": []
+          },
+          {
+            "axis": "save_reopen",
+            "status": "PASS",
+            "evidenceCount": 2,
+            "blockers": []
+          },
+          {
+            "axis": "undo",
+            "status": "PASS",
+            "evidenceCount": 1,
+            "blockers": []
+          },
+          {
+            "axis": "export",
+            "status": "PASS",
+            "evidenceCount": 2,
+            "blockers": []
+          },
+          {
+            "axis": "drawing",
+            "status": "PASS",
+            "evidenceCount": 2,
+            "blockers": []
+          }
+        ]
+      },
+      {
+        "feature": "mirror",
+        "status": "PASS",
+        "passedAxes": 7,
+        "requiredAxes": 7,
+        "axes": [
+          {
+            "axis": "create",
+            "status": "PASS",
+            "evidenceCount": 1,
+            "blockers": []
+          },
+          {
+            "axis": "edit",
+            "status": "PASS",
+            "evidenceCount": 1,
+            "blockers": []
+          },
+          {
+            "axis": "regenerate",
+            "status": "PASS",
+            "evidenceCount": 1,
+            "blockers": []
+          },
+          {
+            "axis": "save_reopen",
+            "status": "PASS",
+            "evidenceCount": 2,
+            "blockers": []
+          },
+          {
+            "axis": "undo",
+            "status": "PASS",
+            "evidenceCount": 1,
+            "blockers": []
+          },
+          {
+            "axis": "export",
+            "status": "PASS",
+            "evidenceCount": 2,
+            "blockers": []
+          },
+          {
+            "axis": "drawing",
+            "status": "PASS",
+            "evidenceCount": 2,
+            "blockers": []
+          }
+        ]
+      },
+      {
+        "feature": "boolean",
+        "status": "PASS",
+        "passedAxes": 7,
+        "requiredAxes": 7,
+        "axes": [
+          {
+            "axis": "create",
+            "status": "PASS",
+            "evidenceCount": 1,
+            "blockers": []
+          },
+          {
+            "axis": "edit",
+            "status": "PASS",
+            "evidenceCount": 1,
+            "blockers": []
+          },
+          {
+            "axis": "regenerate",
+            "status": "PASS",
+            "evidenceCount": 1,
+            "blockers": []
+          },
+          {
+            "axis": "save_reopen",
+            "status": "PASS",
+            "evidenceCount": 2,
+            "blockers": []
+          },
+          {
+            "axis": "undo",
+            "status": "PASS",
+            "evidenceCount": 1,
+            "blockers": []
+          },
+          {
+            "axis": "export",
+            "status": "PASS",
+            "evidenceCount": 2,
+            "blockers": []
+          },
+          {
+            "axis": "drawing",
+            "status": "PASS",
+            "evidenceCount": 2,
+            "blockers": []
+          }
+        ]
+      },
+      {
+        "feature": "splitBody",
+        "status": "PASS",
+        "passedAxes": 7,
+        "requiredAxes": 7,
+        "axes": [
+          {
+            "axis": "create",
+            "status": "PASS",
+            "evidenceCount": 1,
+            "blockers": []
+          },
+          {
+            "axis": "edit",
+            "status": "PASS",
+            "evidenceCount": 1,
+            "blockers": []
+          },
+          {
+            "axis": "regenerate",
+            "status": "PASS",
+            "evidenceCount": 1,
+            "blockers": []
+          },
+          {
+            "axis": "save_reopen",
+            "status": "PASS",
+            "evidenceCount": 2,
+            "blockers": []
+          },
+          {
+            "axis": "undo",
+            "status": "PASS",
+            "evidenceCount": 1,
+            "blockers": []
+          },
+          {
+            "axis": "export",
+            "status": "PASS",
+            "evidenceCount": 2,
+            "blockers": []
+          },
+          {
+            "axis": "drawing",
+            "status": "PASS",
+            "evidenceCount": 2,
+            "blockers": []
+          }
+        ]
+      }
+    ],
+    "blockers": []
+  }
+}

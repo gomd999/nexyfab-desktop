@@ -27,6 +27,7 @@ import {
   type DrawingResult,
   type ProjectionView,
 } from './autoDrawing';
+import { layoutBalloons, type ViewBounds } from '../drawing/balloonCalloutLayout';
 
 export interface AssemblyDrawingPart {
   /** Stable id used in BOM rows + fingerprint. */
@@ -57,6 +58,19 @@ export interface BomRow {
   readonly partFingerprint: string;
 }
 
+/** Canonical sheet-space callout consumed by all three drawing exporters. */
+export interface AssemblyBalloon {
+  readonly id: string;
+  readonly itemNumber: number;
+  /** Point on the corresponding part view (paper space, top-left origin). */
+  readonly anchor: { readonly x: number; readonly y: number };
+  /** Centre of the numbered balloon (paper space, top-left origin). */
+  readonly balloonCentre: { readonly x: number; readonly y: number };
+  readonly leader: readonly [{ readonly x: number; readonly y: number }, { readonly x: number; readonly y: number }];
+  /** Alias retained for consumers that use the exploded-view vocabulary. */
+  readonly position: { readonly x: number; readonly y: number };
+}
+
 export interface AssemblyDrawingResult extends DrawingResult {
   /** BOM rows ordered by stable part index. */
   readonly bom: readonly BomRow[];
@@ -65,6 +79,8 @@ export interface AssemblyDrawingResult extends DrawingResult {
   /** Composite fingerprint covering geometry + transforms + qty + label.
    *  Stable: identical assemblies produce identical strings. */
   readonly fingerprint: string;
+  /** Numbered, anchored callouts rendered by PDF/DXF/SVG exporters. */
+  readonly balloons: readonly AssemblyBalloon[];
 }
 
 /**
@@ -134,12 +150,81 @@ export function generateAssemblyDrawing(
   // Combined sheet — primary view from the FIRST part populates the
   // top-level DrawingResult so downstream PDF/DXF exporters can render
   // the "assembly overview" view; per-part details are in `perPart`.
-  const primary = perPart[0];
+  const paperWidth = perPart[0]!.paperWidth;
+  const paperHeight = perPart[0]!.paperHeight;
+  const tableHeight = 8 + bom.length * 6;
+  const margin = 10;
+  const titleReserve = 30;
+  const viewBottom = Math.max(margin + 30, paperHeight - titleReserve - tableHeight - 5);
+  const cols = parts.length <= 1 ? 1 : parts.length <= 4 ? 2 : 3;
+  const rows = Math.ceil(parts.length / cols);
+  const cellW = (paperWidth - margin * 2) / cols;
+  const cellH = (viewBottom - margin) / rows;
+
+  // Compose one deterministic sheet view per part. The previous path only
+  // returned the first part's view, leaving every other BOM item unbound.
+  const composedViews = perPart.map((partDrawing, i) => {
+    const source = partDrawing.views[0]!;
+    const fit = Math.min(1, (cellW - 20) / Math.max(source.width, 1), (cellH - 20) / Math.max(source.height, 1));
+    const width = source.width * fit;
+    const height = source.height * fit;
+    const col = i % cols;
+    const row = Math.floor(i / cols);
+    const position = { x: margin + col * cellW + (cellW - width) / 2, y: margin + row * cellH + (cellH - height) / 2 };
+    return {
+      projection: source.projection,
+      lines: source.lines.map((line) => ({ ...line, x1: line.x1 * fit, y1: line.y1 * fit, x2: line.x2 * fit, y2: line.y2 * fit })),
+      texts: (source.texts ?? []).map((tx) => ({ ...tx, x: tx.x * fit, y: tx.y * fit, fontSize: tx.fontSize * fit })),
+      position, width, height,
+    };
+  });
+  const viewBounds: ViewBounds = {
+    minX: Math.min(...composedViews.map((v) => v.position.x)), minY: Math.min(...composedViews.map((v) => v.position.y)),
+    maxX: Math.max(...composedViews.map((v) => v.position.x + v.width)), maxY: Math.max(...composedViews.map((v) => v.position.y + v.height)),
+  };
+  const anchors = composedViews.map((view, i) => {
+    const lines = view.lines;
+    const local = lines.length > 0 ? lines.reduce((acc, line) => ({ x: acc.x + (line.x1 + line.x2) / 2, y: acc.y + (line.y1 + line.y2) / 2 }), { x: 0, y: 0 }) : { x: view.width / 2, y: view.height / 2 };
+    const count = Math.max(lines.length, 1);
+    return { id: parts[i]!.id, itemNumber: i + 1, point: { x: view.position.x + local.x / count, y: view.position.y + view.height - local.y / count } };
+  });
+  const placed = layoutBalloons(anchors, viewBounds, { marginMm: 8, balloonRadiusMm: 4, minSeparationMm: 3 }).placed;
+  const balloons: AssemblyBalloon[] = placed.map((p) => {
+    const balloonCentre = { x: Math.max(5, Math.min(p.balloonCentre.x, paperWidth - 5)), y: Math.max(5, Math.min(p.balloonCentre.y, viewBottom - 5)) };
+    return { id: p.id, itemNumber: p.itemNumber, anchor: p.anchor, balloonCentre, position: balloonCentre, leader: [balloonCentre, p.anchor] };
+  });
+
+  // Flatten the composed cells into one sheet view. This preserves the
+  // historical `views.length === 1` contract while ensuring every anchor is
+  // actually attached to geometry present in the exported view.
+  const sheetView = {
+    projection: composedViews[0]!.projection,
+    lines: composedViews.flatMap((view) => view.lines.map((line) => ({
+      ...line,
+      x1: view.position.x + line.x1,
+      x2: view.position.x + line.x2,
+      y1: viewBottom - view.position.y - view.height + line.y1,
+      y2: viewBottom - view.position.y - view.height + line.y2,
+    }))),
+    texts: composedViews.flatMap((view) => (view.texts ?? []).map((tx) => ({
+      ...tx,
+      x: view.position.x + tx.x,
+      y: viewBottom - view.position.y - view.height + tx.y,
+    }))),
+    position: { x: 0, y: 0 },
+    width: paperWidth,
+    height: viewBottom,
+  };
 
   return {
-    ...primary,
+    views: [sheetView],
+    titleBlock: config.titleBlock,
+    tolerance: config.tolerance,
+    paperWidth,
+    paperHeight,
     bom,
     perPart,
     fingerprint: computeAssemblyFingerprint(parts),
+    balloons,
   };
 }

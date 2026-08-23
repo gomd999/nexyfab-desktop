@@ -164,6 +164,12 @@ export function kinematicDragStep(
   }
 
   const mode = gesture.mode;
+  // Keep the pre-drag pose around.  A revolute drag is a kinematic command,
+  // so a limit mate must reject the part of the command that leaves the
+  // feasible interval instead of asking the solver to move a body that we
+  // deliberately pinned for this solve.
+  const startPosition = body.position.clone();
+  const startQuaternion = bodyQuat(body);
   if (mode.kind === 'revolute') {
     // Project current grab + target onto the rotation plane ⊥ axis through
     // the pivot, and rotate the body by the signed angle between them.
@@ -202,20 +208,106 @@ export function kinematicDragStep(
     body.position.add(targetWorld.clone().sub(grab));
   }
 
+  const desiredPosition = body.position.clone();
+  const desiredQuaternion = bodyQuat(body);
+  const hasLimitAngle = state.mates.some(m =>
+    m.enabled && m.type === 'limitAngle' && m.selections.some(s => s.bodyIndex === gesture.bodyIndex),
+  );
+
+  const solvePinned = (): ReturnType<typeof solveAssembly> => {
+    const prevFixed = body.fixed;
+    if (mode.kind !== 'free') body.fixed = true;
+    try {
+      return solveAssembly(state, iterations, { rotationalResponse: true });
+    } finally {
+      body.fixed = prevFixed;
+    }
+  };
+
+  const isFeasible = (result: ReturnType<typeof solveAssembly>): boolean =>
+    result.converged && result.unsatisfied.length === 0 && result.conflicts.length === 0 &&
+    state.mates.every(m => {
+      if (!m.enabled || m.type !== 'limitAngle') return true;
+      const [s0, s1] = m.selections;
+      const p0 = result.bodies[s0.bodyIndex];
+      const p1 = result.bodies[s1.bodyIndex];
+      if (!p0 || !p1) return false;
+      const n0 = s0.localNormal.clone().applyQuaternion(new THREE.Quaternion().setFromEuler(p0.rotation)).normalize();
+      const n1 = s1.localNormal.clone().applyQuaternion(new THREE.Quaternion().setFromEuler(p1.rotation)).normalize();
+      const angle = (Math.acos(THREE.MathUtils.clamp(n0.dot(n1), -1, 1)) * 180) / Math.PI;
+      const lo = m.min ?? 0;
+      const hi = m.max ?? lo;
+      return angle >= lo - 1e-7 && angle <= hi + 1e-7;
+    });
+
+  // Interpolate a trial pose along the actual revolute path.  Linear Euler
+  // interpolation would leave the hinge circle and can make a valid endpoint
+  // appear invalid, so use a world-space quaternion delta for this mode.
+  const setTrialFraction = (fraction: number): void => {
+    if (mode.kind === 'revolute') {
+      const delta = desiredQuaternion.clone().multiply(startQuaternion.clone().invert());
+      const step = new THREE.Quaternion().slerp(delta, fraction);
+      body.position.copy(startPosition.clone().sub(mode.pivotWorld).applyQuaternion(step).add(mode.pivotWorld));
+      body.rotation.setFromQuaternion(step.clone().premultiply(startQuaternion));
+      return;
+    }
+    body.position.lerpVectors(startPosition, desiredPosition, fraction);
+    body.rotation.setFromQuaternion(startQuaternion.clone().slerp(desiredQuaternion, fraction));
+  };
+
   // Pin the driven body for the re-solve so the correction flows outward
   // (the same trick positionDriver.applyDriver uses), unless it's free-mode
   // (then the solver may also polish the dragged body itself).
-  const pin = mode.kind !== 'free';
-  const prevFixed = body.fixed;
-  if (pin) body.fixed = true;
-  const res = solveAssembly(state, iterations, { rotationalResponse: true });
-  body.fixed = prevFixed;
+  let res = solvePinned();
+  let commitResult = true;
 
-  // Write the solved poses back so the next frame warm-starts from here.
-  for (let i = 0; i < state.bodies.length; i++) {
-    state.bodies[i].position.copy(res.bodies[i].position);
-    state.bodies[i].rotation.copy(res.bodies[i].rotation);
+  if (!isFeasible(res) && hasLimitAngle && mode.kind === 'revolute') {
+    // If the previous frame was feasible, the feasible part of a continuous
+    // drag is an interval [0, boundary].  Bisection gives stable behaviour at
+    // either bound without depending on the limit mate's correction direction.
+    setTrialFraction(0);
+    const atStart = solvePinned();
+    if (isFeasible(atStart)) {
+      let lo = 0;
+      let hi = 1;
+      let best = atStart;
+      for (let i = 0; i < 28; i++) {
+        const mid = (lo + hi) / 2;
+        setTrialFraction(mid);
+        const trial = solvePinned();
+        if (isFeasible(trial)) {
+          lo = mid;
+          best = trial;
+        } else {
+          hi = mid;
+        }
+      }
+      setTrialFraction(lo);
+      res = best;
+    } else {
+      // Contradictory limits (or another unsatisfied mate already present at
+      // the prior pose) have no safe drag result.  Do not commit a pinned,
+      // invalid candidate and do not report false convergence.
+      setTrialFraction(0);
+      res = atStart;
+      commitResult = false;
+    }
   }
 
-  return { bodies: res.bodies, converged: res.converged, iterations: res.iterations };
+  // Write the solved poses back so the next frame warm-starts from here.
+  if (commitResult) {
+    for (let i = 0; i < state.bodies.length; i++) {
+      state.bodies[i].position.copy(res.bodies[i].position);
+      state.bodies[i].rotation.copy(res.bodies[i].rotation);
+    }
+  }
+
+  const resultBodies = commitResult
+    ? res.bodies
+    : state.bodies.map(b => ({ position: b.position.clone(), rotation: b.rotation.clone() }));
+  return {
+    bodies: resultBodies,
+    converged: isFeasible(res),
+    iterations: res.iterations,
+  };
 }

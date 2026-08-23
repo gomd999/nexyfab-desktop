@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { checkPlan } from '@/lib/plan-guard';
 import { getDbAdapter } from '@/lib/db-adapter';
+import { boundedJsonError, readBoundedJson } from '@/lib/boundedJsonBody';
+
+const MAX_BODY_BYTES = 8 * 1024 * 1024;
 
 function generateShareCode(): string {
   const chars = 'ABCDEFGHJKMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789';
@@ -19,7 +22,12 @@ export async function POST(req: NextRequest) {
   if (!planCheck.ok) return planCheck.response;
 
   try {
-    const body = await req.json();
+    let body: Record<string, unknown>;
+    try { body = await readBoundedJson<Record<string, unknown>>(req, MAX_BODY_BYTES); }
+    catch (error) {
+      if (boundedJsonError(error)?.code === 'PAYLOAD_TOO_LARGE') return NextResponse.json({ error: 'simulation payload too large' }, { status: 413 });
+      throw error;
+    }
     const { name, inputs, results } = body;
 
     if (!name || !inputs || !results) {

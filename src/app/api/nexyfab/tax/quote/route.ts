@@ -14,22 +14,32 @@ import { getAuthUser } from '@/lib/auth-middleware';
 import { checkOrigin } from '@/lib/csrf';
 import { calculateTax, validateVatId } from '@/lib/tax-engine';
 import type { CountryCode, CurrencyCode } from '@/lib/country-pricing';
+import { boundedJsonError, readBoundedJson } from '@/lib/boundedJsonBody';
 
 export const dynamic = 'force-dynamic';
+const TAX_QUOTE_JSON_BYTES = 64 * 1024;
 
 export async function POST(req: NextRequest) {
   if (!checkOrigin(req)) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   const authUser = await getAuthUser(req);
   if (!authUser) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-  const body = await req.json() as {
+  let body: {
     amount?:        number;
     currency?:      string;
     sellerCountry?: string;
     buyerCountry?:  string;
     buyerTaxId?:    string | null;
     isB2B?:         boolean;
-  };
+  } = {};
+  try {
+    body = await readBoundedJson(req, TAX_QUOTE_JSON_BYTES);
+  } catch (error) {
+    const bodyError = boundedJsonError(error);
+    if (bodyError?.code === 'PAYLOAD_TOO_LARGE') {
+      return NextResponse.json({ error: 'Request body too large' }, { status: bodyError.status });
+    }
+  }
 
   const amount   = Number(body.amount);
   const currency = (body.currency ?? 'KRW').toUpperCase() as CurrencyCode;

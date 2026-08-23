@@ -1,0 +1,37 @@
+{
+  "schema": "nexyfab.mechanical-single-part-step-import.v1",
+  "feature": "loft",
+  "partRevisionSha256": "800bd71d875111ea1e1bb56a70a99daec997832eac75058952b31a1069a7df10",
+  "sourceDesignRevisionSha256": "3cf6a0f9c8efcf153a2cfefde087a2112c086fc412d2feeaeb9ce52542838564",
+  "sourceStep": {
+    "path": "docs/evidence/cad-independent/local/mechanical-core-runtime-260813/loft/loft-edited.step",
+    "sha256": "bf8dca653960e804034094f2194879eeef287727e871f166ae9c3b6db5fa7568",
+    "bytes": 142885,
+    "assertionId": "loft.export.native-step"
+  },
+  "exactKernel": "OCCT",
+  "units": {
+    "value": "mm",
+    "confidence": "high"
+  },
+  "solidCount": 1,
+  "singleSolid": true,
+  "volumeMm3": 10840,
+  "boundsMm": [
+    [
+      -10.049728191845,
+      -15.049728191845,
+      -10.049728191845
+    ],
+    [
+      10.049728191845,
+      15.049728191845,
+      10.049728191845
+    ]
+  ],
+  "dimensionsMm": {
+    "x": 20.09945638369,
+    "y": 30.09945638369,
+    "z": 20.09945638369
+  }
+}

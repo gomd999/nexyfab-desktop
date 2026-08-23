@@ -13,6 +13,8 @@
 interface PricePerMillion {
   inputUsd: number;
   outputUsd: number;
+  cachedInputUsd?: number;
+  cacheWriteInputUsd?: number;
 }
 
 /**
@@ -22,8 +24,10 @@ interface PricePerMillion {
  */
 const PRICES: Record<string, PricePerMillion> = {
   // DeepSeek (https://api-docs.deepseek.com/quick_start/pricing) — 2026-05 rates
-  'deepseek:deepseek-chat':                 { inputUsd: 0.14, outputUsd: 0.28 },
-  'deepseek:deepseek-reasoner':             { inputUsd: 0.55, outputUsd: 2.19 },
+  'deepseek:deepseek-chat':                 { inputUsd: 0.14, cachedInputUsd: 0.0028, outputUsd: 0.28 },
+  'deepseek:deepseek-reasoner':             { inputUsd: 0.14, cachedInputUsd: 0.0028, outputUsd: 0.28 },
+  'deepseek:deepseek-v4-flash':             { inputUsd: 0.14, cachedInputUsd: 0.0028, outputUsd: 0.28 },
+  'deepseek:deepseek-v4-pro':               { inputUsd: 0.435, cachedInputUsd: 0.003625, outputUsd: 0.87 },
 
   // OpenAI (https://openai.com/api/pricing/) — 2026-05 rates unless noted
   'openai:gpt-4o-mini':                     { inputUsd: 0.15, outputUsd: 0.60 },
@@ -31,14 +35,14 @@ const PRICES: Record<string, PricePerMillion> = {
   'openai:gpt-4-turbo':                     { inputUsd: 10.00, outputUsd: 30.00 },
   // 260802 rates, short-context tier (cached-input/cache-write/long-context tiers
   // exist but aren't tracked here — PricePerMillion has no field for them yet).
-  'openai:gpt-5.6-sol':                     { inputUsd: 5.00, outputUsd: 30.00 },
-  'openai:gpt-5.6-terra':                   { inputUsd: 2.00, outputUsd: 12.00 },
-  'openai:gpt-5.6-luna':                    { inputUsd: 0.20, outputUsd: 1.20 },
+  'openai:gpt-5.6-sol':                     { inputUsd: 5.00, cachedInputUsd: 0.50, cacheWriteInputUsd: 6.25, outputUsd: 30.00 },
+  'openai:gpt-5.6-terra':                   { inputUsd: 2.00, cachedInputUsd: 0.20, cacheWriteInputUsd: 2.50, outputUsd: 12.00 },
+  'openai:gpt-5.6-luna':                    { inputUsd: 0.20, cachedInputUsd: 0.02, cacheWriteInputUsd: 0.25, outputUsd: 1.20 },
 
   // Anthropic (https://docs.anthropic.com/en/docs/about-claude/pricing) — 2026-05
-  'anthropic:claude-haiku-4-5-20251001':    { inputUsd: 1.00, outputUsd: 5.00 },
-  'anthropic:claude-sonnet-4-6':            { inputUsd: 3.00, outputUsd: 15.00 },
-  'anthropic:claude-opus-4-7':              { inputUsd: 15.00, outputUsd: 75.00 },
+  'anthropic:claude-haiku-4-5-20251001':    { inputUsd: 1.00, cachedInputUsd: 0.10, cacheWriteInputUsd: 1.25, outputUsd: 5.00 },
+  'anthropic:claude-sonnet-4-6':            { inputUsd: 3.00, cachedInputUsd: 0.30, cacheWriteInputUsd: 3.75, outputUsd: 15.00 },
+  'anthropic:claude-opus-4-7':              { inputUsd: 15.00, cachedInputUsd: 1.50, cacheWriteInputUsd: 18.75, outputUsd: 75.00 },
 
   // Local — assumed free (self-hosted inference)
   'local:llama3.1':                         { inputUsd: 0, outputUsd: 0 },
@@ -71,6 +75,7 @@ export function estimateCostCents(
   model: string,
   promptTokens: number | undefined,
   completionTokens: number | undefined,
+  cache?: { cachedPromptTokens?: number; cacheWriteTokens?: number },
 ): number {
   // Sanitize per-input: NaN/Infinity → 0 so callers passing dirty values
   // never get NaN back. Negative inputs are also clamped to zero.
@@ -82,7 +87,23 @@ export function estimateCostCents(
   const price = exact ?? resolveByPrefix(provider, model);
   if (!price) return 0;
 
-  const usd = (pIn / 1_000_000) * price.inputUsd + (pOut / 1_000_000) * price.outputUsd;
+  const cached = Math.min(
+    pIn,
+    typeof cache?.cachedPromptTokens === 'number' && Number.isFinite(cache.cachedPromptTokens)
+      ? Math.max(0, cache.cachedPromptTokens)
+      : 0,
+  );
+  const written = Math.min(
+    Math.max(0, pIn - cached),
+    typeof cache?.cacheWriteTokens === 'number' && Number.isFinite(cache.cacheWriteTokens)
+      ? Math.max(0, cache.cacheWriteTokens)
+      : 0,
+  );
+  const uncached = Math.max(0, pIn - cached - written);
+  const usd = (uncached / 1_000_000) * price.inputUsd
+    + (cached / 1_000_000) * (price.cachedInputUsd ?? price.inputUsd)
+    + (written / 1_000_000) * (price.cacheWriteInputUsd ?? price.inputUsd)
+    + (pOut / 1_000_000) * price.outputUsd;
   return Math.round(usd * 10_000) / 100;  // → cents with 2 decimals
 }
 

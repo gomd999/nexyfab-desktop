@@ -1,0 +1,81 @@
+{
+  "schema": "nexyfab.mechanical-core-feature-local-runtime.v1",
+  "feature": "cut",
+  "axis": "regenerate",
+  "status": "PASS",
+  "executedAt": "2026-08-22T07:13:30.564Z",
+  "initial": {
+    "handle": "occt:295",
+    "kernelKind": "Solid",
+    "nativeShapeType": 0,
+    "solidCount": 1,
+    "singleSolid": true,
+    "volumeMm3": 67200,
+    "edgeCount": 24,
+    "faceCount": 10,
+    "boundsMm": [
+      [
+        -30.0000001,
+        -20.0000001,
+        -15.000000100000001
+      ],
+      [
+        30.0000001,
+        20.0000001,
+        15.000000100000001
+      ]
+    ]
+  },
+  "edited": {
+    "handle": "occt:297",
+    "kernelKind": "Solid",
+    "nativeShapeType": 0,
+    "solidCount": 1,
+    "singleSolid": true,
+    "volumeMm3": 64800,
+    "edgeCount": 24,
+    "faceCount": 10,
+    "boundsMm": [
+      [
+        -30.0000001,
+        -20.0000001,
+        -15.000000100000001
+      ],
+      [
+        30.0000001,
+        20.0000001,
+        15.000000100000001
+      ]
+    ]
+  },
+  "repeated": {
+    "handle": "occt:299",
+    "kernelKind": "Solid",
+    "nativeShapeType": 0,
+    "solidCount": 1,
+    "singleSolid": true,
+    "volumeMm3": 64800,
+    "edgeCount": 24,
+    "faceCount": 10,
+    "boundsMm": [
+      [
+        -30.0000001,
+        -20.0000001,
+        -15.000000100000001
+      ],
+      [
+        30.0000001,
+        20.0000001,
+        15.000000100000001
+      ]
+    ]
+  },
+  "featureMeaning": {
+    "assertion": "exact centered rectangular through-cut removes width x sheet-thickness x length while preserving the host outer bounds",
+    "widthMm": 18,
+    "lengthMm": 10,
+    "expectedVolumeMm3": 64800,
+    "actualVolumeMm3": 64800
+  },
+  "assertion": "edited parameter changed the exact signature and a fresh native regeneration reproduced topology, bounds, and volume"
+}

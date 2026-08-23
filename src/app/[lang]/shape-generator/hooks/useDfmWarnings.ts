@@ -46,7 +46,7 @@ export function useDfmWarnings(
     setState(s => ({ ...s, loading: true }));
 
     try {
-      const res = await fetch('/api/nexyfab/dfm-check', {
+      const res = await fetch('/api/nexyfab/dfm-check/', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(params),

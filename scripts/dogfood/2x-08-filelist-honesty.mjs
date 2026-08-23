@@ -15,7 +15,7 @@ const cases = [
 for (const [d, id, p] of cases) {
   const asm = buildAssemblyTemplate(d, id, p);
   const dir = `${OUT}pkg-${d}-${id}`;
-  const r = await callTool('generate_package', { assembly: asm, outDir: dir, title: id });
+  const r = await callTool('generate_package', { assembly: asm, outDir: dir, title: id, confirmWrite: true });
   console.log(`\n### ${d}/${id} ok=${r.ok}`);
   console.log('files[] reported :', JSON.stringify((r.files ?? []).map((f) => (f.error ? `${f.name}!ERR(${f.error.slice(0, 40)})` : f.name))));
   let onDisk = [];

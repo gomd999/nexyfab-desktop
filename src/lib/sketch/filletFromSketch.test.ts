@@ -5,6 +5,7 @@
  */
 import { describe, it, expect } from 'vitest';
 import { filletFromSketch } from './filletFromSketch';
+import { deserializeFeatureTree, serializeFeatureTree } from '@/lib/cad/featureTreePersist';
 import type { SolverViewState } from './solverToProfile';
 
 function rectSketch(): SolverViewState {
@@ -79,6 +80,17 @@ describe('filletFromSketch', () => {
     expect(r.ok).toBe(true);
     if (r.ok) {
       expect(r.scad).toMatch(/^\/\/ === fillet_1 \(Fillet\) ===/);
+    }
+  });
+
+  it('returns a persistable dependency tree whose fillet references the live seed', () => {
+    const r = filletFromSketch(rectSketch(), { depth: 20, radius: 1, edgeSelection: 'all' });
+    expect(r.ok).toBe(true);
+    if (r.ok) {
+      expect(r.tree.nodes).toHaveLength(2);
+      expect(r.tree.nodes[1]?.dependencies).toEqual(['fillet_child']);
+      expect(r.tree.nodes[1]?.payload).toMatchObject({ kind: 'fillet', childId: 'fillet_child' });
+      expect(deserializeFeatureTree(serializeFeatureTree(r.tree))).toMatchObject({ ok: true });
     }
   });
 

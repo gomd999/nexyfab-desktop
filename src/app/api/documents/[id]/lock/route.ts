@@ -37,6 +37,9 @@ import {
   lockConflictPayload,
   clampTtlMs,
 } from '@/lib/cloudDoc/locks';
+import { readBoundedJson } from '@/lib/boundedJsonBody';
+
+const MAX_JSON_BODY_BYTES = 16 * 1024;
 
 /** Shared auth + access resolution (mirrors the [id]/route.ts wrapper). */
 async function loadAccess(
@@ -56,8 +59,9 @@ async function loadAccess(
 }
 
 async function readTtlMs(req: NextRequest): Promise<number | null> {
+  if (!req.body) return clampTtlMs(undefined);
   let body: { ttlMs?: unknown } = {};
-  try { body = await req.json().catch(() => ({})); } catch { body = {}; }
+  try { body = await readBoundedJson<{ ttlMs?: unknown }>(req, MAX_JSON_BODY_BYTES); } catch { return null; }
   return clampTtlMs(body.ttlMs);
 }
 

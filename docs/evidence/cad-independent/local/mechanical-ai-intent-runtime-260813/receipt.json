@@ -1,0 +1,166 @@
+{
+  "schema": "nexyfab.mechanical-ai-intent-runtime-receipt.v1",
+  "generatedAt": "2026-08-22T07:13:00.871Z",
+  "revision": "7c3a02e2da7fbee88dac5533efea39eac2ec0114cde1b70936d41992d83dbbe1",
+  "sourceBindings": [
+    {
+      "path": "src/app/[lang]/shape-generator/features/occtEngine.ts",
+      "sha256": "32ff70b38fe4634f1a1058319fbe0a782057df0aee95975ac1c6bdac41eb3084",
+      "bytes": 133719
+    },
+    {
+      "path": "src/app/[lang]/shape-generator/features/topologyEdgeFinder.ts",
+      "sha256": "c1fb7eefc6462dd83ec1c146f4a432a87d200cd3f35ac8ca013f198a5a9a53dd",
+      "bytes": 21231
+    },
+    {
+      "path": "src/app/[lang]/shape-generator/features/variableFillet.ts",
+      "sha256": "afe690a2b7bcfb006760de09e609f25a124113ec8cc1b0901a80726b3916fe0b",
+      "bytes": 8461
+    },
+    {
+      "path": "src/app/[lang]/shape-generator/features/offsetFace.ts",
+      "sha256": "8ea98c75163f9476c30424bf555eea2377c96686fb9d79bd45f5ce140a1b86d7",
+      "bytes": 7702
+    },
+    {
+      "path": "src/app/[lang]/shape-generator/features/thread.ts",
+      "sha256": "622e2b22146ebf24443550aede6b5c7ed220b6b3960149e3711321ba5d8ae59d",
+      "bytes": 7898
+    },
+    {
+      "path": "src/app/[lang]/shape-generator/features/threads/applyThreadOcct.ts",
+      "sha256": "cec5f01414564bec7da93c36ba515a61ce11424eb189a7a5c9b69b282aea30f3",
+      "bytes": 4890
+    },
+    {
+      "path": "src/app/[lang]/shape-generator/features/helix.ts",
+      "sha256": "718b3c8eea925c07f1d1329759b6e5523adb58574d580c1aa02cf2c2acc4fde6",
+      "bytes": 6057
+    },
+    {
+      "path": "src/app/[lang]/shape-generator/features/sheetMetal.ts",
+      "sha256": "bec21b1a37183a6a12fb4bb1a2f4bb17ffb0dd2a2fdecbc0f3083bf8b480b614",
+      "bytes": 49431
+    },
+    {
+      "path": "src/app/[lang]/shape-generator/features/tab.ts",
+      "sha256": "9dd870859810b41415dc39805ee735507ee77297af0894d54336ac24eeda9d2e",
+      "bytes": 9611
+    },
+    {
+      "path": "src/app/[lang]/shape-generator/features/cut.ts",
+      "sha256": "115f96068beec6684e9ba861abf95ad862386d74958647a43f74e6a0973c4152",
+      "bytes": 13619
+    },
+    {
+      "path": "src/app/[lang]/shape-generator/features/reliefCuts.ts",
+      "sha256": "a9c566da3c3e48314b72df3e3a03f7eb662ee67b2cfb8a642e37e381c49a5a32",
+      "bytes": 20581
+    },
+    {
+      "path": "src/app/[lang]/shape-generator/features/variableShell.ts",
+      "sha256": "a4ed100cd7e56db936a8bb1362b301e29495cf6c5901a28306250b65e17d1d34",
+      "bytes": 6478
+    },
+    {
+      "path": "src/app/[lang]/shape-generator/features/revolve.ts",
+      "sha256": "24cb93461f736406d49172082dad7318c887e279ca596c8b820530f89a29539b",
+      "bytes": 4834
+    },
+    {
+      "path": "src/app/[lang]/shape-generator/features/sweep.ts",
+      "sha256": "0cdaf7ae7e8bc67c32be47db6267d46049b0f4e76da1a571ccebd099ae3bfc8a",
+      "bytes": 20456
+    },
+    {
+      "path": "src/app/[lang]/shape-generator/features/loft.ts",
+      "sha256": "245a7392ef59774a532e1c7bc9272de223b95f05a630a3febca2cfbcf7cdc785",
+      "bytes": 19628
+    },
+    {
+      "path": "src/app/[lang]/shape-generator/features/mirror.ts",
+      "sha256": "d1c0d22acba7205bd95a47504b3628a6e721334c9c9771b0f31b6345ce621209",
+      "bytes": 2312
+    },
+    {
+      "path": "src/app/[lang]/shape-generator/features/boolean.ts",
+      "sha256": "3c35a39072725586df6e2a761acc8a04084d5818666ed3e7121322a90f802e9f",
+      "bytes": 14981
+    },
+    {
+      "path": "src/app/[lang]/shape-generator/features/splitBody.ts",
+      "sha256": "753229973784c9de8181d2d4791f8ae151bbdb71f55d7dadbf5dd8cff4faecd7",
+      "bytes": 4015
+    },
+    {
+      "path": "src/app/[lang]/shape-generator/features/pipelineManager.ts",
+      "sha256": "66284ece9ce6a6206f28e99b97b86be755669169e470a25462fbb8daae09201e",
+      "bytes": 31526
+    },
+    {
+      "path": "src/app/[lang]/shape-generator/sketch/extrudeProfile.ts",
+      "sha256": "2f134635d6bd2b1c924f45d7226d56746ba907592987cf8f0fe97a865731dcb6",
+      "bytes": 20871
+    },
+    {
+      "path": "src/app/[lang]/shape-generator/io/nfabFormat.ts",
+      "sha256": "6c0422cec5d7524a263a543b94eb30cb0917837c9ec912a2acd12de037544f4d",
+      "bytes": 29671
+    },
+    {
+      "path": "src/app/[lang]/shape-generator/history/CommandHistory.ts",
+      "sha256": "97438d50d8e20e93040b423b70bc6a5898bd90ecaedccd3fd44f9d359fef0c50",
+      "bytes": 2357
+    },
+    {
+      "path": "src/app/[lang]/shape-generator/features/types.ts",
+      "sha256": "a8fcce84df76c47fc3cb4f1f35888485ab1f88105b35491a2773d8655790c255",
+      "bytes": 6204
+    },
+    {
+      "path": "src/lib/ai/mechanicalCoreFeatureContract.ts",
+      "sha256": "a53d59fde828bca93ac903e961970be256fe83223733517dcef2bfb5b5f2bbfe",
+      "bytes": 16839
+    },
+    {
+      "path": "scripts/mechanical-core-feature-local-runtime.ts",
+      "sha256": "e6633a788f34892ac95bb18b77b3abef2eb03d01e90cd45827e12f8cbb3ee760",
+      "bytes": 81487
+    }
+  ],
+  "artifactBindings": [
+    {
+      "path": "docs/evidence/cad-independent/local/mechanical-ai-intent-runtime-260813/intent-runtime-results.json",
+      "sha256": "0cd4c96d4b7382a77615b90eb8514f2594266f5a802e8f8c7a153581b781ee58",
+      "bytes": 23579
+    },
+    {
+      "path": "docs/evidence/cad-independent/local/mechanical-ai-intent-runtime-260813/runtime-axis-evidence.json",
+      "sha256": "1ff1e846938e47673fe62b7f3568c05f91fd213c7a9eaee64bdab79bb83a700f",
+      "bytes": 117004
+    }
+  ],
+  "summary": {
+    "requiredCases": 10,
+    "pass": 10,
+    "fail": 0,
+    "blocked": 0,
+    "requiredAxes": 70,
+    "axisPass": 70,
+    "axisFail": 0,
+    "axisNotRun": 0
+  },
+  "localIntegration": {
+    "status": "PASS"
+  },
+  "commercialCampaign": {
+    "status": "NOT_RUN",
+    "releaseEligible": false,
+    "blockers": [
+      "real_ai_model_campaign_not_run",
+      "external_commercial_receipt_not_evaluated"
+    ]
+  },
+  "claimBoundary": "Local deterministic chat-intent to canonical-candidate to exact-runtime integration only; no AI model or external commercial campaign was run."
+}

@@ -1,0 +1,37 @@
+{
+  "schema": "nexyfab.mechanical-single-part-step-import.v1",
+  "feature": "variableShell",
+  "partRevisionSha256": "c05381df599e1023151bbea98545aa3e6e00fa5e6924c490f0319c41890f8245",
+  "sourceDesignRevisionSha256": "3cf6a0f9c8efcf153a2cfefde087a2112c086fc412d2feeaeb9ce52542838564",
+  "sourceStep": {
+    "path": "docs/evidence/cad-independent/local/mechanical-core-runtime-260813/variableShell/variableShell-edited.step",
+    "sha256": "2c48a7423162b7606e57ac70e68cd093aa86591b5021e44641a010409462be7e",
+    "bytes": 30053,
+    "assertionId": "variableShell.export.native-step"
+  },
+  "exactKernel": "OCCT",
+  "units": {
+    "value": "mm",
+    "confidence": "high"
+  },
+  "solidCount": 1,
+  "singleSolid": true,
+  "volumeMm3": 20437.500000000007,
+  "boundsMm": [
+    [
+      -30.000000100000005,
+      -20.000000100000005,
+      -15.000000100000003
+    ],
+    [
+      30.000000100000005,
+      20.000000100000005,
+      15.000000100000003
+    ]
+  ],
+  "dimensionsMm": {
+    "x": 60.00000020000001,
+    "y": 40.00000020000001,
+    "z": 30.000000200000006
+  }
+}

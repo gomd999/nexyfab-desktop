@@ -18,6 +18,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getAuthUser } from '@/lib/auth-middleware';
 import { verifyAdmin } from '@/lib/admin-auth';
 import { getDbAdapter } from '@/lib/db-adapter';
+import { boundedJsonError, readBoundedJson } from '@/lib/boundedJsonBody';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -104,8 +105,11 @@ export async function POST(req: NextRequest) {
 
   let body: { signalId?: unknown; verdict?: unknown; notes?: unknown };
   try {
-    body = await req.json();
-  } catch {
+    body = await readBoundedJson(req, 64 * 1024);
+  } catch (error) {
+    if (boundedJsonError(error)?.status === 413) {
+      return NextResponse.json({ error: 'payload too large' }, { status: 413 });
+    }
     return NextResponse.json({ error: 'invalid JSON' }, { status: 400 });
   }
   const signalId = typeof body.signalId === 'string' ? body.signalId : '';

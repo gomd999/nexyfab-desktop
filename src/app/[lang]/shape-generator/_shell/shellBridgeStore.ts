@@ -8,6 +8,7 @@
 // stay the single source of truth for CAD logic.
 
 import { create } from 'zustand';
+import type { SketchNodeData } from '../useFeatureStack';
 
 export type ShellEditMode = 'modeling' | 'sketch' | 'assembly';
 export type ShellUnitSystem = 'mm' | 'inch';
@@ -24,10 +25,25 @@ export interface ShellFeatureItem {
   meta?: string;
   /** Numeric params keyed by name — drives the Inspector PARAMETERS section. */
   params?: Record<string, number>;
+  /** Optional editor metadata for base-shape and feature parameters. */
+  paramDefs?: Record<string, {
+    label?: string;
+    min?: number;
+    max?: number;
+    step?: number;
+    unit?: string;
+  }>;
   /** Real edge selections attached to this feature (fillet/chamfer/shell) —
    *  drives the Inspector EDGES section. id = persistent topology id when
    *  available; meta = human hint (e.g. "L 12.0 mm"). */
   edges?: { id: string; meta?: string }[];
+  /** Portable authoring data retained for PDM checkout/restore. */
+  sketchData?: SketchNodeData;
+  edgeSelections?: import('../editing/selectionInfo').EdgeSelectionInfo[];
+  faceSelections?: import('../editing/selectionInfo').FaceSelectionInfo[];
+  targetEdgeIds?: string[];
+  targetFaceIds?: string[];
+  paramExpressions?: Record<string, string>;
   /** Children for sketch profile / sub-features. */
   children?: ShellFeatureItem[];
 }
@@ -141,6 +157,7 @@ export interface ShellBridgeState {
 
   // Feature tree snapshot — Inner publishes a flat list for the sidebar to
   // render. Heavy domain types stay in sceneStore; this is presentation only.
+  baseShapeItem: ShellFeatureItem | null;
   featureItems: ShellFeatureItem[];
   selectedFeatureId: string | null;
   /** Tree row currently being hovered — Inner reads this to apply viewport
@@ -166,6 +183,8 @@ export interface ShellBridgeState {
    *  null = no analysis has completed yet — Inspector shows "run" instead of
    *  a fabricated count. */
   dfmWarningCount: number | null;
+  /** Hash of the live canonical model content used by the AI Apply guard. */
+  contentRevision: string;
 
   // Writers
   setMode: (s: Partial<Pick<ShellBridgeState, 'isSketchMode' | 'assemblyOpen' | 'editMode'>>) => void;
@@ -176,6 +195,7 @@ export interface ShellBridgeState {
   setCloud: (s: Partial<Pick<ShellBridgeState, 'cloudStatus' | 'cloudSavedAt' | 'autosaveSavedAt'>>) => void;
   setSketchSolver: (s: Partial<Pick<ShellBridgeState, 'sketchSolverOk' | 'sketchDof' | 'sketchEntities' | 'sketchConstraints' | 'sketchDimensions' | 'sketchSolveMs' | 'sketchStatus' | 'sketchRedundantCount'>>) => void;
   setSelection: (s: Partial<Pick<ShellBridgeState, 'selectionKind' | 'selectionLabel' | 'selectionCount'>>) => void;
+  setBaseShapeItem: (item: ShellFeatureItem | null) => void;
   setFeatureItems: (items: ShellFeatureItem[], selectedId: string | null) => void;
   setHoveredFeatureId: (id: string | null) => void;
   setAssemblyItems: (items: ShellAssemblyItem[], selectedId: string | null) => void;
@@ -187,6 +207,7 @@ export interface ShellBridgeState {
   }) => void;
   setSketchSelectedEntity: (id: string | null) => void;
   setDfmWarningCount: (n: number | null) => void;
+  setContentRevision: (revision: string) => void;
 }
 
 export const useShellBridge = create<ShellBridgeState>((set) => ({
@@ -215,6 +236,7 @@ export const useShellBridge = create<ShellBridgeState>((set) => ({
   selectionKind: null,
   selectionLabel: null,
   selectionCount: 0,
+  baseShapeItem: null,
   featureItems: [],
   selectedFeatureId: null,
   hoveredFeatureId: null,
@@ -226,6 +248,7 @@ export const useShellBridge = create<ShellBridgeState>((set) => ({
   sketchDimensionList: [],
   sketchSelectedEntityId: null,
   dfmWarningCount: null,
+  contentRevision: '',
 
   setMode: (s) => set(s),
   setUnits: (u) => set({ unitSystem: u }),
@@ -235,6 +258,7 @@ export const useShellBridge = create<ShellBridgeState>((set) => ({
   setCloud: (s) => set(s),
   setSketchSolver: (s) => set(s),
   setSelection: (s) => set(s),
+  setBaseShapeItem: (item) => set({ baseShapeItem: item }),
   setFeatureItems: (items, selectedId) => set({ featureItems: items, selectedFeatureId: selectedId }),
   setHoveredFeatureId: (id) => set({ hoveredFeatureId: id }),
   setAssemblyItems: (items, selectedId) => set({ assemblyItems: items, selectedAssemblyId: selectedId }),
@@ -246,4 +270,5 @@ export const useShellBridge = create<ShellBridgeState>((set) => ({
   }),
   setSketchSelectedEntity: (id) => set({ sketchSelectedEntityId: id }),
   setDfmWarningCount: (n) => set({ dfmWarningCount: n }),
+  setContentRevision: (contentRevision) => set({ contentRevision }),
 }));

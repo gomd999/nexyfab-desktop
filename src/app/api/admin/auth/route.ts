@@ -1,123 +1,162 @@
 import { NextRequest, NextResponse } from 'next/server';
-import bcrypt from 'bcryptjs';
-import { rateLimitAsync } from '@/lib/rate-limit';
+import { createHash } from 'node:crypto';
 import { checkOrigin } from '@/lib/csrf';
-import { createAdminSession, verifyAdmin } from '@/lib/admin-auth';
+import { sendEmail } from '@/lib/email';
 import { getTrustedClientIp } from '@/lib/client-ip';
+import { rateLimitAsync, rateLimitHeaders } from '@/lib/rate-limit';
+import { recordAdminAudit } from '@/lib/admin-audit';
+import { boundedJsonError, readBoundedJson } from '@/lib/boundedJsonBody';
+import {
+  ADMIN_EMAIL_CODE_TTL_MS,
+  adminRequestIpHash,
+  createAdminEmailSession,
+  issueAdminEmailLoginCode,
+  isAllowedAdminEmail,
+  maskAdminEmail,
+  normalizeAdminEmail,
+  revokeAdminEmailSession,
+  verifyAdminEmailLoginCode,
+  verifyAdminEmailTokenLive,
+} from '@/lib/admin-email-auth';
 
 export const dynamic = 'force-dynamic';
 
-/** Session check for the AdminAuthGate — returns whether the caller already
- *  holds a valid admin session (the nf_admin_token cookie is scoped to
- *  /api/admin, so the gate must ask the server rather than read it). */
+const PRIVATE_HEADERS = { 'Cache-Control': 'no-store, private' };
+
+function emailRateKey(email: string): string {
+  return createHash('sha256').update(email).digest('hex').slice(0, 24);
+}
+
+function cookieOptions(maxAge: number) {
+  return {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'strict' as const,
+    maxAge,
+    path: '/',
+    priority: 'high' as const,
+  };
+}
+
 export async function GET(req: NextRequest) {
-  return NextResponse.json({ authed: await verifyAdmin(req) });
+  const session = await verifyAdminEmailTokenLive(req.cookies.get('nf_admin_token')?.value).catch(() => null);
+  return NextResponse.json(
+    { authed: Boolean(session), email: session?.email ?? null },
+    { headers: PRIVATE_HEADERS },
+  );
 }
 
 export async function POST(req: NextRequest) {
-  // CSRF check
-  if (!checkOrigin(req)) {
-    return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+  if (!checkOrigin(req) || req.headers.get('sec-fetch-site') === 'cross-site') {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403, headers: PRIVATE_HEADERS });
   }
 
-  // Rate limit: 5 attempts per minute per IP
+  let body: {
+    action?: unknown;
+    email?: unknown;
+    code?: unknown;
+  };
+  try { body = await readBoundedJson(req, 64 * 1024); }
+  catch (error) {
+    if (boundedJsonError(error)?.status === 413) return NextResponse.json({ error: 'Payload too large' }, { status: 413, headers: PRIVATE_HEADERS });
+    body = {};
+  }
+  const action = body.action === 'verify' ? 'verify' : 'request';
+  const email = normalizeAdminEmail(body.email);
+  if (!email) {
+    return NextResponse.json({ error: '올바른 이메일 주소를 입력해 주세요.' }, { status: 400, headers: PRIVATE_HEADERS });
+  }
+
   const ip = getTrustedClientIp(req.headers);
-  const rl = await rateLimitAsync(`admin-auth:${ip}`, 5, 60_000);
-  if (!rl.allowed) {
-    return NextResponse.json({ error: '요청이 너무 많습니다. 잠시 후 다시 시도하세요.' }, { status: 429 });
-  }
+  const ipHash = adminRequestIpHash(ip);
 
-  const { password } = await req.json() as { password?: string };
-
-  const adminPasswordHash = process.env.ADMIN_PASSWORD_HASH;
-  const adminPasswordPlain = process.env.ADMIN_PASSWORD;
-
-  if (!adminPasswordHash && !adminPasswordPlain) {
-    console.error('[admin/auth] ADMIN_PASSWORD_HASH 또는 ADMIN_PASSWORD 환경변수가 설정되지 않았습니다.');
-    return NextResponse.json({ error: '서버 설정 오류' }, { status: 500 });
-  }
-
-  if (!password) {
-    return NextResponse.json({ error: '비밀번호가 올바르지 않습니다.' }, { status: 401 });
-  }
-
-  let valid = false;
-  if (adminPasswordHash) {
-    valid = await bcrypt.compare(password, adminPasswordHash);
-  } else if (adminPasswordPlain) {
-    // 프로덕션에서는 평문 비밀번호 허용 안 함 — ADMIN_PASSWORD_HASH 설정 필요
-    if (process.env.NODE_ENV === 'production') {
-      console.error('[admin/auth] Production requires ADMIN_PASSWORD_HASH (bcrypt). Plain ADMIN_PASSWORD rejected.');
-      return NextResponse.json({ error: '서버 설정 오류' }, { status: 500 });
+  if (action === 'request') {
+    const [ipLimit, emailLimit] = await Promise.all([
+      rateLimitAsync(`admin-email-request:ip:${ipHash}`, 5, 60 * 60 * 1000, { failClosed: process.env.NODE_ENV === 'production' }),
+      rateLimitAsync(`admin-email-request:email:${emailRateKey(email)}`, 5, 60 * 60 * 1000, { failClosed: process.env.NODE_ENV === 'production' }),
+    ]);
+    const limited = !ipLimit.allowed ? ipLimit : !emailLimit.allowed ? emailLimit : null;
+    if (limited) {
+      return NextResponse.json(
+        { error: '인증 요청이 너무 많습니다. 잠시 후 다시 시도해 주세요.', retryAfter: Math.max(1, Math.ceil((limited.resetAt - Date.now()) / 1000)) },
+        { status: 429, headers: { ...PRIVATE_HEADERS, ...rateLimitHeaders(limited, 5) } },
+      );
     }
-    valid = password === adminPasswordPlain;
-  }
 
-  if (!valid) {
-    return NextResponse.json({ error: '비밀번호가 올바르지 않습니다.' }, { status: 401 });
-  }
-
-  /**
-   * ★ 2단계 (260802) — **비밀번호 하나로 40페이지 콘솔이 열리던 것**을 막는다.
-   *
-   * `/admin` 은 계정이 아니라 공유 비밀번호로 들어오므로 개인 주소가 없다.
-   * `OPS_ALERT_EMAIL`(운영 알림 주소)로 코드를 보낸다 — 「누구인지」가 아니라
-   * **「그 메일함에 접근할 수 있는가」**를 확인하는 것이다.
-   * 개인 계정 OTP 보다 약하지만 **비밀번호 하나보다는 확실히 강하다.**
-   *
-   * ⚠ 설정이 없으면(`unconfigured`) **조용히 통과시키지 않고 그 사실을 응답에 적는다.**
-   *   조용히 열면 「2단계를 켰다」고 믿는 상태로 열려 있게 된다.
-   */
-  const { consoleOtpMode, issueConsoleOtp, verifyConsoleOtp, opsRecipients } = await import('@/lib/admin-console-otp');
-  const mode = consoleOtpMode();
-  const otp = (await req.clone().json().catch(() => ({}))) as { otp?: string };
-
-  if (mode === 'enforced') {
-    if (!otp.otp) {
-      // 1단계 통과 → 코드 발송. **아직 세션을 주지 않는다.**
-      const { code } = await issueConsoleOtp();
-      const { sendEmail } = await import('@/lib/email');
-      const to = opsRecipients();
+    // Do not reveal whether the submitted address is on the allowlist.
+    if (await isAllowedAdminEmail(email)) {
+      const issued = await issueAdminEmailLoginCode(email, ipHash);
       const sent = await sendEmail({
-        to: to.join(','),
-        subject: `[NexyFab] 관리자 콘솔 인증 코드 ${code}`,
-        html: `<div style="font-family:system-ui,sans-serif;max-width:520px">`
-          + `<h2>관리자 콘솔 인증 코드</h2>`
-          + `<div style="font-size:32px;font-weight:800;letter-spacing:.2em;padding:16px;background:#f1f5f9;border-radius:8px;text-align:center">${code}</div>`
-          + `<p style="color:#64748b;font-size:13px">5분 안에 입력해야 합니다. IP ${ip}.`
-          + ` <b>본인이 시도하지 않았다면 ADMIN_PASSWORD 가 노출된 것입니다 — 즉시 교체하세요.</b></p></div>`,
-        text: `관리자 콘솔 인증 코드: ${code} (5분 유효, IP ${ip})`,
+        to: email,
+        subject: `[NexyFab] 관리자 로그인 인증 코드 ${issued.code}`,
+        text: `NexyFab 관리자 로그인 인증 코드: ${issued.code}\n${Math.floor(ADMIN_EMAIL_CODE_TTL_MS / 60000)}분 동안 유효하며 한 번만 사용할 수 있습니다.\n본인이 요청하지 않았다면 이 메일을 무시하세요.`,
+        html: `<!doctype html><html lang="ko"><body style="margin:0;padding:32px;background:#f3f6fb;font-family:system-ui,sans-serif">
+          <div style="max-width:460px;margin:0 auto;background:#fff;border:1px solid #dbe3ef;border-radius:18px;padding:30px">
+            <p style="margin:0 0 5px;color:#2563eb;font-size:12px;font-weight:800;letter-spacing:.08em">NEXYFAB ADMIN</p>
+            <h1 style="margin:0 0 20px;color:#111827;font-size:20px">관리자 로그인 인증 코드</h1>
+            <div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:14px;padding:20px;text-align:center">
+              <span style="color:#1d4ed8;font-size:34px;font-weight:900;letter-spacing:.28em;font-family:ui-monospace,monospace">${issued.code}</span>
+            </div>
+            <p style="margin:20px 0 0;color:#4b5563;font-size:13px;line-height:1.7">${Math.floor(ADMIN_EMAIL_CODE_TTL_MS / 60000)}분 후 만료되며 한 번만 사용할 수 있습니다.<br>본인이 요청하지 않았다면 이 메일을 무시하세요.</p>
+          </div></body></html>`,
       });
-      if (!sent.ok) {
-        // ⚠ 못 보냈으면 **성공이라 하지 않는다.** 오지 않는 메일을 기다리게 된다.
-        console.error('[admin/auth] OTP 발송 실패:', sent.error);
-        return NextResponse.json({ error: '인증 메일을 보내지 못했습니다 — 운영자에게 문의하세요.' }, { status: 502 });
-      }
-      return NextResponse.json({ requiresOtp: true, message: '운영 이메일로 인증 코드를 보냈습니다.' });
+      if (!sent.ok) console.error('[admin-email-auth] verification email failed:', sent.error);
     }
-    const v = await verifyConsoleOtp(String(otp.otp));
-    if (!v.ok) {
-      return NextResponse.json({ error: '인증 코드가 올바르지 않습니다.', reason: v.reason }, { status: 401 });
-    }
+
+    return NextResponse.json({
+      ok: true,
+      requiresCode: true,
+      to: maskAdminEmail(email),
+      message: '허용된 관리자 이메일이면 인증 코드를 발송했습니다.',
+    }, { headers: PRIVATE_HEADERS });
   }
 
-  const adminToken = createAdminSession();
-  const response = NextResponse.json({
-    ok: true,
-    /** ⚠ 2단계가 실제로 적용됐는지 **응답에 적는다** — 「켰다」는 믿음과 실제를 가른다. */
-    twoFactor: mode,
-    ...(mode === 'unconfigured'
-      ? { warning: 'OPS_ALERT_EMAIL 이 설정되지 않아 2단계 인증이 적용되지 않았습니다 — 비밀번호만으로 접근 중입니다.' }
-      : {}),
+  const verifyLimit = await rateLimitAsync(
+    `admin-email-verify:${ipHash}`,
+    20,
+    60 * 60 * 1000,
+    { failClosed: process.env.NODE_ENV === 'production' },
+  );
+  if (!verifyLimit.allowed) {
+    return NextResponse.json(
+      { error: '인증 시도 횟수를 초과했습니다. 잠시 후 다시 시도해 주세요.' },
+      { status: 429, headers: { ...PRIVATE_HEADERS, ...rateLimitHeaders(verifyLimit, 20) } },
+    );
+  }
+
+  const code = typeof body.code === 'string' ? body.code.replace(/\D/g, '') : '';
+  const result = await verifyAdminEmailLoginCode(email, code, ipHash);
+  if (!result.ok) {
+    const status = result.reason === 'too_many_attempts' ? 429 : 401;
+    return NextResponse.json({
+      error: result.reason === 'expired'
+        ? '인증 코드가 만료되었습니다. 새 코드를 요청해 주세요.'
+        : result.reason === 'too_many_attempts'
+          ? '인증 시도 횟수를 초과했습니다. 새 코드를 요청해 주세요.'
+          : '인증 코드가 올바르지 않습니다.',
+      reason: result.reason,
+      attemptsLeft: result.attemptsLeft,
+    }, { status, headers: PRIVATE_HEADERS });
+  }
+
+  const session = await createAdminEmailSession(email, ipHash, req.headers.get('user-agent') ?? '');
+  const response = NextResponse.json({ ok: true, email: session.email }, { headers: PRIVATE_HEADERS });
+  response.cookies.set('nf_admin_token', session.token, cookieOptions(session.maxAge));
+  void recordAdminAudit(req, {
+    adminUserId: session.email,
+    action: 'admin.email_login',
+    target: session.email,
   });
-  response.cookies.set('nf_admin_token', adminToken, {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
-    sameSite: 'strict',
-    maxAge: 30 * 60,
-    // Was '/api/admin' — but the server-side admin layout must read this cookie
-    // on /admin/* page requests to gate rendering, so it has to be sent there too.
-    path: '/',
-  });
+  return response;
+}
+
+export async function DELETE(req: NextRequest) {
+  if (!checkOrigin(req) || req.headers.get('sec-fetch-site') === 'cross-site') {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403, headers: PRIVATE_HEADERS });
+  }
+  const token = req.cookies.get('nf_admin_token')?.value;
+  await revokeAdminEmailSession(token).catch(() => undefined);
+  const response = NextResponse.json({ ok: true }, { headers: PRIVATE_HEADERS });
+  response.cookies.set('nf_admin_token', '', cookieOptions(0));
   return response;
 }

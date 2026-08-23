@@ -1,0 +1,41 @@
+{
+  "schema": "nexyfab.mechanical-core-feature-local-runtime.v1",
+  "feature": "circularPattern",
+  "axis": "undo",
+  "status": "PASS",
+  "executedAt": "2026-08-22T07:13:30.564Z",
+  "restoredPayload": {
+    "id": "runtime-feature",
+    "enabled": true,
+    "type": "circularPattern",
+    "params": {
+      "axis": 1,
+      "count": 3,
+      "totalAngle": 360,
+      "patternTarget": 0
+    }
+  },
+  "restoredExact": {
+    "handle": "occt:100",
+    "kernelKind": "Solid",
+    "nativeShapeType": 0,
+    "solidCount": 1,
+    "singleSolid": true,
+    "volumeMm3": 16752.923418550406,
+    "edgeCount": 27,
+    "faceCount": 11,
+    "boundsMm": [
+      [
+        -17.696152522706658,
+        -10.000000100000014,
+        -24.650635194610985
+      ],
+      [
+        25.000000100000015,
+        10.000000100000014,
+        24.65063519461098
+      ]
+    ]
+  },
+  "futureDepth": 1
+}

@@ -2,7 +2,6 @@
 
 import React, { useMemo, useState, useRef, useCallback } from 'react';
 import { usePathname } from 'next/navigation';
-import { isKorean } from '@/lib/i18n/normalize';
 import type { HistoryNode } from '../useFeatureStack';
 
 // ─── i18n dict ────────────────────────────────────────────────────────────────
@@ -133,14 +132,14 @@ export default function FeatureDependencyGraph({
   nodes,
   activeNodeId,
   onSelectNode,
-  lang,
+  lang: _lang,
 }: FeatureDependencyGraphProps) {
   const pathname = usePathname();
   const seg = pathname?.split('/').filter(Boolean)[0] ?? 'en';
   const langMap: Record<string, keyof typeof dict> = {
     kr: 'ko', ko: 'ko', en: 'en', ja: 'ja', cn: 'zh', zh: 'zh', es: 'es', ar: 'ar',
   };
-  const t = dict[langMap[seg] ?? (isKorean(lang ?? 'en') ? 'ko' : 'en')];
+  const t = dict[langMap[seg] ?? 'en'];
   const [hoveredId, setHoveredId] = useState<string | null>(null);
   const svgRef = useRef<SVGSVGElement | null>(null);
   const [pan, setPan] = useState({ x: 16, y: 16 });

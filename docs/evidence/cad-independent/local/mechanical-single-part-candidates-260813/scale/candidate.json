@@ -1,0 +1,64 @@
+{
+  "schema": "nexyfab.mechanical-single-part-candidate.v1",
+  "feature": "scale",
+  "candidateStatus": "PASS",
+  "partRevisionSha256": "88609e13c935db9bdd943f3c647e44dc32b58a5509c160fb40c391ace72ed113",
+  "source": {
+    "receiptPath": "docs/evidence/cad-independent/local/mechanical-core-feature-axis-evidence.json",
+    "receiptSha256": "79d9344b7d101580b7e1574759a8eff652cbe942e6a389056b488aba28a77930",
+    "designRevisionSha256": "3cf6a0f9c8efcf153a2cfefde087a2112c086fc412d2feeaeb9ce52542838564",
+    "nfab": {
+      "path": "docs/evidence/cad-independent/local/mechanical-core-runtime-260813/scale/saved-project.nfab",
+      "sha256": "6185cff9c33106a5b956b1bea53487e3ab50c21729d338d2aa9318626e507ac1",
+      "bytes": 1582,
+      "assertionId": "scale.save_reopen.saved-bytes",
+      "revisionSha256": "6185cff9c33106a5b956b1bea53487e3ab50c21729d338d2aa9318626e507ac1",
+      "formatVersion": 3,
+      "createdAt": 1786643060721,
+      "updatedAt": 1786643060721
+    },
+    "step": {
+      "path": "docs/evidence/cad-independent/local/mechanical-core-runtime-260813/scale/scale-edited.step",
+      "sha256": "73c77e34850f8166356f8fbb9c535f7f939162809ce9e951a64ccf06fe76b26b",
+      "bytes": 15659,
+      "assertionId": "scale.export.native-step"
+    },
+    "drawingSvg": {
+      "path": "docs/evidence/cad-independent/local/mechanical-core-runtime-260813/scale/scale-exact-hlr.svg",
+      "sha256": "b2cb00e355597d2cea27f6148b18be0f779c5d3adb23cfbacde86745b1193297",
+      "bytes": 2285,
+      "assertionId": "scale.drawing.exact-hlr-svg"
+    }
+  },
+  "artifacts": {
+    "stepImport": {
+      "path": "docs/evidence/cad-independent/local/mechanical-single-part-candidates-260813/scale/step-import.json",
+      "sha256": "30d9bf170642bf299d5f9ccb96ec50a21f2a853b4fbd0de43e2fa6968ab9cfe1",
+      "bytes": 949,
+      "assertionId": "scale.candidate.step-import"
+    },
+    "drawing": {
+      "path": "docs/evidence/cad-independent/local/mechanical-single-part-candidates-260813/scale/scale-three-axis-hlr.svg",
+      "sha256": "b2cb00e355597d2cea27f6148b18be0f779c5d3adb23cfbacde86745b1193297",
+      "bytes": 2285,
+      "assertionId": "scale.candidate.three-axis-hlr"
+    },
+    "bom": {
+      "path": "docs/evidence/cad-independent/local/mechanical-single-part-candidates-260813/scale/bom.json",
+      "sha256": "33594c86f65af954350fbedb0096f725c4b0a440827f398191017ab1dadddbe8",
+      "bytes": 849,
+      "assertionId": "scale.candidate.one-part-bom"
+    }
+  },
+  "capabilityStatus": {
+    "stepImportSolidUnitsBounds": "PASS",
+    "threeAxisHlrDrawingCandidate": "PASS",
+    "onePartBomQuantityDimensions": "PASS",
+    "drawingDimensions": "NOT_RUN",
+    "gdt": "NOT_RUN",
+    "pmi": "NOT_RUN",
+    "humanApproval": "NOT_RUN",
+    "manufacturingRelease": "BLOCKED"
+  },
+  "commercialReleaseEligible": false
+}

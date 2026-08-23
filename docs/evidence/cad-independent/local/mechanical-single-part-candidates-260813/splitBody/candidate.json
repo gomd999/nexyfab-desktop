@@ -1,0 +1,64 @@
+{
+  "schema": "nexyfab.mechanical-single-part-candidate.v1",
+  "feature": "splitBody",
+  "candidateStatus": "PASS",
+  "partRevisionSha256": "bbf911629e96cb34b92ee2f55a2a404b9ea6ab20569d7b37f8a59e843462ae10",
+  "source": {
+    "receiptPath": "docs/evidence/cad-independent/local/mechanical-core-feature-axis-evidence.json",
+    "receiptSha256": "79d9344b7d101580b7e1574759a8eff652cbe942e6a389056b488aba28a77930",
+    "designRevisionSha256": "3cf6a0f9c8efcf153a2cfefde087a2112c086fc412d2feeaeb9ce52542838564",
+    "nfab": {
+      "path": "docs/evidence/cad-independent/local/mechanical-core-runtime-260813/splitBody/saved-project.nfab",
+      "sha256": "735d547c9437cee2c7304a1a263c2e85115a27769f05e86b3d4bf80844379698",
+      "bytes": 1609,
+      "assertionId": "splitBody.save_reopen.saved-bytes",
+      "revisionSha256": "735d547c9437cee2c7304a1a263c2e85115a27769f05e86b3d4bf80844379698",
+      "formatVersion": 3,
+      "createdAt": 1786643134868,
+      "updatedAt": 1786643134868
+    },
+    "step": {
+      "path": "docs/evidence/cad-independent/local/mechanical-core-runtime-260813/splitBody/splitBody-edited.step",
+      "sha256": "4a0eb79927543242fa64f6222c418afa76ab228b9d80a26e172929870f50f612",
+      "bytes": 16154,
+      "assertionId": "splitBody.export.native-step"
+    },
+    "drawingSvg": {
+      "path": "docs/evidence/cad-independent/local/mechanical-core-runtime-260813/splitBody/splitBody-exact-hlr.svg",
+      "sha256": "f5342cccd72f7dc2aa57f2cdbb79243656b196a83629513b2bb346d3c70f2e58",
+      "bytes": 1965,
+      "assertionId": "splitBody.drawing.exact-hlr-svg"
+    }
+  },
+  "artifacts": {
+    "stepImport": {
+      "path": "docs/evidence/cad-independent/local/mechanical-single-part-candidates-260813/splitBody/step-import.json",
+      "sha256": "b91c9b330656d12640dbda331fbac1d87ca7d05dcc0d84ebe66da0e6ecee9358",
+      "bytes": 986,
+      "assertionId": "splitBody.candidate.step-import"
+    },
+    "drawing": {
+      "path": "docs/evidence/cad-independent/local/mechanical-single-part-candidates-260813/splitBody/splitBody-three-axis-hlr.svg",
+      "sha256": "f5342cccd72f7dc2aa57f2cdbb79243656b196a83629513b2bb346d3c70f2e58",
+      "bytes": 1965,
+      "assertionId": "splitBody.candidate.three-axis-hlr"
+    },
+    "bom": {
+      "path": "docs/evidence/cad-independent/local/mechanical-single-part-candidates-260813/splitBody/bom.json",
+      "sha256": "70bff85ae824b7a474a7f987135fb53302ad853dc4597c4b83f8b40ae75ceb09",
+      "bytes": 865,
+      "assertionId": "splitBody.candidate.one-part-bom"
+    }
+  },
+  "capabilityStatus": {
+    "stepImportSolidUnitsBounds": "PASS",
+    "threeAxisHlrDrawingCandidate": "PASS",
+    "onePartBomQuantityDimensions": "PASS",
+    "drawingDimensions": "NOT_RUN",
+    "gdt": "NOT_RUN",
+    "pmi": "NOT_RUN",
+    "humanApproval": "NOT_RUN",
+    "manufacturingRelease": "BLOCKED"
+  },
+  "commercialReleaseEligible": false
+}

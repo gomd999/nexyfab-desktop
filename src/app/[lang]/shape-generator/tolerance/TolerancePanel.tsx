@@ -9,6 +9,7 @@
 
 import React, { useState } from 'react';
 import { toIsoLang } from '@/lib/i18n/normalize';
+import { loc } from '@/lib/i18n/loc';
 import { worstCase, rss, monteCarlo, type StackupChain, type DimensionLink } from './toleranceStackup';
 
 interface TolerancePanelProps {
@@ -175,7 +176,7 @@ export default function TolerancePanel({
         <div style={{ fontSize: 11, lineHeight: 1.6 }}>
           <div><strong>{t.wcLabel}:</strong> {results.wc.minMm.toFixed(3)} ~ {results.wc.maxMm.toFixed(3)} mm (±{(results.wc.toleranceMm / 2).toFixed(3)})</div>
           <div><strong>{t.rssLabel}:</strong> 1σ = {results.rss.sigmaMm.toFixed(4)}, 3σ = ±{results.rss.threeSigmaMm.toFixed(3)} mm</div>
-          <div><strong>{t.mcLabel}:</strong> 평균 {results.mc.meanMm.toFixed(3)}, σ {results.mc.sigmaMm.toFixed(4)}, min {results.mc.minMm.toFixed(3)}, max {results.mc.maxMm.toFixed(3)}</div>
+          <div><strong>{t.mcLabel}:</strong> {loc(lang, { ko: '평균', en: 'mean', ja: '平均', zh: '平均值', es: 'media', ar: 'المتوسط' })} {results.mc.meanMm.toFixed(3)}, σ {results.mc.sigmaMm.toFixed(4)}, min {results.mc.minMm.toFixed(3)}, max {results.mc.maxMm.toFixed(3)}</div>
         </div>
       )}
     </div>

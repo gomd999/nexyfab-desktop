@@ -15,6 +15,11 @@ import {
   nexyfabAppLangPathFromEmailLocale,
 } from '@/lib/nexyfab-email';
 import { normPartnerEmail } from '@/lib/partner-factory-access';
+import { resolveRequestOrgContext } from '@/lib/org-context';
+import { acceptQuoteAtomically, QuoteAcceptanceError } from '@/lib/quoteAcceptance';
+import { canManageOrderInActiveWorkspace } from '@/lib/nfOrderAccess';
+import { loc } from '@/lib/i18n/loc';
+import { readBoundedJson } from '@/lib/boundedJsonBody';
 
 export const dynamic = 'force-dynamic';
 
@@ -77,6 +82,9 @@ export async function GET(req: NextRequest) {
 
   const inquiryId = req.nextUrl.searchParams.get('inquiryId');
   const isAdmin = await verifyAdmin(req);
+  await db.execute('ALTER TABLE nf_rfqs ADD COLUMN org_id TEXT').catch(() => {});
+  const context = resolveRequestOrgContext(authUser);
+  if (!isAdmin && !context.ok) return NextResponse.json({ error: 'Select a valid workspace', code: context.code }, { status: 409 });
 
   // Admin은 전체 조회 가능, 일반 유저는 자신의 RFQ에 연결된 견적만 조회
   let rows: QuoteRow[];
@@ -85,16 +93,18 @@ export async function GET(req: NextRequest) {
       ? await db.queryAll<QuoteRow>('SELECT * FROM nf_quotes WHERE inquiry_id = ? ORDER BY created_at DESC', inquiryId)
       : await db.queryAll<QuoteRow>('SELECT * FROM nf_quotes ORDER BY created_at DESC');
   } else {
+    const scope = context.ok && context.orgId ? 'r.org_id = ?' : 'r.user_id = ? AND r.org_id IS NULL';
+    const scopeArg = context.ok ? context.orgId ?? authUser.userId : authUser.userId;
     rows = inquiryId
       ? await db.queryAll<QuoteRow>(
           `SELECT q.* FROM nf_quotes q JOIN nf_rfqs r ON q.inquiry_id = r.id
-           WHERE q.inquiry_id = ? AND r.user_id = ? ORDER BY q.created_at DESC`,
-          inquiryId, authUser.userId,
+           WHERE q.inquiry_id = ? AND ${scope} ORDER BY q.created_at DESC`,
+          inquiryId, scopeArg,
         )
       : await db.queryAll<QuoteRow>(
           `SELECT q.* FROM nf_quotes q JOIN nf_rfqs r ON q.inquiry_id = r.id
-           WHERE r.user_id = ? ORDER BY q.created_at DESC`,
-          authUser.userId,
+           WHERE ${scope} ORDER BY q.created_at DESC`,
+          scopeArg,
         );
   }
 
@@ -105,7 +115,7 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   if (!checkOrigin(req)) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   if (!(await verifyAdmin(req))) return NextResponse.json({ error: 'Admin only' }, { status: 403 });
-  const body = await req.json() as {
+  const body = await readBoundedJson(req, 1024 * 1024) as {
     inquiryId?: string;
     projectName?: string;
     factoryName?: string;
@@ -125,6 +135,7 @@ export async function POST(req: NextRequest) {
   }
 
   const db = getDbAdapter();
+  await db.execute('ALTER TABLE nf_rfqs ADD COLUMN org_id TEXT').catch(() => {});
   const id = `QT-${Date.now()}`;
   const createdAt = new Date().toISOString();
   const rfqLineage = inquiryId
@@ -213,7 +224,9 @@ export async function POST(req: NextRequest) {
       if (rfqUser?.email) {
         const locale = nexyfabEmailLocaleFromLanguageTag(rfqUser.language);
         const langPath = nexyfabAppLangPathFromEmailLocale(locale);
-        const factoryLabel = factoryName ?? (locale === 'ko' ? '제조사' : 'Manufacturer');
+        const factoryLabel = factoryName ?? loc(locale, {
+          ko: '제조사', en: 'Manufacturer', ja: 'メーカー', zh: '制造商', es: 'Fabricante', ar: 'المصنّع',
+        });
         await enqueueJob('send_email', {
           to: rfqUser.email,
           subject: quoteReceivedEmailSubject(locale, projectName),
@@ -254,7 +267,7 @@ export async function PATCH(req: NextRequest) {
   if (!checkOrigin(req)) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   const authUser = await getAuthUser(req);
   if (!authUser) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  const body = await req.json() as { id?: string; status?: string };
+  const body = await readBoundedJson(req, 64 * 1024) as { id?: string; status?: string };
   const { id, status } = body;
 
   const VALID_STATUSES = ['pending', 'accepted', 'rejected', 'expired'];
@@ -280,32 +293,46 @@ export async function PATCH(req: NextRequest) {
   // longer an acceptable bar. Admins may set any status; the RFQ owner
   // (buyer) may accept/reject their own quotes; everyone else is denied.
   const isAdmin = authUser.globalRole === 'super_admin' || (await verifyAdmin(req));
+  const workspace = resolveRequestOrgContext(authUser);
+  if (!isAdmin && !workspace.ok) return NextResponse.json({ error: 'Select a valid workspace', code: workspace.code }, { status: 409 });
+  const rfqOwner = existing.inquiry_id
+    ? await db.queryOne<{ user_id: string | null; user_email: string | null; org_id: string | null }>(
+        'SELECT user_id, user_email, org_id FROM nf_rfqs WHERE id = ?',
+        existing.inquiry_id,
+      ).catch(() => null)
+    : null;
   if (!isAdmin) {
     if (status !== 'accepted' && status !== 'rejected') {
       return NextResponse.json({ error: '이 상태로 변경할 권한이 없습니다.' }, { status: 403 });
     }
-    const rfqOwner = existing.inquiry_id
-      ? await db.queryOne<{ user_id: string | null; user_email: string | null }>(
-          'SELECT user_id, user_email FROM nf_rfqs WHERE id = ?',
-          existing.inquiry_id,
-        ).catch(() => null)
-      : null;
-    const ownsByUserId = !!rfqOwner?.user_id && rfqOwner.user_id === authUser.userId;
+    const ownsByUserId = !!rfqOwner?.user_id && canManageOrderInActiveWorkspace(authUser, {
+      user_id: rfqOwner.user_id,
+      org_id: rfqOwner.org_id,
+    });
     const ownsByEmail = !rfqOwner?.user_id && !!rfqOwner?.user_email && !!authUser.email
       && rfqOwner.user_email.trim().toLowerCase() === authUser.email.trim().toLowerCase();
     if (!ownsByUserId && !ownsByEmail) {
       return NextResponse.json({ error: '이 견적을 변경할 권한이 없습니다.' }, { status: 403 });
     }
   }
-
   const updatedAt = new Date().toISOString();
   let result: { changes: number };
   try {
-    result = await db.execute(
-      'UPDATE nf_quotes SET status = ?, updated_at = ? WHERE id = ?',
-      status, updatedAt, id,
-    );
+    if (status === 'accepted') {
+      await db.execute('ALTER TABLE nf_orders ADD COLUMN quote_id TEXT').catch(() => {});
+      await db.execute('ALTER TABLE nf_orders ADD COLUMN org_id TEXT').catch(() => {});
+      await acceptQuoteAtomically(db, rowToQuote(existing), updatedAt);
+      result = { changes: 1 };
+    } else {
+      result = await db.execute(
+        'UPDATE nf_quotes SET status = ?, updated_at = ? WHERE id = ?',
+        status, updatedAt, id,
+      );
+    }
   } catch (err) {
+    if (err instanceof QuoteAcceptanceError) {
+      return NextResponse.json({ error: err.message, code: err.code }, { status: 409 });
+    }
     console.error('[quotes PATCH] DB error:', err);
     return NextResponse.json({ error: '견적 업데이트에 실패했습니다.' }, { status: 500 });
   }
@@ -361,150 +388,6 @@ export async function PATCH(req: NextRequest) {
         }
       } catch { /* non-blocking */ }
 
-      // Auto-create the contract row so the buyer doesn't have to make a
-      // second click after acceptance. Without this, the deal stalls at
-      // "accepted" with no contract → no payment → no escrow.
-      try {
-        const existingContract = await db.queryOne<{ id: string }>(
-          `SELECT id FROM nf_contracts WHERE quote_id = ? LIMIT 1`,
-          id,
-        ).catch(() => null);
-        if (!existingContract) {
-          const { getCommissionRatePct, COMMISSION_PCT_FLOOR } = await import('@/lib/commission');
-          const contractAmount = quote.estimatedAmount ?? 0;
-          // Look up buyer to check first-contract discount + plan tier.
-          const buyer = await db.queryOne<{ user_id: string; user_email: string | null }>(
-            `SELECT user_id, user_email FROM nf_rfqs WHERE id = ?`,
-            quote.inquiryId,
-          ).catch(() => null);
-          const buyerEmail = buyer?.user_email ?? null;
-          const buyerPlan = await db.queryOne<{ plan: string }>(
-            `SELECT plan FROM nf_users WHERE id = ?`,
-            buyer?.user_id ?? '',
-          ).catch(() => null);
-          const plan = buyerPlan?.plan ?? 'standard';
-          const isFirstContract = buyerEmail
-            ? ((await db.queryOne<{ cnt: number }>(
-                `SELECT COUNT(*) as cnt FROM nf_contracts WHERE customer_email = ? AND status != 'cancelled'`,
-                buyerEmail,
-              ).catch(() => null))?.cnt ?? 0) === 0
-            : false;
-          const baseRate = getCommissionRatePct(contractAmount, plan);
-          const rate = Math.max(COMMISSION_PCT_FLOOR, baseRate - (isFirstContract ? 1 : 0));
-          const gross = Math.round(contractAmount * rate / 100);
-          const MIN_FEE: Record<string, number> = { standard: 500_000, premium: 1_000_000, pro: 500_000, team: 800_000, enterprise: 1_000_000 };
-          const deduction = MIN_FEE[plan] ?? 500_000;
-          const finalCharge = Math.max(0, gross - deduction);
-          const ctrId = `CTR-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
-          const nowIso = new Date().toISOString();
-          await db.execute(
-            `INSERT INTO nf_contracts
-              (id, project_name, status, partner_email, factory_name,
-               contract_amount, commission_rate, base_commission_rate,
-               gross_commission, plan_deduction, final_charge,
-               is_first_contract, first_contract_discount,
-               customer_email, quote_id, plan, created_at)
-             VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
-            ctrId, quote.projectName, 'contracted',
-            normPartnerEmail(quote.partnerEmail), quote.factoryName ?? null,
-            contractAmount, rate, baseRate,
-            gross, deduction, finalCharge,
-            isFirstContract ? 1 : 0, isFirstContract ? Math.round(contractAmount * 1 / 100) : 0,
-            buyerEmail, id, plan, nowIso,
-          );
-        }
-      } catch (err) {
-        console.warn('[quotes PATCH] contract auto-create failed:', err);
-        // Non-blocking: the quote still flips to accepted even if contract
-        // creation hits a race or transient DB error. Operator can retry
-        // via /admin/contracts.
-      }
-
-      // Auto-create the production order (nf_orders) so the buyer immediately
-      // gets a trackable order (steps / QC / shipping) instead of the pipeline
-      // stalling at an accepted-quote+contract with no production record. The
-      // modeler's direct /api/nexyfab/orders path required a manual checkout;
-      // an accepted quote IS the commitment, so we materialize the order here.
-      // Idempotent on quote_id; non-blocking. We intentionally do NOT fire
-      // onContractCreated (NexyFlow approval) — the contract row above already
-      // represents the deal, and the orders route's trigger is for the manual
-      // checkout path. (2026-06-09 design→manufacturing continuity.)
-      try {
-        const existingOrder = await db.queryOne<{ id: string }>(
-          `SELECT id FROM nf_orders WHERE quote_id = ? LIMIT 1`,
-          id,
-        ).catch(() => null);
-        if (!existingOrder) {
-          const rfqForOrder = await db.queryOne<{
-            user_id: string | null; quantity: number | null; shape_name: string | null;
-          }>(
-            `SELECT user_id, quantity, shape_name FROM nf_rfqs WHERE id = ?`,
-            quote.inquiryId,
-          ).catch(() => null);
-          // No resolvable buyer → skip. An order owned by user_id '' is an
-          // orphan no buyer can ever see; better to leave it to the operator
-          // (who gets the quote_accepted notification above) than to create
-          // an invisible row.
-          if (!rfqForOrder?.user_id) {
-            throw new Error(`RFQ ${quote.inquiryId ?? '(none)'} has no user_id — skipping order auto-create`);
-          }
-          const DAY = 86_400_000;
-          const ordNow = Date.now();
-          const leadDays = 14;
-          const steps = [
-            { label: 'Order Placed',  labelKo: '주문 완료', completedAt: ordNow },
-            { label: 'In Production', labelKo: '생산 중',   estimatedAt: ordNow + 2 * DAY },
-            { label: 'QC',            labelKo: '품질 검사', estimatedAt: ordNow + (leadDays - 4) * DAY },
-            { label: 'Shipped',       labelKo: '배송 시작', estimatedAt: ordNow + (leadDays - 2) * DAY },
-            { label: 'Delivered',     labelKo: '배송 완료', estimatedAt: ordNow + leadDays * DAY },
-          ];
-          const ordId = `ORD-${new Date().getFullYear()}-${Math.random().toString(36).slice(2, 8).toUpperCase()}`;
-          const ordAmount = quote.estimatedAmount ?? 0;
-          // Lazy-add the quote_id column so deploys without the migration work.
-          await db.execute('ALTER TABLE nf_orders ADD COLUMN quote_id TEXT').catch(() => {});
-          // Unique index makes the check-then-insert above race-safe: a
-          // concurrent second accept hits the constraint and lands in this
-          // block's catch instead of creating a duplicate order. Multiple
-          // NULL quote_ids (manual-checkout orders) are allowed on both
-          // SQLite and Postgres.
-          await db.execute(
-            'CREATE UNIQUE INDEX IF NOT EXISTS idx_nf_orders_quote_id ON nf_orders(quote_id)',
-          ).catch(() => {});
-          await db.execute(
-            `INSERT INTO nf_orders
-              (id, rfq_id, quote_id, user_id, part_name, manufacturer_name, quantity,
-               total_price_krw, total_price, currency, buyer_country,
-               hs_code, incoterm, ship_from_country, ship_to_country,
-               status, steps, created_at, estimated_delivery_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-            ordId,
-            quote.inquiryId,
-            id,
-            rfqForOrder.user_id,
-            rfqForOrder.shape_name ?? quote.projectName,
-            // manufacturer_name is NOT NULL in both schemas — a null here
-            // makes the INSERT throw and the order silently never appear.
-            quote.factoryName || quote.partnerEmail || '미지정',
-            rfqForOrder.quantity ?? 1,
-            ordAmount,
-            ordAmount,
-            'KRW',
-            null,
-            null,
-            null,
-            null,
-            null,
-            'placed',
-            JSON.stringify(steps),
-            ordNow,
-            ordNow + leadDays * DAY,
-          );
-        }
-      } catch (err) {
-        console.warn('[quotes PATCH] order auto-create failed:', err);
-        // Non-blocking: acceptance + contract still succeed. Operator can place
-        // the order manually if this races or hits a transient DB error.
-      }
     } else if (status === 'rejected') {
       createNotification(
         `partner:${normPartnerEmail(quote.partnerEmail)}`,

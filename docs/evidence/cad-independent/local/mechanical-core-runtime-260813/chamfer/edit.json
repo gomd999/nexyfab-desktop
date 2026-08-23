@@ -1,0 +1,29 @@
+{
+  "schema": "nexyfab.mechanical-core-feature-local-runtime.v1",
+  "feature": "chamfer",
+  "axis": "edit",
+  "status": "PASS",
+  "executedAt": "2026-08-22T07:13:30.564Z",
+  "commandId": "chamfer-runtime-param-edit",
+  "historyDepth": 1,
+  "before": {
+    "id": "runtime-feature",
+    "enabled": true,
+    "type": "chamfer",
+    "params": {
+      "distance": 2,
+      "radius": 2,
+      "edgeSelection": 0
+    }
+  },
+  "after": {
+    "id": "runtime-feature",
+    "enabled": true,
+    "type": "chamfer",
+    "params": {
+      "distance": 4,
+      "radius": 4,
+      "edgeSelection": 0
+    }
+  }
+}

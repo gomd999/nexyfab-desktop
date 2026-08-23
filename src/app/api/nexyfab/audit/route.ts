@@ -3,6 +3,9 @@ import { getAuthUser } from '@/lib/auth-middleware';
 import { getDbAdapter } from '@/lib/db-adapter';
 import { getTrustedClientIpOrUndefined } from '@/lib/client-ip';
 import { logAudit as _logAudit } from '@/lib/audit';
+import { boundedJsonError, readBoundedJson } from '@/lib/boundedJsonBody';
+
+const MAX_AUDIT_BODY_BYTES = 1024 * 1024;
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -93,12 +96,16 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const body = await req.json().catch(() => ({})) as {
+  let body: {
     userId: string;
     action: string;
     resourceId?: string;
     metadata?: Record<string, unknown>;
-  };
+  } = {} as { userId: string; action: string; resourceId?: string; metadata?: Record<string, unknown> };
+  try { body = await readBoundedJson(req, MAX_AUDIT_BODY_BYTES); }
+  catch (error) {
+    if (boundedJsonError(error)?.code === 'PAYLOAD_TOO_LARGE') return NextResponse.json({ error: 'Request too large', code: 'PAYLOAD_TOO_LARGE' }, { status: 413 });
+  }
 
   if (!body.action) {
     return NextResponse.json({ error: 'action is required' }, { status: 400 });

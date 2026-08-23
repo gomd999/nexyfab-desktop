@@ -14,16 +14,47 @@
  */
 
 import { use } from 'react';
-import { AssemblyBrowserPageContent } from './_content';
+import dynamic from 'next/dynamic';
+
+const AssemblyBrowserPageContent = dynamic(
+  () => import('./_content').then(mod => mod.AssemblyBrowserPageContent),
+  {
+    ssr: false,
+    loading: () => (
+      <main aria-busy="true" aria-live="polite" style={{ padding: 24 }}>
+        Loading assembly workspace…
+      </main>
+    ),
+  },
+);
 
 interface PageProps {
   params: Promise<{ lang: string }>;
-  searchParams: Promise<{ aiRevision?: string | string[] }>;
+  searchParams: Promise<{
+    aiRevision?: string | string[];
+    project?: string | string[];
+    revision?: string | string[];
+    revisionHash?: string | string[];
+  }>;
 }
 
 export default function AssemblyBrowserPage({ params, searchParams }: PageProps): React.ReactElement {
   const { lang } = use(params);
   const query = use(searchParams);
   const aiRevisionId = typeof query.aiRevision === 'string' ? query.aiRevision : undefined;
-  return <AssemblyBrowserPageContent lang={lang} aiRevisionId={aiRevisionId} />;
+  const projectId = typeof query.project === 'string' ? query.project : undefined;
+  const rawRevision = typeof query.revision === 'string' ? Number(query.revision) : Number.NaN;
+  const projectRevision = Number.isSafeInteger(rawRevision) && rawRevision >= 0 ? rawRevision : undefined;
+  const projectRevisionHash = typeof query.revisionHash === 'string' && /^[a-f0-9]{64}$/.test(query.revisionHash)
+    ? query.revisionHash
+    : undefined;
+  return (
+    <AssemblyBrowserPageContent
+      lang={lang}
+      aiRevisionId={aiRevisionId}
+      projectId={projectId}
+      projectRevision={projectRevision}
+      projectRevisionHash={projectRevisionHash}
+    />
+  );
 }

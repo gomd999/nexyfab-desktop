@@ -9,6 +9,7 @@ describe('CAD v1 weldment verify', () => {
     expect(payload.artifact.members).toHaveLength(2);
     expect(payload.artifact.totalStockMm).toBeGreaterThan(0);
     expect(payload.artifact.totalMassKg).toBeGreaterThan(0);
+    expect(payload).toMatchObject({ releaseReady: false, releaseGate: { status: 'HOLD', releaseReady: false } });
     expect(payload.sideEffects).toEqual({ quoteCreated: false, rfqCreated: false });
   });
 });

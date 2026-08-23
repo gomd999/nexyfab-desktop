@@ -1,0 +1,25 @@
+{
+  "schema": "nexyfab.historical-evidence-quarantine.v1",
+  "status": "STALE",
+  "quarantined": true,
+  "receipt": {
+    "path": "docs/evidence/cad-independent/local/mechanical-single-part-candidates-260813/receipt.json",
+    "sha256": "9349cfccfa50847d1b44d55db543913741daa543c3407a92fde15f8eb5e2f10c",
+    "sha256SidecarPath": "docs/evidence/cad-independent/local/mechanical-single-part-candidates-260813/receipt.sha256",
+    "integrity": "PASS"
+  },
+  "staleness": {
+    "reason": "SOURCE_SHA256_MISMATCH",
+    "sourcePath": "docs/evidence/cad-independent/local/mechanical-core-feature-axis-evidence.json",
+    "receiptBoundSourceSha256": "79d9344b7d101580b7e1574759a8eff652cbe942e6a389056b488aba28a77930",
+    "observedSourceSha256": "2fce7ffc6cb769cd37ee480b7a5b41e31d1a51ca816933072e025aadc43a85a5",
+    "observedOn": "2026-08-23"
+  },
+  "releasePolicy": {
+    "canonicalGateInput": false,
+    "usedForRelease": false,
+    "inventoryClassification": "temporary",
+    "freshQualificationRequired": true
+  },
+  "claimBoundary": "The original receipt and its checksum are preserved as historical bytes. This marker does not renew, replace, or validate their source binding."
+}

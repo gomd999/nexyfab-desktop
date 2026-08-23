@@ -291,7 +291,16 @@ ${face ? `선택 면: ${face.label ?? face.face ?? face} — 지시는 이 면 �
 이웃 부품(참고 — 충돌 회피):\n${neighbors.join('\n')}
 지시: ${String(instruction).slice(0, 400)}
 출력(JSON 만): {"patch":{"params":{...바뀐 값만},"at":{...바뀐 값만}},"note":"한줄 설명"} — type 변경이 꼭 필요하면 "type" 포함(그때 params 는 새 타입 전체 파라미터).`;
-  let out = await callAiJson(prompt, null, { models, thinkingBudget: 0, maxOutputTokens: 2048 });
+  // Part edits must stay small and deterministic.  Do not let the general
+  // compose fallback (which may start with Gemini and exhaust its token
+  // budget) turn a one-line patch into a user-facing bad-JSON failure.
+  const editModels = Array.isArray(models) && models.length ? models : ['deepseek-chat', 'gpt-4o-mini'];
+  let out;
+  try {
+    out = await callAiJson(prompt, null, { models: editModels, thinkingBudget: 0, maxOutputTokens: 1024 });
+  } catch (e) {
+    return { ok: false, error: `AI 편집 응답을 받지 못했습니다. ${e instanceof Error ? e.message : String(e)}`.slice(0, 220) };
+  }
   for (let attempt = 0; attempt < 2; attempt++) {
     const body = out?.data ?? out; // callAiJson 은 {data, model, repaired} 래퍼
     const patch = body?.patch;
@@ -301,7 +310,7 @@ ${face ? `선택 면: ${face.label ?? face.face ?? face} — 지시는 이 면 �
     if (attempt === 0) {
       out = await callAiJson(
         `${prompt}\n\n이전 패치 ${JSON.stringify(patch)} 가 게이트에서 실패했다: ${JSON.stringify(r.gateErrors ?? r.error).slice(0, 300)}\n오류를 고친 패치를 같은 형식으로 다시 출력하라.`,
-        null, { models, thinkingBudget: 0, maxOutputTokens: 2048 },
+        null, { models: editModels, thinkingBudget: 0, maxOutputTokens: 1024 },
       );
     } else {
       return { ok: false, error: '패치 게이트 실패(교정 1회 포함 — 정직 거부)', gateErrors: r.gateErrors ?? [r.error], patch };

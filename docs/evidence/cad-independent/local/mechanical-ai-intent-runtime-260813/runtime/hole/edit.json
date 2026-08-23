@@ -1,0 +1,63 @@
+{
+  "schema": "nexyfab.mechanical-core-feature-local-runtime.v1",
+  "feature": "hole",
+  "axis": "edit",
+  "status": "PASS",
+  "executedAt": "2026-08-22T07:13:00.871Z",
+  "commandId": "hole-runtime-param-edit",
+  "historyDepth": 1,
+  "before": {
+    "id": "runtime-feature",
+    "enabled": true,
+    "type": "hole",
+    "params": {
+      "holeType": 0,
+      "diameter": 8,
+      "posX": 0,
+      "posZ": 0,
+      "depth": 40,
+      "endCondition": 1,
+      "engine": 1
+    }
+  },
+  "after": {
+    "id": "runtime-feature",
+    "enabled": true,
+    "type": "hole",
+    "params": {
+      "holeType": 0,
+      "diameter": 12,
+      "posX": 0,
+      "posZ": 0,
+      "depth": 40,
+      "endCondition": 1,
+      "engine": 1
+    }
+  },
+  "intentBinding": {
+    "caseId": "ko_practical-01-hole",
+    "candidateId": "intent-runtime:ko_practical-01-hole",
+    "candidateBaseRevision": "7c3a02e2da7fbee88dac5533efea39eac2ec0114cde1b70936d41992d83dbbe1",
+    "promptSha256": "8e41f52aeb29df0d0db6a2cd2856af945033d319834c07c50b43326e4bce4d6a",
+    "inputSha256": "b781befa692abcd8dd7e823391cfe7b63c657e07f588fa3c504b4a3873663538",
+    "sourceUnits": [
+      "mm"
+    ],
+    "normalizedUnit": "mm",
+    "dimensionsMm": {
+      "width": 100,
+      "length": 60,
+      "thickness": 8
+    }
+  },
+  "intentDimensionAssertion": {
+    "status": "PASS",
+    "inputSha256": "b781befa692abcd8dd7e823391cfe7b63c657e07f588fa3c504b4a3873663538",
+    "dimensionsMm": {
+      "width": 100,
+      "length": 60,
+      "thickness": 8
+    },
+    "normalizedUnit": "mm"
+  }
+}

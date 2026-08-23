@@ -1,0 +1,82 @@
+{
+  "schema": "nexyfab.mechanical-core-feature-local-runtime.v1",
+  "feature": "sketchExtrude",
+  "axis": "regenerate",
+  "status": "PASS",
+  "executedAt": "2026-08-22T07:13:30.564Z",
+  "initial": {
+    "handle": "occt:357",
+    "kernelKind": "Solid",
+    "nativeShapeType": 2,
+    "solidCount": 1,
+    "singleSolid": true,
+    "volumeMm3": 9504,
+    "edgeCount": 12,
+    "faceCount": 6,
+    "boundsMm": [
+      [
+        -1.0000000177635683e-7,
+        -1.0000000177635683e-7,
+        -6.000000100000002
+      ],
+      [
+        36.0000001,
+        22.0000001,
+        6.000000100000002
+      ]
+    ]
+  },
+  "edited": {
+    "handle": "occt:359",
+    "kernelKind": "Solid",
+    "nativeShapeType": 2,
+    "solidCount": 1,
+    "singleSolid": true,
+    "volumeMm3": 14256,
+    "edgeCount": 12,
+    "faceCount": 6,
+    "boundsMm": [
+      [
+        -1.0000000177635683e-7,
+        -1.0000000177635683e-7,
+        -9.000000100000001
+      ],
+      [
+        36.0000001,
+        22.0000001,
+        9.000000100000001
+      ]
+    ]
+  },
+  "repeated": {
+    "handle": "occt:361",
+    "kernelKind": "Solid",
+    "nativeShapeType": 2,
+    "solidCount": 1,
+    "singleSolid": true,
+    "volumeMm3": 14256,
+    "edgeCount": 12,
+    "faceCount": 6,
+    "boundsMm": [
+      [
+        -1.0000000177635683e-7,
+        -1.0000000177635683e-7,
+        -9.000000100000001
+      ],
+      [
+        36.0000001,
+        22.0000001,
+        9.000000100000001
+      ]
+    ]
+  },
+  "featureMeaning": {
+    "assertion": "actual product inline sketchExtrude created one exact OCCT prism with volume = closed-profile area x edited depth",
+    "profileAreaMm2": 792,
+    "depthMm": 18,
+    "expectedVolumeMm3": 14256,
+    "actualVolumeMm3": 14256,
+    "exactZSpanMm": 18.000000200000002
+  },
+  "assertion": "edited parameter changed the exact signature and a fresh native regeneration reproduced topology, bounds, and volume"
+}

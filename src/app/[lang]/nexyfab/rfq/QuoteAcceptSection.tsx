@@ -10,6 +10,9 @@
 
 import { useEffect, useState } from 'react';
 import QuoteComparisonView from './QuoteComparisonView';
+import { formatNumber } from '@/lib/i18n/format';
+import { toIsoLang } from '@/lib/i18n/normalize';
+import { createCommercialLocalizer } from '@/lib/i18n/commercialLocalizer';
 
 const C = {
   bg: 'var(--nx-bg)',
@@ -38,13 +41,19 @@ interface QuoteForRFQ {
 /** Unit suffix must follow the isKo branch: this used to append the Korean
  * word '원' unconditionally, so non-Korean users saw prices like "49,000원"
  * with no English rendering of the currency unit at all. */
-export function formatQuoteAmount(n: number, isKo: boolean): string {
-  return isKo ? `${n.toLocaleString('ko-KR')}원` : `${n.toLocaleString()} KRW`;
+export function formatQuoteAmount(n: number, lang: string | boolean): string {
+  const inputLang = typeof lang === 'boolean' ? ({ true: 'ko', false: 'en' } as const)[String(lang) as 'true' | 'false'] : lang;
+  const iso = toIsoLang(inputLang);
+  const suffix: Record<string, string> = { ko: '원', en: ' KRW', ja: ' KRW', zh: ' KRW', es: ' KRW', ar: ' KRW' };
+  return `${formatNumber(n, iso) ?? ''}${suffix[iso]}`;
 }
 
 export function QuoteAcceptSection({
   rfqId, isKo, lang, onAccepted,
 }: { rfqId: string; isKo: boolean; lang: string; onAccepted: (amount: number, factoryName: string) => void }) {
+  const uiLang = toIsoLang(lang || (typeof document !== 'undefined' ? document.documentElement.lang : ({ true: 'ko', false: 'en' } as const)[String(isKo) as 'true' | 'false']));
+  const copy = (ko: string, en: string) => createCommercialLocalizer(uiLang)(ko, en);
+  const accessible = ({ true: { accept: '✓ 수락', progress: '주문 진행 상황 보기 →' }, false: { accept: '✓ Accept', progress: 'View order progress →' } } as const)[String(isKo) as 'true' | 'false'];
   const [quotes, setQuotes] = useState<QuoteForRFQ[]>([]);
   const [loading, setLoading] = useState(true);
   const [actingId, setActingId] = useState<string | null>(null);
@@ -87,7 +96,7 @@ export function QuoteAcceptSection({
         setQuotes(prev => prev.filter(q => q.id !== quoteId));
       }
     } catch {
-      alert(isKo ? '처리 중 오류가 발생했습니다.' : 'An error occurred.');
+      alert(copy('처리 중 오류가 발생했습니다.', 'An error occurred.'));
     } finally {
       setActingId(null);
     }
@@ -97,12 +106,12 @@ export function QuoteAcceptSection({
     return (
       <div style={{ background: `${C.green}12`, border: `1px solid ${C.green}30`, borderRadius: 8, padding: '14px 18px', textAlign: 'center' }}>
         <p style={{ margin: '0 0 8px', fontSize: 14, fontWeight: 700, color: C.green }}>
-          ✅ {isKo ? '견적을 수락했습니다. 제조사에 알림을 보냈습니다.' : 'Quote accepted. Manufacturer notified.'}
+          ✅ {copy('견적을 수락했습니다. 제조사에 알림을 보냈습니다.', 'Quote accepted. Manufacturer notified.')}
         </p>
         {orderIdFromAccept && (
           <>
             <p style={{ margin: '0 0 10px', fontSize: 12, color: C.textMuted }}>
-              {isKo ? '주문이 자동 생성되었습니다' : 'Order auto-created'} ·{' '}
+              {copy('주문이 자동 생성되었습니다', 'Order auto-created')} ·{' '}
               <code style={{ background: 'var(--nx-panel)', padding: '2px 6px', borderRadius: 4, color: C.text }}>{orderIdFromAccept}</code>
             </p>
             <a
@@ -113,8 +122,9 @@ export function QuoteAcceptSection({
                 borderRadius: 7, textDecoration: 'none',
                 background: C.green, color: '#fff',
               }}
+              aria-label={accessible.progress}
             >
-              {isKo ? '주문 진행 상황 보기 →' : 'View order progress →'}
+              {copy('주문 진행 상황 보기 →', 'View order progress →')}
             </a>
           </>
         )}
@@ -125,20 +135,20 @@ export function QuoteAcceptSection({
   return (
     <div style={{ background: `#388bfd10`, border: `1px solid ${C.accent}30`, borderRadius: 10, padding: '12px 14px' }}>
       <p style={{ margin: '0 0 10px', fontSize: 12, fontWeight: 800, color: C.accent }}>
-        💬 {isKo ? '제조사 견적이 도착했습니다. 수락 또는 거절해주세요.' : 'Manufacturer quote(s) arrived. Accept or decline.'}
+        💬 {copy('제조사 견적이 도착했습니다. 수락 또는 거절해주세요.', 'Manufacturer quote(s) arrived. Accept or decline.')}
       </p>
 
-      {loading && <p style={{ margin: 0, fontSize: 11, color: C.textMuted }}>{isKo ? '불러오는 중...' : 'Loading...'}</p>}
+      {loading && <p style={{ margin: 0, fontSize: 11, color: C.textMuted }}>{copy('불러오는 중...', 'Loading...')}</p>}
       {!loading && quotes.length === 0 && (
         <p style={{ margin: 0, fontSize: 11, color: C.textMuted }}>
-          {isKo ? '견적이 없습니다.' : 'No quotes available.'}
+          {copy('견적이 없습니다.', 'No quotes available.')}
         </p>
       )}
 
       {/* B5 — Side-by-side comparison shown when 2+ quotes are available. */}
       {!loading && quotes.length >= 2 && (
         <QuoteComparisonView
-          lang={isKo ? 'ko' : 'en'}
+          lang={uiLang}
           quotes={quotes}
           acting={actingId}
           onAction={(id, action) => void handleAction(id, action)}
@@ -154,8 +164,8 @@ export function QuoteAcceptSection({
             <div style={{ flex: 1, minWidth: 0 }}>
               <p style={{ margin: '0 0 2px', fontSize: 13, fontWeight: 700, color: C.text }}>{q.factoryName}</p>
               <p style={{ margin: 0, fontSize: 12, color: C.textMuted }}>
-                {formatQuoteAmount(q.estimatedAmount, isKo)}
-                {q.estimatedDays ? ` · ${q.estimatedDays}${isKo ? '일' : 'd'}` : ''}
+                {formatQuoteAmount(q.estimatedAmount, lang)}
+                {q.estimatedDays ? ` · ${q.estimatedDays}${copy('일', 'd')}` : ''}
                 {q.note ? ` · ${q.note}` : ''}
               </p>
             </div>
@@ -163,13 +173,14 @@ export function QuoteAcceptSection({
               <button
                 onClick={() => void handleAction(q.id, 'accept')}
                 disabled={actingId === q.id}
+                aria-label={accessible.accept}
                 style={{
                   padding: '5px 14px', borderRadius: 6, fontSize: 11, fontWeight: 800,
                   border: 'none', background: C.green, color: '#fff',
                   cursor: actingId === q.id ? 'wait' : 'pointer', opacity: actingId === q.id ? 0.6 : 1,
                 }}
               >
-                {actingId === q.id ? '...' : (isKo ? '✓ 수락' : '✓ Accept')}
+                {actingId === q.id ? '...' : copy('✓ 수락', '✓ Accept')}
               </button>
               <button
                 onClick={() => void handleAction(q.id, 'reject')}
@@ -180,7 +191,7 @@ export function QuoteAcceptSection({
                   cursor: actingId ? 'not-allowed' : 'pointer', opacity: actingId ? 0.5 : 1,
                 }}
               >
-                {isKo ? '✕ 거절' : '✕ Decline'}
+                {copy('✕ 거절', '✕ Decline')}
               </button>
             </div>
           </div>

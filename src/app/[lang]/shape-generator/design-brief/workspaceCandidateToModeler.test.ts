@@ -55,4 +55,15 @@ describe('workspace candidate to modeler draft', () => {
     expect(result.draft.baseShape).toEqual({ id: 'cylinder', params: { diameter: 50, height: 60 } });
     expect(result.draft.features).toHaveLength(0);
   });
+
+  it.each([
+    ['schema', 'nexyfab.editable-workspace-candidate.v0', 'workspace_candidate_schema_invalid'],
+    ['reverificationRequired', false, 'workspace_candidate_reverification_required'],
+    ['inheritedVerification', true, 'workspace_candidate_inherited_verification_forbidden'],
+    ['manufacturingReleaseReady', true, 'workspace_candidate_release_claim_forbidden'],
+  ] as const)('fails closed when the HTTP candidate changes %s', (field, value, blocker) => {
+    const candidate = buildEditableWorkspaceCandidate(lBracketPlan());
+    const tampered = { ...candidate, [field]: value } as typeof candidate;
+    expect(workspaceCandidateToModelerDraft(tampered)).toEqual({ ok: false, blockers: [blocker] });
+  });
 });

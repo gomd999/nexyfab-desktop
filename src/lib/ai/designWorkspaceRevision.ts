@@ -109,7 +109,7 @@ export function validateDesignWorkspaceRevision(workspace: DesignWorkspaceRevisi
     || workspace.revision < 0
     || !DOMAINS.has(workspace.domain)
     || !MODES.has(workspace.workMode)
-    || (workspace.experience !== 'guided' && workspace.experience !== 'expert')
+    || (workspace.experience !== 'guided' && workspace.experience !== 'standard' && workspace.experience !== 'expert')
     || !SHA256.test(workspace.documentHash)) issues.push('invalid_workspace_header');
 
   const lockIds = new Set<string>();
@@ -177,7 +177,7 @@ export function switchWorkspaceMode(
   if (issues.length) return { committed: false, workspace, blockedLockIds: [], issues };
   const experience = selection.experience ?? workspace.experience;
   const workMode = selection.workMode ?? workspace.workMode;
-  if ((experience !== 'guided' && experience !== 'expert') || !MODES.has(workMode)) {
+  if ((experience !== 'guided' && experience !== 'standard' && experience !== 'expert') || !MODES.has(workMode)) {
     return { committed: false, workspace, blockedLockIds: [], issues: ['invalid_workspace_mode'] };
   }
   return {

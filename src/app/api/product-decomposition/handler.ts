@@ -27,7 +27,7 @@ export async function handleProductDecomposition(
   if (!parsed.ok) {
     return { status: 422, payload: { ok: false, code: 'INVALID_DECOMPOSITION', message: 'AI did not return a complete product decomposition', issues: parsed.issues } };
   }
-  const accuracy = assessProductDecompositionAccuracy(parsed.plan, new Set(['user:prompt']));
+  const accuracy = assessProductDecompositionAccuracy(parsed.plan, new Set(['user:prompt']), { request: text });
   if (!accuracy.readyForGeometry) return { status: 422, payload: { ok: false, code: accuracy.requiresAuthoritativeInput ? 'AUTHORITATIVE_INPUT_REQUIRED' : 'DECOMPOSITION_NEEDS_REVIEW', message: 'Product decomposition did not pass independent accuracy gates', issues: productPlanAccuracyReasons(accuracy), accuracyAssessment: accuracy } };
   const compiled = compileProductDecomposition(parsed.plan);
   if (!compiled.ok) {

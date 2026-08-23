@@ -3,7 +3,7 @@
 // In Tauri desktop mode, all API calls go to https://nexyfab.com/api/...
 
 import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
+import { createJSONStorage, persist } from 'zustand/middleware';
 import { fetchWithRetry } from '@/lib/fetch-retry';
 import { parseUserStageColumn, type Stage } from '@/lib/userStage';
 
@@ -33,6 +33,8 @@ export interface AuthUser {
 interface AuthState {
   user: AuthUser | null;
   token: string | null;
+  /** Server-cookie reconciliation state. Never persisted across page loads. */
+  sessionStatus: 'unknown' | 'authenticated' | 'anonymous';
   isLoading: boolean;
   error: string | null;
 }
@@ -94,9 +96,10 @@ function subscribeLogout(clear: () => void): void {
 
 export const useAuthStore = create<AuthStore>()(
   persist(
-    (set) => ({
+    (set, get) => ({
       user: null,
       token: null,
+      sessionStatus: 'unknown',
       isLoading: false,
       error: null,
 
@@ -114,7 +117,7 @@ export const useAuthStore = create<AuthStore>()(
             return false;
           }
           const { user, token } = await res.json();
-          set({ user, token, isLoading: false, error: null });
+          set({ user, token, sessionStatus: 'authenticated', isLoading: false, error: null });
           return true;
         } catch {
           set({ isLoading: false, error: 'Network error. Please try again.' });
@@ -145,7 +148,7 @@ export const useAuthStore = create<AuthStore>()(
             return false;
           }
           const { user, token } = await res.json();
-          set({ user, token, isLoading: false, error: null });
+          set({ user, token, sessionStatus: 'authenticated', isLoading: false, error: null });
           return true;
         } catch {
           set({ isLoading: false, error: 'Network error. Please try again.' });
@@ -184,15 +187,21 @@ export const useAuthStore = create<AuthStore>()(
         } catch (err) {
           console.error('[useAuth] 서버 로그아웃 실패 — 로컬 정리는 계속한다', err);
         }
-        set({ user: null, token: null, error: null });
-        try { localStorage.removeItem('nexyfab-auth'); } catch (err) { console.error('[useAuth] caught', err); }
+        set({ user: null, token: null, sessionStatus: 'anonymous', error: null });
+        try { sessionStorage.removeItem('nexyfab-auth'); } catch (err) { console.error('[useAuth] caught', err); }
+        try { sessionStorage.removeItem('currentUser'); } catch (err) { console.error('[useAuth] caught', err); }
         broadcastLogout();
       },
 
-      setUser: (user, token) => set({ user, token }),
+      setUser: (user, token) => set({
+        user,
+        token,
+        sessionStatus: user ? 'authenticated' : 'anonymous',
+      }),
       clearError: () => set({ error: null }),
 
       refreshPlan: async () => {
+        if (get().sessionStatus !== 'authenticated') return;
         try {
           const res = await fetchWithRetry(`${apiBase()}/api/auth/refresh`, {
             method: 'POST',
@@ -241,6 +250,7 @@ export const useAuthStore = create<AuthStore>()(
     }),
     {
       name: 'nexyfab-auth',
+      storage: createJSONStorage(() => sessionStorage),
       partialize: (s) => ({ user: s.user, token: s.token }),
     },
   ),
@@ -257,8 +267,9 @@ export const useAuthStore = create<AuthStore>()(
  */
 if (typeof window !== 'undefined') {
   subscribeLogout(() => {
-    useAuthStore.setState({ user: null, token: null, error: null });
-    try { localStorage.removeItem('nexyfab-auth'); } catch { /* 저장소 차단 환경 */ }
+    useAuthStore.setState({ user: null, token: null, sessionStatus: 'anonymous', error: null });
+    try { sessionStorage.removeItem('nexyfab-auth'); } catch { /* 저장소 차단 환경 */ }
+    try { sessionStorage.removeItem('currentUser'); } catch { /* 저장소 차단 환경 */ }
   });
 }
 

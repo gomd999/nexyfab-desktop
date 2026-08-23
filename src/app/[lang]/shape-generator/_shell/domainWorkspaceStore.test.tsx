@@ -30,4 +30,12 @@ describe('domain workspace shared state', () => {
     act(() => setDomainWorkspaceSelection(current => ({ ...current, workMode: 'precision_cad' })));
     expect(getDomainWorkspaceSelection()).toEqual({ domain: 'mechanical', experience: 'guided', workMode: 'precision_cad' });
   });
+
+  it('persists the standard tool level between guided and expert', () => {
+    const { result } = renderHook(() => useDomainWorkspaceSelection());
+    act(() => result.current[1]({ domain: 'mechanical', experience: 'standard', workMode: 'manual' }));
+    expect(result.current[0]).toEqual({ domain: 'mechanical', experience: 'standard', workMode: 'manual' });
+    expect(JSON.parse(window.sessionStorage.getItem(DOMAIN_WORKSPACE_STORAGE_KEY) ?? 'null'))
+      .toEqual({ domain: 'mechanical', experience: 'standard', workMode: 'manual' });
+  });
 });

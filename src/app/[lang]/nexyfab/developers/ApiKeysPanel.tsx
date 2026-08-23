@@ -3,7 +3,10 @@
  * API 키 자가발급 패널 (Pro 이상). 기존 /api/user/api-keys 라우트를 그대로 사용.
  * 정직/보안: 평문 키는 발급 응답에서 1회만 표시(copy) 후 다시 못 봄. 목록은 접두만 노출.
  */
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import Link from 'next/link';
+import { createCommercialLocalizer } from '@/lib/i18n/commercialLocalizer';
+import { toRouteLang } from '@/lib/i18n/normalize';
 
 interface KeyRow {
   id: string;
@@ -40,7 +43,9 @@ function fmt(ts: number | null): string {
   try { return new Date(ts).toISOString().slice(0, 10); } catch { return '—'; }
 }
 
-export default function ApiKeysPanel({ ko }: { ko: boolean }) {
+export default function ApiKeysPanel({ lang }: { lang: string }) {
+  const L = useMemo(() => createCommercialLocalizer(lang), [lang]);
+  const routeLang = toRouteLang(lang);
   const [loading, setLoading] = useState(true);
   const [list, setList] = useState<ListResp | null>(null);
   const [authed, setAuthed] = useState(true);
@@ -58,9 +63,9 @@ export default function ApiKeysPanel({ ko }: { ko: boolean }) {
       const j = (await r.json()) as ListResp;
       setAuthed(true); setList(j);
     } catch {
-      setErr(ko ? '목록을 불러오지 못했습니다.' : 'Failed to load keys.');
+      setErr(L('목록을 불러오지 못했습니다.', 'Failed to load keys.'));
     } finally { setLoading(false); }
-  }, [ko]);
+  }, [L]);
 
   useEffect(() => { void load(); }, [load]);
 
@@ -70,16 +75,16 @@ export default function ApiKeysPanel({ ko }: { ko: boolean }) {
       const r = await fetch('/api/user/api-keys', {
         method: 'POST', credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: name.trim() || (ko ? '기본 키' : 'default') }),
+        body: JSON.stringify({ name: name.trim() || (L('기본 키', 'default')) }),
       });
       const j = await r.json();
-      if (!r.ok) { setErr(j.error ?? (ko ? '발급 실패' : 'Failed')); return; }
+      if (!r.ok) { setErr(j.error ?? (L('발급 실패', 'Failed'))); return; }
       setFreshKey(j.key); setName('');
       await load();
     } catch {
-      setErr(ko ? '발급 중 오류가 발생했습니다.' : 'Error while issuing.');
+      setErr(L('발급 중 오류가 발생했습니다.', 'Error while issuing.'));
     } finally { setCreating(false); }
-  }, [name, ko, load]);
+  }, [name, load, L]);
 
   const revoke = useCallback(async (id: string) => {
     setErr(null);
@@ -89,27 +94,27 @@ export default function ApiKeysPanel({ ko }: { ko: boolean }) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ id }),
       });
-      if (!r.ok) { const j = await r.json().catch(() => ({})); setErr(j.error ?? (ko ? '취소 실패' : 'Failed')); return; }
+      if (!r.ok) { const j = await r.json().catch(() => ({})); setErr(j.error ?? (L('취소 실패', 'Failed'))); return; }
       await load();
     } catch {
-      setErr(ko ? '취소 중 오류가 발생했습니다.' : 'Error while revoking.');
+      setErr(L('취소 중 오류가 발생했습니다.', 'Error while revoking.'));
     }
-  }, [ko, load]);
+  }, [load, L]);
 
   const copy = useCallback(() => {
     if (!freshKey) return;
     void navigator.clipboard?.writeText(freshKey).then(() => { setCopied(true); setTimeout(() => setCopied(false), 2000); });
   }, [freshKey]);
 
-  if (loading) return <div style={box}>{ko ? '불러오는 중…' : 'Loading…'}</div>;
+  if (loading) return <div style={box}>{L('불러오는 중…', 'Loading…')}</div>;
 
   if (!authed) {
     return (
       <div style={box}>
         <p style={{ margin: 0, fontSize: 13.5 }}>
-          {ko ? 'API 키를 발급하려면 먼저 ' : 'Sign in to issue an API key — '}
-          <a href="/kr/login" style={{ color: 'var(--nx-accent, #2563eb)', fontWeight: 700 }}>{ko ? '로그인' : 'log in'}</a>
-          {ko ? '하세요. (Pro 플랜 이상)' : ' (Pro plan or higher).'}
+          {L('API 키를 발급하려면 먼저 ', 'Sign in to issue an API key — ')}
+          <a href={`/login?lang=${routeLang}`} style={{ color: 'var(--nx-accent, #2563eb)', fontWeight: 700 }}>{L('로그인', 'log in')}</a>
+          {L('하세요. (Pro 플랜 이상)', ' (Pro plan or higher).')}
         </p>
       </div>
     );
@@ -122,10 +127,8 @@ export default function ApiKeysPanel({ ko }: { ko: boolean }) {
     <div style={box}>
       {!isPro && (
         <div style={{ padding: '10px 12px', borderRadius: 9, background: 'rgba(37,99,235,0.07)', border: '1px solid var(--nx-accent, #2563eb)', fontSize: 13 }}>
-          🔒 {ko
-            ? 'API 키는 Pro 플랜 이상에서 발급됩니다. Pro로 업그레이드하면 CLI·MCP·HTTP API를 바로 연결할 수 있어요. '
-            : 'API keys require a Pro plan or higher. Upgrade to connect the CLI, MCP, and HTTP API. '}
-          <a href="/kr/nexyfab/pricing" style={{ color: 'var(--nx-accent, #2563eb)', fontWeight: 700 }}>{ko ? '요금제 보기' : 'See pricing'}</a>
+          🔒 {L('API 키는 Pro 플랜 이상에서 발급됩니다. Pro로 업그레이드하면 CLI·MCP·HTTP API를 바로 연결할 수 있어요. ', 'API keys require a Pro plan or higher. Upgrade to connect the CLI, MCP, and HTTP API. ')}
+          <Link href={`/${routeLang}/nexyfab/pricing`} style={{ color: 'var(--nx-accent, #2563eb)', fontWeight: 700 }}>{L('요금제 보기', 'See pricing')}</Link>
         </div>
       )}
 
@@ -133,11 +136,11 @@ export default function ApiKeysPanel({ ko }: { ko: boolean }) {
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
           <input
             value={name} onChange={(e) => setName(e.target.value)} maxLength={100}
-            placeholder={ko ? '키 이름(예: ci-runner)' : 'Key name (e.g. ci-runner)'}
+            placeholder={L('키 이름(예: ci-runner)', 'Key name (e.g. ci-runner)')}
             style={{ flex: '1 1 200px', padding: '8px 10px', borderRadius: 8, border: '1px solid var(--nx-border, #d3d9e0)', fontSize: 13 }}
           />
           <button onClick={() => void create()} disabled={creating} style={{ ...btn, opacity: creating ? 0.6 : 1 }}>
-            {creating ? (ko ? '발급 중…' : 'Issuing…') : (ko ? '새 키 발급' : 'Generate key')}
+            {creating ? (L('발급 중…', 'Issuing…')) : (L('새 키 발급', 'Generate key'))}
           </button>
         </div>
       )}
@@ -145,11 +148,11 @@ export default function ApiKeysPanel({ ko }: { ko: boolean }) {
       {freshKey && (
         <div style={{ marginTop: 12, padding: '12px 14px', borderRadius: 10, border: '1px solid #16a34a', background: 'rgba(22,163,74,0.06)' }}>
           <div style={{ fontSize: 12.5, fontWeight: 800, color: '#15803d', marginBottom: 6 }}>
-            ⚠ {ko ? '지금 저장하세요. 이 키는 다시 표시되지 않습니다.' : 'Save this now — it will not be shown again.'}
+            ⚠ {L('지금 저장하세요. 이 키는 다시 표시되지 않습니다.', 'Save this now — it will not be shown again.')}
           </div>
           <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
             <code style={{ flex: '1 1 260px', padding: '8px 10px', borderRadius: 7, background: '#0b1020', color: '#c8d3e8', fontSize: 12.5, fontFamily: 'ui-monospace, monospace', wordBreak: 'break-all' }}>{freshKey}</code>
-            <button onClick={copy} style={btnGhost}>{copied ? (ko ? '복사됨 ✓' : 'Copied ✓') : (ko ? '복사' : 'Copy')}</button>
+            <button onClick={copy} style={btnGhost}>{copied ? (L('복사됨 ✓', 'Copied ✓')) : (L('복사', 'Copy'))}</button>
           </div>
         </div>
       )}
@@ -159,10 +162,10 @@ export default function ApiKeysPanel({ ko }: { ko: boolean }) {
       {list && list.keys.length > 0 && (
         <table style={{ borderCollapse: 'collapse', width: '100%', fontSize: 12.5, marginTop: 14 }}>
           <thead><tr style={{ textAlign: 'left', color: 'var(--nx-text-2, #46505e)' }}>
-            <th style={{ padding: '4px 8px' }}>{ko ? '이름' : 'Name'}</th>
-            <th style={{ padding: '4px 8px' }}>{ko ? '접두' : 'Prefix'}</th>
-            <th style={{ padding: '4px 8px' }}>{ko ? '생성' : 'Created'}</th>
-            <th style={{ padding: '4px 8px' }}>{ko ? '마지막 사용' : 'Last used'}</th>
+            <th style={{ padding: '4px 8px' }}>{L('이름', 'Name')}</th>
+            <th style={{ padding: '4px 8px' }}>{L('접두', 'Prefix')}</th>
+            <th style={{ padding: '4px 8px' }}>{L('생성', 'Created')}</th>
+            <th style={{ padding: '4px 8px' }}>{L('마지막 사용', 'Last used')}</th>
             <th style={{ padding: '4px 8px' }} />
           </tr></thead>
           <tbody>
@@ -174,7 +177,7 @@ export default function ApiKeysPanel({ ko }: { ko: boolean }) {
                 <td style={{ padding: '6px 8px' }}>{fmt(k.last_used_at)}</td>
                 <td style={{ padding: '6px 8px', textAlign: 'right' }}>
                   <button onClick={() => void revoke(k.id)} style={{ ...btnGhost, color: '#dc2626', borderColor: 'rgba(220,38,38,0.4)' }}>
-                    {ko ? '취소' : 'Revoke'}
+                    {L('취소', 'Revoke')}
                   </button>
                 </td>
               </tr>
@@ -185,7 +188,7 @@ export default function ApiKeysPanel({ ko }: { ko: boolean }) {
 
       {list && list.keys.length === 0 && isPro && (
         <p style={{ marginTop: 12, fontSize: 12.5, color: 'var(--nx-text-2, #46505e)' }}>
-          {ko ? '아직 발급된 키가 없습니다.' : 'No keys yet.'}
+          {L('아직 발급된 키가 없습니다.', 'No keys yet.')}
         </p>
       )}
     </div>

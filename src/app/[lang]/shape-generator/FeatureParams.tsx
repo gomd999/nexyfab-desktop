@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react';
 import { toIsoLang } from '@/lib/i18n/normalize';
+import { loc } from '@/lib/i18n/loc';
 import type { FeatureDefinition, FeatureInstance } from './features/types';
 import type { ExprVariable } from './ExpressionEngine';
 import {
@@ -70,7 +71,6 @@ export default function FeatureParams({
   instance, definition, t, onParamChange,
   expressions, variables, onExpressionCommit, lang,
 }: FeatureParamsProps) {
-  const ko = lang === 'ko' || lang === 'kr';
   // ⚠ 260802: `ko ? COPY.ko : COPY.en` 2분기라 ja·zh·es·ar 이 영어로 떨어졌다.
   const et = EXPR_COPY[toIsoLang(lang)] ?? EXPR_COPY.en;
   // Which param key is currently being typed into (inline text editor).
@@ -97,7 +97,7 @@ export default function FeatureParams({
   if (!definition?.params || !instance?.params) {
     return (
       <div style={{ fontSize: 12, color: 'var(--nx-text-2)', padding: '4px 0' }}>
-        {ko ? '편집할 파라미터가 없습니다' : 'No editable parameters'}
+        {loc(lang, { ko: '편집할 파라미터가 없습니다', en: 'No editable parameters', ja: '編集可能なパラメータはありません', zh: '没有可编辑的参数', es: 'No hay parámetros editables', ar: 'لا توجد معلمات قابلة للتحرير' })}
       </div>
     );
   }

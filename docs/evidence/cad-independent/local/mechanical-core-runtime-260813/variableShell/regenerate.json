@@ -1,0 +1,87 @@
+{
+  "schema": "nexyfab.mechanical-core-feature-local-runtime.v1",
+  "feature": "variableShell",
+  "axis": "regenerate",
+  "status": "PASS",
+  "executedAt": "2026-08-22T07:13:30.564Z",
+  "initial": {
+    "handle": "occt:343",
+    "kernelKind": "Solid",
+    "nativeShapeType": 0,
+    "solidCount": 1,
+    "singleSolid": true,
+    "volumeMm3": 14287.5,
+    "edgeCount": 24,
+    "faceCount": 11,
+    "boundsMm": [
+      [
+        -30.0000001,
+        -20.0000001,
+        -15.000000100000001
+      ],
+      [
+        30.0000001,
+        20.0000001,
+        15.000000100000001
+      ]
+    ]
+  },
+  "edited": {
+    "handle": "occt:345",
+    "kernelKind": "Solid",
+    "nativeShapeType": 0,
+    "solidCount": 1,
+    "singleSolid": true,
+    "volumeMm3": 20437.500000000007,
+    "edgeCount": 24,
+    "faceCount": 11,
+    "boundsMm": [
+      [
+        -30.000000100000005,
+        -20.000000100000005,
+        -15.000000100000003
+      ],
+      [
+        30.000000100000005,
+        20.000000100000005,
+        15.000000100000003
+      ]
+    ]
+  },
+  "repeated": {
+    "handle": "occt:347",
+    "kernelKind": "Solid",
+    "nativeShapeType": 0,
+    "solidCount": 1,
+    "singleSolid": true,
+    "volumeMm3": 20437.500000000007,
+    "edgeCount": 24,
+    "faceCount": 11,
+    "boundsMm": [
+      [
+        -30.000000100000005,
+        -20.000000100000005,
+        -15.000000100000003
+      ],
+      [
+        30.000000100000005,
+        20.000000100000005,
+        15.000000100000003
+      ]
+    ]
+  },
+  "featureMeaning": {
+    "assertion": "actual product exact variable shell subtracts an open-top rectangular cavity with independent side and bottom thicknesses",
+    "exactScope": "axis-aligned bbox-faithful box only; general per-face B-Rep thickening remains unsupported and fail-closed",
+    "unsupportedGeometryError": "VARIABLE_SHELL_EXACT_BOX_REQUIRED",
+    "openFace": "top",
+    "sideThicknessMm": 2.5,
+    "bottomThicknessMm": 2.5,
+    "innerWidthMm": 55,
+    "innerDepthMm": 25,
+    "removedHeightMm": 37.5,
+    "expectedVolumeMm3": 20437.5,
+    "actualVolumeMm3": 20437.500000000007
+  },
+  "assertion": "edited parameter changed the exact signature and a fresh native regeneration reproduced topology, bounds, and volume"
+}

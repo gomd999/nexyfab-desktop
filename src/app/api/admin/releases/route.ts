@@ -7,6 +7,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { verifyAdmin } from '@/lib/admin-auth';
 import { getDbAdapter } from '@/lib/db-adapter';
 import { randomUUID } from 'crypto';
+import { readBoundedJson } from '@/lib/boundedJsonBody';
 
 export const dynamic = 'force-dynamic';
 
@@ -66,7 +67,7 @@ export async function POST(req: NextRequest) {
   const isAdmin = await verifyAdmin(req);
   if (!isAdmin) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
 
-  const body = await req.json() as Omit<Partial<ReleaseRow>, 'is_latest'> & {
+  const body = await readBoundedJson(req, 1024 * 1024) as Omit<Partial<ReleaseRow>, 'is_latest'> & {
     version: string;
     is_latest?: boolean | number;
   };
@@ -155,7 +156,7 @@ export async function PATCH(req: NextRequest) {
   const isAdmin = await verifyAdmin(req);
   if (!isAdmin) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
 
-  const { id } = await req.json() as { id: string };
+  const { id } = await readBoundedJson(req, 64 * 1024) as { id: string };
   if (!id) return NextResponse.json({ error: 'id is required' }, { status: 400 });
 
   const db = getDbAdapter();

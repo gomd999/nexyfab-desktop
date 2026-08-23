@@ -25,7 +25,7 @@ export interface LandscapeReleaseCertificateInput {
   deliverables?: BoundLandscapeEvidence<LandscapeDeliverableEvidence>;
   repair?: BoundLandscapeEvidence<LandscapeAxisEvidence>;
 }
-export interface LandscapeReleaseCertificate { schema: 'nexyfab.landscape-release-certificate.v1'; workspaceRevision: number; modelContentHash: string; status: LandscapeEvidenceStatus; releaseReady: boolean; assertions: DomainAccuracyAssertionResult[]; issues: string[] }
+export interface LandscapeReleaseCertificate { schema: 'nexyfab.landscape-release-certificate.v1'; workspaceRevision: number; modelContentHash: string; status: LandscapeEvidenceStatus; internalReady: boolean; releaseReady: false; assertions: DomainAccuracyAssertionResult[]; issues: string[] }
 
 const SHA256 = /^[a-f0-9]{64}$/;
 const rank: Record<LandscapeEvidenceStatus, number> = { pass: 0, not_run: 1, fail: 2 };
@@ -95,5 +95,5 @@ export function buildLandscapeReleaseCertificate(input: LandscapeReleaseCertific
   ];
   const assertions = merge(values), issues = [...workspaceIssues, ...documentIssues, ...assertions.filter(item => item.status !== 'pass').map(item => `${item.axis}:${item.status}`)];
   const status: LandscapeEvidenceStatus = assertions.length !== 20 ? 'fail' : assertions.some(item => item.status === 'fail') ? 'fail' : assertions.some(item => item.status === 'not_run') ? 'not_run' : 'pass';
-  return { schema: 'nexyfab.landscape-release-certificate.v1', workspaceRevision: input.workspace.workspace.revision, modelContentHash: input.workspace.geometry.contentHash, status, releaseReady: status === 'pass', assertions, issues };
+  return { schema: 'nexyfab.landscape-release-certificate.v1', workspaceRevision: input.workspace.workspace.revision, modelContentHash: input.workspace.geometry.contentHash, status, internalReady: status === 'pass', releaseReady: false, assertions, issues };
 }

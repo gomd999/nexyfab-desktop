@@ -21,11 +21,14 @@ import { getAuthUser } from '@/lib/auth-middleware';
 import { getDbAdapter } from '@/lib/db-adapter';
 import { createNotification } from '@/app/lib/notify';
 import { normPartnerEmail } from '@/lib/partner-factory-access';
+import { isOrderBuyerInActiveWorkspace } from '@/lib/nfOrderAccess';
+import { boundedJsonError, readBoundedJson } from '@/lib/boundedJsonBody';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 const VALID_STEPS = new Set(['production_start', 'qc', 'packing', 'shipped', 'note']);
+const ORDER_MILESTONE_JSON_BYTES = 64 * 1024;
 
 interface MilestoneRow {
   id: string;
@@ -55,12 +58,12 @@ async function ensureTable(db: ReturnType<typeof getDbAdapter>): Promise<void> {
   tableEnsured = true;
 }
 
-async function resolveOrder(db: ReturnType<typeof getDbAdapter>, id: string): Promise<{ buyerUserId: string; partnerEmail: string | null } | null> {
-  const o = await db.queryOne<{ user_id: string; partner_email: string | null }>(
-    'SELECT user_id, partner_email FROM nf_orders WHERE id = ?', id,
+async function resolveOrder(db: ReturnType<typeof getDbAdapter>, id: string): Promise<{ user_id: string; org_id: string | null; partnerEmail: string | null } | null> {
+  const o = await db.queryOne<{ user_id: string; org_id: string | null; partner_email: string | null }>(
+    'SELECT user_id, org_id, partner_email FROM nf_orders WHERE id = ?', id,
   ).catch(() => null);
   if (!o) return null;
-  return { buyerUserId: o.user_id, partnerEmail: o.partner_email };
+  return { user_id: o.user_id, org_id: o.org_id, partnerEmail: o.partner_email };
 }
 
 function rowToMilestone(r: MilestoneRow) {
@@ -83,7 +86,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
   const order = await resolveOrder(db, id);
   if (!order) return NextResponse.json({ error: 'order not found' }, { status: 404 });
 
-  const isBuyer = auth.userId === order.buyerUserId;
+  const isBuyer = isOrderBuyerInActiveWorkspace(auth, order);
   const isPartner = !!order.partnerEmail && normPartnerEmail(auth.email ?? '') === normPartnerEmail(order.partnerEmail);
   if (!isBuyer && !isPartner) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
 
@@ -102,8 +105,12 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   const { id } = await params;
   let body: { step?: unknown; note?: unknown; attachments?: unknown };
   try {
-    body = await req.json();
-  } catch {
+    body = await readBoundedJson(req, ORDER_MILESTONE_JSON_BYTES);
+  } catch (error) {
+    const bodyError = boundedJsonError(error);
+    if (bodyError?.code === 'PAYLOAD_TOO_LARGE') {
+      return NextResponse.json({ error: 'Request body too large' }, { status: bodyError.status });
+    }
     return NextResponse.json({ error: 'invalid JSON' }, { status: 400 });
   }
   const step = typeof body.step === 'string' ? body.step : '';
@@ -146,7 +153,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 
   // Notify the buyer.
   void createNotification(
-    order.buyerUserId,
+    order.user_id,
     'order.milestone',
     `Order ${id} — ${step}`,
     note ? note.slice(0, 120) : `${attachments.length} attachment(s)`,

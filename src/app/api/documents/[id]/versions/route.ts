@@ -33,9 +33,12 @@ import {
 } from '@/lib/cloudDoc/access';
 import { publicVersionShape, type VersionRow, type GateResultLike } from '@/lib/cloudDoc/versions';
 import { getLockHeldByOther, lockConflictPayload } from '@/lib/cloudDoc/locks';
+import { readBoundedJson } from '@/lib/boundedJsonBody';
 
 const MAX_LABEL_LEN = 100;
 const MAX_BRANCH_LEN = 80;
+const MAX_JSON_BODY_BYTES = 2 * 1024 * 1024;
+const SIGNED_URL_TTL_SEC = 600;
 
 // ─── GET /api/documents/[id]/versions ───────────────────────────────────────
 
@@ -65,9 +68,26 @@ export async function GET(
     id, limit,
   );
 
+  let versions = rows.map(publicVersionShape);
+  // A version row intentionally exposes only its storage key.  Checkout
+  // needs a short-lived URL to read the immutable snapshot, so sign each
+  // object only after the document access check has succeeded.
+  try {
+    const storage = getStorage();
+    if (storage.getSignedUrl) {
+      versions = await Promise.all(versions.map(async (version) => ({
+        ...version,
+        blobUrl: await storage.getSignedUrl(version.blobKey, SIGNED_URL_TTL_SEC),
+        blobUrlExpiresAt: Date.now() + SIGNED_URL_TTL_SEC * 1000,
+      })));
+    }
+  } catch (err) {
+    console.warn('[versions.GET] signed snapshot URLs unavailable:', (err as Error).message);
+  }
+
   return NextResponse.json({
     ok: true,
-    versions: rows.map(publicVersionShape),
+    versions,
     docVersion: access.row.version,
   });
 }
@@ -104,7 +124,7 @@ export async function POST(
   }
 
   let body: { label?: unknown; branchName?: unknown; parentVersionId?: unknown; gateReport?: unknown };
-  try { body = await req.json().catch(() => ({})); }
+  try { body = req.body ? await readBoundedJson(req, MAX_JSON_BODY_BYTES) : {}; }
   catch { return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 }); }
 
   // Validation

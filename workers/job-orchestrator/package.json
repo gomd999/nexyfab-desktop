@@ -1,0 +1,10 @@
+{
+  "name": "@nexyfab/job-orchestrator",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "vitest run workers/job-orchestrator/src/core.test.ts workers/job-orchestrator/src/ledger.test.ts --reporter=dot",
+    "deploy": "wrangler deploy --config workers/job-orchestrator/wrangler.toml"
+  }
+}

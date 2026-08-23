@@ -74,6 +74,22 @@ describe('POST /api/step-import — validation', () => {
     expect(data.error).toBe('BAD_REQUEST');
   });
 
+  it('rejects invalid UTF-8 and a declared oversized JSON envelope before parsing', async () => {
+    const invalid = new Request('http://localhost/api/step-import', {
+      method: 'POST', headers: { 'content-type': 'application/json' }, body: new Uint8Array([0x7b, 0xff, 0x7d]),
+    });
+    expect((await POST(invalid as never)).status).toBe(400);
+
+    const declared = new Request('http://localhost/api/step-import', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', 'content-length': String(33 * 1024 * 1024) },
+      body: '{}',
+    });
+    const response = await POST(declared as never);
+    expect(response.status).toBe(413);
+    await expect(response.json()).resolves.toMatchObject({ error: 'PAYLOAD_TOO_LARGE' });
+  });
+
   it('rejects empty source with 400 BAD_REQUEST', async () => {
     const res = await POST(jsonReq({ source: '' }) as never);
     expect(res.status).toBe(400);
@@ -223,6 +239,17 @@ describe('POST /api/step-import — multipart/form-data', () => {
     expect(res.status).toBe(400);
     const data = await res.json();
     expect(data.error).toBe('BAD_REQUEST');
+  });
+
+  it('rejects a declared oversized multipart request before form parsing', async () => {
+    const fd = new FormData();
+    fd.append('file', new Blob(['small']), 'part.step');
+    const req = new Request('http://localhost/api/step-import', {
+      method: 'POST', headers: { 'content-length': String(7 * 1024 * 1024) }, body: fd,
+    });
+    const res = await POST(req as never);
+    expect(res.status).toBe(413);
+    await expect(res.json()).resolves.toMatchObject({ error: 'PAYLOAD_TOO_LARGE' });
   });
 });
 

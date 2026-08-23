@@ -734,6 +734,83 @@
     return out;
   }
 
+  // Imported STEP faces have no upstream feature names.  Keep a deterministic
+  // centroid order so the browser can request the same face again after a
+  // round-trip (mirrors the Node bridge's f.import.* contract).
+  function importedWorkerFaceTopo(shape) {
+    var faces = uniqueFaces(shape), rows = [];
+    for (var i = 0; i < faces.length; i++) {
+      var c = { x: Infinity, y: Infinity, z: Infinity };
+      try {
+        var exp = new (occt.TopExp_Explorer_2 || occt.TopExp_Explorer)(faces[i], occt.TopAbs_ShapeEnum.TopAbs_VERTEX, occt.TopAbs_ShapeEnum.TopAbs_SHAPE);
+        var p = null;
+        if (exp.More()) {
+          var v = occt.TopoDS.Vertex_1 ? occt.TopoDS.Vertex_1(exp.Current()) : occt.TopoDS.Vertex(exp.Current());
+          p = (occt.BRep_Tool.Pnt_1 || occt.BRep_Tool.Pnt)(v);
+          c = { x: p.X(), y: p.Y(), z: p.Z() };
+          if (v && v.delete) v.delete();
+        }
+        if (exp && exp.delete) exp.delete();
+        if (p && p.delete) p.delete();
+      } catch (_e) { void _e; }
+      rows.push({ face: faces[i], c: c });
+    }
+    rows.sort(function (a, b) { return a.c.x - b.c.x || a.c.y - b.c.y || a.c.z - b.c.z; });
+    return rows.map(function (r, index) { return { face: r.face, name: 'f.import.' + index }; });
+  }
+
+  function planarWorkerFaceNormal(face) {
+    try {
+      var surfaceFn = occt.BRep_Tool && (occt.BRep_Tool.Surface_2 || occt.BRep_Tool.Surface);
+      if (typeof surfaceFn !== 'function') return null;
+      var handle = surfaceFn(face), surf = handle && typeof handle.get === 'function' ? handle.get() : handle;
+      if (!surf || typeof surf.Pln !== 'function') return null;
+      var pln = surf.Pln(), axis = pln.Axis(), dir = axis.Direction();
+      var reversed = occt.TopAbs_Orientation && occt.TopAbs_Orientation.TopAbs_REVERSED;
+      var sign = typeof face.Orientation === 'function' && reversed !== undefined && face.Orientation() === reversed ? -1 : 1;
+      return { x: sign * dir.X(), y: sign * dir.Y(), z: sign * dir.Z() };
+    } catch (_e) { return null; }
+  }
+
+  function pushPullFace(handle, faceId, distance) {
+    if (!occt) return notReady();
+    if (!isFinite(distance) || distance === 0) return { ok: false, error: 'pushPullFace: distance must be non-zero finite', warnings: [] };
+    var shape = handles.get(handle), entries = faceTopos.get(handle) || [];
+    if (!shape) return { ok: false, error: 'pushPullFace: unknown handle (' + handle + ')', warnings: [] };
+    var matches = entries.filter(function (entry) { return entry.name === faceId; });
+    if (matches.length !== 1) return { ok: false, error: 'pushPullFace: face ' + faceId + ' resolved ' + matches.length + ' times', warnings: [] };
+    var normal = planarWorkerFaceNormal(matches[0].face);
+    if (!normal) return { ok: false, error: 'pushPullFace: face ' + faceId + ' is not planar; curved-face offset is not enabled yet', warnings: [] };
+    var Vec = occt.gp_Vec_4 || occt.gp_Vec;
+    var Prism = occt.BRepPrimAPI_MakePrism_1 || occt.BRepPrimAPI_MakePrism;
+    var Fuse = occt.BRepAlgoAPI_Fuse_3 || occt.BRepAlgoAPI_Fuse;
+    var Cut = occt.BRepAlgoAPI_Cut_3 || occt.BRepAlgoAPI_Cut;
+    if (!Vec || !Prism || !Fuse || !Cut) return { ok: false, error: 'pushPullFace: required OCCT symbol missing', warnings: [] };
+    var before = shapeMetrics(shape).volume, candidates = [];
+    for (var sign = 1; sign >= -1; sign -= 2) {
+      var vec = null, toolBuilder = null, algo = null;
+      try {
+        vec = new Vec(normal.x * Math.abs(distance) * sign, normal.y * Math.abs(distance) * sign, normal.z * Math.abs(distance) * sign);
+        toolBuilder = new Prism(matches[0].face, vec, false, true);
+        var tool = toolBuilder.Shape();
+        algo = new (distance > 0 ? Fuse : Cut)(shape, tool);
+        var candidate = algo.Shape(), metrics = shapeMetrics(candidate), valid = true;
+        try {
+          var Analyzer = occt.BRepCheck_Analyzer_1 || occt.BRepCheck_Analyzer;
+          if (Analyzer) { var an = new Analyzer(candidate, true); valid = an.IsValid_2 ? an.IsValid_2() : an.IsValid(); if (an.delete) an.delete(); }
+        } catch (_a) { void _a; }
+        if (valid && isFinite(metrics.volume)) candidates.push({ shape: candidate, volume: metrics.volume });
+      } catch (_e) { void _e; }
+      finally { if (algo && algo.delete) algo.delete(); if (toolBuilder && toolBuilder.delete) toolBuilder.delete(); if (vec && vec.delete) vec.delete(); }
+    }
+    var changed = candidates.filter(function (c) { return distance > 0 ? c.volume > before + 1e-7 : c.volume < before - 1e-7 && c.volume > 1e-9; });
+    changed.sort(function (a, b) { return distance > 0 ? b.volume - a.volume : a.volume - b.volume; });
+    if (!changed.length) return { ok: false, error: 'pushPullFace: no valid volume-changing result', warnings: [] };
+    var resultShape = changed[0].shape;
+    var h = alloc(resultShape, importedWorkerEdgeTopo(resultShape), importedWorkerFaceTopo(resultShape));
+    return { ok: true, handle: h, kind: 'solid', warnings: ['exact B-Rep push/pull ' + faceId + ' ' + distance + ' mm'] };
+  }
+
   // ─── per-op OCCT call sites ────────────────────────────────────────────
 
   /**
@@ -811,7 +888,7 @@
       return { ok: false, error: 'buildPrismAt: loop, z0, and positive height are required', warnings: [] };
     }
     var circle = detectCircleLoop(loop);
-    if (circle) return buildCylinderAt(circle.center, z0, heightMm, circle.radius);
+    if (circle) return buildCylinderZAt(circle.center, z0, heightMm, circle.radius);
     return buildFromExtrude({ loop: loop, depth: heightMm, z0: z0 });
   }
 
@@ -860,7 +937,7 @@
     return out;
   }
 
-  function buildCylinderAt(center, z0, heightMm, radius) {
+  function buildCylinderZAt(center, z0, heightMm, radius) {
     var Pnt = occt && (occt.gp_Pnt_3 || occt.gp_Pnt), Dir = occt && (occt.gp_Dir_4 || occt.gp_Dir);
     var Ax2 = occt && (occt.gp_Ax2_3 || occt.gp_Ax2), Cylinder = occt && (occt.BRepPrimAPI_MakeCylinder_3 || occt.BRepPrimAPI_MakeCylinder);
     if (!Pnt || !Dir || !Ax2 || !Cylinder) return { ok: false, error: 'buildCylinderAt: required OCCT symbol missing', warnings: [] };
@@ -875,6 +952,37 @@
     finally {
       if (maker && maker.delete) maker.delete(); if (axis && axis.delete) axis.delete();
       if (dir && dir.delete) dir.delete(); if (origin && origin.delete) origin.delete();
+    }
+  }
+
+  function buildCylinderAxisAt(center, axis, radiusMm, depthMm) {
+    if (!occt || !Array.isArray(center) || center.length !== 3 || !Array.isArray(axis) || axis.length !== 3 ||
+        !center.every(function (value) { return typeof value === 'number' && isFinite(value); }) ||
+        !axis.every(function (value) { return typeof value === 'number' && isFinite(value); }) ||
+        typeof radiusMm !== 'number' || !isFinite(radiusMm) || !(radiusMm > 0) ||
+        typeof depthMm !== 'number' || !isFinite(depthMm) || !(depthMm > 0)) {
+      return { ok: false, error: 'buildCylinderAt: finite center/axis, positive radius/depth are required', warnings: [] };
+    }
+    var norm = Math.hypot(axis[0], axis[1], axis[2]);
+    if (!isFinite(norm) || norm < 1e-12) return { ok: false, error: 'buildCylinderAt: axis direction must be non-zero', warnings: [] };
+    var Pnt = occt.gp_Pnt_3 || occt.gp_Pnt;
+    var Dir = occt.gp_Dir_4 || occt.gp_Dir;
+    var Ax2 = occt.gp_Ax2_3 || occt.gp_Ax2;
+    var Cylinder = occt.BRepPrimAPI_MakeCylinder_3 || occt.BRepPrimAPI_MakeCylinder;
+    if (!Pnt || !Dir || !Ax2 || !Cylinder) return { ok: false, error: 'buildCylinderAt: required OCCT symbol missing', warnings: [] };
+    var origin = null, direction = null, placement = null, maker = null;
+    try {
+      origin = new Pnt(center[0], center[1], center[2]);
+      direction = new Dir(axis[0] / norm, axis[1] / norm, axis[2] / norm);
+      placement = new Ax2(origin, direction);
+      maker = new Cylinder(placement, radiusMm, depthMm);
+      var shape = maker.Shape();
+      var h = alloc(shape, importedWorkerEdgeTopo(shape), []);
+      return { ok: true, handle: h, kind: 'solid', warnings: ['analytic OCCT cylinder built along supplied axis'] };
+    } catch (err) { return { ok: false, error: 'buildCylinderAt: ' + (err && err.message), warnings: [] }; }
+    finally {
+      if (maker && maker.delete) maker.delete(); if (placement && placement.delete) placement.delete();
+      if (direction && direction.delete) direction.delete(); if (origin && origin.delete) origin.delete();
     }
   }
 
@@ -896,7 +1004,7 @@
       axis = new Ax2(origin, dir);
       maker = new Cone(axis, radius0, radius1, heightMm);
       var shape = maker.Shape();
-      var h = alloc(shape, importedWorkerEdgeTopo(shape));
+      var h = alloc(shape, importedWorkerEdgeTopo(shape), importedWorkerFaceTopo(shape));
       return { ok: true, handle: h, kind: 'solid', warnings: [] };
     } catch (err) {
       return { ok: false, error: 'buildConeAt: ' + (err && err.message), warnings: [] };
@@ -1740,6 +1848,10 @@
           makeShapePayload(reqId, buildPrismAt(args.loop || [], args.z0, args.heightMm));
           return;
 
+        case 'buildCylinderAt':
+          makeShapePayload(reqId, buildCylinderAxisAt(args.center, args.axis, args.radiusMm, args.depthMm));
+          return;
+
         case 'buildConeAt':
           makeShapePayload(reqId, buildConeAt(args.center, args.z0, args.heightMm, args.radius0, args.radius1));
           return;
@@ -1757,6 +1869,10 @@
         case 'fillet':
         case 'chamfer':
           makeShapePayload(reqId, filletOrChamfer(op, args.handle, args.edgeIds || [], args.dim));
+          return;
+
+        case 'pushPullFace':
+          makeShapePayload(reqId, pushPullFace(args.handle, args.faceId, args.distance));
           return;
 
         case 'variableFillet':
@@ -1846,6 +1962,7 @@
           buildFromExtrude: buildFromExtrude,
           buildFromRevolve: buildFromRevolve,
           buildPrismAt: buildPrismAt,
+          buildCylinderAt: buildCylinderAxisAt,
           buildConeAt: buildConeAt,
           buildThreadHelixCutter: buildThreadHelixCutter,
           booleanOp: booleanOp,

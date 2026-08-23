@@ -1,112 +1,53 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { boundedRawBodyError, readBoundedRawBody } from '@/lib/boundedRawBody';
+import {
+  isSamlVerifierUnavailable,
+  SamlVerifierUnavailableError,
+  verifySamlResponse,
+} from '@/lib/saml-sso-verifier';
+import { oidcSsoReadiness } from '@/lib/oidc-sso-readiness';
+
+const MAX_SAML_CALLBACK_BODY_BYTES = 2 * 1024 * 1024;
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-interface SSOUser {
-  id: string;
-  email: string;
-  name: string;
-  plan: 'enterprise';
-}
+// ─── SAML assertion — commercial verifier boundary ───────────────────────────
+// XMLDSig, request correlation, replay protection, and local session issuance
+// must be implemented and reviewed as one unit. Until then every assertion is
+// rejected before decoding or consuming claims.
 
-interface SSOCallbackResult {
-  user: SSOUser;
-  token: string;
-  demo?: boolean;
-}
-
-// ─── Demo fallback ────────────────────────────────────────────────────────────
-
-const _DEMO_RESULT: SSOCallbackResult = {
-  user: {
-    id: 'sso-demo',
-    email: 'demo@company.com',
-    name: 'SSO User',
-    plan: 'enterprise',
-  },
-  token: 'sso-demo-token',
-  demo: true,
-};
-
-// ─── OIDC token exchange (production) ─────────────────────────────────────────
-
-async function exchangeOIDCCode(code: string, state: string): Promise<SSOCallbackResult> {
-  const clientId = process.env.OIDC_CLIENT_ID!;
-  const clientSecret = process.env.OIDC_CLIENT_SECRET!;
-  const issuer = process.env.OIDC_ISSUER!;
-
-  // Discover token endpoint
-  const discoveryRes = await fetch(`${issuer}/.well-known/openid-configuration`);
-  if (!discoveryRes.ok) throw new Error('OIDC discovery failed');
-  const discovery = await discoveryRes.json() as { token_endpoint: string; userinfo_endpoint: string };
-
-  // Exchange code for tokens
-  const tokenRes = await fetch(discovery.token_endpoint, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-    body: new URLSearchParams({
-      grant_type: 'authorization_code',
-      code,
-      state,
-      client_id: clientId,
-      client_secret: clientSecret,
-      redirect_uri: `${process.env.NEXT_PUBLIC_BASE_URL ?? ''}/api/nexyfab/sso/callback`,
-    }),
+async function processSAMLAssertion(samlResponse: string): Promise<never> {
+  await verifySamlResponse(samlResponse, {
+    trustedIdpCertificates: (process.env.SAML_IDP_CERTIFICATES ?? '')
+      .split('||')
+      .map(value => value.trim())
+      .filter(Boolean),
+    expectedIssuer: process.env.SAML_IDP_ISSUER ?? '',
+    expectedAudience: process.env.SAML_ENTITY_ID ?? '',
+    expectedDestination: `${process.env.NEXT_PUBLIC_BASE_URL ?? ''}/api/nexyfab/sso/callback`,
+    expectedInResponseTo: null,
   });
-  if (!tokenRes.ok) throw new Error('OIDC token exchange failed');
-  const tokens = await tokenRes.json() as { access_token: string; id_token: string };
 
-  // Fetch userinfo
-  const userRes = await fetch(discovery.userinfo_endpoint, {
-    headers: { Authorization: `Bearer ${tokens.access_token}` },
-  });
-  if (!userRes.ok) throw new Error('OIDC userinfo failed');
-  const userInfo = await userRes.json() as { sub: string; email: string; name?: string };
-
-  return {
-    user: {
-      id: userInfo.sub,
-      email: userInfo.email,
-      name: userInfo.name ?? userInfo.email,
-      plan: 'enterprise',
-    },
-    token: tokens.id_token ?? tokens.access_token,
-  };
-}
-
-// ─── SAML assertion — NOT IMPLEMENTED ────────────────────────────────────────
-// XML 서명 검증(samlify 등 라이브러리) 없이는 계정 위조가 가능하므로
-// 이 함수는 항상 오류를 던집니다. SAML을 활성화하려면:
-//   1. npm install samlify node-rsa
-//   2. IDP 메타데이터/인증서로 서명 검증 구현
-//   3. 이 함수를 교체한 후 SAML_ENTITY_ID 설정
-
-async function processSAMLAssertion(_samlResponse: string): Promise<SSOCallbackResult> {
-  throw new Error('SAML SSO is not yet implemented. XML signature validation required.');
+  // Session issuance remains unreachable until the verifier and request
+  // correlation/replay stores are implemented together.
+  throw new SamlVerifierUnavailableError();
 }
 
 // ─── GET /api/nexyfab/sso/callback?code=&state= (OIDC) ───────────────────────
 
 export async function GET(req: NextRequest) {
-  const code = req.nextUrl.searchParams.get('code');
-  const state = req.nextUrl.searchParams.get('state') ?? '';
-
-  // OIDC 환경변수 미설정 시 접근 차단 (데모 모드 비활성화)
-  if (!process.env.OIDC_CLIENT_ID) {
-    return NextResponse.json({ error: 'SSO가 설정되지 않았습니다.' }, { status: 503 });
-  }
-
-  if (!code) {
-    return NextResponse.json({ error: 'code parameter is required' }, { status: 400 });
-  }
-
-  try {
-    const result = await exchangeOIDCCode(code, state);
-    return NextResponse.json(result);
-  } catch (err) {
-    const message = err instanceof Error ? err.message : 'OIDC callback failed';
-    return NextResponse.json({ error: message }, { status: 502 });
-  }
+  // Deliberately do not consume `code` or contact the IdP until a login-start
+  // transaction has bound state, nonce, and PKCE and can be consumed once.
+  void req;
+  const readiness = oidcSsoReadiness();
+  return NextResponse.json(
+    {
+      error: 'OIDC callback is disabled until the complete commercial login flow is available.',
+      code: readiness.code,
+      blockers: readiness.blockers,
+    },
+    { status: 503 },
+  );
 }
 
 // ─── POST /api/nexyfab/sso/callback (SAML) ───────────────────────────────────
@@ -119,14 +60,29 @@ export async function POST(req: NextRequest) {
 
   let samlResponse: string | null = null;
 
+  let raw: string;
+  try {
+    const bytes = await readBoundedRawBody(req, MAX_SAML_CALLBACK_BODY_BYTES);
+    raw = new TextDecoder('utf-8', { fatal: true }).decode(bytes);
+  } catch (error) {
+    const bounded = boundedRawBodyError(error);
+    if (bounded?.code === 'PAYLOAD_TOO_LARGE') {
+      return NextResponse.json({ error: 'Request too large', code: bounded.code }, { status: bounded.status });
+    }
+    return NextResponse.json({ error: 'Invalid request body' }, { status: 400 });
+  }
+
   const contentType = req.headers.get('content-type') ?? '';
   if (contentType.includes('application/x-www-form-urlencoded')) {
-    const text = await req.text();
-    const params = new URLSearchParams(text);
+    const params = new URLSearchParams(raw);
     samlResponse = params.get('SAMLResponse');
   } else {
-    const body = await req.json() as { SAMLResponse?: string };
-    samlResponse = body.SAMLResponse ?? null;
+    try {
+      const body = JSON.parse(raw) as { SAMLResponse?: string };
+      samlResponse = body.SAMLResponse ?? null;
+    } catch {
+      return NextResponse.json({ error: 'Invalid request body' }, { status: 400 });
+    }
   }
 
   if (!samlResponse) {
@@ -137,6 +93,12 @@ export async function POST(req: NextRequest) {
     const result = await processSAMLAssertion(samlResponse);
     return NextResponse.json(result);
   } catch (err) {
+    if (isSamlVerifierUnavailable(err)) {
+      return NextResponse.json(
+        { error: err.message, code: err.code, blockers: err.blockers },
+        { status: err.status },
+      );
+    }
     const message = err instanceof Error ? err.message : 'SAML assertion failed';
     return NextResponse.json({ error: message }, { status: 502 });
   }

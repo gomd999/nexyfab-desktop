@@ -34,8 +34,9 @@
 
 import { detectIntent } from '@/lib/ai/featureTreeIntentDetector';
 import { INTENT_KINDS } from '@/lib/ai/featureTreeIntentDetector';
-import { BUILD_INTENT_PROMPT } from '@/lib/ai/llmPrompt';
+import { BUILD_INTENT_SYSTEM_PROMPT, BUILD_INTENT_USER_PROMPT } from '@/lib/ai/llmPrompt';
 import { isAddableFeatureType } from '@/lib/ai/addableFeatureTypes';
+import { isMechanicalCoreFeatureId } from '@/lib/ai/mechanicalCoreFeatureContract';
 import type { AiModelContext } from '@/lib/ai/modelContext';
 import type { PlanIntent } from '@/lib/ai/featureTreePlanner';
 
@@ -129,10 +130,6 @@ function resolveLlmFetcher(
  * can build the prompt themselves and pass the body through an injected
  * `opts.llmFetcher`.
  */
-function buildPrompt(text: string, context?: AiModelContext): string {
-  return BUILD_INTENT_PROMPT(text, INTENT_KINDS, context);
-}
-
 async function callAnthropic(
   text: string,
   context: AiModelContext | undefined,
@@ -150,7 +147,12 @@ async function callAnthropic(
       model: process.env.ANTHROPIC_MODEL ?? 'claude-haiku-4-5-20251001',
       max_tokens: 512,
       temperature: 0,
-      messages: [{ role: 'user', content: buildPrompt(text, context) }],
+      system: [{
+        type: 'text',
+        text: BUILD_INTENT_SYSTEM_PROMPT(INTENT_KINDS),
+        cache_control: { type: 'ephemeral' },
+      }],
+      messages: [{ role: 'user', content: BUILD_INTENT_USER_PROMPT(text, context) }],
     }),
     signal,
   });
@@ -187,7 +189,10 @@ async function callDeepSeek(
       model: process.env.DEEPSEEK_MODEL ?? 'deepseek-chat',
       max_tokens: 512,
       temperature: 0,
-      messages: [{ role: 'user', content: buildPrompt(text, context) }],
+      messages: [
+        { role: 'system', content: BUILD_INTENT_SYSTEM_PROMPT(INTENT_KINDS) },
+        { role: 'user', content: BUILD_INTENT_USER_PROMPT(text, context) },
+      ],
     }),
     signal,
   });
@@ -205,6 +210,7 @@ async function callOpenAI(
   apiKey: string,
   signal: AbortSignal,
 ): Promise<unknown> {
+  const model = process.env.OPENAI_MODEL ?? 'gpt-4o-mini';
   const res = await fetch('https://api.openai.com/v1/chat/completions', {
     method: 'POST',
     headers: {
@@ -212,10 +218,17 @@ async function callOpenAI(
       Authorization: `Bearer ${apiKey}`,
     },
     body: JSON.stringify({
-      model: process.env.OPENAI_MODEL ?? 'gpt-4o-mini',
+      model,
       max_tokens: 512,
       temperature: 0,
-      messages: [{ role: 'user', content: buildPrompt(text, context) }],
+      prompt_cache_key: `nexyfab:feature-tree-intent:${PROMPT_VERSION}:${model}`,
+      ...(model.startsWith('gpt-5.6-')
+        ? { prompt_cache_options: { mode: 'explicit', ttl: '30m' } }
+        : {}),
+      messages: [
+        { role: 'system', content: BUILD_INTENT_SYSTEM_PROMPT(INTENT_KINDS) },
+        { role: 'user', content: BUILD_INTENT_USER_PROMPT(text, context) },
+      ],
     }),
     signal,
   });
@@ -421,6 +434,18 @@ function validatePlanIntent(payload: unknown): PlanIntent | null {
       if (typeof b.shapeId !== 'string' || !BUILD_PART_BASES.has(b.shapeId)) return null;
       const baseParams = numericRecord(b.params);
       const featsRaw = Array.isArray(obj.features) ? obj.features : [];
+      // A model response is untrusted input.  Never cast an arbitrary string
+      // into the viewport FeatureType union: an unknown key would otherwise
+      // reach addFeatureWithParams and could become a silent/no-op feature.
+      // sketchExtrude is represented by build_part.base (or the dedicated
+      // create_sketch_extrude intent), so it is not valid in this modifier list.
+      if (!featsRaw.every((feature) => {
+        if (!feature || typeof feature !== 'object' || Array.isArray(feature)) return false;
+        const type = (feature as Record<string, unknown>).type;
+        return typeof type === 'string'
+          && type !== 'sketchExtrude'
+          && isMechanicalCoreFeatureId(type);
+      })) return null;
       const features = featsRaw
         .filter((f): f is Record<string, unknown> => !!f && typeof f === 'object' && !Array.isArray(f))
         .filter((f) => typeof f.type === 'string' && f.type.length > 0)

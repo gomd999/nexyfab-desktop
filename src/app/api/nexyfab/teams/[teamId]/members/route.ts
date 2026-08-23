@@ -5,8 +5,18 @@ import { checkOrigin } from '@/lib/csrf';
 import { z } from 'zod';
 import { randomBytes } from 'crypto';
 import { sendNotificationEmail } from '@/app/lib/mailer';
+import { boundedJsonError, readBoundedJson } from '@/lib/boundedJsonBody';
 
 export const dynamic = 'force-dynamic';
+const TEAM_MEMBER_JSON_BYTES = 64 * 1024;
+
+async function readTeamMemberBody(req: NextRequest): Promise<{ value: unknown; tooLarge: boolean }> {
+  try {
+    return { value: await readBoundedJson(req, TEAM_MEMBER_JSON_BYTES), tooLarge: false };
+  } catch (error) {
+    return { value: {}, tooLarge: boundedJsonError(error)?.code === 'PAYLOAD_TOO_LARGE' };
+  }
+}
 
 async function requireTeamOwnerOrManager(teamId: string, userId: string) {
   const db = getDbAdapter();
@@ -72,7 +82,9 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ tea
     email: z.string().email().max(255),
     role: z.enum(['manager', 'viewer']).default('viewer'),
   });
-  const parsed = schema.safeParse(await req.json().catch(() => ({})));
+  const requestBody = await readTeamMemberBody(req);
+  if (requestBody.tooLarge) return NextResponse.json({ error: 'Request body too large' }, { status: 413 });
+  const parsed = schema.safeParse(requestBody.value);
   if (!parsed.success) return NextResponse.json({ error: 'Invalid input' }, { status: 400 });
 
   const db = getDbAdapter();
@@ -132,7 +144,9 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ te
     inviteId: z.string().optional(),
     role: z.enum(['manager', 'viewer']),
   });
-  const parsed = schema.safeParse(await req.json().catch(() => ({})));
+  const requestBody = await readTeamMemberBody(req);
+  if (requestBody.tooLarge) return NextResponse.json({ error: 'Request body too large' }, { status: 413 });
+  const parsed = schema.safeParse(requestBody.value);
   if (!parsed.success) return NextResponse.json({ error: 'Invalid input' }, { status: 400 });
 
   const db = getDbAdapter();
@@ -171,7 +185,9 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ t
   const access = await requireTeamOwnerOrManager(teamId, authUser.userId);
   if (!access) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
 
-  const { memberId, inviteId } = await req.json().catch(() => ({})) as { memberId?: string; inviteId?: string };
+  const requestBody = await readTeamMemberBody(req);
+  if (requestBody.tooLarge) return NextResponse.json({ error: 'Request body too large' }, { status: 413 });
+  const { memberId, inviteId } = requestBody.value as { memberId?: string; inviteId?: string };
   if (!memberId && !inviteId) return NextResponse.json({ error: 'memberId or inviteId required' }, { status: 400 });
 
   const db = getDbAdapter();

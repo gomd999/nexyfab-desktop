@@ -12,6 +12,10 @@
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
+const storageMocks = vi.hoisted(() => ({
+  getSignedUrl: vi.fn().mockResolvedValue('https://signed.example/v.ydoc'),
+}));
+
 vi.mock('@/lib/auth-middleware', () => ({
   getAuthUser: vi.fn(),
 }));
@@ -28,7 +32,7 @@ vi.mock('@/lib/storage', () => ({
   getStorage: vi.fn(() => ({
     download: vi.fn().mockResolvedValue(Buffer.from('snapshot-data')),
     uploadRaw: vi.fn().mockResolvedValue(undefined),
-    getSignedUrl: vi.fn().mockResolvedValue('https://signed.example/v.ydoc'),
+    getSignedUrl: storageMocks.getSignedUrl,
     delete: vi.fn().mockResolvedValue(undefined),
   })),
 }));
@@ -132,7 +136,13 @@ describe('GET /api/documents/[id]/versions', () => {
     expect(body.versions).toHaveLength(1);
     expect(body.versions[0]).toMatchObject({
       id: 'v1', label: 'milestone', isExplicit: true, sizeBytes: 200,
+      blobUrl: 'https://signed.example/v.ydoc',
     });
+    expect(body.versions[0].blobUrlExpiresAt).toEqual(expect.any(Number));
+    expect(storageMocks.getSignedUrl).toHaveBeenCalledWith(
+      'documents/u-alice/d1/versions/v3.ydoc',
+      600,
+    );
     expect(body.docVersion).toBe(3);
   });
 

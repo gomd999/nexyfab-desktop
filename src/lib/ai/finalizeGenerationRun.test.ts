@@ -78,11 +78,12 @@ describe("finalizeGenerationRun", () => {
       motion: { required: false },
       parts: [part()],
     });
-    expect(result.stoppedAt).toBe("complete");
+    expect(result.stoppedAt).toBe("release");
+    expect(result.commercialReleaseReady).toBe(false);
     expect(result.state.stages.motion.status).toBe("passed");
     expect(result.state.stages.manufacturing.status).toBe("passed");
     expect(result.state.stages.roundtrip.status).toBe("passed");
-    expect(result.state.stages.release.status).toBe("passed");
+    expect(result.state.stages.release.status).toBe("blocked");
   });
   it("records missing required motion as not_run and does not evaluate later gates", () => {
     const result = finalizeGenerationRun(ready(), {
@@ -163,7 +164,8 @@ describe("finalizeGenerationRun", () => {
       motion: { required: false },
       parts: [evidence],
     });
-    expect(result.stoppedAt).toBe("complete");
+    expect(result.stoppedAt).toBe("release");
+    expect(result.commercialReleaseReady).toBe(false);
     expect(
       result.manufacturingReports.p1?.gates.find((gate) => gate.id === "G4")
         ?.status,

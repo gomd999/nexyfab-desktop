@@ -14,6 +14,10 @@ import {
     type Project, type ProjectStatus, type CommissionRecord,
 } from '@/lib/mockData';
 import { SHAPE_MAP } from '@/app/[lang]/shape-generator/shapes';
+import { formatDate, formatMoney } from '@/lib/i18n/format';
+import { loc } from '@/lib/i18n/loc';
+import { toIsoLang, toRouteLang } from '@/lib/i18n/normalize';
+import { createCommercialLocalizer } from '@/lib/i18n/commercialLocalizer';
 
 /** Same-origin API: 쿠키 세션을 항상 전송 */
 function credFetch(input: RequestInfo | URL, init?: RequestInit): Promise<Response> {
@@ -95,35 +99,23 @@ const AUDIT_ACTION_EN_MAP: Record<string, string> = {
 };
 
 function projectAuditCopy(lang: string) {
-    const ko = lang === 'kr' || lang === 'ko';
-    if (ko) {
-        return {
-            sectionTitle: '프로젝트 활동 (감사 로그)',
-            loading: '불러오는 중…',
-            planNote: 'Pro 이상 플랜에서 이 프로젝트에 연결된 저장·초대·멤버 변경 기록을 조회할 수 있습니다. (계정 플랜 업그레이드 후 다시 열어 주세요.)',
-            loadFail: '활동 기록을 불러오지 못했습니다.',
-            empty: '아직 기록된 활동이 없습니다.',
-            actorPrefix: '주체 ID',
-            auditCsv: 'CSV',
-            auditCsvTitle: '이 프로젝트 감사 로그를 CSV로 저장',
-        };
-    }
+    const text = <T extends Record<'ko' | 'en' | 'ja' | 'zh' | 'es' | 'ar', string>>(m: T) => loc(lang, m);
     return {
-        sectionTitle: 'Project activity (audit log)',
-        loading: 'Loading…',
-        planNote: 'Upgrade to Pro or higher to view save, invite, and member changes for this project.',
-        loadFail: 'Could not load activity.',
-        empty: 'No recorded activity yet.',
-        actorPrefix: 'Actor',
+        sectionTitle: text({ ko: '프로젝트 활동 (감사 로그)', en: 'Project activity (audit log)', ja: 'プロジェクト活動（監査ログ）', zh: '项目活动（审计日志）', es: 'Actividad del proyecto (registro de auditoría)', ar: 'نشاط المشروع (سجل التدقيق)' }),
+        loading: text({ ko: '불러오는 중…', en: 'Loading…', ja: '読み込み中…', zh: '加载中…', es: 'Cargando…', ar: 'جارٍ التحميل…' }),
+        planNote: text({ ko: 'Pro 이상 플랜에서 이 프로젝트에 연결된 저장·초대·멤버 변경 기록을 조회할 수 있습니다.', en: 'Upgrade to Pro or higher to view save, invite, and member changes for this project.', ja: 'Pro以上にアップグレードすると、このプロジェクトの保存・招待・メンバー変更を確認できます。', zh: '升级到 Pro 或更高方案即可查看此项目的保存、邀请和成员变更。', es: 'Actualiza a Pro o superior para ver los cambios de guardado, invitaciones y miembros.', ar: 'قم بالترقية إلى Pro أو أعلى لعرض تغييرات الحفظ والدعوات والأعضاء.' }),
+        loadFail: text({ ko: '활동 기록을 불러오지 못했습니다.', en: 'Could not load activity.', ja: '活動を読み込めませんでした。', zh: '无法加载活动记录。', es: 'No se pudo cargar la actividad.', ar: 'تعذر تحميل النشاط.' }),
+        empty: text({ ko: '아직 기록된 활동이 없습니다.', en: 'No recorded activity yet.', ja: '記録された活動はまだありません。', zh: '暂无记录的活动。', es: 'Aún no hay actividad registrada.', ar: 'لا يوجد نشاط مسجل بعد.' }),
+        actorPrefix: text({ ko: '주체 ID', en: 'Actor', ja: '実行者', zh: '操作者', es: 'Autor', ar: 'المنفذ' }),
         auditCsv: 'CSV',
-        auditCsvTitle: 'Download this project audit log as CSV',
+        auditCsvTitle: text({ ko: '이 프로젝트 감사 로그를 CSV로 저장', en: 'Download this project audit log as CSV', ja: 'このプロジェクトの監査ログをCSVで保存', zh: '将此项目审计日志下载为 CSV', es: 'Descargar este registro de auditoría como CSV', ar: 'تنزيل سجل تدقيق هذا المشروع بصيغة CSV' }),
     };
 }
 
 function formatProjectAuditAction(lang: string, action: string): string {
-    const ko = lang === 'kr' || lang === 'ko';
-    if (ko) return AUDIT_ACTION_KO_MAP[action] ?? action;
-    return AUDIT_ACTION_EN_MAP[action] ?? action;
+    const ko = AUDIT_ACTION_KO_MAP[action] ?? action;
+    const en = AUDIT_ACTION_EN_MAP[action] ?? action;
+    return createCommercialLocalizer(lang)(ko, en);
 }
 
 interface NexysysUser {
@@ -189,17 +181,17 @@ interface CustomerContract {
 }
 
 function getUserLang(): string {
-    if (typeof window === 'undefined') return 'kr';
+    if (typeof window === 'undefined') return 'en';
     try {
-        const stored = localStorage.getItem('currentUser');
+        const stored = sessionStorage.getItem('currentUser');
         if (stored) {
             const u = JSON.parse(stored);
-            if (u.language && ['kr', 'en', 'ja', 'cn', 'es', 'ar'].includes(u.language)) return u.language;
+            if (u.language) return toRouteLang(u.language);
         }
     } catch (err) { console.error('[page] caught', err); }
     const saved = localStorage.getItem('nf_lang');
-    if (saved && ['kr', 'en', 'ja', 'cn', 'es', 'ar'].includes(saved)) return saved;
-    return 'kr';
+    if (saved) return toRouteLang(saved);
+    return 'en';
 }
 
 function DashboardPage() {
@@ -208,6 +200,7 @@ function DashboardPage() {
     const [user, setUser] = useState<NexysysUser | null>(null);
     const [dashToast, setDashToast] = useState<{ type: 'success' | 'error'; msg: string } | null>(null);
     const userLang = getUserLang();
+    const L = useMemo(() => createCommercialLocalizer(userLang), [userLang]);
     const projectAuditLabels = useMemo(() => projectAuditCopy(userLang), [userLang]);
     const validTabs: Tab[] = ['overview', 'designs', 'contracts', 'messages', 'commission', 'settings'];
     const initialTab = (searchParams.get('tab') as Tab | null);
@@ -292,7 +285,7 @@ function DashboardPage() {
             if (!r.ok) {
                 setDashToast({
                     type: 'error',
-                    msg: userLang === 'kr' || userLang === 'ko' ? `CSV보내기 실패 (${r.status})` : `CSV export failed (${r.status})`,
+                    msg: loc(userLang, { ko: `CSV보내기 실패 (${r.status})`, en: `CSV export failed (${r.status})`, ja: `CSVのエクスポートに失敗しました（${r.status}）`, zh: `CSV 导出失败（${r.status}）`, es: `Error al exportar CSV (${r.status})`, ar: `فشل تصدير CSV (${r.status})` }),
                 });
                 return;
             }
@@ -307,12 +300,12 @@ function DashboardPage() {
             URL.revokeObjectURL(url);
             setDashToast({
                 type: 'success',
-                msg: userLang === 'kr' || userLang === 'ko' ? 'CSV 파일을 저장했습니다.' : 'CSV file saved.',
+                msg: loc(userLang, { ko: 'CSV 파일을 저장했습니다.', en: 'CSV file saved.', ja: 'CSVファイルを保存しました。', zh: 'CSV 文件已保存。', es: 'Archivo CSV guardado.', ar: 'تم حفظ ملف CSV.' }),
             });
         } catch {
             setDashToast({
                 type: 'error',
-                msg: userLang === 'kr' || userLang === 'ko' ? 'CSV보내기 중 오류가 났습니다.' : 'CSV export error.',
+                msg: loc(userLang, { ko: 'CSV보내기 중 오류가 났습니다.', en: 'CSV export error.', ja: 'CSVのエクスポート中にエラーが発生しました。', zh: '导出 CSV 时出错。', es: 'Error al exportar el CSV.', ar: 'حدث خطأ أثناء تصدير CSV.' }),
             });
         }
     }, [membersProjectId, userLang]);
@@ -367,7 +360,7 @@ function DashboardPage() {
             });
             const j = await res.json().catch(() => ({})) as { error?: string; token?: string };
             if (!res.ok) {
-                setDashToast({ type: 'error', msg: j.error ?? `오류 (${res.status})` });
+                setDashToast({ type: 'error', msg: j.error ?? L(`오류 (${res.status})`, `Error (${res.status})`) });
                 return;
             }
             if (j.token && typeof window !== 'undefined') {
@@ -376,14 +369,14 @@ function DashboardPage() {
                 u.searchParams.set('tab', 'designs');
                 setPendingInviteLink(u.toString());
                 setPendingInviteToken(j.token);
-                setDashToast({ type: 'success', msg: '초대 링크가 생성되었습니다. 복사해 초대 대상에게 보내세요.' });
+                setDashToast({ type: 'success', msg: L('초대 링크가 생성되었습니다. 복사해 초대 대상에게 보내세요.', 'Invite link created. Copy it and send it to the invitee.') });
             }
             fetchPendingInvites(membersProjectId);
             fetchProjectAudit(membersProjectId);
         } finally {
             setMemberBusy(false);
         }
-    }, [membersProjectId, inviteEmail, inviteRole, fetchPendingInvites, fetchProjectAudit]);
+    }, [membersProjectId, inviteEmail, inviteRole, fetchPendingInvites, fetchProjectAudit, L]);
 
     const handleRevokeInvite = React.useCallback(async (token?: string | null) => {
         const tok = (token ?? pendingInviteToken)?.trim();
@@ -402,14 +395,14 @@ function DashboardPage() {
                 }
                 fetchPendingInvites(membersProjectId);
                 fetchProjectAudit(membersProjectId);
-                setDashToast({ type: 'success', msg: '초대 링크를 폐기했습니다.' });
+                setDashToast({ type: 'success', msg: L('초대 링크를 폐기했습니다.', 'Invite link revoked.') });
             } else {
-                setDashToast({ type: 'error', msg: j.error ?? `오류 (${res.status})` });
+                setDashToast({ type: 'error', msg: j.error ?? L(`오류 (${res.status})`, `Error (${res.status})`) });
             }
         } finally {
             setMemberBusy(false);
         }
-    }, [membersProjectId, pendingInviteToken, fetchPendingInvites, fetchProjectAudit]);
+    }, [membersProjectId, pendingInviteToken, fetchPendingInvites, fetchProjectAudit, L]);
 
     const handleAddMember = React.useCallback(async () => {
         if (!membersProjectId || !inviteEmail.trim()) return;
@@ -427,25 +420,25 @@ function DashboardPage() {
                 fetchMembers(membersProjectId);
                 fetchPendingInvites(membersProjectId);
                 fetchProjectAudit(membersProjectId);
-                setDashToast({ type: 'success', msg: '멤버가 추가되었습니다.' });
+                setDashToast({ type: 'success', msg: L('멤버가 추가되었습니다.', 'Member added.') });
             } else {
                 const j = await res.json().catch(() => ({})) as { error?: string; code?: string };
                 if (j.code === 'USER_NOT_FOUND') {
                     setDashToast({
                         type: 'error',
-                        msg: '가입된 이메일이 없습니다. 아래「초대 링크 만들기」로 가입 전 초대를 보낼 수 있습니다.',
+                        msg: L('가입된 이메일이 없습니다. 아래「초대 링크 만들기」로 가입 전 초대를 보낼 수 있습니다.', 'No registered user was found for that email. Use “Create invite link” below to invite them before registration.'),
                     });
                 } else {
-                    setDashToast({ type: 'error', msg: j.error ?? `오류 (${res.status})` });
+                    setDashToast({ type: 'error', msg: j.error ?? L(`오류 (${res.status})`, `Error (${res.status})`) });
                 }
             }
         } finally {
             setMemberBusy(false);
         }
-    }, [membersProjectId, inviteEmail, inviteRole, fetchMembers, fetchPendingInvites, fetchProjectAudit]);
+    }, [membersProjectId, inviteEmail, inviteRole, fetchMembers, fetchPendingInvites, fetchProjectAudit, L]);
 
     const handleRemoveMember = React.useCallback(async (userId: string) => {
-        if (!membersProjectId || !confirm('이 멤버를 제거할까요?')) return;
+        if (!membersProjectId || !confirm(L('이 멤버를 제거할까요?', 'Remove this member?'))) return;
         setMemberBusy(true);
         try {
             const res = await credFetch(
@@ -455,15 +448,15 @@ function DashboardPage() {
             if (res.ok) {
                 fetchMembers(membersProjectId);
                 fetchProjectAudit(membersProjectId);
-                setDashToast({ type: 'success', msg: '멤버를 제거했습니다.' });
+                setDashToast({ type: 'success', msg: L('멤버를 제거했습니다.', 'Member removed.') });
             } else {
                 const j = await res.json().catch(() => ({})) as { error?: string };
-                setDashToast({ type: 'error', msg: j.error ?? `오류 (${res.status})` });
+                setDashToast({ type: 'error', msg: j.error ?? L(`오류 (${res.status})`, `Error (${res.status})`) });
             }
         } finally {
             setMemberBusy(false);
         }
-    }, [membersProjectId, fetchMembers, fetchProjectAudit]);
+    }, [membersProjectId, fetchMembers, fetchProjectAudit, L]);
 
     const fetchVersions = React.useCallback((projectId: string) => {
         setVersionsLoading(true);
@@ -492,7 +485,7 @@ function DashboardPage() {
     }, []);
 
     const handleRestoreVersion = React.useCallback(async (projectId: string, versionId: string) => {
-        if (!confirm('이 버전으로 복원할까요? 현재 상태는 자동으로 스냅샷에 저장됩니다.')) return;
+        if (!confirm(L('이 버전으로 복원할까요? 현재 상태는 자동으로 스냅샷에 저장됩니다.', 'Restore this version? The current state will be saved as a snapshot.'))) return;
         setRestoringId(versionId);
         try {
             const res = await credFetch(`/api/nexyfab/projects/${projectId}`, {
@@ -507,10 +500,10 @@ function DashboardPage() {
         } finally {
             setRestoringId(null);
         }
-    }, [fetchDesigns]);
+    }, [fetchDesigns, L]);
 
     const handleDeleteDesign = React.useCallback(async (id: string) => {
-        if (!confirm('이 설계를 삭제할까요?')) return;
+        if (!confirm(L('이 설계를 삭제할까요?', 'Delete this design?'))) return;
         setDeletingId(id);
         try {
             await credFetch(`/api/nexyfab/projects/${id}`, { method: 'DELETE' });
@@ -518,7 +511,7 @@ function DashboardPage() {
         } finally {
             setDeletingId(null);
         }
-    }, []);
+    }, [L]);
 
     const acceptInviteToken = searchParams.get('acceptInvite');
     React.useEffect(() => {
@@ -534,16 +527,16 @@ function DashboardPage() {
             });
             const j = await res.json().catch(() => ({})) as { error?: string };
             if (res.ok) {
-                setDashToast({ type: 'success', msg: '프로젝트 초대를 수락했습니다.「내 설계」에서 확인하세요.' });
+                setDashToast({ type: 'success', msg: L('프로젝트 초대를 수락했습니다.「내 설계」에서 확인하세요.', 'Project invitation accepted. Check “My designs”.') });
             } else {
-                setDashToast({ type: 'error', msg: j.error ?? '초대 수락에 실패했습니다.' });
+                setDashToast({ type: 'error', msg: j.error ?? L('초대 수락에 실패했습니다.', 'Failed to accept the invitation.') });
             }
             fetchDesigns();
         })();
-    }, [acceptInviteToken, router, searchParams, fetchDesigns]);
+    }, [acceptInviteToken, router, searchParams, fetchDesigns, L]);
 
     useEffect(() => {
-        const stored = localStorage.getItem('currentUser');
+        const stored = sessionStorage.getItem('currentUser');
         if (stored) {
             try {
                 const parsed = JSON.parse(stored);
@@ -632,15 +625,15 @@ function DashboardPage() {
             {/* Header */}
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '28px', flexWrap: 'wrap', gap: '12px' }}>
                 <div>
-                    <h1 style={{ fontSize: '24px', fontWeight: 900, color: '#111827', margin: '0 0 4px' }}>안녕하세요, {user!.name}님 👋</h1>
-                    <p style={{ fontSize: '14px', color: '#6b7280', margin: 0 }}>현재 플랜: <PlanBadge plan={activePlan} /></p>
+                    <h1 style={{ fontSize: '24px', fontWeight: 900, color: '#111827', margin: '0 0 4px' }}>{L('안녕하세요, ', 'Hello, ')}{user!.name}{L('님 👋', ' 👋')}</h1>
+                    <p style={{ fontSize: '14px', color: '#6b7280', margin: 0 }}>{L('현재 플랜: ', 'Current plan: ')}<PlanBadge plan={activePlan} /></p>
                 </div>
                 <div style={{ display: 'flex', gap: '10px' }}>
                     <a href={`/${userLang}/project-inquiry`} style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '12px 22px', borderRadius: '12px', background: blue, color: '#fff', fontWeight: 800, fontSize: '14px', textDecoration: 'none' }}>
-                        + 새 프로젝트 신청
+                        + {L('새 프로젝트 신청', 'New project')}
                     </a>
                     <a href={`/${userLang}/pricing`} style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '12px 18px', borderRadius: '12px', background: '#f3f4f6', color: '#374151', fontWeight: 700, fontSize: '13px', textDecoration: 'none' }}>
-                        플랜 관리
+                        {L('플랜 관리', 'Manage plan')}
                     </a>
                 </div>
             </div>
@@ -648,10 +641,10 @@ function DashboardPage() {
             {/* Stat Cards */}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '16px', marginBottom: '36px' }}>
                 {[
-                    { label: '전체 프로젝트', value: totalProjects, color: '#6366f1', icon: '📋' },
-                    { label: '진행 중', value: activeProjects, color: '#f59e0b', icon: '⚙️' },
-                    { label: '견적 수신 완료', value: pendingQuotes, color: '#8b5cf6', icon: '💬' },
-                    { label: '계약 완료', value: contracted, color: '#10b981', icon: '✅' },
+                    { label: L('전체 프로젝트', 'All projects'), value: totalProjects, color: '#6366f1', icon: '📋' },
+                    { label: L('진행 중', 'In progress'), value: activeProjects, color: '#f59e0b', icon: '⚙️' },
+                    { label: L('견적 수신 완료', 'Quotes received'), value: pendingQuotes, color: '#8b5cf6', icon: '💬' },
+                    { label: L('계약 완료', 'Contracts complete'), value: contracted, color: '#10b981', icon: '✅' },
                 ].map((stat, i) => (
                     <div key={i} style={s.statCard(stat.color)}>
                         <div style={{ fontSize: '24px', marginBottom: '8px' }}>{stat.icon}</div>
@@ -665,15 +658,15 @@ function DashboardPage() {
             <div>
                 <div style={{ marginBottom: '16px' }}>
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
-                        <h2 style={{ ...s.h2, margin: 0 }}>프로젝트 목록</h2>
-                        {!projectsLoading && projects.length > 0 && <span style={{ fontSize: '13px', color: '#9ca3af' }}>클릭하면 프로젝트 상세로 이동합니다</span>}
+                        <h2 style={{ ...s.h2, margin: 0 }}>{L('프로젝트 목록', 'Projects')}</h2>
+                        {!projectsLoading && projects.length > 0 && <span style={{ fontSize: '13px', color: '#9ca3af' }}>{L('클릭하면 프로젝트 상세로 이동합니다', 'Click a project to view details')}</span>}
                     </div>
                     {!projectsLoading && projects.length > 0 && (
                         <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
                             <input
                                 value={search}
                                 onChange={e => setSearch(e.target.value)}
-                                placeholder="프로젝트 검색..."
+                                placeholder={L('프로젝트 검색...', 'Search projects...')}
                                 style={{ flex: 1, minWidth: '200px', padding: '9px 14px', borderRadius: '10px', border: '1.5px solid #e5e7eb', fontSize: '13px', outline: 'none', fontFamily: 'inherit' }}
                             />
                             <select
@@ -681,7 +674,7 @@ function DashboardPage() {
                                 onChange={e => setStatusFilter(e.target.value)}
                                 style={{ padding: '9px 14px', borderRadius: '10px', border: '1.5px solid #e5e7eb', fontSize: '13px', background: '#fff', cursor: 'pointer', outline: 'none', fontFamily: 'inherit' }}
                             >
-                                <option value="all">전체 상태</option>
+                                <option value="all">{L('전체 상태', 'All statuses')}</option>
                                 {STATUS_STEPS.map(s2 => <option key={s2} value={s2}>{STATUS_LABEL[s2]}</option>)}
                             </select>
                         </div>
@@ -713,15 +706,15 @@ function DashboardPage() {
                     /* ② Empty State — Onboarding */
                     <div style={{ background: '#fff', borderRadius: '24px', border: '1px solid #f0f0f0', boxShadow: '0 2px 12px rgba(0,0,0,0.04)', padding: '52px 40px', textAlign: 'center' }}>
                         <div style={{ fontSize: '52px', marginBottom: '16px' }}>🏭</div>
-                        <h3 style={{ fontSize: '22px', fontWeight: 900, color: '#111827', margin: '0 0 8px' }}>첫 제조 프로젝트를 시작해보세요</h3>
+                        <h3 style={{ fontSize: '22px', fontWeight: 900, color: '#111827', margin: '0 0 8px' }}>{L('첫 제조 프로젝트를 시작해보세요', 'Start your first manufacturing project')}</h3>
                         <p style={{ fontSize: '14px', color: '#6b7280', margin: '0 0 40px', lineHeight: 1.7 }}>
-                            3단계로 최적의 제조 공장을 매칭하고<br />복수 견적을 비교해 계약까지 원스톱으로 진행합니다
+                            {L('3단계로 최적의 제조 공장을 매칭하고', 'Match with the best factory in three steps')}<br />{L('복수 견적을 비교해 계약까지 원스톱으로 진행합니다', 'Compare multiple quotes and complete the contract in one place')}
                         </p>
                         <div style={{ display: 'flex', justifyContent: 'center', gap: '0', marginBottom: '44px', flexWrap: 'wrap' }}>
                             {[
-                                { step: '1', icon: '✏️', title: '프로젝트 신청', desc: '제품 사양·수량·예산을\n입력합니다' },
-                                { step: '2', icon: '🤖', title: 'AI 공장 매칭', desc: 'NexyFab이 최적의\n파트너 공장을 찾습니다' },
-                                { step: '3', icon: '📊', title: '견적 비교 후 계약', desc: '복수 견적을 비교하고\n최적 조건으로 계약합니다' },
+                                { step: '1', icon: '✏️', title: L('프로젝트 신청', 'Request a project'), desc: L('제품 사양·수량·예산을\n입력합니다', 'Enter product specs, quantity, and budget') },
+                                { step: '2', icon: '🤖', title: L('AI 공장 매칭', 'AI factory matching'), desc: L('NexyFab이 최적의\n파트너 공장을 찾습니다', 'NexyFab finds the best\npartner factory') },
+                                { step: '3', icon: '📊', title: L('견적 비교 후 계약', 'Compare quotes and contract'), desc: L('복수 견적을 비교하고\n최적 조건으로 계약합니다', 'Compare quotes and\ncontract on the best terms') },
                             ].map((step, i) => (
                                 <React.Fragment key={i}>
                                     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: '160px', gap: '8px' }}>
@@ -735,7 +728,7 @@ function DashboardPage() {
                             ))}
                         </div>
                         <a href={`/${userLang}/project-inquiry`} style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '14px 36px', borderRadius: '14px', background: blue, color: '#fff', fontWeight: 800, fontSize: '15px', textDecoration: 'none' }}>
-                            + 첫 프로젝트 신청하기
+                            + {L('첫 프로젝트 신청하기', 'Request your first project')}
                         </a>
                     </div>
 
@@ -756,7 +749,7 @@ function DashboardPage() {
                                         {isQuotesReady && (
                                             <div style={{ padding: '9px 20px', background: 'linear-gradient(90deg, #f5f3ff, #ede9fe)', borderBottom: '1px solid #ddd6fe', display: 'flex', alignItems: 'center', gap: '7px' }}>
                                                 <span style={{ fontSize: '14px' }}>🎉</span>
-                                                <span style={{ fontSize: '12px', fontWeight: 800, color: '#6d28d9' }}>견적이 도착했습니다! 지금 비교해보세요</span>
+                                                <span style={{ fontSize: '12px', fontWeight: 800, color: '#6d28d9' }}>{L('견적이 도착했습니다! 지금 비교해보세요', 'A quote has arrived! Compare it now')}</span>
                                             </div>
                                         )}
 
@@ -785,16 +778,16 @@ function DashboardPage() {
 
                                             {/* Meta */}
                                             <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
-                                                {p.factories > 0 && <span style={{ fontSize: '12px', color: '#6b7280' }}>🏭 공장 {p.factories}개</span>}
-                                                {p.quotesReceived > 0 && <span style={{ fontSize: '12px', color: '#8b5cf6', fontWeight: 700 }}>💬 견적 {p.quotesReceived}개</span>}
-                                                {p.estimatedAmount && <span style={{ fontSize: '12px', color: '#374151', fontWeight: 700 }}>₩{(p.estimatedAmount / 10000).toFixed(0)}만</span>}
+                                                {p.factories > 0 && <span style={{ fontSize: '12px', color: '#6b7280' }}>🏭 {L('공장', 'Factories')} {p.factories}</span>}
+                                                {p.quotesReceived > 0 && <span style={{ fontSize: '12px', color: '#8b5cf6', fontWeight: 700 }}>💬 {L('견적', 'Quotes')} {p.quotesReceived}</span>}
+                                                {p.estimatedAmount && <span style={{ fontSize: '12px', color: '#374151', fontWeight: 700 }}>₩{(p.estimatedAmount / 10000).toFixed(0)}{L('만', '0k')}</span>}
                                                 <span style={{ fontSize: '12px', color: '#9ca3af', marginLeft: 'auto' }}>{p.updatedAt}</span>
                                             </div>
 
                                             {isQuotesReady && (
                                                 <div style={{ marginTop: '12px', paddingTop: '12px', borderTop: '1px solid #f0f0f0', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                                                    <span style={{ fontSize: '12px', color: '#8b5cf6', fontWeight: 700 }}>견적 {p.quotesReceived}개 비교 가능</span>
-                                                    <span style={{ fontSize: '12px', color: blue, fontWeight: 700 }}>상세 보기 →</span>
+                                                    <span style={{ fontSize: '12px', color: '#8b5cf6', fontWeight: 700 }}>{L('견적', 'Quotes')} {p.quotesReceived} {L('개 비교 가능', 'available to compare')}</span>
+                                                    <span style={{ fontSize: '12px', color: blue, fontWeight: 700 }}>{L('상세 보기 →', 'View details →')}</span>
                                                 </div>
                                             )}
                                         </div>
@@ -809,8 +802,8 @@ function DashboardPage() {
                                 onMouseEnter={e => { (e.currentTarget as HTMLElement).style.borderColor = blue; (e.currentTarget as HTMLElement).style.background = blue + '04'; }}
                                 onMouseLeave={e => { (e.currentTarget as HTMLElement).style.borderColor = '#e5e7eb'; (e.currentTarget as HTMLElement).style.background = '#fff'; }}>
                                 <div style={{ fontSize: '28px' }}>+</div>
-                                <div style={{ fontWeight: 800, color: '#374151', fontSize: '14px' }}>새 프로젝트 신청</div>
-                                <div style={{ fontSize: '12px', color: '#9ca3af', textAlign: 'center' }}>AI 제조 매칭 서비스 시작하기</div>
+                                <div style={{ fontWeight: 800, color: '#374151', fontSize: '14px' }}>{L('새 프로젝트 신청', 'New project')}</div>
+                                <div style={{ fontSize: '12px', color: '#9ca3af', textAlign: 'center' }}>{L('AI 제조 매칭 서비스 시작하기', 'Start AI manufacturing matching')}</div>
                             </div>
                         </a>
                     </div>
@@ -822,7 +815,7 @@ function DashboardPage() {
                                 onClick={() => setPage(p => Math.max(1, p - 1))}
                                 disabled={page === 1}
                                 style={{ padding: '7px 14px', borderRadius: '10px', border: '1.5px solid #e5e7eb', background: page === 1 ? '#f9fafb' : '#fff', color: page === 1 ? '#d1d5db' : '#374151', fontSize: '13px', fontWeight: 700, cursor: page === 1 ? 'default' : 'pointer' }}>
-                                ← 이전
+                                ← {L('이전', 'Previous')}
                             </button>
                             {Array.from({ length: totalPages }, (_, i) => i + 1).map(p2 => (
                                 <button key={p2} onClick={() => setPage(p2)}
@@ -834,9 +827,9 @@ function DashboardPage() {
                                 onClick={() => setPage(p => Math.min(totalPages, p + 1))}
                                 disabled={page === totalPages}
                                 style={{ padding: '7px 14px', borderRadius: '10px', border: '1.5px solid #e5e7eb', background: page === totalPages ? '#f9fafb' : '#fff', color: page === totalPages ? '#d1d5db' : '#374151', fontSize: '13px', fontWeight: 700, cursor: page === totalPages ? 'default' : 'pointer' }}>
-                                다음 →
+                                {L('다음', 'Next')} →
                             </button>
-                            <span style={{ fontSize: '12px', color: '#9ca3af', marginLeft: '4px' }}>{filtered.length}개 중 {(page-1)*PAGE_SIZE+1}–{Math.min(page*PAGE_SIZE, filtered.length)}</span>
+                            <span style={{ fontSize: '12px', color: '#9ca3af', marginLeft: '4px' }}>{filtered.length} {L('개 중', 'of')} {(page-1)*PAGE_SIZE+1}–{Math.min(page*PAGE_SIZE, filtered.length)}</span>
                         </div>
                     )}
                     </div>
@@ -850,19 +843,19 @@ function DashboardPage() {
 
     const CommissionTab = () => (
         <div>
-            <h1 style={{ fontSize: '22px', fontWeight: 900, color: '#111827', margin: '0 0 8px' }}>수수료 내역</h1>
+            <h1 style={{ fontSize: '22px', fontWeight: 900, color: '#111827', margin: '0 0 8px' }}>{L('수수료 내역', 'Commission history')}</h1>
             <p style={{ fontSize: '14px', color: '#6b7280', margin: '0 0 20px' }}>
-                당사를 통해 프로젝트 착수시 서비스료는 총수수료에서 공제됩니다.
+                {L('당사를 통해 프로젝트 착수시 서비스료는 총수수료에서 공제됩니다.', 'When a project starts through us, the service fee is deducted from the total commission.')}
             </p>
 
             <div style={{ background: activePlan === 'premium' ? blue + '0d' : '#f9fafb', border: `1.5px solid ${activePlan === 'premium' ? blue + '30' : '#e5e7eb'}`, borderRadius: '14px', padding: '14px 20px', marginBottom: '24px', display: 'flex', alignItems: 'center', gap: '14px' }}>
                 <span style={{ fontSize: '20px' }}>{activePlan === 'premium' ? '⭐' : '📋'}</span>
                 <div>
                     <span style={{ fontWeight: 800, color: activePlan === 'premium' ? blue : '#374151', fontSize: '14px' }}>
-                        {activePlan === 'premium' ? 'Premium' : 'Standard'} 플랜
+                        {activePlan === 'premium' ? 'Premium' : 'Standard'} {L('플랜', 'plan')}
                     </span>
                     <span style={{ fontSize: '13px', color: '#6b7280', marginLeft: '8px' }}>
-                        서비스료 <b style={{ color: '#111827' }}>₩{(planMinFee / 10000).toFixed(0)}만원 (1회)</b> — 착수시 총수수료에서 공제됩니다.
+                        {L('서비스료', 'Service fee')} <b style={{ color: '#111827' }}>₩{(planMinFee / 10000).toFixed(0)}{L('만원 (1회)', '0k (one-time)')}</b> — {L('착수시 총수수료에서 공제됩니다.', 'deducted from the total commission when work starts.')}
                     </span>
                 </div>
             </div>
@@ -870,17 +863,17 @@ function DashboardPage() {
             {commissions.length === 0 ? (
                 <div style={{ background: '#fff', borderRadius: '20px', border: '1px solid #f0f0f0', padding: '60px 40px', textAlign: 'center', marginBottom: '20px' }}>
                     <div style={{ fontSize: '40px', marginBottom: '12px' }}>📊</div>
-                    <p style={{ fontSize: '15px', fontWeight: 700, color: '#6b7280', margin: 0 }}>아직 수수료 내역이 없습니다</p>
-                    <p style={{ fontSize: '13px', color: '#9ca3af', marginTop: '6px' }}>계약이 완료되면 이곳에 수수료 내역이 표시됩니다.</p>
+                    <p style={{ fontSize: '15px', fontWeight: 700, color: '#6b7280', margin: 0 }}>{L('아직 수수료 내역이 없습니다', 'No commission history yet')}</p>
+                    <p style={{ fontSize: '13px', color: '#9ca3af', marginTop: '6px' }}>{L('계약이 완료되면 이곳에 수수료 내역이 표시됩니다.', 'Commission details will appear here after a contract is completed.')}</p>
                 </div>
             ) : (<>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))', gap: '16px', marginBottom: '28px' }}>
                 {[
-                    { label: '총 계약 건수', value: `${commissions.length}건`, icon: '📋', color: '#6366f1' },
-                    { label: '총 산정 수수료', value: `₩${(commissions.reduce((a, c) => a + c.grossCommission, 0) / 10000).toFixed(1)}만`, icon: '📊', color: '#f59e0b' },
-                    { label: '플랜 공제 합계', value: `₩${(commissions.reduce((a, c) => a + c.planDeduction, 0) / 10000).toFixed(0)}만`, icon: '🎟️', color: '#8b5cf6' },
-                    { label: '실 청구 합계', value: `₩${(commissions.reduce((a, c) => a + c.finalCharge, 0) / 10000).toFixed(1)}만`, icon: '💳', color: blue },
-                    { label: '납부 완료', value: `₩${(commissions.filter(c => c.status === 'paid').reduce((a, c) => a + c.finalCharge, 0) / 10000).toFixed(1)}만`, icon: '✅', color: '#10b981' },
+                    { label: L('총 계약 건수', 'Total contracts'), value: `${commissions.length}`, icon: '📋', color: '#6366f1' },
+                    { label: L('총 산정 수수료', 'Gross commission'), value: `₩${(commissions.reduce((a, c) => a + c.grossCommission, 0) / 10000).toFixed(1)}${L('만', '0k')}`, icon: '📊', color: '#f59e0b' },
+                    { label: L('플랜 공제 합계', 'Plan deductions'), value: `₩${(commissions.reduce((a, c) => a + c.planDeduction, 0) / 10000).toFixed(0)}${L('만', '0k')}`, icon: '🎟️', color: '#8b5cf6' },
+                    { label: L('실 청구 합계', 'Net charges'), value: `₩${(commissions.reduce((a, c) => a + c.finalCharge, 0) / 10000).toFixed(1)}${L('만', '0k')}`, icon: '💳', color: blue },
+                    { label: L('납부 완료', 'Paid'), value: `₩${(commissions.filter(c => c.status === 'paid').reduce((a, c) => a + c.finalCharge, 0) / 10000).toFixed(1)}${L('만', '0k')}`, icon: '✅', color: '#10b981' },
                 ].map((s2, i) => (
                     <div key={i} style={s.statCard(s2.color)}>
                         <div style={{ fontSize: '20px', marginBottom: '8px' }}>{s2.icon}</div>
@@ -893,22 +886,22 @@ function DashboardPage() {
             <div style={{ ...s.card, overflowX: 'auto', padding: 0, marginBottom: '20px' }}>
                 <table style={s.table}>
                     <thead>
-                        <tr>{['프로젝트', '계약금', '수수료율', '산정 수수료', '플랜 공제', '추가 청구', '상태', '날짜'].map(h => <th key={h} style={s.th}>{h}</th>)}</tr>
+                        <tr>{[L('프로젝트', 'Project'), L('계약금', 'Contract amount'), L('수수료율', 'Commission rate'), L('산정 수수료', 'Gross commission'), L('플랜 공제', 'Plan deduction'), L('추가 청구', 'Additional charge'), L('상태', 'Status'), L('날짜', 'Date')].map(h => <th key={h} style={s.th}>{h}</th>)}</tr>
                     </thead>
                     <tbody>
                         {commissions.map((c, i) => {
                             const statusColor = c.status === 'paid' ? '#10b981' : c.status === 'invoiced' ? blue : '#f59e0b';
-                            const statusLabel = c.status === 'paid' ? '납부 완료' : c.status === 'invoiced' ? '청구됨' : '대기 중';
+                            const statusLabel = c.status === 'paid' ? L('납부 완료', 'Paid') : c.status === 'invoiced' ? L('청구됨', 'Invoiced') : L('대기 중', 'Pending');
                             const covered = c.grossCommission <= c.planDeduction;
                             return (
                                 <tr key={i}>
                                     <td style={{ ...s.td, fontWeight: 700, color: '#111827' }}>{c.projectName}</td>
-                                    <td style={{ ...s.td, fontWeight: 700 }}>₩{(c.contractAmount / 10000).toFixed(0)}만</td>
+                                    <td style={{ ...s.td, fontWeight: 700 }}>₩{(c.contractAmount / 10000).toFixed(0)}{L('만', '0k')}</td>
                                     <td style={{ ...s.td, textAlign: 'center' }}><span style={{ display: 'inline-block', background: '#f3f4f6', color: '#374151', borderRadius: '8px', padding: '3px 10px', fontWeight: 700, fontSize: '13px' }}>{c.commissionRate}%</span></td>
-                                    <td style={{ ...s.td, fontWeight: 700 }}>₩{(c.grossCommission / 10000).toFixed(1)}만</td>
-                                    <td style={{ ...s.td, textAlign: 'center' }}><span style={{ display: 'inline-block', background: '#f0fdf4', color: '#16a34a', borderRadius: '8px', padding: '3px 10px', fontWeight: 700, fontSize: '12px' }}>−₩{(c.planDeduction / 10000).toFixed(0)}만</span></td>
+                                    <td style={{ ...s.td, fontWeight: 700 }}>₩{(c.grossCommission / 10000).toFixed(1)}{L('만', '0k')}</td>
+                                    <td style={{ ...s.td, textAlign: 'center' }}><span style={{ display: 'inline-block', background: '#f0fdf4', color: '#16a34a', borderRadius: '8px', padding: '3px 10px', fontWeight: 700, fontSize: '12px' }}>−₩{(c.planDeduction / 10000).toFixed(0)}{L('만', '0k')}</span></td>
                                     <td style={{ ...s.td, fontWeight: 900, fontSize: '15px' }}>
-                                        {covered ? <span style={{ color: '#10b981', fontSize: '12px', fontWeight: 700 }}>이용료 내 포함</span> : <span style={{ color: blue }}>₩{(c.finalCharge / 10000).toFixed(1)}만</span>}
+                                        {covered ? <span style={{ color: '#10b981', fontSize: '12px', fontWeight: 700 }}>{L('이용료 내 포함', 'Included in fee')}</span> : <span style={{ color: blue }}>₩{(c.finalCharge / 10000).toFixed(1)}{L('만', '0k')}</span>}
                                     </td>
                                     <td style={s.td}><span style={{ display: 'inline-block', padding: '3px 12px', borderRadius: '20px', fontSize: '12px', fontWeight: 700, background: statusColor + '18', color: statusColor }}>{statusLabel}</span></td>
                                     <td style={{ ...s.td, color: '#9ca3af' }}>{c.date}</td>
@@ -920,12 +913,12 @@ function DashboardPage() {
             </div>
 
             <div style={s.card}>
-                <h2 style={{ ...s.h2, fontSize: '15px' }}>📊 수수료 구간 및 플랜별 최소 수수료</h2>
+                <h2 style={{ ...s.h2, fontSize: '15px' }}>📊 {L('수수료 구간 및 플랜별 최소 수수료', 'Commission tiers and plan minimums')}</h2>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
                     <div>
-                        <div style={{ fontSize: '12px', fontWeight: 700, color: '#9ca3af', marginBottom: '8px' }}>계약금 구간별 수수료율</div>
+                        <div style={{ fontSize: '12px', fontWeight: 700, color: '#9ca3af', marginBottom: '8px' }}>{L('계약금 구간별 수수료율', 'Commission rate by contract amount')}</div>
                         <table style={s.table}>
-                            <thead><tr><th style={s.th}>구간</th><th style={{ ...s.th, textAlign: 'center' }}>수수료율</th></tr></thead>
+                            <thead><tr><th style={s.th}>{L('구간', 'Range')}</th><th style={{ ...s.th, textAlign: 'center' }}>{L('수수료율', 'Rate')}</th></tr></thead>
                             <tbody>
                                 {RATE_TIERS.map((tier, i) => (
                                     <tr key={i}><td style={{ ...s.td, fontSize: '12px' }}>{tier.label}</td><td style={{ ...s.td, textAlign: 'center', fontWeight: 800, color: blue }}>{tier.rate}%</td></tr>
@@ -934,18 +927,18 @@ function DashboardPage() {
                         </table>
                     </div>
                     <div>
-                        <div style={{ fontSize: '12px', fontWeight: 700, color: '#9ca3af', marginBottom: '8px' }}>플랜별 최소 수수료 (선납 공제)</div>
+                        <div style={{ fontSize: '12px', fontWeight: 700, color: '#9ca3af', marginBottom: '8px' }}>{L('플랜별 최소 수수료 (선납 공제)', 'Plan minimum fee (prepaid deduction)')}</div>
                         {[
                             { plan: 'Standard', fee: 500_000, color: '#6b7280', bg: '#f9fafb' },
                             { plan: 'Premium', fee: 1_000_000, color: blue, bg: blue + '0a' },
                         ].map((p, i) => (
                             <div key={i} style={{ background: p.bg, border: `1px solid ${p.color}20`, borderRadius: '12px', padding: '14px 16px', marginBottom: '10px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                                 <span style={{ fontWeight: 700, color: p.color, fontSize: '14px' }}>{p.plan}</span>
-                                <span style={{ fontWeight: 900, color: p.color, fontSize: '16px' }}>₩{(p.fee / 10000).toFixed(0)}만원</span>
+                                <span style={{ fontWeight: 900, color: p.color, fontSize: '16px' }}>₩{(p.fee / 10000).toFixed(0)}{L('만원', '0k')}</span>
                             </div>
                         ))}
                         <p style={{ fontSize: '11px', color: '#9ca3af', lineHeight: 1.6, margin: '8px 0 0' }}>
-                            산정 수수료가 최소 수수료 이하일 경우 추가 청구 없음.
+                            {L('산정 수수료가 최소 수수료 이하일 경우 추가 청구 없음.', 'No additional charge when the calculated commission is below the minimum.')}
                         </p>
                     </div>
                 </div>
@@ -966,14 +959,14 @@ function DashboardPage() {
 
     const ContractsTab = () => (
         <div>
-            <h1 style={{ fontSize: '22px', fontWeight: 900, color: '#111827', margin: '0 0 4px' }}>계약 현황</h1>
-            <p style={{ fontSize: '14px', color: '#6b7280', margin: '0 0 24px' }}>진행 중인 제조 계약의 상태와 진행률을 확인합니다.</p>
+            <h1 style={{ fontSize: '22px', fontWeight: 900, color: '#111827', margin: '0 0 4px' }}>{L('계약 현황', 'Contracts')}</h1>
+            <p style={{ fontSize: '14px', color: '#6b7280', margin: '0 0 24px' }}>{L('진행 중인 제조 계약의 상태와 진행률을 확인합니다.', 'Track active manufacturing contracts and progress.')}</p>
 
             {contracts.length === 0 ? (
                 <div style={{ background: '#fff', borderRadius: '20px', border: '1px solid #f0f0f0', padding: '60px 40px', textAlign: 'center' }}>
                     <div style={{ fontSize: '40px', marginBottom: '12px' }}>📋</div>
-                    <p style={{ fontSize: '15px', fontWeight: 700, color: '#6b7280', margin: 0 }}>아직 계약이 없습니다</p>
-                    <p style={{ fontSize: '13px', color: '#9ca3af', marginTop: '6px' }}>견적을 수락하면 이곳에 계약이 표시됩니다.</p>
+                    <p style={{ fontSize: '15px', fontWeight: 700, color: '#6b7280', margin: 0 }}>{L('아직 계약이 없습니다', 'No contracts yet')}</p>
+                    <p style={{ fontSize: '13px', color: '#9ca3af', marginTop: '6px' }}>{L('견적을 수락하면 이곳에 계약이 표시됩니다.', 'Accepted quotes will appear here as contracts.')}</p>
                 </div>
             ) : (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
@@ -986,7 +979,7 @@ function DashboardPage() {
                                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '14px', flexWrap: 'wrap', gap: '8px' }}>
                                     <div>
                                         <div style={{ fontSize: '16px', fontWeight: 800, color: '#111827', marginBottom: '4px' }}>{c.projectName}</div>
-                                        <div style={{ fontSize: '12px', color: '#9ca3af' }}>{c.factoryName || '파트너 미배정'} · {c.contractDate || ''}</div>
+                                        <div style={{ fontSize: '12px', color: '#9ca3af' }}>{c.factoryName || L('파트너 미배정', 'Partner unassigned')} · {c.contractDate || ''}</div>
                                     </div>
                                     <span style={{ background: color + '18', color, borderRadius: '20px', padding: '4px 12px', fontSize: '12px', fontWeight: 700 }}>{label}</span>
                                 </div>
@@ -994,7 +987,7 @@ function DashboardPage() {
                                 {/* Progress bar */}
                                 <div style={{ marginBottom: '14px' }}>
                                     <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
-                                        <span style={{ fontSize: '12px', fontWeight: 700, color: '#6b7280' }}>제조 진행률</span>
+                                        <span style={{ fontSize: '12px', fontWeight: 700, color: '#6b7280' }}>{L('제조 진행률', 'Manufacturing progress')}</span>
                                         <span style={{ fontSize: '13px', fontWeight: 900, color: pct === 100 ? '#10b981' : blue }}>{pct}%</span>
                                     </div>
                                     <div style={{ height: '8px', background: '#f3f4f6', borderRadius: '99px', overflow: 'hidden' }}>
@@ -1004,10 +997,10 @@ function DashboardPage() {
 
                                 {/* Meta */}
                                 <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap', alignItems: 'center' }}>
-                                    <span style={{ fontSize: '13px', fontWeight: 800, color: '#111827' }}>₩{(c.contractAmount || 0).toLocaleString('ko-KR')}원</span>
-                                    {c.deadline && <span style={{ fontSize: '12px', color: '#6b7280' }}>납기 {c.deadline}</span>}
-                                    {c.completionRequested && <span style={{ fontSize: '11px', fontWeight: 700, padding: '2px 8px', borderRadius: '20px', background: '#fef3c7', color: '#92400e' }}>완료 확인 요청 중</span>}
-                                    <a href={`/dashboard/projects/${c.id}`} style={{ marginLeft: 'auto', fontSize: '12px', fontWeight: 700, color: blue, textDecoration: 'none' }}>상세 보기 →</a>
+                                    <span style={{ fontSize: '13px', fontWeight: 800, color: '#111827' }}>{formatMoney(c.contractAmount || 0, userLang, 'KRW') ?? '—'}</span>
+                                    {c.deadline && <span style={{ fontSize: '12px', color: '#6b7280' }}>{L('납기', 'Due')} {c.deadline}</span>}
+                                    {c.completionRequested && <span style={{ fontSize: '11px', fontWeight: 700, padding: '2px 8px', borderRadius: '20px', background: '#fef3c7', color: '#92400e' }}>{L('완료 확인 요청 중', 'Completion confirmation requested')}</span>}
+                                    <a href={`/dashboard/projects/${c.id}`} style={{ marginLeft: 'auto', fontSize: '12px', fontWeight: 700, color: blue, textDecoration: 'none' }}>{L('상세 보기 →', 'View details →')}</a>
                                 </div>
                             </div>
                         );
@@ -1048,17 +1041,17 @@ function DashboardPage() {
             });
         }, []);
 
-        if (loading) return <div style={{ padding: '60px', textAlign: 'center', color: '#9ca3af', fontSize: '14px' }}>불러오는 중...</div>;
+        if (loading) return <div style={{ padding: '60px', textAlign: 'center', color: '#9ca3af', fontSize: '14px' }}>{L('불러오는 중...', 'Loading...')}</div>;
 
         return (
             <div>
-                <h1 style={{ fontSize: '22px', fontWeight: 900, color: '#111827', margin: '0 0 4px' }}>메시지</h1>
-                <p style={{ fontSize: '14px', color: '#6b7280', margin: '0 0 24px' }}>프로젝트별 대화 내역을 모아 볼 수 있습니다.</p>
+                <h1 style={{ fontSize: '22px', fontWeight: 900, color: '#111827', margin: '0 0 4px' }}>{L('메시지', 'Messages')}</h1>
+                <p style={{ fontSize: '14px', color: '#6b7280', margin: '0 0 24px' }}>{L('프로젝트별 대화 내역을 모아 볼 수 있습니다.', 'View conversations grouped by project.')}</p>
                 {msgData.length === 0 ? (
                     <div style={{ background: '#fff', borderRadius: '20px', border: '1px solid #f0f0f0', padding: '60px 40px', textAlign: 'center' }}>
                         <div style={{ fontSize: '40px', marginBottom: '12px' }}>💬</div>
-                        <p style={{ fontSize: '15px', fontWeight: 700, color: '#6b7280', margin: 0 }}>아직 메시지가 없습니다</p>
-                        <p style={{ fontSize: '13px', color: '#9ca3af', marginTop: '6px' }}>계약된 프로젝트에서 담당자와 대화할 수 있습니다.</p>
+                        <p style={{ fontSize: '15px', fontWeight: 700, color: '#6b7280', margin: 0 }}>{L('아직 메시지가 없습니다', 'No messages yet')}</p>
+                        <p style={{ fontSize: '13px', color: '#9ca3af', marginTop: '6px' }}>{L('계약된 프로젝트에서 담당자와 대화할 수 있습니다.', 'You can message the coordinator from a contracted project.')}</p>
                     </div>
                 ) : (
                     <div style={{ background: '#fff', borderRadius: '20px', border: '1px solid #f0f0f0', overflow: 'hidden' }}>
@@ -1071,12 +1064,12 @@ function DashboardPage() {
                                 <div style={{ flex: 1, minWidth: 0 }}>
                                     <div style={{ fontSize: '14px', fontWeight: 700, color: '#111827', marginBottom: '3px' }}>{d.project.name}</div>
                                     <div style={{ fontSize: '12px', color: '#9ca3af', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                                        {d.lastMsg.senderType === 'customer' ? '나: ' : 'NexyFab: '}{d.lastMsg.text?.startsWith('📎 파일:') ? '파일을 보냈습니다' : d.lastMsg.text}
+                                        {d.lastMsg.senderType === 'customer' ? `${L('나', 'Me')}: ` : 'NexyFab: '}{d.lastMsg.text?.startsWith('📎 파일:') ? L('파일을 보냈습니다', 'Sent a file') : d.lastMsg.text}
                                     </div>
                                 </div>
                                 <div style={{ textAlign: 'right', flexShrink: 0 }}>
                                     <div style={{ fontSize: '11px', color: '#9ca3af', marginBottom: '4px' }}>
-                                        {new Date(d.lastMsg.createdAt).toLocaleDateString('ko-KR', { month: 'short', day: 'numeric' })}
+                                        {formatDate(d.lastMsg.createdAt, userLang, { month: 'short', day: 'numeric' })}
                                     </div>
                                     <span style={{ background: blue, color: '#fff', borderRadius: '20px', padding: '2px 8px', fontSize: '11px', fontWeight: 700 }}>{d.count}</span>
                                 </div>
@@ -1111,23 +1104,23 @@ function DashboardPage() {
         <div>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '24px' }}>
                 <div>
-                    <h1 style={{ fontSize: '22px', fontWeight: 900, color: '#111827', margin: '0 0 4px' }}>내 설계 💾</h1>
-                    <p style={{ fontSize: '14px', color: '#6b7280', margin: 0 }}>클라우드에 저장된 NexyFab 설계 파일</p>
+                    <h1 style={{ fontSize: '22px', fontWeight: 900, color: '#111827', margin: '0 0 4px' }}>{L('내 설계 💾', 'My designs 💾')}</h1>
+                    <p style={{ fontSize: '14px', color: '#6b7280', margin: 0 }}>{L('클라우드에 저장된 NexyFab 설계 파일', 'NexyFab designs saved in the cloud')}</p>
                 </div>
                 <Link prefetch href={`/${userLang}/shape-generator`} style={{ padding: '10px 20px', borderRadius: '12px', background: blue, color: '#fff', fontSize: '13px', fontWeight: 700, textDecoration: 'none' }}>
-                    + 새 설계
+                    + {L('새 설계', 'New design')}
                 </Link>
             </div>
 
             {designsLoading ? (
-                <div style={{ textAlign: 'center', padding: '60px 0', color: '#9ca3af', fontSize: '14px' }}>불러오는 중…</div>
+                <div style={{ textAlign: 'center', padding: '60px 0', color: '#9ca3af', fontSize: '14px' }}>{L('불러오는 중…', 'Loading…')}</div>
             ) : designs.length === 0 ? (
                 <div style={{ textAlign: 'center', padding: '80px 20px', background: '#fff', borderRadius: '20px', border: '1px dashed #e5e7eb' }}>
                     <div style={{ fontSize: '48px', marginBottom: '16px' }}>🧊</div>
-                    <div style={{ fontSize: '16px', fontWeight: 700, color: '#374151', marginBottom: '8px' }}>저장된 설계가 없습니다</div>
-                    <div style={{ fontSize: '13px', color: '#9ca3af', marginBottom: '24px' }}>Shape Generator에서 설계를 저장하면 여기 표시됩니다.</div>
+                    <div style={{ fontSize: '16px', fontWeight: 700, color: '#374151', marginBottom: '8px' }}>{L('저장된 설계가 없습니다', 'No saved designs')}</div>
+                    <div style={{ fontSize: '13px', color: '#9ca3af', marginBottom: '24px' }}>{L('Shape Generator에서 설계를 저장하면 여기 표시됩니다.', 'Designs saved from Shape Generator will appear here.')}</div>
                     <Link prefetch href={`/${userLang}/shape-generator`} style={{ padding: '10px 24px', borderRadius: '12px', background: blue, color: '#fff', fontSize: '13px', fontWeight: 700, textDecoration: 'none' }}>
-                        설계 시작하기
+                        {L('설계 시작하기', 'Start designing')}
                     </Link>
                 </div>
             ) : (
@@ -1151,26 +1144,26 @@ function DashboardPage() {
                                         </span>
                                     )}
                                     <span style={{ fontSize: '11px', color: '#9ca3af' }}>
-                                        {new Date(d.updatedAt).toLocaleDateString('ko-KR')}
+                                        {formatDate(d.updatedAt, userLang)}
                                     </span>
                                 </div>
                                 <div style={{ display: 'flex', gap: '6px' }}>
                                     <Link prefetch href={`/${userLang}/shape-generator?projectId=${d.id}`} style={{ flex: 1, padding: '7px 0', borderRadius: '8px', background: blue, color: '#fff', fontSize: '12px', fontWeight: 700, textDecoration: 'none', textAlign: 'center' }}>
-                                        열기
+                                        {L('열기', 'Open')}
                                     </Link>
                                     <button onClick={() => handleOpenVersions(d.id)}
                                         style={{ padding: '7px 10px', borderRadius: '8px', border: '1px solid #e0e7ff', background: '#f5f7ff', color: '#6366f1', fontSize: '11px', fontWeight: 700, cursor: 'pointer' }}
-                                        title="버전 히스토리">
+                                        title={L('버전 히스토리', 'Version history')}>
                                         🕐
                                     </button>
                                     <button type="button" onClick={() => openMembersModal(d.id)}
                                         style={{ padding: '7px 10px', borderRadius: '8px', border: '1px solid #dbeafe', background: '#eff6ff', color: '#0369a1', fontSize: '11px', fontWeight: 700, cursor: 'pointer' }}
-                                        title="팀 멤버 (편집/보기)">
-                                        팀
+                                        title={L('팀 멤버 (편집/보기)', 'Team members (edit/view)')}>
+                                        {L('팀', 'Team')}
                                     </button>
                                     <button onClick={() => void handleDeleteDesign(d.id)} disabled={deletingId === d.id}
                                         style={{ padding: '7px 10px', borderRadius: '8px', border: '1px solid #fee2e2', background: '#fff', color: '#ef4444', fontSize: '12px', fontWeight: 700, cursor: 'pointer' }}>
-                                        {deletingId === d.id ? '…' : '삭제'}
+                                        {deletingId === d.id ? '…' : L('삭제', 'Delete')}
                                     </button>
                                 </div>
                             </div>
@@ -1189,7 +1182,7 @@ function DashboardPage() {
                         <div style={{ padding: '20px 24px 14px', borderBottom: '1px solid #f0f0f0', display: 'flex', alignItems: 'center', gap: '10px' }}>
                             <span style={{ fontSize: '20px' }}>🕐</span>
                             <div style={{ flex: 1 }}>
-                                <div style={{ fontSize: '15px', fontWeight: 900, color: '#111827' }}>버전 히스토리</div>
+                                <div style={{ fontSize: '15px', fontWeight: 900, color: '#111827' }}>{L('버전 히스토리', 'Version history')}</div>
                                 <div style={{ fontSize: '12px', color: '#9ca3af' }}>
                                     {designs.find(d => d.id === versionProjectId)?.name ?? versionProjectId}
                                 </div>
@@ -1200,11 +1193,11 @@ function DashboardPage() {
                         {/* 버전 목록 */}
                         <div style={{ overflowY: 'auto', flex: 1, padding: '12px 0' }}>
                             {versionsLoading ? (
-                                <div style={{ textAlign: 'center', padding: '40px 0', color: '#9ca3af', fontSize: '13px' }}>불러오는 중…</div>
+                                <div style={{ textAlign: 'center', padding: '40px 0', color: '#9ca3af', fontSize: '13px' }}>{L('불러오는 중…', 'Loading…')}</div>
                             ) : versions.length === 0 ? (
                                 <div style={{ textAlign: 'center', padding: '40px 20px' }}>
                                     <div style={{ fontSize: '32px', marginBottom: '10px' }}>📭</div>
-                                    <div style={{ fontSize: '13px', color: '#9ca3af' }}>저장된 버전이 없습니다.<br/>설계를 수정하면 자동으로 스냅샷이 생성됩니다.</div>
+                                    <div style={{ fontSize: '13px', color: '#9ca3af' }}>{L('저장된 버전이 없습니다.', 'No saved versions.')}<br/>{L('설계를 수정하면 자동으로 스냅샷이 생성됩니다.', 'Editing a design automatically creates a snapshot.')}</div>
                                 </div>
                             ) : (
                                 versions.map((v, i) => (
@@ -1217,10 +1210,10 @@ function DashboardPage() {
                                         <div style={{ flex: 1, minWidth: 0 }}>
                                             <div style={{ fontSize: '13px', fontWeight: 700, color: '#111827' }}>
                                                 v{v.version_num}
-                                                {i === 0 && <span style={{ marginLeft: '6px', fontSize: '10px', background: '#eff6ff', color: blue, borderRadius: '4px', padding: '1px 6px', fontWeight: 700 }}>최신</span>}
+                                                {i === 0 && <span style={{ marginLeft: '6px', fontSize: '10px', background: '#eff6ff', color: blue, borderRadius: '4px', padding: '1px 6px', fontWeight: 700 }}>{L('최신', 'Latest')}</span>}
                                             </div>
                                             <div style={{ fontSize: '11px', color: '#9ca3af', marginTop: '2px' }}>
-                                                {new Date(v.created_at).toLocaleString('ko-KR', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                                                {formatDate(v.created_at, userLang, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
                                                 {v.shape_id && <span style={{ marginLeft: '6px' }}>{designCardIcon(v.shape_id)} {v.shape_id}</span>}
                                             </div>
                                         </div>
@@ -1228,14 +1221,14 @@ function DashboardPage() {
                                             onClick={() => void handleRestoreVersion(versionProjectId, v.id)}
                                             disabled={restoringId === v.id || i === 0}
                                             style={{ padding: '6px 14px', borderRadius: '8px', border: `1px solid ${i === 0 ? '#e5e7eb' : '#e0e7ff'}`, background: i === 0 ? '#f9fafb' : '#f5f7ff', color: i === 0 ? '#9ca3af' : '#6366f1', fontSize: '12px', fontWeight: 700, cursor: i === 0 ? 'default' : 'pointer', flexShrink: 0 }}>
-                                            {restoringId === v.id ? '…' : i === 0 ? '현재' : '복원'}
+                                            {restoringId === v.id ? '…' : i === 0 ? L('현재', 'Current') : L('복원', 'Restore')}
                                         </button>
                                     </div>
                                 ))
                             )}
                         </div>
                         <div style={{ padding: '14px 24px', borderTop: '1px solid #f0f0f0', fontSize: '11px', color: '#9ca3af' }}>
-                            최대 20개 버전 보관 · 자동 저장 시 스냅샷 생성
+                            {L('최대 20개 버전 보관 · 자동 저장 시 스냅샷 생성', 'Up to 20 versions are kept · snapshots are created automatically')}
                         </div>
                     </div>
                 </div>
@@ -1250,7 +1243,7 @@ function DashboardPage() {
                         <div style={{ padding: '18px 22px 12px', borderBottom: '1px solid #f0f0f0', display: 'flex', alignItems: 'center', gap: '10px' }}>
                             <span style={{ fontSize: '20px' }}>👥</span>
                             <div style={{ flex: 1 }}>
-                                <div style={{ fontSize: '15px', fontWeight: 900, color: '#111827' }}>팀 멤버</div>
+                                <div style={{ fontSize: '15px', fontWeight: 900, color: '#111827' }}>{L('팀 멤버', 'Team members')}</div>
                                 <div style={{ fontSize: '12px', color: '#9ca3af' }}>
                                     {designs.find(x => x.id === membersProjectId)?.name ?? membersProjectId}
                                 </div>
@@ -1259,7 +1252,7 @@ function DashboardPage() {
                                 style={{ background: 'none', border: 'none', fontSize: '20px', color: '#9ca3af', cursor: 'pointer', lineHeight: 1 }}>✕</button>
                         </div>
                         <div style={{ padding: '14px 22px', borderBottom: '1px solid #f9fafb' }}>
-                            <div style={{ fontSize: '11px', fontWeight: 700, color: '#6b7280', marginBottom: '8px' }}>초대 (가입된 이메일만 가능)</div>
+                            <div style={{ fontSize: '11px', fontWeight: 700, color: '#6b7280', marginBottom: '8px' }}>{L('초대 (가입된 이메일만 가능)', 'Invite (registered emails only)')}</div>
                             <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
                                 <input
                                     type="email"
@@ -1274,31 +1267,31 @@ function DashboardPage() {
                                     onChange={e => setInviteRole(e.target.value as 'editor' | 'viewer')}
                                     disabled={memberBusy}
                                     style={{ padding: '8px 10px', borderRadius: '10px', border: '1px solid #e5e7eb', fontSize: '12px', fontWeight: 700 }}>
-                                    <option value="viewer">보기</option>
-                                    <option value="editor">편집</option>
+                                    <option value="viewer">{L('보기', 'View')}</option>
+                                    <option value="editor">{L('편집', 'Edit')}</option>
                                 </select>
                                 <button type="button" onClick={() => void handleAddMember()} disabled={memberBusy || !inviteEmail.trim()}
                                     style={{ padding: '8px 16px', borderRadius: '10px', border: 'none', background: memberBusy || !inviteEmail.trim() ? '#e5e7eb' : blue, color: memberBusy || !inviteEmail.trim() ? '#9ca3af' : '#fff', fontSize: '12px', fontWeight: 800, cursor: memberBusy || !inviteEmail.trim() ? 'default' : 'pointer' }}>
-                                    추가
+                                    {L('추가', 'Add')}
                                 </button>
                             </div>
                             <p style={{ fontSize: '10px', color: '#9ca3af', margin: '8px 0 0', lineHeight: 1.4 }}>
-                                보기: 열람만. 편집: 클라우드 저장·버전 복원 가능. 소유자만 이 목록을 관리합니다.
+                                {L('보기: 열람만. 편집: 클라우드 저장·버전 복원 가능. 소유자만 이 목록을 관리합니다.', 'View: read-only. Edit: cloud save and version restore. Only the owner can manage this list.')}
                             </p>
                             <div style={{ marginTop: '12px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
                                 <button type="button" onClick={() => void handleCreateInviteLink()} disabled={memberBusy || !inviteEmail.trim()}
                                     style={{ alignSelf: 'flex-start', padding: '8px 14px', borderRadius: '10px', border: '1px solid #bae6fd', background: '#f0f9ff', color: '#0369a1', fontSize: '12px', fontWeight: 700, cursor: memberBusy || !inviteEmail.trim() ? 'default' : 'pointer' }}>
-                                    초대 링크 만들기 (가입 전 이메일)
+                                    {L('초대 링크 만들기 (가입 전 이메일)', 'Create invite link (unregistered email)')}
                                 </button>
                                 {pendingInviteLink && (
                                     <div style={{ fontSize: '11px', color: '#374151' }}>
-                                        <div style={{ fontWeight: 700, marginBottom: '4px' }}>링크 복사</div>
+                                        <div style={{ fontWeight: 700, marginBottom: '4px' }}>{L('링크 복사', 'Copy link')}</div>
                                         <input readOnly value={pendingInviteLink}
                                             onFocus={e => e.target.select()}
                                             style={{ width: '100%', padding: '8px 10px', borderRadius: '8px', border: '1px solid #e5e7eb', fontSize: '11px' }} />
                                         <button type="button" onClick={() => void handleRevokeInvite()} disabled={memberBusy}
                                             style={{ marginTop: '8px', padding: '6px 12px', borderRadius: '8px', border: '1px solid #fecaca', background: '#fff', color: '#b91c1c', fontSize: '11px', fontWeight: 700, cursor: memberBusy ? 'default' : 'pointer' }}>
-                                            링크 폐기 (서버에서 토큰 삭제)
+                                            {L('링크 폐기 (서버에서 토큰 삭제)', 'Revoke link (delete token on server)')}
                                         </button>
                                     </div>
                                 )}
@@ -1306,20 +1299,20 @@ function DashboardPage() {
                         </div>
                         {pendingInvitesList.length > 0 && (
                             <div style={{ padding: '10px 22px', borderBottom: '1px solid #f9fafb', background: '#fafafa' }}>
-                                <div style={{ fontSize: '11px', fontWeight: 800, color: '#374151', marginBottom: '8px' }}>대기 중인 이메일 초대</div>
+                                <div style={{ fontSize: '11px', fontWeight: 800, color: '#374151', marginBottom: '8px' }}>{L('대기 중인 이메일 초대', 'Pending email invitations')}</div>
                                 <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                                     {pendingInvitesList.map(inv => (
                                         <div key={inv.token} style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', fontSize: '11px' }}>
                                             <span style={{ fontWeight: 700, color: '#111827' }}>{inv.emailHint}</span>
-                                            <span style={{ color: '#6b7280' }}>{inv.role === 'editor' ? '편집' : '보기'}</span>
+                                            <span style={{ color: '#6b7280' }}>{inv.role === 'editor' ? L('편집', 'Edit') : L('보기', 'View')}</span>
                                             {inv.expired ? (
-                                                <span style={{ color: '#b45309', fontWeight: 700 }}>만료됨</span>
+                                                <span style={{ color: '#b45309', fontWeight: 700 }}>{L('만료됨', 'Expired')}</span>
                                             ) : (
-                                                <span style={{ color: '#9ca3af' }}>만료 {new Date(inv.expiresAt).toLocaleDateString('ko-KR')}</span>
+                                                <span style={{ color: '#9ca3af' }}>{loc(userLang, { ko: '만료', en: 'Expires', ja: '期限', zh: '到期', es: 'Caduca', ar: 'ينتهي' })} {formatDate(inv.expiresAt, userLang)}</span>
                                             )}
                                             <button type="button" onClick={() => void handleRevokeInvite(inv.token)} disabled={memberBusy}
                                                 style={{ marginLeft: 'auto', padding: '4px 10px', borderRadius: '6px', border: '1px solid #fecaca', background: '#fff', color: '#b91c1c', fontSize: '10px', fontWeight: 700, cursor: memberBusy ? 'default' : 'pointer' }}>
-                                                폐기
+                                                {L('폐기', 'Revoke')}
                                             </button>
                                         </div>
                                     ))}
@@ -1365,7 +1358,7 @@ function DashboardPage() {
                                         <div key={log.id} style={{ fontSize: '10px', color: '#4b5563', lineHeight: 1.4, borderBottom: '1px solid #eef2ff', paddingBottom: '6px' }}>
                                             <span style={{ fontWeight: 800, color: '#111827' }}>{formatProjectAuditAction(userLang, log.action)}</span>
                                             <span style={{ color: '#9ca3af', marginLeft: '6px' }}>
-                                                {new Date(log.createdAt).toLocaleString(userLang === 'kr' || userLang === 'ko' ? 'ko-KR' : 'en-US', { dateStyle: 'short', timeStyle: 'short' })}
+                                                {formatDate(log.createdAt, userLang, { dateStyle: 'short', timeStyle: 'short' })}
                                             </span>
                                             <div style={{ color: '#9ca3af', marginTop: '2px' }}>{projectAuditLabels.actorPrefix} · {log.userId.slice(0, 10)}…</div>
                                         </div>
@@ -1375,19 +1368,19 @@ function DashboardPage() {
                         </div>
                         <div style={{ overflowY: 'auto', flex: 1, padding: '8px 0 12px' }}>
                             {membersLoading ? (
-                                <div style={{ textAlign: 'center', padding: '32px 0', color: '#9ca3af', fontSize: '13px' }}>불러오는 중…</div>
+                                <div style={{ textAlign: 'center', padding: '32px 0', color: '#9ca3af', fontSize: '13px' }}>{L('불러오는 중…', 'Loading…')}</div>
                             ) : membersRows.length === 0 ? (
-                                <div style={{ textAlign: 'center', padding: '24px 16px', fontSize: '13px', color: '#9ca3af' }}>아직 초대된 멤버가 없습니다.</div>
+                                <div style={{ textAlign: 'center', padding: '24px 16px', fontSize: '13px', color: '#9ca3af' }}>{L('아직 초대된 멤버가 없습니다.', 'No invited members yet.')}</div>
                             ) : (
                                 membersRows.map(m => (
                                     <div key={m.userId} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '10px 22px', borderBottom: '1px solid #f9fafb' }}>
                                         <div style={{ flex: 1, minWidth: 0 }}>
                                             <div style={{ fontSize: '13px', fontWeight: 700, color: '#111827', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{m.email}</div>
-                                            <div style={{ fontSize: '11px', color: '#9ca3af' }}>{m.role === 'editor' ? '편집' : '보기'}</div>
+                                            <div style={{ fontSize: '11px', color: '#9ca3af' }}>{m.role === 'editor' ? L('편집', 'Edit') : L('보기', 'View')}</div>
                                         </div>
                                         <button type="button" onClick={() => void handleRemoveMember(m.userId)} disabled={memberBusy}
                                             style={{ padding: '6px 12px', borderRadius: '8px', border: '1px solid #fee2e2', background: '#fff', color: '#ef4444', fontSize: '11px', fontWeight: 700, cursor: memberBusy ? 'default' : 'pointer' }}>
-                                            제거
+                                            {L('제거', 'Remove')}
                                         </button>
                                     </div>
                                 ))
@@ -1402,8 +1395,8 @@ function DashboardPage() {
     // ── Settings Tab ──────────────────────────────────────────────────────────
     const SettingsTab = () => (
         <div>
-            <h1 style={{ fontSize: '22px', fontWeight: 900, color: '#111827', margin: '0 0 4px' }}>계정 설정</h1>
-            <p style={{ fontSize: '14px', color: '#6b7280', margin: '0 0 24px' }}>프로필과 플랜을 관리합니다.</p>
+            <h1 style={{ fontSize: '22px', fontWeight: 900, color: '#111827', margin: '0 0 4px' }}>{L('계정 설정', 'Account settings')}</h1>
+            <p style={{ fontSize: '14px', color: '#6b7280', margin: '0 0 24px' }}>{L('프로필과 플랜을 관리합니다.', 'Manage your profile and plan.')}</p>
 
             {/* Profile card */}
             <div style={{ background: '#fff', borderRadius: '20px', border: '1px solid #f0f0f0', padding: '28px', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '20px' }}>
@@ -1420,17 +1413,17 @@ function DashboardPage() {
                     <PlanBadge plan={activePlan} />
                 </div>
                 <Link href="/account" style={{ padding: '9px 20px', borderRadius: '12px', background: '#f3f4f6', color: '#374151', fontSize: '13px', fontWeight: 700, textDecoration: 'none' }}>
-                    프로필 수정
+                    {L('프로필 수정', 'Edit profile')}
                 </Link>
             </div>
 
             {/* Quick links */}
             {[
-                { icon: '🔒', label: '비밀번호 변경', desc: '계정 보안을 강화하세요', href: '/account?tab=security' },
-                { icon: '🔔', label: '알림 설정', desc: '이메일·앱 알림 수신 여부를 관리합니다', href: '/account?tab=notifications' },
-                { icon: '💳', label: '플랜 관리', desc: `현재 ${activePlan === 'premium' ? 'Premium' : 'Standard'} 플랜 — 업그레이드 또는 취소`, href: `/${userLang}/pricing` },
-                { icon: '📄', label: '이용 약관 / 개인정보 처리방침', desc: 'NexyFab 법적 문서 확인', href: `/${userLang}/terms-of-use` },
-                { icon: '🚪', label: '로그아웃', desc: '현재 기기에서 로그아웃합니다', href: '/logout' },
+                { icon: '🔒', label: L('비밀번호 변경', 'Change password'), desc: L('계정 보안을 강화하세요', 'Strengthen account security'), href: '/account?tab=security' },
+                { icon: '🔔', label: L('알림 설정', 'Notification settings'), desc: L('이메일·앱 알림 수신 여부를 관리합니다', 'Manage email and app notifications'), href: '/account?tab=notifications' },
+                { icon: '💳', label: L('플랜 관리', 'Manage plan'), desc: L(`현재 ${activePlan === 'premium' ? 'Premium' : 'Standard'} 플랜 — 업그레이드 또는 취소`, `Current ${activePlan === 'premium' ? 'Premium' : 'Standard'} plan — upgrade or cancel`), href: `/${userLang}/pricing` },
+                { icon: '📄', label: L('이용 약관 / 개인정보 처리방침', 'Terms / privacy policy'), desc: L('NexyFab 법적 문서 확인', 'Review NexyFab legal documents'), href: `/${userLang}/terms-of-use` },
+                { icon: '🚪', label: L('로그아웃', 'Log out'), desc: L('현재 기기에서 로그아웃합니다', 'Sign out of this device'), href: '/logout' },
             ].map((item, i) => (
                 <Link key={i} href={item.href} style={{ display: 'flex', alignItems: 'center', gap: '16px', background: '#fff', borderRadius: '16px', border: '1px solid #f0f0f0', padding: '18px 22px', marginBottom: '10px', textDecoration: 'none', transition: '0.1s' }}
                     onMouseEnter={e => (e.currentTarget as HTMLElement).style.background = '#f8fafc'}
@@ -1488,20 +1481,20 @@ function DashboardPage() {
                     </div>
                     <NexyfabNotificationBell />
                     <NotificationBell recipient={`customer:${user.email}`} />
-                    <Link href="/account" style={{ fontSize: '13px', color: '#6b7280', textDecoration: 'none', fontWeight: 600 }}>계정 설정</Link>
+                    <Link href="/account" style={{ fontSize: '13px', color: '#6b7280', textDecoration: 'none', fontWeight: 600 }}>{L('계정 설정', 'Account settings')}</Link>
                 </div>
             </div>
 
             <div style={s.body}>
                 <nav id="customer-sidebar" aria-label="Dashboard navigation" style={s.sidebar}>
-                    <div style={{ fontSize: '11px', fontWeight: 800, color: '#9ca3af', letterSpacing: '0.08em', textTransform: 'uppercase', padding: '0 14px', marginBottom: '8px' }}>메뉴</div>
+                    <div style={{ fontSize: '11px', fontWeight: 800, color: '#9ca3af', letterSpacing: '0.08em', textTransform: 'uppercase', padding: '0 14px', marginBottom: '8px' }}>{L('메뉴', 'Menu')}</div>
                     {([
-                        { id: 'overview' as Tab, label: '프로젝트 홈', icon: '🏠' },
-                        { id: 'designs' as Tab, label: '내 설계', icon: '💾', badge: designs.length || undefined },
-                        { id: 'contracts' as Tab, label: '계약 현황', icon: '📋', badge: contracts.filter(c => !['completed','cancelled'].includes(c.status)).length || undefined },
-                        { id: 'messages' as Tab, label: '메시지', icon: '💬' },
-                        { id: 'commission' as Tab, label: '수수료 내역', icon: '📈' },
-                        { id: 'settings' as Tab, label: '계정 설정', icon: '⚙️' },
+                        { id: 'overview' as Tab, label: L('프로젝트 홈', 'Project home'), icon: '🏠' },
+                        { id: 'designs' as Tab, label: L('내 설계', 'My designs'), icon: '💾', badge: designs.length || undefined },
+                        { id: 'contracts' as Tab, label: L('계약 현황', 'Contracts'), icon: '📋', badge: contracts.filter(c => !['completed','cancelled'].includes(c.status)).length || undefined },
+                        { id: 'messages' as Tab, label: L('메시지', 'Messages'), icon: '💬' },
+                        { id: 'commission' as Tab, label: L('수수료 내역', 'Commission history'), icon: '📈' },
+                        { id: 'settings' as Tab, label: L('계정 설정', 'Account settings'), icon: '⚙️' },
                     ]).map(item => (
                         <button key={item.id} onClick={() => changeTab(item.id)}
                             aria-current={tab === item.id ? 'page' : undefined}
@@ -1517,7 +1510,7 @@ function DashboardPage() {
                     ))}
                     <div style={{ marginTop: 'auto', paddingTop: '16px', borderTop: '1px solid var(--color-border)' }}>
                         <a href={`/${userLang}/pricing`} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 14px', borderRadius: '12px', background: blue + '10', color: blue, fontWeight: 700, fontSize: '13px', textDecoration: 'none' }}>
-                            <span>⬆️</span> 플랜 업그레이드
+                            <span>⬆️</span> {L('플랜 업그레이드', 'Upgrade plan')}
                         </a>
                     </div>
                 </nav>
@@ -1535,12 +1528,12 @@ function DashboardPage() {
             {/* Mobile Bottom Nav */}
             <nav style={{ display: 'none' }} id="customer-mobile-nav" aria-label="Mobile navigation">
                 {([
-                    { id: 'overview' as Tab, label: '홈', icon: '🏠' },
-                    { id: 'contracts' as Tab, label: '계약', icon: '📋' },
-                    { id: 'messages' as Tab, label: '메시지', icon: '💬' },
-                    { id: 'commission' as Tab, label: '수수료', icon: '📈' },
-                    { id: 'settings' as Tab, label: '설정', icon: '⚙️' },
-                    { id: 'designs' as Tab, label: '설계', icon: '💾' },
+                    { id: 'overview' as Tab, label: L('홈', 'Home'), icon: '🏠' },
+                    { id: 'contracts' as Tab, label: L('계약', 'Contracts'), icon: '📋' },
+                    { id: 'messages' as Tab, label: L('메시지', 'Messages'), icon: '💬' },
+                    { id: 'commission' as Tab, label: L('수수료', 'Commission'), icon: '📈' },
+                    { id: 'settings' as Tab, label: L('설정', 'Settings'), icon: '⚙️' },
+                    { id: 'designs' as Tab, label: L('설계', 'Designs'), icon: '💾' },
                 ] as { id: Tab; label: string; icon: string }[]).map(item => (
                     <button key={item.id} onClick={() => changeTab(item.id)}
                         aria-current={tab === item.id ? 'page' : undefined}

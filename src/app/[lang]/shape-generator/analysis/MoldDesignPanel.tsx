@@ -12,6 +12,7 @@ const lt = {
     moldSizeLabel: '금형 여유 폭 (mm)',
     running: '생성 중...',
     done: '금형 분할 완료',
+    split: '코어/캐비티 분할', parts: '표준 금형 부품 라이브러리', exportPackage: '제조 패키지 (ZIP) 내보내기',
   },
   en: {
     title: 'Mold Cavity & Draft Analysis',
@@ -22,6 +23,7 @@ const lt = {
     moldSizeLabel: 'Mold Margin (mm)',
     running: 'Processing...',
     done: 'Mold split complete',
+    split: 'Core/Cavity Split', parts: 'Standard Mold Parts', exportPackage: 'Export Mfg Package (ZIP)',
   },
   ja: {
     title: '金型キャビティ & 抜き勾配解析',
@@ -32,6 +34,7 @@ const lt = {
     moldSizeLabel: '金型の余裕幅 (mm)',
     running: '生成中...',
     done: '金型分割が完了しました',
+    split: 'コア／キャビティを分割', parts: '標準金型部品ライブラリ', exportPackage: '製造パッケージ（ZIP）を出力',
   },
   zh: {
     title: '模具型腔与拔模分析',
@@ -42,6 +45,7 @@ const lt = {
     moldSizeLabel: '模具余量 (mm)',
     running: '生成中...',
     done: '模具分型完成',
+    split: '分割型芯／型腔', parts: '标准模具零件库', exportPackage: '导出制造包（ZIP）',
   },
   es: {
     title: 'Cavidad de molde y análisis de desmoldeo',
@@ -52,6 +56,7 @@ const lt = {
     moldSizeLabel: 'Margen del molde (mm)',
     running: 'Procesando...',
     done: 'Partición del molde completada',
+    split: 'Separar macho/cavidad', parts: 'Biblioteca de piezas de molde estándar', exportPackage: 'Exportar paquete de fabricación (ZIP)',
   },
   ar: {
     title: 'تجويف القالب وتحليل زاوية السحب',
@@ -62,6 +67,7 @@ const lt = {
     moldSizeLabel: 'هامش القالب (مم)',
     running: 'جارٍ التوليد...',
     done: 'اكتمل تقسيم القالب',
+    split: 'تقسيم القلب/التجويف', parts: 'مكتبة أجزاء القوالب القياسية', exportPackage: 'تصدير حزمة التصنيع (ZIP)',
   },
 };
 
@@ -163,7 +169,7 @@ export default function MoldDesignPanel({ lang, geometry, onClose, onGenerateCav
               border: 'none', fontWeight: 600, cursor: 'pointer'
             }}
           >
-            {lang === 'ko' ? '코어/캐비티 분할' : 'Core/Cavity Split'}
+            {t.split}
           </button>
           
           <button
@@ -173,7 +179,7 @@ export default function MoldDesignPanel({ lang, geometry, onClose, onGenerateCav
               border: '1px solid var(--nx-border-strong)', fontWeight: 600, cursor: 'pointer'
             }}
           >
-            {lang === 'ko' ? '표준 금형 부품 라이브러리' : 'Standard Mold Parts'}
+            {t.parts}
           </button>
           
           <button
@@ -185,7 +191,7 @@ export default function MoldDesignPanel({ lang, geometry, onClose, onGenerateCav
               opacity: !geometry ? 0.6 : 1
             }}
           >
-            {lang === 'ko' ? '제조 패키지 (ZIP) 내보내기' : 'Export Mfg Package (ZIP)'}
+            {t.exportPackage}
           </button>
         </div>
       </div>

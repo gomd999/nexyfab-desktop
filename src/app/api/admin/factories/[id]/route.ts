@@ -5,6 +5,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { verifyAdmin } from '@/lib/admin-auth';
 import { getDbAdapter } from '@/lib/db-adapter';
+import { readBoundedJson } from '@/lib/boundedJsonBody';
 
 export const dynamic = 'force-dynamic';
 
@@ -21,7 +22,7 @@ export async function PATCH(
   const existing = await db.queryOne<{ id: string }>('SELECT id FROM nf_factories WHERE id = ?', id);
   if (!existing) return NextResponse.json({ error: 'Not found' }, { status: 404 });
 
-  const body = await req.json() as Record<string, unknown>;
+  const body = await readBoundedJson<Record<string, unknown>>(req, 256 * 1024);
   const now = Date.now();
 
   const allowed = [

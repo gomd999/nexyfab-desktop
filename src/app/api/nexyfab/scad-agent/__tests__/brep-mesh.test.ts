@@ -7,7 +7,7 @@
  * triangles is enough for the route to succeed.
  */
 
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 
 // P2 — auth was added in Round 14; tests stub it as authenticated so
 // the existing OCCT-registry behavior coverage stays intact.
@@ -28,6 +28,7 @@ vi.mock('../../../../[lang]/shape-generator/features/occtEngine', () => {
 });
 
 import * as engine from '../../../../[lang]/shape-generator/features/occtEngine';
+import { issueBrepHandleAccessToken } from '@/lib/ai/scad-agent/brepHandleAccessToken';
 
 const mod = engine as unknown as {
   __register: (h: string, s: unknown) => void;
@@ -37,11 +38,17 @@ const mod = engine as unknown as {
 describe('GET /api/nexyfab/scad-agent/brep-mesh', () => {
   beforeEach(() => {
     mod.__reset();
+    process.env.SCAD_AGENT_HANDLE_TOKEN_SECRET = 'brep-route-test-secret-0123456789';
   });
+  afterEach(() => { delete process.env.SCAD_AGENT_HANDLE_TOKEN_SECRET; });
 
-  async function GET(query: string) {
+  async function GET(query: string, authorized = true) {
     const { GET: handler } = await import('../brep-mesh/route');
-    const req = new Request(`http://test/api/nexyfab/scad-agent/brep-mesh?${query}`);
+    const params = new URLSearchParams(query);
+    const handle = params.get('handle');
+    const headers = new Headers();
+    if (authorized && handle) headers.set('x-nexyfab-brep-capability', issueBrepHandleAccessToken({ userId: 'test-user', handle }) ?? '');
+    const req = new Request(`http://test/api/nexyfab/scad-agent/brep-mesh?${params.toString()}`, { headers });
     return handler(req);
   }
 
@@ -55,6 +62,12 @@ describe('GET /api/nexyfab/scad-agent/brep-mesh', () => {
   it('returns 404 for unknown handle', async () => {
     const res = await GET('handle=occt:999');
     expect(res.status).toBe(404);
+  });
+
+  it('holds a raw or missing capability instead of authorizing by handle alone', async () => {
+    const res = await GET('handle=occt:999', false);
+    expect(res.status).toBe(403);
+    await expect(res.json()).resolves.toMatchObject({ status: 'HOLD', releaseReady: false });
   });
 
   it('returns 422 when handle has no mesh()', async () => {
@@ -72,6 +85,7 @@ describe('GET /api/nexyfab/scad-agent/brep-mesh', () => {
 
     const res = await GET('handle=occt:tri');
     expect(res.status).toBe(200);
+    expect(res.headers.get('cache-control')).toBe('private, no-store');
     const body = await res.json();
     expect(body.ok).toBe(true);
     expect(body.handle).toBe('occt:tri');

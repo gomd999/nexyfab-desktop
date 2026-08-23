@@ -1,0 +1,12 @@
+{
+  "schema": "nexyfab.deployable-unit.v1",
+  "id": "occt-exact",
+  "kind": "container",
+  "targetRuntime": "cloudflare-containers",
+  "sourceMode": "new-unit",
+  "legacySource": ["occt-worker"],
+  "componentSources": ["containers/occt-exact", "containers/occt-xcaf"],
+  "implementationState": "PARTIAL",
+  "deployEnabled": false,
+  "rollbackOwner": "exact-cad-job-blocked"
+}

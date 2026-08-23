@@ -3,7 +3,7 @@
  * Mirrors brep-mesh's registry-mock pattern: stub getShape/exportOcctStep over a
  * tiny in-memory registry so the route logic is exercised without WASM.
  */
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 
 vi.mock('@/lib/auth-middleware', () => ({
   getAuthUser: vi.fn(async () => ({ userId: 'test-user', email: 'test@x.com', orgIds: [] })),
@@ -26,6 +26,7 @@ vi.mock('../../../../[lang]/shape-generator/features/occtEngine', () => {
 });
 
 import * as engine from '../../../../[lang]/shape-generator/features/occtEngine';
+import { issueBrepHandleAccessToken } from '@/lib/ai/scad-agent/brepHandleAccessToken';
 
 const mod = engine as unknown as {
   __register: (h: string, s: unknown) => void;
@@ -38,11 +39,19 @@ function brepShape(step = STEP_TEXT) {
 }
 
 describe('GET /api/nexyfab/scad-agent/brep-step', () => {
-  beforeEach(() => mod.__reset());
+  beforeEach(() => {
+    mod.__reset();
+    process.env.SCAD_AGENT_HANDLE_TOKEN_SECRET = 'brep-route-test-secret-0123456789';
+  });
+  afterEach(() => { delete process.env.SCAD_AGENT_HANDLE_TOKEN_SECRET; });
 
-  async function GET(query: string) {
+  async function GET(query: string, authorized = true) {
     const { GET: handler } = await import('../brep-step/route');
-    const req = new Request(`http://test/api/nexyfab/scad-agent/brep-step?${query}`);
+    const params = new URLSearchParams(query);
+    const handle = params.get('handle');
+    const headers = new Headers();
+    if (authorized && handle) headers.set('x-nexyfab-brep-capability', issueBrepHandleAccessToken({ userId: 'test-user', handle }) ?? '');
+    const req = new Request(`http://test/api/nexyfab/scad-agent/brep-step?${params.toString()}`, { headers });
     return handler(req);
   }
 
@@ -57,6 +66,12 @@ describe('GET /api/nexyfab/scad-agent/brep-step', () => {
     expect(res.status).toBe(404);
   });
 
+  it('holds a raw or missing capability instead of authorizing by handle alone', async () => {
+    const res = await GET('handle=occt:999', false);
+    expect(res.status).toBe(403);
+    await expect(res.json()).resolves.toMatchObject({ status: 'HOLD', releaseReady: false });
+  });
+
   it('returns 422 when the handle has no B-rep (not STEP-exportable)', async () => {
     mod.__register('occt:mesh-only', { mesh: () => ({ vertices: [], triangles: [] }) });
     const res = await GET('handle=occt:mesh-only');
@@ -67,6 +82,7 @@ describe('GET /api/nexyfab/scad-agent/brep-step', () => {
     mod.__register('occt:solid', brepShape());
     const res = await GET('handle=occt:solid');
     expect(res.status).toBe(200);
+    expect(res.headers.get('cache-control')).toBe('private, no-store');
     const body = await res.json();
     expect(body.ok).toBe(true);
     expect(body.handle).toBe('occt:solid');

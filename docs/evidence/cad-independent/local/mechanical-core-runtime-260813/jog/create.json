@@ -1,0 +1,55 @@
+{
+  "schema": "nexyfab.mechanical-core-feature-local-runtime.v1",
+  "feature": "jog",
+  "axis": "create",
+  "status": "PASS",
+  "executedAt": "2026-08-22T07:13:30.564Z",
+  "payload": {
+    "id": "runtime-feature",
+    "enabled": true,
+    "type": "jog",
+    "params": {
+      "offset": 5,
+      "position": 40,
+      "spacing": 20,
+      "radius": 2
+    }
+  },
+  "exact": {
+    "handle": "occt:267",
+    "kernelKind": "Solid",
+    "nativeShapeType": 2,
+    "solidCount": 1,
+    "singleSolid": true,
+    "volumeMm3": 3599.999999999999,
+    "edgeCount": 36,
+    "faceCount": 14,
+    "boundsMm": [
+      [
+        -30.00384937308465,
+        -1.0038493730846492,
+        -15.003849373084648
+      ],
+      [
+        29.351094217353562,
+        6.003849373084649,
+        15.003849373084648
+      ]
+    ]
+  },
+  "featureMeaning": {
+    "assertion": "actual product exact jog conserves blank volume and creates two opposite analytic bends with constant-thickness neutral-axis developed spacing",
+    "offsetMm": 5,
+    "developedSpacingMm": 20,
+    "radiusMm": 2,
+    "thicknessMm": 2,
+    "cylindricalFaces": 4,
+    "baselineVolumeMm3": 3600,
+    "actualVolumeMm3": 3599.999999999999,
+    "expectedTopMm": 6,
+    "actualTopMm": 6.003849373084649,
+    "projectedLengthMm": 59.35494359043821
+  },
+  "exactScope": "declared numeric runtime case",
+  "assertion": "native OCCT produced one non-empty exact solid and changed the host geometry"
+}

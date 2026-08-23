@@ -1,0 +1,238 @@
+{
+  "schema": "nexyfab.agent-mcp-cli-local-readiness.v1",
+  "generatedAt": "2026-08-23T07:01:30.126Z",
+  "status": "PASS_LOCAL",
+  "localReady": true,
+  "commercialReleaseEligible": false,
+  "commandResults": [
+    {
+      "id": "focused_mcp_cli_parity",
+      "status": "PASSED_LOCAL",
+      "evidence": {
+        "path": "docs/evidence/local/agent-mcp-cli-runtime-current/focused_mcp_cli_parity.json",
+        "bytes": 1410,
+        "sha256": "063739858475f06058cebc89d0c5094b21b38036d3433969e6968f07252fc191"
+      }
+    },
+    {
+      "id": "cli_offline_subprocess_roundtrip",
+      "status": "PASSED_LOCAL",
+      "evidence": {
+        "path": "docs/evidence/local/agent-mcp-cli-runtime-current/cli_offline_subprocess_roundtrip.json",
+        "bytes": 637,
+        "sha256": "c2d3cb029b865b1d62ab17e3c8b489e92ac6445cffa33d5332067a902f852661"
+      }
+    },
+    {
+      "id": "agent_sidecar_source_bundle_check",
+      "status": "PASSED_LOCAL",
+      "evidence": {
+        "path": "docs/evidence/local/agent-mcp-cli-runtime-current/agent_sidecar_source_bundle_check.json",
+        "bytes": 847,
+        "sha256": "13b5a3dbacb468ac1f4c3bc3d2042be36174e94338504397731f75b1e5ea78fa"
+      }
+    },
+    {
+      "id": "windows_sea_fail_closed_contract",
+      "status": "PASSED_LOCAL",
+      "evidence": {
+        "path": "docs/evidence/local/agent-mcp-cli-runtime-current/windows_sea_fail_closed_contract.json",
+        "bytes": 1397,
+        "sha256": "820af7d50e2fdc22039587fb1005a444b7616111db3e65d74472df3dc5722ed2"
+      }
+    }
+  ],
+  "capabilityBoundary": {
+    "testedLocalMcpCliParity": true,
+    "certifiesExternalWindowsSea": false,
+    "certifiesAuthenticode": false,
+    "certifiesInstallerLifecycle": false
+  },
+  "sourceInventory": [
+    "package.json",
+    "scripts/build-agent-mcp-cli-local-readiness.mjs",
+    "scripts/build-agent-sidecar.mjs",
+    "scripts/agent-sidecar/windows-sea-readiness.mjs",
+    "scripts/agent-sidecar/windows-sea-release-evidence.mjs",
+    "scripts/drawing-to-3d/capability-surface-manifest.mjs",
+    "scripts/drawing-to-3d/agent-mcp-server.mjs",
+    "scripts/drawing-to-3d/installer-core-agent-server.mjs",
+    "scripts/cli/nexyfab.mjs",
+    "public/downloads/nexyfab-mcp.mjs",
+    "scripts/agent-mcp-cli-runtime-parity.test.ts",
+    "scripts/mcp-stdio-transport.test.ts",
+    "scripts/drawing-to-3d/agent-mcp-server.test.ts",
+    "scripts/drawing-to-3d/capability-surface-manifest.test.ts",
+    "scripts/drawing-to-3d/cad-v1-mcp.test.ts",
+    "scripts/drawing-to-3d/downloadable-mcp.test.ts",
+    "scripts/drawing-to-3d/mcp-package-publish.test.ts",
+    "scripts/drawing-to-3d/mcp-honesty.test.ts",
+    "scripts/cli/nexyfab.test.ts",
+    "scripts/cli/nexyfab.roundtrip.test.mjs",
+    "scripts/agent-sidecar/windows-sea-readiness.test.mjs",
+    "scripts/agent-sidecar/windows-sea-release-evidence.test.mjs"
+  ],
+  "externalWindowsSea": {
+    "status": "HOLD",
+    "releaseEligible": false,
+    "authority": "docs/evidence/release/windows-agent-sidecar-release-receipt.json",
+    "evidence": {
+      "path": "docs/evidence/release/windows-agent-sidecar-release-receipt.json",
+      "bytes": 3101,
+      "sha256": "d3b61ad219f476a3332887a00b985233565b0068012e2e88bbe79a149f4c50a3"
+    },
+    "observedReceiptStatus": "HOLD",
+    "observedReleaseEligible": false,
+    "observedReceiptSha256": "22ad622a441c969cd6b27853b6a553a73f7d9fb51a7bb3d79ec62576889162a7",
+    "blockers": [
+      "release_binding_mismatch",
+      "sea_unsigned_binary_invalid",
+      "sea_signed_binary_invalid",
+      "sea_manifest_binding_invalid",
+      "sea_reproducible_artifact_not_verified",
+      "sea_mcp_cli_parity_not_verified",
+      "authenticode_not_verified",
+      "installer_lifecycle_not_verified",
+      "trusted_release_attestation_invalid"
+    ]
+  },
+  "sourceBindings": [
+    {
+      "path": "package.json",
+      "bytes": 38323,
+      "sha256": "1d615e4db6253c1b1f0a9593c46e99329ac25f591f57d79c3353aa5c814b7cc9"
+    },
+    {
+      "path": "scripts/build-agent-mcp-cli-local-readiness.mjs",
+      "bytes": 17186,
+      "sha256": "78b80f5d5f1834cc53a5d254bb31d4959131dedcef067027749043295cb2ec39"
+    },
+    {
+      "path": "scripts/build-agent-sidecar.mjs",
+      "bytes": 10112,
+      "sha256": "c3c778dfe398f8bb7bfde8bc932eba351d9ee1dcc570c3726902e60eedfe91ca"
+    },
+    {
+      "path": "scripts/agent-sidecar/windows-sea-readiness.mjs",
+      "bytes": 11949,
+      "sha256": "c185074834a7d31abe94c451f7e20f3e7906abd78a435fd0c49923bb7018fddc"
+    },
+    {
+      "path": "scripts/agent-sidecar/windows-sea-release-evidence.mjs",
+      "bytes": 31336,
+      "sha256": "820b7d093888d6854a0d9133874fb7fdf259a467ec74d8aa26a396cd3943dfb1"
+    },
+    {
+      "path": "scripts/drawing-to-3d/capability-surface-manifest.mjs",
+      "bytes": 4251,
+      "sha256": "041263ec9be851426416a074d4196d153a051410fbede6cd65bbf59f23c56f45"
+    },
+    {
+      "path": "scripts/drawing-to-3d/agent-mcp-server.mjs",
+      "bytes": 18684,
+      "sha256": "de71e81d2d124d8c5124ad3b2a49ceb899cdc07b492f7243faf6f568548bee8d"
+    },
+    {
+      "path": "scripts/drawing-to-3d/installer-core-agent-server.mjs",
+      "bytes": 19656,
+      "sha256": "f52af7dd36108d7f0080af41fad5a044ee788018b4459a91096ff7d431a5653d"
+    },
+    {
+      "path": "scripts/cli/nexyfab.mjs",
+      "bytes": 51117,
+      "sha256": "ff34086a2760a787bae9e8ce04a82c3ed08a0fd840cfb3ae1a81eeb340104d67"
+    },
+    {
+      "path": "public/downloads/nexyfab-mcp.mjs",
+      "bytes": 33122,
+      "sha256": "cf645adc442b34b13a1e20be830bfe613ac67ea19a85c6f8d768e892f3cc22b5"
+    },
+    {
+      "path": "scripts/agent-mcp-cli-runtime-parity.test.ts",
+      "bytes": 15575,
+      "sha256": "c67f569662acb045424ba0950877f2cb1811821fa17aefc12c4ef012c8d572bf"
+    },
+    {
+      "path": "scripts/mcp-stdio-transport.test.ts",
+      "bytes": 8669,
+      "sha256": "bbf1cb1d4188c2e4b33a95422a40ac28cc39e19974b8f326a5307aaaa74d31c8"
+    },
+    {
+      "path": "scripts/drawing-to-3d/agent-mcp-server.test.ts",
+      "bytes": 11987,
+      "sha256": "d3f03b30b444298df57609825ecb489abf408d0e63e0e6f0abd93a69aa3c1dae"
+    },
+    {
+      "path": "scripts/drawing-to-3d/capability-surface-manifest.test.ts",
+      "bytes": 5867,
+      "sha256": "5927aec834038f1a1f0e3ad3181beeea4d67de8eb575778405cae9078c437e38"
+    },
+    {
+      "path": "scripts/drawing-to-3d/cad-v1-mcp.test.ts",
+      "bytes": 35926,
+      "sha256": "d6f4f44b099559be74fa0873902a5312618e765382fd941c1e3a5b03109e2f3b"
+    },
+    {
+      "path": "scripts/drawing-to-3d/downloadable-mcp.test.ts",
+      "bytes": 10150,
+      "sha256": "43ee89e39af91cfc66a35c82097fc624519b778c03578ce2bf3da11482465aee"
+    },
+    {
+      "path": "scripts/drawing-to-3d/mcp-package-publish.test.ts",
+      "bytes": 9815,
+      "sha256": "12431fed2b00f16f409073fdc7784e88151d4f519b1385a503a51e26cf91df4f"
+    },
+    {
+      "path": "scripts/drawing-to-3d/mcp-honesty.test.ts",
+      "bytes": 8419,
+      "sha256": "1507730ed8736af815fb493c4bfe823a3dfe72bf8ff968be48cd0f8cb3d24ed8"
+    },
+    {
+      "path": "scripts/cli/nexyfab.test.ts",
+      "bytes": 44879,
+      "sha256": "98cd90bd5e41cd2e3e87db452f5375ddc38132cf2122fd361291f118f900fc8a"
+    },
+    {
+      "path": "scripts/cli/nexyfab.roundtrip.test.mjs",
+      "bytes": 6753,
+      "sha256": "f0c5be006637d270205f37cf033a6af6bd6b2ff8a60d1d88924d438b1480f551"
+    },
+    {
+      "path": "scripts/agent-sidecar/windows-sea-readiness.test.mjs",
+      "bytes": 4752,
+      "sha256": "f4dba89e148bc83435ea7c39df74a500c8e8ee106d7ae90c6a7ae85d1b20803a"
+    },
+    {
+      "path": "scripts/agent-sidecar/windows-sea-release-evidence.test.mjs",
+      "bytes": 16365,
+      "sha256": "091c8742b5f3814f25255ca4ec40b38722b3e6e1c627cd690da89631dc213a30"
+    },
+    {
+      "path": "docs/evidence/release/windows-agent-sidecar-release-receipt.json",
+      "bytes": 3101,
+      "sha256": "d3b61ad219f476a3332887a00b985233565b0068012e2e88bbe79a149f4c50a3"
+    },
+    {
+      "path": "docs/evidence/local/agent-mcp-cli-runtime-current/focused_mcp_cli_parity.json",
+      "bytes": 1410,
+      "sha256": "063739858475f06058cebc89d0c5094b21b38036d3433969e6968f07252fc191"
+    },
+    {
+      "path": "docs/evidence/local/agent-mcp-cli-runtime-current/cli_offline_subprocess_roundtrip.json",
+      "bytes": 637,
+      "sha256": "c2d3cb029b865b1d62ab17e3c8b489e92ac6445cffa33d5332067a902f852661"
+    },
+    {
+      "path": "docs/evidence/local/agent-mcp-cli-runtime-current/agent_sidecar_source_bundle_check.json",
+      "bytes": 847,
+      "sha256": "13b5a3dbacb468ac1f4c3bc3d2042be36174e94338504397731f75b1e5ea78fa"
+    },
+    {
+      "path": "docs/evidence/local/agent-mcp-cli-runtime-current/windows_sea_fail_closed_contract.json",
+      "bytes": 1397,
+      "sha256": "820af7d50e2fdc22039587fb1005a444b7616111db3e65d74472df3dc5722ed2"
+    }
+  ],
+  "blockers": [],
+  "receiptSha256": "4eb1c52392afc4f472e3a1d260679d2ff9111b7b139b797a37c5710412a312b4"
+}

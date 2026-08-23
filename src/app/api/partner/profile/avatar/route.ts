@@ -8,10 +8,12 @@ import { getDbAdapter } from '@/lib/db-adapter';
 import { findFactoryForPartnerEmail } from '@/lib/partner-factory-access';
 import { getStorage } from '@/lib/storage';
 import { checkOrigin } from '@/lib/csrf';
+import { readBoundedMultipartForm } from '@/lib/boundedMultipartForm';
 
 export const dynamic = 'force-dynamic';
 
 const MAX_SIZE = 2 * 1024 * 1024; // 2 MB
+const MAX_AVATAR_MULTIPART_BODY_BYTES = 3 * 1024 * 1024;
 const ALLOWED_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp']);
 
 function imageExtension(type: string, bytes: Buffer): string | null {
@@ -27,10 +29,12 @@ export async function POST(req: NextRequest) {
   const partner = await getPartnerAuth(req);
   if (!partner) return NextResponse.json({ error: '인증이 필요합니다.' }, { status: 401 });
 
-  let formData: FormData;
-  try {
-    formData = await req.formData();
-  } catch {
+  const boundedForm = await readBoundedMultipartForm(req, MAX_AVATAR_MULTIPART_BODY_BYTES);
+  if (boundedForm.tooLarge) {
+    return NextResponse.json({ error: 'Request too large', code: 'PAYLOAD_TOO_LARGE' }, { status: 413 });
+  }
+  const formData = boundedForm.form;
+  if (!formData) {
     return NextResponse.json({ error: 'multipart/form-data 형식이 필요합니다.' }, { status: 400 });
   }
 

@@ -14,6 +14,10 @@ import { randomBytes } from 'node:crypto';
 import { getAuthUser } from '@/lib/auth-middleware';
 import { getDbAdapter } from '@/lib/db-adapter';
 import { checkOrigin } from '@/lib/csrf';
+import { resolveRequestOrgContext } from '@/lib/org-context';
+import { boundedJsonError, readBoundedJson } from '@/lib/boundedJsonBody';
+
+const MAX_PROMPT_LIBRARY_BODY_BYTES = 32 * 1024;
 
 export const dynamic = 'force-dynamic';
 
@@ -84,12 +88,19 @@ export async function GET(req: NextRequest) {
 
   const db = getDbAdapter();
   await ensureTable(db);
+  const context = resolveRequestOrgContext(authUser);
+  if (!context.ok) {
+    return NextResponse.json({ error: 'Select a valid workspace', code: context.code }, { status: 409 });
+  }
 
   const scope = req.nextUrl.searchParams.get('scope');
-  const orgIds = authUser.orgIds;
+  const orgId = context.orgId;
 
   let rows: PromptRow[] = [];
   if (scope === 'personal') {
+    if (context.mode !== 'personal') {
+      return NextResponse.json({ error: 'Switch to personal workspace first' }, { status: 409 });
+    }
     rows = await db.queryAll<PromptRow>(
       `SELECT * FROM nf_prompt_library
         WHERE scope = 'personal' AND owner_id = ?
@@ -97,26 +108,24 @@ export async function GET(req: NextRequest) {
       authUser.userId,
     );
   } else if (scope === 'org') {
-    if (orgIds.length === 0) return NextResponse.json({ entries: [] });
-    const placeholders = orgIds.map(() => '?').join(',');
+    if (!orgId) return NextResponse.json({ entries: [] });
     rows = await db.queryAll<PromptRow>(
       `SELECT * FROM nf_prompt_library
-        WHERE scope = 'org' AND org_id IN (${placeholders})
+        WHERE scope = 'org' AND org_id = ?
         ORDER BY updated_at DESC`,
-      ...orgIds,
+      orgId,
     );
   } else {
-    // Both — personal owned by caller plus org-shared in caller's orgs
-    const placeholders = orgIds.length > 0 ? orgIds.map(() => '?').join(',') : null;
-    const sql = placeholders
+    // The selected workspace is a hard boundary: personal prompts are not
+    // mixed into an organization view, and vice versa.
+    const sql = orgId
       ? `SELECT * FROM nf_prompt_library
-           WHERE (scope = 'personal' AND owner_id = ?)
-              OR (scope = 'org' AND org_id IN (${placeholders}))
+           WHERE scope = 'org' AND org_id = ?
            ORDER BY updated_at DESC`
       : `SELECT * FROM nf_prompt_library
            WHERE scope = 'personal' AND owner_id = ?
            ORDER BY updated_at DESC`;
-    const args = placeholders ? [authUser.userId, ...orgIds] : [authUser.userId];
+    const args = [orgId ?? authUser.userId];
     rows = await db.queryAll<PromptRow>(sql, ...args);
   }
 
@@ -139,8 +148,16 @@ export async function POST(req: NextRequest) {
   if (!checkOrigin(req)) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   const authUser = await getAuthUser(req);
   if (!authUser) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  const context = resolveRequestOrgContext(authUser);
+  if (!context.ok) {
+    return NextResponse.json({ error: 'Select a valid workspace', code: context.code }, { status: 409 });
+  }
 
-  const body = await req.json().catch(() => ({})) as CreateBody;
+  let body = {} as CreateBody;
+  try { body = await readBoundedJson<CreateBody>(req, MAX_PROMPT_LIBRARY_BODY_BYTES); }
+  catch (error) {
+    if (boundedJsonError(error)?.code === 'PAYLOAD_TOO_LARGE') return NextResponse.json({ error: 'Request too large', code: 'PAYLOAD_TOO_LARGE' }, { status: 413 });
+  }
 
   const scope = body.scope === 'org' ? 'org' : 'personal';
   const title = typeof body.title === 'string' ? body.title.trim() : '';
@@ -158,10 +175,11 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'description too long (max 500)' }, { status: 400 });
   }
   if (scope === 'org') {
-    if (!orgId) return NextResponse.json({ error: 'orgId required for org scope' }, { status: 400 });
-    if (!authUser.orgIds.includes(orgId)) {
-      return NextResponse.json({ error: 'Not a member of that org' }, { status: 403 });
+    if (!orgId || orgId !== context.orgId) {
+      return NextResponse.json({ error: 'orgId must match the active workspace' }, { status: 403 });
     }
+  } else if (context.mode !== 'personal') {
+    return NextResponse.json({ error: 'Switch to personal workspace to create a personal prompt' }, { status: 409 });
   }
 
   const db = getDbAdapter();

@@ -55,7 +55,7 @@ test.describe('Q8 happy-path workflow', () => {
     }
 
     // 2. Open DFM panel. This is a release-path assertion, not an optional probe.
-    const dfmBtn = page.getByTestId('shell-open-dfm');
+    const dfmBtn = page.getByTestId('shell-open-verify');
     await expect(dfmBtn).toBeVisible({ timeout: 10_000 });
     await dfmBtn.click();
     await page.getByTestId('shell-open-full-dfm').click();
@@ -67,9 +67,10 @@ test.describe('Q8 happy-path workflow', () => {
     await quoteBtn.click();
     await expect(page.getByTestId('rfq-panel')).toBeVisible({ timeout: 10_000 });
 
-    // 4. Force a save and require a concrete saved state.
+    // 4. Force a local .nfab save and require an honest persistence state.
+    // Guest/local save can remain "ready" while signed-in autosave reports "saved".
     await page.keyboard.press('Control+S');
-    await expect(page.getByTestId('autosave-indicator')).toHaveAttribute('data-save-state', 'saved', { timeout: 15_000 });
+    await expect(page.getByTestId('autosave-indicator')).toHaveAttribute('data-save-state', /^(ready|saved)$/, { timeout: 15_000 });
 
     // Final assertion — workspace is still alive after the full workflow
     await expect(page.getByTestId('shape-generator-workspace')).toBeVisible();

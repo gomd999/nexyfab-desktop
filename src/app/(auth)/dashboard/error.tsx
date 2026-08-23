@@ -35,7 +35,7 @@ export default function DashboardError({
 
   useEffect(() => {
     console.error('Dashboard error:', error);
-    void fetch('/api/nexyfab/telemetry', {
+    void fetch('/api/nexyfab/telemetry/', {
       method: 'POST', headers: { 'Content-Type': 'application/json' }, keepalive: true,
       body: JSON.stringify({ events: [{ id: crypto.randomUUID?.() ?? Math.random().toString(36).slice(2), ts: Date.now(), level: 'error', source: 'unknown', message: error.message || 'DashboardError', stack: error.stack, context: { digest: error.digest }, url: typeof window !== 'undefined' ? window.location.href : undefined, sessionId: 'auth-dashboard' }] }),
     }).catch(() => {});

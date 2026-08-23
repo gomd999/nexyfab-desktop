@@ -1,247 +1,7 @@
 [
   {
-    "file": "app/(auth)/account/page.tsx",
-    "hits": 1
-  },
-  {
-    "file": "app/(auth)/dashboard/page.tsx",
-    "hits": 6
-  },
-  {
-    "file": "app/(auth)/dashboard/projects/[id]/page.tsx",
-    "hits": 3
-  },
-  {
-    "file": "app/[lang]/nexyfab/admin/email-logs/page.tsx",
-    "hits": 1
-  },
-  {
-    "file": "app/[lang]/nexyfab/admin/email-templates/page.tsx",
-    "hits": 2
-  },
-  {
-    "file": "app/[lang]/nexyfab/admin/page.tsx",
-    "hits": 2
-  },
-  {
-    "file": "app/[lang]/nexyfab/admin/rfq-matching/page.tsx",
-    "hits": 1
-  },
-  {
-    "file": "app/[lang]/nexyfab/billing/fmtKRW.ts",
-    "hits": 1
-  },
-  {
-    "file": "app/[lang]/nexyfab/dashboard/page.tsx",
-    "hits": 9
-  },
-  {
-    "file": "app/[lang]/nexyfab/evaluate/page.tsx",
-    "hits": 1
-  },
-  {
-    "file": "app/[lang]/nexyfab/manufacturer/dashboard/page.tsx",
-    "hits": 2
-  },
-  {
-    "file": "app/[lang]/nexyfab/manufacturer/page.tsx",
-    "hits": 2
-  },
-  {
-    "file": "app/[lang]/nexyfab/manufacturers/[id]/page.tsx",
-    "hits": 1
-  },
-  {
-    "file": "app/[lang]/nexyfab/orders/OrderTimeline.tsx",
-    "hits": 1
-  },
-  {
-    "file": "app/[lang]/nexyfab/orders/orderHelpers.ts",
-    "hits": 1
-  },
-  {
-    "file": "app/[lang]/nexyfab/orders/page.tsx",
-    "hits": 1
-  },
-  {
-    "file": "app/[lang]/nexyfab/projects/page.tsx",
-    "hits": 1
-  },
-  {
-    "file": "app/[lang]/nexyfab/rfq/page.tsx",
-    "hits": 2
-  },
-  {
-    "file": "app/[lang]/nexyfab/rfq/QuoteAcceptSection.tsx",
-    "hits": 1
-  },
-  {
-    "file": "app/[lang]/nexyfab/rfq/QuoteComparisonView.tsx",
-    "hits": 1
-  },
-  {
-    "file": "app/[lang]/nexyfab/settings/audit/page.tsx",
-    "hits": 1
-  },
-  {
-    "file": "app/[lang]/nexyfab/settings/billing/page.tsx",
-    "hits": 11
-  },
-  {
-    "file": "app/[lang]/nexyfab/team/page.tsx",
-    "hits": 4
-  },
-  {
-    "file": "app/[lang]/quick-quote/AutoQuoteCard.tsx",
-    "hits": 1
-  },
-  {
-    "file": "app/[lang]/quick-quote/page.tsx",
-    "hits": 9
-  },
-  {
-    "file": "app/[lang]/shape-generator/ai/useVoiceInput.ts",
-    "hits": 1
-  },
-  {
-    "file": "app/[lang]/shape-generator/analysis/ManufacturingReadyCard.tsx",
-    "hits": 1
-  },
-  {
-    "file": "app/[lang]/shape-generator/cots/COTSPanel.tsx",
-    "hits": 1
-  },
-  {
-    "file": "app/[lang]/shape-generator/drawing/bomTable.ts",
-    "hits": 2
-  },
-  {
-    "file": "app/[lang]/shape-generator/estimation/CostEstimator.ts",
-    "hits": 1
-  },
-  {
-    "file": "app/[lang]/shape-generator/estimation/CostPanel.tsx",
-    "hits": 1
-  },
-  {
-    "file": "app/[lang]/shape-generator/estimation/quotePrinter.ts",
-    "hits": 1
-  },
-  {
-    "file": "app/[lang]/shape-generator/estimation/rfqBundler.ts",
-    "hits": 1
-  },
-  {
-    "file": "app/[lang]/shape-generator/estimation/SupplierPanel.tsx",
-    "hits": 1
-  },
-  {
-    "file": "app/[lang]/shape-generator/hooks/useManufacturingFlow.ts",
-    "hits": 2
-  },
-  {
-    "file": "app/[lang]/shape-generator/io/StepUploader.tsx",
-    "hits": 1
-  },
-  {
-    "file": "app/[lang]/shape-generator/offline/OfflineModeBanner.tsx",
-    "hits": 1
-  },
-  {
-    "file": "app/[lang]/shape-generator/ShapeGeneratorInner.tsx",
-    "hits": 1
-  },
-  {
-    "file": "app/[lang]/share/[token]/ShareViewer.tsx",
-    "hits": 1
-  },
-  {
-    "file": "app/[lang]/simulator/page.tsx",
-    "hits": 4
-  },
-  {
-    "file": "app/[lang]/view/[token]/page.tsx",
-    "hits": 2
-  },
-  {
-    "file": "app/admin/analytics/page.tsx",
-    "hits": 1
-  },
-  {
-    "file": "app/admin/anti-poach/page.tsx",
-    "hits": 2
-  },
-  {
-    "file": "app/admin/api-health/page.tsx",
-    "hits": 2
-  },
-  {
-    "file": "app/admin/audit-log/page.tsx",
-    "hits": 1
-  },
-  {
-    "file": "app/admin/billing/page.tsx",
-    "hits": 3
-  },
-  {
-    "file": "app/admin/contracts/page.tsx",
-    "hits": 2
-  },
-  {
-    "file": "app/admin/email-templates/page.tsx",
-    "hits": 1
-  },
-  {
-    "file": "app/admin/jobs/page.tsx",
-    "hits": 1
-  },
-  {
-    "file": "app/admin/manufacturing-kpi/page.tsx",
-    "hits": 1
-  },
-  {
-    "file": "app/admin/page.tsx",
-    "hits": 1
-  },
-  {
-    "file": "app/admin/partner-applications/page.tsx",
-    "hits": 1
-  },
-  {
-    "file": "app/admin/partner-cutover/page.tsx",
-    "hits": 2
-  },
-  {
-    "file": "app/admin/partner-kpi/page.tsx",
-    "hits": 1
-  },
-  {
-    "file": "app/admin/quotes/page.tsx",
-    "hits": 3
-  },
-  {
-    "file": "app/admin/refund-queue/page.tsx",
-    "hits": 1
-  },
-  {
-    "file": "app/admin/settings/page.tsx",
-    "hits": 2
-  },
-  {
-    "file": "app/admin/settlements/page.tsx",
-    "hits": 1
-  },
-  {
-    "file": "app/api/contracts/[id]/pdf/route.ts",
-    "hits": 4
-  },
-  {
     "file": "app/api/contracts/[id]/route.ts",
     "hits": 1
-  },
-  {
-    "file": "app/api/contracts/route.ts",
-    "hits": 2
   },
   {
     "file": "app/api/cron/anti-poach-signals/route.ts",
@@ -288,10 +48,6 @@
     "hits": 3
   },
   {
-    "file": "app/api/nexyfab/orders/[id]/pdf/route.ts",
-    "hits": 1
-  },
-  {
     "file": "app/api/nexyfab/orders/[id]/tax-invoice/route.ts",
     "hits": 1
   },
@@ -316,64 +72,16 @@
     "hits": 2
   },
   {
-    "file": "app/api/partner/settlement-pdf/route.ts",
-    "hits": 2
-  },
-  {
-    "file": "app/api/quotes/[id]/pdf/route.ts",
-    "hits": 2
-  },
-  {
     "file": "app/api/quotes/route.ts",
     "hits": 2
-  },
-  {
-    "file": "app/components/NexyfabNotificationBell.tsx",
-    "hits": 1
-  },
-  {
-    "file": "app/components/NotificationBell.tsx",
-    "hits": 1
-  },
-  {
-    "file": "app/partner/hub/page.tsx",
-    "hits": 1
   },
   {
     "file": "app/partner/quotes/QuoteAccuracyPanel.tsx",
     "hits": 1
   },
   {
-    "file": "app/portal/page.tsx",
-    "hits": 2
-  },
-  {
-    "file": "components/nexyfab/ConciergeProgressCard.tsx",
-    "hits": 1
-  },
-  {
-    "file": "components/nexyfab/PartnerProBadge.tsx",
-    "hits": 1
-  },
-  {
-    "file": "components/nexyfab/TimeseriesChart.tsx",
-    "hits": 1
-  },
-  {
     "file": "lib/billing-engine.ts",
     "hits": 2
-  },
-  {
-    "file": "lib/currency.ts",
-    "hits": 1
-  },
-  {
-    "file": "lib/formatDate.ts",
-    "hits": 3
-  },
-  {
-    "file": "lib/fx-rates.ts",
-    "hits": 1
   },
   {
     "file": "lib/i18n/format.ts",
@@ -382,14 +90,6 @@
   {
     "file": "lib/login-security.ts",
     "hits": 1
-  },
-  {
-    "file": "lib/multi-currency.ts",
-    "hits": 2
-  },
-  {
-    "file": "lib/nexyfab-email.ts",
-    "hits": 2
   },
   {
     "file": "lib/nexyflow-triggers.ts",

@@ -8,9 +8,10 @@
  * - 일일 알림 한도 5회 (localStorage 기반) — freemium 과부하 방지
  */
 
-import { useEffect, useRef, useCallback } from 'react';
+import { useEffect, useRef, useCallback, useMemo } from 'react';
 import type { DFMResult } from './analysis/dfmAnalysis';
 import type { Toast } from './useToast';
+import { createCommercialLocalizer } from '@/lib/i18n/commercialLocalizer';
 
 const DAILY_LIMIT = 5;
 const DEBOUNCE_MS = 2000;
@@ -73,7 +74,7 @@ export function useProactiveAdvisor({
   const prevDfmScoreRef = useRef<number | null>(null);
   const prevFeasfRef = useRef<number | null>(null);
   const prevShapeRef = useRef<string | null>(null);
-  const isKo = lang === 'ko';
+  const L = useMemo(() => createCommercialLocalizer(lang), [lang]);
 
   const checkAndAlert = useCallback(() => {
     if (!shapeId) return;
@@ -92,16 +93,14 @@ export function useProactiveAdvisor({
             return (rank[b.severity] ?? 0) - (rank[a.severity] ?? 0);
           })[0];
         const hint = topIssue
-          ? (isKo ? `주요 문제: ${topIssue.description}` : `Top issue: ${topIssue.description}`)
+          ? `${L('주요 문제', 'Top issue')}: ${topIssue.description}`
           : '';
         addToast(
           dfmScore < 50 ? 'error' : 'warning',
-          isKo
-            ? `DFM 경고: 제조성 점수 ${dfmScore}점. ${hint}`
-            : `DFM Warning: manufacturability score ${dfmScore}. ${hint}`,
+          `${L('DFM 경고: 제조성 점수', 'DFM warning: manufacturability score')} ${dfmScore}${L('점.', '.')} ${hint}`,
           8000,
           onOpenAdvisor
-            ? { label: isKo ? 'AI에게 물어보기' : 'Ask AI', onClick: onOpenAdvisor }
+            ? { label: L('AI에게 물어보기', 'Ask AI'), onClick: onOpenAdvisor }
             : undefined,
         );
         triggered = true;
@@ -115,12 +114,10 @@ export function useProactiveAdvisor({
       if (isNewIssue && incrementAdvisorState()) {
         addToast(
           feaSafetyFactor < 1.0 ? 'error' : 'warning',
-          isKo
-            ? `구조 경고: 안전계수 ${feaSafetyFactor.toFixed(2)} (권장 ≥2.0). 두께/소재 변경을 검토하세요.`
-            : `Structural warning: safety factor ${feaSafetyFactor.toFixed(2)} (recommended ≥2.0).`,
+          `${L('구조 경고: 안전계수', 'Structural warning: safety factor')} ${feaSafetyFactor.toFixed(2)} ${L('(권장 ≥2.0). 두께/소재 변경을 검토하세요.', '(recommended ≥2.0). Review thickness and material.')}`,
           8000,
           onOpenAdvisor
-            ? { label: isKo ? 'AI에게 물어보기' : 'Ask AI', onClick: onOpenAdvisor }
+            ? { label: L('AI에게 물어보기', 'Ask AI'), onClick: onOpenAdvisor }
             : undefined,
         );
       }
@@ -128,7 +125,7 @@ export function useProactiveAdvisor({
 
     prevDfmScoreRef.current = dfmScore;
     prevFeasfRef.current = feaSafetyFactor;
-  }, [dfmScore, dfmResults, feaSafetyFactor, shapeId, isKo, addToast, onOpenAdvisor]);
+  }, [dfmScore, dfmResults, feaSafetyFactor, shapeId, L, addToast, onOpenAdvisor]);
 
   // Reset refs when shape changes
   useEffect(() => {

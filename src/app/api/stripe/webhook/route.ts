@@ -19,12 +19,14 @@
  *   STRIPE_WEBHOOK_SECRET   — whsec_... from Stripe Dashboard → Webhooks
  */
 import { NextRequest, NextResponse } from 'next/server';
+import { boundedRawBodyError, readBoundedRawBody } from '@/lib/boundedRawBody';
 import Stripe from 'stripe';
 import { getDbAdapter } from '@/lib/db-adapter';
 import { enqueueJob } from '@/lib/job-queue';
 
 // Disable body parsing so we can read raw bytes for signature verification
 export const dynamic = 'force-dynamic';
+const STRIPE_WEBHOOK_RAW_BYTES = 1024 * 1024;
 
 // ─── Stripe client ───────────────────────────────────────────────────────────
 
@@ -45,20 +47,30 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     return NextResponse.json({ error: 'Webhook not configured' }, { status: 500 });
   }
 
-  const rawBody = await req.text();
+  let rawBytes: Uint8Array;
+  try {
+    rawBytes = await readBoundedRawBody(req, STRIPE_WEBHOOK_RAW_BYTES);
+  } catch (error) {
+    const bodyError = boundedRawBodyError(error);
+    if (bodyError?.code === 'PAYLOAD_TOO_LARGE') return NextResponse.json({ error: 'Request body too large' }, { status: bodyError.status });
+    return NextResponse.json({ error: 'Invalid signature' }, { status: 401 });
+  }
   const stripeSignature = req.headers.get('stripe-signature') ?? '';
 
   // ── 1. Signature verification ────────────────────────────────────────────
   let event: Stripe.Event;
+  let rawBody: string;
   try {
     if (webhookSecret) {
       if (!stripeSignature) {
         return NextResponse.json({ error: 'Missing stripe-signature header' }, { status: 401 });
       }
       const stripe = getStripe();
-      event = stripe.webhooks.constructEvent(rawBody, stripeSignature, webhookSecret);
+      event = stripe.webhooks.constructEvent(Buffer.from(rawBytes), stripeSignature, webhookSecret);
+      rawBody = new TextDecoder('utf-8', { fatal: true }).decode(rawBytes);
     } else {
       // Dev mode without a secret — parse JSON directly (never reached in prod)
+      rawBody = new TextDecoder('utf-8', { fatal: true }).decode(rawBytes);
       event = JSON.parse(rawBody) as Stripe.Event;
     }
   } catch (err) {

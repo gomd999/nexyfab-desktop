@@ -137,7 +137,7 @@ function InvitationsInner() {
           <h1 style={titleStyle}>{t.title}</h1>
           <p style={subtitleStyle}>{t.subtitle}</p>
         </div>
-        <PartnerProBadge session={typeof window !== 'undefined' ? localStorage.getItem('partnerSession') ?? '' : ''} />
+        <PartnerProBadge lang={lang} session={typeof window !== 'undefined' ? localStorage.getItem('partnerSession') ?? '' : ''} />
       </div>
 
       {loading && <div style={mutedStyle}>{t.loading}</div>}

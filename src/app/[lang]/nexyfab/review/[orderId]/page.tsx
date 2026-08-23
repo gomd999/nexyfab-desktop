@@ -10,6 +10,8 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import ReviewForm from '@/components/nexyfab/ReviewForm';
+import { toIsoLang, toRouteLang } from '@/lib/i18n/normalize';
+import { createCommercialLocalizer } from '@/lib/i18n/commercialLocalizer';
 
 interface OrderInfo {
   id: string;
@@ -23,7 +25,9 @@ interface OrderInfo {
 export default function StandaloneReviewPage() {
   const params = useParams();
   const router = useRouter();
-  const lang = (params?.lang as string) === 'kr' ? 'ko' : 'en';
+  const routeLang = params?.lang as string;
+  const lang = toIsoLang(routeLang);
+  const route = toRouteLang(routeLang);
   const orderId = params?.orderId as string;
   const [order, setOrder] = useState<OrderInfo | null>(null);
   const [loadErr, setLoadErr] = useState<string | null>(null);
@@ -43,20 +47,15 @@ export default function StandaloneReviewPage() {
     return () => { cancelled = true; };
   }, [orderId]);
 
-  const t = lang === 'ko' ? {
-    title: '주문 리뷰',
-    loading: '주문 정보를 불러오는 중…',
-    notFound: '주문을 찾을 수 없습니다.',
-    notDelivered: '배송 완료 후에 리뷰를 작성할 수 있습니다.',
-    forOrder: '주문',
-    backToOrders: '← 주문 목록으로',
-  } : {
-    title: 'Order Review',
-    loading: 'Loading order info…',
-    notFound: 'Order not found.',
-    notDelivered: 'You can review after the order is delivered.',
-    forOrder: 'For order',
-    backToOrders: '← Back to orders',
+  const L = createCommercialLocalizer(lang);
+  const t = {
+    title: L('주문 리뷰', 'Order Review'),
+    loading: L('주문 정보를 불러오는 중…', 'Loading order info…'),
+    notFound: L('주문을 찾을 수 없습니다.', 'Order not found.'),
+    notDelivered: L('배송 완료 후에 리뷰를 작성할 수 있습니다.', 'You can review after the order is delivered.'),
+    forOrder: L('주문', 'For order'),
+    backToOrders: L('← 주문 목록으로', '← Back to orders'),
+    partnerEmailMissing: L('주문에 연결된 파트너 이메일이 없어 리뷰를 제출할 수 없습니다.', 'Partner email missing on this order — cannot submit review.'),
   };
 
   if (loadErr) {
@@ -78,14 +77,14 @@ export default function StandaloneReviewPage() {
         <div style={{ color: '#d29922', padding: 16, background: 'rgba(210,153,34,0.12)', borderRadius: 8, fontSize: 13 }}>
           ⚠ {t.notDelivered}
         </div>
-        <a href={`/${lang === 'ko' ? 'kr' : 'en'}/nexyfab/orders`} style={backLinkStyle}>{t.backToOrders}</a>
+        <a href={`/${route}/nexyfab/orders`} style={backLinkStyle}>{t.backToOrders}</a>
       </main>
     );
   }
   if (!order.partnerEmail) {
     return (
       <main style={pageStyle}>
-        <div style={{ color: '#f85149', padding: 16 }}>Partner email missing on this order — cannot submit review.</div>
+        <div style={{ color: '#f85149', padding: 16 }}>{t.partnerEmailMissing}</div>
       </main>
     );
   }
@@ -102,17 +101,17 @@ export default function StandaloneReviewPage() {
       </div>
 
       <ReviewForm
-        lang={lang as 'ko' | 'en'}
+        lang={lang}
         contractId={order.id}
         partnerEmail={order.partnerEmail}
         onSubmitted={() => {
           // Send back to orders list after a short delay so the success
           // message has a chance to render.
-          setTimeout(() => router.push(`/${lang === 'ko' ? 'kr' : 'en'}/nexyfab/orders`), 1800);
+          setTimeout(() => router.push(`/${route}/nexyfab/orders`), 1800);
         }}
       />
 
-      <a href={`/${lang === 'ko' ? 'kr' : 'en'}/nexyfab/orders`} style={backLinkStyle}>{t.backToOrders}</a>
+      <a href={`/${route}/nexyfab/orders`} style={backLinkStyle}>{t.backToOrders}</a>
     </main>
   );
 }

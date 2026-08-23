@@ -2,6 +2,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getAuthUser } from '@/lib/auth-middleware';
 import { getDbAdapter } from '@/lib/db-adapter';
 import { checkOrigin } from '@/lib/csrf';
+import { boundedJsonError, readBoundedJson } from '@/lib/boundedJsonBody';
+
+const MAX_APPLICATION_DECISION_BODY_BYTES = 16 * 1024;
 
 export const dynamic = 'force-dynamic';
 
@@ -57,7 +60,11 @@ export async function PATCH(req: NextRequest) {
   const admin = await requireAdmin(req);
   if (!admin) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
 
-  const body = await req.json().catch(() => ({})) as { id: string; action: 'approve' | 'reject'; note?: string };
+  let body = {} as { id: string; action: 'approve' | 'reject'; note?: string };
+  try { body = await readBoundedJson(req, MAX_APPLICATION_DECISION_BODY_BYTES); }
+  catch (error) {
+    if (boundedJsonError(error)?.code === 'PAYLOAD_TOO_LARGE') return NextResponse.json({ error: 'Request too large', code: 'PAYLOAD_TOO_LARGE' }, { status: 413 });
+  }
   if (!body.id || !['approve', 'reject'].includes(body.action)) {
     return NextResponse.json({ error: 'id and action (approve|reject) required' }, { status: 400 });
   }

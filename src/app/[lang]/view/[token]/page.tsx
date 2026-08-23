@@ -2,6 +2,8 @@
 
 import Link from 'next/link';
 import { use, useEffect, useRef, useState, useCallback } from 'react';
+import { toIsoLang, toRouteLang, type IsoLang } from '@/lib/i18n/normalize';
+import { formatDate, formatNumber } from '@/lib/i18n/format';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -41,7 +43,26 @@ interface ShareData {
 
 // ─── Spinner ─────────────────────────────────────────────────────────────────
 
-function Spinner() {
+type ViewCopy = {
+  loading: string; annotationAdded: string; addFailed: string; networkError: string;
+  extended: string; extendFailed: string; expiredTitle: string; checkLink: string;
+  openNexyfab: string; sharedModel: string; expires: string; extendTitle: string;
+  extend: string; annotationPlaceholder: string; color: string; add: string; cancel: string;
+  clickPin: string; addNote: string; material: string; annotations: string; open: string;
+  noAnnotations: string; useAddNote: string; markOpen: string; markResolved: string;
+  reopen: string; resolved: string; loginPro: string;
+};
+
+const VIEW_COPY: Record<IsoLang, ViewCopy> = {
+  ko: { loading: '로드 중...', annotationAdded: '주석이 추가되었습니다!', addFailed: '추가 실패', networkError: '네트워크 오류', extended: '1년 연장되었습니다!', extendFailed: '연장 실패 (소유자만 가능)', expiredTitle: '링크가 만료되었거나 존재하지 않습니다', checkLink: '공유 링크를 다시 확인해 주세요.', openNexyfab: 'NexyFab으로 이동 →', sharedModel: '공유된 3D 모델', expires: '만료', extendTitle: '공유 링크 1년 연장', extend: '+ 연장', annotationPlaceholder: '주석 내용 입력...', color: '색상', add: '추가', cancel: '취소', clickPin: '클릭하여 핀 추가', addNote: '주석 추가', material: '재료', annotations: '3D 주석', open: '미해결', noAnnotations: '아직 주석이 없습니다.', useAddNote: '왼쪽 "주석 추가" 버튼을 눌러 추가하세요.', markOpen: '미해결로 변경', markResolved: '해결됨으로 표시', reopen: '재오픈', resolved: '해결됨', loginPro: 'Pro 로그인하면 주석을 추가할 수 있습니다 →' },
+  en: { loading: 'Loading...', annotationAdded: 'Annotation added!', addFailed: 'Failed to add', networkError: 'Network error', extended: 'Extended by 1 year!', extendFailed: 'Failed — owner only', expiredTitle: 'Link expired or not found', checkLink: 'Please check the share link.', openNexyfab: 'Open NexyFab →', sharedModel: 'Shared 3D Model', expires: 'Expires', extendTitle: 'Extend link by 1 year', extend: '+ Extend', annotationPlaceholder: 'Enter annotation text...', color: 'Color', add: 'Add', cancel: 'Cancel', clickPin: 'Click to place pin', addNote: 'Add note', material: 'Material', annotations: '3D Annotations', open: 'open', noAnnotations: 'No annotations yet.', useAddNote: 'Use "Add note" to place one.', markOpen: 'Mark open', markResolved: 'Mark resolved', reopen: 'Reopen', resolved: 'Resolved', loginPro: 'Log in with Pro to add annotations →' },
+  ja: { loading: '読み込み中...', annotationAdded: '注釈を追加しました！', addFailed: '追加に失敗しました', networkError: 'ネットワークエラー', extended: '1年延長しました！', extendFailed: '延長に失敗しました（所有者のみ）', expiredTitle: 'リンクの有効期限が切れているか、存在しません', checkLink: '共有リンクを確認してください。', openNexyfab: 'NexyFabを開く →', sharedModel: '共有3Dモデル', expires: '期限', extendTitle: 'リンクを1年間延長', extend: '+ 延長', annotationPlaceholder: '注釈を入力...', color: '色', add: '追加', cancel: 'キャンセル', clickPin: 'クリックしてピンを配置', addNote: '注釈を追加', material: '素材', annotations: '3D注釈', open: '未解決', noAnnotations: '注釈はまだありません。', useAddNote: '左の「注釈を追加」ボタンから追加できます。', markOpen: '未解決に戻す', markResolved: '解決済みにする', reopen: '再開', resolved: '解決済み', loginPro: 'Proにログインすると注釈を追加できます →' },
+  zh: { loading: '加载中...', annotationAdded: '注释已添加！', addFailed: '添加失败', networkError: '网络错误', extended: '已延长一年！', extendFailed: '延长失败（仅所有者可操作）', expiredTitle: '链接已过期或不存在', checkLink: '请检查共享链接。', openNexyfab: '打开 NexyFab →', sharedModel: '共享 3D 模型', expires: '到期', extendTitle: '将链接延长一年', extend: '+ 延长', annotationPlaceholder: '输入注释内容...', color: '颜色', add: '添加', cancel: '取消', clickPin: '点击放置标记', addNote: '添加注释', material: '材料', annotations: '3D 注释', open: '未解决', noAnnotations: '暂无注释。', useAddNote: '使用左侧“添加注释”按钮。', markOpen: '标记为未解决', markResolved: '标记为已解决', reopen: '重新打开', resolved: '已解决', loginPro: '登录 Pro 后即可添加注释 →' },
+  es: { loading: 'Cargando...', annotationAdded: '¡Anotación añadida!', addFailed: 'No se pudo añadir', networkError: 'Error de red', extended: '¡Ampliado un año!', extendFailed: 'No se pudo ampliar (solo el propietario)', expiredTitle: 'El enlace ha caducado o no existe', checkLink: 'Comprueba el enlace compartido.', openNexyfab: 'Abrir NexyFab →', sharedModel: 'Modelo 3D compartido', expires: 'Caduca', extendTitle: 'Ampliar el enlace un año', extend: '+ Ampliar', annotationPlaceholder: 'Escribe una anotación...', color: 'Color', add: 'Añadir', cancel: 'Cancelar', clickPin: 'Haz clic para colocar un pin', addNote: 'Añadir nota', material: 'Material', annotations: 'Anotaciones 3D', open: 'abiertas', noAnnotations: 'Aún no hay anotaciones.', useAddNote: 'Usa «Añadir nota» para colocar una.', markOpen: 'Marcar como abierta', markResolved: 'Marcar como resuelta', reopen: 'Reabrir', resolved: 'Resuelta', loginPro: 'Inicia sesión con Pro para añadir anotaciones →' },
+  ar: { loading: 'جارٍ التحميل...', annotationAdded: 'تمت إضافة التعليق!', addFailed: 'تعذرت الإضافة', networkError: 'خطأ في الشبكة', extended: 'تم التمديد سنة واحدة!', extendFailed: 'تعذر التمديد — للمالك فقط', expiredTitle: 'انتهت صلاحية الرابط أو أنه غير موجود', checkLink: 'يرجى التحقق من الرابط المشترك.', openNexyfab: 'فتح NexyFab ←', sharedModel: 'نموذج ثلاثي الأبعاد مشترك', expires: 'ينتهي', extendTitle: 'تمديد الرابط سنة واحدة', extend: '+ تمديد', annotationPlaceholder: 'أدخل نص التعليق...', color: 'اللون', add: 'إضافة', cancel: 'إلغاء', clickPin: 'انقر لوضع دبوس', addNote: 'إضافة تعليق', material: 'المادة', annotations: 'تعليقات ثلاثية الأبعاد', open: 'مفتوح', noAnnotations: 'لا توجد تعليقات بعد.', useAddNote: 'استخدم زر «إضافة تعليق» لوضع تعليق.', markOpen: 'وضع علامة مفتوح', markResolved: 'وضع علامة محلول', reopen: 'إعادة فتح', resolved: 'محلول', loginPro: 'سجّل الدخول بحساب Pro لإضافة التعليقات ←' },
+};
+
+function Spinner({ lang }: { lang: string }) {
   return (
     <div style={{
       minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -53,7 +74,7 @@ function Spinner() {
           borderTopColor: '#388bfd', borderRadius: '50%',
           animation: 'spin 0.9s linear infinite', margin: '0 auto 16px',
         }} />
-        <p style={{ color: '#6e7681', fontSize: 14, margin: 0 }}>Loading...</p>
+        <p style={{ color: '#6e7681', fontSize: 14, margin: 0 }}>{VIEW_COPY[toIsoLang(lang)].loading}</p>
       </div>
     </div>
   );
@@ -63,7 +84,8 @@ function Spinner() {
 
 export default function ViewTokenPage({ params }: { params: Promise<{ lang: string; token: string }> }) {
   const { lang, token } = use(params);
-  const isKo = lang === 'ko';
+  const routeLang = toRouteLang(lang);
+  const t = VIEW_COPY[toIsoLang(routeLang)];
 
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const overlayCanvasRef = useRef<HTMLCanvasElement>(null);
@@ -280,17 +302,17 @@ export default function ViewTokenPage({ params }: { params: Promise<{ lang: stri
         setPendingScreenPos(null);
         setAddMode(false);
         reloadAnnotations();
-        setAnnMsg(isKo ? '주석이 추가되었습니다!' : 'Annotation added!');
+        setAnnMsg(t.annotationAdded);
         setTimeout(() => setAnnMsg(null), 3000);
       } else {
-        setAnnMsg(data.error ?? (isKo ? '추가 실패' : 'Failed to add'));
+        setAnnMsg(data.error ?? t.addFailed);
       }
     } catch {
-      setAnnMsg(isKo ? '네트워크 오류' : 'Network error');
+      setAnnMsg(t.networkError);
     } finally {
       setAnnSubmitting(false);
     }
-  }, [pendingPos, annText, annColor, authToken, token, reloadAnnotations, isKo]);
+  }, [pendingPos, annText, annColor, authToken, token, reloadAnnotations, t]);
 
   // Toggle resolved
   const toggleResolved = useCallback(async (ann: Annotation) => {
@@ -321,27 +343,25 @@ export default function ViewTokenPage({ params }: { params: Promise<{ lang: stri
       if (res.ok && data.ok) {
         const newExpiry = data.expiresAt ? new Date(data.expiresAt).getTime() : Date.now() + 365 * 86400000;
         setShareData(prev => prev ? { ...prev, expiresAt: newExpiry } : prev);
-        setExtendMsg(isKo ? '1년 연장되었습니다!' : 'Extended by 1 year!');
+        setExtendMsg(t.extended);
       } else {
-        setExtendMsg(data.error ?? (isKo ? '연장 실패 (소유자만 가능)' : 'Failed — owner only'));
+        setExtendMsg(data.error ?? t.extendFailed);
       }
     } catch {
-      setExtendMsg(isKo ? '네트워크 오류' : 'Network error');
+      setExtendMsg(t.networkError);
     } finally {
       setExtending(false);
       setTimeout(() => setExtendMsg(null), 4000);
     }
-  }, [authToken, token, isKo]);
+  }, [authToken, token, t]);
 
   // ── Format helpers ────────────────────────────────────────────────────────
   function fmtDate(ts: number) {
-    return new Date(ts).toLocaleDateString(isKo ? 'ko-KR' : 'en-US', {
-      year: 'numeric', month: 'short', day: 'numeric',
-    });
+    return formatDate(ts, routeLang, { year: 'numeric', month: 'short', day: 'numeric' }) ?? '';
   }
 
   // ── Loading ───────────────────────────────────────────────────────────────
-  if (loading) return <Spinner />;
+  if (loading) return <Spinner lang={routeLang} />;
 
   if (error || !shareData) {
     return (
@@ -353,10 +373,10 @@ export default function ViewTokenPage({ params }: { params: Promise<{ lang: stri
         <div style={{ textAlign: 'center', maxWidth: 400, padding: '0 24px' }}>
           <div style={{ fontSize: 56, marginBottom: 20 }}>🔒</div>
           <h2 style={{ margin: '0 0 8px', fontSize: 20, color: '#e6edf3' }}>
-            {isKo ? '링크가 만료되었거나 존재하지 않습니다' : 'Link expired or not found'}
+            {t.expiredTitle}
           </h2>
           <p style={{ color: '#8b949e', fontSize: 14, margin: '0 0 24px' }}>
-            {error ?? (isKo ? '공유 링크를 다시 확인해 주세요.' : 'Please check the share link.')}
+            {error ?? t.checkLink}
           </p>
           <Link
             prefetch
@@ -367,7 +387,7 @@ export default function ViewTokenPage({ params }: { params: Promise<{ lang: stri
               fontSize: 14, textDecoration: 'none',
             }}
           >
-            {isKo ? 'NexyFab으로 이동 →' : 'Open NexyFab →'}
+            {t.openNexyfab}
           </Link>
         </div>
       </div>
@@ -395,13 +415,13 @@ export default function ViewTokenPage({ params }: { params: Promise<{ lang: stri
         </Link>
         <span style={{ color: '#30363d' }}>•</span>
         <span style={{ fontSize: 15, fontWeight: 600, color: '#e6edf3' }}>
-          {metadata.name || (isKo ? '공유된 3D 모델' : 'Shared 3D Model')}
+          {metadata.name || t.sharedModel}
         </span>
         <span style={{
           fontSize: 11, padding: '2px 9px', borderRadius: 20,
           background: '#21262d', color: '#8b949e', border: '1px solid #30363d',
         }}>
-          👁 {viewCount.toLocaleString()}
+          👁 {formatNumber(viewCount, routeLang) ?? viewCount}
         </span>
 
         <div style={{ flex: 1 }} />
@@ -409,20 +429,20 @@ export default function ViewTokenPage({ params }: { params: Promise<{ lang: stri
         {/* Expiry with extend button */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
           <span style={{ fontSize: 11, color: isExpiringSoon ? '#d29922' : '#8b949e' }}>
-            {isExpiringSoon ? '⚠️ ' : ''}{isKo ? '만료' : 'Expires'}: {fmtDate(expiresAt)}
+            {isExpiringSoon ? '⚠️ ' : ''}{t.expires}: {fmtDate(expiresAt)}
           </span>
           {authToken && (
             <button
               onClick={() => void extendShare()}
               disabled={extending}
-              title={isKo ? '공유 링크 1년 연장' : 'Extend link by 1 year'}
+              title={t.extendTitle}
               style={{
                 padding: '3px 9px', borderRadius: 5, border: '1px solid #30363d',
                 background: 'transparent', color: '#6e7681', fontSize: 10, cursor: 'pointer',
                 opacity: extending ? 0.6 : 1,
               }}
             >
-              {extending ? '...' : (isKo ? '+ 연장' : '+ Extend')}
+              {extending ? '...' : t.extend}
             </button>
           )}
         </div>
@@ -500,7 +520,7 @@ export default function ViewTokenPage({ params }: { params: Promise<{ lang: stri
               <textarea
                 value={annText}
                 onChange={e => setAnnText(e.target.value)}
-                placeholder={isKo ? '주석 내용 입력...' : 'Enter annotation text...'}
+                placeholder={t.annotationPlaceholder}
                 rows={3}
                 style={{
                   width: '100%', padding: '7px 9px', borderRadius: 6, resize: 'none',
@@ -510,7 +530,7 @@ export default function ViewTokenPage({ params }: { params: Promise<{ lang: stri
                 }}
               />
               <div style={{ display: 'flex', gap: 6, alignItems: 'center', marginBottom: 8 }}>
-                <label style={{ fontSize: 10, color: '#6e7681' }}>{isKo ? '색상' : 'Color'}:</label>
+                <label style={{ fontSize: 10, color: '#6e7681' }}>{t.color}:</label>
                 {['#f59e0b', '#388bfd', '#3fb950', '#f85149', '#a371f7'].map(c => (
                   <button
                     key={c}
@@ -533,7 +553,7 @@ export default function ViewTokenPage({ params }: { params: Promise<{ lang: stri
                     fontSize: 12, fontWeight: 700, cursor: annText.trim() ? 'pointer' : 'default',
                   }}
                 >
-                  {annSubmitting ? '...' : (isKo ? '추가' : 'Add')}
+                  {annSubmitting ? '...' : t.add}
                 </button>
                 <button
                   onClick={() => { setPendingPos(null); setPendingScreenPos(null); setAnnText(''); }}
@@ -542,7 +562,7 @@ export default function ViewTokenPage({ params }: { params: Promise<{ lang: stri
                     background: 'transparent', color: '#6e7681', fontSize: 12, cursor: 'pointer',
                   }}
                 >
-                  {isKo ? '취소' : 'Cancel'}
+                  {t.cancel}
                 </button>
               </div>
             </div>
@@ -562,8 +582,8 @@ export default function ViewTokenPage({ params }: { params: Promise<{ lang: stri
               }}
             >
               📌 {addMode
-                ? (isKo ? '클릭하여 핀 추가' : 'Click to place pin')
-                : (isKo ? '주석 추가' : 'Add note')}
+                ? t.clickPin
+                : t.addNote}
             </button>
           )}
 
@@ -591,7 +611,7 @@ export default function ViewTokenPage({ params }: { params: Promise<{ lang: stri
         }}>
           {metadata.material && (
             <span style={{ fontSize: 11, color: '#8b949e' }}>
-              {isKo ? '재료' : 'Material'}: <b style={{ color: '#e6edf3' }}>{metadata.material}</b>
+              {t.material}: <b style={{ color: '#e6edf3' }}>{metadata.material}</b>
             </span>
           )}
           {metadata.bbox && (
@@ -629,14 +649,14 @@ export default function ViewTokenPage({ params }: { params: Promise<{ lang: stri
             display: 'flex', flexDirection: 'column',
           }}>
             <div style={{ padding: '10px 14px', borderBottom: '1px solid #30363d', fontSize: 12, fontWeight: 700, color: '#8b949e' }}>
-              {isKo ? '3D 주석' : '3D Annotations'} ({annotations.filter(a => !a.resolved).length} {isKo ? '미해결' : 'open'})
+              {t.annotations} ({annotations.filter(a => !a.resolved).length} {t.open})
             </div>
             <div style={{ overflowY: 'auto', flex: 1, padding: '8px 0' }}>
               {annotations.length === 0 ? (
                 <p style={{ padding: '16px', color: '#6e7681', fontSize: 12, textAlign: 'center', margin: 0 }}>
-                  {isKo ? '아직 주석이 없습니다.' : 'No annotations yet.'}
+                  {t.noAnnotations}
                   {authToken && (
-                    <><br /><span style={{ color: '#8b949e' }}>{isKo ? '왼쪽 "주석 추가" 버튼을 눌러 추가하세요.' : 'Use "Add note" to place one.'}</span></>
+                    <><br /><span style={{ color: '#8b949e' }}>{t.useAddNote}</span></>
                   )}
                 </p>
               ) : annotations.map(ann => (
@@ -664,23 +684,23 @@ export default function ViewTokenPage({ params }: { params: Promise<{ lang: stri
                     {authToken && (
                       <button
                         onClick={() => void toggleResolved(ann)}
-                        title={ann.resolved ? (isKo ? '미해결로 변경' : 'Mark open') : (isKo ? '해결됨으로 표시' : 'Mark resolved')}
+                        title={ann.resolved ? t.markOpen : t.markResolved}
                         style={{
                           padding: '1px 6px', borderRadius: 4, border: `1px solid ${ann.resolved ? '#6e7681' : '#3fb950'}`,
                           background: 'transparent', color: ann.resolved ? '#6e7681' : '#3fb950',
                           fontSize: 9, fontWeight: 700, cursor: 'pointer', flexShrink: 0,
                         }}
                       >
-                        {ann.resolved ? (isKo ? '재오픈' : 'Reopen') : '✓'}
+                        {ann.resolved ? t.reopen : '✓'}
                       </button>
                     )}
                     {!authToken && ann.resolved && (
                       <span style={{ fontSize: 9, color: '#3fb950', background: '#3fb95022', padding: '1px 5px', borderRadius: 4 }}>
-                        {isKo ? '해결됨' : 'Resolved'}
+                        {t.resolved}
                       </span>
                     )}
                     <span style={{ fontSize: 10, color: '#6e7681', flexShrink: 0 }}>
-                      {new Date(ann.createdAt).toLocaleDateString(isKo ? 'ko-KR' : 'en-US', { month: 'short', day: 'numeric' })}
+                      {formatDate(ann.createdAt, routeLang, { month: 'short', day: 'numeric' })}
                     </span>
                   </div>
                   <div style={{ fontSize: 12, color: '#8b949e', lineHeight: 1.5, wordBreak: 'break-word' }}>
@@ -693,8 +713,8 @@ export default function ViewTokenPage({ params }: { params: Promise<{ lang: stri
             {/* Not logged in hint */}
             {!authToken && (
               <div style={{ padding: '10px 14px', borderTop: '1px solid #21262d', fontSize: 11, color: '#6e7681', textAlign: 'center' }}>
-                <a href="/login" style={{ color: '#388bfd', fontWeight: 700, textDecoration: 'none' }}>
-                  {isKo ? 'Pro 로그인하면 주석을 추가할 수 있습니다 →' : 'Log in with Pro to add annotations →'}
+                <a href={`/login?lang=${routeLang}`} style={{ color: '#388bfd', fontWeight: 700, textDecoration: 'none' }}>
+                  {t.loginPro}
                 </a>
               </div>
             )}

@@ -29,14 +29,14 @@ export async function guardStudioAi(req: NextRequest): Promise<NextResponse | nu
     }
     return null;
   }
-  const budget = await checkUserBudget(planCheck.userId);
+  const budget = await checkUserBudget(planCheck.userId, planCheck.orgId);
   if (!budget.ok) {
     return NextResponse.json(
       { ok: false, error: `일일 AI 사용 한도($${budget.limitUsd})에 도달했습니다. 내일 다시 시도하세요.`, code: 'COST_BUDGET', resetAtMs: budget.resetAtMs },
       { status: 402 },
     );
   }
-  const slot = await consumeMonthlyMetricSlot(planCheck.userId, planCheck.plan, 'shape_chat');
+  const slot = await consumeMonthlyMetricSlot(planCheck.userId, planCheck.plan, 'shape_chat', undefined, planCheck.orgId);
   if (!slot.ok) {
     return NextResponse.json(
       { ok: false, error: `무료 플랜 월 한도(${slot.limit}회)에 도달했습니다. Pro로 업그레이드하면 무제한입니다.`, code: 'PLAN_LIMIT' },

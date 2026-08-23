@@ -1,0 +1,52 @@
+{
+  "schema": "nexyfab.mechanical-core-feature-local-runtime.v1",
+  "feature": "cornerRelief",
+  "axis": "create",
+  "status": "PASS",
+  "executedAt": "2026-08-22T07:13:30.564Z",
+  "payload": {
+    "id": "runtime-feature",
+    "enabled": true,
+    "type": "cornerRelief",
+    "params": {
+      "corner": 0,
+      "shape": 0,
+      "size": 5,
+      "inset": 0
+    }
+  },
+  "exact": {
+    "handle": "occt:329",
+    "kernelKind": "Solid",
+    "nativeShapeType": 0,
+    "solidCount": 1,
+    "singleSolid": true,
+    "volumeMm3": 3590.1825229575315,
+    "edgeCount": 15,
+    "faceCount": 7,
+    "boundsMm": [
+      [
+        -30.00301145948707,
+        -1.0030114594870712,
+        -15.003011459487071
+      ],
+      [
+        30.00301145948707,
+        1.0030114594870712,
+        15.003011459487071
+      ]
+    ]
+  },
+  "featureMeaning": {
+    "assertion": "actual product exact circular corner relief subtracts one analytic quarter-cylinder from the selected sheet corner",
+    "exactScope": "axis-aligned constant-thickness box host",
+    "corner": 0,
+    "sizeMm": 5,
+    "cylindricalFaces": 1,
+    "removedVolumeMm3": 9.817477042468104,
+    "expectedVolumeMm3": 3590.182522957532,
+    "actualVolumeMm3": 3590.1825229575315
+  },
+  "exactScope": "declared numeric runtime case",
+  "assertion": "native OCCT produced one non-empty exact solid and changed the host geometry"
+}

@@ -10,6 +10,11 @@ import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { rateLimit } from '@/lib/rate-limit';
 import { getTrustedClientIp } from '@/lib/client-ip';
+import { boundedJsonError, readBoundedJson } from '@/lib/boundedJsonBody';
+
+// Match the generic API proxy ceiling; ordinary ASCII DXF up to the existing
+// product limit still fits without advertising an unreachable route budget.
+const MAX_BODY_BYTES = 16 * 1024 * 1024;
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -26,7 +31,10 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   if (!rl.allowed) return NextResponse.json({ ok: false, error: '요청이 너무 많습니다.' }, { status: 429 });
 
   let body: { dxf?: string; origin?: { E?: number; N?: number }; layerFilter?: string };
-  try { body = await req.json(); } catch { return NextResponse.json({ ok: false, error: 'invalid json' }, { status: 400 }); }
+  try { body = await readBoundedJson(req, MAX_BODY_BYTES); } catch (error) {
+    if (boundedJsonError(error)?.code === 'PAYLOAD_TOO_LARGE') return NextResponse.json({ ok: false, error: 'DXF 12MB 초과 — 도엽을 나눠 주세요.' }, { status: 413 });
+    return NextResponse.json({ ok: false, error: 'invalid json' }, { status: 400 });
+  }
   const dxf = body.dxf ?? '';
   if (!dxf || typeof dxf !== 'string') return NextResponse.json({ ok: false, error: 'dxf 텍스트가 필요합니다.' }, { status: 400 });
   if (dxf.length > 12_000_000) return NextResponse.json({ ok: false, error: 'DXF 12MB 초과 — 도엽을 나눠 주세요.' }, { status: 400 });

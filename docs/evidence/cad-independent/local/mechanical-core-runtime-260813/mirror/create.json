@@ -1,0 +1,46 @@
+{
+  "schema": "nexyfab.mechanical-core-feature-local-runtime.v1",
+  "feature": "mirror",
+  "axis": "create",
+  "status": "PASS",
+  "executedAt": "2026-08-22T07:13:30.564Z",
+  "payload": {
+    "id": "runtime-feature",
+    "enabled": true,
+    "type": "mirror",
+    "params": {
+      "plane": 0
+    }
+  },
+  "exact": {
+    "handle": "occt:414",
+    "kernelKind": "Solid",
+    "nativeShapeType": 0,
+    "solidCount": 1,
+    "singleSolid": true,
+    "volumeMm3": 144000,
+    "edgeCount": 12,
+    "faceCount": 6,
+    "boundsMm": [
+      [
+        -60.0000001,
+        -20.0000001,
+        -15.000000100000001
+      ],
+      [
+        60.0000001,
+        20.0000001,
+        15.000000100000001
+      ]
+    ]
+  },
+  "featureMeaning": {
+    "assertion": "actual product OCCT mirror fused an origin-plane reflection; YZ doubles the tangent offset seed while XY coincides with it",
+    "plane": 0,
+    "baselineVolumeMm3": 72000,
+    "expectedVolumeMm3": 144000,
+    "actualVolumeMm3": 144000
+  },
+  "exactScope": "declared numeric runtime case",
+  "assertion": "native OCCT produced one non-empty exact solid and changed the host geometry"
+}

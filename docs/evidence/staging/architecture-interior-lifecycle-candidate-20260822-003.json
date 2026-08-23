@@ -1,0 +1,39 @@
+{
+  "schema": "nexyfab.staging-architecture-interior-lifecycle.v1",
+  "generatedAt": "2026-08-21T20:41:29.912Z",
+  "ok": false,
+  "target": "https://nexyfabcom-staging.up.railway.app",
+  "runId": "architecture-interior-e2e-1787344854749-t489jf",
+  "checks": {
+    "login": "passed",
+    "project_create": "passed",
+    "ai_proposal_ready": "failed",
+    "concept_commit_after_explicit_approval": "not_run",
+    "exact_commit_after_explicit_approval": "not_run",
+    "derived_artifact_commit_after_explicit_approval": "not_run",
+    "workspace_readback": "not_run",
+    "reconnect_exact_workspace": "not_run",
+    "project_cleanup": "passed",
+    "disposable_account_erased": "passed"
+  },
+  "unsupported": [
+    {
+      "name": "code_compliance",
+      "status": "not_run",
+      "reason": "route contract reports compliance not_run until governed checks are explicitly run"
+    },
+    {
+      "name": "release_and_manufacturing",
+      "status": "not_run",
+      "reason": "architecture/interior lifecycle does not claim release or manufacturing readiness"
+    },
+    {
+      "name": "quote_or_rfq_side_effects",
+      "status": "not_run",
+      "reason": "all lifecycle routes explicitly guarantee no quote/RFQ side effects"
+    }
+  ],
+  "releaseReady": false,
+  "credentialsPersisted": false,
+  "transientProjectRetained": false
+}

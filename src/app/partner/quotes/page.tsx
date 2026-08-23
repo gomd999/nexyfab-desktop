@@ -719,6 +719,7 @@ export default function PartnerQuotesPage() {
                               bbox={quote.bbox}
                               variant="compact"
                               autoFetch={!quote.shareToken && !!quote.rfqId}
+                              lang={lang}
                             />
                           </div>
                         )}
@@ -726,7 +727,7 @@ export default function PartnerQuotesPage() {
                           <div className="mt-3 border-t border-gray-100 pt-3">
                             <RfqCadFilesPanel
                               rfqId={quote.rfqId}
-                              isKo
+                              lang={lang}
                               authToken={getSession()}
                               compact
                             />

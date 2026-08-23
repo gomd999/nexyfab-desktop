@@ -7,7 +7,7 @@
  *    클라이언트가 읽을 수도, 보낼 수도 없다 → 언제나 `!rawToken` 분기
  * ② `!rawToken` 이면 **쿠키를 하나도 안 지우고** `{ok:true}` 를 돌려줬다 —
  *    성공으로 보이지만 아무 일도 하지 않는다
- * ③ 유일한 호출부가 **본문 없이** POST 해서 `req.json()` 이 던지고 500 이 났다
+ * ③ 유일한 호출부가 **본문 없이** POST 해서 JSON body parser가 던지고 500 이 났다
  * ④ 쿠키를 지울 때 `domain` 을 주지 않았다. 로그인은 `COOKIE_DOMAIN` 으로 굽는데
  *    삭제는 도메인 없이 해서, 서브도메인 공유 설정에서는 **삭제가 안 된다**
  * ```
@@ -28,6 +28,9 @@ import { COOKIE_DOMAIN } from '@/lib/service-config';
 import { getAuthUser } from '@/lib/auth-middleware';
 import { logAudit } from '@/lib/audit';
 import { getTrustedClientIp } from '@/lib/client-ip';
+import { readBoundedJson } from '@/lib/boundedJsonBody';
+
+const MAX_LOGOUT_BODY_BYTES = 16 * 1024;
 
 export const dynamic = 'force-dynamic';
 
@@ -73,7 +76,7 @@ export async function POST(req: NextRequest) {
    */
   let bodyToken: string | undefined;
   try {
-    const body = (await req.json()) as { refreshToken?: string } | null;
+    const body = await readBoundedJson<{ refreshToken?: string } | null>(req, MAX_LOGOUT_BODY_BYTES);
     bodyToken = body?.refreshToken;
   } catch { bodyToken = undefined; }
 

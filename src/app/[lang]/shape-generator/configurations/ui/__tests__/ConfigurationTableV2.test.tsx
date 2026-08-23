@@ -286,11 +286,17 @@ describe('ConfigurationTableV2 — perf smoke', () => {
     for (let i = 0; i < 20; i += 1) table.add(`C${i}`, { id: `cfg-${i}` });
     const features: FeatureInstance[] = [];
     for (let i = 0; i < 50; i += 1) features.push(feat(`f${i}`, { a: i }));
-    const t0 = performance.now();
-    render(<ConfigurationTableV2 table={table} features={features} lang="en" />);
-    const dt = performance.now() - t0;
-    // Document the actual time for the burn-in tracker.
-    console.log(`[F-CONFIG-UI-PERF-01] 50×20 mount dt=${dt.toFixed(1)}ms (jsdom)`);
-    expect(dt).toBeLessThan(1500);
-  });
+    const samples: number[] = [];
+    for (let attempt = 0; attempt < 3; attempt += 1) {
+      const t0 = performance.now();
+      const mounted = render(<ConfigurationTableV2 table={table} features={features} lang="en" />);
+      samples.push(performance.now() - t0);
+      mounted.unmount();
+    }
+    const median = [...samples].sort((left, right) => left - right)[1];
+    // A single wall-clock sample is noisy when the full suite is also running
+    // OCCT/FEA workers. Keep the product budget unchanged and gate the median.
+    console.log(`[F-CONFIG-UI-PERF-01] 50×20 mount samples=${samples.map(value => value.toFixed(1)).join(',')}ms median=${median.toFixed(1)}ms (jsdom)`);
+    expect(median).toBeLessThan(1500);
+  }, 10_000);
 });

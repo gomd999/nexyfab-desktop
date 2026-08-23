@@ -29,12 +29,12 @@ export interface InlineSuggestionOverlayProps {
 }
 
 const COPY = {
-  ko: { apply: '자동 수정', dismiss: '닫기', details: '상세' },
-  en: { apply: 'Auto-fix',  dismiss: 'Dismiss', details: 'Details' },
-  ja: { apply: '自動修正', dismiss: '閉じる', details: '詳細' },
-  zh: { apply: '自动修复', dismiss: '关闭', details: '详情' },
-  es: { apply: 'Corregir', dismiss: 'Descartar', details: 'Detalles' },
-  ar: { apply: 'إصلاح تلقائي', dismiss: 'إغلاق', details: 'التفاصيل' },
+  ko: { heading: '제안', apply: '자동 수정', dismiss: '닫기', details: '상세' },
+  en: { heading: 'SUGGESTIONS', apply: 'Auto-fix',  dismiss: 'Dismiss', details: 'Details' },
+  ja: { heading: '提案', apply: '自動修正', dismiss: '閉じる', details: '詳細' },
+  zh: { heading: '建议', apply: '自动修复', dismiss: '关闭', details: '详情' },
+  es: { heading: 'SUGERENCIAS', apply: 'Corregir', dismiss: 'Descartar', details: 'Detalles' },
+  ar: { heading: 'اقتراحات', apply: 'إصلاح تلقائي', dismiss: 'إغلاق', details: 'التفاصيل' },
 } as const;
 
 export default function InlineSuggestionOverlay({
@@ -42,8 +42,6 @@ export default function InlineSuggestionOverlay({
 }: InlineSuggestionOverlayProps) {
   const [expandedId, setExpandedId] = useState<string | null>(null);
   if (suggestions.length === 0) return null;
-  const ko = lang === 'ko' || lang === 'kr';
-  // ⚠ 260802: `ko ? COPY.ko : COPY.en` 2분기라 ja·zh·es·ar 이 영어로 떨어졌다.
   const t = COPY[toIsoLang(lang)] ?? COPY.en;
 
   // Group suggestions per featureId so we badge once per feature.
@@ -74,7 +72,7 @@ export default function InlineSuggestionOverlay({
         }}
       >
         <div style={{ padding: '4px 14px 8px', fontSize: 11, color: 'var(--nx-text-2)', fontWeight: 600, letterSpacing: '0.04em' }}>
-          {ko ? '제안' : 'SUGGESTIONS'} ({suggestions.length})
+          {t.heading} ({suggestions.length})
         </div>
         {suggestions.map(s => (
           <div

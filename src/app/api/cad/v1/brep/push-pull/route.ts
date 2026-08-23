@@ -3,11 +3,14 @@ import{getTrustedClientIp}from'@/lib/client-ip';
 import{rateLimit}from'@/lib/rate-limit';
 import{loadOcctNode}from'@/lib/occt/nodeOcctLoader';
 import{createNodeOcctBridge}from'@/lib/occt/nodeOcctBridge';
+import{boundedJsonError,readBoundedJson}from'@/lib/boundedJsonBody';
 export const runtime='nodejs';export const dynamic='force-dynamic';
+const MAX_BODY_BYTES=32*1024*1024;
 
 export async function POST(req:NextRequest){
   const ip=getTrustedClientIp(req.headers);if(!rateLimit(`cad-v1-brep-push-pull:${ip}`,20,60_000).allowed)return NextResponse.json({ok:false,code:'RATE_LIMIT'},{status:429});
-  const body=await req.json().catch(()=>null)as{step?:string;encoding?:'base64'|'utf8';faceRef?:string;distanceMm?:number}|null;
+  let body:{step?:string;encoding?:'base64'|'utf8';faceRef?:string;distanceMm?:number}|null;
+  try{body=await readBoundedJson(req,MAX_BODY_BYTES);}catch(error){if(boundedJsonError(error)?.code==='PAYLOAD_TOO_LARGE')return NextResponse.json({ok:false,code:'PAYLOAD_TOO_LARGE'},{status:413});body=null;}
   if(!body||typeof body.step!=='string'||body.step.length===0||body.step.length>30_000_000||typeof body.faceRef!=='string'||!Number.isFinite(body.distanceMm)||body.distanceMm===0)return NextResponse.json({ok:false,code:'BAD_REQUEST',message:'step, faceRef and non-zero distanceMm are required'},{status:400});
   try{
     const source=body.encoding==='base64'?Buffer.from(body.step,'base64').toString('utf8'):body.step;

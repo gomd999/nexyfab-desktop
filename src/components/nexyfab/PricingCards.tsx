@@ -2,7 +2,8 @@
 
 import { useState } from 'react';
 import { useAuthStore } from '@/hooks/useAuth';
-import { isKorean } from '@/lib/i18n/normalize';
+import { toIsoLang, type IsoLang } from '@/lib/i18n/normalize';
+import { getSsoCommercialCopy } from '@/lib/i18n/ssoCommercialStatus';
 
 interface Props {
   lang?: string;
@@ -187,24 +188,24 @@ const PLANS: Plan[] = [
       '팀 워크스페이스',
       '협업 실시간 편집',
       '고급 분석 대시보드',
-      '전용 계정 매니저',
-      'SLA 99.9% 보장',
+      '팀원 역할 관리',
+      '팀 공유 BOM',
     ],
     featuresEn: [
       'All Pro features',
       'Team workspace',
       'Real-time collaboration',
       'Advanced analytics dashboard',
-      'Dedicated account manager',
-      'SLA 99.9% guarantee',
+      'Team member role management',
+      'Shared team BOMs',
     ],
     featuresJa: [
       'Pro全機能',
       'チームワークスペース',
       'リアルタイム共同編集',
       '高度な分析ダッシュボード',
-      '専任アカウントマネージャー',
-      'SLA 99.9%保証',
+      'メンバー権限管理',
+      'チーム共有BOM',
     ],
     cta: '문의하기',
     ctaEn: 'Contact us',
@@ -212,23 +213,61 @@ const PLANS: Plan[] = [
   },
 ];
 
+type PlanCopy = { features: string[]; period: string; cta: string; bundleNote?: BundleNote; price: string };
+
+function getPlanCopy(plan: Plan, lang: IsoLang): PlanCopy {
+  // Keep one complete six-key table even where commercial copy is currently
+  // shared. This prevents a new locale from silently taking the Korean branch.
+  const features: Record<IsoLang, string[]> = {
+    ko: plan.features, en: plan.featuresEn, ja: plan.featuresJa,
+    zh: plan.featuresEn, es: plan.featuresEn, ar: plan.featuresEn,
+  };
+  const periods: Record<IsoLang, string> = {
+    ko: plan.period, en: plan.periodEn, ja: plan.periodJa,
+    zh: plan.periodEn, es: plan.periodEn, ar: plan.periodEn,
+  };
+  const ctas: Record<IsoLang, string> = {
+    ko: plan.cta, en: plan.ctaEn, ja: plan.ctaJa,
+    zh: plan.ctaEn, es: plan.ctaEn, ar: plan.ctaEn,
+  };
+  const notes: Record<IsoLang, BundleNote | undefined> = {
+    ko: plan.bundleNote, en: plan.bundleNoteEn, ja: plan.bundleNoteJa,
+    zh: plan.bundleNoteEn, es: plan.bundleNoteEn, ar: plan.bundleNoteEn,
+  };
+  const prices: Record<IsoLang, string> = {
+    ko: plan.price, en: plan.priceAlt, ja: plan.priceJa,
+    zh: plan.priceAlt, es: plan.priceAlt, ar: plan.priceAlt,
+  };
+  return { features: features[lang], period: periods[lang], cta: ctas[lang], bundleNote: notes[lang], price: prices[lang] };
+}
+
+const LABELS: Record<IsoLang, { current: string; recommended: string; processing: string; demo: string; subject: string }> = {
+  ko: { current: '현재 플랜', recommended: '추천', processing: '처리 중...', demo: '데모 결제 (실제 청구 없음) — {plan} 플랜으로 이동 중...', subject: '[NexyFab] 3D 툴 견적 문의 — {plan}' },
+  en: { current: 'Current Plan', recommended: 'Recommended', processing: 'Processing...', demo: 'Demo checkout (no charge) — moving to {plan} plan...', subject: '[NexyFab] 3D tool quote inquiry — {plan}' },
+  ja: { current: '現在のプラン', recommended: 'おすすめ', processing: '処理中...', demo: 'デモ決済（請求なし）— {plan}プランへ移動中...', subject: '[NexyFab] 3Dツール見積もり — {plan}' },
+  zh: { current: '当前方案', recommended: '推荐', processing: '处理中...', demo: '演示结算（不会扣款）— 正在进入 {plan} 方案...', subject: '[NexyFab] 3D工具报价咨询 — {plan}' },
+  es: { current: 'Plan actual', recommended: 'Recomendado', processing: 'Procesando...', demo: 'Pago de demostración (sin cargo) — pasando al plan {plan}...', subject: '[NexyFab] Consulta de cotización de herramienta 3D — {plan}' },
+  ar: { current: 'الخطة الحالية', recommended: 'موصى بها', processing: 'جارٍ المعالجة...', demo: 'دفع تجريبي (بدون رسوم) — الانتقال إلى خطة {plan}...', subject: '[NexyFab] استفسار عرض سعر أداة ثلاثية الأبعاد — {plan}' },
+};
+
 export default function PricingCards({ lang = 'ko', currentPlan }: Props) {
   const { user } = useAuthStore();
   const activePlan = currentPlan ?? user?.plan ?? 'free';
-  const isKo = isKorean(lang);
-  const isJa = lang === 'ja';
+  const iso = toIsoLang(lang);
+  const labels = LABELS[iso];
+  const ssoCopy = getSsoCommercialCopy(lang);
 
   const [loading, setLoading] = useState<string | null>(null);
   const [demoNote, setDemoNote] = useState<string | null>(null);
 
-  const handleUpgrade = async (plan: 'pro' | 'team') => {
+  const _handleUpgrade = async (plan: 'pro' | 'team') => {
     setLoading(plan);
     setDemoNote(null);
     try {
       const res = await fetch('/api/billing/checkout', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ planId: plan, lang }),
+        body: JSON.stringify({ planId: plan, lang: iso }),
       });
       const data = await res.json() as {
         url?: string;
@@ -244,7 +283,7 @@ export default function PricingCards({ lang = 'ko', currentPlan }: Props) {
       }
 
       if (data.mock) {
-        setDemoNote(`데모 결제 (실제 청구 없음) — ${plan.toUpperCase()} 플랜으로 이동 중...`);
+        setDemoNote(labels.demo.replace('{plan}', plan.toUpperCase()));
       }
 
       if (data.url) {
@@ -254,9 +293,6 @@ export default function PricingCards({ lang = 'ko', currentPlan }: Props) {
       setLoading(null);
     }
   };
-
-  const pickBundleNote = (plan: Plan): BundleNote | undefined =>
-    isKo ? plan.bundleNote : isJa ? plan.bundleNoteJa : plan.bundleNoteEn;
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '24px' }}>
@@ -288,7 +324,17 @@ export default function PricingCards({ lang = 'ko', currentPlan }: Props) {
           const isCurrent = activePlan === plan.id;
           const isHighlight = plan.highlight && !isCurrent;
           const isLoading = loading === plan.id;
-          const bundleNote = pickBundleNote(plan);
+          const basePlanCopy = getPlanCopy(plan, iso);
+          const planCopy = plan.id === 'team'
+            ? {
+                ...basePlanCopy,
+                features: [
+                  ...basePlanCopy.features.slice(0, 4),
+                  ssoCopy.teamRoleManagement,
+                  ssoCopy.sharedTeamBoms,
+                ],
+              }
+            : basePlanCopy;
 
           return (
             <div
@@ -326,7 +372,7 @@ export default function PricingCards({ lang = 'ko', currentPlan }: Props) {
                     whiteSpace: 'nowrap',
                   }}
                 >
-                  {isKo ? '현재 플랜' : isJa ? '現在のプラン' : 'Current Plan'}
+                  {labels.current}
                 </div>
               )}
 
@@ -348,7 +394,7 @@ export default function PricingCards({ lang = 'ko', currentPlan }: Props) {
                     whiteSpace: 'nowrap',
                   }}
                 >
-                  {isKo ? '추천' : isJa ? 'おすすめ' : 'Recommended'}
+                  {labels.recommended}
                 </div>
               )}
 
@@ -373,12 +419,12 @@ export default function PricingCards({ lang = 'ko', currentPlan }: Props) {
                       letterSpacing: '-1px',
                     }}
                   >
-                    {isKo ? plan.price : isJa ? plan.priceJa : plan.priceAlt}
+                    {planCopy.price}
                   </span>
                   <span style={{ color: '#64748b', fontSize: '14px' }}>
-                    {isKo ? plan.period : isJa ? plan.periodJa : plan.periodEn}
+                    {planCopy.period}
                   </span>
-                  {isKo && (
+                  {iso === 'ko' && (
                     <span style={{ color: '#475569', fontSize: '12px' }}>
                       ({plan.priceAlt})
                     </span>
@@ -388,7 +434,7 @@ export default function PricingCards({ lang = 'ko', currentPlan }: Props) {
 
               {/* Features */}
               <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'flex', flexDirection: 'column', gap: '10px', flex: 1 }}>
-                {(isKo ? plan.features : isJa ? plan.featuresJa : plan.featuresEn).map((feat) => (
+                {planCopy.features.map((feat) => (
                   <li
                     key={feat}
                     style={{
@@ -408,7 +454,7 @@ export default function PricingCards({ lang = 'ko', currentPlan }: Props) {
               </ul>
 
               {/* Bundle note (separated from features for readability) */}
-              {bundleNote && (
+              {planCopy.bundleNote && (
                 <div
                   style={{
                     background: 'rgba(245,158,11,0.08)',
@@ -425,10 +471,10 @@ export default function PricingCards({ lang = 'ko', currentPlan }: Props) {
                     color: '#f59e0b', fontSize: '12px', fontWeight: 700,
                   }}>
                     <span aria-hidden="true">★</span>
-                    {bundleNote.title}
+                    {planCopy.bundleNote.title}
                   </div>
                   <div style={{ color: '#e0b974', fontSize: '11px', lineHeight: 1.5 }}>
-                    {bundleNote.detail}
+                    {planCopy.bundleNote.detail}
                   </div>
                 </div>
               )}
@@ -441,7 +487,7 @@ export default function PricingCards({ lang = 'ko', currentPlan }: Props) {
                   // Paid tiers are quote-on-request ("별도 협의") — route to an
                   // inquiry instead of self-serve checkout.
                   if (plan.id === 'pro_lite' || plan.id === 'pro' || plan.id === 'team') {
-                    window.location.href = `mailto:gomd99914@gmail.com?subject=${encodeURIComponent(`[NexyFab] 3D 툴 견적 문의 — ${plan.name}`)}`;
+                    window.location.href = `mailto:gomd99914@gmail.com?subject=${encodeURIComponent(labels.subject.replace('{plan}', plan.name))}`;
                   }
                 }}
                 style={{
@@ -467,10 +513,10 @@ export default function PricingCards({ lang = 'ko', currentPlan }: Props) {
                 }}
               >
                 {isLoading
-                  ? (isKo ? '처리 중...' : 'Processing...')
+                  ? labels.processing
                   : isCurrent
-                  ? (isKo ? '현재 플랜' : isJa ? '現在のプラン' : 'Current Plan')
-                  : (isKo ? plan.cta : isJa ? plan.ctaJa : plan.ctaEn)}
+                  ? labels.current
+                  : planCopy.cta}
               </button>
             </div>
           );

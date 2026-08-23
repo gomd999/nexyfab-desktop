@@ -1,0 +1,27 @@
+{
+  "schema": "nexyfab.mechanical-core-feature-local-runtime.v1",
+  "feature": "hole",
+  "axis": "drawing",
+  "status": "PASS",
+  "executedAt": "2026-08-22T07:13:00.871Z",
+  "kernel": "OCCT HLRBRep via replicad drawProjection",
+  "views": {
+    "front": {
+      "visible": 5,
+      "hidden": 4,
+      "viewBox": "-52.000001 -32.000001 104.000002 64.000002"
+    },
+    "top": {
+      "visible": 1,
+      "hidden": 5,
+      "viewBox": "-52.000001 -6.000001 104.000002 12.000002"
+    },
+    "right": {
+      "visible": 3,
+      "hidden": 6,
+      "viewBox": "-6.000001 -32.000001 12.000002 64.000002"
+    }
+  },
+  "svgBytes": 4778,
+  "svgSha256": "d6314a6127b3e703a8291840ff0c50957272cb47b55438f156b8d3379a642fbe"
+}

@@ -4,6 +4,7 @@ import { usePathname } from 'next/navigation';
 import * as THREE from 'three';
 import { runThermalFEA, applyThermalColormap, THERMAL_MATERIALS, type ThermalBoundary, type ThermalResult } from './thermalFEA';
 import { useAnalysisStore } from '../store/analysisStore';
+import { createCommercialLocalizer } from '@/lib/i18n/commercialLocalizer';
 
 interface Props {
   geometry: THREE.BufferGeometry | null;
@@ -150,7 +151,7 @@ export default function ThermalFEAPanel({ geometry, lang, onResult, onClose, res
     kr: 'ko', ko: 'ko', en: 'en', ja: 'ja', cn: 'zh', zh: 'zh', es: 'es', ar: 'ar',
   };
   const t = dict[langMap[seg] ?? 'en'];
-  const isKo = (langMap[seg] ?? 'en') === 'ko';
+  const L = createCommercialLocalizer(lang);
   const faceNames = t.faces;
 
   const [materialId, setMaterialId] = useState<keyof typeof THERMAL_MATERIALS>('aluminum');
@@ -191,7 +192,7 @@ export default function ThermalFEAPanel({ geometry, lang, onResult, onClose, res
     } finally {
       setIsRunning(false);
     }
-  }, [geometry, boundaries, materialId, ambientTemp, isRunning, onResult]);
+  }, [geometry, boundaries, materialId, ambientTemp, isRunning, onResult, setResult]);
 
   const mat = THERMAL_MATERIALS[materialId];
 
@@ -210,7 +211,7 @@ export default function ThermalFEAPanel({ geometry, lang, onResult, onClose, res
           {(Object.entries(THERMAL_MATERIALS) as [keyof typeof THERMAL_MATERIALS, typeof THERMAL_MATERIALS[keyof typeof THERMAL_MATERIALS]][]).map(([id, m]) => (
             <button key={id} onClick={() => setMaterialId(id)}
               style={{ padding: '3px 8px', borderRadius: 4, border: `1px solid ${materialId === id ? C.accent : C.border}`, background: materialId === id ? 'var(--nx-accent-soft)' : 'transparent', color: materialId === id ? C.accent : C.muted, fontSize: 10, cursor: 'pointer', fontWeight: materialId === id ? 700 : 400 }}>
-              {isKo ? m.nameKo : m.name}
+              {L(m.nameKo, m.name)}
             </button>
           ))}
         </div>

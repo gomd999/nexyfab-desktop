@@ -26,6 +26,8 @@ import {
 export interface DrivingDimensionFieldProps {
   em: EquationManager;
   binding: DimensionBinding;
+  /** Route locale. All user-visible feedback ships in the six supported locales. */
+  lang?: string;
   /** Optional label shown before the input. */
   label?: string;
   /** Called with the new variable value after a successful drive. */
@@ -43,8 +45,19 @@ function currentValue(em: EquationManager, binding: DimensionBinding): number {
 }
 
 export default function DrivingDimensionField({
-  em, binding, label, onCommitted, onRebuild,
+  em, binding, lang = 'en', label, onCommitted, onRebuild,
 }: DrivingDimensionFieldProps): React.ReactElement {
+  const locale = lang === 'kr' ? 'ko' : lang === 'cn' ? 'zh' : lang;
+  const copy = ({
+    ko: { failed: '치수 변경 실패', drives: '구동 변수' },
+    en: { failed: 'Dimension edit failed', drives: 'drives variable' },
+    ja: { failed: '寸法の変更に失敗しました', drives: '駆動変数' },
+    zh: { failed: '尺寸修改失败', drives: '驱动变量' },
+    es: { failed: 'No se pudo modificar la cota', drives: 'controla la variable' },
+    ar: { failed: 'تعذر تعديل البُعد', drives: 'يقود المتغير' },
+  } as const)[locale as 'ko' | 'en' | 'ja' | 'zh' | 'es' | 'ar'] ?? {
+    failed: 'Dimension edit failed', drives: 'drives variable',
+  };
   const [text, setText] = React.useState(() => String(currentValue(em, binding)));
   const [error, setError] = React.useState<string | null>(null);
 
@@ -52,14 +65,14 @@ export default function DrivingDimensionField({
     const v = Number(text);
     const r = applyDimensionEdit(em, [binding], binding.dimensionId, v);
     if (!r.ok) {
-      setError(r.error ?? 'edit failed');
+      setError(`${copy.failed}: ${r.error ?? ''}`.replace(/:\s*$/, ''));
       return;
     }
     setError(null);
     setText(String(currentValue(em, binding)));
     if (r.variableValue !== undefined) onCommitted?.(r.variableValue);
     onRebuild?.();
-  }, [text, em, binding, onCommitted, onRebuild]);
+  }, [text, em, binding, onCommitted, onRebuild, copy.failed]);
 
   return (
     <span
@@ -81,7 +94,7 @@ export default function DrivingDimensionField({
       />
       <span
         data-testid="driving-dim-var"
-        title={`drives ${binding.variable}`}
+        title={`${copy.drives}: ${binding.variable}`}
         style={{ color: 'var(--nx-accent)', fontFamily: 'monospace' }}
       >
         ƒ{binding.variable}

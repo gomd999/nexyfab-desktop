@@ -2279,7 +2279,7 @@ export default function ShapePreview({
                 onMouseEnter={e => { if (displayMode !== key) { e.currentTarget.style.background = 'var(--nx-glass-soft)'; } }}
                 onMouseLeave={e => { if (displayMode !== key) { e.currentTarget.style.background = 'transparent'; } }}
               >
-                <span style={{ fontSize: 12 }}>{icon}</span>
+                <span aria-hidden="true" style={{ fontSize: 12 }}>{icon}</span>
                 <span>{label}</span>
               </button>
             ))}
@@ -2785,7 +2785,7 @@ export default function ShapePreview({
               // wrong depth under a log buffer and Z-fights HARDER. The tight
               // near/far range alone fixes the shimmer. (2026-06-09)
               camera={{ position: [150, 120, 150], fov: 50, near: 1, far: 50_000 }}
-              shadows
+              shadows="basic"
               gl={{ antialias: true, preserveDrawingBuffer: true }}
               onCreated={({ gl, scene }) => {
                 gl.domElement.setAttribute('data-engine', NF_R3F_VIEWPORT_DATA_ENGINE);
@@ -2975,14 +2975,14 @@ export default function ShapePreview({
                       const lineGeo = new THREE.BufferGeometry().setFromPoints(points);
 
                       const colorMap: Record<string, string> = {
-                        coincident: 'var(--nx-accent)', concentric: 'var(--nx-ok)', distance: 'var(--nx-warn)',
-                        angle: 'var(--nx-error)', parallel: 'var(--nx-accent-2)', perpendicular: '#f778ba', tangent: '#2ea043'
+                        coincident: GL_COLOR.accent, concentric: GL_COLOR.ok, distance: GL_COLOR.warn,
+                        angle: GL_COLOR.error, parallel: GL_COLOR.accent2, perpendicular: '#f778ba', tangent: '#2ea043'
                       };
                       const iconMap: Record<string, string> = {
                         coincident: '═', concentric: '⊙', distance: '↔', angle: '∡', parallel: '∥', perpendicular: '⊥', tangent: '⌒'
                       };
                       
-                      const color = colorMap[mate.type] || 'var(--nx-text-2)';
+                      const color = colorMap[mate.type] || GL_COLOR.neutral;
                       const icon = iconMap[mate.type] || '🔗';
                       const midPoint = new THREE.Vector3().addVectors(ptA, ptB).multiplyScalar(0.5);
 

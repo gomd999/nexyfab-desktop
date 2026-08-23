@@ -3,9 +3,11 @@ import { existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { rateLimit } from '@/lib/rate-limit';
 import { getTrustedClientIp } from '@/lib/client-ip';
+import { readBoundedJson } from '@/lib/boundedJsonBody';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
+const MAX_JSON_BODY_BYTES = 1024 * 1024;
 
 /**
  * Sheet-metal Phase 1 — the FOLDED part as a real analytic B-rep STEP. A base
@@ -46,7 +48,7 @@ export async function POST(req: NextRequest) {
   if (!rateLimit(`sheetmetal-step:${ip}`, 30, 3_600_000).allowed) {
     return NextResponse.json({ error: 'Too many requests', code: 'RATE_LIMIT' }, { status: 429 });
   }
-  const b = (await req.json().catch(() => ({}))) as {
+  const b = (await readBoundedJson(req, MAX_JSON_BODY_BYTES).catch(() => ({}))) as {
     width?: number; length?: number; thickness?: number; bendRadius?: number; flanges?: Flange[];
   };
   const W = Math.min(Math.max(10, num(b.width, 100)), 2000);

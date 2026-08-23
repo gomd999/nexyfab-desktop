@@ -106,14 +106,13 @@ describe('FamilyExportButton — modal', () => {
 });
 
 describe('FamilyExportButton — export', () => {
-  it('shows placeholder-mode notice when no stepExporter', async () => {
+  it('blocks download and explains exact export is unavailable without stepExporter', () => {
     const { table, features } = makeTable(2);
     render(<FamilyExportButton table={table} features={features} lang="en" />);
     fireEvent.click(screen.getByTestId('family-export-button'));
-    fireEvent.click(screen.getByTestId('family-export-go'));
-    await waitFor(() =>
-      expect(screen.getByTestId('family-export-deferred-notice')).toBeInTheDocument(),
-    );
+    const exportButton = screen.getByTestId('family-export-go');
+    expect(exportButton).toBeDisabled();
+    expect(screen.getByTestId('family-export-deferred-notice')).toBeInTheDocument();
   });
 
   it('calls stepExporter for each selected config when provided', async () => {
@@ -137,15 +136,13 @@ describe('FamilyExportButton — export', () => {
     expect(calledIds).toContain('cfg-1');
   });
 
-  it('preserves the original active config after export', async () => {
+  it('preserves the original active config when unavailable export is opened', () => {
     const { table, features } = makeTable(3);
     table.activate('cfg-1');
     render(<FamilyExportButton table={table} features={features} lang="en" />);
     fireEvent.click(screen.getByTestId('family-export-button'));
-    fireEvent.click(screen.getByTestId('family-export-go'));
-    await waitFor(() =>
-      expect(screen.getByTestId('family-export-deferred-notice')).toBeInTheDocument(),
-    );
+    expect(screen.getByTestId('family-export-go')).toBeDisabled();
+    expect(screen.getByTestId('family-export-deferred-notice')).toBeInTheDocument();
     expect(table.getActiveId()).toBe('cfg-1');
   });
 });

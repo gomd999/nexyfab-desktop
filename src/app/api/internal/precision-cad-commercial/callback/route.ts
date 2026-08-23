@@ -1,0 +1,17 @@
+import { createHmac, timingSafeEqual } from 'node:crypto';
+import { NextRequest, NextResponse } from 'next/server';
+import { getDbAdapter } from '@/lib/db-adapter';
+import { canonicalCommercialExecution, type CommercialWorkerReceipt } from '../../../../../../packages/job-contracts/src/commercialPrecisionExecution';
+import { CommercialExecutionOutboxStore } from '@/lib/precision-cad-agent/commercialExecutionOutboxStore';
+import { loadTrustedCommercialWorkers } from '@/lib/precision-cad-agent/commercialWorkerReceipt';
+import { boundedRawBodyError, readBoundedRawBody } from '@/lib/boundedRawBody';
+
+export const dynamic = 'force-dynamic'; export const runtime = 'nodejs';
+const MAX_BODY_BYTES = 512 * 1024;
+function hmac(secret: string, bytes: Uint8Array): string { return createHmac('sha256', secret).update(bytes).digest('base64url'); }
+function validHmac(secret: string, bytes: Uint8Array, supplied: string): boolean { const a = Buffer.from(hmac(secret, bytes)); const b = Buffer.from(supplied); return a.length === b.length && timingSafeEqual(a, b); }
+export async function POST(req: NextRequest) {
+  const secret = process.env.NEXYFAB_COMMERCIAL_CALLBACK_SECRET ?? ''; let bytes: Uint8Array; try { bytes = await readBoundedRawBody(req, MAX_BODY_BYTES); } catch (error) { if (!secret || secret.length < 32) return NextResponse.json({ ok: false, code: 'CALLBACK_NOT_CONFIGURED', releaseReady: false }, { status: 503 }); if (boundedRawBodyError(error)?.code === 'PAYLOAD_TOO_LARGE') return NextResponse.json({ ok: false, code: 'BODY_TOO_LARGE' }, { status: 413 }); return NextResponse.json({ ok: false, code: 'INVALID_JSON' }, { status: 400 }); } if (!secret || secret.length < 32) return NextResponse.json({ ok: false, code: 'CALLBACK_NOT_CONFIGURED', releaseReady: false }, { status: 503 }); if (!validHmac(secret, bytes, req.headers.get('x-commercial-callback-hmac') ?? '')) return NextResponse.json({ ok: false, code: 'FORBIDDEN' }, { status: 403 }); let text: string; try { text = new TextDecoder('utf-8', { fatal: true }).decode(bytes); } catch { return NextResponse.json({ ok: false, code: 'INVALID_JSON' }, { status: 400 }); }
+  let receipt: CommercialWorkerReceipt; try { receipt = JSON.parse(text) as CommercialWorkerReceipt; if (canonicalCommercialExecution(receipt) !== text) return NextResponse.json({ ok: false, code: 'NON_CANONICAL' }, { status: 422 }); } catch { return NextResponse.json({ ok: false, code: 'INVALID_JSON' }, { status: 400 }); }
+  try { const workers = loadTrustedCommercialWorkers(); if (!workers) return NextResponse.json({ ok: false, code: 'WORKER_REGISTRY_INVALID', releaseReady: false }, { status: 503 }); const store = new CommercialExecutionOutboxStore(getDbAdapter()); const row = await store.read(receipt.jobId); if (!row) return NextResponse.json({ ok: false, code: 'NOT_FOUND' }, { status: 404 }); const result = await store.acceptReceipt({ receipt, expected: { ...row.job, leaseCapabilityHash: row.capabilityHash }, trustedWorkers: workers }); if (!result.ok) return NextResponse.json({ ok: false, code: result.code, releaseReady: false }, { status: 409 }); return NextResponse.json({ ok: true, status: result.row.status, releaseReady: false }, { status: 200, headers: { 'Cache-Control': 'no-store' } }); } catch (error) { return NextResponse.json({ ok: false, code: String(error).includes('migration_required') ? 'MIGRATION_REQUIRED' : 'CALLBACK_FAILED', releaseReady: false }, { status: 503 }); }
+}

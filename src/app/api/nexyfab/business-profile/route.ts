@@ -10,6 +10,9 @@ import { getAuthUser } from '@/lib/auth-middleware';
 import { getDbAdapter } from '@/lib/db-adapter';
 import { checkOrigin } from '@/lib/csrf';
 import { sanitizeText } from '@/lib/sanitize';
+import { boundedJsonError, readBoundedJson } from '@/lib/boundedJsonBody';
+
+const MAX_BUSINESS_PROFILE_BODY_BYTES = 64 * 1024;
 
 const profileSchema = z.object({
   // 10-digit business reg number (사업자등록번호). Allow common formats
@@ -81,7 +84,11 @@ export async function POST(req: NextRequest) {
   const authUser = await getAuthUser(req);
   if (!authUser) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-  const raw = await req.json().catch(() => null);
+  let raw: unknown = null;
+  try { raw = await readBoundedJson(req, MAX_BUSINESS_PROFILE_BODY_BYTES); }
+  catch (error) {
+    if (boundedJsonError(error)?.code === 'PAYLOAD_TOO_LARGE') return NextResponse.json({ error: 'Request too large', code: 'PAYLOAD_TOO_LARGE' }, { status: 413 });
+  }
   const parsed = profileSchema.safeParse(raw);
   if (!parsed.success) {
     return NextResponse.json({ error: parsed.error.issues[0]?.message ?? 'Invalid input' }, { status: 400 });

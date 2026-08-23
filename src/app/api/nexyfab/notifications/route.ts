@@ -3,8 +3,10 @@ import { getAuthUser } from '@/lib/auth-middleware';
 import { getDbAdapter } from '@/lib/db-adapter';
 import { checkOrigin } from '@/lib/csrf';
 import { notificationRecipientKeys, sqlPlaceholders } from '@/lib/notificationRecipientKeys';
+import { boundedJsonError, readBoundedJson } from '@/lib/boundedJsonBody';
 
 export const dynamic = 'force-dynamic';
+const NOTIFICATION_UPDATE_JSON_BYTES = 64 * 1024;
 
 interface Notification {
   id: string;
@@ -38,7 +40,16 @@ export async function PATCH(req: NextRequest) {
   const authUser = await getAuthUser(req);
   if (!authUser) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-  const { id, all } = await req.json().catch(() => ({})) as { id?: string; all?: boolean };
+  let body: { id?: string; all?: boolean } = {};
+  try {
+    body = await readBoundedJson(req, NOTIFICATION_UPDATE_JSON_BYTES);
+  } catch (error) {
+    const bodyError = boundedJsonError(error);
+    if (bodyError?.code === 'PAYLOAD_TOO_LARGE') {
+      return NextResponse.json({ error: 'Request body too large' }, { status: bodyError.status });
+    }
+  }
+  const { id, all } = body;
   const keys = notificationRecipientKeys(authUser);
   const db = getDbAdapter();
 

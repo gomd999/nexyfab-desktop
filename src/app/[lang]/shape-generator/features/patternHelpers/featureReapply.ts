@@ -27,6 +27,7 @@ export function reapplySeedAt(
   posX: number,
   posZ: number,
   featureId?: string,
+  posY?: number,
 ): THREE.BufferGeometry {
   if (seed.type === 'cut') {
     const p = seed.params;
@@ -49,7 +50,7 @@ export function reapplySeedAt(
   // FeatureApplyContext face selection is needed here.
   return holeFeature.apply(
     geometry,
-    { ...seed.params, posX, posZ },
+    { ...seed.params, posX, posZ, ...(Number.isFinite(posY) ? { posY } : {}) },
     featureId ? { featureId } : undefined,
   );
 }

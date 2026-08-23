@@ -1,6 +1,7 @@
 import { createHash } from 'node:crypto';
 import { validateAiAssemblyProgram, type AiAssemblyProgram } from '../aiAssemblyProgram';
-import { selectRobotCatalogBytes } from './robotCatalogSelection';
+import { selectRobotCatalogBytes, type RobotAuxiliaryCatalogSelection, type RobotAuxiliaryMount } from './robotCatalogSelection';
+import type { AuxiliaryComponentKind } from './componentCatalog';
 import { evaluateRobotHousingFitEvidence } from './robotHousingFitEvidence';
 
 const SHA256 = /^[a-f0-9]{64}$/;
@@ -11,12 +12,14 @@ export type RobotCadIntegrationPacket = {
   requirementsSha256: string; catalogManifestSha256: string; catalogArtifactSetSha256: string; housingSha256: string;
   readiness: 'review_pending' | 'not_ready'; expertReviewRequired: true; cadIntegrationStatus: 'not_applied'; releaseReady: false;
   replacements: Array<{ joint: number; placeholders: { motor: string; reducer: string; bearing: string }; selected: { motor: string; reducer: string; bearing: string }; fitStatus: 'passed' }>;
+  auxiliaryAdditions?: Array<{ kind: AuxiliaryComponentKind; pendingComponentId: RobotAuxiliaryCatalogSelection['pendingComponentId']; selected: string; occurrenceId: string; mount: RobotAuxiliaryMount }>;
   errors: string[]; sideEffects: { persisted: false; sourceModified: false; cadModified: false; quoteCreated: false; rfqSent: false };
 };
-type RobotCadIntegrationTarget = Pick<RobotCadIntegrationPacket, 'lineageId' | 'revision' | 'baseProgramHash' | 'programHash' | 'revisionManifestSha256' | 'requirementsSha256' | 'catalogManifestSha256' | 'catalogArtifactSetSha256' | 'housingSha256' | 'replacements'>;
+type RobotCadIntegrationTarget = Pick<RobotCadIntegrationPacket, 'lineageId' | 'revision' | 'baseProgramHash' | 'programHash' | 'revisionManifestSha256' | 'requirementsSha256' | 'catalogManifestSha256' | 'catalogArtifactSetSha256' | 'housingSha256' | 'replacements' | 'auxiliaryAdditions'>;
 
 export function hashRobotCadIntegrationTarget(target: RobotCadIntegrationTarget) {
-  return sha256(new TextEncoder().encode(JSON.stringify({ lineageId: target.lineageId, revision: target.revision, baseProgramHash: target.baseProgramHash, programHash: target.programHash, revisionManifestSha256: target.revisionManifestSha256, requirementsSha256: target.requirementsSha256, catalogManifestSha256: target.catalogManifestSha256, catalogArtifactSetSha256: target.catalogArtifactSetSha256, housingSha256: target.housingSha256, replacements: target.replacements })));
+  const body = { lineageId: target.lineageId, revision: target.revision, baseProgramHash: target.baseProgramHash, programHash: target.programHash, revisionManifestSha256: target.revisionManifestSha256, requirementsSha256: target.requirementsSha256, catalogManifestSha256: target.catalogManifestSha256, catalogArtifactSetSha256: target.catalogArtifactSetSha256, housingSha256: target.housingSha256, replacements: target.replacements, ...(target.auxiliaryAdditions?.length ? { auxiliaryAdditions: target.auxiliaryAdditions } : {}) };
+  return sha256(new TextEncoder().encode(JSON.stringify(body)));
 }
 
 export function buildRobotCadIntegrationPacket(programBytes: Uint8Array, revisionManifestBytes: Uint8Array, housingBytes: Uint8Array, requirementsBytes: Uint8Array, catalogManifestBytes: Uint8Array, uploaded: readonly UploadedArtifact[]): RobotCadIntegrationPacket {
@@ -37,13 +40,28 @@ export function buildRobotCadIntegrationPacket(programBytes: Uint8Array, revisio
     catch { errors.push('editable program structure is invalid'); }
   }
   const replacements = typedProgram ? buildReplacements(typedProgram, selection, housing, errors) : [];
+  const auxiliaryAdditions = typedProgram ? buildAuxiliaryAdditions(typedProgram, selection, errors) : [];
   if (!selection.selectionReady) errors.push('six-axis catalog selection is not ready');
   if (housing.housingStatus !== 'passed') errors.push('six-axis housing fit has not passed');
   if (replacements.length !== 6) errors.push('exactly six governed replacement plans are required');
+  if (selection.auxiliarySelectionStatus === 'passed' && auxiliaryAdditions.length !== 4) errors.push('exactly four auxiliary addition plans are required after auxiliary selection');
   const ready = errors.length === 0;
-  const binding = { lineageId, revision, baseProgramHash, programHash, revisionManifestSha256, requirementsSha256: selection.requirementsSha256, catalogManifestSha256: selection.manifestSha256, catalogArtifactSetSha256: selection.artifactSetSha256, housingSha256: housing.housingSha256, replacements };
-  const emittedBinding = { ...binding, replacements: ready ? replacements : [] };
+  const binding = { lineageId, revision, baseProgramHash, programHash, revisionManifestSha256, requirementsSha256: selection.requirementsSha256, catalogManifestSha256: selection.manifestSha256, catalogArtifactSetSha256: selection.artifactSetSha256, housingSha256: housing.housingSha256, replacements, auxiliaryAdditions };
+  const emittedBinding = { ...binding, replacements: ready ? replacements : [], auxiliaryAdditions: ready ? auxiliaryAdditions : [] };
   return { schema: 'nexyfab.robot-cad-integration-review-packet.v1', targetHash: hashRobotCadIntegrationTarget(emittedBinding), ...emittedBinding, readiness: ready ? 'review_pending' : 'not_ready', expertReviewRequired: true, cadIntegrationStatus: 'not_applied', releaseReady: false, errors: [...new Set(errors)], sideEffects: { persisted: false, sourceModified: false, cadModified: false, quoteCreated: false, rfqSent: false } };
+}
+
+function buildAuxiliaryAdditions(program: AiAssemblyProgram, selection: ReturnType<typeof selectRobotCatalogBytes>, errors: string[]): NonNullable<RobotCadIntegrationPacket['auxiliaryAdditions']> {
+  if (selection.auxiliarySelectionStatus === 'not_run') return [];
+  if (!selection.auxiliarySelectionReady || selection.auxiliarySelections.length !== 4) return [];
+  const instanceIds = new Set(program.assembly?.parts?.map(part => part.id) ?? []); const occurrenceIds = new Set<string>();
+  return selection.auxiliarySelections.flatMap(item => {
+    const occurrenceId = `AUX:${item.kind}:${item.component.id}`;
+    if (!instanceIds.has(item.mount.parentPartId)) { errors.push(`${item.pendingComponentId}: explicit mount parent ${item.mount.parentPartId} is absent from the editable program`); return []; }
+    if (instanceIds.has(occurrenceId) || occurrenceIds.has(occurrenceId)) { errors.push(`${item.pendingComponentId}: auxiliary occurrence ID is duplicated`); return []; }
+    occurrenceIds.add(occurrenceId);
+    return [{ kind: item.kind, pendingComponentId: item.pendingComponentId, selected: item.component.id, occurrenceId, mount: item.mount }];
+  });
 }
 
 function buildReplacements(program: AiAssemblyProgram, selection: ReturnType<typeof selectRobotCatalogBytes>, housing: ReturnType<typeof evaluateRobotHousingFitEvidence>, errors: string[]) {

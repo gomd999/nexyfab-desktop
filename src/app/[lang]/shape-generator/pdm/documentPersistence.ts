@@ -49,6 +49,7 @@
  */
 
 import type { Commit } from './versionBranch';
+import * as Y from 'yjs';
 
 // ── Server response shapes (mirror publicVersionShape / publicDocShape) ──────
 
@@ -82,6 +83,33 @@ export interface PublicVersion {
   gateReport: GateResultLike[] | null;
   createdBy: string;
   createdAt: number;
+  /** Short-lived read URL returned only after document access is checked. */
+  blobUrl?: string | null;
+  blobUrlExpiresAt?: number | null;
+}
+
+export interface VersionSnapshot {
+  versionId: string;
+  /** Raw immutable payload; callers may feed Yjs bytes into their live Y.Doc. */
+  bytes: Uint8Array;
+  contentType: 'json' | 'yjs' | 'unknown';
+  json: unknown | null;
+}
+
+/** Decode the snapshot convention used by lib/collab/crdtAdapter.ts without
+ * mutating the live collaborative document. Invalid/legacy bytes return null. */
+export function decodeYjsSnapshotJson(bytes: Uint8Array): unknown | null {
+  const doc = new Y.Doc();
+  try {
+    Y.applyUpdate(doc, bytes);
+    const raw = doc.getMap<string>('state').get('snapshot');
+    if (typeof raw !== 'string') return null;
+    return JSON.parse(raw) as unknown;
+  } catch {
+    return null;
+  } finally {
+    doc.destroy();
+  }
 }
 
 // ── Commit envelope (encoded into the version `label`) ───────────────────────
@@ -290,6 +318,68 @@ export async function fetchVersionHistory(
   }
   const json = (await res.json()) as { versions?: PublicVersion[] };
   return json.versions ?? [];
+}
+
+/**
+ * Download the immutable payload used by a PDM checkout.  The server never
+ * accepts a client-supplied storage key; it returns a short-lived signed URL
+ * only for versions visible to the authenticated user.
+ */
+export async function fetchVersionSnapshot(
+  version: PublicVersion,
+  opts: PersistOptions = {},
+): Promise<VersionSnapshot> {
+  const f = resolveFetch(opts);
+  const url = version.blobUrl;
+  if (!url) {
+    throw new PersistenceError('server_error', 'version snapshot URL is unavailable; refresh version history');
+  }
+  let res: Response;
+  try { res = await f(url, { method: 'GET', credentials: 'include' }); }
+  catch (err) { throw new PersistenceError('offline', `snapshot GET failed (network): ${(err as Error).message}`); }
+  if (!res.ok) throw new PersistenceError(reasonForStatus(res.status), `snapshot GET ${res.status}`);
+  const bytes = new Uint8Array(await res.arrayBuffer());
+  let json: unknown | null = null;
+  let contentType: VersionSnapshot['contentType'] = 'unknown';
+  const headerType = res.headers.get('content-type') ?? '';
+  if (headerType.includes('json')) contentType = 'json';
+  try {
+    const text = new TextDecoder().decode(bytes);
+    const parsed = JSON.parse(text) as unknown;
+    json = parsed;
+    contentType = 'json';
+  } catch {
+    // Yjs/opaque binary payloads are intentionally not coerced to JSON.
+    if (bytes.length > 0 && bytes[0] !== 0x7b) {
+      contentType = 'yjs';
+      json = decodeYjsSnapshotJson(bytes);
+    }
+  }
+  return { versionId: version.id, bytes, contentType, json };
+}
+
+/** Restore a selected version and immediately obtain the fresh current blob
+ * URL so the viewer can apply the restored Yjs document without a stale read. */
+export async function checkoutVersion(
+  documentId: string,
+  versionId: string,
+  opts: PersistOptions = {},
+): Promise<{ version: PublicVersion; currentBlobUrl: string | null }> {
+  const f = resolveFetch(opts);
+  let res: Response;
+  try {
+    res = await f(`/api/documents/${encodeURIComponent(documentId)}/versions/${encodeURIComponent(versionId)}/restore`, {
+      method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' }, body: '{}',
+    });
+  } catch (err) { throw new PersistenceError('offline', `checkout failed (network): ${(err as Error).message}`); }
+  if (!res.ok) throw new PersistenceError(reasonForStatus(res.status), `checkout ${res.status}`);
+  const body = await res.json() as { version: PublicVersion };
+  let currentBlobUrl: string | null = null;
+  try {
+    const current = await f(`/api/documents/${encodeURIComponent(documentId)}`, { method: 'GET', credentials: 'include' });
+    if (current.ok) currentBlobUrl = ((await current.json()) as { blobUrl?: string | null }).blobUrl ?? null;
+  } catch { /* restore succeeded; caller can retry the current URL read */ }
+  return { version: body.version, currentBlobUrl };
 }
 
 // ── Reconstruction: version list → commit graph read-model ───────────────────

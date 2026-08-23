@@ -16,6 +16,9 @@ import {
   type EmailCategory,
   verifyUnsubscribeToken as verifyToken,
 } from '@/lib/email-unsubscribe';
+import { boundedJsonError, readBoundedJson } from '@/lib/boundedJsonBody';
+
+const MAX_EMAIL_PREFERENCES_BODY_BYTES = 16 * 1024;
 
 const patchSchema = z.object({
   preferences: z.record(z.enum(CATEGORIES as [EmailCategory, ...EmailCategory[]]), z.boolean()).optional(),
@@ -78,7 +81,11 @@ export async function GET(req: NextRequest) {
 
 export async function PATCH(req: NextRequest) {
   if (!checkOrigin(req)) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
-  const raw = await req.json().catch(() => null);
+  let raw: unknown = null;
+  try { raw = await readBoundedJson(req, MAX_EMAIL_PREFERENCES_BODY_BYTES); }
+  catch (error) {
+    if (boundedJsonError(error)?.code === 'PAYLOAD_TOO_LARGE') return NextResponse.json({ error: 'Request too large', code: 'PAYLOAD_TOO_LARGE' }, { status: 413 });
+  }
   const parsed = patchSchema.safeParse(raw);
   if (!parsed.success) return NextResponse.json({ error: 'Invalid input' }, { status: 400 });
 

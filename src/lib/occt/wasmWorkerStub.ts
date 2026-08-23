@@ -73,6 +73,7 @@ export type WireOp =
   | 'buildFromExtrude'
   | 'buildFromRevolve'
   | 'buildPrismAt'
+  | 'buildCylinderAt'
   | 'buildConeAt'
   | 'buildThreadHelixCutter'
   | 'booleanUnion'
@@ -214,6 +215,17 @@ export function createWasmWorkerStub(opts: CreateStubOpts = {}): WorkerLike {
             Number(args.z0), Number(args.heightMm),
           );
           if (!r.ok || !r.shape) { reply({ reqId, ok: false, error: r.error ?? 'buildPrismAt failed', warnings: r.warnings }); return; }
+          reply({ reqId, ok: true, shape: shapeToWire(r.shape), warnings: r.warnings });
+          return;
+        }
+
+        case 'buildCylinderAt': {
+          if (!inner.buildCylinderAt) { reply({ reqId, ok: false, error: 'buildCylinderAt: not supported' }); return; }
+          const r = await inner.buildCylinderAt(
+            args.center as [number, number, number], args.axis as [number, number, number],
+            Number(args.radiusMm), Number(args.depthMm),
+          );
+          if (!r.ok || !r.shape) { reply({ reqId, ok: false, error: r.error ?? 'buildCylinderAt failed', warnings: r.warnings }); return; }
           reply({ reqId, ok: true, shape: shapeToWire(r.shape), warnings: r.warnings });
           return;
         }

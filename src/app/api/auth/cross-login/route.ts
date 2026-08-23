@@ -24,6 +24,9 @@ import type { UserRow } from '@/lib/db-types';
 import * as OTPAuth from 'otpauth';
 import { getTrustedClientIp } from '@/lib/client-ip';
 import { parseUserStageColumn } from '@/lib/stage-engine';
+import { boundedJsonError, readBoundedJson } from '@/lib/boundedJsonBody';
+
+const MAX_CROSS_LOGIN_BODY_BYTES = 16 * 1024;
 
 export const dynamic = 'force-dynamic';
 
@@ -51,7 +54,10 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Invalid service secret' }, { status: 403 });
   }
 
-  const parsed = loginSchema.safeParse(await req.json().catch(() => ({})));
+  let raw: unknown = {};
+  try { raw = await readBoundedJson(req, MAX_CROSS_LOGIN_BODY_BYTES); }
+  catch (error) { if (boundedJsonError(error)?.code === 'PAYLOAD_TOO_LARGE') return NextResponse.json({ error: 'Request too large', code: 'PAYLOAD_TOO_LARGE' }, { status: 413 }); }
+  const parsed = loginSchema.safeParse(raw);
   if (!parsed.success) {
     return NextResponse.json({ error: 'Invalid input' }, { status: 400 });
   }

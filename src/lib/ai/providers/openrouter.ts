@@ -17,6 +17,32 @@ function keySync(): string | undefined {
   return getSettingSync('openrouter.api_key') || process.env.OPENROUTER_API_KEY;
 }
 
+function supportsExplicitCacheMarker(model: string): boolean {
+  return model.startsWith('anthropic/')
+    || /^qwen\/(?:qwen3-max|qwen-plus|qwen3\.6-plus|qwen3-coder-plus|qwen3-coder-flash)(?:$|:)/.test(model);
+}
+
+/** Preserve a stable prefix and opt in only where OpenRouter documents it. */
+export function buildOpenRouterChatBody(req: ChatCompletionRequest, model: string): Record<string, unknown> {
+  const explicit = supportsExplicitCacheMarker(model);
+  const lastSystemIndex = req.messages.reduce(
+    (found, message, index) => message.role === 'system' ? index : found,
+    -1,
+  );
+  const messages = req.messages.map((message, index) => explicit && index === lastSystemIndex
+    ? {
+        role: message.role,
+        content: [{ type: 'text', text: message.content, cache_control: { type: 'ephemeral' } }],
+      }
+    : message);
+  return {
+    model,
+    messages,
+    max_tokens: req.maxTokens ?? 4096,
+    temperature: req.temperature ?? 0.2,
+  };
+}
+
 export const openrouterProvider: ProviderAdapter = {
   name: 'openrouter',
 
@@ -44,12 +70,7 @@ export const openrouterProvider: ProviderAdapter = {
     const res = await fetch(`${BASE}/chat/completions`, {
       method: 'POST',
       headers,
-      body: JSON.stringify({
-        model,
-        messages: req.messages,
-        max_tokens: req.maxTokens ?? 4096,
-        temperature: req.temperature ?? 0.2,
-      }),
+      body: JSON.stringify(buildOpenRouterChatBody(req, model)),
       signal: req.signal
         ? AbortSignal.any([req.signal, AbortSignal.timeout(req.timeoutMs ?? 60_000)])
         : AbortSignal.timeout(req.timeoutMs ?? 60_000),
@@ -63,7 +84,11 @@ export const openrouterProvider: ProviderAdapter = {
     const data = await res.json() as {
       // ★260731 — 절단 신호를 읽는다. 종전엔 버려서 잘린 응답이 「형식 오류」로만 보였다.
       choices?: Array<{ message?: { content?: string }; finish_reason?: string }>;
-      usage?: { prompt_tokens?: number; completion_tokens?: number };
+      usage?: {
+        prompt_tokens?: number;
+        completion_tokens?: number;
+        prompt_tokens_details?: { cached_tokens?: number; cache_write_tokens?: number };
+      };
     };
     const content = data.choices?.[0]?.message?.content ?? '';
     if (!content) throw new AiProviderError('openrouter', undefined, 'OpenRouter returned no text');
@@ -75,6 +100,10 @@ export const openrouterProvider: ProviderAdapter = {
       model,
       promptTokens: data.usage?.prompt_tokens,
       completionTokens: data.usage?.completion_tokens,
+      cachedPromptTokens: data.usage?.prompt_tokens_details?.cached_tokens,
+      cacheWriteTokens: data.usage?.prompt_tokens_details?.cache_write_tokens,
+      cacheMissTokens: Math.max(0, (data.usage?.prompt_tokens ?? 0) - (data.usage?.prompt_tokens_details?.cached_tokens ?? 0)),
+      cacheProfile: 'openrouter-native',
       latencyMs: Date.now() - startedAt,
     };
   },

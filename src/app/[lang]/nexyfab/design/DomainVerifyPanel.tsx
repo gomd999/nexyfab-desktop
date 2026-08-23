@@ -14,7 +14,7 @@
  */
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { isKorean } from '@/lib/i18n/normalize';
+import { designLoc, designPair } from './designI18n';
 
 interface InputSpec {
   name: string; labelKo: string; unit: string;
@@ -48,7 +48,7 @@ const DERIVED_UNIT: Record<string, string> = {
 const num = (v: number | boolean) => (typeof v === 'number' ? (Number.isInteger(v) ? v : +v.toFixed(2)) : String(v));
 
 export default function DomainVerifyPanel({ intent, lang, defaultDomain }: { intent: unknown; lang: string; defaultDomain?: string | null }) {
-  const ko = isKorean(lang);
+  const t = (copy: Parameters<typeof designLoc>[1]) => designLoc(lang, copy);
   const [domains, setDomains] = useState<DomainSpec[] | null>(null);
   const [domainSlug, setDomainSlug] = useState('');
   const [calcId, setCalcId] = useState('');
@@ -124,16 +124,16 @@ export default function DomainVerifyPanel({ intent, lang, defaultDomain }: { int
   return (
     <div style={{ padding: '0 16px 16px', borderTop: '1px solid var(--nx-border, #dfe3e8)', paddingTop: 14 }}>
       <div style={{ fontSize: 12, fontWeight: 800, marginBottom: 8 }}>
-        {ko ? '분야 검증 (선택)' : 'Domain verification (optional)'}
+        {t({ ko: '분야 검증 (선택)', en: 'Domain verification (optional)', ja: '分野検証（任意）', zh: '领域验证（可选）', es: 'Verificación del dominio (opcional)', ar: 'التحقق من المجال (اختياري)' })}
         <span style={{ marginLeft: 6, fontSize: 10.5, fontWeight: 600, color: 'var(--nx-text-3, #6b7684)' }}>
-          {ko ? '형상 파생 + 하중 입력 → 계산기' : 'geometry-derived + your loads → calculator'}
+          {t({ ko: '형상 파생 + 하중 입력 → 계산기', en: 'geometry-derived + your loads → calculator', ja: '形状から導出 + 荷重入力 → 計算機', zh: '几何派生 + 荷载输入 → 计算器', es: 'geometría derivada + tus cargas → calculadora', ar: 'المشتق من الشكل + أحمالك → الحاسبة' })}
         </span>
       </div>
 
       {/* 분야 · 계산기 선택 */}
       <div style={{ display: 'flex', gap: 6, marginBottom: 6 }}>
         <select value={domainSlug} onChange={(e) => { setDomainSlug(e.target.value); const d = domains.find((x) => x.slug === e.target.value); setCalcId(d?.calculators[0]?.id ?? ''); }} style={selStyle}>
-          {domains.map((d) => <option key={d.slug} value={d.slug}>{d.labelKo}</option>)}
+          {domains.map((d) => <option key={d.slug} value={d.slug}>{designPair(lang, d.labelKo, (d as DomainSpec & { labelEn?: string }).labelEn ?? d.labelKo)}</option>)}
         </select>
         <select value={calcId} onChange={(e) => setCalcId(e.target.value)} style={selStyle}>
           {domain?.calculators.map((c) => <option key={c.id} value={c.id}>{c.labelKo}</option>)}
@@ -144,13 +144,13 @@ export default function DomainVerifyPanel({ intent, lang, defaultDomain }: { int
       {/* ④ 부재 선택 — 프리즘형 부재가 2개 이상이면 무엇을 검증할지 선택 */}
       {candidates.length > 1 && (
         <label style={{ display: 'block', fontSize: 11, marginBottom: 8 }}>
-          <span style={{ color: 'var(--nx-text-3, #6b7684)' }}>{ko ? '검증 부재' : 'Member to verify'}</span>
+          <span style={{ color: 'var(--nx-text-3, #6b7684)' }}>{t({ ko: '검증 부재', en: 'Member to verify', ja: '検証部材', zh: '待验证构件', es: 'Elemento a verificar', ar: 'العنصر المطلوب التحقق منه' })}</span>
           <select
             value={String(memberRef ?? '')}
             onChange={(e) => { const v = e.target.value; const ref = v === '' ? undefined : v; setMemberRef(ref); run(ref); }}
             style={{ ...selStyle, marginTop: 2 }}
           >
-            <option value="">{ko ? '자동(첫 부재)' : 'Auto (first)'}</option>
+            <option value="">{t({ ko: '자동(첫 부재)', en: 'Auto (first)', ja: '自動（最初の部材）', zh: '自动（第一个）', es: 'Automático (primero)', ar: 'تلقائي (الأول)' })}</option>
             {candidates.map((c) => (
               <option key={c.id} value={c.id}>{c.id} · {c.kind} · L{c.L}mm · A{c.A}mm²</option>
             ))}
@@ -179,7 +179,7 @@ export default function DomainVerifyPanel({ intent, lang, defaultDomain }: { int
       )}
 
       <button type="button" onClick={() => run()} disabled={loading} style={runStyle}>
-        {loading ? (ko ? '검증 중…' : 'Verifying…') : ko ? '분야 검증 실행' : 'Run domain check'}
+        {loading ? t({ ko: '검증 중…', en: 'Verifying…', ja: '検証中…', zh: '验证中…', es: 'Verificando…', ar: 'جارٍ التحقق…' }) : t({ ko: '분야 검증 실행', en: 'Run domain check', ja: '分野検証を実行', zh: '运行领域验证', es: 'Ejecutar verificación', ar: 'تشغيل فحص المجال' })}
       </button>
 
       {err && <div style={{ marginTop: 8, padding: 8, borderRadius: 6, background: '#fdecec', color: '#b42318', fontSize: 11.5 }}>{err}</div>}
@@ -187,7 +187,7 @@ export default function DomainVerifyPanel({ intent, lang, defaultDomain }: { int
       {/* 필수 입력 누락(하중 등) — 값을 지어내지 않음 */}
       {result && !result.ok && result.needInputs && (
         <div style={{ marginTop: 8, padding: 8, borderRadius: 6, background: '#fff4e5', color: '#a15c00', fontSize: 11.5 }}>
-          {ko ? '이 검토엔 다음 입력이 필요합니다(형상으론 알 수 없음): ' : 'This check needs (not derivable from geometry): '}
+          {t({ ko: '이 검토엔 다음 입력이 필요합니다(형상으론 알 수 없음): ', en: 'This check needs (not derivable from geometry): ', ja: 'この検証には次の入力が必要です（形状からは導出できません）：', zh: '此验证需要以下输入（无法从几何推导）：', es: 'Esta comprobación necesita (no se deriva de la geometría): ', ar: 'يتطلب هذا الفحص المدخلات التالية (لا يمكن اشتقاقها من الشكل): ' })}
           <b>{result.needInputs.map((s) => s.labelKo).join(', ')}</b>
         </div>
       )}
@@ -202,7 +202,7 @@ export default function DomainVerifyPanel({ intent, lang, defaultDomain }: { int
             }}>{result.verdict}</span>
             {result.member && (
               <span style={{ fontSize: 11, color: 'var(--nx-text-3, #6b7684)' }}>
-                {ko ? '검증 부재: ' : 'member: '}{result.member.id ?? result.member.kind} · L={result.member.L}mm
+                {t({ ko: '검증 부재: ', en: 'member: ', ja: '検証部材: ', zh: '验证构件：', es: 'elemento: ', ar: 'العنصر: ' })}{result.member.id ?? result.member.kind} · L={result.member.L}mm
               </span>
             )}
           </div>
@@ -213,13 +213,13 @@ export default function DomainVerifyPanel({ intent, lang, defaultDomain }: { int
               <div
                 style={{ background: '#fff', borderRadius: 8, padding: 6, overflowX: 'auto' }}
                 onClick={(e) => {
-                  const t = (e.target as HTMLElement).closest('[data-param]');
-                  const key = t?.getAttribute('data-param');
+                  const node = (e.target as HTMLElement).closest('[data-param]');
+                  const key = node?.getAttribute('data-param');
                   if (!key) return;
                   const spec = calc?.userInputs.find((s) => s.name === key);
                   const cur = params[key] ?? (spec?.default !== undefined ? String(spec.default) : '');
                   const label = spec ? `${spec.labelKo}${spec.unit ? ` (${spec.unit})` : ''}` : key;
-                  const nv = window.prompt((ko ? '새 값 — ' : 'New value — ') + label, cur);
+                  const nv = window.prompt(t({ ko: '새 값 — ', en: 'New value — ', ja: '新しい値 — ', zh: '新值 — ', es: 'Nuevo valor — ', ar: 'قيمة جديدة — ' }) + label, cur);
                   if (nv === null || nv.trim() === '' || !Number.isFinite(Number(nv))) return;
                   const next = { ...params, [key]: nv };
                   setParams(next);
@@ -228,7 +228,7 @@ export default function DomainVerifyPanel({ intent, lang, defaultDomain }: { int
                 dangerouslySetInnerHTML={{ __html: result.drawingSvg }}
               />
               <div style={{ fontSize: 10.5, color: 'var(--nx-text-3, #6b7684)', marginTop: 2 }}>
-                {ko ? '파란 치수 클릭 = 해당 값 수정 → 재검증·도면 재생성 (폼과 동일 단위)' : 'Click a blue dimension to edit → auto re-verify & redraw (same units as form)'}
+                {t({ ko: '파란 치수 클릭 = 해당 값 수정 → 재검증·도면 재생성 (폼과 동일 단위)', en: 'Click a blue dimension to edit → auto re-verify & redraw (same units as form)', ja: '青い寸法をクリックして編集 → 自動で再検証・再描画', zh: '点击蓝色尺寸编辑 → 自动重新验证并重绘', es: 'Haz clic en una medida azul para editarla → reverificación y redibujo automáticos', ar: 'انقر على بُعد أزرق للتعديل → إعادة التحقق والرسم تلقائياً' })}
               </div>
             </div>
           )}
@@ -236,7 +236,7 @@ export default function DomainVerifyPanel({ intent, lang, defaultDomain }: { int
           {/* 형상 파생값(투명성) */}
           {result.derived && Object.keys(result.derived).length > 0 && (
             <div style={{ fontSize: 11, marginBottom: 8 }}>
-              <span style={{ color: 'var(--nx-text-3, #6b7684)' }}>{ko ? '형상 파생 ' : 'from geometry '}</span>
+              <span style={{ color: 'var(--nx-text-3, #6b7684)' }}>{t({ ko: '형상 파생 ', en: 'from geometry ', ja: '形状由来 ', zh: '来自几何 ', es: 'de la geometría ', ar: 'من الشكل ' })}</span>
               {Object.entries(result.derived).map(([k, v]) => (
                 <span key={k} style={{ display: 'inline-block', margin: '0 6px 4px 0', padding: '1px 6px', borderRadius: 4, background: 'var(--nx-hover, #eef1f4)' }}>
                   {k}={num(v)}{DERIVED_UNIT[k] ? ` ${DERIVED_UNIT[k]}` : ''}
@@ -259,7 +259,7 @@ export default function DomainVerifyPanel({ intent, lang, defaultDomain }: { int
                     </span>
                     {ratio !== undefined && (
                       <span style={{ fontWeight: 600, color: ratio <= 1 ? 'var(--nx-text, #1a2230)' : '#b42318' }}>
-                        {ko ? '이용률 ' : 'util '}{(ratio * 100).toFixed(0)}%
+                        {t({ ko: '이용률 ', en: 'util ', ja: '利用率 ', zh: '利用率 ', es: 'util. ', ar: 'الاستخدام ' })}{(ratio * 100).toFixed(0)}%
                       </span>
                     )}
                   </div>
@@ -270,11 +270,11 @@ export default function DomainVerifyPanel({ intent, lang, defaultDomain }: { int
 
           {/* ③ 구조화된 근거(인용) + draft 라벨 + disclaimer */}
           <div style={{ marginTop: 10, paddingTop: 8, borderTop: '1px dashed var(--nx-border, #dfe3e8)', fontSize: 10.5, color: 'var(--nx-text-3, #6b7684)', lineHeight: 1.5 }}>
-            {draft && <div style={{ color: '#a15c00', fontWeight: 600 }}>⚠ {ko ? '비법정 참고 — 공개예제 게이트 미충족(draft)' : 'Reference only — draft calculator'}</div>}
+            {draft && <div style={{ color: '#a15c00', fontWeight: 600 }}>⚠ {t({ ko: '비법정 참고 — 공개예제 게이트 미충족(draft)', en: 'Reference only — draft calculator', ja: '参考用 — ドラフト計算機', zh: '仅供参考 — 草稿计算器', es: 'Solo referencia — calculadora en borrador', ar: 'للمرجع فقط — حاسبة مسودة' })}</div>}
             {result.disclaimer && <div>{result.disclaimer}</div>}
             {result.citations && result.citations.length > 0 && (
               <div style={{ marginTop: 4 }}>
-                <div style={{ fontWeight: 700, marginBottom: 2 }}>{ko ? '근거' : 'Basis'}</div>
+                <div style={{ fontWeight: 700, marginBottom: 2 }}>{t({ ko: '근거', en: 'Basis', ja: '根拠', zh: '依据', es: 'Base', ar: 'الأساس' })}</div>
                 {result.citations.map((c, i) => (
                   <div key={i} style={{ marginBottom: 2 }}>
                     <span style={{
@@ -288,7 +288,7 @@ export default function DomainVerifyPanel({ intent, lang, defaultDomain }: { int
                   </div>
                 ))}
                 <div style={{ marginTop: 2, fontStyle: 'italic' }}>
-                  {ko ? 'PD=미 연방 퍼블릭도메인 원문 링크. ref=조항 참조(원문 비수록). 전문 검색(RAG)은 별도.' : 'PD=US-gov public-domain source link. ref=clause reference only.'}
+                  {t({ ko: 'PD=미 연방 퍼블릭도메인 원문 링크. ref=조항 참조(원문 비수록). 전문 검색(RAG)은 별도.', en: 'PD=US-gov public-domain source link. ref=clause reference only.', ja: 'PD=米国政府のパブリックドメイン原文リンク。ref=条項参照。', zh: 'PD=美国政府公共领域原文链接。ref=条款引用。', es: 'PD=enlace a la fuente pública del gobierno de EE. UU.; ref=referencia de cláusula.', ar: 'PD=رابط مصدر حكومي أمريكي متاح للعامة؛ ref=مرجع البند.' })}
                 </div>
               </div>
             )}

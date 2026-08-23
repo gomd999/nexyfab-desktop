@@ -328,7 +328,10 @@ function computeNodeStats(
     case 'circular_pattern':
       return circularPatternStats(p, node, prior);
     case 'hole':
-      return holeStats(p);
+      return holeStats(
+        p,
+        p.childId === undefined ? undefined : ctx.requirePayload(p.childId, node.id, 'extrude').depth,
+      );
     case 'fillet':
       // Volume / surface area intentionally undefined — see module caveats.
       // Bbox passes through from the child extrude.
@@ -729,17 +732,23 @@ function circularPatternStats(
   };
 }
 
-function holeStats(p: Extract<FeaturePayload, { kind: 'hole' }>): FeatureStats {
+function holeStats(
+  p: Extract<FeaturePayload, { kind: 'hole' }>,
+  hostThickness?: number,
+): FeatureStats {
   // Subtractive — negative volume. The hole sits at (cx, cy) with the
   // bore axis along -Z, top at z=0, bottom at z=-depth.
   const r = p.diameter / 2;
-  let v = -(Math.PI * r * r * p.depth);
+  const through = p.terminationMode === 'through' ||
+    (p.terminationMode === undefined || p.terminationMode === 'auto') && hostThickness !== undefined;
+  const depth = through ? (hostThickness ?? p.depth) : p.depth;
+  let v = -(Math.PI * r * r * depth);
   // Outer surface area of the carved cavity: side wall + bottom disc.
   // (No top disc — that face is shared with the parent body and is
   // removed by the subtraction.)
-  let sa = 2 * Math.PI * r * p.depth + Math.PI * r * r;
-  const bottomZ = -p.depth;
-  const topZ = 0;
+  let sa = 2 * Math.PI * r * depth + Math.PI * r * r;
+  const bottomZ = (hostThickness ?? 0) - depth;
+  const topZ = hostThickness ?? 0;
   let maxR = r;
   if (p.holeType === 'counterbore' && p.counterboreDiameter !== undefined && p.counterboreDepth !== undefined) {
     const cbR = p.counterboreDiameter / 2;
@@ -952,6 +961,17 @@ export function computeStats(
   let aggSA = 0;
   let aggBbox: Bbox = EMPTY_BBOX;
   let nodeCount = 0;
+  // A pattern consumes its seed body inside the generated loop. Keep the
+  // seed's per-feature stats for inspection, but do not add it to the
+  // aggregate a second time; otherwise a four-hole pattern reports five
+  // removed holes (seed + four instances) while replay emits four.
+  const patternSeeds = new Set<string>();
+  for (const node of tree.nodes) {
+    if (node.payload.kind === 'linear_pattern' || node.payload.kind === 'circular_pattern') {
+      const seed = node.payload.childId ?? node.dependencies[0];
+      if (seed !== undefined) patternSeeds.add(seed);
+    }
+  }
   // Payload-only context — fillet/chamfer need the upstream extrude's
   // parameters, never its rendered SCAD.
   const ctx = emitContextForTree(tree);
@@ -962,13 +982,13 @@ export function computeStats(
     const stats = computeNodeStats(node, perFeature, ctx, embeddedChildNodes);
     perFeature.set(node.id, stats);
     nodeCount += 1;
-    if (stats.volume !== undefined && Number.isFinite(stats.volume)) {
+    if (!patternSeeds.has(node.id) && stats.volume !== undefined && Number.isFinite(stats.volume)) {
       aggVolume += stats.volume;
     }
-    if (stats.surfaceArea !== undefined && Number.isFinite(stats.surfaceArea)) {
+    if (!patternSeeds.has(node.id) && stats.surfaceArea !== undefined && Number.isFinite(stats.surfaceArea)) {
       aggSA += stats.surfaceArea;
     }
-    if (stats.bbox && !isEmptyBbox(stats.bbox)) {
+    if (!patternSeeds.has(node.id) && stats.bbox && !isEmptyBbox(stats.bbox)) {
       aggBbox = unionBbox(aggBbox, stats.bbox);
     }
   }

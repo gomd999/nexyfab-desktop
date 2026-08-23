@@ -1,3 +1,5 @@
+import { toIsoLang, type IsoLang } from './i18n/normalize';
+
 /**
  * partner-pricebook.ts — Types + utilities for partner price books and
  * process-capability matrices, plus a deterministic auto-quote helper.
@@ -26,6 +28,23 @@ export const PROCESS_LABELS: Record<ProcessCode, string> = {
   casting:           '주조',
   welding:           '용접',
 };
+
+const PROCESS_LABEL_COPIES: Record<ProcessCode, Record<IsoLang, string>> = {
+  cnc_milling: { ko: 'CNC 밀링', en: 'CNC Milling', ja: 'CNCフライス加工', zh: 'CNC铣削', es: 'Fresado CNC', ar: 'تفريز CNC' },
+  cnc_turning: { ko: 'CNC 선반', en: 'CNC Turning', ja: 'CNC旋盤加工', zh: 'CNC车削', es: 'Torneado CNC', ar: 'خراطة CNC' },
+  fdm: { ko: '3D 프린팅 (FDM)', en: '3D Printing (FDM)', ja: '3Dプリント (FDM)', zh: '3D打印 (FDM)', es: 'Impresión 3D (FDM)', ar: 'طباعة ثلاثية الأبعاد (FDM)' },
+  sla: { ko: '3D 프린팅 (SLA)', en: '3D Printing (SLA)', ja: '3Dプリント (SLA)', zh: '3D打印 (SLA)', es: 'Impresión 3D (SLA)', ar: 'طباعة ثلاثية الأبعاد (SLA)' },
+  sls: { ko: '3D 프린팅 (SLS)', en: '3D Printing (SLS)', ja: '3Dプリント (SLS)', zh: '3D打印 (SLS)', es: 'Impresión 3D (SLS)', ar: 'طباعة ثلاثية الأبعاد (SLS)' },
+  sheetmetal_laser: { ko: '판금 (레이저)', en: 'Sheet Metal (Laser)', ja: '板金 (レーザー)', zh: '钣金 (激光)', es: 'Chapa (láser)', ar: 'صفائح (ليزر)' },
+  sheetmetal_press: { ko: '판금 (프레스)', en: 'Sheet Metal (Press)', ja: '板金 (プレス)', zh: '钣金 (冲压)', es: 'Chapa (prensa)', ar: 'صفائح (ضغط)' },
+  injection: { ko: '사출 성형', en: 'Injection Molding', ja: '射出成形', zh: '注塑成型', es: 'Moldeo por inyección', ar: 'القولبة بالحقن' },
+  casting: { ko: '주조', en: 'Casting', ja: '鋳造', zh: '铸造', es: 'Fundición', ar: 'سباكة' },
+  welding: { ko: '용접', en: 'Welding', ja: '溶接', zh: '焊接', es: 'Soldadura', ar: 'لحام' },
+};
+
+export function processLabel(code: ProcessCode, lang: string | undefined | null): string {
+  return PROCESS_LABEL_COPIES[code]?.[toIsoLang(lang)] ?? PROCESS_LABELS[code] ?? code;
+}
 
 export const PROCESS_CODES = Object.keys(PROCESS_LABELS) as ProcessCode[];
 

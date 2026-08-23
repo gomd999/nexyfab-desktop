@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState, useCallback, useRef } from 'react';
+import { useAdminI18n } from '../AdminI18nProvider';
 
 interface UserSummary {
   userId: string;
@@ -28,6 +29,7 @@ function fmtCents(cents: number) {
 const AUTO_REFRESH_MS = 30_000;
 
 export default function CostOvershootPage() {
+  const { copy } = useAdminI18n();
   const [data, setData] = useState<ApiResponse | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -85,7 +87,7 @@ export default function CostOvershootPage() {
     <div className="min-h-screen bg-gray-950 text-gray-100 p-6">
       <div className="max-w-6xl mx-auto space-y-4">
         <div className="flex items-center justify-between flex-wrap gap-3">
-          <h1 className="text-2xl font-semibold">Cost Overshoot — per-user daily AI spend</h1>
+          <h1 className="text-2xl font-semibold">{copy.pageTitles.costOvershoot}</h1>
           <div className="flex items-center gap-2 text-sm">
             <label className="flex items-center gap-1 text-gray-400">
               <input

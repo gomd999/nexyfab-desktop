@@ -1,4 +1,4 @@
-import { COMPLEX_PRODUCT_FAMILIES, type ComplexBenchmarkCase, type ComplexBenchmarkFamily } from './complexProductBenchmark';
+import { AUXILIARY_PRODUCT_FAMILIES, COMPLEX_PRODUCT_FAMILIES, CORE_MECHANICAL_PRODUCT_FAMILIES, type ComplexBenchmarkCase, type ComplexBenchmarkFamily } from './complexProductBenchmark';
 
 export const COMPLEX_ACCURACY_AXES = ['requirements', 'dimensions', 'features', 'part_definitions', 'occurrences', 'body_membership', 'hierarchy', 'transforms', 'joints', 'motion', 'collision_clearance', 'manufacturing', 'step_roundtrip', 'repair'] as const;
 export type ComplexAccuracyAxis = typeof COMPLEX_ACCURACY_AXES[number];
@@ -8,13 +8,13 @@ export interface ComplexBenchmarkAssertionV2 { id: string; axis: ComplexAccuracy
 export interface ComplexBenchmarkCaseV2 { schema: 'nexyfab.complex-benchmark-case.v2'; caseId: string; family: ComplexBenchmarkFamily; tier: ComplexProductTier; holdoutGroup: string; sourceHash: string; split: 'holdout'; assertions: ComplexBenchmarkAssertionV2[]; }
 export interface ComplexBenchmarkAssertionRunV2 { assertionId: string; status: ComplexAssertionStatus; reason: string; artifactHashes: string[]; }
 export interface ComplexBenchmarkRunV2 { schema: 'nexyfab.complex-benchmark-run.v2'; subject: 'reference_ground_truth' | 'ai_generation'; caseId: string; campaign: number; repeat: number; usedForTuning: false; requiredGatesPassed: boolean; verified: boolean; falseVerified: boolean; falseClear: boolean; destructivePartMerge: boolean; assertions: ComplexBenchmarkAssertionRunV2[]; }
-export interface ComplexBenchmarkPolicyV2 { minimumCasesPerFamily: number; repeatsPerCampaign: number; consecutiveCampaigns: number; minimumAccuracy: number; minimumCoverage: number; requiredGatePassRate: 1; maximumFalseVerified: 0; maximumFalseClear: 0; maximumDestructivePartMerge: 0; }
+export interface ComplexBenchmarkPolicyV2 { minimumCasesPerFamily: number; repeatsPerCampaign: number; consecutiveCampaigns: number; minimumAccuracy: number; minimumCoverage: number; requiredGatePassRate: 1; maximumFalseVerified: 0; maximumFalseClear: 0; maximumDestructivePartMerge: 0; requiredFamilies?: readonly ComplexBenchmarkFamily[]; }
 export interface ComplexAxisMetricV2 { axis: ComplexAccuracyAxis; expected: number; measured: number; passed: number; failed: number; notRun: number; microAccuracy: number | null; macroAccuracy: number | null; coverage: number | null; }
 export interface ComplexGroupMetricV2 { group: string; cases: number; runs: number; minimumRepeats: number; minimumRepeatsPerCampaign: number; campaigns: number; axes: ComplexAxisMetricV2[]; gatePassRate: number | null; falseVerified: number; falseClear: number; destructivePartMerge: number; minimumRunAccuracy: number | null; runAccuracyStdDev: number | null; eligible: boolean; blockers: string[]; }
-export interface ComplexBenchmarkReportV2 { schema: 'nexyfab.complex-benchmark-report.v2'; policy: ComplexBenchmarkPolicyV2; referenceGroundTruthRuns: number; aiGenerationRuns: number; families: ComplexGroupMetricV2[]; tiers: ComplexGroupMetricV2[]; overall: ComplexGroupMetricV2; eligible: boolean; }
+export interface ComplexBenchmarkReportV2 { schema: 'nexyfab.complex-benchmark-report.v2'; policy: ComplexBenchmarkPolicyV2; requiredFamilies: ComplexBenchmarkFamily[]; referenceGroundTruthRuns: number; aiGenerationRuns: number; families: ComplexGroupMetricV2[]; tiers: ComplexGroupMetricV2[]; overall: ComplexGroupMetricV2; coreMechanicalEligible: boolean; auxiliaryServicesEligible: boolean; eligible: boolean; }
 
 const SHA = /^[a-f0-9]{64}$/;
-export const DEFAULT_COMPLEX_BENCHMARK_POLICY_V2: ComplexBenchmarkPolicyV2 = { minimumCasesPerFamily: 20, repeatsPerCampaign: 5, consecutiveCampaigns: 3, minimumAccuracy: 0.95, minimumCoverage: 0.95, requiredGatePassRate: 1, maximumFalseVerified: 0, maximumFalseClear: 0, maximumDestructivePartMerge: 0 };
+export const DEFAULT_COMPLEX_BENCHMARK_POLICY_V2: ComplexBenchmarkPolicyV2 = { minimumCasesPerFamily: 20, repeatsPerCampaign: 5, consecutiveCampaigns: 3, minimumAccuracy: 0.95, minimumCoverage: 0.95, requiredGatePassRate: 1, maximumFalseVerified: 0, maximumFalseClear: 0, maximumDestructivePartMerge: 0, requiredFamilies: CORE_MECHANICAL_PRODUCT_FAMILIES };
 const ratio = (a: number, b: number) => b > 0 ? a / b : null;
 
 export function validateComplexBenchmarkV2(cases: readonly ComplexBenchmarkCaseV2[], runs: readonly ComplexBenchmarkRunV2[]): string[] {
@@ -76,8 +76,18 @@ export function migrateComplexBenchmarkCaseV1(value: ComplexBenchmarkCase, tier:
 
 export function buildComplexBenchmarkReportV2(cases: readonly ComplexBenchmarkCaseV2[], runs: readonly ComplexBenchmarkRunV2[], policy: ComplexBenchmarkPolicyV2 = DEFAULT_COMPLEX_BENCHMARK_POLICY_V2): ComplexBenchmarkReportV2 {
   const issues = validateComplexBenchmarkV2(cases, runs); if (issues.length) throw new TypeError(issues.join(' '));
-  const families = COMPLEX_PRODUCT_FAMILIES.map(family => groupMetric(family, cases.filter(item => item.family === family), runs, policy, true));
+  const requiredFamilies = resolveRequiredFamilies(policy.requiredFamilies);
+  const families = COMPLEX_PRODUCT_FAMILIES.map(family => groupMetric(family, cases.filter(item => item.family === family), runs, policy, requiredFamilies.includes(family)));
   const tiers = (['T1', 'T2', 'T3', 'T4'] as const).map(tier => groupMetric(tier, cases.filter(item => item.tier === tier), runs, policy, false));
   const overall = groupMetric('overall', cases, runs, policy, false);
-  return { schema: 'nexyfab.complex-benchmark-report.v2', policy, referenceGroundTruthRuns: runs.filter(item => item.subject === 'reference_ground_truth').length, aiGenerationRuns: runs.filter(item => item.subject === 'ai_generation').length, families, tiers, overall, eligible: families.every(item => item.eligible) && tiers.filter(item => item.cases > 0 && item.group !== 'T4').every(item => item.eligible) && overall.eligible };
+  const metricByFamily = new Map(families.map(item => [item.group as ComplexBenchmarkFamily, item]));
+  const coreMechanicalEligible = CORE_MECHANICAL_PRODUCT_FAMILIES.every(family => metricByFamily.get(family)?.eligible === true);
+  const auxiliaryServicesEligible = AUXILIARY_PRODUCT_FAMILIES.every(family => metricByFamily.get(family)?.eligible === true);
+  return { schema: 'nexyfab.complex-benchmark-report.v2', policy: { ...policy, requiredFamilies }, requiredFamilies, referenceGroundTruthRuns: runs.filter(item => item.subject === 'reference_ground_truth').length, aiGenerationRuns: runs.filter(item => item.subject === 'ai_generation').length, families, tiers, overall, coreMechanicalEligible, auxiliaryServicesEligible, eligible: requiredFamilies.every(family => metricByFamily.get(family)?.eligible === true) && tiers.filter(item => item.cases > 0 && item.group !== 'T4').every(item => item.eligible) && overall.eligible };
+}
+
+export function resolveRequiredFamilies(value?: readonly ComplexBenchmarkFamily[]): ComplexBenchmarkFamily[] {
+  const selected = value?.length ? [...new Set(value)] : [...CORE_MECHANICAL_PRODUCT_FAMILIES];
+  if (!selected.length || selected.some(family => !COMPLEX_PRODUCT_FAMILIES.includes(family))) throw new TypeError('benchmark_required_families_invalid');
+  return selected;
 }

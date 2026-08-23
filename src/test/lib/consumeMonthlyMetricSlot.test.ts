@@ -2,11 +2,12 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 const txQueryOne = vi.fn();
 const txExecute = vi.fn();
+const dbExecute = vi.fn(async () => ({ changes: 0 }));
 const transaction = vi.fn(async (fn: (db: { queryOne: typeof txQueryOne; execute: typeof txExecute }) => Promise<unknown>) =>
   fn({ queryOne: txQueryOne, execute: txExecute }));
 
 vi.mock('@/lib/db-adapter', () => ({
-  getDbAdapter: () => ({ transaction }),
+  getDbAdapter: () => ({ execute: dbExecute, transaction }),
 }));
 
 import { consumeMonthlyMetricSlot } from '@/lib/plan-guard';
@@ -30,6 +31,15 @@ describe('consumeMonthlyMetricSlot', () => {
     expect(r.ok).toBe(false);
     expect(r.limit).toBe(40);
     expect(txExecute).not.toHaveBeenCalled();
+  });
+
+  it('counts and writes against the exact active organization', async () => {
+    txQueryOne.mockResolvedValueOnce({ c: 2 });
+    const r = await consumeMonthlyMetricSlot('u1', 'free', 'brep_step_import', { mode: 'async' }, 'org-a');
+    expect(r).toMatchObject({ ok: true, used: 3 });
+    expect(txQueryOne.mock.calls[0]?.[0]).toContain('org_id = ?');
+    expect(txQueryOne.mock.calls[0]?.[1]).toBe('org-a');
+    expect(txExecute.mock.calls[0]?.slice(1, 4)).toEqual([expect.any(String), 'u1', 'org-a']);
   });
 
   it('is no-op for unlimited plan metrics', async () => {

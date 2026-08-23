@@ -11,6 +11,7 @@
 import { useEffect, useRef } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
+import { GL_COLOR } from './lib/glColors';
 
 const GUIDE_LEN = 10000; // half-length of each guide line (very long = infinite)
 
@@ -34,7 +35,7 @@ export default function SnapAlignGuides() {
   if (linesRef.current === null) {
     linesRef.current = {
       x: makeAxisLine('#f87171'), // red = X
-      y: makeAxisLine('var(--nx-ok)'), // green = Y
+      y: makeAxisLine(GL_COLOR.ok), // green = Y; WebGL cannot resolve CSS variables
       z: makeAxisLine('#60a5fa'), // blue = Z
     };
   }

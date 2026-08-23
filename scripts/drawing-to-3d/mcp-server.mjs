@@ -15,7 +15,6 @@
  *   ⚠ 복잡 조립도·다부품 도면은 여전히 **미대응**이다(단일 부품 정투상 기준).
  *   extract/edit는 GEMINI_API_KEY(.env) 필요.
  */
-import { createInterface } from "node:readline";
 import { createHash } from "node:crypto";
 import { extractDrawingFromImage } from "./extract.mjs";
 import { editDrawing } from "./edit.mjs";
@@ -60,6 +59,7 @@ import { interiorCheck } from "./interior-check.mjs";
 import { landscapeCheck } from "./landscape-check.mjs";
 import * as bridgeMod from "./bridge-check.mjs";
 import { loadPathCheck, listUsages as loadPathUsages } from "./load-path.mjs";
+import { createStdioMcpServer } from "../mcp-stdio-transport.mjs";
 
 // bridge_check 자동 디스패치(라우트 CHECK_DISPATCH 와 동일): 어셈블리 meta 필드로
 // 아치·트러스·사장·현수·계단 간이 체인을 고르고, 없으면 거더교(bridgeCheck) 폴백.
@@ -70,6 +70,42 @@ const BRIDGE_DISPATCH = [
   { meta: "suspensionMeta", fn: "suspensionCheck" },
   { meta: "stairMeta", fn: "stairCheck" },
 ];
+
+const MCP_V3_SCHEMA = { type: "array", minItems: 3, maxItems: 3, items: { type: "number" } };
+const MCP_PHYSICAL_SYSTEMS = ["electrical", "data", "cold_water", "hot_water", "drain", "supply_air", "return_air"];
+const MCP_PHYSICAL_PORT_SCHEMA = {
+  type: "object", additionalProperties: false,
+  required: ["id", "ownerObjectId", "system", "connector", "positionMm", "required"],
+  properties: {
+    id: { type: "string", minLength: 1 }, ownerObjectId: { type: "string", minLength: 1 }, system: { type: "string", enum: MCP_PHYSICAL_SYSTEMS },
+    connector: { type: "string", minLength: 1 }, positionMm: MCP_V3_SCHEMA, required: { type: "boolean" },
+    direction: { type: "string", enum: ["inlet", "outlet", "bidirectional"] }, nominalDiameterMm: { type: "number", exclusiveMinimum: 0 }, axis: MCP_V3_SCHEMA, insertionDepthMm: { type: "number", minimum: 0 },
+  },
+};
+const MCP_PHYSICAL_NODE_SCHEMA = {
+  type: "object", additionalProperties: false, required: ["id", "system", "connector", "positionMm"],
+  properties: { id: { type: "string", minLength: 1 }, system: { type: "string", enum: MCP_PHYSICAL_SYSTEMS }, connector: { type: "string", minLength: 1 }, positionMm: MCP_V3_SCHEMA, nominalDiameterMm: { type: "number", exclusiveMinimum: 0 } },
+};
+const MCP_PHYSICAL_CONNECTION_SCHEMA = {
+  type: "object", additionalProperties: false, required: ["id", "portId", "nodeId"],
+  properties: { id: { type: "string", minLength: 1 }, portId: { type: "string", minLength: 1 }, nodeId: { type: "string", minLength: 1 } },
+};
+const MCP_PHYSICAL_RUN_SCHEMA = {
+  type: "object", additionalProperties: false, required: ["id", "system", "fromNodeId", "toNodeId", "lengthMm", "pathMm"],
+  properties: {
+    id: { type: "string", minLength: 1 }, system: { type: "string", enum: MCP_PHYSICAL_SYSTEMS }, fromNodeId: { type: "string", minLength: 1 }, toNodeId: { type: "string", minLength: 1 },
+    lengthMm: { type: "number", exclusiveMinimum: 0 }, elevationDropMm: { type: "number" }, diameterMm: { type: "number", exclusiveMinimum: 0 },
+    pathMm: { type: "array", minItems: 2, items: MCP_V3_SCHEMA }, representation: { type: "string", enum: ["physical_solid", "analysis_only_internal_flow"] }, internalFlowPathId: { type: "string", minLength: 1 }, collisionEligible: { type: "boolean" },
+  },
+};
+const MCP_PHYSICAL_RULES_SCHEMA = {
+  type: "object", additionalProperties: false,
+  required: ["maximumConnectionDistanceMm", "minimumDrainSlopePercent", "requireMatchingConnector", "requirePhysicalRouteGeometry", "requireDiameterMatch", "requireRunFromConnectedPort"],
+  properties: {
+    maximumConnectionDistanceMm: { type: "number", minimum: 0 }, minimumDrainSlopePercent: { type: "number", minimum: 0 }, requireMatchingConnector: { type: "boolean" }, requirePhysicalRouteGeometry: { const: true },
+    endpointToleranceMm: { type: "number", minimum: 0 }, lengthToleranceMm: { type: "number", minimum: 0 }, minimumAxisAlignmentCos: { type: "number", minimum: 0, maximum: 1 }, requireDiameterMatch: { const: true }, requireRunFromConnectedPort: { const: true },
+  },
+};
 
 /**
  * ★260731 — 종전 5종은 **텍스트 경로의 어휘**였다. 도면 추출은 11종을 지원하는데
@@ -124,6 +160,89 @@ async function remoteCall(route, body, toolName) {
   }
   if (!res.ok && json && json.ok === undefined && json.error === undefined)
     json = { ok: false, error: `HTTP ${res.status}`, body: json };
+  return json;
+}
+
+async function remoteMultipartCall(route, fileFields, toolName, limits) {
+  const key = process.env.NEXYFAB_API_KEY;
+  if (!key) {
+    return {
+      ok: false,
+      remoteOnly: true,
+      error: `'${toolName}' requires NEXYFAB_API_KEY. Issue a Pro-or-higher API key in NexyFab account settings and set it in the MCP server environment.`,
+    };
+  }
+
+  const fs = await import('node:fs/promises');
+  const path = await import('node:path');
+  const form = new FormData();
+  const namesByField = new Map();
+  let totalBytes = 0;
+  try {
+    for (const item of fileFields) {
+      const paths = Array.isArray(item.paths) ? item.paths : [item.paths];
+      if (paths.length < (item.minimumCount ?? 1) || paths.length > item.maximumCount) {
+        throw new Error(`${item.field} requires ${item.minimumCount ?? 1}-${item.maximumCount} files`);
+      }
+      const fieldNames = namesByField.get(item.field) ?? new Set();
+      namesByField.set(item.field, fieldNames);
+      for (const filePath of paths) {
+        const displayName = path.basename(filePath);
+        if (fieldNames.has(displayName)) throw new Error(`duplicate ${item.field} filename: ${displayName}`);
+        fieldNames.add(displayName);
+        let stat;
+        try {
+          stat = await fs.stat(filePath);
+        } catch {
+          throw new Error(`unable to read ${displayName}`);
+        }
+        if (!stat.isFile()) throw new Error(`${displayName} is not a regular file`);
+        if (stat.size < 1 || stat.size > item.maximumBytes) {
+          throw new Error(`${displayName} must be 1-${item.maximumBytes} bytes`);
+        }
+        totalBytes += stat.size;
+        if (totalBytes > limits.maximumTotalBytes) {
+          throw new Error(`multipart payload exceeds ${limits.maximumTotalBytes} bytes`);
+        }
+        let bytes;
+        try {
+          bytes = await fs.readFile(filePath);
+        } catch {
+          throw new Error(`unable to read ${displayName}`);
+        }
+        form.append(item.field, new Blob([bytes]), displayName);
+      }
+    }
+  } catch (error) {
+    return {
+      ok: false,
+      error: `Local evidence input rejected: ${String(error?.message ?? error)}`,
+    };
+  }
+
+  let response;
+  try {
+    response = await fetch(_apiUrl() + route, {
+      method: 'POST',
+      headers: { authorization: `Bearer ${key}` },
+      body: form,
+    });
+  } catch (error) {
+    return {
+      ok: false,
+      error: `Remote multipart call failed (${_apiUrl()}${route}): ${String(error?.message ?? error)}`,
+    };
+  }
+  const text = await response.text();
+  let json;
+  try {
+    json = JSON.parse(text);
+  } catch {
+    json = { ok: false, error: `HTTP ${response.status}: non-JSON response` };
+  }
+  if (!response.ok && json && json.ok === undefined && json.error === undefined) {
+    json = { ok: false, error: `HTTP ${response.status}`, body: json };
+  }
   return json;
 }
 
@@ -233,6 +352,95 @@ export const tools = [
       type: "object",
       additionalProperties: false,
       properties: {},
+    },
+  },
+  {
+    name: "verify_complex_system_graph",
+    description:
+      "Verify a hash-bound complex-product system graph against every declared source evidence file. Returns calculation evidence only; physical validation, family contracts and release approval remain required.",
+    inputSchema: {
+      type: "object",
+      required: ["graphFile", "artifactFiles"],
+      additionalProperties: false,
+      properties: {
+        graphFile: { type: "string", minLength: 1, description: "Local Complex System Graph JSON path." },
+        artifactFiles: { type: "array", minItems: 1, maxItems: 256, items: { type: "string", minLength: 1 }, description: "Local paths for all evidence files declared by the graph." },
+      },
+    },
+  },
+  {
+    name: "verify_gearbox_system_contract",
+    description:
+      "Verify the gearbox product-family engineering contract against a complex-system graph and its exact evidence bytes. Never claims physical rig validation or final release.",
+    inputSchema: {
+      type: "object",
+      required: ["graphFile", "contractFile", "artifactFiles"],
+      additionalProperties: false,
+      properties: {
+        graphFile: { type: "string", minLength: 1 },
+        contractFile: { type: "string", minLength: 1, description: "Local gearbox contract JSON path." },
+        artifactFiles: { type: "array", minItems: 1, maxItems: 256, items: { type: "string", minLength: 1 } },
+      },
+    },
+  },
+  {
+    name: "verify_machine_skid_system_contract",
+    description:
+      "Verify the machine/skid product-family engineering contract against a complex-system graph and its exact evidence bytes. Physical commissioning remains required.",
+    inputSchema: {
+      type: "object",
+      required: ["graphFile", "contractFile", "artifactFiles"],
+      additionalProperties: false,
+      properties: {
+        graphFile: { type: "string", minLength: 1 },
+        contractFile: { type: "string", minLength: 1, description: "Local machine/skid contract JSON path." },
+        artifactFiles: { type: "array", minItems: 1, maxItems: 256, items: { type: "string", minLength: 1 } },
+      },
+    },
+  },
+  {
+    name: "verify_welded_enclosure_system_contract",
+    description:
+      "Verify the welded-structure/enclosure product-family contract against exact graph and evidence bytes. Weld, dimensional and ingress inspections remain required.",
+    inputSchema: {
+      type: "object",
+      required: ["graphFile", "contractFile", "artifactFiles"],
+      additionalProperties: false,
+      properties: {
+        graphFile: { type: "string", minLength: 1 },
+        contractFile: { type: "string", minLength: 1, description: "Local welded/enclosure contract JSON path." },
+        artifactFiles: { type: "array", minItems: 1, maxItems: 256, items: { type: "string", minLength: 1 } },
+      },
+    },
+  },
+  {
+    name: "analyze_complex_system_change_impact",
+    description:
+      "Compare two hash-bound complex-product graph revisions and compute the affected dependency cone, stale evidence and required reverification without modifying CAD or creating commercial side effects.",
+    inputSchema: {
+      type: "object",
+      required: ["baseGraphFile", "targetGraphFile", "baseArtifactFiles", "targetArtifactFiles"],
+      additionalProperties: false,
+      properties: {
+        baseGraphFile: { type: "string", minLength: 1 },
+        targetGraphFile: { type: "string", minLength: 1 },
+        baseArtifactFiles: { type: "array", minItems: 1, maxItems: 256, items: { type: "string", minLength: 1 } },
+        targetArtifactFiles: { type: "array", minItems: 1, maxItems: 256, items: { type: "string", minLength: 1 } },
+      },
+    },
+  },
+  {
+    name: "verify_complex_assembly_scale",
+    description:
+      "Recompute the 20/100/500/1000-occurrence complex-assembly benchmark from its manifest and timing evidence. Independent benchmark approval and release remain blocked.",
+    inputSchema: {
+      type: "object",
+      required: ["benchmarkFile", "artifactFiles"],
+      additionalProperties: false,
+      properties: {
+        benchmarkFile: { type: "string", minLength: 1, description: "Local scale benchmark JSON path." },
+        artifactFiles: { type: "array", minItems: 1, maxItems: 256, items: { type: "string", minLength: 1 } },
+      },
     },
   },
   {
@@ -567,9 +775,27 @@ export const tools = [
     },
   },
   {
+    name: "verify_physical_network",
+    description:
+      "Verify typed equipment ports and measured continuous physical route geometry. Missing paths, endpoint/length/axis/diameter mismatch, duplicate flow solids, and analysis-only collision solids block release. Caller pass claims are rejected.",
+    inputSchema: {
+      type: "object",
+      required: ["id", "ports", "nodes", "connections", "runs", "rules"],
+      additionalProperties: false,
+      properties: {
+        id: { type: "string", minLength: 1 },
+        ports: { type: "array", items: MCP_PHYSICAL_PORT_SCHEMA },
+        nodes: { type: "array", items: MCP_PHYSICAL_NODE_SCHEMA },
+        connections: { type: "array", items: MCP_PHYSICAL_CONNECTION_SCHEMA },
+        runs: { type: "array", items: MCP_PHYSICAL_RUN_SCHEMA },
+        rules: MCP_PHYSICAL_RULES_SCHEMA,
+      },
+    },
+  },
+  {
     name: "verify_manufacturing_evidence",
     description:
-      "Evaluate fail-closed CAD manufacturing evidence gates G0-G9. Missing checks are not_run, never passed. Read-only: creates no quote, RFQ, or artifact release.",
+      "Preview caller-supplied CAD manufacturing evidence gates G0-G9. Missing checks are not_run, and caller assertions never become an authoritative design or release pass. Read-only: creates no quote, RFQ, or artifact release.",
     inputSchema: { type: "object", additionalProperties: true, properties: {} },
   },
   {
@@ -586,7 +812,7 @@ export const tools = [
         "revisionSha256",
         "roundtrips",
       ],
-      additionalProperties: true,
+      additionalProperties: false,
       properties: {
         workflowStatus: { type: "string" },
         purpose: { type: "string" },
@@ -852,7 +1078,7 @@ export const tools = [
   {
     name: "verify_ai_generation",
     description:
-      "Fail-closed verification of the complete staged AI CAD process: intent, independent parts, manufacturing gates, mate solve, declared DoF, precise interference, motion and STEP roundtrip. Read-only and never creates a quote or RFQ.",
+      "Diagnostic evaluation of caller-supplied staged AI CAD claims. It never grants manufacturing release; use the server-owned refine/advance/finalize flow for release evidence. Read-only and never creates a quote or RFQ.",
     inputSchema: {
       type: "object",
       additionalProperties: true,
@@ -867,23 +1093,40 @@ export const tools = [
   {
     name: "transition_ai_generation_state",
     description:
-      "Initialize, record, recover, or selection-edit-invalidate the ordered AI CAD generation state with SHA-256 checkpoints and bounded retry evidence. Creates no quote or RFQ.",
+      "Initialize, inspect recovery, plan, or selection-edit-invalidate the server-owned AI CAD generation state. Stage results can only be recorded by server executors. Creates no quote or RFQ.",
     inputSchema: {
       type: "object",
       required: ["action"],
-      additionalProperties: true,
+      additionalProperties: false,
       properties: {
         action: {
           type: "string",
-          enum: ["initialize", "record", "recover", "invalidate_edit"],
+          enum: ["initialize", "recover", "invalidate_edit", "plan"],
         },
         runId: { type: "string" },
         state: { type: "object" },
-        completion: { type: "object" },
         stage: { type: "string" },
-        previousFingerprints: { type: "array", items: { type: "string" } },
-        maxAttempts: { type: "integer", minimum: 1 },
         transaction: { type: "object" },
+        confirmWrite: { type: "boolean", description: "Required for state creation or invalidation; explicit per-call approval." },
+      },
+    },
+  },
+  {
+    name: "refine_ai_generation",
+    description:
+      "Run one server-owned bounded AI refinement stage. The server reconstructs prior outputs, hashes, feedback, and attempt count; client-supplied context cannot forge them. No quote or RFQ.",
+    inputSchema: {
+      type: "object", additionalProperties: false, required: ["state", "context"],
+      properties: {
+        state: { type: "object" },
+        context: {
+          type: "object", additionalProperties: false, required: ["request", "stage", "attempt", "priorOutputs", "priorCheckpointHashes", "feedback", "immutableEvidenceRefs"],
+          properties: {
+            request: { type: "string", minLength: 1, maxLength: 8000 }, stage: { type: "string", enum: ["intent", "decomposition", "interfaces", "part_programs"] }, attempt: { type: "integer", minimum: 1 },
+            priorOutputs: { type: "object" }, priorCheckpointHashes: { type: "object" }, feedback: { type: "array", items: { type: "string" } }, immutableEvidenceRefs: { type: "array", items: { type: "string" } },
+          },
+        },
+        confirmWrite: { type: "boolean", description: "Explicit per-call approval for persisted generation state." },
       },
     },
   },
@@ -899,13 +1142,14 @@ export const tools = [
         state: { type: "object" },
         program: { type: "object" },
         allowedDoF: { type: "integer", minimum: 0, default: 0 },
+        confirmWrite: { type: "boolean", description: "Explicit per-call approval for persisted generation state." },
       },
     },
   },
   {
     name: "finalize_ai_generation",
     description:
-      "Server-verify required animation frames, per-part manufacturing G0-G7, caller-supplied reference STEP requirements (flat pattern, bend table, member identity, miter lengths, cut list), STEP export/re-import measurements, and exact-artifact G9 authorization with affected-part-only recovery. Reference STEP pass claims are never trusted from the caller. No quote or RFQ.",
+      "Server-verify required animation frames, per-part manufacturing G0-G7, caller-supplied reference STEP requirements, STEP export/re-import measurements, and exact-artifact G9 authorization. Commercial mode also requires server-signed evidenceReceipts bound to the run revision and program SHA-256. Caller pass claims are never trusted. No quote or RFQ.",
     inputSchema: {
       type: "object",
       required: ["state", "program", "motion", "parts"],
@@ -922,6 +1166,8 @@ export const tools = [
               "Per-part evidence. referenceStep may contain raw STEP source and required manufacturing checks; the server derives every verdict.",
           },
         },
+        evidenceReceipts: { type: "object", additionalProperties: { type: "object" } },
+        confirmWrite: { type: "boolean", description: "Explicit per-call approval for persisted generation state." },
       },
     },
   },
@@ -1104,6 +1350,7 @@ export const tools = [
       type: "object",
       required: ["intent", "outPath"],
       properties: {
+        confirmWrite: { type: "boolean", description: "Explicit per-call approval required before writing the STEP file." },
         intent: { type: "object", description: "compose_3d 범용조합 intent" },
         outPath: { type: "string", description: ".step 절대경로" },
       },
@@ -1119,6 +1366,7 @@ export const tools = [
       type: "object",
       required: ["outPath"],
       properties: {
+        confirmWrite: { type: "boolean", description: "Explicit per-call approval required before writing the HTML file." },
         intent: {
           type: "object",
           description: "단품 intent (intent 또는 assembly 중 하나)",
@@ -1405,6 +1653,7 @@ export const tools = [
       type: "object",
       required: ["assembly", "outDir"],
       properties: {
+        confirmWrite: { type: "boolean", description: "Explicit per-call approval required before writing the package." },
         assembly: { type: "object" },
         outDir: { type: "string", description: "저장 디렉터리(절대경로)" },
         title: { type: "string" },
@@ -1521,6 +1770,7 @@ export const tools = [
       type: "object",
       required: ["domain", "templateId", "outDir"],
       properties: {
+        confirmWrite: { type: "boolean", description: "Explicit per-call approval required before writing the package." },
         domain: { type: "string" },
         templateId: { type: "string" },
         params: {
@@ -1595,6 +1845,7 @@ export const tools = [
       type: "object",
       required: ["assembly"],
       properties: {
+        confirmWrite: { type: "boolean", description: "Explicit per-call approval required when outDir is supplied." },
         assembly: { type: "object" },
         outDir: {
           type: "string",
@@ -2117,6 +2368,46 @@ function schemaViolations(name, args) {
   return bad;
 }
 
+// Raw local MCP calls are intentionally fail-closed at the last boundary before
+// a filesystem or durable generation-state side effect. API-key scopes remain
+// enforced by the HTTP routes; this flag is an additional per-call user intent
+// signal and is never forwarded to those routes.
+export const MCP_WRITE_APPROVAL_FLAG = "confirmWrite";
+export const MCP_WRITE_APPROVAL_ERROR = "MCP_WRITE_APPROVAL_REQUIRED";
+export const LOCAL_MCP_WRITE_TOOLS = Object.freeze([
+  "export_step",
+  "html_render",
+  "generate_package",
+  "generate_domain_package",
+]);
+export const LOCAL_MCP_CONDITIONAL_WRITE_TOOLS = Object.freeze(["render_preview"]);
+const LOCAL_MCP_WRITE_TOOL_SET = new Set(LOCAL_MCP_WRITE_TOOLS);
+const PERSISTENT_GENERATION_WRITE_TOOLS = new Set([
+  "refine_ai_generation",
+  "advance_ai_generation",
+  "finalize_ai_generation",
+]);
+
+function requiresWriteApproval(name, args) {
+  if (LOCAL_MCP_WRITE_TOOL_SET.has(name)) return true;
+  // The renderer treats any non-empty outDir as a write target. Do not use
+  // trim() here: a whitespace path is still a filesystem side effect and
+  // must not bypass the raw-MCP approval boundary.
+  if (LOCAL_MCP_CONDITIONAL_WRITE_TOOLS.includes(name)) return typeof args?.outDir === "string" && args.outDir.length > 0;
+  if (PERSISTENT_GENERATION_WRITE_TOOLS.has(name)) return true;
+  if (name === "transition_ai_generation_state") {
+    return !["plan", "recover"].includes(args?.action);
+  }
+  return false;
+}
+
+function withoutWriteApproval(args) {
+  if (!args || typeof args !== "object") return args;
+  const safeArgs = { ...args };
+  delete safeArgs.confirmWrite;
+  return safeArgs;
+}
+
 export async function callTool(name, args = {}) {
   const bad = schemaViolations(name, args ?? {});
   if (bad.length) {
@@ -2127,6 +2418,19 @@ export async function callTool(name, args = {}) {
       inputSchema: tools.find((t) => t.name === name)?.inputSchema,
     };
   }
+  if (requiresWriteApproval(name, args)) {
+    if (args?.[MCP_WRITE_APPROVAL_FLAG] !== true) {
+      return {
+        ok: false,
+        code: MCP_WRITE_APPROVAL_ERROR,
+        error: `Per-call approval required: set ${MCP_WRITE_APPROVAL_FLAG}=true before invoking ${name}.`,
+        tool: name,
+      };
+    }
+  }
+  // Approval is local transport metadata, never part of an HTTP/API payload.
+  // Strip it for read-only transition actions too when a caller supplied it.
+  args = withoutWriteApproval(args);
   return stampOk(await callToolInner(name, args));
 }
 
@@ -2145,6 +2449,58 @@ async function callToolInner(name, args = {}) {
         error: `capabilities call failed: ${String(e?.message ?? e)}`,
       };
     }
+  }
+  if (name === "verify_complex_system_graph") {
+    return remoteMultipartCall(
+      "/api/cad/v1/system/verify",
+      [
+        { field: "graph", paths: args.graphFile, maximumCount: 1, maximumBytes: 10_000_000 },
+        { field: "artifact", paths: args.artifactFiles, maximumCount: 256, maximumBytes: 50_000_000 },
+      ],
+      name,
+      { maximumTotalBytes: 150_000_000 },
+    );
+  }
+  if (["verify_gearbox_system_contract", "verify_machine_skid_system_contract", "verify_welded_enclosure_system_contract"].includes(name)) {
+    const routeByTool = {
+      verify_gearbox_system_contract: "/api/cad/v1/system/gearbox/verify",
+      verify_machine_skid_system_contract: "/api/cad/v1/system/machine-skid/verify",
+      verify_welded_enclosure_system_contract: "/api/cad/v1/system/welded-enclosure/verify",
+    };
+    return remoteMultipartCall(
+      routeByTool[name],
+      [
+        { field: "graph", paths: args.graphFile, maximumCount: 1, maximumBytes: 10_000_000 },
+        { field: "contract", paths: args.contractFile, maximumCount: 1, maximumBytes: 10_000_000 },
+        { field: "artifact", paths: args.artifactFiles, maximumCount: 256, maximumBytes: 50_000_000 },
+      ],
+      name,
+      { maximumTotalBytes: 150_000_000 },
+    );
+  }
+  if (name === "analyze_complex_system_change_impact") {
+    return remoteMultipartCall(
+      "/api/cad/v1/system/change-impact/verify",
+      [
+        { field: "baseGraph", paths: args.baseGraphFile, maximumCount: 1, maximumBytes: 10_000_000 },
+        { field: "targetGraph", paths: args.targetGraphFile, maximumCount: 1, maximumBytes: 10_000_000 },
+        { field: "baseArtifact", paths: args.baseArtifactFiles, maximumCount: 256, maximumBytes: 50_000_000 },
+        { field: "targetArtifact", paths: args.targetArtifactFiles, maximumCount: 256, maximumBytes: 50_000_000 },
+      ],
+      name,
+      { maximumTotalBytes: 300_000_000 },
+    );
+  }
+  if (name === "verify_complex_assembly_scale") {
+    return remoteMultipartCall(
+      "/api/cad/v1/system/scale/verify",
+      [
+        { field: "benchmark", paths: args.benchmarkFile, maximumCount: 1, maximumBytes: 20_000_000 },
+        { field: "artifact", paths: args.artifactFiles, maximumCount: 256, maximumBytes: 100_000_000 },
+      ],
+      name,
+      { maximumTotalBytes: 500_000_000 },
+    );
   }
   if (name === "product_decomposition") {
     return remoteCall(
@@ -2216,6 +2572,8 @@ async function callToolInner(name, args = {}) {
       args,
       name,
     );
+  if (name === "verify_physical_network")
+    return remoteCall("/api/cad/v1/physical-network/verify", { network: args }, name);
   if (name === "verify_manufacturing_evidence") {
     return remoteCall("/api/cad/v1/manufacturing/verify", args, name);
   }
@@ -2512,6 +2870,8 @@ async function callToolInner(name, args = {}) {
   }
   if (name === "transition_ai_generation_state")
     return remoteCall("/api/cad/v1/generation/state", args, name);
+  if (name === "refine_ai_generation")
+    return remoteCall("/api/cad/v1/generation/refine", args, name);
   if (name === "advance_ai_generation")
     return remoteCall("/api/cad/v1/generation/advance", args, name);
   if (name === "finalize_ai_generation")
@@ -2953,7 +3313,7 @@ async function callToolInner(name, args = {}) {
     // 260729: verifyParams 를 **전달하지 않아** 분야 템플릿 경로에서는 지진(R)·풍(V0)·
     // 옹벽 검토 파라미터를 아무리 넣어도 반영되지 않았다 — 검토가 구현돼 있는데 앞문에서
     // 인자가 끊겨 영영 실행되지 않는 구조였다.
-    return callTool("generate_package", {
+    return callToolInner("generate_package", {
       assembly: asm,
       outDir: args.outDir,
       title: args.title ?? asm.name,
@@ -3508,55 +3868,10 @@ async function callToolInner(name, args = {}) {
 import { pathToFileURL as _p2f } from "node:url";
 const IS_MAIN =
   process.argv[1] && import.meta.url === _p2f(process.argv[1]).href;
-const rl = IS_MAIN ? createInterface({ input: process.stdin }) : null;
-const send = (msg) => process.stdout.write(JSON.stringify(msg) + "\n");
-
-rl?.on("line", async (line) => {
-  line = line.trim();
-  if (!line) return;
-  let req;
-  try {
-    req = JSON.parse(line);
-  } catch {
-    return;
-  }
-  const { id, method, params } = req;
-  const reply = (result) =>
-    id !== undefined && send({ jsonrpc: "2.0", id, result });
-  const fail = (code, message) =>
-    id !== undefined && send({ jsonrpc: "2.0", id, error: { code, message } });
-  try {
-    if (method === "initialize") {
-      reply({
-        protocolVersion: params?.protocolVersion ?? "2024-11-05",
-        capabilities: { tools: {} },
-        serverInfo: { name: "nexyfab-drawing-to-3d", version: "0.1.0" },
-      });
-    } else if (
-      method === "notifications/initialized" ||
-      method === "initialized"
-    ) {
-      // notification
-    } else if (method === "ping") {
-      reply({});
-    } else if (method === "tools/list") {
-      reply({ tools });
-    } else if (method === "tools/call") {
-      try {
-        const result = await callTool(params.name, params.arguments ?? {});
-        reply({
-          content: [{ type: "text", text: JSON.stringify(result, null, 2) }],
-        });
-      } catch (e) {
-        reply({
-          content: [{ type: "text", text: `ERROR: ${e.message}` }],
-          isError: true,
-        });
-      }
-    } else if (id !== undefined) {
-      fail(-32601, `method not found: ${method}`);
-    }
-  } catch (e) {
-    fail(-32603, e.message);
-  }
+export { schemaViolations };
+if (IS_MAIN) createStdioMcpServer({
+  serverInfo: { name: "nexyfab-drawing-to-3d", version: "0.1.0" },
+  tools,
+  callTool,
+  validateToolInput: (name, args) => schemaViolations(name, args),
 });

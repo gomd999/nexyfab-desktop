@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import Link from 'next/link';
+import { useAdminI18n } from '../AdminI18nProvider';
 
 interface RunSummary {
   id: string;
@@ -37,6 +38,7 @@ function fmtDate(ts: number) {
 }
 
 export default function PromptCompareHistoryPage() {
+  const { copy } = useAdminI18n();
   const [runs, setRuns] = useState<RunSummary[] | null>(null);
   const [filter, setFilter] = useState('');
   const [createdByFilter, setCreatedByFilter] = useState('');
@@ -92,7 +94,7 @@ export default function PromptCompareHistoryPage() {
     <div className="min-h-screen bg-gray-950 text-gray-100 p-6">
       <div className="max-w-6xl mx-auto space-y-4">
         <div className="flex items-center justify-between flex-wrap gap-3">
-          <h1 className="text-2xl font-semibold">Prompt Compare — History</h1>
+          <h1 className="text-2xl font-semibold">{copy.pageTitles.promptHistory}</h1>
           <div className="flex items-center gap-2 text-sm flex-wrap">
             <input
               type="text"

@@ -78,7 +78,9 @@ export interface BuildingReleaseCertificate {
   workspaceRevision: number;
   modelContentHash: string;
   status: BuildingEvidenceStatus;
-  releaseReady: boolean;
+  /** Internal structural/readiness result only; commercial release requires the external qualification contract. */
+  internalReady?: boolean;
+  releaseReady: false;
   assertions: DomainAccuracyAssertionResult[];
   issues: string[];
 }
@@ -242,7 +244,8 @@ export function buildBuildingReleaseCertificate(input: BuildingReleaseCertificat
     workspaceRevision: input.workspace.workspace.revision,
     modelContentHash: input.workspace.geometry.contentHash,
     status,
-    releaseReady: status === 'pass',
+    internalReady: status === 'pass',
+    releaseReady: false,
     assertions,
     issues,
   };

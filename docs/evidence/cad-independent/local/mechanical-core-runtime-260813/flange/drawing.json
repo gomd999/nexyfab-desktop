@@ -1,0 +1,27 @@
+{
+  "schema": "nexyfab.mechanical-core-feature-local-runtime.v1",
+  "feature": "flange",
+  "axis": "drawing",
+  "status": "PASS",
+  "executedAt": "2026-08-22T07:13:30.564Z",
+  "kernel": "OCCT HLRBRep via replicad drawProjection",
+  "views": {
+    "front": {
+      "visible": 3,
+      "hidden": 6,
+      "viewBox": "-32.000001 -22.000001000000008 64.00000200000001 39.00000200000001"
+    },
+    "top": {
+      "visible": 5,
+      "hidden": 4,
+      "viewBox": "-32.000001 -3.000001 64.000002 30.000002000000002"
+    },
+    "right": {
+      "visible": 1,
+      "hidden": 1,
+      "viewBox": "-27.000001 -22.000001 30.000002000000002 39.000002"
+    }
+  },
+  "svgBytes": 4468,
+  "svgSha256": "97f94a6a8eed656ad3ea4479e542638f5ff53f7e6f801eacb8a34fce1a747952"
+}

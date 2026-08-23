@@ -4,6 +4,7 @@ import { getAuthUser } from '@/lib/auth-middleware';
 import { checkOrigin } from '@/lib/csrf';
 import { z } from 'zod';
 import { buildNexyFlowClient } from '@/lib/nexyflow-client';
+import { boundedJsonError, readBoundedJson } from '@/lib/boundedJsonBody';
 
 export const dynamic = 'force-dynamic';
 
@@ -90,7 +91,13 @@ export async function POST(req: NextRequest) {
     approvalThresholdKrw: z.number().int().min(0).default(1_000_000),
   });
 
-  const parsed = schema.safeParse(await req.json().catch(() => ({})));
+  let input: unknown;
+  try { input = await readBoundedJson(req, 64 * 1024); }
+  catch (error) {
+    if (boundedJsonError(error)?.status === 413) return NextResponse.json({ error: 'Payload too large' }, { status: 413 });
+    input = {};
+  }
+  const parsed = schema.safeParse(input);
   if (!parsed.success) return NextResponse.json({ error: parsed.error.issues[0]?.message }, { status: 400 });
 
   // Test connection before saving

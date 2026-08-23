@@ -12,8 +12,11 @@ import { checkOrigin } from '@/lib/csrf';
 import { sendEmail, getNexyfabAdminEmail } from '@/lib/nexyfab-email';
 import { esc } from '@/lib/html-escape';
 import { rateLimit } from '@/lib/rate-limit';
+import { canManageOrderInActiveWorkspace } from '@/lib/nfOrderAccess';
+import { boundedJsonError, readBoundedJson } from '@/lib/boundedJsonBody';
 
 export const dynamic = 'force-dynamic';
+const REFUND_REQUEST_JSON_BYTES = 64 * 1024;
 
 async function ensureRefundCols(db: ReturnType<typeof getDbAdapter>) {
   for (const col of ['refund_requested_at INTEGER', 'refund_reason TEXT']) {
@@ -34,24 +37,33 @@ export async function POST(
   }
 
   const { id: orderId } = await params;
-  const body = await req.json() as { reason?: string };
+  let body: { reason?: string };
+  try {
+    body = await readBoundedJson(req, REFUND_REQUEST_JSON_BYTES);
+  } catch (error) {
+    const bodyError = boundedJsonError(error);
+    if (bodyError?.code === 'PAYLOAD_TOO_LARGE') {
+      return NextResponse.json({ error: 'Request body too large' }, { status: bodyError.status });
+    }
+    return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 });
+  }
   const reason = (body.reason ?? '').trim().slice(0, 500);
 
   const db = getDbAdapter();
   await ensureRefundCols(db);
 
   const order = await db.queryOne<{
-    id: string; user_id: string; part_name: string;
+    id: string; user_id: string; org_id: string | null; part_name: string;
     status: string; payment_status: string | null;
     refund_requested_at: number | null;
     total_price_krw: number;
   }>(
-    'SELECT id, user_id, part_name, status, payment_status, refund_requested_at, total_price_krw FROM nf_orders WHERE id = ?',
+    'SELECT id, user_id, org_id, part_name, status, payment_status, refund_requested_at, total_price_krw FROM nf_orders WHERE id = ?',
     orderId,
   );
 
   if (!order) return NextResponse.json({ error: '주문을 찾을 수 없습니다.' }, { status: 404 });
-  if (order.user_id !== authUser.userId) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+  if (!canManageOrderInActiveWorkspace(authUser, order)) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   if (order.payment_status !== 'paid') {
     return NextResponse.json({ error: '결제 완료된 주문만 환불 요청이 가능합니다.' }, { status: 400 });
   }

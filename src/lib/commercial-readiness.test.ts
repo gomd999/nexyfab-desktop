@@ -13,6 +13,7 @@ const base = {
   S3_ACCESS_KEY_ID: 'key',
   S3_SECRET_ACCESS_KEY: 'secret',
   CRON_SECRET: 'cron-secret',
+  GENERATION_EVIDENCE_SIGNING_SECRET: 'commercial-generation-evidence-secret-32-bytes',
   SMTP_HOST: 'smtp.example.com',
   SENTRY_DSN: 'https://public@sentry.example/1',
   NEXT_SERVER_ACTIONS_ENCRYPTION_KEY: 'stable-key',
@@ -35,6 +36,11 @@ describe('commercialReadinessIssues', () => {
       'rate_limit.redis_required',
       'observability.sentry_required',
     ]));
+  });
+
+  it('requires a strong server-only generation evidence signing secret', () => {
+    const issues = commercialReadinessIssues({ ...base, GENERATION_EVIDENCE_SIGNING_SECRET: 'short' });
+    expect(issues.map(issue => issue.code)).toContain('cad_release.evidence_signing_secret_weak');
   });
 
   it('requires fail-closed distributed CAD account quotas', () => {
@@ -86,5 +92,22 @@ describe('commercialReadinessIssues', () => {
       DODO_API_KEY: 'dodo-key',
       DODO_WEBHOOK_SECRET: 'dodo-webhook',
     })).toEqual([]);
+  });
+
+  it('requires all append-only commercial migrations and both Ed25519 registries', () => {
+    const issues = commercialReadinessIssues({
+      ...base,
+      NEXYFAB_COMMERCIAL_MODE: '1',
+      NEXYFAB_PRECISION_CAD_COMMERCIAL_MODE: '1',
+      POSTGRES_MIGRATION_VERSION: '2026082202',
+    });
+    expect(issues.map(issue => issue.code)).toEqual(expect.arrayContaining([
+      'database.migration_version_required',
+      'database.migration_2026082202_checksum_required',
+      'database.migration_2026082203_checksum_required',
+      'database.migration_2026082204_checksum_required',
+      'worker.ed25519_registry_required',
+      'verifier.ed25519_registry_required',
+    ]));
   });
 });

@@ -29,8 +29,8 @@ import { solverStateToProfile, type SolverViewState } from './solverToProfile';
 import { extractClosedLoops, type ClosedLoop } from './sketchProfile';
 import { buildExtrudeFromLoop, extrudeToScad } from '@/lib/cad/extrudeProfile';
 import {
-  buildLinearPattern,
-  buildCircularPattern,
+  buildLinearPatternRef,
+  buildCircularPatternRef,
   type Vec3D,
 } from '@/lib/cad/pattern';
 import { replayTree, type FeatureTree, type FeatureNode } from '@/lib/cad/featureTree';
@@ -46,6 +46,8 @@ export type PatternFromSketchResult =
   | {
       ok: true;
       scad: string;
+      /** Editable dependency tree used to produce `scad`; safe to persist. */
+      tree: FeatureTree;
       loop: ClosedLoop;
       /** Lines from the sketch that didn't participate in the chosen loop. */
       danglingLines: ReadonlyArray<string>;
@@ -65,7 +67,7 @@ function buildChildScad(
   sketch: SolverViewState,
   child: PatternChildOptions,
 ):
-  | { ok: true; scad: string; loop: ClosedLoop; danglingLines: ReadonlyArray<string> }
+  | { ok: true; scad: string; loop: ClosedLoop; danglingLines: ReadonlyArray<string>; extrude: ReturnType<typeof buildExtrudeFromLoop> }
   | { ok: false; error: string } {
   if (!Number.isFinite(child.depth) || child.depth <= 0) {
     return { ok: false, error: `child extrude depth must be positive, got ${child.depth}` };
@@ -97,6 +99,7 @@ function buildChildScad(
     scad: childScad,
     loop,
     danglingLines: extraction.danglingLines,
+    extrude,
   };
 }
 
@@ -119,7 +122,7 @@ export function linearPatternFromSketch(
 
   let pattern;
   try {
-    pattern = buildLinearPattern({
+    pattern = buildLinearPatternRef('linear_pattern_child', {
       childScad: childRes.scad,
       count: opts.count,
       direction: opts.direction,
@@ -128,17 +131,24 @@ export function linearPatternFromSketch(
   } catch (e) {
     return { ok: false, error: e instanceof Error ? e.message : String(e) };
   }
+  const childNode: FeatureNode = {
+    id: 'linear_pattern_child',
+    name: 'Pattern seed',
+    dependencies: [],
+    payload: childRes.extrude,
+  };
   const node: FeatureNode = {
     id: 'linear_pattern_1',
     name: opts.featureName ?? 'LinearPattern',
-    dependencies: [],
+    dependencies: ['linear_pattern_child'],
     payload: pattern,
   };
-  const tree: FeatureTree = { nodes: [node] };
+  const tree: FeatureTree = { nodes: [childNode, node] };
   const result = replayTree(tree);
   return {
     ok: true,
     scad: result.scad,
+    tree,
     loop: childRes.loop,
     danglingLines: childRes.danglingLines,
   };
@@ -164,7 +174,7 @@ export function circularPatternFromSketch(
 
   let pattern;
   try {
-    pattern = buildCircularPattern({
+    pattern = buildCircularPatternRef('circular_pattern_child', {
       childScad: childRes.scad,
       count: opts.count,
       axisOrigin: opts.axisOrigin,
@@ -174,17 +184,24 @@ export function circularPatternFromSketch(
   } catch (e) {
     return { ok: false, error: e instanceof Error ? e.message : String(e) };
   }
+  const childNode: FeatureNode = {
+    id: 'circular_pattern_child',
+    name: 'Pattern seed',
+    dependencies: [],
+    payload: childRes.extrude,
+  };
   const node: FeatureNode = {
     id: 'circular_pattern_1',
     name: opts.featureName ?? 'CircularPattern',
-    dependencies: [],
+    dependencies: ['circular_pattern_child'],
     payload: pattern,
   };
-  const tree: FeatureTree = { nodes: [node] };
+  const tree: FeatureTree = { nodes: [childNode, node] };
   const result = replayTree(tree);
   return {
     ok: true,
     scad: result.scad,
+    tree,
     loop: childRes.loop,
     danglingLines: childRes.danglingLines,
   };

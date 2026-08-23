@@ -1,0 +1,10 @@
+{
+  "schema": "nexyfab.architecture-interior.golden-lineage-validation.v1",
+  "valid": true,
+  "qualificationStatus": "HOLD",
+  "issues": [],
+  "receipt": {
+    "path": "docs/evidence/architecture-interior-golden-lineage-260823/qualification-receipt.json",
+    "sha256": "5d28403963c85b9063ab957be1af0ccfbce16f703703c5f59165678f2d204f70"
+  }
+}

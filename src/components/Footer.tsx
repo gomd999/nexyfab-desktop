@@ -2,6 +2,7 @@
 
 import React from 'react';
 import { usePathname } from 'next/navigation';
+import { toIsoLang, toRouteLang } from '@/lib/i18n/normalize';
 
 const dict = {
     ko: {
@@ -115,6 +116,16 @@ const dict = {
     }
 };
 
+const FOOTER_NAV_LABEL: Record<string, string> = {
+    kr: '푸터 정책 탐색', en: 'Footer policy navigation', ja: 'フッターのポリシー ナビゲーション',
+    cn: '页脚政策导航', es: 'Navegación de políticas del pie', ar: 'تنقل سياسات التذييل',
+};
+const FOOTER_RIGHTS: Record<string, string> = {
+    kr: '© 2026 Nexysys Lab Co., Ltd. 모든 권리 보유.', en: '© 2026 Nexysys Lab Co., Ltd. All rights reserved.',
+    ja: '© 2026 Nexysys Lab Co., Ltd. 無断転載を禁じます。', cn: '© 2026 Nexysys Lab Co., Ltd. 版权所有。',
+    es: '© 2026 Nexysys Lab Co., Ltd. Todos los derechos reservados.', ar: '© 2026 Nexysys Lab Co., Ltd. جميع الحقوق محفوظة.',
+};
+
 export default function Footer() {
     const pathname = usePathname();
     const parts = pathname?.split('/').filter(Boolean) || [];
@@ -129,12 +140,11 @@ export default function Footer() {
 
     // adminlink 폴더 내부에 있을 경우, 메인 사이트 링크가 깨지지 않도록 처리
     const isAdmin = parts[0] === 'adminlink';
-    const langCode = isAdmin ? 'kr' : (parts[0] || 'en');
-    const lang = ['en', 'kr', 'ja', 'cn', 'es', 'ar'].includes(langCode) ? langCode : 'en';
-
-
-    const langMap: Record<string, string> = { kr: 'ko', en: 'en', ja: 'ja', cn: 'cn', es: 'es', ar: 'ar' };
-    const t = dict[langMap[lang] as keyof typeof dict];
+    const lang = isAdmin ? 'kr' : toRouteLang(parts[0]);
+    // Footer's historical catalog uses `cn` for Simplified Chinese while the
+    // shared helper uses ISO `zh`; keep the catalog stable at this boundary.
+    const dictKey = lang === 'cn' ? 'cn' : toIsoLang(lang);
+    const t = dict[dictKey as keyof typeof dict];
 
     const nexysysBase = (process.env.NEXT_PUBLIC_NEXYSYS_URL || 'https://nexysys.com').replace(/\/$/, '');
     const nexysysLegalHref = process.env.NEXT_PUBLIC_NEXYSYS_LEGAL_URL || `${nexysysBase}/kr/`;
@@ -161,7 +171,7 @@ export default function Footer() {
                     </div>
                 </div>
 
-                <nav className="hat-footer-nav" aria-label="Footer policy navigation">
+                <nav className="hat-footer-nav" aria-label={FOOTER_NAV_LABEL[lang]}>
                     <a href={`/${lang}/terms-of-use/`}>{t.term1}</a>
                     <a href={`/${lang}/privacy-policy/`}>{t.term2}</a>
                     <a href={`/${lang}/security-policy/`}>{t.term3}</a>
@@ -170,7 +180,7 @@ export default function Footer() {
                     <a href={`/${lang}/refund-policy/`}>{t.term6}</a>
                 </nav>
 
-                <div className="hat-footer-legal" style={{ fontSize: '12px', color: '#9ca3af', lineHeight: 1.8, marginTop: '16px', textAlign: 'center' }}>
+                <div className="hat-footer-legal" style={{ fontSize: '12px', color: '#4b5563', lineHeight: 1.8, marginTop: '16px', textAlign: 'center' }}>
                     <div style={{ fontWeight: 600, color: '#6b7280' }}>{t.company}</div>
                     <div>{t.ceo} | {t.bizNo}</div>
                     {(telesalesRegNo || telesalesBrokerRegNo) && (
@@ -186,7 +196,7 @@ export default function Footer() {
                     )}
                     <div>{t.address}</div>
                     <div style={{ marginTop: '6px' }}>
-                        <span style={{ color: '#9ca3af' }}>{t.contactLabel}: </span>
+                        <span style={{ color: '#4b5563' }}>{t.contactLabel}: </span>
                         <a href={`mailto:${supportEmail}`} style={{ color: '#0b5cff', fontWeight: 600, textDecoration: 'none' }}>{supportEmail}</a>
                     </div>
                 </div>
@@ -205,7 +215,7 @@ export default function Footer() {
                 ) : null}
 
                 <div className="hat-footer-bottom">
-                    <div className="hat-footer-copy">© 2026 Nexysys Lab Co., Ltd. All rights reserved.</div>
+                    <div className="hat-footer-copy">{FOOTER_RIGHTS[lang]}</div>
                     <div className="hat-footer-note">
                         {t.note}
                     </div>

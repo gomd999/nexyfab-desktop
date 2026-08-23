@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { authBaseUrl } from '@/lib/auth-base-url';
+import { toIsoLang, toRouteLang } from '@/lib/i18n/normalize';
 
 const AUTH_BASE = authBaseUrl();
 
@@ -146,20 +147,24 @@ const dict: Record<Lang, Record<string, string>> = {
 
 function detectLang(): Lang {
     try {
-        const stored = localStorage.getItem('currentUser');
+        const query = new URLSearchParams(window.location.search).get('lang');
+        if (query) return toIsoLang(query);
+        const stored = sessionStorage.getItem('currentUser');
         if (stored) {
             const u = JSON.parse(stored);
-            if (u.language && dict[u.language as Lang]) return u.language as Lang;
+            if (u.language) return toIsoLang(u.language);
         }
-        const saved = localStorage.getItem('app_language');
-        if (saved && dict[saved as Lang]) return saved as Lang;
+        const saved = localStorage.getItem('app_language')
+            || localStorage.getItem('nf_lang')
+            || localStorage.getItem('nexyfab_language');
+        if (saved) return toIsoLang(saved);
     } catch (err) { console.error('[page] caught', err); }
-    return 'ko';
+    return 'en';
 }
 
 export default function RegisterPage() {
     const router = useRouter();
-    const [lang, setLang] = useState<Lang>('ko');
+    const [lang, setLang] = useState<Lang>('en');
     const [name, setName] = useState('');
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
@@ -172,11 +177,12 @@ export default function RegisterPage() {
 
     useEffect(() => {
         setLang(detectLang());
-        const stored = localStorage.getItem('currentUser');
+        const stored = sessionStorage.getItem('currentUser');
         if (stored) router.replace('/account');
     }, [router]);
 
     const t = dict[lang];
+    const routeLang = toRouteLang(lang);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -207,7 +213,7 @@ export default function RegisterPage() {
 
             // Auto-login after signup
             if (data.user) {
-                localStorage.setItem('currentUser', JSON.stringify(data.user));
+                sessionStorage.setItem('currentUser', JSON.stringify(data.user));
                 window.dispatchEvent(new Event('storage'));
             }
             setSuccess(t.success);
@@ -225,7 +231,7 @@ export default function RegisterPage() {
                     language: lang,
                     plan: 'free',
                 };
-                localStorage.setItem('currentUser', JSON.stringify(devUser));
+                sessionStorage.setItem('currentUser', JSON.stringify(devUser));
                 window.dispatchEvent(new Event('storage'));
                 setSuccess(t.success);
                 setTimeout(() => router.push('/account'), 1200);
@@ -304,9 +310,9 @@ export default function RegisterPage() {
                         />
                         <span>
                             <span style={{ color: '#ef4444', fontWeight: 700 }}>*</span> {t.agreeTerms}{' '}
-                            <Link href={`/${lang}/terms-of-use/`} target="_blank" rel="noopener noreferrer" prefetch={false} style={{ color: '#0b5cff', fontWeight: 600 }}>{t.termsLink}</Link>
+                            <Link href={`/${routeLang}/terms-of-use/`} target="_blank" rel="noopener noreferrer" prefetch={false} style={{ color: '#0b5cff', fontWeight: 600 }}>{t.termsLink}</Link>
                             {' '}{t.and}{' '}
-                            <Link href={`/${lang}/privacy-policy/`} target="_blank" rel="noopener noreferrer" prefetch={false} style={{ color: '#0b5cff', fontWeight: 600 }}>{t.privacyLink}</Link>
+                            <Link href={`/${routeLang}/privacy-policy/`} target="_blank" rel="noopener noreferrer" prefetch={false} style={{ color: '#0b5cff', fontWeight: 600 }}>{t.privacyLink}</Link>
                         </span>
                     </label>
                     <label style={{ display: 'flex', alignItems: 'flex-start', gap: '8px', fontSize: '13px', color: '#6b7280', cursor: 'pointer', lineHeight: 1.5 }}>
@@ -336,7 +342,7 @@ export default function RegisterPage() {
                 </form>
 
                 <div style={{ textAlign: 'center', marginTop: '20px' }}>
-                    <Link href="/login" prefetch={false} style={{ fontSize: '13px', color: '#0b5cff', textDecoration: 'none', fontWeight: 600 }}>
+                    <Link href={`/login?lang=${routeLang}`} prefetch={false} style={{ fontSize: '13px', color: '#0b5cff', textDecoration: 'none', fontWeight: 600 }}>
                         {t.haveAccount} {t.signIn}
                     </Link>
                 </div>

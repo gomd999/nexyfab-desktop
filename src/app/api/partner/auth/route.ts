@@ -8,6 +8,9 @@ import { signJWT } from '@/lib/jwt';
 import { grantRole } from '@/lib/rbac';
 import { getTrustedClientIp } from '@/lib/client-ip';
 import { parseUserStageColumn } from '@/lib/stage-engine';
+import { boundedJsonError, readBoundedJson } from '@/lib/boundedJsonBody';
+
+const MAX_PARTNER_AUTH_BODY_BYTES = 16 * 1024;
 
 export const dynamic = 'force-dynamic';
 
@@ -23,8 +26,9 @@ export async function POST(req: Request) {
 
   let email: string, token: string;
   try {
-    ({ email, token } = await req.json() as { email: string; token: string });
+    ({ email, token } = await readBoundedJson<{ email: string; token: string }>(req, MAX_PARTNER_AUTH_BODY_BYTES));
   } catch (err) {
+    if (boundedJsonError(err)?.code === 'PAYLOAD_TOO_LARGE') return NextResponse.json({ error: 'Request too large', code: 'PAYLOAD_TOO_LARGE' }, { status: 413 });
     logError('파트너 인증 요청 파싱 실패', err instanceof Error ? err : undefined, { url: '/api/partner/auth' });
     return NextResponse.json({ error: '요청 데이터가 올바르지 않습니다.' }, { status: 400 });
   }

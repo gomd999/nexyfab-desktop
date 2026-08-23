@@ -6,6 +6,12 @@ import { buildBomCSVString } from './bomExport';
 import type { BomRow } from './bomExport';
 import { cadExportBlockers, type CadReleaseStatus } from '@/lib/cad-release-status';
 import type { CadDeliverableReleaseDecision } from '@/lib/cad-deliverable-release';
+export {
+  assessManufacturingHandoffReadiness,
+  type ManufacturingHandoffGateStatus,
+  type ManufacturingHandoffReadiness,
+  type ManufacturingHandoffReadinessInput,
+} from './manufacturingHandoffReadiness';
 
 /** Metadata shipped beside .step for shops / RFQ (machine + human readable). */
 export interface ManufacturingSidecarMeta {

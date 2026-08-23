@@ -1,6 +1,8 @@
 'use client';
 
 import { useState, useCallback, useEffect, useRef } from 'react';
+import { useAdminI18n } from '../AdminI18nProvider';
+import { createCommercialLocalizer } from '@/lib/i18n/commercialLocalizer';
 
 interface SearchHit {
   type: string;
@@ -27,12 +29,12 @@ const TYPE_ICON: Record<string, string> = {
   partner:  '🤝',
 };
 
-const TYPE_LABEL: Record<string, string> = {
-  user:     '사용자',
-  rfq:      'RFQ',
-  factory:  '제조사',
-  contract: '계약',
-  partner:  '파트너',
+const TYPE_LABEL: Record<string, { ko: string; en: string }> = {
+  user:     { ko: '사용자', en: 'Users' },
+  rfq:      { ko: 'RFQ', en: 'RFQs' },
+  factory:  { ko: '제조사', en: 'Factories' },
+  contract: { ko: '계약', en: 'Contracts' },
+  partner:  { ko: '파트너', en: 'Partners' },
 };
 
 const GROUP_HREF: Record<string, string> = {
@@ -46,7 +48,14 @@ const GROUP_HREF: Record<string, string> = {
 const RECENT_KEY = 'admin_search_recent';
 const MAX_RECENT = 8;
 
-const SUGGESTIONS = ['PCB', '알루미늄', 'EV 배터리', '의료기기', 'prototype', '시제품'];
+const SUGGESTIONS = [
+  { ko: 'PCB', en: 'PCB' },
+  { ko: '알루미늄', en: 'Aluminum' },
+  { ko: 'EV 배터리', en: 'EV battery' },
+  { ko: '의료기기', en: 'Medical device' },
+  { ko: '프로토타입', en: 'Prototype' },
+  { ko: '시제품', en: 'Pilot product' },
+];
 
 function getRecent(): string[] {
   try { return JSON.parse(localStorage.getItem(RECENT_KEY) ?? '[]'); } catch { return []; }
@@ -85,6 +94,8 @@ function useDebounce<T>(value: T, delay: number): T {
 }
 
 export default function AdminSearchPage() {
+  const { locale } = useAdminI18n();
+  const L = createCommercialLocalizer(locale);
   const [query, setQuery]     = useState('');
   const [results, setResults] = useState<SearchResults | null>(null);
   const [loading, setLoading] = useState(false);
@@ -115,11 +126,11 @@ export default function AdminSearchPage() {
   useEffect(() => { inputRef.current?.focus(); }, []);
 
   const grouped = results ? [
-    { key: 'users',     label: TYPE_LABEL['user'],     icon: TYPE_ICON['user'],     hits: results.users },
-    { key: 'rfqs',      label: TYPE_LABEL['rfq'],      icon: TYPE_ICON['rfq'],      hits: results.rfqs },
-    { key: 'factories', label: TYPE_LABEL['factory'],  icon: TYPE_ICON['factory'],  hits: results.factories },
-    { key: 'contracts', label: TYPE_LABEL['contract'], icon: TYPE_ICON['contract'], hits: results.contracts },
-    { key: 'partners',  label: TYPE_LABEL['partner'],  icon: TYPE_ICON['partner'],  hits: results.partners ?? [] },
+    { key: 'users',     label: L(TYPE_LABEL.user.ko, TYPE_LABEL.user.en),         icon: TYPE_ICON.user,     hits: results.users },
+    { key: 'rfqs',      label: L(TYPE_LABEL.rfq.ko, TYPE_LABEL.rfq.en),           icon: TYPE_ICON.rfq,      hits: results.rfqs },
+    { key: 'factories', label: L(TYPE_LABEL.factory.ko, TYPE_LABEL.factory.en),   icon: TYPE_ICON.factory,  hits: results.factories },
+    { key: 'contracts', label: L(TYPE_LABEL.contract.ko, TYPE_LABEL.contract.en), icon: TYPE_ICON.contract, hits: results.contracts },
+    { key: 'partners',  label: L(TYPE_LABEL.partner.ko, TYPE_LABEL.partner.en),   icon: TYPE_ICON.partner,  hits: results.partners ?? [] },
   ].filter(g => g.hits.length > 0) : [];
 
   const totalHits = grouped.reduce((s, g) => s + g.hits.length, 0);
@@ -127,8 +138,8 @@ export default function AdminSearchPage() {
   return (
     <div className="max-w-3xl mx-auto">
       <div className="mb-6">
-        <h1 className="text-2xl font-bold text-gray-900">통합 검색</h1>
-        <p className="text-sm text-gray-500 mt-1">회원 · RFQ · 제조사 · 계약 전체 검색</p>
+        <h1 className="text-2xl font-bold text-gray-900">{L('통합 검색', 'Global search')}</h1>
+        <p className="text-sm text-gray-500 mt-1">{L('회원 · RFQ · 제조사 · 계약 전체 검색', 'Search users, RFQs, factories, and contracts')}</p>
       </div>
 
       {/* Search input */}
@@ -142,7 +153,7 @@ export default function AdminSearchPage() {
           ref={inputRef}
           value={query}
           onChange={e => setQuery(e.target.value)}
-          placeholder="이메일, 부품명, 회사명, 계약 ID 등..."
+          placeholder={L('이메일, 부품명, 회사명, 계약 ID 등...', 'Email, part name, company, contract ID, and more...')}
           className="w-full pl-12 pr-4 py-3.5 text-base border-2 border-gray-200 rounded-2xl outline-none focus:border-blue-400 transition shadow-sm"
         />
         {loading && (
@@ -158,12 +169,12 @@ export default function AdminSearchPage() {
           {recent.length > 0 ? (
             <div className="mb-8">
               <div className="flex items-center justify-between mb-3">
-                <h2 className="text-xs font-bold text-gray-400 uppercase tracking-widest">최근 검색</h2>
+                <h2 className="text-xs font-bold text-gray-400 uppercase tracking-widest">{L('최근 검색', 'Recent searches')}</h2>
                 <button
                   onClick={() => { localStorage.removeItem(RECENT_KEY); setRecent([]); }}
                   className="text-xs text-gray-400 hover:text-gray-600"
                 >
-                  전체 삭제
+                  {L('전체 삭제', 'Clear all')}
                 </button>
               </div>
               <div className="bg-white rounded-2xl border border-gray-200 shadow-sm divide-y divide-gray-50">
@@ -189,21 +200,21 @@ export default function AdminSearchPage() {
           ) : (
             <div className="text-center py-10 text-gray-400">
               <div className="text-5xl mb-3">🔍</div>
-              <p className="text-sm font-semibold">검색어를 입력하세요</p>
-              <p className="text-xs mt-1">이메일, 부품명, RFQ ID, 계약 번호 등으로 검색</p>
+              <p className="text-sm font-semibold">{L('검색어를 입력하세요', 'Enter a search term')}</p>
+              <p className="text-xs mt-1">{L('이메일, 부품명, RFQ ID, 계약 번호 등으로 검색', 'Search by email, part name, RFQ ID, contract number, and more')}</p>
             </div>
           )}
 
           <div>
-            <h2 className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-3">추천 검색</h2>
+            <h2 className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-3">{L('추천 검색', 'Suggested searches')}</h2>
             <div className="flex flex-wrap gap-2">
               {SUGGESTIONS.map(s => (
                 <button
-                  key={s}
-                  onClick={() => setQuery(s)}
+                  key={s.en}
+                  onClick={() => setQuery(L(s.ko, s.en))}
                   className="px-3 py-1.5 text-sm bg-white border border-gray-200 rounded-full text-gray-600 hover:border-blue-300 hover:text-blue-600 hover:bg-blue-50 transition-colors shadow-sm"
                 >
-                  {s}
+                  {L(s.ko, s.en)}
                 </button>
               ))}
             </div>
@@ -215,16 +226,16 @@ export default function AdminSearchPage() {
       {query.length >= 2 && !loading && totalHits === 0 && (
         <div className="text-center py-16 text-gray-400">
           <div className="text-4xl mb-3">😕</div>
-          <p className="text-sm font-semibold text-gray-600">&quot;{query}&quot;에 대한 검색 결과가 없습니다</p>
-          <p className="text-xs mt-1 mb-6">검색어를 다시 확인하거나 다른 키워드로 시도해 보세요.</p>
+          <p className="text-sm font-semibold text-gray-600">{L(`“${query}”에 대한 검색 결과가 없습니다`, `No results found for “${query}”`)}</p>
+          <p className="text-xs mt-1 mb-6">{L('검색어를 다시 확인하거나 다른 키워드로 시도해 보세요.', 'Check the search term or try another keyword.')}</p>
           <div className="flex flex-wrap gap-2 justify-center">
             {SUGGESTIONS.map(s => (
               <button
-                key={s}
-                onClick={() => setQuery(s)}
+                key={s.en}
+                onClick={() => setQuery(L(s.ko, s.en))}
                 className="px-3 py-1.5 text-sm bg-white border border-gray-200 rounded-full text-gray-600 hover:border-blue-300 hover:text-blue-600 hover:bg-blue-50 transition-colors"
               >
-                {s}
+                {L(s.ko, s.en)}
               </button>
             ))}
           </div>
@@ -242,7 +253,7 @@ export default function AdminSearchPage() {
               href={GROUP_HREF[key] ?? '#'}
               className="ml-auto text-xs text-blue-500 hover:underline"
             >
-              전체 보기 →
+              {L('전체 보기 →', 'View all →')}
             </a>
           </div>
           <div className="bg-white rounded-2xl border border-gray-200 shadow-sm divide-y divide-gray-50">

@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { usePathname } from 'next/navigation';
+import { createCommercialLocalizer } from '@/lib/i18n/commercialLocalizer';
 
 /* ── i18n ─────────────────────────────────────────────────────────────── */
 
@@ -119,6 +120,7 @@ export default function CommandPalette({ visible, onClose, commands, lang, onAsk
   const pathname = usePathname();
   const seg = pathname?.split('/').filter(Boolean)[0] ?? 'en';
   const tt = dict[langMap[seg] ?? 'en'];
+  const L = useMemo(() => createCommercialLocalizer(langMap[seg] ?? lang), [lang, seg]);
 
   // Focus input when opened
   useEffect(() => {
@@ -341,7 +343,7 @@ export default function CommandPalette({ visible, onClose, commands, lang, onAsk
                         }}>
                           {cmd.icon}
                         </span>
-                      <span style={{ flex: 1 }}>{(lang === 'ko' || lang === 'kr') && cmd.labelKo ? cmd.labelKo : cmd.label}</span>
+                      <span style={{ flex: 1 }}>{cmd.labelKo ? L(cmd.labelKo, cmd.label) : cmd.label}</span>
                       {cmd.shortcut && (
                         <kbd style={{
                           fontSize: 10, color: 'var(--nx-border-strong)', fontWeight: 600,

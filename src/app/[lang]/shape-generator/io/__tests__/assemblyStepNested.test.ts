@@ -29,6 +29,9 @@ DATA;
 #5=PRODUCT('${productName}','${productName}','',(#3));
 #6=PRODUCT_DEFINITION_FORMATION('','',#5);
 #${partDefId}=PRODUCT_DEFINITION('design','',#6,#3);
+#80=PRODUCT_DEFINITION_SHAPE('','',#${partDefId});
+#81=SHAPE_REPRESENTATION('${productName}',(),#1);
+#82=SHAPE_DEFINITION_REPRESENTATION(#80,#81);
 ENDSEC;
 END-ISO-10303-21;
 `;
@@ -73,6 +76,13 @@ describe('stitchNestedAssemblyHierarchy — preconditions', () => {
     expect(() =>
       stitchNestedAssemblyHierarchy(sub('rootbad', [brokenLeaf])),
     ).toThrow(/could not be planned/);
+  });
+
+  it('fails closed when reserved wrapper entity ranges would overlap', () => {
+    const tooMany = Array.from({ length: 401 }, (_, index) => (
+      sub(`S${index}`, [leaf(`P${index}`)])
+    ));
+    expect(() => stitchNestedAssemblyHierarchy(sub('Root', tooMany))).toThrow(/capacity exceeded/);
   });
 });
 
@@ -185,7 +195,11 @@ describe('stitchNestedAssemblyHierarchy — entity-graph integrity', () => {
     const r = stitchNestedAssemblyHierarchy(tree);
     const nauoCount = (r.stepText.match(/NEXT_ASSEMBLY_USAGE_OCCURRENCE/g) || []).length;
     const idtCount = (r.stepText.match(/ITEM_DEFINED_TRANSFORMATION/g) || []).length;
+    const rrwtCount = (r.stepText.match(/REPRESENTATION_RELATIONSHIP_WITH_TRANSFORMATION/g) || []).length;
+    const cdsrCount = (r.stepText.match(/CONTEXT_DEPENDENT_SHAPE_REPRESENTATION/g) || []).length;
     expect(idtCount).toBe(nauoCount);
+    expect(rrwtCount).toBe(nauoCount);
+    expect(cdsrCount).toBe(nauoCount);
   });
 });
 

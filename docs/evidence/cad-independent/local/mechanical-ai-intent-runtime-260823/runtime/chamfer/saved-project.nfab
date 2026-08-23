@@ -1,0 +1,77 @@
+{
+  "magic": "nfab",
+  "version": 3,
+  "createdAt": 1787467913586,
+  "updatedAt": 1787467913586,
+  "name": "Mechanical runtime chamfer",
+  "tree": {
+    "nodes": [
+      {
+        "id": "runtime-root",
+        "type": "baseShape",
+        "label": "Base exact box",
+        "icon": "base",
+        "params": {},
+        "enabled": true,
+        "expanded": true,
+        "parentId": null,
+        "children": [
+          "runtime-feature"
+        ],
+        "timestamp": 1,
+        "editingActive": false
+      },
+      {
+        "id": "runtime-feature",
+        "type": "feature",
+        "label": "Runtime chamfer",
+        "icon": "feature",
+        "featureType": "chamfer",
+        "params": {
+          "distance": 2.2224999999999997,
+          "radius": 2.2224999999999997,
+          "edgeSelection": 0
+        },
+        "enabled": true,
+        "expanded": true,
+        "parentId": "runtime-root",
+        "children": [],
+        "timestamp": 2,
+        "editingActive": false
+      }
+    ],
+    "rootId": "runtime-root",
+    "activeNodeId": "runtime-feature"
+  },
+  "scene": {
+    "selectedId": "box",
+    "params": {
+      "width": 100,
+      "height": 6.35,
+      "depth": 60
+    },
+    "paramExpressions": {},
+    "materialId": "aluminum",
+    "color": "#cccccc",
+    "isSketchMode": false,
+    "sketchPlane": "xy",
+    "sketchProfile": {
+      "segments": [],
+      "closed": false
+    },
+    "sketchConfig": {
+      "mode": "extrude",
+      "depth": 60,
+      "revolveAngle": 360,
+      "revolveAxis": "y",
+      "segments": 32
+    }
+  },
+  "meta": {
+    "evidenceOnly": true,
+    "exactKernel": "OCCT",
+    "intentCaseId": "mixed_units-03-chamfer",
+    "intentInputSha256": "83e52ee531c466b6e6f9297def0e729cef34d3f5fe74724fdbcf3c9c9c100687",
+    "candidateBaseRevision": "3aabe87739ff99d1730c5375bad2e67c6be3fb8b482a4aa88e070328cf84915b"
+  }
+}

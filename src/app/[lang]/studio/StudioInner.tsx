@@ -22,7 +22,9 @@ import StudioSidebar from './StudioSidebar';
 import { listDesigns, saveDesign, getDesign, deleteDesign, titleFromMessages, setDesignScope, type StudioDesign, type StudioChatMsg } from './studioDesigns';
 import { parseScadColors, isolateColorScad, defaultColorCss } from './scadColors';
 import { applyFeatureProgramCustomizerValue, emitScadFromProgram, type FeatureProgram } from './emitScadFromProgram';
-import { CODEGEN_MODELS, DEFAULT_CODEGEN_MODEL } from '@/lib/ai/codegenModels';
+import { buildPrecisionCadHandoff } from '@/lib/ai/precisionCadHandoff';
+import { AiModelSelector, useAiModelPreference } from '@/components/nexyfab/AiModelSelector';
+import { createStudioLocalizer } from '@/lib/i18n/studioLocalizer';
 import { renderScadWasm, wasmAvailable } from './wasmRender';
 import { captureMultiView } from './multiViewCapture';
 import {
@@ -96,6 +98,18 @@ interface ChatMsg {
   image?: string | null;
   thumb?: string | null;
   status?: 'thinking' | 'done' | 'error';
+  aiExecution?: {
+    selectedModelLabel?: string;
+    textModel?: string | null;
+    visionModel?: string | null;
+    visionAutoRouted?: boolean;
+    resultCacheHit?: boolean;
+    inputCacheHit?: boolean;
+    cachedPromptTokens?: number;
+    cacheWriteTokens?: number;
+    parallelAssistantModel?: string | null;
+    parallelAssistantTasks?: string[];
+  };
 }
 const toPersist = (m: ChatMsg[]): StudioChatMsg[] => m.map(({ role, text, image, thumb, status }) => ({ role, text, image, thumb, status }));
 
@@ -109,33 +123,6 @@ function shortScadError(raw: string): string {
 interface RenderResult { ok: boolean; error?: string; raw?: string; auth?: boolean }
 
 /** Compact model picker (CADAM-style) — choose which AI generates the model. */
-function ModelPicker({ modelId, onPick, isKo, compact }: { modelId: string; onPick: (id: string) => void; isKo: boolean; compact?: boolean }) {
-  const [open, setOpen] = useState(false);
-  const cur = CODEGEN_MODELS.find(m => m.id === modelId) ?? CODEGEN_MODELS[0];
-  return (
-    <div className="relative">
-      <button onClick={() => setOpen(o => !o)} className={`flex items-center gap-1 st-panel-2 border st-bd rounded-full ${compact ? 'px-2 py-0.5 text-[11px]' : 'px-3 py-[7px] text-[12px]'} st-text-2 hover:st-text font-medium`} title={isKo ? 'AI 모델 선택' : 'Choose AI model'}>
-        <span>🧠 {cur.label}</span><span className="opacity-60">▾</span>
-      </button>
-      {open && (
-        <>
-          <div className="fixed inset-0 z-20" onClick={() => setOpen(false)} />
-          <div className="absolute z-30 mt-1 right-0 w-60 st-panel border st-bd rounded-xl shadow-2xl overflow-hidden py-1">
-            {CODEGEN_MODELS.map(m => (
-              <button key={m.id} onClick={() => { onPick(m.id); setOpen(false); }}
-                className={`w-full text-left px-3 py-2 hover:st-hover ${m.id === modelId ? 'bg-blue-600/15' : ''}`}>
-                <div className="text-[13px] font-semibold st-text flex items-center gap-1.5">{m.label}{m.id === modelId && <span className="text-blue-400 text-[11px]">✓</span>}</div>
-                {m.note && <div className="text-[11px] st-text-3">{m.note}</div>}
-              </button>
-            ))}
-            <div className="px-3 pt-1.5 pb-1 text-[10px] st-text-3 border-t st-bd mt-1">{isKo ? '미설정 모델은 자동으로 대체됩니다.' : 'Unconfigured models fall back automatically.'}</div>
-          </div>
-        </>
-      )}
-    </div>
-  );
-}
-
 /** Extract the largest explicit dimension (mm) a user asked for, for scale
  *  auto-correction. Reads "A×B×C", "N mm", and "⌀N / diameter N" patterns. */
 function parseTargetLargestMm(prompt: string): number | null {
@@ -148,14 +135,15 @@ function parseTargetLargestMm(prompt: string): number | null {
   return valid.length ? Math.max(...valid) : null;
 }
 
-export default function StudioInner({ onExpert, initialPrecise = true }: { onExpert?: () => void; initialPrecise?: boolean } = {}) {
+export default function StudioInner({ onExpert, initialPrecise = true, routeLang, translations }: { onExpert?: () => void; initialPrecise?: boolean; routeLang?: string; translations?: Record<string, string> } = {}) {
   const params = useParams();
   const router = useRouter();
-  const lang = (Array.isArray(params?.lang) ? params.lang[0] : params?.lang) ?? 'en';
+  const lang = routeLang ?? (Array.isArray(params?.lang) ? params.lang[0] : params?.lang) ?? 'en';
   const isKo = lang === 'ko' || lang === 'kr';
-  const T = (ko: string, en: string) => (isKo ? ko : en);
+  const T = createStudioLocalizer(lang, translations);
   const userName = useAuthStore(s => s.user?.name ?? s.user?.email ?? null);
   const userId = useAuthStore(s => s.user?.id ?? null);
+  const userPlan = useAuthStore(s => s.user?.plan ?? 'free');
 
   const [messages, setMessages] = useState<ChatMsg[]>([]);
   const [hydrated, setHydrated] = useState(false);
@@ -217,9 +205,7 @@ export default function StudioInner({ onExpert, initialPrecise = true }: { onExp
   const [lockedParams, setLockedParams] = useState<Set<string>>(() => new Set());
   const lockedParamValuesRef = useRef<Map<string, number | boolean | string>>(new Map());
   const clarificationContextRef = useRef<string | null>(null);
-  const [modelId, setModelId] = useState(DEFAULT_CODEGEN_MODEL); // user-picked codegen model
-  useEffect(() => { try { const m = localStorage.getItem('nexyfab:studio-model'); if (m && CODEGEN_MODELS.some(x => x.id === m)) setModelId(m); } catch { /* ignore */ } }, []);
-  const pickModel = useCallback((id: string) => { setModelId(id); try { localStorage.setItem('nexyfab:studio-model', id); } catch { /* ignore */ } }, []);
+  const { modelId, pickModel } = useAiModelPreference(userPlan);
 
   const idRef = useRef(0);
   const nextId = () => ++idRef.current;
@@ -255,6 +241,9 @@ export default function StudioInner({ onExpert, initialPrecise = true }: { onExp
 
   const setAiMsg = useCallback((id: number, text: string, status: ChatMsg['status']) => {
     setMessages(m => m.map(x => (x.id === id ? { ...x, text, status } : x)));
+  }, []);
+  const setAiExecution = useCallback((id: number, aiExecution: ChatMsg['aiExecution']) => {
+    setMessages(current => current.map(message => message.id === id ? { ...message, aiExecution } : message));
   }, []);
 
   const renderScad = useCallback(async (src: string): Promise<RenderResult> => {
@@ -409,7 +398,9 @@ export default function StudioInner({ onExpert, initialPrecise = true }: { onExp
         const data = await res.json().catch(() => ({})) as {
           part?: string; features?: unknown[]; verificationContext?: FeatureProgram['verificationContext'];
           error?: string; code?: string; questions?: string[];
+          aiExecution?: ChatMsg['aiExecution'];
         };
+        if (data.aiExecution) setAiExecution(aiId, data.aiExecution);
         if (res.status === 422 && (
           data.code === 'CLARIFICATION_REQUIRED'
           || data.code === 'FEATURE_PROGRAM_INVALID'
@@ -483,7 +474,7 @@ export default function StudioInner({ onExpert, initialPrecise = true }: { onExp
       // code — retry once. Deterministic gate/vision responses never improve on
       // retry, so break out for those.
       let res: Response | null = null;
-      let data: { code?: string; scad?: string; reason?: string; error?: string } = {};
+      let data: { code?: string; scad?: string; reason?: string; error?: string; aiExecution?: ChatMsg['aiExecution'] } = {};
       for (let attempt = 0; attempt < 2; attempt++) {
         try {
           res = await fetch('/api/nexyfab/scad-intent-from-nl', {
@@ -491,6 +482,7 @@ export default function StudioInner({ onExpert, initialPrecise = true }: { onExp
             body: JSON.stringify(body),
           });
           data = await res.json().catch(() => ({}));
+          if (data.aiExecution) setAiExecution(aiId, data.aiExecution);
         } catch { res = null; data = {}; }
         const c = data.code;
         if (c === 'GUEST_LIMIT' || c === 'VISION_BUSY' || c === 'VISION_FAILED') break;
@@ -529,23 +521,18 @@ export default function StudioInner({ onExpert, initialPrecise = true }: { onExp
       // stubborn BOSL2 bug still resolves into a renderable model.
       for (let attempt = 1; !r.ok && r.raw && attempt <= 3; attempt++) {
         setAiMsg(aiId, T('코드 오류를 자동 수정 중…', 'Auto-fixing a code error…'), 'thinking');
-        // Final attempt = full PLAIN-OpenSCAD rewrite (no BOSL2). Plain primitives
-        // almost never error, so this resolves stubborn BOSL2 bugs (rounding-fit
-        // asserts, bad gear()/attach signatures, syntax) that targeted fixes repeat.
-        const escalate = attempt >= 3;
         const tooLarge = /too large/i.test(r.raw) || /too large/i.test(r.error ?? '');
-        const fixPrompt = tooLarge
-          ? `The rendered mesh is too large to return. Shrink the triangle count: set $fn=${attempt >= 2 ? 20 : 28}, simplify or drop the most detailed cosmetic features, and avoid minkowski() and very large hull() chains. Return the COMPLETE program keeping the same overall shape and the Customizer parameters/groups.`
-          : escalate
-            ? `The program keeps failing to render in OpenSCAD:\n${r.raw.slice(0, 600)}\nRewrite the ENTIRE model using ONLY PLAIN OpenSCAD — cube, cylinder, sphere, polyhedron, translate, rotate, scale, mirror, hull, minkowski, difference, union, intersection, for. Do NOT use BOSL2 at all: no \`include <BOSL2/...>\`, no cuboid/cyl/rounding=/chamfer=/attach/anchor/edges/gear. Keep EVERY part with its position, size, proportions and the overall design, plus the Customizer parameter variables, comments and groups. Approximate any rounded/chamfered edge with a plain shape — a sharp model that RENDERS is the goal.`
-            : `The program failed to render in OpenSCAD with this error:\n${r.raw.slice(0, 800)}\nFix ONLY what caused the error and return the COMPLETE corrected program. The usual cause is a BOSL2 call (cuboid/cyl/rounding=/attach/anchor/edges) — replace just those with the plain-OpenSCAD equivalent (cube/cylinder/translate/difference/hull), keeping the SAME rounding/fillet intent where easy. CRITICAL: keep EVERY part, its position, size, proportions and the overall design intact — do NOT simplify the model, do NOT turn it into a plain box, do NOT remove parts. Keep the Customizer parameter variables, comments and groups.`;
+        // A size failure is not permission to delete details or reduce physical
+        // fidelity. Keep the failed candidate and require the precision path.
+        if (tooLarge) break;
+        const fixPrompt = `The program failed to render in OpenSCAD with this error:\n${r.raw.slice(0, 800)}\nFix ONLY what caused the error and return the COMPLETE corrected program. Replace an unsupported call only with an equivalent construction. CRITICAL: preserve EVERY part, feature, hole, fillet, rounding, position, size, parameter, group and interface. Do NOT simplify, merge, suppress, approximate or remove anything. If an equivalent correction is impossible, return the original program unchanged so the caller stops and requests precision CAD.`;
         try {
           const fixRes = await fetch('/api/nexyfab/scad-intent-from-nl', {
             method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
             // Repairs go to DeepSeek regardless of the picked model — it reliably
             // emits valid OpenSCAD, whereas a model that just produced a broken
             // program (e.g. rounding>size, syntax errors) tends to repeat it.
-            body: JSON.stringify({ prompt: fixPrompt, freeform: true, previousScad: code, repair: true, modelId: 'deepseek-reasoner' }),
+            body: JSON.stringify({ prompt: fixPrompt, freeform: true, previousScad: code, repair: true }),
           });
           const fixData = await fixRes.json().catch(() => ({}));
           const fixedRaw = (fixData as { scad?: string }).scad;
@@ -644,7 +631,7 @@ export default function StudioInner({ onExpert, initialPrecise = true }: { onExp
     } finally {
       setBusy(false);
     }
-  }, [input, image, busy, scad, precise, modelId, renderScad, renderColored, setAiMsg, refreshDesigns, isKo, applyLockedValues]);
+  }, [input, image, busy, scad, precise, modelId, renderScad, renderColored, setAiMsg, setAiExecution, refreshDesigns, isKo, applyLockedValues]);
 
   // ── Prompt expansion: rewrite a short request into a precise OpenSCAD brief ──
   // the user can review/edit before sending. Best for mechanical parts; flags
@@ -884,9 +871,8 @@ export default function StudioInner({ onExpert, initialPrecise = true }: { onExp
     URL.revokeObjectURL(url);
   }, [stlB64]);
 
-  // STEP export — the manufacturing handoff. Precise models build a TRUE
-  // analytic B-rep (planar + cylindrical faces, re-opens cleanly in
-  // SolidWorks/Fusion); free-form falls back to a tessellated AP203 STEP.
+  // STEP export — manufacturing handoff requires a true analytic B-rep.
+  // Mesh/free-form geometry is preview-only and never falls back to STEP.
   const [stepBusy, setStepBusy] = useState(false);
   const exportStep = useCallback(async () => {
     if (!geometry || stepBusy) return;
@@ -938,26 +924,16 @@ export default function StudioInner({ onExpert, initialPrecise = true }: { onExp
               return;
             }
           }
-          // analytic build failed → fall through to the mesh STEP
+          alert(T('정밀 B-Rep 검증에 실패해 STEP을 내보내지 않았습니다. 정밀 CAD에서 오류를 수정해 주세요.', 'Exact B-Rep verification failed, so no STEP was exported. Repair it in Precision CAD.'));
+          return;
         } catch { /* fall through */ }
       }
-      // Free-form (or analytic failed): tessellated solid → AP203 STEP.
+      // Free-form mesh is intentionally not represented as manufacturing STEP.
       setReadiness(classifyManufacturingReadiness({
         hasGeometry: true,
         hasFeatureProgram: false,
       }));
-      const pos = geometry.getAttribute('position');
-      if (!pos) return;
-      const positions = Array.from(pos.array as Float32Array);
-      const idx = geometry.getIndex();
-      const triangles = idx ? Array.from(idx.array as ArrayLike<number>) : Array.from({ length: pos.count }, (_, i) => i);
-      const res = await fetch('/api/nexyfab/brep/step-export-from-stl', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
-        body: JSON.stringify({ positions, triangles, fileName: 'nexyfab-part.step' }),
-      });
-      if (res.status === 401) { alert(T('STEP 내보내기는 무료 로그인이 필요합니다.', 'STEP export needs a (free) login.')); return; }
-      if (!res.ok) { alert(T('STEP 내보내기에 실패했어요.', 'STEP export failed.')); return; }
-      save(await res.text());
+      alert(T('자유형·메시 모델은 제조용 STEP으로 변환하지 않습니다. 정밀 CAD에서 editable feature 모델로 재생성해 주세요.', 'Free-form mesh models are not converted into manufacturing STEP. Rebuild as an editable feature model in Precision CAD.'));
     } catch { alert(T('STEP 내보내기에 실패했어요.', 'STEP export failed.')); }
     finally { setStepBusy(false); }
   }, [geometry, stepBusy, isKo]);
@@ -1003,7 +979,19 @@ export default function StudioInner({ onExpert, initialPrecise = true }: { onExp
     // Precise designs also carry their structured feature program so the modeler
     // can rebuild an EDITABLE feature tree (not just an imported solid).
     try {
-      if (programRef.current) sessionStorage.setItem('nexyfab:studio-handoff-program', JSON.stringify(programRef.current));
+      let handoffProgram: FeatureProgram | null = programRef.current;
+      // If the AI returned only SCAD, use the canonical primitive adapter for
+      // the small safe subset. Complex/unsupported SCAD remains mesh-only and
+      // is never pretended to be an editable precision model.
+      if (!handoffProgram && scad) {
+        const handoff = buildPrecisionCadHandoff({
+          definitionId: currentIdRef.current,
+          moduleSource: scad,
+          sourceRef: 'studio-handoff',
+        });
+        handoffProgram = handoff.editableProgram ?? null;
+      }
+      if (handoffProgram) sessionStorage.setItem('nexyfab:studio-handoff-program', JSON.stringify(handoffProgram));
       else sessionStorage.removeItem('nexyfab:studio-handoff-program');
     } catch { /* ignore */ }
     if (onExpert) onExpert();
@@ -1171,8 +1159,8 @@ export default function StudioInner({ onExpert, initialPrecise = true }: { onExp
     T('기어 24개 스퍼기어', 'a 24-tooth spur gear'),
   ];
   const greetingBase = precise
-    ? (isKo ? '님, 어떤 정밀 부품을 만들까요?' : ', what precise part shall we build?')
-    : (isKo ? '님, 무엇을 만들까요?' : ', what should we build?');
+    ? T('님, 어떤 정밀 부품을 만들까요?', ', what precise part shall we build?')
+    : T('님, 무엇을 만들까요?', ', what should we build?');
   const greeting = userName ? `${userName.split('@')[0]}${greetingBase}` : (precise ? T('어떤 정밀 부품을 만들까요?', 'What precise part shall we build?') : T('무엇을 만들까요?', 'What should we build?'));
 
   const sidebar = (
@@ -1199,7 +1187,7 @@ export default function StudioInner({ onExpert, initialPrecise = true }: { onExp
               <button data-testid="ai-cad-mode-precise" aria-pressed={precise} onClick={() => setPrecise(true)} className={`px-3 py-1 rounded-full font-semibold ${precise ? 'bg-indigo-600 text-white' : 'st-text-2'}`} title={T('일반 사용자도 AI가 정밀 CAD 엔진을 자동 운용합니다', 'AI automatically operates the precision CAD engine for every user')}>✨ {T('AI 자동 설계', 'AI Auto Design')}</button>
               <button data-testid="ai-cad-mode-free" aria-pressed={!precise} onClick={() => setPrecise(false)} className={`px-3 py-1 rounded-full font-semibold ${!precise ? 'bg-blue-600 text-white' : 'st-text-2'}`} title={T('조형·유기 형상을 빠르게 만들 때 사용', 'Use for fast free-form or organic geometry')}>{T('빠른 자유형', 'Fast Free-form')}</button>
             </div>
-            <ModelPicker modelId={modelId} onPick={pickModel} isKo={isKo} />
+            <AiModelSelector modelId={modelId} onChange={pickModel} plan={userPlan} lang={lang} />
           </div>
 
           <h1 className="text-2xl sm:text-3xl font-bold mb-2 text-center">{greeting}</h1>
@@ -1268,6 +1256,16 @@ export default function StudioInner({ onExpert, initialPrecise = true }: { onExp
                 <div className={`rounded-xl px-3 py-2 text-[12px] whitespace-pre-wrap break-words ${m.role === 'user' ? 'bg-blue-700/40 border border-blue-700/40' : m.status === 'error' ? 'bg-red-900/30 border border-red-800/40 text-red-200' : 'st-panel-2 border st-bd'}`}>
                   {m.image && <img src={m.image} alt="" className="w-full max-h-32 object-contain rounded mb-1.5 bg-black/30" />}
                   {m.status === 'thinking' ? <span className="inline-flex items-center gap-1.5 text-blue-300"><span className="w-1.5 h-1.5 rounded-full bg-blue-400 animate-pulse" />{m.text}</span> : m.text}
+                  {m.aiExecution && m.status !== 'thinking' && (
+                    <div className="mt-2 pt-1.5 border-t st-bd text-[10px] st-text-3" data-testid="ai-execution-model">
+                      ✦ {m.aiExecution.resultCacheHit
+                        ? T('저장된 설계 결과 사용', 'Reused cached design result')
+                        : `${m.aiExecution.selectedModelLabel ?? m.aiExecution.textModel ?? 'AI'}`}
+                      {m.aiExecution.visionAutoRouted && ` · Vision → ${m.aiExecution.visionModel ?? 'GPT-5.6 Luna'}`}
+                      {!!m.aiExecution.parallelAssistantTasks?.length && ` · Parallel → ${m.aiExecution.parallelAssistantModel ?? 'GPT-5.6 Luna'}`}
+                      {m.aiExecution.inputCacheHit && ` · ${T('입력 캐시 적중', 'Input cache hit')}`}
+                    </div>
+                  )}
                   {m.thumb && <img src={m.thumb} alt="" className="w-full max-h-28 object-contain rounded mt-1.5 bg-black/20 cursor-pointer" onClick={() => setMobileTab('3d')} title={T('3D 보기', 'View in 3D')} />}
                 </div>
               </div>
@@ -1280,7 +1278,7 @@ export default function StudioInner({ onExpert, initialPrecise = true }: { onExp
                 <button data-testid="ai-cad-mode-precise" aria-pressed={precise} onClick={() => setPrecise(true)} className={`px-2 py-0.5 rounded-full font-semibold ${precise ? 'bg-indigo-600 text-white' : 'st-text-2'}`} title={T('AI가 정밀 CAD 엔진을 자동 운용', 'AI-managed precision CAD')}>✨ {T('AI 자동', 'AI Auto')}</button>
                 <button data-testid="ai-cad-mode-free" aria-pressed={!precise} onClick={() => setPrecise(false)} className={`px-2 py-0.5 rounded-full font-semibold ${!precise ? 'bg-blue-600 text-white' : 'st-text-2'}`}>{T('빠른 자유형', 'Fast Free')}</button>
               </div>
-              <ModelPicker modelId={modelId} onPick={pickModel} isKo={isKo} compact />
+              <AiModelSelector modelId={modelId} onChange={pickModel} plan={userPlan} lang={lang} compact />
             </div>
             {image && <ImagePill />}
             {scad && !image && (

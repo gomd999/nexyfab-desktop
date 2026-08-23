@@ -1,17 +1,25 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { boundedJsonError, readBoundedJson } from '@/lib/boundedJsonBody';
 import { getAuthUser } from '@/lib/auth-middleware';
 import { getDbAdapter } from '@/lib/db-adapter';
 import { deliverWebhook } from '@/lib/webhook-delivery';
 import { checkOrigin } from '@/lib/csrf';
 
 export const dynamic = 'force-dynamic';
+const WEBHOOK_TEST_JSON_BYTES = 64 * 1024;
 
 export async function POST(req: NextRequest) {
   if (!checkOrigin(req)) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   const authUser = await getAuthUser(req);
   if (!authUser) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-  const { id } = await req.json().catch(() => ({})) as { id?: string };
+  let body: { id?: string } = {};
+  try { body = await readBoundedJson(req, WEBHOOK_TEST_JSON_BYTES); }
+  catch (error) {
+    const bodyError = boundedJsonError(error);
+    if (bodyError?.code === 'PAYLOAD_TOO_LARGE') return NextResponse.json({ error: 'Request body too large' }, { status: bodyError.status });
+  }
+  const { id } = body;
   if (!id) return NextResponse.json({ error: 'id required' }, { status: 400 });
 
   const db = getDbAdapter();

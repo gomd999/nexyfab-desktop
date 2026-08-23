@@ -89,7 +89,7 @@ export function PropRow({ label, children }: PropRowProps) {
 
 /** Numeric input that visually matches the mockup. */
 export function PropNumber({
-  value, onChange, suffix, min, max, step, ariaLabel, testId,
+  value, onChange, suffix, min, max, step, ariaLabel, testId, inputId, inputName,
 }: {
   value: number;
   onChange: (v: number) => void;
@@ -99,10 +99,14 @@ export function PropNumber({
   step?: number;
   ariaLabel?: string;
   testId?: string;
+  inputId?: string;
+  inputName?: string;
 }) {
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
       <input
+        id={inputId}
+        name={inputName}
         type="number"
         aria-label={ariaLabel}
         data-testid={testId}

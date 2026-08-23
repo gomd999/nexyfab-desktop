@@ -100,11 +100,12 @@
       "bytes": 10830818,
       "pageCount": 240,
       "pageCountMethod": "pdf-page-object-scan-approximate",
-      "family": "civil3d",
+      "family": "midas-civil",
       "domains": [
         "civil",
-        "alignment",
-        "survey"
+        "bridge",
+        "structural_analysis",
+        "fea"
       ],
       "sourcePolicy": "read_only_local_reference"
     },
@@ -156,9 +157,11 @@
       "bytes": 1771083,
       "pageCount": 29,
       "pageCountMethod": "pdf-page-object-scan-approximate",
-      "family": "other",
+      "family": "visualization",
       "domains": [
-        "review_required"
+        "architecture",
+        "interior",
+        "visualization"
       ],
       "sourcePolicy": "read_only_local_reference"
     },
@@ -272,9 +275,13 @@
       "bytes": 15713032,
       "pageCount": 293,
       "pageCountMethod": "pdf-page-object-scan-approximate",
-      "family": "other",
+      "family": "solidworks",
       "domains": [
-        "review_required"
+        "part",
+        "assembly",
+        "drawing",
+        "manufacturing",
+        "pdm"
       ],
       "sourcePolicy": "read_only_local_reference"
     },
@@ -285,11 +292,11 @@
       "bytes": 30084448,
       "pageCount": 47,
       "pageCountMethod": "pdf-page-object-scan-approximate",
-      "family": "rhino",
+      "family": "grasshopper",
       "domains": [
+        "parametric_graph",
         "surface",
-        "brep",
-        "drafting"
+        "brep"
       ],
       "sourcePolicy": "read_only_local_reference"
     }

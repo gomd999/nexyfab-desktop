@@ -1,0 +1,30 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://nexyfab.com/schemas/robot-manufacturing-validation-v3.json",
+  "title": "NexyFab robot manufacturing validation v3",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "lineageId", "revision", "programHash", "targetHash", "applicationHash", "applicationReceiptHash", "preciseReportHash", "catalogManifestSha256", "housingSha256", "catalogArtifactSetSha256", "reviewerId", "reviewerIdentitySha256", "generatedAt", "selectedComponentCount", "driveComponentCount", "auxiliaryComponentCount", "checks", "signature"],
+  "properties": {
+    "schema": { "const": "nexyfab.robot-manufacturing-validation.v3" },
+    "lineageId": { "type": "string", "minLength": 1 },
+    "revision": { "type": "integer", "minimum": 1 },
+    "programHash": { "$ref": "#/$defs/sha256" }, "targetHash": { "$ref": "#/$defs/sha256" },
+    "applicationHash": { "$ref": "#/$defs/sha256" }, "applicationReceiptHash": { "$ref": "#/$defs/sha256" },
+    "preciseReportHash": { "$ref": "#/$defs/sha256" }, "catalogManifestSha256": { "$ref": "#/$defs/sha256" },
+    "housingSha256": { "$ref": "#/$defs/sha256" }, "catalogArtifactSetSha256": { "$ref": "#/$defs/sha256" },
+    "reviewerId": { "type": "string", "minLength": 1 }, "reviewerIdentitySha256": { "$ref": "#/$defs/sha256" },
+    "generatedAt": { "type": "string", "format": "date-time" },
+    "selectedComponentCount": { "const": 22 }, "driveComponentCount": { "const": 18 }, "auxiliaryComponentCount": { "const": 4 },
+    "checks": {
+      "type": "object", "additionalProperties": false,
+      "required": ["dfm", "toleranceStack", "bom", "fasteners", "cableRouting", "materials", "processPlan"],
+      "properties": {
+        "dfm": { "const": true }, "toleranceStack": { "const": true }, "bom": { "const": true },
+        "fasteners": { "const": true }, "cableRouting": { "const": true }, "materials": { "const": true }, "processPlan": { "const": true }
+      }
+    },
+    "signature": { "type": "string", "minLength": 1 }
+  },
+  "$defs": { "sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" } }
+}

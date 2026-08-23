@@ -1,0 +1,45 @@
+{
+  "schema": "nexyfab.mechanical-core-feature-local-runtime.v1",
+  "feature": "draft",
+  "axis": "create",
+  "status": "PASS",
+  "executedAt": "2026-08-22T07:13:30.564Z",
+  "payload": {
+    "id": "runtime-feature",
+    "enabled": true,
+    "type": "draft",
+    "params": {
+      "angle": 3,
+      "direction": 0
+    }
+  },
+  "exact": {
+    "handle": "occt:107",
+    "kernelKind": "Solid",
+    "nativeShapeType": 2,
+    "solidCount": 1,
+    "singleSolid": true,
+    "volumeMm3": 72058.59360702678,
+    "edgeCount": 12,
+    "faceCount": 6,
+    "boundsMm": [
+      [
+        -31.04815568566083,
+        -20.000000100000012,
+        -16.04815568566083
+      ],
+      [
+        31.04815568566084,
+        20.000000100000012,
+        16.04815568566083
+      ]
+    ]
+  },
+  "featureMeaning": {
+    "assertion": "exact feature changed volume relative to its exact seed",
+    "baselineVolumeMm3": 72000,
+    "actualVolumeMm3": 72058.59360702678
+  },
+  "exactScope": "declared numeric runtime case",
+  "assertion": "native OCCT produced one non-empty exact solid and changed the host geometry"
+}

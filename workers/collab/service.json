@@ -1,0 +1,11 @@
+{
+  "schema": "nexyfab.deployable-unit.v1",
+  "id": "collab-worker",
+  "kind": "worker",
+  "targetRuntime": "cloudflare-workers-durable-objects",
+  "sourceMode": "legacy-directory-compatibility",
+  "legacySource": ["occt-collab-worker"],
+  "implementationState": "PARTIAL",
+  "deployEnabled": false,
+  "rollbackOwner": "single-user-local-document"
+}

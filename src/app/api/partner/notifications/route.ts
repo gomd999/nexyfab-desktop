@@ -2,6 +2,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getPartnerAuth } from '@/lib/partner-auth';
 import { getDbAdapter } from '@/lib/db-adapter';
 import { partnerNotificationRecipientKeys, sqlPlaceholders } from '@/lib/notificationRecipientKeys';
+import { boundedJsonError, readBoundedJson } from '@/lib/boundedJsonBody';
+
+const MAX_PARTNER_NOTIFICATION_BODY_BYTES = 16 * 1024;
 
 export const dynamic = 'force-dynamic';
 
@@ -41,7 +44,9 @@ export async function POST(req: NextRequest) {
   const partner = await getPartnerAuth(req);
   if (!partner) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-  const body = await req.json().catch(() => ({})) as { id?: string; all?: boolean };
+  let body: { id?: string; all?: boolean } = {};
+  try { body = await readBoundedJson(req, MAX_PARTNER_NOTIFICATION_BODY_BYTES); }
+  catch (error) { if (boundedJsonError(error)?.code === 'PAYLOAD_TOO_LARGE') return NextResponse.json({ error: 'Request too large', code: 'PAYLOAD_TOO_LARGE' }, { status: 413 }); }
   const keys = partnerNotificationRecipientKeys(partner);
   const db = getDbAdapter();
 
@@ -68,7 +73,9 @@ export async function DELETE(req: NextRequest) {
   const partner = await getPartnerAuth(req);
   if (!partner) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-  const body = await req.json().catch(() => ({})) as { id?: string };
+  let body: { id?: string } = {};
+  try { body = await readBoundedJson(req, MAX_PARTNER_NOTIFICATION_BODY_BYTES); }
+  catch (error) { if (boundedJsonError(error)?.code === 'PAYLOAD_TOO_LARGE') return NextResponse.json({ error: 'Request too large', code: 'PAYLOAD_TOO_LARGE' }, { status: 413 }); }
   const keys = partnerNotificationRecipientKeys(partner);
   const db = getDbAdapter();
 

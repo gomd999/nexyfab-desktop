@@ -4,6 +4,7 @@ import { getDbAdapter } from '@/lib/db-adapter';
 import { checkOrigin } from '@/lib/csrf';
 import { z } from 'zod';
 import type { WebhookEvent as _WebhookEvent } from '@/lib/webhook-delivery';
+import { boundedJsonError, readBoundedJson } from '@/lib/boundedJsonBody';
 
 export const dynamic = 'force-dynamic';
 
@@ -45,7 +46,13 @@ export async function POST(req: NextRequest) {
     events: z.array(z.string()).max(20).default([]),
   });
 
-  const parsed = schema.safeParse(await req.json().catch(() => ({})));
+  let input: unknown;
+  try { input = await readBoundedJson(req, 64 * 1024); }
+  catch (error) {
+    if (boundedJsonError(error)?.status === 413) return NextResponse.json({ error: 'Payload too large' }, { status: 413 });
+    input = {};
+  }
+  const parsed = schema.safeParse(input);
   if (!parsed.success) return NextResponse.json({ error: parsed.error.issues[0]?.message }, { status: 400 });
 
   // Test the webhook first

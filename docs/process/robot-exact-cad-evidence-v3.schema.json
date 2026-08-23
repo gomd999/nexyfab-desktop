@@ -1,0 +1,42 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://nexyfab.com/schemas/robot-exact-cad-evidence-v3.json",
+  "title": "NexyFab robot exact-CAD evidence v3",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "lineageId", "revision", "programHash", "targetHash", "applicationHash", "applicationReceiptHash", "preciseReportHash", "catalogManifestSha256", "housingSha256", "signerId", "signerIdentitySha256", "kernelStackIdentitySha256", "kernelEvidenceSha256", "revisionManifestSha256", "assemblyStepSha256", "drawingPackageSha256", "generatedAt", "partCount", "jointCount", "checks", "signature"],
+  "properties": {
+    "schema": { "const": "nexyfab.robot-exact-cad-evidence.v3" },
+    "lineageId": { "type": "string", "minLength": 1 },
+    "revision": { "type": "integer", "minimum": 1 },
+    "programHash": { "$ref": "#/$defs/sha256" },
+    "targetHash": { "$ref": "#/$defs/sha256" },
+    "applicationHash": { "$ref": "#/$defs/sha256" },
+    "applicationReceiptHash": { "$ref": "#/$defs/sha256" },
+    "preciseReportHash": { "$ref": "#/$defs/sha256" },
+    "catalogManifestSha256": { "$ref": "#/$defs/sha256" },
+    "housingSha256": { "$ref": "#/$defs/sha256" },
+    "signerId": { "type": "string", "minLength": 1 },
+    "signerIdentitySha256": { "$ref": "#/$defs/sha256" },
+    "kernelStackIdentitySha256": { "$ref": "#/$defs/sha256" },
+    "kernelEvidenceSha256": { "$ref": "#/$defs/sha256" },
+    "revisionManifestSha256": { "$ref": "#/$defs/sha256" },
+    "assemblyStepSha256": { "$ref": "#/$defs/sha256" },
+    "drawingPackageSha256": { "$ref": "#/$defs/sha256" },
+    "generatedAt": { "type": "string", "format": "date-time" },
+    "partCount": { "const": 29 },
+    "jointCount": { "const": 6 },
+    "checks": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["partRoundtrip", "assemblyXcafRoundtrip", "motion", "interference", "drawing", "units", "topology"],
+      "properties": {
+        "partRoundtrip": { "const": true }, "assemblyXcafRoundtrip": { "const": true },
+        "motion": { "const": true }, "interference": { "const": true },
+        "drawing": { "const": true }, "units": { "const": true }, "topology": { "const": true }
+      }
+    },
+    "signature": { "type": "string", "minLength": 1 }
+  },
+  "$defs": { "sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" } }
+}

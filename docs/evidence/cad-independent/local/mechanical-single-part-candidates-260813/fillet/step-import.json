@@ -1,0 +1,37 @@
+{
+  "schema": "nexyfab.mechanical-single-part-step-import.v1",
+  "feature": "fillet",
+  "partRevisionSha256": "61f5c7db9983ddc5db024b8bdce636125d1d7b795c7a0f574609c2325b23d74c",
+  "sourceDesignRevisionSha256": "3cf6a0f9c8efcf153a2cfefde087a2112c086fc412d2feeaeb9ce52542838564",
+  "sourceStep": {
+    "path": "docs/evidence/cad-independent/local/mechanical-core-runtime-260813/fillet/fillet-edited.step",
+    "sha256": "dddd8e975f5403d89fed0efe1e4ea7791e21300cc52bab485628913c1d2a4293",
+    "bytes": 63606,
+    "assertionId": "fillet.export.native-step"
+  },
+  "exactKernel": "OCCT",
+  "units": {
+    "value": "mm",
+    "confidence": "high"
+  },
+  "solidCount": 1,
+  "singleSolid": true,
+  "volumeMm3": 70300.22371359493,
+  "boundsMm": [
+    [
+      -30.00403676988911,
+      -20.00403676988911,
+      -15.004036769889114
+    ],
+    [
+      30.00403676988911,
+      20.00403676988911,
+      15.004036769889114
+    ]
+  ],
+  "dimensionsMm": {
+    "x": 60.00807353977822,
+    "y": 40.00807353977822,
+    "z": 30.008073539778227
+  }
+}

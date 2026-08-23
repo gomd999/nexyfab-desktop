@@ -1,0 +1,64 @@
+{
+  "schema": "nexyfab.mechanical-single-part-candidate.v1",
+  "feature": "mirror",
+  "candidateStatus": "PASS",
+  "partRevisionSha256": "a9497245c7679d9a3a6bb4d8aa1647a2743c62811d95c587d3f8347c80b0e563",
+  "source": {
+    "receiptPath": "docs/evidence/cad-independent/local/mechanical-core-feature-axis-evidence.json",
+    "receiptSha256": "79d9344b7d101580b7e1574759a8eff652cbe942e6a389056b488aba28a77930",
+    "designRevisionSha256": "3cf6a0f9c8efcf153a2cfefde087a2112c086fc412d2feeaeb9ce52542838564",
+    "nfab": {
+      "path": "docs/evidence/cad-independent/local/mechanical-core-runtime-260813/mirror/saved-project.nfab",
+      "sha256": "a787e03e59160b6240446643f05d50306115e15106a168233d81d8650db1621b",
+      "bytes": 1529,
+      "assertionId": "mirror.save_reopen.saved-bytes",
+      "revisionSha256": "a787e03e59160b6240446643f05d50306115e15106a168233d81d8650db1621b",
+      "formatVersion": 3,
+      "createdAt": 1786643134481,
+      "updatedAt": 1786643134481
+    },
+    "step": {
+      "path": "docs/evidence/cad-independent/local/mechanical-core-runtime-260813/mirror/mirror-edited.step",
+      "sha256": "8958d970d359ee70f5530b005ff5c073aef9c3d33a5a1c114414a38463a942df",
+      "bytes": 15551,
+      "assertionId": "mirror.export.native-step"
+    },
+    "drawingSvg": {
+      "path": "docs/evidence/cad-independent/local/mechanical-core-runtime-260813/mirror/mirror-exact-hlr.svg",
+      "sha256": "0840f7e92d7a41bda6b6d7a8d257f20ca31618e67e86a6b0612c8d0e86dc65f1",
+      "bytes": 2162,
+      "assertionId": "mirror.drawing.exact-hlr-svg"
+    }
+  },
+  "artifacts": {
+    "stepImport": {
+      "path": "docs/evidence/cad-independent/local/mechanical-single-part-candidates-260813/mirror/step-import.json",
+      "sha256": "7f45391d60418e0569051d31d7691e712c719e230d2062ecf1e9e806b43f0cde",
+      "bytes": 987,
+      "assertionId": "mirror.candidate.step-import"
+    },
+    "drawing": {
+      "path": "docs/evidence/cad-independent/local/mechanical-single-part-candidates-260813/mirror/mirror-three-axis-hlr.svg",
+      "sha256": "0840f7e92d7a41bda6b6d7a8d257f20ca31618e67e86a6b0612c8d0e86dc65f1",
+      "bytes": 2162,
+      "assertionId": "mirror.candidate.three-axis-hlr"
+    },
+    "bom": {
+      "path": "docs/evidence/cad-independent/local/mechanical-single-part-candidates-260813/mirror/bom.json",
+      "sha256": "d19975ed960132ec3f9ac868dcd1209248265bb21df5c5b65bde928d932eada3",
+      "bytes": 859,
+      "assertionId": "mirror.candidate.one-part-bom"
+    }
+  },
+  "capabilityStatus": {
+    "stepImportSolidUnitsBounds": "PASS",
+    "threeAxisHlrDrawingCandidate": "PASS",
+    "onePartBomQuantityDimensions": "PASS",
+    "drawingDimensions": "NOT_RUN",
+    "gdt": "NOT_RUN",
+    "pmi": "NOT_RUN",
+    "humanApproval": "NOT_RUN",
+    "manufacturingRelease": "BLOCKED"
+  },
+  "commercialReleaseEligible": false
+}

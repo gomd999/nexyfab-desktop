@@ -3,6 +3,7 @@ import { getAuthUser } from '@/lib/auth-middleware';
 import { getDbAdapter } from '@/lib/db-adapter';
 import { getPartnerAuth } from '@/lib/partner-auth';
 import { normPartnerEmail } from '@/lib/partner-factory-access';
+import { isOrderBuyerInActiveWorkspace } from '@/lib/nfOrderAccess';
 
 export const dynamic = 'force-dynamic';
 
@@ -25,6 +26,7 @@ interface OrderRow {
   created_at: number;
   estimated_delivery_at: number;
   user_id: string | null;
+  org_id: string | null;
   user_email: string | null;
   partner_email: string | null;
   payment_status: string | null;
@@ -46,7 +48,7 @@ export async function GET(
 
   const order = await db.queryOne<OrderRow>(
     `SELECT id, part_name, manufacturer_name, quantity, total_price_krw,
-            status, created_at, estimated_delivery_at, user_id, user_email,
+            status, created_at, estimated_delivery_at, user_id, org_id, user_email,
             partner_email, payment_status
      FROM nf_orders WHERE id = ?`,
     orderId,
@@ -56,9 +58,7 @@ export async function GET(
 
   if (authUser) {
     const isAdmin = authUser.globalRole === 'super_admin';
-    const userEmailOk =
-      order.user_email != null && normPartnerEmail(order.user_email) === normPartnerEmail(authUser.email);
-    if (!isAdmin && order.user_id !== authUser.userId && !userEmailOk) {
+    if (!isAdmin && (!order.user_id || !isOrderBuyerInActiveWorkspace(authUser, { user_id: order.user_id, org_id: order.org_id }))) {
       return new NextResponse('Forbidden', { status: 403 });
     }
   } else if (partnerAuth) {

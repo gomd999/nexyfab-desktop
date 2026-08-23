@@ -30,7 +30,7 @@ export interface CommentsPanelProps {
 
 const STORAGE_PREFIX = 'nexyfab.comments.v1.';
 
-export function CommentsPanel({ isKo, projectId, authorName }: CommentsPanelProps) {
+export function CommentsPanel({ projectId, authorName }: CommentsPanelProps) {
   const lang = useLang();
   const key = STORAGE_PREFIX + (projectId ?? 'local');
   const [comments, setComments] = useState<CommentNode[]>([]);
@@ -132,7 +132,7 @@ export function CommentsPanel({ isKo, projectId, authorName }: CommentsPanelProp
             }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
                 <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--nx-text)' }}>{c.author}</span>
-                <span style={{ fontSize: 9, color: 'var(--nx-text-3)' }}>{relativeTime(c.createdAt, isKo)}</span>
+                <span style={{ fontSize: 9, color: 'var(--nx-text-3)' }}>{relativeTime(c.createdAt, lang)}</span>
                 <span style={{ flex: 1 }} />
                 <button
                   onClick={() => toggleResolved(c.id)}
@@ -154,7 +154,7 @@ export function CommentsPanel({ isKo, projectId, authorName }: CommentsPanelProp
                   {c.replies.map(r => (
                     <div key={r.id} style={{ fontSize: 10, color: 'var(--nx-text-2)' }}>
                       <span style={{ fontWeight: 700, color: 'var(--nx-text)' }}>{r.author}</span>
-                      <span style={{ color: 'var(--nx-text-3)', marginLeft: 4 }}>{relativeTime(r.createdAt, isKo)}</span>
+                      <span style={{ color: 'var(--nx-text-3)', marginLeft: 4 }}>{relativeTime(r.createdAt, lang)}</span>
                       <div style={{ marginTop: 2, lineHeight: 1.4 }}>{r.body}</div>
                     </div>
                   ))}
@@ -232,13 +232,13 @@ const iconBtnStyle: React.CSSProperties = {
   color: 'var(--nx-text-3)', cursor: 'pointer', fontSize: 12,
 };
 
-function relativeTime(ts: number, isKo: boolean): string {
+function relativeTime(ts: number, lang: string): string {
   const diff = Date.now() - ts;
   const min = Math.floor(diff / 60_000);
-  if (min < 1) return isKo ? '방금' : 'just now';
-  if (min < 60) return isKo ? `${min}분 전` : `${min}m`;
+  if (min < 1) return loc(lang, { ko: '방금', en: 'just now', ja: 'たった今', zh: '刚刚', es: 'ahora', ar: 'الآن' });
+  if (min < 60) return loc(lang, { ko: `${min}분 전`, en: `${min}m`, ja: `${min}分前`, zh: `${min}分钟前`, es: `hace ${min} min`, ar: `قبل ${min} د` });
   const h = Math.floor(min / 60);
-  if (h < 24) return isKo ? `${h}시간 전` : `${h}h`;
+  if (h < 24) return loc(lang, { ko: `${h}시간 전`, en: `${h}h`, ja: `${h}時間前`, zh: `${h}小时前`, es: `hace ${h} h`, ar: `قبل ${h} س` });
   const d = Math.floor(h / 24);
-  return isKo ? `${d}일 전` : `${d}d`;
+  return loc(lang, { ko: `${d}일 전`, en: `${d}d`, ja: `${d}日前`, zh: `${d}天前`, es: `hace ${d} d`, ar: `قبل ${d} ي` });
 }

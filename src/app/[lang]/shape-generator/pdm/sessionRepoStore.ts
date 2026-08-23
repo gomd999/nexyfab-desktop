@@ -28,7 +28,7 @@
  */
 
 import { create } from 'zustand';
-import { VersionRepo, type Commit, type Branch } from './versionBranch';
+import { VersionRepo, type Commit, type Branch, type VersionRepoSnapshot } from './versionBranch';
 import {
   mergeFeatures,
   resolveConflict,
@@ -47,6 +47,8 @@ import {
 import {
   pushCommitVersion,
   fetchVersionHistory,
+  fetchVersionSnapshot,
+  checkoutVersion,
   reconstructGraph,
   PersistenceError,
   type PersistFailureReason,
@@ -54,6 +56,26 @@ import {
   type GateResultLike,
 } from './documentPersistence';
 import type { FeatureInstance } from '../features/types';
+
+const LOCAL_REPO_KEY = 'nexyfab:pdm-repo:v1';
+function loadLocalRepo(): VersionRepo | null {
+  if (process.env.NODE_ENV === 'test') return null;
+  if (typeof window === 'undefined') return null;
+  try { const raw = window.localStorage.getItem(LOCAL_REPO_KEY); return raw ? VersionRepo.fromSnapshot(JSON.parse(raw) as VersionRepoSnapshot) : null; } catch { return null; }
+}
+function saveLocalRepo(repo: VersionRepo | null) {
+  if (typeof window === 'undefined') return;
+  try { if (repo) window.localStorage.setItem(LOCAL_REPO_KEY, JSON.stringify(repo.toSnapshot())); else window.localStorage.removeItem(LOCAL_REPO_KEY); } catch { /* best effort */ }
+}
+
+function emitCheckoutRestore(repo: VersionRepo) {
+  if (typeof window === 'undefined') return;
+  try {
+    window.dispatchEvent(new CustomEvent('nexyfab:pdm-checkout-restore', {
+      detail: { branch: repo.current().branchName, commit: repo.current().commit },
+    }));
+  } catch { /* browser event is advisory; checkout itself already succeeded */ }
+}
 
 export interface PendingMerge {
   sourceBranch: string;
@@ -147,6 +169,8 @@ export interface PdmSessionState {
   ) => Promise<{ commit: Commit | null; persist: PersistResult }>;
   /** Load the server version history and rebuild the commit graph read-model. */
   loadHistory: () => Promise<PersistResult>;
+  /** Restore an immutable server snapshot and emit it to the live modeler. */
+  checkoutServerVersion: (commitId: string) => Promise<PersistResult>;
 }
 
 const demoFeature = (
@@ -207,7 +231,7 @@ export const usePdmSessionStore = create<PdmSessionState>((set, get) => ({
 
   init: (features, author) => {
     if (get().repo) return; // idempotent — never clobber an existing history
-    set({ repo: new VersionRepo(features, author), isDemo: false, rev: get().rev + 1 });
+    set({ repo: loadLocalRepo() ?? new VersionRepo(features, author), isDemo: false, rev: get().rev + 1 });
   },
 
   loadDemo: () => {
@@ -215,7 +239,7 @@ export const usePdmSessionStore = create<PdmSessionState>((set, get) => ({
     set({ repo: buildDemoRepo(), isDemo: true, rev: get().rev + 1 });
   },
 
-  reset: () => set({ repo: null, isDemo: false, pendingMerge: null, aiRuns: [], rev: get().rev + 1 }),
+  reset: () => { saveLocalRepo(null); set({ repo: null, isDemo: false, pendingMerge: null, aiRuns: [], rev: get().rev + 1 }); },
 
   commit: (features, message, author) => {
     const { repo } = get();
@@ -223,6 +247,7 @@ export const usePdmSessionStore = create<PdmSessionState>((set, get) => ({
     try {
       const c = repo.commit({ authorUserId: author, message, features });
       set(s => ({ rev: s.rev + 1 }));
+      saveLocalRepo(repo);
       return c;
     } catch {
       // Protected branch — surfaced by the UI as a no-op with the engine rule.
@@ -237,6 +262,8 @@ export const usePdmSessionStore = create<PdmSessionState>((set, get) => ({
       repo.branch(name.trim());
       repo.checkout(name.trim());
       set(s => ({ rev: s.rev + 1 }));
+      saveLocalRepo(repo);
+      emitCheckoutRestore(repo);
       return true;
     } catch {
       return false; // duplicate name
@@ -249,6 +276,8 @@ export const usePdmSessionStore = create<PdmSessionState>((set, get) => ({
     try {
       repo.checkout(name);
       set(s => ({ rev: s.rev + 1 }));
+      saveLocalRepo(repo);
+      emitCheckoutRestore(repo);
       return true;
     } catch {
       return false;
@@ -261,6 +290,7 @@ export const usePdmSessionStore = create<PdmSessionState>((set, get) => ({
     try {
       repo.tag(commitId, tag.trim());
       set(s => ({ rev: s.rev + 1 }));
+      saveLocalRepo(repo);
     } catch { /* unknown commit — ignore */ }
   },
 
@@ -314,6 +344,7 @@ export const usePdmSessionStore = create<PdmSessionState>((set, get) => ({
         otherParentId: source.headCommitId,
       });
       set(s => ({ pendingMerge: null, rev: s.rev + 1 }));
+      saveLocalRepo(repo);
       return c;
     } catch {
       return null;
@@ -330,6 +361,7 @@ export const usePdmSessionStore = create<PdmSessionState>((set, get) => ({
     try {
       const run = recordAiRun(repo, input);
       set(s => ({ aiRuns: [...s.aiRuns, run], rev: s.rev + 1 }));
+      saveLocalRepo(repo);
       return run;
     } catch {
       // Duplicate runId (branch exists) — refuse rather than re-record.
@@ -459,6 +491,42 @@ export const usePdmSessionStore = create<PdmSessionState>((set, get) => ({
     } catch (err) {
       const reason: PersistFailureReason =
         err instanceof PersistenceError ? err.reason : 'server_error';
+      const message = err instanceof Error ? err.message : String(err);
+      set({ lastPersistError: { reason, message } });
+      return { ok: false, reason };
+    }
+  },
+
+  checkoutServerVersion: async (commitId) => {
+    const { documentId, persistFetch, versionIdByCommit, repo } = get();
+    if (!documentId) return { ok: false, reason: 'not_bound' };
+    const versionId = versionIdByCommit[commitId];
+    const target = repo?.getCommit(commitId);
+    if (!versionId || !target || !repo) return { ok: false, reason: 'not_found' };
+    try {
+      // Refresh first so signed URLs are never reused after expiry and the
+      // selected immutable payload is the one actually being checked out.
+      const versions = await fetchVersionHistory(documentId, { fetchImpl: persistFetch ?? undefined });
+      const source = versions.find(v => v.id === versionId);
+      if (!source) return { ok: false, reason: 'not_found' };
+      const graph = reconstructGraph(versions);
+      const branch = graph.commits.find(c => c.id === commitId)?.branch ?? repo.current().branchName;
+      const snapshot = await fetchVersionSnapshot(source, { fetchImpl: persistFetch ?? undefined });
+      const restoredFeatures = snapshot.json && typeof snapshot.json === 'object' && Array.isArray((snapshot.json as { features?: unknown }).features)
+        ? (snapshot.json as { features: FeatureInstance[] }).features
+        : target.features;
+      const restoredCommit = { ...target, features: restoredFeatures };
+      const checkout = await checkoutVersion(documentId, versionId, { fetchImpl: persistFetch ?? undefined });
+      try { repo.checkout(branch); } catch { /* local graph may not contain a legacy branch */ }
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('nexyfab:pdm-checkout-restore', {
+          detail: { branch, commit: restoredCommit, snapshot: { versionId, contentType: snapshot.contentType, bytes: snapshot.bytes, currentBlobUrl: checkout.currentBlobUrl } },
+        }));
+      }
+      set({ lastPersistError: null, rev: get().rev + 1 });
+      return { ok: true, versionId };
+    } catch (err) {
+      const reason: PersistFailureReason = err instanceof PersistenceError ? err.reason : 'server_error';
       const message = err instanceof Error ? err.message : String(err);
       set({ lastPersistError: { reason, message } });
       return { ok: false, reason };

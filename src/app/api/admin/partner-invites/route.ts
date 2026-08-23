@@ -16,6 +16,7 @@ import { verifyAdmin } from '@/lib/admin-auth';
 import { getDbAdapter } from '@/lib/db-adapter';
 import { hashPartnerInviteToken } from '@/lib/partner-invite-token';
 import { checkOrigin } from '@/lib/csrf';
+import { boundedJsonError, readBoundedJson } from '@/lib/boundedJsonBody';
 import { getTrustedClientIp } from '@/lib/client-ip';
 import { rateLimitAsync, rateLimitHeaders } from '@/lib/rate-limit';
 
@@ -72,8 +73,9 @@ export async function POST(req: NextRequest) {
 
   let body: Record<string, unknown>;
   try {
-    body = await req.json();
-  } catch {
+    body = await readBoundedJson(req, 256 * 1024);
+  } catch (error) {
+    if (boundedJsonError(error)?.status === 413) return NextResponse.json({ error: 'payload too large' }, { status: 413 });
     return NextResponse.json({ error: 'invalid JSON' }, { status: 400 });
   }
 

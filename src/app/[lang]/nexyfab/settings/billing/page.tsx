@@ -5,6 +5,8 @@ import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import dynamic from 'next/dynamic';
 import { billingT } from './billingDict';
 import SimQuotaWidget from './SimQuotaWidget';
+import { formatDate as formatLocalizedDate, formatNumber } from '@/lib/i18n/format';
+import { createCommercialLocalizer } from '@/lib/i18n/commercialLocalizer';
 
 const CheckoutModal = dynamic(
   () => import('@/components/billing/CheckoutModal'),
@@ -114,6 +116,12 @@ interface PortalData {
   billing:      { cycleEnd: number; estimatedTotalKrw: number; currency: string };
 }
 
+interface OrgWorkspaceData {
+  activeOrgId: string | null;
+  orgContextStatus: 'personal' | 'active' | 'selection_required' | 'invalid';
+  orgs: { id: string; name: string; plan: string; role: string }[];
+}
+
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 const PLAN_LABELS: Record<string, string> = {
@@ -153,19 +161,19 @@ const COUNTRY_FLAGS: Record<string, string> = {
   AU: '🇦🇺', GB: '🇬🇧', DE: '🇩🇪', FR: '🇫🇷', TH: '🇹🇭',
 };
 
-function formatDate(ts: number) {
-  return new Date(ts).toLocaleDateString('ko-KR', { year: 'numeric', month: 'short', day: 'numeric' });
+function formatDate(ts: number, lang: string) {
+  return formatLocalizedDate(ts, lang, { year: 'numeric', month: 'short', day: 'numeric' }) ?? '—';
 }
-function wonOrLocal(amount: number, displayAmount?: number, displayCurrency?: string) {
+function wonOrLocal(amount: number, lang: string, displayAmount?: number, displayCurrency?: string) {
   if (displayAmount && displayCurrency && displayCurrency !== 'KRW') {
-    return `${displayAmount.toLocaleString()} ${displayCurrency}`;
+    return `${formatNumber(displayAmount, lang) ?? displayAmount} ${displayCurrency}`;
   }
-  return amount.toLocaleString('ko-KR') + '원';
+  return `${formatNumber(amount, lang, { maximumFractionDigits: 0 }) ?? '0'}원`;
 }
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
 
-function UsageBar({ item }: { item: UsageItem }) {
+function UsageBar({ item, lang }: { item: UsageItem; lang: string }) {
   const pct = item.usagePct;
   const bar = pct >= 90 ? 'bg-red-500' : pct >= 70 ? 'bg-amber-400' : 'bg-blue-500';
   return (
@@ -173,7 +181,7 @@ function UsageBar({ item }: { item: UsageItem }) {
       <div className="flex justify-between text-xs text-gray-600 mb-1">
         <span>{METRIC_LABELS[item.metric] ?? item.metric}</span>
         <span className={item.overage > 0 ? 'text-red-600 font-semibold' : ''}>
-          {item.used.toLocaleString()} / {item.limit === 99999 ? '무제한' : item.limit.toLocaleString()}
+          {formatNumber(item.used, lang) ?? item.used} / {item.limit === 99999 ? '무제한' : formatNumber(item.limit, lang) ?? item.limit}
         </span>
       </div>
       <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
@@ -216,6 +224,7 @@ export default function BillingSettingsPage() {
 
 function BillingSettingsContent() {
   const { lang }   = useParams<{ lang: string }>();
+  const L = createCommercialLocalizer(lang);
   const router     = useRouter();
   const searchParams = useSearchParams();
 
@@ -228,6 +237,8 @@ function BillingSettingsContent() {
   const [error, setError]       = useState('');
   const [planLoading, setPlanLoading] = useState(false);
   const [cancelConfirm, setCancelConfirm] = useState(false);
+  const [workspace, setWorkspace] = useState<OrgWorkspaceData | null>(null);
+  const [workspaceSwitching, setWorkspaceSwitching] = useState(false);
 
   // Checkout modal
   const [checkoutPlan, setCheckoutPlan] = useState<string | null>(null);
@@ -258,6 +269,15 @@ function BillingSettingsContent() {
   const loadAll = useCallback(async () => {
     setLoading(true);
     try {
+      const workspaceRes = await fetch('/api/nexyfab/orgs/active', { cache: 'no-store' });
+      if (workspaceRes.status === 401) { router.replace(`/${lang}/nexyfab`); return; }
+      const workspaceData = await workspaceRes.json() as OrgWorkspaceData;
+      setWorkspace(workspaceData);
+      if (workspaceData.orgContextStatus === 'selection_required' || workspaceData.orgContextStatus === 'invalid') {
+        setPortal(null);
+        setError('');
+        return;
+      }
       const [portalRes, pricingRes, profileRes, taxRes] = await Promise.all([
         fetch('/api/billing/portal?product=nexyfab'),
         fetch('/api/billing/pricing'),
@@ -276,7 +296,7 @@ function BillingSettingsContent() {
       setPricing(pr);
       setProfile(pf);
       setTaxInvoices(ti.invoices ?? []);
-      if (p.org) setOrgData(p.org);
+      setOrgData(p.org ?? null);
       // Load org members if org exists
       if (p.org?.id) {
         fetch('/api/nexyfab/orgs/invite').then(r => r.json()).then(d => {
@@ -301,6 +321,26 @@ function BillingSettingsContent() {
   }, [lang, router]);
 
   useEffect(() => { void loadAll(); }, [loadAll]);
+
+  const switchWorkspace = useCallback(async (orgId: string | null) => {
+    setWorkspaceSwitching(true);
+    setError('');
+    try {
+      const response = await fetch('/api/nexyfab/orgs/active', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ orgId }),
+      });
+      const data = await response.json() as { error?: string };
+      if (!response.ok) {
+        setError(data.error ?? '작업 공간 전환에 실패했습니다.');
+        return;
+      }
+      await loadAll();
+    } finally {
+      setWorkspaceSwitching(false);
+    }
+  }, [loadAll]);
 
   // Toss 결제 완료 후 리다이렉트 감지
   useEffect(() => {
@@ -396,11 +436,33 @@ function BillingSettingsContent() {
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <p className="text-gray-400 text-sm">결제 정보 불러오는 중...</p>
+        <p className="text-gray-400 text-sm">{L('결제 정보 불러오는 중...', 'Loading payment information...')}</p>
       </div>
     );
   }
   if (!portal) {
+    if (workspace && (workspace.orgContextStatus === 'selection_required' || workspace.orgContextStatus === 'invalid')) {
+      return (
+        <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+          <div className="w-full max-w-md rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
+            <h1 className="text-lg font-bold text-gray-900">{L('작업 공간 선택', 'Select workspace')}</h1>
+            <p className="mt-2 text-sm text-gray-600">{L('프로젝트와 결제 내역을 분리하기 위해 사용할 조직을 명시적으로 선택해주세요.', 'Select the organization to separate project and billing records.')}</p>
+            <select
+              aria-label={L('활성 작업 공간', 'Active workspace')}
+              disabled={workspaceSwitching}
+              defaultValue=""
+              onChange={event => void switchWorkspace(event.target.value === 'personal' ? null : event.target.value || null)}
+              className="mt-5 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+            >
+              <option value="" disabled>{L('선택...', 'Select...')}</option>
+              <option value="personal">{L('개인 작업 공간', 'Personal workspace')}</option>
+              {workspace.orgs.map(org => <option key={org.id} value={org.id}>{org.name} · {PLAN_LABELS[org.plan] ?? org.plan}</option>)}
+            </select>
+            {error && <p className="mt-3 text-sm text-red-600">{error}</p>}
+          </div>
+        </div>
+      );
+    }
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <p className="text-red-400 text-sm">{error || '데이터를 불러올 수 없습니다.'}</p>
@@ -416,6 +478,21 @@ function BillingSettingsContent() {
 
   return (
     <div className="min-h-screen bg-gray-50 py-8 px-4">
+      {workspace && (
+        <div className="mx-auto mb-4 flex max-w-5xl items-center justify-end gap-2">
+          <label htmlFor="workspace-switcher" className="text-xs font-semibold text-gray-500">{L('작업 공간', 'Workspace')}</label>
+          <select
+            id="workspace-switcher"
+            value={workspace.activeOrgId ?? 'personal'}
+            disabled={workspaceSwitching}
+            onChange={event => void switchWorkspace(event.target.value === 'personal' ? null : event.target.value)}
+            className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-800"
+          >
+            <option value="personal">{L('개인', 'Personal')}</option>
+            {workspace.orgs.map(org => <option key={org.id} value={org.id}>{org.name}</option>)}
+          </select>
+        </div>
+      )}
       {/* Checkout Modal */}
       {checkoutPlan && (() => {
         const planInfo = pricing?.plans.find(p => p.plan === checkoutPlan);
@@ -423,10 +500,11 @@ function BillingSettingsContent() {
         const annualTotal  = Math.round(monthlyPrice * 12 * 0.8 * 100) / 100;
         // Format annual price in the same currency style as monthly
         const annualFormatted = planInfo?.totalPriceFormatted
-          ? planInfo.totalPriceFormatted.replace(/[\d,]+(\.\d+)?/, annualTotal.toLocaleString())
+          ? planInfo.totalPriceFormatted.replace(/[\d,]+(\.\d+)?/, formatNumber(annualTotal, lang) ?? String(annualTotal))
           : '';
         return (
           <CheckoutModal
+            lang={lang}
             plan={checkoutPlan}
             product="nexyfab"
             country={country}
@@ -451,16 +529,16 @@ function BillingSettingsContent() {
         {checkoutSuccess && (
           <div className="bg-green-50 border border-green-200 text-green-800 text-sm rounded-xl px-4 py-3 flex items-center gap-2">
             <span className="text-lg">✅</span>
-            <span className="font-semibold">결제 완료!</span> 플랜이 성공적으로 활성화되었습니다.
+            <span className="font-semibold">{L('결제 완료!', 'Payment complete!')}</span> {L('플랜이 성공적으로 활성화되었습니다.', 'Your plan has been activated successfully.')}
           </div>
         )}
 
         {/* Header */}
         <div className="flex items-center justify-between flex-wrap gap-3">
           <div>
-            <h1 className="text-2xl font-black text-gray-900">결제 & 구독</h1>
+            <h1 className="text-2xl font-black text-gray-900">{L('결제 & 구독', 'Billing & subscription')}</h1>
             <p className="text-sm text-gray-500 mt-0.5">
-              {portal.user.email} · 가입일 {formatDate(portal.user.memberSince)}
+              {portal.user.email} · {L('가입일', 'Joined')} {formatDate(portal.user.memberSince, lang)}
               <span className="ml-2">{flag} {country} · {currency}</span>
             </p>
           </div>
@@ -468,7 +546,7 @@ function BillingSettingsContent() {
             onClick={() => setTab('profile')}
             className="text-xs px-3 py-1.5 rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50"
           >
-            {flag} 국가/통화 변경
+            {flag} {L('국가/통화 변경', 'Change country/currency')}
           </button>
         </div>
 
@@ -526,7 +604,7 @@ function BillingSettingsContent() {
                   <span className="text-xl">📅</span>
                   <div className="flex-1">
                     <p className="text-sm font-bold text-amber-900">{t.cancelTitle}</p>
-                    <p className="text-xs text-amber-700 mt-1">{t.cancelBody(formatDate(portal.subscription.current_period_end))}</p>
+                    <p className="text-xs text-amber-700 mt-1">{t.cancelBody(formatDate(portal.subscription.current_period_end, lang))}</p>
                   </div>
                 </div>
               )}
@@ -561,24 +639,24 @@ function BillingSettingsContent() {
                     })()}
                     {taxCfg && taxCfg.rate > 0 && (
                       <span className="text-xs px-2 py-0.5 rounded-full bg-gray-100 text-gray-500">
-                        {taxCfg.nameLocal} {Math.round(taxCfg.rate * 100)}% {taxCfg.included ? '포함' : '별도'}
+                        {taxCfg.nameLocal} {Math.round(taxCfg.rate * 100)}% {taxCfg.included ? L('포함', 'included') : L('별도', 'excluded')}
                       </span>
                     )}
                   </div>
                   {portal.subscription && (
                     <p className="text-sm text-gray-500">
-                      다음 갱신: {formatDate(portal.subscription.current_period_end)}
+                      {L('다음 갱신', 'Next renewal')}: {formatDate(portal.subscription.current_period_end, lang)}
                     </p>
                   )}
                 </div>
                 <div className="text-right">
-                  <p className="text-xs text-gray-400">이번 달 예상 청구</p>
+                  <p className="text-xs text-gray-400">{L('이번 달 예상 청구', 'Estimated bill this month')}</p>
                   <p className="text-2xl font-black text-gray-900">
                     {pricing?.plans.find(p => p.plan === portal.plan)?.totalPriceFormatted
-                      ?? portal.billing.estimatedTotalKrw.toLocaleString('ko-KR') + '원'}
+                      ?? `${formatNumber(portal.billing.estimatedTotalKrw, lang) ?? portal.billing.estimatedTotalKrw} ${L('원', 'KRW')}`}
                   </p>
                   {portal.usage.totalOverageKrw > 0 && (
-                    <p className="text-xs text-amber-600">초과 사용료 포함</p>
+                    <p className="text-xs text-amber-600">{L('초과 사용료 포함', 'Includes overage charges')}</p>
                   )}
                 </div>
               </div>
@@ -587,19 +665,19 @@ function BillingSettingsContent() {
                 <div className="mt-4 pt-4 border-t border-gray-100 flex justify-end">
                   {cancelConfirm ? (
                     <div className="flex items-center gap-2">
-                      <span className="text-sm text-red-600">정말 해지하시겠습니까?</span>
+                      <span className="text-sm text-red-600">{L('정말 해지하시겠습니까?', 'Are you sure you want to cancel?')}</span>
                       <button onClick={() => void handleCancel()} disabled={planLoading}
                         className="px-3 py-1.5 text-xs font-bold rounded-lg bg-red-600 text-white hover:bg-red-700 disabled:opacity-50">
-                        해지 확인
+                        {L('해지 확인', 'Confirm cancellation')}
                       </button>
                       <button onClick={() => setCancelConfirm(false)}
                         className="px-3 py-1.5 text-xs font-semibold rounded-lg border border-gray-200 text-gray-600">
-                        취소
+                        {L('취소', 'Cancel')}
                       </button>
                     </div>
                   ) : (
                     <button onClick={() => setCancelConfirm(true)} className="text-xs text-gray-400 hover:text-red-500 underline">
-                      구독 해지
+                      {L('구독 해지', 'Cancel subscription')}
                     </button>
                   )}
                 </div>
@@ -608,42 +686,42 @@ function BillingSettingsContent() {
 
             {/* Usage */}
             {portal.usage.items.length > 0 && (
-              <SectionCard title="이번 달 사용량">
+            <SectionCard title={L('이번 달 사용량', 'Usage this month')}>
                 <div className="space-y-4">
-                  {portal.usage.items.map(item => <UsageBar key={item.metric} item={item} />)}
+                  {portal.usage.items.map(item => <UsageBar key={item.metric} item={item} lang={lang} />)}
                 </div>
                 {portal.usage.totalOverageKrw > 0 && (
                   <div className="mt-4 pt-4 border-t border-gray-100 flex justify-between text-sm">
-                    <span className="text-gray-600">초과 사용 요금</span>
-                    <span className="font-bold text-red-600">{portal.usage.totalOverageKrw.toLocaleString('ko-KR')}원</span>
+                    <span className="text-gray-600">{L('초과 사용 요금', 'Overage charges')}</span>
+                    <span className="font-bold text-red-600">{formatNumber(portal.usage.totalOverageKrw, lang) ?? portal.usage.totalOverageKrw} {L('원', 'KRW')}</span>
                   </div>
                 )}
               </SectionCard>
             )}
 
             {/* L4 — Sim quota widget (Σ series). Self-fetches /sim-quota. */}
-            <SimQuotaWidget lang="ko" />
+            <SimQuotaWidget lang={lang} />
 
             {/* Recent invoices preview */}
-            <SectionCard title="최근 청구">
+            <SectionCard title={L('최근 청구', 'Recent invoices')}>
               {portal.invoices.slice(0, 3).map(inv => (
                 <div key={inv.id} className="flex items-center justify-between py-2.5 border-b border-gray-50 last:border-0">
                   <div>
-                    <p className="text-sm text-gray-800 truncate max-w-xs">{inv.description || '청구서'}</p>
-                    <p className="text-xs text-gray-400">{formatDate(inv.created_at)}</p>
+                    <p className="text-sm text-gray-800 truncate max-w-xs">{inv.description || L('청구서', 'Invoice')}</p>
+                    <p className="text-xs text-gray-400">{formatDate(inv.created_at, lang)}</p>
                   </div>
                   <div className="flex items-center gap-2 shrink-0">
                     <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${STATUS_COLORS[inv.status] ?? 'bg-gray-100 text-gray-500'}`}>
                       {STATUS_LABELS[inv.status] ?? inv.status}
                     </span>
                     <span className="text-sm font-bold text-gray-900">
-                      {wonOrLocal(inv.total_amount_krw, inv.display_amount, inv.display_currency)}
+                      {wonOrLocal(inv.total_amount_krw, lang, inv.display_amount, inv.display_currency)}
                     </span>
                   </div>
                 </div>
               ))}
               <button onClick={() => setTab('invoices')} className="mt-3 text-xs text-blue-600 hover:underline">
-                전체 보기 →
+                {L('전체 보기', 'View all')} →
               </button>
             </SectionCard>
           </>
@@ -651,7 +729,7 @@ function BillingSettingsContent() {
 
         {/* ── Plan Selection ─────────────────────────────────────────────── */}
         {tab === 'plan' && pricing && (
-          <SectionCard title={`플랜 변경 (${flag} ${pricing.isNativeCurrency ? currency : 'USD'})`}>
+          <SectionCard title={`${L('플랜 변경', 'Change plan')} (${flag} ${pricing.isNativeCurrency ? currency : 'USD'})`}>
 
             {/* Monthly / Annual toggle */}
             <div className="flex justify-center mb-5">
@@ -664,7 +742,7 @@ function BillingSettingsContent() {
                       : 'text-gray-500 hover:text-gray-700'
                   }`}
                 >
-                  월간 결제
+                  {L('월간 결제', 'Monthly')}
                 </button>
                 <button
                   onClick={() => setBillingPeriod('annual')}
@@ -674,8 +752,8 @@ function BillingSettingsContent() {
                       : 'text-gray-500 hover:text-gray-700'
                   }`}
                 >
-                  연간 결제
-                  <span className="text-xs font-bold px-1.5 py-0.5 rounded-full bg-green-100 text-green-700">20% 할인</span>
+                  {L('연간 결제', 'Annual')}
+                  <span className="text-xs font-bold px-1.5 py-0.5 rounded-full bg-green-100 text-green-700">{L('20% 할인', '20% off')}</span>
                 </button>
               </div>
             </div>
@@ -685,10 +763,10 @@ function BillingSettingsContent() {
               <div className="mb-4 flex items-start gap-2 bg-blue-50 border border-blue-100 rounded-xl px-4 py-3">
                 <span className="shrink-0">🌐</span>
                 <div>
-                  <p className="text-xs font-semibold text-blue-700">현지 통화 결제 지원</p>
+                  <p className="text-xs font-semibold text-blue-700">{L('현지 통화 결제 지원', 'Local currency payments supported')}</p>
                   <p className="text-xs text-blue-600 mt-0.5">
-                    현지 통화({currency})로 청구되며 Airwallex를 통해 사용 가능한 결제 수단이 자동으로 표시됩니다.
-                    현지화 가격이 필요하신 경우 프로필에서 지원 국가로 변경해 주세요.
+                    {L(`현지 통화(${currency})로 청구되며 Airwallex를 통해 사용 가능한 결제 수단이 자동으로 표시됩니다.`, `You will be billed in local currency (${currency}); available payment methods will be shown automatically through Airwallex.`)}
+                    {' '}{L('현지화 가격이 필요하신 경우 프로필에서 지원 국가로 변경해 주세요.', 'To use localized pricing, change your supported country in your profile.')}
                   </p>
                 </div>
               </div>
@@ -702,7 +780,7 @@ function BillingSettingsContent() {
 
                 // Format helper — replace numeric portion in formatted string
                 function fmtPrice(val: number) {
-                  return info.totalPriceFormatted.replace(/[\d,]+(\.\d+)?/, val.toLocaleString());
+                  return info.totalPriceFormatted.replace(/[\d,]+(\.\d+)?/, formatNumber(val, lang) ?? String(val));
                 }
 
                 const displayPrice     = billingPeriod === 'annual' ? fmtPrice(annualMonthly) : info.totalPriceFormatted;
@@ -720,14 +798,14 @@ function BillingSettingsContent() {
                         {billingPeriod === 'annual' && info.plan !== 'free' && (
                           <span className="text-xs font-bold px-1.5 py-0.5 rounded-full bg-green-100 text-green-700">-20%</span>
                         )}
-                        {info.isCurrent && <span className="text-xs text-blue-600 font-semibold">현재</span>}
+                        {info.isCurrent && <span className="text-xs text-blue-600 font-semibold">{L('현재', 'Current')}</span>}
                       </div>
                     </div>
                     <div>
                       {info.plan === 'free' ? (
                         <div className="text-lg font-black text-gray-900">
                           {info.totalPriceFormatted}
-                          <span className="text-xs font-normal text-gray-400">/월</span>
+                          <span className="text-xs font-normal text-gray-400">/{L('월', 'mo')}</span>
                         </div>
                       ) : (
                         <>
@@ -737,7 +815,7 @@ function BillingSettingsContent() {
                           </div>
                           {billingPeriod === 'annual' && (
                             <p className="text-xs text-green-600 mt-0.5 font-medium">
-                              연 {fmtPrice(annualTotal)} 일시 결제
+                              {L('연', 'Annual')} {fmtPrice(annualTotal)} {L('일시 결제', 'one-time payment')}
                             </p>
                           )}
                         </>
@@ -746,7 +824,7 @@ function BillingSettingsContent() {
                       {info.fxSuggestion && (
                         <p className="text-xs text-gray-400 mt-0.5">
                           ≈ {info.fxSuggestion.formatted}
-                          <span className="text-gray-300"> (오늘 환율)</span>
+                          <span className="text-gray-300"> ({L('오늘 환율', 'today’s rate')})</span>
                         </p>
                       )}
                     </div>
@@ -757,7 +835,7 @@ function BillingSettingsContent() {
                         onClick={() => void handlePlanSelect(info.plan)}
                         className="mt-auto w-full py-2 text-xs font-bold rounded-lg bg-blue-600 hover:bg-blue-700 text-white disabled:opacity-50 transition"
                       >
-                        {info.plan === 'enterprise' ? '문의하기' : '업그레이드'}
+                        {info.plan === 'enterprise' ? L('문의하기', 'Contact us') : L('업그레이드', 'Upgrade')}
                       </button>
                     )}
                   </div>
@@ -767,12 +845,12 @@ function BillingSettingsContent() {
 
             {/* Usage overages */}
             <div className="mt-6">
-              <p className="text-xs font-bold text-gray-500 uppercase tracking-wide mb-3">초과 사용 요금</p>
+              <p className="text-xs font-bold text-gray-500 uppercase tracking-wide mb-3">{L('초과 사용 요금', 'Overage charges')}</p>
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                 {pricing.usageOverages.map(u => (
                   <div key={u.metric} className="bg-gray-50 rounded-lg px-3 py-2">
                     <p className="text-xs text-gray-500">{METRIC_LABELS[u.metric] ?? u.metric}</p>
-                    <p className="text-sm font-bold text-gray-800">{u.priceFormatted}<span className="text-xs font-normal text-gray-400">/건</span></p>
+                    <p className="text-sm font-bold text-gray-800">{u.priceFormatted}<span className="text-xs font-normal text-gray-400">/{L('건', 'item')}</span></p>
                   </div>
                 ))}
               </div>
@@ -782,7 +860,7 @@ function BillingSettingsContent() {
 
         {/* ── Payment Methods ────────────────────────────────────────────── */}
         {tab === 'payment' && (
-          <SectionCard title={`결제 수단 (${flag} ${country})`}>
+          <SectionCard title={`${L('결제 수단', 'Payment methods')} (${flag} ${country})`}>
             {profile?.paymentMethods && profile.paymentMethods.length > 0 ? (
               <div className="space-y-2">
                 {profile.paymentMethods.map(m => (
@@ -795,25 +873,25 @@ function BillingSettingsContent() {
                       </div>
                     </div>
                     <button className="px-3 py-1.5 text-xs font-semibold rounded-lg bg-blue-600 text-white hover:bg-blue-700 transition">
-                      {m.provider === 'toss' ? '카카오/네이버페이' : '등록'}
+                      {m.provider === 'toss' ? L('카카오/네이버페이', 'Kakao Pay / Naver Pay') : L('등록', 'Add')}
                     </button>
                   </div>
                 ))}
               </div>
             ) : (
-              <p className="text-sm text-gray-400 text-center py-8">이 지역에서 지원하는 결제 수단이 없습니다.</p>
+              <p className="text-sm text-gray-400 text-center py-8">{L('이 지역에서 지원하는 결제 수단이 없습니다.', 'No payment methods are supported in this region.')}</p>
             )}
             <p className="mt-4 text-xs text-gray-400 text-center">
-              결제는 Airwallex {isKorea ? '/ Toss Payments' : ''}를 통해 안전하게 처리됩니다.
+              {L(`결제는 Airwallex ${isKorea ? '/ Toss Payments' : ''}를 통해 안전하게 처리됩니다.`, `Payments are securely processed through Airwallex${isKorea ? ' / Toss Payments' : ''}.`)}
             </p>
           </SectionCard>
         )}
 
         {/* ── Invoices ───────────────────────────────────────────────────── */}
         {tab === 'invoices' && (
-          <SectionCard title="청구 내역">
+          <SectionCard title={L('청구 내역', 'Invoices')}>
             {portal.invoices.length === 0 ? (
-              <p className="text-sm text-gray-400 text-center py-8">청구 내역이 없습니다.</p>
+              <p className="text-sm text-gray-400 text-center py-8">{L('청구 내역이 없습니다.', 'No invoices found.')}</p>
             ) : (
               <div className="space-y-1">
                 {portal.invoices.map(inv => (
@@ -821,8 +899,8 @@ function BillingSettingsContent() {
                     <div className="min-w-0 flex-1">
                       <p className="text-sm font-medium text-gray-800 truncate">{inv.description || inv.id}</p>
                       <p className="text-xs text-gray-400">
-                        {formatDate(inv.created_at)}
-                        {inv.paid_at && <span> · 결제 {formatDate(inv.paid_at)}</span>}
+                        {formatDate(inv.created_at, lang)}
+                        {inv.paid_at && <span> · {L('결제', 'Paid')} {formatDate(inv.paid_at, lang)}</span>}
                       </p>
                     </div>
                     <div className="flex items-center gap-2 shrink-0 flex-wrap">
@@ -830,7 +908,7 @@ function BillingSettingsContent() {
                         {STATUS_LABELS[inv.status] ?? inv.status}
                       </span>
                       <span className="text-sm font-bold text-gray-900">
-                        {wonOrLocal(inv.total_amount_krw, inv.display_amount, inv.display_currency)}
+                        {wonOrLocal(inv.total_amount_krw, lang, inv.display_amount, inv.display_currency)}
                       </span>
                       {isKorea && inv.status === 'paid' && (
                         <button
@@ -846,7 +924,7 @@ function BillingSettingsContent() {
                           }}
                           className="px-2.5 py-1 text-xs font-semibold rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50"
                         >
-                          세금계산서
+                          {L('세금계산서', 'Tax invoice')}
                         </button>
                       )}
                     </div>
@@ -859,13 +937,13 @@ function BillingSettingsContent() {
 
         {/* ── Tax Invoice (Korea only) ───────────────────────────────────── */}
         {tab === 'tax-invoice' && isKorea && (
-          <SectionCard title="전자세금계산서">
+          <SectionCard title={L('전자세금계산서', 'Electronic tax invoices')}>
             <p className="text-xs text-gray-500 mb-4">
-              법인/개인사업자 고객은 청구서마다 전자세금계산서를 발행받을 수 있습니다. 발행 즉시 국세청 전송됩니다.
+              {L('법인/개인사업자 고객은 청구서마다 전자세금계산서를 발행받을 수 있습니다. 발행 즉시 국세청 전송됩니다.', 'Business customers can request an electronic tax invoice for each invoice. It is sent to the tax authority immediately.')}
             </p>
             {taxInvoices.length === 0 ? (
-              <p className="text-sm text-gray-400 text-center py-8">발행된 세금계산서가 없습니다.<br />
-                <span className="text-xs">결제 완료된 청구서에서 「세금계산서」버튼을 클릭하세요.</span>
+              <p className="text-sm text-gray-400 text-center py-8">{L('발행된 세금계산서가 없습니다.', 'No tax invoices issued.')}<br />
+                <span className="text-xs">{L('결제 완료된 청구서에서 「세금계산서」버튼을 클릭하세요.', 'Click “Tax invoice” on a paid invoice.')}</span>
               </p>
             ) : (
               <div className="space-y-2">
@@ -877,12 +955,12 @@ function BillingSettingsContent() {
                         <p className="text-sm font-medium text-gray-800">{ti.buyer_corp_name}</p>
                         <p className="text-xs text-gray-400 font-mono">{ti.mgt_key}</p>
                         <p className="text-xs text-gray-400">
-                          공급가액 {ti.supply_amount_krw.toLocaleString('ko-KR')}원 + 세액 {ti.tax_amount_krw.toLocaleString('ko-KR')}원
+                          {L('공급가액', 'Subtotal')} {formatNumber(ti.supply_amount_krw, lang) ?? ti.supply_amount_krw} {L('원', 'KRW')} + {L('세액', 'Tax')} {formatNumber(ti.tax_amount_krw, lang) ?? ti.tax_amount_krw} {L('원', 'KRW')}
                         </p>
                       </div>
                       <div className="flex items-center gap-2 shrink-0">
                         <span className={`text-xs font-bold px-2.5 py-1 rounded-full ${s.color}`}>{s.label}</span>
-                        <span className="text-sm font-bold text-gray-900">{ti.total_amount_krw.toLocaleString('ko-KR')}원</span>
+                        <span className="text-sm font-bold text-gray-900">{formatNumber(ti.total_amount_krw, lang) ?? ti.total_amount_krw} {L('원', 'KRW')}</span>
                       </div>
                     </div>
                   );
@@ -895,23 +973,23 @@ function BillingSettingsContent() {
         {/* ── Billing Profile ─────────────────────────────────────────────── */}
         {/* ── Org Management ─────────────────────────────────────────── */}
         {tab === 'org' && (
-          <SectionCard title="조직 관리">
+          <SectionCard title={L('조직 관리', 'Organization management')}>
             {!orgData ? (
               /* 조직 생성 폼 */
               <div>
                 <p className="text-sm text-gray-600 mb-4">
-                  기업 계정으로 전환하면 팀 멤버를 초대하고 조직 단위로 빌링을 관리할 수 있습니다.
+                  {L('기업 계정으로 전환하면 팀 멤버를 초대하고 조직 단위로 빌링을 관리할 수 있습니다.', 'Switch to a business account to invite team members and manage billing at the organization level.')}
                 </p>
                 <div className="space-y-3 max-w-sm">
                   <div>
-                    <label className="block text-xs font-semibold text-gray-600 mb-1">회사명 *</label>
+                    <label className="block text-xs font-semibold text-gray-600 mb-1">{L('회사명 *', 'Company name *')}</label>
                     <input type="text" value={orgForm.name}
                       onChange={e => setOrgForm(f => ({ ...f, name: e.target.value }))}
-                      placeholder="(주)회사명"
+                      placeholder={L('(주)회사명', 'Company name')}
                       className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg outline-none focus:border-blue-400" />
                   </div>
                   <div>
-                    <label className="block text-xs font-semibold text-gray-600 mb-1">사업자등록번호</label>
+                    <label className="block text-xs font-semibold text-gray-600 mb-1">{L('사업자등록번호', 'Business registration number')}</label>
                     <input type="text" value={orgForm.businessNumber}
                       onChange={e => setOrgForm(f => ({ ...f, businessNumber: e.target.value.replace(/\D/g, '') }))}
                       placeholder="0000000000" maxLength={10}
@@ -928,15 +1006,15 @@ function BillingSettingsContent() {
                           body: JSON.stringify({ name: orgForm.name.trim(), businessNumber: orgForm.businessNumber || undefined }),
                         });
                         const data = await res.json();
-                        if (!res.ok) { setError(data.error); return; }
+                        if (!res.ok) { setError(data.error ?? L('조직 생성에 실패했습니다.', 'Failed to create organization.')); return; }
                         setOrgData(data.org);
                         loadAll();
-                      } catch { setError('조직 생성에 실패했습니다.'); }
+                      } catch { setError(L('조직 생성에 실패했습니다.', 'Failed to create organization.')); }
                       finally { setOrgCreating(false); }
                     }}
                     className="px-5 py-2.5 text-sm font-bold rounded-lg bg-purple-600 hover:bg-purple-700 text-white disabled:opacity-50 transition"
                   >
-                    {orgCreating ? '생성 중...' : '기업 계정으로 전환'}
+                    {orgCreating ? L('생성 중...', 'Creating...') : L('기업 계정으로 전환', 'Switch to business account')}
                   </button>
                 </div>
               </div>
@@ -949,13 +1027,13 @@ function BillingSettingsContent() {
                   </div>
                   <div>
                     <p className="text-sm font-bold text-gray-900">{orgData.name}</p>
-                    <p className="text-xs text-gray-400">조직 ID: {orgData.id.slice(0, 8)}...</p>
+                    <p className="text-xs text-gray-400">{L('조직 ID', 'Organization ID')}: {orgData.id.slice(0, 8)}...</p>
                   </div>
                 </div>
 
                 {/* 멤버 목록 */}
                 <div>
-                  <h4 className="text-xs font-bold text-gray-500 uppercase tracking-wide mb-2">멤버 ({orgMembers.length}명)</h4>
+                  <h4 className="text-xs font-bold text-gray-500 uppercase tracking-wide mb-2">{L('멤버', 'Members')} ({orgMembers.length})</h4>
                   <div className="space-y-1">
                     {orgMembers.map(m => (
                       <div key={m.user_id} className="flex items-center justify-between py-2 px-3 bg-gray-50 rounded-lg">
@@ -966,7 +1044,7 @@ function BillingSettingsContent() {
                         <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${
                           m.role === 'owner' ? 'bg-purple-100 text-purple-700' : 'bg-gray-100 text-gray-600'
                         }`}>
-                          {m.role === 'owner' ? '소유자' : m.role === 'admin' ? '관리자' : '멤버'}
+                          {m.role === 'owner' ? L('소유자', 'Owner') : m.role === 'admin' ? L('관리자', 'Admin') : L('멤버', 'Member')}
                         </span>
                       </div>
                     ))}
@@ -976,13 +1054,13 @@ function BillingSettingsContent() {
                 {/* 대기 중 초대 */}
                 {orgInvites.length > 0 && (
                   <div>
-                    <h4 className="text-xs font-bold text-gray-500 uppercase tracking-wide mb-2">대기 중 초대</h4>
+                    <h4 className="text-xs font-bold text-gray-500 uppercase tracking-wide mb-2">{L('대기 중 초대', 'Pending invitations')}</h4>
                     <div className="space-y-1">
                       {orgInvites.map(inv => (
                         <div key={inv.id} className="flex items-center justify-between py-2 px-3 bg-amber-50 rounded-lg">
                           <p className="text-sm text-gray-700">{inv.email}</p>
                           <span className="text-xs text-amber-600">
-                            {new Date(inv.expires_at).toLocaleDateString('ko-KR')}까지
+                            {formatDate(inv.expires_at, lang)} {L('까지', 'until')}
                           </span>
                         </div>
                       ))}
@@ -992,11 +1070,11 @@ function BillingSettingsContent() {
 
                 {/* 초대 폼 */}
                 <div className="border-t border-gray-100 pt-4">
-                  <h4 className="text-xs font-bold text-gray-500 uppercase tracking-wide mb-2">멤버 초대</h4>
+                  <h4 className="text-xs font-bold text-gray-500 uppercase tracking-wide mb-2">{L('멤버 초대', 'Invite member')}</h4>
                   <div className="flex gap-2">
                     <input type="email" value={inviteEmail}
                       onChange={e => setInviteEmail(e.target.value)}
-                      placeholder="이메일 주소"
+                      placeholder={L('이메일 주소', 'Email address')}
                       className="flex-1 px-3 py-2 text-sm border border-gray-200 rounded-lg outline-none focus:border-blue-400" />
                     <button
                       disabled={inviting || !inviteEmail.includes('@')}
@@ -1012,12 +1090,12 @@ function BillingSettingsContent() {
                           if (!res.ok) { setError(data.error); return; }
                           setOrgInvites(prev => [...prev, data.invite]);
                           setInviteEmail('');
-                        } catch { setError('초대 발송에 실패했습니다.'); }
+                        } catch { setError(L('초대 발송에 실패했습니다.', 'Failed to send invitation.')); }
                         finally { setInviting(false); }
                       }}
                       className="px-4 py-2 text-sm font-bold rounded-lg bg-blue-600 hover:bg-blue-700 text-white disabled:opacity-50 transition whitespace-nowrap"
                     >
-                      {inviting ? '발송 중...' : '초대'}
+                      {inviting ? L('발송 중...', 'Sending...') : L('초대', 'Invite')}
                     </button>
                   </div>
                 </div>
@@ -1027,11 +1105,11 @@ function BillingSettingsContent() {
         )}
 
         {tab === 'profile' && (
-          <SectionCard title="사업자 정보 & 국가 설정">
+          <SectionCard title={L('사업자 정보 & 국가 설정', 'Business information & country settings')}>
             <form onSubmit={(e) => void handleProfileSave(e)} className="space-y-4">
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-semibold text-gray-600 mb-1">국가 *</label>
+                  <label className="block text-xs font-semibold text-gray-600 mb-1">{L('국가 *', 'Country *')}</label>
                   <select
                     value={profileForm.country}
                     onChange={e => {
@@ -1051,10 +1129,10 @@ function BillingSettingsContent() {
                     {/* Tier 2 국가가 감지된 경우 상단에 표시 */}
                     {pricing?.tier === 'tier2' && pricing.country !== profileForm.country && (
                       <option value={pricing.country}>
-                        🌐 {pricing.country} (현재 위치 · USD)
+                        🌐 {pricing.country} ({L('현재 위치 · USD', 'Current location · USD')})
                       </option>
                     )}
-                    <optgroup label="아시아">
+                    <optgroup label={L('아시아', 'Asia')}>
                       {[['CN','🇨🇳 중국'],['IN','🇮🇳 인도'],['ID','🇮🇩 인도네시아'],
                         ['PH','🇵🇭 필리핀'],['VN','🇻🇳 베트남'],['JP','🇯🇵 일본'],
                         ['TH','🇹🇭 태국'],['MY','🇲🇾 말레이시아'],['KR','🇰🇷 한국'],
@@ -1062,33 +1140,33 @@ function BillingSettingsContent() {
                         <option key={code} value={code}>{label}</option>
                       ))}
                     </optgroup>
-                    <optgroup label="아메리카">
+                    <optgroup label={L('아메리카', 'Americas')}>
                       {[['US','🇺🇸 미국'],['BR','🇧🇷 브라질'],['MX','🇲🇽 멕시코']].map(([code, label]) => (
                         <option key={code} value={code}>{label}</option>
                       ))}
                     </optgroup>
-                    <optgroup label="유럽">
+                    <optgroup label={L('유럽', 'Europe')}>
                       {[['DE','🇩🇪 독일'],['FR','🇫🇷 프랑스'],['GB','🇬🇧 영국'],['TR','🇹🇷 터키']].map(([code, label]) => (
                         <option key={code} value={code}>{label}</option>
                       ))}
                     </optgroup>
-                    <optgroup label="오세아니아">
+                    <optgroup label={L('오세아니아', 'Oceania')}>
                       {[['AU','🇦🇺 호주']].map(([code, label]) => (
                         <option key={code} value={code}>{label}</option>
                       ))}
                     </optgroup>
-                    <optgroup label="중동/아프리카">
+                    <optgroup label={L('중동/아프리카', 'Middle East / Africa')}>
                       {[['AE','🇦🇪 UAE'],['SA','🇸🇦 사우디아라비아'],['EG','🇪🇬 이집트'],['NG','🇳🇬 나이지리아']].map(([code, label]) => (
                         <option key={code} value={code}>{label}</option>
                       ))}
                     </optgroup>
-                    <optgroup label="기타 국가 (USD)">
-                      <option value="__other__">기타 국가 — USD 카드결제</option>
+                    <optgroup label={L('기타 국가 (USD)', 'Other countries (USD)')}>
+                      <option value="__other__">{L('기타 국가 — USD 카드결제', 'Other countries — USD card payment')}</option>
                     </optgroup>
                   </select>
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold text-gray-600 mb-1">결제 통화 *</label>
+                  <label className="block text-xs font-semibold text-gray-600 mb-1">{L('결제 통화 *', 'Payment currency *')}</label>
                   <select
                     value={profileForm.currency}
                     onChange={e => setProfileForm(f => ({ ...f, currency: e.target.value }))}
@@ -1103,47 +1181,47 @@ function BillingSettingsContent() {
 
               <div className="border-t border-gray-100 pt-4">
                 <p className="text-xs font-bold text-gray-500 uppercase tracking-wide mb-3">
-                  사업자 정보 {profileForm.country === 'KR' ? '(세금계산서 발행 필수)' : '(세금 신고용)'}
+                  {L('사업자 정보', 'Business information')} {profileForm.country === 'KR' ? `(${L('세금계산서 발행 필수', 'Tax invoice required')})` : `(${L('세금 신고용', 'For tax reporting')})`}
                 </p>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div>
                     <label className="block text-xs font-semibold text-gray-600 mb-1">
-                      {profileForm.country === 'KR' ? '사업자등록번호' : '세금 ID / VAT 번호'}
+                      {profileForm.country === 'KR' ? L('사업자등록번호', 'Business registration number') : L('세금 ID / VAT 번호', 'Tax ID / VAT number')}
                     </label>
                     <input
                       type="text"
                       value={profileForm.bizRegNo}
                       onChange={e => setProfileForm(f => ({ ...f, bizRegNo: e.target.value }))}
-                      placeholder={profileForm.country === 'KR' ? '0000000000 (10자리)' : 'Tax ID / VAT Number'}
+                      placeholder={profileForm.country === 'KR' ? L('0000000000 (10자리)', '0000000000 (10 digits)') : 'Tax ID / VAT Number'}
                       className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg outline-none focus:border-blue-400"
                     />
                   </div>
                   <div>
-                    <label className="block text-xs font-semibold text-gray-600 mb-1">상호명 / 법인명</label>
+                    <label className="block text-xs font-semibold text-gray-600 mb-1">{L('상호명 / 법인명', 'Business / legal name')}</label>
                     <input type="text" value={profileForm.corpName}
                       onChange={e => setProfileForm(f => ({ ...f, corpName: e.target.value }))}
-                      placeholder="회사명"
+                      placeholder={L('회사명', 'Company name')}
                       className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg outline-none focus:border-blue-400" />
                   </div>
                   <div>
-                    <label className="block text-xs font-semibold text-gray-600 mb-1">대표자명</label>
+                    <label className="block text-xs font-semibold text-gray-600 mb-1">{L('대표자명', 'Representative')}</label>
                     <input type="text" value={profileForm.ceoName}
                       onChange={e => setProfileForm(f => ({ ...f, ceoName: e.target.value }))}
-                      placeholder="대표자"
+                      placeholder={L('대표자', 'Representative')}
                       className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg outline-none focus:border-blue-400" />
                   </div>
                   <div>
-                    <label className="block text-xs font-semibold text-gray-600 mb-1">세금계산서 수신 이메일</label>
+                    <label className="block text-xs font-semibold text-gray-600 mb-1">{L('세금계산서 수신 이메일', 'Tax invoice email')}</label>
                     <input type="email" value={profileForm.bizEmail}
                       onChange={e => setProfileForm(f => ({ ...f, bizEmail: e.target.value }))}
                       placeholder="billing@company.com"
                       className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg outline-none focus:border-blue-400" />
                   </div>
                   <div className="sm:col-span-2">
-                    <label className="block text-xs font-semibold text-gray-600 mb-1">사업장 주소</label>
+                    <label className="block text-xs font-semibold text-gray-600 mb-1">{L('사업장 주소', 'Business address')}</label>
                     <input type="text" value={profileForm.bizAddress}
                       onChange={e => setProfileForm(f => ({ ...f, bizAddress: e.target.value }))}
-                      placeholder="주소"
+                      placeholder={L('주소', 'Address')}
                       className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg outline-none focus:border-blue-400" />
                   </div>
                 </div>
@@ -1152,7 +1230,7 @@ function BillingSettingsContent() {
               <div className="flex justify-end pt-2">
                 <button type="submit" disabled={profileSaving}
                   className="px-5 py-2.5 text-sm font-bold rounded-lg bg-blue-600 hover:bg-blue-700 text-white disabled:opacity-50 transition">
-                  {profileSaving ? '저장 중...' : '저장하기'}
+                  {profileSaving ? L('저장 중...', 'Saving...') : L('저장하기', 'Save')}
                 </button>
               </div>
             </form>
@@ -1160,8 +1238,8 @@ function BillingSettingsContent() {
         )}
 
         <p className="text-center text-xs text-gray-400">
-          결제는 Airwallex{isKorea ? ' / Toss Payments' : ''}를 통해 안전하게 처리됩니다.
-          카드 정보는 Nexysys 서버에 저장되지 않습니다.
+          {L(`결제는 Airwallex${isKorea ? ' / Toss Payments' : ''}를 통해 안전하게 처리됩니다.`, `Payments are securely processed through Airwallex${isKorea ? ' / Toss Payments' : ''}.`)}{' '}
+          {L('카드 정보는 Nexysys 서버에 저장되지 않습니다.', 'Card details are not stored on Nexysys servers.')}
         </p>
       </div>
 
@@ -1171,51 +1249,51 @@ function BillingSettingsContent() {
           onClick={() => setTaxModal(null)}>
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md" onClick={e => e.stopPropagation()}>
             <div className="bg-gray-900 text-white px-6 py-4 rounded-t-2xl">
-              <h2 className="text-base font-bold">전자세금계산서 발행</h2>
+              <h2 className="text-base font-bold">{L('전자세금계산서 발행', 'Issue electronic tax invoice')}</h2>
               <p className="text-xs text-gray-400 mt-0.5">{taxModal.description}</p>
             </div>
             <form onSubmit={(e) => void handleTaxIssue(e)} className="p-6 space-y-3">
               <div>
-                <label className="block text-xs font-semibold text-gray-600 mb-1">사업자등록번호 * (10자리)</label>
+                <label className="block text-xs font-semibold text-gray-600 mb-1">{L('사업자등록번호 * (10자리)', 'Business registration number * (10 digits)')}</label>
                 <input type="text" required maxLength={10} value={taxForm.bizRegNo}
                   onChange={e => setTaxForm(f => ({ ...f, bizRegNo: e.target.value.replace(/\D/g, '') }))}
                   placeholder="0000000000"
                   className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg outline-none focus:border-blue-400" />
               </div>
               <div>
-                <label className="block text-xs font-semibold text-gray-600 mb-1">상호명 *</label>
+                <label className="block text-xs font-semibold text-gray-600 mb-1">{L('상호명 *', 'Business name *')}</label>
                 <input type="text" required value={taxForm.corpName}
                   onChange={e => setTaxForm(f => ({ ...f, corpName: e.target.value }))}
-                  placeholder="(주)회사명"
+                  placeholder={L('(주)회사명', 'Company name')}
                   className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg outline-none focus:border-blue-400" />
               </div>
               <div>
-                <label className="block text-xs font-semibold text-gray-600 mb-1">대표자명 *</label>
+                <label className="block text-xs font-semibold text-gray-600 mb-1">{L('대표자명 *', 'Representative *')}</label>
                 <input type="text" required value={taxForm.ceoName}
                   onChange={e => setTaxForm(f => ({ ...f, ceoName: e.target.value }))}
-                  placeholder="홍길동"
+                  placeholder={L('홍길동', 'John Doe')}
                   className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg outline-none focus:border-blue-400" />
               </div>
               <div>
-                <label className="block text-xs font-semibold text-gray-600 mb-1">수신 이메일 *</label>
+                <label className="block text-xs font-semibold text-gray-600 mb-1">{L('수신 이메일 *', 'Recipient email *')}</label>
                 <input type="email" required value={taxForm.bizEmail}
                   onChange={e => setTaxForm(f => ({ ...f, bizEmail: e.target.value }))}
                   placeholder="billing@company.com"
                   className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg outline-none focus:border-blue-400" />
               </div>
               <div className="bg-amber-50 rounded-lg px-3 py-2 text-xs text-amber-700">
-                공급가액 {Math.round(taxModal.total_amount_krw / 1.1).toLocaleString('ko-KR')}원
-                + 세액 {(taxModal.total_amount_krw - Math.round(taxModal.total_amount_krw / 1.1)).toLocaleString('ko-KR')}원
-                = 합계 {taxModal.total_amount_krw.toLocaleString('ko-KR')}원
+                {L('공급가액', 'Subtotal')} {formatNumber(Math.round(taxModal.total_amount_krw / 1.1), lang) ?? '0'} {L('원', 'KRW')}
+                + {L('세액', 'Tax')} {formatNumber(taxModal.total_amount_krw - Math.round(taxModal.total_amount_krw / 1.1), lang) ?? '0'} {L('원', 'KRW')}
+                = {L('합계', 'Total')} {formatNumber(taxModal.total_amount_krw, lang) ?? '0'} {L('원', 'KRW')}
               </div>
               <div className="flex gap-2 pt-1">
                 <button type="submit" disabled={taxSubmitting}
                   className="flex-1 py-2.5 text-sm font-bold rounded-lg bg-blue-600 hover:bg-blue-700 text-white disabled:opacity-50 transition">
-                  {taxSubmitting ? '발행 중...' : '세금계산서 발행'}
+                  {taxSubmitting ? L('발행 중...', 'Issuing...') : L('세금계산서 발행', 'Issue tax invoice')}
                 </button>
                 <button type="button" onClick={() => setTaxModal(null)}
                   className="px-5 py-2.5 text-sm font-semibold rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50">
-                  취소
+                  {L('취소', 'Cancel')}
                 </button>
               </div>
             </form>

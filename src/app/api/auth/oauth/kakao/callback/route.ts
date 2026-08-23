@@ -5,13 +5,12 @@ import { getStorage } from '@/lib/storage';
 import { recordLoginAndCheck } from '@/lib/login-security';
 import { randomBytes, createHash } from 'crypto';
 import { SERVICE_NAME } from '@/lib/service-config';
-import { accessTokenCookie, refreshTokenCookie } from '@/lib/cookie-config';
+import { accessTokenCookie, browserSessionCookie, refreshTokenCookie } from '@/lib/cookie-config';
 import { getTrustedClientIp } from '@/lib/client-ip';
 import { parseUserStageColumn } from '@/lib/stage-engine';
+import { toIsoLang, toRouteLang } from '@/lib/i18n/normalize';
 
 export const dynamic = 'force-dynamic';
-
-const ALLOWED_LANGS = new Set(['ko', 'en', 'ja', 'zh']);
 
 export async function GET(req: NextRequest) {
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://nexyfab.com';
@@ -23,7 +22,8 @@ export async function GET(req: NextRequest) {
 
   // Parse state: format is `<token>:<lang>`
   const [returnedState, rawLang] = stateParam.split(':');
-  const lang = ALLOWED_LANGS.has(rawLang ?? '') ? rawLang : 'ko';
+  const routeLang = toRouteLang(rawLang ?? 'kr');
+  const lang = toIsoLang(routeLang);
 
   // Verify CSRF state
   const storedState = req.cookies.get('oauth_state')?.value;
@@ -161,13 +161,15 @@ export async function GET(req: NextRequest) {
       `rt-${crypto.randomUUID()}`, user.id, refreshHash, now + 30 * 24 * 3600_000, now,
     );
 
-    const response = NextResponse.redirect(`${siteUrl}/${lang}/nexyfab/dashboard`);
+    const response = NextResponse.redirect(`${siteUrl}/${routeLang}/nexyfab/dashboard`);
     // Clear state cookie
     response.cookies.set('oauth_state', '', { maxAge: 0, path: '/api/auth/oauth' });
     const ac = accessTokenCookie(accessToken, 'lax');
     response.cookies.set(ac.name, ac.value, ac.options);
     const rc = refreshTokenCookie(rawRefresh, 'lax');
     response.cookies.set(rc.name, rc.value, rc.options);
+    const bs = browserSessionCookie('lax');
+    response.cookies.set(bs.name, bs.value, bs.options);
     return response;
   } catch (err) {
     console.error('[kakao/callback]', err);

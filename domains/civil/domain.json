@@ -1,0 +1,12 @@
+{
+  "schema": "nexyfab.cad-domain.v1",
+  "id": "civil",
+  "contractVersion": "nexyfab.cad-contract.v1",
+  "workspaceRoute": "/[lang]/shape-generator?domain=civil",
+  "legacySourceRoots": ["src/app/[lang]/shape-generator/_shell/spatial", "src/lib/eng-domain/civil"],
+  "targetRoot": "domains/civil",
+  "authoringState": "PREVIEW",
+  "exactExecutionState": "NOT_IMPLEMENTED",
+  "releaseState": "BLOCKED",
+  "requiredExternalEvidence": ["approved-survey", "approved-tin", "vertical-datum", "drainage-hydraulics"]
+}

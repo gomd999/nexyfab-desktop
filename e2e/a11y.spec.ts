@@ -73,10 +73,12 @@ test.describe('a11y · landing', () => {
 test.describe('a11y · auth modal', () => {
   test('AuthModal exposes dialog landmarks', async ({ page }) => {
     await page.goto('/kr/nexyfab/hub');
+    await page.waitForLoadState('networkidle');
     await page.getByRole('button', { name: '로그인', exact: true }).click();
-    const dialog = page.getByRole('dialog', { name: /로그인하여 계속하기|Sign in to continue/ });
-    await expect(dialog).toBeVisible();
+    const dialog = page.locator('[role="dialog"][aria-modal="true"][aria-labelledby="auth-modal-title"]');
+    await expect(dialog).toBeVisible({ timeout: 20_000 });
     await expect(dialog).toHaveAttribute('aria-modal', 'true');
     await expect(dialog).toHaveAttribute('aria-labelledby', /.+/);
+    await expect(dialog.locator('#auth-modal-title')).toContainText(/로그인하여 계속하기|Sign in to continue/);
   });
 });

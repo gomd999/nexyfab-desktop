@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
+import { useAdminI18n } from '../AdminI18nProvider';
 
 interface OverrideRow {
   provider: string;
@@ -25,6 +26,7 @@ interface ApiResponse {
 }
 
 export default function ProviderChainPage() {
+  const { copy } = useAdminI18n();
   const [data, setData] = useState<ApiResponse | null>(null);
   const [chain, setChain] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
@@ -119,7 +121,7 @@ export default function ProviderChainPage() {
   return (
     <div className="min-h-screen bg-gray-950 text-gray-100 p-6">
       <div className="max-w-4xl mx-auto space-y-4">
-        <h1 className="text-2xl font-semibold">AI Provider Chain</h1>
+        <h1 className="text-2xl font-semibold">{copy.pageTitles.providerChain}</h1>
         <p className="text-sm text-gray-500">
           Active runtime chain. DB override (when set) wins over env. Reorder, add, or remove
           providers and click <em>Save</em>. Cache propagates to all instances within ~30s.

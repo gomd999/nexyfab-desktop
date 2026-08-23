@@ -442,3 +442,10 @@ export const RISK_SCENARIO_I18N: Record<string, Record<keyof typeof simDict, { n
         ar: { name: 'كارثة طبيعية', description: 'كارثة طبيعية في موقع إنتاج رئيسي توقف المصنع لمدة شهرين' },
     },
 };
+
+/** Display labels for industry preset IDs. Values remain stable API/UI keys. */
+export const INDUSTRY_SPECIAL_I18N: Record<string, Record<keyof typeof simDict, string>> = {
+    semiconductor: { ko: '반도체 패키징', en: 'Semiconductor Packaging', ja: '半導体パッケージング', cn: '半导体封装', es: 'Encapsulado de semiconductores', ar: 'تغليف أشباه الموصلات' },
+    medical_device: { ko: '의료기기', en: 'Medical Devices', ja: '医療機器', cn: '医疗器械', es: 'Dispositivos médicos', ar: 'الأجهزة الطبية' },
+    automotive_tier: { ko: '자동차 부품 (Tier)', en: 'Automotive Parts (Tier)', ja: '自動車部品（Tier）', cn: '汽车零部件（Tier）', es: 'Componentes de automoción (Tier)', ar: 'قطع غيار السيارات (Tier)' },
+};

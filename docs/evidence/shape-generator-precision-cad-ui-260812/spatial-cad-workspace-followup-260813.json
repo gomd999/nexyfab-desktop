@@ -1,0 +1,175 @@
+{
+  "recordedAt": "2026-08-13",
+  "scope": "spatial CAD separation plus interior, building, landscape and civil authoring vertical slices",
+  "implementation": {
+    "interiorCanonicalModelSharedByPlanViewerVerifier": "PASS",
+    "interiorTwoDimensionalEditor": "PASS",
+    "interiorWebGlViewer": "PASS",
+    "interiorCheckApi": "PREVIEW",
+    "spaceBoundaryV1Integration": "PASS_IMPLEMENTED_AUTH_E2E_NOT_RUN",
+    "continuousDoorSwingV1Integration": "PASS_IMPLEMENTED_AUTH_E2E_NOT_RUN",
+    "obstacleAwareEgressGraphV1Integration": "PASS_IMPLEMENTED_AUTH_E2E_NOT_RUN",
+    "truthStateInvalidationOnEdit": "PASS",
+    "buildingAuthoring": "PASS_CONCEPT_VERTICAL_SLICE_AUTH_E2E_NOT_RUN",
+    "civilAuthoring": "PASS_CONCEPT_VERTICAL_SLICE_EXTERNAL_AUTHORITY_NOT_RUN",
+    "landscapeAuthoring": "PASS_CONCEPT_VERTICAL_SLICE_EXTERNAL_AUTHORITY_NOT_RUN",
+    "buildingCanonicalArchitectureDocument": "PASS",
+    "buildingPlanAndWebGlViewer": "PASS",
+    "buildingArchitectureV1Integration": "PASS_IMPLEMENTED_AUTH_E2E_NOT_RUN",
+    "landscapeCanonicalDocument": "PASS",
+    "landscapePlanAndWebGlViewer": "PASS",
+    "landscapeLocalConsistencyCheck": "PREVIEW",
+    "landscapeTerrainSpeciesIrrigationAuthority": "NOT_RUN",
+    "civilCanonicalDocument": "PASS",
+    "civilPlanAndWebGlViewer": "PASS",
+    "civilExplicitCrsFailClosed": "PASS",
+    "civilLocalConsistencyCheck": "PREVIEW_AFTER_EXPLICIT_EPSG",
+    "civilSurveyDatumHydraulicsAuthority": "NOT_RUN",
+    "precisionCadToAiDraftHandoff": "PASS_ONE_TIME_DOMAIN_BOUND_NO_AUTO_RUN",
+    "precisionCadAiDraftRoundTrip": "PASS_ORIGINAL_DRAFT_RESTORED_VERIFICATION_RESET",
+    "aiGeometryToDeepSpatialCanonicalApply": "NOT_IMPLEMENTED",
+    "spatialDraftAuthorityClaim": "NONE",
+    "spatialDraftAuthTokenIncluded": false
+  },
+  "verification": {
+    "vitest": {
+      "status": "PASS_AFTER_SANDBOX_RETRY",
+      "files": 29,
+      "tests": 101,
+      "initialSandboxAttempt": "FAILED_SPAWN_EPERM_NOT_WAIVED"
+    },
+    "typescript": {
+      "status": "PASS",
+      "heapMegabytes": 8192,
+      "initialDefaultHeapAttempt": "FAILED_OOM_NOT_WAIVED",
+      "seconds": 117.2
+    },
+    "targetedEslint": "PASS_AFTER_EXACT_PATH_AND_CALLBACK_REF_ADJUSTMENT_ZERO_WARNINGS",
+    "initialEslintAttempt": "FAILED_NO_FILES_MATCHED_NOT_WAIVED",
+    "diffCheck": "PASS",
+    "chromeDesktop": {
+      "status": "PASS_OBSERVED",
+      "width": 1440,
+      "documentOverflowPixels": 0,
+      "webGlCanvas": true,
+      "consoleErrorsWarningsIssues": 0
+    },
+    "chromeAnonymousGovernedChecks": {
+      "status": "AUTH_REQUIRED_BLOCKED",
+      "boundaryHttpStatus": 401,
+      "doorSwingHttpStatus": 401,
+      "egressHttpStatus": 401,
+      "loginHandoff": "PASS",
+      "fabricatedPass": false
+    },
+    "chromeMobile": {
+      "status": "PASS_OBSERVED_REVIEW_ONLY",
+      "viewport": "500x900",
+      "documentOverflowPixels": 0
+    },
+    "chromeBuilding": {
+      "status": "PASS_OBSERVED_CONCEPT_ONLY",
+      "plan2d": true,
+      "webGl3d": true,
+      "dimensionCommit": "13500 mm",
+      "documentOverflowPixels": 0,
+      "architectureVerifyHttpStatus": 401,
+      "uiState": "AUTH_REQUIRED_BLOCKED",
+      "circulation": "NOT_RUN",
+      "fabricatedPass": false
+    },
+    "chromeLandscape": {
+      "status": "PASS_OBSERVED_CONCEPT_ONLY",
+      "plan2d": true,
+      "webGl3d": true,
+      "dimensionCommit": "35.5 m",
+      "desktopOverflowPixels": 0,
+      "mobileOverflowPixels": 0,
+      "consoleErrorsWarningsIssues": 0,
+      "localConsistency": "PREVIEW",
+      "approvedTerrain": "NOT_RUN",
+      "speciesAndNurseryEvidence": "NOT_RUN",
+      "irrigationHydraulics": "NOT_RUN"
+    },
+    "chromeCivil": {
+      "status": "PASS_OBSERVED_CONCEPT_ONLY",
+      "plan2d": true,
+      "webGl3d": true,
+      "webGlCanvas": "888x520",
+      "desktopOverflowPixels": 0,
+      "mobileOverflowPixels": 0,
+      "mobileVisibleEditableInputs": 0,
+      "missingEpsgState": "BLOCKED",
+      "explicitEpsg": 5186,
+      "localConsistency": "PREVIEW",
+      "approvedSurveyAndTin": "NOT_RUN",
+      "verticalDatumAndProfile": "NOT_RUN",
+      "drainageHydraulics": "NOT_RUN",
+      "consoleErrorsWarnings": 0,
+      "fabricatedPass": false
+    },
+    "chromePrecisionCadToAi": {
+      "status": "PASS_OBSERVED_DRAFT_ONLY",
+      "sourceDomain": "civil",
+      "sourceEpsg": 5186,
+      "sourceLengthM": 135,
+      "sourceVerification": "PREVIEW",
+      "destinationPromptPrefilled": true,
+      "missingAuthorityPreserved": ["approved survey and TIN", "vertical datum and profile", "drainage hydraulics"],
+      "automaticAiOrGenerationRequests": 0,
+      "handoffConsumedOnce": true,
+      "destinationOverflowPixels": 0,
+      "consoleErrorsWarningsAfterAdjustment": 0
+    },
+    "chromePrecisionCadAiRoundTrip": {
+      "status": "PASS_OBSERVED_ORIGINAL_DRAFT_ONLY",
+      "restoredEpsg": 5186,
+      "restoredLengthM": 135,
+      "verificationAfterReturn": "NOT_RUN",
+      "handoffConsumedOnce": true,
+      "overflowPixels": 0,
+      "consoleErrorsWarnings": 0,
+      "aiGeometryAutoApplied": false,
+      "deepCanonicalApply": "NOT_IMPLEMENTED"
+    },
+    "mechanicalRegression": {
+      "status": "PASS_AFTER_SANDBOX_RETRY",
+      "initialAttempt": "FAILED_CMD_SPAWNSYNC_EPERM_NOT_WAIVED",
+      "losslessDesignGraph": true,
+      "coreThirtyRuntimeCoverage": true,
+      "threeCycleNfab": true,
+      "threeCycleStep": true,
+      "mechanicalAccuracy": "49/49",
+      "typecheck": true
+    },
+    "externalMechanicalContracts": {
+      "status": "BLOCKED_EXPECTED_EXIT_1",
+      "featureReceipts": "0/30",
+      "stepC4Targets": "0/4",
+      "fabricatedPass": false
+    },
+    "productionBuild": {
+      "status": "PASS_FINAL",
+      "previousFailure": "ENOTEMPTY while cleaning .next; guarded Windows rm retry retained",
+      "initialCurrentAttempt": "FAILED_SPAWN_EPERM_NOT_WAIVED",
+      "adjustment": "reran the identical build with approved worker-spawn permission",
+      "seconds": 398.8,
+      "staticPages": "290/290",
+      "bundleBudget": "PASS",
+      "sharedKilobytes": "723.1/781.3",
+      "worstFirstPaintKilobytes": "1584.1/1660.2"
+    }
+  },
+  "unresolved": {
+    "externalFeatureReceipts": "0/30 BLOCKED",
+    "stepInteroperabilityTargets": "0/4 BLOCKED",
+    "authenticatedManufacturingRelease": "NOT_RUN",
+    "authenticatedSpatialV1Checks": "NOT_RUN",
+    "figmaEditableFileE2E": "NOT_RUN",
+    "chromeScreenshotPersistence": "BLOCKED_BY_MCP_WORKSPACE_POLICY",
+    "blindCases": "0/20 NOT_RUN",
+    "fabricationPilots": "0/3 NOT_RUN",
+    "redisProductionConfiguration": "NOT_RUN"
+  },
+  "releaseDecision": "HOLD_BLOCK"
+}

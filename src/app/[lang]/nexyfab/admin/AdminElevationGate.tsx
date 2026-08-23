@@ -13,6 +13,8 @@
  * **열린 채 남는다.** 하위 경로까지 덮으려면 layout 이어야 한다.
  */
 import { useCallback, useEffect, useState } from 'react';
+import { useParams } from 'next/navigation';
+import { createCommercialLocalizer } from '@/lib/i18n/commercialLocalizer';
 
 type Status =
   | { phase: 'loading' }
@@ -33,6 +35,8 @@ const LANG_FALLBACK = {
 };
 
 export default function AdminElevationGate({ children }: { children: React.ReactNode }) {
+  const { lang } = useParams<{ lang: string }>();
+  const L = createCommercialLocalizer(lang);
   const [status, setStatus] = useState<Status>({ phase: 'loading' });
   const [code, setCode] = useState('');
   const [verifying, setVerifying] = useState(false);
@@ -83,7 +87,7 @@ export default function AdminElevationGate({ children }: { children: React.React
   };
 
   if (status.phase === 'loading') {
-    return <div style={{ padding: '3rem', textAlign: 'center', color: '#64748b' }}>확인 중…</div>;
+    return <div style={{ padding: '3rem', textAlign: 'center', color: '#64748b' }}>{L('확인 중…', 'Checking…')}</div>;
   }
   if (status.phase === 'ready') return <>{children}</>;
   if (status.phase === 'not-admin') {

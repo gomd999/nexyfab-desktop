@@ -1,0 +1,37 @@
+{
+  "schema": "nexyfab.mechanical-single-part-step-import.v1",
+  "feature": "sketchExtrude",
+  "partRevisionSha256": "453ab349a4af2be29c8c34edb0d93a20908443d04b520640fda2e0712326ec57",
+  "sourceDesignRevisionSha256": "3cf6a0f9c8efcf153a2cfefde087a2112c086fc412d2feeaeb9ce52542838564",
+  "sourceStep": {
+    "path": "docs/evidence/cad-independent/local/mechanical-core-runtime-260813/sketchExtrude/sketchExtrude-edited.step",
+    "sha256": "b046b9d7983c92502f933dae13483931a16f15f8dbfc3df057d940164d0282cc",
+    "bytes": 15499,
+    "assertionId": "sketchExtrude.export.native-step"
+  },
+  "exactKernel": "OCCT",
+  "units": {
+    "value": "mm",
+    "confidence": "high"
+  },
+  "solidCount": 1,
+  "singleSolid": true,
+  "volumeMm3": 14256,
+  "boundsMm": [
+    [
+      -1.0000000177635683e-7,
+      -1.0000000177635683e-7,
+      -9.000000100000001
+    ],
+    [
+      36.0000001,
+      22.0000001,
+      9.000000100000001
+    ]
+  ],
+  "dimensionsMm": {
+    "x": 36.0000002,
+    "y": 22.000000200000002,
+    "z": 18.000000200000002
+  }
+}

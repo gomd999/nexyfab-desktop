@@ -1,0 +1,35 @@
+{
+  "schema": "nexyfab.mechanical-core-feature-local-runtime.v1",
+  "feature": "cut",
+  "axis": "edit",
+  "status": "PASS",
+  "executedAt": "2026-08-22T07:13:30.564Z",
+  "commandId": "cut-runtime-param-edit",
+  "historyDepth": 1,
+  "before": {
+    "id": "runtime-feature",
+    "enabled": true,
+    "type": "cut",
+    "params": {
+      "width": 12,
+      "length": 10,
+      "posX": 0,
+      "posZ": 0,
+      "endCondition": 1,
+      "depth": 5
+    }
+  },
+  "after": {
+    "id": "runtime-feature",
+    "enabled": true,
+    "type": "cut",
+    "params": {
+      "width": 18,
+      "length": 10,
+      "posX": 0,
+      "posZ": 0,
+      "endCondition": 1,
+      "depth": 5
+    }
+  }
+}

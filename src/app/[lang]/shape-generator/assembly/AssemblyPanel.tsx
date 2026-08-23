@@ -21,6 +21,7 @@ import { useAssemblyState } from './useAssemblyState';
 import { loc } from '../lib/loc';
 import { mateGraphSummary, preflightAssemblyMates } from '@/lib/assemblyMatePreflight';
 import { useUIStore } from '../store/uiStore';
+import { useLang } from '../hooks/useLang';
 
 // Dynamically import the solver panel to avoid pulling Three.js into the initial bundle
 const AssemblyMatesPanel = dynamic(() => import('./AssemblyMatesPanel'), { ssr: false });
@@ -51,6 +52,8 @@ const dict = {
     viewportPerfNote: '성능(Perf) 패널에서 프레임·워커 시간을 확인할 수 있습니다.',
     viewportOpenPerfButton: '성능 패널 열기',
     interferencePreambleBanner: '쌍 비교가 많습니다. 검사 전 저장하고 실행 시간을 고려하세요.',
+    widthMateHint: '파트 A의 두 기준면 사이에 파트 B를 중앙 정렬합니다. 두 번째 기준면(faceA2)은 뷰포트에서 면을 선택해 지정하세요. 미지정 시 면 접촉으로 동작합니다.',
+    solverRequiresParts: '배치 파트 2개 이상 또는 멀티 바디 BOM 2행 이상일 때 사용',
   },
   en: {
     assembly: 'Assembly', mates: 'Mates', solver: 'Solver',
@@ -75,6 +78,8 @@ const dict = {
     viewportPerfNote: 'Open the Performance panel to watch frame and worker timings.',
     viewportOpenPerfButton: 'Open Performance HUD',
     interferencePreambleBanner: 'Pairwise checks grow quickly — save work before running on large assemblies.',
+    widthMateHint: 'Centers part B between two reference faces on part A. Pick the second face (faceA2) in the viewport; without it the mate falls back to plane contact.',
+    solverRequiresParts: 'Requires at least two placed parts or two multi-body BOM rows',
   },
   ja: {
     assembly: 'アセンブリ', mates: 'メイト', solver: 'ソルバー',
@@ -99,6 +104,8 @@ const dict = {
     viewportPerfNote: 'パフォーマンスパネルでフレーム・ワーカー時間を確認できます。',
     viewportOpenPerfButton: 'パフォーマンスを開く',
     interferencePreambleBanner: 'ペア比較が増えるため、実行前に保存し時間に余裕を持ってください。',
+    widthMateHint: 'パートAの2つの基準面の間でパートBを中央揃えします。ビューポートで2番目の面（faceA2）を選択してください。未指定の場合は面接触として動作します。',
+    solverRequiresParts: '配置済みパート2個以上、またはマルチボディBOM 2行以上が必要です',
   },
   zh: {
     assembly: '装配', mates: '配合', solver: '求解器',
@@ -123,6 +130,8 @@ const dict = {
     viewportPerfNote: '可在性能面板中查看帧与 worker 时间。',
     viewportOpenPerfButton: '打开性能监视',
     interferencePreambleBanner: '成对比较增长很快 — 大型装配体请先保存再运行检查。',
+    widthMateHint: '将零件B居中放置在零件A的两个基准面之间。请在视口中选择第二个面（faceA2）；未指定时将按平面接触处理。',
+    solverRequiresParts: '至少需要两个已放置零件或两行多实体 BOM',
   },
   es: {
     assembly: 'Ensamblaje', mates: 'Relaciones', solver: 'Resolvedor',
@@ -147,6 +156,8 @@ const dict = {
     viewportPerfNote: 'Abra el panel de rendimiento para ver tiempos de fotograma y del worker.',
     viewportOpenPerfButton: 'Abrir rendimiento',
     interferencePreambleBanner: 'Las comparaciones por pares crecen rápido — guarde antes en conjuntos grandes.',
+    widthMateHint: 'Centra la pieza B entre dos caras de referencia de la pieza A. Seleccione la segunda cara (faceA2) en el visor; si no se indica, se usará contacto plano.',
+    solverRequiresParts: 'Requiere al menos dos piezas colocadas o dos filas BOM multicuerpo',
   },
   ar: {
     assembly: 'التجميع', mates: 'العلاقات', solver: 'الحلال',
@@ -171,6 +182,8 @@ const dict = {
     viewportPerfNote: 'افتح لوحة الأداء لمراقبة زمن الإطار والعامل (worker).',
     viewportOpenPerfButton: 'فتح لوحة الأداء',
     interferencePreambleBanner: 'تتزايد مقارنات الأزواج بسرعة — احفظ العمل قبل التشغيل على التجميعات الكبيرة.',
+    widthMateHint: 'يوسّط الجزء B بين وجهي مرجع في الجزء A. اختر الوجه الثاني (faceA2) في نافذة العرض؛ وبدونه يُستخدم تلامس سطحي.',
+    solverRequiresParts: 'يتطلب جزأين موضوعين على الأقل أو صفين في BOM متعدد الأجسام',
   },
 };
 
@@ -235,7 +248,6 @@ export default function AssemblyPanel({
   onExplodeFactorChange,
   partNames,
   interferenceCheckPartCount,
-  isKo,
   onClose,
   onApplyMatesToPlacement,
   placedParts,
@@ -247,15 +259,14 @@ export default function AssemblyPanel({
   const langMap: Record<string, keyof typeof dict> = {
     kr: 'ko', ko: 'ko', en: 'en', ja: 'ja', cn: 'zh', zh: 'zh', es: 'es', ar: 'ar',
   };
-  const resolvedLang = langMap[seg] ?? (isKo ? 'ko' : 'en');
+  const resolvedLang = langMap[seg] ?? 'en';
   const t = dict[resolvedLang];
   const setShowPerf = useUIStore(s => s.setShowPerf);
   const interferenceLoad = useMemo(
     () => getAssemblyLoadGuidance(Math.max(0, interferenceCheckPartCount)),
     [interferenceCheckPartCount],
   );
-  // MATE_TYPE_LABELS external dict only has ko/en. Non-ko/en langs fall back to English (industry-standard constraint names).
-  const mateLabels = resolvedLang === 'ko' ? MATE_TYPE_LABELS.ko : MATE_TYPE_LABELS.en;
+  const mateLabels = MATE_TYPE_LABELS[resolvedLang] ?? MATE_TYPE_LABELS.en;
 
   const [addMode, setAddMode] = useState(false);
   const [newMateType, setNewMateType] = useState<MateType>('coincident');
@@ -796,9 +807,7 @@ export default function AssemblyPanel({
                 {/* Width hint — needs a second reference face on part A */}
                 {newMateType === 'width' && (
                   <p style={{ margin: 0, fontSize: 10, lineHeight: 1.45, color: C.textDim }}>
-                    {resolvedLang === 'ko'
-                      ? '파트 A의 두 기준면 사이에 파트 B를 중앙 정렬합니다. 두 번째 기준면(faceA2)은 뷰포트에서 면을 선택해 지정하세요. 미지정 시 면 접촉으로 동작합니다.'
-                      : 'Centers part B between two reference faces on part A. Pick the second face (faceA2) in the viewport; without it the mate falls back to plane contact.'}
+                    {t.widthMateHint}
                   </p>
                 )}
 
@@ -874,9 +883,7 @@ export default function AssemblyPanel({
               disabled={!canSyncSolverFromBom}
               title={
                 !canSyncSolverFromBom
-                  ? (resolvedLang === 'ko'
-                    ? '배치 파트 2개 이상 또는 멀티 바디 BOM 2행 이상일 때 사용'
-                    : 'Requires at least two placed parts or two multi-body BOM rows')
+                  ? t.solverRequiresParts
                   : undefined
               }
               onClick={handleSyncSolverFromBom}
@@ -1146,6 +1153,7 @@ export default function AssemblyPanel({
 /** Compact balance readout: total mass, centre of mass, and a stable/tipping
  *  badge. Pure derive from placedParts — recomputes on any part change. */
 function AssemblyBalanceStrip({ placedParts, C }: { placedParts?: PlacedPart[]; C: Record<string, string> }) {
+  const lang = useLang();
   const balance = useMemo(
     () => (placedParts && placedParts.length > 0 ? computeAssemblyBalance(placedParts) : null),
     [placedParts],
@@ -1171,8 +1179,8 @@ function AssemblyBalanceStrip({ placedParts, C }: { placedParts?: PlacedPart[]; 
           padding: '6px 10px', fontSize: 11, color: C.text2 ?? C.text,
         }}
       >
-        <span title="Total mass">⚖️ <b style={{ color: C.text }}>{mass}</b></span>
-        <span title="Centre of mass (mm)">CoM <span style={{ color: C.text }}>{cx.toFixed(0)}, {cy.toFixed(0)}, {cz.toFixed(0)}</span></span>
+        <span title={loc(lang, { ko: '총 질량', en: 'Total mass', ja: '総質量', zh: '总质量', es: 'Masa total', ar: 'الكتلة الكلية' })}>⚖️ <b style={{ color: C.text }}>{mass}</b></span>
+        <span title={loc(lang, { ko: '무게중심 (mm)', en: 'Centre of mass (mm)', ja: '重心 (mm)', zh: '质心 (mm)', es: 'Centro de masa (mm)', ar: 'مركز الكتلة (مم)' })}>CoM <span style={{ color: C.text }}>{cx.toFixed(0)}, {cy.toFixed(0)}, {cz.toFixed(0)}</span></span>
         {canSim && (
           <button
             type="button"
@@ -1182,22 +1190,26 @@ function AssemblyBalanceStrip({ placedParts, C }: { placedParts?: PlacedPart[]; 
               padding: '1px 8px', borderRadius: 6, fontSize: 11, cursor: 'pointer',
               background: C.panel2 ?? 'transparent', color: C.text, border: `1px solid ${C.border}`,
             }}
-          >▶ 시뮬레이션</button>
+          >▶ {loc(lang, { ko: '시뮬레이션', en: 'Simulate', ja: 'シミュレーション', zh: '仿真', es: 'Simular', ar: 'محاكاة' })}</button>
         )}
         <span
-          title={balance.stable ? 'Centre of mass sits over the support — stable' : 'Centre of mass falls outside the support — it would tip'}
+          title={balance.stable
+            ? loc(lang, { ko: '무게중심이 지지면 위에 있어 안정적입니다', en: 'Centre of mass sits over the support — stable', ja: '重心が支持面上にあり安定しています', zh: '质心位于支撑面上，状态稳定', es: 'El centro de masa está sobre el soporte: estable', ar: 'مركز الكتلة فوق الدعامة — مستقر' })
+            : loc(lang, { ko: '무게중심이 지지면 밖에 있어 전도될 수 있습니다', en: 'Centre of mass falls outside the support — it would tip', ja: '重心が支持面外にあり転倒する可能性があります', zh: '质心位于支撑面外，可能倾倒', es: 'El centro de masa queda fuera del soporte: podría volcar', ar: 'مركز الكتلة خارج الدعامة — قد ينقلب' })}
           style={{
             marginLeft: 'auto', padding: '1px 8px', borderRadius: 10, fontWeight: 700,
             background: balance.stable ? okBg : badBg, color: balance.stable ? okFg : badFg,
           }}
         >
-          {balance.stable ? `안정 ·  여유 ${balance.marginMm.toFixed(0)}mm` : `전도 위험 · ${Math.abs(balance.marginMm).toFixed(0)}mm 초과`}
+          {balance.stable
+            ? loc(lang, { ko: `안정 · 여유 ${balance.marginMm.toFixed(0)}mm`, en: `Stable · ${balance.marginMm.toFixed(0)}mm margin`, ja: `安定 · 余裕 ${balance.marginMm.toFixed(0)}mm`, zh: `稳定 · 余量 ${balance.marginMm.toFixed(0)}mm`, es: `Estable · margen de ${balance.marginMm.toFixed(0)} mm`, ar: `مستقر · هامش ${balance.marginMm.toFixed(0)} مم` })
+            : loc(lang, { ko: `전도 위험 · ${Math.abs(balance.marginMm).toFixed(0)}mm 초과`, en: `Tipping risk · ${Math.abs(balance.marginMm).toFixed(0)}mm beyond support`, ja: `転倒リスク · ${Math.abs(balance.marginMm).toFixed(0)}mm 超過`, zh: `倾倒风险 · 超出 ${Math.abs(balance.marginMm).toFixed(0)}mm`, es: `Riesgo de vuelco · excede ${Math.abs(balance.marginMm).toFixed(0)} mm`, ar: `خطر الانقلاب · تجاوز ${Math.abs(balance.marginMm).toFixed(0)} مم` })}
         </span>
       </div>
       {sim && (
         <div style={{ padding: '4px 10px 8px', fontSize: 11 }}>
           {sim.ok ? (
-            <span style={{ color: okFg }}>✓ 시뮬레이션 통과 — 안정적이고 부품 간섭 없음</span>
+            <span style={{ color: okFg }}>{loc(lang, { ko: '✓ 시뮬레이션 통과 — 안정적이고 부품 간섭 없음', en: '✓ Simulation passed — stable with no part interference', ja: '✓ シミュレーション合格 — 安定し、部品干渉なし', zh: '✓ 仿真通过 — 状态稳定且无零件干涉', es: '✓ Simulación superada: estable y sin interferencias', ar: '✓ اجتازت المحاكاة — مستقرة ولا يوجد تداخل بين الأجزاء' })}</span>
           ) : (
             <ul style={{ margin: 0, paddingLeft: 16, color: badFg }}>
               {sim.issues.map((it, i) => (

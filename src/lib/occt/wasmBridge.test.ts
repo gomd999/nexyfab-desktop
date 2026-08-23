@@ -109,6 +109,7 @@ describe('createWasmBridge: construction', () => {
     expect(typeof bridge.boolean.intersect).toBe('function');
     expect(typeof bridge.fillet).toBe('function');
     expect(typeof bridge.chamfer).toBe('function');
+    expect(typeof bridge.pushPullFace).toBe('function');
     expect(typeof bridge.exportSTEP).toBe('function');
     expect(typeof bridge.importSTEP).toBe('function');
     expect(typeof bridge.release).toBe('function');
@@ -326,6 +327,14 @@ describe('createWasmBridge: kernel ops', () => {
     expect(cone.ok).toBe(true);
     expect(cone.shape!.bbox?.min.z).toBe(16);
     expect(cone.shape!.bbox?.max.z).toBe(20);
+    bridge.dispose();
+  });
+
+  it('exposes the origin/direction cylinder wire operation and fails closed on the stub worker', async () => {
+    const bridge = createWasmBridge();
+    expect(bridge.buildCylinderAt).toBeTypeOf('function');
+    const result = await bridge.buildCylinderAt!([10, 20, 30], [1, 0, 0], 5, 40);
+    expect(result).toMatchObject({ ok: false, error: 'buildCylinderAt: not supported' });
     bridge.dispose();
   });
 

@@ -1,0 +1,64 @@
+{
+  "schema": "nexyfab.mechanical-single-part-candidate.v1",
+  "feature": "cornerRelief",
+  "candidateStatus": "PASS",
+  "partRevisionSha256": "5259dcb18cfbbdb032a33bb8e022fbc9f5a02f71a72c1a8def7c19d5c2baaa3f",
+  "source": {
+    "receiptPath": "docs/evidence/cad-independent/local/mechanical-core-feature-axis-evidence.json",
+    "receiptSha256": "79d9344b7d101580b7e1574759a8eff652cbe942e6a389056b488aba28a77930",
+    "designRevisionSha256": "3cf6a0f9c8efcf153a2cfefde087a2112c086fc412d2feeaeb9ce52542838564",
+    "nfab": {
+      "path": "docs/evidence/cad-independent/local/mechanical-core-runtime-260813/cornerRelief/saved-project.nfab",
+      "sha256": "54a67f115bbb64e12596fc550d34d2b4d49f9fd36c2540f678de7804f768f379",
+      "bytes": 1613,
+      "assertionId": "cornerRelief.save_reopen.saved-bytes",
+      "revisionSha256": "54a67f115bbb64e12596fc550d34d2b4d49f9fd36c2540f678de7804f768f379",
+      "formatVersion": 3,
+      "createdAt": 1786643132790,
+      "updatedAt": 1786643132790
+    },
+    "step": {
+      "path": "docs/evidence/cad-independent/local/mechanical-core-runtime-260813/cornerRelief/cornerRelief-edited.step",
+      "sha256": "936f40859cd8379158f0dfb7ca825f98488dbf2c79fccd33a0dfeeefcda1ad63",
+      "bytes": 19924,
+      "assertionId": "cornerRelief.export.native-step"
+    },
+    "drawingSvg": {
+      "path": "docs/evidence/cad-independent/local/mechanical-core-runtime-260813/cornerRelief/cornerRelief-exact-hlr.svg",
+      "sha256": "aa32eacc07887e17d671f6e6c4f677d0f45bf2fab62784c0021cca42f0716f8c",
+      "bytes": 3336,
+      "assertionId": "cornerRelief.drawing.exact-hlr-svg"
+    }
+  },
+  "artifacts": {
+    "stepImport": {
+      "path": "docs/evidence/cad-independent/local/mechanical-single-part-candidates-260813/cornerRelief/step-import.json",
+      "sha256": "8eb0cf5821850c927509e6473f4624e69a04394bdb859d5917d109923903410d",
+      "bytes": 1057,
+      "assertionId": "cornerRelief.candidate.step-import"
+    },
+    "drawing": {
+      "path": "docs/evidence/cad-independent/local/mechanical-single-part-candidates-260813/cornerRelief/cornerRelief-three-axis-hlr.svg",
+      "sha256": "aa32eacc07887e17d671f6e6c4f677d0f45bf2fab62784c0021cca42f0716f8c",
+      "bytes": 3336,
+      "assertionId": "cornerRelief.candidate.three-axis-hlr"
+    },
+    "bom": {
+      "path": "docs/evidence/cad-independent/local/mechanical-single-part-candidates-260813/cornerRelief/bom.json",
+      "sha256": "48f2186672b200527adff4dc296a0820836c4bee7d1b4e790ab15e3838a8d623",
+      "bytes": 884,
+      "assertionId": "cornerRelief.candidate.one-part-bom"
+    }
+  },
+  "capabilityStatus": {
+    "stepImportSolidUnitsBounds": "PASS",
+    "threeAxisHlrDrawingCandidate": "PASS",
+    "onePartBomQuantityDimensions": "PASS",
+    "drawingDimensions": "NOT_RUN",
+    "gdt": "NOT_RUN",
+    "pmi": "NOT_RUN",
+    "humanApproval": "NOT_RUN",
+    "manufacturingRelease": "BLOCKED"
+  },
+  "commercialReleaseEligible": false
+}

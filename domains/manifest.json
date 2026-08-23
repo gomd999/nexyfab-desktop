@@ -1,0 +1,19 @@
+{
+  "schema": "nexyfab.domain-registry.v1",
+  "contractVersion": "2026-08-13.1",
+  "domains": [
+    "mechanical",
+    "architecture",
+    "civil",
+    "landscape",
+    "interior",
+    "coordination"
+  ],
+  "sharedContracts": [
+    "packages/auth-contracts",
+    "packages/artifact-contracts",
+    "packages/cad-contracts",
+    "packages/job-contracts"
+  ],
+  "crossDomainRule": "Domains exchange versioned contracts and artifacts; they must not import another domain implementation."
+}

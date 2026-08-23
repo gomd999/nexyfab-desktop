@@ -1,0 +1,271 @@
+{
+  "schema": "nexyfab.architecture-interior.lineage-operations-report.v1",
+  "generatedAt": "2026-08-23T05:50:08.766Z",
+  "status": "HOLD",
+  "scoreEligible": false,
+  "policy": {
+    "sourceReadOnly": true,
+    "licenseDecisionNeverInferred": true,
+    "assignmentNeverInferred": true,
+    "independentReviewerRequired": true,
+    "holdoutTuningExcluded": true
+  },
+  "inventory": {
+    "binding": {
+      "path": "docs/evidence/architecture-interior-reference-inventory-260821/reference-inventory.json",
+      "sha256": "73b5bf8480dd7612835eb04b880d50dd4b2b41b87711887bce3d4fee35e4d939",
+      "exists": true
+    },
+    "declaredRootSha256": "e9055e794ecc60bb9d70ad73a74f4ad9bea7d1c4c8ca7afc919a582470d65d38",
+    "files": 7407,
+    "schema": "nexyfab.architecture-interior.reference-inventory.v1"
+  },
+  "goldenManifest": {
+    "binding": {
+      "path": "docs/evidence/architecture-interior-golden-lineage-260823/qualification-receipt.json",
+      "sha256": "5d28403963c85b9063ab957be1af0ccfbce16f703703c5f59165678f2d204f70",
+      "exists": true
+    },
+    "schema": "nexyfab.architecture-interior.golden-lineage-qualification.v1",
+    "status": "HOLD",
+    "validation": {
+      "status": "PASS",
+      "issues": []
+    },
+    "externalValidation": {
+      "status": "PASS",
+      "issues": []
+    }
+  },
+  "sourceRoots": {
+    "example73": {
+      "configuredPath": "C:/Users/gomd9/Downloads/nexysys_1/nexyfab.com/7.3 example",
+      "realPath": "C:/Users/gomd9/Downloads/nexysys_1/nexyfab.com/7.3 example",
+      "exists": true
+    },
+    "manuals": {
+      "configuredPath": "C:/Users/gomd9/Downloads/nexysys_1/nexyfab.com/document(manuals)",
+      "realPath": "C:/Users/gomd9/Downloads/nexysys_1/nexyfab.com/document(manuals)",
+      "exists": true
+    },
+    "operator_refs": {
+      "configuredPath": "C:/Users/gomd9/Downloads/참고파일들",
+      "realPath": "C:/Users/gomd9/Downloads/참고파일들",
+      "exists": true
+    }
+  },
+  "scenarios": {
+    "office": {
+      "status": "HOLD",
+      "assignment": {
+        "status": "unassigned",
+        "selectedCount": 0,
+        "roles": []
+      },
+      "sourceRoot": {
+        "status": "PASS",
+        "roots": []
+      },
+      "pathHash": {
+        "status": "HOLD",
+        "checked": 0,
+        "matched": 0
+      },
+      "license": {
+        "decision": "HOLD",
+        "checked": 0,
+        "approved": 0
+      },
+      "independentReviewer": {
+        "status": "HOLD",
+        "checked": 0,
+        "approved": 0,
+        "reviewerIds": []
+      },
+      "selections": [],
+      "candidateCount": 8,
+      "blockers": [
+        "no_approved_assignment",
+        "assignment_missing"
+      ]
+    },
+    "apartment": {
+      "status": "HOLD",
+      "assignment": {
+        "status": "unassigned",
+        "selectedCount": 0,
+        "roles": []
+      },
+      "sourceRoot": {
+        "status": "PASS",
+        "roots": []
+      },
+      "pathHash": {
+        "status": "HOLD",
+        "checked": 0,
+        "matched": 0
+      },
+      "license": {
+        "decision": "HOLD",
+        "checked": 0,
+        "approved": 0
+      },
+      "independentReviewer": {
+        "status": "HOLD",
+        "checked": 0,
+        "approved": 0,
+        "reviewerIds": []
+      },
+      "selections": [],
+      "candidateCount": 8,
+      "blockers": [
+        "no_approved_assignment",
+        "assignment_missing"
+      ]
+    },
+    "cafe": {
+      "status": "HOLD",
+      "assignment": {
+        "status": "unassigned",
+        "selectedCount": 0,
+        "roles": []
+      },
+      "sourceRoot": {
+        "status": "PASS",
+        "roots": []
+      },
+      "pathHash": {
+        "status": "HOLD",
+        "checked": 0,
+        "matched": 0
+      },
+      "license": {
+        "decision": "HOLD",
+        "checked": 0,
+        "approved": 0
+      },
+      "independentReviewer": {
+        "status": "HOLD",
+        "checked": 0,
+        "approved": 0,
+        "reviewerIds": []
+      },
+      "selections": [],
+      "candidateCount": 7,
+      "blockers": [
+        "no_approved_assignment",
+        "assignment_missing"
+      ]
+    },
+    "mep_companion": {
+      "status": "HOLD",
+      "assignment": {
+        "status": "unassigned",
+        "selectedCount": 0,
+        "roles": []
+      },
+      "sourceRoot": {
+        "status": "PASS",
+        "roots": []
+      },
+      "pathHash": {
+        "status": "HOLD",
+        "checked": 0,
+        "matched": 0
+      },
+      "license": {
+        "decision": "HOLD",
+        "checked": 0,
+        "approved": 0
+      },
+      "independentReviewer": {
+        "status": "HOLD",
+        "checked": 0,
+        "approved": 0,
+        "reviewerIds": []
+      },
+      "selections": [],
+      "candidateCount": 7,
+      "blockers": [
+        "no_approved_assignment",
+        "assignment_missing"
+      ]
+    },
+    "comprehensive_residential": {
+      "status": "HOLD",
+      "assignment": {
+        "status": "unassigned",
+        "selectedCount": 0,
+        "roles": []
+      },
+      "sourceRoot": {
+        "status": "PASS",
+        "roots": []
+      },
+      "pathHash": {
+        "status": "HOLD",
+        "checked": 0,
+        "matched": 0
+      },
+      "license": {
+        "decision": "HOLD",
+        "checked": 0,
+        "approved": 0
+      },
+      "independentReviewer": {
+        "status": "HOLD",
+        "checked": 0,
+        "approved": 0,
+        "reviewerIds": []
+      },
+      "selections": [],
+      "candidateCount": 8,
+      "blockers": [
+        "no_approved_assignment",
+        "assignment_missing"
+      ]
+    },
+    "ifc_regression": {
+      "status": "HOLD",
+      "assignment": {
+        "status": "unassigned",
+        "selectedCount": 0,
+        "roles": []
+      },
+      "sourceRoot": {
+        "status": "PASS",
+        "roots": []
+      },
+      "pathHash": {
+        "status": "HOLD",
+        "checked": 0,
+        "matched": 0
+      },
+      "license": {
+        "decision": "HOLD",
+        "checked": 0,
+        "approved": 0
+      },
+      "independentReviewer": {
+        "status": "HOLD",
+        "checked": 0,
+        "approved": 0,
+        "reviewerIds": []
+      },
+      "selections": [],
+      "candidateCount": 8,
+      "blockers": [
+        "no_approved_assignment",
+        "assignment_missing"
+      ]
+    }
+  },
+  "blockers": [
+    "scenario_hold:office",
+    "scenario_hold:apartment",
+    "scenario_hold:cafe",
+    "scenario_hold:mep_companion",
+    "scenario_hold:comprehensive_residential",
+    "scenario_hold:ifc_regression"
+  ]
+}

@@ -505,7 +505,7 @@ export default function PartnerDashboardPage() {
               <h1 className="text-2xl font-black text-gray-900">{t.pageTitle}</h1>
               <p className="text-sm text-gray-500 mt-1">{partner.factoryName} {t.pageSubtitleSuffix}</p>
             </div>
-            <PartnerNotificationBell session={session} />
+            <PartnerNotificationBell session={session} lang={lang} />
           </div>
 
           {/* Stats cards */}

@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
+import { useAdminI18n } from '../AdminI18nProvider';
 
 interface VariantStats {
   promptId: string;
@@ -46,6 +47,7 @@ function delta(current: number, baseline: number): string {
 }
 
 export default function PromptStatsPage() {
+  const { copy } = useAdminI18n();
   const [data, setData] = useState<ApiResponse | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -83,7 +85,7 @@ export default function PromptStatsPage() {
     <div className="min-h-screen bg-gray-950 text-gray-100 p-6">
       <div className="max-w-7xl mx-auto space-y-4">
         <div className="flex items-center justify-between">
-          <h1 className="text-2xl font-semibold">Prompt Stats — A/B Variant Comparison</h1>
+          <h1 className="text-2xl font-semibold">{copy.pageTitles.promptStats}</h1>
           <div className="flex items-center gap-2 text-sm">
             <label className="text-gray-400">Last</label>
             <select

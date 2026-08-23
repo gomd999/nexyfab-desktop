@@ -1,0 +1,3248 @@
+{
+  "cadV1": {
+    "advertisedOperations": [
+      {
+        "cli": {
+          "approvalBoundary": "cad_http_boundary_only",
+          "approvalRequirement": "none_at_cad_http_boundary",
+          "authType": [
+            "bearer_api_key"
+          ],
+          "availability": "dispatcher",
+          "commercialPersistence": "none",
+          "entrypoint": "main",
+          "mutationScope": "propose",
+          "name": "design",
+          "releaseClaimAllowed": false,
+          "releaseClaimReason": "CAD v1 operation inventory is not a commercial release authorization; persistence is described per operation.",
+          "requiredAuthScope": "read:projects",
+          "source": "scripts/cli/nexyfab.mjs"
+        },
+        "id": "product_decomposition",
+        "mcp": {
+          "approvalBoundary": "cad_http_boundary_only",
+          "approvalRequirement": "none_at_cad_http_boundary",
+          "approvalStatus": "HOLD_raw_mcp_entrypoint",
+          "authType": [
+            "bearer_api_key"
+          ],
+          "availability": "dispatcher",
+          "commercialPersistence": "none",
+          "entrypoint": "callTool",
+          "mutationScope": "propose",
+          "name": "product_decomposition",
+          "releaseClaimAllowed": false,
+          "releaseClaimReason": "CAD v1 operation inventory is not a commercial release authorization; persistence is described per operation.",
+          "requiredAuthScope": "read:projects",
+          "source": "scripts/drawing-to-3d/mcp-server.mjs"
+        },
+        "path": "/api/cad/v1/product-decomposition",
+        "web": {
+          "approvalBoundary": "cad_http_boundary_only",
+          "approvalRequirement": "none_at_cad_http_boundary",
+          "authType": [
+            "cookie",
+            "bearer_api_key"
+          ],
+          "availability": "dispatcher",
+          "commercialPersistence": "none",
+          "entrypoint": "POST",
+          "mutationScope": "propose",
+          "releaseClaimAllowed": false,
+          "releaseClaimReason": "CAD v1 operation inventory is not a commercial release authorization; persistence is described per operation.",
+          "requiredAuthScope": "read:projects",
+          "source": "src/app/api/cad/v1/product-decomposition/route.ts"
+        }
+      },
+      {
+        "cli": {
+          "availability": "HOLD",
+          "reason": "No bounded CLI argument adapter is advertised for this operation."
+        },
+        "id": "verify_complex_system_graph",
+        "mcp": {
+          "approvalBoundary": "cad_http_boundary_only",
+          "approvalRequirement": "none_at_cad_http_boundary",
+          "approvalStatus": "HOLD_raw_mcp_entrypoint",
+          "authType": [
+            "bearer_api_key"
+          ],
+          "availability": "dispatcher",
+          "commercialPersistence": "none",
+          "entrypoint": "callTool",
+          "mutationScope": "read",
+          "name": "verify_complex_system_graph",
+          "releaseClaimAllowed": false,
+          "releaseClaimReason": "CAD v1 operation inventory is not a commercial release authorization; persistence is described per operation.",
+          "requiredAuthScope": "read:projects",
+          "source": "scripts/drawing-to-3d/mcp-server.mjs"
+        },
+        "path": "/api/cad/v1/system/verify",
+        "web": {
+          "approvalBoundary": "cad_http_boundary_only",
+          "approvalRequirement": "none_at_cad_http_boundary",
+          "authType": [
+            "cookie",
+            "bearer_api_key"
+          ],
+          "availability": "dispatcher",
+          "commercialPersistence": "none",
+          "entrypoint": "POST",
+          "mutationScope": "read",
+          "releaseClaimAllowed": false,
+          "releaseClaimReason": "CAD v1 operation inventory is not a commercial release authorization; persistence is described per operation.",
+          "requiredAuthScope": "read:projects",
+          "source": "src/app/api/cad/v1/system/verify/route.ts"
+        }
+      },
+      {
+        "cli": {
+          "availability": "HOLD",
+          "reason": "No bounded CLI argument adapter is advertised for this operation."
+        },
+        "id": "verify_gearbox_system_contract",
+        "mcp": {
+          "approvalBoundary": "cad_http_boundary_only",
+          "approvalRequirement": "none_at_cad_http_boundary",
+          "approvalStatus": "HOLD_raw_mcp_entrypoint",
+          "authType": [
+            "bearer_api_key"
+          ],
+          "availability": "dispatcher",
+          "commercialPersistence": "none",
+          "entrypoint": "callTool",
+          "mutationScope": "read",
+          "name": "verify_gearbox_system_contract",
+          "releaseClaimAllowed": false,
+          "releaseClaimReason": "CAD v1 operation inventory is not a commercial release authorization; persistence is described per operation.",
+          "requiredAuthScope": "read:projects",
+          "source": "scripts/drawing-to-3d/mcp-server.mjs"
+        },
+        "path": "/api/cad/v1/system/gearbox/verify",
+        "web": {
+          "approvalBoundary": "cad_http_boundary_only",
+          "approvalRequirement": "none_at_cad_http_boundary",
+          "authType": [
+            "cookie",
+            "bearer_api_key"
+          ],
+          "availability": "dispatcher",
+          "commercialPersistence": "none",
+          "entrypoint": "POST",
+          "mutationScope": "read",
+          "releaseClaimAllowed": false,
+          "releaseClaimReason": "CAD v1 operation inventory is not a commercial release authorization; persistence is described per operation.",
+          "requiredAuthScope": "read:projects",
+          "source": "src/app/api/cad/v1/system/gearbox/verify/route.ts"
+        }
+      },
+      {
+        "cli": {
+          "availability": "HOLD",
+          "reason": "No bounded CLI argument adapter is advertised for this operation."
+        },
+        "id": "verify_machine_skid_system_contract",
+        "mcp": {
+          "approvalBoundary": "cad_http_boundary_only",
+          "approvalRequirement": "none_at_cad_http_boundary",
+          "approvalStatus": "HOLD_raw_mcp_entrypoint",
+          "authType": [
+            "bearer_api_key"
+          ],
+          "availability": "dispatcher",
+          "commercialPersistence": "none",
+          "entrypoint": "callTool",
+          "mutationScope": "read",
+          "name": "verify_machine_skid_system_contract",
+          "releaseClaimAllowed": false,
+          "releaseClaimReason": "CAD v1 operation inventory is not a commercial release authorization; persistence is described per operation.",
+          "requiredAuthScope": "read:projects",
+          "source": "scripts/drawing-to-3d/mcp-server.mjs"
+        },
+        "path": "/api/cad/v1/system/machine-skid/verify",
+        "web": {
+          "approvalBoundary": "cad_http_boundary_only",
+          "approvalRequirement": "none_at_cad_http_boundary",
+          "authType": [
+            "cookie",
+            "bearer_api_key"
+          ],
+          "availability": "dispatcher",
+          "commercialPersistence": "none",
+          "entrypoint": "POST",
+          "mutationScope": "read",
+          "releaseClaimAllowed": false,
+          "releaseClaimReason": "CAD v1 operation inventory is not a commercial release authorization; persistence is described per operation.",
+          "requiredAuthScope": "read:projects",
+          "source": "src/app/api/cad/v1/system/machine-skid/verify/route.ts"
+        }
+      },
+      {
+        "cli": {
+          "availability": "HOLD",
+          "reason": "No bounded CLI argument adapter is advertised for this operation."
+        },
+        "id": "verify_welded_enclosure_system_contract",
+        "mcp": {
+          "approvalBoundary": "cad_http_boundary_only",
+          "approvalRequirement": "none_at_cad_http_boundary",
+          "approvalStatus": "HOLD_raw_mcp_entrypoint",
+          "authType": [
+            "bearer_api_key"
+          ],
+          "availability": "dispatcher",
+          "commercialPersistence": "none",
+          "entrypoint": "callTool",
+          "mutationScope": "read",
+          "name": "verify_welded_enclosure_system_contract",
+          "releaseClaimAllowed": false,
+          "releaseClaimReason": "CAD v1 operation inventory is not a commercial release authorization; persistence is described per operation.",
+          "requiredAuthScope": "read:projects",
+          "source": "scripts/drawing-to-3d/mcp-server.mjs"
+        },
+        "path": "/api/cad/v1/system/welded-enclosure/verify",
+        "web": {
+          "approvalBoundary": "cad_http_boundary_only",
+          "approvalRequirement": "none_at_cad_http_boundary",
+          "authType": [
+            "cookie",
+            "bearer_api_key"
+          ],
+          "availability": "dispatcher",
+          "commercialPersistence": "none",
+          "entrypoint": "POST",
+          "mutationScope": "read",
+          "releaseClaimAllowed": false,
+          "releaseClaimReason": "CAD v1 operation inventory is not a commercial release authorization; persistence is described per operation.",
+          "requiredAuthScope": "read:projects",
+          "source": "src/app/api/cad/v1/system/welded-enclosure/verify/route.ts"
+        }
+      },
+      {
+        "cli": {
+          "availability": "HOLD",
+          "reason": "No bounded CLI argument adapter is advertised for this operation."
+        },
+        "id": "analyze_complex_system_change_impact",
+        "mcp": {
+          "approvalBoundary": "cad_http_boundary_only",
+          "approvalRequirement": "none_at_cad_http_boundary",
+          "approvalStatus": "HOLD_raw_mcp_entrypoint",
+          "authType": [
+            "bearer_api_key"
+          ],
+          "availability": "dispatcher",
+          "commercialPersistence": "none",
+          "entrypoint": "callTool",
+          "mutationScope": "read",
+          "name": "analyze_complex_system_change_impact",
+          "releaseClaimAllowed": false,
+          "releaseClaimReason": "CAD v1 operation inventory is not a commercial release authorization; persistence is described per operation.",
+          "requiredAuthScope": "read:projects",
+          "source": "scripts/drawing-to-3d/mcp-server.mjs"
+        },
+        "path": "/api/cad/v1/system/change-impact/verify",
+        "web": {
+          "approvalBoundary": "cad_http_boundary_only",
+          "approvalRequirement": "none_at_cad_http_boundary",
+          "authType": [
+            "cookie",
+            "bearer_api_key"
+          ],
+          "availability": "dispatcher",
+          "commercialPersistence": "none",
+          "entrypoint": "POST",
+          "mutationScope": "read",
+          "releaseClaimAllowed": false,
+          "releaseClaimReason": "CAD v1 operation inventory is not a commercial release authorization; persistence is described per operation.",
+          "requiredAuthScope": "read:projects",
+          "source": "src/app/api/cad/v1/system/change-impact/verify/route.ts"
+        }
+      },
+      {
+        "cli": {
+          "availability": "HOLD",
+          "reason": "No bounded CLI argument adapter is advertised for this operation."
+        },
+        "id": "verify_complex_assembly_scale",
+        "mcp": {
+          "approvalBoundary": "cad_http_boundary_only",
+          "approvalRequirement": "none_at_cad_http_boundary",
+          "approvalStatus": "HOLD_raw_mcp_entrypoint",
+          "authType": [
+            "bearer_api_key"
+          ],
+          "availability": "dispatcher",
+          "commercialPersistence": "none",
+          "entrypoint": "callTool",
+          "mutationScope": "read",
+          "name": "verify_complex_assembly_scale",
+          "releaseClaimAllowed": false,
+          "releaseClaimReason": "CAD v1 operation inventory is not a commercial release authorization; persistence is described per operation.",
+          "requiredAuthScope": "read:projects",
+          "source": "scripts/drawing-to-3d/mcp-server.mjs"
+        },
+        "path": "/api/cad/v1/system/scale/verify",
+        "web": {
+          "approvalBoundary": "cad_http_boundary_only",
+          "approvalRequirement": "none_at_cad_http_boundary",
+          "authType": [
+            "cookie",
+            "bearer_api_key"
+          ],
+          "availability": "dispatcher",
+          "commercialPersistence": "none",
+          "entrypoint": "POST",
+          "mutationScope": "read",
+          "releaseClaimAllowed": false,
+          "releaseClaimReason": "CAD v1 operation inventory is not a commercial release authorization; persistence is described per operation.",
+          "requiredAuthScope": "read:projects",
+          "source": "src/app/api/cad/v1/system/scale/verify/route.ts"
+        }
+      },
+      {
+        "cli": {
+          "approvalBoundary": "cad_http_boundary_only",
+          "approvalRequirement": "none_at_cad_http_boundary",
+          "authType": [
+            "bearer_api_key"
+          ],
+          "availability": "dispatcher",
+          "commercialPersistence": "none",
+          "entrypoint": "main",
+          "mutationScope": "propose",
+          "name": "part",
+          "releaseClaimAllowed": false,
+          "releaseClaimReason": "CAD v1 operation inventory is not a commercial release authorization; persistence is described per operation.",
+          "requiredAuthScope": "read:projects",
+          "source": "scripts/cli/nexyfab.mjs"
+        },
+        "id": "cad_feature_program",
+        "mcp": {
+          "approvalBoundary": "cad_http_boundary_only",
+          "approvalRequirement": "none_at_cad_http_boundary",
+          "approvalStatus": "HOLD_raw_mcp_entrypoint",
+          "authType": [
+            "bearer_api_key"
+          ],
+          "availability": "dispatcher",
+          "commercialPersistence": "none",
+          "entrypoint": "callTool",
+          "mutationScope": "propose",
+          "name": "cad_feature_program",
+          "releaseClaimAllowed": false,
+          "releaseClaimReason": "CAD v1 operation inventory is not a commercial release authorization; persistence is described per operation.",
+          "requiredAuthScope": "read:projects",
+          "source": "scripts/drawing-to-3d/mcp-server.mjs"
+        },
+        "path": "/api/cad/v1/feature-program",
+        "web": {
+          "approvalBoundary": "cad_http_boundary_only",
+          "approvalRequirement": "none_at_cad_http_boundary",
+          "authType": [
+            "cookie",
+            "bearer_api_key"
+          ],
+          "availability": "dispatcher",
+          "commercialPersistence": "none",
+          "entrypoint": "POST",
+          "mutationScope": "propose",
+          "releaseClaimAllowed": false,
+          "releaseClaimReason": "CAD v1 operation inventory is not a commercial release authorization; persistence is described per operation.",
+          "requiredAuthScope": "read:projects",
+          "source": "src/app/api/cad/v1/feature-program/route.ts"
+        }
+      },
+      {
+        "cli": {
+          "approvalBoundary": "cad_http_boundary_only",
+          "approvalRequirement": "none_at_cad_http_boundary",
+          "authType": [
+            "bearer_api_key"
+          ],
+          "availability": "dispatcher",
+          "commercialPersistence": "none",
+          "entrypoint": "main",
+          "mutationScope": "apply",
+          "name": "mesh",
+          "releaseClaimAllowed": false,
+          "releaseClaimReason": "CAD v1 operation inventory is not a commercial release authorization; persistence is described per operation.",
+          "requiredAuthScope": "write:projects",
+          "source": "scripts/cli/nexyfab.mjs"
+        },
+        "id": "feature_tree_mesh",
+        "mcp": {
+          "approvalBoundary": "cad_http_boundary_only",
+          "approvalRequirement": "none_at_cad_http_boundary",
+          "approvalStatus": "HOLD_raw_mcp_entrypoint",
+          "authType": [
+            "bearer_api_key"
+          ],
+          "availability": "dispatcher",
+          "commercialPersistence": "none",
+          "entrypoint": "callTool",
+          "mutationScope": "apply",
+          "name": "feature_tree_mesh",
+          "releaseClaimAllowed": false,
+          "releaseClaimReason": "CAD v1 operation inventory is not a commercial release authorization; persistence is described per operation.",
+          "requiredAuthScope": "write:projects",
+          "source": "scripts/drawing-to-3d/mcp-server.mjs"
+        },
+        "path": "/api/cad/v1/feature-tree-mesh",
+        "web": {
+          "approvalBoundary": "cad_http_boundary_only",
+          "approvalRequirement": "none_at_cad_http_boundary",
+          "authType": [
+            "cookie",
+            "bearer_api_key"
+          ],
+          "availability": "dispatcher",
+          "commercialPersistence": "none",
+          "entrypoint": "POST",
+          "mutationScope": "apply",
+          "releaseClaimAllowed": false,
+          "releaseClaimReason": "CAD v1 operation inventory is not a commercial release authorization; persistence is described per operation.",
+          "requiredAuthScope": "write:projects",
+          "source": "src/app/api/cad/v1/feature-tree-mesh/route.ts"
+        }
+      },
+      {
+        "cli": {
+          "approvalBoundary": "cad_http_boundary_only",
+          "approvalRequirement": "none_at_cad_http_boundary",
+          "authType": [
+            "bearer_api_key"
+          ],
+          "availability": "dispatcher",
+          "commercialPersistence": "none",
+          "entrypoint": "main",
+          "mutationScope": "export",
+          "name": "step",
+          "releaseClaimAllowed": false,
+          "releaseClaimReason": "CAD v1 operation inventory is not a commercial release authorization; persistence is described per operation.",
+          "requiredAuthScope": "write:projects",
+          "source": "scripts/cli/nexyfab.mjs"
+        },
+        "id": "export_part_step",
+        "mcp": {
+          "approvalBoundary": "cad_http_boundary_only",
+          "approvalRequirement": "none_at_cad_http_boundary",
+          "approvalStatus": "HOLD_raw_mcp_entrypoint",
+          "authType": [
+            "bearer_api_key"
+          ],
+          "availability": "dispatcher",
+          "commercialPersistence": "none",
+          "entrypoint": "callTool",
+          "mutationScope": "export",
+          "name": "export_part_step",
+          "releaseClaimAllowed": false,
+          "releaseClaimReason": "CAD v1 operation inventory is not a commercial release authorization; persistence is described per operation.",
+          "requiredAuthScope": "write:projects",
+          "source": "scripts/drawing-to-3d/mcp-server.mjs"
+        },
+        "path": "/api/cad/v1/part-step",
+        "web": {
+          "approvalBoundary": "cad_http_boundary_only",
+          "approvalRequirement": "none_at_cad_http_boundary",
+          "authType": [
+            "cookie",
+            "bearer_api_key"
+          ],
+          "availability": "dispatcher",
+          "commercialPersistence": "none",
+          "entrypoint": "POST",
+          "mutationScope": "export",
+          "releaseClaimAllowed": false,
+          "releaseClaimReason": "CAD v1 operation inventory is not a commercial release authorization; persistence is described per operation.",
+          "requiredAuthScope": "write:projects",
+          "source": "src/app/api/cad/v1/part-step/route.ts"
+        }
+      },
+      {
+        "cli": {
+          "approvalBoundary": "cad_http_boundary_only",
+          "approvalRequirement": "none_at_cad_http_boundary",
+          "authType": [
+            "bearer_api_key"
+          ],
+          "availability": "dispatcher",
+          "commercialPersistence": "none",
+          "entrypoint": "main",
+          "mutationScope": "read",
+          "name": "release decision",
+          "releaseClaimAllowed": false,
+          "releaseClaimReason": "CAD v1 operation inventory is not a commercial release authorization; persistence is described per operation.",
+          "requiredAuthScope": "read:projects",
+          "source": "scripts/cli/nexyfab.mjs"
+        },
+        "id": "decide_cad_release",
+        "mcp": {
+          "approvalBoundary": "cad_http_boundary_only",
+          "approvalRequirement": "none_at_cad_http_boundary",
+          "approvalStatus": "HOLD_raw_mcp_entrypoint",
+          "authType": [
+            "bearer_api_key"
+          ],
+          "availability": "dispatcher",
+          "commercialPersistence": "none",
+          "entrypoint": "callTool",
+          "mutationScope": "read",
+          "name": "decide_cad_release",
+          "releaseClaimAllowed": false,
+          "releaseClaimReason": "CAD v1 operation inventory is not a commercial release authorization; persistence is described per operation.",
+          "requiredAuthScope": "read:projects",
+          "source": "scripts/drawing-to-3d/mcp-server.mjs"
+        },
+        "path": "/api/cad/v1/release/decision",
+        "web": {
+          "approvalBoundary": "cad_http_boundary_only",
+          "approvalRequirement": "none_at_cad_http_boundary",
+          "authType": [
+            "cookie",
+            "bearer_api_key"
+          ],
+          "availability": "dispatcher",
+          "commercialPersistence": "none",
+          "entrypoint": "POST",
+          "mutationScope": "read",
+          "releaseClaimAllowed": false,
+          "releaseClaimReason": "CAD v1 operation inventory is not a commercial release authorization; persistence is described per operation.",
+          "requiredAuthScope": "read:projects",
+          "source": "src/app/api/cad/v1/release/decision/route.ts"
+        }
+      },
+      {
+        "cli": {
+          "approvalBoundary": "cad_http_boundary_only",
+          "approvalRequirement": "none_at_cad_http_boundary",
+          "authType": [
+            "bearer_api_key"
+          ],
+          "availability": "dispatcher",
+          "commercialPersistence": "none",
+          "entrypoint": "main",
+          "mutationScope": "read",
+          "name": "reference analyze",
+          "releaseClaimAllowed": false,
+          "releaseClaimReason": "CAD v1 operation inventory is not a commercial release authorization; persistence is described per operation.",
+          "requiredAuthScope": "read:projects",
+          "source": "scripts/cli/nexyfab.mjs"
+        },
+        "id": "analyze_cad_reference",
+        "mcp": {
+          "approvalBoundary": "cad_http_boundary_only",
+          "approvalRequirement": "none_at_cad_http_boundary",
+          "approvalStatus": "HOLD_raw_mcp_entrypoint",
+          "authType": [
+            "bearer_api_key"
+          ],
+          "availability": "dispatcher",
+          "commercialPersistence": "none",
+          "entrypoint": "callTool",
+          "mutationScope": "read",
+          "name": "analyze_cad_reference",
+          "releaseClaimAllowed": false,
+          "releaseClaimReason": "CAD v1 operation inventory is not a commercial release authorization; persistence is described per operation.",
+          "requiredAuthScope": "read:projects",
+          "source": "scripts/drawing-to-3d/mcp-server.mjs"
+        },
+        "path": "/api/cad/v1/reference/analyze",
+        "web": {
+          "approvalBoundary": "cad_http_boundary_only",
+          "approvalRequirement": "none_at_cad_http_boundary",
+          "authType": [
+            "cookie",
+            "bearer_api_key"
+          ],
+          "availability": "dispatcher",
+          "commercialPersistence": "none",
+          "entrypoint": "POST",
+          "mutationScope": "read",
+          "releaseClaimAllowed": false,
+          "releaseClaimReason": "CAD v1 operation inventory is not a commercial release authorization; persistence is described per operation.",
+          "requiredAuthScope": "read:projects",
+          "source": "src/app/api/cad/v1/reference/analyze/route.ts"
+        }
+      },
+      {
+        "cli": {
+          "approvalBoundary": "cad_http_boundary_only",
+          "approvalRequirement": "none_at_cad_http_boundary",
+          "authType": [
+            "bearer_api_key"
+          ],
+          "availability": "dispatcher",
+          "commercialPersistence": "none",
+          "entrypoint": "main",
+          "mutationScope": "read",
+          "name": "ifc semantic-roundtrip",
+          "releaseClaimAllowed": false,
+          "releaseClaimReason": "CAD v1 operation inventory is not a commercial release authorization; persistence is described per operation.",
+          "requiredAuthScope": "read:projects",
+          "source": "scripts/cli/nexyfab.mjs"
+        },
+        "id": "verify_ifc_semantic_roundtrip",
+        "mcp": {
+          "approvalBoundary": "cad_http_boundary_only",
+          "approvalRequirement": "none_at_cad_http_boundary",
+          "approvalStatus": "HOLD_raw_mcp_entrypoint",
+          "authType": [
+            "bearer_api_key"
+          ],
+          "availability": "dispatcher",
+          "commercialPersistence": "none",
+          "entrypoint": "callTool",
+          "mutationScope": "read",
+          "name": "verify_ifc_semantic_roundtrip",
+          "releaseClaimAllowed": false,
+          "releaseClaimReason": "CAD v1 operation inventory is not a commercial release authorization; persistence is described per operation.",
+          "requiredAuthScope": "read:projects",
+          "source": "scripts/drawing-to-3d/mcp-server.mjs"
+        },
+        "path": "/api/cad/v1/ifc/semantic-roundtrip",
+        "web": {
+          "approvalBoundary": "cad_http_boundary_only",
+          "approvalRequirement": "none_at_cad_http_boundary",
+          "authType": [
+            "cookie",
+            "bearer_api_key"
+          ],
+          "availability": "dispatcher",
+          "commercialPersistence": "none",
+          "entrypoint": "POST",
+          "mutationScope": "read",
+          "releaseClaimAllowed": false,
+          "releaseClaimReason": "CAD v1 operation inventory is not a commercial release authorization; persistence is described per operation.",
+          "requiredAuthScope": "read:projects",
+          "source": "src/app/api/cad/v1/ifc/semantic-roundtrip/route.ts"
+        }
+      },
+      {
+        "cli": {
+          "approvalBoundary": "cad_http_boundary_only",
+          "approvalRequirement": "none_at_cad_http_boundary",
+          "authType": [
+            "bearer_api_key"
+          ],
+          "availability": "dispatcher",
+          "commercialPersistence": "none",
+          "entrypoint": "main",
+          "mutationScope": "propose",
+          "name": "ifc domain-ir",
+          "releaseClaimAllowed": false,
+          "releaseClaimReason": "CAD v1 operation inventory is not a commercial release authorization; persistence is described per operation.",
+          "requiredAuthScope": "read:projects",
+          "source": "scripts/cli/nexyfab.mjs"
+        },
+        "id": "build_ifc_domain_ir",
+        "mcp": {
+          "approvalBoundary": "cad_http_boundary_only",
+          "approvalRequirement": "none_at_cad_http_boundary",
+          "approvalStatus": "HOLD_raw_mcp_entrypoint",
+          "authType": [
+            "bearer_api_key"
+          ],
+          "availability": "dispatcher",
+          "commercialPersistence": "none",
+          "entrypoint": "callTool",
+          "mutationScope": "propose",
+          "name": "build_ifc_domain_ir",
+          "releaseClaimAllowed": false,
+          "releaseClaimReason": "CAD v1 operation inventory is not a commercial release authorization; persistence is described per operation.",
+          "requiredAuthScope": "read:projects",
+          "source": "scripts/drawing-to-3d/mcp-server.mjs"
+        },
+        "path": "/api/cad/v1/ifc/domain-ir",
+        "web": {
+          "approvalBoundary": "cad_http_boundary_only",
+          "approvalRequirement": "none_at_cad_http_boundary",
+          "authType": [
+            "cookie",
+            "bearer_api_key"
+          ],
+          "availability": "dispatcher",
+          "commercialPersistence": "none",
+          "entrypoint": "POST",
+          "mutationScope": "propose",
+          "releaseClaimAllowed": false,
+          "releaseClaimReason": "CAD v1 operation inventory is not a commercial release authorization; persistence is described per operation.",
+          "requiredAuthScope": "read:projects",
+          "source": "src/app/api/cad/v1/ifc/domain-ir/route.ts"
+        }
+      },
+      {
+        "cli": {
+          "approvalBoundary": "cad_http_boundary_only",
+          "approvalRequirement": "none_at_cad_http_boundary",
+          "authType": [
+            "bearer_api_key"
+          ],
+          "availability": "dispatcher",
+          "commercialPersistence": "none",
+          "entrypoint": "main",
+          "mutationScope": "propose",
+          "name": "ifc spatial-ir",
+          "releaseClaimAllowed": false,
+          "releaseClaimReason": "CAD v1 operation inventory is not a commercial release authorization; persistence is described per operation.",
+          "requiredAuthScope": "read:projects",
+          "source": "scripts/cli/nexyfab.mjs"
+        },
+        "id": "build_ifc_spatial_ir",
+        "mcp": {
+          "approvalBoundary": "cad_http_boundary_only",
+          "approvalRequirement": "none_at_cad_http_boundary",
+          "approvalStatus": "HOLD_raw_mcp_entrypoint",
+          "authType": [
+            "bearer_api_key"
+          ],
+          "availability": "dispatcher",
+          "commercialPersistence": "none",
+          "entrypoint": "callTool",
+          "mutationScope": "propose",
+          "name": "build_ifc_spatial_ir",
+          "releaseClaimAllowed": false,
+          "releaseClaimReason": "CAD v1 operation inventory is not a commercial release authorization; persistence is described per operation.",
+          "requiredAuthScope": "read:projects",
+          "source": "scripts/drawing-to-3d/mcp-server.mjs"
+        },
+        "path": "/api/cad/v1/ifc/spatial-ir",
+        "web": {
+          "approvalBoundary": "cad_http_boundary_only",
+          "approvalRequirement": "none_at_cad_http_boundary",
+          "authType": [
+            "cookie",
+            "bearer_api_key"
+          ],
+          "availability": "dispatcher",
+          "commercialPersistence": "none",
+          "entrypoint": "POST",
+          "mutationScope": "propose",
+          "releaseClaimAllowed": false,
+          "releaseClaimReason": "CAD v1 operation inventory is not a commercial release authorization; persistence is described per operation.",
+          "requiredAuthScope": "read:projects",
+          "source": "src/app/api/cad/v1/ifc/spatial-ir/route.ts"
+        }
+      },
+      {
+        "cli": {
+          "approvalBoundary": "cad_http_boundary_only",
+          "approvalRequirement": "none_at_cad_http_boundary",
+          "authType": [
+            "bearer_api_key"
+          ],
+          "availability": "dispatcher",
+          "commercialPersistence": "none",
+          "entrypoint": "main",
+          "mutationScope": "read",
+          "name": "reference mechanical-relations",
+          "releaseClaimAllowed": false,
+          "releaseClaimReason": "CAD v1 operation inventory is not a commercial release authorization; persistence is described per operation.",
+          "requiredAuthScope": "read:projects",
+          "source": "scripts/cli/nexyfab.mjs"
+        },
+        "id": "analyze_step_mechanical_relations",
+        "mcp": {
+          "approvalBoundary": "cad_http_boundary_only",
+          "approvalRequirement": "none_at_cad_http_boundary",
+          "approvalStatus": "HOLD_raw_mcp_entrypoint",
+          "authType": [
+            "bearer_api_key"
+          ],
+          "availability": "dispatcher",
+          "commercialPersistence": "none",
+          "entrypoint": "callTool",
+          "mutationScope": "read",
+          "name": "analyze_step_mechanical_relations",
+          "releaseClaimAllowed": false,
+          "releaseClaimReason": "CAD v1 operation inventory is not a commercial release authorization; persistence is described per operation.",
+          "requiredAuthScope": "read:projects",
+          "source": "scripts/drawing-to-3d/mcp-server.mjs"
+        },
+        "path": "/api/cad/v1/step/mechanical-relations",
+        "web": {
+          "approvalBoundary": "cad_http_boundary_only",
+          "approvalRequirement": "none_at_cad_http_boundary",
+          "authType": [
+            "cookie",
+            "bearer_api_key"
+          ],
+          "availability": "dispatcher",
+          "commercialPersistence": "none",
+          "entrypoint": "POST",
+          "mutationScope": "read",
+          "releaseClaimAllowed": false,
+          "releaseClaimReason": "CAD v1 operation inventory is not a commercial release authorization; persistence is described per operation.",
+          "requiredAuthScope": "read:projects",
+          "source": "src/app/api/cad/v1/step/mechanical-relations/route.ts"
+        }
+      },
+      {
+        "cli": {
+          "approvalBoundary": "cad_http_boundary_only",
+          "approvalRequirement": "none_at_cad_http_boundary",
+          "authType": [
+            "bearer_api_key"
+          ],
+          "availability": "dispatcher",
+          "commercialPersistence": "none",
+          "entrypoint": "main",
+          "mutationScope": "propose",
+          "name": "ifc recovery-plan",
+          "releaseClaimAllowed": false,
+          "releaseClaimReason": "CAD v1 operation inventory is not a commercial release authorization; persistence is described per operation.",
+          "requiredAuthScope": "read:projects",
+          "source": "scripts/cli/nexyfab.mjs"
+        },
+        "id": "plan_ifc_geometry_recovery",
+        "mcp": {
+          "approvalBoundary": "cad_http_boundary_only",
+          "approvalRequirement": "none_at_cad_http_boundary",
+          "approvalStatus": "HOLD_raw_mcp_entrypoint",
+          "authType": [
+            "bearer_api_key"
+          ],
+          "availability": "dispatcher",
+          "commercialPersistence": "none",
+          "entrypoint": "callTool",
+          "mutationScope": "propose",
+          "name": "plan_ifc_geometry_recovery",
+          "releaseClaimAllowed": false,
+          "releaseClaimReason": "CAD v1 operation inventory is not a commercial release authorization; persistence is described per operation.",
+          "requiredAuthScope": "read:projects",
+          "source": "scripts/drawing-to-3d/mcp-server.mjs"
+        },
+        "path": "/api/cad/v1/ifc/recovery-plan",
+        "web": {
+          "approvalBoundary": "cad_http_boundary_only",
+          "approvalRequirement": "none_at_cad_http_boundary",
+          "authType": [
+            "cookie",
+            "bearer_api_key"
+          ],
+          "availability": "dispatcher",
+          "commercialPersistence": "none",
+          "entrypoint": "POST",
+          "mutationScope": "propose",
+          "releaseClaimAllowed": false,
+          "releaseClaimReason": "CAD v1 operation inventory is not a commercial release authorization; persistence is described per operation.",
+          "requiredAuthScope": "read:projects",
+          "source": "src/app/api/cad/v1/ifc/recovery-plan/route.ts"
+        }
+      },
+      {
+        "cli": {
+          "approvalBoundary": "cad_http_boundary_only",
+          "approvalRequirement": "none_at_cad_http_boundary",
+          "authType": [
+            "bearer_api_key"
+          ],
+          "availability": "dispatcher",
+          "commercialPersistence": "none",
+          "entrypoint": "main",
+          "mutationScope": "apply",
+          "name": "ifc recover-geometry",
+          "releaseClaimAllowed": false,
+          "releaseClaimReason": "CAD v1 operation inventory is not a commercial release authorization; persistence is described per operation.",
+          "requiredAuthScope": "write:projects",
+          "source": "scripts/cli/nexyfab.mjs"
+        },
+        "id": "recover_ifc_geometry",
+        "mcp": {
+          "approvalBoundary": "cad_http_boundary_only",
+          "approvalRequirement": "none_at_cad_http_boundary",
+          "approvalStatus": "HOLD_raw_mcp_entrypoint",
+          "authType": [
+            "bearer_api_key"
+          ],
+          "availability": "dispatcher",
+          "commercialPersistence": "none",
+          "entrypoint": "callTool",
+          "mutationScope": "apply",
+          "name": "recover_ifc_geometry",
+          "releaseClaimAllowed": false,
+          "releaseClaimReason": "CAD v1 operation inventory is not a commercial release authorization; persistence is described per operation.",
+          "requiredAuthScope": "write:projects",
+          "source": "scripts/drawing-to-3d/mcp-server.mjs"
+        },
+        "path": "/api/cad/v1/ifc/recover-geometry",
+        "web": {
+          "approvalBoundary": "cad_http_boundary_only",
+          "approvalRequirement": "none_at_cad_http_boundary",
+          "authType": [
+            "cookie",
+            "bearer_api_key"
+          ],
+          "availability": "dispatcher",
+          "commercialPersistence": "none",
+          "entrypoint": "POST",
+          "mutationScope": "apply",
+          "releaseClaimAllowed": false,
+          "releaseClaimReason": "CAD v1 operation inventory is not a commercial release authorization; persistence is described per operation.",
+          "requiredAuthScope": "write:projects",
+          "source": "src/app/api/cad/v1/ifc/recover-geometry/route.ts"
+        }
+      },
+      {
+        "cli": {
+          "approvalBoundary": "cad_http_boundary_only",
+          "approvalRequirement": "none_at_cad_http_boundary",
+          "authType": [
+            "bearer_api_key"
+          ],
+          "availability": "dispatcher",
+          "commercialPersistence": "none",
+          "entrypoint": "main",
+          "mutationScope": "propose",
+          "name": "topology reconcile",
+          "releaseClaimAllowed": false,
+          "releaseClaimReason": "CAD v1 operation inventory is not a commercial release authorization; persistence is described per operation.",
+          "requiredAuthScope": "read:projects",
+          "source": "scripts/cli/nexyfab.mjs"
+        },
+        "id": "reconcile_topology_references",
+        "mcp": {
+          "approvalBoundary": "cad_http_boundary_only",
+          "approvalRequirement": "none_at_cad_http_boundary",
+          "approvalStatus": "HOLD_raw_mcp_entrypoint",
+          "authType": [
+            "bearer_api_key"
+          ],
+          "availability": "dispatcher",
+          "commercialPersistence": "none",
+          "entrypoint": "callTool",
+          "mutationScope": "propose",
+          "name": "reconcile_topology_references",
+          "releaseClaimAllowed": false,
+          "releaseClaimReason": "CAD v1 operation inventory is not a commercial release authorization; persistence is described per operation.",
+          "requiredAuthScope": "read:projects",
+          "source": "scripts/drawing-to-3d/mcp-server.mjs"
+        },
+        "path": "/api/cad/v1/topology/reconcile",
+        "web": {
+          "approvalBoundary": "cad_http_boundary_only",
+          "approvalRequirement": "none_at_cad_http_boundary",
+          "authType": [
+            "cookie",
+            "bearer_api_key"
+          ],
+          "availability": "dispatcher",
+          "commercialPersistence": "none",
+          "entrypoint": "POST",
+          "mutationScope": "propose",
+          "releaseClaimAllowed": false,
+          "releaseClaimReason": "CAD v1 operation inventory is not a commercial release authorization; persistence is described per operation.",
+          "requiredAuthScope": "read:projects",
+          "source": "src/app/api/cad/v1/topology/reconcile/route.ts"
+        }
+      },
+      {
+        "cli": {
+          "approvalBoundary": "cad_http_boundary_only",
+          "approvalRequirement": "none_at_cad_http_boundary",
+          "authType": [
+            "bearer_api_key"
+          ],
+          "availability": "dispatcher",
+          "commercialPersistence": "none",
+          "entrypoint": "main",
+          "mutationScope": "read",
+          "name": "assembly verify",
+          "releaseClaimAllowed": false,
+          "releaseClaimReason": "CAD v1 operation inventory is not a commercial release authorization; persistence is described per operation.",
+          "requiredAuthScope": "read:projects",
+          "source": "scripts/cli/nexyfab.mjs"
+        },
+        "id": "verify_cad_assembly",
+        "mcp": {
+          "approvalBoundary": "cad_http_boundary_only",
+          "approvalRequirement": "none_at_cad_http_boundary",
+          "approvalStatus": "HOLD_raw_mcp_entrypoint",
+          "authType": [
+            "bearer_api_key"
+          ],
+          "availability": "dispatcher",
+          "commercialPersistence": "none",
+          "entrypoint": "callTool",
+          "mutationScope": "read",
+          "name": "verify_cad_assembly",
+          "releaseClaimAllowed": false,
+          "releaseClaimReason": "CAD v1 operation inventory is not a commercial release authorization; persistence is described per operation.",
+          "requiredAuthScope": "read:projects",
+          "source": "scripts/drawing-to-3d/mcp-server.mjs"
+        },
+        "path": "/api/cad/v1/assembly/verify",
+        "web": {
+          "approvalBoundary": "cad_http_boundary_only",
+          "approvalRequirement": "none_at_cad_http_boundary",
+          "authType": [
+            "cookie",
+            "bearer_api_key"
+          ],
+          "availability": "dispatcher",
+          "commercialPersistence": "none",
+          "entrypoint": "POST",
+          "mutationScope": "read",
+          "releaseClaimAllowed": false,
+          "releaseClaimReason": "CAD v1 operation inventory is not a commercial release authorization; persistence is described per operation.",
+          "requiredAuthScope": "read:projects",
+          "source": "src/app/api/cad/v1/assembly/verify/route.ts"
+        }
+      },
+      {
+        "cli": {
+          "approvalBoundary": "cad_http_boundary_only",
+          "approvalRequirement": "none_at_cad_http_boundary",
+          "authType": [
+            "bearer_api_key"
+          ],
+          "availability": "dispatcher",
+          "commercialPersistence": "none",
+          "entrypoint": "main",
+          "mutationScope": "read",
+          "name": "project verify",
+          "releaseClaimAllowed": false,
+          "releaseClaimReason": "CAD v1 operation inventory is not a commercial release authorization; persistence is described per operation.",
+          "requiredAuthScope": "read:projects",
+          "source": "scripts/cli/nexyfab.mjs"
+        },
+        "id": "verify_cad_project",
+        "mcp": {
+          "approvalBoundary": "cad_http_boundary_only",
+          "approvalRequirement": "none_at_cad_http_boundary",
+          "approvalStatus": "HOLD_raw_mcp_entrypoint",
+          "authType": [
+            "bearer_api_key"
+          ],
+          "availability": "dispatcher",
+          "commercialPersistence": "none",
+          "entrypoint": "callTool",
+          "mutationScope": "read",
+          "name": "verify_cad_project",
+          "releaseClaimAllowed": false,
+          "releaseClaimReason": "CAD v1 operation inventory is not a commercial release authorization; persistence is described per operation.",
+          "requiredAuthScope": "read:projects",
+          "source": "scripts/drawing-to-3d/mcp-server.mjs"
+        },
+        "path": "/api/cad/v1/project/verify",
+        "web": {
+          "approvalBoundary": "cad_http_boundary_only",
+          "approvalRequirement": "none_at_cad_http_boundary",
+          "authType": [
+            "cookie",
+            "bearer_api_key"
+          ],
+          "availability": "dispatcher",
+          "commercialPersistence": "none",
+          "entrypoint": "POST",
+          "mutationScope": "read",
+          "releaseClaimAllowed": false,
+          "releaseClaimReason": "CAD v1 operation inventory is not a commercial release authorization; persistence is described per operation.",
+          "requiredAuthScope": "read:projects",
+          "source": "src/app/api/cad/v1/project/verify/route.ts"
+        }
+      },
+      {
+        "cli": {
+          "approvalBoundary": "cad_http_boundary_only",
+          "approvalRequirement": "none_at_cad_http_boundary",
+          "authType": [
+            "bearer_api_key"
+          ],
+          "availability": "dispatcher",
+          "commercialPersistence": "none",
+          "entrypoint": "main",
+          "mutationScope": "read",
+          "name": "interior door-swing --file",
+          "releaseClaimAllowed": false,
+          "releaseClaimReason": "CAD v1 operation inventory is not a commercial release authorization; persistence is described per operation.",
+          "requiredAuthScope": "read:projects",
+          "source": "scripts/cli/nexyfab.mjs"
+        },
+        "id": "verify_door_swing_clearance",
+        "mcp": {
+          "approvalBoundary": "cad_http_boundary_only",
+          "approvalRequirement": "none_at_cad_http_boundary",
+          "approvalStatus": "HOLD_raw_mcp_entrypoint",
+          "authType": [
+            "bearer_api_key"
+          ],
+          "availability": "dispatcher",
+          "commercialPersistence": "none",
+          "entrypoint": "callTool",
+          "mutationScope": "read",
+          "name": "verify_door_swing_clearance",
+          "releaseClaimAllowed": false,
+          "releaseClaimReason": "CAD v1 operation inventory is not a commercial release authorization; persistence is described per operation.",
+          "requiredAuthScope": "read:projects",
+          "source": "scripts/drawing-to-3d/mcp-server.mjs"
+        },
+        "path": "/api/cad/v1/interior/door-swing/verify",
+        "web": {
+          "approvalBoundary": "cad_http_boundary_only",
+          "approvalRequirement": "none_at_cad_http_boundary",
+          "authType": [
+            "cookie",
+            "bearer_api_key"
+          ],
+          "availability": "dispatcher",
+          "commercialPersistence": "none",
+          "entrypoint": "POST",
+          "mutationScope": "read",
+          "releaseClaimAllowed": false,
+          "releaseClaimReason": "CAD v1 operation inventory is not a commercial release authorization; persistence is described per operation.",
+          "requiredAuthScope": "read:projects",
+          "source": "src/app/api/cad/v1/interior/door-swing/verify/route.ts"
+        }
+      },
+      {
+        "cli": {
+          "approvalBoundary": "cad_http_boundary_only",
+          "approvalRequirement": "none_at_cad_http_boundary",
+          "authType": [
+            "bearer_api_key"
+          ],
+          "availability": "dispatcher",
+          "commercialPersistence": "none",
+          "entrypoint": "main",
+          "mutationScope": "read",
+          "name": "interior space-boundary --file",
+          "releaseClaimAllowed": false,
+          "releaseClaimReason": "CAD v1 operation inventory is not a commercial release authorization; persistence is described per operation.",
+          "requiredAuthScope": "read:projects",
+          "source": "scripts/cli/nexyfab.mjs"
+        },
+        "id": "verify_space_boundary_closure",
+        "mcp": {
+          "approvalBoundary": "cad_http_boundary_only",
+          "approvalRequirement": "none_at_cad_http_boundary",
+          "approvalStatus": "HOLD_raw_mcp_entrypoint",
+          "authType": [
+            "bearer_api_key"
+          ],
+          "availability": "dispatcher",
+          "commercialPersistence": "none",
+          "entrypoint": "callTool",
+          "mutationScope": "read",
+          "name": "verify_space_boundary_closure",
+          "releaseClaimAllowed": false,
+          "releaseClaimReason": "CAD v1 operation inventory is not a commercial release authorization; persistence is described per operation.",
+          "requiredAuthScope": "read:projects",
+          "source": "scripts/drawing-to-3d/mcp-server.mjs"
+        },
+        "path": "/api/cad/v1/interior/space-boundary/verify",
+        "web": {
+          "approvalBoundary": "cad_http_boundary_only",
+          "approvalRequirement": "none_at_cad_http_boundary",
+          "authType": [
+            "cookie",
+            "bearer_api_key"
+          ],
+          "availability": "dispatcher",
+          "commercialPersistence": "none",
+          "entrypoint": "POST",
+          "mutationScope": "read",
+          "releaseClaimAllowed": false,
+          "releaseClaimReason": "CAD v1 operation inventory is not a commercial release authorization; persistence is described per operation.",
+          "requiredAuthScope": "read:projects",
+          "source": "src/app/api/cad/v1/interior/space-boundary/verify/route.ts"
+        }
+      },
+      {
+        "cli": {
+          "approvalBoundary": "cad_http_boundary_only",
+          "approvalRequirement": "none_at_cad_http_boundary",
+          "authType": [
+            "bearer_api_key"
+          ],
+          "availability": "dispatcher",
+          "commercialPersistence": "none",
+          "entrypoint": "main",
+          "mutationScope": "read",
+          "name": "interior egress --file",
+          "releaseClaimAllowed": false,
+          "releaseClaimReason": "CAD v1 operation inventory is not a commercial release authorization; persistence is described per operation.",
+          "requiredAuthScope": "read:projects",
+          "source": "scripts/cli/nexyfab.mjs"
+        },
+        "id": "verify_egress_routes",
+        "mcp": {
+          "approvalBoundary": "cad_http_boundary_only",
+          "approvalRequirement": "none_at_cad_http_boundary",
+          "approvalStatus": "HOLD_raw_mcp_entrypoint",
+          "authType": [
+            "bearer_api_key"
+          ],
+          "availability": "dispatcher",
+          "commercialPersistence": "none",
+          "entrypoint": "callTool",
+          "mutationScope": "read",
+          "name": "verify_egress_routes",
+          "releaseClaimAllowed": false,
+          "releaseClaimReason": "CAD v1 operation inventory is not a commercial release authorization; persistence is described per operation.",
+          "requiredAuthScope": "read:projects",
+          "source": "scripts/drawing-to-3d/mcp-server.mjs"
+        },
+        "path": "/api/cad/v1/interior/egress/verify",
+        "web": {
+          "approvalBoundary": "cad_http_boundary_only",
+          "approvalRequirement": "none_at_cad_http_boundary",
+          "authType": [
+            "cookie",
+            "bearer_api_key"
+          ],
+          "availability": "dispatcher",
+          "commercialPersistence": "none",
+          "entrypoint": "POST",
+          "mutationScope": "read",
+          "releaseClaimAllowed": false,
+          "releaseClaimReason": "CAD v1 operation inventory is not a commercial release authorization; persistence is described per operation.",
+          "requiredAuthScope": "read:projects",
+          "source": "src/app/api/cad/v1/interior/egress/verify/route.ts"
+        }
+      },
+      {
+        "cli": {
+          "approvalBoundary": "cad_http_boundary_only",
+          "approvalRequirement": "none_at_cad_http_boundary",
+          "authType": [
+            "bearer_api_key"
+          ],
+          "availability": "dispatcher",
+          "commercialPersistence": "none",
+          "entrypoint": "main",
+          "mutationScope": "read",
+          "name": "interior mep-interference --file",
+          "releaseClaimAllowed": false,
+          "releaseClaimReason": "CAD v1 operation inventory is not a commercial release authorization; persistence is described per operation.",
+          "requiredAuthScope": "read:projects",
+          "source": "scripts/cli/nexyfab.mjs"
+        },
+        "id": "verify_mep_interference",
+        "mcp": {
+          "approvalBoundary": "cad_http_boundary_only",
+          "approvalRequirement": "none_at_cad_http_boundary",
+          "approvalStatus": "HOLD_raw_mcp_entrypoint",
+          "authType": [
+            "bearer_api_key"
+          ],
+          "availability": "dispatcher",
+          "commercialPersistence": "none",
+          "entrypoint": "callTool",
+          "mutationScope": "read",
+          "name": "verify_mep_interference",
+          "releaseClaimAllowed": false,
+          "releaseClaimReason": "CAD v1 operation inventory is not a commercial release authorization; persistence is described per operation.",
+          "requiredAuthScope": "read:projects",
+          "source": "scripts/drawing-to-3d/mcp-server.mjs"
+        },
+        "path": "/api/cad/v1/interior/mep-interference/verify",
+        "web": {
+          "approvalBoundary": "cad_http_boundary_only",
+          "approvalRequirement": "none_at_cad_http_boundary",
+          "authType": [
+            "cookie",
+            "bearer_api_key"
+          ],
+          "availability": "dispatcher",
+          "commercialPersistence": "none",
+          "entrypoint": "POST",
+          "mutationScope": "read",
+          "releaseClaimAllowed": false,
+          "releaseClaimReason": "CAD v1 operation inventory is not a commercial release authorization; persistence is described per operation.",
+          "requiredAuthScope": "read:projects",
+          "source": "src/app/api/cad/v1/interior/mep-interference/verify/route.ts"
+        }
+      },
+      {
+        "cli": {
+          "approvalBoundary": "cad_http_boundary_only",
+          "approvalRequirement": "none_at_cad_http_boundary",
+          "authType": [
+            "bearer_api_key"
+          ],
+          "availability": "dispatcher",
+          "commercialPersistence": "none",
+          "entrypoint": "main",
+          "mutationScope": "read",
+          "name": "animation evaluate",
+          "releaseClaimAllowed": false,
+          "releaseClaimReason": "CAD v1 operation inventory is not a commercial release authorization; persistence is described per operation.",
+          "requiredAuthScope": "read:projects",
+          "source": "scripts/cli/nexyfab.mjs"
+        },
+        "id": "evaluate_assembly_animation",
+        "mcp": {
+          "approvalBoundary": "cad_http_boundary_only",
+          "approvalRequirement": "none_at_cad_http_boundary",
+          "approvalStatus": "HOLD_raw_mcp_entrypoint",
+          "authType": [
+            "bearer_api_key"
+          ],
+          "availability": "dispatcher",
+          "commercialPersistence": "none",
+          "entrypoint": "callTool",
+          "mutationScope": "read",
+          "name": "evaluate_assembly_animation",
+          "releaseClaimAllowed": false,
+          "releaseClaimReason": "CAD v1 operation inventory is not a commercial release authorization; persistence is described per operation.",
+          "requiredAuthScope": "read:projects",
+          "source": "scripts/drawing-to-3d/mcp-server.mjs"
+        },
+        "path": "/api/cad/v1/assembly/animation/evaluate",
+        "web": {
+          "approvalBoundary": "cad_http_boundary_only",
+          "approvalRequirement": "none_at_cad_http_boundary",
+          "authType": [
+            "cookie",
+            "bearer_api_key"
+          ],
+          "availability": "dispatcher",
+          "commercialPersistence": "none",
+          "entrypoint": "POST",
+          "mutationScope": "read",
+          "releaseClaimAllowed": false,
+          "releaseClaimReason": "CAD v1 operation inventory is not a commercial release authorization; persistence is described per operation.",
+          "requiredAuthScope": "read:projects",
+          "source": "src/app/api/cad/v1/assembly/animation/evaluate/route.ts"
+        }
+      },
+      {
+        "cli": {
+          "approvalBoundary": "cad_http_boundary_only",
+          "approvalRequirement": "none_at_cad_http_boundary",
+          "authType": [
+            "bearer_api_key"
+          ],
+          "availability": "dispatcher",
+          "commercialPersistence": "none",
+          "entrypoint": "main",
+          "mutationScope": "apply",
+          "name": "animation command",
+          "releaseClaimAllowed": false,
+          "releaseClaimReason": "CAD v1 operation inventory is not a commercial release authorization; persistence is described per operation.",
+          "requiredAuthScope": "write:projects",
+          "source": "scripts/cli/nexyfab.mjs"
+        },
+        "id": "apply_assembly_animation_command",
+        "mcp": {
+          "approvalBoundary": "cad_http_boundary_only",
+          "approvalRequirement": "none_at_cad_http_boundary",
+          "approvalStatus": "HOLD_raw_mcp_entrypoint",
+          "authType": [
+            "bearer_api_key"
+          ],
+          "availability": "dispatcher",
+          "commercialPersistence": "none",
+          "entrypoint": "callTool",
+          "mutationScope": "apply",
+          "name": "apply_assembly_animation_command",
+          "releaseClaimAllowed": false,
+          "releaseClaimReason": "CAD v1 operation inventory is not a commercial release authorization; persistence is described per operation.",
+          "requiredAuthScope": "write:projects",
+          "source": "scripts/drawing-to-3d/mcp-server.mjs"
+        },
+        "path": "/api/cad/v1/assembly/animation/command",
+        "web": {
+          "approvalBoundary": "cad_http_boundary_only",
+          "approvalRequirement": "none_at_cad_http_boundary",
+          "authType": [
+            "cookie",
+            "bearer_api_key"
+          ],
+          "availability": "dispatcher",
+          "commercialPersistence": "none",
+          "entrypoint": "POST",
+          "mutationScope": "apply",
+          "releaseClaimAllowed": false,
+          "releaseClaimReason": "CAD v1 operation inventory is not a commercial release authorization; persistence is described per operation.",
+          "requiredAuthScope": "write:projects",
+          "source": "src/app/api/cad/v1/assembly/animation/command/route.ts"
+        }
+      },
+      {
+        "cli": {
+          "approvalBoundary": "cad_http_boundary_only",
+          "approvalRequirement": "none_at_cad_http_boundary",
+          "authType": [
+            "bearer_api_key"
+          ],
+          "availability": "dispatcher",
+          "commercialPersistence": "none",
+          "entrypoint": "main",
+          "mutationScope": "propose",
+          "name": "assembly edit --verify-brep",
+          "releaseClaimAllowed": false,
+          "releaseClaimReason": "CAD v1 operation inventory is not a commercial release authorization; persistence is described per operation.",
+          "requiredAuthScope": "read:projects",
+          "source": "scripts/cli/nexyfab.mjs"
+        },
+        "id": "preview_assembly_selection_edit",
+        "mcp": {
+          "approvalBoundary": "cad_http_boundary_only",
+          "approvalRequirement": "none_at_cad_http_boundary",
+          "approvalStatus": "HOLD_raw_mcp_entrypoint",
+          "authType": [
+            "bearer_api_key"
+          ],
+          "availability": "dispatcher",
+          "commercialPersistence": "none",
+          "entrypoint": "callTool",
+          "mutationScope": "propose",
+          "name": "preview_assembly_selection_edit",
+          "releaseClaimAllowed": false,
+          "releaseClaimReason": "CAD v1 operation inventory is not a commercial release authorization; persistence is described per operation.",
+          "requiredAuthScope": "read:projects",
+          "source": "scripts/drawing-to-3d/mcp-server.mjs"
+        },
+        "path": "/api/cad/v1/assembly/selection-edit",
+        "web": {
+          "approvalBoundary": "cad_http_boundary_only",
+          "approvalRequirement": "none_at_cad_http_boundary",
+          "authType": [
+            "cookie",
+            "bearer_api_key"
+          ],
+          "availability": "dispatcher",
+          "commercialPersistence": "none",
+          "entrypoint": "POST",
+          "mutationScope": "propose",
+          "releaseClaimAllowed": false,
+          "releaseClaimReason": "CAD v1 operation inventory is not a commercial release authorization; persistence is described per operation.",
+          "requiredAuthScope": "read:projects",
+          "source": "src/app/api/cad/v1/assembly/selection-edit/route.ts"
+        }
+      },
+      {
+        "cli": {
+          "approvalBoundary": "cad_http_boundary_only",
+          "approvalRequirement": "none_at_cad_http_boundary",
+          "authType": [
+            "bearer_api_key"
+          ],
+          "availability": "dispatcher",
+          "commercialPersistence": "none",
+          "entrypoint": "main",
+          "mutationScope": "apply",
+          "name": "brep push-pull",
+          "releaseClaimAllowed": false,
+          "releaseClaimReason": "CAD v1 operation inventory is not a commercial release authorization; persistence is described per operation.",
+          "requiredAuthScope": "write:projects",
+          "source": "scripts/cli/nexyfab.mjs"
+        },
+        "id": "push_pull_step_face",
+        "mcp": {
+          "approvalBoundary": "cad_http_boundary_only",
+          "approvalRequirement": "none_at_cad_http_boundary",
+          "approvalStatus": "HOLD_raw_mcp_entrypoint",
+          "authType": [
+            "bearer_api_key"
+          ],
+          "availability": "dispatcher",
+          "commercialPersistence": "none",
+          "entrypoint": "callTool",
+          "mutationScope": "apply",
+          "name": "push_pull_step_face",
+          "releaseClaimAllowed": false,
+          "releaseClaimReason": "CAD v1 operation inventory is not a commercial release authorization; persistence is described per operation.",
+          "requiredAuthScope": "write:projects",
+          "source": "scripts/drawing-to-3d/mcp-server.mjs"
+        },
+        "path": "/api/cad/v1/brep/push-pull",
+        "web": {
+          "approvalBoundary": "cad_http_boundary_only",
+          "approvalRequirement": "none_at_cad_http_boundary",
+          "authType": [
+            "cookie",
+            "bearer_api_key"
+          ],
+          "availability": "dispatcher",
+          "commercialPersistence": "none",
+          "entrypoint": "POST",
+          "mutationScope": "apply",
+          "releaseClaimAllowed": false,
+          "releaseClaimReason": "CAD v1 operation inventory is not a commercial release authorization; persistence is described per operation.",
+          "requiredAuthScope": "write:projects",
+          "source": "src/app/api/cad/v1/brep/push-pull/route.ts"
+        }
+      },
+      {
+        "cli": {
+          "approvalBoundary": "cad_http_boundary_only",
+          "approvalRequirement": "none_at_cad_http_boundary",
+          "authType": [
+            "bearer_api_key"
+          ],
+          "availability": "dispatcher",
+          "commercialPersistence": "none",
+          "entrypoint": "main",
+          "mutationScope": "read",
+          "name": "animation verify",
+          "releaseClaimAllowed": false,
+          "releaseClaimReason": "CAD v1 operation inventory is not a commercial release authorization; persistence is described per operation.",
+          "requiredAuthScope": "read:projects",
+          "source": "scripts/cli/nexyfab.mjs"
+        },
+        "id": "verify_assembly_animation",
+        "mcp": {
+          "approvalBoundary": "cad_http_boundary_only",
+          "approvalRequirement": "none_at_cad_http_boundary",
+          "approvalStatus": "HOLD_raw_mcp_entrypoint",
+          "authType": [
+            "bearer_api_key"
+          ],
+          "availability": "dispatcher",
+          "commercialPersistence": "none",
+          "entrypoint": "callTool",
+          "mutationScope": "read",
+          "name": "verify_assembly_animation",
+          "releaseClaimAllowed": false,
+          "releaseClaimReason": "CAD v1 operation inventory is not a commercial release authorization; persistence is described per operation.",
+          "requiredAuthScope": "read:projects",
+          "source": "scripts/drawing-to-3d/mcp-server.mjs"
+        },
+        "path": "/api/cad/v1/assembly/animation/verify",
+        "web": {
+          "approvalBoundary": "cad_http_boundary_only",
+          "approvalRequirement": "none_at_cad_http_boundary",
+          "authType": [
+            "cookie",
+            "bearer_api_key"
+          ],
+          "availability": "dispatcher",
+          "commercialPersistence": "none",
+          "entrypoint": "POST",
+          "mutationScope": "read",
+          "releaseClaimAllowed": false,
+          "releaseClaimReason": "CAD v1 operation inventory is not a commercial release authorization; persistence is described per operation.",
+          "requiredAuthScope": "read:projects",
+          "source": "src/app/api/cad/v1/assembly/animation/verify/route.ts"
+        }
+      },
+      {
+        "cli": {
+          "approvalBoundary": "cad_http_boundary_only",
+          "approvalRequirement": "none_at_cad_http_boundary",
+          "authType": [
+            "bearer_api_key"
+          ],
+          "availability": "dispatcher",
+          "commercialPersistence": "none",
+          "entrypoint": "main",
+          "mutationScope": "read",
+          "name": "generation verify",
+          "releaseClaimAllowed": false,
+          "releaseClaimReason": "CAD v1 operation inventory is not a commercial release authorization; persistence is described per operation.",
+          "requiredAuthScope": "read:projects",
+          "source": "scripts/cli/nexyfab.mjs"
+        },
+        "id": "verify_ai_generation",
+        "mcp": {
+          "approvalBoundary": "cad_http_boundary_only",
+          "approvalRequirement": "none_at_cad_http_boundary",
+          "approvalStatus": "HOLD_raw_mcp_entrypoint",
+          "authType": [
+            "bearer_api_key"
+          ],
+          "availability": "dispatcher",
+          "commercialPersistence": "none",
+          "entrypoint": "callTool",
+          "mutationScope": "read",
+          "name": "verify_ai_generation",
+          "releaseClaimAllowed": false,
+          "releaseClaimReason": "CAD v1 operation inventory is not a commercial release authorization; persistence is described per operation.",
+          "requiredAuthScope": "read:projects",
+          "source": "scripts/drawing-to-3d/mcp-server.mjs"
+        },
+        "path": "/api/cad/v1/generation/verify",
+        "web": {
+          "approvalBoundary": "cad_http_boundary_only",
+          "approvalRequirement": "none_at_cad_http_boundary",
+          "authType": [
+            "cookie",
+            "bearer_api_key"
+          ],
+          "availability": "dispatcher",
+          "commercialPersistence": "none",
+          "entrypoint": "POST",
+          "mutationScope": "read",
+          "releaseClaimAllowed": false,
+          "releaseClaimReason": "CAD v1 operation inventory is not a commercial release authorization; persistence is described per operation.",
+          "requiredAuthScope": "read:projects",
+          "source": "src/app/api/cad/v1/generation/verify/route.ts"
+        }
+      },
+      {
+        "cli": {
+          "availability": "HOLD",
+          "reason": "No bounded CLI argument adapter is advertised for this operation."
+        },
+        "id": "refine_ai_generation",
+        "mcp": {
+          "approvalBoundary": "cad_http_boundary_only",
+          "approvalRequirement": "none_at_cad_http_boundary",
+          "approvalStatus": "HOLD_raw_mcp_entrypoint",
+          "authType": [
+            "bearer_api_key"
+          ],
+          "availability": "dispatcher",
+          "commercialPersistence": "commercial_mode_postgres_generation_state",
+          "entrypoint": "callTool",
+          "mutationScope": "propose",
+          "name": "refine_ai_generation",
+          "releaseClaimAllowed": false,
+          "releaseClaimReason": "CAD v1 operation inventory is not a commercial release authorization; persistence is described per operation.",
+          "requiredAuthScope": "write:projects",
+          "source": "scripts/drawing-to-3d/mcp-server.mjs"
+        },
+        "path": "/api/cad/v1/generation/refine",
+        "web": {
+          "approvalBoundary": "cad_http_boundary_only",
+          "approvalRequirement": "none_at_cad_http_boundary",
+          "authType": [
+            "cookie",
+            "bearer_api_key"
+          ],
+          "availability": "dispatcher",
+          "commercialPersistence": "commercial_mode_postgres_generation_state",
+          "entrypoint": "POST",
+          "mutationScope": "propose",
+          "releaseClaimAllowed": false,
+          "releaseClaimReason": "CAD v1 operation inventory is not a commercial release authorization; persistence is described per operation.",
+          "requiredAuthScope": "write:projects",
+          "source": "src/app/api/cad/v1/generation/refine/route.ts"
+        }
+      },
+      {
+        "cli": {
+          "approvalBoundary": "cad_http_boundary_only",
+          "approvalRequirement": "none_at_cad_http_boundary",
+          "authType": [
+            "bearer_api_key"
+          ],
+          "availability": "dispatcher",
+          "commercialPersistence": "commercial_mode_postgres_generation_state",
+          "entrypoint": "main",
+          "mutationScope": "propose",
+          "name": "generation state --file",
+          "releaseClaimAllowed": false,
+          "releaseClaimReason": "CAD v1 operation inventory is not a commercial release authorization; persistence is described per operation.",
+          "requiredAuthScope": "write:projects",
+          "source": "scripts/cli/nexyfab.mjs"
+        },
+        "id": "transition_ai_generation_state",
+        "mcp": {
+          "approvalBoundary": "cad_http_boundary_only",
+          "approvalRequirement": "none_at_cad_http_boundary",
+          "approvalStatus": "HOLD_raw_mcp_entrypoint",
+          "authType": [
+            "bearer_api_key"
+          ],
+          "availability": "dispatcher",
+          "commercialPersistence": "commercial_mode_postgres_generation_state",
+          "entrypoint": "callTool",
+          "mutationScope": "propose",
+          "name": "transition_ai_generation_state",
+          "releaseClaimAllowed": false,
+          "releaseClaimReason": "CAD v1 operation inventory is not a commercial release authorization; persistence is described per operation.",
+          "requiredAuthScope": "write:projects",
+          "source": "scripts/drawing-to-3d/mcp-server.mjs"
+        },
+        "path": "/api/cad/v1/generation/state",
+        "web": {
+          "approvalBoundary": "cad_http_boundary_only",
+          "approvalRequirement": "none_at_cad_http_boundary",
+          "authType": [
+            "cookie",
+            "bearer_api_key"
+          ],
+          "availability": "dispatcher",
+          "commercialPersistence": "commercial_mode_postgres_generation_state",
+          "entrypoint": "POST",
+          "mutationScope": "propose",
+          "releaseClaimAllowed": false,
+          "releaseClaimReason": "CAD v1 operation inventory is not a commercial release authorization; persistence is described per operation.",
+          "requiredAuthScope": "write:projects",
+          "source": "src/app/api/cad/v1/generation/state/route.ts"
+        }
+      },
+      {
+        "cli": {
+          "approvalBoundary": "cad_http_boundary_only",
+          "approvalRequirement": "none_at_cad_http_boundary",
+          "authType": [
+            "bearer_api_key"
+          ],
+          "availability": "dispatcher",
+          "commercialPersistence": "commercial_mode_postgres_generation_state_with_advance_replay_and_topology_lineage",
+          "entrypoint": "main",
+          "mutationScope": "propose",
+          "name": "generation advance --file",
+          "releaseClaimAllowed": false,
+          "releaseClaimReason": "CAD v1 operation inventory is not a commercial release authorization; persistence is described per operation.",
+          "requiredAuthScope": "write:projects",
+          "source": "scripts/cli/nexyfab.mjs"
+        },
+        "id": "advance_ai_generation",
+        "mcp": {
+          "approvalBoundary": "cad_http_boundary_only",
+          "approvalRequirement": "none_at_cad_http_boundary",
+          "approvalStatus": "HOLD_raw_mcp_entrypoint",
+          "authType": [
+            "bearer_api_key"
+          ],
+          "availability": "dispatcher",
+          "commercialPersistence": "commercial_mode_postgres_generation_state_with_advance_replay_and_topology_lineage",
+          "entrypoint": "callTool",
+          "mutationScope": "propose",
+          "name": "advance_ai_generation",
+          "releaseClaimAllowed": false,
+          "releaseClaimReason": "CAD v1 operation inventory is not a commercial release authorization; persistence is described per operation.",
+          "requiredAuthScope": "write:projects",
+          "source": "scripts/drawing-to-3d/mcp-server.mjs"
+        },
+        "path": "/api/cad/v1/generation/advance",
+        "web": {
+          "approvalBoundary": "cad_http_boundary_only",
+          "approvalRequirement": "none_at_cad_http_boundary",
+          "authType": [
+            "cookie",
+            "bearer_api_key"
+          ],
+          "availability": "dispatcher",
+          "commercialPersistence": "commercial_mode_postgres_generation_state_with_advance_replay_and_topology_lineage",
+          "entrypoint": "POST",
+          "mutationScope": "propose",
+          "releaseClaimAllowed": false,
+          "releaseClaimReason": "CAD v1 operation inventory is not a commercial release authorization; persistence is described per operation.",
+          "requiredAuthScope": "write:projects",
+          "source": "src/app/api/cad/v1/generation/advance/route.ts"
+        }
+      },
+      {
+        "cli": {
+          "approvalBoundary": "cad_http_boundary_only",
+          "approvalRequirement": "none_at_cad_http_boundary",
+          "authType": [
+            "bearer_api_key"
+          ],
+          "availability": "dispatcher",
+          "commercialPersistence": "commercial_mode_postgres_generation_state_with_verified_receipt_reference",
+          "entrypoint": "main",
+          "mutationScope": "export",
+          "name": "generation finalize --file",
+          "releaseClaimAllowed": false,
+          "releaseClaimReason": "CAD v1 operation inventory is not a commercial release authorization; persistence is described per operation.",
+          "requiredAuthScope": "write:projects",
+          "source": "scripts/cli/nexyfab.mjs"
+        },
+        "id": "finalize_ai_generation",
+        "mcp": {
+          "approvalBoundary": "cad_http_boundary_only",
+          "approvalRequirement": "none_at_cad_http_boundary",
+          "approvalStatus": "HOLD_raw_mcp_entrypoint",
+          "authType": [
+            "bearer_api_key"
+          ],
+          "availability": "dispatcher",
+          "commercialPersistence": "commercial_mode_postgres_generation_state_with_verified_receipt_reference",
+          "entrypoint": "callTool",
+          "mutationScope": "export",
+          "name": "finalize_ai_generation",
+          "releaseClaimAllowed": false,
+          "releaseClaimReason": "CAD v1 operation inventory is not a commercial release authorization; persistence is described per operation.",
+          "requiredAuthScope": "write:projects",
+          "source": "scripts/drawing-to-3d/mcp-server.mjs"
+        },
+        "path": "/api/cad/v1/generation/finalize",
+        "web": {
+          "approvalBoundary": "cad_http_boundary_only",
+          "approvalRequirement": "none_at_cad_http_boundary",
+          "authType": [
+            "cookie",
+            "bearer_api_key"
+          ],
+          "availability": "dispatcher",
+          "commercialPersistence": "commercial_mode_postgres_generation_state_with_verified_receipt_reference",
+          "entrypoint": "POST",
+          "mutationScope": "export",
+          "releaseClaimAllowed": false,
+          "releaseClaimReason": "CAD v1 operation inventory is not a commercial release authorization; persistence is described per operation.",
+          "requiredAuthScope": "write:projects",
+          "source": "src/app/api/cad/v1/generation/finalize/route.ts"
+        }
+      },
+      {
+        "cli": {
+          "availability": "HOLD",
+          "reason": "No bounded CLI argument adapter is advertised for this operation."
+        },
+        "id": "verify_physical_network",
+        "mcp": {
+          "approvalBoundary": "cad_http_boundary_only",
+          "approvalRequirement": "none_at_cad_http_boundary",
+          "approvalStatus": "HOLD_raw_mcp_entrypoint",
+          "authType": [
+            "bearer_api_key"
+          ],
+          "availability": "dispatcher",
+          "commercialPersistence": "none",
+          "entrypoint": "callTool",
+          "mutationScope": "read",
+          "name": "verify_physical_network",
+          "releaseClaimAllowed": false,
+          "releaseClaimReason": "CAD v1 operation inventory is not a commercial release authorization; persistence is described per operation.",
+          "requiredAuthScope": "read:projects",
+          "source": "scripts/drawing-to-3d/mcp-server.mjs"
+        },
+        "path": "/api/cad/v1/physical-network/verify",
+        "web": {
+          "approvalBoundary": "cad_http_boundary_only",
+          "approvalRequirement": "none_at_cad_http_boundary",
+          "authType": [
+            "cookie",
+            "bearer_api_key"
+          ],
+          "availability": "dispatcher",
+          "commercialPersistence": "none",
+          "entrypoint": "POST",
+          "mutationScope": "read",
+          "releaseClaimAllowed": false,
+          "releaseClaimReason": "CAD v1 operation inventory is not a commercial release authorization; persistence is described per operation.",
+          "requiredAuthScope": "read:projects",
+          "source": "src/app/api/cad/v1/physical-network/verify/route.ts"
+        }
+      },
+      {
+        "cli": {
+          "approvalBoundary": "cad_http_boundary_only",
+          "approvalRequirement": "none_at_cad_http_boundary",
+          "authType": [
+            "bearer_api_key"
+          ],
+          "availability": "dispatcher",
+          "commercialPersistence": "none",
+          "entrypoint": "main",
+          "mutationScope": "apply",
+          "name": "robot generate",
+          "releaseClaimAllowed": false,
+          "releaseClaimReason": "CAD v1 operation inventory is not a commercial release authorization; persistence is described per operation.",
+          "requiredAuthScope": "write:projects",
+          "source": "scripts/cli/nexyfab.mjs"
+        },
+        "id": "generate_robot_6axis",
+        "mcp": {
+          "approvalBoundary": "cad_http_boundary_only",
+          "approvalRequirement": "none_at_cad_http_boundary",
+          "approvalStatus": "HOLD_raw_mcp_entrypoint",
+          "authType": [
+            "bearer_api_key"
+          ],
+          "availability": "dispatcher",
+          "commercialPersistence": "none",
+          "entrypoint": "callTool",
+          "mutationScope": "apply",
+          "name": "generate_robot_6axis",
+          "releaseClaimAllowed": false,
+          "releaseClaimReason": "CAD v1 operation inventory is not a commercial release authorization; persistence is described per operation.",
+          "requiredAuthScope": "write:projects",
+          "source": "scripts/drawing-to-3d/mcp-server.mjs"
+        },
+        "path": "/api/cad/v1/robot/generate",
+        "web": {
+          "approvalBoundary": "cad_http_boundary_only",
+          "approvalRequirement": "none_at_cad_http_boundary",
+          "authType": [
+            "cookie",
+            "bearer_api_key"
+          ],
+          "availability": "dispatcher",
+          "commercialPersistence": "none",
+          "entrypoint": "POST",
+          "mutationScope": "apply",
+          "releaseClaimAllowed": false,
+          "releaseClaimReason": "CAD v1 operation inventory is not a commercial release authorization; persistence is described per operation.",
+          "requiredAuthScope": "write:projects",
+          "source": "src/app/api/cad/v1/robot/generate/route.ts"
+        }
+      },
+      {
+        "cli": {
+          "approvalBoundary": "cad_http_boundary_only",
+          "approvalRequirement": "none_at_cad_http_boundary",
+          "authType": [
+            "bearer_api_key"
+          ],
+          "availability": "dispatcher",
+          "commercialPersistence": "none",
+          "entrypoint": "main",
+          "mutationScope": "read",
+          "name": "manufacturing verify",
+          "releaseClaimAllowed": false,
+          "releaseClaimReason": "CAD v1 operation inventory is not a commercial release authorization; persistence is described per operation.",
+          "requiredAuthScope": "read:projects",
+          "source": "scripts/cli/nexyfab.mjs"
+        },
+        "id": "verify_manufacturing_evidence",
+        "mcp": {
+          "approvalBoundary": "cad_http_boundary_only",
+          "approvalRequirement": "none_at_cad_http_boundary",
+          "approvalStatus": "HOLD_raw_mcp_entrypoint",
+          "authType": [
+            "bearer_api_key"
+          ],
+          "availability": "dispatcher",
+          "commercialPersistence": "none",
+          "entrypoint": "callTool",
+          "mutationScope": "read",
+          "name": "verify_manufacturing_evidence",
+          "releaseClaimAllowed": false,
+          "releaseClaimReason": "CAD v1 operation inventory is not a commercial release authorization; persistence is described per operation.",
+          "requiredAuthScope": "read:projects",
+          "source": "scripts/drawing-to-3d/mcp-server.mjs"
+        },
+        "path": "/api/cad/v1/manufacturing/verify",
+        "web": {
+          "approvalBoundary": "cad_http_boundary_only",
+          "approvalRequirement": "none_at_cad_http_boundary",
+          "authType": [
+            "cookie",
+            "bearer_api_key"
+          ],
+          "availability": "dispatcher",
+          "commercialPersistence": "none",
+          "entrypoint": "POST",
+          "mutationScope": "read",
+          "releaseClaimAllowed": false,
+          "releaseClaimReason": "CAD v1 operation inventory is not a commercial release authorization; persistence is described per operation.",
+          "requiredAuthScope": "read:projects",
+          "source": "src/app/api/cad/v1/manufacturing/verify/route.ts"
+        }
+      },
+      {
+        "cli": {
+          "approvalBoundary": "cad_http_boundary_only",
+          "approvalRequirement": "none_at_cad_http_boundary",
+          "authType": [
+            "bearer_api_key"
+          ],
+          "availability": "dispatcher",
+          "commercialPersistence": "none",
+          "entrypoint": "main",
+          "mutationScope": "read",
+          "name": "sheet-metal verify",
+          "releaseClaimAllowed": false,
+          "releaseClaimReason": "CAD v1 operation inventory is not a commercial release authorization; persistence is described per operation.",
+          "requiredAuthScope": "read:projects",
+          "source": "scripts/cli/nexyfab.mjs"
+        },
+        "id": "verify_sheet_metal",
+        "mcp": {
+          "approvalBoundary": "cad_http_boundary_only",
+          "approvalRequirement": "none_at_cad_http_boundary",
+          "approvalStatus": "HOLD_raw_mcp_entrypoint",
+          "authType": [
+            "bearer_api_key"
+          ],
+          "availability": "dispatcher",
+          "commercialPersistence": "none",
+          "entrypoint": "callTool",
+          "mutationScope": "read",
+          "name": "verify_sheet_metal",
+          "releaseClaimAllowed": false,
+          "releaseClaimReason": "CAD v1 operation inventory is not a commercial release authorization; persistence is described per operation.",
+          "requiredAuthScope": "read:projects",
+          "source": "scripts/drawing-to-3d/mcp-server.mjs"
+        },
+        "path": "/api/cad/v1/sheet-metal/verify",
+        "web": {
+          "approvalBoundary": "cad_http_boundary_only",
+          "approvalRequirement": "none_at_cad_http_boundary",
+          "authType": [
+            "cookie",
+            "bearer_api_key"
+          ],
+          "availability": "dispatcher",
+          "commercialPersistence": "none",
+          "entrypoint": "POST",
+          "mutationScope": "read",
+          "releaseClaimAllowed": false,
+          "releaseClaimReason": "CAD v1 operation inventory is not a commercial release authorization; persistence is described per operation.",
+          "requiredAuthScope": "read:projects",
+          "source": "src/app/api/cad/v1/sheet-metal/verify/route.ts"
+        }
+      },
+      {
+        "cli": {
+          "approvalBoundary": "cad_http_boundary_only",
+          "approvalRequirement": "none_at_cad_http_boundary",
+          "authType": [
+            "bearer_api_key"
+          ],
+          "availability": "dispatcher",
+          "commercialPersistence": "none",
+          "entrypoint": "main",
+          "mutationScope": "read",
+          "name": "weldment verify",
+          "releaseClaimAllowed": false,
+          "releaseClaimReason": "CAD v1 operation inventory is not a commercial release authorization; persistence is described per operation.",
+          "requiredAuthScope": "read:projects",
+          "source": "scripts/cli/nexyfab.mjs"
+        },
+        "id": "verify_weldment",
+        "mcp": {
+          "approvalBoundary": "cad_http_boundary_only",
+          "approvalRequirement": "none_at_cad_http_boundary",
+          "approvalStatus": "HOLD_raw_mcp_entrypoint",
+          "authType": [
+            "bearer_api_key"
+          ],
+          "availability": "dispatcher",
+          "commercialPersistence": "none",
+          "entrypoint": "callTool",
+          "mutationScope": "read",
+          "name": "verify_weldment",
+          "releaseClaimAllowed": false,
+          "releaseClaimReason": "CAD v1 operation inventory is not a commercial release authorization; persistence is described per operation.",
+          "requiredAuthScope": "read:projects",
+          "source": "scripts/drawing-to-3d/mcp-server.mjs"
+        },
+        "path": "/api/cad/v1/weldment/verify",
+        "web": {
+          "approvalBoundary": "cad_http_boundary_only",
+          "approvalRequirement": "none_at_cad_http_boundary",
+          "authType": [
+            "cookie",
+            "bearer_api_key"
+          ],
+          "availability": "dispatcher",
+          "commercialPersistence": "none",
+          "entrypoint": "POST",
+          "mutationScope": "read",
+          "releaseClaimAllowed": false,
+          "releaseClaimReason": "CAD v1 operation inventory is not a commercial release authorization; persistence is described per operation.",
+          "requiredAuthScope": "read:projects",
+          "source": "src/app/api/cad/v1/weldment/verify/route.ts"
+        }
+      },
+      {
+        "cli": {
+          "approvalBoundary": "cad_http_boundary_only",
+          "approvalRequirement": "none_at_cad_http_boundary",
+          "authType": [
+            "bearer_api_key"
+          ],
+          "availability": "dispatcher",
+          "commercialPersistence": "none",
+          "entrypoint": "main",
+          "mutationScope": "read",
+          "name": "tolerance analyze",
+          "releaseClaimAllowed": false,
+          "releaseClaimReason": "CAD v1 operation inventory is not a commercial release authorization; persistence is described per operation.",
+          "requiredAuthScope": "read:projects",
+          "source": "scripts/cli/nexyfab.mjs"
+        },
+        "id": "analyze_tolerance_stack",
+        "mcp": {
+          "approvalBoundary": "cad_http_boundary_only",
+          "approvalRequirement": "none_at_cad_http_boundary",
+          "approvalStatus": "HOLD_raw_mcp_entrypoint",
+          "authType": [
+            "bearer_api_key"
+          ],
+          "availability": "dispatcher",
+          "commercialPersistence": "none",
+          "entrypoint": "callTool",
+          "mutationScope": "read",
+          "name": "analyze_tolerance_stack",
+          "releaseClaimAllowed": false,
+          "releaseClaimReason": "CAD v1 operation inventory is not a commercial release authorization; persistence is described per operation.",
+          "requiredAuthScope": "read:projects",
+          "source": "scripts/drawing-to-3d/mcp-server.mjs"
+        },
+        "path": "/api/cad/v1/tolerance/analyze",
+        "web": {
+          "approvalBoundary": "cad_http_boundary_only",
+          "approvalRequirement": "none_at_cad_http_boundary",
+          "authType": [
+            "cookie",
+            "bearer_api_key"
+          ],
+          "availability": "dispatcher",
+          "commercialPersistence": "none",
+          "entrypoint": "POST",
+          "mutationScope": "read",
+          "releaseClaimAllowed": false,
+          "releaseClaimReason": "CAD v1 operation inventory is not a commercial release authorization; persistence is described per operation.",
+          "requiredAuthScope": "read:projects",
+          "source": "src/app/api/cad/v1/tolerance/analyze/route.ts"
+        }
+      },
+      {
+        "cli": {
+          "approvalBoundary": "cad_http_boundary_only",
+          "approvalRequirement": "none_at_cad_http_boundary",
+          "authType": [
+            "bearer_api_key"
+          ],
+          "availability": "dispatcher",
+          "commercialPersistence": "none",
+          "entrypoint": "main",
+          "mutationScope": "read",
+          "name": "pmi verify",
+          "releaseClaimAllowed": false,
+          "releaseClaimReason": "CAD v1 operation inventory is not a commercial release authorization; persistence is described per operation.",
+          "requiredAuthScope": "read:projects",
+          "source": "scripts/cli/nexyfab.mjs"
+        },
+        "id": "verify_cad_pmi",
+        "mcp": {
+          "approvalBoundary": "cad_http_boundary_only",
+          "approvalRequirement": "none_at_cad_http_boundary",
+          "approvalStatus": "HOLD_raw_mcp_entrypoint",
+          "authType": [
+            "bearer_api_key"
+          ],
+          "availability": "dispatcher",
+          "commercialPersistence": "none",
+          "entrypoint": "callTool",
+          "mutationScope": "read",
+          "name": "verify_cad_pmi",
+          "releaseClaimAllowed": false,
+          "releaseClaimReason": "CAD v1 operation inventory is not a commercial release authorization; persistence is described per operation.",
+          "requiredAuthScope": "read:projects",
+          "source": "scripts/drawing-to-3d/mcp-server.mjs"
+        },
+        "path": "/api/cad/v1/pmi/verify",
+        "web": {
+          "approvalBoundary": "cad_http_boundary_only",
+          "approvalRequirement": "none_at_cad_http_boundary",
+          "authType": [
+            "cookie",
+            "bearer_api_key"
+          ],
+          "availability": "dispatcher",
+          "commercialPersistence": "none",
+          "entrypoint": "POST",
+          "mutationScope": "read",
+          "releaseClaimAllowed": false,
+          "releaseClaimReason": "CAD v1 operation inventory is not a commercial release authorization; persistence is described per operation.",
+          "requiredAuthScope": "read:projects",
+          "source": "src/app/api/cad/v1/pmi/verify/route.ts"
+        }
+      }
+    ],
+    "heldRoutes": [
+      {
+        "exposure": "HOLD",
+        "path": "/api/cad/v1/architecture/daylight/package",
+        "reason": "HOLD: generated daylight package/export path requires write scope and bounded parity."
+      },
+      {
+        "exposure": "HOLD",
+        "path": "/api/cad/v1/architecture/daylight/results",
+        "reason": "HOLD: Route exists, but bounded Agent/MCP/CLI adapter and commercial parity are not implemented."
+      },
+      {
+        "exposure": "HOLD",
+        "path": "/api/cad/v1/architecture/daylight/run",
+        "reason": "HOLD: Route exists, but bounded Agent/MCP/CLI adapter and commercial parity are not implemented."
+      },
+      {
+        "exposure": "HOLD",
+        "path": "/api/cad/v1/architecture/daylight/status",
+        "reason": "HOLD: side_effect — GET probes Radiance executables via child-process spawn; it is not a safe read-only status surface."
+      },
+      {
+        "exposure": "HOLD",
+        "path": "/api/cad/v1/architecture/daylight/verify",
+        "reason": "HOLD: Route exists, but bounded Agent/MCP/CLI adapter and commercial parity are not implemented."
+      },
+      {
+        "exposure": "HOLD",
+        "path": "/api/cad/v1/architecture/interior/edit",
+        "reason": "HOLD: project/interior mutation path requires bounded editor authorization and transaction parity."
+      },
+      {
+        "exposure": "HOLD",
+        "path": "/api/cad/v1/architecture/service-openings/sync",
+        "reason": "HOLD: project service-opening mutation path requires bounded editor authorization and transaction parity."
+      },
+      {
+        "exposure": "HOLD",
+        "path": "/api/cad/v1/architecture/verify",
+        "reason": "HOLD: Route exists, but bounded Agent/MCP/CLI adapter and commercial parity are not implemented."
+      },
+      {
+        "exposure": "HOLD",
+        "path": "/api/cad/v1/assembly/release/verify",
+        "reason": "HOLD: Route exists, but bounded Agent/MCP/CLI adapter and commercial parity are not implemented."
+      },
+      {
+        "exposure": "HOLD",
+        "path": "/api/cad/v1/generation/commercial-receipts",
+        "reason": "HOLD: Route exists, but bounded Agent/MCP/CLI adapter and commercial parity are not implemented."
+      },
+      {
+        "exposure": "HOLD",
+        "path": "/api/cad/v1/generation/commercial-receipts/requests",
+        "reason": "HOLD: Route exists, but bounded Agent/MCP/CLI adapter and commercial parity are not implemented."
+      },
+      {
+        "exposure": "HOLD",
+        "path": "/api/cad/v1/ifc/deep-roundtrip",
+        "reason": "HOLD: Route exists, but bounded Agent/MCP/CLI adapter and commercial parity are not implemented."
+      },
+      {
+        "exposure": "HOLD",
+        "path": "/api/cad/v1/interior/layout/edit",
+        "reason": "HOLD: project interior-layout mutation path requires bounded editor authorization and transaction parity."
+      },
+      {
+        "exposure": "HOLD",
+        "path": "/api/cad/v1/interior/verify",
+        "reason": "HOLD: Route exists, but bounded Agent/MCP/CLI adapter and commercial parity are not implemented."
+      },
+      {
+        "exposure": "HOLD",
+        "path": "/api/cad/v1/mep/route",
+        "reason": "HOLD: Route exists, but bounded Agent/MCP/CLI adapter and commercial parity are not implemented."
+      },
+      {
+        "exposure": "HOLD",
+        "path": "/api/cad/v1/robot/cable/life",
+        "reason": "HOLD: Route exists, but bounded Agent/MCP/CLI adapter and commercial parity are not implemented."
+      },
+      {
+        "exposure": "HOLD",
+        "path": "/api/cad/v1/robot/catalog/admit",
+        "reason": "HOLD: Route exists, but bounded Agent/MCP/CLI adapter and commercial parity are not implemented."
+      },
+      {
+        "exposure": "HOLD",
+        "path": "/api/cad/v1/robot/catalog/housing-fit",
+        "reason": "HOLD: Route exists, but bounded Agent/MCP/CLI adapter and commercial parity are not implemented."
+      },
+      {
+        "exposure": "HOLD",
+        "path": "/api/cad/v1/robot/catalog/select",
+        "reason": "HOLD: Route exists, but bounded Agent/MCP/CLI adapter and commercial parity are not implemented."
+      },
+      {
+        "exposure": "HOLD",
+        "path": "/api/cad/v1/robot/compliance/evaluate",
+        "reason": "HOLD: Route exists, but bounded Agent/MCP/CLI adapter and commercial parity are not implemented."
+      },
+      {
+        "exposure": "HOLD",
+        "path": "/api/cad/v1/robot/dynamics/evaluate",
+        "reason": "HOLD: Route exists, but bounded Agent/MCP/CLI adapter and commercial parity are not implemented."
+      },
+      {
+        "exposure": "HOLD",
+        "path": "/api/cad/v1/robot/engineering/analyze",
+        "reason": "HOLD: Route exists, but bounded Agent/MCP/CLI adapter and commercial parity are not implemented."
+      },
+      {
+        "exposure": "HOLD",
+        "path": "/api/cad/v1/robot/engineering/coverage",
+        "reason": "HOLD: Route exists, but bounded Agent/MCP/CLI adapter and commercial parity are not implemented."
+      },
+      {
+        "exposure": "HOLD",
+        "path": "/api/cad/v1/robot/integration/apply",
+        "reason": "HOLD: integration apply/export path requires write scope and bounded approval/parity."
+      },
+      {
+        "exposure": "HOLD",
+        "path": "/api/cad/v1/robot/integration/post-verify",
+        "reason": "HOLD: Route exists, but bounded Agent/MCP/CLI adapter and commercial parity are not implemented."
+      },
+      {
+        "exposure": "HOLD",
+        "path": "/api/cad/v1/robot/integration/prepare",
+        "reason": "HOLD: Route exists, but bounded Agent/MCP/CLI adapter and commercial parity are not implemented."
+      },
+      {
+        "exposure": "HOLD",
+        "path": "/api/cad/v1/robot/integration/review",
+        "reason": "HOLD: Route exists, but bounded Agent/MCP/CLI adapter and commercial parity are not implemented."
+      },
+      {
+        "exposure": "HOLD",
+        "path": "/api/cad/v1/robot/life/evaluate",
+        "reason": "HOLD: Route exists, but bounded Agent/MCP/CLI adapter and commercial parity are not implemented."
+      },
+      {
+        "exposure": "HOLD",
+        "path": "/api/cad/v1/robot/motion/coverage",
+        "reason": "HOLD: Route exists, but bounded Agent/MCP/CLI adapter and commercial parity are not implemented."
+      },
+      {
+        "exposure": "HOLD",
+        "path": "/api/cad/v1/robot/physical/verify",
+        "reason": "HOLD: Route exists, but bounded Agent/MCP/CLI adapter and commercial parity are not implemented."
+      },
+      {
+        "exposure": "HOLD",
+        "path": "/api/cad/v1/robot/precision/evaluate",
+        "reason": "HOLD: Route exists, but bounded Agent/MCP/CLI adapter and commercial parity are not implemented."
+      },
+      {
+        "exposure": "HOLD",
+        "path": "/api/cad/v1/robot/release/audit",
+        "reason": "HOLD: Route exists, but bounded Agent/MCP/CLI adapter and commercial parity are not implemented."
+      },
+      {
+        "exposure": "HOLD",
+        "path": "/api/cad/v1/robot/release/final-review",
+        "reason": "HOLD: Route exists, but bounded Agent/MCP/CLI adapter and commercial parity are not implemented."
+      },
+      {
+        "exposure": "HOLD",
+        "path": "/api/cad/v1/robot/release/verified-audit",
+        "reason": "HOLD: Route exists, but bounded Agent/MCP/CLI adapter and commercial parity are not implemented."
+      },
+      {
+        "exposure": "HOLD",
+        "path": "/api/cad/v1/robot/release/work-packet",
+        "reason": "HOLD: generated release work-packet/export path requires write scope and bounded parity."
+      },
+      {
+        "exposure": "HOLD",
+        "path": "/api/cad/v1/robot/requirements/verify",
+        "reason": "HOLD: Route exists, but bounded Agent/MCP/CLI adapter and commercial parity are not implemented."
+      },
+      {
+        "exposure": "HOLD",
+        "path": "/api/cad/v1/robot/reverify",
+        "reason": "HOLD: Route exists, but bounded Agent/MCP/CLI adapter and commercial parity are not implemented."
+      },
+      {
+        "exposure": "HOLD",
+        "path": "/api/cad/v1/robot/safety/electrical",
+        "reason": "HOLD: Route exists, but bounded Agent/MCP/CLI adapter and commercial parity are not implemented."
+      },
+      {
+        "exposure": "HOLD",
+        "path": "/api/cad/v1/robot/thermal/evaluate",
+        "reason": "HOLD: Route exists, but bounded Agent/MCP/CLI adapter and commercial parity are not implemented."
+      },
+      {
+        "exposure": "HOLD",
+        "path": "/api/cad/v1/spatial/command",
+        "reason": "HOLD: CAD draft mutation path requires bounded authorization and durable-state parity."
+      }
+    ]
+  },
+  "claimPolicy": {
+    "commercialPersistenceRequires": "web_project_call_editor_boundary",
+    "missingDispatcher": "HOLD",
+    "missingReason": "HOLD",
+    "releaseClaimDefault": false,
+    "unknownSurface": "HOLD"
+  },
+  "downloadableRemoteMcp": {
+    "authType": [
+      "none",
+      "bearer_api_key"
+    ],
+    "expectedToolCount": 15,
+    "localOverlapByName": [
+      "edit_part",
+      "face_drag",
+      "part_op",
+      "analyze_fea",
+      "reconstruct_verify",
+      "reconstruct_fleet",
+      "code_check",
+      "verify_domain",
+      "interior_check",
+      "landscape_check",
+      "bridge_check",
+      "load_path"
+    ],
+    "names": [
+      "design_assembly",
+      "compose_part",
+      "edit_part",
+      "face_drag",
+      "part_op",
+      "domain_design",
+      "analyze_fea",
+      "reconstruct_verify",
+      "reconstruct_fleet",
+      "code_check",
+      "verify_domain",
+      "interior_check",
+      "landscape_check",
+      "bridge_check",
+      "load_path"
+    ],
+    "relationship": "standalone remote MCP product surface; distinct from local MCP and not a CAD v1 parity claim",
+    "releaseClaimAllowed": false,
+    "releaseClaimReason": "This HTTP surface is inventory evidence only; it does not authorize a commercial release claim.",
+    "remoteOnlyByName": [
+      "design_assembly",
+      "compose_part",
+      "domain_design"
+    ],
+    "source": "public/downloads/nexyfab-mcp.mjs",
+    "writeApprovalFlag": "confirmCall"
+  },
+  "evidence": {
+    "commercialReleaseEligible": false,
+    "localReady": true,
+    "sourceBindings": [
+      {
+        "bytes": 33122,
+        "path": "public/downloads/nexyfab-mcp.mjs",
+        "sha256": "cf645adc442b34b13a1e20be830bfe613ac67ea19a85c6f8d768e892f3cc22b5"
+      },
+      {
+        "bytes": 40476,
+        "path": "scripts/agent-surface-matrix.mjs",
+        "sha256": "bac8d76824e74885c017198e67ba2041ad17a7c466a28e67349480fbc6db1c5f"
+      },
+      {
+        "bytes": 51117,
+        "path": "scripts/cli/nexyfab.mjs",
+        "sha256": "ff34086a2760a787bae9e8ce04a82c3ed08a0fd840cfb3ae1a81eeb340104d67"
+      },
+      {
+        "bytes": 4251,
+        "path": "scripts/drawing-to-3d/capability-surface-manifest.mjs",
+        "sha256": "041263ec9be851426416a074d4196d153a051410fbede6cd65bbf59f23c56f45"
+      },
+      {
+        "bytes": 19656,
+        "path": "scripts/drawing-to-3d/installer-core-agent-server.mjs",
+        "sha256": "f52af7dd36108d7f0080af41fad5a044ee788018b4459a91096ff7d431a5653d"
+      },
+      {
+        "bytes": 156965,
+        "path": "scripts/drawing-to-3d/mcp-server.mjs",
+        "sha256": "34098c4a2a29e8e68961442a67688f8220b48c7abcb20566994906f4d2824015"
+      },
+      {
+        "bytes": 2370,
+        "path": "src/app/api/cad/v1/assembly/animation/command/route.ts",
+        "sha256": "8b7d553c6ffa877a40dfa4063af6ed75b650721d000a3f645a9f42402d914388"
+      },
+      {
+        "bytes": 1542,
+        "path": "src/app/api/cad/v1/assembly/animation/evaluate/route.ts",
+        "sha256": "ca4aa386c847be156dcad0b1dd5e25b5d3d9394ac81d6cb786e9e98ed16a02da"
+      },
+      {
+        "bytes": 11939,
+        "path": "src/app/api/cad/v1/assembly/animation/verify/route.ts",
+        "sha256": "1c8208843e34d71585477a09c81f250becc87da80463f04b79e9c70749185053"
+      },
+      {
+        "bytes": 2668,
+        "path": "src/app/api/cad/v1/assembly/selection-edit/route.ts",
+        "sha256": "11200f11aa59adf1e3c441ffa657171c9844f7628181f2e5c177c7b70f4f0855"
+      },
+      {
+        "bytes": 17698,
+        "path": "src/app/api/cad/v1/assembly/verify/route.ts",
+        "sha256": "3f343e8c3a525a21b6f84431977da1c7262f44d8b5cd6a401fcac25b0a01bc24"
+      },
+      {
+        "bytes": 3009,
+        "path": "src/app/api/cad/v1/brep/push-pull/route.ts",
+        "sha256": "d02a70be59b348879a0a6af7a5ef2b0589bb9a1872ab6efe0769274365fa4185"
+      },
+      {
+        "bytes": 360,
+        "path": "src/app/api/cad/v1/feature-program/route.ts",
+        "sha256": "a3d6a010f808ca01fcca306ce860962935955ff8ebeb855c6b31ca15bdb8afd7"
+      },
+      {
+        "bytes": 1422,
+        "path": "src/app/api/cad/v1/feature-tree-mesh/route.ts",
+        "sha256": "471076fbf3eb92d8915db47889d3a431cbf2ca0e6f1f70ed740914f6626b504f"
+      },
+      {
+        "bytes": 15679,
+        "path": "src/app/api/cad/v1/generation/advance/route.ts",
+        "sha256": "fc85d4088b625f15116f61e5c2e2ab4ec76d3e7e59b3694bc07c02e739cdcf82"
+      },
+      {
+        "bytes": 14207,
+        "path": "src/app/api/cad/v1/generation/finalize/route.ts",
+        "sha256": "52924792c6aeb045dab536a33ef79807a7329bd515e7b7f902e8def7af911888"
+      },
+      {
+        "bytes": 4814,
+        "path": "src/app/api/cad/v1/generation/refine/route.ts",
+        "sha256": "01bb3a0969625896bd083b5375a5dbc11f54f433e637ec03c94c9ea3e2ccd239"
+      },
+      {
+        "bytes": 7063,
+        "path": "src/app/api/cad/v1/generation/state/route.ts",
+        "sha256": "2692af6916cf3c7815ae6b800dc28b27684423a63577412c6f0547f34dc115d7"
+      },
+      {
+        "bytes": 2015,
+        "path": "src/app/api/cad/v1/generation/verify/route.ts",
+        "sha256": "fa50255f0110c19d0347fd9b36b9ec989f7f71db67936de1ff3cbda4f24be095"
+      },
+      {
+        "bytes": 4496,
+        "path": "src/app/api/cad/v1/ifc/domain-ir/route.ts",
+        "sha256": "873e504a9f6afd78111b1ac2b89099867eae8ee537590017dabac3c6b361049e"
+      },
+      {
+        "bytes": 2772,
+        "path": "src/app/api/cad/v1/ifc/recover-geometry/route.ts",
+        "sha256": "8b84b118b53fc1e73f723b0662b01685231d02b5a4461f5aaafe48d50f0d37bd"
+      },
+      {
+        "bytes": 2189,
+        "path": "src/app/api/cad/v1/ifc/recovery-plan/route.ts",
+        "sha256": "0599f9a642545c169f5d9817ea3859d837fb5b4d8247e133adb35da903b4a210"
+      },
+      {
+        "bytes": 2746,
+        "path": "src/app/api/cad/v1/ifc/semantic-roundtrip/route.ts",
+        "sha256": "f329bd4b4362892d45bc18c499f995565e1f155f5d6e61f29f7ffa69a4650459"
+      },
+      {
+        "bytes": 1975,
+        "path": "src/app/api/cad/v1/ifc/spatial-ir/route.ts",
+        "sha256": "bbae5f71ad94e05fa5af0038e46ba0f574ef96d85b668d857697535d2d921f02"
+      },
+      {
+        "bytes": 2668,
+        "path": "src/app/api/cad/v1/interior/door-swing/verify/route.ts",
+        "sha256": "326f1b42abd3ff14bdd6e8c5c69aba13a1bae534e396422496f91a96f6f2cae2"
+      },
+      {
+        "bytes": 2730,
+        "path": "src/app/api/cad/v1/interior/egress/verify/route.ts",
+        "sha256": "4938fecdf5f7919dbd30269229d354396f3bbb1ae4cbd02607777f5d10a43c95"
+      },
+      {
+        "bytes": 2329,
+        "path": "src/app/api/cad/v1/interior/mep-interference/verify/route.ts",
+        "sha256": "088e7f7d08341889a184606d243bb67c84668d6dea6515af4ae9ec940dc58959"
+      },
+      {
+        "bytes": 2291,
+        "path": "src/app/api/cad/v1/interior/space-boundary/verify/route.ts",
+        "sha256": "c88d1ed844cdb6e9d35a5b15ae80cdcc67bd4bc31bdc7f06cd67322ebc2ad93d"
+      },
+      {
+        "bytes": 1866,
+        "path": "src/app/api/cad/v1/manufacturing/verify/route.ts",
+        "sha256": "9c1a3fff6c9bf8c312ddd31333bded2a881112b412790c517aea3f45561f4398"
+      },
+      {
+        "bytes": 916,
+        "path": "src/app/api/cad/v1/part-step/route.ts",
+        "sha256": "79ca03f434a362ead0291d585d1e9bce106fc06279e91ccefc644623db1770cb"
+      },
+      {
+        "bytes": 1896,
+        "path": "src/app/api/cad/v1/physical-network/verify/route.ts",
+        "sha256": "e0b2a545cba55482af5674c1964fcd2d8cabf6925daa76da254ce9799190b858"
+      },
+      {
+        "bytes": 1459,
+        "path": "src/app/api/cad/v1/pmi/verify/route.ts",
+        "sha256": "9c6162846d30f00f03e78fe7f29dc67a8e44ce148b5dc90bcad00ebeee87ab75"
+      },
+      {
+        "bytes": 2111,
+        "path": "src/app/api/cad/v1/product-decomposition/route.ts",
+        "sha256": "6d0c5ac8f38b6a4e987276d2b6ddeb852b844eb0b6af72035162ef4d42c579d4"
+      },
+      {
+        "bytes": 1902,
+        "path": "src/app/api/cad/v1/project/verify/route.ts",
+        "sha256": "81228c131f6b45d6b9b5bd32f44cab679d1ee4754ba55c0760f9b04d98011117"
+      },
+      {
+        "bytes": 6093,
+        "path": "src/app/api/cad/v1/reference/analyze/route.ts",
+        "sha256": "906995d69829e33867df621e1c32c767398c4f450513875dd55c492610c3a996"
+      },
+      {
+        "bytes": 3036,
+        "path": "src/app/api/cad/v1/release/decision/route.ts",
+        "sha256": "7e6d9724dd4c92ba739e86110df77b870e12e7cd727ef3b7d7687d0f04cbb854"
+      },
+      {
+        "bytes": 6258,
+        "path": "src/app/api/cad/v1/robot/generate/route.ts",
+        "sha256": "1a0a2e38c3fbfc08bd2695f586089ff53deff9f22be81fed58e673ce78439a51"
+      },
+      {
+        "bytes": 2166,
+        "path": "src/app/api/cad/v1/sheet-metal/verify/route.ts",
+        "sha256": "ccd185d648fd97e834a3ba57e6951f78d17935c45bd363c14c6d818e3bb47148"
+      },
+      {
+        "bytes": 2650,
+        "path": "src/app/api/cad/v1/step/mechanical-relations/route.ts",
+        "sha256": "63f8b7077f20a9349230cc3fc879b3ac63e33be19a433ef56d10e80312cf058f"
+      },
+      {
+        "bytes": 2894,
+        "path": "src/app/api/cad/v1/system/change-impact/verify/route.ts",
+        "sha256": "3cdf73340349a6f1a8492c2dac12d5225254102cffe2900a9692bbc3e6426e05"
+      },
+      {
+        "bytes": 2459,
+        "path": "src/app/api/cad/v1/system/gearbox/verify/route.ts",
+        "sha256": "5869db4d2c5aa883089e5b861237111c4d585cae1db850d1a182da1c6a6f4d10"
+      },
+      {
+        "bytes": 2440,
+        "path": "src/app/api/cad/v1/system/machine-skid/verify/route.ts",
+        "sha256": "41b6b9ed7a0e2e9fcf1931863a6314fc7aae5c53133349f597a23550844988cb"
+      },
+      {
+        "bytes": 2633,
+        "path": "src/app/api/cad/v1/system/scale/verify/route.ts",
+        "sha256": "a9a9df983c3c3e2d22e6d386c9625c2bdd762d6b3d91cae0eaa8d8a0f25fa1af"
+      },
+      {
+        "bytes": 2220,
+        "path": "src/app/api/cad/v1/system/verify/route.ts",
+        "sha256": "c9af0eff8ae8d4d7b713741d479a7762a586f8168cfd6055511810bc4f4fabd3"
+      },
+      {
+        "bytes": 2505,
+        "path": "src/app/api/cad/v1/system/welded-enclosure/verify/route.ts",
+        "sha256": "90879f90174d1ef1a3b3ef6fe902461016d3544283b628c308ef54c4682a259a"
+      },
+      {
+        "bytes": 2201,
+        "path": "src/app/api/cad/v1/tolerance/analyze/route.ts",
+        "sha256": "355eb342666a5385c79965ee9a969aee381fd70cc1bc95cf5735abbfca68c10a"
+      },
+      {
+        "bytes": 1152,
+        "path": "src/app/api/cad/v1/topology/reconcile/route.ts",
+        "sha256": "57721ceb6da41dd6987edb03988d9e798eb51a3fd3db07b0036389aaf4c546e4"
+      },
+      {
+        "bytes": 2291,
+        "path": "src/app/api/cad/v1/weldment/verify/route.ts",
+        "sha256": "cd21cb3ce16797ebe7bb7737007d027698a8f64f6d12761e0478d6c1a2513570"
+      },
+      {
+        "bytes": 14005,
+        "path": "src/app/api/nexyfab/projects/[id]/architecture-interior-agent/route.ts",
+        "sha256": "ae34bbd6284170083670cc62d7b1c26a25d94c3cbadd9ffb7e6ac7aa5fe87d12"
+      },
+      {
+        "bytes": 7316,
+        "path": "src/app/api/nexyfab/projects/[id]/precision-cad-agent/bootstrap/route.ts",
+        "sha256": "795a6612f28f9e6ddc522463f098da366ae8ba0189fff802c10c2c4ebf1b8f9e"
+      },
+      {
+        "bytes": 21816,
+        "path": "src/app/api/nexyfab/projects/[id]/precision-cad-agent/call/route.ts",
+        "sha256": "1e81a4c8e7e92e59d3e9ef60a3525f4fe511940b462e5294781e5e9a8e9c2808"
+      },
+      {
+        "bytes": 2788,
+        "path": "src/app/api/nexyfab/projects/[id]/precision-cad-agent/catalog/route.ts",
+        "sha256": "ca62440cdca0bf0bb0138680c22640b9de58be6001570ab81f8452fd21772bca"
+      },
+      {
+        "bytes": 7509,
+        "path": "src/app/api/nexyfab/projects/[id]/precision-cad-agent/turn/route.ts",
+        "sha256": "e3ac460cdb2785c390c7eaae78045da7f1993e1aa6208bf42efcee813985f407"
+      },
+      {
+        "bytes": 3314,
+        "path": "src/app/api/nexyfab/scad-agent/brep-mesh/route.ts",
+        "sha256": "5272bbafffe0d1dbb811253c9e98cbed80597f5f9a5c6615946696cffc8b7b4c"
+      },
+      {
+        "bytes": 2847,
+        "path": "src/app/api/nexyfab/scad-agent/brep-step/route.ts",
+        "sha256": "4410b22dbbc9269a4a27ddd308a14855adf000c957fa219f1e8ebba217f058f6"
+      },
+      {
+        "bytes": 5290,
+        "path": "src/app/api/nexyfab/scad-agent/presence/route.ts",
+        "sha256": "062ae02d765f641db95fc09cd80fea45b3724f6f51bd79f73b2188ebcc9d2145"
+      },
+      {
+        "bytes": 25304,
+        "path": "src/app/api/nexyfab/scad-agent/route.ts",
+        "sha256": "f11c30be4317326eadab66091ade4e83e2840e1001e0ac7d25cb287721e90c01"
+      }
+    ],
+    "status": "PASS_LOCAL",
+    "validationErrors": []
+  },
+  "installerSidecar": {
+    "agentKind": "remote_installer_agent",
+    "authType": [
+      "none"
+    ],
+    "expectedToolCount": 8,
+    "names": [
+      "list_domains",
+      "build_assembly",
+      "analyze_dfm",
+      "fab_estimate",
+      "resolve_constraints",
+      "render_preview",
+      "blade_ring",
+      "loft_part"
+    ],
+    "relationship": "local/downloadable Agent catalog used by the web project Agent; not a CAD v1 or CLI parity claim",
+    "releaseClaimAllowed": false,
+    "releaseClaimReason": "This HTTP surface is inventory evidence only; it does not authorize a commercial release claim.",
+    "source": "scripts/drawing-to-3d/installer-core-agent-server.mjs",
+    "writeApprovalFlag": "confirmWrite"
+  },
+  "localMcp": {
+    "expectedToolCount": 90,
+    "includesCadV1ByName": [
+      "product_decomposition",
+      "verify_complex_system_graph",
+      "verify_gearbox_system_contract",
+      "verify_machine_skid_system_contract",
+      "verify_welded_enclosure_system_contract",
+      "analyze_complex_system_change_impact",
+      "verify_complex_assembly_scale",
+      "cad_feature_program",
+      "feature_tree_mesh",
+      "export_part_step",
+      "decide_cad_release",
+      "analyze_cad_reference",
+      "verify_ifc_semantic_roundtrip",
+      "build_ifc_domain_ir",
+      "build_ifc_spatial_ir",
+      "analyze_step_mechanical_relations",
+      "plan_ifc_geometry_recovery",
+      "recover_ifc_geometry",
+      "reconcile_topology_references",
+      "verify_cad_assembly",
+      "verify_cad_project",
+      "verify_door_swing_clearance",
+      "verify_space_boundary_closure",
+      "verify_egress_routes",
+      "verify_mep_interference",
+      "evaluate_assembly_animation",
+      "apply_assembly_animation_command",
+      "preview_assembly_selection_edit",
+      "push_pull_step_face",
+      "verify_assembly_animation",
+      "verify_ai_generation",
+      "refine_ai_generation",
+      "transition_ai_generation_state",
+      "advance_ai_generation",
+      "finalize_ai_generation",
+      "verify_physical_network",
+      "generate_robot_6axis",
+      "verify_manufacturing_evidence",
+      "verify_sheet_metal",
+      "verify_weldment",
+      "analyze_tolerance_stack",
+      "verify_cad_pmi"
+    ],
+    "relationship": "repository-local dispatcher; API-backed tools retain API-key/open-world boundary; no commercial release claim",
+    "releaseClaimAllowed": false,
+    "releaseClaimReason": "This HTTP surface is inventory evidence only; it does not authorize a commercial release claim.",
+    "source": "scripts/drawing-to-3d/mcp-server.mjs",
+    "writeApprovalFlag": "confirmWrite"
+  },
+  "schema": "nexyfab.agent-surface-matrix.v1",
+  "version": 1,
+  "webAgent": {
+    "routes": [
+      {
+        "agentKind": "ai_design_agent",
+        "apiKeyScopeEnforcement": "explicit",
+        "approvalRequirement": "tool_authorizer_in_explicit_design_modes",
+        "authBoundary": "plan_guard_free_or_higher; bearer API keys additionally require write:projects",
+        "authType": [
+          "cookie",
+          "bearer_api_key"
+        ],
+        "cli": {
+          "availability": "HOLD",
+          "reason": "The browser SCAD repair loop, signed continuation, plan budget, and live B-rep capability flow have no equivalent MCP or CLI contract."
+        },
+        "commercialPersistence": "signed_client_carried_session_plus_best_effort_telemetry_and_audit",
+        "dispatcher": {
+          "entrypoint": "POST",
+          "evidenceTokens": [
+            "checkOrigin(req)",
+            "checkPlan(req, 'free')",
+            "scopes.includes('write:projects')",
+            "verifyAgentSession",
+            "signAgentSession",
+            "runRepairLoop"
+          ],
+          "source": "src/app/api/nexyfab/scad-agent/route.ts"
+        },
+        "durability": "continuation_is_client_carried; generated_live_brep_handles_are_not_durable",
+        "exposure": "web-only",
+        "id": "scad-ai-design-agent",
+        "identitySemantics": "authenticated_account_identity",
+        "mcp": {
+          "availability": "HOLD",
+          "reason": "The browser SCAD repair loop, signed continuation, plan budget, and live B-rep capability flow have no equivalent MCP or CLI contract."
+        },
+        "method": "POST",
+        "mutationScope": "read|propose|apply|export",
+        "originRequirement": "same_origin_required",
+        "path": "/api/nexyfab/scad-agent",
+        "releaseClaimAllowed": false,
+        "releaseClaimReason": "This HTTP surface is inventory evidence only; it does not authorize a commercial release claim.",
+        "requiredAuthScope": "write:projects",
+        "runtimeBoundary": {
+          "crossReplica": "signed continuation can travel; live handles cannot; canonical bootstrap refs are rehydrated per request",
+          "processLocalState": "live B-rep registry and request-local hydrated handles"
+        }
+      },
+      {
+        "agentKind": "ai_design_agent",
+        "apiKeyScopeEnforcement": "not_enforced_at_route",
+        "approvalRequirement": "short_lived_handle_capability",
+        "authBoundary": "authenticated_user_plus_short_lived_handle_capability",
+        "authType": [
+          "cookie",
+          "bearer_api_key"
+        ],
+        "cli": {
+          "availability": "HOLD",
+          "reason": "The browser SCAD repair loop, signed continuation, plan budget, and live B-rep capability flow have no equivalent MCP or CLI contract."
+        },
+        "commercialPersistence": "none",
+        "dispatcher": {
+          "entrypoint": "GET",
+          "evidenceTokens": [
+            "getAuthUser",
+            "verifyBrepHandleAccessToken",
+            "getShape(handle)"
+          ],
+          "source": "src/app/api/nexyfab/scad-agent/brep-mesh/route.ts"
+        },
+        "durability": "reads a live process-local B-rep handle only",
+        "exposure": "web-only",
+        "id": "scad-ai-design-brep-mesh",
+        "identitySemantics": "authenticated_account_identity",
+        "mcp": {
+          "availability": "HOLD",
+          "reason": "The browser SCAD repair loop, signed continuation, plan budget, and live B-rep capability flow have no equivalent MCP or CLI contract."
+        },
+        "method": "GET",
+        "mutationScope": "read",
+        "originRequirement": "not_required_for_safe_method",
+        "path": "/api/nexyfab/scad-agent/brep-mesh",
+        "releaseClaimAllowed": false,
+        "releaseClaimReason": "This HTTP surface is inventory evidence only; it does not authorize a commercial release claim.",
+        "requiredAuthScope": null,
+        "runtimeBoundary": {
+          "crossReplica": "unsupported_for_raw_handle_lookup",
+          "processLocalState": "module-scoped B-rep registry"
+        }
+      },
+      {
+        "agentKind": "ai_design_agent",
+        "apiKeyScopeEnforcement": "not_enforced_at_route",
+        "approvalRequirement": "short_lived_handle_capability",
+        "authBoundary": "authenticated_user_plus_short_lived_handle_capability",
+        "authType": [
+          "cookie",
+          "bearer_api_key"
+        ],
+        "cli": {
+          "availability": "HOLD",
+          "reason": "The browser SCAD repair loop, signed continuation, plan budget, and live B-rep capability flow have no equivalent MCP or CLI contract."
+        },
+        "commercialPersistence": "none",
+        "dispatcher": {
+          "entrypoint": "GET",
+          "evidenceTokens": [
+            "getAuthUser",
+            "verifyBrepHandleAccessToken",
+            "exportOcctStep(handle)"
+          ],
+          "source": "src/app/api/nexyfab/scad-agent/brep-step/route.ts"
+        },
+        "durability": "exports from a live process-local B-rep handle without storing the STEP result",
+        "exposure": "web-only",
+        "id": "scad-ai-design-brep-step",
+        "identitySemantics": "authenticated_account_identity",
+        "mcp": {
+          "availability": "HOLD",
+          "reason": "The browser SCAD repair loop, signed continuation, plan budget, and live B-rep capability flow have no equivalent MCP or CLI contract."
+        },
+        "method": "GET",
+        "mutationScope": "export",
+        "originRequirement": "not_required_for_safe_method",
+        "path": "/api/nexyfab/scad-agent/brep-step",
+        "releaseClaimAllowed": false,
+        "releaseClaimReason": "This HTTP surface is inventory evidence only; it does not authorize a commercial release claim.",
+        "requiredAuthScope": null,
+        "runtimeBoundary": {
+          "crossReplica": "unsupported_for_raw_handle_lookup",
+          "processLocalState": "module-scoped B-rep registry"
+        }
+      },
+      {
+        "agentKind": "ai_design_agent",
+        "apiKeyScopeEnforcement": "not_enforced_at_route",
+        "approvalRequirement": "none",
+        "authBoundary": "plan_guard_free_or_higher",
+        "authType": [
+          "cookie",
+          "bearer_api_key"
+        ],
+        "cli": {
+          "availability": "HOLD",
+          "reason": "The browser SCAD repair loop, signed continuation, plan budget, and live B-rep capability flow have no equivalent MCP or CLI contract."
+        },
+        "commercialPersistence": "none",
+        "dispatcher": {
+          "entrypoint": "GET",
+          "evidenceTokens": [
+            "checkPlan(req, 'free')",
+            "SAFE_SESSION_ID.test(sessionId)",
+            "gcRoom(sessionId)"
+          ],
+          "source": "src/app/api/nexyfab/scad-agent/presence/route.ts"
+        },
+        "durability": "60-second in-memory presence only",
+        "exposure": "web-only",
+        "id": "scad-ai-design-presence-read",
+        "identitySemantics": "sessionId selects an ephemeral room and is not an authorization, audit, or ownership identity",
+        "mcp": {
+          "availability": "HOLD",
+          "reason": "The browser SCAD repair loop, signed continuation, plan budget, and live B-rep capability flow have no equivalent MCP or CLI contract."
+        },
+        "method": "GET",
+        "mutationScope": "read",
+        "originRequirement": "not_required_for_safe_method",
+        "path": "/api/nexyfab/scad-agent/presence",
+        "releaseClaimAllowed": false,
+        "releaseClaimReason": "This HTTP surface is inventory evidence only; it does not authorize a commercial release claim.",
+        "requiredAuthScope": null,
+        "runtimeBoundary": {
+          "crossReplica": "unsupported; each replica has an independent room map",
+          "processLocalState": "module-scoped presence rooms"
+        }
+      },
+      {
+        "agentKind": "ai_design_agent",
+        "apiKeyScopeEnforcement": "not_enforced_at_route",
+        "approvalRequirement": "none",
+        "authBoundary": "authenticated admission only; the bounded caller-supplied participant id is untrusted display data",
+        "authType": [
+          "cookie",
+          "bearer_api_key"
+        ],
+        "cli": {
+          "availability": "HOLD",
+          "reason": "The browser SCAD repair loop, signed continuation, plan budget, and live B-rep capability flow have no equivalent MCP or CLI contract."
+        },
+        "commercialPersistence": "none",
+        "dispatcher": {
+          "entrypoint": "POST",
+          "evidenceTokens": [
+            "checkOrigin(req)",
+            "checkPlan(req, 'free')",
+            "SAFE_PARTICIPANT_ID.test(userId)",
+            "setSessionParticipants",
+            "const userId = requestedUserId"
+          ],
+          "source": "src/app/api/nexyfab/scad-agent/presence/route.ts"
+        },
+        "durability": "60-second in-memory presence only",
+        "exposure": "web-only",
+        "id": "scad-ai-design-presence-heartbeat",
+        "identitySemantics": "tab-scoped pseudonym; never account identity, authorization, audit attribution, persistence ownership, or CAD ownership",
+        "mcp": {
+          "availability": "HOLD",
+          "reason": "The browser SCAD repair loop, signed continuation, plan budget, and live B-rep capability flow have no equivalent MCP or CLI contract."
+        },
+        "method": "POST",
+        "mutationScope": "presence_heartbeat",
+        "originRequirement": "same_origin_required",
+        "path": "/api/nexyfab/scad-agent/presence",
+        "releaseClaimAllowed": false,
+        "releaseClaimReason": "This HTTP surface is inventory evidence only; it does not authorize a commercial release claim.",
+        "requiredAuthScope": null,
+        "runtimeBoundary": {
+          "crossReplica": "unsupported; each replica has an independent room map",
+          "processLocalState": "module-scoped presence rooms and collaboration adapter"
+        }
+      },
+      {
+        "agentKind": "domain_agent",
+        "apiKeyScopeEnforcement": "not_enforced_at_route",
+        "approvalRequirement": "none",
+        "authBoundary": "authenticated_project_member",
+        "authType": [
+          "cookie",
+          "bearer_api_key"
+        ],
+        "cli": {
+          "availability": "HOLD",
+          "reason": "The project-bound architecture/interior workspace, CAS mutation, approval, and history transaction have no MCP or CLI adapter."
+        },
+        "commercialPersistence": "reads_database_workspace_without_mutation",
+        "dispatcher": {
+          "entrypoint": "GET",
+          "evidenceTokens": [
+            "getAuthUser",
+            "resolveProjectAccess",
+            "readArchitectureInteriorWorkspace"
+          ],
+          "source": "src/app/api/nexyfab/projects/[id]/architecture-interior-agent/route.ts"
+        },
+        "durability": "shared database workspace and revision history",
+        "exposure": "web-only",
+        "id": "architecture-interior-domain-agent-read",
+        "identitySemantics": "authenticated_account_identity",
+        "mcp": {
+          "availability": "HOLD",
+          "reason": "The project-bound architecture/interior workspace, CAS mutation, approval, and history transaction have no MCP or CLI adapter."
+        },
+        "method": "GET",
+        "mutationScope": "read",
+        "originRequirement": "not_required_for_safe_method",
+        "path": "/api/nexyfab/projects/[id]/architecture-interior-agent",
+        "releaseClaimAllowed": false,
+        "releaseClaimReason": "This HTTP surface is inventory evidence only; it does not authorize a commercial release claim.",
+        "requiredAuthScope": null,
+        "runtimeBoundary": {
+          "crossReplica": "supported_when_replicas_share_the_database",
+          "processLocalState": "none_authoritative"
+        }
+      },
+      {
+        "agentKind": "domain_agent",
+        "apiKeyScopeEnforcement": "not_enforced_at_route",
+        "approvalRequirement": "required_for_apply",
+        "authBoundary": "authenticated_project_member_with_editor_gate_for_mutation",
+        "authType": [
+          "cookie",
+          "bearer_api_key"
+        ],
+        "cli": {
+          "availability": "HOLD",
+          "reason": "The project-bound architecture/interior workspace, CAS mutation, approval, and history transaction have no MCP or CLI adapter."
+        },
+        "commercialPersistence": "workspace_and_history_committed_in_one_database_transaction",
+        "dispatcher": {
+          "entrypoint": "POST",
+          "evidenceTokens": [
+            "checkOrigin(req)",
+            "persistArchitectureInteriorWorkspace",
+            "appendArchitectureInteriorHistoryEventInTransaction"
+          ],
+          "source": "src/app/api/nexyfab/projects/[id]/architecture-interior-agent/route.ts"
+        },
+        "durability": "CAS-bound database workspace revision plus append-only history event",
+        "exposure": "web-only",
+        "id": "architecture-interior-domain-agent-call",
+        "identitySemantics": "authenticated_account_identity",
+        "mcp": {
+          "availability": "HOLD",
+          "reason": "The project-bound architecture/interior workspace, CAS mutation, approval, and history transaction have no MCP or CLI adapter."
+        },
+        "method": "POST",
+        "mutationScope": "read|apply",
+        "originRequirement": "same_origin_required",
+        "path": "/api/nexyfab/projects/[id]/architecture-interior-agent",
+        "releaseClaimAllowed": false,
+        "releaseClaimReason": "This HTTP surface is inventory evidence only; it does not authorize a commercial release claim.",
+        "requiredAuthScope": null,
+        "runtimeBoundary": {
+          "crossReplica": "supported_when_replicas_share_the_database",
+          "processLocalState": "none_authoritative"
+        }
+      },
+      {
+        "agentKind": "remote_installer_agent",
+        "apiKeyScopeEnforcement": "explicit",
+        "approvalRequirement": "none",
+        "authBoundary": "authenticated_project_member",
+        "authType": [
+          "cookie",
+          "bearer_api_key"
+        ],
+        "cli": {
+          "availability": "HOLD",
+          "reason": "Project binding, DB-backed continuation, approval challenges, and isolated execution are not exposed through a bounded MCP or CLI adapter."
+        },
+        "commercialPersistence": "none",
+        "dispatcher": {
+          "entrypoint": "GET",
+          "evidenceTokens": [
+            "hasPrecisionCadProjectScope",
+            "'read:projects'",
+            "assertRemoteProjectRevision"
+          ],
+          "source": "src/app/api/nexyfab/projects/[id]/precision-cad-agent/catalog/route.ts"
+        },
+        "durability": "catalog is reloadable; project revision binding is read from the database",
+        "exposure": "web-only",
+        "id": "precision-cad-remote-installer-catalog",
+        "identitySemantics": "authenticated_account_identity",
+        "mcp": {
+          "availability": "HOLD",
+          "reason": "Project binding, DB-backed continuation, approval challenges, and isolated execution are not exposed through a bounded MCP or CLI adapter."
+        },
+        "method": "GET",
+        "mutationScope": "read",
+        "originRequirement": "not_required_for_safe_method",
+        "path": "/api/nexyfab/projects/[id]/precision-cad-agent/catalog",
+        "releaseClaimAllowed": false,
+        "releaseClaimReason": "This HTTP surface is inventory evidence only; it does not authorize a commercial release claim.",
+        "requiredAuthScope": "read:projects",
+        "runtimeBoundary": {
+          "crossReplica": "safe_when_replicas_share_project_revision_data",
+          "processLocalState": "reloadable module catalog cache"
+        }
+      },
+      {
+        "agentKind": "remote_installer_agent",
+        "apiKeyScopeEnforcement": "explicit",
+        "approvalRequirement": "none",
+        "authBoundary": "authenticated_project_editor",
+        "authType": [
+          "cookie",
+          "bearer_api_key"
+        ],
+        "cli": {
+          "availability": "HOLD",
+          "reason": "Project binding, DB-backed continuation, approval challenges, and isolated execution are not exposed through a bounded MCP or CLI adapter."
+        },
+        "commercialPersistence": "signed_client_carried_session_bound_to_server_canonical_mapping",
+        "dispatcher": {
+          "entrypoint": "POST",
+          "evidenceTokens": [
+            "checkOrigin(req)",
+            "hasPrecisionCadProjectScope",
+            "'write:projects'",
+            "bootstrapPrecisionCadSession"
+          ],
+          "source": "src/app/api/nexyfab/projects/[id]/precision-cad-agent/bootstrap/route.ts"
+        },
+        "durability": "canonical mapping is database-backed; runtime B-rep is rehydrated per worker",
+        "exposure": "web-only",
+        "id": "precision-cad-remote-installer-bootstrap",
+        "identitySemantics": "authenticated_account_identity",
+        "mcp": {
+          "availability": "HOLD",
+          "reason": "Project binding, DB-backed continuation, approval challenges, and isolated execution are not exposed through a bounded MCP or CLI adapter."
+        },
+        "method": "POST",
+        "mutationScope": "session_bootstrap",
+        "originRequirement": "same_origin_required",
+        "path": "/api/nexyfab/projects/[id]/precision-cad-agent/bootstrap",
+        "releaseClaimAllowed": false,
+        "releaseClaimReason": "This HTTP surface is inventory evidence only; it does not authorize a commercial release claim.",
+        "requiredAuthScope": "write:projects",
+        "runtimeBoundary": {
+          "crossReplica": "no raw handle authority crosses replicas; canonical refs must rehydrate",
+          "processLocalState": "rehydrated worker-local B-rep handles only"
+        }
+      },
+      {
+        "agentKind": "remote_installer_agent",
+        "apiKeyScopeEnforcement": "explicit",
+        "approvalRequirement": "delegated_to_call",
+        "authBoundary": "authenticated_project_member",
+        "authType": [
+          "cookie",
+          "bearer_api_key"
+        ],
+        "cli": {
+          "availability": "HOLD",
+          "reason": "Project binding, DB-backed continuation, approval challenges, and isolated execution are not exposed through a bounded MCP or CLI adapter."
+        },
+        "commercialPersistence": "database_backed_provider_continuation_with_30_minute_ttl",
+        "dispatcher": {
+          "entrypoint": "POST",
+          "evidenceTokens": [
+            "checkOrigin(req)",
+            "hasPrecisionCadProjectScope",
+            "'write:projects'",
+            "runRemoteAgentTurn"
+          ],
+          "source": "src/app/api/nexyfab/projects/[id]/precision-cad-agent/turn/route.ts"
+        },
+        "durability": "provider messages and pending calls are stored in the shared database until expiry",
+        "exposure": "web-only",
+        "id": "precision-cad-remote-installer-turn",
+        "identitySemantics": "authenticated_account_identity",
+        "mcp": {
+          "availability": "HOLD",
+          "reason": "Project binding, DB-backed continuation, approval challenges, and isolated execution are not exposed through a bounded MCP or CLI adapter."
+        },
+        "method": "POST",
+        "mutationScope": "provider_turn",
+        "originRequirement": "same_origin_required",
+        "path": "/api/nexyfab/projects/[id]/precision-cad-agent/turn",
+        "releaseClaimAllowed": false,
+        "releaseClaimReason": "This HTTP surface is inventory evidence only; it does not authorize a commercial release claim.",
+        "requiredAuthScope": "write:projects",
+        "runtimeBoundary": {
+          "crossReplica": "supported_when_replicas_share_the_database",
+          "processLocalState": "reloadable module catalog cache only"
+        }
+      },
+      {
+        "agentKind": "remote_installer_agent",
+        "apiKeyScopeEnforcement": "explicit",
+        "approvalRequirement": "database_challenge_required_for_apply_or_export",
+        "authBoundary": "authenticated_project_member_with_editor_gate_for_apply_or_export",
+        "authType": [
+          "cookie",
+          "bearer_api_key"
+        ],
+        "cli": {
+          "availability": "HOLD",
+          "reason": "Project binding, DB-backed continuation, approval challenges, and isolated execution are not exposed through a bounded MCP or CLI adapter."
+        },
+        "commercialPersistence": "editor_outputs_to_immutable_artifacts; commercial_mode_queues_transactional_outbox",
+        "dispatcher": {
+          "entrypoint": "POST",
+          "evidenceTokens": [
+            "checkOrigin(req)",
+            "hasPrecisionCadProjectScope",
+            "'write:projects'",
+            "enqueueCommercialExecutionTransaction",
+            "durableQueue: false"
+          ],
+          "source": "src/app/api/nexyfab/projects/[id]/precision-cad-agent/call/route.ts"
+        },
+        "durability": "commercial mode uses a DB outbox; default isolated child queue reports durableQueue=false",
+        "exposure": "web-only",
+        "id": "precision-cad-remote-installer-call",
+        "identitySemantics": "authenticated_account_identity",
+        "mcp": {
+          "availability": "HOLD",
+          "reason": "Project binding, DB-backed continuation, approval challenges, and isolated execution are not exposed through a bounded MCP or CLI adapter."
+        },
+        "method": "POST",
+        "mutationScope": "read|propose|apply|export",
+        "originRequirement": "same_origin_required",
+        "path": "/api/nexyfab/projects/[id]/precision-cad-agent/call",
+        "releaseClaimAllowed": false,
+        "releaseClaimReason": "This HTTP surface is inventory evidence only; it does not authorize a commercial release claim.",
+        "requiredAuthScope": "write:projects",
+        "runtimeBoundary": {
+          "crossReplica": "mixed: commercial DB outbox is durable; default in-process queue is not cross-replica durable",
+          "processLocalState": "default isolated-worker queue and child execution are process-local"
+        }
+      }
+    ]
+  }
+}

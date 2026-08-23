@@ -3,8 +3,10 @@ import { getAuthUser } from '@/lib/auth-middleware';
 import { checkOrigin } from '@/lib/csrf';
 import { getDbAdapter } from '@/lib/db-adapter';
 import { notificationRecipientKeys, sqlPlaceholders } from '@/lib/notificationRecipientKeys';
+import { readBoundedJson } from '@/lib/boundedJsonBody';
 
 export const dynamic = 'force-dynamic';
+const MAX_JSON_BODY_BYTES = 16 * 1024;
 
 interface NfNotificationRow {
   id: string;
@@ -55,7 +57,9 @@ export async function POST(req: NextRequest) {
   const authUser = await getAuthUser(req);
   if (!authUser) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-  const body = await req.json();
+  let body: Record<string, unknown>;
+  try { body = await readBoundedJson<Record<string, unknown>>(req, MAX_JSON_BODY_BYTES); }
+  catch { return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 }); }
   const { id, all: markAll } = body;
 
   const keys = notificationRecipientKeys(authUser);
@@ -86,7 +90,9 @@ export async function DELETE(req: NextRequest) {
   const authUser = await getAuthUser(req);
   if (!authUser) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-  const body = await req.json().catch(() => ({})) as { id?: string };
+  let body: { id?: string };
+  try { body = req.body ? await readBoundedJson<{ id?: string }>(req, MAX_JSON_BODY_BYTES) : {}; }
+  catch { return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 }); }
   const keys = notificationRecipientKeys(authUser);
   const db = getDbAdapter();
 

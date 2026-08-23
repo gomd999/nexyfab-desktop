@@ -40,7 +40,7 @@ describe('civil release certificate', () => {
     const certificate = buildCivilReleaseCertificate(completeInput());
     expect(certificate.assertions).toHaveLength(22);
     expect(certificate.assertions.every(item => item.status === 'pass')).toBe(true);
-    expect(certificate.releaseReady).toBe(true);
+    expect(certificate).toMatchObject({ internalReady: true, releaseReady: false });
   });
   it('keeps exchange not_run when LandXML/IFC evidence is absent', () => {
     const input = completeInput(); delete input.exchange;

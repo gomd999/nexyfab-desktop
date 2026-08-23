@@ -27,6 +27,16 @@ interface UsageRow {
   product: string;
 }
 
+interface CacheUsageRow {
+  provider: string;
+  tokens_in: number | string | null;
+  cached_tokens: number | string | null;
+  cache_write_tokens: number | string | null;
+  cache_miss_tokens: number | string | null;
+  calls: number | string | null;
+  cache_calls: number | string | null;
+}
+
 const VALID_PRODUCTS = ['nexyfab', 'nexyflow', 'nexywise'] as const;
 type ValidProduct = typeof VALID_PRODUCTS[number];
 
@@ -114,11 +124,56 @@ export async function GET(req: NextRequest) {
     .map(([product, v]) => ({ product, cents: v.cents, calls: v.calls }))
     .sort((a, b) => b.cents - a.cents);
 
+  // Cache counters live in the provider-level meter so they include every
+  // chat-completion path, including routes that do not emit prompt_call.
+  // Product filtering cannot be applied reliably to this table; user and
+  // time filters remain exact. The response flags that scope for the UI.
+  const cacheWheres = ['called_at >= ?', "endpoint = 'chat.completions'", 'status_code = 200'];
+  const cacheArgs: unknown[] = [sinceMs];
+  if (userIdFilter) { cacheWheres.push('user_id = ?'); cacheArgs.push(userIdFilter); }
+  const cacheRows = await db.queryAll<CacheUsageRow>(
+    `SELECT provider,
+            COALESCE(SUM(tokens_in), 0) AS tokens_in,
+            COALESCE(SUM(cached_tokens), 0) AS cached_tokens,
+            COALESCE(SUM(cache_write_tokens), 0) AS cache_write_tokens,
+            COALESCE(SUM(cache_miss_tokens), 0) AS cache_miss_tokens,
+            COUNT(*) AS calls,
+            COALESCE(SUM(CASE WHEN COALESCE(cached_tokens, 0) > 0 THEN 1 ELSE 0 END), 0) AS cache_calls
+       FROM nf_api_usage
+      WHERE ${cacheWheres.join(' AND ')}
+      GROUP BY provider`,
+    ...cacheArgs,
+  ).catch(() => [] as CacheUsageRow[]);
+  const numberOf = (value: number | string | null): number => {
+    const parsed = Number(value ?? 0);
+    return Number.isFinite(parsed) ? parsed : 0;
+  };
+  const cacheProviders = cacheRows.map(row => ({
+    provider: row.provider,
+    tokensIn: numberOf(row.tokens_in),
+    cachedTokens: numberOf(row.cached_tokens),
+    cacheWriteTokens: numberOf(row.cache_write_tokens),
+    cacheMissTokens: numberOf(row.cache_miss_tokens),
+    calls: numberOf(row.calls),
+    cacheCalls: numberOf(row.cache_calls),
+  })).sort((a, b) => b.cachedTokens - a.cachedTokens);
+  const cacheSummary = cacheProviders.reduce((sum, row) => ({
+    tokensIn: sum.tokensIn + row.tokensIn,
+    cachedTokens: sum.cachedTokens + row.cachedTokens,
+    cacheWriteTokens: sum.cacheWriteTokens + row.cacheWriteTokens,
+    cacheMissTokens: sum.cacheMissTokens + row.cacheMissTokens,
+    calls: sum.calls + row.calls,
+    cacheCalls: sum.cacheCalls + row.cacheCalls,
+  }), { tokensIn: 0, cachedTokens: 0, cacheWriteTokens: 0, cacheMissTokens: 0, calls: 0, cacheCalls: 0 });
+
   return NextResponse.json({
     days,
     series,
     topUsers,
     products,
+    cacheSummary,
+    cacheProviders,
+    cacheScope: productFilter ? 'all-products' : 'current-filter',
     ...(userIdFilter ? { userId: userIdFilter } : {}),
     ...(productFilter ? { product: productFilter } : {}),
   });

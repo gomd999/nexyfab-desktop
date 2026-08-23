@@ -13,6 +13,23 @@ test('classifies protected and runtime-excluded release paths fail-closed', () =
   assert.equal(classifyReleasePath('data/nexyfab.db'), 'protected');
   assert.equal(classifyReleasePath('validation-reports/closed-beta-integrity-final.json'), 'protected');
   assert.equal(classifyReleasePath('.tmp/runtime.bin'), 'temporary');
+  assert.equal(classifyReleasePath('.tmp-language-hits.txt'), 'temporary');
+  assert.equal(classifyReleasePath('.codex-runtime/browser-verification.sqlite'), 'protected');
+  assert.equal(classifyReleasePath('.codex-runtime/browser-verification.sqlite-wal'), 'protected');
+  assert.equal(classifyReleasePath('artifacts/local-run/output.step'), 'temporary');
+  for (const generated of [
+    '_eslint_tmp.json',
+    'build_log.txt',
+    'eslint-stats.json',
+    'lint.txt',
+    'patch_context.txt',
+    'temp.html',
+    'tmp.txt',
+  ]) assert.equal(classifyReleasePath(generated), 'temporary');
+  const historicalEvidenceRoot = 'docs/evidence/cad-independent/local/mechanical-single-part-candidates-260813';
+  assert.equal(classifyReleasePath(`${historicalEvidenceRoot}/receipt.json`), 'temporary');
+  assert.equal(classifyReleasePath(`${historicalEvidenceRoot}/receipt.sha256`), 'temporary');
+  assert.equal(classifyReleasePath(`${historicalEvidenceRoot}/STALE.json`), 'evidence');
   assert.equal(classifyReleasePath('docs/evidence/release/audit.json'), 'evidence');
   assert.equal(classifyReleasePath('docs/ACTIVE_EXECUTION_MASTER.md'), 'documentation');
   assert.equal(classifyReleasePath('src/app/page.tsx'), 'deployable');
@@ -21,7 +38,7 @@ test('classifies protected and runtime-excluded release paths fail-closed', () =
 test('builds deterministic category hashes without exposing file contents', () => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'nexyfab-release-baseline-'));
   try {
-    const files = ['src/app.ts', '.env.local', 'docs/plan.md'];
+    const files = ['src/app.ts', '.env.local', 'docs/plan.md', 'artifacts/local-run/output.step'];
     for (const file of files) {
       const absolute = path.join(root, file);
       fs.mkdirSync(path.dirname(absolute), { recursive: true });
@@ -31,8 +48,33 @@ test('builds deterministic category hashes without exposing file contents', () =
     assert.equal(baseline.summary.deployable.files, 1);
     assert.equal(baseline.summary.protected.files, 1);
     assert.equal(baseline.summary.documentation.files, 1);
+    assert.equal(baseline.summary.temporary.files, 1);
     assert.equal(baseline.groups.protected[0].path, '.env.local');
     assert.equal('content' in baseline.groups.protected[0], false);
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test('quarantines the stale historical receipt while retaining its STALE marker', () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'nexyfab-release-stale-evidence-'));
+  const evidenceRoot = 'docs/evidence/cad-independent/local/mechanical-single-part-candidates-260813';
+  const files = [
+    `${evidenceRoot}/receipt.json`,
+    `${evidenceRoot}/receipt.sha256`,
+    `${evidenceRoot}/STALE.json`,
+  ];
+  try {
+    for (const file of files) {
+      const absolute = path.join(root, file);
+      fs.mkdirSync(path.dirname(absolute), { recursive: true });
+      fs.writeFileSync(absolute, `fixture:${file}`, 'utf8');
+    }
+
+    const baseline = buildReleaseBaseline({ files, root });
+    assert.deepEqual(baseline.groups.temporary.map(row => row.path), files.slice(0, 2));
+    assert.deepEqual(baseline.groups.evidence.map(row => row.path), [files[2]]);
+    assert.deepEqual(baseline.policy.quarantinedHistoricalEvidence, files.slice(0, 2));
   } finally {
     fs.rmSync(root, { recursive: true, force: true });
   }
@@ -46,10 +88,14 @@ test('current receipts are excluded from cleanliness and their own baseline hash
     fs.writeFileSync(path.join(root, '.railwayignore'), [
       'node_modules', '.next', '.git', '.env.local', '.env', '*.log', '*.db', '*.zip',
       'data', 'docs', 'scripts/knowledge-crawler', 'validation-reports', 'test-results',
-      '.tmp', 'src-tauri', 'occt-collab-worker', 'occt-worker', 'out', 'out2', '.claude',
+      '.tmp', '/.codex-runtime', '/artifacts', '/backups', 'src-tauri', 'occt-collab-worker', 'out', 'out2', '.claude',
     ].join('\n'), 'utf8');
     fs.writeFileSync(path.join(root, 'app.js'), 'release-code', 'utf8');
-    for (const name of ['commercial-release-baseline-current.json', 'commercialization-readiness-current.json']) {
+    for (const name of [
+      'commercial-release-baseline-current.json',
+      'commercialization-readiness-current.json',
+      'commercialization-readiness-full-product-current.json',
+    ]) {
       fs.writeFileSync(path.join(root, 'docs/evidence/release', name), '{"old":true}\n', 'utf8');
     }
     execFileSync('git', ['init'], { cwd: root, stdio: 'ignore' });
@@ -58,6 +104,7 @@ test('current receipts are excluded from cleanliness and their own baseline hash
     execFileSync('git', ['add', '.'], { cwd: root });
     execFileSync('git', ['commit', '-m', 'fixture'], { cwd: root, stdio: 'ignore' });
     fs.writeFileSync(path.join(root, 'docs/evidence/release/commercialization-readiness-current.json'), '{"new":true}\n', 'utf8');
+    fs.writeFileSync(path.join(root, 'docs/evidence/release/commercialization-readiness-full-product-current.json'), '{"new":true}\n', 'utf8');
 
     execFileSync(process.execPath, [script], { cwd: root, stdio: 'ignore' });
     const receipt = JSON.parse(fs.readFileSync(path.join(root, 'docs/evidence/release/commercial-release-baseline-current.json'), 'utf8'));

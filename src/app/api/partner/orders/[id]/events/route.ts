@@ -12,6 +12,9 @@ import { checkOrigin } from '@/lib/csrf';
 import { listOrderEvents, recordOrderEvent, type OrderEventKind } from '@/lib/order-events';
 import { createNotification } from '@/app/lib/notify';
 import { normPartnerEmail } from '@/lib/partner-factory-access';
+import { boundedJsonError, readBoundedJson } from '@/lib/boundedJsonBody';
+
+const MAX_ORDER_EVENT_BODY_BYTES = 64 * 1024;
 
 export const dynamic = 'force-dynamic';
 
@@ -55,9 +58,11 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
   if ('error' in auth) return auth.error;
   const { partner, order } = auth;
 
-  const body = await req.json().catch(() => null) as {
+  let body: {
     kind?: string; body?: string; photoUrl?: string; metadata?: Record<string, unknown>;
-  } | null;
+  } | null = null;
+  try { body = await readBoundedJson(req, MAX_ORDER_EVENT_BODY_BYTES); }
+  catch (error) { if (boundedJsonError(error)?.code === 'PAYLOAD_TOO_LARGE') return NextResponse.json({ error: 'Request too large', code: 'PAYLOAD_TOO_LARGE' }, { status: 413 }); }
   if (!body || !body.kind || !ALLOWED_KINDS.includes(body.kind as OrderEventKind)) {
     return NextResponse.json({ error: `kind must be one of: ${ALLOWED_KINDS.join(', ')}` }, { status: 400 });
   }

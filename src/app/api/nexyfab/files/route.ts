@@ -9,8 +9,13 @@ import { getStorage } from '@/lib/storage';
 import { validateUploadedFile, sanitizeFileName } from '@/lib/file-validation';
 import { PLAN_LIMITS } from '@/lib/billing-engine';
 import { recordUsage } from '@/lib/billing-engine';
+import { resolveRequestOrgContext } from '@/lib/org-context';
+import { canManageOrderInActiveWorkspace } from '@/lib/nfOrderAccess';
+import { boundedMultipartBodyError, readBoundedMultipartBody } from '@/lib/boundedMultipartBody';
 
 type Plan = 'free' | 'pro' | 'team' | 'enterprise';
+const MAX_FILE_BYTES = 100 * 1024 * 1024;
+const MAX_MULTIPART_BODY_BYTES = MAX_FILE_BYTES + 1024 * 1024;
 
 // ─── GET: List user's files + storage usage ─────────────────────────────────
 
@@ -21,6 +26,9 @@ export async function GET(req: NextRequest) {
   }
 
   const db = getDbAdapter();
+  const context = resolveRequestOrgContext(authUser);
+  if (!context.ok) return NextResponse.json({ error: 'Select a valid workspace', code: context.code }, { status: 409 });
+  await db.execute('ALTER TABLE nf_files ADD COLUMN org_id TEXT').catch(() => {});
   const { searchParams } = req.nextUrl;
   const category = searchParams.get('category');
   const refType = searchParams.get('ref_type');
@@ -32,8 +40,8 @@ export async function GET(req: NextRequest) {
   const offset = (page - 1) * limit;
 
   // Build query with optional filters
-  let where = 'WHERE user_id = ?';
-  const params: unknown[] = [authUser.userId];
+  let where = context.orgId ? 'WHERE org_id = ?' : 'WHERE user_id = ? AND org_id IS NULL';
+  const params: unknown[] = [context.orgId ?? authUser.userId];
 
   if (category) {
     where += ' AND category = ?';
@@ -63,8 +71,8 @@ export async function GET(req: NextRequest) {
       ...params,
     ),
     db.queryOne<{ total_bytes: number }>(
-      `SELECT COALESCE(SUM(size_bytes), 0) as total_bytes FROM nf_files WHERE user_id = ?`,
-      authUser.userId,
+      `SELECT COALESCE(SUM(size_bytes), 0) as total_bytes FROM nf_files WHERE ${context.orgId ? 'org_id = ?' : 'user_id = ? AND org_id IS NULL'}`,
+      context.orgId ?? authUser.userId,
     ),
   ]);
 
@@ -97,20 +105,30 @@ export async function POST(req: NextRequest) {
   }
 
   const db = getDbAdapter();
+  const context = resolveRequestOrgContext(authUser);
+  if (!context.ok) return NextResponse.json({ error: 'Select a valid workspace', code: context.code }, { status: 409 });
+  await db.execute('ALTER TABLE nf_files ADD COLUMN org_id TEXT').catch(() => {});
   const plan = (authUser.plan || 'free') as Plan;
   const limitBytes = (PLAN_LIMITS[plan]?.storage_gb ?? 1) * 1024 ** 3;
 
   // Check current usage before accepting upload
   const usageRow = await db.queryOne<{ total_bytes: number }>(
-    `SELECT COALESCE(SUM(size_bytes), 0) as total_bytes FROM nf_files WHERE user_id = ?`,
-    authUser.userId,
+    `SELECT COALESCE(SUM(size_bytes), 0) as total_bytes FROM nf_files WHERE ${context.orgId ? 'org_id = ?' : 'user_id = ? AND org_id IS NULL'}`,
+    context.orgId ?? authUser.userId,
   );
   const currentUsage = usageRow?.total_bytes ?? 0;
 
   let formData: FormData;
   try {
-    formData = await req.formData();
-  } catch {
+    const multipartBody = await readBoundedMultipartBody(req, MAX_MULTIPART_BODY_BYTES);
+    const parsedHeaders = new Headers(req.headers);
+    parsedHeaders.delete('content-length');
+    parsedHeaders.delete('transfer-encoding');
+    formData = await new Request(req.url, { method: req.method, headers: parsedHeaders, body: multipartBody }).formData();
+  } catch (error) {
+    if (boundedMultipartBodyError(error)?.code === 'PAYLOAD_TOO_LARGE') {
+      return NextResponse.json({ error: 'File too large' }, { status: 413 });
+    }
     return NextResponse.json({ error: 'Invalid form data' }, { status: 400 });
   }
 
@@ -134,7 +152,7 @@ export async function POST(req: NextRequest) {
       '.jpg', '.jpeg', '.png', '.webp', '.gif',
       '.zip',
     ],
-    maxSizeBytes: 100 * 1024 * 1024, // 100MB
+    maxSizeBytes: MAX_FILE_BYTES,
     checkMagicBytes: false,
   });
   if (!validation.valid) {
@@ -147,7 +165,7 @@ export async function POST(req: NextRequest) {
 
   let storageResult;
   try {
-    storageResult = await storage.uploadPrivate(buffer, safeFilename, `files/${authUser.userId}`);
+    storageResult = await storage.uploadPrivate(buffer, safeFilename, `files/${context.orgId ?? authUser.userId}`);
   } catch (err) {
     console.error('File upload error:', err);
     return NextResponse.json({ error: 'File upload failed' }, { status: 500 });
@@ -158,9 +176,9 @@ export async function POST(req: NextRequest) {
   const now = Date.now();
   const cadRoot = category === 'cad' ? fileId : null;
   await db.execute(
-    `INSERT INTO nf_files (id, user_id, storage_key, filename, mime_type, size_bytes, category, ref_type, ref_id, created_at, replaces_file_id, cad_root_id, cad_version, uploaded_by_role)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-    fileId, authUser.userId, storageResult.key, safeFilename,
+    `INSERT INTO nf_files (id, user_id, org_id, storage_key, filename, mime_type, size_bytes, category, ref_type, ref_id, created_at, replaces_file_id, cad_root_id, cad_version, uploaded_by_role)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    fileId, authUser.userId, context.orgId, storageResult.key, safeFilename,
     file.type || 'application/octet-stream', storageResult.size,
     category, refType, refId, now,
     null, cadRoot, 1, null,
@@ -172,6 +190,7 @@ export async function POST(req: NextRequest) {
     const totalGb = Math.ceil(newTotal / (1024 ** 3));
     await recordUsage({
       userId: authUser.userId,
+      orgId: context.orgId,
       product: 'nexyfab',
       metric: 'storage_gb',
       quantity: totalGb,
@@ -215,15 +234,18 @@ export async function DELETE(req: NextRequest) {
   }
 
   const db = getDbAdapter();
-  const file = await db.queryOne<{ id: string; user_id: string; storage_key: string }>(
-    `SELECT id, user_id, storage_key FROM nf_files WHERE id = ?`,
+  const context = resolveRequestOrgContext(authUser);
+  if (!context.ok) return NextResponse.json({ error: 'Select a valid workspace', code: context.code }, { status: 409 });
+  await db.execute('ALTER TABLE nf_files ADD COLUMN org_id TEXT').catch(() => {});
+  const file = await db.queryOne<{ id: string; user_id: string; org_id: string | null; storage_key: string }>(
+    `SELECT id, user_id, org_id, storage_key FROM nf_files WHERE id = ?`,
     fileId,
   );
 
   if (!file) {
     return NextResponse.json({ error: 'File not found' }, { status: 404 });
   }
-  if (file.user_id !== authUser.userId) {
+  if (!canManageOrderInActiveWorkspace(authUser, file)) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   }
 

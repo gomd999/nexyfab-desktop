@@ -9,12 +9,16 @@ import { getDbAdapter } from '@/lib/db-adapter';
 import { getAuthUser } from '@/lib/auth-middleware';
 import { rateLimit } from '@/lib/rate-limit';
 import { getTrustedClientIp } from '@/lib/client-ip';
+import { boundedJsonError, readBoundedJson } from '@/lib/boundedJsonBody';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 
 const MAX_MSGS_BYTES = 96 * 1024; // 스레드당 96KB(카드 JSON 포함 — 이미지 제외 전제)
 const MAX_THREADS = 50;
+// 50 migrations x 96 KiB serialized messages can reach ~30 MiB when every
+// code unit is represented as a six-byte JSON escape.
+const MAX_BODY_BYTES = 32 * 1024 * 1024;
 
 interface ThreadIn {
   id?: string; title?: string; domain?: string; at?: number; updated?: number;
@@ -101,7 +105,10 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   const user = await getAuthUser(req);
   if (!user) return NextResponse.json({ ok: false, error: '로그인 필요' }, { status: 401 });
   await ensureSchema();
-  const body = (await req.json().catch(() => ({}))) as { thread?: ThreadIn; migrate?: ThreadIn[] };
+  type Body = { thread?: ThreadIn; migrate?: ThreadIn[] };
+  let body: Body = {};
+  try { body = await readBoundedJson<Body>(req, MAX_BODY_BYTES); }
+  catch (error) { if (boundedJsonError(error)?.code === 'PAYLOAD_TOO_LARGE') return NextResponse.json({ ok: false, error: '요청이 너무 큽니다.', code: 'PAYLOAD_TOO_LARGE' }, { status: 413 }); }
   if (Array.isArray(body.migrate)) {
     let okCount = 0;
     for (const t of body.migrate.slice(0, MAX_THREADS)) if (await upsert(user.userId, t)) okCount++;

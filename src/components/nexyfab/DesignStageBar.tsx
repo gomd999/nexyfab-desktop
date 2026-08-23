@@ -16,6 +16,9 @@ import { DESIGN_STAGES, type DesignStage, stageIndex } from '@/lib/designStage';
 
 /** 화면 언어 코드(`kr`·`cn`) → 사전 ISO(`ko`·`zh`). 매핑을 안 하면 조용히 영어가 된다. */
 const ISO: Record<string, string> = { kr: 'ko', ko: 'ko', en: 'en', ja: 'ja', cn: 'zh', zh: 'zh', es: 'es', ar: 'ar' };
+const PENDING_KEY: Record<string, string> = {
+  ko: 'pendingKo', en: 'pendingEn', ja: 'pendingJa', zh: 'pendingZh', es: 'pendingEs', ar: 'pendingAr',
+};
 
 export function DesignStageBar({
   stage, lang, accent = '#38bdf8', compact = false,
@@ -24,6 +27,10 @@ export function DesignStageBar({
   const iso = ISO[lang] ?? 'en';
   const s = DESIGN_STAGES[cur];
   const label = (x: (typeof DESIGN_STAGES)[number]) => (x as unknown as Record<string, string>)[iso] ?? x.en;
+  const pending = (x: (typeof DESIGN_STAGES)[number]) => {
+    const key = PENDING_KEY[iso] ?? PENDING_KEY.en;
+    return (x as unknown as Record<string, string>)[key] ?? x.pendingEn;
+  };
 
   return (
     <div style={{ marginBottom: compact ? 6 : 10 }}>
@@ -32,7 +39,7 @@ export function DesignStageBar({
           <React.Fragment key={x.id}>
             {i > 0 && <span style={{ flex: 1, height: 1, background: i <= cur ? accent : 'rgba(148,163,184,0.28)' }} />}
             <span
-              title={iso === 'ko' ? x.pendingKo : x.pendingEn}
+              title={pending(x)}
               style={{
                 fontSize: 11, fontWeight: 800, padding: '3px 9px', borderRadius: 999, whiteSpace: 'nowrap',
                 color: i === cur ? '#0b1020' : i < cur ? accent : '#6e7681',
@@ -52,7 +59,7 @@ export function DesignStageBar({
          *   무엇을 더 말해야 하는지 모른다 — 그게 「알아서 진행한다」로 느껴지는 이유다.
          */
         <div style={{ fontSize: 11, color: '#8b949e', lineHeight: 1.5 }}>
-          {iso === 'ko' ? s.pendingKo : s.pendingEn}
+          {pending(s)}
         </div>
       )}
     </div>

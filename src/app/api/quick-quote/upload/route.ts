@@ -12,6 +12,11 @@ import { getRfqAccessForUser } from '@/lib/rfq-partner-access';
 import { rateLimitAsync } from '@/lib/rate-limit';
 import { getTrustedClientIp } from '@/lib/client-ip';
 import { checkOrigin } from '@/lib/csrf';
+import { visionCompletion } from '@/lib/ai/vision';
+import { consumeEngineeringChatGuestQuota, GUEST_ENGINEERING_CHAT_DAILY_LIMIT } from '@/lib/ai/engineeringChatGuestQuota';
+import { guardStudioAi } from '@/lib/studio-ai-guard';
+import { approximateGeometryFromDimensions, isValidGeometry, type Geometry } from './geometry';
+import { readBoundedMultipartForm } from '@/lib/boundedMultipartForm';
 
 // Accepted extensions and their max sizes for this route
 const QUICK_QUOTE_CONFIG = {
@@ -21,6 +26,11 @@ const QUICK_QUOTE_CONFIG = {
   maxSizeImage: 10 * 1024 * 1024, // 10MB
 };
 const INLINE_OCCT_PARSE_MAX_BYTES = 3 * 1024 * 1024;
+const MULTIPART_FRAMING_ALLOWANCE_BYTES = 1024 * 1024;
+const MAX_ANONYMOUS_MULTIPART_BODY_BYTES = QUICK_QUOTE_CONFIG.maxSizeCad + MULTIPART_FRAMING_ALLOWANCE_BYTES;
+// src/proxy.ts enforces 64 MiB for upload routes. Keep authenticated aggregate
+// uploads honest instead of advertising an unreachable 251 MiB envelope.
+const MAX_AUTHENTICATED_MULTIPART_BODY_BYTES = 64 * 1024 * 1024;
 
 // ─── 파일 타입 감지 ─────────────────────────────────────────────────────────
 
@@ -101,10 +111,7 @@ function parseOBJ(buffer: Buffer): { vertices: number[]; faces: number[] } | nul
 
 // ─── Qwen-VL 이미지 분석 ────────────────────────────────────────────────────
 
-async function analyzeImageWithQwen(base64Data: string, mimeType: string) {
-    const apiKey = process.env.QWEN_API_KEY;
-    const baseUrl = process.env.QWEN_BASE_URL || 'https://dashscope.aliyuncs.com/compatible-mode/v1';
-
+async function analyzeImageWithVision(base64Data: string, mimeType: string, signal?: AbortSignal) {
     const prompt = `이 부품/제품 이미지를 분석해서 다음을 JSON으로만 답해줘:
 1. 부품 유형 (bracket, housing, shaft, gear, plate, cover, flange, etc.)
 2. 예상 제조 공정 (cnc, injection_molding, die_casting, sheet_metal, 3d_printing, forging 중 하나)
@@ -114,61 +121,33 @@ async function analyzeImageWithQwen(base64Data: string, mimeType: string) {
 Format: { "part_type": "...", "process": "...", "complexity": 5, "features": ["...", "..."], "materials": ["...", "...", "..."] }
 JSON만 출력하고 다른 설명은 하지 마세요.`;
 
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 30_000);
-    try {
-        const response = await fetch(`${baseUrl}/chat/completions`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
-            signal: controller.signal,
-            body: JSON.stringify({
-                model: 'qwen-vl-plus',
-                messages: [{
-                    role: 'user',
-                    content: [
-                        { type: 'image_url', image_url: { url: `data:${mimeType};base64,${base64Data}` } },
-                        { type: 'text', text: prompt },
-                    ],
-                }],
-                max_tokens: 512,
-            }),
-        });
-
-        if (!response.ok) throw new Error(`Qwen API error: ${response.status}`);
-        const data = await response.json();
-        const content = data.choices?.[0]?.message?.content || '';
-        const jsonMatch = content.match(/\{[\s\S]*\}/);
-        if (!jsonMatch) throw new Error('No JSON in Qwen response');
-        return JSON.parse(jsonMatch[0]);
-    } finally {
-        clearTimeout(timeout);
-    }
+    // Product policy: all visual-language work is auto-routed through the
+    // shared vision layer (GPT Luna first), rather than a hidden Qwen-only
+    // path with separate credentials and no cache telemetry.
+    const response = await visionCompletion({
+        prompt,
+        images: [{
+            bytes: new Uint8Array(Buffer.from(base64Data, 'base64')),
+            mimeType: ['image/png', 'image/jpeg', 'image/webp'].includes(mimeType)
+                ? mimeType as 'image/png' | 'image/jpeg' | 'image/webp'
+                : 'image/png',
+            label: `Uploaded manufacturing part (${mimeType})`,
+        }],
+        maxTokens: 512,
+        timeoutMs: 30_000,
+        signal,
+    });
+    const jsonMatch = response.text.match(/\{[\s\S]*\}/);
+    if (!jsonMatch) throw new Error('No JSON in vision response');
+    return JSON.parse(jsonMatch[0]);
 }
 
 // ─── 치수로 근사 계산 ────────────────────────────────────────────────────────
 
-function approximateFromDimensions(w: number, h: number, d: number) {
-    return {
-        volume_cm3: (w * h * d) / 1000,
-        surface_area_cm2: (2 * (w * h + w * d + h * d)) / 100,
-        bbox: { w, h, d },
-    };
-}
-
 // ─── 단일 파일 처리 ──────────────────────────────────────────────────────────
 
-type Geometry = { volume_cm3: number; surface_area_cm2: number; bbox: { w: number; h: number; d: number } };
-
-// A geometry is usable only if it has real, finite, positive measurements.
-// The browser OCCT/mesh pipeline (완제품 평가와 동일) sends these; we trust them
-// over the server-side parse because the client already tessellated the file.
-function isValidGeo(g: unknown): g is Geometry {
-    if (!g || typeof g !== 'object') return false;
-    const o = g as Geometry;
-    const finPos = (n: unknown) => typeof n === 'number' && Number.isFinite(n) && n > 0;
-    return finPos(o.volume_cm3) && finPos(o.surface_area_cm2)
-        && !!o.bbox && finPos(o.bbox.w) && finPos(o.bbox.h) && finPos(o.bbox.d);
-}
+// Client/server measurements must remain within the bounded geometry envelope.
+const isValidGeo = isValidGeometry;
 
 async function processOneFile(
     file: File,
@@ -176,6 +155,7 @@ async function processOneFile(
     dimensionsRaw: string | null,
     clientGeo: Geometry | null,
     persistPrivate: boolean,
+    signal?: AbortSignal,
 ): Promise<{
     geometry: Geometry | null;
     aiAnalysis: Record<string, unknown> | null;
@@ -245,7 +225,7 @@ async function processOneFile(
         if (!geometry && dimensionsRaw) {
             try {
                 const dims = JSON.parse(dimensionsRaw);
-                if (dims.w && dims.h && dims.d) geometry = approximateFromDimensions(Number(dims.w), Number(dims.h), Number(dims.d));
+                if (dims.w && dims.h && dims.d) geometry = approximateGeometryFromDimensions(Number(dims.w), Number(dims.h), Number(dims.d));
             } catch { /* ignore */ }
         }
     }
@@ -280,7 +260,7 @@ async function processOneFile(
         if (!geometry && dimensionsRaw) {
             try {
                 const dims = JSON.parse(dimensionsRaw);
-                if (dims.w && dims.h && dims.d) geometry = approximateFromDimensions(Number(dims.w), Number(dims.h), Number(dims.d));
+                if (dims.w && dims.h && dims.d) geometry = approximateGeometryFromDimensions(Number(dims.w), Number(dims.h), Number(dims.d));
             } catch { /* ignore */ }
         }
     }
@@ -291,7 +271,7 @@ async function processOneFile(
         if (dimensionsRaw) {
             try {
                 const dims = JSON.parse(dimensionsRaw);
-                if (dims.w && dims.h && dims.d) geometry = approximateFromDimensions(Number(dims.w), Number(dims.h), Number(dims.d));
+                if (dims.w && dims.h && dims.d) geometry = approximateGeometryFromDimensions(Number(dims.w), Number(dims.h), Number(dims.d));
             } catch { /* ignore */ }
         }
         if (!geometry) geometry = { volume_cm3: 100, surface_area_cm2: 200, bbox: { w: 100, h: 100, d: 100 } };
@@ -300,21 +280,25 @@ async function processOneFile(
     // ── 이미지 ──
     if (fileType === 'image') {
         try {
-            aiAnalysis = await analyzeImageWithQwen(buffer.toString('base64'), file.type || 'image/jpeg');
+            aiAnalysis = await analyzeImageWithVision(buffer.toString('base64'), file.type || 'image/jpeg', signal);
         } catch (e) {
-            console.error('Qwen VL error:', e);
+            console.error('Vision analysis error:', e);
             aiAnalysis = { part_type: 'unknown', process: 'cnc', complexity: 5, features: [], materials: ['steel_s45c', 'aluminum_6061', 'abs_plastic'] };
         }
         if (dimensionsRaw) {
             try {
                 const dims = JSON.parse(dimensionsRaw);
-                if (dims.w && dims.h && dims.d) geometry = approximateFromDimensions(Number(dims.w), Number(dims.h), Number(dims.d));
+                if (dims.w && dims.h && dims.d) geometry = approximateGeometryFromDimensions(Number(dims.w), Number(dims.h), Number(dims.d));
             } catch { /* ignore */ }
         }
         if (!geometry) geometry = { volume_cm3: 100, surface_area_cm2: 200, bbox: { w: 100, h: 100, d: 10 } };
     }
 
     // Async virus scan — delete file and alert admin if infected
+    // Reject overflow/non-finite server results too (including dimensions
+    // supplied by the client) before private persistence or response.
+    if (geometry && !isValidGeo(geometry)) geometry = null;
+
     let storageKey: string | null = null;
     if (persistPrivate && geometry) {
         const storageResult = await getStorage().uploadPrivate(buffer, safeFilename, 'quick-quote');
@@ -387,17 +371,26 @@ export async function POST(req: NextRequest) {
 
     let cleanupStorageKeys: string[] = [];
     try {
-        const formData = await req.formData();
+        const maximumBodyBytes = authUser ? MAX_AUTHENTICATED_MULTIPART_BODY_BYTES : MAX_ANONYMOUS_MULTIPART_BODY_BYTES;
+        const boundedForm = await readBoundedMultipartForm(req, maximumBodyBytes);
+        if (boundedForm.tooLarge) {
+            return NextResponse.json({ error: 'Upload payload is too large' }, { status: 413 });
+        }
+        if (!boundedForm.form) throw new Error('invalid multipart body');
+        const formData = boundedForm.form;
         const files = formData.getAll('file') as File[];
         const dimensionsRaw = formData.get('dimensions') as string | null;
         // Browser-extracted geometry keyed by filename (완제품 평가와 동일한 클라 OCCT/mesh 경로).
         // When present we trust it over the server-side parse.
-        let clientGeometries: Record<string, Geometry> = {};
+        let clientGeometries: Record<string, unknown> = {};
         try {
             const raw = formData.get('clientGeometries');
             if (typeof raw === 'string' && raw) {
+                if (Buffer.byteLength(raw, 'utf8') > 128 * 1024) {
+                    return NextResponse.json({ error: 'clientGeometries is too large' }, { status: 400 });
+                }
                 const parsed = JSON.parse(raw);
-                if (parsed && typeof parsed === 'object') clientGeometries = parsed as Record<string, Geometry>;
+                if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) clientGeometries = parsed as Record<string, unknown>;
             }
         } catch { /* ignore malformed — server parse / dims fallback still runs */ }
         const rfqIdRaw = String(formData.get('rfqId') ?? '').trim();
@@ -444,15 +437,67 @@ export async function POST(req: NextRequest) {
             }
         }
 
+        for (const file of files) {
+            if (Object.prototype.hasOwnProperty.call(clientGeometries, file.name)
+                && !isValidGeo(clientGeometries[file.name])) {
+                return NextResponse.json({ error: `${file.name}: invalid or oversized geometry` }, { status: 400 });
+            }
+        }
+
+        if (dimensionsRaw) {
+            if (Buffer.byteLength(dimensionsRaw, 'utf8') > 4 * 1024) {
+                return NextResponse.json({ error: 'dimensions is too large' }, { status: 400 });
+            }
+            try {
+                const dims = JSON.parse(dimensionsRaw) as { w?: unknown; h?: unknown; d?: unknown };
+                if (dims.w !== undefined || dims.h !== undefined || dims.d !== undefined) {
+                    const candidate = approximateGeometryFromDimensions(Number(dims.w), Number(dims.h), Number(dims.d));
+                    if (!isValidGeo(candidate)) {
+                        return NextResponse.json({ error: 'invalid or oversized dimensions' }, { status: 400 });
+                    }
+                }
+            } catch {
+                return NextResponse.json({ error: 'invalid dimensions' }, { status: 400 });
+            }
+        }
+
         // 모든 파일 처리
-        const results = await Promise.all(
-            files.map(async (file) => {
-                const ab = await file.arrayBuffer();
-                const buffer = Buffer.from(ab);
-                const cg = clientGeometries[file.name];
-                return processOneFile(file, buffer, dimensionsRaw, isValidGeo(cg) ? cg : null, !!authUser);
-            })
-        );
+        // Image analysis is a paid AI path. Apply the shared studio guard for
+        // authenticated budget/monthly slots and anonymous burst control, then
+        // also enforce the non-resettable guest daily quota for anonymous use.
+        const hasImage = files.some(file => getFileType(file.name) === 'image');
+        if (hasImage) {
+            const aiGuard = await guardStudioAi(req);
+            if (aiGuard) return aiGuard;
+        }
+        if (!authUser && hasImage) {
+            const guestQuota = await consumeEngineeringChatGuestQuota(req, ip);
+            if (!guestQuota.allowed) {
+                if (guestQuota.unavailable) {
+                    return NextResponse.json({
+                        error: 'Guest AI quota is temporarily unavailable.',
+                        code: 'GUEST_CHAT_QUOTA_UNAVAILABLE',
+                        resetAtMs: guestQuota.resetAt,
+                    }, { status: 503 });
+                }
+                return NextResponse.json({
+                    error: 'Guest AI quota reached. Please sign in or try again later.',
+                    code: 'GUEST_CHAT_QUOTA',
+                    limit: GUEST_ENGINEERING_CHAT_DAILY_LIMIT,
+                    resetAtMs: guestQuota.resetAt,
+                }, { status: 429 });
+            }
+        }
+
+        // The platform parser still materializes FormData, but process files
+        // sequentially so authenticated multi-file requests never add every
+        // per-file ArrayBuffer to the peak at once.
+        const results: Awaited<ReturnType<typeof processOneFile>>[] = [];
+        for (const file of files) {
+            const buffer = Buffer.from(await file.arrayBuffer());
+            const cg = clientGeometries[file.name];
+            results.push(await processOneFile(file, buffer, dimensionsRaw, isValidGeo(cg) ? cg : null, !!authUser, req.signal));
+        }
 
         const validGeos = results.map(r => r.geometry).filter(Boolean) as Geometry[];
         cleanupStorageKeys = results.flatMap(r => r.storageKey ? [r.storageKey] : []);

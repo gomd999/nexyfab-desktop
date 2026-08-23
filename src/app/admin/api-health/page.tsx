@@ -8,6 +8,8 @@
 
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import TimeseriesChart from '@/components/nexyfab/TimeseriesChart';
+import { createCommercialLocalizer } from '@/lib/i18n/commercialLocalizer';
+import { useAdminI18n } from '../AdminI18nProvider';
 
 interface ProviderStats {
   provider: string;
@@ -133,6 +135,9 @@ const PROVIDER_COLORS: Record<string, string> = {
 };
 
 export default function ApiHealthPage() {
+  const { copy, locale } = useAdminI18n();
+  const L = useMemo(() => createCommercialLocalizer(locale), [locale]);
+  const dateLocale = locale === 'ko' ? 'ko-KR' : locale === 'zh' ? 'zh-CN' : locale;
   const [data, setData] = useState<ApiResp | null>(null);
   const [series, setSeries] = useState<SeriesResp | null>(null);
   const [endpoints, setEndpoints] = useState<EndpointResp | null>(null);
@@ -177,23 +182,29 @@ export default function ApiHealthPage() {
   }, [windowH, providerFilter, bucketM]);
 
   const tripManual = async () => {
-    const reason = prompt('차단 사유 (선택):') ?? '운영자 수동 차단';
+    const reason = prompt(L('차단 사유 (선택):', 'Block reason (optional):')) ?? L('운영자 수동 차단', 'Manual operator block');
     const res = await fetch('/api/admin/breaker', {
       method: 'POST', credentials: 'include',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ reason }),
     });
     if (res.ok) await load();
-    else alert(`실패: ${(await res.json().catch(() => ({})))?.error ?? res.status}`);
+    else {
+      const error = (await res.json().catch(() => ({})))?.error ?? res.status;
+      alert(L(`실패: ${error}`, `Failed: ${error}`));
+    }
   };
 
   const clearScope = async (scope: string) => {
-    if (!confirm(`${scope} 차단 해제?`)) return;
+    if (!confirm(L(`${scope} 차단 해제?`, `Clear block for ${scope}?`))) return;
     const res = await fetch(`/api/admin/breaker?scope=${scope}&resetHealth=1`, {
       method: 'DELETE', credentials: 'include',
     });
     if (res.ok) await load();
-    else alert(`실패: ${(await res.json().catch(() => ({})))?.error ?? res.status}`);
+    else {
+      const error = (await res.json().catch(() => ({})))?.error ?? res.status;
+      alert(L(`실패: ${error}`, `Failed: ${error}`));
+    }
   };
 
   useEffect(() => { void load(); }, [load]);
@@ -209,9 +220,9 @@ export default function ApiHealthPage() {
 
   return (
     <div style={pageStyle}>
-      <h1 style={titleStyle}>📊 API Health</h1>
+      <h1 style={titleStyle}>📊 {copy.pageTitles.apiHealth}</h1>
       <p style={subtitleStyle}>
-        외부 API 호출 (AI / Toss / Resend / R2) 사용량 + 비용 + 실패율 관측. 30초마다 자동 새로고침.
+        {L('외부 API 호출 (AI / Toss / Resend / R2) 사용량 + 비용 + 실패율 관측. 30초마다 자동 새로고침.', 'Monitor external API calls (AI / Toss / Resend / R2): usage, cost, and error rate. Refreshes every 30 seconds.')}
       </p>
 
       {/* Window picker */}
@@ -232,15 +243,15 @@ export default function ApiHealthPage() {
             onChange={e => setProviderFilter(e.target.value || null)}
             style={selectStyle}
           >
-            <option value="">전체 provider</option>
+            <option value="">{L('전체 provider', 'All providers')}</option>
             {data.providers.map(p => (
               <option key={p.provider} value={p.provider}>{p.provider}</option>
             ))}
           </select>
         )}
         <span style={{ fontSize: 11, color: '#6e7681' }}>
-          bucket {bucketM}m · 갱신 {refreshIntervalMs / 1000}s
-          {windowH <= 1 && <span style={{ color: '#3fb950', marginLeft: 6 }}>● LIVE</span>}
+          {L(`bucket ${bucketM}분 · 갱신 ${refreshIntervalMs / 1000}초`, `bucket ${bucketM}m · refresh ${refreshIntervalMs / 1000}s`)}
+          {windowH <= 1 && <span style={{ color: '#3fb950', marginLeft: 6 }}>{L('● 실시간', '● LIVE')}</span>}
         </span>
         <button onClick={() => void load()} style={refreshBtnStyle}>↻</button>
       </div>
@@ -256,30 +267,30 @@ export default function ApiHealthPage() {
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
             <h3 style={{ ...panelTitleStyle, margin: 0, color: breaker.breaker ? '#f85149' : '#3fb950' }}>
               {breaker.breaker
-                ? `🚨 AI 차단 활성 (${breaker.breaker.scope})`
-                : '✓ AI 차단 비활성 — 모든 호출 정상'}
+                ? L(`🚨 AI 차단 활성 (${breaker.breaker.scope})`, `🚨 AI breaker active (${breaker.breaker.scope})`)
+                : L('✓ AI 차단 비활성 — 모든 호출 정상', '✓ AI breaker inactive — all calls healthy')}
             </h3>
             <div style={{ display: 'flex', gap: 8 }}>
               {breaker.breaker ? (
                 <button onClick={() => void clearScope(breaker.breaker!.scope)} style={{
                   padding: '6px 14px', fontSize: 12, fontWeight: 700,
                   background: '#3fb950', color: '#fff', border: 'none', borderRadius: 6, cursor: 'pointer',
-                }}>차단 해제</button>
+                }}>{L('차단 해제', 'Clear block')}</button>
               ) : (
                 <button onClick={() => void tripManual()} style={{
                   padding: '6px 14px', fontSize: 12,
                   background: 'transparent', color: '#f85149',
                   border: '1px solid #f85149', borderRadius: 6, cursor: 'pointer',
-                }}>수동 차단</button>
+                }}>{L('수동 차단', 'Block manually')}</button>
               )}
             </div>
           </div>
           {breaker.breaker && (
             <div style={{ fontSize: 12, color: '#c9d1d9', lineHeight: 1.6 }}>
-              <div>이유: {breaker.breaker.reason}</div>
+              <div>{L('이유:', 'Reason:')} {breaker.breaker.reason}</div>
               <div style={{ color: '#8b949e' }}>
-                만료: {new Date(breaker.breaker.untilMs).toLocaleString('ko-KR')}
-                {' '}(D-{Math.ceil(breaker.breaker.remainingMs / 60000)}분)
+                {L('만료:', 'Expires:')} {new Date(breaker.breaker.untilMs).toLocaleString(dateLocale)}
+                {' '}(D-{Math.ceil(breaker.breaker.remainingMs / 60000)}{L('분', 'min')})
               </div>
             </div>
           )}
@@ -294,8 +305,8 @@ export default function ApiHealthPage() {
                   color: p.degraded ? '#fff' : '#3fb950',
                   border: `1px solid ${p.degraded ? '#f85149' : '#3fb95040'}`,
                 }}>
-                  {p.provider} {p.degraded ? '⚠ degraded' : '✓ healthy'}
-                  {' · '}{p.recentErrors}/{p.recentTotal} 실패
+                  {p.provider} {p.degraded ? L('⚠ 저하', '⚠ Degraded') : L('✓ 정상', '✓ Healthy')}
+                  {' · '}{p.recentErrors}/{p.recentTotal} {L('실패', 'failed')}
                 </span>
               ))}
             </div>
@@ -313,26 +324,26 @@ export default function ApiHealthPage() {
           padding: 12,
         }}>
           <div style={{ fontSize: 12, fontWeight: 700, color: '#d29922', marginBottom: 6 }}>
-            🔮 비용 추세 예측 (last 1h 기준)
+            {L('🔮 비용 추세 예측 (최근 1시간 기준)', '🔮 Cost trend forecast (based on the last 1h)')}
           </div>
           <div style={{ display: 'flex', gap: 16, fontSize: 11, color: '#c9d1d9', flexWrap: 'wrap' }}>
-            <span>속도: <b>${data.forecast.costPerMinute.toFixed(4)}/min</b></span>
+            <span>{L('속도:', 'Rate:')} <b>${data.forecast.costPerMinute.toFixed(4)}/min</b></span>
             {data.forecast.hourlyEtaMin !== null && (
               <span>
-                시간당 cap 도달까지: <b style={{
+                {L('시간당 cap 도달까지:', 'Time to hourly cap:')} <b style={{
                   color: data.forecast.hourlyEtaMin <= 15 ? '#f85149' : data.forecast.hourlyEtaMin <= 60 ? '#d29922' : '#3fb950',
                 }}>
-                  {data.forecast.hourlyEtaMin === 0 ? '이미 초과' : `${data.forecast.hourlyEtaMin}분`}
+                  {data.forecast.hourlyEtaMin === 0 ? L('이미 초과', 'Already exceeded') : `${data.forecast.hourlyEtaMin}${L('분', 'min')}`}
                 </b>
               </span>
             )}
             {data.forecast.dailyEtaMin !== null && (
               <span>
-                일일 cap 도달까지: <b style={{
+                {L('일일 cap 도달까지:', 'Time to daily cap:')} <b style={{
                   color: data.forecast.dailyEtaMin <= 60 ? '#f85149' : data.forecast.dailyEtaMin <= 360 ? '#d29922' : '#3fb950',
                 }}>
-                  {data.forecast.dailyEtaMin === 0 ? '이미 초과'
-                    : data.forecast.dailyEtaMin >= 60 ? `${Math.round(data.forecast.dailyEtaMin / 60)}시간` : `${data.forecast.dailyEtaMin}분`}
+                  {data.forecast.dailyEtaMin === 0 ? L('이미 초과', 'Already exceeded')
+                    : data.forecast.dailyEtaMin >= 60 ? `${Math.round(data.forecast.dailyEtaMin / 60)}${L('시간', 'h')}` : `${data.forecast.dailyEtaMin}${L('분', 'min')}`}
                 </b>
               </span>
             )}
@@ -342,7 +353,7 @@ export default function ApiHealthPage() {
               download
               style={{ color: '#79c0ff', textDecoration: 'underline', fontSize: 11 }}
             >
-              📥 CSV 다운로드 ({windowH}h)
+              {L(`📥 CSV 다운로드 (${windowH}시간)`, `📥 Download CSV (${windowH}h)`)}
             </a>
           </div>
         </div>
@@ -351,27 +362,27 @@ export default function ApiHealthPage() {
       {/* Summary cards */}
       <div style={summaryRowStyle}>
         <div style={summaryCardStyle}>
-          <div style={summaryLabelStyle}>총 호출 수</div>
+          <div style={summaryLabelStyle}>{L('총 호출 수', 'Total calls')}</div>
           <div style={summaryValueStyle}>{totalCalls.toLocaleString()}</div>
         </div>
         <div style={summaryCardStyle}>
-          <div style={summaryLabelStyle}>총 비용 (AI)</div>
+          <div style={summaryLabelStyle}>{L('총 비용 (AI)', 'Total cost (AI)')}</div>
           <div style={{ ...summaryValueStyle, color: '#d29922' }}>${totalCost.toFixed(4)}</div>
         </div>
         <div style={summaryCardStyle}>
-          <div style={summaryLabelStyle}>실패율</div>
+          <div style={summaryLabelStyle}>{L('실패율', 'Error rate')}</div>
           <div style={{
             ...summaryValueStyle,
             color: overallErrorRate >= 0.05 ? '#f85149' : overallErrorRate >= 0.01 ? '#d29922' : '#3fb950',
           }}>{(overallErrorRate * 100).toFixed(2)}%</div>
         </div>
         <div style={summaryCardStyle}>
-          <div style={summaryLabelStyle}>윈도우</div>
-          <div style={{ ...summaryValueStyle, fontSize: 16, color: '#8b949e' }}>last {windowH}h</div>
+          <div style={summaryLabelStyle}>{L('윈도우', 'Window')}</div>
+          <div style={{ ...summaryValueStyle, fontSize: 16, color: '#8b949e' }}>{L(`최근 ${windowH}시간`, `last ${windowH}h`)}</div>
         </div>
       </div>
 
-      {loading && <div style={mutedStyle}>불러오는 중…</div>}
+      {loading && <div style={mutedStyle}>{L('불러오는 중…', 'Loading…')}</div>}
 
       {/* Time-bucketed charts */}
       {series && series.series.length > 0 && (
@@ -380,30 +391,30 @@ export default function ApiHealthPage() {
             data={series.series.map(s => ({ ts: s.ts, value: s.calls }))}
             color="#79c0ff"
             mode="bar"
-            title="호출 수"
-            subtitle={`${series.window.bucketMinutes}분 bucket · ${providerFilter ?? '모든 provider'}`}
+            title={L('호출 수', 'Calls')}
+            subtitle={L(`${series.window.bucketMinutes}분 bucket · ${providerFilter ?? '모든 provider'}`, `${series.window.bucketMinutes}m bucket · ${providerFilter ?? 'All providers'}`)}
           />
           <TimeseriesChart
             data={series.series.map(s => ({ ts: s.ts, value: s.costUsd }))}
             color="#d29922"
             mode="bar"
-            title="비용 (USD)"
-            subtitle={`총 $${series.series.reduce((a, b) => a + b.costUsd, 0).toFixed(4)}`}
+            title={L('비용 (USD)', 'Cost (USD)')}
+            subtitle={L(`총 $${series.series.reduce((a, b) => a + b.costUsd, 0).toFixed(4)}`, `Total $${series.series.reduce((a, b) => a + b.costUsd, 0).toFixed(4)}`)}
             formatY={v => `$${v.toFixed(4)}`}
           />
           <TimeseriesChart
             data={series.series.map(s => ({ ts: s.ts, value: s.errors }))}
             color="#f85149"
             mode="bar"
-            title="실패 수"
-            subtitle={`총 ${series.series.reduce((a, b) => a + b.errors, 0)}건`}
+            title={L('실패 수', 'Failed calls')}
+            subtitle={L(`총 ${series.series.reduce((a, b) => a + b.errors, 0)}건`, `Total ${series.series.reduce((a, b) => a + b.errors, 0)}`)}
           />
           <TimeseriesChart
             data={series.series.map(s => ({ ts: s.ts, value: s.avgLatencyMs }))}
             color="#3fb950"
             mode="line"
-            title="평균 latency"
-            subtitle="bucket 별 평균"
+            title={L('평균 latency', 'Average latency')}
+            subtitle={L('bucket 별 평균', 'Average per bucket')}
             formatY={v => `${Math.round(v)}ms`}
           />
         </div>
@@ -413,27 +424,27 @@ export default function ApiHealthPage() {
       {data && data.providers.length === 0 && (
         <div style={emptyStyle}>
           <div style={{ fontSize: 36, marginBottom: 8 }}>📭</div>
-          <div>이 윈도우에 기록된 호출이 없습니다.</div>
+          <div>{L('이 윈도우에 기록된 호출이 없습니다.', 'No calls were recorded in this window.')}</div>
           <div style={{ fontSize: 11, color: '#8b949e', marginTop: 6 }}>
-            새 마이그레이션 (v84) 적용 직후라면 데이터가 누적될 때까지 잠시 기다려 주세요.
+            {L('새 마이그레이션 (v84) 적용 직후라면 데이터가 누적될 때까지 잠시 기다려 주세요.', 'If migration v84 was just applied, wait for data to accumulate.')}
           </div>
         </div>
       )}
 
       {data && data.providers.length > 0 && (
         <div style={panelStyle}>
-          <h3 style={panelTitleStyle}>Provider별 사용량 (행 클릭 → 필터)</h3>
+          <h3 style={panelTitleStyle}>{L('Provider별 사용량 (행 클릭 → 필터)', 'Usage by provider (click a row to filter)')}</h3>
           <table style={tableStyle}>
             <thead>
               <tr>
-                <th style={thStyle}>Provider</th>
-                <th style={thRightStyle}>호출</th>
-                <th style={thRightStyle}>실패</th>
-                <th style={thRightStyle}>실패율</th>
-                <th style={thRightStyle}>입력 토큰</th>
-                <th style={thRightStyle}>출력 토큰</th>
-                <th style={thRightStyle}>비용 (USD)</th>
-                <th style={thRightStyle}>평균 latency</th>
+                <th style={thStyle}>{L('Provider', 'Provider')}</th>
+                <th style={thRightStyle}>{L('호출', 'Calls')}</th>
+                <th style={thRightStyle}>{L('실패', 'Failed')}</th>
+                <th style={thRightStyle}>{L('실패율', 'Error rate')}</th>
+                <th style={thRightStyle}>{L('입력 토큰', 'Input tokens')}</th>
+                <th style={thRightStyle}>{L('출력 토큰', 'Output tokens')}</th>
+                <th style={thRightStyle}>{L('비용 (USD)', 'Cost (USD)')}</th>
+                <th style={thRightStyle}>{L('평균 latency', 'Average latency')}</th>
                 <th style={thRightStyle}>p95</th>
               </tr>
             </thead>
@@ -447,7 +458,7 @@ export default function ApiHealthPage() {
                     background: providerFilter === p.provider ? '#1f6feb22' : 'transparent',
                   }}
                   onClick={() => setProviderFilter(providerFilter === p.provider ? null : p.provider)}
-                  title="클릭 시 이 provider로 필터"
+                  title={L('클릭 시 이 provider로 필터', 'Click to filter by this provider')}
                 >
                   <td style={tdStyle}>
                     <span style={{
@@ -478,18 +489,18 @@ export default function ApiHealthPage() {
       {endpoints && endpoints.rows.length > 0 && (
         <div style={panelStyle}>
           <h3 style={panelTitleStyle}>
-            Endpoint 상세 ({endpoints.rows.length}건{providerFilter ? ` · ${providerFilter}` : ''})
+            {L(`Endpoint 상세 (${endpoints.rows.length}건${providerFilter ? ` · ${providerFilter}` : ''})`, `Endpoint details (${endpoints.rows.length}${providerFilter ? ` · ${providerFilter}` : ''})`)}
           </h3>
           <table style={tableStyle}>
             <thead>
               <tr>
-                <th style={thStyle}>Provider</th>
-                <th style={thStyle}>Endpoint</th>
-                <th style={thRightStyle}>호출</th>
-                <th style={thRightStyle}>실패율</th>
-                <th style={thRightStyle}>비용</th>
-                <th style={thRightStyle}>평균</th>
-                <th style={thRightStyle}>최대</th>
+                <th style={thStyle}>{L('Provider', 'Provider')}</th>
+                <th style={thStyle}>{L('Endpoint', 'Endpoint')}</th>
+                <th style={thRightStyle}>{L('호출', 'Calls')}</th>
+                <th style={thRightStyle}>{L('실패율', 'Error rate')}</th>
+                <th style={thRightStyle}>{L('비용', 'Cost')}</th>
+                <th style={thRightStyle}>{L('평균', 'Average')}</th>
+                <th style={thRightStyle}>{L('최대', 'Maximum')}</th>
               </tr>
             </thead>
             <tbody>
@@ -502,7 +513,7 @@ export default function ApiHealthPage() {
                     }} />
                     {r.provider}
                   </td>
-                  <td style={{ ...tdStyle, fontFamily: 'monospace', fontSize: 11 }}>{r.endpoint ?? '(none)'}</td>
+                  <td style={{ ...tdStyle, fontFamily: 'monospace', fontSize: 11 }}>{r.endpoint ?? L('(없음)', 'None')}</td>
                   <td style={tdRightStyle}>{r.calls.toLocaleString()}</td>
                   <td style={{
                     ...tdRightStyle,
@@ -521,19 +532,19 @@ export default function ApiHealthPage() {
       {/* Top features by cost */}
       {data && data.topFeatures.length > 0 && (
         <div style={panelStyle}>
-          <h3 style={panelTitleStyle}>비용 상위 Feature</h3>
+          <h3 style={panelTitleStyle}>{L('비용 상위 Feature', 'Top features by cost')}</h3>
           <table style={tableStyle}>
             <thead>
               <tr>
-                <th style={thStyle}>Feature</th>
-                <th style={thRightStyle}>호출</th>
-                <th style={thRightStyle}>비용 (USD)</th>
+                <th style={thStyle}>{L('Feature', 'Feature')}</th>
+                <th style={thRightStyle}>{L('호출', 'Calls')}</th>
+                <th style={thRightStyle}>{L('비용 (USD)', 'Cost (USD)')}</th>
               </tr>
             </thead>
             <tbody>
               {data.topFeatures.map(f => (
                 <tr key={f.feature ?? '(unknown)'} style={trStyle}>
-                  <td style={tdStyle}>{f.feature ?? '(unknown)'}</td>
+                  <td style={tdStyle}>{f.feature ?? L('(알 수 없음)', 'Unknown')}</td>
                   <td style={tdRightStyle}>{f.calls.toLocaleString()}</td>
                   <td style={tdRightStyle}>${f.costUsd.toFixed(4)}</td>
                 </tr>
@@ -547,18 +558,18 @@ export default function ApiHealthPage() {
       {users && users.rows.length > 0 && (
         <div style={panelStyle}>
           <h3 style={panelTitleStyle}>
-            비용 상위 사용자 (last {windowH}h{providerFilter ? ` · ${providerFilter}` : ''})
+            {L(`비용 상위 사용자 (최근 ${windowH}시간${providerFilter ? ` · ${providerFilter}` : ''})`, `Top users by cost (last ${windowH}h${providerFilter ? ` · ${providerFilter}` : ''})`)}
           </h3>
           <table style={tableStyle}>
             <thead>
               <tr>
-                <th style={thStyle}>User</th>
-                <th style={thStyle}>Plan</th>
-                <th style={thRightStyle}>호출</th>
-                <th style={thRightStyle}>실패율</th>
-                <th style={thRightStyle}>토큰</th>
-                <th style={thRightStyle}>비용</th>
-                <th style={thRightStyle}>점유율</th>
+                <th style={thStyle}>{L('사용자', 'User')}</th>
+                <th style={thStyle}>{L('요금제', 'Plan')}</th>
+                <th style={thRightStyle}>{L('호출', 'Calls')}</th>
+                <th style={thRightStyle}>{L('실패율', 'Error rate')}</th>
+                <th style={thRightStyle}>{L('토큰', 'Tokens')}</th>
+                <th style={thRightStyle}>{L('비용', 'Cost')}</th>
+                <th style={thRightStyle}>{L('점유율', 'Share')}</th>
               </tr>
             </thead>
             <tbody>
@@ -567,7 +578,7 @@ export default function ApiHealthPage() {
                 return (
                   <tr key={u.userId} style={trStyle}>
                     <td style={tdStyle}>
-                      <div style={{ fontSize: 12, fontWeight: 600, color: '#c9d1d9' }}>{u.email ?? '(no email)'}</div>
+                      <div style={{ fontSize: 12, fontWeight: 600, color: '#c9d1d9' }}>{u.email ?? L('(이메일 없음)', 'No email')}</div>
                       <div style={{ fontSize: 10, color: '#6e7681', fontFamily: 'monospace' }}>{u.userId.slice(0, 16)}</div>
                     </td>
                     <td style={tdStyle}>
@@ -582,7 +593,7 @@ export default function ApiHealthPage() {
                              : u.plan === 'pro' ? '#3fb950'
                              : '#9ca3af',
                         borderRadius: 3,
-                      }}>{u.plan ?? 'free'}</span>
+                      }}>{u.plan ?? L('무료', 'Free')}</span>
                     </td>
                     <td style={tdRightStyle}>{u.calls.toLocaleString()}</td>
                     <td style={{
@@ -606,7 +617,7 @@ export default function ApiHealthPage() {
           </table>
           {users.rows.length > 0 && users.rows[0].costUsd > 0 && (users.rows[0].costUsd / users.totals.cost) > 0.5 && (
             <div style={{ marginTop: 8, padding: 8, background: '#3a1c1c', borderRadius: 6, fontSize: 11, color: '#f85149' }}>
-              ⚠️ 1명 사용자가 전체 비용의 50%+ 차지 — 어뷰즈 가능성 검토 필요
+              {L('⚠️ 1명 사용자가 전체 비용의 50%+ 차지 — 어뷰즈 가능성 검토 필요', '⚠️ One user accounts for 50%+ of total cost — review for possible abuse')}
             </div>
           )}
         </div>
@@ -615,7 +626,7 @@ export default function ApiHealthPage() {
       {/* Recent errors */}
       {data && data.recentErrors.length > 0 && (
         <div style={panelStyle}>
-          <h3 style={panelTitleStyle}>최근 실패 ({data.recentErrors.length}건)</h3>
+          <h3 style={panelTitleStyle}>{L(`최근 실패 (${data.recentErrors.length}건)`, `Recent failures (${data.recentErrors.length})`)}</h3>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
             {data.recentErrors.map((e, i) => (
               <div key={i} style={errorRowStyle}>
@@ -623,7 +634,7 @@ export default function ApiHealthPage() {
                   <span style={{ fontWeight: 700, color: PROVIDER_COLORS[e.provider] ?? '#f85149' }}>
                     {e.provider} {e.endpoint && <span style={{ color: '#8b949e', fontWeight: 400 }}>· {e.endpoint}</span>}
                   </span>
-                  <span style={{ fontSize: 10, color: '#6e7681' }}>{new Date(e.calledAt).toLocaleString('ko-KR')}</span>
+                  <span style={{ fontSize: 10, color: '#6e7681' }}>{new Date(e.calledAt).toLocaleString(dateLocale)}</span>
                 </div>
                 <div style={{ fontSize: 11, color: '#c9d1d9', fontFamily: 'monospace' }}>{e.message}</div>
               </div>

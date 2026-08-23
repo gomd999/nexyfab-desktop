@@ -42,6 +42,12 @@ describe('shared AI/manual/precision workspace revision', () => {
     expect(result.workspace.documentHash).toBe(original.documentHash);
   });
 
+  it('accepts standard tools without changing the design revision', () => {
+    const original = workspace();
+    const result = switchWorkspaceMode(original, { experience: 'standard', workMode: 'manual' });
+    expect(result).toMatchObject({ committed: true, workspace: { revision: 0, experience: 'standard', workMode: 'manual' } });
+  });
+
   it('preserves a human parameter lock against AI while allowing an explicit expert override', () => {
     const original = workspace();
     const human = commitDesignWorkspaceRevision(original, {

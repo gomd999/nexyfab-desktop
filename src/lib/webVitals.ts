@@ -13,6 +13,12 @@ export interface WebVitalPayload {
   navigationType?: string;
 }
 
+// Keep a finite abuse boundary without rejecting legitimate very-slow page
+// loads. A cold CAD workspace compile/load can exceed two minutes on a
+// development or low-power machine, and rejecting that sample hides exactly
+// the performance failure RUM is meant to surface.
+const MAX_DURATION_VITAL_MS = 10 * 60 * 1_000;
+
 const RATINGS = new Set<WebVitalRating>(['good', 'needs-improvement', 'poor']);
 const DEVICES = new Set<WebVitalDevice>(['mobile', 'tablet', 'desktop']);
 const DYNAMIC_PARENT_SEGMENTS = new Set([
@@ -53,7 +59,7 @@ export function parseWebVitalPayload(input: unknown): WebVitalPayload | null {
   const body = input as Record<string, unknown>;
   if (!WEB_VITAL_NAMES.includes(body.name as WebVitalName)) return null;
   const name = body.name as WebVitalName;
-  const maximum = name === 'CLS' ? 10 : 120_000;
+  const maximum = name === 'CLS' ? 10 : MAX_DURATION_VITAL_MS;
   const value = finiteNumber(body.value, 0, maximum);
   const delta = finiteNumber(body.delta, 0, maximum);
   if (value === null || delta === null || !RATINGS.has(body.rating as WebVitalRating) || !DEVICES.has(body.device as WebVitalDevice)) {

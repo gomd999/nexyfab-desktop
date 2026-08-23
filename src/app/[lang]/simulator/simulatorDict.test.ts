@@ -6,7 +6,7 @@
  * RISK_SCENARIOS 의 name/description 만 예외였다.
  */
 import { describe, expect, it } from 'vitest';
-import { simDict, RISK_SCENARIO_I18N } from './simulatorDict';
+import { simDict, INDUSTRY_SPECIAL_I18N, RISK_SCENARIO_I18N } from './simulatorDict';
 
 const SITE_LANGS = ['ko', 'en', 'ja', 'cn', 'es', 'ar'] as const;
 const SCENARIO_IDS = ['us_china_tariff', 'port_strike', 'energy_crisis', 'supply_shortage', 'currency_shock', 'climate_disaster'];
@@ -49,5 +49,18 @@ describe('★리스크 시나리오가 6개 site 언어를 모두 갖는다', ()
   it('ko 값은 원본과 같다 — 번역 과정에서 원문이 바뀌지 않았는지', () => {
     expect(RISK_SCENARIO_I18N.us_china_tariff.ko.name).toBe('미중 관세전쟁');
     expect(RISK_SCENARIO_I18N.climate_disaster.ko.description).toBe('주요 생산지 자연재해로 공장 2개월 가동 중단');
+  });
+
+  it('산업 특화 프리셋 표시명도 6개 언어를 모두 제공한다', () => {
+    for (const id of ['semiconductor', 'medical_device', 'automotive_tier']) {
+      for (const lang of SITE_LANGS) {
+        expect(INDUSTRY_SPECIAL_I18N[id]?.[lang], `${id}.${lang}`).toBeTruthy();
+      }
+    }
+    for (const id of ['semiconductor', 'medical_device', 'automotive_tier']) {
+      for (const lang of SITE_LANGS.filter((value) => value !== 'ko')) {
+        expect(HANGUL.test(INDUSTRY_SPECIAL_I18N[id]?.[lang] ?? ''), `${id}.${lang}`).toBe(false);
+      }
+    }
   });
 });

@@ -29,7 +29,7 @@ export default function GlobalError({
   useEffect(() => {
     console.error('[GlobalError]', error);
     // Forward to Sentry via telemetry ingestion endpoint
-    void fetch('/api/nexyfab/telemetry', {
+    void fetch('/api/nexyfab/telemetry/', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       keepalive: true,

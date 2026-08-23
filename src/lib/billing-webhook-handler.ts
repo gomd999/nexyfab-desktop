@@ -9,6 +9,7 @@ import { recordOrderCompletion } from './stage-engine';
 import { logFunnelEvent } from './funnel-logger';
 import { sendOpsAlert } from './notify/opsAlert';
 import { recordOrderEvent } from './order-events';
+import { resolveStoredManufacturingLineage, type StoredManufacturingLineageColumns } from './manufacturingLineageDb';
 
 export interface AwWebhookEvent {
   id:         string;
@@ -46,6 +47,31 @@ export async function handleBillingEvent(event: AwWebhookEvent): Promise<string>
       // mark the order as paid.
       const orderId = meta.nexyfab_order_id;
       if (orderId) {
+        const order = await db.queryOne<StoredManufacturingLineageColumns & { user_id: string; total_price_krw: number }>(
+          `SELECT user_id, total_price_krw, lineage_id, artifact_id, artifact_sha256, document_version_id
+             FROM nf_orders WHERE id = ?`,
+          orderId,
+        );
+        const lineage = order
+          ? await resolveStoredManufacturingLineage(db, order.user_id, order)
+          : { ok: false as const, code: 'LINEAGE_NOT_FOUND' as const };
+        const metadataBound = lineage.ok
+          && meta.lineage_id === lineage.ref.lineageId
+          && meta.artifact_sha256 === lineage.ref.artifactSha256;
+        if (!order || !lineage.ok || !metadataBound) {
+          await db.execute(
+            "UPDATE nf_orders SET payment_status = 'paid_artifact_hold', updated_at = ? WHERE id = ? AND payment_status != 'paid'",
+            Date.now(), orderId,
+          );
+          void sendOpsAlert({
+            severity: 'critical',
+            title: 'Paid order blocked by stale manufacturing release',
+            bodyLines: ['Payment succeeded, but production was not started because the signed artifact lineage is missing, revoked, or mismatched.'],
+            context: { orderId, eventId: event.id, lineageCode: lineage.ok ? 'WEBHOOK_METADATA_MISMATCH' : lineage.code },
+            source: 'billing-webhook',
+          });
+          break;
+        }
         const flip = await db.execute(
           `UPDATE nf_orders
               SET payment_status = 'paid',
@@ -57,12 +83,8 @@ export async function handleBillingEvent(event: AwWebhookEvent): Promise<string>
         // Stage promotion only on the first paid-flip — guards against
         // duplicate webhook deliveries double-counting cumulative_order_krw.
         if ((flip.changes ?? 0) > 0) {
-          const ord = await db.queryOne<{ user_id: string; total_price_krw: number }>(
-            'SELECT user_id, total_price_krw FROM nf_orders WHERE id = ?',
-            orderId,
-          ).catch(() => null);
-          if (ord?.user_id) {
-            await recordOrderCompletion(ord.user_id, Number(ord.total_price_krw) || 0);
+          if (order.user_id) {
+            await recordOrderCompletion(order.user_id, Number(order.total_price_krw) || 0);
           }
           await recordOrderEvent({
             orderId,

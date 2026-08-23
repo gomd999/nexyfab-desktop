@@ -2,6 +2,7 @@
 import { spawn } from 'node:child_process';
 import { existsSync } from 'node:fs';
 import path from 'node:path';
+import { pathToFileURL } from 'node:url';
 
 function arg(name, fallback) {
   const prefix = `--${name}=`;
@@ -12,7 +13,7 @@ function arg(name, fallback) {
 const service = arg('service', 'nexyfab.com');
 const environment = arg('environment', 'production');
 const site = arg('site', 'https://nexyfab.com');
-const expectedBuildId = arg('expected-build-id', process.env.NEXYFAB_EXPECTED_BUILD_ID || '');
+let expectedBuildId = arg('expected-build-id', process.env.NEXYFAB_EXPECTED_BUILD_ID || '');
 const timeoutMs = Number(arg('timeout-ms', '1200000'));
 const sourcePath = arg('source', '.');
 const pathAsRoot = process.argv.includes('--path-as-root');
@@ -38,6 +39,79 @@ function runRailway(args, options = {}) {
   return run(railwayCommand, [...railwayPrefixArgs, ...args], options);
 }
 
+function runNpmScript(script, env = process.env) {
+  const npmExecPath = process.env.npm_execpath;
+  if (npmExecPath) return run(process.execPath, [npmExecPath, 'run', script], { stream: true, env });
+  return run(process.platform === 'win32' ? 'npm.cmd' : 'npm', ['run', script], { stream: true, env });
+}
+
+export const TARGET_RUNTIME_KEYS = [
+  'NEXYFAB_COMMERCIAL_MODE', 'NEXYFAB_RELEASE_CHANNEL', 'NEXYFAB_BUILD_ID',
+  'NEXYFAB_PRECISION_CAD_COMMERCIAL_MODE', 'NEXYFAB_AGENT_APPROVAL_SECRET',
+  'NEXYFAB_AGENTIC_TRUST_REGISTRY_JSON', 'EXTERNAL_WORKER_ORCHESTRATOR_URL',
+  'EXTERNAL_WORKER_ORCHESTRATOR_HEALTH_URL', 'POSTGRES_MIGRATION_VERSION',
+  'POSTGRES_MIGRATION_CHECKSUM_2026082202', 'POSTGRES_MIGRATION_CHECKSUM_2026082203',
+  'POSTGRES_MIGRATION_CHECKSUM_2026082204', 'POSTGRES_MIGRATION_CHECKSUM_2026082205',
+  'POSTGRES_MIGRATION_CHECKSUM_2026082206', 'POSTGRES_MIGRATION_CHECKSUM_2026082207', 'POSTGRES_MIGRATION_CHECKSUM_2026082208',
+  'NEXYFAB_COMMERCIAL_WORKER_KEYS_JSON', 'NEXYFAB_COMMERCIAL_WORKER_CLAIM_SECRET',
+  'NEXYFAB_COMMERCIAL_TRANSPORT_SECRET', 'NEXYFAB_COMMERCIAL_CALLBACK_SECRET',
+  'NEXYFAB_COMMERCIAL_CALLBACK_URL', 'NEXYFAB_EXTERNAL_VERIFIER_REGISTRY_JSON',
+  'NEXYFAB_EXTERNAL_VERIFIER_INTERNAL_SECRET', 'OBJECT_STORAGE_PRIVATE_BUCKET',
+  'DATABASE_URL', 'REDIS_URL', 'OPENSCAD_EXTERNAL_WORKER', 'CAD_RUNTIME_EXTERNAL_WORKER',
+  'UPSTASH_REDIS_REST_URL', 'UPSTASH_REDIS_REST_TOKEN', 'NEXYFAB_CAD_INDEPENDENT_MODE',
+  'S3_BUCKET', 'S3_ACCESS_KEY_ID', 'S3_SECRET_ACCESS_KEY', 'CRON_SECRET',
+  'GENERATION_EVIDENCE_SIGNING_SECRET', 'SCAD_AGENT_SESSION_SECRET',
+  'SMTP_HOST', 'SMTP_USER', 'SMTP_PASS', 'NEXYFAB_ADMIN_EMAIL', 'ADMIN_BOOTSTRAP_EMAILS', 'SENTRY_DSN',
+  'NEXT_PUBLIC_AUTH_URL', 'NEXT_PUBLIC_NEXYSYS_URL', 'RECAPTCHA_SECRET_KEY',
+  'NEXT_PUBLIC_RECAPTCHA_SITE_KEY', 'RECAPTCHA_ALLOWED_HOSTNAMES', 'SECURITY_GATE_MODE', 'JWT_SECRET',
+  'NEXT_SERVER_ACTIONS_ENCRYPTION_KEY', 'TOSS_SECRET_KEY', 'TOSS_WEBHOOK_SECRET',
+  'STRIPE_SECRET_KEY', 'STRIPE_WEBHOOK_SECRET', 'AIRWALLEX_CLIENT_ID', 'AIRWALLEX_API_KEY',
+  'AIRWALLEX_WEBHOOK_SECRET', 'DODO_API_KEY', 'DODO_WEBHOOK_SECRET',
+  'ONCALL_OWNER', 'SUPPORT_OWNER', 'ROLLBACK_OWNER', 'LAST_RESTORE_DRILL_AT',
+  'LAST_PAYMENT_REHEARSAL_AT', 'LEGAL_POLICY_APPROVED_AT',
+  'NEXYFAB_DOMAIN_REVIEWER_KEYS', 'NEXYFAB_CAD_REVIEWER_KEYS',
+  'DOMAIN_ACCURACY_EVIDENCE_DIR', 'CAD_INDEPENDENT_RELEASE_AUDIT_V2',
+  'I18N_AUTOMATED_TEST_EVIDENCE', 'I18N_FULL_PRODUCT_REVIEW_RECEIPT',
+  'I18N_FULL_PRODUCT_EVIDENCE_ROOT', 'I18N_RELEASE_RECEIPT_OUTPUT',
+  'ROUTE_SECURITY_MATRIX', 'CAD_API_CONTROL_EVIDENCE', 'SECRET_SCAN_EVIDENCE',
+  'DEPENDENCY_AUDIT_EVIDENCE', 'COMPLEX_HOLDOUT_CASES', 'COMPLEX_GROUND_TRUTH_VALIDATION',
+  'COMPLEX_PRODUCT_SCOPE_ASSESSMENT', 'MECHANICAL_PRODUCT_SCOPE_ASSESSMENT',
+  'COMMERCIAL_VALIDATION_CORPUS', 'SEVEN_DAY_OPERATIONS_RECEIPT', 'RELEASE_BASELINE',
+  'CLOSED_BETA_COMPARISON', 'PRODUCTION_PROTECTED_STATE_RECEIPT', 'SYNTHETIC_CAMPAIGN_RECEIPT',
+  'COMMERCIAL_LIVE_SMOKE', 'OPENSCAD_HTTP_SMOKE', 'AUTHENTICATED_E2E_RECEIPT',
+  'RAILWAY_RESOURCE_BASELINE', 'PRODUCTION_MIGRATION_RECEIPT', 'BACKUP_RESTORE_RECEIPT',
+  'ENVIRONMENT_ISOLATION_RECEIPT', 'EXPERT_REVIEW_RECEIPT', 'COMMERCIALIZATION_GATE_OUTPUT',
+];
+
+function normalizeRailwayVariables(value) {
+  const source = value?.variables && typeof value.variables === 'object' ? value.variables : value;
+  if (Array.isArray(source)) {
+    return Object.fromEntries(source.flatMap(item => {
+      const key = item?.name ?? item?.key;
+      return typeof key === 'string' ? [[key, String(item?.value ?? '')]] : [];
+    }));
+  }
+  if (!source || typeof source !== 'object') return {};
+  return Object.fromEntries(Object.entries(source).map(([key, item]) => [
+    key,
+    String(item && typeof item === 'object' && 'value' in item ? item.value ?? '' : item ?? ''),
+  ]));
+}
+
+async function targetVariables() {
+  const result = await runRailway(['variables', '--service', service, '--environment', environment, '--json']);
+  return normalizeRailwayVariables(JSON.parse(result.stdout));
+}
+
+export function targetGateEnvironment(target, baseEnvironment = process.env) {
+  const env = { ...baseEnvironment };
+  for (const key of TARGET_RUNTIME_KEYS) {
+    if (Object.hasOwn(target, key)) env[key] = target[key];
+    else delete env[key];
+  }
+  return env;
+}
+
 function deploymentRows(value) {
   if (Array.isArray(value)) return value;
   for (const key of ['deployments', 'items', 'data']) if (Array.isArray(value?.[key])) return value[key];
@@ -59,50 +133,77 @@ async function list() {
 
 async function healthCheck() {
   if (!site || site === 'none') return;
-  const url = `${site.replace(/\/$/, '')}/api/health/live`;
+  const url = `${site.replace(/\/$/, '')}/api/health/ready`;
   const response = await fetch(url, { headers: { 'cache-control': 'no-cache' }, signal: AbortSignal.timeout(20_000) });
   if (!response.ok) throw new Error(`health check ${url} returned ${response.status}`);
   const body = await response.json();
   if (body?.ok === false || body?.status === 'error') throw new Error(`health check reports failure: ${JSON.stringify(body)}`);
-  const liveBuildId = String(body?.buildId || body?.build || body?.release || '');
+  const liveResponse = await fetch(`${site.replace(/\/$/, '')}/api/health/live`, { headers: { 'cache-control': 'no-cache' }, signal: AbortSignal.timeout(20_000) });
+  if (!liveResponse.ok) throw new Error(`live health check returned ${liveResponse.status}`);
+  const liveBody = await liveResponse.json();
+  const liveBuildId = String(liveBody?.buildId || liveBody?.build || liveBody?.release || '');
   if (expectedBuildId && liveBuildId !== expectedBuildId) {
     throw new Error(`live build ID mismatch: expected=${expectedBuildId} actual=${liveBuildId || '(missing)'}`);
   }
   console.log(JSON.stringify({ event: 'health-verified', url, liveBuildId: liveBuildId || null }));
 }
 
-const before = await list();
-const beforeIds = new Set(before.map(deploymentId).filter(Boolean));
+async function main() {
+  const target = await targetVariables();
+  const gateEnvironment = targetGateEnvironment(target);
+  const targetBuildId = String(target.NEXYFAB_BUILD_ID ?? '').trim();
+  if (expectedBuildId && targetBuildId && expectedBuildId !== targetBuildId) {
+    throw new Error(`expected build ID does not match target ${environment}/${service} NEXYFAB_BUILD_ID`);
+  }
+  expectedBuildId ||= targetBuildId;
+  if (!expectedBuildId) {
+    throw new Error(`target ${environment}/${service} must define NEXYFAB_BUILD_ID (or pass --expected-build-id) for verified deployment`);
+  }
 
-if (!verifyOnly) {
-  const upArgs = ['up'];
-  if (sourcePath && sourcePath !== '.') upArgs.push(sourcePath);
-  if (pathAsRoot) upArgs.push('--path-as-root');
-  upArgs.push('--detach', '--json', '--service', service, '--environment', environment, '--message', `verified deploy ${new Date().toISOString()}`);
-  await runRailway(upArgs, { stream: true });
+  const before = await list();
+  const beforeIds = new Set(before.map(deploymentId).filter(Boolean));
+
+  // Verify-only is a release verification mode, not a gate bypass. Evaluate the
+  // exact target environment before trusting either an existing or new deploy.
+  await runNpmScript('commercial:release-gate', gateEnvironment);
+
+  if (!verifyOnly) {
+    const upArgs = ['up'];
+    if (sourcePath && sourcePath !== '.') upArgs.push(sourcePath);
+    if (pathAsRoot) upArgs.push('--path-as-root');
+    upArgs.push('--detach', '--json', '--service', service, '--environment', environment, '--message', `verified deploy ${new Date().toISOString()}`);
+    await runRailway(upArgs, { stream: true });
+  }
+
+  const deadline = Date.now() + timeoutMs;
+  let targetId = verifyOnly ? deploymentId(before[0]) : null;
+  let verified = false;
+  while (Date.now() < deadline) {
+    const rows = await list();
+    if (!targetId) targetId = deploymentId(rows.find(row => !beforeIds.has(deploymentId(row))));
+    const target = rows.find(row => deploymentId(row) === targetId);
+    const status = deploymentStatus(target);
+    console.log(JSON.stringify({ event: 'deployment-status', service, deploymentId: targetId, status: status || 'PENDING' }));
+    if (['FAILED', 'CRASHED', 'REMOVED'].includes(status)) {
+      if (targetId) await runRailway(['logs', targetId, '--service', service, '--environment', environment, '--lines', '200']).then(result => process.stderr.write(result.stdout)).catch(() => undefined);
+      throw new Error(`deployment ${targetId ?? '(unknown)'} ended in ${status}`);
+    }
+    if (['SUCCESS', 'ACTIVE'].includes(status)) {
+      await healthCheck();
+      console.log(JSON.stringify({ event: 'deployment-verified', service, deploymentId: targetId, status }));
+      verified = true;
+      break;
+    }
+    await new Promise(resolve => setTimeout(resolve, 10_000));
+  }
+  if (!verified) {
+    throw new Error(`deployment verification timed out after ${timeoutMs}ms (deployment=${targetId ?? 'unknown'})`);
+  }
 }
 
-const deadline = Date.now() + timeoutMs;
-let targetId = verifyOnly ? deploymentId(before[0]) : null;
-let verified = false;
-while (Date.now() < deadline) {
-  const rows = await list();
-  if (!targetId) targetId = deploymentId(rows.find(row => !beforeIds.has(deploymentId(row))));
-  const target = rows.find(row => deploymentId(row) === targetId);
-  const status = deploymentStatus(target);
-  console.log(JSON.stringify({ event: 'deployment-status', service, deploymentId: targetId, status: status || 'PENDING' }));
-  if (['FAILED', 'CRASHED', 'REMOVED'].includes(status)) {
-    if (targetId) await runRailway(['logs', targetId, '--service', service, '--environment', environment, '--lines', '200']).then(result => process.stderr.write(result.stdout)).catch(() => undefined);
-    throw new Error(`deployment ${targetId ?? '(unknown)'} ended in ${status}`);
-  }
-  if (['SUCCESS', 'ACTIVE'].includes(status)) {
-    await healthCheck();
-    console.log(JSON.stringify({ event: 'deployment-verified', service, deploymentId: targetId, status }));
-    verified = true;
-    break;
-  }
-  await new Promise(resolve => setTimeout(resolve, 10_000));
-}
-if (!verified) {
-  throw new Error(`deployment verification timed out after ${timeoutMs}ms (deployment=${targetId ?? 'unknown'})`);
+if (import.meta.url === pathToFileURL(process.argv[1] ?? '').href) {
+  main().catch(error => {
+    console.error(`[verified-deploy] ${error instanceof Error ? error.message : String(error)}`);
+    process.exitCode = 1;
+  });
 }

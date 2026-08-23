@@ -7,12 +7,18 @@ const makeRuns = (cases: ComplexBenchmarkCase[], passed = 10): ComplexBenchmarkR
 describe('complex product benchmark', () => {
   it('reports every absent product family as unmeasured instead of averaging it away', () => {
     const report = buildComplexBenchmarkReport([], []);
-    expect(report.allFamiliesEligible).toBe(false); expect(report.families).toHaveLength(6);
+    expect(report.allFamiliesEligible).toBe(false); expect(report.coreMechanicalEligible).toBe(false); expect(report.auxiliaryServicesEligible).toBe(false); expect(report.families).toHaveLength(8);
     expect(report.families.every(item => item.blockers.some(blocker => blocker.includes('have 0')))).toBe(true);
   });
   it('requires 20 holdouts, five runs and all four accuracy axes at 95%', () => {
     const cases = makeCases(20), report = buildComplexBenchmarkReport(cases, makeRuns(cases));
     expect(report.families.find(item => item.family === 'robot')).toMatchObject({ independentCases: 20, measuredCases: 20, minimumRepeats: 5, dimensionalAccuracy: 1, featureAccuracy: 1, partAccuracy: 1, assemblyAccuracy: 1, eligible: true });
+  });
+  it('keeps secondary interior evidence outside the mechanical launch signal', () => {
+    const cases = makeCases(20), report = buildComplexBenchmarkReport(cases, makeRuns(cases));
+    expect(report.families.find(item => item.family === 'robot')?.eligible).toBe(true);
+    expect(report.auxiliaryServicesEligible).toBe(false);
+    expect(report.allFamiliesEligible).toBe(false);
   });
   it('blocks a 94% assembly result even when the other metrics pass', () => {
     const cases = makeCases(20), runs = makeRuns(cases); runs.forEach(run => { run.assembly = { passed: 94, total: 100 }; });

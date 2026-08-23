@@ -22,10 +22,15 @@
 
 import type { ProviderName } from './types';
 import { truncationOf } from './providers/truncation';
+import { getSetting, getSettingSync } from '../admin-settings';
+import { supportsNativeVision } from './modelCapabilities';
+import { getQwenApiKey, getQwenBaseUrl } from './providers/qwen';
 
 export interface VisionImage {
   /** Raw image bytes (PNG only — JPEG converted by caller if needed). */
   bytes: Uint8Array;
+  /** Actual media type. Defaults to image/png for rendered CAD views. */
+  mimeType?: 'image/png' | 'image/jpeg' | 'image/webp';
   /** Optional caption shown to the model (e.g. "Front view"). */
   label?: string;
 }
@@ -37,10 +42,14 @@ export interface VisionRequest {
   provider?: ProviderName;
   /** Force a specific vision-capable model. */
   model?: string;
+  /** User-selected model. Native VL is preferred; text-only models use Luna. */
+  selectedModel?: { provider: ProviderName; model: string };
   /** Wall-clock timeout in ms. Default 60s. */
   timeoutMs?: number;
   /** Max output tokens. Default 600 (vision critique is short). */
   maxTokens?: number;
+  /** Cancels provider retries and any Luna fallback when the caller disconnects. */
+  signal?: AbortSignal;
 }
 
 export interface VisionResponse {
@@ -49,6 +58,12 @@ export interface VisionResponse {
   model: string;
   promptTokens?: number;
   completionTokens?: number;
+  cachedPromptTokens?: number;
+  cacheWriteTokens?: number;
+  cacheMissTokens?: number;
+  cacheProfile?: 'openai-explicit' | 'qwen-explicit' | 'anthropic-explicit' | 'gemini-implicit' | 'provider-default';
+  visionAutoRouted?: boolean;
+  visionFallbackReason?: 'selected_model_transient_failure';
   latencyMs: number;
   /**
    * ★260731 — **응답이 상한에 걸려 잘렸는가.** `undefined` 는 「안 잘림」이 아니라
@@ -64,7 +79,7 @@ export interface VisionResponse {
 
 export class VisionNotConfiguredError extends Error {
   constructor() {
-    super('No vision-capable AI provider configured. Set ANTHROPIC_API_KEY or OPENAI_API_KEY.');
+    super('No vision-capable AI provider configured. Set OPENAI_API_KEY, QWEN_API_KEY, ANTHROPIC_API_KEY, GEMINI_API_KEY, or LOCAL_VISION_BASE_URL.');
     this.name = 'VisionNotConfiguredError';
   }
 }
@@ -90,7 +105,8 @@ export async function visionCompletion(req: VisionRequest): Promise<VisionRespon
     throw new Error('visionCompletion: max 8 images per request (cost guard)');
   }
 
-  const provider = req.provider ?? autoSelectProvider();
+  const selection = await resolveVisionSelection(req);
+  const provider = selection?.provider ?? null;
   if (!provider) throw new VisionNotConfiguredError();
 
   const t0 = Date.now();
@@ -102,38 +118,174 @@ export async function visionCompletion(req: VisionRequest): Promise<VisionRespon
   let lastErr: unknown;
   for (let attempt = 0; attempt < 3; attempt++) {
     try {
-      const resp = await adapter(req);
-      return { ...resp, latencyMs: Date.now() - t0 };
+      const resp = await adapter({ ...req, provider, model: selection?.model });
+      return { ...resp, visionAutoRouted: selection?.visionAutoRouted, latencyMs: Date.now() - t0 };
     } catch (e) {
       lastErr = e;
-      const transient = e instanceof VisionProviderError && (
-        e.status === 429 || e.status === 500 || e.status === 503 || e.status === undefined ||
-        /high demand|overload|unavailable|try again|resource_exhausted|temporarily|rate.?limit/i.test(e.message)
-      );
-      if (!transient || attempt === 2) throw e;
-      await new Promise(r => setTimeout(r, 700 * (attempt + 1) + Math.floor(Math.random() * 400)));
+      if (req.signal?.aborted) throw e;
+      const transient = isTransientVisionError(e);
+      if (!transient) throw e;
+      if (attempt === 2) break;
+      await waitForVisionRetry(700 * (attempt + 1) + Math.floor(Math.random() * 400), req.signal);
     }
   }
+  if (!req.provider && isTransientVisionError(lastErr) && !req.signal?.aborted) {
+    const fallbacks = await configuredVisionFallbacks(provider);
+    const attempted: ProviderName[] = [provider];
+    for (const fallback of fallbacks) {
+      if (req.signal?.aborted) throw lastErr;
+      attempted.push(fallback.provider);
+      const fallbackAdapter = ADAPTERS[fallback.provider];
+      if (!fallbackAdapter) continue;
+      try {
+        const resp = await fallbackAdapter({
+          ...req,
+          provider: fallback.provider,
+          model: fallback.model,
+          selectedModel: undefined,
+        });
+        void reportVisionFailure({
+          provider,
+          model: selection?.model,
+          error: lastErr,
+          attempted,
+          recoveredBy: { provider: resp.provider, model: resp.model },
+        });
+        return {
+          ...resp,
+          visionAutoRouted: true,
+          visionFallbackReason: 'selected_model_transient_failure',
+          latencyMs: Date.now() - t0,
+        };
+      } catch (fallbackError) {
+        if (!isTransientVisionError(fallbackError)) continue;
+      }
+    }
+    void reportVisionFailure({
+      provider,
+      model: selection?.model,
+      error: lastErr,
+      attempted,
+    });
+  }
   throw lastErr ?? new Error('vision failed');
+}
+
+async function configuredVisionFallbacks(
+  primaryProvider: ProviderName,
+): Promise<Array<{ provider: ProviderName; model?: string }>> {
+  const candidates: ProviderName[] = ['openai', 'qwen', 'anthropic', 'gemini', 'local'];
+  const out: Array<{ provider: ProviderName; model?: string }> = [];
+  for (const candidate of candidates) {
+    if (candidate === primaryProvider) continue;
+    if (!(await isVisionProviderConfigured(candidate))) continue;
+    const model = candidate === 'openai' ? await configuredLunaModel() ?? undefined : undefined;
+    out.push({ provider: candidate, model });
+  }
+  return out;
+}
+
+async function reportVisionFailure(input: {
+  provider: ProviderName;
+  model?: string;
+  error: unknown;
+  attempted: ProviderName[];
+  recoveredBy?: { provider: ProviderName; model: string };
+}): Promise<void> {
+  try {
+    const { notifyAiProviderFailure } = await import('./providerFailureAlert');
+    const status = input.error instanceof VisionProviderError ? input.error.status : undefined;
+    await notifyAiProviderFailure({
+      provider: input.provider,
+      model: input.model,
+      status,
+      errorMessage: input.error instanceof Error ? input.error.message : String(input.error),
+      task: 'vision',
+      attemptedProviders: input.attempted,
+      recoveredBy: input.recoveredBy,
+    });
+  } catch (error) {
+    console.warn('[vision] provider failure alert could not be dispatched:', error);
+  }
+}
+
+function isTransientVisionError(error: unknown): boolean {
+  return error instanceof VisionProviderError && (
+    error.status === 429 || error.status === 500 || error.status === 502 || error.status === 503 || error.status === 504 || error.status === undefined ||
+    /high demand|overload|unavailable|try again|resource_exhausted|temporarily|rate.?limit/i.test(error.message)
+  );
+}
+
+function waitForVisionRetry(ms: number, signal?: AbortSignal): Promise<void> {
+  if (signal?.aborted) return Promise.reject(signal.reason ?? new Error('Vision request aborted'));
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(resolve, ms);
+    signal?.addEventListener('abort', () => {
+      clearTimeout(timer);
+      reject(signal.reason ?? new Error('Vision request aborted'));
+    }, { once: true });
+  });
+}
+
+export interface VisionSelection {
+  provider: ProviderName;
+  model?: string;
+  visionAutoRouted: boolean;
+}
+
+/** Resolve the visual stage without making a paid provider call. */
+export async function resolveVisionSelection(
+  req: Pick<VisionRequest, 'provider' | 'model' | 'selectedModel'>,
+): Promise<VisionSelection | null> {
+  if (req.provider) return { provider: req.provider, model: req.model, visionAutoRouted: false };
+
+  if (req.selectedModel) {
+    const selected = req.selectedModel;
+    if (supportsNativeVision(selected.provider, selected.model) && await isVisionProviderConfigured(selected.provider)) {
+      return { provider: selected.provider, model: selected.model, visionAutoRouted: false };
+    }
+    const luna = await configuredLunaModel();
+    if (luna) return { provider: 'openai', model: luna, visionAutoRouted: true };
+  }
+
+  const provider = await autoSelectProvider();
+  if (!provider) return null;
+  return {
+    provider,
+    model: provider === 'openai' ? await configuredLunaModel() ?? undefined : undefined,
+    visionAutoRouted: false,
+  };
+}
+
+async function configuredLunaModel(): Promise<string | null> {
+  if (!(process.env.OPENAI_API_KEY || await getSetting('openai.api_key'))) return null;
+  return (await getSetting('ai.model.gpt_luna'))?.trim() || 'gpt-5.6-luna';
+}
+
+async function isVisionProviderConfigured(provider: ProviderName): Promise<boolean> {
+  if (provider === 'openai') return !!(process.env.OPENAI_API_KEY || await getSetting('openai.api_key'));
+  if (provider === 'qwen') return !!(await getQwenApiKey());
+  if (provider === 'anthropic') return !!(process.env.ANTHROPIC_API_KEY || await getSetting('anthropic.api_key'));
+  if (provider === 'gemini') return !!(process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY || await getSetting('gemini.api_key'));
+  if (provider === 'local') return !!process.env.LOCAL_VISION_BASE_URL;
+  return false;
 }
 
 /**
  * Auto-select the best available vision provider.
  *
- * Priority is shaped by quality + cost: Anthropic > Gemini > OpenAI > Local.
- * Anthropic Claude vision is currently the highest-quality CAD reviewer in
- * our internal eval (handles assembly proportions well). Gemini 2.0 Flash
- * is ~10× cheaper and good enough for most checks. OpenAI gpt-4o is solid
- * but pricier than Gemini. Local is the free fallback for self-hosted /
- * air-gapped deployments.
+ * Automatic calls without a selected model use GPT Luna first. Calls that
+ * provide `selectedModel` use that model's native VL capability first.
+ * Local remains the last fallback for self-hosted / air-gapped deployments.
  *
  * Override the auto choice by passing `provider:` explicitly to
  * `visionCompletion`.
  */
-function autoSelectProvider(): ProviderName | null {
-  if (process.env.ANTHROPIC_API_KEY) return 'anthropic';
-  if (process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY) return 'gemini';
-  if (process.env.OPENAI_API_KEY) return 'openai';
+async function autoSelectProvider(): Promise<ProviderName | null> {
+  if (process.env.OPENAI_API_KEY || await getSetting('openai.api_key')) return 'openai';
+  if (await getQwenApiKey()) return 'qwen';
+  if (process.env.ANTHROPIC_API_KEY || await getSetting('anthropic.api_key')) return 'anthropic';
+  if (process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY || await getSetting('gemini.api_key')) return 'gemini';
   if (process.env.LOCAL_VISION_BASE_URL) return 'local';
   return null;
 }
@@ -142,15 +294,85 @@ function autoSelectProvider(): ProviderName | null {
 
 type Adapter = (req: VisionRequest) => Promise<Omit<VisionResponse, 'latencyMs'>>;
 
+function requestSignal(req: VisionRequest): AbortSignal {
+  const timeout = AbortSignal.timeout(req.timeoutMs ?? 60_000);
+  return req.signal ? AbortSignal.any([req.signal, timeout]) : timeout;
+}
+
 const ADAPTERS: Partial<Record<ProviderName, Adapter>> = {
   anthropic: anthropicVision,
   openai: openaiVision,
+  qwen: qwenVision,
   gemini: geminiVision,
   local: localVision,
 };
 
+async function qwenVision(req: VisionRequest): Promise<Omit<VisionResponse, 'latencyMs'>> {
+  const key = await getQwenApiKey();
+  if (!key) throw new VisionNotConfiguredError();
+  const model = req.model ?? process.env.QWEN_VISION_MODEL ?? 'qwen3.7-plus';
+  if (!supportsNativeVision('qwen', model)) {
+    throw new VisionProviderError('qwen', 400, `${model} is not registered as a native vision model`);
+  }
+
+  const content: unknown[] = [];
+  for (let i = 0; i < req.images.length; i++) {
+    const img = req.images[i];
+    content.push({ type: 'text', text: img.label ?? `Image ${i + 1}:` });
+    content.push({
+      type: 'image_url',
+      image_url: { url: `data:${img.mimeType ?? 'image/png'};base64,${bytesToBase64(img.bytes)}` },
+    });
+  }
+  content.push({ type: 'text', text: req.prompt });
+
+  const baseUrl = await getQwenBaseUrl();
+  const resp = await fetch(`${baseUrl}/chat/completions`, {
+    method: 'POST',
+    headers: { authorization: `Bearer ${key}`, 'content-type': 'application/json' },
+    body: JSON.stringify({
+      model,
+      max_tokens: req.maxTokens ?? 600,
+      temperature: 0.2,
+      messages: [
+        {
+          role: 'system',
+          content: 'Analyze engineering images faithfully. Distinguish observations from estimates and keep the result concise.',
+        },
+        { role: 'user', content },
+      ],
+    }),
+    signal: requestSignal(req),
+  });
+  if (!resp.ok) {
+    const err = await safeJson(resp);
+    throw new VisionProviderError('qwen', resp.status, err?.error?.message ?? `HTTP ${resp.status}`);
+  }
+  const body = await resp.json() as {
+    choices?: { message?: { content?: string }; finish_reason?: string }[];
+    usage?: {
+      prompt_tokens?: number;
+      completion_tokens?: number;
+      prompt_tokens_details?: { cached_tokens?: number; cache_creation_input_tokens?: number };
+    };
+  };
+  const text = body.choices?.[0]?.message?.content?.trim() ?? '';
+  return {
+    text,
+    ...truncationOf(body.choices?.[0]?.finish_reason),
+    provider: 'qwen',
+    model,
+    promptTokens: body.usage?.prompt_tokens,
+    completionTokens: body.usage?.completion_tokens,
+    cachedPromptTokens: body.usage?.prompt_tokens_details?.cached_tokens,
+    cacheWriteTokens: body.usage?.prompt_tokens_details?.cache_creation_input_tokens,
+    cacheMissTokens: Math.max(0, (body.usage?.prompt_tokens ?? 0) - (body.usage?.prompt_tokens_details?.cached_tokens ?? 0)),
+    cacheProfile: 'provider-default',
+  };
+}
+
 async function anthropicVision(req: VisionRequest): Promise<Omit<VisionResponse, 'latencyMs'>> {
-  const key = process.env.ANTHROPIC_API_KEY;
+  const key = process.env.ANTHROPIC_API_KEY || await getSetting('anthropic.api_key');
   if (!key) throw new VisionNotConfiguredError();
   const model = req.model ?? 'claude-sonnet-4-6';
   const content: unknown[] = req.images.map((img, i) => ([
@@ -161,7 +383,7 @@ async function anthropicVision(req: VisionRequest): Promise<Omit<VisionResponse,
       type: 'image',
       source: {
         type: 'base64',
-        media_type: 'image/png',
+        media_type: img.mimeType ?? 'image/png',
         data: bytesToBase64(img.bytes),
       },
     },
@@ -178,9 +400,14 @@ async function anthropicVision(req: VisionRequest): Promise<Omit<VisionResponse,
     body: JSON.stringify({
       model,
       max_tokens: req.maxTokens ?? 600,
+      system: [{
+        type: 'text',
+        text: 'Analyze engineering images faithfully. Distinguish observations from estimates and keep the result concise.',
+        cache_control: { type: 'ephemeral' },
+      }],
       messages: [{ role: 'user', content }],
     }),
-    signal: AbortSignal.timeout(req.timeoutMs ?? 60_000),
+    signal: requestSignal(req),
   });
   if (!resp.ok) {
     const err = await safeJson(resp);
@@ -189,7 +416,12 @@ async function anthropicVision(req: VisionRequest): Promise<Omit<VisionResponse,
   const body = await resp.json() as {
     content: { type: string; text?: string }[];
     stop_reason?: string;
-    usage?: { input_tokens?: number; output_tokens?: number };
+    usage?: {
+      input_tokens?: number;
+      output_tokens?: number;
+      cache_creation_input_tokens?: number;
+      cache_read_input_tokens?: number;
+    };
   };
   const text = (body.content ?? [])
     .filter(c => c.type === 'text' && typeof c.text === 'string')
@@ -201,27 +433,34 @@ async function anthropicVision(req: VisionRequest): Promise<Omit<VisionResponse,
     ...truncationOf(body.stop_reason),
     provider: 'anthropic',
     model,
-    promptTokens: body.usage?.input_tokens,
+    promptTokens: (body.usage?.input_tokens ?? 0)
+      + (body.usage?.cache_creation_input_tokens ?? 0)
+      + (body.usage?.cache_read_input_tokens ?? 0),
     completionTokens: body.usage?.output_tokens,
+    cachedPromptTokens: body.usage?.cache_read_input_tokens,
+    cacheWriteTokens: body.usage?.cache_creation_input_tokens,
+    cacheMissTokens: body.usage?.input_tokens,
+    cacheProfile: 'anthropic-explicit',
   };
 }
 
 async function openaiVision(req: VisionRequest): Promise<Omit<VisionResponse, 'latencyMs'>> {
-  const key = process.env.OPENAI_API_KEY;
+  const key = process.env.OPENAI_API_KEY || await getSetting('openai.api_key');
   if (!key) throw new VisionNotConfiguredError();
-  const model = req.model ?? 'gpt-4o';
+  const model = req.model ?? (await getSetting('ai.model.gpt_luna')) ?? 'gpt-5.6-luna';
   const content: unknown[] = [];
   for (let i = 0; i < req.images.length; i++) {
     const img = req.images[i];
     content.push({ type: 'text', text: img.label ?? `Image ${i + 1}:` });
     content.push({
       type: 'image_url',
-      image_url: { url: `data:image/png;base64,${bytesToBase64(img.bytes)}` },
+      image_url: { url: `data:${img.mimeType ?? 'image/png'};base64,${bytesToBase64(img.bytes)}` },
     });
   }
   content.push({ type: 'text', text: req.prompt });
 
-  const resp = await fetch('https://api.openai.com/v1/chat/completions', {
+  const openAiBase = (process.env.OPENAI_BASE_URL || 'https://api.openai.com/v1').replace(/\/+$/, '');
+  const resp = await fetch(`${openAiBase}/chat/completions`, {
     method: 'POST',
     headers: {
       'authorization': `Bearer ${key}`,
@@ -229,10 +468,13 @@ async function openaiVision(req: VisionRequest): Promise<Omit<VisionResponse, 'l
     },
     body: JSON.stringify({
       model,
-      max_tokens: req.maxTokens ?? 600,
-      messages: [{ role: 'user', content }],
+      max_completion_tokens: req.maxTokens ?? 600,
+      messages: [
+        { role: 'system', content: 'Analyze engineering images faithfully. Distinguish observations from estimates and keep the result concise.' },
+        { role: 'user', content },
+      ],
     }),
-    signal: AbortSignal.timeout(req.timeoutMs ?? 60_000),
+    signal: requestSignal(req),
   });
   if (!resp.ok) {
     const err = await safeJson(resp);
@@ -240,7 +482,12 @@ async function openaiVision(req: VisionRequest): Promise<Omit<VisionResponse, 'l
   }
   const body = await resp.json() as {
     choices?: { message?: { content?: string }; finish_reason?: string }[];
-    usage?: { prompt_tokens?: number; completion_tokens?: number };
+    usage?: {
+      prompt_tokens?: number;
+      completion_tokens?: number;
+      prompt_tokens_details?: { cached_tokens?: number; cache_write_tokens?: number };
+      cache_write_tokens?: number;
+    };
   };
   const text = body.choices?.[0]?.message?.content?.trim() ?? '';
   return {
@@ -250,11 +497,15 @@ async function openaiVision(req: VisionRequest): Promise<Omit<VisionResponse, 'l
     model,
     promptTokens: body.usage?.prompt_tokens,
     completionTokens: body.usage?.completion_tokens,
+    cachedPromptTokens: body.usage?.prompt_tokens_details?.cached_tokens,
+    cacheWriteTokens: body.usage?.prompt_tokens_details?.cache_write_tokens ?? body.usage?.cache_write_tokens,
+    cacheMissTokens: Math.max(0, (body.usage?.prompt_tokens ?? 0) - (body.usage?.prompt_tokens_details?.cached_tokens ?? 0)),
+    cacheProfile: 'provider-default',
   };
 }
 
 async function geminiVision(req: VisionRequest): Promise<Omit<VisionResponse, 'latencyMs'>> {
-  const key = process.env.GEMINI_API_KEY ?? process.env.GOOGLE_API_KEY;
+  const key = process.env.GEMINI_API_KEY ?? process.env.GOOGLE_API_KEY ?? await getSetting('gemini.api_key');
   if (!key) throw new VisionNotConfiguredError();
   // gemini-2.5-flash is fast + cheap with solid multimodal grounding. (The
   // older gemini-2.0-flash now 404s "no longer available" on newer projects.)
@@ -268,7 +519,7 @@ async function geminiVision(req: VisionRequest): Promise<Omit<VisionResponse, 'l
     parts.push({ text: img.label ?? `Image ${i + 1}:` });
     parts.push({
       inline_data: {
-        mime_type: 'image/png',
+        mime_type: img.mimeType ?? 'image/png',
         data: bytesToBase64(img.bytes),
       },
     });
@@ -286,7 +537,7 @@ async function geminiVision(req: VisionRequest): Promise<Omit<VisionResponse, 'l
         temperature: 0.4,
       },
     }),
-    signal: AbortSignal.timeout(req.timeoutMs ?? 60_000),
+    signal: requestSignal(req),
   });
   if (!resp.ok) {
     const err = await safeJson(resp);
@@ -294,7 +545,11 @@ async function geminiVision(req: VisionRequest): Promise<Omit<VisionResponse, 'l
   }
   const body = await resp.json() as {
     candidates?: { content?: { parts?: { text?: string }[] }; finishReason?: string }[];
-    usageMetadata?: { promptTokenCount?: number; candidatesTokenCount?: number };
+    usageMetadata?: {
+      promptTokenCount?: number;
+      candidatesTokenCount?: number;
+      cachedContentTokenCount?: number;
+    };
   };
   const text = (body.candidates?.[0]?.content?.parts ?? [])
     .map(p => typeof p.text === 'string' ? p.text : '')
@@ -307,6 +562,9 @@ async function geminiVision(req: VisionRequest): Promise<Omit<VisionResponse, 'l
     model,
     promptTokens: body.usageMetadata?.promptTokenCount,
     completionTokens: body.usageMetadata?.candidatesTokenCount,
+    cachedPromptTokens: body.usageMetadata?.cachedContentTokenCount,
+    cacheMissTokens: Math.max(0, (body.usageMetadata?.promptTokenCount ?? 0) - (body.usageMetadata?.cachedContentTokenCount ?? 0)),
+    cacheProfile: 'gemini-implicit',
   };
 }
 
@@ -333,7 +591,7 @@ async function localVision(req: VisionRequest): Promise<Omit<VisionResponse, 'la
     content.push({ type: 'text', text: img.label ?? `Image ${i + 1}:` });
     content.push({
       type: 'image_url',
-      image_url: { url: `data:image/png;base64,${bytesToBase64(img.bytes)}` },
+      image_url: { url: `data:${img.mimeType ?? 'image/png'};base64,${bytesToBase64(img.bytes)}` },
     });
   }
   content.push({ type: 'text', text: req.prompt });
@@ -351,7 +609,7 @@ async function localVision(req: VisionRequest): Promise<Omit<VisionResponse, 'la
       temperature: 0.3,
       messages: [{ role: 'user', content }],
     }),
-    signal: AbortSignal.timeout(req.timeoutMs ?? 90_000),
+    signal: requestSignal({ ...req, timeoutMs: req.timeoutMs ?? 90_000 }),
   });
   if (!resp.ok) {
     const err = await safeJson(resp);
@@ -395,8 +653,14 @@ async function safeJson(resp: Response): Promise<{ error?: { message?: string } 
 
 export function isVisionAvailable(): boolean {
   return !!(
-    process.env.ANTHROPIC_API_KEY ||
+    getSettingSync('openai.api_key') ||
     process.env.OPENAI_API_KEY ||
+    getSettingSync('qwen.api_key') ||
+    process.env.DASHSCOPE_API_KEY ||
+    process.env.QWEN_API_KEY ||
+    getSettingSync('anthropic.api_key') ||
+    process.env.ANTHROPIC_API_KEY ||
+    getSettingSync('gemini.api_key') ||
     process.env.GEMINI_API_KEY ||
     process.env.GOOGLE_API_KEY ||
     process.env.LOCAL_VISION_BASE_URL

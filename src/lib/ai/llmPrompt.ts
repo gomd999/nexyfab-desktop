@@ -106,6 +106,30 @@ export function BUILD_INTENT_PROMPT(
   ].join('\n');
 }
 
+/** Stable provider-cache prefix. Dynamic model context and user text must not
+ * be placed here or every edit would invalidate the cache. */
+export function BUILD_INTENT_SYSTEM_PROMPT(
+  intentKinds: ReadonlyArray<IntentKind> = INTENT_KINDS,
+): string {
+  const marker = '## User request';
+  const full = BUILD_INTENT_PROMPT('__NEXYFAB_DYNAMIC_REQUEST__', intentKinds);
+  const markerIndex = full.indexOf(marker);
+  return (markerIndex >= 0 ? full.slice(0, markerIndex) : full).trim();
+}
+
+/** Per-request suffix paired with BUILD_INTENT_SYSTEM_PROMPT. */
+export function BUILD_INTENT_USER_PROMPT(text: string, context?: AiModelContext): string {
+  const escapedText = text.replace(/"/g, '\\"');
+  const contextBlock = renderModelContext(context);
+  return [
+    ...(contextBlock ? ['## Current model', contextBlock, ''] : []),
+    '## User request',
+    `"${escapedText}"`,
+    '',
+    '## Your output (JSON or null, nothing else)',
+  ].join('\n');
+}
+
 // ─── Schema + examples ──────────────────────────────────────────────────
 
 /**

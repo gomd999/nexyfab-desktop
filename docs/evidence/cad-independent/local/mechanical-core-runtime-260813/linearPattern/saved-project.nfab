@@ -1,0 +1,75 @@
+{
+  "magic": "nfab",
+  "version": 3,
+  "createdAt": 1787382813802,
+  "updatedAt": 1787382813802,
+  "name": "Mechanical runtime linearPattern",
+  "tree": {
+    "nodes": [
+      {
+        "id": "runtime-root",
+        "type": "baseShape",
+        "label": "Base exact box",
+        "icon": "base",
+        "params": {},
+        "enabled": true,
+        "expanded": true,
+        "parentId": null,
+        "children": [
+          "runtime-feature"
+        ],
+        "timestamp": 1,
+        "editingActive": false
+      },
+      {
+        "id": "runtime-feature",
+        "type": "feature",
+        "label": "Runtime linearPattern",
+        "icon": "feature",
+        "featureType": "linearPattern",
+        "params": {
+          "axis": 0,
+          "count": 3,
+          "spacing": 20,
+          "patternTarget": 0
+        },
+        "enabled": true,
+        "expanded": true,
+        "parentId": "runtime-root",
+        "children": [],
+        "timestamp": 2,
+        "editingActive": false
+      }
+    ],
+    "rootId": "runtime-root",
+    "activeNodeId": "runtime-feature"
+  },
+  "scene": {
+    "selectedId": "box",
+    "params": {
+      "width": 30,
+      "height": 20,
+      "depth": 12
+    },
+    "paramExpressions": {},
+    "materialId": "aluminum",
+    "color": "#cccccc",
+    "isSketchMode": false,
+    "sketchPlane": "xy",
+    "sketchProfile": {
+      "segments": [],
+      "closed": false
+    },
+    "sketchConfig": {
+      "mode": "extrude",
+      "depth": 12,
+      "revolveAngle": 360,
+      "revolveAxis": "y",
+      "segments": 32
+    }
+  },
+  "meta": {
+    "evidenceOnly": true,
+    "exactKernel": "OCCT"
+  }
+}

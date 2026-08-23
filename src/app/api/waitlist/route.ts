@@ -5,6 +5,7 @@
  */
 import { NextRequest, NextResponse } from 'next/server';
 import { getDbAdapter } from '@/lib/db-adapter';
+import { boundedJsonError, readBoundedJson } from '@/lib/boundedJsonBody';
 import { rateLimit } from '@/lib/rate-limit';
 import { getTrustedClientIp } from '@/lib/client-ip';
 
@@ -28,7 +29,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const body = await req.json() as {
+    const body = await readBoundedJson(req, 64 * 1024) as {
       email?: string;
       product?: string;
       lang?: string;
@@ -56,7 +57,8 @@ export async function POST(req: NextRequest) {
     );
 
     return NextResponse.json({ ok: true });
-  } catch {
+  } catch (error) {
+    if (boundedJsonError(error)?.status === 413) return NextResponse.json({ error: 'payload_too_large' }, { status: 413 });
     return NextResponse.json({ error: 'internal' }, { status: 500 });
   }
 }

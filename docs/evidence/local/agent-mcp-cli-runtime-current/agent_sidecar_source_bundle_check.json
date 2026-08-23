@@ -1,0 +1,18 @@
+{
+  "schema": "nexyfab.agent-mcp-cli-local-command-result.v1",
+  "generatedAt": "2026-08-23T07:01:30.126Z",
+  "id": "agent_sidecar_source_bundle_check",
+  "command": {
+    "executable": "node",
+    "args": [
+      "scripts/build-agent-sidecar.mjs",
+      "--check"
+    ],
+    "timeoutMs": 60000
+  },
+  "exitCode": 0,
+  "signal": null,
+  "error": null,
+  "stdout": "{\"ok\":true,\"mode\":\"check\",\"targetTriple\":\"x86_64-pc-windows-msvc\",\"bundle\":\"C:\\\\Users\\\\gomd9\\\\Downloads\\\\nexysys_1\\\\nexyfab.com\\\\new\\\\.tmp\\\\agent-sidecar\\\\agent-gateway.cjs\",\"profile\":\"installer-core\",\"assets\":[\"std-catalog.json\",\"detail-calibration.json\"],\"output\":\"C:\\\\Users\\\\gomd9\\\\Downloads\\\\nexysys_1\\\\nexyfab.com\\\\new\\\\src-tauri\\\\binaries\\\\nexyfab-agent-gateway-x86_64-pc-windows-msvc.exe\"}\n",
+  "stderr": ""
+}

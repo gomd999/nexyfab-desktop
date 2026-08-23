@@ -6,16 +6,21 @@ import { verifyExactFurnitureClearance } from '@/lib/ai/interiorFurnitureGeometr
 import { verifyPolygonInteriorRoute } from '@/lib/ai/interiorPolygonRoute';
 import { calculateIesIlluminance, parseIesLm63, type IlluminanceCalculation } from '@/lib/ai/iesPhotometricCalculation';
 import { verifyMepConnections, type EquipmentPort, type MepConnection, type MepConnectionRules, type MepNode, type MepRun } from '@/lib/ai/mepConnectionVerification';
+import { boundedJsonError, readBoundedJson } from '@/lib/boundedJsonBody';
 import { getTrustedClientIp } from '@/lib/client-ip';
 import { rateLimit } from '@/lib/rate-limit';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
+const MAX_INTERIOR_VERIFY_BODY_BYTES = 32 * 1024 * 1024;
 
 export async function POST(req: NextRequest) {
   const ip = getTrustedClientIp(req.headers);
   if (!rateLimit(`cad-v1-interior-verify:${ip}`, 60, 60_000).allowed) return NextResponse.json({ ok: false, code: 'RATE_LIMIT' }, { status: 429 });
-  const body = await req.json().catch(() => null) as { architecture?: ArchitectureDocument; interior?: InteriorDocument; spaceId?: string; route?: { originMm: [number, number]; destinationMm: [number, number]; maximumDistanceMm: number }; door?: { id: string; obstacles: DoorSwingClearanceInput['obstacles'] }; lightingRule?: LightingRule; iesProfiles?: Record<string, string>; workplaneHeightMm?: number; gridSpacingMm?: number; mep?: { ports: EquipmentPort[]; nodes: MepNode[]; connections: MepConnection[]; runs: MepRun[]; rules?: MepConnectionRules } } | null;
+  type Body = { architecture?: ArchitectureDocument; interior?: InteriorDocument; spaceId?: string; route?: { originMm: [number, number]; destinationMm: [number, number]; maximumDistanceMm: number }; door?: { id: string; obstacles: DoorSwingClearanceInput['obstacles'] }; lightingRule?: LightingRule; iesProfiles?: Record<string, string>; workplaneHeightMm?: number; gridSpacingMm?: number; mep?: { ports: EquipmentPort[]; nodes: MepNode[]; connections: MepConnection[]; runs: MepRun[]; rules?: MepConnectionRules } };
+  let body: Body | null;
+  try { body = await readBoundedJson<Body>(req, MAX_INTERIOR_VERIFY_BODY_BYTES); }
+  catch (error) { const bounded = boundedJsonError(error); if (bounded?.code === 'PAYLOAD_TOO_LARGE') return NextResponse.json({ ok: false, code: bounded.code }, { status: bounded.status }); body = null; }
   if (!body?.architecture || !body.interior || !body.spaceId) return NextResponse.json({ ok: false, code: 'BAD_REQUEST', message: 'architecture, interior, and spaceId are required' }, { status: 400 });
   const issues = [...validateArchitectureDocument(body.architecture), ...validateInteriorDocument(body.interior, body.architecture)];
   if (issues.length) return NextResponse.json({ ok: false, code: 'INVALID_MODEL', issues, releaseReady: false, quoteOrRfqSideEffects: false }, { status: 422 });
@@ -37,6 +42,17 @@ export async function POST(req: NextRequest) {
   } catch (error) { return NextResponse.json({ ok: false, code: 'INVALID_PHOTOMETRIC_EVIDENCE', message: error instanceof Error ? error.message : 'IES calculation failed.', releaseReady: false, quoteOrRfqSideEffects: false }, { status: 422 }); }
   const lighting = verifyInteriorLighting(body.interior, body.spaceId, space.boundaryMm, body.lightingRule, body.gridSpacingMm, photometric);
   const mep = body.mep ? verifyMepConnections(body.mep.ports, body.mep.nodes, body.mep.connections, body.mep.runs, body.mep.rules) : { status: 'not_run' as const, failures: [], method: 'explicit_port_network' as const };
-  const releaseReady = route.status === 'passed' && 'clear' in doorSwing && doorSwing.clear && furniture.status === 'passed' && lighting.status === 'passed' && mep.status === 'passed';
-  return NextResponse.json({ ok: true, releaseReady, route, doorSwing, furniture, lighting, mep, quoteOrRfqSideEffects: false });
+  const verificationPassed = route.status === 'passed' && 'clear' in doorSwing && doorSwing.clear && furniture.status === 'passed' && lighting.status === 'passed' && mep.status === 'passed';
+  return NextResponse.json({
+    ok: true,
+    verificationPassed,
+    releaseReady: false,
+    releaseBlocker: 'SIGNED_INDEPENDENT_RELEASE_EVIDENCE_REQUIRED',
+    route,
+    doorSwing,
+    furniture,
+    lighting,
+    mep,
+    quoteOrRfqSideEffects: false,
+  });
 }

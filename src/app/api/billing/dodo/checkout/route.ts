@@ -12,9 +12,11 @@
  *   DODO_PRODUCT_PRO_MONTHLY,  DODO_PRODUCT_PRO_ANNUAL, ...
  */
 import { NextRequest, NextResponse } from 'next/server';
+import { boundedJsonError, readBoundedJson } from '@/lib/boundedJsonBody';
 import { createSubscription, type DodoBillingAddress } from '@/lib/dodo';
 import { getAuthUser } from '@/lib/auth-middleware';
 import { denyIfBeta } from '@/lib/billing-beta-gate';
+import { denyIfPaymentCollectionDisabled } from '@/lib/payment-gate';
 
 export const dynamic = 'force-dynamic';
 
@@ -28,7 +30,11 @@ function getProductId(plan: string, cycle: string): string {
   return v;
 }
 
+const DODO_CHECKOUT_JSON_BYTES = 64 * 1024;
+
 export async function POST(req: NextRequest): Promise<NextResponse> {
+  const paymentDenied = denyIfPaymentCollectionDisabled();
+  if (paymentDenied) return paymentDenied;
   const user = await getAuthUser(req);
   if (!user) return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
   if (!user.emailVerified) {
@@ -39,8 +45,12 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   if (denied) return denied;
 
   let body: { plan?: string; cycle?: string; customerName?: string; billing?: DodoBillingAddress };
-  try { body = (await req.json()) as typeof body; }
-  catch { return NextResponse.json({ error: 'invalid_payload' }, { status: 400 }); }
+  try { body = await readBoundedJson(req, DODO_CHECKOUT_JSON_BYTES); }
+  catch (error) {
+    const bodyError = boundedJsonError(error);
+    if (bodyError?.code === 'PAYLOAD_TOO_LARGE') return NextResponse.json({ error: 'payload_too_large' }, { status: bodyError.status });
+    return NextResponse.json({ error: 'invalid_payload' }, { status: 400 });
+  }
 
   const plan = body.plan ?? '';
   const cycle = body.cycle ?? 'monthly';

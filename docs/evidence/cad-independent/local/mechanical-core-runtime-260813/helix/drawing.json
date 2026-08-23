@@ -1,0 +1,27 @@
+{
+  "schema": "nexyfab.mechanical-core-feature-local-runtime.v1",
+  "feature": "helix",
+  "axis": "drawing",
+  "status": "PASS",
+  "executedAt": "2026-08-22T07:13:30.564Z",
+  "kernel": "OCCT HLRBRep via replicad drawProjection",
+  "views": {
+    "front": {
+      "visible": 23,
+      "hidden": 42,
+      "viewBox": "-11.10225865907108 -8.500001011530042 20.38601131873056 19.97516932007645"
+    },
+    "top": {
+      "visible": 49,
+      "hidden": 47,
+      "viewBox": "-8.78046860410571 -3.429336770638 17.547231084434532 16.846667153518"
+    },
+    "right": {
+      "visible": 47,
+      "hidden": 45,
+      "viewBox": "-13.41733038288 -8.500001000902175 16.846667153518 18.2787372079601"
+    }
+  },
+  "svgBytes": 100527,
+  "svgSha256": "4ab4748a5c08b1eb93273d6247c41a2f442b5270bcecb765f9f0515441aa7472"
+}

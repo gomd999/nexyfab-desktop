@@ -12,6 +12,7 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { usePathname } from 'next/navigation';
 import type { AIHistoryFeature } from '@/lib/ai-history';
+import { createCommercialLocalizer } from '@/lib/i18n/commercialLocalizer';
 
 type Feature = AIHistoryFeature;
 
@@ -289,7 +290,7 @@ export default function AIHistoryPanel({ lang, onClose, projectId, onApplySugges
   // prefer URL-derived language; fall back to lang prop then 'en'
   const resolvedKey = langMap[seg] ?? langMap[lang] ?? 'en';
   const t = dict[resolvedKey];
-  const isKo = resolvedKey === 'ko';
+  const L = createCommercialLocalizer(resolvedKey);
 
   const [filter, setFilter] = useState<Feature | 'all'>('all');
   const [projectOnly, setProjectOnly] = useState<boolean>(true);
@@ -502,7 +503,7 @@ export default function AIHistoryPanel({ lang, onClose, projectId, onApplySugges
                                 }}
                               >
                                 <span style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                                  {(isKo ? s.titleKo : s.title) ?? s.id}
+                                  {s.titleKo && s.title ? L(s.titleKo, s.title) : (s.title ?? s.titleKo ?? s.id)}
                                 </span>
                                 <span style={{ fontSize: 10, color: C.gold, flexShrink: 0 }}>
                                   {s.estimatedSavingsPercent && s.estimatedSavingsPercent > 0

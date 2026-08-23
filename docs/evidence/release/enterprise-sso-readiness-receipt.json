@@ -1,0 +1,101 @@
+{
+  "schema": "nexyfab.enterprise-sso-readiness.v1",
+  "generatedAt": "2026-08-23T01:06:43.847Z",
+  "ok": false,
+  "status": "HOLD",
+  "releaseEligible": false,
+  "environment": "staging",
+  "target": null,
+  "release": {
+    "buildId": null,
+    "deploymentId": null,
+    "gitHead": "3d6ba1ec461169d9d331b939e432483c3953b752"
+  },
+  "evidenceContract": {
+    "schema": "nexyfab.enterprise-sso-staging-evidence.v1",
+    "derivation": "attested-raw-case-artifacts-v2",
+    "sourceManifest": null,
+    "trustedCollectors": null,
+    "isolationReceipt": null,
+    "caseEvidenceRootSha256": null,
+    "runId": null,
+    "requiredCaseIds": [
+      "saml_signed_response_or_assertion",
+      "saml_invalid_signature_rejected",
+      "saml_wrapping_duplicate_id_rejected",
+      "saml_issuer_mismatch_rejected",
+      "saml_audience_mismatch_rejected",
+      "saml_destination_mismatch_rejected",
+      "saml_not_before_rejected",
+      "saml_expired_rejected",
+      "saml_in_response_to_rejected",
+      "saml_replay_rejected",
+      "oidc_valid_authorization_code_flow",
+      "oidc_state_replay_rejected",
+      "oidc_nonce_mismatch_rejected",
+      "oidc_pkce_mismatch_rejected",
+      "oidc_unpinned_discovery_rejected",
+      "oidc_disallowed_algorithm_rejected",
+      "oidc_issuer_mismatch_rejected",
+      "oidc_audience_mismatch_rejected",
+      "oidc_expired_token_rejected",
+      "oidc_userinfo_subject_mismatch_rejected",
+      "oidc_redirect_not_allowlisted_rejected",
+      "oidc_code_replay_rejected"
+    ],
+    "verifiedCaseIds": []
+  },
+  "protocols": {
+    "saml": {
+      "status": "NOT_RUN",
+      "signatureValidation": false,
+      "signedResponseOrAssertion": false,
+      "uniqueIdReferenceValidation": false,
+      "wrappingAndDuplicateIdRejected": false,
+      "issuerAudienceDestinationTimeValidated": false,
+      "inResponseToValidated": false,
+      "replayRejected": false,
+      "localSessionIssued": false
+    },
+    "oidc": {
+      "status": "NOT_RUN",
+      "oneUseStateNoncePkce": false,
+      "pinnedHttpsDiscovery": false,
+      "jwksAlgorithmAllowlist": false,
+      "idTokenClaimsValidated": false,
+      "userinfoSubjectBound": false,
+      "redirectAllowlist": false,
+      "replayRejected": false,
+      "localSessionIssued": false
+    }
+  },
+  "blockers": [
+    "staging_evidence_not_supplied",
+    "release_identity_incomplete",
+    "saml_staging_cases_not_verified",
+    "oidc_staging_cases_not_verified"
+  ],
+  "sourceBindings": [
+    {
+      "path": "scripts/build-enterprise-sso-readiness-receipt.mjs",
+      "bytes": 36066,
+      "sha256": "1e05ca1be4cc9c325ca945b760aff0749bcb091c3b78c894a2a66cd5ad467e67"
+    },
+    {
+      "path": "src/lib/saml-sso-verifier.ts",
+      "bytes": 2417,
+      "sha256": "2d77c34c35d549b824deac4baabbc7e7dad11fd0aac55d475ea79ea6e6e3e464"
+    },
+    {
+      "path": "src/lib/oidc-sso-readiness.ts",
+      "bytes": 1638,
+      "sha256": "457c1482bec4495c541083f17bba924c5aaa2c2384fe56201c56628b31702012"
+    },
+    {
+      "path": "src/app/api/nexyfab/sso/callback/route.ts",
+      "bytes": 4280,
+      "sha256": "3e70444cfdc9bbc40ba9ef314d1e772cc37b7d4785ac106e69ca43d2d10feb21"
+    }
+  ],
+  "receiptSha256": "0fd8185b08fbce100905ef8a3a039ae8870086d310fa2e2e1f1736be8bc4d4a7"
+}

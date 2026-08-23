@@ -9,7 +9,9 @@ import { calculators, validateInput, runCalculatorCore } from './core.mjs';
 
 export { calculators, validateInput };
 
-const __dirname = dirname(fileURLToPath(import.meta.url));
+const __dirname = typeof globalThis.__dirname === 'string'
+  ? globalThis.__dirname
+  : dirname(fileURLToPath(import.meta.url));
 
 export function loadStandards() {
   const dir = join(__dirname, 'standards');

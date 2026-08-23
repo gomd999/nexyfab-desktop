@@ -12,7 +12,11 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
+import { readBoundedJson } from '@/lib/boundedJsonBody';
 import { chatCompletion, AiNotConfiguredError, AiProviderError, type ChatMessage } from '@/lib/ai';
+import { localizedApiMessage, resolveServerLocale } from '@/lib/i18n/serverLocale';
+
+const MAX_JSON_BODY_BYTES = 4 * 1024 * 1024;
 
 // ─── Types ─────────────────────────────────────────────────────────────────
 
@@ -130,18 +134,20 @@ function stripMarkdownJson(text: string): string {
 // ─── POST handler ──────────────────────────────────────────────────────────
 
 export async function POST(req: NextRequest) {
+  const requestBody = await readBoundedJson(req, MAX_JSON_BODY_BYTES).catch(() => ({})) as RequestBody;
+  const locale = resolveServerLocale(req, requestBody.lang ?? req.nextUrl.searchParams.get('lang'));
   const { checkPlan, checkMonthlyLimit, recordUsageEvent } = await import('@/lib/plan-guard');
   const planCheck = await checkPlan(req, 'free');
   if (!planCheck.ok) return planCheck.response;
 
-  const usageCheck = await checkMonthlyLimit(planCheck.userId, planCheck.plan, 'ai_supplier_match');
+  const usageCheck = await checkMonthlyLimit(planCheck.userId, planCheck.plan, 'ai_supplier_match', planCheck.orgId);
   if (!usageCheck.ok) {
     const isPro = usageCheck.limit === -2;
     return NextResponse.json(
       {
         error: isPro
-          ? 'AI Supplier Match requires Pro plan or higher.'
-          : `Free plan limit reached (${usageCheck.limit}/month). Upgrade to Pro for unlimited AI supplier matching.`,
+          ? localizedApiMessage(locale, 'planUpgrade')
+          : localizedApiMessage(locale, 'planLimit', { limit: usageCheck.limit }),
         requiresPro: isPro,
         used: usageCheck.used,
         limit: usageCheck.limit,
@@ -150,9 +156,9 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const body = await req.json().catch(() => ({})) as RequestBody;
+  const body = requestBody;
   if (!Array.isArray(body.candidates) || body.candidates.length === 0 || !body.material || !body.process) {
-    return NextResponse.json({ error: 'candidates[], material, and process are required' }, { status: 400 });
+    return NextResponse.json({ error: localizedApiMessage(locale, 'badRequest'), code: 'SUPPLIER_MATCH_INPUT_REQUIRED', outputLanguage: locale.route }, { status: 400 });
   }
 
   // Pre-trim to top-8 by local score so the LLM only sees strong candidates
@@ -174,14 +180,13 @@ export async function POST(req: NextRequest) {
   const systemPrompt =
     'You are a manufacturing sourcing expert. Given a list of supplier candidates and the buyer context ' +
     '(material, process, quantity, geometry size, use-case, priority), pick the top 3 and justify each. ' +
-    'For each selected supplier, return: rank (1-3), score (0-100), reasoning (en+ko), strengths (2-4 bullets, en+ko), ' +
-    'concerns (1-3 bullets, en+ko), rfqTalkingPoints (2-4 bullets, en+ko). ' +
+    `For each selected supplier, return primary natural-language reasoning, strengths, concerns, and rfqTalkingPoints in ${locale.languageName}, plus the *Ko legacy compatibility fields. ` +
     'Respond with JSON: { "ranked": [ { "id", "rank", "score", "reasoning", "reasoningKo", "strengths", "strengthsKo", "concerns", "concernsKo", "rfqTalkingPoints", "rfqTalkingPointsKo" }, ... ] }. ' +
     'Each bullet under 100 chars. Do NOT wrap JSON in markdown code blocks.';
 
   const messages: ChatMessage[] = [
     { role: 'system', content: systemPrompt },
-    { role: 'user', content: JSON.stringify({ ...trimmedBody, requestedLanguage: body.lang ?? 'en' }) },
+    { role: 'user', content: JSON.stringify({ ...trimmedBody, requestedLanguage: locale.languageName }) },
   ];
 
   let content = '';
@@ -196,33 +201,35 @@ export async function POST(req: NextRequest) {
     content = result.text;
   } catch (e) {
     if (e instanceof AiNotConfiguredError) {
-      recordUsageEvent(planCheck.userId, 'ai_supplier_match');
+      recordUsageEvent(planCheck.userId, 'ai_supplier_match', undefined, planCheck.orgId);
       const ranked = ruleBasedRank(trimmedBody);
       recordAIHistory({
         userId: planCheck.userId,
+        orgId: planCheck.orgId,
         feature: 'ai_supplier_match',
         title: historyTitle,
         payload: { ranked },
         context: historyContext,
         projectId: historyProjectId,
       });
-      return NextResponse.json({ ranked });
+      return NextResponse.json({ ranked, outputLanguage: locale.route });
     }
     const detail = e instanceof AiProviderError
       ? `${e.provider}${e.status ? ` (${e.status})` : ''}: ${e.message}`
       : (e instanceof Error ? e.message : String(e));
     console.warn('[supplier-matcher] AI provider failed, using rule-based fallback:', detail);
-    recordUsageEvent(planCheck.userId, 'ai_supplier_match');
+    recordUsageEvent(planCheck.userId, 'ai_supplier_match', undefined, planCheck.orgId);
     const fallback = ruleBasedRank(trimmedBody);
     recordAIHistory({
       userId: planCheck.userId,
+      orgId: planCheck.orgId,
       feature: 'ai_supplier_match',
       title: historyTitle,
       payload: { ranked: fallback },
       context: historyContext,
       projectId: historyProjectId,
     });
-    return NextResponse.json({ ranked: fallback });
+    return NextResponse.json({ ranked: fallback, outputLanguage: locale.route });
   }
 
   try {
@@ -250,28 +257,30 @@ export async function POST(req: NextRequest) {
 
     if (ranked.length === 0) throw new Error('No valid supplier ids returned');
 
-    recordUsageEvent(planCheck.userId, 'ai_supplier_match');
+    recordUsageEvent(planCheck.userId, 'ai_supplier_match', undefined, planCheck.orgId);
     recordAIHistory({
       userId: planCheck.userId,
+      orgId: planCheck.orgId,
       feature: 'ai_supplier_match',
       title: historyTitle,
       payload: { ranked },
       context: historyContext,
       projectId: historyProjectId,
     });
-    return NextResponse.json({ ranked });
+    return NextResponse.json({ ranked, outputLanguage: locale.route });
   } catch (err) {
     console.warn('[supplier-matcher] AI response parse failed, using rule-based fallback:', err);
-    recordUsageEvent(planCheck.userId, 'ai_supplier_match');
+    recordUsageEvent(planCheck.userId, 'ai_supplier_match', undefined, planCheck.orgId);
     const fallback = ruleBasedRank(trimmedBody);
     recordAIHistory({
       userId: planCheck.userId,
+      orgId: planCheck.orgId,
       feature: 'ai_supplier_match',
       title: historyTitle,
       payload: { ranked: fallback },
       context: historyContext,
       projectId: historyProjectId,
     });
-    return NextResponse.json({ ranked: fallback });
+    return NextResponse.json({ ranked: fallback, outputLanguage: locale.route });
   }
 }

@@ -8,6 +8,14 @@ vi.mock('@/lib/rate-limit', () => ({ rateLimit: () => ({ allowed: true }) }));
 
 import { POST } from './route';
 
+const MAX_TEST_BODY_BYTES = 2_048;
+
+function streamedRequest(body: ReadableStream<Uint8Array>, headers: Record<string, string>) {
+  return new NextRequest('https://nexyfab.com/api/observability/web-vitals/', {
+    method: 'POST', body, headers: { 'content-type': 'application/json', ...headers }, duplex: 'half',
+  } as unknown as NonNullable<ConstructorParameters<typeof NextRequest>[1]>);
+}
+
 describe('POST /api/observability/web-vitals', () => {
   beforeEach(() => logAudit.mockClear());
 
@@ -44,6 +52,30 @@ describe('POST /api/observability/web-vitals', () => {
       method: 'POST', body: '{}', headers: { 'content-length': '4096' },
     });
     expect((await POST(oversized)).status).toBe(413);
+    expect(logAudit).not.toHaveBeenCalled();
+  });
+
+  it('rejects invalid UTF-8 without writing an audit event', async () => {
+    const response = await POST(new NextRequest('https://nexyfab.com/api/observability/web-vitals/', {
+      method: 'POST', body: new Uint8Array([0xff]), headers: { 'content-type': 'application/json' },
+    }));
+    expect(response.status).toBe(400);
+    expect(await response.json()).toEqual({ ok: false, code: 'BAD_METRIC' });
+    expect(logAudit).not.toHaveBeenCalled();
+  });
+
+  it('does not trust Content-Length and cancels measured overflow without audit mutation', async () => {
+    let cancelled = false;
+    const stream = new ReadableStream<Uint8Array>({
+      start(controller) {
+        controller.enqueue(new Uint8Array([0x7b]));
+        controller.enqueue(new Uint8Array(MAX_TEST_BODY_BYTES));
+      },
+      cancel() { cancelled = true; },
+    });
+    const response = await POST(streamedRequest(stream, { 'content-length': '1' }));
+    expect(response.status).toBe(413);
+    expect(cancelled).toBe(true);
     expect(logAudit).not.toHaveBeenCalled();
   });
 });

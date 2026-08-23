@@ -131,8 +131,7 @@ export function holesFromSketch(
       return { ok: false, error: `hole ${i + 1}: sketch point '${h.pointId}' not found` };
     }
     try {
-      holeFeatures.push(
-        buildHoleFeature({
+      const feature = buildHoleFeature({
           center: { x: center.x, y: center.y },
           holeType: h.holeType,
           diameter: h.diameter,
@@ -143,8 +142,24 @@ export function holesFromSketch(
           counterboreDepth: h.counterboreDepth,
           countersinkAngleDegrees: h.countersinkAngleDegrees,
           countersinkDepth: h.countersinkDepth,
-        }),
-      );
+        });
+      const clearance = holeClearanceRadius(feature);
+      if (!pointInsideLoop(center, loop, pointById)) {
+        return { ok: false, error: `hole ${i + 1}: center (${center.x}, ${center.y}) is outside the parent profile` };
+      }
+      const available = minimumBoundaryDistance(center, loop, pointById);
+      if (clearance > available + 1e-9) {
+        return {
+          ok: false,
+          error:
+            `hole ${i + 1}: oversized hole (effective radius ${clearance} mm) ` +
+            `exceeds the parent profile clearance ${available} mm at (${center.x}, ${center.y})`,
+        };
+      }
+      // The host reference is structural, while the direct composed SCAD
+      // below receives the current thickness explicitly. Replay therefore
+      // regenerates auto/through cutters after an upstream depth edit.
+      holeFeatures.push({ ...feature, childId: 'extrude_parent' });
     } catch (e) {
       return {
         ok: false,
@@ -177,7 +192,7 @@ export function holesFromSketch(
 
   // Compose the rendered SCAD: difference() { parent; each hole; }.
   const parentBody = scadForParent(parentExtrude);
-  const holeBodies = holeFeatures.map((h) => holeToScad(h));
+  const holeBodies = holeFeatures.map((h) => holeToScad(h, opts.extrudeDepth));
   const indentedHoles = holeBodies
     .map((b) => indent(b, 2))
     .join('\n');
@@ -212,4 +227,56 @@ function indent(body: string, n: number): string {
 // the FeatureTree replay if a caller wants it.
 function scadForParent(parent: ReturnType<typeof buildExtrudeFromLoop>): string {
   return extrudeToScad(parent);
+}
+
+function holeClearanceRadius(feature: ReturnType<typeof buildHoleFeature>): number {
+  let radius = feature.diameter / 2;
+  if (feature.counterboreDiameter !== undefined) {
+    radius = Math.max(radius, feature.counterboreDiameter / 2);
+  }
+  return radius;
+}
+
+function pointInsideLoop(
+  point: { x: number; y: number },
+  loop: ClosedLoop,
+  pointById: ReadonlyMap<string, { x: number; y: number }>,
+): boolean {
+  const vertices = loop.points.map(id => pointById.get(id)).filter(
+    (p): p is { x: number; y: number } => p !== undefined,
+  );
+  let inside = false;
+  for (let i = 0, j = vertices.length - 1; i < vertices.length; j = i++) {
+    const a = vertices[i]!;
+    const b = vertices[j]!;
+    const crosses = (a.y > point.y) !== (b.y > point.y) &&
+      point.x < ((b.x - a.x) * (point.y - a.y)) / (b.y - a.y) + a.x;
+    if (crosses) inside = !inside;
+  }
+  return inside;
+}
+
+function minimumBoundaryDistance(
+  point: { x: number; y: number },
+  loop: ClosedLoop,
+  pointById: ReadonlyMap<string, { x: number; y: number }>,
+): number {
+  const vertices = loop.points.map(id => pointById.get(id)).filter(
+    (p): p is { x: number; y: number } => p !== undefined,
+  );
+  let minimum = Infinity;
+  for (let i = 0; i < vertices.length; i++) {
+    const a = vertices[i]!;
+    const b = vertices[(i + 1) % vertices.length]!;
+    const dx = b.x - a.x;
+    const dy = b.y - a.y;
+    const lengthSq = dx * dx + dy * dy;
+    const t = lengthSq > 0
+      ? Math.max(0, Math.min(1, ((point.x - a.x) * dx + (point.y - a.y) * dy) / lengthSq))
+      : 0;
+    const qx = a.x + t * dx;
+    const qy = a.y + t * dy;
+    minimum = Math.min(minimum, Math.hypot(point.x - qx, point.y - qy));
+  }
+  return minimum;
 }

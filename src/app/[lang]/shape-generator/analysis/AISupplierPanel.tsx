@@ -14,6 +14,7 @@ import { usePathname } from 'next/navigation';
 import { matchSuppliers, type SupplierMatchResult } from './supplierMatcher';
 import type { RfqSupplierBrief } from './rfqWriter';
 import { requestSupplierQuote } from './rfqSubmitter';
+import { createCommercialLocalizer } from '@/lib/i18n/commercialLocalizer';
 
 // ─── i18n dict (6 languages) ───────────────────────────────────────────────
 const dict = {
@@ -386,6 +387,7 @@ export default function AISupplierPanel({
   onClose, onRequirePro, onRfqSubmitted, projectId,
 }: AISupplierPanelProps) {
   const isKo = lang === 'ko';
+  const L = createCommercialLocalizer(lang);
   const pathname = usePathname();
   const seg = pathname?.split('/').filter(Boolean)[0] ?? lang ?? 'en';
   const resolvedLang = langMap[seg] ?? (langMap[lang] ?? 'en');
@@ -431,7 +433,7 @@ export default function AISupplierPanel({
         fetch('/api/nexyfab/partner/metrics-batch', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ emails, windowDays: 90 }),
+          body: JSON.stringify({ emails, windowDays: 90, lang }),
         })
           .then(r => r.ok ? r.json() : null)
           .then((data: { partners?: Array<{
@@ -472,7 +474,7 @@ export default function AISupplierPanel({
   const handleRequestQuote = useCallback(async (idx: number, row: SupplierMatchResult) => {
     setRfqSubmittingIdx(idx);
     setRfqResultByIdx(prev => { const n = { ...prev }; delete n[idx]; return n; });
-    const mfrName = isKo ? row.manufacturer.nameKo : row.manufacturer.name;
+    const mfrName = L(row.manufacturer.nameKo, row.manufacturer.name);
     const r = await requestSupplierQuote({
       partName,
       manufacturerName: mfrName,
@@ -681,7 +683,7 @@ export default function AISupplierPanel({
                     <RankBadge rank={ranking.rank} />
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{ fontSize: 12, fontWeight: 700, color: C.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                        {isKo ? m.nameKo : m.name}
+                        {L(m.nameKo, m.name)}
                       </div>
                       <div style={{ fontSize: 10, color: C.dim, marginTop: 2 }}>
                         ⭐ {m.rating.toFixed(1)} · {m.minLeadTime}-{m.maxLeadTime}d · {m.region}
@@ -762,7 +764,7 @@ export default function AISupplierPanel({
                   {isExpanded && (
                     <div style={{ padding: '0 12px 12px 12px', borderTop: `1px solid ${C.border}` }}>
                       <div style={{ marginTop: 10, fontSize: 11, color: C.text, lineHeight: 1.5 }}>
-                        {isKo ? ranking.reasoningKo : ranking.reasoning}
+                        {L(ranking.reasoningKo, ranking.reasoning)}
                       </div>
 
                       {ranking.strengths.length > 0 && (
@@ -770,7 +772,7 @@ export default function AISupplierPanel({
                           <div style={{ fontSize: 9, fontWeight: 700, color: C.green, textTransform: 'uppercase', marginBottom: 4 }}>
                             ✓ {tt.strengths}
                           </div>
-                          {(isKo ? ranking.strengthsKo : ranking.strengths).map((s, i) => (
+                          {(L(ranking.strengthsKo, ranking.strengths)).map((s, i) => (
                             <div key={i} style={{ fontSize: 10, color: C.text, lineHeight: 1.4, marginBottom: 3 }}>
                               • {s}
                             </div>
@@ -783,7 +785,7 @@ export default function AISupplierPanel({
                           <div style={{ fontSize: 9, fontWeight: 700, color: C.yellow, textTransform: 'uppercase', marginBottom: 4 }}>
                             ⚠ {tt.concerns}
                           </div>
-                          {(isKo ? ranking.concernsKo : ranking.concerns).map((c, i) => (
+                          {(L(ranking.concernsKo, ranking.concerns)).map((c, i) => (
                             <div key={i} style={{ fontSize: 10, color: C.text, lineHeight: 1.4, marginBottom: 3 }}>
                               • {c}
                             </div>
@@ -796,7 +798,7 @@ export default function AISupplierPanel({
                           <div style={{ fontSize: 9, fontWeight: 700, color: C.accent, textTransform: 'uppercase', marginBottom: 4 }}>
                             📋 {tt.rfqPoints}
                           </div>
-                          {(isKo ? ranking.rfqTalkingPointsKo : ranking.rfqTalkingPoints).map((p, i) => (
+                          {(L(ranking.rfqTalkingPointsKo, ranking.rfqTalkingPoints)).map((p, i) => (
                             <div key={i} style={{ fontSize: 10, color: C.text, lineHeight: 1.4, marginBottom: 3 }}>
                               {i + 1}. {p}
                             </div>

@@ -4,9 +4,12 @@ import { getTrustedClientIp } from '@/lib/client-ip';
 import { type Seg, segmentsToDxf, segmentsToSvg } from '@/lib/papercraft/netDxf';
 import { chatCompletion } from '@/lib/ai';
 import { guardStudioAi } from '@/lib/studio-ai-guard';
+import { localizedApiMessage, resolveServerLocale } from '@/lib/i18n/serverLocale';
+import { readBoundedJson } from '@/lib/boundedJsonBody';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
+const MAX_JSON_BODY_BYTES = 1024 * 1024;
 
 /**
  * PoC — sheet-metal FLAT PATTERN (전개도) with bend-allowance compensation.
@@ -23,13 +26,14 @@ const num = (v: unknown, d: number) => (typeof v === 'number' && isFinite(v) ? v
 interface Flange { edge: 'front' | 'back' | 'left' | 'right'; height: number; angle?: number }
 
 export async function POST(req: NextRequest) {
+  const b = (await readBoundedJson(req, MAX_JSON_BODY_BYTES).catch(() => ({}))) as {
+    width?: number; length?: number; thickness?: number; bendRadius?: number; kFactor?: number; flanges?: Flange[]; prompt?: string; lang?: string;
+  };
+  const locale = resolveServerLocale(req, b.lang ?? req.nextUrl.searchParams.get('lang'));
   const ip = getTrustedClientIp(req.headers);
   if (!rateLimit(`sheetmetal-flat:${ip}`, 30, 3_600_000).allowed) {
-    return NextResponse.json({ error: 'Too many requests', code: 'RATE_LIMIT' }, { status: 429 });
+    return NextResponse.json({ error: localizedApiMessage(locale, 'rateLimited'), code: 'RATE_LIMIT', outputLanguage: locale.route }, { status: 429 });
   }
-  const b = (await req.json().catch(() => ({}))) as {
-    width?: number; length?: number; thickness?: number; bendRadius?: number; kFactor?: number; flanges?: Flange[]; prompt?: string;
-  };
 
   // AI: extract a sheet-metal spec from a free-text part description.
   let aiFlanges: Flange[] | undefined;
@@ -128,5 +132,6 @@ export async function POST(req: NextRequest) {
     bytes: Buffer.byteLength(dxf, 'utf8'),
     svg,
     dxf,
+    outputLanguage: locale.route,
   });
 }

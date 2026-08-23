@@ -94,19 +94,26 @@ export default function AssemblyAnimationTimeline({
       style={{
         display: "grid",
         gridTemplateColumns: "auto 1fr auto",
-        gap: 8,
+        gap: 10,
         alignItems: "center",
+        minWidth: 0,
+        padding: "10px 12px",
+        border: "1px solid var(--nx-border)",
+        borderRadius: 7,
+        background: "var(--nx-panel-2)",
       }}
     >
       <button
         type="button"
         onClick={() => onPlayingChange(!playing)}
         aria-label={playing ? "Pause" : "Play"}
+        style={{ minWidth: 42, minHeight: 42 }}
       >
         {playing ? "❚❚" : "▶"}
       </button>
       <div>
         <input
+          name="assembly-animation-frame-slider"
           aria-label="Animation frame"
           type="range"
           min={animation.startFrame}
@@ -121,16 +128,18 @@ export default function AssemblyAnimationTimeline({
         <div
           data-testid="assembly-animation-verification"
           style={{
-            fontSize: 10,
-            color: failed ? "#dc2626" : unknown ? "#d97706" : "#16a34a",
+            marginTop: 4,
+            fontSize: 11,
+            color: failed ? "#fca5a5" : unknown ? "#fdba74" : "#86efac",
           }}
         >
           {label}
-          {firstToi?.firstPossibleFrame != null && <button type="button" data-testid="assembly-animation-jump-to-toi" onClick={() => onFrameChange(firstToi.firstPossibleFrame!)} style={{ marginLeft: 6, fontSize: 10 }}>Jump</button>}
+          {firstToi?.firstPossibleFrame != null && <button type="button" data-testid="assembly-animation-jump-to-toi" onClick={() => onFrameChange(firstToi.firstPossibleFrame!)} style={{ marginLeft: 6, fontSize: 11, minHeight: 32 }}>Jump</button>}
         </div>
       </div>
       <label style={{ fontFamily: "monospace", fontSize: 12 }}>
         <input
+          name="assembly-animation-current-frame"
           aria-label="Current frame"
           type="number"
           min={animation.startFrame}

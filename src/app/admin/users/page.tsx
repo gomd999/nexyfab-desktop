@@ -1,6 +1,8 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useMemo } from 'react';
+import { useAdminI18n } from '../AdminI18nProvider';
+import { createCommercialLocalizer } from '@/lib/i18n/commercialLocalizer';
 import { formatDate, formatDateTime } from '@/lib/formatDate';
 
 // ── Types ────────────────────────────────────────────────────────────────────
@@ -104,22 +106,24 @@ function parseServices(raw: string | null): string[] {
   try { return JSON.parse(raw || '[]'); } catch { return []; }
 }
 
-function timeAgo(ts: number | null): string {
+function timeAgo(ts: number | null, L?: (korean: string, english: string) => string): string {
   if (!ts) return '-';
   const diff = Date.now() - ts;
   const mins = Math.floor(diff / 60_000);
-  if (mins < 1) return '방금';
-  if (mins < 60) return `${mins}분 전`;
+  if (mins < 1) return L?.('방금', 'Just now') ?? 'Just now';
+  if (mins < 60) return `${mins}${L?.('분 전', ' minutes ago') ?? ' minutes ago'}`;
   const hours = Math.floor(mins / 60);
-  if (hours < 24) return `${hours}시간 전`;
+  if (hours < 24) return `${hours}${L?.('시간 전', ' hours ago') ?? ' hours ago'}`;
   const days = Math.floor(hours / 24);
-  if (days < 30) return `${days}일 전`;
-  return `${Math.floor(days / 30)}개월 전`;
+  if (days < 30) return `${days}${L?.('일 전', ' days ago') ?? ' days ago'}`;
+  return `${Math.floor(days / 30)}${L?.('개월 전', ' months ago') ?? ' months ago'}`;
 }
 
 // ── Page ─────────────────────────────────────────────────────────────────────
 
 export default function AdminUsersPage() {
+  const { locale } = useAdminI18n();
+  const L = useMemo(() => createCommercialLocalizer(locale), [locale]);
   const [authed, setAuthed]   = useState(false);
   const [pw, setPw]           = useState('');
   const [pwError, setPwError] = useState(false);
@@ -201,13 +205,13 @@ export default function AdminUsersPage() {
       if (filterService)  params.set('service', filterService);
       if (filterQ)        params.set('q', filterQ);
       const res = await fetch(`/api/admin/users?${params}`);
-      if (!res.ok) { setError('데이터를 불러오지 못했습니다.'); return; }
+      if (!res.ok) { setError(L('데이터를 불러오지 못했습니다.', 'Could not load user data.')); return; }
       const data = await res.json() as { users: User[]; total: number; stats: PlanStat[] };
       setUsers(data.users);
       setTotal(data.total);
       setStats(data.stats);
     } finally { setLoading(false); }
-  }, [page, filterPlan, filterRole, filterVerified, filterCountry, filterSource, filterService, filterQ, filterSort]);
+  }, [page, filterPlan, filterRole, filterVerified, filterCountry, filterSource, filterService, filterQ, filterSort, L]);
 
   useEffect(() => { if (authed) void load(); }, [authed, load]);
 
@@ -217,8 +221,8 @@ export default function AdminUsersPage() {
   }
 
   async function handleCreateUser() {
-    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(cEmail)) { showToast('유효한 이메일을 입력하세요.'); return; }
-    if (cPw.length < 8) { showToast('비밀번호는 8자 이상이어야 합니다.'); return; }
+    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(cEmail)) { showToast(L('유효한 이메일을 입력하세요.', 'Enter a valid email address.')); return; }
+    if (cPw.length < 8) { showToast(L('비밀번호는 8자 이상이어야 합니다.', 'Password must be at least 8 characters.')); return; }
     setCBusy(true);
     try {
       const res = await fetch('/api/admin/users', {
@@ -228,13 +232,13 @@ export default function AdminUsersPage() {
       });
       const data = await res.json().catch(() => ({}));
       if (res.ok) {
-        showToast(`계정 생성 완료: ${cEmail}`);
+        showToast(`${L('계정 생성 완료', 'Account created')}: ${cEmail}`);
         setCEmail(''); setCName(''); setCPw(''); setCPlan('free'); setCreateOpen(false);
         void load();
       } else {
-        showToast(data.error || data.detail || `생성 실패 (${res.status})`);
+        showToast(data.error || data.detail || `${L('생성 실패', 'Creation failed')} (${res.status})`);
       }
-    } catch { showToast('생성 중 오류가 발생했습니다.'); }
+    } catch { showToast(L('생성 중 오류가 발생했습니다.', 'An error occurred while creating the account.')); }
     finally { setCBusy(false); }
   }
 
@@ -259,17 +263,17 @@ export default function AdminUsersPage() {
         body: JSON.stringify(body),
       });
       const d = await res.json() as { error?: string };
-      if (res.ok) { showToast('회원 정보 수정 완료'); setEditUser(null); void load(); }
-      else showToast(`오류: ${d.error}`);
+      if (res.ok) { showToast(L('회원 정보 수정 완료', 'User details updated')); setEditUser(null); void load(); }
+      else showToast(`${L('오류', 'Error')}: ${d.error}`);
     } finally { setEditSaving(false); }
   }
 
   async function handleLock(user: User) {
     const isLocked = user.locked_until && user.locked_until > Date.now();
     if (isLocked) {
-      if (!confirm(`${user.email}의 잠금을 해제하시겠습니까?`)) return;
+      if (!confirm(`${user.email} — ${L('잠금을 해제하시겠습니까?', 'Unlock this account?')}`)) return;
     } else {
-      if (!confirm(`${user.email} 계정을 잠금하시겠습니까? (24시간)`)) return;
+      if (!confirm(`${user.email} — ${L('계정을 잠금하시겠습니까? (24시간)', 'Lock this account? (24 hours)')}`)) return;
     }
     setLockingId(user.id);
     try {
@@ -278,16 +282,16 @@ export default function AdminUsersPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ userId: user.id, locked: !isLocked }),
       });
-      if (res.ok) showToast(isLocked ? '잠금 해제 완료' : '계정 잠금 완료');
-      else showToast('오류 발생');
+      if (res.ok) showToast(isLocked ? L('잠금 해제 완료', 'Account unlocked') : L('계정 잠금 완료', 'Account locked'));
+      else showToast(L('오류 발생', 'An error occurred'));
       void load();
     } finally { setLockingId(null); }
   }
 
   async function handleDelete(user: User) {
-    if (user.role === 'super_admin') { showToast('super_admin은 삭제할 수 없습니다'); return; }
-    if (!confirm(`정말 ${user.email} 회원을 삭제하시겠습니까?\n이 작업은 되돌릴 수 없습니다.`)) return;
-    if (!confirm(`최종 확인: ${user.email}의 모든 데이터가 삭제됩니다.`)) return;
+    if (user.role === 'super_admin') { showToast(L('super_admin은 삭제할 수 없습니다', 'super_admin accounts cannot be deleted')); return; }
+    if (!confirm(`${L('정말 회원을 삭제하시겠습니까?', 'Really delete this user?')} ${user.email}\n${L('이 작업은 되돌릴 수 없습니다.', 'This action cannot be undone.')}`)) return;
+    if (!confirm(`${L('최종 확인: 모든 데이터가 삭제됩니다.', 'Final confirmation: all data will be deleted.')} ${user.email}`)) return;
     setDeletingId(user.id);
     try {
       const res = await fetch('/api/admin/users', {
@@ -296,14 +300,14 @@ export default function AdminUsersPage() {
         body: JSON.stringify({ userId: user.id }),
       });
       const d = await res.json() as { error?: string };
-      if (res.ok) { showToast('회원 삭제 완료'); void load(); }
-      else showToast(`오류: ${d.error}`);
+      if (res.ok) { showToast(L('회원 삭제 완료', 'User deleted')); void load(); }
+      else showToast(`${L('오류', 'Error')}: ${d.error}`);
     } finally { setDeletingId(null); }
   }
 
   // CSV 내보내기
   function exportCSV() {
-    const header = 'ID,이메일,이름,플랜,역할,서비스,회사,직책,국가,언어,시간대,전화번호,가입경로,가입IP,최근로그인IP,가입일,마지막로그인,로그인횟수,이메일인증,프로젝트수,잠금상태,2FA\n';
+    const header = `ID,${L('이메일,이름,플랜,역할,서비스,회사,직책,국가,언어,시간대,전화번호,가입경로,가입IP,최근로그인IP,가입일,마지막로그인,로그인횟수,이메일인증,프로젝트수,잠금상태', 'Email,Name,Plan,Role,Service,Company,Job title,Country,Language,Timezone,Phone,Signup source,Signup IP,Last login IP,Signup date,Last login,Login count,Email verification,Projects,Lock status')},2FA\n`;
     const rows = users.map(u =>
       [u.id, u.email, u.name, u.plan, u.role,
         parseServices(u.services).join(';'),
@@ -337,18 +341,18 @@ export default function AdminUsersPage() {
         <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-8 w-full max-w-sm">
           <div className="text-center mb-6">
             <div className="text-3xl mb-2">👥</div>
-            <h1 className="text-xl font-black text-gray-900">회원 관리</h1>
-            <p className="text-xs text-gray-400 mt-1">관리자 인증 필요</p>
+            <h1 className="text-xl font-black text-gray-900">{L('회원 관리', 'User management')}</h1>
+            <p className="text-xs text-gray-400 mt-1">{L('관리자 인증 필요', 'Administrator authentication required')}</p>
           </div>
           <input type="password" value={pw} onChange={e => setPw(e.target.value)}
             onKeyDown={e => e.key === 'Enter' && void login()}
-            placeholder="관리자 비밀번호"
+            placeholder={L('관리자 비밀번호', 'Admin password')}
             className={`w-full px-4 py-2.5 rounded-xl border text-sm mb-3 outline-none ${pwError ? 'border-red-400 bg-red-50' : 'border-gray-200 focus:border-blue-400'}`} />
           <button onClick={() => void login()}
             className="w-full py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl text-sm transition">
-            로그인
+            {L('로그인', 'Log in')}
           </button>
-          {pwError && <p className="text-red-500 text-xs text-center mt-2">비밀번호가 틀렸습니다</p>}
+          {pwError && <p className="text-red-500 text-xs text-center mt-2">{L('비밀번호가 틀렸습니다', 'Incorrect password')}</p>}
         </div>
       </div>
     );
@@ -368,25 +372,25 @@ export default function AdminUsersPage() {
       <div className="bg-white rounded-2xl border border-gray-200 p-4">
         <div className="flex items-center justify-between">
           <div>
-            <h2 className="text-sm font-bold text-gray-900">계정 생성 (관리자 발급)</h2>
-            <p className="text-xs text-gray-500 mt-0.5">공개 회원가입은 비공개입니다. 여기서 만든 계정만 로그인할 수 있어요.</p>
+            <h2 className="text-sm font-bold text-gray-900">{L('계정 생성 (관리자 발급)', 'Create account (admin provisioned)')}</h2>
+            <p className="text-xs text-gray-500 mt-0.5">{L('공개 회원가입은 비공개입니다. 여기서 만든 계정만 로그인할 수 있어요.', 'Public sign-up is private. Only accounts created here can log in.')}</p>
           </div>
           <button onClick={() => setCreateOpen(o => !o)} className="text-sm font-semibold px-3 py-1.5 rounded-lg bg-blue-600 text-white hover:bg-blue-500">
-            {createOpen ? '닫기' : '+ 새 계정'}
+            {createOpen ? L('닫기', 'Close') : L('+ 새 계정', '+ New account')}
           </button>
         </div>
         {createOpen && (
           <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <input value={cEmail} onChange={e => setCEmail(e.target.value)} type="email" placeholder="이메일" className="border border-gray-300 rounded-lg px-3 py-2 text-sm" />
-            <input value={cName} onChange={e => setCName(e.target.value)} type="text" placeholder="이름 (선택)" className="border border-gray-300 rounded-lg px-3 py-2 text-sm" />
-            <input value={cPw} onChange={e => setCPw(e.target.value)} type="text" placeholder="비밀번호 (8자 이상)" className="border border-gray-300 rounded-lg px-3 py-2 text-sm" />
+            <input value={cEmail} onChange={e => setCEmail(e.target.value)} type="email" placeholder={L('이메일', 'Email')} className="border border-gray-300 rounded-lg px-3 py-2 text-sm" />
+            <input value={cName} onChange={e => setCName(e.target.value)} type="text" placeholder={L('이름 (선택)', 'Name (optional)')} className="border border-gray-300 rounded-lg px-3 py-2 text-sm" />
+            <input value={cPw} onChange={e => setCPw(e.target.value)} type="text" placeholder={L('비밀번호 (8자 이상)', 'Password (8+ characters)')} className="border border-gray-300 rounded-lg px-3 py-2 text-sm" />
             <select value={cPlan} onChange={e => setCPlan(e.target.value)} className="border border-gray-300 rounded-lg px-3 py-2 text-sm">
               <option value="free">Free</option>
               <option value="pro">Pro</option>
               <option value="team">Team</option>
             </select>
             <button onClick={() => void handleCreateUser()} disabled={cBusy} className="sm:col-span-2 px-4 py-2 rounded-lg bg-emerald-600 text-white text-sm font-bold hover:bg-emerald-500 disabled:opacity-60">
-              {cBusy ? '생성 중…' : '계정 생성 + 접근 권한 부여'}
+              {cBusy ? L('생성 중…', 'Creating…') : L('계정 생성 + 접근 권한 부여', 'Create account + grant access')}
             </button>
           </div>
         )}
@@ -412,27 +416,27 @@ export default function AdminUsersPage() {
 
             <div className="grid grid-cols-2 gap-3 mb-5">
               <div className="bg-gray-50 rounded-xl p-3">
-                <p className="text-xs text-gray-400">플랜</p>
+                <p className="text-xs text-gray-400">{L('플랜', 'Plan')}</p>
                 <p className="font-bold text-gray-900 mt-0.5">{detailUser.plan}</p>
               </div>
               <div className="bg-gray-50 rounded-xl p-3">
-                <p className="text-xs text-gray-400">역할</p>
+                <p className="text-xs text-gray-400">{L('역할', 'Role')}</p>
                 <p className="font-bold text-gray-900 mt-0.5">{detailUser.role}</p>
               </div>
               <div className="bg-gray-50 rounded-xl p-3">
-                <p className="text-xs text-gray-400">가입일</p>
+                <p className="text-xs text-gray-400">{L('가입일', 'Signup date')}</p>
                 <p className="font-bold text-gray-900 mt-0.5">{formatDateTime(detailUser.created_at)}</p>
               </div>
               <div className="bg-gray-50 rounded-xl p-3">
-                <p className="text-xs text-gray-400">마지막 로그인</p>
-                <p className="font-bold text-gray-900 mt-0.5">{detailUser.last_login_at ? timeAgo(detailUser.last_login_at) : '-'}</p>
+                <p className="text-xs text-gray-400">{L('마지막 로그인', 'Last login')}</p>
+        <p className="font-bold text-gray-900 mt-0.5">{detailUser.last_login_at ? timeAgo(detailUser.last_login_at, L) : '-'}</p>
               </div>
               <div className="bg-gray-50 rounded-xl p-3">
-                <p className="text-xs text-gray-400">로그인 횟수</p>
-                <p className="font-bold text-gray-900 mt-0.5">{detailUser.login_count}회</p>
+                <p className="text-xs text-gray-400">{L('로그인 횟수', 'Login count')}</p>
+                <p className="font-bold text-gray-900 mt-0.5">{detailUser.login_count}{L('회', ' times')}</p>
               </div>
               <div className="bg-gray-50 rounded-xl p-3">
-                <p className="text-xs text-gray-400">가입 서비스</p>
+                <p className="text-xs text-gray-400">{L('가입 서비스', 'Signup service')}</p>
                 <div className="flex flex-wrap gap-1 mt-1">
                   {parseServices(detailUser.services).map(s => (
                     <span key={s} className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${SERVICE_COLOR[s] ?? 'bg-gray-100 text-gray-600'}`}>{s}</span>
@@ -440,54 +444,54 @@ export default function AdminUsersPage() {
                 </div>
               </div>
               <div className="bg-gray-50 rounded-xl p-3">
-                <p className="text-xs text-gray-400">가입 경로</p>
+                <p className="text-xs text-gray-400">{L('가입 경로', 'Signup source')}</p>
                 <p className="font-bold text-gray-900 mt-0.5">{SOURCE_LABEL[detailUser.signup_source ?? ''] ?? detailUser.signup_source ?? '-'}</p>
               </div>
               <div className="bg-gray-50 rounded-xl p-3">
-                <p className="text-xs text-gray-400">국가 / 언어</p>
+                <p className="text-xs text-gray-400">{L('국가 / 언어', 'Country / language')}</p>
                 <p className="font-bold text-gray-900 mt-0.5">
                   {detailUser.country ? `${countryFlag(detailUser.country)} ${detailUser.country}` : '-'}
                   {detailUser.language ? ` / ${detailUser.language}` : ''}
                 </p>
               </div>
               <div className="bg-gray-50 rounded-xl p-3">
-                <p className="text-xs text-gray-400">시간대</p>
+                <p className="text-xs text-gray-400">{L('시간대', 'Timezone')}</p>
                 <p className="font-bold text-gray-900 mt-0.5">{detailUser.timezone ?? '-'}</p>
               </div>
               <div className="bg-gray-50 rounded-xl p-3">
-                <p className="text-xs text-gray-400">회사</p>
+                <p className="text-xs text-gray-400">{L('회사', 'Company')}</p>
                 <p className="font-bold text-gray-900 mt-0.5">{detailUser.company ?? '-'}</p>
               </div>
               <div className="bg-gray-50 rounded-xl p-3">
-                <p className="text-xs text-gray-400">직책</p>
+                <p className="text-xs text-gray-400">{L('직책', 'Job title')}</p>
                 <p className="font-bold text-gray-900 mt-0.5">{detailUser.job_title ?? '-'}</p>
               </div>
               <div className="bg-gray-50 rounded-xl p-3">
-                <p className="text-xs text-gray-400">전화번호</p>
+                <p className="text-xs text-gray-400">{L('전화번호', 'Phone')}</p>
                 <p className="font-bold text-gray-900 mt-0.5">{detailUser.phone ?? '-'}</p>
               </div>
               <div className="bg-gray-50 rounded-xl p-3">
-                <p className="text-xs text-gray-400">프로젝트</p>
-                <p className="font-bold text-gray-900 mt-0.5">{detailUser.project_count}개</p>
+                <p className="text-xs text-gray-400">{L('프로젝트', 'Projects')}</p>
+                <p className="font-bold text-gray-900 mt-0.5">{detailUser.project_count}{L('개', '')}</p>
               </div>
               <div className="bg-gray-50 rounded-xl p-3">
-                <p className="text-xs text-gray-400">이메일 인증</p>
+                <p className="text-xs text-gray-400">{L('이메일 인증', 'Email verification')}</p>
                 <p className={`font-bold mt-0.5 ${detailUser.email_verified ? 'text-green-600' : 'text-red-500'}`}>
-                  {detailUser.email_verified ? '완료' : '미인증'}
+                  {detailUser.email_verified ? L('완료', 'Complete') : L('미인증', 'Unverified')}
                 </p>
               </div>
               <div className="bg-gray-50 rounded-xl p-3">
                 <p className="text-xs text-gray-400">2FA (TOTP)</p>
                 <p className={`font-bold mt-0.5 ${detailUser.totp_enabled ? 'text-green-600' : 'text-gray-400'}`}>
-                  {detailUser.totp_enabled ? '활성' : '비활성'}
+                  {detailUser.totp_enabled ? L('활성', 'Active') : L('비활성', 'Inactive')}
                 </p>
               </div>
               <div className="bg-gray-50 rounded-xl p-3">
-                <p className="text-xs text-gray-400">가입 IP</p>
+                <p className="text-xs text-gray-400">{L('가입 IP', 'Signup IP')}</p>
                 <p className="font-bold text-gray-900 mt-0.5 text-xs font-mono">{detailUser.signup_ip ?? '-'}</p>
               </div>
               <div className="bg-gray-50 rounded-xl p-3">
-                <p className="text-xs text-gray-400">최근 로그인 IP</p>
+                <p className="text-xs text-gray-400">{L('최근 로그인 IP', 'Last login IP')}</p>
                 <p className="font-bold text-gray-900 mt-0.5 text-xs font-mono">{detailUser.last_login_ip ?? '-'}</p>
               </div>
             </div>
@@ -495,14 +499,14 @@ export default function AdminUsersPage() {
             {detailUser.locked_until && detailUser.locked_until > Date.now() && (
               <div className="bg-red-50 border border-red-200 rounded-xl p-3 mb-4">
                 <p className="text-sm font-bold text-red-700">
-                  계정 잠김 — {formatDateTime(detailUser.locked_until)}까지
+                  {L('계정 잠김 —', 'Account locked —')} {formatDateTime(detailUser.locked_until)}{L('까지', ' until')}
                 </p>
               </div>
             )}
 
             {detailUser.productRoles.length > 0 && (
               <div className="mb-4">
-                <p className="text-xs font-bold text-gray-500 uppercase tracking-wide mb-2">제품별 역할</p>
+                <p className="text-xs font-bold text-gray-500 uppercase tracking-wide mb-2">{L('제품별 역할', 'Product roles')}</p>
                 <div className="flex flex-wrap gap-2">
                   {detailUser.productRoles.map((pr, i) => (
                     <span key={i} className="text-xs bg-blue-50 text-blue-700 px-2.5 py-1 rounded-full font-semibold">
@@ -515,7 +519,7 @@ export default function AdminUsersPage() {
 
             {detailUser.orgs.length > 0 && (
               <div className="mb-4">
-                <p className="text-xs font-bold text-gray-500 uppercase tracking-wide mb-2">소속 조직</p>
+                <p className="text-xs font-bold text-gray-500 uppercase tracking-wide mb-2">{L('소속 조직', 'Organizations')}</p>
                 <div className="flex flex-wrap gap-2">
                   {detailUser.orgs.map((o, i) => (
                     <span key={i} className="text-xs bg-purple-50 text-purple-700 px-2.5 py-1 rounded-full font-semibold">
@@ -540,11 +544,11 @@ export default function AdminUsersPage() {
                 setEditTimezone(detailUser.timezone ?? '');
                 setDetailUser(null);
               }} className="flex-1 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl text-sm transition">
-                수정
+                {L('수정', 'Edit')}
               </button>
               <button onClick={() => setDetailUser(null)}
                 className="flex-1 py-2.5 border border-gray-200 rounded-xl text-sm text-gray-600 hover:bg-gray-50 transition">
-                닫기
+                {L('닫기', 'Close')}
               </button>
             </div>
           </div>
@@ -555,18 +559,18 @@ export default function AdminUsersPage() {
       {editUser && (
         <div className="fixed inset-0 z-40 bg-black/40 flex items-center justify-center p-4" onClick={() => setEditUser(null)}>
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6" onClick={e => e.stopPropagation()}>
-            <h2 className="text-lg font-black text-gray-900 mb-1">회원 수정</h2>
+            <h2 className="text-lg font-black text-gray-900 mb-1">{L('회원 수정', 'Edit user')}</h2>
             <p className="text-sm text-gray-500 mb-4">{editUser.email}</p>
 
             <div className="space-y-3 max-h-[50vh] overflow-y-auto">
               <div>
-                <label className="text-xs font-semibold text-gray-500 mb-1 block">이름</label>
+                <label className="text-xs font-semibold text-gray-500 mb-1 block">{L('이름', 'Name')}</label>
                 <input value={editName} onChange={e => setEditName(e.target.value)}
                   className="w-full px-3 py-2.5 text-sm border border-gray-200 rounded-xl outline-none focus:border-blue-400" />
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="text-xs font-semibold text-gray-500 mb-1 block">플랜</label>
+                  <label className="text-xs font-semibold text-gray-500 mb-1 block">{L('플랜', 'Plan')}</label>
                   <select value={editPlan} onChange={e => setEditPlan(e.target.value)}
                     className="w-full px-3 py-2.5 text-sm border border-gray-200 rounded-xl outline-none focus:border-blue-400">
                     {['free', 'pro', 'team', 'enterprise'].map(p => (
@@ -575,7 +579,7 @@ export default function AdminUsersPage() {
                   </select>
                 </div>
                 <div>
-                  <label className="text-xs font-semibold text-gray-500 mb-1 block">글로벌 역할</label>
+                  <label className="text-xs font-semibold text-gray-500 mb-1 block">{L('글로벌 역할', 'Global role')}</label>
                   <select value={editRole} onChange={e => setEditRole(e.target.value)}
                     className="w-full px-3 py-2.5 text-sm border border-gray-200 rounded-xl outline-none focus:border-blue-400">
                     <option value="user">user</option>
@@ -584,32 +588,32 @@ export default function AdminUsersPage() {
                 </div>
               </div>
               <div>
-                <label className="text-xs font-semibold text-gray-500 mb-1 block">회사</label>
-                <input value={editCompany} onChange={e => setEditCompany(e.target.value)} placeholder="회사명"
+                <label className="text-xs font-semibold text-gray-500 mb-1 block">{L('회사', 'Company')}</label>
+                <input value={editCompany} onChange={e => setEditCompany(e.target.value)} placeholder={L('회사명', 'Company name')}
                   className="w-full px-3 py-2.5 text-sm border border-gray-200 rounded-xl outline-none focus:border-blue-400" />
               </div>
               <div>
-                <label className="text-xs font-semibold text-gray-500 mb-1 block">직책</label>
-                <input value={editJobTitle} onChange={e => setEditJobTitle(e.target.value)} placeholder="직책"
+                  <label className="text-xs font-semibold text-gray-500 mb-1 block">{L('직책', 'Job title')}</label>
+                  <input value={editJobTitle} onChange={e => setEditJobTitle(e.target.value)} placeholder={L('직책', 'Job title')}
                   className="w-full px-3 py-2.5 text-sm border border-gray-200 rounded-xl outline-none focus:border-blue-400" />
               </div>
               <div>
-                <label className="text-xs font-semibold text-gray-500 mb-1 block">전화번호</label>
+                <label className="text-xs font-semibold text-gray-500 mb-1 block">{L('전화번호', 'Phone')}</label>
                 <input value={editPhone} onChange={e => setEditPhone(e.target.value)} placeholder="+82-10-1234-5678"
                   className="w-full px-3 py-2.5 text-sm border border-gray-200 rounded-xl outline-none focus:border-blue-400" />
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="text-xs font-semibold text-gray-500 mb-1 block">국가</label>
+                  <label className="text-xs font-semibold text-gray-500 mb-1 block">{L('국가', 'Country')}</label>
                   <input value={editCountry} onChange={e => setEditCountry(e.target.value)} placeholder="KR"
                     className="w-full px-3 py-2.5 text-sm border border-gray-200 rounded-xl outline-none focus:border-blue-400" />
                 </div>
                 <div>
-                  <label className="text-xs font-semibold text-gray-500 mb-1 block">언어</label>
+                  <label className="text-xs font-semibold text-gray-500 mb-1 block">{L('언어', 'Language')}</label>
                   <select value={editLanguage} onChange={e => setEditLanguage(e.target.value)}
                     className="w-full px-3 py-2.5 text-sm border border-gray-200 rounded-xl outline-none focus:border-blue-400">
-                    <option value="">미설정</option>
-                    <option value="ko">한국어</option>
+                    <option value="">{L('미설정', 'Not set')}</option>
+                    <option value="ko">{L('한국어', 'Korean')}</option>
                     <option value="en">English</option>
                     <option value="ja">日本語</option>
                     <option value="zh">中文</option>
@@ -617,7 +621,7 @@ export default function AdminUsersPage() {
                 </div>
               </div>
               <div>
-                <label className="text-xs font-semibold text-gray-500 mb-1 block">시간대</label>
+                <label className="text-xs font-semibold text-gray-500 mb-1 block">{L('시간대', 'Timezone')}</label>
                 <input value={editTimezone} onChange={e => setEditTimezone(e.target.value)} placeholder="Asia/Seoul"
                   className="w-full px-3 py-2.5 text-sm border border-gray-200 rounded-xl outline-none focus:border-blue-400" />
               </div>
@@ -626,11 +630,11 @@ export default function AdminUsersPage() {
             <div className="flex gap-2 mt-5">
               <button onClick={() => void handleEdit()} disabled={editSaving}
                 className="flex-1 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl text-sm disabled:opacity-50 transition">
-                {editSaving ? '저장 중...' : '저장'}
+                {editSaving ? L('저장 중...', 'Saving...') : L('저장', 'Save')}
               </button>
               <button onClick={() => setEditUser(null)}
                 className="flex-1 py-2.5 border border-gray-200 rounded-xl text-sm text-gray-600 hover:bg-gray-50 transition">
-                취소
+                {L('취소', 'Cancel')}
               </button>
             </div>
           </div>
@@ -640,17 +644,17 @@ export default function AdminUsersPage() {
       {/* Header */}
       <div className="flex items-start justify-between flex-wrap gap-4">
         <div>
-          <h1 className="text-2xl font-black text-gray-900">회원 관리</h1>
-          <p className="text-sm text-gray-500 mt-0.5">전체 {total.toLocaleString()}명</p>
+          <h1 className="text-2xl font-black text-gray-900">{L('회원 관리', 'User management')}</h1>
+          <p className="text-sm text-gray-500 mt-0.5">{L('전체', 'Total')} {total.toLocaleString()}{L('명', ' users')}</p>
         </div>
         <div className="flex gap-2">
           <button onClick={exportCSV}
             className="px-4 py-2 text-sm font-semibold rounded-xl border border-gray-200 bg-white hover:bg-gray-50">
-            CSV 내보내기
+            {L('CSV 내보내기', 'Export CSV')}
           </button>
           <button onClick={() => void load()}
             className="px-4 py-2 text-sm font-semibold rounded-xl border border-gray-200 bg-white hover:bg-gray-50">
-            새로고침
+            {L('새로고침', 'Refresh')}
           </button>
         </div>
       </div>
@@ -658,10 +662,10 @@ export default function AdminUsersPage() {
       {/* KPI cards */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         {[
-          { label: '전체 회원', value: totalUsers.toLocaleString(), icon: '👥' },
-          { label: '유료 회원', value: paidUsers.toLocaleString(), icon: '💎' },
-          { label: '무료 회원', value: (totalUsers - paidUsers).toLocaleString(), icon: '🆓' },
-          { label: '전환율', value: totalUsers > 0 ? ((paidUsers / totalUsers) * 100).toFixed(1) + '%' : '0%', icon: '📈' },
+          { label: L('전체 회원', 'All users'), value: totalUsers.toLocaleString(), icon: '👥' },
+          { label: L('유료 회원', 'Paid users'), value: paidUsers.toLocaleString(), icon: '💎' },
+          { label: L('무료 회원', 'Free users'), value: (totalUsers - paidUsers).toLocaleString(), icon: '🆓' },
+          { label: L('전환율', 'Conversion rate'), value: totalUsers > 0 ? ((paidUsers / totalUsers) * 100).toFixed(1) + '%' : '0%', icon: '📈' },
         ].map(k => (
           <div key={k.label} className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4">
             <p className="text-xs text-gray-400">{k.icon} {k.label}</p>
@@ -673,11 +677,11 @@ export default function AdminUsersPage() {
       {/* Plan distribution */}
       {stats.length > 0 && (
         <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4">
-          <p className="text-xs font-bold text-gray-500 uppercase tracking-wide mb-3">플랜별 분포</p>
+          <p className="text-xs font-bold text-gray-500 uppercase tracking-wide mb-3">{L('플랜별 분포', 'Plan distribution')}</p>
           <div className="flex flex-wrap gap-2">
             {stats.sort((a, b) => b.count - a.count).map(r => (
               <div key={r.plan} className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-bold ${PLAN_COLOR[r.plan] ?? 'bg-gray-100 text-gray-600'}`}>
-                {r.plan} · {r.count}명
+                {r.plan} · {r.count}{L('명', ' users')}
               </div>
             ))}
           </div>
@@ -688,7 +692,7 @@ export default function AdminUsersPage() {
       <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 flex flex-wrap gap-3">
         <select value={filterPlan} onChange={e => { setFilterPlan(e.target.value); setPage(1); }}
           className="px-3 py-2 text-sm border border-gray-200 rounded-lg outline-none focus:border-blue-400">
-          <option value="">전체 플랜</option>
+          <option value="">{L('전체 플랜', 'All plans')}</option>
           <option value="free">Free</option>
           <option value="pro">Pro</option>
           <option value="team">Team</option>
@@ -696,20 +700,20 @@ export default function AdminUsersPage() {
         </select>
         <select value={filterRole} onChange={e => { setFilterRole(e.target.value); setPage(1); }}
           className="px-3 py-2 text-sm border border-gray-200 rounded-lg outline-none focus:border-blue-400">
-          <option value="">전체 역할</option>
+          <option value="">{L('전체 역할', 'All roles')}</option>
           <option value="user">user</option>
           <option value="super_admin">super_admin</option>
         </select>
         <select value={filterService} onChange={e => { setFilterService(e.target.value); setPage(1); }}
           className="px-3 py-2 text-sm border border-gray-200 rounded-lg outline-none focus:border-blue-400">
-          <option value="">전체 서비스</option>
+          <option value="">{L('전체 서비스', 'All services')}</option>
           <option value="nexyfab">NexyFab</option>
           <option value="nexyflow">NexyFlow</option>
           <option value="nexysys">Nexysys</option>
         </select>
         <select value={filterSource} onChange={e => { setFilterSource(e.target.value); setPage(1); }}
           className="px-3 py-2 text-sm border border-gray-200 rounded-lg outline-none focus:border-blue-400">
-          <option value="">가입 경로</option>
+          <option value="">{L('가입 경로', 'Signup source')}</option>
           <option value="email">Email</option>
           <option value="google">Google</option>
           <option value="kakao">Kakao</option>
@@ -717,29 +721,29 @@ export default function AdminUsersPage() {
         </select>
         <select value={filterCountry} onChange={e => { setFilterCountry(e.target.value); setPage(1); }}
           className="px-3 py-2 text-sm border border-gray-200 rounded-lg outline-none focus:border-blue-400">
-          <option value="">전체 국가</option>
-          <option value="KR">한국</option>
-          <option value="US">미국</option>
-          <option value="JP">일본</option>
-          <option value="CN">중국</option>
+          <option value="">{L('전체 국가', 'All countries')}</option>
+          <option value="KR">{L('한국', 'South Korea')}</option>
+          <option value="US">{L('미국', 'United States')}</option>
+          <option value="JP">{L('일본', 'Japan')}</option>
+          <option value="CN">{L('중국', 'China')}</option>
         </select>
         <select value={filterVerified} onChange={e => { setFilterVerified(e.target.value); setPage(1); }}
           className="px-3 py-2 text-sm border border-gray-200 rounded-lg outline-none focus:border-blue-400">
-          <option value="">인증 상태</option>
-          <option value="1">인증 완료</option>
-          <option value="0">미인증</option>
+          <option value="">{L('인증 상태', 'Verification status')}</option>
+          <option value="1">{L('인증 완료', 'Verified')}</option>
+          <option value="0">{L('미인증', 'Unverified')}</option>
         </select>
         <select value={filterSort} onChange={e => { setFilterSort(e.target.value); setPage(1); }}
           className="px-3 py-2 text-sm border border-gray-200 rounded-lg outline-none focus:border-blue-400">
-          <option value="created_at_desc">최근 가입순</option>
-          <option value="created_at_asc">오래된순</option>
-          <option value="last_login_desc">최근 로그인순</option>
-          <option value="login_count_desc">로그인 많은순</option>
-          <option value="name_asc">이름순</option>
-          <option value="email_asc">이메일순</option>
+          <option value="created_at_desc">{L('최근 가입순', 'Newest signup')}</option>
+          <option value="created_at_asc">{L('오래된순', 'Oldest signup')}</option>
+          <option value="last_login_desc">{L('최근 로그인순', 'Recent login')}</option>
+          <option value="login_count_desc">{L('로그인 많은순', 'Most logins')}</option>
+          <option value="name_asc">{L('이름순', 'Name')}</option>
+          <option value="email_asc">{L('이메일순', 'Email')}</option>
         </select>
         <input value={filterQ} onChange={e => { setFilterQ(e.target.value); setPage(1); }}
-          placeholder="이메일 / 이름 검색"
+          placeholder={L('이메일 / 이름 검색', 'Search email / name')}
           className="px-3 py-2 text-sm border border-gray-200 rounded-lg outline-none focus:border-blue-400 flex-1 min-w-[160px]" />
       </div>
 
@@ -750,20 +754,20 @@ export default function AdminUsersPage() {
         ) : error ? (
           <p className="text-sm text-red-500 text-center py-10">{error}</p>
         ) : users.length === 0 ? (
-          <p className="text-sm text-gray-400 text-center py-16">회원이 없습니다.</p>
+          <p className="text-sm text-gray-400 text-center py-16">{L('회원이 없습니다.', 'No users found.')}</p>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-gray-100 text-xs font-semibold text-gray-500 uppercase tracking-wide">
-                  <th className="px-4 py-3 text-left">회원</th>
-                  <th className="px-4 py-3 text-left">플랜</th>
-                  <th className="px-4 py-3 text-left">국가</th>
-                  <th className="px-4 py-3 text-left">서비스 / 가입</th>
-                  <th className="px-4 py-3 text-left">제품 역할</th>
-                  <th className="px-4 py-3 text-left">상태</th>
-                  <th className="px-4 py-3 text-left">활동</th>
-                  <th className="px-4 py-3 text-left">액션</th>
+                  <th className="px-4 py-3 text-left">{L('회원', 'User')}</th>
+                  <th className="px-4 py-3 text-left">{L('플랜', 'Plan')}</th>
+                  <th className="px-4 py-3 text-left">{L('국가', 'Country')}</th>
+                  <th className="px-4 py-3 text-left">{L('서비스 / 가입', 'Service / signup')}</th>
+                  <th className="px-4 py-3 text-left">{L('제품 역할', 'Product roles')}</th>
+                  <th className="px-4 py-3 text-left">{L('상태', 'Status')}</th>
+                  <th className="px-4 py-3 text-left">{L('활동', 'Activity')}</th>
+                  <th className="px-4 py-3 text-left">{L('액션', 'Actions')}</th>
                 </tr>
               </thead>
               <tbody>
@@ -836,9 +840,9 @@ export default function AdminUsersPage() {
                       <td className="px-4 py-3">
                         <div className="flex flex-col gap-0.5">
                           {user.email_verified ? (
-                            <span className="text-[10px] font-semibold text-green-600">인증됨</span>
+                            <span className="text-[10px] font-semibold text-green-600">{L('인증됨', 'Verified')}</span>
                           ) : (
-                            <span className="text-[10px] font-semibold text-red-500">미인증</span>
+                            <span className="text-[10px] font-semibold text-red-500">{L('미인증', 'Unverified')}</span>
                           )}
                           {user.totp_enabled ? (
                             <span className="text-[10px] font-semibold text-blue-600">2FA</span>
@@ -851,7 +855,7 @@ export default function AdminUsersPage() {
                       <td className="px-4 py-3 text-xs">
                         <p className="text-gray-600">{formatDate(user.created_at)}</p>
                         <p className="text-gray-400" title={user.last_login_at ? formatDateTime(user.last_login_at) : ''}>
-                          {user.last_login_at ? timeAgo(user.last_login_at) : '-'}
+                          {user.last_login_at ? timeAgo(user.last_login_at, L) : '-'}
                           {user.login_count > 0 && <span className="ml-1 text-gray-300">({user.login_count})</span>}
                         </p>
                       </td>
@@ -870,7 +874,7 @@ export default function AdminUsersPage() {
                             setEditTimezone(user.timezone ?? '');
                           }}
                             className="px-2.5 py-1 text-xs font-bold rounded-lg bg-blue-600 hover:bg-blue-700 text-white transition">
-                            수정
+                            {L('수정', 'Edit')}
                           </button>
                           <button onClick={() => void handleLock(user)} disabled={lockingId === user.id}
                             className={`flex items-center gap-1 px-2.5 py-1 text-xs font-semibold rounded-lg border transition ${
@@ -878,12 +882,12 @@ export default function AdminUsersPage() {
                                 ? 'border-green-200 text-green-600 hover:bg-green-50'
                                 : 'border-amber-200 text-amber-600 hover:bg-amber-50'
                             } disabled:opacity-50`}>
-                            {lockingId === user.id ? <Spinner /> : (isLocked ? '해제' : '잠금')}
+                            {lockingId === user.id ? <Spinner /> : (isLocked ? L('해제', 'Unlock') : L('잠금', 'Lock'))}
                           </button>
                           {user.role !== 'super_admin' && (
                             <button onClick={() => void handleDelete(user)} disabled={deletingId === user.id}
                               className="flex items-center gap-1 px-2.5 py-1 text-xs font-semibold rounded-lg border border-red-200 text-red-500 hover:bg-red-50 disabled:opacity-50 transition">
-                              {deletingId === user.id ? <Spinner /> : '삭제'}
+                              {deletingId === user.id ? <Spinner /> : L('삭제', 'Delete')}
                             </button>
                           )}
                         </div>
@@ -900,15 +904,15 @@ export default function AdminUsersPage() {
       {/* Pagination */}
       {total > 50 && (
         <div className="flex items-center justify-between text-sm">
-          <p className="text-gray-400">{(page - 1) * 50 + 1}–{Math.min(page * 50, total)} / {total}명</p>
+          <p className="text-gray-400">{(page - 1) * 50 + 1}–{Math.min(page * 50, total)} / {total}{L('명', ' users')}</p>
           <div className="flex gap-2">
             <button disabled={page === 1} onClick={() => setPage(p => p - 1)}
               className="px-4 py-2 rounded-xl border border-gray-200 bg-white disabled:opacity-40 hover:bg-gray-50 transition">
-              이전
+              {L('이전', 'Previous')}
             </button>
             <button disabled={page * 50 >= total} onClick={() => setPage(p => p + 1)}
               className="px-4 py-2 rounded-xl border border-gray-200 bg-white disabled:opacity-40 hover:bg-gray-50 transition">
-              다음
+              {L('다음', 'Next')}
             </button>
           </div>
         </div>

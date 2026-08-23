@@ -4,12 +4,30 @@ import { getDbAdapter } from '@/lib/db-adapter';
 import { getAuthUser } from '@/lib/auth-middleware';
 import { checkOrigin } from '@/lib/csrf';
 import { sendEmail } from '@/lib/nexyfab-email';
+import { resolveServerLocale } from '@/lib/i18n/serverLocale';
+import { boundedJsonError, readBoundedJson } from '@/lib/boundedJsonBody';
+
+const MAX_SEND_VERIFICATION_BODY_BYTES = 8 * 1024;
+
+const SEND_MESSAGES = {
+  kr: { forbidden: '요청이 허용되지 않습니다.', unauthorized: '로그인이 필요합니다.', rate: '요청이 너무 많습니다. 15분 후 다시 시도하세요.', failed: '이메일을 보내지 못했습니다.' },
+  en: { forbidden: 'Request not allowed.', unauthorized: 'Please sign in.', rate: 'Too many requests. Try again in 15 minutes.', failed: 'Failed to send the email.' },
+  ja: { forbidden: 'リクエストは許可されていません。', unauthorized: 'ログインしてください。', rate: 'リクエストが多すぎます。15分後に再試行してください。', failed: 'メールを送信できませんでした。' },
+  cn: { forbidden: '请求不被允许。', unauthorized: '请先登录。', rate: '请求过多，请在 15 分钟后重试。', failed: '邮件发送失败。' },
+  es: { forbidden: 'Solicitud no permitida.', unauthorized: 'Inicia sesión.', rate: 'Demasiadas solicitudes. Inténtalo de nuevo en 15 minutos.', failed: 'No se pudo enviar el correo.' },
+  ar: { forbidden: 'الطلب غير مسموح به.', unauthorized: 'يرجى تسجيل الدخول.', rate: 'طلبات كثيرة جداً. حاول مجدداً بعد 15 دقيقة.', failed: 'تعذر إرسال البريد الإلكتروني.' },
+} as const;
 
 export async function POST(req: NextRequest) {
-  if (!checkOrigin(req)) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+  let requestBody: { lang?: string } = {};
+  try { requestBody = await readBoundedJson(req, MAX_SEND_VERIFICATION_BODY_BYTES); }
+  catch (error) { if (boundedJsonError(error)?.code === 'PAYLOAD_TOO_LARGE') return NextResponse.json({ error: 'Request too large', code: 'PAYLOAD_TOO_LARGE' }, { status: 413 }); }
+  const locale = resolveServerLocale(req, requestBody.lang);
+  const messages = SEND_MESSAGES[locale.route];
+  if (!checkOrigin(req)) return NextResponse.json({ error: messages.forbidden }, { status: 403 });
 
   const authUser = await getAuthUser(req);
-  if (!authUser) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  if (!authUser) return NextResponse.json({ error: messages.unauthorized }, { status: 401 });
 
   // userId와 email은 인증된 사용자 정보에서 가져옴 (클라이언트 제공값 무시)
   const userId = authUser.userId;
@@ -17,7 +35,7 @@ export async function POST(req: NextRequest) {
 
   // Rate limit: 3 requests per 15 minutes per userId
   if (!(await rateLimitAsync(`send-verification:${userId}`, 3, 15 * 60_000)).allowed) {
-    return NextResponse.json({ error: '요청이 너무 많습니다. 15분 후 다시 시도하세요.' }, { status: 429 });
+    return NextResponse.json({ error: messages.rate }, { status: 429 });
   }
 
   const code = String(Math.floor(100000 + Math.random() * 900000));
@@ -71,6 +89,6 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ sent: true });
   } catch (err) {
     console.error('[send-verification] Email send failed:', err);
-    return NextResponse.json({ error: 'Failed to send email' }, { status: 500 });
+    return NextResponse.json({ error: messages.failed }, { status: 500 });
   }
 }

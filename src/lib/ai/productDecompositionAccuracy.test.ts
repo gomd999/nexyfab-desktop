@@ -27,6 +27,24 @@ const plan = (): ProductDecompositionPlan => ({
   subassemblies: [], observations: [], assumptions: [], unresolved: [],
 });
 
+const pt100ElectricalNetwork = (): NonNullable<ProductDecompositionPlan['physicalNetworks']>[number] => ({
+  id: 'pt100-lead-route',
+  ports: [
+    { id: 'sensor-port', ownerObjectId: 'housing-1', system: 'electrical', connector: 'M12-4pin', positionMm: [0, 0, 0], required: true, direction: 'outlet', axis: [1, 0, 0] },
+    { id: 'control-port', ownerObjectId: 'shaft-1', system: 'electrical', connector: 'M12-4pin', positionMm: [10, 0, 0], required: true, direction: 'inlet', axis: [-1, 0, 0] },
+  ],
+  nodes: [
+    { id: 'sensor-node', system: 'electrical', connector: 'M12-4pin', positionMm: [0, 0, 0] },
+    { id: 'control-node', system: 'electrical', connector: 'M12-4pin', positionMm: [10, 0, 0] },
+  ],
+  connections: [
+    { id: 'sensor-connection', portId: 'sensor-port', nodeId: 'sensor-node' },
+    { id: 'control-connection', portId: 'control-port', nodeId: 'control-node' },
+  ],
+  runs: [{ id: 'lead-solid', system: 'electrical', fromNodeId: 'sensor-node', toNodeId: 'control-node', lengthMm: 10, pathMm: [[0, 0, 0], [10, 0, 0]], representation: 'physical_solid', collisionEligible: true }],
+  rules: { maximumConnectionDistanceMm: 0.1, minimumDrainSlopePercent: 0, requireMatchingConnector: true, requirePhysicalRouteGeometry: true, endpointToleranceMm: 0.01, lengthToleranceMm: 0.01, requireRunFromConnectedPort: true },
+});
+
 describe('product decomposition accuracy gate', () => {
   it('admits a traced, authoritative and connected editable product plan', () => {
     const result = assessProductDecompositionAccuracy(plan());
@@ -61,6 +79,24 @@ describe('product decomposition accuracy gate', () => {
     changed.definitions[0]!.parameterEvidence[0]!.value = 999;
     expect(assessProductDecompositionAccuracy(changed).gates.find(gate => gate.id === 'parameter-provenance')?.reasons)
       .toEqual(expect.arrayContaining([expect.stringContaining('does not match geometry value')]));
+  });
+
+  it('blocks PT100 simplification when the physical signal route is omitted', () => {
+    const result = assessProductDecompositionAccuracy(plan(), undefined, { request: 'PT100 temperature sensor assembly with lead cable' });
+    expect(result.readyForGeometry).toBe(false);
+    expect(result.gates.find(gate => gate.id === 'physical-networks')).toMatchObject({
+      status: 'refine',
+      reasons: expect.arrayContaining([expect.stringContaining('physicalNetworks=[]')]),
+    });
+  });
+
+  it('admits a PT100 plan only after the typed measured lead route passes strict verification', () => {
+    const value = plan();
+    value.physicalNetworks = [pt100ElectricalNetwork()];
+    expect(isProductDecompositionPlan(value)).toBe(true);
+    const result = assessProductDecompositionAccuracy(value, undefined, { request: 'PT100 temperature sensor assembly with lead cable' });
+    expect(result).toMatchObject({ readyForGeometry: true, metrics: { physicalNetworks: 1, requiredPhysicalSystemGroups: 1 } });
+    expect(result.gates.find(gate => gate.id === 'physical-networks')).toMatchObject({ status: 'pass', reasons: [] });
   });
 
   it('guards untrusted model JSON before typed validation', () => {

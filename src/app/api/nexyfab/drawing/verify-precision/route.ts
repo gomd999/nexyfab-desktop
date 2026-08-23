@@ -12,6 +12,9 @@ import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { rateLimit } from '@/lib/rate-limit';
 import { getTrustedClientIp } from '@/lib/client-ip';
+import { boundedJsonError, readBoundedJson } from '@/lib/boundedJsonBody';
+
+const MAX_BODY_BYTES = 32 * 1024 * 1024;
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -41,10 +44,11 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   let assembly: Assembly;
   let latticeLapMm3 = 0;
   try {
-    const body = (await req.json()) as { assembly?: Assembly; latticeLapMm3?: number };
+    const body = await readBoundedJson<{ assembly?: Assembly; latticeLapMm3?: number }>(req, MAX_BODY_BYTES);
     assembly = body.assembly ?? {};
     if (typeof body.latticeLapMm3 === 'number' && body.latticeLapMm3 > 0) latticeLapMm3 = Math.min(body.latticeLapMm3, 200_000);
-  } catch {
+  } catch (error) {
+    if (boundedJsonError(error)?.code === 'PAYLOAD_TOO_LARGE') return NextResponse.json({ ok: false, error: 'assembly가 너무 큽니다.' }, { status: 413 });
     return NextResponse.json({ ok: false, error: 'invalid json' }, { status: 400 });
   }
   if (!Array.isArray(assembly.parts) || assembly.parts.length === 0) {

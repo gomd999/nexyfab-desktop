@@ -1,5 +1,7 @@
 import { validateProductDecomposition, type ProductDecompositionPlan } from './productDecomposition';
 import { parseProductDecompositionPlan } from './productDecompositionSchema';
+import { verifyMepConnections } from './mepConnectionVerification';
+import { derivePhysicalNetworkObligation } from './physicalNetworkObligation';
 
 export type ProductPlanAccuracyGateId =
   | 'structure'
@@ -10,6 +12,7 @@ export type ProductPlanAccuracyGateId =
   | 'editable-definitions'
   | 'assembly-connectivity'
   | 'hierarchy'
+  | 'physical-networks'
   | 'transforms';
 
 export interface ProductPlanAccuracyGate {
@@ -34,7 +37,14 @@ export interface ProductDecompositionAccuracyAssessment {
     numericParameters: number;
     tracedParameters: number;
     lockedParameters: number;
+    physicalNetworks: number;
+    requiredPhysicalSystemGroups: number;
   };
+}
+
+export interface ProductDecompositionAccuracyContext {
+  /** Original user text or another server-bound authoritative request. */
+  request?: string;
 }
 
 const criticalAcceptance = new Set(['interface', 'load', 'motion', 'safety']);
@@ -49,7 +59,11 @@ export function isProductDecompositionPlan(value: unknown): value is ProductDeco
 
 /** Independent server-side gate. Model-reported confidence/completeness never
  * substitutes for requirement traceability, authoritative facts or mate connectivity. */
-export function assessProductDecompositionAccuracy(plan: ProductDecompositionPlan, trustedEvidenceRefs?: ReadonlySet<string>): ProductDecompositionAccuracyAssessment {
+export function assessProductDecompositionAccuracy(
+  plan: ProductDecompositionPlan,
+  trustedEvidenceRefs?: ReadonlySet<string>,
+  context: ProductDecompositionAccuracyContext = {},
+): ProductDecompositionAccuracyAssessment {
   const gates: ProductPlanAccuracyGate[] = [];
   const structural = validateProductDecomposition(plan).map(issue => `${issue.path}: ${issue.message}`);
   add(gates, 'structure', 'refine', structural);
@@ -135,6 +149,32 @@ export function assessProductDecompositionAccuracy(plan: ProductDecompositionPla
     ? ['A complex assembly with 10 or more occurrences requires an explicit functional subassembly hierarchy.'] : [];
   add(gates, 'hierarchy', 'refine', hierarchyReasons);
 
+  const physicalObligation = derivePhysicalNetworkObligation(context.request ?? '', plan.requirements);
+  const physicalReasons: string[] = [];
+  const physicalNetworks = plan.physicalNetworks ?? [];
+  const declaredSystems = new Set(physicalNetworks.flatMap(network => [
+    ...network.ports.map(item => item.system),
+    ...network.nodes.map(item => item.system),
+    ...network.runs.map(item => item.system),
+  ]));
+  if (physicalObligation.required && physicalNetworks.length === 0) {
+    physicalReasons.push('The authoritative request requires typed, measured physical service routes; physicalNetworks=[] or omission is not allowed.');
+  }
+  for (const obligation of physicalObligation.obligations) {
+    if (!obligation.acceptableSystems.some(system => declaredSystems.has(system))) {
+      physicalReasons.push(`Required physical system ${obligation.id} is missing; expected one of ${obligation.acceptableSystems.join(', ')}.`);
+    }
+  }
+  for (const network of physicalNetworks) {
+    try {
+      const verification = verifyMepConnections(network.ports, network.nodes, network.connections, network.runs, network.rules);
+      if (!verification.releaseReady) physicalReasons.push(`${network.id}: strict physical network release failed (${verification.failures.map(failure => `${failure.code}:${failure.objectId}`).join(', ') || 'strict measured-route rules disabled'}).`);
+    } catch (error) {
+      physicalReasons.push(`${network.id}: ${error instanceof Error ? error.message : 'physical network verification failed'}.`);
+    }
+  }
+  add(gates, 'physical-networks', 'refine', physicalReasons);
+
   const transformReasons: string[] = [];
   for (const instance of plan.instances) {
     const q = instance.orientation;
@@ -162,6 +202,8 @@ export function assessProductDecompositionAccuracy(plan: ProductDecompositionPla
       numericParameters: numericLeaves.length,
       tracedParameters,
       lockedParameters,
+      physicalNetworks: physicalNetworks.length,
+      requiredPhysicalSystemGroups: physicalObligation.obligations.length,
     },
   };
 }

@@ -1,0 +1,26 @@
+{
+  "schema": "nexyfab.mechanical-single-part-bom-candidate.v1",
+  "partRevisionSha256": "61f5c7db9983ddc5db024b8bdce636125d1d7b795c7a0f574609c2325b23d74c",
+  "sourceDesignRevisionSha256": "3cf6a0f9c8efcf153a2cfefde087a2112c086fc412d2feeaeb9ce52542838564",
+  "sourceNfabSha256": "35ee12d16b1eb6081ccbf543dca9da0151498325ce7733fcf5f1b46fa018f6c0",
+  "sourceStepSha256": "dddd8e975f5403d89fed0efe1e4ea7791e21300cc52bab485628913c1d2a4293",
+  "units": "mm",
+  "items": [
+    {
+      "partNumber": "fillet",
+      "description": "Mechanical runtime fillet",
+      "quantity": 1,
+      "dimensionsMm": {
+        "x": 60.00807353977822,
+        "y": 40.00807353977822,
+        "z": 30.008073539778227
+      }
+    }
+  ],
+  "claimBoundary": {
+    "singlePartCandidateOnly": true,
+    "materialSpecified": false,
+    "massCalculated": false,
+    "manufacturingApproved": false
+  }
+}

@@ -17,6 +17,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { verifyJWT } from '@/lib/jwt';
 import { getDbAdapter, toBool } from '@/lib/db-adapter';
+import { boundedJsonError, readBoundedJson } from '@/lib/boundedJsonBody';
+
+const MAX_VERIFY_TOKEN_BODY_BYTES = 16 * 1024;
 
 export const dynamic = 'force-dynamic';
 
@@ -32,7 +35,9 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Invalid service secret' }, { status: 403 });
   }
 
-  const body = await req.json().catch(() => ({})) as { token?: string };
+  let body: { token?: string } = {};
+  try { body = await readBoundedJson(req, MAX_VERIFY_TOKEN_BODY_BYTES); }
+  catch (error) { if (boundedJsonError(error)?.code === 'PAYLOAD_TOO_LARGE') return NextResponse.json({ error: 'Request too large', code: 'PAYLOAD_TOO_LARGE' }, { status: 413 }); }
   if (!body.token) {
     return NextResponse.json({ error: 'token required' }, { status: 400 });
   }

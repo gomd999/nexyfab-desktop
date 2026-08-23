@@ -1,5 +1,5 @@
 /**
- * 구조화 JSON 호출의 단일 창구 — **Gemini(기본) · OpenAI(선택)** 두 배선을 다 갖는다.
+ * 구조화 JSON 호출의 단일 창구 — **DeepSeek(기본) · OpenAI · Gemini(폴백)** 배선.
  *
  * 이력:
  *   260802  Gemini → OpenAI(gpt-5.6-sol) 전면 전환. Gemini 전용 재시도 로직을 이 모듈로 흡수.
@@ -13,6 +13,7 @@
  *   모델 이름으로 능력을 미리 단정하지 않고 **응답에서 배운다**(레포 기존 관례).
  */
 import { readFileSync } from 'node:fs';
+import path from 'node:path';
 import { apiKey, repairJsonNumbers } from './extract.mjs';
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -25,8 +26,8 @@ function stripFences(text) {
 }
 
 /**
- * 기본 모델 — Gemini flash(빠름) → pro(폭주 거의 없음).
- * ⚠ 코드 수정 없이 되돌릴 수 있게 env 로 뚫어 둔다: `NEXYFAB_AI_JSON_MODELS=gpt-5.6-sol`
+ * 기본 모델 — 기계 CAD는 DeepSeek chat 우선, 다음 OpenAI, 마지막 Gemini.
+ * 관리/운영에서 `NEXYFAB_AI_JSON_MODELS`로 명시적으로 덮어쓸 수 있다.
  */
 export function defaultJsonModels() {
   const raw = process.env.NEXYFAB_AI_JSON_MODELS;
@@ -34,11 +35,12 @@ export function defaultJsonModels() {
     const list = raw.split(',').map((s) => s.trim()).filter(Boolean);
     if (list.length) return list;
   }
-  return ['gemini-2.5-flash', 'gemini-2.5-pro'];
+  return ['deepseek-chat', 'gpt-4o-mini', 'gemini-2.5-flash'];
 }
 
-/** 모델 이름 → 백엔드. `gpt-*`/`o3`류는 OpenAI, 그 외는 Gemini. */
+/** 모델 이름 → 백엔드. */
 function backendFor(model) {
+  if (/^deepseek/i.test(String(model))) return 'deepseek';
   return /^(gpt-|o\d)/i.test(String(model)) ? 'openai' : 'gemini';
 }
 
@@ -51,8 +53,8 @@ export function openaiApiKey() {
   // 2순위(로컬 CLI 개발): parent .env 파일. 여러 후보 경로 시도(extract.mjs apiKey()와 동일 규약).
   for (const p of [
     process.env.NEXYFAB_ENV_PATH,
-    'C:/Users/gomd9/Downloads/nexysys_1/.env',
-    new URL('../../../../.env', import.meta.url).pathname.replace(/^\/([A-Za-z]:)/, '$1'),
+    path.resolve(process.cwd(), '.env'),
+    path.resolve(process.cwd(), '..', '..', '.env'),
   ].filter(Boolean)) {
     try {
       const m = readFileSync(p, 'utf8').match(/^OPENAI_API_KEY=(\S+)/m);
@@ -60,6 +62,22 @@ export function openaiApiKey() {
     } catch { /* 다음 후보 */ }
   }
   throw new Error('OPENAI_API_KEY 가 설정되지 않았다(환경변수 또는 parent .env)');
+}
+
+export function deepseekApiKey() {
+  const envKey = process.env.DEEPSEEK_API_KEY || process.env.NEXYFAB_DEEPSEEK_API_KEY;
+  if (envKey) return envKey;
+  for (const p of [
+    process.env.NEXYFAB_ENV_PATH,
+    path.resolve(process.cwd(), '.env'),
+    path.resolve(process.cwd(), '..', '..', '.env'),
+  ].filter(Boolean)) {
+    try {
+      const m = readFileSync(p, 'utf8').match(/^(?:NEXYFAB_)?DEEPSEEK_API_KEY=(\S+)/m);
+      if (m) return m[1];
+    } catch { /* 다음 후보 */ }
+  }
+  throw new Error('DEEPSEEK_API_KEY 가 설정되지 않았다(환경변수 또는 parent .env)');
 }
 
 /**
@@ -152,6 +170,71 @@ export async function callOpenAiJson(promptText, schema, { models = ['gpt-5.6-so
         lastErr = new Error(`${model} bad JSON(${fin})`);
         fallbackReasons.push(`${model}: bad JSON(${fin})`);
         if (fin === 'length') break; // 절단 — 같은 모델 재시도로는 안 고쳐진다, 다음 모델로.
+      }
+    }
+  }
+  const err = lastErr instanceof Error ? lastErr : new Error(String(lastErr));
+  err.fallbackReasons = fallbackReasons;
+  throw err;
+}
+
+// ─── DeepSeek 배선(기본) ──────────────────────────────────────────
+
+export async function callDeepSeekJson(promptText, schema, { models = ['deepseek-chat'], maxOutputTokens = 8192 } = {}) {
+  const schemaHint = schema
+    ? '\n\n⚠ 출력은 JSON 객체 하나만(마크다운 울타리·설명 문장 금지). 다음 필드를 채워라:\n' + schemaToHint(schema)
+    : '\n\n⚠ 출력은 JSON 객체 하나만. 마크다운 울타리·설명 문장을 붙이지 마라.';
+  const fullPrompt = promptText + schemaHint;
+  const fallbackReasons = [];
+  let lastErr;
+  for (const model of models) {
+    for (let attempt = 0; attempt < 3; attempt++) {
+      let res;
+      try {
+        res = await fetch(`${(process.env.DEEPSEEK_BASE_URL || 'https://api.deepseek.com/v1').replace(/\/$/, '')}/chat/completions`, {
+          method: 'POST',
+          headers: { 'content-type': 'application/json', authorization: `Bearer ${deepseekApiKey()}` },
+          body: JSON.stringify({
+            model,
+            temperature: 0,
+            max_tokens: Math.min(8192, Math.max(512, Number(maxOutputTokens) || 8192)),
+            response_format: { type: 'json_object' },
+            messages: [{ role: 'user', content: fullPrompt }],
+          }),
+        });
+      } catch (e) {
+        lastErr = e;
+        fallbackReasons.push(`${model}: network`);
+        await sleep(1000 * (attempt + 1));
+        continue;
+      }
+      if (!res.ok) {
+        const bodyText = await res.text().catch(() => '');
+        lastErr = new Error(`${model} ${res.status}: ${bodyText.slice(0, 300)}`);
+        fallbackReasons.push(`${model}: HTTP ${res.status}`);
+        if (res.status === 429 || res.status >= 500) { await sleep(1500 * (attempt + 1)); continue; }
+        break;
+      }
+      const j = await res.json();
+      const choice = j.choices?.[0];
+      const raw = choice?.message?.content;
+      const finish = choice?.finish_reason;
+      if (!raw) {
+        lastErr = new Error(`${model} empty(${finish})`);
+        fallbackReasons.push(`${model}: empty(${finish})`);
+        break;
+      }
+      const cleaned = stripFences(raw);
+      const usage = { out: j.usage?.completion_tokens, total: j.usage?.total_tokens, schema: Boolean(schema) };
+      try { return { data: JSON.parse(cleaned), model, repaired: false, fallbackReasons, usage }; }
+      catch {
+        try {
+          const fixed = repairJsonNumbers(cleaned);
+          if (fixed !== cleaned) return { data: JSON.parse(fixed), model, repaired: true, fallbackReasons, usage };
+        } catch { /* 다음 모델 */ }
+        lastErr = new Error(`${model} bad JSON(${finish})`);
+        fallbackReasons.push(`${model}: bad JSON(${finish})`);
+        break;
       }
     }
   }
@@ -320,7 +403,8 @@ export async function callAiJson(promptText, schema, opts = {}) {
   const fallbackReasons = [];
   let lastErr;
   for (const model of list) {
-    const call = backendFor(model) === 'openai' ? callOpenAiJson : callGeminiJson;
+    const backend = backendFor(model);
+    const call = backend === 'deepseek' ? callDeepSeekJson : backend === 'openai' ? callOpenAiJson : callGeminiJson;
     try {
       const out = await call(promptText, schema, { ...rest, models: [model] });
       return { ...out, fallbackReasons: [...fallbackReasons, ...(out.fallbackReasons ?? [])] };

@@ -362,10 +362,12 @@ function renderNode(node: FeatureNode, ctx: EmitContext): string {
     case 'circular_pattern':
       return circularPatternToScad(p, ctx, node.id);
     case 'hole':
-      // Leaf: a hole is a self-contained CUT TOOL with no upstream field.
-      // Combining it with a host body is `boolean{op:'difference'}`'s job,
-      // which already references its operands by id. See W2-A report.
-      return holeToScad(p);
+      // A host-aware hole resolves the live upstream thickness at replay time;
+      // legacy standalone holes retain their historical serializer behaviour.
+      return holeToScad(
+        p,
+        p.childId === undefined ? undefined : ctx.requirePayload(p.childId, node.id, 'extrude').depth,
+      );
     case 'fillet':
       return filletToScad(p, ctx, node.id);
     case 'chamfer':

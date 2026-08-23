@@ -1,5 +1,11 @@
 # NexyFab 외부 CAD 비의존 구현·검증 및 상용화 리뷰
 
+> **Historical snapshot — superseded for current status.** 이 문서는 2026-08-09 당시
+> 25부품 로봇 demonstrator와 외부 증거 정책의 감사 기록이다. 현재 29부품·68 mate
+> 로봇 구현, 자체 기계 실증 정책과 다음 실행 게이트는
+> `docs/strategy/ai-mechanical-cad-current-status-and-completion-plan-260811.md`를
+> 따른다. 당시 수치와 판정을 현재 정본으로 인용하지 않는다.
+
 - 기준일: 2026-08-09
 - 제품 계약: 사용자는 SOLIDWORKS 등 외부 CAD를 설치하지 않고 NexyFab에서 AI로 복잡 제품 완성을 진행한다. 일반 사용자에게는 AI가 정밀 B-Rep CAD 엔진을 내부적으로 자동 운용하고, 전문가는 필요할 때 같은 피처·치수 모델을 직접 편집한다. 이후 검증, 도면·BOM 및 제조 패키지를 처리한다.
 - 실행 원칙: `점검 → 구현 → 검증·조정 → 다음 단계`

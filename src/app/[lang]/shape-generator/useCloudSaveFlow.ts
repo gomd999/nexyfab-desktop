@@ -14,6 +14,8 @@ import { useState, useCallback, useRef, useEffect } from 'react';
 import { PREF_KEYS, prefGetString, prefSetString, prefRemove } from '@/lib/platform';
 import { useCloudProjectAccessStore } from './store/cloudProjectAccessStore';
 import { stashPendingIntent } from '@/lib/pending-intents';
+import { loc } from '@/lib/i18n/loc';
+import { useLang } from './hooks/useLang';
 
 export type CloudSyncStatus = 'idle' | 'syncing' | 'synced' | 'error';
 const DEBOUNCE_MS = 10_000; // 10s
@@ -37,6 +39,7 @@ export interface UseCloudSaveFlowResult {
 }
 
 export function useCloudSaveFlow(isLoggedIn: boolean): UseCloudSaveFlowResult {
+  const lang = useLang();
   const [cloudStatus, setCloudStatus] = useState<CloudSyncStatus>('idle');
   const [projectId, setProjectId] = useState<string | null>(() => prefGetString(PREF_KEYS.cloudProjectId));
   const [cloudSavedAt, setCloudSavedAt] = useState<number | null>(null);
@@ -66,12 +69,12 @@ export function useCloudSaveFlow(isLoggedIn: boolean): UseCloudSaveFlowResult {
       if (isMounted.current) {
         setCloudStatus('idle');
         setVersionConflictNeedsReload(false);
-        const ko =
-          typeof navigator !== 'undefined' && navigator.language?.toLowerCase().startsWith('ko');
         setCloudError(
-          ko
-            ? '이 프로젝트는 보기 전용입니다. 클라우드 자동 저장이 비활성화됩니다.'
-            : 'This project is read-only. Cloud autosave is disabled.',
+          loc(lang, {
+            ko: '이 프로젝트는 보기 전용입니다. 클라우드 자동 저장이 비활성화됩니다.', en: 'This project is read-only. Cloud autosave is disabled.',
+            ja: 'このプロジェクトは閲覧専用です。クラウド自動保存は無効です。', zh: '此项目为只读，云端自动保存已禁用。',
+            es: 'Este proyecto es de solo lectura. El guardado automático en la nube está desactivado.', ar: 'هذا المشروع للقراءة فقط. تم تعطيل الحفظ التلقائي على السحابة.',
+          }),
         );
       }
       return;
@@ -122,12 +125,12 @@ export function useCloudSaveFlow(isLoggedIn: boolean): UseCloudSaveFlowResult {
               canEdit: false,
             });
             setCloudStatus('idle');
-            const ko =
-              typeof navigator !== 'undefined' && navigator.language?.toLowerCase().startsWith('ko');
             setCloudError(
-              ko
-                ? '이 프로젝트는 보기 전용입니다. 저장할 수 없습니다.'
-                : 'This project is read-only. Save was skipped.',
+              loc(lang, {
+                ko: '이 프로젝트는 보기 전용입니다. 저장할 수 없습니다.', en: 'This project is read-only. Save was skipped.',
+                ja: 'このプロジェクトは閲覧専用のため保存できません。', zh: '此项目为只读，已跳过保存。',
+                es: 'Este proyecto es de solo lectura. Se omitió el guardado.', ar: 'هذا المشروع للقراءة فقط. تم تخطي الحفظ.',
+              }),
             );
             setVersionConflictNeedsReload(false);
             return;
@@ -141,22 +144,27 @@ export function useCloudSaveFlow(isLoggedIn: boolean): UseCloudSaveFlowResult {
             ) {
               lastServerUpdatedAtRef.current = patchData.serverUpdatedAt;
             }
-            const ko =
-              typeof navigator !== 'undefined' && navigator.language?.toLowerCase().startsWith('ko');
             const meta =
               patchData.serverUpdatedAt != null || patchData.clientExpected != null
-                ? ko
-                  ? ` (서버 updatedAt: ${patchData.serverUpdatedAt ?? '—'}, 클라이언트 기대: ${patchData.clientExpected ?? '—'})`
-                  : ` (server updatedAt: ${patchData.serverUpdatedAt ?? '—'}, client expected: ${patchData.clientExpected ?? '—'})`
+                ? loc(lang, {
+                    ko: ` (서버 updatedAt: ${patchData.serverUpdatedAt ?? '—'}, 클라이언트 기대: ${patchData.clientExpected ?? '—'})`,
+                    en: ` (server updatedAt: ${patchData.serverUpdatedAt ?? '—'}, client expected: ${patchData.clientExpected ?? '—'})`,
+                    ja: ` (サーバー updatedAt: ${patchData.serverUpdatedAt ?? '—'}、クライアント期待値: ${patchData.clientExpected ?? '—'})`,
+                    zh: `（服务器 updatedAt：${patchData.serverUpdatedAt ?? '—'}，客户端预期：${patchData.clientExpected ?? '—'}）`,
+                    es: ` (updatedAt del servidor: ${patchData.serverUpdatedAt ?? '—'}, esperado por el cliente: ${patchData.clientExpected ?? '—'})`,
+                    ar: ` (updatedAt للخادم: ${patchData.serverUpdatedAt ?? '—'}، المتوقع لدى العميل: ${patchData.clientExpected ?? '—'})`,
+                  })
                 : '';
             setCloudError(
-              ko
-                ? `${patchData.error ?? '버전 충돌'}${meta} — 아래 버튼으로 서버 최신본을 불러오세요.`
-                : `${patchData.error ?? 'Version conflict'}${meta} — Use the button below to load the latest from the server.`,
+              `${patchData.error ?? loc(lang, { ko: '버전 충돌', en: 'Version conflict', ja: 'バージョン競合', zh: '版本冲突', es: 'Conflicto de versión', ar: 'تعارض الإصدار' })}${meta} — ${loc(lang, {
+                ko: '아래 버튼으로 서버 최신본을 불러오세요.', en: 'Use the button below to load the latest from the server.',
+                ja: '下のボタンでサーバーの最新版を読み込んでください。', zh: '请使用下方按钮加载服务器上的最新版本。',
+                es: 'Use el botón inferior para cargar la versión más reciente del servidor.', ar: 'استخدم الزر أدناه لتحميل أحدث إصدار من الخادم.',
+              })}`,
             );
             return;
           }
-          if (res.status === 401) throw new Error('세션 만료 — 다시 로그인하세요 / Session expired — please log in again');
+          if (res.status === 401) throw new Error(loc(lang, { ko: '세션이 만료되었습니다. 다시 로그인하세요.', en: 'Session expired — please log in again.', ja: 'セッションの有効期限が切れました。再度ログインしてください。', zh: '会话已过期，请重新登录。', es: 'La sesión caducó; vuelva a iniciar sesión.', ar: 'انتهت الجلسة — يرجى تسجيل الدخول مرة أخرى.' }));
           throw new Error(patchData.error || `Server ${res.status}`);
         }
         if (patchData.project?.updatedAt != null) {
@@ -168,7 +176,7 @@ export function useCloudSaveFlow(isLoggedIn: boolean): UseCloudSaveFlowResult {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            name: shapeId ? `${shapeId} design` : 'Untitled design',
+            name: shapeId ? `${shapeId} design` : loc(lang, { ko: '제목 없는 설계', en: 'Untitled design', ja: '無題の設計', zh: '未命名设计', es: 'Diseño sin título', ar: 'تصميم بلا عنوان' }),
             shapeId,
             materialId,
             sceneData,
@@ -200,7 +208,7 @@ export function useCloudSaveFlow(isLoggedIn: boolean): UseCloudSaveFlowResult {
             return;
           }
         }
-        if (res.status === 401) throw new Error('세션 만료 — 다시 로그인하세요 / Session expired — please log in again');
+        if (res.status === 401) throw new Error(loc(lang, { ko: '세션이 만료되었습니다. 다시 로그인하세요.', en: 'Session expired — please log in again.', ja: 'セッションの有効期限が切れました。再度ログインしてください。', zh: '会话已过期，请重新登录。', es: 'La sesión caducó; vuelva a iniciar sesión.', ar: 'انتهت الجلسة — يرجى تسجيل الدخول مرة أخرى.' }));
         if (!res.ok) throw new Error(`Server ${res.status}`);
         const data = await res.json() as {
           project?: { id: string; updatedAt: number; role?: 'owner' | 'editor' | 'viewer'; canEdit?: boolean };
@@ -231,10 +239,10 @@ export function useCloudSaveFlow(isLoggedIn: boolean): UseCloudSaveFlowResult {
       if (isMounted.current) {
         setCloudStatus('error');
         setVersionConflictNeedsReload(false);
-        setCloudError(err instanceof Error ? err.message : 'Cloud save failed');
+        setCloudError(err instanceof Error ? err.message : loc(lang, { ko: '클라우드 저장 실패', en: 'Cloud save failed', ja: 'クラウド保存に失敗しました', zh: '云端保存失败', es: 'Error al guardar en la nube', ar: 'فشل الحفظ على السحابة' }));
       }
     }
-  }, [isLoggedIn, projectId]);
+  }, [isLoggedIn, projectId, lang]);
 
   const syncNow = useCallback((state: object, shapeId: string, materialId: string, thumbnail?: string | null) => {
     const acc = useCloudProjectAccessStore.getState();

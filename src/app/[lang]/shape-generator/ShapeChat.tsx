@@ -6,6 +6,7 @@ import { useToast } from '@/components/ToastProvider';
 import type { FeatureType } from './features/types';
 import type { SketchProfile, SketchConfig } from './sketch/types';
 import type { Face } from './topology/optimizer/types';
+import { loc } from '@/lib/i18n/loc';
 
 /** Minimal typings for Web Speech API (vendor-prefixed constructor on `window`). */
 interface SpeechRecognitionAlternativeLike {
@@ -1113,8 +1114,8 @@ export default function ShapeChat({
               display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8,
             }}>
               <span style={{ fontSize: 12, color: '#fcd34d' }}>
-                ⚠️ AI 일일 예산 {Math.round(budgetAdvisory.fraction * 100)}%
-                {budgetAdvisory.limitUsd != null && ` / $${budgetAdvisory.limitUsd}`} 도달 — 곧 잠금됩니다
+                {loc(seg, { ko: '⚠️ AI 일일 예산', en: '⚠️ Daily AI budget', ja: '⚠️ AI日次予算', zh: '⚠️ AI 每日预算', es: '⚠️ Presupuesto diario de IA', ar: '⚠️ ميزانية الذكاء الاصطناعي اليومية' })} {Math.round(budgetAdvisory.fraction * 100)}%
+                {budgetAdvisory.limitUsd != null && ` / $${budgetAdvisory.limitUsd}`} {loc(seg, { ko: '도달 — 곧 잠금됩니다', en: 'reached — access will be locked soon', ja: 'に到達 — まもなくロックされます', zh: '已达到 — 即将锁定', es: 'alcanzado; el acceso se bloqueará pronto', ar: 'تم بلوغها — سيتم القفل قريبًا' })}
               </span>
               <button
                 onClick={() => setBudgetAdvisory(null)}

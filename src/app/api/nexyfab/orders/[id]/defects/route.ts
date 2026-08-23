@@ -17,6 +17,8 @@ import { getDbAdapter } from '@/lib/db-adapter';
 import { rateLimit } from '@/lib/rate-limit';
 import { sanitizeText } from '@/app/lib/sanitize';
 import { recordMetric } from '@/lib/partner-metrics';
+import { canManageOrderInActiveWorkspace, isOrderBuyerInActiveWorkspace } from '@/lib/nfOrderAccess';
+import { boundedJsonError, readBoundedJson } from '@/lib/boundedJsonBody';
 import {
   ensureDefectsTable, rowToDefect, VALID_KINDS, VALID_SEVERITIES,
   type DefectRow, type DefectKind, type DefectSeverity,
@@ -26,10 +28,12 @@ export const dynamic = 'force-dynamic';
 
 const OPEN_MAX_PER_ORDER = 3;
 const REPORT_WINDOW_DAYS = 30;
+const DEFECT_REPORT_JSON_BYTES = 64 * 1024;
 
 interface OrderRow {
   id: string;
   user_id: string;
+  org_id: string | null;
   partner_email: string | null;
   status: string;
   estimated_delivery_at: number;
@@ -46,7 +50,7 @@ export async function GET(
   await ensureDefectsTable(db);
 
   const order = await db.queryOne<OrderRow>(
-    'SELECT id, user_id, partner_email, status, estimated_delivery_at, manufacturer_id FROM nf_orders WHERE id = ?',
+    'SELECT id, user_id, org_id, partner_email, status, estimated_delivery_at, manufacturer_id FROM nf_orders WHERE id = ?',
     orderId,
   );
   if (!order) return NextResponse.json({ error: 'Order not found' }, { status: 404 });
@@ -55,9 +59,9 @@ export async function GET(
   const authUser = await getAuthUser(req);
   const partner = await getPartnerAuth(req);
 
-  const isBuyer = authUser && order.user_id === authUser.userId;
+  const isBuyer = !!authUser && isOrderBuyerInActiveWorkspace(authUser, order);
   const isPartner = partner && order.partner_email && partner.email === order.partner_email;
-  const isOps = authUser?.roles?.some(r => r.role === 'super_admin' || r.role === 'org_admin');
+  const isOps = authUser?.globalRole === 'super_admin';
 
   if (!isBuyer && !isPartner && !isOps) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
@@ -90,11 +94,11 @@ export async function POST(
   await ensureDefectsTable(db);
 
   const order = await db.queryOne<OrderRow>(
-    'SELECT id, user_id, partner_email, status, estimated_delivery_at, manufacturer_id FROM nf_orders WHERE id = ?',
+    'SELECT id, user_id, org_id, partner_email, status, estimated_delivery_at, manufacturer_id FROM nf_orders WHERE id = ?',
     orderId,
   );
   if (!order) return NextResponse.json({ error: 'Order not found' }, { status: 404 });
-  if (order.user_id !== authUser.userId) {
+  if (!canManageOrderInActiveWorkspace(authUser, order)) {
     return NextResponse.json({ error: '본인 주문만 불량 제기가 가능합니다.' }, { status: 403 });
   }
   if (order.status !== 'delivered') {
@@ -123,12 +127,20 @@ export async function POST(
     );
   }
 
-  const body = await req.json().catch(() => ({})) as {
+  let body: {
     kind?: unknown;
     severity?: unknown;
     description?: unknown;
     photoKeys?: unknown;
-  };
+  } = {};
+  try {
+    body = await readBoundedJson(req, DEFECT_REPORT_JSON_BYTES);
+  } catch (error) {
+    const bodyError = boundedJsonError(error);
+    if (bodyError?.code === 'PAYLOAD_TOO_LARGE') {
+      return NextResponse.json({ error: 'Request body too large' }, { status: bodyError.status });
+    }
+  }
 
   const kind = typeof body.kind === 'string' && (VALID_KINDS as readonly string[]).includes(body.kind)
     ? body.kind as DefectKind : null;

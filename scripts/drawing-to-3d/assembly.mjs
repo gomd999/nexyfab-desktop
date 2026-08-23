@@ -929,13 +929,21 @@ const BORE_GEOM = {
 export function pairExempt(pa, pb, ba, bb, options = {}) {
   const within = (inner, outer, axes) =>
     axes.every((k) => inner.min[k] >= outer.min[k] - 0.1 && inner.max[k] <= outer.max[k] + 0.1);
+  const overlap = [0, 1, 2].map((k) => Math.min(ba.max[k], bb.max[k]) - Math.max(ba.min[k], bb.min[k]));
+  const penetrationDepth = Math.min(...overlap);
+  const recordMismatch = (code, reason) => {
+    if (Array.isArray(options.validationErrors)) options.validationErrors.push({ code, a: pa.id ?? pa.type, b: pb.id ?? pb.type, reason, penetrationDepthMm: +penetrationDepth.toFixed(3) });
+  };
 
   // Explicit member-to-member joint graph. Only the named pair is exempt;
   // role similarity or accidental proximity never creates an exemption.
   const ida = pa.id ?? pa.type, idb = pb.id ?? pb.type;
   const linked = (part, otherId) => Array.isArray(part.connectedWith) && part.connectedWith.includes(otherId);
   if (options.trustedJointGraph === true && (linked(pa, idb) || linked(pb, ida))) {
-    return `설계 접합 선언('${ida}' ↔ '${idb}' — 용접·볼트 상세와 강도는 connections 계층에서 별도 검토)`;
+    const cap = Number.isFinite(options.maxDeclaredJointPenetrationMm) ? Math.max(0, options.maxDeclaredJointPenetrationMm) : 3;
+    const shallow = overlap.every((value) => value > 0) && penetrationDepth <= cap;
+    if (shallow) return `검증된 얕은 설계 접합('${ida}' ↔ '${idb}' — 관입 ${penetrationDepth.toFixed(2)}mm ≤ ${cap.toFixed(2)}mm)`;
+    recordMismatch('DECLARED_JOINT_GEOMETRY_MISMATCH', `declared joint penetration ${penetrationDepth.toFixed(3)}mm exceeds ${cap.toFixed(3)}mm`);
   }
 
   /**
@@ -946,7 +954,19 @@ export function pairExempt(pa, pb, ba, bb, options = {}) {
    * ⚠ **선언 기반**이다(`continuousWith` 가 같아야 한다) — 우연히 붙어 있는 남남을 묶지 않는다.
    */
   if (pa.continuousWith && pa.continuousWith === pb.continuousWith) {
-    return `연속 부재 분할('${pa.continuousWith}' — 실물은 한 몸. 구간 경계 겹침은 현 근사의 필연)`;
+    const a = pa.continuousSegment, b = pb.continuousSegment;
+    const adjacent = a && b && Number.isInteger(a.order) && Number.isInteger(b.order) && Math.abs(a.order - b.order) === 1;
+    const [first, second] = adjacent && a.order < b.order ? [a, b] : adjacent ? [b, a] : [null, null];
+    const endpointDistance = first && second && Array.isArray(first.end) && Array.isArray(second.start)
+      ? Math.hypot(...first.end.map((value, index) => Number(value) - Number(second.start[index]))) : Infinity;
+    const axisA = first?.endAxis, axisB = second?.startAxis;
+    const axisDot = Array.isArray(axisA) && Array.isArray(axisB)
+      ? Math.abs(axisA.reduce((sum, value, index) => sum + Number(value) * Number(axisB[index]), 0)) : -1;
+    const profileMatch = JSON.stringify(pa.params?.profile ?? null) === JSON.stringify(pb.params?.profile ?? null);
+    if (adjacent && endpointDistance <= 1 && axisDot >= Math.cos(15 * Math.PI / 180) && profileMatch) {
+      return `연속 부재 인접구간 검증('${pa.continuousWith}' — 순번·끝점·축·단면 일치)`;
+    }
+    recordMismatch('CONTINUOUS_SEGMENT_GEOMETRY_MISMATCH', `continuous segment requires adjacent order, endpoint ≤1mm, axis ≤15deg and identical profile; endpoint=${Number.isFinite(endpointDistance) ? endpointDistance.toFixed(3) : 'unavailable'}mm`);
   }
 
   // ① 철근 매입 — 전 구간 내포면 배근 정상(피복 검토는 도메인 계산 영역)
@@ -1001,7 +1021,7 @@ export function pairExempt(pa, pb, ba, bb, options = {}) {
    */
   const pf = pa.pressFitWith === (pb.id ?? pb.type) || pb.pressFitWith === (pa.id ?? pa.type);
   if (pf) {
-    const ov = [0, 1, 2].map((k) => Math.min(ba.max[k], bb.max[k]) - Math.max(ba.min[k], bb.min[k]));
+    const ov = overlap;
     const minOv = Math.min(...ov);
     const minSide = Math.min(...[0, 1, 2].map((k) => Math.min(ba.max[k] - ba.min[k], bb.max[k] - bb.min[k])));
     const cap = Math.max(2, minSide * 0.05);
@@ -1181,11 +1201,14 @@ export function buildAssembly(asm, opts = {}) {
   const CONTACT_MM = TOL_CONTACT;
   const interferences = [];
   const contacts = [];
+  const rawOverlaps = [];
+  const jointValidationErrors = [];
   for (const [i, j] of pairCandidates(boxes.map((bb) => bb.box))) {
     {
       const { v, depth } = overlapInfo(boxes[i].box, boxes[j].box);
       const rotated = boxes[i].box.rotated || boxes[j].box.rotated;
       if (v > 1) { // 1mm³ 초과 겹침
+        rawOverlaps.push({ a: boxes[i].id, b: boxes[j].id, overlapMm3: Math.round(v), depthMm: +depth.toFixed(3) });
         /**
          * ⓪ **연속 부재 분할** — 실물이 한 몸인데 모델링 편의로 나눈 구간(코리더 스테이션 등).
          * `pairExempt` 단일 소스로 판정한다 — 보정기와 같은 규칙을 봐야 둘이 안 싸운다.
@@ -1193,6 +1216,7 @@ export function buildAssembly(asm, opts = {}) {
          */
         const contOnly = pairExempt(asm.parts[i], asm.parts[j], boxes[i].box, boxes[j].box, {
           trustedJointGraph: asm.jointGraphProvenance === 'deterministic-template-v1',
+          validationErrors: jointValidationErrors,
         });
         if (contOnly) {
           contacts.push({ a: boxes[i].id, b: boxes[j].id, overlapMm3: Math.round(v), depthMm: +depth.toFixed(2), note: contOnly });
@@ -1676,7 +1700,9 @@ export function buildAssembly(asm, opts = {}) {
 
   // 구조 자동검증 — 형상에서 질량·CG·지지반력·전도 (nexyfab 설계 내장 역량).
   let structural = null;
-  try { structural = structuralCheck(asm, {}); } catch { /* 구조검토 실패는 빌드를 막지 않음 */ }
+  if (asm.analysisPolicy?.genericStructural !== false) {
+    try { structural = structuralCheck(asm, {}); } catch { /* 구조검토 실패는 빌드를 막지 않음 */ }
+  }
 
   /**
    * 종합 설계 타당성 — 부유 0 · **간섭 0** · 배관 오류/관통/교차 0 이어야 PASS.
@@ -1734,9 +1760,40 @@ export function buildAssembly(asm, opts = {}) {
    *   판정에 못 쓴다 — 걸린 부재를 `column_buckling`(AISC 360 §E3)으로 넘기라는 신호다.
    */
   const buckling = bucklingPrecheck(asm);
-  const designOk = support.floating.length === 0
-    && interferences.length === 0
+  const geometryOk = support.floating.length === 0 && interferences.length === 0;
+  const jointValidationOk = jointValidationErrors.length === 0;
+  const pipeRoutingOk = !pipes || (pipes.errors.length === 0 && pipes.obstacleViolations.length === 0 && pipes.crossViolations.length === 0);
+  const designOk = geometryOk
+    && jointValidationOk
     && (!pipes || (pipes.errors.length === 0 && pipes.obstacleViolations.length === 0 && pipes.crossViolations.length === 0));
+
+  const connectionStrength = !connections
+    ? 'not_run'
+    : connections.counts.failed > 0
+      ? 'fail'
+      : connections.releasePass
+        ? 'pass'
+        : 'partial';
+  /**
+   * 이 레거시 조립 검사는 형상·일부 체결 계산만 수행한다. 재료 성적서, 공차/GD&T,
+   * 공정 검증, 검사 성적서와 서버 서명 증거를 만들지 않으므로 제조 출고 PASS를 발행할
+   * 권한이 없다. downstream 상업 출고 게이트가 이 결과와 별도 증거를 함께 검증해야 한다.
+   */
+  const releaseStatus = {
+    geometry: geometryOk ? 'pass' : 'fail',
+    jointValidation: jointValidationOk ? 'pass' : 'fail',
+    pipeRouting: pipes ? (pipeRoutingOk ? 'pass' : 'fail') : 'not_run',
+    connectionStrength,
+    manufacturingEvidence: 'not_run',
+    manufacturingRelease: 'blocked',
+    blockingReasons: [
+      ...(!geometryOk ? ['GEOMETRY_VALIDATION_FAILED'] : []),
+      ...(!jointValidationOk ? ['JOINT_VALIDATION_FAILED'] : []),
+      ...(!pipeRoutingOk ? ['PIPE_ROUTING_VALIDATION_FAILED'] : []),
+      ...(connectionStrength !== 'pass' ? [`CONNECTION_STRENGTH_${connectionStrength.toUpperCase()}`] : []),
+      'SIGNED_MANUFACTURING_EVIDENCE_REQUIRED',
+    ],
+  };
 
   // 픽킹 OBB(260719 #3): 회전 부품은 로컬 치수+배치를 동봉 — 클라 프록시가 회전 적용
   // (AABB 프록시는 회전 부품에서 뚱뚱해져 옆 부품 오픽). 무회전=aabb 만(기존 하위호환).
@@ -1749,7 +1806,14 @@ export function buildAssembly(asm, opts = {}) {
       return { id: b.id, aabb: b.box, obb: { local: { min: la.min, max: la.max }, at: { tx: src.at?.tx ?? 0, ty: src.at?.ty ?? 0, tz: src.at?.tz ?? 0, rx, ry, rz } } };
     } catch { return { id: b.id, aabb: b.box }; }
   });
-  return { ok: true, openscad, parts: partsOut, gateErrors: [], interferences, contacts: contactsFinal, ...(approxOverlaps ? { approxOverlaps } : {}), welds, weldTotalMm, composeIntent, structural, support, pipes, designOk, ...(constraintConflicts?.length ? { constraintConflicts } : {}), ...(placeCorrections?.length ? { placeCorrections } : {}),
+  const collisionAudit = {
+    rawOverlaps,
+    validatedExemptions: contacts.map(contact => ({ a: contact.a, b: contact.b, note: contact.note, depthMm: contact.depthMm ?? 0 })),
+    declarationErrors: jointValidationErrors,
+    unclassified: interferences.map(item => ({ a: item.a, b: item.b, depthMm: item.depthMm })),
+    interferences,
+  };
+  return { ok: true, openscad, parts: partsOut, gateErrors: [], interferences, contacts: contactsFinal, collisionAudit, ...(approxOverlaps ? { approxOverlaps } : {}), welds, weldTotalMm, composeIntent, structural, support, pipes, geometryOk, jointValidationOk, designOk, releaseStatus, manufacturingReleaseOk: false, ...(constraintConflicts?.length ? { constraintConflicts } : {}), ...(placeCorrections?.length ? { placeCorrections } : {}),
     /**
      * 기구 자유도 — `joints[]` 를 **선언한 어셈블리에만** 붙는다.
      * ⚠ 선언이 없으면 키 자체가 없다. `mobility: 0` 으로 내보내면 「안 움직인다」로 읽히는데,

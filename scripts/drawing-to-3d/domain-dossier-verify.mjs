@@ -67,6 +67,8 @@ const CHECK_LABEL_KO = {
   notes: '비고', assumptions: '가정', items: '항목', fields: '입력 항목',
   loads: '하중', load: '하중', dead: '고정하중', live: '활하중', lane: '차선하중',
   truck: '표준트럭하중', ultimate: '극한하중', service: '사용하중', combo: '하중조합',
+  // 하중조합의 식별자는 문서에서 그대로 참조되므로 접미 숫자를 잃지 않는다.
+  U1: '하중조합 U1', U2: '하중조합 U2',
   forces: '단면력', rebar: '철근', spans: '스팬', unitWeight: '단위중량',
   finishes: '마감', mep: '설비', withLoss: '손실 반영', attempted: '시도한 검토',
   unjudged: '미판정',
@@ -101,6 +103,18 @@ function labelForKey(k, unlabeled) {
   //   — 고지가 조치로 이어지지 않으면 고지가 아니다(첫 구현에서 실측으로 잡음).
   if (unlabeled && /^[A-Za-z]/.test(key)) unlabeled.add(key);
   return esc(key);
+}
+
+/**
+ * 노드가 자체적으로 제공한 labelKo/label도 동일한 사전·고지 계약을 따른다.
+ * 계산기가 아직 원문 영문 키를 labelKo에 넣어 반환하는 경우에도 표시를
+ * 조용히 번역하거나 고지를 생략하지 않고, 실제 문서에 찍힌 키를 기록한다.
+ */
+function displayOwnLabel(value, unlabeled) {
+  const key = String(value ?? '');
+  if (CHECK_LABEL_KO[key]) return escMd(CHECK_LABEL_KO[key]);
+  if (unlabeled && /^[A-Za-z]/.test(key)) unlabeled.add(key);
+  return escMd(key);
 }
 
 /** 어셈블리 메타 → 적용 가능한 검증 목록(형상이 검증 입력을 줄 수 있는 것만). */
@@ -493,7 +507,7 @@ function renderGenericCheckTree(node, depth = 0, unlabeled = null, labelHoisted 
   const ownLabel = typeof node.labelKo === 'string' && node.labelKo.trim() ? node.labelKo
     : (typeof node.label === 'string' && node.label.trim() ? node.label : '');
   const parts = [];
-  if (ownLabel && !labelHoisted && depth > 0) parts.push(`<div class="ghead">${escMd(ownLabel)}</div>`);
+  if (ownLabel && !labelHoisted && depth > 0) parts.push(`<div class="ghead">${displayOwnLabel(ownLabel, unlabeled)}</div>`);
   // ⚠ `INPUT`(입력 대기)은 **판정이 아니다.** "판정: INPUT" 으로 찍으면 판정 개수에도
   //   세어지고 소비자에게도 판정처럼 보인다 — 이 세션 내내 강제한 구별이 표시에서 무너진다.
   // ⚠ 표식은 `'INPUT'` 뿐 아니라 **`'INPUT(footing)'` 같은 괄호형**도 쓴다(rc_frame 실측).
@@ -545,7 +559,7 @@ function renderGenericCheckTree(node, depth = 0, unlabeled = null, labelHoisted 
     const own = !Array.isArray(v) && (typeof v.labelKo === 'string' && v.labelKo.trim() ? v.labelKo
       : (typeof v.label === 'string' && v.label.trim() ? v.label : ''));
     const inner = renderGenericCheckTree(v, depth + 1, unlabeled, Boolean(own));
-    const head = own ? escMd(own) : labelForKey(k, unlabeled);
+    const head = own ? displayOwnLabel(own, unlabeled) : labelForKey(k, unlabeled);
     if (inner) parts.push(`<div class="gsection"><div class="ghead">${head}</div>${inner}</div>`);
   }
   if (Array.isArray(node.refs) && node.refs.length) {

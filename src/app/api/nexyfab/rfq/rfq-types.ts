@@ -8,6 +8,7 @@ import {
 export interface RFQEntry {
   rfqId: string;
   userId: string;
+  orgId?: string;
   userEmail?: string;
   shapeId: string;
   shapeName: string;
@@ -52,6 +53,7 @@ export function rowToRfq(row: Record<string, unknown>): RFQEntry {
   return {
     rfqId: row.id as string,
     userId: row.user_id as string,
+    orgId: (row.org_id as string) || undefined,
     userEmail: (row.user_email as string) || undefined,
     shapeId: (row.shape_id as string) ?? '',
     shapeName: (row.shape_name as string) ?? '',

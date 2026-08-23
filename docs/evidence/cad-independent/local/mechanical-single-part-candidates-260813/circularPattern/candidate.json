@@ -1,0 +1,64 @@
+{
+  "schema": "nexyfab.mechanical-single-part-candidate.v1",
+  "feature": "circularPattern",
+  "candidateStatus": "PASS",
+  "partRevisionSha256": "6d28ee413480688b6fc6a29adab45bc384397e378e0e3389e4ad2bc8f597fa7a",
+  "source": {
+    "receiptPath": "docs/evidence/cad-independent/local/mechanical-core-feature-axis-evidence.json",
+    "receiptSha256": "79d9344b7d101580b7e1574759a8eff652cbe942e6a389056b488aba28a77930",
+    "designRevisionSha256": "3cf6a0f9c8efcf153a2cfefde087a2112c086fc412d2feeaeb9ce52542838564",
+    "nfab": {
+      "path": "docs/evidence/cad-independent/local/mechanical-core-runtime-260813/circularPattern/saved-project.nfab",
+      "sha256": "771c0080e2c91e268f7a54fd3a945081d158f8ec87fde60eacdda1a5bf3069b7",
+      "bytes": 1636,
+      "assertionId": "circularPattern.save_reopen.saved-bytes",
+      "revisionSha256": "771c0080e2c91e268f7a54fd3a945081d158f8ec87fde60eacdda1a5bf3069b7",
+      "formatVersion": 3,
+      "createdAt": 1786643060242,
+      "updatedAt": 1786643060242
+    },
+    "step": {
+      "path": "docs/evidence/cad-independent/local/mechanical-core-runtime-260813/circularPattern/circularPattern-edited.step",
+      "sha256": "832267a3349857f5388add95ad0a6821f2b5d32befc49ddd5a72b6da8b4ae98e",
+      "bytes": 43802,
+      "assertionId": "circularPattern.export.native-step"
+    },
+    "drawingSvg": {
+      "path": "docs/evidence/cad-independent/local/mechanical-core-runtime-260813/circularPattern/circularPattern-exact-hlr.svg",
+      "sha256": "3c1cdae776f1cc1a82a673ca390acd0f793db6c626d1af800d9aa96585a491c9",
+      "bytes": 4746,
+      "assertionId": "circularPattern.drawing.exact-hlr-svg"
+    }
+  },
+  "artifacts": {
+    "stepImport": {
+      "path": "docs/evidence/cad-independent/local/mechanical-single-part-candidates-260813/circularPattern/step-import.json",
+      "sha256": "7beae43a26ed6506f4633f53c8543a5f46e94c5a6545d220f2fec261263b5beb",
+      "bytes": 1057,
+      "assertionId": "circularPattern.candidate.step-import"
+    },
+    "drawing": {
+      "path": "docs/evidence/cad-independent/local/mechanical-single-part-candidates-260813/circularPattern/circularPattern-three-axis-hlr.svg",
+      "sha256": "3c1cdae776f1cc1a82a673ca390acd0f793db6c626d1af800d9aa96585a491c9",
+      "bytes": 4746,
+      "assertionId": "circularPattern.candidate.three-axis-hlr"
+    },
+    "bom": {
+      "path": "docs/evidence/cad-independent/local/mechanical-single-part-candidates-260813/circularPattern/bom.json",
+      "sha256": "83a70e7541de6e0ca5e625fdeaaeecbb517d3dd9844b54a6283059ca446244b6",
+      "bytes": 890,
+      "assertionId": "circularPattern.candidate.one-part-bom"
+    }
+  },
+  "capabilityStatus": {
+    "stepImportSolidUnitsBounds": "PASS",
+    "threeAxisHlrDrawingCandidate": "PASS",
+    "onePartBomQuantityDimensions": "PASS",
+    "drawingDimensions": "NOT_RUN",
+    "gdt": "NOT_RUN",
+    "pmi": "NOT_RUN",
+    "humanApproval": "NOT_RUN",
+    "manufacturingRelease": "BLOCKED"
+  },
+  "commercialReleaseEligible": false
+}

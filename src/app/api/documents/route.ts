@@ -29,12 +29,14 @@ import { getStorage } from '@/lib/storage';
 import { logAudit } from '@/lib/audit';
 import { getTrustedClientIpOrUndefined } from '@/lib/client-ip';
 import { ensureCloudDocTables, ensurePersonalWorkspace, asNum, asNumOrNull, type DocumentRow } from '@/lib/cloudDoc/access';
+import { readBoundedJson } from '@/lib/boundedJsonBody';
 
 // ─── helpers ────────────────────────────────────────────────────────────────
 
 const MAX_NAME_LEN = 200;
 const DEFAULT_PAGE_SIZE = 20;
 const MAX_PAGE_SIZE = 100;
+const MAX_JSON_BODY_BYTES = 64 * 1024;
 
 /** Minimal placeholder bytes for the initial `current.ydoc`. The collab
  * worker rewrites this on first save. We use a 2-byte tag so signed-GET
@@ -163,7 +165,7 @@ export async function POST(req: NextRequest) {
 
   let body: { name?: unknown; workspaceId?: unknown };
   try {
-    body = await req.json();
+    body = await readBoundedJson(req, MAX_JSON_BODY_BYTES);
   } catch {
     return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 });
   }

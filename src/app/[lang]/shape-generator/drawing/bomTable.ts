@@ -13,6 +13,7 @@
  */
 
 import type { BomRow } from '../standardParts/bomAggregation';
+import { formatNumber } from '@/lib/i18n/format';
 
 export interface BomColumn {
   key: 'balloon' | 'designation' | 'qty' | 'notes' | 'unitCost' | 'totalCost';
@@ -54,15 +55,15 @@ export function buildBomTable(rows: BomRow[], layout: BomTableLayout = DEFAULT_L
   return { layout, rows: ballooned };
 }
 
-export function renderCell(row: BalloonedRow, col: BomColumn): string {
+export function renderCell(row: BalloonedRow, col: BomColumn, lang: string = 'ko'): string {
   switch (col.key) {
     case 'balloon':     return String(row.balloonNumber);
     case 'designation': return row.designation;
     case 'qty':         return String(row.qty);
     case 'notes':       return row.notes ?? '';
-    case 'unitCost':    return row.unitCostKrw != null ? row.unitCostKrw.toLocaleString('ko-KR') : '—';
+    case 'unitCost':    return row.unitCostKrw != null ? (formatNumber(row.unitCostKrw, lang) ?? '—') : '—';
     case 'totalCost':   return row.unitCostKrw != null
-      ? (row.unitCostKrw * row.qty).toLocaleString('ko-KR')
+      ? (formatNumber(row.unitCostKrw * row.qty, lang) ?? '—')
       : '—';
   }
 }

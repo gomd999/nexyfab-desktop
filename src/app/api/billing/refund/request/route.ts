@@ -16,12 +16,15 @@
  *     the service — the refund-policy contract is unambiguous on that.
  */
 import { NextRequest, NextResponse } from 'next/server';
+import { boundedJsonError, readBoundedJson } from '@/lib/boundedJsonBody';
 import { getAuthUser } from '@/lib/auth-middleware';
 import { checkOrigin } from '@/lib/csrf';
 import { getDbAdapter } from '@/lib/db-adapter';
 import { rateLimit } from '@/lib/rate-limit';
 import { getTrustedClientIp } from '@/lib/client-ip';
 import { sendOpsAlert } from '@/lib/notify/opsAlert';
+import { resolveRequestOrgContext } from '@/lib/org-context';
+import { canManageOrderInActiveWorkspace } from '@/lib/nfOrderAccess';
 
 export const dynamic = 'force-dynamic';
 
@@ -31,6 +34,7 @@ const REFUND_WINDOW_MS = REFUND_WINDOW_DAYS * 24 * 60 * 60 * 1000;
 interface InvoiceRow {
   id: string;
   user_id: string;
+  org_id: string | null;
   product: string;
   aw_invoice_id: string;
   total_amount_krw: number;
@@ -45,35 +49,49 @@ interface UsageRow {
   c: number;
 }
 
+const REFUND_REQUEST_JSON_BYTES = 64 * 1024;
+
 export async function POST(req: NextRequest) {
   if (!checkOrigin(req)) {
     return NextResponse.json({ error: 'Invalid origin' }, { status: 403 });
   }
   const auth = await getAuthUser(req);
   if (!auth) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  const context = resolveRequestOrgContext(auth);
+  if (!context.ok) return NextResponse.json({ error: 'Select a valid billing context', code: context.code }, { status: 409 });
 
   // Rate limit — at most 3 refund requests per user per hour. Prevents
   // someone from spamming refund attempts to find an eligibility loophole.
   const ip = getTrustedClientIp(req.headers);
-  if (!rateLimit(`refund-req:${auth.userId}:${ip}`, 3, 60 * 60 * 1000).allowed) {
+  if (!rateLimit(`refund-req:${context.orgId ?? auth.userId}:${ip}`, 3, 60 * 60 * 1000).allowed) {
     return NextResponse.json({ error: 'Too many requests' }, { status: 429 });
   }
 
-  const body = await req.json().catch(() => ({})) as { invoiceId?: string; reason?: string };
+  let body: { invoiceId?: string; reason?: string } = {};
+  try { body = await readBoundedJson(req, REFUND_REQUEST_JSON_BYTES); }
+  catch (error) {
+    const bodyError = boundedJsonError(error);
+    if (bodyError?.code === 'PAYLOAD_TOO_LARGE') return NextResponse.json({ error: 'Request body too large' }, { status: bodyError.status });
+  }
   if (!body.invoiceId || typeof body.invoiceId !== 'string') {
     return NextResponse.json({ error: 'invoiceId required' }, { status: 400 });
   }
 
   const db = getDbAdapter();
+  await db.execute('ALTER TABLE nf_usage_events ADD COLUMN org_id TEXT').catch(() => {});
+  await db.execute('ALTER TABLE nf_projects ADD COLUMN org_id TEXT').catch(() => {});
   const invoice = await db.queryOne<InvoiceRow>(
-    `SELECT id, user_id, product, aw_invoice_id, total_amount_krw, currency, country,
+    `SELECT id, user_id, org_id, product, aw_invoice_id, total_amount_krw, currency, country,
             status, paid_at, created_at
        FROM nf_aw_invoices
-      WHERE id = ? AND user_id = ?`,
-    body.invoiceId, auth.userId,
+      WHERE id = ? AND ${context.orgId ? 'org_id = ?' : 'user_id = ? AND org_id IS NULL'}`,
+    body.invoiceId, context.orgId ?? auth.userId,
   );
   if (!invoice) {
     return NextResponse.json({ error: 'Invoice not found' }, { status: 404 });
+  }
+  if (!canManageOrderInActiveWorkspace(auth, invoice)) {
+    return NextResponse.json({ error: 'Only the billing owner or organization administrator can request a refund.' }, { status: 403 });
   }
   if (invoice.status !== 'paid') {
     return NextResponse.json(
@@ -91,15 +109,14 @@ export async function POST(req: NextRequest) {
   // nf_audit_log captures project creates/updates.
   const aiUsage = await db.queryOne<UsageRow>(
     `SELECT COUNT(*) as c FROM nf_usage_events
-      WHERE user_id = ? AND created_at >= ?`,
-    auth.userId, paidAt,
+      WHERE ${context.orgId ? 'org_id = ?' : 'user_id = ? AND org_id IS NULL'} AND created_at >= ?`,
+    context.orgId ?? auth.userId, paidAt,
   ).catch(() => null);
 
   const projectUsage = await db.queryOne<UsageRow>(
-    `SELECT COUNT(*) as c FROM nf_audit_log
-      WHERE user_id = ? AND created_at >= ?
-        AND action IN ('project.create', 'project.update', 'project.save')`,
-    auth.userId, paidAt,
+    `SELECT COUNT(*) as c FROM nf_projects
+      WHERE ${context.orgId ? 'org_id = ?' : 'user_id = ? AND org_id IS NULL'} AND created_at >= ?`,
+    context.orgId ?? auth.userId, paidAt,
   ).catch(() => null);
 
   const aiCalls = Number(aiUsage?.c ?? 0);

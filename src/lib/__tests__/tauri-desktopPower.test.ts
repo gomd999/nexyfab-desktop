@@ -22,6 +22,6 @@ describe('hasDesktopPower', () => {
     const { hasDesktopPower } = await import('../tauri');
     expect(hasDesktopPower('nativeFilesystem')).toBe(true);
     expect(hasDesktopPower('directDiskExport')).toBe(true);
-    expect(hasDesktopPower('nativeSidecar')).toBe(false);
+    expect(hasDesktopPower('nativeSidecar')).toBe(true);
   });
 });

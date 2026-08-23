@@ -37,19 +37,21 @@ export function BottomDrawer({
     return () => window.removeEventListener('keydown', onKey);
   }, [open, onClose]);
 
+  // A collapsed aria-hidden drawer must not retain focusable tab buttons.
+  // Inspector launchers are the supported entry point, so omit it until open.
+  if (!open) return null;
+
   return (
     <div
       className="nx-bottom-drawer"
-      style={{ height: open ? height : 24 }}
-      aria-hidden={!open}
+      style={{ height }}
     >
       <div className="nx-bottom-drawer-handle">
         <span
-          style={{ flex: '0 0 auto', cursor: 'pointer', userSelect: 'none' }}
-          onClick={onClose}
-          aria-label={open ? 'Collapse drawer' : 'Expand drawer'}
+          aria-hidden="true"
+          style={{ flex: '0 0 auto', userSelect: 'none' }}
         >
-          {open ? '▼' : '▲'}
+          ▼
         </span>
         {tabs.map(tab => {
           const isActive = tab.id === activeTab;
@@ -102,11 +104,9 @@ export function BottomDrawer({
           ×
         </button>
       </div>
-      {open && (
-        <div className="nx-bottom-drawer-body">
-          {children}
-        </div>
-      )}
+      <div className="nx-bottom-drawer-body">
+        {children}
+      </div>
     </div>
   );
 }

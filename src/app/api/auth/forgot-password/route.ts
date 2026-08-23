@@ -5,6 +5,9 @@ import { rateLimitAsync } from '@/lib/rate-limit';
 import { randomBytes, createHash } from 'crypto';
 import { z } from 'zod';
 import { getTrustedClientIp } from '@/lib/client-ip';
+import { readBoundedJson } from '@/lib/boundedJsonBody';
+
+const MAX_FORGOT_PASSWORD_BODY_BYTES = 16 * 1024;
 
 export const dynamic = 'force-dynamic';
 
@@ -22,7 +25,9 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ok: true }); // 열거 공격 방지: 항상 200 반환
   }
 
-  const body = await req.json().catch(() => ({}));
+  let body: unknown = {};
+  try { body = await readBoundedJson(req, MAX_FORGOT_PASSWORD_BODY_BYTES); }
+  catch { /* Preserve anti-enumeration: every malformed or oversized body is still 200. */ }
   const parsed = z.object({ email: z.string().email() }).safeParse(body);
   if (!parsed.success) {
     return NextResponse.json({ ok: true }); // 이메일 존재 여부 노출 방지

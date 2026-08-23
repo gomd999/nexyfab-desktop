@@ -1,0 +1,44 @@
+{
+  "schema": "nexyfab.mechanical-core-feature-local-runtime.v1",
+  "feature": "rib",
+  "axis": "undo",
+  "status": "PASS",
+  "executedAt": "2026-08-22T07:13:00.871Z",
+  "restoredPayload": {
+    "id": "runtime-feature",
+    "enabled": true,
+    "type": "rib",
+    "params": {
+      "startX": -20,
+      "startZ": 0,
+      "endX": 20,
+      "endZ": 0,
+      "thickness": 3,
+      "height": 14,
+      "direction": 0
+    }
+  },
+  "restoredExact": {
+    "handle": "occt:67",
+    "kernelKind": "Solid",
+    "nativeShapeType": 0,
+    "solidCount": 1,
+    "singleSolid": true,
+    "volumeMm3": 48720,
+    "edgeCount": 24,
+    "faceCount": 11,
+    "boundsMm": [
+      [
+        -50.0000001,
+        -4.000000100000004,
+        -30.000000100000005
+      ],
+      [
+        50.0000001,
+        10.000000100000003,
+        30.000000100000005
+      ]
+    ]
+  },
+  "futureDepth": 1
+}

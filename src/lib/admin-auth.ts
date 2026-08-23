@@ -1,24 +1,15 @@
 import { NextRequest } from 'next/server';
-import { createHash, createHmac, randomBytes, timingSafeEqual } from 'crypto';
+import { createHash, timingSafeEqual } from 'crypto';
 import { getAuthUser } from './auth-middleware';
-
-const ADMIN_SESSION_TTL_MS = 30 * 60 * 1000;
-
-function base64UrlEncode(input: string | Buffer): string {
-  return Buffer.from(input).toString('base64url');
-}
+import {
+  parseAdminEmailToken,
+  verifyAdminEmailTokenLive,
+} from './admin-email-auth';
 
 function safeCompare(a: string, b: string): boolean {
   const ah = createHash('sha256').update(a).digest();
   const bh = createHash('sha256').update(b).digest();
   try { return timingSafeEqual(ah, bh); } catch { return false; }
-}
-
-function adminSessionSecret(): string | null {
-  return process.env.ADMIN_SESSION_SECRET
-    ?? process.env.JWT_SECRET
-    ?? process.env.ADMIN_SECRET
-    ?? null;
 }
 
 /**
@@ -33,45 +24,16 @@ function verifyAdminSecretHeader(req: NextRequest): boolean {
   return safeCompare(provided, expected);
 }
 
-export function createAdminSession(): string {
-  const secret = adminSessionSecret();
-  if (!secret) throw new Error('ADMIN_SESSION_SECRET or JWT_SECRET is required for admin sessions');
-
-  const payload = base64UrlEncode(JSON.stringify({
-    typ: 'nf_admin_session',
-    exp: Date.now() + ADMIN_SESSION_TTL_MS,
-    nonce: randomBytes(16).toString('hex'),
-  }));
-  const sig = createHmac('sha256', secret).update(payload).digest('base64url');
-  return `${payload}.${sig}`;
-}
-
 /**
- * Verify a raw admin session token (no NextRequest) — for Server Components /
- * the admin layout that read the cookie via next/headers and must gate rendering
- * BEFORE children are server-rendered (a client-only gate still ships the
- * protected HTML in the response). Mirrors verifyAdminSession's signature/exp
- * checks exactly.
+ * Cheap signed-token check. API routes and the admin layout must additionally
+ * call verifyAdminTokenLive so revocation and allowlist changes take effect.
  */
 export function verifyAdminToken(token: string | undefined | null): boolean {
-  if (!token) return false;
-  const secret = adminSessionSecret();
-  if (!secret) return false;
-  const [payload, sig] = token.split('.');
-  if (!payload || !sig) return false;
+  try { return Boolean(parseAdminEmailToken(token)); } catch { return false; }
+}
 
-  const expectedSig = createHmac('sha256', secret).update(payload).digest('base64url');
-  if (!safeCompare(sig, expectedSig)) return false;
-
-  try {
-    const parsed = JSON.parse(Buffer.from(payload, 'base64url').toString('utf8')) as {
-      typ?: string;
-      exp?: number;
-    };
-    return parsed.typ === 'nf_admin_session' && typeof parsed.exp === 'number' && parsed.exp >= Date.now();
-  } catch {
-    return false;
-  }
+export async function verifyAdminTokenLive(token: string | undefined | null): Promise<boolean> {
+  try { return Boolean(await verifyAdminEmailTokenLive(token)); } catch { return false; }
 }
 
 /**
@@ -79,10 +41,10 @@ export function verifyAdminToken(token: string | undefined | null): boolean {
  * 1. Signed admin session token (x-admin-token header or nf_admin_token cookie)
  * 2. JWT with globalRole = 'super_admin' (nf_users.role)
  */
-export function verifyAdminSession(req: NextRequest): boolean {
+export async function verifyAdminSession(req: NextRequest): Promise<boolean> {
   const token = req.headers.get('x-admin-token')
     ?? req.cookies.get('nf_admin_token')?.value;
-  return verifyAdminToken(token);
+  return verifyAdminTokenLive(token);
 }
 
 /**
@@ -90,8 +52,8 @@ export function verifyAdminSession(req: NextRequest): boolean {
  * Use this in new routes; legacy routes can continue using verifyAdminSession.
  */
 export async function verifyAdmin(req: NextRequest): Promise<boolean> {
-  // 1. Signed admin token (sync)
-  if (verifyAdminSession(req)) return true;
+  // 1. Signed, revocable email-admin session.
+  if (await verifyAdminSession(req)) return true;
 
   // 2. Shared CI/automation secret (x-admin-secret vs ADMIN_SECRET env)
   if (verifyAdminSecretHeader(req)) return true;
@@ -103,6 +65,21 @@ export async function verifyAdmin(req: NextRequest): Promise<boolean> {
   } catch { /* not authenticated */ }
 
   return false;
+}
+
+/** Identity used by allowlist management and admin audit rows. */
+export async function getAdminIdentity(req: NextRequest): Promise<string | null> {
+  const token = req.headers.get('x-admin-token') ?? req.cookies.get('nf_admin_token')?.value;
+  try {
+    const session = await verifyAdminEmailTokenLive(token);
+    if (session) return session.email;
+  } catch { /* fall through */ }
+  if (verifyAdminSecretHeader(req)) return 'automation';
+  try {
+    const authUser = await getAuthUser(req);
+    if (authUser?.globalRole === 'super_admin') return authUser.email;
+  } catch { /* not authenticated */ }
+  return null;
 }
 
 /**

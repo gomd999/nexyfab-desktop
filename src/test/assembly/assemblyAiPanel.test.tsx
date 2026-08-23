@@ -100,7 +100,7 @@ describe('AssemblyAiPanel', () => {
     expect(screen.getByTestId('assembly-ai-preview-summary')).toHaveTextContent(
       /stacked 3 parts/i,
     );
-    expect(screen.getByTestId('assembly-ai-source-badge')).toHaveTextContent(/regex/i);
+    expect(screen.getByTestId('assembly-ai-source-badge')).toHaveAttribute('data-source', 'regex');
     expect(screen.getByTestId('assembly-ai-preview-part-0')).toBeInTheDocument();
     expect(screen.getByTestId('assembly-ai-preview-part-1')).toBeInTheDocument();
     expect(screen.getByTestId('assembly-ai-preview-part-2')).toBeInTheDocument();
@@ -197,7 +197,7 @@ describe('AssemblyAiPanel', () => {
       expect(screen.getByTestId('assembly-ai-preview-summary')).toBeInTheDocument();
     });
     expect(fetcher).toHaveBeenCalledWith('four widgets stuck on top of each other');
-    expect(screen.getByTestId('assembly-ai-source-badge')).toHaveTextContent(/LLM/);
+    expect(screen.getByTestId('assembly-ai-source-badge')).toHaveAttribute('data-source', 'llm');
     expect(screen.getByTestId('assembly-ai-preview-summary')).toHaveTextContent(
       /stacked 4 parts/i,
     );
@@ -344,7 +344,7 @@ describe('AssemblyAiPanel', () => {
       expect(screen.getByTestId('assembly-ai-preview-summary')).toBeInTheDocument();
     });
     expect(fetcher).toHaveBeenCalledTimes(0);
-    expect(screen.getByTestId('assembly-ai-source-badge')).toHaveTextContent(/regex/i);
+    expect(screen.getByTestId('assembly-ai-source-badge')).toHaveAttribute('data-source', 'regex');
   });
 
   it('Apply on a pair plan forwards the mate kind to onBuildAssembly', async () => {

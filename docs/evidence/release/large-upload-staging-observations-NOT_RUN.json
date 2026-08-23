@@ -1,0 +1,17 @@
+{
+  "schema": "nexyfab.large-upload-staging-observations.v2",
+  "status": "NOT_RUN",
+  "captureMode": "NOT_RUN",
+  "startedAt": null,
+  "completedAt": null,
+  "capturedAt": null,
+  "environment": "staging",
+  "target": null,
+  "release": null,
+  "evidenceDeploymentId": null,
+  "runId": null,
+  "storage": null,
+  "artifacts": null,
+  "attestation": null,
+  "reason": "External staging object-storage capture has not been run. This document must never be edited into a PASS fixture; replace it with an exported raw observation artifact from the runbook."
+}

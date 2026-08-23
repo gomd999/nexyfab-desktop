@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { evaluateSevenDayOperations } from './build-seven-day-operations-receipt.mjs';
+import { evaluateSevenDayOperations, signSevenDayOperationsReceipt, verifySevenDayOperationsReceiptSignature } from './build-seven-day-operations-receipt.mjs';
 
 function samples(service) {
   return Array.from({ length: 28 }, (_, index) => ({
@@ -115,4 +115,56 @@ test('uses an explicit workload memory policy without weakening the default', ()
   });
   assert.equal(qualified.ok, true);
   assert.equal(qualified.services.web.memoryLimitMb, 1536);
+});
+
+test('rejects samples captured before their window closes or in the future', () => {
+  const web = samples('web');
+  web[0].capturedAt = web[0].window.since;
+  web[1].capturedAt = '2099-01-01T00:00:00.000Z';
+  const result = evaluateSevenDayOperations(
+    [...web, ...samples('openscad-worker'), ...samples('fea-worker')],
+    { costSnapshots: costSnapshots(), now: Date.UTC(2026, 7, 22) },
+  );
+  assert.equal(result.ok, false);
+  assert.ok(result.blockers.includes('metrics_invalid:web:2'));
+});
+
+test('rejects impossible HTTP counters', () => {
+  const web = samples('web');
+  web[0].http = { total: 1, '5xx': 2 };
+  const result = evaluateSevenDayOperations(
+    [...web, ...samples('openscad-worker'), ...samples('fea-worker')],
+    { costSnapshots: costSnapshots() },
+  );
+  assert.equal(result.ok, false);
+  assert.ok(result.blockers.includes('metrics_invalid:web:1'));
+  assert.ok(result.blockers.includes('http_evidence_missing:web'));
+});
+
+test('binds the release head and signs the complete operations receipt without changing its decision', () => {
+  const receipt = evaluateSevenDayOperations(
+    [...samples('web'), ...samples('openscad-worker'), ...samples('fea-worker')],
+    {
+      costSnapshots: costSnapshots(),
+      releaseBinding: {
+        environment: 'production',
+        qualifyingFrom: '2026-08-01T00:00:00.000Z',
+        buildId: 'release-build',
+        gitHead: 'a'.repeat(40),
+        services: {
+          web: { sourceService: 'nexyfab.com', deploymentId: 'web-deployment' },
+          'openscad-worker': { sourceService: 'nexyfab-openscad-worker', deploymentId: 'openscad-worker-deployment' },
+          'fea-worker': { sourceService: 'nexyfab-fea-worker', deploymentId: 'fea-worker-deployment' },
+        },
+      },
+    },
+  );
+  const signed = signSevenDayOperationsReceipt(receipt, 's'.repeat(32));
+  assert.equal(signed.ok, receipt.ok);
+  assert.equal(signed.release.head, 'a'.repeat(40));
+  assert.match(signed.receiptSha256, /^[a-f0-9]{64}$/);
+  assert.match(signed.receiptHmacSha256, /^[a-f0-9]{64}$/);
+  assert.deepEqual(signSevenDayOperationsReceipt(signed, 's'.repeat(32)), signed);
+  assert.equal(verifySevenDayOperationsReceiptSignature(signed, 's'.repeat(32)), true);
+  assert.equal(verifySevenDayOperationsReceiptSignature({ ...signed, ok: !signed.ok }, 's'.repeat(32)), false);
 });

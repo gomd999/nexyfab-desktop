@@ -1,0 +1,80 @@
+{
+  "schema": "nexyfab.mechanical-local-step-c4-readiness.v1",
+  "generatedAt": "2026-08-22T07:15:20.620Z",
+  "status": "PASS_LOCAL",
+  "scope": "AP242 explicit-transform axis-aligned box assembly",
+  "designRevisionSha256": "d3af68117bd55dec3d5f750078fee7a562e6b62515264bf9aac5c0fbab5176d8",
+  "sourceArtifactSha256": "c5cec6b3a1f345a61ad076852c0508bd8c296b552ae62841299da91f36fde99b",
+  "target": "independent-step-parser",
+  "requestedLevel": "C4",
+  "checksPassed": 16,
+  "checksFailed": 0,
+  "eligibleForSignedReceipt": true,
+  "commerciallyVerified": false,
+  "commercialStatus": "NOT_RUN",
+  "blockers": [
+    "external_operator_signature_not_run",
+    "nexyfab_kernel_occurrence_geometry_and_transform_pass_local_but_semantic_identifiers_fail_local",
+    "external_product_structure_reopen_not_run",
+    "general_curved_brep_and_non_box_assembly_not_run"
+  ],
+  "sourceBindings": [
+    {
+      "path": "scripts/build-mechanical-local-step-c4-candidate.mjs",
+      "sha256": "9392ed15b2f37f478c74107db35bd09d69f262e65e070a1a5de71440a5bc9a61",
+      "bytes": 11043
+    },
+    {
+      "path": "scripts/standalone-step-ts-adapter.mjs",
+      "sha256": "6b752e81d044376080f2b0f6ee12b7e9db6942aae7547eea1b221d8fe9f01cad",
+      "bytes": 19133
+    },
+    {
+      "path": "scripts/run-mechanical-standalone-step-c4.mjs",
+      "sha256": "03789cedbcbeade8b68363588341596f0113054054283b792bc2e31976c55119",
+      "bytes": 10624
+    },
+    {
+      "path": "src/app/[lang]/shape-generator/io/assemblyStepHierarchy.ts",
+      "sha256": "aa46183122605dafed3762ba3958d87dc77e99c2c1cf620d9394970b64101272",
+      "bytes": 29730
+    },
+    {
+      "path": "src/lib/brep-bridge/stepWrite.ts",
+      "sha256": "f0fb48be37daead81c5440f56007463cf0457a983a38696bf216a9b716f49c04",
+      "bytes": 45404
+    }
+  ],
+  "artifactBindings": [
+    {
+      "path": "source.step",
+      "sha256": "c5cec6b3a1f345a61ad076852c0508bd8c296b552ae62841299da91f36fde99b",
+      "bytes": 15351
+    },
+    {
+      "path": "workbook.json",
+      "sha256": "b359e81e23be87d4c470f5cfd1b2cbc901826555c1b6973729070e95911d2117",
+      "bytes": 940
+    },
+    {
+      "path": "independent-opened.json",
+      "sha256": "2a384972c4cc80af12e2bf8efed86ba142f6f7a6d4ad9524f945af139fead333",
+      "bytes": 1610
+    },
+    {
+      "path": "independent-returned.step",
+      "sha256": "e5dab59e68e9af796e7320f8d4bffe6e2b7a2d9e8908a8314753dfe36b1e2e1e",
+      "bytes": 15206
+    },
+    {
+      "path": "independent-report.json",
+      "sha256": "aa4171106c4d12dce6f9527713ebf2870e20c00285b4feb08b66b91ab6768be7",
+      "bytes": 3211
+    },
+    {
+      "path": "candidate.json",
+      "sha256": "c102a7edf441b0009b8e9ea390b30d0c7c200d2dace68af3c128d04d09381438",
+      "bytes": 3149
+    }
+  ]
+}

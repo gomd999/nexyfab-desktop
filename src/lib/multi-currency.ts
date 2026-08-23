@@ -3,6 +3,7 @@
 // daily FX rates, and falls back to USD when unknown.
 
 import { TAX_RULES } from './tax-rates';
+import { formatNumber } from './i18n/format';
 
 export type Currency = 'KRW' | 'USD' | 'EUR' | 'JPY' | 'GBP' | 'AUD' | 'CAD';
 
@@ -88,8 +89,8 @@ export function convertFromKrw(amountKrw: number, target: Currency): PriceConver
 
   const formatted =
     target === 'KRW' || target === 'JPY'
-      ? displayAmount.toLocaleString('en-US', { maximumFractionDigits: 0 })
-      : displayAmount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+      ? formatNumber(displayAmount, 'en', { maximumFractionDigits: 0 })
+      : formatNumber(displayAmount, 'en', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
   return {
     amount: amountKrw,

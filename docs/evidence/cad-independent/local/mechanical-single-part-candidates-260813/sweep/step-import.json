@@ -1,0 +1,37 @@
+{
+  "schema": "nexyfab.mechanical-single-part-step-import.v1",
+  "feature": "sweep",
+  "partRevisionSha256": "7efd1364e98e801f19b9ff18602bb0cd6bf844afe4e48e6d398f58e08fd698d6",
+  "sourceDesignRevisionSha256": "3cf6a0f9c8efcf153a2cfefde087a2112c086fc412d2feeaeb9ce52542838564",
+  "sourceStep": {
+    "path": "docs/evidence/cad-independent/local/mechanical-core-runtime-260813/sweep/sweep-edited.step",
+    "sha256": "4a261844ddda62e89e172f7dc1a11bb9c349ca7551fc2f978284a0a50bed7fd3",
+    "bytes": 15462,
+    "assertionId": "sweep.export.native-step"
+  },
+  "exactKernel": "OCCT",
+  "units": {
+    "value": "mm",
+    "confidence": "high"
+  },
+  "solidCount": 1,
+  "singleSolid": true,
+  "volumeMm3": 2016,
+  "boundsMm": [
+    [
+      -4.0000001,
+      -3.0000001000000003,
+      -1.000000002220446e-7
+    ],
+    [
+      4.0000001,
+      3.0000001000000003,
+      42.0000001
+    ]
+  ],
+  "dimensionsMm": {
+    "x": 8.0000002,
+    "y": 6.000000200000001,
+    "z": 42.0000002
+  }
+}

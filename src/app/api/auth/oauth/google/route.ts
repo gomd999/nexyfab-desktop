@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { randomBytes } from 'crypto';
+import { toRouteLang } from '@/lib/i18n/normalize';
 
 export const dynamic = 'force-dynamic';
 
@@ -8,7 +9,7 @@ export async function GET(req: NextRequest) {
   const clientId = process.env.GOOGLE_CLIENT_ID;
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://nexyfab.com';
   const redirectUri = `${siteUrl}/api/auth/oauth/google/callback`;
-  const lang = req.nextUrl.searchParams.get('lang') ?? 'ko';
+  const lang = toRouteLang(req.nextUrl.searchParams.get('lang') ?? 'kr');
 
   if (!clientId) {
     return NextResponse.redirect(`${siteUrl}/login?error=oauth_unavailable`);

@@ -1,0 +1,141 @@
+{
+  "magic": "nfab",
+  "version": 3,
+  "createdAt": 1787382874448,
+  "updatedAt": 1787382874448,
+  "name": "Mechanical runtime sketchExtrude",
+  "tree": {
+    "nodes": [
+      {
+        "id": "runtime-root",
+        "type": "baseShape",
+        "label": "Base exact box",
+        "icon": "base",
+        "params": {},
+        "enabled": true,
+        "expanded": true,
+        "parentId": null,
+        "children": [
+          "runtime-feature"
+        ],
+        "timestamp": 1,
+        "editingActive": false
+      },
+      {
+        "id": "runtime-feature",
+        "type": "feature",
+        "label": "Runtime sketchExtrude",
+        "icon": "feature",
+        "featureType": "sketchExtrude",
+        "params": {
+          "depth": 18
+        },
+        "enabled": true,
+        "expanded": true,
+        "parentId": "runtime-root",
+        "children": [],
+        "timestamp": 2,
+        "sketchData": {
+          "profile": {
+            "closed": true,
+            "segments": [
+              {
+                "type": "line",
+                "points": [
+                  {
+                    "x": 0,
+                    "y": 0
+                  },
+                  {
+                    "x": 36,
+                    "y": 0
+                  }
+                ]
+              },
+              {
+                "type": "line",
+                "points": [
+                  {
+                    "x": 36,
+                    "y": 0
+                  },
+                  {
+                    "x": 36,
+                    "y": 22
+                  }
+                ]
+              },
+              {
+                "type": "line",
+                "points": [
+                  {
+                    "x": 36,
+                    "y": 22
+                  },
+                  {
+                    "x": 0,
+                    "y": 22
+                  }
+                ]
+              },
+              {
+                "type": "line",
+                "points": [
+                  {
+                    "x": 0,
+                    "y": 22
+                  },
+                  {
+                    "x": 0,
+                    "y": 0
+                  }
+                ]
+              }
+            ]
+          },
+          "config": {
+            "mode": "extrude",
+            "depth": 18,
+            "revolveAngle": 360,
+            "revolveAxis": "y",
+            "segments": 32
+          },
+          "plane": "xy",
+          "planeOffset": 0,
+          "operation": "add"
+        },
+        "editingActive": false
+      }
+    ],
+    "rootId": "runtime-root",
+    "activeNodeId": "runtime-feature"
+  },
+  "scene": {
+    "selectedId": "box",
+    "params": {
+      "width": 60,
+      "height": 40,
+      "depth": 30
+    },
+    "paramExpressions": {},
+    "materialId": "aluminum",
+    "color": "#cccccc",
+    "isSketchMode": false,
+    "sketchPlane": "xy",
+    "sketchProfile": {
+      "segments": [],
+      "closed": false
+    },
+    "sketchConfig": {
+      "mode": "extrude",
+      "depth": 30,
+      "revolveAngle": 360,
+      "revolveAxis": "y",
+      "segments": 32
+    }
+  },
+  "meta": {
+    "evidenceOnly": true,
+    "exactKernel": "OCCT"
+  }
+}

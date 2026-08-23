@@ -9,6 +9,12 @@
 import { describe, it, expect } from 'vitest';
 import * as THREE from 'three';
 import { revolveFeature } from './revolve';
+import {
+  ensureOcctReady,
+  occtRegisteredShapeEvidence,
+  resetShapeRegistry,
+  setOcctGlobalMode,
+} from './occtEngine';
 
 /** A profile-ish input: box offset on +X so radius (√(x²+z²)) is non-zero. */
 function inputGeom(): THREE.BufferGeometry {
@@ -41,9 +47,24 @@ describe('revolveFeature', () => {
     expect(out.attributes.position.count).toBeGreaterThan(0);
   });
 
-  it('partial-angle revolve uses the mesh path (OCCT builder is full-turn only)', async () => {
-    // angle < 359.5 → applyRevolveOcct returns null even if OCCT were ready.
-    const out = await revolveFeature.applyAsync!(inputGeom(), { ...params, angle: 90 });
-    expect(out.attributes.position.count).toBeGreaterThan(0);
-  });
+  it('partial-angle revolve uses the registered OCCT solid path', async () => {
+    await ensureOcctReady();
+    setOcctGlobalMode(true);
+    resetShapeRegistry();
+    try {
+      const profile = new THREE.BufferGeometry();
+      profile.setAttribute('position', new THREE.Float32BufferAttribute([
+        10, -10, 0, 16, -10, 0, 16, 10, 0, 10, 10, 0,
+      ], 3));
+      const out = await revolveFeature.applyAsync!(profile, { ...params, angle: 240 });
+      const handle = out.userData.occtHandle as string | undefined;
+      expect(handle).toBeTruthy();
+      const exact = occtRegisteredShapeEvidence(handle);
+      expect(exact?.singleSolid).toBe(true);
+      expect(exact?.volumeMm3).toBeCloseTo(240 / 360 * Math.PI * (16 ** 2 - 10 ** 2) * 20, 3);
+    } finally {
+      setOcctGlobalMode(false);
+      resetShapeRegistry();
+    }
+  }, 30_000);
 });

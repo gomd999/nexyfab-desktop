@@ -5,8 +5,13 @@ import { checkOrigin } from '@/lib/csrf';
 import type { NexyfabOrderStatus } from '@/types/nexyfab-orders';
 import { evaluateStage } from '@/lib/stage-engine';
 import { recordOrderEvent } from '@/lib/order-events';
+import { resolveStoredManufacturingLineage } from '@/lib/manufacturingLineageDb';
+import { resolveRequestOrgContext } from '@/lib/org-context';
+import { canManageOrderInActiveWorkspace, isOrderBuyerInActiveWorkspace } from '@/lib/nfOrderAccess';
+import { boundedJsonError, readBoundedJson } from '@/lib/boundedJsonBody';
 
 export const dynamic = 'force-dynamic';
+const ORDER_UPDATE_JSON_BYTES = 64 * 1024;
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -16,6 +21,7 @@ interface NexyfabOrderRow {
   id: string;
   rfq_id: string | null;
   user_id: string;
+  org_id: string | null;
   manufacturer_id: string | null;
   part_name: string;
   manufacturer_name: string;
@@ -29,6 +35,10 @@ interface NexyfabOrderRow {
   tracking_carrier: string | null;
   tracking_last_event: string | null;
   tracking_updated_at: number | null;
+  lineage_id: string | null;
+  artifact_id: string | null;
+  artifact_sha256: string | null;
+  document_version_id: string | null;
 }
 
 function rowToOrder(row: NexyfabOrderRow) {
@@ -78,6 +88,9 @@ export async function GET(
 
   const { id } = await params;
   const db = getDbAdapter();
+  const workspace = resolveRequestOrgContext(authUser);
+  if (!workspace.ok) return NextResponse.json({ error: 'Select a valid workspace', code: workspace.code }, { status: 409 });
+  await db.execute('ALTER TABLE nf_orders ADD COLUMN org_id TEXT').catch(() => {});
 
   const row = await db.queryOne<NexyfabOrderRow>(
     'SELECT * FROM nf_orders WHERE id = ?',
@@ -86,8 +99,8 @@ export async function GET(
 
   if (!row) return NextResponse.json({ error: 'Not found' }, { status: 404 });
 
-  // Allow access to order owner or manufacturer
-  if (row.user_id !== authUser.userId && row.manufacturer_id !== authUser.userId) {
+  const buyerWorkspaceAccess = isOrderBuyerInActiveWorkspace(authUser, row);
+  if (!buyerWorkspaceAccess && row.manufacturer_id !== authUser.userId) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   }
 
@@ -106,7 +119,15 @@ export async function PATCH(
   if (!authUser) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
   const { id } = await params;
-  const body = await req.json().catch(() => ({})) as { status?: string };
+  let body: { status?: string } = {};
+  try {
+    body = await readBoundedJson(req, ORDER_UPDATE_JSON_BYTES);
+  } catch (error) {
+    const bodyError = boundedJsonError(error);
+    if (bodyError?.code === 'PAYLOAD_TOO_LARGE') {
+      return NextResponse.json({ error: 'Request body too large' }, { status: bodyError.status });
+    }
+  }
 
   // Validate status value
   if (!body.status || !ALL_STATUSES.has(body.status)) {
@@ -118,6 +139,9 @@ export async function PATCH(
 
   const newStatus = body.status as OrderStatus;
   const db = getDbAdapter();
+  const workspace = resolveRequestOrgContext(authUser);
+  if (!workspace.ok) return NextResponse.json({ error: 'Select a valid workspace', code: workspace.code }, { status: 409 });
+  await db.execute('ALTER TABLE nf_orders ADD COLUMN org_id TEXT').catch(() => {});
 
   const row = await db.queryOne<NexyfabOrderRow>(
     'SELECT * FROM nf_orders WHERE id = ?',
@@ -125,14 +149,23 @@ export async function PATCH(
   );
 
   if (!row) return NextResponse.json({ error: 'Not found' }, { status: 404 });
+  const buyerWorkspaceAccess = canManageOrderInActiveWorkspace(authUser, row);
 
   // Auth check: only the manufacturer or admin can update
-  const isAdmin = authUser.roles?.some(r => r.role === 'super_admin' || r.role === 'org_admin');
+  const membership = workspace.orgId
+    ? await db.queryOne<{ role: string }>('SELECT role FROM nf_org_members WHERE org_id = ? AND user_id = ?', workspace.orgId, authUser.userId)
+    : null;
+  const isAdmin = authUser.globalRole === 'super_admin' || ['owner', 'admin'].includes(membership?.role ?? '');
   if (row.manufacturer_id !== authUser.userId && !isAdmin) {
     // Also allow the order owner to confirm delivery (shipped → delivered)
-    if (!(row.user_id === authUser.userId && row.status === 'shipped' && newStatus === 'delivered')) {
+    if (!(buyerWorkspaceAccess && row.status === 'shipped' && newStatus === 'delivered')) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
+  }
+
+  const lineage = await resolveStoredManufacturingLineage(db, row.user_id, row);
+  if (!lineage.ok) {
+    return NextResponse.json({ error: 'Manufacturing release is stale or revoked.', code: lineage.code }, { status: 409 });
   }
 
   // Forward-only check

@@ -2,19 +2,30 @@
 
 import { useEffect } from 'react';
 import { usePathname } from 'next/navigation';
+import { toIsoLang, toRouteLang } from '@/lib/i18n/normalize';
 
 export default function LangSetter() {
     const pathname = usePathname();
 
     useEffect(() => {
         if (!pathname) return;
-        const langCode = pathname.split('/')[1];
-
-        const langMap: Record<string, string> = { kr: 'ko', en: 'en', ja: 'ja', cn: 'zh-CN', es: 'es', ar: 'ar' };
-        const htmlLang = langMap[langCode] || 'ko';
+        const pathLang = pathname.split('/')[1];
+        const routeAliases = ['kr', 'ko', 'en', 'ja', 'jp', 'cn', 'zh', 'es', 'ar'];
+        let requestedLang = routeAliases.includes(pathLang) ? pathLang : null;
+        if (!requestedLang) {
+            const params = new URLSearchParams(window.location.search);
+            requestedLang = params.get('lang');
+        }
+        if (!requestedLang) {
+            const cookie = document.cookie.match(/(?:^|; )nf_lang=([^;]+)/)?.[1];
+            requestedLang = cookie ? decodeURIComponent(cookie) : null;
+        }
+        const routeLang = toRouteLang(requestedLang);
+        const isoLang = toIsoLang(routeLang);
+        const htmlLang = isoLang === 'zh' ? 'zh-CN' : isoLang;
 
         document.documentElement.lang = htmlLang;
-        document.documentElement.dir = langCode === 'ar' ? 'rtl' : 'ltr';
+        document.documentElement.dir = routeLang === 'ar' ? 'rtl' : 'ltr';
 
         document.body.className = document.body.className.replace(/lang-\S+/g, '');
         document.body.classList.add(`lang-${htmlLang}`);

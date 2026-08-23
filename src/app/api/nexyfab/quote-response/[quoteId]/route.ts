@@ -9,8 +9,11 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
+import { readBoundedJson } from '@/lib/boundedJsonBody';
 import { getDbAdapter } from '@/lib/db-adapter';
 import { createNotification } from '@/app/lib/notify';
+
+const MAX_JSON_BODY_BYTES = 64 * 1024;
 
 export const dynamic = 'force-dynamic';
 
@@ -101,7 +104,7 @@ export async function POST(
     return NextResponse.json({ error: 'already_submitted', status: q.status }, { status: 409 });
   }
 
-  const body = await req.json().catch(() => ({})) as {
+  const body = await readBoundedJson(req, MAX_JSON_BODY_BYTES).catch(() => ({})) as {
     estimatedAmount?: number;
     estimatedDays?: number;
     note?: string;

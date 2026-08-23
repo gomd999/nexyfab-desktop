@@ -16,6 +16,7 @@
 
 import React, { useState } from 'react';
 import { toIsoLang } from '@/lib/i18n/normalize';
+import { loc } from '@/lib/i18n/loc';
 
 const dict = {
   ko: {
@@ -213,7 +214,14 @@ export default function ReviewForm({ lang, contractId, partnerEmail, onSubmitted
 
       <div style={{ marginTop: 14, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <span style={{ fontSize: 11, color: allRated ? '#3fb950' : 'var(--nx-text-2)' }}>
-          {allRated ? '✓ 모든 항목 평가됨' : t.requireRating}
+          {allRated ? loc(lang, {
+            ko: '✓ 모든 항목 평가됨',
+            en: '✓ All items rated',
+            ja: '✓ すべて評価済み',
+            zh: '✓ 所有项目已评分',
+            es: '✓ Todos los elementos evaluados',
+            ar: '✓ تم تقييم جميع البنود',
+          }) : t.requireRating}
         </span>
         <button
           onClick={handleSubmit}

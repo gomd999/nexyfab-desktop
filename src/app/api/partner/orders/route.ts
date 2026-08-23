@@ -7,6 +7,9 @@ import { createNotification } from '@/app/lib/notify';
 import { recordMetric } from '@/lib/partner-metrics';
 import { recordOrderEvent } from '@/lib/order-events';
 import { normPartnerEmail } from '@/lib/partner-factory-access';
+import { boundedJsonError, readBoundedJson } from '@/lib/boundedJsonBody';
+
+const MAX_PARTNER_ORDER_BODY_BYTES = 32 * 1024;
 
 export const dynamic = 'force-dynamic';
 
@@ -100,7 +103,12 @@ export async function PATCH(req: NextRequest) {
   const partner = await getPartnerAuth(req);
   if (!partner) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-  const body = await req.json() as { orderId: string; status: string };
+  let body: { orderId: string; status: string };
+  try { body = await readBoundedJson(req, MAX_PARTNER_ORDER_BODY_BYTES); }
+  catch (error) {
+    if (boundedJsonError(error)?.code === 'PAYLOAD_TOO_LARGE') return NextResponse.json({ error: 'Request too large', code: 'PAYLOAD_TOO_LARGE' }, { status: 413 });
+    throw error;
+  }
   if (!body.orderId || !body.status) {
     return NextResponse.json({ error: 'orderId and status required' }, { status: 400 });
   }

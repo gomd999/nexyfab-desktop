@@ -2,6 +2,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getAuthUser } from '@/lib/auth-middleware';
 import { checkOrigin } from '@/lib/csrf';
 import { generateMesh, retextureMesh, pollMesh, isMeshGenConfigured } from '@/lib/ai/meshGen';
+import { readBoundedJson } from '@/lib/boundedJsonBody';
+
+const MAX_JSON_BODY_BYTES = 8 * 1024 * 1024;
 
 // Organic 3D mesh-generation track (text/image → GLB) — the complement to the
 // CSG/OpenSCAD track for shapes CSG can't do (animals, characters, freeform).
@@ -18,7 +21,7 @@ export async function POST(req: NextRequest) {
       { status: 501 },
     );
   }
-  const body = (await req.json().catch(() => ({}))) as {
+  const body = (await readBoundedJson(req, MAX_JSON_BODY_BYTES).catch(() => ({}))) as {
     action?: 'generate' | 'refine' | 'retexture'; prompt?: string; image?: string; seed?: number; modelUrl?: string;
   };
   // Retexture: shape fixed, surface regenerated from a style prompt.

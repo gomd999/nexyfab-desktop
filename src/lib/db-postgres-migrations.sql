@@ -120,6 +120,7 @@ CREATE TABLE IF NOT EXISTS nf_sso_config (
 CREATE TABLE IF NOT EXISTS nf_projects (
   id          TEXT PRIMARY KEY,
   user_id     TEXT NOT NULL REFERENCES nf_users(id) ON DELETE CASCADE,
+  org_id      TEXT,
   name        TEXT NOT NULL,
   shape_id    TEXT,
   material_id TEXT,
@@ -135,7 +136,9 @@ CREATE INDEX IF NOT EXISTS idx_projects_user ON nf_projects(user_id);
 -- existing DBs (created without it) → "column archived_at does not exist" 500 on
 -- the project list. Add it idempotently so cloud projects (CAD + papercraft) list.
 ALTER TABLE nf_projects ADD COLUMN IF NOT EXISTS archived_at BIGINT;
+ALTER TABLE nf_projects ADD COLUMN IF NOT EXISTS org_id TEXT;
 CREATE INDEX IF NOT EXISTS idx_projects_user_updated ON nf_projects(user_id, updated_at);
+CREATE INDEX IF NOT EXISTS idx_projects_org_updated ON nf_projects(org_id, updated_at DESC);
 
 CREATE TABLE IF NOT EXISTS nf_shares (
   token            TEXT PRIMARY KEY,
@@ -170,6 +173,7 @@ CREATE INDEX IF NOT EXISTS idx_comments_project ON nf_comments(project_id);
 CREATE TABLE IF NOT EXISTS nf_rfqs (
   id                TEXT PRIMARY KEY,
   user_id           TEXT NOT NULL,
+  org_id            TEXT,
   user_email        TEXT,
   shape_id          TEXT,
   shape_name        TEXT,
@@ -189,11 +193,14 @@ CREATE TABLE IF NOT EXISTS nf_rfqs (
 );
 CREATE INDEX IF NOT EXISTS idx_rfqs_user ON nf_rfqs(user_id);
 CREATE INDEX IF NOT EXISTS idx_rfqs_user_created ON nf_rfqs(user_id, created_at);
+ALTER TABLE nf_rfqs ADD COLUMN IF NOT EXISTS org_id TEXT;
+CREATE INDEX IF NOT EXISTS idx_rfqs_org_created ON nf_rfqs(org_id, created_at DESC);
 
 CREATE TABLE IF NOT EXISTS nf_orders (
   id                    TEXT PRIMARY KEY,
   rfq_id                TEXT,
   user_id               TEXT NOT NULL,
+  org_id                TEXT,
   part_name             TEXT NOT NULL,
   manufacturer_name     TEXT NOT NULL,
   quantity              INTEGER NOT NULL DEFAULT 1,
@@ -757,6 +764,7 @@ CREATE INDEX IF NOT EXISTS idx_aw_retry ON nf_aw_payment_attempts(status, next_r
 CREATE TABLE IF NOT EXISTS nf_usage_events (
   id          TEXT PRIMARY KEY,
   user_id     TEXT NOT NULL,
+  org_id      TEXT,
   product     TEXT NOT NULL,
   metric      TEXT NOT NULL,
   quantity    INTEGER NOT NULL DEFAULT 1,
@@ -854,6 +862,7 @@ ALTER TABLE nf_aw_subscriptions ADD COLUMN IF NOT EXISTS currency TEXT;
 CREATE TABLE IF NOT EXISTS nf_files (
   id           TEXT PRIMARY KEY,
   user_id      TEXT NOT NULL REFERENCES nf_users(id) ON DELETE CASCADE,
+  org_id       TEXT,
   storage_key  TEXT NOT NULL,
   filename     TEXT NOT NULL,
   mime_type    TEXT NOT NULL DEFAULT 'application/octet-stream',
@@ -1908,6 +1917,13 @@ CREATE TABLE IF NOT EXISTS nf_manufacturing_lineage (
   updated_at          BIGINT NOT NULL,
   CHECK (length(artifact_sha256) = 64)
 );
+ALTER TABLE nf_files ADD COLUMN IF NOT EXISTS org_id TEXT;
+CREATE INDEX IF NOT EXISTS idx_files_org_created ON nf_files(org_id, created_at DESC);
+ALTER TABLE nf_usage_events ADD COLUMN IF NOT EXISTS org_id TEXT;
+CREATE INDEX IF NOT EXISTS idx_usage_org_cycle ON nf_usage_events(org_id, product, cycle_start, metric);
+CREATE INDEX IF NOT EXISTS idx_usage_user_personal_cycle ON nf_usage_events(user_id, product, cycle_start, metric) WHERE org_id IS NULL;
+ALTER TABLE nf_ai_history ADD COLUMN IF NOT EXISTS org_id TEXT;
+CREATE INDEX IF NOT EXISTS idx_ai_history_org_feature ON nf_ai_history(org_id, feature, created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_mfg_lineage_project_version
   ON nf_manufacturing_lineage(project_id, document_version_id);
 CREATE INDEX IF NOT EXISTS idx_mfg_lineage_user
@@ -1927,6 +1943,8 @@ ALTER TABLE nf_orders ADD COLUMN IF NOT EXISTS lineage_id TEXT;
 ALTER TABLE nf_orders ADD COLUMN IF NOT EXISTS artifact_id TEXT;
 ALTER TABLE nf_orders ADD COLUMN IF NOT EXISTS artifact_sha256 TEXT;
 ALTER TABLE nf_orders ADD COLUMN IF NOT EXISTS document_version_id TEXT;
+ALTER TABLE nf_orders ADD COLUMN IF NOT EXISTS org_id TEXT;
+CREATE INDEX IF NOT EXISTS idx_orders_org_created ON nf_orders(org_id, created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_rfqs_lineage ON nf_rfqs(lineage_id);
 CREATE INDEX IF NOT EXISTS idx_quotes_lineage ON nf_quotes(lineage_id);
 CREATE INDEX IF NOT EXISTS idx_orders_lineage ON nf_orders(lineage_id);
@@ -1984,3 +2002,271 @@ CREATE TABLE IF NOT EXISTS nf_cad_workspace_heads (
   content_hash TEXT NOT NULL,
   updated_at   BIGINT NOT NULL
 );
+
+-- Spatial concept-CAD drafts remain separate from exact-B-rep release
+-- envelopes. Revisions are project+discipline scoped and issue evidence is
+-- explicitly bounds-preview until an exact clash service produces evidence.
+CREATE TABLE IF NOT EXISTS nf_spatial_cad_drafts (
+  id                TEXT PRIMARY KEY,
+  project_id        TEXT NOT NULL,
+  domain            TEXT NOT NULL,
+  project_revision  INTEGER NOT NULL,
+  document_revision INTEGER NOT NULL,
+  content_hash      TEXT NOT NULL,
+  payload_json      TEXT NOT NULL,
+  created_by        TEXT NOT NULL,
+  created_at        BIGINT NOT NULL,
+  UNIQUE(project_id, domain, project_revision)
+);
+CREATE INDEX IF NOT EXISTS idx_nf_spatial_draft_project_domain
+  ON nf_spatial_cad_drafts(project_id, domain, project_revision DESC);
+CREATE TABLE IF NOT EXISTS nf_spatial_cad_draft_heads (
+  project_id       TEXT NOT NULL,
+  domain           TEXT NOT NULL,
+  project_revision INTEGER NOT NULL,
+  content_hash     TEXT NOT NULL,
+  document_id      TEXT NOT NULL DEFAULT '',
+  locks_json       TEXT NOT NULL DEFAULT '[]',
+  updated_at       BIGINT NOT NULL,
+  PRIMARY KEY(project_id, domain)
+);
+ALTER TABLE nf_spatial_cad_draft_heads ADD COLUMN IF NOT EXISTS document_id TEXT NOT NULL DEFAULT '';
+ALTER TABLE nf_spatial_cad_draft_heads ADD COLUMN IF NOT EXISTS locks_json TEXT NOT NULL DEFAULT '[]';
+CREATE TABLE IF NOT EXISTS nf_spatial_cad_issues (
+  id                 TEXT PRIMARY KEY,
+  project_id         TEXT NOT NULL,
+  candidate_id       TEXT NOT NULL,
+  model_a            TEXT NOT NULL,
+  model_b            TEXT NOT NULL,
+  overlap_json       TEXT NOT NULL,
+  severity           TEXT NOT NULL,
+  model_revision     INTEGER NOT NULL,
+  evidence           TEXT NOT NULL,
+  exact_verification TEXT NOT NULL,
+  status             TEXT NOT NULL,
+  created_by         TEXT NOT NULL,
+  created_at         BIGINT NOT NULL,
+  updated_at         BIGINT NOT NULL,
+  UNIQUE(project_id, candidate_id, model_revision)
+);
+CREATE INDEX IF NOT EXISTS idx_nf_spatial_issue_project
+  ON nf_spatial_cad_issues(project_id, updated_at DESC);
+CREATE TABLE IF NOT EXISTS nf_spatial_cad_jobs (
+  id                   TEXT PRIMARY KEY,
+  project_id           TEXT NOT NULL,
+  kind                 TEXT NOT NULL,
+  status               TEXT NOT NULL,
+  execution            TEXT NOT NULL,
+  release_verification TEXT NOT NULL,
+  request_json         TEXT NOT NULL,
+  created_by           TEXT NOT NULL,
+  created_at           BIGINT NOT NULL,
+  attempts             INTEGER NOT NULL DEFAULT 0,
+  lease_token          TEXT,
+  leased_by            TEXT,
+  lease_expires_at     BIGINT,
+  started_at           BIGINT,
+  finished_at          BIGINT,
+  result_json          TEXT,
+  error_code           TEXT,
+  updated_at           BIGINT NOT NULL DEFAULT 0
+);
+ALTER TABLE nf_spatial_cad_jobs ADD COLUMN IF NOT EXISTS attempts INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE nf_spatial_cad_jobs ADD COLUMN IF NOT EXISTS lease_token TEXT;
+ALTER TABLE nf_spatial_cad_jobs ADD COLUMN IF NOT EXISTS leased_by TEXT;
+ALTER TABLE nf_spatial_cad_jobs ADD COLUMN IF NOT EXISTS lease_expires_at BIGINT;
+ALTER TABLE nf_spatial_cad_jobs ADD COLUMN IF NOT EXISTS started_at BIGINT;
+ALTER TABLE nf_spatial_cad_jobs ADD COLUMN IF NOT EXISTS finished_at BIGINT;
+ALTER TABLE nf_spatial_cad_jobs ADD COLUMN IF NOT EXISTS result_json TEXT;
+ALTER TABLE nf_spatial_cad_jobs ADD COLUMN IF NOT EXISTS error_code TEXT;
+ALTER TABLE nf_spatial_cad_jobs ADD COLUMN IF NOT EXISTS updated_at BIGINT NOT NULL DEFAULT 0;
+CREATE INDEX IF NOT EXISTS idx_nf_spatial_job_project
+  ON nf_spatial_cad_jobs(project_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_nf_spatial_job_claim
+  ON nf_spatial_cad_jobs(kind, status, lease_expires_at, created_at);
+
+CREATE TABLE IF NOT EXISTS nf_manufacturing_lineage_invalidations (
+  id TEXT PRIMARY KEY,
+  lineage_id TEXT NOT NULL,
+  project_id TEXT NOT NULL,
+  prior_document_version_id TEXT NOT NULL,
+  replacement_document_version_id TEXT NOT NULL,
+  reason TEXT NOT NULL,
+  invalidated_at BIGINT NOT NULL,
+  UNIQUE(lineage_id, replacement_document_version_id)
+);
+CREATE INDEX IF NOT EXISTS idx_mfg_invalidation_lineage
+  ON nf_manufacturing_lineage_invalidations(lineage_id, invalidated_at DESC);
+
+CREATE TABLE IF NOT EXISTS nf_manufacturing_inspection_receipts (
+  receipt_id TEXT PRIMARY KEY,
+  order_id TEXT NOT NULL,
+  lineage_id TEXT NOT NULL,
+  artifact_id TEXT NOT NULL,
+  artifact_sha256 TEXT NOT NULL,
+  document_version_id TEXT NOT NULL,
+  release_package_sha256 TEXT NOT NULL,
+  inspection_report_sha256 TEXT NOT NULL,
+  receipt_sha256 TEXT NOT NULL UNIQUE,
+  result TEXT NOT NULL,
+  inspector_id TEXT NOT NULL,
+  inspected_at BIGINT NOT NULL,
+  submitted_by TEXT NOT NULL,
+  raw_json TEXT NOT NULL,
+  created_at BIGINT NOT NULL,
+  UNIQUE(order_id, inspection_report_sha256)
+);
+CREATE INDEX IF NOT EXISTS idx_mfg_inspection_order
+  ON nf_manufacturing_inspection_receipts(order_id, created_at DESC);
+
+-- Project/tenant-scoped immutable artifacts and resumable R2 upload sessions.
+CREATE TABLE IF NOT EXISTS nf_artifact_upload_sessions (
+  id TEXT PRIMARY KEY,
+  project_id TEXT NOT NULL,
+  tenant_id TEXT NOT NULL,
+  user_id TEXT NOT NULL,
+  object_key TEXT NOT NULL UNIQUE,
+  filename TEXT NOT NULL,
+  media_type TEXT NOT NULL,
+  format TEXT NOT NULL,
+  expected_size BIGINT NOT NULL,
+  expected_sha256 TEXT NOT NULL,
+  shape_identity_sha256 TEXT,
+  status TEXT NOT NULL,
+  created_at BIGINT NOT NULL,
+  expires_at BIGINT NOT NULL,
+  completed_at BIGINT,
+  artifact_id TEXT,
+  failure_code TEXT,
+  upload_mode TEXT NOT NULL DEFAULT 'SINGLE_PUT',
+  storage_upload_id TEXT,
+  part_size BIGINT,
+  total_parts INTEGER,
+  multipart_completed_at BIGINT
+);
+CREATE INDEX IF NOT EXISTS idx_nf_artifact_upload_project
+  ON nf_artifact_upload_sessions(project_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_nf_artifact_upload_owner
+  ON nf_artifact_upload_sessions(user_id, status, expires_at);
+CREATE TABLE IF NOT EXISTS nf_cad_artifacts (
+  id TEXT PRIMARY KEY,
+  contract_version TEXT NOT NULL,
+  project_id TEXT NOT NULL,
+  tenant_id TEXT NOT NULL,
+  object_key TEXT NOT NULL UNIQUE,
+  media_type TEXT NOT NULL,
+  format TEXT NOT NULL,
+  byte_length BIGINT NOT NULL,
+  content_sha256 TEXT NOT NULL,
+  shape_identity_sha256 TEXT,
+  producer_build_id TEXT NOT NULL,
+  kernel_identity TEXT NOT NULL,
+  created_by TEXT NOT NULL,
+  created_at BIGINT NOT NULL,
+  immutability_state TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_nf_cad_artifact_project
+  ON nf_cad_artifacts(project_id, created_at DESC);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_nf_cad_artifact_project_hash
+  ON nf_cad_artifacts(project_id, content_sha256);
+
+-- Durable transport remains non-authoritative; Core records job authorization
+-- and accepted compute receipts in the relational system of record.
+CREATE TABLE IF NOT EXISTS nf_cad_job_registry (
+  job_id TEXT PRIMARY KEY,
+  tenant_id TEXT NOT NULL,
+  project_id TEXT NOT NULL,
+  kind TEXT NOT NULL,
+  message_sha256 TEXT NOT NULL,
+  message_json TEXT NOT NULL,
+  status TEXT NOT NULL,
+  requested_by TEXT NOT NULL,
+  created_at BIGINT NOT NULL,
+  updated_at BIGINT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_nf_cad_job_registry_project
+  ON nf_cad_job_registry(project_id, created_at DESC);
+CREATE TABLE IF NOT EXISTS nf_cad_job_receipts (
+  job_id TEXT PRIMARY KEY,
+  message_sha256 TEXT NOT NULL,
+  receipt_sha256 TEXT NOT NULL UNIQUE,
+  receipt_json TEXT NOT NULL,
+  execution TEXT NOT NULL,
+  accepted_at BIGINT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS nf_cad_job_output_intents (
+  job_id TEXT NOT NULL,
+  artifact_id TEXT NOT NULL,
+  object_key TEXT NOT NULL UNIQUE,
+  intent_sha256 TEXT NOT NULL,
+  intent_json TEXT NOT NULL,
+  status TEXT NOT NULL,
+  created_at BIGINT NOT NULL,
+  committed_at BIGINT,
+  committed_artifact_id TEXT,
+  PRIMARY KEY(job_id, artifact_id)
+);
+
+-- Revision-bound Assembly -> Drawing handoffs. Payload JSON is canonicalized,
+-- content-hashed, immutable, tenant/project scoped, and expires automatically.
+CREATE TABLE IF NOT EXISTS nf_assembly_drawing_handoffs (
+  id TEXT PRIMARY KEY,
+  project_id TEXT NOT NULL,
+  tenant_id TEXT NOT NULL,
+  source_revision INTEGER NOT NULL,
+  source_content_sha256 TEXT NOT NULL,
+  payload_sha256 TEXT NOT NULL,
+  payload_json TEXT NOT NULL,
+  byte_length BIGINT NOT NULL,
+  created_by TEXT NOT NULL,
+  created_at BIGINT NOT NULL,
+  expires_at BIGINT NOT NULL,
+  immutability_state TEXT NOT NULL,
+  UNIQUE(project_id, source_revision, payload_sha256)
+);
+CREATE INDEX IF NOT EXISTS idx_nf_assembly_drawing_handoff_lookup
+  ON nf_assembly_drawing_handoffs(project_id, tenant_id, id);
+CREATE INDEX IF NOT EXISTS idx_nf_assembly_drawing_handoff_expiry
+  ON nf_assembly_drawing_handoffs(expires_at);
+
+-- Passwordless admin access. Email addresses are explicitly allow-listed,
+-- verification codes are one-time and short-lived, and sessions are revocable.
+CREATE TABLE IF NOT EXISTS nf_admin_access_emails (
+  id TEXT PRIMARY KEY,
+  email TEXT NOT NULL UNIQUE,
+  active INTEGER NOT NULL DEFAULT 1 CHECK (active IN (0, 1)),
+  added_by TEXT,
+  created_at BIGINT NOT NULL,
+  updated_at BIGINT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_nf_admin_access_active
+  ON nf_admin_access_emails(active, created_at);
+
+CREATE TABLE IF NOT EXISTS nf_admin_login_codes (
+  id TEXT PRIMARY KEY,
+  email TEXT NOT NULL,
+  code_hash TEXT NOT NULL,
+  ip_hash TEXT NOT NULL,
+  attempts INTEGER NOT NULL DEFAULT 0,
+  expires_at BIGINT NOT NULL,
+  used_at BIGINT,
+  created_at BIGINT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_nf_admin_login_code_lookup
+  ON nf_admin_login_codes(email, used_at, expires_at, created_at);
+CREATE INDEX IF NOT EXISTS idx_nf_admin_login_code_expiry
+  ON nf_admin_login_codes(expires_at);
+
+CREATE TABLE IF NOT EXISTS nf_admin_sessions (
+  sid_hash TEXT PRIMARY KEY,
+  email TEXT NOT NULL,
+  ip_hash TEXT NOT NULL,
+  user_agent TEXT,
+  expires_at BIGINT NOT NULL,
+  revoked_at BIGINT,
+  created_at BIGINT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_nf_admin_session_email
+  ON nf_admin_sessions(email, revoked_at, expires_at);
+CREATE INDEX IF NOT EXISTS idx_nf_admin_session_expiry
+  ON nf_admin_sessions(expires_at);

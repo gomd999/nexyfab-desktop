@@ -13,7 +13,10 @@ import { getAuthUser } from '@/lib/auth-middleware';
 import { rateLimit } from '@/lib/rate-limit';
 import { getDbAdapter } from '@/lib/db-adapter';
 import { resolveProjectAccess } from '@/lib/nfProjectAccess';
+import { boundedJsonError, readBoundedJson } from '@/lib/boundedJsonBody';
 import type { CollabEventType, CollabEvent } from './types';
+import type { AuthUser } from '@/lib/auth-middleware';
+const MAX_COLLAB_EVENT_BODY_BYTES = 2 * 1024 * 1024;
 
 // ─── Room ID validation ───────────────────────────────────────────────────────
 // Two formats are accepted:
@@ -25,7 +28,10 @@ const PROJECT_PREFIX = 'project:';
 const ADHOC_ROOM_RE = /^[A-Za-z0-9_-]{8,128}$/;
 const PROJECT_ID_RE = /^[A-Za-z0-9_-]{4,128}$/;
 
-async function authorizeRoom(roomId: string, userId: string): Promise<{ ok: true } | { ok: false; status: number; error: string }> {
+async function authorizeRoom(
+  roomId: string,
+  authUser: Pick<AuthUser, 'userId' | 'orgIds' | 'activeOrgId' | 'orgContextStatus'>,
+): Promise<{ ok: true } | { ok: false; status: number; error: string }> {
   if (typeof roomId !== 'string' || roomId.length === 0) {
     return { ok: false, status: 400, error: 'roomId is required' };
   }
@@ -34,7 +40,7 @@ async function authorizeRoom(roomId: string, userId: string): Promise<{ ok: true
     if (!PROJECT_ID_RE.test(projectId)) {
       return { ok: false, status: 400, error: 'Invalid project room id' };
     }
-    const access = await resolveProjectAccess(getDbAdapter(), projectId, userId);
+    const access = await resolveProjectAccess(getDbAdapter(), projectId, authUser);
     if (!access) return { ok: false, status: 403, error: 'Not a member of this project' };
     return { ok: true };
   }
@@ -101,7 +107,7 @@ export async function GET(request: NextRequest): Promise<Response> {
   const roomId = url.searchParams.get('roomId') ?? '';
   const userId = authUser.userId;
 
-  const auth = await authorizeRoom(roomId, userId);
+  const auth = await authorizeRoom(roomId, authUser);
   if (!auth.ok) return Response.json({ error: auth.error }, { status: auth.status });
 
   let thisClient: SSEClient;
@@ -178,15 +184,16 @@ export async function POST(request: NextRequest): Promise<Response> {
 
   let body: { roomId?: string; event?: Partial<CollabEvent> };
   try {
-    body = await request.json();
-  } catch {
+    body = await readBoundedJson<{ roomId?: string; event?: Partial<CollabEvent> }>(request, MAX_COLLAB_EVENT_BODY_BYTES);
+  } catch (error) {
+    if (boundedJsonError(error)?.code === 'PAYLOAD_TOO_LARGE') return Response.json({ error: 'Request too large', code: 'PAYLOAD_TOO_LARGE' }, { status: 413 });
     return Response.json({ error: 'Invalid JSON' }, { status: 400 });
   }
 
   const { roomId = '', event } = body;
   const userId = authUser.userId;
 
-  const auth = await authorizeRoom(roomId, userId);
+  const auth = await authorizeRoom(roomId, authUser);
   if (!auth.ok) return Response.json({ error: auth.error }, { status: auth.status });
 
   if (!event?.type) {

@@ -7,8 +7,10 @@ import { sanitizeFileName } from '@/lib/file-validation';
 import { getStorage } from '@/lib/storage';
 import { isOwnedDirectStepKey, validateDirectStepUpload } from '@/lib/brep-bridge/directStepUploadPolicy';
 import { rateLimit } from '@/lib/rate-limit';
+import { boundedJsonError, readBoundedJson } from '@/lib/boundedJsonBody';
 
 export const dynamic = 'force-dynamic';
+const MAX_JSON_BODY_BYTES = 16 * 1024;
 
 type RequestBody = {
   action?: unknown;
@@ -23,7 +25,15 @@ export async function POST(req: NextRequest) {
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   const limited = rateLimit(`direct-step-upload:${user.userId}`, 10, 60 * 60_000);
   if (!limited.allowed) return NextResponse.json({ error: 'Too many large-file requests' }, { status: 429 });
-  const body = await req.json().catch(() => ({})) as RequestBody;
+  let body: RequestBody;
+  try {
+    body = await readBoundedJson<RequestBody>(req, MAX_JSON_BODY_BYTES);
+  } catch (error) {
+    if (boundedJsonError(error)?.code === 'PAYLOAD_TOO_LARGE') {
+      return NextResponse.json({ error: 'Request body too large', code: 'PAYLOAD_TOO_LARGE' }, { status: 413 });
+    }
+    body = {};
+  }
   const filename = sanitizeFileName(typeof body.filename === 'string' ? body.filename : '');
   const sizeBytes = Number(body.sizeBytes);
   const policy = validateDirectStepUpload(filename, sizeBytes);

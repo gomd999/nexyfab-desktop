@@ -3,6 +3,7 @@
 import React from 'react';
 import { usePathname } from 'next/navigation';
 import { richText } from '@/lib/richText';
+import { loc } from '@/lib/i18n/loc';
 
 const dict = {
     ko: {
@@ -259,6 +260,22 @@ export default function CompanyIntroductionPage() {
     const langCode = pathname.split('/')[1] || 'en';
     const lang = ['en', 'kr', 'ja', 'cn', 'es', 'ar'].includes(langCode) ? langCode : 'en';
     const t = dict[lang === 'cn' ? 'zh' : lang === 'kr' ? 'ko' : lang as keyof typeof dict];
+    const ecoDescription = loc(lang, {
+        ko: '제조업 난제를 해결하는 산업 AI 연구 집단',
+        en: 'An industrial AI research group solving manufacturing challenges',
+        ja: '製造業の課題を解決する産業AI研究グループ',
+        zh: '解决制造业难题的产业 AI 研究团队',
+        es: 'Grupo de investigación de IA industrial que resuelve retos de fabricación',
+        ar: 'مجموعة أبحاث في الذكاء الاصطناعي الصناعي لحل تحديات التصنيع',
+    });
+    const accentDescription = loc(lang, {
+        ko: '독자적 산업 데이터 기반\n지능형 매칭 엔진',
+        en: 'Proprietary industrial data\nIntelligent matching engine',
+        ja: '独自の産業データ基盤\nインテリジェントマッチングエンジン',
+        zh: '自主产业数据基础\n智能匹配引擎',
+        es: 'Datos industriales propios\nMotor de emparejamiento inteligente',
+        ar: 'بيانات صناعية مملوكة\nمحرك مطابقة ذكي',
+    });
 
     React.useEffect(() => {
         const observerOptions = {
@@ -310,7 +327,7 @@ export default function CompanyIntroductionPage() {
                             <div className="ci-eco-glow"></div>
                             <div className="ci-eco-node-content">
                                 <h4>Nexysys</h4>
-                                <p><strong style={{color:'#0056ff'}}>AI Research Group</strong><br/>제조업 난제를 해결하는 산업 AI 연구 집단</p>
+                                <p><strong style={{color:'#0056ff'}}>AI Research Group</strong><br/>{ecoDescription}</p>
                             </div>
                         </div>
                         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px', color: '#9ca3af', fontSize: '12px' }}>
@@ -406,7 +423,7 @@ export default function CompanyIntroductionPage() {
                         <div className="ci-bento-card ci-bento-accent">
                             <div className="ci-bento-accent-content">
                                 <h3>AI-Driven</h3>
-                                <p>독자적 산업 데이터 기반<br/>지능형 매칭 엔진</p>
+                                <p>{accentDescription}</p>
                                 <div className="bento-accent-circles">
                                     <div className="cac1"></div><div className="cac2"></div><div className="cac3"></div>
                                 </div>

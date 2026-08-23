@@ -1,0 +1,88 @@
+{
+  "schema": "nexyfab.platform-wave-verification.v1",
+  "capturedAt": "2026-08-13T18:22:00+09:00",
+  "overallState": "PARTIAL",
+  "releaseDecision": "HOLD",
+  "waves": {
+    "wave0": {
+      "implementation": "PASS",
+      "backup": {
+        "path": "backups/wave0-260813-1745/candidate-worktree-files.tar.gz",
+        "fileCount": 989,
+        "byteLength": 52152727,
+        "sha256": "916b6288a738901a2d9b56f02d849477c891e12551dcd3e1fc612e85d5067c92"
+      },
+      "chromeDevToolsMcp": "PASS",
+      "figmaMcpIdentity": "PASS_VIEW_SEAT",
+      "figmaEditableFileE2e": "NOT_RUN"
+    },
+    "wave1": {
+      "implementation": "PASS",
+      "architectureValidator": "PASS_11_SERVICES_5_DATASTORES_69_API_GROUPS_22_CRON_GROUPS_6_DOMAINS_4_CONTRACTS",
+      "contractTests": "PASS_2_OF_2",
+      "typecheck": "PASS",
+      "productionBuild": "PASS_290_OF_290_STATIC_PAGES",
+      "precisionCadRegression": "PASS_128_OF_128",
+      "browserConsole": "PASS_0_ERRORS_0_WARNINGS_0_ISSUES",
+      "coldNavigation": "PASS_AFTER_INITIAL_120S_TIMEOUT_TOTAL_2_3_MINUTES"
+    },
+    "wave2": {
+      "implementation": "PASS_WITH_EXTERNAL_NOT_RUN",
+      "edgeGateway": {
+        "code": "PASS",
+        "unitTests": "PASS",
+        "wranglerDryRun": "PASS_WRANGLER_4_122_0_5_00_KIB",
+        "cloudflareDeployment": "NOT_RUN",
+        "dnsCutover": "NOT_RUN"
+      },
+      "artifactUpload": {
+        "projectAndTenantIsolation": "PASS_UNIT",
+        "browserIncrementalSha256": "PASS_UNIT",
+        "singlePut": "PASS_UNIT",
+        "multipartResume": "PASS_UNIT",
+        "contiguousPartAndSizeGate": "PASS_UNIT",
+        "serverStreamSha256": "PASS_UNIT",
+        "immutableArtifactCommit": "PASS_UNIT",
+        "r2LiveCredentials": "NOT_CONFIGURED",
+        "r2LiveUpload": "NOT_RUN",
+        "r2CorsApplication": "NOT_RUN"
+      },
+      "targetedRegression": "PASS_20_OF_20",
+      "typecheck": "PASS",
+      "lint": "PASS"
+    }
+  },
+  "observedFailuresAndWarnings": [
+    {
+      "state": "FAIL_THEN_PASS",
+      "check": "vitest sandbox launch",
+      "detail": "Initial Windows sandbox execution failed with spawn EPERM; approved rerun executed and passed. The initial failure is not waived."
+    },
+    {
+      "state": "FAIL_THEN_PASS",
+      "check": "production build sandbox launch",
+      "detail": "Initial build failed with spawn EPERM; approved rerun completed successfully."
+    },
+    {
+      "state": "WARN",
+      "check": "vitest configuration",
+      "detail": "Vite warns that ESM syntax in a CommonJS-loaded vitest.config.ts will be unsupported by a future native config loader."
+    },
+    {
+      "state": "WARN",
+      "check": "next build",
+      "detail": "Edge Runtime deprecation warning remains."
+    },
+    {
+      "state": "WARN",
+      "check": "rate limiting",
+      "detail": "REDIS_URL is unset locally; local verification used the in-memory fallback."
+    }
+  ],
+  "nonClaims": [
+    "No Cloudflare production deployment was performed.",
+    "No production R2 object was uploaded.",
+    "No DNS or live route was changed.",
+    "Unit PASS is not promoted to commercial or release PASS."
+  ]
+}

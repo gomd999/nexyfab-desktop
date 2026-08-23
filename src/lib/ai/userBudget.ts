@@ -1,8 +1,9 @@
 /**
- * Per-user daily cost gate.
+ * Per-workspace daily cost gate.
  *
  * Sums `costCents` from `nf_usage_events` (metric='prompt_call') over the last
- * 24h for one userId. If the total exceeds `COST_BUDGET_USD_PER_USER_DAILY`,
+ * 24h for one personal or organization workspace. If the total exceeds
+ * `COST_BUDGET_USD_PER_USER_DAILY`,
  * the gate denies further AI calls until the rolling 24h window drops back
  * below the limit.
  *
@@ -44,12 +45,12 @@ interface CachedUsage {
 
 const cache = new Map<string, CachedUsage>();
 
-function setCache(userId: string, value: CachedUsage): void {
-  if (cache.size >= CACHE_MAX_ENTRIES && !cache.has(userId)) {
+function setCache(scopeKey: string, value: CachedUsage): void {
+  if (cache.size >= CACHE_MAX_ENTRIES && !cache.has(scopeKey)) {
     const oldest = cache.keys().next().value;
     if (oldest !== undefined) cache.delete(oldest);
   }
-  cache.set(userId, value);
+  cache.set(scopeKey, value);
 }
 
 // ─── Redis backend (optional) ───────────────────────────────────────────────
@@ -79,11 +80,11 @@ async function getRedis(): Promise<RedisClient | null> {
   }
 }
 
-async function readFromRedis(userId: string): Promise<CachedUsage | null> {
+async function readFromRedis(scopeKey: string): Promise<CachedUsage | null> {
   const r = await getRedis();
   if (!r) return null;
   try {
-    const raw = await r.get(REDIS_KEY_PREFIX + userId);
+    const raw = await r.get(REDIS_KEY_PREFIX + scopeKey);
     if (!raw) return null;
     const parsed = JSON.parse(raw) as CachedUsage;
     if (typeof parsed.cents !== 'number') return null;
@@ -94,12 +95,12 @@ async function readFromRedis(userId: string): Promise<CachedUsage | null> {
   }
 }
 
-async function writeToRedis(userId: string, value: CachedUsage): Promise<void> {
+async function writeToRedis(scopeKey: string, value: CachedUsage): Promise<void> {
   const r = await getRedis();
   if (!r) return;
   try {
     await r.set(
-      REDIS_KEY_PREFIX + userId,
+      REDIS_KEY_PREFIX + scopeKey,
       JSON.stringify(value),
       'EX',
       Math.max(1, Math.ceil(CACHE_TTL_MS / 1000)),
@@ -113,13 +114,14 @@ interface UsageRow { metadata: string | null; created_at: number }
 
 interface CallMeta { costCents?: number }
 
-async function loadDailyCost(userId: string): Promise<{ cents: number; oldestEventMs: number | null }> {
+async function loadDailyCost(userId: string, orgId?: string | null): Promise<{ cents: number; oldestEventMs: number | null }> {
   const db = getDbAdapter();
+  await db.execute('ALTER TABLE nf_usage_events ADD COLUMN org_id TEXT').catch(() => {});
   const since = Date.now() - WINDOW_MS;
   const rows = await db
     .queryAll<UsageRow>(
-      `SELECT metadata, created_at FROM nf_usage_events WHERE user_id = ? AND metric = 'prompt_call' AND created_at > ? LIMIT 5000`,
-      userId,
+      `SELECT metadata, created_at FROM nf_usage_events WHERE ${orgId ? 'org_id = ?' : 'user_id = ? AND org_id IS NULL'} AND metric = 'prompt_call' AND created_at > ? LIMIT 5000`,
+      orgId ?? userId,
       since,
     )
     .catch(() => [] as UsageRow[]);
@@ -163,10 +165,10 @@ export interface UserBudgetCheck {
 }
 
 /**
- * Returns ok=false when the user has exceeded the configured per-user daily
- * budget. With no limit configured, returns ok=true unconditionally.
+ * Returns ok=false when the active workspace has exceeded the configured daily
+ * budget. Personal and organization workspaces never share cache or DB totals.
  */
-export async function checkUserBudget(userId: string): Promise<UserBudgetCheck> {
+export async function checkUserBudget(userId: string, orgId?: string | null): Promise<UserBudgetCheck> {
   const limitUsd = parseFloat(process.env.COST_BUDGET_USD_PER_USER_DAILY ?? '');
   if (!Number.isFinite(limitUsd) || limitUsd <= 0) {
     return {
@@ -195,27 +197,28 @@ export async function checkUserBudget(userId: string): Promise<UserBudgetCheck> 
   };
 
   const now = Date.now();
+  const scopeKey = orgId ? `org:${orgId}` : `user:${userId}`;
 
   // 1. Hot path: in-process cache (~1ms).
-  const local = cache.get(userId);
+  const local = cache.get(scopeKey);
   if (local && local.expiresAt > now) {
     return buildResult(local.cents, local.oldestEventMs, 'cache');
   }
 
   // 2. Warm path: shared Redis cache when configured. A peer instance may
   //    have just queried for this user — we get to skip the DB hit.
-  const remote = await readFromRedis(userId);
+  const remote = await readFromRedis(scopeKey);
   if (remote && remote.expiresAt > now) {
-    setCache(userId, remote);  // populate local for subsequent calls
+    setCache(scopeKey, remote);  // populate local for subsequent calls
     return buildResult(remote.cents, remote.oldestEventMs, 'cache');
   }
 
   // 3. Cold path: DB scan. Populate both caches.
-  const { cents, oldestEventMs } = await loadDailyCost(userId);
+  const { cents, oldestEventMs } = await loadDailyCost(userId, orgId);
   const entry: CachedUsage = { cents, oldestEventMs, expiresAt: now + CACHE_TTL_MS };
-  setCache(userId, entry);
+  setCache(scopeKey, entry);
   // Fire-and-forget: never block the response on a cache write.
-  void writeToRedis(userId, entry);
+  void writeToRedis(scopeKey, entry);
   return buildResult(cents, oldestEventMs, 'db');
 }
 

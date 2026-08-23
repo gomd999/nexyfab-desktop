@@ -1,0 +1,104 @@
+{
+  "schema": "nexyfab.windows-agent-sidecar-release.v1",
+  "generatedAt": "2026-08-23T00:52:31.760Z",
+  "ok": false,
+  "status": "HOLD",
+  "releaseEligible": false,
+  "release": {
+    "buildId": null,
+    "deploymentId": null,
+    "gitHead": "3d6ba1ec461169d9d331b939e432483c3953b752"
+  },
+  "artifacts": {
+    "unsignedBinary": null,
+    "unsignedSha256Manifest": null,
+    "signedBinary": null,
+    "signedSha256Manifest": null,
+    "binary": null,
+    "sha256Manifest": null
+  },
+  "evidence": {
+    "unsignedSeaCreated": "NOT_RUN",
+    "signedSeaCreated": "NOT_RUN",
+    "sha256ManifestAndTamperCheck": "NOT_RUN"
+  },
+  "parity": {
+    "status": "NOT_RUN",
+    "executableInvoked": false,
+    "mcpToolsExact": false,
+    "cliCommandsExact": false,
+    "representativeToolCalls": 0
+  },
+  "signing": {
+    "status": "NOT_RUN",
+    "authenticodeVerified": false,
+    "certificateSha256": null,
+    "timestampAuthority": null,
+    "timestampAt": null
+  },
+  "installer": {
+    "status": "NOT_RUN",
+    "disposableVm": false,
+    "install": "NOT_RUN",
+    "upgrade": "NOT_RUN",
+    "uninstall": "NOT_RUN",
+    "rollback": "NOT_RUN"
+  },
+  "rawEvidence": {
+    "readinessReceipt": {
+      "path": "docs/evidence/agent-sidecar/windows-sea-readiness-260823.json",
+      "bytes": 2382,
+      "sha256": "b759c792c11ddd3248ee4f620850c665d81852f8e033f1f1d39c9204b5b45668"
+    },
+    "parity": null,
+    "signing": null,
+    "installer": null,
+    "attestation": null,
+    "attestationSignature": null,
+    "attestationPublicKey": null
+  },
+  "sourceBindings": [
+    {
+      "path": "scripts/build-agent-sidecar.mjs",
+      "bytes": 10112,
+      "sha256": "c3c778dfe398f8bb7bfde8bc932eba351d9ee1dcc570c3726902e60eedfe91ca"
+    },
+    {
+      "path": "scripts/agent-sidecar/windows-sea-readiness.mjs",
+      "bytes": 11949,
+      "sha256": "c185074834a7d31abe94c451f7e20f3e7906abd78a435fd0c49923bb7018fddc"
+    },
+    {
+      "path": "scripts/agent-sidecar/windows-sea-release-evidence.mjs",
+      "bytes": 31336,
+      "sha256": "820b7d093888d6854a0d9133874fb7fdf259a467ec74d8aa26a396cd3943dfb1"
+    },
+    {
+      "path": "scripts/drawing-to-3d/agent-sidecar-entry.mjs",
+      "bytes": 307,
+      "sha256": "e315a9d4fb1064f89c3ac518774239822a5a4f92402aa178de2f9ce35ae075c2"
+    },
+    {
+      "path": "scripts/drawing-to-3d/installer-core-agent-server.mjs",
+      "bytes": 18511,
+      "sha256": "89061fc4aaa5f7d6689a2a95b0dbe8db2f69980045fa1952a89167f4679b02e2"
+    },
+    {
+      "path": "scripts/drawing-to-3d/capability-surface-manifest.mjs",
+      "bytes": 3031,
+      "sha256": "3e4e80b3815a306132bbf2c37ca750fc87d6c94cc286ea4aa7a5d55a697c90fd"
+    }
+  ],
+  "blockers": [
+    "release_binding_mismatch",
+    "sea_unsigned_binary_invalid",
+    "sea_signed_binary_invalid",
+    "sea_manifest_binding_invalid",
+    "sea_reproducible_artifact_not_verified",
+    "sea_mcp_cli_parity_not_verified",
+    "authenticode_not_verified",
+    "installer_lifecycle_not_verified",
+    "trusted_release_attestation_invalid"
+  ],
+  "receiptSha256": "22ad622a441c969cd6b27853b6a553a73f7d9fb51a7bb3d79ec62576889162a7"
+}

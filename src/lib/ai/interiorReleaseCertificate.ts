@@ -16,7 +16,7 @@ export interface InteriorReleaseCertificateInput {
   lighting?: BoundInteriorEvidence<InteriorAxisEvidence>; acoustics?: BoundInteriorEvidence<InteriorAxisEvidence>;
   ifcRoundtrip?: BoundInteriorEvidence<InteriorAxisEvidence>; deliverables?: BoundInteriorEvidence<InteriorDeliverableEvidence>; repair?: BoundInteriorEvidence<InteriorAxisEvidence>;
 }
-export interface InteriorReleaseCertificate { schema: 'nexyfab.interior-release-certificate.v1'; workspaceRevision: number; modelContentHash: string; status: InteriorEvidenceStatus; releaseReady: boolean; assertions: DomainAccuracyAssertionResult[]; issues: string[] }
+export interface InteriorReleaseCertificate { schema: 'nexyfab.interior-release-certificate.v1'; workspaceRevision: number; modelContentHash: string; status: InteriorEvidenceStatus; internalReady: boolean; releaseReady: false; assertions: DomainAccuracyAssertionResult[]; issues: string[] }
 
 const SHA256 = /^[a-f0-9]{64}$/;
 const rank: Record<InteriorEvidenceStatus, number> = { pass: 0, not_run: 1, fail: 2 };
@@ -63,5 +63,5 @@ export function buildInteriorReleaseCertificate(input: InteriorReleaseCertificat
   ];
   const assertions = merge(values), issues = [...workspaceIssues, ...documentIssues, ...architectureIssues, ...assertions.filter(item => item.status !== 'pass').map(item => `${item.axis}:${item.status}`)];
   const status: InteriorEvidenceStatus = assertions.length !== 25 ? 'fail' : assertions.some(item => item.status === 'fail') ? 'fail' : assertions.some(item => item.status === 'not_run') ? 'not_run' : 'pass';
-  return { schema: 'nexyfab.interior-release-certificate.v1', workspaceRevision: input.workspace.workspace.revision, modelContentHash: input.workspace.geometry.contentHash, status, releaseReady: status === 'pass', assertions, issues };
+  return { schema: 'nexyfab.interior-release-certificate.v1', workspaceRevision: input.workspace.workspace.revision, modelContentHash: input.workspace.geometry.contentHash, status, internalReady: status === 'pass', releaseReady: false, assertions, issues };
 }

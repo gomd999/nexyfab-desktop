@@ -1,5 +1,11 @@
 # NexyFab 상업화 준비도 평가 및 실행 계획
 
+> **Historical snapshot — superseded for current status.** 현재 기계 제품은 외부
+> 상용 CAD C4와 외부 CAD 원본 확보를 기본 출시 조건으로 사용하지 않는다. 최신 구현
+> 수치, 자체 실증 정책과 완료 계획은
+> `docs/strategy/ai-mechanical-cad-current-status-and-completion-plan-260811.md`를
+> 따른다. 이 문서의 외부 worker·holdout 수치는 선택적 상호운용성 트랙의 이력이다.
+
 > **최신 판정 우선:** 이 문서의 기존 native-worker 수치와 P0-2는 과거 외부 CAD 상호운용성 트랙 기록이다. 기본 상품의 현재 구현·판정은 `docs/CAD_INDEPENDENT_IMPLEMENTATION_AND_COMMERCIAL_REVIEW_260809.md`를 우선한다. SOLIDWORKS 등 7개 외부 CAD의 설치·라이선스는 기본 서비스 출시 조건이 아니다.
 
 - 기준일: 2026-08-09

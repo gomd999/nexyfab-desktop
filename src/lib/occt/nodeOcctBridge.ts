@@ -20,7 +20,7 @@ import type {
   OcctFaceAdjacencySummary,
   OcctTypeHistogram,
 } from "./bridge";
-import { ANALYTIC_CIRCULAR_PRISM_WARNING } from "./bridge";
+import { ANALYTIC_CIRCULAR_PRISM_WARNING, ANALYTIC_CYLINDER_WARNING } from "./bridge";
 import type {
   OcctShape,
   OcctShapeKind,
@@ -192,6 +192,28 @@ function buildCylinder(
   return m
     .inst("BRepPrimAPI_MakeCylinder_3", axis, radius, heightMm)
     .Shape() as OcctInstance;
+}
+
+/** Exact analytic cylinder with an explicit origin and direction. */
+function buildCylinderAt(
+  oc: OcctModule,
+  center: readonly [number, number, number],
+  axis: readonly [number, number, number],
+  radiusMm: number,
+  depthMm: number,
+): OcctInstance {
+  const m = maker(oc);
+  const length = Math.hypot(axis[0], axis[1], axis[2]);
+  if (!center.every(Number.isFinite) || !axis.every(Number.isFinite) || !Number.isFinite(length) || length < 1e-12) {
+    throw new Error("buildCylinderAt requires finite center and non-zero direction");
+  }
+  if (!(Number.isFinite(radiusMm) && radiusMm > 0 && Number.isFinite(depthMm) && depthMm > 0)) {
+    throw new Error("buildCylinderAt requires positive finite radius and depth");
+  }
+  const origin = m.inst("gp_Pnt_3", center[0], center[1], center[2]);
+  const direction = m.inst("gp_Dir_4", axis[0] / length, axis[1] / length, axis[2] / length);
+  const placement = m.inst("gp_Ax2_3", origin, direction);
+  return m.inst("BRepPrimAPI_MakeCylinder_3", placement, radiusMm, depthMm).Shape() as OcctInstance;
 }
 
 /** Total edge count (TopExp_Explorer over TopAbs_EDGE; not deduped). */
@@ -2184,6 +2206,24 @@ export function createNodeOcctBridge(oc: OcctModule): OcctBridge {
         return {
           ok: false,
           error: `buildPrismAt: ${e instanceof Error ? e.message : String(e)}`,
+          warnings: [],
+        };
+      }
+    },
+
+    async buildCylinderAt(
+      center: readonly [number, number, number],
+      axis: readonly [number, number, number],
+      radiusMm: number,
+      depthMm: number,
+    ) {
+      try {
+        const shape = buildCylinderAt(oc, center, axis, radiusMm, depthMm);
+        return result(shape, [ANALYTIC_CYLINDER_WARNING], undefined, "solid");
+      } catch (e) {
+        return {
+          ok: false,
+          error: `buildCylinderAt: ${e instanceof Error ? e.message : String(e)}`,
           warnings: [],
         };
       }

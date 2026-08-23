@@ -37,6 +37,13 @@ import {
   type RebarGroup,
 } from './checks';
 import { chatCompletionConstructionPlanner } from './llmPlanner';
+import {
+  bindConstructionPlan,
+  constructionEvidenceLabel,
+  validateConstructionProvenance,
+  type ConstructionAuthorityEvidence,
+  type ConstructionRevisionBinding,
+} from './provenance';
 
 // ─── IR ──────────────────────────────────────────────────────────────────────
 
@@ -65,6 +72,12 @@ export interface ConstructionPlan {
   budget?: number;
   contingencyFactor?: number;
   earthwork?: { cutBankM3: number; fillCompactedM3: number; compactionFactor?: number; toleranceM3?: number };
+  /** Required for a releasable BOQ/schedule; binds every source object to one revision. */
+  revisionBinding?: ConstructionRevisionBinding;
+  /** Required whenever costLineItems are supplied; no fallback/default price is allowed. */
+  priceEvidence?: ConstructionAuthorityEvidence;
+  /** Required whenever earthwork/site quantities are supplied. */
+  siteEvidence?: ConstructionAuthorityEvidence;
 }
 
 export interface ConstructionArtifacts {
@@ -80,41 +93,53 @@ export interface ConstructionPackage {
   rebarWeightKg: number;
   criticalPathDays: number;
   checks: Array<{ id: string; pass: boolean; metrics: Record<string, number>; basis: string }>;
+  provenance: {
+    revisionBinding: ConstructionRevisionBinding;
+    quantityObjects: ConstructionRevisionBinding['objectBindings'];
+    priceEvidence?: ConstructionAuthorityEvidence;
+    siteEvidence?: ConstructionAuthorityEvidence;
+  };
+  claimBoundary: {
+    actualCostEvidence: 'BOUND' | 'NOT_RUN' | 'NOT_APPLICABLE';
+    actualSiteEvidence: 'BOUND' | 'NOT_RUN' | 'NOT_APPLICABLE';
+    releaseEligible: false;
+  };
   disclaimer: string;
 }
 
 const CONSTRUCTION_DISCLAIMER =
   '검증된 물량·공정 산출 — 물량/공정표는 시공 관리용(법정 날인 무관). 다만 정량화된 ' +
-  '구조부재의 설계는 면허 보유자(구조기술사)의 책임. "대체"가 아닌 코파일럿 산출물.';
+  '구조부재의 설계는 면허 보유자(구조기술사)의 책임. "대체"가 아닌 코파일럿 산출물. ' +
+  'fixture 가격·현장 입력은 데모 전용이며 실제 비용·현장 증거나 release 승인을 의미하지 않는다.';
 
 // ─── planner (deterministic fixture) ──────────────────────────────────────────
 
 /** RC frame bay: concrete + rebar + schedule + formwork + cost + earthwork (all pass). */
 export function rcFramePlan(): ConstructionPlan {
-  return {
+  const plan: ConstructionPlan = {
     planId: 'fixture-rc-frame',
     name: 'RC Frame Bay (2 beams + 2 columns)',
     concreteElements: [
-      { tag: 'beam', count: 2, b_m: 0.3, h_m: 0.6, L_m: 6 }, // 2.16 m³
-      { tag: 'column', count: 2, b_m: 0.4, h_m: 0.4, L_m: 3 }, // 0.96 m³
+      { objectId: 'bim:rc-frame:beam-01', tag: 'beam', count: 2, b_m: 0.3, h_m: 0.6, L_m: 6 }, // 2.16 m³
+      { objectId: 'bim:rc-frame:column-01', tag: 'column', count: 2, b_m: 0.4, h_m: 0.4, L_m: 3 }, // 0.96 m³
     ],
     claimedConcreteM3: 3.5, // required = 3.12·1.05 = 3.276 ≤ 3.5 ✓
     wasteFactor: 0.05,
     rebarGroups: [
-      { tag: 'beam-main', nominalDia_mm: 16, length_m: 12, count: 8 },
-      { tag: 'column-main', nominalDia_mm: 22, length_m: 3, count: 16 },
+      { objectId: 'bim:rc-frame:rebar-beam-main', tag: 'beam-main', nominalDia_mm: 16, length_m: 12, count: 8 },
+      { objectId: 'bim:rc-frame:rebar-column-main', tag: 'column-main', nominalDia_mm: 22, length_m: 3, count: 16 },
     ],
     claimedRebarKg: 295,
     rebarToleranceKg: 10,
     activities: [
-      { id: 'excavate', duration_days: 5 },
-      { id: 'pour', duration_days: 6, predecessors: ['excavate'] },
+      { objectId: 'bim:rc-frame:activity-excavate', id: 'excavate', duration_days: 5 },
+      { objectId: 'bim:rc-frame:activity-pour', id: 'pour', duration_days: 6, predecessors: ['excavate'] },
     ],
     deadlineDays: 15,
     // formwork: beams (2·0.6+0.3)·6=9 ×2 + columns 2(0.4+0.4)·3=4.8 ×2 = 18 + 9.6 = 27.6 m²
     formworkElements: [
-      { type: 'beam', count: 2, b_m: 0.3, h_m: 0.6, L_m: 6 },
-      { type: 'column', count: 2, b_m: 0.4, h_m: 0.4, L_m: 3 },
+      { type: 'beam', objectId: 'bim:rc-frame:formwork-beam-01', count: 2, b_m: 0.3, h_m: 0.6, L_m: 6 },
+      { type: 'column', objectId: 'bim:rc-frame:formwork-column-01', count: 2, b_m: 0.4, h_m: 0.4, L_m: 3 },
     ],
     claimedFormworkM2: 27.6,
     // cost: concrete 3.5×150000 + rebar 295×1500 + formwork 27.6×60000 = 2,623,500 (·1.1 ≤ 3.5M)
@@ -127,7 +152,10 @@ export function rcFramePlan(): ConstructionPlan {
     contingencyFactor: 0.1,
     // earthwork: required bank = 90/0.9 = 100 = cut → net 0 ✓
     earthwork: { cutBankM3: 100, fillCompactedM3: 90, compactionFactor: 0.9 },
+    priceEvidence: { sourceId: 'fixture-price-sheet-rc-frame', sourceSha256: '1'.repeat(64), authority: 'fixture' },
+    siteEvidence: { sourceId: 'fixture-site-balance-rc-frame', sourceSha256: '2'.repeat(64), authority: 'fixture' },
   };
+  return bindConstructionPlan(plan, { workspaceRevisionId: 'fixture-rc-frame:r1', workspaceContentHash: 'a'.repeat(64) });
 }
 
 const CONSTRUCTION_FIXTURES: Record<string, (() => ConstructionPlan) | undefined> = {
@@ -177,6 +205,8 @@ export const constructionModule: DomainModule<
     if (!plan.planId) return 'plan has no planId';
     if (plan.concreteElements.length === 0) return 'plan has no concrete elements';
     if (plan.activities.length === 0) return 'plan has no schedule activities';
+    const provenanceIssues = validateConstructionProvenance(plan);
+    if (provenanceIssues.length > 0) return `provenance incomplete: ${provenanceIssues.join(', ')}`;
     return null;
   },
 
@@ -190,6 +220,17 @@ export const constructionModule: DomainModule<
 
   gates(plan) {
     const gates: DomainGateResult[] = [
+      (() => {
+        const issues = validateConstructionProvenance(plan);
+        return {
+          id: 'provenance:binding',
+          kind: 'provenance',
+          pass: issues.length === 0,
+          metrics: { bindingValid: issues.length === 0 ? 1 : 0, issueCount: issues.length },
+          ...(issues.length > 0 ? { reason: issues.join(', ') } : {}),
+          notes: [`revision-bound quantity/schedule objects; prices=${constructionEvidenceLabel(plan.priceEvidence)}; site=${constructionEvidenceLabel(plan.siteEvidence)}`],
+        };
+      })(),
       safeGate('quantity', 'concrete', () =>
         checkConcreteVolumeTakeoff({
           elements: plan.concreteElements,
@@ -296,6 +337,17 @@ export const constructionModule: DomainModule<
       rebarWeightKg: artifacts.rebarWeightKg,
       criticalPathDays: artifacts.criticalPathDays,
       checks: gates.map((g) => ({ id: g.id, pass: g.pass, metrics: g.metrics, basis: g.notes[0] ?? '' })),
+      provenance: {
+        revisionBinding: plan.revisionBinding!,
+        quantityObjects: plan.revisionBinding!.objectBindings,
+        ...(plan.priceEvidence ? { priceEvidence: plan.priceEvidence } : {}),
+        ...(plan.siteEvidence ? { siteEvidence: plan.siteEvidence } : {}),
+      },
+      claimBoundary: {
+        actualCostEvidence: !plan.costLineItems ? 'NOT_APPLICABLE' : 'NOT_RUN',
+        actualSiteEvidence: !plan.earthwork ? 'NOT_APPLICABLE' : 'NOT_RUN',
+        releaseEligible: false,
+      },
       disclaimer: CONSTRUCTION_DISCLAIMER,
     };
   },

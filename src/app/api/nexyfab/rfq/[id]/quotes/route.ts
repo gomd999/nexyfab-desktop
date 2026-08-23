@@ -6,8 +6,10 @@ import { createNotification } from '@/app/lib/notify';
 import { sendEmail } from '@/lib/nexyfab-email';
 import { randomBytes } from 'crypto';
 import { normPartnerEmail } from '@/lib/partner-factory-access';
+import { boundedJsonError, readBoundedJson } from '@/lib/boundedJsonBody';
 
 const DAY = 86_400_000;
+const RFQ_QUOTE_ACTION_JSON_BYTES = 64 * 1024;
 
 export const dynamic = 'force-dynamic';
 
@@ -105,11 +107,16 @@ export async function PATCH(
   );
   if (!rfq) return NextResponse.json({ error: 'RFQ not found' }, { status: 404 });
 
-  const body = await req.json() as {
-    quoteId: string;
-    action: 'accept' | 'reject';
-  };
-  if (!body.quoteId || !['accept', 'reject'].includes(body.action)) {
+  let body: { quoteId?: string; action?: 'accept' | 'reject' } = {};
+  try {
+    body = await readBoundedJson(req, RFQ_QUOTE_ACTION_JSON_BYTES);
+  } catch (error) {
+    const bodyError = boundedJsonError(error);
+    if (bodyError?.code === 'PAYLOAD_TOO_LARGE') {
+      return NextResponse.json({ error: 'Request body too large' }, { status: bodyError.status });
+    }
+  }
+  if (!body.quoteId || !body.action || !['accept', 'reject'].includes(body.action)) {
     return NextResponse.json({ error: 'quoteId and action (accept|reject) required' }, { status: 400 });
   }
 

@@ -1,0 +1,26 @@
+{
+  "schema": "nexyfab.mechanical-single-part-bom-candidate.v1",
+  "partRevisionSha256": "f30b61985d1609372303ec257afa3cda52355f0425d5d87ce366f1731fe0f5af",
+  "sourceDesignRevisionSha256": "3cf6a0f9c8efcf153a2cfefde087a2112c086fc412d2feeaeb9ce52542838564",
+  "sourceNfabSha256": "b4fa1fb7f86891999a522826b65f26e8f1de0b888122b5368547ce6fd40ba507",
+  "sourceStepSha256": "e8d0fb80c46ef705e35000713f6e43e650ec54e3295a222a077931df16b44474",
+  "units": "mm",
+  "items": [
+    {
+      "partNumber": "bendRelief",
+      "description": "Mechanical runtime bendRelief",
+      "quantity": 1,
+      "dimensionsMm": {
+        "x": 60.0000002,
+        "y": 2.0000002000000037,
+        "z": 30.000000200000002
+      }
+    }
+  ],
+  "claimBoundary": {
+    "singlePartCandidateOnly": true,
+    "materialSpecified": false,
+    "massCalculated": false,
+    "manufacturingApproved": false
+  }
+}

@@ -6,9 +6,12 @@ import { recordPromptCall, classifyAiError } from '@/lib/ai/telemetry';
 import { checkUserBudget } from '@/lib/ai/userBudget';
 import { sanitizeShapeChatResponse } from './sanitize';
 import { captureServerError } from '@/lib/error-capture';
+import { localizedApiMessage, resolveServerLocale } from '@/lib/i18n/serverLocale';
+import { boundedJsonError, readBoundedJson } from '@/lib/boundedJsonBody';
 
 const SHAPE_IDS = ['box', 'cylinder', 'pipe', 'lBracket', 'flange', 'plateBend', 'gear', 'fanBlade', 'sprocket', 'pulley', 'sphere', 'cone', 'torus', 'wedge', 'sweep', 'loft'];
 const FEATURE_TYPES = ['fillet', 'chamfer', 'shell', 'hole', 'linearPattern', 'circularPattern', 'mirror', 'boolean', 'draft', 'scale', 'moveCopy', 'splitBody'];
+const MAX_BODY_BYTES = 1024 * 1024;
 
 
 /* ══════════════════════════════════════════════════════════════════════════════
@@ -16,21 +19,28 @@ const FEATURE_TYPES = ['fillet', 'chamfer', 'shell', 'hole', 'linearPattern', 'c
    ══════════════════════════════════════════════════════════════════════════════ */
 
 export async function POST(req: NextRequest) {
+  type ShapeChatBody = { message?: unknown; history?: unknown; context?: unknown; lang?: string };
+  let requestBody: ShapeChatBody = {};
+  let bodyTooLarge = false;
+  try { requestBody = await readBoundedJson<ShapeChatBody>(req, MAX_BODY_BYTES); }
+  catch (error) { bodyTooLarge = boundedJsonError(error)?.code === 'PAYLOAD_TOO_LARGE'; }
+  const locale = resolveServerLocale(req, requestBody.lang ?? req.nextUrl.searchParams.get('lang'));
   // 전역 비용 브레이커(감사 2026-07-16) — eng-chat과 동일하게 복종
   try {
     const { getActiveBreaker } = await import('@/lib/cost-breaker');
     if (await getActiveBreaker()) {
-      return NextResponse.json({ error: 'AI is temporarily paused. Please try again later.' }, { status: 503 });
+      return NextResponse.json({ error: localizedApiMessage(locale, 'breaker'), outputLanguage: locale.route }, { status: 503 });
     }
   } catch { /* ignore */ }
+  if (bodyTooLarge) return NextResponse.json({ error: 'Request too large', code: 'PAYLOAD_TOO_LARGE', outputLanguage: locale.route }, { status: 413 });
   const planCheck = await checkPlan(req, 'free');
   const userPlan = planCheck.ok ? planCheck.plan : 'free';
 
   try {
-    const { message, history, context } = await req.json();
+    const { message, history, context } = requestBody;
 
     if (!message || typeof message !== 'string') {
-      return NextResponse.json({ error: 'message is required' }, { status: 400 });
+      return NextResponse.json({ error: localizedApiMessage(locale, 'messageRequired'), outputLanguage: locale.route }, { status: 400 });
     }
 
     // Atomically reserve a monthly slot BEFORE calling the AI provider so
@@ -40,11 +50,11 @@ export async function POST(req: NextRequest) {
       // Per-user $ budget gate fires first — a single user's runaway loop
       // mustn't be able to keep consuming quota slots even if the slot count
       // is unlimited (Pro / Team).
-      const budget = await checkUserBudget(planCheck.userId);
+      const budget = await checkUserBudget(planCheck.userId, planCheck.orgId);
       if (!budget.ok) {
         return NextResponse.json(
           {
-            error: `Daily AI spend limit reached ($${budget.limitUsd}). Try again later.`,
+            error: localizedApiMessage(locale, 'costBudget', { limit: budget.limitUsd }),
             code: 'COST_BUDGET',
             usedCents: budget.usedCents,
             limitUsd: budget.limitUsd,
@@ -54,10 +64,10 @@ export async function POST(req: NextRequest) {
         );
       }
       const { consumeMonthlyMetricSlot } = await import('@/lib/plan-guard');
-      const slot = await consumeMonthlyMetricSlot(planCheck.userId, userPlan, 'shape_chat');
+      const slot = await consumeMonthlyMetricSlot(planCheck.userId, userPlan, 'shape_chat', undefined, planCheck.orgId);
       if (!slot.ok) {
         return NextResponse.json(
-          { error: `Free plan limit reached (${slot.limit}/month). Upgrade to Pro for unlimited AI chat.` },
+          { error: localizedApiMessage(locale, 'planLimit', { limit: slot.limit }), outputLanguage: locale.route },
           { status: 429 },
         );
       }
@@ -66,7 +76,7 @@ export async function POST(req: NextRequest) {
     // A/B variant resolution — same userId always lands in same bucket.
     const prompt = getPromptVariant('shape-chat', planCheck.ok ? planCheck.userId : undefined);
     const messages: ChatMessage[] = [
-      { role: 'system', content: prompt.template },
+      { role: 'system', content: `${prompt.template}\n\n[OUTPUT LANGUAGE CONTRACT]\nWrite user-facing natural-language fields in ${locale.languageName}. Keep stable shape IDs, feature types, and numeric fields unchanged.` },
     ];
 
     // Free users: limited conversation history (last 4 turns); Pro+: last 10
@@ -100,6 +110,7 @@ export async function POST(req: NextRequest) {
       raw = result.text;
       recordPromptCall({
         userId: planCheck.ok ? planCheck.userId : undefined,
+        orgId: planCheck.ok ? planCheck.orgId : null,
         promptId: prompt.id,
         promptVersion: prompt.version,
         provider: result.provider,
@@ -112,6 +123,7 @@ export async function POST(req: NextRequest) {
     } catch (e) {
       recordPromptCall({
         userId: planCheck.ok ? planCheck.userId : undefined,
+        orgId: planCheck.ok ? planCheck.orgId : null,
         promptId: prompt.id,
         promptVersion: prompt.version,
         provider: e instanceof AiProviderError ? e.provider : 'unknown',
@@ -121,13 +133,13 @@ export async function POST(req: NextRequest) {
         errorClass: classifyAiError(e),
       });
       if (e instanceof AiNotConfiguredError) {
-        return NextResponse.json({ error: 'AI provider not configured' }, { status: 500 });
+        return NextResponse.json({ error: localizedApiMessage(locale, 'providerNotConfigured'), outputLanguage: locale.route }, { status: 500 });
       }
       const detail = e instanceof AiProviderError
         ? `${e.provider}${e.status ? ` (${e.status})` : ''}: ${e.message}`
         : (e instanceof Error ? e.message : String(e));
       console.error('shape-chat AI provider error:', detail);
-      return NextResponse.json({ error: 'AI request failed' }, { status: 502 });
+      return NextResponse.json({ error: localizedApiMessage(locale, 'providerFailed'), outputLanguage: locale.route }, { status: 502 });
     }
 
     // Extract JSON from response (handle markdown fences, leading text, etc.)
@@ -150,7 +162,8 @@ export async function POST(req: NextRequest) {
         params: {},
         features: [],
         message: raw.length > 500 ? raw.slice(0, 500) + '...' : raw,
-        error: 'Failed to parse AI response',
+        error: localizedApiMessage(locale, 'invalidAiResponse'),
+        outputLanguage: locale.route,
       });
     }
 
@@ -186,7 +199,7 @@ export async function POST(req: NextRequest) {
           ? (rawProfile as { segments: unknown[] }).segments
           : null;
       if (!segments || segments.length < 2) {
-        parsed.error = 'Invalid sketch: need at least 2 segments';
+        parsed.error = localizedApiMessage(locale, 'invalidSketch');
       } else {
         // Validate each segment
         const segs = segments as Array<{ type?: string; points?: Array<{ x: number; y: number }> }>;
@@ -263,7 +276,7 @@ export async function POST(req: NextRequest) {
       // Default to single
       if (!parsed.mode) parsed.mode = 'single';
       if (typeof parsed.shapeId === 'string' && !SHAPE_IDS.includes(parsed.shapeId)) {
-        parsed.error = `Unknown shape: ${parsed.shapeId}`;
+        parsed.error = localizedApiMessage(locale, 'unsupportedShape');
         parsed.shapeId = null;
       }
       if (parsed.features && Array.isArray(parsed.features)) {
@@ -287,7 +300,7 @@ export async function POST(req: NextRequest) {
     // the cache is ~free; never blocks the response on telemetry.
     if (planCheck.ok) {
       try {
-        const post = await checkUserBudget(planCheck.userId);
+        const post = await checkUserBudget(planCheck.userId, planCheck.orgId);
         if (post.approaching) {
           parsed._budgetWarning = {
             usedCents: post.usedCents,
@@ -310,7 +323,7 @@ export async function POST(req: NextRequest) {
       } catch { /* never block response on a telemetry hint */ }
     }
 
-    return NextResponse.json(parsed);
+    return NextResponse.json({ ...parsed, outputLanguage: locale.route });
   } catch (e) {
     console.error('shape-chat error:', e);
     captureServerError(e, {
@@ -319,6 +332,6 @@ export async function POST(req: NextRequest) {
       errorClass: 'shapeChatHandler',
       userId: planCheck.ok ? planCheck.userId : undefined,
     });
-    return NextResponse.json({ error: 'Internal error' }, { status: 500 });
+    return NextResponse.json({ error: localizedApiMessage(locale, 'providerFailed'), outputLanguage: locale.route }, { status: 500 });
   }
 }

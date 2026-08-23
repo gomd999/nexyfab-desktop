@@ -10,13 +10,14 @@ import NavigationProgress from '@/components/NavigationProgress';
 import FetchAuthRetry from '@/components/FetchAuthRetry';
 import PlanRefresher from '@/components/PlanRefresher';
 import UtmListener from '@/components/UtmListener';
-import NexyfabSessionHydrator from '@/components/nexyfab/NexyfabSessionHydrator';
 import ConsentScripts from '@/components/ConsentScripts';
 import { PaidBetaBanner } from '@/components/PaidBetaBanner';
 import WebVitalsReporter from '@/components/WebVitalsReporter';
 import Script from 'next/script';
 import { getAdminSettings } from '@/lib/adminSettings';
 import { resolvePrerenderLocales } from '@/lib/prerenderLocales';
+import { toRouteLang } from '@/lib/i18n/normalize';
+import { Suspense } from 'react';
 
 const HTML_LANG: Record<Lang, string> = {
     kr: 'ko',
@@ -31,7 +32,7 @@ export async function generateMetadata(
     { params }: { params: Promise<{ lang: string }> }
 ): Promise<Metadata> {
     const { lang } = await params;
-    return buildMetadata(lang, 'home');
+    return buildMetadata(toRouteLang(lang), 'home');
 }
 
 // Mobile viewport meta — without this iOS Safari renders the page at 980px
@@ -64,12 +65,12 @@ export default async function LangLayout({
     params: Promise<{ lang: string }>;
 }) {
     const { lang } = await params;
-    const validLang = (['kr', 'en', 'ja', 'cn', 'es', 'ar'].includes(lang) ? lang : 'en') as Lang;
+    const validLang = toRouteLang(lang) as Lang;
     const htmlLang = HTML_LANG[validLang];
     const adminSettings = getAdminSettings();
 
     return (
-        <html lang={htmlLang} dir={validLang === 'ar' ? 'rtl' : 'ltr'} suppressHydrationWarning>
+        <html lang={htmlLang} dir={validLang === 'ar' ? 'rtl' : 'ltr'} data-scroll-behavior="smooth" suppressHydrationWarning>
             <head>
                 {/* Nexyfab N 파비콘 */}
                 <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
@@ -98,11 +99,12 @@ export default async function LangLayout({
                 <FetchAuthRetry />
                 <PlanRefresher />
                 <UtmListener />
-                <NexyfabSessionHydrator />
                 <ToastProvider>
                 <LangSetter />
                 <WebVitalsReporter />
-                <Header />
+                <Suspense fallback={null}>
+                    <Header />
+                </Suspense>
                 <PaidBetaBanner lang={validLang} />
                 <JsonLd lang={validLang} />
                 {children}

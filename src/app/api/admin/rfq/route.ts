@@ -5,11 +5,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { verifyAdmin } from '@/lib/admin-auth';
 import { getDbAdapter } from '@/lib/db-adapter';
-import { sendEmail as _sendEmail, rfqAssignedToFactoryHtml } from '@/lib/nexyfab-email';
+import { sendEmail as _sendEmail, rfqAssignedToFactoryHtml, rfqNotificationEmailSubject, nexyfabEmailLocaleFromLanguageTag } from '@/lib/nexyfab-email';
 import { enqueueJob } from '@/lib/job-queue';
 import { createNotification } from '@/app/lib/notify';
 import { logAudit } from '@/lib/audit';
 import { normPartnerEmail } from '@/lib/partner-factory-access';
+import { readBoundedJson } from '@/lib/boundedJsonBody';
 
 export const dynamic = 'force-dynamic';
 
@@ -89,7 +90,7 @@ export async function POST(req: NextRequest) {
   const isAdmin = await verifyAdmin(req);
   if (!isAdmin) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
 
-  const body = await req.json() as {
+  const body = await readBoundedJson(req, 256 * 1024) as {
     rfqId: string;
     factoryId: string;
     adminNote?: string;
@@ -137,8 +138,9 @@ export async function POST(req: NextRequest) {
     materialId: rfq.material_id || '(미입력)',
     quantity: rfq.quantity,
     note: rfq.note || undefined,
+    lang: req.headers.get('accept-language') || undefined,
   });
-  const mailSubject = `[NexyFab] 새 견적 요청 — ${rfq.shape_name || rfq.id}`;
+  const mailSubject = rfqNotificationEmailSubject(nexyfabEmailLocaleFromLanguageTag(req.headers.get('accept-language')), 'new_rfq', { shapeName: rfq.shape_name || rfq.id, rfqIdPrefix: rfq.id.slice(0, 8) });
 
   // 제조사 이메일(담당·연락처) — 서로 다르면 둘 다 발송
   const mailTo = new Set<string>();

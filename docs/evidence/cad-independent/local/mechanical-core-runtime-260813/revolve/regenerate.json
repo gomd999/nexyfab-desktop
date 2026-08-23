@@ -1,0 +1,83 @@
+{
+  "schema": "nexyfab.mechanical-core-feature-local-runtime.v1",
+  "feature": "revolve",
+  "axis": "regenerate",
+  "status": "PASS",
+  "executedAt": "2026-08-22T07:13:30.564Z",
+  "initial": {
+    "handle": "occt:371",
+    "kernelKind": "Solid",
+    "nativeShapeType": 2,
+    "solidCount": 1,
+    "singleSolid": true,
+    "volumeMm3": 6534.512719466769,
+    "edgeCount": 12,
+    "faceCount": 6,
+    "boundsMm": [
+      [
+        -16.0000001,
+        -10.019889360497244,
+        -16.014916272510302
+      ],
+      [
+        16.019889360497242,
+        10.019889360497244,
+        13.87629582104826
+      ]
+    ]
+  },
+  "edited": {
+    "handle": "occt:373",
+    "kernelKind": "Solid",
+    "nativeShapeType": 2,
+    "solidCount": 1,
+    "singleSolid": true,
+    "volumeMm3": 8168.140899333465,
+    "edgeCount": 12,
+    "faceCount": 6,
+    "boundsMm": [
+      [
+        -16.016392870131508,
+        -10.019515937515656,
+        -16.018735151618788
+      ],
+      [
+        16.019515937515656,
+        10.019515937515656,
+        16.012489321656364
+      ]
+    ]
+  },
+  "repeated": {
+    "handle": "occt:375",
+    "kernelKind": "Solid",
+    "nativeShapeType": 2,
+    "solidCount": 1,
+    "singleSolid": true,
+    "volumeMm3": 8168.140899333465,
+    "edgeCount": 12,
+    "faceCount": 6,
+    "boundsMm": [
+      [
+        -16.016392870131508,
+        -10.019515937515656,
+        -16.018735151618788
+      ],
+      [
+        16.019515937515656,
+        10.019515937515656,
+        16.012489321656364
+      ]
+    ]
+  },
+  "featureMeaning": {
+    "assertion": "actual product revolve created one exact partial-angle OCCT annular sector with analytic volume",
+    "angleDeg": 300,
+    "innerRadiusMm": 10,
+    "outerRadiusMm": 16,
+    "heightMm": 20,
+    "expectedVolumeMm3": 8168.140899333463,
+    "actualVolumeMm3": 8168.140899333465
+  },
+  "assertion": "edited parameter changed the exact signature and a fresh native regeneration reproduced topology, bounds, and volume"
+}

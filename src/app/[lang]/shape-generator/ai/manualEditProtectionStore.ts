@@ -8,6 +8,7 @@ export const MANUAL_EDIT_PROTECTION_STORAGE_KEY = 'nexyfab:manual-edit-protectio
 
 export interface RuntimeDesignLock extends FeatureEditLock {
   scope: string;
+  sessionId: string;
   source: 'human' | 'expert' | 'authority';
   reason: string;
   createdAt: string;
@@ -16,6 +17,18 @@ export interface RuntimeDesignLock extends FeatureEditLock {
 let current: readonly RuntimeDesignLock[] = Object.freeze([]);
 let hydrated = false;
 const listeners = new Set<() => void>();
+
+function sessionIdentity(): string {
+  if (typeof window === 'undefined') return 'server';
+  const key = `${MANUAL_EDIT_PROTECTION_STORAGE_KEY}:session`;
+  try {
+    const existing = window.sessionStorage.getItem(key);
+    if (existing?.trim()) return existing;
+    const created = typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function' ? crypto.randomUUID() : `session-${Date.now()}`;
+    window.sessionStorage.setItem(key, created);
+    return created;
+  } catch { return 'browser-session'; }
+}
 
 function validTarget(value: unknown): value is DesignLockTarget {
   if (!value || typeof value !== 'object') return false;
@@ -32,6 +45,7 @@ function isLock(value: unknown): value is RuntimeDesignLock {
   return typeof candidate.id === 'string' && candidate.id.trim().length > 0
     && validTarget(candidate.target)
     && (candidate.scope === undefined || (typeof candidate.scope === 'string' && candidate.scope.trim().length > 0))
+    && typeof candidate.sessionId === 'string' && candidate.sessionId.trim().length > 0
     && (candidate.source === 'human' || candidate.source === 'expert' || candidate.source === 'authority')
     && typeof candidate.reason === 'string' && candidate.reason.trim().length > 0
     && typeof candidate.createdAt === 'string' && Number.isFinite(Date.parse(candidate.createdAt));
@@ -51,7 +65,7 @@ export function hydrateManualEditProtection(): void {
   hydrated = true;
   try {
     const parsed: unknown = JSON.parse(window.sessionStorage.getItem(MANUAL_EDIT_PROTECTION_STORAGE_KEY) ?? 'null');
-    if (Array.isArray(parsed) && parsed.every(isLock)) publish(parsed.map(lock => ({ ...lock, scope: lock.scope ?? 'local-workspace' })), false);
+    if (Array.isArray(parsed) && parsed.every(isLock)) publish(parsed.filter(lock => lock.sessionId === sessionIdentity()).map(lock => ({ ...lock, scope: lock.scope ?? 'local-workspace' })), false);
   } catch { /* invalid browser state is ignored */ }
 }
 
@@ -75,12 +89,26 @@ export function protectManualEdit(
     id: lockId(scope, target),
     target: { ...target },
     scope,
+    sessionId: sessionIdentity(),
     source: options.source ?? 'human',
     reason: options.reason ?? 'User-entered value',
     createdAt: new Date().toISOString(),
   };
   publish([...current.filter(candidate => candidate.id !== lock.id), lock], true);
   return lock;
+}
+
+/** Atomically replace one exact project/domain/document scope in this browser
+ * session. Invalid or mismatched server locks leave the store untouched. */
+export function replaceManualEditProtectionLocks(scope: string, locks: readonly Omit<RuntimeDesignLock, 'sessionId'>[]): boolean {
+  hydrateManualEditProtection();
+  const exactScope = scope.trim();
+  const sessionId = sessionIdentity();
+  const normalized = locks.map(lock => ({ ...lock, sessionId }));
+  if (!exactScope || normalized.some(lock => !isLock(lock) || lock.scope !== exactScope)) return false;
+  const retained = current.filter(lock => lock.scope !== exactScope || lock.sessionId !== sessionId);
+  publish([...retained, ...normalized.map(lock => ({ ...lock, target: { ...lock.target } }))], true);
+  return true;
 }
 
 export function releaseManualEditProtection(lockIdToRelease: string): boolean {

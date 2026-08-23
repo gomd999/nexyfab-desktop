@@ -2,7 +2,8 @@
 
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import { isKorean } from '@/lib/i18n/normalize';
+import { toIsoLang, type IsoLang } from '@/lib/i18n/normalize';
+import { useAuthStore } from '@/hooks/useAuth';
 
 interface NotificationBellProps {
   token: string | null;
@@ -33,18 +34,35 @@ function getIcon(type: string): string {
   return TYPE_ICON[type] ?? '🔔';
 }
 
-function timeAgo(ts: number, isKo: boolean): string {
+type NotificationCopy = {
+  alerts: string; notifications: string; markAllRead: string; empty: string; unread: string; clearRead: string;
+  unreadCount: (count: number) => string;
+  ago: { now: string; minutes: (value: number) => string; hours: (value: number) => string; days: (value: number) => string };
+};
+
+const COPY: Record<IsoLang, NotificationCopy> = {
+  ko: { alerts: '알림', notifications: '알림', markAllRead: '모두 읽음', empty: '새 알림이 없습니다', unread: '읽지 않음', clearRead: '읽은 알림 지우기', unreadCount: (n) => `알림 ${n}개 읽지 않음`, ago: { now: '방금 전', minutes: (n) => `${n}분 전`, hours: (n) => `${n}시간 전`, days: (n) => `${n}일 전` } },
+  en: { alerts: 'Alerts', notifications: 'Notifications', markAllRead: 'Mark all read', empty: 'No new notifications', unread: 'Unread', clearRead: 'Clear read notifications', unreadCount: (n) => `Notifications, ${n} unread`, ago: { now: 'just now', minutes: (n) => `${n}m ago`, hours: (n) => `${n}h ago`, days: (n) => `${n}d ago` } },
+  ja: { alerts: '通知', notifications: '通知', markAllRead: 'すべて既読', empty: '新しい通知はありません', unread: '未読', clearRead: '既読通知を削除', unreadCount: (n) => `未読通知 ${n}件`, ago: { now: 'たった今', minutes: (n) => `${n}分前`, hours: (n) => `${n}時間前`, days: (n) => `${n}日前` } },
+  zh: { alerts: '通知', notifications: '通知', markAllRead: '全部标为已读', empty: '没有新通知', unread: '未读', clearRead: '清除已读通知', unreadCount: (n) => `${n} 条未读通知`, ago: { now: '刚刚', minutes: (n) => `${n}分钟前`, hours: (n) => `${n}小时前`, days: (n) => `${n}天前` } },
+  es: { alerts: 'Avisos', notifications: 'Notificaciones', markAllRead: 'Marcar todo como leído', empty: 'No hay notificaciones nuevas', unread: 'No leído', clearRead: 'Borrar notificaciones leídas', unreadCount: (n) => `${n} notificaciones sin leer`, ago: { now: 'ahora mismo', minutes: (n) => `hace ${n} min`, hours: (n) => `hace ${n} h`, days: (n) => `hace ${n} d` } },
+  ar: { alerts: 'التنبيهات', notifications: 'الإشعارات', markAllRead: 'تحديد الكل كمقروء', empty: 'لا توجد إشعارات جديدة', unread: 'غير مقروء', clearRead: 'مسح الإشعارات المقروءة', unreadCount: (n) => `${n} إشعارات غير مقروءة`, ago: { now: 'الآن', minutes: (n) => `قبل ${n} دقيقة`, hours: (n) => `قبل ${n} ساعة`, days: (n) => `قبل ${n} يوم` } },
+};
+
+function timeAgo(ts: number, copy: NotificationCopy): string {
   const diff = Date.now() - ts;
   const m = Math.floor(diff / 60000);
-  if (m < 1) return isKo ? '방금 전' : 'just now';
-  if (m < 60) return isKo ? `${m}분 전` : `${m}m ago`;
+  if (m < 1) return copy.ago.now;
+  if (m < 60) return copy.ago.minutes(m);
   const h = Math.floor(m / 60);
-  if (h < 24) return isKo ? `${h}시간 전` : `${h}h ago`;
-  return isKo ? `${Math.floor(h / 24)}일 전` : `${Math.floor(h / 24)}d ago`;
+  if (h < 24) return copy.ago.hours(h);
+  return copy.ago.days(Math.floor(h / 24));
 }
 
 export default function NotificationBell({ token, lang }: NotificationBellProps) {
-  const isKo = isKorean(lang);
+  const sessionStatus = useAuthStore(state => state.sessionStatus);
+  const canLoadNotifications = sessionStatus === 'authenticated' && Boolean(token);
+  const copy = COPY[toIsoLang(lang)];
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [notifications, setNotifications] = useState<Notification[]>([]);
@@ -54,7 +72,7 @@ export default function NotificationBell({ token, lang }: NotificationBellProps)
 
   // Initial + periodic fetch (fallback / initial load)
   const fetchNotifications = useCallback(async () => {
-    if (!token) return;
+    if (!canLoadNotifications || !token) return;
     try {
       const res = await fetch('/api/nexyfab/notifications', {
         headers: { Authorization: `Bearer ${token}` },
@@ -65,11 +83,18 @@ export default function NotificationBell({ token, lang }: NotificationBellProps)
       setNotifications(data.notifications ?? []);
       setUnreadCount(data.unreadCount ?? 0);
     } catch { /* silent */ }
-  }, [token]);
+  }, [canLoadNotifications, token]);
 
   // SSE subscription for real-time push
   useEffect(() => {
-    if (!token) return;
+    if (!canLoadNotifications || !token) {
+      queueMicrotask(() => {
+        setNotifications([]);
+        setUnreadCount(0);
+        setOpen(false);
+      });
+      return;
+    }
 
     // Initial fetch to populate existing notifications
     queueMicrotask(() => { void fetchNotifications(); });
@@ -110,7 +135,7 @@ export default function NotificationBell({ token, lang }: NotificationBellProps)
       esRef.current?.close();
       esRef.current = null;
     };
-  }, [token, fetchNotifications]);
+  }, [canLoadNotifications, token, fetchNotifications]);
 
   // Close dropdown on outside click
   useEffect(() => {
@@ -125,7 +150,7 @@ export default function NotificationBell({ token, lang }: NotificationBellProps)
   }, [open]);
 
   const markRead = async (id: string) => {
-    if (!token) return;
+    if (!canLoadNotifications || !token) return;
     await fetch('/api/nexyfab/notifications', {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
@@ -136,7 +161,7 @@ export default function NotificationBell({ token, lang }: NotificationBellProps)
   };
 
   const markAllRead = async () => {
-    if (!token) return;
+    if (!canLoadNotifications || !token) return;
     await fetch('/api/nexyfab/notifications', {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
@@ -147,7 +172,7 @@ export default function NotificationBell({ token, lang }: NotificationBellProps)
   };
 
   const clearRead = async () => {
-    if (!token) return;
+    if (!canLoadNotifications || !token) return;
     await fetch('/api/nexyfab/notifications', {
       method: 'DELETE',
       headers: { Authorization: `Bearer ${token}` },
@@ -172,8 +197,8 @@ export default function NotificationBell({ token, lang }: NotificationBellProps)
         aria-expanded={open}
         aria-label={
           unreadCount > 0
-            ? (isKo ? `알림 ${unreadCount}개 읽지 않음` : `Notifications, ${unreadCount} unread`)
-            : (isKo ? '알림' : 'Notifications')
+            ? copy.unreadCount(unreadCount)
+            : copy.notifications
         }
         style={{
           background: 'none',
@@ -217,7 +242,7 @@ export default function NotificationBell({ token, lang }: NotificationBellProps)
             </span>
           )}
         </span>
-        <span className="nf-nav-label" style={{ fontSize: 13 }}>{isKo ? '알림' : 'Alerts'}</span>
+        <span className="nf-nav-label" style={{ fontSize: 13 }}>{copy.alerts}</span>
       </button>
 
       {/* Dropdown */}
@@ -249,7 +274,7 @@ export default function NotificationBell({ token, lang }: NotificationBellProps)
             borderBottom: '1px solid var(--nx-border)',
           }}>
             <span id="nx-notif-title" style={{ fontSize: 13, fontWeight: 700, color: 'var(--nx-text)' }}>
-              {isKo ? '알림' : 'Notifications'}
+              {copy.notifications}
             </span>
             {unreadCount > 0 && (
               <button
@@ -264,7 +289,7 @@ export default function NotificationBell({ token, lang }: NotificationBellProps)
                   padding: 0,
                 }}
               >
-                {isKo ? '모두 읽음' : 'Mark all read'}
+                {copy.markAllRead}
               </button>
             )}
           </div>
@@ -278,7 +303,7 @@ export default function NotificationBell({ token, lang }: NotificationBellProps)
                 color: 'var(--nx-text-3)',
                 fontSize: 13,
               }}>
-                {isKo ? '새 알림이 없습니다' : 'No new notifications'}
+                {copy.empty}
               </div>
             ) : (
               notifications.map(n => (
@@ -288,7 +313,7 @@ export default function NotificationBell({ token, lang }: NotificationBellProps)
                   onClick={() => handleNotificationClick(n)}
                   onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleNotificationClick(n); } }}
                   tabIndex={n.link ? 0 : -1}
-                  aria-label={`${n.read === 0 ? (isKo ? '읽지 않음' : 'unread') + ': ' : ''}${n.title}`}
+                  aria-label={`${n.read === 0 ? copy.unread + ': ' : ''}${n.title}`}
                   style={{
                     display: 'flex',
                     gap: 10,
@@ -326,7 +351,7 @@ export default function NotificationBell({ token, lang }: NotificationBellProps)
                         {n.body}
                       </p>
                     )}
-                    <span style={{ fontSize: 11, color: 'var(--nx-text-3)' }}>{timeAgo(n.created_at, isKo)}</span>
+                    <span style={{ fontSize: 11, color: 'var(--nx-text-3)' }}>{timeAgo(n.created_at, copy)}</span>
                   </div>
                   {n.read === 0 && (
                     <span style={{
@@ -360,7 +385,7 @@ export default function NotificationBell({ token, lang }: NotificationBellProps)
               onMouseEnter={e => { e.currentTarget.style.color = 'var(--nx-text)'; }}
               onMouseLeave={e => { e.currentTarget.style.color = 'var(--nx-text-3)'; }}
             >
-              {isKo ? '읽은 알림 지우기' : 'Clear read notifications'}
+              {copy.clearRead}
             </button>
           </div>
         </div>

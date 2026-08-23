@@ -9,12 +9,13 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 const planMock = vi.fn(async () => ({ ok: true, userId: 'u-test', plan: 'pro' }));
+const slotMock = vi.fn(async () => ({ ok: true, used: 1, limit: 30 }));
 vi.mock('@/lib/plan-guard', async (orig) => {
   const real = await orig() as Record<string, unknown>;
   return {
     ...real,
     checkPlan: (...args: unknown[]) => planMock(...args as []),
-    consumeMonthlyMetricSlot: vi.fn(async () => ({ ok: true, used: 1, limit: 30 })),
+    consumeMonthlyMetricSlot: (...args: unknown[]) => slotMock(...args as []),
   };
 });
 
@@ -39,6 +40,16 @@ vi.mock('@/lib/enterprise-cad-audit', () => ({
 }));
 
 vi.mock('@/lib/error-capture', () => ({ captureServerError: vi.fn() }));
+
+vi.mock('@/lib/ai/codegenModelRuntime', () => ({
+  resolveRuntimeCodegenModel: vi.fn(async () => ({
+    ok: true,
+    catalog: { id: 'qwen-3.7-plus', label: 'Qwen 3.7 Plus' },
+    provider: 'qwen',
+    model: 'qwen3.7-plus',
+    cacheProfile: 'qwen-explicit',
+  })),
+}));
 
 vi.mock('@/lib/client-ip', () => ({ getTrustedClientIp: () => '127.0.0.1' }));
 
@@ -70,6 +81,8 @@ beforeEach(async () => {
   vi.resetModules();
   planMock.mockReset();
   planMock.mockResolvedValue({ ok: true, userId: 'u-test', plan: 'pro' });
+  slotMock.mockReset();
+  slotMock.mockResolvedValue({ ok: true, used: 1, limit: 30 });
   visionCompletion.mockReset();
   visionCompletion.mockResolvedValue({
     text: JSON.stringify({
@@ -107,7 +120,8 @@ describe('POST /api/nexyfab/intent-from-image', () => {
     expect(res.status).toBe(403);
     const body = await res.json();
     expect(body.code).toBe('PLAN_LOCKED');
-    expect(String(body.error)).toMatch(/Pro plan/i);
+    expect(String(body.error)).toMatch(/upgrade your plan/i);
+    expect(body.required).toBe('pro');
   });
 
   it('returns 400 IMAGE_REQUIRED when imageBase64 is missing', async () => {
@@ -128,6 +142,8 @@ describe('POST /api/nexyfab/intent-from-image', () => {
     expect(body.scad.length).toBeGreaterThan(0);
     expect(body.summary).toMatch(/bracket/i);
     expect(body.cached).toBe(false);
+    expect(slotMock).toHaveBeenCalledTimes(1);
+    expect(slotMock.mock.invocationCallOrder[0]).toBeLessThan(visionCompletion.mock.invocationCallOrder[0]!);
   });
 
   it('returns 502 NON_JSON when the vision model returns non-JSON text', async () => {
@@ -141,6 +157,8 @@ describe('POST /api/nexyfab/intent-from-image', () => {
     expect(res.status).toBe(502);
     const body = await res.json();
     expect(body.code).toBe('NON_JSON');
-    expect(body.raw).toBeTruthy();
+    // Provider output is intentionally not reflected to the client; it can
+    // contain prompt fragments or model-supplied sensitive text.
+    expect(body).not.toHaveProperty('raw');
   });
 });

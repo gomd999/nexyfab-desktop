@@ -3,6 +3,7 @@
 export interface NexyfabProject {
   id: string;
   userId: string;
+  orgId?: string;
   name: string;
   thumbnail?: string;
   shapeId?: string;

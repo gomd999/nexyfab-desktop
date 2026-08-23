@@ -2,9 +2,11 @@ import { NextRequest, NextResponse } from "next/server";
 import { getTrustedClientIp } from "@/lib/client-ip";
 import { rateLimit } from "@/lib/rate-limit";
 import { analyzeStepMechanicalRelations } from "@/lib/reference/stepMechanicalRelationEvidence";
+import { boundedJsonError, readBoundedJson } from "@/lib/boundedJsonBody";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 const MAX = 20 * 1024 * 1024;
+const MAX_BODY_BYTES = 24 * 1024 * 1024;
 export async function POST(req: NextRequest) {
   const ip = getTrustedClientIp(req.headers);
   if (!rateLimit(`cad-v1-step-mechanical:${ip}`, 20, 60_000).allowed)
@@ -12,10 +14,15 @@ export async function POST(req: NextRequest) {
       { ok: false, code: "RATE_LIMIT" },
       { status: 429 },
     );
-  const body = (await req.json().catch(() => null)) as Record<
-    string,
-    unknown
-  > | null;
+  let body: Record<string, unknown> | null;
+  try {
+    body = await readBoundedJson<Record<string, unknown>>(req, MAX_BODY_BYTES);
+  } catch (error) {
+    if (boundedJsonError(error)?.code === "PAYLOAD_TOO_LARGE") {
+      return NextResponse.json({ ok: false, code: "PAYLOAD_TOO_LARGE" }, { status: 413 });
+    }
+    body = null;
+  }
   if (
     !body ||
     Array.isArray(body) ||
@@ -44,13 +51,16 @@ export async function POST(req: NextRequest) {
         ? {}
         : { linearTolerance: Number(body.linearTolerance) }),
     });
-    return NextResponse.json({
-      ok: true,
-      releaseReady:
+    const analysisPassed =
         evidence.coaxialPairs.length > 0 ||
         evidence.pattern.status === "pass" ||
         evidence.weldment.status === "pass" ||
-        evidence.sheetMetal.status === "pass",
+        evidence.sheetMetal.status === "pass";
+    return NextResponse.json({
+      ok: true,
+      analysisPassed,
+      releaseReady: false,
+      releaseBlocker: "SIGNED_INDEPENDENT_RELEASE_EVIDENCE_REQUIRED",
       evidence,
       sourceReturned: false,
       quoteOrRfqSideEffects: false,

@@ -9,8 +9,11 @@ import { checkPlan } from '@/lib/plan-guard';
 import { EMPTY_SPEC } from '@/app/[lang]/shape-generator/intake/intakeSpec';
 import { chatCompletion, AiNotConfiguredError, AiProviderError, type ChatMessage } from '@/lib/ai';
 import { getPrompt } from '@/lib/ai/prompts';
+import { localizedApiMessage, resolveServerLocale } from '@/lib/i18n/serverLocale';
+import { readBoundedJson } from '@/lib/boundedJsonBody';
 
 export const dynamic = 'force-dynamic';
+const MAX_JSON_BODY_BYTES = 64 * 1024;
 
 
 const VALID_CATEGORY = ['mechanical_part', 'structural', 'housing', 'jig_fixture', 'custom'];
@@ -32,17 +35,19 @@ function safeEnumArray<T extends string>(v: unknown, allowed: readonly T[]): T[]
 }
 
 export async function POST(req: NextRequest) {
+  const body = await readBoundedJson(req, MAX_JSON_BODY_BYTES).catch(() => ({})) as { text?: unknown; lang?: unknown };
+  const locale = resolveServerLocale(req, body.lang ?? req.nextUrl.searchParams.get('lang'));
   const plan = await checkPlan(req, 'free');
   if (!plan.ok) return plan.response;
 
-  const { text } = await req.json().catch(() => ({}));
+  const text = body.text;
   if (typeof text !== 'string' || text.trim().length < 4) {
-    return NextResponse.json({ error: '설명이 너무 짧습니다 (4자 이상)' }, { status: 400 });
+    return NextResponse.json({ error: localizedApiMessage(locale, 'messageRequired'), code: 'INTAKE_TEXT_REQUIRED' }, { status: 400 });
   }
 
   const promptDef = getPrompt('intake-from-text');
   const messages: ChatMessage[] = [
-    { role: 'system', content: promptDef.template },
+    { role: 'system', content: `${promptDef.template}\n\n[OUTPUT LANGUAGE CONTRACT]\nWrite the optional notes field in ${locale.languageName}. Keep all enum values and JSON keys unchanged.` },
     { role: 'user', content: text.trim().slice(0, 2000) },
   ];
 
@@ -58,13 +63,13 @@ export async function POST(req: NextRequest) {
     raw = result.text;
   } catch (e) {
     if (e instanceof AiNotConfiguredError) {
-      return NextResponse.json({ error: 'AI provider not configured' }, { status: 500 });
+      return NextResponse.json({ error: localizedApiMessage(locale, 'providerNotConfigured'), code: 'AI_NOT_CONFIGURED' }, { status: 500 });
     }
     const detail = e instanceof AiProviderError
       ? `${e.provider}${e.status ? ` (${e.status})` : ''}: ${e.message}`
       : (e instanceof Error ? e.message : String(e));
     console.error('intake-from-text AI provider error:', detail);
-    return NextResponse.json({ error: 'AI request failed' }, { status: 502 });
+    return NextResponse.json({ error: localizedApiMessage(locale, 'providerFailed'), code: 'AI_REQUEST_FAILED' }, { status: 502 });
   }
 
   let parsed: Record<string, unknown>;
@@ -75,7 +80,7 @@ export async function POST(req: NextRequest) {
     if (first !== -1 && last > first) s = s.slice(first, last + 1);
     parsed = JSON.parse(s) as Record<string, unknown>;
   } catch {
-    return NextResponse.json({ error: 'AI 응답 파싱 실패', raw }, { status: 500 });
+    return NextResponse.json({ error: localizedApiMessage(locale, 'invalidAiResponse'), code: 'AI_RESPONSE_INVALID' }, { status: 502 });
   }
 
   // 화이트리스트 필터링 (LLM 환각 방지)
@@ -106,5 +111,5 @@ export async function POST(req: NextRequest) {
     notes: typeof parsed.notes === 'string' ? parsed.notes.slice(0, 500) : undefined,
   };
 
-  return NextResponse.json({ spec, sourceText: text.trim().slice(0, 200) });
+  return NextResponse.json({ spec, sourceText: text.trim().slice(0, 200), outputLanguage: locale.route });
 }

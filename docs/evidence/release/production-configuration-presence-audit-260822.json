@@ -1,0 +1,38 @@
+{
+  "schema": "nexyfab.production-configuration-presence-audit.v1",
+  "observedAt": "2026-08-21T21:55:39.9317535Z",
+  "environment": "production",
+  "service": "nexyfab.com",
+  "readOnly": true,
+  "valuesDisclosed": false,
+  "mutated": false,
+  "checks": {
+    "databaseConfigured": true,
+    "databasePostgresShape": true,
+    "redisConfigured": true,
+    "redisUrlShape": true,
+    "objectStorageComplete": true,
+    "objectStorageEndpointConfigured": true,
+    "aiProviderConfigured": true,
+    "architectureInteriorApprovalSecretStrongShape": true,
+    "cadSessionSecretStrongShape": true,
+    "generationEvidenceSecretStrongShape": false,
+    "jwtSecretStrongShape": true,
+    "adminSecretConfigured": true,
+    "cronSecretConfigured": true,
+    "serverActionsKeyConfigured": true,
+    "recaptchaSecretConfigured": true,
+    "recaptchaAllowedHostsConfigured": false,
+    "openscadExternalWorkerEnabled": true,
+    "nativeCadExternalWorkerEnabled": false,
+    "cadIndependentModeEnabled": true,
+    "commercialModeEnabled": false
+  },
+  "blockers": [
+    "GENERATION_EVIDENCE_SIGNING_SECRET is absent or shorter than the required strong-secret shape",
+    "RECAPTCHA_ALLOWED_HOSTNAMES is not configured",
+    "CAD_RUNTIME_EXTERNAL_WORKER is not enabled",
+    "NEXYFAB_COMMERCIAL_MODE is not enabled"
+  ],
+  "releaseReady": false
+}

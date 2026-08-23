@@ -1,0 +1,225 @@
+{
+  "schema": "nexyfab.mechanical-local-step-kernel-structure-readiness.v1",
+  "executedAt": "2026-08-22T07:21:27.762Z",
+  "status": "HOLD",
+  "scope": "Bounded two-box AP242 product occurrence geometry, transform, and semantic identity after NexyFab OCCT reopen/export",
+  "localStatus": "FAIL_LOCAL",
+  "geometryStructurePreserved": "PASS_LOCAL",
+  "semanticIdentityPreserved": "FAIL_LOCAL",
+  "productStructureCapability": {
+    "status": "HOLD",
+    "code": "XCAF_STEP_READER_UNAVAILABLE",
+    "reason": "The local OCCT binding exposes STEPControl_Reader/Writer and STEPCAFControl_Writer, but not STEPCAFControl_Reader; imported shapes therefore cannot be traversed as an XCAF product/occurrence document after reopen.",
+    "required": "STEPCAFControl_Reader plus XCAFDoc_ShapeTool traversal bound to the reopened document"
+  },
+  "checks": [
+    {
+      "id": "ap242_reopen",
+      "status": "PASS_LOCAL",
+      "actual": "source=2014,returned=2013"
+    },
+    {
+      "id": "occurrence_count",
+      "status": "PASS_LOCAL",
+      "actual": "2->2"
+    },
+    {
+      "id": "per_occurrence_geometry_and_transform",
+      "status": "PASS_LOCAL",
+      "actual": "2 source/2 returned"
+    },
+    {
+      "id": "aggregate_geometry",
+      "status": "PASS_LOCAL",
+      "actual": "bbox=0,0,0,100,60,20;volume=57600;surface=17600"
+    },
+    {
+      "id": "component_names",
+      "status": "FAIL_LOCAL",
+      "actual": "base-plate|mount-block -> Open CASCADE STEP translator 7.6 1.1|Open CASCADE STEP translator 7.6 1.2"
+    },
+    {
+      "id": "part_numbers",
+      "status": "FAIL_LOCAL",
+      "actual": "base-plate|mount-block -> Open CASCADE STEP translator 7.6 1.1|Open CASCADE STEP translator 7.6 1.2"
+    },
+    {
+      "id": "occurrence_labels",
+      "status": "FAIL_LOCAL",
+      "actual": "Base Plate|Mount Block -> |"
+    }
+  ],
+  "commerciallyVerified": false,
+  "commercialStatus": "NOT_RUN",
+  "releaseEligible": false,
+  "sourceBinding": {
+    "path": "docs/evidence/cad-independent/local/mechanical-step-c4-260814/source.step",
+    "sha256": "c5cec6b3a1f345a61ad076852c0508bd8c296b552ae62841299da91f36fde99b",
+    "bytes": 15351
+  },
+  "returnedBinding": {
+    "path": "docs/evidence/cad-independent/local/mechanical-step-c4-260814/nexyfab-kernel-returned.step",
+    "sha256": "7aae6b01843714e2eb074ae71497489a987a7b6455b03fb82841a21132659bd7",
+    "bytes": 32626
+  },
+  "kernelReceiptBinding": {
+    "path": "docs/evidence/cad-independent/local/mechanical-step-c4-260814/nexyfab-kernel-receipt.json",
+    "sha256": "c0578599755b56c5de041550f4519286c2fec239e3f4f8e8cdc75efdb0bc3896",
+    "bytes": 2323
+  },
+  "sourceBindings": [
+    {
+      "path": "scripts/standalone-step-ts-adapter.mjs",
+      "sha256": "6b752e81d044376080f2b0f6ee12b7e9db6942aae7547eea1b221d8fe9f01cad",
+      "bytes": 19133
+    },
+    {
+      "path": "scripts/verify-mechanical-local-step-kernel-structure.mjs",
+      "sha256": "71b4a9838e17f92119a2c677510f0212418ae61474f1e531bffd9242c23f3030",
+      "bytes": 10712
+    }
+  ],
+  "measurements": {
+    "source": {
+      "bodyCount": 2,
+      "occurrenceCount": 2,
+      "units": "mm",
+      "boundingBox": [
+        0,
+        0,
+        0,
+        100,
+        60,
+        20
+      ],
+      "volume": 57600,
+      "surfaceArea": 17600,
+      "componentNames": [
+        "base-plate",
+        "mount-block"
+      ],
+      "partNumbers": [
+        "base-plate",
+        "mount-block"
+      ],
+      "parts": [
+        {
+          "occurrence": "NexyFab_C4_Box_Assembly_1",
+          "occurrenceLabel": "Base Plate",
+          "name": "base-plate",
+          "partNumber": "base-plate",
+          "dimensionsMm": [
+            100,
+            60,
+            8
+          ],
+          "translationMm": [
+            0,
+            0,
+            0
+          ],
+          "volumeMm3": 48000,
+          "surfaceAreaMm2": 14560
+        },
+        {
+          "occurrence": "NexyFab_C4_Box_Assembly_2",
+          "occurrenceLabel": "Mount Block",
+          "name": "mount-block",
+          "partNumber": "mount-block",
+          "dimensionsMm": [
+            40,
+            20,
+            12
+          ],
+          "translationMm": [
+            20,
+            15,
+            8
+          ],
+          "volumeMm3": 9600,
+          "surfaceAreaMm2": 3040
+        }
+      ],
+      "attributes": {
+        "schema": "AP242",
+        "protocolYear": 2014,
+        "topology": "manifold-solid-brep/axis-aligned-box",
+        "placement": "axis2-placement-3d"
+      }
+    },
+    "returned": {
+      "bodyCount": 2,
+      "occurrenceCount": 2,
+      "units": "mm",
+      "boundingBox": [
+        0,
+        0,
+        0,
+        100,
+        60,
+        20
+      ],
+      "volume": 57600,
+      "surfaceArea": 17600,
+      "componentNames": [
+        "Open CASCADE STEP translator 7.6 1.1",
+        "Open CASCADE STEP translator 7.6 1.2"
+      ],
+      "partNumbers": [
+        "Open CASCADE STEP translator 7.6 1.1",
+        "Open CASCADE STEP translator 7.6 1.2"
+      ],
+      "parts": [
+        {
+          "occurrence": "1",
+          "occurrenceLabel": "",
+          "name": "Open CASCADE STEP translator 7.6 1.1",
+          "partNumber": "Open CASCADE STEP translator 7.6 1.1",
+          "dimensionsMm": [
+            100,
+            60,
+            8
+          ],
+          "translationMm": [
+            0,
+            0,
+            0
+          ],
+          "volumeMm3": 48000,
+          "surfaceAreaMm2": 14560
+        },
+        {
+          "occurrence": "2",
+          "occurrenceLabel": "",
+          "name": "Open CASCADE STEP translator 7.6 1.2",
+          "partNumber": "Open CASCADE STEP translator 7.6 1.2",
+          "dimensionsMm": [
+            40,
+            20,
+            12
+          ],
+          "translationMm": [
+            20,
+            15,
+            8
+          ],
+          "volumeMm3": 9600,
+          "surfaceAreaMm2": 3040
+        }
+      ],
+      "attributes": {
+        "schema": "AP242",
+        "protocolYear": 2013,
+        "topology": "manifold-solid-brep/axis-aligned-box",
+        "placement": "axis2-placement-3d"
+      }
+    }
+  },
+  "blockers": [
+    "component_name_part_number_and_occurrence_label_not_preserved",
+    "product_identity_xcaf_reopen_hold",
+    "external_native_cad_reopen_not_run",
+    "signed_external_operator_receipt_not_run",
+    "bounded_axis_aligned_two_box_scope_only"
+  ]
+}

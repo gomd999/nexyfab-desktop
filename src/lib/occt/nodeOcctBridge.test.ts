@@ -220,6 +220,24 @@ describe("nodeOcctBridge (real OCCT)", () => {
     });
   });
 
+  it("builds native horizontal and oblique cylinders and rejects invalid axis/radius/depth", async () => {
+    if (!okLoad || !bridge.buildCylinderAt) return;
+    for (const axis of [[1, 0, 0] as const, [0, 1, 0] as const, [Math.SQRT1_2, 0, Math.SQRT1_2] as const]) {
+      const made = await bridge.buildCylinderAt([10, 20, 30], axis, 5, 40);
+      expect(made.ok).toBe(true);
+      expect(made.warnings).toContain('analytic OCCT cylinder built along supplied axis');
+      if (!made.ok || !made.shape) continue;
+      const detail = await bridge.inspectShapeDetailed!(made.shape);
+      expect(detail.valid).toBe(true);
+      expect(detail.solidCount).toBe(1);
+      expect(detail.absoluteVolume).toBeCloseTo(Math.PI * 5 ** 2 * 40, 2);
+      bridge.release(made.shape);
+    }
+    await expect(bridge.buildCylinderAt([0, 0, 0], [0, 0, 0], 5, 40)).resolves.toMatchObject({ ok: false });
+    await expect(bridge.buildCylinderAt([0, 0, 0], [1, 0, 0], 0, 40)).resolves.toMatchObject({ ok: false });
+    await expect(bridge.buildCylinderAt([0, 0, 0], [1, 0, 0], 5, 0)).resolves.toMatchObject({ ok: false });
+  });
+
   it("T05/T06: disconnected compound preserves two exact adjacency components", async () => {
     if (!okLoad) return;
     const left = await bridge.buildFromExtrude({

@@ -16,11 +16,13 @@ import { NextRequest, NextResponse } from 'next/server';
 import { enqueueJob, listSolverKinds } from '@/lib/ai/scad-agent/simulationQueue';
 import { bootstrapSolversForEnv } from '@/lib/ai/scad-agent/dockerSolverAdapter';
 import { checkPlan, consumeMonthlyMetricSlot } from '@/lib/plan-guard';
+import { boundedJsonError, readBoundedJson } from '@/lib/boundedJsonBody';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 const VALID_KINDS = new Set(['cfd', 'mbd', 'cam', 'mold_fill', 'optics', 'thermal']);
+const MAX_BODY_BYTES = 64 * 1024 * 1024;
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ kind: string }> }) {
   await bootstrapSolversForEnv();
@@ -35,7 +37,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ kin
   // simpler quota model and matches the pricing page presentation.
   const planCheck = await checkPlan(req, 'free');
   if (!planCheck.ok) return planCheck.response;
-  const slot = await consumeMonthlyMetricSlot(planCheck.userId, planCheck.plan, 'sim_run', { kind });
+  const slot = await consumeMonthlyMetricSlot(planCheck.userId, planCheck.plan, 'sim_run', { kind }, planCheck.orgId);
   if (!slot.ok) {
     if (slot.limit === -2) {
       return NextResponse.json({
@@ -56,8 +58,9 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ kin
 
   let body: unknown;
   try {
-    body = await req.json();
-  } catch {
+    body = await readBoundedJson<unknown>(req, MAX_BODY_BYTES);
+  } catch (error) {
+    if (boundedJsonError(error)?.code === 'PAYLOAD_TOO_LARGE') return NextResponse.json({ ok: false, error: 'simulation input too large' }, { status: 413 });
     return NextResponse.json({ ok: false, error: 'invalid JSON' }, { status: 400 });
   }
   try {

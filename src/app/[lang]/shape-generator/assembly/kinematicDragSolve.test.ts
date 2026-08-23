@@ -49,6 +49,30 @@ function hinge(id: string, a: MateSelection, b: MateSelection): Mate {
   return { id, type: 'hinge', enabled: true, selections: [a, b] };
 }
 
+function limitAngle(id: string, min: number, max: number): Mate {
+  return {
+    id,
+    type: 'limitAngle',
+    enabled: true,
+    min,
+    max,
+    selections: [
+      { bodyIndex: 0, type: 'face', localPoint: new THREE.Vector3(), localNormal: new THREE.Vector3(1, 0, 0) },
+      { bodyIndex: 1, type: 'face', localPoint: new THREE.Vector3(), localNormal: new THREE.Vector3(1, 0, 0) },
+    ],
+  };
+}
+
+function limitedArm(min: number, max: number): AssemblyState {
+  return {
+    bodies: [body('ground', [0, 0, 0], true), body('arm', [0, 0, 0])],
+    mates: [
+      hinge('h', axisSel(0, [0, 0, 0]), axisSel(1, [0, 0, 0])),
+      limitAngle('lim', min, max),
+    ],
+  };
+}
+
 // ─── Mode detection ───────────────────────────────────────────────────────────
 
 describe('detectDragMode', () => {
@@ -132,6 +156,40 @@ describe('kinematicDragStep · revolute', () => {
     expect(tip.y).toBeCloseTo(10, 4);
     // Pin point of the arm (local origin) must remain on the pivot.
     expect(st.bodies[1].position.distanceTo(new THREE.Vector3(5, 0, 0))).toBeLessThan(1e-4);
+  });
+
+  it('clamps a drag past a limit-angle mate to the feasible boundary', () => {
+    const st = limitedArm(0, 45);
+    const gesture = beginDragGesture(st, 1, new THREE.Vector3(10, 0, 0));
+    const res = kinematicDragStep(st, gesture, new THREE.Vector3(0, 10, 0));
+
+    expect(res.converged).toBe(true);
+    expect(st.bodies[1].rotation.z).toBeCloseTo(Math.PI / 4, 5);
+    expect(gestureGrabWorld(st, gesture).x).toBeCloseTo(10 * Math.cos(Math.PI / 4), 4);
+    expect(gestureGrabWorld(st, gesture).y).toBeCloseTo(10 * Math.sin(Math.PI / 4), 4);
+  });
+
+  it('keeps an in-range limit-angle drag at the requested joint angle', () => {
+    const st = limitedArm(0, 45);
+    const gesture = beginDragGesture(st, 1, new THREE.Vector3(10, 0, 0));
+    const angle = (30 * Math.PI) / 180;
+    const res = kinematicDragStep(st, gesture, new THREE.Vector3(10 * Math.cos(angle), 10 * Math.sin(angle), 0));
+
+    expect(res.converged).toBe(true);
+    expect(st.bodies[1].rotation.z).toBeCloseTo(angle, 5);
+  });
+
+  it('rejects a drag when enabled limit-angle mates are contradictory', () => {
+    const st = limitedArm(0, 30);
+    st.mates.push(limitAngle('lim-contradiction', 60, 90));
+    const gesture = beginDragGesture(st, 1, new THREE.Vector3(10, 0, 0));
+    const before = snapshotPoses(st);
+    const res = kinematicDragStep(st, gesture, new THREE.Vector3(0, 10, 0));
+
+    expect(res.converged).toBe(false);
+    expect(st.bodies[1].position.x).toBeCloseTo(before[1].position[0], 8);
+    expect(st.bodies[1].position.y).toBeCloseTo(before[1].position[1], 8);
+    expect(st.bodies[1].rotation.z).toBeCloseTo(before[1].rotation[2], 8);
   });
 });
 

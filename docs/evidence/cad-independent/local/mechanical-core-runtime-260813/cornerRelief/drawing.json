@@ -1,0 +1,27 @@
+{
+  "schema": "nexyfab.mechanical-core-feature-local-runtime.v1",
+  "feature": "cornerRelief",
+  "axis": "drawing",
+  "status": "PASS",
+  "executedAt": "2026-08-22T07:13:30.564Z",
+  "kernel": "OCCT HLRBRep via replicad drawProjection",
+  "views": {
+    "front": {
+      "visible": 2,
+      "hidden": 2,
+      "viewBox": "-32.000001 -17.000000999999997 64.000002 34.000001999999995"
+    },
+    "top": {
+      "visible": 1,
+      "hidden": 5,
+      "viewBox": "-32.000001 -3.000001 64.000002 6.000002"
+    },
+    "right": {
+      "visible": 4,
+      "hidden": 4,
+      "viewBox": "-3.000001 -17.000000999999997 6.000002 34.000001999999995"
+    }
+  },
+  "svgBytes": 3336,
+  "svgSha256": "aa32eacc07887e17d671f6e6c4f677d0f45bf2fab62784c0021cca42f0716f8c"
+}

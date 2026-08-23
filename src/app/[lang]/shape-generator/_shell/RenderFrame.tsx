@@ -14,33 +14,37 @@ import { PbrSpherePreview } from './PbrSpherePreview';
 import { RenderRightPane } from './sidebars/RenderRightPane';
 import { useSceneStore } from '../store/sceneStore';
 import { loc } from '../lib/loc';
+import { toRouteLang } from '@/lib/i18n/normalize';
 
 interface RenderFrameProps {
   lang: string;
-  isKo: boolean;
+  /** Legacy caller compatibility; display strings use `lang` exclusively. */
+  isKo?: boolean;
   projectId?: string;
 }
 
+type LocalizedLabel = { ko: string; en: string; ja: string; zh: string; es: string; ar: string };
+
 interface MaterialSwatch {
   id: string;
-  lbl: string;
+  labels: LocalizedLabel;
   color: string;
   group: 'metal' | 'plastic' | 'wood' | 'glass';
 }
 
 const MATERIAL_LIBRARY: MaterialSwatch[] = [
-  { id: 'aluminum', lbl: 'Aluminum', color: '#cdd2d8', group: 'metal' },
-  { id: 'steel-brushed', lbl: 'Steel · brushed', color: '#a8acb1', group: 'metal' },
-  { id: 'steel-mirror', lbl: 'Steel · mirror', color: '#dde0e3', group: 'metal' },
-  { id: 'anodized-black', lbl: 'Anodized black', color: '#22262b', group: 'metal' },
-  { id: 'copper', lbl: 'Copper', color: '#c97f50', group: 'metal' },
-  { id: 'brass', lbl: 'Brass', color: '#caa15e', group: 'metal' },
-  { id: 'plastic-white', lbl: 'Plastic · white', color: '#eaeaea', group: 'plastic' },
-  { id: 'plastic-black', lbl: 'Plastic · black', color: '#1a1a1a', group: 'plastic' },
-  { id: 'carbon', lbl: 'Carbon weave', color: '#262a30', group: 'plastic' },
-  { id: 'walnut', lbl: 'Walnut', color: '#5a3a23', group: 'wood' },
-  { id: 'oak', lbl: 'Oak', color: '#b9956a', group: 'wood' },
-  { id: 'glass-clear', lbl: 'Glass · clear', color: '#b6d8e5', group: 'glass' },
+  { id: 'aluminum', labels: { ko: '알루미늄', en: 'Aluminum', ja: 'アルミニウム', zh: '铝', es: 'Aluminio', ar: 'ألمنيوم' }, color: '#cdd2d8', group: 'metal' },
+  { id: 'steel-brushed', labels: { ko: '브러시드 스틸', en: 'Steel · brushed', ja: 'ヘアラインスチール', zh: '拉丝钢', es: 'Acero · cepillado', ar: 'فولاذ · مصقول' }, color: '#a8acb1', group: 'metal' },
+  { id: 'steel-mirror', labels: { ko: '미러 스틸', en: 'Steel · mirror', ja: 'ミラースチール', zh: '镜面钢', es: 'Acero · espejo', ar: 'فولاذ · مرآة' }, color: '#dde0e3', group: 'metal' },
+  { id: 'anodized-black', labels: { ko: '아노다이징 블랙', en: 'Anodized black', ja: 'アルマイトブラック', zh: '黑色阳极氧化', es: 'Negro anodizado', ar: 'أسود مؤكسد' }, color: '#22262b', group: 'metal' },
+  { id: 'copper', labels: { ko: '구리', en: 'Copper', ja: '銅', zh: '铜', es: 'Cobre', ar: 'نحاس' }, color: '#c97f50', group: 'metal' },
+  { id: 'brass', labels: { ko: '황동', en: 'Brass', ja: '真鍮', zh: '黄铜', es: 'Latón', ar: 'نحاس أصفر' }, color: '#caa15e', group: 'metal' },
+  { id: 'plastic-white', labels: { ko: '화이트 플라스틱', en: 'Plastic · white', ja: '白色プラスチック', zh: '白色塑料', es: 'Plástico · blanco', ar: 'بلاستيك · أبيض' }, color: '#eaeaea', group: 'plastic' },
+  { id: 'plastic-black', labels: { ko: '블랙 플라스틱', en: 'Plastic · black', ja: '黒色プラスチック', zh: '黑色塑料', es: 'Plástico · negro', ar: 'بلاستيك · أسود' }, color: '#1a1a1a', group: 'plastic' },
+  { id: 'carbon', labels: { ko: '카본 직조', en: 'Carbon weave', ja: 'カーボン織り', zh: '碳纤维编织', es: 'Tejido de carbono', ar: 'نسيج كربوني' }, color: '#262a30', group: 'plastic' },
+  { id: 'walnut', labels: { ko: '월넛', en: 'Walnut', ja: 'ウォルナット', zh: '胡桃木', es: 'Nogal', ar: 'جوز' }, color: '#5a3a23', group: 'wood' },
+  { id: 'oak', labels: { ko: '오크', en: 'Oak', ja: 'オーク', zh: '橡木', es: 'Roble', ar: 'بلوط' }, color: '#b9956a', group: 'wood' },
+  { id: 'glass-clear', labels: { ko: '투명 유리', en: 'Glass · clear', ja: '透明ガラス', zh: '透明玻璃', es: 'Vidrio · transparente', ar: 'زجاج · شفاف' }, color: '#b6d8e5', group: 'glass' },
 ];
 
 const FILTER_GROUPS: {
@@ -54,19 +58,19 @@ const FILTER_GROUPS: {
   { id: 'glass', label: { ko: '유리', en: 'Glass', ja: 'ガラス', zh: '玻璃', es: 'Vidrio', ar: 'الزجاج' } },
 ];
 
-const HDRI_PRESETS: { id: string; lbl: string; lblKo: string; ico: IconName }[] = [
-  { id: 'studio', lbl: 'Studio', lblKo: '스튜디오', ico: 'sun' },
-  { id: 'workshop', lbl: 'Workshop', lblKo: '작업장', ico: 'cog' },
-  { id: 'overcast', lbl: 'Overcast', lblKo: '흐림', ico: 'moon' },
-  { id: 'warehouse', lbl: 'Warehouse', lblKo: '창고', ico: 'cube' },
+const HDRI_PRESETS: { id: string; labels: LocalizedLabel; ico: IconName }[] = [
+  { id: 'studio', labels: { ko: '스튜디오', en: 'Studio', ja: 'スタジオ', zh: '影棚', es: 'Estudio', ar: 'استوديو' }, ico: 'sun' },
+  { id: 'workshop', labels: { ko: '작업장', en: 'Workshop', ja: '作業場', zh: '车间', es: 'Taller', ar: 'ورشة' }, ico: 'cog' },
+  { id: 'overcast', labels: { ko: '흐림', en: 'Overcast', ja: '曇り', zh: '阴天', es: 'Nublado', ar: 'غائم' }, ico: 'moon' },
+  { id: 'warehouse', labels: { ko: '창고', en: 'Warehouse', ja: '倉庫', zh: '仓库', es: 'Almacén', ar: 'مستودع' }, ico: 'cube' },
 ];
 
-export function RenderFrame({ lang, isKo, projectId }: RenderFrameProps) {
+export function RenderFrame({ lang, projectId }: RenderFrameProps) {
   const router = useRouter();
   const gate = useFreemiumGate();
   const [activeTab, setActiveTab] = useState('render');
 
-  const langSeg = lang === 'ko' ? 'kr' : lang;
+  const langSeg = toRouteLang(lang);
   const project = projectId ? `?expert=1&project=${encodeURIComponent(projectId)}` : '?expert=1';
 
   // Cross-mode tab navigation — clicking File/Solid/Assembly/Drawing/Inspect/
@@ -92,7 +96,7 @@ export function RenderFrame({ lang, isKo, projectId }: RenderFrameProps) {
   const [roughness, setRoughness] = useState(0.35);
   const [metalness, setMetalness] = useState(0.85);
   const [exposure, setExposure] = useState(1.0);
-  const [hdriRot, setHdriRot] = useState(0);
+  const [_hdriRot, _setHdriRot] = useState(0);
   const [lens, setLens] = useState(50);
 
   // PBR extras (Specular / Clearcoat / Anisotropy). Local state drives the
@@ -171,7 +175,6 @@ export function RenderFrame({ lang, isKo, projectId }: RenderFrameProps) {
         rightWidth={320}
         left={
           <MaterialLibraryPane
-            isKo={isKo}
             lang={lang}
             materials={visibleMats}
             selectedId={selectedMaterial}
@@ -182,9 +185,8 @@ export function RenderFrame({ lang, isKo, projectId }: RenderFrameProps) {
         }
         right={
           <RenderRightPane
-            isKo={isKo}
             lang={lang}
-            material={MATERIAL_LIBRARY.find(m => m.id === selectedMaterial)?.lbl ?? selectedMaterial}
+            material={loc(lang, MATERIAL_LIBRARY.find(m => m.id === selectedMaterial)?.labels ?? { ko: selectedMaterial, en: selectedMaterial, ja: selectedMaterial, zh: selectedMaterial, es: selectedMaterial, ar: selectedMaterial })}
             color={MATERIAL_LIBRARY.find(m => m.id === selectedMaterial)?.color ?? '#888'}
             roughness={roughness}
             metalness={metalness}
@@ -207,7 +209,6 @@ export function RenderFrame({ lang, isKo, projectId }: RenderFrameProps) {
         }
         viewport={
           <RenderCanvas
-            isKo={isKo}
             lang={lang}
             material={selectedMaterial}
             color={MATERIAL_LIBRARY.find(m => m.id === selectedMaterial)?.color ?? '#888'}
@@ -217,14 +218,14 @@ export function RenderFrame({ lang, isKo, projectId }: RenderFrameProps) {
             hdri={hdri}
             projectId={projectId}
             onBackToModeling={() =>
-              router.push(`/${lang}/shape-generator?shell=v2${projectId ? `&project=${projectId}` : ''}`)
+              router.push(`/${langSeg}/shape-generator?shell=v2${projectId ? `&project=${projectId}` : ''}`)
             }
           />
         }
-        statusBar={{
+          statusBar={{
           left: [
             { id: 'cam', items: [`${lens}mm`] },
-            { id: 'hdri', items: [`HDRI · ${hdri}`] },
+            { id: 'hdri', items: [`HDRI · ${loc(lang, HDRI_PRESETS.find(p => p.id === hdri)?.labels ?? { ko: hdri, en: hdri, ja: hdri, zh: hdri, es: hdri, ar: hdri })}`] },
           ],
           pills: [
             { id: 'engine', label: 'PBR · WebGL2' },
@@ -281,7 +282,7 @@ export function RenderFrame({ lang, isKo, projectId }: RenderFrameProps) {
               <button
                 type="button"
                 className="nx-pillbtn primary"
-                onClick={() => router.push(`/${lang}/nexyfab/pricing`)}
+                onClick={() => router.push(`/${langSeg}/nexyfab/pricing`)}
               >
                 {loc(lang, { ko: 'Pro 업그레이드', en: 'Upgrade to Pro', ja: 'Proにアップグレード', zh: '升级到 Pro', es: 'Actualizar a Pro', ar: 'الترقية إلى Pro' })}
               </button>
@@ -294,7 +295,6 @@ export function RenderFrame({ lang, isKo, projectId }: RenderFrameProps) {
 }
 
 function MaterialLibraryPane({
-  isKo,
   lang,
   materials,
   selectedId,
@@ -302,7 +302,6 @@ function MaterialLibraryPane({
   filter,
   onFilter,
 }: {
-  isKo: boolean;
   lang: string;
   materials: MaterialSwatch[];
   selectedId: string;
@@ -390,7 +389,7 @@ function MaterialLibraryPane({
                 lineHeight: 1.2,
               }}
             >
-              {m.lbl}
+              {loc(lang, m.labels)}
             </span>
           </button>
         ))}
@@ -399,8 +398,7 @@ function MaterialLibraryPane({
   );
 }
 
-function RenderPropsPane({
-  isKo,
+function _RenderPropsPane({
   lang,
   roughness,
   setRoughness,
@@ -415,7 +413,6 @@ function RenderPropsPane({
   lens,
   setLens,
 }: {
-  isKo: boolean;
   lang: string;
   roughness: number;
   setRoughness: (v: number) => void;
@@ -482,7 +479,7 @@ function RenderPropsPane({
                   }}
                 >
                   <Icon size={14} />
-                  {isKo ? h.lblKo : h.lbl}
+                  {loc(lang, h.labels)}
                 </button>
               );
             })}
@@ -562,7 +559,6 @@ function SliderRow({
 }
 
 function RenderCanvas({
-  isKo,
   lang,
   material,
   color,
@@ -573,7 +569,6 @@ function RenderCanvas({
   projectId,
   onBackToModeling,
 }: {
-  isKo: boolean;
   lang: string;
   material: string;
   color: string;

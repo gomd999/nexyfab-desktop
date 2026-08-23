@@ -42,6 +42,7 @@ describe('MCP generate_package — 발행 규약(REV·정합)이 웹 라우트�
   it('REV 는 웹 라우트와 같은 식으로 산출되고 전 HTML 에 스탬프된다', async () => {
     const outDir = mkOut('rev');
     const res = await callTool('generate_domain_package', {
+      confirmWrite: true,
       domain: 'civil', templateId: 'retaining_wall_run', params: OK_PARAMS, outDir,
     });
     expect(res.ok).toBe(true);
@@ -64,6 +65,7 @@ describe('MCP generate_package — 발행 규약(REV·정합)이 웹 라우트�
   it('DXF 표제란·HTML REV 스팬에 미치환 자리표시자가 남지 않는다', async () => {
     const outDir = mkOut('ph');
     const res = await callTool('generate_domain_package', {
+      confirmWrite: true,
       domain: 'civil', templateId: 'retaining_wall_run', params: OK_PARAMS, outDir,
     });
     expect(res.ok).toBe(true);
@@ -79,6 +81,7 @@ describe('MCP generate_package — 발행 규약(REV·정합)이 웹 라우트�
   it('정합 게이트가 실행되어 결과가 응답에 실린다(스킵도 침묵도 아님)', async () => {
     const outDir = mkOut('cons');
     const res = await callTool('generate_domain_package', {
+      confirmWrite: true,
       domain: 'civil', templateId: 'retaining_wall_run', params: OK_PARAMS, outDir,
     });
     expect(res.ok).toBe(true);
@@ -93,6 +96,7 @@ describe('MCP generate_package — 발행 규약(REV·정합)이 웹 라우트�
   it('실시 검도 M1~M6 리포트가 파일로 나간다 — 게이트를 계산만 하고 버리지 않는다', async () => {
     const outDir = mkOut('exec');
     const res = await callTool('generate_domain_package', {
+      confirmWrite: true,
       domain: 'civil', templateId: 'retaining_wall_run', params: OK_PARAMS, outDir,
     });
     expect(res.ok).toBe(true);
@@ -110,6 +114,7 @@ describe('MCP generate_package — 발행 규약(REV·정합)이 웹 라우트�
     // 공중에 뜬 부품이 있어도 에이전트에게는 `ok:true` 만 보였다.
     const outDir = mkOut('float');
     const res = (await callTool('generate_package', {
+      confirmWrite: true,
       outDir,
       assembly: {
         name: '부유 테스트',
@@ -128,6 +133,7 @@ describe('MCP generate_package — 발행 규약(REV·정합)이 웹 라우트�
   it('옹벽 활동 FAIL 이 MCP 경로에서도 쉬운요약까지 도달한다(835eec40 · 과탐 0)', async () => {
     const bad = mkOut('fail');
     const resBad = await callTool('generate_domain_package', {
+      confirmWrite: true,
       domain: 'civil', templateId: 'retaining_wall_run', params: FAIL_PARAMS, outDir: bad,
     });
     expect(resBad.ok).toBe(true);
@@ -139,6 +145,7 @@ describe('MCP generate_package — 발행 규약(REV·정합)이 웹 라우트�
     // 과탐 0 — 건전 옹벽은 경고를 만들지 않는다
     const ok = mkOut('nofail');
     await callTool('generate_domain_package', {
+      confirmWrite: true,
       domain: 'civil', templateId: 'retaining_wall_run', params: OK_PARAMS, outDir: ok,
     });
     const easyOk = read(ok, '쉬운요약.html');
@@ -157,6 +164,7 @@ describe('MCP generate_package — 산출물 실패는 응답에 남는다', () 
   it('정상 경로에서는 outputsFailed 가 비어 있다 (과탐 0)', async () => {
     const outDir = mkOut('nofail');
     const res = (await callTool('generate_domain_package', {
+      confirmWrite: true,
       domain: 'civil', templateId: 'retaining_wall_run', params: OK_PARAMS, outDir,
     })) as PkgResult & { outputsFailed?: string[] };
     expect(res.ok).toBe(true);
@@ -169,6 +177,7 @@ describe('MCP generate_package — 산출물 실패는 응답에 남는다', () 
   it('응답에 outputsFailed 필드가 항상 존재한다 — "검사 안 함"과 구별되게', async () => {
     const outDir = mkOut('field');
     const res = (await callTool('generate_domain_package', {
+      confirmWrite: true,
       domain: 'civil', templateId: 'retaining_wall_run', params: OK_PARAMS, outDir,
     })) as PkgResult & { outputsFailed?: string[] };
     expect(Array.isArray(res.outputsFailed)).toBe(true);

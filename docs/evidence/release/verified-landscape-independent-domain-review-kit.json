@@ -1,0 +1,1029 @@
+{
+  "schema": "nexyfab.independent-domain-review-kit.v3",
+  "generatedAt": "2026-08-22T05:08:02.894Z",
+  "releaseChannel": "verified-landscape",
+  "requiredDomains": [
+    "landscape"
+  ],
+  "policy": {
+    "casesPerDomain": 20,
+    "independentReviewersPerCase": 2,
+    "sourceMayNotComeFromSyntheticLane": true,
+    "sourceMayNotComeFromReferenceLane": true,
+    "reviewerMayNotBeReplacedByAi": true,
+    "signedDecisionRequired": true,
+    "cryptographicSignatureRequired": true,
+    "trustedReviewerRegistryRequired": true,
+    "sourceOrArtifactMutationInvalidatesReview": true,
+    "spatialEvidenceMaySatisfyMechanicalCore": false
+  },
+  "summary": {
+    "requiredCases": 20,
+    "acquiredCases": 0,
+    "approvedCases": 0,
+    "requiredSignedReviews": 40,
+    "completedSignedReviews": 0
+  },
+  "cases": [
+    {
+      "caseId": "landscape-independent-01",
+      "domain": "landscape",
+      "status": "source_required",
+      "requiredAxes": [
+        "terrain",
+        "grading",
+        "drainage",
+        "planting quantities",
+        "spatial clearance"
+      ],
+      "source": {
+        "organizationId": null,
+        "lineageId": null,
+        "sourceSha256": null,
+        "licenseDecision": null,
+        "independentOfTrainingAndReferenceCorpus": null,
+        "acquisitionAttestation": null
+      },
+      "blindedRun": {
+        "inputSha256": null,
+        "outputArtifactHashes": [],
+        "automaticValidationReceipt": {
+          "schema": null,
+          "path": null,
+          "sha256": null
+        },
+        "executedAt": null
+      },
+      "reviews": {
+        "domainReviewer": {
+          "reviewerId": null,
+          "independentFromBuild": null,
+          "decision": null,
+          "reviewedAt": null,
+          "targetHash": null,
+          "signature": null
+        },
+        "independentReviewer": {
+          "reviewerId": null,
+          "independentFromBuild": null,
+          "decision": null,
+          "reviewedAt": null,
+          "targetHash": null,
+          "signature": null
+        },
+        "disagreementResolution": null
+      },
+      "releaseEligible": false
+    },
+    {
+      "caseId": "landscape-independent-02",
+      "domain": "landscape",
+      "status": "source_required",
+      "requiredAxes": [
+        "terrain",
+        "grading",
+        "drainage",
+        "planting quantities",
+        "spatial clearance"
+      ],
+      "source": {
+        "organizationId": null,
+        "lineageId": null,
+        "sourceSha256": null,
+        "licenseDecision": null,
+        "independentOfTrainingAndReferenceCorpus": null,
+        "acquisitionAttestation": null
+      },
+      "blindedRun": {
+        "inputSha256": null,
+        "outputArtifactHashes": [],
+        "automaticValidationReceipt": {
+          "schema": null,
+          "path": null,
+          "sha256": null
+        },
+        "executedAt": null
+      },
+      "reviews": {
+        "domainReviewer": {
+          "reviewerId": null,
+          "independentFromBuild": null,
+          "decision": null,
+          "reviewedAt": null,
+          "targetHash": null,
+          "signature": null
+        },
+        "independentReviewer": {
+          "reviewerId": null,
+          "independentFromBuild": null,
+          "decision": null,
+          "reviewedAt": null,
+          "targetHash": null,
+          "signature": null
+        },
+        "disagreementResolution": null
+      },
+      "releaseEligible": false
+    },
+    {
+      "caseId": "landscape-independent-03",
+      "domain": "landscape",
+      "status": "source_required",
+      "requiredAxes": [
+        "terrain",
+        "grading",
+        "drainage",
+        "planting quantities",
+        "spatial clearance"
+      ],
+      "source": {
+        "organizationId": null,
+        "lineageId": null,
+        "sourceSha256": null,
+        "licenseDecision": null,
+        "independentOfTrainingAndReferenceCorpus": null,
+        "acquisitionAttestation": null
+      },
+      "blindedRun": {
+        "inputSha256": null,
+        "outputArtifactHashes": [],
+        "automaticValidationReceipt": {
+          "schema": null,
+          "path": null,
+          "sha256": null
+        },
+        "executedAt": null
+      },
+      "reviews": {
+        "domainReviewer": {
+          "reviewerId": null,
+          "independentFromBuild": null,
+          "decision": null,
+          "reviewedAt": null,
+          "targetHash": null,
+          "signature": null
+        },
+        "independentReviewer": {
+          "reviewerId": null,
+          "independentFromBuild": null,
+          "decision": null,
+          "reviewedAt": null,
+          "targetHash": null,
+          "signature": null
+        },
+        "disagreementResolution": null
+      },
+      "releaseEligible": false
+    },
+    {
+      "caseId": "landscape-independent-04",
+      "domain": "landscape",
+      "status": "source_required",
+      "requiredAxes": [
+        "terrain",
+        "grading",
+        "drainage",
+        "planting quantities",
+        "spatial clearance"
+      ],
+      "source": {
+        "organizationId": null,
+        "lineageId": null,
+        "sourceSha256": null,
+        "licenseDecision": null,
+        "independentOfTrainingAndReferenceCorpus": null,
+        "acquisitionAttestation": null
+      },
+      "blindedRun": {
+        "inputSha256": null,
+        "outputArtifactHashes": [],
+        "automaticValidationReceipt": {
+          "schema": null,
+          "path": null,
+          "sha256": null
+        },
+        "executedAt": null
+      },
+      "reviews": {
+        "domainReviewer": {
+          "reviewerId": null,
+          "independentFromBuild": null,
+          "decision": null,
+          "reviewedAt": null,
+          "targetHash": null,
+          "signature": null
+        },
+        "independentReviewer": {
+          "reviewerId": null,
+          "independentFromBuild": null,
+          "decision": null,
+          "reviewedAt": null,
+          "targetHash": null,
+          "signature": null
+        },
+        "disagreementResolution": null
+      },
+      "releaseEligible": false
+    },
+    {
+      "caseId": "landscape-independent-05",
+      "domain": "landscape",
+      "status": "source_required",
+      "requiredAxes": [
+        "terrain",
+        "grading",
+        "drainage",
+        "planting quantities",
+        "spatial clearance"
+      ],
+      "source": {
+        "organizationId": null,
+        "lineageId": null,
+        "sourceSha256": null,
+        "licenseDecision": null,
+        "independentOfTrainingAndReferenceCorpus": null,
+        "acquisitionAttestation": null
+      },
+      "blindedRun": {
+        "inputSha256": null,
+        "outputArtifactHashes": [],
+        "automaticValidationReceipt": {
+          "schema": null,
+          "path": null,
+          "sha256": null
+        },
+        "executedAt": null
+      },
+      "reviews": {
+        "domainReviewer": {
+          "reviewerId": null,
+          "independentFromBuild": null,
+          "decision": null,
+          "reviewedAt": null,
+          "targetHash": null,
+          "signature": null
+        },
+        "independentReviewer": {
+          "reviewerId": null,
+          "independentFromBuild": null,
+          "decision": null,
+          "reviewedAt": null,
+          "targetHash": null,
+          "signature": null
+        },
+        "disagreementResolution": null
+      },
+      "releaseEligible": false
+    },
+    {
+      "caseId": "landscape-independent-06",
+      "domain": "landscape",
+      "status": "source_required",
+      "requiredAxes": [
+        "terrain",
+        "grading",
+        "drainage",
+        "planting quantities",
+        "spatial clearance"
+      ],
+      "source": {
+        "organizationId": null,
+        "lineageId": null,
+        "sourceSha256": null,
+        "licenseDecision": null,
+        "independentOfTrainingAndReferenceCorpus": null,
+        "acquisitionAttestation": null
+      },
+      "blindedRun": {
+        "inputSha256": null,
+        "outputArtifactHashes": [],
+        "automaticValidationReceipt": {
+          "schema": null,
+          "path": null,
+          "sha256": null
+        },
+        "executedAt": null
+      },
+      "reviews": {
+        "domainReviewer": {
+          "reviewerId": null,
+          "independentFromBuild": null,
+          "decision": null,
+          "reviewedAt": null,
+          "targetHash": null,
+          "signature": null
+        },
+        "independentReviewer": {
+          "reviewerId": null,
+          "independentFromBuild": null,
+          "decision": null,
+          "reviewedAt": null,
+          "targetHash": null,
+          "signature": null
+        },
+        "disagreementResolution": null
+      },
+      "releaseEligible": false
+    },
+    {
+      "caseId": "landscape-independent-07",
+      "domain": "landscape",
+      "status": "source_required",
+      "requiredAxes": [
+        "terrain",
+        "grading",
+        "drainage",
+        "planting quantities",
+        "spatial clearance"
+      ],
+      "source": {
+        "organizationId": null,
+        "lineageId": null,
+        "sourceSha256": null,
+        "licenseDecision": null,
+        "independentOfTrainingAndReferenceCorpus": null,
+        "acquisitionAttestation": null
+      },
+      "blindedRun": {
+        "inputSha256": null,
+        "outputArtifactHashes": [],
+        "automaticValidationReceipt": {
+          "schema": null,
+          "path": null,
+          "sha256": null
+        },
+        "executedAt": null
+      },
+      "reviews": {
+        "domainReviewer": {
+          "reviewerId": null,
+          "independentFromBuild": null,
+          "decision": null,
+          "reviewedAt": null,
+          "targetHash": null,
+          "signature": null
+        },
+        "independentReviewer": {
+          "reviewerId": null,
+          "independentFromBuild": null,
+          "decision": null,
+          "reviewedAt": null,
+          "targetHash": null,
+          "signature": null
+        },
+        "disagreementResolution": null
+      },
+      "releaseEligible": false
+    },
+    {
+      "caseId": "landscape-independent-08",
+      "domain": "landscape",
+      "status": "source_required",
+      "requiredAxes": [
+        "terrain",
+        "grading",
+        "drainage",
+        "planting quantities",
+        "spatial clearance"
+      ],
+      "source": {
+        "organizationId": null,
+        "lineageId": null,
+        "sourceSha256": null,
+        "licenseDecision": null,
+        "independentOfTrainingAndReferenceCorpus": null,
+        "acquisitionAttestation": null
+      },
+      "blindedRun": {
+        "inputSha256": null,
+        "outputArtifactHashes": [],
+        "automaticValidationReceipt": {
+          "schema": null,
+          "path": null,
+          "sha256": null
+        },
+        "executedAt": null
+      },
+      "reviews": {
+        "domainReviewer": {
+          "reviewerId": null,
+          "independentFromBuild": null,
+          "decision": null,
+          "reviewedAt": null,
+          "targetHash": null,
+          "signature": null
+        },
+        "independentReviewer": {
+          "reviewerId": null,
+          "independentFromBuild": null,
+          "decision": null,
+          "reviewedAt": null,
+          "targetHash": null,
+          "signature": null
+        },
+        "disagreementResolution": null
+      },
+      "releaseEligible": false
+    },
+    {
+      "caseId": "landscape-independent-09",
+      "domain": "landscape",
+      "status": "source_required",
+      "requiredAxes": [
+        "terrain",
+        "grading",
+        "drainage",
+        "planting quantities",
+        "spatial clearance"
+      ],
+      "source": {
+        "organizationId": null,
+        "lineageId": null,
+        "sourceSha256": null,
+        "licenseDecision": null,
+        "independentOfTrainingAndReferenceCorpus": null,
+        "acquisitionAttestation": null
+      },
+      "blindedRun": {
+        "inputSha256": null,
+        "outputArtifactHashes": [],
+        "automaticValidationReceipt": {
+          "schema": null,
+          "path": null,
+          "sha256": null
+        },
+        "executedAt": null
+      },
+      "reviews": {
+        "domainReviewer": {
+          "reviewerId": null,
+          "independentFromBuild": null,
+          "decision": null,
+          "reviewedAt": null,
+          "targetHash": null,
+          "signature": null
+        },
+        "independentReviewer": {
+          "reviewerId": null,
+          "independentFromBuild": null,
+          "decision": null,
+          "reviewedAt": null,
+          "targetHash": null,
+          "signature": null
+        },
+        "disagreementResolution": null
+      },
+      "releaseEligible": false
+    },
+    {
+      "caseId": "landscape-independent-10",
+      "domain": "landscape",
+      "status": "source_required",
+      "requiredAxes": [
+        "terrain",
+        "grading",
+        "drainage",
+        "planting quantities",
+        "spatial clearance"
+      ],
+      "source": {
+        "organizationId": null,
+        "lineageId": null,
+        "sourceSha256": null,
+        "licenseDecision": null,
+        "independentOfTrainingAndReferenceCorpus": null,
+        "acquisitionAttestation": null
+      },
+      "blindedRun": {
+        "inputSha256": null,
+        "outputArtifactHashes": [],
+        "automaticValidationReceipt": {
+          "schema": null,
+          "path": null,
+          "sha256": null
+        },
+        "executedAt": null
+      },
+      "reviews": {
+        "domainReviewer": {
+          "reviewerId": null,
+          "independentFromBuild": null,
+          "decision": null,
+          "reviewedAt": null,
+          "targetHash": null,
+          "signature": null
+        },
+        "independentReviewer": {
+          "reviewerId": null,
+          "independentFromBuild": null,
+          "decision": null,
+          "reviewedAt": null,
+          "targetHash": null,
+          "signature": null
+        },
+        "disagreementResolution": null
+      },
+      "releaseEligible": false
+    },
+    {
+      "caseId": "landscape-independent-11",
+      "domain": "landscape",
+      "status": "source_required",
+      "requiredAxes": [
+        "terrain",
+        "grading",
+        "drainage",
+        "planting quantities",
+        "spatial clearance"
+      ],
+      "source": {
+        "organizationId": null,
+        "lineageId": null,
+        "sourceSha256": null,
+        "licenseDecision": null,
+        "independentOfTrainingAndReferenceCorpus": null,
+        "acquisitionAttestation": null
+      },
+      "blindedRun": {
+        "inputSha256": null,
+        "outputArtifactHashes": [],
+        "automaticValidationReceipt": {
+          "schema": null,
+          "path": null,
+          "sha256": null
+        },
+        "executedAt": null
+      },
+      "reviews": {
+        "domainReviewer": {
+          "reviewerId": null,
+          "independentFromBuild": null,
+          "decision": null,
+          "reviewedAt": null,
+          "targetHash": null,
+          "signature": null
+        },
+        "independentReviewer": {
+          "reviewerId": null,
+          "independentFromBuild": null,
+          "decision": null,
+          "reviewedAt": null,
+          "targetHash": null,
+          "signature": null
+        },
+        "disagreementResolution": null
+      },
+      "releaseEligible": false
+    },
+    {
+      "caseId": "landscape-independent-12",
+      "domain": "landscape",
+      "status": "source_required",
+      "requiredAxes": [
+        "terrain",
+        "grading",
+        "drainage",
+        "planting quantities",
+        "spatial clearance"
+      ],
+      "source": {
+        "organizationId": null,
+        "lineageId": null,
+        "sourceSha256": null,
+        "licenseDecision": null,
+        "independentOfTrainingAndReferenceCorpus": null,
+        "acquisitionAttestation": null
+      },
+      "blindedRun": {
+        "inputSha256": null,
+        "outputArtifactHashes": [],
+        "automaticValidationReceipt": {
+          "schema": null,
+          "path": null,
+          "sha256": null
+        },
+        "executedAt": null
+      },
+      "reviews": {
+        "domainReviewer": {
+          "reviewerId": null,
+          "independentFromBuild": null,
+          "decision": null,
+          "reviewedAt": null,
+          "targetHash": null,
+          "signature": null
+        },
+        "independentReviewer": {
+          "reviewerId": null,
+          "independentFromBuild": null,
+          "decision": null,
+          "reviewedAt": null,
+          "targetHash": null,
+          "signature": null
+        },
+        "disagreementResolution": null
+      },
+      "releaseEligible": false
+    },
+    {
+      "caseId": "landscape-independent-13",
+      "domain": "landscape",
+      "status": "source_required",
+      "requiredAxes": [
+        "terrain",
+        "grading",
+        "drainage",
+        "planting quantities",
+        "spatial clearance"
+      ],
+      "source": {
+        "organizationId": null,
+        "lineageId": null,
+        "sourceSha256": null,
+        "licenseDecision": null,
+        "independentOfTrainingAndReferenceCorpus": null,
+        "acquisitionAttestation": null
+      },
+      "blindedRun": {
+        "inputSha256": null,
+        "outputArtifactHashes": [],
+        "automaticValidationReceipt": {
+          "schema": null,
+          "path": null,
+          "sha256": null
+        },
+        "executedAt": null
+      },
+      "reviews": {
+        "domainReviewer": {
+          "reviewerId": null,
+          "independentFromBuild": null,
+          "decision": null,
+          "reviewedAt": null,
+          "targetHash": null,
+          "signature": null
+        },
+        "independentReviewer": {
+          "reviewerId": null,
+          "independentFromBuild": null,
+          "decision": null,
+          "reviewedAt": null,
+          "targetHash": null,
+          "signature": null
+        },
+        "disagreementResolution": null
+      },
+      "releaseEligible": false
+    },
+    {
+      "caseId": "landscape-independent-14",
+      "domain": "landscape",
+      "status": "source_required",
+      "requiredAxes": [
+        "terrain",
+        "grading",
+        "drainage",
+        "planting quantities",
+        "spatial clearance"
+      ],
+      "source": {
+        "organizationId": null,
+        "lineageId": null,
+        "sourceSha256": null,
+        "licenseDecision": null,
+        "independentOfTrainingAndReferenceCorpus": null,
+        "acquisitionAttestation": null
+      },
+      "blindedRun": {
+        "inputSha256": null,
+        "outputArtifactHashes": [],
+        "automaticValidationReceipt": {
+          "schema": null,
+          "path": null,
+          "sha256": null
+        },
+        "executedAt": null
+      },
+      "reviews": {
+        "domainReviewer": {
+          "reviewerId": null,
+          "independentFromBuild": null,
+          "decision": null,
+          "reviewedAt": null,
+          "targetHash": null,
+          "signature": null
+        },
+        "independentReviewer": {
+          "reviewerId": null,
+          "independentFromBuild": null,
+          "decision": null,
+          "reviewedAt": null,
+          "targetHash": null,
+          "signature": null
+        },
+        "disagreementResolution": null
+      },
+      "releaseEligible": false
+    },
+    {
+      "caseId": "landscape-independent-15",
+      "domain": "landscape",
+      "status": "source_required",
+      "requiredAxes": [
+        "terrain",
+        "grading",
+        "drainage",
+        "planting quantities",
+        "spatial clearance"
+      ],
+      "source": {
+        "organizationId": null,
+        "lineageId": null,
+        "sourceSha256": null,
+        "licenseDecision": null,
+        "independentOfTrainingAndReferenceCorpus": null,
+        "acquisitionAttestation": null
+      },
+      "blindedRun": {
+        "inputSha256": null,
+        "outputArtifactHashes": [],
+        "automaticValidationReceipt": {
+          "schema": null,
+          "path": null,
+          "sha256": null
+        },
+        "executedAt": null
+      },
+      "reviews": {
+        "domainReviewer": {
+          "reviewerId": null,
+          "independentFromBuild": null,
+          "decision": null,
+          "reviewedAt": null,
+          "targetHash": null,
+          "signature": null
+        },
+        "independentReviewer": {
+          "reviewerId": null,
+          "independentFromBuild": null,
+          "decision": null,
+          "reviewedAt": null,
+          "targetHash": null,
+          "signature": null
+        },
+        "disagreementResolution": null
+      },
+      "releaseEligible": false
+    },
+    {
+      "caseId": "landscape-independent-16",
+      "domain": "landscape",
+      "status": "source_required",
+      "requiredAxes": [
+        "terrain",
+        "grading",
+        "drainage",
+        "planting quantities",
+        "spatial clearance"
+      ],
+      "source": {
+        "organizationId": null,
+        "lineageId": null,
+        "sourceSha256": null,
+        "licenseDecision": null,
+        "independentOfTrainingAndReferenceCorpus": null,
+        "acquisitionAttestation": null
+      },
+      "blindedRun": {
+        "inputSha256": null,
+        "outputArtifactHashes": [],
+        "automaticValidationReceipt": {
+          "schema": null,
+          "path": null,
+          "sha256": null
+        },
+        "executedAt": null
+      },
+      "reviews": {
+        "domainReviewer": {
+          "reviewerId": null,
+          "independentFromBuild": null,
+          "decision": null,
+          "reviewedAt": null,
+          "targetHash": null,
+          "signature": null
+        },
+        "independentReviewer": {
+          "reviewerId": null,
+          "independentFromBuild": null,
+          "decision": null,
+          "reviewedAt": null,
+          "targetHash": null,
+          "signature": null
+        },
+        "disagreementResolution": null
+      },
+      "releaseEligible": false
+    },
+    {
+      "caseId": "landscape-independent-17",
+      "domain": "landscape",
+      "status": "source_required",
+      "requiredAxes": [
+        "terrain",
+        "grading",
+        "drainage",
+        "planting quantities",
+        "spatial clearance"
+      ],
+      "source": {
+        "organizationId": null,
+        "lineageId": null,
+        "sourceSha256": null,
+        "licenseDecision": null,
+        "independentOfTrainingAndReferenceCorpus": null,
+        "acquisitionAttestation": null
+      },
+      "blindedRun": {
+        "inputSha256": null,
+        "outputArtifactHashes": [],
+        "automaticValidationReceipt": {
+          "schema": null,
+          "path": null,
+          "sha256": null
+        },
+        "executedAt": null
+      },
+      "reviews": {
+        "domainReviewer": {
+          "reviewerId": null,
+          "independentFromBuild": null,
+          "decision": null,
+          "reviewedAt": null,
+          "targetHash": null,
+          "signature": null
+        },
+        "independentReviewer": {
+          "reviewerId": null,
+          "independentFromBuild": null,
+          "decision": null,
+          "reviewedAt": null,
+          "targetHash": null,
+          "signature": null
+        },
+        "disagreementResolution": null
+      },
+      "releaseEligible": false
+    },
+    {
+      "caseId": "landscape-independent-18",
+      "domain": "landscape",
+      "status": "source_required",
+      "requiredAxes": [
+        "terrain",
+        "grading",
+        "drainage",
+        "planting quantities",
+        "spatial clearance"
+      ],
+      "source": {
+        "organizationId": null,
+        "lineageId": null,
+        "sourceSha256": null,
+        "licenseDecision": null,
+        "independentOfTrainingAndReferenceCorpus": null,
+        "acquisitionAttestation": null
+      },
+      "blindedRun": {
+        "inputSha256": null,
+        "outputArtifactHashes": [],
+        "automaticValidationReceipt": {
+          "schema": null,
+          "path": null,
+          "sha256": null
+        },
+        "executedAt": null
+      },
+      "reviews": {
+        "domainReviewer": {
+          "reviewerId": null,
+          "independentFromBuild": null,
+          "decision": null,
+          "reviewedAt": null,
+          "targetHash": null,
+          "signature": null
+        },
+        "independentReviewer": {
+          "reviewerId": null,
+          "independentFromBuild": null,
+          "decision": null,
+          "reviewedAt": null,
+          "targetHash": null,
+          "signature": null
+        },
+        "disagreementResolution": null
+      },
+      "releaseEligible": false
+    },
+    {
+      "caseId": "landscape-independent-19",
+      "domain": "landscape",
+      "status": "source_required",
+      "requiredAxes": [
+        "terrain",
+        "grading",
+        "drainage",
+        "planting quantities",
+        "spatial clearance"
+      ],
+      "source": {
+        "organizationId": null,
+        "lineageId": null,
+        "sourceSha256": null,
+        "licenseDecision": null,
+        "independentOfTrainingAndReferenceCorpus": null,
+        "acquisitionAttestation": null
+      },
+      "blindedRun": {
+        "inputSha256": null,
+        "outputArtifactHashes": [],
+        "automaticValidationReceipt": {
+          "schema": null,
+          "path": null,
+          "sha256": null
+        },
+        "executedAt": null
+      },
+      "reviews": {
+        "domainReviewer": {
+          "reviewerId": null,
+          "independentFromBuild": null,
+          "decision": null,
+          "reviewedAt": null,
+          "targetHash": null,
+          "signature": null
+        },
+        "independentReviewer": {
+          "reviewerId": null,
+          "independentFromBuild": null,
+          "decision": null,
+          "reviewedAt": null,
+          "targetHash": null,
+          "signature": null
+        },
+        "disagreementResolution": null
+      },
+      "releaseEligible": false
+    },
+    {
+      "caseId": "landscape-independent-20",
+      "domain": "landscape",
+      "status": "source_required",
+      "requiredAxes": [
+        "terrain",
+        "grading",
+        "drainage",
+        "planting quantities",
+        "spatial clearance"
+      ],
+      "source": {
+        "organizationId": null,
+        "lineageId": null,
+        "sourceSha256": null,
+        "licenseDecision": null,
+        "independentOfTrainingAndReferenceCorpus": null,
+        "acquisitionAttestation": null
+      },
+      "blindedRun": {
+        "inputSha256": null,
+        "outputArtifactHashes": [],
+        "automaticValidationReceipt": {
+          "schema": null,
+          "path": null,
+          "sha256": null
+        },
+        "executedAt": null
+      },
+      "reviews": {
+        "domainReviewer": {
+          "reviewerId": null,
+          "independentFromBuild": null,
+          "decision": null,
+          "reviewedAt": null,
+          "targetHash": null,
+          "signature": null
+        },
+        "independentReviewer": {
+          "reviewerId": null,
+          "independentFromBuild": null,
+          "decision": null,
+          "reviewedAt": null,
+          "targetHash": null,
+          "signature": null
+        },
+        "disagreementResolution": null
+      },
+      "releaseEligible": false
+    }
+  ]
+}

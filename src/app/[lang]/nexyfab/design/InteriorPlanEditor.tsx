@@ -15,6 +15,7 @@
 
 import { useEffect, useMemo, useRef, useState, useCallback } from 'react';
 import { toIsoLang } from '@/lib/i18n/normalize';
+import { clampInteriorPlacementPositionMm, INTERIOR_PLACEMENT_CATALOG, roomCenteredToTopLeftMm, topLeftToRoomCenteredMm, type InteriorPlacementObject, type Vec3Mm } from '@/lib/cad/interiorPlacementDocument';
 
 // ─── i18n dictionary (6-lang, identical key sets — AssemblyPresetPanel 패턴) ──
 const dict = {
@@ -152,7 +153,17 @@ const dict = {
   },
 } as const;
 
-export interface Furn { kind: 'table2' | 'table4' | 'sofa'; x: number; y: number }
+export interface Furn { id?: string; kind: 'table2' | 'table4' | 'sofa'; x: number; y: number }
+
+export interface InteriorPlanPlacementController {
+  objects: readonly InteriorPlacementObject[];
+  selectedObjectId: string | null;
+  onSelectObject: (objectId: string | null) => void;
+  onPreviewMove: (objectId: string, positionMm: Vec3Mm) => void;
+  onCommitMove: (objectId: string, positionMm: Vec3Mm) => void | Promise<void>;
+  onAddObject: (kind: Furn['kind'], positionMm?: Vec3Mm) => void | Promise<void>;
+  onDeleteObject: (objectId: string) => void | Promise<void>;
+}
 
 export interface InteriorOverlayData {
   travel?: {
@@ -167,9 +178,9 @@ export interface InteriorOverlayData {
 
 // 가구 카탈로그 — scripts/drawing-to-3d/domain-assemblies.mjs cafe_room CATALOG 미러 (동기화 유지)
 const CATALOG: Record<Furn['kind'], { w: number; d: number; seats: number }> = {
-  table2: { w: 700, d: 700, seats: 2 },
-  table4: { w: 1200, d: 1200, seats: 4 },
-  sofa: { w: 1800, d: 850, seats: 3 },
+  table2: { w: INTERIOR_PLACEMENT_CATALOG.table2.dimensionsMm[0], d: INTERIOR_PLACEMENT_CATALOG.table2.dimensionsMm[1], seats: INTERIOR_PLACEMENT_CATALOG.table2.seats },
+  table4: { w: INTERIOR_PLACEMENT_CATALOG.table4.dimensionsMm[0], d: INTERIOR_PLACEMENT_CATALOG.table4.dimensionsMm[1], seats: INTERIOR_PLACEMENT_CATALOG.table4.seats },
+  sofa: { w: INTERIOR_PLACEMENT_CATALOG.sofa.dimensionsMm[0], d: INTERIOR_PLACEMENT_CATALOG.sofa.dimensionsMm[1], seats: INTERIOR_PLACEMENT_CATALOG.sofa.seats },
 };
 const FURN_FILL: Record<Furn['kind'], string> = { table2: '#ccfbf1', table4: '#99f6e4', sofa: '#fbcfe8' };
 const SNAP = 50; // mm
@@ -183,23 +194,25 @@ const parseLayout = (s?: string): [number, number] | null => {
 };
 
 export default function InteriorPlanEditor({
-  lang, width, depth, doorWidth, exitCount, rows, cols,
-  furniture, onChange, result, unit = 'mm',
+  lang, width, depth, height = 3000, doorWidth, exitCount, rows, cols,
+  furniture, onChange, result, unit = 'mm', placement,
 }: {
   lang: string;
-  width: number; depth: number; doorWidth: number; exitCount: number;
+  width: number; depth: number; height?: number; doorWidth: number; exitCount: number;
   rows: number; cols: number;
   furniture: Furn[] | null; // null = 템플릿 그리드 모드
   onChange: (list: Furn[] | null, label: string) => void;
   result: InteriorOverlayData | null;
+  placement?: InteriorPlanPlacementController;
   unit?: 'mm' | 'm'; // 치수 라벨 표시 단위 (좌표·스냅은 mm 고정)
 }) {
   const t = dict[toIsoLang(lang)] ?? dict.ko;
-  const W = Math.max(1000, width), D = Math.max(1000, depth);
+  const W = Math.max(1000, width), D = Math.max(1000, depth), H = Math.max(1, height);
   const fmtDim = (v: number) => (unit === 'm' ? `${(v / 1000).toFixed(3)} m` : `${v} mm`);
 
   // 로컬 편집 상태 — 드래그 중엔 로컬만 갱신, 놓을 때 onChange로 커밋(리빌드 1회)
   const [items, setItems] = useState<Furn[] | null>(furniture);
+  const [previewItems, setPreviewItems] = useState<Furn[] | null>(null);
   useEffect(() => { setItems(furniture); }, [furniture]);
   const [sel, setSel] = useState<number | null>(null);
   const [ovHeat, setOvHeat] = useState(true);
@@ -207,7 +220,8 @@ export default function InteriorPlanEditor({
   const [ovSprk, setOvSprk] = useState(false);
 
   const svgRef = useRef<SVGSVGElement | null>(null);
-  const dragRef = useRef<{ idx: number; dx: number; dy: number; moved: boolean } | null>(null);
+  const dragRef = useRef<{ idx: number; objectId?: string; dx: number; dy: number; moved: boolean } | null>(null);
+  const placementMode = Boolean(placement);
 
   // cafe_room 그리드 테이블 좌표 미러 — domain-assemblies.mjs와 동일식 (1200각 = table4, 동기화 유지)
   const seedFromGrid = (): Furn[] => {
@@ -231,41 +245,78 @@ export default function InteriorPlanEditor({
     return { ...f, x: Math.max(0, Math.min(W - c.w, snapMm(f.x))), y: Math.max(0, Math.min(D - c.d, snapMm(f.y))) };
   }, [W, D]);
 
+  const placementItems = useMemo<Furn[]>(() => (placement?.objects ?? []).map(object => {
+    const kind = (object.catalogType in INTERIOR_PLACEMENT_CATALOG ? object.catalogType : 'table4') as Furn['kind'];
+    const [x, y] = roomCenteredToTopLeftMm(object.pose.positionMm, [W, D, H], object.dimensionsMm, object.pose.rotationDeg, object.clearanceMm);
+    return { id: object.id, kind, x, y };
+  }), [D, H, W, placement?.objects]);
+  const shownItems = placementMode ? (previewItems ?? placementItems) : items;
+  useEffect(() => { if (placementMode) setPreviewItems(null); }, [placement?.objects, placementMode]);
+
   const toMm = (ev: React.PointerEvent): { x: number; y: number } | null => {
     const el = svgRef.current;
     if (!el) return null;
     const r = el.getBoundingClientRect();
-    if (r.width < 2) return null;
-    const scale = (W + 2 * MARGIN) / r.width;
-    return { x: (ev.clientX - r.left) * scale - MARGIN, y: (ev.clientY - r.top) * scale - MARGIN };
+    if (r.width < 2 || r.height < 2) return null;
+    const viewWidth = W + 2 * MARGIN;
+    const viewHeight = D + 2 * MARGIN;
+    // SVG defaults to xMidYMid meet. Account for its letterbox offsets so a
+    // pointer maps to the same physical point at every responsive aspect ratio.
+    const pixelsPerMm = Math.min(r.width / viewWidth, r.height / viewHeight);
+    const offsetX = (r.width - viewWidth * pixelsPerMm) / 2;
+    const offsetY = (r.height - viewHeight * pixelsPerMm) / 2;
+    return {
+      x: (ev.clientX - r.left - offsetX) / pixelsPerMm - MARGIN,
+      y: (ev.clientY - r.top - offsetY) / pixelsPerMm - MARGIN,
+    };
   };
 
   const onFurnDown = (idx: number) => (ev: React.PointerEvent) => {
-    if (!items) return;
+    if (!shownItems) return;
     ev.stopPropagation();
-    setSel(idx);
+    const selected = shownItems[idx];
+    if (placementMode) placement?.onSelectObject(selected?.id ?? null);
+    else setSel(idx);
     const p = toMm(ev);
-    if (!p) return;
-    dragRef.current = { idx, dx: p.x - items[idx].x, dy: p.y - items[idx].y, moved: false };
+    if (!p || !selected) return;
+    dragRef.current = { idx, objectId: selected.id, dx: p.x - selected.x, dy: p.y - selected.y, moved: false };
     svgRef.current?.setPointerCapture(ev.pointerId);
   };
   const onSvgMove = (ev: React.PointerEvent) => {
     const d = dragRef.current;
-    if (!d || !items) return;
+    if (!d || !shownItems) return;
     const p = toMm(ev);
     if (!p) return;
     d.moved = true;
-    setItems(items.map((f, i) => (i === d.idx ? clampFurn({ ...f, x: p.x - d.dx, y: p.y - d.dy }) : f)));
+    const object = d.objectId ? placement?.objects.find(candidate => candidate.id === d.objectId) : undefined;
+    const next = shownItems.map((f, i) => {
+      if (i !== d.idx) return f;
+      const desired = { ...f, x: snapMm(p.x - d.dx), y: snapMm(p.y - d.dy) };
+      if (!placementMode || !object) return clampFurn(desired);
+      const centered = topLeftToRoomCenteredMm([desired.x, desired.y], [W, D, H], object.dimensionsMm, object.pose.rotationDeg, object.clearanceMm);
+      const clamped = clampInteriorPlacementPositionMm(centered, [W, D, H], object.dimensionsMm, object.pose.rotationDeg, object.clearanceMm);
+      const [x, y] = roomCenteredToTopLeftMm(clamped, [W, D, H], object.dimensionsMm, object.pose.rotationDeg, object.clearanceMm);
+      return { ...desired, x, y };
+    });
+    if (placementMode && d.objectId) {
+      setPreviewItems(next);
+      if (object) placement?.onPreviewMove(d.objectId, topLeftToRoomCenteredMm([next[d.idx]!.x, next[d.idx]!.y], [W, D, H], object.dimensionsMm, object.pose.rotationDeg, object.clearanceMm));
+    } else setItems(next);
   };
   const onSvgUp = () => {
     const d = dragRef.current;
     dragRef.current = null;
-    if (d && d.moved && items) {
-      const f = items[d.idx];
-      onChange(items, `${f.kind} → ${f.x},${f.y}`); // 커밋 → 리빌드+재검증 파이프
+    if (d && d.moved && shownItems) {
+      const f = shownItems[d.idx];
+      if (placementMode && d.objectId) {
+        const object = placement?.objects.find(candidate => candidate.id === d.objectId);
+        if (object) void placement?.onCommitMove(d.objectId, topLeftToRoomCenteredMm([f.x, f.y], [W, D, H], object.dimensionsMm, object.pose.rotationDeg, object.clearanceMm));
+        setPreviewItems(null);
+      } else onChange(shownItems, `${f.kind} → ${f.x},${f.y}`);
     }
   };
   const addFurn = (kind: Furn['kind']) => {
+    if (placementMode) { if ((placement?.objects.length ?? 40) >= 40) return; void placement?.onAddObject(kind); return; }
     if (!items) return;
     const c = CATALOG[kind];
     const next = [...items, clampFurn({ kind, x: (W - c.w) / 2, y: (D - c.d) / 2 })];
@@ -274,6 +325,9 @@ export default function InteriorPlanEditor({
     onChange(next, `+${kind}`);
   };
   const onKey = (ev: React.KeyboardEvent) => {
+    if ((ev.key === 'Delete' || ev.key === 'Backspace') && placementMode && placement?.selectedObjectId) {
+      ev.preventDefault(); void placement.onDeleteObject(placement.selectedObjectId); return;
+    }
     if ((ev.key === 'Delete' || ev.key === 'Backspace') && items && sel !== null && items[sel]) {
       ev.preventDefault();
       const kind = items[sel].kind;
@@ -282,6 +336,31 @@ export default function InteriorPlanEditor({
       setSel(null);
       onChange(next, `−${kind}`);
     }
+    if (placementMode && placement?.selectedObjectId && ['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(ev.key)) {
+      const object = placement.objects.find(item => item.id === placement.selectedObjectId);
+      if (!object) return;
+      ev.preventDefault();
+      const delta: Vec3Mm = [ev.key === 'ArrowRight' ? 50 : ev.key === 'ArrowLeft' ? -50 : 0, ev.key === 'ArrowDown' ? 50 : ev.key === 'ArrowUp' ? -50 : 0, 0];
+      placement.onCommitMove(object.id, [object.pose.positionMm[0] + delta[0], object.pose.positionMm[1] + delta[1], object.pose.positionMm[2]]);
+    }
+  };
+
+  const onSvgDrop = (ev: React.DragEvent<SVGSVGElement>) => {
+    if (!placementMode || !placement) return;
+    const kind = (ev.dataTransfer.getData('application/x-nexyfab-spatial-object') || ev.dataTransfer.getData('application/x-nexyfab-furniture')) as Furn['kind'];
+    if (!(kind in INTERIOR_PLACEMENT_CATALOG)) return;
+    ev.preventDefault();
+    ev.stopPropagation();
+    if (placement.objects.length >= 40) return;
+    const point = toMm(ev as unknown as React.PointerEvent);
+    if (!point) return;
+    const dimensions = INTERIOR_PLACEMENT_CATALOG[kind].dimensionsMm;
+    const positionMm = clampInteriorPlacementPositionMm(
+      [snapMm(point.x - W / 2), snapMm(point.y - D / 2), 0],
+      [W, D, H],
+      dimensions,
+    );
+    void placement.onAddObject(kind, positionMm);
   };
 
   // ── 오버레이 데이터 ─────────────────────────────────────────────────────────
@@ -322,12 +401,12 @@ export default function InteriorPlanEditor({
   const eg = result?.egress;
   const tr = result?.travel;
   const farthest = tr && tr.pass === false && Array.isArray(tr.farthestPointMm) && tr.farthestPointMm.length === 2 ? tr.farthestPointMm : null;
-  const custom = items !== null;
-  const shown = custom ? items : gridPreview;
+  const custom = placementMode || items !== null;
+  const shown = placementMode ? (shownItems ?? []) : custom ? (items ?? []) : gridPreview;
 
-  const ovRow = (checked: boolean, set: (v: boolean) => void, label: string, ready: boolean, needInput: boolean) => (
-    <label style={{ display: 'inline-flex', alignItems: 'center', gap: 3, fontSize: 10.5, marginRight: 8, color: ready ? 'inherit' : 'var(--nx-text-3, #6b7684)' }}>
-      <input type="checkbox" checked={checked} onChange={(e) => set(e.target.checked)} />
+  const ovRow = (id: string, checked: boolean, set: (v: boolean) => void, label: string, ready: boolean, needInput: boolean) => (
+    <label htmlFor={id} style={{ display: 'inline-flex', alignItems: 'center', gap: 3, fontSize: 10.5, marginRight: 8, color: ready ? 'inherit' : 'var(--nx-text-3, #6b7684)' }}>
+      <input id={id} name={id} type="checkbox" checked={checked} onChange={(e) => set(e.target.checked)} />
       {label}
       {checked && !ready && <span style={{ fontSize: 9.5, color: '#b45309' }}> — {needInput ? t.ovNeedInput : t.ovNeedRun}</span>}
     </label>
@@ -345,7 +424,7 @@ export default function InteriorPlanEditor({
             <button type="button" onClick={() => addFurn('table2')} style={btn}>{t.addT2}</button>
             <button type="button" onClick={() => addFurn('table4')} style={btn}>{t.addT4}</button>
             <button type="button" onClick={() => addFurn('sofa')} style={btn}>{t.addSofa}</button>
-            <button type="button" onClick={() => { setSel(null); onChange(null, 'custom→grid'); }} style={btn}>{t.toGrid}</button>
+            {!placementMode && <button type="button" onClick={() => { setSel(null); onChange(null, 'custom→grid'); }} style={btn}>{t.toGrid}</button>}
           </>
         )}
       </div>
@@ -368,9 +447,9 @@ export default function InteriorPlanEditor({
       )}
       {/* 오버레이 토글 — 대응 결과 없으면 정직 안내 */}
       <div style={{ marginBottom: 4 }}>
-        {ovRow(ovHeat, setOvHeat, t.ovHeat, !!heatUrl, false)}
-        {ovRow(ovLux, setOvLux, t.ovLux, !!luxLayout, result?.lighting?.verdict === 'INPUT')}
-        {ovRow(ovSprk, setOvSprk, t.ovSprk, !!(spk && spkLayout), result?.fire?.verdict === 'INPUT' || !result?.fire)}
+        {ovRow('interior-overlay-egress-heatmap', ovHeat, setOvHeat, t.ovHeat, !!heatUrl, false)}
+        {ovRow('interior-overlay-lighting', ovLux, setOvLux, t.ovLux, !!luxLayout, result?.lighting?.verdict === 'INPUT')}
+        {ovRow('interior-overlay-sprinkler', ovSprk, setOvSprk, t.ovSprk, !!(spk && spkLayout), result?.fire?.verdict === 'INPUT' || !result?.fire)}
       </div>
 
       <svg
@@ -379,7 +458,9 @@ export default function InteriorPlanEditor({
         style={{ width: '100%', display: 'block', borderRadius: 8, border: '1px solid var(--nx-border, #dfe3e8)', background: 'var(--nx-panel, #fff)', touchAction: 'none' }}
         onPointerMove={onSvgMove}
         onPointerUp={onSvgUp}
-        onPointerDown={() => setSel(null)}
+        onPointerDown={() => { setSel(null); if (placementMode) placement?.onSelectObject(null); }}
+        onDragOver={placementMode ? (event => event.preventDefault()) : undefined}
+        onDrop={placementMode ? onSvgDrop : undefined}
       >
         <defs>
           <radialGradient id="ipeLux">
@@ -407,9 +488,9 @@ export default function InteriorPlanEditor({
         {/* 가구 — custom 모드=드래그 가능, grid 모드=프리뷰(비활성) */}
         {shown.map((f, i) => {
           const c = CATALOG[f.kind];
-          const seld = custom && sel === i;
+          const seld = placementMode ? placement?.selectedObjectId === f.id : custom && sel === i;
           return (
-            <g key={i} style={{ cursor: custom ? 'move' : 'default' }} pointerEvents={custom ? 'auto' : 'none'} onPointerDown={custom ? onFurnDown(i) : undefined}>
+            <g key={f.id ?? `${f.kind}-${i}`} role={custom ? 'button' : undefined} tabIndex={custom ? 0 : undefined} aria-selected={custom ? seld : undefined} aria-label={custom ? `${f.kind} ${f.id ?? i + 1}` : undefined} data-object-id={f.id} style={{ cursor: custom ? 'move' : 'default' }} pointerEvents={custom ? 'auto' : 'none'} onPointerDown={custom ? onFurnDown(i) : undefined}>
               <rect
                 x={f.x} y={f.y} width={c.w} height={c.d}
                 fill={FURN_FILL[f.kind]} opacity={custom ? 0.95 : 0.55}

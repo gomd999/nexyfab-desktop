@@ -20,7 +20,12 @@
 import { describe, expect, it } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { findIncompleteLangFiles } from './lang-coverage.mjs';
+import {
+  findBinaryLocaleBranches,
+  findDirectKoreanJsx,
+  findEncodedKoreanLiterals,
+  findIncompleteLangFiles,
+} from './lang-coverage.mjs';
 
 const SRC = join(process.cwd(), 'src');
 const BASELINE: string[] = JSON.parse(
@@ -106,5 +111,39 @@ describe('스캐너 사각지대', () => {
 
   it('파트너 구역은 부채 목록에 하나도 없다 — 17개 사전 전부 6/6', () => {
     expect([...scanned].filter((f) => f.startsWith('app/partner/'))).toEqual([]);
+  });
+});
+
+describe('site-wide language hardcoding guard', () => {
+  const USER_FACING_SRC = SRC;
+
+  it('does not use Korean/English-only locale branches anywhere in user-facing source', () => {
+    const rows = findBinaryLocaleBranches(USER_FACING_SRC);
+    expect(
+      rows,
+      `User-facing source still contains binary locale branches:\n${rows
+        .map((row) => `  ${row.file}:${row.line} ${row.condition}`)
+        .join('\n')}`,
+    ).toEqual([]);
+  });
+
+  it('does not render direct Korean JSX outside explicit Korean dictionaries', () => {
+    const rows = findDirectKoreanJsx(USER_FACING_SRC);
+    expect(
+      rows,
+      `User-facing source still contains direct Korean JSX:\n${rows
+        .map((row) => `  ${row.file}:${row.line} ${row.text}`)
+        .join('\n')}`,
+    ).toEqual([]);
+  });
+
+  it('does not hide Korean UI copy inside URL-encoded literals', () => {
+    const rows = findEncodedKoreanLiterals(USER_FACING_SRC);
+    expect(
+      rows,
+      `User-facing source still contains URL-encoded Korean copy:\n${rows
+        .map((row) => `  ${row.file}:${row.line} ${row.text}`)
+        .join('\n')}`,
+    ).toEqual([]);
   });
 });

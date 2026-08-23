@@ -4,9 +4,16 @@ import { getAuthUser } from '@/lib/auth-middleware';
 import { getDbAdapter } from '@/lib/db-adapter';
 import { checkOrigin } from '@/lib/csrf';
 import { confirmPayment } from '@/lib/toss-client';
+import { denyIfPaymentCollectionDisabled } from '@/lib/payment-gate';
 import { recordOrderCompletion } from '@/lib/stage-engine';
 import { notifyFounder } from '@/lib/notify/founderNotify';
 import { recordOrderEvent } from '@/lib/order-events';
+import { resolveStoredManufacturingLineage, type StoredManufacturingLineageColumns } from '@/lib/manufacturingLineageDb';
+import { resolveRequestOrgContext } from '@/lib/org-context';
+import { boundedJsonError, readBoundedJson } from '@/lib/boundedJsonBody';
+
+const PAYMENT_CONFIRM_JSON_BYTES = 64 * 1024;
+import { canManageOrderInActiveWorkspace } from '@/lib/nfOrderAccess';
 
 export const dynamic = 'force-dynamic';
 
@@ -48,6 +55,8 @@ export async function POST(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
+  const paymentDenied = denyIfPaymentCollectionDisabled();
+  if (paymentDenied) return paymentDenied;
   if (!checkOrigin(req)) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   const authUser = await getAuthUser(req);
   if (!authUser) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -55,15 +64,24 @@ export async function POST(
   const { id: orderId } = await params;
   const db = getDbAdapter();
   await ensurePaymentCols(db);
+  await db.execute('ALTER TABLE nf_orders ADD COLUMN org_id TEXT').catch(() => {});
+  const workspace = resolveRequestOrgContext(authUser);
+  if (!workspace.ok) return NextResponse.json({ error: 'Select a valid workspace', code: workspace.code }, { status: 409 });
 
-  const order = await db.queryOne<{
-    id: string; part_name: string; total_price_krw: number; payment_status: string | null; user_id: string;
+  const order = await db.queryOne<StoredManufacturingLineageColumns & {
+    id: string; part_name: string; total_price_krw: number; payment_status: string | null; user_id: string; org_id: string | null;
   }>(
-    'SELECT id, part_name, total_price_krw, payment_status, user_id FROM nf_orders WHERE id = ?',
+    `SELECT id, part_name, total_price_krw, payment_status, user_id, org_id,
+            lineage_id, artifact_id, artifact_sha256, document_version_id
+       FROM nf_orders WHERE id = ?`,
     orderId,
   );
   if (!order) return NextResponse.json({ error: 'Order not found' }, { status: 404 });
-  if (order.user_id !== authUser.userId) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+  if (!canManageOrderInActiveWorkspace(authUser, order)) {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+  }
+  const lineage = await resolveStoredManufacturingLineage(db, order.user_id, order);
+  if (!lineage.ok) return NextResponse.json({ error: 'Manufacturing release is stale or revoked.', code: lineage.code }, { status: 409 });
   if (order.payment_status === 'paid') return NextResponse.json({ error: '이미 결제된 주문입니다.' }, { status: 400 });
 
   // Phase-1 fake-door gate. While NEXYFAB_ESCROW_ENABLED is false the
@@ -128,12 +146,22 @@ export async function PATCH(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
+  const paymentDenied = denyIfPaymentCollectionDisabled();
+  if (paymentDenied) return paymentDenied;
   if (!checkOrigin(req)) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   const authUser = await getAuthUser(req);
   if (!authUser) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
   const { id: orderId } = await params;
-  const body = await req.json() as { paymentKey: string; tossOrderId: string; amount: number };
+  let body: { paymentKey?: string; tossOrderId?: string; amount?: number } = {};
+  try {
+    body = await readBoundedJson(req, PAYMENT_CONFIRM_JSON_BYTES);
+  } catch (error) {
+    const bodyError = boundedJsonError(error);
+    if (bodyError?.code === 'PAYLOAD_TOO_LARGE') {
+      return NextResponse.json({ error: 'Request body too large' }, { status: bodyError.status });
+    }
+  }
   if (!body.paymentKey || !body.tossOrderId || !body.amount) {
     return NextResponse.json({ error: 'paymentKey, tossOrderId, amount required' }, { status: 400 });
   }
@@ -141,13 +169,22 @@ export async function PATCH(
   const db = getDbAdapter();
   await ensurePaymentCols(db);
   await ensureAttemptTable(db);
+  await db.execute('ALTER TABLE nf_orders ADD COLUMN org_id TEXT').catch(() => {});
+  const workspace = resolveRequestOrgContext(authUser);
+  if (!workspace.ok) return NextResponse.json({ error: 'Select a valid workspace', code: workspace.code }, { status: 409 });
 
-  const order = await db.queryOne<{ id: string; user_id: string; toss_order_id: string | null; payment_status: string | null; total_price_krw: number; status: string }>(
-    'SELECT id, user_id, toss_order_id, payment_status, total_price_krw, status FROM nf_orders WHERE id = ?',
+  const order = await db.queryOne<StoredManufacturingLineageColumns & { id: string; user_id: string; org_id: string | null; toss_order_id: string | null; payment_status: string | null; total_price_krw: number; status: string }>(
+    `SELECT id, user_id, org_id, toss_order_id, payment_status, total_price_krw, status,
+            lineage_id, artifact_id, artifact_sha256, document_version_id
+       FROM nf_orders WHERE id = ?`,
     orderId,
   );
   if (!order) return NextResponse.json({ error: 'Order not found' }, { status: 404 });
-  if (order.user_id !== authUser.userId) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+  if (!canManageOrderInActiveWorkspace(authUser, order)) {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+  }
+  const lineage = await resolveStoredManufacturingLineage(db, order.user_id, order);
+  if (!lineage.ok) return NextResponse.json({ error: 'Manufacturing release is stale or revoked.', code: lineage.code }, { status: 409 });
   if (order.toss_order_id !== body.tossOrderId) return NextResponse.json({ error: '결제 정보가 일치하지 않습니다.' }, { status: 400 });
 
   // 이미 결제 완료된 경우 중복 처리 방지
@@ -193,6 +230,23 @@ export async function PATCH(
   try {
     const payment = await confirmPayment(body.paymentKey, body.tossOrderId, body.amount);
     if (payment.status === 'DONE') {
+      const postPaymentLineage = await resolveStoredManufacturingLineage(db, order.user_id, order);
+      if (!postPaymentLineage.ok) {
+        await db.execute(
+          "UPDATE nf_orders SET payment_status = 'paid_artifact_hold', updated_at = ? WHERE id = ?",
+          Date.now(), orderId,
+        );
+        await db.execute(
+          "UPDATE nf_payment_attempts SET status = 'succeeded', raw_response = ? WHERE id = ?",
+          JSON.stringify({ status: payment.status, productionHold: true, lineageCode: postPaymentLineage.code }), attemptId,
+        ).catch(() => {});
+        await notifyFounder({
+          kind: 'reservation', orderId, customerId: authUser.userId, customerEmail: authUser.email,
+          amountKrw: Number(order.total_price_krw) || undefined,
+          note: `결제 완료 후 제조 리니지가 무효화되어 생산 보류: ${postPaymentLineage.code}`,
+        });
+        return NextResponse.json({ ok: true, status: payment.status, productionHold: true, code: postPaymentLineage.code }, { status: 202 });
+      }
       await db.execute(
         "UPDATE nf_orders SET payment_status = 'paid', status = 'production', updated_at = ? WHERE id = ?",
         Date.now(), orderId,

@@ -1,0 +1,11 @@
+{
+  "schema": "nexyfab.deployable-unit.v1",
+  "id": "ifc-step",
+  "kind": "container",
+  "targetRuntime": "cloudflare-containers",
+  "sourceMode": "new-unit-with-legacy-library",
+  "legacySource": ["src/lib/brep-bridge", "src/lib/bim"],
+  "implementationState": "PARTIAL",
+  "deployEnabled": false,
+  "rollbackOwner": "railway-core-api"
+}

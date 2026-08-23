@@ -25,6 +25,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
+import { boundedRawBodyError, readBoundedRawBody } from '@/lib/boundedRawBody';
 import { createHash, randomUUID, timingSafeEqual } from 'crypto';
 import { getDbAdapter } from '@/lib/db-adapter';
 import { createNotification } from '@/app/lib/notify';
@@ -181,13 +182,14 @@ export async function POST(req: NextRequest) {
     }
   }
 
-  const declaredLength = Number(req.headers.get('content-length') ?? '0');
-  if (Number.isFinite(declaredLength) && declaredLength > MAX_INBOUND_BODY_BYTES) {
-    return NextResponse.json({ error: 'payload too large' }, { status: 413 });
-  }
-  const raw = await req.text();
-  if (Buffer.byteLength(raw, 'utf8') > MAX_INBOUND_BODY_BYTES) {
-    return NextResponse.json({ error: 'payload too large' }, { status: 413 });
+  let raw: string;
+  try {
+    const rawBytes = await readBoundedRawBody(req, MAX_INBOUND_BODY_BYTES);
+    raw = new TextDecoder('utf-8', { fatal: true }).decode(rawBytes);
+  } catch (error) {
+    const bodyError = boundedRawBodyError(error);
+    if (bodyError?.code === 'PAYLOAD_TOO_LARGE') return NextResponse.json({ error: 'payload too large' }, { status: bodyError.status });
+    return NextResponse.json({ error: 'invalid JSON' }, { status: 400 });
   }
   let payload: InboundPayload;
   try {

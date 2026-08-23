@@ -1,0 +1,26 @@
+{
+  "schema": "nexyfab.mechanical-single-part-bom-candidate.v1",
+  "partRevisionSha256": "7efd1364e98e801f19b9ff18602bb0cd6bf844afe4e48e6d398f58e08fd698d6",
+  "sourceDesignRevisionSha256": "3cf6a0f9c8efcf153a2cfefde087a2112c086fc412d2feeaeb9ce52542838564",
+  "sourceNfabSha256": "4fca720ee94e6448e8aa67e917e1edf790e04534d261340559694167611804c7",
+  "sourceStepSha256": "4a261844ddda62e89e172f7dc1a11bb9c349ca7551fc2f978284a0a50bed7fd3",
+  "units": "mm",
+  "items": [
+    {
+      "partNumber": "sweep",
+      "description": "Mechanical runtime sweep",
+      "quantity": 1,
+      "dimensionsMm": {
+        "x": 8.0000002,
+        "y": 6.000000200000001,
+        "z": 42.0000002
+      }
+    }
+  ],
+  "claimBoundary": {
+    "singlePartCandidateOnly": true,
+    "materialSpecified": false,
+    "massCalculated": false,
+    "manufacturingApproved": false
+  }
+}

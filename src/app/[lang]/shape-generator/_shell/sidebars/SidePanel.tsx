@@ -81,6 +81,7 @@ export function SidePanel({
       {tabs && tabs.length > 0 && (
         <div
           className="nx-panel-tabs"
+          role="tablist"
           style={{
             height: 26,
             flex: '0 0 26px',
@@ -95,6 +96,8 @@ export function SidePanel({
             return (
               <button
                 key={tab.id}
+                role="tab"
+                aria-selected={isActive}
                 onClick={() => onTabChange?.(tab.id)}
                 title={tab.label}
                 style={{

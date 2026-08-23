@@ -1,0 +1,74 @@
+{
+  "schema": "nexyfab.shape-generator-precision-cad-ui-verification.v1",
+  "observedAtKst": "2026-08-12T23:50:00+09:00",
+  "manualBasis": {
+    "index": "docs/cad-program/requirements/manual-index.json",
+    "primary": ["SOLIDWORKS_Introduction_KO(1).pdf", "Fusion 360 handouts"]
+  },
+  "connections": {
+    "chromeDevToolsMcp": "pass",
+    "chromeAdjustedLighthouseRetest": "timeout",
+    "figmaIdentity": "pass",
+    "figmaSeat": "View",
+    "figmaFileEdit": "not_run"
+  },
+  "automated": {
+    "targetedLint": { "status": "pass", "errors": 0, "preExistingWarnings": 4 },
+    "typecheck": "pass",
+    "vitest": {
+      "status": "pass",
+      "files": 10,
+      "suites": 37,
+      "testsPassed": 339,
+      "testsTotal": 339,
+      "jsdomWebglWarning": true
+    },
+    "productionBuild": {
+      "status": "pass",
+      "command": "npm run build",
+      "cleanBuildSeconds": 540,
+      "staticPagesPassed": 290,
+      "staticPagesTotal": 290,
+      "bundleBudget": "pass"
+    },
+    "standalone": {
+      "packaging": "pass",
+      "startupWithoutRequiredSecrets": "fail_closed",
+      "startupWithLocalValidationEnvironment": "pass",
+      "commercialEnvironment": "not_run"
+    },
+    "playwright": {
+      "status": "pass",
+      "applicablePassed": 2,
+      "inapplicableSkipped": 2,
+      "desktop": {
+        "horizontalOverflow": 0,
+        "missingFieldIdentity": 0,
+        "controlOverlap": 0,
+        "collapseTargetMinimumPx": 24,
+        "webglCanvas": true,
+        "lcpMs": 1112,
+        "cls": 0.014
+      },
+      "mobilePixel5": {
+        "viewOnly": true,
+        "horizontalOverflow": 0,
+        "escapedButtons": 0,
+        "guestBanner": false
+      }
+    }
+  },
+  "interactiveScenarios": {
+    "baseBoxWidth50To55AndUndo": "pass",
+    "localAiFilletRadius2AndUndo": "pass",
+    "assemblyAiThreeStackedPlatesApplyAndUndo": "pass",
+    "cloudAi": "fail_unauthorized",
+    "embeddedAssemblyReleaseSolve": "blocked_stub_remaining_dof_4"
+  },
+  "releaseBoundary": {
+    "mechanicalFeatureReceipts": "0/30",
+    "externalStepTargets": "0/4",
+    "commercialBlockers": 23,
+    "commercialRelease": "blocked"
+  }
+}

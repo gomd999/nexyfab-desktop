@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { validateFeatureTreeValue } from '@/lib/cad/featureTreeValidation';
 import type { ProductDecompositionPlan, ProductDecompositionIssue } from './productDecomposition';
+import { physicalNetworkModelSchema } from './mepConnectionSchema';
 
 const id = z.string().trim().min(1).max(128);
 const text = z.string().trim().min(1).max(4_000);
@@ -99,6 +100,7 @@ export const productDecompositionPlanSchema = z.object({
   }).strict()).min(1).max(10_000),
   mates: z.array(mate).max(20_000),
   subassemblies: z.array(z.object({ id, name: z.string().trim().min(1).max(256), instanceIds: z.array(id).max(10_000), rigid: z.boolean(), parentId: id.optional() }).strict()).max(1_000),
+  physicalNetworks: z.array(physicalNetworkModelSchema).max(100).optional(),
   observations: z.array(z.string().max(4_000)).max(1_000),
   assumptions: z.array(z.string().max(4_000)).max(1_000),
   unresolved: z.array(z.string().max(4_000)).max(1_000),

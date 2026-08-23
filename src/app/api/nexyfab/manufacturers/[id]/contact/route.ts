@@ -6,6 +6,9 @@ import { getDbAdapter } from '@/lib/db-adapter';
 import { rowToRfq } from '../../../rfq/rfq-types';
 import { MANUFACTURERS } from '../../manufacturers-data';
 import { getTrustedClientIp } from '@/lib/client-ip';
+import { boundedJsonError, readBoundedJson } from '@/lib/boundedJsonBody';
+
+const MANUFACTURER_CONTACT_JSON_BYTES = 64 * 1024;
 
 function escapeHtml(str: string): string {
   return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#039;');
@@ -28,10 +31,15 @@ export async function POST(
     return NextResponse.json({ error: 'Too many requests' }, { status: 429 });
   }
 
-  const body = await req.json() as {
-    rfqId?: string;
-    message?: string;
-  };
+  let body: { rfqId?: string; message?: string } = {};
+  try {
+    body = await readBoundedJson(req, MANUFACTURER_CONTACT_JSON_BYTES);
+  } catch (error) {
+    const bodyError = boundedJsonError(error);
+    if (bodyError?.code === 'PAYLOAD_TOO_LARGE') {
+      return NextResponse.json({ error: 'Request body too large' }, { status: bodyError.status });
+    }
+  }
 
   if (!body.rfqId) {
     return NextResponse.json({ error: 'rfqId is required' }, { status: 400 });

@@ -47,8 +47,10 @@ JWT_SECRET=
 # 32+ char random string for cron job auth
 CRON_SECRET=
 
-# bcrypt hash of admin password: node -e "require('bcryptjs').hash('pw',12).then(console.log)"
-ADMIN_PASSWORD_HASH=
+# Passwordless admin allowlist (comma-separated). Add more addresses from
+# /admin/access-emails after signing in with an emailed verification code.
+ADMIN_BOOTSTRAP_EMAILS=admin@example.com
+ADMIN_SESSION_SECRET=
 ADMIN_SECRET=
 ```
 
@@ -244,8 +246,8 @@ openssl rand -base64 32
 # ADMIN_SECRET
 openssl rand -hex 16
 
-# ADMIN_PASSWORD_HASH (replace 'yourpassword')
-node -e "require('bcryptjs').hash('yourpassword', 12).then(console.log)"
+# ADMIN_SESSION_SECRET
+openssl rand -base64 32
 ```
 
 ---

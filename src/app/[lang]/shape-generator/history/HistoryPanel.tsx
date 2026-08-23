@@ -6,6 +6,7 @@ import React from 'react';
 import { usePathname } from 'next/navigation';
 import { useCommandHistory } from './useCommandHistory';
 import type { HistoryCommand } from './CommandHistory';
+import { createCommercialLocalizer } from '@/lib/i18n/commercialLocalizer';
 
 const dict = {
   ko: {
@@ -66,9 +67,9 @@ export default function HistoryPanel({ lang = 'en', onClose }: HistoryPanelProps
     kr: 'ko', ko: 'ko', en: 'en', ja: 'ja', cn: 'zh', zh: 'zh', es: 'es', ar: 'ar',
   };
   const t = dict[langMap[seg] ?? 'en'];
-  const isKo = (langMap[seg] ?? 'en') === 'ko';
+  const L = createCommercialLocalizer(lang);
 
-  const labelFor = (cmd: HistoryCommand) => isKo ? cmd.labelKo : cmd.label;
+  const labelFor = (cmd: HistoryCommand) => L(cmd.labelKo, cmd.label);
 
   // Past commands in most-recent-first order
   const pastReversed = [...history.past].reverse();

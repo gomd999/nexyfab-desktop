@@ -22,10 +22,10 @@ export interface GuestExpiryBannerProps {
 
 export function GuestExpiryBanner({ lang }: GuestExpiryBannerProps) {
   const d = pickShellDict(lang);
-  const user = useAuthStore(s => s.user);
+  const sessionStatus = useAuthStore(s => s.sessionStatus);
   const [dismissed, setDismissed] = useState(false);
 
-  if (user || dismissed) return null;
+  if (sessionStatus !== 'anonymous' || dismissed) return null;
 
   const requireSignup = () => {
     if (typeof window !== 'undefined') {

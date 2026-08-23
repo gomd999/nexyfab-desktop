@@ -1,0 +1,14 @@
+{
+  "schema": "nexyfab.holdout-isolation-receipt.v1",
+  "slotId": "",
+  "family": "",
+  "sourceHash": "",
+  "effectiveAt": "",
+  "accessPolicyId": "",
+  "controls": {
+    "excludedFromTraining": false,
+    "excludedFromFineTuning": false,
+    "excludedFromPromptDevelopment": false,
+    "evaluationAccessRestricted": false
+  }
+}

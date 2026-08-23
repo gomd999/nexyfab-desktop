@@ -3,9 +3,11 @@
 import { Canvas, useThree } from '@react-three/fiber';
 import { OrbitControls, Grid } from '@react-three/drei';
 import * as THREE from 'three';
-import { Suspense, useCallback, useEffect, useRef, useState } from 'react';
+import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { STLLoader } from 'three/examples/jsm/loaders/STLLoader.js';
 import { OBJLoader as _OBJLoader } from 'three/examples/jsm/loaders/OBJLoader.js';
+import { useClientLocale } from '@/lib/i18n/clientLocale';
+import { createCommercialLocalizer } from '@/lib/i18n/commercialLocalizer';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -51,13 +53,14 @@ function fitCamera(camera: THREE.Camera, box: THREE.Box3): THREE.Vector3 {
 // ─── STEP model ───────────────────────────────────────────────────────────────
 
 function STEPModel({
-  url, displayMode, fitKey, onLoad, onError,
+  url, displayMode, fitKey, onLoad, onError, localize,
 }: {
   url: string;
   displayMode: DisplayMode;
   fitKey: number;
   onLoad: (s: ModelStats) => void;
   onError: (e: Error) => void;
+  localize: (ko: string, en: string) => string;
 }) {
   const [geos, setGeos] = useState<THREE.BufferGeometry[]>([]);
   const [edgeGeos, setEdgeGeos] = useState<THREE.BufferGeometry[]>([]);
@@ -80,7 +83,7 @@ function STEPModel({
       const fileBuffer = new Uint8Array(await response.arrayBuffer());
       const result = occt.ReadStepFile(fileBuffer, null);
 
-      if (!result?.meshes?.length) throw new Error('STEP 파일에서 메시를 찾을 수 없습니다.');
+      if (!result?.meshes?.length) throw new Error(localize('STEP 파일에서 메시를 찾을 수 없습니다.', 'No mesh could be found in the STEP file.'));
 
       const built: THREE.BufferGeometry[] = [];
       const edges: THREE.BufferGeometry[] = [];
@@ -103,7 +106,7 @@ function STEPModel({
         edges.push(new THREE.EdgesGeometry(geo, 20));
       }
 
-      if (!built.length) throw new Error('렌더링 가능한 메시가 없습니다.');
+      if (!built.length) throw new Error(localize('렌더링 가능한 메시가 없습니다.', 'No renderable mesh was found.'));
 
       const size = combined.getSize(new THREE.Vector3());
       const center = combined.getCenter(new THREE.Vector3());
@@ -123,7 +126,7 @@ function STEPModel({
     }
     load().catch(e => { if (!cancelled) onError(e instanceof Error ? e : new Error(String(e))); });
     return () => { cancelled = true; };
-  }, [url, onLoad, onError]);
+  }, [url, onLoad, onError, localize]);
 
   const solidColor = '#8b9cf4';
   return (
@@ -215,19 +218,22 @@ function STLScene({
 
 // ─── Scene content ────────────────────────────────────────────────────────────
 
-function SceneContent({ url, ext, displayMode, fitKey, onLoad, onError }: {
+function SceneContent({ url, ext, displayMode, fitKey, onLoad, onError, localize }: {
   url: string; ext: string; displayMode: DisplayMode; fitKey: number;
   onLoad: (s: ModelStats) => void; onError: (e: Error) => void;
+  localize: (ko: string, en: string) => string;
 }) {
   if (ext === 'stl') return <STLScene url={url} displayMode={displayMode} fitKey={fitKey} onLoad={onLoad} onError={onError} />;
   if (['step', 'stp', 'iges', 'igs'].includes(ext))
-    return <STEPModel url={url} displayMode={displayMode} fitKey={fitKey} onLoad={onLoad} onError={onError} />;
+    return <STEPModel url={url} displayMode={displayMode} fitKey={fitKey} onLoad={onLoad} onError={onError} localize={localize} />;
   return null;
 }
 
 // ─── Main ─────────────────────────────────────────────────────────────────────
 
 export default function ModelViewer({ url, filename, onClose: _onClose }: ModelViewerProps) {
+  const lang = useClientLocale();
+  const L = useMemo(() => createCommercialLocalizer(lang), [lang]);
   const ext = filename.split('.').pop()?.toLowerCase() ?? '';
   const [displayMode, setDisplayMode] = useState<DisplayMode>('solid');
   const [loading, setLoading] = useState(true);
@@ -264,9 +270,9 @@ export default function ModelViewer({ url, filename, onClose: _onClose }: ModelV
   const isSupported = kind === 'model';
 
   const MODES: { key: DisplayMode; label: string; icon: string }[] = [
-    { key: 'solid',     label: '솔리드',   icon: '⬛' },
-    { key: 'edges',     label: '엣지',     icon: '◻' },
-    { key: 'wireframe', label: '와이어',   icon: '⬡' },
+    { key: 'solid',     label: L('솔리드', 'Solid'),   icon: '⬛' },
+    { key: 'edges',     label: L('엣지', 'Edges'),     icon: '◻' },
+    { key: 'wireframe', label: L('와이어', 'Wireframe'),   icon: '⬡' },
   ];
 
   return (
@@ -281,7 +287,7 @@ export default function ModelViewer({ url, filename, onClose: _onClose }: ModelV
             {filename}
           </span>
           {loading && isSupported && !error && (
-            <span style={{ fontSize: '11px', color: '#388bfd', animation: 'nf-pulse 1.5s infinite', flexShrink: 0 }}>로딩 중...</span>
+            <span style={{ fontSize: '11px', color: '#388bfd', animation: 'nf-pulse 1.5s infinite', flexShrink: 0 }}>{L('로딩 중...', 'Loading...')}</span>
           )}
 
           {/* 디스플레이 모드 */}
@@ -304,8 +310,8 @@ export default function ModelViewer({ url, filename, onClose: _onClose }: ModelV
           {/* 리셋 + 전체화면 */}
           {isSupported && !error && (
             <div style={{ display: 'flex', gap: '3px', flexShrink: 0 }}>
-              <button onClick={() => setFitKey(k => k + 1)} title="카메라 초기화" style={{ padding: '4px 8px', borderRadius: '6px', border: 'none', background: '#21262d', color: '#6e7681', fontSize: '14px', cursor: 'pointer', lineHeight: 1 }}>⟳</button>
-              <button onClick={toggleFullscreen} title={isFullscreen ? '전체화면 종료' : '전체화면'} style={{ padding: '4px 8px', borderRadius: '6px', border: 'none', background: '#21262d', color: '#6e7681', fontSize: '12px', cursor: 'pointer', lineHeight: 1 }}>
+              <button onClick={() => setFitKey(k => k + 1)} title={L('카메라 초기화', 'Reset camera')} style={{ padding: '4px 8px', borderRadius: '6px', border: 'none', background: '#21262d', color: '#6e7681', fontSize: '14px', cursor: 'pointer', lineHeight: 1 }}>⟳</button>
+              <button onClick={toggleFullscreen} title={isFullscreen ? L('전체화면 종료', 'Exit fullscreen') : L('전체화면', 'Fullscreen')} style={{ padding: '4px 8px', borderRadius: '6px', border: 'none', background: '#21262d', color: '#6e7681', fontSize: '12px', cursor: 'pointer', lineHeight: 1 }}>
                 {isFullscreen ? '⊡' : '⛶'}
               </button>
             </div>
@@ -323,18 +329,18 @@ export default function ModelViewer({ url, filename, onClose: _onClose }: ModelV
             <iframe src={url} title={filename} style={{ width: '100%', height: '100%', border: 'none', background: '#fff' }} />
           ) : kind === 'cad2d' ? (
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', flexDirection: 'column', gap: '8px', padding: '0 20px' }}>
-              <p style={{ color: '#c9d1d9', fontSize: '14px', fontWeight: 600 }}>📐 2D 도면 파일 <code style={{ color: '#f0883e' }}>.{ext}</code></p>
-              <p style={{ color: '#8b949e', fontSize: '12px', textAlign: 'center' }}>브라우저에서는 직접 미리보기가 제공되지 않습니다. 다운로드 후 CAD 뷰어로 열어주세요.</p>
-              <a href={url} download={filename} style={{ marginTop: 6, padding: '6px 14px', background: '#238636', color: '#fff', borderRadius: 6, textDecoration: 'none', fontSize: '12px', fontWeight: 600 }}>⬇ 다운로드</a>
+              <p style={{ color: '#c9d1d9', fontSize: '14px', fontWeight: 600 }}>📐 {L('2D 도면 파일', '2D drawing file')} <code style={{ color: '#f0883e' }}>.{ext}</code></p>
+              <p style={{ color: '#8b949e', fontSize: '12px', textAlign: 'center' }}>{L('브라우저에서는 직접 미리보기가 제공되지 않습니다. 다운로드 후 CAD 뷰어로 열어주세요.', 'Direct browser preview is unavailable. Download the file and open it in a CAD viewer.')}</p>
+              <a href={url} download={filename} style={{ marginTop: 6, padding: '6px 14px', background: '#238636', color: '#fff', borderRadius: 6, textDecoration: 'none', fontSize: '12px', fontWeight: 600 }}>⬇ {L('다운로드', 'Download')}</a>
             </div>
           ) : kind === 'unsupported' ? (
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', flexDirection: 'column', gap: '4px' }}>
-              <p style={{ color: '#8b949e', fontSize: '13px' }}>지원되지 않는 형식: <code style={{ color: '#f0883e' }}>.{ext}</code></p>
-              <p style={{ color: '#484f58', fontSize: '12px' }}>지원: STL, STEP, STP, 이미지, PDF, DWG/DXF</p>
+              <p style={{ color: '#8b949e', fontSize: '13px' }}>{L('지원되지 않는 형식:', 'Unsupported format:')} <code style={{ color: '#f0883e' }}>.{ext}</code></p>
+              <p style={{ color: '#484f58', fontSize: '12px' }}>{L('지원:', 'Supported:')} STL, STEP, STP, {L('이미지', 'images')}, PDF, DWG/DXF</p>
             </div>
           ) : error ? (
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', flexDirection: 'column', gap: '6px', padding: '0 20px' }}>
-              <p style={{ color: '#f85149', fontSize: '13px', fontWeight: 700 }}>모델 로딩 실패</p>
+              <p style={{ color: '#f85149', fontSize: '13px', fontWeight: 700 }}>{L('모델 로딩 실패', 'Model loading failed')}</p>
               <p style={{ color: '#6e7681', fontSize: '12px', textAlign: 'center' }}>{error}</p>
             </div>
           ) : (
@@ -343,7 +349,7 @@ export default function ModelViewer({ url, filename, onClose: _onClose }: ModelV
               {loading && (
                 <div style={{ position: 'absolute', inset: 0, zIndex: 10, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '14px', background: 'rgba(13,17,23,0.85)', backdropFilter: 'blur(4px)' }}>
                   <div style={{ width: '34px', height: '34px', border: '3px solid #21262d', borderTopColor: '#388bfd', borderRadius: '50%', animation: 'nf-spin 0.7s linear infinite' }} />
-                  <span style={{ color: '#8b949e', fontSize: '13px' }}>WASM 파싱 중...</span>
+                  <span style={{ color: '#8b949e', fontSize: '13px' }}>{L('WASM 파싱 중...', 'Parsing WASM...')}</span>
                 </div>
               )}
 
@@ -357,7 +363,7 @@ export default function ModelViewer({ url, filename, onClose: _onClose }: ModelV
                 <Suspense fallback={null}>
                   <SceneContent
                     url={url} ext={ext} displayMode={displayMode}
-                    fitKey={fitKey} onLoad={handleLoad} onError={handleError}
+                    fitKey={fitKey} onLoad={handleLoad} onError={handleError} localize={L}
                   />
                   <OrbitControls makeDefault enableDamping dampingFactor={0.07} minDistance={1} maxDistance={5000} />
                 </Suspense>
@@ -390,10 +396,10 @@ export default function ModelViewer({ url, filename, onClose: _onClose }: ModelV
               <span style={{ color: '#6e7681' }}>△ {stats.triangles.toLocaleString()}</span>
               <span style={{ color: '#30363d' }}>│</span>
               <span style={{ color: '#6e7681' }}>◦ {stats.vertices.toLocaleString()}</span>
-              <span style={{ marginLeft: 'auto', color: '#484f58' }}>드래그 회전 · 우클릭 이동 · 스크롤 줌</span>
+              <span style={{ marginLeft: 'auto', color: '#484f58' }}>{L('드래그 회전 · 우클릭 이동 · 스크롤 줌', 'Drag to rotate · right-click to pan · scroll to zoom')}</span>
             </>
           ) : (
-            <span style={{ color: '#484f58' }}>드래그 회전 · 우클릭 이동 · 스크롤 줌</span>
+            <span style={{ color: '#484f58' }}>{L('드래그 회전 · 우클릭 이동 · 스크롤 줌', 'Drag to rotate · right-click to pan · scroll to zoom')}</span>
           )}
         </div>
 

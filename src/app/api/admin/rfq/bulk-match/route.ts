@@ -13,7 +13,8 @@ import { matchPartners } from '@/app/lib/matching';
 import { createNotification } from '@/app/lib/notify';
 import { logAudit } from '@/lib/audit';
 import { normPartnerEmail } from '@/lib/partner-factory-access';
-import { sendEmail, rfqAssignedToFactoryHtml } from '@/lib/nexyfab-email';
+import { sendEmail, rfqAssignedToFactoryHtml, rfqNotificationEmailSubject, nexyfabEmailLocaleFromLanguageTag } from '@/lib/nexyfab-email';
+import { boundedJsonError, readBoundedJson } from '@/lib/boundedJsonBody';
 
 export const dynamic = 'force-dynamic';
 
@@ -43,7 +44,12 @@ export async function POST(req: NextRequest) {
   if (!checkOrigin(req)) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   if (!(await verifyAdmin(req))) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-  const body = await req.json().catch(() => null) as { rfqIds?: string[] } | null;
+  let body: { rfqIds?: string[] } | null;
+  try { body = await readBoundedJson(req, 256 * 1024); }
+  catch (error) {
+    if (boundedJsonError(error)?.status === 413) return NextResponse.json({ error: 'Payload too large' }, { status: 413 });
+    body = null;
+  }
   if (!body?.rfqIds || !Array.isArray(body.rfqIds) || body.rfqIds.length === 0) {
     return NextResponse.json({ error: 'rfqIds 배열이 필요합니다.' }, { status: 400 });
   }
@@ -149,8 +155,9 @@ export async function POST(req: NextRequest) {
           materialId: rfq.material_id || '-',
           quantity: rfq.quantity,
           note: rfq.note ?? undefined,
+          lang: req.headers.get('accept-language') || undefined,
         });
-        const subject = `[NexyFab] 새 견적 요청 배정 — ${rfq.shape_name || rfqId}`;
+        const subject = rfqNotificationEmailSubject(nexyfabEmailLocaleFromLanguageTag(req.headers.get('accept-language')), 'new_rfq', { shapeName: rfq.shape_name || rfqId, rfqIdPrefix: rfqId.slice(0, 8) });
         const mailTo = new Set<string>();
         const ce = factory.contact_email?.trim();
         const pe = factory.partner_email?.trim();

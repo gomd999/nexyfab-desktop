@@ -1,0 +1,10 @@
+JOB_INGRESS_SECRET=replace-with-at-least-32-random-characters
+CORE_API_SHARED_SECRET=replace-with-at-least-32-random-characters
+COMPUTE_SHARED_SECRET=replace-with-at-least-32-random-characters
+CORE_API_ORIGIN=http://127.0.0.1:3100
+EXACT_COMPUTE_ORIGIN=http://127.0.0.1:4101
+OPENSCAD_ORIGIN=http://127.0.0.1:4102
+FEA_ORIGIN=http://127.0.0.1:4103
+INTEROP_ORIGIN=http://127.0.0.1:4104
+ENVIRONMENT=local
+BUILD_ID=local-unversioned

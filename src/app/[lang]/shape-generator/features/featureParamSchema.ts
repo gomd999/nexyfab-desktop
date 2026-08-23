@@ -38,17 +38,19 @@ export const FEATURE_PARAM_RANGES: Record<string, Record<string, ParamRange>> = 
     engine: { min: 0, max: 1, default: 1, integer: true },
   },
   hole: {
-    holeType: { min: 0, max: 2, default: 0, integer: true },
+    holeType: { min: 0, max: 5, default: 0, integer: true },
     diameter: { min: 1, max: 100, default: 10 },
+    axis: { min: 0, max: 2, default: 1, integer: true },
     posX: { min: -200, max: 200, default: 0 },
+    posY: { min: -200, max: 200, default: 0 },
     posZ: { min: -200, max: 200, default: 0 },
     depth: { min: 1, max: 500, default: 999 },
     counterboreDia: { min: 1, max: 150, default: 18 },
     counterboreDepth: { min: 1, max: 50, default: 5 },
     countersinkAngle: { min: 60, max: 120, default: 90 },
     engine: { min: 0, max: 1, default: 1, integer: true },
-    // W5-D end condition: 0 blind / 1 through_all(legacy-equivalent default) / 2 up_to_face
-    endCondition: { min: 0, max: 2, default: 1, integer: true },
+    // W5-D end condition: 0 blind / 1 through_all / 2 up_to_face / 3 up_to_next
+    endCondition: { min: 0, max: 3, default: 1, integer: true },
   },
   linearPattern: {
     axis: { min: 0, max: 2, default: 0, integer: true },

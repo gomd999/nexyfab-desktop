@@ -1,0 +1,27 @@
+{
+  "schema": "nexyfab.mechanical-core-feature-local-runtime.v1",
+  "feature": "revolve",
+  "axis": "drawing",
+  "status": "PASS",
+  "executedAt": "2026-08-22T07:13:30.564Z",
+  "kernel": "OCCT HLRBRep via replicad drawProjection",
+  "views": {
+    "front": {
+      "visible": 3,
+      "hidden": 3,
+      "viewBox": "-18.000001 -18.000001 36.000002 36.000002"
+    },
+    "top": {
+      "visible": 3,
+      "hidden": 7,
+      "viewBox": "-18.000001 -12.000001 36.000002 24.000002"
+    },
+    "right": {
+      "visible": 3,
+      "hidden": 9,
+      "viewBox": "-12.000001 -18.000001 24.000002 36.000002"
+    }
+  },
+  "svgBytes": 7288,
+  "svgSha256": "fada63157fb22832ff69a87bf0fd66b90a1304a77419a054d1809bc1eababd03"
+}

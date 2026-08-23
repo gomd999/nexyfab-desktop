@@ -1,0 +1,56 @@
+{
+  "schema": "nexyfab.mechanical-core-feature-local-runtime.v1",
+  "feature": "bend",
+  "axis": "create",
+  "status": "PASS",
+  "executedAt": "2026-08-22T07:13:30.564Z",
+  "payload": {
+    "id": "runtime-feature",
+    "enabled": true,
+    "type": "bend",
+    "params": {
+      "angle": 45,
+      "radius": 3,
+      "position": 50,
+      "direction": 0
+    }
+  },
+  "exact": {
+    "handle": "occt:225",
+    "kernelKind": "Solid",
+    "nativeShapeType": 2,
+    "solidCount": 1,
+    "singleSolid": true,
+    "volumeMm3": 3600.000000000002,
+    "edgeCount": 24,
+    "faceCount": 10,
+    "boundsMm": [
+      [
+        -30.006022818974138,
+        -1.0060228189741387,
+        -15.006022818974138
+      ],
+      [
+        22.53331869142412,
+        20.876464441931738,
+        15.006022818974138
+      ]
+    ]
+  },
+  "featureMeaning": {
+    "assertion": "actual product bend preserves constant sheet volume and uses concentric analytic cylindrical faces around the R+T/2 geometric neutral axis",
+    "angleDeg": 45,
+    "radiusMm": 3,
+    "thicknessMm": 2,
+    "neutralRadiusMm": 4,
+    "neutralArcLengthMm": 3.141592653589793,
+    "straightLengthMm": 26.858407346410207,
+    "cylindricalFaces": 2,
+    "expectedVolumeMm3": 3600,
+    "actualVolumeMm3": 3600.000000000002,
+    "expectedTopMm": 20.8704416229576,
+    "actualTopMm": 20.876464441931738
+  },
+  "exactScope": "declared numeric runtime case",
+  "assertion": "native OCCT produced one non-empty exact solid and changed the host geometry"
+}

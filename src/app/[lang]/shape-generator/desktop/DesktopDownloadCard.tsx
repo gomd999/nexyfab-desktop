@@ -109,11 +109,11 @@ const COPY = {
   },
 } as const;
 
-const PLATFORM_LABEL: Record<DesktopPlatform, { ko: string; en: string }> = {
-  windows: { ko: 'Windows', en: 'Windows' },
-  macos:   { ko: 'macOS',   en: 'macOS' },
-  linux:   { ko: 'Linux',   en: 'Linux' },
-  unknown: { ko: '데스크톱', en: 'Desktop' },
+const PLATFORM_LABEL: Record<DesktopPlatform, string> = {
+  windows: 'Windows',
+  macos: 'macOS',
+  linux: 'Linux',
+  unknown: 'Desktop',
 };
 
 const PLATFORM_EXT: Record<DesktopPlatform, string> = {
@@ -142,8 +142,6 @@ export default function DesktopDownloadCard({
     if (!forcePlatform) setPlatform(detectPlatform());
   }, [forcePlatform]);
 
-  const ko = lang === 'ko' || lang === 'kr';
-  // ⚠ 260802: 2분기라 ja·zh·es·ar 이 영어로 떨어졌다.
   const t = COPY[toIsoLang(lang)] ?? COPY.en;
   const platformLabel = PLATFORM_LABEL[platform === 'unknown' ? 'windows' : platform];
   const primaryPlatform = platform === 'unknown' ? 'windows' : platform;
@@ -200,7 +198,7 @@ export default function DesktopDownloadCard({
           }}
         >
           <span aria-hidden>⬇</span>
-          {t.download} · {platformLabel[ko ? 'ko' : 'en']} {PLATFORM_EXT[primaryPlatform]}
+          {t.download} · {platformLabel} {PLATFORM_EXT[primaryPlatform]}
         </a>
         <details style={{ position: 'relative', fontSize: 12 }}>
           <summary style={{ cursor: 'pointer', color: 'var(--nx-text-2)', listStyle: 'none' }}>
@@ -223,7 +221,7 @@ export default function DesktopDownloadCard({
                   textDecoration: 'none',
                 }}
               >
-                {PLATFORM_LABEL[p][ko ? 'ko' : 'en']} {PLATFORM_EXT[p]}
+                {PLATFORM_LABEL[p]} {PLATFORM_EXT[p]}
               </a>
             ))}
           </div>

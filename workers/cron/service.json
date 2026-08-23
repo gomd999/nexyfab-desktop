@@ -1,0 +1,11 @@
+{
+  "schema": "nexyfab.deployable-unit.v1",
+  "id": "cron-worker",
+  "kind": "worker",
+  "targetRuntime": "cloudflare-workers",
+  "sourceMode": "legacy-directory-compatibility",
+  "legacySource": ["cron-worker"],
+  "implementationState": "PARTIAL",
+  "deployEnabled": false,
+  "rollbackOwner": "railway-cron-jobs"
+}

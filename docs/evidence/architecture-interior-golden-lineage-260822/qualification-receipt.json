@@ -1,0 +1,2234 @@
+{
+  "schema": "nexyfab.architecture-interior.golden-lineage-qualification.v1",
+  "generatedAt": "2026-08-22T19:08:20.717Z",
+  "status": "HOLD",
+  "policy": {
+    "sourceReadOnly": true,
+    "tuningExcludedByDefault": true,
+    "licenseAndScenarioFitNeverInferred": true,
+    "roleHashIsolationRequired": true,
+    "attestationRoot": "docs/evidence/architecture-interior-golden-lineage-260822"
+  },
+  "inventory": {
+    "path": "docs/evidence/architecture-interior-reference-inventory-260821/reference-inventory.json",
+    "sha256": "73b5bf8480dd7612835eb04b880d50dd4b2b41b87711887bce3d4fee35e4d939",
+    "declaredRootSha256": "e9055e794ecc60bb9d70ad73a74f4ad9bea7d1c4c8ca7afc919a582470d65d38",
+    "files": 7407,
+    "duplicateHashGroups": 91
+  },
+  "supportingEvidence": {
+    "operatorManifest": {
+      "path": "docs/evidence/cad-independent/reference-utilization-manifest-260809.json",
+      "sha256": "a623ece1abf7a0351e4f2f5a537442195f6f6be61a808acc16007341f79ae4b9"
+    },
+    "manualIndex": {
+      "path": "docs/cad-program/requirements/manual-index.json",
+      "sha256": "afe8f30bc414f6e2a38a7d8a7f328554e73a6701833c2dbdf4e77371a2c2656f"
+    }
+  },
+  "sourceRoots": {
+    "example73": {
+      "configuredPath": "C:\\Users\\gomd9\\Downloads\\nexysys_1\\nexyfab.com\\7.3 example",
+      "realPath": "C:\\Users\\gomd9\\Downloads\\nexysys_1\\nexyfab.com\\7.3 example",
+      "exists": true
+    },
+    "manuals": {
+      "configuredPath": "C:\\Users\\gomd9\\Downloads\\nexysys_1\\nexyfab.com\\document(manuals)",
+      "realPath": "C:\\Users\\gomd9\\Downloads\\nexysys_1\\nexyfab.com\\document(manuals)",
+      "exists": true
+    },
+    "operator_refs": {
+      "configuredPath": "C:\\Users\\gomd9\\Downloads\\참고파일들",
+      "realPath": "C:\\Users\\gomd9\\Downloads\\참고파일들",
+      "exists": true
+    }
+  },
+  "scenarios": {
+    "office": {
+      "status": "HOLD",
+      "selected": [],
+      "candidates": [
+        {
+          "sourceRoot": "operator_refs",
+          "relativePath": "참고파일들4/office-interior-16.snapshot.1/DESK.dwg",
+          "bytes": 5595209,
+          "sha256": "ff97b109086988be0a69f8b5daa91d5b65cfcf50c5dc6279e3aacfc22a903776",
+          "role": "holdout",
+          "tuningExclusion": true,
+          "rank": 1,
+          "ranking": {
+            "score": 269,
+            "tokenHits": [
+              "office",
+              "desk"
+            ],
+            "extension": ".dwg"
+          },
+          "licenseStatus": "approval_attestation_missing",
+          "licenseEvidencePath": null,
+          "licenseEvidenceSha256": null,
+          "scenarioFitStatus": "approval_attestation_missing",
+          "scenarioEvidencePath": null,
+          "scenarioEvidenceSha256": null,
+          "provenance": {
+            "status": "manifest_bound_license_review_required",
+            "evidencePath": "docs/evidence/cad-independent/reference-utilization-manifest-260809.json",
+            "evidenceSha256": "a623ece1abf7a0351e4f2f5a537442195f6f6be61a808acc16007341f79ae4b9",
+            "lineageId": "office-interior-16",
+            "trainingEligible": false,
+            "commercialScoreEligible": false,
+            "licenseReviewRequired": true
+          },
+          "sourceExists": true,
+          "containmentVerified": true,
+          "inventoryMatch": true,
+          "actualBytes": 5595209,
+          "actualSha256": "ff97b109086988be0a69f8b5daa91d5b65cfcf50c5dc6279e3aacfc22a903776",
+          "inventoryDuplicatePaths": [
+            "operator_refs:참고파일들4/office-interior-16.snapshot.1/DESK.dwg"
+          ],
+          "rejectionReasons": [
+            "license_attestation_missing",
+            "scenario_fit_attestation_missing"
+          ]
+        },
+        {
+          "sourceRoot": "operator_refs",
+          "relativePath": "참고파일들4/6-story-corporate-office-revit-1.snapshot.1/6 Story Corporate Office Building 3D model (1).dwg",
+          "bytes": 5133275,
+          "sha256": "af1d4e1d41159760ff38dc15531e26d9b102d2c0369774d4603ed62e22cd2dd5",
+          "role": "holdout",
+          "tuningExclusion": true,
+          "rank": 2,
+          "ranking": {
+            "score": 169,
+            "tokenHits": [
+              "office"
+            ],
+            "extension": ".dwg"
+          },
+          "licenseStatus": "approval_attestation_missing",
+          "licenseEvidencePath": null,
+          "licenseEvidenceSha256": null,
+          "scenarioFitStatus": "approval_attestation_missing",
+          "scenarioEvidencePath": null,
+          "scenarioEvidenceSha256": null,
+          "provenance": {
+            "status": "manifest_bound_license_review_required",
+            "evidencePath": "docs/evidence/cad-independent/reference-utilization-manifest-260809.json",
+            "evidenceSha256": "a623ece1abf7a0351e4f2f5a537442195f6f6be61a808acc16007341f79ae4b9",
+            "lineageId": "6-story-corporate-office-revit-1",
+            "trainingEligible": false,
+            "commercialScoreEligible": false,
+            "licenseReviewRequired": true
+          },
+          "sourceExists": true,
+          "containmentVerified": true,
+          "inventoryMatch": true,
+          "actualBytes": 5133275,
+          "actualSha256": "af1d4e1d41159760ff38dc15531e26d9b102d2c0369774d4603ed62e22cd2dd5",
+          "inventoryDuplicatePaths": [
+            "operator_refs:참고파일들4/6-story-corporate-office-revit-1.snapshot.1/6 Story Corporate Office Building 3D model (1).dwg"
+          ],
+          "rejectionReasons": [
+            "license_attestation_missing",
+            "scenario_fit_attestation_missing"
+          ]
+        },
+        {
+          "sourceRoot": "operator_refs",
+          "relativePath": "참고파일들4/hr-room-1.snapshot.2/office room.dwg",
+          "bytes": 200317,
+          "sha256": "0e259c05721e27449a4e902a9dd1c7bbcf044e0f84e59a78d21f50523281bf19",
+          "role": "holdout",
+          "tuningExclusion": true,
+          "rank": 3,
+          "ranking": {
+            "score": 169,
+            "tokenHits": [
+              "office"
+            ],
+            "extension": ".dwg"
+          },
+          "licenseStatus": "approval_attestation_missing",
+          "licenseEvidencePath": null,
+          "licenseEvidenceSha256": null,
+          "scenarioFitStatus": "approval_attestation_missing",
+          "scenarioEvidencePath": null,
+          "scenarioEvidenceSha256": null,
+          "provenance": {
+            "status": "manifest_bound_license_review_required",
+            "evidencePath": "docs/evidence/cad-independent/reference-utilization-manifest-260809.json",
+            "evidenceSha256": "a623ece1abf7a0351e4f2f5a537442195f6f6be61a808acc16007341f79ae4b9",
+            "lineageId": "hr-room-1",
+            "trainingEligible": false,
+            "commercialScoreEligible": false,
+            "licenseReviewRequired": true
+          },
+          "sourceExists": true,
+          "containmentVerified": true,
+          "inventoryMatch": true,
+          "actualBytes": 200317,
+          "actualSha256": "0e259c05721e27449a4e902a9dd1c7bbcf044e0f84e59a78d21f50523281bf19",
+          "inventoryDuplicatePaths": [
+            "operator_refs:참고파일들4/hr-room-1.snapshot.2/office room.dwg"
+          ],
+          "rejectionReasons": [
+            "license_attestation_missing",
+            "scenario_fit_attestation_missing"
+          ]
+        },
+        {
+          "sourceRoot": "operator_refs",
+          "relativePath": "참고파일들4/revit-skills-showcase-6-story-corporate-office-building-1.snapshot.4/Corporate Office Building-3D View - {3D}.dwg",
+          "bytes": 1728117,
+          "sha256": "0bc9b1c8246af8297c0f4778bc2d110dc71000d2257f804868c69e57f4e1eb09",
+          "role": "holdout",
+          "tuningExclusion": true,
+          "rank": 4,
+          "ranking": {
+            "score": 169,
+            "tokenHits": [
+              "office"
+            ],
+            "extension": ".dwg"
+          },
+          "licenseStatus": "approval_attestation_missing",
+          "licenseEvidencePath": null,
+          "licenseEvidenceSha256": null,
+          "scenarioFitStatus": "approval_attestation_missing",
+          "scenarioEvidencePath": null,
+          "scenarioEvidenceSha256": null,
+          "provenance": {
+            "status": "manifest_bound_license_review_required",
+            "evidencePath": "docs/evidence/cad-independent/reference-utilization-manifest-260809.json",
+            "evidenceSha256": "a623ece1abf7a0351e4f2f5a537442195f6f6be61a808acc16007341f79ae4b9",
+            "lineageId": "revit-skills-showcase-6-story-corporate-office-building-1",
+            "trainingEligible": false,
+            "commercialScoreEligible": false,
+            "licenseReviewRequired": true
+          },
+          "sourceExists": true,
+          "containmentVerified": true,
+          "inventoryMatch": true,
+          "actualBytes": 1728117,
+          "actualSha256": "0bc9b1c8246af8297c0f4778bc2d110dc71000d2257f804868c69e57f4e1eb09",
+          "inventoryDuplicatePaths": [
+            "operator_refs:참고파일들4/revit-skills-showcase-6-story-corporate-office-building-1.snapshot.4/Corporate Office Building-3D View - {3D}.dwg"
+          ],
+          "rejectionReasons": [
+            "license_attestation_missing",
+            "scenario_fit_attestation_missing"
+          ]
+        },
+        {
+          "sourceRoot": "operator_refs",
+          "relativePath": "참고파일들4/6-story-corporate-office-revit-1.snapshot.1/6 Story Corporate Office Building 3D model (1).rvt",
+          "bytes": 9355264,
+          "sha256": "6c2fec006819b984e2a05c39acb5cc8e1227c1c82dddd4d4b9f8bb77ccdbc065",
+          "role": "holdout",
+          "tuningExclusion": true,
+          "rank": 5,
+          "ranking": {
+            "score": 168,
+            "tokenHits": [
+              "office"
+            ],
+            "extension": ".rvt"
+          },
+          "licenseStatus": "approval_attestation_missing",
+          "licenseEvidencePath": null,
+          "licenseEvidenceSha256": null,
+          "scenarioFitStatus": "approval_attestation_missing",
+          "scenarioEvidencePath": null,
+          "scenarioEvidenceSha256": null,
+          "provenance": {
+            "status": "manifest_bound_license_review_required",
+            "evidencePath": "docs/evidence/cad-independent/reference-utilization-manifest-260809.json",
+            "evidenceSha256": "a623ece1abf7a0351e4f2f5a537442195f6f6be61a808acc16007341f79ae4b9",
+            "lineageId": "revit-skills-showcase-6-story-corporate-office-building-1",
+            "trainingEligible": false,
+            "commercialScoreEligible": false,
+            "licenseReviewRequired": true
+          },
+          "sourceExists": true,
+          "containmentVerified": true,
+          "inventoryMatch": false,
+          "actualBytes": 9355264,
+          "actualSha256": "6c2fec006819b984e2a05c39acb5cc8e1227c1c82dddd4d4b9f8bb77ccdbc065",
+          "inventoryDuplicatePaths": [
+            "operator_refs:참고파일들4/6-story-corporate-office-revit-1.snapshot.1/6 Story Corporate Office Building 3D model (1).rvt",
+            "operator_refs:참고파일들4/revit-skills-showcase-6-story-corporate-office-building-1.snapshot.4/Corporate Office Building.0045.rvt"
+          ],
+          "rejectionReasons": [
+            "inventory_duplicate_hash",
+            "license_attestation_missing",
+            "scenario_fit_attestation_missing"
+          ]
+        },
+        {
+          "sourceRoot": "operator_refs",
+          "relativePath": "참고파일들4/hr-room-1.snapshot.2/OFFICE ROOM.rvt",
+          "bytes": 7483392,
+          "sha256": "afb46921b822e9f72958963b8663cbdb0680a90ce52d873ec3fc922025b8ea65",
+          "role": "holdout",
+          "tuningExclusion": true,
+          "rank": 6,
+          "ranking": {
+            "score": 168,
+            "tokenHits": [
+              "office"
+            ],
+            "extension": ".rvt"
+          },
+          "licenseStatus": "approval_attestation_missing",
+          "licenseEvidencePath": null,
+          "licenseEvidenceSha256": null,
+          "scenarioFitStatus": "approval_attestation_missing",
+          "scenarioEvidencePath": null,
+          "scenarioEvidenceSha256": null,
+          "provenance": {
+            "status": "manifest_bound_license_review_required",
+            "evidencePath": "docs/evidence/cad-independent/reference-utilization-manifest-260809.json",
+            "evidenceSha256": "a623ece1abf7a0351e4f2f5a537442195f6f6be61a808acc16007341f79ae4b9",
+            "lineageId": "hr-room-1",
+            "trainingEligible": false,
+            "commercialScoreEligible": false,
+            "licenseReviewRequired": true
+          },
+          "sourceExists": true,
+          "containmentVerified": true,
+          "inventoryMatch": true,
+          "actualBytes": 7483392,
+          "actualSha256": "afb46921b822e9f72958963b8663cbdb0680a90ce52d873ec3fc922025b8ea65",
+          "inventoryDuplicatePaths": [
+            "operator_refs:참고파일들4/hr-room-1.snapshot.2/OFFICE ROOM.rvt"
+          ],
+          "rejectionReasons": [
+            "license_attestation_missing",
+            "scenario_fit_attestation_missing"
+          ]
+        },
+        {
+          "sourceRoot": "operator_refs",
+          "relativePath": "참고파일들4/revit-skills-showcase-6-story-corporate-office-building-1.snapshot.4/Corporate Office Building.STEP",
+          "bytes": 30848584,
+          "sha256": "7d24567878d4d7fa123d3f0c86f3c488d5938323e55a24a82d6760a553ba6df2",
+          "role": "holdout",
+          "tuningExclusion": true,
+          "rank": 7,
+          "ranking": {
+            "score": 164,
+            "tokenHits": [
+              "office"
+            ],
+            "extension": ".step"
+          },
+          "licenseStatus": "approval_attestation_missing",
+          "licenseEvidencePath": null,
+          "licenseEvidenceSha256": null,
+          "scenarioFitStatus": "approval_attestation_missing",
+          "scenarioEvidencePath": null,
+          "scenarioEvidenceSha256": null,
+          "provenance": {
+            "status": "manifest_bound_license_review_required",
+            "evidencePath": "docs/evidence/cad-independent/reference-utilization-manifest-260809.json",
+            "evidenceSha256": "a623ece1abf7a0351e4f2f5a537442195f6f6be61a808acc16007341f79ae4b9",
+            "lineageId": "revit-skills-showcase-6-story-corporate-office-building-1",
+            "trainingEligible": false,
+            "commercialScoreEligible": false,
+            "licenseReviewRequired": true
+          },
+          "sourceExists": true,
+          "containmentVerified": true,
+          "inventoryMatch": true,
+          "actualBytes": 30848584,
+          "actualSha256": "7d24567878d4d7fa123d3f0c86f3c488d5938323e55a24a82d6760a553ba6df2",
+          "inventoryDuplicatePaths": [
+            "operator_refs:참고파일들4/revit-skills-showcase-6-story-corporate-office-building-1.snapshot.4/Corporate Office Building.STEP"
+          ],
+          "rejectionReasons": [
+            "license_attestation_missing",
+            "scenario_fit_attestation_missing"
+          ]
+        },
+        {
+          "sourceRoot": "operator_refs",
+          "relativePath": "참고파일들4/office-design-14.snapshot.2/Untitled.ifc",
+          "bytes": 125541412,
+          "sha256": "18459cb87e0560deb9ad86569d15c59f3c9a263fda62aa0dc6a646125b6ddf99",
+          "role": "holdout",
+          "tuningExclusion": true,
+          "rank": 8,
+          "ranking": {
+            "score": 130,
+            "tokenHits": [
+              "office"
+            ],
+            "extension": ".ifc"
+          },
+          "licenseStatus": "approval_attestation_missing",
+          "licenseEvidencePath": null,
+          "licenseEvidenceSha256": null,
+          "scenarioFitStatus": "approval_attestation_missing",
+          "scenarioEvidencePath": null,
+          "scenarioEvidenceSha256": null,
+          "provenance": {
+            "status": "manifest_bound_license_review_required",
+            "evidencePath": "docs/evidence/cad-independent/reference-utilization-manifest-260809.json",
+            "evidenceSha256": "a623ece1abf7a0351e4f2f5a537442195f6f6be61a808acc16007341f79ae4b9",
+            "lineageId": "office-design-14",
+            "trainingEligible": false,
+            "commercialScoreEligible": false,
+            "licenseReviewRequired": true
+          },
+          "sourceExists": true,
+          "containmentVerified": true,
+          "inventoryMatch": true,
+          "actualBytes": 125541412,
+          "actualSha256": "18459cb87e0560deb9ad86569d15c59f3c9a263fda62aa0dc6a646125b6ddf99",
+          "inventoryDuplicatePaths": [
+            "operator_refs:참고파일들4/office-design-14.snapshot.2/Untitled.ifc"
+          ],
+          "rejectionReasons": [
+            "license_attestation_missing",
+            "scenario_fit_attestation_missing"
+          ]
+        }
+      ],
+      "sourceRootAssessments": {
+        "example73": {
+          "inventoryFiles": 170,
+          "filenameKeywordMatches": 0,
+          "status": "HOLD",
+          "reason": "no_filename_evidence_for_scenario"
+        },
+        "manuals": {
+          "inventoryFiles": 21,
+          "filenameKeywordMatches": 0,
+          "status": "HOLD",
+          "reason": "no_filename_evidence_for_scenario"
+        },
+        "operator_refs": {
+          "inventoryFiles": 7216,
+          "filenameKeywordMatches": 14,
+          "status": "CANDIDATE_REVIEW_REQUIRED",
+          "reason": "filename_match_is_not_scenario_or_license_approval"
+        }
+      },
+      "rejectionReasons": [
+        "no_approved_assignment"
+      ]
+    },
+    "apartment": {
+      "status": "HOLD",
+      "selected": [],
+      "candidates": [
+        {
+          "sourceRoot": "operator_refs",
+          "relativePath": "참고파일들3/modern-5-story-residential-apartment-building-1.snapshot.2/Modern Residential .skp",
+          "bytes": 893119,
+          "sha256": "60d2d70f036b7ec1fb200796323a6ab6471e3af591d9c0f699d9b530c483e111",
+          "role": "holdout",
+          "tuningExclusion": true,
+          "rank": 1,
+          "ranking": {
+            "score": 267,
+            "tokenHits": [
+              "apartment",
+              "residential"
+            ],
+            "extension": ".skp"
+          },
+          "licenseStatus": "approval_attestation_missing",
+          "licenseEvidencePath": null,
+          "licenseEvidenceSha256": null,
+          "scenarioFitStatus": "approval_attestation_missing",
+          "scenarioEvidencePath": null,
+          "scenarioEvidenceSha256": null,
+          "provenance": {
+            "status": "manifest_bound_license_review_required",
+            "evidencePath": "docs/evidence/cad-independent/reference-utilization-manifest-260809.json",
+            "evidenceSha256": "a623ece1abf7a0351e4f2f5a537442195f6f6be61a808acc16007341f79ae4b9",
+            "lineageId": "modern-5-story-residential-apartment-building-1",
+            "trainingEligible": false,
+            "commercialScoreEligible": false,
+            "licenseReviewRequired": true
+          },
+          "sourceExists": true,
+          "containmentVerified": true,
+          "inventoryMatch": true,
+          "actualBytes": 893119,
+          "actualSha256": "60d2d70f036b7ec1fb200796323a6ab6471e3af591d9c0f699d9b530c483e111",
+          "inventoryDuplicatePaths": [
+            "operator_refs:참고파일들3/modern-5-story-residential-apartment-building-1.snapshot.2/Modern Residential .skp"
+          ],
+          "rejectionReasons": [
+            "license_attestation_missing",
+            "scenario_fit_attestation_missing"
+          ]
+        },
+        {
+          "sourceRoot": "operator_refs",
+          "relativePath": "참고파일들4/revit-skills-showcase-3-bedroom-apartment-building-1.snapshot.3/Apartment Building - 3D View - {3D}.dwg",
+          "bytes": 1100863,
+          "sha256": "f2bdf345790502efd5ec889ed5e74613ae74f54a0c192ae8a4bc2d54130e3339",
+          "role": "holdout",
+          "tuningExclusion": true,
+          "rank": 2,
+          "ranking": {
+            "score": 169,
+            "tokenHits": [
+              "apartment"
+            ],
+            "extension": ".dwg"
+          },
+          "licenseStatus": "approval_attestation_missing",
+          "licenseEvidencePath": null,
+          "licenseEvidenceSha256": null,
+          "scenarioFitStatus": "approval_attestation_missing",
+          "scenarioEvidencePath": null,
+          "scenarioEvidenceSha256": null,
+          "provenance": {
+            "status": "manifest_bound_license_review_required",
+            "evidencePath": "docs/evidence/cad-independent/reference-utilization-manifest-260809.json",
+            "evidenceSha256": "a623ece1abf7a0351e4f2f5a537442195f6f6be61a808acc16007341f79ae4b9",
+            "lineageId": "revit-skills-showcase-3-bedroom-apartment-building-1",
+            "trainingEligible": false,
+            "commercialScoreEligible": false,
+            "licenseReviewRequired": true
+          },
+          "sourceExists": true,
+          "containmentVerified": true,
+          "inventoryMatch": true,
+          "actualBytes": 1100863,
+          "actualSha256": "f2bdf345790502efd5ec889ed5e74613ae74f54a0c192ae8a4bc2d54130e3339",
+          "inventoryDuplicatePaths": [
+            "operator_refs:참고파일들4/revit-skills-showcase-3-bedroom-apartment-building-1.snapshot.3/Apartment Building - 3D View - {3D}.dwg"
+          ],
+          "rejectionReasons": [
+            "license_attestation_missing",
+            "scenario_fit_attestation_missing"
+          ]
+        },
+        {
+          "sourceRoot": "operator_refs",
+          "relativePath": "참고파일들4/revit-skills-showcase-3-bedroom-apartment-building-1.snapshot.3/Apartment Building.rvt",
+          "bytes": 9981952,
+          "sha256": "7386182ebe722167feb248e58681969c9f8ddea8adbee2eec9f684a9682838c6",
+          "role": "holdout",
+          "tuningExclusion": true,
+          "rank": 3,
+          "ranking": {
+            "score": 168,
+            "tokenHits": [
+              "apartment"
+            ],
+            "extension": ".rvt"
+          },
+          "licenseStatus": "approval_attestation_missing",
+          "licenseEvidencePath": null,
+          "licenseEvidenceSha256": null,
+          "scenarioFitStatus": "approval_attestation_missing",
+          "scenarioEvidencePath": null,
+          "scenarioEvidenceSha256": null,
+          "provenance": {
+            "status": "manifest_bound_license_review_required",
+            "evidencePath": "docs/evidence/cad-independent/reference-utilization-manifest-260809.json",
+            "evidenceSha256": "a623ece1abf7a0351e4f2f5a537442195f6f6be61a808acc16007341f79ae4b9",
+            "lineageId": "revit-skills-showcase-3-bedroom-apartment-building-1",
+            "trainingEligible": false,
+            "commercialScoreEligible": false,
+            "licenseReviewRequired": true
+          },
+          "sourceExists": true,
+          "containmentVerified": true,
+          "inventoryMatch": true,
+          "actualBytes": 9981952,
+          "actualSha256": "7386182ebe722167feb248e58681969c9f8ddea8adbee2eec9f684a9682838c6",
+          "inventoryDuplicatePaths": [
+            "operator_refs:참고파일들4/revit-skills-showcase-3-bedroom-apartment-building-1.snapshot.3/Apartment Building.rvt"
+          ],
+          "rejectionReasons": [
+            "license_attestation_missing",
+            "scenario_fit_attestation_missing"
+          ]
+        },
+        {
+          "sourceRoot": "operator_refs",
+          "relativePath": "참고파일들4/residential-villa-3.snapshot.1/QATAR AL WUKAIR VILLA/VILLA QR 23IFC.ifc",
+          "bytes": 26507078,
+          "sha256": "8ceaa8cf258d999d99d15c1148ae9ab5f747480a373c27fe8e4090326746784e",
+          "role": "holdout",
+          "tuningExclusion": true,
+          "rank": 4,
+          "ranking": {
+            "score": 130,
+            "tokenHits": [
+              "residential"
+            ],
+            "extension": ".ifc"
+          },
+          "licenseStatus": "approval_attestation_missing",
+          "licenseEvidencePath": null,
+          "licenseEvidenceSha256": null,
+          "scenarioFitStatus": "approval_attestation_missing",
+          "scenarioEvidencePath": null,
+          "scenarioEvidenceSha256": null,
+          "provenance": {
+            "status": "manifest_bound_license_review_required",
+            "evidencePath": "docs/evidence/cad-independent/reference-utilization-manifest-260809.json",
+            "evidenceSha256": "a623ece1abf7a0351e4f2f5a537442195f6f6be61a808acc16007341f79ae4b9",
+            "lineageId": "residential-villa-3",
+            "trainingEligible": false,
+            "commercialScoreEligible": false,
+            "licenseReviewRequired": true
+          },
+          "sourceExists": true,
+          "containmentVerified": true,
+          "inventoryMatch": true,
+          "actualBytes": 26507078,
+          "actualSha256": "8ceaa8cf258d999d99d15c1148ae9ab5f747480a373c27fe8e4090326746784e",
+          "inventoryDuplicatePaths": [
+            "operator_refs:참고파일들4/residential-villa-3.snapshot.1/QATAR AL WUKAIR VILLA/VILLA QR 23IFC.ifc"
+          ],
+          "rejectionReasons": [
+            "license_attestation_missing",
+            "scenario_fit_attestation_missing"
+          ]
+        },
+        {
+          "sourceRoot": "operator_refs",
+          "relativePath": "참고파일들4/2bhk-house-plan-1.snapshot.2/KODI BUILDERS - PROJECT 01.dwg",
+          "bytes": 173881,
+          "sha256": "b9e868b4f9bceb5f1171ddbdbc792c845642ad4ebb18514c9d6186ed1594952a",
+          "role": "holdout",
+          "tuningExclusion": true,
+          "rank": 5,
+          "ranking": {
+            "score": 129,
+            "tokenHits": [
+              "2bhk"
+            ],
+            "extension": ".dwg"
+          },
+          "licenseStatus": "approval_attestation_missing",
+          "licenseEvidencePath": null,
+          "licenseEvidenceSha256": null,
+          "scenarioFitStatus": "approval_attestation_missing",
+          "scenarioEvidencePath": null,
+          "scenarioEvidenceSha256": null,
+          "provenance": {
+            "status": "manifest_bound_license_review_required",
+            "evidencePath": "docs/evidence/cad-independent/reference-utilization-manifest-260809.json",
+            "evidenceSha256": "a623ece1abf7a0351e4f2f5a537442195f6f6be61a808acc16007341f79ae4b9",
+            "lineageId": "2bhk-house-plan-1",
+            "trainingEligible": false,
+            "commercialScoreEligible": false,
+            "licenseReviewRequired": true
+          },
+          "sourceExists": true,
+          "containmentVerified": true,
+          "inventoryMatch": true,
+          "actualBytes": 173881,
+          "actualSha256": "b9e868b4f9bceb5f1171ddbdbc792c845642ad4ebb18514c9d6186ed1594952a",
+          "inventoryDuplicatePaths": [
+            "operator_refs:참고파일들4/2bhk-house-plan-1.snapshot.2/KODI BUILDERS - PROJECT 01.dwg"
+          ],
+          "rejectionReasons": [
+            "license_attestation_missing",
+            "scenario_fit_attestation_missing"
+          ]
+        },
+        {
+          "sourceRoot": "operator_refs",
+          "relativePath": "참고파일들4/3-story-100-square-meteres-apartment-revit-1.snapshot.1/3story 100m villa  (1).dwg",
+          "bytes": 313555,
+          "sha256": "dacc185ebe42cec20b5d4340a34be6fbafedc4210fb70004ff5b7dfe3d49f7ca",
+          "role": "holdout",
+          "tuningExclusion": true,
+          "rank": 6,
+          "ranking": {
+            "score": 129,
+            "tokenHits": [
+              "apartment"
+            ],
+            "extension": ".dwg"
+          },
+          "licenseStatus": "approval_attestation_missing",
+          "licenseEvidencePath": null,
+          "licenseEvidenceSha256": null,
+          "scenarioFitStatus": "approval_attestation_missing",
+          "scenarioEvidencePath": null,
+          "scenarioEvidenceSha256": null,
+          "provenance": {
+            "status": "manifest_bound_license_review_required",
+            "evidencePath": "docs/evidence/cad-independent/reference-utilization-manifest-260809.json",
+            "evidenceSha256": "a623ece1abf7a0351e4f2f5a537442195f6f6be61a808acc16007341f79ae4b9",
+            "lineageId": "3-story-100-square-meteres-apartment-revit-1",
+            "trainingEligible": false,
+            "commercialScoreEligible": false,
+            "licenseReviewRequired": true
+          },
+          "sourceExists": true,
+          "containmentVerified": true,
+          "inventoryMatch": true,
+          "actualBytes": 313555,
+          "actualSha256": "dacc185ebe42cec20b5d4340a34be6fbafedc4210fb70004ff5b7dfe3d49f7ca",
+          "inventoryDuplicatePaths": [
+            "operator_refs:참고파일들4/3-story-100-square-meteres-apartment-revit-1.snapshot.1/3story 100m villa  (1).dwg"
+          ],
+          "rejectionReasons": [
+            "license_attestation_missing",
+            "scenario_fit_attestation_missing"
+          ]
+        },
+        {
+          "sourceRoot": "operator_refs",
+          "relativePath": "참고파일들4/residential-building-23.snapshot.4/section and elevation.dwg",
+          "bytes": 513966,
+          "sha256": "83ef67cd845becf5e9a0b26ef92176c1e7d4a6441a0641e457e87e055b7997bc",
+          "role": "holdout",
+          "tuningExclusion": true,
+          "rank": 7,
+          "ranking": {
+            "score": 129,
+            "tokenHits": [
+              "residential"
+            ],
+            "extension": ".dwg"
+          },
+          "licenseStatus": "approval_attestation_missing",
+          "licenseEvidencePath": null,
+          "licenseEvidenceSha256": null,
+          "scenarioFitStatus": "approval_attestation_missing",
+          "scenarioEvidencePath": null,
+          "scenarioEvidenceSha256": null,
+          "provenance": {
+            "status": "manifest_bound_license_review_required",
+            "evidencePath": "docs/evidence/cad-independent/reference-utilization-manifest-260809.json",
+            "evidenceSha256": "a623ece1abf7a0351e4f2f5a537442195f6f6be61a808acc16007341f79ae4b9",
+            "lineageId": "residential-building-23",
+            "trainingEligible": false,
+            "commercialScoreEligible": false,
+            "licenseReviewRequired": true
+          },
+          "sourceExists": true,
+          "containmentVerified": true,
+          "inventoryMatch": true,
+          "actualBytes": 513966,
+          "actualSha256": "83ef67cd845becf5e9a0b26ef92176c1e7d4a6441a0641e457e87e055b7997bc",
+          "inventoryDuplicatePaths": [
+            "operator_refs:참고파일들4/residential-building-23.snapshot.4/section and elevation.dwg"
+          ],
+          "rejectionReasons": [
+            "license_attestation_missing",
+            "scenario_fit_attestation_missing"
+          ]
+        },
+        {
+          "sourceRoot": "operator_refs",
+          "relativePath": "참고파일들4/residential-building-3-3.snapshot.2/Adhir Ch.Saha.dwg",
+          "bytes": 495136,
+          "sha256": "45de7d14209799e1fccdd83ee5c0be8868b648630c6bd936921f6b6232334b97",
+          "role": "holdout",
+          "tuningExclusion": true,
+          "rank": 8,
+          "ranking": {
+            "score": 129,
+            "tokenHits": [
+              "residential"
+            ],
+            "extension": ".dwg"
+          },
+          "licenseStatus": "approval_attestation_missing",
+          "licenseEvidencePath": null,
+          "licenseEvidenceSha256": null,
+          "scenarioFitStatus": "approval_attestation_missing",
+          "scenarioEvidencePath": null,
+          "scenarioEvidenceSha256": null,
+          "provenance": {
+            "status": "manifest_bound_license_review_required",
+            "evidencePath": "docs/evidence/cad-independent/reference-utilization-manifest-260809.json",
+            "evidenceSha256": "a623ece1abf7a0351e4f2f5a537442195f6f6be61a808acc16007341f79ae4b9",
+            "lineageId": "residential-building-3-3",
+            "trainingEligible": false,
+            "commercialScoreEligible": false,
+            "licenseReviewRequired": true
+          },
+          "sourceExists": true,
+          "containmentVerified": true,
+          "inventoryMatch": true,
+          "actualBytes": 495136,
+          "actualSha256": "45de7d14209799e1fccdd83ee5c0be8868b648630c6bd936921f6b6232334b97",
+          "inventoryDuplicatePaths": [
+            "operator_refs:참고파일들4/residential-building-3-3.snapshot.2/Adhir Ch.Saha.dwg"
+          ],
+          "rejectionReasons": [
+            "license_attestation_missing",
+            "scenario_fit_attestation_missing"
+          ]
+        }
+      ],
+      "sourceRootAssessments": {
+        "example73": {
+          "inventoryFiles": 170,
+          "filenameKeywordMatches": 0,
+          "status": "HOLD",
+          "reason": "no_filename_evidence_for_scenario"
+        },
+        "manuals": {
+          "inventoryFiles": 21,
+          "filenameKeywordMatches": 0,
+          "status": "HOLD",
+          "reason": "no_filename_evidence_for_scenario"
+        },
+        "operator_refs": {
+          "inventoryFiles": 7216,
+          "filenameKeywordMatches": 27,
+          "status": "CANDIDATE_REVIEW_REQUIRED",
+          "reason": "filename_match_is_not_scenario_or_license_approval"
+        }
+      },
+      "rejectionReasons": [
+        "no_approved_assignment"
+      ]
+    },
+    "cafe": {
+      "status": "HOLD",
+      "selected": [],
+      "candidates": [
+        {
+          "sourceRoot": "operator_refs",
+          "relativePath": "참고파일들4/modern-high-school-concept-with-amphitheater-greek-temple-sun-sail-covered-cafeteria-3.snapshot.3/Bleacher Side View.rvt",
+          "bytes": 6230016,
+          "sha256": "d1b3c3a6434671d9871693588d68416048036fa9a88b367e0b2fb6bba2039623",
+          "role": "holdout",
+          "tuningExclusion": true,
+          "rank": 1,
+          "ranking": {
+            "score": 228,
+            "tokenHits": [
+              "cafe",
+              "cafeteria"
+            ],
+            "extension": ".rvt"
+          },
+          "licenseStatus": "approval_attestation_missing",
+          "licenseEvidencePath": null,
+          "licenseEvidenceSha256": null,
+          "scenarioFitStatus": "approval_attestation_missing",
+          "scenarioEvidencePath": null,
+          "scenarioEvidenceSha256": null,
+          "provenance": {
+            "status": "manifest_bound_license_review_required",
+            "evidencePath": "docs/evidence/cad-independent/reference-utilization-manifest-260809.json",
+            "evidenceSha256": "a623ece1abf7a0351e4f2f5a537442195f6f6be61a808acc16007341f79ae4b9",
+            "lineageId": "modern-high-school-concept-with-amphitheater-greek-temple-sun-sail-covered-cafeteria-3",
+            "trainingEligible": false,
+            "commercialScoreEligible": false,
+            "licenseReviewRequired": true
+          },
+          "sourceExists": true,
+          "containmentVerified": true,
+          "inventoryMatch": true,
+          "actualBytes": 6230016,
+          "actualSha256": "d1b3c3a6434671d9871693588d68416048036fa9a88b367e0b2fb6bba2039623",
+          "inventoryDuplicatePaths": [
+            "operator_refs:참고파일들4/modern-high-school-concept-with-amphitheater-greek-temple-sun-sail-covered-cafeteria-3.snapshot.3/Bleacher Side View.rvt"
+          ],
+          "rejectionReasons": [
+            "license_attestation_missing",
+            "scenario_fit_attestation_missing"
+          ]
+        },
+        {
+          "sourceRoot": "operator_refs",
+          "relativePath": "참고파일들4/modern-high-school-concept-with-amphitheater-greek-temple-sun-sail-covered-cafeteria-3.snapshot.3/half of the school.rvt",
+          "bytes": 6467584,
+          "sha256": "609357a8c9f0c8074783a1cb5759439aac45e027498273c737caceb1ba985052",
+          "role": "holdout",
+          "tuningExclusion": true,
+          "rank": 2,
+          "ranking": {
+            "score": 228,
+            "tokenHits": [
+              "cafe",
+              "cafeteria"
+            ],
+            "extension": ".rvt"
+          },
+          "licenseStatus": "approval_attestation_missing",
+          "licenseEvidencePath": null,
+          "licenseEvidenceSha256": null,
+          "scenarioFitStatus": "approval_attestation_missing",
+          "scenarioEvidencePath": null,
+          "scenarioEvidenceSha256": null,
+          "provenance": {
+            "status": "manifest_bound_license_review_required",
+            "evidencePath": "docs/evidence/cad-independent/reference-utilization-manifest-260809.json",
+            "evidenceSha256": "a623ece1abf7a0351e4f2f5a537442195f6f6be61a808acc16007341f79ae4b9",
+            "lineageId": "modern-high-school-concept-with-amphitheater-greek-temple-sun-sail-covered-cafeteria-3",
+            "trainingEligible": false,
+            "commercialScoreEligible": false,
+            "licenseReviewRequired": true
+          },
+          "sourceExists": true,
+          "containmentVerified": true,
+          "inventoryMatch": true,
+          "actualBytes": 6467584,
+          "actualSha256": "609357a8c9f0c8074783a1cb5759439aac45e027498273c737caceb1ba985052",
+          "inventoryDuplicatePaths": [
+            "operator_refs:참고파일들4/modern-high-school-concept-with-amphitheater-greek-temple-sun-sail-covered-cafeteria-3.snapshot.3/half of the school.rvt"
+          ],
+          "rejectionReasons": [
+            "license_attestation_missing",
+            "scenario_fit_attestation_missing"
+          ]
+        },
+        {
+          "sourceRoot": "operator_refs",
+          "relativePath": "참고파일들4/modern-high-school-concept-with-amphitheater-greek-temple-sun-sail-covered-cafeteria-3.snapshot.3/highschool.rvt",
+          "bytes": 20598784,
+          "sha256": "7597bb68fe176e6be504d7ff2e7cd35d297e050e5cdb93063286cb15f396b2a9",
+          "role": "holdout",
+          "tuningExclusion": true,
+          "rank": 3,
+          "ranking": {
+            "score": 228,
+            "tokenHits": [
+              "cafe",
+              "cafeteria"
+            ],
+            "extension": ".rvt"
+          },
+          "licenseStatus": "approval_attestation_missing",
+          "licenseEvidencePath": null,
+          "licenseEvidenceSha256": null,
+          "scenarioFitStatus": "approval_attestation_missing",
+          "scenarioEvidencePath": null,
+          "scenarioEvidenceSha256": null,
+          "provenance": {
+            "status": "manifest_bound_license_review_required",
+            "evidencePath": "docs/evidence/cad-independent/reference-utilization-manifest-260809.json",
+            "evidenceSha256": "a623ece1abf7a0351e4f2f5a537442195f6f6be61a808acc16007341f79ae4b9",
+            "lineageId": "modern-high-school-concept-with-amphitheater-greek-temple-sun-sail-covered-cafeteria-3",
+            "trainingEligible": false,
+            "commercialScoreEligible": false,
+            "licenseReviewRequired": true
+          },
+          "sourceExists": true,
+          "containmentVerified": true,
+          "inventoryMatch": true,
+          "actualBytes": 20598784,
+          "actualSha256": "7597bb68fe176e6be504d7ff2e7cd35d297e050e5cdb93063286cb15f396b2a9",
+          "inventoryDuplicatePaths": [
+            "operator_refs:참고파일들4/modern-high-school-concept-with-amphitheater-greek-temple-sun-sail-covered-cafeteria-3.snapshot.3/highschool.rvt"
+          ],
+          "rejectionReasons": [
+            "license_attestation_missing",
+            "scenario_fit_attestation_missing"
+          ]
+        },
+        {
+          "sourceRoot": "operator_refs",
+          "relativePath": "참고파일들4/modern-high-school-concept-with-amphitheater-greek-temple-sun-sail-covered-cafeteria-3.snapshot.3/highschoollayout.rvt",
+          "bytes": 18776064,
+          "sha256": "6b11cb80b714a09436596845cd50a99b19decd8c831555df4e87156008431c7e",
+          "role": "holdout",
+          "tuningExclusion": true,
+          "rank": 4,
+          "ranking": {
+            "score": 228,
+            "tokenHits": [
+              "cafe",
+              "cafeteria"
+            ],
+            "extension": ".rvt"
+          },
+          "licenseStatus": "approval_attestation_missing",
+          "licenseEvidencePath": null,
+          "licenseEvidenceSha256": null,
+          "scenarioFitStatus": "approval_attestation_missing",
+          "scenarioEvidencePath": null,
+          "scenarioEvidenceSha256": null,
+          "provenance": {
+            "status": "manifest_bound_license_review_required",
+            "evidencePath": "docs/evidence/cad-independent/reference-utilization-manifest-260809.json",
+            "evidenceSha256": "a623ece1abf7a0351e4f2f5a537442195f6f6be61a808acc16007341f79ae4b9",
+            "lineageId": "modern-high-school-concept-with-amphitheater-greek-temple-sun-sail-covered-cafeteria-3",
+            "trainingEligible": false,
+            "commercialScoreEligible": false,
+            "licenseReviewRequired": true
+          },
+          "sourceExists": true,
+          "containmentVerified": true,
+          "inventoryMatch": true,
+          "actualBytes": 18776064,
+          "actualSha256": "6b11cb80b714a09436596845cd50a99b19decd8c831555df4e87156008431c7e",
+          "inventoryDuplicatePaths": [
+            "operator_refs:참고파일들4/modern-high-school-concept-with-amphitheater-greek-temple-sun-sail-covered-cafeteria-3.snapshot.3/highschoollayout.rvt"
+          ],
+          "rejectionReasons": [
+            "license_attestation_missing",
+            "scenario_fit_attestation_missing"
+          ]
+        },
+        {
+          "sourceRoot": "operator_refs",
+          "relativePath": "참고파일들4/modern-high-school-concept-with-amphitheater-greek-temple-sun-sail-covered-cafeteria-3.snapshot.3/Monopteros and amphitheater.rvt",
+          "bytes": 5181440,
+          "sha256": "6ef8d3a3b9d43340fa53bece5d7cef1fc4c733dd5d71ff0e25e4c3480d3dae4d",
+          "role": "holdout",
+          "tuningExclusion": true,
+          "rank": 5,
+          "ranking": {
+            "score": 228,
+            "tokenHits": [
+              "cafe",
+              "cafeteria"
+            ],
+            "extension": ".rvt"
+          },
+          "licenseStatus": "approval_attestation_missing",
+          "licenseEvidencePath": null,
+          "licenseEvidenceSha256": null,
+          "scenarioFitStatus": "approval_attestation_missing",
+          "scenarioEvidencePath": null,
+          "scenarioEvidenceSha256": null,
+          "provenance": {
+            "status": "manifest_bound_license_review_required",
+            "evidencePath": "docs/evidence/cad-independent/reference-utilization-manifest-260809.json",
+            "evidenceSha256": "a623ece1abf7a0351e4f2f5a537442195f6f6be61a808acc16007341f79ae4b9",
+            "lineageId": "modern-high-school-concept-with-amphitheater-greek-temple-sun-sail-covered-cafeteria-3",
+            "trainingEligible": false,
+            "commercialScoreEligible": false,
+            "licenseReviewRequired": true
+          },
+          "sourceExists": true,
+          "containmentVerified": true,
+          "inventoryMatch": true,
+          "actualBytes": 5181440,
+          "actualSha256": "6ef8d3a3b9d43340fa53bece5d7cef1fc4c733dd5d71ff0e25e4c3480d3dae4d",
+          "inventoryDuplicatePaths": [
+            "operator_refs:참고파일들4/modern-high-school-concept-with-amphitheater-greek-temple-sun-sail-covered-cafeteria-3.snapshot.3/Monopteros and amphitheater.rvt"
+          ],
+          "rejectionReasons": [
+            "license_attestation_missing",
+            "scenario_fit_attestation_missing"
+          ]
+        },
+        {
+          "sourceRoot": "operator_refs",
+          "relativePath": "참고파일들4/modern-high-school-concept-with-amphitheater-greek-temple-sun-sail-covered-cafeteria-3.snapshot.3/VAPA.rvt",
+          "bytes": 13287424,
+          "sha256": "d83f88fb0b8f9ae72fe3d29754289146d671dbae982e1fcd72cddf37ccfd5c0e",
+          "role": "holdout",
+          "tuningExclusion": true,
+          "rank": 6,
+          "ranking": {
+            "score": 228,
+            "tokenHits": [
+              "cafe",
+              "cafeteria"
+            ],
+            "extension": ".rvt"
+          },
+          "licenseStatus": "approval_attestation_missing",
+          "licenseEvidencePath": null,
+          "licenseEvidenceSha256": null,
+          "scenarioFitStatus": "approval_attestation_missing",
+          "scenarioEvidencePath": null,
+          "scenarioEvidenceSha256": null,
+          "provenance": {
+            "status": "manifest_bound_license_review_required",
+            "evidencePath": "docs/evidence/cad-independent/reference-utilization-manifest-260809.json",
+            "evidenceSha256": "a623ece1abf7a0351e4f2f5a537442195f6f6be61a808acc16007341f79ae4b9",
+            "lineageId": "modern-high-school-concept-with-amphitheater-greek-temple-sun-sail-covered-cafeteria-3",
+            "trainingEligible": false,
+            "commercialScoreEligible": false,
+            "licenseReviewRequired": true
+          },
+          "sourceExists": true,
+          "containmentVerified": true,
+          "inventoryMatch": true,
+          "actualBytes": 13287424,
+          "actualSha256": "d83f88fb0b8f9ae72fe3d29754289146d671dbae982e1fcd72cddf37ccfd5c0e",
+          "inventoryDuplicatePaths": [
+            "operator_refs:참고파일들4/modern-high-school-concept-with-amphitheater-greek-temple-sun-sail-covered-cafeteria-3.snapshot.3/VAPA.rvt"
+          ],
+          "rejectionReasons": [
+            "license_attestation_missing",
+            "scenario_fit_attestation_missing"
+          ]
+        },
+        {
+          "sourceRoot": "operator_refs",
+          "relativePath": "참고파일들4/modern-high-school-concept-with-amphitheater-greek-temple-sun-sail-covered-cafeteria-3.snapshot.3/halfoftheschool-3DView-{3D}.sat",
+          "bytes": 262992662,
+          "sha256": "24be59690830ea0d1f77c9a8c25c4f2793aa0631eb75933b6a20e891917b4bb3",
+          "role": "holdout",
+          "tuningExclusion": true,
+          "rank": 7,
+          "ranking": {
+            "score": 225,
+            "tokenHits": [
+              "cafe",
+              "cafeteria"
+            ],
+            "extension": ".sat"
+          },
+          "licenseStatus": "approval_attestation_missing",
+          "licenseEvidencePath": null,
+          "licenseEvidenceSha256": null,
+          "scenarioFitStatus": "approval_attestation_missing",
+          "scenarioEvidencePath": null,
+          "scenarioEvidenceSha256": null,
+          "provenance": {
+            "status": "manifest_bound_license_review_required",
+            "evidencePath": "docs/evidence/cad-independent/reference-utilization-manifest-260809.json",
+            "evidenceSha256": "a623ece1abf7a0351e4f2f5a537442195f6f6be61a808acc16007341f79ae4b9",
+            "lineageId": "modern-high-school-concept-with-amphitheater-greek-temple-sun-sail-covered-cafeteria-3",
+            "trainingEligible": false,
+            "commercialScoreEligible": false,
+            "licenseReviewRequired": true
+          },
+          "sourceExists": true,
+          "containmentVerified": true,
+          "inventoryMatch": true,
+          "actualBytes": 262992662,
+          "actualSha256": "24be59690830ea0d1f77c9a8c25c4f2793aa0631eb75933b6a20e891917b4bb3",
+          "inventoryDuplicatePaths": [
+            "operator_refs:참고파일들4/modern-high-school-concept-with-amphitheater-greek-temple-sun-sail-covered-cafeteria-3.snapshot.3/halfoftheschool-3DView-{3D}.sat"
+          ],
+          "rejectionReasons": [
+            "license_attestation_missing",
+            "scenario_fit_attestation_missing"
+          ]
+        }
+      ],
+      "sourceRootAssessments": {
+        "example73": {
+          "inventoryFiles": 170,
+          "filenameKeywordMatches": 0,
+          "status": "HOLD",
+          "reason": "no_filename_evidence_for_scenario"
+        },
+        "manuals": {
+          "inventoryFiles": 21,
+          "filenameKeywordMatches": 0,
+          "status": "HOLD",
+          "reason": "no_filename_evidence_for_scenario"
+        },
+        "operator_refs": {
+          "inventoryFiles": 7216,
+          "filenameKeywordMatches": 7,
+          "status": "CANDIDATE_REVIEW_REQUIRED",
+          "reason": "filename_match_is_not_scenario_or_license_approval"
+        }
+      },
+      "rejectionReasons": [
+        "no_approved_assignment"
+      ]
+    },
+    "mep_companion": {
+      "status": "HOLD",
+      "selected": [],
+      "candidates": [
+        {
+          "sourceRoot": "operator_refs",
+          "relativePath": "참고파일들4/sprinkler-design-using-revit-mep-1.snapshot.3/Sprinkler.rvt",
+          "bytes": 11214848,
+          "sha256": "87813d5056e5107979592f86ca4754fbf761b4368833d5703c27c773adde4507",
+          "role": "holdout",
+          "tuningExclusion": true,
+          "rank": 1,
+          "ranking": {
+            "score": 370,
+            "tokenHits": [
+              "sprinkler-design",
+              "revit-mep",
+              "sprinkler"
+            ],
+            "extension": ".rvt"
+          },
+          "licenseStatus": "approval_attestation_missing",
+          "licenseEvidencePath": null,
+          "licenseEvidenceSha256": null,
+          "scenarioFitStatus": "approval_attestation_missing",
+          "scenarioEvidencePath": null,
+          "scenarioEvidenceSha256": null,
+          "provenance": {
+            "status": "manifest_bound_license_review_required",
+            "evidencePath": "docs/evidence/cad-independent/reference-utilization-manifest-260809.json",
+            "evidenceSha256": "a623ece1abf7a0351e4f2f5a537442195f6f6be61a808acc16007341f79ae4b9",
+            "lineageId": "sprinkler-design-using-revit-mep-1",
+            "trainingEligible": false,
+            "commercialScoreEligible": false,
+            "licenseReviewRequired": true
+          },
+          "sourceExists": true,
+          "containmentVerified": true,
+          "inventoryMatch": true,
+          "actualBytes": 11214848,
+          "actualSha256": "87813d5056e5107979592f86ca4754fbf761b4368833d5703c27c773adde4507",
+          "inventoryDuplicatePaths": [
+            "operator_refs:참고파일들4/sprinkler-design-using-revit-mep-1.snapshot.3/Sprinkler.rvt"
+          ],
+          "rejectionReasons": [
+            "license_attestation_missing",
+            "scenario_fit_attestation_missing"
+          ]
+        },
+        {
+          "sourceRoot": "operator_refs",
+          "relativePath": "참고파일들4/sprinkler-design-using-revit-mep-1.snapshot.3/Sprinkler-3D View - {3D}-Structural-rvt-1-{3D}.dwg",
+          "bytes": 995087,
+          "sha256": "03dbe09dbaf6caaa3a10c7cb9bf3a62d739c59b1693a67a94386ef24c39457d8",
+          "role": "holdout",
+          "tuningExclusion": true,
+          "rank": 2,
+          "ranking": {
+            "score": 369,
+            "tokenHits": [
+              "sprinkler-design",
+              "revit-mep",
+              "sprinkler"
+            ],
+            "extension": ".dwg"
+          },
+          "licenseStatus": "approval_attestation_missing",
+          "licenseEvidencePath": null,
+          "licenseEvidenceSha256": null,
+          "scenarioFitStatus": "approval_attestation_missing",
+          "scenarioEvidencePath": null,
+          "scenarioEvidenceSha256": null,
+          "provenance": {
+            "status": "manifest_bound_license_review_required",
+            "evidencePath": "docs/evidence/cad-independent/reference-utilization-manifest-260809.json",
+            "evidenceSha256": "a623ece1abf7a0351e4f2f5a537442195f6f6be61a808acc16007341f79ae4b9",
+            "lineageId": "sprinkler-design-using-revit-mep-1",
+            "trainingEligible": false,
+            "commercialScoreEligible": false,
+            "licenseReviewRequired": true
+          },
+          "sourceExists": true,
+          "containmentVerified": true,
+          "inventoryMatch": true,
+          "actualBytes": 995087,
+          "actualSha256": "03dbe09dbaf6caaa3a10c7cb9bf3a62d739c59b1693a67a94386ef24c39457d8",
+          "inventoryDuplicatePaths": [
+            "operator_refs:참고파일들4/sprinkler-design-using-revit-mep-1.snapshot.3/Sprinkler-3D View - {3D}-Structural-rvt-1-{3D}.dwg"
+          ],
+          "rejectionReasons": [
+            "license_attestation_missing",
+            "scenario_fit_attestation_missing"
+          ]
+        },
+        {
+          "sourceRoot": "operator_refs",
+          "relativePath": "참고파일들4/sprinkler-design-using-revit-mep-1.snapshot.3/Sprinkler-3D View - {3D}.dwg",
+          "bytes": 1179955,
+          "sha256": "c96cede8696a1bafa57c29538b726ee7eb1b7763e2a04e5d0d3fe81cc0446cd4",
+          "role": "holdout",
+          "tuningExclusion": true,
+          "rank": 3,
+          "ranking": {
+            "score": 369,
+            "tokenHits": [
+              "sprinkler-design",
+              "revit-mep",
+              "sprinkler"
+            ],
+            "extension": ".dwg"
+          },
+          "licenseStatus": "approval_attestation_missing",
+          "licenseEvidencePath": null,
+          "licenseEvidenceSha256": null,
+          "scenarioFitStatus": "approval_attestation_missing",
+          "scenarioEvidencePath": null,
+          "scenarioEvidenceSha256": null,
+          "provenance": {
+            "status": "manifest_bound_license_review_required",
+            "evidencePath": "docs/evidence/cad-independent/reference-utilization-manifest-260809.json",
+            "evidenceSha256": "a623ece1abf7a0351e4f2f5a537442195f6f6be61a808acc16007341f79ae4b9",
+            "lineageId": "sprinkler-design-using-revit-mep-1",
+            "trainingEligible": false,
+            "commercialScoreEligible": false,
+            "licenseReviewRequired": true
+          },
+          "sourceExists": true,
+          "containmentVerified": true,
+          "inventoryMatch": true,
+          "actualBytes": 1179955,
+          "actualSha256": "c96cede8696a1bafa57c29538b726ee7eb1b7763e2a04e5d0d3fe81cc0446cd4",
+          "inventoryDuplicatePaths": [
+            "operator_refs:참고파일들4/sprinkler-design-using-revit-mep-1.snapshot.3/Sprinkler-3D View - {3D}.dwg"
+          ],
+          "rejectionReasons": [
+            "license_attestation_missing",
+            "scenario_fit_attestation_missing"
+          ]
+        },
+        {
+          "sourceRoot": "operator_refs",
+          "relativePath": "참고파일들4/sprinkler-design-using-revit-mep-1.snapshot.3/Sprinkler-Sheet - S101 - First floor Sprinkler design-Architectural-rvt-1-1 - Sprinkler.dwg",
+          "bytes": 300745,
+          "sha256": "720a233383dc0cb86230150247217999aefda9ffd54b26e17766d4d2429a873d",
+          "role": "holdout",
+          "tuningExclusion": true,
+          "rank": 4,
+          "ranking": {
+            "score": 369,
+            "tokenHits": [
+              "sprinkler-design",
+              "revit-mep",
+              "sprinkler"
+            ],
+            "extension": ".dwg"
+          },
+          "licenseStatus": "approval_attestation_missing",
+          "licenseEvidencePath": null,
+          "licenseEvidenceSha256": null,
+          "scenarioFitStatus": "approval_attestation_missing",
+          "scenarioEvidencePath": null,
+          "scenarioEvidenceSha256": null,
+          "provenance": {
+            "status": "manifest_bound_license_review_required",
+            "evidencePath": "docs/evidence/cad-independent/reference-utilization-manifest-260809.json",
+            "evidenceSha256": "a623ece1abf7a0351e4f2f5a537442195f6f6be61a808acc16007341f79ae4b9",
+            "lineageId": "sprinkler-design-using-revit-mep-1",
+            "trainingEligible": false,
+            "commercialScoreEligible": false,
+            "licenseReviewRequired": true
+          },
+          "sourceExists": true,
+          "containmentVerified": true,
+          "inventoryMatch": true,
+          "actualBytes": 300745,
+          "actualSha256": "720a233383dc0cb86230150247217999aefda9ffd54b26e17766d4d2429a873d",
+          "inventoryDuplicatePaths": [
+            "operator_refs:참고파일들4/sprinkler-design-using-revit-mep-1.snapshot.3/Sprinkler-Sheet - S101 - First floor Sprinkler design-Architectural-rvt-1-1 - Sprinkler.dwg"
+          ],
+          "rejectionReasons": [
+            "license_attestation_missing",
+            "scenario_fit_attestation_missing"
+          ]
+        },
+        {
+          "sourceRoot": "operator_refs",
+          "relativePath": "참고파일들4/sprinkler-design-using-revit-mep-1.snapshot.3/Sprinkler-Sheet - S101 - First floor Sprinkler design-Floor Plan - 1 - Sprinkler.dwg",
+          "bytes": 145515,
+          "sha256": "c1d5e79077d336209bb614b89adb6ef722ca48ad07490bd11b93b1400534d0f9",
+          "role": "holdout",
+          "tuningExclusion": true,
+          "rank": 5,
+          "ranking": {
+            "score": 369,
+            "tokenHits": [
+              "sprinkler-design",
+              "revit-mep",
+              "sprinkler"
+            ],
+            "extension": ".dwg"
+          },
+          "licenseStatus": "approval_attestation_missing",
+          "licenseEvidencePath": null,
+          "licenseEvidenceSha256": null,
+          "scenarioFitStatus": "approval_attestation_missing",
+          "scenarioEvidencePath": null,
+          "scenarioEvidenceSha256": null,
+          "provenance": {
+            "status": "manifest_bound_license_review_required",
+            "evidencePath": "docs/evidence/cad-independent/reference-utilization-manifest-260809.json",
+            "evidenceSha256": "a623ece1abf7a0351e4f2f5a537442195f6f6be61a808acc16007341f79ae4b9",
+            "lineageId": "sprinkler-design-using-revit-mep-1",
+            "trainingEligible": false,
+            "commercialScoreEligible": false,
+            "licenseReviewRequired": true
+          },
+          "sourceExists": true,
+          "containmentVerified": true,
+          "inventoryMatch": true,
+          "actualBytes": 145515,
+          "actualSha256": "c1d5e79077d336209bb614b89adb6ef722ca48ad07490bd11b93b1400534d0f9",
+          "inventoryDuplicatePaths": [
+            "operator_refs:참고파일들4/sprinkler-design-using-revit-mep-1.snapshot.3/Sprinkler-Sheet - S101 - First floor Sprinkler design-Floor Plan - 1 - Sprinkler.dwg"
+          ],
+          "rejectionReasons": [
+            "license_attestation_missing",
+            "scenario_fit_attestation_missing"
+          ]
+        },
+        {
+          "sourceRoot": "operator_refs",
+          "relativePath": "참고파일들4/sprinkler-design-using-revit-mep-1.snapshot.3/Sprinkler-Sheet - S101 - First floor Sprinkler design-Structural-rvt-1-1 - Sprinkler.dwg",
+          "bytes": 46955,
+          "sha256": "f4e0244b6934791d28546b9f376a1610ffd84d37169aaf517594d992ab84e201",
+          "role": "holdout",
+          "tuningExclusion": true,
+          "rank": 6,
+          "ranking": {
+            "score": 369,
+            "tokenHits": [
+              "sprinkler-design",
+              "revit-mep",
+              "sprinkler"
+            ],
+            "extension": ".dwg"
+          },
+          "licenseStatus": "approval_attestation_missing",
+          "licenseEvidencePath": null,
+          "licenseEvidenceSha256": null,
+          "scenarioFitStatus": "approval_attestation_missing",
+          "scenarioEvidencePath": null,
+          "scenarioEvidenceSha256": null,
+          "provenance": {
+            "status": "manifest_bound_license_review_required",
+            "evidencePath": "docs/evidence/cad-independent/reference-utilization-manifest-260809.json",
+            "evidenceSha256": "a623ece1abf7a0351e4f2f5a537442195f6f6be61a808acc16007341f79ae4b9",
+            "lineageId": "sprinkler-design-using-revit-mep-1",
+            "trainingEligible": false,
+            "commercialScoreEligible": false,
+            "licenseReviewRequired": true
+          },
+          "sourceExists": true,
+          "containmentVerified": true,
+          "inventoryMatch": true,
+          "actualBytes": 46955,
+          "actualSha256": "f4e0244b6934791d28546b9f376a1610ffd84d37169aaf517594d992ab84e201",
+          "inventoryDuplicatePaths": [
+            "operator_refs:참고파일들4/sprinkler-design-using-revit-mep-1.snapshot.3/Sprinkler-Sheet - S101 - First floor Sprinkler design-Structural-rvt-1-1 - Sprinkler.dwg"
+          ],
+          "rejectionReasons": [
+            "license_attestation_missing",
+            "scenario_fit_attestation_missing"
+          ]
+        },
+        {
+          "sourceRoot": "operator_refs",
+          "relativePath": "참고파일들4/sprinkler-design-using-revit-mep-1.snapshot.3/Sprinkler-Sheet - S101 - First floor Sprinkler design.dwg",
+          "bytes": 37816,
+          "sha256": "5c7cb383703e837a934db690e911cbe435ca91ed453918517e8b1c9c9582da16",
+          "role": "holdout",
+          "tuningExclusion": true,
+          "rank": 7,
+          "ranking": {
+            "score": 369,
+            "tokenHits": [
+              "sprinkler-design",
+              "revit-mep",
+              "sprinkler"
+            ],
+            "extension": ".dwg"
+          },
+          "licenseStatus": "approval_attestation_missing",
+          "licenseEvidencePath": null,
+          "licenseEvidenceSha256": null,
+          "scenarioFitStatus": "approval_attestation_missing",
+          "scenarioEvidencePath": null,
+          "scenarioEvidenceSha256": null,
+          "provenance": {
+            "status": "manifest_bound_license_review_required",
+            "evidencePath": "docs/evidence/cad-independent/reference-utilization-manifest-260809.json",
+            "evidenceSha256": "a623ece1abf7a0351e4f2f5a537442195f6f6be61a808acc16007341f79ae4b9",
+            "lineageId": "sprinkler-design-using-revit-mep-1",
+            "trainingEligible": false,
+            "commercialScoreEligible": false,
+            "licenseReviewRequired": true
+          },
+          "sourceExists": true,
+          "containmentVerified": true,
+          "inventoryMatch": true,
+          "actualBytes": 37816,
+          "actualSha256": "5c7cb383703e837a934db690e911cbe435ca91ed453918517e8b1c9c9582da16",
+          "inventoryDuplicatePaths": [
+            "operator_refs:참고파일들4/sprinkler-design-using-revit-mep-1.snapshot.3/Sprinkler-Sheet - S101 - First floor Sprinkler design.dwg"
+          ],
+          "rejectionReasons": [
+            "license_attestation_missing",
+            "scenario_fit_attestation_missing"
+          ]
+        }
+      ],
+      "sourceRootAssessments": {
+        "example73": {
+          "inventoryFiles": 170,
+          "filenameKeywordMatches": 0,
+          "status": "HOLD",
+          "reason": "no_filename_evidence_for_scenario"
+        },
+        "manuals": {
+          "inventoryFiles": 21,
+          "filenameKeywordMatches": 0,
+          "status": "HOLD",
+          "reason": "no_filename_evidence_for_scenario"
+        },
+        "operator_refs": {
+          "inventoryFiles": 7216,
+          "filenameKeywordMatches": 7,
+          "status": "CANDIDATE_REVIEW_REQUIRED",
+          "reason": "filename_match_is_not_scenario_or_license_approval"
+        }
+      },
+      "rejectionReasons": [
+        "no_approved_assignment"
+      ]
+    },
+    "comprehensive_residential": {
+      "status": "HOLD",
+      "selected": [],
+      "candidates": [
+        {
+          "sourceRoot": "operator_refs",
+          "relativePath": "참고파일들4/las-vegas-dream-home-1.snapshot.6/FINAL PROJECT/FINAL PROJECT_MIRA 121519.0001.rvt",
+          "bytes": 23232512,
+          "sha256": "094a500b681fe645e724221e955bca9a2d94a7f1a9752492d34357296d52c6e4",
+          "role": "holdout",
+          "tuningExclusion": true,
+          "rank": 1,
+          "ranking": {
+            "score": 230,
+            "tokenHits": [
+              "las-vegas-dream-home",
+              "dream-home"
+            ],
+            "extension": ".rvt"
+          },
+          "licenseStatus": "approval_attestation_missing",
+          "licenseEvidencePath": null,
+          "licenseEvidenceSha256": null,
+          "scenarioFitStatus": "approval_attestation_missing",
+          "scenarioEvidencePath": null,
+          "scenarioEvidenceSha256": null,
+          "provenance": {
+            "status": "manifest_bound_license_review_required",
+            "evidencePath": "docs/evidence/cad-independent/reference-utilization-manifest-260809.json",
+            "evidenceSha256": "a623ece1abf7a0351e4f2f5a537442195f6f6be61a808acc16007341f79ae4b9",
+            "lineageId": "las-vegas-dream-home-1",
+            "trainingEligible": false,
+            "commercialScoreEligible": false,
+            "licenseReviewRequired": true
+          },
+          "sourceExists": true,
+          "containmentVerified": true,
+          "inventoryMatch": true,
+          "actualBytes": 23232512,
+          "actualSha256": "094a500b681fe645e724221e955bca9a2d94a7f1a9752492d34357296d52c6e4",
+          "inventoryDuplicatePaths": [
+            "operator_refs:참고파일들4/las-vegas-dream-home-1.snapshot.6/FINAL PROJECT/FINAL PROJECT_MIRA 121519.0001.rvt"
+          ],
+          "rejectionReasons": [
+            "license_attestation_missing",
+            "scenario_fit_attestation_missing"
+          ]
+        },
+        {
+          "sourceRoot": "operator_refs",
+          "relativePath": "참고파일들4/las-vegas-dream-home-1.snapshot.6/FINAL PROJECT/FINAL PROJECT_MIRA 121519.rvt",
+          "bytes": 23232512,
+          "sha256": "85aab9e7c12d43698dea0b3527f179096b103f49774cf745224bb8710ffcb3b9",
+          "role": "holdout",
+          "tuningExclusion": true,
+          "rank": 2,
+          "ranking": {
+            "score": 230,
+            "tokenHits": [
+              "las-vegas-dream-home",
+              "dream-home"
+            ],
+            "extension": ".rvt"
+          },
+          "licenseStatus": "approval_attestation_missing",
+          "licenseEvidencePath": null,
+          "licenseEvidenceSha256": null,
+          "scenarioFitStatus": "approval_attestation_missing",
+          "scenarioEvidencePath": null,
+          "scenarioEvidenceSha256": null,
+          "provenance": {
+            "status": "manifest_bound_license_review_required",
+            "evidencePath": "docs/evidence/cad-independent/reference-utilization-manifest-260809.json",
+            "evidenceSha256": "a623ece1abf7a0351e4f2f5a537442195f6f6be61a808acc16007341f79ae4b9",
+            "lineageId": "las-vegas-dream-home-1",
+            "trainingEligible": false,
+            "commercialScoreEligible": false,
+            "licenseReviewRequired": true
+          },
+          "sourceExists": true,
+          "containmentVerified": true,
+          "inventoryMatch": true,
+          "actualBytes": 23232512,
+          "actualSha256": "85aab9e7c12d43698dea0b3527f179096b103f49774cf745224bb8710ffcb3b9",
+          "inventoryDuplicatePaths": [
+            "operator_refs:참고파일들4/las-vegas-dream-home-1.snapshot.6/FINAL PROJECT/FINAL PROJECT_MIRA 121519.rvt"
+          ],
+          "rejectionReasons": [
+            "license_attestation_missing",
+            "scenario_fit_attestation_missing"
+          ]
+        },
+        {
+          "sourceRoot": "operator_refs",
+          "relativePath": "참고파일들4/las-vegas-dream-home-1.snapshot.6/FINAL PROJECT/FINAL PROJECT_MIRA.rvt",
+          "bytes": 21045248,
+          "sha256": "0d87ba5999a5024caf2427f90e487412cd8e1778f38fe89fe4043bc8f6197a82",
+          "role": "holdout",
+          "tuningExclusion": true,
+          "rank": 3,
+          "ranking": {
+            "score": 230,
+            "tokenHits": [
+              "las-vegas-dream-home",
+              "dream-home"
+            ],
+            "extension": ".rvt"
+          },
+          "licenseStatus": "approval_attestation_missing",
+          "licenseEvidencePath": null,
+          "licenseEvidenceSha256": null,
+          "scenarioFitStatus": "approval_attestation_missing",
+          "scenarioEvidencePath": null,
+          "scenarioEvidenceSha256": null,
+          "provenance": {
+            "status": "manifest_bound_license_review_required",
+            "evidencePath": "docs/evidence/cad-independent/reference-utilization-manifest-260809.json",
+            "evidenceSha256": "a623ece1abf7a0351e4f2f5a537442195f6f6be61a808acc16007341f79ae4b9",
+            "lineageId": "las-vegas-dream-home-1",
+            "trainingEligible": false,
+            "commercialScoreEligible": false,
+            "licenseReviewRequired": true
+          },
+          "sourceExists": true,
+          "containmentVerified": true,
+          "inventoryMatch": true,
+          "actualBytes": 21045248,
+          "actualSha256": "0d87ba5999a5024caf2427f90e487412cd8e1778f38fe89fe4043bc8f6197a82",
+          "inventoryDuplicatePaths": [
+            "operator_refs:참고파일들4/las-vegas-dream-home-1.snapshot.6/FINAL PROJECT/FINAL PROJECT_MIRA.rvt"
+          ],
+          "rejectionReasons": [
+            "license_attestation_missing",
+            "scenario_fit_attestation_missing"
+          ]
+        },
+        {
+          "sourceRoot": "operator_refs",
+          "relativePath": "참고파일들4/las-vegas-dream-home-1.snapshot.6/FINAL PROJECT/FINAL PROJECT_MR.rvt",
+          "bytes": 6230016,
+          "sha256": "454a2166b1111423b853ba1391df48c81d0fec8d019f55eae8ab0055f03bcec3",
+          "role": "holdout",
+          "tuningExclusion": true,
+          "rank": 4,
+          "ranking": {
+            "score": 230,
+            "tokenHits": [
+              "las-vegas-dream-home",
+              "dream-home"
+            ],
+            "extension": ".rvt"
+          },
+          "licenseStatus": "approval_attestation_missing",
+          "licenseEvidencePath": null,
+          "licenseEvidenceSha256": null,
+          "scenarioFitStatus": "approval_attestation_missing",
+          "scenarioEvidencePath": null,
+          "scenarioEvidenceSha256": null,
+          "provenance": {
+            "status": "manifest_bound_license_review_required",
+            "evidencePath": "docs/evidence/cad-independent/reference-utilization-manifest-260809.json",
+            "evidenceSha256": "a623ece1abf7a0351e4f2f5a537442195f6f6be61a808acc16007341f79ae4b9",
+            "lineageId": "las-vegas-dream-home-1",
+            "trainingEligible": false,
+            "commercialScoreEligible": false,
+            "licenseReviewRequired": true
+          },
+          "sourceExists": true,
+          "containmentVerified": true,
+          "inventoryMatch": true,
+          "actualBytes": 6230016,
+          "actualSha256": "454a2166b1111423b853ba1391df48c81d0fec8d019f55eae8ab0055f03bcec3",
+          "inventoryDuplicatePaths": [
+            "operator_refs:참고파일들4/las-vegas-dream-home-1.snapshot.6/FINAL PROJECT/FINAL PROJECT_MR.rvt"
+          ],
+          "rejectionReasons": [
+            "license_attestation_missing",
+            "scenario_fit_attestation_missing"
+          ]
+        },
+        {
+          "sourceRoot": "operator_refs",
+          "relativePath": "참고파일들4/las-vegas-dream-home-1.snapshot.6/FINAL PROJECT/FINAL PROJECT_MR1.rvt",
+          "bytes": 5767168,
+          "sha256": "ca7e3ab7430e9d9fa966030e2237987a96dd12c936a1e080e9b7be61ba61d16d",
+          "role": "holdout",
+          "tuningExclusion": true,
+          "rank": 5,
+          "ranking": {
+            "score": 230,
+            "tokenHits": [
+              "las-vegas-dream-home",
+              "dream-home"
+            ],
+            "extension": ".rvt"
+          },
+          "licenseStatus": "approval_attestation_missing",
+          "licenseEvidencePath": null,
+          "licenseEvidenceSha256": null,
+          "scenarioFitStatus": "approval_attestation_missing",
+          "scenarioEvidencePath": null,
+          "scenarioEvidenceSha256": null,
+          "provenance": {
+            "status": "manifest_bound_license_review_required",
+            "evidencePath": "docs/evidence/cad-independent/reference-utilization-manifest-260809.json",
+            "evidenceSha256": "a623ece1abf7a0351e4f2f5a537442195f6f6be61a808acc16007341f79ae4b9",
+            "lineageId": "las-vegas-dream-home-1",
+            "trainingEligible": false,
+            "commercialScoreEligible": false,
+            "licenseReviewRequired": true
+          },
+          "sourceExists": true,
+          "containmentVerified": true,
+          "inventoryMatch": true,
+          "actualBytes": 5767168,
+          "actualSha256": "ca7e3ab7430e9d9fa966030e2237987a96dd12c936a1e080e9b7be61ba61d16d",
+          "inventoryDuplicatePaths": [
+            "operator_refs:참고파일들4/las-vegas-dream-home-1.snapshot.6/FINAL PROJECT/FINAL PROJECT_MR1.rvt"
+          ],
+          "rejectionReasons": [
+            "license_attestation_missing",
+            "scenario_fit_attestation_missing"
+          ]
+        },
+        {
+          "sourceRoot": "operator_refs",
+          "relativePath": "참고파일들4/las-vegas-dream-home-1.snapshot.6/FINAL PROJECT/FINAL PROJECT_MR2.rvt",
+          "bytes": 16080896,
+          "sha256": "5a9ba4f29b50c81932cb028dd5e268a1d445f0a07861b38f1a8d6f3fc28bc4de",
+          "role": "holdout",
+          "tuningExclusion": true,
+          "rank": 6,
+          "ranking": {
+            "score": 230,
+            "tokenHits": [
+              "las-vegas-dream-home",
+              "dream-home"
+            ],
+            "extension": ".rvt"
+          },
+          "licenseStatus": "approval_attestation_missing",
+          "licenseEvidencePath": null,
+          "licenseEvidenceSha256": null,
+          "scenarioFitStatus": "approval_attestation_missing",
+          "scenarioEvidencePath": null,
+          "scenarioEvidenceSha256": null,
+          "provenance": {
+            "status": "manifest_bound_license_review_required",
+            "evidencePath": "docs/evidence/cad-independent/reference-utilization-manifest-260809.json",
+            "evidenceSha256": "a623ece1abf7a0351e4f2f5a537442195f6f6be61a808acc16007341f79ae4b9",
+            "lineageId": "las-vegas-dream-home-1",
+            "trainingEligible": false,
+            "commercialScoreEligible": false,
+            "licenseReviewRequired": true
+          },
+          "sourceExists": true,
+          "containmentVerified": true,
+          "inventoryMatch": true,
+          "actualBytes": 16080896,
+          "actualSha256": "5a9ba4f29b50c81932cb028dd5e268a1d445f0a07861b38f1a8d6f3fc28bc4de",
+          "inventoryDuplicatePaths": [
+            "operator_refs:참고파일들4/las-vegas-dream-home-1.snapshot.6/FINAL PROJECT/FINAL PROJECT_MR2.rvt"
+          ],
+          "rejectionReasons": [
+            "license_attestation_missing",
+            "scenario_fit_attestation_missing"
+          ]
+        },
+        {
+          "sourceRoot": "operator_refs",
+          "relativePath": "참고파일들4/las-vegas-dream-home-1.snapshot.6/FINAL PROJECT/FINAL PROJECT_MR3.rvt",
+          "bytes": 17010688,
+          "sha256": "1d2fe3784db004c8ea37eb30070901e4e22c6f6a4ea226701a6e564e326d851f",
+          "role": "holdout",
+          "tuningExclusion": true,
+          "rank": 7,
+          "ranking": {
+            "score": 230,
+            "tokenHits": [
+              "las-vegas-dream-home",
+              "dream-home"
+            ],
+            "extension": ".rvt"
+          },
+          "licenseStatus": "approval_attestation_missing",
+          "licenseEvidencePath": null,
+          "licenseEvidenceSha256": null,
+          "scenarioFitStatus": "approval_attestation_missing",
+          "scenarioEvidencePath": null,
+          "scenarioEvidenceSha256": null,
+          "provenance": {
+            "status": "manifest_bound_license_review_required",
+            "evidencePath": "docs/evidence/cad-independent/reference-utilization-manifest-260809.json",
+            "evidenceSha256": "a623ece1abf7a0351e4f2f5a537442195f6f6be61a808acc16007341f79ae4b9",
+            "lineageId": "las-vegas-dream-home-1",
+            "trainingEligible": false,
+            "commercialScoreEligible": false,
+            "licenseReviewRequired": true
+          },
+          "sourceExists": true,
+          "containmentVerified": true,
+          "inventoryMatch": true,
+          "actualBytes": 17010688,
+          "actualSha256": "1d2fe3784db004c8ea37eb30070901e4e22c6f6a4ea226701a6e564e326d851f",
+          "inventoryDuplicatePaths": [
+            "operator_refs:참고파일들4/las-vegas-dream-home-1.snapshot.6/FINAL PROJECT/FINAL PROJECT_MR3.rvt"
+          ],
+          "rejectionReasons": [
+            "license_attestation_missing",
+            "scenario_fit_attestation_missing"
+          ]
+        },
+        {
+          "sourceRoot": "operator_refs",
+          "relativePath": "참고파일들4/las-vegas-dream-home-1.snapshot.6/FINAL PROJECT/FINAL PROJECT_MR4.rvt",
+          "bytes": 17973248,
+          "sha256": "9da4c4d4c75fa2f00533ce57815a8f985481f784f240369189d780dd80d90051",
+          "role": "holdout",
+          "tuningExclusion": true,
+          "rank": 8,
+          "ranking": {
+            "score": 230,
+            "tokenHits": [
+              "las-vegas-dream-home",
+              "dream-home"
+            ],
+            "extension": ".rvt"
+          },
+          "licenseStatus": "approval_attestation_missing",
+          "licenseEvidencePath": null,
+          "licenseEvidenceSha256": null,
+          "scenarioFitStatus": "approval_attestation_missing",
+          "scenarioEvidencePath": null,
+          "scenarioEvidenceSha256": null,
+          "provenance": {
+            "status": "manifest_bound_license_review_required",
+            "evidencePath": "docs/evidence/cad-independent/reference-utilization-manifest-260809.json",
+            "evidenceSha256": "a623ece1abf7a0351e4f2f5a537442195f6f6be61a808acc16007341f79ae4b9",
+            "lineageId": "las-vegas-dream-home-1",
+            "trainingEligible": false,
+            "commercialScoreEligible": false,
+            "licenseReviewRequired": true
+          },
+          "sourceExists": true,
+          "containmentVerified": true,
+          "inventoryMatch": true,
+          "actualBytes": 17973248,
+          "actualSha256": "9da4c4d4c75fa2f00533ce57815a8f985481f784f240369189d780dd80d90051",
+          "inventoryDuplicatePaths": [
+            "operator_refs:참고파일들4/las-vegas-dream-home-1.snapshot.6/FINAL PROJECT/FINAL PROJECT_MR4.rvt"
+          ],
+          "rejectionReasons": [
+            "license_attestation_missing",
+            "scenario_fit_attestation_missing"
+          ]
+        }
+      ],
+      "sourceRootAssessments": {
+        "example73": {
+          "inventoryFiles": 170,
+          "filenameKeywordMatches": 0,
+          "status": "HOLD",
+          "reason": "no_filename_evidence_for_scenario"
+        },
+        "manuals": {
+          "inventoryFiles": 21,
+          "filenameKeywordMatches": 0,
+          "status": "HOLD",
+          "reason": "no_filename_evidence_for_scenario"
+        },
+        "operator_refs": {
+          "inventoryFiles": 7216,
+          "filenameKeywordMatches": 33,
+          "status": "CANDIDATE_REVIEW_REQUIRED",
+          "reason": "filename_match_is_not_scenario_or_license_approval"
+        }
+      },
+      "rejectionReasons": [
+        "no_approved_assignment"
+      ]
+    },
+    "ifc_regression": {
+      "status": "HOLD",
+      "selected": [],
+      "candidates": [
+        {
+          "sourceRoot": "operator_refs",
+          "relativePath": "참고파일들/IFC4.3.x-sample-models-main/IFC4.3.x-sample-models-main/models/advanced-geometric-shape/basin-advanced-brep/basin-advanced-brep.ifc",
+          "bytes": 10073,
+          "sha256": "e947de66cadaefe167e77da75eaaeca864cfcc47f7d1ed197b760b466ae081a9",
+          "role": "holdout",
+          "tuningExclusion": true,
+          "rank": 1,
+          "ranking": {
+            "score": 130,
+            "tokenHits": [
+              "ifc4.3"
+            ],
+            "extension": ".ifc"
+          },
+          "licenseStatus": "approval_attestation_missing",
+          "licenseEvidencePath": null,
+          "licenseEvidenceSha256": null,
+          "scenarioFitStatus": "approval_attestation_missing",
+          "scenarioEvidencePath": null,
+          "scenarioEvidenceSha256": null,
+          "provenance": {
+            "status": "manifest_bound_license_review_required",
+            "evidencePath": "docs/evidence/cad-independent/reference-utilization-manifest-260809.json",
+            "evidenceSha256": "a623ece1abf7a0351e4f2f5a537442195f6f6be61a808acc16007341f79ae4b9",
+            "lineageId": "basin-advanced-brep",
+            "trainingEligible": false,
+            "commercialScoreEligible": false,
+            "licenseReviewRequired": true
+          },
+          "sourceExists": true,
+          "containmentVerified": true,
+          "inventoryMatch": true,
+          "actualBytes": 10073,
+          "actualSha256": "e947de66cadaefe167e77da75eaaeca864cfcc47f7d1ed197b760b466ae081a9",
+          "inventoryDuplicatePaths": [
+            "operator_refs:참고파일들/IFC4.3.x-sample-models-main/IFC4.3.x-sample-models-main/models/advanced-geometric-shape/basin-advanced-brep/basin-advanced-brep.ifc"
+          ],
+          "rejectionReasons": [
+            "license_attestation_missing",
+            "scenario_fit_attestation_missing"
+          ]
+        },
+        {
+          "sourceRoot": "operator_refs",
+          "relativePath": "참고파일들/IFC4.3.x-sample-models-main/IFC4.3.x-sample-models-main/models/advanced-geometric-shape/basin-faceted-brep/basin-faceted-brep.ifc",
+          "bytes": 32713,
+          "sha256": "d2bdf9d5f485ff77ce9723a24ceb75a5532b51d1788b9a5f3f5145944d32065f",
+          "role": "holdout",
+          "tuningExclusion": true,
+          "rank": 2,
+          "ranking": {
+            "score": 130,
+            "tokenHits": [
+              "ifc4.3"
+            ],
+            "extension": ".ifc"
+          },
+          "licenseStatus": "approval_attestation_missing",
+          "licenseEvidencePath": null,
+          "licenseEvidenceSha256": null,
+          "scenarioFitStatus": "approval_attestation_missing",
+          "scenarioEvidencePath": null,
+          "scenarioEvidenceSha256": null,
+          "provenance": {
+            "status": "manifest_bound_license_review_required",
+            "evidencePath": "docs/evidence/cad-independent/reference-utilization-manifest-260809.json",
+            "evidenceSha256": "a623ece1abf7a0351e4f2f5a537442195f6f6be61a808acc16007341f79ae4b9",
+            "lineageId": "basin-faceted-brep",
+            "trainingEligible": false,
+            "commercialScoreEligible": false,
+            "licenseReviewRequired": true
+          },
+          "sourceExists": true,
+          "containmentVerified": true,
+          "inventoryMatch": true,
+          "actualBytes": 32713,
+          "actualSha256": "d2bdf9d5f485ff77ce9723a24ceb75a5532b51d1788b9a5f3f5145944d32065f",
+          "inventoryDuplicatePaths": [
+            "operator_refs:참고파일들/IFC4.3.x-sample-models-main/IFC4.3.x-sample-models-main/models/advanced-geometric-shape/basin-faceted-brep/basin-faceted-brep.ifc"
+          ],
+          "rejectionReasons": [
+            "license_attestation_missing",
+            "scenario_fit_attestation_missing"
+          ]
+        },
+        {
+          "sourceRoot": "operator_refs",
+          "relativePath": "참고파일들/IFC4.3.x-sample-models-main/IFC4.3.x-sample-models-main/models/advanced-geometric-shape/basin-tessellation/basin-tessellation.ifc",
+          "bytes": 11877,
+          "sha256": "466944a98ab0208bd4266d096678233007520915b80bcc14532e64345a1968ef",
+          "role": "holdout",
+          "tuningExclusion": true,
+          "rank": 3,
+          "ranking": {
+            "score": 130,
+            "tokenHits": [
+              "ifc4.3"
+            ],
+            "extension": ".ifc"
+          },
+          "licenseStatus": "approval_attestation_missing",
+          "licenseEvidencePath": null,
+          "licenseEvidenceSha256": null,
+          "scenarioFitStatus": "approval_attestation_missing",
+          "scenarioEvidencePath": null,
+          "scenarioEvidenceSha256": null,
+          "provenance": {
+            "status": "manifest_bound_license_review_required",
+            "evidencePath": "docs/evidence/cad-independent/reference-utilization-manifest-260809.json",
+            "evidenceSha256": "a623ece1abf7a0351e4f2f5a537442195f6f6be61a808acc16007341f79ae4b9",
+            "lineageId": "basin-tessellation",
+            "trainingEligible": false,
+            "commercialScoreEligible": false,
+            "licenseReviewRequired": true
+          },
+          "sourceExists": true,
+          "containmentVerified": true,
+          "inventoryMatch": true,
+          "actualBytes": 11877,
+          "actualSha256": "466944a98ab0208bd4266d096678233007520915b80bcc14532e64345a1968ef",
+          "inventoryDuplicatePaths": [
+            "operator_refs:참고파일들/IFC4.3.x-sample-models-main/IFC4.3.x-sample-models-main/models/advanced-geometric-shape/basin-tessellation/basin-tessellation.ifc"
+          ],
+          "rejectionReasons": [
+            "license_attestation_missing",
+            "scenario_fit_attestation_missing"
+          ]
+        },
+        {
+          "sourceRoot": "operator_refs",
+          "relativePath": "참고파일들/IFC4.3.x-sample-models-main/IFC4.3.x-sample-models-main/models/advanced-geometric-shape/bath-csg-solid/bath-csg-solid.ifc",
+          "bytes": 3313,
+          "sha256": "4592f3029faa12625494ada734fcfe46e4fc91a33d001198e9e3144721870b95",
+          "role": "holdout",
+          "tuningExclusion": true,
+          "rank": 4,
+          "ranking": {
+            "score": 130,
+            "tokenHits": [
+              "ifc4.3"
+            ],
+            "extension": ".ifc"
+          },
+          "licenseStatus": "approval_attestation_missing",
+          "licenseEvidencePath": null,
+          "licenseEvidenceSha256": null,
+          "scenarioFitStatus": "approval_attestation_missing",
+          "scenarioEvidencePath": null,
+          "scenarioEvidenceSha256": null,
+          "provenance": {
+            "status": "manifest_bound_license_review_required",
+            "evidencePath": "docs/evidence/cad-independent/reference-utilization-manifest-260809.json",
+            "evidenceSha256": "a623ece1abf7a0351e4f2f5a537442195f6f6be61a808acc16007341f79ae4b9",
+            "lineageId": "bath-csg-solid",
+            "trainingEligible": false,
+            "commercialScoreEligible": false,
+            "licenseReviewRequired": true
+          },
+          "sourceExists": true,
+          "containmentVerified": true,
+          "inventoryMatch": true,
+          "actualBytes": 3313,
+          "actualSha256": "4592f3029faa12625494ada734fcfe46e4fc91a33d001198e9e3144721870b95",
+          "inventoryDuplicatePaths": [
+            "operator_refs:참고파일들/IFC4.3.x-sample-models-main/IFC4.3.x-sample-models-main/models/advanced-geometric-shape/bath-csg-solid/bath-csg-solid.ifc"
+          ],
+          "rejectionReasons": [
+            "license_attestation_missing",
+            "scenario_fit_attestation_missing"
+          ]
+        },
+        {
+          "sourceRoot": "operator_refs",
+          "relativePath": "참고파일들/IFC4.3.x-sample-models-main/IFC4.3.x-sample-models-main/models/advanced-geometric-shape/cube-advanced-brep/cube-advanced-brep.ifc",
+          "bytes": 10729,
+          "sha256": "40b50cd0dada3fc1032a9d78741df36a65bbe0f8c000c2c4e21de6f59a577dc1",
+          "role": "holdout",
+          "tuningExclusion": true,
+          "rank": 5,
+          "ranking": {
+            "score": 130,
+            "tokenHits": [
+              "ifc4.3"
+            ],
+            "extension": ".ifc"
+          },
+          "licenseStatus": "approval_attestation_missing",
+          "licenseEvidencePath": null,
+          "licenseEvidenceSha256": null,
+          "scenarioFitStatus": "approval_attestation_missing",
+          "scenarioEvidencePath": null,
+          "scenarioEvidenceSha256": null,
+          "provenance": {
+            "status": "manifest_bound_license_review_required",
+            "evidencePath": "docs/evidence/cad-independent/reference-utilization-manifest-260809.json",
+            "evidenceSha256": "a623ece1abf7a0351e4f2f5a537442195f6f6be61a808acc16007341f79ae4b9",
+            "lineageId": "cube-advanced-brep",
+            "trainingEligible": false,
+            "commercialScoreEligible": false,
+            "licenseReviewRequired": true
+          },
+          "sourceExists": true,
+          "containmentVerified": true,
+          "inventoryMatch": true,
+          "actualBytes": 10729,
+          "actualSha256": "40b50cd0dada3fc1032a9d78741df36a65bbe0f8c000c2c4e21de6f59a577dc1",
+          "inventoryDuplicatePaths": [
+            "operator_refs:참고파일들/IFC4.3.x-sample-models-main/IFC4.3.x-sample-models-main/models/advanced-geometric-shape/cube-advanced-brep/cube-advanced-brep.ifc"
+          ],
+          "rejectionReasons": [
+            "license_attestation_missing",
+            "scenario_fit_attestation_missing"
+          ]
+        },
+        {
+          "sourceRoot": "operator_refs",
+          "relativePath": "참고파일들/IFC4.3.x-sample-models-main/IFC4.3.x-sample-models-main/models/alignment-geometries-and-linear-positioning/fixed-reference-swept-area-solid/fixed-reference-swept-area-solid.ifc",
+          "bytes": 10673,
+          "sha256": "d3e6694756815da907bfc278490ce17596a4fac271905b17a9f3e8c0b4dd6d37",
+          "role": "holdout",
+          "tuningExclusion": true,
+          "rank": 6,
+          "ranking": {
+            "score": 130,
+            "tokenHits": [
+              "ifc4.3"
+            ],
+            "extension": ".ifc"
+          },
+          "licenseStatus": "approval_attestation_missing",
+          "licenseEvidencePath": null,
+          "licenseEvidenceSha256": null,
+          "scenarioFitStatus": "approval_attestation_missing",
+          "scenarioEvidencePath": null,
+          "scenarioEvidenceSha256": null,
+          "provenance": {
+            "status": "manifest_bound_license_review_required",
+            "evidencePath": "docs/evidence/cad-independent/reference-utilization-manifest-260809.json",
+            "evidenceSha256": "a623ece1abf7a0351e4f2f5a537442195f6f6be61a808acc16007341f79ae4b9",
+            "lineageId": "fixed-reference-swept-area-solid",
+            "trainingEligible": false,
+            "commercialScoreEligible": false,
+            "licenseReviewRequired": true
+          },
+          "sourceExists": true,
+          "containmentVerified": true,
+          "inventoryMatch": true,
+          "actualBytes": 10673,
+          "actualSha256": "d3e6694756815da907bfc278490ce17596a4fac271905b17a9f3e8c0b4dd6d37",
+          "inventoryDuplicatePaths": [
+            "operator_refs:참고파일들/IFC4.3.x-sample-models-main/IFC4.3.x-sample-models-main/models/alignment-geometries-and-linear-positioning/fixed-reference-swept-area-solid/fixed-reference-swept-area-solid.ifc"
+          ],
+          "rejectionReasons": [
+            "license_attestation_missing",
+            "scenario_fit_attestation_missing"
+          ]
+        },
+        {
+          "sourceRoot": "operator_refs",
+          "relativePath": "참고파일들/IFC4.3.x-sample-models-main/IFC4.3.x-sample-models-main/models/alignment-geometries-and-linear-positioning/linear-placement-of-signal/linear-placement-of-signal.ifc",
+          "bytes": 233672,
+          "sha256": "3c6b97f7a82f1a1d114233702e876f387a03701be0d8a621685e5773ce664c97",
+          "role": "holdout",
+          "tuningExclusion": true,
+          "rank": 7,
+          "ranking": {
+            "score": 130,
+            "tokenHits": [
+              "ifc4.3"
+            ],
+            "extension": ".ifc"
+          },
+          "licenseStatus": "approval_attestation_missing",
+          "licenseEvidencePath": null,
+          "licenseEvidenceSha256": null,
+          "scenarioFitStatus": "approval_attestation_missing",
+          "scenarioEvidencePath": null,
+          "scenarioEvidenceSha256": null,
+          "provenance": {
+            "status": "manifest_bound_license_review_required",
+            "evidencePath": "docs/evidence/cad-independent/reference-utilization-manifest-260809.json",
+            "evidenceSha256": "a623ece1abf7a0351e4f2f5a537442195f6f6be61a808acc16007341f79ae4b9",
+            "lineageId": "linear-placement-of-signal",
+            "trainingEligible": false,
+            "commercialScoreEligible": false,
+            "licenseReviewRequired": true
+          },
+          "sourceExists": true,
+          "containmentVerified": true,
+          "inventoryMatch": true,
+          "actualBytes": 233672,
+          "actualSha256": "3c6b97f7a82f1a1d114233702e876f387a03701be0d8a621685e5773ce664c97",
+          "inventoryDuplicatePaths": [
+            "operator_refs:참고파일들/IFC4.3.x-sample-models-main/IFC4.3.x-sample-models-main/models/alignment-geometries-and-linear-positioning/linear-placement-of-signal/linear-placement-of-signal.ifc"
+          ],
+          "rejectionReasons": [
+            "license_attestation_missing",
+            "scenario_fit_attestation_missing"
+          ]
+        },
+        {
+          "sourceRoot": "operator_refs",
+          "relativePath": "참고파일들/IFC4.3.x-sample-models-main/IFC4.3.x-sample-models-main/models/alignment-geometries-and-linear-positioning/sectioned-solid-horizontal/sectioned-solid-horizontal.ifc",
+          "bytes": 10542,
+          "sha256": "89a424cc27f58130d40642b369b93a9b5fb04df2804f1f52ec3fac457f34c025",
+          "role": "holdout",
+          "tuningExclusion": true,
+          "rank": 8,
+          "ranking": {
+            "score": 130,
+            "tokenHits": [
+              "ifc4.3"
+            ],
+            "extension": ".ifc"
+          },
+          "licenseStatus": "approval_attestation_missing",
+          "licenseEvidencePath": null,
+          "licenseEvidenceSha256": null,
+          "scenarioFitStatus": "approval_attestation_missing",
+          "scenarioEvidencePath": null,
+          "scenarioEvidenceSha256": null,
+          "provenance": {
+            "status": "manifest_bound_license_review_required",
+            "evidencePath": "docs/evidence/cad-independent/reference-utilization-manifest-260809.json",
+            "evidenceSha256": "a623ece1abf7a0351e4f2f5a537442195f6f6be61a808acc16007341f79ae4b9",
+            "lineageId": "sectioned-solid-horizontal",
+            "trainingEligible": false,
+            "commercialScoreEligible": false,
+            "licenseReviewRequired": true
+          },
+          "sourceExists": true,
+          "containmentVerified": true,
+          "inventoryMatch": true,
+          "actualBytes": 10542,
+          "actualSha256": "89a424cc27f58130d40642b369b93a9b5fb04df2804f1f52ec3fac457f34c025",
+          "inventoryDuplicatePaths": [
+            "operator_refs:참고파일들/IFC4.3.x-sample-models-main/IFC4.3.x-sample-models-main/models/alignment-geometries-and-linear-positioning/sectioned-solid-horizontal/sectioned-solid-horizontal.ifc"
+          ],
+          "rejectionReasons": [
+            "license_attestation_missing",
+            "scenario_fit_attestation_missing"
+          ]
+        }
+      ],
+      "sourceRootAssessments": {
+        "example73": {
+          "inventoryFiles": 170,
+          "filenameKeywordMatches": 0,
+          "status": "HOLD",
+          "reason": "no_filename_evidence_for_scenario"
+        },
+        "manuals": {
+          "inventoryFiles": 21,
+          "filenameKeywordMatches": 0,
+          "status": "HOLD",
+          "reason": "no_filename_evidence_for_scenario"
+        },
+        "operator_refs": {
+          "inventoryFiles": 7216,
+          "filenameKeywordMatches": 55,
+          "status": "CANDIDATE_REVIEW_REQUIRED",
+          "reason": "filename_match_is_not_scenario_or_license_approval"
+        }
+      },
+      "rejectionReasons": [
+        "no_approved_assignment"
+      ]
+    }
+  },
+  "blockers": []
+}

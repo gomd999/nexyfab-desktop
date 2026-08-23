@@ -44,6 +44,7 @@ import type { AiGenerationDecision } from '@/lib/ai/aiGenerationPipeline';
 import { refineGenerationSession } from '../ai/generationSessionClient';
 import type { GenerationRunState } from '@/lib/ai/generationRunState';
 import RobotPrecisionHandoffPanel from './RobotPrecisionHandoffPanel';
+import ComplexVerifiedSystemsPanel from './ComplexVerifiedSystemsPanel';
 
 export type AssemblyAiLang = 'ko' | 'en' | 'ja' | 'zh' | 'es' | 'ar';
 
@@ -79,8 +80,8 @@ const dict: Record<AssemblyAiLang, Dict> = {
     couldNotUnderstand: '입력을 이해할 수 없습니다',
     partsHeading: '부품',
     matesHeading: '메이트',
-    sourceRegex: '정규식',
-    sourceLlm: 'LLM',
+    sourceRegex: '로컬 결정형',
+    sourceLlm: '클라우드 AI',
     errorPrefix: '오류',
     summaryStacked: (count, spacing) =>
       spacing !== undefined
@@ -107,8 +108,8 @@ const dict: Record<AssemblyAiLang, Dict> = {
     couldNotUnderstand: 'Could not understand',
     partsHeading: 'Parts',
     matesHeading: 'Mates',
-    sourceRegex: 'regex',
-    sourceLlm: 'LLM',
+    sourceRegex: 'Local deterministic',
+    sourceLlm: 'Cloud AI',
     errorPrefix: 'Error',
     summaryStacked: (count, spacing) =>
       spacing !== undefined
@@ -260,6 +261,8 @@ export interface AssemblyAiPanelProps {
   intentFetcher?: AssemblyAiIntentFetcher;
   /** Click handler for the Apply button. Receives the resolved plan. */
   onBuildAssembly: (plan: AssemblyPlan) => void;
+  /** Lets the host render a non-mutating 3D ghost before Apply. */
+  onPreviewAssembly?: (plan: Exclude<AssemblyPlan, { kind: 'unparsed' }> | null) => void;
   /** Full product decomposition path for real independent parts and hierarchy. */
   onBuildProduct?: (program: AiAssemblyProgram) => void;
 }
@@ -367,7 +370,7 @@ function summarisePlan(
 export default function AssemblyAiPanel(
   props: AssemblyAiPanelProps,
 ): React.ReactElement {
-  const { lang, intentFetcher, onBuildAssembly, onBuildProduct } = props;
+  const { lang, intentFetcher, onBuildAssembly, onBuildProduct, onPreviewAssembly } = props;
   const d = dict[lang];
 
   const [input, setInput] = useState('');
@@ -489,6 +492,12 @@ export default function AssemblyAiPanel(
     };
   }, [status, d]);
 
+  useEffect(() => {
+    onPreviewAssembly?.(status.kind === 'plan' ? status.plan : null);
+  }, [onPreviewAssembly, status]);
+
+  useEffect(() => () => onPreviewAssembly?.(null), [onPreviewAssembly]);
+
   return (
     <div
       data-testid="assembly-ai-panel"
@@ -510,8 +519,11 @@ export default function AssemblyAiPanel(
 
       {onBuildProduct && <RobotPrecisionHandoffPanel lang={lang} onHandoff={onBuildProduct} />}
 
+      <ComplexVerifiedSystemsPanel lang={lang} />
+
       <div style={{ display: 'flex', gap: 8 }}>
         <textarea
+          name="assembly-ai-intent"
           data-testid="assembly-ai-input"
           value={input}
           onChange={(e) => setInput(e.target.value)}
@@ -585,6 +597,7 @@ export default function AssemblyAiPanel(
             </span>
             <span
               data-testid="assembly-ai-source-badge"
+              data-source={status.source}
               style={{
                 fontSize: 10,
                 color: 'var(--nx-text-2)',

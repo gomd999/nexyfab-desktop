@@ -12,10 +12,19 @@
  * 원칙: AI=이해만, 형상·검증=서버 결정론 게이트(간섭·지지·구조). 산출물=비법정
  * (제작용 실시도서+검토 계산서 — 인허가 도서는 유자격 기술사 날인 영역).
  */
-import { createInterface } from 'node:readline';
-
 const BASE = (process.env.NEXYFAB_API_URL ?? 'https://nexyfab.com').replace(/\/$/, '');
 const KEY = process.env.NEXYFAB_API_KEY ?? '';
+// Keep the legacy initialize contract explicit. Modern stdio negotiation uses
+// server/discover and is intentionally advertised as a separate path.
+const MCP_PROTOCOL_VERSION = '2025-03-26';
+const MCP_MODERN_PROTOCOL_VERSION = '2026-07-28';
+const MODERN_PROTOCOL_META_KEY = 'io.modelcontextprotocol/protocolVersion';
+const MODERN_CLIENT_INFO_META_KEY = 'io.modelcontextprotocol/clientInfo';
+const MODERN_CLIENT_CAPABILITIES_META_KEY = 'io.modelcontextprotocol/clientCapabilities';
+const MODERN_SERVER_INFO_META_KEY = 'io.modelcontextprotocol/serverInfo';
+const MAX_REQUEST_LINE_BYTES = 1_000_000;
+const MAX_REMOTE_RESPONSE_BYTES = 5_000_000;
+const REMOTE_TIMEOUT_MS = 60_000;
 
 // 공개 라우트(순수 결정론 — 인증 불필요, 키 없이도 동작): 코드체크·분야 검증 계산기·분야 검증 체인.
 // 그 외(생성·AI 수정·FEA·역설계 등 호스팅 엔진)는 Pro 키 필요.
@@ -123,6 +132,36 @@ const tools = [
   },
 ];
 
+// Remote calls can consume quota and invoke hosted generation/analysis. Make
+// that distinction executable at the downloadable boundary: public verifier
+// routes are read-only, while every other tool needs explicit per-call user
+// approval. The flag is transport metadata and is removed before forwarding.
+const REMOTE_CALL_APPROVAL_FLAG = 'confirmCall';
+const REMOTE_CALL_APPROVAL_ERROR = 'REMOTE_CALL_APPROVAL_REQUIRED';
+const REMOTE_READ_ONLY_TOOLS = PUBLIC_TOOLS;
+const REMOTE_CONSEQUENTIAL_TOOLS = new Set(tools.filter(tool => !REMOTE_READ_ONLY_TOOLS.has(tool.name)).map(tool => tool.name));
+for (const tool of tools) {
+  const readOnly = REMOTE_READ_ONLY_TOOLS.has(tool.name);
+  tool.annotations = {
+    ...(tool.annotations ?? {}),
+    readOnlyHint: readOnly,
+    destructiveHint: false,
+    openWorldHint: !readOnly,
+  };
+  if (!readOnly) {
+    tool.inputSchema = {
+      ...tool.inputSchema,
+      properties: {
+        ...(tool.inputSchema.properties ?? {}),
+        [REMOTE_CALL_APPROVAL_FLAG]: {
+          type: 'boolean',
+          description: 'Required explicit per-call user approval for a consequential remote request.',
+        },
+      },
+    };
+  }
+}
+
 const ROUTE = {
   design_assembly: '/api/nexyfab/drawing/assemble/',
   compose_part: '/api/nexyfab/drawing/compose/',
@@ -154,52 +193,347 @@ function resolveCall(name, args) {
 }
 
 async function callTool(name, args = {}) {
+  if (typeof name !== 'string' || !name || !args || typeof args !== 'object' || Array.isArray(args)) throw new Error('INVALID_TOOL_ARGUMENTS');
+  const tool = tools.find(item => item.name === name);
+  if (!tool) throw new Error('UNKNOWN_TOOL');
+  const argumentIssues = validateToolArguments(tool.inputSchema, args);
+  if (argumentIssues.length) throw new Error('INVALID_TOOL_ARGUMENTS');
+  if (REMOTE_CONSEQUENTIAL_TOOLS.has(name) && args[REMOTE_CALL_APPROVAL_FLAG] !== true) {
+    throw new Error(REMOTE_CALL_APPROVAL_ERROR);
+  }
+  if (Object.prototype.hasOwnProperty.call(args, REMOTE_CALL_APPROVAL_FLAG)) {
+    args = { ...args };
+    delete args[REMOTE_CALL_APPROVAL_FLAG];
+  }
   const { path, body } = resolveCall(name, args);
   if (!path) throw new Error(`unknown tool: ${name}`);
   // 공개 라우트(PUBLIC_TOOLS)는 키 없이도 동작. 그 외 원격(생성·AI 수정·FEA·역설계)은 Pro 키 필요.
   if (!KEY && !PUBLIC_TOOLS.has(name)) throw new Error('NEXYFAB_API_KEY 미설정 — Pro 이상 계정에서 발급(nexyfab.com → 계정 → API Keys)');
-  const res = await fetch(BASE + path, {
-    method: 'POST',
-    headers: { 'content-type': 'application/json', ...(KEY ? { authorization: `Bearer ${KEY}` } : {}) },
-    body: JSON.stringify(body),
-  });
-  const text = await res.text();
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), REMOTE_TIMEOUT_MS);
+  let res;
+  let text;
+  try {
+    res = await fetch(BASE + path, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', ...(KEY ? { authorization: `Bearer ${KEY}` } : {}) },
+      body: JSON.stringify(body),
+      redirect: 'error',
+      signal: controller.signal,
+    });
+    text = await readBoundedResponseText(res);
+  } catch (error) {
+    if (error instanceof Error && error.message === 'REMOTE_RESPONSE_TOO_LARGE') throw error;
+    throw new Error('REMOTE_REQUEST_FAILED');
+  } finally {
+    clearTimeout(timer);
+  }
   let json;
-  try { json = JSON.parse(text); } catch { json = { ok: false, error: `HTTP ${res.status}: ${text.slice(0, 200)}` }; }
-  if (!res.ok && json && json.error === undefined) json = { ok: false, error: `HTTP ${res.status}`, body: json };
+  try { json = JSON.parse(text); } catch { json = { ok: false, error: `HTTP ${res.status}: non-JSON response` }; }
+  // Never reflect an upstream response body through the MCP boundary. Error
+  // pages can contain proxy diagnostics, credentials, or internal URLs.
+  if (!res.ok) json = { ok: false, error: `HTTP ${res.status}` };
+  else if (json && typeof json === 'object' && !Array.isArray(json) && json.ok === false) {
+    const safeCode = typeof json.code === 'string' && /^[A-Z0-9_.:-]{1,128}$/.test(json.code) ? json.code : undefined;
+    const safeError = typeof json.error === 'string' && Buffer.byteLength(json.error, 'utf8') <= 512
+      && !/(https?:\/\/|Bearer\s|nf_live_|file:\/\/|[A-Za-z]:\\|\\\\|(?:^|\s)\/(?:Users|home|var|tmp|etc|opt|srv|app|workspace)\/)/i.test(json.error)
+      ? json.error
+      : 'remote tool failed';
+    json = { ok: false, ...(safeCode ? { code: safeCode } : {}), error: safeError };
+  }
   return json;
 }
 
+async function readBoundedResponseText(res) {
+  const declared = Number(res.headers.get('content-length'));
+  if (Number.isFinite(declared) && declared > MAX_REMOTE_RESPONSE_BYTES) throw new Error('REMOTE_RESPONSE_TOO_LARGE');
+  if (!res.body) return '';
+  const reader = res.body.getReader();
+  const chunks = [];
+  let total = 0;
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    total += value.byteLength;
+    if (total > MAX_REMOTE_RESPONSE_BYTES) {
+      await reader.cancel().catch(() => undefined);
+      throw new Error('REMOTE_RESPONSE_TOO_LARGE');
+    }
+    chunks.push(value);
+  }
+  const bytes = new Uint8Array(total);
+  let offset = 0;
+  for (const chunk of chunks) { bytes.set(chunk, offset); offset += chunk.byteLength; }
+  return new TextDecoder('utf-8', { fatal: true }).decode(bytes);
+}
+
 // ---- MCP JSON-RPC over stdio ----
-const rl = createInterface({ input: process.stdin });
 const send = (msg) => process.stdout.write(JSON.stringify(msg) + '\n');
-rl.on('line', async (line) => {
-  line = line.trim();
+const sendError = (id, code, message) => send({ jsonrpc: '2.0', id, error: { code, message } });
+const frameDecoder = new TextDecoder('utf-8', { fatal: true });
+const decodeFrame = (bytes) => frameDecoder.decode(bytes);
+const isObject = (value) => Boolean(value) && typeof value === 'object' && !Array.isArray(value);
+const hasOwn = (value, key) => Object.prototype.hasOwnProperty.call(value, key);
+const validId = (value) => typeof value === 'string' || (typeof value === 'number' && Number.isFinite(value));
+const ALLOWED_NOTIFICATIONS = new Set(['notifications/initialized', 'initialized', 'notifications/cancelled', 'notifications/progress']);
+const PROTOTYPE_KEYS = new Set(['__proto__', 'prototype', 'constructor']);
+const MAX_ARGUMENT_DEPTH = 8;
+const MAX_ARGUMENT_NODES = 1_000;
+const MAX_ARGUMENT_PROPERTIES = 100;
+const MAX_ARGUMENT_ARRAY_ITEMS = 100;
+const MAX_ARGUMENT_STRING_BYTES = 256 * 1024;
+
+function validateToolArguments(schema, args) {
+  const state = { nodes: 0 };
+  const issues = validateSchemaValue(schema, args, '$', 0, state, true);
+  return issues;
+}
+
+function validateSchemaValue(schema, value, path, depth, state, root = false) {
+  const issues = [];
+  if (!isObject(schema)) return ['schema_invalid'];
+  if (depth > MAX_ARGUMENT_DEPTH) return [`${path}:depth_limit`];
+  state.nodes += 1;
+  if (state.nodes > MAX_ARGUMENT_NODES) return [`${path}:node_limit`];
+
+  const schemaKeys = Object.keys(schema);
+  if (schemaKeys.length > MAX_ARGUMENT_PROPERTIES || schemaKeys.some(key => PROTOTYPE_KEYS.has(key))) return [`${path}:schema_keys_invalid`];
+  const types = schema.type === undefined ? undefined : Array.isArray(schema.type) ? schema.type : [schema.type];
+  if (types && (!types.length || types.some(type => typeof type !== 'string'))) return [`${path}:schema_type_invalid`];
+  if (types && !types.some(type => matchesType(type, value))) issues.push(`${path}:type_invalid`);
+  if (Array.isArray(schema.enum) && !schema.enum.some(item => Object.is(item, value))) issues.push(`${path}:enum_invalid`);
+  if (typeof value === 'string') {
+    if (Buffer.byteLength(value, 'utf8') > MAX_ARGUMENT_STRING_BYTES) issues.push(`${path}:string_too_large`);
+    if (Number.isFinite(schema.minLength) && value.length < schema.minLength) issues.push(`${path}:min_length`);
+    if (Number.isFinite(schema.maxLength) && value.length > schema.maxLength) issues.push(`${path}:max_length`);
+  }
+  if (typeof value === 'number') {
+    if (!Number.isFinite(value)) issues.push(`${path}:number_invalid`);
+    if (Number.isFinite(schema.minimum) && value < schema.minimum) issues.push(`${path}:minimum`);
+    if (Number.isFinite(schema.maximum) && value > schema.maximum) issues.push(`${path}:maximum`);
+  }
+  if (Array.isArray(value)) {
+    if (value.length > MAX_ARGUMENT_ARRAY_ITEMS || (Number.isFinite(schema.maxItems) && value.length > schema.maxItems)) issues.push(`${path}:array_too_large`);
+    if (Number.isFinite(schema.minItems) && value.length < schema.minItems) issues.push(`${path}:min_items`);
+    if (schema.items !== undefined) value.forEach((item, index) => issues.push(...validateSchemaValue(schema.items, item, `${path}[${index}]`, depth + 1, state)));
+    else value.forEach((item, index) => issues.push(...validateBoundValue(item, `${path}[${index}]`, depth + 1, state)));
+  }
+  if (isObject(value)) {
+    const keys = Object.keys(value);
+    if (keys.length > MAX_ARGUMENT_PROPERTIES || keys.some(key => PROTOTYPE_KEYS.has(key) || Buffer.byteLength(key, 'utf8') > 256)) issues.push(`${path}:object_keys_invalid`);
+    const required = Array.isArray(schema.required) ? schema.required : [];
+    for (const key of required) if (typeof key !== 'string' || !hasOwn(value, key)) issues.push(`${path}:required`);
+    const properties = isObject(schema.properties) ? schema.properties : {};
+    const additional = root ? false : schema.additionalProperties;
+    for (const key of keys) {
+      if (hasOwn(properties, key)) issues.push(...validateSchemaValue(properties[key], value[key], `${path}.${key}`, depth + 1, state));
+      else if (additional === false) issues.push(`${path}:additional_property`);
+      else if (isObject(additional)) issues.push(...validateSchemaValue(additional, value[key], `${path}.${key}`, depth + 1, state));
+      else issues.push(...validateBoundValue(value[key], `${path}.${key}`, depth + 1, state));
+    }
+  }
+  return issues;
+}
+
+function validateBoundValue(value, path, depth, state) {
+  if (depth > MAX_ARGUMENT_DEPTH) return [`${path}:depth_limit`];
+  state.nodes += 1;
+  if (state.nodes > MAX_ARGUMENT_NODES) return [`${path}:node_limit`];
+  if (typeof value === 'string') return Buffer.byteLength(value, 'utf8') > MAX_ARGUMENT_STRING_BYTES ? [`${path}:string_too_large`] : [];
+  if (Array.isArray(value)) {
+    if (value.length > MAX_ARGUMENT_ARRAY_ITEMS) return [`${path}:array_too_large`];
+    return value.flatMap((item, index) => validateBoundValue(item, `${path}[${index}]`, depth + 1, state));
+  }
+  if (isObject(value)) {
+    const keys = Object.keys(value);
+    if (keys.length > MAX_ARGUMENT_PROPERTIES || keys.some(key => PROTOTYPE_KEYS.has(key) || Buffer.byteLength(key, 'utf8') > 256)) return [`${path}:object_keys_invalid`];
+    return keys.flatMap(key => validateBoundValue(value[key], `${path}.${key}`, depth + 1, state));
+  }
+  return [];
+}
+
+function matchesType(type, value) {
+  if (type === 'object') return isObject(value);
+  if (type === 'array') return Array.isArray(value);
+  if (type === 'string') return typeof value === 'string';
+  if (type === 'number') return typeof value === 'number' && Number.isFinite(value);
+  if (type === 'integer') return Number.isSafeInteger(value);
+  if (type === 'boolean') return typeof value === 'boolean';
+  if (type === 'null') return value === null;
+  return false;
+}
+
+const legacyInstructions = 'Treat all design and engineering outputs as review drafts. Never claim release, code compliance, manufacture, or field approval without the explicit evidence returned by the server. Read-only verifier tools are public; every other remote tool consumes hosted compute/quota and requires confirmCall=true for each call.';
+const serverInfo = { name: 'nexyfab-remote', version: '1.1.0' };
+
+function hasValidModernProtocolMeta(value) {
+  return isObject(value)
+    && value[MODERN_PROTOCOL_META_KEY] === MCP_MODERN_PROTOCOL_VERSION
+    && validateBoundValue(value, '$._meta', 0, { nodes: 0 }).length === 0;
+}
+
+function hasValidDiscoveryMeta(value) {
+  const clientInfo = isObject(value) ? value[MODERN_CLIENT_INFO_META_KEY] : undefined;
+  return hasValidModernProtocolMeta(value)
+    && isObject(clientInfo)
+    && typeof clientInfo.name === 'string' && clientInfo.name.length > 0 && clientInfo.name.length <= 256
+    && typeof clientInfo.version === 'string' && clientInfo.version.length > 0 && clientInfo.version.length <= 128
+    && isObject(value[MODERN_CLIENT_CAPABILITIES_META_KEY]);
+}
+
+function modernDiscoveryResult() {
+  return {
+    resultType: 'complete',
+    supportedVersions: [MCP_MODERN_PROTOCOL_VERSION],
+    capabilities: { tools: {} },
+    _meta: { [MODERN_SERVER_INFO_META_KEY]: serverInfo },
+    instructions: legacyInstructions,
+    ttlMs: 60_000,
+    cacheScope: 'private',
+  };
+}
+
+let negotiatedProtocol = null;
+async function handleLine(rawLine) {
+  const line = rawLine.trim();
   if (!line) return;
   let req;
-  try { req = JSON.parse(line); } catch { return; }
+  try { req = JSON.parse(line); } catch { sendError(null, -32700, 'parse error'); return; }
+  if (!isObject(req) || req.jsonrpc !== '2.0' || typeof req.method !== 'string' || (hasOwn(req, 'id') && !validId(req.id))) {
+    sendError(validId(req?.id) ? req.id : null, -32600, 'invalid request');
+    return;
+  }
   const { id, method, params } = req;
-  const reply = (result) => id !== undefined && send({ jsonrpc: '2.0', id, result });
+  const isNotification = !hasOwn(req, 'id');
+  // JSON-RPC notifications never receive a response, so only the protocol's
+  // explicitly notification-shaped methods may reach dispatch. In particular,
+  // do not let id-less initialize/tools/call mutate the era or trigger work.
+  if (isNotification && !ALLOWED_NOTIFICATIONS.has(method)) return;
+  const reply = (result) => {
+    if (isNotification) return;
+    const modernResult = negotiatedProtocol === 'modern'
+      ? { resultType: 'complete', ...result, _meta: { ...(isObject(result?._meta) ? result._meta : {}), [MODERN_SERVER_INFO_META_KEY]: serverInfo } }
+      : result;
+    send({ jsonrpc: '2.0', id, result: modernResult });
+  };
+  const invalidParams = () => { if (!isNotification) sendError(id, -32602, 'invalid params'); };
   try {
-    if (method === 'initialize') {
-      reply({ protocolVersion: params?.protocolVersion ?? '2024-11-05', capabilities: { tools: {} }, serverInfo: { name: 'nexyfab-remote', version: '1.0.0' } });
+    const paramsMeta = isObject(params) ? params._meta : undefined;
+    const claimedModernVersion = isObject(paramsMeta) ? paramsMeta[MODERN_PROTOCOL_META_KEY] : undefined;
+    if (claimedModernVersion !== undefined && claimedModernVersion !== MCP_MODERN_PROTOCOL_VERSION) {
+      if (!isNotification) send({ jsonrpc: '2.0', id, error: { code: -32022, message: 'Unsupported protocol version', data: { supported: [MCP_MODERN_PROTOCOL_VERSION], requested: claimedModernVersion } } });
+      return;
+    }
+    const modernRequest = hasValidModernProtocolMeta(paramsMeta);
+    if (negotiatedProtocol === 'modern' && method !== 'initialize' && !modernRequest) { invalidParams(); return; }
+    if (negotiatedProtocol === 'legacy' && modernRequest) { invalidParams(); return; }
+    if (negotiatedProtocol === null && modernRequest) negotiatedProtocol = 'modern';
+    // A modern stdio exchange is stateless per request, but once this process
+    // has selected that era it must not be downgraded by a later handshake.
+    // This also rejects the retired initialize method when its request already
+    // claims the modern protocol metadata.
+    if (method === 'initialize' && negotiatedProtocol === 'modern') { invalidParams(); return; }
+    if (method === 'server/discover') {
+      if (!isObject(params) || !hasValidDiscoveryMeta(params._meta)
+        || Object.keys(params).some(key => key !== '_meta' || PROTOTYPE_KEYS.has(key))
+        || validateBoundValue(params, '$.params', 0, { nodes: 0 }).length) { invalidParams(); return; }
+      negotiatedProtocol = 'modern';
+      reply(modernDiscoveryResult());
+    } else if (method === 'initialize') {
+      if (params !== undefined && !isObject(params)) { invalidParams(); return; }
+      negotiatedProtocol = 'legacy';
+      reply({
+        protocolVersion: MCP_PROTOCOL_VERSION,
+        capabilities: { tools: { listChanged: false } },
+        serverInfo,
+        instructions: legacyInstructions,
+      });
     } else if (method === 'notifications/initialized' || method === 'initialized') {
       // notification
     } else if (method === 'ping') {
+      if (params !== undefined && (!isObject(params) || Object.keys(params).some(key => key !== '_meta'))) { invalidParams(); return; }
       reply({});
     } else if (method === 'tools/list') {
-      reply({ tools });
+      if (params !== undefined && (!isObject(params) || Object.keys(params).some(key => key !== '_meta'))) { invalidParams(); return; }
+      reply({
+        tools: tools.map(tool => ({ ...tool, inputSchema: { ...tool.inputSchema, additionalProperties: false } })),
+        ...(negotiatedProtocol === 'modern' ? { ttlMs: 60_000, cacheScope: 'private' } : {}),
+      });
     } else if (method === 'tools/call') {
+      if (!isObject(params) || typeof params.name !== 'string' || (params.arguments !== undefined && !isObject(params.arguments)) || Object.keys(params).some(key => !['name', 'arguments', '_meta'].includes(key) || PROTOTYPE_KEYS.has(key))) { invalidParams(); return; }
+      const tool = tools.find(item => item.name === params.name);
+      if (!tool) { invalidParams(); return; }
+      if (validateToolArguments(tool.inputSchema, params.arguments ?? {}).length) {
+        reply({ content: [{ type: 'text', text: 'ERROR: INVALID_TOOL_ARGUMENTS' }], isError: true });
+        return;
+      }
       try {
         const result = await callTool(params.name, params.arguments ?? {});
         reply({ content: [{ type: 'text', text: JSON.stringify(result, null, 2) }], ...(result && result.ok === false ? { isError: true } : {}) });
       } catch (e) {
-        reply({ content: [{ type: 'text', text: `ERROR: ${e.message}` }], isError: true });
+        const code = e instanceof Error && ['INVALID_TOOL_ARGUMENTS', 'REMOTE_CALL_APPROVAL_REQUIRED', 'REMOTE_REQUEST_FAILED', 'REMOTE_RESPONSE_TOO_LARGE'].includes(e.message) ? e.message : 'TOOL_CALL_FAILED';
+        reply({ content: [{ type: 'text', text: `ERROR: ${code}` }], isError: true });
       }
-    } else if (id !== undefined) {
-      send({ jsonrpc: '2.0', id, error: { code: -32601, message: `method not found: ${method}` } });
+    } else if (!isNotification) {
+      sendError(id, -32601, 'method not found');
     }
-  } catch (e) {
-    if (id !== undefined) send({ jsonrpc: '2.0', id, error: { code: -32603, message: e.message } });
+  } catch {
+    if (!isNotification) sendError(id, -32603, 'internal error');
   }
+}
+
+let requestQueue = Promise.resolve();
+
+// Keep only MAX_REQUEST_LINE_BYTES bytes of the current frame. A CR directly
+// before LF is treated as the CRLF terminator, including when split across
+// input chunks. Oversized frames are discarded through their newline and
+// produce exactly one canonical framing error.
+const lineBuffer = Buffer.allocUnsafe(MAX_REQUEST_LINE_BYTES);
+let lineLength = 0;
+let oversizedLine = false;
+let pendingCarriageReturn = false;
+const resetLine = () => {
+  lineLength = 0;
+  oversizedLine = false;
+  pendingCarriageReturn = false;
+};
+const enqueueLine = (lineBytes) => {
+  let line = null;
+  let invalidUtf8 = false;
+  if (lineBytes !== null) {
+    try { line = decodeFrame(lineBytes); }
+    catch { invalidUtf8 = true; }
+  }
+  requestQueue = requestQueue.then(() => {
+    if (lineBytes === null) { sendError(null, -32600, 'request too large'); return; }
+    if (invalidUtf8 || line === null) { sendError(null, -32700, 'parse error'); return; }
+    return handleLine(line);
+  }).catch(() => sendError(null, -32603, 'internal error'));
+};
+const finishLine = () => {
+  if (oversizedLine) enqueueLine(null);
+  else if (lineLength > 0) enqueueLine(lineBuffer.subarray(0, lineLength));
+  resetLine();
+};
+const appendByte = (byte) => {
+  if (lineLength >= MAX_REQUEST_LINE_BYTES) { oversizedLine = true; return; }
+  lineBuffer[lineLength++] = byte;
+};
+const consumeByte = (byte) => {
+  if (pendingCarriageReturn) {
+    pendingCarriageReturn = false;
+    if (byte === 0x0a) { finishLine(); return; }
+    appendByte(0x0d);
+  }
+  if (byte === 0x0a) finishLine();
+  else if (byte === 0x0d) pendingCarriageReturn = true;
+  else appendByte(byte);
+};
+process.stdin.on('data', chunk => {
+  const bytes = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk);
+  for (const byte of bytes) consumeByte(byte);
+});
+process.stdin.on('end', () => {
+  if (pendingCarriageReturn) { pendingCarriageReturn = false; appendByte(0x0d); }
+  if (lineLength > 0 || oversizedLine) finishLine();
 });

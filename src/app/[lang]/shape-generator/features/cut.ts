@@ -1,5 +1,5 @@
 /**
- * cut.ts — Sheet-metal Cut feature (mesh mode, three-bvh-csg SUBTRACTION).
+ * cut.ts — Sheet-metal Cut feature (OCCT B-rep primary, mesh CSG fallback).
  *
  * A Cut removes a rectangular slot from the sheet. The tool is a box sized
  * width(X) × length(Z), centred at (posX, posZ) in the sheet's frame; the
@@ -24,6 +24,13 @@ import type { FaceSelectionInfo } from '../editing/selectionInfo';
 import { noteMeshFallback } from './downgradeNotice';
 import { csgSubtract } from './reliefCuts';
 import { appendPatternSeed } from './patternHelpers/featureSeed';
+import {
+  hostBoxFromGeometry,
+  occtBoxBooleanWithPrimitive,
+  resolveBrepHostHandleAsync,
+  type OcctBooleanResult,
+} from './occtEngine';
+import { shouldUseOcctEngine } from './engineSelection';
 
 export type CutEndCondition = 'blind' | 'through_all' | 'up_to_face';
 
@@ -52,6 +59,58 @@ export interface CutParams {
    *  apply path resolves it from ctx.faceSelections via
    *  resolveUpToFacePlaneY; programmatic callers may pass it directly. */
   upToPlaneY?: number;
+}
+
+export interface CutOcctHostBox {
+  w: number;
+  h: number;
+  d: number;
+  cx: number;
+  cy: number;
+  cz: number;
+}
+
+/** Exact rectangular cut using the same end-condition dimensions as the UI feature. */
+export function applyCutOcct(
+  hostHandle: string | null | undefined,
+  hostBox: CutOcctHostBox,
+  params: CutParams,
+  tessellation: { tolerance?: number; angularTolerance?: number } = {},
+): OcctBooleanResult {
+  const width = Math.max(0.1, params.width);
+  const length = Math.max(0.1, params.length);
+  const pad = 1;
+  const topY = hostBox.cy + hostBox.h / 2;
+  const bottomY = hostBox.cy - hostBox.h / 2;
+  const endCondition = params.endCondition ?? 'through_all';
+  let toolMinY: number;
+  const toolMaxY = topY + pad;
+  if (endCondition === 'blind') {
+    if (!Number.isFinite(params.depth) || !(params.depth! > 0)) {
+      throw new Error(`Blind cut rejected: depth must be a positive number of mm (got ${String(params.depth)})`);
+    }
+    toolMinY = topY - params.depth!;
+  } else if (endCondition === 'up_to_face') {
+    if (!Number.isFinite(params.upToPlaneY) || !(params.upToPlaneY! < topY)) {
+      throw new Error('up_to_face rejected: a finite stop plane below the top face is required');
+    }
+    toolMinY = params.upToPlaneY!;
+  } else {
+    toolMinY = bottomY - pad;
+  }
+  if (!(toolMaxY > toolMinY)) throw new Error('Exact Cut tool has a non-positive depth');
+  return occtBoxBooleanWithPrimitive('subtract', hostBox, {
+    shape: 'box',
+    w: width,
+    h: toolMaxY - toolMinY,
+    d: length,
+    cx: params.posX,
+    cy: (toolMinY + toolMaxY) / 2,
+    cz: params.posZ,
+    rx: 0,
+    ry: 0,
+    rz: 0,
+  }, tessellation, hostHandle);
 }
 
 /** Existence check shared by cut/hole up_to_face: the target plane must still
@@ -214,6 +273,62 @@ export const cutFeature: FeatureDefinition = {
     // in feature mode can re-apply the actual subtraction per instance.
     // up_to_face carries the RESOLVED plane so re-application needs no
     // face-selection object (the plane is re-checked against the body there).
+    appendPatternSeed(out, geometry, {
+      featureId: ctx?.featureId ?? null,
+      type: 'cut',
+      params: {
+        width: cutParams.width,
+        length: cutParams.length,
+        posX: cutParams.posX,
+        posZ: cutParams.posZ,
+        endCondition: CUT_END_CONDITION.indexOf(endCondition),
+        ...(Number.isFinite(params.depth) ? { depth: params.depth } : {}),
+        ...(upToPlaneY != null ? { upToPlaneY } : {}),
+      },
+    });
+    return noteMeshFallback(out, { op: 'Cut', featureId: ctx?.featureId });
+  },
+  async applyAsync(geometry, params, ctx) {
+    const endCondition = endConditionFromEnum(params.endCondition);
+    const upToPlaneY = endCondition === 'up_to_face'
+      ? resolveUpToFacePlaneY(geometry, ctx?.faceSelections)
+      : undefined;
+    const cutParams: CutParams = {
+      width: params.width ?? 20,
+      length: params.length ?? 10,
+      posX: params.posX ?? 0,
+      posZ: params.posZ ?? 0,
+      endCondition,
+      depth: params.depth,
+      ...(upToPlaneY != null ? { upToPlaneY } : {}),
+    };
+    if (shouldUseOcctEngine()) {
+      try {
+        const hostBox = hostBoxFromGeometry(geometry);
+        const hostHandle = await resolveBrepHostHandleAsync(geometry);
+        const result = applyCutOcct(hostHandle, hostBox, cutParams);
+        if (result.handle) {
+          result.geometry.userData = { ...(geometry.userData ?? {}), occtHandle: result.handle };
+          appendPatternSeed(result.geometry, geometry, {
+            featureId: ctx?.featureId ?? null,
+            type: 'cut',
+            params: {
+              width: cutParams.width,
+              length: cutParams.length,
+              posX: cutParams.posX,
+              posZ: cutParams.posZ,
+              endCondition: CUT_END_CONDITION.indexOf(endCondition),
+              ...(Number.isFinite(params.depth) ? { depth: params.depth } : {}),
+              ...(upToPlaneY != null ? { upToPlaneY } : {}),
+            },
+          });
+          return result.geometry;
+        }
+      } catch (err) {
+        console.warn('[cut] OCCT path failed, falling back to mesh:', err);
+      }
+    }
+    const out = applyCut(geometry, cutParams, ctx?.featureId);
     appendPatternSeed(out, geometry, {
       featureId: ctx?.featureId ?? null,
       type: 'cut',

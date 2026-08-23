@@ -6,7 +6,7 @@
  * the Hole wizard (live product surface, `holesFromSketch`) produces a part
  * with NO holes in it, and nothing warns.
  */
-import { describe, it } from 'vitest';
+import { describe, it, expect } from 'vitest';
 import { extrudeToScad, buildExtrudeFromLoop, type ExtrudeFeature } from '@/lib/cad/extrudeProfile';
 import { buildHoleFeature, holeToScad } from '@/lib/cad/holeProfile';
 import { holesFromSketch } from '@/lib/sketch/holesFromSketch';
@@ -29,9 +29,9 @@ describe('DOGFOOD 03 — hole Z placement', () => {
     const h = buildHoleFeature({
       center: { x: 15, y: 15 }, holeType: 'drilled', diameter: 9, depth: 10,
     });
-    console.log('HOLE SCAD:\n' + holeToScad(h));
-    console.log('>>> plate occupies z = [0, 10]; hole cylinder is translated to z = [-10, +0.01]');
-    console.log('>>> overlap = 0.01 mm  => difference() removes essentially nothing');
+    console.log('HOLE SCAD:\n' + holeToScad(h, p.depth));
+    expect(holeToScad(h, p.depth)).toContain('translate([0, 0, -0.01]) cylinder(h=10.02');
+    console.log('>>> plate occupies z = [0, 10]; host-aware hole spans [-0.01, 10.01]');
   });
 
   it('the LIVE Hole wizard bridge: holesFromSketch', () => {
@@ -59,6 +59,7 @@ describe('DOGFOOD 03 — hole Z placement', () => {
     }
     console.log('holesFromSketch SCAD:\n' + res.scad);
     console.log('holeCount =', res.holeCount);
+    expect(res.scad).toContain('translate([0, 0, -0.01]) cylinder(h=10.02');
   });
 
   it('hole point that is NOT in the sketch — is the error useful?', () => {
@@ -97,6 +98,7 @@ describe('DOGFOOD 03 — hole Z placement', () => {
       holes: [{ pointId: 'ctr', holeType: 'drilled', diameter: 200, depth: 500 }],
     });
     console.log('oversized hole accepted?', res.ok, res.ok ? '' : res.error);
-    if (res.ok) console.log(res.scad);
+    expect(res.ok).toBe(false);
+    if (!res.ok) expect(res.error).toMatch(/oversized|clearance/i);
   });
 });

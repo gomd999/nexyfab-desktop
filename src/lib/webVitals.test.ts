@@ -19,4 +19,13 @@ describe('web vital payload privacy boundary', () => {
     expect(parseWebVitalPayload({ name: 'TTFB', value: 10, delta: 10, rating: 'good', route: '/', device: 'desktop' })).toBeNull();
     expect(parseWebVitalPayload({ name: 'CLS', value: 99, delta: 1, rating: 'poor', route: '/', device: 'desktop' })).toBeNull();
   });
+
+  it('keeps very slow but valid duration samples inside the abuse boundary', () => {
+    expect(parseWebVitalPayload({
+      name: 'LCP', value: 124_464, delta: 124_464, rating: 'poor', route: '/en/shape-generator/', device: 'desktop',
+    })).toMatchObject({ name: 'LCP', value: 124_464, delta: 124_464, rating: 'poor' });
+    expect(parseWebVitalPayload({
+      name: 'LCP', value: 600_001, delta: 600_001, rating: 'poor', route: '/', device: 'desktop',
+    })).toBeNull();
+  });
 });

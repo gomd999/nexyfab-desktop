@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { use, useState, useEffect } from 'react';
-import { isKorean } from '@/lib/i18n/normalize';
+import { createCommercialLocalizer } from '@/lib/i18n/commercialLocalizer';
 
 const FALLBACK_MANUFACTURERS = [
   'Korea Precision', 'AdditiveMind', 'ProtoLabs KR', 'HanwhaQ&C', 'SFA Engineering',
@@ -117,7 +117,7 @@ const PLANS = [
 
 export default function NexyfabHomePage({ params }: { params: Promise<{ lang: string }> }) {
   const { lang } = use(params);
-  const isKo = isKorean(lang);
+  const L = createCommercialLocalizer(lang);
   const [hoveredFeature, setHoveredFeature] = useState<number | null>(null);
   const [manufacturers, setManufacturers] = useState<string[]>(FALLBACK_MANUFACTURERS);
 
@@ -126,13 +126,14 @@ export default function NexyfabHomePage({ params }: { params: Promise<{ lang: st
       .then(r => r.ok ? r.json() : null)
       .then(d => {
         if (Array.isArray(d?.manufacturers) && d.manufacturers.length > 0) {
+          const localize = createCommercialLocalizer(lang);
           setManufacturers(d.manufacturers.map((m: { name: string; name_ko?: string }) =>
-            isKo ? (m.name_ko || m.name) : m.name,
+            localize(m.name_ko || m.name, m.name),
           ));
         }
       })
       .catch(() => {});
-  }, [isKo]);
+  }, [lang]);
 
   return (
     <div style={{
@@ -162,7 +163,7 @@ export default function NexyfabHomePage({ params }: { params: Promise<{ lang: st
           letterSpacing: '0.06em',
           border: '1px solid #388bfd40',
         }}>
-          {isKo ? '브라우저 기반 제조 플랫폼' : 'Browser-Based Manufacturing Platform'}
+          {L('브라우저 기반 제조 플랫폼', 'Browser-Based Manufacturing Platform')}
         </div>
 
         <h1 style={{
@@ -173,10 +174,7 @@ export default function NexyfabHomePage({ params }: { params: Promise<{ lang: st
           letterSpacing: '-0.03em',
           color: '#e6edf3',
         }}>
-          {isKo
-            ? (<>브라우저에서 설계,<br /><span style={{ background: 'linear-gradient(135deg, #388bfd, #8b5cf6)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>AI 제조 판단</span>, 제조사 연결</>)
-            : (<>Browser-based CAD,<br /><span style={{ background: 'linear-gradient(135deg, #388bfd, #8b5cf6)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>AI DFM Analysis</span>, Manufacturer Connection</>)
-          }
+          {L('브라우저에서 설계,', 'Browser-based CAD,')}<br /><span style={{ background: 'linear-gradient(135deg, #388bfd, #8b5cf6)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>{L('AI 제조 판단', 'AI DFM Analysis')}</span>{L(', 제조사 연결', ', Manufacturer Connection')}
         </h1>
 
         <p style={{
@@ -186,9 +184,7 @@ export default function NexyfabHomePage({ params }: { params: Promise<{ lang: st
           color: '#8b949e',
           lineHeight: 1.65,
         }}>
-          {isKo
-            ? 'NexyFab은 설계부터 제조까지 하나의 플랫폼에서 처리합니다. 설치 없이 브라우저에서 3D 설계 후 AI 분석, 견적, 제조사 연결까지 한 번에.'
-            : 'NexyFab handles everything from design to manufacturing in a single platform. Design 3D parts in the browser, get AI analysis, quotes, and manufacturer connections — all at once.'}
+          {L('NexyFab은 설계부터 제조까지 하나의 플랫폼에서 처리합니다. 설치 없이 브라우저에서 3D 설계 후 AI 분석, 견적, 제조사 연결까지 한 번에.', 'NexyFab handles everything from design to manufacturing in a single platform. Design 3D parts in the browser, get AI analysis, quotes, and manufacturer connections — all at once.')}
         </p>
 
         <div style={{ display: 'flex', gap: 12, justifyContent: 'center', flexWrap: 'wrap' }}>
@@ -209,7 +205,7 @@ export default function NexyfabHomePage({ params }: { params: Promise<{ lang: st
             onMouseEnter={e => { e.currentTarget.style.opacity = '0.88'; e.currentTarget.style.transform = 'translateY(-1px)'; }}
             onMouseLeave={e => { e.currentTarget.style.opacity = '1'; e.currentTarget.style.transform = 'translateY(0)'; }}
           >
-            ✏️ {isKo ? '무료로 시작' : 'Start for Free'}
+            ✏️ {L('무료로 시작', 'Start for Free')}
           </Link>
           <a
             href={`/${lang}/nexyfab/dashboard`}
@@ -227,7 +223,7 @@ export default function NexyfabHomePage({ params }: { params: Promise<{ lang: st
             onMouseEnter={e => { e.currentTarget.style.borderColor = '#58a6ff'; e.currentTarget.style.background = '#21262d'; }}
             onMouseLeave={e => { e.currentTarget.style.borderColor = '#30363d'; e.currentTarget.style.background = 'transparent'; }}
           >
-            {isKo ? '데모 보기 →' : 'View Demo →'}
+            {L('데모 보기 →', 'View Demo →')}
           </a>
         </div>
       </section>
@@ -284,10 +280,10 @@ export default function NexyfabHomePage({ params }: { params: Promise<{ lang: st
                 STEP {i + 1}
               </div>
               <h3 style={{ margin: '0 0 8px', fontSize: 16, fontWeight: 700, color: '#e6edf3' }}>
-                {isKo ? step.titleKo : step.titleEn}
+                {L(step.titleKo, step.titleEn)}
               </h3>
               <p style={{ margin: 0, fontSize: 13, color: '#8b949e', lineHeight: 1.55 }}>
-                {isKo ? step.descKo : step.descEn}
+                {L(step.descKo, step.descEn)}
               </p>
               {i < FLOW_STEPS.length - 1 && (
                 <div style={{
@@ -320,10 +316,10 @@ export default function NexyfabHomePage({ params }: { params: Promise<{ lang: st
           textAlign: 'center',
           letterSpacing: '-0.02em',
         }}>
-          {isKo ? '모든 제조 워크플로우를 한 곳에' : 'Every manufacturing workflow, in one place'}
+          {L('모든 제조 워크플로우를 한 곳에', 'Every manufacturing workflow, in one place')}
         </h2>
         <p style={{ margin: '0 0 32px', textAlign: 'center', color: '#6e7681', fontSize: 14 }}>
-          {isKo ? '설계부터 납품까지 필요한 모든 도구' : 'All the tools you need from design to delivery'}
+          {L('설계부터 납품까지 필요한 모든 도구', 'All the tools you need from design to delivery')}
         </p>
         <div style={{
           display: 'grid',
@@ -346,10 +342,10 @@ export default function NexyfabHomePage({ params }: { params: Promise<{ lang: st
             >
               <div style={{ fontSize: 26, marginBottom: 12 }}>{feat.icon}</div>
               <h4 style={{ margin: '0 0 8px', fontSize: 14, fontWeight: 700, color: '#e6edf3' }}>
-                {isKo ? feat.titleKo : feat.titleEn}
+                {L(feat.titleKo, feat.titleEn)}
               </h4>
               <p style={{ margin: 0, fontSize: 13, color: '#6e7681', lineHeight: 1.55 }}>
-                {isKo ? feat.descKo : feat.descEn}
+                {L(feat.descKo, feat.descEn)}
               </p>
             </div>
           ))}
@@ -369,10 +365,10 @@ export default function NexyfabHomePage({ params }: { params: Promise<{ lang: st
           textAlign: 'center',
           letterSpacing: '-0.02em',
         }}>
-          {isKo ? '플랜 비교' : 'Plan Comparison'}
+          {L('플랜 비교', 'Plan Comparison')}
         </h2>
         <p style={{ margin: '0 0 32px', textAlign: 'center', color: '#6e7681', fontSize: 14 }}>
-          {isKo ? '필요에 맞는 플랜을 선택하세요' : 'Choose the plan that fits your needs'}
+          {L('필요에 맞는 플랜을 선택하세요', 'Choose the plan that fits your needs')}
         </p>
         <div style={{
           display: 'grid',
@@ -405,7 +401,7 @@ export default function NexyfabHomePage({ params }: { params: Promise<{ lang: st
                   borderRadius: 20,
                   letterSpacing: '0.06em',
                 }}>
-                  {isKo ? '인기' : 'POPULAR'}
+                  {L('인기', 'POPULAR')}
                 </div>
               )}
               <div style={{
@@ -418,10 +414,12 @@ export default function NexyfabHomePage({ params }: { params: Promise<{ lang: st
                 {plan.name}
               </div>
               <div style={{ fontSize: 22, fontWeight: 900, color: '#e6edf3', marginBottom: 16 }}>
-                {isKo ? plan.priceKo : plan.priceEn}
+                {L(plan.priceKo, plan.priceEn)}
               </div>
               <ul style={{ margin: '0 0 20px', padding: 0, listStyle: 'none' }}>
-                {(isKo ? plan.features.ko : plan.features.en).map((f, i) => (
+                {plan.features.en.map((englishFeature, i) => {
+                  const f = L(plan.features.ko[i] ?? englishFeature, englishFeature);
+                  return (
                   <li key={i} style={{
                     display: 'flex',
                     alignItems: 'center',
@@ -433,7 +431,8 @@ export default function NexyfabHomePage({ params }: { params: Promise<{ lang: st
                     <span style={{ color: '#3fb950', fontSize: 12 }}>✓</span>
                     {f}
                   </li>
-                ))}
+                  );
+                })}
               </ul>
               <Link
                 prefetch
@@ -454,7 +453,7 @@ export default function NexyfabHomePage({ params }: { params: Promise<{ lang: st
                 onMouseEnter={e => { e.currentTarget.style.opacity = '0.85'; }}
                 onMouseLeave={e => { e.currentTarget.style.opacity = '1'; }}
               >
-                {isKo ? '시작하기' : 'Get started'}
+                {L('시작하기', 'Get started')}
               </Link>
             </div>
           ))}
@@ -469,7 +468,7 @@ export default function NexyfabHomePage({ params }: { params: Promise<{ lang: st
         textAlign: 'center',
       }}>
         <p style={{ margin: '0 0 24px', fontSize: 13, color: '#6e7681', fontWeight: 600, letterSpacing: '0.05em' }}>
-          {isKo ? '제조 파트너' : 'MANUFACTURING PARTNERS'}
+          {L('제조 파트너', 'MANUFACTURING PARTNERS')}
         </p>
         <div style={{
           display: 'flex',
@@ -506,10 +505,10 @@ export default function NexyfabHomePage({ params }: { params: Promise<{ lang: st
         textAlign: 'center',
       }}>
         <h2 style={{ margin: '0 0 12px', fontSize: 24, fontWeight: 800, letterSpacing: '-0.02em' }}>
-          {isKo ? '지금 바로 설계를 시작하세요' : 'Start designing right now'}
+          {L('지금 바로 설계를 시작하세요', 'Start designing right now')}
         </h2>
         <p style={{ margin: '0 0 28px', color: '#6e7681', fontSize: 14 }}>
-          {isKo ? '신용카드 불필요 · 무료로 3개 프로젝트 · 언제든 업그레이드' : 'No credit card · 3 free projects · Upgrade anytime'}
+          {L('신용카드 불필요 · 무료로 3개 프로젝트 · 언제든 업그레이드', 'No credit card · 3 free projects · Upgrade anytime')}
         </p>
         <Link
           prefetch
@@ -528,7 +527,7 @@ export default function NexyfabHomePage({ params }: { params: Promise<{ lang: st
           onMouseEnter={e => { e.currentTarget.style.opacity = '0.88'; e.currentTarget.style.transform = 'translateY(-1px)'; }}
           onMouseLeave={e => { e.currentTarget.style.opacity = '1'; e.currentTarget.style.transform = 'translateY(0)'; }}
         >
-          ✏️ {isKo ? '무료로 시작' : 'Get started for free'}
+          ✏️ {L('무료로 시작', 'Get started for free')}
         </Link>
       </section>
     </div>

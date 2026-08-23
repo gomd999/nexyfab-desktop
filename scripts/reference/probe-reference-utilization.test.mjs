@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { probeReferenceSignature, referenceProbeFailureReason } from './probe-reference-utilization.mjs';
+import { admitReferenceImport, probeReferenceSignature, referenceProbeFailureReason } from './probe-reference-utilization.mjs';
 
 const bytes = value => new TextEncoder().encode(value);
 
@@ -14,4 +14,15 @@ test('identifies common files masquerading as STEP', () => {
   assert.equal(probeReferenceSignature('step', stl, stl.length), false);
   assert.equal(referenceProbeFailureReason('step', stl), 'extension_mismatch_detected_stl');
   assert.equal(referenceProbeFailureReason('step', creo), 'extension_mismatch_detected_creo_native');
+  assert.deepEqual(admitReferenceImport('step', stl), { admitted: false, reason: 'extension_mismatch_detected_stl' });
+  assert.deepEqual(admitReferenceImport('step', creo), { admitted: false, reason: 'extension_mismatch_detected_creo_native' });
+});
+
+test('rejects a binary STL masquerading as STEP before importer admission', () => {
+  const triangleCount = 1;
+  const binaryStl = new Uint8Array(84 + triangleCount * 50);
+  new DataView(binaryStl.buffer).setUint32(80, triangleCount, true);
+  assert.equal(probeReferenceSignature('step', binaryStl, binaryStl.length), false);
+  assert.deepEqual(admitReferenceImport('.step', binaryStl), { admitted: false, reason: 'extension_mismatch_detected_stl' });
+  assert.deepEqual(admitReferenceImport('step', binaryStl.subarray(0, 84), binaryStl.length), { admitted: false, reason: 'extension_mismatch_detected_stl' });
 });

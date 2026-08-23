@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAuthUser } from '@/lib/auth-middleware';
 import { getDbAdapter } from '@/lib/db-adapter';
+import { boundedJsonError, readBoundedJson } from '@/lib/boundedJsonBody';
+
+const MAX_NOTIFICATION_SETTINGS_BODY_BYTES = 16 * 1024;
 
 export const dynamic = 'force-dynamic';
 
@@ -60,7 +63,12 @@ export async function PATCH(req: NextRequest) {
   }
 
   try {
-    const body = await req.json();
+    let body: unknown;
+    try { body = await readBoundedJson(req, MAX_NOTIFICATION_SETTINGS_BODY_BYTES); }
+    catch (error) {
+      if (boundedJsonError(error)?.code === 'PAYLOAD_TOO_LARGE') return NextResponse.json({ error: 'Request too large', code: 'PAYLOAD_TOO_LARGE' }, { status: 413 });
+      throw error;
+    }
     const { settings } = body as { settings?: Partial<NotificationSettings> };
 
     if (!settings || typeof settings !== 'object') {

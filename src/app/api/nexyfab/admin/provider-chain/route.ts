@@ -11,24 +11,30 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getAuthUser } from '@/lib/auth-middleware';
 import { listProviderOverride, setProviderOverride, listProviderOverrideAudit } from '@/lib/ai/providerOverride';
 import type { ProviderName } from '@/lib/ai/types';
+import { localizedApiMessage, resolveServerLocale } from '@/lib/i18n/serverLocale';
+import { boundedJsonError, readBoundedJson } from '@/lib/boundedJsonBody';
+
+const MAX_PROVIDER_CHAIN_BODY_BYTES = 16 * 1024;
 
 export const dynamic = 'force-dynamic';
 
-const VALID_PROVIDERS: ProviderName[] = ['deepseek', 'openai', 'anthropic', 'local'];
+const VALID_PROVIDERS: ProviderName[] = ['deepseek', 'qwen', 'openai', 'gemini', 'anthropic', 'openrouter', 'local'];
 
 interface AdminOk { kind: 'ok'; userId: string }
 interface AdminFail { kind: 'fail'; response: NextResponse }
 
 async function requireAdmin(req: NextRequest): Promise<AdminOk | AdminFail> {
+  const locale = resolveServerLocale(req, req.nextUrl.searchParams.get('lang'));
   const authUser = await getAuthUser(req);
-  if (!authUser) return { kind: 'fail', response: NextResponse.json({ error: 'Unauthorized' }, { status: 401 }) };
+  if (!authUser) return { kind: 'fail', response: NextResponse.json({ error: localizedApiMessage(locale, 'unauthorized'), outputLanguage: locale.route }, { status: 401 }) };
   const isAdmin = authUser.globalRole === 'super_admin'
     || (authUser.roles?.some(r => r.role === 'org_admin' as string) ?? false);
-  if (!isAdmin) return { kind: 'fail', response: NextResponse.json({ error: 'Forbidden' }, { status: 403 }) };
+  if (!isAdmin) return { kind: 'fail', response: NextResponse.json({ error: localizedApiMessage(locale, 'forbidden'), outputLanguage: locale.route }, { status: 403 }) };
   return { kind: 'ok', userId: authUser.userId };
 }
 
 export async function GET(req: NextRequest) {
+  const locale = resolveServerLocale(req, req.nextUrl.searchParams.get('lang'));
   const auth = await requireAdmin(req);
   if (auth.kind === 'fail') return auth.response;
 
@@ -42,20 +48,26 @@ export async function GET(req: NextRequest) {
   return NextResponse.json({
     override,
     envPrimary: (process.env.AI_PROVIDER_PRIMARY ?? 'deepseek').split(',').map(s => s.trim()).filter(Boolean),
-    envFallbacks: (process.env.AI_PROVIDER_FALLBACKS ?? 'anthropic,openai,local').split(',').map(s => s.trim()).filter(Boolean),
+    envFallbacks: (process.env.AI_PROVIDER_FALLBACKS ?? 'gemini,openai,local').split(',').map(s => s.trim()).filter(Boolean),
     valid: VALID_PROVIDERS,
     ...(audit ? { audit } : {}),
+    outputLanguage: locale.route,
   });
 }
 
 export async function POST(req: NextRequest) {
+  const locale = resolveServerLocale(req, req.nextUrl.searchParams.get('lang'));
   const auth = await requireAdmin(req);
   if (auth.kind === 'fail') return auth.response;
 
-  const body = await req.json().catch(() => ({}));
+  let body: Record<string, unknown> = {};
+  try { body = await readBoundedJson<Record<string, unknown>>(req, MAX_PROVIDER_CHAIN_BODY_BYTES); }
+  catch (error) {
+    if (boundedJsonError(error)?.code === 'PAYLOAD_TOO_LARGE') return NextResponse.json({ error: 'Request too large', code: 'PAYLOAD_TOO_LARGE' }, { status: 413 });
+  }
   const chain = Array.isArray(body.chain) ? (body.chain as unknown[]) : null;
   if (chain === null) {
-    return NextResponse.json({ error: 'chain (string array) is required' }, { status: 400 });
+    return NextResponse.json({ error: localizedApiMessage(locale, 'badRequest'), code: 'CHAIN_REQUIRED', outputLanguage: locale.route }, { status: 400 });
   }
   // Validate all entries are known providers.
   const cleaned: ProviderName[] = [];
@@ -71,11 +83,11 @@ export async function POST(req: NextRequest) {
   // Reject if requester sent providers but none were valid — surface a clear error.
   if (chain.length > 0 && cleaned.length === 0) {
     return NextResponse.json(
-      { error: `No valid providers in chain. Allowed: ${VALID_PROVIDERS.join(', ')}` },
+      { error: localizedApiMessage(locale, 'badRequest'), code: 'NO_VALID_PROVIDERS', outputLanguage: locale.route },
       { status: 400 },
     );
   }
 
   await setProviderOverride(cleaned, auth.userId);
-  return NextResponse.json({ ok: true, chain: cleaned, updatedAt: Date.now() });
+  return NextResponse.json({ ok: true, chain: cleaned, updatedAt: Date.now(), outputLanguage: locale.route });
 }

@@ -24,4 +24,34 @@ describe('CAD v1 continuous door swing verification', () => {
     const response = await POST(request({ pivot: { x: 0, y: 0 }, closedAngleDeg: 0, openAngleDeg: 90, widthMm: 0, thicknessMm: 40, obstacles: [{ id: 'bad', polygon: [] }] }));
     expect(response.status).toBe(400);
   });
+
+  it('measures streamed bytes, ignores a falsely small Content-Length, and cancels oversize input', async () => {
+    let cancelled = false;
+    const body = new ReadableStream<Uint8Array>({
+      start(controller) {
+        controller.enqueue(new TextEncoder().encode('{"payload":"'));
+        controller.enqueue(new Uint8Array(4 * 1024 * 1024));
+      },
+      cancel() { cancelled = true; },
+    });
+    const response = await POST(new NextRequest('http://localhost/api/cad/v1/interior/door-swing/verify', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', 'content-length': '1' },
+      body,
+      duplex: 'half',
+    } as unknown as ConstructorParameters<typeof NextRequest>[1]));
+    expect(response.status).toBe(413);
+    await expect(response.json()).resolves.toEqual({ ok: false, code: 'PAYLOAD_TOO_LARGE' });
+    expect(cancelled).toBe(true);
+  });
+
+  it('preserves INVALID_INPUT for malformed JSON and invalid UTF-8', async () => {
+    const malformed = await POST(new NextRequest('http://localhost/api/cad/v1/interior/door-swing/verify', { method: 'POST', body: '{' }));
+    expect(malformed.status).toBe(400);
+    await expect(malformed.json()).resolves.toMatchObject({ ok: false, code: 'INVALID_INPUT' });
+
+    const invalidUtf8 = await POST(new NextRequest('http://localhost/api/cad/v1/interior/door-swing/verify', { method: 'POST', body: new Uint8Array([0xff]) }));
+    expect(invalidUtf8.status).toBe(400);
+    await expect(invalidUtf8.json()).resolves.toMatchObject({ ok: false, code: 'INVALID_INPUT' });
+  });
 });

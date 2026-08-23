@@ -4,6 +4,26 @@
 
 import { NextResponse } from "next/server";
 
+const VEC3_SCHEMA = { type: "array", prefixItems: [{ type: "number" }, { type: "number" }, { type: "number" }], minItems: 3, maxItems: 3 } as const;
+const MEP_SYSTEM_SCHEMA = { enum: ["electrical", "data", "cold_water", "hot_water", "drain", "supply_air", "return_air"] } as const;
+const PHYSICAL_PORT_SCHEMA = {
+  type: "object", additionalProperties: false,
+  required: ["id", "ownerObjectId", "system", "connector", "positionMm", "required"],
+  properties: { id: { type: "string", minLength: 1, maxLength: 128 }, ownerObjectId: { type: "string", minLength: 1, maxLength: 128 }, system: MEP_SYSTEM_SCHEMA, connector: { type: "string", minLength: 1, maxLength: 128 }, positionMm: VEC3_SCHEMA, required: { type: "boolean" }, direction: { enum: ["inlet", "outlet", "bidirectional"] }, nominalDiameterMm: { type: "number", exclusiveMinimum: 0 }, axis: VEC3_SCHEMA, insertionDepthMm: { type: "number", minimum: 0 } },
+} as const;
+const PHYSICAL_NODE_SCHEMA = {
+  type: "object", additionalProperties: false, required: ["id", "system", "connector", "positionMm"],
+  properties: { id: { type: "string", minLength: 1, maxLength: 128 }, system: MEP_SYSTEM_SCHEMA, connector: { type: "string", minLength: 1, maxLength: 128 }, positionMm: VEC3_SCHEMA, nominalDiameterMm: { type: "number", exclusiveMinimum: 0 } },
+} as const;
+const PHYSICAL_CONNECTION_SCHEMA = {
+  type: "object", additionalProperties: false, required: ["id", "portId", "nodeId"],
+  properties: { id: { type: "string", minLength: 1, maxLength: 128 }, portId: { type: "string", minLength: 1, maxLength: 128 }, nodeId: { type: "string", minLength: 1, maxLength: 128 } },
+} as const;
+const PHYSICAL_RUN_SCHEMA = {
+  type: "object", additionalProperties: false, required: ["id", "system", "fromNodeId", "toNodeId", "lengthMm", "pathMm"],
+  properties: { id: { type: "string", minLength: 1, maxLength: 128 }, system: MEP_SYSTEM_SCHEMA, fromNodeId: { type: "string", minLength: 1, maxLength: 128 }, toNodeId: { type: "string", minLength: 1, maxLength: 128 }, lengthMm: { type: "number", exclusiveMinimum: 0 }, elevationDropMm: { type: "number" }, diameterMm: { type: "number", exclusiveMinimum: 0 }, pathMm: { type: "array", minItems: 2, maxItems: 20000, items: VEC3_SCHEMA }, representation: { enum: ["physical_solid", "analysis_only_internal_flow"] }, internalFlowPathId: { type: "string", minLength: 1, maxLength: 128 }, collisionEligible: { type: "boolean" } },
+} as const;
+
 const SPEC = {
   openapi: "3.1.0",
   info: {
@@ -268,8 +288,18 @@ const SPEC = {
         description: "Maintains immutable stage checkpoints for intent through release and returns an adaptive execution plan. AI remains the default executor and manages conditional precision CAD for general users; experts may optionally open the same precise model for direct editing. Authoritative input and final expert review remain separate outcomes.",
         tags: ["CAD"],
         security: [{ bearerAuth: [] }],
-        requestBody: { required: true, content: { "application/json": { schema: { type: "object", required: ["action"], properties: { action: { enum: ["initialize", "record", "recover", "invalidate_edit", "plan"] }, state: { type: "object" }, runId: { type: "string" } } } } } },
+        requestBody: { required: true, content: { "application/json": { schema: { type: "object", additionalProperties: false, required: ["action"], properties: { action: { enum: ["initialize", "recover", "invalidate_edit", "plan"] }, state: { type: "object" }, runId: { type: "string" }, stage: { type: "string" }, transaction: { type: "object" } } } } } },
         responses: { "200": { description: "Generation state and adaptive complete-product execution plan" }, "409": { description: "Invalid stage transition" }, "429": { description: "Rate limited" } },
+      },
+    },
+    "/api/cad/v1/generation/refine": {
+      post: {
+        summary: "Run one server-owned AI product-refinement stage",
+        description: "The server reloads the authoritative run, reconstructs earlier checkpoint payloads and hashes, owns the attempt counter and applies a strict stage schema. Client confidence, earlier outputs, hashes, feedback and retry budgets cannot grant progression.",
+        tags: ["CAD"],
+        security: [{ bearerAuth: [] }],
+        requestBody: { required: true, content: { "application/json": { schema: { type: "object", additionalProperties: false, required: ["state", "context"], properties: { state: { type: "object" }, context: { type: "object", additionalProperties: false, required: ["request", "stage", "attempt", "priorOutputs", "priorCheckpointHashes", "feedback", "immutableEvidenceRefs"], properties: { request: { type: "string", minLength: 1, maxLength: 8000 }, stage: { enum: ["intent", "decomposition", "interfaces", "part_programs"] }, attempt: { type: "integer", minimum: 1 }, priorOutputs: { type: "object" }, priorCheckpointHashes: { type: "object" }, feedback: { type: "array", items: { type: "string" } }, immutableEvidenceRefs: { type: "array", items: { type: "string" } } } } } } } } },
+        responses: { "200": { description: "Server-validated refinement decision and updated checkpoint state" }, "409": { description: "Run revision or refinement context conflict" }, "422": { description: "Invalid AI stage draft" }, "429": { description: "Rate limited" } },
       },
     },
     "/api/cad/v1/generation/advance": {
@@ -286,7 +316,7 @@ const SPEC = {
       post: {
         summary: "Finalize an AI CAD run with server-derived evidence",
         description:
-          "Continues AI product implementation through animation, per-part G0-G7 manufacturing gates, optional reference STEP domain evidence, STEP round-trip measurements, and exact-artifact G9. It returns an adaptive execution plan instead of treating every result as a draft or forcing every product into precision CAD. Caller pass claims are ignored; failures identify only affected parts and do not create quotes or RFQs.",
+          "Continues AI product implementation through animation, per-part G0-G7 manufacturing gates, optional reference STEP domain evidence, STEP round-trip measurements, and exact-artifact G9. Commercial release additionally requires server-signed evidence bound to the run revision, program SHA-256, exact kernel checkpoint, topology checkpoint and part evidence. Caller pass claims are ignored; failures identify only affected parts and do not create quotes or RFQs.",
         tags: ["CAD"],
         security: [{ bearerAuth: [] }],
         requestBody: {
@@ -791,7 +821,7 @@ const SPEC = {
       post: {
         summary: "Verify the complete staged AI CAD generation process",
         description:
-          "Fail-closed read-only gate across intent, independent part generation, manufacturing evidence, mate residuals, declared DoF, precise interference, motion and STEP roundtrip. No quote or RFQ is created.",
+          "Advisory, read-only evaluation of caller-supplied claims across intent, independent part generation, manufacturing evidence, mate residuals, declared DoF, precise interference, motion and STEP roundtrip. It always returns releaseReady=false; only the server-owned refine/advance/finalize flow can authorize release. No quote or RFQ is created.",
         tags: ["CAD"],
         security: [{ bearerAuth: [] }],
         requestBody: {
@@ -817,11 +847,36 @@ const SPEC = {
         responses: {
           "200": {
             description:
-              "Current blocking stage, structured errors/warnings and releaseReady",
+              "Current blocking stage, structured errors/warnings, advisoryOnly=true and releaseReady=false",
           },
           "400": { description: "Invalid evidence object" },
           "429": { description: "Rate limited" },
         },
+      },
+    },
+    "/api/cad/v1/physical-network/verify": {
+      post: {
+        summary: "Verify typed ports and measured physical product routes",
+        description: "Fail-closed verification for equipment ports, nodes, connections and measured run polylines. Release requires strict physical route geometry; analysis-only internal flow cannot be collision geometry and duplicate physical internal-flow solids fail.",
+        tags: ["CAD"],
+        security: [{ bearerAuth: [] }],
+        requestBody: {
+          required: true,
+          content: { "application/json": { schema: {
+            type: "object", additionalProperties: false, required: ["network"], properties: { network: {
+              type: "object", additionalProperties: false, required: ["id", "ports", "nodes", "connections", "runs", "rules"],
+              properties: {
+                id: { type: "string", minLength: 1, maxLength: 128 },
+                ports: { type: "array", maxItems: 2000, items: PHYSICAL_PORT_SCHEMA },
+                nodes: { type: "array", maxItems: 10000, items: PHYSICAL_NODE_SCHEMA },
+                connections: { type: "array", maxItems: 20000, items: PHYSICAL_CONNECTION_SCHEMA },
+                runs: { type: "array", maxItems: 10000, items: PHYSICAL_RUN_SCHEMA },
+                rules: { type: "object", additionalProperties: false, required: ["maximumConnectionDistanceMm", "minimumDrainSlopePercent", "requireMatchingConnector", "requirePhysicalRouteGeometry", "requireDiameterMatch", "requireRunFromConnectedPort"], properties: { maximumConnectionDistanceMm: { type: "number", minimum: 0 }, minimumDrainSlopePercent: { type: "number", minimum: 0 }, requireMatchingConnector: { type: "boolean" }, requirePhysicalRouteGeometry: { const: true }, endpointToleranceMm: { type: "number", minimum: 0 }, lengthToleranceMm: { type: "number", minimum: 0 }, minimumAxisAlignmentCos: { type: "number", minimum: 0, maximum: 1 }, requireDiameterMatch: { const: true }, requireRunFromConnectedPort: { const: true } } },
+              },
+            } },
+          } } },
+        },
+        responses: { "200": { description: "Server-derived physical-network verdict and measurements" }, "422": { description: "Invalid or untyped physical-network contract" }, "429": { description: "Rate limited" } },
       },
     },
     "/api/cad/v1/robot/generate": {
@@ -877,7 +932,7 @@ const SPEC = {
       post: {
         summary: "Evaluate fail-closed manufacturing evidence G0-G9",
         description:
-          "Read-only evidence evaluation. Missing gates are not_run and block designOk. No quote, RFQ, or artifact release is created.",
+          "Read-only preview of caller-supplied evidence. Missing gates are not_run, and even a complete caller assertion never becomes an authoritative designOk or release pass. No quote, RFQ, or artifact release is created.",
         tags: ["CAD"],
         security: [{ bearerAuth: [] }],
         requestBody: {
@@ -887,7 +942,7 @@ const SPEC = {
         responses: {
           "200": {
             description:
-              "G0-G9 report, designOk, and explicit no-side-effect status",
+              "G0-G9 reported-gate preview, fail-closed authoritative status, and explicit no-side-effect status",
           },
           "400": { description: "Invalid evidence object" },
           "429": { description: "Rate limited" },

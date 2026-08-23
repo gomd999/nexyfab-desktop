@@ -22,6 +22,7 @@ NexyFab의 cron 라우트들은 모두 HTTP GET 엔드포인트로 구현되어 
 | `GET /api/cron/prompt-variant-burnin` | 하루 1회 (예: 04:00 UTC) | A/B variant 회귀 검사 |
 | `GET /api/cron/prompt-cost-budget` | 하루 1회 (예: 04:30 UTC) | AI 일일 비용 예산 알림 |
 | `GET /api/cron/audit-prune` | 하루 1회 (예: 05:00 UTC) | audit 테이블 retention 정리 (기본 90일) |
+| `POST /api/cron/assembly-drawing-handoff-prune?limit=100` | 하루 1회 (예: 05:10 UTC) | 만료된 서버 소유 Assembly→Drawing handoff를 최대 100개씩 정리; `hasMore`이면 반복 |
 
 ## 2. Railway Cron Service 구성 (권장)
 
@@ -38,6 +39,7 @@ Railway 프로젝트에 새 service를 추가:
    0 4 * * *  curl -fSs -H "Authorization: Bearer $CRON_SECRET" https://api.nexyfab.com/api/cron/prompt-variant-burnin
    30 4 * * * curl -fSs -H "Authorization: Bearer $CRON_SECRET" https://api.nexyfab.com/api/cron/prompt-cost-budget
    0 5 * * *  curl -fSs -H "Authorization: Bearer $CRON_SECRET" https://api.nexyfab.com/api/cron/audit-prune
+   10 5 * * * curl -fSs -X POST -H "Authorization: Bearer $CRON_SECRET" "https://api.nexyfab.com/api/cron/assembly-drawing-handoff-prune?limit=100"
    0 0 * * *  curl -fSs -H "Authorization: Bearer $CRON_SECRET" https://api.nexyfab.com/api/cron/quote-expire
    30 0 * * * curl -fSs -H "Authorization: Bearer $CRON_SECRET" https://api.nexyfab.com/api/cron/rfq-expire
    0 1 * * *  curl -fSs -H "Authorization: Bearer $CRON_SECRET" https://api.nexyfab.com/api/cron/webhook-prune

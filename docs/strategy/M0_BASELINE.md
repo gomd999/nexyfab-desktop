@@ -8,7 +8,7 @@
 |------|------|
 | `npm run m0` | `typecheck` + 골든 `.nfab` 파싱 테스트 (`src/test/m0/nfabGolden.test.ts`) |
 | `npm run m1` | `typecheck` + M0 골든 + M1 exchange 테스트 — **M1 채택 시 권장 일일 게이트** |
-| `npm run test` | 전체 Vitest (커버리지 정책은 `vitest.config.ts` 참고) |
+| `npm run test` | 전체 Vitest (커버리지 정책은 `vitest.config.mts` 참고) |
 | `npm run test:e2e` | Playwright (로컬은 `npm run dev` 후, CI는 `playwright.config`의 webServer) |
 
 골든 파일: `tests/golden/m0-minimal.nfab.json` — 스키마 `parseProject` 호환 최소 프로젝트.

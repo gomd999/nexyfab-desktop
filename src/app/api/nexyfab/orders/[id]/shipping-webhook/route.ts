@@ -18,8 +18,10 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createHmac, timingSafeEqual } from 'node:crypto';
 import { getDbAdapter } from '@/lib/db-adapter';
 import type { NexyfabOrderStatus } from '@/types/nexyfab-orders';
+import { boundedRawBodyError, readBoundedRawBody } from '@/lib/boundedRawBody';
 
 export const dynamic = 'force-dynamic';
+const SHIPPING_WEBHOOK_BODY_BYTES = 256 * 1024;
 
 type ShippingEvent = 'in_transit' | 'out_for_delivery' | 'delivered' | 'exception';
 const VALID_EVENTS = new Set<string>(['in_transit', 'out_for_delivery', 'delivered', 'exception']);
@@ -46,7 +48,7 @@ async function ensureTrackingCols(db: ReturnType<typeof getDbAdapter>) {
 }
 
 /** Verify `X-Shipping-Signature: sha256=<hex>` against the raw request body. */
-function verifySignature(rawBody: string, header: string | null, secret: string): boolean {
+function verifySignature(rawBody: Uint8Array, header: string | null, secret: string): boolean {
   if (!header) return false;
   const [algo, hex] = header.split('=');
   if (algo !== 'sha256' || !hex) return false;
@@ -78,7 +80,16 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> },
 ) {
   const secret = process.env.SHIPPING_WEBHOOK_SECRET ?? '';
-  const rawBody = await req.text();
+  let rawBody: Uint8Array;
+  try {
+    rawBody = await readBoundedRawBody(req, SHIPPING_WEBHOOK_BODY_BYTES);
+  } catch (error) {
+    const bodyError = boundedRawBodyError(error);
+    if (bodyError?.code === 'PAYLOAD_TOO_LARGE') {
+      return NextResponse.json({ error: 'Request body too large' }, { status: bodyError.status });
+    }
+    return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 });
+  }
 
   if (secret) {
     const sig = req.headers.get('x-shipping-signature');
@@ -92,7 +103,8 @@ export async function POST(
 
   let body: WebhookBody;
   try {
-    body = JSON.parse(rawBody) as WebhookBody;
+    const rawText = new TextDecoder('utf-8', { fatal: true }).decode(rawBody);
+    body = JSON.parse(rawText) as WebhookBody;
   } catch {
     return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 });
   }

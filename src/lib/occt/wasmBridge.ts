@@ -337,6 +337,13 @@ export function createWasmBridge(opts: CreateWasmBridgeOptions = {}): WasmOcctBr
     return toOperationResult(await sendRequest('buildPrismAt', { loop: [...loop], z0, heightMm }));
   };
 
+  const buildCylinderAt: NonNullable<OcctBridge['buildCylinderAt']> = async (
+    center: readonly [number, number, number], axis: readonly [number, number, number], radiusMm: number, depthMm: number,
+  ) => {
+    await ensureReady();
+    return toOperationResult(await sendRequest('buildCylinderAt', { center: [...center], axis: [...axis], radiusMm, depthMm }));
+  };
+
   const buildConeAt = async (
     center: { x: number; y: number }, z0: number, heightMm: number, radius0: number, radius1: number,
   ): Promise<OcctOperationResult> => {
@@ -386,6 +393,20 @@ export function createWasmBridge(opts: CreateWasmBridgeOptions = {}): WasmOcctBr
     await ensureReady();
     const handle = wireHandleOf(shape, 'chamfer');
     const resp = await sendRequest('chamfer', { handle, edgeIds, dim: distance });
+    return toOperationResult(resp);
+  };
+
+  /** Exact kernel push/pull for a named planar B-Rep face.  Curved faces are
+   * deliberately rejected by the worker until the surface-offset contract is
+   * available; callers must keep the mesh fallback disabled for those faces. */
+  const pushPullFace = async (
+    shape: OcctShape,
+    faceId: string,
+    distance: number,
+  ): Promise<OcctOperationResult> => {
+    await ensureReady();
+    const handle = wireHandleOf(shape, 'pushPullFace');
+    const resp = await sendRequest('pushPullFace', { handle, faceId, distance });
     return toOperationResult(resp);
   };
 
@@ -512,6 +533,7 @@ export function createWasmBridge(opts: CreateWasmBridgeOptions = {}): WasmOcctBr
     buildFromExtrude,
     buildFromRevolve,
     buildPrismAt,
+    buildCylinderAt,
     buildConeAt,
     buildThreadHelixCutter,
     boolean,
@@ -519,6 +541,7 @@ export function createWasmBridge(opts: CreateWasmBridgeOptions = {}): WasmOcctBr
     variableFillet,
     lawFillet,
     chamfer,
+    pushPullFace,
     buildPlanarFace,
     thicken,
     surfaceTrim,

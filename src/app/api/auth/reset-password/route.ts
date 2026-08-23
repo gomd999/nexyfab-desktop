@@ -5,6 +5,9 @@ import { createHash } from 'crypto';
 import { z } from 'zod';
 import bcrypt from 'bcryptjs';
 import { getTrustedClientIp } from '@/lib/client-ip';
+import { boundedJsonError, readBoundedJson } from '@/lib/boundedJsonBody';
+
+const MAX_RESET_PASSWORD_BODY_BYTES = 16 * 1024;
 
 export const dynamic = 'force-dynamic';
 
@@ -14,7 +17,9 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Too many requests' }, { status: 429 });
   }
 
-  const body = await req.json().catch(() => ({}));
+  let body: unknown = {};
+  try { body = await readBoundedJson(req, MAX_RESET_PASSWORD_BODY_BYTES); }
+  catch (error) { if (boundedJsonError(error)?.code === 'PAYLOAD_TOO_LARGE') return NextResponse.json({ error: 'Request too large', code: 'PAYLOAD_TOO_LARGE' }, { status: 413 }); }
   const parsed = z.object({
     token: z.string().min(1),
     password: z.string().min(8).regex(/[0-9]/, 'Password must contain at least one number'),

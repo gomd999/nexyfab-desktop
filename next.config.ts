@@ -2,6 +2,7 @@
 // Railway/Cloudflare 배포는 대개 파일이 없고 대시보드/Secrets 만 사용 → 무시됨.
 // OS/CI/Railway env 에 이미 있으면 덮어쓰지 않음 (배포 환경 우선).
 // 반드시 다른 import 보다 먼저 실행 — Sentry 등이 env 를 캡처하기 전에 주입.
+// eslint-disable-next-line @typescript-eslint/no-require-imports -- side-effect loader must run before static imports are evaluated
 require('./scripts/load-parent-env.cjs');
 
 import type { NextConfig } from "next";
@@ -62,6 +63,24 @@ const nextConfig: NextConfig = {
       './data/**/*',
       './nexyfab.db',
       './nexyfab.db-*',
+    ],
+  },
+  // The browser Precision CAD API loads the reviewed installer-core MCP
+  // implementation at runtime. Keep its transitive ESM modules in standalone
+  // deployments even though the import is intentionally dynamic.
+  outputFileTracingIncludes: {
+    '/api/nexyfab/projects/*/precision-cad-agent/*': [
+      './scripts/drawing-to-3d/**/*',
+      './scripts/engineering-core/**/*',
+    ],
+    // The exact-promotion route is the only server entry point that loads the
+    // real Node OCCT adapter. Keep its narrowly required WASM runtime files in
+    // standalone output without tracing the package for every API route.
+    '/api/nexyfab/projects/*/architecture-interior-exact': [
+      './node_modules/opencascade.js/dist/opencascade.wasm.js',
+      './node_modules/opencascade.js/dist/opencascade.wasm.wasm',
+      './node_modules/opencascade.js/package.json',
+      './src/lib/occt/**/*',
     ],
   },
   allowedDevOrigins: ['127.0.0.1', 'localhost'],
@@ -158,10 +177,11 @@ const nextConfig: NextConfig = {
   },
   experimental: {
     // Proxy clones API bodies so both the security boundary and route can
-    // consume them. Complex CAD uploads need more than Next's 10MB default;
-    // src/proxy.ts still rejects ordinary API bodies above 16MB and permits
-    // 64MB only for the named upload surfaces.
-    proxyClientMaxBodySize: '64mb',
+    // consume them. Complex CAD evidence routes explicitly accept up to
+    // 500 MB. A lower buffer silently truncates multipart bodies before the
+    // route sees them. src/proxy.ts still rejects ordinary APIs above 16 MB
+    // and applies narrower 150/300/500 MB route-specific limits.
+    proxyClientMaxBodySize: '500mb',
     optimizePackageImports: ['three', '@react-three/fiber', '@react-three/drei', 'lucide-react'],
     serverActions: {
       bodySizeLimit: '10mb',

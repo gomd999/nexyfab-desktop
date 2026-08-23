@@ -60,15 +60,34 @@ function maxEntityId(stepText: string): number {
   return max;
 }
 
-/** Find the entity id of the part's primary PRODUCT_DEFINITION_SHAPE
- *  (or its precursor PRODUCT_DEFINITION when PDS isn't emitted by the
- *  writer). Returns null if neither is present. */
+/** Find the entity id of the part's PRODUCT_DEFINITION.
+ *
+ * NEXT_ASSEMBLY_USAGE_OCCURRENCE formally references PRODUCT_DEFINITION on
+ * both sides. Older code preferred PRODUCT_DEFINITION_SHAPE when it existed,
+ * leaving an apparently populated tree whose child reference had the wrong
+ * entity type. Keep the PDS fallback only for legacy/non-conforming sources;
+ * all NexyFab and OCCT exports take the standards-compliant PD path. */
 function findPartDefinitionId(stepText: string): number | null {
-  const pds = stepText.match(/^#(\d+)\s*=\s*PRODUCT_DEFINITION_SHAPE/m);
-  if (pds) return Number(pds[1]);
   const pd = stepText.match(/^#(\d+)\s*=\s*PRODUCT_DEFINITION\s*\(/m);
   if (pd) return Number(pd[1]);
   return null;
+}
+
+/** Find the shape representation bound to the part definition through
+ * PRODUCT_DEFINITION_SHAPE -> SHAPE_DEFINITION_REPRESENTATION. */
+function findPartRepresentationId(stepText: string, partDefinitionId: number): number | null {
+  const pdsPattern = new RegExp(
+    `^#(\\d+)\\s*=\\s*PRODUCT_DEFINITION_SHAPE\\s*\\([^;]*#${partDefinitionId}\\s*\\)`,
+    'm',
+  );
+  const pds = stepText.match(pdsPattern);
+  if (!pds) return null;
+  const sdrPattern = new RegExp(
+    `^#\\d+\\s*=\\s*SHAPE_DEFINITION_REPRESENTATION\\s*\\(\\s*#${pds[1]}\\s*,\\s*#(\\d+)\\s*\\)`,
+    'm',
+  );
+  const sdr = stepText.match(sdrPattern);
+  return sdr ? Number(sdr[1]) : null;
 }
 
 /** Extract just the entity lines from a part's STEP DATA section. */
@@ -113,6 +132,7 @@ interface PreparedPart {
   offset: number;
   dataLines: string[];
   partDefId: number; // post-offset id of part's PRODUCT_DEFINITION
+  partRepId: number; // post-offset id of part's bound SHAPE_REPRESENTATION
   transform: THREE.Matrix4;
 }
 
@@ -150,8 +170,15 @@ export function stitchAssemblyHierarchy(
     const part = parts[i];
     const stepText = perPartStepText[i];
     const localPartDefId = findPartDefinitionId(stepText);
+    const localPartRepId = localPartDefId === null
+      ? null
+      : findPartRepresentationId(stepText, localPartDefId);
     if (localPartDefId == null) {
       diagnostics.push({ partId: part.id, warning: 'no PRODUCT_DEFINITION found in part STEP' });
+      continue;
+    }
+    if (localPartRepId == null) {
+      diagnostics.push({ partId: part.id, warning: 'no SHAPE_DEFINITION_REPRESENTATION found in part STEP' });
       continue;
     }
     const dataLines = extractDataLines(stepText);
@@ -166,13 +193,14 @@ export function stitchAssemblyHierarchy(
       offset: runningOffset,
       dataLines: dataLines.map((l) => shiftEntityIds(l, runningOffset)),
       partDefId: localPartDefId + runningOffset,
+      partRepId: localPartRepId + runningOffset,
       transform: part.transform ?? new THREE.Matrix4().identity(),
     });
     runningOffset += partMax + 100;
   }
 
   if (prepared.length === 0) {
-    throw new Error('stitchAssemblyHierarchy: no parts had a parseable PRODUCT_DEFINITION');
+    throw new Error('stitchAssemblyHierarchy: no parts had a parseable product and shape representation');
   }
 
   const safeName = assemblyName.replace(/'/g, '');
@@ -208,6 +236,41 @@ export function stitchAssemblyHierarchy(
   lines.push(`#${rootProdFormId}=PRODUCT_DEFINITION_FORMATION('','',#${rootProdId});`);
   const rootProdDefId = id++;
   lines.push(`#${rootProdDefId}=PRODUCT_DEFINITION('design','',#${rootProdFormId},#${prodDefCtxId});`);
+
+  // Assembly-side representation context used by every occurrence
+  // relationship. A standards-compliant placement needs more than a bare
+  // ITEM_DEFINED_TRANSFORMATION: the transform must be reachable from the
+  // occurrence PDS through CDSR/RRWT. Several desktop importers ignore an
+  // orphan IDT even though the entity itself parses successfully.
+  const asmOriginId = id++;
+  lines.push(`#${asmOriginId}=CARTESIAN_POINT('',(0.0,0.0,0.0));`);
+  const asmZId = id++;
+  lines.push(`#${asmZId}=DIRECTION('',(0.0,0.0,1.0));`);
+  const asmXId = id++;
+  lines.push(`#${asmXId}=DIRECTION('',(1.0,0.0,0.0));`);
+  const asmAxisId = id++;
+  lines.push(`#${asmAxisId}=AXIS2_PLACEMENT_3D('',#${asmOriginId},#${asmZId},#${asmXId});`);
+  const asmLengthUnitId = id++;
+  lines.push(`#${asmLengthUnitId}=(LENGTH_UNIT() NAMED_UNIT(*) SI_UNIT(.MILLI.,.METRE.));`);
+  const asmAngleUnitId = id++;
+  lines.push(`#${asmAngleUnitId}=(NAMED_UNIT(*) PLANE_ANGLE_UNIT() SI_UNIT($,.RADIAN.));`);
+  const asmSolidAngleUnitId = id++;
+  lines.push(`#${asmSolidAngleUnitId}=(NAMED_UNIT(*) SI_UNIT($,.STERADIAN.) SOLID_ANGLE_UNIT());`);
+  const asmUncertaintyId = id++;
+  lines.push(`#${asmUncertaintyId}=UNCERTAINTY_MEASURE_WITH_UNIT(LENGTH_MEASURE(1.E-7),#${asmLengthUnitId},'distance_accuracy_value','confusion accuracy');`);
+  const asmContextId = id++;
+  lines.push(
+    `#${asmContextId}=(GEOMETRIC_REPRESENTATION_CONTEXT(3) ` +
+    `GLOBAL_UNCERTAINTY_ASSIGNED_CONTEXT((#${asmUncertaintyId})) ` +
+    `GLOBAL_UNIT_ASSIGNED_CONTEXT((#${asmLengthUnitId},#${asmAngleUnitId},#${asmSolidAngleUnitId})) ` +
+    `REPRESENTATION_CONTEXT('Assembly Context','3D'));`,
+  );
+  const asmRepId = id++;
+  lines.push(`#${asmRepId}=SHAPE_REPRESENTATION('${safeName}',(#${asmAxisId}),#${asmContextId});`);
+  const rootPdsId = id++;
+  lines.push(`#${rootPdsId}=PRODUCT_DEFINITION_SHAPE('','',#${rootProdDefId});`);
+  const rootSdrId = id++;
+  lines.push(`#${rootSdrId}=SHAPE_DEFINITION_REPRESENTATION(#${rootPdsId},#${asmRepId});`);
 
   // Per-part NAUO + transform
   for (let i = 0; i < prepared.length; i++) {
@@ -248,7 +311,19 @@ export function stitchAssemblyHierarchy(
 
     // Transformation entity binding source → target.
     const idtId = id++;
-    lines.push(`#${idtId}=ITEM_DEFINED_TRANSFORMATION('${occurrenceTag}_xfm','',#${srcFrameId},#${dstFrameId});`);
+    lines.push(`#${idtId}=ITEM_DEFINED_TRANSFORMATION('${occurrenceTag}_xfm','',#${dstFrameId},#${srcFrameId});`);
+
+    // Bind the transform to this NAUO. This is the formal AP214/AP242 chain
+    // consumed by `readStepNauoTransform` and native CAD importers.
+    const occurrenceRelationshipId = id++;
+    lines.push(
+      `#${occurrenceRelationshipId}=( REPRESENTATION_RELATIONSHIP('','',#${asmRepId},#${part.partRepId}) ` +
+      `REPRESENTATION_RELATIONSHIP_WITH_TRANSFORMATION(#${idtId}) SHAPE_REPRESENTATION_RELATIONSHIP() );`,
+    );
+    const occurrencePdsId = id++;
+    lines.push(`#${occurrencePdsId}=PRODUCT_DEFINITION_SHAPE('','',#${nauoId});`);
+    const occurrenceCdsrId = id++;
+    lines.push(`#${occurrenceCdsrId}=CONTEXT_DEPENDENT_SHAPE_REPRESENTATION(#${occurrenceRelationshipId},#${occurrencePdsId});`);
   }
 
   // ── Per-part renumbered entities ──────────────────────────────────────
@@ -316,16 +391,22 @@ interface LeafPlan {
   dataLines: string[];
   /** Per-leaf renumbered PRODUCT_DEFINITION id. */
   partDefId: number;
+  /** Per-leaf renumbered shape representation id. */
+  partRepId: number;
   transform: THREE.Matrix4;
 }
 
 interface NodePlan {
   /** Sub-assembly's own renumbered PRODUCT_DEFINITION id (assigned in wrapper range). */
   defId: number;
+  /** Sub-assembly shape representation id in the reserved wrapper range. */
+  repId: number;
   label: string;
   transform: THREE.Matrix4;
   /** Refs to children's defIds (interior + leaf). */
   childDefIds: number[];
+  /** Representation paired with each child definition. */
+  childRepIds: number[];
   /** Per-child transform for the occurrence (matches childDefIds index). */
   childTransforms: THREE.Matrix4[];
   /** Per-child occurrence name (NAUO 'name' field). */
@@ -346,16 +427,24 @@ function planNode(
     nodes: NodePlan[];
     nextLeafOffset: { value: number };
     nextWrapperDefId: { value: number };
+    nextWrapperRepId: { value: number };
     depth: { max: number };
   },
   currentDepth: number,
-): { defId: number } | null {
+): { defId: number; repId: number } | null {
   ctx.depth.max = Math.max(ctx.depth.max, currentDepth);
 
   if (isPartNode(node)) {
     const localPartDefId = findPartDefinitionId(node.stepText);
+    const localPartRepId = localPartDefId === null
+      ? null
+      : findPartRepresentationId(node.stepText, localPartDefId);
     if (localPartDefId == null) {
       ctx.diagnostics.push({ partId: node.partId, warning: 'no PRODUCT_DEFINITION found in part STEP' });
+      return null;
+    }
+    if (localPartRepId == null) {
+      ctx.diagnostics.push({ partId: node.partId, warning: 'no SHAPE_DEFINITION_REPRESENTATION found in part STEP' });
       return null;
     }
     const dataLines = extractDataLines(node.stepText);
@@ -373,14 +462,16 @@ function planNode(
       offset,
       dataLines: dataLines.map((l) => shiftEntityIds(l, offset)),
       partDefId: localPartDefId + offset,
+      partRepId: localPartRepId + offset,
       transform: node.transform ?? new THREE.Matrix4().identity(),
     });
 
-    return { defId: localPartDefId + offset };
+    return { defId: localPartDefId + offset, repId: localPartRepId + offset };
   }
 
   // Sub-assembly node — recurse into children, then allocate wrapper defId.
   const childDefIds: number[] = [];
+  const childRepIds: number[] = [];
   const childTransforms: THREE.Matrix4[] = [];
   const childOccNames: string[] = [];
   let i = 0;
@@ -388,6 +479,7 @@ function planNode(
     const result = planNode(child, ctx, currentDepth + 1);
     if (result) {
       childDefIds.push(result.defId);
+      childRepIds.push(result.repId);
       const childTx = isPartNode(child)
         ? (child.transform ?? new THREE.Matrix4().identity())
         : (child.transform ?? new THREE.Matrix4().identity());
@@ -404,16 +496,19 @@ function planNode(
   }
 
   const myDefId = ctx.nextWrapperDefId.value++;
+  const myRepId = ctx.nextWrapperRepId.value++;
   ctx.nodes.push({
     defId: myDefId,
+    repId: myRepId,
     label: (node.label ?? node.subAsmId).replace(/'/g, ''),
     transform: node.transform ?? new THREE.Matrix4().identity(),
     childDefIds,
+    childRepIds,
     childTransforms,
     childOccNames,
   });
 
-  return { defId: myDefId };
+  return { defId: myDefId, repId: myRepId };
 }
 
 /**
@@ -444,6 +539,7 @@ export function stitchNestedAssemblyHierarchy(
     nodes: [] as NodePlan[],
     nextLeafOffset: { value: 1000 },
     nextWrapperDefId: { value: 100 }, // sub-asm PRODUCT_DEFINITION ids live in 100..999
+    nextWrapperRepId: { value: 500 }, // sub-asm representations use a disjoint reserved range
     depth: { max: 0 },
   };
 
@@ -458,6 +554,19 @@ export function stitchNestedAssemblyHierarchy(
   // ── Wrapper emission ────────────────────────────────────────────────────
   const lines: string[] = [];
   let id = 1;
+  const reservedValues = ctx.nodes.flatMap((node) => [node.defId, node.repId]);
+  const reservedWrapperIds = new Set(reservedValues);
+  if (reservedWrapperIds.size !== reservedValues.length
+    || reservedValues.some((value) => value < 1 || value >= 1000)) {
+    throw new Error('stitchNestedAssemblyHierarchy: wrapper entity capacity exceeded');
+  }
+  const nextId = (): number => {
+    while (reservedWrapperIds.has(id)) id++;
+    if (id >= 1000) {
+      throw new Error('stitchNestedAssemblyHierarchy: wrapper entity capacity exceeded');
+    }
+    return id++;
+  };
 
   lines.push('ISO-10303-21;');
   lines.push('HEADER;');
@@ -468,37 +577,67 @@ export function stitchNestedAssemblyHierarchy(
   lines.push('DATA;');
 
   // Shared application context entities
-  const appCtxId = id++;
+  const appCtxId = nextId();
   lines.push(`#${appCtxId}=APPLICATION_CONTEXT('mechanical design');`);
-  const appProtoId = id++;
+  const appProtoId = nextId();
   lines.push(`#${appProtoId}=APPLICATION_PROTOCOL_DEFINITION('international standard','automotive_design',2003,#${appCtxId});`);
-  const prodCtxId = id++;
+  const prodCtxId = nextId();
   lines.push(`#${prodCtxId}=PRODUCT_CONTEXT('',#${appCtxId},'mechanical');`);
-  const prodDefCtxId = id++;
+  const prodDefCtxId = nextId();
   lines.push(`#${prodDefCtxId}=PRODUCT_DEFINITION_CONTEXT('part definition',#${appCtxId},'design');`);
+
+  const asmOriginId = nextId();
+  lines.push(`#${asmOriginId}=CARTESIAN_POINT('',(0.0,0.0,0.0));`);
+  const asmZId = nextId();
+  lines.push(`#${asmZId}=DIRECTION('',(0.0,0.0,1.0));`);
+  const asmXId = nextId();
+  lines.push(`#${asmXId}=DIRECTION('',(1.0,0.0,0.0));`);
+  const asmAxisId = nextId();
+  lines.push(`#${asmAxisId}=AXIS2_PLACEMENT_3D('',#${asmOriginId},#${asmZId},#${asmXId});`);
+  const asmLengthUnitId = nextId();
+  lines.push(`#${asmLengthUnitId}=(LENGTH_UNIT() NAMED_UNIT(*) SI_UNIT(.MILLI.,.METRE.));`);
+  const asmAngleUnitId = nextId();
+  lines.push(`#${asmAngleUnitId}=(NAMED_UNIT(*) PLANE_ANGLE_UNIT() SI_UNIT($,.RADIAN.));`);
+  const asmSolidAngleUnitId = nextId();
+  lines.push(`#${asmSolidAngleUnitId}=(NAMED_UNIT(*) SI_UNIT($,.STERADIAN.) SOLID_ANGLE_UNIT());`);
+  const asmUncertaintyId = nextId();
+  lines.push(`#${asmUncertaintyId}=UNCERTAINTY_MEASURE_WITH_UNIT(LENGTH_MEASURE(1.E-7),#${asmLengthUnitId},'distance_accuracy_value','confusion accuracy');`);
+  const asmContextId = nextId();
+  lines.push(
+    `#${asmContextId}=(GEOMETRIC_REPRESENTATION_CONTEXT(3) ` +
+    `GLOBAL_UNCERTAINTY_ASSIGNED_CONTEXT((#${asmUncertaintyId})) ` +
+    `GLOBAL_UNIT_ASSIGNED_CONTEXT((#${asmLengthUnitId},#${asmAngleUnitId},#${asmSolidAngleUnitId})) ` +
+    `REPRESENTATION_CONTEXT('Assembly Context','3D'));`,
+  );
 
   // One PRODUCT + FORMATION + DEFINITION per sub-asm node (ctx.nodes ordered
   // bottom-up by the recursive walk → emit in reverse so the root appears
   // last and is easy to spot in the file).
   for (const sub of ctx.nodes) {
-    const prodId = id++;
+    const prodId = nextId();
     lines.push(`#${prodId}=PRODUCT('${sub.label}','${sub.label}','',(#${prodCtxId}));`);
-    const formId = id++;
+    const formId = nextId();
     lines.push(`#${formId}=PRODUCT_DEFINITION_FORMATION('','',#${prodId});`);
     // The sub-asm's defId was allocated by planNode in the wrapper range;
     // we emit the entity here using that id (we trust no collision because
     // the wrapper range [100..999] is reserved and id counter starts at 1).
     lines.push(`#${sub.defId}=PRODUCT_DEFINITION('design','',#${formId},#${prodDefCtxId});`);
+    lines.push(`#${sub.repId}=SHAPE_REPRESENTATION('${sub.label}',(#${asmAxisId}),#${asmContextId});`);
+    const subPdsId = nextId();
+    lines.push(`#${subPdsId}=PRODUCT_DEFINITION_SHAPE('','',#${sub.defId});`);
+    const subSdrId = nextId();
+    lines.push(`#${subSdrId}=SHAPE_DEFINITION_REPRESENTATION(#${subPdsId},#${sub.repId});`);
   }
 
   // Per sub-asm, emit NAUO + ITEM_DEFINED_TRANSFORMATION for each child.
   for (const sub of ctx.nodes) {
     for (let cIdx = 0; cIdx < sub.childDefIds.length; cIdx++) {
       const childDef = sub.childDefIds[cIdx];
+      const childRep = sub.childRepIds[cIdx];
       const childXfm = sub.childTransforms[cIdx];
       const occName = sub.childOccNames[cIdx];
 
-      const nauoId = id++;
+      const nauoId = nextId();
       lines.push(
         `#${nauoId}=NEXT_ASSEMBLY_USAGE_OCCURRENCE(` +
         `'${occName}','${occName}','',` +
@@ -506,15 +645,25 @@ export function stitchNestedAssemblyHierarchy(
       );
 
       const { origin, zAxis, xAxis } = decomposeForAxisPlacement(childXfm);
-      const srcPtId = id++; lines.push(`#${srcPtId}=CARTESIAN_POINT('',(0.0,0.0,0.0));`);
-      const srcZId = id++; lines.push(`#${srcZId}=DIRECTION('',(0.0,0.0,1.0));`);
-      const srcXId = id++; lines.push(`#${srcXId}=DIRECTION('',(1.0,0.0,0.0));`);
-      const srcFrame = id++; lines.push(`#${srcFrame}=AXIS2_PLACEMENT_3D('',#${srcPtId},#${srcZId},#${srcXId});`);
-      const dstPtId = id++; lines.push(`#${dstPtId}=CARTESIAN_POINT('',(${fmt(origin[0])},${fmt(origin[1])},${fmt(origin[2])}));`);
-      const dstZId = id++; lines.push(`#${dstZId}=DIRECTION('',(${fmt(zAxis[0])},${fmt(zAxis[1])},${fmt(zAxis[2])}));`);
-      const dstXId = id++; lines.push(`#${dstXId}=DIRECTION('',(${fmt(xAxis[0])},${fmt(xAxis[1])},${fmt(xAxis[2])}));`);
-      const dstFrame = id++; lines.push(`#${dstFrame}=AXIS2_PLACEMENT_3D('',#${dstPtId},#${dstZId},#${dstXId});`);
-      const idtId = id++; lines.push(`#${idtId}=ITEM_DEFINED_TRANSFORMATION('${occName}_xfm','',#${srcFrame},#${dstFrame});`);
+      const srcPtId = nextId(); lines.push(`#${srcPtId}=CARTESIAN_POINT('',(0.0,0.0,0.0));`);
+      const srcZId = nextId(); lines.push(`#${srcZId}=DIRECTION('',(0.0,0.0,1.0));`);
+      const srcXId = nextId(); lines.push(`#${srcXId}=DIRECTION('',(1.0,0.0,0.0));`);
+      const srcFrame = nextId(); lines.push(`#${srcFrame}=AXIS2_PLACEMENT_3D('',#${srcPtId},#${srcZId},#${srcXId});`);
+      const dstPtId = nextId(); lines.push(`#${dstPtId}=CARTESIAN_POINT('',(${fmt(origin[0])},${fmt(origin[1])},${fmt(origin[2])}));`);
+      const dstZId = nextId(); lines.push(`#${dstZId}=DIRECTION('',(${fmt(zAxis[0])},${fmt(zAxis[1])},${fmt(zAxis[2])}));`);
+      const dstXId = nextId(); lines.push(`#${dstXId}=DIRECTION('',(${fmt(xAxis[0])},${fmt(xAxis[1])},${fmt(xAxis[2])}));`);
+      const dstFrame = nextId(); lines.push(`#${dstFrame}=AXIS2_PLACEMENT_3D('',#${dstPtId},#${dstZId},#${dstXId});`);
+      const idtId = nextId();
+      lines.push(`#${idtId}=ITEM_DEFINED_TRANSFORMATION('${occName}_xfm','',#${dstFrame},#${srcFrame});`);
+      const relationshipId = nextId();
+      lines.push(
+        `#${relationshipId}=( REPRESENTATION_RELATIONSHIP('','',#${sub.repId},#${childRep}) ` +
+        `REPRESENTATION_RELATIONSHIP_WITH_TRANSFORMATION(#${idtId}) SHAPE_REPRESENTATION_RELATIONSHIP() );`,
+      );
+      const occurrencePdsId = nextId();
+      lines.push(`#${occurrencePdsId}=PRODUCT_DEFINITION_SHAPE('','',#${nauoId});`);
+      const occurrenceCdsrId = nextId();
+      lines.push(`#${occurrenceCdsrId}=CONTEXT_DEPENDENT_SHAPE_REPRESENTATION(#${relationshipId},#${occurrencePdsId});`);
     }
   }
 

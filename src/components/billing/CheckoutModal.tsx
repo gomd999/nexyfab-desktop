@@ -19,6 +19,7 @@
  */
 
 import { useEffect, useRef, useState } from 'react';
+import { createCommercialLocalizer } from '@/lib/i18n/commercialLocalizer';
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -47,6 +48,7 @@ interface CheckoutModalProps {
   annualFormatted?: string; // annual total price string (e.g. "₩278,208")
   onSuccess:        () => void;
   onClose:          () => void;
+  lang?: string;
 }
 
 /** Subset of Airwallex.js Drop-in used by this modal (loaded from CDN) */
@@ -104,8 +106,9 @@ const AIRWALLEX_CDN = 'https://checkout.airwallex.com/assets/elements.bundle.min
 // ── Main component ────────────────────────────────────────────────────────────
 
 export default function CheckoutModal({
-  plan, product, country, priceFormatted, period, annualFormatted, onSuccess, onClose,
+  plan, product, country, priceFormatted, period, annualFormatted, onSuccess, onClose, lang = 'en',
 }: CheckoutModalProps) {
+  const L = createCommercialLocalizer(lang);
   const [step, setStep]       = useState<'loading' | 'ready' | 'paying' | 'success' | 'error'>('loading');
   const [errorMsg, setErrorMsg] = useState('');
   const [params, setParams]   = useState<CheckoutParams | null>(null);
@@ -115,6 +118,7 @@ export default function CheckoutModal({
 
   // ── Step 1: fetch checkout params from server ───────────────────────────────
   useEffect(() => {
+    const localize = createCommercialLocalizer(lang);
     void (async () => {
       try {
         const res = await fetch('/api/billing/checkout', {
@@ -123,15 +127,15 @@ export default function CheckoutModal({
           body:    JSON.stringify({ plan, product, period, action: 'create' }),
         });
         const data = await res.json() as CheckoutParams & { error?: string };
-        if (!res.ok) throw new Error(data.error ?? '결제 초기화 실패');
+        if (!res.ok) throw new Error(data.error ?? localize('결제 초기화 실패', 'Payment initialization failed'));
         setParams(data);
         setStep('ready');
       } catch (e) {
-        setErrorMsg(e instanceof Error ? e.message : '오류 발생');
+        setErrorMsg(e instanceof Error ? e.message : localize('오류 발생', 'An error occurred'));
         setStep('error');
       }
     })();
-  }, [plan, product, period]);
+  }, [plan, product, period, lang]);
 
   // ── Step 2a: Mount Airwallex Drop-in (현지 결제수단 포함) ───────────────────
   useEffect(() => {
@@ -228,7 +232,7 @@ export default function CheckoutModal({
       });
         // Note: Toss redirects the page, so code after this line won't run
     } catch (e) {
-      setErrorMsg(e instanceof Error ? e.message : '결제 오류');
+        setErrorMsg(e instanceof Error ? e.message : L('결제 오류', 'Payment error'));
       setStep('error');
     }
   }
@@ -242,17 +246,17 @@ export default function CheckoutModal({
         <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
           <div>
             <div className="flex items-center gap-2">
-              <h2 className="text-lg font-black text-gray-900">결제하기</h2>
+              <h2 className="text-lg font-black text-gray-900">{L('결제하기', 'Checkout')}</h2>
               {period === 'annual' && (
-                <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-green-100 text-green-700">연간 20% 할인</span>
+                <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-green-100 text-green-700">{L('연간 20% 할인', '20% annual discount')}</span>
               )}
             </div>
             <p className="text-sm text-gray-500">
               {product} {plan.charAt(0).toUpperCase() + plan.slice(1)} ·{' '}
               {period === 'annual' ? (
-                <span className="font-semibold text-gray-800">{annualFormatted ?? priceFormatted} / 년</span>
+                <span className="font-semibold text-gray-800">{annualFormatted ?? priceFormatted} {L('/ 년', '/ year')}</span>
               ) : (
-                <span className="font-semibold text-gray-800">{priceFormatted} / 월</span>
+                <span className="font-semibold text-gray-800">{priceFormatted} {L('/ 월', '/ month')}</span>
               )}
             </p>
           </div>
@@ -268,7 +272,7 @@ export default function CheckoutModal({
                 <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                 <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
               </svg>
-              <p className="text-sm text-gray-400">결제 준비 중...</p>
+              <p className="text-sm text-gray-400">{L('결제 준비 중...', 'Preparing checkout...')}</p>
             </div>
           )}
 
@@ -276,8 +280,8 @@ export default function CheckoutModal({
           {step === 'success' && (
             <div className="flex flex-col items-center gap-3 py-10">
               <div className="text-5xl">✅</div>
-              <p className="text-lg font-black text-gray-900">결제 완료!</p>
-              <p className="text-sm text-gray-500">{plan} 플랜이 활성화되었습니다.</p>
+              <p className="text-lg font-black text-gray-900">{L('결제 완료!', 'Payment complete!')}</p>
+              <p className="text-sm text-gray-500">{plan} {L('플랜이 활성화되었습니다.', 'plan is now active.')}</p>
             </div>
           )}
 
@@ -288,7 +292,7 @@ export default function CheckoutModal({
                 <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                 <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
               </svg>
-              <p className="text-sm text-gray-400">결제 처리 중...</p>
+              <p className="text-sm text-gray-400">{L('결제 처리 중...', 'Processing payment...')}</p>
             </div>
           )}
 
@@ -300,7 +304,7 @@ export default function CheckoutModal({
               <button
                 onClick={() => { setStep('loading'); setErrorMsg(''); setParams(null); }}
                 className="px-4 py-2 text-sm font-bold rounded-xl bg-blue-600 text-white hover:bg-blue-700 transition">
-                다시 시도
+                {L('다시 시도', 'Try again')}
               </button>
             </div>
           )}
@@ -315,7 +319,7 @@ export default function CheckoutModal({
                 className="min-h-[200px] w-full"
               />
               <p className="text-xs text-gray-400 text-center flex items-center justify-center gap-1">
-                🔒 Airwallex 보안 결제 · PCI DSS 인증
+                🔒 {L('Airwallex 보안 결제 · PCI DSS 인증', 'Secure payment by Airwallex · PCI DSS certified')}
               </p>
             </div>
           )}
@@ -324,20 +328,20 @@ export default function CheckoutModal({
           {step === 'ready' && isToss && (
             <div className="space-y-4">
               <div className="bg-gray-50 rounded-xl p-4 text-sm text-gray-600 space-y-1">
-                <p className="font-semibold text-gray-800">결제 정보 확인</p>
-                <p>플랜: <span className="font-bold">{plan.charAt(0).toUpperCase() + plan.slice(1)}</span></p>
+                <p className="font-semibold text-gray-800">{L('결제 정보 확인', 'Review payment details')}</p>
+                <p>{L('플랜:', 'Plan:')} <span className="font-bold">{plan.charAt(0).toUpperCase() + plan.slice(1)}</span></p>
                 {period === 'annual' ? (
                   <>
-                    <p>결제 주기: <span className="font-bold text-green-700">연간 결제</span></p>
-                    <p>금액: <span className="font-bold">{annualFormatted ?? priceFormatted} / 년</span>
-                      <span className="ml-1 text-xs text-green-600">(20% 할인 적용)</span>
+                    <p>{L('결제 주기:', 'Billing cycle:')} <span className="font-bold text-green-700">{L('연간 결제', 'Annual billing')}</span></p>
+                    <p>{L('금액:', 'Amount:')} <span className="font-bold">{annualFormatted ?? priceFormatted} {L('/ 년', '/ year')}</span>
+                      <span className="ml-1 text-xs text-green-600">{L('(20% 할인 적용)', '(20% discount applied)')}</span>
                     </p>
-                    <p className="text-xs text-gray-400">VAT(10%) 포함 · 1년 단위 결제</p>
+                    <p className="text-xs text-gray-400">{L('VAT(10%) 포함 · 1년 단위 결제', 'VAT (10%) included · billed annually')}</p>
                   </>
                 ) : (
                   <>
-                    <p>금액: <span className="font-bold">{priceFormatted} / 월</span></p>
-                    <p className="text-xs text-gray-400">VAT(10%) 포함 · 매월 자동 결제</p>
+                    <p>{L('금액:', 'Amount:')} <span className="font-bold">{priceFormatted} {L('/ 월', '/ month')}</span></p>
+                    <p className="text-xs text-gray-400">{L('VAT(10%) 포함 · 매월 자동 결제', 'VAT (10%) included · billed monthly')}</p>
                   </>
                 )}
               </div>
@@ -345,13 +349,13 @@ export default function CheckoutModal({
               <button
                 onClick={() => void handleTossPayment('CARD')}
                 className="w-full py-3.5 bg-blue-600 hover:bg-blue-700 text-white font-black rounded-xl text-base transition">
-                카드 결제
+                {L('카드 결제', 'Pay by card')}
               </button>
 
               <div className="grid grid-cols-2 gap-2">
                 {([
-                  { label: '토스페이',  icon: '🔵', method: 'TOSSPAY' as const },
-                  { label: '계좌이체',  icon: '🏦', method: 'TRANSFER' as const },
+                  { label: L('토스페이', 'Toss Pay'),  icon: '🔵', method: 'TOSSPAY' as const },
+                  { label: L('계좌이체', 'Bank transfer'),  icon: '🏦', method: 'TRANSFER' as const },
                 ] as const).map(m => (
                   <button key={m.label}
                     onClick={() => void handleTossPayment(m.method)}
@@ -362,7 +366,7 @@ export default function CheckoutModal({
                 ))}
               </div>
 
-              <p className="text-xs text-gray-400 text-center">🔒 Toss Payments 보안 결제 · 국내 인증</p>
+              <p className="text-xs text-gray-400 text-center">🔒 {L('Toss Payments 보안 결제 · 국내 인증', 'Secure payment by Toss Payments · Korea verification')}</p>
             </div>
           )}
         </div>

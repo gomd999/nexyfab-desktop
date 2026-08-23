@@ -1,0 +1,7 @@
+CORE_API_ORIGIN=http://127.0.0.1:3100
+STUDIO_ORIGIN=http://127.0.0.1:3100
+EDGE_HANDLER_ORIGIN=http://127.0.0.1:3100
+GATEWAY_SHARED_SECRET=replace-with-at-least-32-random-characters
+ALLOWED_HOSTS=localhost,127.0.0.1
+ENVIRONMENT=local
+BUILD_ID=local-unversioned

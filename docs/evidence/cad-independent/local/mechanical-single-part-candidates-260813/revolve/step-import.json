@@ -1,0 +1,37 @@
+{
+  "schema": "nexyfab.mechanical-single-part-step-import.v1",
+  "feature": "revolve",
+  "partRevisionSha256": "ce6dedcced895b04bc6a6d85421b1e7a2774a601bbe2d6b1ebe400a4394a86d6",
+  "sourceDesignRevisionSha256": "3cf6a0f9c8efcf153a2cfefde087a2112c086fc412d2feeaeb9ce52542838564",
+  "sourceStep": {
+    "path": "docs/evidence/cad-independent/local/mechanical-core-runtime-260813/revolve/revolve-edited.step",
+    "sha256": "151b5d9aa3c975c78f5a0f53585c69f5793466f568ae7b81119932c8b264d7fa",
+    "bytes": 16041,
+    "assertionId": "revolve.export.native-step"
+  },
+  "exactKernel": "OCCT",
+  "units": {
+    "value": "mm",
+    "confidence": "high"
+  },
+  "solidCount": 1,
+  "singleSolid": true,
+  "volumeMm3": 8168.140899333355,
+  "boundsMm": [
+    [
+      -16.004973187986945,
+      -10.004973187986945,
+      -16.000000100000005
+    ],
+    [
+      16.004973187986945,
+      10.004973187986945,
+      16.00000010000001
+    ]
+  ],
+  "dimensionsMm": {
+    "x": 32.00994637597389,
+    "y": 20.00994637597389,
+    "z": 32.00000020000002
+  }
+}

@@ -7,8 +7,11 @@
 
 import fs from 'node:fs/promises';
 import path from 'node:path';
+import { cookies, headers } from 'next/headers';
+import { createCommercialLocalizer } from '@/lib/i18n/commercialLocalizer';
+import { resolveServerLocale } from '@/lib/i18n/serverLocale';
 
-export const dynamic = 'force-static';
+export const dynamic = 'force-dynamic';
 
 async function loadAgreement(): Promise<string> {
   const filePath = path.join(process.cwd(), 'public', 'legal', 'partner-agreement-v1.md');
@@ -55,15 +58,19 @@ function formatInline(s: string): string {
 }
 
 export default async function PartnerAgreementPage() {
-  const md = await loadAgreement().catch(() => '# Partner agreement\n\n약관 파일을 불러올 수 없습니다.');
+  const cookieStore = await cookies();
+  const requestHeaders = await headers();
+  const locale = resolveServerLocale({ headers: requestHeaders }, cookieStore.get('nf_lang')?.value ?? cookieStore.get('NEXT_LOCALE')?.value);
+  const L = createCommercialLocalizer(locale.iso);
+  const md = await loadAgreement().catch(() => `# ${L('파트너 약관', 'Partner agreement')}\n\n${L('약관 파일을 불러올 수 없습니다.', 'Unable to load the agreement file.')}`);
   const html = renderMarkdown(md);
   return (
     <main style={{ maxWidth: 760, margin: '0 auto', padding: '40px 20px', fontFamily: 'system-ui, sans-serif', color: '#1f2937', lineHeight: 1.7 }}>
       <div dangerouslySetInnerHTML={{ __html: html }} />
       <hr style={{ margin: '40px 0', border: 'none', borderTop: '1px solid #e5e7eb' }} />
       <p style={{ fontSize: 12, color: '#6b7280' }}>
-        이 페이지는 NexyFab 파트너 약관 v1.0의 공식 공개본입니다.
-        문의: <a href="mailto:nexyfab@nexysys.com">nexyfab@nexysys.com</a>
+        {L('이 페이지는 NexyFab 파트너 약관 v1.0의 공식 공개본입니다.', 'This page is the official public copy of the NexyFab Partner Agreement v1.0.')}
+        {' '}{L('문의:', 'Contact:')} <a href="mailto:nexyfab@nexysys.com">nexyfab@nexysys.com</a>
       </p>
     </main>
   );

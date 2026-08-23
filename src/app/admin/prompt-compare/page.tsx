@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
+import { useAdminI18n } from '../AdminI18nProvider';
 
 interface CompareResult {
   provider: string;
@@ -101,6 +102,7 @@ function downloadCsv(result: CompareResponse) {
 }
 
 export default function PromptComparePage() {
+  const { copy } = useAdminI18n();
   const [promptIds, setPromptIds] = useState<string[]>([]);
   const [promptId, setPromptId] = useState('shape-chat');
   const [userInput, setUserInput] = useState('Make a 100×60×10mm aluminum mounting plate with four M5 bolt holes');
@@ -192,7 +194,7 @@ export default function PromptComparePage() {
   return (
     <div className="min-h-screen bg-gray-950 text-gray-100 p-6">
       <div className="max-w-7xl mx-auto space-y-4">
-        <h1 className="text-2xl font-semibold">Prompt Compare — Side-by-side providers</h1>
+        <h1 className="text-2xl font-semibold">{copy.pageTitles.promptCompare}</h1>
         <p className="text-xs text-gray-500">
           Runs the chosen prompt + input across every selected provider in parallel. Token cost is real — use sparingly.
         </p>

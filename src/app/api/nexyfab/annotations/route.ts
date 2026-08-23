@@ -3,6 +3,9 @@ import { getDbAdapter } from '@/lib/db-adapter';
 import { getAuthUser } from '@/lib/auth-middleware';
 import { checkOrigin } from '@/lib/csrf';
 import { z } from 'zod';
+import { boundedJsonError, readBoundedJson } from '@/lib/boundedJsonBody';
+
+const MAX_ANNOTATION_BODY_BYTES = 64 * 1024;
 
 export const dynamic = 'force-dynamic';
 
@@ -75,7 +78,17 @@ export async function POST(req: NextRequest) {
     authorRole: z.enum(['user', 'partner', 'admin']).default('user'),
   });
 
-  const parsed = schema.safeParse(await req.json().catch(() => ({})));
+  let raw: unknown;
+  try {
+    raw = await readBoundedJson(req, MAX_ANNOTATION_BODY_BYTES);
+  } catch (error) {
+    const bounded = boundedJsonError(error) ?? { code: 'BAD_REQUEST' as const, status: 400 as const };
+    if (bounded.code === 'PAYLOAD_TOO_LARGE') {
+      return NextResponse.json({ error: 'Request too large', code: bounded.code }, { status: bounded.status });
+    }
+    raw = {};
+  }
+  const parsed = schema.safeParse(raw);
   if (!parsed.success) return NextResponse.json({ error: parsed.error.issues[0]?.message }, { status: 400 });
 
   await ensureTable();
@@ -100,7 +113,17 @@ export async function PATCH(req: NextRequest) {
   const authUser = await getAuthUser(req);
   if (!authUser) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-  const { id, resolved } = await req.json().catch(() => ({})) as { id?: string; resolved?: boolean };
+  let body: { id?: string; resolved?: boolean };
+  try {
+    body = await readBoundedJson(req, MAX_ANNOTATION_BODY_BYTES);
+  } catch (error) {
+    const bounded = boundedJsonError(error) ?? { code: 'BAD_REQUEST' as const, status: 400 as const };
+    if (bounded.code === 'PAYLOAD_TOO_LARGE') {
+      return NextResponse.json({ error: 'Request too large', code: bounded.code }, { status: bounded.status });
+    }
+    body = {};
+  }
+  const { id, resolved } = body;
   if (!id) return NextResponse.json({ error: 'id required' }, { status: 400 });
 
   const db = getDbAdapter();
@@ -117,7 +140,17 @@ export async function DELETE(req: NextRequest) {
   const authUser = await getAuthUser(req);
   if (!authUser) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-  const { id } = await req.json().catch(() => ({})) as { id?: string };
+  let body: { id?: string };
+  try {
+    body = await readBoundedJson(req, MAX_ANNOTATION_BODY_BYTES);
+  } catch (error) {
+    const bounded = boundedJsonError(error) ?? { code: 'BAD_REQUEST' as const, status: 400 as const };
+    if (bounded.code === 'PAYLOAD_TOO_LARGE') {
+      return NextResponse.json({ error: 'Request too large', code: bounded.code }, { status: bounded.status });
+    }
+    body = {};
+  }
+  const { id } = body;
   if (!id) return NextResponse.json({ error: 'id required' }, { status: 400 });
 
   const db = getDbAdapter();

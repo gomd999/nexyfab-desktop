@@ -14,6 +14,9 @@ import {
   newInviteToken,
 } from '@/lib/nfProjectInvites';
 import { getTrustedClientIpOrUndefined } from '@/lib/client-ip';
+import { boundedJsonError, readBoundedJson } from '@/lib/boundedJsonBody';
+
+const MAX_INVITE_BODY_BYTES = 64 * 1024;
 
 const postSchema = z.object({
   email: z.string().email().max(320),
@@ -33,7 +36,7 @@ export async function GET(
 
   const { id } = await params;
   const db = getDbAdapter();
-  const access = await resolveProjectAccess(db, id, authUser.userId);
+  const access = await resolveProjectAccess(db, id, authUser);
   if (!access) return NextResponse.json({ error: 'Not found' }, { status: 404 });
   if (access.role !== 'owner') {
     return NextResponse.json(
@@ -82,7 +85,7 @@ export async function POST(
 
   const { id } = await params;
   const db = getDbAdapter();
-  const access = await resolveProjectAccess(db, id, authUser.userId);
+  const access = await resolveProjectAccess(db, id, authUser);
   if (!access) return NextResponse.json({ error: 'Not found' }, { status: 404 });
   if (access.role !== 'owner') {
     return NextResponse.json(
@@ -93,9 +96,13 @@ export async function POST(
 
   let body: unknown;
   try {
-    body = await req.json();
-  } catch {
-    return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 });
+    body = await readBoundedJson(req, MAX_INVITE_BODY_BYTES);
+  } catch (error) {
+    const bounded = boundedJsonError(error) ?? { code: 'BAD_REQUEST' as const, status: 400 as const };
+    if (bounded.code === 'PAYLOAD_TOO_LARGE') {
+      return NextResponse.json({ error: 'Request too large', code: bounded.code }, { status: bounded.status });
+    }
+    return NextResponse.json({ error: 'Invalid JSON' }, { status: bounded.status });
   }
   const parsed = postSchema.safeParse(body);
   if (!parsed.success) {
@@ -190,7 +197,7 @@ export async function DELETE(
   }
 
   const db = getDbAdapter();
-  const access = await resolveProjectAccess(db, id, authUser.userId);
+  const access = await resolveProjectAccess(db, id, authUser);
   if (!access) return NextResponse.json({ error: 'Not found' }, { status: 404 });
   if (access.role !== 'owner') {
     return NextResponse.json(

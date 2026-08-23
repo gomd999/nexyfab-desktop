@@ -24,10 +24,13 @@ import type * as THREE from 'three';
 export interface BrepProvenance {
   /** Where the body came from. Today only the SCAD agent. */
   source: 'scad-agent';
-  /** The server-side replicad registry handle — still live for the session, so
-   *  STEP export through it is lossless. */
+  /** The server-side replicad registry handle (never authoritative by itself). */
   serverHandle: string;
+  /** Short-lived capability issued by the authenticated SCAD route. */
+  handleAccessToken: string;
 }
+
+export const BREP_CAPABILITY_HEADER = 'x-nexyfab-brep-capability' as const;
 
 const KEY = 'brepProvenance';
 
@@ -36,9 +39,11 @@ const KEY = 'brepProvenance';
  * knows it's B-rep-backed (not a hand-built mesh). Idempotent; a falsy handle is
  * a no-op so call sites don't need to guard.
  */
-export function tagBrepProvenance(geometry: THREE.BufferGeometry, serverHandle: string | null | undefined): void {
-  if (!serverHandle) return;
-  const prov: BrepProvenance = { source: 'scad-agent', serverHandle };
+export function tagBrepProvenance(geometry: THREE.BufferGeometry, serverHandle: string | null | undefined, handleAccessToken?: string | null): void {
+  // A raw process-local handle is not sufficient to authorize either mesh
+  // access or STEP export. Do not stamp unusable provenance into the model.
+  if (!serverHandle || !handleAccessToken) return;
+  const prov: BrepProvenance = { source: 'scad-agent', serverHandle, handleAccessToken };
   geometry.userData[KEY] = prov;
 }
 
@@ -46,7 +51,8 @@ export function tagBrepProvenance(geometry: THREE.BufferGeometry, serverHandle: 
  *  agent B-rep (a plain sketch / imported mesh). */
 export function readBrepProvenance(geometry: THREE.BufferGeometry): BrepProvenance | null {
   const p = geometry.userData[KEY] as BrepProvenance | undefined;
-  return p && p.source === 'scad-agent' && typeof p.serverHandle === 'string' ? p : null;
+  return p && p.source === 'scad-agent' && typeof p.serverHandle === 'string'
+    && typeof p.handleAccessToken === 'string' ? p : null;
 }
 
 /** True when this body can be STEP-exported losslessly through its live server
@@ -59,4 +65,9 @@ export function canExportStepViaServerHandle(geometry: THREE.BufferGeometry): bo
  *  site and any test agree on the contract. */
 export function brepStepEndpoint(prov: BrepProvenance): string {
   return `/api/nexyfab/scad-agent/brep-step?handle=${encodeURIComponent(prov.serverHandle)}`;
+}
+
+/** Headers for the endpoint above; capability stays out of URL/log history. */
+export function brepStepHeaders(prov: BrepProvenance): Record<string, string> {
+  return { [BREP_CAPABILITY_HEADER]: prov.handleAccessToken };
 }

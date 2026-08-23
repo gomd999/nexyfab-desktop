@@ -39,10 +39,12 @@ import {
   publicLockShape,
   lockConflictPayload,
 } from '@/lib/cloudDoc/locks';
+import { readBoundedJson } from '@/lib/boundedJsonBody';
 
 const SIGNED_URL_TTL_SEC = 600;     // 10 min, per spec §4.3
 const MAX_NAME_LEN = 200;
 const SOFT_DELETE_WINDOW_MS = 90 * 24 * 60 * 60 * 1000;
+const MAX_JSON_BODY_BYTES = 64 * 1024;
 
 function publicDocShape(row: DocumentRow, role: string) {
   return {
@@ -191,7 +193,7 @@ export async function PUT(
   }
 
   let body: { name?: unknown; workspaceId?: unknown; thumbnailKey?: unknown; ifMatchVersion?: unknown };
-  try { body = await req.json(); }
+  try { body = await readBoundedJson(req, MAX_JSON_BODY_BYTES); }
   catch { return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 }); }
 
   // D1 (PDM) optimistic concurrency — clients that observed an older

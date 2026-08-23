@@ -3,7 +3,8 @@
 import { use, useCallback, useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/hooks/useAuth';
-import { isKorean } from '@/lib/i18n/normalize';
+import { createCommercialLocalizer, localizeCommercialDictionary } from '@/lib/i18n/commercialLocalizer';
+import { formatDate } from '@/lib/i18n/format';
 
 interface EmailTemplate {
   id: string;
@@ -45,7 +46,7 @@ const T = {
     variablesHint: '사용 가능한 변수:',
     idReadonly: 'ID (편집 불가)',
     idNew: 'ID (직접 입력 또는 자동 생성)',
-    updated: (t: number) => `수정: ${new Date(t).toLocaleDateString('ko-KR')}`,
+    updated: (t: number) => `수정: ${t}`,
     noBody: '(본문 없음)',
   },
   en: {
@@ -75,7 +76,7 @@ const T = {
     variablesHint: 'Available variables:',
     idReadonly: 'ID (read-only)',
     idNew: 'ID (enter or leave blank for auto)',
-    updated: (t: number) => `Updated: ${new Date(t).toLocaleDateString('en-US')}`,
+    updated: (t: number) => `Updated: ${t}`,
     noBody: '(no body)',
   },
 };
@@ -87,7 +88,9 @@ export default function AdminEmailTemplatesPage({
   params: Promise<{ lang: string }>;
 }) {
   const { lang } = use(params);
-  const t = isKorean(lang) ? T.ko : T.en;
+  const L = createCommercialLocalizer(lang);
+  const localized = localizeCommercialDictionary(lang, T.ko, T.en);
+  const t = { ...localized, updated: (value: number) => `${L('수정', 'Updated')}: ${formatDate(value, lang) ?? '—'}` };
 
   const router = useRouter();
   const { user, isLoading: authLoading } = useAuthStore();
@@ -142,7 +145,7 @@ export default function AdminEmailTemplatesPage({
     void fetchTemplates();
   }, [fetchTemplates, authLoading, user]);
 
-  if (authLoading) return <div className="p-8 text-center text-gray-400">확인 중...</div>;
+  if (authLoading) return <div className="p-8 text-center text-gray-400">{L('확인 중...', 'Checking...')}</div>;
   if (!user || user.role !== 'admin') return null;
 
   const selectTemplate = (tpl: EmailTemplate) => {
@@ -172,7 +175,7 @@ export default function AdminEmailTemplatesPage({
 
   const handleSave = async () => {
     if (!form.name || !form.subject || !form.html_body) {
-      showMsg(isKorean(lang) ? '이름, 제목, 본문은 필수입니다.' : 'Name, subject, and body are required.', false);
+      showMsg(L('이름, 제목, 본문은 필수입니다.', 'Name, subject, and body are required.'), false);
       return;
     }
     setSaving(true);
@@ -352,7 +355,7 @@ export default function AdminEmailTemplatesPage({
                     value={form.id}
                     readOnly={!isNew}
                     onChange={(e) => setForm((f) => ({ ...f, id: e.target.value }))}
-                    placeholder={isNew ? (isKorean(lang) ? '비워두면 자동 생성' : 'Leave blank for auto-generate') : ''}
+                    placeholder={isNew ? L('비워두면 자동 생성', 'Leave blank for auto-generate') : ''}
                     style={{ ...inputStyle, opacity: isNew ? 1 : 0.6, cursor: isNew ? 'text' : 'default', fontFamily: 'monospace' }}
                   />
                 </div>

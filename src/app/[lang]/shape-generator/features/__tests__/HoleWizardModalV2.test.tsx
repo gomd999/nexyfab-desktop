@@ -207,14 +207,14 @@ describe('HoleWizardModalV2 — Termination + Preview tabs (W3)', () => {
     expect(screen.queryByTestId('hole-wizard-v2-termination-tipangle')).toBeNull();
   });
 
-  it('Up-to-next renders a disabled face-picker placeholder', () => {
+  it('Up-to-next reports automatic boundary termination without a face picker', () => {
     render(
       <HoleWizardModalV2 open lang="en" onClose={() => {}} onApply={() => {}} forceFlagOpen />,
     );
     fireEvent.click(screen.getByTestId('hole-wizard-v2-tab-termination'));
     fireEvent.click(screen.getByTestId('hole-wizard-v2-termination-upToNext'));
-    const picker = screen.getByTestId('hole-wizard-v2-termination-upToNext-picker') as HTMLButtonElement;
-    expect(picker.disabled).toBe(true);
+    expect(screen.getByTestId('hole-wizard-v2-termination-upToNext-detail')).toHaveTextContent('Up to next');
+    expect(screen.queryByTestId('hole-wizard-v2-termination-upToNext-picker')).toBeNull();
   });
 
   it('Up-to-face renders a disabled face-picker placeholder and disables Apply', () => {
@@ -228,6 +228,31 @@ describe('HoleWizardModalV2 — Termination + Preview tabs (W3)', () => {
     // Apply should be disabled — validator flags UPTOFACE_FACE_MISSING.
     const apply = screen.getByTestId('hole-wizard-v2-apply') as HTMLButtonElement;
     expect(apply.disabled).toBe(true);
+  });
+
+  it('Up-to-face accepts the selected persistent face and commits its id', () => {
+    const onApply = vi.fn();
+    render(
+      <HoleWizardModalV2
+        open
+        lang="en"
+        onClose={() => {}}
+        onApply={onApply}
+        selectedFaceId="face-7"
+        forceFlagOpen
+      />,
+    );
+    fireEvent.click(screen.getByTestId('hole-wizard-v2-tab-termination'));
+    fireEvent.click(screen.getByTestId('hole-wizard-v2-termination-upToFace'));
+    expect(screen.getByTestId('hole-wizard-v2-termination-upToFace-picker')).toHaveTextContent('face-7');
+    const apply = screen.getByTestId('hole-wizard-v2-apply') as HTMLButtonElement;
+    expect(apply.disabled).toBe(false);
+    fireEvent.click(apply);
+    expect(onApply).toHaveBeenCalledTimes(1);
+    expect(onApply.mock.calls[0][0].terminationParams).toEqual({
+      kind: 'upToFace',
+      faceId: 'face-7',
+    });
   });
 
   it('Preview tab renders the SVG cross-section + summary block', () => {

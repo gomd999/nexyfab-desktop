@@ -1,0 +1,41 @@
+{
+  "schema": "nexyfab.mechanical-core-feature-local-runtime.v1",
+  "feature": "variableFillet",
+  "axis": "undo",
+  "status": "PASS",
+  "executedAt": "2026-08-22T07:13:30.564Z",
+  "restoredPayload": {
+    "id": "runtime-feature",
+    "enabled": true,
+    "type": "variableFillet",
+    "params": {
+      "startRadius": 2,
+      "endRadius": 4,
+      "segments": 3,
+      "engine": 1
+    }
+  },
+  "restoredExact": {
+    "handle": "occt:165",
+    "kernelKind": "Solid",
+    "nativeShapeType": 0,
+    "solidCount": 1,
+    "singleSolid": true,
+    "volumeMm3": 71939.38092511223,
+    "edgeCount": 15,
+    "faceCount": 7,
+    "boundsMm": [
+      [
+        -30.027490874428224,
+        -20.027490874428224,
+        -15.027490874428223
+      ],
+      [
+        30.027490874428224,
+        20.027490874428224,
+        15.027490874428223
+      ]
+    ]
+  },
+  "futureDepth": 1
+}

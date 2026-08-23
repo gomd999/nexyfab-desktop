@@ -133,7 +133,7 @@ export async function runMultiStageRefinement(input: {
         if (!isProductDecompositionPlan(draft.output)) {
           decision = { disposition: attempt >= maxAttempts ? 'stop' : 'refine_same_stage', stage, reasons: ['ProductDecompositionPlan envelope is incomplete or invalid.'] };
         } else {
-          const assessment = assessProductDecompositionAccuracy(draft.output, new Set(draft.evidenceRefs));
+          const assessment = assessProductDecompositionAccuracy(draft.output, new Set(draft.evidenceRefs), { request: input.request });
           if (!assessment.readyForGeometry) decision = {
             disposition: assessment.requiresAuthoritativeInput ? 'request_input' : attempt >= maxAttempts ? 'stop' : 'refine_same_stage',
             stage,

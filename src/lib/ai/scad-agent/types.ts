@@ -394,6 +394,8 @@ export interface SketchToBrepExtrudeArgs {
 /** Persisted sketch state for the session. */
 export interface SketchState {
   name: string;
+  /** Optional server-bound canonical part occurrence. */
+  partId?: string;
   entities: SketchEntity[];
   constraints: SketchConstraint[];
   /** True iff the most recent solve_mates succeeded. */
@@ -714,8 +716,55 @@ export interface BrepEntry {
   kind: string;
   /** Free-form label the agent can use (e.g. "bracket", "nut1"). */
   label?: string;
+  /** Server-bound canonical part occurrence. Never inferred from handle/label. */
+  partId?: string;
   /** ISO timestamp of creation. */
   ts: number;
+  /** False when the previous worker's runtime could not be reconstructed. */
+  runtimeAvailable?: boolean;
+  /** Hash of a retired runtime handle; preserves audit identity without
+   * exposing a usable process-local handle in a signed client session. */
+  runtimeHandleDigest?: string;
+  unavailableReason?: 'CAD_RUNTIME_REHYDRATION_REQUIRED';
+}
+
+/**
+ * HMAC-bound ownership index for precision CAD authorization.
+ *
+ * This remains optional for legacy interactive sessions. When present, every
+ * governed geometry/feature/mate reference must resolve through these exact
+ * maps; the agent must never derive ownership from a prompt or a handle name.
+ */
+export interface CadSessionOwnership {
+  schema: 'nexyfab.cad-session-ownership.v1';
+  partIds: string[];
+  brepHandles?: Record<string, string>;
+  featureIds?: Record<string, string>;
+  sketchIds?: Record<string, string>;
+  entityIds?: Record<string, string>;
+  faceIds?: Record<string, string>;
+  edgeIds?: Record<string, string>;
+  mateIds?: Record<string, string[]>;
+}
+
+/**
+ * Server-side workspace binding for a precision-CAD session.
+ *
+ * This is deliberately separate from `CadSessionOwnership`: ownership says
+ * which exact references the session may use, while this envelope says which
+ * immutable workspace revision produced those references.  Both fields are
+ * included in the SCAD-session HMAC; clients must never be allowed to create
+ * or replace either one.
+ */
+export interface CadSessionBootstrapBinding {
+  schema: 'nexyfab.cad-session-bootstrap.v1';
+  projectId: string;
+  workspaceId: string;
+  workspaceRevision: number;
+  workspaceContentHash: string;
+  geometryContentHash: string;
+  shapeIdentityHash: string;
+  bootstrappedAt: number;
 }
 
 // ─── B2 (checkpoint) tool args + types ─────────────────────────────────
@@ -924,6 +973,10 @@ export interface AgentSession {
    * agent enumerate without poking server internals.
    */
   brepEntries: BrepEntry[];
+  /** Optional HMAC-bound ownership index for precision CAD target checks. */
+  cadOwnership?: CadSessionOwnership;
+  /** Optional HMAC-bound workspace/revision source for precision CAD sessions. */
+  cadBootstrap?: CadSessionBootstrapBinding;
   /**
    * B-rep handles that passed verify_spec_brep in this session. Handles are
    * immutable registry identities, so any geometry edit creates a new handle
@@ -1052,14 +1105,16 @@ export interface AgentRunOptions {
   resetHistoryOnIncompleteArtifact?: boolean;
   /** Stage 2 — separate cap for view_render (vision) calls; defaults to 3. */
   visionCallsCap?: number;
-  /** B1 — disable the deterministic fast-path classifier. Default false
-   *  (fast-path enabled). Set true in tests that specifically exercise
-   *  the LLM loop, or when the caller wants AI behavior even on simple prompts. */
+  /** B1 — deterministic fast-path switch. It is enabled unless this is
+   *  explicitly false. AI-owned execution modes set false so the selected
+   *  model must run even for simple catalog-matched prompts. */
   fastPath?: boolean;
   /** Provider override for testing — see AiClient. */
   ai?: AiClient;
   /** Tool executor override for testing — defaults to real implementations. */
   tools?: ToolExecutorMap;
+  /** Optional production authorization gate evaluated before every tool call. */
+  authorizeToolCall?: (call: ToolCall, session: AgentSession) => ToolResult | null | Promise<ToolResult | null>;
   /** Streaming callback fired after each model round / tool call. */
   onEvent?: (ev: AgentEvent) => void;
   /** Abort signal — propagated to the AI client and the tool loop so a

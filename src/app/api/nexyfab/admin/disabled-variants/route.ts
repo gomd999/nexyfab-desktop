@@ -15,6 +15,9 @@ import {
   listDisabledVariants,
 } from '@/lib/ai/disabledVariants';
 import { listPromptIds } from '@/lib/ai/prompts';
+import { boundedJsonError, readBoundedJson } from '@/lib/boundedJsonBody';
+
+const MAX_DISABLED_VARIANT_BODY_BYTES = 16 * 1024;
 
 export const dynamic = 'force-dynamic';
 
@@ -43,7 +46,11 @@ export async function POST(req: NextRequest) {
   const auth = await requireAdmin(req);
   if (auth.kind === 'fail') return auth.response;
 
-  const body = await req.json().catch(() => ({}));
+  let body: Record<string, unknown> = {};
+  try { body = await readBoundedJson<Record<string, unknown>>(req, MAX_DISABLED_VARIANT_BODY_BYTES); }
+  catch (error) {
+    if (boundedJsonError(error)?.code === 'PAYLOAD_TOO_LARGE') return NextResponse.json({ error: 'Request too large', code: 'PAYLOAD_TOO_LARGE' }, { status: 413 });
+  }
   const variantId = typeof body.variantId === 'string' ? body.variantId.trim() : '';
   const reason = typeof body.reason === 'string' ? body.reason.slice(0, 500) : undefined;
 

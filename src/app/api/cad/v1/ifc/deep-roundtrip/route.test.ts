@@ -19,7 +19,7 @@ describe('IFC deep semantic roundtrip route', () => {
     const response = await POST(request({ beforeIfc: completeIfc(), afterIfc: completeIfc() }));
     const json = await response.json();
     expect(response.status).toBe(200);
-    expect(json).toMatchObject({ ok: true, releaseReady: true, sourceReturned: false, sideEffects: false });
+    expect(json).toMatchObject({ ok: true, roundtripPassed: true, releaseReady: false, sourceReturned: false, sideEffects: false });
     expect(JSON.stringify(json)).not.toContain('ISO-10303-21');
   });
 

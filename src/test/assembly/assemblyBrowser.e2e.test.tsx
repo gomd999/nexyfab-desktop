@@ -102,7 +102,7 @@ describe('AssemblyBrowser → /api/assembly-solve e2e (sample presets)', () => {
     fireEvent.click(screen.getByTestId('solver-assembly-solve'));
     await waitFor(() => expect(fetchMock).toHaveBeenCalled());
     const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit];
-    expect(url).toBe('/api/assembly-solve');
+    expect(url).toBe('/api/assembly-solve/');
     expect(init.method).toBe('POST');
     const body = JSON.parse(String(init.body)) as FetchedSolveBody;
     // State must carry the preset's two cubes + concentric mate.
@@ -145,9 +145,9 @@ describe('AssemblyBrowser → /api/assembly-solve e2e (sample presets)', () => {
     );
   });
 
-  // ── 4. phase=stub response renders the 'stub' badge ────────────────────
+  // ── 4. production authoring rejects a compatibility-stub response ─────
 
-  it('renders phase badge "stub" when the API responds with phase=stub', async () => {
+  it('provisions geometry for a new part and rejects phase=stub as non-authoritative', async () => {
     fetchMock.mockResolvedValue(
       makeJsonResponse({
         ok: true,
@@ -159,7 +159,6 @@ describe('AssemblyBrowser → /api/assembly-solve e2e (sample presets)', () => {
         phase: 'stub',
       }),
     );
-    // Start from blank — that triggers the stub path (no featureTrees sent).
     render(<AssemblyBrowserPageContent lang="en" />);
     await screen.findByTestId('solver-assembly-modal');
     // Bare blank has no parts, so add one so the modal becomes solvable.
@@ -168,12 +167,13 @@ describe('AssemblyBrowser → /api/assembly-solve e2e (sample presets)', () => {
     await waitFor(() => expect(fetchMock).toHaveBeenCalled());
     const [, init] = fetchMock.mock.calls[0] as [string, RequestInit];
     const body = JSON.parse(String(init.body)) as FetchedSolveBody;
-    expect(body.featureTrees).toBeUndefined();
+    expect(body.featureTrees?.part_1?.nodes).toHaveLength(1);
     await waitFor(() =>
-      expect(screen.getByTestId('solver-assembly-solve-phase').textContent).toMatch(
-        /stub/i,
+      expect(screen.getByTestId('solver-assembly-solve-error')).toHaveTextContent(
+        /AUTHORITATIVE_SOLVER_REQUIRED/i,
       ),
     );
+    expect(screen.queryByTestId('solver-assembly-solve-phase')).not.toBeInTheDocument();
   });
 
   // ── 5. ok=false response renders error ─────────────────────────────────

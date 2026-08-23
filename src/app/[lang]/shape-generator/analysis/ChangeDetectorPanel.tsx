@@ -13,6 +13,7 @@
 import { useState, useCallback } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { detectChanges, type DesignSpec, type ChangeDetectorResult, type SpecDiff } from './changeDetector';
+import { createCommercialLocalizer } from '@/lib/i18n/commercialLocalizer';
 
 // ─── i18n ────────────────────────────────────────────────────────────────────
 
@@ -274,7 +275,8 @@ function SpecInput({ spec, onChange, label, tt }: { spec: DesignSpec; onChange: 
   );
 }
 
-function DiffRow({ diff, isKo }: { diff: SpecDiff; isKo: boolean }) {
+function DiffRow({ diff, isKo: _isKo, lang }: { diff: SpecDiff; isKo: boolean; lang: string }) {
+  const L = createCommercialLocalizer(lang);
   const color = IMPACT_COLOR[diff.impact];
   return (
     <div style={{
@@ -282,25 +284,26 @@ function DiffRow({ diff, isKo }: { diff: SpecDiff; isKo: boolean }) {
       padding: '7px 10px', background: C.card, borderRadius: 7,
       border: `1px solid ${diff.impact === 'high' ? C.red + '44' : C.border}`,
     }}>
-      <span style={{ fontSize: 11, fontWeight: 700, color: C.textDim }}>{isKo ? diff.fieldKo : diff.field}</span>
+      <span style={{ fontSize: 11, fontWeight: 700, color: C.textDim }}>{L(diff.fieldKo, diff.field)}</span>
       <span style={{ fontSize: 11, color: C.textMuted, textDecoration: 'line-through' }}>{diff.prev}</span>
       <span style={{ fontSize: 11, color: C.text }}>{diff.next}</span>
       <span style={{
         fontSize: 9, fontWeight: 800, padding: '2px 6px', borderRadius: 8, textAlign: 'center',
         background: `${color}20`, color,
       }}>
-        {isKo ? diff.impactKo : diff.impact}
+        {L(diff.impactKo, diff.impact)}
       </span>
     </div>
   );
 }
 
-function ImpactBadge({ label, value, valueKo, valueEn, icon, isKo }: { label: string; value: string; valueKo: string; valueEn?: string; icon: string; isKo: boolean }) {
+function ImpactBadge({ label, value, valueKo, valueEn, icon, isKo: _isKo, lang }: { label: string; value: string; valueKo: string; valueEn?: string; icon: string; isKo: boolean; lang: string }) {
+  const L = createCommercialLocalizer(lang);
   const color = value === 'increase' ? C.red : value === 'decrease' ? C.green : value === 'neutral' ? C.textMuted : C.yellow;
   return (
     <div style={{ flex: 1, background: C.card, borderRadius: 8, padding: '8px 10px', textAlign: 'center', border: `1px solid ${C.border}` }}>
       <p style={{ margin: '0 0 2px', fontSize: 10, color: C.textMuted }}>{icon} {label}</p>
-      <p style={{ margin: 0, fontSize: 12, fontWeight: 800, color }}>{isKo ? valueKo : (valueEn ?? valueKo)}</p>
+      <p style={{ margin: 0, fontSize: 12, fontWeight: 800, color }}>{L(valueKo, (valueEn ?? valueKo))}</p>
     </div>
   );
 }
@@ -311,6 +314,7 @@ export default function ChangeDetectorPanel({ currentSpec, onClose, lang = 'ko',
   const resolvedLang: Lang = langMap[seg] ?? langMap[lang] ?? 'en';
   const t = dict[resolvedLang];
   const isKo = resolvedLang === 'ko';
+  const L = createCommercialLocalizer(lang);
   const router = useRouter();
   const [prev, setPrev] = useState<DesignSpec>({ ...EMPTY, label: 'Rev A', ...currentSpec });
   const [next, setNext] = useState<DesignSpec>({ ...EMPTY, label: 'Rev B' });
@@ -392,8 +396,8 @@ export default function ChangeDetectorPanel({ currentSpec, onClose, lang = 'ko',
             <>
               {/* Impact summary */}
               <div style={{ display: 'flex', gap: 8 }}>
-                <ImpactBadge label={t.costImpact} value={result.costImpact} valueKo={result.costImpactKo} valueEn={result.costImpact} icon="💰" isKo={isKo} />
-                <ImpactBadge label={t.leadImpact} value={result.leadImpact} valueKo={result.leadImpactKo} valueEn={result.leadImpact} icon="⏱" isKo={isKo} />
+                <ImpactBadge label={t.costImpact} value={result.costImpact} valueKo={result.costImpactKo} valueEn={result.costImpact} icon="💰" isKo={isKo} lang={lang} />
+                <ImpactBadge label={t.leadImpact} value={result.leadImpact} valueKo={result.leadImpactKo} valueEn={result.leadImpact} icon="⏱" isKo={isKo} lang={lang} />
                 <div style={{ flex: 1, background: result.reRfqRequired ? `${C.red}12` : `${C.green}12`, borderRadius: 8, padding: '8px 10px', textAlign: 'center', border: `1px solid ${result.reRfqRequired ? C.red + '44' : C.green + '44'}` }}>
                   <p style={{ margin: '0 0 2px', fontSize: 10, color: C.textMuted }}>📋 {t.reRfq}</p>
                   <p style={{ margin: 0, fontSize: 12, fontWeight: 800, color: result.reRfqRequired ? C.red : C.green }}>
@@ -404,7 +408,7 @@ export default function ChangeDetectorPanel({ currentSpec, onClose, lang = 'ko',
 
               {/* Re-RFQ reason */}
               <div style={{ background: C.card, borderRadius: 8, padding: '10px 14px', fontSize: 12, color: C.textDim, lineHeight: 1.5 }}>
-                {isKo ? result.reRfqReasonKo : result.reRfqReason}
+                {L(result.reRfqReasonKo, result.reRfqReason)}
               </div>
 
               {/* Diffs */}
@@ -420,7 +424,7 @@ export default function ChangeDetectorPanel({ currentSpec, onClose, lang = 'ko',
                     <span>{t.impactCol}</span>
                   </div>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                    {result.diffs.map((d, i) => <DiffRow key={i} diff={d} isKo={isKo} />)}
+                    {result.diffs.map((d, i) => <DiffRow key={i} diff={d} isKo={isKo} lang={lang} />)}
                   </div>
                 </div>
               ) : (
@@ -436,7 +440,7 @@ export default function ChangeDetectorPanel({ currentSpec, onClose, lang = 'ko',
                     {t.recommendedActions}
                   </p>
                   <ul style={{ margin: 0, padding: 0, listStyle: 'none', display: 'flex', flexDirection: 'column', gap: 4 }}>
-                    {(isKo ? result.actionsKo : result.actions).map((a, i) => (
+                    {(L(result.actionsKo, result.actions)).map((a, i) => (
                       <li key={i} style={{
                         display: 'flex', gap: 8, alignItems: 'flex-start',
                         background: C.card, borderRadius: 7, padding: '7px 10px',

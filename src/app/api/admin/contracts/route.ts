@@ -7,8 +7,10 @@ import { NextRequest, NextResponse } from 'next/server';
 import { verifyAdmin } from '@/lib/admin-auth';
 import { getDbAdapter } from '@/lib/db-adapter';
 import { enqueueJob } from '@/lib/job-queue';
-import { contractSignedHtml } from '@/lib/nexyfab-email';
+import { contractSignedEmailSubject, contractSignedHtml, contractSignedInAppCopy, nexyfabAppLangPathFromEmailLocale, nexyfabEmailLocaleFromLanguageTag } from '@/lib/nexyfab-email';
 import { parseFxQuote, isFxQuoteValid } from '@/lib/money';
+import { loc } from '@/lib/i18n/loc';
+import { readBoundedJson } from '@/lib/boundedJsonBody';
 
 export const dynamic = 'force-dynamic';
 
@@ -52,7 +54,7 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   if (!(await verifyAdmin(req))) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
 
-  const body = await req.json() as {
+  const body = await readBoundedJson(req, 256 * 1024) as {
     quoteId?: string;
     projectName?: string;
     customerEmail?: string;
@@ -217,13 +219,11 @@ export async function POST(req: NextRequest) {
     console.error('[admin/contracts POST] 주문 자동 생성 실패(계약은 유지):', err);
   }
 
-  const resolvedLang = lang.startsWith('ko') ? 'ko' : 'en';
+  const resolvedLang = nexyfabEmailLocaleFromLanguageTag(lang);
 
   // 고객 이메일 발송
   if (customerEmail) {
-    const subject = resolvedLang === 'ko'
-      ? `[NexyFab] 계약이 체결됐습니다 — ${projectName}`
-      : `[NexyFab] Contract Signed — ${projectName}`;
+    const subject = contractSignedEmailSubject(resolvedLang, projectName);
     await enqueueJob('send_email', {
       to: customerEmail,
       subject,
@@ -245,6 +245,9 @@ export async function POST(req: NextRequest) {
         'SELECT id FROM nf_users WHERE email = ?', customerEmail,
       );
       if (userRow?.id) {
+        const inAppCopy = contractSignedInAppCopy(resolvedLang, projectName, factoryName ?? loc(resolvedLang, {
+          ko: '제조사', en: 'the manufacturer', ja: 'メーカー', zh: '制造商', es: 'el fabricante', ar: 'المصنّع',
+        }));
         const notifId = `notif-${crypto.randomUUID()}`;
         await db.execute(
           `INSERT INTO nf_notifications (id, user_id, type, title, body, link, read, created_at)
@@ -252,11 +255,9 @@ export async function POST(req: NextRequest) {
           notifId,
           userRow.id,
           'contract.signed',
-          resolvedLang === 'ko' ? `계약 체결: ${projectName}` : `Contract signed: ${projectName}`,
-          resolvedLang === 'ko'
-            ? `${factoryName ?? '제조사'}와의 계약이 성공적으로 체결됐습니다.`
-            : `Your contract with ${factoryName ?? 'the manufacturer'} has been confirmed.`,
-          `/${resolvedLang === 'ko' ? 'kr' : 'en'}/nexyfab/orders`,
+          inAppCopy.title,
+          inAppCopy.body,
+          `/${nexyfabAppLangPathFromEmailLocale(resolvedLang)}/nexyfab/orders`,
           Date.now(),
         );
       }
@@ -269,11 +270,11 @@ export async function POST(req: NextRequest) {
   if (partnerEmail) {
     await enqueueJob('send_email', {
       to: partnerEmail,
-      subject: `[NexyFab] 계약 체결 확인 — ${projectName}`,
+      subject: contractSignedEmailSubject(resolvedLang, projectName),
       html: contractSignedHtml({
         recipientName: factoryName || partnerEmail,
         recipientType: 'factory',
-        lang: 'ko',
+        lang: resolvedLang,
         contractId: id,
         projectName,
         factoryName: factoryName ?? '제조사',

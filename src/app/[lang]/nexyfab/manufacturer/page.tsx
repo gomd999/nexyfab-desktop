@@ -4,7 +4,9 @@ import Link from 'next/link';
 import { use, useEffect, useState, useCallback, useRef } from 'react';
 import type { NexyfabOrder } from '@/types/nexyfab-orders';
 import { useToast } from '@/hooks/useToast';
-import { isKorean } from '@/lib/i18n/normalize';
+import { toIsoLang } from '@/lib/i18n/normalize';
+import { createCommercialLocalizer } from '@/lib/i18n/commercialLocalizer';
+import { formatDate, formatMoney, formatNumber } from '@/lib/i18n/format';
 
 type Tab = 'new' | 'progress' | 'done';
 
@@ -26,21 +28,20 @@ function maskUserId(uid: string): string {
   return uid.length > 4 ? uid.slice(0, 4) + '***' : uid + '***';
 }
 
-function fmtKRW(n: number) {
-  return n.toLocaleString('ko-KR') + '원';
+function fmtKRW(n: number, lang: string) {
+  return formatMoney(n, lang, 'KRW') ?? '';
 }
 
-function fmtDate(ts: number, isKo: boolean) {
-  return new Date(ts).toLocaleDateString(isKo ? 'ko-KR' : 'en-US', {
-    year: 'numeric', month: 'short', day: 'numeric',
-  });
+function fmtDate(ts: number, lang: string) {
+  return formatDate(ts, lang, { year: 'numeric', month: 'short', day: 'numeric' }) ?? '';
 }
 
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
 export default function ManufacturerDashboardPage({ params }: { params: Promise<{ lang: string }> }) {
   const { lang } = use(params);
-  const isKo = isKorean(lang);
+  const isKo = toIsoLang(lang) === 'ko';
+  const L = createCommercialLocalizer(lang);
   const toast = useToast();
 
   const [orders, setOrders] = useState<NexyfabOrder[]>([]);
@@ -83,9 +84,9 @@ export default function ManufacturerDashboardPage({ params }: { params: Promise<
       });
       if (!r.ok) throw new Error('Failed');
       await loadOrders(true);
-      toast.success(isKo ? '주문 상태가 업데이트되었습니다.' : 'Order status updated.');
+      toast.success(L('주문 상태가 업데이트되었습니다.', 'Order status updated.'));
     } catch {
-      toast.error(isKo ? '상태 변경에 실패했습니다.' : 'Failed to update status.');
+      toast.error(L('상태 변경에 실패했습니다.', 'Failed to update status.'));
     } finally {
       setActionLoading(null);
     }
@@ -129,14 +130,14 @@ export default function ManufacturerDashboardPage({ params }: { params: Promise<
         </Link>
         <span style={{ color: 'var(--nx-border)' }}>/</span>
         <span style={{ fontSize: 16, fontWeight: 600 }}>
-          {isKo ? '제조 대시보드' : 'Manufacturer Dashboard'}
+          {L('제조 대시보드', 'Manufacturer Dashboard')}
         </span>
         <div style={{ flex: 1 }} />
         <a href={`/${lang}/nexyfab/orders`} style={{
           fontSize: 12, color: 'var(--nx-text-2)', textDecoration: 'none', padding: '6px 12px',
           border: '1px solid var(--nx-border)', borderRadius: 6,
         }}>
-          {isKo ? '내 주문' : 'My Orders'}
+          {L('내 주문', 'My Orders')}
         </a>
       </div>
 
@@ -146,20 +147,20 @@ export default function ManufacturerDashboardPage({ params }: { params: Promise<
           display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16, marginBottom: 32,
         }}>
           <StatCard
-            label={isKo ? '전체 주문' : 'Total Orders'}
+            label={L('전체 주문', 'Total Orders')}
             value={String(totalOrders)}
             icon="📋"
             color="#388bfd"
           />
           <StatCard
-            label={isKo ? '진행 중' : 'In Progress'}
+            label={L('진행 중', 'In Progress')}
             value={String(inProgressOrders)}
             icon="⚙️"
             color="#f0883e"
           />
           <StatCard
-            label={isKo ? '이번 달 매출' : 'Revenue (Month)'}
-            value={fmtKRW(revenueThisMonth)}
+            label={L('이번 달 매출', 'Revenue (Month)')}
+            value={fmtKRW(revenueThisMonth, lang)}
             icon="💰"
             color="#3fb950"
           />
@@ -180,7 +181,7 @@ export default function ManufacturerDashboardPage({ params }: { params: Promise<
                 display: 'flex', alignItems: 'center', gap: 8,
               }}
             >
-              {isKo ? t.ko : t.en}
+              {L(t.ko, t.en)}
               {t.count > 0 && (
                 <span style={{
                   fontSize: 10, padding: '1px 7px', borderRadius: 12,
@@ -197,7 +198,7 @@ export default function ManufacturerDashboardPage({ params }: { params: Promise<
         {/* ── Content ── */}
         {loading && (
           <div style={{ textAlign: 'center', padding: '60px 0', color: 'var(--nx-text-3)' }}>
-            {isKo ? '불러오는 중...' : 'Loading...'}
+            {L('불러오는 중...', 'Loading...')}
           </div>
         )}
 
@@ -206,13 +207,13 @@ export default function ManufacturerDashboardPage({ params }: { params: Promise<
             background: '#da363322', border: '1px solid #da363355',
             borderRadius: 8, padding: '14px 16px', color: '#f85149', fontSize: 13, marginBottom: 16,
           }}>
-            {error === 'LOAD_FAILED' ? (isKo ? '불러오기 실패' : 'Failed to load orders') : error}
+            {error === 'LOAD_FAILED' ? (L('불러오기 실패', 'Failed to load orders')) : error}
           </div>
         )}
 
         {!loading && !error && tabOrders.length === 0 && (
           <div style={{ textAlign: 'center', padding: '60px 0', color: 'var(--nx-text-3)' }}>
-            {isKo ? '해당 주문이 없습니다.' : 'No orders in this category.'}
+            {L('해당 주문이 없습니다.', 'No orders in this category.')}
           </div>
         )}
 
@@ -221,6 +222,7 @@ export default function ManufacturerDashboardPage({ params }: { params: Promise<
             <ManufacturerOrderCard
               key={order.id}
               order={order}
+              lang={lang}
               isKo={isKo}
               actionLoading={actionLoading === order.id}
               onAction={handleAction}
@@ -274,13 +276,15 @@ const STATUS_BADGE: Record<NexyfabOrder['status'], { ko: string; en: string; col
 };
 
 function ManufacturerOrderCard({
-  order, isKo, actionLoading, onAction,
+  order, lang, isKo, actionLoading, onAction,
 }: {
   order: NexyfabOrder;
+  lang: string;
   isKo: boolean;
   actionLoading: boolean;
   onAction: (order: NexyfabOrder) => void;
 }) {
+  const L = createCommercialLocalizer(lang);
   const actionDef = STATUS_ACTION[order.status];
   const badge = STATUS_BADGE[order.status];
 
@@ -306,7 +310,7 @@ function ManufacturerOrderCard({
           fontSize: 11, fontWeight: 700, padding: '3px 10px', borderRadius: 10,
           background: badge.color + '22', color: badge.color,
         }}>
-          {isKo ? badge.ko : badge.en}
+          {L(badge.ko, badge.en)}
         </span>
       </div>
 
@@ -315,10 +319,10 @@ function ManufacturerOrderCard({
         padding: '14px 20px',
         display: 'flex', alignItems: 'center', gap: 24, flexWrap: 'wrap',
       }}>
-        <MetaItem label={isKo ? '고객' : 'Customer'} value={maskUserId(order.userId)} />
-        <MetaItem label={isKo ? '수량' : 'Qty'} value={`${order.quantity.toLocaleString()}${isKo ? '개' : ' pcs'}`} />
-        <MetaItem label={isKo ? '금액' : 'Price'} value={fmtKRW(order.totalPriceKRW)} />
-        <MetaItem label={isKo ? '주문일' : 'Date'} value={fmtDate(order.createdAt, isKo)} />
+        <MetaItem label={L('고객', 'Customer')} value={maskUserId(order.userId)} />
+        <MetaItem label={L('수량', 'Qty')} value={`${formatNumber(order.quantity, lang)}${L('개', ' pcs')}`} />
+        <MetaItem label={L('금액', 'Price')} value={fmtKRW(order.totalPriceKRW, lang)} />
+        <MetaItem label={L('주문일', 'Date')} value={fmtDate(order.createdAt, lang)} />
         <div style={{ flex: 1 }} />
 
         {/* Action button or completion badge */}
@@ -336,8 +340,8 @@ function ManufacturerOrderCard({
             }}
           >
             {actionLoading
-              ? (isKo ? '처리 중...' : 'Processing...')
-              : (isKo ? actionDef.ko : actionDef.en)}
+              ? (L('처리 중...', 'Processing...'))
+              : L(actionDef.ko, actionDef.en)}
           </button>
         ) : (
           <span style={{
@@ -345,8 +349,8 @@ function ManufacturerOrderCard({
             background: 'var(--nx-panel-2)', color: 'var(--nx-text-3)', border: '1px solid var(--nx-border)',
           }}>
             {order.status === 'shipped'
-              ? (isKo ? '배송 완료 확인 대기' : 'Awaiting delivery confirm')
-              : (isKo ? '완료' : 'Completed')}
+              ? (L('배송 완료 확인 대기', 'Awaiting delivery confirm'))
+              : (L('완료', 'Completed'))}
           </span>
         )}
       </div>

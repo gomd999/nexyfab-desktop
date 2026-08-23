@@ -8,6 +8,7 @@ import {
   type ToleranceStackEntry,
   type StackResult,
 } from './toleranceStack';
+import { localizeCommercialDictionary } from '@/lib/i18n/commercialLocalizer';
 
 const C = {
   bg: 'var(--nx-panel)',
@@ -22,7 +23,7 @@ const C = {
 
 interface Props {
   initialEntries?: ToleranceStackEntry[];
-  lang?: 'ko' | 'en';
+  lang?: 'ko' | 'en' | 'ja' | 'zh' | 'es' | 'ar';
   onChange?: (entries: ToleranceStackEntry[], result: StackResult) => void;
 }
 
@@ -70,9 +71,7 @@ export default function ToleranceStackPanel({ initialEntries, lang = 'ko', onCha
     update(id, { upper: t, lower: t });
   };
 
-  const T = lang === 'ko'
-    ? { title: '공차 스택 분석', add: '+ 행 추가', method: '해석법', wc: '최악 조건', rss: 'RSS', label: '이름', nominal: '공칭', upper: '상편차', lower: '하편차', dir: '방향', iso: 'ISO 2768', result: '스택 결과', min: '최소', max: '최대', nominalLabel: '공칭', total: '총 공차', specWin: '규격 윈도우(선택)', lsl: '하한', usl: '상한', pass: '합격', fail: '불합격', contribs: '기여도', addSub: { add: '+', sub: '−' } }
-    : { title: 'Tolerance Stack Analysis', add: '+ Add row', method: 'Method', wc: 'Worst-Case', rss: 'RSS', label: 'Label', nominal: 'Nom.', upper: '+Tol', lower: '−Tol', dir: 'Dir', iso: 'ISO 2768', result: 'Stack Result', min: 'Min', max: 'Max', nominalLabel: 'Nominal', total: 'Total tol', specWin: 'Spec Window (opt.)', lsl: 'LSL', usl: 'USL', pass: 'PASS', fail: 'FAIL', contribs: 'Contributions', addSub: { add: '+', sub: '−' } };
+  const T = localizeCommercialDictionary(lang, { title: '공차 스택 분석', add: '+ 행 추가', method: '해석법', wc: '최악 조건', rss: 'RSS', label: '이름', nominal: '공칭', upper: '상편차', lower: '하편차', dir: '방향', iso: 'ISO 2768', result: '스택 결과', min: '최소', max: '최대', nominalLabel: '공칭', total: '총 공차', specWin: '규격 윈도우(선택)', lsl: '하한', usl: '상한', pass: '합격', fail: '불합격', contribs: '기여도', addSub: { add: '+', sub: '−' } }, { title: 'Tolerance Stack Analysis', add: '+ Add row', method: 'Method', wc: 'Worst-Case', rss: 'RSS', label: 'Label', nominal: 'Nom.', upper: '+Tol', lower: '−Tol', dir: 'Dir', iso: 'ISO 2768', result: 'Stack Result', min: 'Min', max: 'Max', nominalLabel: 'Nominal', total: 'Total tol', specWin: 'Spec Window (opt.)', lsl: 'LSL', usl: 'USL', pass: 'PASS', fail: 'FAIL', contribs: 'Contributions', addSub: { add: '+', sub: '−' } });
 
   return (
     <div style={{ background: C.bg, color: C.text, border: `1px solid ${C.border}`, borderRadius: 8, padding: 12, fontSize: 12 }}>

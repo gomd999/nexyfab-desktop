@@ -10,6 +10,8 @@ import { getDbAdapter } from '@/lib/db-adapter';
 import { checkOrigin } from '@/lib/csrf';
 import { evaluateStage } from '@/lib/stage-engine';
 import { SERVICE_NAME } from '@/lib/service-config';
+import { normalizeAdminMemberPlanStats } from '@/lib/admin-member-stats';
+import { boundedJsonError, readBoundedJson } from '@/lib/boundedJsonBody';
 
 export const dynamic = 'force-dynamic';
 
@@ -95,11 +97,11 @@ export async function GET(req: NextRequest) {
        LIMIT ? OFFSET ?`,
       ...params, limit, offset,
     ),
-    db.queryOne<{ total: number }>(
+    db.queryOne<{ total: number | string }>(
       `SELECT COUNT(*) AS total FROM nf_users u ${where}`,
       ...params,
     ),
-    db.queryAll<{ plan: string; count: number }>(
+    db.queryAll<{ plan: string; count: number | string }>(
       `SELECT plan, COUNT(*) AS count FROM nf_users WHERE id <> 'demo-user' GROUP BY plan`,
     ),
   ]);
@@ -144,17 +146,17 @@ export async function GET(req: NextRequest) {
 
   return NextResponse.json({
     users: enriched,
-    total: countRow?.total ?? 0,
+    total: Number(countRow?.total ?? 0),
     page,
     limit,
-    stats,
+    stats: normalizeAdminMemberPlanStats(stats),
   });
 }
 
 export async function PATCH(req: NextRequest) {
   if (!(await verifyAdmin(req))) return unauthorized();
 
-  const body = await req.json() as {
+  const body = await readBoundedJson(req, 256 * 1024) as {
     userId?: string;
     plan?: string;
     role?: string;
@@ -286,7 +288,7 @@ export async function DELETE(req: NextRequest) {
   if (!checkOrigin(req)) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   if (!(await verifyAdmin(req))) return unauthorized();
 
-  const { userId } = await req.json() as { userId?: string };
+  const { userId } = await readBoundedJson(req, 64 * 1024) as { userId?: string };
   if (!userId) return NextResponse.json({ error: 'userId required' }, { status: 400 });
 
   const db = getDbAdapter();
@@ -318,7 +320,12 @@ export async function POST(req: NextRequest) {
   if (!checkOrigin(req)) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   if (!(await verifyAdmin(req))) return unauthorized();
 
-  const body = await req.json().catch(() => ({})) as { email?: string; password?: string; name?: string; plan?: string };
+  let body: { email?: string; password?: string; name?: string; plan?: string };
+  try { body = await readBoundedJson(req, 256 * 1024); }
+  catch (error) {
+    if (boundedJsonError(error)?.status === 413) return NextResponse.json({ error: 'Payload too large' }, { status: 413 });
+    body = {};
+  }
   const email = (body.email ?? '').trim().toLowerCase();
   const password = body.password ?? '';
   if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return NextResponse.json({ error: '유효한 이메일을 입력하세요.' }, { status: 400 });

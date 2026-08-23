@@ -115,7 +115,7 @@ describe('building release certificate', () => {
     const certificate = buildBuildingReleaseCertificate(completeInput());
     expect(certificate.assertions).toHaveLength(20);
     expect(certificate.assertions.every(item => item.status === 'pass')).toBe(true);
-    expect(certificate).toMatchObject({ status: 'pass', releaseReady: true, issues: [] });
+    expect(certificate).toMatchObject({ status: 'pass', internalReady: true, releaseReady: false, issues: [] });
   });
 
   it('does not claim IFC fidelity when the deep roundtrip is missing', () => {

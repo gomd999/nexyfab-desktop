@@ -11,6 +11,9 @@ import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { rateLimit } from '@/lib/rate-limit';
 import { getTrustedClientIp } from '@/lib/client-ip';
+import { boundedJsonError, readBoundedJson } from '@/lib/boundedJsonBody';
+
+const MAX_BODY_BYTES = 4 * 1024 * 1024;
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -31,7 +34,10 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   if (!rl.allowed) return NextResponse.json({ ok: false, error: '요청이 너무 많습니다.' }, { status: 429 });
 
   let spec: unknown;
-  try { spec = await req.json(); } catch { return NextResponse.json({ ok: false, error: 'invalid json' }, { status: 400 }); }
+  try { spec = await readBoundedJson(req, MAX_BODY_BYTES); } catch (error) {
+    if (boundedJsonError(error)?.code === 'PAYLOAD_TOO_LARGE') return NextResponse.json({ ok: false, error: 'loft 입력이 너무 큽니다.' }, { status: 413 });
+    return NextResponse.json({ ok: false, error: 'invalid json' }, { status: 400 });
+  }
 
   let mod: LoftMod;
   try { mod = await load(); } catch (e) { return NextResponse.json({ ok: false, error: 'loft 모듈 로드 실패: ' + (e instanceof Error ? e.message : String(e)) }, { status: 500 }); }

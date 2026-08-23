@@ -5,6 +5,7 @@ import { validateDesignArtifactGraph } from '@/lib/ai/designArtifactGraph';
 import type { DesignWorkspaceRevision } from '@/lib/ai/designWorkspaceRevision';
 import { validateDesignWorkspaceRevision } from '@/lib/ai/designWorkspaceRevision';
 import { getDomainProfile } from '@/lib/ai/domainProfileRegistry';
+import { invalidateManufacturingLineageForRevision } from '@/lib/manufacturingLineageDb';
 
 export const CAD_WORKSPACE_ENVELOPE_SCHEMA = 'nexyfab.cad-workspace-envelope.v1' as const;
 const SHA256 = /^[a-f0-9]{64}$/;
@@ -33,8 +34,20 @@ export interface StoredCadWorkspaceEnvelope extends CadWorkspaceEnvelopeInput {
   contentHash: string;
 }
 
+export interface CadWorkspaceRevisionSummary {
+  artifactId: string;
+  revision: number;
+  domain: DesignWorkspaceRevision['domain'];
+  lineageId: string;
+  envelopeContentHash: string;
+  geometryContentHash: string;
+  shapeIdentityHash: string;
+  kernelId: string;
+  createdAt: number;
+}
+
 export type PersistCadWorkspaceResult =
-  | { ok: true; revisionId: string; envelope: StoredCadWorkspaceEnvelope }
+  | { ok: true; revisionId: string; envelope: StoredCadWorkspaceEnvelope; invalidatedLineageIds: string[] }
   | { ok: false; code: 'INVALID_ENVELOPE'; issues: string[] }
   | { ok: false; code: 'REVISION_CONFLICT'; currentRevision: number; currentContentHash: string; conflictPaths: string[] };
 
@@ -155,6 +168,22 @@ export async function ensureCadWorkspaceRevisionTables(db: DbAdapter): Promise<v
 type HeadRow = { revision: number; content_hash: string };
 type PayloadRow = HeadRow & { payload_json: string };
 
+export type AuthoritativeWorkspaceHead = { projectId: string; revision: number; contentHash: string };
+
+/** Read-only head access for commercial persistence. It deliberately performs no DDL. */
+export async function readAuthoritativeWorkspaceHead(db: DbAdapter, projectId: string): Promise<AuthoritativeWorkspaceHead | null> {
+  if (!projectId.trim()) return null;
+  const row = await db.queryOne<HeadRow>('SELECT revision, content_hash FROM nf_cad_workspace_heads WHERE project_id = ?', projectId);
+  return row ? { projectId, revision: Number(row.revision), contentHash: String(row.content_hash) } : null;
+}
+
+/** Compare-and-swap only; callers must provide the already verified old head. */
+export async function compareAndSwapAuthoritativeWorkspaceHead(db: DbAdapter, input: { projectId: string; expectedRevision: number; expectedContentHash: string; nextRevision: number; nextContentHash: string; at: number }): Promise<boolean> {
+  if (!input.projectId.trim() || !Number.isSafeInteger(input.expectedRevision) || !Number.isSafeInteger(input.nextRevision) || input.nextRevision <= input.expectedRevision || !SHA256.test(input.expectedContentHash) || !SHA256.test(input.nextContentHash)) return false;
+  const result = await db.execute('UPDATE nf_cad_workspace_heads SET revision = ?, content_hash = ?, updated_at = ? WHERE project_id = ? AND revision = ? AND content_hash = ?', input.nextRevision, input.nextContentHash, input.at, input.projectId, input.expectedRevision, input.expectedContentHash);
+  return result.changes === 1;
+}
+
 export async function persistCadWorkspaceRevision(
   db: DbAdapter,
   userId: string,
@@ -208,7 +237,8 @@ export async function persistCadWorkspaceRevision(
       );
       if (updated.changes !== 1) throw new Error('cad_workspace_head_compare_and_swap_failed');
     }
-    return { ok: true, revisionId, envelope };
+    const invalidatedLineageIds = await invalidateManufacturingLineageForRevision(tx, projectId, revisionId, now);
+    return { ok: true, revisionId, envelope, invalidatedLineageIds };
   });
 }
 
@@ -221,4 +251,37 @@ export async function readCadWorkspaceRevision(
     ? await db.queryOne<{ payload_json: string }>('SELECT payload_json FROM nf_cad_workspace_revisions WHERE project_id = ? ORDER BY revision DESC LIMIT 1', projectId)
     : await db.queryOne<{ payload_json: string }>('SELECT payload_json FROM nf_cad_workspace_revisions WHERE project_id = ? AND revision = ?', projectId, revision);
   return row ? JSON.parse(row.payload_json) as StoredCadWorkspaceEnvelope : null;
+}
+
+export async function listCadWorkspaceRevisions(
+  db: DbAdapter,
+  projectId: string,
+  limit = 50,
+): Promise<CadWorkspaceRevisionSummary[]> {
+  const boundedLimit = Number.isSafeInteger(limit) ? Math.min(100, Math.max(1, limit)) : 50;
+  const rows = await db.queryAll<{ id: string; revision: number; domain: DesignWorkspaceRevision['domain']; content_hash: string; payload_json: string; created_at: number }>(
+    `SELECT id, revision, domain, content_hash, payload_json, created_at
+     FROM nf_cad_workspace_revisions WHERE project_id = ? ORDER BY revision DESC LIMIT ?`,
+    projectId, boundedLimit,
+  );
+  return rows.flatMap(row => {
+    try {
+      const stored = JSON.parse(row.payload_json) as StoredCadWorkspaceEnvelope;
+      const { contentHash, ...input } = stored;
+      if (contentHash !== row.content_hash || contentHash !== hashCadWorkspaceEnvelope(input as CadWorkspaceEnvelopeInput)) return [];
+      if (validateCadWorkspaceEnvelope(input as CadWorkspaceEnvelopeInput).length) return [];
+      if (stored.workspace.projectId !== projectId || stored.workspace.revision !== Number(row.revision) || stored.workspace.domain !== row.domain) return [];
+      return [{
+        artifactId: row.id,
+        revision: Number(row.revision),
+        domain: row.domain,
+        lineageId: stored.workspace.lineageId,
+        envelopeContentHash: contentHash,
+        geometryContentHash: stored.geometry.contentHash,
+        shapeIdentityHash: stored.geometry.shapeIdentityHash,
+        kernelId: stored.kernelIdentity.kernelId,
+        createdAt: Number(row.created_at),
+      }];
+    } catch { return []; }
+  });
 }

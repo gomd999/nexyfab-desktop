@@ -11,6 +11,8 @@
  * for latency curves where the trend matters more than absolute volume.
  */
 import React, { useMemo, useState } from 'react';
+import { loc } from '@/lib/i18n/loc';
+import { formatDate } from '@/lib/i18n/format';
 
 export interface TimeseriesPoint {
   ts: number;
@@ -30,6 +32,7 @@ export interface TimeseriesChartProps {
   title?: string;
   /** Subtitle e.g. "windowH=24, bucketM=60" */
   subtitle?: string;
+  lang?: string;
 }
 
 const DEFAULT_HEIGHT = 120;
@@ -47,6 +50,7 @@ export default function TimeseriesChart({
   maxY,
   title,
   subtitle,
+  lang = 'en',
 }: TimeseriesChartProps) {
   const [hoverIdx, setHoverIdx] = useState<number | null>(null);
   // Cap container at 800px CSS but draw at 800 so SVG scales responsively.
@@ -66,7 +70,7 @@ export default function TimeseriesChart({
       <div style={containerStyle}>
         {title && <div style={titleStyle}>{title}</div>}
         <div style={{ height, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#6e7681', fontSize: 12 }}>
-          데이터 없음
+          {loc(lang, { ko: '데이터 없음', en: 'No data', ja: 'データなし', zh: '暂无数据', es: 'Sin datos', ar: 'لا توجد بيانات' })}
         </div>
       </div>
     );
@@ -74,9 +78,9 @@ export default function TimeseriesChart({
 
   const { max, stepX } = computed;
   const ticks = [0, max / 2, max];
-  const xToTime = (i: number) => new Date(data[i].ts).toLocaleString('ko-KR', {
+  const xToTime = (i: number) => formatDate(data[i].ts, lang, {
     month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit',
-  });
+  }) ?? '—';
 
   return (
     <div style={containerStyle}>

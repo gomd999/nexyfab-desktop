@@ -6,6 +6,7 @@ export interface StatusPill {
   id: string;
   label: ReactNode;
   tone?: 'default' | 'ok' | 'warn' | 'error';
+  saveState?: 'ready' | 'saving' | 'saved' | 'error';
 }
 
 export interface StatusSection {
@@ -43,6 +44,9 @@ export function StatusBar({ left = [], pills = [], right = [] }: StatusBarProps)
         <span
           key={p.id}
           className="pill"
+          data-testid={p.id === 'cloud' ? 'autosave-indicator' : undefined}
+          data-save-state={p.id === 'cloud' ? p.saveState : undefined}
+          aria-label={p.id === 'cloud' ? `Autosave: ${String(p.label)}` : undefined}
           style={p.tone ? { color: toneColor[p.tone] } : undefined}
         >
           {p.tone === 'ok' && <span className="dot" />}

@@ -16,6 +16,7 @@ import {
 import type { FlatPatternResult } from '../features/sheetMetal';
 import type { DFMIssueSummary } from './rfqBundler';
 import { useFreemium, type FreemiumFeature } from '@/hooks/useFreemium';
+import { formatNumber } from '@/lib/i18n/format';
 import UpgradeModal from '@/components/nexyfab/UpgradeModal';
 
 /* ─── Props ─────────────────────────────────────────────────────────────────── */
@@ -283,7 +284,7 @@ function CostBarChart({ estimates, lang }: { estimates: CostEstimate[]; lang: st
               }} />
             </div>
             <span style={{ fontSize: 10, fontWeight: 700, color: C.text, width: 72, textAlign: 'right' }}>
-              {formatCost(e.unitCost, e.currency)}
+              {formatCost(e.unitCost, e.currency, lang)}
             </span>
           </div>
         );
@@ -334,10 +335,10 @@ function EstimateCard({ est, lang }: { est: CostEstimate; lang: string }) {
         </div>
         <div style={{ textAlign: 'right' }}>
           <div style={{ fontSize: 16, fontWeight: 800, color: C.accentBright }}>
-            {formatCost(est.totalCost, est.currency)}
+            {formatCost(est.totalCost, est.currency, lang)}
           </div>
           <div style={{ fontSize: 10, color: C.dim }}>
-            {tt.unitCost}: {formatCost(est.unitCost, est.currency)}
+            {tt.unitCost}: {formatCost(est.unitCost, est.currency, lang)}
           </div>
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 3, alignItems: 'flex-end' }}>
@@ -352,15 +353,15 @@ function EstimateCard({ est, lang }: { est: CostEstimate; lang: string }) {
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 6, fontSize: 11 }}>
             <div>
               <span style={{ color: C.dim }}>{tt.material}</span><br />
-              <span style={{ fontWeight: 700, color: C.text }}>{formatCost(est.materialCost, est.currency)}</span>
+              <span style={{ fontWeight: 700, color: C.text }}>{formatCost(est.materialCost, est.currency, lang)}</span>
             </div>
             <div>
               <span style={{ color: C.dim }}>{tt.machine}</span><br />
-              <span style={{ fontWeight: 700, color: C.text }}>{formatCost(est.machineCost, est.currency)}</span>
+              <span style={{ fontWeight: 700, color: C.text }}>{formatCost(est.machineCost, est.currency, lang)}</span>
             </div>
             <div>
               <span style={{ color: C.dim }}>{tt.setup}</span><br />
-              <span style={{ fontWeight: 700, color: C.text }}>{formatCost(est.setupCost, est.currency)}</span>
+              <span style={{ fontWeight: 700, color: C.text }}>{formatCost(est.setupCost, est.currency, lang)}</span>
             </div>
           </div>
           {est.notes.length > 0 && (
@@ -451,7 +452,7 @@ function MaterialPriceTicker({ materialId, lang }: { materialId: string; lang: s
               </div>
               <div style={{ fontSize: 11 }}>
                 <span style={{ color: 'var(--nx-border-strong)' }}>KRW/kg </span>
-                <span style={{ color: 'var(--nx-ok)', fontWeight: 700 }}>₩{price.krwPerKg.toLocaleString('ko-KR')}</span>
+                <span style={{ color: 'var(--nx-ok)', fontWeight: 700 }}>₩{formatNumber(price.krwPerKg, lang) ?? '0'}</span>
               </div>
               <div style={{ fontSize: 9, color: 'var(--nx-border-strong)', width: '100%' }}>
                 {tt.updated}{price.updatedAt?.slice(0, 10) ?? '—'} · {price.source}

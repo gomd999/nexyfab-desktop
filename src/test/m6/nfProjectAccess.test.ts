@@ -6,6 +6,7 @@ import type { DbAdapter } from '@/lib/db-adapter';
 describe('M6 nfProjectAccess (owner branch)', () => {
   it('returns owner when project.user_id matches', async () => {
     const db = {
+      execute: vi.fn().mockResolvedValue({ changes: 0 }),
       queryOne: vi.fn().mockResolvedValueOnce({
         id: 'p1',
         user_id: 'u-owner',
@@ -15,7 +16,12 @@ describe('M6 nfProjectAccess (owner branch)', () => {
       }),
     } as unknown as DbAdapter;
 
-    const acc = await resolveProjectAccess(db, 'p1', 'u-owner');
+    const acc = await resolveProjectAccess(db, 'p1', {
+      userId: 'u-owner',
+      orgIds: [],
+      activeOrgId: null,
+      orgContextStatus: 'personal',
+    });
     expect(acc?.role).toBe('owner');
     expect(acc?.canEdit).toBe(true);
     expect(acc?.ownerUserId).toBe('u-owner');

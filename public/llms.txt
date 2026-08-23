@@ -1,0 +1,11 @@
+# NexyFab
+
+> Browser-based, AI-assisted precision CAD and manufacturing workspace.
+
+- [NexyFab](https://nexyfab.com/)
+- [Shape Generator](https://nexyfab.com/ko/shape-generator/)
+- [Documentation](https://nexyfab.com/ko/docs/)
+
+NexyFab combines parametric shape generation, feature-tree editing, assembly
+workflows, DFM feedback, and manufacturing quotation tools. Generated geometry
+and solver results must be verified before production use.

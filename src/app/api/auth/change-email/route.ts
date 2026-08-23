@@ -4,6 +4,9 @@ import crypto from 'crypto';
 import { getAuthUser } from '@/lib/auth-middleware';
 import { getDbAdapter } from '@/lib/db-adapter';
 import { sendEmail } from '@/lib/email';
+import { boundedJsonError, readBoundedJson } from '@/lib/boundedJsonBody';
+
+const MAX_CHANGE_EMAIL_BODY_BYTES = 16 * 1024;
 
 export const dynamic = 'force-dynamic';
 
@@ -14,7 +17,12 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: '로그인이 필요합니다.' }, { status: 401 });
     }
 
-    const body = await req.json();
+    let body: unknown;
+    try { body = await readBoundedJson(req, MAX_CHANGE_EMAIL_BODY_BYTES); }
+    catch (error) {
+      if (boundedJsonError(error)?.code === 'PAYLOAD_TOO_LARGE') return NextResponse.json({ error: 'Request too large', code: 'PAYLOAD_TOO_LARGE' }, { status: 413 });
+      throw error;
+    }
     const { newEmail, confirmEmail, password } = body as {
       newEmail?: string;
       confirmEmail?: string;

@@ -12,6 +12,9 @@
 // to render inline, and forcing ops into a detail page slows triage.
 
 import React, { useCallback, useEffect, useState } from 'react';
+import { useAdminI18n } from '../AdminI18nProvider';
+import { createCommercialLocalizer } from '@/lib/i18n/commercialLocalizer';
+import { formatDate } from '@/lib/i18n/format';
 
 interface Signal {
   id: string;
@@ -29,22 +32,24 @@ interface Signal {
 
 interface Counts { open: number; reviewed: number }
 
-const KIND_LABELS: Record<string, { ko: string; emoji: string; color: string }> = {
-  orphan_order: { ko: '에스크로 누락 주문',  emoji: '💸', color: '#dc2626' },
-  repeat_pair:  { ko: '반복 노출 미체결',    emoji: '🔁', color: '#d97706' },
-  quick_cancel: { ko: '견적 후 즉시 취소',   emoji: '⚡', color: '#d97706' },
+const KIND_LABELS: Record<string, { ko: string; en: string; emoji: string; color: string }> = {
+  orphan_order: { ko: '에스크로 누락 주문', en: 'Order missing escrow', emoji: '💸', color: '#dc2626' },
+  repeat_pair:  { ko: '반복 노출 미체결', en: 'Repeated unmatched pair', emoji: '🔁', color: '#d97706' },
+  quick_cancel: { ko: '견적 후 즉시 취소', en: 'Cancelled immediately after quote', emoji: '⚡', color: '#d97706' },
 };
 
-const VERDICT_LABELS: Record<string, string> = {
-  false_positive:         '✓ 정상 (오탐)',
-  warning_sent:           '⚠️ 경고 발송',
-  enforcement_initiated:  '🚨 위반 처리 개시',
+const VERDICT_LABELS: Record<string, { ko: string; en: string }> = {
+  false_positive:         { ko: '✓ 정상 (오탐)', en: '✓ Normal (false positive)' },
+  warning_sent:           { ko: '⚠️ 경고 발송', en: '⚠️ Warning sent' },
+  enforcement_initiated:  { ko: '🚨 위반 처리 개시', en: '🚨 Enforcement initiated' },
 };
 
 const STATUS_TABS = ['open', 'reviewed', 'all'] as const;
 type StatusTab = typeof STATUS_TABS[number];
 
 export default function AntiPoachAdminPage() {
+  const { locale } = useAdminI18n();
+  const L = createCommercialLocalizer(locale);
   const [signals, setSignals] = useState<Signal[]>([]);
   const [counts, setCounts] = useState<Counts>({ open: 0, reviewed: 0 });
   const [tab, setTab] = useState<StatusTab>('open');
@@ -99,19 +104,21 @@ export default function AntiPoachAdminPage() {
 
   return (
     <div style={pageStyle}>
-      <h1 style={titleStyle}>🛡️ Anti-Poach 시그널 검토</h1>
+      <h1 style={titleStyle}>{L('🛡️ Anti-Poach 시그널 검토', '🛡️ Anti-poaching signal review')}</h1>
       <p style={subtitleStyle}>
-        파트너 약관 §6 (24개월 거래 우회 금지) 위반 의심 신호를 운영자가 검토합니다.
-        매주 월요일 cron이 새 시그널을 추가합니다.
+        {L(
+          '파트너 약관 §6 (24개월 거래 우회 금지) 위반 의심 신호를 운영자가 검토합니다. 매주 월요일 cron이 새 시그널을 추가합니다.',
+          'Review suspected violations of Partner Terms §6 (24-month non-circumvention). A weekly Monday cron job adds new signals.',
+        )}
       </p>
 
       <div style={statsRowStyle}>
         <div style={statCardStyle}>
-          <div style={statLabelStyle}>미검토</div>
+          <div style={statLabelStyle}>{L('미검토', 'Open')}</div>
           <div style={{ ...statValueStyle, color: counts.open > 0 ? '#dc2626' : '#059669' }}>{counts.open}</div>
         </div>
         <div style={statCardStyle}>
-          <div style={statLabelStyle}>검토 완료</div>
+          <div style={statLabelStyle}>{L('검토 완료', 'Reviewed')}</div>
           <div style={{ ...statValueStyle, color: '#6b7280' }}>{counts.reviewed}</div>
         </div>
       </div>
@@ -123,29 +130,29 @@ export default function AntiPoachAdminPage() {
               ...tabBtnStyle,
               background: tab === s ? '#1f6feb' : 'transparent',
               color: tab === s ? '#fff' : '#9ca3af',
-            }}>{s === 'open' ? '미검토' : s === 'reviewed' ? '검토 완료' : '전체'}</button>
+            }}>{s === 'open' ? L('미검토', 'Open') : s === 'reviewed' ? L('검토 완료', 'Reviewed') : L('전체', 'All')}</button>
           ))}
         </div>
         <select value={kindFilter} onChange={e => setKindFilter(e.target.value)} style={selectStyle}>
-          <option value="all">전체 종류</option>
+          <option value="all">{L('전체 종류', 'All types')}</option>
           {Object.entries(KIND_LABELS).map(([k, v]) => (
-            <option key={k} value={k}>{v.emoji} {v.ko}</option>
+            <option key={k} value={k}>{v.emoji} {L(v.ko, v.en)}</option>
           ))}
         </select>
-        <button onClick={() => void load()} style={refreshBtnStyle}>↻ 새로고침</button>
+        <button onClick={() => void load()} style={refreshBtnStyle}>{L('↻ 새로고침', '↻ Refresh')}</button>
       </div>
 
-      {loading && <div style={mutedStyle}>불러오는 중…</div>}
+      {loading && <div style={mutedStyle}>{L('불러오는 중…', 'Loading…')}</div>}
       {!loading && signals.length === 0 && (
         <div style={emptyStyle}>
           <div style={{ fontSize: 36, marginBottom: 8 }}>🎉</div>
-          <div>{tab === 'open' ? '미검토 시그널이 없습니다.' : '시그널이 없습니다.'}</div>
+          <div>{tab === 'open' ? L('미검토 시그널이 없습니다.', 'There are no open signals.') : L('시그널이 없습니다.', 'There are no signals.')}</div>
         </div>
       )}
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
         {signals.map(s => {
-          const kind = KIND_LABELS[s.kind] ?? { ko: s.kind, emoji: '❓', color: '#6b7280' };
+          const kind = KIND_LABELS[s.kind] ?? { ko: s.kind, en: s.kind, emoji: '❓', color: '#6b7280' };
           const isReviewed = s.reviewedAt !== null;
           const p = pendingVerdict[s.id] ?? { verdict: '', notes: '' };
           return (
@@ -156,7 +163,7 @@ export default function AntiPoachAdminPage() {
             }}>
               <div style={rowHeaderStyle}>
                 <span style={{ fontSize: 14, fontWeight: 700 }}>
-                  {kind.emoji} {kind.ko}
+                  {kind.emoji} {L(kind.ko, kind.en)}
                 </span>
                 <span style={{
                   ...severityChipStyle,
@@ -166,7 +173,7 @@ export default function AntiPoachAdminPage() {
                   {s.severity}
                 </span>
                 <span style={{ flex: 1 }} />
-                <span style={timeStyle}>{new Date(s.detectedAt).toLocaleString('ko-KR')}</span>
+                <span style={timeStyle}>{formatDate(s.detectedAt, locale, { dateStyle: 'medium', timeStyle: 'short' }) ?? '-'}</span>
               </div>
 
               <div style={evidenceBlockStyle}>
@@ -180,9 +187,9 @@ export default function AntiPoachAdminPage() {
 
               {isReviewed ? (
                 <div style={verdictDisplayStyle}>
-                  <strong>{VERDICT_LABELS[s.verdict ?? ''] ?? s.verdict}</strong>
+                  <strong>{VERDICT_LABELS[s.verdict ?? ''] ? L(VERDICT_LABELS[s.verdict ?? ''].ko, VERDICT_LABELS[s.verdict ?? ''].en) : s.verdict}</strong>
                   <span style={{ color: '#6b7280', marginLeft: 8 }}>
-                    by {s.reviewedBy?.slice(0, 12)} · {new Date(s.reviewedAt!).toLocaleString('ko-KR')}
+                    {L('검토자', 'by')} {s.reviewedBy?.slice(0, 12)} · {formatDate(s.reviewedAt, locale, { dateStyle: 'medium', timeStyle: 'short' }) ?? '-'}
                   </span>
                 </div>
               ) : (
@@ -192,15 +199,15 @@ export default function AntiPoachAdminPage() {
                     onChange={e => updatePending(s.id, 'verdict', e.target.value)}
                     style={selectStyle}
                   >
-                    <option value="">— 판정 선택 —</option>
+                    <option value="">{L('— 판정 선택 —', '— Select verdict —')}</option>
                     {Object.entries(VERDICT_LABELS).map(([k, v]) => (
-                      <option key={k} value={k}>{v}</option>
+                      <option key={k} value={k}>{L(v.ko, v.en)}</option>
                     ))}
                   </select>
                   <input
                     value={p.notes}
                     onChange={e => updatePending(s.id, 'notes', e.target.value)}
-                    placeholder="검토 메모 (선택)"
+                    placeholder={L('검토 메모 (선택)', 'Review notes (optional)')}
                     style={notesInputStyle}
                   />
                   <button
@@ -212,7 +219,7 @@ export default function AntiPoachAdminPage() {
                       cursor: (!p.verdict || submitting === s.id) ? 'not-allowed' : 'pointer',
                     }}
                   >
-                    {submitting === s.id ? '저장 중…' : '판정 저장'}
+                    {submitting === s.id ? L('저장 중…', 'Saving…') : L('판정 저장', 'Save verdict')}
                   </button>
                 </div>
               )}

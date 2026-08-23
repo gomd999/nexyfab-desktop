@@ -10,6 +10,38 @@ import type { DrawingResult, DrawingLine, DrawingText, ViewResult } from './auto
 import type { jsPDF } from 'jspdf';
 import { detectCirclesAndArcs, type Seg } from './dxfArcDetect';
 
+interface AssemblyExportRow {
+  index: number;
+  label: string;
+  qty: number;
+  material: string;
+}
+
+interface AssemblyExportBalloon {
+  itemNumber: number;
+  anchor: { x: number; y: number };
+  balloonCentre: { x: number; y: number };
+  leader: readonly [{ x: number; y: number }, { x: number; y: number }];
+}
+
+interface AssemblyExportData {
+  bom?: readonly AssemblyExportRow[];
+  balloons?: readonly AssemblyExportBalloon[];
+}
+
+function assemblyExportData(drawing: DrawingResult): AssemblyExportData {
+  // Keep DrawingResult's public shape unchanged for ordinary part drawings;
+  // assemblyDrawing supplies these fields structurally at runtime.
+  const candidate = drawing as DrawingResult & Partial<AssemblyExportData>;
+  return candidate.bom && candidate.balloons ? candidate : {};
+}
+
+function assemblyTableOrigin(drawing: DrawingResult, rows: readonly AssemblyExportRow[]): { x: number; y: number; width: number; height: number } {
+  const width = 100;
+  const height = 8 + rows.length * 6;
+  return { x: 10, y: drawing.paperHeight - 30 - height - 5, width, height };
+}
+
 /** PDF/DXF/SVG 미리보기 공통 — 표제란 리비전 필드 접두사(CAD 관례, ASCII). */
 export const DRAWING_TITLE_REVISION_LABEL = 'Rev';
 
@@ -85,6 +117,34 @@ export function buildDrawingSvgString(
         `<text transform="translate(${tx.x},${vh - tx.y})${rot}" ` +
           `text-anchor="${ta}" font-size="${tx.fontSize}" fill="${fill}" font-family="monospace,Consolas,monospace">${escapeXml(tx.text)}</text>`,
       );
+    }
+    chunks.push('</g>');
+  }
+
+  const assembly = assemblyExportData(drawing);
+  if (assembly.bom && assembly.balloons) {
+    const table = assemblyTableOrigin(drawing, assembly.bom);
+    const cols = [0, 8, 58, 70];
+    chunks.push(`<g data-export="assembly-bom-balloon" font-family="monospace,Consolas,monospace">`);
+    chunks.push(`<rect x="${table.x}" y="${table.y}" width="${table.width}" height="${table.height}" fill="white" stroke="#000000" stroke-width="0.4"/>`);
+    chunks.push(`<line x1="${table.x}" y1="${table.y + 8}" x2="${table.x + table.width}" y2="${table.y + 8}" stroke="#000000" stroke-width="0.25"/>`);
+    for (const offset of [8, 58, 70]) chunks.push(`<line x1="${table.x + offset}" y1="${table.y}" x2="${table.x + offset}" y2="${table.y + table.height}" stroke="#000000" stroke-width="0.2"/>`);
+    for (const [i, label] of ['#', 'Item', 'Qty', 'Material'].entries()) {
+      const x = table.x + cols[i]! + (i === 0 || i === 2 ? 4 : 1);
+      chunks.push(`<text x="${x}" y="${table.y + 5}" font-size="2.5" fill="#000000">${escapeXml(label)}</text>`);
+    }
+    for (const [i, row] of assembly.bom.entries()) {
+      const y = table.y + 8 + i * 6 + 4;
+      const vals = [String(row.index), row.label, String(row.qty), row.material];
+      for (const [j, value] of vals.entries()) {
+        const x = table.x + cols[j]! + (j === 0 || j === 2 ? 4 : 1);
+        chunks.push(`<text x="${x}" y="${y}" font-size="2.5" fill="#333333">${escapeXml(value)}</text>`);
+      }
+    }
+    for (const b of assembly.balloons) {
+      chunks.push(`<line x1="${b.anchor.x}" y1="${b.anchor.y}" x2="${b.balloonCentre.x}" y2="${b.balloonCentre.y}" stroke="#000000" stroke-width="0.3"/>`);
+      chunks.push(`<circle cx="${b.balloonCentre.x}" cy="${b.balloonCentre.y}" r="4" fill="white" stroke="#000000" stroke-width="0.4"/>`);
+      chunks.push(`<text x="${b.balloonCentre.x}" y="${b.balloonCentre.y + 1.2}" text-anchor="middle" font-size="3.5" fill="#000000">${b.itemNumber}</text>`);
     }
     chunks.push('</g>');
   }
@@ -276,6 +336,39 @@ function drawDatumOverlayPDF(doc: jsPDF, datums: readonly DatumFrameOverlay[]): 
   }
 }
 
+function drawAssemblyOverlayPDF(doc: jsPDF, drawing: DrawingResult): void {
+  const assembly = assemblyExportData(drawing);
+  if (!assembly.bom || !assembly.balloons) return;
+  const table = assemblyTableOrigin(drawing, assembly.bom);
+  const cols = [0, 8, 58, 70];
+  doc.setDrawColor(0, 0, 0);
+  doc.setFillColor(255, 255, 255);
+  doc.setLineWidth(0.4);
+  doc.rect(table.x, table.y, table.width, table.height, 'FD');
+  doc.setLineWidth(0.25);
+  doc.line(table.x, table.y + 8, table.x + table.width, table.y + 8);
+  for (const offset of [8, 58, 70]) doc.line(table.x + offset, table.y, table.x + offset, table.y + table.height);
+  doc.setTextColor(0, 0, 0);
+  doc.setFontSize(5);
+  for (const [i, label] of ['#', 'Item', 'Qty', 'Material'].entries()) {
+    doc.text(label, table.x + cols[i]! + (i === 0 || i === 2 ? 4 : 1), table.y + 5);
+  }
+  doc.setFontSize(5);
+  for (const [i, row] of assembly.bom.entries()) {
+    const y = table.y + 8 + i * 6 + 4;
+    for (const [j, value] of [String(row.index), row.label, String(row.qty), row.material].entries()) {
+      doc.text(value, table.x + cols[j]! + (j === 0 || j === 2 ? 4 : 1), y);
+    }
+  }
+  doc.setLineWidth(0.3);
+  for (const b of assembly.balloons) {
+    doc.line(b.anchor.x, b.anchor.y, b.balloonCentre.x, b.balloonCentre.y);
+    doc.circle(b.balloonCentre.x, b.balloonCentre.y, 4, 'FD');
+    doc.setFontSize(7);
+    doc.text(String(b.itemNumber), b.balloonCentre.x, b.balloonCentre.y + 1.7, { align: 'center' });
+  }
+}
+
 async function createDrawingJsPdf(
   drawing: DrawingResult,
   gdt: readonly GdtAnnotationOverlay[] = [],
@@ -287,7 +380,9 @@ async function createDrawingJsPdf(
     orientation: isLandscape ? 'landscape' : 'portrait',
     unit: 'mm',
     format: [drawing.paperWidth, drawing.paperHeight],
-    compress: true,
+    // Keep content streams inspectable in release evidence and downstream
+    // CAD/PDF validators (labels remain searchable in the exported bytes).
+    compress: false,
   });
 
   doc.setDrawColor(0);
@@ -308,6 +403,7 @@ async function createDrawingJsPdf(
   }
 
   drawTitleBlockPDF(doc, drawing);
+  drawAssemblyOverlayPDF(doc, drawing);
   drawGdtOverlayPDF(doc, gdt);
   drawDatumOverlayPDF(doc, datums);
   return doc;
@@ -412,6 +508,8 @@ const DXF_LAYERS = [
   { name: 'TEXT',      color: 7, ltype: 'CONTINUOUS' },
   { name: 'TITLE',     color: 7, ltype: 'CONTINUOUS' },
   { name: 'DATUM',     color: 7, ltype: 'CONTINUOUS' }, // GD&T datum reference frames
+  { name: 'BOM',       color: 7, ltype: 'CONTINUOUS' },
+  { name: 'BALLOON',   color: 7, ltype: 'CONTINUOUS' },
 ];
 
 /** R12 LTYPE definitions referenced by the layers above. */
@@ -570,6 +668,36 @@ export function buildDrawingDxfString(
   dxf += dxfText('TITLE', tbX + 52, tbY + 11, 2.5, `Scale: ${tb.scale || ''}`);
   dxf += dxfText('TITLE', tbX + 2,  tbY + 3,  2.5, `Drawn: ${tb.drawnBy || ''}`);
   dxf += dxfText('TITLE', tbX + 52, tbY + 3,  2.5, `Date: ${tb.date || ''}`);
+
+  const assembly = assemblyExportData(drawing);
+  if (assembly.bom && assembly.balloons) {
+    const table = assemblyTableOrigin(drawing, assembly.bom);
+    const cols = [0, 8, 58, 70];
+    const yTop = ph - table.y;
+    const yBottom = ph - (table.y + table.height);
+    dxf += dxfLine('BOM', table.x, yTop, table.x + table.width, yTop);
+    dxf += dxfLine('BOM', table.x + table.width, yTop, table.x + table.width, yBottom);
+    dxf += dxfLine('BOM', table.x + table.width, yBottom, table.x, yBottom);
+    dxf += dxfLine('BOM', table.x, yBottom, table.x, yTop);
+    dxf += dxfLine('BOM', table.x, yTop - 8, table.x + table.width, yTop - 8);
+    for (const offset of [8, 58, 70]) dxf += dxfLine('BOM', table.x + offset, yTop, table.x + offset, yBottom);
+    for (const [i, label] of ['#', 'Item', 'Qty', 'Material'].entries()) {
+      dxf += dxfText('BOM', table.x + cols[i]! + (i === 0 || i === 2 ? 4 : 1), yTop - 5, 2.5, label);
+    }
+    for (const [i, row] of assembly.bom.entries()) {
+      const y = yTop - 8 - i * 6 - 4;
+      for (const [j, value] of [String(row.index), row.label, String(row.qty), row.material].entries()) {
+        dxf += dxfText('BOM', table.x + cols[j]! + (j === 0 || j === 2 ? 4 : 1), y, 2.5, value);
+      }
+    }
+    for (const b of assembly.balloons) {
+      const ax = b.anchor.x, ay = ph - b.anchor.y;
+      const bx = b.balloonCentre.x, by = ph - b.balloonCentre.y;
+      dxf += dxfLine('BALLOON', ax, ay, bx, by);
+      dxf += dxfCircle('BALLOON', bx, by, 4);
+      dxf += dxfText('BALLOON', bx - 1, by - 1, 3.5, String(b.itemNumber));
+    }
+  }
 
   if (drawing.tolerance) {
     dxf += dxfText('TEXT', 5, 1, 2,

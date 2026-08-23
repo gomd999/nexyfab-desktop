@@ -13,8 +13,9 @@ const root = path.resolve(__dirname, '..');
 const mergePath = path.join(root, 'src-tauri', 'updater.merge.json');
 
 const pubkey = process.env.TAURI_UPDATER_PUBKEY?.trim();
+const includeAgentSidecar = process.env.NEXYFAB_AGENT_SIDECAR === '1';
 
-if (!pubkey) {
+if (!pubkey && !includeAgentSidecar) {
   if (fs.existsSync(mergePath)) {
     fs.unlinkSync(mergePath);
     console.log('[tauri-updater-merge] removed updater.merge.json (no TAURI_UPDATER_PUBKEY)');
@@ -25,13 +26,9 @@ if (!pubkey) {
 }
 
 const merge = {
-  plugins: {
-    updater: {
-      active: true,
-      pubkey,
-    },
-  },
+  ...(pubkey ? { plugins: { updater: { active: true, pubkey } } } : {}),
+  ...(includeAgentSidecar ? { bundle: { externalBin: ['binaries/nexyfab-agent-gateway'] } } : {}),
 };
 
 fs.writeFileSync(mergePath, JSON.stringify(merge, null, 2), 'utf-8');
-console.log('[tauri-updater-merge] wrote src-tauri/updater.merge.json (updater active)');
+console.log(`[tauri-updater-merge] wrote src-tauri/updater.merge.json (updater=${Boolean(pubkey)}, agentSidecar=${includeAgentSidecar})`);

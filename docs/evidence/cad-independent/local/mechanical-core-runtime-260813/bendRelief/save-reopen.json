@@ -1,0 +1,31 @@
+{
+  "schema": "nexyfab.mechanical-core-feature-local-runtime.v1",
+  "feature": "bendRelief",
+  "axis": "save_reopen",
+  "status": "PASS",
+  "executedAt": "2026-08-22T07:13:30.564Z",
+  "savedBytes": 1611,
+  "savedSha256": "b3375a3ac2879a50d69763210857e24c6a8257d9e6a49c52ceb7eb191321993c",
+  "reopened": {
+    "handle": "occt:319",
+    "kernelKind": "Solid",
+    "nativeShapeType": 0,
+    "solidCount": 1,
+    "singleSolid": true,
+    "volumeMm3": 3480,
+    "edgeCount": 36,
+    "faceCount": 14,
+    "boundsMm": [
+      [
+        -30.0000001,
+        -1.0000001000000018,
+        -15.000000100000001
+      ],
+      [
+        30.0000001,
+        1.0000001000000018,
+        15.000000100000001
+      ]
+    ]
+  }
+}

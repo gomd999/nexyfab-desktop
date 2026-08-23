@@ -4,8 +4,12 @@ import Link from 'next/link';
 import { use, useEffect, useState, useCallback } from 'react';
 import ConfirmModal from '@/components/ConfirmModal';
 import { useToast } from '@/hooks/useToast';
-import { isKorean } from '@/lib/i18n/normalize';
+import { toIsoLang } from '@/lib/i18n/normalize';
+import { formatDate } from '@/lib/i18n/format';
+import { createCommercialLocalizer } from '@/lib/i18n/commercialLocalizer';
 import { useAuthStore } from '@/hooks/useAuth';
+
+const NEXYCAD_HANDOFF_ENABLED = process.env.NEXT_PUBLIC_NEXYCAD_HANDOFF_ENABLED === '1';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -26,17 +30,18 @@ type TabKey = 'active' | 'archived';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-function fmtDate(ts: number, isKo: boolean) {
-  return new Date(ts).toLocaleDateString(isKo ? 'ko-KR' : 'en-US', {
-    year: 'numeric', month: 'short', day: 'numeric',
-  });
+function fmtDate(ts: number, lang: string) {
+  return formatDate(ts, toIsoLang(lang), { year: 'numeric', month: 'short', day: 'numeric' }) ?? '';
 }
 
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
 export default function ProjectsPage({ params }: { params: Promise<{ lang: string }> }) {
   const { lang } = use(params);
-  const isKo = isKorean(lang);
+  const copy = useCallback(
+    (ko: string, en: string) => createCommercialLocalizer(lang)(ko, en),
+    [lang],
+  );
   const toast = useToast();
   const { user, refreshPlan } = useAuthStore();
   // plan 캐시 stale 방지(감사 2026-07-16) — 결제 직후에도 이 페이지가 최신 플랜을 보게
@@ -67,6 +72,7 @@ export default function ProjectsPage({ params }: { params: Promise<{ lang: strin
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [pendingDelete, setPendingDelete] = useState<NexyfabProject | null>(null);
   const [archivingId, setArchivingId] = useState<string | null>(null);
+  const [launchingNexyCadId, setLaunchingNexyCadId] = useState<string | null>(null);
 
   const FREE_LIMIT = 1;
 
@@ -138,14 +144,14 @@ export default function ProjectsPage({ params }: { params: Promise<{ lang: strin
       if (!r.ok) throw new Error('Delete failed');
       setProjects(prev => prev.filter(p => p.id !== project.id));
       setTotal(t => Math.max(0, t - 1));
-      toast.success(isKo ? '프로젝트가 삭제되었습니다.' : 'Project deleted.');
+      toast.success(copy('프로젝트가 삭제되었습니다.', 'Project deleted.'));
       setPendingDelete(null);
     } catch {
-      toast.error(isKo ? '삭제에 실패했습니다.' : 'Failed to delete project.');
+      toast.error(copy('삭제에 실패했습니다.', 'Failed to delete project.'));
     } finally {
       setDeletingId(null);
     }
-  }, [pendingDelete, toast, isKo]);
+  }, [pendingDelete, toast, copy]);
 
   // ── Archive / Unarchive ────────────────────────────────────────────────────
   const toggleArchive = useCallback(async (project: NexyfabProject) => {
@@ -163,9 +169,10 @@ export default function ProjectsPage({ params }: { params: Promise<{ lang: strin
         const errBody = await r.json().catch(() => ({} as { code?: string; error?: string }));
         if (errBody.code === 'FREE_PROJECT_LIMIT') {
           toast.warning(
-            isKo
-              ? '활성 프로젝트가 1개 한도를 채웠습니다. 복원하려면 Pro로 업그레이드하거나 다른 프로젝트를 보관하세요.'
-              : 'You already have 1 active project. Upgrade to Pro or archive another to restore this one.',
+            copy(
+              '활성 프로젝트가 1개 한도를 채웠습니다. 복원하려면 Pro로 업그레이드하거나 다른 프로젝트를 보관하세요.',
+              'You already have 1 active project. Upgrade to Pro or archive another to restore this one.',
+            ),
           );
           return;
         }
@@ -175,15 +182,34 @@ export default function ProjectsPage({ params }: { params: Promise<{ lang: strin
       setTotal(t => Math.max(0, t - 1));
       toast.success(
         archiving
-          ? (isKo ? '보관함으로 이동했습니다.' : 'Moved to archive.')
-          : (isKo ? '활성 프로젝트로 복원했습니다.' : 'Restored to active.'),
+          ? copy('보관함으로 이동했습니다.', 'Moved to archive.')
+          : copy('활성 프로젝트로 복원했습니다.', 'Restored to active.'),
       );
     } catch {
-      toast.error(isKo ? '작업에 실패했습니다.' : 'Action failed.');
+      toast.error(copy('작업에 실패했습니다.', 'Action failed.'));
     } finally {
       setArchivingId(null);
     }
-  }, [toast, isKo]);
+  }, [toast, copy]);
+
+  const launchNexyCad = useCallback(async (project: NexyfabProject) => {
+    setLaunchingNexyCadId(project.id);
+    try {
+      const response = await fetch('/api/integrations/nexycad/handoff', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ projectId: project.id }),
+      });
+      const payload = await response.json().catch(() => null) as { launchUrl?: string; code?: string } | null;
+      if (!response.ok || !payload?.launchUrl) throw new Error(payload?.code || 'NEXYCAD_HANDOFF_FAILED');
+      window.location.assign(payload.launchUrl);
+    } catch (error) {
+      console.error('[projects] NEXYCAD launch failed:', error instanceof Error ? error.message : String(error));
+      toast.error(copy('기계 CAD를 열 수 없습니다. 잠시 후 다시 시도해 주세요.', 'Mechanical CAD could not be opened. Try again shortly.'));
+    } finally {
+      setLaunchingNexyCadId(null);
+    }
+  }, [toast, copy]);
 
   // ── Derived data ───────────────────────────────────────────────────────────
   const allMaterials = Array.from(new Set(projects.map(p => p.materialId).filter((m): m is string => !!m)));
@@ -228,7 +254,7 @@ export default function ProjectsPage({ params }: { params: Promise<{ lang: strin
         </Link>
         <span style={{ color: 'var(--nx-border)' }}>/</span>
         <span style={{ fontSize: 16, fontWeight: 600 }}>
-          {isKo ? '내 프로젝트' : 'My Projects'}
+          {copy('내 프로젝트', 'My Projects')}
         </span>
         {/* 내 것 | 공유됨 탭 — 구 사이드바 '공유된 항목'의 새 집(2026-07-16 IA) */}
         <div style={{ display: 'flex', gap: 4, marginLeft: 4 }}>
@@ -242,7 +268,7 @@ export default function ProjectsPage({ params }: { params: Promise<{ lang: strin
               color: !sharedView ? 'var(--nx-accent)' : 'var(--nx-text-2)',
             }}
           >
-            {isKo ? '내 것' : 'Mine'}
+            {copy('내 것', 'Mine')}
           </button>
           <button
             type="button"
@@ -254,7 +280,7 @@ export default function ProjectsPage({ params }: { params: Promise<{ lang: strin
               color: sharedView ? 'var(--nx-accent)' : 'var(--nx-text-2)',
             }}
           >
-            🔗 {isKo ? '공유됨' : 'Shared'}
+            🔗 {copy('공유됨', 'Shared')}
           </button>
         </div>
         <div style={{ flex: 1 }} />
@@ -268,7 +294,7 @@ export default function ProjectsPage({ params }: { params: Promise<{ lang: strin
                 display: 'flex', alignItems: 'center', gap: 6,
               }}
             >
-              ⬆ {isKo ? 'Pro 업그레이드' : 'Upgrade to Pro'}
+              ⬆ {copy('Pro 업그레이드', 'Upgrade to Pro')}
             </a>
           ) : (
             <Link
@@ -280,7 +306,7 @@ export default function ProjectsPage({ params }: { params: Promise<{ lang: strin
                 display: 'flex', alignItems: 'center', gap: 6,
               }}
             >
-              + {isKo ? '새 프로젝트' : 'New Project'}
+              + {copy('새 프로젝트', 'New Project')}
             </Link>
           )
         )}
@@ -301,16 +327,17 @@ export default function ProjectsPage({ params }: { params: Promise<{ lang: strin
           }}>
             <span>⚠️</span>
             <span style={{ flex: 1 }}>
-              {isKo
-                ? `무료 플랜은 활성 프로젝트 ${FREE_LIMIT}개까지 허용됩니다. 현재 ${total}개 사용 중 — 더 만들려면 Pro로 업그레이드하세요.`
-                : `Free plan allows ${FREE_LIMIT} active projects. You have ${total} — upgrade to Pro for unlimited.`}
+              {copy(
+                '무료 플랜은 활성 프로젝트 {{0}}개까지 허용됩니다. 현재 {{1}}개 사용 중 — 더 만들려면 Pro로 업그레이드하세요.',
+                'Free plan allows {{0}} active projects. You have {{1}} — upgrade to Pro for unlimited.',
+              ).replace('{{0}}', String(FREE_LIMIT)).replace('{{1}}', String(total))}
             </span>
             <a href={`/${lang}/nexyfab/billing`} style={{
               padding: '4px 12px', borderRadius: 6, background: '#f0883e',
               color: '#fff', fontWeight: 700, fontSize: 12, textDecoration: 'none',
               whiteSpace: 'nowrap',
             }}>
-              {isKo ? 'Pro 업그레이드' : 'Upgrade to Pro'}
+              {copy('Pro 업그레이드', 'Upgrade to Pro')}
             </a>
           </div>
         )}
@@ -328,7 +355,7 @@ export default function ProjectsPage({ params }: { params: Promise<{ lang: strin
               fontSize: 13, fontWeight: tab === t ? 700 : 400,
               cursor: 'pointer', transition: 'all 0.15s',
             }}>
-              {t === 'active' ? (isKo ? '활성' : 'Active') : (isKo ? '보관함' : 'Archived')}
+              {t === 'active' ? copy('활성', 'Active') : copy('보관함', 'Archived')}
             </button>
           ))}
         </div>
@@ -342,7 +369,7 @@ export default function ProjectsPage({ params }: { params: Promise<{ lang: strin
               type="text"
               value={search}
               onChange={e => setSearch(e.target.value)}
-              placeholder={isKo ? '이름 검색...' : 'Search by name...'}
+              placeholder={copy('이름 검색...', 'Search by name...')}
               style={{
                 ...selectStyle,
                 minWidth: 0, flex: '1 1 120px', maxWidth: 260,
@@ -350,20 +377,20 @@ export default function ProjectsPage({ params }: { params: Promise<{ lang: strin
             />
             {allMaterials.length > 0 && (
               <select value={materialFilter} onChange={e => setMaterialFilter(e.target.value)} style={selectStyle}>
-                <option value="">{isKo ? '재료 전체' : 'All materials'}</option>
+                <option value="">{copy('재료 전체', 'All materials')}</option>
                 {allMaterials.map(m => <option key={m} value={m}>{m}</option>)}
               </select>
             )}
             {allTags.length > 0 && (
               <select value={tagFilter} onChange={e => setTagFilter(e.target.value)} style={selectStyle}>
-                <option value="">{isKo ? '태그 전체' : 'All tags'}</option>
+                <option value="">{copy('태그 전체', 'All tags')}</option>
                 {allTags.map(t => <option key={t} value={t}>{t}</option>)}
               </select>
             )}
             <select value={sort} onChange={e => setSort(e.target.value as SortKey)} style={selectStyle}>
-              <option value="date">{isKo ? '최근 수정순' : 'Recently updated'}</option>
-              <option value="name">{isKo ? '이름순' : 'Name A→Z'}</option>
-              <option value="material">{isKo ? '재료순' : 'Material A→Z'}</option>
+              <option value="date">{copy('최근 수정순', 'Recently updated')}</option>
+              <option value="name">{copy('이름순', 'Name A→Z')}</option>
+              <option value="material">{copy('재료순', 'Material A→Z')}</option>
             </select>
           </div>
         )}
@@ -376,7 +403,7 @@ export default function ProjectsPage({ params }: { params: Promise<{ lang: strin
               borderTopColor: 'var(--nx-accent)', borderRadius: '50%',
               animation: 'spin 0.9s linear infinite', margin: '0 auto 16px',
             }} />
-            {isKo ? '불러오는 중...' : 'Loading...'}
+            {copy('불러오는 중...', 'Loading...')}
           </div>
         )}
 
@@ -386,7 +413,7 @@ export default function ProjectsPage({ params }: { params: Promise<{ lang: strin
             background: '#da363322', border: '1px solid #da363355',
             borderRadius: 8, padding: '14px 16px', color: 'var(--nx-error)', fontSize: 13, marginBottom: 16,
           }}>
-            {error === 'LOAD_FAILED' ? (isKo ? '프로젝트를 불러오지 못했습니다.' : 'Failed to load projects.') : error}
+            {error === 'LOAD_FAILED' ? copy('프로젝트를 불러오지 못했습니다.', 'Failed to load projects.') : error}
             <button
               onClick={loadProjects}
               style={{
@@ -394,7 +421,7 @@ export default function ProjectsPage({ params }: { params: Promise<{ lang: strin
                 border: 'none', cursor: 'pointer', textDecoration: 'underline',
               }}
             >
-              {isKo ? '다시 시도' : 'Retry'}
+              {copy('다시 시도', 'Retry')}
             </button>
           </div>
         )}
@@ -404,12 +431,13 @@ export default function ProjectsPage({ params }: { params: Promise<{ lang: strin
           <div style={{ textAlign: 'center', padding: '80px 0' }}>
             <div style={{ fontSize: 56, marginBottom: 16 }}>🔗</div>
             <p style={{ fontSize: 16, fontWeight: 600, color: 'var(--nx-text)', margin: '0 0 8px' }}>
-              {isKo ? '아직 공유받은 프로젝트가 없습니다.' : 'Nothing shared with you yet.'}
+              {copy('아직 공유받은 프로젝트가 없습니다.', 'Nothing shared with you yet.')}
             </p>
             <p style={{ fontSize: 13, color: 'var(--nx-text-2)', margin: '0 0 24px' }}>
-              {isKo
-                ? '다른 사용자가 프로젝트를 공유하면 여기에 표시됩니다. 팀 공유 기능은 준비 중입니다.'
-                : 'Projects others share with you will appear here. Team sharing is coming soon.'}
+              {copy(
+                '다른 사용자가 프로젝트를 공유하면 여기에 표시됩니다. 팀 공유 기능은 준비 중입니다.',
+                'Projects others share with you will appear here. Team sharing is coming soon.',
+              )}
             </p>
             <Link
               prefetch
@@ -420,7 +448,7 @@ export default function ProjectsPage({ params }: { params: Promise<{ lang: strin
                 color: 'var(--nx-text)', fontSize: 13, fontWeight: 600, textDecoration: 'none',
               }}
             >
-              {isKo ? '내 프로젝트 보기' : 'View my projects'}
+              {copy('내 프로젝트 보기', 'View my projects')}
             </Link>
           </div>
         )}
@@ -430,12 +458,13 @@ export default function ProjectsPage({ params }: { params: Promise<{ lang: strin
           <div style={{ textAlign: 'center', padding: '80px 0' }}>
             <div style={{ fontSize: 56, marginBottom: 16 }}>🔒</div>
             <p style={{ fontSize: 16, fontWeight: 600, color: 'var(--nx-text)', margin: '0 0 8px' }}>
-              {isKo ? '로그인하면 저장한 프로젝트가 여기에 표시됩니다.' : 'Sign in to see your saved projects here.'}
+              {copy('로그인하면 저장한 프로젝트가 여기에 표시됩니다.', 'Sign in to see your saved projects here.')}
             </p>
             <p style={{ fontSize: 13, color: 'var(--nx-text-2)', margin: '0 0 24px' }}>
-              {isKo
-                ? '게스트 작업은 이 브라우저에만 저장됩니다. 로그인하면 클라우드에 영구 저장돼요.'
-                : 'Guest work stays in this browser only — sign in to save it to the cloud.'}
+              {copy(
+                '게스트 작업은 이 브라우저에만 저장됩니다. 로그인하면 클라우드에 영구 저장돼요.',
+                'Guest work stays in this browser only — sign in to save it to the cloud.',
+              )}
             </p>
             <Link
               prefetch
@@ -446,7 +475,7 @@ export default function ProjectsPage({ params }: { params: Promise<{ lang: strin
                 color: '#fff', fontSize: 13, fontWeight: 700, textDecoration: 'none',
               }}
             >
-              {isKo ? '3D 설계 시작 →' : 'Start designing →'}
+              {copy('3D 설계 시작 →', 'Start designing →')}
             </Link>
           </div>
         )}
@@ -457,15 +486,13 @@ export default function ProjectsPage({ params }: { params: Promise<{ lang: strin
             <div style={{ fontSize: 56, marginBottom: 16 }}>{tab === 'archived' ? '🗃️' : '📐'}</div>
             <p style={{ fontSize: 16, fontWeight: 600, color: 'var(--nx-text)', margin: '0 0 8px' }}>
               {tab === 'archived'
-                ? (isKo ? '보관된 프로젝트가 없습니다.' : 'No archived projects.')
-                : (isKo ? '아직 저장된 프로젝트가 없습니다.' : 'No saved projects yet.')}
+                ? copy('보관된 프로젝트가 없습니다.', 'No archived projects.')
+                : copy('아직 저장된 프로젝트가 없습니다.', 'No saved projects yet.')}
             </p>
             {tab === 'active' && (
               <>
                 <p style={{ fontSize: 13, color: 'var(--nx-text-2)', margin: '0 0 24px' }}>
-                  {isKo
-                    ? '3D 형상을 설계하고 프로젝트로 저장해 보세요.'
-                    : 'Design a 3D shape and save it as a project.'}
+                  {copy('3D 형상을 설계하고 프로젝트로 저장해 보세요.', 'Design a 3D shape and save it as a project.')}
                 </p>
                 <Link
                   prefetch
@@ -476,7 +503,7 @@ export default function ProjectsPage({ params }: { params: Promise<{ lang: strin
                     fontSize: 14, textDecoration: 'none',
                   }}
                 >
-                  {isKo ? '형상 설계 시작' : 'Start Designing'}
+                  {copy('형상 설계 시작', 'Start Designing')}
                 </Link>
               </>
             )}
@@ -486,7 +513,7 @@ export default function ProjectsPage({ params }: { params: Promise<{ lang: strin
         {/* ── No filter results ── */}
         {!loading && !error && projects.length > 0 && filtered.length === 0 && (
           <div style={{ textAlign: 'center', padding: '48px 0', color: 'var(--nx-text-2)' }}>
-            {isKo ? '검색 결과가 없습니다.' : 'No matching projects.'}
+            {copy('검색 결과가 없습니다.', 'No matching projects.')}
           </div>
         )}
 
@@ -502,12 +529,13 @@ export default function ProjectsPage({ params }: { params: Promise<{ lang: strin
                 key={project.id}
                 project={project}
                 lang={lang}
-                isKo={isKo}
                 tab={tab}
                 isDeleting={deletingId === project.id}
                 isArchiving={archivingId === project.id}
+                isLaunchingNexyCad={launchingNexyCadId === project.id}
                 onDelete={requestDelete}
                 onToggleArchive={toggleArchive}
+                onLaunchNexyCad={launchNexyCad}
                 canManage={!sharedView}
               />
             ))}
@@ -517,16 +545,17 @@ export default function ProjectsPage({ params }: { params: Promise<{ lang: strin
 
       <ConfirmModal
         open={!!pendingDelete}
-        title={isKo ? '프로젝트 삭제' : 'Delete project'}
+        title={copy('프로젝트 삭제', 'Delete project')}
         message={
           pendingDelete
-            ? (isKo
-                ? `"${pendingDelete.name}" 프로젝트를 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.`
-                : `Delete "${pendingDelete.name}"? This cannot be undone.`)
+            ? copy(
+                '"{{0}}" 프로젝트를 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.',
+                'Delete "{{0}}"? This cannot be undone.',
+              ).replace('{{0}}', pendingDelete.name)
             : ''
         }
-        confirmLabel={isKo ? '삭제' : 'Delete'}
-        cancelLabel={isKo ? '취소' : 'Cancel'}
+        confirmLabel={copy('삭제', 'Delete')}
+        cancelLabel={copy('취소', 'Cancel')}
         destructive
         busy={deletingId !== null}
         onConfirm={confirmDelete}
@@ -539,20 +568,22 @@ export default function ProjectsPage({ params }: { params: Promise<{ lang: strin
 // ─── Project Card ─────────────────────────────────────────────────────────────
 
 function ProjectCard({
-  project, lang, isKo, tab, isDeleting, isArchiving, onDelete, onToggleArchive, canManage = true,
+  project, lang, tab, isDeleting, isArchiving, isLaunchingNexyCad, onDelete, onToggleArchive, onLaunchNexyCad, canManage = true,
 }: {
   project: NexyfabProject;
   lang: string;
-  isKo: boolean;
   tab: TabKey;
   isDeleting: boolean;
   isArchiving: boolean;
+  isLaunchingNexyCad: boolean;
   onDelete: (p: NexyfabProject) => void;
   onToggleArchive: (p: NexyfabProject) => void;
+  onLaunchNexyCad: (p: NexyfabProject) => void;
   /** Owner-only actions (archive/delete) — hidden for shared (non-owner) cards. */
   canManage?: boolean;
 }) {
-  const busy = isDeleting || isArchiving;
+  const busy = isDeleting || isArchiving || isLaunchingNexyCad;
+  const copy = (ko: string, en: string) => createCommercialLocalizer(lang)(ko, en);
 
   return (
     <div style={{
@@ -592,7 +623,7 @@ function ProjectCard({
             background: 'var(--nx-panel-2)', borderRadius: 6, padding: '2px 8px',
             fontSize: 10, color: 'var(--nx-text-2)',
           }}>
-            {isKo ? '보관됨' : 'Archived'}
+            {copy('보관됨', 'Archived')}
           </div>
         )}
       </div>
@@ -631,11 +662,28 @@ function ProjectCard({
         )}
 
         <div style={{ fontSize: 10, color: 'var(--nx-text-3)', marginBottom: 14 }}>
-          {isKo ? '수정' : 'Updated'}: {fmtDate(project.updatedAt, isKo)}
+              {copy('수정', 'Updated')}: {fmtDate(project.updatedAt, lang)}
         </div>
 
         {/* Actions */}
         <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+          {tab === 'active' && NEXYCAD_HANDOFF_ENABLED && (
+            <button
+              type="button"
+              onClick={() => onLaunchNexyCad(project)}
+              disabled={busy}
+              style={{
+                flex: 1, padding: '7px 10px', borderRadius: 7,
+                background: 'var(--nx-accent)', color: '#fff',
+                border: '1px solid var(--nx-accent)',
+                fontSize: 12, fontWeight: 700,
+                textAlign: 'center', minWidth: 88,
+                cursor: busy ? 'wait' : 'pointer', opacity: busy ? 0.65 : 1,
+              }}
+            >
+              {isLaunchingNexyCad ? '...' : copy('기계 CAD', 'Mechanical CAD')}
+            </button>
+          )}
           {tab === 'active' && (
             <Link
               prefetch
@@ -648,7 +696,7 @@ function ProjectCard({
                 textAlign: 'center', minWidth: 48,
               }}
             >
-              {isKo ? '열기' : 'Open'}
+              {copy('열기', 'Open')}
             </Link>
           )}
           {canManage && (
@@ -665,7 +713,7 @@ function ProjectCard({
                 transition: 'all 0.15s',
               }}
             >
-              {isArchiving ? '...' : (tab === 'archived' ? (isKo ? '복원' : 'Restore') : (isKo ? '보관' : 'Archive'))}
+              {isArchiving ? '...' : (tab === 'archived' ? copy('복원', 'Restore') : copy('보관', 'Archive'))}
             </button>
           )}
           {canManage && (
@@ -683,12 +731,12 @@ function ProjectCard({
                 transition: 'all 0.15s',
               }}
             >
-              {isDeleting ? '...' : (isKo ? '삭제' : 'Delete')}
+              {isDeleting ? '...' : copy('삭제', 'Delete')}
             </button>
           )}
           {!canManage && (
             <span style={{ padding: '7px 10px', fontSize: 11, color: 'var(--nx-text-3)' }}>
-              {isKo ? '공유받음' : 'Shared'}
+              {copy('공유받음', 'Shared')}
             </span>
           )}
         </div>

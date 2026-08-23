@@ -1,29 +1,497 @@
 {
-  "schema": "nexyfab.commercialization-readiness.v1",
+  "schema": "nexyfab.commercialization-readiness.v4",
+  "evaluatedReleaseBaseline": {
+    "path": "docs/evidence/release/commercial-release-baseline-current.json",
+    "bytes": 2193919,
+    "sha256": "fd8e227d92c544e812edb48fc66e7c93708fbc0c0678dd519c77ba60c892237d"
+  },
+  "release": {
+    "branch": "release/2026-08-10",
+    "gitHead": "3d6ba1ec461169d9d331b939e432483c3953b752",
+    "baselineStatus": "candidate_uncommitted",
+    "workingTreeChanges": 3185,
+    "deploymentId": null,
+    "buildId": null,
+    "rollbackDeploymentId": null,
+    "dockerImageDigest": null,
+    "dbSchemaVersion": null
+  },
+  "releaseChannel": "mechanical-core",
+  "productReleaseScope": {
+    "explicit": false,
+    "valid": true,
+    "requested": null,
+    "surfaces": [
+      "web"
+    ],
+    "claimBoundary": "web-only-default-private-beta; commercial-ga requires an explicit product scope"
+  },
+  "productEvidence": {
+    "enterpriseSso": {
+      "required": false,
+      "receiptVerified": false,
+      "blockers": [],
+      "receiptSha256": "0fd8185b08fbce100905ef8a3a039ae8870086d310fa2e2e1f1736be8bc4d4a7",
+      "sourceBindings": [
+        {
+          "path": "scripts/build-enterprise-sso-readiness-receipt.mjs",
+          "bytes": 36066,
+          "sha256": "1e05ca1be4cc9c325ca945b760aff0749bcb091c3b78c894a2a66cd5ad467e67"
+        },
+        {
+          "path": "src/lib/saml-sso-verifier.ts",
+          "bytes": 2417,
+          "sha256": "2d77c34c35d549b824deac4baabbc7e7dad11fd0aac55d475ea79ea6e6e3e464"
+        },
+        {
+          "path": "src/lib/oidc-sso-readiness.ts",
+          "bytes": 1638,
+          "sha256": "457c1482bec4495c541083f17bba924c5aaa2c2384fe56201c56628b31702012"
+        },
+        {
+          "path": "src/app/api/nexyfab/sso/callback/route.ts",
+          "bytes": 4280,
+          "sha256": "3e70444cfdc9bbc40ba9ef314d1e772cc37b7d4785ac106e69ca43d2d10feb21"
+        }
+      ]
+    },
+    "windowsAgentSidecar": {
+      "required": false,
+      "receiptVerified": false,
+      "blockers": [],
+      "receiptSha256": "22ad622a441c969cd6b27853b6a553a73f7d9fb51a7bb3d79ec62576889162a7",
+      "sourceBindings": [
+        {
+          "path": "scripts/build-agent-sidecar.mjs",
+          "bytes": 10112,
+          "sha256": "c3c778dfe398f8bb7bfde8bc932eba351d9ee1dcc570c3726902e60eedfe91ca"
+        },
+        {
+          "path": "scripts/agent-sidecar/windows-sea-readiness.mjs",
+          "bytes": 11949,
+          "sha256": "c185074834a7d31abe94c451f7e20f3e7906abd78a435fd0c49923bb7018fddc"
+        },
+        {
+          "path": "scripts/agent-sidecar/windows-sea-release-evidence.mjs",
+          "bytes": 31336,
+          "sha256": "820b7d093888d6854a0d9133874fb7fdf259a467ec74d8aa26a396cd3943dfb1"
+        },
+        {
+          "path": "scripts/drawing-to-3d/agent-sidecar-entry.mjs",
+          "bytes": 307,
+          "sha256": "e315a9d4fb1064f89c3ac518774239822a5a4f92402aa178de2f9ce35ae075c2"
+        },
+        {
+          "path": "scripts/drawing-to-3d/installer-core-agent-server.mjs",
+          "bytes": 18511,
+          "sha256": "89061fc4aaa5f7d6689a2a95b0dbe8db2f69980045fa1952a89167f4679b02e2"
+        },
+        {
+          "path": "scripts/drawing-to-3d/capability-surface-manifest.mjs",
+          "bytes": 3031,
+          "sha256": "3e4e80b3815a306132bbf2c37ca750fc87d6c94cc286ea4aa7a5d55a697c90fd"
+        }
+      ]
+    },
+    "largeUpload": {
+      "required": false,
+      "receiptVerified": false,
+      "blockers": [],
+      "receiptSha256": "9d9ae480958f6bcd3a008b5d653a7d7dce181a5b547489c7bcf6ec5baf729351",
+      "sourceBindings": [
+        {
+          "path": "docs/evidence/release/large-upload-staging-observations-NOT_RUN.json",
+          "bytes": 557,
+          "sha256": "39027fd08fd6704176dd6b61d95944088bf6207bedeb37af721dae8c7f6afeb5"
+        }
+      ]
+    },
+    "specialtyTracks": null
+  },
+  "requiredDomains": [
+    "mechanical"
+  ],
+  "requiredComplexFamilies": [],
+  "specialtyTrack": null,
+  "specialtyEvidence": null,
+  "securityEvidence": {
+    "receiptVerified": false,
+    "receiptSha256": "d56f752176f011f342279f38822f4c5ac55184182080902243a414efe662da37",
+    "sourceBindings": [
+      {
+        "path": "docs/evidence/security/route-security-matrix-260810.json",
+        "bytes": 551509,
+        "sha256": "7f875b55c87900ab85020155516cc369ac8c2d1f76f52d6ec4971bcfb7a1031a"
+      },
+      {
+        "path": "docs/evidence/cad-independent/cad-api-control-evidence.json",
+        "bytes": 16134,
+        "sha256": "7d21526c4a7f6fb13be1b890b26d022422338397e91b9cce92d6d8b0ace16fff"
+      },
+      {
+        "path": "docs/evidence/security/secret-scan-260810.json",
+        "bytes": 197,
+        "sha256": "721e6120dd9600d44532edc84b190fb140fe26651e314926610987cb393e122a"
+      },
+      {
+        "path": "docs/evidence/security/dependency-audit-260810.json",
+        "bytes": 514,
+        "sha256": "9191b3346444fdefc65893056a7b48d5d860231ce0cc3f8b734c4c002151dc63"
+      },
+      {
+        "path": "package-lock.json",
+        "bytes": 630857,
+        "sha256": "d27bddc997f10ade5cf94722b17c70a4e958b1e8f631f1e807a3ac4c51289f26"
+      }
+    ],
+    "derived": {
+      "routeSecurityMatrix": {
+        "ok": true,
+        "schema": "nexyfab.route-security-matrix.v1",
+        "status": "pass",
+        "derived": {
+          "routeFiles": 607,
+          "exportedHandlers": 837,
+          "routesWithGaps": 0,
+          "gapCounts": {},
+          "byClassification": {
+            "public": 131,
+            "authenticated": 354,
+            "admin": 68,
+            "webhook": 6,
+            "internal-worker": 35,
+            "disabled": 13
+          },
+          "unknownClassifications": 0,
+          "publicMutationPolicies": 93
+        },
+        "blockers": []
+      },
+      "cadApiControls": {
+        "ok": true,
+        "schema": "nexyfab.cad-api-control-evidence.v1",
+        "status": "pass",
+        "derived": {
+          "checksPass": true,
+          "issues": 0
+        },
+        "blockers": []
+      },
+      "secretScan": {
+        "ok": true,
+        "schema": "nexyfab-secret-scan-v1",
+        "status": "pass",
+        "derived": {
+          "findingCount": 0,
+          "filesScanned": 7657,
+          "bytesScanned": 88863058
+        },
+        "blockers": []
+      },
+      "dependencyAudit": {
+        "ok": true,
+        "schema": "nexyfab-dependency-audit-v1",
+        "status": "pass",
+        "derived": {
+          "vulnerabilityTotal": 0,
+          "dependencyTotal": 1250
+        },
+        "blockers": []
+      }
+    },
+    "blockers": [
+      "receipt_not_pass",
+      "release_metadata_invalid",
+      "release_binding_mismatch",
+      "receipt_blockers_present"
+    ],
+    "rawDiagnostics": {
+      "routeMatrixOk": true,
+      "cadApiControlsOk": true,
+      "secretFindings": 0,
+      "dependencyVulnerabilities": 0
+    }
+  },
+  "architectureInteriorRecoveryEvidence": {
+    "required": false,
+    "receiptVerified": false,
+    "receiptSha256": null,
+    "target": null
+  },
   "privateBeta": {
     "eligible": false,
     "blockers": [
-      "release_baseline_head_mismatch"
+      "release_candidate_not_committed",
+      "current_release_working_tree_dirty",
+      "release_identity_missing:deploymentId",
+      "release_identity_missing:buildId",
+      "release_identity_missing:rollbackDeploymentId",
+      "release_identity_missing:dockerImageDigest",
+      "closed_beta_integrity_failed",
+      "production_protected_state_failed",
+      "production_smoke_not_passed",
+      "openscad_http_smoke_not_passed",
+      "authenticated_user_e2e_not_passed",
+      "runtime_memory_target_failed",
+      "production_migration_receipt_missing",
+      "backup_restore_receipt_missing",
+      "distributed_quota_environment_not_verified",
+      "synthetic_domain_campaign_incomplete",
+      "mechanical_scope_ten_direct_designs_incomplete",
+      "mechanical_product_private_beta_not_eligible",
+      "commercial_security_receipt_missing"
     ]
   },
   "commercialGa": {
     "eligible": false,
     "blockers": [
-      "release_baseline_head_mismatch",
-      "independent_holdout_not_eligible:mechanical",
-      "independent_holdout_not_eligible:building",
-      "independent_holdout_not_eligible:civil",
-      "independent_holdout_not_eligible:landscape",
-      "independent_holdout_not_eligible:interior",
-      "seven_day_operations_receipt_missing",
-      "expert_review_receipt_missing"
+      "release_candidate_not_committed",
+      "current_release_working_tree_dirty",
+      "release_identity_missing:deploymentId",
+      "release_identity_missing:buildId",
+      "release_identity_missing:rollbackDeploymentId",
+      "release_identity_missing:dockerImageDigest",
+      "closed_beta_integrity_failed",
+      "production_protected_state_failed",
+      "production_smoke_not_passed",
+      "openscad_http_smoke_not_passed",
+      "authenticated_user_e2e_not_passed",
+      "runtime_memory_target_failed",
+      "production_migration_receipt_missing",
+      "backup_restore_receipt_missing",
+      "distributed_quota_environment_not_verified",
+      "synthetic_domain_campaign_incomplete",
+      "mechanical_scope_ten_direct_designs_incomplete",
+      "mechanical_product_private_beta_not_eligible",
+      "commercial_security_receipt_missing",
+      "mechanical_scope_30_feature_closed_loop_incomplete",
+      "mechanical_scope_thirty_direct_designs_incomplete",
+      "mechanical_scope_intent_campaign_150_incomplete",
+      "mechanical_scope_standard_step_conformance_incomplete",
+      "mechanical_scope_blind_product_challenge_incomplete",
+      "mechanical_scope_manufacturing_receipt_incomplete",
+      "mechanical_product_self_service_not_eligible",
+      "mechanical_manufacturing_release_not_verified",
+      "product_release_scope_not_explicit_for_ga",
+      "seven_day_operations_receipt_missing"
     ]
   },
-  "generatedAt": "2026-08-10T21:47:10.910Z",
+  "generatedAt": "2026-08-23T07:50:31.372Z",
   "evidence": {
     "routeSecurityMatrix": "pass",
     "cadApiControls": "pass",
     "secretFindings": 0,
-    "dependencyVulnerabilities": 0
+    "dependencyVulnerabilities": 0,
+    "commercialSecurityReceipt": {
+      "receiptVerified": false,
+      "receiptSha256": "d56f752176f011f342279f38822f4c5ac55184182080902243a414efe662da37",
+      "sourceBindings": [
+        {
+          "path": "docs/evidence/security/route-security-matrix-260810.json",
+          "bytes": 551509,
+          "sha256": "7f875b55c87900ab85020155516cc369ac8c2d1f76f52d6ec4971bcfb7a1031a"
+        },
+        {
+          "path": "docs/evidence/cad-independent/cad-api-control-evidence.json",
+          "bytes": 16134,
+          "sha256": "7d21526c4a7f6fb13be1b890b26d022422338397e91b9cce92d6d8b0ace16fff"
+        },
+        {
+          "path": "docs/evidence/security/secret-scan-260810.json",
+          "bytes": 197,
+          "sha256": "721e6120dd9600d44532edc84b190fb140fe26651e314926610987cb393e122a"
+        },
+        {
+          "path": "docs/evidence/security/dependency-audit-260810.json",
+          "bytes": 514,
+          "sha256": "9191b3346444fdefc65893056a7b48d5d860231ce0cc3f8b734c4c002151dc63"
+        },
+        {
+          "path": "package-lock.json",
+          "bytes": 630857,
+          "sha256": "d27bddc997f10ade5cf94722b17c70a4e958b1e8f631f1e807a3ac4c51289f26"
+        }
+      ],
+      "derived": {
+        "routeSecurityMatrix": {
+          "ok": true,
+          "schema": "nexyfab.route-security-matrix.v1",
+          "status": "pass",
+          "derived": {
+            "routeFiles": 607,
+            "exportedHandlers": 837,
+            "routesWithGaps": 0,
+            "gapCounts": {},
+            "byClassification": {
+              "public": 131,
+              "authenticated": 354,
+              "admin": 68,
+              "webhook": 6,
+              "internal-worker": 35,
+              "disabled": 13
+            },
+            "unknownClassifications": 0,
+            "publicMutationPolicies": 93
+          },
+          "blockers": []
+        },
+        "cadApiControls": {
+          "ok": true,
+          "schema": "nexyfab.cad-api-control-evidence.v1",
+          "status": "pass",
+          "derived": {
+            "checksPass": true,
+            "issues": 0
+          },
+          "blockers": []
+        },
+        "secretScan": {
+          "ok": true,
+          "schema": "nexyfab-secret-scan-v1",
+          "status": "pass",
+          "derived": {
+            "findingCount": 0,
+            "filesScanned": 7657,
+            "bytesScanned": 88863058
+          },
+          "blockers": []
+        },
+        "dependencyAudit": {
+          "ok": true,
+          "schema": "nexyfab-dependency-audit-v1",
+          "status": "pass",
+          "derived": {
+            "vulnerabilityTotal": 0,
+            "dependencyTotal": 1250
+          },
+          "blockers": []
+        }
+      },
+      "blockers": [
+        "receipt_not_pass",
+        "release_metadata_invalid",
+        "release_binding_mismatch",
+        "receipt_blockers_present"
+      ],
+      "rawDiagnostics": {
+        "routeMatrixOk": true,
+        "cadApiControlsOk": true,
+        "secretFindings": 0,
+        "dependencyVulnerabilities": 0
+      }
+    },
+    "productReleaseScope": {
+      "explicit": false,
+      "valid": true,
+      "requested": null,
+      "surfaces": [
+        "web"
+      ],
+      "claimBoundary": "web-only-default-private-beta; commercial-ga requires an explicit product scope"
+    },
+    "productEvidence": {
+      "enterpriseSso": {
+        "required": false,
+        "receiptVerified": false,
+        "blockers": [],
+        "receiptSha256": "0fd8185b08fbce100905ef8a3a039ae8870086d310fa2e2e1f1736be8bc4d4a7",
+        "sourceBindings": [
+          {
+            "path": "scripts/build-enterprise-sso-readiness-receipt.mjs",
+            "bytes": 36066,
+            "sha256": "1e05ca1be4cc9c325ca945b760aff0749bcb091c3b78c894a2a66cd5ad467e67"
+          },
+          {
+            "path": "src/lib/saml-sso-verifier.ts",
+            "bytes": 2417,
+            "sha256": "2d77c34c35d549b824deac4baabbc7e7dad11fd0aac55d475ea79ea6e6e3e464"
+          },
+          {
+            "path": "src/lib/oidc-sso-readiness.ts",
+            "bytes": 1638,
+            "sha256": "457c1482bec4495c541083f17bba924c5aaa2c2384fe56201c56628b31702012"
+          },
+          {
+            "path": "src/app/api/nexyfab/sso/callback/route.ts",
+            "bytes": 4280,
+            "sha256": "3e70444cfdc9bbc40ba9ef314d1e772cc37b7d4785ac106e69ca43d2d10feb21"
+          }
+        ]
+      },
+      "windowsAgentSidecar": {
+        "required": false,
+        "receiptVerified": false,
+        "blockers": [],
+        "receiptSha256": "22ad622a441c969cd6b27853b6a553a73f7d9fb51a7bb3d79ec62576889162a7",
+        "sourceBindings": [
+          {
+            "path": "scripts/build-agent-sidecar.mjs",
+            "bytes": 10112,
+            "sha256": "c3c778dfe398f8bb7bfde8bc932eba351d9ee1dcc570c3726902e60eedfe91ca"
+          },
+          {
+            "path": "scripts/agent-sidecar/windows-sea-readiness.mjs",
+            "bytes": 11949,
+            "sha256": "c185074834a7d31abe94c451f7e20f3e7906abd78a435fd0c49923bb7018fddc"
+          },
+          {
+            "path": "scripts/agent-sidecar/windows-sea-release-evidence.mjs",
+            "bytes": 31336,
+            "sha256": "820b7d093888d6854a0d9133874fb7fdf259a467ec74d8aa26a396cd3943dfb1"
+          },
+          {
+            "path": "scripts/drawing-to-3d/agent-sidecar-entry.mjs",
+            "bytes": 307,
+            "sha256": "e315a9d4fb1064f89c3ac518774239822a5a4f92402aa178de2f9ce35ae075c2"
+          },
+          {
+            "path": "scripts/drawing-to-3d/installer-core-agent-server.mjs",
+            "bytes": 18511,
+            "sha256": "89061fc4aaa5f7d6689a2a95b0dbe8db2f69980045fa1952a89167f4679b02e2"
+          },
+          {
+            "path": "scripts/drawing-to-3d/capability-surface-manifest.mjs",
+            "bytes": 3031,
+            "sha256": "3e4e80b3815a306132bbf2c37ca750fc87d6c94cc286ea4aa7a5d55a697c90fd"
+          }
+        ]
+      },
+      "largeUpload": {
+        "required": false,
+        "receiptVerified": false,
+        "blockers": [],
+        "receiptSha256": "9d9ae480958f6bcd3a008b5d653a7d7dce181a5b547489c7bcf6ec5baf729351",
+        "sourceBindings": [
+          {
+            "path": "docs/evidence/release/large-upload-staging-observations-NOT_RUN.json",
+            "bytes": 557,
+            "sha256": "39027fd08fd6704176dd6b61d95944088bf6207bedeb37af721dae8c7f6afeb5"
+          }
+        ]
+      },
+      "specialtyTracks": null
+    },
+    "complexHoldoutCases": 88,
+    "complexGroundTruthApproved": 0,
+    "complexProductSelfServiceEligible": false,
+    "complexManufacturingReleaseVerified": false,
+    "mechanicalScopeStatus": "private_beta_evidence_pending",
+    "mechanicalInternalRegressionVerified": true,
+    "mechanicalCoreThirtyFeatureClosedLoopVerified": false,
+    "mechanicalDirectDesignCandidateVerified": false,
+    "mechanicalDirectDesignThirtyVerified": false,
+    "mechanicalIntentCampaign150Verified": false,
+    "mechanicalStandardStepConformanceVerified": false,
+    "mechanicalRevisionConsistencyVerified": true,
+    "mechanicalBlindProductChallengeVerified": false,
+    "mechanicalManufacturingReceiptVerified": false,
+    "releaseChannel": "mechanical-core",
+    "requiredDomains": [
+      "mechanical"
+    ],
+    "requiredComplexFamilies": [],
+    "specialtyTrack": null,
+    "specialtyEvidence": null,
+    "distributedQuotaEnvironmentVerified": false
   }
 }

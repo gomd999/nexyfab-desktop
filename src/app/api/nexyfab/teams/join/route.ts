@@ -2,8 +2,10 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getAuthUser } from '@/lib/auth-middleware';
 import { getDbAdapter } from '@/lib/db-adapter';
 import { checkOrigin } from '@/lib/csrf';
+import { boundedJsonError, readBoundedJson } from '@/lib/boundedJsonBody';
 
 export const dynamic = 'force-dynamic';
+const TEAM_JOIN_JSON_BYTES = 64 * 1024;
 
 // POST /api/nexyfab/teams/join  body: { token }
 export async function POST(req: NextRequest) {
@@ -11,7 +13,16 @@ export async function POST(req: NextRequest) {
   const authUser = await getAuthUser(req);
   if (!authUser) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-  const { token } = await req.json().catch(() => ({})) as { token?: string };
+  let body: { token?: string } = {};
+  try {
+    body = await readBoundedJson(req, TEAM_JOIN_JSON_BYTES);
+  } catch (error) {
+    const bodyError = boundedJsonError(error);
+    if (bodyError?.code === 'PAYLOAD_TOO_LARGE') {
+      return NextResponse.json({ error: 'Request body too large' }, { status: bodyError.status });
+    }
+  }
+  const { token } = body;
   if (!token) return NextResponse.json({ error: 'token required' }, { status: 400 });
 
   const db = getDbAdapter();

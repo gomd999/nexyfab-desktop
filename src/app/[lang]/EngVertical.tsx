@@ -263,8 +263,8 @@ export function EngDev({ langCode }: { langCode: string }) {
   const mcp = `claude mcp add nexyfab \\
   -e NEXYFAB_API_KEY=nf_live_... \\
   -- node nexyfab-mcp.mjs
-# core tools: text_to_assembly, compose_3d, edit_part,
-#          face_drag, part_op, generate_domain_package`;
+# remote tools: design_assembly, compose_part, edit_part,
+#          face_drag, part_op, domain_design (+9 verification tools)`;
   const cli = `node cli.mjs assemble "2 columns on a base plate" --out asm.json
 node cli.mjs package asm.json --out ./out --step
 # GA drawing, part drawings, BOQ, spec, DXF, STEP`;
@@ -272,7 +272,7 @@ node cli.mjs package asm.json --out ./out --step
     <section style={{ background: '#f8fafc', padding: '90px 24px' }}>
       <div style={{ maxWidth: '1000px', margin: '0 auto' }}>
         <header style={{ textAlign: 'center', marginBottom: '40px' }} className="reveal">
-          <p style={{ fontSize: '13px', fontWeight: 700, color: '#3b82f6', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: '12px' }}>{t.devKicker}</p>
+          <p style={{ fontSize: '13px', fontWeight: 700, color: '#1d4ed8', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: '12px' }}>{t.devKicker}</p>
           <h2 style={{ fontSize: 'clamp(24px, 3.5vw, 36px)', fontWeight: 900, color: '#0f172a', letterSpacing: '-0.02em', marginBottom: '10px', wordBreak: 'keep-all' }}>{t.devTitle}</h2>
           <p style={{ fontSize: '15px', color: '#64748b', maxWidth: '620px', margin: '0 auto', wordBreak: 'keep-all' }}>{t.devSub}</p>
         </header>
@@ -316,7 +316,7 @@ node cli.mjs package asm.json --out ./out --step
               background: '#fff', color: '#1d4ed8', border: '2px solid #3b82f6', textDecoration: 'none',
             }}>{t.pricingCta}</Link>
           </div>
-          <p style={{ marginTop: '16px', fontSize: '11px', color: '#94a3b8', wordBreak: 'keep-all' }}>{t.devAttribution}</p>
+          <p style={{ marginTop: '16px', fontSize: '11px', color: '#475569', wordBreak: 'keep-all' }}>{t.devAttribution}</p>
         </div>
       </div>
     </section>

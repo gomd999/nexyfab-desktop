@@ -7,6 +7,7 @@
  */
 import { NextRequest, NextResponse } from 'next/server';
 import { getDbAdapter } from '@/lib/db-adapter';
+import { resolveServerLocale } from '@/lib/i18n/serverLocale';
 
 export const dynamic = 'force-dynamic';
 
@@ -62,6 +63,29 @@ function extractCnProvince(address: string | null): { zh: string; ko: string } {
   return { zh, ko: CN_PROVINCE_KO[zh] || zh };
 }
 
+function missingLabel(route: string): string {
+  return route === 'kr' ? '\uBBF8\uC785\uB825'
+    : route === 'ja' ? '\u672A\u5165\u529B'
+      : route === 'cn' ? '\u672A\u586B\u5199'
+        : route === 'es' ? 'Sin datos'
+          : route === 'ar' ? '\u063A\u064A\u0631 \u0645\u062F\u062E\u0644'
+            : 'Not provided';
+}
+
+function regionLabel(route: string, country: string, ko: string, zh: string): string {
+  if (country === 'cn') return route === 'cn' ? zh : ko;
+  return ko;
+}
+
+function directoryError(route: string): string {
+  return route === 'kr' ? '\uACF5\uC7A5 \uB514\uB809\uD130\uB9AC\uB97C \uC77C\uC2DC\uC801\uC73C\uB85C \uC0AC\uC6A9\uD560 \uC218 \uC5C6\uC2B5\uB2C8\uB2E4.'
+    : route === 'ja' ? '\u5DE5\u5834\u30C7\u30A3\u30EC\u30AF\u30C8\u30EA\u30FC\u306F\u4E00\u6642\u7684\u306B\u5229\u7528\u3067\u304D\u307E\u305B\u3093\u3002'
+      : route === 'cn' ? '\u5DE5\u5382\u76EE\u5F55\u6682\u65F6\u65E0\u6CD5\u4F7F\u7528\u3002'
+        : route === 'es' ? 'El directorio de fábricas no está disponible temporalmente.'
+          : route === 'ar' ? '\u062F\u0644\u064A\u0644 \u0627\u0644\u0645\u0635\u0627\u0646\u0639 \u063A\u064A\u0631 \u0645\u062A\u0627\u062D \u0645\u0624\u0642\u062A\u064B\u0627.'
+            : 'The factory directory is temporarily unavailable.';
+}
+
 interface DirRow {
   id: number;
   country: string;
@@ -73,6 +97,8 @@ interface DirRow {
 
 export async function GET(req: NextRequest) {
   const { searchParams } = req.nextUrl;
+  const locale = resolveServerLocale(req, searchParams.get('lang'));
+  const missing = missingLabel(locale.route);
   const country   = (searchParams.get('country') || 'ko').toLowerCase();  // 'ko' | 'cn'
   const field     = searchParams.get('field') || '';
   const region    = searchParams.get('region') || '';
@@ -94,22 +120,25 @@ export async function GET(req: NextRequest) {
       idParam,
     );
     if (!row) {
-      return NextResponse.json({ factories: [], total: 0, page: 1, totalPages: 0 });
+      return NextResponse.json({ factories: [], total: 0, page: 1, totalPages: 0, outputLanguage: locale.route });
     }
     const tags = (row.product || '').split(/[,·\/]+/).map(t => t.trim()).filter(Boolean).slice(0, 5);
     const isCn = String(row.country).toUpperCase() === 'CN';
     const factory = isCn
       ? {
-          id: String(row.id), company: row.name || '(미입력)', tags,
+          id: String(row.id), company: row.name || missing, tags,
           industry: row.industry || '', regionKo: extractCnProvince(row.address).ko,
-          regionZh: extractCnProvince(row.address).zh, address: row.address || '', country: 'cn' as const,
+          regionZh: extractCnProvince(row.address).zh,
+          regionLabel: regionLabel(locale.route, 'cn', extractCnProvince(row.address).ko, extractCnProvince(row.address).zh),
+          address: row.address || '', country: 'cn' as const, displayLocale: locale.route,
         }
       : {
-          id: String(row.id), company: row.name || '(미입력)', tags,
+          id: String(row.id), company: row.name || missing, tags,
           industry: row.industry || '', region: extractKoRegion(row.address),
-          address: row.address || '', country: 'ko' as const,
+          regionLabel: extractKoRegion(row.address) || missing,
+          address: row.address || '', country: 'ko' as const, displayLocale: locale.route,
         };
-    return NextResponse.json({ factories: [factory], total: 1, page: 1, totalPages: 1 });
+    return NextResponse.json({ factories: [factory], total: 1, page: 1, totalPages: 1, outputLanguage: locale.route });
   }
 
   // ── WHERE 절 (adapter 는 '?' placeholder 를 PG $N 로 자동 치환) ──────────
@@ -172,23 +201,27 @@ export async function GET(req: NextRequest) {
         const prov = extractCnProvince(row.address);
         return {
           id: String(row.id),
-          company: row.name || '(미입력)',
+          company: row.name || missing,
           tags,
           industry: row.industry || '',
           regionKo: prov.ko,
           regionZh: prov.zh,
+          regionLabel: regionLabel(locale.route, 'cn', prov.ko, prov.zh),
           address: row.address || '',
           country: 'cn' as const,
+          displayLocale: locale.route,
         };
       }
       return {
         id: String(row.id),
-        company: row.name || '(미입력)',
+        company: row.name || missing,
         tags,
         industry: row.industry || '',
         region: extractKoRegion(row.address),
+        regionLabel: extractKoRegion(row.address) || missing,
         address: row.address || '',
         country: 'ko' as const,
+        displayLocale: locale.route,
       };
     });
 
@@ -197,6 +230,7 @@ export async function GET(req: NextRequest) {
       total,
       page,
       totalPages: Math.ceil(total / limit),
+      outputLanguage: locale.route,
     });
     res.headers.set('Cache-Control', 'public, s-maxage=600, stale-while-revalidate=3600');
     return res;
@@ -206,12 +240,12 @@ export async function GET(req: NextRequest) {
     console.error('[factories API] query failed:', errMsg);
     if (process.env.NODE_ENV !== 'production') {
       return NextResponse.json(
-        { factories: [], total: 0, page: 1, totalPages: 0, _devError: errMsg },
+        { factories: [], total: 0, page: 1, totalPages: 0, outputLanguage: locale.route, error: directoryError(locale.route) },
         { status: 500 },
       );
     }
     return NextResponse.json(
-      { factories: [], total: 0, page: 1, totalPages: 0 },
+      { factories: [], total: 0, page: 1, totalPages: 0, outputLanguage: locale.route },
       { status: 500 },
     );
   }

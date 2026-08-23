@@ -1,0 +1,19 @@
+{
+  "schema": "nexyfab.authenticated-commercial-e2e.v1",
+  "generatedAt": "2026-08-17T14:40:08.202Z",
+  "ok": true,
+  "target": "https://nexyfabcom-staging.up.railway.app",
+  "checks": [
+    "login",
+    "session",
+    "project_create",
+    "project_read",
+    "cad_verify",
+    "storage_state_reconnect",
+    "expert_workspace_visible",
+    "project_cleanup",
+    "logout"
+  ],
+  "credentialsPersisted": false,
+  "transientProjectRetained": false
+}

@@ -366,7 +366,18 @@ export function AssemblyExportBridge(
         : pruned;
 
       // 5. Stitch + download. Stitcher diagnostics are appended.
-      const result = stitchNestedAssemblyHierarchy(withTransforms, asmName);
+      let result: ReturnType<typeof stitchNestedAssemblyHierarchy>;
+      try {
+        result = stitchNestedAssemblyHierarchy(withTransforms, asmName);
+      } catch (err) {
+        diags.push({
+          partId: '__assembly_export__',
+          warning: `assembly STEP hierarchy could not be generated: ${err instanceof Error ? err.message : String(err)}`,
+        });
+        setLastResult({ ok: 0, failed: diags.length });
+        onDiagnostics?.(diags);
+        return;
+      }
       for (const d of result.diagnostics) diags.push(d);
 
       const safeName = asmName.replace(/[^a-zA-Z0-9_\-.]/g, '_') || 'Assembly';

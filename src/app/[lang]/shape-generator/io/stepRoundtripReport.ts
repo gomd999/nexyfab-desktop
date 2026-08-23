@@ -120,42 +120,95 @@ export interface RoundtripChainResult {
   readonly exportBytes: number;
 }
 
-export async function runStepRoundtripReport(
+export interface StepRoundtripCycle {
+  readonly cycle: number;
+  readonly driftFromPrevious: RoundtripDrift;
+  readonly driftFromOriginal: RoundtripDrift;
+  readonly exportBytes: number;
+}
+
+export interface StepRoundtripCyclesResult {
+  readonly cycles: StepRoundtripCycle[];
+  readonly importFailed: boolean;
+  readonly failedCycle?: number;
+  readonly failedExportBytes?: number;
+  readonly importErrorMessage?: string;
+}
+
+function brokenDrift(): RoundtripDrift {
+  return {
+    volumeDriftPct: Infinity,
+    surfaceDriftPct: Infinity,
+    bboxDeltaMax: Infinity,
+    vertexCountDelta: 0,
+    triangleCountDelta: 0,
+    hashChanged: true,
+    verdict: 'broken',
+  };
+}
+
+/**
+ * Repeats the real STEP export -> import chain. Each cycle compares against
+ * both its direct input and the original geometry so cumulative drift cannot
+ * hide behind individually small steps.
+ */
+export async function runStepRoundtripCycles(
   geometry: THREE.BufferGeometry,
   partName = 'NexyFab_Part',
-): Promise<RoundtripChainResult> {
+  cycleCount = 3,
+): Promise<StepRoundtripCyclesResult> {
+  if (!Number.isInteger(cycleCount) || cycleCount < 1 || cycleCount > 10) {
+    throw new Error('STEP_ROUNDTRIP_CYCLE_COUNT_INVALID');
+  }
   const [{ exportToStepAsync }, { importStepFile }, { computeSignature }] =
     await Promise.all([
       import('./stepExporter'),
       import('./stepImporter'),
       import('../__tests__/geometrySignature'),
     ]);
-
-  const before = computeSignature(geometry);
-  const stepText = await exportToStepAsync(geometry, partName);
-  const exportBytes = stepText.length;
-  const buf = new TextEncoder().encode(stepText);
-  const ab = buf.buffer.slice(buf.byteOffset, buf.byteOffset + buf.byteLength) as ArrayBuffer;
-
-  try {
-    const imported = await importStepFile(ab);
-    const after = computeSignature(imported.geometry);
-    return { drift: computeRoundtripDrift(before, after), importFailed: false, exportBytes };
-  } catch (err) {
-    const message = err instanceof Error ? err.message : String(err);
-    return {
-      drift: {
-        volumeDriftPct: Infinity,
-        surfaceDriftPct: Infinity,
-        bboxDeltaMax: Infinity,
-        vertexCountDelta: 0,
-        triangleCountDelta: 0,
-        hashChanged: true,
-        verdict: 'broken',
-      },
-      importFailed: true,
-      importErrorMessage: message,
-      exportBytes,
-    };
+  const original = computeSignature(geometry);
+  let current = geometry;
+  const cycles: StepRoundtripCycle[] = [];
+  for (let index = 0; index < cycleCount; index += 1) {
+    const before = computeSignature(current);
+    const stepText = await exportToStepAsync(current, `${partName}_r${index + 1}`);
+    const bytes = new TextEncoder().encode(stepText);
+    const buffer = bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength) as ArrayBuffer;
+    try {
+      const imported = await importStepFile(buffer);
+      const after = computeSignature(imported.geometry);
+      cycles.push({
+        cycle: index + 1,
+        driftFromPrevious: computeRoundtripDrift(before, after),
+        driftFromOriginal: computeRoundtripDrift(original, after),
+        exportBytes: stepText.length,
+      });
+      current = imported.geometry;
+    } catch (error) {
+      return {
+        cycles,
+        importFailed: true,
+        failedCycle: index + 1,
+        failedExportBytes: stepText.length,
+        importErrorMessage: error instanceof Error ? error.message : String(error),
+      };
+    }
   }
+  return { cycles, importFailed: false };
+}
+
+export async function runStepRoundtripReport(
+  geometry: THREE.BufferGeometry,
+  partName = 'NexyFab_Part',
+): Promise<RoundtripChainResult> {
+  const result = await runStepRoundtripCycles(geometry, partName, 1);
+  const cycle = result.cycles[0];
+  return cycle
+    ? { drift: cycle.driftFromPrevious, importFailed: false, exportBytes: cycle.exportBytes }
+    : {
+        drift: brokenDrift(),
+        importFailed: true,
+        importErrorMessage: result.importErrorMessage,
+        exportBytes: result.failedExportBytes ?? 0,
+      };
 }

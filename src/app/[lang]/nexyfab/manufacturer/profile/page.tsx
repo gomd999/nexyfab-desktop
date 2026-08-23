@@ -2,7 +2,8 @@
 
 import { use, useEffect, useState, useCallback } from 'react';
 import { useToast } from '@/hooks/useToast';
-import { isKorean } from '@/lib/i18n/normalize';
+import { createCommercialLocalizer } from '@/lib/i18n/commercialLocalizer';
+import { manufacturingRegion, manufacturingTerm } from '@/lib/i18n/manufacturingTerms';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -149,7 +150,7 @@ const S = {
 
 export default function ManufacturerProfilePage({ params }: { params: Promise<{ lang: string }> }) {
   const { lang } = use(params);
-  const isKo = isKorean(lang);
+  const copy = (ko: string, en: string) => createCommercialLocalizer(lang)(ko, en);
 
   const [profile, setProfile] = useState<FactoryProfile | null>(null);
   const [loading, setLoading] = useState(true);
@@ -207,7 +208,7 @@ export default function ManufacturerProfilePage({ params }: { params: Promise<{ 
 
   const handleSave = async () => {
     if (!name.trim()) {
-      toast.error(isKo ? '공장명을 입력해주세요.' : 'Factory name is required.');
+      toast.error(copy('공장명을 입력해주세요.', 'Factory name is required.'));
       return;
     }
 
@@ -238,10 +239,10 @@ export default function ManufacturerProfilePage({ params }: { params: Promise<{ 
       const json = await res.json() as { factory: FactoryProfile };
       setProfile(json.factory);
       populateForm(json.factory);
-      toast.success(isKo ? '프로필이 저장되었습니다.' : 'Profile saved successfully.');
+      toast.success(copy('프로필이 저장되었습니다.', 'Profile saved successfully.'));
     } catch (e) {
       const msg = e instanceof Error ? e.message : 'Unknown error';
-      toast.error(isKo ? `저장 실패: ${msg}` : `Save failed: ${msg}`);
+      toast.error(copy(`저장 실패: ${msg}`, `Save failed: ${msg}`));
     } finally {
       setSaving(false);
     }
@@ -256,53 +257,54 @@ export default function ManufacturerProfilePage({ params }: { params: Promise<{ 
     <div style={S.page}>
       {/* ── Header ─────────────────────────────────────────────────────────── */}
       <div style={S.header}>
-        <h1 style={S.title}>{isKo ? '파트너 프로필 편집' : 'Partner Profile'}</h1>
+        <h1 style={S.title}>{copy('파트너 프로필 편집', 'Partner Profile')}</h1>
         <p style={S.subtitle}>
-          {isKo
-            ? '제조사 정보를 최신 상태로 유지하여 더 많은 RFQ를 받으세요.'
-            : 'Keep your factory profile up to date to receive more RFQ assignments.'}
+          {copy(
+            '제조사 정보를 최신 상태로 유지하여 더 많은 RFQ를 받으세요.',
+            'Keep your factory profile up to date to receive more RFQ assignments.',
+          )}
         </p>
       </div>
 
       {loading ? (
         <div style={{ color: 'var(--nx-text-2)', fontSize: '14px', padding: '40px 0', textAlign: 'center' }}>
-          {isKo ? '불러오는 중…' : 'Loading profile…'}
+          {copy('불러오는 중…', 'Loading profile…')}
         </div>
       ) : (
         <>
           {/* ── Basic Info ─────────────────────────────────────────────────── */}
           <div style={S.card}>
-            <div style={S.cardHeader}>🏭 {isKo ? '기본 정보' : 'Basic Information'}</div>
+            <div style={S.cardHeader}>🏭 {copy('기본 정보', 'Basic Information')}</div>
             <div style={S.cardBody}>
               <div style={S.fieldGroup}>
                 <div style={S.field}>
-                  <label style={S.label}>{isKo ? '공장명 (EN) *' : 'Factory Name (EN) *'}</label>
+                  <label style={S.label}>{copy('공장명 (EN) *', 'Factory Name (EN) *')}</label>
                   <input
                     style={inputStyle('name')}
                     value={name}
                     onChange={(e) => setName(e.target.value)}
                     onFocus={() => setFocused('name')}
                     onBlur={() => setFocused(null)}
-                    placeholder={isKo ? '공장 영문명' : 'Factory name in English'}
+                    placeholder={copy('공장 영문명', 'Factory name in English')}
                   />
                 </div>
                 <div style={S.field}>
-                  <label style={S.label}>{isKo ? '지역' : 'Region'}</label>
+                  <label style={S.label}>{copy('지역', 'Region')}</label>
                   <select
                     style={S.select}
                     value={region}
                     onChange={(e) => setRegion(e.target.value)}
                   >
-                    <option value="">{isKo ? '지역 선택' : 'Select region'}</option>
+                    <option value="">{copy('지역 선택', 'Select region')}</option>
                     {REGIONS.map((r) => (
-                      <option key={r} value={r}>{r}</option>
+                      <option key={r} value={r}>{manufacturingRegion(r, lang)}</option>
                     ))}
                   </select>
                 </div>
               </div>
               <div style={S.fieldGroup}>
                 <div style={S.field}>
-                  <label style={S.label}>{isKo ? '최소 리드타임 (일)' : 'Min Lead Time (days)'}</label>
+                  <label style={S.label}>{copy('최소 리드타임 (일)', 'Min Lead Time (days)')}</label>
                   <input
                     type="number"
                     min={1}
@@ -315,7 +317,7 @@ export default function ManufacturerProfilePage({ params }: { params: Promise<{ 
                   />
                 </div>
                 <div style={S.field}>
-                  <label style={S.label}>{isKo ? '최대 리드타임 (일)' : 'Max Lead Time (days)'}</label>
+                  <label style={S.label}>{copy('최대 리드타임 (일)', 'Max Lead Time (days)')}</label>
                   <input
                     type="number"
                     min={1}
@@ -333,7 +335,7 @@ export default function ManufacturerProfilePage({ params }: { params: Promise<{ 
 
           {/* ── Processes ──────────────────────────────────────────────────── */}
           <div style={S.card}>
-            <div style={S.cardHeader}>⚙️ {isKo ? '가공 공정' : 'Manufacturing Processes'}</div>
+            <div style={S.cardHeader}>⚙️ {copy('가공 공정', 'Manufacturing Processes')}</div>
             <div style={S.cardBody}>
               <div style={S.checkGrid}>
                 {ALL_PROCESSES.map(({ value, label }) => {
@@ -349,7 +351,7 @@ export default function ManufacturerProfilePage({ params }: { params: Promise<{ 
                         onChange={() => toggleItem(value, processes, setProcesses)}
                         style={{ accentColor: '#388bfd', width: '14px', height: '14px', flexShrink: 0 }}
                       />
-                      {label}
+                      {manufacturingTerm(value, lang) || label}
                     </label>
                   );
                 })}
@@ -359,7 +361,7 @@ export default function ManufacturerProfilePage({ params }: { params: Promise<{ 
 
           {/* ── Certifications ────────────────────────────────────────────── */}
           <div style={S.card}>
-            <div style={S.cardHeader}>🏆 {isKo ? '인증' : 'Certifications'}</div>
+            <div style={S.cardHeader}>🏆 {copy('인증', 'Certifications')}</div>
             <div style={S.cardBody}>
               <div style={S.checkGrid}>
                 {ALL_CERTIFICATIONS.map(({ value, label }) => {
@@ -375,7 +377,7 @@ export default function ManufacturerProfilePage({ params }: { params: Promise<{ 
                         onChange={() => toggleItem(value, certifications, setCertifications)}
                         style={{ accentColor: '#388bfd', width: '14px', height: '14px', flexShrink: 0 }}
                       />
-                      {label}
+                      {manufacturingTerm(value, lang) || label}
                     </label>
                   );
                 })}
@@ -385,11 +387,11 @@ export default function ManufacturerProfilePage({ params }: { params: Promise<{ 
 
           {/* ── Contact Info ─────────────────────────────────────────────── */}
           <div style={S.card}>
-            <div style={S.cardHeader}>📞 {isKo ? '연락처' : 'Contact Information'}</div>
+            <div style={S.cardHeader}>📞 {copy('연락처', 'Contact Information')}</div>
             <div style={S.cardBody}>
               <div style={S.fieldGroup}>
                 <div style={S.field}>
-                  <label style={S.label}>{isKo ? '담당자 이메일' : 'Contact Email'}</label>
+                  <label style={S.label}>{copy('담당자 이메일', 'Contact Email')}</label>
                   <input
                     type="email"
                     style={inputStyle('cemail')}
@@ -401,7 +403,7 @@ export default function ManufacturerProfilePage({ params }: { params: Promise<{ 
                   />
                 </div>
                 <div style={S.field}>
-                  <label style={S.label}>{isKo ? '전화번호' : 'Phone Number'}</label>
+                  <label style={S.label}>{copy('전화번호', 'Phone Number')}</label>
                   <input
                     type="tel"
                     style={inputStyle('cphone')}
@@ -418,30 +420,30 @@ export default function ManufacturerProfilePage({ params }: { params: Promise<{ 
 
           {/* ── Description ───────────────────────────────────────────────── */}
           <div style={S.card}>
-            <div style={S.cardHeader}>📝 {isKo ? '업체 소개' : 'Description'}</div>
+            <div style={S.cardHeader}>📝 {copy('업체 소개', 'Description')}</div>
             <div style={S.cardBody}>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
                 <div style={S.field}>
-                  <label style={S.label}>{isKo ? '영문 소개' : 'Description (English)'}</label>
+                  <label style={S.label}>{copy('영문 소개', 'Description (English)')}</label>
                   <textarea
                     style={{ ...S.textarea, ...(focused === 'desc' ? { borderColor: '#388bfd' } : {}) }}
                     value={description}
                     onChange={(e) => setDescription(e.target.value)}
                     onFocus={() => setFocused('desc')}
                     onBlur={() => setFocused(null)}
-                    placeholder={isKo ? '영문으로 제조사를 소개해주세요.' : 'Describe your factory in English…'}
+                    placeholder={copy('영문으로 제조사를 소개해주세요.', 'Describe your factory in English…')}
                     rows={4}
                   />
                 </div>
                 <div style={S.field}>
-                  <label style={S.label}>{isKo ? '한국어 소개' : 'Description (Korean)'}</label>
+                  <label style={S.label}>{copy('한국어 소개', 'Description (Korean)')}</label>
                   <textarea
                     style={{ ...S.textarea, ...(focused === 'desc_ko' ? { borderColor: '#388bfd' } : {}) }}
                     value={descriptionKo}
                     onChange={(e) => setDescriptionKo(e.target.value)}
                     onFocus={() => setFocused('desc_ko')}
                     onBlur={() => setFocused(null)}
-                    placeholder={isKo ? '한국어로 제조사를 소개해주세요.' : 'Describe your factory in Korean…'}
+                    placeholder={copy('한국어로 제조사를 소개해주세요.', 'Describe your factory in Korean…')}
                     rows={4}
                   />
                 </div>
@@ -476,7 +478,7 @@ export default function ManufacturerProfilePage({ params }: { params: Promise<{ 
                 transition: 'background 0.15s',
               }}
             >
-              {saving ? (isKo ? '저장 중…' : 'Saving…') : (isKo ? '프로필 저장' : 'Save Profile')}
+              {saving ? copy('저장 중…', 'Saving…') : copy('프로필 저장', 'Save Profile')}
             </button>
 
             {profile && (
@@ -492,7 +494,7 @@ export default function ManufacturerProfilePage({ params }: { params: Promise<{ 
                   cursor: 'pointer',
                 }}
               >
-                {isKo ? '변경 취소' : 'Reset'}
+                {copy('변경 취소', 'Reset')}
               </button>
             )}
 

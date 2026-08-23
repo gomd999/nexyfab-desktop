@@ -1,0 +1,11 @@
+{
+  "schema": "nexyfab.deployable-unit.v1",
+  "id": "core-api",
+  "kind": "application",
+  "targetRuntime": "railway-node",
+  "sourceMode": "legacy-route-compatibility",
+  "legacySource": ["src/app/api", "src/lib/db-adapter.ts"],
+  "implementationState": "COMPATIBILITY_BOUNDARY",
+  "deployEnabled": false,
+  "rollbackOwner": "legacy-next-origin"
+}

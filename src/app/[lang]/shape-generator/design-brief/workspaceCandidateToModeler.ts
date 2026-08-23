@@ -1,4 +1,7 @@
-import type { EditableWorkspaceCandidate } from '@/lib/ai/design-driver/workspaceCandidate';
+import {
+  EDITABLE_WORKSPACE_CANDIDATE_SCHEMA,
+  type EditableWorkspaceCandidate,
+} from '@/lib/ai/design-driver/workspaceCandidate';
 import { reconstructFeatureTree } from '../ai/programToFeatures';
 import { getFeatureDefinition } from '../features';
 import type { FeatureInstance, FeatureType } from '../features/types';
@@ -15,6 +18,22 @@ export interface ModelerWorkspaceDraft {
 export type WorkspaceDraftResult =
   | { ok: true; draft: ModelerWorkspaceDraft }
   | { ok: false; blockers: string[] };
+
+/**
+ * The candidate crossed an HTTP boundary before reaching this adapter. Keep
+ * the release/reverification flags as runtime assertions rather than trusting
+ * their TypeScript literals: a stale, tampered, or incorrectly upgraded
+ * payload must never be applied as an already-verified workspace revision.
+ */
+function candidateContractBlockers(candidate: EditableWorkspaceCandidate): string[] {
+  const value = candidate as unknown as Record<string, unknown>;
+  const blockers: string[] = [];
+  if (value.schema !== EDITABLE_WORKSPACE_CANDIDATE_SCHEMA) blockers.push('workspace_candidate_schema_invalid');
+  if (value.reverificationRequired !== true) blockers.push('workspace_candidate_reverification_required');
+  if (value.inheritedVerification !== false) blockers.push('workspace_candidate_inherited_verification_forbidden');
+  if (value.manufacturingReleaseReady !== false) blockers.push('workspace_candidate_release_claim_forbidden');
+  return blockers;
+}
 
 function safeId(value: string): string {
   return value.replace(/[^a-zA-Z0-9_-]+/g, '-').replace(/^-+|-+$/g, '') || 'design';
@@ -65,6 +84,8 @@ function buildHistory(sourcePlanId: string, features: FeatureInstance[]): Modele
  * across the representation boundary.
  */
 export function workspaceCandidateToModelerDraft(candidate: EditableWorkspaceCandidate): WorkspaceDraftResult {
+  const contractBlockers = candidateContractBlockers(candidate);
+  if (contractBlockers.length) return { ok: false, blockers: contractBlockers };
   if (!candidate.supported || !candidate.program) {
     return { ok: false, blockers: candidate.blockers.length ? [...candidate.blockers] : ['workspace_program_missing'] };
   }

@@ -1,0 +1,26 @@
+{
+  "schema": "nexyfab.mechanical-single-part-bom-candidate.v1",
+  "partRevisionSha256": "5687622fc81b71a3b0fbd97dd9bc37e39950cb6fe8d074709321c489c5f1c195",
+  "sourceDesignRevisionSha256": "3cf6a0f9c8efcf153a2cfefde087a2112c086fc412d2feeaeb9ce52542838564",
+  "sourceNfabSha256": "d0fec92c6e70429eda385861df0685034f8ac553288d1d6083bc868c72d6af1b",
+  "sourceStepSha256": "de39d9552a7b52f6f6e1164769dba66479a4282b533bdb3a7de50ed88fe95a0e",
+  "units": "mm",
+  "items": [
+    {
+      "partNumber": "bend",
+      "description": "Mechanical runtime bend",
+      "quantity": 1,
+      "dimensionsMm": {
+        "x": 47.238840296521005,
+        "y": 25.856271765057002,
+        "z": 30.003108379992003
+      }
+    }
+  ],
+  "claimBoundary": {
+    "singlePartCandidateOnly": true,
+    "materialSpecified": false,
+    "massCalculated": false,
+    "manufacturingApproved": false
+  }
+}

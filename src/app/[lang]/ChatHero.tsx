@@ -3,7 +3,7 @@
 /**
  * ChatHero — 채팅-우선 랜딩 히어로 (Genspark/GPT형).
  *
- * 중앙 채팅 입력 + 하단 5개 분야 칩(기계설계·토목·건축·조경·인테리어).
+ * 중앙 통합 입력 + 제품·기계 주 경로 / 공간·인프라 Beta 보조 경로.
  * 사용자가 자연어로 물으면 /api/eng-chat 을 도메인과 함께 호출해 실제 AI 응답을
  * 인라인으로 렌더한다. 전문가 CAD(expert)는 사람에게 직접 노출하지 않고, 여기서
  * AI가 상담·안내한 뒤 필요한 경우에만 결정론 데모/견적/스튜디오로 이어 준다.
@@ -11,12 +11,16 @@
 
 import React, { useState, useRef, useCallback, useEffect, useMemo } from 'react';
 import dynamic from 'next/dynamic';
+import Link from 'next/link';
 import type * as ThreeNS from 'three';
 import { DomainIcon } from './_domainIcons';
 import Md from '@/components/nexyfab/Md';
 import { ACCEPT_RASTER, imageFromTransfer, isAcceptedRaster } from '@/lib/drawingInput';
+import { actionReplyRequiresConfirmation, normalizeEngChatActionPayload } from '@/lib/engChatActionPayload';
 
 import { type DesignStage, stageOf } from '@/lib/designStage';
+import { recommendDesignDomains } from '@/lib/ai/domainPromptClassifier';
+import { useAuthStore } from '@/hooks/useAuth';
 import { DesignStageBar } from '@/components/nexyfab/DesignStageBar';
 // three/R3F 뷰어는 SSR 불가 → 클라이언트에서만 로드.
 const ChatCadViewer = dynamic(() => import('./ChatCadViewer'), {
@@ -25,12 +29,28 @@ const ChatCadViewer = dynamic(() => import('./ChatCadViewer'), {
     <div style={{ width: '100%', height: 240, borderRadius: 10, background: '#0b1020', border: '1px solid rgba(255,255,255,0.08)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#64748b', fontSize: 12 }}>3D…</div>
   ),
 });
+const DesignResultTrustPanel = dynamic(
+  () => import('@/components/nexyfab/DesignResultTrustPanel').then((m) => m.DesignResultTrustPanel),
+  { ssr: false },
+);
 
 type Domain = 'mechanical' | 'civil' | 'architecture' | 'landscape' | 'interior';
 type CheckRow = { name: string; pass: boolean; detail: string };
 type CalcResult = { verdict: string; title: string; checks: CheckRow[]; refs: string[]; remaining?: number; error?: string };
 type ComposeIntent = { name?: string; features?: Array<Record<string, unknown>> };
-type AssemblyPlan = { name?: string; parts?: Array<Record<string, unknown>> };
+type JetEngineMeta = {
+  engineType?: string;
+  overallLengthMm?: number;
+  fanDiameterMm?: number;
+  compressorStages?: number;
+  compressorBladesPerRow?: number;
+  turbineStages?: number;
+  turbineBladesPerRow?: number;
+  analysisLevel?: string;
+  flowPath?: Array<{ station?: string; outerDiaMm?: number; innerDiaMm?: number; hubDiaMm?: number; annulusAreaMm2?: number }>;
+  notVerified?: string[];
+};
+type AssemblyPlan = { name?: string; parts?: Array<Record<string, unknown>>; jetEngineMeta?: JetEngineMeta; analysisPolicy?: Record<string, unknown> };
 // 기계 CAD 결과. 단일부품(compose→STEP) 또는 멀티바디 조립체(assemble→GA) 스테이지.
 type CadResult = {
   composing?: boolean;          // 생성 진행 중(십수 초)
@@ -50,6 +70,7 @@ type CadResult = {
   welds?: Array<Record<string, unknown>>;  // 용접 조인트 개산
   weldTotalMm?: number;
   structural?: StructuralResult;            // 형상기반 자동 구조검증
+  jetEngineMeta?: JetEngineMeta;             // 축류 유로 개념 형상 + 미검증 해석 범위
 };
 type StructuralResult = {
   totalMassKg?: number; cgHeightM?: number; maxSupportKg?: number;
@@ -139,7 +160,7 @@ function summarizeFeatures(intent: ComposeIntent | undefined, lang: Lang): strin
 }
 
 import { assemblyToPartsProgram, composeIntentToFeatureProgram, openInPrecisionCad } from './chatCadHandoff';
-import { chatContextPreamble, type ReverseProgramResult } from './shape-generator/ai/programFromNfab';
+import { isReverseProgramResult, type ReverseProgramResult } from './shape-generator/ai/programFromNfab';
 // compose intent 의 주(main) box 치수 [w,d,h] 추출 (정투상 도면용).
 function mainBoxDims(intent: ComposeIntent | undefined): [number, number, number] | null {
   const feats = intent?.features;
@@ -152,10 +173,6 @@ function mainBoxDims(intent: ComposeIntent | undefined): [number, number, number
     }
   }
   return best;
-}
-function holeCount(intent: ComposeIntent | undefined): number {
-  const feats = intent?.features;
-  return Array.isArray(feats) ? feats.filter(f => (f.kind === 'cylinder' || f.kind === 'hole') && f.op === 'subtract').length : 0;
 }
 // subtract 구멍의 위치(at.translate)+지름 수집 — 정투상 평면뷰에 원으로 표시.
 function collectHoles(intent: ComposeIntent | undefined): Array<{ x: number; y: number; d: number }> {
@@ -175,7 +192,7 @@ function collectHoles(intent: ComposeIntent | undefined): Array<{ x: number; y: 
 }
 // 정투상(3각법) 2뷰 SVG — 정면(W×H)+평면(W×D) + 전체치수. 프리즘형 개요도(비법정).
 // 순수 숫자만 템플릿에 삽입(주입 위험 없음). 구멍 위치는 compose 한계로 개수만 표기.
-function buildDrawingSvg(intent: ComposeIntent | undefined): string | null {
+function buildDrawingSvg(intent: ComposeIntent | undefined, lang: Lang): string | null {
   const box = mainBoxDims(intent);
   if (!box) return null;
   const [w, d, h] = box;
@@ -193,7 +210,7 @@ function buildDrawingSvg(intent: ComposeIntent | undefined): string | null {
     .filter(hh => hh.x <= w && hh.y <= d)
     .map(hh => `<circle cx="${(ox + hh.x * s).toFixed(1)}" cy="${(topY + hh.y * s).toFixed(1)}" r="${Math.max(1.2, (hh.d * s) / 2).toFixed(1)}" fill="none" stroke="#93c5fd" stroke-width="0.9"/><line x1="${(ox + hh.x * s - 3).toFixed(1)}" y1="${(topY + hh.y * s).toFixed(1)}" x2="${(ox + hh.x * s + 3).toFixed(1)}" y2="${(topY + hh.y * s).toFixed(1)}" stroke="#93c5fd" stroke-width="0.4"/>`)
     .join('');
-  const note = placed.length < holes.length ? `⌀ holes ×${holes.length} (${holes.length - placed.length} 위치 미부여)` : (holes.length ? `⌀ holes ×${holes.length}` : '');
+  const note = placed.length < holes.length ? `⌀ holes ×${holes.length} (${holes.length - placed.length} ${CHAT_UI_I18N[lang].unplacedHole})` : (holes.length ? `⌀ holes ×${holes.length}` : '');
   // K5(260808) — 구멍 위치 치수선: 고유 x/y 좌표별로 하단/우측에 1회씩
   // (행·열을 공유하는 패턴은 중복 치수 없이 읽힌다). 4개 초과 좌표는 생략 표기.
   const uniq = (vals: number[]) => [...new Set(vals.map(v => +v.toFixed(2)))].sort((a, b) => a - b);
@@ -206,11 +223,11 @@ function buildDrawingSvg(intent: ComposeIntent | undefined): string | null {
   const diaGroups = [...placed.reduce((m, hh) => m.set(hh.d, (m.get(hh.d) ?? 0) + 1), new Map<number, number>()).entries()]
     .map(([dd, n]) => `⌀${dd}×${n}`).join(' ');
   return `<svg viewBox="0 0 ${ox + fw + 60} ${topY + tt + 30 + (hxs.length ? hxs.length * 10 + 6 : 0)}" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:auto;background:#0b1020;border-radius:8px">
-    <text x="${ox}" y="14" fill="#8b949e" font-size="9" font-family="ui-monospace,monospace">FRONT (정면)</text>
+    <text x="${ox}" y="14" fill="#8b949e" font-size="9" font-family="ui-monospace,monospace">${CHAT_UI_I18N[lang].frontView}</text>
     <rect x="${ox}" y="${oy}" width="${fw}" height="${fh}" fill="none" stroke="#cbd5e1" stroke-width="1.1"/>
     ${dim(ox, oy - 8, ox + fw, oy - 8, `${w}`)}
     ${dim(ox - 10, oy, ox - 10, oy + fh, `${h}`)}
-    <text x="${ox}" y="${topY - 8}" fill="#8b949e" font-size="9" font-family="ui-monospace,monospace">TOP (평면)</text>
+    <text x="${ox}" y="${topY - 8}" fill="#8b949e" font-size="9" font-family="ui-monospace,monospace">${CHAT_UI_I18N[lang].topView}</text>
     <rect x="${ox}" y="${topY}" width="${fw}" height="${tt}" fill="none" stroke="#cbd5e1" stroke-width="1.1"/>
     ${holeCircles}
     ${holeDims}
@@ -262,15 +279,15 @@ function summarizeParts(assembly: AssemblyPlan | undefined): string[] {
 }
 
 // 기계 멀티바디: 자연어 → drawing/assemble(AI 어셈블리 + 게이트-교정 + 간섭검사).
-async function runAssemblePipeline(prompt: string, signal?: AbortSignal): Promise<CadResult> {
+async function runAssemblePipeline(prompt: string, lang: Lang, signal?: AbortSignal): Promise<CadResult> {
   const r = await fetch('/api/nexyfab/drawing/assemble/', {
-    method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ description: prompt }),
+    method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ description: prompt, lang }),
     signal,
   });
   const j = await r.json().catch(() => ({}));
   if (!r.ok || !j?.ok) {
     const ge = Array.isArray(j?.gateErrors) ? j.gateErrors.join(', ') : '';
-    return { error: (j && (j.error || ge)) || '조립체 생성에 실패했어요.' };
+    return { error: localizedApiError(lang, (j && (j.error || ge)), CHAT_UI_I18N[lang].assemblyFailed) };
   }
   return {
     isAssembly: true,
@@ -285,6 +302,7 @@ async function runAssemblePipeline(prompt: string, signal?: AbortSignal): Promis
     welds: Array.isArray(j.welds) ? j.welds : [],
     weldTotalMm: typeof j.weldTotalMm === 'number' ? j.weldTotalMm : 0,
     structural: (j.structural && typeof j.structural === 'object') ? j.structural as StructuralResult : undefined,
+    jetEngineMeta: (j.assembly as AssemblyPlan | undefined)?.jetEngineMeta,
     gateErrors: [],
     spec: summarizeParts(j.assembly as AssemblyPlan),
   };
@@ -302,6 +320,9 @@ function cadFromEditResp(j: Record<string, unknown>): CadResult {
     welds: Array.isArray(j.welds) ? (j.welds as CadResult['welds']) : [],
     weldTotalMm: typeof j.weldTotalMm === 'number' ? j.weldTotalMm : 0,
     structural: j.structural && typeof j.structural === 'object' ? (j.structural as StructuralResult) : undefined,
+    jetEngineMeta: (j.jetEngineMeta && typeof j.jetEngineMeta === 'object')
+      ? (j.jetEngineMeta as JetEngineMeta)
+      : (j.assembly as AssemblyPlan | undefined)?.jetEngineMeta,
     gateErrors: [],
     spec: summarizeParts(j.assembly as AssemblyPlan),
   };
@@ -341,12 +362,12 @@ function uncertaintyLine(r: Recognized, t: (typeof DICT)[Lang]): string {
 async function runExtractPipeline(att: Attached, lang: Lang): Promise<{ cad: CadResult; recognized?: Recognized }> {
   const r = await fetch('/api/nexyfab/drawing/extract/', {
     method: 'POST', headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({ imageBase64: att.base64, mimeType: att.mime }),
+    body: JSON.stringify({ imageBase64: att.base64, mimeType: att.mime, lang }),
   });
   const j = await r.json().catch(() => ({}));
   const recognized = j?.recognized && typeof j.recognized === 'object'
     ? {
-        label: String(j.recognized.label ?? j.recognized.type ?? ''),
+        label: DRAWING_TYPE_I18N[String(j.recognized.type ?? '')]?.[lang] ?? String(j.recognized.label ?? j.recognized.type ?? ''),
         confidence: Number(j.recognized.confidence) || 0,
         // ⚠ 여기서 버리면 **판독기가 정직해도 사용자는 모른다.** 어느 치수가 불확실한지 옮긴다.
         ...(Array.isArray(j.recognized.estimatedFields) ? { estimatedFields: j.recognized.estimatedFields.map(String) } : {}),
@@ -355,14 +376,14 @@ async function runExtractPipeline(att: Attached, lang: Lang): Promise<{ cad: Cad
     : undefined;
   if (!r.ok || !j?.ok || !j.intent) {
     const ge = Array.isArray(j?.gateErrors) ? j.gateErrors.join(', ') : '';
-    return { cad: { error: (j && (j.error || ge)) || '도면을 3D로 변환하지 못했어요.' }, recognized };
+    return { cad: { error: localizedApiError(lang, (j && (j.error || ge)), CHAT_UI_I18N[lang].drawingFailed) }, recognized };
   }
   return {
     cad: {
       composeIntent: j.intent as ComposeIntent,
       scad: typeof j.scad === 'string' ? j.scad : undefined,
       gateErrors: [],
-      spec: Array.isArray(j.spec) ? (j.spec as string[]) : summarizeFeatures(j.intent as ComposeIntent, lang),
+      spec: lang === 'kr' && Array.isArray(j.spec) ? (j.spec as string[]) : summarizeFeatures(j.intent as ComposeIntent, lang),
     },
     recognized,
   };
@@ -372,13 +393,13 @@ async function runExtractPipeline(att: Attached, lang: Lang): Promise<{ cad: Cad
 // 체크포인트로 반환(정밀 3D/STEP은 사용자 승인 후 export-step).
 async function runComposePipeline(prompt: string, lang: Lang, signal?: AbortSignal): Promise<CadResult> {
   const r = await fetch('/api/nexyfab/drawing/compose/', {
-    method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ description: prompt }),
+    method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ description: prompt, lang }),
     signal,
   });
   const j = await r.json().catch(() => ({}));
   if (!r.ok || !j?.ok || !j.intent) {
     const ge = Array.isArray(j?.gateErrors) ? j.gateErrors.join(', ') : '';
-    return { error: (j && (j.error || ge)) || '형상 생성에 실패했어요.' };
+    return { error: localizedApiError(lang, (j && (j.error || ge)), CHAT_UI_I18N[lang].geometryFailed) };
   }
   return {
     composeIntent: j.intent as ComposeIntent,
@@ -428,7 +449,7 @@ async function runDemoCalc(id: string, input: Record<string, unknown>, lang: Lan
     method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ input }),
   });
   const j = await res.json().catch(() => ({}));
-  if (!res.ok) throw new Error(j?.error || 'calc failed');
+  if (!res.ok) throw new Error(localizedApiError(lang, j?.error, CHAT_UI_I18N[lang].requestFailed));
   return {
     verdict: j.verdict ?? (j.checks && Object.values(j.checks as Record<string, { pass?: boolean }>).every(c => c.pass) ? 'PASS' : 'FAIL'),
     title: j.calculator ?? id,
@@ -438,13 +459,238 @@ async function runDemoCalc(id: string, input: Record<string, unknown>, lang: Lan
   };
 }
 
-const DOMAINS: Domain[] = ['mechanical', 'civil', 'architecture', 'landscape', 'interior'];
+const SPATIAL_DOMAINS: Domain[] = ['architecture', 'civil', 'landscape', 'interior'];
 const DOMAIN_ACCENT: Record<Domain, string> = {
   mechanical: '#3b82f6', civil: '#8b5cf6', architecture: '#f59e0b', landscape: '#22c55e', interior: '#ec4899',
 };
 
 type Lang = 'kr' | 'en' | 'ja' | 'cn' | 'es' | 'ar';
+
+/** CAD 결과 카드와 고정 3D 패널에서 쓰는 문구. DICT 밖의 하드코딩이 다른 언어 화면에 새지 않게 한다. */
+export const CAD_RESULT_I18N: Record<Lang, {
+  fillet: string; throat: string; weldNote: string;
+  jetTitle: string; compressor: string; turbine: string; stages: string;
+  jetComplete: string; verificationScope: string; verificationDetail: string;
+  mass: string; support: string; overturning: string; structuralNote: string;
+  undoPushPull: string; detailLodTitle: string; detailLod: string;
+  followups: string[];
+}> = {
+  kr: {
+    fillet: '필렛', throat: '목', weldNote: '전둘레 필렛 개산 · AABB 접촉 기준 · 비법정(정밀은 조인트 선언 후속)',
+    jetTitle: '축류 유로 개념 검토', compressor: '압축기', turbine: '터빈', stages: '단',
+    jetComplete: '개념 형상·유로 면적 검토 완료 · 상세 해석은 설계 단계에 맞춰 추가할 수 있습니다.', verificationScope: '검증 범위 상세', verificationDetail: 'CFD 압력·온도장, 연소 안정성, 블레이드 응력·크리프, 로터동역학, 파편 봉쇄, 감항 인증은 별도 해석 단계입니다.',
+    mass: '질량', support: '지지', overturning: '전도', structuralNote: '형상기반 자동 산출 · 강체/단순보 근사 · 비법정(상세 FEA 후속)',
+    undoPushPull: '푸시풀 되돌리기', detailLodTitle: '1차 골격 표시 중 — 2차 상세로 전환', detailLod: '2차 상세',
+    followups: ['구체화 계획을 세워서 단계별로 진행해줘', '부품 연결부와 기준축을 다시 정렬해줘', '간섭·부유 부품을 모두 점검해줘', 'BOM과 제조 순서를 만들어줘', 'STEP·SCAD 산출물을 갱신해줘', '검증 결과와 남은 작업을 요약해줘'],
+  },
+  en: {
+    fillet: 'fillet', throat: 'throat', weldNote: 'All-around fillet estimate · AABB contact basis · non-statutory (joint declaration required for precision)',
+    jetTitle: 'Preliminary axial flow-path review', compressor: 'Compressor', turbine: 'Turbine', stages: 'stages',
+    jetComplete: 'Concept geometry and flow-path review complete · detailed analyses can be added as the design advances.', verificationScope: 'Verification scope', verificationDetail: 'CFD pressure/temperature, combustion stability, blade stress/creep, rotordynamics, containment, and airworthiness are separate analysis stages.',
+    mass: 'Mass', support: 'Support', overturning: 'Overturning', structuralNote: 'Geometry-based automatic estimate · rigid-body/simple-beam approximation · non-statutory (detailed FEA follows)',
+    undoPushPull: 'Undo push-pull', detailLodTitle: 'Showing initial skeleton — switch to detailed model', detailLod: 'Detailed model',
+    followups: ['Create a refinement plan and execute it step by step', 'Re-align interfaces and datum axes', 'Check all interferences and floating parts', 'Create the BOM and manufacturing sequence', 'Refresh STEP and SCAD outputs', 'Summarize verification and remaining work'],
+  },
+  ja: {
+    fillet: 'すみ肉', throat: 'のど厚', weldNote: '全周すみ肉の概算 · AABB接触基準 · 非法定（精密化には継手定義が必要）',
+    jetTitle: '軸流流路の予備レビュー', compressor: '圧縮機', turbine: 'タービン', stages: '段',
+    jetComplete: '概念形状と流路面積のレビュー完了 · 詳細解析は設計の進行に応じて追加できます。', verificationScope: '検証範囲', verificationDetail: 'CFD圧力・温度場、燃焼安定性、翼の応力・クリープ、ローターダイナミクス、封じ込め、耐空証明は別の解析段階です。',
+    mass: '質量', support: '支持', overturning: '転倒', structuralNote: '形状ベース自動算出 · 剛体/単純梁近似 · 非法定（詳細FEAは後続）',
+    undoPushPull: 'プッシュプルを元に戻す', detailLodTitle: '初期骨格を表示中 — 詳細モデルへ切替', detailLod: '詳細モデル',
+    followups: ['詳細化計画を作成して段階的に実行して', '接続部と基準軸を再調整して', '干渉と浮遊部品をすべて確認して', 'BOMと製造順序を作成して', 'STEPとSCADを更新して', '検証結果と残作業を要約して'],
+  },
+  cn: {
+    fillet: '角焊缝', throat: '焊喉', weldNote: '全周角焊缝估算 · 基于AABB接触 · 非法定（精确分析需后续定义接头）',
+    jetTitle: '轴流通道初步审查', compressor: '压气机', turbine: '涡轮', stages: '级',
+    jetComplete: '概念几何与流道面积审查完成 · 可随设计推进增加详细分析。', verificationScope: '验证范围', verificationDetail: 'CFD压力/温度、燃烧稳定性、叶片应力/蠕变、转子动力学、包容性和适航认证属于独立分析阶段。',
+    mass: '质量', support: '支承', overturning: '倾覆', structuralNote: '基于几何的自动估算 · 刚体/简支梁近似 · 非法定（后续详细FEA）',
+    undoPushPull: '撤销推拉', detailLodTitle: '正在显示初步骨架 — 切换至详细模型', detailLod: '详细模型',
+    followups: ['制定细化计划并逐步执行', '重新对齐接口和基准轴', '检查所有干涉和悬空零件', '创建BOM和制造顺序', '更新STEP和SCAD输出', '总结验证结果和剩余工作'],
+  },
+  es: {
+    fillet: 'filete', throat: 'garganta', weldNote: 'Estimación de filete perimetral · contacto AABB · no normativa (la precisión requiere definir juntas)',
+    jetTitle: 'Revisión preliminar del flujo axial', compressor: 'Compresor', turbine: 'Turbina', stages: 'etapas',
+    jetComplete: 'Revisión de geometría conceptual y área de flujo completada · se pueden añadir análisis detallados al avanzar el diseño.', verificationScope: 'Alcance de verificación', verificationDetail: 'Presión/temperatura CFD, estabilidad de combustión, tensión/fluencia de álabes, rotodinámica, contención y aeronavegabilidad son etapas de análisis separadas.',
+    mass: 'Masa', support: 'Soporte', overturning: 'Vuelco', structuralNote: 'Estimación automática basada en geometría · aproximación rígida/viga simple · no normativa (FEA detallado posterior)',
+    undoPushPull: 'Deshacer empujar/tirar', detailLodTitle: 'Mostrando estructura inicial — cambiar al modelo detallado', detailLod: 'Modelo detallado',
+    followups: ['Crea un plan de refinamiento y ejecútalo paso a paso', 'Realinea interfaces y ejes de referencia', 'Comprueba interferencias y piezas flotantes', 'Crea la BOM y la secuencia de fabricación', 'Actualiza las salidas STEP y SCAD', 'Resume la verificación y el trabajo pendiente'],
+  },
+  ar: {
+    fillet: 'لحام زاوية', throat: 'سُمك الحلق', weldNote: 'تقدير لحام زاوية محيطي · وفق تلامس AABB · غير نظامي (يلزم تعريف الوصلات للتحليل الدقيق)',
+    jetTitle: 'مراجعة أولية لمسار التدفق المحوري', compressor: 'الضاغط', turbine: 'التوربين', stages: 'مراحل',
+    jetComplete: 'اكتملت مراجعة الشكل المفاهيمي ومساحة مسار التدفق · يمكن إضافة تحليلات تفصيلية مع تقدم التصميم.', verificationScope: 'نطاق التحقق', verificationDetail: 'ضغط وحرارة CFD، واستقرار الاحتراق، وإجهاد وزحف الشفرات، وديناميكا الدوار، والاحتواء، وصلاحية الطيران مراحل تحليل منفصلة.',
+    mass: 'الكتلة', support: 'الدعم', overturning: 'الانقلاب', structuralNote: 'تقدير آلي قائم على الشكل · تقريب جسم صلب/جائز بسيط · غير نظامي (يتبعه تحليل FEA تفصيلي)',
+    undoPushPull: 'تراجع عن الدفع والسحب', detailLodTitle: 'يُعرض الهيكل الأولي — انتقل إلى النموذج التفصيلي', detailLod: 'النموذج التفصيلي',
+    followups: ['أنشئ خطة تحسين ونفّذها خطوة بخطوة', 'أعد محاذاة الوصلات والمحاور المرجعية', 'افحص جميع التداخلات والأجزاء العائمة', 'أنشئ قائمة المواد وتسلسل التصنيع', 'حدّث مخرجات STEP وSCAD', 'لخّص نتائج التحقق والعمل المتبقي'],
+  },
+};
+
+export function shouldUseCadSplitView(wideScreen: boolean, started: boolean, hasCad: boolean): boolean {
+  return wideScreen && started && hasCad;
+}
+
+type ChatUiCopy = {
+  unplacedHole: string; frontView: string; topView: string;
+  assemblyFailed: string; drawingFailed: string; geometryFailed: string; packageFailed: string;
+  stepFailed: string; gaFailed: string; hlrFailed: string; dfmFailed: string; viewerUnavailable: string; renderFailed: string;
+  precisionProtected: string; expertTitle: string; expertTransfer: string; dfmNote: string; contactTitle: string;
+  rerun: string; printTitle: string; printHeading: string; calculator: string; input: string; engineResult: string; printNote: string;
+  repairing: string; noPlacement: string; placementFailed: string; legacyRebuilt: string; requestFailed: string;
+  fileType: string; fileSize: string; scalePrefix: string;
+  cadContextLoaded: string; unmapped: string; sourceProtected: string; scalePlaceholder: string; scaleTitle: string;
+  threads: string; pin: string; delete: string; remove: string; clear: string;
+  selectedPart: string; selectPart: string; faceSelected: string; clickFace: string; adjustFace: string; adjustMm: string; apply: string;
+  gateNotRun: string;
+};
+
+/** ChatHero의 사전 밖 사용자 노출 문구를 한곳에 모은 6개 언어 사전. */
+export const CHAT_UI_I18N: Record<Lang, ChatUiCopy> = {
+  kr: {
+    unplacedHole: '위치 미부여', frontView: '정면', topView: '평면', assemblyFailed: '조립체 생성에 실패했어요.', drawingFailed: '도면을 3D로 변환하지 못했어요.', geometryFailed: '형상 생성에 실패했어요.', packageFailed: '패키지 생성에 실패했어요.', stepFailed: 'STEP 생성에 실패했어요.', gaFailed: 'GA 생성에 실패했어요.', hlrFailed: '투영 도면 생성에 실패했어요.', dfmFailed: 'DFM 분석에 실패했어요.', viewerUnavailable: '이 브라우저에서는 3D를 사용할 수 없습니다.', renderFailed: '3D 렌더링에 실패했어요.',
+    precisionProtected: '정밀 CAD 원본 보호를 위해 전체 모델 재생성을 차단했습니다. 기존 모델 변경은 정밀 CAD 화면의 AI 편집에서 revision-bound patch로 적용해 주세요.', expertTitle: 'AI 결과의 피처와 치수를 유지해 정밀 3D CAD에서 계속 편집합니다.', expertTransfer: '편집 가능한 피처·치수 인계', dfmNote: '개산(비법정) · 조인트/용접 정량은 다음 단계', contactTitle: '접촉/체결 후보(관통 ≤2mm) — 조인트 선언 정밀검증 후속',
+    rerun: '다시 실행', printTitle: 'NexyFab 검토 카드', printHeading: 'NexyFab 검토 결과(참고자료·비법정)', calculator: '계산기', input: '입력', engineResult: '결과(엔진 원본)', printNote: '정식 계산서 양식은 설계 계산기 스튜디오에서 생성하세요. 본 출력은 대화 카드 전사입니다.',
+    repairing: '현재 조립체 배치 수정·재검증 중…', noPlacement: '자동 배치로는 검증된 간섭이 줄지 않았습니다. 현재 형상과 연결을 유지한 이동만으로는 해결할 수 없습니다. 3D에서 간섭 부품을 선택하고 목표 위치나 여유 간격을 지정해 주세요.', placementFailed: '배치 후보가 검증된 간섭 수를 줄이지 못했습니다.', legacyRebuilt: '기존 대체 형상은 배치 수정으로 해결할 수 없어, 전체 외형을 유지하고 실제 블레이드 링·환형 연소기·축류 유로가 있는 개념 조립체로 재생성한 뒤 간섭을 다시 검증했습니다.', requestFailed: '요청 처리 중 연결 오류가 발생했습니다.',
+    fileType: 'PNG·JPG·WebP 이미지만 지원합니다.', fileSize: '이미지가 너무 큽니다(6MB 이하).', scalePrefix: '기준 최장변', cadContextLoaded: 'CAD 모델 컨텍스트가 로드되어 이 모델 기준으로 요청을 반영합니다.', unmapped: '미반영', sourceProtected: '원본 보호: 검토만 가능하며 형상 변경은 정밀 CAD의 AI 패치를 사용합니다.', scalePlaceholder: '기준 최장변(mm, 선택)', scaleTitle: '사진/시안에는 스케일이 없습니다. 실물의 가장 긴 변을 알려주시면 그 값을 기준으로 생성합니다.',
+    threads: '대화 목록', pin: '대화 고정', delete: '대화 삭제', remove: '첨부 제거', clear: '선택 해제', selectedPart: '선택 부품', selectPart: '부품을 선택하세요', faceSelected: '면 방향 선택됨', clickFace: '면을 클릭하면 조정 가능', adjustFace: '선택 면 치수 조정', adjustMm: '조정량(mm)', apply: '적용', gateNotRun: '미실행',
+  },
+  en: {
+    unplacedHole: 'position not assigned', frontView: 'Front', topView: 'Top', assemblyFailed: 'Could not generate the assembly.', drawingFailed: 'Could not convert the drawing to 3D.', geometryFailed: 'Could not generate the geometry.', packageFailed: 'Could not generate the package.', stepFailed: 'Could not build STEP.', gaFailed: 'Could not build the GA view.', hlrFailed: 'Could not generate the projection drawing.', dfmFailed: 'Could not run the DFM analysis.', viewerUnavailable: '3D is unavailable in this browser.', renderFailed: 'Could not render the 3D model.',
+    precisionProtected: 'Whole-model regeneration was blocked to protect the precision CAD source. Apply changes with the in-CAD AI editor as revision-bound patches.', expertTitle: 'Continue editing in precision 3D CAD while preserving features and dimensions.', expertTransfer: 'Editable features and dimensions transferred', dfmNote: 'Estimate (non-statutory) · joint and weld quantities follow in the next stage', contactTitle: 'Contact/fastening candidate (penetration ≤2 mm) — precise verification follows joint declaration',
+    rerun: 'Re-run', printTitle: 'NexyFab review card', printHeading: 'NexyFab review result (reference, non-statutory)', calculator: 'Calculator', input: 'Input', engineResult: 'Result (raw engine output)', printNote: 'Use the design calculator studio for a formal calculation sheet. This printout transcribes the chat card.',
+    repairing: 'Repairing and re-verifying the current assembly…', noPlacement: 'Automatic placement could not reduce the verified clashes. Moving parts alone cannot resolve them while preserving the current geometry and connections. Select a clashing part in 3D and specify its target position or clearance.', placementFailed: 'No placement candidate reduced the verified interference count.', legacyRebuilt: 'The proxy geometry could not be repaired by placement, so it was rebuilt within the same envelope with blade rings, an annular combustor and an axial flow path, then re-verified for clashes.', requestFailed: 'The request failed because of a connection error.',
+    fileType: 'Only PNG, JPG and WebP images are supported.', fileSize: 'The image is too large (maximum 6 MB).', scalePrefix: 'Reference longest side', cadContextLoaded: 'The CAD model context is loaded; requests will be applied against this model.', unmapped: 'Not mapped', sourceProtected: 'Source protected: review only; use an in-CAD AI patch for geometry changes.', scalePlaceholder: 'Longest side (mm, optional)', scaleTitle: 'Photos and concepts have no scale. Enter the longest real-world side to use as the generation reference.',
+    threads: 'Chat list', pin: 'Pin chat', delete: 'Delete chat', remove: 'Remove attachment', clear: 'Clear selection', selectedPart: 'Selected part', selectPart: 'Select a part', faceSelected: 'Face direction selected', clickFace: 'Click a face to adjust it', adjustFace: 'Adjust selected face dimension', adjustMm: 'Adjustment (mm)', apply: 'Apply', gateNotRun: 'not run',
+  },
+  ja: {
+    unplacedHole: '位置未指定', frontView: '正面', topView: '上面', assemblyFailed: 'アセンブリを生成できませんでした。', drawingFailed: '図面を3Dに変換できませんでした。', geometryFailed: '形状を生成できませんでした。', packageFailed: 'パッケージを生成できませんでした。', stepFailed: 'STEPを生成できませんでした。', gaFailed: 'GA表示を生成できませんでした。', hlrFailed: '投影図を生成できませんでした。', dfmFailed: 'DFM解析を実行できませんでした。', viewerUnavailable: 'このブラウザでは3Dを利用できません。', renderFailed: '3Dモデルをレンダリングできませんでした。',
+    precisionProtected: '精密CAD原本を保護するためモデル全体の再生成を停止しました。変更は精密CAD内のAI編集でrevision-bound patchとして適用してください。', expertTitle: 'フィーチャと寸法を保持したまま精密3D CADで編集を続けます。', expertTransfer: '編集可能なフィーチャと寸法を引き継ぎ', dfmNote: '概算（非法定）· 継手と溶接数量は次段階', contactTitle: '接触・締結候補（貫通≤2mm）— 継手定義後に精密検証',
+    rerun: '再実行', printTitle: 'NexyFab検討カード', printHeading: 'NexyFab検討結果（参考・非法定）', calculator: '計算機', input: '入力', engineResult: '結果（エンジン原文）', printNote: '正式な計算書は設計計算スタジオで作成してください。この印刷はチャットカードの転記です。',
+    repairing: '現在のアセンブリ配置を修正・再検証中…', noPlacement: '自動配置では検証済み干渉を減らせませんでした。3Dで干渉部品を選び、目標位置またはクリアランスを指定してください。', placementFailed: '干渉数を減らす配置候補がありませんでした。', legacyRebuilt: '代替形状は配置だけでは修正できないため、外形を保持して翼列・環状燃焼器・軸流流路を持つ概念アセンブリに再構築し、干渉を再検証しました。', requestFailed: '接続エラーによりリクエストを処理できませんでした。',
+    fileType: 'PNG・JPG・WebP画像のみ対応しています。', fileSize: '画像が大きすぎます（6MB以下）。', scalePrefix: '基準最長辺', cadContextLoaded: 'CADモデルのコンテキストを読み込み、このモデル基準で反映します。', unmapped: '未反映', sourceProtected: '原本保護：確認のみ。形状変更は精密CAD内のAIパッチを使用してください。', scalePlaceholder: '最長辺(mm、任意)', scaleTitle: '写真や概念図には尺度がありません。実物の最長辺を入力すると生成基準にします。',
+    threads: 'チャット一覧', pin: 'チャットを固定', delete: 'チャットを削除', remove: '添付を削除', clear: '選択解除', selectedPart: '選択部品', selectPart: '部品を選択', faceSelected: '面方向を選択済み', clickFace: '面をクリックして調整', adjustFace: '選択面の寸法調整', adjustMm: '調整量(mm)', apply: '適用', gateNotRun: '未実行',
+  },
+  cn: {
+    unplacedHole: '位置未指定', frontView: '正视', topView: '俯视', assemblyFailed: '无法生成装配体。', drawingFailed: '无法将图纸转换为3D。', geometryFailed: '无法生成几何体。', packageFailed: '无法生成设计包。', stepFailed: '无法生成STEP。', gaFailed: '无法生成GA视图。', hlrFailed: '无法生成投影图。', dfmFailed: '无法执行DFM分析。', viewerUnavailable: '此浏览器不支持3D。', renderFailed: '无法渲染3D模型。',
+    precisionProtected: '为保护精密CAD源文件，已阻止整模重新生成。请在精密CAD中使用AI编辑，以revision-bound patch应用更改。', expertTitle: '保留特征和尺寸并继续在精密3D CAD中编辑。', expertTransfer: '已移交可编辑特征和尺寸', dfmNote: '估算（非法定）· 接头和焊接数量在下一阶段计算', contactTitle: '接触/紧固候选（贯穿≤2mm）— 定义接头后精确验证',
+    rerun: '重新运行', printTitle: 'NexyFab审核卡', printHeading: 'NexyFab审核结果（参考、非法定）', calculator: '计算器', input: '输入', engineResult: '结果（引擎原始输出）', printNote: '正式计算书请在设计计算工作室生成。本打印件仅转录聊天卡。',
+    repairing: '正在修正并重新验证当前装配位置…', noPlacement: '自动布置未能减少已验证干涉。请在3D中选择干涉零件并指定目标位置或间隙。', placementFailed: '没有布置候选能减少已验证干涉。', legacyRebuilt: '替代几何无法仅靠布置修复，因此在保持整体包络的情况下重建为含叶环、环形燃烧室和轴流通道的概念装配体，并重新验证干涉。', requestFailed: '连接错误导致请求处理失败。',
+    fileType: '仅支持PNG、JPG和WebP图片。', fileSize: '图片过大（最大6MB）。', scalePrefix: '基准最长边', cadContextLoaded: '已加载CAD模型上下文，请求将以此模型为基准应用。', unmapped: '未映射', sourceProtected: '源文件保护：仅可审核；几何修改请使用精密CAD内的AI补丁。', scalePlaceholder: '最长边(mm，可选)', scaleTitle: '照片和概念图没有尺度。输入实物最长边作为生成基准。',
+    threads: '对话列表', pin: '固定对话', delete: '删除对话', remove: '移除附件', clear: '清除选择', selectedPart: '已选零件', selectPart: '请选择零件', faceSelected: '已选择面方向', clickFace: '单击面进行调整', adjustFace: '调整所选面尺寸', adjustMm: '调整量(mm)', apply: '应用', gateNotRun: '未执行',
+  },
+  es: {
+    unplacedHole: 'posición sin asignar', frontView: 'Frontal', topView: 'Superior', assemblyFailed: 'No se pudo generar el conjunto.', drawingFailed: 'No se pudo convertir el plano a 3D.', geometryFailed: 'No se pudo generar la geometría.', packageFailed: 'No se pudo generar el paquete.', stepFailed: 'No se pudo generar STEP.', gaFailed: 'No se pudo generar la vista GA.', hlrFailed: 'No se pudo generar la proyección.', dfmFailed: 'No se pudo ejecutar el análisis DFM.', viewerUnavailable: 'El 3D no está disponible en este navegador.', renderFailed: 'No se pudo renderizar el modelo 3D.',
+    precisionProtected: 'Se bloqueó la regeneración completa para proteger el CAD de precisión. Aplica los cambios en el editor IA del CAD como parches ligados a la revisión.', expertTitle: 'Continúa en CAD 3D de precisión conservando operaciones y cotas.', expertTransfer: 'Operaciones y cotas editables transferidas', dfmNote: 'Estimación no normativa · juntas y soldaduras se cuantifican en la siguiente fase', contactTitle: 'Candidato de contacto/fijación (penetración ≤2mm) — verificación precisa tras definir la junta',
+    rerun: 'Ejecutar de nuevo', printTitle: 'Ficha de revisión NexyFab', printHeading: 'Resultado de revisión NexyFab (referencia no normativa)', calculator: 'Calculadora', input: 'Entrada', engineResult: 'Resultado (salida original del motor)', printNote: 'Genera la memoria formal en el estudio de cálculo. Esta impresión transcribe la tarjeta del chat.',
+    repairing: 'Corrigiendo y verificando de nuevo el conjunto…', noPlacement: 'La colocación automática no redujo las interferencias verificadas. Selecciona una pieza en 3D e indica su posición o separación objetivo.', placementFailed: 'Ninguna colocación redujo las interferencias verificadas.', legacyRebuilt: 'La geometría provisional no se corrigió solo con colocación; se reconstruyó dentro de la misma envolvente con anillos de álabes, cámara anular y flujo axial, y se verificó de nuevo.', requestFailed: 'La solicitud falló por un error de conexión.',
+    fileType: 'Solo se admiten imágenes PNG, JPG y WebP.', fileSize: 'La imagen es demasiado grande (máximo 6MB).', scalePrefix: 'Lado mayor de referencia', cadContextLoaded: 'El contexto del modelo CAD está cargado; las solicitudes se aplicarán a este modelo.', unmapped: 'Sin asignar', sourceProtected: 'Fuente protegida: solo revisión; usa un parche IA dentro del CAD para cambiar la geometría.', scalePlaceholder: 'Lado mayor (mm, opcional)', scaleTitle: 'Las fotos y conceptos no tienen escala. Introduce el lado real más largo como referencia.',
+    threads: 'Lista de chats', pin: 'Fijar chat', delete: 'Eliminar chat', remove: 'Quitar adjunto', clear: 'Borrar selección', selectedPart: 'Pieza seleccionada', selectPart: 'Selecciona una pieza', faceSelected: 'Dirección de cara seleccionada', clickFace: 'Haz clic en una cara para ajustarla', adjustFace: 'Ajustar dimensión de la cara', adjustMm: 'Ajuste (mm)', apply: 'Aplicar', gateNotRun: 'no ejecutada',
+  },
+  ar: {
+    unplacedHole: 'الموضع غير محدد', frontView: 'أمامي', topView: 'علوي', assemblyFailed: 'تعذر إنشاء التجميع.', drawingFailed: 'تعذر تحويل الرسم إلى نموذج ثلاثي الأبعاد.', geometryFailed: 'تعذر إنشاء الشكل الهندسي.', packageFailed: 'تعذر إنشاء الحزمة.', stepFailed: 'تعذر إنشاء ملف STEP.', gaFailed: 'تعذر إنشاء عرض GA.', hlrFailed: 'تعذر إنشاء المسقط.', dfmFailed: 'تعذر تشغيل تحليل قابلية التصنيع.', viewerUnavailable: 'العرض ثلاثي الأبعاد غير متاح في هذا المتصفح.', renderFailed: 'تعذر عرض النموذج ثلاثي الأبعاد.',
+    precisionProtected: 'تم منع إعادة إنشاء النموذج بالكامل لحماية مصدر CAD الدقيق. طبّق التغييرات من خلال محرر الذكاء الاصطناعي داخل CAD كتصحيحات مرتبطة بالمراجعة.', expertTitle: 'تابع التحرير في CAD ثلاثي الأبعاد الدقيق مع الحفاظ على الميزات والأبعاد.', expertTransfer: 'تم نقل الميزات والأبعاد القابلة للتحرير', dfmNote: 'تقدير غير نظامي · تُحسب الوصلات واللحامات في المرحلة التالية', contactTitle: 'مرشح تلامس/تثبيت (اختراق ≤2 مم) — التحقق الدقيق بعد تعريف الوصلة',
+    rerun: 'إعادة التشغيل', printTitle: 'بطاقة مراجعة NexyFab', printHeading: 'نتيجة مراجعة NexyFab (مرجع غير نظامي)', calculator: 'الحاسبة', input: 'المدخلات', engineResult: 'النتيجة (مخرجات المحرك الأصلية)', printNote: 'أنشئ ورقة الحساب الرسمية في استوديو الحسابات. هذه الطباعة نسخة من بطاقة المحادثة.',
+    repairing: 'جارٍ إصلاح مواضع التجميع وإعادة التحقق…', noPlacement: 'لم ينجح الترتيب التلقائي في تقليل التداخلات المتحققة. اختر الجزء المتداخل في العرض ثلاثي الأبعاد وحدد موضعه أو الخلوص المطلوب.', placementFailed: 'لم يقلل أي ترتيب مرشح عدد التداخلات المتحققة.', legacyRebuilt: 'تعذر إصلاح الشكل البديل بالمواضع فقط، فأعيد بناؤه ضمن الغلاف نفسه بحلقات شفرات وحجرة احتراق حلقية ومسار تدفق محوري ثم أعيد فحص التداخل.', requestFailed: 'فشل الطلب بسبب خطأ في الاتصال.',
+    fileType: 'تُقبل صور PNG وJPG وWebP فقط.', fileSize: 'الصورة كبيرة جدًا (الحد الأقصى 6 ميجابايت).', scalePrefix: 'أطول ضلع مرجعي', cadContextLoaded: 'تم تحميل سياق نموذج CAD وستُطبّق الطلبات بالاستناد إلى هذا النموذج.', unmapped: 'غير معتمد', sourceProtected: 'المصدر محمي: المراجعة فقط؛ استخدم تصحيح الذكاء الاصطناعي داخل CAD لتغيير الشكل.', scalePlaceholder: 'أطول ضلع (مم، اختياري)', scaleTitle: 'لا تحتوي الصور والمفاهيم على مقياس. أدخل أطول ضلع حقيقي ليكون مرجع الإنشاء.',
+    threads: 'قائمة المحادثات', pin: 'تثبيت المحادثة', delete: 'حذف المحادثة', remove: 'إزالة المرفق', clear: 'مسح التحديد', selectedPart: 'الجزء المحدد', selectPart: 'اختر جزءًا', faceSelected: 'تم تحديد اتجاه الوجه', clickFace: 'انقر على وجه لتعديله', adjustFace: 'تعديل بُعد الوجه المحدد', adjustMm: 'قيمة التعديل (مم)', apply: 'تطبيق', gateNotRun: 'لم يُنفذ',
+  },
+};
+
+export const DRAWING_TYPE_I18N: Record<string, Record<Lang, string>> = {
+  plate_with_holes: { kr: '타공 평판', en: 'Perforated plate', ja: '穴あき平板', cn: '开孔平板', es: 'Placa perforada', ar: 'صفيحة مثقبة' },
+  stepped_plate: { kr: '단차 평판', en: 'Stepped plate', ja: '段付き平板', cn: '阶梯平板', es: 'Placa escalonada', ar: 'صفيحة متدرجة' },
+  l_bracket: { kr: 'L 브래킷', en: 'L bracket', ja: 'Lブラケット', cn: 'L形支架', es: 'Soporte en L', ar: 'كتيفة على شكل L' },
+  flange: { kr: '플랜지', en: 'Flange', ja: 'フランジ', cn: '法兰', es: 'Brida', ar: 'شفة' },
+  bent_sheet: { kr: 'U채널 절곡판', en: 'Bent U-channel', ja: 'U形曲げ板', cn: 'U形折弯板', es: 'Canal U plegado', ar: 'قناة U مثنية' },
+  tube: { kr: '원형 파이프', en: 'Round tube', ja: '丸パイプ', cn: '圆管', es: 'Tubo redondo', ar: 'أنبوب دائري' },
+  rect_tube: { kr: '각관', en: 'Rectangular tube', ja: '角形鋼管', cn: '矩形管', es: 'Tubo rectangular', ar: 'أنبوب مستطيل' },
+  box: { kr: '직육면체 블록', en: 'Rectangular block', ja: '直方体ブロック', cn: '长方体块', es: 'Bloque rectangular', ar: 'كتلة مستطيلة' },
+  cylinder: { kr: '원기둥 봉', en: 'Cylindrical bar', ja: '丸棒', cn: '圆柱棒', es: 'Barra cilíndrica', ar: 'قضيب أسطواني' },
+  gusset: { kr: '거셋 보강판', en: 'Gusset plate', ja: 'ガセット補強板', cn: '加劲肋板', es: 'Cartela de refuerzo', ar: 'صفيحة تقوية' },
+  base_plate: { kr: '베이스판', en: 'Base plate', ja: 'ベースプレート', cn: '底板', es: 'Placa base', ar: 'صفيحة قاعدة' },
+};
+
+function localizedApiError(lang: Lang, value: unknown, fallback: string): string {
+  const text = typeof value === 'string' ? value.trim() : '';
+  if (!text) return fallback;
+  // 서버의 레거시 오류가 한국어/영어로 고정돼 있으면 현재 UI 언어의 안전한 문구를 쓴다.
+  if (lang !== 'kr' && /[가-힣]/.test(text)) return fallback;
+  if (!['kr', 'en'].includes(lang) && /^[\x00-\x7F]+$/.test(text)) return fallback;
+  return text;
+}
 const toLang = (l: string): Lang => (['kr', 'en', 'ja', 'cn', 'es', 'ar'].includes(l) ? (l as Lang) : 'en');
+
+export const DESIGN_PATH_I18N: Record<Lang, {
+  group: string; mechanical: string; spatial: string; beta: string; auto: string;
+}> = {
+  kr: { group: '제품 영역', mechanical: 'AI 기계 CAD', spatial: 'Space Design Labs', beta: '부가 Beta', auto: '기계 제품을 기본으로 분석하며 공간 요청은 Labs로 분리합니다' },
+  en: { group: 'Product area', mechanical: 'AI Mechanical CAD', spatial: 'Space Design Labs', beta: 'Additional Beta', auto: 'Mechanical products are the default; spatial requests are isolated in Labs' },
+  ja: { group: '製品領域', mechanical: 'AI機械CAD', spatial: 'Space Design Labs', beta: '追加Beta', auto: '機械製品が既定で、空間設計はLabsに分離されます' },
+  cn: { group: '产品领域', mechanical: 'AI机械CAD', spatial: 'Space Design Labs', beta: '附加Beta', auto: '默认面向机械产品，空间请求单独进入Labs' },
+  es: { group: 'Área de producto', mechanical: 'CAD mecánico con IA', spatial: 'Space Design Labs', beta: 'Beta adicional', auto: 'El producto mecánico es el flujo principal; el diseño espacial queda aislado en Labs' },
+  ar: { group: 'مجال المنتج', mechanical: 'CAD ميكانيكي بالذكاء الاصطناعي', spatial: 'Space Design Labs', beta: 'بيتا إضافية', auto: 'المنتجات الميكانيكية هي المسار الافتراضي، وخدمات المساحات منفصلة في Labs' },
+};
+
+const CHAT_DOMAIN_BY_PROFILE = {
+  mechanical: 'mechanical', building: 'architecture', civil: 'civil', landscape: 'landscape', interior: 'interior',
+} as const satisfies Record<string, Domain>;
+
+/** Conservative first-turn routing. Ambiguous prompts remain on the mechanical default. */
+export function inferChatDomain(prompt: string): Domain | null {
+  const recommendations = recommendDesignDomains(prompt);
+  const top = recommendations[0];
+  const second = recommendations[1];
+  if (!top || top.score < 0.67 || top.score - (second?.score ?? 0) < 0.34) return null;
+  return CHAT_DOMAIN_BY_PROFILE[top.domain];
+}
+
+/** Follow-up edits must operate on the exact generated assembly, not re-enter generation intent routing. */
+export function isAssemblyClashRepairRequest(prompt: string): boolean {
+  const text = prompt.toLowerCase().replace(/\s+/g, ' ').trim();
+  const mentionsClash = /(간섭|겹침|충돌|interference|overlap|collision|干渉|重叠|干涉|interferencia|تداخل)/i.test(text);
+  const asksRepair = /(해결|수정|조정|고쳐|없애|분리|fix|repair|resolve|adjust|remove|correct|修正|解消|解决|调整|correg|resolver|ajust|إصلاح|حل)/i.test(text);
+  return mentionsClash && asksRepair;
+}
+
+function assemblyRepairCopy(lang: Lang, before: number, after: number): string {
+  const complete: Record<Lang, string> = {
+    kr: `기존 조립체의 치수와 부품은 유지하고 배치만 수정했습니다. 검증된 간섭 ${before}건을 모두 해결했습니다.`,
+    en: `Kept the existing parts and dimensions, changed placement only, and resolved all ${before} verified interferences.`,
+    ja: `既存の部品と寸法を維持し、配置のみを修正して、検証済みの干渉 ${before} 件をすべて解消しました。`,
+    cn: `保留现有零件和尺寸，仅调整位置，已解决全部 ${before} 处已验证干涉。`,
+    es: `Se conservaron las piezas y cotas, se ajustó solo la posición y se resolvieron las ${before} interferencias verificadas.`,
+    ar: `تم الحفاظ على الأجزاء والأبعاد وتعديل المواضع فقط، وحُلّت جميع حالات التداخل المتحققة وعددها ${before}.`,
+  };
+  const partial: Record<Lang, string> = {
+    kr: `기존 조립체의 치수와 부품은 유지하고 배치만 수정했습니다. 간섭이 ${before}건에서 ${after}건으로 줄었습니다. 남은 간섭은 3D에서 해당 부품을 선택해 목표 위치나 여유 간격을 지정해 주세요.`,
+    en: `Kept the existing parts and dimensions and changed placement only. Interferences decreased from ${before} to ${after}. Select a remaining part in 3D and specify its target position or clearance.`,
+    ja: `既存の部品と寸法を維持し、配置のみを修正しました。干渉は ${before} 件から ${after} 件に減少しました。残る部品を3Dで選び、目標位置またはクリアランスを指定してください。`,
+    cn: `保留现有零件和尺寸，仅调整位置。干涉从 ${before} 处降至 ${after} 处。请在3D中选择剩余零件并指定目标位置或间隙。`,
+    es: `Se conservaron las piezas y cotas y solo se ajustó la posición. Las interferencias bajaron de ${before} a ${after}. Selecciona una pieza restante en 3D e indica su posición o separación objetivo.`,
+    ar: `تم الحفاظ على الأجزاء والأبعاد وتعديل المواضع فقط. انخفض التداخل من ${before} إلى ${after}. اختر جزءًا متبقيًا في العرض ثلاثي الأبعاد وحدد موضعه أو الخلوص المطلوب.`,
+  };
+  return after === 0 ? complete[lang] : partial[lang];
+}
+
+export function protectedPrecisionCadEditResult(lang: Lang, context: ReverseProgramResult): CadResult {
+  const revision = context.designGraph.revisionSha256.slice(0, 12);
+  return {
+    error: `${CHAT_UI_I18N[lang].precisionProtected} (revision ${revision})`,
+  };
+}
+
+export type GenerationGateStatus = 'passed' | 'failed' | 'not_run';
+
+/** Persisted/legacy results without an explicit gate receipt stay fail-closed. */
+export function generationGateStatusOf(gateErrors: unknown): GenerationGateStatus {
+  if (!Array.isArray(gateErrors)) return 'not_run';
+  return gateErrors.length === 0 ? 'passed' : 'failed';
+}
+
+/** An intent/assembly plan is not generated geometry evidence by itself. */
+export function hasGeneratedGeometryEvidence(stepText: unknown, scad: unknown): boolean {
+  return (typeof stepText === 'string' && stepText.trim().length > 0)
+    || (typeof scad === 'string' && scad.trim().length > 0);
+}
 
 const DICT: Record<Lang, {
   title: string; sub: string; placeholder: string; send: string; thinking: string;
@@ -477,14 +723,14 @@ const DICT: Record<Lang, {
 }> = {
   kr: {
     title: '무엇을 설계할까요?',
-    sub: '설계하고 싶은 것을 자연어로 설명하거나, 도면·스케치 이미지를 올려보세요. 기계설계부터 토목·건축·조경·인테리어까지.',
-    placeholder: '예: 200L 스테인리스 응집 탱크를 설계하고 싶어요 / H-300 보 6m 스팬 검토',
+    sub: '만들고 싶은 제품을 평소 말처럼 적어주세요. AI가 필요한 치수를 물어보고, 부품·조립·도면까지 단계별로 만듭니다.',
+    placeholder: '예: 높이 300mm, 폭 200mm인 모터 브래킷을 만들어줘',
     send: '보내기', thinking: '생각 중…',
     disclaimer: 'AI 응답은 비법정 참고자료입니다. 최종 검토·서명은 유자격 기술자의 책임입니다.',
     error: '응답을 가져오지 못했어요. 잠시 후 다시 시도해 주세요.',
     reset: '새 대화',
     trust: '결정론 계산 엔진 · 엔지니어링 코퍼스 · 결과엔 기준 조항 근거 표시',
-    chips: { mechanical: '기계설계', civil: '토목', architecture: '건축', landscape: '조경', interior: '인테리어' },
+    chips: { mechanical: '제품·기계', civil: '토목', architecture: '건축', landscape: '조경', interior: '인테리어' },
     actDemo: '검증 엔진 데모', actQuote: '정밀 견적 요청', actContact: '전문가 상담',
     newChat: '새 대화', guestNote: '게스트: 대화는 이 기기에만 저장', guestLimit: '대화가 이 기기에만 저장됩니다 — 가입하면 어디서나 이어집니다',
     stop: '중단', copyMsg: '복사', copied: '복사됨 ✓', regen: '다시 생성',
@@ -503,14 +749,14 @@ const DICT: Record<Lang, {
   },
   en: {
     title: 'What do you want to design?',
-    sub: 'Describe what you want to design in plain language, or upload a drawing/sketch. From mechanical to civil, architecture, landscape and interior.',
+    sub: 'AI mechanical design and precision CAD share one design history. Spatial disciplines are available separately through Space Design Labs Beta.',
     placeholder: 'e.g. Design a 200L stainless coagulation tank / Check an H-300 beam over a 6m span',
     send: 'Send', thinking: 'Thinking…',
     disclaimer: 'AI replies are non-statutory references. Final review and sign-off remain a licensed engineer’s responsibility.',
     error: 'Could not get a reply. Please try again shortly.',
     reset: 'New chat',
     trust: 'Deterministic calc engine · engineering corpus · every result cites its code clause',
-    chips: { mechanical: 'Mechanical', civil: 'Civil', architecture: 'Architecture', landscape: 'Landscape', interior: 'Interior' },
+    chips: { mechanical: 'Product & mechanical', civil: 'Civil', architecture: 'Architecture', landscape: 'Landscape', interior: 'Interior' },
     actDemo: 'Verification engine demo', actQuote: 'Request a quote', actContact: 'Talk to an expert',
     newChat: 'New chat', guestNote: 'Guest: chats stay on this device', guestLimit: 'Chats are saved on this device only — sign up to sync',
     stop: 'Stop', copyMsg: 'Copy', copied: 'Copied ✓', regen: 'Regenerate',
@@ -529,14 +775,14 @@ const DICT: Record<Lang, {
   },
   ja: {
     title: '何を設計しますか？',
-    sub: '設計したいものを自然文で説明するか、図面・スケッチ画像をアップロードしてください。機械設計から土木・建築・造園・インテリアまで。',
+    sub: 'AI機械設計と精密CADを一つの設計履歴で接続します。空間分野は別サービスのSpace Design Labs Betaで提供します。',
     placeholder: '例：200Lステンレス凝集タンクを設計したい / H-300 梁 6mスパンの検討',
     send: '送信', thinking: '考え中…',
     disclaimer: 'AIの回答は非法定の参考資料です。最終確認と署名は有資格技術者の責任です。',
     error: '回答を取得できませんでした。しばらくして再試行してください。',
     reset: '新しいチャット',
     trust: '決定論的計算エンジン · エンジニアリングコーパス · 結果に基準条項の根拠を明示',
-    chips: { mechanical: '機械設計', civil: '土木', architecture: '建築', landscape: '造園', interior: 'インテリア' },
+    chips: { mechanical: '製品・機械', civil: '土木', architecture: '建築', landscape: '造園', interior: 'インテリア' },
     actDemo: '検証エンジンのデモ', actQuote: '見積もり依頼', actContact: '専門家に相談',
     newChat: '新しいチャット', guestNote: 'ゲスト：会話はこの端末のみに保存', guestLimit: '会話はこの端末のみに保存 — 登録で同期できます',
     stop: '停止', copyMsg: 'コピー', copied: 'コピー済み ✓', regen: '再生成',
@@ -554,14 +800,14 @@ const DICT: Record<Lang, {
   },
   cn: {
     title: '您想设计什么？',
-    sub: '用自然语言描述您想设计的东西，或上传图纸·草图。从机械设计到土木、建筑、景观和室内。',
+    sub: 'AI机械设计与精密CAD共享同一设计历史。空间领域由独立的Space Design Labs Beta提供。',
     placeholder: '例如：设计一个 200L 不锈钢混凝罐 / 复核 6m 跨度的 H-300 梁',
     send: '发送', thinking: '思考中…',
     disclaimer: 'AI 回复为非法定参考资料。最终审核与签署由持证工程师负责。',
     error: '未能获取回复，请稍后重试。',
     reset: '新对话',
     trust: '确定性计算引擎 · 工程语料库 · 结果标注规范条款依据',
-    chips: { mechanical: '机械设计', civil: '土木', architecture: '建筑', landscape: '景观', interior: '室内' },
+    chips: { mechanical: '产品与机械', civil: '土木', architecture: '建筑', landscape: '景观', interior: '室内' },
     actDemo: '验证引擎演示', actQuote: '请求报价', actContact: '咨询专家',
     newChat: '新对话', guestNote: '访客：对话仅保存在本设备', guestLimit: '对话仅保存在本设备 — 注册后可同步',
     stop: '停止', copyMsg: '复制', copied: '已复制 ✓', regen: '重新生成',
@@ -579,14 +825,14 @@ const DICT: Record<Lang, {
   },
   es: {
     title: '¿Qué quieres diseñar?',
-    sub: 'Describe lo que quieres diseñar en lenguaje natural, o sube un plano/boceto. De lo mecánico a civil, arquitectura, paisajismo e interiores.',
+    sub: 'El diseño mecánico con IA y el CAD de precisión comparten un único historial. Las disciplinas espaciales se ofrecen por separado en Space Design Labs Beta.',
     placeholder: 'ej.: Diseñar un tanque de coagulación de 200L / Verificar una viga H-300 en 6m',
     send: 'Enviar', thinking: 'Pensando…',
     disclaimer: 'Las respuestas de IA son referencias no normativas. La revisión y firma final son responsabilidad de un ingeniero colegiado.',
     error: 'No se pudo obtener respuesta. Inténtalo de nuevo en unos momentos.',
     reset: 'Nuevo chat',
     trust: 'Motor de cálculo determinista · corpus de ingeniería · cada resultado cita su norma',
-    chips: { mechanical: 'Mecánico', civil: 'Civil', architecture: 'Arquitectura', landscape: 'Paisajismo', interior: 'Interior' },
+    chips: { mechanical: 'Producto y mecánica', civil: 'Civil', architecture: 'Arquitectura', landscape: 'Paisajismo', interior: 'Interior' },
     actDemo: 'Demo del motor de verificación', actQuote: 'Solicitar presupuesto', actContact: 'Hablar con un experto',
     newChat: 'Nuevo chat', guestNote: 'Invitado: los chats quedan en este dispositivo', guestLimit: 'Los chats se guardan solo aquí — regístrate para sincronizar',
     stop: 'Detener', copyMsg: 'Copiar', copied: 'Copiado ✓', regen: 'Regenerar',
@@ -604,14 +850,14 @@ const DICT: Record<Lang, {
   },
   ar: {
     title: 'ماذا تريد أن تُصمّم؟',
-    sub: 'صِف ما تريد تصميمه بلغة طبيعية، أو ارفع رسمًا/مخططًا. من التصميم الميكانيكي إلى المدني والمعماري والمناظر والديكور.',
+    sub: 'يرتبط التصميم الميكانيكي بالذكاء الاصطناعي وCAD الدقيق في سجل تصميم واحد. وتتوفر مجالات المساحات بشكل منفصل ضمن Space Design Labs Beta.',
     placeholder: 'مثال: تصميم خزان تخثّر ستانلس 200 لتر / فحص جائز H-300 على بحر 6م',
     send: 'إرسال', thinking: 'يفكّر…',
     disclaimer: 'ردود الذكاء الاصطناعي مراجع غير قانونية. المراجعة والاعتماد النهائي مسؤولية مهندس مرخّص.',
     error: 'تعذّر الحصول على رد. حاول مرة أخرى بعد قليل.',
     reset: 'محادثة جديدة',
     trust: 'محرك حساب حتمي · مكتبة هندسية · كل نتيجة تُسنَد إلى بند الكود',
-    chips: { mechanical: 'ميكانيكي', civil: 'مدني', architecture: 'معماري', landscape: 'مناظر', interior: 'ديكور' },
+    chips: { mechanical: 'المنتجات والميكانيكا', civil: 'مدني', architecture: 'معماري', landscape: 'مناظر', interior: 'ديكور' },
     actDemo: 'عرض محرّك التحقق', actQuote: 'اطلب عرض سعر', actContact: 'تحدث مع خبير',
     newChat: 'محادثة جديدة', guestNote: 'ضيف: تُحفظ المحادثات على هذا الجهاز فقط', guestLimit: 'تُحفظ المحادثات هنا فقط — سجّل للمزامنة',
     stop: 'إيقاف', copyMsg: 'نسخ', copied: 'تم النسخ ✓', regen: 'إعادة التوليد',
@@ -628,6 +874,66 @@ const DICT: Record<Lang, {
     quoteThis: 'اطلب عرض سعر لهذا التصميم', saveSignup: 'سجّل مجانًا لحفظ هذا كمشروع ومتابعة التحرير.', signup: 'تسجيل مجاني', cadStructural: 'فحص إنشائي تلقائي', cadPackage: 'حزمة التصميم',
   },
 };
+
+type ChatActionErrorPayload = {
+  error?: unknown;
+  code?: unknown;
+  limit?: unknown;
+  resetAtMs?: unknown;
+};
+
+/** Keep operational API details out of chat and give the user a next action. */
+export function formatChatActionError(
+  lang: Lang,
+  langCode: string,
+  payload: ChatActionErrorPayload,
+  fallback: string,
+): string {
+  const code = typeof payload.code === 'string' ? payload.code : '';
+  const limit = typeof payload.limit === 'number' ? payload.limit : 3;
+  const resetAt = typeof payload.resetAtMs === 'number' && Number.isFinite(payload.resetAtMs)
+    ? new Date(payload.resetAtMs).toLocaleString(
+      ({ kr: 'ko-KR', en: 'en-US', ja: 'ja-JP', cn: 'zh-CN', es: 'es-ES', ar: 'ar' } as Record<Lang, string>)[lang],
+      { dateStyle: 'medium', timeStyle: 'short' },
+    )
+    : null;
+  const login = `/login?lang=${encodeURIComponent(langCode)}`;
+
+  if (code === 'GUEST_CHAT_QUOTA') {
+    const byLang: Record<Lang, string> = {
+      kr: `오늘의 게스트 AI 설계 ${limit}회를 모두 사용했어요. [로그인](${login})하면 계정 한도로 바로 계속할 수 있습니다.${resetAt ? ` 게스트 한도 초기화: ${resetAt}` : ''}`,
+      en: `You have used today's ${limit} guest AI design requests. [Sign in](${login}) to continue with your account quota.${resetAt ? ` Guest quota resets: ${resetAt}` : ''}`,
+      ja: `本日のゲストAI設計${limit}回を使い切りました。[ログイン](${login})するとアカウント枠で続行できます。${resetAt ? ` ゲスト枠のリセット: ${resetAt}` : ''}`,
+      cn: `今天的 ${limit} 次访客 AI 设计额度已用完。[登录](${login})后可使用账户额度继续。${resetAt ? ` 访客额度重置：${resetAt}` : ''}`,
+      es: `Has usado las ${limit} solicitudes de diseño IA para invitados de hoy. [Inicia sesión](${login}) para continuar con la cuota de tu cuenta.${resetAt ? ` Restablecimiento: ${resetAt}` : ''}`,
+      ar: `لقد استخدمت ${limit} طلبات تصميم الذكاء الاصطناعي للضيف اليوم. [سجّل الدخول](${login}) للمتابعة ضمن حصة حسابك.${resetAt ? ` إعادة الضبط: ${resetAt}` : ''}`,
+    };
+    return byLang[lang];
+  }
+  if (code === 'GUEST_CHAT_QUOTA_UNAVAILABLE') {
+    const byLang: Record<Lang, string> = {
+      kr: `게스트 사용량 확인이 잠시 지연되고 있어요. 잠시 후 다시 시도하거나 [로그인](${login})해 주세요.`,
+      en: `Guest usage verification is temporarily delayed. Try again shortly or [sign in](${login}).`,
+      ja: `ゲスト利用量の確認が一時的に遅れています。しばらくして再試行するか、[ログイン](${login})してください。`,
+      cn: `访客用量验证暂时延迟。请稍后重试或[登录](${login})。`,
+      es: `La verificación de uso de invitado está temporalmente demorada. Inténtalo de nuevo o [inicia sesión](${login}).`,
+      ar: `يتأخر التحقق من استخدام الضيف مؤقتًا. حاول لاحقًا أو [سجّل الدخول](${login}).`,
+    };
+    return byLang[lang];
+  }
+  if (code === 'ACTION_FORMAT_INVALID') {
+    const byLang: Record<Lang, string> = {
+      kr: 'AI 요청 해석 결과의 형식이 올바르지 않았습니다. 같은 요청을 다시 보내거나, 수정할 부품을 3D에서 선택해 구체적인 치수·위치를 지정해 주세요.',
+      en: 'The AI request parser returned an invalid format. Retry the request, or select the target part in 3D and specify an exact dimension or position.',
+      ja: 'AIリクエスト解析の形式が正しくありません。再試行するか、3Dで対象部品を選択して正確な寸法・位置を指定してください。',
+      cn: 'AI请求解析结果格式无效。请重试，或在3D中选择目标零件并指定准确尺寸或位置。',
+      es: 'El analizador de solicitudes devolvió un formato no válido. Reintenta o selecciona la pieza en 3D e indica una cota o posición exacta.',
+      ar: 'أعاد محلل الطلب تنسيقًا غير صالح. أعد المحاولة أو اختر الجزء في العرض ثلاثي الأبعاد وحدد بُعدًا أو موضعًا دقيقًا.',
+    };
+    return byLang[lang];
+  }
+  return localizedApiError(lang, payload.error, fallback);
+}
 
 // 분야별 시작 예시 프롬프트 (대화 시작 전 노출, 클릭 시 즉시 전송)
 const SUGGEST: Record<Lang, Record<Domain, string[]>> = {
@@ -676,7 +982,7 @@ const SUGGEST: Record<Lang, Record<Domain, string[]>> = {
 };
 
 // 결정론 계산 결과 카드 (eng-api demo 응답 → PASS/FAIL + 검토항목 + 근거).
-function CalcCard({ calc, t, isRtl, consultHref, onRerun, onPrint }: { calc: CalcResult; t: (typeof DICT)[Lang]; isRtl: boolean; consultHref: string; onRerun?: () => void; onPrint?: () => void }) {
+function CalcCard({ calc, t, lang, isRtl, consultHref, onRerun, onPrint }: { calc: CalcResult; t: (typeof DICT)[Lang]; lang: Lang; isRtl: boolean; consultHref: string; onRerun?: () => void; onPrint?: () => void }) {
   if (calc.error) {
     return (
       <div style={{ maxWidth: '92%', background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.3)', borderRadius: 12, padding: '11px 14px', fontSize: 12.5, color: '#fca5a5', textAlign: isRtl ? 'right' : 'left' }}>
@@ -708,7 +1014,7 @@ function CalcCard({ calc, t, isRtl, consultHref, onRerun, onPrint }: { calc: Cal
       <p style={{ marginTop: 6, fontSize: 10, color: '#6e7681', lineHeight: 1.5 }}>{t.disclaimer}</p>
       {(onRerun || onPrint) && (
         <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
-          {onRerun && <button type="button" onClick={onRerun} style={{ fontSize: 11, background: 'rgba(59,130,246,0.15)', color: '#93c5fd', border: '1px solid rgba(59,130,246,0.35)', borderRadius: 7, padding: '4px 10px', cursor: 'pointer' }}>↻ Re-run</button>}
+          {onRerun && <button type="button" onClick={onRerun} style={{ fontSize: 11, background: 'rgba(59,130,246,0.15)', color: '#93c5fd', border: '1px solid rgba(59,130,246,0.35)', borderRadius: 7, padding: '4px 10px', cursor: 'pointer' }}>↻ {CHAT_UI_I18N[lang].rerun}</button>}
           {onPrint && <button type="button" onClick={onPrint} style={{ fontSize: 11, background: 'rgba(148,163,184,0.12)', color: '#cbd5e1', border: '1px solid rgba(148,163,184,0.3)', borderRadius: 7, padding: '4px 10px', cursor: 'pointer' }}>🖨</button>}
         </div>
       )}
@@ -732,7 +1038,7 @@ function download(text: string, name: string, mime = 'text/plain') {
 /* SCAD 인라인 3D 미리보기 — STEP 승인 전에도 채팅 안에서 바로 본다(2026-07-16 사용자 요청).
    렌더는 클라 결정론(openscad-wasm→STL→three). 최신 카드만 auto, 과거 카드는 버튼(스레드
    복원 시 일괄 렌더 방지). three/wasm은 클릭·auto 시점에 동적 로드(랜딩 번들 비대화 방지). */
-function MiniScadViewer({ scad, auto, accent, height = 240, parts, selectedId, onPick, onFaceDrag }: { scad: string; auto?: boolean; accent: string; height?: number; parts?: Array<{ id: string; aabb: { min: number[]; max: number[] } }>; selectedId?: string | null; onPick?: (id: string | null, normal?: number[] | null) => void; onFaceDrag?: (id: string, normal: number[], deltaMm: number) => void }) {
+function MiniScadViewer({ scad, auto, accent, lang, height = 240, parts, selectedId, onPick, onFaceDrag }: { scad: string; auto?: boolean; accent: string; lang: Lang; height?: number; parts?: Array<{ id: string; aabb: { min: number[]; max: number[] } }>; selectedId?: string | null; onPick?: (id: string | null, normal?: number[] | null) => void; onFaceDrag?: (id: string, normal: number[], deltaMm: number) => void }) {
   const mountRef = useRef<HTMLDivElement>(null);
   const [st, setSt] = useState<'idle' | 'busy' | 'ok' | 'err'>('idle');
   const [errMsg, setErrMsg] = useState('');
@@ -749,9 +1055,9 @@ function MiniScadViewer({ scad, auto, accent, height = 240, parts, selectedId, o
         import('@/app/[lang]/shape-generator/io/importers'),
         import('three'),
       ]);
-      if (!wr.wasmAvailable()) throw new Error('3D unavailable in this browser');
+      if (!wr.wasmAvailable()) throw new Error(CHAT_UI_I18N[lang].viewerUnavailable);
       const r = await wr.renderScadWasm(scad);
-      if (!r.ok || !r.data) throw new Error(r.error ?? 'render failed');
+      if (!r.ok || !r.data) throw new Error(localizedApiError(lang, r.error, CHAT_UI_I18N[lang].renderFailed));
       const buf = r.data.buffer.slice(r.data.byteOffset, r.data.byteOffset + r.data.byteLength) as ArrayBuffer;
       const geom = im.parseSTL(buf);
       geom.computeVertexNormals();
@@ -948,7 +1254,7 @@ function MiniScadViewer({ scad, auto, accent, height = 240, parts, selectedId, o
       setSt('err');
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [scad, parts, onPick, accent, height]);
+  }, [scad, parts, onPick, accent, height, lang]);
   useEffect(() => () => { cleanupRef.current?.(); }, []);
   useEffect(() => { apiRef.current?.select(selectedId ?? null); }, [selectedId]);
   useEffect(() => { if (auto && st === 'idle') void start(); /* 최신 카드만 자동 */ // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -968,7 +1274,15 @@ function MiniScadViewer({ scad, auto, accent, height = 240, parts, selectedId, o
 }
 
 function CadCard({ cad, t, accent, isRtl, preview, lang }: { cad: CadResult; t: (typeof DICT)[Lang]; accent: string; isRtl: boolean; preview?: boolean; lang: Lang }) {
+  const cadCopy = CAD_RESULT_I18N[lang];
   const [stepText, setStepText] = useState<string | null>(null);
+  const [stepBinding, setStepBinding] = useState<{
+    revisionId: string;
+    revisionSha256: string;
+    stepSha256: string;
+    artifactManifest: Record<string, unknown>;
+    analyticStepHandoffPassed: boolean;
+  } | null>(null);
   const [building, setBuilding] = useState(false);
   const [err, setErr] = useState('');
   /**
@@ -1002,29 +1316,47 @@ function CadCard({ cad, t, accent, isRtl, preview, lang }: { cad: CadResult; t: 
     if (!cad.assembly) return;
     setPkgBusy(true); setErr('');
     try {
-      const r = await fetch('/api/nexyfab/drawing/package/', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ assembly: cad.assembly, options: { member: { section: 'SHS50x50x3', spanMm: 1000 } } }) });
+      const r = await fetch('/api/nexyfab/drawing/package/', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ assembly: cad.assembly, options: { lang, member: { section: 'SHS50x50x3', spanMm: 1000 } } }) });
       const j = await r.json().catch(() => ({}));
-      if (!r.ok || !j?.ok) throw new Error(j?.error || (Array.isArray(j?.gateErrors) ? j.gateErrors.join(', ') : '패키지 생성 실패'));
+      if (!r.ok || !j?.ok) throw new Error(localizedApiError(lang, j?.error || (Array.isArray(j?.gateErrors) ? j.gateErrors.join(', ') : ''), CHAT_UI_I18N[lang].packageFailed));
       if (typeof j.zipBase64 === 'string') {
         const bin = atob(j.zipBase64); const bytes = new Uint8Array(bin.length);
         for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
         const url = URL.createObjectURL(new Blob([bytes], { type: 'application/zip' }));
-        const a = document.createElement('a'); a.href = url; a.download = 'design_package.zip'; a.click();
+        const a = document.createElement('a'); a.href = url; a.download = `design_package_${lang}.zip`; a.click();
         setTimeout(() => URL.revokeObjectURL(url), 1500);
       } else if (Array.isArray(j.files)) {
         for (const f of j.files as Array<{ name: string; content: string; mime?: string }>) download(f.content, f.name, f.mime ?? 'text/html');
-      } else throw new Error('패키지 생성 실패');
+      } else throw new Error(CHAT_UI_I18N[lang].packageFailed);
     } catch (e) { setErr(e instanceof Error ? e.message : t.error); } finally { setPkgBusy(false); }
   };
 
   const confirmStep = async () => {
     if (!cad.composeIntent) return;
-    setBuilding(true); setErr('');
+    setBuilding(true); setErr(''); setStepBinding(null);
     try {
       const r = await fetch('/api/nexyfab/drawing/export-step/', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ intent: cad.composeIntent }) });
-      const j = await r.json().catch(() => ({}));
-      if (!r.ok || !j?.ok || typeof j.step !== 'string') throw new Error(j?.error || 'STEP build failed');
+      const j = await r.json().catch(() => ({})) as {
+        ok?: boolean;
+        step?: string;
+        error?: string;
+        revisionId?: string;
+        revisionSha256?: string;
+        stepSha256?: string;
+        artifactManifest?: Record<string, unknown>;
+        analyticStepHandoffPassed?: boolean;
+      };
+      if (!r.ok || !j?.ok || typeof j.step !== 'string') throw new Error(localizedApiError(lang, j?.error, CHAT_UI_I18N[lang].stepFailed));
       setStepText(j.step);
+      if (typeof j.revisionId === 'string' && typeof j.revisionSha256 === 'string' && typeof j.stepSha256 === 'string' && j.artifactManifest && typeof j.artifactManifest === 'object') {
+        setStepBinding({
+          revisionId: j.revisionId,
+          revisionSha256: j.revisionSha256,
+          stepSha256: j.stepSha256,
+          artifactManifest: j.artifactManifest,
+          analyticStepHandoffPassed: j.analyticStepHandoffPassed === true,
+        });
+      }
       // 확정 시각을 남긴다 — 이때부터 화면은 「제작」 단계이고, 이 아래 결과물은 확정본 기준이다.
       setConfirmedAt(Date.now());
     } catch (e) { setErr(e instanceof Error ? e.message : t.error); } finally { setBuilding(false); }
@@ -1036,7 +1368,7 @@ function CadCard({ cad, t, accent, isRtl, preview, lang }: { cad: CadResult; t: 
       const body = cad.isAssembly ? { assembly: cad.assembly } : { intent: cad.composeIntent };
       const r = await fetch('/api/nexyfab/drawing/render-html/', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) });
       const j = await r.json().catch(() => ({}));
-      if (!r.ok || !j?.ok || typeof j.html !== 'string') throw new Error(j?.error || 'GA build failed');
+      if (!r.ok || !j?.ok || typeof j.html !== 'string') throw new Error(localizedApiError(lang, j?.error, CHAT_UI_I18N[lang].gaFailed));
       const url = URL.createObjectURL(new Blob([j.html], { type: 'text/html' }));
       window.open(url, '_blank', 'noopener');
       setTimeout(() => URL.revokeObjectURL(url), 60_000);
@@ -1058,7 +1390,7 @@ function CadCard({ cad, t, accent, isRtl, preview, lang }: { cad: CadResult; t: 
     try {
       const r = await fetch('/api/nexyfab/drawing/hlr/', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ intent, views: ['front', 'top'] }) });
       const j = (await r.json().catch(() => ({}))) as { ok?: boolean; views?: Record<string, string>; error?: string };
-      if (!r.ok || !j.ok || !j.views) throw new Error(j.error || 'HLR failed');
+      if (!r.ok || !j.ok || !j.views) throw new Error(localizedApiError(lang, j.error, CHAT_UI_I18N[lang].hlrFailed));
       setHlr(j.views);
     } catch (e) { setErr(e instanceof Error ? e.message : t.error); } finally { setHlrBusy(false); }
   };
@@ -1069,7 +1401,7 @@ function CadCard({ cad, t, accent, isRtl, preview, lang }: { cad: CadResult; t: 
     try {
       const r = await fetch('/api/nexyfab/drawing/fab/', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ intent }) });
       const j = await r.json().catch(() => ({}));
-      if (!r.ok || !j?.ok) throw new Error(j?.error || 'DFM failed');
+      if (!r.ok || !j?.ok) throw new Error(localizedApiError(lang, j?.error, CHAT_UI_I18N[lang].dfmFailed));
       const est = (j.estimate ?? {}) as Record<string, unknown>;
       const num = (v: unknown) => (typeof v === 'number' ? v : undefined);
       setDfm({ mass: num(est.massKg ?? est.mass ?? j.massKg), cost: num(est.total ?? est.cost ?? j.cost), dxf: typeof j.dxf === 'string' ? j.dxf : undefined });
@@ -1080,7 +1412,8 @@ function CadCard({ cad, t, accent, isRtl, preview, lang }: { cad: CadResult; t: 
   if (cad.error) return <div style={{ ...card, border: '1px solid rgba(239,68,68,0.3)', background: 'rgba(239,68,68,0.08)', color: '#fca5a5', fontSize: 12.5 }}>⚠️ {cad.error}</div>;
   if (cad.composing) return <div style={{ ...card, color: '#93c5fd', fontSize: 13 }}>{t.cadGenerating}</div>;
 
-  const gateOk = !cad.gateErrors || cad.gateErrors.length === 0;
+  const generationGateStatus = generationGateStatusOf(cad.gateErrors);
+  const gatePassed = generationGateStatus === 'passed';
   const specBlock = cad.spec && cad.spec.length > 0 && (
     <div style={{ display: 'grid', gap: 5, marginBottom: 10 }}>
       {cad.spec.map((s, i) => (
@@ -1089,26 +1422,37 @@ function CadCard({ cad, t, accent, isRtl, preview, lang }: { cad: CadResult; t: 
     </div>
   );
   const gateBadge = (
-    <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 11, fontWeight: 700, marginBottom: 12, padding: '3px 10px', borderRadius: 999, background: gateOk ? 'rgba(34,197,94,0.14)' : 'rgba(245,158,11,0.14)', color: gateOk ? '#4ade80' : '#fbbf24' }}>
-      {gateOk ? '✓' : '!'} {t.cadGate}{!gateOk && `: ${cad.gateErrors!.join(', ')}`}
+    <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 11, fontWeight: 700, marginBottom: 12, padding: '3px 10px', borderRadius: 999, background: gatePassed ? 'rgba(34,197,94,0.14)' : 'rgba(245,158,11,0.14)', color: gatePassed ? '#4ade80' : '#fbbf24' }}>
+      {gatePassed ? '✓' : generationGateStatus === 'failed' ? '!' : '–'} {t.cadGate}
+      {generationGateStatus === 'failed' && `: ${cad.gateErrors!.join(', ')}`}
+      {generationGateStatus === 'not_run' && `: ${CHAT_UI_I18N[lang].gateNotRun}`}
     </div>
   );
-  const drawingSvg = !cad.isAssembly ? buildDrawingSvg(cad.composeIntent) : null;
+  const drawingSvg = !cad.isAssembly ? buildDrawingSvg(cad.composeIntent, lang) : null;
   // E1(260808b) — 단일 사각판+위치구멍만 피처트리로 변환 가능(그 외 null=버튼 숨김).
   // F-6(260808g) — 어셈블리도 정직 범위(box/cylinder/tube·무회전·전 파트 사상
   // 가능)면 전문가 모드로 핸드오프. 범위 밖이면 null → 버튼 숨김(부분 약속 금지).
   const expertProgram = cad.isAssembly
     ? assemblyToPartsProgram(cad.assembly as { name?: string; parts?: unknown } | undefined)
     : composeIntentToFeatureProgram(cad.composeIntent);
+  const trustPanel = (
+    <DesignResultTrustPanel
+      lang={lang}
+      hasGeometry={hasGeneratedGeometryEvidence(stepText, cad.scad)}
+      hasFeatureProgram={Boolean(expertProgram)}
+      analyticStepHandoffPassed={stepBinding?.analyticStepHandoffPassed === true}
+      generationGateStatus={generationGateStatus}
+      revisionId={stepBinding?.revisionId}
+      artifactSha256={stepBinding?.stepSha256}
+    />
+  );
   const openExpert = () => { if (expertProgram) openInPrecisionCad(expertProgram, lang); };
   const expertCta = expertProgram && (
     <button
       type="button"
       data-testid="chat-open-precision-cad"
       onClick={openExpert}
-      title={lang === 'kr'
-        ? 'AI 결과의 피처와 치수를 유지해 정밀 3D CAD에서 계속 편집합니다.'
-        : 'Continue editing in precision 3D CAD while preserving features and dimensions.'}
+      title={CHAT_UI_I18N[lang].expertTitle}
       style={{
         ...btnGhost, display: 'inline-flex', flexDirection: 'column', alignItems: 'flex-start',
         gap: 2, padding: '8px 12px', borderColor: `${accent}88`, background: `${accent}18`,
@@ -1116,7 +1460,7 @@ function CadCard({ cad, t, accent, isRtl, preview, lang }: { cad: CadResult; t: 
     >
       <span style={{ fontWeight: 800 }}>🛠 {t.cadOpenExpert}</span>
       <span style={{ fontSize: 9.5, opacity: 0.72 }}>
-        {lang === 'kr' ? '편집 가능한 피처·치수 인계' : 'Editable features & dimensions transferred'}
+        {CHAT_UI_I18N[lang].expertTransfer}
       </span>
     </button>
   );
@@ -1137,7 +1481,7 @@ function CadCard({ cad, t, accent, isRtl, preview, lang }: { cad: CadResult; t: 
       {dfm.mass !== undefined && <span>≈ {dfm.mass.toFixed(1)} kg&nbsp;&nbsp;</span>}
       {dfm.cost !== undefined && <span>≈ ₩{Math.round(dfm.cost).toLocaleString()}&nbsp;&nbsp;</span>}
       {dfm.dxf && <button onClick={() => download(dfm.dxf!, 'flat.dxf', 'application/dxf')} style={{ ...btnGhost, padding: '3px 10px' }}>⭳ DXF</button>}
-      <div style={{ marginTop: 4, fontSize: 10, color: '#6e7681' }}>개산(비법정) · 조인트/용접 정량은 다음 단계</div>
+      <div style={{ marginTop: 4, fontSize: 10, color: '#6e7681' }}>{CHAT_UI_I18N[lang].dfmNote}</div>
     </div>
   );
   // 맥락형 전환 — 결과 안에서 자연스럽게 견적으로(별도 CTA 버튼 대신).
@@ -1153,17 +1497,19 @@ function CadCard({ cad, t, accent, isRtl, preview, lang }: { cad: CadResult; t: 
             <ChatCadViewer stepText={stepText} accent={accent} onReady={setGeos} />
             <div style={{ display: 'flex', gap: 8, marginTop: 8, flexWrap: 'wrap' }}>
               <button onClick={() => download(stepText, 'assembly.step', 'application/step')} style={btnPrimary(accent)}>⭳ {t.cadStepDownload}</button>
+              {stepBinding && <button onClick={() => download(JSON.stringify(stepBinding.artifactManifest, null, 2), 'assembly.artifact-manifest.json', 'application/json')} style={btnGhost}>⭳ Manifest</button>}
               {geos && <button onClick={downloadStl} style={btnGhost}>⭳ {t.cadStlDownload}</button>}
             </div>
           </div>
         )}
-        {!stepText && cad.scad && <MiniScadViewer scad={cad.scad} auto={preview} accent={accent} />}
+        {!stepText && cad.scad && <MiniScadViewer scad={cad.scad} auto={preview} accent={accent} lang={lang} />}
         {nInterf > 0 && (
           <div style={{ margin: '0 0 10px', padding: '8px 11px', borderRadius: 9, background: 'rgba(239,68,68,0.12)', border: '1px solid rgba(239,68,68,0.4)', color: '#fca5a5', fontSize: 12, lineHeight: 1.55 }}>
             ⚠ <b>{t.cadInterf.replace('{n}', String(nInterf))}</b> — {t.clashWarn}
           </div>
         )}
         <DesignStageBar stage={stage} lang={lang} accent={accent} />
+        {trustPanel}
         <div style={{ fontSize: 13, fontWeight: 800, color: "#e6edf3", marginBottom: 10 }}>{t.cadAssemblyTitle}</div>
         <div style={{ fontSize: 11, fontWeight: 700, color: '#8b949e', marginBottom: 6 }}>{t.cadParts}</div>
         {specBlock}
@@ -1173,7 +1519,7 @@ function CadCard({ cad, t, accent, isRtl, preview, lang }: { cad: CadResult; t: 
             {nInterf ? `✕ ${t.cadInterf.replace('{n}', String(nInterf))}` : `✓ ${t.cadInterfNone}`}
           </div>
           {(cad.contacts?.length ?? 0) > 0 && (
-            <div title="접촉/체결 후보(관통 ≤2mm) — 조인트 선언 정밀검증 후속" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 11, fontWeight: 700, padding: '3px 10px', borderRadius: 999, background: 'rgba(148,163,184,0.14)', color: '#94a3b8' }}>
+            <div title={CHAT_UI_I18N[lang].contactTitle} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 11, fontWeight: 700, padding: '3px 10px', borderRadius: 999, background: 'rgba(148,163,184,0.14)', color: '#94a3b8' }}>
             ◦ {t.cadContacts.replace('{n}', String(cad.contacts!.length))}
           </div>
           )}
@@ -1191,11 +1537,40 @@ function CadCard({ cad, t, accent, isRtl, preview, lang }: { cad: CadResult; t: 
             <div style={{ display: 'grid', gap: 2 }}>
               {cad.welds.slice(0, 8).map((w, i) => (
                 <div key={i} style={{ fontSize: 11.5, color: '#94a3b8', fontVariantNumeric: 'tabular-nums' }}>
-                  {String(w.a)}–{String(w.b)}: {Number(w.lengthMm)}mm · 필렛 {Number(w.legMm)}mm · 목 {Number(w.throatMm)}mm · {Number(w.throatAreaMm2).toLocaleString()}mm²
+                  {String(w.a)}–{String(w.b)}: {Number(w.lengthMm)}mm · {cadCopy.fillet} {Number(w.legMm)}mm · {cadCopy.throat} {Number(w.throatMm)}mm · {Number(w.throatAreaMm2).toLocaleString()}mm²
                 </div>
               ))}
             </div>
-            <div style={{ marginTop: 5, fontSize: 10, color: '#6e7681' }}>전둘레 필렛 개산 · AABB 접촉 기준 · 비법정(정밀은 조인트 선언 후속)</div>
+            <div style={{ marginTop: 5, fontSize: 10, color: '#6e7681' }}>{cadCopy.weldNote}</div>
+          </div>
+        )}
+        {cad.jetEngineMeta && (
+          <div style={{ marginBottom: 12, fontSize: 12, color: '#cbd5e1', background: '#0b1020', border: '1px solid rgba(59,130,246,0.32)', borderRadius: 8, padding: '10px 12px' }}>
+            <div style={{ fontWeight: 800, marginBottom: 6 }}>🌬️ {cadCopy.jetTitle}</div>
+            <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginBottom: 7, fontVariantNumeric: 'tabular-nums' }}>
+              <span>D {cad.jetEngineMeta.fanDiameterMm} mm</span>
+              <span>L {cad.jetEngineMeta.overallLengthMm} mm</span>
+              <span>{cadCopy.compressor} {cad.jetEngineMeta.compressorStages} {cadCopy.stages}</span>
+              <span>{cadCopy.turbine} {cad.jetEngineMeta.turbineStages} {cadCopy.stages}</span>
+            </div>
+            {!!cad.jetEngineMeta.flowPath?.length && (
+              <div style={{ display: 'grid', gap: 3, color: '#93c5fd', fontSize: 11, fontVariantNumeric: 'tabular-nums' }}>
+                {cad.jetEngineMeta.flowPath.map((station, index) => (
+                  <div key={`${station.station}-${index}`}>
+                    {station.station}: ϴ{station.outerDiaMm} / {typeof station.innerDiaMm === 'number' ? `ID ${station.innerDiaMm}` : `hub ϴ${station.hubDiaMm}`} mm · A {Number(station.annulusAreaMm2 ?? 0).toLocaleString()} mm²
+                  </div>
+                ))}
+              </div>
+            )}
+            <div style={{ marginTop: 7, color: '#fbbf24', fontSize: 10.5, lineHeight: 1.5 }}>
+              {cadCopy.jetComplete}
+            </div>
+            <details style={{ marginTop: 6, color: '#94a3b8', fontSize: 10.5 }}>
+              <summary style={{ cursor: 'pointer' }}>{cadCopy.verificationScope}</summary>
+              <div style={{ marginTop: 4, lineHeight: 1.5 }}>
+                {cadCopy.verificationDetail}
+              </div>
+            </details>
           </div>
         )}
         {cad.structural && typeof cad.structural.totalMassKg === 'number' && (() => {
@@ -1204,13 +1579,13 @@ function CadCard({ cad, t, accent, isRtl, preview, lang }: { cad: CadResult; t: 
             <div style={{ marginBottom: 12, fontSize: 12, color: '#cbd5e1', background: '#0b1020', border: `1px solid ${warn ? 'rgba(245,158,11,0.3)' : 'rgba(34,197,94,0.25)'}`, borderRadius: 8, padding: '9px 12px' }}>
               <div style={{ fontWeight: 700, marginBottom: 5 }}>🏗️ {t.cadStructural} {warn ? '⚠️' : '✓'}</div>
               <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', fontVariantNumeric: 'tabular-nums' }}>
-                <span>질량 ≈ {s.totalMassKg} kg</span>
+                <span>{cadCopy.mass} ≈ {s.totalMassKg} kg</span>
                 {typeof s.cgHeightM === 'number' && <span>CG {s.cgHeightM} m</span>}
-                {typeof s.maxSupportKg === 'number' && <span>지지 ≤ {s.maxSupportKg} kg</span>}
-                {s.tipover && <span>전도 {s.tipover.staticAngleDeg}° · {s.tipover.seismicG}g FS {s.tipover.seismicFS}</span>}
+                {typeof s.maxSupportKg === 'number' && <span>{cadCopy.support} ≤ {s.maxSupportKg} kg</span>}
+                {s.tipover && <span>{cadCopy.overturning} {s.tipover.staticAngleDeg}° · {s.tipover.seismicG}g FS {s.tipover.seismicFS}</span>}
               </div>
               {warn && <div style={{ marginTop: 5, color: '#fbbf24', fontSize: 11, lineHeight: 1.5 }}>{s.warnings!.map((w, i) => <div key={i}>• {w}</div>)}</div>}
-              <div style={{ marginTop: 5, fontSize: 10, color: '#6e7681' }}>형상기반 자동 산출 · 강체/단순보 근사 · 비법정(상세 FEA 후속)</div>
+              <div style={{ marginTop: 5, fontSize: 10, color: '#6e7681' }}>{cadCopy.structuralNote}</div>
             </div>
           );
         })()}
@@ -1231,9 +1606,12 @@ function CadCard({ cad, t, accent, isRtl, preview, lang }: { cad: CadResult; t: 
   if (stepText) {
     return (
       <div style={card}>
+        <DesignStageBar stage={stage} lang={lang} accent={accent} />
+        {trustPanel}
         <ChatCadViewer stepText={stepText} accent={accent} onReady={setGeos} />
         <div style={{ display: 'flex', gap: 8, marginTop: 10, flexWrap: 'wrap' }}>
           <button onClick={() => download(stepText, 'model.step', 'application/step')} style={btnPrimary(accent)}>⭳ {t.cadStepDownload}</button>
+          {stepBinding && <button onClick={() => download(JSON.stringify(stepBinding.artifactManifest, null, 2), 'model.artifact-manifest.json', 'application/json')} style={btnGhost}>⭳ Manifest</button>}
           {geos && <button onClick={downloadStl} style={btnGhost}>⭳ {t.cadStlDownload}</button>}
           {cad.scad && <button onClick={() => download(cad.scad!, 'model.scad')} style={btnGhost}>⭳ {t.cadDownload}</button>}
           <button onClick={openGA} disabled={gaBusy} style={btnGhost}>{gaBusy ? '…' : `⤢ ${t.cadOpenGA}`}</button>
@@ -1250,8 +1628,9 @@ function CadCard({ cad, t, accent, isRtl, preview, lang }: { cad: CadResult; t: 
   return (
     <div style={card}>
       <DesignStageBar stage={stage} lang={lang} accent={accent} />
+      {trustPanel}
       <div style={{ fontSize: 13, fontWeight: 800, color: "#e6edf3", marginBottom: 10 }}>{t.cadSpecTitle}</div>
-      {cad.scad && <MiniScadViewer scad={cad.scad} auto={preview} accent={accent} />}
+      {cad.scad && <MiniScadViewer scad={cad.scad} auto={preview} accent={accent} lang={lang} />}
       {specBlock}
       {drawingSvg && (
         <details open style={{ marginBottom: 10 }}>
@@ -1313,8 +1692,10 @@ function WiringCard({ wiring, t, accent, isRtl }: { wiring: CableRow[]; t: (type
 export default function ChatHero({ langCode, appMode = false }: { langCode: string; appMode?: boolean }) {
   const lang = toLang(langCode);
   const t = DICT[lang];
+  const pathLabels = DESIGN_PATH_I18N[lang];
   const isRtl = lang === 'ar';
   const [domain, setDomain] = useState<Domain>('mechanical');
+  const [domainLocked, setDomainLocked] = useState(false);
   const [input, setInput] = useState('');
   const [messages, setMessages] = useState<Msg[]>([]);
   const [loading, setLoading] = useState(false);
@@ -1327,12 +1708,13 @@ export default function ChatHero({ langCode, appMode = false }: { langCode: stri
       const raw = sessionStorage.getItem('nexyfab:chat-context-program');
       if (raw) {
         sessionStorage.removeItem('nexyfab:chat-context-program');
-        setCadCtx(JSON.parse(raw) as ReverseProgramResult);
+        const parsed: unknown = JSON.parse(raw);
+        if (isReverseProgramResult(parsed)) setCadCtx(parsed);
       }
     } catch { /* 손상 컨텍스트=무시(빈 상태가 정직) */ }
   }, []);
-  const [authed, setAuthed] = useState<boolean | null>(null); // null=미확인, false=게스트, true=회원
-  const [plan, setPlan] = useState<string>('free'); // 스레드당 무료 3회 게이트용(Pro 계열=무제한)
+  const sessionStatus = useAuthStore(state => state.sessionStatus);
+  const authed = sessionStatus === 'unknown' ? null : sessionStatus === 'authenticated';
   const [threads, setThreads] = useState<Thread[]>([]);
   const [activeId, setActiveId] = useState<string | null>(null);
   const [sideOpen, setSideOpen] = useState(false);
@@ -1346,19 +1728,6 @@ export default function ChatHero({ langCode, appMode = false }: { langCode: stri
   const accent = DOMAIN_ACCENT[domain];
   const started = messages.length > 0;
   const consultHref = `/${langCode}/contact/`;
-
-  // 로그인 여부(게스트 가입 유도 판단용). httpOnly 쿠키라 세션 API로만 확인.
-  useEffect(() => {
-    let live = true;
-    fetch('/api/auth/session').then(async (r) => {
-      if (!live) return;
-      setAuthed(r.ok);
-      if (r.ok) {
-        try { const j = await r.json(); setPlan(String(j?.user?.plan ?? 'free')); } catch { /* ignore */ }
-      }
-    }).catch(() => { if (live) setAuthed(false); });
-    return () => { live = false; };
-  }, []);
 
   // 대화 시작 시 = 전용 채팅 화면. 랜딩 하위 마케팅 섹션을 숨겨 "별도 채팅창"처럼.
   useEffect(() => {
@@ -1376,6 +1745,7 @@ export default function ChatHero({ langCode, appMode = false }: { langCode: stri
     if (th) {
       setActiveId(th.id);
       setDomain(th.domain);
+      setDomainLocked(true);
       setMessages(th.msgs.map((m) => (m.cad?.composing ? { ...m, cad: undefined } : m)).filter((m) => m.content || m.calc || m.cad || m.wiring));
     }
     const onPop = () => {
@@ -1383,7 +1753,7 @@ export default function ChatHero({ langCode, appMode = false }: { langCode: stri
       if (!t2) { setActiveId(null); setMessages([]); }
       else {
         const cur = loadThreads().find((x) => x.id === t2);
-        if (cur) { setActiveId(cur.id); setDomain(cur.domain); setMessages(cur.msgs.map((m) => (m.cad?.composing ? { ...m, cad: undefined } : m))); }
+        if (cur) { setActiveId(cur.id); setDomain(cur.domain); setDomainLocked(true); setMessages(cur.msgs.map((m) => (m.cad?.composing ? { ...m, cad: undefined } : m))); }
       }
     };
     window.addEventListener('popstate', onPop);
@@ -1439,7 +1809,7 @@ export default function ChatHero({ langCode, appMode = false }: { langCode: stri
     const tid = activeId;
     void fetch('/api/eng-chat/', {
       method: 'POST', headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ mode: 'title', domain, message: firstUser.content.slice(0, 600) + '\n---\n' + firstAsst.content.slice(0, 400) }),
+      body: JSON.stringify({ mode: 'title', domain, lang, message: firstUser.content.slice(0, 600) + '\n---\n' + firstAsst.content.slice(0, 400) }),
     }).then((r) => r.json()).then((j: { title?: string | null }) => {
       const tt = (j?.title ?? '').trim();
       if (tt) setThreads((prev) => prev.map((x) => (x.id === tid ? { ...x, title: tt, aiTitled: true } : x)));
@@ -1477,13 +1847,18 @@ export default function ChatHero({ langCode, appMode = false }: { langCode: stri
   const openThread = (id: string) => {
     const th = threads.find((x) => x.id === id);
     if (!th) return;
-    setActiveId(id); setDomain(th.domain); setMessages(th.msgs.map((m) => (m.cad?.composing ? { ...m, cad: undefined } : m))); setSideOpen(false);
+    setActiveId(id); setDomain(th.domain); setDomainLocked(true); setMessages(th.msgs.map((m) => (m.cad?.composing ? { ...m, cad: undefined } : m))); setSideOpen(false);
     try { window.history.pushState({ t: id }, '', '?t=' + id); } catch { /* ignore */ }
   };
   const newThread = () => {
-    setActiveId(null); setMessages([]); setInput(''); setSideOpen(false);
+    setActiveId(null); setMessages([]); setInput(''); setDomain('mechanical'); setDomainLocked(false); setSideOpen(false);
     try { window.history.pushState({}, '', window.location.pathname); } catch { /* ignore */ }
   };
+  useEffect(() => {
+    const onNewChat = () => newThread();
+    window.addEventListener('nexyfab:new-chat', onNewChat);
+    return () => window.removeEventListener('nexyfab:new-chat', onNewChat);
+  }, []);
   const deleteThread = (id: string) => {
     setThreads((prev) => prev.filter((x) => x.id !== id));
     if (authed) void fetch('/api/nexyfab/chat-threads/?id=' + id, { method: 'DELETE' }).catch(() => {});
@@ -1510,7 +1885,8 @@ export default function ChatHero({ langCode, appMode = false }: { langCode: stri
     const esc = (x: string) => x.replace(/&/g, '&amp;').replace(/</g, '&lt;');
     const w = window.open('', '_blank');
     if (!w) return;
-    w.document.write('<!DOCTYPE html><html lang="ko"><head><meta charset="utf-8"><title>NexyFab 검토 카드</title><style>body{font-family:system-ui;font-size:12px;padding:24px}pre{background:#f1f5f9;padding:12px;border-radius:8px;white-space:pre-wrap;font-size:11px}</style></head><body><h2>NexyFab 검토 결과(참고자료·비법정)</h2>' + (m.calcId ? '<p>계산기: <b>' + esc(m.calcId) + '</b></p><h3>입력</h3><pre>' + esc(JSON.stringify(m.calcInput ?? {}, null, 1)) + '</pre>' : '') + '<h3>결과(엔진 원본)</h3><pre>' + esc(JSON.stringify(m.calc, null, 1)) + '</pre><p style="color:#64748b">정식 계산서 양식은 /design 계산기 스튜디오에서 — 본 출력은 대화 카드 전사.</p></body></html>');
+    const pc = CHAT_UI_I18N[lang];
+    w.document.write(`<!DOCTYPE html><html lang="${lang}"><head><meta charset="utf-8"><title>${esc(pc.printTitle)}</title><style>body{font-family:system-ui;font-size:12px;padding:24px}pre{background:#f1f5f9;padding:12px;border-radius:8px;white-space:pre-wrap;font-size:11px}</style></head><body><h2>${esc(pc.printHeading)}</h2>` + (m.calcId ? `<p>${esc(pc.calculator)}: <b>` + esc(m.calcId) + `</b></p><h3>${esc(pc.input)}</h3><pre>` + esc(JSON.stringify(m.calcInput ?? {}, null, 1)) + '</pre>' : '') + `<h3>${esc(pc.engineResult)}</h3><pre>` + esc(JSON.stringify(m.calc, null, 1)) + `</pre><p style="color:#64748b">${esc(pc.printNote)}</p></body></html>`);
     w.document.close();
     setTimeout(() => w.print(), 300);
   };
@@ -1563,13 +1939,15 @@ export default function ChatHero({ langCode, appMode = false }: { langCode: stri
     }
     return null;
   }, [messages]);
-  const splitMode = appMode && wideScreen && started && !!latestCad;
+  // 랜딩(`/[lang]/`)에서 시작한 CAD 대화도 같은 3D 작업공간을 유지한다.
+  const splitMode = shouldUseCadSplitView(wideScreen, started, !!latestCad);
   const stopGen = () => { try { abortRef.current?.abort(); } catch { /* ignore */ } };
-
   const send = useCallback(async (override?: string, historyOverride?: Msg[]) => {
     const text = (override ?? input).trim();
     if (!text || loading) return;
-    if (threadLimitReached) return; // 스레드당 무료 3회(클라 게이트 — UI 배너와 동일 조건)
+    const inferredDomain = !domainLocked && messages.length === 0 ? inferChatDomain(text) : null;
+    const requestDomain = inferredDomain ?? domain;
+    if (inferredDomain && inferredDomain !== domain) setDomain(inferredDomain);
     setError('');
     const history = historyOverride ?? messages.slice(-8);
     setMessages(m => [...m, { role: 'user', content: text }]);
@@ -1579,22 +1957,64 @@ export default function ChatHero({ langCode, appMode = false }: { langCode: stri
     abortRef.current = ac;
     const autoscroll = () => requestAnimationFrame(() => { scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' }); });
     try {
-      if (ACTION_DOMAINS.includes(domain)) {
+      if (requestDomain === 'mechanical' && latestCad?.assembly && isAssemblyClashRepairRequest(text)) {
+        const before = latestCad.interferences?.length ?? 0;
+        setStage(CHAT_UI_I18N[lang].repairing);
+        setMessages(m => [...m, { role: 'assistant', content: t.thinking, cad: { composing: true } }]);
+        const setRepairResult = (patch: Partial<Msg>) => setMessages(m => {
+          const copy = m.slice();
+          for (let i = copy.length - 1; i >= 0; i--) {
+            if (copy[i].role === 'assistant') { copy[i] = { ...copy[i], ...patch }; break; }
+          }
+          return copy;
+        });
+        const repairResponse = await fetch('/api/nexyfab/drawing/edit-assembly/', {
+          method: 'POST', headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ assembly: latestCad.assembly, instruction: text }),
+          signal: ac.signal,
+        });
+        const repaired = (await repairResponse.json().catch(() => ({}))) as Record<string, unknown>;
+        if (!repairResponse.ok || !repaired.ok) {
+          const noImprovement = repaired.code === 'NO_PLACEMENT_IMPROVEMENT';
+          const detail = noImprovement
+            ? CHAT_UI_I18N[lang].noPlacement
+            : (typeof repaired.error === 'string' && repaired.error.trim()
+              ? localizedApiError(lang, repaired.error, CHAT_UI_I18N[lang].placementFailed)
+              : CHAT_UI_I18N[lang].placementFailed);
+          const remaining = typeof repaired.remainingInterferences === 'number' ? ` (${repaired.remainingInterferences})` : '';
+          setError(detail);
+          setRepairResult({ content: `⚠️ ${detail}${remaining}`, cad: undefined });
+        } else {
+          const after = typeof repaired.remainingInterferences === 'number'
+            ? repaired.remainingInterferences
+            : Array.isArray(repaired.interferences) ? repaired.interferences.length : before;
+          const content = repaired.legacyProxyRebuilt
+            ? CHAT_UI_I18N[lang].legacyRebuilt
+            : assemblyRepairCopy(lang, before, after);
+          setRepairResult({ content, cad: cadFromEditResp(repaired) });
+        }
+        return;
+      }
+      if (ACTION_DOMAINS.includes(requestDomain)) {
         setStage(t.stageAnalyze);
         // ── 실행형: 의도추출 → (calc면) 라이브 엔진 실행 → 결과카드 ──
         const res = await fetch('/api/eng-chat/action/', {
           method: 'POST', headers: { 'content-type': 'application/json' },
           body: JSON.stringify({
-            message: text, domain, history,
+            message: text, domain: requestDomain, history, lang,
             // 증분 수정(2026-07-16): 직전 설계 스펙을 동봉 — "방금 그거 높이만 바꿔"가 동작
             lastSpec: (() => { const lc = [...messages].reverse().find((mm) => mm.cad && !mm.cad.error); const sp = lc?.cad?.spec; return Array.isArray(sp) ? sp.join('\n') : typeof sp === 'string' ? sp : undefined; })(),
           }),
           signal: ac.signal,
         });
-        const j = await res.json().catch(() => ({}));
+        const rawAction = await res.json().catch(() => ({}));
+        // Defense in depth for older/cached API responses and providers that
+        // double-encode their JSON action envelope.
+        const j = normalizeEngChatActionPayload(rawAction) ?? rawAction;
         if (!res.ok) {
-          setError(j?.error || t.error);
-          setMessages(m => [...m, { role: 'assistant', content: `⚠️ ${j?.error || t.error}` }]);
+          const actionError = formatChatActionError(lang, langCode, j ?? {}, t.error);
+          setError(actionError);
+          setMessages(m => [...m, { role: 'assistant', content: `⚠️ ${actionError}` }]);
         } else if (j.type === 'calc' && j.id) {
           setMessages(m => [...m, { role: 'assistant', content: String(j.reply || t.calcRunning) }]);
           autoscroll();
@@ -1615,7 +2035,7 @@ export default function ChatHero({ langCode, appMode = false }: { langCode: stri
               return copy;
             });
           }
-        } else if ((j.type === 'scad' || j.type === 'assembly') && j.prompt) {
+        } else if ((j.type === 'scad' || j.type === 'assembly') && j.prompt && !actionReplyRequiresConfirmation(j.reply)) {
           setStage(t.stageCad);
           // ── 기계: 단일부품(compose→STEP) 또는 멀티바디(assemble→GA) ──
           setMessages(m => [...m, { role: 'assistant', content: String(j.reply || t.cadGenerating), cad: { composing: true } }]);
@@ -1627,10 +2047,10 @@ export default function ChatHero({ langCode, appMode = false }: { langCode: stri
           });
           try {
             setCad(j.type === 'assembly'
-              ? await runAssemblePipeline(String(j.prompt), ac.signal)
-              : await runComposePipeline(cadCtx ? `${chatContextPreamble(cadCtx)}
-
-${String(j.prompt)}` : String(j.prompt), lang, ac.signal));
+              ? await runAssemblePipeline(String(j.prompt), lang, ac.signal)
+              : cadCtx
+                ? protectedPrecisionCadEditResult(lang, cadCtx)
+                : await runComposePipeline(String(j.prompt), lang, ac.signal));
           } catch (e) {
             if ((e as Error)?.name === 'AbortError') {
               // 사용자가 "중단"을 눌렀다 — 진행 카드를 에러로 덮지 않고 그대로 둔다.
@@ -1642,7 +2062,15 @@ ${String(j.prompt)}` : String(j.prompt), lang, ac.signal));
           // ── 전기 결선표(개산) — from-to 케이블 목록 ──
           setMessages(m => [...m, { role: 'assistant', content: String(j.reply || ''), wiring: j.cables as CableRow[] }]);
         } else {
-          setMessages(m => [...m, { role: 'assistant', content: String(j.reply || t.error) }]);
+          const emptyAction = !j?.type || (j.type === 'reply' && !String(j.reply ?? '').trim());
+          const actionError = emptyAction
+            ? formatChatActionError(lang, langCode, {
+              ...(rawAction && typeof rawAction === 'object' ? rawAction as ChatActionErrorPayload : {}),
+              code: (rawAction as { code?: unknown })?.code ?? 'ACTION_FORMAT_INVALID',
+            }, t.error)
+            : String(j.reply);
+          if (emptyAction) setError(actionError);
+          setMessages(m => [...m, { role: 'assistant', content: emptyAction ? `⚠️ ${actionError}` : actionError }]);
         }
       } else {
       // ── 대화형(기계·인테리어): 스트리밍. 트레일링 슬래시 필수(308 회피) ──
@@ -1650,12 +2078,12 @@ ${String(j.prompt)}` : String(j.prompt), lang, ac.signal));
       const res = await fetch('/api/eng-chat/', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ message: text, domain, history, stream: true }),
+        body: JSON.stringify({ message: text, domain: requestDomain, history, stream: true, lang }),
         signal: ac.signal,
       });
       if (!res.ok) {
         const j = await res.json().catch(() => ({}));
-        const msg = j?.error || t.error;
+        const msg = localizedApiError(lang, j?.error, t.error);
         setError(msg);
         setMessages(m => [...m, { role: 'assistant', content: `⚠️ ${msg}` }]);
       } else if (res.headers.get('x-stream') === '1' && res.body) {
@@ -1677,8 +2105,9 @@ ${String(j.prompt)}` : String(j.prompt), lang, ac.signal));
         // 비스트리밍 JSON 폴백
         const j = await res.json().catch(() => ({}));
         if (!j?.reply) {
-          setError(j?.error || t.error);
-          setMessages(m => [...m, { role: 'assistant', content: `⚠️ ${j?.error || t.error}` }]);
+          const msg = localizedApiError(lang, j?.error, t.error);
+          setError(msg);
+          setMessages(m => [...m, { role: 'assistant', content: `⚠️ ${msg}` }]);
         } else {
           setMessages(m => [...m, { role: 'assistant', content: String(j.reply) }]);
         }
@@ -1688,8 +2117,11 @@ ${String(j.prompt)}` : String(j.prompt), lang, ac.signal));
       if ((err as Error)?.name === 'AbortError') {
         // 사용자 중단 — 이미 흘러나온 부분 응답은 그대로 둔다
       } else {
-        setError(t.error);
-        setMessages(m => [...m, { role: 'assistant', content: `⚠️ ${t.error}` }]);
+        const detail = err instanceof Error && err.message
+          ? `${CHAT_UI_I18N[lang].requestFailed} ${localizedApiError(lang, err.message, '')}`.trim()
+          : t.error;
+        setError(detail);
+        setMessages(m => [...m, { role: 'assistant', content: `⚠️ ${detail}` }]);
       }
     } finally {
       setLoading(false);
@@ -1697,11 +2129,11 @@ ${String(j.prompt)}` : String(j.prompt), lang, ac.signal));
       abortRef.current = null;
       autoscroll();
     }
-  }, [input, loading, messages, domain, t, plan, lang]);
+  }, [input, loading, messages, domain, domainLocked, t, lang, langCode, cadCtx, latestCad]);
 
   // 마지막 user 발화 이후를 걷어내고 재전송 — 히스토리에서 직전 답을 제외해 같은 답 재생산을 피한다
   const regen = () => {
-    if (loading || threadLimitReached) return; // 한도 도달 시 regen은 삭제만 하고 재생성 안 됨(감사 HIGH) — 선차단
+    if (loading) return;
     let ui = -1;
     for (let i = messages.length - 1; i >= 0; i--) { if (messages[i].role === 'user') { ui = i; break; } }
     if (ui < 0) return;
@@ -1725,7 +2157,7 @@ ${String(j.prompt)}` : String(j.prompt), lang, ac.signal));
     if (!f) return;
     const v = isAcceptedRaster(f);
     if (!v.ok) {
-      setError(v.reason === 'type' ? 'PNG·JPG·WebP 이미지만 지원합니다.' : '이미지가 너무 큽니다(6MB 이하).');
+      setError(v.reason === 'type' ? CHAT_UI_I18N[lang].fileType : CHAT_UI_I18N[lang].fileSize);
       return;
     }
     const reader = new FileReader();
@@ -1735,7 +2167,7 @@ ${String(j.prompt)}` : String(j.prompt), lang, ac.signal));
       setError('');
     };
     reader.readAsDataURL(f);
-  }, []);
+  }, [lang]);
 
   const onPickFile = (e: React.ChangeEvent<HTMLInputElement>) => {
     const f = e.target.files?.[0];
@@ -1777,13 +2209,13 @@ ${String(j.prompt)}` : String(j.prompt), lang, ac.signal));
         // 사진 = 형태 힌트만(§3): 유형 분류만 받고 치수는 버린다 → 핵심 치수 되묻기
         const rp = await fetch('/api/nexyfab/drawing/extract-preset/', {
           method: 'POST', headers: { 'content-type': 'application/json' },
-          body: JSON.stringify({ imageBase64: att.base64, mimeType: att.mime, domain: STUDIO_DOMAIN[domain] ?? 'mech' }),
+          body: JSON.stringify({ imageBase64: att.base64, mimeType: att.mime, domain: STUDIO_DOMAIN[domain] ?? 'mech', lang }),
         });
         const jp = (await rp.json()) as { ok?: boolean; labelKo?: string; labelEn?: string; templateId?: string; error?: string };
-        const label = jp.ok ? ((lang === 'kr' ? jp.labelKo : jp.labelEn) ?? jp.templateId ?? '?') : '?';
-        setLast({ content: jp.ok ? t.photoHint.replace('{label}', String(label)) : '⚠️ ' + (jp.error ?? t.error) });
+        const label = jp.ok ? (DRAWING_TYPE_I18N[String(jp.templateId ?? '')]?.[lang] ?? (lang === 'kr' ? jp.labelKo : jp.labelEn) ?? jp.templateId ?? '?') : '?';
+        setLast({ content: jp.ok ? t.photoHint.replace('{label}', String(label)) : '⚠️ ' + localizedApiError(lang, jp.error, t.error) });
         // #5 기준 치수(사용자 제공값): 다음 생성 문장에 프리필 — 스케일이 실제 생성 텍스트에 실리게(투명)
-        if (jp.ok && scaleMm && parseFloat(scaleMm) > 0) { setInput(`기준 최장변 ${parseFloat(scaleMm)}mm 기준 — `); setScaleMm(''); }
+        if (jp.ok && scaleMm && parseFloat(scaleMm) > 0) { setInput(`${CHAT_UI_I18N[lang].scalePrefix} ${parseFloat(scaleMm)}mm — `); setScaleMm(''); }
         return;
       }
       const { cad, recognized } = await runExtractPipeline(att, lang);
@@ -1802,7 +2234,7 @@ ${String(j.prompt)}` : String(j.prompt), lang, ac.signal));
   // ✨ 시안 이미지 생성 — text→시안→도안→3D · 사진→흰배경 정리→도안→3D (2026-07-18)
   // 입력 커스텀은 서버(buildGenImagePrompt)가 담당 — 클라는 원문+첨부만 보낸다.
   const sendGenImage = useCallback(async () => {
-    if (loading || threadLimitReached) return;
+    if (loading) return;
     const text = input.trim();
     const att = attached;
     if (!text && !att) return;
@@ -1819,24 +2251,23 @@ ${String(j.prompt)}` : String(j.prompt), lang, ac.signal));
     try {
       const r = await fetch('/api/nexyfab/drawing/genimage/', {
         method: 'POST', headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ prompt: text, imageBase64: att?.base64, mimeType: att?.mime, domain: STUDIO_DOMAIN[domain] ?? 'mech' }),
+        body: JSON.stringify({ prompt: text, imageBase64: att?.base64, mimeType: att?.mime, domain: STUDIO_DOMAIN[domain] ?? 'mech', lang }),
       });
       const j = (await r.json().catch(() => ({}))) as { ok?: boolean; imageBase64?: string; mime?: string; quota?: { remaining?: number; limit?: number }; code?: string; limit?: number; error?: string };
       if (!r.ok || !j.ok || !j.imageBase64) {
         if (j.code === 'IMAGE_QUOTA') setLast({ content: t.genImgLimit.replace('{n}', String(j.limit ?? '')) });
-        else setLast({ content: '⚠️ ' + (j.error ?? t.error) });
+        else setLast({ content: '⚠️ ' + localizedApiError(lang, j.error, t.error) });
         return;
       }
       const dataUrl = `data:${j.mime ?? 'image/png'};base64,${j.imageBase64}`;
       const remain = typeof j.quota?.remaining === 'number' ? String(j.quota.remaining) : '?';
       setLast({ content: t.genImgNote.replace('{n}', remain), genImage: dataUrl, genSrc: text, genFromImage: !!att });
     } catch (e) {
-      setLast({ content: '⚠️ ' + (e instanceof Error ? e.message : t.error) });
+      setLast({ content: '⚠️ ' + (e instanceof Error ? localizedApiError(lang, e.message, t.error) : t.error) });
     } finally {
       setLoading(false); autoscroll();
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [attached, input, loading, t, domain]);
+  }, [attached, input, loading, t, domain, lang]);
 
   // 시안 카드 → 도안→3D 진행: 사진 유래=정리된 시안을 도면 판독(extract, 게이트가 신뢰도 검증),
   // 텍스트 유래=원문으로 compose(치수는 텍스트가 근거 — 시안 이미지에서 치수를 읽지 않는다, 날조 금지).
@@ -1860,22 +2291,23 @@ ${String(j.prompt)}` : String(j.prompt), lang, ac.signal));
           : (cad.error ? '' : t.cadSpecTitle);
         setLast({ content: line, cad });
       } else {
-        const cad = await runComposePipeline(cadCtx ? `${chatContextPreamble(cadCtx)}
-
-${m.genSrc || ''}` : (m.genSrc || ''), lang);
+        const cad = cadCtx
+          ? protectedPrecisionCadEditResult(lang, cadCtx)
+          : await runComposePipeline(m.genSrc || '', lang);
         setLast({ content: cad.error ? '' : t.cadSpecTitle, cad });
       }
     } catch (e) {
-      setLast({ content: '', cad: { error: e instanceof Error ? e.message : t.error } });
+      setLast({ content: '', cad: { error: e instanceof Error ? localizedApiError(lang, e.message, t.error) : t.error } });
     } finally {
       setLoading(false); autoscroll();
     }
 
-  }, [loading, t, lang]);
+  }, [loading, t, lang, cadCtx]);
 
   // 🎯 P1 픽킹 편집(260719): 우측 3D에서 부품 클릭=선택 → 다음 메시지는 그 부품만 수정
   // (edit-part — AI=패치 이해만, 적용·게이트=서버 결정론. 대상 외 부품 불변은 코드 보장)
   const [pickedPart, setPickedPart] = useState<string | null>(null);
+  const [adjustMm, setAdjustMm] = useState('');
   const [pickedNormal, setPickedNormal] = useState<number[] | null>(null); // P2 면 컨텍스트
   // #1 LOD: draft(1차 골격)가 있는 카드면 골격 먼저 — 🧩 버튼으로 2차 전환
   const [lodFull, setLodFull] = useState(true);
@@ -1900,10 +2332,10 @@ ${m.genSrc || ''}` : (m.genSrc || ''), lang);
     try {
       const r = await fetch('/api/nexyfab/drawing/face-drag/', {
         method: 'POST', headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ assembly: asmCad.assembly, partId, normal, deltaMm }),
+        body: JSON.stringify({ assembly: asmCad.assembly, partId, normal, deltaMm, lang }),
       });
       const j = (await r.json().catch(() => ({}))) as Record<string, unknown>;
-      if (!r.ok || !j.ok) { setError(String((j as { error?: string }).error ?? 'face-drag')); return; }
+      if (!r.ok || !j.ok) { setError(localizedApiError(lang, (j as { error?: string }).error, t.error)); return; }
       if (asmCad) { dragUndoRef.current.push(asmCad); if (dragUndoRef.current.length > 5) dragUndoRef.current.shift(); setDragUndoN(dragUndoRef.current.length); }
       const cad = cadFromEditResp(j);
       setMessages((m) => {
@@ -1912,12 +2344,11 @@ ${m.genSrc || ''}` : (m.genSrc || ''), lang);
         return copy;
       });
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'face-drag');
+      setError(e instanceof Error ? localizedApiError(lang, e.message, t.error) : t.error);
     } finally {
       setLoading(false);
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [loading]);
+  }, [latestCad, loading, lang, t]);
   const sendPartEdit = useCallback(async () => {
     const text = input.trim();
     const asmCad = latestCad;
@@ -1935,51 +2366,56 @@ ${m.genSrc || ''}` : (m.genSrc || ''), lang);
     try {
       const r = await fetch('/api/nexyfab/drawing/edit-part/', {
         method: 'POST', headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ assembly: asmCad.assembly, partId: pickedPart, instruction: text, ...(pickedNormal ? { face: { normal: pickedNormal } } : {}) }),
+        body: JSON.stringify({ assembly: asmCad.assembly, partId: pickedPart, instruction: text, lang, ...(pickedNormal ? { face: { normal: pickedNormal } } : {}) }),
       });
       const j = (await r.json().catch(() => ({}))) as Record<string, unknown>;
       if (!r.ok || !j.ok) {
         const ge = Array.isArray(j.gateErrors) ? ` (${(j.gateErrors as string[]).slice(0, 2).join('; ')})` : '';
-        setLast({ content: '⚠️ ' + String((j as { error?: string }).error ?? t.error) + ge });
+        setLast({ content: '⚠️ ' + localizedApiError(lang, (j as { error?: string }).error, t.error) + ge });
         return;
       }
       setLast({ content: t.pickEdited.replace('{id}', pickedPart) + (j.note ? ` — ${String(j.note)}` : ''), cad: cadFromEditResp(j) });
     } catch (e) {
-      setLast({ content: '⚠️ ' + (e instanceof Error ? e.message : t.error) });
+      setLast({ content: '⚠️ ' + (e instanceof Error ? localizedApiError(lang, e.message, t.error) : t.error) });
     } finally {
       setLoading(false); autoscroll();
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [input, pickedPart, pickedNormal, loading, t]);
+  }, [input, pickedPart, pickedNormal, latestCad, loading, t, lang]);
   // 선택 부품이 최신 어셈블리에 없으면 자동 해제(스레드 전환·재생성 대비)
   useEffect(() => {
     if (pickedPart && !latestCad?.partsAabb?.some((p) => p.id === pickedPart)) { setPickedPart(null); setPickedNormal(null); }
   }, [latestCad, pickedPart]);
 
-  const FREE_TURNS_PER_THREAD = 3; // 비회원·무료회원 공통(2026-07-16) — Pro 계열 무제한
-  const isPaidPlan = plan === 'pro' || plan === 'team' || plan === 'enterprise';
-  const userTurns = useMemo(() => messages.filter((m) => m.role === 'user').length, [messages]);
-  const threadLimitReached = !isPaidPlan && userTurns >= FREE_TURNS_PER_THREAD;
-  const submit = () => { if (threadLimitReached) return; if (attached) void sendImage(); else if (pickedPart && latestCad?.assembly) void sendPartEdit(); else void send(); };
-  const canSend = !threadLimitReached && (attached ? !loading : (!loading && !!input.trim()));
+  const submit = () => { if (attached) void sendImage(); else if (pickedPart && latestCad?.assembly) void sendPartEdit(); else void send(); };
+  const canSend = attached ? !loading : (!loading && !!input.trim());
 
   const onKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); submit(); }
   };
 
   return (
-    <section id="nf-chat" dir={isRtl ? 'rtl' : 'ltr'} style={{
+    <section id="nf-chat" className={isRtl ? 'nf-chat-rtl' : undefined} dir={isRtl ? 'rtl' : 'ltr'} style={{
       position: 'relative', overflow: 'hidden',
+      boxSizing: 'border-box',
       background: 'linear-gradient(135deg, #0a0f1e 0%, #0d1b3e 45%, #0b1a38 100%)',
-      minHeight: '100dvh', display: 'flex', alignItems: started ? 'stretch' : 'center', justifyContent: 'center',
+      minHeight: started ? (appMode ? 0 : 'calc(100dvh - 72px)') : '100dvh',
+      height: started ? (appMode ? '100%' : 'calc(100dvh - 72px)') : undefined,
+      display: 'flex', alignItems: started ? 'stretch' : 'center', justifyContent: 'center',
       padding: appMode
         ? (started ? '20px 16px 16px' : '48px 20px 48px')
-        : (started ? '84px 16px 20px' : '104px 20px 64px'),
+        : (started ? '12px 16px' : '104px 20px 64px'),
       transition: 'padding .25s',
       ...(appMode ? { flex: 1, minWidth: 0 } : {}),
     }}>
       {/* 채팅 활성 시 랜딩 하위 섹션·푸터 숨김 → 전용 채팅 화면 */}
-      <style>{`body[data-nf-chat="on"] #nf-chat ~ section, body[data-nf-chat="on"] #nf-chat ~ footer { display: none !important; }`}</style>
+      <style>{`
+        body[data-nf-chat="on"] { overflow: hidden !important; }
+        body[data-nf-chat="on"] #nf-chat ~ section,
+        body[data-nf-chat="on"] #Nexyfab-footer { display: none !important; }
+        .nf-chat-scroll { scrollbar-width: thin; scrollbar-color: rgba(148,163,184,.38) transparent; overscroll-behavior: contain; }
+        .nf-chat-scroll::-webkit-scrollbar { width: 7px; }
+        .nf-chat-scroll::-webkit-scrollbar-thumb { background: rgba(148,163,184,.32); border-radius: 999px; }
+      `}</style>
       {!appMode && <style>{`
         .nf-side { position: fixed; left: 0; top: 64px; bottom: 0; width: 264px; z-index: 40; background: rgba(10,15,30,0.96); border-right: 1px solid rgba(148,163,184,0.15); backdrop-filter: blur(8px); display: flex; flex-direction: column; padding: 12px 10px; transform: translateX(-100%); transition: transform .2s; }
         .nf-side[data-open="1"] { transform: translateX(0); }
@@ -1989,6 +2425,10 @@ ${m.genSrc || ''}` : (m.genSrc || ''), lang);
         .nf-th[data-active="1"] { background: rgba(59,130,246,0.2); color: #fff; }
         .nf-th .del, .nf-th .pin { opacity: 0; font-size: 11px; background: none; border: none; color: #94a3b8; cursor: pointer; }
         .nf-th:hover .del, .nf-th:hover .pin { opacity: 1; }
+        .nf-chat-rtl .nf-side { left: auto; right: 0; border-right: none; border-left: 1px solid rgba(148,163,184,0.15); transform: translateX(100%); }
+        .nf-chat-rtl .nf-side[data-open="1"] { transform: translateX(0); }
+        .nf-chat-rtl .nf-th { text-align: right; }
+        @media (min-width: 1100px) { .nf-chat-rtl .nf-chat-main { margin-right: 264px !important; margin-left: 0 !important; } }
       `}</style>}
       <div style={{ position: 'absolute', inset: 0, opacity: 0.06, backgroundImage: 'linear-gradient(rgba(59,130,246,0.5) 1px, transparent 1px), linear-gradient(90deg, rgba(59,130,246,0.5) 1px, transparent 1px)', backgroundSize: '60px 60px' }} />
       <div style={{ position: 'absolute', top: '12%', left: '50%', transform: 'translateX(-50%)', width: 640, height: 640, background: `radial-gradient(circle, ${accent}22 0%, transparent 70%)`, borderRadius: '50%', filter: 'blur(90px)', transition: 'background .4s' }} />
@@ -1997,8 +2437,8 @@ ${m.genSrc || ''}` : (m.genSrc || ''), lang);
           appMode에선 통합 사이드바의 채팅 섹션이 이 역할이라 렌더하지 않음 */}
       {started && !appMode && (
         <>
-          <button type="button" className="nf-side-toggle" onClick={() => setSideOpen(o => !o)} aria-label="threads"
-            style={{ position: 'fixed', left: 12, top: 74, zIndex: 41, background: 'rgba(15,23,42,0.85)', border: '1px solid rgba(148,163,184,0.3)', color: '#cbd5e1', borderRadius: 8, padding: '6px 9px', cursor: 'pointer', fontSize: 14 }}>☰</button>
+          <button type="button" className="nf-side-toggle" onClick={() => setSideOpen(o => !o)} aria-label={CHAT_UI_I18N[lang].threads}
+            style={{ position: 'fixed', insetInlineStart: 12, top: 74, zIndex: 41, background: 'rgba(15,23,42,0.85)', border: '1px solid rgba(148,163,184,0.3)', color: '#cbd5e1', borderRadius: 8, padding: '6px 9px', cursor: 'pointer', fontSize: 14 }}>☰</button>
           {sideOpen && <div onClick={() => setSideOpen(false)} style={{ position: 'fixed', inset: 0, zIndex: 39, background: 'rgba(0,0,0,0.4)' }} />}
           <aside className="nf-side" data-open={sideOpen ? '1' : '0'} dir={isRtl ? 'rtl' : 'ltr'}>
             <button type="button" className="nf-th" style={{ border: '1px dashed rgba(148,163,184,0.35)', justifyContent: 'center', fontWeight: 700 }} onClick={newThread}>＋ {t.newChat}</button>
@@ -2014,15 +2454,15 @@ ${m.genSrc || ''}` : (m.genSrc || ''), lang);
                     <span aria-hidden style={{ fontSize: 12, flex: '0 0 16px', textAlign: 'center' }}>{DOMAIN_EMOJI_TH[th.domain] ?? '💬'}</span>
                     <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{th.pinned ? '📌 ' : ''}{th.title}</span>
                     {th.badge && <span style={{ fontSize: 9, fontWeight: 800, color: th.badge === 'PASS' ? '#4ade80' : th.badge === 'FAIL' ? '#f87171' : '#94a3b8' }}>{th.badge === 'PASS' ? '✓' : th.badge === 'FAIL' ? '✗' : 'ⓘ'}</span>}
-                    <button type="button" className="pin" onClick={(e) => { e.stopPropagation(); togglePin(th.id); }} aria-label="pin">📌</button>
-                    <button type="button" className="del" onClick={(e) => { e.stopPropagation(); deleteThread(th.id); }} aria-label="delete">✕</button>
+                    <button type="button" className="pin" onClick={(e) => { e.stopPropagation(); togglePin(th.id); }} aria-label={CHAT_UI_I18N[lang].pin}>📌</button>
+                    <button type="button" className="del" onClick={(e) => { e.stopPropagation(); deleteThread(th.id); }} aria-label={CHAT_UI_I18N[lang].delete}>✕</button>
                   </div>
                 ))}
             </div>
             {authed === false && (
               <div style={{ fontSize: 10.5, color: '#94a3b8', padding: '8px 6px', borderTop: '1px solid rgba(148,163,184,0.15)' }}>
                 {threads.length >= 10
-                  ? <a href="/register" style={{ color: '#60a5fa' }}>{t.guestLimit}</a>
+                  ? <Link href="/register" style={{ color: '#60a5fa' }}>{t.guestLimit}</Link>
                   : (t.guestNote)}
               </div>
             )}
@@ -2032,7 +2472,7 @@ ${m.genSrc || ''}` : (m.genSrc || ''), lang);
 
       <div className="nf-chat-main" style={{
         position: 'relative', zIndex: 1, width: '100%', maxWidth: splitMode ? 640 : 780, margin: splitMode ? '0' : '0 auto', textAlign: 'center', transition: 'margin .2s',
-        ...(started ? { display: 'flex', flexDirection: 'column', height: appMode ? 'calc(100dvh - 36px)' : 'calc(100dvh - 104px)' } : {}),
+        ...(started ? { display: 'flex', flexDirection: 'column', height: appMode ? 'calc(100dvh - 36px)' : '100%' } : {}),
       }}>
         {!started && (
           <>
@@ -2067,9 +2507,9 @@ ${m.genSrc || ''}` : (m.genSrc || ''), lang);
 
         {/* 대화 패널 */}
         {started && (
-          <div ref={scrollRef} style={{
+          <div ref={scrollRef} className="nf-chat-scroll" style={{
             textAlign: isRtl ? 'right' : 'left', flex: 1, minHeight: 0, overflowY: 'auto',
-            marginBottom: 14, padding: '4px 2px', display: 'flex', flexDirection: 'column', gap: 12,
+            marginBottom: 12, padding: '8px 8px 16px 2px', display: 'flex', flexDirection: 'column', gap: 14,
           }}>
             {messages.map((m, i) => {
               const alignEnd = m.role === 'user' ? !isRtl : isRtl;
@@ -2091,7 +2531,7 @@ ${m.genSrc || ''}` : (m.genSrc || ''), lang);
                   )}
                   {m.content && (
                     <div style={{
-                      maxWidth: '86%', padding: '11px 15px', borderRadius: 14, fontSize: 14, lineHeight: 1.7,
+                      maxWidth: m.role === 'user' ? '82%' : '94%', padding: '12px 16px', borderRadius: 14, fontSize: 14, lineHeight: 1.7,
                       whiteSpace: m.role === 'user' ? 'pre-wrap' : 'normal', wordBreak: 'break-word',
                       background: m.role === 'user' ? accent : 'rgba(255,255,255,0.07)',
                       color: m.role === 'user' ? '#fff' : '#e2e8f0',
@@ -2106,20 +2546,11 @@ ${m.genSrc || ''}` : (m.genSrc || ''), lang);
                       )}
                     </div>
                   )}
-                  {m.calc && <CalcCard calc={m.calc} t={t} isRtl={isRtl} consultHref={consultHref}
+                  {m.calc && <CalcCard calc={m.calc} t={t} lang={lang} isRtl={isRtl} consultHref={consultHref}
                     onRerun={m.calcId ? () => { void rerunCalc(m.calcId!, m.calcInput ?? {}); } : undefined}
                     onPrint={() => printCalc(m)} />}
                   {m.cad && (
-                    <>
-                      <CadCard cad={m.cad} t={t} accent={accent} isRtl={isRtl} preview={i === messages.length - 1 && !splitMode} lang={lang} />
-                      {!m.cad.error && (
-                        <a href={'/' + langCode + '/nexyfab/design/?domain=' + (STUDIO_DOMAIN[domain] ?? 'mech')}
-                          onClick={() => { try { sessionStorage.setItem('nf-chat-handoff', JSON.stringify({ spec: m.cad?.spec ?? m.content ?? '', at: Date.now(), type: m.cad?.isAssembly ? 'assembly' : 'part' })); } catch { /* ignore */ } }}
-                          style={{ display: 'inline-block', marginTop: 6, fontSize: 11.5, color: '#93c5fd', border: '1px solid rgba(59,130,246,0.35)', borderRadius: 7, padding: '4px 10px', textDecoration: 'none' }}>
-                          🛠 Studio →
-                        </a>
-                      )}
-                    </>
+                    <CadCard cad={m.cad} t={t} accent={accent} isRtl={isRtl} preview={i === messages.length - 1 && !splitMode} lang={lang} />
                   )}
                   {m.wiring && m.wiring.length > 0 && <WiringCard wiring={m.wiring} t={t} accent={accent} isRtl={isRtl} />}
                 </div>
@@ -2133,7 +2564,8 @@ ${m.genSrc || ''}` : (m.genSrc || ''), lang);
             {!loading && messages.length > 0 && (() => {
               const last = messages[messages.length - 1];
               if (last.role !== 'assistant' || !last.content || last.content.startsWith('⚠️')) return null;
-              const chips = last.calc && !last.calc.error ? t.fuCalc : last.cad && !last.cad.error ? (((last.cad.interferences?.length ?? 0) > 0 ? [t.fuFixClash] : []).concat(t.fuCad)) : t.fuText;
+              const cadFollowups = CAD_RESULT_I18N[lang].followups;
+              const chips = last.calc && !last.calc.error ? t.fuCalc : last.cad && !last.cad.error ? (((last.cad.interferences?.length ?? 0) > 0 ? [t.fuFixClash] : []).concat(t.fuCad, cadFollowups)) : t.fuText;
               return (
                 <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', justifyContent: isRtl ? 'flex-end' : 'flex-start' }}>
                   {chips.map((c, ci) => (
@@ -2152,32 +2584,26 @@ ${m.genSrc || ''}` : (m.genSrc || ''), lang);
         {started && authed === false && messages.some(m => (m.cad && !m.cad.error) || (m.calc && !m.calc.error) || (m.wiring && m.wiring.length > 0)) && (
           <div style={{ flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10, flexWrap: 'wrap', margin: '0 0 12px', padding: '9px 14px', borderRadius: 12, background: 'rgba(59,130,246,0.1)', border: '1px solid rgba(59,130,246,0.25)' }}>
             <span style={{ fontSize: 12.5, color: '#cbd5e1' }}>{t.saveSignup}</span>
-            <a href="/register" style={{ fontSize: 12.5, fontWeight: 800, color: '#fff', background: accent, padding: '6px 14px', borderRadius: 9, textDecoration: 'none', whiteSpace: 'nowrap' }}>{t.signup} →</a>
-          </div>
-        )}
-
-        {/* 스레드당 무료 3회 한도 배너 — 새 대화 or Pro */}
-        {threadLimitReached && (
-          <div style={{ flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10, flexWrap: 'wrap', margin: '0 0 12px', padding: '10px 14px', borderRadius: 12, background: 'rgba(245,158,11,0.12)', border: '1px solid rgba(245,158,11,0.35)' }}>
-            <span style={{ fontSize: 12.5, color: '#fcd34d' }}>{t.threadLimit.replace('{n}', String(FREE_TURNS_PER_THREAD))}</span>
-            <button type="button" onClick={() => { newThread(); }} style={{ fontSize: 12.5, fontWeight: 800, color: '#fff', background: 'rgba(255,255,255,0.12)', border: '1px solid rgba(255,255,255,0.25)', padding: '6px 14px', borderRadius: 9, cursor: 'pointer' }}>＋ {t.newChat}</button>
-            <a href={`/${langCode}/pricing/`} style={{ fontSize: 12.5, fontWeight: 800, color: '#fff', background: accent, padding: '6px 14px', borderRadius: 9, textDecoration: 'none', whiteSpace: 'nowrap' }}>{t.proCta} →</a>
+            <Link href={`/register?lang=${encodeURIComponent(langCode)}`} style={{ fontSize: 12.5, fontWeight: 800, color: '#fff', background: accent, padding: '6px 14px', borderRadius: 9, textDecoration: 'none', whiteSpace: 'nowrap' }}>{t.signup} →</Link>
           </div>
         )}
 
         {/* 입력 카드 */}
-        <div style={{
+        <div className="nf-chat-composer" style={{
           background: 'rgba(255,255,255,0.06)', border: `1px solid ${accent}55`,
           borderRadius: 18, padding: 12, boxShadow: `0 12px 48px rgba(0,0,0,0.4)`,
           backdropFilter: 'blur(8px)', transition: 'border-color .3s', flexShrink: 0,
         }}>
-          <input ref={fileRef} type="file" accept={ACCEPT_RASTER} onChange={onPickFile} style={{ display: 'none' }} />
+          <input id="nf-chat-reference-file" name="design-reference" aria-label={t.attachDrawing} ref={fileRef} type="file" accept={ACCEPT_RASTER} onChange={onPickFile} style={{ display: 'none' }} />
 
           {/* 첨부 도면 미리보기 */}
           {cadCtx && (
             <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, margin: '0 0 8px', padding: '5px 12px', borderRadius: 999, background: 'rgba(99,102,241,0.14)', border: '1px solid rgba(99,102,241,0.35)', fontSize: 11.5, color: '#c7d2fe', fontWeight: 600 }}>
-              🛠 CAD 모델 컨텍스트 로드됨 — 요청이 이 모델 기준으로 반영됩니다
-              {cadCtx.unmapped.length > 0 && <span style={{ color: '#fbbf24' }}>· 미반영: {cadCtx.unmapped.join(', ')}</span>}
+              🛠 {CHAT_UI_I18N[lang].cadContextLoaded}
+              {cadCtx.unmapped.length > 0 && <span style={{ color: '#fbbf24' }}>· {CHAT_UI_I18N[lang].unmapped}: {cadCtx.unmapped.join(', ')}</span>}
+              <span data-testid="precision-cad-patch-only" style={{ color: '#fbbf24' }}>
+                · {CHAT_UI_I18N[lang].sourceProtected}
+              </span>
               <button onClick={() => setCadCtx(null)} style={{ background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer', fontSize: 12, padding: 0 }}>✕</button>
             </div>
           )}
@@ -2186,14 +2612,17 @@ ${m.genSrc || ''}` : (m.genSrc || ''), lang);
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src={attached.dataUrl} alt="" style={{ width: 44, height: 44, objectFit: 'cover', borderRadius: 8, border: '1px solid rgba(255,255,255,0.18)' }} />
               <span style={{ fontSize: 12, color: '#cbd5e1', maxWidth: 220, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{attached.name}</span>
-              <input value={scaleMm} onChange={(e) => setScaleMm(e.target.value)} placeholder="기준 최장변(mm, 선택)" inputMode="decimal"
-                title="사진/시안엔 스케일이 없어요 — 실물의 가장 긴 변을 알려주시면 그 기준으로 생성합니다(사용자 제공값)"
+              <input value={scaleMm} onChange={(e) => setScaleMm(e.target.value)} placeholder={CHAT_UI_I18N[lang].scalePlaceholder} inputMode="decimal"
+                title={CHAT_UI_I18N[lang].scaleTitle}
                 style={{ width: 140, padding: '4px 8px', borderRadius: 8, border: '1px solid rgba(148,163,184,0.35)', background: 'rgba(255,255,255,0.05)', color: '#e2e8f0', fontSize: 11.5 }} />
-              <button onClick={() => { setAttached(null); setScaleMm(''); }} aria-label="remove" style={{ marginInlineStart: 'auto', width: 24, height: 24, borderRadius: 999, border: '1px solid rgba(255,255,255,0.16)', background: 'rgba(255,255,255,0.06)', color: '#cbd5e1', cursor: 'pointer', lineHeight: 1, fontSize: 13 }}>×</button>
+              <button onClick={() => { setAttached(null); setScaleMm(''); }} aria-label={CHAT_UI_I18N[lang].remove} style={{ marginInlineStart: 'auto', width: 24, height: 24, borderRadius: 999, border: '1px solid rgba(255,255,255,0.16)', background: 'rgba(255,255,255,0.06)', color: '#cbd5e1', cursor: 'pointer', lineHeight: 1, fontSize: 13 }}>×</button>
             </div>
           )}
 
           <textarea
+            id="nf-chat-design-prompt"
+            name="design-prompt"
+            aria-label={t.placeholder}
             value={input}
             onChange={e => setInput(e.target.value)}
             onKeyDown={onKeyDown}
@@ -2224,11 +2653,11 @@ ${m.genSrc || ''}` : (m.genSrc || ''), lang);
                 </button>
               )}
               {domain === 'mechanical' && (
-                <button onClick={() => { void sendGenImage(); }} disabled={loading || threadLimitReached || (!input.trim() && !attached)} title={t.genImg} aria-label={t.genImg} style={{
+                <button onClick={() => { void sendGenImage(); }} disabled={loading || (!input.trim() && !attached)} title={t.genImg} aria-label={t.genImg} style={{
                   display: 'inline-flex', alignItems: 'center', gap: 6, padding: '6px 11px', borderRadius: 10,
-                  cursor: loading || threadLimitReached || (!input.trim() && !attached) ? 'not-allowed' : 'pointer',
+                  cursor: loading || (!input.trim() && !attached) ? 'not-allowed' : 'pointer',
                   border: `1px solid ${accent}55`, background: 'rgba(255,255,255,0.05)', color: '#cbd5e1', fontSize: 12.5, fontWeight: 600,
-                  opacity: loading || threadLimitReached || (!input.trim() && !attached) ? 0.5 : 1,
+                  opacity: loading || (!input.trim() && !attached) ? 0.5 : 1,
                 }}>
                   ✨<span style={{ display: started ? 'none' : 'inline' }}>{t.genImg}</span>
                 </button>
@@ -2246,7 +2675,7 @@ ${m.genSrc || ''}` : (m.genSrc || ''), lang);
                   border: `1px solid ${accent}77`, background: `${accent}1d`, color: '#e2e8f0', fontSize: 12, fontWeight: 700, maxWidth: 220,
                 }}>
                   🎯 <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{pickedPart}{pickedNormal ? ` · ${faceTag(pickedNormal)}` : ''}</span>
-                  <button onClick={() => { setPickedPart(null); setPickedNormal(null); }} aria-label="clear" style={{ background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer', fontSize: 12, padding: 0 }}>✕</button>
+                  <button onClick={() => { setPickedPart(null); setPickedNormal(null); }} aria-label={CHAT_UI_I18N[lang].clear} style={{ background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer', fontSize: 12, padding: 0 }}>✕</button>
                 </span>
               )}
             </div>
@@ -2272,27 +2701,50 @@ ${m.genSrc || ''}` : (m.genSrc || ''), lang);
         {!started && domain === 'mechanical' && (
           <p style={{ marginTop: 10, fontSize: 11.5, color: 'rgba(148,163,184,0.7)', lineHeight: 1.5, maxWidth: 560, margin: '10px auto 0', wordBreak: 'keep-all' }}>{t.uploadHint}</p>
         )}
+        {error && (
+          <div role="alert" style={{ maxWidth: 640, margin: '10px auto 0', padding: '8px 12px', borderRadius: 10, border: '1px solid rgba(239,68,68,0.35)', background: 'rgba(239,68,68,0.10)', color: '#fca5a5', fontSize: 12, lineHeight: 1.5 }}>
+            ⚠️ {error}
+          </div>
+        )}
 
-        {/* 분야 칩 */}
-        <div style={{ display: 'flex', gap: 8, justifyContent: 'center', flexWrap: 'wrap', marginTop: 18 }}>
-          {DOMAINS.map(d => {
-            const on = d === domain;
-            const c = DOMAIN_ACCENT[d];
-            return (
-              <button key={d} onClick={() => { setDomain(d); if (d !== 'mechanical') setAttached(null); }} style={{
-                display: 'inline-flex', alignItems: 'center', gap: 7,
-                padding: '8px 16px', borderRadius: 999, cursor: 'pointer',
-                fontSize: 13, fontWeight: on ? 800 : 600,
-                border: `1.5px solid ${on ? c : 'rgba(255,255,255,0.14)'}`,
-                background: on ? `${c}22` : 'rgba(255,255,255,0.04)',
-                color: on ? '#fff' : 'rgba(203,213,225,0.85)', transition: 'all .18s',
-              }}>
-                <span style={{ color: on ? c : 'inherit', display: 'inline-flex' }}><DomainIcon name={d} size={16} /></span>
-                {t.chips[d]}
-              </button>
-            );
-          })}
-        </div>
+        {/* 외부 제품 IA는 두 경로, 실제 검증 엔진은 분야별로 유지한다. */}
+        {!started && <div role="group" aria-label={pathLabels.group} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, marginTop: 18 }}>
+          <button type="button" data-testid="mechanical-core-path" aria-pressed={domain === 'mechanical'} onClick={() => { setDomain('mechanical'); setDomainLocked(true); }} style={{
+            display: 'inline-flex', alignItems: 'center', gap: 8, padding: '11px 22px', borderRadius: 999, cursor: 'pointer',
+            fontSize: 14, fontWeight: 850, border: `2px solid ${domain === 'mechanical' ? DOMAIN_ACCENT.mechanical : 'rgba(59,130,246,0.55)'}`,
+            background: domain === 'mechanical' ? `${DOMAIN_ACCENT.mechanical}32` : 'rgba(59,130,246,0.10)', color: '#fff', transition: 'all .18s',
+            boxShadow: domain === 'mechanical' ? '0 8px 28px rgba(37,99,235,0.2)' : 'none',
+          }}>
+            <DomainIcon name="mechanical" size={16} /> {pathLabels.mechanical}
+          </button>
+          <button type="button" data-testid="space-design-labs-path" aria-pressed={domain !== 'mechanical'} onClick={() => { if (domain === 'mechanical') setDomain('architecture'); setDomainLocked(true); setAttached(null); }} style={{
+            display: 'inline-flex', alignItems: 'center', gap: 7, padding: '5px 10px', borderRadius: 8, cursor: 'pointer',
+            fontSize: 11, fontWeight: domain !== 'mechanical' ? 750 : 600,
+            border: `1px dashed ${domain !== 'mechanical' ? DOMAIN_ACCENT[domain] : 'rgba(255,255,255,0.18)'}`,
+            background: domain !== 'mechanical' ? `${DOMAIN_ACCENT[domain]}16` : 'transparent', color: 'rgba(203,213,225,0.82)', transition: 'all .18s',
+          }}>
+            ↗ {pathLabels.spatial} <span style={{ padding: '2px 6px', borderRadius: 999, background: 'rgba(245,158,11,0.16)', color: '#fbbf24', fontSize: 9, fontWeight: 800 }}>{pathLabels.beta}</span>
+          </button>
+        </div>}
+        {!domainLocked && !started && <p style={{ margin: '7px auto 0', color: 'rgba(148,163,184,0.75)', fontSize: 10.5 }}>{pathLabels.auto}</p>}
+
+        {!started && domain !== 'mechanical' && (
+          <div role="group" aria-label={pathLabels.spatial} style={{ display: 'flex', gap: 7, justifyContent: 'center', flexWrap: 'wrap', marginTop: 9 }}>
+            {SPATIAL_DOMAINS.map(d => {
+              const on = d === domain;
+              const c = DOMAIN_ACCENT[d];
+              return (
+                <button type="button" key={d} aria-pressed={on} onClick={() => { setDomain(d); setDomainLocked(true); setAttached(null); }} style={{
+                  display: 'inline-flex', alignItems: 'center', gap: 6, padding: '6px 12px', borderRadius: 999, cursor: 'pointer',
+                  fontSize: 12, fontWeight: on ? 800 : 600, border: `1px solid ${on ? c : 'rgba(255,255,255,0.12)'}`,
+                  background: on ? `${c}20` : 'rgba(255,255,255,0.025)', color: on ? '#fff' : 'rgba(203,213,225,0.82)',
+                }}>
+                  <DomainIcon name={d} size={14} /> {t.chips[d]}
+                </button>
+              );
+            })}
+          </div>
+        )}
 
         {/* 분야별 시작 예시 (대화 시작 전) */}
         {!started && (
@@ -2312,22 +2764,12 @@ ${m.genSrc || ''}` : (m.genSrc || ''), lang);
         )}
 
         {/* 새 대화 (GPT형 — 후속 CTA 제거, 채팅 안에서 결과·다운로드가 완결) */}
-        {started && (
-          <div style={{ display: 'flex', gap: 10, justifyContent: 'center', flexWrap: 'wrap', marginTop: 14 }}>
-            {/* 반드시 newThread() — messages만 비우면 activeId가 남아 다음 대화가 이전 스레드를 덮어쓴다 */}
-            <button onClick={() => { newThread(); setError(''); setAttached(null); }} style={{
-              padding: '8px 18px', borderRadius: 11, fontSize: 13, fontWeight: 600, cursor: 'pointer',
-              background: 'rgba(255,255,255,0.06)', color: '#cbd5e1', border: '1px solid rgba(255,255,255,0.14)',
-            }}>+ {t.reset}</button>
-          </div>
-        )}
-
-        <p style={{ marginTop: 22, fontSize: 11, color: 'rgba(148,163,184,0.72)', lineHeight: 1.6, maxWidth: 560, margin: '22px auto 0', wordBreak: 'keep-all' }}>{t.disclaimer}</p>
+        {!started && <p style={{ marginTop: 22, fontSize: 11, color: 'rgba(148,163,184,0.72)', lineHeight: 1.6, maxWidth: 560, margin: '22px auto 0', wordBreak: 'keep-all' }}>{t.disclaimer}</p>}
       </div>
 
-      {/* 우측 상시 3D 패널(appMode·넓은 화면·CAD 결과 존재 시) — 최신 결과를 크게 */}
+      {/* 우측 상시 3D 패널(넓은 화면·CAD 결과 존재 시) — 랜딩과 앱에서 최신 결과를 크게 */}
       {splitMode && latestCad?.scad && (
-        <aside style={{ position: 'relative', zIndex: 1, width: 'min(44%, 620px)', marginInlineStart: 18, display: 'flex', flexDirection: 'column', height: 'calc(100dvh - 36px)', overflowY: 'auto' }}>
+        <aside data-testid="cad-split-view" style={{ position: 'relative', zIndex: 1, width: 'min(44%, 620px)', marginInlineStart: 18, display: 'flex', flexDirection: 'column', height: 'calc(100dvh - 36px)', overflowY: 'auto' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
             <span style={{ fontSize: 12.5, fontWeight: 800, color: '#e2e8f0' }}>🧊 3D</span>
             {(latestCad.interferences?.length ?? 0) > 0
@@ -2336,18 +2778,24 @@ ${m.genSrc || ''}` : (m.genSrc || ''), lang);
                 ? <span style={{ fontSize: 10.5, fontWeight: 800, padding: '2px 9px', borderRadius: 999, background: 'rgba(34,197,94,0.15)', color: '#4ade80' }}>✓ {t.cadInterfNone}</span>
                 : null}
             {dragUndoN > 0 && (
-              <button onClick={undoFaceDrag} title="푸시풀 되돌리기" style={{ fontSize: 10.5, fontWeight: 800, padding: '2px 9px', borderRadius: 999, border: '1px solid rgba(148,163,184,0.4)', background: 'rgba(255,255,255,0.06)', color: '#cbd5e1', cursor: 'pointer' }}>↩ {dragUndoN}</button>
+              <button onClick={undoFaceDrag} title={CAD_RESULT_I18N[lang].undoPushPull} style={{ fontSize: 10.5, fontWeight: 800, padding: '2px 9px', borderRadius: 999, border: '1px solid rgba(148,163,184,0.4)', background: 'rgba(255,255,255,0.06)', color: '#cbd5e1', cursor: 'pointer' }}>↩ {dragUndoN}</button>
             )}
             {latestCad.scadDraft && !lodFull && (
-              <button onClick={() => setLodFull(true)} title="1차 골격 표시 중 — 2차 상세로 전환" style={{ fontSize: 10.5, fontWeight: 800, padding: '2px 9px', borderRadius: 999, border: `1px solid ${accent}66`, background: `${accent}1d`, color: '#bfdbfe', cursor: 'pointer' }}>🧩 2차 상세</button>
+              <button onClick={() => setLodFull(true)} title={CAD_RESULT_I18N[lang].detailLodTitle} style={{ fontSize: 10.5, fontWeight: 800, padding: '2px 9px', borderRadius: 999, border: `1px solid ${accent}66`, background: `${accent}1d`, color: '#bfdbfe', cursor: 'pointer' }}>🧩 {CAD_RESULT_I18N[lang].detailLod}</button>
             )}
-            <a href={'/' + langCode + '/nexyfab/design/?domain=' + (STUDIO_DOMAIN[domain] ?? 'mech')}
-              onClick={() => { try { sessionStorage.setItem('nf-chat-handoff', JSON.stringify({ spec: latestCad.spec ?? '', at: Date.now(), type: latestCad.isAssembly ? 'assembly' : 'part' })); } catch { /* ignore */ } }}
-              style={{ marginInlineStart: 'auto', fontSize: 11, color: '#93c5fd', border: '1px solid rgba(59,130,246,0.35)', borderRadius: 7, padding: '3px 10px', textDecoration: 'none' }}>
-              🛠 Studio →
-            </a>
           </div>
-          <MiniScadViewer key={scadKey(latestCad.scad ?? '') + ':' + (latestCad.interferences?.length ?? 0) + ':' + (lodFull ? 'f' : 'd')} scad={(lodFull ? latestCad.scad : latestCad.scadDraft) ?? latestCad.scad!} auto accent={accent} height={520} parts={lodFull ? latestCad.partsAabb : (latestCad.partsAabbDraft ?? latestCad.partsAabb)} selectedId={pickedPart} onPick={(id, normal) => { setPickedPart(id); setPickedNormal(normal ?? null); }} onFaceDrag={applyFaceDrag} />
+          <MiniScadViewer key={scadKey(latestCad.scad ?? '') + ':' + (latestCad.interferences?.length ?? 0) + ':' + (lodFull ? 'f' : 'd')} scad={(lodFull ? latestCad.scad : latestCad.scadDraft) ?? latestCad.scad!} auto accent={accent} lang={lang} height={520} parts={lodFull ? latestCad.partsAabb : (latestCad.partsAabbDraft ?? latestCad.partsAabb)} selectedId={pickedPart} onPick={(id, normal) => { setPickedPart(id); setPickedNormal(normal ?? null); setAdjustMm(''); }} onFaceDrag={applyFaceDrag} />
+          <div style={{ marginTop: 8, padding: '10px 12px', borderRadius: 10, border: `1px solid ${pickedPart ? `${accent}66` : 'rgba(148,163,184,0.22)'}`, background: 'rgba(15,23,42,0.72)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+              <span style={{ fontSize: 11.5, fontWeight: 800, color: '#cbd5e1' }}>{pickedPart ? `${CHAT_UI_I18N[lang].selectedPart}: ${pickedPart}` : CHAT_UI_I18N[lang].selectPart}</span>
+              <span style={{ fontSize: 10, color: '#94a3b8' }}>{pickedNormal ? CHAT_UI_I18N[lang].faceSelected : CHAT_UI_I18N[lang].clickFace}</span>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <input aria-label={CHAT_UI_I18N[lang].adjustFace} type="range" min={-100} max={100} step={5} value={adjustMm === '' ? 0 : Number(adjustMm)} disabled={!pickedPart || !pickedNormal} onChange={(e) => setAdjustMm(e.target.value)} style={{ flex: 1, accentColor: accent, opacity: pickedPart && pickedNormal ? 1 : 0.45 }} />
+              <input aria-label={CHAT_UI_I18N[lang].adjustMm} type="number" value={adjustMm} placeholder="mm" disabled={!pickedPart || !pickedNormal} onChange={(e) => setAdjustMm(e.target.value)} style={{ width: 68, padding: '5px 7px', borderRadius: 7, border: '1px solid rgba(148,163,184,0.3)', background: '#0b1020', color: '#e2e8f0' }} />
+              <button type="button" disabled={!pickedPart || !pickedNormal || adjustMm === '' || Number(adjustMm) === 0 || loading} onClick={() => { if (pickedPart && pickedNormal && Number.isFinite(Number(adjustMm))) void applyFaceDrag(pickedPart, pickedNormal, Math.round(Number(adjustMm))); }} style={{ padding: '5px 9px', borderRadius: 7, border: 'none', background: pickedPart && pickedNormal ? accent : '#334155', color: '#fff', fontSize: 11, fontWeight: 800, cursor: pickedPart && pickedNormal ? 'pointer' : 'not-allowed' }}>{CHAT_UI_I18N[lang].apply}</button>
+            </div>
+          </div>
         </aside>
       )}
     </section>

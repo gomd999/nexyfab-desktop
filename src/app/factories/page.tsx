@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback, useRef } from 'react';
 import { usePathname } from 'next/navigation';
-import { FACT_DICT, pickFactLang, INDUSTRY_LABELS, REGION_LABELS, type FactDict, type FactLang } from './factoriesDict';
+import { FACT_DICT, pickFactLang, INDUSTRY_LABELS, REGION_LABELS, factoryDisplayLabel, type FactDict, type FactLang } from './factoriesDict';
 
 // ── 상수 ──────────────────────────────────────────────────────────────────────
 
@@ -70,8 +70,23 @@ function FactoryCard({ factory, view, search, field, region: filterRegion, t, la
   t: FactDict; lang: FactLang;
 }) {
   const isKo = factory.country === 'ko';
-  const region = isKo ? (factory as KoFactory).region : (factory as CnFactory).regionKo;
-  const countryLabel = isKo ? `🇰🇷 ${t.cardKo}` : `🇨🇳 ${t.cardCn}`;
+  const countryTheme = {
+    ko: {
+      flag: '🇰🇷', icon: '🏭', accent: '#2563eb', accentBg: '#eff6ff',
+      badgeBg: '#dbeafe', badgeColor: '#1d4ed8', gradient: '#60a5fa', border: '#bfdbfe',
+    },
+    cn: {
+      flag: '🇨🇳', icon: '🏗️', accent: '#ea580c', accentBg: '#fff7ed',
+      badgeBg: '#fed7aa', badgeColor: '#c2410c', gradient: '#fb923c', border: '#fed7aa',
+    },
+  }[factory.country];
+  const regionValue = isKo ? (factory as KoFactory).region : (factory as CnFactory).regionKo;
+  const region = !isKo && lang === 'cn'
+    ? (factory as CnFactory).regionZh
+    : factoryDisplayLabel(regionValue, lang);
+  const industry = factoryDisplayLabel(factory.industry, lang);
+  const countryName = { ko: t.cardKo, cn: t.cardCn }[factory.country];
+  const countryLabel = `${countryTheme.flag} ${countryName}`;
   const langSeg = lang === 'ko' ? 'kr' : lang;
 
   const contactParams = new URLSearchParams({
@@ -79,7 +94,7 @@ function FactoryCard({ factory, view, search, field, region: filterRegion, t, la
     factoryId: factory.id,
     industry: factory.industry || '',
     tags: factory.tags.join(','),
-    region: region || '',
+    region: regionValue || '',
     country: factory.country,
   });
   if (search) contactParams.set('search', search);
@@ -87,10 +102,7 @@ function FactoryCard({ factory, view, search, field, region: filterRegion, t, la
   if (filterRegion) contactParams.set('filterRegion', filterRegion);
 
   const contactUrl = `/${langSeg}/project-inquiry/?${contactParams.toString()}`;
-  const accentColor = isKo ? '#2563eb' : '#ea580c';
-  const accentBg = isKo ? '#eff6ff' : '#fff7ed';
-  const badgeBg = isKo ? '#dbeafe' : '#fed7aa';
-  const badgeColor = isKo ? '#1d4ed8' : '#c2410c';
+  const { icon: countryIcon, accent: accentColor, accentBg, badgeBg, badgeColor } = countryTheme;
 
   if (view === 'list') {
     return (
@@ -117,7 +129,7 @@ function FactoryCard({ factory, view, search, field, region: filterRegion, t, la
           display: 'flex', alignItems: 'center', justifyContent: 'center',
           fontSize: 18, flexShrink: 0,
         }}>
-          {isKo ? '🏭' : '🏗️'}
+          {countryIcon}
         </div>
 
         <div style={{ flex: 1, minWidth: 0 }}>
@@ -139,8 +151,8 @@ function FactoryCard({ factory, view, search, field, region: filterRegion, t, la
               </span>
             )}
           </div>
-          {factory.industry && (
-            <div style={{ fontSize: 11, color: '#9ca3af', marginTop: 3 }}>{factory.industry}</div>
+          {industry && (
+            <div style={{ fontSize: 11, color: '#9ca3af', marginTop: 3 }}>{industry}</div>
           )}
         </div>
 
@@ -149,7 +161,7 @@ function FactoryCard({ factory, view, search, field, region: filterRegion, t, la
             <span key={t} style={{
               fontSize: 11, background: '#f8fafc', color: '#64748b',
               padding: '2px 9px', borderRadius: 20, border: '1px solid #e2e8f0',
-            }}>{t}</span>
+            }}>{factoryDisplayLabel(t, lang)}</span>
           ))}
         </div>
 
@@ -188,7 +200,7 @@ function FactoryCard({ factory, view, search, field, region: filterRegion, t, la
       {/* 상단 컬러 바 */}
       <div style={{
         position: 'absolute', top: 0, left: 0, right: 0, height: 3,
-        background: `linear-gradient(90deg, ${accentColor}, ${isKo ? '#60a5fa' : '#fb923c'})`,
+        background: `linear-gradient(90deg, ${accentColor}, ${countryTheme.gradient})`,
         borderRadius: '18px 18px 0 0',
       }} />
 
@@ -198,9 +210,9 @@ function FactoryCard({ factory, view, search, field, region: filterRegion, t, la
           width: 46, height: 46, borderRadius: 14, flexShrink: 0,
           background: accentBg,
           display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20,
-          border: `1px solid ${isKo ? '#bfdbfe' : '#fed7aa'}`,
+          border: `1px solid ${countryTheme.border}`,
         }}>
-          {isKo ? '🏭' : '🏗️'}
+          {countryIcon}
         </div>
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ overflow: 'hidden', whiteSpace: 'nowrap' }}>
@@ -224,14 +236,14 @@ function FactoryCard({ factory, view, search, field, region: filterRegion, t, la
       </div>
 
       {/* 업종 */}
-      {factory.industry && (
+      {industry && (
         <div style={{
           fontSize: 11, color: '#64748b',
           background: '#f8fafc', border: '1px solid #e2e8f0',
           padding: '5px 10px', borderRadius: 8,
           overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
         }}>
-          {factory.industry}
+          {industry}
         </div>
       )}
 
@@ -242,7 +254,7 @@ function FactoryCard({ factory, view, search, field, region: filterRegion, t, la
             <span key={t} style={{
               fontSize: 11, background: '#f8fafc', color: '#475569',
               padding: '3px 10px', borderRadius: 20, border: '1px solid #e2e8f0',
-            }}>{t}</span>
+            }}>{factoryDisplayLabel(t, lang)}</span>
           ))}
         </div>
       )}
@@ -578,7 +590,7 @@ export default function FactoriesPage() {
                   onMouseEnter={e => { e.currentTarget.style.borderColor = '#3b82f6'; e.currentTarget.style.color = '#3b82f6'; }}
                   onMouseLeave={e => { e.currentTarget.style.borderColor = '#e2e8f0'; e.currentTarget.style.color = '#475569'; }}
                 >
-                  #{kw}
+                  #{factoryDisplayLabel(kw, lang)}
                 </button>
               ))}
             </div>

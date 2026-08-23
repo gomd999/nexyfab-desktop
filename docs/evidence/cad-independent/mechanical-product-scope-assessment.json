@@ -1,0 +1,52 @@
+{
+  "schema": "nexyfab.mechanical-product-scope-assessment.v3",
+  "releaseChannel": "mechanical-core",
+  "assessedAt": "2026-08-22T22:32:40.135Z",
+  "sources": [
+    {
+      "path": "docs/evidence/cad-independent/mechanical-core-internal-verification.json",
+      "sha256": "62051057e0b632341d96b5b09cd5517e4d5ab707f2cf9965b9cc30ee2f30bd84"
+    },
+    {
+      "path": "docs/evidence/cad-independent/mechanical-core-feature-closed-loop-assessment.json",
+      "sha256": "284fc80bd9fe9ffa62c832a2747d3873504bea82c054d9f60b551c85ad52b46c"
+    }
+  ],
+  "evidence": {
+    "internalRegressionVerified": true,
+    "coreThirtyFeatureClosedLoopVerified": false,
+    "directDesignCandidateVerified": false,
+    "directDesignThirtyVerified": false,
+    "intentCampaign150Verified": false,
+    "standardStepConformanceVerified": false,
+    "artifactRevisionConsistencyVerified": true,
+    "blindProductChallengeVerified": false,
+    "manufacturingReceiptVerified": false
+  },
+  "decision": {
+    "privateBetaEligible": false,
+    "selfServiceEligible": false,
+    "manufacturingReleaseVerified": false,
+    "failClosed": true,
+    "status": "private_beta_evidence_pending"
+  },
+  "blockers": [
+    "mechanical_core_30_feature_closed_loop_required",
+    "ten_direct_design_packages_required_for_private_beta",
+    "thirty_direct_design_packages_required",
+    "mechanical_intent_campaign_150_required",
+    "standard_step_conformance_required",
+    "twenty_blind_product_challenges_required",
+    "three_manufactured_pilot_receipts_required"
+  ],
+  "claimBoundary": {
+    "internalRegressionCertifiesCommercialAccuracy": false,
+    "syntheticEvidenceCertifiesCommercialAccuracy": false,
+    "stepExportAloneCertifiesManufacturability": false,
+    "kernelSelfRoundtripCertifiesCommercialCadCompatibility": false,
+    "featureRegistrationAloneCertifiesClosedLoop": false,
+    "spatialLabsEvidenceMaySatisfyMechanicalCore": false,
+    "vendorSpecificCadValidationRequiredForBaseRelease": false,
+    "internalRoleSeparatedReviewMayBeMarketedAsExternal": false
+  }
+}

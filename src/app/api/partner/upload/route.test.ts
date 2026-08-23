@@ -37,6 +37,8 @@ vi.mock('@/lib/nexyfab-email', () => ({ getNexyfabAdminEmail: () => 'admin@examp
 
 import { GET, POST } from './route';
 
+const MAX_UPLOAD_MULTIPART_BODY_BYTES = 64 * 1024 * 1024;
+
 const partner = { partnerId: 'partner-1', email: 'owner@example.com', company: 'Owner Co' };
 
 beforeEach(() => {
@@ -92,5 +94,29 @@ describe('partner contract attachment isolation', () => {
     expect(mocks.uploadPrivate).toHaveBeenCalledWith(expect.any(Buffer), 'part.step', 'contracts/C-1');
     expect(body.attachment.storageKey).toMatch(/^private\//);
     expect(body.attachment.url).toMatch(/^\/api\/partner\/upload\?contractId=C-1&id=ATT-/);
+  });
+
+  it('cancels a declared oversized multipart body before DB or storage work', async () => {
+    let cancelled = false;
+    const stream = new ReadableStream<Uint8Array>({ cancel() { cancelled = true; } });
+    const response = await POST(new NextRequest('https://nexyfab.com/api/partner/upload', {
+      method: 'POST',
+      headers: { 'content-type': 'multipart/form-data; boundary=x', 'content-length': String(MAX_UPLOAD_MULTIPART_BODY_BYTES + 1) },
+      body: stream,
+      duplex: 'half',
+    } as unknown as NonNullable<ConstructorParameters<typeof NextRequest>[1]>));
+    expect(response.status).toBe(413);
+    expect(cancelled).toBe(true);
+    expect(mocks.queryOne).not.toHaveBeenCalled();
+    expect(mocks.uploadPrivate).not.toHaveBeenCalled();
+  });
+
+  it('preserves malformed multipart rejection without DB or storage work', async () => {
+    const response = await POST(new NextRequest('https://nexyfab.com/api/partner/upload', {
+      method: 'POST', headers: { 'content-type': 'multipart/form-data; boundary=x' }, body: new Uint8Array([0xff]),
+    }));
+    expect(response.status).toBe(400);
+    expect(mocks.queryOne).not.toHaveBeenCalled();
+    expect(mocks.uploadPrivate).not.toHaveBeenCalled();
   });
 });

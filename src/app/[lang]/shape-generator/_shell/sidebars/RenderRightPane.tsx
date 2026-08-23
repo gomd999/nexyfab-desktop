@@ -14,10 +14,17 @@ import { loc } from '../../lib/loc';
 // Wraps a control whose handler isn't wired yet so it reads as unavailable
 // instead of pretending to work (dimmed + non-interactive + tooltip).
 // (2026-06-12 honesty: disable dead controls rather than show fake-working ones)
-function Soon({ children, isKo }: { children: ReactNode; isKo: boolean }) {
+function Soon({ children, lang }: { children: ReactNode; lang: string }) {
   return (
     <span
-      title={isKo ? '준비 중 — 아직 적용되지 않습니다' : 'Coming soon — not yet wired'}
+      title={loc(lang, {
+        ko: 'Closed Beta에서 제공되지 않는 기능입니다',
+        en: 'Unavailable in Closed Beta',
+        ja: 'クローズドベータでは利用できません',
+        zh: 'Closed Beta 暂不可用',
+        es: 'No disponible en la beta cerrada',
+        ar: 'غير متاح في النسخة التجريبية المغلقة',
+      })}
       style={{ display: 'block', opacity: 0.4, pointerEvents: 'none' }}
     >
       {children}
@@ -25,17 +32,20 @@ function Soon({ children, isKo }: { children: ReactNode; isKo: boolean }) {
   );
 }
 
-const RENDER_CATALOG_DICT_KO: CatalogPanelDict = {
-  catalogTitle: '렌더/애니메이션 도구', catalogLoading: '불러오는 중…', catalogReady: '준비됨',
-  catalogRun: '실행', catalogFailed: '불러오기 실패', catalogEmpty: '해당 기능이 없습니다',
-};
-const RENDER_CATALOG_DICT_EN: CatalogPanelDict = {
-  catalogTitle: 'Render / Animation', catalogLoading: 'Loading…', catalogReady: 'Ready',
-  catalogRun: 'Run', catalogFailed: 'Load failed', catalogEmpty: 'No matching feature',
-};
+function renderCatalogDict(lang: string): CatalogPanelDict {
+  return {
+    catalogTitle: loc(lang, { ko: '렌더/애니메이션 도구', en: 'Render / Animation', ja: 'レンダー/アニメーションツール', zh: '渲染/动画工具', es: 'Herramientas de render/animación', ar: 'أدوات التصيير/الرسوم المتحركة' }),
+    catalogLoading: loc(lang, { ko: '불러오는 중…', en: 'Loading…', ja: '読み込み中…', zh: '加载中…', es: 'Cargando…', ar: 'جارٍ التحميل…' }),
+    catalogReady: loc(lang, { ko: '준비됨', en: 'Ready', ja: '準備完了', zh: '就绪', es: 'Listo', ar: 'جاهز' }),
+    catalogRun: loc(lang, { ko: '실행', en: 'Run', ja: '実行', zh: '运行', es: 'Ejecutar', ar: 'تشغيل' }),
+    catalogFailed: loc(lang, { ko: '불러오기 실패', en: 'Load failed', ja: '読み込みに失敗しました', zh: '加载失败', es: 'Error de carga', ar: 'فشل التحميل' }),
+    catalogEmpty: loc(lang, { ko: '해당 기능이 없습니다', en: 'No matching feature', ja: '該当する機能はありません', zh: '没有匹配的功能', es: 'No hay funciones coincidentes', ar: 'لا توجد ميزة مطابقة' }),
+  };
+}
 
 export interface RenderRightPaneProps {
-  isKo: boolean;
+  /** Legacy caller compatibility; display strings use `lang` exclusively. */
+  isKo?: boolean;
   lang: string;
   material: string;
   color: string;
@@ -61,7 +71,7 @@ export interface RenderRightPaneProps {
 }
 
 export function RenderRightPane({
-  isKo, lang, material, color, roughness, metalness, exposure, hdri, lens,
+  lang, material, color, roughness, metalness, exposure, hdri, lens,
   specular = 0.5, clearcoat = 0, anisotropy = 0.3,
   setRoughness, setMetalness, setExposure, setHdri, setLens,
   setSpecular, setClearcoat, setAnisotropy,
@@ -100,7 +110,8 @@ export function RenderRightPane({
       </PropSection>
 
       <PropSection title={loc(lang, { ko: '커스텀 텍스처', en: 'Custom textures', ja: 'カスタムテクスチャ', zh: '自定义纹理', es: 'Texturas personalizadas', ar: 'مواد مخصصة' })} defaultExpanded={false}>
-        <CustomMaterialUpload isKo={isKo} />
+        {/* `isKo` remains only for legacy child compatibility; the child uses its locale hook. */}
+        <CustomMaterialUpload isKo={false} />
       </PropSection>
 
       <PropSection title={loc(lang, { ko: '환경', en: 'Environment', ja: '環境', zh: '环境', es: 'Entorno', ar: 'البيئة' })}>
@@ -116,10 +127,10 @@ export function RenderRightPane({
             ]}
           />
         </PropRow>
-        <Soon isKo={isKo}><Slider label={loc(lang, { ko: '회전', en: 'Rotation', ja: '回転', zh: '旋转', es: 'Rotación', ar: 'تدوير' })} value={0} min={0} max={360} step={1} onChange={() => { /* not wired */ }} /></Soon>
+        <Soon lang={lang}><Slider label={loc(lang, { ko: '회전', en: 'Rotation', ja: '回転', zh: '旋转', es: 'Rotación', ar: 'تدوير' })} value={0} min={0} max={360} step={1} onChange={() => { /* not wired */ }} /></Soon>
         <Slider label={loc(lang, { ko: '노출', en: 'Exposure', ja: '露出', zh: '曝光', es: 'Exposición', ar: 'التعريض' })} value={exposure} min={0.1} max={3} step={0.05} onChange={setExposure} />
         <PropRow label={loc(lang, { ko: '바닥 그림자', en: 'Ground shadow', ja: '地面の影', zh: '地面阴影', es: 'Sombra de suelo', ar: 'ظل الأرضية' })}>
-          <Soon isKo={isKo}><PropCheck checked onChange={() => { /* not wired */ }} label={loc(lang, { ko: '받기', en: 'Catch', ja: '受光', zh: '接收', es: 'Recibir', ar: 'التقاط' })} /></Soon>
+          <Soon lang={lang}><PropCheck checked onChange={() => { /* not wired */ }} label={loc(lang, { ko: '받기', en: 'Catch', ja: '受光', zh: '接收', es: 'Recibir', ar: 'التقاط' })} /></Soon>
         </PropRow>
       </PropSection>
 
@@ -138,10 +149,10 @@ export function RenderRightPane({
             }}
           />
         </PropRow>
-        <Soon isKo={isKo}><Slider label={loc(lang, { ko: '조리개', en: 'Aperture', ja: '絞り', zh: '光圈', es: 'Apertura', ar: 'فتحة العدسة' })} value={0.5} min={0.95} max={32} step={0.1} onChange={() => { /* not wired */ }} /></Soon>
-        <Soon isKo={isKo}><Slider label={loc(lang, { ko: '초점거리', en: 'Focus dist.', ja: '焦点距離', zh: '对焦距离', es: 'Dist. de enfoque', ar: 'مسافة التركيز' })} value={0.6} min={0} max={10} step={0.1} onChange={() => { /* not wired */ }} /></Soon>
+        <Soon lang={lang}><Slider label={loc(lang, { ko: '조리개', en: 'Aperture', ja: '絞り', zh: '光圈', es: 'Apertura', ar: 'فتحة العدسة' })} value={0.5} min={0.95} max={32} step={0.1} onChange={() => { /* not wired */ }} /></Soon>
+        <Soon lang={lang}><Slider label={loc(lang, { ko: '초점거리', en: 'Focus dist.', ja: '焦点距離', zh: '对焦距离', es: 'Dist. de enfoque', ar: 'مسافة التركيز' })} value={0.6} min={0} max={10} step={0.1} onChange={() => { /* not wired */ }} /></Soon>
         <PropRow label={loc(lang, { ko: '구도', en: 'Composition', ja: '構図', zh: '构图', es: 'Composición', ar: 'التكوين' })}>
-          <Soon isKo={isKo}><PropSelect
+          <Soon lang={lang}><PropSelect
             value="hero"
             onChange={() => { /* not wired */ }}
             options={[
@@ -155,7 +166,7 @@ export function RenderRightPane({
 
       <PropSection title={loc(lang, { ko: '출력', en: 'Output', ja: '出力', zh: '输出', es: 'Salida', ar: 'الإخراج' })}>
         <PropRow label={loc(lang, { ko: '해상도', en: 'Resolution', ja: '解像度', zh: '分辨率', es: 'Resolución', ar: 'الدقة' })}>
-          <Soon isKo={isKo}><PropSelect
+          <Soon lang={lang}><PropSelect
             value="4k"
             onChange={() => { /* not wired */ }}
             options={[
@@ -169,7 +180,7 @@ export function RenderRightPane({
           <span className="mono" style={{ fontSize: 11, color: 'var(--nx-text-2)' }}>256 spp</span>
         </PropRow>
         <PropRow label={loc(lang, { ko: '포맷', en: 'Format', ja: 'フォーマット', zh: '格式', es: 'Formato', ar: 'الصيغة' })}>
-          <Soon isKo={isKo}><PropSelect
+          <Soon lang={lang}><PropSelect
             value="png16"
             onChange={() => { /* not wired */ }}
             options={[
@@ -207,7 +218,7 @@ export function RenderRightPane({
         <FeatureCatalogPanel
           route="render"
           license="pro"
-          dict={isKo ? RENDER_CATALOG_DICT_KO : RENDER_CATALOG_DICT_EN}
+          dict={renderCatalogDict(lang)}
           onRun={(featureId, entryFn) => {
              
             console.info(`[catalog] run ${featureId} via ${entryFn}()`);

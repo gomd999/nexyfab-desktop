@@ -1199,4 +1199,162 @@ describe("CAD v1 commands", () => {
       stdout.mockRestore();
     }
   });
+
+  it("fails closed on timeout and does not expose the request URL", async () => {
+    const savedKey = process.env.NEXYFAB_API_KEY;
+    const savedTimeout = process.env.NEXYFAB_CLI_TIMEOUT_MS;
+    process.env.NEXYFAB_API_KEY = "nf_live_timeout_secret";
+    process.env.NEXYFAB_CLI_TIMEOUT_MS = "25";
+    const stderr = vi.spyOn(process.stderr, "write").mockReturnValue(true);
+    const fetchSpy = vi.spyOn(globalThis, "fetch").mockImplementation(
+      (_url, init) =>
+        new Promise((_resolve, reject) => {
+          init?.signal?.addEventListener("abort", () =>
+            reject(new DOMException("aborted", "AbortError")),
+          );
+        }),
+    );
+    try {
+      expect(await run(["whoami"])).toBe(codes.network);
+      const output = stderr.mock.calls.map(([chunk]) => String(chunk)).join("");
+      expect(output).toContain("request timed out");
+      expect(output).not.toContain("nexyfab.com");
+      expect(output).not.toContain("timeout_secret");
+    } finally {
+      fetchSpy.mockRestore();
+      stderr.mockRestore();
+      if (savedKey === undefined) delete process.env.NEXYFAB_API_KEY;
+      else process.env.NEXYFAB_API_KEY = savedKey;
+      if (savedTimeout === undefined) delete process.env.NEXYFAB_CLI_TIMEOUT_MS;
+      else process.env.NEXYFAB_CLI_TIMEOUT_MS = savedTimeout;
+    }
+  });
+
+  it("uses redirect:error and sanitizes redirect/network failures", async () => {
+    const savedKey = process.env.NEXYFAB_API_KEY;
+    process.env.NEXYFAB_API_KEY = "nf_live_redirect_secret";
+    const stderr = vi.spyOn(process.stderr, "write").mockReturnValue(true);
+    const fetchSpy = vi.spyOn(globalThis, "fetch").mockRejectedValue(
+      new TypeError("redirected to https://internal.example/api?key=secret"),
+    );
+    try {
+      expect(await run(["whoami"])).toBe(codes.network);
+      expect(fetchSpy.mock.calls[0]?.[1]?.redirect).toBe("error");
+      const output = stderr.mock.calls.map(([chunk]) => String(chunk)).join("");
+      expect(output).toContain("network request failed");
+      expect(output).not.toContain("internal.example");
+      expect(output).not.toContain("key=secret");
+    } finally {
+      fetchSpy.mockRestore();
+      stderr.mockRestore();
+      if (savedKey === undefined) delete process.env.NEXYFAB_API_KEY;
+      else process.env.NEXYFAB_API_KEY = savedKey;
+    }
+  });
+
+  it("rejects declared and streaming responses over the cap", async () => {
+    const savedKey = process.env.NEXYFAB_API_KEY;
+    process.env.NEXYFAB_API_KEY = "nf_live_response_secret";
+    const stderr = vi.spyOn(process.stderr, "write").mockReturnValue(true);
+    const oversized = 8 * 1024 * 1024 + 1;
+    const fetchSpy = vi.spyOn(globalThis, "fetch")
+      .mockResolvedValueOnce(
+        new Response("{}", {
+          status: 200,
+          headers: { "content-length": String(oversized) },
+        }),
+      )
+      .mockResolvedValueOnce(
+        new Response(new Uint8Array(oversized), { status: 200 }),
+      );
+    try {
+      expect(await run(["whoami"])).toBe(codes.response);
+      expect(await run(["whoami"])).toBe(codes.response);
+      const output = stderr.mock.calls.map(([chunk]) => String(chunk)).join("");
+      expect(output).toContain("server response exceeds the local size limit");
+      expect(output).not.toContain("nexyfab.com");
+      expect(output).not.toContain("response_secret");
+    } finally {
+      fetchSpy.mockRestore();
+      stderr.mockRestore();
+      if (savedKey === undefined) delete process.env.NEXYFAB_API_KEY;
+      else process.env.NEXYFAB_API_KEY = savedKey;
+    }
+  });
+
+  it("rejects a successful HTTP response with malformed JSON", async () => {
+    const savedKey = process.env.NEXYFAB_API_KEY;
+    process.env.NEXYFAB_API_KEY = "nf_live_invalid_response_secret";
+    const stderr = vi.spyOn(process.stderr, "write").mockReturnValue(true);
+    const fetchSpy = vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response("{not-json", { status: 200 }));
+    try {
+      expect(await run(["whoami"])).toBe(codes.response);
+      const output = stderr.mock.calls.map(([chunk]) => String(chunk)).join("");
+      expect(output).toContain("server returned invalid JSON");
+      expect(output).not.toContain("invalid_response_secret");
+    } finally {
+      fetchSpy.mockRestore();
+      stderr.mockRestore();
+      if (savedKey === undefined) delete process.env.NEXYFAB_API_KEY;
+      else process.env.NEXYFAB_API_KEY = savedKey;
+    }
+  });
+
+  it("rejects a successful HTTP response containing invalid UTF-8", async () => {
+    const savedKey = process.env.NEXYFAB_API_KEY;
+    process.env.NEXYFAB_API_KEY = "nf_live_invalid_utf8_response_secret";
+    const stderr = vi.spyOn(process.stderr, "write").mockReturnValue(true);
+    const bytes = Buffer.concat([Buffer.from('{"keys":["'), Buffer.from([0xff]), Buffer.from('"]}')]);
+    const fetchSpy = vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response(bytes, { status: 200 }));
+    try {
+      expect(await run(["whoami"])).toBe(codes.response);
+      const output = stderr.mock.calls.map(([chunk]) => String(chunk)).join("");
+      expect(output).toContain("server returned invalid JSON");
+      expect(output).not.toContain("invalid_utf8_response_secret");
+    } finally {
+      fetchSpy.mockRestore();
+      stderr.mockRestore();
+      if (savedKey === undefined) delete process.env.NEXYFAB_API_KEY;
+      else process.env.NEXYFAB_API_KEY = savedKey;
+    }
+  });
+
+  it("rejects oversized, invalid UTF-8, and traversing inputs before fetch", async () => {
+    const fs = await import("node:fs");
+    const oversized = resolve(process.cwd(), "nexyfab-cli-oversized.json");
+    const invalidUtf8 = resolve(process.cwd(), "nexyfab-cli-invalid-utf8.json");
+    const invalidJson = resolve(process.cwd(), "nexyfab-cli-invalid-json.json");
+    fs.writeFileSync(oversized, Buffer.alloc(16 * 1024 * 1024 + 1, 0x20));
+    fs.writeFileSync(invalidUtf8, Buffer.from([0xff, 0xfe]));
+    fs.writeFileSync(invalidJson, "{not-json");
+    const stderr = vi.spyOn(process.stderr, "write").mockReturnValue(true);
+    const fetchSpy = vi.spyOn(globalThis, "fetch");
+    try {
+      expect(
+        await run(["topology", "reconcile", "--file", oversized]),
+      ).toBe(codes.usage);
+      expect(
+        await run(["topology", "reconcile", "--file", invalidUtf8]),
+      ).toBe(codes.usage);
+      expect(
+        await run(["topology", "reconcile", "--file", invalidJson]),
+      ).toBe(codes.usage);
+      expect(
+        await run(["topology", "reconcile", "--file", "../outside.json"]),
+      ).toBe(codes.usage);
+      expect(fetchSpy).not.toHaveBeenCalled();
+      const output = stderr.mock.calls.map(([chunk]) => String(chunk)).join("");
+      expect(output).toContain("exceeds the local size limit");
+      expect(output).toContain("not valid UTF-8");
+      expect(output).toContain("invalid JSON");
+      expect(output).toContain("path traversal is not allowed");
+      expect(output).not.toContain(oversized);
+    } finally {
+      if (fs.existsSync(oversized)) fs.unlinkSync(oversized);
+      if (fs.existsSync(invalidUtf8)) fs.unlinkSync(invalidUtf8);
+      if (fs.existsSync(invalidJson)) fs.unlinkSync(invalidJson);
+      fetchSpy.mockRestore();
+      stderr.mockRestore();
+    }
+  });
 });

@@ -1,0 +1,27 @@
+{
+  "schema": "nexyfab.mechanical-core-feature-local-runtime.v1",
+  "feature": "sketchExtrude",
+  "axis": "drawing",
+  "status": "PASS",
+  "executedAt": "2026-08-22T07:13:30.564Z",
+  "kernel": "OCCT HLRBRep via replicad drawProjection",
+  "views": {
+    "front": {
+      "visible": 3,
+      "hidden": 3,
+      "viewBox": "-2.000001 -11.000001 40.000001999999995 22.000002"
+    },
+    "top": {
+      "visible": 1,
+      "hidden": 1,
+      "viewBox": "-2.000001 -2.000001 40.000001999999995 26.000002000000002"
+    },
+    "right": {
+      "visible": 3,
+      "hidden": 3,
+      "viewBox": "-24.000001 -11.000001 26.000002000000002 22.000002"
+    }
+  },
+  "svgBytes": 2123,
+  "svgSha256": "015c724d672c2a2bb5c7414d774a4e01db37d28b72cf86d7326b20167952380a"
+}

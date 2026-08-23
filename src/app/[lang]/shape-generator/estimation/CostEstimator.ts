@@ -1,6 +1,7 @@
 // ─── Manufacturing Cost Estimation Engine ────────────────────────────────────
 import { getMaterialPreset, type MaterialPreset } from '../materials';
 import { loc } from '@/lib/i18n/loc';
+import { formatNumber } from '@/lib/i18n/format';
 import type { FlatPatternResult } from '../features/sheetMetal';
 
 /* ─── Types ─────────────────────────────────────────────────────────────────── */
@@ -57,8 +58,8 @@ function toCurrency(usd: number, c: CostCurrency): number {
   return c === 'KRW' ? Math.round(usd * USD_TO_KRW) : +usd.toFixed(2);
 }
 
-export function formatCost(value: number, currency: CostCurrency): string {
-  if (currency === 'KRW') return `₩${Math.round(value).toLocaleString('ko-KR')}`;
+export function formatCost(value: number, currency: CostCurrency, lang: string = 'ko'): string {
+  if (currency === 'KRW') return `₩${formatNumber(Math.round(value), lang) ?? '0'}`;
   return `$${value.toFixed(2)}`;
 }
 

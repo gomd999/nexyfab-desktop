@@ -263,13 +263,13 @@ function CellInput({ value, onChange, placeholder, mono, highlight, style }: Cel
 
 // ─── Main Component ───────────────────────────────────────────────────────────
 
-export default function ConfigTablePanel({ params, onApply, onClose, lang }: ConfigTablePanelProps) {
+export default function ConfigTablePanel({ params, onApply, onClose, lang: _lang }: ConfigTablePanelProps) {
   const pathname = usePathname();
   const seg = pathname?.split('/').filter(Boolean)[0] ?? 'en';
   const langMap: Record<string, keyof typeof dict> = {
     kr: 'ko', ko: 'ko', en: 'en', ja: 'ja', cn: 'zh', zh: 'zh', es: 'es', ar: 'ar',
   };
-  const t = dict[langMap[seg] ?? (!lang || lang === 'ko' ? 'ko' : 'en')];
+  const t = dict[langMap[seg] ?? 'en'];
 
   // ─── State ────────────────────────────────────────────────────────────────
 

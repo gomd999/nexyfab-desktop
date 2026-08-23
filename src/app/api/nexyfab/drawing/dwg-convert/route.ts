@@ -22,6 +22,9 @@ import { getTrustedClientIp } from '@/lib/client-ip';
 import { readDwgToDxf, type DwgConvertStats } from '@/lib/brep-bridge/dwgImport';
 import { dxfToIr2d, roundTripVerify2d } from '@/lib/cad-ir/ingestDxf2d';
 import { recordUsageEvent } from '@/lib/plan-guard';
+import { boundedJsonError, readBoundedJson } from '@/lib/boundedJsonBody';
+
+const MAX_BODY_BYTES = 86 * 1024 * 1024;
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -54,7 +57,10 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   if (!rl.allowed) return NextResponse.json({ ok: false, error: '요청이 너무 많습니다.' }, { status: 429 });
 
   let body: { dwgBase64?: string };
-  try { body = await req.json(); } catch { return NextResponse.json({ ok: false, error: 'invalid json' }, { status: 400 }); }
+  try { body = await readBoundedJson(req, MAX_BODY_BYTES); } catch (error) {
+    if (boundedJsonError(error)?.code === 'PAYLOAD_TOO_LARGE') return NextResponse.json({ ok: false, error: 'DWG 요청 본문이 너무 큽니다.' }, { status: 413 });
+    return NextResponse.json({ ok: false, error: 'invalid json' }, { status: 400 });
+  }
   const b64 = typeof body.dwgBase64 === 'string' ? body.dwgBase64 : '';
   if (!b64) return NextResponse.json({ ok: false, error: 'dwgBase64 가 필요합니다.' }, { status: 400 });
   if (b64.length > 84_000_000) return NextResponse.json({ ok: false, error: 'DWG 60MB 초과(웹 업로드 예산) — 외부 참조 분리 또는 DXF 로 저장 후 업로드하세요.' }, { status: 400 });

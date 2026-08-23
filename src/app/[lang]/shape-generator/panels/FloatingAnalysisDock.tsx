@@ -33,6 +33,7 @@ function floatWrapRight(inset: number): React.CSSProperties {
 export type FloatingDockPanelId = 'motion' | 'modal' | 'buckling' | 'tol' | 'surf' | 'mfgpipe';
 
 interface FloatingAnalysisDockProps {
+  showTopologyMap?: boolean;
   lang: string;
   /** Per-panel stack inset (SCAD base + slot index). Fallback: dockInsetRight. */
   dockInsetForPanel?: (id: FloatingDockPanelId) => number;
@@ -74,6 +75,7 @@ interface FloatingAnalysisDockProps {
 }
 
 export default function FloatingAnalysisDock({
+  showTopologyMap = true,
   lang,
   dockInsetForPanel,
   dockInsetRight = 0,
@@ -94,7 +96,7 @@ export default function FloatingAnalysisDock({
     dockInsetForPanel?.(id) ?? dockInsetRight;
   return (
     <>
-      {topoMap.map.generation > 0 && (
+      {showTopologyMap && topoMap.map.generation > 0 && (
         <TopoMapPanel topoMap={topoMap} lang={lang} />
       )}
 

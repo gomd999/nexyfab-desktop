@@ -1,0 +1,71 @@
+{
+  "schema": "nexyfab.windows-agent-sidecar-readiness.v1",
+  "generatedAt": "2026-08-22T23:17:40.556Z",
+  "status": "HOLD",
+  "releaseEligible": false,
+  "host": {
+    "nodeVersion": "v25.2.1",
+    "platform": "win32",
+    "arch": "x64",
+    "targetTriple": "x86_64-pc-windows-msvc"
+  },
+  "toolchain": {
+    "nativeBuildSea": false,
+    "legacySeaConfig": true,
+    "postjectInstalled": false,
+    "signtoolInstalled": false
+  },
+  "evidence": {
+    "sourceBundleSmoke": "PASS",
+    "sourceBundleArtifact": {
+      "path": ".tmp/agent-sidecar/agent-gateway.cjs",
+      "bytes": 833490,
+      "sha256": "9a209aabd5dd4cf602443e09e99f7b6fde73cb510cb125ac19e219a342d8e0bc"
+    },
+    "unsignedSeaCreated": "NOT_OBSERVED",
+    "sha256ManifestAndTamperCheck": "NOT_RUN_OR_FAIL",
+    "seaMcpCliParitySmoke": "NOT_RUN",
+    "authenticodeSignature": "NOT_RUN",
+    "installerExecution": "NOT_RUN"
+  },
+  "expectedArtifacts": {
+    "binary": "src-tauri/binaries/nexyfab-agent-gateway-x86_64-pc-windows-msvc.exe",
+    "sha256Manifest": "src-tauri/binaries/nexyfab-agent-gateway-x86_64-pc-windows-msvc.exe.sha256.json"
+  },
+  "blockers": [
+    "sea_injection_toolchain_missing",
+    "unsigned_windows_sea_missing",
+    "sha256_manifest_missing",
+    "sea_mcp_cli_parity_smoke_not_run",
+    "authenticode_signature_missing",
+    "installer_execution_evidence_missing"
+  ],
+  "sourceBindings": [
+    {
+      "path": "scripts/build-agent-sidecar.mjs",
+      "bytes": 10112,
+      "sha256": "c3c778dfe398f8bb7bfde8bc932eba351d9ee1dcc570c3726902e60eedfe91ca"
+    },
+    {
+      "path": "scripts/agent-sidecar/windows-sea-readiness.mjs",
+      "bytes": 11949,
+      "sha256": "c185074834a7d31abe94c451f7e20f3e7906abd78a435fd0c49923bb7018fddc"
+    },
+    {
+      "path": "scripts/drawing-to-3d/agent-sidecar-entry.mjs",
+      "bytes": 307,
+      "sha256": "e315a9d4fb1064f89c3ac518774239822a5a4f92402aa178de2f9ce35ae075c2"
+    },
+    {
+      "path": "scripts/drawing-to-3d/installer-core-agent-server.mjs",
+      "bytes": 18511,
+      "sha256": "89061fc4aaa5f7d6689a2a95b0dbe8db2f69980045fa1952a89167f4679b02e2"
+    },
+    {
+      "path": "scripts/drawing-to-3d/capability-surface-manifest.mjs",
+      "bytes": 3031,
+      "sha256": "3e4e80b3815a306132bbf2c37ca750fc87d6c94cc286ea4aa7a5d55a697c90fd"
+    }
+  ],
+  "receiptSha256": "d0d756e6c48771122e7f183f54d6774764087f4f494602baa0a9c84037272779"
+}

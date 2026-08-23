@@ -11,7 +11,7 @@
  */
 
 import { useMemo, useState } from 'react';
-import { isKorean } from '@/lib/i18n/normalize';
+import { designLoc, designPair } from './designI18n';
 import { CALC_CATALOG, type CalcSpec, type CalcParam } from '@/app/api/eng-chat/calcCatalog';
 
 type Json = string | number | boolean | null | Json[] | { [k: string]: Json };
@@ -133,7 +133,7 @@ ${result.attribution ? `<br/>${esc(result.attribution)}` : ''}
 }
 
 export default function CalcStudioPanel({ lang }: { lang: string }) {
-  const ko = isKorean(lang);
+  const t = (copy: Parameters<typeof designLoc>[1]) => designLoc(lang, copy);
   const groups = useMemo(() => {
     const g = new Map<string, CalcSpec[]>();
     for (const c of CALC_CATALOG) {
@@ -176,13 +176,13 @@ export default function CalcStudioPanel({ lang }: { lang: string }) {
         if (raw === undefined || raw.trim() === '') continue;
         if (isNumericParam(p)) {
           const n = Number(raw);
-          if (Number.isNaN(n)) throw new Error(`${k}: ${ko ? '숫자 필요' : 'number required'}`);
+          if (Number.isNaN(n)) throw new Error(`${k}: ${designPair(lang, '숫자 필요', 'number required')}`);
           input[k] = n;
         } else if (p.type === 'boolean') input[k] = raw === 'true';
         else if (p.enum) input[k] = raw;
         else if (p.type === 'string') input[k] = raw;
         else {
-          try { input[k] = JSON.parse(raw) as Json; } catch { throw new Error(`${k}: ${ko ? 'JSON 형식 오류' : 'invalid JSON'}`); }
+          try { input[k] = JSON.parse(raw) as Json; } catch { throw new Error(`${k}: ${designPair(lang, 'JSON 형식 오류', 'invalid JSON')}`); }
         }
       }
       const res = await fetch('/api/nexyfab/drawing/calc/', {
@@ -217,7 +217,7 @@ export default function CalcStudioPanel({ lang }: { lang: string }) {
     const t = (e.target as HTMLElement).closest('[data-param]');
     const key = t?.getAttribute('data-param');
     if (!key) return;
-    const nv = window.prompt((ko ? '새 값(mm) — ' : 'New value (mm) — ') + key, reb[key] ?? '');
+    const nv = window.prompt(designPair(lang, '새 값(mm) — ', 'New value (mm) — ') + key, reb[key] ?? '');
     if (nv === null || nv.trim() === '' || !Number.isFinite(Number(nv))) return;
     const next = { ...reb, [key]: nv };
     setReb(next);
@@ -278,7 +278,7 @@ export default function CalcStudioPanel({ lang }: { lang: string }) {
         body: JSON.stringify({ name: (project || '계산 케이스') + ' — calc-cases', domain: 'calc-cases', snapshot: { cases: cases.map((c) => ({ calcId: c.calcId, member: c.member, inputUsed: c.inputUsed, result: c.result })) } }),
       });
       const j = (await res.json()) as { ok: boolean; error?: string };
-      setSaveMsg(j.ok ? (ko ? '서버 저장 완료' : 'Saved') : res.status === 401 ? (ko ? '로그인 필요' : 'Login required') : (j.error ?? 'error'));
+      setSaveMsg(j.ok ? designPair(lang, '서버 저장 완료', 'Saved') : res.status === 401 ? designPair(lang, '로그인 필요', 'Login required') : (j.error ?? 'error'));
     } catch (e) { setSaveMsg(e instanceof Error ? e.message : String(e)); }
     setTimeout(() => setSaveMsg(null), 4000);
   };
@@ -299,13 +299,13 @@ export default function CalcStudioPanel({ lang }: { lang: string }) {
   return (
     <section className="rounded-2xl border border-slate-200 dark:border-slate-700 p-4 space-y-3">
       <div className="flex items-center justify-between flex-wrap gap-2">
-        <h3 className="font-bold text-sm">{ko ? `계산기 스튜디오 — 전 분야 ${CALC_CATALOG.length}종` : `Calculator Studio — ${CALC_CATALOG.length} engines`}</h3>
-        <span className="text-[11px] text-slate-500">{ko ? '스키마 자동 폼 · 결과는 엔진 원본 그대로(비법정 참고)' : 'Auto-form from schema · raw engine output (non-statutory)'}</span>
+        <h3 className="font-bold text-sm">{t({ ko: `계산기 스튜디오 — 전 분야 ${CALC_CATALOG.length}종`, en: `Calculator Studio — ${CALC_CATALOG.length} engines`, ja: `計算機スタジオ — ${CALC_CATALOG.length}エンジン`, zh: `计算器工作室 — ${CALC_CATALOG.length} 个引擎`, es: `Estudio de calculadoras — ${CALC_CATALOG.length} motores`, ar: `استوديو الحاسبات — ${CALC_CATALOG.length} محركاً` })}</h3>
+        <span className="text-[11px] text-slate-500">{t({ ko: '스키마 자동 폼 · 결과는 엔진 원본 그대로(비법정 참고)', en: 'Auto-form from schema · raw engine output (non-statutory)', ja: 'スキーマ自動フォーム · エンジンの生出力（法定外参考）', zh: '根据模式自动生成表单 · 引擎原始输出（非法定意见）', es: 'Formulario automático · salida cruda del motor (no estatutaria)', ar: 'نموذج تلقائي من المخطط · ناتج المحرك الخام (غير قانوني)' })}</span>
       </div>
       <div className="flex flex-wrap gap-2">
         {Array.from(groups.entries()).map(([dom, list]) => (
           <details key={dom} className="rounded-lg border border-slate-200 dark:border-slate-700 px-2 py-1" open={list.some((c) => c.id === calcId)}>
-            <summary className="text-xs font-semibold cursor-pointer">{(DOMAIN_LABEL[dom]?.[ko ? 0 : 1]) ?? dom} ({list.length})</summary>
+            <summary className="text-xs font-semibold cursor-pointer">{DOMAIN_LABEL[dom] ? designPair(lang, DOMAIN_LABEL[dom][0], DOMAIN_LABEL[dom][1]) : dom} ({list.length})</summary>
             <div className="flex flex-wrap gap-1 py-1 max-w-md">
               {list.map((c) => (
                 <button key={c.id} onClick={() => pick(c.id)}
@@ -341,7 +341,7 @@ export default function CalcStudioPanel({ lang }: { lang: string }) {
                     </select>
                   ) : isObj ? (
                     <textarea value={vals[k] ?? ''} onChange={(e) => setVals((s) => ({ ...s, [k]: e.target.value }))}
-                      placeholder={ko ? 'JSON 입력 (설명 참조)' : 'JSON (see description)'} rows={2}
+                      placeholder={designPair(lang, 'JSON 입력 (설명 참조)', 'JSON (see description)')} rows={2}
                       className="rounded border border-slate-300 dark:border-slate-600 bg-transparent px-2 py-1 font-mono text-[11px]" />
                   ) : (
                     <input value={vals[k] ?? ''} onChange={(e) => setVals((s) => ({ ...s, [k]: e.target.value }))}
@@ -356,36 +356,36 @@ export default function CalcStudioPanel({ lang }: { lang: string }) {
           <div className="flex items-center gap-2 flex-wrap">
             <button onClick={() => run()} disabled={loading}
               className="text-xs font-semibold px-4 py-1.5 rounded-lg bg-slate-900 text-white dark:bg-white dark:text-slate-900 disabled:opacity-50">
-              {loading ? (ko ? '계산 중…' : 'Running…') : (ko ? '계산 실행' : 'Run')}
+              {loading ? designPair(lang, '계산 중…', 'Running…') : designPair(lang, '계산 실행', 'Run')}
             </button>
             {result && (
               <>
-                <input value={project} onChange={(e) => setProject(e.target.value)} placeholder={ko ? '프로젝트명(계산서)' : 'Project (sheet)'}
+                <input value={project} onChange={(e) => setProject(e.target.value)} placeholder={designPair(lang, '프로젝트명(계산서)', 'Project (sheet)')}
                   className="text-xs rounded border border-slate-300 dark:border-slate-600 bg-transparent px-2 py-1 w-36" />
-                <input value={member} onChange={(e) => setMember(e.target.value)} placeholder={ko ? '부재 표기 예: G1' : 'Member e.g. G1'}
+                <input value={member} onChange={(e) => setMember(e.target.value)} placeholder={designPair(lang, '부재 표기 예: G1', 'Member e.g. G1')}
                   className="text-xs rounded border border-slate-300 dark:border-slate-600 bg-transparent px-2 py-1 w-28" />
-                <input value={company} onChange={(e) => setCompany(e.target.value)} placeholder={ko ? '회사명(표지)' : 'Company'}
+                <input value={company} onChange={(e) => setCompany(e.target.value)} placeholder={designPair(lang, '회사명(표지)', 'Company')}
                   className="text-xs rounded border border-slate-300 dark:border-slate-600 bg-transparent px-2 py-1 w-28" />
-                <input value={engineer} onChange={(e) => setEngineer(e.target.value)} placeholder={ko ? '검토자(서명란)' : 'Engineer'}
+                <input value={engineer} onChange={(e) => setEngineer(e.target.value)} placeholder={designPair(lang, '검토자(서명란)', 'Engineer')}
                   className="text-xs rounded border border-slate-300 dark:border-slate-600 bg-transparent px-2 py-1 w-24" />
                 <label className="text-[11px] flex items-center gap-1"><input type="checkbox" checked={sheetEn} onChange={(e) => setSheetEn(e.target.checked)} />EN</label>
                 <button onClick={printSheet}
                   className="text-xs font-semibold px-3 py-1.5 rounded-lg border border-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800">
-                  🖨 {ko ? '계산서 출력(1장 양식)' : 'Print calc sheet'}
+                  🖨 {designPair(lang, '계산서 출력(1장 양식)', 'Print calc sheet')}
                 </button>
                 <button onClick={addCase}
                   className="text-xs px-3 py-1.5 rounded-lg border border-slate-300 dark:border-slate-600 hover:bg-slate-100 dark:hover:bg-slate-800">
-                  ＋ {ko ? '케이스 저장' : 'Save case'}
+                  ＋ {designPair(lang, '케이스 저장', 'Save case')}
                 </button>
               </>
             )}
             <span className="mx-1 text-slate-300">|</span>
-            <button onClick={savePreset} className="text-[11px] px-2 py-1 rounded border border-slate-300 dark:border-slate-600 hover:bg-slate-100 dark:hover:bg-slate-800">{ko ? '입력 저장' : 'Save inputs'}</button>
-            <button onClick={loadPreset} className="text-[11px] px-2 py-1 rounded border border-slate-300 dark:border-slate-600 hover:bg-slate-100 dark:hover:bg-slate-800">{ko ? '입력 불러오기' : 'Load inputs'}</button>
+            <button onClick={savePreset} className="text-[11px] px-2 py-1 rounded border border-slate-300 dark:border-slate-600 hover:bg-slate-100 dark:hover:bg-slate-800">{designPair(lang, '입력 저장', 'Save inputs')}</button>
+            <button onClick={loadPreset} className="text-[11px] px-2 py-1 rounded border border-slate-300 dark:border-slate-600 hover:bg-slate-100 dark:hover:bg-slate-800">{designPair(lang, '입력 불러오기', 'Load inputs')}</button>
           </div>
           {cases.length > 0 && (
             <div className="flex items-center gap-2 flex-wrap rounded-lg border border-slate-200 dark:border-slate-700 p-2">
-              <span className="text-[11px] font-semibold">{ko ? `케이스 ${cases.length}건` : `${cases.length} cases`}</span>
+              <span className="text-[11px] font-semibold">{designPair(lang, `케이스 ${cases.length}건`, `${cases.length} cases`)}</span>
               {cases.map((c, i) => (
                 <span key={i} className={`text-[10px] px-2 py-0.5 rounded-full border ${c.result.verdict === 'PASS' ? 'border-green-500 text-green-700' : c.result.verdict === 'FAIL' ? 'border-rose-500 text-rose-700' : 'border-slate-400 text-slate-600'}`}>
                   {c.member}·{c.result.verdict ?? 'INFO'}
@@ -393,13 +393,13 @@ export default function CalcStudioPanel({ lang }: { lang: string }) {
                 </span>
               ))}
               <button onClick={printAllCases} className="text-[11px] font-semibold px-3 py-1 rounded-lg border border-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800">
-                🖨 {ko ? '일괄 계산서(부재별 1장)' : 'Print all sheets'}
+                🖨 {designPair(lang, '일괄 계산서(부재별 1장)', 'Print all sheets')}
               </button>
               <button onClick={exportCsv} className="text-[11px] px-3 py-1 rounded-lg border border-slate-300 dark:border-slate-600 hover:bg-slate-100 dark:hover:bg-slate-800">
                 ⬇ CSV
               </button>
               <button onClick={saveCasesServer} className="text-[11px] px-3 py-1 rounded-lg border border-slate-300 dark:border-slate-600 hover:bg-slate-100 dark:hover:bg-slate-800">
-                ☁ {ko ? '서버 저장' : 'Save to server'}
+                ☁ {designPair(lang, '서버 저장', 'Save to server')}
               </button>
               {saveMsg && <span className="text-[10px] text-slate-500">{saveMsg}</span>}
             </div>
@@ -420,7 +420,7 @@ export default function CalcStudioPanel({ lang }: { lang: string }) {
               }}
               dangerouslySetInnerHTML={{ __html: resultSvg }} />
           )}
-          {result && resultSvg && <p className="text-[10px] text-slate-500 -mt-1">{ko ? '파란 치수 클릭 = 값 수정 → 자동 재계산·도면 재생성 (입력 폼과 동일 단위 — 도면 라벨은 mm 표기)' : 'Click blue dims to edit → auto rerun (form units; labels in mm)'}</p>}
+          {result && resultSvg && <p className="text-[10px] text-slate-500 -mt-1">{designPair(lang, '파란 치수 클릭 = 값 수정 → 자동 재계산·도면 재생성 (입력 폼과 동일 단위 — 도면 라벨은 mm 표기)', 'Click blue dims to edit → auto rerun (form units; labels in mm)')}</p>}
           {result && (
             <div className="space-y-2 rounded-xl border border-slate-200 dark:border-slate-700 p-3">
               {verdict && (
@@ -428,26 +428,26 @@ export default function CalcStudioPanel({ lang }: { lang: string }) {
               )}
               {result.checks !== undefined && <ObjTable data={result.checks as Json} />}
               {result.intermediate !== undefined && (
-                <details><summary className="text-[11px] text-slate-500 cursor-pointer">{ko ? '중간값' : 'Intermediates'}</summary><ObjTable data={result.intermediate as Json} /></details>
+                <details><summary className="text-[11px] text-slate-500 cursor-pointer">{designPair(lang, '중간값', 'Intermediates')}</summary><ObjTable data={result.intermediate as Json} /></details>
               )}
               {Array.isArray(result.notes) && <ul className="text-[11px] text-slate-600 dark:text-slate-300 list-disc pl-4 space-y-0.5">{result.notes.map((n, i) => <li key={i}>{n}</li>)}</ul>}
               {Array.isArray(result.refs) && <p className="text-[10px] text-slate-500">{result.refs.join(' · ')}</p>}
-              {result.status && <p className="text-[10px] text-slate-400">{ko ? '검증 상태: ' : 'Verification: '}{result.status}</p>}
+              {result.status && <p className="text-[10px] text-slate-400">{designPair(lang, '검증 상태: ', 'Verification: ')}{result.status}</p>}
               {result.disclaimer && <p className="text-[10px] text-amber-700 dark:text-amber-400">{result.disclaimer}</p>}
             </div>
           )}
           {showRebar && (
             <div className="rounded-xl border border-dashed border-slate-300 dark:border-slate-600 p-3 space-y-2">
-              <p className="text-xs font-semibold">{ko ? '배근 전개도(입면) — 실시도면 소스' : 'Rebar elevation — drawing source'}</p>
+              <p className="text-xs font-semibold">{designPair(lang, '배근 전개도(입면) — 실시도면 소스', 'Rebar elevation — drawing source')}</p>
               <div className="flex flex-wrap gap-2 text-[11px]">
-                {([['L_mm', ko ? '경간/층고' : 'Span/Story'], ['sEnd_mm', ko ? '단부간격' : 'End spacing'], ['sMid_mm', ko ? '중앙간격' : 'Mid spacing'], ['topBars', ko ? '상부근' : 'Top bars'], ['botBars', ko ? '하부근' : 'Bottom bars'], ['stirrup', ko ? '늑근' : 'Stirrup']] as const).map(([k, label]) => (
+                {([['L_mm', designPair(lang, '경간/층고', 'Span/Story')], ['sEnd_mm', designPair(lang, '단부간격', 'End spacing')], ['sMid_mm', designPair(lang, '중앙간격', 'Mid spacing')], ['topBars', designPair(lang, '상부근', 'Top bars')], ['botBars', designPair(lang, '하부근', 'Bottom bars')], ['stirrup', designPair(lang, '늑근', 'Stirrup')]] as const).map(([k, label]) => (
                   <label key={k} className="flex flex-col">
                     <span className="text-slate-500">{label}</span>
                     <input value={reb[k]} onChange={(e) => setReb((s) => ({ ...s, [k]: e.target.value }))}
                       className="rounded border border-slate-300 dark:border-slate-600 bg-transparent px-2 py-0.5 w-24" />
                   </label>
                 ))}
-                <button onClick={() => drawRebar()} className="self-end text-xs font-semibold px-3 py-1 rounded-lg border border-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800">{ko ? '전개도 생성' : 'Draw'}</button>
+                <button onClick={() => drawRebar()} className="self-end text-xs font-semibold px-3 py-1 rounded-lg border border-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800">{designPair(lang, '전개도 생성', 'Draw')}</button>
               </div>
               {rebSvg && <div className="bg-white rounded-lg p-2 overflow-x-auto" onClick={onRebDimClick} dangerouslySetInnerHTML={{ __html: rebSvg }} />}
               {rebSvg && (
@@ -462,7 +462,7 @@ export default function CalcStudioPanel({ lang }: { lang: string }) {
                   }
                 }} className="text-[11px] px-3 py-1 rounded-lg border border-slate-300 dark:border-slate-600 hover:bg-slate-100 dark:hover:bg-slate-800">⬇ DXF</button>
               )}
-              {rebSvg && <p className="text-[10px] text-slate-500">{ko ? '정착·이음 상세는 KDS 14 20 52 별도 설계 — 도면 소스(판정 없음). 계산서 출력에 자동 포함. DXF=CAD 반입용(개략 축척 명시).' : 'Anchorage/splice per KDS 14 20 52 separately — drawing source only, included in printed sheet. DXF for CAD import.'}</p>}
+              {rebSvg && <p className="text-[10px] text-slate-500">{designPair(lang, '정착·이음 상세는 KDS 14 20 52 별도 설계 — 도면 소스(판정 없음). 계산서 출력에 자동 포함. DXF=CAD 반입용(개략 축척 명시).', 'Anchorage/splice per KDS 14 20 52 separately — drawing source only, included in printed sheet. DXF for CAD import.')}</p>}
             </div>
           )}
         </div>

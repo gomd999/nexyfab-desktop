@@ -100,7 +100,12 @@ describe("advanceGenerationRun", () => {
     expect(result.state.stages.topology.status).toBe("passed");
     expect(result.state.stages.assembly_solve.status).toBe("passed");
     expect(result.state.stages.motion.status).toBe("pending");
+    expect(result.commercialReleaseReady).toBe(false);
     expect(result.state.stages.kernel.checkpointHash).toHaveLength(64);
+    expect(result.state.checkpointOutputs?.kernel).toEqual(expect.arrayContaining([expect.objectContaining({
+      partId: 'p1', source: 'occt-exact', exactCad: expect.objectContaining({ kernel: 'OCCT', valid: true, stepSha256: expect.stringMatching(/^[a-f0-9]{64}$/) }),
+    })]));
+    expect(result.state.checkpointOutputs?.topology).toEqual(expect.arrayContaining([expect.objectContaining({ partId: 'p1', exactStepSha256: expect.stringMatching(/^[a-f0-9]{64}$/) })]));
     expect(verifier).toHaveBeenCalledOnce();
   });
 

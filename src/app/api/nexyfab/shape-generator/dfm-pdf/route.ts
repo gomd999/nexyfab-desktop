@@ -16,6 +16,9 @@ import { getAuthUser } from '@/lib/auth-middleware';
 import { checkPlan } from '@/lib/plan-guard';
 import fs from 'fs';
 import path from 'path';
+import { boundedJsonError, readBoundedJson } from '@/lib/boundedJsonBody';
+
+const MAX_BODY_BYTES = 2 * 1024 * 1024;
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -83,8 +86,9 @@ export async function POST(req: NextRequest) {
 
   let body: unknown;
   try {
-    body = await req.json();
-  } catch {
+    body = await readBoundedJson<unknown>(req, MAX_BODY_BYTES);
+  } catch (error) {
+    if (boundedJsonError(error)?.code === 'PAYLOAD_TOO_LARGE') return NextResponse.json({ error: 'request too large' }, { status: 413 });
     return NextResponse.json({ error: 'invalid JSON' }, { status: 400 });
   }
   if (!validateBody(body)) {

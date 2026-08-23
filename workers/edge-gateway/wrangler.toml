@@ -1,0 +1,15 @@
+name = "nexyfab-edge-gateway"
+main = "src/index.ts"
+compatibility_date = "2026-08-13"
+compatibility_flags = ["nodejs_compat"]
+
+[observability]
+enabled = true
+
+[vars]
+ENVIRONMENT = "staging-disabled"
+BUILD_ID = "NOT_DEPLOYED"
+
+# CORE_API_ORIGIN, STUDIO_ORIGIN and EDGE_HANDLER_ORIGIN are deliberately not
+# committed. Bind them per environment in Cloudflare after the staging gate.
+# GATEWAY_SHARED_SECRET must be configured as a Wrangler secret.

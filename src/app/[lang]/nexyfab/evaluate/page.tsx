@@ -7,6 +7,9 @@
 
 import { use, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { loc } from '@/lib/i18n/loc';
+import { createCommercialLocalizer } from '@/lib/i18n/commercialLocalizer';
+import { formatDate, formatNumber } from '@/lib/i18n/format';
+import { toIsoLang } from '@/lib/i18n/normalize';
 import dynamic from 'next/dynamic';
 import type * as THREE from 'three';
 import { MATERIAL_PRESETS } from '@/app/[lang]/shape-generator/materials';
@@ -134,8 +137,8 @@ const PROCESSES = [
 
 export default function EvaluatePage({ params }: { params: Promise<{ lang: string }> }) {
   const { lang } = use(params);
-  const ko = lang === 'ko' || lang === 'kr';
-  const T = (k: string, e: string) => (ko ? k : e);
+  const locale = toIsoLang(lang);
+  const T = createCommercialLocalizer(locale);
 
   const [filename, setFilename] = useState<string | null>(null);
   const [metrics, setMetrics] = useState<Metrics | null>(null);
@@ -408,7 +411,7 @@ export default function EvaluatePage({ params }: { params: Promise<{ lang: strin
               <Metric label={T('질량', 'Mass')} value={metrics.mass_g != null ? `${metrics.mass_g} g` : '—'} />
               <Metric label={T('최소 치수', 'Min dim')} value={`${metrics.smallest_dim_mm} mm`} />
               <Metric label={T('종횡비', 'Aspect')} value={`${metrics.aspect_ratio}×`} />
-              <Metric label={T('삼각형', 'Triangles')} value={metrics.triangle_count.toLocaleString()} />
+              <Metric label={T('삼각형', 'Triangles')} value={formatNumber(metrics.triangle_count, locale) ?? ''} />
             </div>
             {meshQuality && !meshQuality.reliable && (
               <div className="mt-3 text-xs rounded-lg bg-amber-500/10 border border-amber-500/30 text-amber-300/90 px-3 py-2">
@@ -514,15 +517,15 @@ export default function EvaluatePage({ params }: { params: Promise<{ lang: strin
           {costEstimate && (
             <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/[0.06] p-5">
               <div className="text-sm font-bold mb-1">📟 {T('예상 견적 범위', 'Estimated price range')} <span className="text-[11px] font-normal opacity-60">({costEstimate.region.toUpperCase()} · {costEstimate.calibrated ? T('실견적 보정', 'calibrated') : T('개략치', 'seed rates')})</span></div>
-              <div className="text-lg font-bold">{costEstimate.perPart.min.toLocaleString()}~{costEstimate.perPart.max.toLocaleString()}{T('원', ' KRW')} <span className="text-xs font-normal opacity-70">/{T('개', 'ea')}</span></div>
-              <div className="text-sm opacity-80">{T('총', 'Total')} {costEstimate.total.min.toLocaleString()}~{costEstimate.total.max.toLocaleString()}{T('원', ' KRW')}</div>
+              <div className="text-lg font-bold">{formatNumber(costEstimate.perPart.min, locale)}~{formatNumber(costEstimate.perPart.max, locale)}{T('원', ' KRW')} <span className="text-xs font-normal opacity-70">/{T('개', 'ea')}</span></div>
+              <div className="text-sm opacity-80">{T('총', 'Total')} {formatNumber(costEstimate.total.min, locale)}~{formatNumber(costEstimate.total.max, locale)}{T('원', ' KRW')}</div>
               {costEstimate.drivers.length > 0 && <div className="text-xs opacity-60 mt-1.5">{costEstimate.drivers.join(' · ')}</div>}
               {costCurve && costCurve.length > 0 && (
                 <div className="mt-2 pt-2 border-t border-white/10">
                   <div className="text-[11px] opacity-60 mb-1">{T('수량별 개당 단가', 'Per-part by quantity')}</div>
                   <div className="flex flex-wrap gap-x-3 gap-y-1 text-xs">
                     {costCurve.map(p => (
-                      <span key={p.quantity}><span className="opacity-55">{p.quantity.toLocaleString()}{T('개', '')}</span> {p.perPartMid.toLocaleString()}{T('원', '')}</span>
+                      <span key={p.quantity}><span className="opacity-55">{formatNumber(p.quantity, locale)}{T('개', '')}</span> {formatNumber(p.perPartMid, locale)}{T('원', '')}</span>
                     ))}
                   </div>
                 </div>
@@ -533,7 +536,7 @@ export default function EvaluatePage({ params }: { params: Promise<{ lang: strin
 
           {costComparison && costComparison.options.length > 0 && (
             <div className="rounded-xl border border-white/10 bg-white/[0.03] p-5">
-              <div className="text-sm font-bold mb-2">🔀 {T('공정·지역 비교견적', 'Process × region comparison')} <span className="text-[11px] font-normal opacity-60">({T('수량', 'qty')} {costComparison.quantity.toLocaleString()})</span></div>
+              <div className="text-sm font-bold mb-2">🔀 {T('공정·지역 비교견적', 'Process × region comparison')} <span className="text-[11px] font-normal opacity-60">({T('수량', 'qty')} {formatNumber(costComparison.quantity, locale)})</span></div>
               <table className="w-full text-xs">
                 <thead><tr className="opacity-60 border-b border-white/10">
                   <th className="text-left py-1 font-medium">{T('공정', 'Process')}</th>
@@ -550,7 +553,7 @@ export default function EvaluatePage({ params }: { params: Promise<{ lang: strin
                       <tr key={i} className={best ? 'text-emerald-400 font-semibold' : ''}>
                         <td className="py-1">{label}{best ? ' ★' : ''}</td>
                         <td>{o.region.toUpperCase()}</td>
-                        <td className="text-right">{o.perPart.min.toLocaleString()}~{o.perPart.max.toLocaleString()}</td>
+                        <td className="text-right">{formatNumber(o.perPart.min, locale)}~{formatNumber(o.perPart.max, locale)}</td>
                         <td className="text-right opacity-70">{o.leadDays ? `${o.leadDays.min}~${o.leadDays.max}` : '-'}</td>
                         <td className="text-right whitespace-nowrap">
                           <a href={quoteUrl(`&process=${o.process}&region=${o.region}`)} className="text-blue-400 hover:underline mr-2" title={T('이 조건으로 견적요청', 'Request a quote')}>💵</a>
@@ -598,7 +601,7 @@ export default function EvaluatePage({ params }: { params: Promise<{ lang: strin
                 className="text-left rounded-lg border border-white/10 bg-white/[0.03] hover:bg-white/[0.06] px-3 py-2">
                 <div className="text-sm font-medium truncate">{h.filename}</div>
                 <div className="text-xs opacity-60 flex gap-2 mt-0.5 flex-wrap">
-                  <span>{new Date(h.created_at).toLocaleDateString(ko ? 'ko-KR' : 'en-US')}</span>
+                  <span>{formatDate(h.created_at, locale) ?? ''}</span>
                   {h.material ? <span>· {h.material}</span> : null}
                   {h.report?.scores ? <span>· {T('제조성', 'Mfg')} {h.report.scores.manufacturability}</span> : null}
                 </div>

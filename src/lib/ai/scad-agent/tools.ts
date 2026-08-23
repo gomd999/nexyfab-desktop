@@ -49,6 +49,7 @@ import type {
   AddMateArgs,
   BrepToDrawingArgs,
 } from './types';
+import type { ProviderName } from '../types';
 import { applyUnifiedDiff, DiffApplyError } from './diff';
 import { intentToScad, type IntentInput } from '../../openscad-render/intentToScad';
 import { extractDimensions, reconcileIntent } from '../dimensionExtractor';
@@ -234,6 +235,11 @@ export interface ToolHostAdapters {
   render: RenderAdapter;
   geometry: GeometryAdapter;
   dfm: DfmAdapter;
+  /** Selected execution model, reused by tools that make nested AI calls. */
+  aiExecution?: {
+    selectedModel?: { provider: ProviderName; model: string };
+    signal?: AbortSignal;
+  };
   /** Stage 2 — optional. When omitted, view_render returns a typed error. */
   vision?: VisionAdapter;
   /** A (Stage 3) — optional. When omitted, brep_* tools return NO_BREP. */
@@ -1216,6 +1222,13 @@ export function makeTools(host: ToolHostAdapters): ToolExecutorMap {
     const processes = (a.processes ?? ['cnc_milling', '3d_printing']).slice(0, 4);
     try {
       const dfm = await host.dfm(session.render, processes);
+      if (dfm.meta?.releaseEvidence === false) {
+        return {
+          ok: false,
+          error: `${dfm.issuesCount} DFM screening issue(s) flagged. ${dfm.summary}`,
+          code: dfm.meta.screeningAvailable === false ? 'DFM_SCREENING_UNAVAILABLE' : 'DFM_SCREENING_ONLY',
+        };
+      }
       return {
         ok: true,
         output: `${dfm.issuesCount} DFM issue(s) flagged.\n${dfm.summary}`,
@@ -1491,6 +1504,8 @@ export function makeTools(host: ToolHostAdapters): ToolExecutorMap {
         imageBytes: decoded.bytes,
         mimeType,
         hintText: typeof a.hintText === 'string' ? a.hintText : undefined,
+        selectedModel: host.aiExecution?.selectedModel,
+        signal: host.aiExecution?.signal,
       });
       if (!result.ok) {
         return { ok: false, error: result.message, code: result.code };

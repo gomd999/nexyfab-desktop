@@ -12,7 +12,7 @@
  */
 import { describe, it, expect, beforeAll } from 'vitest';
 import * as THREE from 'three';
-import { runStepRoundtripReport } from '../stepRoundtripReport';
+import { runStepRoundtripCycles, runStepRoundtripReport } from '../stepRoundtripReport';
 import { ensureOcctReady } from '../../features/occtEngine';
 
 const ENABLED = process.env.RUN_OCCT_FEASIBILITY === '1';
@@ -62,4 +62,18 @@ d('STEP roundtrip (export → OCCT → import) — shape fidelity', () => {
     expect(r.drift.verdict).toBe('clean');           // shape unchanged…
     expect(r.drift.bboxDeltaMax).toBeGreaterThan(10); // …but position re-centred (~20mm)
   }, 60_000);
+
+  it('keeps an L-extrude clean through three consecutive export -> re-import cycles', async () => {
+    const result = await runStepRoundtripCycles(lExtrude(), 'L-three-cycle', 3);
+    expect(result.importFailed).toBe(false);
+    expect(result.cycles).toHaveLength(3);
+    for (const cycle of result.cycles) {
+      expect(cycle.driftFromPrevious.verdict).toBe('clean');
+      expect(cycle.driftFromPrevious.volumeDriftPct).toBeLessThan(0.5);
+      expect(cycle.driftFromPrevious.surfaceDriftPct).toBeLessThan(0.5);
+      expect(cycle.driftFromOriginal.volumeDriftPct).toBeLessThan(0.5);
+      expect(cycle.driftFromOriginal.surfaceDriftPct).toBeLessThan(0.5);
+      expect(cycle.exportBytes).toBeGreaterThan(0);
+    }
+  }, 120_000);
 });

@@ -10,6 +10,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { verifyAdmin } from '@/lib/admin-auth';
 import { processStageEvents } from '@/lib/stage-worker';
+import { boundedJsonError, readBoundedJson } from '@/lib/boundedJsonBody';
 
 export const dynamic = 'force-dynamic';
 
@@ -25,7 +26,12 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   }
 
-  const body = await req.json().catch(() => ({})) as { limit?: number; baseUrl?: string };
+  let body: { limit?: number; baseUrl?: string };
+  try { body = await readBoundedJson(req, 64 * 1024); }
+  catch (error) {
+    if (boundedJsonError(error)?.status === 413) return NextResponse.json({ error: 'Payload too large' }, { status: 413 });
+    body = {};
+  }
   const limit = Math.min(Math.max(Number(body.limit) || 50, 1), 500);
 
   const result = await processStageEvents({ limit, baseUrl: body.baseUrl });

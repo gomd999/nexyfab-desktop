@@ -76,6 +76,15 @@ describe('Next 16 proxy closed-beta security boundary', () => {
     expect(config.matcher).toContain('/api/:path*');
   });
 
+  it('allows the passwordless admin sign-in endpoint while protecting other admin APIs', async () => {
+    vi.stubEnv('SECURITY_GATE_MODE', 'off');
+    vi.stubEnv('ADMIN_OTP_REQUIRED', 'true');
+    const signIn = await proxy(request('/api/admin/auth', '203.0.113.86', { method: 'POST' }));
+    const protectedRoute = await proxy(request('/api/admin/users', '203.0.113.87'));
+    expect(signIn.status).not.toBe(428);
+    expect(protectedRoute.status).toBe(428);
+  });
+
   it('observes rate-limit violations without blocking in shadow mode', async () => {
     vi.stubEnv('SECURITY_GATE_MODE', 'shadow');
     vi.spyOn(console, 'warn').mockImplementation(() => undefined);
@@ -113,6 +122,34 @@ describe('Next 16 proxy closed-beta security boundary', () => {
       contentLength: 17 * 1024 * 1024,
     }));
     expect(blocked.status).toBe(413);
+  });
+
+  it('preserves route-aligned upload ceilings for complex verified systems', async () => {
+    vi.stubEnv('SECURITY_GATE_MODE', 'enforce');
+    const graphBundle = await proxy(request('/api/cad/v1/system/verify', '203.0.113.90', {
+      method: 'POST', contentLength: 149_000_000,
+    }));
+    const impactBundle = await proxy(request('/api/cad/v1/system/change-impact/verify', '203.0.113.91', {
+      method: 'POST', contentLength: 299_000_000,
+    }));
+    const scaleBundle = await proxy(request('/api/cad/v1/system/scale/verify', '203.0.113.92', {
+      method: 'POST', contentLength: 127 * 1024 * 1024,
+    }));
+    expect(graphBundle.status).not.toBe(413);
+    expect(impactBundle.status).not.toBe(413);
+    expect(scaleBundle.status).not.toBe(413);
+    const oversizedScaleBundle = await proxy(request('/api/cad/v1/system/scale/verify', '203.0.113.93', {
+      method: 'POST', contentLength: 128 * 1024 * 1024 + 1,
+    }));
+    expect(oversizedScaleBundle.status).toBe(413);
+    const sendMailAtCap = await proxy(request('/api/send-mail', '203.0.113.94', {
+      method: 'POST', contentLength: 20 * 1024 * 1024,
+    }));
+    const oversizedSendMail = await proxy(request('/api/send-mail', '203.0.113.95', {
+      method: 'POST', contentLength: 20 * 1024 * 1024 + 1,
+    }));
+    expect(sendMailAtCap.status).not.toBe(413);
+    expect(oversizedSendMail.status).toBe(413);
   });
 
   it('blocks cross-site cookie mutations but leaves bearer/server calls unaffected', async () => {

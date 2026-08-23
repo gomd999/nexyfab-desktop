@@ -1,0 +1,56 @@
+{
+  "schema": "nexyfab.mechanical-core-feature-local-runtime.v1",
+  "feature": "flange",
+  "axis": "create",
+  "status": "PASS",
+  "executedAt": "2026-08-22T07:13:30.564Z",
+  "payload": {
+    "id": "runtime-feature",
+    "enabled": true,
+    "type": "flange",
+    "params": {
+      "height": 18,
+      "angle": 90,
+      "radius": 3,
+      "edgeIndex": 0
+    }
+  },
+  "exact": {
+    "handle": "occt:239",
+    "kernelKind": "Solid",
+    "nativeShapeType": 2,
+    "solidCount": 1,
+    "singleSolid": true,
+    "volumeMm3": 6153.98223686155,
+    "edgeCount": 24,
+    "faceCount": 10,
+    "boundsMm": [
+      [
+        -30.006022818974145,
+        -1.0060228189741425,
+        -15.006022818974147
+      ],
+      [
+        30.00602281897414,
+        19.00602281897414,
+        20.006022818974145
+      ]
+    ]
+  },
+  "featureMeaning": {
+    "assertion": "actual product exact edge flange adds width x thickness x developed-length volume with concentric analytic bend faces and the requested straight height",
+    "edgeIndex": 0,
+    "angleDeg": 90,
+    "radiusMm": 3,
+    "thicknessMm": 2,
+    "neutralRadiusMm": 4,
+    "addedDevelopedLengthMm": 21.283185307179586,
+    "cylindricalFaces": 2,
+    "expectedVolumeMm3": 6153.9822368615505,
+    "actualVolumeMm3": 6153.98223686155,
+    "expectedTopMm": 19,
+    "actualTopMm": 19.00602281897414
+  },
+  "exactScope": "declared numeric runtime case",
+  "assertion": "native OCCT produced one non-empty exact solid and changed the host geometry"
+}

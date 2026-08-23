@@ -18,6 +18,7 @@ import { getDbAdapter } from '@/lib/db-adapter';
 import { normPartnerEmail } from '@/lib/partner-factory-access';
 import { logAudit } from '@/lib/audit';
 import { createNotification } from '@/app/lib/notify';
+import { boundedJsonError, readBoundedJson } from '@/lib/boundedJsonBody';
 
 export const dynamic = 'force-dynamic';
 
@@ -31,13 +32,16 @@ interface BulkBody {
 }
 
 const MAX_BATCH = 100;
+const MAX_BULK_QUOTE_BODY_BYTES = 64 * 1024;
 
 export async function POST(req: NextRequest) {
   if (!checkOrigin(req)) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   const partner = await getPartnerAuth(req);
   if (!partner) return NextResponse.json({ error: '인증이 필요합니다.' }, { status: 401 });
 
-  const body = (await req.json().catch(() => null)) as BulkBody | null;
+  let body: BulkBody | null = null;
+  try { body = await readBoundedJson<BulkBody>(req, MAX_BULK_QUOTE_BODY_BYTES); }
+  catch (error) { if (boundedJsonError(error)?.code === 'PAYLOAD_TOO_LARGE') return NextResponse.json({ error: 'Request too large', code: 'PAYLOAD_TOO_LARGE' }, { status: 413 }); }
   if (!body || !body.action || !Array.isArray(body.quoteIds) || body.quoteIds.length === 0) {
     return NextResponse.json({ error: 'action과 quoteIds[]가 필요합니다.' }, { status: 400 });
   }

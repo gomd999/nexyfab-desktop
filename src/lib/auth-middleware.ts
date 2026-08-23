@@ -12,19 +12,28 @@ export interface AuthUser {
   globalRole: string;        // 'user' | 'super_admin'
   roles: UserRole[];         // per-product roles from nf_user_roles
   orgIds: string[];          // org IDs the user belongs to
+  activeOrgId?: string | null;
+  orgContextStatus?: 'personal' | 'active' | 'selection_required' | 'invalid';
   emailVerified: boolean;
   apiKey?: { id: string; scopes: string[] };
 }
 
 /** Enrich base user info with roles and org membership */
-async function enrichAuthUser(base: { userId: string; email: string; plan: string }): Promise<AuthUser | null> {
+async function enrichAuthUser(
+  base: { userId: string; email: string; plan: string },
+  requestedOrgId: string | null,
+): Promise<AuthUser | null> {
   const db = getDbAdapter();
   const [roleRows, orgRows, userRow] = await Promise.all([
     db.queryAll<{ product: string; role: string; org_id: string | null }>(
       'SELECT product, role, org_id FROM nf_user_roles WHERE user_id = ?', base.userId,
     ),
-    db.queryAll<{ org_id: string }>(
-      'SELECT org_id FROM nf_org_members WHERE user_id = ?', base.userId,
+    db.queryAll<{ org_id: string; org_plan: string }>(
+      `SELECT om.org_id, o.plan AS org_plan
+         FROM nf_org_members om
+         JOIN nf_orgs o ON o.id = om.org_id
+        WHERE om.user_id = ?`,
+      base.userId,
     ),
     db.queryOne<{
       email: string;
@@ -59,18 +68,45 @@ async function enrichAuthUser(base: { userId: string; email: string; plan: strin
     userRow?.plan_expires_at ?? null,
     userRow?.plan_fallback ?? null,
   );
+  const orgIds = [...new Set(orgRows.map(r => r.org_id))].sort();
+  const explicitPersonal = requestedOrgId === 'personal';
+  const requestedMemberOrg = requestedOrgId && requestedOrgId !== 'personal' && orgIds.includes(requestedOrgId)
+    ? requestedOrgId
+    : null;
+  const invalidRequestedOrg = Boolean(requestedOrgId && requestedOrgId !== 'personal' && !requestedMemberOrg);
+  const activeOrgId = explicitPersonal
+    ? null
+    : requestedMemberOrg ?? (requestedOrgId === null && orgIds.length === 1 ? orgIds[0]! : null);
+  const orgContextStatus: NonNullable<AuthUser['orgContextStatus']> = invalidRequestedOrg
+    ? 'invalid'
+    : activeOrgId
+      ? 'active'
+      : explicitPersonal || orgIds.length === 0
+        ? 'personal'
+        : 'selection_required';
+  const activeOrgPlan = activeOrgId
+    ? orgRows.find(row => row.org_id === activeOrgId)?.org_plan
+    : null;
   return {
     userId: base.userId,
     email: userRow.email,
-    plan: effectivePlan,
+    // Entitlements are tenant-scoped. Personal mode uses the user's plan;
+    // an active organization uses that organization's plan without mutating
+    // the user's personal subscription.
+    plan: activeOrgPlan ?? effectivePlan,
     globalRole: userRow?.role ?? 'user',
     roles: roleRows.map(r => ({ product: r.product, role: r.role, orgId: r.org_id }) as UserRole),
-    orgIds: orgRows.map(r => r.org_id),
+    orgIds,
+    activeOrgId,
+    orgContextStatus,
     emailVerified: (userRow?.email_verified ?? 0) === 1,
   };
 }
 
 export async function getAuthUser(req: NextRequest): Promise<AuthUser | null> {
+  const requestedOrgId = req.headers.get('x-nexyfab-org-id')?.trim()
+    || req.cookies.get('nf_active_org_id')?.value?.trim()
+    || null;
   // 1. Try httpOnly cookie first (preferred, XSS-safe)
   const cookieToken = req.cookies.get('nf_access_token')?.value;
   // 2. Fall back to Authorization header (API clients, mobile)
@@ -110,7 +146,7 @@ export async function getAuthUser(req: NextRequest): Promise<AuthUser | null> {
         'SELECT id, email, plan FROM nf_users WHERE id = ?', userId,
       );
       return user
-        ? enrichAuthUser({ userId: user.id, email: user.email, plan: user.plan })
+        ? enrichAuthUser({ userId: user.id, email: user.email, plan: user.plan }, requestedOrgId)
         : null;
     }
   }
@@ -148,7 +184,7 @@ export async function getAuthUser(req: NextRequest): Promise<AuthUser | null> {
       );
       if (!user) return null;
 
-      const enriched = await enrichAuthUser({ userId: user.id, email: user.email, plan: user.plan });
+      const enriched = await enrichAuthUser({ userId: user.id, email: user.email, plan: user.plan }, requestedOrgId);
       if (!enriched) return null;
       let scopes: string[] = [];
       try {
@@ -164,7 +200,7 @@ export async function getAuthUser(req: NextRequest): Promise<AuthUser | null> {
   if (ssoPayload) {
     const user = await resolveOrProvisionUser(ssoPayload);
     if (!user) return null;
-    return enrichAuthUser({ userId: user.id, email: user.email, plan: user.plan });
+    return enrichAuthUser({ userId: user.id, email: user.email, plan: user.plan }, requestedOrgId);
   }
 
   // ── HMAC fallback (legacy HS256) ─────────────────────────────────────────
@@ -178,7 +214,7 @@ export async function getAuthUser(req: NextRequest): Promise<AuthUser | null> {
   const payload: JWTPayload | null = await verifyJWT(token);
   if (!payload) return null;
   warnLegacyHs256(payload.sub);
-  return enrichAuthUser({ userId: payload.sub, email: payload.email, plan: payload.plan });
+  return enrichAuthUser({ userId: payload.sub, email: payload.email, plan: payload.plan }, requestedOrgId);
 }
 
 // Sampled deprecation warning. Logging every legacy token would flood stdout

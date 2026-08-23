@@ -165,7 +165,7 @@ const dict = {
 // ─── BodyPanel ────────────────────────────────────────────────────────────────
 
 export default function BodyPanel({
-  lang,
+  lang: _lang,
   bodies,
   activeBodyId,
   selectedBodyIds,
@@ -184,7 +184,7 @@ export default function BodyPanel({
   const langMap: Record<string, keyof typeof dict> = {
     kr: 'ko', ko: 'ko', en: 'en', ja: 'ja', cn: 'zh', zh: 'zh', es: 'es', ar: 'ar',
   };
-  const t = dict[langMap[seg] ?? (lang === 'ko' ? 'ko' : 'en')];
+  const t = dict[langMap[seg] ?? 'en'];
 
   const [splitPlane, setSplitPlane] = useState(0);
   const [splitOffset, setSplitOffset] = useState(0);

@@ -15,4 +15,17 @@ describe('CAD v1 staged generation verification', () => {
     expect(payload.decision.stage).toBe('assembly_solve');
     expect(payload.quoteOrRfqSideEffects).toBe(false);
   });
+
+  it('never promotes a complete set of caller booleans to commercial release', async () => {
+    const response = await POST(new NextRequest('http://localhost/api/cad/v1/generation/verify', {
+      method: 'POST', headers: { 'content-type': 'application/json', 'x-forwarded-for': 'generation-claim-only' }, body: JSON.stringify({
+        intent: { unresolved: [], conflicts: [] }, decomposition: { valid: true, independentPartCount: 1, errors: [] },
+        parts: [{ instanceId: 'p1', manufacturingPassed: true, errors: [] }],
+        assembly: { converged: true, finalMaxResidual: 0, tolerance: 0.01, unsupportedResiduals: 0, approximateDoF: 0, allowedDoF: 0 },
+        interference: { checked: true, method: 'precise', overlaps: [], intendedContacts: [] },
+        motion: { required: false, checked: false, collisionFree: true }, stepRoundtrip: { passed: true, errors: [] },
+      }),
+    }));
+    expect(await response.json()).toMatchObject({ decision: { status: 'pass', stage: 'complete' }, releaseReady: false, advisoryOnly: true, releaseBlocker: 'SERVER_OWNED_SIGNED_EVIDENCE_REQUIRED' });
+  });
 });

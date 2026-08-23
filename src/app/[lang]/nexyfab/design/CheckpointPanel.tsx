@@ -12,6 +12,8 @@
  */
 
 import { useEffect, useMemo, useRef } from 'react';
+import { usePathname } from 'next/navigation';
+import { designLoc } from './designI18n';
 
 export interface CheckpointData {
   intent: { name?: string; features?: unknown[] };
@@ -109,13 +111,18 @@ function specLines(features: unknown[] | undefined): string[] {
 }
 
 export default function CheckpointPanel({
-  data, ko, onApprove, onCancel,
+  data, onApprove, onCancel,
 }: {
   data: CheckpointData;
   ko: boolean;
   onApprove: () => void | Promise<void>;
   onCancel: () => void;
 }) {
+  const pathname = usePathname();
+  // DesignInner historically passed only `ko`; recover the full route locale here
+  // so kr/cn and the four additional locales remain available without touching it.
+  const routeLang = pathname?.split('/').filter(Boolean)[0] ?? 'en';
+  const t = (copy: Parameters<typeof designLoc>[1]) => designLoc(routeLang, copy);
   const frontRef = useRef<HTMLCanvasElement>(null); // 정면 = X-Z
   const topRef = useRef<HTMLCanvasElement>(null);   // 평면 = X-Y
   const sideRef = useRef<HTMLCanvasElement>(null);  // 측면 = Y-Z
@@ -153,30 +160,28 @@ export default function CheckpointPanel({
   // §12.3 뷰 라우팅 v1 — 회전체는 정면·평면 2뷰(측면=정면과 동일), 그 외 3각법 3뷰
   const views: Array<[React.RefObject<HTMLCanvasElement | null>, string, string]> = isRevolve
     ? [
-      [frontRef, ko ? '정면(=측면)' : 'Front (=Side)', `Ø/W ${data.bbox.x} × H ${data.bbox.z}`],
-      [topRef, ko ? '평면' : 'Top', `W ${data.bbox.x} × D ${data.bbox.y}`],
+      [frontRef, t({ ko: '정면(=측면)', en: 'Front (=Side)', ja: '正面（=側面）', zh: '正面（=侧面）', es: 'Frontal (=lateral)', ar: 'أمامي (=جانبي)' }), `Ø/W ${data.bbox.x} × H ${data.bbox.z}`],
+      [topRef, t({ ko: '평면', en: 'Top', ja: '平面', zh: '顶面', es: 'Superior', ar: 'علوي' }), `W ${data.bbox.x} × D ${data.bbox.y}`],
     ]
     : [
-      [frontRef, ko ? '정면' : 'Front', `W ${data.bbox.x} × H ${data.bbox.z}`],
-      [topRef, ko ? '평면' : 'Top', `W ${data.bbox.x} × D ${data.bbox.y}`],
-      [sideRef, ko ? '측면' : 'Side', `D ${data.bbox.y} × H ${data.bbox.z}`],
+      [frontRef, t({ ko: '정면', en: 'Front', ja: '正面', zh: '正面', es: 'Frontal', ar: 'أمامي' }), `W ${data.bbox.x} × H ${data.bbox.z}`],
+      [topRef, t({ ko: '평면', en: 'Top', ja: '平面', zh: '顶面', es: 'Superior', ar: 'علوي' }), `W ${data.bbox.x} × D ${data.bbox.y}`],
+      [sideRef, t({ ko: '측면', en: 'Side', ja: '側面', zh: '侧面', es: 'Lateral', ar: 'جانبي' }), `D ${data.bbox.y} × H ${data.bbox.z}`],
     ];
   const spec = specLines(data.intent.features);
   const clsLabel = cls === 'revolve'
-    ? (ko ? '회전체/대칭형 — 2뷰로 충분(§12.3)' : 'Revolved — 2 views suffice')
+    ? t({ ko: '회전체/대칭형 — 2뷰로 충분(§12.3)', en: 'Revolved — 2 views suffice', ja: '回転体・対称形 — 2ビューで十分（§12.3）', zh: '回转体/对称形 — 2 个视图足够（§12.3）', es: 'Revolucionado — bastan 2 vistas', ar: 'جسم دوراني/متماثل — يكفي عرضان' })
     : cls === 'assembly'
-      ? (ko ? '조립체 — 3각법(중심선 그래프 뷰는 후속)' : 'Assembly — 3 views (skeleton view later)')
-      : (ko ? '각주형 — 표준 3각법' : 'Prismatic — standard 3 views');
+      ? t({ ko: '조립체 — 3각법(중심선 그래프 뷰는 후속)', en: 'Assembly — 3 views (skeleton view later)', ja: 'アセンブリ — 3面図（骨格ビューは後続）', zh: '装配体 — 三视图（骨架视图后续提供）', es: 'Ensamblaje — 3 vistas (esqueleto después)', ar: 'تجميعة — 3 مساقط (العرض الهيكلي لاحقاً)' })
+      : t({ ko: '각주형 — 표준 3각법', en: 'Prismatic — standard 3 views', ja: '角柱形 — 標準三面図', zh: '棱柱体 — 标准三视图', es: 'Prismático — 3 vistas estándar', ar: 'منشوري — 3 مساقط قياسية' });
 
   return (
     <div style={{ marginTop: 10, padding: 12, borderRadius: 10, border: '2px solid var(--nx-accent, #2563eb)', background: 'var(--nx-panel, #fff)' }}>
       <div style={{ fontSize: 12, fontWeight: 800 }}>
-        📐 {ko ? '도면 체크포인트 — 적용 전 확인' : 'Drawing checkpoint — review before apply'}
+        📐 {t({ ko: '도면 체크포인트 — 적용 전 확인', en: 'Drawing checkpoint — review before apply', ja: '図面チェックポイント — 適用前に確認', zh: '图纸检查点 — 应用前确认', es: 'Punto de control del plano — revisar antes de aplicar', ar: 'نقطة فحص الرسم — راجع قبل التطبيق' })}
       </div>
       <div style={{ fontSize: 10.5, color: 'var(--nx-text-3, #6b7684)', marginTop: 2, lineHeight: 1.5 }}>
-        {ko
-          ? 'AI가 해석한 설계의 드래프트 뷰입니다. 치수·형태가 의도와 맞는지 확인 후 적용하세요. 3D를 만들기 전에 잡는 게 가장 쌉니다.'
-          : 'Draft views of the AI-interpreted design. Check shape & dims before applying.'}
+        {t({ ko: 'AI가 해석한 설계의 드래프트 뷰입니다. 치수·형태가 의도와 맞는지 확인 후 적용하세요. 3D를 만들기 전에 잡는 게 가장 쌉니다.', en: 'Draft views of the AI-interpreted design. Check shape & dims before applying.', ja: 'AIが解釈した設計の下書きです。適用前に形状と寸法を確認してください。', zh: '这是 AI 解读设计的草图视图。应用前请检查形状和尺寸。', es: 'Vistas preliminares del diseño interpretado por IA. Comprueba forma y medidas antes de aplicar.', ar: 'هذه مسودات للتصميم الذي فسّره الذكاء الاصطناعي. تحقق من الشكل والأبعاد قبل التطبيق.' })}
       </div>
       <div style={{ marginTop: 4, fontSize: 9.5, fontWeight: 700, color: 'var(--nx-accent, #2563eb)' }}>{clsLabel}</div>
 
@@ -192,7 +197,7 @@ export default function CheckpointPanel({
       </div>
 
       <div style={{ marginTop: 6, fontSize: 10.5, fontVariantNumeric: 'tabular-nums' }}>
-        <b>{ko ? '전체 외형' : 'Overall'}:</b> {data.bbox.x} × {data.bbox.y} × {data.bbox.z} mm
+        <b>{t({ ko: '전체 외형', en: 'Overall', ja: '全体外形', zh: '总体外形', es: 'Dimensiones generales', ar: 'الأبعاد الكلية' })}:</b> {data.bbox.x} × {data.bbox.y} × {data.bbox.z} mm
         {data.verify && !data.verify.error && (
           <span style={{ marginLeft: 8, color: data.verify.manifold ? '#16a34a' : '#dc2626', fontWeight: 700 }}>
             {data.verify.manifold ? 'manifold ✓' : 'manifold ✗'}
@@ -203,7 +208,7 @@ export default function CheckpointPanel({
       {spec.length > 0 && (
         <details style={{ marginTop: 4 }}>
           <summary style={{ fontSize: 10, cursor: 'pointer', color: 'var(--nx-text-3, #6b7684)' }}>
-            {ko ? `피처 스펙 ${data.intent.features?.length ?? 0}개 (원본 값 그대로)` : `Feature spec (${data.intent.features?.length ?? 0})`}
+            {t({ ko: `피처 스펙 ${data.intent.features?.length ?? 0}개 (원본 값 그대로)`, en: `Feature spec (${data.intent.features?.length ?? 0})`, ja: `フィーチャー仕様（${data.intent.features?.length ?? 0}件）`, zh: `特征规格（${data.intent.features?.length ?? 0}项）`, es: `Especificación de features (${data.intent.features?.length ?? 0})`, ar: `مواصفات العناصر (${data.intent.features?.length ?? 0})` })}
           </summary>
           <div style={{ fontSize: 9.5, color: 'var(--nx-text-2, #46505e)', lineHeight: 1.6, marginTop: 2, fontFamily: 'ui-monospace, monospace' }}>
             {spec.map((l, i) => <div key={i}>{l}</div>)}
@@ -214,15 +219,15 @@ export default function CheckpointPanel({
       <div style={{ display: 'flex', gap: 6, marginTop: 10 }}>
         <button type="button" onClick={() => void onApprove()}
           style={{ flex: 1, padding: '8px 0', borderRadius: 7, border: 'none', background: 'var(--nx-accent, #2563eb)', color: '#fff', fontSize: 12.5, fontWeight: 700, cursor: 'pointer' }}>
-          ✓ {ko ? '승인하고 3D 적용' : 'Approve & apply 3D'}
+          ✓ {t({ ko: '승인하고 3D 적용', en: 'Approve & apply 3D', ja: '承認して3Dを適用', zh: '批准并应用 3D', es: 'Aprobar y aplicar 3D', ar: 'اعتماد وتطبيق 3D' })}
         </button>
         <button type="button" onClick={onCancel}
           style={{ padding: '8px 14px', borderRadius: 7, border: '1px solid var(--nx-border, #dfe3e8)', background: 'transparent', color: 'inherit', fontSize: 12.5, cursor: 'pointer' }}>
-          {ko ? '수정하기' : 'Revise'}
+          {t({ ko: '수정하기', en: 'Revise', ja: '修正', zh: '修改', es: 'Revisar', ar: 'مراجعة' })}
         </button>
       </div>
       <div style={{ marginTop: 4, fontSize: 9.5, color: 'var(--nx-text-3, #6b7684)' }}>
-        {ko ? '수정하기 = 프롬프트를 고쳐 다시 생성 (도면에서 숫자 하나 고치는 게 SCAD 디버깅보다 100배 쌉니다)' : 'Revise = edit the prompt and regenerate.'}
+        {t({ ko: '수정하기 = 프롬프트를 고쳐 다시 생성 (도면에서 숫자 하나 고치는 게 SCAD 디버깅보다 100배 쌉니다)', en: 'Revise = edit the prompt and regenerate.', ja: '修正 = プロンプトを編集して再生成します。', zh: '修改 = 编辑提示词并重新生成。', es: 'Revisar = edita el prompt y vuelve a generar.', ar: 'المراجعة = عدّل الطلب ثم أعد الإنشاء.' })}
       </div>
     </div>
   );

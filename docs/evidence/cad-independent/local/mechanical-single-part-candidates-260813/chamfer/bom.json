@@ -1,0 +1,26 @@
+{
+  "schema": "nexyfab.mechanical-single-part-bom-candidate.v1",
+  "partRevisionSha256": "6611c6ace2857b2a3ac5ad1f46c7289c71c33037de7f054cbcf4953e1370d77b",
+  "sourceDesignRevisionSha256": "3cf6a0f9c8efcf153a2cfefde087a2112c086fc412d2feeaeb9ce52542838564",
+  "sourceNfabSha256": "553ff7f3149db8c34f2d58cf7a93cca3b4cc5537f0776cc561b9690b3c3debe9",
+  "sourceStepSha256": "85254b2871d0355fbf06d1e939f3551b4bdeb74b7f5a555e194cb2b81ec1d1a8",
+  "units": "mm",
+  "items": [
+    {
+      "partNumber": "chamfer",
+      "description": "Mechanical runtime chamfer",
+      "quantity": 1,
+      "dimensionsMm": {
+        "x": 60.00000020000001,
+        "y": 40.00000020000001,
+        "z": 30.00000020000001
+      }
+    }
+  ],
+  "claimBoundary": {
+    "singlePartCandidateOnly": true,
+    "materialSpecified": false,
+    "massCalculated": false,
+    "manufacturingApproved": false
+  }
+}

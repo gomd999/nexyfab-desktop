@@ -1,0 +1,42 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://nexyfab.com/schemas/architecture-interior-lineage-operations-report.v1.json",
+  "title": "NexyFab architecture/interior lineage operations report",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "generatedAt", "status", "scoreEligible", "policy", "inventory", "goldenManifest", "sourceRoots", "scenarios", "blockers"],
+  "allOf": [
+    {
+      "if": { "properties": { "status": { "const": "QUALIFIED" } }, "required": ["status"] },
+      "then": { "properties": { "scoreEligible": { "const": true } } },
+      "else": { "properties": { "scoreEligible": { "const": false } } }
+    }
+  ],
+  "properties": {
+    "schema": { "const": "nexyfab.architecture-interior.lineage-operations-report.v1" },
+    "generatedAt": { "type": "string", "format": "date-time" },
+    "status": { "enum": ["QUALIFIED", "HOLD"] },
+    "scoreEligible": { "type": "boolean" },
+    "policy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["sourceReadOnly", "licenseDecisionNeverInferred", "assignmentNeverInferred", "independentReviewerRequired", "holdoutTuningExcluded"],
+      "properties": {
+        "sourceReadOnly": { "const": true },
+        "licenseDecisionNeverInferred": { "const": true },
+        "assignmentNeverInferred": { "const": true },
+        "independentReviewerRequired": { "const": true },
+        "holdoutTuningExcluded": { "const": true }
+      }
+    },
+    "inventory": { "type": "object" },
+    "goldenManifest": { "type": "object" },
+    "sourceRoots": { "type": "object" },
+    "scenarios": {
+      "type": "object",
+      "required": ["office", "apartment", "cafe"],
+      "additionalProperties": { "type": "object" }
+    },
+    "blockers": { "type": "array", "items": { "type": "string" } }
+  }
+}

@@ -37,6 +37,13 @@ function detectLang(): 'ko' | 'en' | 'ja' | 'cn' | 'es' | 'ar' {
   return 'en';
 }
 
+const ROUTE_FOR_LANG: Record<'ko' | 'en' | 'ja' | 'cn' | 'es' | 'ar', string> = {
+  ko: 'kr', en: 'en', ja: 'ja', cn: 'cn', es: 'es', ar: 'ar',
+};
+const DATE_LOCALE_FOR_LANG: Record<'ko' | 'en' | 'ja' | 'cn' | 'es' | 'ar', string> = {
+  ko: 'ko-KR', en: 'en-US', ja: 'ja-JP', cn: 'zh-CN', es: 'es-ES', ar: 'ar-SA',
+};
+
 const i18n = {
   ko: { viewOnly: '읽기 전용', openEditor: 'Shape Generator에서 열기 →', submitRfq: '⚡ 이 모델로 RFQ 제출', expires: '만료', loading: '불러오는 중...', expired: '링크가 만료되었습니다', notFound: '링크를 찾을 수 없습니다', goHome: 'NexyFab으로 이동', specs: '스펙', size: '크기', material: '소재', tooLarge: '모델 데이터가 너무 큽니다.', download: 'STEP 다운로드', version: '버전', versionHistory: '버전 이력', annotate: '메모', addNote: '클릭하여 메모 추가', notePlaceholder: '메모 입력...', save: '저장', cancel: '취소', deleteNote: '삭제' },
   en: { viewOnly: 'View-only', openEditor: 'Open in Shape Generator →', submitRfq: '⚡ Submit RFQ', expires: 'Expires', loading: 'Loading...', expired: 'Link has expired', notFound: 'Link not found', goHome: 'Go to NexyFab', specs: 'Specs', size: 'Size', material: 'Material', tooLarge: 'Model data is too large.', download: 'Download STEP', version: 'Version', versionHistory: 'Version History', annotate: 'Annotate', addNote: 'Click to add a note', notePlaceholder: 'Enter note...', save: 'Save', cancel: 'Cancel', deleteNote: 'Delete' },
@@ -170,7 +177,7 @@ export default function ViewPage({ params }: { params: Promise<{ token: string }
       sessionStorage.setItem('nexyfab_shared_mesh', data.meshDataBase64);
       sessionStorage.setItem('nexyfab_shared_meta', JSON.stringify(data.metadata));
       // 뷰어 언어 → 사이트 라우트. ⚠ es·ar 이 빠져 있어 en 으로 떨어졌다.
-      const route = lang === 'ko' ? 'kr' : lang === 'cn' ? 'cn' : lang === 'ja' ? 'ja' : lang === 'es' ? 'es' : lang === 'ar' ? 'ar' : 'en';
+      const route = ROUTE_FOR_LANG[lang];
       window.open(`/${route}/shape-generator/?from=shared`, '_blank');
     } catch { toast('error', t.tooLarge); }
   };
@@ -215,7 +222,7 @@ export default function ViewPage({ params }: { params: Promise<{ token: string }
             </button>
             {authToken && (
               <a
-                href={`/kr/nexyfab/rfq?from=view&token=${token}&name=${encodeURIComponent(data?.metadata?.name ?? '')}`}
+                href={`/${ROUTE_FOR_LANG[lang]}/nexyfab/rfq?from=view&token=${token}&name=${encodeURIComponent(data?.metadata?.name ?? '')}`}
                 style={{
                   padding: '7px 16px', borderRadius: '10px', fontSize: '12px', fontWeight: 700,
                   background: 'linear-gradient(135deg, #388bfd, #8b5cf6)', color: '#fff',
@@ -242,7 +249,7 @@ export default function ViewPage({ params }: { params: Promise<{ token: string }
             <div style={{ textAlign: 'right' }}>
               <p style={{ margin: 0, fontSize: 13, fontWeight: 700 }}>{data.metadata.name}</p>
               <p style={{ margin: 0, fontSize: 10, color: '#6e7681' }}>
-                {t.expires}: {new Date(data.expiresAt).toLocaleDateString()}
+                {t.expires}: {new Date(data.expiresAt).toLocaleDateString(DATE_LOCALE_FOR_LANG[lang])}
               </p>
             </div>
           </div>
@@ -435,7 +442,7 @@ export default function ViewPage({ params }: { params: Promise<{ token: string }
                           background: v.token === token ? 'rgba(59,130,246,0.1)' : 'transparent',
                         }}
                       >
-                        v{v.version} — {new Date(v.createdAt).toLocaleDateString()}
+                        v{v.version} — {new Date(v.createdAt).toLocaleDateString(DATE_LOCALE_FOR_LANG[lang])}
                       </a>
                     ))}
                   </div>

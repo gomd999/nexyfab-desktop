@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import AccountSecuritySection from './AccountSecuritySection';
 import Image from 'next/image';
 import Link from 'next/link';
@@ -8,6 +8,9 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import PasskeyManager from './PasskeyManager';
 import { useToast } from '@/components/ToastProvider';
 import { authBaseUrl, nexysysBaseUrl } from '@/lib/auth-base-url';
+import { formatDate, formatMoney } from '@/lib/i18n/format';
+import { toIsoLang, toRouteLang } from '@/lib/i18n/normalize';
+import { createCommercialLocalizer } from '@/lib/i18n/commercialLocalizer';
 
 const AUTH_BASE = authBaseUrl();
 const NEXYSYS_URL = nexysysBaseUrl();
@@ -302,19 +305,21 @@ const ROUTE_LANG: Record<AccountLang, string> = {
 };
 
 function getUserLang(): AccountLang {
-  if (typeof window === 'undefined') return 'ko';
+  if (typeof window === 'undefined') return 'en';
   try {
-    const stored = localStorage.getItem('currentUser');
+    const stored = sessionStorage.getItem('currentUser');
     if (stored) {
       const u = JSON.parse(stored);
-      if (u.language && u.language in ACCOUNT_I18N) return u.language as AccountLang;
+      if (u.language) return toIsoLang(u.language) as AccountLang;
     }
   } catch (err) { console.error('[page] caught', err); }
-  return 'ko';
+  return 'en';
 }
 
 function SubscriptionSection() {
-  const t = ACCOUNT_I18N[getUserLang()];
+  const userLang = getUserLang();
+  const routeLang = toRouteLang(userLang);
+  const t = ACCOUNT_I18N[userLang];
   const [billing, setBilling] = useState<{
     currentPlan: string; memberSince: number;
     recentInvoices: { id: string; total_amount_krw: number; status: string; created_at: number; description: string }[];
@@ -354,14 +359,14 @@ function SubscriptionSection() {
           </span>
         </div>
         <span style={{ fontSize: '12px', color: '#9ca3af' }}>
-          {t.memberSince}{new Date(billing.memberSince).toLocaleDateString()}
+          {t.memberSince}{formatDate(billing.memberSince, userLang) ?? ''}
         </span>
       </div>
 
       {/* Actions */}
       <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
         {billing.currentPlan === 'free' ? (
-          <Link href={`/${getUserLang()}/pricing`} style={{
+          <Link href={`/${routeLang}/pricing`} style={{
             display: 'inline-flex', alignItems: 'center', gap: '6px',
             padding: '10px 20px', borderRadius: '10px',
             background: '#0b5cff', color: '#fff', fontWeight: 700, fontSize: '13px',
@@ -370,7 +375,7 @@ function SubscriptionSection() {
             {t.upgradeToPro}
           </Link>
         ) : (
-          <Link href={`/${getUserLang()}/nexyfab/settings/billing`} style={{
+          <Link href={`/${routeLang}/nexyfab/settings/billing`} style={{
             display: 'inline-flex', alignItems: 'center', gap: '6px',
             padding: '10px 20px', borderRadius: '10px',
             border: '1px solid #e5e7eb',
@@ -398,10 +403,10 @@ function SubscriptionSection() {
                     marginLeft: '8px', fontSize: '11px', padding: '2px 6px', borderRadius: '4px',
                     background: inv.status === 'paid' ? '#dcfce7' : '#fef9c3',
                     color: inv.status === 'paid' ? '#16a34a' : '#92400e',
-                  }}>{inv.status === 'paid' ? '결제완료' : inv.status}</span>
+                  }}>{inv.status === 'paid' ? t.paymentComplete : inv.status}</span>
                 </span>
                 <span style={{ color: '#9ca3af' }}>
-                  ₩{inv.total_amount_krw.toLocaleString('ko-KR')} · {new Date(inv.created_at).toLocaleDateString()}
+                  {formatMoney(inv.total_amount_krw, userLang, 'KRW') ?? ''} · {formatDate(inv.created_at, userLang) ?? ''}
                 </span>
               </div>
             ))}
@@ -484,8 +489,10 @@ export default function AccountPage() {
   const searchParams = useSearchParams();
   const { toast } = useToast();
   const [user, setUser] = useState<NexysysUser | null>(null);
-  const lang: AccountLang = (user?.language as AccountLang) || getUserLang();
-  const t = ACCOUNT_I18N[lang] || ACCOUNT_I18N.ko;
+  const lang: AccountLang = toIsoLang(user?.language || getUserLang()) as AccountLang;
+  const routeLang = toRouteLang(lang);
+  const t = ACCOUNT_I18N[lang] || ACCOUNT_I18N.en;
+  const L = useMemo(() => createCommercialLocalizer(lang), [lang]);
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -522,25 +529,25 @@ export default function AccountPage() {
   const [deleteLoading, setDeleteLoading] = useState(false);
 
   useEffect(() => {
-    const stored = localStorage.getItem('currentUser');
+    const stored = sessionStorage.getItem('currentUser');
     if (stored) {
-      try { setUser(JSON.parse(stored)); } catch { router.push('/login'); }
+      try { setUser(JSON.parse(stored)); } catch { router.push(`/login?lang=${routeLang}`); }
     } else {
-      router.push('/login');
+      router.push(`/login?lang=${routeLang}`);
     }
-  }, [router]);
+  }, [router, routeLang]);
 
   useEffect(() => {
     if (searchParams.get('emailChanged') === '1') {
-      toast('success', '이메일이 성공적으로 변경되었습니다.');
-      router.replace('/account');
+      toast('success', L('이메일이 성공적으로 변경되었습니다.', 'Email changed successfully.'));
+      router.replace(`/account?lang=${routeLang}`);
     }
     const emailChangeError = searchParams.get('emailChangeError');
     if (emailChangeError) {
       toast('error', emailChangeError);
-      router.replace('/account');
+      router.replace(`/account?lang=${routeLang}`);
     }
-  }, [searchParams, toast, router]);
+  }, [searchParams, toast, router, routeLang, L]);
 
   // Load notification settings on mount
   const loadNotifSettings = useCallback(async () => {
@@ -565,15 +572,15 @@ export default function AccountPage() {
 
   const handleLogout = async () => {
     await fetch(`${AUTH_BASE}/api/auth/logout`, { method: 'POST', credentials: 'include' }).catch(() => {});
-    localStorage.removeItem('currentUser');
+    sessionStorage.removeItem('currentUser');
     window.dispatchEvent(new Event('storage'));
-    router.push('/login');
+    router.push(`/login?lang=${routeLang}`);
   };
 
   const startEditing = () => {
     if (!user) return;
     setEditName(user.name);
-    setEditLanguage(user.language || 'ko');
+    setEditLanguage(user.language || 'en');
     setEditing(true);
     setProfileMessage(null);
   };
@@ -604,7 +611,7 @@ export default function AccountPage() {
 
       const data = await res.json() as { user: NexysysUser };
       setUser(data.user);
-      localStorage.setItem('currentUser', JSON.stringify(data.user));
+      sessionStorage.setItem('currentUser', JSON.stringify(data.user));
       window.dispatchEvent(new Event('storage'));
       setEditing(false);
       setProfileMessage({ type: 'success', text: t.profileUpdated });
@@ -660,15 +667,15 @@ export default function AccountPage() {
 
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(newEmail)) {
-      toast('error', '올바른 이메일 형식이 아닙니다.');
+      toast('error', L('올바른 이메일 형식이 아닙니다.', 'Enter a valid email address.'));
       return;
     }
     if (newEmail !== confirmEmail) {
-      toast('error', '이메일 주소가 일치하지 않습니다.');
+      toast('error', L('이메일 주소가 일치하지 않습니다.', 'Email addresses do not match.'));
       return;
     }
     if (!emailPassword) {
-      toast('error', '현재 비밀번호를 입력해주세요.');
+      toast('error', L('현재 비밀번호를 입력해주세요.', 'Enter your current password.'));
       return;
     }
 
@@ -681,13 +688,13 @@ export default function AccountPage() {
         body: JSON.stringify({ newEmail, confirmEmail, password: emailPassword }),
       });
       const data = await res.json() as { ok?: boolean; message?: string; error?: string };
-      if (!res.ok) throw new Error(data.error || '이메일 변경 요청에 실패했습니다.');
-      toast('success', data.message || '인증 이메일을 발송했습니다.');
+      if (!res.ok) throw new Error(data.error || L('이메일 변경 요청에 실패했습니다.', 'Failed to request an email change.'));
+      toast('success', data.message || L('인증 이메일을 발송했습니다.', 'Verification email sent.'));
       setNewEmail('');
       setConfirmEmail('');
       setEmailPassword('');
     } catch (err: unknown) {
-      toast('error', err instanceof Error ? err.message : '이메일 변경 요청에 실패했습니다.');
+      toast('error', err instanceof Error ? err.message : L('이메일 변경 요청에 실패했습니다.', 'Failed to request an email change.'));
     } finally {
       setEmailChangeLoading(false);
     }
@@ -704,10 +711,10 @@ export default function AccountPage() {
         body: JSON.stringify({ settings: notifSettings }),
       });
       const data = await res.json() as { ok?: boolean; error?: string };
-      if (!res.ok) throw new Error(data.error || '설정 저장에 실패했습니다.');
-      toast('success', '알림 설정이 저장되었습니다.');
+      if (!res.ok) throw new Error(data.error || L('설정 저장에 실패했습니다.', 'Failed to save notification settings.'));
+      toast('success', L('알림 설정이 저장되었습니다.', 'Notification settings saved.'));
     } catch (err: unknown) {
-      toast('error', err instanceof Error ? err.message : '설정 저장에 실패했습니다.');
+      toast('error', err instanceof Error ? err.message : L('설정 저장에 실패했습니다.', 'Failed to save notification settings.'));
     } finally {
       setNotifLoading(false);
     }
@@ -724,12 +731,12 @@ export default function AccountPage() {
         credentials: 'same-origin',
       });
       const data = await res.json() as { deleted?: boolean; error?: string };
-      if (!res.ok) throw new Error(data.error || '계정 삭제에 실패했습니다.');
-      localStorage.removeItem('currentUser');
+      if (!res.ok) throw new Error(data.error || L('계정 삭제에 실패했습니다.', 'Failed to delete the account.'));
+      sessionStorage.removeItem('currentUser');
       window.dispatchEvent(new Event('storage'));
       router.push('/');
     } catch (err: unknown) {
-      toast('error', err instanceof Error ? err.message : '계정 삭제에 실패했습니다.');
+      toast('error', err instanceof Error ? err.message : L('계정 삭제에 실패했습니다.', 'Failed to delete the account.'));
       setDeleteLoading(false);
       setShowDeleteModal(false);
     }
@@ -802,7 +809,7 @@ export default function AccountPage() {
                 <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: '#6b7280', marginBottom: '4px', textTransform: 'uppercase' }}>{t.languageLabel}</label>
                 <select value={editLanguage} onChange={e => setEditLanguage(e.target.value)} style={{ ...inputStyle, cursor: 'pointer' }}>
                   <option value="en">English</option>
-                  <option value="ko">한국어</option>
+                  <option value="ko">{L('한국어', 'Korean')}</option>
                   <option value="zh">中文</option>
                   <option value="ja">日本語</option>
                   <option value="es">Español</option>
@@ -925,10 +932,10 @@ export default function AccountPage() {
 
         {/* ─── 이메일 변경 ──────────────────────────────────────────────────── */}
         <div style={cardStyle}>
-          <h3 style={{ fontSize: '16px', fontWeight: '800', color: '#111827', margin: '0 0 20px' }}>이메일 변경</h3>
+          <h3 style={{ fontSize: '16px', fontWeight: '800', color: '#111827', margin: '0 0 20px' }}>{L('이메일 변경', 'Change email')}</h3>
           <form onSubmit={handleEmailChange} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
             <div>
-              <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: '#6b7280', marginBottom: '4px', textTransform: 'uppercase' }}>새 이메일 주소</label>
+              <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: '#6b7280', marginBottom: '4px', textTransform: 'uppercase' }}>{L('새 이메일 주소', 'New email address')}</label>
               <input
                 type="email"
                 value={newEmail}
@@ -939,7 +946,7 @@ export default function AccountPage() {
               />
             </div>
             <div>
-              <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: '#6b7280', marginBottom: '4px', textTransform: 'uppercase' }}>새 이메일 확인</label>
+              <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: '#6b7280', marginBottom: '4px', textTransform: 'uppercase' }}>{L('새 이메일 확인', 'Confirm new email')}</label>
               <input
                 type="email"
                 value={confirmEmail}
@@ -950,7 +957,7 @@ export default function AccountPage() {
               />
             </div>
             <div>
-              <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: '#6b7280', marginBottom: '4px', textTransform: 'uppercase' }}>현재 비밀번호</label>
+              <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: '#6b7280', marginBottom: '4px', textTransform: 'uppercase' }}>{L('현재 비밀번호', 'Current password')}</label>
               <input
                 type="password"
                 value={emailPassword}
@@ -969,41 +976,41 @@ export default function AccountPage() {
                 opacity: emailChangeLoading ? 0.6 : 1, fontSize: '14px',
               }}
             >
-              {emailChangeLoading ? '요청 중...' : '이메일 변경 요청'}
+              {emailChangeLoading ? L('요청 중...', 'Sending...') : L('이메일 변경 요청', 'Request email change')}
             </button>
           </form>
         </div>
 
         {/* ─── 알림 설정 ───────────────────────────────────────────────────── */}
         <div style={cardStyle}>
-          <h3 style={{ fontSize: '16px', fontWeight: '800', color: '#111827', margin: '0 0 4px' }}>알림 설정</h3>
+          <h3 style={{ fontSize: '16px', fontWeight: '800', color: '#111827', margin: '0 0 4px' }}>{L('알림 설정', 'Notification settings')}</h3>
           <div style={{ borderTop: '1px solid #f3f4f6', marginTop: '16px' }}>
             <ToggleSwitch
-              label="이메일 알림: RFQ 업데이트"
+              label={L('이메일 알림: RFQ 업데이트', 'Email alert: RFQ updates')}
               value={notifSettings.emailRfqUpdate}
               onChange={v => setNotifSettings(s => ({ ...s, emailRfqUpdate: v }))}
             />
             <div style={{ borderTop: '1px solid #f9fafb' }} />
             <ToggleSwitch
-              label="이메일 알림: 견적 만료"
+              label={L('이메일 알림: 견적 만료', 'Email alert: quote expiry')}
               value={notifSettings.emailQuoteExpiry}
               onChange={v => setNotifSettings(s => ({ ...s, emailQuoteExpiry: v }))}
             />
             <div style={{ borderTop: '1px solid #f9fafb' }} />
             <ToggleSwitch
-              label="이메일 알림: 주문 상태 변경"
+              label={L('이메일 알림: 주문 상태 변경', 'Email alert: order status changes')}
               value={notifSettings.emailOrderStatus}
               onChange={v => setNotifSettings(s => ({ ...s, emailOrderStatus: v }))}
             />
             <div style={{ borderTop: '1px solid #f9fafb' }} />
             <ToggleSwitch
-              label="이메일 알림: 마케팅 및 뉴스레터"
+              label={L('이메일 알림: 마케팅 및 뉴스레터', 'Email alert: marketing and newsletters')}
               value={notifSettings.emailMarketing}
               onChange={v => setNotifSettings(s => ({ ...s, emailMarketing: v }))}
             />
             <div style={{ borderTop: '1px solid #f9fafb' }} />
             <ToggleSwitch
-              label="브라우저 알림"
+              label={L('브라우저 알림', 'Browser notifications')}
               value={notifSettings.browserNotifications}
               onChange={v => setNotifSettings(s => ({ ...s, browserNotifications: v }))}
             />
@@ -1019,7 +1026,7 @@ export default function AccountPage() {
               opacity: notifLoading ? 0.6 : 1, fontSize: '14px',
             }}
           >
-            {notifLoading ? '저장 중...' : '설정 저장'}
+            {notifLoading ? L('저장 중...', 'Saving...') : L('설정 저장', 'Save settings')}
           </button>
         </div>
 
@@ -1057,9 +1064,9 @@ export default function AccountPage() {
           boxShadow: '0 4px 20px rgba(0,0,0,0.04)',
           border: '1px solid #fecaca',
         }}>
-          <h3 style={{ fontSize: '16px', fontWeight: '800', color: '#dc2626', margin: '0 0 8px' }}>위험 구역</h3>
+          <h3 style={{ fontSize: '16px', fontWeight: '800', color: '#dc2626', margin: '0 0 8px' }}>{L('위험 구역', 'Danger zone')}</h3>
           <p style={{ fontSize: '14px', color: '#6b7280', margin: '0 0 20px', lineHeight: 1.5 }}>
-            계정을 삭제하면 모든 데이터가 영구적으로 제거됩니다.
+            {L('계정을 삭제하면 모든 데이터가 영구적으로 제거됩니다.', 'Deleting your account permanently removes all data.')}
           </p>
           <button
             type="button"
@@ -1071,7 +1078,7 @@ export default function AccountPage() {
               cursor: 'pointer',
             }}
           >
-            계정 탈퇴
+            {L('계정 탈퇴', 'Delete account')}
           </button>
         </div>
 
@@ -1106,13 +1113,13 @@ export default function AccountPage() {
             boxShadow: '0 20px 60px rgba(0,0,0,0.2)',
           }}>
             <h3 id="delete-modal-title" style={{ fontSize: '18px', fontWeight: '800', color: '#dc2626', margin: '0 0 12px' }}>
-              계정 탈퇴 확인
+              {L('계정 탈퇴 확인', 'Confirm account deletion')}
             </h3>
             <p style={{ fontSize: '14px', color: '#374151', margin: '0 0 8px', lineHeight: 1.6 }}>
-              이 작업은 <strong>되돌릴 수 없습니다.</strong> 모든 프로젝트, RFQ, 주문 데이터가 영구적으로 삭제됩니다.
+              {L('이 작업은 되돌릴 수 없습니다. 모든 프로젝트, RFQ, 주문 데이터가 영구적으로 삭제됩니다.', 'This action cannot be undone. All projects, RFQs, and order data will be permanently deleted.')}
             </p>
             <p style={{ fontSize: '14px', color: '#6b7280', margin: '0 0 20px' }}>
-              계속하려면 아래 입력란에 <strong style={{ color: '#374151' }}>DELETE</strong> 를 입력하세요.
+              {L('계속하려면 아래 입력란에 DELETE 를 입력하세요.', 'Type DELETE in the field below to continue.')}
             </p>
             <input
               type="text"
@@ -1135,7 +1142,7 @@ export default function AccountPage() {
                   color: '#6b7280', fontWeight: '700', fontSize: '14px', cursor: 'pointer',
                 }}
               >
-                취소
+                {L('취소', 'Cancel')}
               </button>
               <button
                 type="button"
@@ -1150,7 +1157,7 @@ export default function AccountPage() {
                   opacity: deleteLoading ? 0.7 : 1,
                 }}
               >
-                {deleteLoading ? '삭제 중...' : '계정 영구 삭제'}
+                {deleteLoading ? L('삭제 중...', 'Deleting...') : L('계정 영구 삭제', 'Permanently delete account')}
               </button>
             </div>
           </div>

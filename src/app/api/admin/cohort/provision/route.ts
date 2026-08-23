@@ -26,6 +26,7 @@
  *   dryRun    : 아무것도 쓰지 않고 무엇이 바뀔지만 돌려준다.
  */
 import { NextRequest, NextResponse } from 'next/server';
+import { boundedJsonError, readBoundedJson } from '@/lib/boundedJsonBody';
 import crypto from 'node:crypto';
 import bcrypt from 'bcryptjs';
 import { verifyAdmin } from '@/lib/admin-auth';
@@ -60,8 +61,12 @@ export interface ProvisionRow {
 export async function POST(req: NextRequest) {
   if (!(await verifyAdmin(req))) return NextResponse.json({ error: 'forbidden' }, { status: 403 });
 
-  const body = (await req.json().catch(() => null)) as
-    { members?: MemberIn[]; plan?: string; dryRun?: boolean } | null;
+  let body: { members?: MemberIn[]; plan?: string; dryRun?: boolean } | null;
+  try { body = await readBoundedJson(req, 2 * 1024 * 1024); }
+  catch (error) {
+    if (boundedJsonError(error)?.status === 413) return NextResponse.json({ error: 'payload_too_large' }, { status: 413 });
+    body = null;
+  }
   if (!Array.isArray(body?.members) || !body.members.length) {
     return NextResponse.json({ error: 'invalid_request', hint: 'members[] 가 필요합니다' }, { status: 400 });
   }

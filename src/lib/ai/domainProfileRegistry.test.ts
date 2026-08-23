@@ -11,6 +11,7 @@ describe('domain profile registry', () => {
       expect(profile.requiredInputs.every(input => input.authoritative)).toBe(true);
       expect(profile.evidenceAxes).toEqual(expect.arrayContaining([...COMMON_DOMAIN_EVIDENCE_AXES]));
       expect(profile.manualTools.guided.length).toBeGreaterThan(0);
+      expect(profile.manualTools.standard.length).toBeGreaterThan(0);
       expect(profile.manualTools.expert.length).toBeGreaterThan(0);
     }
   });

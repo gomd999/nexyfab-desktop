@@ -5,6 +5,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { verifyAdmin } from '@/lib/admin-auth';
 import { getDbAdapter } from '@/lib/db-adapter';
 import { enqueueJob } from '@/lib/job-queue';
+import { readBoundedJson } from '@/lib/boundedJsonBody';
 
 export const dynamic = 'force-dynamic';
 
@@ -28,7 +29,7 @@ export async function PATCH(
   if (!isAdmin) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
 
   const { id } = await params;
-  const body = await req.json() as PatchBody;
+  const body = await readBoundedJson<PatchBody>(req, 64 * 1024);
 
   if (!['approve', 'reject'].includes(body.action)) {
     return NextResponse.json({ error: 'Invalid action. Use "approve" or "reject".' }, { status: 400 });

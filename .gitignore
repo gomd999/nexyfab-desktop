@@ -58,6 +58,16 @@ admin-settings.json
 # Local validation/runtime scratch spaces (never release inputs)
 /.tmp/
 /.runtime-wp20/
+/.codex-runtime/
+/.codex-dev*
+/.rtl-test*
+/.tmp-*
+
+# Local verification evidence and generated worker bundles. Durable evidence
+# belongs under docs/evidence; these directories are reproducible run output.
+/artifacts/
+/workers/*/.wrangler-dry-run/
+/workers/*/artifacts/
 
 # large binary / archive files
 *.db

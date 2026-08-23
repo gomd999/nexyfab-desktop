@@ -416,7 +416,7 @@ describe('AssemblyConstraintsPanel — initial seeding + i18n', () => {
 });
 
 describe('AssemblyBrowserModal — Constraints toggle integration', () => {
-  it('toggle mounts and unmounts the constraints panel host', () => {
+  it('toggle mounts and unmounts the constraints panel host', async () => {
     render(
       <AssemblyBrowserModal
         lang="en"
@@ -434,7 +434,7 @@ describe('AssemblyBrowserModal — Constraints toggle integration', () => {
     expect(host).toBeInTheDocument();
     // The panel itself mounted inside.
     expect(
-      within(host).getByTestId('assembly-constraints-panel'),
+      await within(host).findByTestId('assembly-constraints-panel'),
     ).toBeInTheDocument();
     // Toggle off — host disappears again.
     fireEvent.click(screen.getByTestId('solver-assembly-constraints-toggle'));

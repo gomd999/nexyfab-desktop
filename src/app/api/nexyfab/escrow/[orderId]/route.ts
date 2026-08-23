@@ -21,9 +21,12 @@ import { verifyAdmin } from '@/lib/admin-auth';
 import { getDbAdapter } from '@/lib/db-adapter';
 import { normPartnerEmail } from '@/lib/partner-factory-access';
 import { logFunnelEvent } from '@/lib/funnel-logger';
+import { isOrderBuyerInActiveWorkspace } from '@/lib/nfOrderAccess';
+import { boundedJsonError, readBoundedJson } from '@/lib/boundedJsonBody';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
+const ESCROW_ACTION_JSON_BYTES = 64 * 1024;
 
 type EscrowStatus = 'pending' | 'received' | 'held' | 'released' | 'refunded' | 'disputed';
 
@@ -77,10 +80,10 @@ async function ensureTable(db: ReturnType<typeof getDbAdapter>): Promise<void> {
 
 async function resolveOrder(db: ReturnType<typeof getDbAdapter>, orderId: string) {
   return db.queryOne<{
-    user_id: string; partner_email: string | null;
+    user_id: string; org_id: string | null; partner_email: string | null;
     total_price_krw: number; status: string;
   }>(
-    'SELECT user_id, partner_email, total_price_krw, status FROM nf_orders WHERE id = ?',
+    'SELECT user_id, org_id, partner_email, total_price_krw, status FROM nf_orders WHERE id = ?',
     orderId,
   ).catch(() => null);
 }
@@ -96,7 +99,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ orde
   const order = await resolveOrder(db, orderId);
   if (!order) return NextResponse.json({ error: 'order not found' }, { status: 404 });
 
-  const isBuyer = auth.userId === order.user_id;
+  const isBuyer = isOrderBuyerInActiveWorkspace(auth, order);
   const isPartner = !!order.partner_email && normPartnerEmail(auth.email ?? '') === normPartnerEmail(order.partner_email);
   const isAdmin = await verifyAdmin(req).catch(() => false);
   if (!isBuyer && !isPartner && !isAdmin) {
@@ -137,8 +140,12 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ ord
   const { orderId } = await params;
   let body: { action?: unknown; notes?: unknown; commissionPct?: unknown };
   try {
-    body = await req.json();
-  } catch {
+    body = await readBoundedJson(req, ESCROW_ACTION_JSON_BYTES);
+  } catch (error) {
+    const bodyError = boundedJsonError(error);
+    if (bodyError?.code === 'PAYLOAD_TOO_LARGE') {
+      return NextResponse.json({ error: 'Request body too large' }, { status: bodyError.status });
+    }
     return NextResponse.json({ error: 'invalid JSON' }, { status: 400 });
   }
   const action = typeof body.action === 'string' ? body.action : '';

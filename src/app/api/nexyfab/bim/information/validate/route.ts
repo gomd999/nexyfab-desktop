@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { boundedJsonError, readBoundedJson } from '@/lib/boundedJsonBody';
 import { z } from 'zod';
 import { getTrustedClientIp } from '@/lib/client-ip';
 import { rateLimit } from '@/lib/rate-limit';
@@ -62,12 +63,18 @@ const requestSchema = z.discriminatedUnion('mode', [
 
 export async function POST(req: NextRequest): Promise<NextResponse> {
   const contentLength = Number(req.headers.get('content-length') ?? 0);
-  if (contentLength > 10_000_000) return NextResponse.json({ ok: false, error: 'payload_too_large' }, { status: 413 });
+  if (contentLength > 10_000_000) {
+    await req.body?.cancel('declared payload too large').catch(() => undefined);
+    return NextResponse.json({ ok: false, error: 'payload_too_large' }, { status: 413 });
+  }
   const limit = rateLimit(`bim-information-validate:${getTrustedClientIp(req.headers)}`, 30, 60_000);
   if (!limit.allowed) return NextResponse.json({ ok: false, error: 'rate_limited' }, { status: 429 });
   let body: unknown;
-  try { body = await req.json(); }
-  catch { return NextResponse.json({ ok: false, error: 'invalid_json' }, { status: 400 }); }
+  try { body = await readBoundedJson(req, 10_000_000); }
+  catch (error) {
+    if (boundedJsonError(error)?.code === 'PAYLOAD_TOO_LARGE') return NextResponse.json({ ok: false, error: 'payload_too_large' }, { status: 413 });
+    return NextResponse.json({ ok: false, error: 'invalid_json' }, { status: 400 });
+  }
   const parsed = requestSchema.safeParse(body);
   if (!parsed.success) return NextResponse.json({ ok: false, error: 'invalid_request', issues: parsed.error.issues.map(value => ({ path: value.path.join('.'), message: value.message })) }, { status: 400 });
   const report = parsed.data.mode === 'registry'

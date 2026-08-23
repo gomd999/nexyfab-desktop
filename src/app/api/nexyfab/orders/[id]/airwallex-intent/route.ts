@@ -20,6 +20,10 @@ import { getDbAdapter } from '@/lib/db-adapter';
 import { checkOrigin } from '@/lib/csrf';
 import { createPaymentIntent, getPaymentIntent, toAirwallexAmount } from '@/lib/airwallex-client';
 import { detectCountryFromRequest } from '@/lib/country-pricing';
+import { resolveStoredManufacturingLineage, type StoredManufacturingLineageColumns } from '@/lib/manufacturingLineageDb';
+import { resolveRequestOrgContext } from '@/lib/org-context';
+import { canManageOrderInActiveWorkspace } from '@/lib/nfOrderAccess';
+import { denyIfPaymentCollectionDisabled } from '@/lib/payment-gate';
 
 export const dynamic = 'force-dynamic';
 
@@ -34,9 +38,10 @@ async function ensureCols(db: ReturnType<typeof getDbAdapter>) {
   }
 }
 
-interface OrderRow {
+interface OrderRow extends StoredManufacturingLineageColumns {
   id: string;
   user_id: string;
+  org_id: string | null;
   part_name: string;
   total_price: number | null;
   total_price_krw: number;
@@ -51,6 +56,8 @@ export async function POST(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
+  const paymentDenied = denyIfPaymentCollectionDisabled();
+  if (paymentDenied) return paymentDenied;
   if (!checkOrigin(req)) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   const authUser = await getAuthUser(req);
   if (!authUser) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -58,15 +65,23 @@ export async function POST(
   const { id: orderId } = await params;
   const db = getDbAdapter();
   await ensureCols(db);
+  await db.execute('ALTER TABLE nf_orders ADD COLUMN org_id TEXT').catch(() => {});
+  const workspace = resolveRequestOrgContext(authUser);
+  if (!workspace.ok) return NextResponse.json({ error: 'Select a valid workspace', code: workspace.code }, { status: 409 });
 
   const order = await db.queryOne<OrderRow>(
-    `SELECT id, user_id, part_name, total_price, total_price_krw, currency, buyer_country,
-            payment_status, aw_intent_id, aw_client_secret
+    `SELECT id, user_id, org_id, part_name, total_price, total_price_krw, currency, buyer_country,
+            payment_status, aw_intent_id, aw_client_secret,
+            lineage_id, artifact_id, artifact_sha256, document_version_id
        FROM nf_orders WHERE id = ?`,
     orderId,
   );
   if (!order) return NextResponse.json({ error: 'Order not found' }, { status: 404 });
-  if (order.user_id !== authUser.userId) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+  if (!canManageOrderInActiveWorkspace(authUser, order)) {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+  }
+  const lineage = await resolveStoredManufacturingLineage(db, order.user_id, order);
+  if (!lineage.ok) return NextResponse.json({ error: 'Manufacturing release is stale or revoked.', code: lineage.code }, { status: 409 });
   if (order.payment_status === 'paid') return NextResponse.json({ error: '이미 결제된 주문입니다.' }, { status: 400 });
 
   const currency = (order.currency ?? 'KRW').toUpperCase();
@@ -115,6 +130,9 @@ export async function POST(
         product:           'nexyfab',
         nexyfab_order_id:  orderId,
         nexysys_user_id:   order.user_id,
+        nexysys_org_id:    order.org_id ?? 'personal',
+        lineage_id:        lineage.ref.lineageId,
+        artifact_sha256:   lineage.ref.artifactSha256,
       },
     });
 

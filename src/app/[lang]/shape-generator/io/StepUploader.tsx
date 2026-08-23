@@ -15,6 +15,7 @@ import {
 import { analytics } from '@/lib/analytics';
 import { BREP_STEP_BROWSER_MAX_BYTES } from '@/lib/brep-bridge/constants';
 import { decideStepProcessingRoute, formatStepCapacityMb } from '@/lib/brep-bridge/stepCapacityPolicy';
+import { formatNumber } from '@/lib/i18n/format';
 
 
 const dict = {
@@ -128,8 +129,8 @@ interface StepUploaderProps {
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-function fmt(n: number, dec = 2) {
-  return n.toLocaleString('en-US', { maximumFractionDigits: dec, minimumFractionDigits: dec });
+function fmt(n: number, lang: string, dec = 2) {
+  return formatNumber(n, lang, { maximumFractionDigits: dec, minimumFractionDigits: dec }) ?? '0';
 }
 
 function isStepFile(file: File) {
@@ -623,9 +624,9 @@ export default function StepUploader({ onAnalysisComplete, onGeometryLoad, onPar
                   <StatRow label={T.faces}    value={displayStats.faceCount.toLocaleString()} />
                   <StatRow label={T.edges}    value={displayStats.edgeCount.toLocaleString()} />
                   {displayStats === result && <StatRow label={T.shells}   value={result.shellCount.toString()} />}
-                  <StatRow label={T.volume}   value={fmt(displayStats.volume_cm3)} />
-                  <StatRow label={T.surface}  value={fmt(displayStats.surfaceArea_cm2)} />
-                  <StatRow label={T.bbox}     value={`${fmt(displayStats.bbox.w, 1)} × ${fmt(displayStats.bbox.h, 1)} × ${fmt(displayStats.bbox.d, 1)}`} />
+                  <StatRow label={T.volume}   value={fmt(displayStats.volume_cm3, lang)} />
+                  <StatRow label={T.surface}  value={fmt(displayStats.surfaceArea_cm2, lang)} />
+                  <StatRow label={T.bbox}     value={`${fmt(displayStats.bbox.w, lang, 1)} × ${fmt(displayStats.bbox.h, lang, 1)} × ${fmt(displayStats.bbox.d, lang, 1)}`} />
                   <StatRow label={T.solid}    value={displayStats.isSolid   ? T.yes : T.no} />
                   <StatRow label={T.manifold} value={displayStats.isManifold ? T.yes : T.no} />
                 </div>

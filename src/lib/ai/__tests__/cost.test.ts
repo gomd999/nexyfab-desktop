@@ -64,4 +64,16 @@ describe('cost estimation', () => {
     expect(estimateCostCents('deepseek', 'deepseek-chat', NaN, 500)).toBeGreaterThanOrEqual(0);
     expect(estimateCostCents('deepseek', 'deepseek-chat', 1000, Infinity)).toBeGreaterThanOrEqual(0);
   });
+
+  it('applies cached-read and explicit-write prices without double counting input', () => {
+    const uncached = estimateCostCents('openai', 'gpt-5.6-luna', 1_000_000, 0);
+    const cached = estimateCostCents('openai', 'gpt-5.6-luna', 1_000_000, 0, {
+      cachedPromptTokens: 1_000_000,
+    });
+    const written = estimateCostCents('openai', 'gpt-5.6-luna', 1_000_000, 0, {
+      cacheWriteTokens: 1_000_000,
+    });
+    expect(cached).toBeLessThan(uncached);
+    expect(written).toBeGreaterThan(uncached);
+  });
 });

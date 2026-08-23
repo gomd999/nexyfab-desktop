@@ -1,0 +1,44 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://nexyfab.com/schemas/mechanical-step-interoperability-evidence-bundle.v3.json",
+  "title": "NexyFab standalone STEP C4 interoperability evidence bundle",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "evidenceRootId", "receipts", "evidence"],
+  "$defs": {
+    "sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+    "artifact": {
+      "type": "object", "additionalProperties": false, "required": ["path", "sha256"],
+      "properties": { "path": { "type": "string", "minLength": 1 }, "sha256": { "$ref": "#/$defs/sha256" } }
+    },
+    "signoff": {
+      "type": "object", "additionalProperties": false, "required": ["reviewerId", "signedAt", "targetHash", "signature"],
+      "properties": {
+        "reviewerId": { "type": "string", "minLength": 1 }, "signedAt": { "type": "string", "format": "date-time" },
+        "targetHash": { "$ref": "#/$defs/sha256" }, "signature": { "type": "string", "minLength": 1 }
+      }
+    },
+    "artifacts": {
+      "type": "object", "additionalProperties": false, "required": ["source", "opened", "returned", "evidenceBundle"],
+      "properties": {
+        "source": { "$ref": "#/$defs/artifact" }, "opened": { "$ref": "#/$defs/artifact" },
+        "returned": { "$ref": "#/$defs/artifact" }, "evidenceBundle": { "$ref": "#/$defs/artifact" }
+      }
+    }
+  },
+  "properties": {
+    "schema": { "const": "nexyfab.mechanical-step-interoperability-evidence-bundle.v3" },
+    "evidenceRootId": { "$ref": "#/$defs/sha256" },
+    "receipts": { "type": "array", "minItems": 2 },
+    "evidence": {
+      "type": "array", "minItems": 2,
+      "items": {
+        "type": "object", "additionalProperties": false, "required": ["target", "artifacts", "operator"],
+        "properties": {
+          "target": { "enum": ["nexyfab", "independent-step-parser", "solidworks", "fusion", "onshape", "nx", "creo"] },
+          "artifacts": { "$ref": "#/$defs/artifacts" }, "operator": { "$ref": "#/$defs/signoff" }
+        }
+      }
+    }
+  }
+}

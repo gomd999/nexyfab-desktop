@@ -1,0 +1,44 @@
+{
+  "schema": "nexyfab.route-ownership.v1",
+  "contractVersion": "2026-08-14.1",
+  "routeRoot": "src/app/api",
+  "ingress": "edge-gateway",
+  "currentExecutionOwner": "core-api",
+  "groups": [
+    {
+      "targetOwner": "core-api",
+      "routeGroups": ["__tests__", "admin", "admin-settings", "auth", "billing", "compliance", "contact", "contracts", "desktop-update", "dev", "documents", "enterprise", "factories", "feature-flags", "files", "health", "inquiries", "integrations", "market-data", "match", "material-prices", "messages", "nexyfab", "notifications", "observability", "partner", "partners", "portal", "public", "quick-quote", "quotes", "releases", "reviews", "search", "send-mail", "settlements", "stripe", "templates", "unsubscribe", "user", "waitlist"]
+    },
+    {
+      "targetOwner": "job-orchestrator",
+      "routeGroups": ["assembly-intent", "assembly-solve", "cad", "chamfer-render", "collab", "eng-chat", "extrude-render", "feature-tree-mesh", "featureTree-intent", "fillet-render", "hole-render", "internal", "loft-render", "occt", "pattern-render", "product-decomposition", "revolve-render", "shape-chat", "shell-render", "sim", "simulations", "step-import", "sweep-render"]
+    },
+    {
+      "targetOwner": "cron-worker",
+      "routeGroups": ["cron", "jobs"]
+    },
+    {
+      "targetOwner": "edge-gateway",
+      "routeGroups": ["docs", "og", "webhooks"]
+    }
+  ],
+  "cronRouteGroups": ["anti-poach-signals", "assembly-drawing-handoff-prune", "audit-prune", "billing-grace-prune", "budget-warning-prune", "burnin-step-corpus", "cancel-winback", "concierge-digest", "cost-breaker-check", "demo-session-prune", "fx-rates", "metered-billing", "ops-digest", "order-delays", "partner-nonresponse-sla", "payment-stuck-recovery", "precision-cad-commercial-outbox", "precision-cad-commercial-persistence", "precision-cad-execution-recovery", "pro-grace-expiry", "prompt-cost-budget", "prompt-variant-burnin", "quote-expire", "rfq-expire", "trial-reminders", "webhook-prune"],
+  "railwayCronJobs": ["email-processor", "quote-expiry-reminder", "db-backup", "webhook-prune", "concierge-digest", "pro-grace-expiry", "anti-poach-signals", "partner-nonresponse-sla", "payment-stuck-recovery", "cost-breaker-check", "demo-session-prune", "billing-grace-prune", "budget-warning-prune", "audit-prune", "prompt-cost-budget", "prompt-variant-burnin", "rfq-expire", "quote-expire", "ops-digest", "order-delays", "fx-rates", "trial-reminders", "metered-billing", "cancel-winback"],
+  "knownGaps": [
+    {
+      "id": "burnin-step-corpus-trigger",
+      "state": "NOT_RUN",
+      "reason": "A checked-in cron route exists but no matching Railway cronJobs entry was found in the baseline config."
+    },
+    {
+      "id": "cloudflare-cron-production-coverage",
+      "state": "NOT_RUN",
+      "reason": "The repository worker is present, but production schedule and secret bindings were not revalidated in this cycle."
+    },
+    {
+      "id": "assembly-drawing-handoff-prune-scheduler",
+      "state": "NOT_RUN",
+      "reason": "The bounded prune route and local tests exist, but no production Cloudflare or Railway schedule observation is available."
+    }
+  ]
+}

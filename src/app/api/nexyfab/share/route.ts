@@ -7,6 +7,11 @@ import { checkOrigin } from '@/lib/csrf';
 import { logAudit } from '@/lib/audit';
 import { rateLimit } from '@/lib/rate-limit';
 import { getTrustedClientIp } from '@/lib/client-ip';
+import { boundedJsonError, readBoundedJson } from '@/lib/boundedJsonBody';
+
+// The 10,000,000-character mesh is base64 (no JSON escaping required); retain
+// room for metadata and envelope while bounding pre-parser allocation.
+const MAX_SHARE_BODY_BYTES = 12 * 1024 * 1024;
 
 const createShareSchema = z.object({
   meshDataBase64: z.string().min(1).max(10_000_000),
@@ -48,7 +53,11 @@ export async function POST(req: NextRequest) {
 
   const authUser = await getAuthUser(req);
 
-  const rawBody = await req.json().catch(() => ({})) as Record<string, unknown>;
+  let rawBody: Record<string, unknown> = {};
+  try { rawBody = await readBoundedJson<Record<string, unknown>>(req, MAX_SHARE_BODY_BYTES); }
+  catch (error) {
+    if (boundedJsonError(error)?.code === 'PAYLOAD_TOO_LARGE') return NextResponse.json({ error: 'Payload too large', code: 'PAYLOAD_TOO_LARGE' }, { status: 413 });
+  }
 
   const parsed = createShareSchema.safeParse(rawBody);
   if (!parsed.success) {

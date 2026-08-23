@@ -4,7 +4,10 @@ import { useRef, useMemo, useCallback, useState, useEffect } from 'react';
 import { useThree, ThreeEvent } from '@react-three/fiber';
 import { Html } from '@react-three/drei';
 import * as THREE from 'three';
+import { GL_COLOR } from '../lib/glColors';
 import type { UniqueFace } from './useFaceEditing';
+import { useLang } from '../hooks/useLang';
+import { loc } from '@/lib/i18n/loc';
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -13,8 +16,8 @@ import type { UniqueFace } from './useFaceEditing';
 const Y_AXIS = new THREE.Vector3(0, 1, 0);
 
 const COLOR_HOVERED = '#fbbf24';
-const COLOR_SELECTED = 'var(--nx-accent)';
-const COLOR_ARROW = 'var(--nx-ok)';
+const COLOR_SELECTED = GL_COLOR.accent;
+const COLOR_ARROW = GL_COLOR.ok;
 
 // ---------------------------------------------------------------------------
 // Props
@@ -87,6 +90,7 @@ function FaceMesh({
   onFaceSelect,
   onFaceSketch,
 }: FaceMeshProps) {
+  const lang = useLang();
   const handlePointerOver = useCallback(
     (e: ThreeEvent<PointerEvent>) => {
       e.stopPropagation();
@@ -156,7 +160,7 @@ function FaceMesh({
       {isHovered && onFaceSketch && (
         <Html center style={{ pointerEvents: 'none', userSelect: 'none' }}>
           <div style={{ background: 'rgba(56,139,253,0.85)', color: 'var(--nx-text)', fontSize: 10, padding: '2px 8px', borderRadius: 4, fontWeight: 700, whiteSpace: 'nowrap' }}>
-            더블클릭: 이 면에 스케치
+            {loc(lang, { ko: '더블클릭: 이 면에 스케치', en: 'Double-click: sketch on this face', ja: 'ダブルクリック：この面にスケッチ', zh: '双击：在此面上绘制草图', es: 'Doble clic: boceto en esta cara', ar: 'نقر مزدوج: ارسم على هذا السطح' })}
           </div>
         </Html>
       )}

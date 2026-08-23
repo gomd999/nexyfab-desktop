@@ -3,10 +3,14 @@
 import React, { useState, useEffect } from 'react';
 import { AdminSettings } from '@/lib/adminSettings';
 import { authBaseUrl } from '@/lib/auth-base-url';
+import { useClientLocale } from '@/lib/i18n/clientLocale';
+import { createCommercialLocalizer } from '@/lib/i18n/commercialLocalizer';
 
 const AUTH_BASE = authBaseUrl();
 
 export default function AdminLinkPage() {
+    const lang = useClientLocale();
+    const L = createCommercialLocalizer(lang);
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [isAuthorized, setIsAuthorized] = useState(false);
@@ -67,7 +71,7 @@ export default function AdminLinkPage() {
             if (!res.ok) throw new Error(data.message || 'Login failed');
 
             if (data.user.role !== 'admin' && data.user.role !== 'superadmin') {
-                setMessage({ type: 'error', text: '관리자 권한이 필요합니다.' });
+                setMessage({ type: 'error', text: L('관리자 권한이 필요합니다.', 'Administrator access is required.') });
                 return;
             }
 
@@ -78,7 +82,7 @@ export default function AdminLinkPage() {
         } catch (err: unknown) {
             setMessage({
                 type: 'error',
-                text: err instanceof Error ? err.message : '로그인에 실패했습니다.',
+                text: err instanceof Error ? err.message : L('로그인에 실패했습니다.', 'Login failed.'),
             });
         }
     };
@@ -103,10 +107,10 @@ export default function AdminLinkPage() {
             if (res.ok && data.success) {
                 setMessage({ type: 'success', text: data.message });
             } else {
-                setMessage({ type: 'error', text: data.error || '저장에 실패했습니다.' });
+                setMessage({ type: 'error', text: data.error || L('저장에 실패했습니다.', 'Failed to save.') });
             }
         } catch (_error) {
-            setMessage({ type: 'error', text: '서버 오류가 발생했습니다.' });
+            setMessage({ type: 'error', text: L('서버 오류가 발생했습니다.', 'A server error occurred.') });
         } finally {
             setIsSaving(false);
         }
@@ -126,7 +130,7 @@ export default function AdminLinkPage() {
     if (isLoading) {
         return (
             <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#f9fafb', fontFamily: 'Pretendard, sans-serif' }}>
-                <p>로딩 중...</p>
+                <p>{L('로딩 중...', 'Loading...')}</p>
             </div>
         );
     }
@@ -136,14 +140,14 @@ export default function AdminLinkPage() {
             <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#f9fafb', padding: '16px', fontFamily: 'Pretendard, sans-serif' }}>
                 <div style={{ maxWidth: '400px', width: '100%', background: '#fff', padding: '32px', borderRadius: '16px', boxShadow: '0 10px 25px rgba(0,0,0,0.05)', border: '1px solid #f3f4f6' }}>
                     <div style={{ textAlign: 'center', marginBottom: '32px' }}>
-                        <h1 style={{ fontSize: '24px', fontWeight: '900', color: '#111827', margin: '0 0 8px' }}>관리자 로그인</h1>
-                        <p style={{ fontSize: '14px', color: '#6b7280', margin: 0 }}>Nexysys 관리자 계정으로 로그인하세요.</p>
+                        <h1 style={{ fontSize: '24px', fontWeight: '900', color: '#111827', margin: '0 0 8px' }}>{L('관리자 로그인', 'Administrator login')}</h1>
+                        <p style={{ fontSize: '14px', color: '#6b7280', margin: 0 }}>{L('Nexysys 관리자 계정으로 로그인하세요.', 'Sign in with your Nexysys administrator account.')}</p>
                     </div>
 
                     <form style={{ display: 'flex', flexDirection: 'column', gap: '16px' }} onSubmit={handleLogin}>
                         <input
                             type="email"
-                            placeholder="이메일"
+                            placeholder={L('이메일', 'Email')}
                             style={{ width: '100%', padding: '12px 16px', background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: '12px', outline: 'none', transition: '0.2s', fontSize: '15px', boxSizing: 'border-box' }}
                             value={email}
                             onChange={(e) => setEmail(e.target.value)}
@@ -151,7 +155,7 @@ export default function AdminLinkPage() {
                         />
                         <input
                             type="password"
-                            placeholder="비밀번호"
+                            placeholder={L('비밀번호', 'Password')}
                             style={{ width: '100%', padding: '12px 16px', background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: '12px', outline: 'none', transition: '0.2s', fontSize: '15px', boxSizing: 'border-box' }}
                             value={password}
                             onChange={(e) => setPassword(e.target.value)}
@@ -163,7 +167,7 @@ export default function AdminLinkPage() {
                             type="submit"
                             style={{ width: '100%', background: '#0b5cff', color: '#fff', fontWeight: '700', padding: '14px 16px', borderRadius: '12px', border: 'none', cursor: 'pointer', boxShadow: '0 4px 12px rgba(11,92,255,0.2)', transition: 'background 0.2s' }}
                         >
-                            로그인
+                            {L('로그인', 'Log in')}
                         </button>
                     </form>
                 </div>
@@ -178,14 +182,14 @@ export default function AdminLinkPage() {
                 <div style={{ background: '#0b5cff', padding: '24px 32px', color: '#fff' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
                         <div>
-                            <h1 style={{ fontSize: '22px', fontWeight: '900', margin: '0 0 4px' }}>Nexyfab 관리자</h1>
-                            <p style={{ color: 'rgba(255,255,255,0.8)', fontSize: '13px', margin: 0 }}>사이트 설정 및 문의 내역을 관리할 수 있습니다.</p>
+                            <h1 style={{ fontSize: '22px', fontWeight: '900', margin: '0 0 4px' }}>{L('Nexyfab 관리자', 'Nexyfab administration')}</h1>
+                            <p style={{ color: 'rgba(255,255,255,0.8)', fontSize: '13px', margin: 0 }}>{L('사이트 설정 및 문의 내역을 관리할 수 있습니다.', 'Manage site settings and inquiry history.')}</p>
                         </div>
                         <button
                             onClick={handleLogout}
                             style={{ background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.2)', color: '#fff', fontSize: '13px', fontWeight: '600', cursor: 'pointer', padding: '6px 14px', borderRadius: '8px', transition: '0.2s' }}
                         >
-                            로그아웃
+                            {L('로그아웃', 'Log out')}
                         </button>
                     </div>
 
@@ -204,7 +208,7 @@ export default function AdminLinkPage() {
                                 transition: '0.2s'
                             }}
                         >
-                            환경 설정
+                            {L('환경 설정', 'Settings')}
                         </button>
                         <button
                             onClick={() => setActiveTab('inquiries')}
@@ -220,7 +224,7 @@ export default function AdminLinkPage() {
                                 transition: '0.2s'
                             }}
                         >
-                            문의 내역 확인
+                            {L('문의 내역 확인', 'View inquiries')}
                         </button>
                     </div>
                 </div>
@@ -232,13 +236,13 @@ export default function AdminLinkPage() {
                             {/* Grid 2Cols */}
                             <div style={{ display: 'flex', gap: '24px', flexWrap: 'wrap' }}>
                                 <div style={{ flex: '1 1 calc(50% - 12px)', minWidth: '280px' }}>
-                                    <label style={{ display: 'block', fontSize: '14px', fontWeight: '700', color: '#374151', marginBottom: '8px' }}>Google Analytics 측정 ID</label>
+                                    <label style={{ display: 'block', fontSize: '14px', fontWeight: '700', color: '#374151', marginBottom: '8px' }}>{L('Google Analytics 측정 ID', 'Google Analytics measurement ID')}</label>
                                     <input
                                         type="text"
                                         name="googleAnalyticsId"
                                         value={settings.googleAnalyticsId}
                                         onChange={handleChange}
-                                        placeholder="예: G-XXXXXXXXXX"
+                                        placeholder={L('예: G-XXXXXXXXXX', 'e.g. G-XXXXXXXXXX')}
                                         style={{ width: '100%', boxSizing: 'border-box', padding: '12px 16px', background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: '12px', fontSize: '14px', fontFamily: 'monospace' }}
                                     />
                                 </div>
@@ -249,7 +253,7 @@ export default function AdminLinkPage() {
                                         name="googleVerification"
                                         value={settings.googleVerification}
                                         onChange={handleChange}
-                                        placeholder="예: rrqY5TvvJIAF..."
+                                        placeholder={L('예: rrqY5TvvJIAF...', 'e.g. rrqY5TvvJIAF...')}
                                         style={{ width: '100%', boxSizing: 'border-box', padding: '12px 16px', background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: '12px', fontSize: '14px', fontFamily: 'monospace' }}
                                     />
                                 </div>
@@ -263,7 +267,7 @@ export default function AdminLinkPage() {
                                         name="naverVerification"
                                         value={settings.naverVerification}
                                         onChange={handleChange}
-                                        placeholder="예: 31234abcde123..."
+                                        placeholder={L('예: 31234abcde123...', 'e.g. 31234abcde123...')}
                                         style={{ width: '100%', boxSizing: 'border-box', padding: '12px 16px', background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: '12px', fontSize: '14px', fontFamily: 'monospace' }}
                                     />
                                 </div>
@@ -274,7 +278,7 @@ export default function AdminLinkPage() {
                                         name="bingVerification"
                                         value={settings.bingVerification}
                                         onChange={handleChange}
-                                        placeholder="msvalidate.01 값 입력"
+                                        placeholder={L('msvalidate.01 값 입력', 'Enter the msvalidate.01 value')}
                                         style={{ width: '100%', boxSizing: 'border-box', padding: '12px 16px', background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: '12px', fontSize: '14px', fontFamily: 'monospace' }}
                                     />
                                 </div>
@@ -285,7 +289,7 @@ export default function AdminLinkPage() {
                             <div>
                                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
                                     <label style={{ fontSize: '14px', fontWeight: '700', color: '#374151', margin: 0 }}>Custom &lt;HEAD&gt; Scripts</label>
-                                    <span style={{ fontSize: '11px', background: '#eff6ff', color: '#3b82f6', padding: '2px 8px', borderRadius: '4px', fontWeight: '600' }}>GTM 추천 영역</span>
+                                    <span style={{ fontSize: '11px', background: '#eff6ff', color: '#3b82f6', padding: '2px 8px', borderRadius: '4px', fontWeight: '600' }}>{L('GTM 추천 영역', 'GTM recommended area')}</span>
                                 </div>
                                 <textarea
                                     name="headScripts"
@@ -313,15 +317,15 @@ export default function AdminLinkPage() {
 
                             <div>
                                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
-                                    <label style={{ fontSize: '14px', fontWeight: '700', color: '#374151', margin: 0 }}>문의 알림 수신 이메일</label>
-                                    <span style={{ fontSize: '11px', background: '#fef3c7', color: '#d97706', padding: '2px 8px', borderRadius: '4px', fontWeight: '600' }}>실시간 알림</span>
+                                    <label style={{ fontSize: '14px', fontWeight: '700', color: '#374151', margin: 0 }}>{L('문의 알림 수신 이메일', 'Inquiry notification email')}</label>
+                                    <span style={{ fontSize: '11px', background: '#fef3c7', color: '#d97706', padding: '2px 8px', borderRadius: '4px', fontWeight: '600' }}>{L('실시간 알림', 'Real-time alerts')}</span>
                                 </div>
                                 <input
                                     type="text"
                                     name="adminEmails"
                                     value={settings.adminEmails}
                                     onChange={handleChange}
-                                    placeholder="예: info@nexyfab.com, admin@nexyfab.com"
+                                    placeholder={L('예: info@nexyfab.com, admin@nexyfab.com', 'e.g. info@nexyfab.com, admin@nexyfab.com')}
                                     style={{ width: '100%', boxSizing: 'border-box', padding: '12px 16px', background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: '12px', fontSize: '14px' }}
                                 />
                             </div>
@@ -340,16 +344,16 @@ export default function AdminLinkPage() {
                                     disabled={isSaving}
                                     style={{ background: '#0b5cff', color: '#fff', fontWeight: '700', padding: '14px 28px', borderRadius: '12px', border: 'none', cursor: isSaving ? 'not-allowed' : 'pointer', opacity: isSaving ? 0.6 : 1, boxShadow: '0 4px 12px rgba(11,92,255,0.2)' }}
                                 >
-                                    {isSaving ? '저장 중...' : '변경사항 저장'}
+                                    {isSaving ? L('저장 중...', 'Saving...') : L('변경사항 저장', 'Save changes')}
                                 </button>
                             </div>
                         </form>
                     ) : (
                         <div style={{ textAlign: 'center', padding: '40px 0' }}>
                             <div style={{ marginBottom: '24px' }}>
-                                <h2 style={{ fontSize: '20px', fontWeight: '800', color: '#111827', margin: '0 0 12px' }}>문의 내역 관리</h2>
+                                <h2 style={{ fontSize: '20px', fontWeight: '800', color: '#111827', margin: '0 0 12px' }}>{L('문의 내역 관리', 'Manage inquiries')}</h2>
                                 <p style={{ color: '#6b7280', fontSize: '14px', lineHeight: '1.6', margin: '0 auto', maxWidth: '400px' }}>
-                                    웹사이트를 통해 접수된 모든 문의 내용이 자동 수집됩니다.
+                                    {L('웹사이트를 통해 접수된 모든 문의 내용이 자동 수집됩니다.', 'All inquiries submitted through the website are collected automatically.')}
                                 </p>
                             </div>
 
@@ -371,7 +375,7 @@ export default function AdminLinkPage() {
                                     transition: '0.2s'
                                 }}
                             >
-                                문의 내역 관리자 열기
+                                {L('문의 내역 관리자 열기', 'Open inquiry admin')}
                             </a>
                         </div>
                     )}

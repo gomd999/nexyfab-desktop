@@ -4,6 +4,9 @@ import type { AuthenticationResponseJSON } from '@simplewebauthn/server';
 import { getDbAdapter } from '@/lib/db-adapter';
 import { checkOrigin } from '@/lib/csrf';
 import { getRpConfig, readChallenge, CHALLENGE_COOKIE, challengeCookieOptions, issueNexyfabSession, type SessionUserRow } from '@/lib/webauthn';
+import { boundedJsonError, readBoundedJson } from '@/lib/boundedJsonBody';
+
+const MAX_WEBAUTHN_ASSERTION_BODY_BYTES = 256 * 1024;
 
 export const dynamic = 'force-dynamic';
 
@@ -11,7 +14,9 @@ export const dynamic = 'force-dynamic';
 export async function POST(req: NextRequest) {
   if (!checkOrigin(req)) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
 
-  const body = await req.json().catch(() => ({})) as { email?: string; response?: AuthenticationResponseJSON };
+  let body: { email?: string; response?: AuthenticationResponseJSON } = {};
+  try { body = await readBoundedJson(req, MAX_WEBAUTHN_ASSERTION_BODY_BYTES); }
+  catch (error) { if (boundedJsonError(error)?.code === 'PAYLOAD_TOO_LARGE') return NextResponse.json({ error: 'Request too large', code: 'PAYLOAD_TOO_LARGE' }, { status: 413 }); }
   const email = (body.email ?? '').trim().toLowerCase();
   const response = body.response;
   if (!email || !response?.id) return NextResponse.json({ error: '잘못된 요청입니다.' }, { status: 400 });

@@ -3,8 +3,25 @@ import type { NextResponse } from 'next/server';
 
 type SameSite = 'strict' | 'lax' | 'none';
 
+export const BROWSER_SESSION_COOKIE = 'nf_browser_session';
+
+/** Session-only marker that distinguishes current sessions from legacy persistent cookies. */
+export function browserSessionCookie(sameSite: SameSite = 'strict') {
+  return {
+    name: BROWSER_SESSION_COOKIE,
+    value: 'v1',
+    options: {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite,
+      path: '/',
+      ...(COOKIE_DOMAIN ? { domain: COOKIE_DOMAIN } : {}),
+    },
+  } as const;
+}
+
 /**
- * Standard cookie options for access token (httpOnly, 15min)
+ * Browser-session access token cookie (httpOnly).
  */
 export function accessTokenCookie(token: string, sameSite: SameSite = 'strict') {
   return {
@@ -14,7 +31,6 @@ export function accessTokenCookie(token: string, sameSite: SameSite = 'strict') 
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite,
-      maxAge: 15 * 60,
       path: '/',
       ...(COOKIE_DOMAIN ? { domain: COOKIE_DOMAIN } : {}),
     },
@@ -22,7 +38,7 @@ export function accessTokenCookie(token: string, sameSite: SameSite = 'strict') 
 }
 
 /**
- * Standard cookie options for refresh token (httpOnly, 30days)
+ * Browser-session refresh token cookie (httpOnly); server-side expiry still applies.
  */
 export function refreshTokenCookie(token: string, sameSite: SameSite = 'strict') {
   return {
@@ -32,7 +48,6 @@ export function refreshTokenCookie(token: string, sameSite: SameSite = 'strict')
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite,
-      maxAge: 30 * 24 * 3600,
       path: '/api/auth',
       ...(COOKIE_DOMAIN ? { domain: COOKIE_DOMAIN } : {}),
     },
@@ -53,6 +68,7 @@ export function clearAuthCookies(response: NextResponse): void {
   const clearSet = (options: typeof base & { domain?: string }) => {
     response.cookies.set('nf_access_token', '', { ...options, path: '/' });
     response.cookies.set('nf_refresh_token', '', { ...options, path: '/api/auth' });
+    response.cookies.set(BROWSER_SESSION_COOKIE, '', { ...options, path: '/' });
     response.cookies.set('nf_admin_elev', '', { ...options, path: '/' });
     response.cookies.set('nf_admin_token', '', { ...options, path: '/' });
   };

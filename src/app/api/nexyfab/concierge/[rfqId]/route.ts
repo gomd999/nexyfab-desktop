@@ -21,6 +21,9 @@ import { getAuthUser } from '@/lib/auth-middleware';
 import { verifyAdmin } from '@/lib/admin-auth';
 import { getDbAdapter } from '@/lib/db-adapter';
 import { logFunnelEvent, type FunnelEventType } from '@/lib/funnel-logger';
+import { boundedJsonError, readBoundedJson } from '@/lib/boundedJsonBody';
+
+const MAX_CONCIERGE_BODY_BYTES = 16 * 1024;
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -169,8 +172,9 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ rfq
   const { rfqId } = await params;
   let body: { factoryId?: unknown; status?: unknown; note?: unknown; publicNote?: unknown };
   try {
-    body = await req.json();
-  } catch {
+    body = await readBoundedJson(req, MAX_CONCIERGE_BODY_BYTES);
+  } catch (error) {
+    if (boundedJsonError(error)?.code === 'PAYLOAD_TOO_LARGE') return NextResponse.json({ error: 'Request too large', code: 'PAYLOAD_TOO_LARGE' }, { status: 413 });
     return NextResponse.json({ error: 'invalid JSON' }, { status: 400 });
   }
   const factoryId = typeof body.factoryId === 'string' ? body.factoryId : '';

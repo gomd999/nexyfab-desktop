@@ -2,9 +2,9 @@
   "schema": "nexyfab.third-party-notices.v1",
   "title": "Open-source and third-party components",
   "notice": "Generated from package-lock.json for production dependencies. Legal review and corresponding-source delivery records remain separate release evidence.",
-  "packageLockSha256": "ec5896a3246a0404b91265df9f5ffbc306d5f4fd2760c677ffb6524a7b573b2b",
+  "packageLockSha256": "d27bddc997f10ade5cf94722b17c70a4e958b1e8f631f1e807a3ac4c51289f26",
   "licenseOverridesSha256": "3daaa175bebe51d25b1a64d184dde6f287283d67fc63799eaff7c131b628f142",
-  "packageCount": 684,
+  "packageCount": 685,
   "criticalCopyleft": [
     {
       "name": "@salusoft89/planegcs",
@@ -768,6 +768,13 @@
         "sha256": "117da2af0d4ce0fe1c8e19b5cff9dcd806adf973d328d27b11d4448c4ff24f76",
         "bytes": 1106
       }
+    },
+    {
+      "name": "@cloudflare/containers",
+      "version": "0.3.7",
+      "license": "MIT OR Apache-2.0",
+      "url": "https://github.com/cloudflare/containers",
+      "direct": true
     },
     {
       "name": "@dimforge/rapier3d-compat",

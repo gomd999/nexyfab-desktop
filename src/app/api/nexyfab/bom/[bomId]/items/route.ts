@@ -3,8 +3,10 @@ import { getAuthUser } from '@/lib/auth-middleware';
 import { getDbAdapter } from '@/lib/db-adapter';
 import { checkOrigin } from '@/lib/csrf';
 import { z } from 'zod';
+import { boundedJsonError, readBoundedJson } from '@/lib/boundedJsonBody';
 
 export const dynamic = 'force-dynamic';
+const BOM_ITEM_JSON_BYTES = 64 * 1024;
 
 async function requireBomOwner(bomId: string, userId: string) {
   const db = getDbAdapter();
@@ -55,7 +57,16 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ bom
     level: z.number().int().min(0).max(10).default(0),
     sortOrder: z.number().int().min(0).default(0),
   });
-  const parsed = schema.safeParse(await req.json().catch(() => ({})));
+  let rawBody: unknown = {};
+  try {
+    rawBody = await readBoundedJson(req, BOM_ITEM_JSON_BYTES);
+  } catch (error) {
+    const bodyError = boundedJsonError(error);
+    if (bodyError?.code === 'PAYLOAD_TOO_LARGE') {
+      return NextResponse.json({ error: 'Request body too large' }, { status: bodyError.status });
+    }
+  }
+  const parsed = schema.safeParse(rawBody);
   if (!parsed.success) return NextResponse.json({ error: parsed.error.issues[0]?.message }, { status: 400 });
 
   const d = parsed.data;
@@ -85,7 +96,16 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ b
   const { bomId } = await params;
   if (!await requireBomOwner(bomId, authUser.userId)) return NextResponse.json({ error: 'Not found' }, { status: 404 });
 
-  const { itemId } = await req.json().catch(() => ({})) as { itemId?: string };
+  let body: { itemId?: string } = {};
+  try {
+    body = await readBoundedJson(req, BOM_ITEM_JSON_BYTES);
+  } catch (error) {
+    const bodyError = boundedJsonError(error);
+    if (bodyError?.code === 'PAYLOAD_TOO_LARGE') {
+      return NextResponse.json({ error: 'Request body too large' }, { status: bodyError.status });
+    }
+  }
+  const { itemId } = body;
   if (!itemId) return NextResponse.json({ error: 'itemId required' }, { status: 400 });
 
   const db = getDbAdapter();

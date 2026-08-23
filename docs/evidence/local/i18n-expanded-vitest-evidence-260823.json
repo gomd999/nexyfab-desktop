@@ -1,0 +1,186 @@
+{
+  "schema": "nexyfab.i18n-vitest-evidence.v1",
+  "suite": "expanded",
+  "command": "npx vitest run i18n --reporter=json",
+  "generatedAt": "2026-08-23T02:35:22.905Z",
+  "buildId": null,
+  "gitHead": null,
+  "rawOutput": {
+    "path": "docs/evidence/local/i18n-expanded-vitest-raw-260823.json",
+    "bytes": 86875,
+    "sha256": "8cd47cc6fb451d2e3ebab98822198815e14fa090495fa2e65b14876a97b9a8b4"
+  },
+  "sourceBindings": [
+    {
+      "path": "scripts/i18n/acquire-full-product-review-packet.test.ts",
+      "bytes": 4125,
+      "sha256": "36c02ca6e3e1d7e8290c238dd69cf65565ce0b0f7ae17dcf78b4471802e17fc5"
+    },
+    {
+      "path": "scripts/i18n/commercial-catalog.test.ts",
+      "bytes": 1157,
+      "sha256": "679fd1fee2b0d33627b7949e69174825afb91c5bec58743f6f7c7fd282d17f11"
+    },
+    {
+      "path": "scripts/i18n/lang-coverage.test.ts",
+      "bytes": 7470,
+      "sha256": "b9ab669cf9fec3f79376fdaf1f8ab51d461c1ba70c9ae568acc9f5324435f3c4"
+    },
+    {
+      "path": "scripts/i18n/locale-hardcode.test.ts",
+      "bytes": 4339,
+      "sha256": "2d5fdf1497b80c4f98b2b6a8b8adde05f37b15c7d7819bbd1bde31b49b1ffef3"
+    },
+    {
+      "path": "src/app/[lang]/ChatHero.i18n.test.ts",
+      "bytes": 11970,
+      "sha256": "8f4e1c9c710f0e3720274ea37b274cf8e786a06b16e7e48432b07f41cad7440b"
+    },
+    {
+      "path": "src/lib/i18n/adminTranslations.test.ts",
+      "bytes": 705,
+      "sha256": "3df5312045692bf9ff4984ebc5bd64c78bbbbe6a8a45d3dddaa011c0f76cb1a8"
+    },
+    {
+      "path": "src/lib/i18n/catalogLocalizer.test.ts",
+      "bytes": 1039,
+      "sha256": "bbc8aeb66956d5f352f1989cc48b6a656efe12075146379b04b80a617f9fa0ed"
+    },
+    {
+      "path": "src/lib/i18n/manufacturingTerms.test.ts",
+      "bytes": 2437,
+      "sha256": "7c1a9a5b3195987614ddd2252d4f0b074163a7b6cb8310aa18a80f39f6b81a6e"
+    },
+    {
+      "path": "src/lib/i18n/normalize.test.ts",
+      "bytes": 1812,
+      "sha256": "fc050bbbb384be009f472a409b08fff15cd7243a96787b5aad343819a5977c2a"
+    },
+    {
+      "path": "src/lib/i18n/serverLocale.test.ts",
+      "bytes": 1496,
+      "sha256": "dc2b9b690924d7aaf9b51259aa67388cd5cb95efe4c54592f84d0c3d1879c347"
+    },
+    {
+      "path": "src/lib/i18n/spatialCadJobTranslations.test.ts",
+      "bytes": 507,
+      "sha256": "1d50321b2ac733faff0907e3abeb502eeea4e820464d3a623401cd2f865eb622"
+    },
+    {
+      "path": "src/lib/i18n/ssoCommercialStatus.test.ts",
+      "bytes": 1196,
+      "sha256": "f65c7ce27ed59e736661dbfdb05d073fa2c6267ae1368137a8ac1d449f8a4498"
+    },
+    {
+      "path": "src/app/[lang]/dashboard/page.i18n.test.tsx",
+      "bytes": 1910,
+      "sha256": "0b0b6c555b8727a2aec62a555b402897072a8ed6950afac38631e2b9c348f2b3"
+    },
+    {
+      "path": "src/app/[lang]/quick-quote/AutoQuoteCard.i18n.test.tsx",
+      "bytes": 1713,
+      "sha256": "32bc3897e50f69461781b04c453bc46e251686f68395de222e1a25b104090afd"
+    },
+    {
+      "path": "src/app/[lang]/shape-generator/WorkflowStepper.i18n.test.tsx",
+      "bytes": 2440,
+      "sha256": "cc0d71bc35b88dd680e34833927004758dc099e1dd9be4c56138e5081054a11a"
+    },
+    {
+      "path": "src/app/[lang]/nexyfab/billing/page.i18n.test.tsx",
+      "bytes": 1977,
+      "sha256": "aec71a993e5eb55e8686b491dad7507a46c954df385bd9c06eebc62cb793a638"
+    },
+    {
+      "path": "src/app/[lang]/nexyfab/design/CodeCheckPanel.i18n.test.tsx",
+      "bytes": 3925,
+      "sha256": "a15406e4d8a97ad5c16b19e4e13971faf7e69e78ebedfd3136fee99dbdd4548b"
+    },
+    {
+      "path": "src/app/[lang]/nexyfab/design/DesignInner.i18n.test.ts",
+      "bytes": 664,
+      "sha256": "7bb4c9e6ce8b18de648e824714335398bc7c8e4fb5e0ff0e4dd05109b0f9062e"
+    },
+    {
+      "path": "src/app/[lang]/nexyfab/design/FabPanel.i18n.test.tsx",
+      "bytes": 4575,
+      "sha256": "e22b129b917df9c3b10dd20f926198f768fe0f5b769d015182c35886358acc8e"
+    },
+    {
+      "path": "src/app/[lang]/nexyfab/design/PrecisionCadAgentPanel.i18n.test.ts",
+      "bytes": 843,
+      "sha256": "58caff8c30a80b0c8fc5dc9557e2dbad0e56ef1400abfc0ad226d17b2fbfa2e9"
+    },
+    {
+      "path": "src/app/[lang]/nexyfab/dfm/page.i18n.test.ts",
+      "bytes": 1743,
+      "sha256": "cefda58d4cce73ebbcda26a6a452c4c7483c0c562c07ecbef33d476e9d0205d0"
+    },
+    {
+      "path": "src/app/[lang]/nexyfab/orders/page.i18n.test.tsx",
+      "bytes": 3745,
+      "sha256": "5924f50012b094fb3e27323d423e060839bc38fe5f35d36ac6d21f02e4a1a4c5"
+    },
+    {
+      "path": "src/app/[lang]/nexyfab/rfq/page.i18n.test.tsx",
+      "bytes": 4623,
+      "sha256": "dcefba0833dfa47f6493b7ebe62e3249d3f34470044a49784b226e2f2eaa32fb"
+    },
+    {
+      "path": "src/app/[lang]/shape-generator/ai/FloatingAiPrompt.i18n.test.tsx",
+      "bytes": 1513,
+      "sha256": "e93fac69519990ee5ec36ca292ebf17ff9b994329c15781ebc15279b031e3efa"
+    },
+    {
+      "path": "src/app/[lang]/shape-generator/ai/useVoiceInput.i18n.test.ts",
+      "bytes": 1749,
+      "sha256": "151fd128b9b1c0a64a8916096e05a88f9cb69516c9fef1336b4c4f00c7d28840"
+    },
+    {
+      "path": "src/app/[lang]/shape-generator/topology/TopoPanel.i18n.test.tsx",
+      "bytes": 2073,
+      "sha256": "b50196c2328ba006552f21a4620c314375bce04f0f2014dc504f0409ae153ce7"
+    },
+    {
+      "path": "src/app/[lang]/shape-generator/__tests__/multiViewportI18n.test.tsx",
+      "bytes": 2203,
+      "sha256": "b5785cd120877c4ce7ef9f0577c3e66fafd6f0b7dc67444639388f04254353bd"
+    },
+    {
+      "path": "src/app/[lang]/shape-generator/__tests__/shapeDictI18n.test.ts",
+      "bytes": 2395,
+      "sha256": "4489f08eaf32f97c118064fcfc33cce5e2efd2c6826f7739091b913aaa0e7df0"
+    },
+    {
+      "path": "src/app/[lang]/shape-generator/__tests__/shapePreviewI18n.test.tsx",
+      "bytes": 2117,
+      "sha256": "bb4c92f5595ecf7483b1898a2e4d7ba7d6a786c08f07feca155802eb3ab96c32"
+    },
+    {
+      "path": "src/app/[lang]/shape-generator/referenceGeometry/__tests__/i18n.test.ts",
+      "bytes": 6411,
+      "sha256": "1ea57804a8d57f2a2ed0172901fff6b8db2ea4745912e30da78b940cef5e10f2"
+    },
+    {
+      "path": "src/app/[lang]/shape-generator/features/sheetmetal/__tests__/sheetMetalI18n.test.ts",
+      "bytes": 5729,
+      "sha256": "4bc75bc7d4c2492370bb2662564e0940e60071c9f2cb47b65815ab01e9d2056d"
+    },
+    {
+      "path": "src/app/[lang]/shape-generator/features/threads/__tests__/i18n.test.ts",
+      "bytes": 4806,
+      "sha256": "d09f59a8de8d56fdb8555c57c11f259d956cbd6c206b3695d74fbb4c73756c64"
+    }
+  ],
+  "counts": {
+    "files": 32,
+    "tests": 230,
+    "passed": 230,
+    "failed": 0,
+    "skipped": 0,
+    "todo": 0
+  },
+  "pass": true,
+  "issues": [],
+  "evidenceSha256": "070c77c3a618db2a6c8fee7f757418649071735648213eda7cc51e552b57f216"
+}

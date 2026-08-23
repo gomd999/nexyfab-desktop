@@ -11,12 +11,8 @@
  * FeatureInstance[] shape the tested PDM engine (versionBranch /
  * conflictResolution / historyView) operates on.
  *
- * Known approximation (explicit, by design):
- *   - ShellFeatureItem carries only numeric params + muted flag — sketch
- *     geometry / edge selections are NOT round-tripped. The PDM layer never
- *     dispatches on these, so commits/diffs/merges remain correct for the
- *     id + type + params + enabled surface it actually compares
- *     (see conflictResolution.featureEquals).
+ * Portable authoring data is copied as well, so a checkout can rebuild the
+ * actual feature tree instead of only a numeric presentation snapshot.
  */
 
 import type { ShellFeatureItem } from '../_shell/shellBridgeStore';
@@ -34,7 +30,13 @@ export function shellItemsToFeatureInstances(items: ShellFeatureItem[]): Feature
         // PDM layer only compares them for equality.
         type: it.type as FeatureType,
         params: { ...(it.params ?? {}) },
+        ...(it.paramExpressions ? { paramExpressions: { ...it.paramExpressions } } : {}),
         enabled: !it.muted,
+        ...(it.sketchData ? { sketchData: it.sketchData } : {}),
+        ...(it.edgeSelections ? { edgeSelections: it.edgeSelections } : {}),
+        ...(it.faceSelections ? { faceSelections: it.faceSelections } : {}),
+        ...(it.targetEdgeIds ? { targetEdgeIds: [...it.targetEdgeIds] } : {}),
+        ...(it.targetFaceIds ? { targetFaceIds: [...it.targetFaceIds] } : {}),
       });
       if (it.children?.length) walk(it.children);
     }

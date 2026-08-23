@@ -52,8 +52,9 @@ describe('★① 단계 판정 — 결과에서 정한다', () => {
 
   it('★각 단계가 「무엇이 아직 확정 안 됐는지」를 말한다 — 「초안」만으로는 뭘 더 말할지 모른다', () => {
     for (const s of DESIGN_STAGES) {
-      expect(s.pendingKo, s.id).toBeTruthy();
-      expect(s.pendingEn, s.id).toBeTruthy();
+      for (const key of ['pendingKo', 'pendingEn', 'pendingZh', 'pendingJa', 'pendingEs', 'pendingAr'] as const) {
+        expect(s[key], `${s.id}.${key}`).toBeTruthy();
+      }
     }
     expect(DESIGN_STAGES[0].pendingKo, '초안은 추정이 있다는 사실을 말해야 한다').toMatch(/추정/);
   });

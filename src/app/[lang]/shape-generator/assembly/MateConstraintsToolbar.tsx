@@ -87,6 +87,7 @@ export type MateButtonKind =
 
 interface Dict {
   toolbarLabel: string;
+  advanced: string;
   concentric: string;
   coincidentPoint: string;
   coincidentPlane: string;
@@ -111,6 +112,7 @@ interface Dict {
 const dict: Record<EditorLang, Dict> = {
   ko: {
     toolbarLabel: '메이트 도구',
+    advanced: '고급 메이트',
     concentric: '동심',
     coincidentPoint: '점일치',
     coincidentPlane: '면일치',
@@ -133,6 +135,7 @@ const dict: Record<EditorLang, Dict> = {
   },
   en: {
     toolbarLabel: 'Mates',
+    advanced: 'Advanced mates',
     concentric: 'Concentric',
     coincidentPoint: 'Coincident Point',
     coincidentPlane: 'Coincident Plane',
@@ -155,6 +158,7 @@ const dict: Record<EditorLang, Dict> = {
   },
   ja: {
     toolbarLabel: '合致ツール',
+    advanced: '高度な合致',
     concentric: '同心',
     coincidentPoint: '点一致',
     coincidentPlane: '面一致',
@@ -177,6 +181,7 @@ const dict: Record<EditorLang, Dict> = {
   },
   zh: {
     toolbarLabel: '配合工具',
+    advanced: '高级配合',
     concentric: '同心',
     coincidentPoint: '点重合',
     coincidentPlane: '面重合',
@@ -199,6 +204,7 @@ const dict: Record<EditorLang, Dict> = {
   },
   es: {
     toolbarLabel: 'Restricciones',
+    advanced: 'Restricciones avanzadas',
     concentric: 'Concéntrico',
     coincidentPoint: 'Coincidente (punto)',
     coincidentPlane: 'Coincidente (plano)',
@@ -221,6 +227,7 @@ const dict: Record<EditorLang, Dict> = {
   },
   ar: {
     toolbarLabel: 'قيود التجميع',
+    advanced: 'قيود متقدمة',
     concentric: 'متمركز',
     coincidentPoint: 'تطابق نقطي',
     coincidentPlane: 'تطابق سطحي',
@@ -509,6 +516,8 @@ export interface MateConstraintsToolbarProps {
   onAdd: (mate: Mate) => void;
   onClear?: () => void;
   disabled?: boolean;
+  /** Guided mode keeps specialist motion/transmission mates in a disclosure. */
+  experienceMode?: 'guided' | 'expert';
 }
 
 // ─── component ────────────────────────────────────────────────────────────
@@ -519,10 +528,15 @@ export default function MateConstraintsToolbar({
   onAdd,
   onClear,
   disabled = false,
+  experienceMode = 'expert',
 }: MateConstraintsToolbarProps): React.JSX.Element {
   const t = dict[lang] ?? dict.en;
   const crossPart = isCrossPartPair(selection);
   const [openValueFor, setOpenValueFor] = useState<MateButtonKind | null>(null);
+  const basicDefs = MATE_DEFS.filter((def) =>
+    ['concentric', 'coincident_point', 'coincident_plane', 'parallel', 'perpendicular', 'distance', 'angle'].includes(def.kind),
+  );
+  const advancedDefs = MATE_DEFS.filter((def) => !basicDefs.includes(def));
 
   const handleClick = useCallback(
     (def: MateDef) => {
@@ -548,6 +562,50 @@ export default function MateConstraintsToolbar({
     [onAdd, selection],
   );
 
+  const renderMateButton = (def: MateDef) => {
+    const enabled = !disabled && crossPart && def.canApply(selection);
+    const label = def.label(t);
+    const isOpen = openValueFor === def.kind;
+    return (
+      <span key={def.kind} style={{ position: 'relative', display: 'inline-flex' }}>
+        <button
+          type="button"
+          data-testid={`solver-mate-${def.kind}-button`}
+          onClick={() => handleClick(def)}
+          disabled={!enabled}
+          title={label}
+          style={{
+            minWidth: 44,
+            minHeight: 40,
+            padding: '0 10px',
+            border: '1px solid var(--nx-border)',
+            borderRadius: 4,
+            background: enabled ? 'var(--nx-panel)' : 'var(--nx-panel-2)',
+            color: enabled ? 'var(--nx-text)' : 'var(--nx-text-2)',
+            cursor: enabled ? 'pointer' : 'not-allowed',
+            fontSize: 14,
+            lineHeight: 1,
+            display: 'inline-flex',
+            gap: 4,
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
+        >
+          <span aria-hidden="true">{def.symbol}</span>
+          <span style={{ fontSize: 12 }}>{label}</span>
+        </button>
+        {def.value && isOpen && enabled ? (
+          <ValuePopover
+            def={def}
+            t={t}
+            onSubmit={(raw) => handleValueSubmit(def, raw)}
+            onCancel={() => setOpenValueFor(null)}
+          />
+        ) : null}
+      </span>
+    );
+  };
+
   return (
     <div
       data-testid="solver-mate-toolbar"
@@ -565,50 +623,17 @@ export default function MateConstraintsToolbar({
         borderRadius: 6,
       }}
     >
-      {MATE_DEFS.map((def) => {
-        const enabled = !disabled && crossPart && def.canApply(selection);
-        const label = def.label(t);
-        const isOpen = openValueFor === def.kind;
-        return (
-          <span key={def.kind} style={{ position: 'relative', display: 'inline-flex' }}>
-            <button
-              type="button"
-              data-testid={`solver-mate-${def.kind}-button`}
-              onClick={() => handleClick(def)}
-              disabled={!enabled}
-              aria-label={label}
-              title={label}
-              style={{
-                minWidth: 36,
-                height: 32,
-                padding: '0 8px',
-                border: '1px solid var(--nx-border)',
-                borderRadius: 4,
-                background: enabled ? 'var(--nx-panel)' : 'var(--nx-panel-2)',
-                color: enabled ? 'var(--nx-text)' : 'var(--nx-text-2)',
-                cursor: enabled ? 'pointer' : 'not-allowed',
-                fontSize: 14,
-                lineHeight: 1,
-                display: 'inline-flex',
-                gap: 4,
-                alignItems: 'center',
-                justifyContent: 'center',
-              }}
-            >
-              <span aria-hidden="true">{def.symbol}</span>
-              <span style={{ fontSize: 11 }}>{label}</span>
-            </button>
-            {def.value && isOpen && enabled ? (
-              <ValuePopover
-                def={def}
-                t={t}
-                onSubmit={(raw) => handleValueSubmit(def, raw)}
-                onCancel={() => setOpenValueFor(null)}
-              />
-            ) : null}
-          </span>
-        );
-      })}
+      {(experienceMode === 'guided' ? basicDefs : MATE_DEFS).map(renderMateButton)}
+      {experienceMode === 'guided' ? (
+        <details data-testid="solver-mate-advanced-disclosure" style={{ flexBasis: '100%' }}>
+          <summary style={{ minHeight: 40, display: 'flex', alignItems: 'center', cursor: 'pointer', color: 'var(--nx-text-2)', fontSize: 12 }}>
+            {t.advanced} ({advancedDefs.length})
+          </summary>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, paddingTop: 4 }}>
+            {advancedDefs.map(renderMateButton)}
+          </div>
+        </details>
+      ) : null}
       {onClear ? (
         <button
           type="button"
@@ -619,7 +644,7 @@ export default function MateConstraintsToolbar({
           title={t.clear}
           style={{
             marginInlineStart: 'auto',
-            height: 32,
+            minHeight: 40,
             padding: '0 10px',
             border: '1px solid var(--nx-border)',
             borderRadius: 4,

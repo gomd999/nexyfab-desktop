@@ -1,0 +1,26 @@
+{
+  "schema": "nexyfab.mechanical-single-part-bom-candidate.v1",
+  "partRevisionSha256": "bbf911629e96cb34b92ee2f55a2a404b9ea6ab20569d7b37f8a59e843462ae10",
+  "sourceDesignRevisionSha256": "3cf6a0f9c8efcf153a2cfefde087a2112c086fc412d2feeaeb9ce52542838564",
+  "sourceNfabSha256": "735d547c9437cee2c7304a1a263c2e85115a27769f05e86b3d4bf80844379698",
+  "sourceStepSha256": "4a0eb79927543242fa64f6222c418afa76ab228b9d80a26e172929870f50f612",
+  "units": "mm",
+  "items": [
+    {
+      "partNumber": "splitBody",
+      "description": "Mechanical runtime splitBody",
+      "quantity": 1,
+      "dimensionsMm": {
+        "x": 60.0000002,
+        "y": 40.0000002,
+        "z": 11.000000200000002
+      }
+    }
+  ],
+  "claimBoundary": {
+    "singlePartCandidateOnly": true,
+    "materialSpecified": false,
+    "massCalculated": false,
+    "manufacturingApproved": false
+  }
+}

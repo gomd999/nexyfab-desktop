@@ -102,10 +102,32 @@ import { advanceGenerationSession } from '../ai/generationSessionClient';
 import { buildEditedAiAssemblyProgram, packageAiAssemblyRevision } from '@/lib/ai/aiAssemblyRevision';
 import { AI_ASSEMBLY_REVISION_REQUEST_EVENT, AI_ASSEMBLY_REVISION_RESULT_EVENT, type AiAssemblyRevisionRequest, type AiAssemblyRevisionResult } from '@/lib/ai/aiAssemblyRevisionEvent';
 import type { JointEvidenceClaim } from '@/lib/reference/jointEvidenceReleaseGate';
+import { createDefaultAssemblyPartTree } from './placedPartFeatureTreeProvisioning';
+import { createCommercialLocalizer } from '@/lib/i18n/commercialLocalizer';
+import { loc } from '@/lib/i18n/loc';
 
 // ─── i18n ────────────────────────────────────────────────────────────────
 
 export type AssemblyBrowserLang = 'ko' | 'en' | 'ja' | 'zh' | 'es' | 'ar';
+
+function localized(lang: AssemblyBrowserLang, values: Record<AssemblyBrowserLang, string>): string {
+  return values[lang];
+}
+
+type AssemblyWorkspaceSection = 'assembly' | 'ai' | 'verify' | 'history';
+type AssemblyExperienceMode = 'guided' | 'expert';
+
+const WORKSPACE_COPY: Record<AssemblyBrowserLang, {
+  assembly: string; ai: string; verify: string; history: string;
+  emptyStart: string; solveStatus: string; releaseStatus: string;
+}> = {
+  ko: { assembly: '조립', ai: 'AI 설계', verify: '검증', history: '기록', emptyStart: '조립을 가져오거나 첫 부품을 추가하세요', solveStatus: '해석: 실행 전', releaseStatus: '출시 검증: 실행 전' },
+  en: { assembly: 'Assembly', ai: 'AI design', verify: 'Verify', history: 'History', emptyStart: 'Import an assembly or add the first part', solveStatus: 'Solve: NOT_RUN', releaseStatus: 'Release verification: NOT_RUN' },
+  ja: { assembly: 'アセンブリ', ai: 'AI設計', verify: '検証', history: '履歴', emptyStart: 'アセンブリを読み込むか最初の部品を追加', solveStatus: '解析: 未実行', releaseStatus: 'リリース検証: 未実行' },
+  zh: { assembly: '装配', ai: 'AI设计', verify: '验证', history: '历史', emptyStart: '导入装配或添加第一个零件', solveStatus: '求解：未运行', releaseStatus: '发布验证：未运行' },
+  es: { assembly: 'Ensamblaje', ai: 'Diseño IA', verify: 'Verificar', history: 'Historial', emptyStart: 'Importa un ensamblaje o añade la primera pieza', solveStatus: 'Solución: NO EJECUTADO', releaseStatus: 'Verificación: NO EJECUTADO' },
+  ar: { assembly: 'التجميع', ai: 'تصميم AI', verify: 'التحقق', history: 'السجل', emptyStart: 'استورد تجميعاً أو أضف الجزء الأول', solveStatus: 'الحل: لم يُشغّل', releaseStatus: 'تحقق الإصدار: لم يُشغّل' },
+};
 
 interface Dict {
   modalTitle: string;
@@ -1134,6 +1156,13 @@ export type AssemblyBrowserOnSolve = (
 
 export interface AssemblyBrowserModalProps {
   lang: AssemblyBrowserLang;
+  embedded?: boolean;
+  default3DView?: boolean;
+  exactSolveRequired?: boolean;
+  externalSolveBlockers?: ReadonlyArray<string>;
+  externalReleaseBlockers?: ReadonlyArray<string>;
+  onStateChange?: (state: AssemblyState) => void;
+  onFeatureTreesChange?: (trees: Record<string, FeatureTree>) => void;
   initialState?: AssemblyState;
   /**
    * Optional pre-seeded per-part FeatureTrees. Keys are PartInstance.id,
@@ -1660,6 +1689,13 @@ interface CommercialMotionVerificationResult {
 
 export default function AssemblyBrowserModal({
   lang,
+  embedded = false,
+  default3DView = false,
+  exactSolveRequired = false,
+  externalSolveBlockers = [],
+  externalReleaseBlockers = [],
+  onStateChange,
+  onFeatureTreesChange,
   initialState,
   initialFeatureTrees,
   onClose,
@@ -1672,6 +1708,7 @@ export default function AssemblyBrowserModal({
   initialAutoInfer,
 }: AssemblyBrowserModalProps): React.ReactElement {
   const t = dict[lang];
+  const L = createCommercialLocalizer(lang);
 
   // Persistence + history (Phase 4 + 4.2): all assembly-state I/O now flows
   // through `useAssemblyHistory`, which internally delegates persistence to
@@ -1708,7 +1745,12 @@ export default function AssemblyBrowserModal({
   }, [history.state]);
 
   const state = overrideState ?? history.state;
-
+  const workspace = WORKSPACE_COPY[lang];
+  const [workspaceSection, setWorkspaceSection] = useState<AssemblyWorkspaceSection>('assembly');
+  const [experienceMode, setExperienceMode] = useState<AssemblyExperienceMode>('guided');
+  const pristine = state.parts.length === 0 && state.mates.length === 0;
+  void setExperienceMode;
+  void embedded;
   /**
    * Non-recording state setter. Used for transient edits that should NOT
    * push to history (and must therefore bypass validateAssembly).
@@ -1765,6 +1807,15 @@ export default function AssemblyBrowserModal({
   const [memoryFeatureTrees, setMemoryFeatureTrees] = useState<Record<string, FeatureTree>>(
     initialFeatureTrees ?? {},
   );
+  useEffect(() => {
+    if (projectId !== undefined) return;
+    const next = initialFeatureTrees ?? {};
+    setMemoryFeatureTrees(next);
+    setFeatureTreeText(Object.fromEntries(
+      Object.entries(next).map(([partId, tree]) => [partId, JSON.stringify(tree, null, 2)]),
+    ));
+    setFeatureTreeError({});
+  }, [initialFeatureTrees, projectId]);
   const featureTrees = projectId !== undefined ? persistedTrees : memoryFeatureTrees;
   const setFeatureTrees = useCallback(
     (
@@ -1786,6 +1837,9 @@ export default function AssemblyBrowserModal({
     },
     [projectId, persistedTrees, setPersistedTrees],
   );
+  useEffect(() => {
+    onFeatureTreesChange?.(featureTrees);
+  }, [featureTrees, onFeatureTreesChange]);
   /**
    * Per-part "raw" textarea contents — the controlled value of each
    * textarea. Decoupled from `featureTrees` so the user can transiently
@@ -1829,6 +1883,12 @@ export default function AssemblyBrowserModal({
     | { status: 'ok'; result: AssemblyBrowserSolveResult }
     | { status: 'error'; message: string }
   >({ status: 'idle' });
+  const solveGateBlockers = solveState.status === 'ok'
+    ? [
+        ...(solveState.result.phase !== 'real' ? ['authoritative_real_solver_required'] : []),
+        ...(typeof solveState.result.dof === 'number' && solveState.result.dof > 0 ? [`remaining_dof_${solveState.result.dof}_exceeds_allowed_0`] : []),
+      ]
+    : [];
   const [commercialVerification, setCommercialVerification] = useState<
     | { status: 'idle' }
     | { status: 'loading' }
@@ -1891,7 +1951,10 @@ export default function AssemblyBrowserModal({
       (prev) => ({ ...prev, parts: [...prev.parts, part] }),
       t.descAddPart(id),
     );
-  }, [overrideState, history.state, recordState, t]);
+    const tree = createDefaultAssemblyPartTree(id);
+    setFeatureTrees((prev) => ({ ...prev, [id]: tree }));
+    setFeatureTreeText((prev) => ({ ...prev, [id]: JSON.stringify(tree, null, 2) }));
+  }, [overrideState, history.state, recordState, setFeatureTrees, setFeatureTreeText, t]);
 
   const removePartLocal = useCallback((partId: string) => {
     recordState(
@@ -1943,7 +2006,7 @@ export default function AssemblyBrowserModal({
     setSelection((prev) => prev.filter((s) => s.partId !== partId));
     // Clear the 3D viewer highlight if the removed part was selected.
     setSelectedPartId((prev) => (prev === partId ? null : prev));
-  }, [recordState, t]);
+  }, [recordState, setFeatureTrees, setFeatureTreeText, t]);
 
   const renamePart = useCallback((partId: string, name: string) => {
     setStateDirect((prev) => ({
@@ -2555,6 +2618,13 @@ export default function AssemblyBrowserModal({
     | { kind: 'created'; parts: number; mates: number }
     | { kind: 'unparsed' }
   >(null);
+  const [inlineAiDraft, setInlineAiDraft] = useState<{
+    nextState: AssemblyState;
+    trees: Record<string, FeatureTree>;
+    description: string;
+    parts: number;
+    mates: number;
+  } | null>(null);
 
   /**
    * Apply a planner-supplied `PlanStep[]` to a single part's FeatureTree
@@ -2687,20 +2757,26 @@ export default function AssemblyBrowserModal({
       result.kind === 'stacked'
         ? `AI: ${result.count} stacked → ${newParts.length} parts + ${newMates.length} mates`
         : `AI: ${result.rows}x${result.cols} grid → ${newParts.length} parts`;
-    recordState(
-      (prev) => ({
-        parts: [...prev.parts, ...newParts],
-        mates: [...prev.mates, ...newMates],
-      }),
+    setInlineAiDraft({
+      nextState: {
+        parts: [...base.parts, ...newParts],
+        mates: [...base.mates, ...newMates],
+      },
+      trees: Object.fromEntries(newParts.map((part) => [part.id, createDefaultAssemblyPartTree(part.id)])),
       description,
-    );
-    setAiStatus({
-      kind: 'created',
       parts: newParts.length,
       mates: newMates.length,
     });
+  }, [aiInput, overrideState, history.state]);
+
+  const applyInlineAiDraft = useCallback(() => {
+    if (!inlineAiDraft) return;
+    recordState(inlineAiDraft.nextState, inlineAiDraft.description);
+    setFeatureTrees((previous) => ({ ...previous, ...inlineAiDraft.trees }));
+    setAiStatus({ kind: 'created', parts: inlineAiDraft.parts, mates: inlineAiDraft.mates });
+    setInlineAiDraft(null);
     setAiInput('');
-  }, [aiInput, overrideState, history.state, recordState]);
+  }, [inlineAiDraft, recordState, setFeatureTrees]);
 
   const onInferMatesClick = useCallback(() => {
     const { partFaces, partAxes } = derivePartGeometryForAssembly(
@@ -2970,6 +3046,7 @@ export default function AssemblyBrowserModal({
     try {
       const result = await onSolve(state, featureTrees, solverSelection, groupOptions);
       setSolveState({ status: 'ok', result });
+      if (result.state !== undefined) onStateChange?.(result.state);
     } catch (e) {
       setSolveState({
         status: 'error',
@@ -2984,6 +3061,7 @@ export default function AssemblyBrowserModal({
     useGroupsOn,
     clampedMaxParallel,
     t.errorPrefix,
+    onStateChange,
   ]);
 
   // ── BOM export (Phase 4.5) ────────────────────────────────────────────
@@ -3008,7 +3086,7 @@ export default function AssemblyBrowserModal({
   // opt in. When ON we mount {@link Assembly3DViewer} between the parts
   // panel and the mates panel, sharing the `selectedPartId` state with the
   // 2D parts list so a click in either surface highlights the other.
-  const [show3DView, setShow3DView] = useState<boolean>(false);
+  const [show3DView, setShow3DView] = useState<boolean>(default3DView);
   const [viewportPickMode,setViewportPickMode]=useState<ViewportPickMode>('part');
   const [viewerViewport, setViewerViewport] = useState<{ scene: import('three').Scene; camera: import('three').Camera; domElement: HTMLElement } | null>(null);
   const toggle3DView = useCallback(() => setShow3DView((v) => !v), []);
@@ -3124,7 +3202,7 @@ export default function AssemblyBrowserModal({
   const runCommercialVerification=useCallback(async()=>{
     setCommercialVerification({status:'loading'});
     try{
-      const response=await fetch('/api/cad/v1/assembly/release/verify',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({
+      const response=await fetch('/api/cad/v1/assembly/release/verify/',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({
         state,featureTrees,solver:solverSelection,useGroups:useGroupsOn||undefined,maxParallel:useGroupsOn?clampedMaxParallel:undefined,
         allowedDoF:commercialAllowedDoF,intendedContacts:[],
         ...(commercialAllowedDoF>0?{animation}:{}),
@@ -3139,7 +3217,7 @@ export default function AssemblyBrowserModal({
   const animationVerification = useMemo(() => animation.tracks.length ? verifyAssemblyAnimationWithRecovery(state,animation,new Map(Object.entries(animationLocalBoxes)),{frameStep:Math.max(1,Math.ceil((animation.endFrame-animation.startFrame)/200))}).verification : null, [animation, animationLocalBoxes, state]);
   const [preciseTimeOfImpact,setPreciseTimeOfImpact]=useState<PreciseCollisionTimeEvidence[]|null>(null),[preciseAnimationBusy,setPreciseAnimationBusy]=useState(false);
   useEffect(()=>{setPreciseTimeOfImpact(null);setMotionVerification(null);setJointEvidence(null);setCommercialVerification({status:'idle'});},[animation,featureTrees,state]);
-  const runPreciseAnimationVerification=useCallback(async()=>{setPreciseAnimationBusy(true);try{const response=await fetch('/api/cad/v1/assembly/animation/verify',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({state,animation,featureTrees,frameStep:Math.max(1,Math.ceil((animation.endFrame-animation.startFrame)/200)),toiFrameTolerance:1e-3,toiMaxDepth:20,...(jointEvidence?{jointEvidence}:{})})}),json=await response.json() as CommercialMotionVerificationResult&{ok?:boolean;message?:string};if(!response.ok||!json.ok)throw new Error(json.message??`Precise animation verification failed (${response.status})`);setMotionVerification(json);setPreciseTimeOfImpact(json.precise?.continuous?.timeOfImpact??[]);setAnimationPackageError(null);}catch(error){setMotionVerification(null);setPreciseTimeOfImpact(null);setAnimationPackageError(error instanceof Error?error.message:String(error));}finally{setPreciseAnimationBusy(false);}},[animation,featureTrees,jointEvidence,state]);
+  const runPreciseAnimationVerification=useCallback(async()=>{setPreciseAnimationBusy(true);try{const response=await fetch('/api/cad/v1/assembly/animation/verify/',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({state,animation,featureTrees,frameStep:Math.max(1,Math.ceil((animation.endFrame-animation.startFrame)/200)),toiFrameTolerance:1e-3,toiMaxDepth:20,...(jointEvidence?{jointEvidence}:{})})}),json=await response.json() as CommercialMotionVerificationResult&{ok?:boolean;message?:string};if(!response.ok||!json.ok)throw new Error(json.message??`Precise animation verification failed (${response.status})`);setMotionVerification(json);setPreciseTimeOfImpact(json.precise?.continuous?.timeOfImpact??[]);setAnimationPackageError(null);}catch(error){setMotionVerification(null);setPreciseTimeOfImpact(null);setAnimationPackageError(error instanceof Error?error.message:String(error));}finally{setPreciseAnimationBusy(false);}},[animation,featureTrees,jointEvidence,state]);
   const downloadMotionReviewPacket=useCallback(async()=>{if(!motionVerification)return;const packet={schema:'nexyfab.motion-review-work-packet.v1',verificationInputHash:motionVerification.verificationInputHash,exactCadEvidence:motionVerification.precise?.exactCadEvidence??{},collisionVerification:{status:motionVerification.precise?.status??'not_run',collisionFree:motionVerification.precise?.collisionFree===true,failureCodes:motionVerification.precise?.failureCodes??[]},requiredEvidence:{schema:'nexyfab.native-cad-expert-review.v1',dualIndependentSignoff:true,nativeJointSemantics:true},releaseExecuted:false};await downloadBlob(`assembly-motion-review-${motionVerification.verificationInputHash}.json`,new Blob([`${JSON.stringify(packet,null,2)}\n`],{type:'application/json'}));},[motionVerification]);
   /** State handed to Assembly3DViewer — animation is evaluated without mutating design history. */
   const viewerState = useMemo(() => {
@@ -3540,9 +3618,25 @@ export default function AssemblyBrowserModal({
     () => Object.values(featureTreeError).some((msg) => Boolean(msg)),
     [featureTreeError],
   );
+  const missingGeometryPartIds = useMemo(
+    () => state.parts
+      .filter((part) => !featureTrees[part.id] || featureTrees[part.id]!.nodes.length === 0)
+      .map((part) => part.id),
+    [featureTrees, state.parts],
+  );
+  const readinessBlockers = useMemo(
+    () => [
+      ...(exactSolveRequired && state.parts.length === 0 ? ['assembly_empty'] : []),
+      ...(exactSolveRequired && missingGeometryPartIds.length > 0
+        ? [`missing_active_geometry:${missingGeometryPartIds.join(',')}`]
+        : []),
+      ...externalSolveBlockers,
+    ],
+    [exactSolveRequired, externalSolveBlockers, missingGeometryPartIds, state.parts.length],
+  );
   const solveDisabled = useMemo(
-    () => !onSolve || solveState.status === 'loading' || hasFeatureTreeError,
-    [onSolve, solveState.status, hasFeatureTreeError],
+    () => !onSolve || solveState.status === 'loading' || hasFeatureTreeError || readinessBlockers.length > 0,
+    [onSolve, solveState.status, hasFeatureTreeError, readinessBlockers.length],
   );
 
   // ── keyboard shortcuts: Ctrl+Z (undo), Ctrl+Y / Ctrl+Shift+Z (redo) ────
@@ -3659,6 +3753,8 @@ export default function AssemblyBrowserModal({
       }}
     >
       <div
+        data-experience={experienceMode}
+        data-pristine={pristine}
         style={{
           background: 'var(--nx-panel)',
           padding: 20,
@@ -3679,6 +3775,85 @@ export default function AssemblyBrowserModal({
         >
           {t.modalTitle}
         </h3>
+
+        <nav data-testid="solver-assembly-workspace-nav" style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+          {([
+            ['assembly', workspace.assembly],
+            ['ai', workspace.ai],
+            ['verify', workspace.verify],
+            ['history', workspace.history],
+          ] as const).map(([section, label]) => (
+            <button
+              key={section}
+              type="button"
+              data-testid={`solver-assembly-workspace-${section}`}
+              aria-pressed={workspaceSection === section}
+              onClick={() => {
+                setWorkspaceSection(section);
+                if (section === 'ai') setAiPanelOn(true);
+                if (section === 'verify') setConstraintsPanelOn(true);
+              }}
+            >
+              {label}
+            </button>
+          ))}
+        </nav>
+
+        {pristine && (
+          <div data-testid="solver-assembly-empty-start">
+            {workspace.emptyStart}
+          </div>
+        )}
+        <div data-testid="solver-assembly-solver-status">
+          {solveGateBlockers.length > 0 ? localized(lang, { ko: '해석: 차단됨', en: 'Solve: BLOCKED', ja: '解析: ブロック', zh: '求解：已阻断', es: 'Solución: BLOQUEADA', ar: 'الحل: محظور' }) : workspace.solveStatus}
+        </div>
+        {exactSolveRequired ? (
+          <>
+            <div
+              data-testid="solver-assembly-process-rail"
+              aria-label="Precision assembly completion stages"
+              style={{ display: 'grid', gridTemplateColumns: 'repeat(5, minmax(0, 1fr))', gap: 6 }}
+            >
+              <div
+                data-testid="solver-assembly-stage-geometry"
+                data-status={state.parts.length > 0 && missingGeometryPartIds.length === 0 ? 'ready' : 'blocked'}
+              />
+              <div
+                data-testid="solver-assembly-stage-mates"
+                data-status={state.parts.length > 0 && (state.parts.length === 1 || state.mates.length > 0) ? 'ready' : 'pending'}
+              />
+              <div
+                data-testid="solver-assembly-stage-solve"
+                data-status={solveState.status === 'ok' && solveGateBlockers.length === 0 ? 'ready' : solveState.status === 'error' || solveGateBlockers.length > 0 ? 'blocked' : 'pending'}
+              />
+              <div
+                data-testid="solver-assembly-stage-verify"
+                data-status={commercialVerification.status === 'ok' ? 'ready' : commercialVerification.status === 'error' ? 'blocked' : 'pending'}
+              />
+              <div
+                data-testid="solver-assembly-stage-release"
+                data-status={commercialVerification.status === 'ok' && commercialVerification.result.releaseReady && externalReleaseBlockers.length === 0
+                  ? 'ready'
+                  : commercialVerification.status === 'error' || externalReleaseBlockers.length > 0
+                    ? 'blocked'
+                    : 'pending'}
+              />
+            </div>
+            {readinessBlockers.length > 0 && (
+              <div data-testid="solver-assembly-readiness-gate" role="alert">
+                {missingGeometryPartIds.length > 0
+                  ? `Missing active geometry: ${missingGeometryPartIds.join(', ')}`
+                  : readinessBlockers.join(' · ')}
+              </div>
+            )}
+          </>
+        ) : (
+          <div
+            data-testid="solver-assembly-stage-solve"
+            data-status={solveState.status === 'ok' && solveGateBlockers.length === 0 ? 'ready' : solveState.status === 'error' ? 'blocked' : 'pending'}
+          />
+        )}
+        <div data-testid="solver-assembly-release-status">{workspace.releaseStatus}</div>
 
         <div
           data-testid="solver-assembly-3d-toggle-wrap"
@@ -4156,7 +4331,7 @@ export default function AssemblyBrowserModal({
                 onClear={onClearSelection}
               />
               <div data-testid="solver-assembly-selection-edit" style={{display:'flex',flexDirection:'column',gap:5,paddingTop:5,borderTop:'1px dashed var(--nx-border)'}}>
-                <div style={{display:'flex',gap:5}}><input aria-label="Selected geometry edit command" value={selectionEditCommand} onChange={event=>{setSelectionEditCommand(event.target.value);setSelectionEditPreview(null);}} placeholder="홀 직경 8mm / 면 오프셋 2mm / 메이트 거리 10mm" style={{flex:1}}/><button type="button" disabled={selection.length===0&&selectedMateIds.size===0} onClick={previewSelectionEdit}>Preview</button></div>
+                <div style={{display:'flex',gap:5}}><input aria-label="Selected geometry edit command" value={selectionEditCommand} onChange={event=>{setSelectionEditCommand(event.target.value);setSelectionEditPreview(null);}} placeholder={loc(lang, { ko: '홀 직경 8mm / 면 오프셋 2mm / 메이트 거리 10mm', en: 'Hole diameter 8mm / face offset 2mm / mate distance 10mm', ja: '穴径8mm／面オフセット2mm／メイト距離10mm', zh: '孔径8mm／面偏移2mm／配合距离10mm', es: 'Diámetro de orificio 8 mm / desfase de cara 2 mm / distancia de relación 10 mm', ar: 'قطر الثقب 8 مم / إزاحة السطح 2 مم / مسافة العلاقة 10 مم' })} style={{flex:1}}/><button type="button" disabled={selection.length===0&&selectedMateIds.size===0} onClick={previewSelectionEdit}>Preview</button></div>
                 {selectionEditPreview&&<div data-testid="solver-assembly-selection-edit-preview" style={{padding:6,background:'var(--nx-panel-2)',borderRadius:4,fontSize:11}}><div><strong>Plan:</strong> {selectionEditPreview.summary}</div><div>Operations: {selectionEditPreview.transaction.operations.map(operation=>operation.kind).join(', ')}</div><div>Revision: {selectionEditPreview.transaction.baseRevision}</div>{selectionEditPreview.transaction.selection.topology.some(ref=>ref.referenceQuality!=='persistent')&&<label><input type="checkbox" checked={confirmDerivedSelection} onChange={event=>setConfirmDerivedSelection(event.target.checked)}/> Confirm derived topology reference</label>}<div style={{display:'flex',gap:5,marginTop:4}}><button type="button" onClick={applySelectionEdit}>Apply atomically</button><button type="button" onClick={()=>{setSelectionEditPreview(null);setSelectionEditError(null);}}>Cancel</button></div></div>}
                 {selectionEditPreview?.evidence&&<div data-testid="solver-assembly-selection-edit-evidence" style={{fontSize:11,color:'var(--nx-text-muted)'}}>FeatureTree estimate: ΔV {selectionEditPreview.evidence.deltaVolumeMm3.toFixed(3)} mm³ · changed {selectionEditPreview.evidence.changedFeatureIds.join(', ')||'none'} · topology {selectionEditPreview.evidence.topologyValidation}</div>}
                 {selectionEditUndo&&<button type="button" onClick={undoSelectionEdit}>Undo last selection edit</button>}
@@ -4198,22 +4373,22 @@ export default function AssemblyBrowserModal({
               <AssemblyAnimationTimeline animation={animation} frame={animationFrame} playing={animationPlaying} onFrameChange={setAnimationFrame} onPlayingChange={setAnimationPlaying} verification={animationVerification} timeOfImpact={preciseTimeOfImpact}/>
               <div style={{display:'flex',gap:6,alignItems:'center'}}>
                 <button type="button" data-testid="solver-assembly-add-keyframe" disabled={!selectedPartId} onClick={addSelectedPoseKeyframe}>◆ Keyframe</button>
-                <button type="button" data-testid="solver-assembly-precise-animation-verify" disabled={preciseAnimationBusy||!animation.tracks.length} onClick={()=>void runPreciseAnimationVerification()}>{preciseAnimationBusy?'Verifying…':(lang==='ko'?'상용 운동 검증':'Manufacturing motion')}</button>
+                <button type="button" data-testid="solver-assembly-precise-animation-verify" disabled={preciseAnimationBusy||!animation.tracks.length} onClick={()=>void runPreciseAnimationVerification()}>{preciseAnimationBusy?'Verifying…':(L('상용 운동 검증', 'Manufacturing motion'))}</button>
                 <label style={{fontSize:11}}>End <input aria-label="Animation end frame" type="number" min={1} max={100000} value={animation.endFrame} onChange={event=>setAnimation(previous=>({...previous,endFrame:Math.max(previous.startFrame+1,Number(event.target.value)||1)}))} style={{width:70}}/></label>
                 <label style={{fontSize:11}}>FPS <input aria-label="Animation FPS" type="number" min={1} max={240} value={animation.fps} onChange={event=>setAnimation(previous=>({...previous,fps:Math.max(1,Math.min(240,Number(event.target.value)||30))}))} style={{width:55}}/></label>
                 <button type="button" onClick={exportAnimation}>Export JSON</button><button type="button" onClick={exportAnimationHtml}>Export HTML</button><button type="button" onClick={()=>void exportAnimationGlb()}>Export GLB</button><button type="button" onClick={()=>animationImportRef.current?.click()}>Import JSON</button><input ref={animationImportRef} type="file" accept="application/json,.json" hidden onChange={event=>{const file=event.target.files?.[0];if(file)void importAnimation(file);event.target.value='';}}/>
-                <button type="button" data-testid="solver-assembly-joint-evidence-import" onClick={()=>jointEvidenceImportRef.current?.click()}>{jointEvidence?(lang==='ko'?'조인트 증거 로드됨':'Joint evidence loaded'):(lang==='ko'?'서명 조인트 증거':'Signed joint evidence')}</button><input data-testid="solver-assembly-joint-evidence-file" ref={jointEvidenceImportRef} type="file" accept="application/json,.json" hidden onChange={event=>{const file=event.target.files?.[0];if(file)void importJointEvidence(file);event.target.value='';}}/>
+                <button type="button" data-testid="solver-assembly-joint-evidence-import" onClick={()=>jointEvidenceImportRef.current?.click()}>{jointEvidence?(L('조인트 증거 로드됨', 'Joint evidence loaded')):(L('서명 조인트 증거', 'Signed joint evidence'))}</button><input data-testid="solver-assembly-joint-evidence-file" ref={jointEvidenceImportRef} type="file" accept="application/json,.json" hidden onChange={event=>{const file=event.target.files?.[0];if(file)void importJointEvidence(file);event.target.value='';}}/>
               </div>
               {motionVerification&&<div data-testid="solver-assembly-motion-verify-result" role="status" style={{fontSize:11,padding:7,border:`1px solid ${motionVerification.releaseReady?'#6ee7b7':'#fdba74'}`,background:motionVerification.releaseReady?'#ecfdf5':'#fff7ed',borderRadius:4}}>
-                <strong>{motionVerification.releaseReady?(lang==='ko'?'운동 출시 게이트 통과':'Motion release gate passed'):(lang==='ko'?'운동 출시 게이트 차단':'Motion release gate blocked')}</strong>
+                <strong>{motionVerification.releaseReady?(L('운동 출시 게이트 통과', 'Motion release gate passed')):(L('운동 출시 게이트 차단', 'Motion release gate blocked'))}</strong>
                 {' · '}precise {motionVerification.precise?.status??'not_run'} · collision-free {motionVerification.precise?.collisionFree?'yes':'no'} · exact parts {Object.keys(motionVerification.precise?.exactCadEvidence??{}).length}/{state.parts.length} · joint {motionVerification.jointEvidenceGate?.status??'not_run'}
                 <div data-testid="solver-assembly-motion-review-hash">review target {motionVerification.verificationInputHash}</div>
                 {(motionVerification.precise?.failureCodes?.length??0)>0&&<div>{motionVerification.precise!.failureCodes!.join(' · ')}</div>}
                 {(motionVerification.jointEvidenceGate?.errors?.length??0)>0&&<div>{motionVerification.jointEvidenceGate!.errors!.join(' · ')}</div>}
-                <button type="button" data-testid="solver-assembly-motion-review-download" onClick={()=>void downloadMotionReviewPacket()}>{lang==='ko'?'전문가 검토 패킷':'Expert review packet'}</button>
+                <button type="button" data-testid="solver-assembly-motion-review-download" onClick={()=>void downloadMotionReviewPacket()}>{L('전문가 검토 패킷', 'Expert review packet')}</button>
               </div>}
               {animationPackageError&&<div role="alert" style={{fontSize:11,color:'#dc2626'}}>{animationPackageError}</div>}
-              <div style={{display:'flex',gap:6}}><input aria-label="Animation command" value={animationCommand} onChange={event=>setAnimationCommand(event.target.value)} placeholder="0~100프레임 arm X축 100mm 이동" style={{flex:1}}/><button type="button" onClick={runAnimationCommand}>AI timeline</button></div>
+              <div style={{display:'flex',gap:6}}><input aria-label="Animation command" value={animationCommand} onChange={event=>setAnimationCommand(event.target.value)} placeholder={loc(lang, { ko: '0~100프레임 arm X축 100mm 이동', en: 'Move arm 100mm on X from frames 0–100', ja: '0～100フレームでarmをX軸方向に100mm移動', zh: '在0～100帧内将arm沿X轴移动100mm', es: 'Mover arm 100 mm en X entre los fotogramas 0–100', ar: 'حرّك arm مسافة 100 مم على المحور X خلال الإطارات 0–100' })} style={{flex:1}}/><button type="button" onClick={runAnimationCommand}>AI timeline</button></div>
               {/* ── RRRRR Agent: PartManipulatorGizmo integration ──
                   Only when a part is selected. The gizmo's render gate is
                   Boolean(selectedPart && scene); we pass a stub scene so
@@ -4672,9 +4847,14 @@ export default function AssemblyBrowserModal({
           >
             <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12 }}>
               <strong>
-                {lang === 'ko'
-                  ? `재생성 참조 검토 (${topologyReview.length})`
-                  : `Regeneration reference review (${topologyReview.length})`}
+                {localized(lang, {
+                  ko: `재생성 참조 검토 (${topologyReview.length})`,
+                  en: `Regeneration reference review (${topologyReview.length})`,
+                  ja: `再生成参照の確認 (${topologyReview.length})`,
+                  zh: `重新生成引用检查 (${topologyReview.length})`,
+                  es: `Revisión de referencias regeneradas (${topologyReview.length})`,
+                  ar: `مراجعة المراجع المُعاد توليدها (${topologyReview.length})`,
+                })}
               </strong>
               <button
                 type="button"
@@ -4682,13 +4862,25 @@ export default function AssemblyBrowserModal({
                 onClick={() => setTopologyReview([])}
                 style={{ border: 0, background: 'transparent', cursor: 'pointer' }}
               >
-                {lang === 'ko' ? '모두 확인' : 'Dismiss all'}
+                {localized(lang, {
+                  ko: '모두 확인',
+                  en: 'Dismiss all',
+                  ja: 'すべて確認',
+                  zh: '全部确认',
+                  es: 'Descartar todo',
+                  ar: 'تأكيد الكل',
+                })}
               </button>
             </div>
             <span>
-              {lang === 'ko'
-                ? '형상 변경으로 참조가 사라진 메이트를 안전하게 억제했습니다.'
-                : 'Mates whose references disappeared were safely suppressed.'}
+              {localized(lang, {
+                ko: '형상 변경으로 참조가 사라진 메이트를 안전하게 억제했습니다.',
+                en: 'Mates whose references disappeared were safely suppressed.',
+                ja: '形状変更で参照が消えたMateを安全に抑制しました。',
+                zh: '已安全抑制因形状更改而丢失引用的配合。',
+                es: 'Se suprimieron de forma segura los mates cuyas referencias desaparecieron.',
+                ar: 'تم تعطيل القيود التي اختفت مراجعها بأمان.',
+              })}
             </span>
             {topologyReview.map((item, index) => (
               <div
@@ -4900,7 +5092,7 @@ export default function AssemblyBrowserModal({
         )}
         {commercialVerification.status === 'ok' && (
           <div data-testid="solver-assembly-commercial-verify-result" role="status" style={{fontSize:12,padding:8,background:commercialVerification.result.releaseReady?'#ecfdf5':'#fff7ed',border:`1px solid ${commercialVerification.result.releaseReady?'#6ee7b7':'#fdba74'}`,borderRadius:4}}>
-            <strong>{commercialVerification.result.releaseReady?(lang==='ko'?'정확 조립 출시 게이트 통과':'Exact assembly release gate passed'):(lang==='ko'?'정확 조립 출시 게이트 차단':'Exact assembly release gate blocked')}</strong>
+            <strong>{commercialVerification.result.releaseReady?(L('정확 조립 출시 게이트 통과', 'Exact assembly release gate passed')):(L('정확 조립 출시 게이트 차단', 'Exact assembly release gate blocked'))}</strong>
             {' · '}OCCT/STEP {commercialVerification.result.assemblyCertificate?.exactCad??'not_run'}
             {' · '}interference {commercialVerification.result.assemblyCertificate?.interference??'not_run'}
             {' · '}DoF {commercialVerification.result.assemblyCertificate?.dofAccepted?'accepted':'blocked'}
@@ -4908,11 +5100,11 @@ export default function AssemblyBrowserModal({
             {' · '}joint {commercialVerification.result.assemblyCertificate?.jointEvidence??commercialVerification.result.jointEvidenceGate?.status??'not_run'}
             {' · '}same exact evidence {commercialVerification.result.assemblyCertificate?.exactEvidenceConsistent===false?'no':'yes'}
             <div data-testid="solver-assembly-commercial-exact-count">
-              {lang==='ko'?'STEP 왕복 검증 부품':'STEP round-trip parts'}: {Object.keys(commercialVerification.result.exactCadEvidence??{}).length}/{state.parts.length}
+              {L('STEP 왕복 검증 부품', 'STEP round-trip parts')}: {Object.keys(commercialVerification.result.exactCadEvidence??{}).length}/{state.parts.length}
             </div>
             {commercialVerification.result.releaseCertificate&&<>
               <div data-testid="solver-assembly-release-certificate-hash">release target {commercialVerification.result.releaseCertificate.verificationInputHash} · certificate {commercialVerification.result.releaseCertificate.certificateSha256}</div>
-              <button type="button" data-testid="solver-assembly-release-certificate-download" onClick={()=>void downloadAssemblyReleaseCertificate()}>{lang==='ko'?'통합 릴리스 인증서':'Unified release certificate'}</button>
+              <button type="button" data-testid="solver-assembly-release-certificate-download" onClick={()=>void downloadAssemblyReleaseCertificate()}>{L('통합 릴리스 인증서', 'Unified release certificate')}</button>
             </>}
             {(commercialVerification.result.verificationUnavailable?.length??0)>0&&<div>{commercialVerification.result.verificationUnavailable!.join(' · ')}</div>}
           </div>
@@ -4981,12 +5173,17 @@ export default function AssemblyBrowserModal({
             </div>
             <div>
               <span data-testid="solver-assembly-solve-success">
-                {solveState.result.success ? t.success : t.failure}
+                {solveGateBlockers.length > 0 ? localized(lang, { ko: '차단됨', en: 'blocked', ja: 'ブロック', zh: '已阻断', es: 'bloqueada', ar: 'محظور' }) : (solveState.result.success ? t.success : t.failure)}
               </span>
               {' · '}
               <span data-testid="solver-assembly-solve-dof">
                 {t.dof}: {solveState.result.dof ?? 0}
               </span>
+              {solveGateBlockers.length > 0 && (
+                <div data-testid="solver-assembly-solve-gate-blockers">
+                  {solveGateBlockers.join(' · ')}
+                </div>
+              )}
               {solveState.result.iterations !== undefined && (
                 <>
                   {' · '}
@@ -5343,6 +5540,16 @@ export default function AssemblyBrowserModal({
                 }}
               >
                 {t.couldNotParse}
+              </div>
+            )}
+            {inlineAiDraft && (
+              <div data-testid="solver-assembly-ai-preview" style={{ fontSize: 11, color: '#0c4a6e', padding: '7px 8px', background: '#ecfeff', border: '1px dashed #0891b2', borderRadius: 4 }}>
+                <strong>{localized(lang, { ko: '적용 전 변경안', en: 'Proposed change', ja: '提案された変更', zh: '拟议更改', es: 'Cambio propuesto', ar: 'التغيير المقترح' })}</strong>
+                <div>+{inlineAiDraft.parts} parts · +{inlineAiDraft.mates} mates</div>
+                <div style={{ display: 'flex', gap: 6, marginTop: 6 }}>
+                  <button type="button" data-testid="solver-assembly-ai-apply" onClick={applyInlineAiDraft}>{localized(lang, { ko: '변경안 적용', en: 'Apply proposal', ja: '提案を適用', zh: '应用提案', es: 'Aplicar propuesta', ar: 'تطبيق الاقتراح' })}</button>
+                  <button type="button" data-testid="solver-assembly-ai-cancel" onClick={() => setInlineAiDraft(null)}>{localized(lang, { ko: '취소', en: 'Cancel', ja: 'キャンセル', zh: '取消', es: 'Cancelar', ar: 'إلغاء' })}</button>
+                </div>
               </div>
             )}
             {aiStatus?.kind === 'created' && (
@@ -5718,15 +5925,15 @@ export default function AssemblyBrowserModal({
             </label>
           )}
           <label style={{display:'inline-flex',alignItems:'center',gap:4,fontSize:11,color:'var(--nx-text-2)'}}>
-            {lang==='ko'?'허용 DoF':'Allowed DoF'}
+            {L('허용 DoF', 'Allowed DoF')}
             <input data-testid="solver-assembly-commercial-allowed-dof" aria-label="Commercial allowed DoF" type="number" min={0} max={100} step={1} value={commercialAllowedDoF} onChange={event=>setCommercialAllowedDoF(Math.max(0,Math.min(100,Math.floor(Number(event.target.value)||0))))} style={{width:52,padding:'4px 5px'}}/>
           </label>
           {commercialAllowedDoF>0&&<>
             <button type="button" data-testid="solver-assembly-commercial-joint-evidence-import" onClick={()=>commercialJointEvidenceImportRef.current?.click()} style={{padding:'7px 10px',fontSize:11}}>
-              {jointEvidence?(lang==='ko'?'서명 조인트 증거 로드됨':'Signed joint evidence loaded'):(lang==='ko'?'서명 조인트 증거 업로드':'Upload signed joint evidence')}
+              {jointEvidence?(L('서명 조인트 증거 로드됨', 'Signed joint evidence loaded')):(L('서명 조인트 증거 업로드', 'Upload signed joint evidence'))}
             </button>
             <input ref={commercialJointEvidenceImportRef} data-testid="solver-assembly-commercial-joint-evidence-file" type="file" accept="application/json,.json" hidden onChange={event=>{const file=event.target.files?.[0];if(file)void importJointEvidence(file);event.target.value='';}}/>
-            {animation.tracks.length===0&&<span data-testid="solver-assembly-commercial-motion-required" style={{fontSize:10,color:'#b45309'}}>{lang==='ko'?'가동 조립은 키프레임 운동이 필요합니다':'Movable release requires governed keyframe motion'}</span>}
+            {animation.tracks.length===0&&<span data-testid="solver-assembly-commercial-motion-required" style={{fontSize:10,color:'#b45309'}}>{L('가동 조립은 키프레임 운동이 필요합니다', 'Movable release requires governed keyframe motion')}</span>}
           </>}
           <button
             type="button"
@@ -5735,7 +5942,7 @@ export default function AssemblyBrowserModal({
             data-testid="solver-assembly-commercial-verify"
             style={{padding:'8px 14px',fontSize:12,fontWeight:600,background:'#7c3aed',color:'#fff',border:'1px solid #6d28d9',borderRadius:4,cursor:'pointer'}}
           >
-            {commercialVerification.status==='loading'?(lang==='ko'?'정확 검증 중…':'Exact verifying…'):(lang==='ko'?'상용 정확 검증':'Manufacturing verify')}
+            {commercialVerification.status==='loading'?(L('정확 검증 중…', 'Exact verifying…')):(L('상용 정확 검증', 'Manufacturing verify'))}
           </button>
           <button
             type="button"

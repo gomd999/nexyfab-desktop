@@ -8,13 +8,40 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getAuthUser } from '@/lib/auth-middleware';
 import { getDbAdapter, toBool } from '@/lib/db-adapter';
 import { parseUserStageColumn } from '@/lib/stage-engine';
+import { BROWSER_SESSION_COOKIE, clearAuthCookies } from '@/lib/cookie-config';
 
 export const dynamic = 'force-dynamic';
 
+function anonymousSession(req: NextRequest, refreshable = Boolean(req.cookies.get('nf_refresh_token')?.value)) {
+  return NextResponse.json(
+    {
+      authenticated: false,
+      user: null,
+      // The client cannot read the httpOnly token itself. This hint lets the
+      // hydrator recover an expired access cookie without probing refresh for
+      // every genuine guest.
+      refreshable,
+    },
+    { headers: { 'Cache-Control': 'private, no-store' } },
+  );
+}
+
 export async function GET(req: NextRequest) {
+  const hasAuthCookie = Boolean(
+    req.cookies.get('nf_access_token')?.value || req.cookies.get('nf_refresh_token')?.value,
+  );
+  if (hasAuthCookie && req.cookies.get(BROWSER_SESSION_COOKIE)?.value !== 'v1') {
+    const response = anonymousSession(req, false);
+    clearAuthCookies(response);
+    return response;
+  }
+
   const auth = await getAuthUser(req);
   if (!auth) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    // This endpoint is an identity probe, not a protected resource. A signed-out
+    // browser is a normal state, so do not turn every public page load into a
+    // noisy 401. Protected APIs continue to reject anonymous requests.
+    return anonymousSession(req);
   }
 
   const db = getDbAdapter();
@@ -35,10 +62,14 @@ export async function GET(req: NextRequest) {
   );
 
   if (!row) {
-    return NextResponse.json({ error: 'User not found' }, { status: 404 });
+    // The account may have been deleted between token verification and this
+    // lookup. Treat that as an authoritative signed-out state so stale local
+    // identity is cleared rather than preserved indefinitely.
+    return anonymousSession(req);
   }
 
   return NextResponse.json({
+    authenticated: true,
     user: {
       id: row.id,
       email: row.email,
@@ -50,5 +81,5 @@ export async function GET(req: NextRequest) {
       role: row.role ?? undefined,
       nexyfabStage: parseUserStageColumn(row.stage),
     },
-  });
+  }, { headers: { 'Cache-Control': 'private, no-store' } });
 }

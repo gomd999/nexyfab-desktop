@@ -1,0 +1,1109 @@
+{
+  "schema": "nexyfab.independent-domain-review-kit.v3",
+  "generatedAt": "2026-08-22T05:08:02.963Z",
+  "releaseChannel": "mechanical-core",
+  "requiredDomains": [
+    "mechanical"
+  ],
+  "policy": {
+    "casesPerDomain": 20,
+    "independentReviewersPerCase": 2,
+    "sourceMayNotComeFromSyntheticLane": true,
+    "sourceMayNotComeFromReferenceLane": true,
+    "reviewerMayNotBeReplacedByAi": true,
+    "signedDecisionRequired": true,
+    "cryptographicSignatureRequired": true,
+    "trustedReviewerRegistryRequired": true,
+    "sourceOrArtifactMutationInvalidatesReview": true,
+    "spatialEvidenceMaySatisfyMechanicalCore": false
+  },
+  "summary": {
+    "requiredCases": 20,
+    "acquiredCases": 0,
+    "approvedCases": 0,
+    "requiredSignedReviews": 40,
+    "completedSignedReviews": 0
+  },
+  "cases": [
+    {
+      "caseId": "mechanical-independent-01",
+      "domain": "mechanical",
+      "status": "source_required",
+      "requiredAxes": [
+        "dimension",
+        "topology",
+        "assembly",
+        "motion",
+        "collision clearance",
+        "STEP roundtrip",
+        "drawing",
+        "BOM",
+        "manufacturing"
+      ],
+      "source": {
+        "organizationId": null,
+        "lineageId": null,
+        "sourceSha256": null,
+        "licenseDecision": null,
+        "independentOfTrainingAndReferenceCorpus": null,
+        "acquisitionAttestation": null
+      },
+      "blindedRun": {
+        "inputSha256": null,
+        "outputArtifactHashes": [],
+        "automaticValidationReceipt": {
+          "schema": null,
+          "path": null,
+          "sha256": null
+        },
+        "executedAt": null
+      },
+      "reviews": {
+        "domainReviewer": {
+          "reviewerId": null,
+          "independentFromBuild": null,
+          "decision": null,
+          "reviewedAt": null,
+          "targetHash": null,
+          "signature": null
+        },
+        "independentReviewer": {
+          "reviewerId": null,
+          "independentFromBuild": null,
+          "decision": null,
+          "reviewedAt": null,
+          "targetHash": null,
+          "signature": null
+        },
+        "disagreementResolution": null
+      },
+      "releaseEligible": false
+    },
+    {
+      "caseId": "mechanical-independent-02",
+      "domain": "mechanical",
+      "status": "source_required",
+      "requiredAxes": [
+        "dimension",
+        "topology",
+        "assembly",
+        "motion",
+        "collision clearance",
+        "STEP roundtrip",
+        "drawing",
+        "BOM",
+        "manufacturing"
+      ],
+      "source": {
+        "organizationId": null,
+        "lineageId": null,
+        "sourceSha256": null,
+        "licenseDecision": null,
+        "independentOfTrainingAndReferenceCorpus": null,
+        "acquisitionAttestation": null
+      },
+      "blindedRun": {
+        "inputSha256": null,
+        "outputArtifactHashes": [],
+        "automaticValidationReceipt": {
+          "schema": null,
+          "path": null,
+          "sha256": null
+        },
+        "executedAt": null
+      },
+      "reviews": {
+        "domainReviewer": {
+          "reviewerId": null,
+          "independentFromBuild": null,
+          "decision": null,
+          "reviewedAt": null,
+          "targetHash": null,
+          "signature": null
+        },
+        "independentReviewer": {
+          "reviewerId": null,
+          "independentFromBuild": null,
+          "decision": null,
+          "reviewedAt": null,
+          "targetHash": null,
+          "signature": null
+        },
+        "disagreementResolution": null
+      },
+      "releaseEligible": false
+    },
+    {
+      "caseId": "mechanical-independent-03",
+      "domain": "mechanical",
+      "status": "source_required",
+      "requiredAxes": [
+        "dimension",
+        "topology",
+        "assembly",
+        "motion",
+        "collision clearance",
+        "STEP roundtrip",
+        "drawing",
+        "BOM",
+        "manufacturing"
+      ],
+      "source": {
+        "organizationId": null,
+        "lineageId": null,
+        "sourceSha256": null,
+        "licenseDecision": null,
+        "independentOfTrainingAndReferenceCorpus": null,
+        "acquisitionAttestation": null
+      },
+      "blindedRun": {
+        "inputSha256": null,
+        "outputArtifactHashes": [],
+        "automaticValidationReceipt": {
+          "schema": null,
+          "path": null,
+          "sha256": null
+        },
+        "executedAt": null
+      },
+      "reviews": {
+        "domainReviewer": {
+          "reviewerId": null,
+          "independentFromBuild": null,
+          "decision": null,
+          "reviewedAt": null,
+          "targetHash": null,
+          "signature": null
+        },
+        "independentReviewer": {
+          "reviewerId": null,
+          "independentFromBuild": null,
+          "decision": null,
+          "reviewedAt": null,
+          "targetHash": null,
+          "signature": null
+        },
+        "disagreementResolution": null
+      },
+      "releaseEligible": false
+    },
+    {
+      "caseId": "mechanical-independent-04",
+      "domain": "mechanical",
+      "status": "source_required",
+      "requiredAxes": [
+        "dimension",
+        "topology",
+        "assembly",
+        "motion",
+        "collision clearance",
+        "STEP roundtrip",
+        "drawing",
+        "BOM",
+        "manufacturing"
+      ],
+      "source": {
+        "organizationId": null,
+        "lineageId": null,
+        "sourceSha256": null,
+        "licenseDecision": null,
+        "independentOfTrainingAndReferenceCorpus": null,
+        "acquisitionAttestation": null
+      },
+      "blindedRun": {
+        "inputSha256": null,
+        "outputArtifactHashes": [],
+        "automaticValidationReceipt": {
+          "schema": null,
+          "path": null,
+          "sha256": null
+        },
+        "executedAt": null
+      },
+      "reviews": {
+        "domainReviewer": {
+          "reviewerId": null,
+          "independentFromBuild": null,
+          "decision": null,
+          "reviewedAt": null,
+          "targetHash": null,
+          "signature": null
+        },
+        "independentReviewer": {
+          "reviewerId": null,
+          "independentFromBuild": null,
+          "decision": null,
+          "reviewedAt": null,
+          "targetHash": null,
+          "signature": null
+        },
+        "disagreementResolution": null
+      },
+      "releaseEligible": false
+    },
+    {
+      "caseId": "mechanical-independent-05",
+      "domain": "mechanical",
+      "status": "source_required",
+      "requiredAxes": [
+        "dimension",
+        "topology",
+        "assembly",
+        "motion",
+        "collision clearance",
+        "STEP roundtrip",
+        "drawing",
+        "BOM",
+        "manufacturing"
+      ],
+      "source": {
+        "organizationId": null,
+        "lineageId": null,
+        "sourceSha256": null,
+        "licenseDecision": null,
+        "independentOfTrainingAndReferenceCorpus": null,
+        "acquisitionAttestation": null
+      },
+      "blindedRun": {
+        "inputSha256": null,
+        "outputArtifactHashes": [],
+        "automaticValidationReceipt": {
+          "schema": null,
+          "path": null,
+          "sha256": null
+        },
+        "executedAt": null
+      },
+      "reviews": {
+        "domainReviewer": {
+          "reviewerId": null,
+          "independentFromBuild": null,
+          "decision": null,
+          "reviewedAt": null,
+          "targetHash": null,
+          "signature": null
+        },
+        "independentReviewer": {
+          "reviewerId": null,
+          "independentFromBuild": null,
+          "decision": null,
+          "reviewedAt": null,
+          "targetHash": null,
+          "signature": null
+        },
+        "disagreementResolution": null
+      },
+      "releaseEligible": false
+    },
+    {
+      "caseId": "mechanical-independent-06",
+      "domain": "mechanical",
+      "status": "source_required",
+      "requiredAxes": [
+        "dimension",
+        "topology",
+        "assembly",
+        "motion",
+        "collision clearance",
+        "STEP roundtrip",
+        "drawing",
+        "BOM",
+        "manufacturing"
+      ],
+      "source": {
+        "organizationId": null,
+        "lineageId": null,
+        "sourceSha256": null,
+        "licenseDecision": null,
+        "independentOfTrainingAndReferenceCorpus": null,
+        "acquisitionAttestation": null
+      },
+      "blindedRun": {
+        "inputSha256": null,
+        "outputArtifactHashes": [],
+        "automaticValidationReceipt": {
+          "schema": null,
+          "path": null,
+          "sha256": null
+        },
+        "executedAt": null
+      },
+      "reviews": {
+        "domainReviewer": {
+          "reviewerId": null,
+          "independentFromBuild": null,
+          "decision": null,
+          "reviewedAt": null,
+          "targetHash": null,
+          "signature": null
+        },
+        "independentReviewer": {
+          "reviewerId": null,
+          "independentFromBuild": null,
+          "decision": null,
+          "reviewedAt": null,
+          "targetHash": null,
+          "signature": null
+        },
+        "disagreementResolution": null
+      },
+      "releaseEligible": false
+    },
+    {
+      "caseId": "mechanical-independent-07",
+      "domain": "mechanical",
+      "status": "source_required",
+      "requiredAxes": [
+        "dimension",
+        "topology",
+        "assembly",
+        "motion",
+        "collision clearance",
+        "STEP roundtrip",
+        "drawing",
+        "BOM",
+        "manufacturing"
+      ],
+      "source": {
+        "organizationId": null,
+        "lineageId": null,
+        "sourceSha256": null,
+        "licenseDecision": null,
+        "independentOfTrainingAndReferenceCorpus": null,
+        "acquisitionAttestation": null
+      },
+      "blindedRun": {
+        "inputSha256": null,
+        "outputArtifactHashes": [],
+        "automaticValidationReceipt": {
+          "schema": null,
+          "path": null,
+          "sha256": null
+        },
+        "executedAt": null
+      },
+      "reviews": {
+        "domainReviewer": {
+          "reviewerId": null,
+          "independentFromBuild": null,
+          "decision": null,
+          "reviewedAt": null,
+          "targetHash": null,
+          "signature": null
+        },
+        "independentReviewer": {
+          "reviewerId": null,
+          "independentFromBuild": null,
+          "decision": null,
+          "reviewedAt": null,
+          "targetHash": null,
+          "signature": null
+        },
+        "disagreementResolution": null
+      },
+      "releaseEligible": false
+    },
+    {
+      "caseId": "mechanical-independent-08",
+      "domain": "mechanical",
+      "status": "source_required",
+      "requiredAxes": [
+        "dimension",
+        "topology",
+        "assembly",
+        "motion",
+        "collision clearance",
+        "STEP roundtrip",
+        "drawing",
+        "BOM",
+        "manufacturing"
+      ],
+      "source": {
+        "organizationId": null,
+        "lineageId": null,
+        "sourceSha256": null,
+        "licenseDecision": null,
+        "independentOfTrainingAndReferenceCorpus": null,
+        "acquisitionAttestation": null
+      },
+      "blindedRun": {
+        "inputSha256": null,
+        "outputArtifactHashes": [],
+        "automaticValidationReceipt": {
+          "schema": null,
+          "path": null,
+          "sha256": null
+        },
+        "executedAt": null
+      },
+      "reviews": {
+        "domainReviewer": {
+          "reviewerId": null,
+          "independentFromBuild": null,
+          "decision": null,
+          "reviewedAt": null,
+          "targetHash": null,
+          "signature": null
+        },
+        "independentReviewer": {
+          "reviewerId": null,
+          "independentFromBuild": null,
+          "decision": null,
+          "reviewedAt": null,
+          "targetHash": null,
+          "signature": null
+        },
+        "disagreementResolution": null
+      },
+      "releaseEligible": false
+    },
+    {
+      "caseId": "mechanical-independent-09",
+      "domain": "mechanical",
+      "status": "source_required",
+      "requiredAxes": [
+        "dimension",
+        "topology",
+        "assembly",
+        "motion",
+        "collision clearance",
+        "STEP roundtrip",
+        "drawing",
+        "BOM",
+        "manufacturing"
+      ],
+      "source": {
+        "organizationId": null,
+        "lineageId": null,
+        "sourceSha256": null,
+        "licenseDecision": null,
+        "independentOfTrainingAndReferenceCorpus": null,
+        "acquisitionAttestation": null
+      },
+      "blindedRun": {
+        "inputSha256": null,
+        "outputArtifactHashes": [],
+        "automaticValidationReceipt": {
+          "schema": null,
+          "path": null,
+          "sha256": null
+        },
+        "executedAt": null
+      },
+      "reviews": {
+        "domainReviewer": {
+          "reviewerId": null,
+          "independentFromBuild": null,
+          "decision": null,
+          "reviewedAt": null,
+          "targetHash": null,
+          "signature": null
+        },
+        "independentReviewer": {
+          "reviewerId": null,
+          "independentFromBuild": null,
+          "decision": null,
+          "reviewedAt": null,
+          "targetHash": null,
+          "signature": null
+        },
+        "disagreementResolution": null
+      },
+      "releaseEligible": false
+    },
+    {
+      "caseId": "mechanical-independent-10",
+      "domain": "mechanical",
+      "status": "source_required",
+      "requiredAxes": [
+        "dimension",
+        "topology",
+        "assembly",
+        "motion",
+        "collision clearance",
+        "STEP roundtrip",
+        "drawing",
+        "BOM",
+        "manufacturing"
+      ],
+      "source": {
+        "organizationId": null,
+        "lineageId": null,
+        "sourceSha256": null,
+        "licenseDecision": null,
+        "independentOfTrainingAndReferenceCorpus": null,
+        "acquisitionAttestation": null
+      },
+      "blindedRun": {
+        "inputSha256": null,
+        "outputArtifactHashes": [],
+        "automaticValidationReceipt": {
+          "schema": null,
+          "path": null,
+          "sha256": null
+        },
+        "executedAt": null
+      },
+      "reviews": {
+        "domainReviewer": {
+          "reviewerId": null,
+          "independentFromBuild": null,
+          "decision": null,
+          "reviewedAt": null,
+          "targetHash": null,
+          "signature": null
+        },
+        "independentReviewer": {
+          "reviewerId": null,
+          "independentFromBuild": null,
+          "decision": null,
+          "reviewedAt": null,
+          "targetHash": null,
+          "signature": null
+        },
+        "disagreementResolution": null
+      },
+      "releaseEligible": false
+    },
+    {
+      "caseId": "mechanical-independent-11",
+      "domain": "mechanical",
+      "status": "source_required",
+      "requiredAxes": [
+        "dimension",
+        "topology",
+        "assembly",
+        "motion",
+        "collision clearance",
+        "STEP roundtrip",
+        "drawing",
+        "BOM",
+        "manufacturing"
+      ],
+      "source": {
+        "organizationId": null,
+        "lineageId": null,
+        "sourceSha256": null,
+        "licenseDecision": null,
+        "independentOfTrainingAndReferenceCorpus": null,
+        "acquisitionAttestation": null
+      },
+      "blindedRun": {
+        "inputSha256": null,
+        "outputArtifactHashes": [],
+        "automaticValidationReceipt": {
+          "schema": null,
+          "path": null,
+          "sha256": null
+        },
+        "executedAt": null
+      },
+      "reviews": {
+        "domainReviewer": {
+          "reviewerId": null,
+          "independentFromBuild": null,
+          "decision": null,
+          "reviewedAt": null,
+          "targetHash": null,
+          "signature": null
+        },
+        "independentReviewer": {
+          "reviewerId": null,
+          "independentFromBuild": null,
+          "decision": null,
+          "reviewedAt": null,
+          "targetHash": null,
+          "signature": null
+        },
+        "disagreementResolution": null
+      },
+      "releaseEligible": false
+    },
+    {
+      "caseId": "mechanical-independent-12",
+      "domain": "mechanical",
+      "status": "source_required",
+      "requiredAxes": [
+        "dimension",
+        "topology",
+        "assembly",
+        "motion",
+        "collision clearance",
+        "STEP roundtrip",
+        "drawing",
+        "BOM",
+        "manufacturing"
+      ],
+      "source": {
+        "organizationId": null,
+        "lineageId": null,
+        "sourceSha256": null,
+        "licenseDecision": null,
+        "independentOfTrainingAndReferenceCorpus": null,
+        "acquisitionAttestation": null
+      },
+      "blindedRun": {
+        "inputSha256": null,
+        "outputArtifactHashes": [],
+        "automaticValidationReceipt": {
+          "schema": null,
+          "path": null,
+          "sha256": null
+        },
+        "executedAt": null
+      },
+      "reviews": {
+        "domainReviewer": {
+          "reviewerId": null,
+          "independentFromBuild": null,
+          "decision": null,
+          "reviewedAt": null,
+          "targetHash": null,
+          "signature": null
+        },
+        "independentReviewer": {
+          "reviewerId": null,
+          "independentFromBuild": null,
+          "decision": null,
+          "reviewedAt": null,
+          "targetHash": null,
+          "signature": null
+        },
+        "disagreementResolution": null
+      },
+      "releaseEligible": false
+    },
+    {
+      "caseId": "mechanical-independent-13",
+      "domain": "mechanical",
+      "status": "source_required",
+      "requiredAxes": [
+        "dimension",
+        "topology",
+        "assembly",
+        "motion",
+        "collision clearance",
+        "STEP roundtrip",
+        "drawing",
+        "BOM",
+        "manufacturing"
+      ],
+      "source": {
+        "organizationId": null,
+        "lineageId": null,
+        "sourceSha256": null,
+        "licenseDecision": null,
+        "independentOfTrainingAndReferenceCorpus": null,
+        "acquisitionAttestation": null
+      },
+      "blindedRun": {
+        "inputSha256": null,
+        "outputArtifactHashes": [],
+        "automaticValidationReceipt": {
+          "schema": null,
+          "path": null,
+          "sha256": null
+        },
+        "executedAt": null
+      },
+      "reviews": {
+        "domainReviewer": {
+          "reviewerId": null,
+          "independentFromBuild": null,
+          "decision": null,
+          "reviewedAt": null,
+          "targetHash": null,
+          "signature": null
+        },
+        "independentReviewer": {
+          "reviewerId": null,
+          "independentFromBuild": null,
+          "decision": null,
+          "reviewedAt": null,
+          "targetHash": null,
+          "signature": null
+        },
+        "disagreementResolution": null
+      },
+      "releaseEligible": false
+    },
+    {
+      "caseId": "mechanical-independent-14",
+      "domain": "mechanical",
+      "status": "source_required",
+      "requiredAxes": [
+        "dimension",
+        "topology",
+        "assembly",
+        "motion",
+        "collision clearance",
+        "STEP roundtrip",
+        "drawing",
+        "BOM",
+        "manufacturing"
+      ],
+      "source": {
+        "organizationId": null,
+        "lineageId": null,
+        "sourceSha256": null,
+        "licenseDecision": null,
+        "independentOfTrainingAndReferenceCorpus": null,
+        "acquisitionAttestation": null
+      },
+      "blindedRun": {
+        "inputSha256": null,
+        "outputArtifactHashes": [],
+        "automaticValidationReceipt": {
+          "schema": null,
+          "path": null,
+          "sha256": null
+        },
+        "executedAt": null
+      },
+      "reviews": {
+        "domainReviewer": {
+          "reviewerId": null,
+          "independentFromBuild": null,
+          "decision": null,
+          "reviewedAt": null,
+          "targetHash": null,
+          "signature": null
+        },
+        "independentReviewer": {
+          "reviewerId": null,
+          "independentFromBuild": null,
+          "decision": null,
+          "reviewedAt": null,
+          "targetHash": null,
+          "signature": null
+        },
+        "disagreementResolution": null
+      },
+      "releaseEligible": false
+    },
+    {
+      "caseId": "mechanical-independent-15",
+      "domain": "mechanical",
+      "status": "source_required",
+      "requiredAxes": [
+        "dimension",
+        "topology",
+        "assembly",
+        "motion",
+        "collision clearance",
+        "STEP roundtrip",
+        "drawing",
+        "BOM",
+        "manufacturing"
+      ],
+      "source": {
+        "organizationId": null,
+        "lineageId": null,
+        "sourceSha256": null,
+        "licenseDecision": null,
+        "independentOfTrainingAndReferenceCorpus": null,
+        "acquisitionAttestation": null
+      },
+      "blindedRun": {
+        "inputSha256": null,
+        "outputArtifactHashes": [],
+        "automaticValidationReceipt": {
+          "schema": null,
+          "path": null,
+          "sha256": null
+        },
+        "executedAt": null
+      },
+      "reviews": {
+        "domainReviewer": {
+          "reviewerId": null,
+          "independentFromBuild": null,
+          "decision": null,
+          "reviewedAt": null,
+          "targetHash": null,
+          "signature": null
+        },
+        "independentReviewer": {
+          "reviewerId": null,
+          "independentFromBuild": null,
+          "decision": null,
+          "reviewedAt": null,
+          "targetHash": null,
+          "signature": null
+        },
+        "disagreementResolution": null
+      },
+      "releaseEligible": false
+    },
+    {
+      "caseId": "mechanical-independent-16",
+      "domain": "mechanical",
+      "status": "source_required",
+      "requiredAxes": [
+        "dimension",
+        "topology",
+        "assembly",
+        "motion",
+        "collision clearance",
+        "STEP roundtrip",
+        "drawing",
+        "BOM",
+        "manufacturing"
+      ],
+      "source": {
+        "organizationId": null,
+        "lineageId": null,
+        "sourceSha256": null,
+        "licenseDecision": null,
+        "independentOfTrainingAndReferenceCorpus": null,
+        "acquisitionAttestation": null
+      },
+      "blindedRun": {
+        "inputSha256": null,
+        "outputArtifactHashes": [],
+        "automaticValidationReceipt": {
+          "schema": null,
+          "path": null,
+          "sha256": null
+        },
+        "executedAt": null
+      },
+      "reviews": {
+        "domainReviewer": {
+          "reviewerId": null,
+          "independentFromBuild": null,
+          "decision": null,
+          "reviewedAt": null,
+          "targetHash": null,
+          "signature": null
+        },
+        "independentReviewer": {
+          "reviewerId": null,
+          "independentFromBuild": null,
+          "decision": null,
+          "reviewedAt": null,
+          "targetHash": null,
+          "signature": null
+        },
+        "disagreementResolution": null
+      },
+      "releaseEligible": false
+    },
+    {
+      "caseId": "mechanical-independent-17",
+      "domain": "mechanical",
+      "status": "source_required",
+      "requiredAxes": [
+        "dimension",
+        "topology",
+        "assembly",
+        "motion",
+        "collision clearance",
+        "STEP roundtrip",
+        "drawing",
+        "BOM",
+        "manufacturing"
+      ],
+      "source": {
+        "organizationId": null,
+        "lineageId": null,
+        "sourceSha256": null,
+        "licenseDecision": null,
+        "independentOfTrainingAndReferenceCorpus": null,
+        "acquisitionAttestation": null
+      },
+      "blindedRun": {
+        "inputSha256": null,
+        "outputArtifactHashes": [],
+        "automaticValidationReceipt": {
+          "schema": null,
+          "path": null,
+          "sha256": null
+        },
+        "executedAt": null
+      },
+      "reviews": {
+        "domainReviewer": {
+          "reviewerId": null,
+          "independentFromBuild": null,
+          "decision": null,
+          "reviewedAt": null,
+          "targetHash": null,
+          "signature": null
+        },
+        "independentReviewer": {
+          "reviewerId": null,
+          "independentFromBuild": null,
+          "decision": null,
+          "reviewedAt": null,
+          "targetHash": null,
+          "signature": null
+        },
+        "disagreementResolution": null
+      },
+      "releaseEligible": false
+    },
+    {
+      "caseId": "mechanical-independent-18",
+      "domain": "mechanical",
+      "status": "source_required",
+      "requiredAxes": [
+        "dimension",
+        "topology",
+        "assembly",
+        "motion",
+        "collision clearance",
+        "STEP roundtrip",
+        "drawing",
+        "BOM",
+        "manufacturing"
+      ],
+      "source": {
+        "organizationId": null,
+        "lineageId": null,
+        "sourceSha256": null,
+        "licenseDecision": null,
+        "independentOfTrainingAndReferenceCorpus": null,
+        "acquisitionAttestation": null
+      },
+      "blindedRun": {
+        "inputSha256": null,
+        "outputArtifactHashes": [],
+        "automaticValidationReceipt": {
+          "schema": null,
+          "path": null,
+          "sha256": null
+        },
+        "executedAt": null
+      },
+      "reviews": {
+        "domainReviewer": {
+          "reviewerId": null,
+          "independentFromBuild": null,
+          "decision": null,
+          "reviewedAt": null,
+          "targetHash": null,
+          "signature": null
+        },
+        "independentReviewer": {
+          "reviewerId": null,
+          "independentFromBuild": null,
+          "decision": null,
+          "reviewedAt": null,
+          "targetHash": null,
+          "signature": null
+        },
+        "disagreementResolution": null
+      },
+      "releaseEligible": false
+    },
+    {
+      "caseId": "mechanical-independent-19",
+      "domain": "mechanical",
+      "status": "source_required",
+      "requiredAxes": [
+        "dimension",
+        "topology",
+        "assembly",
+        "motion",
+        "collision clearance",
+        "STEP roundtrip",
+        "drawing",
+        "BOM",
+        "manufacturing"
+      ],
+      "source": {
+        "organizationId": null,
+        "lineageId": null,
+        "sourceSha256": null,
+        "licenseDecision": null,
+        "independentOfTrainingAndReferenceCorpus": null,
+        "acquisitionAttestation": null
+      },
+      "blindedRun": {
+        "inputSha256": null,
+        "outputArtifactHashes": [],
+        "automaticValidationReceipt": {
+          "schema": null,
+          "path": null,
+          "sha256": null
+        },
+        "executedAt": null
+      },
+      "reviews": {
+        "domainReviewer": {
+          "reviewerId": null,
+          "independentFromBuild": null,
+          "decision": null,
+          "reviewedAt": null,
+          "targetHash": null,
+          "signature": null
+        },
+        "independentReviewer": {
+          "reviewerId": null,
+          "independentFromBuild": null,
+          "decision": null,
+          "reviewedAt": null,
+          "targetHash": null,
+          "signature": null
+        },
+        "disagreementResolution": null
+      },
+      "releaseEligible": false
+    },
+    {
+      "caseId": "mechanical-independent-20",
+      "domain": "mechanical",
+      "status": "source_required",
+      "requiredAxes": [
+        "dimension",
+        "topology",
+        "assembly",
+        "motion",
+        "collision clearance",
+        "STEP roundtrip",
+        "drawing",
+        "BOM",
+        "manufacturing"
+      ],
+      "source": {
+        "organizationId": null,
+        "lineageId": null,
+        "sourceSha256": null,
+        "licenseDecision": null,
+        "independentOfTrainingAndReferenceCorpus": null,
+        "acquisitionAttestation": null
+      },
+      "blindedRun": {
+        "inputSha256": null,
+        "outputArtifactHashes": [],
+        "automaticValidationReceipt": {
+          "schema": null,
+          "path": null,
+          "sha256": null
+        },
+        "executedAt": null
+      },
+      "reviews": {
+        "domainReviewer": {
+          "reviewerId": null,
+          "independentFromBuild": null,
+          "decision": null,
+          "reviewedAt": null,
+          "targetHash": null,
+          "signature": null
+        },
+        "independentReviewer": {
+          "reviewerId": null,
+          "independentFromBuild": null,
+          "decision": null,
+          "reviewedAt": null,
+          "targetHash": null,
+          "signature": null
+        },
+        "disagreementResolution": null
+      },
+      "releaseEligible": false
+    }
+  ]
+}

@@ -3,6 +3,7 @@
 import React, { useState } from 'react';
 import ExpressionInput from './ExpressionInput';
 import { isExpression, type ExprVariable } from './ExpressionEngine';
+import { loc } from '@/lib/i18n/loc';
 
 export interface PropertyManagerProps {
   visible: boolean;
@@ -89,7 +90,7 @@ export default function PropertyManager({
   const typeLabel = t(lang, featureType);
 
   return (
-    <div style={{
+    <div role="region" aria-label={`${featureName} ${t(lang, 'params')}`} style={{
       position: 'absolute', top: 8, right: 8, width: 260, zIndex: 50,
       background: 'var(--nx-panel)', border: '1px solid var(--nx-border)', borderRadius: 10,
       boxShadow: '0 8px 32px rgba(0,0,0,0.5)',
@@ -108,7 +109,7 @@ export default function PropertyManager({
           <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--nx-text)' }}>{featureName}</div>
           <div style={{ fontSize: 10, color: 'var(--nx-text-3)' }}>{typeLabel}</div>
         </div>
-        <button onClick={onClose} style={{
+        <button type="button" aria-label={t(lang, 'close')} onClick={onClose} style={{
           width: 20, height: 20, borderRadius: 4, border: 'none', background: 'transparent',
           color: 'var(--nx-text-3)', fontSize: 14, cursor: 'pointer',
           display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -130,13 +131,16 @@ export default function PropertyManager({
           const value = featureParams[def.name] ?? 0;
           const expr = expressions?.[def.name] ?? String(value);
           const supportsExpression = !!onExpressionChange;
+          const fieldKey = `${selectedFeatureId}-${def.name}`.replace(/[^a-zA-Z0-9_-]/g, '-');
+          const inputId = `feature-param-${fieldKey}`;
+          const rangeId = `feature-param-range-${fieldKey}`;
           // Expression-driven params are edited through their formula — the
           // slider is hidden (a drag would be snapped back by re-evaluation).
           const driven = supportsExpression && !!expressions?.[def.name] && isExpression(expressions[def.name]);
           return (
             <div key={def.name} style={{ marginBottom: 6 }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 2, gap: 6 }}>
-                <label style={{ fontSize: 10, fontWeight: 600, color: 'var(--nx-text-2)', flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{def.label}</label>
+                <label htmlFor={inputId} style={{ fontSize: 10, fontWeight: 600, color: 'var(--nx-text-2)', flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{def.label}</label>
                 {supportsExpression ? (
                   <div style={{ width: 120 }}>
                     <ExpressionInput
@@ -149,10 +153,13 @@ export default function PropertyManager({
                       max={def.max ?? Infinity}
                       step={def.step ?? 1}
                       unit="mm"
+                      inputId={inputId}
+                      inputName={`featureParam.${def.name}`}
+                      ariaLabel={`${def.label} (${featureName})`}
                     />
                   </div>
                 ) : (
-                  <input type="number" value={value} min={def.min} max={def.max} step={def.step ?? 1}
+                  <input id={inputId} name={`featureParam.${def.name}`} aria-label={`${def.label} (${featureName})`} type="number" value={value} min={def.min} max={def.max} step={def.step ?? 1}
                     onChange={e => onParamChange(def.name, parseFloat(e.target.value) || 0)}
                     style={{
                       width: 60, padding: '2px 6px', borderRadius: 4,
@@ -164,7 +171,7 @@ export default function PropertyManager({
                 )}
               </div>
               {def.min !== undefined && def.max !== undefined && !driven && (
-                <input type="range" min={def.min} max={def.max} step={def.step ?? 1} value={value}
+                <input id={rangeId} name={`featureParamRange.${def.name}`} aria-label={`${def.label} ${t(lang, 'params')}`} type="range" min={def.min} max={def.max} step={def.step ?? 1} value={value}
                   onChange={e => onParamChange(def.name, parseFloat(e.target.value))}
                   style={{ width: '100%', accentColor: 'var(--nx-accent)', height: 3 }} />
               )}
@@ -203,15 +210,15 @@ export default function PropertyManager({
         >
           <span style={{ fontSize: 8, color: 'var(--nx-text-3)' }}>{collapsed.appearance ? '▶' : '▼'}</span>
           <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--nx-text-2)', textTransform: 'uppercase' }}>
-            {lang === 'ko' ? '외형' : 'Appearance'}
+            {loc(lang, { ko: '외형', en: 'Appearance', ja: '外観', zh: '外观', es: 'Apariencia', ar: 'المظهر' })}
           </span>
           <div style={{ flex: 1, height: 1, background: 'var(--nx-panel-2)' }} />
         </div>
         {!collapsed.appearance && (
           <div style={{ padding: '4px 8px', background: 'var(--nx-bg)', borderRadius: 6, fontSize: 10 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', padding: '2px 0' }}>
-              <span style={{ color: 'var(--nx-text-3)' }}>{lang === 'ko' ? '상속' : 'Inherit'}</span>
-              <span style={{ color: 'var(--nx-text)' }}>{lang === 'ko' ? '본체로부터' : 'From body'}</span>
+              <span style={{ color: 'var(--nx-text-3)' }}>{loc(lang, { ko: '상속', en: 'Inherit', ja: '継承', zh: '继承', es: 'Heredar', ar: 'توريث' })}</span>
+              <span style={{ color: 'var(--nx-text)' }}>{loc(lang, { ko: '본체로부터', en: 'From body', ja: '本体から', zh: '来自主体', es: 'Del cuerpo', ar: 'من الجسم' })}</span>
             </div>
           </div>
         )}
@@ -226,15 +233,13 @@ export default function PropertyManager({
             >
               <span style={{ fontSize: 8, color: 'var(--nx-text-3)' }}>{collapsed.edges ? '▶' : '▼'}</span>
               <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--nx-text-2)', textTransform: 'uppercase' }}>
-                {lang === 'ko' ? '엣지' : 'Edges'}
+                {loc(lang, { ko: '엣지', en: 'Edges', ja: 'エッジ', zh: '边', es: 'Aristas', ar: 'الحواف' })}
               </span>
               <div style={{ flex: 1, height: 1, background: 'var(--nx-panel-2)' }} />
             </div>
             {!collapsed.edges && (
               <div style={{ padding: '4px 8px', background: 'var(--nx-bg)', borderRadius: 6, fontSize: 10, color: 'var(--nx-text-3)', fontStyle: 'italic' }}>
-                {lang === 'ko'
-                  ? '뷰포트에서 엣지를 클릭하여 추가/제거'
-                  : 'Click edges in viewport to add / remove'}
+                {loc(lang, { ko: '뷰포트에서 엣지를 클릭하여 추가/제거', en: 'Click edges in viewport to add / remove', ja: 'ビューポートでエッジをクリックして追加／削除', zh: '在视口中点击边以添加/移除', es: 'Haz clic en las aristas para añadir o quitar', ar: 'انقر على الحواف في العرض للإضافة أو الإزالة' })}
               </div>
             )}
           </>

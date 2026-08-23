@@ -1,0 +1,31 @@
+{
+  "schema": "nexyfab.mechanical-core-feature-local-runtime.v1",
+  "feature": "jog",
+  "axis": "edit",
+  "status": "PASS",
+  "executedAt": "2026-08-22T07:13:30.564Z",
+  "commandId": "jog-runtime-param-edit",
+  "historyDepth": 1,
+  "before": {
+    "id": "runtime-feature",
+    "enabled": true,
+    "type": "jog",
+    "params": {
+      "offset": 5,
+      "position": 40,
+      "spacing": 20,
+      "radius": 2
+    }
+  },
+  "after": {
+    "id": "runtime-feature",
+    "enabled": true,
+    "type": "jog",
+    "params": {
+      "offset": 8,
+      "position": 40,
+      "spacing": 20,
+      "radius": 2
+    }
+  }
+}

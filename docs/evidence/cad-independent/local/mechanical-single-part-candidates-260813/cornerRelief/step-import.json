@@ -1,0 +1,37 @@
+{
+  "schema": "nexyfab.mechanical-single-part-step-import.v1",
+  "feature": "cornerRelief",
+  "partRevisionSha256": "5259dcb18cfbbdb032a33bb8e022fbc9f5a02f71a72c1a8def7c19d5c2baaa3f",
+  "sourceDesignRevisionSha256": "3cf6a0f9c8efcf153a2cfefde087a2112c086fc412d2feeaeb9ce52542838564",
+  "sourceStep": {
+    "path": "docs/evidence/cad-independent/local/mechanical-core-runtime-260813/cornerRelief/cornerRelief-edited.step",
+    "sha256": "936f40859cd8379158f0dfb7ca825f98488dbf2c79fccd33a0dfeeefcda1ad63",
+    "bytes": 19924,
+    "assertionId": "cornerRelief.export.native-step"
+  },
+  "exactKernel": "OCCT",
+  "units": {
+    "value": "mm",
+    "confidence": "high"
+  },
+  "solidCount": 1,
+  "singleSolid": true,
+  "volumeMm3": 3574.867258771294,
+  "boundsMm": [
+    [
+      -30.001204825215186,
+      -1.0012048252151855,
+      -15.001204825215185
+    ],
+    [
+      30.001204825215186,
+      1.0012048252151855,
+      15.001204825215185
+    ]
+  ],
+  "dimensionsMm": {
+    "x": 60.00240965043037,
+    "y": 2.002409650430371,
+    "z": 30.00240965043037
+  }
+}

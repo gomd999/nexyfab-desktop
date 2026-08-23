@@ -1,0 +1,83 @@
+{
+  "schema": "nexyfab.change-impact.v1",
+  "contractVersion": "2026-08-13.1",
+  "rules": [
+    {
+      "paths": ["packages/**", "src/lib/platform/**"],
+      "checks": ["platform:architecture:check", "contract-tests", "typecheck"],
+      "deployUnits": []
+    },
+    {
+      "paths": ["packages/cad-contracts/**", "src/lib/reference/nativeCadReopenGate.ts"],
+      "checks": ["cad-interop-contract-tests", "native-cad-reopen-gate-tests", "typecheck"],
+      "deployUnits": ["studio-web", "ifc-step", "native-fallback"]
+    },
+    {
+      "paths": ["domains/mechanical/**", "src/app/[lang]/shape-generator/**"],
+      "checks": ["mechanical-targeted-tests", "typecheck", "studio-browser-smoke"],
+      "deployUnits": ["studio-web"]
+    },
+    {
+      "paths": ["domains/architecture/**", "domains/civil/**", "domains/landscape/**", "domains/interior/**", "domains/coordination/**", "src/app/[lang]/shape-generator/_shell/spatial/**"],
+      "checks": ["spatial-targeted-tests", "typecheck", "studio-browser-smoke"],
+      "deployUnits": ["studio-web"]
+    },
+    {
+      "paths": ["workers/edge-gateway/**"],
+      "checks": ["edge-contract-tests", "tenant-isolation-tests"],
+      "deployUnits": ["edge-gateway"]
+    },
+    {
+      "paths": ["workers/cron/**", "cron-worker/**", "src/app/api/cron/**", "src/app/api/jobs/**"],
+      "checks": ["cron-contract-tests", "idempotency-tests"],
+      "deployUnits": ["cron-worker"]
+    },
+    {
+      "paths": ["workers/collab/**", "occt-collab-worker/**"],
+      "checks": ["collab-typecheck", "collab-recovery-tests"],
+      "deployUnits": ["collab-worker"]
+    },
+    {
+      "paths": ["workers/job-orchestrator/**", "packages/job-contracts/**", "containers/runtime/**", "src/app/api/internal/cad-job-artifacts/**", "src/lib/cad/spatialCadJobStore.ts"],
+      "checks": ["job-contract-tests", "lease-recovery-tests"],
+      "deployUnits": ["job-orchestrator"]
+    },
+    {
+      "paths": ["containers/occt-exact/**", "containers/occt-xcaf/**", "occt-worker/**"],
+      "checks": ["exact-kernel-corpus", "xcaf-product-identity-tests", "receipt-tests", "cancel-timeout-recovery-tests"],
+      "deployUnits": ["occt-exact"]
+    },
+    {
+      "paths": ["containers/openscad/**", "services/openscad-worker/**"],
+      "checks": ["openscad-worker-tests", "artifact-hash-tests"],
+      "deployUnits": ["openscad"]
+    },
+    {
+      "paths": ["containers/fea/**", "services/fea-worker/**"],
+      "checks": ["fea-worker-tests", "artifact-hash-tests"],
+      "deployUnits": ["fea"]
+    },
+    {
+      "paths": ["containers/ifc-step/**", "src/lib/brep-bridge/**", "src/lib/bim/**"],
+      "checks": ["ifc-step-contract-tests", "artifact-hash-tests", "exact-kernel-corpus"],
+      "deployUnits": ["ifc-step"]
+    },
+    {
+      "paths": ["containers/native-fallback/**"],
+      "checks": ["fallback-routing-tests", "receipt-tests", "cancel-timeout-recovery-tests"],
+      "deployUnits": ["native-fallback"]
+    },
+    {
+      "paths": ["apps/core-api/**", "src/app/api/**", "src/lib/db-adapter.ts"],
+      "checks": ["api-targeted-tests", "database-contract-tests", "typecheck"],
+      "deployUnits": ["core-api"]
+    }
+  ],
+  "deploymentPolicy": {
+    "default": "NO_DEPLOY",
+    "requireExplicitUnitMatch": true,
+    "requireStagingReceipt": true,
+    "productionCanarySequencePercent": [1, 10, 50, 100],
+    "automaticProductionPromotion": false
+  }
+}

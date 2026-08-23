@@ -28,6 +28,7 @@ import { sanitizeText } from '@/lib/sanitize';
 import { enqueueJob } from '@/lib/job-queue';
 import { opsAlert } from '@/lib/ops-alert';
 import { getTrustedClientIp } from '@/lib/client-ip';
+import { boundedJsonError, readBoundedJson } from '@/lib/boundedJsonBody';
 
 const ALLOWED_CATEGORIES = new Set([
   'general', 'order', 'partner', 'billing', 'bug', 'other',
@@ -58,8 +59,9 @@ export async function POST(req: NextRequest) {
 
   let body: RequestBody = {};
   try {
-    body = (await req.json()) as RequestBody;
-  } catch {
+    body = await readBoundedJson<RequestBody>(req, 64 * 1024);
+  } catch (error) {
+    if (boundedJsonError(error)?.status === 413) return NextResponse.json({ error: 'Payload too large' }, { status: 413 });
     return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 });
   }
 

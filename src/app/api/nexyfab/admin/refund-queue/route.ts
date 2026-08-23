@@ -17,6 +17,9 @@ import { getDbAdapter } from '@/lib/db-adapter';
 import { createRefund } from '@/lib/airwallex-client';
 import { cancelPayment } from '@/lib/toss-client';
 import { recordBillingAnalytics } from '@/lib/billing-engine';
+import { boundedJsonError, readBoundedJson } from '@/lib/boundedJsonBody';
+
+const MAX_REFUND_DECISION_BODY_BYTES = 16 * 1024;
 
 export const dynamic = 'force-dynamic';
 
@@ -87,11 +90,15 @@ export async function POST(req: NextRequest) {
   const auth = await requireAdmin(req);
   if (auth.kind === 'fail') return auth.response;
 
-  const body = await req.json().catch(() => ({})) as {
+  let body: {
     invoiceId?: string;
     action?: string;
     reason?: string;
-  };
+  } = {};
+  try { body = await readBoundedJson(req, MAX_REFUND_DECISION_BODY_BYTES); }
+  catch (error) {
+    if (boundedJsonError(error)?.code === 'PAYLOAD_TOO_LARGE') return NextResponse.json({ error: 'Request too large', code: 'PAYLOAD_TOO_LARGE' }, { status: 413 });
+  }
   if (!body.invoiceId || (body.action !== 'approve' && body.action !== 'reject')) {
     return NextResponse.json({ error: 'invoiceId + action(approve|reject) required' }, { status: 400 });
   }

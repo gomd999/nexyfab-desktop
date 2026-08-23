@@ -12,6 +12,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { verifyAdmin } from '@/lib/admin-auth';
 import { getDbAdapter } from '@/lib/db-adapter';
 import bcrypt from 'bcryptjs';
+import { boundedJsonError, readBoundedJson } from '@/lib/boundedJsonBody';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -21,9 +22,14 @@ const AUTH_BASE = process.env.AUTH_SERVER_URL || 'https://auth.nexysys.com';
 export async function POST(req: NextRequest) {
   if (!(await verifyAdmin(req))) return NextResponse.json({ error: 'forbidden' }, { status: 403 });
 
-  const body = (await req.json().catch(() => null)) as {
+  let body: {
     emails?: string[]; subscriptionEndsAt?: string | null; password?: string;
   } | null;
+  try { body = await readBoundedJson(req, 1024 * 1024); }
+  catch (error) {
+    if (boundedJsonError(error)?.status === 413) return NextResponse.json({ error: 'payload_too_large' }, { status: 413 });
+    body = null;
+  }
   if (!body?.emails?.length) return NextResponse.json({ error: 'invalid_request' }, { status: 400 });
   if (!body.password && !Object.prototype.hasOwnProperty.call(body, 'subscriptionEndsAt')) {
     return NextResponse.json({ error: 'nothing_to_do' }, { status: 400 });

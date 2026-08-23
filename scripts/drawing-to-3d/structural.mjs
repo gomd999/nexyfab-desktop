@@ -11,6 +11,7 @@
  */
 import { partAabb, gearPoly, sheetPoly, polyArea, boltDims, holeFeature, extrudePoly, expandHoles, holeVolume, compositeSubs, subAabb } from './reconstruct.mjs';
 import { snapSquareTube } from './std-snap.mjs';
+import { readFileSync } from 'node:fs';
 
 const g = 9.81;
 
@@ -916,7 +917,6 @@ export function structuralCheck(assembly, opts = {}) {
 
 const isMain = process.argv[1] && process.argv[1].replaceAll('\\', '/').endsWith('structural.mjs');
 if (isMain && process.argv[2]) {
-  const { readFileSync } = await import('node:fs');
   const asm = JSON.parse(readFileSync(process.argv[2], 'utf8'));
   console.log(JSON.stringify(structuralCheck(asm, { member: { section: 'SHS50x50x3', spanMm: 1300 } }), null, 2));
 }

@@ -1,0 +1,14 @@
+{
+  "schema": "nexyfab.model-freeze-receipt.v1",
+  "releaseHead": "",
+  "frozenAt": "",
+  "queueSha256": "",
+  "existingCasesSha256": "",
+  "signatureVerification": {
+    "status": "pending",
+    "algorithm": "",
+    "keyId": "",
+    "verifiedAt": "",
+    "receiptHash": ""
+  }
+}

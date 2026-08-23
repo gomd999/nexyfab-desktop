@@ -29,6 +29,9 @@ import {
   asNumOrNull,
   type DocRole,
 } from '@/lib/cloudDoc/access';
+import { readBoundedJson } from '@/lib/boundedJsonBody';
+
+const MAX_JSON_BODY_BYTES = 64 * 1024;
 
 interface PermissionRow {
   document_id: string;
@@ -109,7 +112,7 @@ export async function POST(
   }
 
   let body: { userId?: unknown; role?: unknown; expiresAt?: unknown };
-  try { body = await req.json(); }
+  try { body = await readBoundedJson(req, MAX_JSON_BODY_BYTES); }
   catch { return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 }); }
 
   if (typeof body.userId !== 'string' || body.userId.length === 0) {

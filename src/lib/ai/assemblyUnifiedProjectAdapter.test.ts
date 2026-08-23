@@ -32,9 +32,9 @@ describe('assembly to unified project adapter', () => {
     expect(assemblyUnifiedProject('l', 'landscape', { parts: [{ id: 'site' }], terrainMeta: {} }).project.documents[0]?.representations).toContain('tin');
   });
 
-  it('gives all 59 templates an explicit deep-document not_run boundary', () => {
+  it('gives all 60 templates an explicit deep-document not_run boundary', () => {
     const templates = listAssemblyTemplates() as Array<{ domain: string; id: string }>;
-    expect(templates).toHaveLength(59);
+    expect(templates).toHaveLength(60);
 
     for (const template of templates) {
       const domain = template.domain === 'bridge' ? 'civil' : template.domain === 'mech' ? 'mech' : template.domain;

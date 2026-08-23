@@ -4,6 +4,7 @@ import { getDbAdapter } from '@/lib/db-adapter';
 import { getAuthUser } from '@/lib/auth-middleware';
 import { checkOrigin } from '@/lib/csrf';
 import { resolveProjectAccess } from '@/lib/nfProjectAccess';
+import { boundedJsonError, readBoundedJson } from '@/lib/boundedJsonBody';
 
 const collabSchema = z.object({
   projectId: z.string().min(1).max(100),
@@ -32,6 +33,7 @@ interface CollabSession {
 
 const SESSION_TIMEOUT_MS = 5_000;
 const MAX_SESSIONS_PER_PROJECT = 10;
+const MAX_PRESENCE_BODY_BYTES = 64 * 1024;
 const CLEANUP_THROTTLE = 30_000;
 let lastCleanup = 0;
 
@@ -83,7 +85,7 @@ export async function GET(req: NextRequest) {
   }
 
   const db = getDbAdapter();
-  const access = await resolveProjectAccess(db, projectId, authUser.userId);
+  const access = await resolveProjectAccess(db, projectId, authUser);
   if (!access) return NextResponse.json({ error: 'Project not found' }, { status: 404 });
 
   if (Date.now() - lastCleanup > CLEANUP_THROTTLE) {
@@ -111,7 +113,9 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  const rawBody = await req.json().catch(() => ({})) as Record<string, unknown>;
+  let rawBody: Record<string, unknown> = {};
+  try { rawBody = await readBoundedJson<Record<string, unknown>>(req, MAX_PRESENCE_BODY_BYTES); }
+  catch (error) { if (boundedJsonError(error)?.code === 'PAYLOAD_TOO_LARGE') return NextResponse.json({ error: 'Request too large', code: 'PAYLOAD_TOO_LARGE' }, { status: 413 }); }
 
   const parsed = collabSchema.safeParse(rawBody);
   if (!parsed.success) {
@@ -125,7 +129,7 @@ export async function POST(req: NextRequest) {
   const userId = authUser.userId;
   const userName = authUser.email;
   const db = getDbAdapter();
-  const access = await resolveProjectAccess(db, projectId, userId);
+  const access = await resolveProjectAccess(db, projectId, authUser);
   if (!access) return NextResponse.json({ error: 'Project not found' }, { status: 404 });
 
   await purgeExpired(projectId);

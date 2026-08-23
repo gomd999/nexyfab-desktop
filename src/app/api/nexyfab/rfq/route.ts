@@ -17,9 +17,13 @@ import { getTrustedClientIpOrUndefined } from '@/lib/client-ip';
 import { normPartnerEmail } from '@/lib/partner-factory-access';
 import { serializeRfqAnalysisSummary } from '@/lib/rfq-analysis-summary';
 import { resolveAuthorizedManufacturingLineage } from '@/lib/manufacturingLineageDb';
+import { resolveRequestOrgContext } from '@/lib/org-context';
+import { boundedJsonError, readBoundedJson } from '@/lib/boundedJsonBody';
 
 // 데모 RFQ 일일 한도 — IP 별. 본 계정의 50/일 과 별개.
 const DEMO_DAILY_LIMIT_PER_IP = 5;
+// Includes bounded analysis-summary/DFM/cost metadata; CAD binaries remain file uploads.
+const RFQ_CREATE_JSON_BYTES = 2 * 1024 * 1024;
 
 const rfqSchema = z.object({
   shapeId: z.string().min(1).max(100).optional(),
@@ -63,16 +67,20 @@ export async function POST(req: NextRequest) {
 
   let userId: string;
   let userEmail: string | undefined;
+  let orgId: string | null = null;
 
   if (isDemo) {
     userId    = DEMO_USER_ID;
     userEmail = undefined;
   } else {
+    const context = resolveRequestOrgContext(preAuth!);
+    if (!context.ok) return NextResponse.json({ error: 'Select a valid workspace', code: context.code }, { status: 409 });
+    orgId = context.orgId;
     const planCheck = await checkPlan(req, 'free');
     if (!planCheck.ok) return planCheck.response;
 
     const { checkMonthlyLimit } = await import('@/lib/plan-guard');
-    const usageCheck = await checkMonthlyLimit(planCheck.userId, planCheck.plan, 'rfq');
+    const usageCheck = await checkMonthlyLimit(planCheck.userId, planCheck.plan, 'rfq', planCheck.orgId);
     if (!usageCheck.ok) {
       return NextResponse.json(
         { error: `Free plan limit reached (${usageCheck.limit}/month). Upgrade to Pro for unlimited RFQ.` },
@@ -87,7 +95,15 @@ export async function POST(req: NextRequest) {
     userEmail = preAuth?.email ?? '';
   }
 
-  const rawBody = await req.json() as Record<string, unknown>;
+  let rawBody: Record<string, unknown> = {};
+  try {
+    rawBody = await readBoundedJson(req, RFQ_CREATE_JSON_BYTES);
+  } catch (error) {
+    const bodyError = boundedJsonError(error);
+    if (bodyError?.code === 'PAYLOAD_TOO_LARGE') {
+      return NextResponse.json({ error: 'Request body too large', code: bodyError.code }, { status: bodyError.status });
+    }
+  }
 
   const hasAnalysisSummaryProp = Object.prototype.hasOwnProperty.call(rawBody, 'analysisSummary');
   let resolvedAnalysisSummaryJson: string | null = null;
@@ -125,6 +141,7 @@ export async function POST(req: NextRequest) {
   const ip = getTrustedClientIpOrUndefined(req.headers);
 
   const db = getDbAdapter();
+  await db.execute('ALTER TABLE nf_rfqs ADD COLUMN org_id TEXT').catch(() => {});
 
   const manufacturingLineage = parsed.data.manufacturingArtifact
     ? await resolveAuthorizedManufacturingLineage(db, userId, parsed.data.manufacturingArtifact)
@@ -155,8 +172,10 @@ export async function POST(req: NextRequest) {
     }
   } else {
     const countRow = await db.queryOne<{ c: number }>(
-      'SELECT COUNT(*) as c FROM nf_rfqs WHERE user_id = ? AND created_at > ?',
-      userId, dayStart,
+      orgId
+        ? 'SELECT COUNT(*) as c FROM nf_rfqs WHERE org_id = ? AND created_at > ?'
+        : 'SELECT COUNT(*) as c FROM nf_rfqs WHERE user_id = ? AND org_id IS NULL AND created_at > ?',
+      orgId ?? userId, dayStart,
     );
     const todayCount = countRow?.c ?? 0;
     if (todayCount >= 50) {
@@ -188,14 +207,15 @@ export async function POST(req: NextRequest) {
 
   await db.execute(
     `INSERT INTO nf_rfqs
-       (id, user_id, user_email, shape_id, shape_name, material_id, quantity,
+       (id, user_id, org_id, user_email, shape_id, shape_name, material_id, quantity,
         volume_cm3, surface_area_cm2, bbox, dfm_results, cost_estimates, note,
         deadline, preferred_factory_id, shape_share_token, dfm_score, dfm_process,
         dfm_check_id, analysis_summary, lineage_id, artifact_id, artifact_sha256,
         document_version_id, status, created_at, updated_at, session_id)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', ?, ?, ?)`,
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', ?, ?, ?)`,
     rfqId,
     userId,
+    orgId,
     userEmail ?? null,
     body.shapeId ?? null,
     body.shapeName ?? null,
@@ -247,6 +267,7 @@ export async function POST(req: NextRequest) {
   if (!isDemo) {
     recordUsage({
       userId,
+      orgId,
       product: 'nexyfab',
       metric: 'rfq_submission',
       metadata: JSON.stringify({ rfqId, materialId: body.materialId }),
@@ -352,7 +373,7 @@ export async function POST(req: NextRequest) {
         const notifUserId = `partner:${normPartnerEmail(email)}`;
         sendEmail(
           email,
-          `[NexyFab] 새 견적 요청 — ${body.shapeName || rfqId.slice(0, 8).toUpperCase()}`,
+          rfqNotificationEmailSubject(nexyfabEmailLocaleFromLanguageTag(req.headers.get('accept-language')), 'new_rfq', { shapeName: body.shapeName || rfqId.slice(0, 8).toUpperCase(), rfqIdPrefix: rfqId.slice(0, 8) }),
           partnerRfqNotificationHtml({
             rfqId,
             shapeName: body.shapeName,
@@ -361,6 +382,7 @@ export async function POST(req: NextRequest) {
             dfmProcess: body.dfmProcess,
             note: body.note,
             partnerDashUrl: `${baseUrl}/partner/quotes`,
+            lang: req.headers.get('accept-language') || undefined,
           }),
         ).catch(() => {});
         createNotification(
@@ -403,10 +425,16 @@ export async function GET(req: NextRequest) {
   const useStatusFilter = VALID_STATUSES.includes(statusFilter);
 
   const db = getDbAdapter();
+  await db.execute('ALTER TABLE nf_rfqs ADD COLUMN org_id TEXT').catch(() => {});
 
-  // 데모: session_id 로 자기 RFQ 만 조회. 본 계정: user_id 로.
-  const ownerClause = authUser ? 'r.user_id = ?' : 'r.session_id = ?';
-  const ownerArg    = authUser ? authUser.userId : demoSession!.id;
+  const context = authUser ? resolveRequestOrgContext(authUser) : null;
+  if (context && !context.ok) return NextResponse.json({ error: 'Select a valid workspace', code: context.code }, { status: 409 });
+  const ownerClause = authUser
+    ? context!.orgId
+      ? 'r.org_id = ?'
+      : 'r.user_id = ? AND r.org_id IS NULL'
+    : 'r.session_id = ?';
+  const ownerArg = authUser ? context!.orgId ?? authUser.userId : demoSession!.id;
 
   const statusClause = useStatusFilter ? ' AND r.status = ?' : '';
   const countArgs: unknown[] = useStatusFilter ? [ownerArg, statusFilter] : [ownerArg];

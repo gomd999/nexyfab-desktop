@@ -21,6 +21,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { checkPlan } from '@/lib/plan-guard';
 import { rateLimit } from '@/lib/rate-limit';
+import { readBoundedJson } from '@/lib/boundedJsonBody';
+
+const MAX_JSON_BODY_BYTES = 4 * 1024 * 1024;
 import { getTrustedClientIp } from '@/lib/client-ip';
 import { checkUserBudget } from '@/lib/ai/userBudget';
 import { captureServerError } from '@/lib/error-capture';
@@ -52,7 +55,7 @@ function parseInput(body: unknown): { domain: string; brief: DomainBrief } | { e
 }
 
 export async function POST(req: NextRequest) {
-  const body = await req.json().catch(() => ({}));
+  const body = await readBoundedJson<Record<string, unknown>>(req, MAX_JSON_BODY_BYTES).catch(() => ({}));
   const parsed = parseInput(body);
   if ('error' in parsed) {
     return NextResponse.json({ error: parsed.error }, { status: 400 });
@@ -65,7 +68,7 @@ export async function POST(req: NextRequest) {
   // Free-text briefs hit the LLM planner (real AI spend) → per-user daily $ gate.
   // Fixture briefs are deterministic (no spend) and skip it.
   if (isLlmBrief(parsed.brief)) {
-    const budget = await checkUserBudget(planCheck.userId);
+    const budget = await checkUserBudget(planCheck.userId, planCheck.orgId);
     if (!budget.ok) {
       return NextResponse.json(
         { error: `Daily AI spend limit reached ($${budget.limitUsd}).`, code: 'COST_BUDGET', usedCents: budget.usedCents, limitUsd: budget.limitUsd, resetAtMs: budget.resetAtMs },

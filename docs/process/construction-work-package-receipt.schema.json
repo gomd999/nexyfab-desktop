@@ -1,0 +1,51 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://nexyfab.com/schemas/construction-work-package-receipt.v1.json",
+  "title": "NexyFab canonical external construction work-package receipt",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "receiptId",
+    "projectId",
+    "workspaceId",
+    "workspaceRevision",
+    "buildId",
+    "workPackageId",
+    "workspaceContentHash",
+    "sourceArtifactId",
+    "sourceArtifactSha256",
+    "sourceSystem",
+    "fieldEvidenceId",
+    "reviewerIds",
+    "targetHash",
+    "receiptSha256",
+    "issuedAt",
+    "expiresAt"
+  ],
+  "properties": {
+    "schema": { "const": "nexyfab.construction-work-package-receipt.v1" },
+    "receiptId": { "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$" },
+    "projectId": { "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$" },
+    "workspaceId": { "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$" },
+    "workspaceRevision": { "type": "integer", "minimum": 0 },
+    "buildId": { "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$" },
+    "workPackageId": { "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$" },
+    "workspaceContentHash": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+    "sourceArtifactId": { "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$" },
+    "sourceArtifactSha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+    "sourceSystem": { "const": "Contractor" },
+    "fieldEvidenceId": { "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$" },
+    "reviewerIds": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 },
+      "minItems": 2,
+      "maxItems": 2,
+      "uniqueItems": true
+    },
+    "targetHash": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+    "receiptSha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+    "issuedAt": { "type": "string", "format": "date-time" },
+    "expiresAt": { "type": "string", "format": "date-time" }
+  }
+}

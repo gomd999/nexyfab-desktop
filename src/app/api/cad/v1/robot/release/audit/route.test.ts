@@ -4,7 +4,7 @@ import { NextRequest } from 'next/server';
 vi.mock('@/lib/ai/robot/robotReleaseEvidenceAuditV2', () => ({
   parseTrustedRobotExactCadKeys: vi.fn(() => ({})),
   auditRobotReleaseEvidenceV2: vi.fn((_post, exact, manufacturing) => ({
-    schema: 'nexyfab.robot-release-evidence-audit.v2', status: exact && manufacturing ? 'ready_for_final_review' : 'not_ready',
+    schema: 'nexyfab.robot-release-evidence-audit.v3', status: exact && manufacturing ? 'ready_for_final_review' : 'not_ready',
     releaseTargetHash: exact && manufacturing ? 'a'.repeat(64) : null, programHash: 'b'.repeat(64),
     postIntegrationSha256: 'c'.repeat(64), exactCadEvidenceSha256: exact ? 'd'.repeat(64) : null,
     manufacturingEvidenceSha256: manufacturing ? 'e'.repeat(64) : null,

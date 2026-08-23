@@ -23,8 +23,11 @@ import { METHODS_BY_ID } from '@/app/[lang]/shape-generator/library/methods';
 import { MATERIALS_BY_ID } from '@/app/[lang]/shape-generator/library/materials';
 import { estimateUnitCost } from '@/app/[lang]/shape-generator/library/costing';
 import { sizeClassToDims, quantityTierToCount } from '@/app/[lang]/shape-generator/intake/intakeSpec';
+import { localizedApiMessage, resolveServerLocale } from '@/lib/i18n/serverLocale';
+import { boundedJsonError, readBoundedJson } from '@/lib/boundedJsonBody';
 
 export const dynamic = 'force-dynamic';
+const MAX_BODY_BYTES = 512 * 1024;
 
 
 function safeParseJson(raw: string): unknown {
@@ -36,19 +39,23 @@ function safeParseJson(raw: string): unknown {
 }
 
 export async function POST(req: NextRequest) {
+  let requestBody: Record<string, unknown> | null = null;
+  try { requestBody = await readBoundedJson<Record<string, unknown>>(req, MAX_BODY_BYTES); }
+  catch (error) {
+    if (boundedJsonError(error)?.code === 'PAYLOAD_TOO_LARGE') {
+      const locale = resolveServerLocale(req, req.nextUrl.searchParams.get('lang'));
+      return NextResponse.json({ error: localizedApiMessage(locale, 'badRequest'), code: 'PAYLOAD_TOO_LARGE', outputLanguage: locale.route }, { status: 413 });
+    }
+  }
+  const locale = resolveServerLocale(req, requestBody?.lang ?? req.nextUrl.searchParams.get('lang'));
   const plan = await checkPlan(req, 'free');
   if (!plan.ok) return plan.response;
 
-  let body: Record<string, unknown> = {};
-  try {
-    body = (await req.json()) as Record<string, unknown>;
-  } catch {
-    return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 });
-  }
+  const body = requestBody ?? {};
 
   const spec = body.spec as IntakeSpec | undefined;
   if (!spec || !spec.category) {
-    return NextResponse.json({ error: 'IntakeSpec required' }, { status: 400 });
+    return NextResponse.json({ error: localizedApiMessage(locale, 'badRequest'), code: 'INTAKE_SPEC_REQUIRED', outputLanguage: locale.route }, { status: 400 });
   }
   // 사용자가 특정 layer 를 강제로 고정한 경우 (Result Panel 의 swap 액션)
   const force = (body.force ?? {}) as { partId?: string; methodId?: string; materialId?: string };
@@ -72,6 +79,7 @@ export async function POST(req: NextRequest) {
       {
         error: '호환되는 부품/제조법/재료 조합을 찾지 못했습니다.',
         spec,
+        outputLanguage: locale.route,
       },
       { status: 422 }
     );
@@ -114,7 +122,7 @@ Pick the best bundle (don't have to be #1 if another fits user's specific needs 
 
   const promptDef = getPrompt('compose');
   const messages: ChatMessage[] = [
-    { role: 'system', content: promptDef.template },
+    { role: 'system', content: `${promptDef.template}\n\n[OUTPUT LANGUAGE CONTRACT]\nWrite rationale and display labels in ${locale.languageName}; preserve partId, methodId, materialId, parameter keys, and JSCAD code.` },
     { role: 'user', content: userMessage },
   ];
 
@@ -130,20 +138,20 @@ Pick the best bundle (don't have to be #1 if another fits user's specific needs 
     raw = result.text;
   } catch (e) {
     if (e instanceof AiNotConfiguredError) {
-      return NextResponse.json({ error: 'AI provider not configured' }, { status: 500 });
+      return NextResponse.json({ error: localizedApiMessage(locale, 'providerNotConfigured'), outputLanguage: locale.route }, { status: 500 });
     }
     const detail = e instanceof AiProviderError
       ? `${e.provider}${e.status ? ` (${e.status})` : ''}: ${e.message}`
       : (e instanceof Error ? e.message : String(e));
     console.error('compose AI provider error:', detail);
-    return NextResponse.json({ error: 'AI request failed' }, { status: 502 });
+    return NextResponse.json({ error: localizedApiMessage(locale, 'providerFailed'), outputLanguage: locale.route }, { status: 502 });
   }
 
   let parsed: Record<string, unknown>;
   try {
     parsed = safeParseJson(raw) as Record<string, unknown>;
   } catch {
-    return NextResponse.json({ error: 'AI 응답 파싱 실패', raw }, { status: 500 });
+    return NextResponse.json({ error: localizedApiMessage(locale, 'invalidAiResponse'), outputLanguage: locale.route }, { status: 500 });
   }
 
   // 4) LLM 결과 검증 + 폴백
@@ -164,6 +172,7 @@ Pick the best bundle (don't have to be #1 if another fits user's specific needs 
       code: wrapJscadMain(fallbackCode),
       rationale: ['AI 응답 검증 실패 → 최고 점수 조합으로 폴백'],
       fallback: true,
+      outputLanguage: locale.route,
       bundles: bundles.slice(0, 3).map(summarizeBundle),
     });
   }
@@ -248,6 +257,7 @@ Pick the best bundle (don't have to be #1 if another fits user's specific needs 
       materials: topMaterials.slice(0, 3).map((m) => ({ id: m.item.id, name: m.item.nameKo, score: m.score })),
     },
     bundles: bundles.slice(0, 3).map(summarizeBundle),
+    outputLanguage: locale.route,
   });
 }
 

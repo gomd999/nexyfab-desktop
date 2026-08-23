@@ -117,7 +117,7 @@ export default function MobileSendToDesktop({ labels }: Props) {
           disabled={!pageUrl}
           style={{
             padding: '11px 14px', borderRadius: 8, border: '1px solid #2553a8',
-            background: copied ? '#1d6f47' : '#1c3a78', color: 'var(--nx-text)',
+            background: copied ? '#17603f' : '#1c3a78', color: '#fff',
             fontSize: 13, fontWeight: 700, cursor: pageUrl ? 'pointer' : 'not-allowed',
             transition: 'background 0.15s',
           }}
@@ -128,7 +128,7 @@ export default function MobileSendToDesktop({ labels }: Props) {
           href={mailto}
           style={{
             padding: '11px 14px', borderRadius: 8, border: '1px solid var(--nx-border)',
-            background: 'transparent', color: 'var(--nx-text)', textDecoration: 'none',
+            background: 'transparent', color: '#fff', textDecoration: 'none',
             fontSize: 13, fontWeight: 700, display: 'block',
           }}
         >

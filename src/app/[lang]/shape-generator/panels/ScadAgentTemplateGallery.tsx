@@ -14,6 +14,7 @@
 // later without changing this component's API.
 
 import React, { useEffect, useState } from 'react';
+import { createCommercialLocalizer } from '@/lib/i18n/commercialLocalizer';
 
 interface Template {
   id: string;
@@ -220,16 +221,21 @@ const TEMPLATES: Template[] = [
   },
 ];
 
-const dict = {
+type TemplateGalleryCopy = { open: string; title: string; close: string; send: string; subtitle: string };
+const dict: Record<'ko' | 'en' | 'ja' | 'zh' | 'es' | 'ar', TemplateGalleryCopy> = {
   ko: { open: '🎨 템플릿', title: '시작 템플릿', close: '닫기', send: '✦ 시작', subtitle: '클릭하면 즉시 에이전트가 작업을 시작합니다' },
   en: { open: '🎨 Templates', title: 'Starter Templates', close: 'Close', send: '✦ Start', subtitle: 'Click to launch the agent on this template instantly' },
+  ja: { open: '🎨 テンプレート', title: 'スターターテンプレート', close: '閉じる', send: '✦ 開始', subtitle: 'クリックしてエージェントをすぐに開始' },
+  zh: { open: '🎨 模板', title: '入门模板', close: '关闭', send: '✦ 开始', subtitle: '点击即可使用此模板启动代理' },
+  es: { open: '🎨 Plantillas', title: 'Plantillas iniciales', close: 'Cerrar', send: '✦ Iniciar', subtitle: 'Haz clic para iniciar el agente al instante con esta plantilla' },
+  ar: { open: '🎨 قوالب', title: 'قوالب البدء', close: 'إغلاق', send: '✦ بدء', subtitle: 'انقر لتشغيل الوكيل فورًا باستخدام هذا القالب' },
 };
-// Intentional: ja/zh/es/ar fall back to EN for the template gallery
-// (20 templates × 2 strings × 4 langs = 160 entries). Templates exist
-// to advertise capability — EN copy with native chrome (header, button)
-// is acceptable graceful degradation. See Cheatsheet for the same trade.
+// Template records remain a stable ko/en data contract. Display strings go
+// through the commercial catalog so every route locale receives the matching
+// translation when available, with the source pair retained as a safe fallback
+// for server-provided or newly added templates.
 const langMap: Record<string, keyof typeof dict> = {
-  kr: 'ko', ko: 'ko', en: 'en', ja: 'en', cn: 'en', zh: 'en', es: 'en', ar: 'en',
+  kr: 'ko', ko: 'ko', en: 'en', ja: 'ja', cn: 'zh', zh: 'zh', es: 'es', ar: 'ar',
 };
 
 export interface TemplateGalleryProps {
@@ -240,8 +246,9 @@ export interface TemplateGalleryProps {
 
 export default function ScadAgentTemplateGallery({ lang, onPick }: TemplateGalleryProps) {
   const [open, setOpen] = useState(false);
-  const isKo = (langMap[lang] ?? 'en') === 'ko';
-  const t = dict[isKo ? 'ko' : 'en'];
+  const langKey = langMap[lang] ?? 'en';
+  const t = dict[langKey as keyof typeof dict] ?? dict.en;
+  const L = createCommercialLocalizer(langKey);
 
   useEffect(() => {
     if (!open) return;
@@ -270,7 +277,7 @@ export default function ScadAgentTemplateGallery({ lang, onPick }: TemplateGalle
           {TEMPLATES.map(tpl => (
             <button
               key={tpl.id}
-              onClick={() => { onPick(isKo ? tpl.prompt_ko : tpl.prompt_en); setOpen(false); }}
+              onClick={() => { onPick(L(tpl.prompt_ko, tpl.prompt_en)); setOpen(false); }}
               style={cardStyle}
               onMouseEnter={(e) => {
                 e.currentTarget.style.borderColor = 'var(--nx-accent)';
@@ -283,10 +290,10 @@ export default function ScadAgentTemplateGallery({ lang, onPick }: TemplateGalle
             >
               <div style={{ fontSize: 28, marginBottom: 4 }}>{tpl.emoji}</div>
               <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--nx-text)', marginBottom: 3 }}>
-                {isKo ? tpl.title_ko : tpl.title_en}
+                {L(tpl.title_ko, tpl.title_en)}
               </div>
               <div style={{ fontSize: 10, color: 'var(--nx-text-2)', marginBottom: 6, minHeight: 26, lineHeight: 1.3 }}>
-                {isKo ? tpl.desc_ko : tpl.desc_en}
+                {L(tpl.desc_ko, tpl.desc_en)}
               </div>
               <div style={{ display: 'flex', gap: 3, flexWrap: 'wrap' }}>
                 {tpl.tags.map(tag => (

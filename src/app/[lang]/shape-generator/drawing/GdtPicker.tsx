@@ -13,8 +13,8 @@
 import { useState } from 'react';
 import { useLang } from '../hooks/useLang';
 import { loc } from '../lib/loc';
+import { createCommercialLocalizer } from '@/lib/i18n/commercialLocalizer';
 import {
-  GDT_SYMBOLS,
   GDT_MODIFIERS,
   GDT_CATEGORY_LABELS,
   gdtSymbolsByCategory,
@@ -29,8 +29,9 @@ interface Props {
   onClose: () => void;
 }
 
-export default function GdtPicker({ open, isKo, onClose }: Props) {
+export default function GdtPicker({ open, isKo: _isKo, onClose }: Props) {
   const lang = useLang();
+  const L = createCommercialLocalizer(lang);
   const [selected, setSelected] = useState<GdtSymbol | null>(null);
   const [tolerance, setTolerance] = useState(0.1);
   const [modifier, setModifier] = useState<FeatureControlFrame['modifier']>(undefined);
@@ -127,7 +128,7 @@ export default function GdtPicker({ open, isKo, onClose }: Props) {
                       }}
                     >
                       <span style={{ fontSize: 16, width: 18, textAlign: 'center' }}>{s.symbol}</span>
-                      <span style={{ fontSize: 11 }}>{isKo ? s.nameKo : s.nameEn}</span>
+                      <span style={{ fontSize: 11 }}>{L(s.nameKo, s.nameEn)}</span>
                     </button>
                   );
                 })}
@@ -171,7 +172,7 @@ export default function GdtPicker({ open, isKo, onClose }: Props) {
                   >
                     <option value="">—</option>
                     {GDT_MODIFIERS.map(m => (
-                      <option key={m.id} value={m.id}>{m.symbol} {isKo ? m.nameKo : m.nameEn}</option>
+                      <option key={m.id} value={m.id}>{m.symbol} {L(m.nameKo, m.nameEn)}</option>
                     ))}
                   </select>
                 </label>

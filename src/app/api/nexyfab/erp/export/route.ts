@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getDbAdapter } from '@/lib/db-adapter';
 import { getAuthUser } from '@/lib/auth-middleware';
 import { rowsToCsv, sheetsToXlsxBuffer } from '@/lib/tabular-export';
+import { resolveRequestOrgContext } from '@/lib/org-context';
 
 export const dynamic = 'force-dynamic';
 
@@ -10,6 +11,8 @@ export async function GET(req: NextRequest) {
   if (!authUser) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   const { meetsPlan } = await import('@/lib/plan-guard');
   if (!meetsPlan(authUser.plan, 'pro')) return NextResponse.json({ error: 'Pro plan required for ERP export.' }, { status: 403 });
+  const context = resolveRequestOrgContext(authUser);
+  if (!context.ok) return NextResponse.json({ error: 'Select a valid workspace', code: context.code }, { status: 409 });
 
   const sp = req.nextUrl.searchParams;
   const type = sp.get('type') ?? 'contracts'; // contracts | rfqs | quotes
@@ -18,6 +21,11 @@ export async function GET(req: NextRequest) {
   const to   = sp.get('to')   ? parseInt(sp.get('to')!,   10) : Date.now();
 
   const db = getDbAdapter();
+  await db.execute('ALTER TABLE nf_rfqs ADD COLUMN org_id TEXT').catch(() => {});
+  await db.execute('ALTER TABLE nf_orders ADD COLUMN org_id TEXT').catch(() => {});
+  const rfqScope = context.orgId ? 'r.org_id = ?' : 'r.user_id = ? AND r.org_id IS NULL';
+  const orderScope = context.orgId ? 'org_id = ?' : 'user_id = ? AND org_id IS NULL';
+  const scopeArg = context.orgId ?? authUser.userId;
   let rows: Record<string, unknown>[] = [];
 
   if (type === 'rfqs') {
@@ -25,28 +33,28 @@ export async function GET(req: NextRequest) {
       `SELECT id, shape_name AS part_name, material_id AS material,
               quantity, quote_amount AS quoted_price_krw, status, note,
               created_at, updated_at
-       FROM nf_rfqs WHERE user_id = ? AND created_at BETWEEN ? AND ?
+       FROM nf_rfqs r WHERE ${rfqScope} AND created_at BETWEEN ? AND ?
        ORDER BY created_at DESC LIMIT 2000`,
-      authUser.userId, from, to,
+      scopeArg, from, to,
     );
   } else if (type === 'quotes') {
     rows = await db.queryAll<Record<string, unknown>>(
-      `SELECT q.id, q.rfq_id, q.manufacturer_name, q.unit_price_krw,
-              q.total_price_krw, q.lead_time_days, q.status, q.created_at
+      `SELECT q.id, q.inquiry_id AS rfq_id, q.factory_name AS manufacturer_name,
+              q.estimated_amount AS total_price_krw, q.valid_until, q.status, q.created_at
        FROM nf_quotes q
-       JOIN nf_rfqs r ON r.id = q.rfq_id
-       WHERE r.user_id = ? AND q.created_at BETWEEN ? AND ?
+       JOIN nf_rfqs r ON r.id = q.inquiry_id
+       WHERE ${rfqScope} AND q.created_at BETWEEN ? AND ?
        ORDER BY q.created_at DESC LIMIT 2000`,
-      authUser.userId, from, to,
+      scopeArg, from, to,
     );
   } else {
     // contracts (nf_orders)
     rows = await db.queryAll<Record<string, unknown>>(
       `SELECT id, rfq_id, part_name, manufacturer_name, quantity,
               total_price_krw, status, created_at, estimated_delivery_at
-       FROM nf_orders WHERE user_id = ? AND created_at BETWEEN ? AND ?
+       FROM nf_orders WHERE ${orderScope} AND created_at BETWEEN ? AND ?
        ORDER BY created_at DESC LIMIT 2000`,
-      authUser.userId, from, to,
+      scopeArg, from, to,
     );
   }
 

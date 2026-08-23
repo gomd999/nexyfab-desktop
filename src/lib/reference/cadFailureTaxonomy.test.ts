@@ -25,4 +25,15 @@ describe('CAD failure taxonomy', () => {
     expect(cadFailureDisposition('COLLISION_GEOMETRY_MISSING')).toMatchObject({ retryable: true, automaticRepair: 'collision-refine', releaseBlocking: true });
     expect(cadFailureDisposition('PRECISE_CCD_BUDGET_EXCEEDED')).toMatchObject({ retryable: true, automaticRepair: 'collision-refine', releaseBlocking: true });
   });
+
+  it('keeps false-PASS, semantic simplification, repair, signature, and fake-route failures non-automatable and release-blocking', () => {
+    const codes = [
+      'DECLARED_JOINT_GEOMETRY_MISMATCH', 'CONTINUOUS_SEGMENT_GEOMETRY_MISMATCH',
+      'GENERATION_PROGRAM_BINDING_MISMATCH', 'SEMANTIC_INVENTORY_MISMATCH', 'CLIENT_ASSERTED_MEASUREMENT_REJECTED',
+      'GENERATION_EXACT_CAD_CHECKPOINT_MISSING', 'GENERATION_EXACT_CAD_CHECKPOINT_MISMATCH',
+      'FALLBACK_NOT_RELEASE_ELIGIBLE', 'REPAIR_SCOPE_VIOLATION', 'RELEASE_EVIDENCE_SIGNATURE_INVALID',
+      'ROUTE_GEOMETRY_MISSING', 'TYPED_PORT_INCOMPLETE', 'TYPED_RUN_INCOMPLETE', 'DUPLICATE_INTERNAL_FLOW_SOLID', 'PHYSICAL_NETWORK_EMPTY',
+    ] as const;
+    for (const code of codes) expect(cadFailureDisposition(code)).toMatchObject({ automaticRepair: null, releaseBlocking: true });
+  });
 });

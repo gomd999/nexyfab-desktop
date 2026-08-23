@@ -1,0 +1,16 @@
+{
+  "schema": "nexyfab.mechanical-step-interoperability-assessment.v2",
+  "releaseChannel": "mechanical-core",
+  "requiredLevel": "C4",
+  "verifiedLevel": null,
+  "verifiedTargets": [],
+  "eligible": false,
+  "blockers": [
+    "target:nexyfab:missing",
+    "target:independent-step-parser:missing",
+    "matrix:revision_mismatch",
+    "matrix:source_artifact_mismatch"
+  ],
+  "generatedAt": null,
+  "sourceReceipts": null
+}

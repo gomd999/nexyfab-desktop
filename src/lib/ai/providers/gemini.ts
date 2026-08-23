@@ -1,5 +1,7 @@
 import { AiProviderError, type ChatCompletionRequest, type ChatCompletionResponse, type ChatMessage, type ProviderAdapter } from '../types';
 import { truncationOf } from './truncation';
+import { createHash } from 'crypto';
+import { getSetting, getSettingSync } from '../../admin-settings';
 
 /**
  * Google Gemini text provider (generateContent). Gemini is markedly stronger
@@ -13,12 +15,100 @@ import { truncationOf } from './truncation';
  */
 const DEFAULT_MODEL = 'gemini-2.5-pro';
 
-function apiKey(): string | undefined {
-  return process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY;
+function apiKeySync(): string | undefined {
+  return getSettingSync('gemini.api_key') || process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY;
+}
+
+interface GeminiCacheEntry {
+  name: string;
+  expiresAt: number;
+  writeTokens: number;
+  key: string;
+}
+
+const explicitCaches = new Map<string, GeminiCacheEntry>();
+const cacheCreates = new Map<string, Promise<GeminiCacheEntry | null>>();
+const cacheDisabledUntil = new Map<string, number>();
+const GEMINI_CACHE_TTL_SECONDS = 3_600;
+
+function stableSystemText(messages: ChatMessage[]): string {
+  return messages.filter(message => message.role === 'system').map(message => message.content).join('\n\n');
+}
+
+function geminiMinimumCacheTokens(model: string): number {
+  return /^gemini-(?:3|4)/i.test(model) ? 4_096 : 2_048;
+}
+
+function estimatedTokens(text: string): number {
+  return Math.ceil(Buffer.byteLength(text, 'utf8') / 4);
+}
+
+function geminiCacheKey(model: string, systemText: string): string {
+  const digest = createHash('sha256').update(`${model}\n${systemText}`).digest('hex').slice(0, 24);
+  return `nexyfab:gemini:${model}:${digest}:v1`;
+}
+
+async function ensureGeminiExplicitCache(
+  key: string,
+  model: string,
+  systemText: string,
+  apiKeyValue: string,
+): Promise<GeminiCacheEntry | null> {
+  const now = Date.now();
+  const current = explicitCaches.get(key);
+  if (current && current.expiresAt > now + 60_000) {
+    return { ...current, writeTokens: 0 };
+  }
+  if ((cacheDisabledUntil.get(key) ?? 0) > now) return null;
+  const pending = cacheCreates.get(key);
+  if (pending) return pending;
+
+  const creation = (async (): Promise<GeminiCacheEntry | null> => {
+    const response = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/cachedContents?key=${encodeURIComponent(apiKeyValue)}`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          model: `models/${model}`,
+          displayName: `nexyfab-${key.slice(-27, -3)}`,
+          systemInstruction: { role: 'system', parts: [{ text: systemText }] },
+          ttl: `${GEMINI_CACHE_TTL_SECONDS}s`,
+        }),
+        signal: AbortSignal.timeout(30_000),
+      },
+    );
+    if (!response.ok) {
+      // Explicit caching is an optimization. Unsupported/undersized contexts
+      // must fall back to Gemini's implicit cache without failing generation.
+      await response.text().catch(() => '');
+      cacheDisabledUntil.set(key, Date.now() + 5 * 60_000);
+      return null;
+    }
+    const data = await response.json() as {
+      name?: string;
+      expireTime?: string;
+      usageMetadata?: { totalTokenCount?: number };
+    };
+    if (!data.name) return null;
+    const providerExpiry = data.expireTime ? Date.parse(data.expireTime) : Number.NaN;
+    const entry: GeminiCacheEntry = {
+      name: data.name,
+      expiresAt: Number.isFinite(providerExpiry)
+        ? providerExpiry
+        : Date.now() + (GEMINI_CACHE_TTL_SECONDS - 60) * 1_000,
+      writeTokens: data.usageMetadata?.totalTokenCount ?? 0,
+      key,
+    };
+    explicitCaches.set(key, entry);
+    return entry;
+  })().finally(() => cacheCreates.delete(key));
+  cacheCreates.set(key, creation);
+  return creation;
 }
 
 /** Map our system/user/assistant messages into Gemini's contents + systemInstruction. */
-function toGemini(messages: ChatMessage[]): {
+export function toGemini(messages: ChatMessage[]): {
   systemInstruction?: { parts: { text: string }[] };
   contents: { role: 'user' | 'model'; parts: { text: string }[] }[];
 } {
@@ -37,11 +127,11 @@ export const geminiProvider: ProviderAdapter = {
   name: 'gemini',
 
   isConfigured(): boolean {
-    return Boolean(apiKey());
+    return Boolean(apiKeySync());
   },
 
   async complete(req: ChatCompletionRequest): Promise<ChatCompletionResponse> {
-    const key = apiKey();
+    const key = (await getSetting('gemini.api_key')) || process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY;
     if (!key) throw new AiProviderError('gemini', undefined, 'GEMINI_API_KEY is not set');
 
     // Only honour a gemini-family model name; a caller's deepseek/openai model
@@ -49,23 +139,43 @@ export const geminiProvider: ProviderAdapter = {
     const model = req.model?.startsWith('gemini') ? req.model : (process.env.GEMINI_TEXT_MODEL ?? DEFAULT_MODEL);
     const startedAt = Date.now();
     const { systemInstruction, contents } = toGemini(req.messages);
+    const systemText = stableSystemText(req.messages);
+    const cacheKey = systemText ? geminiCacheKey(model, systemText) : undefined;
+    const cacheEligible = Boolean(
+      cacheKey
+      && estimatedTokens(systemText) >= geminiMinimumCacheTokens(model),
+    );
+    const explicitCache = cacheEligible && cacheKey
+      ? await ensureGeminiExplicitCache(cacheKey, model, systemText, key)
+      : null;
 
     const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(key)}`;
-    const res = await fetch(url, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        ...(systemInstruction ? { systemInstruction } : {}),
-        contents,
-        generationConfig: {
-          maxOutputTokens: req.maxTokens ?? 8192,
-          temperature: req.temperature ?? 0.2,
-        },
-      }),
-      signal: req.signal
-        ? AbortSignal.any([req.signal, AbortSignal.timeout(req.timeoutMs ?? 60_000)])
-        : AbortSignal.timeout(req.timeoutMs ?? 60_000),
-    });
+    const generate = (cachedContent?: string) => fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ...(cachedContent
+            ? { cachedContent }
+            : systemInstruction ? { systemInstruction } : {}),
+          contents,
+          generationConfig: {
+            maxOutputTokens: req.maxTokens ?? 8192,
+            temperature: req.temperature ?? 0.2,
+          },
+        }),
+        signal: req.signal
+          ? AbortSignal.any([req.signal, AbortSignal.timeout(req.timeoutMs ?? 60_000)])
+          : AbortSignal.timeout(req.timeoutMs ?? 60_000),
+      });
+    let res = await generate(explicitCache?.name);
+
+    // A cache can expire between our local TTL check and generation. Retry the
+    // actual request once without the stale resource; never retry model errors.
+    if (!res.ok && explicitCache && (res.status === 400 || res.status === 404)) {
+      await res.text().catch(() => '');
+      explicitCaches.delete(explicitCache.key);
+      res = await generate();
+    }
 
     if (!res.ok) {
       const text = await res.text().catch(() => '');
@@ -74,7 +184,11 @@ export const geminiProvider: ProviderAdapter = {
 
     const data = await res.json() as {
       candidates?: { content?: { parts?: { text?: string }[] }; finishReason?: string }[];
-      usageMetadata?: { promptTokenCount?: number; candidatesTokenCount?: number };
+      usageMetadata?: {
+        promptTokenCount?: number;
+        candidatesTokenCount?: number;
+        cachedContentTokenCount?: number;
+      };
     };
     const content = (data.candidates?.[0]?.content?.parts ?? [])
       .map(p => p.text ?? '')
@@ -94,6 +208,14 @@ export const geminiProvider: ProviderAdapter = {
       model,
       promptTokens: data.usageMetadata?.promptTokenCount,
       completionTokens: data.usageMetadata?.candidatesTokenCount,
+      cachedPromptTokens: data.usageMetadata?.cachedContentTokenCount,
+      cacheWriteTokens: explicitCache?.writeTokens,
+      cacheMissTokens: Math.max(
+        0,
+        (data.usageMetadata?.promptTokenCount ?? 0) - (data.usageMetadata?.cachedContentTokenCount ?? 0),
+      ),
+      promptCacheKey: cacheKey,
+      cacheProfile: explicitCache ? 'gemini-explicit' : 'gemini-implicit',
       latencyMs: Date.now() - startedAt,
     };
   },

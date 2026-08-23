@@ -19,10 +19,12 @@
  *   DODO_WEBHOOK_SECRET   — whsec_... from the Dodo dashboard
  */
 import { NextRequest, NextResponse } from 'next/server';
+import { boundedRawBodyError, readBoundedRawBody } from '@/lib/boundedRawBody';
 import { verifyWebhook } from '@/lib/dodo';
 import { getDbAdapter } from '@/lib/db-adapter';
 
 export const dynamic = 'force-dynamic';
+const DODO_WEBHOOK_RAW_BYTES = 1024 * 1024;
 
 interface DodoEvent {
   id?: string;
@@ -42,7 +44,15 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     return NextResponse.json({ error: 'webhook_not_configured' }, { status: 500 });
   }
 
-  const rawBody = await req.text();
+  let rawBody: string;
+  try {
+    const rawBytes = await readBoundedRawBody(req, DODO_WEBHOOK_RAW_BYTES);
+    rawBody = new TextDecoder('utf-8', { fatal: true }).decode(rawBytes);
+  } catch (error) {
+    const bodyError = boundedRawBodyError(error);
+    if (bodyError?.code === 'PAYLOAD_TOO_LARGE') return NextResponse.json({ error: 'payload_too_large' }, { status: bodyError.status });
+    return NextResponse.json({ error: 'invalid_payload' }, { status: 400 });
+  }
 
   if (secret) {
     if (!verifyWebhook(rawBody, req.headers, secret)) {

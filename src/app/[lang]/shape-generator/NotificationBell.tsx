@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { usePathname } from 'next/navigation';
+import { useAuthStore } from '@/hooks/useAuth';
 
 /* ─── i18n ────────────────────────────────────────────────────────────────── */
 
@@ -66,6 +67,8 @@ function typeIcon(type: string): string {
 // ─── Notification Bell ────────────────────────────────────────────────────────
 
 export default function NotificationBell({ lang }: { lang: string }) {
+  const sessionStatus = useAuthStore(state => state.sessionStatus);
+  const canLoadNotifications = sessionStatus === 'authenticated';
   const pathname = usePathname();
   const seg = pathname?.split('/').filter(Boolean)[0] ?? lang ?? 'en';
   const t = dict[langMap[seg] ?? 'en'];
@@ -80,6 +83,7 @@ export default function NotificationBell({ lang }: { lang: string }) {
 
   // ── Fetch Notifications ─────────────────────────────────────────────────────
   const fetchNotifications = useCallback(async () => {
+    if (!canLoadNotifications) return;
     setLoading(true);
     try {
       const r = await fetch('/api/nexyfab/notifications');
@@ -100,10 +104,11 @@ export default function NotificationBell({ lang }: { lang: string }) {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [canLoadNotifications]);
 
   // ── Mark All Read ───────────────────────────────────────────────────────────
   const markAllRead = useCallback(async () => {
+    if (!canLoadNotifications) return;
     try {
       await fetch('/api/nexyfab/notifications', {
         method: 'PATCH',
@@ -115,10 +120,11 @@ export default function NotificationBell({ lang }: { lang: string }) {
     } catch {
       // ignore
     }
-  }, []);
+  }, [canLoadNotifications]);
 
   // ── Clear All ───────────────────────────────────────────────────────────────
   const clearAll = useCallback(async () => {
+    if (!canLoadNotifications) return;
     try {
       await fetch('/api/nexyfab/notifications', { method: 'DELETE' });
       setNotifications([]);
@@ -126,7 +132,7 @@ export default function NotificationBell({ lang }: { lang: string }) {
     } catch {
       // ignore
     }
-  }, []);
+  }, [canLoadNotifications]);
 
   // ── Bell click ──────────────────────────────────────────────────────────────
   const handleBellClick = useCallback(() => {
@@ -141,12 +147,20 @@ export default function NotificationBell({ lang }: { lang: string }) {
 
   // ── Polling ─────────────────────────────────────────────────────────────────
   useEffect(() => {
+    if (!canLoadNotifications) {
+      queueMicrotask(() => {
+        setNotifications([]);
+        setUnreadCount(0);
+        setOpen(false);
+      });
+      return;
+    }
     fetchNotifications();
     intervalRef.current = setInterval(fetchNotifications, 60_000);
     return () => {
       if (intervalRef.current) clearInterval(intervalRef.current);
     };
-  }, [fetchNotifications]);
+  }, [canLoadNotifications, fetchNotifications]);
 
   // ── Click Outside ───────────────────────────────────────────────────────────
   useEffect(() => {

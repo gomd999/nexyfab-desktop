@@ -10,8 +10,11 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getAuthUser } from '@/lib/auth-middleware';
 import { getDbAdapter } from '@/lib/db-adapter';
 import { resolveProjectAccess } from '@/lib/nfProjectAccess';
+import { boundedJsonError, readBoundedJson } from '@/lib/boundedJsonBody';
 
 export const dynamic = 'force-dynamic';
+// Base64 expands binary Yjs updates by 4/3; 8 MiB admits about 6 MiB of update bytes plus JSON framing.
+const MAX_COLLAB_UPDATE_BODY_BYTES = 8 * 1024 * 1024;
 
 interface Subscriber {
   id: string;
@@ -40,7 +43,7 @@ export async function GET(req: NextRequest) {
   // Project-membership gate: only the owner or an invited member may subscribe
   // to a project's collab stream. Without this any authenticated user could
   // read another tenant's live edits (IDOR).
-  const access = await resolveProjectAccess(getDbAdapter(), projectId, authUser.userId);
+  const access = await resolveProjectAccess(getDbAdapter(), projectId, authUser);
   if (!access) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
 
   const subId = `${authUser.userId}-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
@@ -103,11 +106,14 @@ export async function POST(req: NextRequest) {
 
   // Publishing a doc mutation requires edit rights; viewers (and non-members)
   // are rejected so they can't inject updates into a project they can't edit.
-  const access = await resolveProjectAccess(getDbAdapter(), projectId, authUser.userId);
+  const access = await resolveProjectAccess(getDbAdapter(), projectId, authUser);
   if (!access) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   if (!access.canEdit) return NextResponse.json({ error: 'Forbidden: viewer cannot publish updates' }, { status: 403 });
 
-  const body = await req.json().catch(() => null) as { sessionId?: string; update?: string; kind?: 'doc' | 'awareness' } | null;
+  type UpdateBody = { sessionId?: string; update?: string; kind?: 'doc' | 'awareness' };
+  let body: UpdateBody | null;
+  try { body = await readBoundedJson<UpdateBody>(req, MAX_COLLAB_UPDATE_BODY_BYTES); }
+  catch (error) { if (boundedJsonError(error)?.code === 'PAYLOAD_TOO_LARGE') return NextResponse.json({ error: 'Request too large', code: 'PAYLOAD_TOO_LARGE' }, { status: 413 }); body = null; }
   if (!body?.update) return NextResponse.json({ error: 'update required' }, { status: 400 });
 
   const kind = body.kind === 'awareness' ? 'awareness' : 'doc';

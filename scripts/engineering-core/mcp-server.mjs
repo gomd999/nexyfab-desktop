@@ -9,11 +9,11 @@
  * Wave 2 TODO: 동일 도구를 Cloudflare Worker HTTP API로 노출 + API key 발급(D1)·rate limit —
  * 외부 AI 서비스(OpenAI tools, 커스텀 에이전트)용. MCP는 로컬/개발, HTTP는 상용.
  */
-import { createInterface } from 'node:readline';
 import { readdirSync, readFileSync, existsSync } from 'node:fs';
 import { dirname, join } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 import { calculators, loadStandards, runCalculator } from './registry.mjs';
+import { createStdioMcpServer } from '../mcp-stdio-transport.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const INDEX_DIR = join(__dirname, '..', 'knowledge-crawler', 'data', 'index');
@@ -112,42 +112,11 @@ async function callTool(name, args = {}) {
   return runCalculator(name, input, standard ?? 'KDS');
 }
 
-// ---- JSON-RPC over stdio ----
-const rl = createInterface({ input: process.stdin });
-const send = (msg) => process.stdout.write(JSON.stringify(msg) + '\n');
+export { tools, callTool };
 
-rl.on('line', async (line) => {
-  line = line.trim();
-  if (!line) return;
-  let req;
-  try { req = JSON.parse(line); } catch { return; }
-  const { id, method, params } = req;
-  const reply = (result) => id !== undefined && send({ jsonrpc: '2.0', id, result });
-  const fail = (code, message) => id !== undefined && send({ jsonrpc: '2.0', id, error: { code, message } });
-  try {
-    if (method === 'initialize') {
-      reply({
-        protocolVersion: params?.protocolVersion ?? '2024-11-05',
-        capabilities: { tools: {} },
-        serverInfo: { name: 'nexyfab-engineering-core', version: '0.1.0' },
-      });
-    } else if (method === 'notifications/initialized' || method === 'initialized') {
-      // notification — no response
-    } else if (method === 'ping') {
-      reply({});
-    } else if (method === 'tools/list') {
-      reply({ tools });
-    } else if (method === 'tools/call') {
-      try {
-        const result = await callTool(params.name, params.arguments ?? {});
-        reply({ content: [{ type: 'text', text: JSON.stringify(result, null, 2) }] });
-      } catch (e) {
-        reply({ content: [{ type: 'text', text: `ERROR: ${e.message}` }], isError: true });
-      }
-    } else if (id !== undefined) {
-      fail(-32601, `method not found: ${method}`);
-    }
-  } catch (e) {
-    fail(-32603, e.message);
-  }
+const IS_MAIN = process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href;
+if (IS_MAIN) createStdioMcpServer({
+  serverInfo: { name: 'nexyfab-engineering-core', version: '0.1.0' },
+  tools,
+  callTool,
 });

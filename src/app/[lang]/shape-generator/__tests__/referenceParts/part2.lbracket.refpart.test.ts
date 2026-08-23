@@ -331,22 +331,10 @@ describeMaybe('REF-PART 2 · L-bracket', () => {
     expect(vol).toBeGreaterThan(expected * 0.9);
     expect(vol).toBeLessThan(expected * 1.05);
 
-    // Note where the hole pattern hurt: 4 separate features for 4 holes.
-    recordFinding({
-      part: 'P2 L-bracket',
-      severity: 'major',
-      title: 'no feature-level hole pattern',
-      detail: 'linearPattern/circularPattern clone the WHOLE BODY (features/linearPattern.ts:25-32), so a '
-        + '4-hole mounting pattern requires 4 hand-placed hole features; changing the bolt spacing means '
-        + 'editing each one. SolidWorks users expect pattern-of-feature.',
-    });
-    recordFinding({
-      part: 'P2 L-bracket',
-      severity: 'major',
-      title: 'hole feature is Y-axis-only',
-      detail: 'features/hole.ts always drills along Y (bbox top); holes through the upright flange (X axis) '
-        + 'need a rotated boolean cylinder instead — the Hole Wizard cannot place them.',
-    });
+    // Feature-unit pattern and X/Y/Z hole-axis behaviour are covered by
+    // featurePattern.test.ts, hole.advanced.test.ts and the wizard runtime
+    // suite. This reference part intentionally keeps four explicit holes so
+    // its historical closed-form volume remains independently auditable.
   }, 240_000);
 
   it('.nfab round-trip → re-run → identical volume', async () => {

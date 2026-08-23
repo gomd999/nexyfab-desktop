@@ -16,7 +16,7 @@ import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { rateLimit } from '@/lib/rate-limit';
 import { getTrustedClientIp } from '@/lib/client-ip';
-import { stepToNexyfabAssembly, stepToNexyfabAssemblyPreferKernel } from '@/lib/brep-bridge/stepToNexyfabAssembly';
+import { stepToNexyfabAssemblyPreferKernel } from '@/lib/brep-bridge/stepToNexyfabAssembly';
 import { igesToNexyfabAssembly, stlToNexyfabAssembly } from '@/lib/brep-bridge/meshIgesImport';
 import { ifcToNexyfabAssembly } from '@/lib/brep-bridge/ifcImport';
 import { dwgToNexyfabAssembly } from '@/lib/brep-bridge/dwgImport';
@@ -24,6 +24,14 @@ import { satToNexyfabAssembly } from '@/lib/brep-bridge/satImport';
 import { xtToNexyfabAssembly } from '@/lib/brep-bridge/xtImport';
 import { stepToIr, meshSoupToStepIr, gateIntentTriangles, acisReconstructionGate } from '@/lib/cad-ir';
 import { recordUsageEvent } from '@/lib/plan-guard';
+import { boundedJsonError, readBoundedJson } from '@/lib/boundedJsonBody';
+
+// This legacy inline JSON bridge shares the generic API proxy ceiling. Larger
+// binaries belong on direct object storage, not in base64 JSON.
+const MAX_BODY_BYTES = 16 * 1024 * 1024;
+const MAX_INLINE_TEXT_CHARS = 15_000_000;
+// Base64 adds 4/3 overhead; leave room for format/name/material JSON fields.
+const MAX_INLINE_BINARY_BYTES = 11 * 1024 * 1024;
 
 /** 독점 포맷 안내(임포트 불가 시 정직 응답) — 각 툴의 개방 포맷 내보내기 경로. */
 const CONVERT_GUIDE: Record<string, string> = {
@@ -54,7 +62,10 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   if (!rl.allowed) return NextResponse.json({ ok: false, error: '요청이 너무 많습니다.' }, { status: 429 });
 
   let body: { step?: string; name?: string; material?: string; format?: string; stlBase64?: string };
-  try { body = await req.json(); } catch { return NextResponse.json({ ok: false, error: 'invalid json' }, { status: 400 }); }
+  try { body = await readBoundedJson(req, MAX_BODY_BYTES); } catch (error) {
+    if (boundedJsonError(error)?.code === 'PAYLOAD_TOO_LARGE') return NextResponse.json({ ok: false, error: 'CAD import 요청 본문이 너무 큽니다.' }, { status: 413 });
+    return NextResponse.json({ ok: false, error: 'invalid json' }, { status: 400 });
+  }
   const fmt = String(body.format ?? 'step').toLowerCase();
   if (CONVERT_GUIDE[fmt]) {
     return NextResponse.json({ ok: false, error: `${fmt.toUpperCase()} 는 독점 포맷 — 파서 미지원(정직). 변환 경로: ${CONVERT_GUIDE[fmt]}` }, { status: 200 });
@@ -72,14 +83,14 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       ? Buffer.from(body.stlBase64, 'base64').toString('latin1')
       : (body.step ?? '');
     if (!src) return NextResponse.json({ ok: false, error: 'x_t 텍스트가 필요합니다.' }, { status: 400 });
-    if (src.length > 60_000_000) return NextResponse.json({ ok: false, error: 'x_t 60MB 초과(웹 업로드 예산)' }, { status: 400 });
+    if (src.length > MAX_INLINE_TEXT_CHARS) return NextResponse.json({ ok: false, error: 'x_t 15MB 초과(인라인 JSON 예산)' }, { status: 400 });
     bridged = xtToNexyfabAssembly(src, { name });
   } else if (fmt === 'sat' || fmt === 'sab') {
     // ACIS SAT(텍스트)/SAB(바이너리) — 바디별 점군 AABB box(정직 근사 명시)
     const buf = typeof body.stlBase64 === 'string' && body.stlBase64
       ? Buffer.from(body.stlBase64, 'base64')
       : Buffer.from(body.step ?? '', 'latin1');
-    if (buf.length > 60_000_000) return NextResponse.json({ ok: false, error: 'SAT 60MB 초과(웹 업로드 예산)' }, { status: 400 });
+    if (buf.length > MAX_INLINE_BINARY_BYTES) return NextResponse.json({ ok: false, error: 'SAT 11MB 초과(인라인 JSON 예산)' }, { status: 400 });
     if (!buf.length) return NextResponse.json({ ok: false, error: 'SAT 데이터가 필요합니다.' }, { status: 400 });
     const head15 = buf.toString('latin1', 0, 15);
     bridged = head15 === 'ACIS BinaryFile' || head15 === 'ASM BinaryFile4'
@@ -91,28 +102,28 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     const b64 = typeof body.stlBase64 === 'string' ? body.stlBase64 : '';
     if (!b64) return NextResponse.json({ ok: false, error: 'DWG 바이너리(stlBase64 필드, base64)가 필요합니다.' }, { status: 400 });
     const buf = Buffer.from(b64, 'base64');
-    if (buf.length > 60_000_000) return NextResponse.json({ ok: false, error: 'DWG 60MB 초과' }, { status: 400 });
+    if (buf.length > MAX_INLINE_BINARY_BYTES) return NextResponse.json({ ok: false, error: 'DWG 11MB 초과(인라인 JSON 예산)' }, { status: 400 });
     bridged = await dwgToNexyfabAssembly(buf.buffer.slice(buf.byteOffset, buf.byteOffset + buf.byteLength), { name });
   } else if (fmt === 'stl') {
     const buf = typeof body.stlBase64 === 'string' && body.stlBase64
       ? Buffer.from(body.stlBase64, 'base64')
       : Buffer.from(body.step ?? '', 'latin1');
-    if (buf.length > 30_000_000) return NextResponse.json({ ok: false, error: 'STL 30MB 초과' }, { status: 400 });
+    if (buf.length > MAX_INLINE_BINARY_BYTES) return NextResponse.json({ ok: false, error: 'STL 11MB 초과(인라인 JSON 예산)' }, { status: 400 });
     bridged = stlToNexyfabAssembly(buf, { name, ...matOpt });
   } else if (fmt === 'ifc') {
     const src = body.step ?? '';
     if (!src) return NextResponse.json({ ok: false, error: 'IFC 텍스트가 필요합니다.' }, { status: 400 });
-    if (src.length > 40_000_000) return NextResponse.json({ ok: false, error: 'IFC 40MB 초과(웹 업로드 예산) — 층/동 분할 내보내기 필요' }, { status: 400 });
+    if (src.length > MAX_INLINE_TEXT_CHARS) return NextResponse.json({ ok: false, error: 'IFC 15MB 초과(인라인 JSON 예산)' }, { status: 400 });
     bridged = ifcToNexyfabAssembly(src, { name });
   } else if (fmt === 'iges' || fmt === 'igs') {
     const src = body.step ?? '';
     if (!src) return NextResponse.json({ ok: false, error: 'IGES 텍스트가 필요합니다.' }, { status: 400 });
-    if (src.length > 15_000_000) return NextResponse.json({ ok: false, error: 'IGES 15MB 초과' }, { status: 400 });
+    if (src.length > MAX_INLINE_TEXT_CHARS) return NextResponse.json({ ok: false, error: 'IGES 15MB 초과' }, { status: 400 });
     bridged = igesToNexyfabAssembly(src, { name, ...matOpt });
   } else {
     const step = body.step ?? '';
     if (!step || typeof step !== 'string') return NextResponse.json({ ok: false, error: 'step 텍스트가 필요합니다.' }, { status: 400 });
-    if (step.length > 15_000_000) return NextResponse.json({ ok: false, error: 'STEP 15MB 초과 — 부분 파일로 나눠주세요.' }, { status: 400 });
+    if (step.length > MAX_INLINE_TEXT_CHARS) return NextResponse.json({ ok: false, error: 'STEP 15MB 초과 — 부분 파일로 나눠주세요.' }, { status: 400 });
     stepSourceForGate = step;
     /**
      * ★260802 — **커널 우선 · AABB 폴백**. 종전에는 전 부품을 AABB 상자로 받았고

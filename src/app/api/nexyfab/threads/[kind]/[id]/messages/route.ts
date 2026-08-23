@@ -22,8 +22,11 @@ import { getDbAdapter } from '@/lib/db-adapter';
 import { createNotification } from '@/app/lib/notify';
 import { normPartnerEmail } from '@/lib/partner-factory-access';
 import { rateLimit } from '@/lib/rate-limit';
+import { boundedJsonError, readBoundedJson } from '@/lib/boundedJsonBody';
+import { isOrderBuyerInActiveWorkspace } from '@/lib/nfOrderAccess';
 
 export const runtime = 'nodejs';
+const MAX_MESSAGE_BODY_BYTES = 256 * 1024;
 export const dynamic = 'force-dynamic';
 
 type ThreadKind = 'rfq' | 'order';
@@ -70,10 +73,10 @@ async function resolveThreadParties(
   db: ReturnType<typeof getDbAdapter>,
   kind: ThreadKind,
   id: string,
-): Promise<{ buyerUserId: string; partnerEmail: string | null } | null> {
+): Promise<{ buyerUserId: string; orgId: string | null; partnerEmail: string | null } | null> {
   if (kind === 'rfq') {
-    const r = await db.queryOne<{ user_id: string; preferred_factory_id: string | null; status: string }>(
-      'SELECT user_id, preferred_factory_id, status FROM nf_rfqs WHERE id = ?', id,
+    const r = await db.queryOne<{ user_id: string; org_id: string | null; preferred_factory_id: string | null; status: string }>(
+      'SELECT user_id, org_id, preferred_factory_id, status FROM nf_rfqs WHERE id = ?', id,
     ).catch(() => null);
     if (!r) return null;
     // Look up partner email via the accepted quote (if any) or preferred factory.
@@ -89,14 +92,14 @@ async function resolveThreadParties(
       ).catch(() => null);
       partnerEmail = f?.partner_email ?? null;
     }
-    return { buyerUserId: r.user_id, partnerEmail };
+    return { buyerUserId: r.user_id, orgId: r.org_id, partnerEmail };
   }
   // order
-  const o = await db.queryOne<{ user_id: string; partner_email: string | null }>(
-    'SELECT user_id, partner_email FROM nf_orders WHERE id = ?', id,
+  const o = await db.queryOne<{ user_id: string; org_id: string | null; partner_email: string | null }>(
+    'SELECT user_id, org_id, partner_email FROM nf_orders WHERE id = ?', id,
   ).catch(() => null);
   if (!o) return null;
-  return { buyerUserId: o.user_id, partnerEmail: o.partner_email };
+  return { buyerUserId: o.user_id, orgId: o.org_id, partnerEmail: o.partner_email };
 }
 
 function rowToMessage(r: MessageRow) {
@@ -131,7 +134,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ kind
   if (!parties) return NextResponse.json({ error: 'thread not found' }, { status: 404 });
 
   // Access: only the buyer or the partner can read.
-  const isBuyer = auth.userId === parties.buyerUserId;
+  const isBuyer = isOrderBuyerInActiveWorkspace(auth, { user_id: parties.buyerUserId, org_id: parties.orgId });
   const isPartner = !!parties.partnerEmail && normPartnerEmail(auth.email ?? '') === normPartnerEmail(parties.partnerEmail);
   if (!isBuyer && !isPartner) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
@@ -185,8 +188,9 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ kin
 
   let body: { body?: unknown; attachments?: unknown };
   try {
-    body = await req.json();
-  } catch {
+    body = await readBoundedJson<{ body?: unknown; attachments?: unknown }>(req, MAX_MESSAGE_BODY_BYTES);
+  } catch (error) {
+    if (boundedJsonError(error)?.code === 'PAYLOAD_TOO_LARGE') return NextResponse.json({ error: 'request too large', code: 'PAYLOAD_TOO_LARGE' }, { status: 413 });
     return NextResponse.json({ error: 'invalid JSON' }, { status: 400 });
   }
   const text = typeof body.body === 'string' ? body.body.trim().slice(0, 5000) : '';
@@ -206,7 +210,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ kin
   const parties = await resolveThreadParties(db, kind as ThreadKind, id);
   if (!parties) return NextResponse.json({ error: 'thread not found' }, { status: 404 });
 
-  const isBuyer = auth.userId === parties.buyerUserId;
+  const isBuyer = isOrderBuyerInActiveWorkspace(auth, { user_id: parties.buyerUserId, org_id: parties.orgId });
   const isPartner = !!parties.partnerEmail && normPartnerEmail(auth.email ?? '') === normPartnerEmail(parties.partnerEmail);
   if (!isBuyer && !isPartner) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 });

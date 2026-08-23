@@ -10,7 +10,7 @@ import { refineInterferencesMesh } from './interference-refine.mjs';
 import { ga2dDrawing as _ga2d } from './package.mjs';
 
 const ga2dDrawing = _ga2d as unknown as (asm: unknown, opts?: Record<string, unknown>) => string;
-type Built = { ok: boolean; designOk: boolean; interferences: { a: string; b: string }[]; contacts: { a: string; b: string; note: string }[]; support: { floating: string[] } };
+type Built = { ok: boolean; designOk: boolean; interferences: { a: string; b: string }[]; contacts: { a: string; b: string; note: string }[]; support: { floating: string[] }; collisionAudit: { declarationErrors: Array<{ code: string }> } };
 type Refined = { interferences: unknown[]; laps: { a: string; b: string }[]; demoted: unknown[] };
 
 describe('R2-⑨ 컨베이어', () => {
@@ -34,17 +34,17 @@ describe('R2-⑨ 컨베이어', () => {
 });
 
 describe('R2-⑩ 송전탑', () => {
-  it('격자 완결: 명시적 절점 그래프로 designOk + 확정 간섭 0 + E1 헐 투영', async () => {
+  it('격자 형상은 생성되지만 gusset 없는 깊은 절점 선언은 release HOLD + E1 헐 투영', async () => {
     const asm = buildAssemblyTemplate('mech', 'transmission_tower', { panels: 3, height: 15000 });
     const b = buildAssembly(asm) as Built;
     expect(b.ok).toBe(true);
-    // 절점은 템플릿이 `connectedWith` 쌍으로 특정한다. 역할·근접성·
-    // “격자처럼 보임”은 면제 근거가 아니므로 선언된 쌍만 접합으로 분류된다.
-    expect(b.designOk).toBe(true);
-    expect(b.interferences).toHaveLength(0);
-    expect(b.contacts.filter((c) => /설계 접합 선언/.test(c.note)).length).toBeGreaterThan(0);
+    // connectedWith는 접합 후보일 뿐이다. 실제 gusset/볼트/용접 형상 없이 깊이 교차한
+    // 부재는 더 이상 선언만으로 release PASS가 되지 않는다.
+    expect(b.designOk).toBe(false);
+    expect(b.interferences.length).toBeGreaterThan(0);
+    expect(b.collisionAudit.declarationErrors.some(error => error.code === 'DECLARED_JOINT_GEOMETRY_MISMATCH')).toBe(true);
     const r = (await refineInterferencesMesh(asm, b.interferences)) as Refined;
-    expect(r.interferences).toHaveLength(0);
+    expect(r.interferences.length).toBeGreaterThan(0);
     expect(r.laps).toHaveLength(0);
     // 경사 주주재/브레이스 = E1 실윤곽 폴리곤(AABB 사각 아님)
     const ga = ga2dDrawing(asm, { title: 'tower', domain: 'mech' });

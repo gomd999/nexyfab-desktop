@@ -4,12 +4,14 @@ import { parseTrustedRobotExactCadKeys } from '@/lib/ai/robot/robotReleaseEviden
 import { parseTrustedReviewerKeys } from '@/lib/reference/nativeCadExpertReview';
 import { getTrustedClientIp } from '@/lib/client-ip';
 import { rateLimitAsync } from '@/lib/rate-limit';
+import { readBoundedMultipartForm } from '@/lib/boundedMultipartForm';
 
 export const runtime = 'nodejs'; export const dynamic = 'force-dynamic';
 export async function POST(req: NextRequest) {
   const ip = getTrustedClientIp(req.headers);
   if (!(await rateLimitAsync(`cad-v1-robot-release-work-packet:${ip}`, 10, 60_000)).allowed) return NextResponse.json({ ok: false, code: 'RATE_LIMIT' }, { status: 429 });
-  const form = await req.formData().catch(() => null), post = form?.get('postIntegration');
+  const multipart = await readBoundedMultipartForm(req, 6_000_000); if (multipart.tooLarge) return NextResponse.json({ ok: false, code: 'TOO_LARGE' }, { status: 413 });
+  const form = multipart.form, post = form?.get('postIntegration');
   if (!(post instanceof File)) return NextResponse.json({ ok: false, code: 'BAD_REQUEST', message: 'postIntegration evidence is required' }, { status: 400 });
   if (post.size < 1 || post.size > 5_000_000) return NextResponse.json({ ok: false, code: 'TOO_LARGE' }, { status: 413 });
   const packet = buildRobotReleaseWorkPacketV2(new Uint8Array(await post.arrayBuffer()), parseTrustedRobotExactCadKeys(process.env.NEXYFAB_ROBOT_EXACT_CAD_SIGNER_KEYS), parseTrustedRobotExactCadKeys(process.env.NEXYFAB_ROBOT_MANUFACTURING_REVIEWER_KEYS), parseTrustedReviewerKeys());

@@ -3,8 +3,10 @@ import { getAuthUser } from '@/lib/auth-middleware';
 import { getDbAdapter } from '@/lib/db-adapter';
 import { checkOrigin } from '@/lib/csrf';
 import { z } from 'zod';
+import { boundedJsonError, readBoundedJson } from '@/lib/boundedJsonBody';
 
 export const dynamic = 'force-dynamic';
+const RFQ_COMPARE_JSON_BYTES = 64 * 1024;
 
 interface QuoteRow {
   id: string; project_name: string; factory_name: string;
@@ -22,7 +24,16 @@ export async function POST(req: NextRequest) {
   const schema = z.object({
     quoteIds: z.array(z.string().min(1)).min(2).max(5),
   });
-  const parsed = schema.safeParse(await req.json().catch(() => ({})));
+  let rawBody: unknown = {};
+  try {
+    rawBody = await readBoundedJson(req, RFQ_COMPARE_JSON_BYTES);
+  } catch (error) {
+    const bodyError = boundedJsonError(error);
+    if (bodyError?.code === 'PAYLOAD_TOO_LARGE') {
+      return NextResponse.json({ error: 'Request body too large' }, { status: bodyError.status });
+    }
+  }
+  const parsed = schema.safeParse(rawBody);
   if (!parsed.success) return NextResponse.json({ error: '2~5개의 quoteId를 제공하세요.' }, { status: 400 });
 
   const db = getDbAdapter();

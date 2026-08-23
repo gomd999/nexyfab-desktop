@@ -1,0 +1,31 @@
+{
+  "schema": "nexyfab.mechanical-core-feature-local-runtime.v1",
+  "feature": "chamfer",
+  "axis": "save_reopen",
+  "status": "PASS",
+  "executedAt": "2026-08-23T06:51:51.379Z",
+  "savedBytes": 1861,
+  "savedSha256": "ce7fab15229bfe0482b028036b5b729e283f8c0415456b5a85c8ffba00265642",
+  "reopened": {
+    "handle": "occt:37",
+    "kernelKind": "Solid",
+    "nativeShapeType": 0,
+    "solidCount": 1,
+    "singleSolid": true,
+    "volumeMm3": 36515.17588470834,
+    "edgeCount": 48,
+    "faceCount": 26,
+    "boundsMm": [
+      [
+        -50.000000100000015,
+        -3.1750001000000183,
+        -30.000000100000015
+      ],
+      [
+        50.000000100000015,
+        3.1750001000000183,
+        30.000000100000015
+      ]
+    ]
+  }
+}

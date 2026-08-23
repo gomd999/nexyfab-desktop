@@ -1,0 +1,126 @@
+{
+  "schema": "nexyfab.platform-wave-verification.v1",
+  "capturedAt": "2026-08-13T20:03:30+09:00",
+  "waves": ["wave4", "wave5", "wave6"],
+  "overallState": "PARTIAL",
+  "releaseDecision": "HOLD",
+  "gateState": {
+    "G4": "PASS_LOCAL",
+    "G5": "PASS_LOCAL",
+    "G6": "PASS_LOCAL",
+    "productionRelease": "NOT_RUN"
+  },
+  "wave4": {
+    "studioShellAndMechanical": "PASS_BROWSER",
+    "coordinationWorkspace": "PASS_BROWSER",
+    "resizablePersistentPanels": "PASS_BROWSER_KEYBOARD_AND_RELOAD",
+    "viewport1920x1080": "PASS",
+    "viewport1440x900": "PASS",
+    "viewport1280x800": "PASS",
+    "documentOverflow": "PASS_0_AT_ALL_VIEWPORTS",
+    "uncaughtConsoleErrors": "PASS_0_ON_CLEAN_NAVIGATION",
+    "jobsIssuesAiActions": "PASS_REAL_PANES",
+    "truthLabels": "PASS_NOT_RUN_RETAINED",
+    "freezeV4Comparison": "PASS_MANUAL_LOCAL",
+    "editableFigmaComparison": "NOT_RUN_VIEW_ONLY_CONNECTION"
+  },
+  "wave5": {
+    "building": "PASS_BROWSER_AND_UNIT",
+    "civil": "PASS_BROWSER_AND_UNIT",
+    "landscape": "PASS_BROWSER_AND_UNIT",
+    "interior": "PASS_BROWSER_AND_UNIT",
+    "coordination": "PASS_BROWSER_AND_UNIT",
+    "typedImmutableUndoRedo": "PASS_NEW_REVISION_PER_UNDO_REDO",
+    "projectPersistRestore": "PASS_AUTHENTICATED_UNIT",
+    "realAuthenticatedBrowserProject": "NOT_RUN_NO_ACCOUNT_CONTEXT",
+    "governedChecksFailClosed": "PASS_UNIT",
+    "missingFormIdentity": "PASS_0_AFTER_INTERIOR_FIX",
+    "spatialRegression": "PASS_44_OF_44",
+    "undoRedoFocusedRegression": "PASS_8_OF_8"
+  },
+  "wave6": {
+    "canonicalCandidateSchema": "PASS_UNIT",
+    "intentLocksCandidateDiffEvidence": "PASS_UNIT_AND_BROWSER",
+    "explicitApplyBoundary": "PASS_UNIT_AND_BROWSER",
+    "previewLeavesModelUnchanged": "PASS_BROWSER_WIDTH_50_RETAINED",
+    "applyCreatesUndoBoundary": "PASS_BROWSER_UNDO_ENABLED_AND_EXECUTED",
+    "staleRevisionRecheck": "PASS_UNIT",
+    "currentLockRecheck": "PASS_UNIT",
+    "fabricatedEvidenceRejection": "PASS_UNIT",
+    "metricSourceAndState": "PASS_UNIT_AND_BROWSER",
+    "downstreamReverification": "PASS_GEOMETRY_NOT_RUN_DFM_NOT_RUN_METRIC_STALE",
+    "canonicalRenderRoute": "PASS_BROWSER_POST_200",
+    "aiRegression": "PASS_35_OF_35",
+    "transportRegression": "PASS_7_OF_7"
+  },
+  "quality": {
+    "targetedEslint": "PASS_0_ERRORS_0_WARNINGS",
+    "typescript8GiB": "PASS",
+    "lighthouseInteriorAccessibility": 100,
+    "lighthouseInteriorBestPractices": 100,
+    "lighthouseInteriorSeoFirstRun": 100,
+    "lighthouseInteriorAgenticBeforeClsFix": 85,
+    "lighthouseInteriorAgenticAfterClsFix": 100,
+    "lighthouseRepeatSeo": "92_ROBOTS_FETCH_TOOLING_TIMEOUT",
+    "robotsDirectFetch": "PASS_HTTP_200_18MS",
+    "viteNativeLoaderWarning": "OPEN_WARNING"
+  },
+  "observedFailuresAndAdjustments": [
+    {
+      "stage": "vitest sandbox run",
+      "result": "FAIL",
+      "reason": "spawn EPERM",
+      "adjustment": "reran with approved non-sandbox process execution",
+      "final": "PASS"
+    },
+    {
+      "stage": "default Node typecheck",
+      "result": "FAIL",
+      "reason": "4 GiB heap out of memory",
+      "adjustment": "reran with NODE_OPTIONS=--max-old-space-size=8192",
+      "final": "PASS"
+    },
+    {
+      "stage": "landscape cold browser load",
+      "result": "TIMEOUT",
+      "reason": "stale dev server and cold compilation",
+      "adjustment": "clean server restart and cold compile",
+      "final": "PASS"
+    },
+    {
+      "stage": "mechanical DevTools reused tab",
+      "result": "DEVTOOLS_TAB_TIMEOUT",
+      "reason": "connector tab stopped responding while the origin remained HTTP 200",
+      "adjustment": "new isolated DevTools tab",
+      "final": "PASS"
+    },
+    {
+      "stage": "AI canonical browser apply first attempt",
+      "result": "FAIL",
+      "reason": "POST to non-canonical /api/nexyfab/openscad-render returned 308 and redirected localhost to HTTPS",
+      "adjustment": "use canonical trailing-slash route and add transport regression test",
+      "final": "PASS_HTTP_200"
+    },
+    {
+      "stage": "Lighthouse repeat SEO",
+      "result": "TOOLING_TIMEOUT",
+      "reason": "robots.txt request exceeded the audit fetch deadline",
+      "adjustment": "direct fetch confirmed static route HTTP 200; failure retained",
+      "final": "NOT_PROMOTED_TO_PASS"
+    }
+  ],
+  "externalVerification": {
+    "productionVisualRegression": "NOT_RUN",
+    "cloudflareDeployment": "NOT_RUN",
+    "railwayContainerParity": "NOT_RUN",
+    "signedInTenantProjectE2E": "NOT_RUN",
+    "externalCadReopen": "NOT_RUN",
+    "independentExpertReview": "NOT_RUN"
+  },
+  "nonClaims": [
+    "Local gate completion is not production deployment evidence.",
+    "A successful mesh render is not exact B-Rep, DFM, FEA or release PASS.",
+    "AI Apply invalidates or leaves NOT_RUN all downstream verification until rerun.",
+    "No Cloudflare or Railway production resource was changed."
+  ]
+}

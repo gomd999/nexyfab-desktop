@@ -274,6 +274,16 @@ export function analyzeConnections(assembly, opts = {}) {
      *   통과율이 올라간다 — 정확히 거꾸로다. 그래서 미검토 개수를 항상 함께 낸다.
      */
     allPass: failed.length === 0 && (solved.length + conditional.length) > 0,
+    /**
+     * 제조 출고에 사용할 수 있는 엄격 판정이다. 부분검토·미검토는 실패와 마찬가지로
+     * 출고를 막고, 모든 체결부가 완전검토(solved)되어 명시적으로 pass 여야 한다.
+     */
+    releasePass: checks.length > 0
+      && solved.length === checks.length
+      && conditional.length === 0
+      && notChecked.length === 0
+      && failed.length === 0
+      && checks.every((item) => item.pass === true),
     note: `체결부 ${checks.length}건 — 완전검토 ${solved.length} · 부분검토 ${conditional.length} · 미검토 ${notChecked.length} · 불합격 ${failed.length}`
       + (notChecked.length ? '. ⚠미검토는 통과가 아니다 — 제원을 안 적으면 검토가 안 될 뿐이다.' : ''),
   };

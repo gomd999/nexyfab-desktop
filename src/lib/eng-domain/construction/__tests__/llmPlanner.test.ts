@@ -12,6 +12,7 @@ import { describe, it, expect } from 'vitest';
 import { runDomainDriver } from '@/lib/domain-driver';
 import { constructionModule } from '../module';
 import { coerceConstructionPlan, makeConstructionLlmPlanner } from '../llmPlanner';
+import { bindConstructionPlan } from '../provenance';
 
 // Mirrors the passing rc-frame fixture values: concrete Σ = 2·0.3·0.6·6 + 2·0.4·0.4·3 = 3.12 m³.
 const VALID_RC_FRAME_JSON = JSON.stringify({
@@ -52,7 +53,10 @@ const VALID_RC_FRAME_JSON = JSON.stringify({
 describe('#2 construction LLM planner — free text → coerced plan → verified by the same gates', () => {
   it('a well-formed LLM plan drives end-to-end to a verified package', async () => {
     const planner = makeConstructionLlmPlanner({ complete: async () => '```json\n' + VALID_RC_FRAME_JSON + '\n```' });
-    const plan = await planner({ id: 'llm', text: 'RC frame bay: 2 beams 0.3×0.6×6 m + 2 columns 0.4×0.4×3 m' });
+    const unboundPlan = await planner({ id: 'llm', text: 'RC frame bay: 2 beams 0.3×0.6×6 m + 2 columns 0.4×0.4×3 m' });
+    unboundPlan.priceEvidence = { sourceId: 'fixture-price-sheet-llm', sourceSha256: '3'.repeat(64), authority: 'fixture' };
+    unboundPlan.siteEvidence = { sourceId: 'fixture-site-balance-llm', sourceSha256: '4'.repeat(64), authority: 'fixture' };
+    const plan = bindConstructionPlan(unboundPlan, { revisionId: 'llm-fixture:r1', revisionSha256: 'c'.repeat(64) });
     const res = await runDomainDriver({ id: 'llm' }, { ...constructionModule, plan: () => plan });
     expect(res.ok).toBe(true);
     if (!res.ok) return;

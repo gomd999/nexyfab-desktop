@@ -28,16 +28,18 @@ import { extractClosedLoops, type ClosedLoop } from './sketchProfile';
 import { buildExtrudeFromLoop, type ExtrudeFeature } from '@/lib/cad/extrudeProfile';
 import {
   buildFilletFeature,
-  filletToScad,
+  buildFilletFeatureRef,
   type FilletEdgeSelection,
   type FilletFeature,
 } from '@/lib/cad/filletProfile';
-import { replayTree, type FeatureTree, type FeatureNode } from '@/lib/cad/featureTree';
+import { replayTree, type FeatureTree } from '@/lib/cad/featureTree';
 
 export type FilletFromSketchResult =
   | {
       ok: true;
       scad: string;
+      /** Editable dependency tree used to produce `scad`; safe to persist. */
+      tree: FeatureTree;
       loop: ClosedLoop;
       fillet: FilletFeature;
       /** Lines from the sketch that didn't participate in the chosen loop. */
@@ -130,16 +132,27 @@ export function filletFromSketch(
     return { ok: false, error: e instanceof Error ? e.message : String(e) };
   }
 
-  const scadBody = filletToScad(fillet);
   const featureName = opts.featureName ?? 'Fillet';
-  const envelope = `// === fillet_1 (${featureName}) ===\n${scadBody}`;
-  // Probe replayTree (no-op) so we surface any contract drift early.
-  const tree: FeatureTree = { nodes: [] as ReadonlyArray<FeatureNode> };
-  replayTree(tree);
+  // Minimal dependency-aware bridge: the fillet node now resolves the live
+  // extrude payload during replay, so a later depth/profile edit cannot leave
+  // this sketch-created fillet rendering its stale child snapshot.
+  fillet = buildFilletFeatureRef('fillet_child', childExtrude, {
+    radius: fillet.radius,
+    edgeSelection: fillet.edgeSelection,
+    ...(fillet.vertexRadii !== undefined ? { vertexRadii: fillet.vertexRadii } : {}),
+  });
+  const tree: FeatureTree = {
+    nodes: [
+      { id: 'fillet_child', name: 'Fillet seed', dependencies: [], payload: childExtrude },
+      { id: 'fillet_1', name: featureName, dependencies: ['fillet_child'], payload: fillet },
+    ],
+  };
+  const envelope = replayTree(tree).scad;
 
   return {
     ok: true,
     scad: envelope,
+    tree,
     loop,
     fillet,
     danglingLines: extraction.danglingLines,

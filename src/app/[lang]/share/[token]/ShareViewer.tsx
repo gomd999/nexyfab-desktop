@@ -7,6 +7,7 @@
  */
 import React, { useEffect, useState } from 'react';
 import { toIsoLang } from '@/lib/i18n/normalize';
+import { formatDate } from '@/lib/i18n/format';
 import Link from 'next/link';
 import dynamic from 'next/dynamic';
 import { useRouter } from 'next/navigation';
@@ -201,7 +202,7 @@ export default function ShareViewer({ token, lang }: { token: string; lang: stri
               {data.shapeName || data.shapeId}
             </div>
             <div style={{ fontSize: 11, color: '#484f58' }}>
-              {t.sharedAt}: {new Date(data.createdAt).toLocaleDateString(lang === 'ko' ? 'ko-KR' : 'en-US')}
+              {t.sharedAt}: {formatDate(data.createdAt, lang) ?? '—'}
             </div>
           </div>
 

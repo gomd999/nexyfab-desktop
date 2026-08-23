@@ -1,7 +1,7 @@
 /**
  * occt/runtimeMode — tests for the stub-vs-wasm runtime detector.
  *
- * Vitest runs under `node` environment (see vitest.config.ts), so `window`
+ * Vitest runs under `node` environment (see vitest.config.mts), so `window`
  * is absent by default. Tests that want to simulate a browser explicitly
  * install `window` + a mock `fetch` on `globalThis`, then `resetOcctModeCache`
  * between cases so each test starts from a clean slate.

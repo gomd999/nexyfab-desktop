@@ -22,6 +22,8 @@ export interface PlacedPart {
   rotation: [number, number, number];  // degrees
   materialId?: string;
   color?: string;
+  /** Assembly ground state. Optional for backward-compatible saved scenes. */
+  fixed?: boolean;
 }
 
 interface Props {
@@ -181,13 +183,13 @@ const SHAPE_ICONS: Record<string, string> = {
 
 // ─── Component ───────────────────────────────────────────────────────────────
 
-export default function PartPlacementPanel({ parts, onChange, isKo, currentShapeId, currentParams, onHighlightPart }: Props) {
+export default function PartPlacementPanel({ parts, onChange, isKo: _isKo, currentShapeId, currentParams, onHighlightPart }: Props) {
   const pathname = usePathname();
   const seg = pathname?.split('/').filter(Boolean)[0] ?? 'en';
   const langMap: Record<string, keyof typeof dict> = {
     kr: 'ko', ko: 'ko', en: 'en', ja: 'ja', cn: 'zh', zh: 'zh', es: 'es', ar: 'ar',
   };
-  const t = dict[langMap[seg] ?? (isKo ? 'ko' : 'en')];
+  const t = dict[langMap[seg] ?? 'en'];
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [showBom, setShowBom] = useState(false);
   const [showShapeSelector, setShowShapeSelector] = useState(false);

@@ -111,13 +111,13 @@ interface Props {
   isKo?: boolean;
 }
 
-export default function CotsSizePreset({ shapeId, onSelect, isKo }: Props) {
+export default function CotsSizePreset({ shapeId, onSelect, isKo: _isKo }: Props) {
   const pathname = usePathname();
   const seg = pathname?.split('/').filter(Boolean)[0] ?? 'en';
   const langMap: Record<string, keyof typeof dict> = {
     kr: 'ko', ko: 'ko', en: 'en', ja: 'ja', cn: 'zh', zh: 'zh', es: 'es', ar: 'ar',
   };
-  const t = dict[langMap[seg] ?? (isKo ? 'ko' : 'en')];
+  const t = dict[langMap[seg] ?? 'en'];
 
   const presets = COTS_PRESETS[shapeId];
   if (!presets || presets.length === 0) return null;

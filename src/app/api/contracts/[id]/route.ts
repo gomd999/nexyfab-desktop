@@ -6,6 +6,17 @@ import { enqueueJob } from '@/lib/job-queue';
 import { createNotification } from '@/app/lib/notify';
 import { logAudit } from '@/lib/audit';
 import { normPartnerEmail } from '@/lib/partner-factory-access';
+import { boundedJsonError, readBoundedJson } from '@/lib/boundedJsonBody';
+
+const MAX_CONTRACT_UPDATE_BODY_BYTES = 64 * 1024;
+type ContractPatchBody = {
+  status?: string;
+  partnerEmail?: string | null;
+  deadline?: string | null;
+  customerContact?: unknown;
+  completionRequested?: boolean;
+  isFirstContract?: boolean;
+};
 
 export const dynamic = 'force-dynamic';
 
@@ -58,7 +69,12 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   if (!checkOrigin(req)) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   if (!(await verifyAdmin(req))) return NextResponse.json({ error: 'Admin only' }, { status: 403 });
   const { id } = await params;
-  const body = await req.json();
+  let body: ContractPatchBody;
+  try { body = await readBoundedJson<ContractPatchBody>(req, MAX_CONTRACT_UPDATE_BODY_BYTES); }
+  catch (error) {
+    if (boundedJsonError(error)?.code === 'PAYLOAD_TOO_LARGE') return NextResponse.json({ error: 'Request too large', code: 'PAYLOAD_TOO_LARGE' }, { status: 413 });
+    throw error;
+  }
   const { status, partnerEmail, deadline, customerContact, completionRequested, isFirstContract } = body;
 
   const db = getDbAdapter();

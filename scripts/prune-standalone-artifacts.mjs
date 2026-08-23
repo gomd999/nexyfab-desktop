@@ -2,6 +2,7 @@
 import { existsSync, lstatSync, readdirSync, rmSync, statSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { packageReleaseHealthEvidence } from './package-release-health-evidence.mjs';
 
 function bytesUnder(target) {
   if (!existsSync(target)) return 0;
@@ -34,8 +35,19 @@ export function pruneStandaloneArtifacts({
   const standalone = path.resolve(root, distDir, 'standalone');
   assertGeneratedStandalone(root, standalone);
   if (!existsSync(standalone) || !statSync(standalone).isDirectory()) {
-    return { removed: [], freedBytes: 0, standalone };
+    return { removed: [], freedBytes: 0, standalone, releaseHealthEvidence: null };
   }
+
+  // Next excludes docs from file tracing. Copy only the two fixed, runtime
+  // receipt files before pruning; never copy the docs tree or secret-bearing
+  // local state. Missing/invalid receipts fail the build closed.
+  const releaseHealthEvidence = packageReleaseHealthEvidence({
+    projectRoot: root,
+    standaloneRoot: standalone,
+    sourceRoot: process.env.RELEASE_HEALTH_EVIDENCE_SOURCE_DIR
+      ? path.resolve(root, process.env.RELEASE_HEALTH_EVIDENCE_SOURCE_DIR)
+      : root,
+  });
 
   // These paths are mutable customer/admin state. They may be picked up by
   // Next's broad fs tracing on developer machines, but are never valid image
@@ -71,7 +83,7 @@ export function pruneStandaloneArtifacts({
     removed.push(relative.replaceAll('\\', '/'));
   }
 
-  return { removed, freedBytes, standalone };
+  return { removed, freedBytes, standalone, releaseHealthEvidence };
 }
 
 const invokedDirectly = process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url);
@@ -82,6 +94,7 @@ if (invokedDirectly) {
   console.log(JSON.stringify({
     event: 'standalone-prune',
     removed: result.removed,
+    releaseHealthEvidence: result.releaseHealthEvidence?.copied ?? [],
     freedMiB: Math.round((result.freedBytes / 1024 / 1024) * 10) / 10,
   }));
 }

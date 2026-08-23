@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect, useRef } from 'react';
+import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import type { AppRouterInstance } from 'next/dist/shared/lib/app-router-context.shared-runtime';
 import type { ShapeResult } from '../shapes';
 import type { DFMResult } from '../analysis/dfmAnalysis';
@@ -7,8 +7,33 @@ import type { Toast } from '../useToast';
 import { useAuthStore } from '@/hooks/useAuth';
 import { estimateCosts } from '../estimation/CostEstimator';
 import { KRW_PER_USD } from '@/lib/currency';
+import { formatDate, formatNumber } from '@/lib/i18n/format';
+import { loc } from '@/lib/i18n/loc';
 
 type AddToast = (type: Toast['type'], msg: string) => void;
+
+function manufacturingCopy(lang: string) {
+  const L = (ko: string, en: string, ja: string, zh: string, es: string, ar: string) =>
+    loc(lang, { ko, en, ja, zh, es, ar });
+  return {
+    upgrade: L('견적 요청', 'Request quote', '見積依頼', '请求报价', 'Solicitar presupuesto', 'طلب عرض سعر'),
+    customSketch: L('사용자 스케치', 'Custom Sketch', 'カスタムスケッチ', '自定义草图', 'Boceto personalizado', 'رسم مخصص'),
+    user: L('사용자', 'User', 'ユーザー', '用户', 'Usuario', 'المستخدم'),
+    shape: L('형상', 'Shape', '形状', '形状', 'Forma', 'الشكل'), material: L('소재', 'Material', '材料', '材料', 'Material', 'المادة'),
+    density: L('밀도', 'density', '密度', '密度', 'densidad', 'الكثافة'), dimensions: L('치수', 'Dimensions', '寸法', '尺寸', 'Dimensiones', 'الأبعاد'),
+    volume: L('부피', 'Volume', '体積', '体积', 'Volumen', 'الحجم'), surface: L('표면적', 'Surface area', '表面積', '表面积', 'Área superficial', 'مساحة السطح'),
+    weight: L('무게', 'Weight', '重量', '重量', 'Peso', 'الوزن'), quantity: L('수량', 'Quantity', '数量', '数量', 'Cantidad', 'الكمية'),
+    process: L('권장 공정', 'Recommended process', '推奨工程', '推荐工艺', 'Proceso recomendado', 'العملية الموصى بها'),
+    unitCost: L('예상 단가', 'Estimated unit cost', '推定単価', '预计单价', 'Coste unitario estimado', 'تكلفة الوحدة المقدّرة'),
+    leadTime: L('리드타임', 'Lead time', 'リードタイム', '交付周期', 'Plazo de entrega', 'مدة التسليم'),
+    unset: L('미정', 'Not set', '未設定', '未设置', 'Sin definir', 'غير محدد'),
+    score: L('DFM 점수', 'DFM score', 'DFMスコア', 'DFM评分', 'Puntuación DFM', 'درجة DFM'),
+    issues: L('이슈', 'issues', '問題', '问题', 'problemas', 'مشكلات'), errors: L('오류', 'errors', 'エラー', '错误', 'errores', 'أخطاء'),
+    topIssues: L('주요 DFM 이슈', 'Top DFM issues', '主なDFM問題', '主要DFM问题', 'Principales problemas DFM', 'أهم مشكلات DFM'),
+    success: L('RFQ가 생성되었습니다. 견적 요청 페이지에서 확인하세요.', 'RFQ created. Check your quote requests.', 'RFQを作成しました。見積依頼ページで確認してください。', 'RFQ已创建，请在报价请求页面查看。', 'RFQ creada. Revise sus solicitudes de presupuesto.', 'تم إنشاء طلب عرض السعر. راجعه في صفحة طلبات الأسعار.'),
+    failed: L('RFQ 생성 실패', 'RFQ creation failed', 'RFQの作成に失敗しました', 'RFQ创建失败', 'Error al crear la RFQ', 'فشل إنشاء طلب عرض السعر'),
+  };
+}
 
 export interface ManufacturingFlowDeps {
   effectiveResult: ShapeResult | null;
@@ -44,6 +69,7 @@ export function useManufacturingFlow(deps: ManufacturingFlowDeps) {
     setUpgradeFeature,
     shareToken,
   } = deps;
+  const copy = useMemo(() => manufacturingCopy(lang), [lang]);
 
   const [showManufacturingCard, setShowManufacturingCard] = useState(false);
   const [showManufacturerMatch, setShowManufacturerMatch] = useState(false);
@@ -62,7 +88,7 @@ export function useManufacturingFlow(deps: ManufacturingFlowDeps) {
   const handleGetQuote = useCallback(async () => {
     if (!effectiveResult) return;
     if (!planLimits.rfq) {
-      setUpgradeFeature('견적 요청');
+      setUpgradeFeature(copy.upgrade);
       setShowUpgradePrompt(true);
       return;
     }
@@ -106,7 +132,7 @@ export function useManufacturingFlow(deps: ManufacturingFlowDeps) {
       const weight_g = effectiveResult.volume_cm3 * density;
 
       // ── RFQ API 호출 ──────────────────────────────────────────────────────
-      const shapeName = sketchResult ? 'Custom Sketch' : selectedId;
+      const shapeName = sketchResult ? copy.customSketch : selectedId;
       const rfqRes = await fetch('/api/nexyfab/rfq', {
         method: 'POST',
         headers: {
@@ -168,30 +194,30 @@ export function useManufacturingFlow(deps: ManufacturingFlowDeps) {
       let currentUser: { name?: string; email?: string } = {};
       if (typeof window !== 'undefined') {
         try {
-          const stored = localStorage.getItem('currentUser');
+          const stored = sessionStorage.getItem('currentUser');
           if (stored) currentUser = JSON.parse(stored);
         } catch { /* ignore */ }
       }
 
-      const dateStr = new Date().toLocaleDateString('ko-KR');
+      const dateStr = formatDate(new Date(), lang) ?? '';
       const projectName = sketchResult
-        ? `Custom Sketch - ${dateStr}`
+        ? `${copy.customSketch} - ${dateStr}`
         : `${shapeName} - ${dateStr}`;
 
       // ── 구조화된 메시지 (공장이 실제로 견적 낼 수 있는 정보) ──────────────
       const structuredMessage = [
-        `[형상] ${shapeName}`,
-        `[소재] ${materialId} (밀도 ${density} g/cm³)`,
-        `[치수] W${effectiveResult.bbox.w.toFixed(1)} × H${effectiveResult.bbox.h.toFixed(1)} × D${effectiveResult.bbox.d.toFixed(1)} mm`,
-        `[부피] ${effectiveResult.volume_cm3.toFixed(2)} cm³`,
-        `[표면적] ${effectiveResult.surface_area_cm2.toFixed(1)} cm²`,
-        `[무게] ${weight_g < 1000 ? weight_g.toFixed(1) + 'g' : (weight_g / 1000).toFixed(2) + 'kg'}`,
-        `[수량] ${quantity}개`,
-        `[권장 공정] ${bestEstimate?.process ?? '미정'}`,
-        `[예상 단가] ${bestEstimate ? '₩' + Math.round(bestEstimate.unitCost * KRW_PER_USD).toLocaleString('ko-KR') : '미정'}`,
-        `[리드타임] ${bestEstimate?.leadTime ?? '미정'}`,
-        dfmScore !== null ? `[DFM 점수] ${dfmScore}/100 (이슈 ${dfmIssueCount}건, 오류 ${dfmErrors}건)` : '',
-        dfmTopIssues.length > 0 ? `[주요 DFM 이슈]\n${dfmTopIssues.map(i => '  - ' + i).join('\n')}` : '',
+        `[${copy.shape}] ${shapeName}`,
+        `[${copy.material}] ${materialId} (${copy.density} ${density} g/cm³)`,
+        `[${copy.dimensions}] W${effectiveResult.bbox.w.toFixed(1)} × H${effectiveResult.bbox.h.toFixed(1)} × D${effectiveResult.bbox.d.toFixed(1)} mm`,
+        `[${copy.volume}] ${effectiveResult.volume_cm3.toFixed(2)} cm³`,
+        `[${copy.surface}] ${effectiveResult.surface_area_cm2.toFixed(1)} cm²`,
+        `[${copy.weight}] ${weight_g < 1000 ? weight_g.toFixed(1) + 'g' : (weight_g / 1000).toFixed(2) + 'kg'}`,
+        `[${copy.quantity}] ${quantity}`,
+        `[${copy.process}] ${bestEstimate?.process ?? copy.unset}`,
+        `[${copy.unitCost}] ${bestEstimate ? '₩' + (formatNumber(Math.round(bestEstimate.unitCost * KRW_PER_USD), lang) ?? '0') : copy.unset}`,
+        `[${copy.leadTime}] ${bestEstimate?.leadTime ?? copy.unset}`,
+        dfmScore !== null ? `[${copy.score}] ${dfmScore}/100 (${copy.issues} ${dfmIssueCount}, ${copy.errors} ${dfmErrors})` : '',
+        dfmTopIssues.length > 0 ? `[${copy.topIssues}]\n${dfmTopIssues.map(i => '  - ' + i).join('\n')}` : '',
         rfqData.rfqId ? `[RFQ ID] ${rfqData.rfqId}` : '',
       ].filter(Boolean).join('\n');
 
@@ -200,7 +226,7 @@ export function useManufacturingFlow(deps: ManufacturingFlowDeps) {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          name: currentUser.name || '사용자',
+          name: currentUser.name || copy.user,
           email: currentUser.email || '',
           projectName,
           message: structuredMessage,
@@ -227,9 +253,7 @@ export function useManufacturingFlow(deps: ManufacturingFlowDeps) {
         }),
       });
 
-      addToast('success', lang === 'ko'
-        ? 'RFQ가 생성되었습니다. 견적 요청 페이지에서 확인하세요.'
-        : 'RFQ created. Check your quote requests.');
+      addToast('success', copy.success);
 
       setShowManufacturerMatch(true);
 
@@ -238,7 +262,7 @@ export function useManufacturingFlow(deps: ManufacturingFlowDeps) {
         router.push(`/${langSeg}/nexyfab/rfq`);
       }, 1500);
     } catch {
-      addToast('error', lang === 'ko' ? 'RFQ 생성 실패' : 'RFQ creation failed');
+      addToast('error', copy.failed);
     } finally {
       setRfqPending(false);
     }
@@ -257,6 +281,7 @@ export function useManufacturingFlow(deps: ManufacturingFlowDeps) {
     router,
     langSeg,
     quantity,
+    copy,
   ]);
 
   return {

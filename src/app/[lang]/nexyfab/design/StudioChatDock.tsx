@@ -8,7 +8,7 @@
  */
 
 import { useEffect, useRef, useState } from 'react';
-import { isKorean } from '@/lib/i18n/normalize';
+import { designLoc } from './designI18n';
 import Md from '@/components/nexyfab/Md';
 
 type DockMsg = { role: 'user' | 'assistant'; content: string; calc?: { verdict?: string; notes?: string[] } & Record<string, unknown>; calcId?: string };
@@ -24,27 +24,15 @@ function saveAll(list: DockThread[]) {
 }
 
 export default function StudioChatDock({ lang, domainSlug, intentName, partCount, pickedPart, onPartEdit }: { lang: string; domainSlug?: string | null; intentName?: string | null; partCount?: number | null; pickedPart?: string | null; onPartEdit?: (instruction: string) => Promise<void> }) {
-  const ko = isKorean(lang);
   const [open, setOpen] = useState(false);
   const [msgs, setMsgs] = useState<DockMsg[]>([]);
   const [input, setInput] = useState('');
   const [busy, setBusy] = useState(false);
   const [copied, setCopied] = useState<number | null>(null);
-  // 스레드당 무료 3회(2026-07-16 정책) — ChatHero와 동일 게이트(도크 우회 방지, 감사)
-  const [plan, setPlan] = useState('free');
-  useEffect(() => {
-    fetch('/api/auth/session').then(async (r) => {
-      if (!r.ok) return;
-      try { const j = await r.json(); setPlan(String(j?.user?.plan ?? 'free')); } catch { /* ignore */ }
-    }).catch(() => {});
-  }, []);
-  const isPaid = plan === 'pro' || plan === 'team' || plan === 'enterprise';
-  const userTurns = msgs.filter((m) => m.role === 'user').length;
-  const limited = !isPaid && userTurns >= 3;
-  const resetThread = () => { setMsgs([]); threadIdRef.current = null; };
   const threadIdRef = useRef<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const chatDomain = DOMAIN_MAP[domainSlug ?? ''] ?? 'mechanical';
+  const t = (copy: Parameters<typeof designLoc>[1]) => designLoc(lang, copy);
 
   // 스레드 동기화(랜딩과 공유) — 도크 전용 스레드 1개를 만들고 이어감
   useEffect(() => {
@@ -65,16 +53,16 @@ export default function StudioChatDock({ lang, domainSlug, intentName, partCount
 
   const send = async () => {
     const text = input.trim();
-    if (!text || busy || limited) return; // 스레드당 무료 3회
+    if (!text || busy) return;
     setInput('');
-    const ctx = intentName ? (ko ? `[현재 설계: ${intentName}${partCount ? ` · 파츠 ${partCount}` : ''}] ` : `[current design: ${intentName}] `) : '';
+    const ctx = intentName ? `${t({ ko: `[현재 설계: ${intentName}${partCount ? ` · 파츠 ${partCount}` : ''}] `, en: `[current design: ${intentName}${partCount ? ` · parts ${partCount}` : ''}] `, ja: `[現在の設計: ${intentName}${partCount ? ` · 部品 ${partCount}` : ''}] `, zh: `[当前设计：${intentName}${partCount ? ` · 部件 ${partCount}` : ''}] `, es: `[diseño actual: ${intentName}${partCount ? ` · piezas ${partCount}` : ''}] `, ar: `[التصميم الحالي: ${intentName}${partCount ? ` · أجزاء ${partCount}` : ''}] ` })}` : '';
     // 🎯 픽킹 편집(260719 #6): 뷰어에서 부품 선택 상태면 도크 메시지=그 부품만 수정(edit-part)
     if (pickedPart && onPartEdit) {
       setMsgs((m) => [...m, { role: 'user', content: `🎯 ${pickedPart}: ${text}` }]);
       setBusy(true);
       try {
         await onPartEdit(text);
-        setMsgs((m) => [...m, { role: 'assistant', content: ko ? `🎯 ${pickedPart} 수정 적용 — 뷰어·검증 갱신됨` : `🎯 ${pickedPart} edited` }]);
+        setMsgs((m) => [...m, { role: 'assistant', content: t({ ko: `🎯 ${pickedPart} 수정 적용 — 뷰어·검증 갱신됨`, en: `🎯 ${pickedPart} edited — viewer and checks updated`, ja: `🎯 ${pickedPart}を編集しました — ビューアーと検証を更新`, zh: `🎯 已编辑 ${pickedPart} — 已更新预览和校验`, es: `🎯 ${pickedPart} editado — visor y comprobaciones actualizados`, ar: `🎯 تم تعديل ${pickedPart} — تم تحديث العرض والفحوصات` }) }]);
       } catch (e) {
         setMsgs((m) => [...m, { role: 'assistant', content: '⚠️ ' + (e instanceof Error ? e.message : String(e)) }]);
       } finally {
@@ -117,13 +105,13 @@ export default function StudioChatDock({ lang, domainSlug, intentName, partCount
         <div style={{ width: 340, height: 440, marginBottom: 10, borderRadius: 14, overflow: 'hidden', display: 'flex', flexDirection: 'column',
           background: 'var(--nx-panel, #fff)', border: '1px solid var(--nx-border, #dfe3e8)', boxShadow: '0 12px 40px rgba(0,0,0,0.25)' }}>
           <div style={{ padding: '10px 12px', fontSize: 12.5, fontWeight: 800, borderBottom: '1px solid var(--nx-border, #dfe3e8)', display: 'flex', justifyContent: 'space-between' }}>
-            <span>💬 {ko ? 'AI 어시스턴트' : 'AI Assistant'} <span style={{ fontWeight: 600, color: 'var(--nx-text-3, #6b7684)' }}>{ko ? '— 랜딩 대화와 이어짐' : ''}</span></span>
+            <span>💬 {t({ ko: 'AI 어시스턴트', en: 'AI Assistant', ja: 'AIアシスタント', zh: 'AI 助手', es: 'Asistente de IA', ar: 'مساعد الذكاء الاصطناعي' })} <span style={{ fontWeight: 600, color: 'var(--nx-text-3, #6b7684)' }}>{t({ ko: '— 랜딩 대화와 이어짐', en: '', ja: '— ランディングの会話と連携', zh: '— 与首页对话关联', es: '— conectado con el chat inicial', ar: '— مرتبط بمحادثة الصفحة الرئيسية' })}</span></span>
             <button type="button" onClick={() => setOpen(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'inherit' }}>✕</button>
           </div>
           <div ref={scrollRef} style={{ flex: 1, overflowY: 'auto', padding: 10, display: 'flex', flexDirection: 'column', gap: 8 }}>
             {!msgs.length && (
               <div style={{ fontSize: 12, color: 'var(--nx-text-3, #6b7684)', lineHeight: 1.6 }}>
-                {ko ? '설계 질문·계산 요청을 하세요. 현재 설계 정보가 자동으로 첨부됩니다.\n예: "이 보 처짐 검토해줘", "말뚝 지지력 계산"' : 'Ask design questions or run calculations — current design context is attached.'}
+                {t({ ko: '설계 질문·계산 요청을 하세요. 현재 설계 정보가 자동으로 첨부됩니다.\n예: "이 보 처짐 검토해줘", "말뚝 지지력 계산"', en: 'Ask design questions or run calculations — current design context is attached.', ja: '設計について質問したり計算を実行できます。現在の設計情報が自動で添付されます。', zh: '可以提问设计问题或运行计算，当前设计信息会自动附加。', es: 'Haz preguntas de diseño o ejecuta cálculos; el contexto actual se adjunta automáticamente.', ar: 'اطرح أسئلة التصميم أو شغّل الحسابات؛ ستُرفق معلومات التصميم الحالية تلقائياً.' })}
               </div>
             )}
             {msgs.map((m, i) => (
@@ -135,7 +123,7 @@ export default function StudioChatDock({ lang, domainSlug, intentName, partCount
                   <button type="button"
                     onClick={() => { void navigator.clipboard?.writeText(m.content).then(() => { setCopied(i); setTimeout(() => setCopied(null), 1200); }).catch(() => {}); }}
                     style={{ display: 'block', marginTop: 5, padding: '2px 8px', borderRadius: 6, fontSize: 10.5, cursor: 'pointer', border: '1px solid var(--nx-border, #dfe3e8)', background: 'transparent', color: 'var(--nx-text-3, #6b7684)' }}>
-                    {copied === i ? (ko ? '복사됨 ✓' : 'Copied ✓') : (ko ? '복사' : 'Copy')}
+                    {copied === i ? t({ ko: '복사됨 ✓', en: 'Copied ✓', ja: 'コピー済み ✓', zh: '已复制 ✓', es: 'Copiado ✓', ar: 'تم النسخ ✓' }) : t({ ko: '복사', en: 'Copy', ja: 'コピー', zh: '复制', es: 'Copiar', ar: 'نسخ' })}
                   </button>
                 )}
                 {m.calc && (
@@ -147,23 +135,16 @@ export default function StudioChatDock({ lang, domainSlug, intentName, partCount
                 )}
               </div>
             ))}
-            {busy && <div style={{ fontSize: 12, color: 'var(--nx-text-3, #6b7684)' }}>{ko ? '응답 생성 중…' : 'Generating…'}</div>}
+            {busy && <div style={{ fontSize: 12, color: 'var(--nx-text-3, #6b7684)' }}>{t({ ko: '응답 생성 중…', en: 'Generating…', ja: '回答を生成中…', zh: '正在生成回复…', es: 'Generando…', ar: 'جارٍ إنشاء الرد…' })}</div>}
           </div>
-          {limited && (
-            <div style={{ padding: '7px 10px', borderTop: '1px solid var(--nx-border, #dfe3e8)', fontSize: 11, color: '#b45309', display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-              <span>{ko ? '무료 한도(스레드당 3회) 도달' : 'Free limit (3/thread) reached'}</span>
-              <button type="button" onClick={resetThread} style={{ padding: '3px 10px', borderRadius: 6, fontSize: 11, fontWeight: 700, cursor: 'pointer', border: '1px solid var(--nx-border, #dfe3e8)', background: 'transparent', color: 'inherit' }}>＋ {ko ? '새 대화' : 'New'}</button>
-              <a href={`/${lang.startsWith('en') ? 'en' : lang}/pricing/`} style={{ fontWeight: 800, color: 'var(--nx-accent, #2563eb)' }}>Pro →</a>
-            </div>
-          )}
           {pickedPart && (
             <div style={{ padding: '5px 10px', borderTop: '1px solid var(--nx-border, #dfe3e8)', fontSize: 11, fontWeight: 700, color: 'var(--nx-accent, #2563eb)' }}>
-              🎯 {pickedPart} — {ko ? '메시지가 이 부품만 수정합니다(뷰어에서 선택 해제 가능)' : 'messages edit only this part'}
+              🎯 {pickedPart} — {t({ ko: '메시지가 이 부품만 수정합니다(뷰어에서 선택 해제 가능)', en: 'messages edit only this part', ja: 'この部品だけを編集します（ビューアーで選択解除できます）', zh: '消息只会编辑此部件（可在预览中取消选择）', es: 'los mensajes editan solo esta pieza (puedes deseleccionarla en el visor)', ar: 'ستعدّل الرسائل هذه القطعة فقط (يمكن إلغاء تحديدها في العرض)' })}
             </div>
           )}
           <div style={{ display: 'flex', gap: 6, padding: 10, borderTop: '1px solid var(--nx-border, #dfe3e8)' }}>
             <input value={input} onChange={(e) => setInput(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') void send(); }}
-              placeholder={pickedPart ? (ko ? `🎯 ${pickedPart} 수정 지시…` : `Edit ${pickedPart}…`) : ko ? '질문·계산 요청…' : 'Ask or calculate…'}
+              placeholder={pickedPart ? t({ ko: `🎯 ${pickedPart} 수정 지시…`, en: `Edit ${pickedPart}…`, ja: `🎯 ${pickedPart}への編集指示…`, zh: `🎯 编辑 ${pickedPart}…`, es: `🎯 Editar ${pickedPart}…`, ar: `🎯 تعديل ${pickedPart}…` }) : t({ ko: '질문·계산 요청…', en: 'Ask or calculate…', ja: '質問または計算…', zh: '提问或计算…', es: 'Pregunta o calcula…', ar: 'اسأل أو احسب…' })}
               style={{ flex: 1, padding: '8px 10px', borderRadius: 8, border: '1px solid var(--nx-border, #dfe3e8)', background: 'transparent', color: 'inherit', fontSize: 12.5 }} />
             <button type="button" onClick={() => void send()} disabled={busy || !input.trim()}
               style={{ padding: '8px 12px', borderRadius: 8, border: 'none', background: 'var(--nx-accent, #2563eb)', color: '#fff', fontSize: 12.5, fontWeight: 700, cursor: 'pointer', opacity: busy || !input.trim() ? 0.5 : 1 }}>→</button>

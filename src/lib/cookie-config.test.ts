@@ -6,12 +6,17 @@ afterEach(() => vi.unstubAllEnvs());
 describe('authentication cookie policy', () => {
   it('pins access and refresh cookie security attributes in production', async () => {
     vi.stubEnv('NODE_ENV', 'production');
-    const { accessTokenCookie, refreshTokenCookie } = await import('./cookie-config');
+    const { accessTokenCookie, browserSessionCookie, refreshTokenCookie } = await import('./cookie-config');
 
     const access = accessTokenCookie('access');
     const refresh = refreshTokenCookie('refresh');
-    expect(access.options).toMatchObject({ httpOnly: true, secure: true, sameSite: 'strict', path: '/', maxAge: 900 });
-    expect(refresh.options).toMatchObject({ httpOnly: true, secure: true, sameSite: 'strict', path: '/api/auth', maxAge: 2_592_000 });
+    const browserSession = browserSessionCookie();
+    expect(access.options).toMatchObject({ httpOnly: true, secure: true, sameSite: 'strict', path: '/' });
+    expect(refresh.options).toMatchObject({ httpOnly: true, secure: true, sameSite: 'strict', path: '/api/auth' });
+    expect(access.options).not.toHaveProperty('maxAge');
+    expect(refresh.options).not.toHaveProperty('maxAge');
+    expect(browserSession.options).toMatchObject({ httpOnly: true, secure: true, sameSite: 'strict', path: '/' });
+    expect(browserSession.options).not.toHaveProperty('maxAge');
   });
 
   it('expires user, refresh, elevation and legacy admin cookies together', async () => {
@@ -21,7 +26,7 @@ describe('authentication cookie policy', () => {
     clearAuthCookies(response);
 
     const headers = response.headers.getSetCookie();
-    for (const name of ['nf_access_token', 'nf_refresh_token', 'nf_admin_elev', 'nf_admin_token']) {
+    for (const name of ['nf_access_token', 'nf_refresh_token', 'nf_browser_session', 'nf_admin_elev', 'nf_admin_token']) {
       const cookie = headers.find(value => value.startsWith(`${name}=`));
       expect(cookie, `${name} was not cleared`).toBeDefined();
       expect(cookie).toMatch(/Max-Age=0/i);

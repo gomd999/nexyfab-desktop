@@ -1,0 +1,50 @@
+{
+  "schema": "nexyfab.mechanical-core-feature-local-runtime.v1",
+  "feature": "revolve",
+  "axis": "create",
+  "status": "PASS",
+  "executedAt": "2026-08-22T07:13:30.564Z",
+  "payload": {
+    "id": "runtime-feature",
+    "enabled": true,
+    "type": "revolve",
+    "params": {
+      "angle": 240,
+      "segments": 32,
+      "axis": 1
+    }
+  },
+  "exact": {
+    "handle": "occt:371",
+    "kernelKind": "Solid",
+    "nativeShapeType": 2,
+    "solidCount": 1,
+    "singleSolid": true,
+    "volumeMm3": 6534.512719466769,
+    "edgeCount": 12,
+    "faceCount": 6,
+    "boundsMm": [
+      [
+        -16.0000001,
+        -10.019889360497244,
+        -16.014916272510302
+      ],
+      [
+        16.019889360497242,
+        10.019889360497244,
+        13.87629582104826
+      ]
+    ]
+  },
+  "featureMeaning": {
+    "assertion": "actual product revolve created one exact partial-angle OCCT annular sector with analytic volume",
+    "angleDeg": 240,
+    "innerRadiusMm": 10,
+    "outerRadiusMm": 16,
+    "heightMm": 20,
+    "expectedVolumeMm3": 6534.512719466769,
+    "actualVolumeMm3": 6534.512719466769
+  },
+  "exactScope": "declared numeric runtime case",
+  "assertion": "native OCCT produced one non-empty exact solid and changed the host geometry"
+}

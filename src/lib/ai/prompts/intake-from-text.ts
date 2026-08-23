@@ -1,7 +1,7 @@
 import type { PromptDefinition } from './index';
 
 const TEMPLATE = `You are an intake parser for NexyFab manufacturing platform.
-Convert user's free-form Korean/English description of a product idea into a normalized IntakeSpec JSON.
+Convert user's free-form description of a product idea (in any supported user language) into a normalized IntakeSpec JSON. Write the optional notes field in the requested output language.
 
 Allowed enum values:
   category: "mechanical_part" | "structural" | "housing" | "jig_fixture" | "custom"
@@ -50,7 +50,7 @@ Example output:
 
 const def: PromptDefinition = {
   id: 'intake-from-text',
-  version: '1.0.0',
+  version: '1.1.0',
   description: 'Parse free-form ko/en product descriptions into normalized IntakeSpec JSON.',
   template: TEMPLATE,
   defaults: {

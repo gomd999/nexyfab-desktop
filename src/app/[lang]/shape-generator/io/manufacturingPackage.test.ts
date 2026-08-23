@@ -4,9 +4,44 @@ import * as THREE from 'three';
 const downloaded: Array<{ name: string; blob: Blob }> = [];
 vi.mock('@/lib/platform', () => ({ downloadBlob: vi.fn(async (name: string, blob: Blob) => { downloaded.push({ name, blob }); }) }));
 import { unzipSync, strFromU8 } from 'fflate';
-import { exportManufacturingZipBundle } from './manufacturingPackage';
+import {
+  assessManufacturingHandoffReadiness,
+  exportManufacturingZipBundle,
+} from './manufacturingPackage';
 
 describe('immutable manufacturing package v3', () => {
+  it('keeps a drawing handoff blocked until every revision-bound artifact passes', () => {
+    const blocked = assessManufacturingHandoffReadiness({
+      revisionId: 'assembly:abc',
+      solver: 'PASS',
+      featureTrees: 'PASS',
+      exactStep: 'NOT_RUN',
+      drawing: 'NOT_RUN',
+      bom: 'NOT_RUN',
+      gdtPmi: 'NOT_RUN',
+      releaseDecision: 'BLOCKED',
+    });
+    expect(blocked.status).toBe('BLOCKED');
+    expect(blocked.blockers).toEqual([
+      'exact-brep-step-not-passed',
+      'revision-bound-drawing-not-passed',
+      'revision-bound-bom-not-passed',
+      'gdt-pmi-not-verified',
+      'manufacturing-release-decision-not-passed',
+    ]);
+
+    expect(assessManufacturingHandoffReadiness({
+      revisionId: 'assembly:verified',
+      solver: 'PASS',
+      featureTrees: 'PASS',
+      exactStep: 'PASS',
+      drawing: 'PASS',
+      bom: 'PASS',
+      gdtPmi: 'PASS',
+      releaseDecision: 'PASS',
+    })).toEqual({ revisionId: 'assembly:verified', status: 'PASS', blockers: [] });
+  });
+
   it('hashes every pre-manifest artifact and binds release evidence', async () => {
     downloaded.length = 0;
     const sha = 'a'.repeat(64);
@@ -17,6 +52,8 @@ describe('immutable manufacturing package v3', () => {
         revisionManifestSha256: sha, kernelStackIdentitySha256: sha, kernelEvidenceSha256: sha,
         drawingStatus: 'pass', pmiStatus: 'verified', workflowStatus: 'manufacturing_or_construction_approved',
         deliverableDecision: {
+          schema: 'nexyfab.cad-deliverable-release-decision.v2', profile: 'mechanical',
+          requiredRoundtrips: ['step', 'bom', 'drawing'],
           status: 'pass', purpose: 'manufacturing_or_construction', workflowStatus: 'manufacturing_or_construction_approved',
           roundtripEvidenceSha256: sha, validReviewerIds: ['domain-expert', 'independent-expert'], blockers: [],
         },

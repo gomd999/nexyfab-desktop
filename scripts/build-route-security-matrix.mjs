@@ -47,12 +47,28 @@ function hasAny(source, expressions) {
   return expressions.some(expression => expression.test(source));
 }
 
+function hasEnforcedOptionalAuth(source) {
+  const assignment = /\bconst\s+([A-Za-z_$][\w$]*)\s*=\s*await\s+getAuthUser\s*\([^;\r\n]*\)\s*\.catch\s*\(\s*\(\)\s*=>\s*null\s*\)/g;
+  return [...source.matchAll(assignment)].some(match => {
+    const variable = match[1].replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const immediateRemainder = source.slice((match.index ?? 0) + match[0].length, (match.index ?? 0) + match[0].length + 300);
+    return new RegExp(`^\\s*;?\\s*if\\s*\\(\\s*!\\s*${variable}\\s*\\)\\s*\\{?[\\s\\S]{0,180}?status\\s*:\\s*401`).test(immediateRemainder);
+  });
+}
+
 export function analyzeRouteSecurity(route, source, publicMutationPolicy = null) {
   const methods = exportedMethods(source);
   const mutation = methods.some(method => MUTATION_METHODS.has(method));
+  const unsafeDirectBodyParser = /\b(?:req|request)(?:\s*\.\s*clone\s*\(\s*\))?\s*\.\s*(?:json|text|formData|arrayBuffer|blob)\s*\(/.test(source);
+  // Some public/guest routes enrich telemetry or model selection with an
+  // optional identity lookup. A swallowed null result is not an auth gate.
+  const authenticationSource = source.replace(
+    /\bgetAuthUser\s*\([^;\r\n]*\)\s*\.catch\s*\(\s*\(\)\s*=>\s*null\s*\)/g,
+    '',
+  );
   const controls = {
-    authentication: hasAny(source, [
-      /\bgetAuthUser\b/, /\brequireAuth\b/, /\brequireAdmin\b/, /\bverifyAdmin\b/,
+    authentication: hasEnforcedOptionalAuth(source) || hasAny(authenticationSource, [
+      /\bgetAuthUser\s*\(/, /\brequireAuth\b/, /\brequireAdmin\b/, /\bverifyAdmin\b/,
       /\bverifyJWT\b/, /\bnf_access_token\b/, /\bx-admin-(?:secret|token)\b/i,
       /\bcheckPlan\b/, /\bgetPartnerAuth\b/, /\bx-seed-key\b/i,
     ]) || (route.startsWith('/api/cad/v1') && !(route === '/api/cad/v1/capabilities' && methods.every(method => method === 'GET'))),
@@ -69,6 +85,7 @@ export function analyzeRouteSecurity(route, source, publicMutationPolicy = null)
     webhookSignature: hasAny(source, [
       /constructEvent\b/, /timingSafeEqual\b/, /verify\w*Signature\b/i, /webhook\w*secret/i, /signature\w*verif/i,
     ]),
+    boundedRequestBody: mutation && !unsafeDirectBodyParser,
   };
 
   // Next 16 executes src/proxy.ts for every /api route. Production defaults
@@ -86,7 +103,7 @@ export function analyzeRouteSecurity(route, source, publicMutationPolicy = null)
   if (/SCIM_NOT_IMPLEMENTED|status:\s*410/.test(source)) {
     classification = 'disabled';
     classificationBasis = 'explicit-not-implemented-or-gone';
-  } else if (ADMIN_PATTERN.test(route)) {
+  } else if (ADMIN_PATTERN.test(route) && route !== '/api/admin/auth') {
     classification = 'admin';
     classificationBasis = 'admin-route-prefix';
   } else if (WEBHOOK_PATTERN.test(route)) {
@@ -108,6 +125,7 @@ export function analyzeRouteSecurity(route, source, publicMutationPolicy = null)
   if (classification === 'admin' && !controls.authentication) gaps.push('ADMIN_AUTH_MISSING');
   if (classification === 'webhook' && mutation && !controls.webhookSignature) gaps.push('WEBHOOK_SIGNATURE_MISSING');
   if (classification === 'public' && mutation && !controls.publicMutationPolicy) gaps.push('PUBLIC_MUTATION_REVIEW_REQUIRED');
+  if (mutation && unsafeDirectBodyParser) gaps.push('DIRECT_REQUEST_BODY_PARSER_UNBOUNDED');
   if (mutation && classification !== 'webhook' && !controls.rateLimit && !controls.activeProxyRateLimit && !route.startsWith('/api/cad/v1')) {
     gaps.push('MUTATION_RATE_LIMIT_MISSING');
   }
@@ -121,7 +139,24 @@ export function analyzeRouteSecurity(route, source, publicMutationPolicy = null)
   return { route, methods, mutation, classification, classificationBasis, controls, gaps };
 }
 
-export function buildRouteSecurityMatrix(root) {
+function forwardedRouteDependencies(file, source, appApiRoot, seen = new Set()) {
+  const dependencies = [];
+  for (const match of source.matchAll(/\bfrom\s+['"](\.{1,2}\/[^'"]*route)['"]/g)) {
+    const unresolved = path.resolve(path.dirname(file), match[1]);
+    const candidates = [unresolved, `${unresolved}.ts`, path.join(unresolved, 'route.ts')];
+    const dependency = candidates.find(candidate => fs.existsSync(candidate) && fs.statSync(candidate).isFile());
+    if (!dependency || seen.has(dependency)) continue;
+    const relative = path.relative(appApiRoot, dependency);
+    if (!relative || relative.startsWith('..') || path.isAbsolute(relative)) continue;
+    seen.add(dependency);
+    const dependencySource = fs.readFileSync(dependency, 'utf8');
+    dependencies.push({ file: dependency, source: dependencySource });
+    dependencies.push(...forwardedRouteDependencies(dependency, dependencySource, appApiRoot, seen));
+  }
+  return dependencies;
+}
+
+export function buildRouteSecurityMatrix(root, generatedAt = new Date().toISOString()) {
   const appApiRoot = path.join(root, 'src', 'app', 'api');
   const policyPath = path.join(root, 'security', 'public-mutation-policy.json');
   const policyDocument = JSON.parse(fs.readFileSync(policyPath, 'utf8'));
@@ -146,14 +181,20 @@ export function buildRouteSecurityMatrix(root) {
     .sort((left, right) => left.localeCompare(right))
     .map(file => {
       const source = fs.readFileSync(file, 'utf8');
+      const dependencies = forwardedRouteDependencies(file, source, appApiRoot);
+      const securitySource = [source, ...dependencies.map(item => item.source)].join('\n');
       return {
         ...analyzeRouteSecurity(
           routePathFromFile(file, appApiRoot),
-          source,
+          securitySource,
           policyByRoute.get(routePathFromFile(file, appApiRoot)) ?? null,
         ),
         file: path.relative(root, file).replaceAll('\\', '/'),
         sourceSha256: sha256(source),
+        securityDependencies: dependencies.map(item => ({
+          file: path.relative(root, item.file).replaceAll('\\', '/'),
+          sha256: sha256(item.source),
+        })),
       };
     });
   const routeByPath = new Map(routes.map(route => [route.route, route]));
@@ -172,6 +213,7 @@ export function buildRouteSecurityMatrix(root) {
   for (const route of routes) for (const gap of route.gaps) gapCounts[gap] = (gapCounts[gap] ?? 0) + 1;
   return {
     schema: 'nexyfab.route-security-matrix.v1',
+    generatedAt,
     status: routes.every(route => route.gaps.length === 0) && policyConfigIssues.length === 0 ? 'pass' : 'fail',
     summary: {
       routeFiles: routes.length,
@@ -218,7 +260,9 @@ export function main(args = process.argv.slice(2)) {
   const write = args.includes('--write');
   const jsonPath = path.join(root, 'docs', 'evidence', 'security', 'route-security-matrix-260810.json');
   const mdPath = path.join(root, 'docs', 'evidence', 'security', 'route-security-matrix-260810.md');
-  const report = buildRouteSecurityMatrix(root);
+  let storedGeneratedAt = null;
+  try { storedGeneratedAt = JSON.parse(fs.readFileSync(jsonPath, 'utf8')).generatedAt ?? null; } catch { /* missing/stale evidence */ }
+  const report = buildRouteSecurityMatrix(root, write || !storedGeneratedAt ? new Date().toISOString() : storedGeneratedAt);
   const json = `${JSON.stringify(report, null, 2)}\n`;
   const md = `${markdown(report)}\n`;
   if (write) {

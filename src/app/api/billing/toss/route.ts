@@ -4,6 +4,9 @@
  * POST /api/billing/toss/webhook   — 토스 웹훅
  */
 import { NextRequest, NextResponse } from 'next/server';
+import { boundedJsonError, readBoundedJson } from '@/lib/boundedJsonBody';
+import { boundedRawBodyError, readBoundedRawBody } from '@/lib/boundedRawBody';
+import { denyIfPaymentCollectionDisabled } from '@/lib/payment-gate';
 import { getAuthUser } from '@/lib/auth-middleware';
 import { getDbAdapter } from '@/lib/db-adapter';
 import { checkOrigin } from '@/lib/csrf';
@@ -29,13 +32,22 @@ const billingKeySchema = z.object({
   authKey:     z.string().min(1),
   customerKey: z.string().min(1),
 });
+const TOSS_ACTION_JSON_BYTES = 64 * 1024;
+const TOSS_WEBHOOK_RAW_BYTES = 1024 * 1024;
 
 export async function POST(req: NextRequest) {
+  const paymentDenied = denyIfPaymentCollectionDisabled();
+  if (paymentDenied) return paymentDenied;
   if (!checkOrigin(req)) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   const authUser = await getAuthUser(req);
   if (!authUser) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-  const body = await req.json() as Record<string, unknown>;
+  let body: Record<string, unknown> = {};
+  try { body = await readBoundedJson(req, TOSS_ACTION_JSON_BYTES); }
+  catch (error) {
+    const bodyError = boundedJsonError(error);
+    if (bodyError?.code === 'PAYLOAD_TOO_LARGE') return NextResponse.json({ error: 'Request body too large' }, { status: bodyError.status });
+  }
   const db   = getDbAdapter();
 
   // ── 결제 승인 ────────────────────────────────────────────────────────────
@@ -110,7 +122,15 @@ export async function POST(req: NextRequest) {
 
 // ── 토스 웹훅 ────────────────────────────────────────────────────────────────
 export async function PUT(req: NextRequest) {
-  const rawBody   = await req.text();
+  let rawBody: string;
+  try {
+    const rawBytes = await readBoundedRawBody(req, TOSS_WEBHOOK_RAW_BYTES);
+    rawBody = new TextDecoder('utf-8', { fatal: true }).decode(rawBytes);
+  } catch (error) {
+    const bodyError = boundedRawBodyError(error);
+    if (bodyError?.code === 'PAYLOAD_TOO_LARGE') return NextResponse.json({ error: 'Request body too large' }, { status: bodyError.status });
+    return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 });
+  }
   const signature = req.headers.get('x-signature') ?? '';
   const secret    = process.env.TOSS_WEBHOOK_SECRET ?? '';
 

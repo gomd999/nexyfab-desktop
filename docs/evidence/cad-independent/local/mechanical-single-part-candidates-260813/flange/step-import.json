@@ -1,0 +1,37 @@
+{
+  "schema": "nexyfab.mechanical-single-part-step-import.v1",
+  "feature": "flange",
+  "partRevisionSha256": "b3711c40417092e0ee192f818ec38307dba54377164c9b2fbeaa804dbc8509cd",
+  "sourceDesignRevisionSha256": "3cf6a0f9c8efcf153a2cfefde087a2112c086fc412d2feeaeb9ce52542838564",
+  "sourceStep": {
+    "path": "docs/evidence/cad-independent/local/mechanical-core-runtime-260813/flange/flange-edited.step",
+    "sha256": "cae1cee42d8d0440bfde4857c671036db0aa0067b6b5890b0c9a6b4069d948e1",
+    "bytes": 31999,
+    "assertionId": "flange.export.native-step"
+  },
+  "exactKernel": "OCCT",
+  "units": {
+    "value": "mm",
+    "confidence": "high"
+  },
+  "solidCount": 1,
+  "singleSolid": true,
+  "volumeMm3": 6873.982236861622,
+  "boundsMm": [
+    [
+      -30.001506006518984,
+      -1.0015060065189834,
+      -15.001506006518984
+    ],
+    [
+      30.001506006518984,
+      25.001506006518984,
+      20.001506006518984
+    ]
+  ],
+  "dimensionsMm": {
+    "x": 60.00301201303797,
+    "y": 26.003012013037967,
+    "z": 35.00301201303797
+  }
+}

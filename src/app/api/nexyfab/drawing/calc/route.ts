@@ -11,6 +11,9 @@ import { pathToFileURL } from 'node:url';
 import { rateLimit } from '@/lib/rate-limit';
 import { getTrustedClientIp } from '@/lib/client-ip';
 import { CALC_CATALOG } from '@/app/api/eng-chat/calcCatalog';
+import { boundedJsonError, readBoundedJson } from '@/lib/boundedJsonBody';
+
+const MAX_BODY_BYTES = 2 * 1024 * 1024;
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -46,7 +49,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   const rl = rateLimit(`drawing-calc:${ip}`, 60, 60_000);
   if (!rl.allowed) return NextResponse.json({ ok: false, error: '요청이 너무 많습니다.' }, { status: 429 });
   try {
-    const body = (await req.json()) as { id?: string; input?: unknown; standard?: string; drawing?: { kind?: string; params?: Record<string, unknown>; format?: string } };
+    const body = await readBoundedJson<{ id?: string; input?: unknown; standard?: string; drawing?: { kind?: string; params?: Record<string, unknown>; format?: string } }>(req, MAX_BODY_BYTES);
     let result: Record<string, unknown> | null = null;
     if (body.id) {
       if (typeof body.id !== 'string' || typeof body.input !== 'object' || body.input === null) {
@@ -84,6 +87,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     if (!result && !svg) return NextResponse.json({ ok: false, error: 'id 또는 drawing 필요' }, { status: 400 });
     return NextResponse.json({ ok: true, ...(result ? { result } : {}), ...(svg ? { svg } : {}), ...(resultSvg ? { resultSvg } : {}), ...(dxf ? { dxf } : {}) });
   } catch (e) {
+    if (boundedJsonError(e)?.code === 'PAYLOAD_TOO_LARGE') return NextResponse.json({ ok: false, error: '계산 입력이 너무 큽니다.' }, { status: 413 });
     const msg = e instanceof Error ? e.message : String(e);
     const gate = msg.includes('input gate');
     return NextResponse.json({ ok: false, error: msg, gate }, { status: gate ? 422 : 500 });

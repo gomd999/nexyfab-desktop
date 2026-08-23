@@ -11,10 +11,14 @@
 // have many entries, and we want to keep scannable density high.
 
 import React from 'react';
+import { useLang } from '../hooks/useLang';
+import { loc } from '@/lib/i18n/loc';
 
 interface ToolResultMeta {
   // Common
   handle?: string;
+  /** Short-lived server capability; a raw process-local handle is not enough. */
+  handleAccessToken?: string;
   bytes?: number;
   // Render
   renderOk?: boolean;
@@ -116,7 +120,7 @@ export interface RichResultProps {
   meta?: ToolResultMeta;
   ok: boolean;
   /** W6 — when present, B-rep tool result cards show a "Show in canvas" button. */
-  onShowBrepHandle?: (handle: string) => void | Promise<void>;
+  onShowBrepHandle?: (handle: string, accessToken: string) => void | Promise<void>;
 }
 
 export function RichResult({ toolName, output, meta, ok, onShowBrepHandle }: RichResultProps): React.ReactElement {
@@ -256,8 +260,8 @@ export function RichResult({ toolName, output, meta, ok, onShowBrepHandle }: Ric
           <Pill text="✚ B-REP" tone="success" />
           {meta?.handle && <code style={S.frameCode}>{meta.handle}</code>}
           <span style={S.subText}>{toolName.replace('brep_', '')}</span>
-          {meta?.handle && onShowBrepHandle && (
-            <ShowInCanvasButton handle={meta.handle} onShow={onShowBrepHandle} />
+          {meta?.handle && meta.handleAccessToken && onShowBrepHandle && (
+            <ShowInCanvasButton handle={meta.handle} accessToken={meta.handleAccessToken} onShow={onShowBrepHandle} />
           )}
         </div>
       } />;
@@ -269,8 +273,8 @@ export function RichResult({ toolName, output, meta, ok, onShowBrepHandle }: Ric
           {typeof meta?.triangleCount === 'number' && (
             <span style={S.metric}>{meta.triangleCount.toLocaleString()} tris</span>
           )}
-          {meta?.handle && onShowBrepHandle && (
-            <ShowInCanvasButton handle={meta.handle} onShow={onShowBrepHandle} />
+          {meta?.handle && meta.handleAccessToken && onShowBrepHandle && (
+            <ShowInCanvasButton handle={meta.handle} accessToken={meta.handleAccessToken} onShow={onShowBrepHandle} />
           )}
         </div>
       } />;
@@ -450,20 +454,20 @@ export function RichResult({ toolName, output, meta, ok, onShowBrepHandle }: Ric
 // callback. Shows a transient loading state so the user knows the click
 // registered (mesh fetch can take a few hundred ms for complex parts).
 
-function ShowInCanvasButton({ handle, onShow }: { handle: string; onShow: (h: string) => void | Promise<void> }) {
+function ShowInCanvasButton({ handle, accessToken, onShow }: { handle: string; accessToken: string; onShow: (h: string, accessToken: string) => void | Promise<void> }) {
   const [busy, setBusy] = React.useState(false);
   const [done, setDone] = React.useState(false);
   const onClick = React.useCallback(async () => {
     if (busy) return;
     setBusy(true);
     try {
-      await onShow(handle);
+      await onShow(handle, accessToken);
       setDone(true);
       setTimeout(() => setDone(false), 1500);
     } finally {
       setBusy(false);
     }
-  }, [busy, handle, onShow]);
+  }, [accessToken, busy, handle, onShow]);
   return (
     <button onClick={onClick} disabled={busy} style={showCanvasBtnStyle} title={`Render ${handle} into the main viewport`}>
       {busy ? '…' : done ? '✓' : '↗ canvas'}
@@ -492,6 +496,7 @@ const showCanvasBtnStyle: React.CSSProperties = {
 // new tab via a Blob URL (avoids inflating the DOM document).
 
 function DrawingSvgCard({ meta }: { meta?: ToolResultMeta }): React.ReactElement {
+  const lang = useLang();
   const svg = typeof meta?.svg === 'string' ? meta.svg : null;
   const [popupBlocked, setPopupBlocked] = React.useState(false);
   const onOpenFull = React.useCallback(() => {
@@ -532,7 +537,7 @@ function DrawingSvgCard({ meta }: { meta?: ToolResultMeta }): React.ReactElement
             background: 'rgba(210,153,34,0.12)',
             border: '1px solid var(--nx-warn)', borderRadius: 4,
           }}>
-            ⚠ 팝업 차단됨 — 브라우저 주소창의 팝업 허용 후 다시 시도하세요.
+            {loc(lang, { ko: '⚠ 팝업 차단됨 — 브라우저 주소창의 팝업 허용 후 다시 시도하세요.', en: '⚠ Pop-up blocked — allow pop-ups in the browser address bar and try again.', ja: '⚠ ポップアップがブロックされました。アドレスバーで許可して再試行してください。', zh: '⚠ 弹窗已被阻止，请在浏览器地址栏中允许弹窗后重试。', es: '⚠ Ventana emergente bloqueada; permita las ventanas emergentes y vuelva a intentarlo.', ar: '⚠ تم حظر النافذة المنبثقة — اسمح بالنوافذ المنبثقة ثم أعد المحاولة.' })}
           </div>
         )}
         {svg && (

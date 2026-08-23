@@ -45,6 +45,7 @@ describe('recordPromptCall', () => {
 
     recordPromptCall({
       userId: 'u-123',
+      orgId: 'org-123',
       promptId: 'shape-chat',
       promptVersion: '1.0.0',
       provider: 'deepseek',
@@ -65,7 +66,7 @@ describe('recordPromptCall', () => {
       promptTokens: 800,
       completionTokens: 400,
       success: true,
-    }));
+    }), 'org-123');
   });
 
   it('uses anon bucket when userId omitted', async () => {
@@ -82,7 +83,7 @@ describe('recordPromptCall', () => {
       success: true,
     });
 
-    expect(spy).toHaveBeenCalledWith('anon', 'prompt_call', expect.any(Object));
+    expect(spy).toHaveBeenCalledWith('anon', 'prompt_call', expect.any(Object), undefined);
   });
 
   it('records errorClass on failure', async () => {
@@ -104,7 +105,7 @@ describe('recordPromptCall', () => {
     expect(spy).toHaveBeenCalledWith('u-456', 'prompt_call', expect.objectContaining({
       success: false,
       errorClass: 'AiProviderError',
-    }));
+    }), undefined);
   });
 
   it('omits optional fields when not provided', async () => {
@@ -125,5 +126,34 @@ describe('recordPromptCall', () => {
     expect(metadata).not.toHaveProperty('promptTokens');
     expect(metadata).not.toHaveProperty('completionTokens');
     expect(metadata).not.toHaveProperty('errorClass');
+  });
+
+  it('records provider input-cache counters without prompt content', async () => {
+    const mod = await import('@/lib/plan-guard');
+    const spy = mod.recordUsageEvent as unknown as ReturnType<typeof vi.fn>;
+    spy.mockClear();
+
+    recordPromptCall({
+      userId: 'u-cache',
+      promptId: 'cad-feature-program',
+      promptVersion: '1.0.0',
+      provider: 'openai',
+      model: 'gpt-5.6-luna',
+      latencyMs: 450,
+      promptTokens: 1600,
+      completionTokens: 300,
+      cachedPromptTokens: 1200,
+      cacheWriteTokens: 0,
+      cacheMissTokens: 400,
+      cacheProfile: 'openai-explicit',
+      success: true,
+    });
+
+    expect(spy).toHaveBeenCalledWith('u-cache', 'prompt_call', expect.objectContaining({
+      cachedPromptTokens: 1200,
+      cacheWriteTokens: 0,
+      cacheMissTokens: 400,
+      cacheProfile: 'openai-explicit',
+    }), undefined);
   });
 });

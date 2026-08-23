@@ -64,6 +64,8 @@ import { polyhedronToMesh, polyhedronFeatureEdges, meshBounds } from './occtView
 
 /** Emitted only when a sampled circular loop was built as an exact OCCT cylinder. */
 export const ANALYTIC_CIRCULAR_PRISM_WARNING = 'analytic circular prism promoted to OCCT cylinder';
+/** Emitted only by the native arbitrary-axis OCCT cylinder primitive. */
+export const ANALYTIC_CYLINDER_WARNING = 'analytic OCCT cylinder built along supplied axis';
 
 // ─── public bridge interface ──────────────────────────────────────────────
 
@@ -168,6 +170,8 @@ export interface OcctBridge {
    * callers feature-detect and refuse honestly when it is absent.
    */
   buildPrismAt?(loop: ReadonlyArray<{ x: number; y: number }>, z0: number, heightMm: number): Promise<OcctOperationResult>;
+  /** Build an analytic OCCT cylinder from a finite origin and unit direction. */
+  buildCylinderAt?(center: readonly [number, number, number], axis: readonly [number, number, number], radiusMm: number, depthMm: number): Promise<OcctOperationResult>;
   /** Build a conical frustum along +Z for countersink and tapered-tool cuts. */
   buildConeAt?(center: { x: number; y: number }, z0: number, heightMm: number, radius0: number, radius1: number): Promise<OcctOperationResult>;
   /** Build an exact BREP triangular thread cutter swept along a cylindrical

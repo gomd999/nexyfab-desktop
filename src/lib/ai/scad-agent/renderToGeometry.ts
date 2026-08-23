@@ -32,7 +32,7 @@ export async function renderScadToGeometry(
     throw new ScadRenderError(400, 'SCAD source is empty');
   }
 
-  const resp = await fetch('/api/nexyfab/openscad-render', {
+  const resp = await fetch('/api/nexyfab/openscad-render/', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ scad, format: 'stl', ...(importStl ? { importStl } : {}) }),

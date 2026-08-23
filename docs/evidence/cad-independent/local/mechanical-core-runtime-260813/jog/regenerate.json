@@ -1,0 +1,87 @@
+{
+  "schema": "nexyfab.mechanical-core-feature-local-runtime.v1",
+  "feature": "jog",
+  "axis": "regenerate",
+  "status": "PASS",
+  "executedAt": "2026-08-22T07:13:30.564Z",
+  "initial": {
+    "handle": "occt:267",
+    "kernelKind": "Solid",
+    "nativeShapeType": 2,
+    "solidCount": 1,
+    "singleSolid": true,
+    "volumeMm3": 3599.999999999999,
+    "edgeCount": 36,
+    "faceCount": 14,
+    "boundsMm": [
+      [
+        -30.00384937308465,
+        -1.0038493730846492,
+        -15.003849373084648
+      ],
+      [
+        29.351094217353562,
+        6.003849373084649,
+        15.003849373084648
+      ]
+    ]
+  },
+  "edited": {
+    "handle": "occt:269",
+    "kernelKind": "Solid",
+    "nativeShapeType": 2,
+    "solidCount": 1,
+    "singleSolid": true,
+    "volumeMm3": 3600.0000000000005,
+    "edgeCount": 36,
+    "faceCount": 14,
+    "boundsMm": [
+      [
+        -30.003909916019175,
+        -1.003909916019177,
+        -15.003909916019177
+      ],
+      [
+        28.249888931106128,
+        9.003909916019177,
+        15.003909916019177
+      ]
+    ]
+  },
+  "repeated": {
+    "handle": "occt:271",
+    "kernelKind": "Solid",
+    "nativeShapeType": 2,
+    "solidCount": 1,
+    "singleSolid": true,
+    "volumeMm3": 3600.0000000000005,
+    "edgeCount": 36,
+    "faceCount": 14,
+    "boundsMm": [
+      [
+        -30.003909916019175,
+        -1.003909916019177,
+        -15.003909916019177
+      ],
+      [
+        28.249888931106128,
+        9.003909916019177,
+        15.003909916019177
+      ]
+    ]
+  },
+  "featureMeaning": {
+    "assertion": "actual product exact jog conserves blank volume and creates two opposite analytic bends with constant-thickness neutral-axis developed spacing",
+    "offsetMm": 8,
+    "developedSpacingMm": 20,
+    "radiusMm": 2,
+    "thicknessMm": 2,
+    "cylindricalFaces": 4,
+    "baselineVolumeMm3": 3600,
+    "actualVolumeMm3": 3600.0000000000005,
+    "expectedTopMm": 9,
+    "actualTopMm": 9.003909916019177,
+    "projectedLengthMm": 58.2537988471253
+  },
+  "assertion": "edited parameter changed the exact signature and a fresh native regeneration reproduced topology, bounds, and volume"
+}

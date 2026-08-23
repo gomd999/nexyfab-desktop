@@ -1,0 +1,37 @@
+{
+  "schema": "nexyfab.mechanical-single-part-step-import.v1",
+  "feature": "offsetFace",
+  "partRevisionSha256": "a4f1bd61c79234d8e3225c79842c946c52601ea779d2345027bc632c63152a82",
+  "sourceDesignRevisionSha256": "3cf6a0f9c8efcf153a2cfefde087a2112c086fc412d2feeaeb9ce52542838564",
+  "sourceStep": {
+    "path": "docs/evidence/cad-independent/local/mechanical-core-runtime-260813/offsetFace/offsetFace-edited.step",
+    "sha256": "5573cf8e0f11d557d87536c68ab44c081094de0247f8eefbd544ba07cf82c4f7",
+    "bytes": 15579,
+    "assertionId": "offsetFace.export.native-step"
+  },
+  "exactKernel": "OCCT",
+  "units": {
+    "value": "mm",
+    "confidence": "high"
+  },
+  "solidCount": 1,
+  "singleSolid": true,
+  "volumeMm3": 81000,
+  "boundsMm": [
+    [
+      -30.0000001,
+      -20.0000001,
+      -15.0000001
+    ],
+    [
+      30.0000001,
+      25.0000001,
+      15.0000001
+    ]
+  ],
+  "dimensionsMm": {
+    "x": 60.0000002,
+    "y": 45.0000002,
+    "z": 30.0000002
+  }
+}

@@ -531,5 +531,5 @@ export async function middleware(req: NextRequest): Promise<NextResponse> {
 
 export const config = {
   // API protection plus canonical redirects for legacy ISO locale segments.
-  matcher: ['/api/:path*', '/ko/:path*', '/zh/:path*'],
+  matcher: ['/api/:path*', '/ko/:path*', '/zh/:path*', '/jp/:path*'],
 };

@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useRef, useCallback, use } from 'react';
 import { useAuthStore } from '@/hooks/useAuth';
-import { isKorean } from '@/lib/i18n/normalize';
+import { localizeCommercialDictionary } from '@/lib/i18n/commercialLocalizer';
 
 // ─── i18n ────────────────────────────────────────────────────────────────────
 
@@ -134,7 +134,7 @@ interface UploadApiResponse {
 
 export default function FilesPage({ params }: { params: Promise<{ lang: string }> }) {
   const { lang } = use(params);
-  const t = isKorean(lang) ? dict.ko : dict.en;
+  const t = localizeCommercialDictionary(lang, dict.ko, dict.en);
   const { user } = useAuthStore();
 
   const [files, setFiles] = useState<FileItem[]>([]);

@@ -1,18 +1,35 @@
 // Save / list 완제품 평가 (Design Review) reports for the signed-in user.
 
 import { NextRequest, NextResponse } from 'next/server';
-import { getAuthUser } from '@/lib/auth-middleware';
+import { getAuthUser, type AuthUser } from '@/lib/auth-middleware';
+import { resolveRequestOrgContext } from '@/lib/org-context';
 import { deleteReview, saveReview, listReviews } from '@/lib/design-reviews';
 import { checkOrigin } from '@/lib/csrf';
+import { boundedJsonError, readBoundedJson } from '@/lib/boundedJsonBody';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
+const REVIEW_JSON_BYTES = 1024 * 1024;
+
+type WorkspaceResult =
+  | { ok: true; user: AuthUser; orgId: string | null }
+  | { ok: false; response: NextResponse };
+
+async function requireWorkspace(req: NextRequest): Promise<WorkspaceResult> {
+  const user = await getAuthUser(req);
+  if (!user) return { ok: false, response: NextResponse.json({ error: 'Unauthorized' }, { status: 401 }) };
+  const context = resolveRequestOrgContext(user);
+  if (!context.ok) {
+    return { ok: false, response: NextResponse.json({ error: 'Select a valid workspace', code: context.code }, { status: 409 }) };
+  }
+  return { ok: true, user, orgId: context.orgId };
+}
 
 export async function GET(req: NextRequest) {
-  const user = await getAuthUser(req);
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  const workspace = await requireWorkspace(req);
+  if (!workspace.ok) return workspace.response;
   try {
-    const rows = await listReviews(user.userId, 20);
+    const rows = await listReviews(workspace.user.userId, 20, workspace.orgId);
     const reviews = rows.map(r => ({
       id: r.id, filename: r.filename, material: r.material, process: r.process,
       created_at: Number(r.created_at),
@@ -26,16 +43,25 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   if (!checkOrigin(req)) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
-  const user = await getAuthUser(req);
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  const body = (await req.json().catch(() => null)) as {
+  const workspace = await requireWorkspace(req);
+  if (!workspace.ok) return workspace.response;
+  let body: {
     filename?: string; material?: string; process?: string; metrics?: unknown; report?: unknown;
   } | null;
+  try {
+    body = await readBoundedJson(req, REVIEW_JSON_BYTES);
+  } catch (error) {
+    const bodyError = boundedJsonError(error);
+    if (bodyError?.code === 'PAYLOAD_TOO_LARGE') {
+      return NextResponse.json({ error: 'Request body too large' }, { status: bodyError.status });
+    }
+    body = null;
+  }
   if (!body?.report) return NextResponse.json({ error: 'report required' }, { status: 400 });
   try {
     const id = crypto.randomUUID();
     await saveReview({
-      id, userId: user.userId,
+      id, userId: workspace.user.userId, orgId: workspace.orgId,
       filename: body.filename ?? 'part',
       material: body.material ?? '',
       process: body.process ?? '',
@@ -50,11 +76,11 @@ export async function POST(req: NextRequest) {
 
 export async function DELETE(req: NextRequest) {
   if (!checkOrigin(req)) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
-  const user = await getAuthUser(req);
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  const workspace = await requireWorkspace(req);
+  if (!workspace.ok) return workspace.response;
   const id = req.nextUrl.searchParams.get('id')?.trim();
   if (!id || id.length > 128) return NextResponse.json({ error: 'valid id required' }, { status: 400 });
-  const deleted = await deleteReview(user.userId, id);
+  const deleted = await deleteReview(workspace.user.userId, id, workspace.orgId);
   return deleted > 0
     ? NextResponse.json({ ok: true, deleted })
     : NextResponse.json({ error: 'Not found' }, { status: 404 });

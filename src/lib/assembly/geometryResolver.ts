@@ -132,7 +132,8 @@ export function buildPartRefRegistry(
   if (base?.loop?.length) {
     const xs = base.loop.map(point => point.x);
     const ys = base.loop.map(point => point.y);
-    const bounds = { x: [Math.min(...xs), Math.max(...xs)], y: [Math.min(...ys), Math.max(...ys)], z: [0, base.depth] } as const;
+    const baseZ = base.profileOffsetZ ?? 0;
+    const bounds = { x: [Math.min(...xs), Math.max(...xs)], y: [Math.min(...ys), Math.max(...ys)], z: [baseZ, baseZ + base.depth] } as const;
     const axes = ['x', 'y', 'z'] as const;
     for (const axis of axes) for (const side of ['min', 'max'] as const) {
       const coordinate = bounds[axis][side === 'min' ? 0 : 1];
@@ -143,7 +144,7 @@ export function buildPartRefRegistry(
     for (const x of ['min', 'max'] as const) for (const y of ['min', 'max'] as const) for (const z of ['min', 'max'] as const) {
       registry.set(`bbox_point_x${x}_y${y}_z${z}`, { kind: 'point', origin: vec3(bounds.x[x === 'min' ? 0 : 1], bounds.y[y === 'min' ? 0 : 1], bounds.z[z === 'min' ? 0 : 1]) });
     }
-    const baseZ=base.profileOffsetZ??0,topZ=baseZ+base.depth;
+    const topZ=baseZ+base.depth;
     registry.set('f.cap.bottom', { kind:'plane', origin:vec3(0,0,baseZ), normal:vec3(0,0,-1) });
     registry.set('f.cap.top', { kind:'plane', origin:vec3(0,0,topZ), normal:vec3(0,0,1) });
     registry.set('bbox_axis_z_min', { kind:'axis', origin:vec3(0,0,baseZ), direction:vec3(0,0,1) });
@@ -310,8 +311,11 @@ export function featureTreeGeometryResolver(
 // ─── small helper for tests ──────────────────────────────────────────────
 
 /** Iterate the registered ref names for a part. Useful for UI / debug. */
-export function listPartRefs(tree: FeatureTree): ReadonlyArray<string> {
-  return Array.from(buildPartRefRegistry(tree).keys());
+export function listPartRefs(
+  tree: FeatureTree,
+  explicitRefs?: Readonly<Record<string, PartRefSpec>>,
+): ReadonlyArray<string> {
+  return Array.from(buildPartRefRegistry(tree, explicitRefs).keys());
 }
 
 // ─── FeatureNode is re-exported for tests that build trees inline. ───────

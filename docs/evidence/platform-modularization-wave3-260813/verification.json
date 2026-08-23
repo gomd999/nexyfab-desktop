@@ -1,0 +1,39 @@
+{
+  "schema": "nexyfab.platform-wave-verification.v1",
+  "capturedAt": "2026-08-13T18:37:00+09:00",
+  "wave": "wave3",
+  "overallState": "PARTIAL",
+  "releaseDecision": "HOLD",
+  "implementation": {
+    "authenticatedQueueIngress": "PASS_UNIT",
+    "durableObjectIdempotencyAndConflictGate": "PASS_UNIT",
+    "queueExplicitAckRetryAndDlq": "PASS_UNIT",
+    "idempotentWorkflowCreateBatch": "PASS_UNIT",
+    "workflowAuthorizeExecuteCommitSteps": "PASS_UNIT",
+    "wranglerDryRun": "PASS_WRANGLER_4_122_0_17_51_KIB",
+    "coreProjectTenantArtifactAuthorization": "PASS_UNIT",
+    "coreWorkerKernelReceiptShaGate": "PASS_UNIT",
+    "transportCannotClaimExecutionPass": "PASS_UNIT",
+    "computeCannotClaimReleasePass": "PASS_UNIT",
+    "targetedRegression": "PASS_18_OF_18",
+    "expandedMigrationAndContractRegression": "PASS_31_OF_31",
+    "typecheck": "PASS",
+    "lint": "PASS"
+  },
+  "externalVerification": {
+    "cloudflareQueueProvisioning": "NOT_RUN",
+    "cloudflareDlqProvisioning": "NOT_RUN",
+    "cloudflareWorkflowProvisioning": "NOT_RUN",
+    "durableObjectMigration": "NOT_RUN",
+    "coreApiSecretBinding": "NOT_RUN",
+    "computeOriginBindings": "NOT_RUN",
+    "stagingEndToEndJob": "NOT_RUN",
+    "deadLetterReplayDrill": "NOT_RUN"
+  },
+  "nonClaims": [
+    "Queue persistence is not execution PASS.",
+    "Workflow completion is not execution PASS without a Core API-accepted receipt.",
+    "Core API receipt acceptance is not release PASS.",
+    "No Cloudflare resource or production route was changed."
+  ]
+}

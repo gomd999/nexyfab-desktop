@@ -8,9 +8,11 @@ import { evaluateManufacturingGates } from '@/lib/ai/manufacturingGates';
 import { compareStepRoundtrip, type BrepMeasurement } from '@/lib/ai/stepRoundtripVerification';
 import { evaluateProgramDfm } from '@/lib/ai/manufacturingContext';
 import { createHash } from 'node:crypto';
+import { readBoundedJson } from '@/lib/boundedJsonBody';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
+const MAX_JSON_BODY_BYTES = 4 * 1024 * 1024;
 
 /**
  * Own replicad init with an explicit wasm path. The shared `ensureOcctReady`
@@ -80,7 +82,7 @@ export async function POST(req: NextRequest) {
   if (!rateLimit(`cad-feature-step:${ip}`, 30, 3_600_000).allowed) {
     return NextResponse.json({ error: 'Too many STEP exports — try again shortly.', code: 'RATE_LIMIT' }, { status: 429 });
   }
-  const body = (await req.json().catch(() => ({}))) as CadFeatureProgram;
+  const body = (await readBoundedJson(req, MAX_JSON_BODY_BYTES).catch(() => ({}))) as CadFeatureProgram;
   const validation = validateCadFeatureProgram(body);
   if (!validation.ok) {
     return NextResponse.json({ error: 'invalid feature program', code: 'FEATURE_PROGRAM_INVALID', details: validation.errors }, { status: 422 });

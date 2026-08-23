@@ -4,6 +4,16 @@ import { getSetting, getSettingSync } from '../../admin-settings';
 
 const DEFAULT_MODEL = 'deepseek-chat';
 
+/** DeepSeek caching is automatic; keep the stable system prefix first. */
+export function buildDeepSeekChatBody(req: ChatCompletionRequest, model: string): Record<string, unknown> {
+  return {
+    model,
+    messages: req.messages,
+    max_tokens: req.maxTokens ?? 4096,
+    temperature: req.temperature ?? 0.2,
+  };
+}
+
 export const deepseekProvider: ProviderAdapter = {
   name: 'deepseek',
 
@@ -33,12 +43,7 @@ export const deepseekProvider: ProviderAdapter = {
         'Content-Type': 'application/json',
         Authorization: `Bearer ${apiKey}`,
       },
-      body: JSON.stringify({
-        model,
-        messages: req.messages,
-        max_tokens: req.maxTokens ?? 4096,
-        temperature: req.temperature ?? 0.2,
-      }),
+      body: JSON.stringify(buildDeepSeekChatBody(req, model)),
       // Combine the timeout signal with the caller-supplied abort signal
       // (e.g. SSE client disconnect) so either path cancels the fetch.
       signal: req.signal
@@ -54,7 +59,12 @@ export const deepseekProvider: ProviderAdapter = {
     const data = await res.json() as {
       // ★260731 — 절단 신호를 읽는다. 종전엔 버려서 잘린 응답이 「형식 오류」로만 보였다.
       choices?: Array<{ message?: { content?: string }; finish_reason?: string }>;
-      usage?: { prompt_tokens?: number; completion_tokens?: number };
+      usage?: {
+        prompt_tokens?: number;
+        completion_tokens?: number;
+        prompt_cache_hit_tokens?: number;
+        prompt_cache_miss_tokens?: number;
+      };
     };
     const content = data.choices?.[0]?.message?.content ?? '';
 
@@ -65,6 +75,9 @@ export const deepseekProvider: ProviderAdapter = {
       model,
       promptTokens: data.usage?.prompt_tokens,
       completionTokens: data.usage?.completion_tokens,
+      cachedPromptTokens: data.usage?.prompt_cache_hit_tokens,
+      cacheMissTokens: data.usage?.prompt_cache_miss_tokens,
+      cacheProfile: 'deepseek-automatic',
       latencyMs: Date.now() - startedAt,
     };
   },

@@ -17,6 +17,7 @@
  */
 
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { toIsoLang, type IsoLang } from '@/lib/i18n/normalize';
 
 type SpeechRecognitionLike = {
   lang: string;
@@ -45,7 +46,7 @@ function getSpeechRecognition(): SpeechRecognitionCtor | null {
 
 export interface VoiceInputOptions {
   lang: string;
-  /** Override the recognition locale tag. Default: ko-KR for ko, en-US otherwise. */
+  /** Override the recognition locale tag. Defaults to the selected UI locale. */
   recognitionLang?: string;
   /** Auto-stop after this much silence. Default: 1500ms. */
   silenceMs?: number;
@@ -53,6 +54,20 @@ export interface VoiceInputOptions {
   onFinal?: (text: string) => void;
   onError?: (msg: string) => void;
 }
+
+/**
+ * Speech recognition uses regional BCP-47 tags rather than the route's short
+ * locale id. Keep this map next to the hook so Arabic (and the other four
+ * non-English locales) do not silently fall back to en-US.
+ */
+const VOICE_LOCALES: Record<IsoLang, string> = {
+  ko: 'ko-KR',
+  en: 'en-US',
+  ja: 'ja-JP',
+  zh: 'zh-CN',
+  es: 'es-ES',
+  ar: 'ar-SA',
+};
 
 export interface VoiceInputState {
   supported: boolean;
@@ -82,8 +97,7 @@ export function useVoiceInput(opts: VoiceInputOptions): VoiceInputState {
   const start = useCallback(() => {
     if (!ctor || recRef.current) return;
     const rec = new ctor();
-    const locale = opts.recognitionLang
-      ?? ((opts.lang === 'ko' || opts.lang === 'kr') ? 'ko-KR' : 'en-US');
+    const locale = opts.recognitionLang ?? VOICE_LOCALES[toIsoLang(opts.lang)];
     rec.lang = locale;
     rec.continuous = true;
     rec.interimResults = true;

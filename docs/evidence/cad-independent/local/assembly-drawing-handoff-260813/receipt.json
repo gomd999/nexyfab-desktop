@@ -1,0 +1,231 @@
+{
+  "schema": "nexyfab.assembly-drawing-handoff-local-readiness.v1",
+  "generatedAt": "2026-08-22T21:59:10.270Z",
+  "status": "HOLD",
+  "commercialReady": false,
+  "localVerification": {
+    "scope": "LOCAL_SQLITE_ROUTE_AUTH_ACCESS_STORE",
+    "status": "PASS",
+    "command": "npx vitest run src/app/api/nexyfab/projects/[id]/drawing-handoffs/route.sqlite.integration.test.ts src/app/api/cron/assembly-drawing-handoff-prune/route.test.ts src/lib/cad/assemblyDrawingHandoffStore.test.ts --reporter=dot",
+    "exitCode": 0,
+    "durationMs": 7033,
+    "testFiles": [
+      "src/app/api/nexyfab/projects/[id]/drawing-handoffs/route.sqlite.integration.test.ts",
+      "src/app/api/cron/assembly-drawing-handoff-prune/route.test.ts",
+      "src/lib/cad/assemblyDrawingHandoffStore.test.ts"
+    ]
+  },
+  "claims": [
+    {
+      "id": "local_sqlite_route_store_e2e",
+      "status": "PASS",
+      "reason": "Route, signed local auth, org/project access, revision/hash CAS and immutable SQLite bytes were exercised."
+    },
+    {
+      "id": "local_sqlite_bounded_expiry_cleanup",
+      "status": "PASS",
+      "reason": "Cron authorization, durable-path admission and bounded two-pass expiry cleanup were exercised against SQLite."
+    },
+    {
+      "id": "production_scheduler_observation",
+      "status": "NOT_RUN",
+      "reason": "No production scheduler registration, invocation or repeated drain observation was supplied."
+    },
+    {
+      "id": "production_browser_cookie_org_switch",
+      "status": "NOT_RUN",
+      "reason": "No production browser session-cookie and organization-switch E2E was supplied."
+    },
+    {
+      "id": "production_postgres_transaction_concurrency",
+      "status": "NOT_RUN",
+      "reason": "No production PostgreSQL migration, transaction or concurrent retry E2E was supplied."
+    }
+  ],
+  "artifactStates": {
+    "exactBrepStep": "NOT_RUN",
+    "drawingVerification": "NOT_RUN",
+    "bomVerification": "NOT_RUN",
+    "gdtPmiVerification": "NOT_RUN",
+    "manufacturingPackage": "BLOCKED"
+  },
+  "runtimePlacement": {
+    "status": "HOLD",
+    "evidenceState": "NOT_RUN",
+    "liveEvidencePath": "docs/evidence/platform-runtime/live-observation-current.json",
+    "liveEvidenceWritten": false,
+    "claims": [
+      {
+        "id": "cloudflare-staging-deploy",
+        "state": "NOT_RUN",
+        "reason": "live evidence file is absent"
+      },
+      {
+        "id": "railway-minimal-staging-deploy",
+        "state": "NOT_RUN",
+        "reason": "live evidence file is absent"
+      },
+      {
+        "id": "authenticated-project-e2e",
+        "state": "NOT_RUN",
+        "reason": "live evidence file is absent"
+      },
+      {
+        "id": "cloudflare-railway-same-corpus-parity",
+        "state": "NOT_RUN",
+        "reason": "live evidence file is absent"
+      },
+      {
+        "id": "postgres-backup-restore",
+        "state": "NOT_RUN",
+        "reason": "live evidence file is absent"
+      },
+      {
+        "id": "r2-artifact-restore",
+        "state": "NOT_RUN",
+        "reason": "live evidence file is absent"
+      },
+      {
+        "id": "queue-dead-letter-recovery",
+        "state": "NOT_RUN",
+        "reason": "live evidence file is absent"
+      },
+      {
+        "id": "collaboration-snapshot-recovery",
+        "state": "NOT_RUN",
+        "reason": "live evidence file is absent"
+      },
+      {
+        "id": "independent-rollback",
+        "state": "NOT_RUN",
+        "reason": "live evidence file is absent"
+      },
+      {
+        "id": "thirty-day-cost-performance-error-observation",
+        "state": "NOT_RUN",
+        "reason": "live evidence file is absent"
+      }
+    ]
+  },
+  "sourceBindings": [
+    {
+      "path": "package-lock.json",
+      "sha256": "d27bddc997f10ade5cf94722b17c70a4e958b1e8f631f1e807a3ac4c51289f26"
+    },
+    {
+      "path": "scripts/build-assembly-drawing-handoff-readiness.mjs",
+      "sha256": "e75116732ca02451b18f12bb24d694afa9fa1443e38af98ecf9fdb1ef747a82d"
+    },
+    {
+      "path": "scripts/build-assembly-drawing-handoff-readiness.test.mjs",
+      "sha256": "bbc271c6980e02176c3b86d0a33c21ac7518a6fa1a5ee0d8200152b571572e33"
+    },
+    {
+      "path": "config/platform/runtime-placement.v1.json",
+      "sha256": "ab94d6acd20541c8ae76928582c8f1a4a4792c680033f961c3abf8b39c7eb242"
+    },
+    {
+      "path": "scripts/platform/evaluate-runtime-placement-readiness.mjs",
+      "sha256": "e0f59b56a25801710408f81e52c348b8f3fd69af1ca9c64098f13b1651775b1c"
+    },
+    {
+      "path": "src/app/[lang]/shape-generator/assembly/drawingHandoff.ts",
+      "sha256": "4716832985c4c61f2964598e36f321c674100f63350717417a6e302c34f7f6fb"
+    },
+    {
+      "path": "src/app/[lang]/shape-generator/assembly/drawingHandoff.test.ts",
+      "sha256": "28cb580f155b5a87e1086ed0c00051ae207fd4c3326acbefc56fbf38f56b49cf"
+    },
+    {
+      "path": "src/app/[lang]/shape-generator/assembly/serverDrawingHandoff.ts",
+      "sha256": "c325fa5bf66538e23e5508d1f04b44ddf6d049f3e078392a4dcaafd7e64b7fba"
+    },
+    {
+      "path": "src/app/[lang]/shape-generator/assembly/drawingHandoff.ui.test.tsx",
+      "sha256": "b9fef7aea2a1e23e88045606090f842b79aec97ba6457d2f0edc28eb382d931e"
+    },
+    {
+      "path": "src/app/[lang]/shape-generator/assembly/_content.tsx",
+      "sha256": "dd8cd4a6a3eb8a930289df2c77065008ed75703675f7dd119515ae453cd31096"
+    },
+    {
+      "path": "src/app/[lang]/shape-generator/drawing/_content.tsx",
+      "sha256": "1ae7cbe87e0c7372b796e7efb913617e04952853654a7dbd13c457547c66dad6"
+    },
+    {
+      "path": "src/app/[lang]/shape-generator/drawing/assemblyHandoff.test.tsx",
+      "sha256": "6ca1133bcb754f5d3351c8cb21678ea386beb38d5dc4c77235b8f941d682d162"
+    },
+    {
+      "path": "src/lib/cad/assemblyDrawingHandoffStore.ts",
+      "sha256": "d5d6486e3c991f6ef5e9e44c6132d75ed0c2d62e4b6d9fb392cde981a8c876b8"
+    },
+    {
+      "path": "src/lib/cad/assemblyDrawingHandoffStore.test.ts",
+      "sha256": "95410d9772ea1c7b33439958013abe729a7cf229f548cf4d959296a34610fe52"
+    },
+    {
+      "path": "src/app/api/nexyfab/projects/[id]/drawing-handoffs/route.ts",
+      "sha256": "fd6930646309021e43af3c0b0b19582e8aaac3ede638d6baf5fe15d3e2b53e26"
+    },
+    {
+      "path": "src/app/api/nexyfab/projects/[id]/drawing-handoffs/route.test.ts",
+      "sha256": "45e686a1537ae6929ff7e366075244b4a5a5a775adc8773e3a34d052744b9566"
+    },
+    {
+      "path": "src/app/api/nexyfab/projects/[id]/drawing-handoffs/route.sqlite.integration.test.ts",
+      "sha256": "b9d0d49e9541ffd23417347aaf11d5f30cad284a48b67742b2e5ef3d5d3ddd61"
+    },
+    {
+      "path": "src/app/api/nexyfab/projects/[id]/drawing-handoffs/[handoffId]/route.ts",
+      "sha256": "e23dca4efe61c826c5d22bdc1b3fa29ef313071397e0fd366cea06679e509173"
+    },
+    {
+      "path": "src/app/api/nexyfab/projects/[id]/drawing-handoffs/[handoffId]/route.test.ts",
+      "sha256": "85f0657ee7f7be553505c1aa6195b18780d18be5be87590ccaadc9b8fa9bb802"
+    },
+    {
+      "path": "src/app/api/cron/assembly-drawing-handoff-prune/route.ts",
+      "sha256": "2bb1a064610349d548cfd24e8c3abb76435a5486d9e90dcbec57e8ef18e13ddd"
+    },
+    {
+      "path": "src/app/api/cron/assembly-drawing-handoff-prune/route.test.ts",
+      "sha256": "b325ca5c1d7913dd26b47496a3330e71576f8f05e19b17526376da424b38658d"
+    },
+    {
+      "path": "src/lib/db-migrations-wave-2-sqlite.sql",
+      "sha256": "aaaeb45f18943f552491e5def362be260cb04c1b15c5af034184f12dd83ff30a"
+    },
+    {
+      "path": "src/lib/db-postgres-migrations.sql",
+      "sha256": "6a1c0d3ae98e7b13f6dff6d4c38071b61674b23027fd571553ce3a594e0b26cc"
+    },
+    {
+      "path": "src/lib/db-adapter.ts",
+      "sha256": "65d39a20667b05c0e593a4ca248ffd9777ecf0e72ca424c14439aee0eeb18502"
+    },
+    {
+      "path": "docs/strategy/RAILWAY_CRON_SETUP.md",
+      "sha256": "60f37c075ff8b2836d0ef4815d0372e396d16d3ddae77103950be2c70b7755b5"
+    }
+  ],
+  "proposedInternalVerifierBindings": [
+    "scripts/build-assembly-drawing-handoff-readiness.mjs",
+    "scripts/build-assembly-drawing-handoff-readiness.test.mjs",
+    "src/lib/cad/assemblyDrawingHandoffStore.ts",
+    "src/lib/cad/assemblyDrawingHandoffStore.test.ts",
+    "src/app/api/nexyfab/projects/[id]/drawing-handoffs/route.ts",
+    "src/app/api/nexyfab/projects/[id]/drawing-handoffs/route.test.ts",
+    "src/app/api/nexyfab/projects/[id]/drawing-handoffs/route.sqlite.integration.test.ts",
+    "src/app/api/nexyfab/projects/[id]/drawing-handoffs/[handoffId]/route.ts",
+    "src/app/api/nexyfab/projects/[id]/drawing-handoffs/[handoffId]/route.test.ts",
+    "src/app/api/cron/assembly-drawing-handoff-prune/route.ts",
+    "src/app/api/cron/assembly-drawing-handoff-prune/route.test.ts",
+    "src/app/[lang]/shape-generator/assembly/serverDrawingHandoff.ts",
+    "src/app/[lang]/shape-generator/assembly/drawingHandoff.ui.test.tsx",
+    "src/app/[lang]/shape-generator/drawing/assemblyHandoff.test.tsx",
+    "src/lib/db-migrations-wave-2-sqlite.sql",
+    "src/lib/db-postgres-migrations.sql"
+  ],
+  "evidenceRootSha256": "a72f2e24b87031105aa5dee863b35f938d6957f8a29dd2358ade40d0903a2a3e"
+}

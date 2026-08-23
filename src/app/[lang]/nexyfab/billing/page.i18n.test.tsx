@@ -35,4 +35,11 @@ describe('fmtKRW — currency unit suffix is language-branched', () => {
     expect(fmtKRW(null, true)).toBe('무료');
     expect(fmtKRW(null, false)).toBe('Free');
   });
+
+  it('localizes free labels for every supported locale', () => {
+    expect(fmtKRW(0, 'ja')).toBe('無料');
+    expect(fmtKRW(0, 'cn')).toBe('免费');
+    expect(fmtKRW(0, 'es')).toBe('Gratis');
+    expect(fmtKRW(0, 'ar')).toBe('مجاني');
+  });
 });

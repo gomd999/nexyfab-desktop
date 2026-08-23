@@ -1126,7 +1126,7 @@ describe('FeatureTreePlannerPanel', () => {
       ).toBe('SCAD 복사');
     });
 
-    it('non-ko/en langs fall back to English explainer text', () => {
+    it('Japanese uses the localized explainer text', () => {
       render(
         <FeatureTreePlannerPanel
           lang="ja"
@@ -1140,7 +1140,7 @@ describe('FeatureTreePlannerPanel', () => {
       ).toBe('ツリーを説明');
       fireEvent.click(screen.getByTestId('planner-explain-button'));
       const intent = screen.getByTestId('planner-explain-design-intent');
-      expect(intent.textContent).toMatch(/extrude/i);
+      expect(intent.textContent).toMatch(/押し出し/);
     });
 
     it('warnings panel uses role="alert" when warnings exist', () => {

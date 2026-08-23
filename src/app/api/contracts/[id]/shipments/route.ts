@@ -5,6 +5,9 @@ import { checkOrigin } from '@/lib/csrf';
 import { trackShipment, detectCarrier, type Carrier } from '@/lib/shipping-tracker';
 import { z } from 'zod';
 import { triggerWebhooks } from '@/lib/webhook-delivery';
+import { boundedJsonError, readBoundedJson } from '@/lib/boundedJsonBody';
+
+const MAX_SHIPMENT_BODY_BYTES = 32 * 1024;
 
 export const dynamic = 'force-dynamic';
 
@@ -79,7 +82,10 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     carrier: z.enum(['cj', 'fedex', 'dhl', 'ems', 'unknown']).optional(),
     label: z.string().max(100).optional(),
   });
-  const parsed = schema.safeParse(await req.json().catch(() => ({})));
+  let raw: unknown = {};
+  try { raw = await readBoundedJson(req, MAX_SHIPMENT_BODY_BYTES); }
+  catch (error) { if (boundedJsonError(error)?.code === 'PAYLOAD_TOO_LARGE') return NextResponse.json({ error: 'Request too large', code: 'PAYLOAD_TOO_LARGE' }, { status: 413 }); }
+  const parsed = schema.safeParse(raw);
   if (!parsed.success) return NextResponse.json({ error: parsed.error.issues[0]?.message }, { status: 400 });
 
   const carrier: Carrier = parsed.data.carrier ?? detectCarrier(parsed.data.trackingNumber);
@@ -120,7 +126,10 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   if (!authUser) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   const { id: contractId } = await params;
 
-  const { shipmentId } = await req.json().catch(() => ({})) as { shipmentId?: string };
+  let body: { shipmentId?: string } = {};
+  try { body = await readBoundedJson(req, MAX_SHIPMENT_BODY_BYTES); }
+  catch (error) { if (boundedJsonError(error)?.code === 'PAYLOAD_TOO_LARGE') return NextResponse.json({ error: 'Request too large', code: 'PAYLOAD_TOO_LARGE' }, { status: 413 }); }
+  const { shipmentId } = body;
   if (!shipmentId) return NextResponse.json({ error: 'shipmentId required' }, { status: 400 });
 
   await ensureTable();

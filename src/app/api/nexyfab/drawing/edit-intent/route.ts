@@ -14,9 +14,12 @@ import { chatCompletion, AiNotConfiguredError, type ChatMessage } from '@/lib/ai
 import { rateLimit } from '@/lib/rate-limit';
 import { getTrustedClientIp } from '@/lib/client-ip';
 import { guardStudioAi } from '@/lib/studio-ai-guard';
+import { localizedApiMessage, resolveServerLocale } from '@/lib/i18n/serverLocale';
+import { boundedJsonError, readBoundedJson } from '@/lib/boundedJsonBody';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
+const MAX_BODY_BYTES = 256 * 1024;
 
 type ParamSpec = { name: string; current: number; min?: number; max?: number; unit?: string };
 type Edit = { param: string; op: 'set' | 'delta'; value: number };
@@ -62,33 +65,37 @@ const LLM_SYS = `너는 CAD 편집 인텐트 변환기다. 사용자의 한 문�
 규칙: 목록에 없는 파라미터 금지. 애매하면 빈 배열 []. 값을 지어내지 말 것. m/cm는 mm로 환산.`;
 
 export async function POST(req: NextRequest): Promise<NextResponse> {
+  let body: { utterance?: string; allowedParams?: ParamSpec[]; selectedParam?: string; lang?: string } = {};
+  let bodyError: ReturnType<typeof boundedJsonError> = null;
+  try { body = await readBoundedJson<typeof body>(req, MAX_BODY_BYTES); }
+  catch (error) { bodyError = boundedJsonError(error); }
+  const locale = resolveServerLocale(req, body.lang ?? req.nextUrl.searchParams.get('lang'));
   const ip = getTrustedClientIp(req.headers);
   const rl = rateLimit(`drawing-editintent:${ip}`, 30, 60_000);
-  if (!rl.allowed) return NextResponse.json({ ok: false, error: '요청이 너무 많습니다.' }, { status: 429 });
+  if (!rl.allowed) return NextResponse.json({ ok: false, error: localizedApiMessage(locale, 'rateLimited'), outputLanguage: locale.route }, { status: 429 });
   // 구독 정합(2026-07-16): 로그인=shape_chat 슬롯+예산, 익명=합산 리밋(게스트 데모 유지)
   const planGuard = await guardStudioAi(req);
   if (planGuard) return planGuard;
-
-  let body: { utterance?: string; allowedParams?: ParamSpec[]; selectedParam?: string };
-  try {
-    body = (await req.json()) as typeof body;
-  } catch {
-    return NextResponse.json({ ok: false, error: 'invalid json' }, { status: 400 });
+  if (bodyError) {
+    return NextResponse.json(
+      { ok: false, error: localizedApiMessage(locale, 'badRequest'), outputLanguage: locale.route },
+      { status: bodyError.code === 'PAYLOAD_TOO_LARGE' ? 413 : 400 },
+    );
   }
   const utterance = (body.utterance ?? '').slice(0, 300);
   const params = Array.isArray(body.allowedParams) ? body.allowedParams.slice(0, 40) : [];
   if (!utterance || !params.length) {
-    return NextResponse.json({ ok: false, error: 'utterance·allowedParams 필요' }, { status: 400 });
+    return NextResponse.json({ ok: false, error: localizedApiMessage(locale, 'messageRequired'), outputLanguage: locale.route }, { status: 400 });
   }
 
   // 1) 정규식 우선 (결정론)
   const rex = parseRegex(utterance, body.selectedParam, params);
-  if (rex) return NextResponse.json({ ok: true, edits: rex, source: 'regex' });
+  if (rex) return NextResponse.json({ ok: true, edits: rex, source: 'regex', outputLanguage: locale.route });
 
   // 2) LLM 폴백 — allowedParams 제약 + JSON 강제 + 사후 검증(결정론 게이트)
   try {
     const messages: ChatMessage[] = [
-      { role: 'system', content: LLM_SYS },
+      { role: 'system', content: `${LLM_SYS}\n[OUTPUT LANGUAGE CONTRACT] Keep JSON keys, parameter identifiers, operation names, and numeric values unchanged.` },
       {
         role: 'user',
         content: `허용 파라미터: ${JSON.stringify(params.map((p) => ({ name: p.name, current: p.current, min: p.min, max: p.max })))}\n선택됨: ${body.selectedParam ?? '없음'}\n문장: ${utterance}`,
@@ -97,22 +104,23 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     const res = await chatCompletion({ messages, maxTokens: 300, temperature: 0 });
     const text = (res as { text?: string; content?: string }).text ?? (res as { content?: string }).content ?? '';
     const jsonMatch = text.match(/\[[\s\S]*\]/);
-    if (!jsonMatch) return NextResponse.json({ ok: false, error: '해석 실패 — 더 구체적으로 말해 주세요(예: "거더 춤 200 줄여")' });
+    if (!jsonMatch) return NextResponse.json({ ok: false, error: localizedApiMessage(locale, 'invalidAiResponse'), outputLanguage: locale.route });
     let edits: Edit[];
     try {
       edits = JSON.parse(jsonMatch[0]) as Edit[];
     } catch {
-      return NextResponse.json({ ok: false, error: 'LLM 출력 파싱 실패 — 재시도 요망' });
+      return NextResponse.json({ ok: false, error: localizedApiMessage(locale, 'invalidAiResponse'), outputLanguage: locale.route });
     }
     // 사후 검증: 허용 목록·연산·수치 (지어낸 파라미터 거부)
     const names = new Set(params.map((p) => p.name));
     const valid = edits.filter((e) => e && names.has(e.param) && (e.op === 'set' || e.op === 'delta') && Number.isFinite(e.value));
-    if (!valid.length) return NextResponse.json({ ok: false, error: '허용 파라미터 내 해석 불가 — 정직 거부' });
-    return NextResponse.json({ ok: true, edits: valid, source: 'llm', note: 'LLM 해석 — 적용 전 값 확인 권장. 한계는 형상 게이트가 최종 판정.' });
+    if (!valid.length) return NextResponse.json({ ok: false, error: localizedApiMessage(locale, 'badRequest'), outputLanguage: locale.route });
+    return NextResponse.json({ ok: true, edits: valid, source: 'llm', note: localizedApiMessage(locale, 'freeformSummary'), outputLanguage: locale.route });
   } catch (e) {
     if (e instanceof AiNotConfiguredError) {
-      return NextResponse.json({ ok: false, error: 'AI 미구성 — 정규식 패턴(예: "200 줄여", "3000으로")만 지원' });
+      return NextResponse.json({ ok: false, error: localizedApiMessage(locale, 'providerNotConfigured'), outputLanguage: locale.route });
     }
-    return NextResponse.json({ ok: false, error: 'edit-intent failed: ' + (e instanceof Error ? e.message : String(e)) }, { status: 502 });
+    console.error('edit-intent provider error:', e);
+    return NextResponse.json({ ok: false, error: localizedApiMessage(locale, 'providerFailed'), outputLanguage: locale.route }, { status: 502 });
   }
 }

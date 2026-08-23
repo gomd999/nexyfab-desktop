@@ -4,6 +4,7 @@ import React, { useState, useCallback } from 'react';
 import type { DimensionAdvice, UseCase, LoadContext, MaterialAdvice } from './aiDimensionAdvisor';
 import { useFreemium } from '@/hooks/useFreemium';
 import UpgradeModal from '@/components/nexyfab/UpgradeModal';
+import { createCommercialLocalizer } from '@/lib/i18n/commercialLocalizer';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -299,7 +300,7 @@ export default function DimensionAdvisorPanel({
   onClose,
 }: DimensionAdvisorPanelProps) {
   const t = dict[langMap[lang] ?? 'en'];
-  const isKo = (langMap[lang] ?? 'en') === 'ko';
+  const L = createCommercialLocalizer(langMap[lang] ?? 'en');
   const { check, consume, getRemainingCount } = useFreemium();
   const [showUpgrade, setShowUpgrade] = useState(false);
   const [upgradeOverLimit, setUpgradeOverLimit] = useState(false);
@@ -622,7 +623,7 @@ export default function DimensionAdvisorPanel({
               </span>
             </div>
             <div style={{ fontSize: 11, color: C.textDim, lineHeight: 1.5, marginBottom: 6 }}>
-              {isKo ? materialAdvice.reasonKo : materialAdvice.reasonEn}
+              {L(materialAdvice.reasonKo, materialAdvice.reasonEn)}
             </div>
             {materialAdvice.alternatives.length > 0 && (
               <div style={{ fontSize: 10, color: C.textDim }}>
@@ -665,7 +666,7 @@ export default function DimensionAdvisorPanel({
               const isApplied = applied.has(item.param);
               const delta = item.suggestedValue - item.currentValue;
               const deltaSign = delta > 0 ? '+' : '';
-              const reason = isKo ? item.reasonKo : item.reason;
+              const reason = L(item.reasonKo, item.reason);
 
               return (
                 <div

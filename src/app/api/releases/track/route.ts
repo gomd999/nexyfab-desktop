@@ -5,8 +5,10 @@
  */
 import { NextRequest, NextResponse } from 'next/server';
 import { getDbAdapter } from '@/lib/db-adapter';
+import { readBoundedJson } from '@/lib/boundedJsonBody';
 
 export const dynamic = 'force-dynamic';
+const MAX_JSON_BODY_BYTES = 16 * 1024;
 
 const VALID_PLATFORMS = ['win_x64', 'mac_aarch64', 'mac_x64', 'linux_x64'] as const;
 type Platform = (typeof VALID_PLATFORMS)[number];
@@ -20,7 +22,7 @@ const COL: Record<Platform, string> = {
 
 export async function POST(req: NextRequest) {
   try {
-    const { platform, version } = await req.json() as { platform: string; version?: string };
+    const { platform, version } = await readBoundedJson<{ platform: string; version?: string }>(req, MAX_JSON_BODY_BYTES);
 
     if (!VALID_PLATFORMS.includes(platform as Platform)) {
       return NextResponse.json({ error: 'invalid platform' }, { status: 400 });

@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { usePartnerLang } from '../_lib/partnerLang';
 import { registerDict } from '../_lib/dicts/register';
 import { executeRecaptchaV3 } from '@/lib/recaptcha-client';
+import { manufacturingTerm } from '@/lib/i18n/manufacturingTerms';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -107,7 +108,7 @@ function Select({ value, onChange, children, ...props }: SelectProps) {
   );
 }
 
-function CheckboxGroup({ options, selected, onChange }: { options: string[]; selected: string[]; onChange: (val: string[]) => void }) {
+function CheckboxGroup({ options, selected, onChange, lang }: { options: string[]; selected: string[]; onChange: (val: string[]) => void; lang: string }) {
   return (
     <div className="flex flex-wrap gap-2">
       {options.map(opt => {
@@ -123,7 +124,7 @@ function CheckboxGroup({ options, selected, onChange }: { options: string[]; sel
                 : 'bg-gray-50 text-gray-600 border-gray-200 hover:border-blue-300 hover:bg-blue-50'
             }`}
           >
-            {opt}
+            {manufacturingTerm(opt, lang)}
           </button>
         );
       })}
@@ -404,6 +405,7 @@ export default function PartnerRegisterPage() {
                 <FieldLabel required>{t.step3FieldProcesses}</FieldLabel>
                 <CheckboxGroup
                   options={PROCESS_OPTIONS}
+                  lang={lang}
                   selected={form.processes}
                   onChange={v => set('processes', v)}
                 />
@@ -414,6 +416,7 @@ export default function PartnerRegisterPage() {
                 <FieldLabel>{t.step3FieldCerts}</FieldLabel>
                 <CheckboxGroup
                   options={CERT_OPTIONS}
+                  lang={lang}
                   selected={form.certifications}
                   onChange={v => set('certifications', v)}
                 />
@@ -432,6 +435,7 @@ export default function PartnerRegisterPage() {
                 <FieldLabel required>{t.step3FieldIndustries}</FieldLabel>
                 <CheckboxGroup
                   options={INDUSTRY_OPTIONS}
+                  lang={lang}
                   selected={form.industries}
                   onChange={v => set('industries', v)}
                 />

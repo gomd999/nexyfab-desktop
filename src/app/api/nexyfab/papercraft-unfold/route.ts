@@ -3,6 +3,12 @@ import { rateLimit } from '@/lib/rate-limit';
 import { getTrustedClientIp } from '@/lib/client-ip';
 import { segmentsToDxf, segmentsToSvg } from '@/lib/papercraft/netDxf';
 import { unfoldMesh } from '@/lib/papercraft/unfoldMesh';
+import { boundedJsonError, readBoundedJson } from '@/lib/boundedJsonBody';
+
+// Match the generic API proxy ceiling. JSON decoding and number arrays remain
+// in-memory, so larger meshes must be uploaded as binary worker artifacts.
+const MAX_BODY_BYTES = 16 * 1024 * 1024;
+const MAX_MESH_SCALARS = 1_000_000;
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -18,12 +24,16 @@ export async function POST(req: NextRequest) {
   if (!rateLimit(`papercraft-unfold:${ip}`, 30, 3_600_000).allowed) {
     return NextResponse.json({ error: 'Too many requests', code: 'RATE_LIMIT' }, { status: 429 });
   }
-  const b = (await req.json().catch(() => ({}))) as { positions?: number[]; indices?: number[] | null; tab?: number; thickness?: number };
+  let b: { positions?: number[]; indices?: number[] | null; tab?: number; thickness?: number } = {};
+  try { b = await readBoundedJson(req, MAX_BODY_BYTES); }
+  catch (error) {
+    if (boundedJsonError(error)?.code === 'PAYLOAD_TOO_LARGE') return NextResponse.json({ error: 'geometry too large', code: 'TOO_LARGE' }, { status: 413 });
+  }
   const positions = Array.isArray(b.positions) ? b.positions : null;
   if (!positions || positions.length < 9) {
     return NextResponse.json({ error: 'positions (flat [x,y,z,…], ≥1 triangle) required', code: 'NO_GEOMETRY' }, { status: 400 });
   }
-  if (positions.length > 4_000_000) {
+  if (positions.length + (Array.isArray(b.indices) ? b.indices.length : 0) > MAX_MESH_SCALARS) {
     return NextResponse.json({ error: 'geometry too large', code: 'TOO_LARGE' }, { status: 413 });
   }
   const indices = Array.isArray(b.indices) && b.indices.length >= 3 ? b.indices : null;

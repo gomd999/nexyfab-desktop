@@ -1,9 +1,18 @@
 'use client';
 
 import { useEffect, useState, useCallback, useMemo } from 'react';
+import { useAdminI18n } from '../AdminI18nProvider';
 
 interface SeriesPoint { day: string; cents: number; calls: number }
 interface TopUser { userId: string; cents: number; calls: number }
+interface CacheStats {
+  tokensIn: number;
+  cachedTokens: number;
+  cacheWriteTokens: number;
+  cacheMissTokens: number;
+  calls: number;
+  cacheCalls: number;
+}
 interface ApiResponse {
   days: number;
   series: SeriesPoint[];
@@ -11,6 +20,9 @@ interface ApiResponse {
   products?: Array<{ product: string; cents: number; calls: number }>;
   userId?: string;
   product?: string;
+  cacheSummary?: CacheStats;
+  cacheProviders?: Array<CacheStats & { provider: string }>;
+  cacheScope?: 'current-filter' | 'all-products';
 }
 
 function fmtCents(c: number) {
@@ -48,6 +60,15 @@ function exportCsv(data: ApiResponse) {
       lines.push([p.product, p.cents.toFixed(2), p.calls].map(v => csvEscape(String(v))).join(','));
     }
   }
+  if (data.cacheProviders && data.cacheProviders.length > 0) {
+    lines.push('');
+    lines.push('# Provider cache');
+    lines.push(['provider', 'tokensIn', 'cachedTokens', 'cacheWriteTokens', 'cacheMissTokens', 'calls', 'cacheCalls'].join(','));
+    for (const p of data.cacheProviders) {
+      lines.push([p.provider, p.tokensIn, p.cachedTokens, p.cacheWriteTokens, p.cacheMissTokens, p.calls, p.cacheCalls]
+        .map(v => csvEscape(String(v))).join(','));
+    }
+  }
   const blob = new Blob([lines.join('\r\n')], { type: 'text/csv;charset=utf-8' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
@@ -60,6 +81,7 @@ function exportCsv(data: ApiResponse) {
 }
 
 export default function AIUsagePage() {
+  const { copy } = useAdminI18n();
   const [data, setData] = useState<ApiResponse | null>(null);
   const [days, setDays] = useState(30);
   const [userFilter, setUserFilter] = useState('');
@@ -114,12 +136,15 @@ export default function AIUsagePage() {
 
   const total = data?.series.reduce((s, p) => s + p.cents, 0) ?? 0;
   const totalCalls = data?.series.reduce((s, p) => s + p.calls, 0) ?? 0;
+  const cacheHitRate = data?.cacheSummary && data.cacheSummary.tokensIn > 0
+    ? data.cacheSummary.cachedTokens / data.cacheSummary.tokensIn * 100
+    : 0;
 
   return (
     <div className="min-h-screen bg-gray-950 text-gray-100 p-6">
       <div className="max-w-5xl mx-auto space-y-4">
         <div className="flex items-center justify-between flex-wrap gap-3">
-          <h1 className="text-2xl font-semibold">AI Usage Timeseries</h1>
+          <h1 className="text-2xl font-semibold">{copy.pageTitles.aiUsage}</h1>
           <div className="flex items-center gap-2 text-sm flex-wrap">
             <select
               value={productFilter}
@@ -253,6 +278,31 @@ export default function AIUsagePage() {
                 );
               })()}
             </section>
+
+            {data.cacheSummary && (
+              <section className="bg-gray-900 border border-gray-800 rounded-lg p-4 space-y-3">
+                <div className="flex items-center justify-between gap-3">
+                  <h2 className="text-sm font-semibold text-gray-300">Provider prompt cache</h2>
+                  {data.cacheScope === 'all-products' && (
+                    <span className="text-xs text-amber-400">Cache totals cover all products</span>
+                  )}
+                </div>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                  <div><div className="text-xs text-gray-500">Token hit rate</div><div className="text-xl font-mono font-bold">{cacheHitRate.toFixed(1)}%</div></div>
+                  <div><div className="text-xs text-gray-500">Cached input</div><div className="text-xl font-mono font-bold">{data.cacheSummary.cachedTokens.toLocaleString()}</div></div>
+                  <div><div className="text-xs text-gray-500">Cache writes</div><div className="text-xl font-mono font-bold">{data.cacheSummary.cacheWriteTokens.toLocaleString()}</div></div>
+                  <div><div className="text-xs text-gray-500">Hit calls</div><div className="text-xl font-mono font-bold">{data.cacheSummary.cacheCalls.toLocaleString()} / {data.cacheSummary.calls.toLocaleString()}</div></div>
+                </div>
+                {data.cacheProviders && data.cacheProviders.length > 0 && (
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-xs">
+                      <thead className="text-gray-500 border-b border-gray-800"><tr><th className="text-left py-1">Provider</th><th className="text-right py-1">Cached</th><th className="text-right py-1">Written</th><th className="text-right py-1">Missed</th><th className="text-right py-1">Hit calls</th></tr></thead>
+                      <tbody>{data.cacheProviders.map(row => <tr key={row.provider} className="border-b border-gray-800/40"><td className="py-1 font-mono">{row.provider}</td><td className="py-1 text-right font-mono">{row.cachedTokens.toLocaleString()}</td><td className="py-1 text-right font-mono">{row.cacheWriteTokens.toLocaleString()}</td><td className="py-1 text-right font-mono">{row.cacheMissTokens.toLocaleString()}</td><td className="py-1 text-right font-mono">{row.cacheCalls.toLocaleString()} / {row.calls.toLocaleString()}</td></tr>)}</tbody>
+                    </table>
+                  </div>
+                )}
+              </section>
+            )}
 
             {!data.userId && data.topUsers.length > 0 && (
               <section className="bg-gray-900 border border-gray-800 rounded-lg p-4 space-y-2">

@@ -1,0 +1,89 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://nexyfab.com/schemas/mechanical-direct-design-campaign.v1.json",
+  "title": "NexyFab mechanical direct-design campaign receipt",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "releaseChannel", "evidenceRootId", "generatedAt", "ok", "cases", "summary"],
+  "$defs": {
+    "sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+    "artifact": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "sha256"],
+      "properties": {
+        "path": { "type": "string", "minLength": 1 },
+        "sha256": { "$ref": "#/$defs/sha256" }
+      }
+    }
+  },
+  "properties": {
+    "schema": { "const": "nexyfab.mechanical-direct-design-campaign.v1" },
+    "releaseChannel": { "const": "mechanical-core" },
+    "evidenceRootId": { "$ref": "#/$defs/sha256" },
+    "generatedAt": { "type": "string", "format": "date-time" },
+    "ok": { "type": "boolean" },
+    "cases": {
+      "type": "array",
+      "minItems": 30,
+      "maxItems": 30,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["caseId", "family", "primaryFeature", "status"],
+        "properties": {
+          "caseId": { "type": "string", "minLength": 1 },
+          "family": { "enum": ["machined", "sheet_metal", "rotational_sweep_loft", "pattern_multibody_boolean"] },
+          "primaryFeature": { "type": "string", "minLength": 1 },
+          "status": { "enum": ["pending", "pass", "fail"] },
+          "designRevisionSha256": { "$ref": "#/$defs/sha256" },
+          "requirementsSha256": { "$ref": "#/$defs/sha256" },
+          "cycles": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["nfab", "step"],
+            "properties": { "nfab": { "const": 3 }, "step": { "const": 3 } }
+          },
+          "checks": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["kernelValid", "nonEmpty", "stableFeatureIds", "lockedDimensionsPreserved", "nfabThreeCycles", "stepThreeCycles", "drawingReleased", "bomReconciled", "revisionBound"],
+            "properties": {
+              "kernelValid": { "const": true }, "nonEmpty": { "const": true },
+              "stableFeatureIds": { "const": true }, "lockedDimensionsPreserved": { "const": true },
+              "nfabThreeCycles": { "const": true }, "stepThreeCycles": { "const": true },
+              "drawingReleased": { "const": true }, "bomReconciled": { "const": true },
+              "revisionBound": { "const": true }
+            }
+          },
+          "artifacts": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["requirements", "nfab", "step", "drawing", "bom", "manifest", "intentEvaluation"],
+            "properties": {
+              "requirements": { "$ref": "#/$defs/artifact" }, "nfab": { "$ref": "#/$defs/artifact" },
+              "step": { "$ref": "#/$defs/artifact" }, "drawing": { "$ref": "#/$defs/artifact" },
+              "bom": { "$ref": "#/$defs/artifact" }, "manifest": { "$ref": "#/$defs/artifact" },
+              "intentEvaluation": { "$ref": "#/$defs/artifact" }
+            }
+          }
+        },
+        "allOf": [{
+          "if": { "properties": { "status": { "const": "pass" } }, "required": ["status"] },
+          "then": { "required": ["designRevisionSha256", "requirementsSha256", "cycles", "checks", "artifacts"] }
+        }]
+      }
+    },
+    "summary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["cases", "passed", "pending", "failed", "intents", "falseVerified"],
+      "properties": {
+        "cases": { "const": 30 }, "passed": { "type": "integer", "minimum": 0, "maximum": 30 },
+        "pending": { "type": "integer", "minimum": 0, "maximum": 30 },
+        "failed": { "type": "integer", "minimum": 0, "maximum": 30 },
+        "intents": { "type": "integer", "minimum": 0 }, "falseVerified": { "const": 0 }
+      }
+    }
+  }
+}

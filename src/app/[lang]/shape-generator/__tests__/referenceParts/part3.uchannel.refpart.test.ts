@@ -18,7 +18,7 @@ import { cacheClear } from '../../features/pipelineCache';
 import { getFlatPatternMetadata, applyFlange } from '../../features/sheetMetal';
 import { applyTab } from '../../features/tab';
 import { getKFactor, bendAllowance } from '../../features/sheetMetalTables';
-import { flatPatternToDXFEntities, exportDXF } from '../../io/dxfExporter';
+import { buildFlatPatternDXFText, flatPatternToDXFEntities, exportDXF } from '../../io/dxfExporter';
 import { generateDrawing } from '../../analysis/autoDrawing';
 import {
   buildDrawingSvgString,
@@ -266,16 +266,12 @@ describeMaybe('REF-PART 3 · sheet-metal U-channel chassis', () => {
     expect(notes.length).toBeGreaterThanOrEqual(3); // label + table header + row
     console.log(`[REF-PART 3] flat DXF IR: ${entities.length} entities (${cut.length} cut, ${bendLines.length} bend, ${notes.length} annotate)`);
 
-    // exportDXF resolves headlessly but produces NOTHING observable (downloadBlob
-    // early-returns without window) — there is no public DXF-string API.
+    // The browser download path remains available; the public text serializer
+    // makes the same deterministic content observable to server/CI callers.
+    const text = buildFlatPatternDXFText({ geometry: res.geometry, ...meta! });
+    expect(text).toContain('BEND TABLE');
+    expect(text).toContain('BEND_UP');
     await expect(exportDXF(entities, 'ref-part-3')).resolves.toBeUndefined();
-    recordFinding({
-      part: 'P3 U-channel',
-      severity: 'minor',
-      title: 'no headless DXF text accessor for the flat pattern',
-      detail: 'io/dxfExporter.ts keeps generateDXFText private; exportDXF → downloadBlob no-ops without a DOM '
-        + '(lib/platform/downloadBlob.ts:15). Server-side / CI export of the flat-pattern DXF text is impossible.',
-    });
   }, 60_000);
 
   it('sheet IR + real drawing exporters (SVG / DXF / PDF) for the U-channel', async () => {

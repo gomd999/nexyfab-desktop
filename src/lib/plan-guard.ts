@@ -31,6 +31,7 @@ export async function checkMonthlyLimit(
   userId: string,
   plan: string,
   metric: string,
+  orgId?: string | null,
 ): Promise<{ ok: boolean; used: number; limit: number }> {
   const limits = PLAN_MONTHLY_LIMITS[plan] ?? PLAN_MONTHLY_LIMITS.free;
   const limit = limits[metric] ?? -1;
@@ -40,10 +41,11 @@ export async function checkMonthlyLimit(
 
   const { getDbAdapter } = await import('./db-adapter');
   const db = getDbAdapter();
+  await db.execute('ALTER TABLE nf_usage_events ADD COLUMN org_id TEXT').catch(() => {});
   const monthStart = Date.now() - 30 * 86_400_000;
   const row = await db.queryOne<{ c: number }>(
-    `SELECT COUNT(*) as c FROM nf_usage_events WHERE user_id = ? AND metric = ? AND created_at > ?`,
-    userId, metric, monthStart,
+    `SELECT COUNT(*) as c FROM nf_usage_events WHERE ${orgId ? 'org_id = ?' : 'user_id = ? AND org_id IS NULL'} AND metric = ? AND created_at > ?`,
+    orgId ?? userId, metric, monthStart,
   );
   const used = row?.c ?? 0;
   return { ok: used < limit, used, limit };
@@ -58,6 +60,7 @@ export async function consumeMonthlyMetricSlot(
   plan: string,
   metric: string,
   metadata?: Record<string, unknown>,
+  orgId?: string | null,
 ): Promise<{ ok: boolean; used: number; limit: number }> {
   const limits = PLAN_MONTHLY_LIMITS[plan] ?? PLAN_MONTHLY_LIMITS.free;
   const limit = limits[metric] ?? -1;
@@ -66,12 +69,13 @@ export async function consumeMonthlyMetricSlot(
 
   const { getDbAdapter } = await import('./db-adapter');
   const db = getDbAdapter();
+  await db.execute('ALTER TABLE nf_usage_events ADD COLUMN org_id TEXT').catch(() => {});
   const monthStart = Date.now() - 30 * 86_400_000;
 
   return db.transaction(async (tx) => {
     const row = await tx.queryOne<{ c: number }>(
-      `SELECT COUNT(*) as c FROM nf_usage_events WHERE user_id = ? AND metric = ? AND created_at > ?`,
-      userId, metric, monthStart,
+      `SELECT COUNT(*) as c FROM nf_usage_events WHERE ${orgId ? 'org_id = ?' : 'user_id = ? AND org_id IS NULL'} AND metric = ? AND created_at > ?`,
+      orgId ?? userId, metric, monthStart,
     );
     const used = row?.c ?? 0;
     if (used >= limit) {
@@ -80,8 +84,8 @@ export async function consumeMonthlyMetricSlot(
     const id = `ue-${Math.random().toString(36).slice(2)}`;
     const metaJson = metadata ? JSON.stringify(metadata) : null;
     await tx.execute(
-      `INSERT INTO nf_usage_events (id, user_id, product, metric, quantity, cycle_start, metadata, created_at) VALUES (?, ?, 'nexyfab', ?, 1, 0, ?, ?)`,
-      id, userId, metric, metaJson, Date.now(),
+      `INSERT INTO nf_usage_events (id, user_id, org_id, product, metric, quantity, cycle_start, metadata, created_at) VALUES (?, ?, ?, 'nexyfab', ?, 1, 0, ?, ?)`,
+      id, userId, orgId ?? null, metric, metaJson, Date.now(),
     );
     return { ok: true, used: used + 1, limit };
   });
@@ -92,15 +96,16 @@ export function recordUsageEvent(
   userId: string,
   metric: string,
   metadata?: Record<string, unknown>,
+  orgId?: string | null,
 ): void {
   import('./db-adapter').then(({ getDbAdapter }) => {
     const db = getDbAdapter();
     const id = `ue-${Math.random().toString(36).slice(2)}`;
     const metaJson = metadata ? JSON.stringify(metadata) : null;
-    db.execute(
-      `INSERT INTO nf_usage_events (id, user_id, product, metric, quantity, cycle_start, metadata, created_at) VALUES (?, ?, 'nexyfab', ?, 1, 0, ?, ?)`,
-      id, userId, metric, metaJson, Date.now(),
-    ).catch(() => { /* ignore */ });
+    db.execute('ALTER TABLE nf_usage_events ADD COLUMN org_id TEXT').catch(() => {}).then(() => db.execute(
+      `INSERT INTO nf_usage_events (id, user_id, org_id, product, metric, quantity, cycle_start, metadata, created_at) VALUES (?, ?, ?, 'nexyfab', ?, 1, 0, ?, ?)`,
+      id, userId, orgId ?? null, metric, metaJson, Date.now(),
+    )).catch(() => { /* ignore */ });
   }).catch(() => { /* ignore */ });
 }
 
@@ -111,7 +116,7 @@ export function meetsPlan(userPlan: string, required: Plan): boolean {
 // API route 내에서 직접 호출하는 helper
 // 토큰에서 plan 추출 (jwt.ts가 없을 경우 demo-token 패턴으로 fallback)
 export async function checkPlan(req: NextRequest, required: Plan): Promise<
-  { ok: true; userId: string; plan: string } |
+  { ok: true; userId: string; orgId: string | null; plan: string; apiKey?: { id: string; scopes: string[] } } |
   { ok: false; response: NextResponse }
 > {
   // auth-middleware.ts의 getAuthUser 시도, 없으면 inline fallback
@@ -119,18 +124,25 @@ export async function checkPlan(req: NextRequest, required: Plan): Promise<
     const { getAuthUser } = await import('./auth-middleware');
     const user = await getAuthUser(req);
     if (!user) return { ok: false, response: NextResponse.json({ error: 'Unauthorized' }, { status: 401 }) };
-    // 토큰 plan은 결제/해지 직후 stale할 수 있다(감사 2026-07-16) — DB 최신 plan으로 보정.
-    // (업그레이드 직후에도 슬롯에 막히는 치명 불일치 방지 · 조회 실패 시 토큰 plan 유지)
-    let plan = user.plan;
-    try {
-      const { getDbAdapter } = await import('./db-adapter');
-      const row = await getDbAdapter().queryOne<{ plan?: string }>('SELECT plan FROM nf_users WHERE id = ?', user.userId);
-      if (row?.plan) plan = String(row.plan);
-    } catch { /* DB 조회 실패 — 토큰 plan으로 진행 */ }
+    const { resolveRequestOrgContext } = await import('./org-context');
+    const context = resolveRequestOrgContext(user);
+    if (!context.ok) {
+      return { ok: false, response: NextResponse.json({ error: 'Select a valid workspace', code: context.code }, { status: 409 }) };
+    }
+    // getAuthUser resolves the current database-backed entitlement for the
+    // selected tenant. Re-reading nf_users here would overwrite an active
+    // organization's plan with the user's personal plan.
+    const plan = user.plan;
     if (!meetsPlan(plan, required)) {
       return { ok: false, response: NextResponse.json({ error: 'Plan upgrade required', required }, { status: 403 }) };
     }
-    return { ok: true, userId: user.userId, plan };
+    return {
+      ok: true,
+      userId: user.userId,
+      orgId: context.orgId,
+      plan,
+      ...(user.apiKey ? { apiKey: user.apiKey } : {}),
+    };
   } catch (err) {
     console.error('[plan-guard] checkPlan error:', err);
     return { ok: false, response: NextResponse.json({ error: 'Service temporarily unavailable' }, { status: 503 }) };

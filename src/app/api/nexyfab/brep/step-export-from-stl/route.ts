@@ -10,6 +10,10 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { getAuthUser } from '@/lib/auth-middleware';
+import { readBoundedJson } from '@/lib/boundedJsonBody';
+
+// HOLD: this preview-only mesh path still materializes numeric arrays and STEP text together.
+const MAX_JSON_BODY_BYTES = 32 * 1024 * 1024;
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -126,8 +130,15 @@ function meshToStepAp203(
 export async function POST(req: NextRequest) {
   const authUser = await getAuthUser(req);
   if (!authUser) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  if (process.env.NEXYFAB_COMMERCIAL_MODE === '1') {
+    return NextResponse.json({
+      ok: false,
+      code: 'MESH_STEP_NOT_RELEASE_ELIGIBLE',
+      message: 'Triangle-mesh STEP is preview-only and is disabled for commercial manufacturing handoff.',
+    }, { status: 409 });
+  }
 
-  const body = await req.json().catch(() => null) as {
+  const body = await readBoundedJson(req, MAX_JSON_BODY_BYTES).catch(() => null) as {
     positions?: number[];
     triangles?: number[];
     fileName?: string;
@@ -154,6 +165,8 @@ export async function POST(req: NextRequest) {
     headers: {
       'Content-Type': 'application/step',
       'Content-Disposition': `attachment; filename="${body.fileName ?? 'nexyfab-part.step'}"`,
+      'X-NexyFab-Fidelity': 'preview-mesh-faceted',
+      'X-Manufacturing-Release-Eligible': 'false',
     },
   });
 }

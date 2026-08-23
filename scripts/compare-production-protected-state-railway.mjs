@@ -41,7 +41,15 @@ try {
   const productionName = new URL(web.DATABASE_URL).pathname.replace(/^\//, '');
   const candidateUrl = publicDatabaseUrl(web.DATABASE_URL, database.DATABASE_PUBLIC_URL, productionName);
   const baselineUrl = publicDatabaseUrl(web.DATABASE_URL, database.DATABASE_PUBLIC_URL, baselineDatabase);
-  const receipt = await compareProtectedState({ baselineUrl, candidateUrl });
+  const receipt = await compareProtectedState({
+    baselineUrl,
+    candidateUrl,
+    release: {
+      buildId: process.env.RELEASE_BUILD_ID ?? null,
+      deploymentId: process.env.RELEASE_DEPLOYMENT_ID ?? null,
+      gitHead: process.env.RELEASE_GIT_HEAD ?? null,
+    },
+  });
   fs.mkdirSync(path.dirname(output), { recursive: true });
   fs.writeFileSync(output, `${JSON.stringify(receipt, null, 2)}\n`);
   console.log(JSON.stringify({ ok: receipt.ok, protectedTableCount: receipt.protectedTableCount, blockers: receipt.blockers }));

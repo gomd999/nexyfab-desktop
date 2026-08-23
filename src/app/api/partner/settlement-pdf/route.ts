@@ -13,6 +13,9 @@ import { verifyAdmin } from '@/lib/admin-auth';
 import { getPartnerAuth } from '@/lib/partner-auth';
 import { normPartnerEmail } from '@/lib/partner-factory-access';
 import { getDbAdapter } from '@/lib/db-adapter';
+import { bcp47, formatNumber } from '@/lib/i18n/format';
+import { loc } from '@/lib/i18n/loc';
+import { resolveServerLocale } from '@/lib/i18n/serverLocale';
 
 export const dynamic = 'force-dynamic';
 
@@ -29,8 +32,8 @@ interface SettlementContractRow {
 
 // ─── 금액 포맷 ────────────────────────────────────────────────────────────
 
-function won(n: number): string {
-  return n.toLocaleString('ko-KR') + '원';
+function won(n: number, lang: string): string {
+  return `${formatNumber(n, lang) ?? n} KRW`;
 }
 
 // ─── HTML 내역서 생성 ─────────────────────────────────────────────────────
@@ -41,8 +44,32 @@ function buildHtml(params: {
   month: string;
   contracts: SettlementContractRow[];
   issuedAt: string;
+  lang: string;
 }): string {
-  const { partnerEmail, company, month, contracts, issuedAt } = params;
+  const { partnerEmail, company, month, contracts, issuedAt, lang } = params;
+  const C = <T extends { ko: string; en: string; ja: string; zh: string; es: string; ar: string }>(m: T) => loc(lang, m);
+  const c = {
+    print: C({ ko: '🖨️ PDF로 인쇄 / 저장', en: '🖨️ Print / Save PDF', ja: '🖨️ PDFを印刷 / 保存', zh: '🖨️ 打印 / 保存 PDF', es: '🖨️ Imprimir / Guardar PDF', ar: '🖨️ طباعة / حفظ PDF' }),
+    subtitle: C({ ko: '제조 파트너 플랫폼', en: 'Manufacturing partner platform', ja: '製造パートナープラットフォーム', zh: '制造合作方平台', es: 'Plataforma de socios de fabricación', ar: 'منصة شركاء التصنيع' }),
+    title: C({ ko: '파트너 정산 내역서', en: 'Partner settlement statement', ja: 'パートナー精算明細書', zh: '合作方结算单', es: 'Estado de liquidación del socio', ar: 'كشف تسوية الشريك' }),
+    issued: C({ ko: '발행일', en: 'Issued', ja: '発行日', zh: '开具日期', es: 'Emitido', ar: 'تاريخ الإصدار' }),
+    company: C({ ko: '파트너사', en: 'Partner', ja: 'パートナー会社', zh: '合作方', es: 'Socio', ar: 'الشريك' }),
+    email: C({ ko: '이메일', en: 'Email', ja: 'メール', zh: '邮箱', es: 'Correo', ar: 'البريد الإلكتروني' }),
+    period: C({ ko: '대상 기간', en: 'Period', ja: '対象期間', zh: '期间', es: 'Periodo', ar: 'الفترة' }),
+    count: C({ ko: '계약 건수', en: 'Contracts', ja: '契約件数', zh: '合同数量', es: 'Contratos', ar: 'عدد العقود' }),
+    empty: C({ ko: '해당 기간에 완료된 계약이 없습니다.', en: 'No contracts were completed during this period.', ja: 'この期間に完了した契約はありません。', zh: '此期间没有已完成的合同。', es: 'No se completaron contratos durante este periodo.', ar: 'لم تكتمل أي عقود خلال هذه الفترة.' }),
+    id: C({ ko: '계약 ID', en: 'Contract ID', ja: '契約ID', zh: '合同 ID', es: 'ID del contrato', ar: 'معرّف العقد' }),
+    project: C({ ko: '프로젝트명', en: 'Project name', ja: 'プロジェクト名', zh: '项目名称', es: 'Proyecto', ar: 'اسم المشروع' }),
+    amount: C({ ko: '계약금액', en: 'Contract amount', ja: '契約金額', zh: '合同金额', es: 'Importe del contrato', ar: 'قيمة العقد' }),
+    rate: C({ ko: '수수료율', en: 'Commission rate', ja: '手数料率', zh: '佣金率', es: 'Tasa de comisión', ar: 'نسبة العمولة' }),
+    commission: C({ ko: '수수료', en: 'Commission', ja: '手数料', zh: '佣金', es: 'Comisión', ar: 'العمولة' }),
+    deduction: C({ ko: '플랜 공제', en: 'Plan deduction', ja: 'プラン控除', zh: '方案扣除', es: 'Deducción del plan', ar: 'خصم الخطة' }),
+    final: C({ ko: '최종 수수료', en: 'Final charge', ja: '最終手数料', zh: '最终费用', es: 'Cargo final', ar: 'الرسم النهائي' }),
+    total: C({ ko: '합계', en: 'Total', ja: '合計', zh: '合计', es: 'Total', ar: 'الإجمالي' }),
+    footer: C({ ko: '본 내역서는 NexyFab 플랫폼에서 자동 생성되었습니다.', en: 'This statement was generated automatically by the NexyFab platform.', ja: 'この明細書はNexyFabプラットフォームで自動生成されました。', zh: '本结算单由 NexyFab 平台自动生成。', es: 'Este estado se generó automáticamente en la plataforma NexyFab.', ar: 'تم إنشاء هذا الكشف تلقائيًا بواسطة منصة NexyFab.' }),
+    service: C({ ko: 'NexyFab은 제조 파트너 매칭 서비스를 제공합니다.', en: 'NexyFab provides manufacturing partner matching services.', ja: 'NexyFabは製造パートナーのマッチングサービスを提供します。', zh: 'NexyFab 提供制造合作方匹配服务。', es: 'NexyFab ofrece servicios de emparejamiento con socios de fabricación.', ar: 'توفر NexyFab خدمات مطابقة شركاء التصنيع.' }),
+    stamp: C({ ko: '직인', en: 'Stamp', ja: '印', zh: '盖章', es: 'Sello', ar: 'ختم' }),
+  };
 
   const rows = contracts.map((c) => {
     const amount: number = c.contractAmount ?? 0;
@@ -55,11 +82,11 @@ function buildHtml(params: {
       <tr>
         <td>${c.id}</td>
         <td>${c.projectName}</td>
-        <td style="text-align:right">${won(amount)}</td>
+        <td style="text-align:right">${won(amount, lang)}</td>
         <td style="text-align:center">${rate}%</td>
-        <td style="text-align:right">${won(gross)}</td>
-        <td style="text-align:right">${won(deduction)}</td>
-        <td style="text-align:right;font-weight:bold">${won(finalCharge)}</td>
+        <td style="text-align:right">${won(gross, lang)}</td>
+        <td style="text-align:right">${won(deduction, lang)}</td>
+        <td style="text-align:right;font-weight:bold">${won(finalCharge, lang)}</td>
       </tr>`;
   }).join('');
 
@@ -70,11 +97,11 @@ function buildHtml(params: {
   const totalFinal = contracts.reduce((s, c) => s + (c.finalCharge ?? 0), 0);
 
   return `<!DOCTYPE html>
-<html lang="ko">
+<html lang="${lang === 'kr' ? 'ko' : lang}">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>NexyFab 파트너 정산 내역서 — ${month}</title>
+  <title>NexyFab ${c.title} — ${month}</title>
   <style>
     /* ── 기본 ── */
     * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -246,7 +273,7 @@ function buildHtml(params: {
       onclick="window.print()"
       style="padding:8px 20px;background:#1a56db;color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer"
     >
-      🖨️ PDF로 인쇄 / 저장
+      ${c.print}
     </button>
   </div>
 
@@ -254,59 +281,59 @@ function buildHtml(params: {
   <div class="header">
     <div>
       <div class="logo">NexyFab</div>
-      <div class="logo-sub">제조 파트너 플랫폼</div>
+      <div class="logo-sub">${c.subtitle}</div>
     </div>
     <div class="doc-title">
-      <h1>파트너 정산 내역서</h1>
-      <p>발행일: ${issuedAt}</p>
+      <h1>${c.title}</h1>
+      <p>${c.issued}: ${issuedAt}</p>
     </div>
   </div>
 
   <!-- 파트너 / 기간 정보 -->
   <div class="info-grid">
     <div class="info-item">
-      <label>파트너사</label>
+      <label>${c.company}</label>
       <span>${company || '—'}</span>
     </div>
     <div class="info-item">
-      <label>이메일</label>
+      <label>${c.email}</label>
       <span>${partnerEmail}</span>
     </div>
     <div class="info-item">
-      <label>대상 기간</label>
+      <label>${c.period}</label>
       <span>${month}</span>
     </div>
     <div class="info-item">
-      <label>계약 건수</label>
-      <span>${contracts.length}건</span>
+      <label>${c.count}</label>
+      <span>${contracts.length}</span>
     </div>
   </div>
 
   <!-- 계약 내역 테이블 -->
   ${contracts.length === 0
-    ? `<div class="empty">해당 기간에 완료된 계약이 없습니다.</div>`
+    ? `<div class="empty">${c.empty}</div>`
     : `<table>
     <thead>
       <tr>
-        <th>계약 ID</th>
-        <th>프로젝트명</th>
-        <th>계약금액</th>
-        <th>수수료율</th>
-        <th>수수료</th>
-        <th>플랜공제</th>
-        <th>최종수수료</th>
+        <th>${c.id}</th>
+        <th>${c.project}</th>
+        <th>${c.amount}</th>
+        <th>${c.rate}</th>
+        <th>${c.commission}</th>
+        <th>${c.deduction}</th>
+        <th>${c.final}</th>
       </tr>
     </thead>
     <tbody>
       ${rows}
       <!-- 합계 행 -->
       <tr class="total-row">
-        <td colspan="2" style="text-align:right">합계</td>
-        <td style="text-align:right">${won(totalAmount)}</td>
+        <td colspan="2" style="text-align:right">${c.total}</td>
+        <td style="text-align:right">${won(totalAmount, lang)}</td>
         <td style="text-align:center">—</td>
-        <td style="text-align:right">${won(totalGross)}</td>
-        <td style="text-align:right">${won(totalDeduction)}</td>
-        <td style="text-align:right">${won(totalFinal)}</td>
+        <td style="text-align:right">${won(totalGross, lang)}</td>
+        <td style="text-align:right">${won(totalDeduction, lang)}</td>
+        <td style="text-align:right">${won(totalFinal, lang)}</td>
       </tr>
     </tbody>
   </table>`
@@ -315,12 +342,12 @@ function buildHtml(params: {
   <!-- 하단 -->
   <div class="footer">
     <div class="footer-note">
-      본 내역서는 NexyFab 플랫폼에서 자동 생성되었습니다.<br />
-      문의: nexyfab@nexysys.com<br />
-      NexyFab은 제조 파트너 매칭 서비스를 제공합니다.
+      ${c.footer}<br />
+      Contact: nexyfab@nexysys.com<br />
+      ${c.service}
     </div>
     <div class="stamp-area">
-      <div class="stamp-box">직인</div>
+      <div class="stamp-box">${c.stamp}</div>
       <div class="stamp-label">NexyFab</div>
     </div>
   </div>
@@ -333,6 +360,8 @@ function buildHtml(params: {
 
 export async function GET(req: NextRequest) {
   const { searchParams } = req.nextUrl;
+  const serverLocale = resolveServerLocale(req, searchParams.get('lang'));
+  const lang = serverLocale.route;
   const partnerEmailParam = searchParams.get('partnerEmail');
   const month = searchParams.get('month'); // 예: 2025-03
 
@@ -394,11 +423,11 @@ export async function GET(req: NextRequest) {
     finalCharge: c.final_charge ?? 0,
   }));
 
-  const issuedAt = new Date().toLocaleDateString('ko-KR', {
+  const issuedAt = new Date().toLocaleDateString(bcp47(lang), {
     year: 'numeric', month: 'long', day: 'numeric',
   });
 
-  const html = buildHtml({ partnerEmail, company, month, contracts: filtered, issuedAt });
+  const html = buildHtml({ partnerEmail, company, month, contracts: filtered, issuedAt, lang });
 
   return new NextResponse(html, {
     status: 200,

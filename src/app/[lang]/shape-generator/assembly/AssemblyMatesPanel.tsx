@@ -20,6 +20,15 @@ import {
 import { analyzeAssemblyRank } from './assemblyRank';
 import { useMateWorker } from '../workers/useMateWorker';
 import { reportError } from '../lib/telemetry';
+import ConflictResolutionOverlay from './ConflictResolutionOverlay';
+import {
+  MATE_TYPE_DOFS as CONFLICT_MATE_DOFS,
+  autoStrength,
+  proposeConflictResolutions,
+  resolveConflicts,
+  type AssemblyMate as ConflictMate,
+  type MateType as ConflictMateType,
+} from './mateConflictResolver';
 
 // ─── i18n labels ──────────────────────────────────────────────────────────────
 
@@ -202,29 +211,31 @@ export default function AssemblyMatesPanel({
 
   const [solveResult, setSolveResult] = useState<SolveResult | null>(null);
   const [solving, setSolving] = useState(false);
+  const [highlightedMateIds, setHighlightedMateIds] = useState<Set<string>>(new Set());
+  const [dismissedConflictSignature, setDismissedConflictSignature] = useState<string | null>(null);
   const { performSolve } = useMateWorker();
 
   // ── Handlers ──────────────────────────────────────────────────────────────
 
-  const handleSolve = useCallback(async () => {
+  const solveAndCommit = useCallback(async (candidate: AssemblyState) => {
     setSolving(true);
     try {
       // Off-thread solve. Falls back to sync solveAssembly inside the hook
       // when Worker isn't available. Avoids blocking the UI on 50+ part
       // assemblies.
-      const result = await performSolve(assemblyState);
+      const result = await performSolve(candidate);
       setSolveResult(result);
 
       // Push updated positions/rotations back to the parent
       const updated: AssemblyState = {
-        ...assemblyState,
-        bodies: assemblyState.bodies.map((b, i) => ({
+        ...candidate,
+        bodies: candidate.bodies.map((b, i) => ({
           ...b,
           position: result.bodies[i].position,
           rotation: result.bodies[i].rotation,
         })),
         // Mark conflicting mates so the list can highlight them
-        mates: assemblyState.mates.map(m => ({
+        mates: candidate.mates.map(m => ({
           ...m,
           conflict: result.conflicts.includes(m.id),
         })),
@@ -236,16 +247,16 @@ export default function AssemblyMatesPanel({
       const msg = err instanceof Error ? err.message : String(err);
       if (msg !== 'superseded') {
         reportError('feature_pipeline', err, { phase: 'mate_solve' });
-        const result = solveAssembly(assemblyState);
+        const result = solveAssembly(candidate);
         setSolveResult(result);
         onAssemblyUpdate({
-          ...assemblyState,
-          bodies: assemblyState.bodies.map((b, i) => ({
+          ...candidate,
+          bodies: candidate.bodies.map((b, i) => ({
             ...b,
             position: result.bodies[i].position,
             rotation: result.bodies[i].rotation,
           })),
-          mates: assemblyState.mates.map(m => ({
+          mates: candidate.mates.map(m => ({
             ...m,
             conflict: result.conflicts.includes(m.id),
           })),
@@ -254,7 +265,11 @@ export default function AssemblyMatesPanel({
     } finally {
       setSolving(false);
     }
-  }, [assemblyState, onAssemblyUpdate, performSolve]);
+  }, [onAssemblyUpdate, performSolve]);
+
+  const handleSolve = useCallback(async () => {
+    await solveAndCommit(assemblyState);
+  }, [assemblyState, solveAndCommit]);
 
   const toggleMate = useCallback((id: string) => {
     onAssemblyUpdate({
@@ -279,6 +294,58 @@ export default function AssemblyMatesPanel({
       mates: assemblyState.mates.filter(m => m.id !== id),
     });
   }, [assemblyState, onAssemblyUpdate]);
+
+  // A1 host wiring — adapt the live selection-based mate model to the
+  // non-destructive conflict proposal engine. Unsupported fixed/belt rows stay
+  // untouched; every accepted proposal SUPPRESSES a mate instead of deleting
+  // design intent, then immediately re-solves the live assembly.
+  const conflictMates = useMemo<ConflictMate[]>(() => assemblyState.mates.flatMap((mate, index) => {
+    if (!mate.enabled || mate.type === 'fixed' || mate.type === 'belt') return [];
+    if (!(mate.type in CONFLICT_MATE_DOFS)) return [];
+    const type = mate.type as ConflictMateType;
+    return [{
+      id: mate.id,
+      bodyA: `body:${mate.selections[0].bodyIndex}`,
+      bodyB: `body:${mate.selections[1].bodyIndex}`,
+      type,
+      strength: autoStrength(type, index),
+      dofsRemoved: CONFLICT_MATE_DOFS[type],
+    }];
+  }), [assemblyState.mates]);
+  const conflictBodyIds = useMemo(
+    () => assemblyState.bodies.map((_, index) => `body:${index}`),
+    [assemblyState.bodies],
+  );
+  const conflictProposals = useMemo(
+    () => proposeConflictResolutions(conflictMates, conflictBodyIds),
+    [conflictBodyIds, conflictMates],
+  );
+  const conflictSignature = useMemo(
+    () => conflictProposals.map((proposal) => (
+      `${proposal.highlightMateIds.join(',')}:${proposal.conflict.totalRemoved}/${proposal.conflict.availableDofs}`
+    )).join('|'),
+    [conflictProposals],
+  );
+  const suppressAndResolve = useCallback((mateIds: Iterable<string>) => {
+    const suppressed = new Set(mateIds);
+    if (suppressed.size === 0) return;
+    const next: AssemblyState = {
+      ...assemblyState,
+      mates: assemblyState.mates.map((mate) => suppressed.has(mate.id)
+        ? { ...mate, enabled: false, conflict: false }
+        : mate),
+    };
+    setHighlightedMateIds(new Set());
+    setDismissedConflictSignature(null);
+    // Commit suppression immediately so the overlay closes without waiting for
+    // a worker round-trip, then replace placements with the verified solve.
+    onAssemblyUpdate(next);
+    void solveAndCommit(next);
+  }, [assemblyState, onAssemblyUpdate, solveAndCommit]);
+  const acceptAllRecommendedConflicts = useCallback(() => {
+    const resolution = resolveConflicts(conflictMates, conflictBodyIds);
+    suppressAndResolve(resolution.droppedMates);
+  }, [conflictBodyIds, conflictMates, suppressAndResolve]);
 
   // ── Derived values ────────────────────────────────────────────────────────
 
@@ -353,6 +420,15 @@ export default function AssemblyMatesPanel({
 
   return (
     <div style={{ padding: 12, display: 'flex', flexDirection: 'column', gap: 10 }}>
+
+      <ConflictResolutionOverlay
+        lang={resolvedLang}
+        proposals={dismissedConflictSignature === conflictSignature ? [] : conflictProposals}
+        onAccept={(mateId) => suppressAndResolve([mateId])}
+        onAcceptAllRecommended={acceptAllRecommendedConflicts}
+        onHighlight={(mateIds) => setHighlightedMateIds(new Set(mateIds))}
+        onClose={() => setDismissedConflictSignature(conflictSignature)}
+      />
 
       {/* Header row */}
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 10 }}>
@@ -449,8 +525,11 @@ export default function AssemblyMatesPanel({
           assemblyState.mates.map(mate => {
             const isUnsatisfied = solveResult?.unsatisfied.includes(mate.id);
             const isConflict = mate.conflict || solveResult?.conflicts.includes(mate.id);
+            const isHighlighted = highlightedMateIds.has(mate.id);
             const borderColor = isConflict
               ? 'var(--nx-error)'
+              : isHighlighted
+                ? 'var(--nx-accent)'
               : isUnsatisfied
                 ? '#e3b341'
                 : theme.border;
@@ -458,6 +537,9 @@ export default function AssemblyMatesPanel({
             return (
               <div
                 key={mate.id}
+                data-testid={`assembly-mate-row-${mate.id}`}
+                data-highlighted={isHighlighted ? 'true' : 'false'}
+                data-enabled={mate.enabled ? 'true' : 'false'}
                 style={{
                   display: 'flex',
                   alignItems: 'center',

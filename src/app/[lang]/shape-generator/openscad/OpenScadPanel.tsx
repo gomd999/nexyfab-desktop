@@ -997,6 +997,7 @@ interface CurrentShape {
 
 interface Props {
   onGeometryReady: (geo: THREE.BufferGeometry, description: string) => void;
+  modelId?: string;
   selectedElement?: ElementSelectionInfo | null;
   currentShape?: CurrentShape | null;
 }
@@ -1208,7 +1209,7 @@ const REFINE_LABEL: Record<string, string> = {
   zh: '修改上一结果', es: 'Refinar anterior', ar: 'تعديل السابق',
 };
 
-export default function OpenScadPanel({ onGeometryReady, selectedElement, currentShape }: Props) {
+export default function OpenScadPanel({ onGeometryReady, modelId, selectedElement, currentShape }: Props) {
   const pathname = usePathname();
   const seg = pathname?.split('/').filter(Boolean)[0] ?? 'en';
   const langMap: Record<string, keyof typeof dict> = {
@@ -1885,12 +1886,12 @@ export default function OpenScadPanel({ onGeometryReady, selectedElement, curren
     try {
       const doRefine = scadNlRefine && lastScadIntent != null && !scadNlFreeform && !scadNlImage;
       const reqBody = scadNlImage
-        ? { prompt, image: scadNlImage, freeform: true }
+        ? { prompt, image: scadNlImage, freeform: true, modelId }
         : scadNlFreeform
-          ? { prompt, freeform: true }
+          ? { prompt, freeform: true, modelId }
           : doRefine
-            ? { prompt, previousIntent: lastScadIntent }
-            : { prompt };
+            ? { prompt, previousIntent: lastScadIntent, modelId }
+            : { prompt, modelId };
       const res = await fetch('/api/nexyfab/scad-intent-from-nl', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', ...(useAuthStore.getState().token ? { Authorization: `Bearer ${useAuthStore.getState().token}` } : {}) },
@@ -1938,7 +1939,7 @@ export default function OpenScadPanel({ onGeometryReady, selectedElement, curren
     } finally {
       setScadNlBusy(false);
     }
-  }, [scadNlPrompt, t, scadNlRefine, lastScadIntent, scadNlFreeform, scadNlImage]);
+  }, [scadNlPrompt, t, scadNlRefine, lastScadIntent, scadNlFreeform, scadNlImage, modelId]);
 
   const downloadScadStl = useCallback(async () => {
     if (scadResultB64) {
@@ -2071,7 +2072,7 @@ export default function OpenScadPanel({ onGeometryReady, selectedElement, curren
       const res = await fetch('/api/nexyfab/intent-from-image', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ imageBase64: imageDataUrl, hintText: imageHint.trim() || undefined }),
+        body: JSON.stringify({ imageBase64: imageDataUrl, hintText: imageHint.trim() || undefined, modelId }),
       });
       const data = await res.json().catch(() => ({} as { ok?: boolean; error?: string; intent?: unknown; summary?: string }));
       if (!res.ok || data.ok === false) {
@@ -2088,7 +2089,7 @@ export default function OpenScadPanel({ onGeometryReady, selectedElement, curren
     } finally {
       setExtractBusy(false);
     }
-  }, [imageDataUrl, imageHint, extractBusy, t]);
+  }, [imageDataUrl, imageHint, extractBusy, modelId, t]);
 
   /** Copy the extracted intent JSON into the verify-spec textarea and
    *  reveal the verify section. The user can then click "Run verify" or

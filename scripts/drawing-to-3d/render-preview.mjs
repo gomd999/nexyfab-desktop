@@ -10,6 +10,7 @@
  * CLI: node render-preview.mjs asm.json outPrefix [views]
  */
 import zlib from 'node:zlib';
+import { readFileSync, writeFileSync } from 'node:fs';
 import { partAabb } from './reconstruct.mjs';
 import { resolveConstraints } from './assembly-constraints.mjs'; // ⓑ 관계배치 어셈블리도 미리보기
 
@@ -145,7 +146,6 @@ export function renderPreview(assembly, { views = ['iso', 'side', 'top'], W = 10
 // ── CLI ──
 const isMain = process.argv[1] && process.argv[1].replaceAll('\\', '/').endsWith('render-preview.mjs');
 if (isMain) {
-  const { readFileSync, writeFileSync } = await import('node:fs');
   const asm = JSON.parse(readFileSync(process.argv[2], 'utf8'));
   const prefix = process.argv[3] ?? 'preview';
   const views = process.argv[4] ? process.argv[4].split(',') : ['iso', 'side', 'top'];

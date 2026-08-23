@@ -1,6 +1,8 @@
 'use client';
+import { useAdminI18n } from '../AdminI18nProvider';
+import { createCommercialLocalizer } from '@/lib/i18n/commercialLocalizer';
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useMemo } from 'react';
 import { formatDateTime } from '@/lib/formatDate';
 import { useToast } from '@/hooks/useToast';
 
@@ -26,8 +28,11 @@ const STATUS_COLORS: Record<string, string> = {
   failed:     'bg-red-100 text-red-700 border-red-200',
 };
 
-const STATUS_LABELS: Record<string, string> = {
-  pending: '대기중', processing: '처리중', done: '발송완료', failed: '실패',
+const STATUS_LABELS: Record<string, { ko: string; en: string }> = {
+  pending: { ko: '대기 중', en: 'Pending' },
+  processing: { ko: '처리 중', en: 'Processing' },
+  done: { ko: '발송 완료', en: 'Sent' },
+  failed: { ko: '실패', en: 'Failed' },
 };
 
 const PAGE_SIZE = 20;
@@ -52,6 +57,8 @@ function SkeletonRow() {
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
 export default function AdminEmailLogsPage() {
+  const { locale } = useAdminI18n();
+  const L = useMemo(() => createCommercialLocalizer(locale), [locale]);
   const [jobs, setJobs] = useState<EmailJob[]>([]);
   const [_summary, setSummary] = useState<Record<string, number>>({});
   const [loading, setLoading] = useState(true);
@@ -95,11 +102,11 @@ export default function AdminEmailLogsPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ action: 'process_queue' }),
       });
-      if (res.ok) toast.success('대기/실패 Job 재처리 완료');
-      else toast.error('재처리 실패');
+      if (res.ok) toast.success(L('대기/실패 작업 재처리 완료', 'Queued and failed jobs reprocessed.'));
+      else toast.error(L('재처리 실패', 'Reprocessing failed.'));
       await load();
     } catch {
-      toast.error('오류 발생');
+      toast.error(L('오류가 발생했습니다.', 'An error occurred.'));
     } finally {
       setRetrying(null);
     }
@@ -110,7 +117,7 @@ export default function AdminEmailLogsPage() {
     try {
       const res = await fetch('/api/admin/jobs?days=30', { method: 'DELETE' });
       const d = await res.json();
-      toast.success(`${d.deleted}건 정리 완료 (30일 이상 된 완료/실패)`);
+      toast.success(L(`${d.deleted}건 정리 완료 (30일 이상 된 완료/실패 작업)`, `${d.deleted} jobs cleaned up (completed/failed for 30+ days)`));
       await load();
     } finally {
       setRetrying(null);
@@ -125,12 +132,11 @@ export default function AdminEmailLogsPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ jobId }),
       });
-      const d = await res.json().catch(() => ({}));
-      if (res.ok) toast.success('재발송 요청 완료');
-      else toast.error(d.error ?? '재발송 실패');
+      if (res.ok) toast.success(L('재발송 요청 완료', 'Resend requested.'));
+      else toast.error(L('재발송 실패', 'Resend failed.'));
       if (res.ok) await load();
     } catch {
-      toast.error('재발송 오류');
+      toast.error(L('재발송 중 오류가 발생했습니다.', 'An error occurred while resending.'));
     } finally {
       setResendingId(null);
     }
@@ -172,12 +178,12 @@ export default function AdminEmailLogsPage() {
     <div className="max-w-6xl mx-auto">
       <div className="flex items-start justify-between mb-6">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">이메일 발송 로그</h1>
-          <p className="text-sm text-gray-500 mt-1">send_email 타입 Job 상태 조회 및 재처리</p>
+          <h1 className="text-2xl font-bold text-gray-900">{L('이메일 발송 로그', 'Email delivery logs')}</h1>
+          <p className="text-sm text-gray-500 mt-1">{L('send_email 유형 작업의 상태 조회 및 재처리', 'Review and reprocess send_email jobs')}</p>
         </div>
         <button onClick={load} disabled={loading}
           className="px-3 py-1.5 text-sm rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 disabled:opacity-50">
-          새로고침
+          {L('새로고침', 'Refresh')}
         </button>
       </div>
 
@@ -189,22 +195,22 @@ export default function AdminEmailLogsPage() {
               statusFilter === s ? 'ring-2 ring-blue-500' : 'hover:border-blue-200'
             } ${STATUS_COLORS[s] ?? 'bg-white border-gray-200'}`}>
             <div className="text-2xl font-black">{typeSummary[s]}</div>
-            <div className="text-xs font-semibold mt-1 capitalize">{STATUS_LABELS[s]}</div>
+            <div className="text-xs font-semibold mt-1 capitalize">{L(STATUS_LABELS[s].ko, STATUS_LABELS[s].en)}</div>
           </button>
         ))}
       </div>
 
       {/* Actions */}
       <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-5 mb-6">
-        <div className="text-sm font-bold text-gray-700 mb-4">관리 액션</div>
+        <div className="text-sm font-bold text-gray-700 mb-4">{L('관리 작업', 'Management actions')}</div>
         <div className="flex flex-wrap gap-2">
           <button onClick={retryFailed} disabled={!!retrying}
             className="flex items-center gap-2 px-4 py-2 rounded-xl border border-gray-200 text-sm font-semibold text-gray-700 hover:border-blue-300 hover:text-blue-700 hover:bg-blue-50 transition disabled:opacity-50">
-            ⚡ {retrying === 'retry' ? '처리 중...' : '실패 Job 재처리'}
+            ⚡ {retrying === 'retry' ? L('처리 중...', 'Processing...') : L('실패 작업 재처리', 'Reprocess failed jobs')}
           </button>
           <button onClick={cleanOld} disabled={!!retrying}
             className="flex items-center gap-2 px-4 py-2 rounded-xl border border-red-200 text-sm font-semibold text-red-600 hover:bg-red-50 transition disabled:opacity-50 ml-auto">
-            🧹 {retrying === 'clean' ? '정리 중...' : '30일 이상 된 완료/실패 정리'}
+            🧹 {retrying === 'clean' ? L('정리 중...', 'Cleaning...') : L('30일 이상 된 완료/실패 정리', 'Clean completed/failed jobs older than 30 days')}
           </button>
         </div>
       </div>
@@ -213,24 +219,24 @@ export default function AdminEmailLogsPage() {
       <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
         <div className="flex items-center justify-between px-5 py-3 border-b border-gray-100 gap-3 flex-wrap">
           <span className="text-sm font-bold text-gray-700">
-            이메일 발송 내역 ({filtered.length}건)
+            {L(`이메일 발송 내역 (${filtered.length}건)`, `Email delivery history (${filtered.length})`)}
           </span>
           <div className="flex items-center gap-2 flex-wrap">
             {/* Search bar */}
             <input
               value={search}
               onChange={e => setSearch(e.target.value)}
-              placeholder="수신자 이메일 또는 제목 검색"
+              placeholder={L('수신자 이메일 또는 제목 검색', 'Search recipient email or subject')}
               className="text-xs px-3 py-1.5 rounded-lg border border-gray-200 outline-none focus:border-blue-400 w-52"
             />
             {/* Status filter pills */}
             <div className="flex gap-1">
               {[
-                { value: '', label: '전체' },
-                { value: 'done', label: '발송완료' },
-                { value: 'failed', label: '실패' },
-                { value: 'pending', label: '대기중' },
-                { value: 'processing', label: '처리중' },
+                { value: '', label: L('전체', 'All') },
+                { value: 'done', label: L('발송 완료', 'Sent') },
+                { value: 'failed', label: L('실패', 'Failed') },
+                { value: 'pending', label: L('대기 중', 'Pending') },
+                { value: 'processing', label: L('처리 중', 'Processing') },
               ].map(opt => (
                 <button key={opt.value || 'all'} onClick={() => setStatusFilter(opt.value)}
                   className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition-colors ${
@@ -249,7 +255,7 @@ export default function AdminEmailLogsPage() {
             {Array.from({ length: 5 }).map((_, i) => <SkeletonRow key={i} />)}
           </div>
         ) : filtered.length === 0 ? (
-          <div className="text-center py-12 text-gray-400">이메일 발송 기록이 없습니다</div>
+          <div className="text-center py-12 text-gray-400">{L('이메일 발송 기록이 없습니다.', 'No email delivery records.')}</div>
         ) : (
           <div className="divide-y divide-gray-50">
             {paginated.map(job => {
@@ -264,7 +270,7 @@ export default function AdminEmailLogsPage() {
                       onClick={() => toggleExpand(job.id)}
                       className="text-gray-400 hover:text-gray-600 mt-0.5 shrink-0 transition-transform"
                       style={{ transform: isExpanded ? 'rotate(90deg)' : 'rotate(0deg)', transition: 'transform 0.15s' }}
-                      title={isExpanded ? '접기' : '펼치기'}
+                      title={isExpanded ? L('접기', 'Collapse') : L('펼치기', 'Expand')}
                     >
                       ▶
                     </button>
@@ -272,10 +278,10 @@ export default function AdminEmailLogsPage() {
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 flex-wrap">
                         <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded border ${STATUS_COLORS[job.status] ?? 'bg-gray-100'}`}>
-                          {STATUS_LABELS[job.status] ?? job.status}
+                          {STATUS_LABELS[job.status] ? L(STATUS_LABELS[job.status].ko, STATUS_LABELS[job.status].en) : job.status}
                         </span>
                         {job.attempts > 0 && (
-                          <span className="text-[10px] text-gray-400">시도 {job.attempts}/{job.maxAttempts}</span>
+                          <span className="text-[10px] text-gray-400">{L('시도', 'Attempts')} {job.attempts}/{job.maxAttempts}</span>
                         )}
                         {job.to && (
                           <span className="text-[10px] font-mono bg-gray-100 text-gray-600 px-1.5 py-0.5 rounded">{job.to}</span>
@@ -285,8 +291,8 @@ export default function AdminEmailLogsPage() {
                         <div className="text-xs font-semibold text-gray-700 mt-1 truncate">{job.subject}</div>
                       )}
                       <div className="text-xs text-gray-400 mt-1 flex flex-wrap gap-x-3">
-                        <span>생성: {formatDateTime(job.createdAt)}</span>
-                        {job.processedAt && <span>처리: {formatDateTime(job.processedAt)}</span>}
+                        <span>{L('생성:', 'Created:')} {formatDateTime(job.createdAt, locale)}</span>
+                        {job.processedAt && <span>{L('처리:', 'Processed:')} {formatDateTime(job.processedAt, locale)}</span>}
                       </div>
                       {job.errorMessage && (
                         <div className="text-xs text-red-500 mt-1 break-all">{job.errorMessage}</div>
@@ -300,7 +306,7 @@ export default function AdminEmailLogsPage() {
                           disabled={resendingId === job.id}
                           className="text-[11px] font-semibold px-2.5 py-1 rounded-lg border border-blue-200 text-blue-600 hover:bg-blue-50 transition disabled:opacity-50"
                         >
-                          {resendingId === job.id ? '발송 중...' : '재발송'}
+                          {resendingId === job.id ? L('발송 중...', 'Sending...') : L('재발송', 'Resend')}
                         </button>
                       )}
                       <code className="text-[9px] font-mono text-gray-300 hidden sm:block self-center">
@@ -312,7 +318,7 @@ export default function AdminEmailLogsPage() {
                   {/* Expandable HTML preview */}
                   {isExpanded && (
                     <div className="px-5 pb-4 bg-gray-50 border-b border-gray-100">
-                      <div className="text-xs font-bold text-gray-500 mb-2 mt-1">이메일 미리보기</div>
+                      <div className="text-xs font-bold text-gray-500 mb-2 mt-1">{L('이메일 미리보기', 'Email preview')}</div>
                       {job.htmlBody ? (
                         <div
                           className="border border-gray-200 rounded-lg overflow-auto bg-white"
@@ -332,13 +338,13 @@ export default function AdminEmailLogsPage() {
                             <tbody>
                               {[
                                 ['Job ID', job.id],
-                                ['수신자', job.to ?? '-'],
-                                ['제목', job.subject ?? '-'],
-                                ['상태', STATUS_LABELS[job.status] ?? job.status],
-                                ['시도 횟수', `${job.attempts} / ${job.maxAttempts}`],
-                                ['생성 시각', formatDateTime(job.createdAt)],
-                                ['처리 시각', job.processedAt ? formatDateTime(job.processedAt) : '-'],
-                                ['오류 메시지', job.errorMessage ?? '-'],
+                                [L('수신자', 'Recipient'), job.to ?? '-'],
+                                [L('제목', 'Subject'), job.subject ?? '-'],
+                                [L('상태', 'Status'), STATUS_LABELS[job.status] ? L(STATUS_LABELS[job.status].ko, STATUS_LABELS[job.status].en) : job.status],
+                                [L('시도 횟수', 'Attempts'), `${job.attempts} / ${job.maxAttempts}`],
+                                [L('생성 시각', 'Created at'), formatDateTime(job.createdAt, locale)],
+                                [L('처리 시각', 'Processed at'), job.processedAt ? formatDateTime(job.processedAt, locale) : '-'],
+                                [L('오류 메시지', 'Error message'), job.errorMessage ?? '-'],
                               ].map(([k, v]) => (
                                 <tr key={k} className="border-b border-gray-100">
                                   <td className="py-1.5 pr-4 font-semibold text-gray-400 w-28">{k}</td>
@@ -361,7 +367,7 @@ export default function AdminEmailLogsPage() {
         {!loading && totalPages > 1 && (
           <div className="flex items-center justify-between px-5 py-3 border-t border-gray-100">
             <span className="text-xs text-gray-400">
-              {(currentPage - 1) * PAGE_SIZE + 1}–{Math.min(currentPage * PAGE_SIZE, filtered.length)} / {filtered.length}건
+              {L(`${(currentPage - 1) * PAGE_SIZE + 1}–${Math.min(currentPage * PAGE_SIZE, filtered.length)} / ${filtered.length}건`, `${(currentPage - 1) * PAGE_SIZE + 1}–${Math.min(currentPage * PAGE_SIZE, filtered.length)} / ${filtered.length}`)}
             </span>
             <div className="flex gap-1.5">
               <button
@@ -369,7 +375,7 @@ export default function AdminEmailLogsPage() {
                 disabled={currentPage === 1}
                 className="px-3 py-1 rounded-lg border border-gray-200 text-xs font-semibold text-gray-600 hover:bg-gray-50 disabled:opacity-40"
               >
-                이전
+                {L('이전', 'Previous')}
               </button>
               {Array.from({ length: Math.min(totalPages, 7) }, (_, i) => {
                 const p = i + 1;
@@ -393,7 +399,7 @@ export default function AdminEmailLogsPage() {
                 disabled={currentPage === totalPages}
                 className="px-3 py-1 rounded-lg border border-gray-200 text-xs font-semibold text-gray-600 hover:bg-gray-50 disabled:opacity-40"
               >
-                다음
+                {L('다음', 'Next')}
               </button>
             </div>
           </div>

@@ -27,11 +27,13 @@ import { checkUserBudget } from '@/lib/ai/userBudget';
 import { captureServerError } from '@/lib/error-capture';
 import { isFeatureEnabled } from '@/lib/feature-flags';
 import { buildBriefExecutionDisclosure, parseBrief, runDesignBrief } from './runner';
+import { readBoundedJson } from '@/lib/boundedJsonBody';
 
 export const dynamic = 'force-dynamic';
+const MAX_JSON_BODY_BYTES = 4 * 1024 * 1024;
 
 export async function POST(req: NextRequest) {
-  const body = await req.json().catch(() => ({}));
+  const body = await readBoundedJson(req, MAX_JSON_BODY_BYTES).catch(() => ({}));
   const parsed = parseBrief(body);
   if ('error' in parsed) {
     return NextResponse.json({ error: parsed.error }, { status: 400 });
@@ -58,7 +60,7 @@ export async function POST(req: NextRequest) {
   }
 
   // Per-user daily $ budget gate.
-  const budget = await checkUserBudget(planCheck.userId);
+  const budget = await checkUserBudget(planCheck.userId, planCheck.orgId);
   if (!budget.ok) {
     return NextResponse.json(
       {
@@ -81,7 +83,7 @@ export async function POST(req: NextRequest) {
       { status: 429 },
     );
   }
-  const slot = await consumeMonthlyMetricSlot(planCheck.userId, planCheck.plan, 'design_brief');
+  const slot = await consumeMonthlyMetricSlot(planCheck.userId, planCheck.plan, 'design_brief', undefined, planCheck.orgId);
   if (!slot.ok) {
     return NextResponse.json(
       { error: `Plan limit reached (${slot.limit}/month).`, code: 'MONTHLY_LIMIT', limit: slot.limit },

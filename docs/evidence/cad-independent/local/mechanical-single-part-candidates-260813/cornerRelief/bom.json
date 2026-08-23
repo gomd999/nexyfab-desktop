@@ -1,0 +1,26 @@
+{
+  "schema": "nexyfab.mechanical-single-part-bom-candidate.v1",
+  "partRevisionSha256": "5259dcb18cfbbdb032a33bb8e022fbc9f5a02f71a72c1a8def7c19d5c2baaa3f",
+  "sourceDesignRevisionSha256": "3cf6a0f9c8efcf153a2cfefde087a2112c086fc412d2feeaeb9ce52542838564",
+  "sourceNfabSha256": "54a67f115bbb64e12596fc550d34d2b4d49f9fd36c2540f678de7804f768f379",
+  "sourceStepSha256": "936f40859cd8379158f0dfb7ca825f98488dbf2c79fccd33a0dfeeefcda1ad63",
+  "units": "mm",
+  "items": [
+    {
+      "partNumber": "cornerRelief",
+      "description": "Mechanical runtime cornerRelief",
+      "quantity": 1,
+      "dimensionsMm": {
+        "x": 60.00240965043037,
+        "y": 2.002409650430371,
+        "z": 30.00240965043037
+      }
+    }
+  ],
+  "claimBoundary": {
+    "singlePartCandidateOnly": true,
+    "materialSpecified": false,
+    "massCalculated": false,
+    "manufacturingApproved": false
+  }
+}

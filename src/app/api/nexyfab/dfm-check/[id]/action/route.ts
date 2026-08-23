@@ -10,10 +10,13 @@
  * Body: { action: 'proceed_to_match' | 'request_expert' | 'revise' }
  */
 import { NextRequest, NextResponse } from 'next/server';
+import { readBoundedJson } from '@/lib/boundedJsonBody';
 import { getAuthUser } from '@/lib/auth-middleware';
 import { getDbAdapter } from '@/lib/db-adapter';
 import { checkOrigin } from '@/lib/csrf';
 import { logFunnelEvent, type FunnelEventType } from '@/lib/funnel-logger';
+
+const MAX_JSON_BODY_BYTES = 16 * 1024;
 
 export const dynamic = 'force-dynamic';
 
@@ -39,7 +42,7 @@ export async function POST(
   }
 
   const { id } = await params;
-  const body = await req.json().catch(() => ({})) as { action?: string };
+  const body = await readBoundedJson(req, MAX_JSON_BODY_BYTES).catch(() => ({})) as { action?: string };
   if (!body.action || !ACTIONS.includes(body.action as DfmAction)) {
     return NextResponse.json(
       { error: `action must be one of: ${ACTIONS.join(', ')}` },

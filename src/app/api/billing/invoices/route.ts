@@ -4,6 +4,7 @@
  * POST /api/billing/invoices/charge   — charge an open invoice
  */
 import { NextRequest, NextResponse } from 'next/server';
+import { boundedJsonError, readBoundedJson } from '@/lib/boundedJsonBody';
 import { getAuthUser } from '@/lib/auth-middleware';
 import { getDbAdapter } from '@/lib/db-adapter';
 import { checkOrigin } from '@/lib/csrf';
@@ -13,10 +14,18 @@ import {
   type Product,
   type Plan,
 } from '@/lib/billing-engine';
+import { resolveRequestOrgContext } from '@/lib/org-context';
+import { denyIfPaymentCollectionDisabled } from '@/lib/payment-gate';
+
+function orgContextError(code: 'ORG_CONTEXT_REQUIRED' | 'ORG_CONTEXT_INVALID') {
+  return NextResponse.json({ error: 'Select a valid billing context', code }, { status: 409 });
+}
 
 export async function GET(req: NextRequest) {
   const authUser = await getAuthUser(req);
   if (!authUser) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  const context = resolveRequestOrgContext(authUser);
+  if (!context.ok) return orgContextError(context.code);
 
   const db = getDbAdapter();
   const product = req.nextUrl.searchParams.get('product') ?? undefined;
@@ -24,13 +33,9 @@ export async function GET(req: NextRequest) {
   const limit   = Math.min(50, parseInt(req.nextUrl.searchParams.get('limit') ?? '20', 10));
   const offset  = (page - 1) * limit;
 
-  // Scope to the caller's personal invoices AND their org's invoices — org-level
-  // invoices carry org_id (user_id NULL), so a user_id-only filter silently
-  // hid them from org members. orgId comes from the VERIFIED session
-  // (authUser.orgIds), never client input — matches /api/billing/portal.
-  const orgId = authUser.orgIds[0] ?? null;
-  const scope = orgId ? '(user_id = ? OR org_id = ?)' : 'user_id = ?';
-  const scopeArgs: (string | number)[] = orgId ? [authUser.userId, orgId] : [authUser.userId];
+  const orgId = context.orgId;
+  const scope = orgId ? 'org_id = ?' : 'user_id = ? AND org_id IS NULL';
+  const scopeArgs: (string | number)[] = orgId ? [orgId] : [authUser.userId];
   const whereProduct = product ? 'AND product = ?' : '';
   const productArgs = product ? [product] : [];
 
@@ -85,17 +90,26 @@ export async function GET(req: NextRequest) {
   });
 }
 
+const BILLING_INVOICE_JSON_BYTES = 64 * 1024;
+
 export async function POST(req: NextRequest) {
   if (!checkOrigin(req)) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   const authUser = await getAuthUser(req);
   if (!authUser) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  const context = resolveRequestOrgContext(authUser);
+  if (!context.ok) return orgContextError(context.code);
 
-  const body = await req.json() as {
-    action: 'generate' | 'charge';
+  let body: {
+    action?: 'generate' | 'charge';
     product?: Product;
     invoiceId?: string;
     paymentMethodId?: string;
-  };
+  } = {};
+  try { body = await readBoundedJson(req, BILLING_INVOICE_JSON_BYTES); }
+  catch (error) {
+    const bodyError = boundedJsonError(error);
+    if (bodyError?.code === 'PAYLOAD_TOO_LARGE') return NextResponse.json({ error: 'Request body too large' }, { status: bodyError.status });
+  }
 
   const db = getDbAdapter();
 
@@ -105,13 +119,10 @@ export async function POST(req: NextRequest) {
     if (!(await verifyAdmin(req))) {
       return NextResponse.json({ error: 'Admin only' }, { status: 403 });
     }
-    const user = await db.queryOne<{ plan: string }>(
-      'SELECT plan FROM nf_users WHERE id = ?', authUser.userId,
-    );
-    const plan    = (user?.plan ?? 'free') as Plan;
+    const plan    = (authUser.plan ?? 'free') as Plan;
     const product = body.product ?? 'nexyfab';
 
-    const result = await generateCycleInvoice(authUser.userId, product, plan);
+    const result = await generateCycleInvoice(authUser.userId, product, plan, undefined, context.orgId);
     if (result.skipped) {
       return NextResponse.json({ message: '청구할 금액이 없습니다.', skipped: true });
     }
@@ -119,19 +130,19 @@ export async function POST(req: NextRequest) {
   }
 
   if (body.action === 'charge') {
+    const paymentDenied = denyIfPaymentCollectionDisabled();
+    if (paymentDenied) return paymentDenied;
     if (!body.invoiceId || !body.paymentMethodId) {
       return NextResponse.json({ error: 'invoiceId and paymentMethodId required' }, { status: 400 });
     }
 
-    // Verify the invoice belongs to the caller — personally OR via an org they
-    // are a verified member of (org_id checked against the session orgIds, not
-    // trusted from input). Prevents charging an invoice outside your tenant.
     const invoice = await db.queryOne<{ user_id: string | null; org_id: string | null }>(
       'SELECT user_id, org_id FROM nf_aw_invoices WHERE id = ?', body.invoiceId,
     );
-    const isOwner = !!invoice && invoice.user_id === authUser.userId;
-    const isOrgMember = !!invoice?.org_id && authUser.orgIds.includes(invoice.org_id);
-    if (!invoice || (!isOwner && !isOrgMember)) {
+    const belongsToContext = context.orgId
+      ? invoice?.org_id === context.orgId
+      : invoice?.org_id === null && invoice?.user_id === authUser.userId;
+    if (!invoice || !belongsToContext) {
       return NextResponse.json({ error: 'Invoice not found' }, { status: 404 });
     }
 

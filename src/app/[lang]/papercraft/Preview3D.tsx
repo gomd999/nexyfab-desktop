@@ -13,8 +13,11 @@
  */
 import { Canvas } from '@react-three/fiber';
 import { OrbitControls } from '@react-three/drei';
+import { usePathname } from 'next/navigation';
 import React, { useMemo } from 'react';
 import { BufferGeometry, Float32BufferAttribute } from 'three';
+import { loc } from '@/lib/i18n/loc';
+import { toIsoLang } from '@/lib/i18n/normalize';
 
 export type Model3D =
   | { kind: 'box'; W: number; D: number; H: number; roof: 'flat' | 'gable' | 'open'; gableH?: number }
@@ -92,21 +95,30 @@ function ModelMesh({ m }: { m: Model3D }) {
   );
 }
 
-class Preview3DBoundary extends React.Component<{ children: React.ReactNode }, { hasError: boolean }> {
-  constructor(props: { children: React.ReactNode }) { super(props); this.state = { hasError: false }; }
+class Preview3DBoundary extends React.Component<{ children: React.ReactNode; fallback: string }, { hasError: boolean }> {
+  constructor(props: { children: React.ReactNode; fallback: string }) { super(props); this.state = { hasError: false }; }
   static getDerivedStateFromError() { return { hasError: true }; }
   override componentDidCatch(err: Error) { console.warn('Preview3D failed; hiding 3D preview', err); }
   override render() {
     if (this.state.hasError) {
-      return <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: '#8b949e', fontSize: 12 }}>3D 미리보기를 표시할 수 없습니다 (2D 도면은 정상)</div>;
+      return <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: '#8b949e', fontSize: 12 }}>{this.props.fallback}</div>;
     }
     return this.props.children;
   }
 }
 
 export default function Preview3D({ model }: { model: Model3D }) {
+  const pathname = usePathname();
+  const lang = toIsoLang(pathname?.split('/')[1]);
   return (
-    <Preview3DBoundary>
+    <Preview3DBoundary fallback={loc(lang, {
+      ko: '3D 미리보기를 표시할 수 없습니다 (2D 도면은 정상)',
+      en: '3D preview is unavailable (the 2D drawing is fine)',
+      ja: '3Dプレビューを表示できません（2D図面は正常です）',
+      zh: '无法显示 3D 预览（2D 图纸正常）',
+      es: 'La vista previa 3D no está disponible (el plano 2D funciona)',
+      ar: 'معاينة 3D غير متاحة (الرسم ثنائي الأبعاد سليم)',
+    })}>
       <Canvas shadows dpr={[1, 2]} camera={{ position: [2.4, 1.8, 2.6], fov: 45 }} style={{ width: '100%', height: '100%' }}>
         <color attach="background" args={['#0d1117']} />
         <hemisphereLight intensity={0.6} groundColor="#1a2230" />

@@ -27,9 +27,11 @@ const ConditionPanel = dynamic(() => import('../topology/ConditionPanel'), { ssr
 const SectionPropertiesPanel = dynamic(() => import('../SectionPropertiesPanel'), { ssr: false });
 const CotsSizePreset = dynamic(() => import('../CotsSizePreset'), { ssr: false });
 const ExpressionInput = dynamic(() => import('../ExpressionInput'), { ssr: false });
+const FeatureOperationsTree = dynamic(() => import('./FeatureOperationsTree'), { ssr: false });
 import SidebarResizer from '../SidebarResizer';
 import { RAIL_WIDTH } from '../hooks/useSidebarLayout';
 import { prefGetJson, prefSetJson, PREF_KEYS } from '@/lib/platform';
+import { loc } from '@/lib/i18n/loc';
 
 // ─── i18n dict ────────────────────────────────────────────────────────────────
 
@@ -465,15 +467,15 @@ function LeftPanel({
   tier1,
   tier2,
   effectiveResult,
-  featureHistory: _featureHistory,
+  featureHistory,
   features,
   rollbackTo: _rollbackTo,
-  startEditing: _startEditing,
+  startEditing,
   finishEditing: _finishEditing,
   toggleExpanded: _toggleExpanded,
   ensureExpanded: _ensureExpanded,
-  toggleFeature: _toggleFeature,
-  removeNode: _removeNode,
+  toggleFeature,
+  removeNode,
   updateFeatureParam: _updateFeatureParam,
   addFeature: _addFeature,
   moveFeatureByIds: _moveFeatureByIds,
@@ -538,7 +540,7 @@ function LeftPanel({
   onDimChange,
   materialKey,
   unitSystem,
-  onSelectFeatureFromTree: _onSelectFeatureFromTree,
+  onSelectFeatureFromTree,
   onMaterialKeyChange,
   fixedFaces,
   loads,
@@ -588,7 +590,7 @@ function LeftPanel({
   const langMap: Record<string, keyof typeof dict> = {
     kr: 'ko', ko: 'ko', en: 'en', ja: 'ja', cn: 'zh', zh: 'zh', es: 'es', ar: 'ar',
   };
-  const tt = dict[langMap[seg] ?? (lang === 'ko' ? 'ko' : 'en')];
+  const tt = dict[langMap[seg] ?? 'en'];
 
   const [newVariantName, setNewVariantName] = React.useState('');
   React.useEffect(() => {
@@ -717,7 +719,7 @@ function LeftPanel({
         <button
           onClick={onToggleCollapse}
           aria-label="Expand panel"
-          title="Expand (펼치기)"
+          title={loc(lang, { ko: '펼치기', en: 'Expand', ja: '展開', zh: '展开', es: 'Expandir', ar: 'توسيع' })}
           style={{
             width: 32, height: 32, borderRadius: 6, border: `1px solid ${theme.border}`,
             background: theme.cardBg, color: theme.text, cursor: 'pointer',
@@ -757,7 +759,7 @@ function LeftPanel({
         <button
           onClick={onToggleCollapse}
           aria-label="Collapse panel"
-          title="Collapse (접기)"
+          title={loc(lang, { ko: '접기', en: 'Collapse', ja: '折りたたむ', zh: '折叠', es: 'Contraer', ar: 'طي' })}
           style={{
             position: 'absolute', top: 4,
             [side === 'right' ? 'left' : 'right']: 4,
@@ -864,6 +866,27 @@ function LeftPanel({
                           <div style={{ marginLeft: 26, padding: '4px 6px', fontSize: 11, color: theme.textMuted, fontStyle: 'italic' }}>No sketches</div>
                         )}
                       </div>
+
+                      {/* Live feature operations. This uses the same history
+                          ids as the timeline, so tree edits, Undo/Redo and PDM
+                          checkout all address one canonical feature graph. */}
+                      <FeatureOperationsTree
+                        lang={lang}
+                        history={featureHistory}
+                        colors={{
+                          text: theme.text,
+                          muted: theme.textMuted,
+                          accent: theme.accent,
+                          border: theme.border,
+                          hover: theme.hoverBg,
+                          input: theme.inputBg,
+                          danger: '#ef4444',
+                        }}
+                        onSelect={onSelectFeatureFromTree}
+                        onEdit={startEditing}
+                        onToggle={toggleFeature}
+                        onRemove={removeNode}
+                      />
 
                       {/* Bodies */}
                       <div>

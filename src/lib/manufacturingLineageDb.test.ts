@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { DbAdapter } from './db-adapter';
-import { resolveAuthorizedManufacturingLineage } from './manufacturingLineageDb';
+import { invalidateManufacturingLineageForRevision, resolveAuthorizedManufacturingLineage } from './manufacturingLineageDb';
 
 const ref = { lineageId: 'l1', artifactId: 'a1', artifactSha256: 'a'.repeat(64), documentVersionId: 'v1' };
 const adapter = (row: unknown): DbAdapter => {
@@ -37,5 +37,21 @@ describe('authorized manufacturing lineage resolver', () => {
       document_version_id: 'v1', release_status: 'authorized', authorized_at: 1,
       authorized_by: 'reviewer', invalidated_at: null,
     }), 'u1', ref)).resolves.toMatchObject({ code: 'LINEAGE_ARTIFACT_MISMATCH' });
+  });
+
+  it('revokes prior releases and emits an append-only receipt on a new revision', async () => {
+    const statements: Array<{ sql: string; params: unknown[] }> = [];
+    const db = adapter(undefined);
+    db.queryAll = async <T>() => [{ lineage_id: 'l-old', document_version_id: 'v-old' }] as T[];
+    db.execute = async (sql: string, ...params: unknown[]) => {
+      statements.push({ sql, params });
+      return { changes: sql.includes('UPDATE nf_manufacturing_lineage') ? 1 : 0 };
+    };
+
+    await expect(invalidateManufacturingLineageForRevision(db, 'project-1', 'v-new', 100))
+      .resolves.toEqual(['l-old']);
+    expect(statements.some(item => item.sql.includes("release_status = 'revoked'"))).toBe(true);
+    expect(statements.some(item => item.sql.includes('nf_manufacturing_lineage_invalidations') && item.sql.includes('INSERT'))).toBe(true);
+    expect(statements.flatMap(item => item.params)).toContain('v-new');
   });
 });

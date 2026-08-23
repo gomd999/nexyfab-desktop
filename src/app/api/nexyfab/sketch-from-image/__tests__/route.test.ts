@@ -21,10 +21,11 @@ vi.mock('@/lib/ai/sketchFromImageService', () => ({ runSketchFromImage: (...a: u
 import { POST } from '../route';
 
 function reqOf(body: unknown): NextRequest {
-  return {
-    headers: new Headers(),
-    json: async () => body,
-  } as unknown as NextRequest;
+  return new Request('http://localhost/api/nexyfab/sketch-from-image', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify(body),
+  }) as unknown as NextRequest;
 }
 
 const okEntities = { points: [], lines: [{ id: 'l1', p1: 'p1', p2: 'p2', x1: 0, y1: 0, x2: 10, y2: 0 }], circles: [], arcs: [] };

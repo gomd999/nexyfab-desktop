@@ -9,8 +9,11 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getAuthUser } from '@/lib/auth-middleware';
 import { rateLimit } from '@/lib/rate-limit';
 import { chatCompletion, AiNotConfiguredError, type ChatMessage } from '@/lib/ai';
+import { localizedApiMessage, resolveServerLocale } from '@/lib/i18n/serverLocale';
+import { boundedJsonError, readBoundedJson } from '@/lib/boundedJsonBody';
 
 export const dynamic = 'force-dynamic';
+const RFQ_PARSE_JSON_BYTES = 64 * 1024;
 
 // 유효한 materialId 목록 (RFQ form과 동일)
 const MATERIAL_IDS = [
@@ -92,25 +95,31 @@ Rules:
 
 export async function POST(req: NextRequest) {
   const authUser = await getAuthUser(req);
-  if (!authUser) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  const locale = resolveServerLocale(req, req.nextUrl.searchParams.get('lang'));
+  if (!authUser) return NextResponse.json({ error: localizedApiMessage(locale, 'unauthorized'), code: 'UNAUTHORIZED' }, { status: 401 });
 
   // Rate limit: 20 parses per hour per user
   const rl = rateLimit(`rfq-parse:${authUser.userId}`, 20, 60 * 60_000);
   if (!rl.allowed) {
-    return NextResponse.json({ error: '요청이 너무 많습니다. 잠시 후 다시 시도하세요.' }, { status: 429 });
+    return NextResponse.json({ error: localizedApiMessage(locale, 'rateLimited'), code: 'RATE_LIMITED' }, { status: 429 });
   }
 
   let body: { text?: string; lang?: string };
-  try { body = await req.json(); } catch {
-    return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 });
+  try { body = await readBoundedJson(req, RFQ_PARSE_JSON_BYTES); } catch (error) {
+    const bodyError = boundedJsonError(error);
+    if (bodyError?.code === 'PAYLOAD_TOO_LARGE') {
+      return NextResponse.json({ error: localizedApiMessage(locale, 'badRequest'), code: bodyError.code }, { status: bodyError.status });
+    }
+    return NextResponse.json({ error: localizedApiMessage(locale, 'badRequest'), code: 'BAD_REQUEST' }, { status: 400 });
   }
+  const bodyLocale = resolveServerLocale(req, body.lang ?? req.nextUrl.searchParams.get('lang'));
 
   const text = (body.text ?? '').trim();
-  if (!text) return NextResponse.json({ error: 'text는 필수입니다.' }, { status: 400 });
-  if (text.length > 2000) return NextResponse.json({ error: '텍스트가 너무 깁니다. (최대 2000자)' }, { status: 400 });
+  if (!text) return NextResponse.json({ error: localizedApiMessage(bodyLocale, 'messageRequired'), code: 'TEXT_REQUIRED' }, { status: 400 });
+  if (text.length > 2000) return NextResponse.json({ error: localizedApiMessage(bodyLocale, 'promptTooLong'), code: 'TEXT_TOO_LONG' }, { status: 400 });
 
   const messages: ChatMessage[] = [
-    { role: 'system', content: buildSystemPrompt() },
+    { role: 'system', content: `${buildSystemPrompt()}\n\n[OUTPUT LANGUAGE CONTRACT]\nWrite the note field in ${bodyLocale.languageName}. Keep enum values and JSON keys unchanged.` },
     { role: 'user', content: text },
   ];
 
@@ -127,11 +136,11 @@ export async function POST(req: NextRequest) {
   } catch (e) {
     if (e instanceof AiNotConfiguredError) {
       const parsed = regexParse(text);
-      return NextResponse.json({ parsed, confidence: 40, rawText: text, fallback: true });
+      return NextResponse.json({ parsed, confidence: 40, rawText: text, fallback: true, outputLanguage: bodyLocale.route });
     }
     console.error('[rfq/parse] AI provider error, falling back to regex:', e);
     const parsed = regexParse(text);
-    return NextResponse.json({ parsed, confidence: 35, rawText: text, fallback: true });
+    return NextResponse.json({ parsed, confidence: 35, rawText: text, fallback: true, outputLanguage: bodyLocale.route });
   }
 
   try {
@@ -164,12 +173,12 @@ export async function POST(req: NextRequest) {
       ? Math.max(0, Math.min(100, llmResult.confidence))
       : 70;
 
-    return NextResponse.json({ parsed, confidence, rawText: text });
+    return NextResponse.json({ parsed, confidence, rawText: text, outputLanguage: bodyLocale.route });
 
   } catch (err) {
     // LLM 실패 시 정규식 fallback
     console.error('[rfq/parse] LLM error, falling back to regex:', err);
     const parsed = regexParse(text);
-    return NextResponse.json({ parsed, confidence: 35, rawText: text, fallback: true });
+    return NextResponse.json({ parsed, confidence: 35, rawText: text, fallback: true, outputLanguage: bodyLocale.route });
   }
 }

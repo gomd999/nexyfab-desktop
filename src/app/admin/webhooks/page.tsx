@@ -1,7 +1,9 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { formatDateTime } from '@/lib/formatDate';
+import { createCommercialLocalizer } from '@/lib/i18n/commercialLocalizer';
+import { useAdminI18n } from '../AdminI18nProvider';
 
 interface WebhookEvent {
   id: string;
@@ -30,6 +32,8 @@ function EventTypeBadge({ type }: { type: string }) {
 }
 
 export default function WebhooksAdminPage() {
+  const { locale } = useAdminI18n();
+  const L = useMemo(() => createCommercialLocalizer(locale), [locale]);
   const [events, setEvents] = useState<WebhookEvent[]>([]);
   const [pagination, setPagination] = useState<Pagination | null>(null);
   const [eventTypes, setEventTypes] = useState<string[]>([]);
@@ -57,17 +61,17 @@ export default function WebhooksAdminPage() {
       if (filterType) params.set('type', filterType);
       if (search) params.set('q', search);
       const res = await fetch(`/api/admin/webhooks?${params}`);
-      if (!res.ok) { setError('이벤트를 불러오는 데 실패했습니다.'); return; }
+      if (!res.ok) { setError(L('이벤트를 불러오는 데 실패했습니다.', 'Failed to load webhook events.')); return; }
       const data = await res.json();
       setEvents(data.events ?? []);
       setPagination(data.pagination ?? null);
       if (data.types?.length > 0) setEventTypes(data.types);
     } catch {
-      setError('네트워크 오류가 발생했습니다.');
+      setError(L('네트워크 오류가 발생했습니다.', 'A network error occurred.'));
     } finally {
       setLoading(false);
     }
-  }, [page, filterType, search]);
+  }, [page, filterType, search, L]);
 
   useEffect(() => { fetchEvents(); }, [fetchEvents]);
 
@@ -81,32 +85,32 @@ export default function WebhooksAdminPage() {
       });
       const data = await res.json();
       if (res.ok && data.ok) {
-        showToast(`재처리 완료 — ${data.eventType}`, true);
+        showToast(L(`재처리 완료 — ${data.eventType}`, `Reprocessed — ${data.eventType}`), true);
         fetchEvents();
       } else {
-        showToast(data.error || '재처리에 실패했습니다.', false);
+        showToast(data.error || L('재처리에 실패했습니다.', 'Failed to reprocess.'), false);
       }
     } catch {
-      showToast('네트워크 오류가 발생했습니다.', false);
+      showToast(L('네트워크 오류가 발생했습니다.', 'A network error occurred.'), false);
     } finally {
       setReprocessingId(null);
     }
   }
 
   async function handleDelete(eventId: string) {
-    if (!confirm(`이벤트 ${eventId}를 삭제하시겠습니까?`)) return;
+    if (!confirm(L(`이벤트 ${eventId}를 삭제하시겠습니까?`, `Delete event ${eventId}?`))) return;
     setDeletingId(eventId);
     try {
       const res = await fetch(`/api/admin/webhooks?id=${encodeURIComponent(eventId)}`, { method: 'DELETE' });
       if (res.ok) {
-        showToast('삭제되었습니다.', true);
+        showToast(L('삭제되었습니다.', 'Deleted.'), true);
         fetchEvents();
       } else {
         const data = await res.json();
-        showToast(data.error || '삭제에 실패했습니다.', false);
+        showToast(data.error || L('삭제에 실패했습니다.', 'Failed to delete.'), false);
       }
     } catch {
-      showToast('네트워크 오류가 발생했습니다.', false);
+      showToast(L('네트워크 오류가 발생했습니다.', 'A network error occurred.'), false);
     } finally {
       setDeletingId(null);
     }
@@ -134,14 +138,14 @@ export default function WebhooksAdminPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">웹훅 이벤트</h1>
-          <p className="text-sm text-gray-500 mt-0.5">Airwallex 결제 웹훅 수신 내역</p>
+          <h1 className="text-2xl font-bold text-gray-900">{L('웹훅 이벤트', 'Webhook events')}</h1>
+          <p className="text-sm text-gray-500 mt-0.5">{L('Airwallex 결제 웹훅 수신 내역', 'Airwallex payment webhook delivery history')}</p>
         </div>
         <button
           onClick={() => fetchEvents()}
           className="px-4 py-2 text-sm font-semibold border border-gray-200 rounded-lg hover:bg-gray-50 transition"
         >
-          새로고침
+          {L('새로고침', 'Refresh')}
         </button>
       </div>
 
@@ -149,19 +153,19 @@ export default function WebhooksAdminPage() {
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
         <div className="bg-white rounded-xl border border-gray-200 p-4">
           <div className="text-2xl font-bold text-blue-600">{pagination?.total ?? events.length}</div>
-          <div className="text-xs text-gray-500 mt-1">총 이벤트</div>
+          <div className="text-xs text-gray-500 mt-1">{L('총 이벤트', 'Total events')}</div>
         </div>
         <div className="bg-white rounded-xl border border-gray-200 p-4">
           <div className="text-2xl font-bold text-green-600">{succeededCount}</div>
-          <div className="text-xs text-gray-500 mt-1">성공 (현재 페이지)</div>
+          <div className="text-xs text-gray-500 mt-1">{L('성공 (현재 페이지)', 'Succeeded (current page)')}</div>
         </div>
         <div className="bg-white rounded-xl border border-gray-200 p-4">
           <div className="text-2xl font-bold text-red-600">{failedCount}</div>
-          <div className="text-xs text-gray-500 mt-1">실패/취소 (현재 페이지)</div>
+          <div className="text-xs text-gray-500 mt-1">{L('실패/취소 (현재 페이지)', 'Failed/cancelled (current page)')}</div>
         </div>
         <div className="bg-white rounded-xl border border-gray-200 p-4">
           <div className="text-2xl font-bold text-gray-700">{Object.keys(typeStats).length}</div>
-          <div className="text-xs text-gray-500 mt-1">이벤트 유형</div>
+          <div className="text-xs text-gray-500 mt-1">{L('이벤트 유형', 'Event type')}</div>
         </div>
       </div>
 
@@ -172,14 +176,14 @@ export default function WebhooksAdminPage() {
           onChange={e => { setFilterType(e.target.value); setPage(1); }}
           className="px-3 py-2 text-sm border border-gray-200 rounded-lg bg-white focus:ring-2 focus:ring-blue-500 outline-none"
         >
-          <option value="">모든 이벤트 유형</option>
+          <option value="">{L('모든 이벤트 유형', 'All event types')}</option>
           {eventTypes.map(t => (
             <option key={t} value={t}>{t}</option>
           ))}
         </select>
         <input
           type="text"
-          placeholder="이벤트 ID / 타입 검색..."
+placeholder={L('이벤트 ID / 타입 검색...', 'Search event ID / type...')}
           value={search}
           onChange={e => { setSearch(e.target.value); setPage(1); }}
           className="px-3 py-2 text-sm border border-gray-200 rounded-lg flex-1 min-w-[200px] focus:ring-2 focus:ring-blue-500 outline-none"
@@ -189,20 +193,20 @@ export default function WebhooksAdminPage() {
       {/* Table */}
       <div className="bg-white rounded-xl border border-gray-200 overflow-x-auto">
         {loading ? (
-          <div className="text-center py-16 text-gray-400 text-sm">불러오는 중...</div>
+          <div className="text-center py-16 text-gray-400 text-sm">{L('불러오는 중…', 'Loading…')}</div>
         ) : error ? (
           <div className="text-center py-16 text-red-400 text-sm">{error}</div>
         ) : events.length === 0 ? (
-          <div className="text-center py-16 text-gray-400 text-sm">이벤트가 없습니다.</div>
+          <div className="text-center py-16 text-gray-400 text-sm">{L('이벤트가 없습니다.', 'No webhook events.')}</div>
         ) : (
           <table className="w-full text-sm min-w-[720px]">
             <thead>
               <tr className="border-b border-gray-100 bg-gray-50">
-                <th className="text-left px-4 py-3 text-xs font-bold text-gray-500">이벤트 유형</th>
-                <th className="text-left px-4 py-3 text-xs font-bold text-gray-500">처리 일시</th>
-                <th className="text-left px-4 py-3 text-xs font-bold text-gray-500">이벤트 ID</th>
-                <th className="text-left px-4 py-3 text-xs font-bold text-gray-500">페이로드</th>
-                <th className="text-left px-4 py-3 text-xs font-bold text-gray-500">작업</th>
+                <th className="text-left px-4 py-3 text-xs font-bold text-gray-500">{L('이벤트 유형', 'Event type')}</th>
+                <th className="text-left px-4 py-3 text-xs font-bold text-gray-500">{L('처리 일시', 'Processed at')}</th>
+                <th className="text-left px-4 py-3 text-xs font-bold text-gray-500">{L('이벤트 ID', 'Event ID')}</th>
+                <th className="text-left px-4 py-3 text-xs font-bold text-gray-500">{L('페이로드', 'Payload')}</th>
+                <th className="text-left px-4 py-3 text-xs font-bold text-gray-500">{L('작업', 'Action')}</th>
               </tr>
             </thead>
             <tbody>
@@ -212,16 +216,16 @@ export default function WebhooksAdminPage() {
                     <EventTypeBadge type={event.type} />
                   </td>
                   <td className="px-4 py-3 text-gray-500 text-xs whitespace-nowrap">
-                    {formatDateTime(event.processedAt)}
+                    {formatDateTime(event.processedAt, locale)}
                   </td>
                   <td className="px-4 py-3 font-mono text-[11px] text-gray-400 max-w-[200px] truncate" title={event.eventId}>
                     {event.eventId}
                   </td>
                   <td className="px-4 py-3">
                     {event.hasPayload ? (
-                      <span className="text-xs text-green-600 font-semibold">있음</span>
+                      <span className="text-xs text-green-600 font-semibold">{L('있음', 'Present')}</span>
                     ) : (
-                      <span className="text-xs text-gray-400">없음</span>
+                      <span className="text-xs text-gray-400">{L('없음', 'None')}</span>
                     )}
                   </td>
                   <td className="px-4 py-3">
@@ -229,17 +233,17 @@ export default function WebhooksAdminPage() {
                       <button
                         onClick={() => handleReprocess(event.eventId)}
                         disabled={reprocessingId === event.eventId || !event.hasPayload}
-                        title={!event.hasPayload ? '페이로드가 없어 재처리 불가' : '이벤트 재처리'}
+                        title={!event.hasPayload ? L('페이로드가 없어 재처리 불가', 'Cannot reprocess without a payload') : L('이벤트 재처리', 'Reprocess event')}
                         className="px-3 py-1 text-[11px] font-bold text-blue-600 border border-blue-200 rounded-lg hover:bg-blue-50 transition disabled:opacity-40 disabled:cursor-not-allowed"
                       >
-                        {reprocessingId === event.eventId ? '처리중...' : '재처리'}
+                        {reprocessingId === event.eventId ? L('처리 중...', 'Processing...') : L('재처리', 'Reprocess')}
                       </button>
                       <button
                         onClick={() => handleDelete(event.eventId)}
                         disabled={deletingId === event.eventId}
                         className="px-3 py-1 text-[11px] font-bold text-red-500 border border-red-200 rounded-lg hover:bg-red-50 transition disabled:opacity-40"
                       >
-                        {deletingId === event.eventId ? '삭제중...' : '삭제'}
+                        {deletingId === event.eventId ? L('삭제 중...', 'Deleting...') : L('삭제', 'Delete')}
                       </button>
                     </div>
                   </td>
@@ -254,7 +258,7 @@ export default function WebhooksAdminPage() {
       {pagination && pagination.totalPages > 1 && (
         <div className="flex items-center justify-between">
           <span className="text-sm text-gray-500">
-            총 {pagination.total}개 중 {(pagination.page - 1) * pagination.limit + 1}–
+            {L(`총 ${pagination.total}개 중`, `${pagination.total} total,`)} {(pagination.page - 1) * pagination.limit + 1}–
             {Math.min(pagination.page * pagination.limit, pagination.total)}
           </span>
           <div className="flex gap-2">
@@ -263,7 +267,7 @@ export default function WebhooksAdminPage() {
               disabled={page === 1}
               className="px-3 py-1.5 text-sm border border-gray-200 rounded-lg hover:bg-gray-50 disabled:opacity-40"
             >
-              이전
+              {L('이전', 'Previous')}
             </button>
             <span className="px-3 py-1.5 text-sm text-gray-600">{page} / {pagination.totalPages}</span>
             <button
@@ -271,7 +275,7 @@ export default function WebhooksAdminPage() {
               disabled={page === pagination.totalPages}
               className="px-3 py-1.5 text-sm border border-gray-200 rounded-lg hover:bg-gray-50 disabled:opacity-40"
             >
-              다음
+              {L('다음', 'Next')}
             </button>
           </div>
         </div>

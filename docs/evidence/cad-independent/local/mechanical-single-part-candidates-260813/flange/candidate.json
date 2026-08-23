@@ -1,0 +1,64 @@
+{
+  "schema": "nexyfab.mechanical-single-part-candidate.v1",
+  "feature": "flange",
+  "candidateStatus": "PASS",
+  "partRevisionSha256": "b3711c40417092e0ee192f818ec38307dba54377164c9b2fbeaa804dbc8509cd",
+  "source": {
+    "receiptPath": "docs/evidence/cad-independent/local/mechanical-core-feature-axis-evidence.json",
+    "receiptSha256": "79d9344b7d101580b7e1574759a8eff652cbe942e6a389056b488aba28a77930",
+    "designRevisionSha256": "3cf6a0f9c8efcf153a2cfefde087a2112c086fc412d2feeaeb9ce52542838564",
+    "nfab": {
+      "path": "docs/evidence/cad-independent/local/mechanical-core-runtime-260813/flange/saved-project.nfab",
+      "sha256": "c7c48113c80b3d2621778d940366a65303b6ac653fb0dc7164797352377b9b25",
+      "bytes": 1603,
+      "assertionId": "flange.save_reopen.saved-bytes",
+      "revisionSha256": "c7c48113c80b3d2621778d940366a65303b6ac653fb0dc7164797352377b9b25",
+      "formatVersion": 3,
+      "createdAt": 1786643131147,
+      "updatedAt": 1786643131147
+    },
+    "step": {
+      "path": "docs/evidence/cad-independent/local/mechanical-core-runtime-260813/flange/flange-edited.step",
+      "sha256": "cae1cee42d8d0440bfde4857c671036db0aa0067b6b5890b0c9a6b4069d948e1",
+      "bytes": 31999,
+      "assertionId": "flange.export.native-step"
+    },
+    "drawingSvg": {
+      "path": "docs/evidence/cad-independent/local/mechanical-core-runtime-260813/flange/flange-exact-hlr.svg",
+      "sha256": "97f94a6a8eed656ad3ea4479e542638f5ff53f7e6f801eacb8a34fce1a747952",
+      "bytes": 4468,
+      "assertionId": "flange.drawing.exact-hlr-svg"
+    }
+  },
+  "artifacts": {
+    "stepImport": {
+      "path": "docs/evidence/cad-independent/local/mechanical-single-part-candidates-260813/flange/step-import.json",
+      "sha256": "827823e9bd71de2dfbdc494d81a732156ab79145015b7e3c308bb8f6ca42f425",
+      "bytes": 1034,
+      "assertionId": "flange.candidate.step-import"
+    },
+    "drawing": {
+      "path": "docs/evidence/cad-independent/local/mechanical-single-part-candidates-260813/flange/flange-three-axis-hlr.svg",
+      "sha256": "97f94a6a8eed656ad3ea4479e542638f5ff53f7e6f801eacb8a34fce1a747952",
+      "bytes": 4468,
+      "assertionId": "flange.candidate.three-axis-hlr"
+    },
+    "bom": {
+      "path": "docs/evidence/cad-independent/local/mechanical-single-part-candidates-260813/flange/bom.json",
+      "sha256": "a12b858458cbd90217c2b5ac1443bc3854cefca5394c935fac2a90f3577673fa",
+      "bytes": 873,
+      "assertionId": "flange.candidate.one-part-bom"
+    }
+  },
+  "capabilityStatus": {
+    "stepImportSolidUnitsBounds": "PASS",
+    "threeAxisHlrDrawingCandidate": "PASS",
+    "onePartBomQuantityDimensions": "PASS",
+    "drawingDimensions": "NOT_RUN",
+    "gdt": "NOT_RUN",
+    "pmi": "NOT_RUN",
+    "humanApproval": "NOT_RUN",
+    "manufacturingRelease": "BLOCKED"
+  },
+  "commercialReleaseEligible": false
+}

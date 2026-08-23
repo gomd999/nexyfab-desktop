@@ -7,7 +7,7 @@
 
 import { use, useCallback, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { isKorean } from '@/lib/i18n/normalize';
+import { createCommercialLocalizer } from '@/lib/i18n/commercialLocalizer';
 import { useAuthStore } from '@/hooks/useAuth';
 
 interface InviteInfo {
@@ -18,7 +18,7 @@ interface InviteInfo {
 
 export default function InviteAcceptPage({ params }: { params: Promise<{ lang: string; token: string }> }) {
   const { lang, token } = use(params);
-  const isKo = isKorean(lang);
+  const L = createCommercialLocalizer(lang);
   const router = useRouter();
   const user = useAuthStore(s => s.user);
 
@@ -29,26 +29,20 @@ export default function InviteAcceptPage({ params }: { params: Promise<{ lang: s
 
   const langSeg = lang === 'ko' ? 'kr' : lang;
 
-  const t = isKo ? {
-    title: '프로젝트 초대', loading: '초대 확인 중…',
-    invalid: '초대가 유효하지 않거나 만료되었습니다.',
-    invitedAs: (r: string) => `${r === 'viewer' ? '보기 전용' : '편집 가능'} 권한으로 초대되었습니다.`,
-    forEmail: (e: string) => `초대 이메일: ${e}`,
-    signIn: '로그인하고 수락',
-    signInHint: '초대받은 이메일과 같은 계정으로 로그인하세요.',
-    accept: '초대 수락', accepting: '수락 중…',
-    mismatch: '로그인한 이메일이 초대와 일치하지 않습니다. 초대받은 이메일로 로그인하세요.',
-    backHome: '홈으로',
-  } : {
-    title: 'Project invitation', loading: 'Checking invite…',
-    invalid: 'This invite is invalid or has expired.',
-    invitedAs: (r: string) => `You've been invited as ${r}.`,
-    forEmail: (e: string) => `Invited email: ${e}`,
-    signIn: 'Sign in to accept',
-    signInHint: 'Sign in with the same email the invite was sent to.',
-    accept: 'Accept invite', accepting: 'Accepting…',
-    mismatch: 'Your signed-in email does not match the invite. Sign in with the invited email.',
-    backHome: 'Go home',
+  const t = {
+    title: L('프로젝트 초대', 'Project invitation'),
+    loading: L('초대 확인 중…', 'Checking invite…'),
+    invalid: L('초대가 유효하지 않거나 만료되었습니다.', 'This invite is invalid or has expired.'),
+    invitedAs: (role: string) => role === 'viewer'
+      ? L('보기 전용 권한으로 초대되었습니다.', "You've been invited as a viewer.")
+      : L('편집 가능 권한으로 초대되었습니다.', "You've been invited as an editor."),
+    forEmail: (email: string) => `${L('초대 이메일', 'Invited email')}: ${email}`,
+    signIn: L('로그인하고 수락', 'Sign in to accept'),
+    signInHint: L('초대받은 이메일과 같은 계정으로 로그인하세요.', 'Sign in with the same email the invite was sent to.'),
+    accept: L('초대 수락', 'Accept invite'),
+    accepting: L('수락 중…', 'Accepting…'),
+    mismatch: L('로그인한 이메일이 초대와 일치하지 않습니다. 초대받은 이메일로 로그인하세요.', 'Your signed-in email does not match the invite. Sign in with the invited email.'),
+    backHome: L('홈으로', 'Go home'),
   };
 
   useEffect(() => {

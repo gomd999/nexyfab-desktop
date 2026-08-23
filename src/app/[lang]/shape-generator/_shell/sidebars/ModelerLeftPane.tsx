@@ -50,6 +50,7 @@ function featureToTreeNode(item: ShellFeatureItem): TreeNode {
 
 export function ModelerLeftPane({ lang, onSelectFeature }: ModelerLeftPaneProps) {
   const d = pickShellDict(lang);
+  const baseShape = useShellBridge(s => s.baseShapeItem);
   const features = useShellBridge(s => s.featureItems);
   const selectedFeatureId = useShellBridge(s => s.selectedFeatureId);
   const setHoveredFeatureId = useShellBridge(s => s.setHoveredFeatureId);
@@ -57,10 +58,11 @@ export function ModelerLeftPane({ lang, onSelectFeature }: ModelerLeftPaneProps)
   const [filter, setFilter] = useState('');
 
   const filtered = useMemo<ShellFeatureItem[]>(() => {
-    if (!filter.trim()) return features;
+    const items = baseShape ? [baseShape, ...features] : features;
+    if (!filter.trim()) return items;
     const q = filter.toLowerCase();
-    return features.filter(f => f.label.toLowerCase().includes(q));
-  }, [features, filter]);
+    return items.filter(f => f.label.toLowerCase().includes(q));
+  }, [baseShape, features, filter]);
 
   const treeNodes = useMemo(() => filtered.map(featureToTreeNode), [filtered]);
 
@@ -79,6 +81,9 @@ export function ModelerLeftPane({ lang, onSelectFeature }: ModelerLeftPaneProps)
           <div className="nx-filter">
             <I.search size={11} />
             <input
+              id="shell-feature-filter"
+              name="featureFilter"
+              aria-label={d.filterFeatures}
               type="text"
               placeholder={d.filterFeatures}
               value={filter}
@@ -89,7 +94,12 @@ export function ModelerLeftPane({ lang, onSelectFeature }: ModelerLeftPaneProps)
               }}
             />
           </div>
-          <button className="nx-icon-btn" aria-label={d.add}>
+          <button
+            type="button"
+            className="nx-icon-btn"
+            aria-label={d.add}
+            onClick={() => window.dispatchEvent(new CustomEvent('nexyfab:open-command-palette'))}
+          >
             <I.plus size={11} />
           </button>
         </div>

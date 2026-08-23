@@ -68,6 +68,8 @@ function coerceConcreteElement(v: unknown, path: string): ConcreteElement {
     h_m: reqNum(o.h_m, `${path}.h_m`),
     L_m: reqNum(o.L_m, `${path}.L_m`),
   };
+  const objectId = optStr(o.objectId, `${path}.objectId`);
+  if (objectId !== undefined) e.objectId = objectId;
   const tag = optStr(o.tag, `${path}.tag`);
   if (tag !== undefined) e.tag = tag;
   const count = optNum(o.count, `${path}.count`);
@@ -83,6 +85,8 @@ function coerceRebarGroup(v: unknown, path: string): RebarGroup {
     nominalDia_mm: reqNum(o.nominalDia_mm, `${path}.nominalDia_mm`),
     length_m: reqNum(o.length_m, `${path}.length_m`),
   };
+  const objectId = optStr(o.objectId, `${path}.objectId`);
+  if (objectId !== undefined) g.objectId = objectId;
   const tag = optStr(o.tag, `${path}.tag`);
   if (tag !== undefined) g.tag = tag;
   const count = optNum(o.count, `${path}.count`);
@@ -110,6 +114,8 @@ function coerceActivity(v: unknown, path: string): Activity {
     id: reqStr(o.id, `${path}.id`),
     duration_days: reqNum(o.duration_days, `${path}.duration_days`),
   };
+  const objectId = optStr(o.objectId, `${path}.objectId`);
+  if (objectId !== undefined) a.objectId = objectId;
   if (o.predecessors !== undefined && o.predecessors !== null) {
     const raw = reqArray(o.predecessors, `${path}.predecessors`);
     a.predecessors = raw.map((p, i) => coercePredecessor(p, `${path}.predecessors[${i}]`));
@@ -128,6 +134,8 @@ function coerceFormworkElement(v: unknown, path: string): FormworkElement {
     const e = base as T & { tag?: string; count?: number };
     if (tag !== undefined) e.tag = tag;
     if (count !== undefined) e.count = count;
+    const objectId = optStr(o.objectId, `${path}.objectId`);
+    if (objectId !== undefined) (e as T & { objectId?: string }).objectId = objectId;
     return e;
   };
 

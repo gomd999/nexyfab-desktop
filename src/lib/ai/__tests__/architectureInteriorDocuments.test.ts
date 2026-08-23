@@ -48,6 +48,10 @@ describe('separate architecture and interior semantic documents', () => {
   it('validates building grids, stairs, zones and field-verified interior systems', () => {
     const arch = architecture();
     arch.grids = [{ id: 'grid-a', name: 'A', axis: 'x', startMm: [0, 0], endMm: [4000, 0] }];
+    const gridEdit = applyArchitectureInteriorEdit(arch, interior(), { kind: 'edit_grid', gridId: 'grid-a', name: 'A1', endMm: [4500, 0] });
+    expect(gridEdit.architecture.grids).toEqual([{ id: 'grid-a', name: 'A1', axis: 'x', startMm: [0, 0], endMm: [4500, 0] }]);
+    expect(() => applyArchitectureInteriorEdit(arch, interior(), { kind: 'edit_grid', gridId: 'grid-a', endMm: [0, 0] })).toThrow('Invalid grid');
+    expect(() => applyArchitectureInteriorEdit(arch, interior(), { kind: 'edit_grid', gridId: 'missing', name: 'B' })).toThrow('Unknown grid');
     arch.storeys.push({ id: 'level-2', name: 'L2', elevationMm: 3000, heightMm: 3000 });
     arch.stairs = [{ id: 'stair-1', fromStoreyId: 'level-1', toStoreyId: 'level-2', widthMm: 1200, riserCount: 18, treadDepthMm: 280, pathMm: [[0, 0, 0], [3000, 0, 3000]] }];
     arch.zones = [{ id: 'fire-zone', name: 'F1', kind: 'fire', spaceIds: ['room-1'] }];
@@ -58,5 +62,18 @@ describe('separate architecture and interior semantic documents', () => {
     fitout.fieldMeasurement = { sourceRef: 'scan://survey-1', measuredAt: '2026-08-09T00:00:00Z', architectureRevision: 0, toleranceMm: 5 };
     expect(validateArchitectureDocument(arch)).toEqual([]);
     expect(validateInteriorDocument(fitout, arch)).toEqual([]);
+  });
+  it('creates and patch-edits only the selected stair while binding its endpoint Z values', () => {
+    const arch = architecture();
+    arch.storeys.push({ id: 'level-2', name: 'L2', elevationMm: 3000, heightMm: 3000 });
+    const stair = { id: 'stair-1', fromStoreyId: 'level-1', toStoreyId: 'level-2', widthMm: 1200, riserCount: 18, treadDepthMm: 280, pathMm: [[500, 500, 0], [500, 2000, 3000]] as [number, number, number][] };
+    const created = applyArchitectureInteriorEdit(arch, interior(), { kind: 'create_stair', stair });
+    const edited = applyArchitectureInteriorEdit(created.architecture, created.interior, { kind: 'edit_stair', stairId: 'stair-1', widthMm: 1400 });
+    expect(edited.architecture.stairs).toEqual([{ ...stair, widthMm: 1400 }]);
+    expect(edited.architecture.walls).toEqual(arch.walls);
+    expect(() => applyArchitectureInteriorEdit(created.architecture, created.interior, { kind: 'edit_stair', stairId: 'stair-1', widthMm: 1200 })).toThrow('no-op');
+    const malformed = structuredClone(created.architecture);
+    malformed.stairs![0]!.pathMm[0]![2] = 1;
+    expect(validateArchitectureDocument(malformed).some(issue => issue.includes('stair-1'))).toBe(true);
   });
 });

@@ -10,10 +10,16 @@
  * Internal-secret auth prevents public triggering.
  */
 import { NextRequest, NextResponse } from 'next/server';
+import { boundedJsonError, readBoundedJson } from '@/lib/boundedJsonBody';
 import { processSmartRetries } from '@/lib/billing-engine';
 import { verifyAdmin } from '@/lib/admin-auth';
+import { denyIfPaymentCollectionDisabled } from '@/lib/payment-gate';
+
+const BILLING_RETRY_JSON_BYTES = 64 * 1024;
 
 export async function POST(req: NextRequest) {
+  const paymentDenied = denyIfPaymentCollectionDisabled();
+  if (paymentDenied) return paymentDenied;
   // Only allow internal cron / admin calls
   const cronSecret = req.headers.get('x-cron-secret');
   const expectedCron = process.env.CRON_SECRET;
@@ -25,7 +31,12 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   }
 
-  const body = await req.json().catch(() => ({}) as { paymentMethodId?: string });
+  let body: { paymentMethodId?: string } = {};
+  try { body = await readBoundedJson(req, BILLING_RETRY_JSON_BYTES); }
+  catch (error) {
+    const bodyError = boundedJsonError(error);
+    if (bodyError?.code === 'PAYLOAD_TOO_LARGE') return NextResponse.json({ error: 'Request body too large' }, { status: bodyError.status });
+  }
   const paymentMethodId = body.paymentMethodId ?? process.env.AIRWALLEX_DEFAULT_PM ?? '';
 
   if (!paymentMethodId) {
@@ -43,6 +54,8 @@ export async function POST(req: NextRequest) {
 
 // Vercel Cron also calls GET
 export async function GET(req: NextRequest) {
+  const paymentDenied = denyIfPaymentCollectionDisabled();
+  if (paymentDenied) return paymentDenied;
   const cronSecret = req.headers.get('authorization')?.replace('Bearer ', '');
   const expectedCron = process.env.CRON_SECRET;
 

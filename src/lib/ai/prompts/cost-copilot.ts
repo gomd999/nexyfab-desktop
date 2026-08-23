@@ -8,14 +8,14 @@ const TEMPLATE =
   '(c) process swap (processSwap = process id). Available material ids: aluminum, steel, titanium, copper, gold, ' +
   'abs_white, abs_black, nylon, glass, rubber, wood, ceramic. Available process ids: cnc_milling, cnc_turning, ' +
   'injection_molding, sheet_metal, casting, 3d_printing. Include estimatedSavingsPercent (negative = increase) ' +
-  'and a tradeoff caveat. Also give a short top-level reply (en+ko). ' +
+  'and a tradeoff caveat. Write primary text fields in the requested output language and keep the *Ko fields as Korean legacy translations. ' +
   'Respond with JSON: { "reply", "replyKo", "suggestions": [ { "id", "title", "titleKo", "rationale", "rationaleKo", ' +
   '"paramDeltas"?, "materialSwap"?, "processSwap"?, "estimatedSavingsPercent", "caveat"?, "caveatKo"? } ] }. ' +
   'Keep text fields under 180 characters. Do NOT wrap JSON in markdown.';
 
 const def: PromptDefinition = {
   id: 'cost-copilot',
-  version: '1.0.0',
+  version: '1.1.0',
   description: 'Design-for-Cost copilot: conversational cost/lead-time reduction suggestions.',
   template: TEMPLATE,
   defaults: {

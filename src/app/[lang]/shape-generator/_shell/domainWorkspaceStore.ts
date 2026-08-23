@@ -32,7 +32,7 @@ function normalizeSelection(value: unknown): DomainWorkspaceSelection | null {
   if (!value || typeof value !== 'object') return null;
   const candidate = value as Partial<DomainWorkspaceSelection>;
   if (!DESIGN_DOMAIN_IDS.includes(candidate.domain as DesignDomainId)
-    || (candidate.experience !== 'guided' && candidate.experience !== 'expert')
+    || (candidate.experience !== 'guided' && candidate.experience !== 'standard' && candidate.experience !== 'expert')
     || (candidate.workMode !== undefined && !['ai_assisted', 'manual', 'precision_cad'].includes(candidate.workMode))) return null;
   return {
     domain: candidate.domain as DesignDomainId,

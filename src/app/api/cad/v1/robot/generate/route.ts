@@ -13,12 +13,19 @@ import { getTrustedClientIp } from '@/lib/client-ip';
 import { rateLimit } from '@/lib/rate-limit';
 import { buildAdaptiveComplexProductExecutionPlan } from '@/lib/ai/adaptiveComplexProductExecution';
 import { createGenerationRun, recordGenerationStage } from '@/lib/ai/generationRunState';
+import { boundedJsonError, readBoundedJson } from '@/lib/boundedJsonBody';
 
 export const runtime = 'nodejs'; export const dynamic = 'force-dynamic';
+const MAX_BODY_BYTES = 16 * 1024 * 1024;
 export async function POST(req: NextRequest) {
   const ip = getTrustedClientIp(req.headers);
   if (!rateLimit(`cad-v1-robot-generate:${ip}`, 30, 60_000).allowed) return NextResponse.json({ ok: false, code: 'RATE_LIMIT' }, { status: 429 });
-  const body = await req.json().catch(() => null) as { name?: string; spec?: RobotEngineeringSpec; catalog?: CatalogComponent[]; targets?: RobotTargetPose[]; path?: RobotTargetPose[]; cableRoutes?:CableRoute[]; cableKeepOut?:KeepOutSphere[]; serviceEnvelopes?:ServiceEnvelope[]; serviceObstacles?:ServiceObstacle[] } | null;
+  let body: { name?: string; spec?: RobotEngineeringSpec; catalog?: CatalogComponent[]; targets?: RobotTargetPose[]; path?: RobotTargetPose[]; cableRoutes?:CableRoute[]; cableKeepOut?:KeepOutSphere[]; serviceEnvelopes?:ServiceEnvelope[]; serviceObstacles?:ServiceObstacle[] } | null;
+  try { body = await readBoundedJson(req, MAX_BODY_BYTES); }
+  catch (error) {
+    if (boundedJsonError(error)?.code === 'PAYLOAD_TOO_LARGE') return NextResponse.json({ ok: false, code: 'TOO_LARGE', message: 'Robot generation request is too large' }, { status: 413 });
+    body = null;
+  }
   if (!body?.spec || !Array.isArray(body.spec.joints)) return NextResponse.json({ ok: false, code: 'BAD_REQUEST', message: 'spec.joints is required' }, { status: 400 });
   if (body.targets && (!Array.isArray(body.targets) || body.targets.length > 200)) return NextResponse.json({ ok: false, code: 'TOO_LARGE', message: 'targets is limited to 200 poses' }, { status: 413 });
   if (body.path && (!Array.isArray(body.path) || body.path.length > 2000)) return NextResponse.json({ ok: false, code: 'TOO_LARGE', message: 'path is limited to 2000 waypoints' }, { status: 413 });

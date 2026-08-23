@@ -1,0 +1,111 @@
+{
+  "schema": "nexyfab.mechanical-standalone-step-c4-candidate.v1",
+  "releaseChannel": "mechanical-core",
+  "target": "independent-step-parser",
+  "executionMode": "independent_parser",
+  "requestedLevel": "C4",
+  "protocol": "AP242",
+  "modelKind": "assembly",
+  "designRevisionSha256": "d3af68117bd55dec3d5f750078fee7a562e6b62515264bf9aac5c0fbab5176d8",
+  "sourceArtifactSha256": "c5cec6b3a1f345a61ad076852c0508bd8c296b552ae62841299da91f36fde99b",
+  "openedArtifactSha256": "2a384972c4cc80af12e2bf8efed86ba142f6f7a6d4ad9524f945af139fead333",
+  "returnedArtifactSha256": "e5dab59e68e9af796e7320f8d4bffe6e2b7a2d9e8908a8314753dfe36b1e2e1e",
+  "evidenceBundleSha256": "aa4171106c4d12dce6f9527713ebf2870e20c00285b4feb08b66b91ab6768be7",
+  "engine": {
+    "family": "iso10303-part21-pure-ts",
+    "identity": "Separate pure TypeScript ISO 10303-21 parser/writer",
+    "version": "1.0.0-box-assembly"
+  },
+  "executedAt": "2026-08-22T07:15:20.601Z",
+  "checks": [
+    {
+      "id": "opened",
+      "status": "pass",
+      "actual": "independent parser constructed an entity graph"
+    },
+    {
+      "id": "schema_conformance",
+      "status": "pass",
+      "actual": "AP242 schema measured"
+    },
+    {
+      "id": "valid_brep",
+      "status": "pass",
+      "actual": "2 six-face/twelve-edge/eight-vertex manifold box bodies measured"
+    },
+    {
+      "id": "body_count",
+      "status": "pass",
+      "actual": 2
+    },
+    {
+      "id": "units",
+      "status": "pass",
+      "actual": "mm"
+    },
+    {
+      "id": "bounding_box",
+      "status": "pass",
+      "actual": "0,0,0,100,60,20"
+    },
+    {
+      "id": "volume",
+      "status": "pass",
+      "actual": 57600
+    },
+    {
+      "id": "surface_area",
+      "status": "pass",
+      "actual": 17600
+    },
+    {
+      "id": "product_structure",
+      "status": "pass",
+      "actual": "2 product occurrences"
+    },
+    {
+      "id": "occurrence_transforms",
+      "status": "pass",
+      "actual": "2 explicit transforms"
+    },
+    {
+      "id": "component_names",
+      "status": "pass",
+      "actual": "base-plate|mount-block"
+    },
+    {
+      "id": "part_numbers",
+      "status": "pass",
+      "actual": "base-plate|mount-block"
+    },
+    {
+      "id": "attributes",
+      "status": "pass",
+      "actual": "{\"schema\":\"AP242\",\"protocolYear\":2014,\"topology\":\"manifold-solid-brep/axis-aligned-box\",\"placement\":\"axis2-placement-3d\"}"
+    },
+    {
+      "id": "returned_reimport",
+      "status": "pass",
+      "actual": "returned bytes parsed by the independent parser"
+    },
+    {
+      "id": "geometry_diff",
+      "status": "pass",
+      "actual": "source and returned independent measurements are byte-for-byte equal"
+    },
+    {
+      "id": "revision_binding",
+      "status": "pass",
+      "actual": "runner-bound design revision and source hash"
+    }
+  ],
+  "evidence": {
+    "source": "source.step",
+    "opened": "independent-opened.json",
+    "returned": "independent-returned.step",
+    "report": "independent-report.json"
+  },
+  "eligibleForSignedReceipt": true,
+  "commerciallyVerified": false,
+  "nextAction": "sign_and_bind_with_nexyfab_receipt"
+}

@@ -13,7 +13,15 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const root = path.resolve(__dirname, '..');
 const mergePath = path.join(root, 'src-tauri', 'updater.merge.json');
 
-execSync('node scripts/tauri-updater-merge.mjs', { cwd: root, stdio: 'inherit' });
+// Build the external MCP sidecar before Tauri starts its static-route staging.
+// On unsupported Node this exits with the stable >=25.5 requirement and leaves
+// the source tree untouched.
+execSync('npm run agent:sidecar:build', { cwd: root, stdio: 'inherit' });
+execSync('node scripts/tauri-updater-merge.mjs', {
+  cwd: root,
+  stdio: 'inherit',
+  env: { ...process.env, NEXYFAB_AGENT_SIDECAR: '1' },
+});
 
 let cmd = 'npx tauri build';
 if (fs.existsSync(mergePath)) {

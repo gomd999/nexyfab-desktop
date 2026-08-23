@@ -10,7 +10,7 @@
   },
   "dependencyLock": {
     "path": "package-lock.json",
-    "sha256": "ec5896a3246a0404b91265df9f5ffbc306d5f4fd2760c677ffb6524a7b573b2b"
+    "sha256": "d27bddc997f10ade5cf94722b17c70a4e958b1e8f631f1e807a3ac4c51289f26"
   },
   "components": [
     {
@@ -62,8 +62,8 @@
     {
       "path": "public/occt-worker/occt-worker-real.js",
       "role": "generated-worker-dispatch-policy",
-      "bytes": 88752,
-      "sha256": "28d5ac4b4fc95bb807d512c020f5254295d6177757cda9b8ba99b2879c09e035"
+      "bytes": 96264,
+      "sha256": "e2d4ec4f092dcf908bce4c240b9ae40fab7d2c5e0f8748be8d5948f2b1a99798"
     },
     {
       "path": "public/occt-worker/occt-worker-commercial.js",
@@ -76,14 +76,14 @@
     {
       "path": "src/app/[lang]/shape-generator/features/occtEngine.ts",
       "role": "semantic-and-release-policy",
-      "bytes": 125078,
-      "sha256": "cf09a06f9002ced5c640e9409b3797f58ff95af323487bb55803270330e02041"
+      "bytes": 133719,
+      "sha256": "32ff70b38fe4634f1a1058319fbe0a782057df0aee95975ac1c6bdac41eb3084"
     },
     {
       "path": "src/lib/occt/nodeOcctBridge.ts",
       "role": "semantic-and-release-policy",
-      "bytes": 86233,
-      "sha256": "3fca536371c13033c8ee5a4c92027cca22db1bf7e04771890db15be08d680c03"
+      "bytes": 87853,
+      "sha256": "f568e1db7dc03b4f1797c43fa3008b75e26c3fe45ea786c86f6366df366a5811"
     },
     {
       "path": "src/lib/occt/serverReplicad.ts",
@@ -142,8 +142,8 @@
     {
       "path": "src/lib/assembly/featureTreePreciseInterference.ts",
       "role": "semantic-and-release-policy",
-      "bytes": 25870,
-      "sha256": "49d6fe978f5ad7c86af5a0713f21c4f088767cea460fdec09fb8d6b4ce6d4698"
+      "bytes": 26192,
+      "sha256": "d56c8889b02dec7a8eda5686f0fbd915847148693845b2cfe37553c596d27a6c"
     },
     {
       "path": "src/lib/assembly/motionStudy.ts",
@@ -160,20 +160,20 @@
     {
       "path": "src/app/api/cad/v1/assembly/verify/route.ts",
       "role": "semantic-and-release-policy",
-      "bytes": 17367,
-      "sha256": "dc62e48a751eec23c7edf0136c56852e87b8983ed6e4794b32569013f8fee8c0"
+      "bytes": 17698,
+      "sha256": "3f343e8c3a525a21b6f84431977da1c7262f44d8b5cd6a401fcac25b0a01bc24"
     },
     {
       "path": "src/app/api/cad/v1/assembly/release/verify/route.ts",
       "role": "semantic-and-release-policy",
-      "bytes": 11720,
-      "sha256": "b03157e184782b669978a2fec6e72b105185fa65ab1438f47b882df165872071"
+      "bytes": 12060,
+      "sha256": "5f0a29809094cca1a7e232c1384e91174ec13055ef48801e34c45d21f8ead171"
     },
     {
       "path": "src/app/api/nexyfab/design-brief/route.ts",
       "role": "semantic-and-release-policy",
-      "bytes": 4530,
-      "sha256": "e758a8efb93fa45e36123f3385823fbe8baf0b764b6d8c1dcb20a4a3f2c893c0"
+      "bytes": 4708,
+      "sha256": "b657b734edb1a7a20728e007a03985707779e6e46198df7961686743f123426b"
     },
     {
       "path": "src/app/api/nexyfab/design-brief/runner.ts",
@@ -214,14 +214,14 @@
     {
       "path": "src/app/[lang]/shape-generator/io/manufacturingPackage.ts",
       "role": "semantic-and-release-policy",
-      "bytes": 11966,
-      "sha256": "54c75612e3b3d5fc1a3c9e746f1da7db71237915ef714fa71e56fb4f7dcc9762"
+      "bytes": 12176,
+      "sha256": "7997c1d69b71f52e9b50e6492204d7d9ae46781cca88b5d65791962d8792b782"
     },
     {
       "path": "src/lib/ai/robot/robotPostIntegrationEvidence.ts",
       "role": "semantic-and-release-policy",
-      "bytes": 9122,
-      "sha256": "92d2d901d08ef47e1c62674706ef3330470c4d075fccdbc91aa5ae22997be6e2"
+      "bytes": 16266,
+      "sha256": "6a5d92cd67729c710379765b042a2d2c4a9151c6f1e53a2b33038153c49edf0e"
     },
     {
       "path": "src/lib/ai/robot/robotCoordinatedMotion.ts",
@@ -238,26 +238,26 @@
     {
       "path": "src/lib/ai/adaptiveComplexProductExecution.ts",
       "role": "semantic-and-release-policy",
-      "bytes": 7628,
-      "sha256": "7fdc7477d0650707bf5a3fb53fdcb37b0f7c77948d7e70ef50afb35c79667805"
+      "bytes": 9572,
+      "sha256": "90001d427268826efa00ff6962ea2b0e8ecb4248e05b4849d04885a5819dfc7a"
     },
     {
       "path": "src/lib/ai/productDecompositionAccuracy.ts",
       "role": "semantic-and-release-policy",
-      "bytes": 11476,
-      "sha256": "be6bc5a6c3a5e332383e77441d1274ad1140b20833a33d9b1e6eff3eec962c47"
+      "bytes": 13663,
+      "sha256": "ab34a2d180cb73dd597eb283bcdf51a0a740f58e6f85c2bfd0796432580ffb9b"
     },
     {
       "path": "src/lib/ai/productDecomposition.ts",
       "role": "semantic-and-release-policy",
-      "bytes": 8725,
-      "sha256": "a8eae62469a0782de9c4fc6f6877d701a072cc169990f83085447daf55b6001e"
+      "bytes": 10292,
+      "sha256": "8a6c26f827d0b7a4995eebe6cd1e3ff5c9035a1f83181a51bd999b6160612ea6"
     },
     {
       "path": "src/lib/ai/multiStageRefinement.ts",
       "role": "semantic-and-release-policy",
-      "bytes": 9842,
-      "sha256": "e7b8460a1aaeb2cdfffbdeab3513b8fce5dc08ed933f98ac15d06256fe29e8e3"
+      "bytes": 9870,
+      "sha256": "7bae4f66152ecdaf7cf0f406dea010a12d480db96cf848055ec00e293eed67c6"
     },
     {
       "path": "src/lib/ai/referenceGuidedRefinement.ts",
@@ -268,14 +268,14 @@
     {
       "path": "src/app/api/cad/v1/generation/refine/handler.ts",
       "role": "semantic-and-release-policy",
-      "bytes": 6581,
-      "sha256": "ffb0f96e68edee92c6ca883d5ebfab63ee2d8abbc9dd274c2fef91ed23c015c9"
+      "bytes": 10990,
+      "sha256": "46c08f36264362f7f7ffd3160d0b707adeb5cb73e7984b3df4effd6df47eed9f"
     },
     {
       "path": "src/lib/ai/robot/robotReleaseEvidenceAuditV2.ts",
       "role": "semantic-and-release-policy",
-      "bytes": 8806,
-      "sha256": "d6b3ba7b59f56c1480fe54199d488573d27ea9f02d74e7709f6dbe9426931c75"
+      "bytes": 10842,
+      "sha256": "b58e36350f6683d1de3e7a7aaa1d142477b6bced4286fd098151a9a1e29d499e"
     },
     {
       "path": "src/lib/ai/robot/robotReleaseEvidenceAudit.ts",
@@ -286,8 +286,8 @@
     {
       "path": "src/lib/ai/robot/robotReleaseWorkPacketV2.ts",
       "role": "semantic-and-release-policy",
-      "bytes": 5238,
-      "sha256": "742187a7d1ca382f147070722d0c6f87ff74b6633d60491fd84e6a8317390a29"
+      "bytes": 6867,
+      "sha256": "93f4b486b0df98205d2df8240eee1c53be0e079a433ae172edd90d7aa7dcccce"
     },
     {
       "path": "src/lib/ai/robot/robotReleaseWorkPacket.ts",
@@ -298,86 +298,86 @@
     {
       "path": "src/lib/ai/robot/robotFinalReleaseReview.ts",
       "role": "semantic-and-release-policy",
-      "bytes": 4581,
-      "sha256": "517c1b0f37f739d57603705249db6583ece16e1b506633f211420895aa5dff34"
+      "bytes": 5355,
+      "sha256": "ea6590fe275b5d5b7f96181c5c4d588064e01de1b8e203e26c2247e1779fdc1d"
     },
     {
       "path": "src/app/api/cad/v1/robot/release/audit/route.ts",
       "role": "semantic-and-release-policy",
-      "bytes": 2217,
-      "sha256": "a5670bbd573f9fbf3dbaad5959b0f19648f2ee18bac64a9ccc824cdf7cc70427"
+      "bytes": 2436,
+      "sha256": "57ce012a1c071180dc10bab5e21367698a4bfb71ae01a4227f4e7100cd467145"
     },
     {
       "path": "src/app/api/cad/v1/robot/release/work-packet/route.ts",
       "role": "semantic-and-release-policy",
-      "bytes": 1649,
-      "sha256": "3eb3d91015a241dc3089665bdd93972d7258cc8c9bffec7a176a7bb38f4c00a0"
+      "bytes": 1865,
+      "sha256": "f8c7c9aed38bbb5cfc57dc5a03dcfa1804ef29a3ce133b59c2d7efac890119e6"
     },
     {
       "path": "src/app/api/cad/v1/robot/release/final-review/route.ts",
       "role": "semantic-and-release-policy",
-      "bytes": 2119,
-      "sha256": "8fe134b521c949e0a5e00ead641c67c4e404759053d34346a8051c0fb3ec53e4"
+      "bytes": 2487,
+      "sha256": "f8fb7c32310c3d00518ba6ee63cadebed5eeedccc1ce600fbf68b7e57b773417"
     },
     {
       "path": "src/app/api/cad/v1/robot/generate/route.ts",
       "role": "semantic-and-release-policy",
-      "bytes": 5893,
-      "sha256": "470bbfa4978e2853978651f4b144d809b609d4c0df9b0f49e37ba10b775abb24"
+      "bytes": 6258,
+      "sha256": "1a0a2e38c3fbfc08bd2695f586089ff53deff9f22be81fed58e673ce78439a51"
     },
     {
       "path": "src/app/api/cad/v1/robot/reverify/route.ts",
       "role": "semantic-and-release-policy",
-      "bytes": 15966,
-      "sha256": "b19b09836dce8f334ef9dbbbd0853d60b1170d4c859842e83fdc2816b42ab833"
+      "bytes": 16185,
+      "sha256": "e4c3303bd63637bf129e410dab94153ad705316e848eca47c46b6d251c4b107f"
     },
     {
       "path": "src/app/api/cad/v1/generation/state/route.ts",
       "role": "semantic-and-release-policy",
-      "bytes": 3919,
-      "sha256": "bf8c5d7d1992d2cdd09579dbf5ec6c828dfab9c4d862243abe8e3403d24e5ec1"
+      "bytes": 7063,
+      "sha256": "2692af6916cf3c7815ae6b800dc28b27684423a63577412c6f0547f34dc115d7"
     },
     {
       "path": "src/app/api/cad/v1/generation/advance/route.ts",
       "role": "semantic-and-release-policy",
-      "bytes": 3819,
-      "sha256": "07eb3844669d18ef442fbdb5fe0f1ffa2d9357e04ef155155a9c0f5dead5cd4d"
+      "bytes": 15679,
+      "sha256": "fc85d4088b625f15116f61e5c2e2ab4ec76d3e7e59b3694bc07c02e739cdcf82"
     },
     {
       "path": "src/app/api/cad/v1/generation/finalize/route.ts",
       "role": "semantic-and-release-policy",
-      "bytes": 5902,
-      "sha256": "9de57e5da1bd57b5ef3775e6a04782a1dc708d5eb908a1085a89678475a872ed"
+      "bytes": 14207,
+      "sha256": "52924792c6aeb045dab536a33ef79807a7329bd515e7b7f902e8def7af911888"
     },
     {
       "path": "src/app/[lang]/shape-generator/ai/generationSessionClient.ts",
       "role": "semantic-and-release-policy",
-      "bytes": 14277,
-      "sha256": "c3532186862cc1450a4d303d22520eb8c3a65278cad7ca4adbfb2cf8d6c310ce"
+      "bytes": 14696,
+      "sha256": "d5e123eeffdbe73ee6e21f6888d069c5f69fde63629bce2ad8e2f5634a1d7486"
     },
     {
       "path": "src/app/[lang]/shape-generator/_shell/CadWorkflowRail.tsx",
       "role": "semantic-and-release-policy",
-      "bytes": 13014,
-      "sha256": "734e640883fe25dc6c832b7c5108a47962500d6cf9d0ae6aaba82905195c9cdb"
+      "bytes": 17799,
+      "sha256": "95e1eb29699aec4e6fb69a6ed4d7fb3dd2b94764e3ec7a710424c4ef7ecb5792"
     },
     {
       "path": "src/app/[lang]/shape-generator/_shell/ModelerShell.tsx",
       "role": "semantic-and-release-policy",
-      "bytes": 37598,
-      "sha256": "1950335902b5ddc4a519a6bbabaf52d78747b86dbdb3f0dae72ad9192e0fa1a9"
+      "bytes": 54060,
+      "sha256": "a4bf26625b81827d929a009327208afa4cda0de5df8a44dd365a01f1c1d72445"
     },
     {
       "path": "src/app/[lang]/shape-generator/ShapeGeneratorClientPage.tsx",
       "role": "semantic-and-release-policy",
-      "bytes": 3444,
-      "sha256": "6fb6fe0e896a335417b5daaecc28e2fca34fd3a4e20faf290b33bc091bd5b9f5"
+      "bytes": 3484,
+      "sha256": "308f1d61f66896f2c10f67144fc468c6eb0ff0eb713b754710e7a1ef51d054db"
     },
     {
       "path": "src/app/[lang]/studio/StudioInner.tsx",
       "role": "semantic-and-release-policy",
-      "bytes": 86215,
-      "sha256": "4817059106cb67036fabd091a87220cb564a38424c9b63bc38923e44dc814c8e"
+      "bytes": 85050,
+      "sha256": "ccaf01e222b5e5e431274f19d7d31eae25089e994ae3ab3737b362b89e584eda"
     },
     {
       "path": "src/app/[lang]/studio/emitScadFromProgram.ts",
@@ -388,8 +388,8 @@
     {
       "path": "src/app/[lang]/shape-generator/assembly/RobotPrecisionHandoffPanel.tsx",
       "role": "semantic-and-release-policy",
-      "bytes": 67035,
-      "sha256": "fb35524edbfa175342b18d99c65f488bd674cfd058b9d5cb03ba9d3a1dd8afe1"
+      "bytes": 110170,
+      "sha256": "352d761fc40e387052430dd8706d22b33360a02e8759795130e2749f13a24334"
     },
     {
       "path": "scripts/build-complex-product-scope-assessment.mjs",
@@ -413,37 +413,37 @@
       "path": "docs/evidence/cad-independent/complex-product-scope-assessment.json",
       "role": "semantic-and-release-policy",
       "bytes": 9628,
-      "sha256": "87b082a55a81acbb5f026d4480c060707a51b1e9b6bd4b77655f31804a963221"
+      "sha256": "594631f5558a9bb64787feffa27ce8692551b192f3bb2272c8f7684be9bd7dac"
     },
     {
       "path": "middleware.ts",
       "role": "semantic-and-release-policy",
-      "bytes": 19980,
-      "sha256": "328c0dac37deb7e36c9008128b42317fa909b1629cd36dc33087d31d47c95e75"
+      "bytes": 19994,
+      "sha256": "621d05b02de9ba27def25f49272fa5532f4d3d96ba68c26d705abe8573d5e833"
     },
     {
       "path": "src/lib/auth-middleware.ts",
       "role": "semantic-and-release-policy",
-      "bytes": 8713,
-      "sha256": "0371a549e1fca7cb33ca537a78428caebc1a426045e047c131d2bbc27cf8c1dc"
+      "bytes": 10271,
+      "sha256": "0d4b2040dcdb9467d8fcdd95c1d892760a9298136366b326dd6be909fb0b2027"
     },
     {
       "path": "src/lib/rate-limit.ts",
       "role": "semantic-and-release-policy",
-      "bytes": 5735,
-      "sha256": "01508a7658493357036c316d563e914274f1dabfdc7f9f090d8d0699e94f7aef"
+      "bytes": 6122,
+      "sha256": "93476cfbafede9cdc69147eb53fef555579bee23b50073bcf313013e6cc65131"
     },
     {
       "path": "src/lib/commercial-readiness.ts",
       "role": "semantic-and-release-policy",
-      "bytes": 3554,
-      "sha256": "1a95ec64690b95367ba4ad2c297545259dabd5e1a6f6517a022850c0d82aeb75"
+      "bytes": 7368,
+      "sha256": "a7a48ef1d5e65a9cdc497b24451bcb0e32f0b40c83cceea2d29f56d6e48bc19e"
     },
     {
       "path": "src/app/api/docs/openapi/route.ts",
       "role": "semantic-and-release-policy",
-      "bytes": 42008,
-      "sha256": "d0e19cb82fa1fa0f534e30542f442dc1b91620d30cf74e59d21eef79887acc4a"
+      "bytes": 48706,
+      "sha256": "0d8c7cd4e3e49b303f02d2ac9ff6be015b7512a343d225d977145c4b94a823e1"
     },
     {
       "path": "scripts/generate-third-party-notices.mjs",
@@ -460,8 +460,8 @@
     {
       "path": "src/content/third-party-notices.generated.json",
       "role": "semantic-and-release-policy",
-      "bytes": 224012,
-      "sha256": "704fe6d30c4ee7dd38d075be12f76cac4792f7e6bbe5e1847c3a58ef5735decd"
+      "bytes": 224207,
+      "sha256": "563683e86c2f8e2fcac71447f2bb706e46d9cc10bf830dba0e0707b966623676"
     },
     {
       "path": "scripts/check-occt-readiness.js",
@@ -470,5 +470,5 @@
       "sha256": "50d0f0cd4bacadf24b337c8e36784d834a14cdeee175fc6b1850df12fe017c9f"
     }
   ],
-  "identitySha256": "91f08dbf63ed18735aa6e1589f1df90859f970b70d726cb8ffda252c7d9b5a18"
+  "identitySha256": "4b98ca69bd1d7f373e90490ac083af6530e444bd700c3cff961f59ef7537fbe2"
 }

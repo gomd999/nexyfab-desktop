@@ -1,0 +1,115 @@
+{
+  "schema": "nexyfab.commercial-security-evidence-receipt.v2",
+  "generatedAt": "2026-08-23T07:32:01.766Z",
+  "ok": false,
+  "status": "HOLD",
+  "target": "production",
+  "release": {
+    "buildId": null,
+    "deploymentId": null,
+    "gitHead": null
+  },
+  "freshness": {
+    "generatedAt": "2026-08-23T07:32:01.766Z",
+    "maxAgeMs": 86400000,
+    "expiresAt": "2026-08-24T07:32:01.766Z"
+  },
+  "sourceBindings": [
+    {
+      "path": "docs/evidence/security/route-security-matrix-260810.json",
+      "bytes": 551509,
+      "sha256": "7f875b55c87900ab85020155516cc369ac8c2d1f76f52d6ec4971bcfb7a1031a"
+    },
+    {
+      "path": "docs/evidence/cad-independent/cad-api-control-evidence.json",
+      "bytes": 16134,
+      "sha256": "7d21526c4a7f6fb13be1b890b26d022422338397e91b9cce92d6d8b0ace16fff"
+    },
+    {
+      "path": "docs/evidence/security/secret-scan-260810.json",
+      "bytes": 197,
+      "sha256": "721e6120dd9600d44532edc84b190fb140fe26651e314926610987cb393e122a"
+    },
+    {
+      "path": "docs/evidence/security/dependency-audit-260810.json",
+      "bytes": 514,
+      "sha256": "9191b3346444fdefc65893056a7b48d5d860231ce0cc3f8b734c4c002151dc63"
+    },
+    {
+      "path": "package-lock.json",
+      "bytes": 630857,
+      "sha256": "d27bddc997f10ade5cf94722b17c70a4e958b1e8f631f1e807a3ac4c51289f26"
+    }
+  ],
+  "evidence": {
+    "routeSecurityMatrix": {
+      "ok": true,
+      "schema": "nexyfab.route-security-matrix.v1",
+      "status": "pass",
+      "derived": {
+        "routeFiles": 607,
+        "exportedHandlers": 837,
+        "routesWithGaps": 0,
+        "gapCounts": {},
+        "byClassification": {
+          "public": 131,
+          "authenticated": 354,
+          "admin": 68,
+          "webhook": 6,
+          "internal-worker": 35,
+          "disabled": 13
+        },
+        "unknownClassifications": 0,
+        "publicMutationPolicies": 93
+      },
+      "blockers": []
+    },
+    "cadApiControls": {
+      "ok": true,
+      "schema": "nexyfab.cad-api-control-evidence.v1",
+      "status": "pass",
+      "derived": {
+        "checksPass": true,
+        "issues": 0
+      },
+      "blockers": []
+    },
+    "secretScan": {
+      "ok": true,
+      "schema": "nexyfab-secret-scan-v1",
+      "status": "pass",
+      "derived": {
+        "findingCount": 0,
+        "filesScanned": 7657,
+        "bytesScanned": 88863058
+      },
+      "blockers": []
+    },
+    "dependencyAudit": {
+      "ok": true,
+      "schema": "nexyfab-dependency-audit-v1",
+      "status": "pass",
+      "derived": {
+        "vulnerabilityTotal": 0,
+        "dependencyTotal": 1250
+      },
+      "blockers": []
+    }
+  },
+  "integrity": {
+    "packageLockVerified": true,
+    "declaredSourcesVerified": true,
+    "sourceFreshness": {
+      "routeSecurityMatrix": true,
+      "cadApiControls": true,
+      "secretScan": true,
+      "dependencyAudit": true
+    }
+  },
+  "blockers": [
+    "release_build_id_missing",
+    "release_deployment_id_missing",
+    "release_git_head_invalid"
+  ],
+  "receiptSha256": "d56f752176f011f342279f38822f4c5ac55184182080902243a414efe662da37"
+}

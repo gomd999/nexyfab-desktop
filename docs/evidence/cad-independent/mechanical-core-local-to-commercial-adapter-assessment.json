@@ -1,0 +1,241 @@
+{
+  "schema": "nexyfab.mechanical-core-local-to-commercial-adapter.v1",
+  "status": "HOLD",
+  "eligible": false,
+  "localCandidate": {
+    "status": "LOCAL_CANDIDATE",
+    "eligible": true,
+    "passedFeatures": 30,
+    "axisTotals": {
+      "PASS": 210,
+      "FAIL": 0,
+      "NOT_RUN": 0
+    },
+    "sourceEvidence": {
+      "path": "docs/evidence/cad-independent/local/mechanical-core-feature-axis-evidence.json",
+      "sha256": "2fce7ffc6cb769cd37ee480b7a5b41e31d1a51ca816933072e025aadc43a85a5"
+    }
+  },
+  "requiredCases": 30,
+  "caseBinding": [
+    {
+      "feature": "hole",
+      "localStatus": "PASS",
+      "localPassedAxes": 7,
+      "localRequiredAxes": 7,
+      "commercialCasePresent": false
+    },
+    {
+      "feature": "fillet",
+      "localStatus": "PASS",
+      "localPassedAxes": 7,
+      "localRequiredAxes": 7,
+      "commercialCasePresent": false
+    },
+    {
+      "feature": "chamfer",
+      "localStatus": "PASS",
+      "localPassedAxes": 7,
+      "localRequiredAxes": 7,
+      "commercialCasePresent": false
+    },
+    {
+      "feature": "shell",
+      "localStatus": "PASS",
+      "localPassedAxes": 7,
+      "localRequiredAxes": 7,
+      "commercialCasePresent": false
+    },
+    {
+      "feature": "rib",
+      "localStatus": "PASS",
+      "localPassedAxes": 7,
+      "localRequiredAxes": 7,
+      "commercialCasePresent": false
+    },
+    {
+      "feature": "linearPattern",
+      "localStatus": "PASS",
+      "localPassedAxes": 7,
+      "localRequiredAxes": 7,
+      "commercialCasePresent": false
+    },
+    {
+      "feature": "circularPattern",
+      "localStatus": "PASS",
+      "localPassedAxes": 7,
+      "localRequiredAxes": 7,
+      "commercialCasePresent": false
+    },
+    {
+      "feature": "draft",
+      "localStatus": "PASS",
+      "localPassedAxes": 7,
+      "localRequiredAxes": 7,
+      "commercialCasePresent": false
+    },
+    {
+      "feature": "scale",
+      "localStatus": "PASS",
+      "localPassedAxes": 7,
+      "localRequiredAxes": 7,
+      "commercialCasePresent": false
+    },
+    {
+      "feature": "moveCopy",
+      "localStatus": "PASS",
+      "localPassedAxes": 7,
+      "localRequiredAxes": 7,
+      "commercialCasePresent": false
+    },
+    {
+      "feature": "variableFillet",
+      "localStatus": "PASS",
+      "localPassedAxes": 7,
+      "localRequiredAxes": 7,
+      "commercialCasePresent": false
+    },
+    {
+      "feature": "offsetFace",
+      "localStatus": "PASS",
+      "localPassedAxes": 7,
+      "localRequiredAxes": 7,
+      "commercialCasePresent": false
+    },
+    {
+      "feature": "thread",
+      "localStatus": "PASS",
+      "localPassedAxes": 7,
+      "localRequiredAxes": 7,
+      "commercialCasePresent": false
+    },
+    {
+      "feature": "helix",
+      "localStatus": "PASS",
+      "localPassedAxes": 7,
+      "localRequiredAxes": 7,
+      "commercialCasePresent": false
+    },
+    {
+      "feature": "bend",
+      "localStatus": "PASS",
+      "localPassedAxes": 7,
+      "localRequiredAxes": 7,
+      "commercialCasePresent": false
+    },
+    {
+      "feature": "flange",
+      "localStatus": "PASS",
+      "localPassedAxes": 7,
+      "localRequiredAxes": 7,
+      "commercialCasePresent": false
+    },
+    {
+      "feature": "hem",
+      "localStatus": "PASS",
+      "localPassedAxes": 7,
+      "localRequiredAxes": 7,
+      "commercialCasePresent": false
+    },
+    {
+      "feature": "jog",
+      "localStatus": "PASS",
+      "localPassedAxes": 7,
+      "localRequiredAxes": 7,
+      "commercialCasePresent": false
+    },
+    {
+      "feature": "tab",
+      "localStatus": "PASS",
+      "localPassedAxes": 7,
+      "localRequiredAxes": 7,
+      "commercialCasePresent": false
+    },
+    {
+      "feature": "cut",
+      "localStatus": "PASS",
+      "localPassedAxes": 7,
+      "localRequiredAxes": 7,
+      "commercialCasePresent": false
+    },
+    {
+      "feature": "bendRelief",
+      "localStatus": "PASS",
+      "localPassedAxes": 7,
+      "localRequiredAxes": 7,
+      "commercialCasePresent": false
+    },
+    {
+      "feature": "cornerRelief",
+      "localStatus": "PASS",
+      "localPassedAxes": 7,
+      "localRequiredAxes": 7,
+      "commercialCasePresent": false
+    },
+    {
+      "feature": "variableShell",
+      "localStatus": "PASS",
+      "localPassedAxes": 7,
+      "localRequiredAxes": 7,
+      "commercialCasePresent": false
+    },
+    {
+      "feature": "sketchExtrude",
+      "localStatus": "PASS",
+      "localPassedAxes": 7,
+      "localRequiredAxes": 7,
+      "commercialCasePresent": false
+    },
+    {
+      "feature": "revolve",
+      "localStatus": "PASS",
+      "localPassedAxes": 7,
+      "localRequiredAxes": 7,
+      "commercialCasePresent": false
+    },
+    {
+      "feature": "sweep",
+      "localStatus": "PASS",
+      "localPassedAxes": 7,
+      "localRequiredAxes": 7,
+      "commercialCasePresent": false
+    },
+    {
+      "feature": "loft",
+      "localStatus": "PASS",
+      "localPassedAxes": 7,
+      "localRequiredAxes": 7,
+      "commercialCasePresent": false
+    },
+    {
+      "feature": "mirror",
+      "localStatus": "PASS",
+      "localPassedAxes": 7,
+      "localRequiredAxes": 7,
+      "commercialCasePresent": false
+    },
+    {
+      "feature": "boolean",
+      "localStatus": "PASS",
+      "localPassedAxes": 7,
+      "localRequiredAxes": 7,
+      "commercialCasePresent": false
+    },
+    {
+      "feature": "splitBody",
+      "localStatus": "PASS",
+      "localPassedAxes": 7,
+      "localRequiredAxes": 7,
+      "commercialCasePresent": false
+    }
+  ],
+  "commercial": {
+    "eligible": false,
+    "blockers": [
+      "commercial_feature_bundle_missing",
+      "local_candidate_is_not_commercial_receipt"
+    ],
+    "sourceReceipt": null
+  },
+  "receipt": null
+}

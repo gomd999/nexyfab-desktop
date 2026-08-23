@@ -32,4 +32,13 @@ describe('LandscapeDocument', () => {
     const readiness = landscapeReleaseReadiness(model);
     expect(readiness).toMatchObject({ plant_provenance: false, soil_volume: false, irrigation_capacity: false, drainage: false });
   });
+  it('returns issues instead of throwing when a populated document has an invalid site boundary', () => {
+    const model = landscape();
+    model.siteBoundaryM = [];
+    expect(() => validateLandscapeDocument(model)).not.toThrow();
+    expect(validateLandscapeDocument(model)).toEqual(expect.arrayContaining([
+      'Landscape site boundary requires at least three finite points.',
+      'tree-1: invalid plant geometry or provenance.',
+    ]));
+  });
 });

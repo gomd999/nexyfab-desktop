@@ -14,6 +14,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { toIsoLang } from '@/lib/i18n/normalize';
+import { manufacturingRegion, manufacturingTerm } from '@/lib/i18n/manufacturingTerms';
 import PartnerMetricsBar, { type PartnerMetrics } from '@/app/[lang]/shape-generator/analysis/PartnerMetricsBar';
 
 interface PreviewResp {
@@ -156,6 +157,7 @@ export interface PartnerPreviewCardProps {
 export default function PartnerPreviewCard({ lang, partnerEmail }: PartnerPreviewCardProps) {
   // ⚠ 260802: 2분기라 ja·zh·es·ar 이 영어로 떨어졌다.
   const t = dict[toIsoLang(lang)] ?? dict.en;
+  const isoLang = toIsoLang(lang);
   const [data, setData] = useState<PreviewResp['partner'] | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -164,7 +166,7 @@ export default function PartnerPreviewCard({ lang, partnerEmail }: PartnerPrevie
     setError(null);
     (async () => {
       try {
-        const res = await fetch(`/api/nexyfab/partner/${encodeURIComponent(partnerEmail)}/preview`);
+        const res = await fetch(`/api/nexyfab/partner/${encodeURIComponent(partnerEmail)}/preview?lang=${encodeURIComponent(isoLang)}`);
         if (!res.ok) {
           throw new Error(res.status === 404 ? t.notFound : `HTTP ${res.status}`);
         }
@@ -175,7 +177,7 @@ export default function PartnerPreviewCard({ lang, partnerEmail }: PartnerPrevie
       }
     })();
     return () => { cancelled = true; };
-  }, [partnerEmail, t.notFound]);
+  }, [isoLang, partnerEmail, t.notFound]);
 
   if (error) return <div style={errStyle}>{error}</div>;
   if (!data) return <div style={mutedStyle}>{t.loading}</div>;
@@ -191,8 +193,8 @@ export default function PartnerPreviewCard({ lang, partnerEmail }: PartnerPrevie
         <div>
           <div style={nameStyle}>{data.name}</div>
           <div style={subtitleStyle}>
-            {data.region && <span>{t.region}: {data.region}</span>}
-            {data.industry && <span> · {t.industry}: {data.industry}</span>}
+            {data.region && <span>{t.region}: {manufacturingRegion(data.region, isoLang) || manufacturingTerm(data.region, isoLang)}</span>}
+            {data.industry && <span> · {t.industry}: {manufacturingTerm(data.industry, isoLang)}</span>}
             <span> · {t.age} {ageLabel}</span>
           </div>
         </div>
@@ -212,7 +214,7 @@ export default function PartnerPreviewCard({ lang, partnerEmail }: PartnerPrevie
       {/* Capabilities */}
       {data.processes.length > 0 && (
         <Row label={t.processes}>
-          {data.processes.map(p => <Chip key={p} text={p} accent="#79c0ff" />)}
+          {data.processes.map(p => <Chip key={p} text={manufacturingTerm(p, isoLang)} accent="#79c0ff" />)}
         </Row>
       )}
       {data.certifications.length > 0 && (

@@ -12,6 +12,7 @@
  * retry the request a single time. Idempotent and body-safe.
  */
 import { useEffect } from 'react';
+import { useAuthStore } from '@/hooks/useAuth';
 
 let installed = false;
 // Single-flight: concurrent 401s share one refresh instead of stampeding.
@@ -46,6 +47,12 @@ export default function FetchAuthRetry() {
 
       const res = await orig(input, init);
       if (!eligible || res.status !== 401) return res;
+
+      // A protected endpoint may legitimately return 401 to a signed-out user.
+      // Refresh only for a session that the cookie-backed hydrator has already
+      // confirmed; otherwise a notification 401 creates a misleading refresh
+      // 400 and doubles the guest-side failure noise.
+      if (useAuthStore.getState().sessionStatus !== 'authenticated') return res;
 
       // The request must be safely re-sendable to retry. undefined / string
       // bodies are fine; streams, Blobs and FormData are not re-read reliably.

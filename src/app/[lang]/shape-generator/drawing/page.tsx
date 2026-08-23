@@ -21,9 +21,24 @@ import { DrawingPageContent } from './_content';
 
 interface PageProps {
   params: Promise<{ lang: string }>;
+  searchParams: Promise<{
+    handoff?: string | string[];
+    project?: string | string[];
+    storage?: string | string[];
+  }>;
 }
 
-export default function DrawingPage({ params }: PageProps): React.ReactElement {
+export default function DrawingPage({ params, searchParams }: PageProps): React.ReactElement {
   const { lang } = use(params);
-  return <DrawingPageContent lang={lang} />;
+  const query = use(searchParams);
+  const handoffId = typeof query.handoff === 'string' ? query.handoff : undefined;
+  const handoffProjectId = typeof query.project === 'string' ? query.project : undefined;
+  const handoffStorage = query.storage === 'server' ? 'server' as const : 'session' as const;
+  return (
+    <DrawingPageContent
+      lang={lang}
+      {...(handoffId ? { handoffId, handoffStorage } : {})}
+      {...(handoffProjectId ? { handoffProjectId } : {})}
+    />
+  );
 }

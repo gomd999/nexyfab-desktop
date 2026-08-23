@@ -7,8 +7,11 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getDbAdapter } from '@/lib/db-adapter';
 import { generateCycleInvoice, chargeInvoice, type Product, type Plan } from '@/lib/billing-engine';
 import { emailInvoicePdf } from '@/lib/invoice-pdf';
+import { denyIfPaymentCollectionDisabled } from '@/lib/payment-gate';
 
 export async function POST(req: NextRequest) {
+  const paymentDenied = denyIfPaymentCollectionDisabled();
+  if (paymentDenied) return paymentDenied;
   const cronSecret = req.headers.get('x-cron-secret');
   if (!cronSecret || cronSecret !== process.env.CRON_SECRET) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 });

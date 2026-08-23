@@ -1,0 +1,81 @@
+{
+  "magic": "nfab",
+  "version": 3,
+  "createdAt": 1787382874685,
+  "updatedAt": 1787382874685,
+  "name": "Mechanical runtime sweep",
+  "tree": {
+    "nodes": [
+      {
+        "id": "runtime-root",
+        "type": "baseShape",
+        "label": "Base exact box",
+        "icon": "base",
+        "params": {},
+        "enabled": true,
+        "expanded": true,
+        "parentId": null,
+        "children": [
+          "runtime-feature"
+        ],
+        "timestamp": 1,
+        "editingActive": false
+      },
+      {
+        "id": "runtime-feature",
+        "type": "feature",
+        "label": "Runtime sweep",
+        "icon": "feature",
+        "featureType": "sweep",
+        "params": {
+          "pathType": 0,
+          "length": 42,
+          "arcAngle": 90,
+          "arcRadius": 40,
+          "helixPitch": 10,
+          "helixTurns": 1,
+          "twist": 0,
+          "guideMode": 0,
+          "guideStart": 20,
+          "guideEnd": 20
+        },
+        "enabled": true,
+        "expanded": true,
+        "parentId": "runtime-root",
+        "children": [],
+        "timestamp": 2,
+        "editingActive": false
+      }
+    ],
+    "rootId": "runtime-root",
+    "activeNodeId": "runtime-feature"
+  },
+  "scene": {
+    "selectedId": "box",
+    "params": {
+      "width": 60,
+      "height": 40,
+      "depth": 30
+    },
+    "paramExpressions": {},
+    "materialId": "aluminum",
+    "color": "#cccccc",
+    "isSketchMode": false,
+    "sketchPlane": "xy",
+    "sketchProfile": {
+      "segments": [],
+      "closed": false
+    },
+    "sketchConfig": {
+      "mode": "extrude",
+      "depth": 30,
+      "revolveAngle": 360,
+      "revolveAxis": "y",
+      "segments": 32
+    }
+  },
+  "meta": {
+    "evidenceOnly": true,
+    "exactKernel": "OCCT"
+  }
+}

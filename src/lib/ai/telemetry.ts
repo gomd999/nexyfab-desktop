@@ -19,6 +19,8 @@ import { estimateCostCents } from './cost';
 export interface PromptCallTelemetry {
   /** Anonymous if userId omitted; metric still captured for system-wide stats. */
   userId?: string;
+  /** Active organization for tenant-scoped usage and cost attribution. */
+  orgId?: string | null;
   /** Prompt id after variant resolution (e.g. "shape-chat" or "scad-intent-from-nl:tighter"). */
   promptId: string;
   /** Prompt version at call time (e.g. "1.1.0"). */
@@ -32,6 +34,11 @@ export interface PromptCallTelemetry {
   /** Token counts when reported by the provider. */
   promptTokens?: number;
   completionTokens?: number;
+  /** Prompt tokens served from or written to an explicit provider cache. */
+  cachedPromptTokens?: number;
+  cacheWriteTokens?: number;
+  cacheMissTokens?: number;
+  cacheProfile?: 'openai-explicit' | 'qwen-explicit' | 'deepseek-automatic' | 'anthropic-explicit' | 'gemini-explicit' | 'gemini-implicit' | 'openrouter-native' | 'provider-default';
   /** True if the call succeeded; false if the provider chain failed. */
   success: boolean;
   /** Short error code/class on failure (e.g. "AiNotConfigured", "deepseek_502"). */
@@ -59,17 +66,24 @@ export function recordPromptCall(t: PromptCallTelemetry): void {
   };
   if (t.promptTokens !== undefined) metadata.promptTokens = t.promptTokens;
   if (t.completionTokens !== undefined) metadata.completionTokens = t.completionTokens;
+  if (t.cachedPromptTokens !== undefined) metadata.cachedPromptTokens = t.cachedPromptTokens;
+  if (t.cacheWriteTokens !== undefined) metadata.cacheWriteTokens = t.cacheWriteTokens;
+  if (t.cacheMissTokens !== undefined) metadata.cacheMissTokens = t.cacheMissTokens;
+  if (t.cacheProfile !== undefined) metadata.cacheProfile = t.cacheProfile;
   if (t.errorClass) metadata.errorClass = t.errorClass;
 
   // Compute cost at write time so historical rows keep their pricing even if
   // the rate card changes later. Cost is only meaningful for successful calls
   // that report token counts.
   if (t.success && (t.promptTokens || t.completionTokens)) {
-    const cents = estimateCostCents(t.provider, t.model, t.promptTokens, t.completionTokens);
+    const cents = estimateCostCents(t.provider, t.model, t.promptTokens, t.completionTokens, {
+      cachedPromptTokens: t.cachedPromptTokens,
+      cacheWriteTokens: t.cacheWriteTokens,
+    });
     if (cents > 0) metadata.costCents = cents;
   }
 
-  recordUsageEvent(userId, METRIC, metadata);
+  recordUsageEvent(userId, METRIC, metadata, t.orgId);
 }
 
 /** Classify an unknown error into a short string for telemetry. */

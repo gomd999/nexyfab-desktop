@@ -1,0 +1,87 @@
+{
+  "schema": "nexyfab.mechanical-ai-intent-local-qualification-receipt.v1",
+  "generatedAt": "2026-08-22T07:12:30.395Z",
+  "qualificationClass": "LOCAL_DETERMINISTIC_NO_GEOMETRY",
+  "sourceBindings": [
+    {
+      "path": "scripts/mechanical-ai-intent-local-qualification.ts",
+      "sha256": "ea2ff0f55df572573312a634d95fda78e83a464c8b8dcfd3b390d380baf85cd2",
+      "bytes": 18625
+    },
+    {
+      "path": "src/lib/ai/guidedDesignBrief.ts",
+      "sha256": "da3b9994bc91cc66f1069b537ae5ef295dd0aebeb1618c477cc5c9fdab346c13",
+      "bytes": 15251
+    },
+    {
+      "path": "src/lib/ai/aiCanonicalCandidate.ts",
+      "sha256": "509cf8d2247ceb72d8d8ada2589ca4a4a67dca228a650895356fe63e90c6d760",
+      "bytes": 12357
+    },
+    {
+      "path": "src/lib/ai/mechanicalCoreFeatureContract.ts",
+      "sha256": "a53d59fde828bca93ac903e961970be256fe83223733517dcef2bfb5b5f2bbfe",
+      "bytes": 16839
+    }
+  ],
+  "artifactBindings": [
+    {
+      "path": "docs/evidence/cad-independent/local/mechanical-ai-intent-qualification-260813/corpus.json",
+      "sha256": "26df52ca13e69f3e3a3c413abb6fceafd3c6cb21711627bedd9deb6653b638ea",
+      "bytes": 48673
+    },
+    {
+      "path": "docs/evidence/cad-independent/local/mechanical-ai-intent-qualification-260813/results.json",
+      "sha256": "3c1d07fe8ab0adf4b659e16df054595cd60a42124216d9d768e69a40cb100507",
+      "bytes": 168936
+    }
+  ],
+  "summary": {
+    "total": 150,
+    "categoryCounts": {
+      "ko_practical": 30,
+      "en_practical": 30,
+      "mixed_units": 30,
+      "missing_required": 30,
+      "contradictory_or_unmanufacturable": 30
+    },
+    "parsePass": 150,
+    "requirementsReady": 90,
+    "negativeCorrectlyBlocked": 60,
+    "candidatePass": 90,
+    "candidateBlocked": 60,
+    "geometryEligible": 90,
+    "geometryBlocked": 60,
+    "geometryExecution": {
+      "PASS": 0,
+      "FAIL": 0,
+      "NOT_RUN": 150
+    },
+    "verificationEligibility": {
+      "ELIGIBLE": 0,
+      "BLOCKED": 150
+    },
+    "verificationExecution": {
+      "PASS": 0,
+      "FAIL": 0,
+      "NOT_RUN": 150
+    },
+    "expectedOutcomePass": 150,
+    "expectedOutcomeFail": 0
+  },
+  "localQualification": {
+    "status": "PASS",
+    "scope": "parse_requirements_candidate_and_eligibility_only"
+  },
+  "commercialCampaign": {
+    "status": "NOT_RUN",
+    "releaseEligible": false,
+    "blockers": [
+      "real_ai_model_campaign_not_run",
+      "geometry_execution_not_run",
+      "verification_execution_not_run",
+      "external_commercial_receipt_not_evaluated"
+    ]
+  },
+  "claimBoundary": "This receipt proves deterministic local intake qualification only. It does not prove an AI model call, geometry creation, CAD verification, manufacturing fitness, or commercial release readiness."
+}

@@ -1,5 +1,7 @@
 import { getDbAdapter, type DbAdapter } from '@/lib/db-adapter';
 import type { NexyfabProject } from '@/app/api/nexyfab/projects/projects-types';
+import type { AuthUser } from '@/lib/auth-middleware';
+import { resolveRequestOrgContext, resourceBelongsToOrgContext } from '@/lib/org-context';
 
 export type NfProjectRole = NonNullable<NexyfabProject['role']>;
 
@@ -34,15 +36,20 @@ export async function ensureProjectMembersTable(): Promise<void> {
 export async function resolveProjectAccess(
   db: DbAdapter,
   projectId: string,
-  authUserId: string,
+  authUser: Pick<AuthUser, 'userId' | 'orgIds' | 'activeOrgId' | 'orgContextStatus'>,
 ): Promise<NfProjectAccess | null> {
+  const context = resolveRequestOrgContext(authUser);
+  if (!context.ok) return null;
+  const commercial = process.env.NEXYFAB_COMMERCIAL_MODE === '1' || process.env.NEXYFAB_PRECISION_CAD_COMMERCIAL_MODE === '1';
+  if (!commercial) await db.execute('ALTER TABLE nf_projects ADD COLUMN org_id TEXT').catch(() => {});
   const row = await db.queryOne<Record<string, unknown>>('SELECT * FROM nf_projects WHERE id = ?', projectId);
-  if (!row) return null;
+  if (!row || !resourceBelongsToOrgContext(row.org_id, context)) return null;
+  const authUserId = authUser.userId;
   const ownerUserId = row.user_id as string;
   if (ownerUserId === authUserId) {
     return { row, role: 'owner', canEdit: true, ownerUserId };
   }
-  await ensureProjectMembersTable();
+  if (!commercial) await ensureProjectMembersTable();
   const m = await db.queryOne<{ role: string }>(
     'SELECT role FROM nf_project_members WHERE project_id = ? AND user_id = ?',
     projectId,

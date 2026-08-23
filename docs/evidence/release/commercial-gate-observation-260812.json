@@ -1,0 +1,136 @@
+{
+  "schemaVersion": 1,
+  "capturedAt": "2026-08-12T19:49:53+09:00",
+  "branch": "release/2026-08-10",
+  "head": "3d6ba1ec461169d9d331b939e432483c3953b752",
+  "commercialPreflight": {
+    "status": "BLOCK",
+    "blockerCount": 12,
+    "warningCount": 2,
+    "blockers": [
+      "DATABASE_URL missing",
+      "REDIS_URL missing",
+      "RECAPTCHA_ALLOWED_HOSTNAMES missing",
+      "SECURITY_GATE_MODE missing",
+      "SCAD_AGENT_SESSION_SECRET missing",
+      "OPENSCAD_EXTERNAL_WORKER must be 1",
+      "CAD_RUNTIME_EXTERNAL_WORKER must be 1",
+      "NEXYFAB_CAD_INDEPENDENT_MODE must be 1",
+      "GENERATION_EVIDENCE_SIGNING_SECRET missing",
+      "NEXT_SERVER_ACTIONS_ENCRYPTION_KEY missing",
+      "PostgreSQL migration verification not run because DATABASE_URL is missing",
+      "Redis verification not run because REDIS_URL is missing"
+    ],
+    "warnings": [
+      "NEXT_PUBLIC_NEXYSYS_URL missing",
+      "TOSS_SECRET_KEY is a test key"
+    ]
+  },
+  "mechanicalContracts": {
+    "status": "BLOCK",
+    "eligible": false,
+    "featureReceipts": {
+      "passed": 0,
+      "required": 30
+    },
+    "stepInteroperability": {
+      "verifiedLevel": null,
+      "requiredLevel": "C4",
+      "verifiedTargets": [],
+      "requiredTargets": [
+        "nexyfab",
+        "solidworks",
+        "fusion",
+        "onshape"
+      ]
+    }
+  },
+  "commercialReleaseGate": {
+    "status": "BLOCK",
+    "stages": [
+      {
+        "name": "licenses",
+        "status": "PASS",
+        "packages": 684,
+        "criticalCopyleft": 3
+      },
+      {
+        "name": "kernelIdentity",
+        "status": "PASS"
+      },
+      {
+        "name": "cadApiControls",
+        "status": "PASS",
+        "routes": 80,
+        "handlers": 80,
+        "issues": 0
+      },
+      {
+        "name": "mechanicalContracts",
+        "status": "BLOCK"
+      },
+      {
+        "name": "mechanicalScope",
+        "status": "NOT_RUN"
+      },
+      {
+        "name": "complexScope",
+        "status": "NOT_RUN"
+      },
+      {
+        "name": "occtCommercial",
+        "status": "NOT_RUN"
+      },
+      {
+        "name": "commercialReleaseEnvironmentAndOperations",
+        "status": "NOT_RUN"
+      }
+    ],
+    "reason": "The command uses fail-fast sequencing and stopped at the mechanical contract blocker. Downstream stages were not executed in this run."
+  },
+  "standaloneDownstreamChecks": {
+    "mechanicalScope": {
+      "checkStatus": "PASS",
+      "eligibilityStatus": "BLOCK",
+      "assessmentStatus": "private_beta_evidence_pending",
+      "blockerCount": 7
+    },
+    "complexScope": {
+      "checkStatus": "PASS",
+      "scopedClosedBetaPilotEligible": true,
+      "broadComplexProductSelfServiceEligible": false,
+      "manufacturingReleaseGuaranteed": false,
+      "failClosed": true
+    },
+    "occtCommercial": {
+      "status": "PASS",
+      "mode": "wasm",
+      "warnings": 0,
+      "errors": 0
+    },
+    "commercialReleaseEnvironmentAndOperations": {
+      "status": "BLOCK",
+      "blockerCount": 23,
+      "categories": [
+        "PostgreSQL",
+        "Redis",
+        "isolated CAD workers",
+        "CAD independent mode",
+        "S3 object storage",
+        "cron authentication",
+        "generation evidence signing",
+        "SMTP",
+        "Sentry",
+        "Server Actions encryption",
+        "payment provider and webhook",
+        "commercial mode",
+        "on-call/support/rollback owners",
+        "restore/payment/legal timestamps",
+        "mechanical domain accuracy evidence",
+        "CAD-independent audit v2"
+      ]
+    },
+    "notes": "These commands were run independently after the fail-fast aggregate gate stopped. A passing assessment integrity check does not change the embedded eligibility or manufacturing-release decision."
+  },
+  "releaseDecision": "BLOCK"
+}

@@ -22,6 +22,9 @@ import { rateLimit } from '@/lib/rate-limit';
 import { getTrustedClientIp } from '@/lib/client-ip';
 import { guardStudioAi } from '@/lib/studio-ai-guard';
 import { recordFailure } from '@/lib/failureLog';
+import { boundedJsonError, readBoundedJson } from '@/lib/boundedJsonBody';
+
+const MAX_BODY_BYTES = 64 * 1024;
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -55,9 +58,10 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 
   let description: string;
   try {
-    const body = (await req.json()) as { description?: string };
+    const body = await readBoundedJson<{ description?: string }>(req, MAX_BODY_BYTES);
     description = (body.description ?? '').trim();
-  } catch {
+  } catch (error) {
+    if (boundedJsonError(error)?.code === 'PAYLOAD_TOO_LARGE') return NextResponse.json({ ok: false, error: 'description이 너무 깁니다(2000자 이하).' }, { status: 413 });
     return NextResponse.json({ ok: false, error: 'invalid json' }, { status: 400 });
   }
   if (!description || description.length < 4) {
@@ -102,7 +106,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
     // 키 미설정은 503(설정 문제) — 백엔드를 Gemini↔OpenAI 로 바꿔도 맞게 남도록 둘 다 본다.
-    const status = /GEMINI_API_KEY|OPENAI_API_KEY/.test(msg) ? 503 : 502;
+    const status = /DEEPSEEK_API_KEY|GEMINI_API_KEY|OPENAI_API_KEY/.test(msg) ? 503 : 502;
     return NextResponse.json({ ok: false, error: 'compose failed: ' + msg.slice(0, 200) }, { status });
   }
 }

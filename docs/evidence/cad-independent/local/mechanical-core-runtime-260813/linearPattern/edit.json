@@ -1,0 +1,31 @@
+{
+  "schema": "nexyfab.mechanical-core-feature-local-runtime.v1",
+  "feature": "linearPattern",
+  "axis": "edit",
+  "status": "PASS",
+  "executedAt": "2026-08-22T07:13:30.564Z",
+  "commandId": "linearPattern-runtime-param-edit",
+  "historyDepth": 1,
+  "before": {
+    "id": "runtime-feature",
+    "enabled": true,
+    "type": "linearPattern",
+    "params": {
+      "axis": 0,
+      "count": 2,
+      "spacing": 20,
+      "patternTarget": 0
+    }
+  },
+  "after": {
+    "id": "runtime-feature",
+    "enabled": true,
+    "type": "linearPattern",
+    "params": {
+      "axis": 0,
+      "count": 3,
+      "spacing": 20,
+      "patternTarget": 0
+    }
+  }
+}

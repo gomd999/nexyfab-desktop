@@ -1,0 +1,26 @@
+{
+  "schema": "nexyfab.mechanical-single-part-bom-candidate.v1",
+  "partRevisionSha256": "69880ca9fee5d4e358c82462bac4082936726861746659ddfe42889ca846bf20",
+  "sourceDesignRevisionSha256": "3cf6a0f9c8efcf153a2cfefde087a2112c086fc412d2feeaeb9ce52542838564",
+  "sourceNfabSha256": "d4554f18ee03a729e0aeb70c8d4bb9fe5f6ab1a8271e5d83ada30078b8f328e2",
+  "sourceStepSha256": "1697f25eeb07aa63e208d7d6bb516127f03d2c77510c73a5d584198cfa7894a7",
+  "units": "mm",
+  "items": [
+    {
+      "partNumber": "cut",
+      "description": "Mechanical runtime cut",
+      "quantity": 1,
+      "dimensionsMm": {
+        "x": 60.0000002,
+        "y": 40.0000002,
+        "z": 30.000000200000002
+      }
+    }
+  ],
+  "claimBoundary": {
+    "singlePartCandidateOnly": true,
+    "materialSpecified": false,
+    "massCalculated": false,
+    "manufacturingApproved": false
+  }
+}

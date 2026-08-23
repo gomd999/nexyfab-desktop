@@ -25,7 +25,7 @@ type Chk = {
 };
 const check = checkConnection as unknown as (c: unknown, o?: unknown) => Chk;
 const analyze = analyzeConnections as unknown as (a: unknown) => null | {
-  checks: Chk[]; counts: Record<string, number>; allPass: boolean; note: string;
+  checks: Chk[]; counts: Record<string, number>; allPass: boolean; releasePass: boolean; note: string;
 };
 const contacts = declaredContacts as unknown as (a: unknown) => null | { contacts: Array<Record<string, unknown>>; errors: string[]; note: string };
 const build = buildAssembly as unknown as (a: unknown, o?: unknown) => Record<string, unknown>;
@@ -171,7 +171,16 @@ describe('★② 미검토를 통과로 세지 않는다', () => {
       { id: 'unknown', type: 'pin' },
     ] })!;
     expect(a.counts).toMatchObject({ total: 2, solved: 1, notChecked: 1, failed: 0 });
+    expect(a.releasePass, '미검토가 하나라도 있으면 제조 출고 PASS가 아니다').toBe(false);
     expect(a.note).toMatch(/미검토는 통과가 아니다/);
+  });
+
+  it('releasePass 는 모든 체결부가 완전검토되고 명시적으로 합격해야만 true 다', () => {
+    const a = analyze({ connections: [
+      { id: 'ok', type: 'weld-group', weldLengthMm: 400, weldThroatMm: 5, forceN: 100000, allowableWeldMPa: 120 },
+    ] })!;
+    expect(a.counts).toMatchObject({ total: 1, solved: 1, conditional: 0, notChecked: 0, failed: 0 });
+    expect(a.releasePass).toBe(true);
   });
 
   it('connections 선언이 없으면 null — 「이상 없음」이 아니다', () => {
@@ -190,15 +199,26 @@ describe('★③ 다른 질문은 따로 답한다', () => {
   };
 
   it('체결부 불합격이 designOk 를 끌어내리지 않는다 — 조립 성립과 하중 저항은 다른 질문이다', () => {
-    const r = build(structuredClone(ASM)) as { designOk: boolean; connections: { counts: Record<string, number> } };
+    const r = build(structuredClone(ASM)) as {
+      designOk: boolean;
+      manufacturingReleaseOk: boolean;
+      releaseStatus: { connectionStrength: string; manufacturingRelease: string; blockingReasons: string[] };
+      connections: { counts: Record<string, number> };
+    };
     expect(r.connections.counts.failed, '핀은 안전율 0.63 으로 불합격').toBe(1);
     expect(r.designOk, '그래도 조립 자체는 성립한다(간섭·부유 없음)').toBe(true);
+    expect(r.releaseStatus.connectionStrength).toBe('fail');
+    expect(r.releaseStatus.manufacturingRelease).toBe('blocked');
+    expect(r.releaseStatus.blockingReasons).toContain('CONNECTION_STRENGTH_FAIL');
+    expect(r.manufacturingReleaseOk).toBe(false);
   });
 
   it('선언이 없으면 connections 키 자체가 안 붙는다', () => {
     const r = build({ parts: ASM.parts }) as Record<string, unknown>;
     expect(r.connections).toBeUndefined();
     expect(r.declaredContacts).toBeUndefined();
+    expect(r.releaseStatus).toMatchObject({ connectionStrength: 'not_run', manufacturingRelease: 'blocked' });
+    expect(r.manufacturingReleaseOk).toBe(false);
   });
 
   /**

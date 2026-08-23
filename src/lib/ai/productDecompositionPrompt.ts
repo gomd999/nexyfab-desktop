@@ -20,10 +20,14 @@ Rules:
 - Every non-fixed occurrence must have an active mate path to a fixed root; otherwise list the missing datum/interface in unresolved.
 - subassemblies express functional product hierarchy; an instance belongs to at most one direct subassembly.
 - Products with 10 or more occurrences require an explicit functional subassembly hierarchy.
+- Always return physicalNetworks (use [] only when the request has no fluid, air, power, data, sensor, drain, cable, or wiring service path).
+- PT100/RTD/thermocouple and other sensors require typed electrical/data ports and a measured lead/cable route. Piping, hose, duct, hydraulic, pneumatic, water, coolant, and drain requirements require the matching typed physical route.
+- Every release-intended physical network sets rules.requirePhysicalRouteGeometry=true and supplies port direction/axis, measured run pathMm, endpoint/length tolerances, and required-port-to-run connectivity. Never use a string declaration as route evidence.
+- Internal fluid analysis paths use representation="analysis_only_internal_flow" and collisionEligible=false. Emit the surrounding physical wall/pipe solid only once; never duplicate a physical internal-flow solid.
 - Manufactured part numbers must be stable and repeated only for instances of the same definition.
 
 Top-level keys exactly:
-version, units, productName, requirements, definitions, instances, mates, subassemblies, observations, assumptions, unresolved.
+version, units, productName, requirements, definitions, instances, mates, subassemblies, physicalNetworks, observations, assumptions, unresolved.
 
 Request:
 ${request}`;

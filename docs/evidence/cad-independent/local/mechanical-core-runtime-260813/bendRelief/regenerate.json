@@ -1,0 +1,85 @@
+{
+  "schema": "nexyfab.mechanical-core-feature-local-runtime.v1",
+  "feature": "bendRelief",
+  "axis": "regenerate",
+  "status": "PASS",
+  "executedAt": "2026-08-22T07:13:30.564Z",
+  "initial": {
+    "handle": "occt:310",
+    "kernelKind": "Solid",
+    "nativeShapeType": 0,
+    "solidCount": 1,
+    "singleSolid": true,
+    "volumeMm3": 3528,
+    "edgeCount": 36,
+    "faceCount": 14,
+    "boundsMm": [
+      [
+        -30.0000001,
+        -1.0000001,
+        -15.0000001
+      ],
+      [
+        30.0000001,
+        1.0000001,
+        15.0000001
+      ]
+    ]
+  },
+  "edited": {
+    "handle": "occt:313",
+    "kernelKind": "Solid",
+    "nativeShapeType": 0,
+    "solidCount": 1,
+    "singleSolid": true,
+    "volumeMm3": 3480,
+    "edgeCount": 36,
+    "faceCount": 14,
+    "boundsMm": [
+      [
+        -30.0000001,
+        -1.0000001000000018,
+        -15.000000100000001
+      ],
+      [
+        30.0000001,
+        1.0000001000000018,
+        15.000000100000001
+      ]
+    ]
+  },
+  "repeated": {
+    "handle": "occt:316",
+    "kernelKind": "Solid",
+    "nativeShapeType": 0,
+    "solidCount": 1,
+    "singleSolid": true,
+    "volumeMm3": 3480,
+    "edgeCount": 36,
+    "faceCount": 14,
+    "boundsMm": [
+      [
+        -30.0000001,
+        -1.0000001000000018,
+        -15.000000100000001
+      ],
+      [
+        30.0000001,
+        1.0000001000000018,
+        15.000000100000001
+      ]
+    ]
+  },
+  "featureMeaning": {
+    "assertion": "actual product exact bend relief subtracts two rectangular end notches located from explicit bend history",
+    "exactScope": "axis-aligned constant-thickness box host with explicit v2 bend history",
+    "bendLineAxis": "x",
+    "bendLinePosMm": 0,
+    "widthMm": 5,
+    "depthMm": 6,
+    "removedVolumeMm3": 120,
+    "expectedVolumeMm3": 3480,
+    "actualVolumeMm3": 3480
+  },
+  "assertion": "edited parameter changed the exact signature and a fresh native regeneration reproduced topology, bounds, and volume"
+}

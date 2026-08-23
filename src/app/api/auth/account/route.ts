@@ -7,6 +7,9 @@ import bcrypt from 'bcryptjs';
 import { getTrustedClientIp } from '@/lib/client-ip';
 import { clearAuthCookies } from '@/lib/cookie-config';
 import { deleteNexyfabAccountData } from '@/lib/deleteAccountData';
+import { boundedJsonError, readBoundedJson } from '@/lib/boundedJsonBody';
+
+const MAX_ACCOUNT_DELETE_BODY_BYTES = 16 * 1024;
 
 export const dynamic = 'force-dynamic';
 
@@ -22,7 +25,9 @@ export async function DELETE(req: NextRequest) {
     return NextResponse.json({ error: 'Too many requests' }, { status: 429 });
   }
 
-  const body = await req.json().catch(() => ({}));
+  let body: unknown = {};
+  try { body = await readBoundedJson(req, MAX_ACCOUNT_DELETE_BODY_BYTES); }
+  catch (error) { if (boundedJsonError(error)?.code === 'PAYLOAD_TOO_LARGE') return NextResponse.json({ error: 'Request too large', code: 'PAYLOAD_TOO_LARGE' }, { status: 413 }); }
   const parsed = z.object({
     password: z.string().min(1),
     confirm: z.literal('DELETE MY ACCOUNT'),

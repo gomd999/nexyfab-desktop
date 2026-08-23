@@ -1,0 +1,24 @@
+{
+  "schema": "nexyfab.postgres-migration-receipt.v1",
+  "generatedAt": "2026-08-17T11:45:39.923Z",
+  "ok": true,
+  "target": "railway-staging",
+  "migration": {
+    "ok": true,
+    "version": 2026081701,
+    "name": "cad_artifacts_handoffs_spatial_20260817",
+    "checksum": "700b2db4b0d1370f1d694cbcd02142dcb48530d5ba7040a0ad61f6394af7f45e",
+    "decision": "apply"
+  },
+  "before": {
+    "tableCount": 109,
+    "totalRows": 57,
+    "businessRowCountSha256": "198388e6b8a3bb23d28d8198cceccf54fa1cc4b049a8d802356da2feea96b931"
+  },
+  "after": {
+    "tableCount": 121,
+    "totalRows": 58,
+    "businessRowCountSha256": "b9414cee3958c62b4c466a101fb31cb9dce8377a59be940aa76d2a1f16379f0a"
+  },
+  "changedBusinessTables": []
+}

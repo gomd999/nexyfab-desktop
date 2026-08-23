@@ -12,7 +12,7 @@
     },
     {
       "path": "src/lib/ai/adaptiveComplexProductExecution.ts",
-      "sha256": "7fdc7477d0650707bf5a3fb53fdcb37b0f7c77948d7e70ef50afb35c79667805"
+      "sha256": "496da039cceb562afee86957eceb72acb343e390ce25589d69979bfea3b52511"
     }
   ],
   "externalCadInstallationRequired": false,

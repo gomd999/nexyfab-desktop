@@ -1,0 +1,44 @@
+{
+  "schema": "nexyfab.mechanical-core-feature-local-runtime.v1",
+  "feature": "hole",
+  "axis": "undo",
+  "status": "PASS",
+  "executedAt": "2026-08-22T07:13:00.871Z",
+  "restoredPayload": {
+    "id": "runtime-feature",
+    "enabled": true,
+    "type": "hole",
+    "params": {
+      "holeType": 0,
+      "diameter": 8,
+      "posX": 0,
+      "posZ": 0,
+      "depth": 40,
+      "endCondition": 1,
+      "engine": 1
+    }
+  },
+  "restoredExact": {
+    "handle": "occt:11",
+    "kernelKind": "Solid",
+    "nativeShapeType": 0,
+    "solidCount": 1,
+    "singleSolid": true,
+    "volumeMm3": 47597.8761403405,
+    "edgeCount": 13,
+    "faceCount": 6,
+    "boundsMm": [
+      [
+        -50.001243371996736,
+        -4.001243371996735,
+        -30.001243371996736
+      ],
+      [
+        50.001243371996736,
+        4.001243371996735,
+        30.001243371996736
+      ]
+    ]
+  },
+  "futureDepth": 1
+}

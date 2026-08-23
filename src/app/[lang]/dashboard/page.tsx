@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
-import { isKorean } from '@/lib/i18n/normalize';
+import { createCommercialLocalizer } from '@/lib/i18n/commercialLocalizer';
 import {
   FolderGit2, 
   Plus, 
@@ -56,46 +56,27 @@ export default function DashboardPage() {
     });
   }, []);
 
-  const t = isKorean(lang) ? {
-    title: '프로젝트 대시보드',
-    newProject: '새 프로젝트',
-    search: '프로젝트 검색...',
-    draft: '초안',
-    quoted: '견적 완료',
-    ordered: '주문됨',
-    parts: '개 부품',
-    empty: '아직 생성된 프로젝트가 없습니다.',
-    colName: '이름',
-    colStatus: '상태',
-    colParts: '부품 수',
-    colUpdated: '최근 수정',
-    colActions: '작업',
+  const L = createCommercialLocalizer(lang);
+  const t = {
+    title: L('프로젝트 대시보드', 'Project Dashboard'),
+    newProject: L('새 프로젝트', 'New Project'),
+    search: L('프로젝트 검색...', 'Search projects...'),
+    draft: L('초안', 'Draft'),
+    quoted: L('견적 완료', 'Quoted'),
+    ordered: L('주문됨', 'Ordered'),
+    parts: L('개 부품', 'parts'),
+    empty: L('아직 생성된 프로젝트가 없습니다.', 'No projects created yet.'),
+    colName: L('이름', 'Name'),
+    colStatus: L('상태', 'Status'),
+    colParts: L('부품 수', 'Parts'),
+    colUpdated: L('최근 수정', 'Last Updated'),
+    colActions: L('작업', 'Actions'),
     menu: {
-      projects: '내 프로젝트',
-      team: '팀 멤버',
-      billing: '결제 관리',
-      settings: '설정'
-    }
-  } : {
-    title: 'Project Dashboard',
-    newProject: 'New Project',
-    search: 'Search projects...',
-    draft: 'Draft',
-    quoted: 'Quoted',
-    ordered: 'Ordered',
-    parts: 'parts',
-    empty: 'No projects created yet.',
-    colName: 'Name',
-    colStatus: 'Status',
-    colParts: 'Parts',
-    colUpdated: 'Last Updated',
-    colActions: 'Actions',
-    menu: {
-      projects: 'My Projects',
-      team: 'Team Members',
-      billing: 'Billing',
-      settings: 'Settings'
-    }
+      projects: L('내 프로젝트', 'My Projects'),
+      team: L('팀 멤버', 'Team Members'),
+      billing: L('결제 관리', 'Billing'),
+      settings: L('설정', 'Settings'),
+    },
   };
 
   const filteredProjects = projects.filter(p => 

@@ -13,6 +13,7 @@ import {
   type SnsEnvelope,
   verifySnsSignature,
 } from '@/lib/aws-sns-signature';
+import { boundedRawBodyError, readBoundedRawBody } from '@/lib/boundedRawBody';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -20,13 +21,14 @@ export const runtime = 'nodejs';
 const MAX_SNS_BODY_BYTES = 256 * 1024;
 
 export async function POST(req: NextRequest) {
-  const declaredLength = Number(req.headers.get('content-length') ?? '0');
-  if (Number.isFinite(declaredLength) && declaredLength > MAX_SNS_BODY_BYTES) {
-    return NextResponse.json({ error: 'payload too large' }, { status: 413 });
-  }
-  const raw = await req.text();
-  if (Buffer.byteLength(raw, 'utf8') > MAX_SNS_BODY_BYTES) {
-    return NextResponse.json({ error: 'payload too large' }, { status: 413 });
+  let raw: string;
+  try {
+    const bytes = await readBoundedRawBody(req, MAX_SNS_BODY_BYTES);
+    raw = new TextDecoder('utf-8', { fatal: true }).decode(bytes);
+  } catch (error) {
+    const bounded = boundedRawBodyError(error);
+    if (bounded?.code === 'PAYLOAD_TOO_LARGE') return NextResponse.json({ error: 'payload too large' }, { status: 413 });
+    return NextResponse.json({ error: 'bad json' }, { status: 400 });
   }
   let env: SnsEnvelope;
   try { env = JSON.parse(raw) as SnsEnvelope; } catch { return NextResponse.json({ error: 'bad json' }, { status: 400 }); }

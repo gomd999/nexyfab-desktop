@@ -72,10 +72,10 @@ const ENV_CHECKS: EnvCheck[] = [
     hint: 'S3 bucket for file uploads. If not set, local filesystem is used.',
   },
   {
-    key: 'ADMIN_PASSWORD_HASH',
+    key: 'ADMIN_BOOTSTRAP_EMAILS',
     required: false,
-    validate: (v) => v.startsWith('$2'),
-    hint: 'bcrypt hash of admin password. Generate with: node -e "require(\'bcryptjs\').hash(\'password\',12).then(console.log)"',
+    validate: (v) => v.split(',').every((email) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())),
+    hint: 'Comma-separated allowlist used to seed passwordless admin email access.',
   },
 ];
 

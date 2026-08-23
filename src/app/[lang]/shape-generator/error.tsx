@@ -42,7 +42,7 @@ export default function ShapeGeneratorError({
 
   useEffect(() => {
     console.error('Shape generator error:', error);
-    void fetch('/api/nexyfab/telemetry', {
+    void fetch('/api/nexyfab/telemetry/', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       keepalive: true,

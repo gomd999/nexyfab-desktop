@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { buildRadianceExecutionPlan, calculateAnnualDaylightMetrics, parseAnnualIlluminanceMatrix, parseRtraceRgbIlluminance } from '@/lib/ai/radianceExecution';
+import { boundedJsonError, readBoundedJson } from '@/lib/boundedJsonBody';
 import { getTrustedClientIp } from '@/lib/client-ip';
 import { rateLimit } from '@/lib/rate-limit';
 
@@ -9,11 +10,14 @@ export const dynamic = 'force-dynamic';
 type Body =
   | { kind: 'point_in_time'; sensorCount: number; output?: string }
   | { kind: 'annual'; sensorCount: number; timestepCount: number; timestepHours?: number; output?: string };
+const MAX_DAYLIGHT_RESULTS_BODY_BYTES = 64 * 1024 * 1024;
 
 export async function POST(req: NextRequest) {
   const ip = getTrustedClientIp(req.headers);
   if (!rateLimit(`cad-v1-daylight-results:${ip}`, 30, 60_000).allowed) return NextResponse.json({ ok: false, code: 'RATE_LIMIT' }, { status: 429 });
-  const body = await req.json().catch(() => null) as Body | null;
+  let body: Body | null;
+  try { body = await readBoundedJson<Body>(req, MAX_DAYLIGHT_RESULTS_BODY_BYTES); }
+  catch (error) { const bounded = boundedJsonError(error); if (bounded?.code === 'PAYLOAD_TOO_LARGE') return NextResponse.json({ ok: false, code: bounded.code, releaseReady: false }, { status: bounded.status }); body = null; }
   if (!body || (body.kind !== 'point_in_time' && body.kind !== 'annual') || !Number.isInteger(body.sensorCount) || body.sensorCount <= 0) return NextResponse.json({ ok: false, code: 'BAD_REQUEST', releaseReady: false }, { status: 400 });
   const plan = buildRadianceExecutionPlan(body.kind);
   if (typeof body.output !== 'string' || !body.output.trim()) return NextResponse.json({ ok: true, status: 'not_run', releaseReady: false, plan, errors: ['radiance_output_missing'], quoteOrRfqSideEffects: false });

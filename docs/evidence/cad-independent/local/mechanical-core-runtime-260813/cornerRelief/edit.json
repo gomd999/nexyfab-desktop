@@ -1,0 +1,31 @@
+{
+  "schema": "nexyfab.mechanical-core-feature-local-runtime.v1",
+  "feature": "cornerRelief",
+  "axis": "edit",
+  "status": "PASS",
+  "executedAt": "2026-08-22T07:13:30.564Z",
+  "commandId": "cornerRelief-runtime-param-edit",
+  "historyDepth": 1,
+  "before": {
+    "id": "runtime-feature",
+    "enabled": true,
+    "type": "cornerRelief",
+    "params": {
+      "corner": 0,
+      "shape": 0,
+      "size": 5,
+      "inset": 0
+    }
+  },
+  "after": {
+    "id": "runtime-feature",
+    "enabled": true,
+    "type": "cornerRelief",
+    "params": {
+      "corner": 0,
+      "shape": 0,
+      "size": 8,
+      "inset": 0
+    }
+  }
+}

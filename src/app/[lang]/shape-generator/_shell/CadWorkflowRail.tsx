@@ -15,6 +15,44 @@ export interface CadWorkflowRailProps {
   onPreciseCad: () => void;
   onVerify: () => void;
   onExportEvidencePackage: () => void;
+  compact?: boolean;
+}
+
+export type CadWorkflowTruth = 'NOT_RUN' | 'WORKING' | 'PREVIEW' | 'BLOCKED' | 'VERIFIED';
+export type CadWorkflowStep = 'ai' | 'cad' | 'verify' | 'release';
+
+export interface CadWorkflowGuidance {
+  step: CadWorkflowStep;
+  truth: CadWorkflowTruth;
+  action: CadWorkflowStep | null;
+}
+
+/**
+ * One fail-closed summary for the novice-facing next action.  In particular,
+ * a clean preview/DFM result is not promoted to release evidence.
+ */
+export function getCadWorkflowGuidance({
+  hasModel,
+  dfmWarningCount,
+  executionPlan,
+}: Pick<CadWorkflowRailProps, 'hasModel' | 'dfmWarningCount' | 'executionPlan'>): CadWorkflowGuidance {
+  if (executionPlan?.status === 'ai_building') {
+    return { step: 'ai', truth: 'WORKING', action: null };
+  }
+  if (executionPlan?.status === 'authoritative_input_required') {
+    return { step: 'ai', truth: 'BLOCKED', action: 'ai' };
+  }
+  if (executionPlan?.status === 'precision_cad_required') {
+    return { step: 'cad', truth: 'PREVIEW', action: 'cad' };
+  }
+  if (executionPlan?.status === 'expert_review_required') {
+    return { step: 'release', truth: 'BLOCKED', action: 'cad' };
+  }
+  if (!hasModel) return { step: 'ai', truth: 'NOT_RUN', action: 'ai' };
+  if (dfmWarningCount === null) return { step: 'verify', truth: 'NOT_RUN', action: 'verify' };
+  if (dfmWarningCount > 0) return { step: 'verify', truth: 'BLOCKED', action: 'ai' };
+  if (executionPlan?.releaseReady === true) return { step: 'release', truth: 'VERIFIED', action: 'release' };
+  return { step: 'verify', truth: 'PREVIEW', action: 'verify' };
 }
 
 const copy = {
@@ -27,6 +65,7 @@ const copy = {
     release: '4 릴리스 / 전문가', blocked: '증거 없이는 제조 승인 안 됨',
     package: '증거 패키지', external: '외부 CAD 설치 불필요',
     affected: (n: number) => `영향 부품 ${n}개`, reasons: '확인 필요', verified: '기술 검증 완료 · 상용 출시는 별도 승인',
+    now: '현재', next: '다음', actions: { ai: 'AI에게 입력·수정 요청', cad: '정밀 CAD 열기', verify: '정확성 검사 실행', release: '검증 패키지 내보내기' },
   },
   en: {
     label: 'Design flow', ai: '1 AI product build', aiState: 'Build complex parts, assemblies, motion and manufacturing outputs',
@@ -37,6 +76,7 @@ const copy = {
     release: '4 Release / expert', blocked: 'No manufacturing approval without evidence',
     package: 'Evidence package', external: 'No external CAD installation',
     affected: (n: number) => `${n} affected part(s)`, reasons: 'Needs attention', verified: 'Technically verified · commercial release is separate',
+    now: 'Now', next: 'Next', actions: { ai: 'Ask AI for input or repair', cad: 'Open precision CAD', verify: 'Run accuracy checks', release: 'Export verified package' },
   },
   ja: {
     label: '設計フロー', ai: '1 AI製品実装', aiState: '複雑な部品・アセンブリ・動作・製造成果物まで実装',
@@ -47,6 +87,7 @@ const copy = {
     release: '4 リリース / 専門家', blocked: '証拠なしでは製造承認不可',
     package: '証拠パッケージ', external: '外部CADのインストール不要',
     affected: (n: number) => `影響部品 ${n}個`, reasons: '確認が必要', verified: '技術検証済み・商用リリースは別途承認',
+    now: '現在', next: '次へ', actions: { ai: 'AIに入力・修正を依頼', cad: '精密CADを開く', verify: '精度検証を実行', release: '検証済みパッケージを出力' },
   },
   zh: {
     label: '设计流程', ai: '1 AI产品实现', aiState: '实现复杂零件、装配、运动和制造输出',
@@ -57,6 +98,7 @@ const copy = {
     release: '4 发布 / 专家', blocked: '没有证据不得批准制造',
     package: '证据包', external: '无需安装外部CAD',
     affected: (n: number) => `${n}个受影响零件`, reasons: '需要确认', verified: '技术验证完成，商业发布需单独批准',
+    now: '当前', next: '下一步', actions: { ai: '请求AI补充或修复', cad: '打开精密CAD', verify: '运行精度检查', release: '导出已验证包' },
   },
   es: {
     label: 'Flujo de diseño', ai: '1 Implementación de producto con IA', aiState: 'Crea piezas complejas, ensamblajes, movimiento y resultados de fabricación',
@@ -67,6 +109,7 @@ const copy = {
     release: '4 Publicación / experto', blocked: 'Sin evidencia no se aprueba la fabricación',
     package: 'Paquete de evidencia', external: 'No requiere instalar CAD externo',
     affected: (n: number) => `${n} pieza(s) afectada(s)`, reasons: 'Requiere atención', verified: 'Verificado técnicamente; la publicación comercial es independiente',
+    now: 'Ahora', next: 'Siguiente', actions: { ai: 'Pedir datos o corrección a la IA', cad: 'Abrir CAD de precisión', verify: 'Ejecutar controles de precisión', release: 'Exportar paquete verificado' },
   },
   ar: {
     label: 'مسار التصميم', ai: '1 تنفيذ المنتج بالذكاء الاصطناعي', aiState: 'إنشاء الأجزاء المعقدة والتجميع والحركة ومخرجات التصنيع',
@@ -77,35 +120,50 @@ const copy = {
     release: '4 الإصدار / الخبير', blocked: 'لا اعتماد للتصنيع من دون دليل',
     package: 'حزمة الأدلة', external: 'لا حاجة إلى تثبيت CAD خارجي',
     affected: (n: number) => `${n} جزء متأثر`, reasons: 'يحتاج إلى مراجعة', verified: 'تم التحقق تقنيا؛ الإصدار التجاري مستقل',
+    now: 'الآن', next: 'التالي', actions: { ai: 'اطلب إدخالا أو إصلاحا من الذكاء الاصطناعي', cad: 'فتح CAD الدقيق', verify: 'تشغيل فحوص الدقة', release: 'تصدير الحزمة المتحقق منها' },
   },
 };
 
 export function CadWorkflowRail({
-  lang, domain = 'mechanical', hasModel, dfmWarningCount, executionPlan, onAiDesign, onPreciseCad, onVerify, onExportEvidencePackage,
+  lang, domain = 'mechanical', hasModel, dfmWarningCount, executionPlan, onAiDesign, onPreciseCad, onVerify, onExportEvidencePackage, compact = false,
 }: CadWorkflowRailProps) {
   const normalizedLang = lang === 'kr' ? 'ko' : lang;
   const d = copy[normalizedLang as keyof typeof copy] ?? copy.en;
   const journey = getDomainUserJourney(domain, normalizedLang);
-  const localizedDomainFlow = normalizedLang === 'ko' || normalizedLang === 'en';
-  const aiLabel = localizedDomainFlow
-    ? normalizedLang === 'ko' ? `1 AI ${journey.title} 구현` : `1 AI ${journey.title} build`
-    : d.ai;
-  const domainAiState = localizedDomainFlow
-    ? normalizedLang === 'ko' ? `${journey.focus} 범위를 구현` : `Build ${journey.focus.toLocaleLowerCase()}`
-    : d.aiState;
+  const domainCopy = {
+    ko: {
+      ai: `1 AI ${journey.title} 구현`, state: `${journey.focus} 범위를 구현`,
+      issues: (n: number) => `형상·분야 이슈 ${n}건 · 조정 필요`,
+      pass: '기본 형상 통과 · 분야 검증과 릴리스 증거 확인 필요',
+    },
+    en: {
+      ai: `1 AI ${journey.title} build`, state: `Build ${journey.focus.toLocaleLowerCase()}`,
+      issues: (n: number) => `${n} geometry/domain issue(s) · adjustment required`,
+      pass: 'Base geometry passed · domain checks and release evidence required',
+    },
+  }[normalizedLang as 'ko' | 'en'];
+  const aiLabel = domainCopy?.ai ?? d.ai;
+  const domainAiState = domainCopy?.state ?? d.aiState;
   const verifyState = !hasModel
     ? d.waiting
     : dfmWarningCount === null
       ? d.run
       : dfmWarningCount > 0
-        ? domain === 'mechanical' ? d.issues(dfmWarningCount) : normalizedLang === 'ko' ? `형상·분야 이슈 ${dfmWarningCount}건 · 조정 필요` : `${dfmWarningCount} geometry/domain issue(s) · adjustment required`
-        : domain === 'mechanical' ? d.dfmPass : normalizedLang === 'ko' ? '기본 형상 통과 · 분야 검증과 릴리스 증거 확인 필요' : 'Base geometry passed · domain checks and release evidence required';
+        ? domain === 'mechanical' ? d.issues(dfmWarningCount) : (domainCopy?.issues(dfmWarningCount) ?? d.issues(dfmWarningCount))
+        : domain === 'mechanical' ? d.dfmPass : (domainCopy?.pass ?? d.dfmPass);
   const aiState = executionPlan?.status === 'authoritative_input_required' ? d.input
     : executionPlan?.status === 'precision_cad_required' ? d.precision
       : executionPlan?.status === 'expert_review_required' ? d.expert
         : executionPlan?.status === 'ai_design_complete' ? d.complete
           : executionPlan?.status === 'ai_building' ? d.aiBuilding : domainAiState;
   const precisionRequired = executionPlan?.precisionCad.required === true;
+  const guidance = getCadWorkflowGuidance({ hasModel, dfmWarningCount, executionPlan });
+  const nextAction = guidance.action ? d.actions[guidance.action] : aiState;
+  const runNextAction = guidance.action === 'ai' ? onAiDesign
+    : guidance.action === 'cad' ? onPreciseCad
+      : guidance.action === 'verify' ? onVerify
+        : guidance.action === 'release' ? onExportEvidencePackage
+          : undefined;
   const affected = executionPlan?.affectedPartIds.length ?? 0;
   const detail = executionPlan && (executionPlan.reasonCodes.length || affected)
     ? `${affected ? `${d.affected(affected)} · ` : ''}${executionPlan.reasonCodes.slice(0, 2).join(', ') || d.reasons}`
@@ -123,29 +181,50 @@ export function CadWorkflowRail({
     <nav
       aria-label={d.label}
       data-testid="cad-workflow-rail"
+      data-compact={compact || undefined}
       style={{
         display: 'flex', alignItems: 'center', flex: '0 0 29px', minWidth: 0,
         borderBottom: '1px solid var(--nx-border)', background: 'var(--nx-panel-2)', overflowX: 'auto',
       }}
     >
-      <button type="button" style={itemStyle} onClick={onAiDesign} title={[aiState, detail].filter(Boolean).join(' — ')}>
+      <button type="button" aria-current={guidance.step === 'ai' ? 'step' : undefined} style={itemStyle} onClick={onAiDesign} title={[aiState, detail].filter(Boolean).join(' — ')}>
         <strong style={{ fontSize: 11, whiteSpace: 'nowrap', color: !hasModel ? 'var(--nx-accent)' : 'var(--nx-ok)' }}>{aiLabel}</strong>
         <span style={stateStyle}>{aiState}</span>
         {detail && <span data-testid="cad-workflow-local-repair" style={{ ...stateStyle, color: 'var(--nx-warn)' }}>{detail}</span>}
       </button>
-      <button type="button" style={itemStyle} onClick={onPreciseCad} title={[d.cadState, detail].filter(Boolean).join(' — ')}>
+      <button type="button" aria-current={guidance.step === 'cad' ? 'step' : undefined} style={itemStyle} onClick={onPreciseCad} title={[d.cadState, detail].filter(Boolean).join(' — ')}>
         <strong style={{ fontSize: 11, whiteSpace: 'nowrap', color: precisionRequired ? 'var(--nx-warn)' : hasModel ? 'var(--nx-accent)' : 'var(--nx-text-2)' }}>{d.cad}</strong>
         <span style={stateStyle}>{precisionRequired ? aiState : d.cadState}</span>
       </button>
-      <button type="button" style={itemStyle} onClick={onVerify} disabled={!hasModel} title={verifyState}>
+      <button type="button" aria-current={guidance.step === 'verify' ? 'step' : undefined} style={itemStyle} onClick={onVerify} disabled={!hasModel} title={verifyState}>
         <strong style={{ fontSize: 11, whiteSpace: 'nowrap', color: dfmWarningCount === 0 ? 'var(--nx-ok)' : dfmWarningCount && dfmWarningCount > 0 ? 'var(--nx-warn)' : 'var(--nx-text-2)' }}>{d.verify}</strong>
         <span style={stateStyle}>{verifyState}</span>
       </button>
-      <button type="button" style={itemStyle} onClick={onExportEvidencePackage} disabled={!hasModel} title={d.blocked}>
+      <button type="button" aria-current={guidance.step === 'release' ? 'step' : undefined} style={itemStyle} onClick={onExportEvidencePackage} disabled={!hasModel || executionPlan?.releaseReady !== true} title={executionPlan?.releaseReady ? d.verified : d.blocked}>
         <strong style={{ fontSize: 11, whiteSpace: 'nowrap', color: executionPlan?.releaseReady ? 'var(--nx-ok)' : 'var(--nx-warn)' }}>{d.release}</strong>
         <span data-testid="cad-workflow-release-status" style={stateStyle}>{executionPlan?.releaseReady ? d.verified : d.blocked}</span>
         <span style={{ fontSize: 10, whiteSpace: 'nowrap', color: 'var(--nx-accent)' }}>{d.package}</span>
       </button>
+      <div
+        data-testid="cad-workflow-guidance"
+        style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '0 8px', whiteSpace: 'nowrap' }}
+      >
+        <span role="status" aria-live="polite" aria-atomic="true" style={{ display: 'inline-flex', gap: 6, alignItems: 'center' }}>
+          <strong style={{ color: guidance.truth === 'BLOCKED' ? 'var(--nx-danger)' : guidance.truth === 'VERIFIED' ? 'var(--nx-ok)' : guidance.truth === 'WORKING' ? 'var(--nx-accent)' : 'var(--nx-warn)', fontSize: 10 }}>
+            {d.now}: {guidance.truth}
+          </strong>
+          <span style={stateStyle}>{d.next}: {nextAction}</span>
+        </span>
+        <button
+          type="button"
+          data-testid="cad-workflow-next-action"
+          disabled={!runNextAction}
+          onClick={runNextAction}
+          style={{ minHeight: 24, padding: '0 8px', border: '1px solid var(--nx-accent)', borderRadius: 5, background: 'var(--nx-panel)', color: 'var(--nx-accent)', fontSize: 10, fontWeight: 800, cursor: runNextAction ? 'pointer' : 'wait' }}
+        >
+          {nextAction}
+        </button>
+      </div>
       <span style={{ marginLeft: 'auto', padding: '0 10px', color: 'var(--nx-ok)', fontSize: 10, whiteSpace: 'nowrap' }}>
         {d.external}
       </span>

@@ -1,4 +1,4 @@
-import { randomUUID } from 'crypto';
+import { createHash, randomUUID } from 'crypto';
 import path from 'path';
 import fs from 'fs';
 
@@ -7,6 +7,12 @@ import fs from 'fs';
 export interface StorageResult {
   key: string;       // unique file key (e.g., "uploads/quick-quote/abc123/file.step")
   url: string;       // public or signed URL
+  size: number;
+}
+
+export interface StorageMultipartPart {
+  partNumber: number;
+  etag: string;
   size: number;
 }
 
@@ -26,8 +32,39 @@ export interface StorageAdapter {
     contentType: string,
     expiresInSeconds?: number,
   ): Promise<{ key: string; uploadUrl: string }>;
+  /** Direct private PUT at a caller-selected, already-authorized exact key. */
+  createPrivateRawUploadUrl?(
+    key: string,
+    contentType: string,
+    expiresInSeconds?: number,
+  ): Promise<{ uploadUrl: string }>;
   /** Authoritative stored byte size after direct upload. */
   stat?(key: string): Promise<{ size: number }>;
+  /** Stream the stored object and compute its authoritative SHA-256 without buffering it in memory. */
+  sha256?(key: string): Promise<{ size: number; contentSha256: string }>;
+  /** Begin a resumable private multipart upload at a storage-owned key. */
+  createPrivateMultipartUpload?(
+    filename: string,
+    directory: string,
+    contentType: string,
+  ): Promise<{ key: string; storageUploadId: string }>;
+  /** Issue one short-lived upload-part URL. */
+  createPrivateMultipartPartUrl?(
+    key: string,
+    storageUploadId: string,
+    partNumber: number,
+    expiresInSeconds?: number,
+  ): Promise<{ uploadUrl: string }>;
+  /** Read authoritative uploaded part state for resume and finalization. */
+  listPrivateMultipartParts?(key: string, storageUploadId: string): Promise<StorageMultipartPart[]>;
+  /** Assemble uploaded parts into the immutable private object. */
+  completePrivateMultipartUpload?(
+    key: string,
+    storageUploadId: string,
+    parts: StorageMultipartPart[],
+  ): Promise<void>;
+  /** Abort an unfinished multipart upload. */
+  abortPrivateMultipartUpload?(key: string, storageUploadId: string): Promise<void>;
 }
 
 // ─── Local Filesystem Storage ──────────────────────────────────────────────
@@ -62,9 +99,11 @@ function getLocalStorage(): StorageAdapter {
       return { key, url: '', size: buffer.length };
     },
     async uploadRaw(buffer, key) {
-      const filePath = path.join(process.cwd(), 'public', key);
+      const filePath = key.startsWith('private/')
+        ? resolveUnder(privateRoot, key.slice('private/'.length))
+        : resolveUnder(publicRoot, key);
       fs.mkdirSync(path.dirname(filePath), { recursive: true });
-      fs.writeFileSync(filePath, buffer);
+      fs.writeFileSync(filePath, buffer, { flag: 'wx' });
     },
     async download(key) {
       const filePath = key.startsWith('private/')
@@ -87,6 +126,19 @@ function getLocalStorage(): StorageAdapter {
         ? resolveUnder(privateRoot, key.slice('private/'.length))
         : resolveUnder(publicRoot, key);
       return { size: fs.statSync(filePath).size };
+    },
+    async sha256(key) {
+      const filePath = key.startsWith('private/')
+        ? resolveUnder(privateRoot, key.slice('private/'.length))
+        : resolveUnder(publicRoot, key);
+      const hash = createHash('sha256');
+      let size = 0;
+      for await (const chunk of fs.createReadStream(filePath)) {
+        const bytes = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk);
+        size += bytes.byteLength;
+        hash.update(bytes);
+      }
+      return { size, contentSha256: hash.digest('hex') };
     },
   };
 }
@@ -211,6 +263,19 @@ function getS3Storage(): StorageAdapter {
         return { key, uploadUrl };
       });
     },
+    async createPrivateRawUploadUrl(key, contentType, expiresInSeconds = 900) {
+      if (!key.startsWith('private/') || key.includes('..')) throw new Error('invalid private object key');
+      return withMeter('presignPrivateRawPut', async () => {
+        const { S3Client, PutObjectCommand } = await import('@aws-sdk/client-s3');
+        const { getSignedUrl } = await import('@aws-sdk/s3-request-presigner');
+        const uploadUrl = await getSignedUrl(
+          makeClient(S3Client),
+          new PutObjectCommand({ Bucket: bucket, Key: key, ContentType: contentType }),
+          { expiresIn: expiresInSeconds },
+        );
+        return { uploadUrl };
+      });
+    },
     async stat(key) {
       return withMeter('headObject', async () => {
         const { S3Client, HeadObjectCommand } = await import('@aws-sdk/client-s3');
@@ -218,6 +283,97 @@ function getS3Storage(): StorageAdapter {
         const size = Number(result.ContentLength);
         if (!Number.isSafeInteger(size) || size < 0) throw new Error('invalid object size');
         return { size };
+      });
+    },
+    async sha256(key) {
+      return withMeter('sha256Object', async () => {
+        const { S3Client, GetObjectCommand } = await import('@aws-sdk/client-s3');
+        const result = await makeClient(S3Client).send(new GetObjectCommand({ Bucket: bucket, Key: key }));
+        if (!result.Body) throw new Error('object body unavailable');
+        const hash = createHash('sha256');
+        let size = 0;
+        for await (const chunk of result.Body as AsyncIterable<Uint8Array>) {
+          const bytes = Buffer.from(chunk);
+          size += bytes.byteLength;
+          hash.update(bytes);
+        }
+        return { size, contentSha256: hash.digest('hex') };
+      });
+    },
+    async createPrivateMultipartUpload(filename, directory, contentType) {
+      return withMeter('createMultipartUpload', async () => {
+        const { CreateMultipartUploadCommand, S3Client } = await import('@aws-sdk/client-s3');
+        const key = `private/${directory}/${randomUUID()}/${filename}`;
+        const result = await makeClient(S3Client).send(new CreateMultipartUploadCommand({
+          Bucket: bucket,
+          Key: key,
+          ContentType: contentType,
+        }));
+        if (!result.UploadId) throw new Error('multipart upload id unavailable');
+        return { key, storageUploadId: result.UploadId };
+      });
+    },
+    async createPrivateMultipartPartUrl(key, storageUploadId, partNumber, expiresInSeconds = 900) {
+      return withMeter('presignMultipartPart', async () => {
+        const { S3Client, UploadPartCommand } = await import('@aws-sdk/client-s3');
+        const { getSignedUrl } = await import('@aws-sdk/s3-request-presigner');
+        const uploadUrl = await getSignedUrl(
+          makeClient(S3Client),
+          new UploadPartCommand({ Bucket: bucket, Key: key, UploadId: storageUploadId, PartNumber: partNumber }),
+          { expiresIn: expiresInSeconds },
+        );
+        return { uploadUrl };
+      });
+    },
+    async listPrivateMultipartParts(key, storageUploadId) {
+      return withMeter('listMultipartParts', async () => {
+        const { ListPartsCommand, S3Client } = await import('@aws-sdk/client-s3');
+        const client = makeClient(S3Client);
+        const parts: StorageMultipartPart[] = [];
+        let marker: string | undefined;
+        do {
+          const result = await client.send(new ListPartsCommand({
+            Bucket: bucket,
+            Key: key,
+            UploadId: storageUploadId,
+            ...(marker ? { PartNumberMarker: marker } : {}),
+          }));
+          for (const part of result.Parts ?? []) {
+            const partNumber = Number(part.PartNumber);
+            const size = Number(part.Size);
+            if (!Number.isSafeInteger(partNumber) || partNumber < 1 || !Number.isSafeInteger(size) || size < 0 || !part.ETag) {
+              throw new Error('invalid multipart part metadata');
+            }
+            parts.push({ partNumber, etag: part.ETag, size });
+          }
+          marker = result.IsTruncated && result.NextPartNumberMarker !== undefined
+            ? String(result.NextPartNumberMarker)
+            : undefined;
+        } while (marker);
+        return parts.sort((left, right) => left.partNumber - right.partNumber);
+      });
+    },
+    async completePrivateMultipartUpload(key, storageUploadId, parts) {
+      await withMeter('completeMultipartUpload', async () => {
+        const { CompleteMultipartUploadCommand, S3Client } = await import('@aws-sdk/client-s3');
+        await makeClient(S3Client).send(new CompleteMultipartUploadCommand({
+          Bucket: bucket,
+          Key: key,
+          UploadId: storageUploadId,
+          MultipartUpload: {
+            Parts: parts.map(part => ({ PartNumber: part.partNumber, ETag: part.etag })),
+          },
+        }));
+      });
+    },
+    async abortPrivateMultipartUpload(key, storageUploadId) {
+      await withMeter('abortMultipartUpload', async () => {
+        const { AbortMultipartUploadCommand, S3Client } = await import('@aws-sdk/client-s3');
+        await makeClient(S3Client).send(new AbortMultipartUploadCommand({
+          Bucket: bucket,
+          Key: key,
+          UploadId: storageUploadId,
+        }));
       });
     },
   };

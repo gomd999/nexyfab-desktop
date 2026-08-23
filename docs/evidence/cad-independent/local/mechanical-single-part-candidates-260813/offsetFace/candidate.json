@@ -1,0 +1,64 @@
+{
+  "schema": "nexyfab.mechanical-single-part-candidate.v1",
+  "feature": "offsetFace",
+  "candidateStatus": "PASS",
+  "partRevisionSha256": "a4f1bd61c79234d8e3225c79842c946c52601ea779d2345027bc632c63152a82",
+  "source": {
+    "receiptPath": "docs/evidence/cad-independent/local/mechanical-core-feature-axis-evidence.json",
+    "receiptSha256": "79d9344b7d101580b7e1574759a8eff652cbe942e6a389056b488aba28a77930",
+    "designRevisionSha256": "3cf6a0f9c8efcf153a2cfefde087a2112c086fc412d2feeaeb9ce52542838564",
+    "nfab": {
+      "path": "docs/evidence/cad-independent/local/mechanical-core-runtime-260813/offsetFace/saved-project.nfab",
+      "sha256": "faaf7a5cf21d0ee287cdef09466c256a247d6e93fb0f4bc4f96f934c66d57aa2",
+      "bytes": 1544,
+      "assertionId": "offsetFace.save_reopen.saved-bytes",
+      "revisionSha256": "faaf7a5cf21d0ee287cdef09466c256a247d6e93fb0f4bc4f96f934c66d57aa2",
+      "formatVersion": 3,
+      "createdAt": 1786643061807,
+      "updatedAt": 1786643061807
+    },
+    "step": {
+      "path": "docs/evidence/cad-independent/local/mechanical-core-runtime-260813/offsetFace/offsetFace-edited.step",
+      "sha256": "5573cf8e0f11d557d87536c68ab44c081094de0247f8eefbd544ba07cf82c4f7",
+      "bytes": 15579,
+      "assertionId": "offsetFace.export.native-step"
+    },
+    "drawingSvg": {
+      "path": "docs/evidence/cad-independent/local/mechanical-core-runtime-260813/offsetFace/offsetFace-exact-hlr.svg",
+      "sha256": "100b54678d9f34a59b1f41620c9869d5053a0be62d399e9f5b16e48977a8c6fc",
+      "bytes": 2371,
+      "assertionId": "offsetFace.drawing.exact-hlr-svg"
+    }
+  },
+  "artifacts": {
+    "stepImport": {
+      "path": "docs/evidence/cad-independent/local/mechanical-single-part-candidates-260813/offsetFace/step-import.json",
+      "sha256": "99d4e24bb42bc3fe4ff015054be13c06790783608f3b63124feec6335bfee692",
+      "bytes": 968,
+      "assertionId": "offsetFace.candidate.step-import"
+    },
+    "drawing": {
+      "path": "docs/evidence/cad-independent/local/mechanical-single-part-candidates-260813/offsetFace/offsetFace-three-axis-hlr.svg",
+      "sha256": "100b54678d9f34a59b1f41620c9869d5053a0be62d399e9f5b16e48977a8c6fc",
+      "bytes": 2371,
+      "assertionId": "offsetFace.candidate.three-axis-hlr"
+    },
+    "bom": {
+      "path": "docs/evidence/cad-independent/local/mechanical-single-part-candidates-260813/offsetFace/bom.json",
+      "sha256": "0d6991da694f78cca2886434b5515aff8e3868e8b2cdda7795800fd0878b31f9",
+      "bytes": 859,
+      "assertionId": "offsetFace.candidate.one-part-bom"
+    }
+  },
+  "capabilityStatus": {
+    "stepImportSolidUnitsBounds": "PASS",
+    "threeAxisHlrDrawingCandidate": "PASS",
+    "onePartBomQuantityDimensions": "PASS",
+    "drawingDimensions": "NOT_RUN",
+    "gdt": "NOT_RUN",
+    "pmi": "NOT_RUN",
+    "humanApproval": "NOT_RUN",
+    "manufacturingRelease": "BLOCKED"
+  },
+  "commercialReleaseEligible": false
+}

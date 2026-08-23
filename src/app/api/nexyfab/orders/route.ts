@@ -8,6 +8,10 @@ import { recordUsage } from '@/lib/billing-engine';
 import type { NexyfabOrder, NexyfabOrderStep } from '@/types/nexyfab-orders';
 import { isIncoterm, isValidHsCode, normalizeHsCode } from '@/lib/shipping';
 import { resolveAuthorizedManufacturingLineage, type ManufacturingLineageRefInput } from '@/lib/manufacturingLineageDb';
+import { resolveRequestOrgContext } from '@/lib/org-context';
+import { boundedJsonError, readBoundedJson } from '@/lib/boundedJsonBody';
+
+const ORDER_CREATE_JSON_BYTES = 256 * 1024;
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -15,6 +19,7 @@ interface NexyfabOrderRow {
   id: string;
   rfq_id: string | null;
   user_id: string;
+  org_id: string | null;
   part_name: string;
   manufacturer_name: string;
   quantity: number;
@@ -102,20 +107,19 @@ export async function GET(req: NextRequest) {
   const statusFilter = status && VALID_STATUSES.has(status) ? status : null;
 
   const db = getDbAdapter();
-  const hasOrg = authUser.orgIds.length > 0;
+  await db.execute('ALTER TABLE nf_rfqs ADD COLUMN org_id TEXT').catch(() => {});
+  const context = resolveRequestOrgContext(authUser);
+  if (!context.ok) {
+    return NextResponse.json({ error: 'Select a valid workspace', code: context.code }, { status: 409 });
+  }
+  await db.execute('ALTER TABLE nf_orders ADD COLUMN org_id TEXT').catch(() => {});
 
-  // Base WHERE clause
-  const userWhere = hasOrg
-    ? `(o.user_id = ? OR o.user_id IN (
-         SELECT om2.user_id FROM nf_org_members om1
-         JOIN nf_org_members om2 ON om2.org_id = om1.org_id
-         WHERE om1.user_id = ?))`
-    : 'o.user_id = ?';
+  const userWhere = context.orgId
+    ? 'o.org_id = ?'
+    : 'o.user_id = ? AND o.org_id IS NULL';
 
   const statusClause = statusFilter ? ` AND o.status = ?` : '';
-  const baseArgs = hasOrg
-    ? [authUser.userId, authUser.userId]
-    : [authUser.userId];
+  const baseArgs = [context.orgId ?? authUser.userId];
   const filterArgs = statusFilter ? [...baseArgs, statusFilter] : baseArgs;
 
   const [rows, countRow] = await Promise.all([
@@ -174,18 +178,22 @@ export async function POST(req: NextRequest) {
   if (!authUser.emailVerified) {
     return NextResponse.json({ error: '이메일 인증 후 주문이 가능합니다.', code: 'EMAIL_UNVERIFIED' }, { status: 403 });
   }
+  const context = resolveRequestOrgContext(authUser);
+  if (!context.ok) {
+    return NextResponse.json({ error: 'Select a valid workspace', code: context.code }, { status: 409 });
+  }
 
   if (!rateLimit(`orders-post:${authUser.userId}`, 10, 60_000).allowed) {
     return NextResponse.json({ error: '요청이 너무 많습니다.' }, { status: 429 });
   }
 
-  const body = await req.json() as {
+  let body: {
     rfqId?: string;
     quoteId?: string;       // v83 — direct linkage so escrow can find contract.commission_rate
     userId?: string;
-    partName: string;
-    manufacturerName: string;
-    quantity: number;
+    partName?: string;
+    manufacturerName?: string;
+    quantity?: number;
     totalPriceKRW?: number;
     totalPrice?: number;
     currency?: string;
@@ -196,7 +204,15 @@ export async function POST(req: NextRequest) {
     shipToCountry?: string;
     estimatedLeadDays?: number;
     manufacturingArtifact?: ManufacturingLineageRefInput;
-  };
+  } = {};
+  try {
+    body = await readBoundedJson(req, ORDER_CREATE_JSON_BYTES);
+  } catch (error) {
+    const bodyError = boundedJsonError(error);
+    if (bodyError?.code === 'PAYLOAD_TOO_LARGE') {
+      return NextResponse.json({ error: 'Request body too large' }, { status: bodyError.status });
+    }
+  }
 
   const currency = (body.currency ?? 'KRW').toUpperCase();
   const totalPrice = body.totalPrice ?? body.totalPriceKRW ?? 0;
@@ -237,11 +253,13 @@ export async function POST(req: NextRequest) {
   ];
 
   const id = `ORD-${new Date().getFullYear()}-${randomBytes(3).toString('hex').toUpperCase()}`;
-  // Always use authenticated user's ID — never trust userId from request body
+  // The actor comes from authentication; organization orders remain owned by
+  // the RFQ/release owner so the immutable lineage owner cannot drift.
   const userId = authUser.userId;
   const estimatedDeliveryAt = now + leadDays * DAY;
 
   const db = getDbAdapter();
+  await db.execute('ALTER TABLE nf_rfqs ADD COLUMN org_id TEXT').catch(() => {});
   if (!body.rfqId) {
     return NextResponse.json(
       { error: '승인된 제조 산출물이 연결된 RFQ가 필요합니다.', code: 'RFQ_REQUIRED_FOR_ORDER' },
@@ -249,15 +267,17 @@ export async function POST(req: NextRequest) {
     );
   }
   const rfqLineage = await db.queryOne<{
+    user_id: string;
+    org_id: string | null;
     lineage_id: string | null;
     artifact_id: string | null;
     artifact_sha256: string | null;
     document_version_id: string | null;
   }>(
-    `SELECT lineage_id, artifact_id, artifact_sha256, document_version_id
-       FROM nf_rfqs WHERE id = ? AND user_id = ?`,
+    `SELECT user_id, org_id, lineage_id, artifact_id, artifact_sha256, document_version_id
+       FROM nf_rfqs WHERE id = ? AND ${context.orgId ? 'org_id = ?' : 'user_id = ? AND org_id IS NULL'}`,
     body.rfqId,
-    userId,
+    context.orgId ?? userId,
   );
   if (!rfqLineage?.lineage_id || !rfqLineage.artifact_id || !rfqLineage.artifact_sha256 || !rfqLineage.document_version_id) {
     return NextResponse.json(
@@ -271,6 +291,7 @@ export async function POST(req: NextRequest) {
     artifactSha256: rfqLineage.artifact_sha256,
     documentVersionId: rfqLineage.document_version_id,
   };
+  const orderOwnerUserId = rfqLineage.user_id;
   if (body.manufacturingArtifact && (
     body.manufacturingArtifact.lineageId !== serverArtifact.lineageId
     || body.manufacturingArtifact.artifactId !== serverArtifact.artifactId
@@ -282,7 +303,7 @@ export async function POST(req: NextRequest) {
       { status: 409 },
     );
   }
-  const authorizedLineage = await resolveAuthorizedManufacturingLineage(db, userId, serverArtifact);
+  const authorizedLineage = await resolveAuthorizedManufacturingLineage(db, orderOwnerUserId, serverArtifact);
   if (!authorizedLineage.ok) {
     return NextResponse.json(
       { error: '제조 산출물 승인이 만료되었거나 취소되었습니다.', code: authorizedLineage.code },
@@ -291,18 +312,20 @@ export async function POST(req: NextRequest) {
   }
   // Lazy-add v83 column so deploys without the migration applied still work.
   await db.execute('ALTER TABLE nf_orders ADD COLUMN quote_id TEXT').catch(() => {});
+  await db.execute('ALTER TABLE nf_orders ADD COLUMN org_id TEXT').catch(() => {});
   await db.execute(
     `INSERT INTO nf_orders
-      (id, rfq_id, quote_id, user_id, part_name, manufacturer_name, quantity,
+      (id, rfq_id, quote_id, user_id, org_id, part_name, manufacturer_name, quantity,
        total_price_krw, total_price, currency, buyer_country,
        hs_code, incoterm, ship_from_country, ship_to_country,
        lineage_id, artifact_id, artifact_sha256, document_version_id,
        status, steps, created_at, estimated_delivery_at)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     id,
     body.rfqId ?? null,
     body.quoteId ?? null,
-    userId,
+    orderOwnerUserId,
+    context.orgId,
     body.partName,
     body.manufacturerName,
     body.quantity,
@@ -325,11 +348,11 @@ export async function POST(req: NextRequest) {
   );
 
   // Usage recording (fire-and-forget)
-  recordUsage({ userId, product: 'nexyfab', metric: 'order_place', metadata: JSON.stringify({ orderId: id }) }).catch(() => {});
+  recordUsage({ userId, orgId: context.orgId, product: 'nexyfab', metric: 'order_place', metadata: JSON.stringify({ orderId: id }) }).catch(() => {});
 
   // NexyFlow 연동: 결재 자동 생성 (fire-and-forget)
   onContractCreated({
-    userId,
+    userId: orderOwnerUserId,
     contractId: id,
     partName: body.partName,
     manufacturerName: body.manufacturerName,
@@ -344,7 +367,7 @@ export async function POST(req: NextRequest) {
     artifactId: authorizedLineage.ref.artifactId,
     artifactSha256: authorizedLineage.ref.artifactSha256,
     documentVersionId: authorizedLineage.ref.documentVersionId,
-    userId,
+    userId: orderOwnerUserId,
     partName: body.partName,
     manufacturerName: body.manufacturerName,
     quantity: body.quantity,

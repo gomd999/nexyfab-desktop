@@ -11,6 +11,10 @@ import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { rateLimit } from '@/lib/rate-limit';
 import { getTrustedClientIp } from '@/lib/client-ip';
+import { buildDesignArtifactManifest, designRevisionSha256 } from '@/lib/designArtifactBinding';
+import { boundedJsonError, readBoundedJson } from '@/lib/boundedJsonBody';
+
+const MAX_BODY_BYTES = 32 * 1024 * 1024;
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -39,8 +43,9 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 
   let intent: unknown;
   try {
-    intent = ((await req.json()) as { intent?: unknown }).intent;
-  } catch {
+    intent = (await readBoundedJson<{ intent?: unknown }>(req, MAX_BODY_BYTES)).intent;
+  } catch (error) {
+    if (boundedJsonError(error)?.code === 'PAYLOAD_TOO_LARGE') return NextResponse.json({ ok: false, error: 'intent가 너무 큽니다.' }, { status: 413 });
     return NextResponse.json({ ok: false, error: 'invalid json' }, { status: 400 });
   }
   if (!intent || typeof intent !== 'object') {
@@ -52,8 +57,23 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     const { step: stepText, entities, fuseReport, tree, importNotes } = await step.intentToStep(intent);
     // 정직 고지: OCCT 융합서 제외된 피처가 있으면 숨기지 않고 응답에 명시(§14 견고화)
     const dropped = fuseReport?.dropped?.length ?? 0;
+    const artifactBinding = buildDesignArtifactManifest({
+      revisionId: 'intent-' + designRevisionSha256(intent).slice(0, 12),
+      revisionValue: intent,
+      artifacts: [{ name: 'model.step', mime: 'application/step', bytes: Buffer.from(stepText, 'utf8') }],
+    });
     return NextResponse.json({
       ok: true, step: stepText, entities, bytes: stepText.length, format: 'STEP (B-rep, ISO-10303)',
+      revisionId: artifactBinding.manifest.revisionId,
+      revisionSha256: artifactBinding.manifest.revisionSha256,
+      stepSha256: artifactBinding.manifest.artifacts[0]!.sha256,
+      artifactManifestSha256: artifactBinding.manifestSha256,
+      artifactManifest: artifactBinding.manifest,
+      releaseStatus: artifactBinding.manifest.releaseStatus,
+      manufacturingAllowed: artifactBinding.manifest.manufacturingAllowed,
+      // Export success is not a STEP round-trip. A separate re-import and
+      // topology/dimension comparison must set this true in a later receipt.
+      analyticStepHandoffPassed: false,
       /**
        * 조립 트리 실측(260803). 있으면 CAD 가 하위조립 계층으로 연다.
        * ⚠ 없으면 **평면 나열**이다 — 「STEP 이 나왔다」와 「조립으로 열린다」는 다르고,

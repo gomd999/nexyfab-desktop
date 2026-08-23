@@ -42,6 +42,38 @@ beforeEach(() => {
   }
 });
 
+describe('POST /api/featureTree-intent - bounded JSON ingress', () => {
+  it('rejects a declared body beyond the parser cap', async () => {
+    const r = await POST(new Request('http://localhost/api/featureTree-intent', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', 'content-length': String(1024 * 1024 + 1) },
+      body: '{}',
+    }) as never);
+    expect(r.status).toBe(413);
+    await expect(r.json()).resolves.toMatchObject({ ok: false, code: 'PAYLOAD_TOO_LARGE' });
+  });
+
+  it('measures streamed bytes despite a falsely small declaration and cancels oversize input', async () => {
+    let cancelled = false;
+    const init = {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', 'content-length': '1', 'transfer-encoding': 'chunked' },
+      body: new ReadableStream<Uint8Array>({
+        start(controller) {
+          controller.enqueue(new TextEncoder().encode('{"text":"'));
+          controller.enqueue(new Uint8Array(1024 * 1024));
+        },
+        cancel() { cancelled = true; },
+      }),
+      duplex: 'half',
+    } as RequestInit & { duplex: 'half' };
+    const r = await POST(new Request('http://localhost/api/featureTree-intent', init) as never);
+    expect(r.status).toBe(413);
+    await expect(r.json()).resolves.toMatchObject({ ok: false, code: 'PAYLOAD_TOO_LARGE' });
+    expect(cancelled).toBe(true);
+  });
+});
+
 afterEach(() => {
   for (const k of ENV_KEYS) {
     if (savedEnv[k] === undefined) delete process.env[k];
@@ -233,6 +265,18 @@ describe('POST /api/featureTree-intent — LLM fallback path', () => {
     const res = await handleFeatureTreeIntent({ text: 'a gearbox with holes' }, { llmFetcher: fetcher });
     if (!res.payload.ok) throw new Error('expected ok');
     expect(res.payload.source).toBe('fallback');
+  });
+
+  it('rejects build_part with an unknown or inline sketch modifier', async () => {
+    for (const type of ['totallyUnknownFeature', 'sketchExtrude']) {
+      const fetcher = vi.fn().mockResolvedValue({
+        kind: 'build_part',
+        base: { shapeId: 'box', params: { width: 40, height: 20, depth: 30 } },
+        features: [{ type, params: {} }],
+      });
+      const response = await handleFeatureTreeIntent({ text: `build with ${type}` }, { llmFetcher: fetcher });
+      expect(response.payload).toMatchObject({ ok: true, intent: null, source: 'fallback' });
+    }
   });
 
   it('rejects create_sketch_extrude with <3 points → source:"fallback"', async () => {
@@ -562,8 +606,11 @@ describe('POST /api/featureTree-intent — BUILD_INTENT_PROMPT integration', () 
       await POST(makeReq({ text: 'abstract free-form prompt' }) as never);
       const body = JSON.parse(
         String((fetchSpy.mock.calls[0]![1] as RequestInit).body),
-      ) as { messages: Array<{ content: string }> };
-      const sent = body.messages[0]!.content;
+      ) as { system?: Array<{ text?: string }>; messages: Array<{ content: string }> };
+      const sent = [
+        ...(body.system ?? []).map(block => block.text ?? ''),
+        ...body.messages.map(message => message.content),
+      ].join('\n');
       for (const kind of INTENT_KINDS) {
         expect(sent).toContain(kind);
       }

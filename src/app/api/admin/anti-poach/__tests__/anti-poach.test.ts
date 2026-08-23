@@ -36,6 +36,12 @@ function req(method: string, body?: unknown, qs = '') {
   });
 }
 
+function streamedReq(body: ReadableStream<Uint8Array>, headers: Record<string, string>) {
+  return new Request('http://test/api/admin/anti-poach', {
+    method: 'POST', body, headers: { 'content-type': 'application/json', ...headers }, duplex: 'half',
+  } as RequestInit & { duplex: 'half' });
+}
+
 describe('GET /admin/anti-poach', () => {
   it('401 unauth', async () => {
     vi.mocked(getAuthUser).mockResolvedValue(null);
@@ -75,6 +81,46 @@ describe('GET /admin/anti-poach', () => {
 });
 
 describe('POST /admin/anti-poach', () => {
+  it('cancels declared and measured oversized input before admin mutation', async () => {
+    vi.mocked(getAuthUser).mockResolvedValue(adminAuth as never);
+    vi.mocked(verifyAdmin).mockResolvedValue(true);
+    const execute = vi.fn();
+    vi.mocked(getDbAdapter).mockReturnValue({ queryOne: vi.fn(), queryAll: vi.fn(), execute } as never);
+
+    let declaredCancelled = false;
+    const declared = new ReadableStream<Uint8Array>({ cancel() { declaredCancelled = true; } });
+    const declaredResponse = await POST(streamedReq(declared, { 'content-length': '65537' }) as Parameters<typeof POST>[0]);
+    expect(declaredResponse.status).toBe(413);
+    expect(declaredCancelled).toBe(true);
+
+    let measuredCancelled = false;
+    const measured = new ReadableStream<Uint8Array>({
+      start(controller) {
+        controller.enqueue(new Uint8Array([0x7b]));
+        controller.enqueue(new Uint8Array(64 * 1024));
+      },
+      cancel() { measuredCancelled = true; },
+    });
+    const measuredResponse = await POST(streamedReq(measured, { 'content-length': '1' }) as Parameters<typeof POST>[0]);
+    expect(measuredResponse.status).toBe(413);
+    expect(measuredCancelled).toBe(true);
+    expect(execute).not.toHaveBeenCalled();
+  });
+
+  it('rejects invalid UTF-8 before querying or mutating admin data', async () => {
+    vi.mocked(getAuthUser).mockResolvedValue(adminAuth as never);
+    vi.mocked(verifyAdmin).mockResolvedValue(true);
+    const queryOne = vi.fn();
+    const execute = vi.fn();
+    vi.mocked(getDbAdapter).mockReturnValue({ queryOne, queryAll: vi.fn(), execute } as never);
+    const response = await POST(new Request('http://test/api/admin/anti-poach', {
+      method: 'POST', headers: { 'content-type': 'application/json' }, body: new Uint8Array([0xff]),
+    }) as Parameters<typeof POST>[0]);
+    expect(response.status).toBe(400);
+    expect(queryOne).not.toHaveBeenCalled();
+    expect(execute).not.toHaveBeenCalled();
+  });
+
   it('400 invalid verdict', async () => {
     vi.mocked(getAuthUser).mockResolvedValue(adminAuth as never);
     vi.mocked(verifyAdmin).mockResolvedValue(true);

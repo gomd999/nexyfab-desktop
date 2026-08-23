@@ -6,10 +6,12 @@ import { checkOrigin } from '@/lib/csrf';
 import { getDbAdapter } from '@/lib/db-adapter';
 import { recordMetric } from '@/lib/partner-metrics';
 import { normPartnerEmail } from '@/lib/partner-factory-access';
+import { readBoundedJson } from '@/lib/boundedJsonBody';
 
 export const dynamic = 'force-dynamic';
 
 const ADMIN_EMAIL = process.env.ADMIN_EMAIL || 'admin@nexyfab.com';
+const MAX_JSON_BODY_BYTES = 64 * 1024;
 
 
 type ReviewRow = {
@@ -93,7 +95,7 @@ export async function POST(req: NextRequest) {
   if (!authUser) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
   let body: unknown;
-  try { body = await req.json(); } catch {
+  try { body = await readBoundedJson(req, MAX_JSON_BODY_BYTES); } catch {
     return NextResponse.json({ error: '요청 데이터가 올바르지 않습니다.' }, { status: 400 });
   }
   if (!body || typeof body !== 'object' || Array.isArray(body)) {

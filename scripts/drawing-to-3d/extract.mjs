@@ -5,6 +5,7 @@
  * usage: node extract.mjs testdata/flange-04.png
  */
 import { readFileSync } from 'node:fs';
+import path from 'node:path';
 
 export function apiKey() {
   // 1순위: 환경변수 (사이트 서버·Railway·프로덕션에서 이 경로로 동작).
@@ -13,8 +14,8 @@ export function apiKey() {
   // 2순위(로컬 CLI 개발): parent .env 파일. 여러 후보 경로 시도.
   for (const p of [
     process.env.NEXYFAB_ENV_PATH,
-    'C:/Users/gomd9/Downloads/nexysys_1/.env',
-    new URL('../../../../.env', import.meta.url).pathname.replace(/^\/([A-Za-z]:)/, '$1'),
+    path.resolve(process.cwd(), '.env'),
+    path.resolve(process.cwd(), '..', '..', '.env'),
   ].filter(Boolean)) {
     try {
       const m = readFileSync(p, 'utf8').match(/^GEMINI_API_KEY=(\S+)/m);

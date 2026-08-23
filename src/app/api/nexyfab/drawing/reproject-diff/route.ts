@@ -18,6 +18,10 @@ import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { rateLimit } from '@/lib/rate-limit';
 import { getTrustedClientIp } from '@/lib/client-ip';
+import { boundedJsonError, readBoundedJson } from '@/lib/boundedJsonBody';
+
+// A 256 KiB canonical intent can expand when embedded and JSON-escaped.
+const MAX_BODY_BYTES = 2 * 1024 * 1024;
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -47,10 +51,11 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 
   let intent: unknown, draft: Measure | undefined;
   try {
-    const body = (await req.json()) as { intent?: unknown; draft?: Measure };
+    const body = await readBoundedJson<{ intent?: unknown; draft?: Measure }>(req, MAX_BODY_BYTES);
     intent = body.intent;
     draft = body.draft;
-  } catch {
+  } catch (error) {
+    if (boundedJsonError(error)?.code === 'PAYLOAD_TOO_LARGE') return NextResponse.json({ ok: false, error: 'intent가 너무 큽니다(피처 200개·256KB 이하).' }, { status: 413 });
     return NextResponse.json({ ok: false, error: 'invalid json' }, { status: 400 });
   }
   if (!intent || typeof intent !== 'object') return NextResponse.json({ ok: false, error: 'intent가 필요합니다.' }, { status: 400 });

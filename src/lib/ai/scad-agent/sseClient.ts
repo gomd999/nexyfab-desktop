@@ -10,6 +10,8 @@ import type { AgentEvent, AgentSession } from './types';
 
 export interface AgentStreamRequest {
   userPrompt: string;
+  /** Public model catalogue id selected by the user (for example deepseek-pro). */
+  modelId?: string;
   /** Continuation session from a previous run, or omit for fresh start. */
   session?: AgentSession | null;
   signal?: AbortSignal;
@@ -28,6 +30,7 @@ export async function streamScadAgent(req: AgentStreamRequest): Promise<void> {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         userPrompt: req.userPrompt,
+        modelId: req.modelId,
         session: req.session ?? undefined,
       }),
       signal: req.signal,

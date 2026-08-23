@@ -7,6 +7,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { toIsoLang } from '@/lib/i18n/normalize';
+import { formatNumber } from '@/lib/i18n/format';
 
 interface ProcessCandidate {
   process: string;
@@ -143,7 +144,7 @@ export const dict = {
 };
 
 export interface AutoQuoteCardProps {
-  lang: 'ko' | 'en';
+  lang: string;
   geometry: {
     volume_cm3: number;
     surface_area_cm2: number;
@@ -155,7 +156,7 @@ export interface AutoQuoteCardProps {
   onApply: (process: string, material: string) => void;
 }
 
-const fmt = (n: number) => n.toLocaleString('ko-KR');
+const fmt = (n: number, lang: string) => formatNumber(n, lang) ?? String(n);
 
 export default function AutoQuoteCard({ lang, geometry, quantity, onApply }: AutoQuoteCardProps) {
   // ⚠ 260802: 2분기라 ja·zh·es·ar 이 영어로 떨어졌다.
@@ -215,7 +216,7 @@ export default function AutoQuoteCard({ lang, geometry, quantity, onApply }: Aut
         </div>
       </div>
 
-      <PrimaryCandidate cand={data.primary} t={t} confLabel={confLabel} onApply={onApply} highlighted />
+      <PrimaryCandidate cand={data.primary} t={t} lang={lang} confLabel={confLabel} onApply={onApply} highlighted />
 
       {data.alternatives.length > 0 && (
         <div style={{ marginTop: 12 }}>
@@ -224,7 +225,7 @@ export default function AutoQuoteCard({ lang, geometry, quantity, onApply }: Aut
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 8 }}>
             {data.alternatives.map(alt => (
-              <PrimaryCandidate key={alt.process} cand={alt} t={t} confLabel={confLabel} onApply={onApply} />
+              <PrimaryCandidate key={alt.process} cand={alt} t={t} lang={lang} confLabel={confLabel} onApply={onApply} />
             ))}
           </div>
         </div>
@@ -238,10 +239,11 @@ export default function AutoQuoteCard({ lang, geometry, quantity, onApply }: Aut
 }
 
 function PrimaryCandidate({
-  cand, t, confLabel, onApply, highlighted = false,
+  cand, t, lang, confLabel, onApply, highlighted = false,
 }: {
   cand: ProcessCandidate;
   t: typeof dict.ko;
+  lang: string;
   confLabel: (c: ProcessCandidate['confidence']) => string;
   onApply: (process: string, material: string) => void;
   highlighted?: boolean;
@@ -270,8 +272,8 @@ function PrimaryCandidate({
       </div>
       <div style={{ fontSize: 11, color: '#475569', marginBottom: 8, lineHeight: 1.4 }}>{cand.rationale}</div>
       <div style={{ display: 'flex', gap: 12, fontSize: 12, color: '#374151', marginBottom: 8, alignItems: 'baseline' }}>
-        <span><strong>{t.perUnit}</strong> {fmt(cand.estimatedUnitKrw)}원</span>
-        <span><strong>{t.total}</strong> {fmt(cand.estimatedTotalKrw)}원</span>
+        <span><strong>{t.perUnit}</strong> {fmt(cand.estimatedUnitKrw, lang)} KRW</span>
+        <span><strong>{t.total}</strong> {fmt(cand.estimatedTotalKrw, lang)} KRW</span>
         <span style={{ color: '#6b7280' }}>{t.leadTime} {cand.leadTimeDays}{t.days}</span>
       </div>
       <button

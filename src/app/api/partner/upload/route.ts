@@ -11,6 +11,7 @@ import { getDbAdapter } from '@/lib/db-adapter';
 import { getPartnerAuth } from '@/lib/partner-auth';
 import { normPartnerEmail } from '@/lib/partner-factory-access';
 import { getTrustedClientIp } from '@/lib/client-ip';
+import { readBoundedMultipartForm } from '@/lib/boundedMultipartForm';
 
 export const dynamic = 'force-dynamic';
 
@@ -20,9 +21,12 @@ const DOCUMENT_EXTS = ['pdf', 'dwg', 'dxf'];
 
 const SIZE_LIMITS: Record<string, number> = {
   image: 10 * 1024 * 1024,     // 10MB
-  model: 100 * 1024 * 1024,    // 100MB
-  document: 100 * 1024 * 1024, // 100MB
+  // The upload proxy is 64 MiB; reserve 2 MiB for multipart framing/fields.
+  model: 62 * 1024 * 1024,
+  document: 62 * 1024 * 1024,
 };
+
+const MAX_UPLOAD_MULTIPART_BODY_BYTES = 64 * 1024 * 1024;
 
 function getFileType(ext: string): 'image' | 'model' | 'document' | null {
   if (IMAGE_EXTS.includes(ext)) return 'image';
@@ -169,7 +173,12 @@ export async function POST(req: NextRequest) {
 
   let formData: FormData;
   try {
-    formData = await req.formData();
+    const boundedForm = await readBoundedMultipartForm(req, MAX_UPLOAD_MULTIPART_BODY_BYTES);
+    if (boundedForm.tooLarge) {
+      return NextResponse.json({ error: 'Request too large', code: 'PAYLOAD_TOO_LARGE' }, { status: 413 });
+    }
+    if (!boundedForm.form) throw new Error('invalid multipart body');
+    formData = boundedForm.form;
   } catch (err) {
     logError('파일 데이터 파싱 실패', err instanceof Error ? err : undefined, { url: '/api/partner/upload' });
     return NextResponse.json({ error: '파일 데이터를 읽을 수 없습니다.' }, { status: 400 });

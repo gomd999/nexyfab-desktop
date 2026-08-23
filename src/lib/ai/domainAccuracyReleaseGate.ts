@@ -102,15 +102,17 @@ async function array<T>(bytes: Uint8Array): Promise<T[]> {
   return parsed as T[];
 }
 
-/** Commercial and technical-pilot releases require five signed independent 95% campaign reports. */
+/** Commercial and technical releases require signed independent 95% reports for their declared product channel. */
 export async function domainAccuracyReleaseIssues(
   evidenceDir: string | undefined,
   trustedReviewers: TrustedDomainReleaseReviewers = {},
   now = Date.now(),
+  requiredDomains: readonly DomainAccuracyDomain[] = DOMAIN_ACCURACY_DOMAINS,
 ): Promise<DomainAccuracyReleaseIssue[]> {
-  if (!evidenceDir?.trim()) return [{ code: 'domain_accuracy.evidence_dir_missing', message: 'DOMAIN_ACCURACY_EVIDENCE_DIR must point to approved five-domain campaign evidence' }];
+  const scope = requiredDomains.join(',');
+  if (!evidenceDir?.trim()) return [{ code: 'domain_accuracy.evidence_dir_missing', message: `DOMAIN_ACCURACY_EVIDENCE_DIR must point to approved campaign evidence for: ${scope}` }];
   const issues: DomainAccuracyReleaseIssue[] = [];
-  for (const domain of DOMAIN_ACCURACY_DOMAINS) {
+  for (const domain of requiredDomains) {
     try {
       const casesBytes = await readFile(join(evidenceDir, `${domain}.cases.json`));
       const runsBytes = await readFile(join(evidenceDir, `${domain}.runs.json`));

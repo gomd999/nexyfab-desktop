@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect } from 'react';
 import { useAuthStore } from '@/hooks/useAuth';
-import { isKorean } from '@/lib/i18n/normalize';
+import { toIsoLang, toRouteLang, type IsoLang } from '@/lib/i18n/normalize';
 
 interface UserMenuProps {
   onOpenAuth: (mode?: 'login' | 'signup') => void;
@@ -16,8 +16,22 @@ const PLAN_BADGE: Record<string, { label: string; color: string }> = {
   enterprise: { label: 'ENT', color: '#d29922' },
 };
 
+const COPY: Record<IsoLang, {
+  login: string; signup: string; projects: string; upgrade: string;
+  rfq: string; orders: string; marketplace: string; logout: string;
+}> = {
+  ko: { login: '로그인', signup: '무료 시작', projects: '내 프로젝트', upgrade: 'Pro 업그레이드', rfq: '견적 요청', orders: '주문 추적', marketplace: '마켓플레이스', logout: '로그아웃' },
+  en: { login: 'Log in', signup: 'Get started', projects: 'My Projects', upgrade: 'Upgrade to Pro', rfq: 'RFQ', orders: 'Orders', marketplace: 'Marketplace', logout: 'Log out' },
+  ja: { login: 'ログイン', signup: '無料で始める', projects: 'マイプロジェクト', upgrade: 'Proにアップグレード', rfq: '見積依頼', orders: '注文追跡', marketplace: 'マーケットプレイス', logout: 'ログアウト' },
+  zh: { login: '登录', signup: '免费开始', projects: '我的项目', upgrade: '升级到 Pro', rfq: '询价请求', orders: '订单跟踪', marketplace: '市场', logout: '退出登录' },
+  es: { login: 'Iniciar sesión', signup: 'Comenzar gratis', projects: 'Mis proyectos', upgrade: 'Actualizar a Pro', rfq: 'Solicitud de cotización', orders: 'Seguimiento de pedidos', marketplace: 'Marketplace', logout: 'Cerrar sesión' },
+  ar: { login: 'تسجيل الدخول', signup: 'ابدأ مجانًا', projects: 'مشاريعي', upgrade: 'الترقية إلى Pro', rfq: 'طلب عرض سعر', orders: 'تتبع الطلبات', marketplace: 'السوق', logout: 'تسجيل الخروج' },
+};
+
 export default function UserMenu({ onOpenAuth, lang = 'ko' }: UserMenuProps) {
   const { user, logout } = useAuthStore();
+  const copy = COPY[toIsoLang(lang)];
+  const routeLang = toRouteLang(lang);
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
@@ -43,7 +57,7 @@ export default function UserMenu({ onOpenAuth, lang = 'ko' }: UserMenuProps) {
           onMouseEnter={e => { e.currentTarget.style.borderColor = '#58a6ff'; e.currentTarget.style.color = 'var(--nx-text)'; }}
           onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--nx-border)'; e.currentTarget.style.color = 'var(--nx-text-2)'; }}
         >
-          {isKorean(lang) ? '로그인' : 'Log in'}
+          {copy.login}
         </button>
         <button
           onClick={() => onOpenAuth('signup')}
@@ -56,7 +70,7 @@ export default function UserMenu({ onOpenAuth, lang = 'ko' }: UserMenuProps) {
           onMouseEnter={e => { e.currentTarget.style.opacity = '0.85'; }}
           onMouseLeave={e => { e.currentTarget.style.opacity = '1'; }}
         >
-          {isKorean(lang) ? '무료 시작' : 'Get started'}
+          {copy.signup}
         </button>
       </div>
     );
@@ -111,8 +125,8 @@ export default function UserMenu({ onOpenAuth, lang = 'ko' }: UserMenuProps) {
             <p style={{ margin: '2px 0 0', fontSize: 11, color: 'var(--nx-text-3)' }}>{user.email}</p>
           </div>
           {[
-            { label: isKorean(lang) ? '내 프로젝트' : 'My Projects', icon: '📁', href: `/${lang}/nexyfab/dashboard` },
-            { label: isKorean(lang) ? 'Pro 업그레이드' : 'Upgrade to Pro', icon: '⚡', href: `/${lang}/pricing` },
+            { label: copy.projects, icon: '📁', href: `/${routeLang}/nexyfab/dashboard` },
+            { label: copy.upgrade, icon: '⚡', href: `/${routeLang}/pricing` },
           ].map(item => (
             <a key={item.label} href={item.href} style={{
               display: 'flex', alignItems: 'center', gap: 8,
@@ -128,9 +142,9 @@ export default function UserMenu({ onOpenAuth, lang = 'ko' }: UserMenuProps) {
           {/* Manufacturing section */}
           <div style={{ borderTop: '1px solid var(--nx-panel-2)', marginTop: 2 }} />
           {[
-            { label: isKorean(lang) ? '견적 요청' : 'RFQ', icon: '💬', href: `/${lang}/nexyfab/rfq` },
-            { label: isKorean(lang) ? '주문 추적' : 'Orders', icon: '📦', href: `/${lang}/nexyfab/orders` },
-            { label: isKorean(lang) ? '마켓플레이스' : 'Marketplace', icon: '🏭', href: `/${lang}/nexyfab/marketplace` },
+            { label: copy.rfq, icon: '💬', href: `/${routeLang}/nexyfab/rfq` },
+            { label: copy.orders, icon: '📦', href: `/${routeLang}/nexyfab/orders` },
+            { label: copy.marketplace, icon: '🏭', href: `/${routeLang}/nexyfab/marketplace` },
           ].map(item => (
             <a key={item.label} href={item.href} style={{
               display: 'flex', alignItems: 'center', gap: 8,
@@ -155,7 +169,7 @@ export default function UserMenu({ onOpenAuth, lang = 'ko' }: UserMenuProps) {
             onMouseEnter={e => { e.currentTarget.style.background = 'var(--nx-panel-2)'; }}
             onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; }}
           >
-            🚪 {isKorean(lang) ? '로그아웃' : 'Log out'}
+            🚪 {copy.logout}
           </button>
         </div>
       )}

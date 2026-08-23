@@ -3,11 +3,14 @@ import { getDbAdapter } from '@/lib/db-adapter';
 import { getAuthUser } from '@/lib/auth-middleware';
 import { checkOrigin } from '@/lib/csrf';
 import ExcelJS from 'exceljs';
+import { boundedMultipartBodyError, readBoundedMultipartBody } from '@/lib/boundedMultipartBody';
 
 export const dynamic = 'force-dynamic';
 
 const ALLOWED_PLANS = ['team', 'enterprise'];
 const MAX_ROWS = 500;
+const MAX_IMPORT_FILE_BYTES = 10 * 1024 * 1024;
+const MAX_MULTIPART_BODY_BYTES = MAX_IMPORT_FILE_BYTES + 1024 * 1024;
 
 // Column aliases: canonical name → accepted header variants (case-insensitive)
 const COLUMN_MAP: Record<string, string[]> = {
@@ -95,18 +98,29 @@ export async function POST(req: NextRequest) {
   }
 
   let formData: FormData;
-  try { formData = await req.formData(); } catch {
+  try {
+    const multipartBody = await readBoundedMultipartBody(req, MAX_MULTIPART_BODY_BYTES);
+    const parsedHeaders = new Headers(req.headers);
+    parsedHeaders.delete('content-length');
+    parsedHeaders.delete('transfer-encoding');
+    formData = await new Request(req.url, { method: req.method, headers: parsedHeaders, body: multipartBody }).formData();
+  } catch (error) {
+    if (boundedMultipartBodyError(error)?.code === 'PAYLOAD_TOO_LARGE') {
+      return NextResponse.json({ error: 'Import file is too large' }, { status: 413 });
+    }
     return NextResponse.json({ error: 'multipart/form-data required' }, { status: 400 });
   }
 
   const file = formData.get('file') as File | null;
   if (!file) return NextResponse.json({ error: 'file field required' }, { status: 400 });
+  if (file.size > MAX_IMPORT_FILE_BYTES) return NextResponse.json({ error: 'Import file is too large' }, { status: 413 });
 
   const name = file.name.toLowerCase();
   if (!name.endsWith('.csv') && !name.endsWith('.xlsx')) {
     return NextResponse.json({ error: 'CSV 또는 XLSX 파일만 지원합니다.' }, { status: 400 });
   }
 
+  // HOLD: ExcelJS still expands XLSX ZIP contents in memory; move large imports to a sandboxed worker.
   const arrayBuffer = await file.arrayBuffer();
   const buffer = Buffer.from(arrayBuffer);
 

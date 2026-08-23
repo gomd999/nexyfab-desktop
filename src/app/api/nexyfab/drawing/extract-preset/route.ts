@@ -18,6 +18,9 @@ import { rateLimit } from '@/lib/rate-limit';
 import { getTrustedClientIp } from '@/lib/client-ip';
 import { guardStudioAi } from '@/lib/studio-ai-guard';
 import { recordFailure } from '@/lib/failureLog';
+import { boundedJsonError, readBoundedJson } from '@/lib/boundedJsonBody';
+
+const MAX_BODY_BYTES = 9 * 1024 * 1024;
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -120,12 +123,13 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 
   let imageBase64: string, mimeType: string, domain: string, kind: string;
   try {
-    const body = (await req.json()) as { imageBase64?: string; mimeType?: string; domain?: string; kind?: string };
+    const body = await readBoundedJson<{ imageBase64?: string; mimeType?: string; domain?: string; kind?: string }>(req, MAX_BODY_BYTES);
     imageBase64 = (body.imageBase64 ?? '').replace(/^data:[^,]+,/, '').trim();
     mimeType = (body.mimeType ?? 'image/png').toLowerCase();
     domain = body.domain ?? 'mech';
     kind = body.kind === 'assembly' ? 'assembly' : 'part';
-  } catch {
+  } catch (error) {
+    if (boundedJsonError(error)?.code === 'PAYLOAD_TOO_LARGE') return NextResponse.json({ ok: false, error: '이미지가 너무 큽니다(6MB 이하).' }, { status: 413 });
     return NextResponse.json({ ok: false, error: 'invalid json' }, { status: 400 });
   }
   if (!imageBase64 || imageBase64.length < 100) return NextResponse.json({ ok: false, error: '이미지가 필요합니다.' }, { status: 400 });

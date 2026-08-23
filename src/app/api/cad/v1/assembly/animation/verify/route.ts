@@ -32,8 +32,10 @@ import {
   type JointEvidenceClaim,
 } from "@/lib/reference/jointEvidenceReleaseGate";
 import { hashNativeCadVerificationInput } from "@/lib/reference/nativeCadExpertReview";
+import { boundedJsonError, readBoundedJson } from "@/lib/boundedJsonBody";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+const MAX_BODY_BYTES = 32 * 1024 * 1024;
 export async function POST(req: NextRequest) {
   const ip = getTrustedClientIp(req.headers);
   if (!rateLimit(`cad-v1-animation-verify:${ip}`, 10, 60_000).allowed)
@@ -41,7 +43,7 @@ export async function POST(req: NextRequest) {
       { ok: false, code: "RATE_LIMIT" },
       { status: 429 },
     );
-  const b = (await req.json().catch(() => null)) as {
+  let b: {
     state?: AssemblyState;
     animation?: AssemblyAnimation;
     localBoxes?: Record<string, AABB>;
@@ -53,6 +55,11 @@ export async function POST(req: NextRequest) {
     toiMaxEvaluations?: number;
     jointEvidence?: JointEvidenceClaim;
   } | null;
+  try { b = await readBoundedJson(req, MAX_BODY_BYTES); }
+  catch (error) {
+    if (boundedJsonError(error)?.code === "PAYLOAD_TOO_LARGE") return NextResponse.json({ ok: false, code: "PAYLOAD_TOO_LARGE" }, { status: 413 });
+    b = null;
+  }
   if (!b?.state || !b.animation || (!b.localBoxes && !b.featureTrees))
     return NextResponse.json(
       {

@@ -147,7 +147,10 @@ async function executeToolCall(
   call: ToolCall,
   tools: ToolExecutorMap,
   session: AgentSession,
+  authorizeToolCall?: AgentRunOptions['authorizeToolCall'],
 ): Promise<ToolResult> {
+  const authorizationResult = await authorizeToolCall?.(call, session);
+  if (authorizationResult) return authorizationResult;
   const hasExecutor = Object.prototype.hasOwnProperty.call(tools, call.name);
   const fn: ToolExecutor | undefined = hasExecutor ? tools[call.name] : undefined;
   if (!fn) {
@@ -256,7 +259,7 @@ export async function runScadAgent(opts: AgentRunOptions): Promise<{
       // Execute the two synthetic tool calls directly.
       for (const call of synthCalls) {
         emit({ type: 'tool_call', call });
-        const result = await executeToolCall(call, opts.tools, session);
+        const result = await executeToolCall(call, opts.tools, session, opts.authorizeToolCall);
         session.budget = recordToolCall(session.budget);
         if (call.name === 'render') {
           const renderOk = result.ok && session.render.ok === true;
@@ -359,7 +362,7 @@ export async function runScadAgent(opts: AgentRunOptions): Promise<{
           args: {},
         };
         emit({ type: 'tool_call', call });
-        const result = await executeToolCall(call, opts.tools, session);
+        const result = await executeToolCall(call, opts.tools, session, opts.authorizeToolCall);
         session.budget = recordToolCall(session.budget);
         session.budget = recordRenderResult(
           session.budget,
@@ -427,7 +430,7 @@ export async function runScadAgent(opts: AgentRunOptions): Promise<{
       }
 
       emit({ type: 'tool_call', call });
-      const result = await executeToolCall(call, opts.tools, session);
+      const result = await executeToolCall(call, opts.tools, session, opts.authorizeToolCall);
 
       session.budget = recordToolCall(session.budget);
       if (call.name === 'render') {

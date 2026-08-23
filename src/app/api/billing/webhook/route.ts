@@ -12,12 +12,14 @@
  * - invoice.payment_failed
  */
 import { NextRequest, NextResponse } from 'next/server';
+import { boundedRawBodyError, readBoundedRawBody } from '@/lib/boundedRawBody';
 import { verifyWebhookSignature } from '@/lib/airwallex-client';
 import { getDbAdapter } from '@/lib/db-adapter';
 import { handleBillingEvent } from '@/lib/billing-webhook-handler';
 
 // Raw body needed for signature verification — disable body parsing
 export const dynamic = 'force-dynamic';
+const AIRWALLEX_WEBHOOK_RAW_BYTES = 1024 * 1024;
 
 interface AwWebhookEvent {
   id:         string;
@@ -29,7 +31,15 @@ interface AwWebhookEvent {
 }
 
 export async function POST(req: NextRequest) {
-  const rawBody  = await req.text();
+  let rawBody: string;
+  try {
+    const rawBytes = await readBoundedRawBody(req, AIRWALLEX_WEBHOOK_RAW_BYTES);
+    rawBody = new TextDecoder('utf-8', { fatal: true }).decode(rawBytes);
+  } catch (error) {
+    const bodyError = boundedRawBodyError(error);
+    if (bodyError?.code === 'PAYLOAD_TOO_LARGE') return NextResponse.json({ error: 'Request body too large' }, { status: bodyError.status });
+    return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 });
+  }
   const timestamp = req.headers.get('x-timestamp') ?? '';
   const signature = req.headers.get('x-signature') ?? '';
   const webhookSecret = process.env.AIRWALLEX_WEBHOOK_SECRET ?? '';

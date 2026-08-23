@@ -7,6 +7,8 @@ import {
   type Supplier, type ProcessType as SupplierProcessType,
 } from './supplierData';
 import { PROCESS_ICONS, getProcessName, type ProcessType } from './CostEstimator';
+import { createCommercialLocalizer } from '@/lib/i18n/commercialLocalizer';
+import { formatNumber } from '@/lib/i18n/format';
 
 interface SupplierPanelProps {
   materialId: string;
@@ -92,7 +94,7 @@ function StarRating({ stars }: { stars: number }) {
 
 function SupplierCard({ s, lang, tt }: { s: Supplier; lang: string; tt: typeof dict.en }) {
   const [expanded, setExpanded] = useState(false);
-  const isKo = lang === 'ko';
+  const L = createCommercialLocalizer(lang);
   return (
     <div
       style={{
@@ -106,7 +108,7 @@ function SupplierCard({ s, lang, tt }: { s: Supplier; lang: string; tt: typeof d
       <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>
         <div style={{ flex: 1 }}>
           <div style={{ fontSize: 12, fontWeight: 700, color: C.text }}>
-            {isKo ? s.nameKo : s.name}
+            {L(s.nameKo, s.name)}
           </div>
           <div style={{ fontSize: 10, color: C.dim, marginTop: 1 }}>
             {s.regionLabel} · {s.processes.map(p => PROCESS_ICONS[p as ProcessType] ?? '⚙').join(' ')}
@@ -140,7 +142,7 @@ function SupplierCard({ s, lang, tt }: { s: Supplier; lang: string; tt: typeof d
             <div>
               <span style={{ color: C.dim }}>{tt.minOrder}</span><br />
               <span style={{ color: C.text, fontWeight: 700 }}>
-                ₩{s.minOrderKRW.toLocaleString('ko-KR')}
+                ₩{formatNumber(s.minOrderKRW, lang) ?? '0'}
               </span>
             </div>
           </div>
@@ -259,7 +261,7 @@ export default function SupplierPanel({ materialId, lang, onClose, defaultProces
               color: regionFilter === r.value ? C.accentBright : C.dim,
               cursor: 'pointer',
             }}>
-              {r.label[resolvedLang === 'ko' ? 'ko' : 'en']}
+              {r.label[resolvedLang]}
             </button>
           ))}
         </div>

@@ -5,6 +5,10 @@ import { getAuthUser } from '@/lib/auth-middleware';
 import { getDbAdapter } from '@/lib/db-adapter';
 import { checkOrigin } from '@/lib/csrf';
 import { sendNotificationEmail } from '@/app/lib/mailer';
+import { resolveRequestOrgContext } from '@/lib/org-context';
+import { boundedJsonError, readBoundedJson } from '@/lib/boundedJsonBody';
+
+const ORG_INVITE_JSON_BYTES = 64 * 1024;
 
 /**
  * GET  /api/nexyfab/orgs/invite — 초대 목록 + 현재 멤버 목록
@@ -17,8 +21,10 @@ export async function GET(req: NextRequest) {
   const authUser = await getAuthUser(req);
   if (!authUser) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-  const orgId = authUser.orgIds[0];
-  if (!orgId) return NextResponse.json({ error: '조직에 소속되어 있지 않습니다.' }, { status: 403 });
+  const context = resolveRequestOrgContext(authUser);
+  if (!context.ok) return NextResponse.json({ error: '조직을 선택해주세요.', code: context.code }, { status: 409 });
+  const orgId = context.orgId;
+  if (!orgId) return NextResponse.json({ error: '조직 컨텍스트가 필요합니다.' }, { status: 403 });
 
   const db = getDbAdapter();
 
@@ -47,18 +53,30 @@ export async function POST(req: NextRequest) {
   const authUser = await getAuthUser(req);
   if (!authUser) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-  const orgId = authUser.orgIds[0];
-  if (!orgId) return NextResponse.json({ error: '조직에 소속되어 있지 않습니다.' }, { status: 403 });
+  const context = resolveRequestOrgContext(authUser);
+  if (!context.ok) return NextResponse.json({ error: '조직을 선택해주세요.', code: context.code }, { status: 409 });
+  const orgId = context.orgId;
+  if (!orgId) return NextResponse.json({ error: '조직 컨텍스트가 필요합니다.' }, { status: 403 });
 
-  // Only owner or org_admin can invite
-  const isOrgAdmin = authUser.roles.some(
-    r => r.product === 'nexyfab' && (r.role === 'org_admin') && r.orgId === orgId,
+  // 조직 멤버십 역할이 tenant-scoped 권한의 정본이다.
+  const db = getDbAdapter();
+  const membership = await db.queryOne<{ role: string }>(
+    'SELECT role FROM nf_org_members WHERE org_id = ? AND user_id = ?',
+    orgId, authUser.userId,
   );
-  if (!isOrgAdmin && authUser.globalRole !== 'super_admin') {
+  if (!['owner', 'admin'].includes(membership?.role ?? '') && authUser.globalRole !== 'super_admin') {
     return NextResponse.json({ error: '초대 권한이 없습니다.' }, { status: 403 });
   }
 
-  const body = await req.json() as { email: string; role?: string };
+  let body: { email?: string; role?: string } = {};
+  try {
+    body = await readBoundedJson(req, ORG_INVITE_JSON_BYTES);
+  } catch (error) {
+    const bodyError = boundedJsonError(error);
+    if (bodyError?.code === 'PAYLOAD_TOO_LARGE') {
+      return NextResponse.json({ error: 'Request body too large' }, { status: bodyError.status });
+    }
+  }
   const email = body.email?.trim()?.toLowerCase();
   if (!email || !email.includes('@')) {
     return NextResponse.json({ error: '유효한 이메일을 입력해주세요.' }, { status: 400 });
@@ -69,8 +87,6 @@ export async function POST(req: NextRequest) {
   if (!VALID_INVITE_ROLES.includes(role)) {
     return NextResponse.json({ error: '유효하지 않은 역할입니다.' }, { status: 400 });
   }
-  const db = getDbAdapter();
-
   // Check if already a member
   const existingMember = await db.queryOne<{ id: string }>(
     `SELECT om.id FROM nf_org_members om

@@ -1,0 +1,54 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://nexyfab.com/schemas/mechanical-blind-product-challenge.v1.json",
+  "title": "NexyFab role-separated mechanical blind product challenge receipt",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "releaseChannel", "evidenceRootId", "generatedAt", "ok", "cases", "summary"],
+  "$defs": {
+    "sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+    "artifact": {
+      "type": "object", "additionalProperties": false, "required": ["path", "sha256"],
+      "properties": { "path": { "type": "string", "minLength": 1 }, "sha256": { "$ref": "#/$defs/sha256" } }
+    },
+    "review": {
+      "type": "object", "additionalProperties": false,
+      "required": ["reviewerId", "decision", "independentFromBuild", "targetHash", "reviewedAt", "signature"],
+      "properties": {
+        "reviewerId": { "type": "string", "minLength": 1 }, "decision": { "const": "approved" },
+        "independentFromBuild": { "const": true }, "targetHash": { "$ref": "#/$defs/sha256" },
+        "reviewedAt": { "type": "string", "format": "date-time" }, "signature": { "type": "string", "minLength": 1 }
+      }
+    }
+  },
+  "properties": {
+    "schema": { "const": "nexyfab.mechanical-blind-product-challenge.v1" },
+    "releaseChannel": { "const": "mechanical-core" }, "evidenceRootId": { "$ref": "#/$defs/sha256" },
+    "generatedAt": { "type": "string", "format": "date-time" }, "ok": { "const": true },
+    "cases": {
+      "type": "array", "minItems": 20, "maxItems": 20,
+      "items": {
+        "type": "object", "additionalProperties": false,
+        "required": ["challengeId", "risk", "status", "internalRoleSeparated", "builderId", "requirementsLockedAt", "startedAt", "completedAt", "designRevisionSha256", "artifacts", "targetHash", "reviews"],
+        "properties": {
+          "challengeId": { "type": "string", "minLength": 1 }, "risk": { "enum": ["standard", "high"] },
+          "status": { "const": "pass" }, "internalRoleSeparated": { "const": true }, "builderId": { "type": "string", "minLength": 1 },
+          "requirementsLockedAt": { "type": "string", "format": "date-time" }, "startedAt": { "type": "string", "format": "date-time" },
+          "completedAt": { "type": "string", "format": "date-time" }, "designRevisionSha256": { "$ref": "#/$defs/sha256" },
+          "artifacts": {
+            "type": "object", "additionalProperties": false, "required": ["requirements", "releasePackage"],
+            "properties": { "requirements": { "$ref": "#/$defs/artifact" }, "releasePackage": { "$ref": "#/$defs/artifact" } }
+          },
+          "targetHash": { "$ref": "#/$defs/sha256" }, "reviews": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/review" } }
+        }
+      }
+    },
+    "summary": {
+      "type": "object", "additionalProperties": false, "required": ["cases", "passed", "pending", "failed", "highRisk", "falseVerified"],
+      "properties": {
+        "cases": { "const": 20 }, "passed": { "const": 20 }, "pending": { "const": 0 }, "failed": { "const": 0 },
+        "highRisk": { "type": "integer", "minimum": 5 }, "falseVerified": { "const": 0 }
+      }
+    }
+  }
+}

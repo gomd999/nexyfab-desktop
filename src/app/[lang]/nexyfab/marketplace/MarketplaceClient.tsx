@@ -2,7 +2,10 @@
 
 import Link from 'next/link';
 import { useState, use, useEffect, useCallback } from 'react';
-import { isKorean } from '@/lib/i18n/normalize';
+import { createCommercialLocalizer } from '@/lib/i18n/commercialLocalizer';
+import { manufacturingRegion, manufacturingTerm } from '@/lib/i18n/manufacturingTerms';
+import { formatNumber } from '@/lib/i18n/format';
+import { toIsoLang, type IsoLang } from '@/lib/i18n/normalize';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -51,35 +54,21 @@ function gradientForId(id: string): [string, string] {
   return GRADIENT_PALETTE[hash % GRADIENT_PALETTE.length];
 }
 
-const REGION_LABELS: Record<string, string> = {
-  KR: '🇰🇷 한국',  CN: '🇨🇳 중국',  US: '🇺🇸 미국',
-  JP: '🇯🇵 일본',  DE: '🇩🇪 독일',  VN: '🇻🇳 베트남',
-  TW: '🇹🇼 대만',  TH: '🇹🇭 태국',  IN: '🇮🇳 인도',
+const PRICE_LABELS: Record<PriceLevel, { labels: Record<IsoLang, string>; color: string }> = {
+  budget: { labels: { ko: '저가', en: 'Budget', ja: '低価格', zh: '经济型', es: 'Económico', ar: 'اقتصادي' }, color: '#3fb950' },
+  standard: { labels: { ko: '표준', en: 'Standard', ja: '標準', zh: '标准', es: 'Estándar', ar: 'قياسي' }, color: '#e3b341' },
+  premium: { labels: { ko: '프리미엄', en: 'Premium', ja: 'プレミアム', zh: '高级', es: 'Premium', ar: 'مميز' }, color: '#a371f7' },
 };
 
-const PROCESS_LABELS: Record<string, { ko: string; en: string }> = {
-  cnc_milling:       { ko: 'CNC 밀링',    en: 'CNC Milling' },
-  cnc_turning:       { ko: 'CNC 선삭',    en: 'CNC Turning' },
-  injection_molding: { ko: '사출 성형',   en: 'Injection Molding' },
-  sheet_metal:       { ko: '판금',        en: 'Sheet Metal' },
-  casting:           { ko: '주조',        en: 'Casting' },
-  '3d_printing':     { ko: '3D 프린팅',  en: '3D Printing' },
-  die_casting:       { ko: '다이캐스팅', en: 'Die Casting' },
-  forging:           { ko: '단조',        en: 'Forging' },
-  welding:           { ko: '용접',        en: 'Welding' },
-};
-
-const PRICE_LABELS: Record<PriceLevel, { ko: string; en: string; color: string }> = {
-  budget:   { ko: '저가',      en: 'Budget',   color: '#3fb950' },
-  standard: { ko: '표준',      en: 'Standard', color: '#e3b341' },
-  premium:  { ko: '프리미엄',  en: 'Premium',  color: '#a371f7' },
-};
+function priceLabel(level: PriceLevel, lang: string): string {
+  return PRICE_LABELS[level].labels[toIsoLang(lang)];
+}
 
 // ─── Main page ────────────────────────────────────────────────────────────────
 
 export default function MarketplacePage({ params }: { params: Promise<{ lang: string }> }) {
   const { lang } = use(params);
-  const isKo = isKorean(lang);
+  const L = createCommercialLocalizer(lang);
 
   const [manufacturers, setManufacturers] = useState<Manufacturer[]>([]);
   const [loading, setLoading] = useState(true);
@@ -130,7 +119,7 @@ export default function MarketplacePage({ params }: { params: Promise<{ lang: st
   let filtered = manufacturers.filter(m => {
     if (q) {
       const processLabels = m.processes.flatMap(p => [
-        PROCESS_LABELS[p]?.ko ?? '', PROCESS_LABELS[p]?.en ?? '',
+        manufacturingTerm(p, lang), manufacturingTerm(p, 'en'), p,
       ]).join(' ').toLowerCase();
       const certLabels = m.certifications.join(' ').toLowerCase();
       const searchable = [
@@ -185,7 +174,7 @@ export default function MarketplacePage({ params }: { params: Promise<{ lang: st
         </Link>
         <span style={{ color: 'var(--nx-border)' }}>|</span>
         <span style={{ fontSize: 14, color: 'var(--nx-text-3)' }}>
-          {isKo ? '제조사 마켓플레이스' : 'Manufacturer Marketplace'}
+          {L('제조사 마켓플레이스', 'Manufacturer Marketplace')}
         </span>
         <div style={{ flex: 1 }} />
         <div style={{
@@ -198,7 +187,7 @@ export default function MarketplacePage({ params }: { params: Promise<{ lang: st
           <input
             value={searchText}
             onChange={e => { setSearchText(e.target.value); setPage(1); }}
-            placeholder={isKo ? '제조사 검색...' : 'Search manufacturers...'}
+            placeholder={L('제조사 검색...', 'Search manufacturers...')}
             style={{
               background: 'transparent', border: 'none', outline: 'none',
               color: 'var(--nx-text)', fontSize: 13, width: '100%', minWidth: 0,
@@ -209,7 +198,7 @@ export default function MarketplacePage({ params }: { params: Promise<{ lang: st
           fontSize: 12, color: '#388bfd', textDecoration: 'none',
           padding: '5px 12px', borderRadius: 6, border: '1px solid #388bfd33', background: '#388bfd11',
         }}>
-          {isKo ? '내 주문' : 'My Orders'}
+          {L('내 주문', 'My Orders')}
         </a>
       </div>
 
@@ -227,7 +216,7 @@ export default function MarketplacePage({ params }: { params: Promise<{ lang: st
               }}
             >
               {sidebarOpen ? '◀' : '▶'}
-              {sidebarOpen && (isKo ? '필터' : 'Filters')}
+              {sidebarOpen && (L('필터', 'Filters'))}
               {sidebarOpen && activeFilterCount > 0 && (
                 <span style={{
                   background: '#388bfd', color: '#fff', borderRadius: 99,
@@ -240,40 +229,40 @@ export default function MarketplacePage({ params }: { params: Promise<{ lang: st
 
             {sidebarOpen && (
               <>
-                <FilterSection title={isKo ? '정렬' : 'Sort'}>
+                <FilterSection title={L('정렬', 'Sort')}>
                   {(['rating', 'lead_time', 'price'] as SortKey[]).map(k => (
                     <FilterChip key={k} active={sortKey === k} onClick={() => { setSortKey(k); setPage(1); }}>
-                      {k === 'rating' ? (isKo ? '평점순' : 'Rating')
-                        : k === 'lead_time' ? (isKo ? '납기순' : 'Lead Time')
-                        : (isKo ? '가격순' : 'Price')}
+                      {k === 'rating' ? (L('평점순', 'Rating'))
+                        : k === 'lead_time' ? (L('납기순', 'Lead Time'))
+                        : (L('가격순', 'Price'))}
                     </FilterChip>
                   ))}
                 </FilterSection>
 
                 {allProcesses.length > 0 && (
-                  <FilterSection title={isKo ? '공정 유형' : 'Process Type'}>
+                  <FilterSection title={L('공정 유형', 'Process Type')}>
                     {allProcesses.map(p => (
                       <FilterChip key={p} active={processFilter.includes(p)}
                         onClick={() => { setProcessFilter(v => toggleArr(v, p)); setPage(1); }}>
-                        {PROCESS_LABELS[p]?.[isKo ? 'ko' : 'en'] ?? p}
+                        {manufacturingTerm(p, lang)}
                       </FilterChip>
                     ))}
                   </FilterSection>
                 )}
 
                 {allRegions.length > 1 && (
-                  <FilterSection title={isKo ? '지역' : 'Region'}>
+                  <FilterSection title={L('지역', 'Region')}>
                     {allRegions.map(r => (
                       <FilterChip key={r} active={regionFilter.includes(r)}
                         onClick={() => { setRegionFilter(v => toggleArr(v, r)); setPage(1); }}>
-                        {REGION_LABELS[r] ?? r}
+                        {manufacturingRegion(r, lang)}
                       </FilterChip>
                     ))}
                   </FilterSection>
                 )}
 
                 {allCerts.length > 0 && (
-                  <FilterSection title={isKo ? '인증' : 'Certifications'}>
+                  <FilterSection title={L('인증', 'Certifications')}>
                     {allCerts.map(c => (
                       <FilterChip key={c} active={certFilter.includes(c)}
                         onClick={() => { setCertFilter(v => toggleArr(v, c)); setPage(1); }}>
@@ -283,12 +272,12 @@ export default function MarketplacePage({ params }: { params: Promise<{ lang: st
                   </FilterSection>
                 )}
 
-                <FilterSection title={isKo ? '가격 수준' : 'Price Level'}>
+                <FilterSection title={L('가격 수준', 'Price Level')}>
                   {(['budget', 'standard', 'premium'] as PriceLevel[]).map(pl => (
                     <FilterChip key={pl} active={priceLevelFilter.includes(pl)}
                       color={PRICE_LABELS[pl].color}
                       onClick={() => { setPriceLevelFilter(v => toggleArr(v, pl)); setPage(1); }}>
-                      {PRICE_LABELS[pl][isKo ? 'ko' : 'en']}
+                      {priceLabel(pl, lang)}
                     </FilterChip>
                   ))}
                 </FilterSection>
@@ -306,7 +295,7 @@ export default function MarketplacePage({ params }: { params: Promise<{ lang: st
                       cursor: 'pointer', fontWeight: 600,
                     }}
                   >
-                    {isKo ? '필터 초기화' : 'Clear filters'}
+                    {L('필터 초기화', 'Clear filters')}
                   </button>
                 )}
               </>
@@ -318,17 +307,17 @@ export default function MarketplacePage({ params }: { params: Promise<{ lang: st
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 20, flexWrap: 'wrap' }}>
             <h1 style={{ margin: 0, fontSize: 18, fontWeight: 800 }}>
-              {isKo ? '제조사 목록' : 'Manufacturers'}
+              {L('제조사 목록', 'Manufacturers')}
             </h1>
             {!loading && (
               <span style={{ fontSize: 12, color: 'var(--nx-text-3)' }}>
-                {filtered.length}{isKo ? '개' : ' results'}
+                {filtered.length}{L('개', ' results')}
               </span>
             )}
             <div style={{ flex: 1 }} />
             {totalPages > 1 && (
               <span style={{ fontSize: 12, color: 'var(--nx-text-3)' }}>
-                {page} / {totalPages} {isKo ? '페이지' : 'pages'}
+                {page} / {totalPages} {L('페이지', 'pages')}
               </span>
             )}
           </div>
@@ -353,7 +342,7 @@ export default function MarketplacePage({ params }: { params: Promise<{ lang: st
               borderRadius: 10, padding: '32px', textAlign: 'center', color: '#f85149',
             }}>
               {error === 'LOAD_FAILED'
-                ? (isKo ? '데이터를 불러오지 못했습니다.' : 'Failed to load manufacturers.')
+                ? (L('데이터를 불러오지 못했습니다.', 'Failed to load manufacturers.'))
                 : error}
               <br />
               <button onClick={loadManufacturers} style={{
@@ -361,7 +350,7 @@ export default function MarketplacePage({ params }: { params: Promise<{ lang: st
                 background: '#f8514922', border: '1px solid #f85149',
                 color: '#f85149', cursor: 'pointer', fontSize: 12, fontWeight: 600,
               }}>
-                {isKo ? '다시 시도' : 'Retry'}
+                {L('다시 시도', 'Retry')}
               </button>
             </div>
           )}
@@ -373,8 +362,8 @@ export default function MarketplacePage({ params }: { params: Promise<{ lang: st
               borderRadius: 10, padding: '48px', textAlign: 'center', color: 'var(--nx-text-3)',
             }}>
               {manufacturers.length === 0
-                ? (isKo ? '등록된 제조사가 없습니다.' : 'No manufacturers registered yet.')
-                : (isKo ? '조건에 맞는 제조사가 없습니다.' : 'No manufacturers match the selected filters.')}
+                ? (L('등록된 제조사가 없습니다.', 'No manufacturers registered yet.'))
+                : (L('조건에 맞는 제조사가 없습니다.', 'No manufacturers match the selected filters.'))}
             </div>
           )}
 
@@ -382,7 +371,7 @@ export default function MarketplacePage({ params }: { params: Promise<{ lang: st
           {!loading && !error && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
               {paginated.map(m => (
-                <ManufacturerCard key={m.id} manufacturer={m} isKo={isKo} lang={lang} onViewDetail={setDetailManufacturer} />
+                <ManufacturerCard key={m.id} manufacturer={m} lang={lang} onViewDetail={setDetailManufacturer} />
               ))}
             </div>
           )}
@@ -391,7 +380,7 @@ export default function MarketplacePage({ params }: { params: Promise<{ lang: st
           {!loading && totalPages > 1 && (
             <div style={{ display: 'flex', gap: 8, justifyContent: 'center', marginTop: 28 }}>
               <PageButton disabled={page <= 1} onClick={() => setPage(p => p - 1)}>
-                ← {isKo ? '이전' : 'Prev'}
+                ← {L('이전', 'Prev')}
               </PageButton>
               {Array.from({ length: Math.min(totalPages, 7) }, (_, i) => {
                 const p = totalPages <= 7 ? i + 1
@@ -405,7 +394,7 @@ export default function MarketplacePage({ params }: { params: Promise<{ lang: st
                 );
               })}
               <PageButton disabled={page >= totalPages} onClick={() => setPage(p => p + 1)}>
-                {isKo ? '다음' : 'Next'} →
+                {L('다음', 'Next')} →
               </PageButton>
             </div>
           )}
@@ -416,7 +405,6 @@ export default function MarketplacePage({ params }: { params: Promise<{ lang: st
       {detailManufacturer && (
         <ManufacturerDetailDrawer
           manufacturer={detailManufacturer}
-          isKo={isKo}
           lang={lang}
           onClose={() => setDetailManufacturer(null)}
         />
@@ -428,13 +416,14 @@ export default function MarketplacePage({ params }: { params: Promise<{ lang: st
 
 // ─── ManufacturerDetailDrawer ─────────────────────────────────────────────────
 
-function ManufacturerDetailDrawer({ manufacturer: m, isKo, lang, onClose }: {
-  manufacturer: Manufacturer; isKo: boolean; lang: string; onClose: () => void;
+function ManufacturerDetailDrawer({ manufacturer: m, lang, onClose }: {
+  manufacturer: Manufacturer; lang: string; onClose: () => void;
 }) {
+  const L = createCommercialLocalizer(lang);
   const pl = PRICE_LABELS[m.priceLevel] ?? PRICE_LABELS.standard;
   const [gradFrom, gradTo] = gradientForId(m.id);
-  const initials = (isKo && m.nameKo ? m.nameKo : m.name).slice(0, 1);
-  const desc = isKo ? (m.descriptionKo || m.description) : m.description;
+  const initials = L(m.nameKo || m.name, m.name).slice(0, 1);
+  const desc = L(m.descriptionKo || m.description, m.description);
 
   function stars(rating: number) {
     const full = Math.round(rating);
@@ -463,12 +452,12 @@ function ManufacturerDetailDrawer({ manufacturer: m, isKo, lang, onClose }: {
             {initials}
           </div>
           <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ fontSize: 16, fontWeight: 800 }}>{isKo ? m.nameKo : m.name}</div>
+            <div style={{ fontSize: 16, fontWeight: 800 }}>{L(m.nameKo || m.name, m.name)}</div>
             <div style={{ fontSize: 12, color: 'var(--nx-text-3)', marginTop: 2 }}>
-              📍 {REGION_LABELS[m.region] ?? m.region}
+              📍 {manufacturingRegion(m.region, lang)}
               {m.hasPartnerProfile && (
                 <span style={{ marginLeft: 8, fontSize: 10, fontWeight: 700, padding: '1px 6px', borderRadius: 4, background: '#388bfd18', color: '#388bfd' }}>
-                  {isKo ? '파트너' : 'Partner'}
+                  {L('파트너', 'Partner')}
                 </span>
               )}
             </div>
@@ -482,17 +471,17 @@ function ManufacturerDetailDrawer({ manufacturer: m, isKo, lang, onClose }: {
           {/* Rating + Price */}
           <div style={{ display: 'flex', gap: 20, flexWrap: 'wrap' }}>
             <div>
-              <div style={{ fontSize: 10, color: 'var(--nx-text-3)', marginBottom: 4 }}>{isKo ? '평점' : 'Rating'}</div>
+              <div style={{ fontSize: 10, color: 'var(--nx-text-3)', marginBottom: 4 }}>{L('평점', 'Rating')}</div>
               {m.reviewCount >= MIN_REVIEWS ? (
                 <>
                   <div style={{ fontSize: 15, color: '#e3b341' }}>{stars(m.rating)}</div>
                   <div style={{ fontSize: 11, color: 'var(--nx-text-2)', marginTop: 2 }}>
-                    {m.rating.toFixed(1)} ({m.reviewCount.toLocaleString()} {isKo ? '리뷰' : 'reviews'})
+                    {m.rating.toFixed(1)} ({formatNumber(m.reviewCount, lang) ?? m.reviewCount} {L('리뷰', 'reviews')})
                   </div>
                 </>
               ) : (
                 <div style={{ fontSize: 11, color: 'var(--nx-text-3)', marginTop: 2 }}>
-                  {isKo ? '리뷰 준비 중' : 'No reviews yet'}
+                  {L('리뷰 준비 중', 'No reviews yet')}
                   {m.reviewCount > 0 && (
                     <span style={{ marginLeft: 4, color: 'var(--nx-border)' }}>({m.reviewCount}/{MIN_REVIEWS})</span>
                   )}
@@ -500,18 +489,18 @@ function ManufacturerDetailDrawer({ manufacturer: m, isKo, lang, onClose }: {
               )}
             </div>
             <div>
-              <div style={{ fontSize: 10, color: 'var(--nx-text-3)', marginBottom: 4 }}>{isKo ? '가격 수준' : 'Price Level'}</div>
+              <div style={{ fontSize: 10, color: 'var(--nx-text-3)', marginBottom: 4 }}>{L('가격 수준', 'Price Level')}</div>
               <div style={{
                 fontSize: 12, fontWeight: 700, padding: '3px 10px', borderRadius: 6,
                 background: pl.color + '18', color: pl.color, display: 'inline-block',
               }}>
-                {pl[isKo ? 'ko' : 'en']}
+                {priceLabel(m.priceLevel, lang)}
               </div>
             </div>
             <div>
-              <div style={{ fontSize: 10, color: 'var(--nx-text-3)', marginBottom: 4 }}>{isKo ? '납기' : 'Lead Time'}</div>
+              <div style={{ fontSize: 10, color: 'var(--nx-text-3)', marginBottom: 4 }}>{L('납기', 'Lead Time')}</div>
               <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--nx-text)' }}>
-                {m.minLeadTime}–{m.maxLeadTime}{isKo ? '일' : 'd'}
+                {m.minLeadTime}–{m.maxLeadTime}{L('일', 'd')}
               </div>
             </div>
           </div>
@@ -520,7 +509,7 @@ function ManufacturerDetailDrawer({ manufacturer: m, isKo, lang, onClose }: {
           {desc && (
             <div>
               <div style={{ fontSize: 10, color: 'var(--nx-text-3)', marginBottom: 6, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.4px' }}>
-                {isKo ? '소개' : 'About'}
+                {L('소개', 'About')}
               </div>
               <p style={{ margin: 0, fontSize: 13, color: 'var(--nx-text)', lineHeight: 1.65 }}>{desc}</p>
             </div>
@@ -530,12 +519,12 @@ function ManufacturerDetailDrawer({ manufacturer: m, isKo, lang, onClose }: {
           {m.processes.length > 0 && (
             <div>
               <div style={{ fontSize: 10, color: 'var(--nx-text-3)', marginBottom: 8, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.4px' }}>
-                {isKo ? '공정 유형' : 'Processes'}
+                {L('공정 유형', 'Processes')}
               </div>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5 }}>
                 {m.processes.map(p => (
                   <span key={p} style={{ fontSize: 11, padding: '3px 10px', borderRadius: 6, background: 'var(--nx-panel-2)', color: 'var(--nx-text-2)', border: '1px solid var(--nx-border)' }}>
-                    {PROCESS_LABELS[p]?.[isKo ? 'ko' : 'en'] ?? p}
+                    {manufacturingTerm(p, lang)}
                   </span>
                 ))}
               </div>
@@ -546,7 +535,7 @@ function ManufacturerDetailDrawer({ manufacturer: m, isKo, lang, onClose }: {
           {m.certifications.length > 0 && (
             <div>
               <div style={{ fontSize: 10, color: 'var(--nx-text-3)', marginBottom: 8, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.4px' }}>
-                {isKo ? '인증' : 'Certifications'}
+                {L('인증', 'Certifications')}
               </div>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5 }}>
                 {m.certifications.map(c => (
@@ -562,7 +551,7 @@ function ManufacturerDetailDrawer({ manufacturer: m, isKo, lang, onClose }: {
           {m.website && (
             <div>
               <div style={{ fontSize: 10, color: 'var(--nx-text-3)', marginBottom: 6, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.4px' }}>
-                {isKo ? '홈페이지' : 'Website'}
+                {L('홈페이지', 'Website')}
               </div>
               <a href={m.website} target="_blank" rel="noopener noreferrer" style={{ fontSize: 13, color: '#388bfd', wordBreak: 'break-all' }}>
                 🌐 {m.website}
@@ -582,7 +571,7 @@ function ManufacturerDetailDrawer({ manufacturer: m, isKo, lang, onClose }: {
               color: '#fff', fontSize: 13, fontWeight: 700,
             }}
           >
-            {isKo ? '견적 요청' : 'Request Quote'}
+            {L('견적 요청', 'Request Quote')}
           </a>
         </div>
       </div>
@@ -592,20 +581,21 @@ function ManufacturerDetailDrawer({ manufacturer: m, isKo, lang, onClose }: {
 
 // ─── ManufacturerCard ─────────────────────────────────────────────────────────
 
-function ManufacturerCard({ manufacturer: m, isKo, lang, onViewDetail }: {
-  manufacturer: Manufacturer; isKo: boolean; lang: string; onViewDetail: (m: Manufacturer) => void;
+function ManufacturerCard({ manufacturer: m, lang, onViewDetail }: {
+  manufacturer: Manufacturer; lang: string; onViewDetail: (m: Manufacturer) => void;
 }) {
+  const L = createCommercialLocalizer(lang);
   const [hovered, setHovered] = useState(false);
   const pl = PRICE_LABELS[m.priceLevel] ?? PRICE_LABELS.standard;
   const [gradFrom, gradTo] = gradientForId(m.id);
-  const initials = (isKo && m.nameKo ? m.nameKo : m.name).slice(0, 1);
+  const initials = L(m.nameKo || m.name, m.name).slice(0, 1);
 
   function stars(rating: number) {
     const full = Math.round(rating);
     return '★'.repeat(full) + '☆'.repeat(5 - full);
   }
 
-  const desc = isKo ? (m.descriptionKo || m.description) : m.description;
+  const desc = L(m.descriptionKo || m.description, m.description);
 
   return (
     <div
@@ -634,23 +624,23 @@ function ManufacturerCard({ manufacturer: m, isKo, lang, onViewDetail }: {
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, flexWrap: 'wrap', marginBottom: 4 }}>
           <span style={{ fontSize: 15, fontWeight: 700, color: 'var(--nx-text)' }}>
-            {isKo ? m.nameKo : m.name}
+            {L(m.nameKo || m.name, m.name)}
           </span>
           <span style={{ fontSize: 11, color: 'var(--nx-text-3)' }}>
-            📍 {REGION_LABELS[m.region] ?? m.region}
+            📍 {manufacturingRegion(m.region, lang)}
           </span>
           <span style={{
             fontSize: 10, fontWeight: 700, padding: '2px 7px', borderRadius: 6,
             background: pl.color + '18', color: pl.color,
           }}>
-            {pl[isKo ? 'ko' : 'en']}
+            {priceLabel(m.priceLevel, lang)}
           </span>
           {m.hasPartnerProfile && (
             <span style={{
               fontSize: 10, fontWeight: 700, padding: '2px 7px', borderRadius: 6,
               background: '#388bfd18', color: '#388bfd',
             }}>
-              {isKo ? '파트너' : 'Partner'}
+              {L('파트너', 'Partner')}
             </span>
           )}
         </div>
@@ -668,7 +658,7 @@ function ManufacturerCard({ manufacturer: m, isKo, lang, onViewDetail }: {
               fontSize: 10, padding: '2px 8px', borderRadius: 5,
               background: 'var(--nx-panel-2)', color: 'var(--nx-text-2)', border: '1px solid var(--nx-border)',
             }}>
-              {PROCESS_LABELS[p]?.[isKo ? 'ko' : 'en'] ?? p}
+              {manufacturingTerm(p, lang)}
             </span>
           ))}
           {m.certifications.map(c => (
@@ -687,24 +677,22 @@ function ManufacturerCard({ manufacturer: m, isKo, lang, onViewDetail }: {
             <>
               <span style={{ color: '#e3b341', letterSpacing: 1 }}>{stars(m.rating)}</span>
               <span style={{ color: 'var(--nx-text-2)' }}>
-                {m.rating.toFixed(1)} ({m.reviewCount.toLocaleString()} {isKo ? '리뷰' : 'reviews'})
+                {m.rating.toFixed(1)} ({formatNumber(m.reviewCount, lang) ?? m.reviewCount} {L('리뷰', 'reviews')})
               </span>
             </>
           ) : (
-            <span style={{ color: 'var(--nx-text-3)', fontSize: 11 }}>{isKo ? '리뷰 준비 중' : 'No reviews yet'}</span>
+            <span style={{ color: 'var(--nx-text-3)', fontSize: 11 }}>{L('리뷰 준비 중', 'No reviews yet')}</span>
           )}
           <span style={{ color: 'var(--nx-text-3)' }}>|</span>
           <span style={{ color: 'var(--nx-text-2)' }}>
-            {isKo
-              ? `납기 ${m.minLeadTime}–${m.maxLeadTime}일`
-              : `Lead ${m.minLeadTime}–${m.maxLeadTime}d`}
+            {L(`납기 ${m.minLeadTime}–${m.maxLeadTime}일`, `Lead ${m.minLeadTime}–${m.maxLeadTime}d`)}
           </span>
           {m.website && (
             <>
               <span style={{ color: 'var(--nx-text-3)' }}>|</span>
               <a href={m.website} target="_blank" rel="noopener noreferrer"
                 style={{ fontSize: 11, color: '#388bfd', textDecoration: 'none' }}>
-                🌐 {isKo ? '홈페이지' : 'Website'}
+                🌐 {L('홈페이지', 'Website')}
               </a>
             </>
           )}
@@ -726,7 +714,7 @@ function ManufacturerCard({ manufacturer: m, isKo, lang, onViewDetail }: {
             whiteSpace: 'nowrap',
           }}
         >
-          {isKo ? '견적 요청' : 'Request Quote'}
+          {L('견적 요청', 'Request Quote')}
         </a>
         <button
           onClick={() => onViewDetail(m)}
@@ -744,7 +732,7 @@ function ManufacturerCard({ manufacturer: m, isKo, lang, onViewDetail }: {
           onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--nx-text-2)'; e.currentTarget.style.color = 'var(--nx-text)'; }}
           onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--nx-border)'; e.currentTarget.style.color = 'var(--nx-text-2)'; }}
         >
-          {isKo ? '상세 보기' : 'View Details'}
+          {L('상세 보기', 'View Details')}
         </button>
       </div>
     </div>

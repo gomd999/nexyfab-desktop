@@ -1,5 +1,7 @@
 .root {
   min-width: 0;
+  /* Dense 10–12px guidance uses the accessible secondary-text tone. */
+  --nx-text-3: var(--nx-text-2, #46505e);
 }
 
 .journey {
@@ -98,11 +100,28 @@
   flex: 0 0 auto;
   padding: 7px 9px;
   border-radius: 7px;
-  background: var(--nx-accent, #2563eb);
+  background: #1d4ed8;
   color: #fff;
   font-size: 11px;
   font-weight: 800;
   text-decoration: none;
+}
+
+.controlPane [role='group'] > button[aria-pressed='true'] {
+  border-color: #1d4ed8 !important;
+  background: #1d4ed8 !important;
+  color: #fff !important;
+}
+
+/* Keep the split-pane divider on the logical end side for Arabic RTL. */
+.root[dir='rtl'] .controlPane {
+  border-right: 0 !important;
+  border-left: 1px solid var(--nx-border, #dfe3e8) !important;
+}
+
+.root[dir='rtl'] .readiness,
+.root[dir='rtl'] .journey {
+  direction: rtl;
 }
 
 @media (max-width: 760px) {
@@ -133,8 +152,22 @@
     display: none;
   }
 
+  .journey {
+    flex-wrap: wrap;
+    overflow-x: visible;
+  }
+
   .readiness {
+    flex-direction: column;
+    min-width: 0;
+    overflow-x: visible;
     padding-bottom: 2px;
+  }
+
+  .readiness span {
+    flex: 1 1 auto;
+    min-width: 0;
+    overflow-wrap: anywhere;
   }
 
   .precisionOption {

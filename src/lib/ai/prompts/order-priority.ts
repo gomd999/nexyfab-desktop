@@ -5,12 +5,12 @@ const TEMPLATE =
   'rank each RFQ by attractiveness (margin × DFM fit × deadline urgency × process match). ' +
   'Return JSON: { "ranked": [{id, projectName, estimatedAmount, score(0-100), tag("priority"|"good_fit"|"consider"|"pass"), ' +
   'estimatedMarginKrw, marginPct, reasons[], reasonsKo[], riskFlags[], riskFlagsKo[]}], ' +
-  '"summary"(EN), "summaryKo"(KR), "topPick"(EN), "topPickKo"(KR) }. ' +
+  '"summary" and "topPick" in the requested output language, with "summaryKo" and "topPickKo" as Korean legacy translations }. ' +
   'Be concise. No markdown.';
 
 const def: PromptDefinition = {
   id: 'order-priority',
-  version: '1.0.0',
+  version: '1.1.0',
   description: 'Partner-side RFQ prioritizer: rank incoming RFQs by attractiveness for the partner.',
   template: TEMPLATE,
   defaults: {

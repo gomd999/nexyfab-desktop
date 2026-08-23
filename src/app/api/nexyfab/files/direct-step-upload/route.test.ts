@@ -23,6 +23,12 @@ function request(body: Record<string, unknown>) {
   });
 }
 
+function streamedRequest(body: ReadableStream<Uint8Array>, headers: Record<string, string>) {
+  return new NextRequest('http://localhost/api/nexyfab/files/direct-step-upload', {
+    method: 'POST', body, headers: { 'content-type': 'application/json', ...headers }, duplex: 'half',
+  } as unknown as NonNullable<ConstructorParameters<typeof NextRequest>[1]>);
+}
+
 describe('direct large STEP upload route', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -64,5 +70,38 @@ describe('direct large STEP upload route', () => {
     expect(args?.[0]).toContain('INSERT INTO nf_files');
     expect(args).toContain('private/files/u1/id/loader.step');
     expect(args).toContain(417 * MB);
+  });
+
+  it('rejects malformed JSON with the existing policy response and no side effects', async () => {
+    const response = await POST(new NextRequest('http://localhost/api/nexyfab/files/direct-step-upload', {
+      method: 'POST', body: '{', headers: { 'content-type': 'application/json' },
+    }));
+    expect(response.status).toBe(400);
+    expect(await response.json()).toMatchObject({ code: 'INVALID_FILENAME' });
+    expect(mocks.createPrivateUploadUrl).not.toHaveBeenCalled();
+    expect(mocks.execute).not.toHaveBeenCalled();
+  });
+
+  it('cancels declared and measured oversized JSON before storage side effects', async () => {
+    let declaredCancelled = false;
+    const declared = new ReadableStream<Uint8Array>({ cancel() { declaredCancelled = true; } });
+    const declaredResponse = await POST(streamedRequest(declared, { 'content-length': '16385' }));
+    expect(declaredResponse.status).toBe(413);
+    expect(declaredCancelled).toBe(true);
+
+    let measuredCancelled = false;
+    const measured = new ReadableStream<Uint8Array>({
+      start(controller) {
+        controller.enqueue(new Uint8Array([0x7b]));
+        controller.enqueue(new Uint8Array(16 * 1024));
+      },
+      cancel() { measuredCancelled = true; },
+    });
+    const measuredResponse = await POST(streamedRequest(measured, { 'content-length': '1' }));
+    expect(measuredResponse.status).toBe(413);
+    expect(measuredCancelled).toBe(true);
+    expect(mocks.createPrivateUploadUrl).not.toHaveBeenCalled();
+    expect(mocks.stat).not.toHaveBeenCalled();
+    expect(mocks.execute).not.toHaveBeenCalled();
   });
 });

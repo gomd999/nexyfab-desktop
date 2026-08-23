@@ -79,6 +79,7 @@ import {
   type ExplainerLang,
 } from '@/lib/ai/scadIntentFromTree';
 import type { FeatureTree } from '@/lib/cad/featureTree';
+import { toIsoLang } from '@/lib/i18n/normalize';
 
 export type PlannerLang = 'ko' | 'en' | 'ja' | 'zh' | 'es' | 'ar';
 
@@ -524,7 +525,7 @@ export default function FeatureTreePlannerPanel(
    * future phase (see scadIntentFromTree.ts "Out of scope"). Keeps the UI
    * localized while the long-form narration stays in English for non-ko.
    */
-  const explainerLang: ExplainerLang = lang === 'ko' ? 'ko' : 'en';
+  const explainerLang: ExplainerLang = toIsoLang(lang);
 
   const handleExplain = useCallback(() => {
     const next = explainFeatureTree(currentTree, { lang: explainerLang });

@@ -1,0 +1,65 @@
+{
+  "schema": "nexyfab.assembly-workspace-ui-verification.v1",
+  "observedAtKst": "2026-08-12T21:10:00+09:00",
+  "route": "http://127.0.0.1:3333/kr/shape-generator/assembly/?expert=1",
+  "connections": {
+    "chromeDevToolsMcp": "pass",
+    "figmaMcpAuthentication": "pass",
+    "figmaSeat": "View",
+    "figmaFileReadWrite": "not_run"
+  },
+  "sourceReferences": [
+    "SOLIDWORKS_Introduction_KO(1).pdf",
+    "Fusion 360 handouts",
+    "Rhino User's Guide",
+    "Grasshopper Primer"
+  ],
+  "automated": {
+    "typecheck": "pass",
+    "targetedLint": "pass",
+    "tests": {
+      "status": "pass",
+      "files": 4,
+      "tests": 295
+    },
+    "productionBuild": {
+      "status": "pass",
+      "durationSeconds": 325.7,
+      "staticPages": 290,
+      "bundleBudget": "pass",
+      "warnings": [
+        "Edge Runtime deprecation",
+        "REDIS_URL missing; in-memory rate limiting is not multi-instance safe"
+      ]
+    }
+  },
+  "chrome": {
+    "screenshotPersistence": "blocked_by_chrome_mcp_path_policy",
+    "screenshotInspection": "pass_in_session",
+    "desktop1440x1000": {
+      "horizontalOverflowControls": 0,
+      "accessibility": 100,
+      "bestPractices": 100,
+      "seo": 100,
+      "agenticBrowsing": 50
+    },
+    "mobile390x844": {
+      "horizontalOverflowControls": 0,
+      "documentWidth": 390,
+      "accessibility": 100,
+      "bestPractices": 100,
+      "seo": 80,
+      "agenticBrowsing": 50
+    },
+    "remainingAuditFailures": [
+      "robots-txt",
+      "llms-txt"
+    ]
+  },
+  "releaseBoundary": {
+    "commercialRelease": "blocked",
+    "solverInitialStatus": "NOT_RUN",
+    "manufacturingVerificationInitialStatus": "NOT_RUN",
+    "note": "The UI overhaul does not promote missing engineering or manufacturing evidence to PASS."
+  }
+}

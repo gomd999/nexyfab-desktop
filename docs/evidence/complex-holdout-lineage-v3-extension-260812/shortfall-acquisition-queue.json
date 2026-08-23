@@ -1,0 +1,2084 @@
+{
+  "schema": "nexyfab.holdout-shortfall-acquisition-queue.v1",
+  "generatedAt": "2026-08-11T15:00:00.000Z",
+  "policy": {
+    "placeholdersAreNotCases": true,
+    "grantsApproval": false,
+    "scoreEligible": false,
+    "crossFamilyReuseForbidden": true,
+    "snapshotArchiveAndMembersShareLineage": true,
+    "mechanicalCoreOnly": true,
+    "automaticFamilyContractPassForbidden": true
+  },
+  "summary": {
+    "required": 40,
+    "acquired": 0,
+    "remaining": 40,
+    "byFamily": {
+      "machine_skid": 20,
+      "welded_enclosure": 20
+    }
+  },
+  "slots": [
+    {
+      "slotId": "machine-skid-acquire-01",
+      "family": "machine_skid",
+      "status": "missing",
+      "scoreEligible": false,
+      "requirements": {
+        "independentProductLineage": true,
+        "sourceSha256Required": true,
+        "commercialProvenanceReviewRequired": true,
+        "holdoutIsolationRequired": true,
+        "nativeDefinitionOccurrenceReviewRequired": true,
+        "familyContractChecksRequired": [
+          "mass_and_envelope",
+          "frame_and_load_path",
+          "anchors",
+          "alignment",
+          "vibration",
+          "lifting_and_cg",
+          "ports",
+          "service_removal",
+          "transport"
+        ],
+        "preferredExactFormats": [
+          "step",
+          "stp",
+          "x_t",
+          "x_b",
+          "sldasm",
+          "iam",
+          "catproduct",
+          "asm"
+        ],
+        "conditionalFormats": [
+          "iges",
+          "igs",
+          "sldprt",
+          "ipt",
+          "catpart",
+          "prt",
+          "zip"
+        ],
+        "rejectedAsSoleEvidence": [
+          "png",
+          "jpg",
+          "jpeg",
+          "pdf",
+          "mp4",
+          "scad-derived-from-holdout",
+          "aabb-approximation"
+        ]
+      }
+    },
+    {
+      "slotId": "machine-skid-acquire-02",
+      "family": "machine_skid",
+      "status": "missing",
+      "scoreEligible": false,
+      "requirements": {
+        "independentProductLineage": true,
+        "sourceSha256Required": true,
+        "commercialProvenanceReviewRequired": true,
+        "holdoutIsolationRequired": true,
+        "nativeDefinitionOccurrenceReviewRequired": true,
+        "familyContractChecksRequired": [
+          "mass_and_envelope",
+          "frame_and_load_path",
+          "anchors",
+          "alignment",
+          "vibration",
+          "lifting_and_cg",
+          "ports",
+          "service_removal",
+          "transport"
+        ],
+        "preferredExactFormats": [
+          "step",
+          "stp",
+          "x_t",
+          "x_b",
+          "sldasm",
+          "iam",
+          "catproduct",
+          "asm"
+        ],
+        "conditionalFormats": [
+          "iges",
+          "igs",
+          "sldprt",
+          "ipt",
+          "catpart",
+          "prt",
+          "zip"
+        ],
+        "rejectedAsSoleEvidence": [
+          "png",
+          "jpg",
+          "jpeg",
+          "pdf",
+          "mp4",
+          "scad-derived-from-holdout",
+          "aabb-approximation"
+        ]
+      }
+    },
+    {
+      "slotId": "machine-skid-acquire-03",
+      "family": "machine_skid",
+      "status": "missing",
+      "scoreEligible": false,
+      "requirements": {
+        "independentProductLineage": true,
+        "sourceSha256Required": true,
+        "commercialProvenanceReviewRequired": true,
+        "holdoutIsolationRequired": true,
+        "nativeDefinitionOccurrenceReviewRequired": true,
+        "familyContractChecksRequired": [
+          "mass_and_envelope",
+          "frame_and_load_path",
+          "anchors",
+          "alignment",
+          "vibration",
+          "lifting_and_cg",
+          "ports",
+          "service_removal",
+          "transport"
+        ],
+        "preferredExactFormats": [
+          "step",
+          "stp",
+          "x_t",
+          "x_b",
+          "sldasm",
+          "iam",
+          "catproduct",
+          "asm"
+        ],
+        "conditionalFormats": [
+          "iges",
+          "igs",
+          "sldprt",
+          "ipt",
+          "catpart",
+          "prt",
+          "zip"
+        ],
+        "rejectedAsSoleEvidence": [
+          "png",
+          "jpg",
+          "jpeg",
+          "pdf",
+          "mp4",
+          "scad-derived-from-holdout",
+          "aabb-approximation"
+        ]
+      }
+    },
+    {
+      "slotId": "machine-skid-acquire-04",
+      "family": "machine_skid",
+      "status": "missing",
+      "scoreEligible": false,
+      "requirements": {
+        "independentProductLineage": true,
+        "sourceSha256Required": true,
+        "commercialProvenanceReviewRequired": true,
+        "holdoutIsolationRequired": true,
+        "nativeDefinitionOccurrenceReviewRequired": true,
+        "familyContractChecksRequired": [
+          "mass_and_envelope",
+          "frame_and_load_path",
+          "anchors",
+          "alignment",
+          "vibration",
+          "lifting_and_cg",
+          "ports",
+          "service_removal",
+          "transport"
+        ],
+        "preferredExactFormats": [
+          "step",
+          "stp",
+          "x_t",
+          "x_b",
+          "sldasm",
+          "iam",
+          "catproduct",
+          "asm"
+        ],
+        "conditionalFormats": [
+          "iges",
+          "igs",
+          "sldprt",
+          "ipt",
+          "catpart",
+          "prt",
+          "zip"
+        ],
+        "rejectedAsSoleEvidence": [
+          "png",
+          "jpg",
+          "jpeg",
+          "pdf",
+          "mp4",
+          "scad-derived-from-holdout",
+          "aabb-approximation"
+        ]
+      }
+    },
+    {
+      "slotId": "machine-skid-acquire-05",
+      "family": "machine_skid",
+      "status": "missing",
+      "scoreEligible": false,
+      "requirements": {
+        "independentProductLineage": true,
+        "sourceSha256Required": true,
+        "commercialProvenanceReviewRequired": true,
+        "holdoutIsolationRequired": true,
+        "nativeDefinitionOccurrenceReviewRequired": true,
+        "familyContractChecksRequired": [
+          "mass_and_envelope",
+          "frame_and_load_path",
+          "anchors",
+          "alignment",
+          "vibration",
+          "lifting_and_cg",
+          "ports",
+          "service_removal",
+          "transport"
+        ],
+        "preferredExactFormats": [
+          "step",
+          "stp",
+          "x_t",
+          "x_b",
+          "sldasm",
+          "iam",
+          "catproduct",
+          "asm"
+        ],
+        "conditionalFormats": [
+          "iges",
+          "igs",
+          "sldprt",
+          "ipt",
+          "catpart",
+          "prt",
+          "zip"
+        ],
+        "rejectedAsSoleEvidence": [
+          "png",
+          "jpg",
+          "jpeg",
+          "pdf",
+          "mp4",
+          "scad-derived-from-holdout",
+          "aabb-approximation"
+        ]
+      }
+    },
+    {
+      "slotId": "machine-skid-acquire-06",
+      "family": "machine_skid",
+      "status": "missing",
+      "scoreEligible": false,
+      "requirements": {
+        "independentProductLineage": true,
+        "sourceSha256Required": true,
+        "commercialProvenanceReviewRequired": true,
+        "holdoutIsolationRequired": true,
+        "nativeDefinitionOccurrenceReviewRequired": true,
+        "familyContractChecksRequired": [
+          "mass_and_envelope",
+          "frame_and_load_path",
+          "anchors",
+          "alignment",
+          "vibration",
+          "lifting_and_cg",
+          "ports",
+          "service_removal",
+          "transport"
+        ],
+        "preferredExactFormats": [
+          "step",
+          "stp",
+          "x_t",
+          "x_b",
+          "sldasm",
+          "iam",
+          "catproduct",
+          "asm"
+        ],
+        "conditionalFormats": [
+          "iges",
+          "igs",
+          "sldprt",
+          "ipt",
+          "catpart",
+          "prt",
+          "zip"
+        ],
+        "rejectedAsSoleEvidence": [
+          "png",
+          "jpg",
+          "jpeg",
+          "pdf",
+          "mp4",
+          "scad-derived-from-holdout",
+          "aabb-approximation"
+        ]
+      }
+    },
+    {
+      "slotId": "machine-skid-acquire-07",
+      "family": "machine_skid",
+      "status": "missing",
+      "scoreEligible": false,
+      "requirements": {
+        "independentProductLineage": true,
+        "sourceSha256Required": true,
+        "commercialProvenanceReviewRequired": true,
+        "holdoutIsolationRequired": true,
+        "nativeDefinitionOccurrenceReviewRequired": true,
+        "familyContractChecksRequired": [
+          "mass_and_envelope",
+          "frame_and_load_path",
+          "anchors",
+          "alignment",
+          "vibration",
+          "lifting_and_cg",
+          "ports",
+          "service_removal",
+          "transport"
+        ],
+        "preferredExactFormats": [
+          "step",
+          "stp",
+          "x_t",
+          "x_b",
+          "sldasm",
+          "iam",
+          "catproduct",
+          "asm"
+        ],
+        "conditionalFormats": [
+          "iges",
+          "igs",
+          "sldprt",
+          "ipt",
+          "catpart",
+          "prt",
+          "zip"
+        ],
+        "rejectedAsSoleEvidence": [
+          "png",
+          "jpg",
+          "jpeg",
+          "pdf",
+          "mp4",
+          "scad-derived-from-holdout",
+          "aabb-approximation"
+        ]
+      }
+    },
+    {
+      "slotId": "machine-skid-acquire-08",
+      "family": "machine_skid",
+      "status": "missing",
+      "scoreEligible": false,
+      "requirements": {
+        "independentProductLineage": true,
+        "sourceSha256Required": true,
+        "commercialProvenanceReviewRequired": true,
+        "holdoutIsolationRequired": true,
+        "nativeDefinitionOccurrenceReviewRequired": true,
+        "familyContractChecksRequired": [
+          "mass_and_envelope",
+          "frame_and_load_path",
+          "anchors",
+          "alignment",
+          "vibration",
+          "lifting_and_cg",
+          "ports",
+          "service_removal",
+          "transport"
+        ],
+        "preferredExactFormats": [
+          "step",
+          "stp",
+          "x_t",
+          "x_b",
+          "sldasm",
+          "iam",
+          "catproduct",
+          "asm"
+        ],
+        "conditionalFormats": [
+          "iges",
+          "igs",
+          "sldprt",
+          "ipt",
+          "catpart",
+          "prt",
+          "zip"
+        ],
+        "rejectedAsSoleEvidence": [
+          "png",
+          "jpg",
+          "jpeg",
+          "pdf",
+          "mp4",
+          "scad-derived-from-holdout",
+          "aabb-approximation"
+        ]
+      }
+    },
+    {
+      "slotId": "machine-skid-acquire-09",
+      "family": "machine_skid",
+      "status": "missing",
+      "scoreEligible": false,
+      "requirements": {
+        "independentProductLineage": true,
+        "sourceSha256Required": true,
+        "commercialProvenanceReviewRequired": true,
+        "holdoutIsolationRequired": true,
+        "nativeDefinitionOccurrenceReviewRequired": true,
+        "familyContractChecksRequired": [
+          "mass_and_envelope",
+          "frame_and_load_path",
+          "anchors",
+          "alignment",
+          "vibration",
+          "lifting_and_cg",
+          "ports",
+          "service_removal",
+          "transport"
+        ],
+        "preferredExactFormats": [
+          "step",
+          "stp",
+          "x_t",
+          "x_b",
+          "sldasm",
+          "iam",
+          "catproduct",
+          "asm"
+        ],
+        "conditionalFormats": [
+          "iges",
+          "igs",
+          "sldprt",
+          "ipt",
+          "catpart",
+          "prt",
+          "zip"
+        ],
+        "rejectedAsSoleEvidence": [
+          "png",
+          "jpg",
+          "jpeg",
+          "pdf",
+          "mp4",
+          "scad-derived-from-holdout",
+          "aabb-approximation"
+        ]
+      }
+    },
+    {
+      "slotId": "machine-skid-acquire-10",
+      "family": "machine_skid",
+      "status": "missing",
+      "scoreEligible": false,
+      "requirements": {
+        "independentProductLineage": true,
+        "sourceSha256Required": true,
+        "commercialProvenanceReviewRequired": true,
+        "holdoutIsolationRequired": true,
+        "nativeDefinitionOccurrenceReviewRequired": true,
+        "familyContractChecksRequired": [
+          "mass_and_envelope",
+          "frame_and_load_path",
+          "anchors",
+          "alignment",
+          "vibration",
+          "lifting_and_cg",
+          "ports",
+          "service_removal",
+          "transport"
+        ],
+        "preferredExactFormats": [
+          "step",
+          "stp",
+          "x_t",
+          "x_b",
+          "sldasm",
+          "iam",
+          "catproduct",
+          "asm"
+        ],
+        "conditionalFormats": [
+          "iges",
+          "igs",
+          "sldprt",
+          "ipt",
+          "catpart",
+          "prt",
+          "zip"
+        ],
+        "rejectedAsSoleEvidence": [
+          "png",
+          "jpg",
+          "jpeg",
+          "pdf",
+          "mp4",
+          "scad-derived-from-holdout",
+          "aabb-approximation"
+        ]
+      }
+    },
+    {
+      "slotId": "machine-skid-acquire-11",
+      "family": "machine_skid",
+      "status": "missing",
+      "scoreEligible": false,
+      "requirements": {
+        "independentProductLineage": true,
+        "sourceSha256Required": true,
+        "commercialProvenanceReviewRequired": true,
+        "holdoutIsolationRequired": true,
+        "nativeDefinitionOccurrenceReviewRequired": true,
+        "familyContractChecksRequired": [
+          "mass_and_envelope",
+          "frame_and_load_path",
+          "anchors",
+          "alignment",
+          "vibration",
+          "lifting_and_cg",
+          "ports",
+          "service_removal",
+          "transport"
+        ],
+        "preferredExactFormats": [
+          "step",
+          "stp",
+          "x_t",
+          "x_b",
+          "sldasm",
+          "iam",
+          "catproduct",
+          "asm"
+        ],
+        "conditionalFormats": [
+          "iges",
+          "igs",
+          "sldprt",
+          "ipt",
+          "catpart",
+          "prt",
+          "zip"
+        ],
+        "rejectedAsSoleEvidence": [
+          "png",
+          "jpg",
+          "jpeg",
+          "pdf",
+          "mp4",
+          "scad-derived-from-holdout",
+          "aabb-approximation"
+        ]
+      }
+    },
+    {
+      "slotId": "machine-skid-acquire-12",
+      "family": "machine_skid",
+      "status": "missing",
+      "scoreEligible": false,
+      "requirements": {
+        "independentProductLineage": true,
+        "sourceSha256Required": true,
+        "commercialProvenanceReviewRequired": true,
+        "holdoutIsolationRequired": true,
+        "nativeDefinitionOccurrenceReviewRequired": true,
+        "familyContractChecksRequired": [
+          "mass_and_envelope",
+          "frame_and_load_path",
+          "anchors",
+          "alignment",
+          "vibration",
+          "lifting_and_cg",
+          "ports",
+          "service_removal",
+          "transport"
+        ],
+        "preferredExactFormats": [
+          "step",
+          "stp",
+          "x_t",
+          "x_b",
+          "sldasm",
+          "iam",
+          "catproduct",
+          "asm"
+        ],
+        "conditionalFormats": [
+          "iges",
+          "igs",
+          "sldprt",
+          "ipt",
+          "catpart",
+          "prt",
+          "zip"
+        ],
+        "rejectedAsSoleEvidence": [
+          "png",
+          "jpg",
+          "jpeg",
+          "pdf",
+          "mp4",
+          "scad-derived-from-holdout",
+          "aabb-approximation"
+        ]
+      }
+    },
+    {
+      "slotId": "machine-skid-acquire-13",
+      "family": "machine_skid",
+      "status": "missing",
+      "scoreEligible": false,
+      "requirements": {
+        "independentProductLineage": true,
+        "sourceSha256Required": true,
+        "commercialProvenanceReviewRequired": true,
+        "holdoutIsolationRequired": true,
+        "nativeDefinitionOccurrenceReviewRequired": true,
+        "familyContractChecksRequired": [
+          "mass_and_envelope",
+          "frame_and_load_path",
+          "anchors",
+          "alignment",
+          "vibration",
+          "lifting_and_cg",
+          "ports",
+          "service_removal",
+          "transport"
+        ],
+        "preferredExactFormats": [
+          "step",
+          "stp",
+          "x_t",
+          "x_b",
+          "sldasm",
+          "iam",
+          "catproduct",
+          "asm"
+        ],
+        "conditionalFormats": [
+          "iges",
+          "igs",
+          "sldprt",
+          "ipt",
+          "catpart",
+          "prt",
+          "zip"
+        ],
+        "rejectedAsSoleEvidence": [
+          "png",
+          "jpg",
+          "jpeg",
+          "pdf",
+          "mp4",
+          "scad-derived-from-holdout",
+          "aabb-approximation"
+        ]
+      }
+    },
+    {
+      "slotId": "machine-skid-acquire-14",
+      "family": "machine_skid",
+      "status": "missing",
+      "scoreEligible": false,
+      "requirements": {
+        "independentProductLineage": true,
+        "sourceSha256Required": true,
+        "commercialProvenanceReviewRequired": true,
+        "holdoutIsolationRequired": true,
+        "nativeDefinitionOccurrenceReviewRequired": true,
+        "familyContractChecksRequired": [
+          "mass_and_envelope",
+          "frame_and_load_path",
+          "anchors",
+          "alignment",
+          "vibration",
+          "lifting_and_cg",
+          "ports",
+          "service_removal",
+          "transport"
+        ],
+        "preferredExactFormats": [
+          "step",
+          "stp",
+          "x_t",
+          "x_b",
+          "sldasm",
+          "iam",
+          "catproduct",
+          "asm"
+        ],
+        "conditionalFormats": [
+          "iges",
+          "igs",
+          "sldprt",
+          "ipt",
+          "catpart",
+          "prt",
+          "zip"
+        ],
+        "rejectedAsSoleEvidence": [
+          "png",
+          "jpg",
+          "jpeg",
+          "pdf",
+          "mp4",
+          "scad-derived-from-holdout",
+          "aabb-approximation"
+        ]
+      }
+    },
+    {
+      "slotId": "machine-skid-acquire-15",
+      "family": "machine_skid",
+      "status": "missing",
+      "scoreEligible": false,
+      "requirements": {
+        "independentProductLineage": true,
+        "sourceSha256Required": true,
+        "commercialProvenanceReviewRequired": true,
+        "holdoutIsolationRequired": true,
+        "nativeDefinitionOccurrenceReviewRequired": true,
+        "familyContractChecksRequired": [
+          "mass_and_envelope",
+          "frame_and_load_path",
+          "anchors",
+          "alignment",
+          "vibration",
+          "lifting_and_cg",
+          "ports",
+          "service_removal",
+          "transport"
+        ],
+        "preferredExactFormats": [
+          "step",
+          "stp",
+          "x_t",
+          "x_b",
+          "sldasm",
+          "iam",
+          "catproduct",
+          "asm"
+        ],
+        "conditionalFormats": [
+          "iges",
+          "igs",
+          "sldprt",
+          "ipt",
+          "catpart",
+          "prt",
+          "zip"
+        ],
+        "rejectedAsSoleEvidence": [
+          "png",
+          "jpg",
+          "jpeg",
+          "pdf",
+          "mp4",
+          "scad-derived-from-holdout",
+          "aabb-approximation"
+        ]
+      }
+    },
+    {
+      "slotId": "machine-skid-acquire-16",
+      "family": "machine_skid",
+      "status": "missing",
+      "scoreEligible": false,
+      "requirements": {
+        "independentProductLineage": true,
+        "sourceSha256Required": true,
+        "commercialProvenanceReviewRequired": true,
+        "holdoutIsolationRequired": true,
+        "nativeDefinitionOccurrenceReviewRequired": true,
+        "familyContractChecksRequired": [
+          "mass_and_envelope",
+          "frame_and_load_path",
+          "anchors",
+          "alignment",
+          "vibration",
+          "lifting_and_cg",
+          "ports",
+          "service_removal",
+          "transport"
+        ],
+        "preferredExactFormats": [
+          "step",
+          "stp",
+          "x_t",
+          "x_b",
+          "sldasm",
+          "iam",
+          "catproduct",
+          "asm"
+        ],
+        "conditionalFormats": [
+          "iges",
+          "igs",
+          "sldprt",
+          "ipt",
+          "catpart",
+          "prt",
+          "zip"
+        ],
+        "rejectedAsSoleEvidence": [
+          "png",
+          "jpg",
+          "jpeg",
+          "pdf",
+          "mp4",
+          "scad-derived-from-holdout",
+          "aabb-approximation"
+        ]
+      }
+    },
+    {
+      "slotId": "machine-skid-acquire-17",
+      "family": "machine_skid",
+      "status": "missing",
+      "scoreEligible": false,
+      "requirements": {
+        "independentProductLineage": true,
+        "sourceSha256Required": true,
+        "commercialProvenanceReviewRequired": true,
+        "holdoutIsolationRequired": true,
+        "nativeDefinitionOccurrenceReviewRequired": true,
+        "familyContractChecksRequired": [
+          "mass_and_envelope",
+          "frame_and_load_path",
+          "anchors",
+          "alignment",
+          "vibration",
+          "lifting_and_cg",
+          "ports",
+          "service_removal",
+          "transport"
+        ],
+        "preferredExactFormats": [
+          "step",
+          "stp",
+          "x_t",
+          "x_b",
+          "sldasm",
+          "iam",
+          "catproduct",
+          "asm"
+        ],
+        "conditionalFormats": [
+          "iges",
+          "igs",
+          "sldprt",
+          "ipt",
+          "catpart",
+          "prt",
+          "zip"
+        ],
+        "rejectedAsSoleEvidence": [
+          "png",
+          "jpg",
+          "jpeg",
+          "pdf",
+          "mp4",
+          "scad-derived-from-holdout",
+          "aabb-approximation"
+        ]
+      }
+    },
+    {
+      "slotId": "machine-skid-acquire-18",
+      "family": "machine_skid",
+      "status": "missing",
+      "scoreEligible": false,
+      "requirements": {
+        "independentProductLineage": true,
+        "sourceSha256Required": true,
+        "commercialProvenanceReviewRequired": true,
+        "holdoutIsolationRequired": true,
+        "nativeDefinitionOccurrenceReviewRequired": true,
+        "familyContractChecksRequired": [
+          "mass_and_envelope",
+          "frame_and_load_path",
+          "anchors",
+          "alignment",
+          "vibration",
+          "lifting_and_cg",
+          "ports",
+          "service_removal",
+          "transport"
+        ],
+        "preferredExactFormats": [
+          "step",
+          "stp",
+          "x_t",
+          "x_b",
+          "sldasm",
+          "iam",
+          "catproduct",
+          "asm"
+        ],
+        "conditionalFormats": [
+          "iges",
+          "igs",
+          "sldprt",
+          "ipt",
+          "catpart",
+          "prt",
+          "zip"
+        ],
+        "rejectedAsSoleEvidence": [
+          "png",
+          "jpg",
+          "jpeg",
+          "pdf",
+          "mp4",
+          "scad-derived-from-holdout",
+          "aabb-approximation"
+        ]
+      }
+    },
+    {
+      "slotId": "machine-skid-acquire-19",
+      "family": "machine_skid",
+      "status": "missing",
+      "scoreEligible": false,
+      "requirements": {
+        "independentProductLineage": true,
+        "sourceSha256Required": true,
+        "commercialProvenanceReviewRequired": true,
+        "holdoutIsolationRequired": true,
+        "nativeDefinitionOccurrenceReviewRequired": true,
+        "familyContractChecksRequired": [
+          "mass_and_envelope",
+          "frame_and_load_path",
+          "anchors",
+          "alignment",
+          "vibration",
+          "lifting_and_cg",
+          "ports",
+          "service_removal",
+          "transport"
+        ],
+        "preferredExactFormats": [
+          "step",
+          "stp",
+          "x_t",
+          "x_b",
+          "sldasm",
+          "iam",
+          "catproduct",
+          "asm"
+        ],
+        "conditionalFormats": [
+          "iges",
+          "igs",
+          "sldprt",
+          "ipt",
+          "catpart",
+          "prt",
+          "zip"
+        ],
+        "rejectedAsSoleEvidence": [
+          "png",
+          "jpg",
+          "jpeg",
+          "pdf",
+          "mp4",
+          "scad-derived-from-holdout",
+          "aabb-approximation"
+        ]
+      }
+    },
+    {
+      "slotId": "machine-skid-acquire-20",
+      "family": "machine_skid",
+      "status": "missing",
+      "scoreEligible": false,
+      "requirements": {
+        "independentProductLineage": true,
+        "sourceSha256Required": true,
+        "commercialProvenanceReviewRequired": true,
+        "holdoutIsolationRequired": true,
+        "nativeDefinitionOccurrenceReviewRequired": true,
+        "familyContractChecksRequired": [
+          "mass_and_envelope",
+          "frame_and_load_path",
+          "anchors",
+          "alignment",
+          "vibration",
+          "lifting_and_cg",
+          "ports",
+          "service_removal",
+          "transport"
+        ],
+        "preferredExactFormats": [
+          "step",
+          "stp",
+          "x_t",
+          "x_b",
+          "sldasm",
+          "iam",
+          "catproduct",
+          "asm"
+        ],
+        "conditionalFormats": [
+          "iges",
+          "igs",
+          "sldprt",
+          "ipt",
+          "catpart",
+          "prt",
+          "zip"
+        ],
+        "rejectedAsSoleEvidence": [
+          "png",
+          "jpg",
+          "jpeg",
+          "pdf",
+          "mp4",
+          "scad-derived-from-holdout",
+          "aabb-approximation"
+        ]
+      }
+    },
+    {
+      "slotId": "welded-enclosure-acquire-01",
+      "family": "welded_enclosure",
+      "status": "missing",
+      "scoreEligible": false,
+      "requirements": {
+        "independentProductLineage": true,
+        "sourceSha256Required": true,
+        "commercialProvenanceReviewRequired": true,
+        "holdoutIsolationRequired": true,
+        "nativeDefinitionOccurrenceReviewRequired": true,
+        "familyContractChecksRequired": [
+          "member_strength",
+          "weld_capacity_and_inspection",
+          "sheet_bend_relief",
+          "distortion_and_datums",
+          "door_hinge_and_seal",
+          "grounding",
+          "coating",
+          "ingress_design_and_physical_test"
+        ],
+        "preferredExactFormats": [
+          "step",
+          "stp",
+          "x_t",
+          "x_b",
+          "sldasm",
+          "iam",
+          "catproduct",
+          "asm"
+        ],
+        "conditionalFormats": [
+          "iges",
+          "igs",
+          "sldprt",
+          "ipt",
+          "catpart",
+          "prt",
+          "zip"
+        ],
+        "rejectedAsSoleEvidence": [
+          "png",
+          "jpg",
+          "jpeg",
+          "pdf",
+          "mp4",
+          "scad-derived-from-holdout",
+          "aabb-approximation"
+        ]
+      }
+    },
+    {
+      "slotId": "welded-enclosure-acquire-02",
+      "family": "welded_enclosure",
+      "status": "missing",
+      "scoreEligible": false,
+      "requirements": {
+        "independentProductLineage": true,
+        "sourceSha256Required": true,
+        "commercialProvenanceReviewRequired": true,
+        "holdoutIsolationRequired": true,
+        "nativeDefinitionOccurrenceReviewRequired": true,
+        "familyContractChecksRequired": [
+          "member_strength",
+          "weld_capacity_and_inspection",
+          "sheet_bend_relief",
+          "distortion_and_datums",
+          "door_hinge_and_seal",
+          "grounding",
+          "coating",
+          "ingress_design_and_physical_test"
+        ],
+        "preferredExactFormats": [
+          "step",
+          "stp",
+          "x_t",
+          "x_b",
+          "sldasm",
+          "iam",
+          "catproduct",
+          "asm"
+        ],
+        "conditionalFormats": [
+          "iges",
+          "igs",
+          "sldprt",
+          "ipt",
+          "catpart",
+          "prt",
+          "zip"
+        ],
+        "rejectedAsSoleEvidence": [
+          "png",
+          "jpg",
+          "jpeg",
+          "pdf",
+          "mp4",
+          "scad-derived-from-holdout",
+          "aabb-approximation"
+        ]
+      }
+    },
+    {
+      "slotId": "welded-enclosure-acquire-03",
+      "family": "welded_enclosure",
+      "status": "missing",
+      "scoreEligible": false,
+      "requirements": {
+        "independentProductLineage": true,
+        "sourceSha256Required": true,
+        "commercialProvenanceReviewRequired": true,
+        "holdoutIsolationRequired": true,
+        "nativeDefinitionOccurrenceReviewRequired": true,
+        "familyContractChecksRequired": [
+          "member_strength",
+          "weld_capacity_and_inspection",
+          "sheet_bend_relief",
+          "distortion_and_datums",
+          "door_hinge_and_seal",
+          "grounding",
+          "coating",
+          "ingress_design_and_physical_test"
+        ],
+        "preferredExactFormats": [
+          "step",
+          "stp",
+          "x_t",
+          "x_b",
+          "sldasm",
+          "iam",
+          "catproduct",
+          "asm"
+        ],
+        "conditionalFormats": [
+          "iges",
+          "igs",
+          "sldprt",
+          "ipt",
+          "catpart",
+          "prt",
+          "zip"
+        ],
+        "rejectedAsSoleEvidence": [
+          "png",
+          "jpg",
+          "jpeg",
+          "pdf",
+          "mp4",
+          "scad-derived-from-holdout",
+          "aabb-approximation"
+        ]
+      }
+    },
+    {
+      "slotId": "welded-enclosure-acquire-04",
+      "family": "welded_enclosure",
+      "status": "missing",
+      "scoreEligible": false,
+      "requirements": {
+        "independentProductLineage": true,
+        "sourceSha256Required": true,
+        "commercialProvenanceReviewRequired": true,
+        "holdoutIsolationRequired": true,
+        "nativeDefinitionOccurrenceReviewRequired": true,
+        "familyContractChecksRequired": [
+          "member_strength",
+          "weld_capacity_and_inspection",
+          "sheet_bend_relief",
+          "distortion_and_datums",
+          "door_hinge_and_seal",
+          "grounding",
+          "coating",
+          "ingress_design_and_physical_test"
+        ],
+        "preferredExactFormats": [
+          "step",
+          "stp",
+          "x_t",
+          "x_b",
+          "sldasm",
+          "iam",
+          "catproduct",
+          "asm"
+        ],
+        "conditionalFormats": [
+          "iges",
+          "igs",
+          "sldprt",
+          "ipt",
+          "catpart",
+          "prt",
+          "zip"
+        ],
+        "rejectedAsSoleEvidence": [
+          "png",
+          "jpg",
+          "jpeg",
+          "pdf",
+          "mp4",
+          "scad-derived-from-holdout",
+          "aabb-approximation"
+        ]
+      }
+    },
+    {
+      "slotId": "welded-enclosure-acquire-05",
+      "family": "welded_enclosure",
+      "status": "missing",
+      "scoreEligible": false,
+      "requirements": {
+        "independentProductLineage": true,
+        "sourceSha256Required": true,
+        "commercialProvenanceReviewRequired": true,
+        "holdoutIsolationRequired": true,
+        "nativeDefinitionOccurrenceReviewRequired": true,
+        "familyContractChecksRequired": [
+          "member_strength",
+          "weld_capacity_and_inspection",
+          "sheet_bend_relief",
+          "distortion_and_datums",
+          "door_hinge_and_seal",
+          "grounding",
+          "coating",
+          "ingress_design_and_physical_test"
+        ],
+        "preferredExactFormats": [
+          "step",
+          "stp",
+          "x_t",
+          "x_b",
+          "sldasm",
+          "iam",
+          "catproduct",
+          "asm"
+        ],
+        "conditionalFormats": [
+          "iges",
+          "igs",
+          "sldprt",
+          "ipt",
+          "catpart",
+          "prt",
+          "zip"
+        ],
+        "rejectedAsSoleEvidence": [
+          "png",
+          "jpg",
+          "jpeg",
+          "pdf",
+          "mp4",
+          "scad-derived-from-holdout",
+          "aabb-approximation"
+        ]
+      }
+    },
+    {
+      "slotId": "welded-enclosure-acquire-06",
+      "family": "welded_enclosure",
+      "status": "missing",
+      "scoreEligible": false,
+      "requirements": {
+        "independentProductLineage": true,
+        "sourceSha256Required": true,
+        "commercialProvenanceReviewRequired": true,
+        "holdoutIsolationRequired": true,
+        "nativeDefinitionOccurrenceReviewRequired": true,
+        "familyContractChecksRequired": [
+          "member_strength",
+          "weld_capacity_and_inspection",
+          "sheet_bend_relief",
+          "distortion_and_datums",
+          "door_hinge_and_seal",
+          "grounding",
+          "coating",
+          "ingress_design_and_physical_test"
+        ],
+        "preferredExactFormats": [
+          "step",
+          "stp",
+          "x_t",
+          "x_b",
+          "sldasm",
+          "iam",
+          "catproduct",
+          "asm"
+        ],
+        "conditionalFormats": [
+          "iges",
+          "igs",
+          "sldprt",
+          "ipt",
+          "catpart",
+          "prt",
+          "zip"
+        ],
+        "rejectedAsSoleEvidence": [
+          "png",
+          "jpg",
+          "jpeg",
+          "pdf",
+          "mp4",
+          "scad-derived-from-holdout",
+          "aabb-approximation"
+        ]
+      }
+    },
+    {
+      "slotId": "welded-enclosure-acquire-07",
+      "family": "welded_enclosure",
+      "status": "missing",
+      "scoreEligible": false,
+      "requirements": {
+        "independentProductLineage": true,
+        "sourceSha256Required": true,
+        "commercialProvenanceReviewRequired": true,
+        "holdoutIsolationRequired": true,
+        "nativeDefinitionOccurrenceReviewRequired": true,
+        "familyContractChecksRequired": [
+          "member_strength",
+          "weld_capacity_and_inspection",
+          "sheet_bend_relief",
+          "distortion_and_datums",
+          "door_hinge_and_seal",
+          "grounding",
+          "coating",
+          "ingress_design_and_physical_test"
+        ],
+        "preferredExactFormats": [
+          "step",
+          "stp",
+          "x_t",
+          "x_b",
+          "sldasm",
+          "iam",
+          "catproduct",
+          "asm"
+        ],
+        "conditionalFormats": [
+          "iges",
+          "igs",
+          "sldprt",
+          "ipt",
+          "catpart",
+          "prt",
+          "zip"
+        ],
+        "rejectedAsSoleEvidence": [
+          "png",
+          "jpg",
+          "jpeg",
+          "pdf",
+          "mp4",
+          "scad-derived-from-holdout",
+          "aabb-approximation"
+        ]
+      }
+    },
+    {
+      "slotId": "welded-enclosure-acquire-08",
+      "family": "welded_enclosure",
+      "status": "missing",
+      "scoreEligible": false,
+      "requirements": {
+        "independentProductLineage": true,
+        "sourceSha256Required": true,
+        "commercialProvenanceReviewRequired": true,
+        "holdoutIsolationRequired": true,
+        "nativeDefinitionOccurrenceReviewRequired": true,
+        "familyContractChecksRequired": [
+          "member_strength",
+          "weld_capacity_and_inspection",
+          "sheet_bend_relief",
+          "distortion_and_datums",
+          "door_hinge_and_seal",
+          "grounding",
+          "coating",
+          "ingress_design_and_physical_test"
+        ],
+        "preferredExactFormats": [
+          "step",
+          "stp",
+          "x_t",
+          "x_b",
+          "sldasm",
+          "iam",
+          "catproduct",
+          "asm"
+        ],
+        "conditionalFormats": [
+          "iges",
+          "igs",
+          "sldprt",
+          "ipt",
+          "catpart",
+          "prt",
+          "zip"
+        ],
+        "rejectedAsSoleEvidence": [
+          "png",
+          "jpg",
+          "jpeg",
+          "pdf",
+          "mp4",
+          "scad-derived-from-holdout",
+          "aabb-approximation"
+        ]
+      }
+    },
+    {
+      "slotId": "welded-enclosure-acquire-09",
+      "family": "welded_enclosure",
+      "status": "missing",
+      "scoreEligible": false,
+      "requirements": {
+        "independentProductLineage": true,
+        "sourceSha256Required": true,
+        "commercialProvenanceReviewRequired": true,
+        "holdoutIsolationRequired": true,
+        "nativeDefinitionOccurrenceReviewRequired": true,
+        "familyContractChecksRequired": [
+          "member_strength",
+          "weld_capacity_and_inspection",
+          "sheet_bend_relief",
+          "distortion_and_datums",
+          "door_hinge_and_seal",
+          "grounding",
+          "coating",
+          "ingress_design_and_physical_test"
+        ],
+        "preferredExactFormats": [
+          "step",
+          "stp",
+          "x_t",
+          "x_b",
+          "sldasm",
+          "iam",
+          "catproduct",
+          "asm"
+        ],
+        "conditionalFormats": [
+          "iges",
+          "igs",
+          "sldprt",
+          "ipt",
+          "catpart",
+          "prt",
+          "zip"
+        ],
+        "rejectedAsSoleEvidence": [
+          "png",
+          "jpg",
+          "jpeg",
+          "pdf",
+          "mp4",
+          "scad-derived-from-holdout",
+          "aabb-approximation"
+        ]
+      }
+    },
+    {
+      "slotId": "welded-enclosure-acquire-10",
+      "family": "welded_enclosure",
+      "status": "missing",
+      "scoreEligible": false,
+      "requirements": {
+        "independentProductLineage": true,
+        "sourceSha256Required": true,
+        "commercialProvenanceReviewRequired": true,
+        "holdoutIsolationRequired": true,
+        "nativeDefinitionOccurrenceReviewRequired": true,
+        "familyContractChecksRequired": [
+          "member_strength",
+          "weld_capacity_and_inspection",
+          "sheet_bend_relief",
+          "distortion_and_datums",
+          "door_hinge_and_seal",
+          "grounding",
+          "coating",
+          "ingress_design_and_physical_test"
+        ],
+        "preferredExactFormats": [
+          "step",
+          "stp",
+          "x_t",
+          "x_b",
+          "sldasm",
+          "iam",
+          "catproduct",
+          "asm"
+        ],
+        "conditionalFormats": [
+          "iges",
+          "igs",
+          "sldprt",
+          "ipt",
+          "catpart",
+          "prt",
+          "zip"
+        ],
+        "rejectedAsSoleEvidence": [
+          "png",
+          "jpg",
+          "jpeg",
+          "pdf",
+          "mp4",
+          "scad-derived-from-holdout",
+          "aabb-approximation"
+        ]
+      }
+    },
+    {
+      "slotId": "welded-enclosure-acquire-11",
+      "family": "welded_enclosure",
+      "status": "missing",
+      "scoreEligible": false,
+      "requirements": {
+        "independentProductLineage": true,
+        "sourceSha256Required": true,
+        "commercialProvenanceReviewRequired": true,
+        "holdoutIsolationRequired": true,
+        "nativeDefinitionOccurrenceReviewRequired": true,
+        "familyContractChecksRequired": [
+          "member_strength",
+          "weld_capacity_and_inspection",
+          "sheet_bend_relief",
+          "distortion_and_datums",
+          "door_hinge_and_seal",
+          "grounding",
+          "coating",
+          "ingress_design_and_physical_test"
+        ],
+        "preferredExactFormats": [
+          "step",
+          "stp",
+          "x_t",
+          "x_b",
+          "sldasm",
+          "iam",
+          "catproduct",
+          "asm"
+        ],
+        "conditionalFormats": [
+          "iges",
+          "igs",
+          "sldprt",
+          "ipt",
+          "catpart",
+          "prt",
+          "zip"
+        ],
+        "rejectedAsSoleEvidence": [
+          "png",
+          "jpg",
+          "jpeg",
+          "pdf",
+          "mp4",
+          "scad-derived-from-holdout",
+          "aabb-approximation"
+        ]
+      }
+    },
+    {
+      "slotId": "welded-enclosure-acquire-12",
+      "family": "welded_enclosure",
+      "status": "missing",
+      "scoreEligible": false,
+      "requirements": {
+        "independentProductLineage": true,
+        "sourceSha256Required": true,
+        "commercialProvenanceReviewRequired": true,
+        "holdoutIsolationRequired": true,
+        "nativeDefinitionOccurrenceReviewRequired": true,
+        "familyContractChecksRequired": [
+          "member_strength",
+          "weld_capacity_and_inspection",
+          "sheet_bend_relief",
+          "distortion_and_datums",
+          "door_hinge_and_seal",
+          "grounding",
+          "coating",
+          "ingress_design_and_physical_test"
+        ],
+        "preferredExactFormats": [
+          "step",
+          "stp",
+          "x_t",
+          "x_b",
+          "sldasm",
+          "iam",
+          "catproduct",
+          "asm"
+        ],
+        "conditionalFormats": [
+          "iges",
+          "igs",
+          "sldprt",
+          "ipt",
+          "catpart",
+          "prt",
+          "zip"
+        ],
+        "rejectedAsSoleEvidence": [
+          "png",
+          "jpg",
+          "jpeg",
+          "pdf",
+          "mp4",
+          "scad-derived-from-holdout",
+          "aabb-approximation"
+        ]
+      }
+    },
+    {
+      "slotId": "welded-enclosure-acquire-13",
+      "family": "welded_enclosure",
+      "status": "missing",
+      "scoreEligible": false,
+      "requirements": {
+        "independentProductLineage": true,
+        "sourceSha256Required": true,
+        "commercialProvenanceReviewRequired": true,
+        "holdoutIsolationRequired": true,
+        "nativeDefinitionOccurrenceReviewRequired": true,
+        "familyContractChecksRequired": [
+          "member_strength",
+          "weld_capacity_and_inspection",
+          "sheet_bend_relief",
+          "distortion_and_datums",
+          "door_hinge_and_seal",
+          "grounding",
+          "coating",
+          "ingress_design_and_physical_test"
+        ],
+        "preferredExactFormats": [
+          "step",
+          "stp",
+          "x_t",
+          "x_b",
+          "sldasm",
+          "iam",
+          "catproduct",
+          "asm"
+        ],
+        "conditionalFormats": [
+          "iges",
+          "igs",
+          "sldprt",
+          "ipt",
+          "catpart",
+          "prt",
+          "zip"
+        ],
+        "rejectedAsSoleEvidence": [
+          "png",
+          "jpg",
+          "jpeg",
+          "pdf",
+          "mp4",
+          "scad-derived-from-holdout",
+          "aabb-approximation"
+        ]
+      }
+    },
+    {
+      "slotId": "welded-enclosure-acquire-14",
+      "family": "welded_enclosure",
+      "status": "missing",
+      "scoreEligible": false,
+      "requirements": {
+        "independentProductLineage": true,
+        "sourceSha256Required": true,
+        "commercialProvenanceReviewRequired": true,
+        "holdoutIsolationRequired": true,
+        "nativeDefinitionOccurrenceReviewRequired": true,
+        "familyContractChecksRequired": [
+          "member_strength",
+          "weld_capacity_and_inspection",
+          "sheet_bend_relief",
+          "distortion_and_datums",
+          "door_hinge_and_seal",
+          "grounding",
+          "coating",
+          "ingress_design_and_physical_test"
+        ],
+        "preferredExactFormats": [
+          "step",
+          "stp",
+          "x_t",
+          "x_b",
+          "sldasm",
+          "iam",
+          "catproduct",
+          "asm"
+        ],
+        "conditionalFormats": [
+          "iges",
+          "igs",
+          "sldprt",
+          "ipt",
+          "catpart",
+          "prt",
+          "zip"
+        ],
+        "rejectedAsSoleEvidence": [
+          "png",
+          "jpg",
+          "jpeg",
+          "pdf",
+          "mp4",
+          "scad-derived-from-holdout",
+          "aabb-approximation"
+        ]
+      }
+    },
+    {
+      "slotId": "welded-enclosure-acquire-15",
+      "family": "welded_enclosure",
+      "status": "missing",
+      "scoreEligible": false,
+      "requirements": {
+        "independentProductLineage": true,
+        "sourceSha256Required": true,
+        "commercialProvenanceReviewRequired": true,
+        "holdoutIsolationRequired": true,
+        "nativeDefinitionOccurrenceReviewRequired": true,
+        "familyContractChecksRequired": [
+          "member_strength",
+          "weld_capacity_and_inspection",
+          "sheet_bend_relief",
+          "distortion_and_datums",
+          "door_hinge_and_seal",
+          "grounding",
+          "coating",
+          "ingress_design_and_physical_test"
+        ],
+        "preferredExactFormats": [
+          "step",
+          "stp",
+          "x_t",
+          "x_b",
+          "sldasm",
+          "iam",
+          "catproduct",
+          "asm"
+        ],
+        "conditionalFormats": [
+          "iges",
+          "igs",
+          "sldprt",
+          "ipt",
+          "catpart",
+          "prt",
+          "zip"
+        ],
+        "rejectedAsSoleEvidence": [
+          "png",
+          "jpg",
+          "jpeg",
+          "pdf",
+          "mp4",
+          "scad-derived-from-holdout",
+          "aabb-approximation"
+        ]
+      }
+    },
+    {
+      "slotId": "welded-enclosure-acquire-16",
+      "family": "welded_enclosure",
+      "status": "missing",
+      "scoreEligible": false,
+      "requirements": {
+        "independentProductLineage": true,
+        "sourceSha256Required": true,
+        "commercialProvenanceReviewRequired": true,
+        "holdoutIsolationRequired": true,
+        "nativeDefinitionOccurrenceReviewRequired": true,
+        "familyContractChecksRequired": [
+          "member_strength",
+          "weld_capacity_and_inspection",
+          "sheet_bend_relief",
+          "distortion_and_datums",
+          "door_hinge_and_seal",
+          "grounding",
+          "coating",
+          "ingress_design_and_physical_test"
+        ],
+        "preferredExactFormats": [
+          "step",
+          "stp",
+          "x_t",
+          "x_b",
+          "sldasm",
+          "iam",
+          "catproduct",
+          "asm"
+        ],
+        "conditionalFormats": [
+          "iges",
+          "igs",
+          "sldprt",
+          "ipt",
+          "catpart",
+          "prt",
+          "zip"
+        ],
+        "rejectedAsSoleEvidence": [
+          "png",
+          "jpg",
+          "jpeg",
+          "pdf",
+          "mp4",
+          "scad-derived-from-holdout",
+          "aabb-approximation"
+        ]
+      }
+    },
+    {
+      "slotId": "welded-enclosure-acquire-17",
+      "family": "welded_enclosure",
+      "status": "missing",
+      "scoreEligible": false,
+      "requirements": {
+        "independentProductLineage": true,
+        "sourceSha256Required": true,
+        "commercialProvenanceReviewRequired": true,
+        "holdoutIsolationRequired": true,
+        "nativeDefinitionOccurrenceReviewRequired": true,
+        "familyContractChecksRequired": [
+          "member_strength",
+          "weld_capacity_and_inspection",
+          "sheet_bend_relief",
+          "distortion_and_datums",
+          "door_hinge_and_seal",
+          "grounding",
+          "coating",
+          "ingress_design_and_physical_test"
+        ],
+        "preferredExactFormats": [
+          "step",
+          "stp",
+          "x_t",
+          "x_b",
+          "sldasm",
+          "iam",
+          "catproduct",
+          "asm"
+        ],
+        "conditionalFormats": [
+          "iges",
+          "igs",
+          "sldprt",
+          "ipt",
+          "catpart",
+          "prt",
+          "zip"
+        ],
+        "rejectedAsSoleEvidence": [
+          "png",
+          "jpg",
+          "jpeg",
+          "pdf",
+          "mp4",
+          "scad-derived-from-holdout",
+          "aabb-approximation"
+        ]
+      }
+    },
+    {
+      "slotId": "welded-enclosure-acquire-18",
+      "family": "welded_enclosure",
+      "status": "missing",
+      "scoreEligible": false,
+      "requirements": {
+        "independentProductLineage": true,
+        "sourceSha256Required": true,
+        "commercialProvenanceReviewRequired": true,
+        "holdoutIsolationRequired": true,
+        "nativeDefinitionOccurrenceReviewRequired": true,
+        "familyContractChecksRequired": [
+          "member_strength",
+          "weld_capacity_and_inspection",
+          "sheet_bend_relief",
+          "distortion_and_datums",
+          "door_hinge_and_seal",
+          "grounding",
+          "coating",
+          "ingress_design_and_physical_test"
+        ],
+        "preferredExactFormats": [
+          "step",
+          "stp",
+          "x_t",
+          "x_b",
+          "sldasm",
+          "iam",
+          "catproduct",
+          "asm"
+        ],
+        "conditionalFormats": [
+          "iges",
+          "igs",
+          "sldprt",
+          "ipt",
+          "catpart",
+          "prt",
+          "zip"
+        ],
+        "rejectedAsSoleEvidence": [
+          "png",
+          "jpg",
+          "jpeg",
+          "pdf",
+          "mp4",
+          "scad-derived-from-holdout",
+          "aabb-approximation"
+        ]
+      }
+    },
+    {
+      "slotId": "welded-enclosure-acquire-19",
+      "family": "welded_enclosure",
+      "status": "missing",
+      "scoreEligible": false,
+      "requirements": {
+        "independentProductLineage": true,
+        "sourceSha256Required": true,
+        "commercialProvenanceReviewRequired": true,
+        "holdoutIsolationRequired": true,
+        "nativeDefinitionOccurrenceReviewRequired": true,
+        "familyContractChecksRequired": [
+          "member_strength",
+          "weld_capacity_and_inspection",
+          "sheet_bend_relief",
+          "distortion_and_datums",
+          "door_hinge_and_seal",
+          "grounding",
+          "coating",
+          "ingress_design_and_physical_test"
+        ],
+        "preferredExactFormats": [
+          "step",
+          "stp",
+          "x_t",
+          "x_b",
+          "sldasm",
+          "iam",
+          "catproduct",
+          "asm"
+        ],
+        "conditionalFormats": [
+          "iges",
+          "igs",
+          "sldprt",
+          "ipt",
+          "catpart",
+          "prt",
+          "zip"
+        ],
+        "rejectedAsSoleEvidence": [
+          "png",
+          "jpg",
+          "jpeg",
+          "pdf",
+          "mp4",
+          "scad-derived-from-holdout",
+          "aabb-approximation"
+        ]
+      }
+    },
+    {
+      "slotId": "welded-enclosure-acquire-20",
+      "family": "welded_enclosure",
+      "status": "missing",
+      "scoreEligible": false,
+      "requirements": {
+        "independentProductLineage": true,
+        "sourceSha256Required": true,
+        "commercialProvenanceReviewRequired": true,
+        "holdoutIsolationRequired": true,
+        "nativeDefinitionOccurrenceReviewRequired": true,
+        "familyContractChecksRequired": [
+          "member_strength",
+          "weld_capacity_and_inspection",
+          "sheet_bend_relief",
+          "distortion_and_datums",
+          "door_hinge_and_seal",
+          "grounding",
+          "coating",
+          "ingress_design_and_physical_test"
+        ],
+        "preferredExactFormats": [
+          "step",
+          "stp",
+          "x_t",
+          "x_b",
+          "sldasm",
+          "iam",
+          "catproduct",
+          "asm"
+        ],
+        "conditionalFormats": [
+          "iges",
+          "igs",
+          "sldprt",
+          "ipt",
+          "catpart",
+          "prt",
+          "zip"
+        ],
+        "rejectedAsSoleEvidence": [
+          "png",
+          "jpg",
+          "jpeg",
+          "pdf",
+          "mp4",
+          "scad-derived-from-holdout",
+          "aabb-approximation"
+        ]
+      }
+    }
+  ]
+}

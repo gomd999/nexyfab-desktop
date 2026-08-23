@@ -1,0 +1,11 @@
+{
+  "schema": "nexyfab.deployable-unit.v1",
+  "id": "studio-web",
+  "kind": "application",
+  "targetRuntime": "cloudflare-workers-opennext",
+  "sourceMode": "legacy-root-compatibility",
+  "legacySource": ["src/app", "src/components", "src/lib"],
+  "implementationState": "MIGRATION_PENDING",
+  "deployEnabled": false,
+  "rollbackOwner": "legacy-next-origin"
+}

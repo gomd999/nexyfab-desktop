@@ -1,0 +1,55 @@
+{
+  "schema": "nexyfab.mechanical-core-feature-local-runtime.v1",
+  "feature": "variableShell",
+  "axis": "create",
+  "status": "PASS",
+  "executedAt": "2026-08-22T07:13:30.564Z",
+  "payload": {
+    "id": "runtime-feature",
+    "enabled": true,
+    "type": "variableShell",
+    "params": {
+      "topThickness": 2,
+      "sideThickness": 1.5,
+      "bottomThickness": 2.5,
+      "openFace": 1
+    }
+  },
+  "exact": {
+    "handle": "occt:343",
+    "kernelKind": "Solid",
+    "nativeShapeType": 0,
+    "solidCount": 1,
+    "singleSolid": true,
+    "volumeMm3": 14287.5,
+    "edgeCount": 24,
+    "faceCount": 11,
+    "boundsMm": [
+      [
+        -30.0000001,
+        -20.0000001,
+        -15.000000100000001
+      ],
+      [
+        30.0000001,
+        20.0000001,
+        15.000000100000001
+      ]
+    ]
+  },
+  "featureMeaning": {
+    "assertion": "actual product exact variable shell subtracts an open-top rectangular cavity with independent side and bottom thicknesses",
+    "exactScope": "axis-aligned bbox-faithful box only; general per-face B-Rep thickening remains unsupported and fail-closed",
+    "unsupportedGeometryError": "VARIABLE_SHELL_EXACT_BOX_REQUIRED",
+    "openFace": "top",
+    "sideThicknessMm": 1.5,
+    "bottomThicknessMm": 2.5,
+    "innerWidthMm": 57,
+    "innerDepthMm": 27,
+    "removedHeightMm": 37.5,
+    "expectedVolumeMm3": 14287.5,
+    "actualVolumeMm3": 14287.5
+  },
+  "exactScope": "axis-aligned bbox-faithful box only; non-box/general per-face thickening is unsupported and fail-closed",
+  "assertion": "native OCCT produced one non-empty exact solid and changed the host geometry"
+}

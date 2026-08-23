@@ -12,7 +12,7 @@ import { createHmac, randomBytes, createHash, timingSafeEqual } from 'crypto';
 import { getDbAdapter } from '@/lib/db-adapter';
 import { signJWT } from '@/lib/jwt';
 import { SERVICE_NAME } from '@/lib/service-config';
-import { accessTokenCookie, refreshTokenCookie } from '@/lib/cookie-config';
+import { accessTokenCookie, browserSessionCookie, refreshTokenCookie } from '@/lib/cookie-config';
 import { parseUserStageColumn } from '@/lib/stage-engine';
 
 export const CHALLENGE_COOKIE = 'nf_webauthn_chal';
@@ -106,8 +106,9 @@ export async function issueNexyfabSession(dbUser: SessionUserRow): Promise<{
 
   const rc = refreshTokenCookie(raw);
   const ac = accessTokenCookie(token);
+  const bs = browserSessionCookie();
   return {
     user: { id: dbUser.id, email: dbUser.email, name: dbUser.name, plan: dbUser.plan, projectCount: dbUser.project_count ?? 0, emailVerified, nexyfabStage },
-    cookies: [{ name: rc.name, value: rc.value, options: rc.options }, { name: ac.name, value: ac.value, options: ac.options }],
+    cookies: [{ name: rc.name, value: rc.value, options: rc.options }, { name: ac.name, value: ac.value, options: ac.options }, { name: bs.name, value: bs.value, options: bs.options }],
   };
 }

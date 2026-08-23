@@ -12,6 +12,10 @@ import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { rateLimit } from '@/lib/rate-limit';
 import { getTrustedClientIp } from '@/lib/client-ip';
+import { boundedJsonError, readBoundedJson } from '@/lib/boundedJsonBody';
+
+// 4,000,000 DXF characters plus JSON escaping and intent metadata.
+const MAX_BODY_BYTES = 8 * 1024 * 1024;
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -36,10 +40,11 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   let dxfText: string;
   let intent: Record<string, unknown> | null = null;
   try {
-    const body = (await req.json()) as { dxfText?: string; intent?: Record<string, unknown> };
+    const body = await readBoundedJson<{ dxfText?: string; intent?: Record<string, unknown> }>(req, MAX_BODY_BYTES);
     dxfText = String(body.dxfText ?? '');
     if (body.intent && typeof body.intent === 'object') intent = body.intent;
-  } catch {
+  } catch (error) {
+    if (boundedJsonError(error)?.code === 'PAYLOAD_TOO_LARGE') return NextResponse.json({ ok: false, error: 'DXF가 너무 큽니다(4MB 이하 ASCII).' }, { status: 413 });
     return NextResponse.json({ ok: false, error: 'invalid json' }, { status: 400 });
   }
   if (dxfText.length < 20) return NextResponse.json({ ok: false, error: 'DXF 내용이 필요합니다.' }, { status: 400 });

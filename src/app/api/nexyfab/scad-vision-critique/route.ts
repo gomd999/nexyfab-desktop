@@ -5,9 +5,13 @@ import { getPromptVariant } from '@/lib/ai/prompts';
 import { rateLimit } from '@/lib/rate-limit';
 import { getTrustedClientIp } from '@/lib/client-ip';
 import { guardStudioAi } from '@/lib/studio-ai-guard';
+import { localizedApiMessage, resolveServerLocale } from '@/lib/i18n/serverLocale';
+import { readBoundedJson } from '@/lib/boundedJsonBody';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
+// Two optional base64 rasters plus SCAD source.
+const MAX_JSON_BODY_BYTES = 16 * 1024 * 1024;
 
 /**
  * Visual self-critique for free-form Studio models. The client sends a
@@ -19,23 +23,24 @@ export const dynamic = 'force-dynamic';
  * not metered as a new design (guest-friendly, like the render self-repair).
  */
 export async function POST(req: NextRequest) {
+  const body = (await readBoundedJson(req, MAX_JSON_BODY_BYTES).catch(() => ({}))) as { image?: string; prompt?: string; scad?: string; multiview?: boolean; refImage?: string; lang?: string };
+  const locale = resolveServerLocale(req, body.lang ?? req.nextUrl.searchParams.get('lang'));
   // 감사 2026-07-16: 완전 무가드였던 그물⑤(요청당 vision+chat 2회 유료 호출) — studio AI 정책 이식
   const ip = getTrustedClientIp(req.headers);
   const rl = rateLimit(`scad-vision:${ip}`, 6, 60_000);
-  if (!rl.allowed) return NextResponse.json({ faithful: true, scad: null, error: '요청이 너무 많습니다.' }, { status: 429 });
+  if (!rl.allowed) return NextResponse.json({ faithful: true, scad: null, error: localizedApiMessage(locale, 'rateLimited'), outputLanguage: locale.route }, { status: 429 });
   const planGuard = await guardStudioAi(req);
   if (planGuard) return planGuard;
   try {
     const { getActiveBreaker } = await import('@/lib/cost-breaker');
-    if (await getActiveBreaker()) return NextResponse.json({ faithful: true, scad: null });
+    if (await getActiveBreaker()) return NextResponse.json({ faithful: true, scad: null, outputLanguage: locale.route });
   } catch { /* ignore */ }
-  const body = (await req.json().catch(() => ({}))) as { image?: string; prompt?: string; scad?: string; multiview?: boolean; refImage?: string };
   const multiview = body.multiview === true;
   const prompt = (body.prompt ?? '').trim();
   const scad = (body.scad ?? '').trim();
   const image = body.image ?? '';
   if (!scad || !image || !prompt) {
-    return NextResponse.json({ faithful: true, scad: null });
+    return NextResponse.json({ faithful: true, scad: null, outputLanguage: locale.route });
   }
 
   const toBytes = (s: string): Uint8Array | null => {
@@ -43,7 +48,7 @@ export async function POST(req: NextRequest) {
     catch { return null; }
   };
   const bytes = toBytes(image);
-  if (!bytes) return NextResponse.json({ faithful: true, scad: null });
+  if (!bytes) return NextResponse.json({ faithful: true, scad: null, outputLanguage: locale.route });
   // Optional reference photo (image-to-3D): the reviewer compares the render
   // against the real object the user uploaded.
   const refBytes = body.refImage ? toBytes(body.refImage) : null;
@@ -74,11 +79,11 @@ Faithful = a person clearly recognizes it as "${prompt}", as ONE connected solid
       issues: Array.isArray(parsed.issues) ? parsed.issues.filter((s: unknown) => typeof s === 'string').slice(0, 5) : [],
     };
   } catch {
-    return NextResponse.json({ faithful: true, scad: null }); // vision down → no-op
+    return NextResponse.json({ faithful: true, scad: null, outputLanguage: locale.route }); // vision down → no-op
   }
 
   if (critique.faithful || critique.issues.length === 0) {
-    return NextResponse.json({ faithful: true, scad: null, issues: [] });
+    return NextResponse.json({ faithful: true, scad: null, issues: [], outputLanguage: locale.route });
   }
 
   // 2. DeepSeek rewrites the geometry to fix the flagged problems.
@@ -86,7 +91,7 @@ Faithful = a person clearly recognizes it as "${prompt}", as ONE connected solid
   try {
     const fix = await chatCompletion({
       messages: [
-        { role: 'system', content: promptDef.template },
+        { role: 'system', content: `${promptDef.template}\n\n[OUTPUT LANGUAGE CONTRACT]\nWrite critique issue text in ${locale.languageName}; preserve OpenSCAD/JSCAD code, parameter names, and stable identifiers.` },
         { role: 'user', content: `Here is the current OpenSCAD program:\n\`\`\`\n${scad}\n\`\`\`\n\nA reviewer looked at the 3D render and found these problems that stop it from looking like "${prompt}":\n${critique.issues.map((s, i) => `${i + 1}. ${s}`).join('\n')}\n\nFix the GEOMETRY so it faithfully looks like "${prompt}": correct the orientation, position, proportion and connection of every part, and remove any floating/detached pieces. Return the COMPLETE corrected program, keeping the same Customizer parameter variables, comments and groups so the sliders still work.` },
       ],
       maxTokens: promptDef.defaults.maxTokens,
@@ -97,8 +102,8 @@ Faithful = a person clearly recognizes it as "${prompt}", as ONE connected solid
     let fixed = fix.text.replace(/^```(?:openscad|scad|c)?\s*/i, '').replace(/```\s*$/i, '').trim();
     const fence = fixed.match(/```(?:openscad|scad|c)?\s*([\s\S]*?)```/i);
     if (fence) fixed = fence[1]!.trim();
-    return NextResponse.json({ faithful: false, issues: critique.issues, scad: fixed && fixed !== scad ? fixed : null });
+    return NextResponse.json({ faithful: false, issues: critique.issues, scad: fixed && fixed !== scad ? fixed : null, outputLanguage: locale.route });
   } catch {
-    return NextResponse.json({ faithful: false, issues: critique.issues, scad: null });
+    return NextResponse.json({ faithful: false, issues: critique.issues, scad: null, outputLanguage: locale.route });
   }
 }

@@ -1,0 +1,149 @@
+{
+  "schema": "nexyfab.platform-architecture.v1",
+  "contractVersion": "2026-08-13.1",
+  "sourceBaseline": {
+    "branch": "release/2026-08-10",
+    "head": "3d6ba1ec",
+    "workingTree": "candidate_uncommitted",
+    "productionState": "NOT_RUN"
+  },
+  "services": [
+    {
+      "id": "studio-web",
+      "descriptor": "apps/studio-web/service.json",
+      "currentSource": ".",
+      "currentPlatform": "railway",
+      "targetPlatform": "cloudflare-workers-opennext",
+      "implementationState": "MIGRATION_PENDING"
+    },
+    {
+      "id": "core-api",
+      "descriptor": "apps/core-api/service.json",
+      "currentSource": "src/app/api",
+      "currentPlatform": "railway",
+      "targetPlatform": "railway",
+      "implementationState": "COMPATIBILITY_BOUNDARY"
+    },
+    {
+      "id": "edge-gateway",
+      "descriptor": "workers/edge-gateway/service.json",
+      "currentSource": "workers/edge-gateway",
+      "currentPlatform": "NOT_IMPLEMENTED",
+      "targetPlatform": "cloudflare-workers",
+      "implementationState": "PARTIAL"
+    },
+    {
+      "id": "cron-worker",
+      "descriptor": "workers/cron/service.json",
+      "currentSource": "cron-worker",
+      "currentPlatform": "cloudflare-workers",
+      "targetPlatform": "cloudflare-workers",
+      "implementationState": "PARTIAL"
+    },
+    {
+      "id": "collab-worker",
+      "descriptor": "workers/collab/service.json",
+      "currentSource": "occt-collab-worker",
+      "currentPlatform": "cloudflare-workers-durable-objects-kv",
+      "targetPlatform": "cloudflare-workers-durable-objects-r2",
+      "implementationState": "PARTIAL"
+    },
+    {
+      "id": "job-orchestrator",
+      "descriptor": "workers/job-orchestrator/service.json",
+      "currentSource": "src/lib/cad/spatialCadJobStore.ts",
+      "currentPlatform": "railway-origin",
+      "targetPlatform": "cloudflare-queues-workflows",
+      "implementationState": "PARTIAL"
+    },
+    {
+      "id": "openscad",
+      "descriptor": "containers/openscad/service.json",
+      "currentSource": "containers/openscad",
+      "currentPlatform": "railway",
+      "targetPlatform": "cloudflare-containers",
+      "implementationState": "PARTIAL"
+    },
+    {
+      "id": "fea",
+      "descriptor": "containers/fea/service.json",
+      "currentSource": "containers/fea",
+      "currentPlatform": "railway",
+      "targetPlatform": "cloudflare-containers",
+      "implementationState": "PARTIAL"
+    },
+    {
+      "id": "occt-exact",
+      "descriptor": "containers/occt-exact/service.json",
+      "currentSource": "containers/occt-exact",
+      "currentPlatform": "local-browser-worker",
+      "targetPlatform": "cloudflare-containers",
+      "implementationState": "PARTIAL"
+    },
+    {
+      "id": "ifc-step",
+      "descriptor": "containers/ifc-step/service.json",
+      "currentSource": "containers/ifc-step",
+      "currentPlatform": "railway-origin",
+      "targetPlatform": "cloudflare-containers",
+      "implementationState": "PARTIAL"
+    },
+    {
+      "id": "native-fallback",
+      "descriptor": "containers/native-fallback/service.json",
+      "currentSource": "containers/native-fallback",
+      "currentPlatform": "railway-container-not-deployed",
+      "targetPlatform": "railway",
+      "implementationState": "PARTIAL"
+    }
+  ],
+  "dataStores": [
+    {
+      "id": "relational-system-of-record",
+      "authority": "postgresql",
+      "currentPlatform": "railway",
+      "targetPlatform": "railway-postgresql-with-hyperdrive",
+      "state": "EXTERNAL_NOT_RUN",
+      "owns": ["identity", "tenant", "authorization", "billing", "orders", "project-metadata", "cad-revision-metadata", "job-state"]
+    },
+    {
+      "id": "artifact-system-of-record",
+      "authority": "r2",
+      "currentPlatform": "s3-compatible-adapter",
+      "targetPlatform": "cloudflare-r2",
+      "state": "PARTIAL",
+      "owns": ["step", "ifc", "brep", "drawings", "job-results", "collaboration-snapshots"]
+    },
+    {
+      "id": "job-transport",
+      "authority": "cloudflare-queues",
+      "currentPlatform": "railway-redis",
+      "targetPlatform": "cloudflare-queues",
+      "state": "PARTIAL",
+      "owns": ["job-delivery-only"]
+    },
+    {
+      "id": "collaboration-session",
+      "authority": "durable-objects",
+      "currentPlatform": "cloudflare-durable-objects-kv",
+      "targetPlatform": "cloudflare-durable-objects-r2",
+      "state": "PARTIAL",
+      "owns": ["live-session", "awareness", "recovery-snapshot-pointer"]
+    },
+    {
+      "id": "ephemeral-compute-disk",
+      "authority": "none",
+      "currentPlatform": "worker-local-disk",
+      "targetPlatform": "container-ephemeral-disk",
+      "state": "PARTIAL",
+      "owns": []
+    }
+  ],
+  "forbiddenClaims": [
+    "queue_delivery_equals_execution_pass",
+    "compute_pass_equals_release_pass",
+    "container_disk_is_durable",
+    "kv_or_durable_object_is_authority_for_identity_billing_or_orders",
+    "missing_evidence_can_be_promoted_to_pass"
+  ]
+}

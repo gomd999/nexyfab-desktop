@@ -1,0 +1,53 @@
+{
+  "schema": "nexyfab.mechanical-core-feature-local-runtime.v1",
+  "feature": "shell",
+  "axis": "edit",
+  "status": "PASS",
+  "executedAt": "2026-08-22T07:13:00.871Z",
+  "commandId": "shell-runtime-param-edit",
+  "historyDepth": 1,
+  "before": {
+    "id": "runtime-feature",
+    "enabled": true,
+    "type": "shell",
+    "params": {
+      "thickness": 1.44,
+      "openFace": 1
+    }
+  },
+  "after": {
+    "id": "runtime-feature",
+    "enabled": true,
+    "type": "shell",
+    "params": {
+      "thickness": 2.4,
+      "openFace": 1
+    }
+  },
+  "intentBinding": {
+    "caseId": "ko_practical-04-shell",
+    "candidateId": "intent-runtime:ko_practical-04-shell",
+    "candidateBaseRevision": "7c3a02e2da7fbee88dac5533efea39eac2ec0114cde1b70936d41992d83dbbe1",
+    "promptSha256": "52f0acadbaccba1af392291d411d56ba0d67064c973116a29151d164737a71e9",
+    "inputSha256": "e315ec859f4459bf7428df820f82a3f77efa3ebcc762be1f4a46db82ea0ed5fd",
+    "sourceUnits": [
+      "mm"
+    ],
+    "normalizedUnit": "mm",
+    "dimensionsMm": {
+      "width": 100,
+      "length": 60,
+      "thickness": 8
+    }
+  },
+  "intentDimensionAssertion": {
+    "status": "PASS",
+    "inputSha256": "e315ec859f4459bf7428df820f82a3f77efa3ebcc762be1f4a46db82ea0ed5fd",
+    "dimensionsMm": {
+      "width": 100,
+      "length": 60,
+      "thickness": 8
+    },
+    "normalizedUnit": "mm"
+  }
+}

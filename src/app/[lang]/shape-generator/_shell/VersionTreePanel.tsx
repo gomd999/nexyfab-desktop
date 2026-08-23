@@ -13,10 +13,9 @@
 //     conflict list with per-conflict ours/theirs resolution → 2-parent
 //     merge commit via VersionRepo.merge.
 //
-// Honest-limits note (rendered in the UI as captions, not hidden):
-//   - History is in-memory per session (no backend persistence yet).
-//   - Checkout moves the PDM HEAD only — restoring the live model from a
-//     commit snapshot is not wired (Inner's feature pipeline owns that).
+// Checkout is available for both session branches and server-backed versions.
+// The selected immutable snapshot is replayed into Inner's live feature
+// pipeline through the shared nexyfab:pdm-checkout-restore contract.
 
 import { useEffect, useMemo, useState } from 'react';
 import { useLang } from '../hooks/useLang';
@@ -80,10 +79,12 @@ export function VersionTreePanel({ isKo, documentId }: VersionTreePanelProps) {
   const commitAndPersist = usePdmSessionStore(s => s.commitAndPersist);
   const persistCommit = usePdmSessionStore(s => s.persistCommit);
   const loadHistory = usePdmSessionStore(s => s.loadHistory);
+  const checkoutServerVersion = usePdmSessionStore(s => s.checkoutServerVersion);
   const restoredGraph = usePdmSessionStore(s => s.restoredGraph);
   const lastPersistError = usePdmSessionStore(s => s.lastPersistError);
   const [showServerHistory, setShowServerHistory] = useState(false);
   const [historyLoading, setHistoryLoading] = useState(false);
+  const [checkoutLoading, setCheckoutLoading] = useState<string | null>(null);
 
   // Auto-bind when a caller supplies a real document id (no-op today — no
   // live caller passes one yet; see documentPersistence.ts's 260723 note).
@@ -324,12 +325,12 @@ export function VersionTreePanel({ isKo, documentId }: VersionTreePanelProps) {
               </label>
               <div style={{ fontSize: 9, color: 'var(--nx-text-3)' }}>
                 {loc(lang, {
-                  ko: '체크아웃은 PDM HEAD만 이동합니다 — 모델 복원은 아직 미지원',
-                  en: 'Checkout moves the PDM HEAD only — restoring the model is not wired yet',
-                  ja: 'チェックアウトはPDM HEADの移動のみ — モデル復元は未対応',
-                  zh: '检出仅移动 PDM HEAD — 尚不支持恢复模型',
-                  es: 'El checkout solo mueve el HEAD de PDM — restaurar el modelo aún no está conectado',
-                  ar: 'السحب يحرك رأس PDM فقط — استعادة النموذج غير مفعلة بعد',
+                  ko: '체크아웃하면 PDM HEAD와 해당 피처 스냅샷이 현재 모델에 함께 복원됩니다.',
+                  en: 'Checkout restores the PDM HEAD and replays its feature snapshot into the live model.',
+                  ja: 'チェックアウトすると、PDM HEADとフィーチャースナップショットが現在のモデルに復元されます。',
+                  zh: '检出会恢复 PDM HEAD，并将其特征快照重新应用到当前模型。',
+                  es: 'El checkout restaura el HEAD de PDM y reproduce su instantánea de operaciones en el modelo activo.',
+                  ar: 'يعيد السحب رأس PDM ويطبّق لقطة الميزات الخاصة به على النموذج الحالي.',
                 })}
               </div>
 
@@ -494,6 +495,18 @@ export function VersionTreePanel({ isKo, documentId }: VersionTreePanelProps) {
                               </span>
                               <span style={{ color: 'var(--nx-text)' }}>{c.message}</span>
                               <span>({c.branch})</span>
+                              <button
+                                type="button"
+                                data-testid={`pdm-server-checkout-${c.id}`}
+                                disabled={checkoutLoading !== null}
+                                onClick={() => {
+                                  setCheckoutLoading(c.id);
+                                  void checkoutServerVersion(c.id).finally(() => setCheckoutLoading(null));
+                                }}
+                                style={{ ...miniBtn, height: 18, padding: '1px 5px', opacity: checkoutLoading !== null ? 0.55 : 1 }}
+                              >
+                                {checkoutLoading === c.id ? '…' : loc(lang, { ko: '복원', en: 'Restore', ja: '復元', zh: '恢复', es: 'Restaurar', ar: 'استعادة' })}
+                              </button>
                             </div>
                           ))}
                         </div>

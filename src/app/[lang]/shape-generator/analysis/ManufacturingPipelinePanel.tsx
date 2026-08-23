@@ -10,6 +10,7 @@ import {
   type ManufacturerRecommendation,
 } from './manufacturingPipeline';
 import { useAnalysisStore } from '../store/analysisStore';
+import { createCommercialLocalizer } from '@/lib/i18n/commercialLocalizer';
 
 /* ─── i18n ──────────────────────────────────────────────────────────────── */
 
@@ -174,6 +175,7 @@ export default function ManufacturingPipelinePanel({
   const result = propResult ?? storeResult;
   const setResult = setStoreResult;
   const [running, setRunning] = useState(false);
+  const L = React.useMemo(() => createCommercialLocalizer(lang), [lang]);
 
   const handleRun = useCallback(async () => {
     setRunning(true);
@@ -311,7 +313,7 @@ export default function ManufacturingPipelinePanel({
   /* ── Manufacturer cards ─ */
   function renderManufacturer(m: ManufacturerRecommendation) {
     const stars = '\u2605'.repeat(Math.round(m.rating)) + '\u2606'.repeat(5 - Math.round(m.rating));
-    const nameDisplay = (langMap[lang] ?? 'en') === 'ko' ? m.nameKo : m.name;
+    const nameDisplay = L(m.nameKo, m.name);
     return (
       <div key={m.id} style={{
         background: C.card, border: `1px solid ${C.border}`, borderRadius: 8,

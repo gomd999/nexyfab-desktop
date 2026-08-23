@@ -23,6 +23,7 @@ import {
   type SpecVerificationResult,
 } from '@/lib/ai/scad-agent/specVerification';
 import type { IntentInput } from '@/lib/openscad-render/intentToScad';
+import { readBoundedJson } from '@/lib/boundedJsonBody';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -31,6 +32,7 @@ export const dynamic = 'force-dynamic';
  *  current editor" use case; long-form library files belong on the async
  *  render path, not on this synchronous verify route. */
 const MAX_SCAD_BYTES = 100_000;
+const MAX_JSON_BODY_BYTES = 1024 * 1024;
 /** Per (ip,user) hourly cap. Verify is heavier than scad-intent-from-nl
  *  (CLI render + STL parse + topology checks) so we cap it more conservatively. */
 const RATE_LIMIT_PER_HOUR = 60;
@@ -88,7 +90,7 @@ export async function POST(req: NextRequest): Promise<NextResponse<ErrorResponse
     return err('Rate limit exceeded', 429, 'RATE_LIMIT');
   }
 
-  const body = (await req.json().catch(() => ({}))) as Record<string, unknown>;
+  const body = (await readBoundedJson(req, MAX_JSON_BODY_BYTES).catch(() => ({}))) as Record<string, unknown>;
   const scad = typeof body.scad === 'string' ? body.scad : '';
   if (!scad.trim()) {
     return err('scad source is required', 400, 'SCAD_REQUIRED');

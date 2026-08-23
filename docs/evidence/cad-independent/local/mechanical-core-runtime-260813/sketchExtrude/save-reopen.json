@@ -1,0 +1,31 @@
+{
+  "schema": "nexyfab.mechanical-core-feature-local-runtime.v1",
+  "feature": "sketchExtrude",
+  "axis": "save_reopen",
+  "status": "PASS",
+  "executedAt": "2026-08-22T07:13:30.564Z",
+  "savedBytes": 3170,
+  "savedSha256": "a9a43bb5fe0bba47aa0aece0515f49f920cc0ad481995639c658b8827531de12",
+  "reopened": {
+    "handle": "occt:363",
+    "kernelKind": "Solid",
+    "nativeShapeType": 2,
+    "solidCount": 1,
+    "singleSolid": true,
+    "volumeMm3": 14256,
+    "edgeCount": 12,
+    "faceCount": 6,
+    "boundsMm": [
+      [
+        -1.0000000177635683e-7,
+        -1.0000000177635683e-7,
+        -9.000000100000001
+      ],
+      [
+        36.0000001,
+        22.0000001,
+        9.000000100000001
+      ]
+    ]
+  }
+}

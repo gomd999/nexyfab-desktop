@@ -1,0 +1,96 @@
+{
+  "schema": "nexyfab.mechanical-core-feature-local-runtime.v1",
+  "feature": "chamfer",
+  "axis": "regenerate",
+  "status": "PASS",
+  "executedAt": "2026-08-23T06:51:51.379Z",
+  "initial": {
+    "handle": "occt:31",
+    "kernelKind": "Solid",
+    "nativeShapeType": 0,
+    "solidCount": 1,
+    "singleSolid": true,
+    "volumeMm3": 37696.47526941668,
+    "edgeCount": 48,
+    "faceCount": 26,
+    "boundsMm": [
+      [
+        -50.00000010000002,
+        -3.175000100000022,
+        -30.000000100000022
+      ],
+      [
+        50.00000010000002,
+        3.175000100000022,
+        30.000000100000022
+      ]
+    ]
+  },
+  "edited": {
+    "handle": "occt:33",
+    "kernelKind": "Solid",
+    "nativeShapeType": 0,
+    "solidCount": 1,
+    "singleSolid": true,
+    "volumeMm3": 36515.17588470834,
+    "edgeCount": 48,
+    "faceCount": 26,
+    "boundsMm": [
+      [
+        -50.000000100000015,
+        -3.1750001000000183,
+        -30.000000100000015
+      ],
+      [
+        50.000000100000015,
+        3.1750001000000183,
+        30.000000100000015
+      ]
+    ]
+  },
+  "repeated": {
+    "handle": "occt:35",
+    "kernelKind": "Solid",
+    "nativeShapeType": 0,
+    "solidCount": 1,
+    "singleSolid": true,
+    "volumeMm3": 36515.17588470834,
+    "edgeCount": 48,
+    "faceCount": 26,
+    "boundsMm": [
+      [
+        -50.000000100000015,
+        -3.1750001000000183,
+        -30.000000100000015
+      ],
+      [
+        50.000000100000015,
+        3.1750001000000183,
+        30.000000100000015
+      ]
+    ]
+  },
+  "featureMeaning": {
+    "assertion": "exact feature changed volume relative to its exact seed",
+    "baselineVolumeMm3": 38100,
+    "actualVolumeMm3": 36515.17588470834
+  },
+  "intentBinding": {
+    "caseId": "mixed_units-03-chamfer",
+    "candidateId": "intent-runtime:mixed_units-03-chamfer",
+    "candidateBaseRevision": "3aabe87739ff99d1730c5375bad2e67c6be3fb8b482a4aa88e070328cf84915b",
+    "promptSha256": "50a5290d69b20f20f846644c5090aeab5a4a05032a8fdc661e7b8cc676c0b799",
+    "inputSha256": "83e52ee531c466b6e6f9297def0e729cef34d3f5fe74724fdbcf3c9c9c100687",
+    "sourceUnits": [
+      "mm",
+      "in"
+    ],
+    "normalizedUnit": "mm",
+    "dimensionsMm": {
+      "width": 100,
+      "length": 60,
+      "thickness": 6.35
+    }
+  },
+  "assertion": "edited parameter changed the exact signature and a fresh native regeneration reproduced topology, bounds, and volume"
+}

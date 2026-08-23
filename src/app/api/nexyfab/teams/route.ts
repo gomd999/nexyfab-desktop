@@ -4,8 +4,18 @@ import { getDbAdapter } from '@/lib/db-adapter';
 import { checkOrigin } from '@/lib/csrf';
 import { z } from 'zod';
 import { sendNotificationEmail as _sendNotificationEmail } from '@/app/lib/mailer';
+import { boundedJsonError, readBoundedJson } from '@/lib/boundedJsonBody';
 
 export const dynamic = 'force-dynamic';
+const TEAM_JSON_BYTES = 64 * 1024;
+
+async function readTeamBody(req: NextRequest): Promise<{ value: unknown; tooLarge: boolean }> {
+  try {
+    return { value: await readBoundedJson(req, TEAM_JSON_BYTES), tooLarge: false };
+  } catch (error) {
+    return { value: {}, tooLarge: boundedJsonError(error)?.code === 'PAYLOAD_TOO_LARGE' };
+  }
+}
 
 // GET — list teams user belongs to
 export async function GET(req: NextRequest) {
@@ -40,7 +50,9 @@ export async function POST(req: NextRequest) {
   }
 
   const schema = z.object({ name: z.string().min(2).max(100) });
-  const parsed = schema.safeParse(await req.json().catch(() => ({})));
+  const requestBody = await readTeamBody(req);
+  if (requestBody.tooLarge) return NextResponse.json({ error: 'Request body too large' }, { status: 413 });
+  const parsed = schema.safeParse(requestBody.value);
   if (!parsed.success) return NextResponse.json({ error: 'name is required (2-100 chars)' }, { status: 400 });
 
   const db = getDbAdapter();
@@ -65,7 +77,9 @@ export async function PATCH(req: NextRequest) {
     teamId: z.string().min(1),
     name: z.string().min(2).max(100),
   });
-  const parsed = schema.safeParse(await req.json().catch(() => ({})));
+  const requestBody = await readTeamBody(req);
+  if (requestBody.tooLarge) return NextResponse.json({ error: 'Request body too large' }, { status: 413 });
+  const parsed = schema.safeParse(requestBody.value);
   if (!parsed.success) return NextResponse.json({ error: 'Invalid input' }, { status: 400 });
 
   const db = getDbAdapter();
@@ -85,7 +99,9 @@ export async function DELETE(req: NextRequest) {
   const authUser = await getAuthUser(req);
   if (!authUser) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-  const { teamId } = await req.json().catch(() => ({})) as { teamId?: string };
+  const requestBody = await readTeamBody(req);
+  if (requestBody.tooLarge) return NextResponse.json({ error: 'Request body too large' }, { status: 413 });
+  const { teamId } = requestBody.value as { teamId?: string };
   if (!teamId) return NextResponse.json({ error: 'teamId required' }, { status: 400 });
 
   const db = getDbAdapter();

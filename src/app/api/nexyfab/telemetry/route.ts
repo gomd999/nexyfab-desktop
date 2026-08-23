@@ -6,6 +6,9 @@ import { shouldSkipTelemetryDuplicateForCadAudit } from '@/lib/telemetryCadDedup
 import { forwardToSentry } from '@/lib/sentry-forward';
 import { getTrustedClientIpOrUndefined } from '@/lib/client-ip';
 import { flattenFeaturePipelineContext } from '@/lib/featurePipelineTelemetry';
+import { rateLimit } from '@/lib/rate-limit';
+import { boundTelemetryContext } from './telemetry-bounds';
+import { boundedJsonError, readBoundedJson } from '@/lib/boundedJsonBody';
 
 /**
  * Client-side telemetry ingestion for shape-generator.
@@ -35,6 +38,13 @@ interface IncomingEvent {
 }
 
 const MAX_EVENTS_PER_REQUEST = 100;
+const MAX_TELEMETRY_BODY_BYTES = 8 * 1024 * 1024;
+
+// Telemetry is intentionally public, but a batch endpoint must not become an
+// unbounded log/Sentry fan-out. Keep this limiter separate from the generic
+// proxy limit so its request budget is explicit and locally testable.
+const TELEMETRY_RATE_LIMIT = 30;
+const TELEMETRY_RATE_WINDOW_MS = 60_000;
 
 const MAX_MESSAGE_LEN = 2000;
 const MAX_STACK_LEN = 5000;
@@ -47,7 +57,7 @@ function sanitize(ev: IncomingEvent): IncomingEvent {
     source: typeof ev.source === 'string' ? ev.source.slice(0, 64) : 'unknown',
     message: typeof ev.message === 'string' ? ev.message.slice(0, MAX_MESSAGE_LEN) : '',
     stack: typeof ev.stack === 'string' ? ev.stack.slice(0, MAX_STACK_LEN) : undefined,
-    context: ev.context && typeof ev.context === 'object' ? ev.context : undefined,
+    context: boundTelemetryContext(ev.context),
     url: typeof ev.url === 'string' ? ev.url.slice(0, 256) : undefined,
     sessionId: typeof ev.sessionId === 'string' ? ev.sessionId.slice(0, 64) : undefined,
   };
@@ -55,8 +65,25 @@ function sanitize(ev: IncomingEvent): IncomingEvent {
 
 export async function POST(req: NextRequest) {
   try {
+    const ip = getTrustedClientIpOrUndefined(req.headers);
+    const rate = rateLimit(
+      `nexyfab-telemetry:${ip ?? 'unknown'}`,
+      TELEMETRY_RATE_LIMIT,
+      TELEMETRY_RATE_WINDOW_MS,
+    );
+    if (!rate.allowed) {
+      return NextResponse.json(
+        { ok: false, error: 'Too many telemetry requests' },
+        { status: 429, headers: { 'Retry-After': String(Math.max(1, Math.ceil((rate.resetAt - Date.now()) / 1000))) } },
+      );
+    }
+
     const authUser = await getAuthUser(req).catch(() => null);
-    const body = (await req.json().catch(() => null)) as { events?: IncomingEvent[] } | null;
+    let body: { events?: IncomingEvent[] } | null = null;
+    try { body = await readBoundedJson(req, MAX_TELEMETRY_BODY_BYTES); }
+    catch (error) {
+      if (boundedJsonError(error)?.code === 'PAYLOAD_TOO_LARGE') return NextResponse.json({ ok: false, error: 'Payload too large', code: 'PAYLOAD_TOO_LARGE' }, { status: 413 });
+    }
     if (!body || !Array.isArray(body.events)) {
       return NextResponse.json({ ok: false, error: 'events array required' }, { status: 400 });
     }
@@ -66,7 +93,6 @@ export async function POST(req: NextRequest) {
     // Fan out to the existing audit log so ops can query it alongside other
     // user activity. logAudit swallows its own errors, so one bad row won't
     // break the batch.
-    const ip = getTrustedClientIpOrUndefined(req.headers);
     for (const ev of events) {
       const ctx =
         ev.context && typeof ev.context === 'object' && !Array.isArray(ev.context)

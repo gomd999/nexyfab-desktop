@@ -18,6 +18,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import FabPanel from './FabPanel';
+import { createCommercialLocalizer } from '@/lib/i18n/commercialLocalizer';
 
 const HANGUL = /[가-힣]/;
 
@@ -56,11 +57,12 @@ beforeEach(() => {
 });
 
 describe('FabPanel — rate card labels are language-branched, not fixed Korean', () => {
-  it.each(['en', 'ja', 'cn', 'es', 'ar'])('lang=%s: rate card shows English labels, no leftover Korean', async (lang) => {
+  it.each(['en', 'ja', 'cn', 'es', 'ar'])('lang=%s: rate card uses the six-language catalog, no leftover Korean', async (lang) => {
     const { container } = render(<FabPanel intent={{ kind: 'sheet' }} lang={lang} />);
-    await screen.findByText('Material (₩/kg)');
-    expect(screen.getByText('Cut (₩/m)')).toBeInTheDocument();
-    expect(screen.getByText('Margin (%)')).toBeInTheDocument();
+    const L = createCommercialLocalizer(lang);
+    await screen.findByText(`${L('', 'Material')} (₩/kg)`);
+    expect(screen.getByText(`${L('', 'Cut')} (₩/m)`)).toBeInTheDocument();
+    expect(screen.getByText(`${L('', 'Margin')} (%)`)).toBeInTheDocument();
     expect(container.textContent).not.toMatch(HANGUL);
   });
 

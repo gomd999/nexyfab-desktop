@@ -2,11 +2,13 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 
 // Stub the DB so we can hand-feed prompt_call rows per test.
 const userRows = new Map<string, Array<{ metadata: string; created_at?: number }>>();
+const seenQueries: Array<{ sql: string; args: unknown[] }> = [];
 
 vi.mock('@/lib/db-adapter', () => ({
   getDbAdapter: () => ({
     async queryAll<T>(sql: string, ...args: unknown[]): Promise<T[]> {
       if (/FROM nf_usage_events/i.test(sql)) {
+        seenQueries.push({ sql, args });
         const userId = String(args[0]);
         const rows = userRows.get(userId) ?? [];
         // Mock now provides created_at in addition to metadata.
@@ -26,6 +28,7 @@ describe('checkUserBudget', () => {
 
   beforeEach(() => {
     userRows.clear();
+    seenQueries.length = 0;
     _clearUserBudgetCacheForTests();
     savedLimit = process.env.COST_BUDGET_USD_PER_USER_DAILY;
     delete process.env.COST_BUDGET_USD_PER_USER_DAILY;
@@ -101,6 +104,24 @@ describe('checkUserBudget', () => {
     const b = await checkUserBudget('u-b');
     expect(a.ok).toBe(false);
     expect(b.ok).toBe(true);
+  });
+
+  it('keeps organization budgets independent from the same user personal budget', async () => {
+    process.env.COST_BUDGET_USD_PER_USER_DAILY = '1';
+    userRows.set('u-shared', [{ metadata: JSON.stringify({ costCents: 25 }) }]);
+    userRows.set('org-a', [{ metadata: JSON.stringify({ costCents: 200 }) }]);
+    userRows.set('org-b', [{ metadata: JSON.stringify({ costCents: 50 }) }]);
+
+    const personal = await checkUserBudget('u-shared');
+    const orgA = await checkUserBudget('u-shared', 'org-a');
+    const orgB = await checkUserBudget('u-shared', 'org-b');
+
+    expect(personal.usedCents).toBe(25);
+    expect(orgA.ok).toBe(false);
+    expect(orgB.ok).toBe(true);
+    expect(seenQueries[0]?.sql).toContain('user_id = ? AND org_id IS NULL');
+    expect(seenQueries[1]?.sql).toContain('org_id = ?');
+    expect(seenQueries[1]?.args[0]).toBe('org-a');
   });
 
   it('zero or negative limit is treated as disabled', async () => {

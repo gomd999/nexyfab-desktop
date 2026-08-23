@@ -17,6 +17,10 @@ import { NextRequest, NextResponse } from 'next/server';
 import { chatCompletion, AiNotConfiguredError, AiProviderError, type ChatMessage } from '@/lib/ai';
 import { getPrompt } from '@/lib/ai/prompts';
 import { recordPromptCall, classifyAiError } from '@/lib/ai/telemetry';
+import { localizedApiMessage, resolveServerLocale } from '@/lib/i18n/serverLocale';
+import { boundedJsonError, readBoundedJson } from '@/lib/boundedJsonBody';
+
+const MAX_BODY_BYTES = 1024 * 1024;
 
 // ─── Types (mirror the DFMIssue client shape, trimmed to what LLM needs) ──
 
@@ -212,18 +216,30 @@ function stripMarkdownJson(text: string): string {
 // ─── POST handler ─────────────────────────────────────────────────────────
 
 export async function POST(req: NextRequest) {
+  let requestBody = {} as {
+    issue: DFMIssueInput;
+    process: ProcessKind;
+    material?: string;
+    params?: Record<string, number>;
+    lang?: string;
+    projectId?: string;
+  };
+  let requestBodyTooLarge = false;
+  try { requestBody = await readBoundedJson<typeof requestBody>(req, MAX_BODY_BYTES); }
+  catch (error) { requestBodyTooLarge = boundedJsonError(error)?.code === 'PAYLOAD_TOO_LARGE'; }
+  const locale = resolveServerLocale(req, requestBody.lang ?? req.nextUrl.searchParams.get('lang'));
   const { checkPlan, checkMonthlyLimit, recordUsageEvent } = await import('@/lib/plan-guard');
   const planCheck = await checkPlan(req, 'free');
   if (!planCheck.ok) return planCheck.response;
 
-  const usageCheck = await checkMonthlyLimit(planCheck.userId, planCheck.plan, 'dfm_insights');
+  const usageCheck = await checkMonthlyLimit(planCheck.userId, planCheck.plan, 'dfm_insights', planCheck.orgId);
   if (!usageCheck.ok) {
     const isPro = usageCheck.limit === -2;
     return NextResponse.json(
       {
         error: isPro
-          ? 'AI DFM Insights requires Pro plan or higher.'
-          : `Free plan limit reached (${usageCheck.limit}/month). Upgrade to Pro for unlimited AI DFM insights.`,
+          ? localizedApiMessage(locale, 'planUpgrade')
+          : localizedApiMessage(locale, 'planLimit', { limit: `${usageCheck.limit}/month` }),
         requiresPro: isPro,
         used: usageCheck.used,
         limit: usageCheck.limit,
@@ -232,18 +248,12 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const body = await req.json().catch(() => ({})) as {
-    issue: DFMIssueInput;
-    process: ProcessKind;
-    material?: string;
-    params?: Record<string, number>;
-    lang?: string;
-    projectId?: string;
-  };
+  if (requestBodyTooLarge) return NextResponse.json({ error: localizedApiMessage(locale, 'badRequest'), code: 'PAYLOAD_TOO_LARGE' }, { status: 413 });
+  const body = requestBody;
 
-  const { issue, process: procKind, material, params, lang, projectId } = body;
+  const { issue, process: procKind, material, params, projectId } = body;
   if (!issue || !issue.type || !procKind) {
-    return NextResponse.json({ error: 'issue.type and process are required' }, { status: 400 });
+    return NextResponse.json({ error: localizedApiMessage(locale, 'messageRequired'), code: 'DFM_INPUT_REQUIRED' }, { status: 400 });
   }
 
   const { recordAIHistory } = await import('@/lib/ai-history');
@@ -257,8 +267,8 @@ export async function POST(req: NextRequest) {
 
   const prompt = getPrompt('dfm-explainer');
   const messages: ChatMessage[] = [
-    { role: 'system', content: prompt.template },
-    { role: 'user', content: JSON.stringify({ issue, process: procKind, material, params, requestedLanguage: lang ?? 'en' }) },
+    { role: 'system', content: `${prompt.template}\n\n[OUTPUT LANGUAGE CONTRACT]\nWrite primary explanation, labels, rationales, and cost notes in ${locale.languageName}. Keep the *Ko fields as Korean legacy compatibility text.` },
+    { role: 'user', content: JSON.stringify({ issue, process: procKind, material, params, requestedLanguage: locale.languageName }) },
   ];
 
   let content = '';
@@ -273,6 +283,7 @@ export async function POST(req: NextRequest) {
     content = result.text;
     recordPromptCall({
       userId: planCheck.userId,
+      orgId: planCheck.orgId,
       promptId: prompt.id,
       promptVersion: prompt.version,
       provider: result.provider,
@@ -285,6 +296,7 @@ export async function POST(req: NextRequest) {
   } catch (e) {
     recordPromptCall({
       userId: planCheck.userId,
+      orgId: planCheck.orgId,
       promptId: prompt.id,
       promptVersion: prompt.version,
       provider: e instanceof AiProviderError ? e.provider : 'unknown',
@@ -294,33 +306,35 @@ export async function POST(req: NextRequest) {
       errorClass: classifyAiError(e),
     });
     if (e instanceof AiNotConfiguredError) {
-      recordUsageEvent(planCheck.userId, 'dfm_insights');
+      recordUsageEvent(planCheck.userId, 'dfm_insights', undefined, planCheck.orgId);
       const explanation = ruleBasedExplain(issue, procKind);
       recordAIHistory({
         userId: planCheck.userId,
+        orgId: planCheck.orgId,
         feature: 'dfm_insights',
         title: historyTitle,
         payload: { explanation },
         context: historyContext,
         projectId,
       });
-      return NextResponse.json({ explanation });
+      return NextResponse.json({ explanation, outputLanguage: locale.route });
     }
     const detail = e instanceof AiProviderError
       ? `${e.provider}${e.status ? ` (${e.status})` : ''}: ${e.message}`
       : (e instanceof Error ? e.message : String(e));
     console.warn('[dfm-explainer] AI provider failed, using rule-based fallback:', detail);
-    recordUsageEvent(planCheck.userId, 'dfm_insights');
+    recordUsageEvent(planCheck.userId, 'dfm_insights', undefined, planCheck.orgId);
     const fallback = ruleBasedExplain(issue, procKind);
     recordAIHistory({
       userId: planCheck.userId,
+      orgId: planCheck.orgId,
       feature: 'dfm_insights',
       title: historyTitle,
       payload: { explanation: fallback },
       context: historyContext,
       projectId,
     });
-    return NextResponse.json({ explanation: fallback });
+    return NextResponse.json({ explanation: fallback, outputLanguage: locale.route });
   }
 
   try {
@@ -346,28 +360,30 @@ export async function POST(req: NextRequest) {
       costNoteKo: parsed.costNoteKo ?? parsed.costNote ?? '',
     };
 
-    recordUsageEvent(planCheck.userId, 'dfm_insights');
+    recordUsageEvent(planCheck.userId, 'dfm_insights', undefined, planCheck.orgId);
     recordAIHistory({
       userId: planCheck.userId,
+      orgId: planCheck.orgId,
       feature: 'dfm_insights',
       title: historyTitle,
       payload: { explanation },
       context: historyContext,
       projectId,
     });
-    return NextResponse.json({ explanation });
+    return NextResponse.json({ explanation, outputLanguage: locale.route });
   } catch (err) {
     console.warn('[dfm-explainer] AI response parse failed, using rule-based fallback:', err);
-    recordUsageEvent(planCheck.userId, 'dfm_insights');
+    recordUsageEvent(planCheck.userId, 'dfm_insights', undefined, planCheck.orgId);
     const fallback = ruleBasedExplain(issue, procKind);
     recordAIHistory({
       userId: planCheck.userId,
+      orgId: planCheck.orgId,
       feature: 'dfm_insights',
       title: historyTitle,
       payload: { explanation: fallback },
       context: historyContext,
       projectId,
     });
-    return NextResponse.json({ explanation: fallback });
+    return NextResponse.json({ explanation: fallback, outputLanguage: locale.route });
   }
 }

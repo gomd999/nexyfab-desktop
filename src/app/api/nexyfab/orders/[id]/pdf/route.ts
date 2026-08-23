@@ -4,8 +4,12 @@ import { getDbAdapter } from '@/lib/db-adapter';
 import { getPartnerAuth } from '@/lib/partner-auth';
 import { formatMoney } from '@/lib/money';
 import { calculateTax } from '@/lib/tax-engine';
+import { isOrderBuyerInActiveWorkspace } from '@/lib/nfOrderAccess';
 import { incotermProfile } from '@/lib/shipping';
 import type { CountryCode, CurrencyCode } from '@/lib/country-pricing';
+import { bcp47 } from '@/lib/i18n/format';
+import { loc } from '@/lib/i18n/loc';
+import { resolveServerLocale } from '@/lib/i18n/serverLocale';
 
 export const dynamic = 'force-dynamic';
 
@@ -32,7 +36,7 @@ export async function GET(
   }
 
   const order = await db.queryOne<{
-    id: string; rfq_id: string | null; user_id: string; part_name: string;
+    id: string; rfq_id: string | null; user_id: string; org_id: string | null; part_name: string;
     manufacturer_name: string; quantity: number; total_price_krw: number;
     total_price: number | null; currency: string | null; buyer_country: string | null;
     hs_code: string | null; incoterm: string | null;
@@ -48,9 +52,9 @@ export async function GET(
   // buyer country; domestic KR stays in Korean by default.
   const langParam = req.nextUrl.searchParams.get('lang') ?? '';
   const buyerTaxId = req.nextUrl.searchParams.get('buyerTaxId') ?? null;
-  const isKo = langParam === 'en' ? false : (!order.buyer_country || order.buyer_country === 'KR');
-  const locale = isKo ? 'ko-KR' : 'en-US';
-  const htmlLang = isKo ? 'ko' : 'en';
+  const serverLocale = resolveServerLocale(req, langParam || undefined);
+  const locale = bcp47(serverLocale.route);
+  const htmlLang = serverLocale.iso;
 
   const currency = (order.currency ?? 'KRW') as CurrencyCode;
   const amount   = order.total_price ?? order.total_price_krw;
@@ -66,7 +70,7 @@ export async function GET(
   });
 
   // 접근 권한 검증
-  const isCustomer = authUser?.userId === order.user_id;
+  const isCustomer = !!authUser && isOrderBuyerInActiveWorkspace(authUser, order);
   const isPartner = partnerAuth && (
     partnerAuth.email === order.partner_email ||
     partnerAuth.company === order.manufacturer_name
@@ -76,51 +80,66 @@ export async function GET(
   }
 
   const steps: { label: string; labelKo: string; completedAt?: number; estimatedAt?: number }[] = JSON.parse(order.steps ?? '[]');
-  const STATUS_KO: Record<string, string> = {
-    placed: '주문 접수', production: '생산 중', qc: '품질 검사', shipped: '배송 중', delivered: '납품 완료',
-  };
-  const STATUS_EN: Record<string, string> = {
-    placed: 'Placed', production: 'In Production', qc: 'Quality Check', shipped: 'Shipped', delivered: 'Delivered',
+  const STATUS_LABELS: Record<string, { ko: string; en: string; ja: string; zh: string; es: string; ar: string }> = {
+    placed: { ko: '주문 접수', en: 'Placed', ja: '注文受付', zh: '已下单', es: 'Pedido recibido', ar: 'تم استلام الطلب' },
+    production: { ko: '생산 중', en: 'In Production', ja: '生産中', zh: '生产中', es: 'En producción', ar: 'قيد الإنتاج' },
+    qc: { ko: '품질 검사', en: 'Quality Check', ja: '品質検査', zh: '质量检查', es: 'Control de calidad', ar: 'فحص الجودة' },
+    shipped: { ko: '배송 중', en: 'Shipped', ja: '発送済み', zh: '运输中', es: 'Enviado', ar: 'تم الشحن' },
+    delivered: { ko: '납품 완료', en: 'Delivered', ja: '納品完了', zh: '已交付', es: 'Entregado', ar: 'تم التسليم' },
   };
   const STATUS_COLOR: Record<string, string> = {
     placed: '#388bfd', production: '#f0883e', qc: '#e3b341', shipped: '#79c0ff', delivered: '#3fb950',
   };
-  const statusLabel = (isKo ? STATUS_KO : STATUS_EN)[order.status] ?? order.status;
+  const statusLabel = STATUS_LABELS[order.status]
+    ? loc(serverLocale.route, STATUS_LABELS[order.status]!)
+    : order.status;
   const statusColor = STATUS_COLOR[order.status] ?? '#6e7681';
 
   const commissionRate = 0.05;
   const commissionMoney = { value: amount * commissionRate, currency };
   const partnerPayoutMoney = { value: amount - commissionMoney.value, currency };
 
-  const t = isKo
-    ? {
-        title: '주문 확인서 / 인보이스',
-        orderInfo: '주문 정보', orderId: '주문 번호', rfq: 'RFQ 번호', orderedAt: '주문일',
-        dueAt: '납기 예정일', currentStatus: '현재 상태', paid: '✓ 결제 완료', paidLabel: '결제 상태',
-        part: '부품 및 금액', partName: '부품명', mfr: '제조사', qty: '수량', qtyUnit: '개',
-        subtotal: '공급가액', tax: (name: string) => `${name} (${(tax.rate * 100).toFixed(0)}%)`,
-        total: '합계 금액', commission: (r: string) => `플랫폼 수수료 (${r}%)`, payout: '파트너 수령액',
-        steps: '진행 단계', stepCol: '단계', stateCol: '상태', dateCol: '일시',
-        done: '✓ 완료', pending: '대기', estimated: '예정',
-        buyer: '발주사 (고객)', platform: 'NexyFab 플랫폼', seller: '제조사 (파트너)', signature: '서명 / Signature',
-        issued: '발행일', reverseCharge: '세금 주의: 역과세(Reverse Charge) — 구매자가 자국에서 VAT를 신고/납부합니다.',
-        exportNote: '세금 주의: 영세율 수출 거래입니다.',
-        shipping: '국제 배송 정보', hsCode: 'HS 코드', incoterm: '인코텀즈', shipFrom: '출하국', shipTo: '도착국',
-      }
-    : {
-        title: 'Order Confirmation / Invoice',
-        orderInfo: 'Order Information', orderId: 'Order No.', rfq: 'RFQ No.', orderedAt: 'Order Date',
-        dueAt: 'Estimated Delivery', currentStatus: 'Status', paid: '✓ Paid', paidLabel: 'Payment',
-        part: 'Part & Pricing', partName: 'Part Name', mfr: 'Manufacturer', qty: 'Quantity', qtyUnit: 'units',
-        subtotal: 'Subtotal', tax: (name: string) => `${name} (${(tax.rate * 100).toFixed(0)}%)`,
-        total: 'Total', commission: (r: string) => `Platform Fee (${r}%)`, payout: 'Partner Payout',
-        steps: 'Progress', stepCol: 'Step', stateCol: 'State', dateCol: 'Timestamp',
-        done: '✓ Done', pending: 'Pending', estimated: 'est.',
-        buyer: 'Buyer', platform: 'NexyFab Platform', seller: 'Manufacturer (Partner)', signature: 'Signature',
-        issued: 'Issued', reverseCharge: 'Tax note: Reverse charge applies — the buyer self-assesses VAT in their country.',
-        exportNote: 'Tax note: Zero-rated export.',
-        shipping: 'International Shipping', hsCode: 'HS Code', incoterm: 'Incoterm', shipFrom: 'Ship From', shipTo: 'Ship To',
-      };
+  const L = <T extends { ko: string; en: string; ja: string; zh: string; es: string; ar: string }>(m: T) => loc(serverLocale.route, m);
+  const t = {
+    title: L({ ko: '주문 확인서 / 인보이스', en: 'Order Confirmation / Invoice', ja: '注文確認書 / 請求書', zh: '订单确认单 / 发票', es: 'Confirmación de pedido / Factura', ar: 'تأكيد الطلب / الفاتورة' }),
+    orderInfo: L({ ko: '주문 정보', en: 'Order Information', ja: '注文情報', zh: '订单信息', es: 'Información del pedido', ar: 'معلومات الطلب' }),
+    orderId: L({ ko: '주문 번호', en: 'Order No.', ja: '注文番号', zh: '订单号', es: 'N.º de pedido', ar: 'رقم الطلب' }),
+    rfq: L({ ko: 'RFQ 번호', en: 'RFQ No.', ja: 'RFQ番号', zh: 'RFQ 编号', es: 'N.º de RFQ', ar: 'رقم RFQ' }),
+    orderedAt: L({ ko: '주문일', en: 'Order Date', ja: '注文日', zh: '下单日期', es: 'Fecha del pedido', ar: 'تاريخ الطلب' }),
+    dueAt: L({ ko: '납기 예정일', en: 'Estimated Delivery', ja: '納期予定日', zh: '预计交付', es: 'Entrega estimada', ar: 'التسليم المتوقع' }),
+    currentStatus: L({ ko: '현재 상태', en: 'Status', ja: '現在の状態', zh: '当前状态', es: 'Estado', ar: 'الحالة' }),
+    paid: L({ ko: '✓ 결제 완료', en: '✓ Paid', ja: '✓ 支払い済み', zh: '✓ 已付款', es: '✓ Pagado', ar: '✓ مدفوع' }),
+    paidLabel: L({ ko: '결제 상태', en: 'Payment', ja: '支払い', zh: '付款', es: 'Pago', ar: 'الدفع' }),
+    part: L({ ko: '부품 및 금액', en: 'Part & Pricing', ja: '部品と価格', zh: '零件与价格', es: 'Pieza y precio', ar: 'القطعة والسعر' }),
+    partName: L({ ko: '부품명', en: 'Part Name', ja: '部品名', zh: '零件名称', es: 'Nombre de la pieza', ar: 'اسم القطعة' }),
+    mfr: L({ ko: '제조사', en: 'Manufacturer', ja: 'メーカー', zh: '制造商', es: 'Fabricante', ar: 'المصنّع' }),
+    qty: L({ ko: '수량', en: 'Quantity', ja: '数量', zh: '数量', es: 'Cantidad', ar: 'الكمية' }),
+    qtyUnit: L({ ko: '개', en: 'units', ja: '個', zh: '件', es: 'unidades', ar: 'وحدة' }),
+    subtotal: L({ ko: '공급가액', en: 'Subtotal', ja: '小計', zh: '小计', es: 'Subtotal', ar: 'الإجمالي الفرعي' }),
+    tax: (name: string) => `${name} (${(tax.rate * 100).toFixed(0)}%)`,
+    total: L({ ko: '합계 금액', en: 'Total', ja: '合計', zh: '合计', es: 'Total', ar: 'الإجمالي' }),
+    commission: (r: string) => `${L({ ko: '플랫폼 수수료', en: 'Platform Fee', ja: 'プラットフォーム手数料', zh: '平台服务费', es: 'Comisión de plataforma', ar: 'رسوم المنصة' })} (${r}%)`,
+    payout: L({ ko: '파트너 수령액', en: 'Partner Payout', ja: 'パートナー受取額', zh: '合作方收款', es: 'Pago al socio', ar: 'مستحقات الشريك' }),
+    steps: L({ ko: '진행 단계', en: 'Progress', ja: '進行状況', zh: '进度', es: 'Progreso', ar: 'التقدم' }),
+    stepCol: L({ ko: '단계', en: 'Step', ja: 'ステップ', zh: '步骤', es: 'Paso', ar: 'الخطوة' }),
+    stateCol: L({ ko: '상태', en: 'State', ja: '状態', zh: '状态', es: 'Estado', ar: 'الحالة' }),
+    dateCol: L({ ko: '일시', en: 'Timestamp', ja: '日時', zh: '时间', es: 'Fecha y hora', ar: 'التاريخ والوقت' }),
+    done: L({ ko: '✓ 완료', en: '✓ Done', ja: '✓ 完了', zh: '✓ 完了', es: '✓ Hecho', ar: '✓ مكتمل' }),
+    pending: L({ ko: '대기', en: 'Pending', ja: '保留中', zh: '待处理', es: 'Pendiente', ar: 'قيد الانتظار' }),
+    estimated: L({ ko: '예정', en: 'est.', ja: '予定', zh: '预计', es: 'est.', ar: 'متوقع' }),
+    buyer: L({ ko: '발주사 (고객)', en: 'Buyer', ja: '発注者（顧客）', zh: '买方（客户）', es: 'Comprador (cliente)', ar: 'المشتري (العميل)' }),
+    platform: L({ ko: 'NexyFab 플랫폼', en: 'NexyFab Platform', ja: 'NexyFab プラットフォーム', zh: 'NexyFab 平台', es: 'Plataforma NexyFab', ar: 'منصة NexyFab' }),
+    seller: L({ ko: '제조사 (파트너)', en: 'Manufacturer (Partner)', ja: 'メーカー（パートナー）', zh: '制造商（合作方）', es: 'Fabricante (socio)', ar: 'المصنّع (الشريك)' }),
+    signature: L({ ko: '서명 / Signature', en: 'Signature', ja: '署名', zh: '签名', es: 'Firma', ar: 'التوقيع' }),
+    issued: L({ ko: '발행일', en: 'Issued', ja: '発行日', zh: '开具日期', es: 'Emitida', ar: 'تاريخ الإصدار' }),
+    reverseCharge: L({ ko: '세금 주의: 역과세(Reverse Charge) — 구매자가 자국에서 VAT를 신고/납부합니다.', en: 'Tax note: Reverse charge applies — the buyer self-assesses VAT in their country.', ja: '税務注記: リバースチャージ — 購入者が自国でVATを申告・納付します。', zh: '税务说明：适用反向征税，由买方在所在国申报并缴纳 VAT。', es: 'Nota fiscal: se aplica la inversión del sujeto pasivo; el comprador autoliquida el IVA.', ar: 'ملاحظة ضريبية: ينطبق الاحتساب العكسي، ويقيّم المشتري ضريبة القيمة المضافة ويدفعها في بلده.' }),
+    exportNote: L({ ko: '세금 주의: 영세율 수출 거래입니다.', en: 'Tax note: Zero-rated export.', ja: '税務注記: 輸出ゼロ税率取引です。', zh: '税务说明：零税率出口交易。', es: 'Nota fiscal: exportación con tasa cero.', ar: 'ملاحظة ضريبية: تصدير بمعدل ضريبة صفري.' }),
+    shipping: L({ ko: '국제 배송 정보', en: 'International Shipping', ja: '国際配送情報', zh: '国际运输信息', es: 'Envío internacional', ar: 'معلومات الشحن الدولي' }),
+    hsCode: L({ ko: 'HS 코드', en: 'HS Code', ja: 'HSコード', zh: 'HS 编码', es: 'Código HS', ar: 'رمز HS' }),
+    incoterm: L({ ko: '인코텀즈', en: 'Incoterm', ja: 'インコタームズ', zh: '国际贸易术语', es: 'Incoterm', ar: 'إنكوترمز' }),
+    shipFrom: L({ ko: '출하국', en: 'Ship From', ja: '出荷国', zh: '发货国', es: 'País de origen', ar: 'بلد الشحن' }),
+    shipTo: L({ ko: '도착국', en: 'Ship To', ja: '納品国', zh: '目的国', es: 'País de destino', ar: 'بلد الوصول' }),
+  };
 
   const stepsHtml = steps.map((s, i) => {
     const done = !!s.completedAt;
@@ -129,7 +148,7 @@ export async function GET(
       : s.estimatedAt
         ? `${fmtTs(s.estimatedAt, locale)} (${t.estimated})`
         : '';
-    const stepLabel = isKo ? s.labelKo : s.label;
+    const stepLabel = loc(serverLocale.route, { ko: s.labelKo, en: s.label, ja: s.label, zh: s.label, es: s.label, ar: s.label });
     return `
       <tr>
         <td style="padding:8px 12px;border-bottom:1px solid #e8ecf0;font-size:13px;color:#374151;font-weight:${i === 0 ? 700 : 400}">

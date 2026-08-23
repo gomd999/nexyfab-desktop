@@ -60,6 +60,20 @@ export interface RateLimitResult {
   allowed: boolean;
   remaining: number;
   resetAt: number;
+  unavailable?: boolean;
+}
+
+export interface AsyncRateLimitOptions {
+  failClosed?: boolean;
+}
+
+function unavailableResult(windowMs: number): RateLimitResult {
+  return {
+    allowed: false,
+    remaining: 0,
+    resetAt: Date.now() + Math.min(windowMs, 60_000),
+    unavailable: true,
+  };
 }
 
 // ─── Background Redis Sync ─────────────────────────────────────────────────
@@ -127,9 +141,10 @@ export async function rateLimitAsync(
   key: string,
   maxRequests: number,
   windowMs: number,
+  options: AsyncRateLimitOptions = {},
 ): Promise<RateLimitResult> {
   const redis = getRedis();
-  if (!redis) return rateLimitMemory(key, maxRequests, windowMs);
+  if (!redis) return options.failClosed ? unavailableResult(windowMs) : rateLimitMemory(key, maxRequests, windowMs);
 
   try {
     const redisKey = `rl:${key}`;
@@ -146,8 +161,7 @@ export async function rateLimitAsync(
       resetAt,
     };
   } catch {
-    // Redis error — fallback to in-memory
-    return rateLimitMemory(key, maxRequests, windowMs);
+    return options.failClosed ? unavailableResult(windowMs) : rateLimitMemory(key, maxRequests, windowMs);
   }
 }
 

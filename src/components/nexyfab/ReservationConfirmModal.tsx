@@ -15,7 +15,7 @@
  */
 
 import React from 'react';
-import { isKorean } from '@/lib/i18n/normalize';
+import { createCommercialLocalizer } from '@/lib/i18n/commercialLocalizer';
 
 interface ReservationConfirmModalProps {
   open: boolean;
@@ -33,27 +33,16 @@ export default function ReservationConfirmModal({
   buyerEmail,
 }: ReservationConfirmModalProps) {
   if (!open) return null;
-  const ko = isKorean(lang);
-
-  const t = ko
-    ? {
-        title: '예약이 접수되었습니다',
-        line1: 'B2B 안심 제조 보증 상태로 예약되었습니다.',
-        line2: '담당 매니저가 도면을 검토하고 파트너 공장과 단가를 조율한 뒤, 24시간 내에 확정 견적과 결제 링크를 보내드립니다.',
-        emailNote: '회신 받을 주소',
-        whyTitle: '왜 즉시 결제가 아닌가요?',
-        why: '현재 NexyFab은 콘시어지 트랙으로 운영됩니다. 매니저가 직접 도면 오류를 점검하고 파트너와 단가를 협상하여 가장 좋은 결과를 만들기 위한 단계입니다.',
-        ok: '확인',
-      }
-    : {
-        title: 'Reservation received',
-        line1: 'Your order has been reserved under our concierge track.',
-        line2: 'A manager will review your design, negotiate with our partner factories, and send a confirmed quote and payment link within 24 hours.',
-        emailNote: 'Reply will be sent to',
-        whyTitle: 'Why not immediate checkout?',
-        why: 'NexyFab currently operates in concierge mode — a manager reviews every design for errors and negotiates with partners on your behalf to ensure the best outcome.',
-        ok: 'OK',
-      };
+  const L = createCommercialLocalizer(lang);
+  const t = {
+    title: L('예약이 접수되었습니다', 'Reservation received'),
+    line1: L('B2B 안심 제조 보증 상태로 예약되었습니다.', 'Your order has been reserved under our concierge track.'),
+    line2: L('담당 매니저가 도면을 검토하고 파트너 공장과 단가를 조율한 뒤, 24시간 내에 확정 견적과 결제 링크를 보내드립니다.', 'A manager will review your design, negotiate with our partner factories, and send a confirmed quote and payment link within 24 hours.'),
+    emailNote: L('회신 받을 주소', 'Reply will be sent to'),
+    whyTitle: L('왜 즉시 결제가 아닌가요?', 'Why not immediate checkout?'),
+    why: L('현재 NexyFab은 콘시어지 트랙으로 운영됩니다. 매니저가 직접 도면 오류를 점검하고 파트너와 단가를 협상하여 가장 좋은 결과를 만들기 위한 단계입니다.', 'NexyFab currently operates in concierge mode — a manager reviews every design for errors and negotiates with partners on your behalf to ensure the best outcome.'),
+    ok: L('확인', 'OK'),
+  };
 
   return (
     <div

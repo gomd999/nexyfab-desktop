@@ -21,6 +21,6 @@ for (const [dom, id, p] of [
   const f = `${OUT}intent-${dom}-${id}.json`;
   writeFileSync(f, JSON.stringify(intent, null, 1));
   console.log('--- generate_package(assembly=intent):');
-  const r = await callTool('generate_package', { assembly: intent, outDir: `${OUT}pkg-intent-${dom}-${id}`, title: id });
+  const r = await callTool('generate_package', { assembly: intent, outDir: `${OUT}pkg-intent-${dom}-${id}`, title: id, confirmWrite: true });
   console.log(JSON.stringify({ ok: r.ok, gateErrors: r.gateErrors, files: (r.files ?? []).map((x) => x.name) }));
 }

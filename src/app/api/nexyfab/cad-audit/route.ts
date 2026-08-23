@@ -12,8 +12,10 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getAuthUser } from '@/lib/auth-middleware';
 import { getTrustedClientIpOrUndefined } from '@/lib/client-ip';
 import { CadAuditAction, logCadPipelineAudit } from '@/lib/enterprise-cad-audit';
+import { readBoundedJson } from '@/lib/boundedJsonBody';
 
 const ALLOWED_ACTIONS = new Set<string>(Object.values(CadAuditAction));
+const MAX_JSON_BODY_BYTES = 4 * 1024 * 1024;
 
 export async function POST(req: NextRequest) {
   try {
@@ -21,7 +23,7 @@ export async function POST(req: NextRequest) {
     if (!authUser) {
       return NextResponse.json({ ok: false, error: 'Unauthorized' }, { status: 401 });
     }
-    const raw = (await req.json().catch(() => null)) as {
+    const raw = (await readBoundedJson(req, MAX_JSON_BODY_BYTES).catch(() => null)) as {
       action?: string;
       resourceId?: string;
       metadata?: Record<string, unknown>;

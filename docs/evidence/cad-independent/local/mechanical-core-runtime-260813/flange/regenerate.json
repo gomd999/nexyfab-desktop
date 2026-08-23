@@ -1,0 +1,88 @@
+{
+  "schema": "nexyfab.mechanical-core-feature-local-runtime.v1",
+  "feature": "flange",
+  "axis": "regenerate",
+  "status": "PASS",
+  "executedAt": "2026-08-22T07:13:30.564Z",
+  "initial": {
+    "handle": "occt:239",
+    "kernelKind": "Solid",
+    "nativeShapeType": 2,
+    "solidCount": 1,
+    "singleSolid": true,
+    "volumeMm3": 6153.98223686155,
+    "edgeCount": 24,
+    "faceCount": 10,
+    "boundsMm": [
+      [
+        -30.006022818974145,
+        -1.0060228189741425,
+        -15.006022818974147
+      ],
+      [
+        30.00602281897414,
+        19.00602281897414,
+        20.006022818974145
+      ]
+    ]
+  },
+  "edited": {
+    "handle": "occt:241",
+    "kernelKind": "Solid",
+    "nativeShapeType": 2,
+    "solidCount": 1,
+    "singleSolid": true,
+    "volumeMm3": 6873.982236861545,
+    "edgeCount": 24,
+    "faceCount": 10,
+    "boundsMm": [
+      [
+        -30.006022818974145,
+        -1.0060228189741425,
+        -15.006022818974147
+      ],
+      [
+        30.00602281897414,
+        25.00602281897414,
+        20.006022818974145
+      ]
+    ]
+  },
+  "repeated": {
+    "handle": "occt:243",
+    "kernelKind": "Solid",
+    "nativeShapeType": 2,
+    "solidCount": 1,
+    "singleSolid": true,
+    "volumeMm3": 6873.982236861545,
+    "edgeCount": 24,
+    "faceCount": 10,
+    "boundsMm": [
+      [
+        -30.006022818974145,
+        -1.0060228189741425,
+        -15.006022818974147
+      ],
+      [
+        30.00602281897414,
+        25.00602281897414,
+        20.006022818974145
+      ]
+    ]
+  },
+  "featureMeaning": {
+    "assertion": "actual product exact edge flange adds width x thickness x developed-length volume with concentric analytic bend faces and the requested straight height",
+    "edgeIndex": 0,
+    "angleDeg": 90,
+    "radiusMm": 3,
+    "thicknessMm": 2,
+    "neutralRadiusMm": 4,
+    "addedDevelopedLengthMm": 27.283185307179586,
+    "cylindricalFaces": 2,
+    "expectedVolumeMm3": 6873.9822368615505,
+    "actualVolumeMm3": 6873.982236861545,
+    "expectedTopMm": 25,
+    "actualTopMm": 25.00602281897414
+  },
+  "assertion": "edited parameter changed the exact signature and a fresh native regeneration reproduced topology, bounds, and volume"
+}

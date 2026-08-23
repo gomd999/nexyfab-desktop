@@ -5,6 +5,7 @@ import { use, useEffect, useState, useCallback } from 'react';
 import { useToast } from '@/hooks/useToast';
 import { isKorean } from '@/lib/i18n/normalize';
 import { fmtKRW } from './fmtKRW';
+import { createCommercialLocalizer } from '@/lib/i18n/commercialLocalizer';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -83,11 +84,18 @@ const PLANS: PlanDef[] = [
 export default function BillingPage({ params }: { params: Promise<{ lang: string }> }) {
   const { lang } = use(params);
   const isKo = isKorean(lang);
+  const L = createCommercialLocalizer(lang);
 
   const [cycle, setCycle] = useState<BillingCycle>('monthly');
   const [currentPlan, setCurrentPlan] = useState<PlanId>('free');
   const [loadingPlan, setLoadingPlan] = useState<PlanId | null>(null);
-  const [betaStatus, setBetaStatus] = useState<{ enabled: boolean; allowed: boolean; contact: string } | null>(null);
+  const [betaStatus, setBetaStatus] = useState<{
+    enabled: boolean;
+    allowed: boolean;
+    contact: string;
+    paymentsEnabled: boolean;
+    paymentStatus: 'enabled' | 'disabled';
+  } | null>(null);
   const toast = useToast();
 
   // ── Fetch current plan ─────────────────────────────────────────────────────
@@ -102,7 +110,13 @@ export default function BillingPage({ params }: { params: Promise<{ lang: string
   useEffect(() => {
     fetch('/api/billing/beta-status', { credentials: 'same-origin' })
       .then(r => r.ok ? r.json() : null)
-      .then(d => { if (d) setBetaStatus(d as { enabled: boolean; allowed: boolean; contact: string }); })
+      .then(d => { if (d) setBetaStatus(d as {
+        enabled: boolean;
+        allowed: boolean;
+        contact: string;
+        paymentsEnabled: boolean;
+        paymentStatus: 'enabled' | 'disabled';
+      }); })
       .catch(() => {});
   }, []);
 
@@ -111,11 +125,11 @@ export default function BillingPage({ params }: { params: Promise<{ lang: string
     if (typeof window === 'undefined') return;
     const sp = new URLSearchParams(window.location.search);
     if (sp.get('success') === '1') {
-      toast.success(isKo ? '결제가 완료되었습니다! 플랜이 업그레이드됩니다.' : 'Payment successful! Your plan will be upgraded.');
+      toast.success(L('결제가 완료되었습니다! 플랜이 업그레이드됩니다.', 'Payment successful! Your plan will be upgraded.'));
       // Clean up URL
       window.history.replaceState({}, '', window.location.pathname);
     } else if (sp.get('cancel') === '1') {
-      toast.error(isKo ? '결제가 취소되었습니다.' : 'Payment cancelled.');
+      toast.error(L('결제가 취소되었습니다.', 'Payment cancelled.'));
       window.history.replaceState({}, '', window.location.pathname);
     }
   }, [isKo, toast]);
@@ -126,6 +140,10 @@ export default function BillingPage({ params }: { params: Promise<{ lang: string
   // the Dodo hosted checkout page in the user's actual currency.
   const handleUpgrade = useCallback(async (planId: PlanId) => {
     if (planId === 'free' || planId === currentPlan) return;
+    if (betaStatus?.paymentsEnabled !== true) {
+      toast.error(L('현재 결제를 받고 있지 않습니다. 실제 청구는 발생하지 않습니다.', 'Payments are currently disabled. No charge will be made.'));
+      return;
+    }
     setLoadingPlan(planId);
     try {
       // Server uses 'annual'; UI uses 'yearly'. Translate on the wire.
@@ -143,29 +161,29 @@ export default function BillingPage({ params }: { params: Promise<{ lang: string
         contact?: string;
       };
 
+      if (r.status === 503 && data.error === 'payments_disabled') {
+        toast.error(L('현재 결제를 받고 있지 않습니다. 실제 청구는 발생하지 않습니다.', 'Payments are currently disabled. No charge will be made.'));
+        return;
+      }
       if (r.status === 403 && data.error === 'billing_beta_only') {
-        toast.error(isKo
-          ? '현재 베타 사용자에게만 결제가 허용됩니다.'
-          : 'Payment is currently restricted to pre-approved beta users.');
+        toast.error(L('현재 베타 사용자에게만 결제가 허용됩니다.', 'Payment is currently restricted to pre-approved beta users.'));
         return;
       }
       if (r.status === 503 && data.error === 'dodo_product_not_configured') {
-        toast.error(isKo
-          ? '결제 상품이 아직 준비되지 않았습니다. 잠시 후 다시 시도해주세요.'
-          : 'Payment product is not yet configured. Please try again later.');
+        toast.error(L('결제 상품이 아직 준비되지 않았습니다. 잠시 후 다시 시도해주세요.', 'Payment product is not yet configured. Please try again later.'));
         return;
       }
       if (!r.ok || !data.url) {
-        toast.error(data.message ?? data.error ?? (isKo ? '결제 페이지를 열 수 없습니다.' : 'Could not open checkout.'));
+        toast.error(data.message ?? data.error ?? (L('결제 페이지를 열 수 없습니다.', 'Could not open checkout.')));
         return;
       }
       window.location.href = data.url;
     } catch {
-      toast.error(isKo ? '네트워크 오류가 발생했습니다.' : 'Network error.');
+      toast.error(L('네트워크 오류가 발생했습니다.', 'Network error.'));
     } finally {
       setLoadingPlan(null);
     }
-  }, [cycle, currentPlan, isKo, toast]);
+  }, [betaStatus?.paymentsEnabled, cycle, currentPlan, isKo, toast]);
 
   return (
     <div style={{
@@ -184,22 +202,38 @@ export default function BillingPage({ params }: { params: Promise<{ lang: string
         </Link>
         <span style={{ color: 'var(--nx-border)' }}>/</span>
         <span style={{ fontSize: 16, fontWeight: 600 }}>
-          {isKo ? '요금제' : 'Billing & Plans'}
+          {L('요금제', 'Billing & Plans')}
         </span>
         <div style={{ flex: 1 }} />
         <a href={`/${lang}/nexyfab/settings`} style={{
           fontSize: 12, color: 'var(--nx-text-2)', textDecoration: 'none',
           padding: '6px 12px', border: '1px solid var(--nx-border)', borderRadius: 6,
         }}>
-          {isKo ? '설정' : 'Settings'}
+          {L('설정', 'Settings')}
         </a>
       </div>
 
       <div style={{ maxWidth: 1000, margin: '0 auto', padding: '48px 24px' }}>
+        {betaStatus?.paymentsEnabled === false && (
+          <div style={{
+            border: '1px solid #388bfd66', background: '#12233f', borderRadius: 10,
+            padding: '14px 18px', marginBottom: 32, display: 'flex', gap: 12, alignItems: 'flex-start',
+          }}>
+            <span aria-hidden="true" style={{ fontSize: 18, color: '#58a6ff', lineHeight: 1 }}>ℹ</span>
+            <div>
+              <div style={{ fontSize: 14, fontWeight: 700, color: '#79c0ff', marginBottom: 4 }}>
+                {L('공식 서비스 · 결제 비활성', 'Official service · Payments disabled')}
+              </div>
+              <div style={{ fontSize: 13, color: '#a5d6ff', lineHeight: 1.5 }}>
+                {L('현재 결제를 받고 있지 않습니다. 서비스를 이용해도 실제 청구는 발생하지 않습니다.', 'Payments are not being accepted yet. You can use the service without being charged.')}
+              </div>
+            </div>
+          </div>
+        )}
         {/* ── Closed-beta banner ── */}
         {/* Only renders when payment is restricted to a pre-approved allowlist
             and the current user is not on it. */}
-        {betaStatus?.enabled && !betaStatus.allowed && (
+        {betaStatus?.paymentsEnabled !== false && betaStatus?.enabled && !betaStatus.allowed && (
           <div style={{
             border: '1px solid #d4a017', background: '#3a2d0c', borderRadius: 10,
             padding: '14px 18px', marginBottom: 32, display: 'flex', gap: 12, alignItems: 'flex-start',
@@ -207,15 +241,13 @@ export default function BillingPage({ params }: { params: Promise<{ lang: string
             <span style={{ fontSize: 18, color: '#d4a017', lineHeight: 1 }}>⚠</span>
             <div style={{ flex: 1, minWidth: 0 }}>
               <div style={{ fontSize: 14, fontWeight: 700, color: '#f0c14b', marginBottom: 4 }}>
-                {isKo ? '현재 베타 서비스' : 'Closed beta'}
+                {L('현재 베타 서비스', 'Closed beta')}
               </div>
               <div style={{ fontSize: 13, color: '#e0c97a', lineHeight: 1.5 }}>
-                {isKo
-                  ? '결제는 사전 승인된 사용자만 가능합니다.'
-                  : 'Payment is open to pre-approved users only.'}
+                {L('결제는 사전 승인된 사용자만 가능합니다.', 'Payment is open to pre-approved users only.')}
               </div>
               <div style={{ fontSize: 12, color: '#c9b06e', marginTop: 6 }}>
-                {isKo ? '사전 신청: ' : 'Request access: '}
+                {L('사전 신청: ', 'Request access: ')}
                 <a
                   href={`mailto:${betaStatus.contact}`}
                   style={{ color: '#f0c14b', textDecoration: 'underline' }}
@@ -230,12 +262,10 @@ export default function BillingPage({ params }: { params: Promise<{ lang: string
         {/* ── Title ── */}
         <div style={{ textAlign: 'center', marginBottom: 40 }}>
           <h1 style={{ fontSize: 32, fontWeight: 800, color: 'var(--nx-text)', margin: '0 0 12px' }}>
-            {isKo ? '당신에게 맞는 플랜을 선택하세요' : 'Choose the right plan for you'}
+            {L('당신에게 맞는 플랜을 선택하세요', 'Choose the right plan for you')}
           </h1>
           <p style={{ fontSize: 15, color: 'var(--nx-text-2)', margin: 0 }}>
-            {isKo
-              ? '언제든지 업그레이드하거나 다운그레이드할 수 있습니다.'
-              : 'Upgrade or downgrade at any time.'}
+            {L('언제든지 업그레이드하거나 다운그레이드할 수 있습니다.', 'Upgrade or downgrade at any time.')}
           </p>
         </div>
 
@@ -245,7 +275,7 @@ export default function BillingPage({ params }: { params: Promise<{ lang: string
           gap: 12, marginBottom: 40,
         }}>
           <span style={{ fontSize: 13, color: cycle === 'monthly' ? 'var(--nx-text)' : 'var(--nx-text-2)', fontWeight: 600 }}>
-            {isKo ? '월간' : 'Monthly'}
+            {L('월간', 'Monthly')}
           </span>
           <button
             onClick={() => setCycle(prev => prev === 'monthly' ? 'yearly' : 'monthly')}
@@ -266,12 +296,12 @@ export default function BillingPage({ params }: { params: Promise<{ lang: string
             }} />
           </button>
           <span style={{ fontSize: 13, color: cycle === 'yearly' ? 'var(--nx-text)' : 'var(--nx-text-2)', fontWeight: 600 }}>
-            {isKo ? '연간' : 'Yearly'}
+            {L('연간', 'Yearly')}
             <span style={{
               marginLeft: 6, fontSize: 10, padding: '1px 7px', borderRadius: 10,
               background: '#3fb95022', color: '#3fb950', border: '1px solid #3fb95044',
             }}>
-              {isKo ? '17% 할인' : '17% off'}
+              {L('17% 할인', '17% off')}
             </span>
           </span>
         </div>
@@ -309,7 +339,7 @@ export default function BillingPage({ params }: { params: Promise<{ lang: string
                     fontSize: 10, fontWeight: 700, padding: '3px 12px',
                     borderBottomLeftRadius: 10,
                   }}>
-                    {isKo ? '인기' : 'Popular'}
+                    {L('인기', 'Popular')}
                   </div>
                 )}
 
@@ -319,17 +349,17 @@ export default function BillingPage({ params }: { params: Promise<{ lang: string
                     fontSize: 11, fontWeight: 700, color: plan.color,
                     textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 6,
                   }}>
-                    {isKo ? plan.nameKo : plan.nameEn}
+                    {L(plan.nameKo, plan.nameEn)}
                   </div>
 
                   {/* Price */}
                   <div style={{ marginBottom: 20 }}>
                     <span style={{ fontSize: 32, fontWeight: 800, color: 'var(--nx-text)', fontFamily: 'monospace' }}>
-                      {fmtKRW(price, isKo)}
+                      {fmtKRW(price, lang)}
                     </span>
                     {price !== null && price > 0 && (
                       <span style={{ fontSize: 12, color: 'var(--nx-text-2)', marginLeft: 4 }}>
-                        /{isKo ? (cycle === 'monthly' ? '월' : '년') : (cycle === 'monthly' ? 'mo' : 'yr')}
+                        /{cycle === 'monthly' ? L('월', 'mo') : L('년', 'yr')}
                       </span>
                     )}
                   </div>
@@ -342,7 +372,7 @@ export default function BillingPage({ params }: { params: Promise<{ lang: string
                       border: `1px solid ${plan.color}44`,
                       fontSize: 13, fontWeight: 700, marginBottom: 24,
                     }}>
-                      {isKo ? '현재 플랜' : 'Current Plan'}
+                      {L('현재 플랜', 'Current Plan')}
                     </div>
                   ) : plan.id === 'free' ? (
                     <div style={{
@@ -351,25 +381,27 @@ export default function BillingPage({ params }: { params: Promise<{ lang: string
                       border: '1px solid var(--nx-border)',
                       fontSize: 13, marginBottom: 24,
                     }}>
-                      {isKo ? '기본 플랜' : 'Default plan'}
+                      {L('기본 플랜', 'Default plan')}
                     </div>
                   ) : (
                     <button
                       onClick={() => handleUpgrade(plan.id)}
-                      disabled={isLoading}
+                      disabled={isLoading || betaStatus?.paymentsEnabled !== true}
                       style={{
                         width: '100%', padding: '10px 16px', borderRadius: 8,
-                        fontSize: 13, fontWeight: 700, cursor: isLoading ? 'not-allowed' : 'pointer',
-                        background: isLoading ? 'var(--nx-panel-2)' : plan.color,
-                        color: isLoading ? 'var(--nx-text-3)' : '#fff',
+                        fontSize: 13, fontWeight: 700, cursor: isLoading || betaStatus?.paymentsEnabled !== true ? 'not-allowed' : 'pointer',
+                        background: isLoading || betaStatus?.paymentsEnabled !== true ? 'var(--nx-panel-2)' : plan.color,
+                        color: isLoading || betaStatus?.paymentsEnabled !== true ? 'var(--nx-text-3)' : '#fff',
                         border: 'none', marginBottom: 24,
                         transition: 'opacity 0.15s',
-                        opacity: isLoading ? 0.7 : 1,
+                        opacity: isLoading || betaStatus?.paymentsEnabled !== true ? 0.7 : 1,
                       }}
                     >
-                      {isLoading
-                        ? (isKo ? '처리 중...' : 'Processing...')
-                        : (isKo ? '업그레이드' : 'Upgrade')}
+                      {betaStatus?.paymentsEnabled !== true
+                        ? L('결제 비활성', 'Payments disabled')
+                        : isLoading
+                        ? (L('처리 중...', 'Processing...'))
+                        : (L('업그레이드', 'Upgrade'))}
                     </button>
                   )}
 
@@ -379,7 +411,7 @@ export default function BillingPage({ params }: { params: Promise<{ lang: string
                       <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>
                         <span style={{ color: plan.color, fontSize: 14, flexShrink: 0 }}>✓</span>
                         <span style={{ fontSize: 13, color: 'var(--nx-text)', lineHeight: 1.4 }}>
-                          {isKo ? f.ko : f.en}
+                          {L(f.ko, f.en)}
                         </span>
                       </div>
                     ))}
@@ -396,26 +428,20 @@ export default function BillingPage({ params }: { params: Promise<{ lang: string
           border: '1px solid var(--nx-border)', borderRadius: 12,
         }}>
           <h3 style={{ margin: '0 0 12px', fontSize: 14, fontWeight: 700, color: 'var(--nx-text)' }}>
-            {isKo ? '자주 묻는 질문' : 'FAQ'}
+            {L('자주 묻는 질문', 'FAQ')}
           </h3>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
             <FaqItem
-              q={isKo ? '언제든지 취소할 수 있나요?' : 'Can I cancel anytime?'}
-              a={isKo
-                ? '네, 언제든지 취소할 수 있으며 청구 주기 종료까지 서비스를 이용할 수 있습니다.'
-                : 'Yes, you can cancel anytime and continue using the service until the end of your billing period.'}
+              q={L('언제든지 취소할 수 있나요?', 'Can I cancel anytime?')}
+              a={L('네, 언제든지 취소할 수 있으며 청구 주기 종료까지 서비스를 이용할 수 있습니다.', 'Yes, you can cancel anytime and continue using the service until the end of your billing period.')}
             />
             <FaqItem
-              q={isKo ? '결제 방법은 무엇인가요?' : 'What payment methods are accepted?'}
-              a={isKo
-                ? 'Visa, Mastercard, 국내 카드 등 주요 신용카드를 지원합니다.'
-                : 'Major credit cards including Visa, Mastercard, and domestic cards are supported.'}
+              q={L('결제 방법은 무엇인가요?', 'What payment methods are accepted?')}
+              a={L('Visa, Mastercard, 국내 카드 등 주요 신용카드를 지원합니다.', 'Major credit cards including Visa, Mastercard, and domestic cards are supported.')}
             />
             <FaqItem
-              q={isKo ? '연간 요금제의 할인은 어떻게 적용되나요?' : 'How does the annual discount work?'}
-              a={isKo
-                ? '연간 결제 시 월간 대비 약 17% 할인된 가격으로 제공됩니다.'
-                : 'Annual billing offers approximately 17% off compared to monthly billing.'}
+              q={L('연간 요금제의 할인은 어떻게 적용되나요?', 'How does the annual discount work?')}
+              a={L('연간 결제 시 월간 대비 약 17% 할인된 가격으로 제공됩니다.', 'Annual billing offers approximately 17% off compared to monthly billing.')}
             />
           </div>
         </div>

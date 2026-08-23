@@ -1,11 +1,35 @@
 # NexyFab 활성 실행 기준서
 
-상태 기준일: 2026-08-10  
+상태 기준일: 2026-08-12
 적용 범위: 결제·법무를 제외한 AI 복잡 제품 생성, 정밀 CAD, 기계·건축·토목·조경·인테리어, 참고자료 활용, 기술 출시 검증
+
+> **정본 범위 갱신:** 이 문서는 다분야 구현 이력과 공통 불변조건을 보존한다. AI 정밀
+> 기계 CAD, Robot Verified Systems와 기계 복잡 조립체의 현재 상태·증거 정책·다음
+> 실행 순서는
+> `docs/strategy/ai-mechanical-cad-current-status-and-completion-plan-260811.md`를
+> 우선한다. 외부 CAD C4와 외부 holdout은 기본 기계 출시 조건이 아니다.
+
+> **활성 체크리스트:** 현재 진행률, 증거 공백, 다음 종료 조건은
+> `docs/NEXYFAB_PROGRESS_AND_NEXT_ACTIONS.md`에서 한 번에 관리한다.
+
+> **2026-08-23 최신 검증:** 아래 2026-08-12 수치는 역사적 스냅샷이다. 현재 권위값은
+> 607개 route file/837 handler/gap 0, 83개 CAD API route file/85 handler/issue 0,
+> secret scan 7,657 files/88,863,058 bytes/finding 0이다. 로컬 production-mode build와
+> bundle budget은 PASS지만 release identity와 외부 운영·전문가·제조 증빙이 없어 상용화는 HOLD다.
+
+> **2026-08-12 검증 갱신:** 기계 내부 영수증, Vitest 8/8 shard 27,218 pass/0 fail,
+> Node 326 pass/0 fail, 전체 타입 검사, 전체 `src` ESLint, 프로덕션 build·번들 예산,
+> 569개 route/783 handler 보안 매트릭스, 79/79 CAD API 통제와 secret 0건이
+> 통과했다. 조직별 데이터·사용량·AI 비용 격리와 release→RFQ→quote→order→inspection
+> 계보도 구현했다. 복잡 제품은 기계 코어 7제품군과 Spatial Labs를 분리하고 제품군별
+> `verified-*` 릴리스 채널·캠페인 scope·40슬롯 pending-only 확장 큐까지 구현했다.
+> 다만 작업 트리 375건, 직접 설계 0/30, blind 0/20, 제조 0/3,
+> 7일 운영 receipt 없음 때문에 private beta와 GA는 계속 차단한다. 실행 workbook은
+> `C:\Users\gomd9\Downloads\nexysys_1\nexyfab-commercial-evidence-260812`에 있다.
 
 ## 1. 이 문서의 역할
 
-이 문서는 NexyFab CAD 작업의 단일 활성 기준서다. 날짜가 붙은 기존 계획·리뷰·handoff 문서는 근거와 이력으로만 사용한다. 현재 작업 순서와 완료 상태가 충돌하면 이 문서를 우선하며, 상태는 코드·테스트·실데이터 증거가 있을 때만 변경한다.
+이 문서는 NexyFab CAD 작업의 공통 실행 원칙과 다분야 이력 기준서다. 날짜가 붙은 기존 계획·리뷰·handoff 문서는 근거와 이력으로만 사용한다. 기계 제품의 현재 작업 순서와 완료 상태가 충돌하면 위의 기계 현재 상태 정본을 우선하며, 상태는 코드·테스트·실데이터 증거가 있을 때만 변경한다.
 
 다음 표현은 서로 바꾸어 쓰지 않는다.
 

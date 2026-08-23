@@ -9,6 +9,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
+import { boundedJsonError, readBoundedJson } from '@/lib/boundedJsonBody';
 import { handleAssemblyIntent, type AssemblyIntentBody } from './handler';
 
 export const runtime = 'nodejs';
@@ -17,27 +18,21 @@ export const dynamic = 'force-dynamic';
 const MAX_BODY_BYTES = 5 * 1024 * 1024;
 
 export async function POST(req: NextRequest): Promise<NextResponse> {
-  // Body-size guard: peek at Content-Length so we don't buffer multi-MB
-  // bodies just to discover they're too large.
-  const contentLengthHeader = req.headers.get('content-length');
-  if (contentLengthHeader !== null) {
-    const cl = Number(contentLengthHeader);
-    if (Number.isFinite(cl) && cl > MAX_BODY_BYTES) {
-      return NextResponse.json(
-        {
-          ok: false,
-          code: 'PAYLOAD_TOO_LARGE',
-          message: `body bytes ${cl} exceeds maximum ${MAX_BODY_BYTES}`,
-        },
-        { status: 413 },
-      );
-    }
-  }
-
   let body: AssemblyIntentBody;
   try {
-    body = (await req.json()) as AssemblyIntentBody;
-  } catch {
+    body = await readBoundedJson<AssemblyIntentBody>(req, MAX_BODY_BYTES);
+  } catch (error) {
+    const bounded = boundedJsonError(error);
+    if (bounded?.code === 'PAYLOAD_TOO_LARGE') {
+      const declaredBytes = Number(req.headers.get('content-length'));
+      const message = Number.isFinite(declaredBytes) && declaredBytes > MAX_BODY_BYTES
+        ? `body bytes ${declaredBytes} exceeds maximum ${MAX_BODY_BYTES}`
+        : `body exceeds maximum ${MAX_BODY_BYTES} bytes`;
+      return NextResponse.json(
+        { ok: false, code: bounded.code, message },
+        { status: bounded.status },
+      );
+    }
     return NextResponse.json(
       { ok: false, code: 'BAD_REQUEST', message: 'Body must be valid JSON' },
       { status: 400 },

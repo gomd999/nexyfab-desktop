@@ -4,6 +4,32 @@ import { getSetting, getSettingSync } from '../../admin-settings';
 
 const DEFAULT_MODEL = 'claude-haiku-4-5-20251001';
 
+export function buildAnthropicMessagesBody(
+  req: ChatCompletionRequest,
+  model: string,
+): Record<string, unknown> {
+  const systemParts: string[] = [];
+  const messages: ChatMessage[] = [];
+  for (const message of req.messages) {
+    if (message.role === 'system') systemParts.push(message.content);
+    else messages.push(message);
+  }
+  const systemText = systemParts.join('\n\n');
+  return {
+    model,
+    ...(systemText ? {
+      system: [{
+        type: 'text',
+        text: systemText,
+        cache_control: { type: 'ephemeral' },
+      }],
+    } : {}),
+    messages: messages.map(message => ({ role: message.role, content: message.content })),
+    max_tokens: req.maxTokens ?? 4096,
+    temperature: req.temperature ?? 0.2,
+  };
+}
+
 /**
  * Anthropic uses /v1/messages, not /v1/chat/completions. This adapter folds
  * the OpenAI-style messages array into Anthropic's expected shape:
@@ -18,19 +44,12 @@ export const anthropicProvider: ProviderAdapter = {
   },
 
   async complete(req: ChatCompletionRequest): Promise<ChatCompletionResponse> {
-    const apiKey = await getSetting('anthropic.api_key');
+    const apiKey = (await getSetting('anthropic.api_key')) || process.env.ANTHROPIC_API_KEY;
     if (!apiKey) throw new AiProviderError('anthropic', undefined, 'ANTHROPIC_API_KEY is not set');
 
     const baseUrl = process.env.ANTHROPIC_BASE_URL || 'https://api.anthropic.com';
     const model = req.model ?? process.env.ANTHROPIC_MODEL ?? DEFAULT_MODEL;
     const startedAt = Date.now();
-
-    const systemParts: string[] = [];
-    const messages: ChatMessage[] = [];
-    for (const m of req.messages) {
-      if (m.role === 'system') systemParts.push(m.content);
-      else messages.push(m);
-    }
 
     const res = await fetch(`${baseUrl}/v1/messages`, {
       method: 'POST',
@@ -39,13 +58,7 @@ export const anthropicProvider: ProviderAdapter = {
         'x-api-key': apiKey,
         'anthropic-version': '2023-06-01',
       },
-      body: JSON.stringify({
-        model,
-        system: systemParts.join('\n\n') || undefined,
-        messages: messages.map(m => ({ role: m.role, content: m.content })),
-        max_tokens: req.maxTokens ?? 4096,
-        temperature: req.temperature ?? 0.2,
-      }),
+      body: JSON.stringify(buildAnthropicMessagesBody(req, model)),
       signal: req.signal
         ? AbortSignal.any([req.signal, AbortSignal.timeout(req.timeoutMs ?? 30_000)])
         : AbortSignal.timeout(req.timeoutMs ?? 30_000),
@@ -60,7 +73,12 @@ export const anthropicProvider: ProviderAdapter = {
       content?: Array<{ type: string; text?: string }>;
       // ★260731 — `max_tokens` 로 끝났는지. 버리면 절단이 파싱 실패로 둔갑한다.
       stop_reason?: string;
-      usage?: { input_tokens?: number; output_tokens?: number };
+      usage?: {
+        input_tokens?: number;
+        output_tokens?: number;
+        cache_creation_input_tokens?: number;
+        cache_read_input_tokens?: number;
+      };
     };
     const text = (data.content ?? [])
       .filter(b => b.type === 'text')
@@ -72,8 +90,14 @@ export const anthropicProvider: ProviderAdapter = {
       ...truncationOf(data.stop_reason),
       provider: 'anthropic',
       model,
-      promptTokens: data.usage?.input_tokens,
+      promptTokens: (data.usage?.input_tokens ?? 0)
+        + (data.usage?.cache_creation_input_tokens ?? 0)
+        + (data.usage?.cache_read_input_tokens ?? 0),
       completionTokens: data.usage?.output_tokens,
+      cachedPromptTokens: data.usage?.cache_read_input_tokens,
+      cacheWriteTokens: data.usage?.cache_creation_input_tokens,
+      cacheMissTokens: data.usage?.input_tokens,
+      cacheProfile: 'anthropic-explicit',
       latencyMs: Date.now() - startedAt,
     };
   },

@@ -46,6 +46,7 @@ import type {
   FeatureKind,
 } from '@/lib/cad/featureTree';
 import { computeStats } from '@/lib/cad/featureTreeStats';
+import { loc } from '@/lib/i18n/loc';
 
 // ─── public API ──────────────────────────────────────────────────────────
 
@@ -175,9 +176,14 @@ function describeNode(
       return describeChamfer(p, lang);
     case 'shell':
       return {
-        text: lang === 'ko'
-          ? `쉘: 두께 ${fmt(p.thickness)}mm${p.openTopFace ? ' · 위 면 열림' : ''}${p.openBottomFace ? ' · 아래 면 열림' : ''}`
-          : `Shell: ${fmt(p.thickness)}mm thick${p.openTopFace ? ', top open' : ''}${p.openBottomFace ? ', bottom open' : ''}`,
+        text: loc(lang, {
+          ko: `쉘: 두께 ${fmt(p.thickness)}mm${p.openTopFace ? ' · 위 면 열림' : ''}${p.openBottomFace ? ' · 아래 면 열림' : ''}`,
+          en: `Shell: ${fmt(p.thickness)}mm thick${p.openTopFace ? ', top open' : ''}${p.openBottomFace ? ', bottom open' : ''}`,
+          ja: `シェル: 厚さ ${fmt(p.thickness)}mm${p.openTopFace ? ' · 上面開放' : ''}${p.openBottomFace ? ' · 底面開放' : ''}`,
+          zh: `壳体：厚度 ${fmt(p.thickness)}mm${p.openTopFace ? ' · 顶面开放' : ''}${p.openBottomFace ? ' · 底面开放' : ''}`,
+          es: `Vaciado: ${fmt(p.thickness)}mm de espesor${p.openTopFace ? ', parte superior abierta' : ''}${p.openBottomFace ? ', parte inferior abierta' : ''}`,
+          ar: `غلاف: السماكة ${fmt(p.thickness)} مم${p.openTopFace ? ' · السطح العلوي مفتوح' : ''}${p.openBottomFace ? ' · السطح السفلي مفتوح' : ''}`,
+        }),
         params: { thickness: p.thickness, openTopFace: !!p.openTopFace, openBottomFace: !!p.openBottomFace },
       };
     case 'rib':
@@ -194,10 +200,14 @@ function describeBoolean(
   lang: ExplainerLang,
 ): NodeDescription {
   const opKo = p.op === 'union' ? '합집합' : p.op === 'difference' ? '차집합' : '교집합';
-  const text =
-    lang === 'ko'
-      ? `불리언 ${opKo}: ${p.bodies.length}개 바디 결합`
-      : `Boolean ${p.op}: combine ${p.bodies.length} bodies`;
+  const text = loc(lang, {
+    ko: `불리언 ${opKo}: ${p.bodies.length}개 바디 결합`,
+    en: `Boolean ${p.op}: combine ${p.bodies.length} bodies`,
+    ja: `ブール演算 ${p.op}: ${p.bodies.length}個のボディを結合`,
+    zh: `布尔运算 ${p.op}：合并 ${p.bodies.length} 个实体`,
+    es: `Boolean ${p.op}: combinar ${p.bodies.length} cuerpos`,
+    ar: `عملية منطقية ${p.op}: دمج ${p.bodies.length} أجسام`,
+  });
   return { text, params: { op: p.op, bodyCount: p.bodies.length } };
 }
 
@@ -206,10 +216,14 @@ function describeRib(
   lang: ExplainerLang,
 ): NodeDescription {
   const len = Math.hypot(p.end.x - p.start.x, p.end.y - p.start.y);
-  const text =
-    lang === 'ko'
-      ? `리브(보강대): 길이 ${fmt(len)}mm · 두께 ${fmt(p.thickness)}mm · 높이 ${fmt(p.height)}mm`
-      : `Rib (stiffener): ${fmt(len)}mm long, ${fmt(p.thickness)}mm thick, ${fmt(p.height)}mm tall`;
+  const text = loc(lang, {
+    ko: `리브(보강대): 길이 ${fmt(len)}mm · 두께 ${fmt(p.thickness)}mm · 높이 ${fmt(p.height)}mm`,
+    en: `Rib (stiffener): ${fmt(len)}mm long, ${fmt(p.thickness)}mm thick, ${fmt(p.height)}mm tall`,
+    ja: `リブ（補強材）: 長さ ${fmt(len)}mm · 厚さ ${fmt(p.thickness)}mm · 高さ ${fmt(p.height)}mm`,
+    zh: `加强筋：长度 ${fmt(len)}mm · 厚度 ${fmt(p.thickness)}mm · 高度 ${fmt(p.height)}mm`,
+    es: `Nervio (refuerzo): ${fmt(len)}mm de largo, ${fmt(p.thickness)}mm de espesor, ${fmt(p.height)}mm de alto`,
+    ar: `ضلع (تقوية): الطول ${fmt(len)} مم · السماكة ${fmt(p.thickness)} مم · الارتفاع ${fmt(p.height)} مم`,
+  });
   return { text, params: { length: len, thickness: p.thickness, height: p.height } };
 }
 
@@ -217,10 +231,14 @@ function describeSweepPath(
   p: Extract<FeaturePayload, { kind: 'sweep_path' }>,
   lang: ExplainerLang,
 ): NodeDescription {
-  const text =
-    lang === 'ko'
-      ? `경로 스윕: ${p.profile.length}점 프로파일을 ${p.path.length}점 경로를 따라 스윕`
-      : `Path sweep: a ${p.profile.length}-pt profile swept along a ${p.path.length}-pt path`;
+  const text = loc(lang, {
+    ko: `경로 스윕: ${p.profile.length}점 프로파일을 ${p.path.length}점 경로를 따라 스윕`,
+    en: `Path sweep: a ${p.profile.length}-pt profile swept along a ${p.path.length}-pt path`,
+    ja: `パススイープ: ${p.profile.length}点のプロファイルを${p.path.length}点のパスに沿ってスイープ`,
+    zh: `路径扫掠：沿 ${p.path.length} 点路径扫掠 ${p.profile.length} 点轮廓`,
+    es: `Barrido por trayectoria: perfil de ${p.profile.length} puntos a lo largo de una trayectoria de ${p.path.length} puntos`,
+    ar: `اكتساح المسار: اكتساح ملف من ${p.profile.length} نقطة على مسار من ${p.path.length} نقطة`,
+  });
   return { text, params: { profilePoints: p.profile.length, pathPoints: p.path.length } };
 }
 

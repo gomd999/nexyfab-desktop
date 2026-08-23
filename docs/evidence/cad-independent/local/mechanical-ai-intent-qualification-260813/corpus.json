@@ -1,0 +1,1155 @@
+{
+  "schema": "nexyfab.mechanical-ai-intent-corpus.v1",
+  "frozenDefinition": true,
+  "featureContract": [
+    "hole",
+    "fillet",
+    "chamfer",
+    "shell",
+    "rib",
+    "linearPattern",
+    "circularPattern",
+    "draft",
+    "scale",
+    "moveCopy",
+    "variableFillet",
+    "offsetFace",
+    "thread",
+    "helix",
+    "bend",
+    "flange",
+    "hem",
+    "jog",
+    "tab",
+    "cut",
+    "bendRelief",
+    "cornerRelief",
+    "variableShell",
+    "sketchExtrude",
+    "revolve",
+    "sweep",
+    "loft",
+    "mirror",
+    "boolean",
+    "splitBody"
+  ],
+  "categories": [
+    "ko_practical",
+    "en_practical",
+    "mixed_units",
+    "missing_required",
+    "contradictory_or_unmanufacturable"
+  ],
+  "cases": [
+    {
+      "caseId": "ko_practical-01-hole",
+      "category": "ko_practical",
+      "feature": "hole",
+      "prompt": "6061-T6 알루미늄을 CNC 가공해서 100×60×8 mm 기준의 구멍 기능을 적용한 정밀 브래킷을 설계해줘.",
+      "expectedRequirementOutcome": "READY"
+    },
+    {
+      "caseId": "ko_practical-02-fillet",
+      "category": "ko_practical",
+      "feature": "fillet",
+      "prompt": "6061-T6 알루미늄을 CNC 가공해서 100×60×8 mm 기준의 필렛 기능을 적용한 정밀 브래킷을 설계해줘.",
+      "expectedRequirementOutcome": "READY"
+    },
+    {
+      "caseId": "ko_practical-03-chamfer",
+      "category": "ko_practical",
+      "feature": "chamfer",
+      "prompt": "6061-T6 알루미늄을 CNC 가공해서 100×60×8 mm 기준의 모따기 기능을 적용한 정밀 브래킷을 설계해줘.",
+      "expectedRequirementOutcome": "READY"
+    },
+    {
+      "caseId": "ko_practical-04-shell",
+      "category": "ko_practical",
+      "feature": "shell",
+      "prompt": "6061-T6 알루미늄을 CNC 가공해서 100×60×8 mm 기준의 쉘 기능을 적용한 정밀 브래킷을 설계해줘.",
+      "expectedRequirementOutcome": "READY"
+    },
+    {
+      "caseId": "ko_practical-05-rib",
+      "category": "ko_practical",
+      "feature": "rib",
+      "prompt": "6061-T6 알루미늄을 CNC 가공해서 100×60×8 mm 기준의 리브 기능을 적용한 정밀 브래킷을 설계해줘.",
+      "expectedRequirementOutcome": "READY"
+    },
+    {
+      "caseId": "ko_practical-06-linearPattern",
+      "category": "ko_practical",
+      "feature": "linearPattern",
+      "prompt": "6061-T6 알루미늄을 CNC 가공해서 100×60×8 mm 기준의 선형 패턴 기능을 적용한 정밀 브래킷을 설계해줘.",
+      "expectedRequirementOutcome": "READY"
+    },
+    {
+      "caseId": "ko_practical-07-circularPattern",
+      "category": "ko_practical",
+      "feature": "circularPattern",
+      "prompt": "6061-T6 알루미늄을 CNC 가공해서 100×60×8 mm 기준의 원형 패턴 기능을 적용한 정밀 브래킷을 설계해줘.",
+      "expectedRequirementOutcome": "READY"
+    },
+    {
+      "caseId": "ko_practical-08-draft",
+      "category": "ko_practical",
+      "feature": "draft",
+      "prompt": "6061-T6 알루미늄을 CNC 가공해서 100×60×8 mm 기준의 구배 기능을 적용한 정밀 브래킷을 설계해줘.",
+      "expectedRequirementOutcome": "READY"
+    },
+    {
+      "caseId": "ko_practical-09-scale",
+      "category": "ko_practical",
+      "feature": "scale",
+      "prompt": "6061-T6 알루미늄을 CNC 가공해서 100×60×8 mm 기준의 스케일 기능을 적용한 정밀 브래킷을 설계해줘.",
+      "expectedRequirementOutcome": "READY"
+    },
+    {
+      "caseId": "ko_practical-10-moveCopy",
+      "category": "ko_practical",
+      "feature": "moveCopy",
+      "prompt": "6061-T6 알루미늄을 CNC 가공해서 100×60×8 mm 기준의 이동 복사 기능을 적용한 정밀 브래킷을 설계해줘.",
+      "expectedRequirementOutcome": "READY"
+    },
+    {
+      "caseId": "ko_practical-11-variableFillet",
+      "category": "ko_practical",
+      "feature": "variableFillet",
+      "prompt": "6061-T6 알루미늄을 CNC 가공해서 100×60×8 mm 기준의 가변 필렛 기능을 적용한 정밀 브래킷을 설계해줘.",
+      "expectedRequirementOutcome": "READY"
+    },
+    {
+      "caseId": "ko_practical-12-offsetFace",
+      "category": "ko_practical",
+      "feature": "offsetFace",
+      "prompt": "6061-T6 알루미늄을 CNC 가공해서 100×60×8 mm 기준의 면 오프셋 기능을 적용한 정밀 브래킷을 설계해줘.",
+      "expectedRequirementOutcome": "READY"
+    },
+    {
+      "caseId": "ko_practical-13-thread",
+      "category": "ko_practical",
+      "feature": "thread",
+      "prompt": "6061-T6 알루미늄을 CNC 가공해서 100×60×8 mm 기준의 나사산 기능을 적용한 정밀 브래킷을 설계해줘.",
+      "expectedRequirementOutcome": "READY"
+    },
+    {
+      "caseId": "ko_practical-14-helix",
+      "category": "ko_practical",
+      "feature": "helix",
+      "prompt": "6061-T6 알루미늄을 CNC 가공해서 100×60×8 mm 기준의 나선 기능을 적용한 정밀 브래킷을 설계해줘.",
+      "expectedRequirementOutcome": "READY"
+    },
+    {
+      "caseId": "ko_practical-15-bend",
+      "category": "ko_practical",
+      "feature": "bend",
+      "prompt": "6061-T6 알루미늄을 CNC 가공해서 100×60×8 mm 기준의 굽힘 기능을 적용한 정밀 브래킷을 설계해줘.",
+      "expectedRequirementOutcome": "READY"
+    },
+    {
+      "caseId": "ko_practical-16-flange",
+      "category": "ko_practical",
+      "feature": "flange",
+      "prompt": "6061-T6 알루미늄을 CNC 가공해서 100×60×8 mm 기준의 플랜지 기능을 적용한 정밀 브래킷을 설계해줘.",
+      "expectedRequirementOutcome": "READY"
+    },
+    {
+      "caseId": "ko_practical-17-hem",
+      "category": "ko_practical",
+      "feature": "hem",
+      "prompt": "6061-T6 알루미늄을 CNC 가공해서 100×60×8 mm 기준의 헤밍 기능을 적용한 정밀 브래킷을 설계해줘.",
+      "expectedRequirementOutcome": "READY"
+    },
+    {
+      "caseId": "ko_practical-18-jog",
+      "category": "ko_practical",
+      "feature": "jog",
+      "prompt": "6061-T6 알루미늄을 CNC 가공해서 100×60×8 mm 기준의 조그 기능을 적용한 정밀 브래킷을 설계해줘.",
+      "expectedRequirementOutcome": "READY"
+    },
+    {
+      "caseId": "ko_practical-19-tab",
+      "category": "ko_practical",
+      "feature": "tab",
+      "prompt": "6061-T6 알루미늄을 CNC 가공해서 100×60×8 mm 기준의 탭 기능을 적용한 정밀 브래킷을 설계해줘.",
+      "expectedRequirementOutcome": "READY"
+    },
+    {
+      "caseId": "ko_practical-20-cut",
+      "category": "ko_practical",
+      "feature": "cut",
+      "prompt": "6061-T6 알루미늄을 CNC 가공해서 100×60×8 mm 기준의 절단 기능을 적용한 정밀 브래킷을 설계해줘.",
+      "expectedRequirementOutcome": "READY"
+    },
+    {
+      "caseId": "ko_practical-21-bendRelief",
+      "category": "ko_practical",
+      "feature": "bendRelief",
+      "prompt": "6061-T6 알루미늄을 CNC 가공해서 100×60×8 mm 기준의 굽힘 릴리프 기능을 적용한 정밀 브래킷을 설계해줘.",
+      "expectedRequirementOutcome": "READY"
+    },
+    {
+      "caseId": "ko_practical-22-cornerRelief",
+      "category": "ko_practical",
+      "feature": "cornerRelief",
+      "prompt": "6061-T6 알루미늄을 CNC 가공해서 100×60×8 mm 기준의 코너 릴리프 기능을 적용한 정밀 브래킷을 설계해줘.",
+      "expectedRequirementOutcome": "READY"
+    },
+    {
+      "caseId": "ko_practical-23-variableShell",
+      "category": "ko_practical",
+      "feature": "variableShell",
+      "prompt": "6061-T6 알루미늄을 CNC 가공해서 100×60×8 mm 기준의 가변 쉘 기능을 적용한 정밀 브래킷을 설계해줘.",
+      "expectedRequirementOutcome": "READY"
+    },
+    {
+      "caseId": "ko_practical-24-sketchExtrude",
+      "category": "ko_practical",
+      "feature": "sketchExtrude",
+      "prompt": "6061-T6 알루미늄을 CNC 가공해서 100×60×8 mm 기준의 스케치 돌출 기능을 적용한 정밀 브래킷을 설계해줘.",
+      "expectedRequirementOutcome": "READY"
+    },
+    {
+      "caseId": "ko_practical-25-revolve",
+      "category": "ko_practical",
+      "feature": "revolve",
+      "prompt": "6061-T6 알루미늄을 CNC 가공해서 100×60×8 mm 기준의 회전 기능을 적용한 정밀 브래킷을 설계해줘.",
+      "expectedRequirementOutcome": "READY"
+    },
+    {
+      "caseId": "ko_practical-26-sweep",
+      "category": "ko_practical",
+      "feature": "sweep",
+      "prompt": "6061-T6 알루미늄을 CNC 가공해서 100×60×8 mm 기준의 스윕 기능을 적용한 정밀 브래킷을 설계해줘.",
+      "expectedRequirementOutcome": "READY"
+    },
+    {
+      "caseId": "ko_practical-27-loft",
+      "category": "ko_practical",
+      "feature": "loft",
+      "prompt": "6061-T6 알루미늄을 CNC 가공해서 100×60×8 mm 기준의 로프트 기능을 적용한 정밀 브래킷을 설계해줘.",
+      "expectedRequirementOutcome": "READY"
+    },
+    {
+      "caseId": "ko_practical-28-mirror",
+      "category": "ko_practical",
+      "feature": "mirror",
+      "prompt": "6061-T6 알루미늄을 CNC 가공해서 100×60×8 mm 기준의 미러 기능을 적용한 정밀 브래킷을 설계해줘.",
+      "expectedRequirementOutcome": "READY"
+    },
+    {
+      "caseId": "ko_practical-29-boolean",
+      "category": "ko_practical",
+      "feature": "boolean",
+      "prompt": "6061-T6 알루미늄을 CNC 가공해서 100×60×8 mm 기준의 불리언 기능을 적용한 정밀 브래킷을 설계해줘.",
+      "expectedRequirementOutcome": "READY"
+    },
+    {
+      "caseId": "ko_practical-30-splitBody",
+      "category": "ko_practical",
+      "feature": "splitBody",
+      "prompt": "6061-T6 알루미늄을 CNC 가공해서 100×60×8 mm 기준의 바디 분할 기능을 적용한 정밀 브래킷을 설계해줘.",
+      "expectedRequirementOutcome": "READY"
+    },
+    {
+      "caseId": "en_practical-01-hole",
+      "category": "en_practical",
+      "feature": "hole",
+      "prompt": "Design a precision bracket with the hole feature, 100 x 60 x 8 mm, in 6061-T6 aluminum using CNC milling.",
+      "expectedRequirementOutcome": "READY"
+    },
+    {
+      "caseId": "en_practical-02-fillet",
+      "category": "en_practical",
+      "feature": "fillet",
+      "prompt": "Design a precision bracket with the fillet feature, 100 x 60 x 8 mm, in 6061-T6 aluminum using CNC milling.",
+      "expectedRequirementOutcome": "READY"
+    },
+    {
+      "caseId": "en_practical-03-chamfer",
+      "category": "en_practical",
+      "feature": "chamfer",
+      "prompt": "Design a precision bracket with the chamfer feature, 100 x 60 x 8 mm, in 6061-T6 aluminum using CNC milling.",
+      "expectedRequirementOutcome": "READY"
+    },
+    {
+      "caseId": "en_practical-04-shell",
+      "category": "en_practical",
+      "feature": "shell",
+      "prompt": "Design a precision bracket with the shell feature, 100 x 60 x 8 mm, in 6061-T6 aluminum using CNC milling.",
+      "expectedRequirementOutcome": "READY"
+    },
+    {
+      "caseId": "en_practical-05-rib",
+      "category": "en_practical",
+      "feature": "rib",
+      "prompt": "Design a precision bracket with the rib feature, 100 x 60 x 8 mm, in 6061-T6 aluminum using CNC milling.",
+      "expectedRequirementOutcome": "READY"
+    },
+    {
+      "caseId": "en_practical-06-linearPattern",
+      "category": "en_practical",
+      "feature": "linearPattern",
+      "prompt": "Design a precision bracket with the linear pattern feature, 100 x 60 x 8 mm, in 6061-T6 aluminum using CNC milling.",
+      "expectedRequirementOutcome": "READY"
+    },
+    {
+      "caseId": "en_practical-07-circularPattern",
+      "category": "en_practical",
+      "feature": "circularPattern",
+      "prompt": "Design a precision bracket with the circular pattern feature, 100 x 60 x 8 mm, in 6061-T6 aluminum using CNC milling.",
+      "expectedRequirementOutcome": "READY"
+    },
+    {
+      "caseId": "en_practical-08-draft",
+      "category": "en_practical",
+      "feature": "draft",
+      "prompt": "Design a precision bracket with the draft feature, 100 x 60 x 8 mm, in 6061-T6 aluminum using CNC milling.",
+      "expectedRequirementOutcome": "READY"
+    },
+    {
+      "caseId": "en_practical-09-scale",
+      "category": "en_practical",
+      "feature": "scale",
+      "prompt": "Design a precision bracket with the scale feature, 100 x 60 x 8 mm, in 6061-T6 aluminum using CNC milling.",
+      "expectedRequirementOutcome": "READY"
+    },
+    {
+      "caseId": "en_practical-10-moveCopy",
+      "category": "en_practical",
+      "feature": "moveCopy",
+      "prompt": "Design a precision bracket with the move copy feature, 100 x 60 x 8 mm, in 6061-T6 aluminum using CNC milling.",
+      "expectedRequirementOutcome": "READY"
+    },
+    {
+      "caseId": "en_practical-11-variableFillet",
+      "category": "en_practical",
+      "feature": "variableFillet",
+      "prompt": "Design a precision bracket with the variable fillet feature, 100 x 60 x 8 mm, in 6061-T6 aluminum using CNC milling.",
+      "expectedRequirementOutcome": "READY"
+    },
+    {
+      "caseId": "en_practical-12-offsetFace",
+      "category": "en_practical",
+      "feature": "offsetFace",
+      "prompt": "Design a precision bracket with the offset face feature, 100 x 60 x 8 mm, in 6061-T6 aluminum using CNC milling.",
+      "expectedRequirementOutcome": "READY"
+    },
+    {
+      "caseId": "en_practical-13-thread",
+      "category": "en_practical",
+      "feature": "thread",
+      "prompt": "Design a precision bracket with the thread feature, 100 x 60 x 8 mm, in 6061-T6 aluminum using CNC milling.",
+      "expectedRequirementOutcome": "READY"
+    },
+    {
+      "caseId": "en_practical-14-helix",
+      "category": "en_practical",
+      "feature": "helix",
+      "prompt": "Design a precision bracket with the helix feature, 100 x 60 x 8 mm, in 6061-T6 aluminum using CNC milling.",
+      "expectedRequirementOutcome": "READY"
+    },
+    {
+      "caseId": "en_practical-15-bend",
+      "category": "en_practical",
+      "feature": "bend",
+      "prompt": "Design a precision bracket with the bend feature, 100 x 60 x 8 mm, in 6061-T6 aluminum using CNC milling.",
+      "expectedRequirementOutcome": "READY"
+    },
+    {
+      "caseId": "en_practical-16-flange",
+      "category": "en_practical",
+      "feature": "flange",
+      "prompt": "Design a precision bracket with the flange feature, 100 x 60 x 8 mm, in 6061-T6 aluminum using CNC milling.",
+      "expectedRequirementOutcome": "READY"
+    },
+    {
+      "caseId": "en_practical-17-hem",
+      "category": "en_practical",
+      "feature": "hem",
+      "prompt": "Design a precision bracket with the hem feature, 100 x 60 x 8 mm, in 6061-T6 aluminum using CNC milling.",
+      "expectedRequirementOutcome": "READY"
+    },
+    {
+      "caseId": "en_practical-18-jog",
+      "category": "en_practical",
+      "feature": "jog",
+      "prompt": "Design a precision bracket with the jog feature, 100 x 60 x 8 mm, in 6061-T6 aluminum using CNC milling.",
+      "expectedRequirementOutcome": "READY"
+    },
+    {
+      "caseId": "en_practical-19-tab",
+      "category": "en_practical",
+      "feature": "tab",
+      "prompt": "Design a precision bracket with the tab feature, 100 x 60 x 8 mm, in 6061-T6 aluminum using CNC milling.",
+      "expectedRequirementOutcome": "READY"
+    },
+    {
+      "caseId": "en_practical-20-cut",
+      "category": "en_practical",
+      "feature": "cut",
+      "prompt": "Design a precision bracket with the cut feature, 100 x 60 x 8 mm, in 6061-T6 aluminum using CNC milling.",
+      "expectedRequirementOutcome": "READY"
+    },
+    {
+      "caseId": "en_practical-21-bendRelief",
+      "category": "en_practical",
+      "feature": "bendRelief",
+      "prompt": "Design a precision bracket with the bend relief feature, 100 x 60 x 8 mm, in 6061-T6 aluminum using CNC milling.",
+      "expectedRequirementOutcome": "READY"
+    },
+    {
+      "caseId": "en_practical-22-cornerRelief",
+      "category": "en_practical",
+      "feature": "cornerRelief",
+      "prompt": "Design a precision bracket with the corner relief feature, 100 x 60 x 8 mm, in 6061-T6 aluminum using CNC milling.",
+      "expectedRequirementOutcome": "READY"
+    },
+    {
+      "caseId": "en_practical-23-variableShell",
+      "category": "en_practical",
+      "feature": "variableShell",
+      "prompt": "Design a precision bracket with the variable shell feature, 100 x 60 x 8 mm, in 6061-T6 aluminum using CNC milling.",
+      "expectedRequirementOutcome": "READY"
+    },
+    {
+      "caseId": "en_practical-24-sketchExtrude",
+      "category": "en_practical",
+      "feature": "sketchExtrude",
+      "prompt": "Design a precision bracket with the sketch extrude feature, 100 x 60 x 8 mm, in 6061-T6 aluminum using CNC milling.",
+      "expectedRequirementOutcome": "READY"
+    },
+    {
+      "caseId": "en_practical-25-revolve",
+      "category": "en_practical",
+      "feature": "revolve",
+      "prompt": "Design a precision bracket with the revolve feature, 100 x 60 x 8 mm, in 6061-T6 aluminum using CNC milling.",
+      "expectedRequirementOutcome": "READY"
+    },
+    {
+      "caseId": "en_practical-26-sweep",
+      "category": "en_practical",
+      "feature": "sweep",
+      "prompt": "Design a precision bracket with the sweep feature, 100 x 60 x 8 mm, in 6061-T6 aluminum using CNC milling.",
+      "expectedRequirementOutcome": "READY"
+    },
+    {
+      "caseId": "en_practical-27-loft",
+      "category": "en_practical",
+      "feature": "loft",
+      "prompt": "Design a precision bracket with the loft feature, 100 x 60 x 8 mm, in 6061-T6 aluminum using CNC milling.",
+      "expectedRequirementOutcome": "READY"
+    },
+    {
+      "caseId": "en_practical-28-mirror",
+      "category": "en_practical",
+      "feature": "mirror",
+      "prompt": "Design a precision bracket with the mirror feature, 100 x 60 x 8 mm, in 6061-T6 aluminum using CNC milling.",
+      "expectedRequirementOutcome": "READY"
+    },
+    {
+      "caseId": "en_practical-29-boolean",
+      "category": "en_practical",
+      "feature": "boolean",
+      "prompt": "Design a precision bracket with the boolean feature, 100 x 60 x 8 mm, in 6061-T6 aluminum using CNC milling.",
+      "expectedRequirementOutcome": "READY"
+    },
+    {
+      "caseId": "en_practical-30-splitBody",
+      "category": "en_practical",
+      "feature": "splitBody",
+      "prompt": "Design a precision bracket with the split body feature, 100 x 60 x 8 mm, in 6061-T6 aluminum using CNC milling.",
+      "expectedRequirementOutcome": "READY"
+    },
+    {
+      "caseId": "mixed_units-01-hole",
+      "category": "mixed_units",
+      "feature": "hole",
+      "prompt": "Design a precision bracket with the hole feature: 100 mm × 60 mm × 6.35 mm (3.937 in × 2.362 in × 0.25 in), 6061-T6 aluminum, CNC milled.",
+      "expectedRequirementOutcome": "READY"
+    },
+    {
+      "caseId": "mixed_units-02-fillet",
+      "category": "mixed_units",
+      "feature": "fillet",
+      "prompt": "Design a precision bracket with the fillet feature: 100 mm × 60 mm × 6.35 mm (3.937 in × 2.362 in × 0.25 in), 6061-T6 aluminum, CNC milled.",
+      "expectedRequirementOutcome": "READY"
+    },
+    {
+      "caseId": "mixed_units-03-chamfer",
+      "category": "mixed_units",
+      "feature": "chamfer",
+      "prompt": "Design a precision bracket with the chamfer feature: 100 mm × 60 mm × 6.35 mm (3.937 in × 2.362 in × 0.25 in), 6061-T6 aluminum, CNC milled.",
+      "expectedRequirementOutcome": "READY"
+    },
+    {
+      "caseId": "mixed_units-04-shell",
+      "category": "mixed_units",
+      "feature": "shell",
+      "prompt": "Design a precision bracket with the shell feature: 100 mm × 60 mm × 6.35 mm (3.937 in × 2.362 in × 0.25 in), 6061-T6 aluminum, CNC milled.",
+      "expectedRequirementOutcome": "READY"
+    },
+    {
+      "caseId": "mixed_units-05-rib",
+      "category": "mixed_units",
+      "feature": "rib",
+      "prompt": "Design a precision bracket with the rib feature: 100 mm × 60 mm × 6.35 mm (3.937 in × 2.362 in × 0.25 in), 6061-T6 aluminum, CNC milled.",
+      "expectedRequirementOutcome": "READY"
+    },
+    {
+      "caseId": "mixed_units-06-linearPattern",
+      "category": "mixed_units",
+      "feature": "linearPattern",
+      "prompt": "Design a precision bracket with the linear pattern feature: 100 mm × 60 mm × 6.35 mm (3.937 in × 2.362 in × 0.25 in), 6061-T6 aluminum, CNC milled.",
+      "expectedRequirementOutcome": "READY"
+    },
+    {
+      "caseId": "mixed_units-07-circularPattern",
+      "category": "mixed_units",
+      "feature": "circularPattern",
+      "prompt": "Design a precision bracket with the circular pattern feature: 100 mm × 60 mm × 6.35 mm (3.937 in × 2.362 in × 0.25 in), 6061-T6 aluminum, CNC milled.",
+      "expectedRequirementOutcome": "READY"
+    },
+    {
+      "caseId": "mixed_units-08-draft",
+      "category": "mixed_units",
+      "feature": "draft",
+      "prompt": "Design a precision bracket with the draft feature: 100 mm × 60 mm × 6.35 mm (3.937 in × 2.362 in × 0.25 in), 6061-T6 aluminum, CNC milled.",
+      "expectedRequirementOutcome": "READY"
+    },
+    {
+      "caseId": "mixed_units-09-scale",
+      "category": "mixed_units",
+      "feature": "scale",
+      "prompt": "Design a precision bracket with the scale feature: 100 mm × 60 mm × 6.35 mm (3.937 in × 2.362 in × 0.25 in), 6061-T6 aluminum, CNC milled.",
+      "expectedRequirementOutcome": "READY"
+    },
+    {
+      "caseId": "mixed_units-10-moveCopy",
+      "category": "mixed_units",
+      "feature": "moveCopy",
+      "prompt": "Design a precision bracket with the move copy feature: 100 mm × 60 mm × 6.35 mm (3.937 in × 2.362 in × 0.25 in), 6061-T6 aluminum, CNC milled.",
+      "expectedRequirementOutcome": "READY"
+    },
+    {
+      "caseId": "mixed_units-11-variableFillet",
+      "category": "mixed_units",
+      "feature": "variableFillet",
+      "prompt": "Design a precision bracket with the variable fillet feature: 100 mm × 60 mm × 6.35 mm (3.937 in × 2.362 in × 0.25 in), 6061-T6 aluminum, CNC milled.",
+      "expectedRequirementOutcome": "READY"
+    },
+    {
+      "caseId": "mixed_units-12-offsetFace",
+      "category": "mixed_units",
+      "feature": "offsetFace",
+      "prompt": "Design a precision bracket with the offset face feature: 100 mm × 60 mm × 6.35 mm (3.937 in × 2.362 in × 0.25 in), 6061-T6 aluminum, CNC milled.",
+      "expectedRequirementOutcome": "READY"
+    },
+    {
+      "caseId": "mixed_units-13-thread",
+      "category": "mixed_units",
+      "feature": "thread",
+      "prompt": "Design a precision bracket with the thread feature: 100 mm × 60 mm × 6.35 mm (3.937 in × 2.362 in × 0.25 in), 6061-T6 aluminum, CNC milled.",
+      "expectedRequirementOutcome": "READY"
+    },
+    {
+      "caseId": "mixed_units-14-helix",
+      "category": "mixed_units",
+      "feature": "helix",
+      "prompt": "Design a precision bracket with the helix feature: 100 mm × 60 mm × 6.35 mm (3.937 in × 2.362 in × 0.25 in), 6061-T6 aluminum, CNC milled.",
+      "expectedRequirementOutcome": "READY"
+    },
+    {
+      "caseId": "mixed_units-15-bend",
+      "category": "mixed_units",
+      "feature": "bend",
+      "prompt": "Design a precision bracket with the bend feature: 100 mm × 60 mm × 6.35 mm (3.937 in × 2.362 in × 0.25 in), 6061-T6 aluminum, CNC milled.",
+      "expectedRequirementOutcome": "READY"
+    },
+    {
+      "caseId": "mixed_units-16-flange",
+      "category": "mixed_units",
+      "feature": "flange",
+      "prompt": "Design a precision bracket with the flange feature: 100 mm × 60 mm × 6.35 mm (3.937 in × 2.362 in × 0.25 in), 6061-T6 aluminum, CNC milled.",
+      "expectedRequirementOutcome": "READY"
+    },
+    {
+      "caseId": "mixed_units-17-hem",
+      "category": "mixed_units",
+      "feature": "hem",
+      "prompt": "Design a precision bracket with the hem feature: 100 mm × 60 mm × 6.35 mm (3.937 in × 2.362 in × 0.25 in), 6061-T6 aluminum, CNC milled.",
+      "expectedRequirementOutcome": "READY"
+    },
+    {
+      "caseId": "mixed_units-18-jog",
+      "category": "mixed_units",
+      "feature": "jog",
+      "prompt": "Design a precision bracket with the jog feature: 100 mm × 60 mm × 6.35 mm (3.937 in × 2.362 in × 0.25 in), 6061-T6 aluminum, CNC milled.",
+      "expectedRequirementOutcome": "READY"
+    },
+    {
+      "caseId": "mixed_units-19-tab",
+      "category": "mixed_units",
+      "feature": "tab",
+      "prompt": "Design a precision bracket with the tab feature: 100 mm × 60 mm × 6.35 mm (3.937 in × 2.362 in × 0.25 in), 6061-T6 aluminum, CNC milled.",
+      "expectedRequirementOutcome": "READY"
+    },
+    {
+      "caseId": "mixed_units-20-cut",
+      "category": "mixed_units",
+      "feature": "cut",
+      "prompt": "Design a precision bracket with the cut feature: 100 mm × 60 mm × 6.35 mm (3.937 in × 2.362 in × 0.25 in), 6061-T6 aluminum, CNC milled.",
+      "expectedRequirementOutcome": "READY"
+    },
+    {
+      "caseId": "mixed_units-21-bendRelief",
+      "category": "mixed_units",
+      "feature": "bendRelief",
+      "prompt": "Design a precision bracket with the bend relief feature: 100 mm × 60 mm × 6.35 mm (3.937 in × 2.362 in × 0.25 in), 6061-T6 aluminum, CNC milled.",
+      "expectedRequirementOutcome": "READY"
+    },
+    {
+      "caseId": "mixed_units-22-cornerRelief",
+      "category": "mixed_units",
+      "feature": "cornerRelief",
+      "prompt": "Design a precision bracket with the corner relief feature: 100 mm × 60 mm × 6.35 mm (3.937 in × 2.362 in × 0.25 in), 6061-T6 aluminum, CNC milled.",
+      "expectedRequirementOutcome": "READY"
+    },
+    {
+      "caseId": "mixed_units-23-variableShell",
+      "category": "mixed_units",
+      "feature": "variableShell",
+      "prompt": "Design a precision bracket with the variable shell feature: 100 mm × 60 mm × 6.35 mm (3.937 in × 2.362 in × 0.25 in), 6061-T6 aluminum, CNC milled.",
+      "expectedRequirementOutcome": "READY"
+    },
+    {
+      "caseId": "mixed_units-24-sketchExtrude",
+      "category": "mixed_units",
+      "feature": "sketchExtrude",
+      "prompt": "Design a precision bracket with the sketch extrude feature: 100 mm × 60 mm × 6.35 mm (3.937 in × 2.362 in × 0.25 in), 6061-T6 aluminum, CNC milled.",
+      "expectedRequirementOutcome": "READY"
+    },
+    {
+      "caseId": "mixed_units-25-revolve",
+      "category": "mixed_units",
+      "feature": "revolve",
+      "prompt": "Design a precision bracket with the revolve feature: 100 mm × 60 mm × 6.35 mm (3.937 in × 2.362 in × 0.25 in), 6061-T6 aluminum, CNC milled.",
+      "expectedRequirementOutcome": "READY"
+    },
+    {
+      "caseId": "mixed_units-26-sweep",
+      "category": "mixed_units",
+      "feature": "sweep",
+      "prompt": "Design a precision bracket with the sweep feature: 100 mm × 60 mm × 6.35 mm (3.937 in × 2.362 in × 0.25 in), 6061-T6 aluminum, CNC milled.",
+      "expectedRequirementOutcome": "READY"
+    },
+    {
+      "caseId": "mixed_units-27-loft",
+      "category": "mixed_units",
+      "feature": "loft",
+      "prompt": "Design a precision bracket with the loft feature: 100 mm × 60 mm × 6.35 mm (3.937 in × 2.362 in × 0.25 in), 6061-T6 aluminum, CNC milled.",
+      "expectedRequirementOutcome": "READY"
+    },
+    {
+      "caseId": "mixed_units-28-mirror",
+      "category": "mixed_units",
+      "feature": "mirror",
+      "prompt": "Design a precision bracket with the mirror feature: 100 mm × 60 mm × 6.35 mm (3.937 in × 2.362 in × 0.25 in), 6061-T6 aluminum, CNC milled.",
+      "expectedRequirementOutcome": "READY"
+    },
+    {
+      "caseId": "mixed_units-29-boolean",
+      "category": "mixed_units",
+      "feature": "boolean",
+      "prompt": "Design a precision bracket with the boolean feature: 100 mm × 60 mm × 6.35 mm (3.937 in × 2.362 in × 0.25 in), 6061-T6 aluminum, CNC milled.",
+      "expectedRequirementOutcome": "READY"
+    },
+    {
+      "caseId": "mixed_units-30-splitBody",
+      "category": "mixed_units",
+      "feature": "splitBody",
+      "prompt": "Design a precision bracket with the split body feature: 100 mm × 60 mm × 6.35 mm (3.937 in × 2.362 in × 0.25 in), 6061-T6 aluminum, CNC milled.",
+      "expectedRequirementOutcome": "READY"
+    },
+    {
+      "caseId": "missing_required-01-hole",
+      "category": "missing_required",
+      "feature": "hole",
+      "prompt": "Design a precision bracket using the hole feature.",
+      "expectedRequirementOutcome": "BLOCKED",
+      "negativeReason": "missing_required"
+    },
+    {
+      "caseId": "missing_required-02-fillet",
+      "category": "missing_required",
+      "feature": "fillet",
+      "prompt": "Design a precision bracket using the fillet feature.",
+      "expectedRequirementOutcome": "BLOCKED",
+      "negativeReason": "missing_required"
+    },
+    {
+      "caseId": "missing_required-03-chamfer",
+      "category": "missing_required",
+      "feature": "chamfer",
+      "prompt": "Design a precision bracket using the chamfer feature.",
+      "expectedRequirementOutcome": "BLOCKED",
+      "negativeReason": "missing_required"
+    },
+    {
+      "caseId": "missing_required-04-shell",
+      "category": "missing_required",
+      "feature": "shell",
+      "prompt": "Design a precision bracket using the shell feature.",
+      "expectedRequirementOutcome": "BLOCKED",
+      "negativeReason": "missing_required"
+    },
+    {
+      "caseId": "missing_required-05-rib",
+      "category": "missing_required",
+      "feature": "rib",
+      "prompt": "Design a precision bracket using the rib feature.",
+      "expectedRequirementOutcome": "BLOCKED",
+      "negativeReason": "missing_required"
+    },
+    {
+      "caseId": "missing_required-06-linearPattern",
+      "category": "missing_required",
+      "feature": "linearPattern",
+      "prompt": "Design a precision bracket using the linear pattern feature.",
+      "expectedRequirementOutcome": "BLOCKED",
+      "negativeReason": "missing_required"
+    },
+    {
+      "caseId": "missing_required-07-circularPattern",
+      "category": "missing_required",
+      "feature": "circularPattern",
+      "prompt": "Design a precision bracket using the circular pattern feature.",
+      "expectedRequirementOutcome": "BLOCKED",
+      "negativeReason": "missing_required"
+    },
+    {
+      "caseId": "missing_required-08-draft",
+      "category": "missing_required",
+      "feature": "draft",
+      "prompt": "Design a precision bracket using the draft feature.",
+      "expectedRequirementOutcome": "BLOCKED",
+      "negativeReason": "missing_required"
+    },
+    {
+      "caseId": "missing_required-09-scale",
+      "category": "missing_required",
+      "feature": "scale",
+      "prompt": "Design a precision bracket using the scale feature.",
+      "expectedRequirementOutcome": "BLOCKED",
+      "negativeReason": "missing_required"
+    },
+    {
+      "caseId": "missing_required-10-moveCopy",
+      "category": "missing_required",
+      "feature": "moveCopy",
+      "prompt": "Design a precision bracket using the move copy feature.",
+      "expectedRequirementOutcome": "BLOCKED",
+      "negativeReason": "missing_required"
+    },
+    {
+      "caseId": "missing_required-11-variableFillet",
+      "category": "missing_required",
+      "feature": "variableFillet",
+      "prompt": "Design a precision bracket using the variable fillet feature.",
+      "expectedRequirementOutcome": "BLOCKED",
+      "negativeReason": "missing_required"
+    },
+    {
+      "caseId": "missing_required-12-offsetFace",
+      "category": "missing_required",
+      "feature": "offsetFace",
+      "prompt": "Design a precision bracket using the offset face feature.",
+      "expectedRequirementOutcome": "BLOCKED",
+      "negativeReason": "missing_required"
+    },
+    {
+      "caseId": "missing_required-13-thread",
+      "category": "missing_required",
+      "feature": "thread",
+      "prompt": "Design a precision bracket using the thread feature.",
+      "expectedRequirementOutcome": "BLOCKED",
+      "negativeReason": "missing_required"
+    },
+    {
+      "caseId": "missing_required-14-helix",
+      "category": "missing_required",
+      "feature": "helix",
+      "prompt": "Design a precision bracket using the helix feature.",
+      "expectedRequirementOutcome": "BLOCKED",
+      "negativeReason": "missing_required"
+    },
+    {
+      "caseId": "missing_required-15-bend",
+      "category": "missing_required",
+      "feature": "bend",
+      "prompt": "Design a precision bracket using the bend feature.",
+      "expectedRequirementOutcome": "BLOCKED",
+      "negativeReason": "missing_required"
+    },
+    {
+      "caseId": "missing_required-16-flange",
+      "category": "missing_required",
+      "feature": "flange",
+      "prompt": "Design a precision bracket using the flange feature.",
+      "expectedRequirementOutcome": "BLOCKED",
+      "negativeReason": "missing_required"
+    },
+    {
+      "caseId": "missing_required-17-hem",
+      "category": "missing_required",
+      "feature": "hem",
+      "prompt": "Design a precision bracket using the hem feature.",
+      "expectedRequirementOutcome": "BLOCKED",
+      "negativeReason": "missing_required"
+    },
+    {
+      "caseId": "missing_required-18-jog",
+      "category": "missing_required",
+      "feature": "jog",
+      "prompt": "Design a precision bracket using the jog feature.",
+      "expectedRequirementOutcome": "BLOCKED",
+      "negativeReason": "missing_required"
+    },
+    {
+      "caseId": "missing_required-19-tab",
+      "category": "missing_required",
+      "feature": "tab",
+      "prompt": "Design a precision bracket using the tab feature.",
+      "expectedRequirementOutcome": "BLOCKED",
+      "negativeReason": "missing_required"
+    },
+    {
+      "caseId": "missing_required-20-cut",
+      "category": "missing_required",
+      "feature": "cut",
+      "prompt": "Design a precision bracket using the cut feature.",
+      "expectedRequirementOutcome": "BLOCKED",
+      "negativeReason": "missing_required"
+    },
+    {
+      "caseId": "missing_required-21-bendRelief",
+      "category": "missing_required",
+      "feature": "bendRelief",
+      "prompt": "Design a precision bracket using the bend relief feature.",
+      "expectedRequirementOutcome": "BLOCKED",
+      "negativeReason": "missing_required"
+    },
+    {
+      "caseId": "missing_required-22-cornerRelief",
+      "category": "missing_required",
+      "feature": "cornerRelief",
+      "prompt": "Design a precision bracket using the corner relief feature.",
+      "expectedRequirementOutcome": "BLOCKED",
+      "negativeReason": "missing_required"
+    },
+    {
+      "caseId": "missing_required-23-variableShell",
+      "category": "missing_required",
+      "feature": "variableShell",
+      "prompt": "Design a precision bracket using the variable shell feature.",
+      "expectedRequirementOutcome": "BLOCKED",
+      "negativeReason": "missing_required"
+    },
+    {
+      "caseId": "missing_required-24-sketchExtrude",
+      "category": "missing_required",
+      "feature": "sketchExtrude",
+      "prompt": "Design a precision bracket using the sketch extrude feature.",
+      "expectedRequirementOutcome": "BLOCKED",
+      "negativeReason": "missing_required"
+    },
+    {
+      "caseId": "missing_required-25-revolve",
+      "category": "missing_required",
+      "feature": "revolve",
+      "prompt": "Design a precision bracket using the revolve feature.",
+      "expectedRequirementOutcome": "BLOCKED",
+      "negativeReason": "missing_required"
+    },
+    {
+      "caseId": "missing_required-26-sweep",
+      "category": "missing_required",
+      "feature": "sweep",
+      "prompt": "Design a precision bracket using the sweep feature.",
+      "expectedRequirementOutcome": "BLOCKED",
+      "negativeReason": "missing_required"
+    },
+    {
+      "caseId": "missing_required-27-loft",
+      "category": "missing_required",
+      "feature": "loft",
+      "prompt": "Design a precision bracket using the loft feature.",
+      "expectedRequirementOutcome": "BLOCKED",
+      "negativeReason": "missing_required"
+    },
+    {
+      "caseId": "missing_required-28-mirror",
+      "category": "missing_required",
+      "feature": "mirror",
+      "prompt": "Design a precision bracket using the mirror feature.",
+      "expectedRequirementOutcome": "BLOCKED",
+      "negativeReason": "missing_required"
+    },
+    {
+      "caseId": "missing_required-29-boolean",
+      "category": "missing_required",
+      "feature": "boolean",
+      "prompt": "Design a precision bracket using the boolean feature.",
+      "expectedRequirementOutcome": "BLOCKED",
+      "negativeReason": "missing_required"
+    },
+    {
+      "caseId": "missing_required-30-splitBody",
+      "category": "missing_required",
+      "feature": "splitBody",
+      "prompt": "Design a precision bracket using the split body feature.",
+      "expectedRequirementOutcome": "BLOCKED",
+      "negativeReason": "missing_required"
+    },
+    {
+      "caseId": "contradictory_or_unmanufacturable-01-hole",
+      "category": "contradictory_or_unmanufacturable",
+      "feature": "hole",
+      "prompt": "Design a precision bracket with the hole feature, 100 x 60 x 8 mm, using aluminum or steel with CNC milling.",
+      "expectedRequirementOutcome": "BLOCKED",
+      "negativeReason": "contradictory"
+    },
+    {
+      "caseId": "contradictory_or_unmanufacturable-02-fillet",
+      "category": "contradictory_or_unmanufacturable",
+      "feature": "fillet",
+      "prompt": "Design a precision bracket with the fillet feature, 100 x 60 x 0 mm, in 6061-T6 aluminum; manufacturing impossible.",
+      "expectedRequirementOutcome": "BLOCKED",
+      "negativeReason": "unmanufacturable"
+    },
+    {
+      "caseId": "contradictory_or_unmanufacturable-03-chamfer",
+      "category": "contradictory_or_unmanufacturable",
+      "feature": "chamfer",
+      "prompt": "Design a precision bracket with the chamfer feature, 100 x 60 x 8 mm, using aluminum or steel with CNC milling.",
+      "expectedRequirementOutcome": "BLOCKED",
+      "negativeReason": "contradictory"
+    },
+    {
+      "caseId": "contradictory_or_unmanufacturable-04-shell",
+      "category": "contradictory_or_unmanufacturable",
+      "feature": "shell",
+      "prompt": "Design a precision bracket with the shell feature, 100 x 60 x 0 mm, in 6061-T6 aluminum; manufacturing impossible.",
+      "expectedRequirementOutcome": "BLOCKED",
+      "negativeReason": "unmanufacturable"
+    },
+    {
+      "caseId": "contradictory_or_unmanufacturable-05-rib",
+      "category": "contradictory_or_unmanufacturable",
+      "feature": "rib",
+      "prompt": "Design a precision bracket with the rib feature, 100 x 60 x 8 mm, using aluminum or steel with CNC milling.",
+      "expectedRequirementOutcome": "BLOCKED",
+      "negativeReason": "contradictory"
+    },
+    {
+      "caseId": "contradictory_or_unmanufacturable-06-linearPattern",
+      "category": "contradictory_or_unmanufacturable",
+      "feature": "linearPattern",
+      "prompt": "Design a precision bracket with the linear pattern feature, 100 x 60 x 0 mm, in 6061-T6 aluminum; manufacturing impossible.",
+      "expectedRequirementOutcome": "BLOCKED",
+      "negativeReason": "unmanufacturable"
+    },
+    {
+      "caseId": "contradictory_or_unmanufacturable-07-circularPattern",
+      "category": "contradictory_or_unmanufacturable",
+      "feature": "circularPattern",
+      "prompt": "Design a precision bracket with the circular pattern feature, 100 x 60 x 8 mm, using aluminum or steel with CNC milling.",
+      "expectedRequirementOutcome": "BLOCKED",
+      "negativeReason": "contradictory"
+    },
+    {
+      "caseId": "contradictory_or_unmanufacturable-08-draft",
+      "category": "contradictory_or_unmanufacturable",
+      "feature": "draft",
+      "prompt": "Design a precision bracket with the draft feature, 100 x 60 x 0 mm, in 6061-T6 aluminum; manufacturing impossible.",
+      "expectedRequirementOutcome": "BLOCKED",
+      "negativeReason": "unmanufacturable"
+    },
+    {
+      "caseId": "contradictory_or_unmanufacturable-09-scale",
+      "category": "contradictory_or_unmanufacturable",
+      "feature": "scale",
+      "prompt": "Design a precision bracket with the scale feature, 100 x 60 x 8 mm, using aluminum or steel with CNC milling.",
+      "expectedRequirementOutcome": "BLOCKED",
+      "negativeReason": "contradictory"
+    },
+    {
+      "caseId": "contradictory_or_unmanufacturable-10-moveCopy",
+      "category": "contradictory_or_unmanufacturable",
+      "feature": "moveCopy",
+      "prompt": "Design a precision bracket with the move copy feature, 100 x 60 x 0 mm, in 6061-T6 aluminum; manufacturing impossible.",
+      "expectedRequirementOutcome": "BLOCKED",
+      "negativeReason": "unmanufacturable"
+    },
+    {
+      "caseId": "contradictory_or_unmanufacturable-11-variableFillet",
+      "category": "contradictory_or_unmanufacturable",
+      "feature": "variableFillet",
+      "prompt": "Design a precision bracket with the variable fillet feature, 100 x 60 x 8 mm, using aluminum or steel with CNC milling.",
+      "expectedRequirementOutcome": "BLOCKED",
+      "negativeReason": "contradictory"
+    },
+    {
+      "caseId": "contradictory_or_unmanufacturable-12-offsetFace",
+      "category": "contradictory_or_unmanufacturable",
+      "feature": "offsetFace",
+      "prompt": "Design a precision bracket with the offset face feature, 100 x 60 x 0 mm, in 6061-T6 aluminum; manufacturing impossible.",
+      "expectedRequirementOutcome": "BLOCKED",
+      "negativeReason": "unmanufacturable"
+    },
+    {
+      "caseId": "contradictory_or_unmanufacturable-13-thread",
+      "category": "contradictory_or_unmanufacturable",
+      "feature": "thread",
+      "prompt": "Design a precision bracket with the thread feature, 100 x 60 x 8 mm, using aluminum or steel with CNC milling.",
+      "expectedRequirementOutcome": "BLOCKED",
+      "negativeReason": "contradictory"
+    },
+    {
+      "caseId": "contradictory_or_unmanufacturable-14-helix",
+      "category": "contradictory_or_unmanufacturable",
+      "feature": "helix",
+      "prompt": "Design a precision bracket with the helix feature, 100 x 60 x 0 mm, in 6061-T6 aluminum; manufacturing impossible.",
+      "expectedRequirementOutcome": "BLOCKED",
+      "negativeReason": "unmanufacturable"
+    },
+    {
+      "caseId": "contradictory_or_unmanufacturable-15-bend",
+      "category": "contradictory_or_unmanufacturable",
+      "feature": "bend",
+      "prompt": "Design a precision bracket with the bend feature, 100 x 60 x 8 mm, using aluminum or steel with CNC milling.",
+      "expectedRequirementOutcome": "BLOCKED",
+      "negativeReason": "contradictory"
+    },
+    {
+      "caseId": "contradictory_or_unmanufacturable-16-flange",
+      "category": "contradictory_or_unmanufacturable",
+      "feature": "flange",
+      "prompt": "Design a precision bracket with the flange feature, 100 x 60 x 0 mm, in 6061-T6 aluminum; manufacturing impossible.",
+      "expectedRequirementOutcome": "BLOCKED",
+      "negativeReason": "unmanufacturable"
+    },
+    {
+      "caseId": "contradictory_or_unmanufacturable-17-hem",
+      "category": "contradictory_or_unmanufacturable",
+      "feature": "hem",
+      "prompt": "Design a precision bracket with the hem feature, 100 x 60 x 8 mm, using aluminum or steel with CNC milling.",
+      "expectedRequirementOutcome": "BLOCKED",
+      "negativeReason": "contradictory"
+    },
+    {
+      "caseId": "contradictory_or_unmanufacturable-18-jog",
+      "category": "contradictory_or_unmanufacturable",
+      "feature": "jog",
+      "prompt": "Design a precision bracket with the jog feature, 100 x 60 x 0 mm, in 6061-T6 aluminum; manufacturing impossible.",
+      "expectedRequirementOutcome": "BLOCKED",
+      "negativeReason": "unmanufacturable"
+    },
+    {
+      "caseId": "contradictory_or_unmanufacturable-19-tab",
+      "category": "contradictory_or_unmanufacturable",
+      "feature": "tab",
+      "prompt": "Design a precision bracket with the tab feature, 100 x 60 x 8 mm, using aluminum or steel with CNC milling.",
+      "expectedRequirementOutcome": "BLOCKED",
+      "negativeReason": "contradictory"
+    },
+    {
+      "caseId": "contradictory_or_unmanufacturable-20-cut",
+      "category": "contradictory_or_unmanufacturable",
+      "feature": "cut",
+      "prompt": "Design a precision bracket with the cut feature, 100 x 60 x 0 mm, in 6061-T6 aluminum; manufacturing impossible.",
+      "expectedRequirementOutcome": "BLOCKED",
+      "negativeReason": "unmanufacturable"
+    },
+    {
+      "caseId": "contradictory_or_unmanufacturable-21-bendRelief",
+      "category": "contradictory_or_unmanufacturable",
+      "feature": "bendRelief",
+      "prompt": "Design a precision bracket with the bend relief feature, 100 x 60 x 8 mm, using aluminum or steel with CNC milling.",
+      "expectedRequirementOutcome": "BLOCKED",
+      "negativeReason": "contradictory"
+    },
+    {
+      "caseId": "contradictory_or_unmanufacturable-22-cornerRelief",
+      "category": "contradictory_or_unmanufacturable",
+      "feature": "cornerRelief",
+      "prompt": "Design a precision bracket with the corner relief feature, 100 x 60 x 0 mm, in 6061-T6 aluminum; manufacturing impossible.",
+      "expectedRequirementOutcome": "BLOCKED",
+      "negativeReason": "unmanufacturable"
+    },
+    {
+      "caseId": "contradictory_or_unmanufacturable-23-variableShell",
+      "category": "contradictory_or_unmanufacturable",
+      "feature": "variableShell",
+      "prompt": "Design a precision bracket with the variable shell feature, 100 x 60 x 8 mm, using aluminum or steel with CNC milling.",
+      "expectedRequirementOutcome": "BLOCKED",
+      "negativeReason": "contradictory"
+    },
+    {
+      "caseId": "contradictory_or_unmanufacturable-24-sketchExtrude",
+      "category": "contradictory_or_unmanufacturable",
+      "feature": "sketchExtrude",
+      "prompt": "Design a precision bracket with the sketch extrude feature, 100 x 60 x 0 mm, in 6061-T6 aluminum; manufacturing impossible.",
+      "expectedRequirementOutcome": "BLOCKED",
+      "negativeReason": "unmanufacturable"
+    },
+    {
+      "caseId": "contradictory_or_unmanufacturable-25-revolve",
+      "category": "contradictory_or_unmanufacturable",
+      "feature": "revolve",
+      "prompt": "Design a precision bracket with the revolve feature, 100 x 60 x 8 mm, using aluminum or steel with CNC milling.",
+      "expectedRequirementOutcome": "BLOCKED",
+      "negativeReason": "contradictory"
+    },
+    {
+      "caseId": "contradictory_or_unmanufacturable-26-sweep",
+      "category": "contradictory_or_unmanufacturable",
+      "feature": "sweep",
+      "prompt": "Design a precision bracket with the sweep feature, 100 x 60 x 0 mm, in 6061-T6 aluminum; manufacturing impossible.",
+      "expectedRequirementOutcome": "BLOCKED",
+      "negativeReason": "unmanufacturable"
+    },
+    {
+      "caseId": "contradictory_or_unmanufacturable-27-loft",
+      "category": "contradictory_or_unmanufacturable",
+      "feature": "loft",
+      "prompt": "Design a precision bracket with the loft feature, 100 x 60 x 8 mm, using aluminum or steel with CNC milling.",
+      "expectedRequirementOutcome": "BLOCKED",
+      "negativeReason": "contradictory"
+    },
+    {
+      "caseId": "contradictory_or_unmanufacturable-28-mirror",
+      "category": "contradictory_or_unmanufacturable",
+      "feature": "mirror",
+      "prompt": "Design a precision bracket with the mirror feature, 100 x 60 x 0 mm, in 6061-T6 aluminum; manufacturing impossible.",
+      "expectedRequirementOutcome": "BLOCKED",
+      "negativeReason": "unmanufacturable"
+    },
+    {
+      "caseId": "contradictory_or_unmanufacturable-29-boolean",
+      "category": "contradictory_or_unmanufacturable",
+      "feature": "boolean",
+      "prompt": "Design a precision bracket with the boolean feature, 100 x 60 x 8 mm, using aluminum or steel with CNC milling.",
+      "expectedRequirementOutcome": "BLOCKED",
+      "negativeReason": "contradictory"
+    },
+    {
+      "caseId": "contradictory_or_unmanufacturable-30-splitBody",
+      "category": "contradictory_or_unmanufacturable",
+      "feature": "splitBody",
+      "prompt": "Design a precision bracket with the split body feature, 100 x 60 x 0 mm, in 6061-T6 aluminum; manufacturing impossible.",
+      "expectedRequirementOutcome": "BLOCKED",
+      "negativeReason": "unmanufacturable"
+    }
+  ]
+}

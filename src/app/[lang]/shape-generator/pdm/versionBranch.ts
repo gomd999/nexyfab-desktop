@@ -43,6 +43,13 @@ export interface Branch {
   protected?: boolean;
 }
 
+export interface VersionRepoSnapshot {
+  version: 1;
+  headBranch: string;
+  commits: Commit[];
+  branches: Branch[];
+}
+
 export class VersionRepo {
   private commits = new Map<string, Commit>();
   private branches = new Map<string, Branch>();
@@ -58,6 +65,30 @@ export class VersionRepo {
     this.commits.set(root.id, root);
     this.branches.set('main', { name: 'main', headCommitId: root.id });
     this.headBranch = 'main';
+  }
+
+  toSnapshot(): VersionRepoSnapshot {
+    return { version: 1, headBranch: this.headBranch, commits: this.listCommits(), branches: this.listBranches() };
+  }
+
+  static fromSnapshot(snapshot: VersionRepoSnapshot): VersionRepo | null {
+    if (!snapshot || snapshot.version !== 1 || !Array.isArray(snapshot.commits) || !Array.isArray(snapshot.branches)) return null;
+    const first = snapshot.commits[0];
+    if (!first || !Array.isArray(first.features)) return null;
+    const repo = new VersionRepo(first.features as FeatureInstance[], first.authorUserId || 'restored');
+    repo.commits.clear();
+    for (const commit of snapshot.commits) {
+      if (!commit || typeof commit.id !== 'string' || !Array.isArray(commit.parents) || !Array.isArray(commit.features)) return null;
+      repo.commits.set(commit.id, { ...commit, features: commit.features.map(feature => ({ ...feature, params: { ...feature.params } })) });
+    }
+    repo.branches.clear();
+    for (const branch of snapshot.branches) {
+      if (!branch || typeof branch.name !== 'string' || typeof branch.headCommitId !== 'string' || !repo.commits.has(branch.headCommitId)) return null;
+      repo.branches.set(branch.name, { ...branch });
+    }
+    if (!repo.branches.has(snapshot.headBranch)) return null;
+    repo.headBranch = snapshot.headBranch;
+    return repo;
   }
 
   /** Make a fresh commit on the current branch. */

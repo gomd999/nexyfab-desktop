@@ -55,6 +55,7 @@
  *   { ok: false, code: 'BAD_REQUEST' | 'INVALID_ASSEMBLY' | 'TOO_LARGE', message: string }
  */
 import { NextRequest, NextResponse } from 'next/server';
+import { boundedJsonError, readBoundedJson } from '@/lib/boundedJsonBody';
 import {
   type AssemblyState,
   approximateAssemblyDoF,
@@ -166,6 +167,7 @@ function pickAutoSolver(state: AssemblyState): SolverUsed {
 
 const MAX_PARTS = 1000;
 const MAX_MATES = 5000;
+const MAX_BODY_BYTES = 32 * 1024 * 1024;
 
 function err(code: string, message: string, status: number): NextResponse {
   return NextResponse.json({ ok: false, code, message }, { status });
@@ -332,8 +334,9 @@ async function runGroupedRespectingMaxParallel(
 export async function POST(req: NextRequest): Promise<NextResponse> {
   let body: AssemblySolveBody;
   try {
-    body = (await req.json()) as AssemblySolveBody;
-  } catch {
+    body = await readBoundedJson<AssemblySolveBody>(req, MAX_BODY_BYTES);
+  } catch (error) {
+    if (boundedJsonError(error)?.code === 'PAYLOAD_TOO_LARGE') return err('TOO_LARGE', `Body exceeds ${MAX_BODY_BYTES} bytes`, 413);
     return err('BAD_REQUEST', 'Body must be valid JSON', 400);
   }
 

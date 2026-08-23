@@ -1,0 +1,81 @@
+{
+  "schema": "nexyfab.mechanical-core-feature-local-runtime.v1",
+  "feature": "mirror",
+  "axis": "regenerate",
+  "status": "PASS",
+  "executedAt": "2026-08-22T07:13:30.564Z",
+  "initial": {
+    "handle": "occt:414",
+    "kernelKind": "Solid",
+    "nativeShapeType": 0,
+    "solidCount": 1,
+    "singleSolid": true,
+    "volumeMm3": 144000,
+    "edgeCount": 12,
+    "faceCount": 6,
+    "boundsMm": [
+      [
+        -60.0000001,
+        -20.0000001,
+        -15.000000100000001
+      ],
+      [
+        60.0000001,
+        20.0000001,
+        15.000000100000001
+      ]
+    ]
+  },
+  "edited": {
+    "handle": "occt:417",
+    "kernelKind": "Solid",
+    "nativeShapeType": 0,
+    "solidCount": 1,
+    "singleSolid": true,
+    "volumeMm3": 72000,
+    "edgeCount": 12,
+    "faceCount": 6,
+    "boundsMm": [
+      [
+        -1.0000000088817842e-7,
+        -20.0000001,
+        -15.000000100000001
+      ],
+      [
+        60.0000001,
+        20.0000001,
+        15.000000100000001
+      ]
+    ]
+  },
+  "repeated": {
+    "handle": "occt:420",
+    "kernelKind": "Solid",
+    "nativeShapeType": 0,
+    "solidCount": 1,
+    "singleSolid": true,
+    "volumeMm3": 72000,
+    "edgeCount": 12,
+    "faceCount": 6,
+    "boundsMm": [
+      [
+        -1.0000000088817842e-7,
+        -20.0000001,
+        -15.000000100000001
+      ],
+      [
+        60.0000001,
+        20.0000001,
+        15.000000100000001
+      ]
+    ]
+  },
+  "featureMeaning": {
+    "assertion": "actual product OCCT mirror fused an origin-plane reflection; YZ doubles the tangent offset seed while XY coincides with it",
+    "plane": 2,
+    "baselineVolumeMm3": 72000,
+    "expectedVolumeMm3": 72000,
+    "actualVolumeMm3": 72000
+  },
+  "assertion": "edited parameter changed the exact signature and a fresh native regeneration reproduced topology, bounds, and volume"
+}

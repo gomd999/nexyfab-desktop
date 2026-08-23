@@ -46,6 +46,11 @@ import { classifyFeatureTopologyPick } from '@/lib/assembly/featureTopologyPick'
 import type { ToolbarSelectionRef } from './MateConstraintsToolbar';
 import { buildTopologicalMap, type TopologicalMap } from '../topology/TopologicalNaming';
 import { pickStableMeshFace } from '@/lib/cad/meshTopologyPick';
+import {
+  LARGE_ASSEMBLY_PROGRESSIVE_MIN_PARTS,
+  LARGE_ASSEMBLY_TESSELLATION_CONCURRENCY,
+  planProgressiveAssemblyLoad,
+} from '@/lib/progressiveAssemblyLoad';
 
 // ─── i18n ────────────────────────────────────────────────────────────────
 
@@ -65,6 +70,15 @@ const axisDict: Record<Assembly3DViewerLang, AxisDict> = {
   zh: { x: 'X', y: 'Y', z: 'Z' },
   es: { x: 'X', y: 'Y', z: 'Z' },
   ar: { x: 'X', y: 'Y', z: 'Z' },
+};
+
+const progressiveDict: Record<Assembly3DViewerLang, { loading: string; proxy: string }> = {
+  ko: { loading: '상세 형상 점진 로딩', proxy: '나머지는 경량 경계상자로 표시됩니다' },
+  en: { loading: 'Progressively loading detail', proxy: 'Remaining parts use lightweight bounding boxes' },
+  ja: { loading: '詳細形状を段階的に読み込み中', proxy: '残りのパーツは軽量境界ボックスで表示されます' },
+  zh: { loading: '正在渐进加载详细几何', proxy: '其余零件以轻量包围盒显示' },
+  es: { loading: 'Cargando detalle progresivamente', proxy: 'Las piezas restantes usan cajas envolventes ligeras' },
+  ar: { loading: 'جارٍ تحميل التفاصيل تدريجيًا', proxy: 'تُعرض الأجزاء المتبقية بصناديق إحاطة خفيفة' },
 };
 
 // ─── colour palette ──────────────────────────────────────────────────────
@@ -192,6 +206,9 @@ export interface Assembly3DViewerProps {
  */
 interface PartMeshUserData {
   partId: string;
+  geometrySignature?: string;
+  geometryOffset?: { cx: number; cy: number; cz: number };
+  detailLevel?: 'proxy' | 'detail';
 }
 
 export default function Assembly3DViewer({
@@ -226,6 +243,68 @@ export default function Assembly3DViewer({
   const selectedIdSet = useMemo(() => new Set(selectedPartIds ?? (selectedPartId ? [selectedPartId] : [])), [selectedPartId, selectedPartIds]);
   const selectedIdSetRef = useRef(selectedIdSet);
   selectedIdSetRef.current = selectedIdSet;
+  const partIdSignature = useMemo(() => state.parts.map((part) => part.id).join('\u001f'), [state.parts]);
+  const partTreeSignatures = useMemo(() => Object.fromEntries(
+    Object.entries(featureTrees ?? {}).map(([partId, tree]) => [partId, JSON.stringify(tree)]),
+  ), [featureTrees]);
+  const [detailedPartIds, setDetailedPartIds] = useState<Set<string>>(() => new Set());
+  const detailedPartSignature = useMemo(
+    () => Array.from(detailedPartIds).sort().join('\u001f'),
+    [detailedPartIds],
+  );
+
+  // Paint every occurrence immediately as a lightweight proxy, then promote
+  // detail in idle-time batches. This bounds main-thread stalls while keeping
+  // selection/focus usable before the full 500+ part assembly is ready.
+  useEffect(() => {
+    const ids = state.parts.map((part) => part.id);
+    const plan = planProgressiveAssemblyLoad(ids, Array.from(selectedIdSetRef.current));
+    let cancelled = false;
+    let timer: ReturnType<typeof setTimeout> | null = null;
+    let idleHandle: number | null = null;
+    setDetailedPartIds(new Set(plan.batches[0] ?? []));
+    let batchIndex = 1;
+    const scheduleNext = () => {
+      if (cancelled || batchIndex >= plan.batches.length) return;
+      const promote = () => {
+        if (cancelled) return;
+        const batch = plan.batches[batchIndex++] ?? [];
+        setDetailedPartIds((previous) => {
+          const next = new Set(previous);
+          for (const id of batch) next.add(id);
+          return next;
+        });
+        scheduleNext();
+      };
+      const idleWindow = window as Window & {
+        requestIdleCallback?: (callback: () => void, options?: { timeout: number }) => number;
+      };
+      if (typeof idleWindow.requestIdleCallback === 'function') {
+        idleHandle = idleWindow.requestIdleCallback(promote, { timeout: 80 });
+      } else {
+        timer = setTimeout(promote, 16);
+      }
+    };
+    scheduleNext();
+    return () => {
+      cancelled = true;
+      if (timer) clearTimeout(timer);
+      const idleWindow = window as Window & { cancelIdleCallback?: (handle: number) => void };
+      if (idleHandle !== null) idleWindow.cancelIdleCallback?.(idleHandle);
+    };
+  }, [partIdSignature, state.parts]);
+
+  useEffect(() => {
+    if (selectedIdSet.size === 0) return;
+    setDetailedPartIds((previous) => {
+      let changed = false;
+      const next = new Set(previous);
+      for (const id of selectedIdSet) {
+        if (!next.has(id)) { next.add(id); changed = true; }
+      }
+      return changed ? next : previous;
+    });
+  }, [selectedIdSet]);
 
   // Full-stack replay: complex trees are rendered once on the server and
   // replace the immediate base-extrude preview when their STL is ready.
@@ -234,11 +313,21 @@ export default function Assembly3DViewer({
     let active = true;
     const entries = Object.entries(featureTrees ?? {}).filter(([, tree]) =>
       tree.nodes.length > 1 || tree.nodes[0]?.payload.kind !== 'extrude');
+    const order = planProgressiveAssemblyLoad(
+      entries.map(([partId]) => partId),
+      Array.from(selectedIdSetRef.current),
+    ).orderedPartIds;
+    const byId = new Map(entries);
+    const queue = order.map((partId) => [partId, byId.get(partId)!] as const);
+    setTessellated((previous) => {
+      for (const geometry of Object.values(previous)) geometry.dispose();
+      return {};
+    });
     if (entries.length === 0) {
-      setTessellated({});
       return () => controller.abort();
     }
-    void Promise.all(entries.map(async ([partId, tree]) => {
+    let cursor = 0;
+    const loadOne = async ([partId, tree]: readonly [string, FeatureTree]) => {
       const key = JSON.stringify(tree);
       let pending = meshBytesCache.get(key);
       if (!pending) {
@@ -257,16 +346,24 @@ export default function Assembly3DViewer({
       const { STLLoader } = await import('three/examples/jsm/loaders/STLLoader.js');
       const geometry = new STLLoader().parse(bytes);
       geometry.computeVertexNormals();
-      return [partId, geometry] as const;
-    })).then(results => {
-      if (!active) return;
-      const next: Record<string, THREE.BufferGeometry> = {};
-      for (const result of results) if (result) next[result[0]] = result[1];
-      setTessellated(previous => {
-        for (const geometry of Object.values(previous)) geometry.dispose();
-        return next;
+      if (!active) { geometry.dispose(); return; }
+      setTessellated((previous) => {
+        previous[partId]?.dispose();
+        return { ...previous, [partId]: geometry };
       });
-    });
+    };
+    const worker = async () => {
+      while (active) {
+        const index = cursor++;
+        const item = queue[index];
+        if (!item) return;
+        await loadOne(item);
+      }
+    };
+    void Promise.all(Array.from(
+      { length: Math.min(LARGE_ASSEMBLY_TESSELLATION_CONCURRENCY, queue.length) },
+      () => worker(),
+    ));
     return () => { active = false; controller.abort(); };
   }, [treeSignature, featureTrees]);
 
@@ -436,30 +533,45 @@ export default function Assembly3DViewer({
       }
     }
 
-    // Add / refresh meshes for every part.
+    // Add every part immediately. Large assemblies start with cheap bounding
+    // boxes and promote each occurrence to full feature geometry in batches.
     for (const part of state.parts) {
       const existing = meshes.get(part.id);
       const tree = featureTrees?.[part.id];
       const bbox = bboxFromFeatureTree(tree);
-      let built: ReturnType<typeof geometryFromFeatureTree>;
-      try {
-        const finalGeometry = tessellated[part.id];
-        built = finalGeometry
-          ? { geometry: finalGeometry.clone(), offset: { cx: 0, cy: 0, cz: 0 }, exact: true }
-          : geometryFromFeatureTree(tree);
-      } catch {
-        built = {
-          geometry: { dispose: () => {} } as unknown as THREE.BufferGeometry,
-          offset: { cx: bbox?.cx ?? 0, cy: bbox?.cy ?? 0, cz: bbox?.cz ?? 0 },
-          exact: false,
-        };
+      const detailed = detailedPartIds.has(part.id);
+      const finalGeometry = detailed ? tessellated[part.id] : undefined;
+      const geometrySignature = detailed
+        ? `detail:${partTreeSignatures[part.id] ?? 'fallback'}:${finalGeometry ? 'server' : 'local'}`
+        : `proxy:${bbox?.sx ?? DEFAULT_SIZE}:${bbox?.sy ?? DEFAULT_SIZE}:${bbox?.sz ?? DEFAULT_SIZE}`;
+      const previousData = existing?.userData as PartMeshUserData | undefined;
+      const needsGeometry = !existing || previousData?.geometrySignature !== geometrySignature;
+      let built: ReturnType<typeof geometryFromFeatureTree> | null = null;
+      if (needsGeometry) {
+        try {
+          built = detailed
+            ? (finalGeometry
+                ? { geometry: finalGeometry.clone(), offset: { cx: 0, cy: 0, cz: 0 }, exact: true }
+                : geometryFromFeatureTree(tree))
+            : {
+                geometry: new THREE.BoxGeometry(bbox?.sx ?? DEFAULT_SIZE, bbox?.sy ?? DEFAULT_SIZE, bbox?.sz ?? DEFAULT_SIZE),
+                offset: { cx: bbox?.cx ?? 0, cy: bbox?.cy ?? 0, cz: bbox?.cz ?? 0 },
+                exact: false,
+              };
+        } catch {
+          built = {
+            geometry: { dispose: () => {} } as unknown as THREE.BufferGeometry,
+            offset: { cx: bbox?.cx ?? 0, cy: bbox?.cy ?? 0, cz: bbox?.cz ?? 0 },
+            exact: false,
+          };
+        }
       }
 
       let mesh = existing;
       if (!mesh) {
         let geometry: THREE.BufferGeometry;
         try {
-          geometry = built.geometry;
+          geometry = built!.geometry;
         } catch {
           // Mock geometry path — create a plain object that satisfies the
           // dispose() contract so cleanup doesn't blow up.
@@ -488,7 +600,12 @@ export default function Assembly3DViewer({
             quaternion: { set: () => {} },
           } as unknown as THREE.Mesh;
         }
-        const ud: PartMeshUserData = { partId: part.id };
+        const ud: PartMeshUserData = {
+          partId: part.id,
+          geometrySignature,
+          geometryOffset: built!.offset,
+          detailLevel: detailed ? 'detail' : 'proxy',
+        };
         mesh.userData = ud;
         mesh.name = `part-mesh-${part.id}`;
         try {
@@ -497,13 +614,17 @@ export default function Assembly3DViewer({
           /* ignore */
         }
         meshes.set(part.id, mesh);
-      } else {
+      } else if (built) {
         // Refresh geometry in place if the part now wants a different size
         // (e.g. the FeatureTree's first extrude was edited). Cheap enough
         // for Phase 1; OCCT path will incrementalize this.
         try {
           mesh.geometry?.dispose?.();
           mesh.geometry = built.geometry;
+          const data = mesh.userData as PartMeshUserData;
+          data.geometrySignature = geometrySignature;
+          data.geometryOffset = built.offset;
+          data.detailLevel = detailed ? 'detail' : 'proxy';
         } catch {
           /* ignore mock failure */
         }
@@ -512,13 +633,14 @@ export default function Assembly3DViewer({
       // Apply placement = position + quaternion. Also pre-offset by the
       // bbox center so the box hugs the part origin instead of dangling
       // in the +Z corner.
-      applyPlacement(mesh, part, built.offset);
+      const data = mesh.userData as PartMeshUserData;
+      applyPlacement(mesh, part, data.geometryOffset ?? { cx: 0, cy: 0, cz: 0 });
       try{const previous=topologyMapsRef.current.get(part.id);topologyMapsRef.current.set(part.id,buildTopologicalMap(mesh.geometry,previous,tree?.nodes.at(-1)?.id??part.partTemplateId));}catch{/* mock geometry has no attributes */}
 
       // Apply selection colour.
       applySelectionColor(mesh, selectedIdSet.has(part.id));
     }
-  }, [state, featureTrees, selectedIdSet, tessellated]);
+  }, [state, featureTrees, tessellated, detailedPartIds, detailedPartSignature, partTreeSignatures]);
 
   // Selection-only re-paint (cheap, skips geometry rebuild) — also runs
   // for free above; this duplicate effect lets a parent toggle highlight
@@ -635,6 +757,23 @@ export default function Assembly3DViewer({
         background: BACKGROUND,
       }}
     >
+      {state.parts.length >= LARGE_ASSEMBLY_PROGRESSIVE_MIN_PARTS && detailedPartIds.size < state.parts.length ? (
+        <div
+          data-testid="assembly-progressive-load"
+          data-loaded-parts={detailedPartIds.size}
+          data-total-parts={state.parts.length}
+          role="status"
+          aria-live="polite"
+          title={(progressiveDict[lang] ?? progressiveDict.en).proxy}
+          style={{
+            position: 'absolute', top: 8, left: 8, zIndex: 2, padding: '5px 8px',
+            borderRadius: 6, background: 'rgba(17,24,39,.88)', color: '#fff',
+            fontSize: 11, pointerEvents: 'none',
+          }}
+        >
+          {(progressiveDict[lang] ?? progressiveDict.en).loading}: {detailedPartIds.size}/{state.parts.length}
+        </div>
+      ) : null}
       <div
         data-testid="assembly-3d-axis-legend"
         style={{

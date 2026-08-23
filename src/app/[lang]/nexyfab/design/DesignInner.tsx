@@ -20,10 +20,11 @@ import dynamic from 'next/dynamic';
 import * as THREE from 'three';
 import { parseSTL } from '@/app/[lang]/shape-generator/io/importers';
 import { renderScadWasm, wasmAvailable } from '@/app/[lang]/studio/wasmRender';
-import { isKorean } from '@/lib/i18n/normalize';
+import { isKorean, toIsoLang, type IsoLang } from '@/lib/i18n/normalize';
 import { type DesignSnapshot, type DesignStage, snapshot, stageOf } from '@/lib/designStage';
 import { DesignStageBar } from '@/components/nexyfab/DesignStageBar';
 import { loc } from '@/lib/i18n/loc';
+import { designPair, designList } from './designI18n';
 import { EXAMPLES } from './DesignExamplesDict';
 import BriefClarifier from './BriefClarifier';
 import StudioChatDock from './StudioChatDock';
@@ -31,8 +32,22 @@ import { findDomain } from './designDomains';
 import type { CheckpointData } from './CheckpointPanel';
 import type { NetItem } from './VerifyNet';
 import { takeDomainDesignHandoff } from '@/lib/ai/domainDesignHandoff';
+import {
+  formatSpatialDesignBriefPrompt,
+  saveSpatialDesignBriefHandoff,
+  saveSpatialDesignBriefHandoffV2,
+  saveSpatialDesignCandidateReturnV2,
+  takeSpatialAiInstruction,
+  takeSpatialDesignBriefHandoffAny,
+  isSpatialDesignBriefHandoffV2,
+  type SpatialDesignBrief,
+} from '@/lib/ai/spatialDesignBriefHandoff';
 import type { DesignDomainId } from '@/lib/ai/domainProfile';
 import { designDomainFromSlug, getDomainUserJourney, precisionCadHref } from '@/lib/ai/domainUserJourney';
+import { createSpatialAiCandidate, type SpatialAiCandidate, type SpatialAiCandidateOperation } from '@/lib/ai/spatialAiCandidate';
+import type { SpatialCadValue } from '@/lib/cad/spatialCadCommand';
+import { takeInteriorPlacementAiHandoff, saveInteriorPlacementAiHandoff, type InteriorPlacementAiHandoff } from '@/lib/ai/interiorPlacementAiHandoff';
+import { INTERIOR_PLACEMENT_AI_CANDIDATE_EVENT, isInteriorPlacementAiCandidate, type InteriorPlacementAiCandidate } from '@/lib/ai/interiorPlacementAiCandidate';
 import styles from './DesignInner.module.css';
 
 const PanelLoading = () => <div role="status" style={{ padding: 12, fontSize: 12, color: 'var(--nx-text-3, #6b7684)' }}>Loading…</div>;
@@ -68,6 +83,18 @@ interface ComposeErr {
 }
 type ComposeResp = ComposeOk | ComposeErr;
 
+function readSpatialAiOperation(value: unknown): SpatialAiCandidateOperation | null {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
+  const item = value as Record<string, unknown>;
+  if (item.kind === 'set_parameter' && typeof item.path === 'string' && Object.prototype.hasOwnProperty.call(item, 'value')) {
+    return { kind: 'set_parameter', path: item.path, value: item.value as SpatialCadValue };
+  }
+  if (item.kind === 'replace_parameters' && item.parameters && typeof item.parameters === 'object' && !Array.isArray(item.parameters)) {
+    return { kind: 'replace_parameters', parameters: item.parameters as Record<string, SpatialCadValue> };
+  }
+  return null;
+}
+
 // OpenSCAD rotate([rx,ry,rz]) 순서(Rx→Ry→Rz)로 벡터 회전 — OBB 프록시 로컬 노멀→CAD 월드(#3)
 function rotCadVec(rot: number[], v: number[]): number[] {
   let [x, y, z] = v;
@@ -84,6 +111,28 @@ interface Bbox {
   y: number;
   z: number;
 }
+
+function readMassKg(value: unknown): number | null {
+  if (!value || typeof value !== 'object') return null;
+  const v = value as Record<string, unknown>;
+  const structural = v.structural && typeof v.structural === 'object' ? v.structural as Record<string, unknown> : null;
+  const candidates = [v.massKg, v.totalMassKg, structural?.totalMassKg, structural?.massKg];
+  const mass = candidates.find((n): n is number => typeof n === 'number' && Number.isFinite(n) && n >= 0);
+  return mass ?? null;
+}
+
+const SUMMARY_COPY: Record<IsoLang, {
+  size: string; sizeNote: string; mass: string; structural: string; notCalculated: string;
+  parts: string; currentAssembly: string; validation: string; clash: string; floating: string;
+  clear: string; latest: string; updating: string; refreshing: string; refreshFailed: string; selectPart: string;
+}> = {
+  ko: { size: '전체 크기', sizeNote: '렌더링/부품 AABB 기준', mass: '총 질량', structural: '구조 계산 결과', notCalculated: '계산 전', parts: '부품 수', currentAssembly: '현재 표시된 조립체', validation: '검증 상태', clash: '간섭', floating: '부유', clear: '배치 상태 양호', latest: '검증 결과 기준', updating: '설계 결과 갱신 중 — 현재 카드는 이전 결과일 수 있습니다.', refreshing: 'BOM·도면·검증 산출물 갱신 중…', refreshFailed: '산출물 갱신 실패 — 요약은 재검증 전 상태일 수 있습니다.', selectPart: '3D 뷰어에서 수정할 부품을 선택하세요.' },
+  en: { size: 'Overall size', sizeNote: 'Rendered/part AABB', mass: 'Total mass', structural: 'Structural result', notCalculated: 'Not calculated', parts: 'Parts', currentAssembly: 'Current assembly', validation: 'Validation', clash: 'Clash', floating: 'Floating', clear: 'Placement is clear', latest: 'From latest verification', updating: 'Updating design result — cards may show the previous revision.', refreshing: 'Refreshing BOM, drawing and verification artifacts…', refreshFailed: 'Artifact refresh failed — summary may need re-verification.', selectPart: 'Select a part in the 3D viewer to edit it.' },
+  ja: { size: '全体サイズ', sizeNote: 'レンダー/部品AABB基準', mass: '総質量', structural: '構造計算結果', notCalculated: '未計算', parts: '部品数', currentAssembly: '現在のアセンブリ', validation: '検証状態', clash: '干渉', floating: '浮遊', clear: '配置に問題ありません', latest: '最新の検証結果', updating: '設計結果を更新中 — 前のリビジョンが表示される場合があります。', refreshing: 'BOM・図面・検証成果物を更新中…', refreshFailed: '成果物の更新に失敗しました — 再検証が必要です。', selectPart: '3Dビューアで編集する部品を選択してください。' },
+  zh: { size: '整体尺寸', sizeNote: '按渲染/零件AABB', mass: '总质量', structural: '结构计算结果', notCalculated: '未计算', parts: '零件数', currentAssembly: '当前装配体', validation: '验证状态', clash: '干涉', floating: '悬空', clear: '装配状态良好', latest: '基于最新验证', updating: '正在更新设计结果 — 卡片可能显示上一版本。', refreshing: '正在更新BOM、图纸和验证成果…', refreshFailed: '成果更新失败 — 可能需要重新验证。', selectPart: '请在3D查看器中选择要编辑的零件。' },
+  es: { size: 'Tamaño total', sizeNote: 'AABB renderizado/de piezas', mass: 'Masa total', structural: 'Resultado estructural', notCalculated: 'Sin calcular', parts: 'Piezas', currentAssembly: 'Ensamblaje actual', validation: 'Validación', clash: 'Interferencia', floating: 'Flotantes', clear: 'Colocación correcta', latest: 'Última validación', updating: 'Actualizando el diseño — las tarjetas pueden mostrar la revisión anterior.', refreshing: 'Actualizando BOM, planos y resultados de validación…', refreshFailed: 'Falló la actualización — puede ser necesaria otra validación.', selectPart: 'Seleccione una pieza en el visor 3D para editarla.' },
+  ar: { size: 'الحجم الكلي', sizeNote: 'حسب AABB للعرض/الأجزاء', mass: 'الكتلة الكلية', structural: 'نتيجة الحساب الإنشائي', notCalculated: 'لم تُحسب بعد', parts: 'عدد الأجزاء', currentAssembly: 'التجميع الحالي', validation: 'حالة التحقق', clash: 'تداخل', floating: 'معلّق', clear: 'الوضع جيد', latest: 'حسب آخر تحقق', updating: 'جارٍ تحديث نتيجة التصميم — قد تعرض البطاقات الإصدار السابق.', refreshing: 'جارٍ تحديث BOM والرسم ونتائج التحقق…', refreshFailed: 'فشل تحديث المخرجات — قد يحتاج الملخص إلى إعادة التحقق.', selectPart: 'حدد جزءًا في العارض ثلاثي الأبعاد لتعديله.' },
+};
 
 // §12.4/§13-4 스테이션 실루엣 프로파일 — 서버(to-step.mjs stationProfiles)와 동일 수학.
 // 비인덱스 STL(9float=1삼각형) 에지-평면 교차 샘플링(정점 비닝은 긴 삼각형을 놓침).
@@ -159,10 +208,15 @@ function ProfileChart({ d, r, label }: { d: AxisProfile; r: AxisProfile; label: 
 
 export default function DesignInner({ lang, initialDomain, initialTab }: { lang: string; initialDomain?: string | null; initialTab?: string | null }) {
   const ko = isKorean(lang);
+  const summaryCopy = SUMMARY_COPY[toIsoLang(lang)];
   const domain = findDomain(initialDomain);
   const workspaceDomain = designDomainFromSlug(initialDomain);
   const journey = getDomainUserJourney(workspaceDomain, lang);
   const [prompt, setPrompt] = useState('');
+  const [spatialSourceDraft, setSpatialSourceDraft] = useState<SpatialDesignBrief | null>(null);
+  const [spatialCandidate, setSpatialCandidate] = useState<SpatialAiCandidate | null>(null);
+  const [spatialCandidateError, setSpatialCandidateError] = useState<string | null>(null);
+  const [interiorPlacementHandoff, setInteriorPlacementHandoff] = useState<InteriorPlacementAiHandoff | null>(null);
   // 일반인 진입 위저드(EasyWizard) 개폐 — 결과는 기존 어셈블리 수신 배선으로 합류
   const [easyOpen, setEasyOpen] = useState(false);
   type StudioTab = 'create' | 'verify' | 'calc' | 'output';
@@ -208,6 +262,63 @@ export default function DesignInner({ lang, initialDomain, initialTab }: { lang:
     } catch { /* ignore */ }
      
   }, []);
+  // Precision CAD → conversational AI. This is a draft-only handoff: it fills
+  // the prompt but never runs generation or applies geometry automatically.
+  useEffect(() => {
+    if (workspaceDomain === 'mechanical') return;
+    const handoff = takeSpatialDesignBriefHandoffAny(window.sessionStorage, workspaceDomain);
+    if (handoff) {
+      setSpatialSourceDraft(handoff);
+      const instruction = takeSpatialAiInstruction(window.sessionStorage, workspaceDomain);
+      const transferred = formatSpatialDesignBriefPrompt(handoff, lang);
+      setPrompt(instruction ? `${instruction}\n\n${transferred}` : transferred);
+    }
+  }, [lang, workspaceDomain]);
+  useEffect(() => {
+    // Placement AI has its own revision/selection packet and must never be
+    // folded into the scalar spatial brief above.
+    if (workspaceDomain !== 'interior') return;
+    setInteriorPlacementHandoff(takeInteriorPlacementAiHandoff(window.sessionStorage));
+  }, [workspaceDomain]);
+  const preserveSpatialDraftForReturn = useCallback(() => {
+    if (!spatialSourceDraft) return;
+    if (isSpatialDesignBriefHandoffV2(spatialSourceDraft)) {
+      if (spatialCandidate) {
+        saveSpatialDesignCandidateReturnV2(window.sessionStorage, { handoff: spatialSourceDraft, candidate: spatialCandidate });
+        return;
+      }
+      // Preserve the revision/hash binding on a round trip. This is still a
+      // draft packet; Precision CAD must review and re-check it before apply.
+      saveSpatialDesignBriefHandoffV2(window.sessionStorage, {
+        baseDocumentRevision: spatialSourceDraft.baseDocumentRevision,
+        contentHash: spatialSourceDraft.contentHash,
+        documentId: spatialSourceDraft.documentId,
+        domain: spatialSourceDraft.domain,
+        unit: spatialSourceDraft.unit,
+        parameters: spatialSourceDraft.parameters,
+        parameterPaths: spatialSourceDraft.parameterPaths,
+        locks: spatialSourceDraft.locks,
+        mode: spatialSourceDraft.mode,
+        missingAuthority: spatialSourceDraft.missingAuthority,
+        verification: 'NOT_RUN',
+      });
+      return;
+    }
+    saveSpatialDesignBriefHandoff(window.sessionStorage, {
+      domain: spatialSourceDraft.domain,
+      unit: spatialSourceDraft.unit,
+      parameters: spatialSourceDraft.parameters,
+      missingAuthority: spatialSourceDraft.missingAuthority,
+      // A navigation round trip is not verification evidence. The receiving
+      // Precision CAD workspace must run its checks again.
+      verification: 'NOT_RUN',
+    });
+  }, [spatialCandidate, spatialSourceDraft]);
+  const preserveInteriorPlacementForReturn = useCallback(() => {
+    if (interiorPlacementHandoff) {
+      saveInteriorPlacementAiHandoff(window.sessionStorage, interiorPlacementHandoff);
+    }
+  }, [interiorPlacementHandoff]);
   const [loading, setLoading] = useState(false);
   const [status, setStatus] = useState('');
   // DXF 씨앗 수신(§9 Phase 2) — ParametricPresetPanel이 파싱해 이벤트로 넘긴다(사람 검증 전제)
@@ -223,6 +334,9 @@ export default function DesignInner({ lang, initialDomain, initialTab }: { lang:
   const handoffTypeRef = useRef<'assembly' | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [errCode, setErrCode] = useState<string | null>(null); // PLAN_LIMIT 등 — 업셀 CTA 분기
+  const [lastFailedPrompt, setLastFailedPrompt] = useState<string | null>(null);
+  const [changeImpact, setChangeImpact] = useState<{ beforeParts: number; afterParts: number; beforeInterf: number | null; afterInterf: number | null } | null>(null);
+  const [artifactRefresh, setArtifactRefresh] = useState<'idle' | 'running' | 'ready' | 'failed'>('idle');
   const [gateErrors, setGateErrors] = useState<string[] | null>(null);
 
   const [intent, setIntent] = useState<ComposeOk['intent'] | null>(null);
@@ -261,8 +375,10 @@ export default function DesignInner({ lang, initialDomain, initialTab }: { lang:
     confirmed: confirmedSnap != null,
   });
   const pendingIntentRef = useRef<IntentMatch | null>(null);
+  const pendingMassRef = useRef<number | null>(null);
   const pendingAssemblyRef = useRef<Record<string, unknown> | null>(null); // 설계 패키지용(어셈블리 경로만)
   const [lastAssembly, setLastAssembly] = useState<Record<string, unknown> | null>(null);
+  const [assemblyMassKg, setAssemblyMassKg] = useState<number | null>(null);
   // 🎯 P2 픽킹(260719): 뷰어 부품 클릭=선택 → 프롬프트=그 부품만 수정(edit-part) ·
   // 선택 부품 면 드래그=푸시풀(face-drag, 결정론). 월드 AABB 프록시는 assemble/edit 응답 parts.
   type PartAabb = { id: string; aabb: { min: number[]; max: number[] }; obb?: { local: { min: number[]; max: number[] }; at: { tx: number; ty: number; tz: number; rx: number; ry: number; rz: number } } };
@@ -272,10 +388,13 @@ export default function DesignInner({ lang, initialDomain, initialTab }: { lang:
   const [pickedNormal, setPickedNormal] = useState<number[] | null>(null); // CAD 좌표계
   const [pickedMulti, setPickedMulti] = useState<string[]>([]); // #5 다중 선택(ctrl+클릭)
   const [dimInput, setDimInput] = useState(''); // #2 치수 직접 입력(mm)
+  const [dimUnit, setDimUnit] = useState<'mm' | 'in'>('mm');
+  const [pendingDimMm, setPendingDimMm] = useState<number | null>(null);
   const [filletInput, setFilletInput] = useState(''); // #7 부품 필렛 r(mm)
   const [moveInput, setMoveInput] = useState(''); // #6 그룹 이동 "dx,dy,dz"
+  const [moveStep, setMoveStep] = useState('10');
   // #1 언두 — 편집 직전 스냅샷 스택(≤10, 클라 로컬 복원: 서버 불필요)
-  type EditSnap = { assembly: Record<string, unknown> | null; partsAabb: PartAabb[] | null; scad: string | null; intent: unknown; interf: number | null; floatN: number | null };
+  type EditSnap = { assembly: Record<string, unknown> | null; partsAabb: PartAabb[] | null; scad: string | null; intent: unknown; interf: number | null; floatN: number | null; massKg: number | null };
   const editHistRef = useRef<EditSnap[]>([]);
   const [histN, setHistN] = useState(0);
   // #1 LOD(1차 골격→2차 상세) — assemble 응답 draft(철물·자유곡면 제외 골격) 우선 표시
@@ -300,6 +419,10 @@ export default function DesignInner({ lang, initialDomain, initialTab }: { lang:
   const cameraRef = useRef<THREE.PerspectiveCamera | null>(null);
   const meshRef = useRef<THREE.Mesh | null>(null);
   const orbit = useRef({ theta: Math.PI * 0.25, phi: Math.PI * 0.35, radius: 600, target: new THREE.Vector3() });
+  const [viewSettingsOpen, setViewSettingsOpen] = useState(false);
+  const [viewDarkBackground, setViewDarkBackground] = useState(true);
+  const [viewAutoRotate, setViewAutoRotate] = useState(false);
+  const viewAutoRotateRef = useRef(false);
 
   // Init the scene once.
   useEffect(() => {
@@ -338,6 +461,7 @@ export default function DesignInner({ lang, initialDomain, initialTab }: { lang:
 
     let raf = 0;
     const loop = () => {
+      if (viewAutoRotateRef.current) orbit.current.theta += 0.006;
       applyCam();
       renderer.render(scene, camera);
       raf = requestAnimationFrame(loop);
@@ -572,6 +696,29 @@ export default function DesignInner({ lang, initialDomain, initialTab }: { lang:
     o.radius = Math.max(size.x, size.y, size.z) * 2.2 + 40;
   }, []);
 
+  useEffect(() => {
+    viewAutoRotateRef.current = viewAutoRotate;
+  }, [viewAutoRotate]);
+  useEffect(() => {
+    if (sceneRef.current) sceneRef.current.background = new THREE.Color(viewDarkBackground ? 0x121a2e : 0xf3f4f6);
+  }, [viewDarkBackground]);
+
+  const setViewPreset = useCallback((preset: 'iso' | 'front' | 'top' | 'side') => {
+    const o = orbit.current;
+    if (preset === 'iso') { o.theta = Math.PI * 0.25; o.phi = Math.PI * 0.35; }
+    if (preset === 'front') { o.theta = 0; o.phi = Math.PI / 2; }
+    if (preset === 'side') { o.theta = Math.PI / 2; o.phi = Math.PI / 2; }
+    if (preset === 'top') { o.theta = 0; o.phi = 0.08; }
+  }, []);
+  const exportViewportPng = useCallback(() => {
+    const canvas = rendererRef.current?.domElement;
+    if (!canvas) return;
+    const a = document.createElement('a');
+    a.href = canvas.toDataURL('image/png');
+    a.download = `${String(intent?.name ?? 'nexyfab-view').replace(/[^a-z0-9가-힣_-]+/gi, '_')}.png`;
+    a.click();
+  }, [intent?.name]);
+
   // Precision-modeler → discipline workspace handoff. The source applies only
   // gate-approved results and includes the canonical editable assembly, so the
   // user can continue with pick/edit/push-pull instead of receiving a mesh-only
@@ -584,6 +731,7 @@ export default function DesignInner({ lang, initialDomain, initialTab }: { lang:
     const handoff = takeDomainDesignHandoff(window.sessionStorage, expectedDomain);
     if (!handoff) return;
     setLastAssembly(handoff.assembly);
+    setAssemblyMassKg(readMassKg(handoff.assembly));
     setLastPartsAabb(handoff.parts as PartAabb[]);
     setScad(handoff.openscad);
     setIntent({ name: String((handoff.assembly as { name?: unknown }).name ?? 'Domain assembly'), features: [] });
@@ -592,7 +740,7 @@ export default function DesignInner({ lang, initialDomain, initialTab }: { lang:
     setIntentM(handoff.validation.intentMatch);
     editHistRef.current = [];
     setHistN(0);
-    setStatus(ko ? 'AI 설계를 수동 편집 작업공간으로 전달했습니다.' : 'AI design transferred into the manual editing workspace.');
+    setStatus(designPair(lang, 'AI 설계를 수동 편집 작업공간으로 전달했습니다.', 'AI design transferred into the manual editing workspace.'));
     if (wasmAvailable()) {
       void renderScadWasm(handoff.openscad).then((rendered) => {
         if (!rendered.ok || !rendered.data) return;
@@ -618,10 +766,10 @@ export default function DesignInner({ lang, initialDomain, initialTab }: { lang:
         body: JSON.stringify({ imagePng: png, domain: domain?.slug ?? 'mech' }),
       });
       const j = (await res.json()) as { ok?: boolean; imageBase64?: string; error?: string };
-      if (!res.ok || !j.ok || !j.imageBase64) throw new Error(j.error ?? (ko ? '렌더링 실패' : 'render failed'));
+      if (!res.ok || !j.ok || !j.imageBase64) throw new Error(j.error ?? (designPair(lang, '렌더링 실패', 'render failed')));
       setVizImg(j.imageBase64);
     } catch (e) {
-      setVizErr((ko ? '실사 렌더링 실패: ' : 'AI render failed: ') + (e instanceof Error ? e.message : String(e)));
+      setVizErr((designPair(lang, '실사 렌더링 실패: ', 'AI render failed: ')) + (e instanceof Error ? e.message : String(e)));
     } finally {
       setVizBusy(false);
     }
@@ -640,6 +788,7 @@ export default function DesignInner({ lang, initialDomain, initialTab }: { lang:
       setIntentM(pendingIntentRef.current); // 요청 정합 — 동일 소비 구조
       pendingIntentRef.current = null;
       setLastAssembly(pendingAssemblyRef.current); // 어셈블리면 패키지 생성 가능, 단품이면 null
+      setAssemblyMassKg(pendingMassRef.current ?? readMassKg(pendingAssemblyRef.current));
       // #1 LOD: draft(골격)가 있으면 1차 먼저 — 전체 scad/parts 는 fullLodRef 에 보관(승인 후 전환)
       const draftLod = pendingDraftRef.current;
       pendingDraftRef.current = null;
@@ -655,6 +804,7 @@ export default function DesignInner({ lang, initialDomain, initialTab }: { lang:
       pendingPartsRef.current = null;
       setPickedPart(null); setPickedNormal(null); setPickedMulti([]);
       pendingAssemblyRef.current = null;
+      pendingMassRef.current = null;
       setDiffRes(null); // 설계가 바뀌면 이전 듀얼-방출 대조 결과는 무효
       setDiffDraftProfiles(null);
       setVisRes(null); // vision 비평도 무효
@@ -664,38 +814,50 @@ export default function DesignInner({ lang, initialDomain, initialTab }: { lang:
       setVerify(verifyObj);
       setFeatureCount(Array.isArray(intentObj.features) ? intentObj.features.length : null);
       if (wasmAvailable()) {
-        setStatus(ko ? '3D 렌더 중…' : 'Rendering 3D…');
+        setStatus(designPair(lang, '3D 렌더 중…', 'Rendering 3D…'));
         const r = await renderScadWasm(draftLod ? draftLod.openscad : scadStr); // #1 골격 우선 표시
         if (r.ok && r.data) {
           const buf = r.data.buffer.slice(r.data.byteOffset, r.data.byteOffset + r.data.byteLength) as ArrayBuffer;
           showGeometry(parseSTL(buf));
         } else {
-          setError((ko ? '브라우저 렌더 실패: ' : 'Client render failed: ') + (r.error ?? ''));
+          setError((designPair(lang, '브라우저 렌더 실패: ', 'Client render failed: ')) + (r.error ?? ''));
         }
       } else {
-        setError(ko ? '이 브라우저에서 3D 렌더러를 쓸 수 없습니다.' : '3D renderer unavailable in this browser.');
+        setError(designPair(lang, '이 브라우저에서 3D 렌더러를 쓸 수 없습니다.', '3D renderer unavailable in this browser.'));
       }
       setStatus('');
     },
     [ko, showGeometry],
   );
 
+  // The deterministic diff function is declared later because it depends on
+  // state established by the edit pipeline. A ref avoids a temporal-dead-zone
+  // dependency while keeping edit callbacks on the latest implementation.
+  const runReprojectDiffRef = useRef<(intentArg?: ComposeOk['intent']) => Promise<void>>(async () => {});
+  const refreshArtifactsRef = useRef<(assembly: Record<string, unknown>) => void>(() => { /* initialized below */ });
+
   // 🎯 edit-part/face-drag 응답 적용(P2) — 검증 상태 갱신 + 재렌더(대상 외 부품 불변은 서버 보장)
   const applyEditResp = useCallback(async (j: Record<string, unknown>) => {
     // #1 언두 스냅샷(적용 직전 상태) — 스택 ≤10
-    editHistRef.current.push({ assembly: lastAssembly, partsAabb: lastPartsAabb, scad, intent, interf, floatN });
+    editHistRef.current.push({ assembly: lastAssembly, partsAabb: lastPartsAabb, scad, intent, interf, floatN, massKg: assemblyMassKg });
     if (editHistRef.current.length > 10) editHistRef.current.shift();
     setHistN(editHistRef.current.length);
-    setLastAssembly((j.assembly as Record<string, unknown>) ?? null);
-    setLastPartsAabb(Array.isArray(j.parts) ? (j.parts as { id: string; aabb: { min: number[]; max: number[] } }[]) : null);
-    setInterf(Array.isArray(j.interferences) ? (j.interferences as unknown[]).length : null);
+    const nextParts = Array.isArray(j.parts) ? (j.parts as { id: string; aabb: { min: number[]; max: number[] } }[]) : null;
+    const nextInterf = Array.isArray(j.interferences) ? (j.interferences as unknown[]).length : null;
+    const nextAssembly = (j.assembly as Record<string, unknown>) ?? null;
+    setLastAssembly(nextAssembly);
+    setAssemblyMassKg(typeof j.massKg === 'number' && Number.isFinite(j.massKg) ? j.massKg : readMassKg(nextAssembly));
+    setLastPartsAabb(nextParts);
+    setInterf(nextInterf);
     setFloatN(Array.isArray(j.floating) ? (j.floating as unknown[]).length : null);
+    setChangeImpact({ beforeParts: lastPartsAabb?.length ?? 0, afterParts: nextParts?.length ?? 0, beforeInterf: interf, afterInterf: nextInterf });
+    if (nextAssembly) refreshArtifactsRef.current(nextAssembly);
     setDiffRes(null); setDiffDraftProfiles(null); setVisRes(null); setFeaRes(null); // 설계 변경 — 검증 무효화
     if (j.composeIntent && typeof j.composeIntent === 'object') {
       setIntent(j.composeIntent as ComposeOk['intent']);
       setFeatureCount(Array.isArray((j.composeIntent as { features?: unknown[] }).features) ? (j.composeIntent as { features: unknown[] }).features.length : null);
       // #4 수정 후 검증그물 자동 재실행 — 역투영 diff(결정론·저비용). 선언은 아래(이벤트 시점 호출=안전)
-      try { void runReprojectDiff(j.composeIntent as ComposeOk['intent']); } catch { /* diff 실패는 편집을 막지 않음 */ }
+      try { void runReprojectDiffRef.current(j.composeIntent as ComposeOk['intent']); } catch { /* diff 실패는 편집을 막지 않음 */ }
     }
     setLodLevel(2); // 편집=상세 단계 작업으로 승격
     if (typeof j.openscad === 'string') {
@@ -709,7 +871,24 @@ export default function DesignInner({ lang, initialDomain, initialTab }: { lang:
       }
     }
    
-  }, [showGeometry, lastAssembly, lastPartsAabb, scad, intent, interf, floatN]);
+  }, [showGeometry, lastAssembly, lastPartsAabb, scad, intent, interf, floatN, assemblyMassKg]);
+
+  // 편집 직후 최신 BOM·도면·검증 패키지를 서버에서 백그라운드 생성한다.
+  // 브라우저에는 자동 다운로드하지 않고, 출력 탭에서 다시 받을 수 있게 상태만 갱신한다.
+  const refreshArtifacts = useCallback((assembly: Record<string, unknown>) => {
+    setArtifactRefresh('running');
+    void fetch('/api/nexyfab/drawing/package/', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ assembly, options: { lang } }),
+    }).then(async (res) => {
+      const data = (await res.json().catch(() => ({}))) as { ok?: boolean; zipBase64?: string };
+      setArtifactRefresh(res.ok && data.ok && typeof data.zipBase64 === 'string' ? 'ready' : 'failed');
+    }).catch(() => setArtifactRefresh('failed'));
+  }, [lang]);
+  useEffect(() => {
+    refreshArtifactsRef.current = refreshArtifacts;
+    return () => { refreshArtifactsRef.current = () => { /* disposed */ }; };
+  }, [refreshArtifacts]);
 
   // #1 LOD 2차 전환 — 보관해둔 전체 scad/parts 로컬 렌더(서버 불필요)
   const applyLod2 = useCallback(async () => {
@@ -737,8 +916,8 @@ export default function DesignInner({ lang, initialDomain, initialTab }: { lang:
         body: JSON.stringify({ name, domain: domain?.slug ?? 'mech', snapshot: { kind: 'assembly-edit', assembly: lastAssembly, partsAabb: lastPartsAabb, scad, intent } }),
       });
       const j = (await res.json().catch(() => ({}))) as { ok?: boolean; error?: string };
-      if (!res.ok || j.ok === false) { setError(res.status === 401 ? (ko ? '로그인 후 저장할 수 있어요' : 'Sign in to save') : String(j.error ?? 'save')); return; }
-      setStatus(ko ? '프로젝트 저장됨 ✓ (REV 이력 포함)' : 'Saved ✓');
+      if (!res.ok || j.ok === false) { setError(res.status === 401 ? (designPair(lang, '로그인 후 저장할 수 있어요', 'Sign in to save')) : String(j.error ?? 'save')); return; }
+      setStatus(designPair(lang, '프로젝트 저장됨 ✓ (REV 이력 포함)', 'Saved ✓'));
       setTimeout(() => setStatus(''), 2000);
     } catch (e) { setError(e instanceof Error ? e.message : String(e)); }
   }, [lastAssembly, lastPartsAabb, scad, intent, domain, ko]);
@@ -747,7 +926,7 @@ export default function DesignInner({ lang, initialDomain, initialTab }: { lang:
       const r = await fetch('/api/nexyfab/drawing/projects/');
       const j = (await r.json().catch(() => ({}))) as { ok?: boolean; projects?: Array<{ id: string; name: string }> };
       if (r.ok && Array.isArray(j.projects)) setProjList(j.projects.map((p) => ({ id: p.id, name: p.name })));
-      else if (r.status === 401) setError(ko ? '로그인 필요(서버 저장은 계정 기능)' : 'Sign in required');
+      else if (r.status === 401) setError(designPair(lang, '로그인 필요(서버 저장은 계정 기능)', 'Sign in required'));
     } catch (e) { setError(e instanceof Error ? e.message : String(e)); }
   }, [ko]);
   const loadProject = useCallback(async (id: string) => {
@@ -757,8 +936,9 @@ export default function DesignInner({ lang, initialDomain, initialTab }: { lang:
       });
       const j = (await r.json().catch(() => ({}))) as { snapshot?: { kind?: string; assembly?: Record<string, unknown>; partsAabb?: PartAabb[]; scad?: string; intent?: unknown } };
       const snap = j.snapshot;
-      if (!r.ok || !snap || snap.kind !== 'assembly-edit') { setError(ko ? '이 항목은 편집 스냅샷이 아니에요(프리셋 저장분은 해당 패널에서)' : 'Not an edit snapshot'); return; }
+      if (!r.ok || !snap || snap.kind !== 'assembly-edit') { setError(designPair(lang, '이 항목은 편집 스냅샷이 아니에요(프리셋 저장분은 해당 패널에서)', 'Not an edit snapshot')); return; }
       setLastAssembly(snap.assembly ?? null);
+      setAssemblyMassKg(readMassKg(snap.assembly));
       setLastPartsAabb(snap.partsAabb ?? null);
       if (snap.intent) setIntent(snap.intent as ComposeOk['intent']);
       editHistRef.current = []; setHistN(0);
@@ -772,7 +952,7 @@ export default function DesignInner({ lang, initialDomain, initialTab }: { lang:
           showGeometry(parseSTL(buf));
         }
       }
-      setStatus(ko ? '편집 스냅샷 복원됨 — 픽킹·수정 이어서 가능' : 'Restored');
+      setStatus(designPair(lang, '편집 스냅샷 복원됨 — 픽킹·수정 이어서 가능', 'Restored'));
       setTimeout(() => setStatus(''), 2000);
     } catch (e) { setError(e instanceof Error ? e.message : String(e)); }
   }, [showGeometry, ko]);
@@ -783,6 +963,7 @@ export default function DesignInner({ lang, initialDomain, initialTab }: { lang:
     setHistN(editHistRef.current.length);
     if (!snap) return;
     setLastAssembly(snap.assembly);
+    setAssemblyMassKg(snap.massKg ?? readMassKg(snap.assembly));
     setLastPartsAabb(snap.partsAabb);
     setInterf(snap.interf);
     setFloatN(snap.floatN);
@@ -803,7 +984,7 @@ export default function DesignInner({ lang, initialDomain, initialTab }: { lang:
   // #5/#7 부품 일괄 연산(결정론) — 복제/삭제/필렛
   const partOpRun = useCallback(async (op: string, ids: string[], opts?: Record<string, unknown>) => {
     if (!lastAssembly || !ids.length) return;
-    setStatus(ko ? `${op} 적용 중…` : `Applying ${op}…`);
+    setStatus(designPair(lang, `${op} 적용 중…`, `Applying ${op}…`));
     setError(null);
     try {
       const res = await fetch('/api/nexyfab/drawing/part-op/', {
@@ -823,30 +1004,41 @@ export default function DesignInner({ lang, initialDomain, initialTab }: { lang:
 
   // #2 치수 직접 입력 — 선택 면 치수를 목표값으로(결정론 face-drag targetMm)
   const applyDimInput = useCallback(async () => {
-    const v = parseFloat(dimInput);
-    if (!Number.isFinite(v) || v <= 0 || !pickedPart || !pickedNormal || !lastAssembly) return;
-    setStatus(ko ? '치수 적용 중…' : 'Applying dimension…');
+    const raw = parseFloat(dimInput);
+    const v = dimUnit === 'in' ? raw * 25.4 : raw;
+    if (!Number.isFinite(raw) || raw <= 0 || !Number.isFinite(v) || v < 0.1 || v > 100000 || !pickedPart || !pickedNormal || !lastAssembly) {
+      setError(designPair(lang, '치수는 0.1~100000mm 범위의 양수여야 합니다.', 'Dimension must be a positive value between 0.1 and 100000 mm.'));
+      return;
+    }
+    setPendingDimMm(v);
+    setStatus(designPair(lang, `치수 ${v.toFixed(2)}mm 미리보기`, `Preview ${v.toFixed(2)}mm`));
+  }, [dimInput, dimUnit, pickedPart, pickedNormal, lastAssembly, ko]);
+
+  const commitPendingDim = useCallback(async () => {
+    if (pendingDimMm == null || !pickedPart || !pickedNormal || !lastAssembly) return;
+    setStatus(designPair(lang, '치수 적용 중…', 'Applying dimension…'));
     setError(null);
     try {
       const res = await fetch('/api/nexyfab/drawing/face-drag/', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ assembly: lastAssembly, partId: pickedPart, normal: pickedNormal, targetMm: v }),
+        body: JSON.stringify({ assembly: lastAssembly, partId: pickedPart, normal: pickedNormal, targetMm: pendingDimMm }),
       });
       const j = (await res.json().catch(() => ({}))) as Record<string, unknown>;
       if (!res.ok || !j.ok) { setError(String((j as { error?: string }).error ?? 'dim')); return; }
       await applyEditResp(j);
       setDimInput('');
+      setPendingDimMm(null);
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
     } finally {
       setStatus('');
     }
-  }, [dimInput, pickedPart, pickedNormal, lastAssembly, applyEditResp, ko]);
+  }, [pendingDimMm, pickedPart, pickedNormal, lastAssembly, applyEditResp, ko]);
 
   const editPartRun = useCallback(async (instruction: string) => {
     if (!pickedPart || !lastAssembly) return;
     setLoading(true); setError(null);
-    setStatus(ko ? `🎯 ${pickedPart} 만 수정하는 중…` : `Editing only ${pickedPart}…`);
+    setStatus(designPair(lang, `🎯 ${pickedPart} 만 수정하는 중…`, `Editing only ${pickedPart}…`));
     try {
       const res = await fetch('/api/nexyfab/drawing/edit-part/', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -865,7 +1057,7 @@ export default function DesignInner({ lang, initialDomain, initialTab }: { lang:
 
   const onFaceDragStudio = useCallback(async (partId: string, normalCad: number[], deltaMm: number) => {
     if (!lastAssembly) return;
-    setStatus(ko ? '푸시풀 적용 중…' : 'Applying push-pull…');
+    setStatus(designPair(lang, '푸시풀 적용 중…', 'Applying push-pull…'));
     setError(null);
     try {
       const res = await fetch('/api/nexyfab/drawing/face-drag/', {
@@ -906,6 +1098,9 @@ export default function DesignInner({ lang, initialDomain, initialTab }: { lang:
       if (pickedPart && lastAssembly) { void editPartRun(desc); return; }
       setLoading(true);
       setError(null);
+      setSpatialCandidate(null);
+      setSpatialCandidateError(null);
+      setLastFailedPrompt(desc);
       setGateErrors(null);
       setExportMsg(null);
       setCheckpoint(null); // 이전 pending 체크포인트는 새 생성 시작 시 무효
@@ -918,8 +1113,8 @@ export default function DesignInner({ lang, initialDomain, initialTab }: { lang:
         || ((desc.match(/@\(/g)?.length ?? 0) >= 2);
       handoffTypeRef.current = null; // 1회 소비
       setStatus(isAssembly
-        ? (ko ? 'AI가 부품을 분해·배치하고 간섭을 검사하는 중… (최대 3라운드)' : 'Decomposing parts & checking interference… (≤3 rounds)')
-        : (ko ? 'AI가 설계를 조합하고 검증하는 중…' : 'Composing & verifying the design…'));
+        ? (designPair(lang, 'AI가 부품을 분해·배치하고 간섭을 검사하는 중… (최대 3라운드)', 'Decomposing parts & checking interference… (≤3 rounds)'))
+        : (designPair(lang, 'AI가 설계를 조합하고 검증하는 중…', 'Composing & verifying the design…')));
       runAbortRef.current?.abort(); // 동시 run 방지(감사) — 이전 요청·타이머는 해당 finally가 정리
       const ac = new AbortController();
       runAbortRef.current = ac;
@@ -943,7 +1138,7 @@ export default function DesignInner({ lang, initialDomain, initialTab }: { lang:
           body: JSON.stringify({ description: desc, ...(isAssembly ? { stream: true } : {}) }),
           signal: ac.signal,
         });
-        type RawResp = ComposeResp & { openscad?: string; composeIntent?: ComposeOk['intent']; interferences?: unknown[] };
+        type RawResp = ComposeResp & { openscad?: string; composeIntent?: ComposeOk['intent']; interferences?: unknown[]; spatialCandidate?: { id?: unknown; summary?: unknown; operation?: unknown }; interiorPlacementCandidate?: unknown };
         let streamed: RawResp | null = null;
         if (isAssembly && (res.headers.get('content-type') ?? '').includes('text/event-stream') && res.body) {
           const reader = res.body.getReader();
@@ -963,8 +1158,8 @@ export default function DesignInner({ lang, initialDomain, initialTab }: { lang:
               try { ev = JSON.parse(line.slice(6)); } catch { continue; }
               if (ev.stage === 'done') { streamed = ev.result as RawResp; continue; }
               if (ev.stage === 'error') continue; // 아래 폴백이 받는다
-              const label = (ko ? ev.ko : ev.en) ?? '';
-              setStatus(`${label}${ev.detail && ko ? ` — ${ev.detail}` : ''}${typeof ev.pct === 'number' ? ` (${ev.pct}%)` : ''}`);
+              const label = (designPair(lang, ev.ko, ev.en)) ?? '';
+              setStatus(`${label}${ev.detail ? ` — ${ev.detail}` : ''}${typeof ev.pct === 'number' ? ` (${ev.pct}%)` : ''}`);
             }
           }
         }
@@ -976,12 +1171,19 @@ export default function DesignInner({ lang, initialDomain, initialTab }: { lang:
         const data: ComposeResp = raw.ok && isAssembly
           ? { ok: true, intent: (raw.composeIntent ?? { name: 'assembly' }) as ComposeOk['intent'], scad: String(raw.openscad ?? ''), rounds: (raw as { rounds?: number }).rounds ?? 1, verify: null }
           : raw;
+        if (workspaceDomain === 'interior' && isInteriorPlacementAiCandidate(raw.interiorPlacementCandidate)) {
+          window.dispatchEvent(new CustomEvent<InteriorPlacementAiCandidate>(INTERIOR_PLACEMENT_AI_CANDIDATE_EVENT, { detail: raw.interiorPlacementCandidate }));
+          setStatus(designPair(lang, '선택 가구 변경안을 검토한 뒤 정밀 CAD에서 적용하세요.', 'Review the selected placement patch, then apply it in Precision CAD.'));
+        }
         if (isAssembly && raw.ok) {
           pendingInterfRef.current = Array.isArray(raw.interferences) ? raw.interferences.length : 0; // 그물 ④
           const sup = (raw as { support?: { floating?: string[] } }).support;
           pendingFloatRef.current = Array.isArray(sup?.floating) ? sup.floating.length : null; // 그물 ④b 지지
           pendingIntentRef.current = ((raw as { intentMatch?: IntentMatch | null }).intentMatch) ?? null; // 그물 ⑦ 요청 정합
           pendingAssemblyRef.current = (raw as { assembly?: Record<string, unknown> }).assembly ?? null;
+          const structural = (raw as { structural?: { totalMassKg?: unknown } }).structural;
+          pendingMassRef.current = typeof structural?.totalMassKg === 'number' && Number.isFinite(structural.totalMassKg)
+            ? structural.totalMassKg : readMassKg(pendingAssemblyRef.current);
           pendingPartsRef.current = Array.isArray((raw as { parts?: unknown[] }).parts)
             ? ((raw as { parts?: unknown[] }).parts as { id: string; aabb: { min: number[]; max: number[] } }[])
             : null; // 🎯 픽킹 프록시(월드 AABB)
@@ -990,14 +1192,44 @@ export default function DesignInner({ lang, initialDomain, initialTab }: { lang:
         if (!data.ok) {
           setErrCode((raw as { code?: string }).code ?? null);
           if (data.gateErrors?.length) setGateErrors(data.gateErrors);
-          else setError(data.error ?? (ko ? '설계 생성 실패' : 'Design failed'));
+          else setError(data.error ?? (designPair(lang, '설계 생성 실패', 'Design failed')));
           setStatus('');
           return;
         }
-        if (!data.scad) { setError(ko ? '형상이 비어 있습니다.' : 'Empty geometry.'); setStatus(''); return; }
+        setLastFailedPrompt(null);
+        // A spatial proposal is an exact, revision-bound diff. Keep it in a
+        // review state; geometry generation must never silently apply it.
+        if (raw.spatialCandidate !== undefined) {
+          if (!isSpatialDesignBriefHandoffV2(spatialSourceDraft)) {
+            setSpatialCandidate(null);
+            setSpatialCandidateError('spatial_v2_handoff_required');
+            setError(designPair(lang, '정밀 CAD 기준 문서가 없어 변경안을 적용할 수 없습니다.', 'A revision-bound Precision CAD handoff is required for this proposal.'));
+            setStatus('');
+            return;
+          }
+          const operation = readSpatialAiOperation(raw.spatialCandidate.operation);
+          if (!operation) {
+            setSpatialCandidate(null);
+            setSpatialCandidateError('invalid_spatial_candidate_operation');
+            setError(designPair(lang, 'AI 변경안 형식이 올바르지 않습니다.', 'The AI spatial proposal has an invalid operation.'));
+            setStatus('');
+            return;
+          }
+          const candidate = createSpatialAiCandidate({
+            handoff: spatialSourceDraft,
+            operation,
+            id: typeof raw.spatialCandidate.id === 'string' && raw.spatialCandidate.id.trim() ? raw.spatialCandidate.id : `spatial-${Date.now()}`,
+            summary: typeof raw.spatialCandidate.summary === 'string' ? raw.spatialCandidate.summary : 'Spatial CAD parameter proposal',
+          });
+          setSpatialCandidate(candidate);
+          setSpatialCandidateError(candidate.canonical.issues.length ? candidate.canonical.issues.join(', ') : null);
+          setStatus(designPair(lang, '변경안을 확인한 뒤 정밀 CAD에서 적용하세요.', 'Review the exact diff, then apply it in Precision CAD.'));
+          return;
+        }
+        if (!data.scad) { setError(designPair(lang, '형상이 비어 있습니다.', 'Empty geometry.')); setStatus(''); return; }
         // §2.1 도면 체크포인트 — 드래프트를 빌드해 3뷰+치수를 먼저 승인받는다(뷰어 적용은 승인 후)
         if (wasmAvailable()) {
-          setStatus(ko ? '체크포인트 도면 생성 중…' : 'Building checkpoint views…');
+          setStatus(designPair(lang, '체크포인트 도면 생성 중…', 'Building checkpoint views…'));
           const r = await renderScadWasm(data.scad);
           if (r.ok && r.data) {
             const buf = r.data.buffer.slice(r.data.byteOffset, r.data.byteOffset + r.data.byteLength) as ArrayBuffer;
@@ -1021,7 +1253,7 @@ export default function DesignInner({ lang, initialDomain, initialTab }: { lang:
       } catch (e) {
         if ((e as Error)?.name === 'AbortError') {
           setStatus('');
-          if (timedOut) setError(ko ? '시간 초과(120초) — 스펙을 더 작게 나누거나 부품 수를 줄여 다시 시도하세요.' : 'Timed out (120s) — try a smaller spec.');
+          if (timedOut) setError(designPair(lang, '시간 초과(120초) — 스펙을 더 작게 나누거나 부품 수를 줄여 다시 시도하세요.', 'Timed out (120s) — try a smaller spec.'));
         } else {
           setError(e instanceof Error ? e.message : String(e));
           setStatus('');
@@ -1033,7 +1265,7 @@ export default function DesignInner({ lang, initialDomain, initialTab }: { lang:
         setLoading(false);
       }
     },
-    [ko, applyDesign, pickedPart, lastAssembly, editPartRun],
+    [ko, applyDesign, pickedPart, lastAssembly, editPartRun, spatialSourceDraft, workspaceDomain],
   );
 
   // 체크포인트 승인/취소 — 승인해야 뷰어 적용, 취소하면 프롬프트 수정 재생성 유도
@@ -1043,9 +1275,7 @@ export default function DesignInner({ lang, initialDomain, initialTab }: { lang:
     setCheckpoint(null);
     setCpState('approved');
     await applyDesign(cp.intent, cp.scad, cp.verify);
-    void runReprojectDiff(cp.intent); // W(2026-07-16): 승인 직후 듀얼-방출 대조 자동 실행
-  // runReprojectDiff는 아래에서 선언(호출은 이벤트 시점이라 안전) — deps 포함 시 TDZ
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    void runReprojectDiffRef.current(cp.intent); // W(2026-07-16): 승인 직후 듀얼-방출 대조 자동 실행
   }, [checkpoint, applyDesign]);
   const cancelCheckpoint = useCallback(() => { setCheckpoint(null); setCpState('none'); }, []);
 
@@ -1095,6 +1325,7 @@ export default function DesignInner({ lang, initialDomain, initialTab }: { lang:
       setDiffBusy(false);
     }
   }, [intent]);
+  useEffect(() => { runReprojectDiffRef.current = runReprojectDiff; }, [runReprojectDiff]);
 
   // §7 그물 ⑤ vision 비평 — 렌더 스크린샷을 Gemini가 "요청한 물건으로 보이는가"로 판정.
   // 교정 SCAD는 적용하지 않는다(정직: intent와 어긋난 기하 주입 금지 — 수정은 재생성으로).
@@ -1188,7 +1419,7 @@ export default function DesignInner({ lang, initialDomain, initialTab }: { lang:
     try { await fetch(current.pollUrl, { method: 'DELETE' }); } catch { /* lease recovery remains the safety net */ }
     setFeaJob(null);
     setFeaBusy(false);
-    setFeaRes({ ok: false, error: ko ? '정밀 FEA 취소를 요청했습니다.' : 'Precision FEA cancellation requested.' });
+    setFeaRes({ ok: false, error: designPair(lang, '정밀 FEA 취소를 요청했습니다.', 'Precision FEA cancellation requested.') });
   }, [feaJob, ko]);
   // P0-b(260719b) 정밀 검증 — A1 라운드트립+B1 의심쌍 메시 부울 온디맨드(어셈블리 경로)
   interface PrecRes {
@@ -1206,7 +1437,7 @@ export default function DesignInner({ lang, initialDomain, initialTab }: { lang:
     try {
       const r = await fetch('/api/nexyfab/drawing/verify-precision/', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ assembly: lastAssembly }),
+        body: JSON.stringify({ assembly: lastAssembly, options: { lang, title: intent?.name ?? undefined } }),
       });
       setPrecRes((await r.json()) as PrecRes);
     } catch (e) {
@@ -1257,7 +1488,7 @@ export default function DesignInner({ lang, initialDomain, initialTab }: { lang:
      * 조용히 바꿔, 사용자는 「내가 확정한 것이 무엇인지」를 잃는다.
      * ⚠ 실패해도 스냅샷은 남긴다 — 「무엇으로 시도했는지」가 실패 분석의 출발점이다.
      */
-    setConfirmedSnap(snapshot(ko ? '제작 확정' : 'Confirmed for manufacturing', 'make', lastAssembly, Date.now()));
+    setConfirmedSnap(snapshot(designPair(lang, '제작 확정', 'Confirmed for manufacturing'), 'make', lastAssembly, Date.now()));
     try {
       const r = await fetch('/api/nexyfab/drawing/package/', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -1270,15 +1501,15 @@ export default function DesignInner({ lang, initialDomain, initialTab }: { lang:
       for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
       const url = URL.createObjectURL(new Blob([bytes], { type: 'application/zip' }));
       const a = document.createElement('a');
-      a.href = url; a.download = 'design_package.zip'; a.click();
+      a.href = url; a.download = `design_package_${lang}.zip`; a.click();
       setTimeout(() => URL.revokeObjectURL(url), 1500);
-      setExportMsg(ko ? '설계 패키지(zip) 내려받음 — GA·2D·구조·BOQ·Dossier 포함' : 'Design package downloaded');
+      setExportMsg(designPair(lang, '설계 패키지(zip) 내려받음 — GA·2D·구조·BOQ·Dossier 포함', lang === 'ar' ? 'تم تنزيل حزمة التصميم — تشمل GA و2D والهيكل وBOQ وDossier' : 'Design package downloaded'));
     } catch (e) {
-      setExportMsg((ko ? '패키지 실패: ' : 'Package failed: ') + (e instanceof Error ? e.message : String(e)));
+      setExportMsg((designPair(lang, '패키지 실패: ', 'Package failed: ')) + (e instanceof Error ? e.message : String(e)));
     } finally {
       setPkgBusy(false);
     }
-  }, [lastAssembly, ko]);
+  }, [lastAssembly, intent?.name, lang, ko]);
 
   // K5(260808) — HLR 실투영 도면(가시선+은선+해석 치수): 어셈블리 경로 온디맨드.
   const [hlrBusy, setHlrBusy] = useState(false);
@@ -1303,9 +1534,9 @@ export default function DesignInner({ lang, initialDomain, initialTab }: { lang:
       const url = URL.createObjectURL(new Blob([html], { type: 'text/html' }));
       window.open(url, '_blank');
       setTimeout(() => URL.revokeObjectURL(url), 30_000);
-      setExportMsg(ko ? 'HLR 도면 새 탭에 열림' : 'HLR drawing opened');
+      setExportMsg(designPair(lang, 'HLR 도면 새 탭에 열림', 'HLR drawing opened'));
     } catch (e) {
-      setExportMsg((ko ? 'HLR 실패: ' : 'HLR failed: ') + (e instanceof Error ? e.message : String(e)));
+      setExportMsg((designPair(lang, 'HLR 실패: ', 'HLR failed: ')) + (e instanceof Error ? e.message : String(e)));
     } finally {
       setHlrBusy(false);
     }
@@ -1324,12 +1555,12 @@ export default function DesignInner({ lang, initialDomain, initialTab }: { lang:
       const data = (await res.json()) as { ok: boolean; step?: string; entities?: number; error?: string };
       if (data.ok && data.step) {
         download(`${intent.name ?? 'design'}.step`, data.step, 'application/step');
-        setExportMsg((ko ? 'STEP 내보냄 · 엔티티 ' : 'STEP exported · ') + (data.entities ?? '?') + (ko ? '개' : ' entities'));
+        setExportMsg((designPair(lang, 'STEP 내보냄 · 엔티티 ', 'STEP exported · ')) + (data.entities ?? '?') + (designPair(lang, '개', ' entities')));
       } else {
-        setExportMsg((ko ? 'STEP 실패: ' : 'STEP failed: ') + (data.error ?? ''));
+        setExportMsg((designPair(lang, 'STEP 실패: ', 'STEP failed: ')) + (data.error ?? ''));
       }
     } catch (e) {
-      setExportMsg((ko ? 'STEP 실패: ' : 'STEP failed: ') + (e instanceof Error ? e.message : String(e)));
+      setExportMsg((designPair(lang, 'STEP 실패: ', 'STEP failed: ')) + (e instanceof Error ? e.message : String(e)));
     } finally {
       setExporting('');
     }
@@ -1348,12 +1579,12 @@ export default function DesignInner({ lang, initialDomain, initialTab }: { lang:
       const data = (await res.json()) as { ok: boolean; html?: string; error?: string };
       if (data.ok && data.html) {
         download(`${intent.name ?? 'design'}.html`, data.html, 'text/html');
-        setExportMsg(ko ? '자립형 HTML 뷰어 내보냄' : 'Self-contained HTML viewer exported');
+        setExportMsg(designPair(lang, '자립형 HTML 뷰어 내보냄', 'Self-contained HTML viewer exported'));
       } else {
-        setExportMsg((ko ? 'HTML 실패: ' : 'HTML failed: ') + (data.error ?? ''));
+        setExportMsg((designPair(lang, 'HTML 실패: ', 'HTML failed: ')) + (data.error ?? ''));
       }
     } catch (e) {
-      setExportMsg((ko ? 'HTML 실패: ' : 'HTML failed: ') + (e instanceof Error ? e.message : String(e)));
+      setExportMsg((designPair(lang, 'HTML 실패: ', 'HTML failed: ')) + (e instanceof Error ? e.message : String(e)));
     } finally {
       setExporting('');
     }
@@ -1361,19 +1592,32 @@ export default function DesignInner({ lang, initialDomain, initialTab }: { lang:
 
   const manifoldOk = verify && verify.manifold === true && !verify.error;
   const verifyFailed = verify && (verify.error || verify.manifold === false);
+  const summaryDims = bbox ?? (() => {
+    const parts = lastPartsAabb ?? [];
+    if (!parts.length) return null;
+    const min = [Infinity, Infinity, Infinity], max = [-Infinity, -Infinity, -Infinity];
+    for (const part of parts) for (let axis = 0; axis < 3; axis++) {
+      min[axis] = Math.min(min[axis], part.aabb.min[axis] ?? Infinity);
+      max[axis] = Math.max(max[axis], part.aabb.max[axis] ?? -Infinity);
+    }
+    return min.every(Number.isFinite) && max.every(Number.isFinite)
+      ? { x: max[0] - min[0], y: max[1] - min[1], z: max[2] - min[2] } : null;
+  })();
+  const summaryPartCount = lastPartsAabb?.length
+    ?? (Array.isArray((lastAssembly as { parts?: unknown[] } | null)?.parts) ? (lastAssembly as { parts: unknown[] }).parts.length : null);
 
   return (
-    <div className={styles.root} style={{ display: 'flex', flexDirection: 'column', height: '100vh', background: 'var(--nx-bg, #f4f6f8)', color: 'var(--nx-text, #1a2230)' }}>
+    <div className={styles.root} dir={lang === 'ar' ? 'rtl' : 'ltr'} style={{ display: 'flex', flexDirection: 'column', height: '100vh', background: 'var(--nx-bg, #f4f6f8)', color: 'var(--nx-text, #1a2230)' }}>
       {/* Header */}
       <div style={{ padding: '14px 20px', borderBottom: '1px solid var(--nx-border, #dfe3e8)' }}>
         <h1 style={{ margin: 0, fontSize: 18, fontWeight: 800, letterSpacing: '-0.02em' }}>
           {domain ? <span style={{ marginRight: 6 }}>{domain.icon}</span> : null}
-          {domain ? (ko ? domain.labelKo : domain.labelEn) : ko ? '설계' : 'Design'}
+          {domain ? (designPair(lang, domain.labelKo, domain.labelEn)) : designPair(lang, '설계', 'Design')}
           <span style={{ marginLeft: 8, fontSize: 12, fontWeight: 600, color: 'var(--nx-text-3, #6b7684)' }}>
-            {domain ? (ko ? domain.descKo : domain.descEn) : (
+            {domain ? (designPair(lang, domain.descKo, domain.descEn)) : (
               (() => {
                 const stage = verify ? 2 : intent ? 1 : 0;
-                const steps = ko ? ['아이디어', '설계', '검증(상시)', '제조'] : ['idea', 'design', 'verify', 'manufacture'];
+                const steps = designList(lang, { ko: ['아이디어', '설계', '검증(상시)', '제조'], en: ['idea', 'design', 'verify', 'manufacture'], ja: ['idea', 'design', 'verify', 'manufacture'], zh: ['idea', 'design', 'verify', 'manufacture'], es: ['idea', 'design', 'verify', 'manufacture'], ar: ['idea', 'design', 'verify', 'manufacture'] });
                 return steps.map((st, i) => (
                   <span key={st} style={{ color: i === stage ? 'var(--nx-accent, #2563eb)' : undefined, fontWeight: i === stage ? 800 : 600 }}>
                     {st}{i < steps.length - 1 ? ' → ' : ''}
@@ -1385,12 +1629,12 @@ export default function DesignInner({ lang, initialDomain, initialTab }: { lang:
               <span style={{ marginLeft: 10, padding: '2px 10px', borderRadius: 999, fontSize: 11, fontWeight: 800,
                 background: (verify as { manifold?: boolean }).manifold ? 'rgba(22,163,74,0.15)' : 'rgba(220,38,38,0.15)',
                 color: (verify as { manifold?: boolean }).manifold ? '#16a34a' : '#dc2626' }}>
-                {(verify as { manifold?: boolean }).manifold ? (ko ? '검증 통과' : 'VERIFIED') : (ko ? '검증 실패' : 'FAILED')}
+                {(verify as { manifold?: boolean }).manifold ? (designPair(lang, '검증 통과', 'VERIFIED')) : (designPair(lang, '검증 실패', 'FAILED'))}
               </span>
             )}
           </span>
         </h1>
-        <nav data-testid="domain-user-journey" aria-label={ko ? '설계 진행 단계' : 'Design progress'} className={styles.journey}>
+        <nav data-testid="domain-user-journey" aria-label={designPair(lang, '설계 진행 단계', 'Design progress')} className={styles.journey}>
           {journey.stages.map((item, index) => {
             const activeIndex = !intent ? 0 : tab === 'output' ? 4 : tab === 'verify' || tab === 'calc' ? 3 : 2;
             const target: StudioTab = index >= 4 ? 'output' : index >= 3 ? 'verify' : 'create';
@@ -1409,9 +1653,9 @@ export default function DesignInner({ lang, initialDomain, initialTab }: { lang:
           <span className={styles.journeyFocus}>{journey.focus}</span>
         </nav>
         <div data-testid="domain-readiness-summary" className={styles.readiness}>
-          <span><b>{ko ? '정밀 입력' : 'Exact inputs'}:</b> {journey.exactInputs.join(' · ')}</span>
-          <span><b>{ko ? '검증' : 'Checks'}:</b> {journey.validations.join(' · ')}</span>
-          <span><b>{ko ? '산출물' : 'Outputs'}:</b> {journey.deliverables.join(' · ')}</span>
+          <span><b>{designPair(lang, '정밀 입력', 'Exact inputs')}:</b> {journey.exactInputs.join(' · ')}</span>
+          <span><b>{designPair(lang, '검증', 'Checks')}:</b> {journey.validations.join(' · ')}</span>
+          <span><b>{designPair(lang, '산출물', 'Outputs')}:</b> {journey.deliverables.join(' · ')}</span>
         </div>
       </div>
 
@@ -1419,8 +1663,8 @@ export default function DesignInner({ lang, initialDomain, initialTab }: { lang:
         {/* Left: prompt + verify + export */}
         <div className={styles.controlPane} style={{ width: 380, minWidth: 380, borderRight: '1px solid var(--nx-border, #dfe3e8)', display: 'flex', flexDirection: 'column', overflow: 'auto' }}>
           {/* 작업 4탭 — 세로 스택 해체: 생성 | 검증 | 계산기 | 출력 */}
-          <div role="group" aria-label={ko ? '설계 작업' : 'Design tasks'} style={{ display: 'flex', gap: 4, padding: '10px 12px 0', position: 'sticky', top: 0, zIndex: 5, background: 'var(--nx-bg, #fff)' }}>
-            {([['create', ko ? '생성' : 'Create'], ['verify', ko ? '검증' : 'Verify'], ['calc', ko ? '계산기' : 'Calc'], ['output', ko ? '출력' : 'Output']] as [StudioTab, string][]).map(([k, label]) => (
+          <div role="group" aria-label={designPair(lang, '설계 작업', 'Design tasks')} style={{ display: 'flex', gap: 4, padding: '10px 12px 0', position: 'sticky', top: 0, zIndex: 5, background: 'var(--nx-bg, #fff)' }}>
+            {([['create', designPair(lang, '생성', 'Create')], ['verify', designPair(lang, '검증', 'Verify')], ['calc', designPair(lang, '계산기', 'Calc')], ['output', designPair(lang, '출력', 'Output')]] as [StudioTab, string][]).map(([k, label]) => (
               <button key={k} type="button" aria-pressed={tab === k} onClick={() => selectTab(k)}
                 style={{ flex: 1, padding: '7px 0', borderRadius: 8, fontSize: 12.5, fontWeight: 700, cursor: 'pointer',
                   border: '1px solid ' + (tab === k ? 'var(--nx-accent, #2563eb)' : 'var(--nx-border, #dfe3e8)'),
@@ -1441,10 +1685,10 @@ export default function DesignInner({ lang, initialDomain, initialTab }: { lang:
               }}
             >
               <div style={{ fontWeight: 800, fontSize: 13.5, color: 'var(--nx-accent, #2563eb)' }}>
-                {ko ? '🙋 처음이신가요? 쉬운 설계로 시작' : '🙋 New here? Start with Easy design'}
+                {designPair(lang, '🙋 처음이신가요? 쉬운 설계로 시작', '🙋 New here? Start with Easy design')}
               </div>
               <div style={{ fontSize: 11.5, color: 'var(--nx-text-3, #6b7684)', marginTop: 3 }}>
-                {ko ? `“${journey.example}”처럼 말하면 됩니다 — 질문 3~4개로 구체화합니다.` : `Say it plainly, e.g. “${journey.example}” — 3–4 questions make it specific.`}
+                {designPair(lang, `“${journey.example}”처럼 말하면 됩니다 — 질문 3~4개로 구체화합니다.`, `Say it plainly, e.g. “${journey.example}” — 3–4 questions make it specific.`)}
               </div>
             </button>
             {easyOpen && (
@@ -1462,7 +1706,7 @@ export default function DesignInner({ lang, initialDomain, initialTab }: { lang:
             {/* 기계 세부분야 칩 — 가설·랙은 사이드바에서 기계로 흡수(2026-07-16 IA) */}
             {(domain?.slug === 'mech' || domain?.slug === 'rack') && (
               <div style={{ display: 'flex', gap: 6, marginBottom: 12 }}>
-                {([['mech', ko ? '기계·장비·판금' : 'Machinery/sheet'], ['rack', ko ? '가설·랙·경량철골' : 'Rack/light steel']] as [string, string][]).map(([s, label]) => (
+                {([['mech', designPair(lang, '기계·장비·판금', 'Machinery/sheet')], ['rack', designPair(lang, '가설·랙·경량철골', 'Rack/light steel')]] as [string, string][]).map(([s, label]) => (
                   <a key={s} href={`/${lang}/nexyfab/design/?domain=${s}`}
                     style={{ padding: '5px 12px', borderRadius: 999, fontSize: 11.5, fontWeight: 700, textDecoration: 'none',
                       border: '1px solid ' + (domain.slug === s ? 'var(--nx-accent, #2563eb)' : 'var(--nx-border, #dfe3e8)'),
@@ -1476,7 +1720,7 @@ export default function DesignInner({ lang, initialDomain, initialTab }: { lang:
             {/* 토목 세부분야 칩 — 교량 노출(2026-07-16 검증 배터리: 백엔드 완비·UI 미노출 해소) */}
             {(domain?.slug === 'civil' || domain?.slug === 'bridge') && (
               <div style={{ display: 'flex', gap: 6, marginBottom: 12 }}>
-                {([['civil', ko ? '토목 소구조물' : 'Civil structures'], ['bridge', ko ? '교량 (거더교)' : 'Bridge (girder)']] as [string, string][]).map(([s, label]) => (
+                {([['civil', designPair(lang, '토목 소구조물', 'Civil structures')], ['bridge', designPair(lang, '교량 (거더교)', 'Bridge (girder)')]] as [string, string][]).map(([s, label]) => (
                   <a key={s} href={`/${lang}/nexyfab/design/?domain=${s}`}
                     style={{ padding: '5px 12px', borderRadius: 999, fontSize: 11.5, fontWeight: 700, textDecoration: 'none',
                       border: '1px solid ' + (domain.slug === s ? 'var(--nx-accent, #2563eb)' : 'var(--nx-border, #dfe3e8)'),
@@ -1489,7 +1733,7 @@ export default function DesignInner({ lang, initialDomain, initialTab }: { lang:
             )}
             {/* 채팅-우선(2026-07-16 사용자 결정): 자유 서술이 1순위, 템플릿 갤러리는 아래 */}
             <label style={{ fontSize: 12, fontWeight: 700, color: 'var(--nx-text-3, #6b7684)' }}>
-              {ko ? '무엇을 설계할까요?' : 'What do you want to design?'}
+              {designPair(lang, '무엇을 설계할까요?', 'What do you want to design?')}
             </label>
             {pickedPart && (
               <div style={{
@@ -1497,7 +1741,7 @@ export default function DesignInner({ lang, initialDomain, initialTab }: { lang:
                 border: '1px solid var(--nx-accent, #2563eb)', background: 'rgba(37,99,235,0.08)', fontSize: 12, fontWeight: 700,
               }}>
                 🎯 {pickedPart}{pickedNormal ? ` · ${'xyz'[Math.abs(pickedNormal[0]) > 0.5 ? 0 : Math.abs(pickedNormal[1]) > 0.5 ? 1 : 2]}${(pickedNormal[Math.abs(pickedNormal[0]) > 0.5 ? 0 : Math.abs(pickedNormal[1]) > 0.5 ? 1 : 2] > 0 ? '+' : '−')}` : ''}
-                <span style={{ fontWeight: 400, color: 'var(--nx-text-3, #6b7684)' }}>{ko ? '— 아래 서술이 이 부품만 수정 · 면 드래그=푸시풀' : '— prompt edits only this part · drag face = push-pull'}</span>
+                <span style={{ fontWeight: 400, color: 'var(--nx-text-3, #6b7684)' }}>{designPair(lang, '— 아래 서술이 이 부품만 수정 · 면 드래그=푸시풀', '— prompt edits only this part · drag face = push-pull')}</span>
                 <button type="button" onClick={() => { setPickedPart(null); setPickedNormal(null); setPickedMulti([]); pickSelRef.current.select(null); }} aria-label="clear"
                   style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--nx-text-3, #6b7684)', fontSize: 12, padding: 0 }}>✕</button>
               </div>
@@ -1508,7 +1752,7 @@ export default function DesignInner({ lang, initialDomain, initialTab }: { lang:
                 marginTop: 6, padding: '6px 12px', borderRadius: 8, border: '1px solid var(--nx-accent, #2563eb)',
                 background: 'rgba(37,99,235,0.1)', color: 'var(--nx-accent, #2563eb)', fontSize: 12, fontWeight: 700, cursor: 'pointer',
               }}>
-                🧩 {ko ? `2차 상세 적용 (+${Math.max(0, (fullLodRef.current?.parts?.length ?? 0) - (lastPartsAabb?.length ?? 0))}부품 — 현재는 1차 골격)` : `Apply detail LOD (+${Math.max(0, (fullLodRef.current?.parts?.length ?? 0) - (lastPartsAabb?.length ?? 0))} parts)`}
+                🧩 {designPair(lang, `2차 상세 적용 (+${Math.max(0, (fullLodRef.current?.parts?.length ?? 0) - (lastPartsAabb?.length ?? 0))}부품 — 현재는 1차 골격)`, `Apply detail LOD (+${Math.max(0, (fullLodRef.current?.parts?.length ?? 0) - (lastPartsAabb?.length ?? 0))} parts)`)}
               </button>
             )}
             {/* 🎯 편집 툴바(#1·#2·#5·#7) — 결정론 연산(AI 없음) + 교체(AI 지시 자동생성) + 저장/복원 */}
@@ -1516,56 +1760,77 @@ export default function DesignInner({ lang, initialDomain, initialTab }: { lang:
               <div style={{ marginTop: 6, display: 'flex', flexWrap: 'wrap', gap: 6, alignItems: 'center', fontSize: 11.5 }}>
                 {histN > 0 && (
                   <button type="button" onClick={() => void undoEdit()} style={{ padding: '4px 10px', borderRadius: 7, border: '1px solid var(--nx-border, #dfe3e8)', background: 'var(--nx-panel, #fff)', color: 'inherit', cursor: 'pointer', fontWeight: 700 }}>
-                    ↩ {ko ? '되돌리기' : 'Undo'} ({histN})
+                    ↩ {designPair(lang, '되돌리기', 'Undo')} ({histN})
                   </button>
                 )}
                 {lastAssembly && (
-                  <button type="button" onClick={() => void saveProject()} title={ko ? '편집 결과+REV 이력 서버 저장(로그인)' : 'Save edits+REV'}
-                    style={{ padding: '4px 10px', borderRadius: 7, border: '1px solid var(--nx-border, #dfe3e8)', background: 'var(--nx-panel, #fff)', color: 'inherit', cursor: 'pointer' }}>💾 {ko ? '저장' : 'Save'}</button>
+                  <button type="button" onClick={() => void saveProject()} title={designPair(lang, '편집 결과+REV 이력 서버 저장(로그인)', 'Save edits+REV')}
+                    style={{ padding: '4px 10px', borderRadius: 7, border: '1px solid var(--nx-border, #dfe3e8)', background: 'var(--nx-panel, #fff)', color: 'inherit', cursor: 'pointer' }}>💾 {designPair(lang, '저장', 'Save')}</button>
                 )}
                 {projList === null ? (
-                  <button type="button" onClick={() => void loadProjects()} style={{ padding: '4px 10px', borderRadius: 7, border: '1px solid var(--nx-border, #dfe3e8)', background: 'var(--nx-panel, #fff)', color: 'inherit', cursor: 'pointer' }}>📂 {ko ? '불러오기' : 'Load'}</button>
+                  <button type="button" onClick={() => void loadProjects()} style={{ padding: '4px 10px', borderRadius: 7, border: '1px solid var(--nx-border, #dfe3e8)', background: 'var(--nx-panel, #fff)', color: 'inherit', cursor: 'pointer' }}>📂 {designPair(lang, '불러오기', 'Load')}</button>
                 ) : (
                   <select defaultValue="" onChange={(e) => { const v = e.target.value; e.target.value = ''; if (v) void loadProject(v); }}
                     style={{ padding: '4px 7px', borderRadius: 7, border: '1px solid var(--nx-border, #dfe3e8)', background: 'var(--nx-panel, #fff)', color: 'inherit', fontSize: 11.5, maxWidth: 180 }}>
-                    <option value="">{ko ? `📂 프로젝트 ${projList.length}개…` : `📂 ${projList.length} projects…`}</option>
+                    <option value="">{designPair(lang, `📂 프로젝트 ${projList.length}개…`, `📂 ${projList.length} projects…`)}</option>
                     {projList.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
                   </select>
                 )}
                 {pickedPart && (
                   <>
-                    {pickedMulti.length > 1 && <span style={{ color: 'var(--nx-text-3, #6b7684)' }}>{ko ? `다중 ${pickedMulti.length}개(Ctrl+클릭)` : `${pickedMulti.length} selected`}</span>}
+                    {pickedMulti.length > 1 && <span style={{ color: 'var(--nx-text-3, #6b7684)' }}>{designPair(lang, `다중 ${pickedMulti.length}개(Ctrl+클릭)`, `${pickedMulti.length} selected`)}</span>}
                     <button type="button" disabled={loading} onClick={() => void partOpRun('duplicate', pickedMulti.length ? pickedMulti : [pickedPart])}
-                      style={{ padding: '4px 10px', borderRadius: 7, border: '1px solid var(--nx-border, #dfe3e8)', background: 'var(--nx-panel, #fff)', color: 'inherit', cursor: 'pointer' }}>⧉ {ko ? '복제' : 'Dup'}</button>
+                      style={{ padding: '4px 10px', borderRadius: 7, border: '1px solid var(--nx-border, #dfe3e8)', background: 'var(--nx-panel, #fff)', color: 'inherit', cursor: 'pointer' }}>⧉ {designPair(lang, '복제', 'Dup')}</button>
                     <button type="button" disabled={loading} onClick={() => void partOpRun('delete', pickedMulti.length ? pickedMulti : [pickedPart])}
-                      style={{ padding: '4px 10px', borderRadius: 7, border: '1px solid rgba(239,68,68,.5)', background: 'var(--nx-panel, #fff)', color: '#ef4444', cursor: 'pointer' }}>🗑 {ko ? '삭제' : 'Del'}</button>
+                      style={{ padding: '4px 10px', borderRadius: 7, border: '1px solid rgba(239,68,68,.5)', background: 'var(--nx-panel, #fff)', color: '#ef4444', cursor: 'pointer' }}>🗑 {designPair(lang, '삭제', 'Del')}</button>
                     {pickedNormal && (
                       <span style={{ display: 'inline-flex', gap: 4, alignItems: 'center' }}>
-                        <input value={dimInput} onChange={(e) => setDimInput(e.target.value)} placeholder={ko ? '면 치수(mm)' : 'dim(mm)'} inputMode="decimal"
+                        <input value={dimInput} onChange={(e) => setDimInput(e.target.value.replace(/[^0-9.+-]/g, ''))} placeholder={designPair(lang, '면 치수', 'dimension')} inputMode="decimal" aria-label={designPair(lang, '면 치수', 'Face dimension')}
                           style={{ width: 78, padding: '4px 7px', borderRadius: 7, border: '1px solid var(--nx-border, #dfe3e8)', background: 'var(--nx-panel, #fff)', color: 'inherit', fontSize: 11.5 }} />
-                        <button type="button" disabled={loading || !parseFloat(dimInput)} onClick={() => void applyDimInput()}
-                          style={{ padding: '4px 9px', borderRadius: 7, border: 'none', background: 'var(--nx-accent, #2563eb)', color: '#fff', cursor: 'pointer', fontWeight: 700 }}>{ko ? '치수 적용' : 'Set'}</button>
+                        <select value={dimUnit} onChange={(e) => setDimUnit(e.target.value as 'mm' | 'in')} aria-label={designPair(lang, '치수 단위', 'Dimension unit')}
+                          style={{ width: 48, padding: '4px 3px', borderRadius: 7, border: '1px solid var(--nx-border, #dfe3e8)', background: 'var(--nx-panel, #fff)', color: 'inherit', fontSize: 11.5 }}>
+                          <option value="mm">mm</option><option value="in">in</option>
+                        </select>
+                        <button type="button" disabled={loading || !Number.isFinite(parseFloat(dimInput)) || parseFloat(dimInput) <= 0} onClick={() => void applyDimInput()}
+                          style={{ padding: '4px 9px', borderRadius: 7, border: 'none', background: 'var(--nx-accent, #2563eb)', color: '#fff', cursor: 'pointer', fontWeight: 700 }}>{designPair(lang, '미리보기', 'Preview')}</button>
+                        {pendingDimMm != null && (
+                          <span style={{ display: 'inline-flex', gap: 3, alignItems: 'center' }}>
+                            <button type="button" disabled={loading} onClick={() => void commitPendingDim()} style={{ padding: '4px 8px', borderRadius: 7, border: 'none', background: '#16a34a', color: '#fff', cursor: 'pointer', fontWeight: 700 }}>{designPair(lang, '적용', 'Apply')}</button>
+                            <button type="button" disabled={loading} onClick={() => { setPendingDimMm(null); setStatus(''); }} style={{ padding: '4px 8px', borderRadius: 7, border: '1px solid var(--nx-border, #dfe3e8)', background: 'transparent', color: 'inherit', cursor: 'pointer', fontWeight: 700 }}>{designPair(lang, '취소', 'Cancel')}</button>
+                          </span>
+                        )}
                       </span>
                     )}
                     <span style={{ display: 'inline-flex', gap: 4, alignItems: 'center' }}>
-                      <input value={filletInput} onChange={(e) => setFilletInput(e.target.value)} placeholder={ko ? '필렛 r' : 'fillet r'} inputMode="decimal"
+                      <input value={filletInput} onChange={(e) => setFilletInput(e.target.value)} placeholder={designPair(lang, '필렛 r', 'fillet r')} inputMode="decimal"
                         style={{ width: 58, padding: '4px 7px', borderRadius: 7, border: '1px solid var(--nx-border, #dfe3e8)', background: 'var(--nx-panel, #fff)', color: 'inherit', fontSize: 11.5 }} />
-                      <button type="button" disabled={loading || !parseFloat(filletInput)} title={ko ? 'STEP(B-rep)에만 반영 — 표시 뷰어는 무필렛(명시)' : 'STEP only'}
+                      <button type="button" disabled={loading || !parseFloat(filletInput)} title={designPair(lang, 'STEP(B-rep)에만 반영 — 표시 뷰어는 무필렛(명시)', 'STEP only')}
                         onClick={() => { const r = parseFloat(filletInput); if (r > 0) { void partOpRun('fillet', pickedMulti.length ? pickedMulti : [pickedPart], { r }); setFilletInput(''); } }}
-                        style={{ padding: '4px 9px', borderRadius: 7, border: '1px solid var(--nx-border, #dfe3e8)', background: 'var(--nx-panel, #fff)', color: 'inherit', cursor: 'pointer' }}>◜ {ko ? '필렛' : 'Fillet'}</button>
+                        style={{ padding: '4px 9px', borderRadius: 7, border: '1px solid var(--nx-border, #dfe3e8)', background: 'var(--nx-panel, #fff)', color: 'inherit', cursor: 'pointer' }}>◜ {designPair(lang, '필렛', 'Fillet')}</button>
                     </span>
                     <span style={{ display: 'inline-flex', gap: 4, alignItems: 'center' }}>
-                      <input value={moveInput} onChange={(e) => setMoveInput(e.target.value)} placeholder={ko ? '이동 dx,dy,dz' : 'move dx,dy,dz'}
+                      <input value={moveInput} onChange={(e) => setMoveInput(e.target.value)} placeholder={designPair(lang, '이동 dx,dy,dz', 'move dx,dy,dz')}
                         style={{ width: 96, padding: '4px 7px', borderRadius: 7, border: '1px solid var(--nx-border, #dfe3e8)', background: 'var(--nx-panel, #fff)', color: 'inherit', fontSize: 11.5 }} />
                       <button type="button" disabled={loading} onClick={() => {
                         const m2 = moveInput.split(',').map((q) => parseFloat(q.trim()));
                         if (m2.length === 3 && m2.every(Number.isFinite) && m2.some((q) => q !== 0)) { void partOpRun('translate', pickedMulti.length ? pickedMulti : [pickedPart!], { dx: m2[0], dy: m2[1], dz: m2[2] }); setMoveInput(''); }
                       }}
-                        style={{ padding: '4px 9px', borderRadius: 7, border: '1px solid var(--nx-border, #dfe3e8)', background: 'var(--nx-panel, #fff)', color: 'inherit', cursor: 'pointer' }}>⇢ {ko ? '이동' : 'Move'}</button>
+                        style={{ padding: '4px 9px', borderRadius: 7, border: '1px solid var(--nx-border, #dfe3e8)', background: 'var(--nx-panel, #fff)', color: 'inherit', cursor: 'pointer' }}>⇢ {designPair(lang, '이동', 'Move')}</button>
                     </span>
-                    <select defaultValue="" disabled={loading} onChange={(e) => { const t2 = e.target.value; e.target.value = ''; if (t2) void editPartRun(ko ? `이 부품을 type '${t2}' 로 교체해줘. 전체 외형 치수는 유지하고 params 는 새 타입의 전체 파라미터로.` : `Replace this part with type '${t2}', keep overall envelope, output full params for the new type.`); }}
+                    <span style={{ display: 'inline-flex', gap: 3, alignItems: 'center', padding: '3px 5px', borderRadius: 7, border: '1px solid var(--nx-accent, #2563eb)', background: 'rgba(37,99,235,.06)' }} title={designPair(lang, '선택 부품을 월드 XYZ 기준으로 이동', 'Move selected part in world XYZ axes')}>
+                      <span style={{ fontSize: 10, fontWeight: 800, color: 'var(--nx-accent, #2563eb)' }}>XYZ</span>
+                      <input value={moveStep} onChange={(e) => setMoveStep(e.target.value.replace(/[^0-9.+-]/g, ''))} aria-label={designPair(lang, '축 이동량(mm)', 'Axis step (mm)')} inputMode="decimal" style={{ width: 42, padding: '3px 4px', borderRadius: 5, border: '1px solid var(--nx-border, #dfe3e8)', background: 'var(--nx-panel, #fff)', color: 'inherit', fontSize: 10.5 }} />
+                      {(['X', 'Y', 'Z'] as const).flatMap((axis) => ([-1, 1] as const).map((sign) => (
+                        <button key={`${axis}${sign}`} type="button" disabled={loading || !pickedPart || !(Number(moveStep) > 0)} onClick={() => {
+                          const d = Number(moveStep) * sign;
+                          const v = axis === 'X' ? { dx: d, dy: 0, dz: 0 } : axis === 'Y' ? { dx: 0, dy: d, dz: 0 } : { dx: 0, dy: 0, dz: d };
+                          void partOpRun('translate', pickedMulti.length ? pickedMulti : [pickedPart!], v);
+                        }} style={{ minWidth: 21, padding: '3px 2px', borderRadius: 5, border: '1px solid var(--nx-border, #dfe3e8)', background: 'var(--nx-panel, #fff)', color: 'inherit', cursor: 'pointer', fontSize: 10, fontWeight: 800 }}>{axis}{sign > 0 ? '+' : '−'}</button>
+                      )))}
+                    </span>
+                    <select defaultValue="" disabled={loading} onChange={(e) => { const t2 = e.target.value; e.target.value = ''; if (t2) void editPartRun(designPair(lang, `이 부품을 type '${t2}' 로 교체해줘. 전체 외형 치수는 유지하고 params 는 새 타입의 전체 파라미터로.`, `Replace this part with type '${t2}', keep overall envelope, output full params for the new type.`)); }}
                       style={{ padding: '4px 7px', borderRadius: 7, border: '1px solid var(--nx-border, #dfe3e8)', background: 'var(--nx-panel, #fff)', color: 'inherit', fontSize: 11.5 }}>
-                      <option value="">{ko ? '⇄ 교체…' : '⇄ Replace…'}</option>
+                      <option value="">{designPair(lang, '⇄ 교체…', '⇄ Replace…')}</option>
                       {['box', 'cylinder', 'tube', 'rect_tube', 'h_section', 'c_channel', 'angle', 'flange'].map((t2) => <option key={t2} value={t2}>{t2}</option>)}
                     </select>
                   </>
@@ -1575,7 +1840,7 @@ export default function DesignInner({ lang, initialDomain, initialTab }: { lang:
             <textarea
               value={prompt}
               onChange={(e) => setPrompt(e.target.value)}
-              placeholder={`${ko ? '예' : 'e.g.'}: ${journey.example}…`}
+              placeholder={`${designPair(lang, '예', 'e.g.')}: ${journey.example}…`}
               rows={5}
               style={{
                 width: '100%', marginTop: 6, padding: 10, borderRadius: 8, resize: 'vertical',
@@ -1583,6 +1848,27 @@ export default function DesignInner({ lang, initialDomain, initialTab }: { lang:
                 color: 'inherit', fontSize: 13, lineHeight: 1.5, boxSizing: 'border-box',
               }}
             />
+            {spatialCandidate && (
+              <section data-testid="spatial-candidate-review" aria-live="polite" style={{ marginTop: 10, padding: 10, borderRadius: 8, border: '1px solid var(--nx-accent, #2563eb)', background: 'var(--nx-accent-soft, rgba(37,99,235,.08))' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, alignItems: 'center' }}>
+                  <b>{designPair(lang, '정밀 CAD 변경안 검토', 'Review Precision CAD proposal')}</b>
+                  <span style={{ fontSize: 10, color: 'var(--nx-text-3, #6b7684)' }}>{spatialCandidate.canonical.state}</span>
+                </div>
+                <div style={{ marginTop: 5, fontSize: 11, color: 'var(--nx-text-2, #46505e)' }}>
+                  {spatialCandidate.operation.kind === 'set_parameter'
+                    ? `${spatialCandidate.operation.path}: ${String(spatialSourceDraft && isSpatialDesignBriefHandoffV2(spatialSourceDraft) ? spatialSourceDraft.parameters[spatialCandidate.operation.path] ?? '—' : '—')} → ${String(spatialCandidate.operation.value)}`
+                    : Object.entries(spatialCandidate.operation.parameters).map(([path, value]) => `${path} → ${String(value)}`).join(' · ')}
+                </div>
+                <div style={{ marginTop: 5, fontSize: 10, color: 'var(--nx-text-3, #6b7684)' }}>
+                  {designPair(lang, '기준 revision', 'Base revision')} {spatialCandidate.baseDocumentRevision} · {designPair(lang, '명시 경로', 'Explicit paths')} {spatialCandidate.parameterPaths.join(', ')}
+                </div>
+                {spatialCandidateError && <div style={{ marginTop: 5, color: 'var(--nx-danger, #dc2626)', fontSize: 10.5 }}>{spatialCandidateError}</div>}
+                <div style={{ marginTop: 7, display: 'flex', justifyContent: 'space-between', gap: 6, alignItems: 'center' }}>
+                  <span style={{ fontSize: 10.5 }}>{designPair(lang, '적용 전 live revision·hash·lock을 다시 검사합니다.', 'Apply requires a live revision, hash and lock re-check.')}</span>
+                  <button type="button" onClick={() => { setSpatialCandidate(null); setSpatialCandidateError(null); }} style={{ padding: '5px 8px', borderRadius: 6, border: '1px solid var(--nx-border, #dfe3e8)', background: 'transparent', color: 'inherit', cursor: 'pointer' }}>{designPair(lang, '폐기', 'Discard')}</button>
+                </div>
+              </section>
+            )}
             {/* 명료화 pre-pass: 대충 쓴 한 줄 → 질문/구조화 브리프(확정·가정·확인필요). 형상은 안 만들고 프롬프트만 다듬음 */}
             <BriefClarifier lang={lang} rawText={prompt} onUseRefined={(t) => setPrompt(t)} />
             <button
@@ -1595,7 +1881,7 @@ export default function DesignInner({ lang, initialDomain, initialTab }: { lang:
                 color: '#fff', fontSize: 14, fontWeight: 700, cursor: loading ? 'wait' : 'pointer',
               }}
             >
-              {loading ? (status || (ko ? '처리 중…' : 'Working…')) : pickedPart ? (ko ? `🎯 ${pickedPart} 수정` : `🎯 Edit ${pickedPart}`) : ko ? '설계 생성 + 검증' : 'Generate + verify'}
+              {loading ? (status || (designPair(lang, '처리 중…', 'Working…'))) : pickedPart ? (designPair(lang, `🎯 ${pickedPart} 수정`, `🎯 Edit ${pickedPart}`)) : designPair(lang, '설계 생성 + 검증', 'Generate + verify')}
             </button>
 
             {/* §2.1 도면 체크포인트 — 자유 서술 결과는 승인 후에만 뷰어 적용 */}
@@ -1606,11 +1892,11 @@ export default function DesignInner({ lang, initialDomain, initialTab }: { lang:
             {/* 분야 프리셋(갤러리) 또는 일반 예시 */}
             <div style={{ marginTop: 10 }}>
               <div style={{ fontSize: 11, color: 'var(--nx-text-3, #6b7684)', marginBottom: 4 }}>
-                {domain ? (ko ? '분야 예시 — 누르면 바로 생성' : 'Domain examples — click to generate') : ko ? '예시' : 'Examples'}
+                {domain ? (designPair(lang, '분야 예시 — 누르면 바로 생성', 'Domain examples — click to generate')) : designPair(lang, '예시', 'Examples')}
               </div>
               {domain
                 ? domain.presets.map((p, i) => {
-                    const txt = ko ? p.promptKo : p.promptEn;
+                    const txt = designPair(lang, p.promptKo, p.promptEn);
                     return (
                       <button
                         key={i}
@@ -1623,7 +1909,7 @@ export default function DesignInner({ lang, initialDomain, initialTab }: { lang:
                           color: 'var(--nx-text-2, #46505e)', fontSize: 11.5, lineHeight: 1.4, cursor: loading ? 'default' : 'pointer',
                         }}
                       >
-                        <div style={{ fontWeight: 700, color: 'var(--nx-text, #1a2230)', marginBottom: 2 }}>{ko ? p.titleKo : p.titleEn}</div>
+                        <div style={{ fontWeight: 700, color: 'var(--nx-text, #1a2230)', marginBottom: 2 }}>{designPair(lang, p.titleKo, p.titleEn)}</div>
                         <div style={{ fontSize: 10.5 }}>{txt}</div>
                       </button>
                     );
@@ -1652,7 +1938,7 @@ export default function DesignInner({ lang, initialDomain, initialTab }: { lang:
             <div ref={templateToolsRef} style={{ marginTop: 12, minHeight: 44 }}>
               {!templateToolsReady && (
                 <button type="button" onClick={() => setTemplateToolsReady(true)} style={{ width: '100%', padding: '9px 12px', borderRadius: 8, border: '1px solid var(--nx-border, #dfe3e8)', background: 'var(--nx-panel, #fff)', color: 'inherit', cursor: 'pointer', fontSize: 12, fontWeight: 700 }}>
-                  {ko ? '템플릿 도구 불러오기' : 'Load template tools'}
+                  {designPair(lang, '템플릿 도구 불러오기', 'Load template tools')}
                 </button>
               )}
               {templateToolsReady && domain?.parametric && (
@@ -1678,26 +1964,28 @@ export default function DesignInner({ lang, initialDomain, initialTab }: { lang:
               )}
             </div>
 
-            <section data-testid="manual-precision-options" className={styles.precisionOption} aria-label={ko ? '수동 수정과 정밀 CAD' : 'Manual and precision CAD options'}>
+            <section data-testid="manual-precision-options" className={styles.precisionOption} aria-label={designPair(lang, '수동 수정과 정밀 CAD', 'Manual and precision CAD options')}>
               <div>
-                <strong>{ko ? 'AI 결과를 그대로 끝낼 필요는 없습니다' : 'You do not have to stop at the AI result'}</strong>
-                <span>{ko ? '오른쪽 3D에서 부품·면을 선택해 직접 조정하고, 필요한 경우에만 같은 분야·설계 이력으로 정밀 CAD를 여세요.' : 'Select parts or faces in 3D for manual changes, and open precision CAD only when needed—within the same domain and design history.'}</span>
+                <strong>{designPair(lang, 'AI 결과를 그대로 끝낼 필요는 없습니다', 'You do not have to stop at the AI result')}</strong>
+                <span>{spatialSourceDraft
+                  ? (designPair(lang, '원래 정밀 CAD 초안은 보존해 돌아갑니다. 단순 지원 형상은 편집 피처로 재구성을 시도하고, 복잡 형상은 검토 상태로 보존합니다.', 'The original Precision CAD draft is preserved on return. Supported primitives are reconstructed as editable features; complex geometry remains review-only.'))
+                  : (designPair(lang, '같은 분야의 정밀 CAD를 엽니다. 지원 가능한 기본 형상은 편집 피처로 전달하고, 나머지는 검토 후 가져옵니다.', 'Open Precision CAD in the same domain. Supported primitives are handed off as editable features; other geometry requires review.'))}</span>
               </div>
-              <a href={precisionCadHref(lang, workspaceDomain)} aria-label={`${journey.title} ${ko ? '정밀 CAD 열기' : 'Open precision CAD'}`}>
-                {ko ? '정밀 CAD 열기' : 'Open precision CAD'} →
+              <a href={precisionCadHref(lang, workspaceDomain)} onClick={() => { preserveSpatialDraftForReturn(); preserveInteriorPlacementForReturn(); }} aria-label={`${journey.title} ${designPair(lang, '정밀 CAD 열기', 'Open precision CAD')}`}>
+                {spatialSourceDraft ? (designPair(lang, '정밀 CAD 초안으로 돌아가기', 'Return to Precision CAD draft')) : (designPair(lang, '정밀 CAD 열기', 'Open precision CAD'))} →
               </a>
             </section>
 
             {/* 기계 전문 도구 — 구 사이드바 '도구' 섹션의 새 집(2026-07-16 IA) */}
             {(domain?.slug === 'mech' || domain?.slug === 'rack') && (
               <div style={{ marginTop: 14 }}>
-                <div style={{ fontSize: 11, color: 'var(--nx-text-3, #6b7684)', marginBottom: 4 }}>{ko ? '기계 전문 도구' : 'Pro tools'}</div>
+                <div style={{ fontSize: 11, color: 'var(--nx-text-3, #6b7684)', marginBottom: 4 }}>{designPair(lang, '기계 전문 도구', 'Pro tools')}</div>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
                   {([
-                    ['✨', ko ? '자유형 Studio' : 'Free-form Studio', `/${lang}/studio`],
-                    ['🛠️', ko ? '전문가형 CAD' : 'Expert CAD', precisionCadHref(lang, workspaceDomain)],
-                    ['📐', ko ? '종이·레이저컷' : 'Papercraft', `/${lang}/papercraft`],
-                    ['🔩', ko ? '부품 라이브러리' : 'Part Library', `/${lang}/nexyfab/cots`],
+                    ['✨', designPair(lang, '자유형 Studio', 'Free-form Studio'), `/${lang}/studio`],
+                    ['🛠️', designPair(lang, '전문가형 CAD', 'Expert CAD'), precisionCadHref(lang, workspaceDomain)],
+                    ['📐', designPair(lang, '종이·레이저컷', 'Papercraft'), `/${lang}/papercraft`],
+                    ['🔩', designPair(lang, '부품 라이브러리', 'Part Library'), `/${lang}/nexyfab/cots`],
                   ] as [string, string, string][]).map(([ic, label, href]) => (
                     <a key={href} href={href}
                       style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '9px 10px', borderRadius: 8, textDecoration: 'none',
@@ -1712,15 +2000,38 @@ export default function DesignInner({ lang, initialDomain, initialTab }: { lang:
 
             {error && (
               <div style={{ marginTop: 10, padding: 10, borderRadius: 8, background: '#fdecec', color: '#b42318', fontSize: 12.5 }}>
-                {error}
-                {errCode === 'PLAN_LIMIT' && (
-                  <a href={`/${lang}/pricing/`} style={{ display: 'inline-block', marginLeft: 8, fontWeight: 800, color: 'var(--nx-accent, #2563eb)' }}>{ko ? 'Pro 보기 →' : 'See Pro →'}</a>
+                <div>{error}</div>
+                {lastFailedPrompt && !loading && (
+                  <div style={{ display: 'flex', gap: 6, marginTop: 8 }}>
+                    <button type="button" onClick={() => void run(lastFailedPrompt)} style={{ padding: '5px 9px', borderRadius: 6, border: '1px solid #b42318', background: '#fff', color: '#b42318', cursor: 'pointer', fontWeight: 800 }}>{designPair(lang, '다시 시도', 'Retry')}</button>
+                    <button type="button" onClick={() => { setError(null); setLastFailedPrompt(null); }} style={{ padding: '5px 9px', borderRadius: 6, border: '1px solid rgba(180,35,24,.35)', background: 'transparent', color: '#b42318', cursor: 'pointer', fontWeight: 700 }}>{designPair(lang, '닫기', 'Dismiss')}</button>
+                  </div>
                 )}
+                {errCode === 'PLAN_LIMIT' && (
+                  <a href={`/${lang}/pricing/`} style={{ display: 'inline-block', marginLeft: 8, fontWeight: 800, color: 'var(--nx-accent, #2563eb)' }}>{designPair(lang, 'Pro 보기 →', 'See Pro →')}</a>
+                )}
+              </div>
+            )}
+            {changeImpact && (
+              <div role="status" aria-live="polite" style={{ marginTop: 10, padding: 10, borderRadius: 8, border: '1px solid var(--nx-accent, #2563eb)', background: 'var(--nx-accent-soft, rgba(37,99,235,.08))', fontSize: 12 }}>
+                <b>{designPair(lang, '변경 영향', lang === 'ar' ? 'تأثير التغيير' : 'Change impact')}</b>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 5, marginTop: 6 }}>
+                  <span>{designPair(lang, '부품', lang === 'ar' ? 'الأجزاء' : 'Parts')}: {changeImpact.beforeParts} → {changeImpact.afterParts}</span>
+                  <span>{designPair(lang, 'BOM', 'BOM')}: {designPair(lang, '갱신 필요', lang === 'ar' ? 'تحديث مطلوب' : 'refresh required')}</span>
+                  <span>{designPair(lang, '도면', lang === 'ar' ? 'الرسم' : 'Drawing')}: {designPair(lang, '재검증 필요', lang === 'ar' ? 'إعادة التحقق مطلوبة' : 're-verification required')}</span>
+                  <span>{designPair(lang, '간섭', lang === 'ar' ? 'التداخل' : 'Interference')}: {changeImpact.beforeInterf ?? '—'} → {changeImpact.afterInterf ?? '—'}</span>
+                  <span style={{ gridColumn: '1 / -1', color: artifactRefresh === 'ready' ? '#16a34a' : artifactRefresh === 'failed' ? '#dc2626' : 'var(--nx-text-2)' }}>
+                    {designPair(lang, '패키지 산출물', lang === 'ar' ? 'حالة الحزمة' : 'Package artifacts')}: {artifactRefresh === 'running' ? (designPair(lang, '자동 갱신 중…', lang === 'ar' ? 'جارٍ التحديث…' : 'refreshing…')) : artifactRefresh === 'ready' ? (designPair(lang, 'BOM·도면·검증 준비 완료', lang === 'ar' ? 'BOM والرسم والتحقق جاهزة' : 'BOM, drawing & verification ready')) : artifactRefresh === 'failed' ? (designPair(lang, '갱신 실패 — 다시 시도 필요', lang === 'ar' ? 'فشل التحديث — أعد المحاولة' : 'refresh failed — retry needed')) : (designPair(lang, '대기', lang === 'ar' ? 'في الانتظار' : 'pending'))}
+                  </span>
+                </div>
+                <button type="button" onClick={() => selectTab('output')} style={{ marginTop: 8, padding: '5px 9px', borderRadius: 6, border: '1px solid var(--nx-accent, #2563eb)', background: 'transparent', color: 'var(--nx-accent, #2563eb)', cursor: 'pointer', fontWeight: 800, fontSize: 11 }}>
+                  {designPair(lang, 'BOM·도면 갱신 확인', lang === 'ar' ? 'فتح BOM والرسم للتحقق من التحديث' : 'Open BOM & drawing refresh')}
+                </button>
               </div>
             )}
             {gateErrors && (
               <div style={{ marginTop: 10, padding: 10, borderRadius: 8, background: '#fff4e5', color: '#a15c00', fontSize: 12.5 }}>
-                <b>{ko ? '검증 실패 — 형상을 만들지 않았습니다' : 'Verification failed — no geometry produced'}</b>
+                <b>{designPair(lang, '검증 실패 — 형상을 만들지 않았습니다', 'Verification failed — no geometry produced')}</b>
                 <ul style={{ margin: '6px 0 0', paddingLeft: 16 }}>
                   {gateErrors.map((g, i) => <li key={i}>{g}</li>)}
                 </ul>
@@ -1731,64 +2042,64 @@ export default function DesignInner({ lang, initialDomain, initialTab }: { lang:
           {/* Always-on verification panel */}
           {visitedTabs.has('verify') && <div style={{ padding: '0 16px 16px', display: tab === 'verify' ? undefined : 'none', paddingTop: tab === 'verify' ? 16 : 0 }}>
             <div style={{ fontSize: 12, fontWeight: 800, letterSpacing: '0.02em', marginBottom: 6 }}>
-              {ko ? '검증 (상시)' : 'Verification (always-on)'}
+              {designPair(lang, '검증 (상시)', 'Verification (always-on)')}
             </div>
             {/* §7 검증 그물 — 통과·실패·미실행 상시 노출(은폐 없음) */}
-            <VerifyNet ko={ko} items={([
+            <VerifyNet lang={lang} items={([
               {
-                label: ko ? '① 도면 체크포인트(의도 오류)' : '① Drawing checkpoint (intent errors)',
+                label: designPair(lang, '① 도면 체크포인트(의도 오류)', '① Drawing checkpoint (intent errors)'),
                 status: cpState === 'approved' ? 'pass' : cpState === 'pending' ? 'todo' : cpState === 'skipped' ? 'skip' : 'todo',
-                note: cpState === 'approved' ? (ko ? '승인됨' : 'approved')
-                  : cpState === 'skipped' ? (ko ? '생략 — 결정론 프리셋/판독 확인카드 경로' : 'skipped — deterministic path')
-                  : cpState === 'pending' ? (ko ? '승인 대기' : 'awaiting approval') : (ko ? '자유 서술 생성 시 활성' : 'runs on free-text'),
+                note: cpState === 'approved' ? (designPair(lang, '승인됨', 'approved'))
+                  : cpState === 'skipped' ? (designPair(lang, '생략 — 결정론 프리셋/판독 확인카드 경로', 'skipped — deterministic path'))
+                  : cpState === 'pending' ? (designPair(lang, '승인 대기', 'awaiting approval')) : (designPair(lang, '자유 서술 생성 시 활성', 'runs on free-text')),
               },
               {
-                label: ko ? '② manifold/watertight(기하 결함)' : '② Manifold/watertight',
+                label: designPair(lang, '② manifold/watertight(기하 결함)', '② Manifold/watertight'),
                 status: verify ? (verify.error ? 'fail' : verify.manifold ? 'pass' : 'fail') : 'todo',
                 note: verify?.triangles ? `${verify.triangles} tri` : undefined,
               },
               {
-                label: ko ? '③ 역투영 diff(방출 오류 — 듀얼-방출 대조)' : '③ Re-projection diff (dual-emission)',
+                label: designPair(lang, '③ 역투영 diff(방출 오류 — 듀얼-방출 대조)', '③ Re-projection diff (dual-emission)'),
                 status: diffRes ? (diffRes.ok ? (diffRes.verdict === 'PASS' ? 'pass' : 'fail') : 'skip') : 'todo',
                 note: diffRes
-                  ? (diffRes.ok ? (ko ? `외형+부피+단면 프로파일 — ${diffRes.verdict}` : `extents+volume+sections — ${diffRes.verdict}`) : (diffRes.stage === 'unsupported' ? (ko ? '기록 커널 미지원 형상' : 'unsupported by record kernel') : (ko ? '실행 실패' : 'run failed')))
-                  : (ko ? '아래 버튼으로 실행 (외형·부피·단면 실루엣)' : 'run below (extents · volume · sections)'),
+                  ? (diffRes.ok ? (designPair(lang, `외형+부피+단면 프로파일 — ${diffRes.verdict}`, `extents+volume+sections — ${diffRes.verdict}`)) : (diffRes.stage === 'unsupported' ? (designPair(lang, '기록 커널 미지원 형상', 'unsupported by record kernel')) : (designPair(lang, '실행 실패', 'run failed'))))
+                  : (designPair(lang, '아래 버튼으로 실행 (외형·부피·단면 실루엣)', 'run below (extents · volume · sections)')),
               },
               {
-                label: ko ? '④ 어셈블리 간섭' : '④ Assembly interference',
+                label: designPair(lang, '④ 어셈블리 간섭', '④ Assembly interference'),
                 status: interf === null ? 'skip' : interf === 0 ? 'pass' : 'fail',
-                note: interf === null ? (ko ? '어셈블리 빌드 시 활성' : 'runs on assembly build') : interf === 0 ? (ko ? '간섭 없음' : 'no clash') : (ko ? `간섭 ${interf}건` : `${interf} clashes`),
+                note: interf === null ? (designPair(lang, '어셈블리 빌드 시 활성', 'runs on assembly build')) : interf === 0 ? (designPair(lang, '간섭 없음', 'no clash')) : (designPair(lang, `간섭 ${interf}건`, `${interf} clashes`)),
               },
               {
-                label: ko ? '④b 지지 체인(부유 — 연결≠지지)' : '④b Support chain (floating)',
+                label: designPair(lang, '④b 지지 체인(부유 — 연결≠지지)', '④b Support chain (floating)'),
                 status: floatN === null ? 'skip' : floatN === 0 ? 'pass' : 'fail',
-                note: floatN === null ? (ko ? '어셈블리 빌드 시 활성' : 'runs on assembly build') : floatN === 0 ? (ko ? '부유 없음' : 'none floating') : (ko ? `부유 ${floatN}건 — 설치 불가 신호` : `${floatN} floating parts`),
+                note: floatN === null ? (designPair(lang, '어셈블리 빌드 시 활성', 'runs on assembly build')) : floatN === 0 ? (designPair(lang, '부유 없음', 'none floating')) : (designPair(lang, `부유 ${floatN}건 — 설치 불가 신호`, `${floatN} floating parts`)),
               },
               {
-                label: ko ? '⑦ 요청 정합(요구 추출→형상 실측 대조)' : '⑦ Intent match (claims vs built)',
+                label: designPair(lang, '⑦ 요청 정합(요구 추출→형상 실측 대조)', '⑦ Intent match (claims vs built)'),
                 status: intentM === null ? 'skip' : intentM.mismatched > 0 ? 'fail' : intentM.matched > 0 ? 'pass' : 'skip',
                 note: intentM === null
-                  ? (ko ? '챗 어셈블리 생성 시 활성' : 'runs on chat assembly')
+                  ? (designPair(lang, '챗 어셈블리 생성 시 활성', 'runs on chat assembly'))
                   : intentM.mismatched > 0
-                    ? (ko ? `불일치 ${intentM.mismatched}건: ` : `${intentM.mismatched} mismatch: `) + intentM.results.filter((q) => q.verdict === 'MISMATCH').slice(0, 2).map((q) => `"${q.text}" — ${q.note}`).join(' · ')
-                      + (intentM.repair?.attempted ? (ko ? ` · 자동 교정 시도(${intentM.repair.before}→${intentM.repair.after}건${intentM.repair.adopted ? ', 채택' : ', 원본 유지'})` : ` · auto-repair ${intentM.repair.before}→${intentM.repair.after}`) : '')
-                    : (ko ? `일치 ${intentM.matched}` : `${intentM.matched} matched`) + (intentM.unverifiable ? (ko ? ` · 검증불가 ${intentM.unverifiable}(정직 표기)` : ` · ${intentM.unverifiable} unverifiable`) : '')
-                      + (intentM.repair?.adopted ? (ko ? ` · 자동 교정 채택(불일치 ${intentM.repair.before}→${intentM.repair.after})` : ` · auto-repaired ${intentM.repair.before}→${intentM.repair.after}`) : '')
-                      + (intentM.assumptions?.length ? (ko ? ` · AI 가정 ${intentM.assumptions.length}건(자가보고): ${intentM.assumptions.slice(0, 2).join(' / ')}` : ` · ${intentM.assumptions.length} AI assumptions`) : ''),
+                    ? (designPair(lang, `불일치 ${intentM.mismatched}건: `, `${intentM.mismatched} mismatch: `)) + intentM.results.filter((q) => q.verdict === 'MISMATCH').slice(0, 2).map((q) => `"${q.text}" — ${q.note}`).join(' · ')
+                      + (intentM.repair?.attempted ? (designPair(lang, ` · 자동 교정 시도(${intentM.repair.before}→${intentM.repair.after}건${intentM.repair.adopted ? ', 채택' : ', 원본 유지'})`, ` · auto-repair ${intentM.repair.before}→${intentM.repair.after}`)) : '')
+                    : (designPair(lang, `일치 ${intentM.matched}`, `${intentM.matched} matched`)) + (intentM.unverifiable ? (designPair(lang, ` · 검증불가 ${intentM.unverifiable}(정직 표기)`, ` · ${intentM.unverifiable} unverifiable`)) : '')
+                      + (intentM.repair?.adopted ? (designPair(lang, ` · 자동 교정 채택(불일치 ${intentM.repair.before}→${intentM.repair.after})`, ` · auto-repaired ${intentM.repair.before}→${intentM.repair.after}`)) : '')
+                      + (intentM.assumptions?.length ? (designPair(lang, ` · AI 가정 ${intentM.assumptions.length}건(자가보고): ${intentM.assumptions.slice(0, 2).join(' / ')}`, ` · ${intentM.assumptions.length} AI assumptions`)) : ''),
               },
               {
-                label: ko ? '⑥ 간이 FEA(응력·SF — 스크리닝)' : '⑥ Quick FEA (screening)',
+                label: designPair(lang, '⑥ 간이 FEA(응력·SF — 스크리닝)', '⑥ Quick FEA (screening)'),
                 status: feaRes ? (feaRes.ok ? ((feaRes.safetyFactor ?? 0) >= 1 ? 'pass' : 'fail') : 'skip') : 'todo',
                 note: feaRes
-                  ? (feaRes.ok ? `SF ${feaRes.safetyFactor ?? '—'} · ${feaRes.maxStressMPa}MPa/${feaRes.yieldMPa}MPa` : (ko ? '실행 실패' : 'failed'))
-                  : (ko ? '아래에서 하중 입력 후 실행(비법정)' : 'enter load below'),
+                  ? (feaRes.ok ? `SF ${feaRes.safetyFactor ?? '—'} · ${feaRes.maxStressMPa}MPa/${feaRes.yieldMPa}MPa` : (designPair(lang, '실행 실패', 'failed')))
+                  : (designPair(lang, '아래에서 하중 입력 후 실행(비법정)', 'enter load below')),
               },
               {
-                label: ko ? '⑤ vision 비평(토폴로지 블런더)' : '⑤ Vision critique',
+                label: designPair(lang, '⑤ vision 비평(토폴로지 블런더)', '⑤ Vision critique'),
                 status: visRes ? ('error' in visRes ? 'skip' : visRes.faithful ? 'pass' : 'fail') : 'todo',
                 note: visRes
-                  ? ('error' in visRes ? (ko ? '실행 실패' : 'run failed') : visRes.faithful ? (ko ? '요청 형상으로 판독됨' : 'reads as requested') : (ko ? `문제 ${visRes.issues.length}건` : `${visRes.issues.length} issues`))
-                  : (ko ? '아래 버튼으로 실행' : 'run below'),
+                  ? ('error' in visRes ? (designPair(lang, '실행 실패', 'run failed')) : visRes.faithful ? (designPair(lang, '요청 형상으로 판독됨', 'reads as requested')) : (designPair(lang, `문제 ${visRes.issues.length}건`, `${visRes.issues.length} issues`)))
+                  : (designPair(lang, '아래 버튼으로 실행', 'run below')),
               },
             ] as NetItem[])} />
             {/* §8-③ 역투영 diff v1 실행 — 드래프트(뷰어 메시) vs 기록(OCCT) 듀얼-방출 대조 */}
@@ -1797,7 +2108,7 @@ export default function DesignInner({ lang, initialDomain, initialTab }: { lang:
                 <button type="button" onClick={() => void runReprojectDiff()} disabled={diffBusy}
                   style={{ width: '100%', padding: '8px 12px', borderRadius: 7, fontSize: 12, fontWeight: 700, cursor: diffBusy ? 'wait' : 'pointer',
                     border: '1px solid var(--nx-accent, #2563eb)', background: 'transparent', color: 'var(--nx-accent, #2563eb)' }}>
-                  {diffBusy ? (ko ? '기록 커널(OCCT) 빌드·대조 중…' : 'Building record kernel & comparing…') : ko ? '⇄ 역투영 diff 실행 — 드래프트 vs 기록 커널' : '⇄ Run re-projection diff (draft vs record)'}
+                  {diffBusy ? (designPair(lang, '기록 커널(OCCT) 빌드·대조 중…', 'Building record kernel & comparing…')) : designPair(lang, '⇄ 역투영 diff 실행 — 드래프트 vs 기록 커널', '⇄ Run re-projection diff (draft vs record)')}
                 </button>
                 {diffRes && !diffRes.ok && (
                   <div style={{ marginTop: 6, fontSize: 11, color: diffRes.stage === 'unsupported' ? '#b45309' : '#991b1b' }}>{diffRes.error}</div>
@@ -1805,20 +2116,20 @@ export default function DesignInner({ lang, initialDomain, initialTab }: { lang:
                 {diffRes?.ok && (
                   <div style={{ marginTop: 6, padding: 9, borderRadius: 8, border: `1px solid ${diffRes.verdict === 'PASS' ? 'rgba(22,163,74,0.4)' : 'rgba(220,38,38,0.4)'}`, background: 'var(--nx-panel, #fff)' }}>
                     <div style={{ fontSize: 11, fontWeight: 800, color: diffRes.verdict === 'PASS' ? '#16a34a' : '#dc2626' }}>
-                      {diffRes.verdict === 'PASS' ? '✓' : '✗'} {ko ? '듀얼-방출 대조 ' : 'Dual-emission '} {diffRes.verdict}
+                      {diffRes.verdict === 'PASS' ? '✓' : '✗'} {designPair(lang, '듀얼-방출 대조 ', 'Dual-emission ')} {diffRes.verdict}
                     </div>
                     {diffRes.manufacturability && (diffRes.manufacturability.floating || diffRes.manufacturability.fuseDropped > 0) && (
                       <div style={{ marginTop: 3, fontSize: 10, color: '#b45309' }}>
                         ⚠ {diffRes.manufacturability.floating ? diffRes.manufacturability.note : ''}
                         {diffRes.manufacturability.fuseDropped > 0
-                          ? (ko ? ` · B-rep 융합 제외 ${diffRes.manufacturability.fuseDropped}건(정직 고지)` : ` · ${diffRes.manufacturability.fuseDropped} features dropped in B-rep fuse`)
+                          ? (designPair(lang, ` · B-rep 융합 제외 ${diffRes.manufacturability.fuseDropped}건(정직 고지)`, ` · ${diffRes.manufacturability.fuseDropped} features dropped in B-rep fuse`))
                           : ''}
                       </div>
                     )}
                     <table style={{ width: '100%', marginTop: 5, borderCollapse: 'collapse', fontSize: 10, fontVariantNumeric: 'tabular-nums' }}>
                       <thead>
                         <tr style={{ color: 'var(--nx-text-3, #6b7684)' }}>
-                          {[ko ? '항목' : 'Item', ko ? '드래프트' : 'Draft', ko ? '기록(OCCT)' : 'Record', 'Δ', ko ? '허용' : 'Tol', ''].map((h) => (
+                          {[designPair(lang, '항목', 'Item'), designPair(lang, '드래프트', 'Draft'), designPair(lang, '기록(OCCT)', 'Record'), 'Δ', designPair(lang, '허용', 'Tol'), ''].map((h) => (
                             <th key={h} style={{ textAlign: 'left', padding: '2px 4px', borderBottom: '1px solid var(--nx-border, #dfe3e8)' }}>{h}</th>
                           ))}
                         </tr>
@@ -1839,7 +2150,7 @@ export default function DesignInner({ lang, initialDomain, initialTab }: { lang:
                     {/* 치수 전수 대조(exact) — 선언 회전체 치수 ↔ B-rep 면 실측(±0.01mm) */}
                     {diffRes.dims && diffRes.dims.rows.length > 0 && (
                       <div style={{ marginTop: 6 }}>
-                        <div style={{ fontSize: 10.5, fontWeight: 800 }}>{ko ? '치수 전수 대조 (선언 ↔ B-rep 실측)' : 'Full dimension audit (declared ↔ B-rep)'}</div>
+                        <div style={{ fontSize: 10.5, fontWeight: 800 }}>{designPair(lang, '치수 전수 대조 (선언 ↔ B-rep 실측)', 'Full dimension audit (declared ↔ B-rep)')}</div>
                         <table style={{ width: '100%', marginTop: 3, borderCollapse: 'collapse', fontSize: 10, fontVariantNumeric: 'tabular-nums' }}>
                           <tbody>
                             {diffRes.dims.rows.map((r, ri) => (
@@ -1854,7 +2165,7 @@ export default function DesignInner({ lang, initialDomain, initialTab }: { lang:
                           </tbody>
                         </table>
                         <div style={{ marginTop: 2, fontSize: 8.5, color: 'var(--nx-text-3, #6b7684)', lineHeight: 1.5 }}>
-                          {diffRes.dims.note}{diffRes.dims.extraFaces > 0 ? (ko ? ` · 선언 외 회전체 면 ${diffRes.dims.extraFaces}개(불리언 파생)` : ` · ${diffRes.dims.extraFaces} extra faces`) : ''}
+                          {diffRes.dims.note}{diffRes.dims.extraFaces > 0 ? (designPair(lang, ` · 선언 외 회전체 면 ${diffRes.dims.extraFaces}개(불리언 파생)`, ` · ${diffRes.dims.extraFaces} extra faces`)) : ''}
                         </div>
                       </div>
                     )}
@@ -1865,12 +2176,12 @@ export default function DesignInner({ lang, initialDomain, initialTab }: { lang:
                         <div style={{ display: 'flex', gap: 6, marginTop: 6 }}>
                           {[0, 1, 2].map((ai) => (
                             diffDraftProfiles[ai] && diffRes.record?.profiles?.[ai]
-                              ? <ProfileChart key={ai} d={diffDraftProfiles[ai]} r={diffRes.record.profiles[ai]} label={(ko ? '축 ' : 'axis ') + 'XYZ'[ai]} />
+                              ? <ProfileChart key={ai} d={diffDraftProfiles[ai]} r={diffRes.record.profiles[ai]} label={(designPair(lang, '축 ', 'axis ')) + 'XYZ'[ai]} />
                               : null
                           ))}
                         </div>
                         <div style={{ marginTop: 2, fontSize: 8.5, color: 'var(--nx-text-3, #6b7684)' }}>
-                          {ko ? '실루엣 오버레이: 실선=드래프트 · 점선=기록(OCCT) — 겹치면 정합' : 'Silhouette overlay: solid=draft · dashed=record'}
+                          {designPair(lang, '실루엣 오버레이: 실선=드래프트 · 점선=기록(OCCT) — 겹치면 정합', 'Silhouette overlay: solid=draft · dashed=record')}
                         </div>
                       </>
                     )}
@@ -1882,13 +2193,13 @@ export default function DesignInner({ lang, initialDomain, initialTab }: { lang:
                 <button type="button" onClick={() => void runVisionCritique()} disabled={visBusy}
                   style={{ width: '100%', marginTop: 6, padding: '8px 12px', borderRadius: 7, fontSize: 12, fontWeight: 700, cursor: visBusy ? 'wait' : 'pointer',
                     border: '1px solid var(--nx-border, #dfe3e8)', background: 'transparent', color: 'inherit' }}>
-                  {visBusy ? (ko ? '👁 vision이 렌더를 판독 중…' : '👁 Vision reading the render…') : ko ? '👁 vision 비평 실행 — 요청한 물건으로 보이는가' : '👁 Run vision critique'}
+                  {visBusy ? (designPair(lang, '👁 vision이 렌더를 판독 중…', '👁 Vision reading the render…')) : designPair(lang, '👁 vision 비평 실행 — 요청한 물건으로 보이는가', '👁 Run vision critique')}
                 </button>
                 {visRes && 'error' in visRes && <div style={{ marginTop: 4, fontSize: 11, color: '#991b1b' }}>{visRes.error}</div>}
                 {visRes && !('error' in visRes) && (
                   <div style={{ marginTop: 6, padding: 9, borderRadius: 8, border: `1px solid ${visRes.faithful ? 'rgba(22,163,74,0.4)' : 'rgba(220,38,38,0.4)'}`, background: 'var(--nx-panel, #fff)' }}>
                     <div style={{ fontSize: 11, fontWeight: 800, color: visRes.faithful ? '#16a34a' : '#dc2626' }}>
-                      {visRes.faithful ? (ko ? '✓ 요청한 형상으로 판독됨' : '✓ Reads as requested') : (ko ? '✗ 토폴로지 문제 발견' : '✗ Topology issues found')}
+                      {visRes.faithful ? (designPair(lang, '✓ 요청한 형상으로 판독됨', '✓ Reads as requested')) : (designPair(lang, '✗ 토폴로지 문제 발견', '✗ Topology issues found'))}
                     </div>
                     {!visRes.faithful && visRes.issues.length > 0 && (
                       <ul style={{ margin: '4px 0 0', paddingLeft: 16, fontSize: 10.5, lineHeight: 1.6 }}>
@@ -1897,7 +2208,7 @@ export default function DesignInner({ lang, initialDomain, initialTab }: { lang:
                     )}
                     {!visRes.faithful && (
                       <div style={{ marginTop: 4, fontSize: 9.5, color: 'var(--nx-text-3, #6b7684)' }}>
-                        {ko ? '교정은 프롬프트를 고쳐 재생성하세요 — 검증 없는 기하 주입은 하지 않습니다(intent-STEP 정합 유지).' : 'Fix by revising the prompt — no unverified geometry injection.'}
+                        {designPair(lang, '교정은 프롬프트를 고쳐 재생성하세요 — 검증 없는 기하 주입은 하지 않습니다(intent-STEP 정합 유지).', 'Fix by revising the prompt — no unverified geometry injection.')}
                       </div>
                     )}
                   </div>
@@ -1906,19 +2217,19 @@ export default function DesignInner({ lang, initialDomain, initialTab }: { lang:
                 {/* 그물 ⑥ 간이 FEA — 하중(kg) 명시 입력 후 실행(TET10 스크리닝, SF<2면 자동 정밀 재해석) */}
                 <div style={{ display: 'flex', gap: 5, marginTop: 8 }}>
                   <input value={feaLoad} onChange={(e) => setFeaLoad(e.target.value)} inputMode="decimal"
-                    placeholder={ko ? '상면 하중 kg (필수)' : 'top load kg'}
+                    placeholder={designPair(lang, '상면 하중 kg (필수)', 'top load kg')}
                     style={{ flex: 1, padding: '7px 9px', borderRadius: 7, fontSize: 11.5, border: '1px solid var(--nx-border, #dfe3e8)', background: 'var(--nx-panel, #fff)', color: 'inherit' }} />
                   <select value={feaMat} onChange={(e) => setFeaMat(e.target.value)}
                     style={{ padding: '7px 8px', borderRadius: 7, fontSize: 11.5, border: '1px solid var(--nx-border, #dfe3e8)', background: 'var(--nx-panel, #fff)', color: 'inherit' }}>
-                    {[['steel', ko ? '강(SS275)' : 'Steel'], ['STS304', 'STS304'], ['aluminum', 'AL6061'], ['concrete', ko ? '콘크리트' : 'Concrete'], ['timber', ko ? '목재' : 'Timber']].map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+                    {[['steel', designPair(lang, '강(SS275)', 'Steel')], ['STS304', 'STS304'], ['aluminum', 'AL6061'], ['concrete', designPair(lang, '콘크리트', 'Concrete')], ['timber', designPair(lang, '목재', 'Timber')]].map(([v, l]) => <option key={v} value={v}>{l}</option>)}
                   </select>
                   <label style={{ display: 'flex', alignItems: 'center', gap: 3, fontSize: 10.5, whiteSpace: 'nowrap' }}>
                     <input type="checkbox" checked={feaPrecise} onChange={(e) => setFeaPrecise(e.target.checked)} disabled={feaBusy} />
-                    {ko ? '정밀(비동기)' : 'Precise async'}
+                    {designPair(lang, '정밀(비동기)', 'Precise async')}
                   </label>
                   <button type="button" onClick={() => void runFeaQuick()} disabled={feaBusy || !Number(feaLoad)}
                     style={{ padding: '0 12px', borderRadius: 7, fontSize: 11.5, fontWeight: 700, cursor: 'pointer', border: '1px solid var(--nx-accent, #2563eb)', background: 'transparent', color: 'var(--nx-accent, #2563eb)', opacity: feaBusy || !Number(feaLoad) ? 0.5 : 1 }}>
-                    {feaBusy ? '…' : ko ? '🧮 FEA' : '🧮 FEA'}
+                    {feaBusy ? '…' : designPair(lang, '🧮 FEA', '🧮 FEA')}
                   </button>
                 </div>
                 {feaJob && (
@@ -1927,7 +2238,7 @@ export default function DesignInner({ lang, initialDomain, initialTab }: { lang:
                     <span>{feaJob.stage} · {feaJob.percent}%</span>
                     <button type="button" onClick={() => void cancelFeaJob()}
                       style={{ padding: '2px 7px', borderRadius: 5, border: '1px solid #dc2626', background: 'transparent', color: '#dc2626', cursor: 'pointer', fontSize: 10 }}>
-                      {ko ? '취소' : 'Cancel'}
+                      {designPair(lang, '취소', 'Cancel')}
                     </button>
                   </div>
                 )}
@@ -1937,15 +2248,15 @@ export default function DesignInner({ lang, initialDomain, initialTab }: { lang:
                     <b style={{ color: (feaRes.safetyFactor ?? 0) >= 1 ? '#16a34a' : '#dc2626' }}>
                       {(feaRes.safetyFactor ?? 0) >= 1 ? '✓' : '✗'} SF {feaRes.safetyFactor ?? '—'}
                     </b>
-                    {' · '}max {feaRes.maxStressMPa} MPa / {ko ? '기준' : 'yield'} {feaRes.yieldMPa} MPa · {feaRes.material}
-                    {feaRes.maxDispMm != null && <> · {ko ? '최대 변위' : 'max disp'} {feaRes.maxDispMm} mm</>}
-                    {feaRes.refined ? <span style={{ color: 'var(--nx-accent, #2563eb)' }}> · {ko ? '정밀 재해석 수행됨' : 'refined'}</span> : null}
+                    {' · '}max {feaRes.maxStressMPa} MPa / {designPair(lang, '기준', 'yield')} {feaRes.yieldMPa} MPa · {feaRes.material}
+                    {feaRes.maxDispMm != null && <> · {designPair(lang, '최대 변위', 'max disp')} {feaRes.maxDispMm} mm</>}
+                    {feaRes.refined ? <span style={{ color: 'var(--nx-accent, #2563eb)' }}> · {designPair(lang, '정밀 재해석 수행됨', 'refined')}</span> : null}
                     <div style={{ marginTop: 3, fontSize: 9.5, color: 'var(--nx-text-3, #6b7684)' }}>{feaRes.note}</div>
                     {feaRes.reportHtml && (
                       <button type="button"
                         onClick={() => { const w = window.open('', '_blank'); if (w && feaRes.reportHtml) { w.document.write(feaRes.reportHtml); w.document.close(); } }}
                         style={{ marginTop: 5, padding: '4px 11px', borderRadius: 6, fontSize: 10.5, fontWeight: 700, cursor: 'pointer', border: '1px solid var(--nx-border, #dfe3e8)', background: 'transparent', color: 'inherit' }}>
-                        📄 {ko ? '리포트 열기(A4)' : 'Open report'}
+                        📄 {designPair(lang, '리포트 열기(A4)', 'Open report')}
                       </button>
                     )}
                   </div>
@@ -1958,7 +2269,7 @@ export default function DesignInner({ lang, initialDomain, initialTab }: { lang:
                 <button type="button" onClick={() => void runPrecision()} disabled={precBusy}
                   style={{ width: '100%', padding: '8px 12px', borderRadius: 7, fontSize: 12, fontWeight: 700, cursor: precBusy ? 'wait' : 'pointer',
                     border: '1px solid var(--nx-accent, #2563eb)', background: 'transparent', color: 'var(--nx-accent, #2563eb)' }}>
-                  {precBusy ? (ko ? 'STEP 재임포트 실측·메시 부울 대조 중…' : 'Round-trip & mesh boolean check…') : ko ? '🔬 정밀 검증 — A1 라운드트립 + B1 메시 부울' : '🔬 Precision verify — A1 round-trip + B1 mesh boolean'}
+                  {precBusy ? (designPair(lang, 'STEP 재임포트 실측·메시 부울 대조 중…', 'Round-trip & mesh boolean check…')) : designPair(lang, '🔬 정밀 검증 — A1 라운드트립 + B1 메시 부울', '🔬 Precision verify — A1 round-trip + B1 mesh boolean')}
                 </button>
                 {precRes && !precRes.ok && (
                   <div style={{ marginTop: 6, fontSize: 11, color: '#991b1b' }}>{precRes.error ?? (precRes.gateErrors ?? []).join('; ')}</div>
@@ -1966,59 +2277,100 @@ export default function DesignInner({ lang, initialDomain, initialTab }: { lang:
                 {precRes?.ok && (
                   <div style={{ marginTop: 6, padding: 9, borderRadius: 8, border: `1px solid ${precRes.roundtrip?.verdict === 'PASS' ? 'rgba(22,163,74,0.4)' : 'rgba(220,38,38,0.4)'}`, background: 'var(--nx-panel, #fff)', fontSize: 11, lineHeight: 1.7 }}>
                     <div style={{ fontWeight: 800, color: precRes.roundtrip?.verdict === 'PASS' ? '#16a34a' : '#dc2626' }}>
-                      {precRes.roundtrip?.verdict === 'PASS' ? '✓' : '✗'} A1 {ko ? '라운드트립' : 'round-trip'} {precRes.roundtrip?.verdict ?? (precRes.roundtrip?.error ? (ko ? '실행 실패' : 'failed') : '—')}
-                      {precRes.roundtrip?.volume && <span style={{ fontWeight: 400 }}> · {ko ? '부피 오차' : 'vol err'} {precRes.roundtrip.volume.errMm3}mm³ (≤{precRes.roundtrip.volume.bandMm3})</span>}
+                      {precRes.roundtrip?.verdict === 'PASS' ? '✓' : '✗'} A1 {designPair(lang, '라운드트립', 'round-trip')} {precRes.roundtrip?.verdict ?? (precRes.roundtrip?.error ? (designPair(lang, '실행 실패', 'failed')) : '—')}
+                      {precRes.roundtrip?.volume && <span style={{ fontWeight: 400 }}> · {designPair(lang, '부피 오차', 'vol err')} {precRes.roundtrip.volume.errMm3}mm³ (≤{precRes.roundtrip.volume.bandMm3})</span>}
                     </div>
                     {precRes.interferenceRefine && !precRes.interferenceRefine.error && (
                       <div style={{ marginTop: 3 }}>
-                        B1 {ko ? '메시 부울' : 'mesh boolean'}: {ko ? '확정' : 'confirmed'} <b style={{ color: precRes.interferenceRefine.interferences.length ? '#dc2626' : '#16a34a' }}>{precRes.interferenceRefine.interferences.length}</b>
-                        {' · '}{ko ? '과탐 해제' : 'demoted'} {precRes.interferenceRefine.demoted.length}
-                        {(precRes.interferenceRefine.laps ?? []).length > 0 && <> · {ko ? '절점 랩' : 'laps'} {(precRes.interferenceRefine.laps ?? []).length}</>}
-                        {' '}({precRes.interferenceRefine.checked} {ko ? '쌍 검사' : 'pairs'})
+                        B1 {designPair(lang, '메시 부울', 'mesh boolean')}: {designPair(lang, '확정', 'confirmed')} <b style={{ color: precRes.interferenceRefine.interferences.length ? '#dc2626' : '#16a34a' }}>{precRes.interferenceRefine.interferences.length}</b>
+                        {' · '}{designPair(lang, '과탐 해제', 'demoted')} {precRes.interferenceRefine.demoted.length}
+                        {(precRes.interferenceRefine.laps ?? []).length > 0 && <> · {designPair(lang, '절점 랩', 'laps')} {(precRes.interferenceRefine.laps ?? []).length}</>}
+                        {' '}({precRes.interferenceRefine.checked} {designPair(lang, '쌍 검사', 'pairs')})
                       </div>
                     )}
                     {!precRes.interferenceRefine && (precRes.interferences ?? []).length === 0 && (
-                      <div style={{ marginTop: 3, color: 'var(--nx-text-3, #6b7684)' }}>{ko ? 'AABB 간섭 0 — B1 생략(검사 대상 없음)' : 'No AABB clashes — B1 skipped'}</div>
+                      <div style={{ marginTop: 3, color: 'var(--nx-text-3, #6b7684)' }}>{designPair(lang, 'AABB 간섭 0 — B1 생략(검사 대상 없음)', 'No AABB clashes — B1 skipped')}</div>
                     )}
                     <div style={{ marginTop: 3, fontSize: 9, color: 'var(--nx-text-3, #6b7684)' }}>
-                      {ko ? 'A1=STEP 재임포트 실측↔폐형 예측(밴드 명시) · B1=의심쌍 한정(전수 아님)' : 'A1=STEP re-import vs closed-form · B1=suspect pairs only'}
+                      {designPair(lang, 'A1=STEP 재임포트 실측↔폐형 예측(밴드 명시) · B1=의심쌍 한정(전수 아님)', 'A1=STEP re-import vs closed-form · B1=suspect pairs only')}
                     </div>
                   </div>
                 )}
               </div>
             )}
+            {(summaryDims || summaryPartCount != null || assemblyMassKg != null || interf != null || floatN != null) && (
+              <div data-testid="assembly-summary" style={{ position: 'sticky', top: 45, zIndex: 4, display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(118px, 1fr))', gap: 8, margin: '0 -2px 12px', padding: '8px 2px', background: 'var(--nx-bg, #f4f6f8)' }}>
+                {(loading || artifactRefresh === 'running' || artifactRefresh === 'failed') && (
+                  <div data-testid="assembly-summary-state" style={{ gridColumn: '1 / -1', padding: '6px 9px', borderRadius: 6, fontSize: 10.5, fontWeight: 700, color: artifactRefresh === 'failed' ? '#b42318' : 'var(--nx-accent, #2563eb)', background: artifactRefresh === 'failed' ? 'rgba(220,38,38,0.08)' : 'rgba(37,99,235,0.08)' }}>
+                    {loading
+                      ? summaryCopy.updating
+                      : artifactRefresh === 'running'
+                        ? summaryCopy.refreshing
+                        : summaryCopy.refreshFailed}
+                  </div>
+                )}
+                <SummaryCard
+                  label={summaryCopy.size}
+                  value={summaryDims ? `${(summaryDims.x / 1000).toFixed(3)} m × ${(summaryDims.y / 1000).toFixed(3)} m × ${(summaryDims.z / 1000).toFixed(3)} m` : '—'}
+                  note={summaryCopy.sizeNote}
+                  onClick={() => setViewSettingsOpen(true)}
+                />
+                <SummaryCard
+                  label={summaryCopy.mass}
+                  value={assemblyMassKg != null ? `${assemblyMassKg.toLocaleString(undefined, { maximumFractionDigits: 2 })} kg` : '—'}
+                  note={assemblyMassKg != null ? summaryCopy.structural : summaryCopy.notCalculated}
+                />
+                <SummaryCard
+                  label={summaryCopy.parts}
+                  value={summaryPartCount != null ? `${summaryPartCount}${designPair(lang, '개', '')}` : '—'}
+                  note={summaryCopy.currentAssembly}
+                  onClick={() => {
+                    const only = lastPartsAabb?.length === 1 ? lastPartsAabb[0]?.id : null;
+                    if (only) { setPickedPart(only); pickSelRef.current.select(only); }
+                    else setStatus(summaryCopy.selectPart);
+                  }}
+                />
+                <SummaryCard
+                  label={summaryCopy.validation}
+                  value={interf != null || floatN != null ? `${summaryCopy.clash} ${interf ?? '—'} · ${summaryCopy.floating} ${floatN ?? '—'}` : '—'}
+                  note={interf === 0 && floatN === 0 ? summaryCopy.clear : summaryCopy.latest}
+                  tone={interf === 0 && floatN === 0 ? 'ok' : interf != null || floatN != null ? 'warn' : 'default'}
+                  onClick={() => selectTab('verify')}
+                />
+              </div>
+            )}
             {!verify && !bbox ? (
               <div style={{ fontSize: 12, color: 'var(--nx-text-3, #6b7684)' }}>
-                {ko ? '설계를 생성하면 manifold·치수 검증이 자동으로 표시됩니다.' : 'Generate a design to see manifold & dimension checks.'}
+                {designPair(lang, '설계를 생성하면 manifold·치수 검증이 자동으로 표시됩니다.', 'Generate a design to see manifold & dimension checks.')}
               </div>
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                 <VerifyRow
-                  label={ko ? 'Manifold (닫힌 솔리드)' : 'Manifold (watertight)'}
+                  label={designPair(lang, 'Manifold (닫힌 솔리드)', 'Manifold (watertight)')}
                   ok={!!manifoldOk}
                   bad={!!verifyFailed}
                   value={
                     verify?.error
                       ? verify.error
                       : manifoldOk
-                        ? (ko ? '결함 0' : '0 defects')
+                        ? (designPair(lang, '결함 0', '0 defects'))
                         : verify?.nonManifoldEdges != null
-                          ? (ko ? `비-manifold 엣지 ${verify.nonManifoldEdges}` : `${verify.nonManifoldEdges} non-manifold edges`)
+                          ? (designPair(lang, `비-manifold 엣지 ${verify.nonManifoldEdges}`, `${verify.nonManifoldEdges} non-manifold edges`))
                           : '—'
                   }
                 />
                 {verify?.triangles != null && (
-                  <VerifyRow label={ko ? '메시 삼각형' : 'Mesh triangles'} value={verify.triangles.toLocaleString()} neutral />
+                  <VerifyRow label={designPair(lang, '메시 삼각형', 'Mesh triangles')} value={verify.triangles.toLocaleString()} neutral />
                 )}
                 {bbox && (
                   <VerifyRow
-                    label={ko ? '치수 (BBox, mm)' : 'Dimensions (BBox, mm)'}
+                    label={designPair(lang, '치수 (BBox, mm)', 'Dimensions (BBox, mm)')}
                     value={`${bbox.x} × ${bbox.y} × ${bbox.z}`}
                     neutral
                   />
                 )}
                 {featureCount != null && (
-                  <VerifyRow label={ko ? '피처 수' : 'Features'} value={String(featureCount)} neutral />
+                  <VerifyRow label={designPair(lang, '피처 수', 'Features')} value={String(featureCount)} neutral />
                 )}
               </div>
             )}
@@ -2042,26 +2394,26 @@ export default function DesignInner({ lang, initialDomain, initialTab }: { lang:
           {/* Export + manufacture */}
           {visitedTabs.has('output') && intent && (
             <div style={{ padding: '0 16px 16px', borderTop: '1px solid var(--nx-border, #dfe3e8)', paddingTop: 14, display: tab === 'output' ? undefined : 'none' }}>
-              <div style={{ fontSize: 12, fontWeight: 800, marginBottom: 8 }}>{ko ? '내보내기 · 제조' : 'Export · Manufacture'}</div>
+              <div style={{ fontSize: 12, fontWeight: 800, marginBottom: 8 }}>{designPair(lang, '내보내기 · 제조', 'Export · Manufacture')}</div>
               <div style={{ fontSize: 10, color: 'var(--nx-text-3, #6b7684)', marginBottom: 6, lineHeight: 1.5 }}>
-                {ko ? '뷰어 = 드래프트 프리뷰 · STEP = 기록 커널(OCCT B-rep) 정밀 형상 — 기하 핸드오프 없이 같은 intent에서 재방출' : 'Viewer = draft preview · STEP = record kernel (OCCT B-rep), re-emitted from the same intent'}
+                {designPair(lang, '뷰어 = 드래프트 프리뷰 · STEP = 기록 커널(OCCT B-rep) 정밀 형상 — 기하 핸드오프 없이 같은 intent에서 재방출', 'Viewer = draft preview · STEP = record kernel (OCCT B-rep), re-emitted from the same intent')}
               </div>
               <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                 {lastAssembly && (
                   <>
                     <button type="button" onClick={() => void downloadPackage()} disabled={pkgBusy} style={exportBtn}>
-                      {pkgBusy ? '…' : ko ? '📦 설계 패키지' : '📦 Design package'}
+                      {pkgBusy ? '…' : designPair(lang, '📦 설계 패키지', '📦 Design package')}
                     </button>
                     <button type="button" onClick={() => void openHlrDrawing()} disabled={hlrBusy} style={exportBtn}>
-                      {hlrBusy ? '…' : ko ? '📐 HLR 도면' : '📐 HLR drawing'}
+                      {hlrBusy ? '…' : designPair(lang, '📐 HLR 도면', '📐 HLR drawing')}
                     </button>
                   </>
                 )}
                 <button type="button" onClick={exportStep} disabled={exporting !== ''} style={exportBtn}>
-                  {exporting === 'step' ? '…' : ko ? 'STEP (B-rep)' : 'STEP (B-rep)'}
+                  {exporting === 'step' ? '…' : designPair(lang, 'STEP (B-rep)', 'STEP (B-rep)')}
                 </button>
                 <button type="button" onClick={exportHtml} disabled={exporting !== ''} style={exportBtn}>
-                  {exporting === 'html' ? '…' : ko ? 'HTML 뷰어' : 'HTML viewer'}
+                  {exporting === 'html' ? '…' : designPair(lang, 'HTML 뷰어', 'HTML viewer')}
                 </button>
                 <button
                   type="button"
@@ -2078,7 +2430,7 @@ export default function DesignInner({ lang, initialDomain, initialTab }: { lang:
                   background: 'var(--nx-accent, #2563eb)', color: '#fff', fontSize: 13, fontWeight: 700, textDecoration: 'none',
                 }}
               >
-                {ko ? '제조 견적 요청 →' : 'Request a manufacturing quote →'}
+                {designPair(lang, '제조 견적 요청 →', 'Request a manufacturing quote →')}
               </Link>
               {exportMsg && <div style={{ marginTop: 8, fontSize: 12, color: 'var(--nx-text-2, #46505e)' }}>{exportMsg}</div>}
             </div>
@@ -2089,15 +2441,82 @@ export default function DesignInner({ lang, initialDomain, initialTab }: { lang:
         <div style={{ flex: 1, position: 'relative', minWidth: 0 }}>
           <StudioChatDock lang={lang} domainSlug={domain?.slug ?? initialDomain} intentName={intent?.name ?? null} partCount={Array.isArray(intent?.features) ? intent.features.length : null} pickedPart={pickedPart} onPartEdit={editPartRun} />
           <div ref={mountRef} style={{ position: 'absolute', inset: 0 }} />
+          {/* CAD inspector: keep the selected-part controls next to the model.
+              The left workflow panel remains available for keyboard-heavy use,
+              while this compact inspector is the primary 3D editing surface. */}
+          {pickedPart && (
+            <div data-testid="cad-selection-inspector" style={{
+              position: 'absolute', top: 72, right: 12, zIndex: 8, width: 'min(330px, calc(100% - 24px))',
+              maxHeight: 'calc(100% - 92px)', overflowY: 'auto', padding: 10, borderRadius: 12,
+              background: 'rgba(7,13,29,.94)', border: '1px solid rgba(96,165,250,.55)', color: '#e5eefc',
+              boxShadow: '0 10px 28px rgba(0,0,0,.32)', backdropFilter: 'blur(8px)', fontSize: 11.5,
+            }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+                <b style={{ color: '#93c5fd' }}>🎯 {designPair(lang, '선택 부품 검사기', 'Selected part inspector')}</b>
+                <button type="button" onClick={() => { setPickedPart(null); setPickedNormal(null); setPickedMulti([]); pickSelRef.current.select(null); }}
+                  style={{ border: '1px solid rgba(148,163,184,.45)', borderRadius: 6, background: 'transparent', color: '#cbd5e1', cursor: 'pointer', padding: '2px 7px' }}>×</button>
+              </div>
+              <div style={{ padding: '6px 8px', borderRadius: 7, background: 'rgba(37,99,235,.16)', marginBottom: 8 }}>
+                <b>{pickedPart}</b>{pickedNormal && <span style={{ color: '#bfdbfe' }}> · {designPair(lang, '면 법선', 'face normal')} [{pickedNormal.map((v) => Number(v.toFixed(2))).join(', ')}]</span>}
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: 6, alignItems: 'center', marginBottom: 7 }}>
+                <label style={{ color: '#cbd5e1' }}>{designPair(lang, '면 치수', 'Face dimension')}</label>
+                <span style={{ display: 'flex', gap: 4 }}>
+                  <input value={dimInput} disabled={!pickedNormal || loading} onChange={(e) => setDimInput(e.target.value.replace(/[^0-9.+-]/g, ''))} placeholder={pickedNormal ? '값' : '면 선택'} inputMode="decimal" aria-label={designPair(lang, '면 치수', 'Face dimension')}
+                    style={{ width: 74, padding: '5px 6px', borderRadius: 6, border: '1px solid #475569', background: '#0f172a', color: '#f8fafc' }} />
+                  <select value={dimUnit} disabled={!pickedNormal || loading} onChange={(e) => setDimUnit(e.target.value as 'mm' | 'in')} aria-label={designPair(lang, '치수 단위', 'Dimension unit')}
+                    style={{ width: 50, borderRadius: 6, border: '1px solid #475569', background: '#0f172a', color: '#f8fafc' }}><option value="mm">mm</option><option value="in">in</option></select>
+                  <button type="button" disabled={!pickedNormal || loading || !Number.isFinite(parseFloat(dimInput)) || parseFloat(dimInput) <= 0} onClick={() => void applyDimInput()}
+                    style={{ padding: '5px 8px', border: 0, borderRadius: 6, background: '#2563eb', color: '#fff', cursor: 'pointer', fontWeight: 700 }}>{designPair(lang, '미리보기', 'Preview')}</button>
+                </span>
+              </div>
+              {pendingDimMm != null && <div style={{ display: 'flex', gap: 5, justifyContent: 'flex-end', marginBottom: 7 }}>
+                <span style={{ color: '#86efac', alignSelf: 'center' }}>{pendingDimMm.toFixed(2)} mm</span>
+                <button type="button" disabled={loading} onClick={() => void commitPendingDim()} style={{ padding: '5px 9px', border: 0, borderRadius: 6, background: '#16a34a', color: '#fff', cursor: 'pointer', fontWeight: 700 }}>{designPair(lang, '적용', 'Apply')}</button>
+                <button type="button" disabled={loading} onClick={() => { setPendingDimMm(null); setStatus(''); }} style={{ padding: '5px 8px', border: '1px solid #475569', borderRadius: 6, background: 'transparent', color: '#cbd5e1', cursor: 'pointer' }}>{designPair(lang, '취소', 'Cancel')}</button>
+              </div>}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: 6, alignItems: 'center', marginBottom: 7 }}>
+                <label style={{ color: '#cbd5e1' }}>{designPair(lang, '이동 (dx, dy, dz mm)', 'Translate (dx, dy, dz mm)')}</label>
+                <span style={{ display: 'flex', gap: 4 }}><input value={moveInput} disabled={loading} onChange={(e) => setMoveInput(e.target.value)} placeholder="0, 0, 0" aria-label={designPair(lang, 'XYZ 이동', 'XYZ translation')}
+                  style={{ width: 112, padding: '5px 6px', borderRadius: 6, border: '1px solid #475569', background: '#0f172a', color: '#f8fafc' }} />
+                  <button type="button" disabled={loading} onClick={() => { const m = moveInput.split(',').map((q) => parseFloat(q.trim())); if (m.length === 3 && m.every(Number.isFinite) && m.some((q) => q !== 0)) { void partOpRun('translate', pickedMulti.length ? pickedMulti : [pickedPart], { dx: m[0], dy: m[1], dz: m[2] }); setMoveInput(''); } }} style={{ padding: '5px 8px', border: 0, borderRadius: 6, background: '#334155', color: '#fff', cursor: 'pointer', fontWeight: 700 }}>{designPair(lang, '이동', 'Move')}</button></span>
+              </div>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, alignItems: 'center', padding: '6px', borderRadius: 7, background: 'rgba(37,99,235,.12)', marginBottom: 7 }}>
+                <b style={{ color: '#93c5fd' }}>XYZ</b><input value={moveStep} disabled={loading} onChange={(e) => setMoveStep(e.target.value.replace(/[^0-9.+-]/g, ''))} aria-label={designPair(lang, '축 이동량(mm)', 'Axis step (mm)')} inputMode="decimal" style={{ width: 52, padding: '4px', borderRadius: 5, border: '1px solid #475569', background: '#0f172a', color: '#f8fafc' }} />
+                {(['X', 'Y', 'Z'] as const).flatMap((axis) => ([-1, 1] as const).map((sign) => <button key={`${axis}${sign}`} type="button" disabled={loading || !(Number(moveStep) > 0)} onClick={() => { const d = Number(moveStep) * sign; void partOpRun('translate', pickedMulti.length ? pickedMulti : [pickedPart], axis === 'X' ? { dx: d, dy: 0, dz: 0 } : axis === 'Y' ? { dx: 0, dy: d, dz: 0 } : { dx: 0, dy: 0, dz: d }); }} style={{ minWidth: 28, padding: '4px 3px', borderRadius: 5, border: '1px solid #475569', background: '#0f172a', color: '#e2e8f0', cursor: 'pointer', fontWeight: 800 }}>{axis}{sign > 0 ? '+' : '−'}</button>))}
+              </div>
+              <div style={{ display: 'flex', gap: 5, alignItems: 'center', marginBottom: 7 }}><input value={filletInput} disabled={loading} onChange={(e) => setFilletInput(e.target.value)} placeholder={designPair(lang, '필렛 반지름 r', 'Fillet radius r')} inputMode="decimal" aria-label={designPair(lang, '필렛 반지름', 'Fillet radius')} style={{ flex: 1, minWidth: 0, padding: '5px 6px', borderRadius: 6, border: '1px solid #475569', background: '#0f172a', color: '#f8fafc' }} /><button type="button" disabled={loading || !(parseFloat(filletInput) > 0)} onClick={() => { const r = parseFloat(filletInput); if (r > 0) { void partOpRun('fillet', pickedMulti.length ? pickedMulti : [pickedPart], { r }); setFilletInput(''); } }} style={{ padding: '5px 9px', border: 0, borderRadius: 6, background: '#334155', color: '#fff', cursor: 'pointer', fontWeight: 700 }}>{designPair(lang, '필렛', 'Fillet')}</button></div>
+              <div style={{ display: 'flex', gap: 5 }}><button type="button" disabled={loading} onClick={() => void partOpRun('duplicate', pickedMulti.length ? pickedMulti : [pickedPart])} style={{ flex: 1, padding: '5px 8px', border: '1px solid #475569', borderRadius: 6, background: 'transparent', color: '#e2e8f0', cursor: 'pointer' }}>{designPair(lang, '복제', 'Duplicate')}</button><button type="button" disabled={loading} onClick={() => void partOpRun('delete', pickedMulti.length ? pickedMulti : [pickedPart])} style={{ flex: 1, padding: '5px 8px', border: '1px solid rgba(248,113,113,.65)', borderRadius: 6, background: 'transparent', color: '#fca5a5', cursor: 'pointer' }}>{designPair(lang, '삭제', 'Delete')}</button></div>
+            </div>
+          )}
           {/* §6.2 드래프트/기록 분리 — 뷰어는 드래프트임을 정직 표기 */}
+          {/* Viewer settings stay with the 3D viewport; advanced section/system
+              filters belong to the assembly viewer once their render hooks are active. */}
+          <div data-testid="cad-view-settings" style={{ position: 'absolute', right: 12, bottom: 12, zIndex: 7, width: 'min(310px, calc(100% - 24px))' }}>
+            <button type="button" onClick={() => setViewSettingsOpen((v) => !v)} aria-expanded={viewSettingsOpen}
+              style={{ width: '100%', padding: '7px 10px', borderRadius: 8, border: '1px solid rgba(148,163,184,.45)', background: 'rgba(7,13,29,.92)', color: '#e5eefc', cursor: 'pointer', textAlign: 'left', fontWeight: 700 }}>
+              ⚙ {designPair(lang, '표시 설정', 'View settings')} <span style={{ float: 'right' }}>{viewSettingsOpen ? '⌃' : '⌄'}</span>
+            </button>
+            {viewSettingsOpen && <div style={{ marginTop: 5, padding: 9, borderRadius: 9, background: 'rgba(7,13,29,.94)', border: '1px solid rgba(96,165,250,.45)', color: '#e5eefc', fontSize: 11 }}>
+              <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 7 }}>
+                {(['iso', 'front', 'top', 'side'] as const).map((p) => <button key={p} type="button" onClick={() => setViewPreset(p)} style={{ flex: 1, minWidth: 54, padding: '5px 6px', borderRadius: 6, border: '1px solid #475569', background: '#172033', color: '#e2e8f0', cursor: 'pointer' }}>{p === 'iso' ? 'ISO' : p === 'front' ? (designPair(lang, '정면', 'Front')) : p === 'top' ? (designPair(lang, '평면', 'Top')) : (designPair(lang, '측면', 'Side'))}</button>)}
+              </div>
+              <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginBottom: 7 }}>
+                <label><input type="checkbox" checked={viewDarkBackground} onChange={(e) => setViewDarkBackground(e.target.checked)} /> {designPair(lang, '어두운 배경', 'Dark background')}</label>
+                <label><input type="checkbox" checked={viewAutoRotate} onChange={(e) => setViewAutoRotate(e.target.checked)} /> {designPair(lang, '자동 회전', 'Auto rotate')}</label>
+              </div>
+              <button type="button" onClick={exportViewportPng} style={{ width: '100%', padding: '6px 8px', border: 0, borderRadius: 6, background: '#334155', color: '#fff', cursor: 'pointer', fontWeight: 700 }}>▣ {designPair(lang, '현재 뷰 PNG', 'Export PNG')}</button>
+              <div style={{ marginTop: 7, color: '#94a3b8', lineHeight: 1.4 }}>{designPair(lang, '단면·계통 필터는 실제 어셈블리 트리 연결 후 이 패널에 추가됩니다.', 'Section and system filters will appear here when the assembly tree hooks are active.')}</div>
+            </div>}
+          </div>
           {scad && (
             <div style={{ position: 'absolute', bottom: 12, left: 12, padding: '4px 10px', borderRadius: 999, background: 'rgba(0,0,0,0.55)', color: '#cbd5e1', fontSize: 10.5, pointerEvents: 'none' }}>
-              {ko ? '드래프트 프리뷰(브라우저 렌더) · 정밀 형상 = 출력 탭 STEP(OCCT)' : 'Draft preview · precise geometry = STEP (OCCT) in Output'}
+              {designPair(lang, '드래프트 프리뷰(브라우저 렌더) · 정밀 형상 = 출력 탭 STEP(OCCT)', 'Draft preview · precise geometry = STEP (OCCT) in Output')}
             </div>
           )}
           {!scad && !loading && (
             <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--nx-text-3, #6b7684)', fontSize: 13, pointerEvents: 'none' }}>
-              {ko ? '① 생성 탭에서 자유 서술이나 템플릿으로 시작하세요 · ② 검증이 자동으로 따라옵니다 · ③ 계산기·출력(도면·STEP·계산서)은 상단 탭 (드래그=회전 · 휠=줌)' : 'Describe freely or pick a template in Create · verification follows automatically · calculators & outputs in tabs (drag = rotate, wheel = zoom)'}
+              {designPair(lang, '① 생성 탭에서 자유 서술이나 템플릿으로 시작하세요 · ② 검증이 자동으로 따라옵니다 · ③ 계산기·출력(도면·STEP·계산서)은 상단 탭 (드래그=회전 · 휠=줌)', 'Describe freely or pick a template in Create · verification follows automatically · calculators & outputs in tabs (drag = rotate, wheel = zoom)')}
             </div>
           )}
           {/**
@@ -2111,7 +2530,7 @@ export default function DesignInner({ lang, initialDomain, initialTab }: { lang:
               <DesignStageBar stage={designStage} lang={lang} />
               {confirmedSnap && (
                 <div style={{ marginTop: 6, fontSize: 10.5, color: '#7dd3fc', lineHeight: 1.5 }}>
-                  {ko ? '확정본 기준으로 출력합니다' : 'Outputs use the confirmed version'}
+                  {designPair(lang, '확정본 기준으로 출력합니다', 'Outputs use the confirmed version')}
                   {' · '}
                   {new Date(confirmedSnap.at).toLocaleTimeString()}
                 </div>
@@ -2120,12 +2539,12 @@ export default function DesignInner({ lang, initialDomain, initialTab }: { lang:
           )}
           {loading && (
             <div style={{ position: 'absolute', top: 12, left: 12, display: 'flex', alignItems: 'center', gap: 8, padding: '6px 12px', borderRadius: 8, background: 'rgba(0,0,0,0.65)', color: '#fff', fontSize: 12 }}>
-              <span>{status || (ko ? '처리 중…' : 'Working…')}</span>
+              <span>{status || (designPair(lang, '처리 중…', 'Working…'))}</span>
               <span style={{ color: '#93c5fd', fontVariantNumeric: 'tabular-nums' }}>{elapsed}s</span>
               {runAbortRef.current && (
                 <button type="button" onClick={() => runAbortRef.current?.abort()}
                   style={{ padding: '2px 10px', borderRadius: 6, fontSize: 11, fontWeight: 700, cursor: 'pointer', border: '1px solid rgba(239,68,68,0.6)', background: 'rgba(239,68,68,0.15)', color: '#fca5a5' }}>
-                  {ko ? '취소' : 'Cancel'}
+                  {designPair(lang, '취소', 'Cancel')}
                 </button>
               )}
             </div>
@@ -2142,7 +2561,7 @@ export default function DesignInner({ lang, initialDomain, initialTab }: { lang:
                 fontSize: 12.5, fontWeight: 700, cursor: vizBusy ? 'wait' : 'pointer', boxShadow: '0 2px 10px rgba(0,0,0,.25)',
               }}
             >
-              {vizBusy ? (ko ? '🎨 렌더링 중…' : '🎨 Rendering…') : ko ? '🎨 실사 컨셉 (AI)' : '🎨 Photoreal concept (AI)'}
+              {vizBusy ? (designPair(lang, '🎨 렌더링 중…', '🎨 Rendering…')) : designPair(lang, '🎨 실사 컨셉 (AI)', '🎨 Photoreal concept (AI)')}
             </button>
           )}
           {vizErr && (
@@ -2153,20 +2572,20 @@ export default function DesignInner({ lang, initialDomain, initialTab }: { lang:
           {vizImg && (
             <div style={{ position: 'absolute', inset: 12, borderRadius: 10, background: 'rgba(15,23,42,.96)', display: 'flex', flexDirection: 'column', padding: 12, zIndex: 5 }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-                <b style={{ color: '#fff', fontSize: 13 }}>{ko ? '🎨 실사 컨셉' : '🎨 Photoreal concept'}</b>
+                <b style={{ color: '#fff', fontSize: 13 }}>{designPair(lang, '🎨 실사 컨셉', '🎨 Photoreal concept')}</b>
                 <div style={{ display: 'flex', gap: 8 }}>
                   <a href={`data:image/png;base64,${vizImg}`} download="concept_render.png" style={{ padding: '5px 12px', borderRadius: 6, background: '#2563eb', color: '#fff', fontSize: 12, fontWeight: 700, textDecoration: 'none' }}>
-                    {ko ? '다운로드' : 'Download'}
+                    {designPair(lang, '다운로드', 'Download')}
                   </a>
                   <button type="button" onClick={() => setVizImg(null)} style={{ padding: '5px 12px', borderRadius: 6, border: 'none', background: '#334155', color: '#fff', fontSize: 12, cursor: 'pointer' }}>
-                    {ko ? '닫기' : 'Close'}
+                    {designPair(lang, '닫기', 'Close')}
                   </button>
                 </div>
               </div>
               { }
               <img src={`data:image/png;base64,${vizImg}`} alt="AI concept render" style={{ flex: 1, minHeight: 0, objectFit: 'contain', borderRadius: 8 }} />
               <div style={{ marginTop: 8, fontSize: 11, color: '#fbbf24' }}>
-                ⚠ {ko ? '컨셉 이미지(비검증) — 기하는 3D 렌더 기준, 재질·조명·환경은 AI 제안. 치수·형상 근거로 사용 금지.' : 'Concept image (unverified) — geometry from the 3D render; materials/lighting are AI suggestions. Not for dimensional reference.'}
+                ⚠ {designPair(lang, '컨셉 이미지(비검증) — 기하는 3D 렌더 기준, 재질·조명·환경은 AI 제안. 치수·형상 근거로 사용 금지.', 'Concept image (unverified) — geometry from the 3D render; materials/lighting are AI suggestions. Not for dimensional reference.')}
               </div>
             </div>
           )}
@@ -2190,6 +2609,17 @@ function VerifyRow({ label, value, ok, bad, neutral }: { label: string; value: s
         {label}
       </span>
       <span style={{ fontWeight: 600, textAlign: 'right' }}>{value}</span>
+    </div>
+  );
+}
+
+function SummaryCard({ label, value, note, tone = 'default', onClick }: { label: string; value: string; note: string; tone?: 'default' | 'ok' | 'warn'; onClick?: () => void }) {
+  const accent = tone === 'ok' ? '#16803c' : tone === 'warn' ? '#b54708' : 'var(--nx-accent, #2563eb)';
+  return (
+    <div role={onClick ? 'button' : undefined} tabIndex={onClick ? 0 : undefined} onClick={onClick} onKeyDown={onClick ? (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onClick(); } } : undefined} style={{ minWidth: 0, padding: '10px 11px', borderRadius: 8, border: '1px solid var(--nx-border, #dfe3e8)', background: 'var(--nx-panel, #fff)', cursor: onClick ? 'pointer' : 'default' }}>
+      <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: accent, fontSize: 16, fontWeight: 800, letterSpacing: '-0.02em' }}>{value}</div>
+      <div style={{ marginTop: 3, color: 'var(--nx-text-2, #46505e)', fontSize: 10.5, fontWeight: 700 }}>{label}</div>
+      <div style={{ marginTop: 2, color: 'var(--nx-text-3, #6b7684)', fontSize: 9.5 }}>{note}</div>
     </div>
   );
 }

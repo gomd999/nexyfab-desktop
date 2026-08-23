@@ -11,6 +11,7 @@ import {
   type ManufacturabilityFlag,
 } from './topologyOptimization';
 import type { OptProgress } from '../topology/optimizer/types';
+import { createCommercialLocalizer } from '@/lib/i18n/commercialLocalizer';
 
 type Lang = 'ko' | 'en' | 'ja' | 'zh' | 'es' | 'ar';
 
@@ -163,8 +164,8 @@ export default function GenerativeDesignPanel({ geometry, lang, onResult, onClos
     kr: 'ko', ko: 'ko', en: 'en', ja: 'ja', cn: 'zh', zh: 'zh', es: 'es', ar: 'ar',
   };
   const tt = dict[langMap[seg] ?? 'en'];
+  const L = createCommercialLocalizer(lang);
 
-  const isKo = lang === 'ko';
   const [isRunning, setIsRunning] = useState(false);
   const [progress, setProgress] = useState<OptProgress | null>(null);
   const [mfgFlags, setMfgFlags] = useState<ManufacturabilityFlag[] | null>(null);
@@ -407,7 +408,7 @@ export default function GenerativeDesignPanel({ geometry, lang, onResult, onClos
 
                   {isExpanded && (
                     <div style={{ padding: '0 8px 8px', display: 'flex', flexDirection: 'column', gap: 3 }}>
-                      {(isKo ? f.reasonsKo : f.reasons).map((r, i) => (
+                      {L(f.reasonsKo, f.reasons).map((r, i) => (
                         <div key={i} style={{ fontSize: 9, color: C.muted, lineHeight: 1.5, paddingLeft: 8, borderLeft: `2px solid ${fgColor}44` }}>
                           {r}
                         </div>

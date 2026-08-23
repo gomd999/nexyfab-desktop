@@ -1,0 +1,26 @@
+{
+  "schema": "nexyfab.mechanical-single-part-bom-candidate.v1",
+  "partRevisionSha256": "609b9ff4be134cff912ab2ba017de8ffd077e7e696fcb3255437296574ace170",
+  "sourceDesignRevisionSha256": "3cf6a0f9c8efcf153a2cfefde087a2112c086fc412d2feeaeb9ce52542838564",
+  "sourceNfabSha256": "2bb5241ca03ed1dac9cbf4985a893264a8d6a7dcbd6b47b84c6145ba5786d67b",
+  "sourceStepSha256": "b5a8b34c22de8aebd4cdbb15dbe7e2cb09fd67720f2c6297707c80eb241ab508",
+  "units": "mm",
+  "items": [
+    {
+      "partNumber": "jog",
+      "description": "Mechanical runtime jog",
+      "quantity": 1,
+      "dimensionsMm": {
+        "x": 58.24839295365595,
+        "y": 10.00241393856896,
+        "z": 30.00241393856896
+      }
+    }
+  ],
+  "claimBoundary": {
+    "singlePartCandidateOnly": true,
+    "materialSpecified": false,
+    "massCalculated": false,
+    "manufacturingApproved": false
+  }
+}

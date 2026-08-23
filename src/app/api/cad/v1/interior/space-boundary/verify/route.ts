@@ -1,10 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { verifySpaceBoundaryClosure, type SpaceBoundaryClosureInput } from '@/lib/assembly/spaceBoundaryClosure';
+import { boundedJsonError, readBoundedJson } from '@/lib/boundedJsonBody';
 import { getTrustedClientIp } from '@/lib/client-ip';
 import { rateLimit } from '@/lib/rate-limit';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
+const MAX_SPACE_BOUNDARY_VERIFY_BODY_BYTES = 4 * 1024 * 1024;
 
 const finitePoint = (value: unknown): value is { x: number; y: number } => {
   if (!value || typeof value !== 'object') return false;
@@ -21,7 +23,9 @@ function validInput(value: unknown): value is SpaceBoundaryClosureInput {
 export async function POST(req: NextRequest) {
   const ip = getTrustedClientIp(req.headers);
   if (!rateLimit(`cad-v1-space-boundary:${ip}`, 120, 60_000).allowed) return NextResponse.json({ ok: false, code: 'RATE_LIMIT', message: 'Too many space boundary requests' }, { status: 429 });
-  const body: unknown = await req.json().catch(() => null);
+  let body: unknown;
+  try { body = await readBoundedJson<unknown>(req, MAX_SPACE_BOUNDARY_VERIFY_BODY_BYTES); }
+  catch (error) { const bounded = boundedJsonError(error); if (bounded?.code === 'PAYLOAD_TOO_LARGE') return NextResponse.json({ ok: false, code: bounded.code }, { status: bounded.status }); body = null; }
   if (!validInput(body)) return NextResponse.json({ ok: false, code: 'INVALID_INPUT', message: 'At least three finite boundary segments are required' }, { status: 400 });
   return NextResponse.json({ ok: true, result: verifySpaceBoundaryClosure(body), quoteOrRfqSideEffects: false });
 }

@@ -1,0 +1,26 @@
+{
+  "schema": "nexyfab.mechanical-single-part-bom-candidate.v1",
+  "partRevisionSha256": "d3620657cdf36bd05b0b6e909c544c2389ba8f4a9275e58fda8aba3838eec638",
+  "sourceDesignRevisionSha256": "3cf6a0f9c8efcf153a2cfefde087a2112c086fc412d2feeaeb9ce52542838564",
+  "sourceNfabSha256": "50f255835ba810b67adb571523f59c952f9b17a9c30edc8a2d7158db908ae789",
+  "sourceStepSha256": "53f0703dbc7a30d467bf77922dadcf83906853ac42ff36880a72aad10086d148",
+  "units": "mm",
+  "items": [
+    {
+      "partNumber": "hole",
+      "description": "Mechanical runtime hole",
+      "quantity": 1,
+      "dimensionsMm": {
+        "x": 60.00373001599021,
+        "y": 40.00373001599021,
+        "z": 30.003730015990207
+      }
+    }
+  ],
+  "claimBoundary": {
+    "singlePartCandidateOnly": true,
+    "materialSpecified": false,
+    "massCalculated": false,
+    "manufacturingApproved": false
+  }
+}

@@ -25,6 +25,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import dynamic from 'next/dynamic';
 import { isKorean } from '@/lib/i18n/normalize';
+import { designPair } from './designI18n';
 import type { ViewerPart } from './AssemblyViewer3D';
 
 const AssemblyViewer3D = dynamic(() => import('./AssemblyViewer3D'), { ssr: false });
@@ -250,6 +251,7 @@ function bodySpecOf(b: BodyState): BodySpec {
 
 export default function LoftStudioPanel({ lang }: { lang: string }) {
   const ko = isKorean(lang);
+  const t = (koText: string, enText: string) => designPair(lang, koText, enText);
 
   // 바디 리스트(기본 1개 = 기존 단일 바디 동작 유지)
   const [bodies, setBodies] = useState<BodyState[]>(() => [makeBody('body1')]);
@@ -451,7 +453,7 @@ export default function LoftStudioPanel({ lang }: { lang: string }) {
         setErr(null);
       } else {
         setResult(null);
-        setErr(data.error ?? (ko ? '알 수 없는 오류' : 'Unknown error'));
+        setErr(data.error ?? t('알 수 없는 오류', 'Unknown error'));
       }
     } catch (e) {
       setResult(null);
@@ -481,9 +483,9 @@ export default function LoftStudioPanel({ lang }: { lang: string }) {
       {/* 상단 정직 라벨 */}
       <div style={{ display: 'flex', alignItems: 'center', marginBottom: 8, gap: 6 }}>
         <div style={{ fontSize: 12, fontWeight: 800 }}>
-          {ko ? '로프트/스윕 스튜디오' : 'Loft / sweep studio'}
+          {t('로프트/스윕 스튜디오', 'Loft / sweep studio')}
           <span style={{ marginLeft: 6, fontSize: 10.5, fontWeight: 600, color: 'var(--nx-text-3, #6b7684)' }}>
-            {ko ? '형상 저작 — 성능/구조 해석 아님' : 'Shape authoring — not performance/structural analysis'}
+            {t('형상 저작 — 성능/구조 해석 아님', 'Shape authoring — not performance/structural analysis')}
           </span>
         </div>
       </div>
@@ -491,9 +493,9 @@ export default function LoftStudioPanel({ lang }: { lang: string }) {
       {/* 0) 바디 리스트(다중 바디) */}
       <div style={{ marginBottom: 8 }}>
         <div style={{ fontSize: 11.5, fontWeight: 700, marginBottom: 4 }}>
-          {ko ? '바디' : 'Bodies'}
+          {t('바디', 'Bodies')}
           <span style={{ marginLeft: 6, fontSize: 10.5, fontWeight: 600, color: 'var(--nx-text-3, #6b7684)' }}>
-            {ko ? `${bodies.length}개 · 선택 바디를 편집` : `${bodies.length} · editing selected`}
+            {t(`${bodies.length}개 · 선택 바디를 편집`, `${bodies.length} · editing selected`)}
           </span>
         </div>
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, alignItems: 'center' }}>
@@ -511,16 +513,16 @@ export default function LoftStudioPanel({ lang }: { lang: string }) {
                     color: active ? '#fff' : 'inherit',
                   }}
                 >
-                  {`#${i + 1}`} · {b.mode === 'sweep' ? (ko ? '스윕' : 'sweep') : (ko ? '로프트' : 'loft')}
+                  {`#${i + 1}`} · {b.mode === 'sweep' ? t('스윕', 'sweep') : t('로프트', 'loft')}
                 </button>
                 {bodies.length > 1 && (
-                  <button type="button" onClick={() => delBody(b.id)} title={ko ? '바디 삭제' : 'Delete body'}
+                  <button type="button" onClick={() => delBody(b.id)} title={t('바디 삭제', 'Delete body')}
                     style={{ ...iconBtn, marginLeft: 2 }}>✕</button>
                 )}
               </span>
             );
           })}
-          <button type="button" onClick={addBody} style={miniBtn}>{ko ? '+ 바디 추가' : '+ Add body'}</button>
+          <button type="button" onClick={addBody} style={miniBtn}>{t('+ 바디 추가', '+ Add body')}</button>
         </div>
       </div>
 
@@ -540,7 +542,7 @@ export default function LoftStudioPanel({ lang }: { lang: string }) {
                 color: active ? 'var(--nx-accent, #2563eb)' : 'inherit',
               }}
             >
-              {m === 'loft' ? (ko ? '로프트 (스테이션)' : 'Loft (stations)') : (ko ? '스윕 (경로 압출)' : 'Sweep (path)')}
+              {m === 'loft' ? t('로프트 (스테이션)', 'Loft (stations)') : t('스윕 (경로 압출)', 'Sweep (path)')}
             </button>
           );
         })}
@@ -548,47 +550,46 @@ export default function LoftStudioPanel({ lang }: { lang: string }) {
 
       {/* 1) 프로파일 선택(두 모드 공용 = 단면) */}
       <label style={{ display: 'flex', flexDirection: 'column', gap: 3, marginBottom: 8 }}>
-        <span style={labelText}>{ko ? '단면 프로파일' : 'Section profile'}</span>
+        <span style={labelText}>{t('단면 프로파일', 'Section profile')}</span>
         <select value={ptype} onChange={(e) => { patchSel((b) => ({ ...b, ptype: e.target.value as ProfileType })); setSelectedIdx(null); }} style={inpStyle}>
-          <option value="circle">{ko ? '원 (circle)' : 'Circle'}</option>
-          <option value="superellipse">{ko ? '초타원 (superellipse)' : 'Superellipse'}</option>
-          <option value="naca">{ko ? 'NACA 에어포일' : 'NACA airfoil'}</option>
-          <option value="roundedRect">{ko ? '라운드 사각 (roundedRect)' : 'Rounded rect'}</option>
-          <option value="polygon">{ko ? '다각형 (직접 편집)' : 'Polygon (custom)'}</option>
+          <option value="circle">{t('원 (circle)', 'Circle')}</option>
+          <option value="superellipse">{t('초타원 (superellipse)', 'Superellipse')}</option>
+          <option value="naca">{t('NACA 에어포일', 'NACA airfoil')}</option>
+          <option value="roundedRect">{t('라운드 사각 (roundedRect)', 'Rounded rect')}</option>
+          <option value="polygon">{t('다각형 (직접 편집)', 'Polygon (custom)')}</option>
         </select>
       </label>
 
       {/* 프로파일 파라미터 */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6, marginBottom: 8 }}>
         {ptype === 'circle' && (<>
-          {numField(ko ? '반지름 r' : 'Radius r', sel.circleP.r, (v) => patchSel((b) => ({ ...b, circleP: { ...b.circleP, r: v } })))}
-          {numField(ko ? '분할 n' : 'Segments n', sel.circleP.n, (v) => patchSel((b) => ({ ...b, circleP: { ...b.circleP, n: v } })))}
+          {numField(t('반지름 r', 'Radius r'), sel.circleP.r, (v) => patchSel((b) => ({ ...b, circleP: { ...b.circleP, r: v } })))}
+          {numField(t('분할 n', 'Segments n'), sel.circleP.n, (v) => patchSel((b) => ({ ...b, circleP: { ...b.circleP, n: v } })))}
         </>)}
         {ptype === 'superellipse' && (<>
-          {numField(ko ? '반축 a' : 'Semi-axis a', sel.seP.a, (v) => patchSel((b) => ({ ...b, seP: { ...b.seP, a: v } })))}
-          {numField(ko ? '반축 b' : 'Semi-axis b', sel.seP.b, (v) => patchSel((b) => ({ ...b, seP: { ...b.seP, b: v } })))}
-          {numField(ko ? '분할 n' : 'Segments n', sel.seP.n, (v) => patchSel((b) => ({ ...b, seP: { ...b.seP, n: v } })))}
-          {numField(ko ? '지수 exp' : 'Exponent', sel.seP.exp, (v) => patchSel((b) => ({ ...b, seP: { ...b.seP, exp: v } })), 0.1)}
+          {numField(t('반축 a', 'Semi-axis a'), sel.seP.a, (v) => patchSel((b) => ({ ...b, seP: { ...b.seP, a: v } })))}
+          {numField(t('반축 b', 'Semi-axis b'), sel.seP.b, (v) => patchSel((b) => ({ ...b, seP: { ...b.seP, b: v } })))}
+          {numField(t('분할 n', 'Segments n'), sel.seP.n, (v) => patchSel((b) => ({ ...b, seP: { ...b.seP, n: v } })))}
+          {numField(t('지수 exp', 'Exponent'), sel.seP.exp, (v) => patchSel((b) => ({ ...b, seP: { ...b.seP, exp: v } })), 0.1)}
         </>)}
         {ptype === 'naca' && (<>
           <label style={{ display: 'flex', flexDirection: 'column', gap: 2, fontSize: 11 }}>
-            <span style={labelText}>{ko ? '코드(4자리)' : 'Code (4-digit)'}</span>
+            <span style={labelText}>{t('코드(4자리)', 'Code (4-digit)')}</span>
             <input value={sel.nacaP.code} inputMode="numeric" maxLength={4}
               onChange={(e) => { const code = e.target.value.replace(/\D/g, '').slice(0, 4); patchSel((b) => ({ ...b, nacaP: { ...b.nacaP, code } })); }}
               style={inpStyle} />
           </label>
-          {numField(ko ? '분할 n (짝수)' : 'Segments n (even)', sel.nacaP.n, (v) => patchSel((b) => ({ ...b, nacaP: { ...b.nacaP, n: v } })))}
+          {numField(t('분할 n (짝수)', 'Segments n (even)'), sel.nacaP.n, (v) => patchSel((b) => ({ ...b, nacaP: { ...b.nacaP, n: v } })))}
         </>)}
         {ptype === 'roundedRect' && (<>
-          {numField(ko ? '폭 w' : 'Width w', sel.rrP.w, (v) => patchSel((b) => ({ ...b, rrP: { ...b.rrP, w: v } })))}
-          {numField(ko ? '높이 h' : 'Height h', sel.rrP.h, (v) => patchSel((b) => ({ ...b, rrP: { ...b.rrP, h: v } })))}
-          {numField(ko ? '코너 r' : 'Corner r', sel.rrP.r, (v) => patchSel((b) => ({ ...b, rrP: { ...b.rrP, r: v } })))}
-          {numField(ko ? '분할 n' : 'Segments n', sel.rrP.n, (v) => patchSel((b) => ({ ...b, rrP: { ...b.rrP, n: v } })))}
+          {numField(t('폭 w', 'Width w'), sel.rrP.w, (v) => patchSel((b) => ({ ...b, rrP: { ...b.rrP, w: v } })))}
+          {numField(t('높이 h', 'Height h'), sel.rrP.h, (v) => patchSel((b) => ({ ...b, rrP: { ...b.rrP, h: v } })))}
+          {numField(t('코너 r', 'Corner r'), sel.rrP.r, (v) => patchSel((b) => ({ ...b, rrP: { ...b.rrP, r: v } })))}
+          {numField(t('분할 n', 'Segments n'), sel.rrP.n, (v) => patchSel((b) => ({ ...b, rrP: { ...b.rrP, n: v } })))}
         </>)}
         {ptype === 'polygon' && (
           <div style={{ gridColumn: '1 / -1', fontSize: 10.5, color: 'var(--nx-text-3, #6b7684)', lineHeight: 1.5 }}>
-            {ko ? '아래 캔버스에서 점을 드래그해 단면을 편집하세요. 점 추가/삭제 버튼으로 개수를 바꿉니다.'
-                : 'Drag points on the canvas below to edit the section. Use add/remove to change point count.'}
+            {t('아래 캔버스에서 점을 드래그해 단면을 편집하세요. 점 추가/삭제 버튼으로 개수를 바꿉니다.', 'Drag points on the canvas below to edit the section. Use add/remove to change point count.')}
           </div>
         )}
       </div>
@@ -611,10 +612,10 @@ export default function LoftStudioPanel({ lang }: { lang: string }) {
         />
         {ptype === 'polygon' && (
           <div style={{ display: 'flex', gap: 6, marginTop: 6 }}>
-            <button type="button" onClick={addPoint} style={miniBtn}>{ko ? '+ 점 추가' : '+ Add point'}</button>
-            <button type="button" onClick={delPoint} style={miniBtn}>{ko ? '− 점 삭제' : '− Remove point'}</button>
+            <button type="button" onClick={addPoint} style={miniBtn}>{t('+ 점 추가', '+ Add point')}</button>
+            <button type="button" onClick={delPoint} style={miniBtn}>{t('− 점 삭제', '− Remove point')}</button>
             <span style={{ fontSize: 10.5, color: 'var(--nx-text-3, #6b7684)', alignSelf: 'center' }}>
-              {ko ? `${poly.length}점` : `${poly.length} pts`}
+              {t(`${poly.length}점`, `${poly.length} pts`)}
             </span>
           </div>
         )}
@@ -624,9 +625,9 @@ export default function LoftStudioPanel({ lang }: { lang: string }) {
       {sel.mode === 'loft' && (
         <div style={{ marginBottom: 8 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
-            <span style={{ fontSize: 11.5, fontWeight: 700 }}>{ko ? '스테이션' : 'Stations'}</span>
+            <span style={{ fontSize: 11.5, fontWeight: 700 }}>{t('스테이션', 'Stations')}</span>
             <label style={{ fontSize: 11, display: 'flex', alignItems: 'center', gap: 4, marginLeft: 'auto' }}>
-              <span style={labelText}>{ko ? '축' : 'Axis'}</span>
+              <span style={labelText}>{t('축', 'Axis')}</span>
               <select value={sel.axis} onChange={(e) => patchSel((b) => ({ ...b, axis: e.target.value as Axis }))} style={{ ...inpStyle, width: 'auto' }}>
                 <option value="z">Z</option>
                 <option value="x">X</option>
@@ -638,7 +639,7 @@ export default function LoftStudioPanel({ lang }: { lang: string }) {
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 11 }}>
               <thead>
                 <tr style={{ color: 'var(--nx-text-3, #6b7684)' }}>
-                  {['#', 'x', 'y', 'z', ko ? '배율' : 'scale', ko ? '회전°' : 'rot°', ''].map((h, i) => (
+                  {['#', 'x', 'y', 'z', t('배율', 'scale'), t('회전°', 'rot°'), ''].map((h, i) => (
                     <th key={i} style={{ textAlign: 'left', padding: '2px 4px', fontWeight: 600 }}>{h}</th>
                   ))}
                 </tr>
@@ -658,15 +659,15 @@ export default function LoftStudioPanel({ lang }: { lang: string }) {
                       </td>
                     ))}
                     <td style={{ padding: '2px 2px', whiteSpace: 'nowrap' }}>
-                      <button type="button" onClick={() => dupStation(i)} title={ko ? '복제' : 'Duplicate'} style={iconBtn}>⧉</button>
-                      <button type="button" onClick={() => delStation(i)} title={ko ? '삭제' : 'Delete'} disabled={sel.stations.length <= 2} style={iconBtn}>✕</button>
+                      <button type="button" onClick={() => dupStation(i)} title={t('복제', 'Duplicate')} style={iconBtn}>⧉</button>
+                      <button type="button" onClick={() => delStation(i)} title={t('삭제', 'Delete')} disabled={sel.stations.length <= 2} style={iconBtn}>✕</button>
                     </td>
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
-          <button type="button" onClick={addStation} style={{ ...miniBtn, marginTop: 6 }}>{ko ? '+ 스테이션 추가' : '+ Add station'}</button>
+          <button type="button" onClick={addStation} style={{ ...miniBtn, marginTop: 6 }}>{t('+ 스테이션 추가', '+ Add station')}</button>
         </div>
       )}
 
@@ -674,9 +675,9 @@ export default function LoftStudioPanel({ lang }: { lang: string }) {
       {sel.mode === 'sweep' && (
         <div style={{ marginBottom: 8 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
-            <span style={{ fontSize: 11.5, fontWeight: 700 }}>{ko ? '경로 (path)' : 'Path'}</span>
+            <span style={{ fontSize: 11.5, fontWeight: 700 }}>{t('경로 (path)', 'Path')}</span>
             <label style={{ fontSize: 11, display: 'flex', alignItems: 'center', gap: 4, marginLeft: 'auto' }}>
-              <span style={labelText}>{ko ? '단면 배율' : 'Section scale'}</span>
+              <span style={labelText}>{t('단면 배율', 'Section scale')}</span>
               <input
                 type="number" inputMode="decimal" step={0.1}
                 value={Number.isFinite(sel.scale) ? sel.scale : ''}
@@ -709,31 +710,30 @@ export default function LoftStudioPanel({ lang }: { lang: string }) {
                       </td>
                     ))}
                     <td style={{ padding: '2px 2px', whiteSpace: 'nowrap' }}>
-                      <button type="button" onClick={() => dupPathPt(i)} title={ko ? '복제' : 'Duplicate'} style={iconBtn}>⧉</button>
-                      <button type="button" onClick={() => delPathPt(i)} title={ko ? '삭제' : 'Delete'} disabled={sel.path.length <= 2} style={iconBtn}>✕</button>
+                      <button type="button" onClick={() => dupPathPt(i)} title={t('복제', 'Duplicate')} style={iconBtn}>⧉</button>
+                      <button type="button" onClick={() => delPathPt(i)} title={t('삭제', 'Delete')} style={iconBtn}>✕</button>
                     </td>
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
-          <button type="button" onClick={addPathPt} style={{ ...miniBtn, marginTop: 6 }}>{ko ? '+ 경로점 추가' : '+ Add path point'}</button>
+          <button type="button" onClick={addPathPt} style={{ ...miniBtn, marginTop: 6 }}>{t('+ 경로점 추가', '+ Add path point')}</button>
           <div style={{ marginTop: 4, fontSize: 10.5, color: 'var(--nx-text-3, #6b7684)', lineHeight: 1.5 }}>
-            {ko ? '단면이 경로 접선에 수직으로 유지되며 압출됩니다(회전-최소화 프레임). 경로점 ≥2 필요.'
-                : 'The section is extruded perpendicular to the path tangent (rotation-minimizing frame). Needs ≥2 path points.'}
+            {t('단면이 경로 접선에 수직으로 유지되며 압출됩니다(회전-최소화 프레임). 경로점 ≥2 필요.', 'The section is extruded perpendicular to the path tangent (rotation-minimizing frame). Needs ≥2 path points.')}
           </div>
         </div>
       )}
 
       {/* 4) 생성 버튼 */}
       <button type="button" onClick={() => void generate()} disabled={busy} style={genStyle}>
-        {busy ? (ko ? '생성 중…' : 'Generating…') : (ko ? (bodies.length > 1 ? '어셈블리 생성' : '생성') : (bodies.length > 1 ? 'Generate assembly' : 'Generate'))}
+        {busy ? t('생성 중…', 'Generating…') : (bodies.length > 1 ? t('어셈블리 생성', 'Generate assembly') : t('생성', 'Generate'))}
       </button>
 
       {/* 오류(정직: 서버 사유 그대로) */}
       {err && (
         <div style={{ marginTop: 8, padding: '7px 10px', borderRadius: 7, background: '#fef2f2', border: '1px solid #fecaca', color: '#991b1b', fontSize: 11 }}>
-          {ko ? '스펙 오류: ' : 'Spec error: '}{err}
+          {t('스펙 오류: ', 'Spec error: ')}{err}
         </div>
       )}
 
@@ -741,11 +741,11 @@ export default function LoftStudioPanel({ lang }: { lang: string }) {
       {result && (
         <div style={{ marginTop: 8 }}>
           <div style={{ fontSize: 10.5, color: 'var(--nx-text-3, #6b7684)', marginBottom: 2 }}>
-            {ko ? '3D 미리보기 (곡면 실측 렌더 · 회전/확대 가능)' : '3D preview (real surface · orbit/zoom)'}
+            {t('3D 미리보기 (곡면 실측 렌더 · 회전/확대 가능)', '3D preview (real surface · orbit/zoom)')}
           </div>
           <AssemblyViewer3D parts={viewerParts} height={340} />
           <div style={{ marginTop: 4, fontSize: 11, color: 'var(--nx-text-2, #46505e)' }}>
-            {ko ? '바디' : 'Bodies'}: {result.count.toLocaleString()} · {ko ? '체적' : 'Volume'}: {fmtVol(result.volumeMm3)} · {ko ? '삼각형' : 'Triangles'}: {result.triCount.toLocaleString()}
+            {t('바디', 'Bodies')}: {result.count.toLocaleString()} · {t('체적', 'Volume')}: {fmtVol(result.volumeMm3)} · {t('삼각형', 'Triangles')}: {result.triCount.toLocaleString()}
           </div>
         </div>
       )}

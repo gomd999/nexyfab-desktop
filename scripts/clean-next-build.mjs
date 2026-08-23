@@ -9,5 +9,12 @@ if (path.dirname(target) !== root || path.basename(target) !== '.next') {
   throw new Error(`Refusing to clean unexpected Next build path: ${target}`);
 }
 
-fs.rmSync(target, { recursive: true, force: true });
+fs.rmSync(target, {
+  recursive: true,
+  force: true,
+  // Windows can briefly retain Next.js cache handles after a dev server exits.
+  // Keep the target guard above, then retry only the same verified .next path.
+  maxRetries: 12,
+  retryDelay: 250,
+});
 process.stdout.write(`${JSON.stringify({ event: 'next-build-cache-cleaned', target: '.next' })}\n`);

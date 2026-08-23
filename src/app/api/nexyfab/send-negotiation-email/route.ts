@@ -10,6 +10,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import nodemailer from 'nodemailer';
 import { getNexyfabFromEmail } from '@/lib/nexyfab-email';
+import { boundedJsonError, readBoundedJson } from '@/lib/boundedJsonBody';
+
+const MAX_NEGOTIATION_EMAIL_BODY_BYTES = 1024 * 1024;
 
 interface SendBody {
   to: string;          // 수신자 이메일
@@ -60,7 +63,11 @@ export async function POST(req: NextRequest) {
   const planCheck = await checkPlan(req, 'pro');
   if (!planCheck.ok) return planCheck.response;
 
-  const body = await req.json().catch(() => ({})) as SendBody;
+  let body = {} as SendBody;
+  try { body = await readBoundedJson<SendBody>(req, MAX_NEGOTIATION_EMAIL_BODY_BYTES); }
+  catch (error) {
+    if (boundedJsonError(error)?.code === 'PAYLOAD_TOO_LARGE') return NextResponse.json({ error: 'Request too large', code: 'PAYLOAD_TOO_LARGE' }, { status: 413 });
+  }
   if (!body.to || !body.subject || !body.body) {
     return NextResponse.json({ error: 'to, subject, body are required' }, { status: 400 });
   }
@@ -91,7 +98,7 @@ export async function POST(req: NextRequest) {
       html: textToHtml(body.body),
     });
 
-    recordUsageEvent(planCheck.userId, 'quote_negotiator');
+    recordUsageEvent(planCheck.userId, 'quote_negotiator', undefined, planCheck.orgId);
 
     return NextResponse.json({
       ok: true,

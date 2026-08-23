@@ -13,8 +13,8 @@
  *      (e.g. pasted via textarea or fetched from another endpoint).
  *
  *   2. multipart/form-data with a `file` field containing the .step / .stp
- *      file blob. Streams via `req.formData()`; same 5 MB cap as the JSON
- *      branch.
+ *      file blob. The complete request is byte-bounded before multipart
+ *      parsing; the STEP file itself keeps the same 5 MB cap as JSON.
  *
  * Either encoding flows into the same validator → importStep() pipeline.
  *
@@ -70,6 +70,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { importStep, StepImportError } from '@/lib/brep-bridge/stepImport';
 import { importStepWithKernel } from '@/lib/brep-bridge/stepKernelImport';
+import { boundedJsonError, readBoundedJson } from '@/lib/boundedJsonBody';
+import { readBoundedMultipartForm } from '@/lib/boundedMultipartForm';
 /** 커널 폴백 크기 상한 — 실측(코퍼스 최대 7.3MB)을 덮되 서버 메모리를 지키는 값. */
 const KERNEL_FALLBACK_MAX_BYTES = 8_000_000;
 import { validateStep } from '@/lib/brep-bridge/stepValidator';
@@ -79,6 +81,10 @@ export const dynamic = 'force-dynamic';
 
 /** 5 MB cap on STEP source size. See route header rationale. */
 const MAX_SOURCE_BYTES = 5 * 1024 * 1024;
+// JSON escaping can expand one source byte to six ASCII bytes (for example
+// `\u0000`), while multipart needs only boundary/header allowance.
+const MAX_JSON_REQUEST_BYTES = 16 * 1024 * 1024;
+const MAX_MULTIPART_REQUEST_BYTES = 6 * 1024 * 1024;
 
 interface StepImportJsonBody {
   source?: unknown;
@@ -100,10 +106,14 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 
   if (contentType.includes('multipart/form-data')) {
     // multipart/form-data branch: pull the file blob, read as text.
-    let form: FormData;
-    try {
-      form = await req.formData();
-    } catch {
+    const { form, tooLarge } = await readBoundedMultipartForm(req, MAX_MULTIPART_REQUEST_BYTES);
+    if (tooLarge) {
+      return NextResponse.json(
+        { ok: false, error: 'PAYLOAD_TOO_LARGE', message: `Multipart request exceeds ${MAX_MULTIPART_REQUEST_BYTES} byte limit` },
+        { status: 413 },
+      );
+    }
+    if (!form) {
       return NextResponse.json(
         { ok: false, error: 'BAD_REQUEST', message: 'Could not parse multipart form data' },
         { status: 400 },
@@ -138,9 +148,14 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   } else {
     // JSON branch.
     let body: StepImportJsonBody;
-    try {
-      body = (await req.json()) as StepImportJsonBody;
-    } catch {
+    try { body = await readBoundedJson<StepImportJsonBody>(req, MAX_JSON_REQUEST_BYTES); }
+    catch (error) {
+      if (boundedJsonError(error)?.code === 'PAYLOAD_TOO_LARGE') {
+        return NextResponse.json(
+          { ok: false, error: 'PAYLOAD_TOO_LARGE', message: `JSON request exceeds ${MAX_JSON_REQUEST_BYTES} byte limit` },
+          { status: 413 },
+        );
+      }
       return NextResponse.json(
         { ok: false, error: 'BAD_REQUEST', message: 'Body must be valid JSON' },
         { status: 400 },

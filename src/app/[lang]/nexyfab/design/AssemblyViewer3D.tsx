@@ -58,6 +58,8 @@ const ROLE_COL: Record<string, string> = {
   column: '#475569', beam: '#0e7490', girder: '#0e7490', crossbeam: '#5b6472',
   slab: '#94a3b8', joist: '#854d0e', deck: '#a16207', floor: '#d1d5db',
   table: '#0f766e', counter: '#7c3aed', wall: '#78716c', base: '#57534e', frame: '#3f4756',
+  terrain: '#7c9a5f', hardscape: '#b9a58b', 'plant-trunk': '#7c4a2d', 'plant-canopy': '#4d8b3d',
+  corridor: '#64748b', drainage: '#0284c7',
 };
 function colorOf(p: ViewerPart): string {
   if (p.role && ROLE_COL[p.role]) return ROLE_COL[p.role];
@@ -97,26 +99,27 @@ export default function AssemblyViewer3D({
 }) {
   const wrapRef = useRef<HTMLDivElement | null>(null);
   const partsRef = useRef(parts);
-  partsRef.current = parts;
   const cbRef = useRef(onPick);
-  cbRef.current = onPick;
   const modeRef = useRef<PickMode>(mode);
-  modeRef.current = mode;
   const unitRef = useRef<'mm' | 'm'>(unit);
-  unitRef.current = unit;
   const lastPickRef = useRef<{ partId: string; faces: FaceKey[] } | null>(null);
   const apiRef = useRef<{ setParts: (list: ViewerPart[]) => void; setMode: (m: PickMode) => void; refreshOverlays: () => void } | null>(null);
 
   useEffect(() => {
+    partsRef.current = parts;
     apiRef.current?.setParts(parts);
   }, [parts]);
 
+  useEffect(() => { cbRef.current = onPick; }, [onPick]);
+
   useEffect(() => {
+    modeRef.current = mode;
     apiRef.current?.setMode(mode);
   }, [mode]);
 
   // 단위 토글 시 치수선 라벨 재생성 (표시 전용)
   useEffect(() => {
+    unitRef.current = unit;
     apiRef.current?.refreshOverlays();
   }, [unit]);
 
@@ -152,6 +155,7 @@ export default function AssemblyViewer3D({
     let pickables: THREE.Mesh[] = [];
     const holderByPart = new Map<string, { holder: THREE.Group; part: ViewerPart }>();
     let hovered: THREE.Mesh | null = null;
+    let selectedMesh: THREE.Mesh | null = null;
     let overlays: THREE.Object3D[] = []; // 면 하이라이트 + ⑦ 치수선(라인·화살촉·라벨 스프라이트)
     let fitted = false;
     let disposed = false;
@@ -186,6 +190,14 @@ export default function AssemblyViewer3D({
         disposeObj(ov);
       }
       overlays = [];
+    };
+
+    const setSelectedMesh = (mesh: THREE.Mesh | null) => {
+      if (selectedMesh && selectedMesh !== mesh) {
+        (selectedMesh.material as THREE.MeshLambertMaterial).emissive.setHex(selectedMesh === hovered ? HOVER_EMISSIVE : 0x000000);
+      }
+      selectedMesh = mesh;
+      if (selectedMesh) (selectedMesh.material as THREE.MeshLambertMaterial).emissive.setHex(0x2563eb);
     };
 
     const makeFacePlane = (part: ViewerPart, face: FaceKey): THREE.Mesh | null => {
@@ -254,6 +266,14 @@ export default function AssemblyViewer3D({
       clearOverlays();
       const rec = holderByPart.get(partId);
       if (!rec?.part.aabb) return;
+      // 선택 부품의 기준축을 항상 표시해 이동/정렬 방향을 혼동하지 않게 한다.
+      const [x0, y0, z0] = rec.part.aabb.min;
+      const [x1, y1, z1] = rec.part.aabb.max;
+      const axisSize = Math.max(x1 - x0, y1 - y0, z1 - z0, 20) * 0.28;
+      const axes = new THREE.AxesHelper(axisSize);
+      axes.position.set((x0 + x1) / 2, (y0 + y1) / 2, (z0 + z1) / 2);
+      rec.holder.add(axes);
+      overlays.push(axes);
       for (const face of faces) {
         const plane = makeFacePlane(rec.part, face);
         if (plane) {
@@ -284,6 +304,7 @@ export default function AssemblyViewer3D({
       group = new THREE.Group();
       pickables = [];
       holderByPart.clear();
+      selectedMesh = null;
 
       list.forEach((p, i) => {
         const partId = p.id ?? `${p.type ?? 'part'}_${i}`;
@@ -414,6 +435,7 @@ export default function AssemblyViewer3D({
     };
 
     const handleFace = (hit: Hit) => {
+      setSelectedMesh(hit.mesh);
       lastPickRef.current = { partId: hit.partId, faces: [hit.faceKey] };
       applyOverlays(hit.partId, [hit.faceKey]);
       const { partId, faceKey } = hit;
@@ -426,6 +448,7 @@ export default function AssemblyViewer3D({
 
     const handleEdge = (hit: Hit) => {
       if (!hit.part.aabb) return;
+      setSelectedMesh(hit.mesh);
       const faces = edgeFaces(hit.part, hit.faceKey, hit.local);
       lastPickRef.current = { partId: hit.partId, faces };
       applyOverlays(hit.partId, faces);
@@ -522,6 +545,7 @@ export default function AssemblyViewer3D({
         modeLocal = m;
         clearPending();
         clearOverlays();
+        setSelectedMesh(null);
         lastPickRef.current = null;
       },
       refreshOverlays: () => {

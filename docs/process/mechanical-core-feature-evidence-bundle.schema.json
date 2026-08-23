@@ -1,0 +1,81 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://nexyfab.com/schemas/mechanical-core-feature-evidence-bundle.v2.json",
+  "title": "NexyFab mechanical core 30-feature evidence bundle",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "evidenceRootId", "receipt", "artifacts", "runner", "validator"],
+  "$defs": {
+    "sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+    "artifact": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "sha256"],
+      "properties": { "path": { "type": "string", "minLength": 1 }, "sha256": { "$ref": "#/$defs/sha256" } }
+    },
+    "signoff": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["reviewerId", "signedAt", "targetHash", "signature"],
+      "properties": {
+        "reviewerId": { "type": "string", "minLength": 1 },
+        "signedAt": { "type": "string", "format": "date-time" },
+        "targetHash": { "$ref": "#/$defs/sha256" },
+        "signature": { "type": "string", "minLength": 1 }
+      }
+    }
+  },
+  "properties": {
+    "schema": { "const": "nexyfab.mechanical-core-feature-evidence-bundle.v2" },
+    "evidenceRootId": { "$ref": "#/$defs/sha256" },
+    "receipt": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schema", "releaseChannel", "generatedAt", "designRevisionSha256", "sourceEvidenceSha256", "cases"],
+      "properties": {
+        "schema": { "const": "nexyfab.mechanical-core-feature-closed-loop.v1" },
+        "releaseChannel": { "const": "mechanical-core" },
+        "generatedAt": { "type": "string", "format": "date-time" },
+        "designRevisionSha256": { "$ref": "#/$defs/sha256" },
+        "sourceEvidenceSha256": { "$ref": "#/$defs/sha256" },
+        "cases": {
+          "type": "array",
+          "minItems": 30,
+          "maxItems": 30,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["feature", "cycles", "status", "checks"],
+            "properties": {
+              "feature": { "enum": ["hole", "fillet", "chamfer", "shell", "rib", "linearPattern", "circularPattern", "draft", "scale", "moveCopy", "variableFillet", "offsetFace", "thread", "helix", "bend", "flange", "hem", "jog", "tab", "cut", "bendRelief", "cornerRelief", "variableShell", "sketchExtrude", "revolve", "sweep", "loft", "mirror", "boolean", "splitBody"] },
+              "cycles": { "const": 3 },
+              "status": { "const": "pass" },
+              "checks": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["manualEditApplied", "aiPatchApplied", "nfabRoundtrip", "stepRoundtrip", "stableIdsPreserved", "lockedValuesPreserved", "selectionBindingsPreserved", "topologySilentRemapCount"],
+                "properties": {
+                  "manualEditApplied": { "const": true }, "aiPatchApplied": { "const": true },
+                  "nfabRoundtrip": { "const": true }, "stepRoundtrip": { "const": true },
+                  "stableIdsPreserved": { "const": true }, "lockedValuesPreserved": { "const": true },
+                  "selectionBindingsPreserved": { "const": true }, "topologySilentRemapCount": { "const": 0 }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "artifacts": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["sourceEvidence", "nativeRunnerEvidence"],
+      "properties": {
+        "sourceEvidence": { "$ref": "#/$defs/artifact" },
+        "nativeRunnerEvidence": { "$ref": "#/$defs/artifact" }
+      }
+    },
+    "runner": { "$ref": "#/$defs/signoff" },
+    "validator": { "$ref": "#/$defs/signoff" }
+  }
+}

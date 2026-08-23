@@ -241,3 +241,140 @@ CREATE TABLE IF NOT EXISTS nf_cad_workspace_heads (
   content_hash TEXT NOT NULL,
   updated_at   BIGINT NOT NULL
 );
+
+-- Project/tenant-scoped immutable artifacts and resumable R2 upload sessions.
+CREATE TABLE IF NOT EXISTS nf_artifact_upload_sessions (
+  id TEXT PRIMARY KEY,
+  project_id TEXT NOT NULL,
+  tenant_id TEXT NOT NULL,
+  user_id TEXT NOT NULL,
+  object_key TEXT NOT NULL UNIQUE,
+  filename TEXT NOT NULL,
+  media_type TEXT NOT NULL,
+  format TEXT NOT NULL,
+  expected_size BIGINT NOT NULL,
+  expected_sha256 TEXT NOT NULL,
+  shape_identity_sha256 TEXT,
+  status TEXT NOT NULL,
+  created_at BIGINT NOT NULL,
+  expires_at BIGINT NOT NULL,
+  completed_at BIGINT,
+  artifact_id TEXT,
+  failure_code TEXT,
+  upload_mode TEXT NOT NULL DEFAULT 'SINGLE_PUT',
+  storage_upload_id TEXT,
+  part_size BIGINT,
+  total_parts INTEGER,
+  multipart_completed_at BIGINT
+);
+CREATE INDEX IF NOT EXISTS idx_nf_artifact_upload_project
+  ON nf_artifact_upload_sessions(project_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_nf_artifact_upload_owner
+  ON nf_artifact_upload_sessions(user_id, status, expires_at);
+CREATE TABLE IF NOT EXISTS nf_cad_artifacts (
+  id TEXT PRIMARY KEY,
+  contract_version TEXT NOT NULL,
+  project_id TEXT NOT NULL,
+  tenant_id TEXT NOT NULL,
+  object_key TEXT NOT NULL UNIQUE,
+  media_type TEXT NOT NULL,
+  format TEXT NOT NULL,
+  byte_length BIGINT NOT NULL,
+  content_sha256 TEXT NOT NULL,
+  shape_identity_sha256 TEXT,
+  producer_build_id TEXT NOT NULL,
+  kernel_identity TEXT NOT NULL,
+  created_by TEXT NOT NULL,
+  created_at BIGINT NOT NULL,
+  immutability_state TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_nf_cad_artifact_project
+  ON nf_cad_artifacts(project_id, created_at DESC);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_nf_cad_artifact_project_hash
+  ON nf_cad_artifacts(project_id, content_sha256);
+
+-- Durable transport remains non-authoritative; Core records job authorization
+-- and accepted compute receipts in the relational system of record.
+CREATE TABLE IF NOT EXISTS nf_cad_job_registry (
+  job_id TEXT PRIMARY KEY,
+  tenant_id TEXT NOT NULL,
+  project_id TEXT NOT NULL,
+  kind TEXT NOT NULL,
+  message_sha256 TEXT NOT NULL,
+  message_json TEXT NOT NULL,
+  status TEXT NOT NULL,
+  requested_by TEXT NOT NULL,
+  created_at BIGINT NOT NULL,
+  updated_at BIGINT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_nf_cad_job_registry_project
+  ON nf_cad_job_registry(project_id, created_at DESC);
+CREATE TABLE IF NOT EXISTS nf_cad_job_receipts (
+  job_id TEXT PRIMARY KEY,
+  message_sha256 TEXT NOT NULL,
+  receipt_sha256 TEXT NOT NULL UNIQUE,
+  receipt_json TEXT NOT NULL,
+  execution TEXT NOT NULL,
+  accepted_at BIGINT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS nf_cad_job_output_intents (
+  job_id TEXT NOT NULL,
+  artifact_id TEXT NOT NULL,
+  object_key TEXT NOT NULL UNIQUE,
+  intent_sha256 TEXT NOT NULL,
+  intent_json TEXT NOT NULL,
+  status TEXT NOT NULL,
+  created_at BIGINT NOT NULL,
+  committed_at BIGINT,
+  committed_artifact_id TEXT,
+  PRIMARY KEY(job_id, artifact_id)
+);
+
+-- Revision-bound Assembly -> Drawing handoffs. Payload JSON is canonicalized,
+-- content-hashed, immutable, tenant/project scoped, and expires automatically.
+CREATE TABLE IF NOT EXISTS nf_assembly_drawing_handoffs (
+  id TEXT PRIMARY KEY,
+  project_id TEXT NOT NULL,
+  tenant_id TEXT NOT NULL,
+  source_revision INTEGER NOT NULL,
+  source_content_sha256 TEXT NOT NULL,
+  payload_sha256 TEXT NOT NULL,
+  payload_json TEXT NOT NULL,
+  byte_length BIGINT NOT NULL,
+  created_by TEXT NOT NULL,
+  created_at BIGINT NOT NULL,
+  expires_at BIGINT NOT NULL,
+  immutability_state TEXT NOT NULL,
+  UNIQUE(project_id, source_revision, payload_sha256)
+);
+CREATE INDEX IF NOT EXISTS idx_nf_assembly_drawing_handoff_lookup
+  ON nf_assembly_drawing_handoffs(project_id, tenant_id, id);
+CREATE INDEX IF NOT EXISTS idx_nf_assembly_drawing_handoff_expiry
+  ON nf_assembly_drawing_handoffs(expires_at);
+
+-- Interior precision placement documents (revision-bound CAS heads/snapshots).
+CREATE TABLE IF NOT EXISTS nf_interior_placement_draft_heads (
+  project_id TEXT NOT NULL,
+  document_id TEXT NOT NULL,
+  room_document_id TEXT NOT NULL,
+  project_revision INTEGER NOT NULL,
+  content_hash TEXT NOT NULL,
+  locks_json TEXT NOT NULL DEFAULT '[]',
+  updated_at INTEGER NOT NULL,
+  PRIMARY KEY(project_id, document_id)
+);
+CREATE TABLE IF NOT EXISTS nf_interior_placement_drafts (
+  id TEXT PRIMARY KEY,
+  project_id TEXT NOT NULL,
+  document_id TEXT NOT NULL,
+  room_document_id TEXT NOT NULL,
+  project_revision INTEGER NOT NULL,
+  document_revision INTEGER NOT NULL,
+  content_hash TEXT NOT NULL,
+  payload_json TEXT NOT NULL,
+  created_by TEXT NOT NULL,
+  created_at INTEGER NOT NULL,
+  UNIQUE(project_id, document_id, project_revision)
+);
+CREATE INDEX IF NOT EXISTS idx_nf_interior_placement_drafts_lookup
+  ON nf_interior_placement_drafts(project_id, document_id, project_revision DESC);

@@ -14,7 +14,8 @@ describe("IFC specialized domain IR route", () => {
     const json = await response.json();
     expect(json).toMatchObject({
       ok: true,
-      releaseReady: true,
+      verificationPassed: true,
+      releaseReady: false,
       ir: {
         kind: "alignment",
         horizontal: [{ endPoint: [100, 0], evaluation: "analytic" }],
@@ -74,7 +75,8 @@ describe("IFC specialized domain IR route", () => {
     ).json();
     expect(json).toMatchObject({
       ok: true,
-      releaseReady: true,
+      verificationPassed: true,
+      releaseReady: false,
       ir: {
         horizontal: [
           {

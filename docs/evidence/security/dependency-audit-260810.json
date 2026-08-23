@@ -1,8 +1,8 @@
 {
   "schema": "nexyfab-dependency-audit-v1",
-  "generatedAt": "2026-08-10T21:17:44.191Z",
+  "generatedAt": "2026-08-23T07:02:41.785Z",
   "command": "npm audit --audit-level=low --json",
-  "packageLockSha256": "ec5896a3246a0404b91265df9f5ffbc306d5f4fd2760c677ffb6524a7b573b2b",
+  "packageLockSha256": "d27bddc997f10ade5cf94722b17c70a4e958b1e8f631f1e807a3ac4c51289f26",
   "status": "pass",
   "vulnerabilities": {
     "info": 0,
@@ -13,11 +13,11 @@
     "total": 0
   },
   "dependencies": {
-    "prod": 597,
-    "dev": 536,
+    "prod": 598,
+    "dev": 537,
     "optional": 206,
     "peer": 36,
     "peerOptional": 0,
-    "total": 1248
+    "total": 1250
   }
 }

@@ -120,7 +120,17 @@ describe('holesFromSketch', () => {
     if (r.ok) {
       expect((r.scad.match(/cylinder\(/g) ?? [])).toHaveLength(1);
       expect(r.scad).not.toContain('d1=0');
+      expect(r.scad).toMatch(/translate\(\[0, 0, -0\.01\]\) cylinder\(h=10\.02/);
     }
+  });
+
+  it('rejects a hole whose bore cannot fit inside the parent profile', () => {
+    const r = holesFromSketch(rectWithCenters(), {
+      extrudeDepth: 10,
+      holes: [{ ...baseDrilledHole, pointId: 'h1', diameter: 20 }],
+    });
+    expect(r.ok).toBe(false);
+    if (!r.ok) expect(r.error).toMatch(/oversized|clearance/i);
   });
 
   it('missing pointId → ok=false with specific error', () => {

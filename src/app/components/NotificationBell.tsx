@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
+import { toIsoLang, type IsoLang } from '@/lib/i18n/normalize';
 
 interface Notification {
   id: string;
@@ -16,7 +17,17 @@ interface Notification {
 
 interface NotificationBellProps {
   recipient: string;
+  lang?: string;
 }
+
+const COPY: Record<IsoLang, { label: string; all: string; unread: string; markAll: string; clearAll: string; empty: string; emptyUnread: string; newHint: string; delete: string; refresh: string; now: string; minute: string; hour: string; day: string; today: string; yesterday: string; thisWeek: string; previous: string; locale: string }> = {
+  ko: { label: '알림', all: '전체', unread: '읽지 않음', markAll: '모두 읽음', clearAll: '모두 삭제', empty: '알림이 없습니다', emptyUnread: '읽지 않은 알림이 없습니다', newHint: '새 알림이 오면 여기에 표시됩니다', delete: '삭제', refresh: '새로고침', now: '방금 전', minute: '분 전', hour: '시간 전', day: '일 전', today: '오늘', yesterday: '어제', thisWeek: '이번 주', previous: '이전', locale: 'ko-KR' },
+  en: { label: 'Notifications', all: 'All', unread: 'Unread', markAll: 'Mark all read', clearAll: 'Delete all', empty: 'No notifications', emptyUnread: 'No unread notifications', newHint: 'New notifications will appear here', delete: 'Delete', refresh: 'Refresh', now: 'Just now', minute: 'm ago', hour: 'h ago', day: 'd ago', today: 'Today', yesterday: 'Yesterday', thisWeek: 'This week', previous: 'Earlier', locale: 'en-US' },
+  ja: { label: '通知', all: 'すべて', unread: '未読', markAll: 'すべて既読', clearAll: 'すべて削除', empty: '通知はありません', emptyUnread: '未読の通知はありません', newHint: '新しい通知はここに表示されます', delete: '削除', refresh: '更新', now: 'たった今', minute: '分前', hour: '時間前', day: '日前', today: '今日', yesterday: '昨日', thisWeek: '今週', previous: '以前', locale: 'ja-JP' },
+  zh: { label: '通知', all: '全部', unread: '未读', markAll: '全部标为已读', clearAll: '全部删除', empty: '暂无通知', emptyUnread: '暂无未读通知', newHint: '新通知会显示在这里', delete: '删除', refresh: '刷新', now: '刚刚', minute: '分钟前', hour: '小时前', day: '天前', today: '今天', yesterday: '昨天', thisWeek: '本周', previous: '更早', locale: 'zh-CN' },
+  es: { label: 'Notificaciones', all: 'Todas', unread: 'No leídas', markAll: 'Marcar todo leído', clearAll: 'Eliminar todo', empty: 'No hay notificaciones', emptyUnread: 'No hay notificaciones sin leer', newHint: 'Las nuevas notificaciones aparecerán aquí', delete: 'Eliminar', refresh: 'Actualizar', now: 'Ahora', minute: ' min', hour: ' h', day: ' d', today: 'Hoy', yesterday: 'Ayer', thisWeek: 'Esta semana', previous: 'Anteriores', locale: 'es-ES' },
+  ar: { label: 'الإشعارات', all: 'الكل', unread: 'غير مقروءة', markAll: 'تحديد الكل كمقروء', clearAll: 'حذف الكل', empty: 'لا توجد إشعارات', emptyUnread: 'لا توجد إشعارات غير مقروءة', newHint: 'ستظهر الإشعارات الجديدة هنا', delete: 'حذف', refresh: 'تحديث', now: 'الآن', minute: ' د مضت', hour: ' س مضت', day: ' يوم مضى', today: 'اليوم', yesterday: 'أمس', thisWeek: 'هذا الأسبوع', previous: 'أقدم', locale: 'ar-SA' },
+};
 
 const TYPE_ICON: Record<string, string> = {
   contract_status: '📋',
@@ -38,31 +49,31 @@ function getNotificationLink(n: Notification, recipient: string): string {
   return isAdmin ? '/admin' : '/partner/dashboard';
 }
 
-function timeAgo(iso: string): string {
+function timeAgo(iso: string, copy: typeof COPY[IsoLang]): string {
   const diff = Date.now() - new Date(iso).getTime();
   const m = Math.floor(diff / 60000);
-  if (m < 1) return '방금 전';
-  if (m < 60) return `${m}분 전`;
+  if (m < 1) return copy.now;
+  if (m < 60) return `${m}${copy.minute}`;
   const h = Math.floor(m / 60);
-  if (h < 24) return `${h}시간 전`;
+  if (h < 24) return `${h}${copy.hour}`;
   const d = Math.floor(h / 24);
-  if (d < 7) return `${d}일 전`;
-  return new Date(iso).toLocaleDateString('ko-KR', { month: 'short', day: 'numeric' });
+  if (d < 7) return `${d}${copy.day}`;
+  return new Date(iso).toLocaleDateString(copy.locale, { month: 'short', day: 'numeric' });
 }
 
-function groupByDate(notifications: Notification[]): { label: string; items: Notification[] }[] {
+function groupByDate(notifications: Notification[], copy: typeof COPY[IsoLang]): { label: string; items: Notification[] }[] {
   const today = new Date(); today.setHours(0, 0, 0, 0);
   const yesterday = new Date(today); yesterday.setDate(today.getDate() - 1);
   const weekAgo = new Date(today); weekAgo.setDate(today.getDate() - 7);
 
-  const groups: Record<string, Notification[]> = { '오늘': [], '어제': [], '이번 주': [], '이전': [] };
+  const groups: Record<string, Notification[]> = { [copy.today]: [], [copy.yesterday]: [], [copy.thisWeek]: [], [copy.previous]: [] };
 
   for (const n of notifications) {
     const d = new Date(n.createdAt); d.setHours(0, 0, 0, 0);
-    if (d >= today) groups['오늘'].push(n);
-    else if (d >= yesterday) groups['어제'].push(n);
-    else if (d >= weekAgo) groups['이번 주'].push(n);
-    else groups['이전'].push(n);
+    if (d >= today) groups[copy.today].push(n);
+    else if (d >= yesterday) groups[copy.yesterday].push(n);
+    else if (d >= weekAgo) groups[copy.thisWeek].push(n);
+    else groups[copy.previous].push(n);
   }
 
   return Object.entries(groups)
@@ -70,8 +81,9 @@ function groupByDate(notifications: Notification[]): { label: string; items: Not
     .map(([label, items]) => ({ label, items }));
 }
 
-export default function NotificationBell({ recipient }: NotificationBellProps) {
+export default function NotificationBell({ recipient, lang = 'ko' }: NotificationBellProps) {
   const router = useRouter();
+  const copy = COPY[toIsoLang(lang)];
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [open, setOpen] = useState(false);
   const [filter, setFilter] = useState<'all' | 'unread'>('all');
@@ -153,7 +165,7 @@ export default function NotificationBell({ recipient }: NotificationBellProps) {
   }
 
   const visible = filter === 'unread' ? notifications.filter(n => !n.read) : notifications;
-  const groups = groupByDate(visible);
+  const groups = groupByDate(visible, copy);
 
   return (
     <>
@@ -161,7 +173,7 @@ export default function NotificationBell({ recipient }: NotificationBellProps) {
       <button
         onClick={() => setOpen(true)}
         className="relative p-2 rounded-lg text-gray-500 hover:bg-gray-100 transition"
-        aria-label="알림"
+        aria-label={copy.label}
       >
         <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
           <path strokeLinecap="round" strokeLinejoin="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
@@ -190,7 +202,7 @@ export default function NotificationBell({ recipient }: NotificationBellProps) {
             {/* Header */}
             <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between shrink-0">
               <div className="flex items-center gap-2">
-                <span className="text-base font-black text-gray-900">알림</span>
+                <span className="text-base font-black text-gray-900">{copy.label}</span>
                 {unreadCount > 0 && (
                   <span className="px-2 py-0.5 bg-red-500 text-white text-xs font-bold rounded-full leading-none">
                     {unreadCount}
@@ -204,7 +216,7 @@ export default function NotificationBell({ recipient }: NotificationBellProps) {
                     disabled={loading}
                     className="text-xs text-blue-600 hover:underline font-semibold disabled:opacity-50"
                   >
-                    모두 읽음
+                    {copy.markAll}
                   </button>
                 )}
                 {notifications.length > 0 && (
@@ -212,9 +224,9 @@ export default function NotificationBell({ recipient }: NotificationBellProps) {
                     onClick={clearAll}
                     disabled={loading}
                     className="text-xs text-gray-400 hover:text-red-500 hover:underline disabled:opacity-50"
-                    title="모두 삭제"
+                    title={copy.clearAll}
                   >
-                    모두 삭제
+                    {copy.clearAll}
                   </button>
                 )}
                 <button
@@ -236,7 +248,7 @@ export default function NotificationBell({ recipient }: NotificationBellProps) {
                   onClick={() => setFilter(f)}
                   className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition ${filter === f ? 'bg-blue-600 text-white' : 'text-gray-500 hover:bg-gray-100'}`}
                 >
-                  {f === 'all' ? '전체' : `읽지 않음 ${unreadCount > 0 ? `(${unreadCount})` : ''}`}
+                  {f === 'all' ? copy.all : `${copy.unread} ${unreadCount > 0 ? `(${unreadCount})` : ''}`}
                 </button>
               ))}
             </div>
@@ -247,9 +259,9 @@ export default function NotificationBell({ recipient }: NotificationBellProps) {
                 <div className="flex flex-col items-center justify-center h-full text-center px-6 py-16">
                   <div className="text-5xl mb-4">🔔</div>
                   <p className="text-sm font-semibold text-gray-500">
-                    {filter === 'unread' ? '읽지 않은 알림이 없습니다' : '알림이 없습니다'}
+                    {filter === 'unread' ? copy.emptyUnread : copy.empty}
                   </p>
-                  <p className="text-xs text-gray-400 mt-1">새 알림이 오면 여기에 표시됩니다</p>
+                  <p className="text-xs text-gray-400 mt-1">{copy.newHint}</p>
                 </div>
               ) : (
                 groups.map(({ label, items }) => (
@@ -279,14 +291,14 @@ export default function NotificationBell({ recipient }: NotificationBellProps) {
                             )}
                           </div>
                           <p className="text-xs text-gray-500 mt-0.5 line-clamp-2 leading-relaxed">{n.message}</p>
-                          <p className="text-[10px] text-gray-400 mt-1.5 font-medium">{timeAgo(n.createdAt)}</p>
+                          <p className="text-[10px] text-gray-400 mt-1.5 font-medium">{timeAgo(n.createdAt, copy)}</p>
                         </div>
 
                         {/* Delete button */}
                         <button
                           onClick={(e) => deleteOne(n.id, e)}
                           className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 p-1 rounded text-gray-300 hover:text-red-400 hover:bg-red-50 transition-all text-xs leading-none"
-                          title="삭제"
+                          title={copy.delete}
                         >
                           ✕
                         </button>
@@ -303,7 +315,7 @@ export default function NotificationBell({ recipient }: NotificationBellProps) {
                 onClick={() => { setOpen(false); fetchNotifications(); }}
                 className="w-full py-2 text-xs font-semibold text-gray-500 hover:text-gray-700 hover:bg-gray-50 rounded-lg transition"
               >
-                새로고침
+                {copy.refresh}
               </button>
             </div>
           </div>

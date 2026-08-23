@@ -10,7 +10,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
-import { isKorean } from '@/lib/i18n/normalize';
+import { createCommercialLocalizer } from '@/lib/i18n/commercialLocalizer';
 
 interface Spec {
   applicable: boolean; kind?: string; note?: string; thicknessMm?: number; cutLengthMm?: number; cutLengthM?: number;
@@ -28,13 +28,13 @@ interface Spec {
   itemTypes?: number; itemCount?: number; seatTotal?: number; floorAreaM2?: number | null;
 }
 
-const KIND_TITLE: Record<string, [string, string]> = {
-  steel_member: ['제조 (강재 부재)', 'Manufacture (steel member)'],
-  steel_assembly: ['제조 (강재 어셈블리)', 'Manufacture (steel assembly)'],
-  bent: ['제조 (판금 절곡)', 'Manufacture (bent sheet)'],
-  concrete: ['제조 (콘크리트 물량)', 'Manufacture (concrete BOQ)'],
-  timber: ['제조 (목재 부재)', 'Manufacture (timber)'],
-  ffe: ['산출 (FF&E 가구)', 'Deliverable (FF&E)'],
+const KIND_TITLE: Record<string, { ko: string; en: string }> = {
+  steel_member: { ko: '제조 (강재 부재)', en: 'Manufacture (steel member)' },
+  steel_assembly: { ko: '제조 (강재 어셈블리)', en: 'Manufacture (steel assembly)' },
+  bent: { ko: '제조 (판금 절곡)', en: 'Manufacture (bent sheet)' },
+  concrete: { ko: '제조 (콘크리트 물량)', en: 'Manufacture (concrete BOQ)' },
+  timber: { ko: '제조 (목재 부재)', en: 'Manufacture (timber)' },
+  ffe: { ko: '산출 (FF&E 가구)', en: 'Deliverable (FF&E)' },
 };
 interface Estimate {
   applicable: boolean; currency?: string; estimate?: boolean;
@@ -85,11 +85,15 @@ const BREAKDOWN_KO: Record<string, string> = {
   material: '소재', cut: '절단', pierce: '피어싱', bend: '절곡', setup: '셋업',
   concrete: '콘크리트', rebar: '철근', formwork: '거푸집', furniture: '가구', install: '설치',
 };
+const BREAKDOWN_EN: Record<string, string> = {
+  material: 'Material', cut: 'Cut', pierce: 'Pierce', bend: 'Bend', setup: 'Setup',
+  concrete: 'Concrete', rebar: 'Rebar', formwork: 'Formwork', furniture: 'Furniture', install: 'Install',
+};
 
 const won = (n?: number) => (typeof n === 'number' ? '₩' + n.toLocaleString() : '—');
 
 export default function FabPanel({ intent, name, lang }: { intent: unknown; name?: string; lang: string }) {
-  const ko = isKorean(lang);
+  const L = createCommercialLocalizer(lang);
   const [rates, setRates] = useState<Record<string, number> | null>(null);
   const [res, setRes] = useState<FabResp | null>(null);
   const [busy, setBusy] = useState(false);
@@ -135,7 +139,7 @@ export default function FabPanel({ intent, name, lang }: { intent: unknown; name
   return (
     <div style={{ padding: '0 16px 16px', borderTop: '1px solid var(--nx-border, #dfe3e8)', paddingTop: 14 }}>
       <div style={{ fontSize: 12, fontWeight: 800, marginBottom: 8 }}>
-        {(() => { const t = spec?.kind && KIND_TITLE[spec.kind]; return t ? (ko ? t[0] : t[1]) : ko ? '제조 (판재 레이저)' : 'Manufacture (sheet laser)'; })()}
+        {(() => { const t = spec?.kind && KIND_TITLE[spec.kind]; return t ? L(t.ko, t.en) : L('제조 (판재 레이저)', 'Manufacture (sheet laser)'); })()}
       </div>
 
       {spec && !spec.applicable ? (
@@ -146,59 +150,59 @@ export default function FabPanel({ intent, name, lang }: { intent: unknown; name
         <>
           {/* 명세(결정론) — kind별 */}
           <div style={{ fontSize: 11.5, marginBottom: 8 }}>
-            <div style={{ color: 'var(--nx-text-3, #6b7684)', marginBottom: 3 }}>{ko ? '제조 명세 (정확)' : 'Spec (exact)'}</div>
+            <div style={{ color: 'var(--nx-text-3, #6b7684)', marginBottom: 3 }}>{L('제조 명세 (정확)', 'Spec (exact)')}</div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2px 8px' }}>
               {spec.kind === 'ffe' ? (
                 <>
-                  <Row k={ko ? '바닥면적' : 'Floor area'} v={`${spec.floorAreaM2 ?? '—'} m²`} />
-                  <Row k={ko ? '좌석 수' : 'Seats'} v={`${spec.seatTotal}`} />
-                  <Row k={ko ? '품목 종류' : 'Item types'} v={`${spec.itemTypes}`} />
-                  <Row k={ko ? '가구 수' : 'Items'} v={`${spec.itemCount}`} />
+                  <Row k={L('바닥면적', 'Floor area')} v={`${spec.floorAreaM2 ?? '—'} m²`} />
+                  <Row k={L('좌석 수', 'Seats')} v={`${spec.seatTotal}`} />
+                  <Row k={L('품목 종류', 'Item types')} v={`${spec.itemTypes}`} />
+                  <Row k={L('가구 수', 'Items')} v={`${spec.itemCount}`} />
                 </>
               ) : spec.kind === 'steel_assembly' ? (
                 <>
-                  <Row k={ko ? '부재 수' : 'Members'} v={`${spec.memberCount}`} />
-                  <Row k={ko ? '총 길이' : 'Total len'} v={`${spec.totalLengthMm} mm`} />
-                  <Row k={ko ? '총 중량' : 'Weight'} v={`${spec.weightKg} kg`} />
-                  <Row k={ko ? '절단' : 'Cuts'} v={`${spec.cuts}`} />
+                  <Row k={L('부재 수', 'Members')} v={`${spec.memberCount}`} />
+                  <Row k={L('총 길이', 'Total len')} v={`${spec.totalLengthMm} mm`} />
+                  <Row k={L('총 중량', 'Weight')} v={`${spec.weightKg} kg`} />
+                  <Row k={L('절단', 'Cuts')} v={`${spec.cuts}`} />
                 </>
               ) : spec.kind === 'steel_member' ? (
                 <>
-                  <Row k={ko ? '부재 길이' : 'Length'} v={`${spec.lengthMm} mm`} />
-                  <Row k={ko ? '단면적' : 'Section'} v={`${spec.sectionAreaMm2} mm²`} />
-                  <Row k={ko ? '단위 중량' : 'Unit wt'} v={`${spec.unitWeightKgM} kg/m`} />
-                  <Row k={ko ? '총 중량' : 'Weight'} v={`${spec.weightKg} kg`} />
-                  <Row k={ko ? '절단' : 'Cuts'} v={`${spec.cuts}`} />
+                  <Row k={L('부재 길이', 'Length')} v={`${spec.lengthMm} mm`} />
+                  <Row k={L('단면적', 'Section')} v={`${spec.sectionAreaMm2} mm²`} />
+                  <Row k={L('단위 중량', 'Unit wt')} v={`${spec.unitWeightKgM} kg/m`} />
+                  <Row k={L('총 중량', 'Weight')} v={`${spec.weightKg} kg`} />
+                  <Row k={L('절단', 'Cuts')} v={`${spec.cuts}`} />
                 </>
               ) : spec.kind === 'concrete' ? (
                 <>
-                  <Row k={ko ? '콘크리트량' : 'Volume'} v={`${spec.volumeM3} m³`} />
-                  <Row k={ko ? '거푸집' : 'Formwork'} v={`${spec.formworkM2} m²`} />
-                  <Row k={spec.rebarBasis === 'design' ? (ko ? '철근(배근)' : 'Rebar (design)') : ko ? '철근(추정)' : 'Rebar (est)'} v={`${spec.rebarKg} kg`} />
-                  <Row k={ko ? '콘크리트 중량' : 'Conc. weight'} v={`${spec.concreteWeightKg} kg`} />
+                  <Row k={L('콘크리트량', 'Volume')} v={`${spec.volumeM3} m³`} />
+                  <Row k={L('거푸집', 'Formwork')} v={`${spec.formworkM2} m²`} />
+                  <Row k={spec.rebarBasis === 'design' ? (L('철근(배근)', 'Rebar (design)')) : L('철근(추정)', 'Rebar (est)')} v={`${spec.rebarKg} kg`} />
+                  <Row k={L('콘크리트 중량', 'Conc. weight')} v={`${spec.concreteWeightKg} kg`} />
                 </>
               ) : spec.kind === 'timber' ? (
                 <>
-                  <Row k={ko ? '목재량' : 'Volume'} v={`${spec.volumeM3} m³`} />
-                  <Row k={ko ? '중량' : 'Weight'} v={`${spec.weightKg} kg`} />
+                  <Row k={L('목재량', 'Volume')} v={`${spec.volumeM3} m³`} />
+                  <Row k={L('중량', 'Weight')} v={`${spec.weightKg} kg`} />
                 </>
               ) : (
                 <>
-                  <Row k={ko ? '절단 길이' : 'Cut length'} v={`${spec.cutLengthM} m`} />
-                  <Row k={ko ? '피어싱' : 'Pierces'} v={`${spec.pierces}`} />
-                  <Row k={ko ? '중량' : 'Weight'} v={`${spec.weightKg} kg`} />
-                  <Row k={ko ? '절곡' : 'Bends'} v={`${spec.bends}`} />
-                  <Row k={ko ? '두께' : 'Thickness'} v={`${spec.thicknessMm} mm`} />
+                  <Row k={L('절단 길이', 'Cut length')} v={`${spec.cutLengthM} m`} />
+                  <Row k={L('피어싱', 'Pierces')} v={`${spec.pierces}`} />
+                  <Row k={L('중량', 'Weight')} v={`${spec.weightKg} kg`} />
+                  <Row k={L('절곡', 'Bends')} v={`${spec.bends}`} />
+                  <Row k={L('두께', 'Thickness')} v={`${spec.thicknessMm} mm`} />
                   {spec.kind === 'bent' && spec.flat
-                    ? <Row k={ko ? '전개 길이' : 'Flat length'} v={`${spec.flat.lengthMm} mm`} />
-                    : <Row k={ko ? '순면적' : 'Net area'} v={`${spec.netAreaMm2} mm²`} />}
+                    ? <Row k={L('전개 길이', 'Flat length')} v={`${spec.flat.lengthMm} mm`} />
+                    : <Row k={L('순면적', 'Net area')} v={`${spec.netAreaMm2} mm²`} />}
                 </>
               )}
             </div>
             {/* 부재 스케줄(BOM) */}
             {spec.kind === 'steel_assembly' && spec.members && (
               <div style={{ marginTop: 5, paddingTop: 5, borderTop: '1px dashed var(--nx-border, #dfe3e8)' }}>
-                <div style={{ fontSize: 10, color: 'var(--nx-text-3, #6b7684)', marginBottom: 2 }}>{ko ? '부재 스케줄' : 'Member schedule'}</div>
+                <div style={{ fontSize: 10, color: 'var(--nx-text-3, #6b7684)', marginBottom: 2 }}>{L('부재 스케줄', 'Member schedule')}</div>
                 {spec.members.map((m, i) => (
                   <div key={i} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10.5 }}>
                     <span>{m.id} · {m.kind} · L{m.lengthMm}</span>
@@ -210,10 +214,10 @@ export default function FabPanel({ intent, name, lang }: { intent: unknown; name
             {/* FF&E 스케줄 */}
             {spec.kind === 'ffe' && spec.items && (
               <div style={{ marginTop: 5, paddingTop: 5, borderTop: '1px dashed var(--nx-border, #dfe3e8)' }}>
-                <div style={{ fontSize: 10, color: 'var(--nx-text-3, #6b7684)', marginBottom: 2 }}>{ko ? '가구 스케줄 (FF&E)' : 'FF&E schedule'}</div>
+                <div style={{ fontSize: 10, color: 'var(--nx-text-3, #6b7684)', marginBottom: 2 }}>{L('가구 스케줄 (FF&E)', 'FF&E schedule')}</div>
                 {spec.items.map((it, i) => (
                   <div key={i} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10.5 }}>
-                    <span>{it.name} × {it.count}{it.seats > 0 ? (ko ? ` · ${it.seats}석` : ` · ${it.seats} seats`) : ''}</span>
+                    <span>{it.name} × {it.count}{it.seats > 0 ? (L(` · ${it.seats}석`, ` · ${it.seats} seats`)) : ''}</span>
                     <span style={{ fontWeight: 600 }}>{won(it.subtotal)}</span>
                   </div>
                 ))}
@@ -223,11 +227,11 @@ export default function FabPanel({ intent, name, lang }: { intent: unknown; name
 
           {/* 단가표(편집) */}
           <div style={{ fontSize: 11, marginBottom: 6 }}>
-            <div style={{ color: 'var(--nx-text-3, #6b7684)', marginBottom: 3 }}>{ko ? '단가표 (편집 가능)' : 'Rate card (editable)'}</div>
+            <div style={{ color: 'var(--nx-text-3, #6b7684)', marginBottom: 3 }}>{L('단가표 (편집 가능)', 'Rate card (editable)')}</div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 5 }}>
               {rateFieldsFor(spec.kind).map((f) => (
                 <label key={f.key} style={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-                  <span style={{ fontSize: 9.5, color: 'var(--nx-text-3, #6b7684)' }}>{ko ? f.ko : f.en} ({ko ? f.unit : (f.unitEn ?? f.unit)})</span>
+                  <span style={{ fontSize: 9.5, color: 'var(--nx-text-3, #6b7684)' }}>{L(f.ko, f.en)} ({L(f.unit, f.unitEn ?? f.unit)})</span>
                   <input
                     type="number" value={rates[f.key] ?? ''}
                     onChange={(e) => setRates((r) => ({ ...(r ?? {}), [f.key]: Number(e.target.value) }))}
@@ -241,14 +245,14 @@ export default function FabPanel({ intent, name, lang }: { intent: unknown; name
           {/* 철근 정밀화(#4): 설계 As 입력 시 배근 기반, 없으면 부피율 추정 */}
           {spec.kind === 'concrete' && (
             <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, marginBottom: 6 }}>
-              <span style={{ color: 'var(--nx-text-3, #6b7684)', whiteSpace: 'nowrap' }}>{ko ? '설계 철근 As (mm²)' : 'Design As (mm²)'}</span>
+              <span style={{ color: 'var(--nx-text-3, #6b7684)', whiteSpace: 'nowrap' }}>{L('설계 철근 As (mm²)', 'Design As (mm²)')}</span>
               <input
                 type="number" inputMode="decimal" value={rebarAs}
-                placeholder={ko ? '미입력=부피율 추정' : 'blank = est by volume'}
+                placeholder={L('미입력=부피율 추정', 'blank = est by volume')}
                 onChange={(e) => setRebarAs(e.target.value)}
                 style={{ flex: 1, padding: '4px 6px', borderRadius: 5, fontSize: 11, border: '1px solid var(--nx-border, #dfe3e8)', background: 'var(--nx-panel, #fff)', color: 'inherit', boxSizing: 'border-box' }}
               />
-              {spec.rebarBasis === 'design' && <span style={{ fontSize: 9, color: '#067647' }}>{ko ? '배근 기반' : 'design'}</span>}
+              {spec.rebarBasis === 'design' && <span style={{ fontSize: 9, color: '#067647' }}>{L('배근 기반', 'design')}</span>}
             </label>
           )}
 
@@ -256,14 +260,23 @@ export default function FabPanel({ intent, name, lang }: { intent: unknown; name
           {est && est.applicable && (
             <div style={{ padding: 8, borderRadius: 6, background: 'var(--nx-accent-soft, #eef4ff)', marginBottom: 8 }}>
               <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between' }}>
-                <span style={{ fontSize: 11, fontWeight: 700 }}>{ko ? '예상 비용' : 'Estimated cost'}
-                  <span style={{ marginLeft: 4, fontSize: 9, color: '#a15c00' }}>{ko ? '· 참고' : '· est.'}</span>
+                <span style={{ fontSize: 11, fontWeight: 700 }}>{L('예상 비용', 'Estimated cost')}
+                  <span style={{ marginLeft: 4, fontSize: 9, color: '#a15c00' }}>{L('· 참고', '· est.')}</span>
                 </span>
                 <span style={{ fontSize: 15, fontWeight: 800 }}>{won(est.total)}{busy ? '…' : ''}</span>
               </div>
               <div style={{ fontSize: 9.5, color: 'var(--nx-text-3, #6b7684)', marginTop: 3 }}>
-                {Object.entries(est.breakdown ?? {}).map(([k, v]) => `${ko ? (BREAKDOWN_KO[k] ?? k) : k} ${won(v)}`).join(' · ')}
-                {` · ${ko ? '마진' : 'margin'} ${won(est.margin)}`}
+                {Object.entries(est.breakdown ?? {}).map(([k, v]) => {
+                  const field = [...RATE_FIELDS_METAL, ...RATE_FIELDS_CONCRETE, ...RATE_FIELDS_TIMBER, ...RATE_FIELDS_FFE].find((item) => item.key === k);
+                  const breakdownEn = BREAKDOWN_EN[k];
+                  const label = field
+                    ? L(field.ko, field.en)
+                    : breakdownEn
+                      ? L(BREAKDOWN_KO[k], breakdownEn)
+                      : k;
+                  return `${label} ${won(v)}`;
+                }).join(' · ')}
+                {` · ${L('마진', 'margin')} ${won(est.margin)}`}
               </div>
               <div style={{ fontSize: 9, color: '#a15c00', marginTop: 3, fontStyle: 'italic' }}>{est.disclaimer}</div>
             </div>
@@ -273,16 +286,16 @@ export default function FabPanel({ intent, name, lang }: { intent: unknown; name
           <div style={{ display: 'flex', gap: 8 }}>
             {res?.dxf && (
               <button type="button" onClick={downloadDxf} style={btn}>
-                {ko ? '절단 DXF' : 'Cut DXF'}
+                {L('절단 DXF', 'Cut DXF')}
               </button>
             )}
             <Link href={`/${lang}/nexyfab/rfq`} style={{ ...btn, textAlign: 'center', textDecoration: 'none', background: 'var(--nx-accent, #2563eb)', color: '#fff', border: 'none', flex: 1 }}>
-              {ko ? '실제 견적 요청 →' : 'Real quote →'}
+              {L('실제 견적 요청 →', 'Real quote →')}
             </Link>
           </div>
         </>
       ) : (
-        <div style={{ fontSize: 11.5, color: 'var(--nx-text-3, #6b7684)' }}>{ko ? '계산 중…' : 'Computing…'}</div>
+        <div style={{ fontSize: 11.5, color: 'var(--nx-text-3, #6b7684)' }}>{L('계산 중…', 'Computing…')}</div>
       )}
     </div>
   );

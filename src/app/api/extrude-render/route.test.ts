@@ -5,7 +5,7 @@
  * tests cover the request-validation paths + pipeline-error response.
  * Full render path is covered by the openscad-render module tests.
  */
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect } from 'vitest';
 import { POST } from './route';
 
 function makeReq(body: unknown): Request {
@@ -15,6 +15,18 @@ function makeReq(body: unknown): Request {
     body: JSON.stringify(body),
   });
 }
+
+describe('POST /api/extrude-render - bounded JSON ingress', () => {
+  it('rejects a declared body beyond the geometry envelope', async () => {
+    const r = await POST(new Request('http://localhost/api/extrude-render', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', 'content-length': String(4 * 1024 * 1024 + 1) },
+      body: '{}',
+    }) as never);
+    expect(r.status).toBe(413);
+    await expect(r.json()).resolves.toMatchObject({ ok: false, code: 'TOO_LARGE' });
+  });
+});
 
 describe('POST /api/extrude-render — validation', () => {
   it('rejects malformed JSON body', async () => {

@@ -10,7 +10,7 @@
  *
  * Also: what do the live *FromSketch bridges produce for a tree?
  */
-import { describe, it } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import { buildExtrudeFromLoop, type ExtrudeFeature } from '@/lib/cad/extrudeProfile';
 import { buildFilletFeatureRef } from '@/lib/cad/filletProfile';
 import { buildChamferFeatureRef } from '@/lib/cad/chamferProfile';
@@ -106,17 +106,21 @@ describe('DOGFOOD 08 — edits that invalidate downstream bounds', () => {
         { id: 'l3', p1: 'c', p2: 'd' }, { id: 'l4', p1: 'd', p2: 'a' },
       ],
     };
-    const f = filletFromSketch(sketch, { extrudeDepth: 10, radius: 8, edgeSelection: 'vertical' } as never);
+    const f = filletFromSketch(sketch, { depth: 10, radius: 8, edgeSelection: 'vertical' });
     console.log('filletFromSketch =>', f.ok ? 'ok' : f.error);
     if (f.ok) console.log('  returns keys:', Object.keys(f));
     const p = linearPatternFromSketch(sketch, {
-      child: { kind: 'extrude', depth: 10 } as never,
+      child: { depth: 10 },
       count: 3, spacing: 30, direction: { x: 1, y: 0, z: 0 },
-    } as never);
+    });
     console.log('linearPatternFromSketch =>', p.ok ? 'ok' : p.error);
     if (p.ok) console.log('  returns keys:', Object.keys(p));
-    console.log('>>> neither returns a FeatureTree — they return a flat SCAD string.');
-    console.log('>>> so the tree the user SAVES never contains the fillet/pattern dependency');
-    console.log('>>> that W2-B promotion requires. W2-B is correct but unreachable from here.');
+    expect(f.ok).toBe(true);
+    expect(p.ok).toBe(true);
+    if (f.ok && p.ok) {
+      expect(f.tree.nodes[1]?.dependencies).toEqual(['fillet_child']);
+      expect(p.tree.nodes[1]?.dependencies).toEqual(['linear_pattern_child']);
+      console.log('>>> both bridges return persistable FeatureTrees with live seed dependencies.');
+    }
   });
 });

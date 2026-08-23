@@ -35,4 +35,94 @@ describe('CivilDocument', () => {
     expect(issues).toContain('TIN triangle');
     expect(issues).toContain('dependency cycle');
   });
+  it('accepts all-id or legacy id-less PVIs, but rejects partial and duplicate stable PVI identity', () => {
+    const stable = civil();
+    stable.profiles[0]!.points = [{ id: 'pvi-start', stationM: 0, elevationM: 10 }, { id: 'pvi-end', stationM: 100, elevationM: 10.5 }];
+    expect(validateCivilDocument(stable)).toEqual([]);
+    expect(civilDomainDocument(stable).objectIds).toEqual(expect.arrayContaining(['pvi-start', 'pvi-end']));
+    const partial = structuredClone(stable);
+    delete partial.profiles[0]!.points[1]!.id;
+    expect(validateCivilDocument(partial).join(' ')).toContain('invalid profile');
+    const duplicate = structuredClone(stable);
+    duplicate.profiles[0]!.points[1]!.id = 'pvi-start';
+    expect(validateCivilDocument(duplicate).join(' ')).toContain('Duplicate or empty civil id pvi-start');
+  });
+
+  it('validates bounded vertical curves against an owning profile and stable PVI', () => {
+    const model = civil();
+    model.profiles[0]!.points = [
+      { id: 'pvi-start', stationM: 0, elevationM: 10 },
+      { id: 'pvi-middle', stationM: 50, elevationM: 10.2 },
+      { id: 'pvi-end', stationM: 100, elevationM: 10.5 },
+    ];
+    model.verticalCurves = [{ id: 'vc-1', profileId: 'profile-a', pviId: 'pvi-middle', startStationM: 25, endStationM: 75, lengthM: 50 }];
+    expect(validateCivilDocument(model)).toEqual([]);
+    expect(civilDomainDocument(model).objectIds).toContain('vc-1');
+
+    const invalid = structuredClone(model);
+    invalid.verticalCurves = [
+      { id: 'vc-1', profileId: 'profile-a', pviId: 'pvi-middle', startStationM: 25, endStationM: 75, lengthM: 49 },
+      { id: 'vc-2', profileId: 'profile-a', pviId: 'pvi-middle', startStationM: 60, endStationM: 90, lengthM: 30 },
+    ];
+    const issues = validateCivilDocument(invalid).join(' ');
+    expect(issues).toContain('invalid vertical curve');
+    expect(issues).toContain('vertical curves overlap');
+
+    const wrongOwner = structuredClone(model);
+    wrongOwner.verticalCurves = [{ id: 'vc-wrong', profileId: 'missing-profile', pviId: 'pvi-middle', startStationM: 25, endStationM: 75, lengthM: 50 }];
+    expect(validateCivilDocument(wrongOwner).join(' ')).toContain('profile/PVI reference');
+  });
+
+  it('validates alignment-owned superelevation regions with bounded slopes and no overlap', () => {
+    const model = civil();
+    model.superelevations = [{ id: 'se-1', alignmentId: 'road-a', startStationM: 10, endStationM: 40, leftCrossSlopePercent: 2.5, rightCrossSlopePercent: -2.5 }];
+    expect(validateCivilDocument(model)).toEqual([]);
+    expect(civilDomainDocument(model).objectIds).toContain('se-1');
+
+    const invalid = structuredClone(model);
+    invalid.superelevations = [
+      { id: 'se-1', alignmentId: 'road-a', startStationM: 10, endStationM: 40, leftCrossSlopePercent: 101, rightCrossSlopePercent: -2.5 },
+      { id: 'se-2', alignmentId: 'road-a', startStationM: 35, endStationM: 60, leftCrossSlopePercent: 2, rightCrossSlopePercent: -2 },
+    ];
+    const issues = validateCivilDocument(invalid).join(' ');
+    expect(issues).toContain('bounded cross slope');
+    expect(issues).toContain('superelevation regions overlap');
+
+    const outOfRange = structuredClone(model);
+    outOfRange.superelevations = [{ id: 'se-out', alignmentId: 'road-a', startStationM: -1, endStationM: 10, leftCrossSlopePercent: 2, rightCrossSlopePercent: -2 }];
+    expect(validateCivilDocument(outOfRange).join(' ')).toContain('station range');
+
+    const stationGapped = structuredClone(model);
+    stationGapped.alignments[0]!.segments.push({ id: 'line-gap', kind: 'line', startM: [100, 0], endM: [200, 0], startStationM: 150 });
+    stationGapped.superelevations = [{ id: 'se-gap', alignmentId: 'road-a', startStationM: 110, endStationM: 120, leftCrossSlopePercent: 2, rightCrossSlopePercent: -2 }];
+    expect(validateCivilDocument(stationGapped).join(' ')).toContain('station range');
+  });
+
+  it('validates stable corridor targets by owner, kind, station range, and role overlap', () => {
+    const model = civil();
+    model.corridorTargets = [
+      { id: 'target-surface', corridorId: 'corridor-a', kind: 'surface', targetObjectId: 'eg', startStationM: 10, endStationM: 40 },
+      { id: 'target-offset', corridorId: 'corridor-a', kind: 'offset', startStationM: 40, endStationM: 60, offsetM: 3 },
+    ];
+    expect(validateCivilDocument(model)).toEqual([]);
+    expect(civilDomainDocument(model).objectIds).toEqual(expect.arrayContaining(['target-surface', 'target-offset']));
+
+    const notListed = structuredClone(model);
+    notListed.corridors[0]!.targetSurfaceIds = [];
+    expect(validateCivilDocument(notListed).join(' ')).toContain('invalid corridor target');
+
+    const invalid = structuredClone(model);
+    invalid.corridorTargets = [
+      { id: 'bad-surface', corridorId: 'corridor-a', kind: 'surface', targetObjectId: 'missing-surface', startStationM: 10, endStationM: 40 },
+      { id: 'bad-offset', corridorId: 'corridor-a', kind: 'offset', startStationM: 30, endStationM: 50, offsetM: 3 },
+      { id: 'bad-offset-2', corridorId: 'corridor-a', kind: 'offset', startStationM: 45, endStationM: 55, offsetM: 4 },
+    ];
+    const issues = validateCivilDocument(invalid).join(' ');
+    expect(issues).toContain('invalid corridor target');
+    expect(issues).toContain('corridor targets overlap');
+
+    const wrongOwner = structuredClone(model);
+    wrongOwner.corridorTargets = [{ id: 'wrong-owner', corridorId: 'missing-corridor', kind: 'alignment', targetObjectId: 'road-a', startStationM: 10, endStationM: 20 }];
+    expect(validateCivilDocument(wrongOwner).join(' ')).toContain('invalid corridor target');
+  });
 });

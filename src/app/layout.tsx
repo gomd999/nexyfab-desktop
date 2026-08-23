@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import './globals.css';
 import './custom.css';
 import { getAdminSettings } from '@/lib/adminSettings';
+import NexyfabSessionHydrator from '@/components/nexyfab/NexyfabSessionHydrator';
 
 const BASE_URL = 'https://nexyfab.com';
 
@@ -94,5 +95,7 @@ export default async function RootLayout({
 }: {
   children: React.ReactNode;
 }) {
-  return children;
+  // Keep the cookie-backed session and legacy page state reconciled on every
+  // route, including /login, /dashboard and /account (not only /[lang]).
+  return <><NexyfabSessionHydrator />{children}</>;
 }

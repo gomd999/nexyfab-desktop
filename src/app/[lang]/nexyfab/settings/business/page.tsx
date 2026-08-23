@@ -6,7 +6,7 @@
 
 import { use, useEffect, useState } from 'react';
 import Link from 'next/link';
-import { isKorean } from '@/lib/i18n/normalize';
+import { createCommercialLocalizer } from '@/lib/i18n/commercialLocalizer';
 
 interface BusinessProfile {
   brn?: string;
@@ -20,7 +20,7 @@ interface BusinessProfile {
 
 export default function BusinessProfilePage({ params }: { params: Promise<{ lang: string }> }) {
   const { lang } = use(params);
-  const isKo = isKorean(lang);
+  const copy = (ko: string, en: string) => createCommercialLocalizer(lang)(ko, en);
   const [profile, setProfile] = useState<BusinessProfile | null>(null);
   const [brn, setBrn] = useState('');
   const [legalName, setLegalName] = useState('');
@@ -48,11 +48,11 @@ export default function BusinessProfilePage({ params }: { params: Promise<{ lang
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!/^\d{3}-?\d{2}-?\d{5}$/.test(brn)) {
-      setResult({ ok: false, message: isKo ? '사업자등록번호 10자리 (123-45-67890)' : 'Enter a 10-digit BRN' });
+      setResult({ ok: false, message: copy('사업자등록번호 10자리 (123-45-67890)', 'Enter a 10-digit BRN') });
       return;
     }
     if (!legalName.trim()) {
-      setResult({ ok: false, message: isKo ? '법인/상호명을 입력하세요' : 'Enter legal entity name' });
+      setResult({ ok: false, message: copy('법인/상호명을 입력하세요', 'Enter legal entity name') });
       return;
     }
     setBusy(true);
@@ -80,17 +80,17 @@ export default function BusinessProfilePage({ params }: { params: Promise<{ lang
         setResult({ ok: false, message: data.error ?? 'Save failed' });
       }
     } catch {
-      setResult({ ok: false, message: isKo ? '네트워크 오류' : 'Network error' });
+      setResult({ ok: false, message: copy('네트워크 오류', 'Network error') });
     } finally {
       setBusy(false);
     }
   };
 
   const statusLabel = (s?: string) => {
-    if (s === 'active') return { text: isKo ? '✓ NTS 검증 완료 · 활성' : '✓ Verified · Active', color: '#10b981' };
-    if (s === 'closed') return { text: isKo ? '✕ 폐업 사업자' : '✕ Closed', color: '#ef4444' };
-    if (s === 'suspended') return { text: isKo ? '⚠ 휴업 상태' : '⚠ Suspended', color: '#f59e0b' };
-    if (s === 'pending') return { text: isKo ? '⌛ 검증 대기' : '⌛ Pending', color: '#6b7280' };
+    if (s === 'active') return { text: copy('✓ NTS 검증 완료 · 활성', '✓ Verified · Active'), color: '#10b981' };
+    if (s === 'closed') return { text: copy('✕ 폐업 사업자', '✕ Closed'), color: '#ef4444' };
+    if (s === 'suspended') return { text: copy('⚠ 휴업 상태', '⚠ Suspended'), color: '#f59e0b' };
+    if (s === 'pending') return { text: copy('⌛ 검증 대기', '⌛ Pending'), color: '#6b7280' };
     return null;
   };
   const status = statusLabel(profile?.verificationStatus);
@@ -99,15 +99,16 @@ export default function BusinessProfilePage({ params }: { params: Promise<{ lang
     <div style={{ minHeight: '100vh', background: '#0c0f14', color: '#d8dee5', padding: 40, fontFamily: 'Inter, system-ui, sans-serif' }}>
       <div style={{ maxWidth: 720, margin: '0 auto' }}>
         <Link href={`/${lang}/nexyfab/settings`} style={{ color: '#7aa9ff', fontSize: 13, textDecoration: 'none' }}>
-          ← {isKo ? '설정으로' : 'Back to Settings'}
+          ← {copy('설정으로', 'Back to Settings')}
         </Link>
         <h1 style={{ fontSize: 28, fontWeight: 700, marginTop: 16, marginBottom: 8 }}>
-          {isKo ? '사업자 정보' : 'Business Profile'}
+          {copy('사업자 정보', 'Business Profile')}
         </h1>
         <p style={{ color: '#8a93a3', fontSize: 14, marginBottom: 24, lineHeight: 1.6 }}>
-          {isKo
-            ? 'Pro 사업자 플랜 · 세금계산서 발행 · 제조 파트너 매칭에 사용됩니다. 사업자등록번호는 국세청 API 로 자동 검증됩니다.'
-            : 'Used for Pro Business plan, tax invoicing, and manufacturer partner matching. BRN is auto-verified through the NTS API.'}
+          {copy(
+            'Pro 사업자 플랜 · 세금계산서 발행 · 제조 파트너 매칭에 사용됩니다. 사업자등록번호는 국세청 API 로 자동 검증됩니다.',
+            'Used for Pro Business plan, tax invoicing, and manufacturer partner matching. BRN is auto-verified through the NTS API.',
+          )}
         </p>
 
         {status && (
@@ -124,7 +125,7 @@ export default function BusinessProfilePage({ params }: { params: Promise<{ lang
         )}
 
         <form onSubmit={onSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-          <FormRow label={isKo ? '사업자등록번호 (10자리)' : 'Business Registration Number (10 digits)'}>
+          <FormRow label={copy('사업자등록번호 (10자리)', 'Business Registration Number (10 digits)')}>
             <input
               type="text"
               value={brn}
@@ -134,27 +135,27 @@ export default function BusinessProfilePage({ params }: { params: Promise<{ lang
               style={inputStyle}
             />
           </FormRow>
-          <FormRow label={isKo ? '법인/상호명' : 'Legal entity name'}>
+          <FormRow label={copy('법인/상호명', 'Legal entity name')}>
             <input
               type="text"
               value={legalName}
               onChange={e => setLegalName(e.target.value)}
-              placeholder={isKo ? '예: (주)Acme Robotics' : 'e.g. Acme Robotics Inc.'}
+                placeholder={copy('예: (주)Acme Robotics', 'e.g. Acme Robotics Inc.')}
               required
               style={inputStyle}
             />
           </FormRow>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
-            <FormRow label={isKo ? '대표자명 (선택)' : 'Representative (optional)'}>
+            <FormRow label={copy('대표자명 (선택)', 'Representative (optional)')}>
               <input
                 type="text"
                 value={repName}
                 onChange={e => setRepName(e.target.value)}
-                placeholder={isKo ? '예: 홍길동' : 'e.g. Jane Doe'}
+                placeholder={copy('예: 홍길동', 'e.g. Jane Doe')}
                 style={inputStyle}
               />
             </FormRow>
-            <FormRow label={isKo ? '개업일 (YYYYMMDD)' : 'Opened (YYYYMMDD)'}>
+            <FormRow label={copy('개업일 (YYYYMMDD)', 'Opened (YYYYMMDD)')}>
               <input
                 type="text"
                 value={openedAt}
@@ -164,7 +165,7 @@ export default function BusinessProfilePage({ params }: { params: Promise<{ lang
               />
             </FormRow>
           </div>
-          <FormRow label={isKo ? '사업자등록증 (선택)' : 'Registration certificate (optional)'}>
+          <FormRow label={copy('사업자등록증 (선택)', 'Registration certificate (optional)')}>
             <label
               htmlFor="cert-upload"
               style={{
@@ -179,7 +180,7 @@ export default function BusinessProfilePage({ params }: { params: Promise<{ lang
             >
               <span>{certFile ? '📎' : '⬆'}</span>
               <span style={{ flex: 1, color: certFile ? '#7aa9ff' : '#8a93a3' }}>
-                {certFile ? certFile.name : (isKo ? 'PDF / PNG / JPG (10MB 이하)' : 'PDF / PNG / JPG (≤ 10MB)')}
+                {certFile ? certFile.name : copy('PDF / PNG / JPG (10MB 이하)', 'PDF / PNG / JPG (≤ 10MB)')}
               </span>
               {certFile && (
                 <button
@@ -197,9 +198,10 @@ export default function BusinessProfilePage({ params }: { params: Promise<{ lang
               />
             </label>
             <p style={{ margin: '6px 0 0', fontSize: 11, color: '#5b6373' }}>
-              {isKo
-                ? 'NTS 검증 후 파트너 인증 배지 발급에 사용됩니다. 등록번호 검증으로 충분한 경우 생략 가능합니다.'
-                : 'Used for partner verification badge after NTS check. Optional if BRN verification passes.'}
+              {copy(
+                'NTS 검증 후 파트너 인증 배지 발급에 사용됩니다. 등록번호 검증으로 충분한 경우 생략 가능합니다.',
+                'Used for partner verification badge after NTS check. Optional if BRN verification passes.',
+              )}
             </p>
           </FormRow>
 
@@ -226,7 +228,7 @@ export default function BusinessProfilePage({ params }: { params: Promise<{ lang
                 cursor: busy ? 'wait' : 'pointer',
               }}
             >
-              {busy ? (isKo ? '검증 중…' : 'Verifying…') : (isKo ? '저장 및 NTS 검증' : 'Save & Verify with NTS')}
+              {busy ? copy('검증 중…', 'Verifying…') : copy('저장 및 NTS 검증', 'Save & Verify with NTS')}
             </button>
           </div>
         </form>

@@ -1,0 +1,18 @@
+{
+  "schema": "nexyfab.native-structure-receipt.v1",
+  "slotId": "",
+  "family": "",
+  "sourceHash": "",
+  "generatedAt": "",
+  "extractor": {
+    "name": "",
+    "version": "",
+    "artifactHash": ""
+  },
+  "counts": {
+    "definitions": 0,
+    "occurrences": 0,
+    "transforms": 0,
+    "joints": 0
+  }
+}

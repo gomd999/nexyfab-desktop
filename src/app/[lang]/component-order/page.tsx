@@ -5,6 +5,7 @@ import { usePathname, useSearchParams } from 'next/navigation';
 import { useToast } from '@/components/ToastProvider';
 import { richText } from '@/lib/richText';
 import { executeRecaptchaV3 } from '@/lib/recaptcha-client';
+import { loc } from '@/lib/i18n/loc';
 
 const dict = {
   ko: {
@@ -297,11 +298,14 @@ function ComponentOrderContent() {
 
     if (isCustom) {
       const customVal = (document.getElementById('customInput') as HTMLInputElement)?.value || '';
-      item = customVal.trim() !== '' ? customVal : (
-        strLang === 'ko' ? '직접입력' :
-          strLang === 'en' ? 'Direct Input' :
-            strLang === 'ja' ? '直接入力' : '直接输入'
-      );
+      item = customVal.trim() !== '' ? customVal : loc(lang, {
+        ko: '직접 입력',
+        en: 'Direct Input',
+        ja: '直接入力',
+        zh: '直接输入',
+        es: 'Entrada directa',
+        ar: 'إدخال مباشر',
+      });
     }
 
     if (!cat || (!item && !isCustom)) {

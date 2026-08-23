@@ -29,6 +29,7 @@ import { generateApiKey } from '@/lib/api-key';
 import { rateLimitAsync } from '@/lib/rate-limit';
 import { getTrustedClientIp } from '@/lib/client-ip';
 import { logAudit } from '@/lib/audit';
+import { boundedJsonError, readBoundedJson } from '@/lib/boundedJsonBody';
 
 export const dynamic = 'force-dynamic';
 
@@ -81,7 +82,13 @@ export async function POST(req: NextRequest) {
     ipWhitelist: z.array(z.string()).max(20).default([]),
     expiresInDays: z.number().int().min(1).max(365).optional(),
   });
-  const parsed = schema.safeParse(await req.json().catch(() => ({})));
+  let input: unknown;
+  try { input = await readBoundedJson(req, 64 * 1024); }
+  catch (error) {
+    if (boundedJsonError(error)?.status === 413) return NextResponse.json({ error: 'Payload too large' }, { status: 413 });
+    input = {};
+  }
+  const parsed = schema.safeParse(input);
   if (!parsed.success) return NextResponse.json({ error: parsed.error.issues[0]?.message }, { status: 400 });
 
   const db = getDbAdapter();

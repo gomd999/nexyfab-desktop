@@ -67,6 +67,9 @@ export type HoleKind =
   | 'tap'
   | 'pipe_tap';
 
+/** Positive world drill axis. Y is the legacy/top-face default. */
+export type HoleAxis = 0 | 1 | 2;
+
 /**
  * Hole geometry spec — discriminated by `kind`. The `drilled` variant carries
  * just the bore diameter; sub-types add their pocket/funnel/thread params.
@@ -352,6 +355,8 @@ export interface HoleArrayDefinition {
   terminationKind: TerminationKind;
   /** Termination parameters (must agree with terminationKind). */
   terminationParams: TerminationParams;
+  /** Optional world drill axis; omitted legacy definitions mean Y. */
+  axis?: HoleAxis;
 }
 
 // ─── Expansion output ──────────────────────────────────────────────────────
@@ -711,6 +716,14 @@ export function validateHoleArray(
       code: 'TERMINATION_MISMATCH',
       message: `kind=${def.kind} but params.kind=${def.params.kind}`,
       field: 'params.kind',
+    });
+  }
+
+  if (def.axis !== undefined && def.axis !== 0 && def.axis !== 1 && def.axis !== 2) {
+    errors.push({
+      code: 'NAN_PARAM',
+      message: `axis must be one of 0 (X), 1 (Y), or 2 (Z), got ${String(def.axis)}`,
+      field: 'axis',
     });
   }
 

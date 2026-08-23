@@ -146,9 +146,9 @@ R0-1·R2 를 적용할 때마다 재실행해 **오매칭율이 숫자로 내려
 | 게이트 | 대상 | 필요 | 상태 |
 |---|---|---|---|
 | **G1** | 판금 단품 제작자 | — | **✅ 통과** (전개→DXF 실무 투입 가능) |
-| **G2** | 기계 단품 제작도 | R1 + R3 | **✅ 260721 통과** — 실행형 실증 `src/test/drawing/g2MachinedPartGate.test.tsx`: L-브래킷 60×50×12+⌀50 보스, 토포 참조 치수 7종 전부 실측(1e-6) → 실제 jspdf+svg2pdf 벡터 PDF에 라벨 텍스트 탑재 확인 → 모델 편집(t12→18) 시 동일 refs 재실측. **한계 명시**: 치수 반출은 벡터 PDF 기준 — R12 DXF는 치수 엔티티 미탑재(R6 이월, 하네스가 한계를 assert로 고정) |
+| **G2** | 기계 단품 제작도 | R1 + R3 | **✅ 260721 통과, 260820 피처 UX 보강** — 실행형 실증 `src/test/drawing/g2MachinedPartGate.test.tsx`: L-브래킷 60×50×12+⌀50 보스, 토포 참조 치수 7종 전부 실측(1e-6) → 실제 jspdf+svg2pdf 벡터 PDF에 라벨 텍스트 탑재 확인 → 모델 편집(t12→18) 시 동일 refs 재실측. 260820에는 실제 피처 트리 직접 편집과 Hole Wizard V2의 규격·배열·종료조건을 사용자 경로에 연결하고 지정 면 persistent reference 및 다음 경계 형상을 회귀 검증했다. **한계 명시**: 치수 반출은 벡터 PDF 기준 — R12 DXF는 치수 엔티티 미탑재(R6 이월, 하네스가 한계를 assert로 고정) |
 | **G3** | 어셈블리 설계 | R1 + R2 + R3 + R5 | **✅ 260721 통과** — 실행형 실증 `src/test/assembly/g3AssemblyGate.test.ts`: 프로그래밍 어셈블리 수렴(손계산 1e-6)→gear 구동 기어비 실반영(90°→−45°)→부품 편집 시 참조 **명시 상실**(사유+구 앵커)→R5 재지정(후보 마진 수치, named 채널은 confident 아님 정직 유지)→재해석·재실측·재수렴. **한계 명시**: mate 구동=운동학 전파(동역학 아님)·named 재지정은 사용자 확인 전제·RefRelinkPanel 페이지 mount는 후속 배선·distance plane/plane 법선정렬 미벌점 잔존 |
-| **G4** | 2인 이상 팀 | G3 + PDM + `/api/documents` 복구 | **✅ 260722b 통과** — 실행형 실증 `src/app/api/documents/__tests__/g4TeamGate.test.ts`(실 DB 라우트+검증된 PDM 엔진): 2인 하루 완주 — 생성·editor 부여→잠금 교대 작업(타인 편집 423)→스냅샷→PDM 3-way 분기 머지(modify-modify 해결, 2-parent 커밋)→오전 버전 복원(히스토리 불변 적층·restoredFrom)→마감(잠금 0·이력 전량·강등 403). 전제=W6-A(int4 오버플로 복구)+W6-B/C(잠금·복원)+W6-D(패널 실데이터·머지 UI). **한계 명시**: PDM 세션 in-memory(문서 API 영속 연결 후속)·체크아웃=HEAD 이동만(라이브 모델 복원 미배선)·Yjs WS 서버 미배포(SSE 협업은 라이브)·blob 복사 스토리지 mock |
+| **G4** | 2인 이상 팀 | G3 + PDM + `/api/documents` 복구 | **✅ 260722b 통과, 260820 Checkout 보강** — 실행형 실증 `src/app/api/documents/__tests__/g4TeamGate.test.ts`(실 DB 라우트+검증된 PDM 엔진): 2인 하루 완주 — 생성·editor 부여→잠금 교대 작업(타인 편집 423)→스냅샷→PDM 3-way 분기 머지(modify-modify 해결, 2-parent 커밋)→오전 버전 복원(히스토리 불변 적층·restoredFrom)→마감(잠금 0·이력 전량·강등 403). 260820에는 접근 검증된 signed version blob, JSON/Yjs snapshot 해독, server restore, 현재 피처 트리·3D replay를 Checkout에 연결했다. **남은 한계**: 운영 R2 실영수증·Yjs WS 서버 배포(SSE 협업은 라이브)·실제 다중 사용자 브라우저 복구 증거는 배포 자격화에서 확인한다. |
 | **G5** | 금형·서피싱·초대형 | 전략 §5 포기 목록 | **의도적 포기** |
 
 "몰락시킨다"의 조작적 정의: **G2·G3 통과 = 기계설계 다수가 이동 가능.**

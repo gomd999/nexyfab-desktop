@@ -19,6 +19,9 @@ import { rateLimitAsync } from '@/lib/rate-limit';
 import { getTrustedClientIp } from '@/lib/client-ip';
 import { logAudit } from '@/lib/audit';
 import { issueRecoveryCodes, remainingRecoveryCodes, RECOVERY_CODE_COUNT } from '@/lib/recovery-codes';
+import { boundedJsonError, readBoundedJson } from '@/lib/boundedJsonBody';
+
+const MAX_RECOVERY_CODE_BODY_BYTES = 16 * 1024;
 
 export const dynamic = 'force-dynamic';
 
@@ -56,7 +59,9 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: '요청이 너무 많습니다. 잠시 후 다시 시도하세요.' }, { status: 429 });
   }
 
-  const body = await req.json().catch(() => ({})) as { password?: string };
+  let body: { password?: string } = {};
+  try { body = await readBoundedJson(req, MAX_RECOVERY_CODE_BODY_BYTES); }
+  catch (error) { if (boundedJsonError(error)?.code === 'PAYLOAD_TOO_LARGE') return NextResponse.json({ error: 'Request too large', code: 'PAYLOAD_TOO_LARGE' }, { status: 413 }); }
   const password = String(body.password ?? '');
   if (!password) return NextResponse.json({ error: '비밀번호를 입력하세요.' }, { status: 400 });
 

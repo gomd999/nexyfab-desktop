@@ -4,14 +4,14 @@ import { useCallback, useEffect, useState, use, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuthStore } from '@/hooks/useAuth';
 import AuthModal from '@/components/nexyfab/AuthModal';
-import { isKorean } from '@/lib/i18n/normalize';
+import { createCommercialLocalizer } from '@/lib/i18n/commercialLocalizer';
 
 function JoinTeamInner({ params }: { params: Promise<{ lang: string }> }) {
   const { lang } = use(params);
   const router = useRouter();
   const searchParams = useSearchParams();
   const { user, token } = useAuthStore();
-  const isKo = isKorean(lang);
+  const copy = (ko: string, en: string) => createCommercialLocalizer(lang)(ko, en);
 
   const inviteToken = searchParams.get('token') ?? '';
 
@@ -65,18 +65,16 @@ function JoinTeamInner({ params }: { params: Promise<{ lang: string }> }) {
         <div style={cardStyle}>
           <div style={{ fontSize: 52, marginBottom: 16 }}>📬</div>
           <h2 style={{ margin: '0 0 8px', fontSize: 22, fontWeight: 800, color: 'var(--nx-text)' }}>
-            {isKo ? '팀 초대를 받으셨습니다' : "You've been invited to a team"}
+            {copy('팀 초대를 받으셨습니다', "You've been invited to a team")}
           </h2>
           <p style={{ color: 'var(--nx-text-2)', marginBottom: 28, lineHeight: 1.6 }}>
-            {isKo
-              ? '초대를 수락하려면 NexyFab에 로그인하세요.'
-              : 'Sign in to NexyFab to accept the invitation.'}
+            {copy('초대를 수락하려면 NexyFab에 로그인하세요.', 'Sign in to NexyFab to accept the invitation.')}
           </p>
           <button
             onClick={() => setShowAuth(true)}
             style={primaryBtn}
           >
-            {isKo ? '로그인 / 회원가입' : 'Sign in / Sign up'}
+            {copy('로그인 / 회원가입', 'Sign in / Sign up')}
           </button>
         </div>
         <AuthModal open={showAuth} onClose={() => setShowAuth(false)} />
@@ -91,7 +89,7 @@ function JoinTeamInner({ params }: { params: Promise<{ lang: string }> }) {
         <div style={cardStyle}>
           <div style={{ fontSize: 52, marginBottom: 16 }}>⏳</div>
           <h2 style={{ margin: '0 0 8px', fontSize: 20, fontWeight: 700, color: 'var(--nx-text)' }}>
-            {isKo ? '초대 처리 중...' : 'Processing invite...'}
+            {copy('초대 처리 중...', 'Processing invite...')}
           </h2>
         </div>
       </div>
@@ -105,22 +103,22 @@ function JoinTeamInner({ params }: { params: Promise<{ lang: string }> }) {
         <div style={cardStyle}>
           <div style={{ fontSize: 52, marginBottom: 16 }}>🎉</div>
           <h2 style={{ margin: '0 0 8px', fontSize: 22, fontWeight: 800, color: '#3fb950' }}>
-            {isKo ? '팀 가입 완료!' : 'Joined the team!'}
+            {copy('팀 가입 완료!', 'Joined the team!')}
           </h2>
           <p style={{ color: 'var(--nx-text-2)', marginBottom: 8 }}>
-            {isKo ? `역할: ` : `Role: `}
+            {copy('역할: ', 'Role: ')}
             <strong style={{ color: 'var(--nx-text)' }}>
-              {role === 'manager' ? (isKo ? '매니저' : 'Manager') : (isKo ? '뷰어' : 'Viewer')}
+              {role === 'manager' ? copy('매니저', 'Manager') : copy('뷰어', 'Viewer')}
             </strong>
           </p>
           <p style={{ color: 'var(--nx-text-3)', marginBottom: 28, fontSize: 13 }}>
-            {isKo ? '팀 대시보드에서 팀원들과 협업하세요.' : 'Collaborate with your team in the team dashboard.'}
+            {copy('팀 대시보드에서 팀원들과 협업하세요.', 'Collaborate with your team in the team dashboard.')}
           </p>
           <button
             onClick={() => router.push(`/${lang}/nexyfab/team`)}
             style={primaryBtn}
           >
-            {isKo ? '팀 대시보드로 이동' : 'Go to Team Dashboard'}
+            {copy('팀 대시보드로 이동', 'Go to Team Dashboard')}
           </button>
         </div>
       </div>
@@ -134,15 +132,16 @@ function JoinTeamInner({ params }: { params: Promise<{ lang: string }> }) {
         <div style={cardStyle}>
           <div style={{ fontSize: 52, marginBottom: 16 }}>⏰</div>
           <h2 style={{ margin: '0 0 8px', fontSize: 20, fontWeight: 700, color: '#f0883e' }}>
-            {isKo ? '초대 링크가 만료되었습니다' : 'Invite link expired'}
+            {copy('초대 링크가 만료되었습니다', 'Invite link expired')}
           </h2>
           <p style={{ color: 'var(--nx-text-2)', marginBottom: 28 }}>
-            {isKo
-              ? '초대 링크는 7일 후 만료됩니다. 팀 소유자에게 재초대를 요청하세요.'
-              : 'Invite links expire after 7 days. Ask the team owner to send a new one.'}
+            {copy(
+              '초대 링크는 7일 후 만료됩니다. 팀 소유자에게 재초대를 요청하세요.',
+              'Invite links expire after 7 days. Ask the team owner to send a new one.',
+            )}
           </p>
           <button onClick={() => router.push(`/${lang}/nexyfab`)} style={secondaryBtn}>
-            {isKo ? '홈으로' : 'Go home'}
+            {copy('홈으로', 'Go home')}
           </button>
         </div>
       </div>
@@ -155,15 +154,15 @@ function JoinTeamInner({ params }: { params: Promise<{ lang: string }> }) {
       <div style={cardStyle}>
         <div style={{ fontSize: 52, marginBottom: 16 }}>❌</div>
         <h2 style={{ margin: '0 0 8px', fontSize: 20, fontWeight: 700, color: '#f85149' }}>
-          {isKo
-            ? (status === 'invalid' ? '유효하지 않은 초대 링크입니다' : '오류가 발생했습니다')
-            : (status === 'invalid' ? 'Invalid invite link' : 'Something went wrong')}
+          {status === 'invalid'
+            ? copy('유효하지 않은 초대 링크입니다', 'Invalid invite link')
+            : copy('오류가 발생했습니다', 'Something went wrong')}
         </h2>
         <p style={{ color: 'var(--nx-text-2)', marginBottom: 28 }}>
-          {isKo ? '올바른 초대 링크를 사용하거나 팀 소유자에게 문의하세요.' : 'Use a valid invite link or contact the team owner.'}
+          {copy('올바른 초대 링크를 사용하거나 팀 소유자에게 문의하세요.', 'Use a valid invite link or contact the team owner.')}
         </p>
         <button onClick={() => router.push(`/${lang}/nexyfab`)} style={secondaryBtn}>
-          {isKo ? '홈으로' : 'Go home'}
+          {copy('홈으로', 'Go home')}
         </button>
       </div>
     </div>

@@ -10,6 +10,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getAuthUser } from '@/lib/auth-middleware';
 import { getDbAdapter } from '@/lib/db-adapter';
 import { listOrderEvents } from '@/lib/order-events';
+import { isOrderBuyerInActiveWorkspace } from '@/lib/nfOrderAccess';
 
 export const dynamic = 'force-dynamic';
 
@@ -19,12 +20,12 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string 
 
   const { id } = await ctx.params;
   const db = getDbAdapter();
-  const row = await db.queryOne<{ user_id: string; manufacturer_id: string | null }>(
-    'SELECT user_id, manufacturer_id FROM nf_orders WHERE id = ?',
+  const row = await db.queryOne<{ user_id: string; org_id: string | null; manufacturer_id: string | null }>(
+    'SELECT user_id, org_id, manufacturer_id FROM nf_orders WHERE id = ?',
     id,
   );
   if (!row) return NextResponse.json({ error: 'Not found' }, { status: 404 });
-  if (row.user_id !== authUser.userId && row.manufacturer_id !== authUser.userId) {
+  if (!isOrderBuyerInActiveWorkspace(authUser, row) && row.manufacturer_id !== authUser.userId) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   }
 

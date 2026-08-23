@@ -965,12 +965,14 @@ interface CutShape extends MeshedShape {
 
 interface RevolvePen {
   lineTo: (p: [number, number]) => RevolvePen;
-  close: () => { sketchOnPlane: (plane: string, origin?: number) => { revolve: (axis?: [number, number, number]) => MeshedShape } };
+  close: () => { sketchOnPlane: (plane: string, origin?: number) => {
+    revolve: (axis?: [number, number, number], config?: { angle?: number }) => MeshedShape;
+  } };
 }
 
 /**
- * Revolve a closed profile 360° around the Y axis into a real B-rep solid of
- * revolution (shafts, bushings, turned parts). v1 scope: full 360° about Y; the
+ * Revolve a closed profile through a partial or full angle around the Y axis
+ * into a real B-rep solid of revolution (shafts, bushings, turned parts). The
  * profile must lie on x ≥ 0 (one side of the axis). Same handle/registry
  * contract as occtExtrudeProfile; returns a null handle on failure so the
  * caller can fall back to the mesh (LatheGeometry) path.
@@ -979,10 +981,11 @@ export function occtRevolveProfile(
   points: { x: number; y: number }[],
   tessellation: { tolerance?: number; angularTolerance?: number } = {},
   planeOffset = 0,
+  angleDeg = 360,
 ): OcctExtrudeResult {
   const rc = requireReplicad();
   const draw = rc.draw as ((p?: [number, number]) => RevolvePen) | undefined;
-  if (typeof draw !== 'function' || points.length < 3) {
+  if (typeof draw !== 'function' || points.length < 3 || !(angleDeg > 0) || angleDeg > 360) {
     return { geometry: new BufferGeometry(), handle: null };
   }
   let pen = draw([points[0].x, points[0].y]);
@@ -993,7 +996,7 @@ export function occtRevolveProfile(
       && Math.abs(points[i].y - points[0].y) < 1e-6) break;
     pen = pen.lineTo([points[i].x, points[i].y]);
   }
-  const solid = pen.close().sketchOnPlane('XY', planeOffset).revolve([0, 1, 0]);
+  const solid = pen.close().sketchOnPlane('XY', planeOffset).revolve([0, 1, 0], { angle: angleDeg });
   const mesh = solid.mesh({
     tolerance: tessellation.tolerance ?? 0.1,
     angularTolerance: tessellation.angularTolerance ?? 0.2,
@@ -1273,6 +1276,8 @@ export function occtSweepHelix(
   axisDir: [number, number, number] = [0, 1, 0],
   /** Left-handed helix (default right-handed). */
   lefthand = false,
+  /** Helix origin. The default preserves the historical origin-centred path. */
+  center: [number, number, number] = [0, 0, 0],
 ): OcctExtrudeResult {
   const rc = requireReplicad();
   const sketchHelix = rc.sketchHelix as
@@ -1282,7 +1287,7 @@ export function occtSweepHelix(
     || profile.length < 3 || !(radius > 0) || !(height > 0) || !(pitch > 0)) {
     return { geometry: new BufferGeometry(), handle: null };
   }
-  const spine = sketchHelix(pitch, height, radius, [0, 0, 0], axisDir, lefthand);
+  const spine = sketchHelix(pitch, height, radius, center, axisDir, lefthand);
   const last = profile.length - 1;
   const solid = spine.sweepSketch((plane) => {
     let pp = draw([profile[0]!.x, profile[0]!.y]);
@@ -1299,6 +1304,206 @@ export function occtSweepHelix(
     angularTolerance: tessellation.angularTolerance ?? 0.2,
   });
   return { geometry: meshToBufferGeometry(mesh), handle: registerShape(solid) };
+}
+
+interface SheetMetalProfilePen {
+  lineTo: (p: [number, number]) => SheetMetalProfilePen;
+  threePointsArcTo: (end: [number, number], mid: [number, number]) => SheetMetalProfilePen;
+  close: () => { sketchOnPlane: (plane: string, origin?: number) => { extrude: (distance: number) => {
+    translate: (v: [number, number, number]) => unknown;
+    rotate: (deg: number, center: [number, number, number], dir: [number, number, number]) => unknown;
+    mesh: MeshedShape['mesh'];
+  } } };
+}
+
+/**
+ * Build an exact constant-thickness sheet-metal cross-section with one
+ * analytic circular bend and extrude it across the bend-line width.
+ *
+ * The straight base occupies `fixedLength` behind the bend line. The moving
+ * leg has `straightLength` after the tangent point. The annular sector uses
+ * inner radius R and outer radius R+T, so its geometric neutral axis is
+ * exactly R+T/2 and the cross-section area is analytically auditable.
+ */
+export function occtSheetMetalBendSolid(
+  options: {
+    fixedLength: number;
+    straightLength: number;
+    width: number;
+    thickness: number;
+    radius: number;
+    angleDeg: number;
+    primaryAxis: 'X' | 'Z';
+    outwardSign?: 1 | -1;
+    bendLine: number;
+    baseY: number;
+    widthCenter: number;
+  },
+  tessellation: { tolerance?: number; angularTolerance?: number } = {},
+): OcctExtrudeResult {
+  const rc = requireReplicad();
+  const draw = rc.draw as ((p?: [number, number]) => SheetMetalProfilePen) | undefined;
+  const {
+    fixedLength, straightLength, width, thickness, radius, angleDeg,
+    primaryAxis, bendLine, baseY, widthCenter,
+  } = options;
+  const direction = options.outwardSign ?? 1;
+  if (typeof draw !== 'function' || !(fixedLength > 0) || !(straightLength >= 0)
+    || !(width > 0) || !(thickness > 0) || !(radius > 0)
+    || !(angleDeg > 0 && angleDeg <= 180)) {
+    return { geometry: new BufferGeometry(), handle: null };
+  }
+  const angle = angleDeg * Math.PI / 180;
+  const half = angle / 2;
+  const outerRadius = radius + thickness;
+  const point = (r: number, a: number, inner = false): [number, number] => [
+    direction * r * Math.sin(a),
+    (inner ? thickness : 0) + r * (1 - Math.cos(a)),
+  ];
+  const outerMid = point(outerRadius, half);
+  const outerEnd = point(outerRadius, angle);
+  const innerMid = point(radius, half, true);
+  const innerEnd = point(radius, angle, true);
+  const tangent: [number, number] = [direction * Math.cos(angle), Math.sin(angle)];
+  const outerLeg: [number, number] = [
+    outerEnd[0] + tangent[0] * straightLength,
+    outerEnd[1] + tangent[1] * straightLength,
+  ];
+  const innerLeg: [number, number] = [
+    innerEnd[0] + tangent[0] * straightLength,
+    innerEnd[1] + tangent[1] * straightLength,
+  ];
+  const pen = draw([-direction * fixedLength, 0])
+    .lineTo([0, 0])
+    .threePointsArcTo(outerEnd, outerMid)
+    .lineTo(outerLeg)
+    .lineTo(innerLeg)
+    .lineTo(innerEnd)
+    .threePointsArcTo([0, thickness], innerMid)
+    .lineTo([-direction * fixedLength, thickness]);
+  let solid = pen.close().sketchOnPlane('XY', -width / 2).extrude(width) as unknown as {
+    translate: (v: [number, number, number]) => unknown;
+    rotate: (deg: number, center: [number, number, number], dir: [number, number, number]) => unknown;
+    mesh: MeshedShape['mesh'];
+  };
+  if (primaryAxis === 'Z') {
+    solid = solid.rotate(-90, [0, 0, 0], [0, 1, 0]) as typeof solid;
+    solid = solid.translate([widthCenter, baseY, bendLine]) as typeof solid;
+  } else {
+    solid = solid.translate([bendLine, baseY, widthCenter]) as typeof solid;
+  }
+  const mesh = solid.mesh({
+    tolerance: tessellation.tolerance ?? 0.1,
+    angularTolerance: tessellation.angularTolerance ?? 0.2,
+  });
+  return { geometry: meshToBufferGeometry(mesh), handle: registerShape(solid) };
+}
+
+/**
+ * Exact constant-thickness jog (two opposite analytic circular bends).
+ * `developedSpacing` is the neutral-axis blank length consumed between the
+ * two bend tangencies; this keeps a forming operation volume-conserving.
+ */
+export function occtSheetMetalJogSolid(
+  options: {
+    fixedLength: number;
+    developedSpacing: number;
+    remainingLength: number;
+    offset: number;
+    width: number;
+    thickness: number;
+    radius: number;
+    primaryAxis: 'X' | 'Z';
+    bendLine: number;
+    baseY: number;
+    widthCenter: number;
+  },
+  tessellation: { tolerance?: number; angularTolerance?: number } = {},
+): OcctExtrudeResult & { angleDeg?: number; straightLength?: number; projectedSpacing?: number } {
+  const rc = requireReplicad();
+  const draw = rc.draw as ((p?: [number, number]) => SheetMetalProfilePen) | undefined;
+  const {
+    fixedLength, developedSpacing, remainingLength, offset, width,
+    thickness, radius, primaryAxis, bendLine, baseY, widthCenter,
+  } = options;
+  const unavailable = () => ({ geometry: new BufferGeometry(), handle: null });
+  if (typeof draw !== 'function' || !(fixedLength > 0) || !(developedSpacing > 0)
+    || !(remainingLength >= 0) || !(offset > 0) || !(width > 0)
+    || !(thickness > 0) || !(radius > 0)) return unavailable();
+  const neutralRadius = radius + thickness / 2;
+  const displacement = (angle: number): number => {
+    const straight = developedSpacing - 2 * neutralRadius * angle;
+    return 2 * neutralRadius * (1 - Math.cos(angle)) + straight * Math.sin(angle);
+  };
+  const maxAngle = Math.min(Math.PI / 2 - 1e-6, developedSpacing / (2 * neutralRadius) - 1e-6);
+  if (!(maxAngle > 1e-5) || displacement(maxAngle) < offset) return unavailable();
+  let lo = 0;
+  let hi = maxAngle;
+  for (let i = 0; i < 80; i++) {
+    const mid = (lo + hi) / 2;
+    if (displacement(mid) < offset) lo = mid;
+    else hi = mid;
+  }
+  const angle = (lo + hi) / 2;
+  const straightLength = developedSpacing - 2 * neutralRadius * angle;
+  if (!(angle > 0) || !(straightLength >= 0)) return unavailable();
+  const s = Math.sin(angle);
+  const c = Math.cos(angle);
+  const first = (r: number, a: number, top = false): [number, number] => [
+    r * Math.sin(a),
+    (top ? thickness : 0) + r * (1 - Math.cos(a)),
+  ];
+  const advanceSecond = (start: [number, number], r: number, phi: number): [number, number] => [
+    start[0] + r * (Math.sin(angle) - Math.sin(angle - phi)),
+    start[1] + r * (Math.cos(angle - phi) - Math.cos(angle)),
+  ];
+  const tangent: [number, number] = [c, s];
+  const lower1 = first(radius + thickness, angle);
+  const lower1Mid = first(radius + thickness, angle / 2);
+  const lower2: [number, number] = [lower1[0] + tangent[0] * straightLength, lower1[1] + tangent[1] * straightLength];
+  const lower3 = advanceSecond(lower2, radius, angle);
+  const lower2Mid = advanceSecond(lower2, radius, angle / 2);
+  const upper1 = first(radius, angle, true);
+  const upper1Mid = first(radius, angle / 2, true);
+  const upper2: [number, number] = [upper1[0] + tangent[0] * straightLength, upper1[1] + tangent[1] * straightLength];
+  const upper3 = advanceSecond(upper2, radius + thickness, angle);
+  const upper2Mid = advanceSecond(upper2, radius + thickness, angle / 2);
+  const lowerEnd: [number, number] = [lower3[0] + remainingLength, lower3[1]];
+  const upperEnd: [number, number] = [upper3[0] + remainingLength, upper3[1]];
+  const pen = draw([-fixedLength, 0])
+    .lineTo([0, 0])
+    .threePointsArcTo(lower1, lower1Mid)
+    .lineTo(lower2)
+    .threePointsArcTo(lower3, lower2Mid)
+    .lineTo(lowerEnd)
+    .lineTo(upperEnd)
+    .lineTo(upper3)
+    .threePointsArcTo(upper2, upper2Mid)
+    .lineTo(upper1)
+    .threePointsArcTo([0, thickness], upper1Mid)
+    .lineTo([-fixedLength, thickness]);
+  let solid = pen.close().sketchOnPlane('XY', -width / 2).extrude(width) as unknown as {
+    translate: (v: [number, number, number]) => unknown;
+    rotate: (deg: number, center: [number, number, number], dir: [number, number, number]) => unknown;
+    mesh: MeshedShape['mesh'];
+  };
+  if (primaryAxis === 'Z') {
+    solid = solid.rotate(-90, [0, 0, 0], [0, 1, 0]) as typeof solid;
+    solid = solid.translate([widthCenter, baseY, bendLine]) as typeof solid;
+  } else {
+    solid = solid.translate([bendLine, baseY, widthCenter]) as typeof solid;
+  }
+  const mesh = solid.mesh({
+    tolerance: tessellation.tolerance ?? 0.1,
+    angularTolerance: tessellation.angularTolerance ?? 0.2,
+  });
+  return {
+    geometry: meshToBufferGeometry(mesh),
+    handle: registerShape(solid),
+    angleDeg: angle * 180 / Math.PI,
+    straightLength,
+    projectedSpacing: lower3[0],
+  };
 }
 
 interface OcctVertexPoint { x: number; y: number; z: number; delete?: () => void }

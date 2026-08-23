@@ -24,6 +24,7 @@ import {
   type IntentFeature,
 } from '../openscad-render/intentToScad';
 import { getCachedIntent, setCachedIntent } from './intentCache';
+import type { ProviderName } from './types';
 
 /** Whitelists are duplicated from prompts/imageIntentFromSketch.v1.ts. Keep
  *  in lock-step with intentToScad's SUPPORTED_SHAPES / SUPPORTED_FEATURES. */
@@ -55,6 +56,11 @@ export interface ImageIntentInput {
   mimeType?: 'image/png' | 'image/jpeg' | 'image/webp';
   /** Optional NL hint the user pairs with the image. */
   hintText?: string;
+  /** Entitlement-checked runtime model selected by the caller. */
+  selectedModel?: { provider: ProviderName; model: string };
+  signal?: AbortSignal;
+  /** Caller already performed the cache probe (used by quota-reserving routes). */
+  skipCacheRead?: boolean;
 }
 
 export type ImageIntentOutcome =
@@ -83,6 +89,10 @@ export type ImageIntentOutcome =
       latencyMs?: number;
       promptTokens?: number;
       completionTokens?: number;
+      cachedPromptTokens?: number;
+      cacheWriteTokens?: number;
+      cacheMissTokens?: number;
+      cacheProfile?: 'openai-explicit' | 'qwen-explicit' | 'anthropic-explicit' | 'gemini-explicit' | 'gemini-implicit' | 'provider-default';
     }
   | {
       ok: false;
@@ -105,6 +115,8 @@ export type ImageIntentOutcome =
       provider?: string;
     };
 
+type CachedImageIntentOutcome = Extract<ImageIntentOutcome, { ok: true }>;
+
 /**
  * Stable cache key — sha256 of (image bytes + hintText + promptVersion).
  *
@@ -120,9 +132,32 @@ export function buildImageIntentCacheKey(input: ImageIntentInput, promptVersion:
   h.update('\x00');
   h.update(input.mimeType ?? 'image/png');
   h.update('\x00');
+  h.update(input.selectedModel ? `${input.selectedModel.provider}:${input.selectedModel.model}` : 'auto');
+  h.update('\x00');
   h.update(promptVersion);
   // Prefix so the cache key never collides with the NL→intent path.
   return `imgintent:${h.digest('hex')}`;
+}
+
+/** Read-only cache probe so callers can reserve quota before a paid VL call. */
+export async function readCachedImageIntent(input: ImageIntentInput): Promise<CachedImageIntentOutcome | null> {
+  if (!input.imageBytes || input.imageBytes.length === 0 || input.imageBytes.length > IMAGE_INTENT_MAX_BYTES) {
+    return null;
+  }
+  const promptDef = getPrompt(IMAGE_INTENT_PROMPT_ID);
+  const cacheKey = buildImageIntentCacheKey(input, promptDef.version);
+  const cached = await getCachedIntent(cacheKey);
+  if (!cached) return null;
+  return {
+    ok: true,
+    intent: cached.intent as IntentInput,
+    scad: cached.scad,
+    warnings: cached.warnings,
+    summary: cached.summary,
+    dimensionSource: cached.dimensionSource,
+    cached: true,
+    cacheKey,
+  };
 }
 
 /**
@@ -165,6 +200,10 @@ export async function extractIntentFromImage(input: ImageIntentInput): Promise<I
       message: `image exceeds ${IMAGE_INTENT_MAX_BYTES} bytes (got ${input.imageBytes.length})`,
     };
   }
+  if (!input.skipCacheRead) {
+    const cached = await readCachedImageIntent(input);
+    if (cached) return cached;
+  }
   if (!isVisionAvailable()) {
     return {
       ok: false,
@@ -175,21 +214,6 @@ export async function extractIntentFromImage(input: ImageIntentInput): Promise<I
 
   const promptDef = getPrompt(IMAGE_INTENT_PROMPT_ID);
   const cacheKey = buildImageIntentCacheKey(input, promptDef.version);
-
-  // Cache lookup — same image+hint+promptVersion → same intent, no AI call.
-  const cached = await getCachedIntent(cacheKey);
-  if (cached) {
-    return {
-      ok: true,
-      intent: cached.intent as IntentInput,
-      scad: cached.scad,
-      warnings: cached.warnings,
-      summary: cached.summary,
-      dimensionSource: cached.dimensionSource,
-      cached: true,
-      cacheKey,
-    };
-  }
 
   // The user-side message is "extract intent". When a hint is provided we
   // prepend it so the model can use it as scale context.
@@ -203,6 +227,10 @@ export async function extractIntentFromImage(input: ImageIntentInput): Promise<I
   let latencyMs: number;
   let promptTokens: number | undefined;
   let completionTokens: number | undefined;
+  let cachedPromptTokens: number | undefined;
+  let cacheWriteTokens: number | undefined;
+  let cacheMissTokens: number | undefined;
+  let cacheProfile: 'openai-explicit' | 'qwen-explicit' | 'anthropic-explicit' | 'gemini-explicit' | 'gemini-implicit' | 'provider-default' | undefined;
   /**
    * ★260731 — **절단을 형식 오류와 구별한다.**
    *   실측: 합성 스케치 24장 중 16장이 `NON_JSON` 이었는데, 원인은 모델이 형식을 어긴 게
@@ -215,7 +243,9 @@ export async function extractIntentFromImage(input: ImageIntentInput): Promise<I
   try {
     const resp = await visionCompletion({
       prompt: `${promptDef.template}\n\n---\n${userPrompt}`,
-      images: [{ bytes: input.imageBytes, label: 'Part image' }],
+      images: [{ bytes: input.imageBytes, mimeType: input.mimeType, label: 'Part image' }],
+      selectedModel: input.selectedModel,
+      signal: input.signal,
       maxTokens: promptDef.defaults.maxTokens ?? 500,
       timeoutMs: promptDef.defaults.timeoutMs ?? 30_000,
     });
@@ -225,6 +255,10 @@ export async function extractIntentFromImage(input: ImageIntentInput): Promise<I
     latencyMs = resp.latencyMs;
     promptTokens = resp.promptTokens;
     completionTokens = resp.completionTokens;
+    cachedPromptTokens = resp.cachedPromptTokens;
+    cacheWriteTokens = resp.cacheWriteTokens;
+    cacheMissTokens = resp.cacheMissTokens;
+    cacheProfile = resp.cacheProfile;
     truncated = resp.truncated;
     finishReason = resp.finishReason;
   } catch (e) {
@@ -350,6 +384,10 @@ export async function extractIntentFromImage(input: ImageIntentInput): Promise<I
     latencyMs,
     promptTokens,
     completionTokens,
+    cachedPromptTokens,
+    cacheWriteTokens,
+    cacheMissTokens,
+    cacheProfile,
   };
 }
 

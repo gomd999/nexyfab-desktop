@@ -19,7 +19,7 @@ import { getDbAdapter } from '@/lib/db-adapter';
 import type { ProviderName } from './types';
 
 const CACHE_TTL_MS = 30_000;
-const VALID_PROVIDERS: ProviderName[] = ['deepseek', 'openai', 'anthropic', 'local'];
+const VALID_PROVIDERS: ProviderName[] = ['deepseek', 'qwen', 'openai', 'gemini', 'anthropic', 'openrouter', 'local'];
 
 let cache: { chain: ProviderName[] | null; expiresAt: number } | null = null;
 let tableEnsured = false;

@@ -109,7 +109,7 @@ export default function QuickExportButton({
         onClick={handleClick}
         aria-label={t.label}
         style={{
-          background: '#3b82f6',
+          background: '#1d4ed8',
           color: 'white',
           border: 'none',
           borderRadius: 10,

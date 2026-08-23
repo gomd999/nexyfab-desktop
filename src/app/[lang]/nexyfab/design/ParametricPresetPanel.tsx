@@ -13,6 +13,7 @@
 import { ACCEPT_RASTER } from '@/lib/drawingInput';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { isKorean } from '@/lib/i18n/normalize';
+import { designPair } from './designI18n';
 
 interface ParamSpec { name: string; labelKo: string; unit: string; default: number; min: number; max: number }
 interface Template { id: string; labelKo: string; labelEn: string; params: ParamSpec[] }
@@ -106,12 +107,12 @@ export default function ParametricPresetPanel({
       if (data.ok && data.intent && data.scad) {
         await onApply(data.intent, data.scad, data.verify);
         setApplied(true);
-        setMsg(ko ? '생성됨 · 항상 유효(결정론)' : 'Generated · always valid (deterministic)');
+        setMsg(designPair(lang, '생성됨 · 항상 유효(결정론)', 'Generated · always valid (deterministic)'));
       } else {
-        setMsg((ko ? '실패: ' : 'Failed: ') + (data.gateErrors?.join('; ') ?? data.error ?? ''));
+        setMsg((designPair(lang, '실패: ', 'Failed: ')) + (data.gateErrors?.join('; ') ?? data.error ?? ''));
       }
     } catch (e) {
-      setMsg((ko ? '실패: ' : 'Failed: ') + (e instanceof Error ? e.message : String(e)));
+      setMsg((designPair(lang, '실패: ', 'Failed: ')) + (e instanceof Error ? e.message : String(e)));
     } finally {
       setBusy(false);
     }
@@ -168,7 +169,7 @@ export default function ParametricPresetPanel({
     if (!f) return;
     // DWG 씨앗(260718): LibreDWG WASM 서버 변환 → DXF 와 동일 씨앗 플로우(사람 검증 전제)
     if (/\.dwg$/i.test(f.name)) {
-      if (f.size > 60_000_000) { setDrawErr(ko ? 'DWG 60MB 초과' : 'DWG over 60MB'); return; }
+      if (f.size > 60_000_000) { setDrawErr(designPair(lang, 'DWG 60MB 초과', 'DWG over 60MB')); return; }
       void (async () => {
         setDrawBusy(true); setDrawErr(null); setDrawRes(null); setDraw2dGate(null);
         try {
@@ -182,19 +183,19 @@ export default function ParametricPresetPanel({
           const j = (await r.json()) as { ok?: boolean; seed?: { measurements: number[]; circles: Array<{ r: number }>; extents: { w: number; h: number } | null }; reconstruction2dGate?: { status: 'pass' | 'fail' | 'unavailable'; score?: number; feedback?: string; reason?: string }; error?: string; mesh3dLikely?: boolean };
           if (!j.ok || !j.seed) {
             setDrawErr(j.mesh3dLikely
-              ? (ko ? '3D 메시 DWG 입니다 — 어셈블리 프리셋의 "실물 가져오기"로 업로드하세요(부품 AABB 임포트).' : '3D mesh DWG — upload via assembly panel "import real model".')
-              : (j.error ?? (ko ? 'DWG 파싱 실패' : 'DWG parse failed')));
+              ? designPair(lang, '3D 메시 DWG 입니다 — 어셈블리 프리셋의 "실물 가져오기"로 업로드하세요(부품 AABB 임포트).', '3D mesh DWG — upload via assembly panel "import real model".')
+              : (j.error ?? designPair(lang, 'DWG 파싱 실패', 'DWG parse failed')));
             return;
           }
           const sd = j.seed;
           const parts: string[] = [];
-          if (sd.extents) parts.push(ko ? `전체 약 ${sd.extents.w}×${sd.extents.h}mm` : `overall ~${sd.extents.w}x${sd.extents.h}mm`);
-          if (sd.measurements.length) parts.push((ko ? '치수값 ' : 'dims ') + sd.measurements.slice(0, 12).join(', '));
-          if (sd.circles.length) parts.push((ko ? '원 Ø' : 'holes Ø') + [...new Set(sd.circles.map((c) => +(c.r * 2).toFixed(2)))].slice(0, 8).join(', Ø') + ` ×${sd.circles.length}`);
-          const seedText = (ko ? 'DWG 씨앗(LibreDWG 변환·사람 검증 필요): ' : 'DWG seed (verify): ') + parts.join(' · ') + (ko ? ' — 이 치수로 [부품 설명]을 설계' : ' — design [part] with these dims');
+          if (sd.extents) parts.push(designPair(lang, `전체 약 ${sd.extents.w}×${sd.extents.h}mm`, `overall ~${sd.extents.w}x${sd.extents.h}mm`));
+          if (sd.measurements.length) parts.push(designPair(lang, '치수값 ', 'dims ') + sd.measurements.slice(0, 12).join(', '));
+          if (sd.circles.length) parts.push(designPair(lang, '원 Ø', 'holes Ø') + [...new Set(sd.circles.map((c) => +(c.r * 2).toFixed(2)))].slice(0, 8).join(', Ø') + ` ×${sd.circles.length}`);
+          const seedText = designPair(lang, 'DWG 씨앗(LibreDWG 변환·사람 검증 필요): ', 'DWG seed (verify): ') + parts.join(' · ') + designPair(lang, ' — 이 치수로 [부품 설명]을 설계', ' — design [part] with these dims');
           window.dispatchEvent(new CustomEvent('nf-dxf-seed', { detail: seedText }));
           setDraw2dGate(j.reconstruction2dGate ?? null);
-          setMsg(ko ? 'DWG를 변환해 씨앗을 프롬프트에 넣었어요 — 부품 설명을 붙여 생성하세요(자동 생성 아님).' : 'DWG converted — seed prefilled, add a part description.');
+          setMsg(designPair(lang, 'DWG를 변환해 씨앗을 프롬프트에 넣었어요 — 부품 설명을 붙여 생성하세요(자동 생성 아님).', 'DWG converted — seed prefilled, add a part description.'));
         } catch (err) {
           setDrawErr(err instanceof Error ? err.message : String(err));
         } finally {
@@ -218,13 +219,13 @@ export default function ParametricPresetPanel({
             if (!j.ok || !j.seed) { setDrawErr(j.error ?? 'DXF 파싱 실패'); return; }
             const sd = j.seed;
             const parts: string[] = [];
-            if (sd.extents) parts.push(ko ? `전체 약 ${sd.extents.w}×${sd.extents.h}mm` : `overall ~${sd.extents.w}x${sd.extents.h}mm`);
-            if (sd.measurements.length) parts.push((ko ? '치수값 ' : 'dims ') + sd.measurements.slice(0, 12).join(', '));
-            if (sd.circles.length) parts.push((ko ? '원 Ø' : 'holes Ø') + [...new Set(sd.circles.map((c) => +(c.r * 2).toFixed(2)))].slice(0, 8).join(', Ø') + ` ×${sd.circles.length}`);
-            const seedText = (ko ? 'DXF 씨앗(사람 검증 필요): ' : 'DXF seed (verify): ') + parts.join(' · ') + (ko ? ' — 이 치수로 [부품 설명]을 설계' : ' — design [part] with these dims');
+            if (sd.extents) parts.push(designPair(lang, `전체 약 ${sd.extents.w}×${sd.extents.h}mm`, `overall ~${sd.extents.w}x${sd.extents.h}mm`));
+            if (sd.measurements.length) parts.push(designPair(lang, '치수값 ', 'dims ') + sd.measurements.slice(0, 12).join(', '));
+            if (sd.circles.length) parts.push(designPair(lang, '원 Ø', 'holes Ø') + [...new Set(sd.circles.map((c) => +(c.r * 2).toFixed(2)))].slice(0, 8).join(', Ø') + ` ×${sd.circles.length}`);
+            const seedText = designPair(lang, 'DXF 씨앗(사람 검증 필요): ', 'DXF seed (verify): ') + parts.join(' · ') + designPair(lang, ' — 이 치수로 [부품 설명]을 설계', ' — design [part] with these dims');
             window.dispatchEvent(new CustomEvent('nf-dxf-seed', { detail: seedText }));
             lastDxfTextRef.current = String(tr.result ?? ''); // P1-b: 이후 도면 이미지 추출 시 실측 교체에 사용
-            setMsg(ko ? 'DXF 씨앗을 프롬프트에 넣었어요 — 부품 설명을 붙여 생성하거나, 같은 부품의 도면 이미지를 올리면 치수를 DXF 실측값으로 교체합니다.' : 'DXF seed prefilled — add a description, or upload the drawing image to snap dims to DXF measurements.');
+            setMsg(designPair(lang, 'DXF 씨앗을 프롬프트에 넣었어요 — 부품 설명을 붙여 생성하거나, 같은 부품의 도면 이미지를 올리면 치수를 DXF 실측값으로 교체합니다.', 'DXF seed prefilled — add a description, or upload the drawing image to snap dims to DXF measurements.'));
           } catch (err) {
             setDrawErr(err instanceof Error ? err.message : String(err));
           } finally {
@@ -235,8 +236,8 @@ export default function ParametricPresetPanel({
       tr.readAsText(f);
       return;
     }
-    if (!/^image\/(png|jpe?g|webp)$/.test(f.type)) { setDrawErr(ko ? 'PNG·JPG·WebP 이미지 또는 DXF만 지원합니다.' : 'PNG/JPG/WebP or DXF only.'); return; }
-    if (f.size > 6_000_000) { setDrawErr(ko ? '이미지가 너무 큽니다(6MB 이하).' : 'Image too large (max 6MB).'); return; }
+    if (!/^image\/(png|jpe?g|webp)$/.test(f.type)) { setDrawErr(designPair(lang, 'PNG·JPG·WebP 이미지 또는 DXF만 지원합니다.', 'PNG/JPG/WebP or DXF only.')); return; }
+    if (f.size > 6_000_000) { setDrawErr(designPair(lang, '이미지가 너무 큽니다(6MB 이하).', 'Image too large (max 6MB).')); return; }
     const mode = modeRef.current;
     const reader = new FileReader();
     reader.onload = () => {
@@ -258,14 +259,14 @@ export default function ParametricPresetPanel({
               // D1 지지율 배지(260719b): 역투영 대조 결과를 성공 시에도 표시(검증됨 vs 추론)
               const rp = j.recognized?.reproject;
               const rpBadge = rp?.verdict === 'OK' && typeof rp.support === 'number'
-                ? (ko ? ` · 역투영 검증 ✓ 지지율 ${Math.round(rp.support * 100)}%` : ` · reprojection ✓ ${Math.round(rp.support * 100)}%`)
-                : rp?.verdict === 'UNSUPPORTED' ? (ko ? ' · 역투영 대상 외' : ' · reprojection n/a') : '';
+                ? designPair(lang, ` · 역투영 검증 ✓ 지지율 ${Math.round(rp.support * 100)}%`, ` · reprojection ✓ ${Math.round(rp.support * 100)}%`)
+                : rp?.verdict === 'UNSUPPORTED' ? designPair(lang, ' · 역투영 대상 외', ' · reprojection n/a') : '';
               // P1-b: DXF 실측 교체 배지 — 교체 건수·잔존 추론 파라미터(정직 구분)
               const rc = j.recognized?.reconcile;
               const rcBadge = rc
-                ? (ko ? ` · DXF 실측 교체 ${rc.measuredCount}건${rc.unverified.length ? `(추론 잔존: ${rc.unverified.slice(0, 3).join('·')})` : ''}` : ` · DXF-snapped ${rc.measuredCount}${rc.unverified.length ? ` (${rc.unverified.length} unverified)` : ''}`)
+                ? designPair(lang, ` · DXF 실측 교체 ${rc.measuredCount}건${rc.unverified.length ? `(추론 잔존: ${rc.unverified.slice(0, 3).join('·')})` : ''}`, ` · DXF-snapped ${rc.measuredCount}${rc.unverified.length ? ` (${rc.unverified.length} unverified)` : ''}`)
                 : '';
-              setMsg((ko ? '도면 판독 → 생성됨: ' : 'Drawing read → generated: ') + (j.recognized?.label ?? '') + (typeof j.recognized?.confidence === 'number' ? ` (${Math.round(j.recognized.confidence * 100)}%)` : '') + rpBadge + rcBadge);
+              setMsg(designPair(lang, '도면 판독 → 생성됨: ', 'Drawing read → generated: ') + (j.recognized?.label ?? '') + (typeof j.recognized?.confidence === 'number' ? ` (${Math.round(j.recognized.confidence * 100)}%)` : '') + rpBadge + rcBadge);
               return;
             }
             // 부품 어휘 매칭 실패 → 아래 프리셋 템플릿 매칭으로 폴백
@@ -278,7 +279,7 @@ export default function ParametricPresetPanel({
           if (j2.ok) {
             // 사진 = 템플릿 분류(형태)만 사용, 판독 치수는 폐기(§3 — 치수 결정 금지)
             setDrawRes(mode === 'photo' ? { ...j2, values: {}, filled: undefined, clamped: undefined, photo: true } : j2);
-          } else setDrawErr(j2.error ?? (ko ? '판독 실패' : 'Read failed'));
+          } else setDrawErr(j2.error ?? designPair(lang, '판독 실패', 'Read failed'));
         } catch (err) {
           setDrawErr(err instanceof Error ? err.message : String(err));
         } finally {
@@ -293,7 +294,7 @@ export default function ParametricPresetPanel({
   const confirmDraw = useCallback(() => {
     if (!drawRes || !templates) return;
     const tp = templates.find((t) => t.id === drawRes.templateId);
-    if (!tp) { setDrawErr(ko ? '템플릿을 찾을 수 없습니다.' : 'Template not found.'); return; }
+    if (!tp) { setDrawErr(designPair(lang, '템플릿을 찾을 수 없습니다.', 'Template not found.')); return; }
     const merged = { ...defaultsOf(tp), ...drawRes.values };
     setTid(tp.id);
     setParams(merged);
@@ -307,25 +308,25 @@ export default function ParametricPresetPanel({
     <div style={{ marginBottom: 12, padding: 12, borderRadius: 8, background: 'var(--nx-accent-soft, #eef4ff)', border: '1px solid var(--nx-border, #dfe3e8)' }}>
       <div style={{ display: 'flex', alignItems: 'center', marginBottom: 6 }}>
         <div style={{ fontSize: 12, fontWeight: 800 }}>
-          {ko ? '파라메트릭 프리셋' : 'Parametric preset'}
+            {designPair(lang, '파라메트릭 프리셋', 'Parametric preset')}
           <span style={{ marginLeft: 6, fontSize: 10.5, fontWeight: 600, color: 'var(--nx-text-3, #6b7684)' }}>
-            {ko ? '카드 클릭=즉시 생성 · AI 없이 항상 유효' : 'click = generate · no AI, always valid'}
+            {designPair(lang, '카드 클릭=즉시 생성 · AI 없이 항상 유효', 'click = generate · no AI, always valid')}
           </span>
         </div>
         <input ref={fileRef} type="file" accept={`${ACCEPT_RASTER},.dxf,.dwg`} onChange={onPickFile} style={{ display: 'none' }} />
         {/* §3 역할 분리 — 도면=치수의 진실 · 사진=형태 힌트(치수 미사용) */}
         <div style={{ marginLeft: 'auto', display: 'flex', gap: 4 }}>
           <button type="button" onClick={() => { modeRef.current = 'drawing'; fileRef.current?.click(); }} disabled={drawBusy}
-            title={ko ? '치수 도면 — 치수를 판독합니다' : 'Dimensioned drawing — dims are read'}
+            title={designPair(lang, '치수 도면 — 치수를 판독합니다', 'Dimensioned drawing — dims are read')}
             style={{ padding: '4px 10px', borderRadius: 7, fontSize: 11, fontWeight: 700, cursor: 'pointer',
               border: '1px solid var(--nx-border, #dfe3e8)', background: 'var(--nx-panel, #fff)', color: 'inherit' }}>
-            📐 {ko ? '도면' : 'Drawing'}
+            📐 {designPair(lang, '도면', 'Drawing')}
           </button>
           <button type="button" onClick={() => { modeRef.current = 'photo'; fileRef.current?.click(); }} disabled={drawBusy}
-            title={ko ? '사진·렌더 — 형태 힌트만, 치수는 읽지 않습니다' : 'Photo/render — shape hint only, no dims'}
+            title={designPair(lang, '사진·렌더 — 형태 힌트만, 치수는 읽지 않습니다', 'Photo/render — shape hint only, no dims')}
             style={{ padding: '4px 10px', borderRadius: 7, fontSize: 11, fontWeight: 700, cursor: 'pointer',
               border: '1px solid var(--nx-border, #dfe3e8)', background: 'var(--nx-panel, #fff)', color: 'inherit' }}>
-            📷 {ko ? '사진' : 'Photo'}
+            📷 {designPair(lang, '사진', 'Photo')}
           </button>
         </div>
       </div>
@@ -342,7 +343,7 @@ export default function ParametricPresetPanel({
               color: 'inherit',
             }}
           >
-            <div style={{ fontSize: 11.5, fontWeight: 800 }}>{ko ? tp.labelKo : tp.labelEn}</div>
+            <div style={{ fontSize: 11.5, fontWeight: 800 }}>{designPair(lang, tp.labelKo, tp.labelEn)}</div>
             <div style={{ fontSize: 9.5, color: 'var(--nx-text-3, #6b7684)', marginTop: 2, lineHeight: 1.45, overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>
               {tp.params.slice(0, 4).map((p) => `${p.labelKo} ${p.default}${p.unit}`).join(' · ')}
             </div>
@@ -350,7 +351,7 @@ export default function ParametricPresetPanel({
         ))}
       </div>
 
-      {drawBusy && <div style={{ marginTop: 6, fontSize: 11, color: 'var(--nx-accent, #2563eb)' }}>{ko ? '이미지 판독 중…' : 'Reading image…'}</div>}
+      {drawBusy && <div style={{ marginTop: 6, fontSize: 11, color: 'var(--nx-accent, #2563eb)' }}>{designPair(lang, '이미지 판독 중…', 'Reading image…')}</div>}
       {drawErr && <div style={{ marginTop: 6, fontSize: 11, color: '#991b1b' }}>{drawErr}</div>}
       {draw2dGate && (
         <div
@@ -365,17 +366,16 @@ export default function ParametricPresetPanel({
         >
           <div style={{ fontWeight: 700 }}>
             {draw2dGate.status === 'pass'
-              ? (ko ? '✓ 도면 읽기 검증 통과 (치수·원·범위 보존)' : '✓ Drawing read verified')
+              ? designPair(lang, '✓ 도면 읽기 검증 통과 (치수·원·범위 보존)', '✓ Drawing read verified')
               : draw2dGate.status === 'fail'
-                ? (ko ? '✕ 도면 해석이 원본 증거와 불일치' : '✕ Interpretation mismatch vs drawing')
-                : (ko ? '검증 불가 (측정 가능한 증거 없음)' : 'Gate unavailable')}
+                ? designPair(lang, '✕ 도면 해석이 원본 증거와 불일치', '✕ Interpretation mismatch vs drawing')
+                : designPair(lang, '검증 불가 (측정 가능한 증거 없음)', 'Gate unavailable')}
             {draw2dGate.status !== 'unavailable' && typeof draw2dGate.score === 'number'
               ? ` · ${(draw2dGate.score * 100).toFixed(0)}%` : ''}
           </div>
           <div style={{ marginTop: 2, opacity: 0.85 }}>
             {draw2dGate.status === 'unavailable'
-              ? (ko ? `측정 가능한 치수·원·범위가 없습니다 (${draw2dGate.reason ?? '이유 미상'}). 통과로 위장하지 않습니다.`
-                    : `No measurable evidence (${draw2dGate.reason ?? 'unknown'}). Not reported as a pass.`)
+              ? designPair(lang, `측정 가능한 치수·원·범위가 없습니다 (${draw2dGate.reason ?? '이유 미상'}). 통과로 위장하지 않습니다.`, `No measurable evidence (${draw2dGate.reason ?? 'unknown'}). Not reported as a pass.`)
               : (draw2dGate.feedback ?? '')}
           </div>
         </div>
@@ -385,35 +385,35 @@ export default function ParametricPresetPanel({
       {drawRes && (
         <div style={{ marginTop: 8, padding: 10, borderRadius: 8, border: '1px solid var(--nx-accent, #2563eb)', background: 'var(--nx-panel, #fff)' }}>
           <div style={{ fontSize: 11.5, fontWeight: 800 }}>
-            📷 {ko ? drawRes.labelKo : drawRes.labelEn ?? drawRes.labelKo}
+            📷 {designPair(lang, drawRes.labelKo ?? '', drawRes.labelEn ?? drawRes.labelKo ?? '')}
             <span style={{ marginLeft: 6, fontSize: 10, fontWeight: 600, color: 'var(--nx-text-3, #6b7684)' }}>
-              {ko ? '판독 신뢰도' : 'confidence'} {Math.round(drawRes.confidence * 100)}%
+              {designPair(lang, '판독 신뢰도', 'confidence')} {Math.round(drawRes.confidence * 100)}%
             </span>
           </div>
           <div style={{ marginTop: 4, fontSize: 10.5, lineHeight: 1.6 }}>
             {drawRes.photo
-              ? (ko ? '사진 = 형태 힌트만 — 치수는 사용하지 않습니다(정책 §3). 기본값으로 생성 후 말로 수정하세요.' : 'Photo = shape hint only — dims are not read. Generate with defaults, then adjust.')
-              : Object.entries(drawRes.values).map(([k, v]) => `${k}: ${v}`).join(' · ') || (ko ? '판독된 치수 없음' : 'no dimensions read')}
+              ? designPair(lang, '사진 = 형태 힌트만 — 치수는 사용하지 않습니다(정책 §3). 기본값으로 생성 후 말로 수정하세요.', 'Photo = shape hint only — dims are not read. Generate with defaults, then adjust.')
+              : Object.entries(drawRes.values).map(([k, v]) => `${k}: ${v}`).join(' · ') || designPair(lang, '판독된 치수 없음', 'no dimensions read')}
           </div>
           {!!drawRes.filled?.length && (
             <div style={{ marginTop: 2, fontSize: 10, color: 'var(--nx-text-3, #6b7684)' }}>
-              {ko ? '기본값 사용: ' : 'defaults used: '}{drawRes.filled.join(', ')}
+              {designPair(lang, '기본값 사용: ', 'defaults used: ')}{drawRes.filled.join(', ')}
             </div>
           )}
           {!!drawRes.clamped?.length && (
             <div style={{ marginTop: 2, fontSize: 10, color: '#b45309' }}>
-              {ko ? '범위 보정: ' : 'clamped: '}{drawRes.clamped.join(', ')}
+              {designPair(lang, '범위 보정: ', 'clamped: ')}{drawRes.clamped.join(', ')}
             </div>
           )}
           {drawRes.notes && <div style={{ marginTop: 2, fontSize: 10, color: 'var(--nx-text-3, #6b7684)' }}>{drawRes.notes}</div>}
           <div style={{ display: 'flex', gap: 6, marginTop: 8 }}>
             <button type="button" onClick={confirmDraw} disabled={busy}
               style={{ flex: 1, padding: '7px 0', borderRadius: 7, border: 'none', background: 'var(--nx-accent, #2563eb)', color: '#fff', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>
-              {ko ? '이 값으로 생성' : 'Generate with these'}
+              {designPair(lang, '이 값으로 생성', 'Generate with these')}
             </button>
             <button type="button" onClick={() => setDrawRes(null)}
               style={{ padding: '7px 14px', borderRadius: 7, border: '1px solid var(--nx-border, #dfe3e8)', background: 'transparent', color: 'inherit', fontSize: 12, cursor: 'pointer' }}>
-              {ko ? '취소' : 'Cancel'}
+              {designPair(lang, '취소', 'Cancel')}
             </button>
           </div>
         </div>
@@ -426,12 +426,12 @@ export default function ParametricPresetPanel({
             <input
               value={nlText} onChange={(e) => setNlText(e.target.value)}
               onKeyDown={(e) => { if (e.key === 'Enter') void sendNl(); }}
-              placeholder={ko ? '말로 수정: "내경 600으로", "높이 100 늘려"' : 'e.g. "bore to 600", "add 100 height"'}
+              placeholder={designPair(lang, '말로 수정: "내경 600으로", "높이 100 늘려"', 'e.g. "bore to 600", "add 100 height"')}
               style={{ ...inpStyle, flex: 1 }}
             />
             <button type="button" onClick={() => void sendNl()} disabled={nlBusy || !nlText.trim()}
               style={{ padding: '0 12px', borderRadius: 6, border: 'none', background: 'var(--nx-accent, #2563eb)', color: '#fff', fontSize: 11.5, fontWeight: 700, cursor: 'pointer', opacity: nlBusy || !nlText.trim() ? 0.5 : 1 }}>
-              {nlBusy ? '…' : ko ? '적용' : 'Apply'}
+              {nlBusy ? '…' : designPair(lang, '적용', 'Apply')}
             </button>
           </div>
           {nlMsg && <div style={{ marginTop: 3, fontSize: 10.5, color: nlMsg.ok ? '#16a34a' : '#991b1b' }}>{nlMsg.text}</div>}
@@ -442,7 +442,7 @@ export default function ParametricPresetPanel({
       {tpl && (
         <details style={{ marginTop: 8 }}>
           <summary style={{ fontSize: 11, fontWeight: 700, cursor: 'pointer', color: 'var(--nx-text-2, #46505e)' }}>
-            {ko ? '세부 치수 직접 입력' : 'Edit dimensions directly'}
+            {designPair(lang, '세부 치수 직접 입력', 'Edit dimensions directly')}
           </summary>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6, margin: '8px 0' }}>
             {tpl.params.map((p) => (
@@ -459,7 +459,7 @@ export default function ParametricPresetPanel({
             ))}
           </div>
           <button type="button" onClick={() => void doGenerate(tid, params)} disabled={busy} style={genStyle}>
-            {busy ? (ko ? '생성 중…' : 'Generating…') : ko ? '이 치수로 생성' : 'Generate with these'}
+            {busy ? designPair(lang, '생성 중…', 'Generating…') : designPair(lang, '이 치수로 생성', 'Generate with these')}
           </button>
         </details>
       )}

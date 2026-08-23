@@ -1,0 +1,56 @@
+{
+  "schema": "nexyfab.mechanical-core-feature-local-runtime.v1",
+  "feature": "chamfer",
+  "axis": "edit",
+  "status": "PASS",
+  "executedAt": "2026-08-22T07:13:00.871Z",
+  "commandId": "chamfer-runtime-param-edit",
+  "historyDepth": 1,
+  "before": {
+    "id": "runtime-feature",
+    "enabled": true,
+    "type": "chamfer",
+    "params": {
+      "distance": 1.1112499999999998,
+      "radius": 1.1112499999999998,
+      "edgeSelection": 0
+    }
+  },
+  "after": {
+    "id": "runtime-feature",
+    "enabled": true,
+    "type": "chamfer",
+    "params": {
+      "distance": 2.2224999999999997,
+      "radius": 2.2224999999999997,
+      "edgeSelection": 0
+    }
+  },
+  "intentBinding": {
+    "caseId": "mixed_units-03-chamfer",
+    "candidateId": "intent-runtime:mixed_units-03-chamfer",
+    "candidateBaseRevision": "7c3a02e2da7fbee88dac5533efea39eac2ec0114cde1b70936d41992d83dbbe1",
+    "promptSha256": "50a5290d69b20f20f846644c5090aeab5a4a05032a8fdc661e7b8cc676c0b799",
+    "inputSha256": "83e52ee531c466b6e6f9297def0e729cef34d3f5fe74724fdbcf3c9c9c100687",
+    "sourceUnits": [
+      "mm",
+      "in"
+    ],
+    "normalizedUnit": "mm",
+    "dimensionsMm": {
+      "width": 100,
+      "length": 60,
+      "thickness": 6.35
+    }
+  },
+  "intentDimensionAssertion": {
+    "status": "PASS",
+    "inputSha256": "83e52ee531c466b6e6f9297def0e729cef34d3f5fe74724fdbcf3c9c9c100687",
+    "dimensionsMm": {
+      "width": 100,
+      "length": 60,
+      "thickness": 6.35
+    },
+    "normalizedUnit": "mm"
+  }
+}

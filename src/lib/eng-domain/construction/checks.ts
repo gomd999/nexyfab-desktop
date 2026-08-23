@@ -58,10 +58,6 @@ function requireNonNegative(name: string, v: number): number {
   }
   return v;
 }
-function requireFinite(name: string, v: number): number {
-  if (!Number.isFinite(v)) throw new Error(`construction check: '${name}' must be finite, got ${v}`);
-  return v;
-}
 function round(v: number, p = 6): number {
   const f = 10 ** p;
   return Math.round(v * f) / f;
@@ -72,6 +68,8 @@ function round(v: number, p = 6): number {
 // ─────────────────────────────────────────────────────────────────────────────
 /** A prismatic concrete element: cross-section b×h extruded over length L. */
 export interface ConcreteElement {
+  /** Stable object identity used by the construction revision/provenance binding. */
+  objectId?: string;
   /** optional tag for traceability (unused in math) */
   tag?: string;
   /** number of identical elements (default 1) */
@@ -205,6 +203,8 @@ export const STANDARD_BAR_UNIT_MASS_KGPM: Record<number, number> = {
 };
 
 export interface RebarGroup {
+  /** Stable object identity used by the construction revision/provenance binding. */
+  objectId?: string;
   /** optional tag for traceability */
   tag?: string;
   /** nominal bar diameter d (mm), e.g. 16 for D16 */
@@ -280,10 +280,10 @@ export function checkRebarWeightTakeoff(input: RebarWeightInput): ConstructionCh
  *  - slab-soffit: plan area b·L                        (underside only)
  */
 export type FormworkElement =
-  | { type: 'beam'; tag?: string; count?: number; b_m: number; h_m: number; L_m: number }
-  | { type: 'column'; tag?: string; count?: number; b_m: number; h_m: number; L_m: number }
-  | { type: 'wall'; tag?: string; count?: number; L_m: number; h_m: number; sides?: number }
-  | { type: 'slab-soffit'; tag?: string; count?: number; b_m: number; L_m: number };
+  | { type: 'beam'; objectId?: string; tag?: string; count?: number; b_m: number; h_m: number; L_m: number }
+  | { type: 'column'; objectId?: string; tag?: string; count?: number; b_m: number; h_m: number; L_m: number }
+  | { type: 'wall'; objectId?: string; tag?: string; count?: number; L_m: number; h_m: number; sides?: number }
+  | { type: 'slab-soffit'; objectId?: string; tag?: string; count?: number; b_m: number; L_m: number };
 
 /** Formed contact area of a single element instance (m²), before ×count. */
 export function formworkAreaOfElement(e: FormworkElement): number {
@@ -370,6 +370,8 @@ export function checkFormworkAreaTakeoff(input: FormworkAreaInput): Construction
 export type Predecessor = string | { id: string; lag_days?: number };
 
 export interface Activity {
+  /** Stable object identity used by the construction revision/provenance binding. */
+  objectId?: string;
   id: string;
   /** activity duration (days) — must be ≥ 0 */
   duration_days: number;

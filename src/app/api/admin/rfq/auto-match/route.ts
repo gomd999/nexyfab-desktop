@@ -11,10 +11,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { verifyAdmin } from '@/lib/admin-auth';
 import { getDbAdapter } from '@/lib/db-adapter';
-import { sendEmail, rfqAssignedToFactoryHtml } from '@/lib/nexyfab-email';
+import { sendEmail, rfqAssignedToFactoryHtml, rfqNotificationEmailSubject, nexyfabEmailLocaleFromLanguageTag } from '@/lib/nexyfab-email';
 import { createNotification } from '@/app/lib/notify';
 import { logAudit } from '@/lib/audit';
 import { normPartnerEmail } from '@/lib/partner-factory-access';
+import { boundedJsonError, readBoundedJson } from '@/lib/boundedJsonBody';
 // Helpers + types live in a sibling module: Next.js 16 forbids non-handler
 // exports from a route file (only GET/POST/… + route config are allowed).
 import { type RfqRow, type FactoryRow, type ScoredFactory, pickAssignedFactory } from './matchSelection';
@@ -27,8 +28,9 @@ export async function POST(req: NextRequest) {
 
   let body: { rfqId?: string };
   try {
-    body = await req.json();
-  } catch {
+    body = await readBoundedJson(req, 64 * 1024);
+  } catch (error) {
+    if (boundedJsonError(error)?.status === 413) return NextResponse.json({ error: 'Payload too large' }, { status: 413 });
     return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 });
   }
 
@@ -96,8 +98,9 @@ export async function POST(req: NextRequest) {
         shapeName: rfq.shape_name || '부품',
         materialId: rfq.material_id || '-',
         quantity: rfq.quantity,
+        lang: req.headers.get('accept-language') || undefined,
       });
-      await sendEmail(bestEmail, '새 견적 요청이 배정되었습니다', html);
+      await sendEmail(bestEmail, rfqNotificationEmailSubject(nexyfabEmailLocaleFromLanguageTag(req.headers.get('accept-language')), 'new_rfq', { shapeName: rfq.shape_name || rfq.id, rfqIdPrefix: rfq.id.slice(0, 8) }), html);
     } catch (err) {
       console.error('[auto-match] Failed to send assignment email:', err);
       // Non-fatal: continue

@@ -5,6 +5,15 @@ type V3 = [number, number, number];
 
 export interface LandscapeSourceEvidence { id: string; kind: 'survey' | 'soil' | 'ecology' | 'nursery' | 'authority'; sourceRef: string; capturedAt: string }
 export interface LandscapeTerrainReference { civilDocumentId: string; surfaceId: string; civilRevision: number }
+/**
+ * A deterministic landscape-side edit to the civil terrain reference.
+ *
+ * This is intentionally a semantic modifier, not a claim that a TIN/grading
+ * kernel has been rebuilt.  The modifier remains revision-bound to the
+ * landscape document and is therefore safe to carry through the agent
+ * transaction until a real terrain solver/exporter consumes it.
+ */
+export interface LandscapeTerrainModifier { id: string; boundaryM: V2[]; deltaM: number }
 export interface LandscapePlant { id: string; speciesCode: string; positionM: V3; installedHeightM: number; matureCanopyDiameterM: number; rootZoneDiameterM: number; spacingM: number; evidenceIds: string[] }
 export interface LandscapePlantingZone { id: string; boundaryM: V2[]; plantIds: string[]; soilVolumeId: string; targetCoveragePercent: number }
 export interface LandscapeHardscape { id: string; kind: 'path' | 'plaza' | 'wall' | 'deck' | 'curb'; boundaryM: V2[]; material: string; slopePercent: number; accessible: boolean }
@@ -20,6 +29,7 @@ export interface LandscapeDocument {
   revision: number;
   coordinateSystemId: string;
   terrain: LandscapeTerrainReference;
+  terrainModifiers?: LandscapeTerrainModifier[];
   sourceEvidence: LandscapeSourceEvidence[];
   siteBoundaryM: V2[];
   plants: LandscapePlant[];
@@ -36,10 +46,24 @@ export interface LandscapeDocument {
 const finite2 = (point: V2) => point.length === 2 && point.every(Number.isFinite);
 const finite3 = (point: V3) => point.length === 3 && point.every(Number.isFinite);
 const positive = (value: number) => Number.isFinite(value) && value > 0;
-const polygonValid = (points: V2[]) => points.length >= 3 && points.every(finite2);
+const polygonArea2 = (points: V2[]) => points.reduce((sum, point, index) => { const next = points[(index + 1) % points.length]!; return sum + point[0] * next[1] - next[0] * point[1]; }, 0);
+const polygonValid = (points: V2[]) => points.length >= 3 && points.every(finite2) && Math.abs(polygonArea2(points)) > 1e-12;
+function pointInsideOrOnBoundary(point: V2, polygon: V2[]): boolean {
+  if (!finite2(point) || !polygonValid(polygon)) return false;
+  let inside = false;
+  for (let index = 0, previous = polygon.length - 1; index < polygon.length; previous = index++) {
+    const a = polygon[previous]!, b = polygon[index]!;
+    const cross = (point[0] - a[0]) * (b[1] - a[1]) - (point[1] - a[1]) * (b[0] - a[0]);
+    const onSegment = Math.abs(cross) <= 1e-9 && point[0] >= Math.min(a[0], b[0]) - 1e-9 && point[0] <= Math.max(a[0], b[0]) + 1e-9 && point[1] >= Math.min(a[1], b[1]) - 1e-9 && point[1] <= Math.max(a[1], b[1]) + 1e-9;
+    if (onSegment) return true;
+    if ((a[1] > point[1]) !== (b[1] > point[1]) && point[0] < ((b[0] - a[0]) * (point[1] - a[1])) / (b[1] - a[1]) + a[0]) inside = !inside;
+  }
+  return inside;
+}
+const polygonInsideSite = (points: V2[], site: V2[]) => points.every(point => pointInsideOrOnBoundary(point, site));
 
 function allLandscapeObjects(document: LandscapeDocument) {
-  return [...document.sourceEvidence, ...document.plants, ...document.plantingZones, ...document.hardscapes, ...document.soilVolumes, ...document.irrigationNodes, ...document.irrigationPipes, ...document.irrigationZones, ...document.drainagePaths, ...document.maintenanceZones];
+  return [...document.sourceEvidence, ...(document.terrainModifiers ?? []), ...document.plants, ...document.plantingZones, ...document.hardscapes, ...document.soilVolumes, ...document.irrigationNodes, ...document.irrigationPipes, ...document.irrigationZones, ...document.drainagePaths, ...document.maintenanceZones];
 }
 
 export function validateLandscapeDocument(document: LandscapeDocument): string[] {
@@ -50,18 +74,30 @@ export function validateLandscapeDocument(document: LandscapeDocument): string[]
   allLandscapeObjects(document).forEach(item => register(item.id));
   const evidence = new Set(document.sourceEvidence.map(item => item.id));
   document.sourceEvidence.forEach(item => { if (!item.sourceRef.trim() || Number.isNaN(Date.parse(item.capturedAt))) issues.push(`${item.id}: invalid landscape source evidence.`); });
-  document.plants.forEach(item => { if (!item.speciesCode.trim() || !finite3(item.positionM) || !positive(item.installedHeightM) || !positive(item.matureCanopyDiameterM) || !positive(item.rootZoneDiameterM) || !positive(item.spacingM) || item.evidenceIds.some(id => !evidence.has(id))) issues.push(`${item.id}: invalid plant geometry or provenance.`); });
+  (document.terrainModifiers ?? []).forEach(item => {
+    if (!polygonValid(item.boundaryM) || !polygonInsideSite(item.boundaryM, document.siteBoundaryM) || !Number.isFinite(item.deltaM)) issues.push(`${item.id}: invalid terrain modifier.`);
+  });
+  document.plants.forEach(item => { if (!item.speciesCode.trim() || !finite3(item.positionM) || !pointInsideOrOnBoundary([item.positionM[0], item.positionM[1]], document.siteBoundaryM) || !positive(item.installedHeightM) || !positive(item.matureCanopyDiameterM) || !positive(item.rootZoneDiameterM) || !positive(item.spacingM) || item.evidenceIds.some(id => !evidence.has(id))) issues.push(`${item.id}: invalid plant geometry or provenance.`); });
   const plantIds = new Set(document.plants.map(item => item.id)), soilIds = new Set(document.soilVolumes.map(item => item.id));
-  document.plantingZones.forEach(item => { if (!polygonValid(item.boundaryM) || item.plantIds.some(id => !plantIds.has(id)) || !soilIds.has(item.soilVolumeId) || !Number.isFinite(item.targetCoveragePercent) || item.targetCoveragePercent < 0 || item.targetCoveragePercent > 100) issues.push(`${item.id}: invalid planting zone.`); });
-  document.hardscapes.forEach(item => { if (!polygonValid(item.boundaryM) || !item.material.trim() || !Number.isFinite(item.slopePercent) || Math.abs(item.slopePercent) > 50) issues.push(`${item.id}: invalid hardscape.`); });
-  document.soilVolumes.forEach(item => { if (!polygonValid(item.boundaryM) || !positive(item.depthM) || !item.soilType.trim() || !item.drainageClass.trim()) issues.push(`${item.id}: invalid soil volume.`); });
+  document.plantingZones.forEach(item => { if (!polygonValid(item.boundaryM) || !polygonInsideSite(item.boundaryM, document.siteBoundaryM) || new Set(item.plantIds).size !== item.plantIds.length || item.plantIds.some(id => !plantIds.has(id)) || !soilIds.has(item.soilVolumeId) || !Number.isFinite(item.targetCoveragePercent) || item.targetCoveragePercent < 0 || item.targetCoveragePercent > 100) issues.push(`${item.id}: invalid planting zone.`); });
+  document.hardscapes.forEach(item => { if (!polygonValid(item.boundaryM) || !polygonInsideSite(item.boundaryM, document.siteBoundaryM) || !item.material.trim() || !Number.isFinite(item.slopePercent) || Math.abs(item.slopePercent) > 50) issues.push(`${item.id}: invalid hardscape.`); });
+  document.soilVolumes.forEach(item => { if (!polygonValid(item.boundaryM) || !polygonInsideSite(item.boundaryM, document.siteBoundaryM) || !positive(item.depthM) || !item.soilType.trim() || !item.drainageClass.trim()) issues.push(`${item.id}: invalid soil volume.`); });
   const nodeIds = new Set(document.irrigationNodes.map(item => item.id));
-  document.irrigationNodes.forEach(item => { if (!finite3(item.positionM) || (item.pressureKpa !== undefined && !positive(item.pressureKpa)) || (item.flowLpm !== undefined && !positive(item.flowLpm)) || (item.kind === 'source' && (!positive(item.pressureKpa ?? 0) || !positive(item.flowLpm ?? 0)))) issues.push(`${item.id}: invalid irrigation node or source capacity.`); });
+  document.irrigationNodes.forEach(item => { if (!finite3(item.positionM) || !pointInsideOrOnBoundary([item.positionM[0], item.positionM[1]], document.siteBoundaryM) || (item.pressureKpa !== undefined && !positive(item.pressureKpa)) || (item.flowLpm !== undefined && !positive(item.flowLpm)) || (item.kind === 'source' && (!positive(item.pressureKpa ?? 0) || !positive(item.flowLpm ?? 0)))) issues.push(`${item.id}: invalid irrigation node or source capacity.`); });
   document.irrigationPipes.forEach(item => { if (!nodeIds.has(item.fromNodeId) || !nodeIds.has(item.toNodeId) || item.fromNodeId === item.toNodeId || !positive(item.diameterMm) || !positive(item.lengthM)) issues.push(`${item.id}: invalid irrigation pipe.`); });
   const plantingZoneIds = new Set(document.plantingZones.map(item => item.id));
-  document.irrigationZones.forEach(item => { if (!nodeIds.has(item.valveNodeId) || item.emitterNodeIds.some(id => !nodeIds.has(id)) || item.plantingZoneIds.some(id => !plantingZoneIds.has(id)) || !positive(item.designFlowLpm)) issues.push(`${item.id}: invalid irrigation zone.`); });
-  document.drainagePaths.forEach(item => { if (item.pointsM.length < 2 || item.pointsM.some(point => !finite3(point)) || !item.outletObjectId.trim() || !positive(item.minimumSlopePercent)) issues.push(`${item.id}: invalid landscape drainage path.`); });
-  document.maintenanceZones.forEach(item => { if (!polygonValid(item.boundaryM) || !positive(item.accessWidthM) || !item.taskCodes.length || item.taskCodes.some(code => !code.trim())) issues.push(`${item.id}: invalid maintenance zone.`); });
+  const nodeById = new Map(document.irrigationNodes.map(item => [item.id, item]));
+  document.irrigationZones.forEach(item => { if (nodeById.get(item.valveNodeId)?.kind !== 'valve' || new Set(item.emitterNodeIds).size !== item.emitterNodeIds.length || new Set(item.plantingZoneIds).size !== item.plantingZoneIds.length || item.emitterNodeIds.some(id => nodeById.get(id)?.kind !== 'emitter') || item.plantingZoneIds.some(id => !plantingZoneIds.has(id)) || !positive(item.designFlowLpm)) issues.push(`${item.id}: invalid irrigation zone.`); });
+  document.drainagePaths.forEach(item => {
+    const slopesValid = item.pointsM.every((point, index) => {
+      const next = item.pointsM[index + 1];
+      if (!next) return true;
+      const horizontal = Math.hypot(next[0] - point[0], next[1] - point[1]);
+      return horizontal > 0 && ((point[2] - next[2]) / horizontal) * 100 + 1e-9 >= item.minimumSlopePercent;
+    });
+    if (item.pointsM.length < 2 || item.pointsM.some(point => !finite3(point) || !pointInsideOrOnBoundary([point[0], point[1]], document.siteBoundaryM)) || !item.outletObjectId.trim() || !positive(item.minimumSlopePercent) || !slopesValid) issues.push(`${item.id}: invalid landscape drainage path.`);
+  });
+  document.maintenanceZones.forEach(item => { if (!polygonValid(item.boundaryM) || !polygonInsideSite(item.boundaryM, document.siteBoundaryM) || !positive(item.accessWidthM) || !item.taskCodes.length || new Set(item.taskCodes).size !== item.taskCodes.length || item.taskCodes.some(code => !code.trim())) issues.push(`${item.id}: invalid maintenance zone.`); });
   return issues;
 }
 

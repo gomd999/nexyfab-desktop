@@ -15,6 +15,7 @@ import { verifyAdmin, verifySuperAdmin } from '@/lib/admin-auth';
 import { getActiveBreaker, tripBreaker, clearBreaker, type BreakerScope } from '@/lib/cost-breaker';
 import { getProviderHealth, resetProviderHealth } from '@/lib/provider-health';
 import { recordAdminAudit } from '@/lib/admin-audit';
+import { boundedJsonError, readBoundedJson } from '@/lib/boundedJsonBody';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -48,7 +49,8 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Forbidden — super_admin required' }, { status: 403 });
   }
   let body: { reason?: unknown; untilMs?: unknown };
-  try { body = await req.json(); } catch {
+  try { body = await readBoundedJson(req, 64 * 1024); } catch (error) {
+    if (boundedJsonError(error)?.status === 413) return NextResponse.json({ error: 'payload too large' }, { status: 413 });
     return NextResponse.json({ error: 'invalid JSON' }, { status: 400 });
   }
   const reason = typeof body.reason === 'string' && body.reason.trim() ? body.reason.trim() : '운영자 수동 차단';

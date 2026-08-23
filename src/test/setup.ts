@@ -58,6 +58,16 @@ if (typeof window !== 'undefined') {
   } catch {
     /* older jsdom locks the descriptor — tests fall back to its stub */
   }
+
+  // A real browser treats `<a download>` as a file-save side effect. jsdom
+  // instead schedules a navigation and emits a noisy "Not implemented"
+  // error after otherwise-passing export tests. Keep ordinary anchor clicks
+  // untouched, but make temporary download anchors a deterministic no-op.
+  const jsdomAnchorClick = window.HTMLAnchorElement.prototype.click;
+  window.HTMLAnchorElement.prototype.click = function click(this: HTMLAnchorElement): void {
+    if (this.hasAttribute('download')) return;
+    jsdomAnchorClick.call(this);
+  };
 }
 
 export {};

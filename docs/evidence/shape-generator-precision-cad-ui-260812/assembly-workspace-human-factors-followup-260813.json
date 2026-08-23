@@ -1,0 +1,131 @@
+{
+  "schema": "nexyfab.assembly-workspace-human-factors-followup.v1",
+  "observedAt": "2026-08-13",
+  "scope": "local implementation and browser verification",
+  "verdict": {
+    "humanFactorsUi": "pass",
+    "supportedPrecisionCadPath": "pass",
+    "aiPreviewApplyUndo": "pass",
+    "manufacturingRelease": "blocked",
+    "commercialRelease": "blocked"
+  },
+  "implemented": {
+    "taskPropertyManager": [
+      "parts",
+      "mates",
+      "solve"
+    ],
+    "mobileDefaultPanels": "drawers_closed",
+    "mateReferenceEntry": "part_and_stable_ref_selects",
+    "advancedMotion": "collapsed_in_solve",
+    "aiPlan": "non_mutating_3d_preview_diff_then_single_transaction_apply",
+    "gearFeatureTree": "shared_involute_profile_extrude_then_through_hole",
+    "semanticRefs": [
+      "rotation_axis",
+      "shaft_axis",
+      "pitch_axis",
+      "pitch_plane",
+      "pitch_point",
+      "linear_axis",
+      "rack_path"
+    ],
+    "authFailureUx": "AUTH_REQUIRED_with_login_link_and_NOT_RUN_details"
+  },
+  "verification": {
+    "precisionVitest": {
+      "status": "pass",
+      "files": 6,
+      "tests": 123
+    },
+    "assemblyUiVitest": {
+      "status": "pass",
+      "files": 2
+    },
+    "typescript": "pass",
+    "targetedEslint": "pass",
+    "diffCheck": "pass",
+    "productionBuild": {
+      "status": "pass",
+      "wallSeconds": 491.9,
+      "staticPages": "290/290",
+      "assemblyInitialJsBytes": 19820,
+      "assemblyBudgetBytes": 20000,
+      "bundleBudget": "pass"
+    },
+    "desktopChrome": {
+      "viewport": "1920x1080",
+      "documentOverflowX": 0,
+      "webgl": true,
+      "missingFormIdentity": 0,
+      "unlabelledFormFields": 0,
+      "consoleErrorWarnIssue": 0,
+      "dynamicConstraintsPanel": "pass"
+    },
+    "mobileChrome": {
+      "viewport": "390x844",
+      "documentOverflowX": 0,
+      "defaultComplementaryPanelsVisible": 0,
+      "footerCommands": [
+        "undo",
+        "redo",
+        "import_step"
+      ]
+    },
+    "twoCubeSolve": {
+      "phase": "real",
+      "residual": 0,
+      "remainingDoF": 2,
+      "allowedDoF": 0,
+      "status": "blocked"
+    },
+    "aiBrowserFlow": {
+      "previewAdds": {
+        "parts": 3,
+        "mates": 2,
+        "modified": 0
+      },
+      "stateBeforeApply": "2_parts_1_mate",
+      "stateAfterApply": "5_parts_3_mates",
+      "stateAfterUndo": "2_parts_1_mate",
+      "status": "pass"
+    }
+  },
+  "failedOrAdjustedRuns": [
+    {
+      "step": "initial_sandbox_build",
+      "status": "fail",
+      "reason": "spawn EPERM"
+    },
+    {
+      "step": "production_build_before_page_shell_reduction",
+      "status": "fail",
+      "reason": "assembly route 20232 bytes exceeded fixed 20000 byte budget"
+    },
+    {
+      "step": "assembly_ui_regression_after_new_contract",
+      "status": "fail_then_fixed",
+      "reason": "tests still expected free-text refs and immediate AI mutation; one real empty-tree stable-ref omission was fixed"
+    }
+  ],
+  "notRun": [
+    "authenticated_manufacturing_verify",
+    "external_occt_step_receipt",
+    "external_interference_receipt",
+    "signed_release_certificate",
+    "figma_file_read_write_without_target_and_edit_seat",
+    "30_of_30_mechanical_closed_loop_receipts",
+    "4_cad_step_interoperability_receipts",
+    "blind_20",
+    "manufacturing_pilot_3"
+  ],
+  "explicitBoundaries": {
+    "rackPrimitive": "not_implemented",
+    "manufacturingVerifyHttpStatus": 401,
+    "manufacturingVerifyCode": "AUTH_REQUIRED",
+    "occtStep": "not_run",
+    "interference": "not_run",
+    "certificate": "not_run",
+    "figmaIdentity": "pass_from_260812_session",
+    "figmaFileE2e": "not_run"
+  }
+}

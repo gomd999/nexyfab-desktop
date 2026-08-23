@@ -22,9 +22,11 @@ import { getTrustedClientIp } from '@/lib/client-ip';
 import { rateLimit } from '@/lib/rate-limit';
 import { evaluateJointEvidenceRelease, type JointEvidenceClaim } from '@/lib/reference/jointEvidenceReleaseGate';
 import { hashNativeCadVerificationInput } from '@/lib/reference/nativeCadExpertReview';
+import { boundedJsonError, readBoundedJson } from '@/lib/boundedJsonBody';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
+const MAX_BODY_BYTES = 32 * 1024 * 1024;
 
 type VerifyBody = {
   state?: AssemblyState;
@@ -49,7 +51,12 @@ export async function POST(req: NextRequest) {
   if (!rateLimit(`cad-v1-assembly-verify:${ip}`, 60, 60_000).allowed) {
     return NextResponse.json({ ok: false, code: 'RATE_LIMIT', message: 'Too many assembly verification requests' }, { status: 429 });
   }
-  const body = (await req.json().catch(() => ({}))) as VerifyBody;
+  let body: VerifyBody;
+  try { body = await readBoundedJson<VerifyBody>(req, MAX_BODY_BYTES); }
+  catch (error) {
+    if (boundedJsonError(error)?.code === 'PAYLOAD_TOO_LARGE') return NextResponse.json({ ok: false, code: 'PAYLOAD_TOO_LARGE' }, { status: 413 });
+    body = {};
+  }
   const motionRequested = Boolean(body.motion || body.motionTrajectory);
   if (body.motion && body.motionTrajectory) {
     return NextResponse.json({ ok: false, code: 'INVALID_MOTION', message: 'motion and motionTrajectory are mutually exclusive' }, { status: 422 });

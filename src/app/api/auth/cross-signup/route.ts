@@ -20,6 +20,9 @@ import { z } from 'zod';
 import { createHash, randomBytes } from 'crypto';
 import { getTrustedClientIp } from '@/lib/client-ip';
 import { parseUserStageColumn } from '@/lib/stage-engine';
+import { boundedJsonError, readBoundedJson } from '@/lib/boundedJsonBody';
+
+const MAX_CROSS_SIGNUP_BODY_BYTES = 32 * 1024;
 
 export const dynamic = 'force-dynamic';
 
@@ -52,7 +55,10 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Invalid service secret' }, { status: 403 });
   }
 
-  const parsed = signupSchema.safeParse(await req.json().catch(() => ({})));
+  let raw: unknown = {};
+  try { raw = await readBoundedJson(req, MAX_CROSS_SIGNUP_BODY_BYTES); }
+  catch (error) { if (boundedJsonError(error)?.code === 'PAYLOAD_TOO_LARGE') return NextResponse.json({ error: 'Request too large', code: 'PAYLOAD_TOO_LARGE' }, { status: 413 }); }
+  const parsed = signupSchema.safeParse(raw);
   if (!parsed.success) {
     return NextResponse.json(
       { error: parsed.error.issues[0]?.message ?? 'Invalid input' },

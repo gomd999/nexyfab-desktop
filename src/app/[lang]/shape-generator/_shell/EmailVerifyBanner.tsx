@@ -15,7 +15,8 @@ export interface EmailVerifyBannerProps {
   lang: string;
 }
 
-export function EmailVerifyBanner({ isKo, lang }: EmailVerifyBannerProps) {
+export function EmailVerifyBanner({ isKo: _isKo, lang }: EmailVerifyBannerProps) {
+  void _isKo;
   const user = useAuthStore(s => s.user);
   const refreshUser = useAuthStore(s => s.refreshPlan);
   // Optimistic UI fallback — mark user verified locally on success so the
@@ -170,9 +171,23 @@ export function EmailVerifyBanner({ isKo, lang }: EmailVerifyBannerProps) {
     >
       <span aria-hidden="true" style={{ fontSize: 16 }}>✉</span>
       <span style={{ flex: 1, minWidth: 0 }}>
-        {isKo
-          ? <>이메일 인증이 필요합니다 — <strong>{user.email}</strong> 로 발송된 6자리 코드를 입력해주세요.</>
-          : <>Email verification needed — enter the 6-digit code sent to <strong>{user.email}</strong>.</>}
+        {loc(lang, {
+          ko: '이메일 인증이 필요합니다 —',
+          en: 'Email verification needed —',
+          ja: 'メール認証が必要です —',
+          zh: '需要验证邮箱 —',
+          es: 'Se necesita verificar el correo —',
+          ar: 'يلزم التحقق من البريد الإلكتروني —',
+        })}{' '}
+        <strong>{user.email}</strong>{' '}
+        {loc(lang, {
+          ko: '로 발송된 6자리 코드를 입력해주세요.',
+          en: 'enter the 6-digit code sent to this address.',
+          ja: 'このアドレスに届いた6桁のコードを入力してください。',
+          zh: '请输入发送到此地址的6位验证码。',
+          es: 'introduce el código de 6 dígitos enviado a esta dirección.',
+          ar: 'أدخل الرمز المكون من 6 أرقام المرسل إلى هذا العنوان.',
+        })}
         {info && <span role="status" aria-live="polite" style={{ marginLeft: 10, color: '#0a4f1f', fontWeight: 700 }}>{info}</span>}
         {error && <span role="alert" aria-live="assertive" style={{ marginLeft: 10, color: '#7a2222', fontWeight: 700 }}>{error}</span>}
       </span>

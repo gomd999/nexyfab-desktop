@@ -11,6 +11,9 @@
 
 import { useState } from 'react';
 import { negotiateQuotes, type QuoteInput, type RfqContext, type NegotiatorResult, type NegotiationDraft } from './quoteNegotiator';
+import { createCommercialLocalizer } from '@/lib/i18n/commercialLocalizer';
+import { formatNumber } from '@/lib/i18n/format';
+import { toIsoLang } from '@/lib/i18n/normalize';
 
 const C = {
   bg: 'var(--nx-bg)',
@@ -34,6 +37,8 @@ const TAG_META: Record<string, { label: string; labelKo: string; color: string }
   balanced:   { label: 'BALANCED',   labelKo: '균형',    color: C.purple },
   expensive:  { label: 'HIGH',       labelKo: '고가',    color: C.yellow },
 };
+const localeFor = (isKo: boolean) => toIsoLang(typeof document !== 'undefined' ? document.documentElement.lang : ({ true: 'ko', false: 'en' } as const)[String(isKo) as 'true' | 'false']);
+const localizerFor = (isKo: boolean) => createCommercialLocalizer(localeFor(isKo));
 
 interface Props {
   rfq: RfqContext;
@@ -44,6 +49,7 @@ interface Props {
 
 function CopyButton({ text, isKo }: { text: string; isKo: boolean }) {
   const [copied, setCopied] = useState(false);
+  const copy = (ko: string, en: string) => localizerFor(isKo)(ko, en);
   const handle = () => {
     navigator.clipboard.writeText(text).then(() => {
       setCopied(true);
@@ -60,7 +66,7 @@ function CopyButton({ text, isKo }: { text: string; isKo: boolean }) {
         color: copied ? C.green : C.textMuted, cursor: 'pointer',
       }}
     >
-      {copied ? (isKo ? '복사됨 ✓' : 'Copied ✓') : (isKo ? '복사' : 'Copy')}
+      {copied ? copy('복사됨 ✓', 'Copied ✓') : copy('복사', 'Copy')}
     </button>
   );
 }
@@ -71,9 +77,10 @@ function NegotiationCard({ draft, isKo }: { draft: NegotiationDraft; isKo: boole
   const [toEmail, setToEmail] = useState('');
   const [sending, setSending] = useState(false);
   const [sendResult, setSendResult] = useState<'ok' | 'error' | null>(null);
-  const subject = isKo ? draft.subjectKo : draft.subject;
-  const body = isKo ? draft.bodyKo : draft.body;
-  const asks = isKo ? draft.asksKo : draft.asks;
+  const copy = (ko: string, en: string) => localizerFor(isKo)(ko, en);
+  const subject = copy(draft.subjectKo, draft.subject);
+  const body = copy(draft.bodyKo, draft.body);
+  const asks = draft.asks.map((en, index) => localizerFor(isKo)(draft.asksKo[index] ?? en, en));
 
   async function handleSend() {
     if (!toEmail.trim()) return;
@@ -117,7 +124,7 @@ function NegotiationCard({ draft, isKo }: { draft: NegotiationDraft; isKo: boole
         <div style={{ padding: '0 14px 14px', display: 'flex', flexDirection: 'column', gap: 10 }}>
           <div>
             <p style={{ margin: '0 0 4px', fontSize: 11, fontWeight: 700, color: C.textMuted }}>
-              {isKo ? '제목' : 'Subject'}
+              {copy('제목', 'Subject')}
             </p>
             <div style={{
               display: 'flex', alignItems: 'center', gap: 8,
@@ -130,7 +137,7 @@ function NegotiationCard({ draft, isKo }: { draft: NegotiationDraft; isKo: boole
 
           <div>
             <p style={{ margin: '0 0 4px', fontSize: 11, fontWeight: 700, color: C.textMuted }}>
-              {isKo ? '협상 포인트' : 'Negotiation Asks'}
+              {copy('협상 포인트', 'Negotiation Asks')}
             </p>
             <ul style={{ margin: 0, padding: '0 0 0 14px', display: 'flex', flexDirection: 'column', gap: 3 }}>
               {asks.map((a, i) => (
@@ -142,7 +149,7 @@ function NegotiationCard({ draft, isKo }: { draft: NegotiationDraft; isKo: boole
           <div>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
               <p style={{ margin: 0, fontSize: 11, fontWeight: 700, color: C.textMuted }}>
-                {isKo ? '이메일 본문' : 'Email Body'}
+                {copy('이메일 본문', 'Email Body')}
               </p>
               <CopyButton text={`${subject}\n\n${body}`} isKo={isKo} />
             </div>
@@ -165,12 +172,12 @@ function NegotiationCard({ draft, isKo }: { draft: NegotiationDraft; isKo: boole
                 border: `1px solid ${C.accent}`, background: `${C.accent}12`, color: C.accent, cursor: 'pointer',
               }}
             >
-              {isKo ? '📤 실제 발송' : '📤 Send Email'}
+              {copy('📤 실제 발송', '📤 Send Email')}
             </button>
           ) : (
             <div style={{ background: C.surface, borderRadius: 8, padding: '10px 12px', border: `1px solid ${C.border}`, display: 'flex', flexDirection: 'column', gap: 8 }}>
               <p style={{ margin: 0, fontSize: 11, fontWeight: 700, color: C.textMuted }}>
-                {isKo ? '수신자 이메일 주소' : 'Recipient Email'}
+                {copy('수신자 이메일 주소', 'Recipient Email')}
               </p>
               <div style={{ display: 'flex', gap: 6 }}>
                 <input
@@ -193,20 +200,20 @@ function NegotiationCard({ draft, isKo }: { draft: NegotiationDraft; isKo: boole
                     opacity: !toEmail.trim() ? 0.5 : 1,
                   }}
                 >
-                  {sending ? '...' : (isKo ? '발송' : 'Send')}
+                  {sending ? '...' : copy('발송', 'Send')}
                 </button>
                 <button
                   onClick={() => { setSendOpen(false); setSendResult(null); }}
                   style={{ padding: '6px 10px', borderRadius: 6, fontSize: 11, border: `1px solid ${C.border}`, background: 'transparent', color: C.textMuted, cursor: 'pointer' }}
                 >
-                  {isKo ? '취소' : 'Cancel'}
+                  {copy('취소', 'Cancel')}
                 </button>
               </div>
               {sendResult === 'ok' && (
-                <p style={{ margin: 0, fontSize: 11, color: C.green }}>✅ {isKo ? '이메일이 발송되었습니다.' : 'Email sent successfully.'}</p>
+                <p style={{ margin: 0, fontSize: 11, color: C.green }}>✅ {copy('이메일이 발송되었습니다.', 'Email sent successfully.')}</p>
               )}
               {sendResult === 'error' && (
-                <p style={{ margin: 0, fontSize: 11, color: C.red }}>❌ {isKo ? '발송 실패. Pro 플랜 또는 SMTP 설정이 필요합니다.' : 'Send failed. Pro plan or SMTP config required.'}</p>
+                <p style={{ margin: 0, fontSize: 11, color: C.red }}>❌ {copy('발송 실패. Pro 플랜 또는 SMTP 설정이 필요합니다.', 'Send failed. Pro plan or SMTP config required.')}</p>
               )}
             </div>
           )}
@@ -222,6 +229,8 @@ export default function QuoteNegotiatorPanel({ rfq, quotes, isKo, onClose }: Pro
   const [result, setResult] = useState<NegotiatorResult | null>(null);
   const [goal, setGoal] = useState<'price' | 'leadtime' | 'both'>('both');
   const [negotiateWith, setNegotiateWith] = useState<string[]>([]);
+  const copy = (ko: string, en: string) => localizerFor(isKo)(ko, en);
+  const uiLang = localeFor(isKo);
 
   const allSelected = negotiateWith.length === 0;
 
@@ -234,12 +243,12 @@ export default function QuoteNegotiatorPanel({ rfq, quotes, isKo, onClose }: Pro
         quotes,
         goal,
         negotiateWith: negotiateWith.length ? negotiateWith : undefined,
-        lang: isKo ? 'ko' : 'en',
+        lang: ({ true: 'ko', false: 'en' } as const)[String(isKo) as 'true' | 'false'],
       });
       setResult(r);
     } catch (e) {
       const err = e as Error & { requiresPro?: boolean };
-      setError(err.requiresPro ? (isKo ? 'Pro 플랜으로 업그레이드해주세요.' : 'Upgrade to Pro.') : (err.message || 'Error'));
+      setError(err.requiresPro ? copy('Pro 플랜으로 업그레이드해주세요.', 'Upgrade to Pro.') : (err.message || copy('오류', 'Error')));
     } finally {
       setLoading(false);
     }
@@ -268,7 +277,7 @@ export default function QuoteNegotiatorPanel({ rfq, quotes, isKo, onClose }: Pro
           <span style={{ fontSize: 18 }}>⚖️</span>
           <div style={{ flex: 1 }}>
             <p style={{ margin: 0, fontSize: 14, fontWeight: 800, color: C.text }}>
-              {isKo ? 'AI 견적 비교 · 협상 어시스턴트' : 'AI Quote Comparison · Negotiation'}
+              {copy('AI 견적 비교 · 협상 어시스턴트', 'AI Quote Comparison · Negotiation')}
             </p>
             <p style={{ margin: 0, fontSize: 11, color: C.textMuted }}>{rfq.projectName}</p>
           </div>
@@ -281,7 +290,7 @@ export default function QuoteNegotiatorPanel({ rfq, quotes, isKo, onClose }: Pro
             <>
               <div>
                 <p style={{ margin: '0 0 6px', fontSize: 11, fontWeight: 700, color: C.textMuted }}>
-                  {isKo ? '협상 목표' : 'Negotiation Goal'}
+                  {copy('협상 목표', 'Negotiation Goal')}
                 </p>
                 <div style={{ display: 'flex', gap: 6 }}>
                   {(['price', 'leadtime', 'both'] as const).map(g => (
@@ -295,9 +304,9 @@ export default function QuoteNegotiatorPanel({ rfq, quotes, isKo, onClose }: Pro
                         color: goal === g ? C.accent : C.textMuted, cursor: 'pointer',
                       }}
                     >
-                      {g === 'price' ? (isKo ? '💰 가격' : '💰 Price') :
-                       g === 'leadtime' ? (isKo ? '⏱ 납기' : '⏱ Lead Time') :
-                       (isKo ? '⚖️ 둘 다' : '⚖️ Both')}
+                      {g === 'price' ? copy('💰 가격', '💰 Price') :
+                       g === 'leadtime' ? copy('⏱ 납기', '⏱ Lead Time') :
+                       copy('⚖️ 둘 다', '⚖️ Both')}
                     </button>
                   ))}
                 </div>
@@ -305,7 +314,7 @@ export default function QuoteNegotiatorPanel({ rfq, quotes, isKo, onClose }: Pro
 
               <div>
                 <p style={{ margin: '0 0 6px', fontSize: 11, fontWeight: 700, color: C.textMuted }}>
-                  {isKo ? '협상 대상 (선택 안 하면 전체)' : 'Negotiate with (blank = all)'}
+                  {copy('협상 대상 (선택 안 하면 전체)', 'Negotiate with (blank = all)')}
                 </p>
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
                   {quotes.map(q => (
@@ -325,7 +334,7 @@ export default function QuoteNegotiatorPanel({ rfq, quotes, isKo, onClose }: Pro
                 </div>
                 {allSelected && (
                   <p style={{ margin: '4px 0 0', fontSize: 10, color: C.textMuted }}>
-                    {isKo ? '* 전체 공급사에 대한 협상 초안이 생성됩니다.' : '* Drafts will be generated for all non-best suppliers.'}
+                    {copy('* 전체 공급사에 대한 협상 초안이 생성됩니다.', '* Drafts will be generated for all non-best suppliers.')}
                   </p>
                 )}
               </div>
@@ -343,17 +352,17 @@ export default function QuoteNegotiatorPanel({ rfq, quotes, isKo, onClose }: Pro
               {/* Summary banner */}
               <div style={{ background: `${C.accent}12`, border: `1px solid ${C.accent}30`, borderRadius: 8, padding: '10px 14px' }}>
                 <p style={{ margin: 0, fontSize: 12, color: C.accent, lineHeight: 1.5 }}>
-                  {isKo ? result.recommendationKo : result.recommendation}
+                  {copy(result.recommendationKo, result.recommendation)}
                 </p>
                 <p style={{ margin: '4px 0 0', fontSize: 10, color: C.textMuted }}>
-                  {isKo ? result.summaryKo : result.summary}
+                  {copy(result.summaryKo, result.summary)}
                 </p>
               </div>
 
               {/* Ranked table */}
               <div>
                 <p style={{ margin: '0 0 6px', fontSize: 11, fontWeight: 700, color: C.textMuted, textTransform: 'uppercase' }}>
-                  {isKo ? '순위' : 'Ranking'}
+                  {copy('순위', 'Ranking')}
                 </p>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
                   {result.ranked.map((r, i) => {
@@ -371,11 +380,11 @@ export default function QuoteNegotiatorPanel({ rfq, quotes, isKo, onClose }: Pro
                             fontSize: 9, padding: '2px 6px', borderRadius: 10,
                             background: `${tagMeta.color}20`, color: tagMeta.color, fontWeight: 800,
                           }}>
-                            {isKo ? tagMeta.labelKo : tagMeta.label}
+                            {copy(tagMeta.labelKo, tagMeta.label)}
                           </span>
                         )}
                         <span style={{ fontSize: 12, fontWeight: 700, color: C.text }}>
-                          {r.estimatedAmount.toLocaleString()}원
+                          {formatNumber(r.estimatedAmount, uiLang) ?? ''} KRW
                         </span>
                         {r.estimatedDays && (
                           <span style={{ fontSize: 11, color: C.textMuted }}>⏱{r.estimatedDays}d</span>
@@ -396,7 +405,7 @@ export default function QuoteNegotiatorPanel({ rfq, quotes, isKo, onClose }: Pro
               {result.negotiations.length > 0 && (
                 <div>
                   <p style={{ margin: '0 0 6px', fontSize: 11, fontWeight: 700, color: C.textMuted, textTransform: 'uppercase' }}>
-                    {isKo ? '협상 이메일 초안' : 'Negotiation Drafts'}
+                    {copy('협상 이메일 초안', 'Negotiation Drafts')}
                   </p>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                     {result.negotiations.map(draft => (
@@ -408,7 +417,7 @@ export default function QuoteNegotiatorPanel({ rfq, quotes, isKo, onClose }: Pro
 
               {result.negotiations.length === 0 && (
                 <div style={{ textAlign: 'center', padding: '12px 0', color: C.textMuted, fontSize: 12 }}>
-                  {isKo ? '최저가가 이미 선택됨 — 추가 협상 불필요.' : 'Best price already selected — no negotiation needed.'}
+                  {copy('최저가가 이미 선택됨 — 추가 협상 불필요.', 'Best price already selected — no negotiation needed.')}
                 </div>
               )}
             </>
@@ -427,7 +436,7 @@ export default function QuoteNegotiatorPanel({ rfq, quotes, isKo, onClose }: Pro
                 color: '#fff', fontSize: 13, fontWeight: 800, cursor: loading ? 'default' : 'pointer',
               }}
             >
-              {loading ? (isKo ? '분석 중...' : 'Analysing...') : (isKo ? '⚖️ AI 분석 시작' : '⚖️ Run AI Analysis')}
+              {loading ? copy('분석 중...', 'Analysing...') : copy('⚖️ AI 분석 시작', '⚖️ Run AI Analysis')}
             </button>
           ) : (
             <button
@@ -438,7 +447,7 @@ export default function QuoteNegotiatorPanel({ rfq, quotes, isKo, onClose }: Pro
                 color: C.textDim, fontSize: 13, fontWeight: 700, cursor: 'pointer',
               }}
             >
-              {isKo ? '🔄 다시 분석' : '🔄 Re-run'}
+            {copy('🔄 다시 분석', '🔄 Re-run')}
             </button>
           )}
           <button
@@ -449,7 +458,7 @@ export default function QuoteNegotiatorPanel({ rfq, quotes, isKo, onClose }: Pro
               color: C.textMuted, fontSize: 13, fontWeight: 600, cursor: 'pointer',
             }}
           >
-            {isKo ? '닫기' : 'Close'}
+            {copy('닫기', 'Close')}
           </button>
         </div>
       </div>

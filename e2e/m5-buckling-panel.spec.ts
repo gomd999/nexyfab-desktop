@@ -21,7 +21,8 @@ test.describe('M5 buckling analysis panel', () => {
     await exitSketchIfNeeded(page);
     await pickBoxWaitForGeometry(page);
 
-    await page.getByTestId('shell-open-fea').click();
+    await page.getByTestId('shell-open-verify').click();
+    await page.getByRole('button', { name: 'FEA', exact: true }).click();
     await page.getByRole('button', { name: 'Buckling', exact: true }).click();
     await page.getByRole('button', { name: /^Run/ }).click();
 

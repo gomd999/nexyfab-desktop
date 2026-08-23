@@ -1,0 +1,89 @@
+{
+  "schema": "nexyfab.runtime-placement.v1",
+  "contractVersion": "2026-08-13.1",
+  "principle": "cloudflare-first-railway-minimal-fail-closed",
+  "targetDeployments": {
+    "cloudflare": [
+      "studio-web",
+      "edge-gateway",
+      "cron-worker",
+      "collab-worker",
+      "job-orchestrator",
+      "openscad",
+      "fea",
+      "occt-exact",
+      "ifc-step"
+    ],
+    "railway": [
+      "core-api",
+      "native-fallback"
+    ]
+  },
+  "railwayDataAuthorities": [
+    "relational-system-of-record"
+  ],
+  "forbiddenRailwayTargetsAfterCutover": [
+    "studio-web",
+    "edge-gateway",
+    "cron-worker",
+    "collab-worker",
+    "job-orchestrator",
+    "openscad",
+    "fea",
+    "occt-exact",
+    "ifc-step",
+    "job-transport"
+  ],
+  "retirementSequence": [
+    {
+      "id": "railway-cron-jobs",
+      "replacement": "cron-worker",
+      "requiredChecks": ["schedule-parity", "idempotency", "missed-run-recovery", "rollback"]
+    },
+    {
+      "id": "railway-redis-job-transport",
+      "replacement": "job-orchestrator",
+      "requiredChecks": ["queue-delivery", "workflow-idempotency", "dead-letter-recovery", "rollback"]
+    },
+    {
+      "id": "railway-openscad-and-fea",
+      "replacement": "cloudflare-containers",
+      "requiredChecks": ["same-corpus-parity", "timeout-cancel", "artifact-integrity", "rollback"]
+    },
+    {
+      "id": "railway-ifc-step-and-occt",
+      "replacement": "cloudflare-containers",
+      "requiredChecks": ["same-corpus-parity", "interop-receipts", "artifact-integrity", "rollback"]
+    },
+    {
+      "id": "railway-studio-web-origin",
+      "replacement": "studio-web",
+      "requiredChecks": ["route-parity", "authenticated-e2e", "cache-security", "rollback"]
+    }
+  ],
+  "observationPolicy": {
+    "minimumConsecutiveDays": 30,
+    "maximumEvidenceAgeHours": 24,
+    "requireZeroUnexplainedGaps": true,
+    "requireCostReduction": true
+  },
+  "requiredLiveChecks": [
+    "cloudflare-staging-deploy",
+    "railway-minimal-staging-deploy",
+    "authenticated-project-e2e",
+    "cloudflare-railway-same-corpus-parity",
+    "postgres-backup-restore",
+    "r2-artifact-restore",
+    "queue-dead-letter-recovery",
+    "collaboration-snapshot-recovery",
+    "independent-rollback",
+    "thirty-day-cost-performance-error-observation"
+  ],
+  "liveEvidencePath": "docs/evidence/platform-runtime/live-observation-current.json",
+  "productionPolicy": {
+    "automaticPromotion": false,
+    "canaryPercent": [1, 10, 50, 100],
+    "requireHumanApproval": true,
+    "missingEvidenceState": "NOT_RUN"
+  }
+}

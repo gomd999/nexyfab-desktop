@@ -1,0 +1,37 @@
+{
+  "schema": "nexyfab.mechanical-single-part-step-import.v1",
+  "feature": "linearPattern",
+  "partRevisionSha256": "9d68f8570cabc1cb4fd20c633b38be709255768ba95410303c44338c780c06cb",
+  "sourceDesignRevisionSha256": "3cf6a0f9c8efcf153a2cfefde087a2112c086fc412d2feeaeb9ce52542838564",
+  "sourceStep": {
+    "path": "docs/evidence/cad-independent/local/mechanical-core-runtime-260813/linearPattern/linearPattern-edited.step",
+    "sha256": "3de8e156f5cf126b915ce9ff9514f99fba8b4b807b6e02b432e309711a1700c4",
+    "bytes": 15554,
+    "assertionId": "linearPattern.export.native-step"
+  },
+  "exactKernel": "OCCT",
+  "units": {
+    "value": "mm",
+    "confidence": "high"
+  },
+  "solidCount": 1,
+  "singleSolid": true,
+  "volumeMm3": 16800,
+  "boundsMm": [
+    [
+      -15.000000100000003,
+      -10.000000100000003,
+      -6.000000100000004
+    ],
+    [
+      55.0000001,
+      10.000000100000003,
+      6.000000100000004
+    ]
+  ],
+  "dimensionsMm": {
+    "x": 70.0000002,
+    "y": 20.000000200000006,
+    "z": 12.000000200000008
+  }
+}

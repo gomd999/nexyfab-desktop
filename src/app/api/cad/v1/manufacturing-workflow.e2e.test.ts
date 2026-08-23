@@ -18,6 +18,7 @@ describe('CAD v1 manufacturing workflow golden path', () => {
     const pmi = await (await pmiVerify(request('pmi/verify', { callouts: [{ id: 'flat', viewportId: 'top', kind: 'flatness', targetRef: 'f.cap.top', toleranceValue: .1 }], validTopologyRefs: ['f.cap.top'] }))).json();
     expect(sheet.designOk).toBe(true);
     expect(weld.designOk).toBe(true);
+    expect(weld.releaseReady).toBe(false);
     expect(tolerance.designOk).toBe(true);
     expect(pmi.designOk).toBe(true);
 
@@ -30,7 +31,8 @@ describe('CAD v1 manufacturing workflow golden path', () => {
       stepRoundtrip: { reimported: true, topologyMatched: true, dimensionsMatched: true, errors: [] },
       release: { artifactId: 'golden-artifact', exactArtifactVerified: true, authorized: true, reasons: [] },
     }))).json();
-    expect(report.designOk).toBe(true);
+    expect(report.reportedGatePass).toBe(true);
+    expect(report).toMatchObject({ designOk: false, releaseReady: false, authoritative: false, trustBoundary: 'client_asserted_preview' });
     expect(report.sideEffects).toEqual({ quoteCreated: false, rfqCreated: false, artifactReleased: false });
     expect(sheet.sideEffects.rfqCreated).toBe(false);
     expect(weld.sideEffects.rfqCreated).toBe(false);

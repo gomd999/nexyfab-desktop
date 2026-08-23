@@ -10,6 +10,7 @@
 
 import React, { useMemo, useState } from 'react';
 import { toIsoLang } from '@/lib/i18n/normalize';
+import { loc } from '@/lib/i18n/loc';
 import { rigidAlign, computeDeviations, flatnessDeviation, type MeasuredPoint, type CadPoint } from './cmmCompare';
 
 interface CmmComparePanelProps {
@@ -186,9 +187,9 @@ export default function CmmComparePanel({ lang, onClose, onResult }: CmmCompareP
           <Row label={t.flatness}>{result.flatness.toFixed(4)} mm</Row>
 
           <div style={{ marginTop: 10, display: 'flex', gap: 4 }}>
-            <span style={{ ...legendSwatch('#16a34a'), }} /> 양호
-            <span style={{ ...legendSwatch('#f59e0b'), marginLeft: 12 }} /> 주의
-            <span style={{ ...legendSwatch('#dc2626'), marginLeft: 12 }} /> 초과
+            <span style={{ ...legendSwatch('#16a34a'), }} /> {loc(lang, { ko: '양호', en: 'Good', ja: '良好', zh: '良好', es: 'Correcto', ar: 'جيد' })}
+            <span style={{ ...legendSwatch('#f59e0b'), marginLeft: 12 }} /> {loc(lang, { ko: '주의', en: 'Warning', ja: '注意', zh: '警告', es: 'Advertencia', ar: 'تحذير' })}
+            <span style={{ ...legendSwatch('#dc2626'), marginLeft: 12 }} /> {loc(lang, { ko: '초과', en: 'Exceeded', ja: '超過', zh: '超出', es: 'Excedido', ar: 'متجاوز' })}
           </div>
         </div>
       )}

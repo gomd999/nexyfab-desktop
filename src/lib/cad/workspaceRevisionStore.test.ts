@@ -10,12 +10,26 @@ import {
   diffCadWorkspacePaths,
   hashCadPayload,
   hashCadWorkspaceEnvelope,
+  listCadWorkspaceRevisions,
   persistCadWorkspaceRevision,
+  readAuthoritativeWorkspaceHead,
+  compareAndSwapAuthoritativeWorkspaceHead,
   validateCadWorkspaceEnvelope,
   type CadWorkspaceEnvelopeInput,
 } from './workspaceRevisionStore';
 
 const hash = (char: string) => char.repeat(64);
+
+describe('authoritative workspace head CAS', () => {
+  it('requires exact old revision/hash and never falls back to DDL', async () => {
+    let current = { revision: 4, content_hash: hash('a') };
+    const db = { backend: 'postgres' as const, queryOne: async () => current, queryAll: async () => [], execute: async (_sql: string, ...params: unknown[]) => { if (params[3] === 'p' && params[4] === current.revision && params[5] === current.content_hash) { current = { revision: Number(params[0]), content_hash: String(params[1]) }; return { changes: 1 }; } return { changes: 0 }; }, executeRaw: async () => { throw new Error('DDL_FORBIDDEN'); }, transaction: async <T>(fn: (db: DbAdapter) => Promise<T>) => fn(db as unknown as DbAdapter), close: async () => {} };
+    const adapter = db as unknown as DbAdapter;
+    await expect(readAuthoritativeWorkspaceHead(adapter, 'p')).resolves.toMatchObject({ revision: 4, contentHash: hash('a') });
+    await expect(compareAndSwapAuthoritativeWorkspaceHead(adapter, { projectId: 'p', expectedRevision: 4, expectedContentHash: hash('a'), nextRevision: 5, nextContentHash: hash('b'), at: 1 })).resolves.toBe(true);
+    await expect(compareAndSwapAuthoritativeWorkspaceHead(adapter, { projectId: 'p', expectedRevision: 4, expectedContentHash: hash('a'), nextRevision: 6, nextContentHash: hash('c'), at: 1 })).resolves.toBe(false);
+  });
+});
 
 function graph(): DesignArtifactGraph {
   return {
@@ -144,6 +158,15 @@ describe('common CAD workspace revision envelope', () => {
       { parts: [{ id: 'a', diameter: 10 }], units: 'mm' },
       { parts: [{ id: 'a', diameter: 12 }], units: 'mm' },
     )).toEqual(['parts[0].diameter']);
+  });
+
+  it('lists only intact project-owned exact revision metadata', async () => {
+    const input = envelope();
+    const contentHash = hashCadWorkspaceEnvelope(input);
+    const valid = { id: 'artifact-1', revision: 0, domain: 'mechanical' as const, content_hash: contentHash, payload_json: JSON.stringify({ ...input, contentHash }), created_at: 1234 };
+    const tampered = { ...valid, id: 'artifact-2', content_hash: hash('f') };
+    const db = { queryAll: async () => [valid, tampered] } as unknown as DbAdapter;
+    await expect(listCadWorkspaceRevisions(db, 'project-1', 200)).resolves.toEqual([expect.objectContaining({ artifactId: 'artifact-1', revision: 0, domain: 'mechanical', geometryContentHash: hash('b'), shapeIdentityHash: hash('d') })]);
   });
 
   it('rejects excessively nested payloads before a database write', async () => {

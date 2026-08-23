@@ -1,6 +1,8 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useMemo } from 'react';
+import { useAdminI18n } from '../AdminI18nProvider';
+import { createCommercialLocalizer } from '@/lib/i18n/commercialLocalizer';
 import Link from 'next/link';
 import { formatDate, formatDateTime } from '@/lib/formatDate';
 import { useToast } from '@/hooks/useToast';
@@ -27,7 +29,6 @@ interface RfqItem {
   created_at: number;
   priority?: 'high' | 'medium' | 'low';
 }
-
 interface Factory {
   id: string;
   name: string;
@@ -93,6 +94,21 @@ const PROCESS_OPTIONS: Record<string, string> = {
   casting: '주조', '3d_printing': '3D 프린팅',
 };
 
+const PROCESS_EN: Record<string, string> = {
+  cnc_milling: 'CNC milling', cnc_turning: 'CNC turning',
+  injection_molding: 'Injection molding', sheet_metal: 'Sheet metal',
+  casting: 'Casting', '3d_printing': '3D printing',
+};
+const STATUS_EN: Record<string, string> = {
+  pending: 'Pending', assigned: 'Assigned', quoted: 'Quoted',
+  accepted: 'Accepted', completed: 'Completed', cancelled: 'Cancelled',
+};
+const PRIORITY_EN: Record<string, string> = { high: 'High', medium: 'Medium', low: 'Low' };
+
+function localizeProcess(L: (ko: string, en: string) => string, value: string): string {
+  return L(PROCESS_OPTIONS[value] ?? value, PROCESS_EN[value] ?? value);
+}
+
 function getMockMatches(rfq: RfqItem, factories: Factory[]): MockMatch[] {
   const pool = factories.length >= 3 ? factories.slice(0, 5) : factories;
   if (pool.length === 0) {
@@ -122,6 +138,8 @@ function getPriority(rfq: RfqItem): 'high' | 'medium' | 'low' {
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export default function AdminRfqPage() {
+  const { locale } = useAdminI18n();
+  const L = useMemo(() => createCommercialLocalizer(locale), [locale]);
   const [rfqs, setRfqs] = useState<RfqItem[]>([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
@@ -211,8 +229,8 @@ export default function AdminRfqPage() {
               ? (factory.name_ko ? `${factory.name} (${factory.name_ko})` : factory.name)
               : m.company,
             region: factory?.region ?? '—',
-            processes: factory
-              ? factory.processes.slice(0, 3).map(p => PROCESS_OPTIONS[p] ?? p)
+              processes: factory
+              ? factory.processes.slice(0, 3).map(p => localizeProcess(L, p))
               : [],
             score: m.score,
           };
@@ -236,16 +254,16 @@ export default function AdminRfqPage() {
       for (const m of (data.matches ?? [])) map[m.partnerId] = m.score;
       setAiScores(map);
       setSortByKpi(false);
-      showToast(`AI 매칭 완료 — ${data.matches?.length ?? 0}개 추천`);
+      showToast(L('AI 매칭 완료 — ' + (data.matches?.length ?? 0) + '개 추천', 'AI matching complete — ' + (data.matches?.length ?? 0) + ' recommendations'));
     } catch {
-      showToast('AI 매칭 실패');
+      showToast(L('AI 매칭 실패', 'AI matching failed'));
     } finally {
       setAiLoading(false);
     }
   };
 
   const handleAssign = async () => {
-    if (!assignModal || !selectedFactory) { showToast('제조사를 선택해 주세요.'); return; }
+    if (!assignModal || !selectedFactory) { showToast(L('제조사를 선택해 주세요.', 'Select a manufacturer.')); return; }
     setAssigning(true);
     try {
       const res = await fetch('/api/admin/rfq', {
@@ -254,15 +272,15 @@ export default function AdminRfqPage() {
         body: JSON.stringify({ rfqId: assignModal.id, factoryId: selectedFactory, adminNote }),
       });
       const data = await res.json() as { ok?: boolean; error?: string; emailSent?: boolean };
-      if (!res.ok) { showToast(data.error || '배정 실패'); return; }
-      showToast(`배정 완료${data.emailSent ? ' (이메일 발송됨)' : ' (이메일 없음)'}`);
+      if (!res.ok) { showToast(data.error || L('배정 실패', 'Assignment failed')); return; }
+      showToast(L('배정 완료' + (data.emailSent ? ' (이메일 발송됨)' : ' (이메일 없음)'), 'Assignment complete' + (data.emailSent ? ' (email sent)' : ' (no email)')));
       setAssignModal(null);
       fetchRfqs();
-    } catch { showToast('오류가 발생했습니다.'); } finally { setAssigning(false); }
+    } catch { showToast(L('오류가 발생했습니다.', 'An error occurred.')); } finally { setAssigning(false); }
   };
 
   const handleBulkMatch = async () => {
-    if (selectedIds.size === 0) { showToast('선택된 RFQ가 없습니다.'); return; }
+    if (selectedIds.size === 0) { showToast(L('선택된 RFQ가 없습니다.', 'No RFQs selected.')); return; }
     setBulkRunning(true);
     try {
       const res = await fetch('/api/admin/rfq/bulk-match', {
@@ -275,15 +293,15 @@ export default function AdminRfqPage() {
         error?: string;
       };
       if (!res.ok) {
-        showToast(data.error ?? '자동 매칭 실패');
+        showToast(data.error ?? L('자동 매칭 실패', 'Automatic matching failed'));
         return;
       }
       const { total = 0, assigned = 0 } = data.summary ?? {};
-      showToast(`${assigned}/${total}건 자동 매칭 완료`);
+      showToast(L(assigned + '/' + total + '건 자동 매칭 완료', assigned + '/' + total + ' RFQs matched automatically'));
       setSelectedIds(new Set());
       fetchRfqs();
     } catch {
-      showToast('자동 매칭 중 오류가 발생했습니다.');
+      showToast(L('자동 매칭 중 오류가 발생했습니다.', 'An error occurred during automatic matching.'));
     } finally {
       setBulkRunning(false);
     }
@@ -327,8 +345,8 @@ export default function AdminRfqPage() {
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24 }}>
         <div>
-          <h1 style={{ fontSize: 22, fontWeight: 800, margin: 0 }}>📋 RFQ 관리</h1>
-          <p style={{ fontSize: 13, color: C.dim, margin: '4px 0 0' }}>총 {total}건</p>
+          <h1 style={{ fontSize: 22, fontWeight: 800, margin: 0 }}>{L('📋 RFQ 관리', '📋 RFQ management')}</h1>
+          <p style={{ fontSize: 13, color: C.dim, margin: '4px 0 0' }}>{L('총 ' + total + '건', 'Total ' + total)}</p>
         </div>
         {selectedIds.size > 0 && (
           <button
@@ -340,7 +358,7 @@ export default function AdminRfqPage() {
               cursor: 'pointer', fontSize: 13, fontWeight: 700,
             }}
           >
-            {bulkRunning ? '⏳ 실행 중...' : `✦ 선택 매칭 실행 (${selectedIds.size}건)`}
+            {bulkRunning ? L('⏳ 실행 중...', '⏳ Running...') : L('✦ 선택 매칭 실행 (' + selectedIds.size + '건)', '✦ Match selected (' + selectedIds.size + ')')}
           </button>
         )}
       </div>
@@ -363,7 +381,7 @@ export default function AdminRfqPage() {
                 display: 'flex', alignItems: 'center', gap: 6,
               }}
             >
-              {tab.label}
+              {L(tab.label, ({ all: 'All', pending: 'Pending', matched: 'Matched', completed: 'Completed', cancelled: 'Cancelled' } as Record<string, string>)[tab.key] ?? tab.label)}
               <span style={{
                 background: isActive ? 'rgba(255,255,255,0.25)' : C.border,
                 color: isActive ? '#fff' : C.text,
@@ -379,7 +397,7 @@ export default function AdminRfqPage() {
 
       {/* Table */}
       {loading ? (
-        <div style={{ textAlign: 'center', padding: 60, color: C.dim }}>불러오는 중...</div>
+        <div style={{ textAlign: 'center', padding: 60, color: C.dim }}>{L('불러오는 중...', 'Loading...')}</div>
       ) : rfqs.length === 0 ? (
         /* ── Empty state ── */
         <div style={{
@@ -395,8 +413,8 @@ export default function AdminRfqPage() {
             <circle cx="54" cy="54" r="12" fill={C.card} stroke={C.accent} strokeWidth="2"/>
             <path d="M50 54h8M54 50v8" stroke={C.accent} strokeWidth="2" strokeLinecap="round"/>
           </svg>
-          <div style={{ fontSize: 16, fontWeight: 700, color: C.text }}>등록된 RFQ가 없습니다</div>
-          <div style={{ fontSize: 13, color: C.dim }}>현재 필터 조건에 맞는 RFQ가 없습니다.</div>
+          <div style={{ fontSize: 16, fontWeight: 700, color: C.text }}>{L('등록된 RFQ가 없습니다', 'No RFQs found')}</div>
+          <div style={{ fontSize: 13, color: C.dim }}>{L('현재 필터 조건에 맞는 RFQ가 없습니다.', 'No RFQs match the current filters.')}</div>
           <Link
             href="/admin/rfq/new"
             prefetch={false}
@@ -405,7 +423,7 @@ export default function AdminRfqPage() {
               fontSize: 13, fontWeight: 700, textDecoration: 'none', display: 'inline-block',
             }}
           >
-            + 새 RFQ 등록
+            {L('+ 새 RFQ 등록', '+ Add RFQ')}
           </Link>
         </div>
       ) : (
@@ -422,8 +440,8 @@ export default function AdminRfqPage() {
                     style={{ cursor: 'pointer' }}
                   />
                 </th>
-                {['RFQ ID', '고객', '부품명', '소재 / 수량', 'DFM', '배정 제조사', '상태'].map(h => (
-                  <th key={h} style={{ padding: '10px 12px', textAlign: 'left', color: C.dim, fontWeight: 600, whiteSpace: 'nowrap' }}>{h}</th>
+                {[['RFQ ID', 'RFQ ID'], ['고객', 'Customer'], ['부품명', 'Part'], ['소재 / 수량', 'Material / Qty'], ['DFM', 'DFM'], ['배정 제조사', 'Assigned manufacturer'], ['상태', 'Status']].map(([ko, en]) => (
+                  <th key={ko} style={{ padding: '10px 12px', textAlign: 'left', color: C.dim, fontWeight: 600, whiteSpace: 'nowrap' }}>{L(ko, en)}</th>
                 ))}
                 {/* Sortable priority */}
                 <th style={{ padding: '10px 12px', textAlign: 'left', color: C.dim, fontWeight: 600, whiteSpace: 'nowrap' }}>
@@ -436,12 +454,12 @@ export default function AdminRfqPage() {
                       display: 'flex', alignItems: 'center', gap: 3,
                     }}
                   >
-                    우선순위{' '}
+                    {L('우선순위', 'Priority')}{' '}
                     {sortPriority === 'asc' ? '▲' : sortPriority === 'desc' ? '▼' : '⇅'}
                   </button>
                 </th>
-                {['접수일', '액션'].map(h => (
-                  <th key={h} style={{ padding: '10px 12px', textAlign: 'left', color: C.dim, fontWeight: 600, whiteSpace: 'nowrap' }}>{h}</th>
+                {[['접수일', 'Received'], ['액션', 'Actions']].map(([ko, en]) => (
+                  <th key={ko} style={{ padding: '10px 12px', textAlign: 'left', color: C.dim, fontWeight: 600, whiteSpace: 'nowrap' }}>{L(ko, en)}</th>
                 ))}
               </tr>
             </thead>
@@ -478,17 +496,17 @@ export default function AdminRfqPage() {
                       </button>
                     </td>
                     <td style={{ padding: '10px 12px' }}>
-                      <div style={{ fontWeight: 600 }}>{rfq.user_name || '(이름없음)'}</div>
+                      <div style={{ fontWeight: 600 }}>{rfq.user_name || L('(이름없음)', '(Unnamed)')}</div>
                       <div style={{ fontSize: 11, color: C.dim }}>{rfq.user_email || '-'}</div>
                     </td>
                     <td style={{ padding: '10px 12px', fontWeight: 600 }}>{rfq.shape_name || '-'}</td>
                     <td style={{ padding: '10px 12px', color: C.dim }}>
-                      {rfq.material_id || '-'} / {rfq.quantity.toLocaleString()}개
+                      {rfq.material_id || '-'} / {rfq.quantity.toLocaleString(locale)}{L('개', '')}
                     </td>
                     <td style={{ padding: '10px 12px' }}>
                       {rfq.dfm_score != null ? (
                         <span style={{ color: rfq.dfm_score >= 70 ? C.green : rfq.dfm_score >= 40 ? C.yellow : C.red, fontWeight: 700 }}>
-                          {rfq.dfm_score}점
+                          {L(rfq.dfm_score + '점', rfq.dfm_score + ' pts')}
                         </span>
                       ) : <span style={{ color: C.dim }}>-</span>}
                     </td>
@@ -498,22 +516,22 @@ export default function AdminRfqPage() {
                             <div style={{ fontWeight: 600, color: C.green }}>{rfq.factory_name}</div>
                             <div style={{ fontSize: 11, color: C.dim }}>{rfq.factory_email || ''}</div>
                           </div>
-                        : <span style={{ color: C.dim }}>미배정</span>
+                        : <span style={{ color: C.dim }}>{L('미배정', 'Unassigned')}</span>
                       }
                     </td>
                     <td style={{ padding: '10px 12px' }}>
                       <span style={{ fontSize: 11, padding: '3px 8px', borderRadius: 20, fontWeight: 700, background: sm.bg, color: sm.color }}>
-                        {sm.label}
+                        {L(sm.label, STATUS_EN[rfq.status] ?? rfq.status)}
                       </span>
                     </td>
                     {/* Priority badge */}
                     <td style={{ padding: '10px 12px' }}>
                       <span style={{ fontSize: 11, padding: '3px 8px', borderRadius: 20, fontWeight: 700, background: pm.bg, color: pm.color }}>
-                        {pm.label}
+                        {L(pm.label, PRIORITY_EN[prio] ?? prio)}
                       </span>
                     </td>
                     <td style={{ padding: '10px 12px', color: C.dim, fontSize: 12 }}>
-                      {formatDate(rfq.created_at)}
+                      {formatDate(rfq.created_at, locale)}
                     </td>
                     <td style={{ padding: '10px 12px' }}>
                       <div style={{ display: 'flex', gap: 6 }}>
@@ -525,7 +543,7 @@ export default function AdminRfqPage() {
                             cursor: 'pointer', fontSize: 11, fontWeight: 600, whiteSpace: 'nowrap',
                           }}
                         >
-                          자동 매칭
+                          {L('자동 매칭', 'Auto-match')}
                         </button>
                         <button
                           onClick={() => openAssign(rfq)}
@@ -535,7 +553,7 @@ export default function AdminRfqPage() {
                             cursor: 'pointer', fontSize: 11, fontWeight: 600, whiteSpace: 'nowrap',
                           }}
                         >
-                          {rfq.assigned_factory_id ? '재배정' : '배정'}
+                          {rfq.assigned_factory_id ? L('재배정', 'Reassign') : L('배정', 'Assign')}
                         </button>
                       </div>
                     </td>
@@ -552,12 +570,12 @@ export default function AdminRfqPage() {
         <div style={{ display: 'flex', justifyContent: 'center', gap: 8, marginTop: 16 }}>
           <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1}
             style={{ padding: '6px 14px', borderRadius: 8, border: `1px solid ${C.border}`, background: C.card, color: C.text, cursor: 'pointer', fontSize: 13 }}>
-            이전
+            {L('이전', 'Previous')}
           </button>
           <span style={{ lineHeight: '32px', fontSize: 13, color: C.dim }}>{page} / {totalPages}</span>
           <button onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page === totalPages}
             style={{ padding: '6px 14px', borderRadius: 8, border: `1px solid ${C.border}`, background: C.card, color: C.text, cursor: 'pointer', fontSize: 13 }}>
-            다음
+            {L('다음', 'Next')}
           </button>
         </div>
       )}
@@ -574,9 +592,9 @@ export default function AdminRfqPage() {
           }}>
             <div style={{ padding: '20px 24px', borderBottom: `1px solid ${C.border}`, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
               <div>
-                <h2 style={{ fontSize: 16, fontWeight: 800, margin: 0, color: C.text }}>자동 매칭 결과</h2>
+                <h2 style={{ fontSize: 16, fontWeight: 800, margin: 0, color: C.text }}>{L('자동 매칭 결과', 'Automatic matching results')}</h2>
                 <p style={{ fontSize: 12, color: C.dim, margin: '3px 0 0' }}>
-                  {matchPanel.rfq.shape_name || matchPanel.rfq.id.slice(0, 14)} · {matchPanel.rfq.material_id} · {matchPanel.rfq.quantity}개
+                  {matchPanel.rfq.shape_name || matchPanel.rfq.id.slice(0, 14)} · {matchPanel.rfq.material_id} · {matchPanel.rfq.quantity}{L('개', ' items')}
                 </p>
               </div>
               <button onClick={() => setMatchPanel(null)} style={{ background: 'none', border: 'none', color: C.dim, cursor: 'pointer', fontSize: 20, lineHeight: 1 }}>✕</button>
@@ -584,16 +602,16 @@ export default function AdminRfqPage() {
 
             <div style={{ padding: 24, flex: 1, overflowY: 'auto' }}>
               <div style={{ fontSize: 12, fontWeight: 700, color: C.dim, marginBottom: 14, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                추천 제조사 TOP {matchPanel.loading ? '…' : Math.min(matchPanel.matches.length, 5)}
+                {L('추천 제조사 TOP', 'Top recommended manufacturers')} {matchPanel.loading ? '…' : Math.min(matchPanel.matches.length, 5)}
               </div>
               {matchPanel.loading && (
                 <div style={{ textAlign: 'center', padding: '40px 0', color: C.dim, fontSize: 14 }}>
-                  ⏳ AI 매칭 분석 중…
+                  {L('⏳ AI 매칭 분석 중…', '⏳ Analyzing AI matches…')}
                 </div>
               )}
               {!matchPanel.loading && matchPanel.matches.length === 0 && (
                 <div style={{ textAlign: 'center', padding: '40px 0', color: C.dim, fontSize: 13 }}>
-                  적합한 공장을 찾지 못했습니다.
+                  {L('적합한 공장을 찾지 못했습니다.', 'No suitable factories found.')}
                 </div>
               )}
               {matchPanel.matches.map((m, i) => {
@@ -610,7 +628,7 @@ export default function AdminRfqPage() {
                         <div style={{ fontWeight: 700, fontSize: 14, color: C.text }}>{m.name}</div>
                         <div style={{ fontSize: 11, color: C.dim }}>{m.region}</div>
                       </div>
-                      <span style={{ fontSize: 16, fontWeight: 800, color: scoreColor }}>{m.score}점</span>
+                      <span style={{ fontSize: 16, fontWeight: 800, color: scoreColor }}>{L(m.score + '점', m.score + ' pts')}</span>
                     </div>
                     {/* Score bar */}
                     <div style={{ marginBottom: 8 }}>
@@ -639,13 +657,13 @@ export default function AdminRfqPage() {
                         cursor: 'pointer', fontSize: 12, fontWeight: 600,
                       }}
                     >
-                      이 제조사로 배정
+                      {L('이 제조사로 배정', 'Assign to this manufacturer')}
                     </button>
                   </div>
                 );
               })}
               <div style={{ padding: '10px 12px', borderRadius: 8, background: '#1a2232', border: `1px solid #1f3a5f`, fontSize: 11, color: C.dim }}>
-                점수는 DFM 점수, 공정 일치도, 지역 근접성을 기반으로 산출된 추천 지표입니다.
+                {L('점수는 DFM 점수, 공정 일치도, 지역 근접성을 기반으로 산출된 추천 지표입니다.', 'Scores reflect DFM score, process match, and regional proximity.')}
               </div>
             </div>
 
@@ -654,7 +672,7 @@ export default function AdminRfqPage() {
                 onClick={() => { const rfqRef = matchPanel.rfq; setMatchPanel(null); openAssign(rfqRef); }}
                 style={{ width: '100%', padding: '9px', borderRadius: 8, border: 'none', background: C.accent, color: '#fff', cursor: 'pointer', fontSize: 13, fontWeight: 700 }}
               >
-                직접 배정 →
+                {L('직접 배정 →', 'Assign directly →')}
               </button>
             </div>
           </div>
@@ -665,15 +683,15 @@ export default function AdminRfqPage() {
       {assignModal && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 20 }}>
           <div style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 14, padding: 28, width: '100%', maxWidth: 520, color: C.text }}>
-            <h2 style={{ fontSize: 18, fontWeight: 800, margin: '0 0 4px' }}>제조사 배정</h2>
+            <h2 style={{ fontSize: 18, fontWeight: 800, margin: '0 0 4px' }}>{L('제조사 배정', 'Assign manufacturer')}</h2>
             <p style={{ color: C.dim, fontSize: 13, margin: '0 0 20px' }}>
               RFQ: <strong style={{ color: C.text }}>{assignModal.shape_name || assignModal.id}</strong>
-              {' / '}{assignModal.material_id} / {assignModal.quantity}개
+              {' / '}{assignModal.material_id} / {assignModal.quantity}{L('개', ' items')}
             </p>
 
             <div style={{ marginBottom: 14 }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6, gap: 6, flexWrap: 'wrap' }}>
-                <label style={{ fontSize: 12, color: C.dim, fontWeight: 600 }}>제조사 선택 *</label>
+                <label style={{ fontSize: 12, color: C.dim, fontWeight: 600 }}>{L('제조사 선택 *', 'Select manufacturer *')}</label>
                 <div style={{ display: 'flex', gap: 6 }}>
                   <button
                     type="button"
@@ -681,14 +699,14 @@ export default function AdminRfqPage() {
                     disabled={aiLoading}
                     style={{ fontSize: 11, color: '#a371f7', background: Object.keys(aiScores).length > 0 ? '#2d1f4a' : 'transparent', border: `1px solid ${Object.keys(aiScores).length > 0 ? '#a371f7' : C.border}`, borderRadius: 6, padding: '2px 8px', cursor: 'pointer', opacity: aiLoading ? 0.6 : 1 }}
                   >
-                    {aiLoading ? '⏳ 분석중...' : Object.keys(aiScores).length > 0 ? '✦ AI 매칭 완료' : '🤖 AI 매칭'}
+                    {aiLoading ? L('⏳ 분석중...', '⏳ Analyzing...') : Object.keys(aiScores).length > 0 ? L('✦ AI 매칭 완료', '✦ AI match complete') : L('🤖 AI 매칭', '🤖 AI match')}
                   </button>
                   <button
                     type="button"
                     onClick={() => setSortByKpi(v => !v)}
                     style={{ fontSize: 11, color: sortByKpi ? C.accent : C.dim, background: sortByKpi ? '#1f3a5f' : 'transparent', border: `1px solid ${sortByKpi ? C.accent : C.border}`, borderRadius: 6, padding: '2px 8px', cursor: 'pointer' }}
                   >
-                    {sortByKpi ? '✦ KPI순' : 'KPI순'}
+                    {sortByKpi ? L('✦ KPI순', '✦ By KPI') : L('KPI순', 'By KPI')}
                   </button>
                 </div>
               </div>
@@ -727,7 +745,7 @@ export default function AdminRfqPage() {
                           </span>
                           {isTop && (
                             <span style={{ fontSize: 10, fontWeight: 700, color: '#f0c040', background: '#2d2200', border: '1px solid #665500', borderRadius: 4, padding: '1px 5px' }}>
-                              ✦ {hasAi ? 'AI 1위' : '추천'}
+                              ✦ {hasAi ? L('AI 1위', 'AI #1') : L('추천', 'Recommended')}
                             </span>
                           )}
                           {aiScore != null && (
@@ -737,20 +755,20 @@ export default function AdminRfqPage() {
                               color: aiScore >= 70 ? C.green : aiScore >= 40 ? C.yellow : C.red,
                               border: `1px solid ${aiScore >= 70 ? '#2ea043' : aiScore >= 40 ? '#9e6a03' : '#da3633'}`,
                             }}>
-                              AI {aiScore}점
+                              {L('AI ' + aiScore + '점', 'AI ' + aiScore + ' pts')}
                             </span>
                           )}
-                          {!f.contact_email && <span style={{ fontSize: 10, color: C.red }}>이메일없음</span>}
+                          {!f.contact_email && <span style={{ fontSize: 10, color: C.red }}>{L('이메일없음', 'No email')}</span>}
                         </div>
                         <div style={{ fontSize: 11, color: C.dim, display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                           <span>{f.region}</span>
-                          {f.processes.slice(0, 3).map(p => <span key={p}>{PROCESS_OPTIONS[p] ?? p}</span>)}
+                          {f.processes.slice(0, 3).map(p => <span key={p}>{localizeProcess(L, p)}</span>)}
                           {kpi && (
                             <>
-                              <span style={{ color: '#3fb950' }}>승률 {(kpi.winRate * 100).toFixed(0)}%</span>
-                              <span>완료 {kpi.completedContracts}건</span>
-                              {kpi.avgResponseHours != null && <span>응답 {kpi.avgResponseHours.toFixed(0)}h</span>}
-                              {kpi.overdueContracts > 0 && <span style={{ color: C.red }}>연체 {kpi.overdueContracts}</span>}
+                              <span style={{ color: '#3fb950' }}>{L('승률', 'Win rate')} {(kpi.winRate * 100).toFixed(0)}%</span>
+                              <span>{L('완료', 'Completed')} {kpi.completedContracts}{L('건', ' jobs')}</span>
+                              {kpi.avgResponseHours != null && <span>{L('응답', 'Response')} {kpi.avgResponseHours.toFixed(0)}h</span>}
+                              {kpi.overdueContracts > 0 && <span style={{ color: C.red }}>{L('연체', 'Overdue')} {kpi.overdueContracts}</span>}
                             </>
                           )}
                         </div>
@@ -761,30 +779,30 @@ export default function AdminRfqPage() {
             </div>
 
             <div style={{ marginBottom: 20 }}>
-              <label style={{ fontSize: 12, color: C.dim, fontWeight: 600, display: 'block', marginBottom: 6 }}>관리자 메모 (선택)</label>
+              <label style={{ fontSize: 12, color: C.dim, fontWeight: 600, display: 'block', marginBottom: 6 }}>{L('관리자 메모 (선택)', 'Admin note (optional)')}</label>
               <textarea
                 value={adminNote}
                 onChange={e => setAdminNote(e.target.value)}
                 rows={2}
-                placeholder="제조사에게 전달할 추가 지시 사항..."
+                placeholder={L('제조사에게 전달할 추가 지시 사항...', 'Additional instructions for the manufacturer...')}
                 style={{ width: '100%', padding: '8px 12px', borderRadius: 8, border: `1px solid ${C.border}`, background: '#0d1117', color: C.text, fontSize: 13, resize: 'vertical', boxSizing: 'border-box' }}
               />
             </div>
 
             {selectedFactory && !factories.find(f => f.id === selectedFactory)?.contact_email && (
               <div style={{ marginBottom: 16, padding: '8px 12px', borderRadius: 8, background: '#2d1f1f', border: `1px solid #5a2020`, fontSize: 12, color: '#f0883e' }}>
-                ⚠️ 선택한 제조사에 연락처 이메일이 없어 이메일이 발송되지 않습니다.
+                {L('⚠️ 선택한 제조사에 연락처 이메일이 없어 이메일이 발송되지 않습니다.', '⚠️ The selected manufacturer has no contact email; no email will be sent.')}
               </div>
             )}
 
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
               <button onClick={() => setAssignModal(null)}
                 style={{ padding: '8px 18px', borderRadius: 8, border: `1px solid ${C.border}`, background: 'transparent', color: C.dim, cursor: 'pointer', fontSize: 13 }}>
-                취소
+                {L('취소', 'Cancel')}
               </button>
               <button onClick={handleAssign} disabled={assigning || !selectedFactory}
                 style={{ padding: '8px 18px', borderRadius: 8, border: 'none', background: assigning || !selectedFactory ? '#1f3a5f' : C.accent, color: '#fff', cursor: 'pointer', fontSize: 13, fontWeight: 700 }}>
-                {assigning ? '배정 중...' : '배정 완료'}
+                {assigning ? L('배정 중...', 'Assigning...') : L('배정 완료', 'Assignment complete')}
               </button>
             </div>
           </div>
@@ -796,24 +814,24 @@ export default function AdminRfqPage() {
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 20 }}>
           <div style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 14, padding: 28, width: '100%', maxWidth: 520, color: C.text }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 20 }}>
-              <h2 style={{ fontSize: 18, fontWeight: 800, margin: 0 }}>RFQ 상세</h2>
+              <h2 style={{ fontSize: 18, fontWeight: 800, margin: 0 }}>{L('RFQ 상세', 'RFQ details')}</h2>
               <button onClick={() => setDetailModal(null)} style={{ background: 'none', border: 'none', color: C.dim, cursor: 'pointer', fontSize: 18 }}>✕</button>
             </div>
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
               {([
-                ['RFQ ID', detailModal.id],
-                ['고객', `${detailModal.user_name || '-'} (${detailModal.user_email || '-'})`],
-                ['부품명', detailModal.shape_name || '-'],
-                ['소재', detailModal.material_id || '-'],
-                ['수량', `${detailModal.quantity.toLocaleString()}개`],
-                ['부피', detailModal.volume_cm3 ? `${detailModal.volume_cm3.toFixed(2)} cm³` : '-'],
-                ['DFM 점수', detailModal.dfm_score != null ? `${detailModal.dfm_score}점` : '-'],
-                ['배정 제조사', detailModal.factory_name || '미배정'],
-                ['상태', STATUS_META[detailModal.status]?.label ?? detailModal.status],
-                ['우선순위', PRIORITY_META[getPriority(detailModal)]?.label ?? '-'],
-                ['메모', detailModal.note || '-'],
-                ['관리자 메모', detailModal.manufacturer_note || '-'],
-                ['접수일', formatDateTime(detailModal.created_at)],
+                [L('RFQ ID', 'RFQ ID'), detailModal.id],
+                [L('고객', 'Customer'), `${detailModal.user_name || '-'} (${detailModal.user_email || '-'})`],
+                [L('부품명', 'Part'), detailModal.shape_name || '-'],
+                [L('소재', 'Material'), detailModal.material_id || '-'],
+                [L('수량', 'Quantity'), detailModal.quantity.toLocaleString(locale) + L('개', ' items')],
+                [L('부피', 'Volume'), detailModal.volume_cm3 ? `${detailModal.volume_cm3.toFixed(2)} cm³` : '-'],
+                [L('DFM 점수', 'DFM score'), detailModal.dfm_score != null ? L(detailModal.dfm_score + '점', detailModal.dfm_score + ' pts') : '-'],
+                [L('배정 제조사', 'Assigned manufacturer'), detailModal.factory_name || L('미배정', 'Unassigned')],
+                [L('상태', 'Status'), L(STATUS_META[detailModal.status]?.label ?? detailModal.status, STATUS_EN[detailModal.status] ?? detailModal.status)],
+                [L('우선순위', 'Priority'), L(PRIORITY_META[getPriority(detailModal)]?.label ?? '-', PRIORITY_EN[getPriority(detailModal)] ?? '-')],
+                [L('메모', 'Note'), detailModal.note || '-'],
+                [L('관리자 메모', 'Admin note'), detailModal.manufacturer_note || '-'],
+                [L('접수일', 'Received'), formatDateTime(detailModal.created_at, locale)],
               ] as [string, string][]).map(([k, v]) => (
                 <tr key={k} style={{ borderBottom: `1px solid ${C.border}` }}>
                   <td style={{ padding: '8px 4px', color: C.dim, width: 120 }}>{k}</td>
@@ -826,13 +844,13 @@ export default function AdminRfqPage() {
                 onClick={() => { const ref = detailModal; setDetailModal(null); openMatchPanel(ref); }}
                 style={{ padding: '8px 16px', borderRadius: 8, border: `1px solid #a371f7`, background: 'transparent', color: '#a371f7', cursor: 'pointer', fontSize: 13, fontWeight: 700 }}
               >
-                자동 매칭
+                {L('자동 매칭', 'Auto-match')}
               </button>
               <button
                 onClick={() => { const ref = detailModal; setDetailModal(null); openAssign(ref); }}
                 style={{ padding: '8px 16px', borderRadius: 8, border: 'none', background: C.accent, color: '#fff', cursor: 'pointer', fontSize: 13, fontWeight: 700 }}
               >
-                제조사 배정
+                {L('제조사 배정', 'Assign manufacturer')}
               </button>
             </div>
           </div>

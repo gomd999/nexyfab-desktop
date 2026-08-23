@@ -1,7 +1,8 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
-import { usePathname } from 'next/navigation';
+import { usePathname, useSearchParams } from 'next/navigation';
+import { toRouteLang, type RouteLang } from '@/lib/i18n/normalize';
 
 const languages = [
     { code: 'en', label: 'English' },
@@ -11,55 +12,38 @@ const languages = [
     { code: 'es', label: 'Español' },
     { code: 'ar', label: 'العربية' },
 ];
+const SELECT_LANGUAGE_LABEL: Record<RouteLang, string> = {
+    kr: '언어 선택', en: 'Select language', ja: '言語を選択', cn: '选择语言', es: 'Seleccionar idioma', ar: 'اختر اللغة',
+};
 
 export default function LanguageSelector() {
     const pathname = usePathname() || '/en';
+    const searchParams = useSearchParams();
+    const queryLang = searchParams.get('lang');
+    const currentQuery = searchParams.toString();
 
     // Parse the current language and path
     const segments = pathname.split('/').filter(Boolean);
-    let currentLang = 'en';
+    let currentLang: RouteLang = 'en';
     let restOfPath = '';
 
-    if (segments.length > 0 && ['en', 'kr', 'ja', 'cn', 'jp', 'es', 'ar'].includes(segments[0])) {
-        // Handle jp to ja alias if needed
-        currentLang = segments[0] === 'jp' ? 'ja' : segments[0];
+    if (segments.length > 0 && ['en', 'kr', 'ja', 'cn', 'ko', 'zh', 'jp', 'es', 'ar'].includes(segments[0])) {
+        // Accept legacy ISO/JP segments, but always emit the canonical route
+        // vocabulary when the user selects another language.
+        currentLang = toRouteLang(segments[0]);
         restOfPath = '/' + segments.slice(1).join('/');
     } else {
         restOfPath = pathname !== '/' ? pathname : '';
+        // Auth/account routes live outside /[lang]. Keep their language in a
+        // query parameter instead of navigating to a route that does not
+        // exist (for example /en/login).
+        currentLang = toRouteLang(queryLang);
     }
 
     const [isOpen, setIsOpen] = useState(false);
-    const [isVisible, setIsVisible] = useState(true);
     const [isHovered, setIsHovered] = useState(false);
 
     const dropdownRef = useRef<HTMLDivElement>(null);
-    const hideTimeout = useRef<NodeJS.Timeout | null>(null);
-    const lastScrollY = useRef(0);
-    const isHoveredRef = useRef(false);
-
-    // useEffect에서 사용하므로 반드시 먼저 선언
-    const resetHideTimeout = () => {
-        if (hideTimeout.current) clearTimeout(hideTimeout.current);
-        if (!isHoveredRef.current) {
-            hideTimeout.current = setTimeout(() => {
-                setIsVisible(false);
-                setIsOpen(false);
-            }, 1500);
-        }
-    };
-
-    // Keep ref in sync with state for timeout closures
-    useEffect(() => {
-        queueMicrotask(() => {
-            isHoveredRef.current = isHovered;
-            if (isHovered) {
-                setIsVisible(true);
-                if (hideTimeout.current) clearTimeout(hideTimeout.current);
-            } else {
-                resetHideTimeout();
-            }
-        });
-    }, [isHovered]);
 
     useEffect(() => {
         const handleClickOutside = (event: MouseEvent) => {
@@ -71,40 +55,23 @@ export default function LanguageSelector() {
         return () => document.removeEventListener('mousedown', handleClickOutside);
     }, []);
 
-    useEffect(() => {
-        const handleMouseMove = () => {
-            setIsVisible(true);
-            resetHideTimeout();
-        };
-
-        const handleScroll = () => {
-            const currentScrollY = window.scrollY;
-            if (currentScrollY > lastScrollY.current + 5) {
-                setIsVisible(false);
-                setIsOpen(false);
-            } else if (currentScrollY < lastScrollY.current - 5) {
-                setIsVisible(true);
-                resetHideTimeout();
-            }
-            lastScrollY.current = currentScrollY;
-        };
-
-        resetHideTimeout();
-        window.addEventListener('mousemove', handleMouseMove);
-        window.addEventListener('scroll', handleScroll, { passive: true });
-
-        return () => {
-            window.removeEventListener('mousemove', handleMouseMove);
-            window.removeEventListener('scroll', handleScroll);
-            if (hideTimeout.current) clearTimeout(hideTimeout.current);
-        };
-    }, []);
-
     const currentLabel = languages.find(l => l.code === currentLang)?.label || '한국어';
     const isRtl = currentLang === 'ar';
 
     const getLink = (code: string) => {
-        return `/${code}${restOfPath}`;
+        const isUnlocalizedAuthRoute = /^(\/login|\/register(?:\/customer)?|\/account|\/dashboard)(?:\/|$)/.test(restOfPath);
+        if (isUnlocalizedAuthRoute) {
+            const query = new URLSearchParams(currentQuery);
+            query.set('lang', code);
+            return `${restOfPath || '/'}?${query.toString()}`;
+        }
+        const query = new URLSearchParams(currentQuery);
+        // A localized path already carries its locale in the first segment;
+        // retaining a stale ?lang= value would make auth/onboarding resolve a
+        // different language than the URL.
+        query.delete('lang');
+        const suffix = query.toString();
+        return `/${code}${restOfPath}${suffix ? `?${suffix}` : ''}`;
     };
 
     return (
@@ -114,34 +81,33 @@ export default function LanguageSelector() {
             style={{
                 position: 'relative',
                 zIndex: 1000005,
-                opacity: isVisible ? 1 : 0,
-                visibility: isVisible ? 'visible' : 'hidden',
-                pointerEvents: isVisible ? 'auto' : 'none',
-                transition: 'opacity 0.4s ease, visibility 0.4s ease'
             }}
             onMouseEnter={() => setIsHovered(true)}
             onMouseLeave={() => setIsHovered(false)}
+            onFocusCapture={() => setIsHovered(true)}
+            onBlurCapture={(event) => {
+                if (!event.currentTarget.contains(event.relatedTarget as Node | null)) {
+                    setIsHovered(false);
+                    setIsOpen(false);
+                }
+            }}
         >
             <button
                 aria-haspopup="listbox"
                 aria-expanded={isOpen}
-                aria-label={isRtl ? 'اختر اللغة' : 'Select language'}
+                aria-label={`${currentLabel} — ${SELECT_LANGUAGE_LABEL[currentLang]}`}
                 style={{
                     display: 'flex',
                     alignItems: 'center',
                     gap: '5px',
                     padding: '6px 14px',
                     borderRadius: '24px',
-                    background: isHovered || isOpen
-                        ? 'var(--lang-btn-active-bg, #007bff)'
-                        : 'var(--lang-btn-bg, #ffffff)',
-                    color: isHovered || isOpen
-                        ? 'var(--lang-btn-active-fg, #ffffff)'
-                        : 'var(--lang-btn-fg, #333333)',
+                    background: isHovered || isOpen ? '#005fcc' : '#ffffff',
+                    color: isHovered || isOpen ? '#ffffff' : '#1f2937',
                     border: '1px solid',
                     borderColor: isHovered || isOpen
-                        ? 'var(--lang-btn-active-bg, #007bff)'
-                        : 'var(--lang-btn-border, #dddddd)',
+                        ? '#005fcc'
+                        : '#cbd5e1',
                     cursor: 'pointer',
                     transition: 'all 0.2s ease',
                     fontSize: '13px',
@@ -177,10 +143,10 @@ export default function LanguageSelector() {
                 >
                     <div
                         style={{
-                            background: 'var(--lang-menu-bg, #fff)',
+                            background: '#ffffff',
                             borderRadius: '8px',
                             boxShadow: '0px 4px 12px rgba(0,0,0,0.1)',
-                            border: '1px solid var(--lang-menu-border, #ebebeb)',
+                            border: '1px solid #cbd5e1',
                             overflow: 'hidden',
                         }}
                     >
@@ -199,14 +165,14 @@ export default function LanguageSelector() {
                                         padding: '10px 16px',
                                         textDecoration: 'none',
                                         color: isCurrent
-                                            ? 'var(--lang-item-active-fg, #007bff)'
-                                            : 'var(--lang-item-fg, #333)',
+                                            ? '#005fcc'
+                                            : '#1f2937',
                                         fontSize: '14px',
                                         fontWeight: isCurrent ? 600 : 400,
-                                        borderBottom: '1px solid var(--lang-item-divider, #f1f1f1)',
+                                        borderBottom: '1px solid #e5e7eb',
                                         background: isCurrent
-                                            ? 'var(--lang-item-active-bg, #f8faff)'
-                                            : 'var(--lang-menu-bg, #fff)',
+                                            ? '#eff6ff'
+                                            : '#ffffff',
                                         transition: 'background 0.2s',
                                     }}
                                     onClick={() => {
@@ -223,10 +189,10 @@ export default function LanguageSelector() {
                                         setIsOpen(false);
                                     }}
                                     onMouseEnter={(e) => {
-                                        if (!isCurrent) e.currentTarget.style.background = 'var(--lang-item-hover-bg, #f9f9f9)';
+                                        if (!isCurrent) e.currentTarget.style.background = '#f3f4f6';
                                     }}
                                     onMouseLeave={(e) => {
-                                        if (!isCurrent) e.currentTarget.style.background = 'var(--lang-menu-bg, #fff)';
+                                        if (!isCurrent) e.currentTarget.style.background = '#ffffff';
                                     }}
                                 >
                                     {lang.label}

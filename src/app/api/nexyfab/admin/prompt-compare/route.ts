@@ -30,6 +30,10 @@ import { localProvider } from '@/lib/ai/providers/local';
 import { saveCompareRun } from '@/lib/ai/compareStore';
 import { pairwiseSimilarity } from '@/lib/ai/similarity';
 import { estimateCostCents } from '@/lib/ai/cost';
+import { localizedApiMessage, resolveServerLocale } from '@/lib/i18n/serverLocale';
+import { boundedJsonError, readBoundedJson } from '@/lib/boundedJsonBody';
+
+const MAX_PROMPT_COMPARE_BODY_BYTES = 64 * 1024;
 
 export const dynamic = 'force-dynamic';
 
@@ -60,10 +64,11 @@ async function callOne(
   maxTokens: number,
   temperature: number,
   timeoutMs: number,
+  providerErrorMessage: string,
 ): Promise<CompareResult> {
   const adapter = PROVIDERS[key];
   if (!adapter.isConfigured()) {
-    return { provider: key, configured: false, ok: false, error: 'not configured', errorClass: 'NotConfigured' };
+    return { provider: key, configured: false, ok: false, error: providerErrorMessage, errorClass: 'NotConfigured' };
   }
   try {
     const r: ChatCompletionResponse = await adapter.complete({
@@ -89,32 +94,37 @@ async function callOne(
         provider: key,
         configured: true,
         ok: false,
-        error: e.message.slice(0, 500),
+        error: providerErrorMessage,
         errorClass: 'AiProviderError',
         model: 'unknown',
       };
     }
     if (e instanceof AiNotConfiguredError) {
-      return { provider: key, configured: false, ok: false, error: 'not configured', errorClass: 'NotConfigured' };
+      return { provider: key, configured: false, ok: false, error: providerErrorMessage, errorClass: 'NotConfigured' };
     }
     return {
       provider: key,
       configured: true,
       ok: false,
-      error: e instanceof Error ? e.message.slice(0, 500) : String(e),
+      error: providerErrorMessage,
       errorClass: 'unknown',
     };
   }
 }
 
 export async function POST(req: NextRequest) {
+  let body: Record<string, unknown> = {};
+  try { body = await readBoundedJson<Record<string, unknown>>(req, MAX_PROMPT_COMPARE_BODY_BYTES); }
+  catch (error) {
+    if (boundedJsonError(error)?.code === 'PAYLOAD_TOO_LARGE') return NextResponse.json({ error: 'Request too large', code: 'PAYLOAD_TOO_LARGE' }, { status: 413 });
+  }
+  const locale = resolveServerLocale(req, body.lang ?? req.nextUrl.searchParams.get('lang'));
   const authUser = await getAuthUser(req);
-  if (!authUser) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  if (!authUser) return NextResponse.json({ error: localizedApiMessage(locale, 'unauthorized'), outputLanguage: locale.route }, { status: 401 });
   const isAdmin = authUser.globalRole === 'super_admin'
     || (authUser.roles?.some(r => r.role === 'org_admin' as string) ?? false);
-  if (!isAdmin) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+  if (!isAdmin) return NextResponse.json({ error: localizedApiMessage(locale, 'forbidden'), outputLanguage: locale.route }, { status: 403 });
 
-  const body = await req.json().catch(() => ({}));
   const promptId = typeof body.promptId === 'string' ? body.promptId : '';
   const userInput = typeof body.userInput === 'string' ? body.userInput : '';
   const overrideMaxTokens = typeof body.maxTokens === 'number' ? body.maxTokens : undefined;
@@ -122,19 +132,19 @@ export async function POST(req: NextRequest) {
   const providersArg: string[] | undefined = Array.isArray(body.providers) ? body.providers : undefined;
 
   if (!promptId) {
-    return NextResponse.json({ error: 'promptId is required' }, { status: 400 });
+    return NextResponse.json({ error: localizedApiMessage(locale, 'promptRequired'), outputLanguage: locale.route }, { status: 400 });
   }
   if (!userInput.trim()) {
-    return NextResponse.json({ error: 'userInput is required' }, { status: 400 });
+    return NextResponse.json({ error: localizedApiMessage(locale, 'messageRequired'), outputLanguage: locale.route }, { status: 400 });
   }
   if (userInput.length > 8000) {
-    return NextResponse.json({ error: 'userInput too long (max 8000 chars)' }, { status: 413 });
+    return NextResponse.json({ error: localizedApiMessage(locale, 'promptTooLong'), outputLanguage: locale.route }, { status: 413 });
   }
 
   let prompt;
   try { prompt = getPrompt(promptId); }
-  catch (e) {
-    return NextResponse.json({ error: e instanceof Error ? e.message : String(e) }, { status: 404 });
+  catch {
+    return NextResponse.json({ error: localizedApiMessage(locale, 'badRequest'), outputLanguage: locale.route }, { status: 404 });
   }
 
   // Resolve which providers to call. Filter to configured + valid keys.
@@ -142,11 +152,11 @@ export async function POST(req: NextRequest) {
     .map(k => String(k).toLowerCase())
     .filter((k): k is ProviderKey => k in PROVIDERS);
   if (requestedKeys.length === 0) {
-    return NextResponse.json({ error: 'no valid providers requested' }, { status: 400 });
+    return NextResponse.json({ error: localizedApiMessage(locale, 'badRequest'), outputLanguage: locale.route }, { status: 400 });
   }
 
   const messages: ChatMessage[] = [
-    { role: 'system', content: prompt.template },
+    { role: 'system', content: `${prompt.template}\n\n[OUTPUT LANGUAGE CONTRACT]\nWrite user-facing natural-language text in ${locale.languageName}; preserve prompt/provider identifiers and structured keys.` },
     { role: 'user', content: userInput },
   ];
   const maxTokens = overrideMaxTokens ?? prompt.defaults.maxTokens ?? 2000;
@@ -154,7 +164,7 @@ export async function POST(req: NextRequest) {
   const timeoutMs = prompt.defaults.timeoutMs ?? 30_000;
 
   const results = await Promise.all(
-    requestedKeys.map(k => callOne(k, messages, maxTokens, temperature, timeoutMs)),
+    requestedKeys.map(k => callOne(k, messages, maxTokens, temperature, timeoutMs, localizedApiMessage(locale, 'providerFailed'))),
   );
 
   // Compute pairwise similarity over successful responses. Failed providers
@@ -234,5 +244,6 @@ export async function POST(req: NextRequest) {
     similarityProviders,
     consolidationHints: hints,
     ...(runId ? { runId } : {}),
+    outputLanguage: locale.route,
   });
 }

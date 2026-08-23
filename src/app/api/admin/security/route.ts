@@ -6,6 +6,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { verifyAdmin } from '@/lib/admin-auth';
 import { getDbAdapter } from '@/lib/db-adapter';
+import { readBoundedJson } from '@/lib/boundedJsonBody';
 
 export const dynamic = 'force-dynamic';
 
@@ -113,7 +114,7 @@ export async function GET(req: NextRequest) {
 export async function PATCH(req: NextRequest) {
   if (!(await verifyAdmin(req))) return unauthorized();
 
-  const { alertId } = await req.json() as { alertId?: string };
+  const { alertId } = await readBoundedJson(req, 64 * 1024) as { alertId?: string };
   if (!alertId) return NextResponse.json({ error: 'alertId required' }, { status: 400 });
 
   const db = getDbAdapter();
@@ -128,7 +129,7 @@ export async function PATCH(req: NextRequest) {
 export async function DELETE(req: NextRequest) {
   if (!(await verifyAdmin(req))) return unauthorized();
 
-  const { userId } = await req.json() as { userId?: string };
+  const { userId } = await readBoundedJson(req, 64 * 1024) as { userId?: string };
   if (!userId) return NextResponse.json({ error: 'userId required' }, { status: 400 });
 
   const db = getDbAdapter();

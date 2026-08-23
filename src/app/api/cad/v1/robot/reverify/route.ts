@@ -8,6 +8,7 @@ import { validateAiAssemblyProgram, type AiAssemblyProgram } from '@/lib/ai/aiAs
 import type { AiAssemblyRevisionPackage } from '@/lib/ai/aiAssemblyRevision';
 import { getTrustedClientIp } from '@/lib/client-ip';
 import { rateLimitAsync } from '@/lib/rate-limit';
+import { readBoundedMultipartForm } from '@/lib/boundedMultipartForm';
 import type { HingeMate } from '@/lib/assembly/mate';
 import {
   buildRobotCoordinatedMotionTrajectory,
@@ -25,7 +26,9 @@ export async function POST(req: NextRequest) {
   // trajectory. Keep the
   // outer budget aligned with the assembly verifier's 60 requests/minute.
   if (!(await rateLimitAsync(`cad-v1-robot-reverify:${ip}`, 4, 60_000)).allowed) return NextResponse.json({ ok: false, code: 'RATE_LIMIT' }, { status: 429 });
-  const form = await req.formData().catch(() => null);
+  const multipart = await readBoundedMultipartForm(req, 52_000_000);
+  if (multipart.tooLarge) return NextResponse.json({ ok: false, code: 'TOO_LARGE' }, { status: 413 });
+  const form = multipart.form;
   const programFile = form?.get('program'); const manifestFile = form?.get('manifest');
   if (!(programFile instanceof File) || !(manifestFile instanceof File)) return NextResponse.json({ ok: false, code: 'BAD_REQUEST', message: 'program and manifest files are required' }, { status: 400 });
   if (programFile.size < 1 || programFile.size > 50_000_000 || manifestFile.size < 1 || manifestFile.size > 1_000_000) return NextResponse.json({ ok: false, code: 'TOO_LARGE' }, { status: 413 });

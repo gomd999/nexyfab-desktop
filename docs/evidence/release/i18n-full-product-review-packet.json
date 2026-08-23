@@ -1,0 +1,173 @@
+{
+  "schema": "nexyfab.commercial-i18n-full-product-artifact-review.v1",
+  "packetType": "unsigned_review_packet",
+  "status": "HOLD",
+  "releaseEligible": false,
+  "buildId": "",
+  "head": "",
+  "generatedAt": "2026-08-22T15:28:39.986Z",
+  "expiresAt": null,
+  "locales": [
+    "kr",
+    "en",
+    "ja",
+    "cn",
+    "es",
+    "ar"
+  ],
+  "artifacts": {
+    "visual": {
+      "kind": "visual",
+      "status": "NOT_RUN",
+      "reviewStatus": "UNSIGNED",
+      "synthetic": false,
+      "buildId": "",
+      "head": "",
+      "locales": [
+        "kr",
+        "en",
+        "ja",
+        "cn",
+        "es",
+        "ar"
+      ],
+      "artifactPath": null,
+      "evidencePath": null,
+      "artifactBytes": null,
+      "evidenceBytes": null,
+      "artifactSha256": null,
+      "evidenceSha256": null,
+      "execution": {
+        "status": "NOT_RUN",
+        "executed": false,
+        "exitCode": null
+      },
+      "reason": "visual_execution_not_run"
+    },
+    "rtl": {
+      "kind": "rtl",
+      "status": "NOT_RUN",
+      "reviewStatus": "UNSIGNED",
+      "synthetic": false,
+      "buildId": "",
+      "head": "",
+      "locales": [
+        "kr",
+        "en",
+        "ja",
+        "cn",
+        "es",
+        "ar"
+      ],
+      "artifactPath": null,
+      "evidencePath": null,
+      "artifactBytes": null,
+      "evidenceBytes": null,
+      "artifactSha256": null,
+      "evidenceSha256": null,
+      "execution": {
+        "status": "NOT_RUN",
+        "executed": false,
+        "exitCode": null
+      },
+      "reason": "rtl_execution_not_run"
+    },
+    "email": {
+      "kind": "email",
+      "status": "NOT_RUN",
+      "reviewStatus": "UNSIGNED",
+      "synthetic": false,
+      "buildId": "",
+      "head": "",
+      "locales": [
+        "kr",
+        "en",
+        "ja",
+        "cn",
+        "es",
+        "ar"
+      ],
+      "artifactPath": null,
+      "evidencePath": null,
+      "artifactBytes": null,
+      "evidenceBytes": null,
+      "artifactSha256": null,
+      "evidenceSha256": null,
+      "execution": {
+        "status": "NOT_RUN",
+        "executed": false,
+        "exitCode": null
+      },
+      "reason": "email_execution_not_run"
+    },
+    "pdf": {
+      "kind": "pdf",
+      "status": "NOT_RUN",
+      "reviewStatus": "UNSIGNED",
+      "synthetic": false,
+      "buildId": "",
+      "head": "",
+      "locales": [
+        "kr",
+        "en",
+        "ja",
+        "cn",
+        "es",
+        "ar"
+      ],
+      "artifactPath": null,
+      "evidencePath": null,
+      "artifactBytes": null,
+      "evidenceBytes": null,
+      "artifactSha256": null,
+      "evidenceSha256": null,
+      "execution": {
+        "status": "NOT_RUN",
+        "executed": false,
+        "exitCode": null
+      },
+      "reason": "pdf_execution_not_run"
+    },
+    "export": {
+      "kind": "export",
+      "status": "NOT_RUN",
+      "reviewStatus": "UNSIGNED",
+      "synthetic": false,
+      "buildId": "",
+      "head": "",
+      "locales": [
+        "kr",
+        "en",
+        "ja",
+        "cn",
+        "es",
+        "ar"
+      ],
+      "artifactPath": null,
+      "evidencePath": null,
+      "artifactBytes": null,
+      "evidenceBytes": null,
+      "artifactSha256": null,
+      "evidenceSha256": null,
+      "execution": {
+        "status": "NOT_RUN",
+        "executed": false,
+        "exitCode": null
+      },
+      "reason": "export_execution_not_run"
+    }
+  },
+  "blockers": [
+    "review_packet_unsigned",
+    "hmac_not_generated_by_runner",
+    "production_pass_not_issued",
+    "visual_not_run",
+    "rtl_not_run",
+    "email_not_run",
+    "pdf_not_run",
+    "export_not_run"
+  ],
+  "signatureStatus": "UNSIGNED",
+  "receiptSha256": null,
+  "receiptHmacSha256": null
+}

@@ -12,6 +12,7 @@ const evidence = (tree: ProductDecompositionPlan['definitions'][number]['feature
 }));
 
 const context = { request: 'robot arm', stage: 'intent' as const, attempt: 1, priorOutputs: {}, priorCheckpointHashes: {}, feedback: [], immutableEvidenceRefs: [] };
+const intentOutput = { requirements: [{ id: 'r1', text: 'Shaft rotates', category: 'motion', acceptance: '360 degree rotation without collision', sourceRef: 'user:prompt' }] };
 const plan = (): ProductDecompositionPlan => ({
   version: 1, units: 'mm', productName: 'Actuator',
   requirements: [{ id: 'r1', text: 'Shaft rotates', category: 'motion', source: 'user', sourceRef: 'user:prompt', acceptance: '360 degree rotation without collision' }],
@@ -25,13 +26,35 @@ const plan = (): ProductDecompositionPlan => ({
 });
 const beforePartPrograms = () => {
   let state = createGenerationRun('part-plan');
-  for (const stage of ['intent', 'decomposition', 'interfaces'] as const) state = recordGenerationStage(state, { stage, input: stage, output: { accepted: true }, status: 'passed' });
+  const outputs = {
+    intent: intentOutput,
+    decomposition: { components: [
+      { id: 'base', name: 'Base', responsibility: 'Anchor', quantity: 1, requirementIds: ['r1'] },
+      { id: 'shaft', name: 'Shaft', responsibility: 'Rotate', quantity: 1, requirementIds: ['r1'] },
+    ] },
+    interfaces: { interfaces: [{ id: 'm1', between: ['base', 'shaft'], kind: 'concentric', requirementIds: ['r1'] }] },
+  };
+  for (const stage of ['intent', 'decomposition', 'interfaces'] as const) state = recordGenerationStage(state, { stage, input: stage, output: outputs[stage], status: 'passed' });
   return state;
 };
 describe('generation refinement handler', () => {
   it('records one accepted AI refinement checkpoint', async () => {
-    const result = await handleGenerationRefine({ state: createGenerationRun('api-refine'), context }, async () => JSON.stringify({ stage: 'intent', output: { requirements: ['move'] }, completeness: 1, confidence: 0.9, unresolved: [], conflicts: [], affectedPartIds: [], evidenceRefs: ['user:prompt'] }));
-    expect(result).toMatchObject({ status: 200, payload: { ok: true, decision: { disposition: 'advance' }, state: { stages: { intent: { status: 'passed' } } }, quoteOrRfqSideEffects: false } });
+    const result = await handleGenerationRefine({ state: createGenerationRun('api-refine'), context }, async () => JSON.stringify({ stage: 'intent', output: intentOutput, completeness: 1, confidence: 0.9, unresolved: [], conflicts: [], affectedPartIds: [], evidenceRefs: ['user:prompt'] }));
+    expect(result).toMatchObject({ status: 200, payload: { ok: true, decision: { disposition: 'advance' }, stageValidation: { passed: true }, state: { stages: { intent: { status: 'passed' } } }, quoteOrRfqSideEffects: false } });
+  });
+  it('does not accept self-reported 100% confidence when the stage schema is incomplete', async () => {
+    const result = await handleGenerationRefine({ state: createGenerationRun('schema-bad'), context }, async () => ({ stage: 'intent', output: { requirements: ['move'] }, completeness: 1, confidence: 1, unresolved: [], conflicts: [], affectedPartIds: [], evidenceRefs: ['user:prompt'] }));
+    expect(result).toMatchObject({ status: 200, payload: { decision: { disposition: 'refine_same_stage' }, stageValidation: { passed: false }, state: { stages: { intent: { status: 'failed', errorCodes: ['STAGE_SCHEMA_INVALID'] } } } } });
+  });
+  it('rejects client-authored retry counters before invoking AI', async () => {
+    let called = false;
+    const result = await handleGenerationRefine({ state: createGenerationRun('attempt-tamper'), context: { ...context, attempt: 3 } }, async () => { called = true; return {}; });
+    expect(called).toBe(false);
+    expect(result).toMatchObject({ status: 409, payload: { code: 'INVALID_REFINEMENT_CONTEXT' } });
+  });
+  it('does not let a caller shorten the server-owned retry policy', async () => {
+    const result = await handleGenerationRefine({ state: createGenerationRun('retry-policy'), context, maxAttempts: 1 }, async () => ({ stage: 'intent', output: { requirements: [] }, completeness: 1, confidence: 1, unresolved: [], conflicts: [], affectedPartIds: [], evidenceRefs: ['user:prompt'] }));
+    expect(result).toMatchObject({ status: 200, payload: { decision: { disposition: 'refine_same_stage' }, state: { stages: { intent: { status: 'failed' } } } } });
   });
   it('never accepts malformed or unsupported model output', async () => {
     const result = await handleGenerationRefine({ state: createGenerationRun('bad'), context }, async () => '{"confidence":1}');
@@ -47,8 +70,22 @@ describe('generation refinement handler', () => {
     expect(result).toMatchObject({ status: 200, payload: { decision: { disposition: 'request_input' }, accuracyAssessment: { readyForGeometry: false, requiresAuthoritativeInput: true }, state: { stages: { part_programs: { status: 'blocked' } } } } });
     expect(result.payload).not.toHaveProperty('program');
   });
+  it('blocks a simplified PT100 product that omits its physical signal route', async () => {
+    const result = await handleGenerationRefine({ state: beforePartPrograms(), context: { ...context, request: 'PT100 temperature sensor assembly with lead cable', stage: 'part_programs', attempt: 1 } }, async () => ({ stage: 'part_programs', output: plan(), completeness: 1, confidence: 1, unresolved: [], conflicts: [], affectedPartIds: [], evidenceRefs: ['user:prompt'] }));
+    expect(result).toMatchObject({ status: 200, payload: { decision: { disposition: 'refine_same_stage' }, accuracyAssessment: { readyForGeometry: false }, state: { stages: { part_programs: { status: 'failed', errorCodes: ['PHYSICAL_NETWORK_EMPTY'] } } } } });
+    expect(result.payload).not.toHaveProperty('program');
+  });
+  it('blocks final-stage AI inventory collapse even when the simplified plan is internally valid', async () => {
+    const simplified = plan();
+    simplified.definitions = [simplified.definitions[0]!];
+    simplified.instances = [simplified.instances[0]!];
+    simplified.mates = [];
+    const result = await handleGenerationRefine({ state: beforePartPrograms(), context: { ...context, stage: 'part_programs', attempt: 1 } }, async () => ({ stage: 'part_programs', output: simplified, completeness: 1, confidence: 1, unresolved: [], conflicts: [], affectedPartIds: [], evidenceRefs: ['user:prompt'] }));
+    expect(result).toMatchObject({ status: 200, payload: { decision: { disposition: 'refine_same_stage' }, stageValidation: { passed: false }, state: { stages: { part_programs: { status: 'failed', errorCodes: ['STAGE_SCHEMA_INVALID'] } } } } });
+    expect(result.payload).not.toHaveProperty('program');
+  });
   it('compiles only a traced, authoritative and mate-connected product plan', async () => {
     const result = await handleGenerationRefine({ state: beforePartPrograms(), context: { ...context, stage: 'part_programs', attempt: 1 } }, async () => ({ stage: 'part_programs', output: plan(), completeness: 1, confidence: 1, unresolved: [], conflicts: [], affectedPartIds: [], evidenceRefs: ['user:prompt'] }));
-    expect(result).toMatchObject({ status: 200, payload: { decision: { disposition: 'advance' }, accuracyAssessment: { readyForGeometry: true }, program: { classification: 'review_required' }, state: { stages: { part_programs: { status: 'passed', metrics: { accuracyGatesPassed: 9, accuracyGatesTotal: 9 } } } } } });
+    expect(result).toMatchObject({ status: 200, payload: { decision: { disposition: 'advance' }, accuracyAssessment: { readyForGeometry: true }, semanticPreservation: { passed: true, errors: [] }, program: { classification: 'review_required' }, state: { stages: { part_programs: { status: 'passed', metrics: { accuracyGatesPassed: 10, accuracyGatesTotal: 10 } } }, evidenceBindings: { intentSnapshotSha256: expect.stringMatching(/^[a-f0-9]{64}$/), programSha256: expect.stringMatching(/^[a-f0-9]{64}$/) } } } });
   });
 });

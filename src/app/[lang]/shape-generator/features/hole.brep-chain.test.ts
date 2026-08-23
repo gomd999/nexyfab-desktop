@@ -1,11 +1,13 @@
 import * as THREE from 'three';
 import { beforeAll, describe, expect, it } from 'vitest';
 import { holeFeature } from './hole';
+import { linearPatternFeature } from './linearPattern';
 import { runPipelineAsync } from './pipelineManager';
 import type { FeatureInstance, MapBackedFeatureType, FeatureDefinition } from './types';
 import {
   ensureOcctReady,
   getShape,
+  occtRegisteredShapeEvidence,
   occtProjectViews,
   resetShapeRegistry,
 } from './occtEngine';
@@ -94,5 +96,51 @@ describeMaybe('holeFeature OCCT B-rep chain regression', () => {
     const views = occtProjectViews(finalHandle, ['front']);
     expect(views).not.toBeNull();
     expect(arcPathCount(views!.front!.visible)).toBeGreaterThanOrEqual(2);
+  }, 120_000);
+
+  it('cuts an upright-flange hole on X in the exact B-rep (not a Y projection)', () => {
+    resetShapeRegistry();
+    const plate = new THREE.BoxGeometry(60, 20, 40);
+    const result = holeFeature.apply(
+      plate,
+      { ...HOLE_PARAMS, axis: 0, posX: 0, posY: 0, posZ: 10 },
+      { featureId: 'upright-x-hole' },
+    );
+    const handle = handleOf(result);
+    const evidence = occtRegisteredShapeEvidence(handle);
+    expect(evidence?.singleSolid).toBe(true);
+    expect(evidence?.volumeMm3).not.toBeNull();
+    // Exact cylinder volume through the X thickness. A Y-axis projection
+    // would remove only 20/60 of this amount and falsely pass bbox checks.
+    expect(evidence!.volumeMm3!).toBeCloseTo(60 * 20 * 40 - Math.PI * 25 * 60, -1);
+    result.computeBoundingBox();
+    expect(result.boundingBox!.max.x - result.boundingBox!.min.x).toBeCloseTo(60, 5);
+  }, 120_000);
+
+  it('keeps a four-hole feature pattern as one exact body (no whole-body copies)', async () => {
+    resetShapeRegistry();
+    const plate = new THREE.BoxGeometry(100, 20, 100);
+    const features: FeatureInstance[] = [
+      {
+        id: 'pattern-seed-hole', type: 'hole', enabled: true,
+        params: { ...HOLE_PARAMS, diameter: 10, posX: -30, posZ: 0 },
+      },
+      {
+        id: 'four-hole-pattern', type: 'linearPattern', enabled: true,
+        params: { axis: 0, count: 4, spacing: 20, patternTarget: 1, seedBack: 0 },
+      },
+    ];
+    const map = {
+      hole: holeFeature,
+      linearPattern: linearPatternFeature,
+    } as Record<MapBackedFeatureType, FeatureDefinition>;
+    const run = await runPipelineAsync(plate, features, map, { occtMode: true });
+    expect(run.errors).toEqual({});
+    const handle = handleOf(run.geometry);
+    const evidence = occtRegisteredShapeEvidence(handle);
+    expect(evidence?.singleSolid).toBe(true);
+    expect(evidence?.volumeMm3).toBeCloseTo(100 * 20 * 100 - 4 * Math.PI * 25 * 20, -1);
+    run.geometry.computeBoundingBox();
+    expect(run.geometry.boundingBox!.max.x - run.geometry.boundingBox!.min.x).toBeCloseTo(100, 5);
   }, 120_000);
 });

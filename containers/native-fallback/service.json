@@ -1,0 +1,11 @@
+{
+  "schema": "nexyfab.deployable-unit.v1",
+  "id": "native-fallback",
+  "kind": "container",
+  "targetRuntime": "railway-container",
+  "sourceMode": "compute-compatible-router",
+  "legacySource": ["src/lib/reference/nativeWorkerExecution.ts"],
+  "implementationState": "PARTIAL",
+  "deployEnabled": false,
+  "rollbackOwner": "job-blocked"
+}

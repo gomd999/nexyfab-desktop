@@ -111,6 +111,13 @@ import { SheetPngExportButton } from './SheetPngExportButton';
 import StepCompareVersionPanel from './StepCompareVersionPanel';
 import OrdinateDimensionPanel from './OrdinateDimensionPanel';
 import { partitionDrawingReferences } from '@/lib/drawing/referenceReview';
+import type { AssemblyDrawingHandoff } from '../assembly/drawingHandoff';
+import { assessManufacturingHandoffReadiness } from '../io/manufacturingHandoffReadiness';
+
+const EMPTY_DRAWING_ASSEMBLY: AssemblyDrawingHandoff['assembly'] = {
+  state: { parts: [], mates: [] },
+  featureTrees: {},
+};
 
 // ─── sample parts ────────────────────────────────────────────────────────
 
@@ -1264,13 +1271,56 @@ function exportSheetStepWithOcctBindings(
  * spans [0, +30] from the one-sided extrude). Material is not carried by
  * PartInstance yet, so the BOM column stays blank.
  */
-function partInstanceToBomInput(p: PartInstance): BomPartInput {
+function rotateByQuaternion(
+  point: { x: number; y: number; z: number },
+  quaternion: PartInstance['orientation'],
+): { x: number; y: number; z: number } {
+  const tx = 2 * (quaternion.y * point.z - quaternion.z * point.y);
+  const ty = 2 * (quaternion.z * point.x - quaternion.x * point.z);
+  const tz = 2 * (quaternion.x * point.y - quaternion.y * point.x);
+  return {
+    x: point.x + quaternion.w * tx + (quaternion.y * tz - quaternion.z * ty),
+    y: point.y + quaternion.w * ty + (quaternion.z * tx - quaternion.x * tz),
+    z: point.z + quaternion.w * tz + (quaternion.x * ty - quaternion.y * tx),
+  };
+}
+
+function worldPolyhedron(poly: Polyhedron, part: PartInstance): Polyhedron {
+  return {
+    vertices: poly.vertices.map(vertex => {
+      const rotated = rotateByQuaternion(vertex, part.orientation);
+      return {
+        x: rotated.x + part.position.x,
+        y: rotated.y + part.position.y,
+        z: rotated.z + part.position.z,
+      };
+    }),
+    faces: poly.faces.map(face => ({
+      vertices: [...face.vertices],
+      normal: rotateByQuaternion(face.normal, part.orientation),
+    })),
+  };
+}
+
+function singleFeaturePreview(tree: { nodes: ReadonlyArray<{ suppressed?: boolean; payload: { kind: string } }> } | undefined): Polyhedron | null {
+  const active = tree?.nodes.filter(node => !node.suppressed) ?? [];
+  // A single independently meshable feature is a valid drawing preview.
+  // Multiple features need an exact regenerated body; selecting only the
+  // last payload would silently omit cuts, booleans or earlier bodies.
+  if (active.length !== 1) return null;
+  return featureToPolyhedron(active[0]!.payload);
+}
+
+function partInstanceToBomInput(p: PartInstance, world: Polyhedron): BomPartInput {
+  const xs = world.vertices.map(vertex => vertex.x);
+  const ys = world.vertices.map(vertex => vertex.y);
+  const zs = world.vertices.map(vertex => vertex.z);
   return {
     id: p.id,
     name: p.name,
     bbox: {
-      min: { x: p.position.x - 15, y: p.position.y - 15, z: p.position.z },
-      max: { x: p.position.x + 15, y: p.position.y + 15, z: p.position.z + 30 },
+      min: { x: Math.min(...xs), y: Math.min(...ys), z: Math.min(...zs) },
+      max: { x: Math.max(...xs), y: Math.max(...ys), z: Math.max(...zs) },
     },
   };
 }
@@ -1296,10 +1346,26 @@ function partInstanceToAssemblyPart(p: PartInstance): AssemblyPart {
 
 // ─── component ───────────────────────────────────────────────────────────
 
-export function DrawingPageContent({ lang }: { lang: string }): React.ReactElement {
+export function DrawingPageContent({
+  lang,
+  handoffId,
+  handoffProjectId,
+  handoffStorage = 'session',
+}: {
+  lang: string;
+  handoffId?: string;
+  handoffProjectId?: string;
+  handoffStorage?: 'server' | 'session';
+}): React.ReactElement {
   const dict = pickDict(lang);
   const router = useRouter();
   const langSeg = lang === 'ko' ? 'kr' : lang;
+  const [assemblyHandoff, setAssemblyHandoff] = useState<AssemblyDrawingHandoff | null>(null);
+  const [assemblyHandoffError, setAssemblyHandoffError] = useState<string | null>(null);
+  const [assemblyHandoffLoading, setAssemblyHandoffLoading] = useState(Boolean(handoffId));
+  const [handoffPersistence, setHandoffPersistence] = useState<'PASS' | 'NOT_RUN'>(
+    handoffStorage === 'server' ? 'PASS' : 'NOT_RUN',
+  );
   const [sourceId, setSourceId] = useState<string>(SAMPLE_PARTS[0].sourceId);
   const [paperSize, setPaperSize] = useState<PaperSize>('A3');
   const [scale, setScale] = useState<number>(1);
@@ -1552,6 +1618,52 @@ export function DrawingPageContent({ lang }: { lang: string }): React.ReactEleme
     return getSampleAssembly(sampleName);
   }, [sampleName]);
 
+  const activeAssembly = assemblyHandoff?.assembly
+    ?? (handoffId ? EMPTY_DRAWING_ASSEMBLY : sampleAssembly);
+  const activeAssemblyName = assemblyHandoff
+    ? assemblyHandoff.source.projectId ?? `revision-${assemblyHandoff.source.stateSha256.slice(0, 12)}`
+    : sampleName;
+
+  useEffect(() => {
+    let cancelled = false;
+    if (!handoffId) {
+      setAssemblyHandoff(null);
+      setAssemblyHandoffError(null);
+      setAssemblyHandoffLoading(false);
+      return () => { cancelled = true; };
+    }
+    setAssemblyHandoffLoading(true);
+    if (handoffStorage === 'server' && !handoffProjectId) {
+      setAssemblyHandoff(null);
+      setAssemblyHandoffError('SERVER_HANDOFF_PROJECT_REQUIRED');
+      setAssemblyHandoffLoading(false);
+      setHandoffPersistence('NOT_RUN');
+      return () => { cancelled = true; };
+    }
+    const pending = handoffStorage === 'server'
+      ? import('../assembly/serverDrawingHandoff').then(({ readServerDrawingHandoff }) =>
+          readServerDrawingHandoff(handoffProjectId!, handoffId))
+      : import('../assembly/drawingHandoff').then(({ readAssemblyDrawingHandoff }) =>
+          readAssemblyDrawingHandoff(handoffId));
+    void pending.then(result => {
+      if (cancelled) return;
+      if (!result.ok) {
+        setAssemblyHandoff(null);
+        setAssemblyHandoffError(result.reason);
+        setAssemblyHandoffLoading(false);
+        setHandoffPersistence('NOT_RUN');
+        return;
+      }
+      setAssemblyHandoff(result.handoff);
+      setAssemblyHandoffError(null);
+      setAssemblyMode(true);
+      setBomEnabled(true);
+      setHandoffPersistence(handoffStorage === 'server' ? 'PASS' : 'NOT_RUN');
+      setAssemblyHandoffLoading(false);
+    });
+    return () => { cancelled = true; };
+  }, [handoffId, handoffProjectId, handoffStorage]);
+
   // Reset per-part sheets + selected part whenever the sample changes.
   // Wrapped in useMemo above so this effect tracks the sample identity.
   React.useEffect(() => {
@@ -1562,8 +1674,32 @@ export function DrawingPageContent({ lang }: { lang: string }): React.ReactEleme
     setAssemblyExportError(null);
     setAssemblyPdfInfo(null);
     setAssemblyPdfError(null);
-    setBomEnabled(false);
-  }, [sampleName]);
+    setBomEnabled(Boolean(assemblyHandoff));
+  }, [sampleName, assemblyHandoff]);
+
+  const assemblyGeometry = useMemo(() => {
+    const drawingGeometryByPart = new Map<string, ReadonlyMap<string, Polyhedron>>();
+    const worldItems: Array<{ poly: Polyhedron; offset: { x: number; y: number; z: number } }> = [];
+    const bomParts: BomPartInput[] = [];
+    const unresolvedPartIds: string[] = [];
+    for (const part of activeAssembly.state.parts) {
+      const local = singleFeaturePreview(activeAssembly.featureTrees[part.id]);
+      if (!local) {
+        unresolvedPartIds.push(part.id);
+        continue;
+      }
+      const world = worldPolyhedron(local, part);
+      drawingGeometryByPart.set(part.id, new Map([[part.id, local]]));
+      worldItems.push({ poly: world, offset: { x: 0, y: 0, z: 0 } });
+      bomParts.push(partInstanceToBomInput(part, world));
+    }
+    return {
+      drawingGeometryByPart,
+      bomParts,
+      unresolvedPartIds,
+      merged: mergePolyhedra(worldItems),
+    };
+  }, [activeAssembly]);
 
   /**
    * SolidWorks-parity Phase 3 — the assembly overview sheet (front view +
@@ -1572,20 +1708,21 @@ export function DrawingPageContent({ lang }: { lang: string }): React.ReactEleme
    */
   const bomSheet = useMemo<Sheet | null>(() => {
     if (!bomEnabled) return null;
-    const parts = sampleAssembly.state.parts;
+    const parts = activeAssembly.state.parts;
     if (parts.length === 0) return null;
+    if (assemblyGeometry.unresolvedPartIds.length > 0) return null;
     try {
       return buildAssemblyBomSheet({
-        id: `assembly-bom-${sampleName}`,
-        name: `BOM — ${sampleName}`,
-        sourceId: `assembly-${sampleName}`,
+        id: `assembly-bom-${activeAssemblyName}`,
+        name: `BOM — ${activeAssemblyName}`,
+        sourceId: `assembly-${activeAssemblyName}`,
         paperSize: 'A3',
-        parts: parts.map(partInstanceToBomInput),
+        parts: assemblyGeometry.bomParts,
       });
     } catch {
       return null;
     }
-  }, [bomEnabled, sampleAssembly, sampleName]);
+  }, [activeAssembly.state.parts, activeAssemblyName, assemblyGeometry, bomEnabled]);
 
   /**
    * Merged assembly polyhedron for the overview viewport, keyed by the
@@ -1596,16 +1733,10 @@ export function DrawingPageContent({ lang }: { lang: string }): React.ReactEleme
    */
   const bomSheetGeometry = useMemo<ReadonlyMap<string, Polyhedron> | undefined>(() => {
     if (!bomEnabled) return undefined;
-    const items: Array<{ poly: Polyhedron; offset: { x: number; y: number; z: number } }> = [];
-    for (const p of sampleAssembly.state.parts) {
-      const tree = sampleAssembly.featureTrees[p.id];
-      const payload = tree?.nodes[0]?.payload;
-      const poly = payload ? featureToPolyhedron(payload) : null;
-      if (poly) items.push({ poly, offset: p.position });
-    }
-    const merged = mergePolyhedra(items);
-    return merged ? new Map([[`assembly-${sampleName}`, merged]]) : undefined;
-  }, [bomEnabled, sampleAssembly, sampleName]);
+    return assemblyGeometry.merged
+      ? new Map([[`assembly-${activeAssemblyName}`, assemblyGeometry.merged]])
+      : undefined;
+  }, [activeAssemblyName, assemblyGeometry.merged, bomEnabled]);
 
   const handleAddSheetForPart = useCallback((partId: string, partName: string) => {
     setPartSheets((prev) => {
@@ -1679,7 +1810,7 @@ export function DrawingPageContent({ lang }: { lang: string }): React.ReactEleme
    * nothing was selected.
    */
   const handleAddAllSheets = useCallback(() => {
-    const parts = sampleAssembly.state.parts;
+    const parts = activeAssembly.state.parts;
     if (parts.length === 0) return;
     setPartSheets((prev) => {
       const next: Record<string, Sheet> = { ...prev };
@@ -1696,7 +1827,7 @@ export function DrawingPageContent({ lang }: { lang: string }): React.ReactEleme
       return next;
     });
     setSelectedPartId((cur) => cur ?? parts[0].id);
-  }, [sampleAssembly]);
+  }, [activeAssembly.state.parts]);
 
   /**
    * Bulk: clear all part sheets after confirming. The selected preview part
@@ -1717,19 +1848,30 @@ export function DrawingPageContent({ lang }: { lang: string }): React.ReactEleme
     setAssemblyExportError(null);
     setAssemblyExport(null);
     try {
-      const parts: AssemblyPart[] = sampleAssembly.state.parts.map(
+      if (assemblyHandoff) {
+        const exact = assemblyHandoff.exactSinglePart;
+        if (!exact || assemblyHandoff.artifacts.exactBrepStep.status !== 'PASS') {
+          throw new Error('BLOCKED: exact B-rep STEP artifact is NOT_RUN for this revision handoff.');
+        }
+        downloadBlob(
+          new Blob([exact.step.text], { type: 'application/step' }),
+          `${exact.part.id}-${assemblyHandoff.source.revisionId.replaceAll(':', '-')}.step`,
+        );
+        return;
+      }
+      const parts: AssemblyPart[] = activeAssembly.state.parts.map(
         partInstanceToAssemblyPart,
       );
       const result = writeAssemblyWithPmi({
         geometry: {
           kind: 'assembly',
-          assemblyName: sampleName,
+          assemblyName: activeAssemblyName,
           parts,
         },
         partSheets,
         header: {
-          description: `NexyFab assembly export — ${sampleName}`,
-          filename: `${sampleName}.step`,
+          description: `NexyFab assembly export — ${activeAssemblyName}`,
+          filename: `${activeAssemblyName}.step`,
         },
       });
       let bindingsCount = 0;
@@ -1742,12 +1884,12 @@ export function DrawingPageContent({ lang }: { lang: string }): React.ReactEleme
         bindingsCount,
       });
       const blob = new Blob([result.source], { type: 'application/step' });
-      downloadBlob(blob, `${sampleName}.step`);
+      downloadBlob(blob, `${activeAssemblyName}.step`);
     } catch (err) {
       const detail = err instanceof Error ? err.message : String(err);
       setAssemblyExportError(`${dict.assemblyExportError}: ${detail}`);
     }
-  }, [sampleAssembly, sampleName, partSheets, dict.assemblyExportError]);
+  }, [activeAssembly.state.parts, activeAssemblyName, assemblyHandoff, partSheets, dict.assemblyExportError]);
 
   /**
    * Phase 5.4 multi-sheet PDF export — bundles every part sheet that has
@@ -1835,7 +1977,7 @@ export function DrawingPageContent({ lang }: { lang: string }): React.ReactEleme
     const runRaster = async (fellBack: boolean): Promise<void> => {
       try {
         const blob = await exportSheetsToPdf(sheetsToExport, svgRefs);
-        downloadBlob(blob, `${sampleName}.pdf`);
+        downloadBlob(blob, `${activeAssemblyName}.pdf`);
         const successMsg = dict.assemblyPdfSuccess.replace(
           '{n}',
           String(sheetsToExport.length),
@@ -1855,7 +1997,7 @@ export function DrawingPageContent({ lang }: { lang: string }): React.ReactEleme
     if (pdfFormat === 'vector') {
       try {
         const blob = await exportSheetsToPdfVector(sheetsToExport, svgRefs);
-        downloadBlob(blob, `${sampleName}.pdf`);
+        downloadBlob(blob, `${activeAssemblyName}.pdf`);
         const successMsg = dict.assemblyPdfSuccess.replace(
           '{n}',
           String(sheetsToExport.length),
@@ -1880,7 +2022,7 @@ export function DrawingPageContent({ lang }: { lang: string }): React.ReactEleme
     await runRaster(false);
   }, [
     partSheets,
-    sampleName,
+    activeAssemblyName,
     pdfFormat,
     bomEnabled,
     bomSheet,
@@ -2662,6 +2804,26 @@ export function DrawingPageContent({ lang }: { lang: string }): React.ReactEleme
     dict.pipelineSingleRaster,
   ]);
 
+  const handoffDrawingCandidateReady = assemblyHandoff?.artifacts.drawing.status === 'PASS'
+    && assemblyHandoff.exactSinglePart !== undefined;
+  const handoffBomCandidateReady = assemblyHandoff?.artifacts.bom.status === 'PASS'
+    && assemblyHandoff.exactSinglePart !== undefined;
+  const manufacturingReadiness = assemblyHandoff
+    ? assessManufacturingHandoffReadiness({
+        revisionId: assemblyHandoff.source.revisionId,
+        solver: assemblyHandoff.verification.solver.status,
+        featureTrees: assemblyHandoff.artifacts.editableFeatureTrees.status,
+        exactStep: assemblyHandoff.artifacts.exactBrepStep.status,
+        // A locally generated candidate is not a verified artifact. The
+        // source receipt remains NOT_RUN until a governed verification
+        // process binds output bytes to this exact revision.
+        drawing: assemblyHandoff.artifacts.drawing.status,
+        bom: assemblyHandoff.artifacts.bom.status,
+        gdtPmi: assemblyHandoff.artifacts.gdtPmi.status,
+        releaseDecision: 'BLOCKED',
+      })
+    : null;
+
   return (
     <main
       data-testid="drawing-page-root"
@@ -2702,7 +2864,7 @@ export function DrawingPageContent({ lang }: { lang: string }): React.ReactEleme
             </button>
             <div>
               <h1 style={{ fontSize: 22, fontWeight: 700, margin: 0 }}>{dict.title}</h1>
-              <p style={{ fontSize: 13, color: '#6b7280', margin: '4px 0 0' }}>{dict.subtitle}</p>
+              <p style={{ fontSize: 13, color: '#4b5563', margin: '4px 0 0' }}>{dict.subtitle}</p>
             </div>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
@@ -2745,6 +2907,68 @@ export function DrawingPageContent({ lang }: { lang: string }): React.ReactEleme
           </div>
         </header>
 
+        {assemblyHandoffLoading ? (
+          <div data-testid="drawing-handoff-loading" role="status" style={{ padding: 10, border: '1px solid #93c5fd', borderRadius: 6, background: '#eff6ff', color: '#1e3a8a', fontSize: 12 }}>
+            Loading revision-bound assembly handoff…
+          </div>
+        ) : null}
+        {assemblyHandoffError ? (
+          <div data-testid="drawing-handoff-error" role="alert" style={{ padding: 10, border: '1px solid #ef4444', borderRadius: 6, background: '#fef2f2', color: '#991b1b', fontSize: 12 }}>
+            Assembly handoff BLOCKED: {assemblyHandoffError}. No sample data was substituted for the requested revision.
+          </div>
+        ) : null}
+        {assemblyHandoff ? (
+          <section data-testid="drawing-handoff-status" aria-label="Assembly drawing handoff status" style={{ display: 'grid', gap: 8, padding: 12, border: '1px solid #cbd5e1', borderRadius: 6, background: '#fff', fontSize: 12 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
+              <strong>Revision-bound assembly handoff</strong>
+              <code>{assemblyHandoff.source.revisionId}</code>
+            </div>
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+              <span data-testid="drawing-handoff-persistence-status">
+                Server persistence {handoffPersistence}{handoffPersistence === 'NOT_RUN' ? ' · session-only' : ' · immutable'}
+              </span>
+              <span data-testid="drawing-handoff-solver-status">Solver {assemblyHandoff.verification.solver.status}</span>
+              <span>FeatureTree {assemblyHandoff.artifacts.editableFeatureTrees.status}</span>
+              <span>Exact STEP {assemblyHandoff.artifacts.exactBrepStep.status}</span>
+              <span data-testid="drawing-handoff-exact-drawing-status">Drawing {handoffDrawingCandidateReady ? 'PASS · exact 3-view HLR' : 'NOT_RUN'}</span>
+              <span data-testid="drawing-handoff-exact-bom-status">BOM {handoffBomCandidateReady ? 'PASS · revision-bound' : 'NOT_RUN'}</span>
+              <span>GD&amp;T / PMI {assemblyHandoff.artifacts.gdtPmi.status}</span>
+            </div>
+            {assemblyGeometry.unresolvedPartIds.length > 0 && !handoffDrawingCandidateReady ? (
+              <div data-testid="drawing-handoff-geometry-blockers" role="alert" style={{ color: '#991b1b' }}>
+                Drawing geometry BLOCKED for multi-feature or unsupported parts: {assemblyGeometry.unresolvedPartIds.join(', ')}. Exact regenerated artifacts are required; proxy boxes are not used.
+              </div>
+            ) : null}
+            <div data-testid="drawing-manufacturing-readiness" role="status" style={{ color: '#92400e' }}>
+              Manufacturing package {manufacturingReadiness?.status}: {manufacturingReadiness?.blockers.join(', ')}
+            </div>
+            <div
+              data-testid="drawing-manufacturing-package-blocked"
+              aria-disabled="true"
+              style={{ justifySelf: 'start', padding: '7px 10px', border: '1px solid #d97706', borderRadius: 4, color: '#92400e', background: '#fffbeb' }}
+            >
+              Manufacturing export is unavailable for this revision; no package was produced.
+            </div>
+            {assemblyHandoff.exactSinglePart ? (
+              <section data-testid="drawing-handoff-exact-artifacts" aria-label="Exact single-part artifacts" style={{ display: 'grid', gap: 8, padding: 10, border: '1px solid #86efac', borderRadius: 6, background: '#f0fdf4' }}>
+                <strong>Exact single-part drawing candidate</strong>
+                <img
+                  data-testid="drawing-handoff-exact-hlr-svg"
+                  src={`data:image/svg+xml;charset=utf-8,${encodeURIComponent(assemblyHandoff.exactSinglePart.drawing.svg)}`}
+                  alt="Revision-bound front, top and right hidden-line views"
+                  style={{ width: '100%', maxHeight: 350, objectFit: 'contain', background: '#fff' }}
+                />
+                <div data-testid="drawing-handoff-overall-dimensions">
+                  Overall bbox (mm): X {assemblyHandoff.exactSinglePart.dimensions.overall.x.toFixed(3)} × Y {assemblyHandoff.exactSinglePart.dimensions.overall.y.toFixed(3)} × Z {assemblyHandoff.exactSinglePart.dimensions.overall.z.toFixed(3)} · scope OVERALL_BBOX_ONLY
+                </div>
+                <div data-testid="drawing-handoff-one-part-bom">
+                  BOM: {assemblyHandoff.exactSinglePart.part.id} · qty 1 · receipt {assemblyHandoff.exactSinglePart.bom.sha256.slice(0, 12)}
+                </div>
+              </section>
+            ) : null}
+          </section>
+        ) : null}
+
         {assemblyMode ? (
           <section
             data-testid="drawing-assembly-section"
@@ -2775,6 +2999,7 @@ export function DrawingPageContent({ lang }: { lang: string }): React.ReactEleme
                 <select
                   data-testid="drawing-assembly-sample-select"
                   value={sampleName}
+                  disabled={Boolean(handoffId) || assemblyHandoffLoading}
                   onChange={(e) => setSampleName(e.target.value as SampleAssemblyName)}
                   style={{ padding: 6 }}
                 >
@@ -2797,7 +3022,7 @@ export function DrawingPageContent({ lang }: { lang: string }): React.ReactEleme
                     gap: 4,
                   }}
                 >
-                  {sampleAssembly.state.parts.map((p) => {
+                  {activeAssembly.state.parts.map((p) => {
                     const hasSheet = Boolean(partSheets[p.id]);
                     const selected = p.id === selectedPartId;
                     const isEditing = editingPartId === p.id && hasSheet;
@@ -2837,7 +3062,7 @@ export function DrawingPageContent({ lang }: { lang: string }): React.ReactEleme
                                 display: 'inline-block',
                                 width: 14,
                                 textAlign: 'center',
-                                color: hasSheet ? '#166534' : '#9ca3af',
+                                color: hasSheet ? '#166534' : '#4b5563',
                                 fontWeight: 700,
                               }}
                             >
@@ -2845,7 +3070,7 @@ export function DrawingPageContent({ lang }: { lang: string }): React.ReactEleme
                             </span>
                             <strong>{p.name}</strong>
                             {!hasSheet ? (
-                              <span style={{ color: '#9ca3af' }}> · {dict.noSheetAdded}</span>
+                              <span style={{ color: '#4b5563' }}> · {dict.noSheetAdded}</span>
                             ) : null}
                           </span>
                           <span style={{ display: 'flex', gap: 4 }}>
@@ -2981,7 +3206,7 @@ export function DrawingPageContent({ lang }: { lang: string }): React.ReactEleme
                   type="button"
                   data-testid="drawing-assembly-add-all-sheets"
                   onClick={handleAddAllSheets}
-                  disabled={sampleAssembly.state.parts.length === 0}
+                  disabled={activeAssembly.state.parts.length === 0}
                   style={{
                     flex: 1,
                     padding: '6px 8px',
@@ -2990,7 +3215,7 @@ export function DrawingPageContent({ lang }: { lang: string }): React.ReactEleme
                     border: 'none',
                     borderRadius: 3,
                     cursor:
-                      sampleAssembly.state.parts.length === 0 ? 'not-allowed' : 'pointer',
+                      activeAssembly.state.parts.length === 0 ? 'not-allowed' : 'pointer',
                     fontSize: 11,
                   }}
                 >
@@ -3046,16 +3271,16 @@ export function DrawingPageContent({ lang }: { lang: string }): React.ReactEleme
                 type="button"
                 data-testid="drawing-export-assembly-step"
                 onClick={onExportAssemblyStep}
-                disabled={sampleAssembly.state.parts.length === 0}
+                disabled={(assemblyHandoff !== null && assemblyHandoff.artifacts.exactBrepStep.status !== 'PASS') || activeAssembly.state.parts.length === 0}
                 style={{
                   padding: '8px 14px',
                   background:
-                    sampleAssembly.state.parts.length === 0 ? '#9ca3af' : '#0f172a',
+                    (assemblyHandoff !== null && assemblyHandoff.artifacts.exactBrepStep.status !== 'PASS') || activeAssembly.state.parts.length === 0 ? '#9ca3af' : '#0f172a',
                   color: '#fff',
                   border: 'none',
                   borderRadius: 4,
                   cursor:
-                    sampleAssembly.state.parts.length === 0 ? 'not-allowed' : 'pointer',
+                    (assemblyHandoff !== null && assemblyHandoff.artifacts.exactBrepStep.status !== 'PASS') || activeAssembly.state.parts.length === 0 ? 'not-allowed' : 'pointer',
                   fontSize: 12,
                 }}
               >
@@ -3084,7 +3309,7 @@ export function DrawingPageContent({ lang }: { lang: string }): React.ReactEleme
                 <legend style={{ padding: '0 4px', fontWeight: 600 }}>
                   {dict.pdfFormat}
                 </legend>
-                <label style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                <label style={{ display: 'flex', alignItems: 'center', gap: 6, minHeight: 28, cursor: 'pointer' }}>
                   <input
                     type="radio"
                     name="drawing-assembly-pdf-format"
@@ -3092,10 +3317,11 @@ export function DrawingPageContent({ lang }: { lang: string }): React.ReactEleme
                     value="raster"
                     checked={pdfFormat === 'raster'}
                     onChange={() => setPdfFormat('raster')}
+                    style={{ width: 24, height: 24, margin: 0, cursor: 'pointer' }}
                   />
                   {dict.formatRaster}
                 </label>
-                <label style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                <label style={{ display: 'flex', alignItems: 'center', gap: 6, minHeight: 28, cursor: 'pointer' }}>
                   <input
                     type="radio"
                     name="drawing-assembly-pdf-format"
@@ -3103,6 +3329,7 @@ export function DrawingPageContent({ lang }: { lang: string }): React.ReactEleme
                     value="vector"
                     checked={pdfFormat === 'vector'}
                     onChange={() => setPdfFormat('vector')}
+                    style={{ width: 24, height: 24, margin: 0, cursor: 'pointer' }}
                   />
                   {dict.formatVector}
                 </label>
@@ -3148,11 +3375,14 @@ export function DrawingPageContent({ lang }: { lang: string }): React.ReactEleme
               }}
             >
               {selectedPartId && partSheets[selectedPartId] ? (
-                <SheetRenderer sheet={partSheets[selectedPartId]} />
+                <SheetRenderer
+                  sheet={partSheets[selectedPartId]}
+                  geometry={assemblyGeometry.drawingGeometryByPart.get(selectedPartId)}
+                />
               ) : (
                 <p
                   data-testid="drawing-assembly-no-selection"
-                  style={{ fontSize: 12, color: '#6b7280', margin: 0 }}
+                  style={{ fontSize: 12, color: '#4b5563', margin: 0 }}
                 >
                   {dict.noSheetAdded}
                 </p>
@@ -3185,7 +3415,10 @@ export function DrawingPageContent({ lang }: { lang: string }): React.ReactEleme
             >
               {Object.entries(partSheets).map(([pid, ps]) => (
                 <div key={pid} data-part-id={pid}>
-                  <SheetRenderer sheet={ps} />
+                  <SheetRenderer
+                    sheet={ps}
+                    geometry={assemblyGeometry.drawingGeometryByPart.get(pid)}
+                  />
                 </div>
               ))}
             </div>
@@ -3789,14 +4022,18 @@ export function DrawingPageContent({ lang }: { lang: string }): React.ReactEleme
                 }}
               >
                 <strong>
-                  {lang === 'ko'
-                    ? `참조 검토 대기 (${drawingReferencePartition.review.length})`
-                    : `Reference review (${drawingReferencePartition.review.length})`}
+                  {loc(lang, {
+                    ko: `참조 검토 대기 (${drawingReferencePartition.review.length})`, en: `Reference review (${drawingReferencePartition.review.length})`,
+                    ja: `参照レビュー (${drawingReferencePartition.review.length})`, zh: `引用审核 (${drawingReferencePartition.review.length})`,
+                    es: `Revisión de referencias (${drawingReferencePartition.review.length})`, ar: `مراجعة المراجع (${drawingReferencePartition.review.length})`,
+                  })}
                 </strong>
                 <span>
-                  {lang === 'ko'
-                    ? '아래 주석은 도면 표시와 내보내기에서 안전하게 제외되었습니다.'
-                    : 'These annotations are safely excluded from rendering and export.'}
+                  {loc(lang, {
+                    ko: '아래 주석은 도면 표시와 내보내기에서 안전하게 제외되었습니다.', en: 'These annotations are safely excluded from rendering and export.',
+                    ja: '以下の注釈は図面表示とエクスポートから安全に除外されました。', zh: '以下注释已安全地从图纸显示和导出中排除。',
+                    es: 'Estas anotaciones se excluyen de forma segura de la visualización y la exportación.', ar: 'تم استبعاد هذه التعليقات بأمان من العرض والتصدير.',
+                  })}
                 </span>
                 {drawingReferencePartition.review.map(item => (
                   <div
@@ -3823,7 +4060,7 @@ export function DrawingPageContent({ lang }: { lang: string }): React.ReactEleme
                           onChange={event => setGdtRelinkDraft(prev => ({ ...prev, [item.id]: event.target.value }))}
                           style={{ minWidth: 0, flex: 1, fontSize: 11 }}
                         >
-                          <option value="">{lang === 'ko' ? '새 면 선택' : 'Select face'}</option>
+                          <option value="">{loc(lang, { ko: '새 면 선택', en: 'Select face', ja: '面を選択', zh: '选择面', es: 'Seleccionar cara', ar: 'اختر سطحًا' })}</option>
                           {validGdtTargets.map(name => <option key={name} value={name}>{name}</option>)}
                         </select>
                         <button
@@ -3832,7 +4069,7 @@ export function DrawingPageContent({ lang }: { lang: string }): React.ReactEleme
                           onClick={() => handleGdtRelinkApply(item.id)}
                           style={{ padding: '3px 8px', border: 0, borderRadius: 3, background: '#b45309', color: '#fff', cursor: 'pointer' }}
                         >
-                          {lang === 'ko' ? '적용' : 'Apply'}
+                          {loc(lang, { ko: '적용', en: 'Apply', ja: '適用', zh: '应用', es: 'Aplicar', ar: 'تطبيق' })}
                         </button>
                       </div>
                     )}

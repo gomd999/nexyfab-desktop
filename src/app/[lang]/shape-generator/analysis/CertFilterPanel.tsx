@@ -12,6 +12,7 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { usePathname } from 'next/navigation';
 import { filterCerts, type CertFilterResult } from './certFilter';
+import { createCommercialLocalizer } from '@/lib/i18n/commercialLocalizer';
 
 const C = {
   bg: 'var(--nx-panel)',
@@ -161,7 +162,7 @@ export default function CertFilterPanel({
   };
   const tt = dict[langMap[seg] ?? 'en'];
 
-  const isKo = lang === 'ko';
+  const L = createCommercialLocalizer(lang);
   const [industry, setIndustry] = useState<string>(initialIndustry ?? 'general');
   const [region, setRegion] = useState<'KR' | 'US' | 'EU' | 'global'>('global');
   const [result, setResult] = useState<CertFilterResult | null>(null);
@@ -292,7 +293,7 @@ export default function CertFilterPanel({
               padding: 10, borderRadius: 6, background: `${C.accent}0d`,
               border: `1px solid ${C.accent}33`, fontSize: 11, color: C.text, lineHeight: 1.5,
             }}>
-              {isKo ? result.summaryKo : result.summary}
+              {L(result.summaryKo, result.summary)}
             </div>
 
             {result.required.length > 0 && (
@@ -307,10 +308,10 @@ export default function CertFilterPanel({
                       background: `${C.red}0d`, border: `1px solid ${C.red}33`,
                     }}>
                       <div style={{ fontSize: 12, fontWeight: 800, color: C.red, marginBottom: 2 }}>
-                        {isKo ? c.nameKo : c.name}{c.region ? ` · ${c.region}` : ''}
+                        {L(c.nameKo, c.name)}{c.region ? ` · ${c.region}` : ''}
                       </div>
                       <div style={{ fontSize: 10, color: C.text, lineHeight: 1.4 }}>
-                        {isKo ? c.reasonKo : c.reason}
+                        {L(c.reasonKo, c.reason)}
                       </div>
                     </div>
                   ))}
@@ -330,10 +331,10 @@ export default function CertFilterPanel({
                       background: `${C.yellow}0d`, border: `1px solid ${C.yellow}33`,
                     }}>
                       <div style={{ fontSize: 12, fontWeight: 700, color: C.yellow, marginBottom: 2 }}>
-                        {isKo ? c.nameKo : c.name}{c.region ? ` · ${c.region}` : ''}
+                        {L(c.nameKo, c.name)}{c.region ? ` · ${c.region}` : ''}
                       </div>
                       <div style={{ fontSize: 10, color: C.text, lineHeight: 1.4 }}>
-                        {isKo ? c.reasonKo : c.reason}
+                        {L(c.reasonKo, c.reason)}
                       </div>
                     </div>
                   ))}
@@ -352,7 +353,7 @@ export default function CertFilterPanel({
                     .sort((a, b) => b.score - a.score)
                     .map((s, i) => {
                       const lookup = s.id ? supplierLookup.get(s.id) : undefined;
-                      const name = lookup ? (isKo ? lookup.nameKo ?? lookup.name : lookup.name ?? lookup.nameKo) : (s.id ?? `#${i + 1}`);
+                      const name = lookup ? (L(lookup.nameKo ?? lookup.name, lookup.name ?? lookup.nameKo)) : (s.id ?? `#${i + 1}`);
                       const color = s.score >= 80 ? C.green : s.score >= 50 ? C.yellow : C.red;
                       return (
                         <div key={s.id ?? i} style={{

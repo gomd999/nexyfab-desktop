@@ -58,6 +58,26 @@ function sqliteAlterColumns(): Set<string> {
   return cols;
 }
 
+/** SQLite 기본 CREATE TABLE과 후속 ALTER를 합친 `테이블.컬럼` 집합. */
+function sqliteColumns(): Set<string> {
+  const cols = sqliteAlterColumns();
+  for (const m of dbTs.matchAll(/CREATE TABLE (?:IF NOT EXISTS )?(\w+)\s*\(/gi)) {
+    const table = m[1]!;
+    let depth = 0;
+    let i = m.index! + m[0].length - 1;
+    const start = i + 1;
+    for (; i < dbTs.length; i++) {
+      if (dbTs[i] === '(') depth++;
+      else if (dbTs[i] === ')') { depth--; if (depth === 0) break; }
+    }
+    for (const line of dbTs.slice(start, i).split('\n')) {
+      const c = line.trim().match(/^(\w+)\s+[A-Za-z]/);
+      if (c && !/^(PRIMARY|FOREIGN|UNIQUE|CHECK|CONSTRAINT)$/i.test(c[1]!)) cols.add(`${table}.${c[1]}`);
+    }
+  }
+  return cols;
+}
+
 /** Postgres 에 CREATE TABLE 이 있는 테이블. */
 function postgresTables(): Set<string> {
   const t = new Set<string>();
@@ -107,8 +127,10 @@ describe('★SQLite 에만 추가된 컬럼이 없다', () => {
 
   it('★인증 경로가 읽는 컬럼은 반드시 있어야 한다 — 없으면 로그인한 모든 요청이 죽는다', () => {
     const pg = postgresColumns();
+    const sqlite = sqliteColumns();
     for (const c of ['nf_users.plan_expires_at', 'nf_users.plan_fallback', 'nf_users.pro_grace_until', 'nf_users.role', 'nf_users.email_verified']) {
       expect(pg.has(c), `${c} 없음 — auth-middleware.enrichAuthUser 가 매 요청 SELECT 한다`).toBe(true);
+      expect(sqlite.has(c), `${c} SQLite 없음 — 로컬 Pro 로그인 후 세션 조회가 죽는다`).toBe(true);
     }
   });
 });

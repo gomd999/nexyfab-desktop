@@ -8,6 +8,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getDbAdapter } from '@/lib/db-adapter';
 import { verifyUnsubscribeEmailToken } from '@/lib/unsubscribe';
+import { readBoundedJson } from '@/lib/boundedJsonBody';
 
 export const dynamic = 'force-dynamic';
 
@@ -49,7 +50,7 @@ export async function GET(req: NextRequest) {
 
 // POST: 확인 페이지에서 제출
 export async function POST(req: NextRequest) {
-  const body = await req.json() as { email?: string; token?: string };
+  const body = await readBoundedJson(req, 64 * 1024) as { email?: string; token?: string };
   const { email = '', token = '' } = body;
 
   if (!email || !token || !verifyUnsubscribeEmailToken(email, token)) {

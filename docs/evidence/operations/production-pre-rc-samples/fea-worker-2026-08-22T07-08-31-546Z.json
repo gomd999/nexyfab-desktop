@@ -1,0 +1,26 @@
+{
+  "schema": "nexyfab.railway-operations-sample.v1",
+  "capturedAt": "2026-08-22T07:08:36.168Z",
+  "service": "fea-worker",
+  "sourceService": "nexyfab-fea-worker",
+  "environment": "production",
+  "window": {
+    "since": "2026-08-22T01:08:31.546+00:00",
+    "until": "2026-08-22T07:08:31.546+00:00"
+  },
+  "deploymentIds": [],
+  "deploymentStatuses": [],
+  "cpu": {
+    "average": 0,
+    "current": 0,
+    "max": 0,
+    "unit": "vCPU"
+  },
+  "memory": {
+    "average_mb": 0,
+    "current_mb": 0,
+    "max_mb": 0
+  },
+  "http": null,
+  "volumes": []
+}

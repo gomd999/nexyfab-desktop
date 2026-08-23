@@ -12,6 +12,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getAuthUser } from '@/lib/auth-middleware';
 import { checkMonthlyLimit } from '@/lib/plan-guard';
 import { getDbAdapter } from '@/lib/db-adapter';
+import { resolveRequestOrgContext } from '@/lib/org-context';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -21,21 +22,21 @@ export async function GET(req: NextRequest) {
   if (!auth) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
   const db = getDbAdapter();
-  const userPlanRow = await db.queryOne<{ plan: string }>(
-    'SELECT plan FROM nf_users WHERE id = ?', auth.userId,
-  ).catch(() => null);
-  const plan = userPlanRow?.plan ?? 'free';
+  const context = resolveRequestOrgContext(auth);
+  if (!context.ok) return NextResponse.json({ error: 'Select a valid workspace', code: context.code }, { status: 409 });
+  const plan = auth.plan ?? 'free';
+  await db.execute('ALTER TABLE nf_usage_events ADD COLUMN org_id TEXT').catch(() => {});
 
-  const r = await checkMonthlyLimit(auth.userId, plan, 'sim_run');
+  const r = await checkMonthlyLimit(auth.userId, plan, 'sim_run', context.orgId);
 
   // Recent run breakdown by kind (last 30 days).
   const monthStart = Date.now() - 30 * 86_400_000;
   const breakdown = await db.queryAll<{ metadata: string | null; count: number }>(
     `SELECT metadata, COUNT(*) as count
        FROM nf_usage_events
-      WHERE user_id = ? AND metric = 'sim_run' AND created_at > ?
+      WHERE ${context.orgId ? 'org_id = ?' : 'user_id = ? AND org_id IS NULL'} AND metric = 'sim_run' AND created_at > ?
    GROUP BY metadata`,
-    auth.userId, monthStart,
+    context.orgId ?? auth.userId, monthStart,
   ).catch((): Array<{ metadata: string | null; count: number }> => []);
 
   const byKind: Record<string, number> = {};

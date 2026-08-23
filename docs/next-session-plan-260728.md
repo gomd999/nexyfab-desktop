@@ -53,7 +53,7 @@ rev 해시식을 웹과 **같게** 둔 것이 핵심 — 두 발생지가 다른
 `mcp-server.mjs` 를 import 하면 `SyntaxError: Invalid or unexpected token`. 원인은 1행
 **shebang** — node 는 `#!` 를 벗겨 실행하지만 vite 변환기는 벗기지 않는다. 즉 이 파일은
 **실행은 되는데 CI 는 한 줄도 볼 수 없는** 상태였다(260727 A-5 `87a9e3f2` 와 같은 종류).
-레포에 shebang 스크립트가 다수라 파일 하나를 고치지 않고 `vitest.config.ts` 에
+레포에 shebang 스크립트가 다수라 파일 하나를 고치지 않고 `vitest.config.mts` 에
 `nf-strip-shebang` 플러그인을 뒀다. `#!` 두 글자만 `//` 로 바꿔 **줄 수·문자 오프셋 보존**
 (스택트레이스 무손상). 스크립트의 실행 계약(`node mcp-server.mjs`)은 그대로.
 

@@ -14,6 +14,9 @@ import { getTrustedClientIp } from '@/lib/client-ip';
 import { checkPlan } from '@/lib/plan-guard';
 import { checkUserBudget } from '@/lib/ai/userBudget';
 import { buildGenImagePrompt, consumeDailyImageSlot, GENIMAGE_ANON_DAILY } from '@/lib/genimage';
+import { boundedJsonError, readBoundedJson } from '@/lib/boundedJsonBody';
+
+const MAX_BODY_BYTES = 7 * 1024 * 1024;
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -33,8 +36,9 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 
   let body: { prompt?: string; imageBase64?: string; mimeType?: string; domain?: string };
   try {
-    body = (await req.json()) as typeof body;
-  } catch {
+    body = await readBoundedJson<typeof body>(req, MAX_BODY_BYTES);
+  } catch (error) {
+    if (boundedJsonError(error)?.code === 'PAYLOAD_TOO_LARGE') return NextResponse.json({ ok: false, error: '이미지가 너무 큽니다(≤4MB)' }, { status: 413 });
     return NextResponse.json({ ok: false, error: 'invalid json' }, { status: 400 });
   }
   const text = typeof body.prompt === 'string' ? body.prompt.trim() : '';
@@ -47,7 +51,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   let quota: { used: number; limit: number };
   const planCheck = await checkPlan(req, 'free');
   if (planCheck.ok) {
-    const budget = await checkUserBudget(planCheck.userId);
+    const budget = await checkUserBudget(planCheck.userId, planCheck.orgId);
     if (!budget.ok) {
       return NextResponse.json({ ok: false, error: `일일 AI 사용 한도($${budget.limitUsd})에 도달했습니다.`, code: 'COST_BUDGET' }, { status: 402 });
     }

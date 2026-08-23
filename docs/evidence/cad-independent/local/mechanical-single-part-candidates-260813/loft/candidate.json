@@ -1,0 +1,64 @@
+{
+  "schema": "nexyfab.mechanical-single-part-candidate.v1",
+  "feature": "loft",
+  "candidateStatus": "PASS",
+  "partRevisionSha256": "800bd71d875111ea1e1bb56a70a99daec997832eac75058952b31a1069a7df10",
+  "source": {
+    "receiptPath": "docs/evidence/cad-independent/local/mechanical-core-feature-axis-evidence.json",
+    "receiptSha256": "79d9344b7d101580b7e1574759a8eff652cbe942e6a389056b488aba28a77930",
+    "designRevisionSha256": "3cf6a0f9c8efcf153a2cfefde087a2112c086fc412d2feeaeb9ce52542838564",
+    "nfab": {
+      "path": "docs/evidence/cad-independent/local/mechanical-core-runtime-260813/loft/saved-project.nfab",
+      "sha256": "0d6cc1a6c292ad72555c2b095ddf283a24fa8444ca5e18dbd4aa4370b28c28b1",
+      "bytes": 1675,
+      "assertionId": "loft.save_reopen.saved-bytes",
+      "revisionSha256": "0d6cc1a6c292ad72555c2b095ddf283a24fa8444ca5e18dbd4aa4370b28c28b1",
+      "formatVersion": 3,
+      "createdAt": 1786643133898,
+      "updatedAt": 1786643133898
+    },
+    "step": {
+      "path": "docs/evidence/cad-independent/local/mechanical-core-runtime-260813/loft/loft-edited.step",
+      "sha256": "bf8dca653960e804034094f2194879eeef287727e871f166ae9c3b6db5fa7568",
+      "bytes": 142885,
+      "assertionId": "loft.export.native-step"
+    },
+    "drawingSvg": {
+      "path": "docs/evidence/cad-independent/local/mechanical-core-runtime-260813/loft/loft-exact-hlr.svg",
+      "sha256": "60953999f4c9b67d2162332dab0a8320dcfc8cc1bba1fe5be7d4d28259db86b5",
+      "bytes": 6894,
+      "assertionId": "loft.drawing.exact-hlr-svg"
+    }
+  },
+  "artifacts": {
+    "stepImport": {
+      "path": "docs/evidence/cad-independent/local/mechanical-single-part-candidates-260813/loft/step-import.json",
+      "sha256": "12eecd393081f3150277da601954d71c7341d723bac6312d45600c899b3d3db8",
+      "bytes": 987,
+      "assertionId": "loft.candidate.step-import"
+    },
+    "drawing": {
+      "path": "docs/evidence/cad-independent/local/mechanical-single-part-candidates-260813/loft/loft-three-axis-hlr.svg",
+      "sha256": "60953999f4c9b67d2162332dab0a8320dcfc8cc1bba1fe5be7d4d28259db86b5",
+      "bytes": 6894,
+      "assertionId": "loft.candidate.three-axis-hlr"
+    },
+    "bom": {
+      "path": "docs/evidence/cad-independent/local/mechanical-single-part-candidates-260813/loft/bom.json",
+      "sha256": "bc2b95a962545228218a702340af818c9af66f3ccc830b1e57ad64e6446938cf",
+      "bytes": 859,
+      "assertionId": "loft.candidate.one-part-bom"
+    }
+  },
+  "capabilityStatus": {
+    "stepImportSolidUnitsBounds": "PASS",
+    "threeAxisHlrDrawingCandidate": "PASS",
+    "onePartBomQuantityDimensions": "PASS",
+    "drawingDimensions": "NOT_RUN",
+    "gdt": "NOT_RUN",
+    "pmi": "NOT_RUN",
+    "humanApproval": "NOT_RUN",
+    "manufacturingRelease": "BLOCKED"
+  },
+  "commercialReleaseEligible": false
+}

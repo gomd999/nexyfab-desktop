@@ -11,8 +11,11 @@ import { NextRequest, NextResponse } from 'next/server';
 import { checkPlan } from '@/lib/plan-guard';
 import { chatCompletion, AiNotConfiguredError, AiProviderError, type ChatMessage } from '@/lib/ai';
 import { getPrompt } from '@/lib/ai/prompts';
+import { localizedApiMessage, resolveServerLocale } from '@/lib/i18n/serverLocale';
+import { readBoundedJson } from '@/lib/boundedJsonBody';
 
 export const dynamic = 'force-dynamic';
+const MAX_JSON_BODY_BYTES = 4 * 1024 * 1024;
 
 const MODE_TO_PROMPT_ID: Record<'generate' | 'refine' | 'fix' | 'face-op', string> = {
   generate: 'openscad-gen-generate',
@@ -22,10 +25,11 @@ const MODE_TO_PROMPT_ID: Record<'generate' | 'refine' | 'fix' | 'face-op', strin
 };
 
 export async function POST(req: NextRequest) {
+  const body = await readBoundedJson(req, MAX_JSON_BODY_BYTES).catch(() => ({})) as Record<string, unknown>;
+  const locale = resolveServerLocale(req, body.lang ?? req.nextUrl.searchParams.get('lang'));
   const plan = await checkPlan(req, 'free');
   if (!plan.ok) return plan.response;
 
-  const body = await req.json().catch(() => ({}));
   const {
     prompt = '',
     currentCode,
@@ -54,7 +58,7 @@ export async function POST(req: NextRequest) {
     userMessage = `CURRENT CODE:\n\`\`\`js\n${currentCode}\n\`\`\`\n\nSELECTED FACE:\n- Direction: ${selectedFace.normalLabel} (normal: [${selectedFace.normal.map(n => n.toFixed(2)).join(', ')}])\n- Area: ${selectedFace.area.toFixed(1)} mm²\n- Click position: [${selectedFace.position.map(p => p.toFixed(1)).join(', ')}] mm\n\nUSER REQUEST: ${prompt}`;
   } else {
     if (!prompt?.trim()) {
-      return NextResponse.json({ error: 'prompt is required' }, { status: 400 });
+      return NextResponse.json({ error: localizedApiMessage(locale, 'promptRequired'), outputLanguage: locale.route }, { status: 400 });
     }
     resolvedMode = 'generate';
     userMessage = prompt;
@@ -62,7 +66,7 @@ export async function POST(req: NextRequest) {
 
   const promptDef = getPrompt(MODE_TO_PROMPT_ID[resolvedMode]);
   const messages: ChatMessage[] = [
-    { role: 'system', content: promptDef.template },
+    { role: 'system', content: `${promptDef.template}\n\n[OUTPUT LANGUAGE CONTRACT]\nWrite description in ${locale.languageName}; preserve JSCAD code, parameter keys, modes, and stable identifiers.` },
     { role: 'user', content: userMessage },
   ];
 
@@ -78,13 +82,13 @@ export async function POST(req: NextRequest) {
     raw = result.text;
   } catch (e) {
     if (e instanceof AiNotConfiguredError) {
-      return NextResponse.json({ error: 'AI provider not configured' }, { status: 500 });
+      return NextResponse.json({ error: localizedApiMessage(locale, 'providerNotConfigured'), outputLanguage: locale.route }, { status: 500 });
     }
     const detail = e instanceof AiProviderError
       ? `${e.provider}${e.status ? ` (${e.status})` : ''}: ${e.message}`
       : (e instanceof Error ? e.message : String(e));
     console.error('openscad-gen AI provider error:', detail);
-    return NextResponse.json({ error: 'AI request failed' }, { status: 502 });
+    return NextResponse.json({ error: localizedApiMessage(locale, 'providerFailed'), outputLanguage: locale.route }, { status: 502 });
   }
 
   try {
@@ -100,8 +104,9 @@ export async function POST(req: NextRequest) {
       code: parsed.code,
       description: parsed.description ?? '',
       dims: parsed.dims ?? null,
+      outputLanguage: locale.route,
     });
   } catch {
-    return NextResponse.json({ error: 'AI 응답 파싱 실패', raw }, { status: 500 });
+    return NextResponse.json({ error: localizedApiMessage(locale, 'invalidAiResponse'), outputLanguage: locale.route }, { status: 500 });
   }
 }

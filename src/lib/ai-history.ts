@@ -29,6 +29,7 @@ export type AIHistoryFeature =
 export interface AIHistoryRow {
   id: string;
   user_id: string;
+  org_id: string | null;
   feature: AIHistoryFeature;
   project_id: string | null;
   title: string;
@@ -50,6 +51,7 @@ export interface AIHistoryRecord<P = unknown, C = unknown> {
 /** Fire-and-forget save. Errors are logged, never thrown. */
 export function recordAIHistory(args: {
   userId: string;
+  orgId?: string | null;
   feature: AIHistoryFeature;
   title: string;
   payload: unknown;
@@ -58,19 +60,19 @@ export function recordAIHistory(args: {
 }): void {
   try {
     const db = getDbAdapter();
-    const id = `ai-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
-    db.execute(
-      `INSERT INTO nf_ai_history (id, user_id, feature, project_id, title, payload, context, created_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-      id,
+    void db.execute('ALTER TABLE nf_ai_history ADD COLUMN org_id TEXT').catch(() => {}).then(() => db.execute(
+      `INSERT INTO nf_ai_history (id, user_id, org_id, feature, project_id, title, payload, context, created_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      `ai-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`,
       args.userId,
+      args.orgId ?? null,
       args.feature,
       args.projectId ?? null,
       args.title.slice(0, 200),
       JSON.stringify(args.payload),
       args.context !== undefined ? JSON.stringify(args.context) : null,
       Date.now(),
-    ).catch((err: unknown) => console.warn('[ai-history] insert failed:', err));
+    )).catch((err: unknown) => console.warn('[ai-history] insert failed:', err));
   } catch (err) {
     console.warn('[ai-history] recordAIHistory error:', err);
   }
@@ -79,20 +81,22 @@ export function recordAIHistory(args: {
 /** List recent AI history rows for a user. */
 export async function listAIHistory(opts: {
   userId: string;
+  orgId?: string | null;
   feature?: AIHistoryFeature;
   projectId?: string;
   limit?: number;
 }): Promise<AIHistoryRecord[]> {
   const db = getDbAdapter();
+  await db.execute('ALTER TABLE nf_ai_history ADD COLUMN org_id TEXT').catch(() => {});
   const limit = Math.min(100, Math.max(1, opts.limit ?? 30));
 
-  const clauses: string[] = ['user_id = ?'];
-  const args: unknown[] = [opts.userId];
+  const clauses: string[] = [opts.orgId ? 'org_id = ?' : 'user_id = ? AND org_id IS NULL'];
+  const args: unknown[] = [opts.orgId ?? opts.userId];
   if (opts.feature)   { clauses.push('feature = ?');    args.push(opts.feature); }
   if (opts.projectId) { clauses.push('project_id = ?'); args.push(opts.projectId); }
 
   const rows = await db.queryAll<AIHistoryRow>(
-    `SELECT id, user_id, feature, project_id, title, payload, context, created_at
+    `SELECT id, user_id, org_id, feature, project_id, title, payload, context, created_at
      FROM nf_ai_history
      WHERE ${clauses.join(' AND ')}
      ORDER BY created_at DESC
@@ -112,12 +116,12 @@ export async function listAIHistory(opts: {
 }
 
 /** Delete a single record (only if owned by the user). */
-export async function deleteAIHistory(userId: string, id: string): Promise<boolean> {
+export async function deleteAIHistory(userId: string, id: string, orgId?: string | null): Promise<boolean> {
   const db = getDbAdapter();
+  await db.execute('ALTER TABLE nf_ai_history ADD COLUMN org_id TEXT').catch(() => {});
   const res = await db.execute(
-    `DELETE FROM nf_ai_history WHERE id = ? AND user_id = ?`,
-    id,
-    userId,
+    `DELETE FROM nf_ai_history WHERE id = ? AND ${orgId ? 'org_id = ?' : 'user_id = ? AND org_id IS NULL'}`,
+    id, orgId ?? userId,
   );
   return res.changes > 0;
 }

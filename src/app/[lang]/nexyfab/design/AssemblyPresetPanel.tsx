@@ -13,7 +13,8 @@ import { ACCEPT_RASTER } from '@/lib/drawingInput';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { VERIFY_FIELDS, buildVerifyParams } from '@/lib/nexyfab/verify-params';
 import dynamic from 'next/dynamic';
-import { isKorean, toIsoLang } from '@/lib/i18n/normalize';
+import { toIsoLang } from '@/lib/i18n/normalize';
+import { designPair } from './designI18n';
 import type { PickEvent, PickMode } from './AssemblyViewer3D';
 import InteriorPlanEditor, { type Furn } from './InteriorPlanEditor';
 
@@ -1551,11 +1552,10 @@ export default function AssemblyPresetPanel({
   /** 빌드 결과 요약(간섭 건수 등) — 검증 그물 ④ 연동(2026-07-16) */
   onBuildInfo?: (info: { interferences: number; floating?: number | null; assembly?: Record<string, unknown> | null }) => void;
 }) {
-  const ko = isKorean(lang);
   const t = dict[toIsoLang(lang)] ?? dict.ko;
   const advancedTitle = domain === 'civil' || domain === 'bridge'
     ? t.advTitle
-    : ko ? '고급 입력(JSON — 선택 템플릿 파라미터)' : 'Advanced input (JSON — selected template parameters)';
+    : designPair(lang, '고급 입력(JSON — 선택 템플릿 파라미터)', 'Advanced input (JSON — selected template parameters)');
   const advancedPlaceholder = domain === 'civil' || domain === 'bridge'
     ? '{ "ips": [[0,0],[120000,0]], "curves": [{"ip":1,"R":30000}], "structures": [{"sta":60000,"type":"culvert"}], "earthwork": {"formationElevM":6,"widthM":3,"slopeN":1.5}, "surveyPoints": [[E,N,EL(m)],...], "origin": {"E":200000,"N":450000} }'
     : '{ "parameterName": 1000 }';
@@ -1969,8 +1969,8 @@ export default function AssemblyPresetPanel({
     const f = e.target.files?.[0];
     e.target.value = '';
     if (!f) return;
-    if (!/^image\/(png|jpe?g|webp)$/.test(f.type)) { setADrawErr(ko ? 'PNG·JPG·WebP 이미지만 지원합니다.' : 'PNG/JPG/WebP only.'); return; }
-    if (f.size > 6_000_000) { setADrawErr(ko ? '이미지가 너무 큽니다(6MB 이하).' : 'Image too large (max 6MB).'); return; }
+    if (!/^image\/(png|jpe?g|webp)$/.test(f.type)) { setADrawErr(designPair(lang, 'PNG·JPG·WebP 이미지만 지원합니다.', 'PNG/JPG/WebP only.')); return; }
+    if (f.size > 6_000_000) { setADrawErr(designPair(lang, '이미지가 너무 큽니다(6MB 이하).', 'Image too large (max 6MB).')); return; }
     const mode = aModeRef.current;
     const reader = new FileReader();
     reader.onload = () => {
@@ -1984,7 +1984,7 @@ export default function AssemblyPresetPanel({
           });
           const j = (await r.json()) as ({ ok: true } & NonNullable<typeof aDrawRes>) | { ok: false; error?: string };
           if (j.ok) setADrawRes(mode === 'photo' ? { ...j, values: {}, filled: undefined, clamped: undefined, photo: true } : j);
-          else setADrawErr(j.error ?? (ko ? '판독 실패' : 'Read failed'));
+          else setADrawErr(j.error ?? (designPair(lang, '판독 실패', 'Read failed')));
         } catch (err) {
           setADrawErr(err instanceof Error ? err.message : String(err));
         } finally {
@@ -1997,12 +1997,12 @@ export default function AssemblyPresetPanel({
   const confirmAsmDraw = () => {
     if (!aDrawRes || !templates) return;
     const tp = templates.find((x) => x.id === aDrawRes.templateId);
-    if (!tp) { setADrawErr(ko ? '템플릿을 찾을 수 없습니다.' : 'Template not found.'); return; }
+    if (!tp) { setADrawErr(designPair(lang, '템플릿을 찾을 수 없습니다.', 'Template not found.')); return; }
     const merged = { ...Object.fromEntries(tp.params.map((p) => [p.name, p.default])), ...aDrawRes.values };
-    const snap: SavedState = { domain, templateId: tp.id, params: merged, name: ko ? '도면 판독' : 'from drawing' };
+    const snap: SavedState = { domain, templateId: tp.id, params: merged, name: designPair(lang, '도면 판독', 'from drawing') };
     setADrawRes(null);
     if (tid === tp.id) {
-      applyRestore(snap, ko ? '도면 판독 적용 — 자동 빌드' : 'Applied from drawing');
+      applyRestore(snap, designPair(lang, '도면 판독 적용 — 자동 빌드', 'Applied from drawing'));
     } else {
       restoreRef.current = snap; // tpl 이펙트가 applyRestore(스냅샷 적용+자동 빌드) 수행
       setTid(tp.id);
@@ -2826,14 +2826,14 @@ export default function AssemblyPresetPanel({
         <input ref={aFileRef} type="file" accept={ACCEPT_RASTER} onChange={onPickAsmFile} style={{ display: 'none' }} />
         <div style={{ marginLeft: 'auto', display: 'flex', gap: 4 }}>
           <button type="button" onClick={() => { aModeRef.current = 'drawing'; aFileRef.current?.click(); }} disabled={aDrawBusy}
-            title={ko ? '치수 도면 — 치수를 판독합니다' : 'Dimensioned drawing'}
+            title={designPair(lang, '치수 도면 — 치수를 판독합니다', 'Dimensioned drawing')}
             style={{ padding: '4px 10px', borderRadius: 7, fontSize: 11, fontWeight: 700, cursor: 'pointer', border: '1px solid var(--nx-border, #dfe3e8)', background: 'var(--nx-panel, #fff)', color: 'inherit' }}>
-            📐 {ko ? '도면' : 'Drawing'}
+            📐 {designPair(lang, '도면', 'Drawing')}
           </button>
           <button type="button" onClick={() => { aModeRef.current = 'photo'; aFileRef.current?.click(); }} disabled={aDrawBusy}
-            title={ko ? '사진·렌더 — 형태 힌트만, 치수는 읽지 않습니다' : 'Photo — shape hint only'}
+            title={designPair(lang, '사진·렌더 — 형태 힌트만, 치수는 읽지 않습니다', 'Photo — shape hint only')}
             style={{ padding: '4px 10px', borderRadius: 7, fontSize: 11, fontWeight: 700, cursor: 'pointer', border: '1px solid var(--nx-border, #dfe3e8)', background: 'var(--nx-panel, #fff)', color: 'inherit' }}>
-            📷 {ko ? '사진' : 'Photo'}
+            📷 {designPair(lang, '사진', 'Photo')}
           </button>
         </div>
       </div>
@@ -2853,7 +2853,7 @@ export default function AssemblyPresetPanel({
             }}
           >
             <div style={{ fontSize: 16, lineHeight: 1 }}>{DOMAIN_EMOJI[tp.domain] ?? '📐'}</div>
-            <div style={{ fontSize: 11.5, fontWeight: 800, marginTop: 3 }}>{tp.label ?? (ko ? tp.labelKo : tp.labelEn)}</div>
+            <div style={{ fontSize: 11.5, fontWeight: 800, marginTop: 3 }}>{tp.label ?? (designPair(lang, tp.labelKo, tp.labelEn))}</div>
             <div style={{ fontSize: 9.5, color: 'var(--nx-text-3, #6b7684)', marginTop: 2, lineHeight: 1.45, overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>
               {tp.params.slice(0, 4).map((p) => `${p.label ?? p.labelKo} ${p.default}${p.unit}`).join(' · ')}
             </div>
@@ -2861,37 +2861,37 @@ export default function AssemblyPresetPanel({
         ))}
       </div>
 
-      {aDrawBusy && <div style={{ marginTop: 6, fontSize: 11, color: 'var(--nx-accent, #2563eb)' }}>{ko ? '이미지 판독 중…' : 'Reading image…'}</div>}
+      {aDrawBusy && <div style={{ marginTop: 6, fontSize: 11, color: 'var(--nx-accent, #2563eb)' }}>{designPair(lang, '이미지 판독 중…', 'Reading image…')}</div>}
       {aDrawErr && <div style={{ marginTop: 6, fontSize: 11, color: '#991b1b' }}>{aDrawErr}</div>}
       {/* 판독 확인 카드 — 승인해야 빌드(허위 형상 방지) */}
       {aDrawRes && (
         <div style={{ marginTop: 8, padding: 10, borderRadius: 8, border: '1px solid var(--nx-accent, #2563eb)', background: 'var(--nx-panel, #fff)' }}>
           <div style={{ fontSize: 11.5, fontWeight: 800 }}>
-            📷 {ko ? aDrawRes.labelKo : aDrawRes.labelEn ?? aDrawRes.labelKo}
+            📷 {designPair(lang, aDrawRes.labelKo, aDrawRes.labelEn ?? aDrawRes.labelKo)}
             <span style={{ marginLeft: 6, fontSize: 10, fontWeight: 600, color: 'var(--nx-text-3, #6b7684)' }}>
-              {ko ? '판독 신뢰도' : 'confidence'} {Math.round(aDrawRes.confidence * 100)}%
+              {designPair(lang, '판독 신뢰도', 'confidence')} {Math.round(aDrawRes.confidence * 100)}%
             </span>
           </div>
           <div style={{ marginTop: 4, fontSize: 10.5, lineHeight: 1.6 }}>
             {aDrawRes.photo
-              ? (ko ? '사진 = 형태 힌트만 — 치수는 사용하지 않습니다(정책 §3). 기본값으로 빌드 후 말로 수정하세요.' : 'Photo = shape hint only — dims not read.')
-              : Object.entries(aDrawRes.values).map(([k, v]) => `${k}: ${v}`).join(' · ') || (ko ? '판독된 치수 없음' : 'no dimensions read')}
+              ? (designPair(lang, '사진 = 형태 힌트만 — 치수는 사용하지 않습니다(정책 §3). 기본값으로 빌드 후 말로 수정하세요.', 'Photo = shape hint only — dims not read.'))
+              : Object.entries(aDrawRes.values).map(([k, v]) => `${k}: ${v}`).join(' · ') || (designPair(lang, '판독된 치수 없음', 'no dimensions read'))}
           </div>
           {!!aDrawRes.filled?.length && (
-            <div style={{ marginTop: 2, fontSize: 10, color: 'var(--nx-text-3, #6b7684)' }}>{ko ? '기본값 사용: ' : 'defaults: '}{aDrawRes.filled.join(', ')}</div>
+            <div style={{ marginTop: 2, fontSize: 10, color: 'var(--nx-text-3, #6b7684)' }}>{designPair(lang, '기본값 사용: ', 'defaults: ')}{aDrawRes.filled.join(', ')}</div>
           )}
           {!!aDrawRes.clamped?.length && (
-            <div style={{ marginTop: 2, fontSize: 10, color: '#b45309' }}>{ko ? '범위 보정: ' : 'clamped: '}{aDrawRes.clamped.join(', ')}</div>
+            <div style={{ marginTop: 2, fontSize: 10, color: '#b45309' }}>{designPair(lang, '범위 보정: ', 'clamped: ')}{aDrawRes.clamped.join(', ')}</div>
           )}
           {aDrawRes.notes && <div style={{ marginTop: 2, fontSize: 10, color: 'var(--nx-text-3, #6b7684)' }}>{aDrawRes.notes}</div>}
           <div style={{ display: 'flex', gap: 6, marginTop: 8 }}>
             <button type="button" onClick={confirmAsmDraw} disabled={busy}
               style={{ flex: 1, padding: '7px 0', borderRadius: 7, border: 'none', background: 'var(--nx-accent, #2563eb)', color: '#fff', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>
-              {ko ? '이 값으로 어셈블리 빌드' : 'Build with these'}
+              {designPair(lang, '이 값으로 어셈블리 빌드', 'Build with these')}
             </button>
             <button type="button" onClick={() => setADrawRes(null)}
               style={{ padding: '7px 14px', borderRadius: 7, border: '1px solid var(--nx-border, #dfe3e8)', background: 'transparent', color: 'inherit', fontSize: 12, cursor: 'pointer' }}>
-              {ko ? '취소' : 'Cancel'}
+              {designPair(lang, '취소', 'Cancel')}
             </button>
           </div>
         </div>
@@ -2901,7 +2901,7 @@ export default function AssemblyPresetPanel({
       {tpl && (
         <details style={{ margin: '6px 0 2px' }}>
           <summary style={{ fontSize: 11, fontWeight: 700, cursor: 'pointer', color: 'var(--nx-text-2, #46505e)' }}>
-            {ko ? '세부 치수 직접 입력' : 'Edit dimensions directly'}
+            {designPair(lang, '세부 치수 직접 입력', 'Edit dimensions directly')}
           </summary>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6, margin: '8px 0' }}>
             {tpl.params.map((p) => (
@@ -2925,7 +2925,7 @@ export default function AssemblyPresetPanel({
         // 산출은 advJson(단일 소스)에 기록 → 기존 생성 경로가 그대로 소비(결정론 게이트 동일).
         <details open style={{ margin: '4px 0 2px' }}>
           <summary style={{ fontSize: 11, fontWeight: 700, cursor: 'pointer', color: 'var(--nx-text-2, #46505e)' }}>
-            {ko ? '선형 에디터 (클릭=IP 추가 · 드래그=이동 · 점 선택=R/Ls)' : 'Alignment editor (click=add IP · drag=move · select=R/Ls)'}
+            {designPair(lang, '선형 에디터 (클릭=IP 추가 · 드래그=이동 · 점 선택=R/Ls)', 'Alignment editor (click=add IP · drag=move · select=R/Ls)')}
           </summary>
           <svg
             viewBox="0 0 640 240"
@@ -2966,7 +2966,7 @@ export default function AssemblyPresetPanel({
                       <text x={X(x) + 8} y={Y(y) - 8} fontSize={10} fill="#334155">IP{i}{edCurves[i]?.R ? ` R${Math.round(edCurves[i].R / 1000)}m${edCurves[i].Ls ? `+Ls${Math.round((edCurves[i].Ls ?? 0) / 1000)}m` : ''}` : ''}</text>
                     </g>
                   ))}
-                  <text x={6} y={232} fontSize={9} fill="#94a3b8">{ko ? `범위 ${Math.round(w.w / 1000)}m × ${Math.round(w.h / 1000)}m (자동 맞춤) · 곡선·게이트는 생성 시 결정론 검증` : `extent ${Math.round(w.w / 1000)}×${Math.round(w.h / 1000)} m (auto-fit)`}</text>
+                  <text x={6} y={232} fontSize={9} fill="#94a3b8">{designPair(lang, `범위 ${Math.round(w.w / 1000)}m × ${Math.round(w.h / 1000)}m (자동 맞춤) · 곡선·게이트는 생성 시 결정론 검증`, `extent ${Math.round(w.w / 1000)}×${Math.round(w.h / 1000)} m (auto-fit)`)}</text>
                 </g>
               );
             })()}
@@ -2978,7 +2978,7 @@ export default function AssemblyPresetPanel({
               <label>Ls(mm) <input type="number" value={edCurves[edSel]?.Ls ?? ''} style={{ ...inpStyle, width: 80 }} onChange={(e) => { const Ls = Number(e.target.value); const next = { ...edCurves }; if (next[edSel]) { if (Ls > 0) next[edSel] = { ...next[edSel], Ls }; else next[edSel] = { R: next[edSel].R }; setEdCurves(next); edCommit(edIps, next); } }} /></label>
               <button type="button" style={{ fontSize: 11, padding: '2px 8px', borderRadius: 6, border: '1px solid var(--nx-line, #d6dbe3)', background: 'transparent', cursor: 'pointer', color: 'inherit' }}
                 onClick={() => { const next = edIps.filter((_, i) => i !== edSel); const nc: Record<number, { R: number; Ls?: number }> = {}; Object.entries(edCurves).forEach(([k, v]) => { const ki = Number(k); if (ki < edSel!) nc[ki] = v; else if (ki > edSel!) nc[ki - 1] = v; }); setEdIps(next); setEdCurves(nc); setEdSel(null); edCommit(next, nc); }}>
-                {ko ? 'IP 삭제' : 'delete'}
+                {designPair(lang, 'IP 삭제', 'delete')}
               </button>
             </div>
           )}
@@ -3003,14 +3003,14 @@ export default function AssemblyPresetPanel({
           {advErr && <div style={{ fontSize: 11, color: '#dc2626', marginTop: 2 }}>⚠ {advErr}</div>}
           <div style={{ fontSize: 10, color: 'var(--nx-text-3, #6b7684)', marginTop: 2 }}>{t.advHint}</div>
           <label style={{ display: 'block', fontSize: 10.5, marginTop: 6, color: 'var(--nx-text-3, #6b7684)' }}>
-            실물 STEP 가져오기(≤15MB · DWG 3D 메시 ≤60MB · 배치=정확, 형상=AABB box 근사 명시):{' '}
+            {designPair(lang, '실물 STEP 가져오기(≤15MB · DWG 3D 메시 ≤60MB · 배치=정확, 형상=AABB box 근사 명시):', 'Import physical STEP (≤15MB · DWG 3D mesh ≤60MB · exact placement, AABB approximation stated):')}{' '}
             <input type="file" accept=".step,.stp,.igs,.iges,.stl,.ifc,.skp,.dwg,.sat,.sab,.x_t,.xmt_txt,.f3d,.sldprt,.sldasm,.ipt,.iam" style={{ fontSize: 10.5 }} disabled={busy}
               onChange={(e) => { const f = e.target.files?.[0]; if (f) void importStepFile(f); e.target.value = ''; }} />
           </label>
           {domain === 'civil' && (
             // 수치지형도 DXF → contours 인입(결정론 파서·표고 없는 폴리라인 제외) — origin 은 advJson 에 선입력
             <label style={{ display: 'block', fontSize: 10.5, marginTop: 6, color: 'var(--nx-text-3, #6b7684)' }}>
-              수치지형도 DXF 등고 가져오기 (advJson 에 {'"origin":{"E":..,"N":..}'}(m) 선입력 필요):{' '}
+              {designPair(lang, '수치지형도 DXF 등고 가져오기 (advJson 에 {"origin":{"E":..,"N":..}}(m) 선입력 필요):', 'Import topographic DXF contours (enter {"origin":{"E":..,"N":..}} in advJson first, in meters):')}{' '}
               <input
                 type="file"
                 accept=".dxf"
@@ -3044,7 +3044,7 @@ export default function AssemblyPresetPanel({
       {/* Round5 ①② 공유·저장·서버 — 접이식(패널 길이 절감, 2026-07-16 UX) */}
       <details style={{ marginTop: 6 }}>
         <summary style={{ fontSize: 11, fontWeight: 700, cursor: 'pointer', color: 'var(--nx-text-2, #46505e)' }}>
-          💾 {ko ? '저장 · 공유 · 서버' : 'Save · Share · Server'}
+          💾 {designPair(lang, '저장 · 공유 · 서버', 'Save · Share · Server')}
         </summary>
       <div style={{ display: 'flex', gap: 4, marginTop: 6, flexWrap: 'wrap', alignItems: 'center' }}>
         <button type="button" onClick={() => void shareLink()} style={{ ...rptBtn, marginTop: 0 }}>🔗 {t.shBtn}</button>
@@ -3187,20 +3187,19 @@ export default function AssemblyPresetPanel({
         >
           <div style={{ fontWeight: 700 }}>
             {stepGate.status === 'pass'
-              ? (ko ? '✓ 원본 STEP 대조 검증 통과 (bbox·genus·수밀)' : '✓ Verified against source STEP')
+              ? (designPair(lang, '✓ 원본 STEP 대조 검증 통과 (bbox·genus·수밀)', '✓ Verified against source STEP'))
               : stepGate.status === 'fail'
-                ? (ko ? '✕ 복원물이 원본 STEP과 불일치' : '✕ Reconstruction does not match source STEP')
-                : (ko ? '검증 불가' : 'Gate unavailable')}
+                ? (designPair(lang, '✕ 복원물이 원본 STEP과 불일치', '✕ Reconstruction does not match source STEP'))
+                : (designPair(lang, '검증 불가', 'Gate unavailable'))}
             {stepGate.status !== 'unavailable' && typeof stepGate.score === 'number'
               ? ` · ${(stepGate.score * 100).toFixed(0)}%` : ''}
             {stepGate.mode
-              ? ` · ${stepGate.mode === 'passthrough' ? (ko ? '실솔리드 대조' : 'real-solid') : (ko ? '근사 복원' : 'approx')}`
+              ? ` · ${stepGate.mode === 'passthrough' ? (designPair(lang, '실솔리드 대조', 'real-solid')) : (designPair(lang, '근사 복원', 'approx'))}`
               : ''}
           </div>
           <div style={{ marginTop: 2, opacity: 0.85 }}>
             {stepGate.status === 'unavailable'
-              ? (ko ? `복원물을 렌더/대조할 수 없었습니다 (${stepGate.reason ?? '이유 미상'}). 통과로 위장하지 않습니다.`
-                    : `Could not render/compare the reconstruction (${stepGate.reason ?? 'unknown'}). Not reported as a pass.`)
+              ? (designPair(lang, `복원물을 렌더/대조할 수 없었습니다 (${stepGate.reason ?? '이유 미상'}). 통과로 위장하지 않습니다.`, `Could not render/compare the reconstruction (${stepGate.reason ?? 'unknown'}). Not reported as a pass.`))
               : (stepGate.feedback ?? '')}
           </div>
           {/* 곡면 ACIS/Parasolid 는 자유 커널이 없어 AABB box 로만 읽힌다 — 막다른 길 대신
@@ -3210,18 +3209,14 @@ export default function AssemblyPresetPanel({
               data-testid="step-export-suggestion"
               style={{ marginTop: 4, paddingTop: 4, borderTop: '1px dashed #d9770655', fontSize: 10.5, fontWeight: 600 }}
             >
-              {ko
-                ? '▸ 곡면 ACIS/Parasolid는 파라메트릭으로 못 읽습니다 — CAD에서 STEP으로 내보내 올리면 전체 곡면 형상을 읽습니다.'
-                : '▸ Curved ACIS/Parasolid cannot be read parametrically — export STEP from your CAD and upload it to read the full curved geometry.'}
+              {designPair(lang, '▸ 곡면 ACIS/Parasolid는 파라메트릭으로 못 읽습니다 — CAD에서 STEP으로 내보내 올리면 전체 곡면 형상을 읽습니다.', '▸ Curved ACIS/Parasolid cannot be read parametrically — export STEP from your CAD and upload it to read the full curved geometry.')}
             </div>
           )}
           {/* passthrough PASS 는 OCCT 가 자기 임포트를 메시화한 라운드트립 항등성 —
               근사(박스 후보 vs 충실 IR)의 적대적 대조보다 약한 검증임을 정직하게 표기. */}
           {stepGate.status === 'pass' && stepGate.mode === 'passthrough' && (
             <div data-testid="step-gate-passthrough-note" style={{ marginTop: 3, fontSize: 10, fontStyle: 'italic', opacity: 0.75 }}>
-              {ko
-                ? '실솔리드 왕복 대조(항등성 확인) — 근사 복원 대비 약한 검증'
-                : 'Real-solid round-trip (identity check) — weaker verification than approximation-mode reconstruction'}
+              {designPair(lang, '실솔리드 왕복 대조(항등성 확인) — 근사 복원 대비 약한 검증', 'Real-solid round-trip (identity check) — weaker verification than approximation-mode reconstruction')}
             </div>
           )}
         </div>
@@ -3417,7 +3412,7 @@ export default function AssemblyPresetPanel({
                   {/* 검증 A/B — A 시점 체인 판정 vs 현재 체인 판정 (둘 다 실행돼 있을 때) */}
                   {abAChain && chain?.ok && (
                     <div style={{ marginTop: 4, fontSize: 10.5 }}>
-                      <b>{ko ? '검증 비교(A→B)' : 'Verification diff (A→B)'}:</b>{' '}
+                      <b>{designPair(lang, '검증 비교(A→B)', 'Verification diff (A→B)')}:</b>{' '}
                       {[...(chain.beams ?? []).map((b) => ({ id: String(b.id).split(' ')[0], v: String(b.verdict), key: `Mu ${b.Mu_kNm}` })),
                         ...(chain.columns ?? []).map((c) => ({ id: String(c.id).split(' ')[0], v: String(c.verdict), key: `Pu ${c.Pu_kN}` }))]
                         .map((cur, i) => {
@@ -3430,7 +3425,7 @@ export default function AssemblyPresetPanel({
                             </span>
                           );
                         })}
-                      <span style={{ color: 'var(--nx-text-3, #6b7684)' }}>{ko ? '(A 스냅샷 시점 체인 기준 — B는 체인 재실행 후 비교)' : '(A snapshot chain vs current — rerun chain for B)'}</span>
+                      <span style={{ color: 'var(--nx-text-3, #6b7684)' }}>{designPair(lang, '(A 스냅샷 시점 체인 기준 — B는 체인 재실행 후 비교)', '(A snapshot chain vs current — rerun chain for B)')}</span>
                     </div>
                   )}
                 </div>
@@ -3773,36 +3768,36 @@ export default function AssemblyPresetPanel({
               </button>
               {/* 전수 설계 루프 — 전 부재 자동 순회(교차검증 게이트 포함) */}
               <button type="button" onClick={runDesignLoop} disabled={loopBusy} style={{ ...rptBtn, background: '#7c3aed', color: '#fff' }}>
-                🔁 {loopBusy ? (ko ? '전수 검토 중…' : 'Looping…') : (ko ? '전수 설계 루프(전 부재)' : 'Full member loop')}
+                🔁 {loopBusy ? (designPair(lang, '전수 검토 중…', 'Looping…')) : (designPair(lang, '전수 설계 루프(전 부재)', 'Full member loop'))}
               </button>
               {loop && !loop.ok && <div style={{ color: '#991b1b', padding: '2px 0', fontSize: 11 }}>{loop.error}</div>}
               {loop?.ok && loop.summary && (
                 <div style={{ marginTop: 4, fontSize: 11 }}>
-                  <b>{ko ? '전수 판정' : 'All-member verdicts'}:</b> {String(loop.summary.total)}{ko ? '부재' : ' members'} —
+                  <b>{designPair(lang, '전수 판정', 'All-member verdicts')}:</b> {String(loop.summary.total)}{designPair(lang, '부재', ' members')} —
                   <span style={{ color: '#16a34a' }}> PASS {String(loop.summary.PASS)}</span> ·
                   <span style={{ color: '#dc2626' }}> FAIL {String(loop.summary.FAIL)}</span> ·
-                  INPUT {String(loop.summary.INPUT)} · {ko ? '교차검증' : 'cross-check'} {loop.crossCheck?.pass === true ? '✓' : '⚠'}
+                  INPUT {String(loop.summary.INPUT)} · {designPair(lang, '교차검증', 'cross-check')} {loop.crossCheck?.pass === true ? '✓' : '⚠'}
                   {(loop.members ?? []).filter((m) => m.verdict === 'FAIL').slice(0, 6).map((m, i) => (
                     <span key={i} style={{ display: 'inline-block', margin: '0 0 0 6px', padding: '0 6px', borderRadius: 4, background: '#fee2e2', color: '#991b1b' }}>{m.id}</span>
                   ))}
                   <button type="button" onClick={() => downloadHtmlReport('/api/nexyfab/drawing/design-loop/', chainBody(), 'design_loop_sheets.html')} style={rptBtn}>
-                    🖨 {ko ? '일괄 계산서(부재별 1장)' : 'All member sheets'}
+                    🖨 {designPair(lang, '일괄 계산서(부재별 1장)', 'All member sheets')}
                   </button>
                   {Number(loop.summary.FAIL) > 0 && (
                     <button type="button" onClick={runSuggest} disabled={suggestBusy} style={{ ...rptBtn, background: '#16a34a', color: '#fff' }}>
-                      {suggestBusy ? (ko ? '탐색 중…' : 'Searching…') : `✨ ${ko ? 'FAIL 부재 자동 배근 제안' : 'Auto rebar suggestion'}`}
+                      {suggestBusy ? (designPair(lang, '탐색 중…', 'Searching…')) : `✨ ${designPair(lang, 'FAIL 부재 자동 배근 제안', 'Auto rebar suggestion')}`}
                     </button>
                   )}
                   {suggest && suggest.ok && (
                     <div style={{ marginTop: 4, fontSize: 11 }}>
-                      <b>{ko ? '자동 제안' : 'Suggestions'}:</b> {(suggest.suggestions ?? []).length}{ko ? '건' : ''} —
-                      {ko ? ' 적용 시 ' : ' after: '}<span style={{ color: suggest.verified ? '#16a34a' : '#d97706', fontWeight: 700 }}>
-                        {suggest.verified ? (ko ? '전 부재 PASS(재검증 완료)' : 'All PASS (re-verified)') : (ko ? '일부 잔여(단면 증대 필요 부재 포함)' : 'partial')}
+                      <b>{designPair(lang, '자동 제안', 'Suggestions')}:</b> {(suggest.suggestions ?? []).length}{designPair(lang, '건', '')} —
+                      {designPair(lang, ' 적용 시 ', ' after: ')}<span style={{ color: suggest.verified ? '#16a34a' : '#d97706', fontWeight: 700 }}>
+                        {suggest.verified ? (designPair(lang, '전 부재 PASS(재검증 완료)', 'All PASS (re-verified)')) : (designPair(lang, '일부 잔여(단면 증대 필요 부재 포함)', 'partial'))}
                       </span>
                       <div style={{ maxHeight: 90, overflowY: 'auto', marginTop: 2 }}>
                         {(suggest.suggestions ?? []).slice(0, 20).map((s, i) => (
                           <span key={i} style={{ display: 'inline-block', margin: '0 4px 2px 0', padding: '0 6px', borderRadius: 4, background: s.result === 'SECTION' ? '#fee2e2' : '#dcfce7', fontSize: 10 }}>
-                            {String(s.id)} {s.result === 'SECTION' ? (ko ? '단면증대 필요' : 'resize') : `${String(s.param)} ${String(s.from)}→${String(s.to)}`}
+                            {String(s.id)} {s.result === 'SECTION' ? (designPair(lang, '단면증대 필요', 'resize')) : `${String(s.param)} ${String(s.from)}→${String(s.to)}`}
                           </span>
                         ))}
                       </div>

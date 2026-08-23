@@ -25,8 +25,8 @@ export const DESKTOP_POWER_IMPL = {
   systemBrowser: true,
   /** `patchFetchForTauri` — 로컬 번들에서 /api → 프로덕션 */
   backendProxy: true,
-  /** 향후: 사이드카 CLI, 오프라인 배치, 대용량 로컬 전처리 등 */
-  nativeSidecar: false,
+  /** 설치형 installer-core CAD 에이전트 사이드카 */
+  nativeSidecar: true,
 } as const;
 
 export type DesktopPowerKey = keyof typeof DESKTOP_POWER_IMPL;

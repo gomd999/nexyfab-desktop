@@ -184,12 +184,12 @@ export function matchSuppliers(
 }
 
 export const REGION_OPTIONS = [
-  { value: '', label: { ko: '전국', en: 'All Regions' } },
-  { value: 'seoul', label: { ko: '서울', en: 'Seoul' } },
-  { value: 'gyeonggi', label: { ko: '경기도', en: 'Gyeonggi' } },
-  { value: 'incheon', label: { ko: '인천', en: 'Incheon' } },
-  { value: 'busan', label: { ko: '부산', en: 'Busan' } },
-  { value: 'daegu', label: { ko: '대구', en: 'Daegu' } },
-  { value: 'gwangju', label: { ko: '광주', en: 'Gwangju' } },
-  { value: 'daejeon', label: { ko: '대전', en: 'Daejeon' } },
+  { value: '', label: { ko: '전국', en: 'All Regions', ja: '全地域', zh: '所有地区', es: 'Todas las regiones', ar: 'كل المناطق' } },
+  { value: 'seoul', label: { ko: '서울', en: 'Seoul', ja: 'ソウル', zh: '首尔', es: 'Seúl', ar: 'سيول' } },
+  { value: 'gyeonggi', label: { ko: '경기도', en: 'Gyeonggi', ja: '京畿道', zh: '京畿道', es: 'Gyeonggi', ar: 'غيونغي' } },
+  { value: 'incheon', label: { ko: '인천', en: 'Incheon', ja: '仁川', zh: '仁川', es: 'Incheon', ar: 'إنتشون' } },
+  { value: 'busan', label: { ko: '부산', en: 'Busan', ja: '釜山', zh: '釜山', es: 'Busan', ar: 'بوسان' } },
+  { value: 'daegu', label: { ko: '대구', en: 'Daegu', ja: '大邱', zh: '大邱', es: 'Daegu', ar: 'دايغو' } },
+  { value: 'gwangju', label: { ko: '광주', en: 'Gwangju', ja: '光州', zh: '光州', es: 'Gwangju', ar: 'غوانغجو' } },
+  { value: 'daejeon', label: { ko: '대전', en: 'Daejeon', ja: '大田', zh: '大田', es: 'Daejeon', ar: 'دايجون' } },
 ];

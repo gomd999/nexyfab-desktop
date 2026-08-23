@@ -3,6 +3,7 @@
 import React, { useState, useCallback, useRef } from 'react';
 import { usePathname } from 'next/navigation';
 import { MATERIAL_PRESETS, USE_CASE_DEFS, type MaterialPreset, type MaterialUseCase } from './materials';
+import { toIsoLang } from '@/lib/i18n/normalize';
 
 const dict = {
   ko: { rough: '거칠기', metal: '금속성' },
@@ -48,7 +49,7 @@ export default function MaterialPicker({ selectedId, onSelect, lang }: MaterialP
   const [tooltip, setTooltip] = useState<TooltipState | null>(null);
   const [useCase, setUseCase] = useState<MaterialUseCase | null>(null);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const displayLang = lang === 'ko' ? 'ko' : 'en';
+  const displayLang = toIsoLang(lang);
 
   const handleMouseEnter = useCallback((e: React.MouseEvent, mat: MaterialPreset) => {
     if (timerRef.current) clearTimeout(timerRef.current);

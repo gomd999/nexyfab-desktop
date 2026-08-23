@@ -16,6 +16,7 @@ import {
 } from '../estimation/CostEstimator';
 import { computeMassProperties } from './massProperties';
 import { getMaterialPreset } from '../materials';
+import { formatNumber } from '@/lib/i18n/format';
 import { KRW_PER_USD } from '@/lib/currency';
 
 // ─── i18n ─────────────────────────────────────────────────────────────────────
@@ -152,7 +153,7 @@ interface ManufacturingReadyCardProps {
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-const fmt = (usd: number) => `₩${Math.round(usd * KRW_PER_USD).toLocaleString('ko-KR')}`;
+const fmt = (usd: number, lang: string) => `₩${formatNumber(Math.round(usd * KRW_PER_USD), lang) ?? '0'}`;
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
@@ -311,7 +312,7 @@ export default function ManufacturingReadyCard({
             {bestEstimate ? (
               <>
                 <div style={{ fontSize: 17, fontWeight: 700, color: 'var(--nx-text)', lineHeight: 1.2 }}>
-                  {fmt(bestEstimate.unitCost)}
+                  {fmt(bestEstimate.unitCost, lang)}
                 </div>
                 <div style={{ fontSize: 9, color: 'var(--nx-text-3)', marginTop: 2 }}>
                   {PROCESS_ICONS[bestEstimate.process]} {getProcessName(bestEstimate.process, lang)}
@@ -484,7 +485,7 @@ function CostBreakdown({
                   {getProcessName(est.process, lang)}
                 </span>
                 <span style={{ fontSize: 10, color: 'var(--nx-text)', fontWeight: 700, fontFamily: 'monospace' }}>
-                  {fmt(est.unitCost)}
+                  {fmt(est.unitCost, lang)}
                 </span>
                 <span style={{ fontSize: 9, color: 'var(--nx-border-strong)' }}>
                   {est.leadTime}

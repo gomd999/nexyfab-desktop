@@ -1,0 +1,37 @@
+{
+  "schema": "nexyfab.mechanical-core-feature-local-runtime.v1",
+  "feature": "loft",
+  "axis": "edit",
+  "status": "PASS",
+  "executedAt": "2026-08-22T07:13:30.564Z",
+  "commandId": "loft-runtime-param-edit",
+  "historyDepth": 1,
+  "before": {
+    "id": "runtime-feature",
+    "enabled": true,
+    "type": "loft",
+    "params": {
+      "sections": 3,
+      "height": 30,
+      "startShape": 1,
+      "endShape": 1,
+      "startSize": 10,
+      "endSize": 6,
+      "twist": 0
+    }
+  },
+  "after": {
+    "id": "runtime-feature",
+    "enabled": true,
+    "type": "loft",
+    "params": {
+      "sections": 3,
+      "height": 30,
+      "startShape": 1,
+      "endShape": 1,
+      "startSize": 10,
+      "endSize": 9,
+      "twist": 0
+    }
+  }
+}

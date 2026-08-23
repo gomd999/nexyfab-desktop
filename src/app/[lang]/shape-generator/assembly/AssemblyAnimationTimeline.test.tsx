@@ -10,6 +10,11 @@ const base: AssemblyAnimationVerification = { verified: true, collisionFree: tru
 const render = (verification: AssemblyAnimationVerification) => renderToStaticMarkup(<AssemblyAnimationTimeline animation={animation} frame={0} playing={false} onFrameChange={vi.fn()} onPlayingChange={vi.fn()} verification={verification}/>);
 
 describe('AssemblyAnimationTimeline continuous evidence', () => {
+  it('names interactive frame fields for browser form tooling', () => {
+    const html = render(base);
+    expect(html).toContain('name="assembly-animation-frame-slider"');
+    expect(html).toContain('name="assembly-animation-current-frame"');
+  });
   it('shows whole-motion clearance rather than sampled-only clearance', () => expect(render(base)).toContain('All sampled and continuous intervals clear'));
   it('surfaces release-blocking rotational intervals', () => {
     const interval = { partA: 'a', partB: 'b', startFrame: 2, endFrame: 3, method: 'adaptive-rotational-aabb' as const, status: 'unresolved' as const, depth: 8 };

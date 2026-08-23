@@ -1,0 +1,18 @@
+[
+  {
+    "AllowedOrigins": [
+      "https://nexyfab.com",
+      "https://www.nexyfab.com"
+    ],
+    "AllowedMethods": [
+      "PUT"
+    ],
+    "AllowedHeaders": [
+      "content-type"
+    ],
+    "ExposeHeaders": [
+      "etag"
+    ],
+    "MaxAgeSeconds": 3600
+  }
+]

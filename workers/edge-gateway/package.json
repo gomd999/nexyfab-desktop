@@ -1,0 +1,10 @@
+{
+  "name": "@nexyfab/edge-gateway",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "vitest run workers/edge-gateway/src/index.test.ts --reporter=dot",
+    "deploy": "wrangler deploy --config workers/edge-gateway/wrangler.toml"
+  }
+}

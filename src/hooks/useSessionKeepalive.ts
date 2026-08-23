@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect } from 'react';
+import { useAuthStore } from '@/hooks/useAuth';
 
 /**
  * Proactively refresh the 15-minute access token so long-lived surfaces (the
@@ -9,10 +10,17 @@ import { useEffect } from 'react';
  * import — returns 401 "Unauthorized" (and autosave shows "Cloud sync failed").
  *
  * Fires every 12 min (before the 15-min expiry) and once when the tab regains
- * focus after being idle. A 401 (guest / no refresh cookie) is harmless.
+ * focus after being idle. It starts only after the central cookie-backed
+ * session probe confirms an authenticated user.
  */
 export function useSessionKeepalive() {
+  const sessionStatus = useAuthStore((state) => state.sessionStatus);
+
   useEffect(() => {
+    // Wait for the cookie-backed session probe. In particular, do not POST the
+    // protected refresh endpoint for a guest or for stale persisted auth state.
+    if (sessionStatus !== 'authenticated') return;
+
     let lastRun = 0;
     const refresh = () => {
       lastRun = Date.now();
@@ -32,5 +40,5 @@ export function useSessionKeepalive() {
     const onFocus = () => { if (Date.now() - lastRun > 5 * 60 * 1000) refresh(); };
     window.addEventListener('focus', onFocus);
     return () => { clearInterval(id); window.removeEventListener('focus', onFocus); };
-  }, []);
+  }, [sessionStatus]);
 }

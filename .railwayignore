@@ -24,15 +24,23 @@ build_log.txt
 .cursor
 .claude
 .tmp
+/.codex-runtime
+/artifacts
+/backups
 src-tauri
 occt-collab-worker
-occt-worker
 out
 
 # Runtime web image does not execute the reference corpus, crawler index, or
 # development evidence. Excluding these keeps Railway's Docker context small
 # while preserving the build/runtime scripts and the separate local MCP tools.
 docs
+# `/api/health/release` packages only these two receipts and the exact JSON
+# source bytes referenced by a qualified seven-day receipt. Railway supports
+# negation after an include rule; do not broaden these exceptions to `!docs`.
+!docs/evidence/release/commercial-i18n-release-receipt.json
+!docs/evidence/release/seven-day-operations-receipt.json
+!docs/evidence/operations/**/*.json
 scripts/knowledge-crawler
 services/openscad-worker
 validation-reports

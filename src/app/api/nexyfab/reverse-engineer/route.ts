@@ -27,6 +27,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { checkPlan, consumeMonthlyMetricSlot } from '@/lib/plan-guard';
 import { checkUserBudget } from '@/lib/ai/userBudget';
 import { rateLimit } from '@/lib/rate-limit';
+import { boundedJsonError, readBoundedJson } from '@/lib/boundedJsonBody';
 import { getTrustedClientIp } from '@/lib/client-ip';
 import { captureServerError } from '@/lib/error-capture';
 import { CadAuditAction, logCadPipelineAudit } from '@/lib/enterprise-cad-audit';
@@ -48,6 +49,8 @@ const RATE_LIMIT_PER_HOUR = 30;
 /** Decoded STL size cap. 8 MB binary STL ≈ 165k triangles — well above any
  *  realistic hand-scanned part; larger uploads point at malformed input. */
 const STL_MAX_BYTES = 8 * 1024 * 1024;
+// 8 MiB decoded STL expands to about 10.7 MiB base64, plus data URL and JSON overhead.
+const MAX_JSON_BODY_BYTES = 12 * 1024 * 1024;
 /** AI-fleet attempt cap — the fleet's OWN budget guard on top of the route's
  *  rate-limit / monthly-slot / daily-$ gates. Each attempt is one agent run
  *  (LLM + render), so this bounds the worst-case cost of an opt-in fleet call. */
@@ -93,7 +96,25 @@ export async function POST(req: NextRequest) {
   }
 
   // (3) Body + decode.
-  const body = (await req.json().catch(() => ({}))) as Record<string, unknown>;
+  let body: Record<string, unknown>;
+  try {
+    body = await readBoundedJson(req, MAX_JSON_BODY_BYTES);
+  } catch (error) {
+    const bounded = boundedJsonError(error);
+    return NextResponse.json(
+      {
+        ok: false,
+        error: bounded?.status === 413
+          ? `STL request exceeds ${Math.round(MAX_JSON_BODY_BYTES / 1024 / 1024)} MB encoded-body limit`
+          : 'Request body must be valid JSON',
+        // A body that cannot fit the bounded STL envelope is still an STL
+        // size failure to callers; do not degrade it to the misleading
+        // STL_REQUIRED response by swallowing the parser error.
+        code: bounded?.status === 413 ? 'STL_TOO_LARGE' : 'BAD_REQUEST',
+      },
+      { status: bounded?.status ?? 400 },
+    );
+  }
   const stlBase64 = typeof body.stlBase64 === 'string' ? body.stlBase64 : '';
   // Opt-in AI-fleet mode. Default stays the cheap heuristic path.
   const fleetMode = body.mode === 'ai-fleet';
@@ -124,7 +145,7 @@ export async function POST(req: NextRequest) {
   // (3b) AI-fleet is LLM-metered — gate on the shared daily $ budget BEFORE
   // doing any model work. Cheap heuristic mode skips this entirely.
   if (fleetMode) {
-    const budget = await checkUserBudget(userId);
+    const budget = await checkUserBudget(userId, planCheck.orgId);
     if (!budget.ok) {
       return NextResponse.json(
         {
@@ -188,7 +209,7 @@ export async function POST(req: NextRequest) {
   // (6) Consume monthly slot. Only on success so a failed extraction
   // doesn't burn the user's monthly quota.
   let usage: { used: number; limit: number; remaining: number } | undefined;
-  const slot = await consumeMonthlyMetricSlot(userId, plan, 'reverse_engineer');
+  const slot = await consumeMonthlyMetricSlot(userId, plan, 'reverse_engineer', undefined, planCheck.orgId);
   if (!slot.ok) {
     return NextResponse.json(
       {

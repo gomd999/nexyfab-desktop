@@ -4,6 +4,23 @@ import React, { useEffect, useState } from 'react';
 import { usePathname } from 'next/navigation';
 import { homeDict } from '../homeDict';
 import { richText } from '@/lib/richText';
+import { toIsoLang, type IsoLang } from '@/lib/i18n/normalize';
+import { loc } from '@/lib/i18n/loc';
+
+const SEARCH_COPY: Record<IsoLang, {
+  placeholder: string;
+  search: string;
+  error: string;
+  empty: string;
+  viewAll: string;
+}> = {
+  ko: { placeholder: '예: 배터리 자동화 설비', search: '검색', error: '검색 중 오류가 발생했습니다.', empty: '검색 결과가 없습니다.', viewAll: '전체 결과 및 문의하기 →' },
+  en: { placeholder: 'e.g. battery automation equipment', search: 'Search', error: 'Search failed. Please try again.', empty: 'No results found.', viewAll: 'View all & Inquire →' },
+  ja: { placeholder: '例: バッテリー自動化設備', search: '検索', error: '検索中にエラーが発生しました。', empty: '検索結果がありません。', viewAll: 'すべての結果・お問い合わせ →' },
+  zh: { placeholder: '例：电池自动化设备', search: '搜索', error: '搜索失败，请重试。', empty: '未找到结果。', viewAll: '查看全部并咨询 →' },
+  es: { placeholder: 'Ej.: equipos de automatización de baterías', search: 'Buscar', error: 'La búsqueda ha fallado. Inténtelo de nuevo.', empty: 'No se encontraron resultados.', viewAll: 'Ver todo y consultar →' },
+  ar: { placeholder: 'مثال: معدات أتمتة البطاريات', search: 'بحث', error: 'فشل البحث. يرجى المحاولة مرة أخرى.', empty: 'لم يتم العثور على نتائج.', viewAll: 'عرض الكل والاستفسار ←' },
+};
 
 // ─── FAQ 아코디언 컴포넌트 ─────────────────────────────────────────────
 
@@ -199,20 +216,7 @@ function EmbeddedSearch({ langCode }: { langCode: string }) {
   const [loading, setLoading] = useState(false);
   const [results, setResults] = useState<Array<{ name: string; industry: string; score: number }> | null>(null);
   const [error, setError] = useState('');
-
-  const placeholder = langCode === 'ko' || langCode === 'kr' ? '예: 배터리 자동화 설비'
-    : langCode === 'ja' ? '例: バッテリー自動化設備'
-    : langCode === 'cn' ? '例: 电池自动化设备'
-    : langCode === 'es' ? 'Ej: equipos de automatización'
-    : langCode === 'ar' ? 'مثال: معدات أتمتة البطاريات'
-    : 'e.g. battery automation equipment';
-
-  const btnLabel = langCode === 'ko' || langCode === 'kr' ? '검색'
-    : langCode === 'ja' ? '検索'
-    : langCode === 'cn' ? '搜索'
-    : langCode === 'es' ? 'Buscar'
-    : langCode === 'ar' ? 'بحث'
-    : 'Search';
+  const copy = SEARCH_COPY[toIsoLang(langCode)];
 
   const handleSearch = async () => {
     if (!query.trim()) return;
@@ -226,7 +230,7 @@ function EmbeddedSearch({ langCode }: { langCode: string }) {
       const allResults = [...(data.ko || []), ...(data.cn || [])].slice(0, 5);
       setResults(allResults);
     } catch {
-      setError(langCode === 'ko' || langCode === 'kr' ? '검색 중 오류가 발생했습니다.' : 'Search failed. Please try again.');
+      setError(copy.error);
     } finally {
       setLoading(false);
     }
@@ -242,7 +246,7 @@ function EmbeddedSearch({ langCode }: { langCode: string }) {
           type="text"
           value={query}
           onChange={e => setQuery(e.target.value)}
-          placeholder={placeholder}
+          placeholder={copy.placeholder}
           style={{
             flex: 1, padding: '12px 16px', borderRadius: '10px',
             border: '1.5px solid #e2e8f0', fontSize: '14px',
@@ -260,7 +264,7 @@ function EmbeddedSearch({ langCode }: { langCode: string }) {
             whiteSpace: 'nowrap', transition: 'background 0.2s',
           }}
         >
-          {loading ? '...' : btnLabel}
+          {loading ? '...' : copy.search}
         </button>
       </form>
 
@@ -270,7 +274,7 @@ function EmbeddedSearch({ langCode }: { langCode: string }) {
 
       {results && results.length === 0 && (
         <p style={{ fontSize: '13px', color: '#94a3b8', textAlign: 'center', margin: '12px 0' }}>
-          {langCode === 'ko' || langCode === 'kr' ? '검색 결과가 없습니다.' : 'No results found.'}
+          {copy.empty}
         </p>
       )}
 
@@ -305,10 +309,7 @@ function EmbeddedSearch({ langCode }: { langCode: string }) {
               fontSize: '13px', fontWeight: 700, textDecoration: 'none',
             }}
           >
-            {langCode === 'ko' || langCode === 'kr' ? '전체 결과 및 문의하기 →'
-              : langCode === 'ja' ? '全結果・お問い合わせ →'
-              : langCode === 'cn' ? '查看全部并咨询 →'
-              : 'View all & Inquire →'}
+            {copy.viewAll}
           </a>
         </div>
       )}
@@ -325,6 +326,19 @@ export default function HowItWorksPage() {
     const langMap: Record<string, keyof typeof homeDict> = { kr: 'ko', en: 'en', ja: 'ja', cn: 'cn', es: 'es', ar: 'ar' };
     const d = homeDict[langMap[lang]];
     const t = d.howPage;
+    const guideTitle = loc(lang, {
+      ko: '3단계로 시작하는 Nexyfab', en: 'Start Nexyfab in 3 steps', ja: '3ステップで始めるNexyfab',
+      zh: '三步开始使用 Nexyfab', es: 'Empieza con Nexyfab en 3 pasos', ar: 'ابدأ مع Nexyfab في 3 خطوات',
+    });
+    const guideSubtitle = loc(lang, {
+      ko: '검색부터 납품까지, 전 과정을 함께합니다.', en: 'We support the entire journey from search to delivery.',
+      ja: '検索から納品まで、全プロセスをサポートします。', zh: '从搜索到交付，我们陪伴整个流程。',
+      es: 'Te acompañamos desde la búsqueda hasta la entrega.', ar: 'نرافقك في العملية كاملة من البحث حتى التسليم.',
+    });
+    const faqTitle = loc(lang, {
+      ko: '자주 묻는 질문', en: 'Frequently asked questions', ja: 'よくある質問', zh: '常见问题',
+      es: 'Preguntas frecuentes', ar: 'الأسئلة الشائعة',
+    });
 
     useEffect(() => {
         const observerOptions = {
@@ -640,10 +654,10 @@ export default function HowItWorksPage() {
                         QUICK START GUIDE
                     </p>
                     <h2 style={{ fontSize: '26px', fontWeight: 800, color: '#1A1F36', marginBottom: '10px' }}>
-                        3단계로 시작하는 Nexyfab
+                        {guideTitle}
                     </h2>
                     <p style={{ fontSize: '14px', color: '#64748b' }}>
-                        검색부터 납품까지, 전 과정을 함께합니다.
+                        {guideSubtitle}
                     </p>
                 </div>
                 <InteractiveGuide
@@ -682,7 +696,7 @@ export default function HowItWorksPage() {
                         FAQ
                     </p>
                     <h2 style={{ fontSize: '26px', fontWeight: 800, color: '#1A1F36', marginBottom: '10px' }}>
-                        자주 묻는 질문
+                        {faqTitle}
                     </h2>
                 </div>
                 <FaqAccordion items={[

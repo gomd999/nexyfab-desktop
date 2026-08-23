@@ -3,9 +3,24 @@ import { solveRobotIk, type RobotTargetPose } from './robotIk';
 
 export type RobotPathFrame = { timeS: number; anglesDeg: number[]; velocityDegS: number[]; accelerationDegS2: number[] };
 export type RobotCollisionCheck = (anglesDeg: readonly number[]) => { collision: boolean; detail?: string };
+/**
+ * Checks the complete swept motion between two adjacent path frames.
+ *
+ * The planner deliberately does not invent geometry here.  A caller with an
+ * exact B-rep/kinematic backend supplies this callback and owns the
+ * continuous check; the callback is invoked for every adjacent frame pair so
+ * a result cannot silently claim continuous coverage when only pose checks
+ * were provided.
+ */
+export type RobotSweptCollisionCheck = (
+  fromAnglesDeg: readonly number[],
+  toAnglesDeg: readonly number[],
+  context: { segmentIndex: number; fromTimeS: number; toTimeS: number },
+) => { collision: boolean; detail?: string };
 export type RobotPathResult = {
   success: boolean; frames: RobotPathFrame[]; durationS: number;
   collisionVerified: boolean; collisionFree: boolean | null;
+  continuousCollisionVerified: boolean; continuousCollisionFree: boolean | null;
   reason?: 'invalid_path' | 'ik_failed' | 'joint_limit' | 'motion_limit' | 'collision';
   failedWaypoint?: number; errors: string[];
 };
@@ -13,7 +28,12 @@ export type RobotPathResult = {
 export function planCartesianRobotPath(
   spec: RobotEngineeringSpec,
   waypoints: readonly RobotTargetPose[],
-  options: { samplePeriodS?: number; collisionCheck?: RobotCollisionCheck; seedDeg?: number[] } = {},
+  options: {
+    samplePeriodS?: number;
+    collisionCheck?: RobotCollisionCheck;
+    sweptCollisionCheck?: RobotSweptCollisionCheck;
+    seedDeg?: number[];
+  } = {},
 ): RobotPathResult {
   if (waypoints.length < 2) return failure('invalid_path', 'At least two Cartesian waypoints are required.');
   const jointWaypoints: number[][] = [];
@@ -29,9 +49,16 @@ export function planCartesianRobotPath(
 export function planJointRobotPath(
   spec: RobotEngineeringSpec,
   waypoints: readonly (readonly number[])[],
-  options: { samplePeriodS?: number; collisionCheck?: RobotCollisionCheck } = {},
+  options: {
+    samplePeriodS?: number;
+    collisionCheck?: RobotCollisionCheck;
+    sweptCollisionCheck?: RobotSweptCollisionCheck;
+  } = {},
 ): RobotPathResult {
   if (spec.joints.length !== 6 || waypoints.length < 2 || waypoints.some(p => p.length !== 6)) return failure('invalid_path', 'A six-axis path requires at least two six-value waypoints.');
+  if (options.samplePeriodS !== undefined && (!Number.isFinite(options.samplePeriodS) || options.samplePeriodS <= 0)) {
+    return failure('invalid_path', 'Sample period must be a finite positive number.');
+  }
   for (let p = 0; p < waypoints.length; p += 1) for (let j = 0; j < 6; j += 1) {
     const q = waypoints[p]![j]!, joint = spec.joints[j]!;
     if (!Number.isFinite(q) || q < joint.minDeg || q > joint.maxDeg) return { ...failure('joint_limit', `Waypoint ${p} J${j + 1} is outside its joint limit.`), failedWaypoint: p };
@@ -51,12 +78,47 @@ export function planJointRobotPath(
   });
   differentiate(frames);
   const limitError = verifyMotionLimits(spec, frames);
-  if (limitError) return { ...failure('motion_limit', limitError), frames, durationS: offset, collisionVerified: false, collisionFree: null };
+  if (limitError) return {
+    ...failure('motion_limit', limitError), frames, durationS: offset,
+    collisionVerified: false, collisionFree: null,
+    continuousCollisionVerified: false, continuousCollisionFree: null,
+  };
   if (options.collisionCheck) for (let i = 0; i < frames.length; i += 1) {
     const hit = options.collisionCheck(frames[i]!.anglesDeg);
-    if (hit.collision) return { success: false, frames, durationS: offset, collisionVerified: true, collisionFree: false, reason: 'collision', errors: [`Collision at frame ${i}${hit.detail ? `: ${hit.detail}` : '.'}`] };
+    if (hit.collision) return {
+      success: false, frames, durationS: offset, collisionVerified: true, collisionFree: false,
+      // The swept callback is intentionally not run after an early pose hit;
+      // do not claim continuous coverage for an unchecked remainder.
+      continuousCollisionVerified: false,
+      continuousCollisionFree: null,
+      reason: 'collision', errors: [`Collision at frame ${i}${hit.detail ? `: ${hit.detail}` : '.'}`],
+    };
   }
-  return { success: true, frames, durationS: offset, collisionVerified: Boolean(options.collisionCheck), collisionFree: options.collisionCheck ? true : null, errors: options.collisionCheck ? [] : ['Collision verification was not supplied.'] };
+  if (options.sweptCollisionCheck) {
+    for (let i = 1; i < frames.length; i += 1) {
+      const from = frames[i - 1]!;
+      const to = frames[i]!;
+      const hit = options.sweptCollisionCheck(from.anglesDeg, to.anglesDeg, {
+        segmentIndex: i - 1,
+        fromTimeS: from.timeS,
+        toTimeS: to.timeS,
+      });
+      if (hit.collision) return {
+        success: false, frames, durationS: offset,
+        collisionVerified: Boolean(options.collisionCheck), collisionFree: options.collisionCheck ? true : null,
+        continuousCollisionVerified: true, continuousCollisionFree: false,
+        reason: 'collision', errors: [`Swept collision at segment ${i - 1}${hit.detail ? `: ${hit.detail}` : '.'}`],
+      };
+    }
+  }
+  const continuousVerified = Boolean(options.sweptCollisionCheck);
+  return {
+    success: true, frames, durationS: offset,
+    collisionVerified: Boolean(options.collisionCheck), collisionFree: options.collisionCheck ? true : null,
+    continuousCollisionVerified: continuousVerified,
+    continuousCollisionFree: continuousVerified ? true : null,
+    errors: options.collisionCheck || options.sweptCollisionCheck ? [] : ['Collision verification was not supplied.'],
+  };
 }
 
 function durationForSegment(spec: RobotEngineeringSpec, from: readonly number[], to: readonly number[]) {
@@ -80,4 +142,11 @@ function verifyMotionLimits(spec: RobotEngineeringSpec, frames: RobotPathFrame[]
   }
   return null;
 }
-function failure(reason: RobotPathResult['reason'], error: string): RobotPathResult { return { success:false, frames:[], durationS:0, collisionVerified:false, collisionFree:null, reason, errors:[error] }; }
+function failure(reason: RobotPathResult['reason'], error: string): RobotPathResult {
+  return {
+    success: false, frames: [], durationS: 0,
+    collisionVerified: false, collisionFree: null,
+    continuousCollisionVerified: false, continuousCollisionFree: null,
+    reason, errors: [error],
+  };
+}

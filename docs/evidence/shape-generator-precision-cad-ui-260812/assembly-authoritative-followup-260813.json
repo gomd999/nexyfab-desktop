@@ -1,0 +1,121 @@
+{
+  "schema": "nexyfab.shape-generator.assembly-authoritative-followup.v1",
+  "observedAt": "2026-08-13T01:05:25+09:00",
+  "workspace": "candidate_uncommitted",
+  "verdict": {
+    "supportedExactSolvePath": "pass",
+    "underConstrainedAssembly": "blocked",
+    "manufacturingReleaseVerification": "error",
+    "commercialRelease": "block"
+  },
+  "connections": {
+    "chromeDevToolsMcp": {
+      "status": "pass",
+      "observed": [
+        "local assembly page",
+        "WebGL context",
+        "DOM accessibility tree",
+        "network requests",
+        "console"
+      ]
+    },
+    "figmaMcp": {
+      "identityStatus": "pass_carried_forward",
+      "fileReadWriteE2e": "not_run",
+      "reason": "No editable target file or edit seat was provided for this follow-up."
+    }
+  },
+  "exactSolve": {
+    "fixedSinglePart": {
+      "status": "pass",
+      "httpStatus": 200,
+      "phase": "real",
+      "solver": "gauss_seidel",
+      "dof": 0,
+      "finalMaxResidual": 0,
+      "featureTreeIncluded": true
+    },
+    "twoCubesConcentric": {
+      "status": "blocked",
+      "phase": "real",
+      "solver": "gauss_seidel",
+      "dof": 2,
+      "allowedDof": 0,
+      "finalMaxResidual": 0,
+      "blocker": "remaining_dof_2_exceeds_allowed_0"
+    },
+    "compatibilityStubAccepted": false
+  },
+  "manufacturingRelease": {
+    "status": "error",
+    "httpStatus": 401,
+    "error": "Authentication required",
+    "occtStep": "not_run",
+    "interference": "not_run",
+    "releaseCertificate": "not_run"
+  },
+  "ui": {
+    "workflowStages": [
+      "part_geometry",
+      "solver_references",
+      "mates",
+      "constraint_solve",
+      "manufacturing"
+    ],
+    "desktop": {
+      "viewport": "1440x1000",
+      "documentHorizontalOverflow": false,
+      "webglContext": true,
+      "consoleErrorsWarningsIssues": 0
+    },
+    "mobile": {
+      "viewport": "390x844@3",
+      "documentHorizontalOverflow": false,
+      "processRail": {
+        "clientWidth": 390,
+        "scrollWidth": 770,
+        "overflowX": "auto",
+        "intentionalInternalScroll": true
+      },
+      "screenshotVisualInspection": "pass",
+      "screenshotFilePersistence": "blocked_by_mcp_workspace_path_policy"
+    }
+  },
+  "verification": {
+    "targetedVitest": {
+      "status": "pass",
+      "files": 5,
+      "tests": 31,
+      "jsdomWebglWarnings": "expected_and_not_counted_as_real_browser_evidence"
+    },
+    "typecheck": "pass",
+    "targetedEslint": "pass",
+    "diffCheck": "pass_with_lf_to_crlf_notices",
+    "productionBuild": {
+      "status": "pass",
+      "durationSeconds": 424,
+      "staticPages": "290/290",
+      "bundleBudget": "pass",
+      "initialFailedAttempts": [
+        "EPERM .next lock",
+        "EPERM .next lock",
+        "EPERM .next lock"
+      ],
+      "adjustment": "Stopped only verified workspace dev/start/standalone processes before clean build."
+    },
+    "developmentServerRestore": {
+      "initialStatus": "error",
+      "initialError": "Unexpected end of JSON input (HTTP 500)",
+      "adjustment": "Removed only .next/dev and regenerated development route artifacts.",
+      "finalStatus": "pass",
+      "finalHttpStatus": 200
+    }
+  },
+  "remainingBlockers": [
+    "lossless_feature_tree_conversion_for_complex_shapes_including_gear_and_rack",
+    "semantic_reselection_of_derived_triangle_topology_references",
+    "authenticated_manufacturing_release_verification",
+    "external_step_interoperability_and_manufacturing_receipts",
+    "commercial_operations_and_infrastructure_gates"
+  ]
+}

@@ -1,31 +1,9 @@
 import type { Metadata } from 'next';
-import { isKorean } from '@/lib/i18n/normalize';
+import { buildMetadata } from '@/lib/metaHelper';
 
 export async function generateMetadata({ params }: { params: Promise<{ lang: string }> }): Promise<Metadata> {
   const { lang } = await params;
-  const isKo = isKorean(lang);
-  return {
-    title: isKo ? 'AI 기반 제조 플랫폼 | NexyFab' : 'AI-Powered Manufacturing Platform | NexyFab',
-    description: isKo
-      ? '브라우저에서 3D 설계, AI DFM 분석, 제조사 연결까지 하나의 플랫폼으로 처리하세요.'
-      : 'Design 3D parts in the browser, get AI DFM analysis, and connect with manufacturers — all in one platform.',
-    openGraph: {
-      title: isKo ? 'AI 기반 제조 플랫폼 | NexyFab' : 'AI-Powered Manufacturing Platform | NexyFab',
-      description: isKo
-        ? '브라우저에서 3D 설계, AI DFM 분석, 제조사 연결까지 하나의 플랫폼으로 처리하세요.'
-        : 'Design 3D parts in the browser, get AI DFM analysis, and connect with manufacturers — all in one platform.',
-      type: 'website',
-      locale: isKo ? 'ko_KR' : 'en_US',
-      siteName: 'NexyFab',
-    },
-    twitter: {
-      card: 'summary_large_image',
-      title: isKo ? 'AI 기반 제조 플랫폼 | NexyFab' : 'AI-Powered Manufacturing Platform | NexyFab',
-      description: isKo
-        ? '브라우저에서 3D 설계, AI DFM 분석, 제조사 연결까지 하나의 플랫폼으로 처리하세요.'
-        : 'Design 3D parts in the browser, get AI DFM analysis, and connect with manufacturers — all in one platform.',
-    },
-  };
+  return buildMetadata(lang, 'home');
 }
 
 import HomeClient from './HomeClient';

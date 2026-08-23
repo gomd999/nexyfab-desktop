@@ -1,0 +1,54 @@
+{
+  "schema": "nexyfab.mechanical-core-feature-local-runtime.v1",
+  "feature": "cornerRelief",
+  "axis": "export",
+  "status": "PASS",
+  "executedAt": "2026-08-22T07:13:30.564Z",
+  "stepBytes": 19924,
+  "stepSha256": "c2a99c1dfbc74f17a375414174a83ae73a83d9c4b8598ea2c371a847a3b5979c",
+  "before": {
+    "handle": "occt:331",
+    "kernelKind": "Solid",
+    "nativeShapeType": 0,
+    "solidCount": 1,
+    "singleSolid": true,
+    "volumeMm3": 3574.8672587712813,
+    "edgeCount": 15,
+    "faceCount": 7,
+    "boundsMm": [
+      [
+        -30.004818275179314,
+        -1.0048182751793133,
+        -15.004818275179312
+      ],
+      [
+        30.004818275179314,
+        1.0048182751793133,
+        15.004818275179312
+      ]
+    ]
+  },
+  "after": {
+    "handle": "occt:340",
+    "kernelKind": "Solid",
+    "nativeShapeType": 2,
+    "solidCount": 1,
+    "singleSolid": true,
+    "volumeMm3": 3574.867258771294,
+    "edgeCount": 15,
+    "faceCount": 7,
+    "boundsMm": [
+      [
+        -30.001204825215186,
+        -1.0012048252151855,
+        -15.001204825215185
+      ],
+      [
+        30.001204825215186,
+        1.0012048252151855,
+        15.001204825215185
+      ]
+    ]
+  },
+  "relativeVolumeDrift": 3.561789824105926e-15
+}

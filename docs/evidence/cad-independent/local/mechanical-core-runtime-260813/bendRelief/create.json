@@ -1,0 +1,53 @@
+{
+  "schema": "nexyfab.mechanical-core-feature-local-runtime.v1",
+  "feature": "bendRelief",
+  "axis": "create",
+  "status": "PASS",
+  "executedAt": "2026-08-22T07:13:30.564Z",
+  "payload": {
+    "id": "runtime-feature",
+    "enabled": true,
+    "type": "bendRelief",
+    "params": {
+      "width": 3,
+      "depth": 6,
+      "position": 50,
+      "shape": 0
+    }
+  },
+  "exact": {
+    "handle": "occt:310",
+    "kernelKind": "Solid",
+    "nativeShapeType": 0,
+    "solidCount": 1,
+    "singleSolid": true,
+    "volumeMm3": 3528,
+    "edgeCount": 36,
+    "faceCount": 14,
+    "boundsMm": [
+      [
+        -30.0000001,
+        -1.0000001,
+        -15.0000001
+      ],
+      [
+        30.0000001,
+        1.0000001,
+        15.0000001
+      ]
+    ]
+  },
+  "featureMeaning": {
+    "assertion": "actual product exact bend relief subtracts two rectangular end notches located from explicit bend history",
+    "exactScope": "axis-aligned constant-thickness box host with explicit v2 bend history",
+    "bendLineAxis": "x",
+    "bendLinePosMm": 0,
+    "widthMm": 3,
+    "depthMm": 6,
+    "removedVolumeMm3": 72,
+    "expectedVolumeMm3": 3528,
+    "actualVolumeMm3": 3528
+  },
+  "exactScope": "declared numeric runtime case",
+  "assertion": "native OCCT produced one non-empty exact solid and changed the host geometry"
+}

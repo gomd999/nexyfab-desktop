@@ -1,7 +1,9 @@
 'use client';
 
 import { use, useEffect, useState, useCallback } from 'react';
-import { isKorean } from '@/lib/i18n/normalize';
+import { createCommercialLocalizer } from '@/lib/i18n/commercialLocalizer';
+import { manufacturingTerm } from '@/lib/i18n/manufacturingTerms';
+import { formatDate, formatNumber } from '@/lib/i18n/format';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -198,14 +200,12 @@ const S = {
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
-function fmtDate(ts: number, isKo: boolean) {
-  return new Date(ts).toLocaleDateString(isKo ? 'ko-KR' : 'en-US', {
-    year: 'numeric', month: 'short', day: 'numeric',
-  });
+function fmtDate(ts: number, lang: string) {
+  return formatDate(ts, lang, { year: 'numeric', month: 'short', day: 'numeric' }) ?? '—';
 }
 
-function fmtMYR(n: number) {
-  return 'MYR ' + n.toLocaleString('en-MY', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+function fmtMYR(n: number, lang: string) {
+  return 'MYR ' + (formatNumber(n, lang, { minimumFractionDigits: 0, maximumFractionDigits: 0 }) ?? '0');
 }
 
 // ─── Availability Save API ────────────────────────────────────────────────────
@@ -227,7 +227,7 @@ async function saveAvailability(schedule: Record<DayKey, DaySchedule>): Promise<
 
 export default function PartnerDashboardPage({ params }: { params: Promise<{ lang: string }> }) {
   const { lang } = use(params);
-  const isKo = isKorean(lang);
+  const L = createCommercialLocalizer(lang);
 
   const [data, setData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -264,8 +264,8 @@ export default function PartnerDashboardPage({ params }: { params: Promise<{ lan
     setSavingAvail(false);
     setAvailToast(
       ok
-        ? (isKo ? '가용성 일정이 저장되었습니다.' : 'Availability schedule saved.')
-        : (isKo ? '저장 실패. 다시 시도해주세요.' : 'Save failed. Please try again.'),
+        ? (L('가용성 일정이 저장되었습니다.', 'Availability schedule saved.'))
+        : (L('저장 실패. 다시 시도해주세요.', 'Save failed. Please try again.')),
     );
     setTimeout(() => setAvailToast(null), 3500);
   };
@@ -276,10 +276,10 @@ export default function PartnerDashboardPage({ params }: { params: Promise<{ lan
 
   // Performance bar chart data (win rate, completion estimates)
   const barData = [
-    { label: isKo ? '견적 제출' : 'Quotes Sent', value: kpis.quoteCount, max: Math.max(kpis.quoteCount, 1), color: '#388bfd' },
-    { label: isKo ? '수주율 %' : 'Win Rate %', value: kpis.winRate ?? 0, max: 100, color: '#a371f7' },
-    { label: isKo ? '활성 주문' : 'Active Orders', value: kpis.activeOrders, max: Math.max(kpis.activeOrders, 1, 10), color: '#f0883e' },
-    { label: isKo ? '평균 응답(h)' : 'Avg Response (h)', value: kpis.avgResponseHours ?? 0, max: Math.max(kpis.avgResponseHours ?? 0, 24), color: '#3fb950' },
+    { label: L('견적 제출', 'Quotes Sent'), value: kpis.quoteCount, max: Math.max(kpis.quoteCount, 1), color: '#388bfd' },
+    { label: L('수주율 %', 'Win Rate %'), value: kpis.winRate ?? 0, max: 100, color: '#a371f7' },
+    { label: L('활성 주문', 'Active Orders'), value: kpis.activeOrders, max: Math.max(kpis.activeOrders, 1, 10), color: '#f0883e' },
+    { label: L('평균 응답(h)', 'Avg Response (h)'), value: kpis.avgResponseHours ?? 0, max: Math.max(kpis.avgResponseHours ?? 0, 24), color: '#3fb950' },
   ];
 
   return (
@@ -287,18 +287,18 @@ export default function PartnerDashboardPage({ params }: { params: Promise<{ lan
       {/* ── Header ─────────────────────────────────────────────────────────── */}
       <div style={S.header}>
         <h1 style={S.title}>
-          {isKo ? '파트너 대시보드' : 'Partner Dashboard'}
+          {L('파트너 대시보드', 'Partner Dashboard')}
         </h1>
         <p style={S.subtitle}>
           {factoryName
-            ? (isKo ? `${factoryName} — 내 제조사 성과 현황` : `${factoryName} — Your manufacturing performance`)
-            : (isKo ? '내 제조사 성과 현황' : 'Your manufacturing performance overview')}
+            ? (L(`${factoryName} — 내 제조사 성과 현황`, `${factoryName} — Your manufacturing performance`))
+            : (L('내 제조사 성과 현황', 'Your manufacturing performance overview'))}
         </p>
       </div>
 
       {loading && (
         <div style={{ color: 'var(--nx-text-2)', fontSize: '14px', padding: '40px 0', textAlign: 'center' }}>
-          {isKo ? '데이터 불러오는 중…' : 'Loading dashboard…'}
+          {L('데이터 불러오는 중…', 'Loading dashboard…')}
         </div>
       )}
 
@@ -307,42 +307,42 @@ export default function PartnerDashboardPage({ params }: { params: Promise<{ lan
           {/* ── KPI Cards ──────────────────────────────────────────────────── */}
           <div style={S.kpiGrid}>
             <div style={S.kpiCard}>
-              <div style={S.kpiLabel}>{isKo ? '총 견적 수' : 'Total Quotes'}</div>
+              <div style={S.kpiLabel}>{L('총 견적 수', 'Total Quotes')}</div>
               <div style={S.kpiValue}>{kpis.quoteCount}</div>
-              <div style={S.kpiSub}>{isKo ? '누적' : 'Cumulative'}</div>
+              <div style={S.kpiSub}>{L('누적', 'Cumulative')}</div>
             </div>
             <div style={S.kpiCard}>
-              <div style={S.kpiLabel}>{isKo ? '수주율' : 'Win Rate'}</div>
+              <div style={S.kpiLabel}>{L('수주율', 'Win Rate')}</div>
               <div style={{ ...S.kpiValue, color: '#a371f7' }}>
                 {kpis.winRate !== null ? `${kpis.winRate}%` : '—'}
               </div>
-              <div style={S.kpiSub}>{isKo ? '수락된 계약 / 견적' : 'Accepted / Quoted'}</div>
+              <div style={S.kpiSub}>{L('수락된 계약 / 견적', 'Accepted / Quoted')}</div>
             </div>
             <div style={S.kpiCard}>
-              <div style={S.kpiLabel}>{isKo ? '활성 주문' : 'Active Orders'}</div>
+              <div style={S.kpiLabel}>{L('활성 주문', 'Active Orders')}</div>
               <div style={{ ...S.kpiValue, color: '#f0883e' }}>{kpis.activeOrders}</div>
-              <div style={S.kpiSub}>{isKo ? '진행 중' : 'In progress'}</div>
+              <div style={S.kpiSub}>{L('진행 중', 'In progress')}</div>
             </div>
             <div style={S.kpiCard}>
-              <div style={S.kpiLabel}>{isKo ? '총 수익' : 'Total Revenue'}</div>
+              <div style={S.kpiLabel}>{L('총 수익', 'Total Revenue')}</div>
               <div style={{ ...S.kpiValue, fontSize: '20px', color: '#3fb950' }}>
-                {fmtMYR(kpis.totalRevenueMYR)}
+                {fmtMYR(kpis.totalRevenueMYR, lang)}
               </div>
-              <div style={S.kpiSub}>{isKo ? '완료 + 진행 계약' : 'Completed + active'}</div>
+              <div style={S.kpiSub}>{L('완료 + 진행 계약', 'Completed + active')}</div>
             </div>
             <div style={S.kpiCard}>
-              <div style={S.kpiLabel}>{isKo ? '평균 응답 시간' : 'Avg Response'}</div>
+              <div style={S.kpiLabel}>{L('평균 응답 시간', 'Avg Response')}</div>
               <div style={{ ...S.kpiValue, color: '#58a6ff' }}>
                 {kpis.avgResponseHours !== null ? `${kpis.avgResponseHours}h` : '—'}
               </div>
-              <div style={S.kpiSub}>{isKo ? '배정 → 첫 견적' : 'Assigned → First quote'}</div>
+              <div style={S.kpiSub}>{L('배정 → 첫 견적', 'Assigned → First quote')}</div>
             </div>
           </div>
 
           {/* ── Performance chart (CSS bars) ──────────────────────────────── */}
           <div style={S.section}>
             <div style={S.sectionHeader}>
-              📊 {isKo ? '성과 지표' : 'Performance Overview'}
+              📊 {L('성과 지표', 'Performance Overview')}
             </div>
             <div style={{ padding: '20px 24px', display: 'flex', flexDirection: 'column', gap: '14px' }}>
               {barData.map((item) => {
@@ -373,14 +373,14 @@ export default function PartnerDashboardPage({ params }: { params: Promise<{ lan
           {/* ── Recent RFQs Table ─────────────────────────────────────────── */}
           <div style={S.section}>
             <div style={S.sectionHeader}>
-              📋 {isKo ? '최근 RFQ 목록' : 'Recent RFQs'}
+              📋 {L('최근 RFQ 목록', 'Recent RFQs')}
               <span style={{ marginLeft: 'auto', fontSize: '11px', color: 'var(--nx-text-2)', fontWeight: 400 }}>
-                {isKo ? `최근 ${rfqs.length}건` : `Last ${rfqs.length} items`}
+                {L(`최근 ${rfqs.length}건`, `Last ${rfqs.length} items`)}
               </span>
             </div>
             {rfqs.length === 0 ? (
               <div style={{ padding: '32px 20px', textAlign: 'center', color: 'var(--nx-text-2)', fontSize: '13px' }}>
-                {isKo ? '배정된 RFQ가 없습니다.' : 'No RFQs assigned yet.'}
+                {L('배정된 RFQ가 없습니다.', 'No RFQs assigned yet.')}
               </div>
             ) : (
               <div style={{ overflowX: 'auto' }}>
@@ -388,10 +388,10 @@ export default function PartnerDashboardPage({ params }: { params: Promise<{ lan
                   <thead>
                     <tr>
                       <th style={S.th}>RFQ ID</th>
-                      <th style={S.th}>{isKo ? '형상명' : 'Shape Name'}</th>
-                      <th style={S.th}>{isKo ? '상태' : 'Status'}</th>
-                      <th style={S.th}>{isKo ? '생성일' : 'Created'}</th>
-                      <th style={S.th}>{isKo ? '배정일' : 'Assigned'}</th>
+                      <th style={S.th}>{L('형상명', 'Shape Name')}</th>
+                      <th style={S.th}>{L('상태', 'Status')}</th>
+                      <th style={S.th}>{L('생성일', 'Created')}</th>
+                      <th style={S.th}>{L('배정일', 'Assigned')}</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -402,15 +402,15 @@ export default function PartnerDashboardPage({ params }: { params: Promise<{ lan
                             {rfq.id.length > 14 ? rfq.id.slice(0, 14) + '…' : rfq.id}
                           </span>
                         </td>
-                        <td style={S.td}>{rfq.shape_name ?? '—'}</td>
+                        <td style={S.td}>{manufacturingTerm(rfq.shape_name, lang) || '—'}</td>
                         <td style={S.td}>
-                          <span style={S.badge(rfq.status)}>{rfq.status}</span>
+                          <span style={S.badge(rfq.status)}>{manufacturingTerm(rfq.status, lang)}</span>
                         </td>
                         <td style={{ ...S.td, color: 'var(--nx-text-2)' }}>
-                          {fmtDate(rfq.created_at, isKo)}
+                          {fmtDate(rfq.created_at, lang)}
                         </td>
                         <td style={{ ...S.td, color: 'var(--nx-text-2)' }}>
-                          {rfq.assigned_at ? fmtDate(rfq.assigned_at, isKo) : '—'}
+                          {rfq.assigned_at ? fmtDate(rfq.assigned_at, lang) : '—'}
                         </td>
                       </tr>
                     ))}
@@ -423,7 +423,7 @@ export default function PartnerDashboardPage({ params }: { params: Promise<{ lan
           {/* ── Availability Settings ─────────────────────────────────────── */}
           <div style={S.section}>
             <div style={S.sectionHeader}>
-              🗓️ {isKo ? '주간 가용성 설정' : 'Weekly Availability'}
+              🗓️ {L('주간 가용성 설정', 'Weekly Availability')}
             </div>
             <div style={{ padding: '20px 24px' }}>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
@@ -445,7 +445,7 @@ export default function PartnerDashboardPage({ params }: { params: Promise<{ lan
                           style={{ accentColor: '#388bfd', width: '15px', height: '15px' }}
                         />
                         <span style={{ fontSize: '13px', fontWeight: 600, color: day.enabled ? 'var(--nx-text)' : 'var(--nx-text-3)', width: '24px' }}>
-                          {isKo ? ko : en}
+                          {L(ko, en)}
                         </span>
                       </label>
                       {/* Time range */}
@@ -498,8 +498,8 @@ export default function PartnerDashboardPage({ params }: { params: Promise<{ lan
                   }}
                 >
                   {savingAvail
-                    ? (isKo ? '저장 중…' : 'Saving…')
-                    : (isKo ? '가용성 저장' : 'Save Availability')}
+                    ? (L('저장 중…', 'Saving…'))
+                    : (L('가용성 저장', 'Save Availability'))}
                 </button>
                 {availToast && (
                   <span style={{ fontSize: '12px', color: availToast.includes('failed') || availToast.includes('실패') ? '#f85149' : '#3fb950' }}>

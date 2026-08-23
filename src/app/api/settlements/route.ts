@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { verifyAdmin } from '@/lib/admin-auth';
 import { checkOrigin } from '@/lib/csrf';
 import { getDbAdapter } from '@/lib/db-adapter';
+import { readBoundedJson } from '@/lib/boundedJsonBody';
 
 export const dynamic = 'force-dynamic';
 
@@ -83,7 +84,11 @@ export async function POST(req: NextRequest) {
   if (!checkOrigin(req)) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   if (!(await verifyAdmin(req))) return NextResponse.json({ error: 'Admin only' }, { status: 403 });
 
-  const body = await req.json();
+  const body = await readBoundedJson<{
+    contractId?: string; projectName?: string; factoryName?: string; contractAmount?: number;
+    commissionRate?: number; grossCommission?: number; planDeduction?: number; finalCharge?: number;
+    isFirstContract?: boolean; firstContractDiscount?: number; notes?: string;
+  }>(req, 256 * 1024);
   const {
     contractId, projectName, factoryName, contractAmount,
     commissionRate, grossCommission, planDeduction, finalCharge,

@@ -24,6 +24,9 @@ import { getTrustedClientIp } from '@/lib/client-ip';
 import { checkOrigin } from '@/lib/csrf';
 import { rateLimitAsync, rateLimitHeaders } from '@/lib/rate-limit';
 import { partnerInviteTokenLookupCandidates } from '@/lib/partner-invite-token';
+import { boundedJsonError, readBoundedJson } from '@/lib/boundedJsonBody';
+
+const MAX_PARTNER_ONBOARD_BODY_BYTES = 64 * 1024;
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -167,8 +170,9 @@ export async function POST(req: NextRequest) {
 
   let body: AcceptBody;
   try {
-    body = await req.json();
-  } catch {
+    body = await readBoundedJson<AcceptBody>(req, MAX_PARTNER_ONBOARD_BODY_BYTES);
+  } catch (error) {
+    if (boundedJsonError(error)?.code === 'PAYLOAD_TOO_LARGE') return NextResponse.json({ error: 'request too large', code: 'PAYLOAD_TOO_LARGE' }, { status: 413 });
     return NextResponse.json({ error: 'invalid JSON' }, { status: 400 });
   }
 

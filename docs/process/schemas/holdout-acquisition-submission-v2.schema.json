@@ -1,0 +1,145 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://nexyfab.com/schemas/holdout-acquisition-submission-v2.schema.json",
+  "title": "NexyFab holdout acquisition submission v2",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "queueBinding", "existingCorpusBinding", "modelFreeze", "records"],
+  "properties": {
+    "schema": { "const": "nexyfab.holdout-acquisition-submission.v2" },
+    "queueBinding": { "$ref": "#/$defs/inputBinding" },
+    "existingCorpusBinding": { "$ref": "#/$defs/inputBinding" },
+    "modelFreeze": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["releaseHead", "frozenAt", "receipt"],
+      "properties": {
+        "releaseHead": { "type": "string", "pattern": "^[A-Fa-f0-9]{40}$" },
+        "frozenAt": { "type": "string", "format": "date-time" },
+        "receipt": { "$ref": "#/$defs/artifactRef" }
+      }
+    },
+    "records": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": { "$ref": "#/$defs/record" }
+    }
+  },
+  "$defs": {
+    "sha256": { "type": "string", "pattern": "^[A-Fa-f0-9]{64}$" },
+    "inputBinding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["sha256"],
+      "properties": {
+        "sha256": { "$ref": "#/$defs/sha256" },
+        "slotCount": { "type": "integer", "minimum": 1 },
+        "caseCount": { "type": "integer", "minimum": 0 }
+      },
+      "oneOf": [
+        { "required": ["slotCount"], "not": { "required": ["caseCount"] } },
+        { "required": ["caseCount"], "not": { "required": ["slotCount"] } }
+      ]
+    },
+    "artifactRef": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["relativePath", "bytes", "sha256"],
+      "properties": {
+        "relativePath": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "^(?![A-Za-z]:)(?!/)(?!.*(?:^|/)\\.\\.(?:/|$))[^\\\\]+$"
+        },
+        "bytes": { "type": "integer", "minimum": 1 },
+        "sha256": { "$ref": "#/$defs/sha256" }
+      }
+    },
+    "review": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["decision", "reviewerId", "reviewedAt", "subjectHash", "signedArtifact"],
+      "properties": {
+        "decision": { "enum": ["pending", "approved", "rejected"] },
+        "reviewerId": { "type": "string", "minLength": 1 },
+        "reviewedAt": { "type": "string", "format": "date-time" },
+        "subjectHash": { "$ref": "#/$defs/sha256" },
+        "signedArtifact": { "$ref": "#/$defs/artifactRef" }
+      }
+    },
+    "record": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "slotId", "family", "lineageGroup", "relativePath", "extension", "sourceHash",
+        "bytes", "sourceAcquiredAt", "provenance", "holdoutIsolation", "nativeStructure"
+      ],
+      "properties": {
+        "slotId": { "type": "string", "minLength": 1 },
+        "family": { "type": "string", "minLength": 1 },
+        "lineageGroup": { "type": "string", "pattern": "^[A-Za-z0-9_]+:[A-Za-z0-9][A-Za-z0-9._-]{2,}$" },
+        "relativePath": { "$ref": "#/$defs/artifactRef/properties/relativePath" },
+        "extension": { "type": "string", "pattern": "^[A-Za-z0-9_]+$" },
+        "sourceHash": { "$ref": "#/$defs/sha256" },
+        "bytes": { "type": "integer", "minimum": 1 },
+        "sourceAcquiredAt": { "type": "string", "format": "date-time" },
+        "provenance": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "sourceUrl", "provider", "productId", "licenseId", "licenseUrl",
+            "commercialUseStatus", "licenseEvidence", "review"
+          ],
+          "properties": {
+            "sourceUrl": { "type": "string", "format": "uri", "pattern": "^https://" },
+            "provider": { "type": "string", "minLength": 1 },
+            "productId": { "type": "string", "minLength": 1 },
+            "licenseId": { "type": "string", "minLength": 1 },
+            "licenseUrl": { "type": "string", "format": "uri", "pattern": "^https://" },
+            "commercialUseStatus": { "enum": ["pending", "approved", "rejected"] },
+            "licenseEvidence": { "$ref": "#/$defs/artifactRef" },
+            "review": { "$ref": "#/$defs/review" }
+          }
+        },
+        "holdoutIsolation": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "excludedFromTraining", "excludedFromFineTuning", "excludedFromPromptDevelopment",
+            "evaluationAccessRestricted", "accessControlReceipt", "review"
+          ],
+          "properties": {
+            "excludedFromTraining": { "type": "boolean" },
+            "excludedFromFineTuning": { "type": "boolean" },
+            "excludedFromPromptDevelopment": { "type": "boolean" },
+            "evaluationAccessRestricted": { "type": "boolean" },
+            "accessControlReceipt": { "$ref": "#/$defs/artifactRef" },
+            "review": { "$ref": "#/$defs/review" }
+          }
+        },
+        "nativeStructure": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "definitions", "occurrences", "transforms", "joints", "extractor",
+            "extractorVersion", "extractorArtifactHash", "receipt", "review"
+          ],
+          "properties": {
+            "definitions": { "type": "integer", "minimum": 1 },
+            "occurrences": { "type": "integer", "minimum": 1 },
+            "transforms": { "type": "integer", "minimum": 1 },
+            "joints": { "type": "integer", "minimum": 0 },
+            "extractor": { "type": "string", "minLength": 1 },
+            "extractorVersion": { "type": "string", "minLength": 1 },
+            "extractorArtifactHash": { "$ref": "#/$defs/sha256" },
+            "receipt": { "$ref": "#/$defs/artifactRef" },
+            "review": { "$ref": "#/$defs/review" }
+          }
+        },
+        "archiveManifest": { "$ref": "#/$defs/artifactRef" },
+        "conditionalFormatReview": { "$ref": "#/$defs/review" }
+      }
+    }
+  }
+}

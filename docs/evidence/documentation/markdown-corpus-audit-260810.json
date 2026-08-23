@@ -1,6 +1,6 @@
 {
   "schema": "nexyfab.markdown-corpus-audit.v1",
-  "generatedAt": "2026-08-09T23:49:18.016Z",
+  "generatedAt": "2026-08-23T05:52:52.304Z",
   "policy": {
     "sourceMutation": false,
     "dependenciesExcluded": [
@@ -14,7 +14,7 @@
     {
       "label": "new/docs",
       "exists": true,
-      "markdownCount": 225
+      "markdownCount": 261
     },
     {
       "label": "7.3 example",
@@ -45,17 +45,17 @@
     }
   ],
   "summary": {
-    "markdownFiles": 275,
-    "bytes": 3688562,
+    "markdownFiles": 311,
+    "bytes": 4299649,
     "filesWithoutH1": 4,
-    "duplicateContentGroups": 4,
+    "duplicateContentGroups": 9,
     "missingLocalMarkdownLinks": 0,
     "markerCounts": {
-      "todo": 21,
-      "notRun": 335,
+      "todo": 23,
+      "notRun": 533,
       "planned": 97,
-      "blocked": 110,
-      "incompleteKo": 290
+      "blocked": 199,
+      "incompleteKo": 378
     }
   },
   "missingLinks": [],
@@ -86,6 +86,41 @@
       "paths": [
         "7.3 example/Assembly_Studio_PBAS_v0.7.3_CONTACT_CONNECTOR_NATIVE_SI/VERIFICATION_SUMMARY.md",
         "7.3 example/Assembly_Studio_PBAS_v0.7.3_CONTACT_CONNECTOR_NATIVE_SI/VERIFICATION_SUMMARY_V0.6.md"
+      ]
+    },
+    {
+      "sha256": "f8d6bab60078a7f7244699f96999b81c1fce77f96187e829f233fa74a9c2d5ac",
+      "paths": [
+        "new/docs/evidence/domain-accuracy-commercial-dryrun-building-260810/DRYRUN-README.md",
+        "new/docs/evidence/domain-accuracy-dryrun-building-v2-260810/DRYRUN-README.md"
+      ]
+    },
+    {
+      "sha256": "42069b1ec7004884850b0b38c0e4dc1329744d17a55d59d9646e4c7966d3422d",
+      "paths": [
+        "new/docs/evidence/domain-accuracy-commercial-dryrun-civil-260810/DRYRUN-README.md",
+        "new/docs/evidence/domain-accuracy-dryrun-civil-v2-260810/DRYRUN-README.md"
+      ]
+    },
+    {
+      "sha256": "5719013f1fd71e18220ee5f65df040bf3121528233195252a6ffeb4cf4b70427",
+      "paths": [
+        "new/docs/evidence/domain-accuracy-commercial-dryrun-interior-260810/DRYRUN-README.md",
+        "new/docs/evidence/domain-accuracy-dryrun-interior-v2-260810/DRYRUN-README.md"
+      ]
+    },
+    {
+      "sha256": "faabe86c5c8915f9c677e0def38d389786f532c67e10076412abaef338629c0b",
+      "paths": [
+        "new/docs/evidence/domain-accuracy-commercial-dryrun-landscape-260810/DRYRUN-README.md",
+        "new/docs/evidence/domain-accuracy-dryrun-landscape-v2-260810/DRYRUN-README.md"
+      ]
+    },
+    {
+      "sha256": "11850022f62df29203ffdf5cdf666b67954b86e5071d04dfbf2cc3f70455ee18",
+      "paths": [
+        "new/docs/evidence/domain-accuracy-commercial-dryrun-mechanical-260810/DRYRUN-README.md",
+        "new/docs/evidence/domain-accuracy-dryrun-mechanical-v3-260810/DRYRUN-README.md"
       ]
     }
   ],
@@ -857,16 +892,31 @@
     },
     {
       "path": "new/docs/ACTIVE_EXECUTION_MASTER.md",
-      "bytes": 78926,
-      "sha256": "f51c6d22c780a64997e3a2961ba065b544db31887d07d221772bb9c1ace5e389",
+      "bytes": 88460,
+      "sha256": "9d7f8ab0bacf88a5835c707a4e00efb76b1614ebeb7199feb5d75593659cc975",
       "title": "NexyFab 활성 실행 기준서",
-      "headings": 36,
+      "headings": 40,
       "markers": {
         "todo": 0,
         "notRun": 36,
         "planned": 1,
-        "blocked": 9,
-        "incompleteKo": 14
+        "blocked": 11,
+        "incompleteKo": 16
+      },
+      "missingLocalMarkdownLinks": []
+    },
+    {
+      "path": "new/docs/ADMIN_I18N_PLAN.md",
+      "bytes": 3193,
+      "sha256": "94cf23e49f399086eb0e1a5efc3e177d3df1a9f5e4bf600c2a2dba8bb9fffedc",
+      "title": "NexyFab 관리자 6개 언어·RTL 계획",
+      "headings": 12,
+      "markers": {
+        "todo": 0,
+        "notRun": 0,
+        "planned": 0,
+        "blocked": 0,
+        "incompleteKo": 0
       },
       "missingLocalMarkdownLinks": []
     },
@@ -887,8 +937,8 @@
     },
     {
       "path": "new/docs/CAD_INDEPENDENT_IMPLEMENTATION_AND_COMMERCIAL_REVIEW_260809.md",
-      "bytes": 12749,
-      "sha256": "15f1d8b66b8705c4d2fa4acf9ff26e6c2d37d79db2bd71c7fadabb7031b500f9",
+      "bytes": 13190,
+      "sha256": "428427654bc49d799e1db9025dfe77623a987e23e730df45919e7affa973e3f9",
       "title": "NexyFab 외부 CAD 비의존 구현·검증 및 상용화 리뷰",
       "headings": 14,
       "markers": {
@@ -902,8 +952,8 @@
     },
     {
       "path": "new/docs/COMMERCIAL_READINESS_ASSESSMENT_AND_PLAN_260809.md",
-      "bytes": 15484,
-      "sha256": "2230fe07fff5ed952758e1c9500ed7e4f02ee0d96aeef8ccbda623903e0141bc",
+      "bytes": 15934,
+      "sha256": "16b5bc9b9cc419e0efbe66f0daa9367ded7cf65c3cbb7febcf111c77d6689e65",
       "title": "NexyFab 상업화 준비도 평가 및 실행 계획",
       "headings": 27,
       "markers": {
@@ -942,6 +992,51 @@
         "planned": 0,
         "blocked": 3,
         "incompleteKo": 4
+      },
+      "missingLocalMarkdownLinks": []
+    },
+    {
+      "path": "new/docs/NEXYCAD_COMMERCIAL_PRECISION_CAD_MASTER_PLAN_260814.md",
+      "bytes": 43549,
+      "sha256": "3b4c34094fb57e9a9a58545a298b5116628b7dbdfda8a06ad2e1f9d56671bb2d",
+      "title": "NEXYCAD 상용 정밀 CAD 통합 마스터 계획",
+      "headings": 63,
+      "markers": {
+        "todo": 0,
+        "notRun": 8,
+        "planned": 0,
+        "blocked": 13,
+        "incompleteKo": 0
+      },
+      "missingLocalMarkdownLinks": []
+    },
+    {
+      "path": "new/docs/NEXYCAD_MODULAR_CLOUDFLARE_PRECISION_CAD_MASTER_PLAN_260813.md",
+      "bytes": 26950,
+      "sha256": "5d3950fb667dbbe561dc5fe9aeda290843851efd3df8f4c4791226b0147cda85",
+      "title": "NEXYCAD 모듈 분리·Cloudflare 전환·정밀 CAD 완성 통합 마스터 플랜",
+      "headings": 61,
+      "markers": {
+        "todo": 0,
+        "notRun": 20,
+        "planned": 0,
+        "blocked": 8,
+        "incompleteKo": 4
+      },
+      "missingLocalMarkdownLinks": []
+    },
+    {
+      "path": "new/docs/NEXYCAD_PRECISION_CAD_IMPLEMENTATION_STATUS_260813.md",
+      "bytes": 18177,
+      "sha256": "209eb273d039b5578bd2be2133f69c370029ee93c2bf4c894d0a295829390415",
+      "title": "NEXYCAD 정밀 CAD 구현 상태 — 2026-08-13",
+      "headings": 9,
+      "markers": {
+        "todo": 0,
+        "notRun": 33,
+        "planned": 0,
+        "blocked": 9,
+        "incompleteKo": 1
       },
       "missingLocalMarkdownLinks": []
     },
@@ -1002,6 +1097,81 @@
         "planned": 0,
         "blocked": 0,
         "incompleteKo": 0
+      },
+      "missingLocalMarkdownLinks": []
+    },
+    {
+      "path": "new/docs/NEXYFAB_COMMERCIALIZATION_CURRENT.md",
+      "bytes": 56449,
+      "sha256": "7959d93e64447c75edc5aa7ea720afa8868e2a45c350dcc70c5803df4211762f",
+      "title": "NexyFab 상용화 현재 상태",
+      "headings": 77,
+      "markers": {
+        "todo": 1,
+        "notRun": 1,
+        "planned": 0,
+        "blocked": 0,
+        "incompleteKo": 5
+      },
+      "missingLocalMarkdownLinks": []
+    },
+    {
+      "path": "new/docs/NEXYFAB_CURRENT_STATUS_AND_REASSESSMENT_260812.md",
+      "bytes": 43367,
+      "sha256": "5f4db59611934fa62cf06e71f400777e214e4022d99b149c0534cb3b535e6ffd",
+      "title": "NexyFab 현재 상태 및 상업 서비스 기준 재평가",
+      "headings": 32,
+      "markers": {
+        "todo": 0,
+        "notRun": 45,
+        "planned": 0,
+        "blocked": 19,
+        "incompleteKo": 15
+      },
+      "missingLocalMarkdownLinks": []
+    },
+    {
+      "path": "new/docs/NEXYFAB_PROGRESS_AND_NEXT_ACTIONS.md",
+      "bytes": 15727,
+      "sha256": "cf054df1c5482e46fa331bc505137f67b4d133b7ea7a70d728f22a976bcf8773",
+      "title": "NexyFab 진행 현황 및 다음 작업",
+      "headings": 25,
+      "markers": {
+        "todo": 0,
+        "notRun": 1,
+        "planned": 0,
+        "blocked": 0,
+        "incompleteKo": 2
+      },
+      "missingLocalMarkdownLinks": []
+    },
+    {
+      "path": "new/docs/NEXYFAB_PT100_COMMERCIAL_HARDENING_260812.md",
+      "bytes": 22760,
+      "sha256": "a398b00838ab2638cf75d4cb1120f6330998dde80cb2938a786045479232042e",
+      "title": "NexyFab PT100·복합제품 상업 서비스 강화 결과 (260812)",
+      "headings": 18,
+      "markers": {
+        "todo": 0,
+        "notRun": 19,
+        "planned": 0,
+        "blocked": 12,
+        "incompleteKo": 8
+      },
+      "missingLocalMarkdownLinks": []
+    },
+    {
+      "path": "new/docs/NEXYFAB_UI_UX_PROCESS_AUDIT_260817.md",
+      "bytes": 15065,
+      "sha256": "6e11d94cf85058b091c716c117a1e83cd537cee09d1eb8d904621b6b7fe3ecbd",
+      "title": "NexyFab UI/UX 및 사용자 프로세스 전수 점검",
+      "headings": 21,
+      "markers": {
+        "todo": 0,
+        "notRun": 1,
+        "planned": 0,
+        "blocked": 1,
+        "incompleteKo": 2
       },
       "missingLocalMarkdownLinks": []
     },
@@ -1086,6 +1256,21 @@
       "sha256": "9c2226ef8c9e3ce7bd3ec6eab075e669f427619de93401842f0379b4a5af1f42",
       "title": "NNN — <Decision title in imperative voice>",
       "headings": 11,
+      "markers": {
+        "todo": 0,
+        "notRun": 0,
+        "planned": 0,
+        "blocked": 0,
+        "incompleteKo": 0
+      },
+      "missingLocalMarkdownLinks": []
+    },
+    {
+      "path": "new/docs/adr/0004-nexyfab-nexycad-product-boundary.md",
+      "bytes": 2190,
+      "sha256": "f3f6e5722c939376e1baf61b8d0d848817b8e6c8803606d361c87a3db180ef3c",
+      "title": "ADR 0004: NexyFab and NEXYCAD product boundary",
+      "headings": 4,
       "markers": {
         "todo": 0,
         "notRun": 0,
@@ -1196,6 +1381,36 @@
         "notRun": 0,
         "planned": 0,
         "blocked": 0,
+        "incompleteKo": 0
+      },
+      "missingLocalMarkdownLinks": []
+    },
+    {
+      "path": "new/docs/adr/018-bind-release-evidence-to-current-head.md",
+      "bytes": 3231,
+      "sha256": "a389ff7505da6371ee100dc3a80c98b92efcd1521672b4e8b83b973a40252928",
+      "title": "018 — Bind release evidence to the current Git HEAD",
+      "headings": 11,
+      "markers": {
+        "todo": 0,
+        "notRun": 0,
+        "planned": 0,
+        "blocked": 3,
+        "incompleteKo": 0
+      },
+      "missingLocalMarkdownLinks": []
+    },
+    {
+      "path": "new/docs/agent-sidecar-windows-release-hold.md",
+      "bytes": 7150,
+      "sha256": "74c362755385cb6f4161662ca183015ae0a185db851184aa8149f6609a3cc398",
+      "title": "Windows agent sidecar release HOLD",
+      "headings": 1,
+      "markers": {
+        "todo": 0,
+        "notRun": 1,
+        "planned": 0,
+        "blocked": 1,
         "incompleteKo": 0
       },
       "missingLocalMarkdownLinks": []
@@ -1427,13 +1642,88 @@
     },
     {
       "path": "new/docs/env-setup.md",
-      "bytes": 7739,
-      "sha256": "0eb60098dd1b1eb4d409c36be6b41d99eb1d31f1379e2a87633cfab79e3bed90",
+      "bytes": 7757,
+      "sha256": "b6c4a2b1c4fb86fd2fc845f5483d5f0c060f63b56bc84c6110099b0f37d0354b",
       "title": "Environment Variables Setup",
-      "headings": 51,
+      "headings": 52,
       "markers": {
         "todo": 0,
         "notRun": 1,
+        "planned": 0,
+        "blocked": 0,
+        "incompleteKo": 0
+      },
+      "missingLocalMarkdownLinks": []
+    },
+    {
+      "path": "new/docs/evidence/domain-accuracy-commercial-dryrun-building-260810/DRYRUN-README.md",
+      "bytes": 716,
+      "sha256": "f8d6bab60078a7f7244699f96999b81c1fce77f96187e829f233fa74a9c2d5ac",
+      "title": "도메인 정확도 캠페인 드라이런 — building",
+      "headings": 1,
+      "markers": {
+        "todo": 0,
+        "notRun": 0,
+        "planned": 0,
+        "blocked": 0,
+        "incompleteKo": 0
+      },
+      "missingLocalMarkdownLinks": []
+    },
+    {
+      "path": "new/docs/evidence/domain-accuracy-commercial-dryrun-civil-260810/DRYRUN-README.md",
+      "bytes": 713,
+      "sha256": "42069b1ec7004884850b0b38c0e4dc1329744d17a55d59d9646e4c7966d3422d",
+      "title": "도메인 정확도 캠페인 드라이런 — civil",
+      "headings": 1,
+      "markers": {
+        "todo": 0,
+        "notRun": 0,
+        "planned": 0,
+        "blocked": 0,
+        "incompleteKo": 0
+      },
+      "missingLocalMarkdownLinks": []
+    },
+    {
+      "path": "new/docs/evidence/domain-accuracy-commercial-dryrun-interior-260810/DRYRUN-README.md",
+      "bytes": 716,
+      "sha256": "5719013f1fd71e18220ee5f65df040bf3121528233195252a6ffeb4cf4b70427",
+      "title": "도메인 정확도 캠페인 드라이런 — interior",
+      "headings": 1,
+      "markers": {
+        "todo": 0,
+        "notRun": 0,
+        "planned": 0,
+        "blocked": 0,
+        "incompleteKo": 0
+      },
+      "missingLocalMarkdownLinks": []
+    },
+    {
+      "path": "new/docs/evidence/domain-accuracy-commercial-dryrun-landscape-260810/DRYRUN-README.md",
+      "bytes": 717,
+      "sha256": "faabe86c5c8915f9c677e0def38d389786f532c67e10076412abaef338629c0b",
+      "title": "도메인 정확도 캠페인 드라이런 — landscape",
+      "headings": 1,
+      "markers": {
+        "todo": 0,
+        "notRun": 0,
+        "planned": 0,
+        "blocked": 0,
+        "incompleteKo": 0
+      },
+      "missingLocalMarkdownLinks": []
+    },
+    {
+      "path": "new/docs/evidence/domain-accuracy-commercial-dryrun-mechanical-260810/DRYRUN-README.md",
+      "bytes": 718,
+      "sha256": "11850022f62df29203ffdf5cdf666b67954b86e5071d04dfbf2cc3f70455ee18",
+      "title": "도메인 정확도 캠페인 드라이런 — mechanical",
+      "headings": 1,
+      "markers": {
+        "todo": 0,
+        "notRun": 0,
         "planned": 0,
         "blocked": 0,
         "incompleteKo": 0
@@ -1651,9 +1941,24 @@
       "missingLocalMarkdownLinks": []
     },
     {
+      "path": "new/docs/evidence/release/REVIEWER_WORK_PACKET_CONTRACT.md",
+      "bytes": 1461,
+      "sha256": "96138f914d3baaa64c3aff7459805ede2b2cda9af7646def48fc506a8dd3a6c5",
+      "title": "Reviewer work packet contract",
+      "headings": 1,
+      "markers": {
+        "todo": 0,
+        "notRun": 0,
+        "planned": 0,
+        "blocked": 0,
+        "incompleteKo": 0
+      },
+      "missingLocalMarkdownLinks": []
+    },
+    {
       "path": "new/docs/evidence/security/route-security-matrix-260810.md",
       "bytes": 564,
-      "sha256": "cb5e39ef553e765b6567654e46c074c9cea7a1ecf3838bf6c96dad5d46e9d2c6",
+      "sha256": "40b32a8469e2cac4a6eed88480e54bd68db226bcd061ad4ce1d3035ec613df68",
       "title": "NexyFab Route Security Matrix",
       "headings": 4,
       "markers": {
@@ -1662,6 +1967,21 @@
         "planned": 0,
         "blocked": 0,
         "incompleteKo": 0
+      },
+      "missingLocalMarkdownLinks": []
+    },
+    {
+      "path": "new/docs/evidence/shape-generator-precision-cad-ui-260812/README.md",
+      "bytes": 17550,
+      "sha256": "d9a2e96a619e38111b43bc560ff3b7ff67fa6dd64e6ab1c40328cfc6d0399444",
+      "title": "Shape Generator 정밀 CAD UI·AI·Assembly 검증 (260812)",
+      "headings": 10,
+      "markers": {
+        "todo": 0,
+        "notRun": 17,
+        "planned": 0,
+        "blocked": 16,
+        "incompleteKo": 8
       },
       "missingLocalMarkdownLinks": []
     },
@@ -1982,8 +2302,8 @@
     },
     {
       "path": "new/docs/next-session-plan-260728.md",
-      "bytes": 39862,
-      "sha256": "45b66948bdbec43061255a7491bb58ce7a86490466e9370c5c68a3d09e3c324f",
+      "bytes": 39863,
+      "sha256": "e06f67e7fa78f37822bf4cd506498007e64503a558976cbfd6cf93b3f9f6c754",
       "title": "다음 세션 인수인계 — 2026-07-28 (MCP 발행 규약 · CI 사각지대 2건 · §6-1 산술 이관 · §6-3 정합 도달 · §6-4 플레이크 규명)",
       "headings": 42,
       "markers": {
@@ -2176,11 +2496,41 @@
       "missingLocalMarkdownLinks": []
     },
     {
+      "path": "new/docs/operations/DEPLOYMENT_PERFORMANCE_AND_ISOLATION.md",
+      "bytes": 3231,
+      "sha256": "85a601e76ebb4b506c2516b29962df5f802fcda0329ee353fe48d92f18b101cc",
+      "title": "Deployment performance and native CAD isolation",
+      "headings": 6,
+      "markers": {
+        "todo": 0,
+        "notRun": 0,
+        "planned": 0,
+        "blocked": 0,
+        "incompleteKo": 0
+      },
+      "missingLocalMarkdownLinks": []
+    },
+    {
       "path": "new/docs/operations/commercial-launch-runbook.md",
       "bytes": 6945,
       "sha256": "9117e8199379da0a0e544127c69d9488c22e66697b2f8294d0de05f836532efe",
       "title": "NexyFab commercial launch runbook",
       "headings": 12,
+      "markers": {
+        "todo": 0,
+        "notRun": 0,
+        "planned": 0,
+        "blocked": 0,
+        "incompleteKo": 0
+      },
+      "missingLocalMarkdownLinks": []
+    },
+    {
+      "path": "new/docs/operations/migration-2026082208-readonly-verification.md",
+      "bytes": 1574,
+      "sha256": "85202de38a0ac88969f36d04f09d13a038685a21c73a1d885722c91db62771f8",
+      "title": "Migration 2026082208 read-only verification",
+      "headings": 1,
       "markers": {
         "todo": 0,
         "notRun": 0,
@@ -2207,8 +2557,8 @@
     },
     {
       "path": "new/docs/operations/robot-component-catalog.md",
-      "bytes": 1331,
-      "sha256": "81f32d765b77c05cf790da8f503a362c0b15acbe74a22a70fab1f657edb227d6",
+      "bytes": 1409,
+      "sha256": "19f4c43f301363b692ce843e5e5517206d332c85b2b4db0d6d9ad226b383cad2",
       "title": "Robot production component catalog",
       "headings": 1,
       "markers": {
@@ -2311,6 +2661,21 @@
       "missingLocalMarkdownLinks": []
     },
     {
+      "path": "new/docs/process/cloudflare-first-railway-minimal-migration-runbook.md",
+      "bytes": 3230,
+      "sha256": "f287d58752459a77793345ff331eea91cb444ad99b632313f286e9a97d9f0f19",
+      "title": "Cloudflare 우선 · Railway 최소화 전환 실행서",
+      "headings": 5,
+      "markers": {
+        "todo": 0,
+        "notRun": 1,
+        "planned": 0,
+        "blocked": 0,
+        "incompleteKo": 1
+      },
+      "missingLocalMarkdownLinks": []
+    },
+    {
       "path": "new/docs/process/commit-policy.md",
       "bytes": 7973,
       "sha256": "3bc9e5fc9e31e3b4a0c1f568504a675ce103c7d0b9bf0f988c0d8119600a04cc",
@@ -2319,6 +2684,36 @@
       "markers": {
         "todo": 0,
         "notRun": 0,
+        "planned": 0,
+        "blocked": 0,
+        "incompleteKo": 0
+      },
+      "missingLocalMarkdownLinks": []
+    },
+    {
+      "path": "new/docs/process/complex-holdout-acquisition-runbook.md",
+      "bytes": 7388,
+      "sha256": "ecee529b2d639fc9ab1a7316f8e8c8473dca14bba1ded5be5f1e7fa6431aebf2",
+      "title": "Complex-product holdout acquisition",
+      "headings": 7,
+      "markers": {
+        "todo": 0,
+        "notRun": 0,
+        "planned": 0,
+        "blocked": 0,
+        "incompleteKo": 0
+      },
+      "missingLocalMarkdownLinks": []
+    },
+    {
+      "path": "new/docs/process/enterprise-sso-staging-evidence-runbook.md",
+      "bytes": 6592,
+      "sha256": "12a0810dd4579c511f9c044c307f28a287b5b8ba6229022b99f8bc935e6e0e38",
+      "title": "Enterprise SSO staging evidence runbook",
+      "headings": 7,
+      "markers": {
+        "todo": 0,
+        "notRun": 1,
         "planned": 0,
         "blocked": 0,
         "incompleteKo": 0
@@ -2341,6 +2736,51 @@
       "missingLocalMarkdownLinks": []
     },
     {
+      "path": "new/docs/process/i18n-full-product-artifact-acquisition-runbook.md",
+      "bytes": 2071,
+      "sha256": "b5ac558df7c99ee90d9043bfde3c9b47b881948375706ca7169d12681f10f535",
+      "title": "i18n full-product artifact acquisition",
+      "headings": 3,
+      "markers": {
+        "todo": 0,
+        "notRun": 1,
+        "planned": 0,
+        "blocked": 0,
+        "incompleteKo": 0
+      },
+      "missingLocalMarkdownLinks": []
+    },
+    {
+      "path": "new/docs/process/mechanical-core-commercialization-runbook.md",
+      "bytes": 10752,
+      "sha256": "6eef7d785c9a74f3223cce9aca16abcfc5e7c97862b0ef1b234cfcab8ab1da6e",
+      "title": "Mechanical-core 상용화 실행서",
+      "headings": 14,
+      "markers": {
+        "todo": 0,
+        "notRun": 1,
+        "planned": 0,
+        "blocked": 0,
+        "incompleteKo": 0
+      },
+      "missingLocalMarkdownLinks": []
+    },
+    {
+      "path": "new/docs/process/mechanical-standalone-step-c4-runbook.md",
+      "bytes": 2619,
+      "sha256": "cf5083ea10120f4cba44451ab61926826d3c9b06235fcd1f5697039b21e4f09f",
+      "title": "Standalone STEP AP242 C4 verification",
+      "headings": 4,
+      "markers": {
+        "todo": 0,
+        "notRun": 2,
+        "planned": 0,
+        "blocked": 1,
+        "incompleteKo": 0
+      },
+      "missingLocalMarkdownLinks": []
+    },
+    {
       "path": "new/docs/process/risk-policy.md",
       "bytes": 3764,
       "sha256": "f6bff9c556825d27d36c63201b52dc1ec2833d49781647ce8be53baa0c1f377c",
@@ -2349,6 +2789,21 @@
       "markers": {
         "todo": 0,
         "notRun": 0,
+        "planned": 0,
+        "blocked": 0,
+        "incompleteKo": 0
+      },
+      "missingLocalMarkdownLinks": []
+    },
+    {
+      "path": "new/docs/process/robot-verified-product-runbook.md",
+      "bytes": 15869,
+      "sha256": "ec282b369eca27cd6b755754d67edad72668804c22c766d9eea3062d6266ee8d",
+      "title": "Robot verified-product release runbook",
+      "headings": 23,
+      "markers": {
+        "todo": 0,
+        "notRun": 4,
         "planned": 0,
         "blocked": 0,
         "incompleteKo": 0
@@ -2402,10 +2857,10 @@
     },
     {
       "path": "new/docs/process/staging-setup-runbook.md",
-      "bytes": 3588,
-      "sha256": "675554fb3e175cecb4637c167a18d3d6e4c491ea2ce67008b7af78d002b7d7f4",
+      "bytes": 4067,
+      "sha256": "749192dc0967101a9ffaee4520b03c02e43b9907bcb6b01f5d9bda71e9fcc3b1",
       "title": "Staging Environment Setup — Railway",
-      "headings": 15,
+      "headings": 16,
       "markers": {
         "todo": 0,
         "notRun": 0,
@@ -2477,8 +2932,8 @@
     },
     {
       "path": "new/docs/roadmap/COMPLETION_PLAN.md",
-      "bytes": 6622,
-      "sha256": "29b417df2952651791c9f70d4653953dcca3c676f2da53a2b5bdc876da538b29",
+      "bytes": 7522,
+      "sha256": "678e63516d13fcefc7171ef56225bc36398bc5510f18f8326b9e02a24fa6046c",
       "title": "완주 계획 — \"AI가 대부분·사람이 최종 검토·기존 툴 대체 수준\"까지 남은 것",
       "headings": 7,
       "markers": {
@@ -2567,8 +3022,8 @@
     },
     {
       "path": "new/docs/roadmap/REPLACEMENT_ROADMAP.md",
-      "bytes": 13448,
-      "sha256": "30adecb01ea085f3391ea1044f153a31a43d1726359fe7928cc9a3bf3b289bca",
+      "bytes": 13730,
+      "sha256": "b256bd29a2570f6215937a7903a0502b98ede2adc5738a201a3a225ead66fe8f",
       "title": "대체 로드맵 — 실측 기반 (260719b)",
       "headings": 21,
       "markers": {
@@ -2596,11 +3051,41 @@
       "missingLocalMarkdownLinks": []
     },
     {
+      "path": "new/docs/runbooks/large-upload-staging-readiness.md",
+      "bytes": 5331,
+      "sha256": "5fad6e11b6c19296b91e730f292d5b908c15089d6771ad5a598fa6950d8b47b9",
+      "title": "Large-upload staging readiness evidence",
+      "headings": 5,
+      "markers": {
+        "todo": 0,
+        "notRun": 2,
+        "planned": 0,
+        "blocked": 0,
+        "incompleteKo": 0
+      },
+      "missingLocalMarkdownLinks": []
+    },
+    {
       "path": "new/docs/session-summary-260802.md",
       "bytes": 9791,
       "sha256": "f32dde2d1c7a8a90027fe76593a0deb7294e877ebde95ff927f96c42496a00c0",
       "title": "세션 정리 (260801~260802)",
       "headings": 22,
+      "markers": {
+        "todo": 0,
+        "notRun": 0,
+        "planned": 0,
+        "blocked": 0,
+        "incompleteKo": 0
+      },
+      "missingLocalMarkdownLinks": []
+    },
+    {
+      "path": "new/docs/staging-e2e-and-restore-drill-runbook.md",
+      "bytes": 5306,
+      "sha256": "677e5e995340dbc174498a22ef60f7a14de2543acbdae174c35924787a426c92",
+      "title": "Staging authenticated E2E and isolated PostgreSQL restore drill",
+      "headings": 6,
       "markers": {
         "todo": 0,
         "notRun": 0,
@@ -2649,6 +3134,21 @@
       "markers": {
         "todo": 1,
         "notRun": 0,
+        "planned": 0,
+        "blocked": 0,
+        "incompleteKo": 0
+      },
+      "missingLocalMarkdownLinks": []
+    },
+    {
+      "path": "new/docs/strategy/AGENT_MCP_CLI_CAPABILITY_HOLD_BACKLOG_260823.md",
+      "bytes": 4006,
+      "sha256": "ef4ba4e2304e40388182a75db0eaa6a2861229cc6a1ec457e30d37342316e8c2",
+      "title": "Agent · MCP · CLI capability inventory and HOLD backlog — 2026-08-23",
+      "headings": 4,
+      "markers": {
+        "todo": 0,
+        "notRun": 1,
         "planned": 0,
         "blocked": 0,
         "incompleteKo": 0
@@ -2793,7 +3293,7 @@
     {
       "path": "new/docs/strategy/M0_BASELINE.md",
       "bytes": 1663,
-      "sha256": "469733c563d7e9099d9da4b4ea88dc333b6f464defe6d7725fe2ce82a6a01172",
+      "sha256": "a5a3c756a24d4455c647e2cfb19ff6b626c7fc95b769b11b5c3a7ca9944d66a4",
       "title": "M0 — 기준선 & 회귀",
       "headings": 5,
       "markers": {
@@ -3121,6 +3621,21 @@
       "missingLocalMarkdownLinks": []
     },
     {
+      "path": "new/docs/strategy/NEXYFAB_SERVICE_AI_DESIGN_PRECISION_CAD_HANDOFF_260822.md",
+      "bytes": 138420,
+      "sha256": "fbc70e4a559f085930274a1e3e7b54a4c0871b9d7bcd92e429eca88e40e63805",
+      "title": "NexyFab 서비스·AI 설계·정밀 CAD 통합 현황 및 다음 세션 인계서",
+      "headings": 80,
+      "markers": {
+        "todo": 0,
+        "notRun": 33,
+        "planned": 0,
+        "blocked": 1,
+        "incompleteKo": 21
+      },
+      "missingLocalMarkdownLinks": []
+    },
+    {
       "path": "new/docs/strategy/OCCT_W3_DESIGN.md",
       "bytes": 11200,
       "sha256": "24ee47ef862649417e073e33070affe9a5ef4a42dcaca3905856f265ed42dd03",
@@ -3182,8 +3697,8 @@
     },
     {
       "path": "new/docs/strategy/RAILWAY_CRON_SETUP.md",
-      "bytes": 4901,
-      "sha256": "7c3521d3549ed0a12f90f6ecefc1556c328fcdc443bf170691cbb6c81ac78e58",
+      "bytes": 5246,
+      "sha256": "60f37c075ff8b2836d0ef4815d0372e396d16d3ddae77103950be2c70b7755b5",
       "title": "Railway Cron Job Setup",
       "headings": 8,
       "markers": {
@@ -3252,6 +3767,36 @@
         "planned": 0,
         "blocked": 0,
         "incompleteKo": 1
+      },
+      "missingLocalMarkdownLinks": []
+    },
+    {
+      "path": "new/docs/strategy/ai-mechanical-cad-category-dominance-plan-260811.md",
+      "bytes": 17788,
+      "sha256": "5e00fdccf88ce82bae0be67e59b572d64ebd2c5ae2c99c186c52d88d4b2e6df3",
+      "title": "NexyFab AI 기계 CAD + 정밀 CAD 카테고리 장악 계획",
+      "headings": 29,
+      "markers": {
+        "todo": 0,
+        "notRun": 0,
+        "planned": 0,
+        "blocked": 0,
+        "incompleteKo": 6
+      },
+      "missingLocalMarkdownLinks": []
+    },
+    {
+      "path": "new/docs/strategy/ai-mechanical-cad-current-status-and-completion-plan-260811.md",
+      "bytes": 47613,
+      "sha256": "71d9c72e54e91a349dbd6ba358d223899706db75b48049924126ee6c58ec7fa1",
+      "title": "NexyFab AI 정밀 기계 CAD 현재 상태 및 완성도 향상 계획",
+      "headings": 62,
+      "markers": {
+        "todo": 1,
+        "notRun": 3,
+        "planned": 0,
+        "blocked": 0,
+        "incompleteKo": 9
       },
       "missingLocalMarkdownLinks": []
     },
@@ -3631,6 +4176,21 @@
       "missingLocalMarkdownLinks": []
     },
     {
+      "path": "new/docs/strategy/multi-domain-complete-cad-master-plan-260820.md",
+      "bytes": 17289,
+      "sha256": "838e93b0df2cb1ec936948349f2c41b17694c3f0085c894f64c67ceaf1e4c604",
+      "title": "NexyFab 5개 분야 완성형 CAD 구축 마스터 계획",
+      "headings": 36,
+      "markers": {
+        "todo": 0,
+        "notRun": 1,
+        "planned": 0,
+        "blocked": 3,
+        "incompleteKo": 1
+      },
+      "missingLocalMarkdownLinks": []
+    },
+    {
       "path": "new/docs/strategy/native-cad-worker-host-deployment-260807.md",
       "bytes": 8807,
       "sha256": "0273804bed6a614c7694345bb2a1c27f7c138cb27a85f7d4c18e58db5ff0861c",
@@ -3717,6 +4277,21 @@
         "planned": 0,
         "blocked": 2,
         "incompleteKo": 6
+      },
+      "missingLocalMarkdownLinks": []
+    },
+    {
+      "path": "new/docs/strategy/product-direction-commercial-master-plan-260811.md",
+      "bytes": 29081,
+      "sha256": "0df0f3cae45c645fe5dc24a959bc10cca499dc9cb4e303b42d2dec904f7bc51b",
+      "title": "NexyFab 제품 방향·상용화 통합 마스터 플랜",
+      "headings": 47,
+      "markers": {
+        "todo": 0,
+        "notRun": 2,
+        "planned": 0,
+        "blocked": 0,
+        "incompleteKo": 3
       },
       "missingLocalMarkdownLinks": []
     },

@@ -2,8 +2,6 @@ import { ImageResponse } from 'next/og';
 import { NextRequest } from 'next/server';
 import { PAGE_META, type Lang, type PageKey } from '@/lib/metaHelper';
 
-export const runtime = 'edge';
-
 // Hard-coded tags for popular landing pages — fall back to PAGE_META.title /
 // description for the long tail (privacy, refund, etc.). This keeps top-of-
 // funnel pages tightly branded while still producing a usable OG image for

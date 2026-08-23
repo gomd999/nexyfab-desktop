@@ -1,0 +1,86 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://nexyfab.com/schemas/mechanical-product-scope-assessment.v2.json",
+  "title": "NexyFab mechanical-core product scope assessment",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "releaseChannel", "assessedAt", "sources", "evidence", "decision", "blockers", "claimBoundary"],
+  "properties": {
+    "schema": { "const": "nexyfab.mechanical-product-scope-assessment.v2" },
+    "releaseChannel": { "const": "mechanical-core" },
+    "assessedAt": { "type": ["string", "null"], "format": "date-time" },
+    "sources": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["path", "sha256"],
+        "properties": {
+          "path": { "type": "string", "minLength": 1 },
+          "sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" }
+        }
+      }
+    },
+    "evidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "independentHoldoutEligible",
+        "coreThirtyFeatureClosedLoopVerified",
+        "commercialCadStepC4Verified",
+        "analyticStepRoundtripVerified",
+        "artifactRevisionConsistencyVerified",
+        "expertDualApprovalComplete",
+        "manufacturingReceiptVerified"
+      ],
+      "properties": {
+        "independentHoldoutEligible": { "type": "boolean" },
+        "coreThirtyFeatureClosedLoopVerified": { "type": "boolean" },
+        "commercialCadStepC4Verified": { "type": "boolean" },
+        "analyticStepRoundtripVerified": { "type": "boolean" },
+        "artifactRevisionConsistencyVerified": { "type": "boolean" },
+        "expertDualApprovalComplete": { "type": "boolean" },
+        "manufacturingReceiptVerified": { "type": "boolean" }
+      }
+    },
+    "decision": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["selfServiceEligible", "manufacturingReleaseVerified", "failClosed", "status"],
+      "properties": {
+        "selfServiceEligible": { "type": "boolean" },
+        "manufacturingReleaseVerified": { "type": "boolean" },
+        "failClosed": { "const": true },
+        "status": {
+          "enum": [
+            "internal_validation_pending",
+            "external_validation_pending",
+            "self_service_verified",
+            "manufacturing_release_verified"
+          ]
+        }
+      }
+    },
+    "blockers": { "type": "array", "items": { "type": "string", "minLength": 1 }, "uniqueItems": true },
+    "claimBoundary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "internalRegressionCertifiesCommercialAccuracy",
+        "syntheticEvidenceCertifiesCommercialAccuracy",
+        "stepExportAloneCertifiesManufacturability",
+        "kernelSelfRoundtripCertifiesCommercialCadCompatibility",
+        "featureRegistrationAloneCertifiesClosedLoop",
+        "spatialLabsEvidenceMaySatisfyMechanicalCore"
+      ],
+      "properties": {
+        "internalRegressionCertifiesCommercialAccuracy": { "const": false },
+        "syntheticEvidenceCertifiesCommercialAccuracy": { "const": false },
+        "stepExportAloneCertifiesManufacturability": { "const": false },
+        "kernelSelfRoundtripCertifiesCommercialCadCompatibility": { "const": false },
+        "featureRegistrationAloneCertifiesClosedLoop": { "const": false },
+        "spatialLabsEvidenceMaySatisfyMechanicalCore": { "const": false }
+      }
+    }
+  }
+}

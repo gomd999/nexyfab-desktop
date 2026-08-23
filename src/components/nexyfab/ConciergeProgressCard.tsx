@@ -13,6 +13,7 @@
 
 import React, { useCallback, useEffect, useState } from 'react';
 import { toIsoLang } from '@/lib/i18n/normalize';
+import { createCommercialLocalizer } from '@/lib/i18n/commercialLocalizer';
 
 interface Entry {
   id: string;
@@ -100,6 +101,7 @@ export interface ConciergeProgressCardProps {
 
 export default function ConciergeProgressCard({ lang, rfqId }: ConciergeProgressCardProps) {
   const t = dict[toIsoLang(lang)] ?? dict.en;
+  const L = createCommercialLocalizer(lang);
   const [entries, setEntries] = useState<Entry[]>([]);
   const [loaded, setLoaded] = useState(false);
 
@@ -165,7 +167,7 @@ export default function ConciergeProgressCard({ lang, rfqId }: ConciergeProgress
                   borderRadius: 12,
                   background: `${meta.color}22`, color: meta.color,
                 }}>
-                  {meta.emoji} {lang === 'ko' ? meta.ko : meta.en}
+                  {meta.emoji} {L(meta.ko, meta.en)}
                 </span>
                 {revealed && e.partnerEmail && (
                   <a href={`mailto:${e.partnerEmail}`} style={contactLinkStyle}>
@@ -205,7 +207,7 @@ function timeAgo(ts: number, lang: string): string {
     return new Intl.RelativeTimeFormat(iso, { numeric: 'auto' }).format(value, unit);
   } catch {
     // 런타임이 해당 로케일을 모를 때 — 빈 문자열 대신 영어로라도 보여 준다.
-    return new Intl.RelativeTimeFormat('en', { numeric: 'auto' }).format(value, unit);
+    return new Intl.RelativeTimeFormat(iso, { numeric: 'auto' }).format(value, unit);
   }
 }
 

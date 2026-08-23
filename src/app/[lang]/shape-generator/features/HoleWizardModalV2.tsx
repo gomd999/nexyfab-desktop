@@ -41,6 +41,7 @@ import {
   type HoleArrayDefinition,
   type HoleArrayKind,
   type HoleKind,
+  type HoleAxis,
   type HoleSpec,
   type HoleStandardRef,
   type PipeTapHoleSpec,
@@ -85,7 +86,9 @@ interface Props {
   open: boolean;
   lang: 'ko' | 'en' | 'ja' | 'zh' | 'es' | 'ar' | string;
   onClose: () => void;
-  onApply: (def: HoleArrayDefinition) => void;
+  /** Return false when the host cannot commit the definition (for example an
+   * up-to-face request without a selected face). The wizard then stays open. */
+  onApply: (def: HoleArrayDefinition) => void | boolean;
   /**
    * When `true`, bypass the search-param flag check. Test escape hatch
    * (the next/navigation mock in tests can't easily set query params).
@@ -109,6 +112,9 @@ interface Props {
    * picker shows an empty-state message.
    */
   availableSketches?: AvailableSketch[];
+  /** Stable topology id of the face selected in the 3D viewport. Required
+   * only for the up-to-face termination mode. */
+  selectedFaceId?: string;
 }
 
 // ─── i18n dictionary ───────────────────────────────────────────────────────
@@ -294,8 +300,8 @@ const DICT: Record<'ko' | 'en' | 'ja' | 'zh' | 'es' | 'ar', Dict> = {
     termBottomFlat: '평면 바닥',
     termBottomConical: '원뿔 바닥',
     termDrillTipAngle: '드릴팁 각도 (°)',
-    termFacePickerPlaceholder: '[작업자 준비 후 면 선택]',
-    termFacePickerHint: '워커 준비 시 활성화',
+    termFacePickerPlaceholder: '[3D에서 대상 면을 먼저 선택]',
+    termFacePickerHint: '선택한 면의 영구 참조를 사용합니다.',
     prevHeader: '단면 미리보기',
     prevDiameter: '드릴 ⌀',
     prevHeadDiameter: '카운터보어 ⌀',
@@ -411,8 +417,8 @@ const DICT: Record<'ko' | 'en' | 'ja' | 'zh' | 'es' | 'ar', Dict> = {
     termBottomFlat: 'Flat bottom',
     termBottomConical: 'Conical bottom',
     termDrillTipAngle: 'Drill tip angle (°)',
-    termFacePickerPlaceholder: '[Pick face after Worker is ready]',
-    termFacePickerHint: 'Enabled once worker face-picker lands',
+    termFacePickerPlaceholder: '[Select a target face in 3D first]',
+    termFacePickerHint: 'Uses the persistent reference of the selected face.',
     prevHeader: 'Cross-section preview',
     prevDiameter: 'Drill ⌀',
     prevHeadDiameter: 'Counterbore ⌀',
@@ -528,8 +534,8 @@ const DICT: Record<'ko' | 'en' | 'ja' | 'zh' | 'es' | 'ar', Dict> = {
     termBottomFlat: '平面底',
     termBottomConical: '円錐底',
     termDrillTipAngle: 'ドリル先端角 (°)',
-    termFacePickerPlaceholder: '[ワーカー準備後に面を選択]',
-    termFacePickerHint: 'ワーカー対応後に有効化',
+    termFacePickerPlaceholder: '[先に3Dで対象面を選択]',
+    termFacePickerHint: '選択面の永続参照を使用します。',
     prevHeader: '断面プレビュー',
     prevDiameter: 'ドリル ⌀',
     prevHeadDiameter: 'カウンターボア ⌀',
@@ -645,8 +651,8 @@ const DICT: Record<'ko' | 'en' | 'ja' | 'zh' | 'es' | 'ar', Dict> = {
     termBottomFlat: '平底',
     termBottomConical: '锥底',
     termDrillTipAngle: '钻头角度 (°)',
-    termFacePickerPlaceholder: '[工作器就绪后选择面]',
-    termFacePickerHint: '工作器就绪后启用',
+    termFacePickerPlaceholder: '[先在3D中选择目标面]',
+    termFacePickerHint: '使用所选面的持久引用。',
     prevHeader: '截面预览',
     prevDiameter: '钻孔 ⌀',
     prevHeadDiameter: '沉头扩孔 ⌀',
@@ -762,8 +768,8 @@ const DICT: Record<'ko' | 'en' | 'ja' | 'zh' | 'es' | 'ar', Dict> = {
     termBottomFlat: 'Fondo plano',
     termBottomConical: 'Fondo cónico',
     termDrillTipAngle: 'Ángulo de punta (°)',
-    termFacePickerPlaceholder: '[Selecciona cara cuando Worker esté listo]',
-    termFacePickerHint: 'Activo cuando el selector de cara esté disponible',
+    termFacePickerPlaceholder: '[Selecciona primero una cara en 3D]',
+    termFacePickerHint: 'Usa la referencia persistente de la cara seleccionada.',
     prevHeader: 'Vista previa de sección',
     prevDiameter: 'Taladro ⌀',
     prevHeadDiameter: 'Avellanado ⌀',
@@ -879,8 +885,8 @@ const DICT: Record<'ko' | 'en' | 'ja' | 'zh' | 'es' | 'ar', Dict> = {
     termBottomFlat: 'قاع مستوٍ',
     termBottomConical: 'قاع مخروطي',
     termDrillTipAngle: 'زاوية رأس المثقاب (°)',
-    termFacePickerPlaceholder: '[اختر الوجه بعد تجهيز العامل]',
-    termFacePickerHint: 'يُفعل عند جاهزية مُنتقي الأوجه',
+    termFacePickerPlaceholder: '[حدد الوجه الهدف في العرض ثلاثي الأبعاد أولاً]',
+    termFacePickerHint: 'يستخدم المرجع الدائم للوجه المحدد.',
     prevHeader: 'معاينة المقطع',
     prevDiameter: 'قطر المثقاب',
     prevHeadDiameter: 'قطر التجويف العميق',
@@ -1026,6 +1032,7 @@ export default function HoleWizardModalV2({
   forceFlagOpen,
   forceFlagV1,
   availableSketches,
+  selectedFaceId,
 }: Props) {
   const pathname = usePathname();
   const sp = useSearchParams();
@@ -1077,6 +1084,9 @@ export default function HoleWizardModalV2({
   // factory default — that's intentional, the wizard is "pick a kind, then
   // tweak", not "fill in the kind-specific section of a shared blob".
   const [positionKind, setPositionKind] = useState<HoleArrayKind>('linear');
+  // Positive world drill axis. Y preserves the historical top-face wizard
+  // behaviour; X/Z are useful for upright flanges and side plates.
+  const [holeAxis, setHoleAxis] = useState<HoleAxis>(1);
   const [arrayDef, setArrayDef] = useState<HoleArrayDefinition>(() =>
     createLinearArrayDefaults('wizard-array', {
       series: 'ISO',
@@ -1186,24 +1196,21 @@ export default function HoleWizardModalV2({
       case 'upToNext':
         return { kind: 'upToNext' };
       case 'upToFace':
-        // UI-only path: no face picker yet (worker blocked). We keep faceId
-        // empty and rely on the validator to flag UPTOFACE_FACE_MISSING. The
-        // Apply button stays disabled until the user picks blind / through /
-        // upToNext or a future face-picker fills the id.
-        return { kind: 'upToFace', faceId: '' };
+        return { kind: 'upToFace', faceId: selectedFaceId?.trim() ?? '' };
     }
-  }, [terminationKind, blindDepth, blindBottomShape, drillTipAngle]);
+  }, [terminationKind, blindDepth, blindBottomShape, drillTipAngle, selectedFaceId]);
 
   // The "effective" def merges the current Size + Type + Termination selections
   // back into the position-tab def for validation + preview. arrayDef itself
   // only changes on Position-tab edits.
   const effectiveDef: HoleArrayDefinition = useMemo(() => ({
     ...arrayDef,
+    axis: holeAxis,
     holeSpec: currentHoleSpec,
     holeSpecDetail: resolvedHoleSpec,
     terminationKind,
     terminationParams,
-  }), [arrayDef, currentHoleSpec, resolvedHoleSpec, terminationKind, terminationParams]);
+  }), [arrayDef, holeAxis, currentHoleSpec, resolvedHoleSpec, terminationKind, terminationParams]);
 
   // Sketch-point provider — when the modal's host supplies `availableSketches`
   // we hand them to `expandHoleArray` so the fromSketch position-mode shows
@@ -1254,7 +1261,8 @@ export default function HoleWizardModalV2({
     if (!validation.ok) return;
     // Hand off the effective definition (size + termination + position) — the
     // memoized merge already carries the resolved HoleSpec + TerminationParams.
-    onApply(effectiveDef);
+    const applied = onApply(effectiveDef);
+    if (applied === false) return;
     onClose();
   };
 
@@ -1615,6 +1623,19 @@ export default function HoleWizardModalV2({
         {/* ── Tab: Position ─────────────────────────────────────────────── */}
         {activeTab === 'position' && (
           <div data-testid="hole-wizard-v2-panel-position">
+            <label style={{ display: 'inline-flex', alignItems: 'center', gap: 6, marginBottom: 10, fontSize: 12, color: 'var(--nx-text-2)' }}>
+              Drill axis
+              <select
+                data-testid="hole-wizard-v2-axis"
+                value={holeAxis}
+                onChange={(e) => setHoleAxis(Number(e.target.value) as HoleAxis)}
+                style={inputStyle}
+              >
+                <option value={1}>Y (top)</option>
+                <option value={0}>X (side)</option>
+                <option value={2}>Z (side)</option>
+              </select>
+            </label>
             {/* Position-kind picker */}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: 4, marginBottom: 10 }}>
               {POSITION_KINDS.map((pk) => (
@@ -1756,35 +1777,18 @@ export default function HoleWizardModalV2({
               </div>
             )}
 
-            {/* Up-to-next — disabled placeholder until worker face-picker lands. */}
+            {/* Up-to-next resolves the first material boundary automatically. */}
             {terminationKind === 'upToNext' && (
               <div
                 data-testid="hole-wizard-v2-termination-upToNext-detail"
-                style={{ padding: 8 }}
+                style={{ padding: 8, fontSize: 11, color: 'var(--nx-text-2)' }}
               >
-                <button
-                  data-testid="hole-wizard-v2-termination-upToNext-picker"
-                  disabled
-                  style={{
-                    padding: '8px 12px',
-                    background: 'var(--nx-border-strong)',
-                    color: 'var(--nx-text-2)',
-                    border: '1px dashed #4b5563',
-                    borderRadius: 6,
-                    cursor: 'not-allowed',
-                    fontSize: 12,
-                    opacity: 0.6,
-                  }}
-                >
-                  {t.termFacePickerPlaceholder}
-                </button>
-                <div style={{ fontSize: 11, color: 'var(--nx-text-2)', marginTop: 6 }}>
-                  {t.termFacePickerHint}
-                </div>
+                {t.termUpToNext}
               </div>
             )}
 
-            {/* Up-to-face — disabled placeholder; same shape as upToNext. */}
+            {/* Face selection is owned by the 3D viewport; the wizard receives
+                and commits its stable topology id. */}
             {terminationKind === 'upToFace' && (
               <div
                 data-testid="hole-wizard-v2-termination-upToFace-detail"
@@ -1799,12 +1803,14 @@ export default function HoleWizardModalV2({
                     color: 'var(--nx-text-2)',
                     border: '1px dashed #4b5563',
                     borderRadius: 6,
-                    cursor: 'not-allowed',
+                    cursor: 'default',
                     fontSize: 12,
-                    opacity: 0.6,
+                    opacity: selectedFaceId ? 1 : 0.6,
                   }}
                 >
-                  {t.termFacePickerPlaceholder}
+                  {selectedFaceId
+                    ? `${t.termUpToFace}: ${selectedFaceId}`
+                    : t.termFacePickerPlaceholder}
                 </button>
                 <div style={{ fontSize: 11, color: 'var(--nx-text-2)', marginTop: 6 }}>
                   {t.termFacePickerHint}

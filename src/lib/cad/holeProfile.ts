@@ -34,6 +34,9 @@ export type HoleTerminationMode = 'auto' | 'blind' | 'through';
 
 export interface HoleFeature {
   kind: 'hole';
+  /** W2-A host reference. When present, replay resolves the live host depth
+   * so auto/through cuts follow edits instead of a stale build-time depth. */
+  childId?: string;
   /** (x,y) in sketch units (mm). Z is implicit: hole drills down from
    *  the top of the parent body. */
   center: { x: number; y: number };
@@ -203,10 +206,23 @@ export const TAP_DRILL_SPECS: ReadonlyArray<ThreadSpec> = Object.freeze([
  * overshoot (0.01 mm) on top + bottom prevents zero-thickness shell faces
  * in OpenSCAD's CGAL pipeline.
  */
-export function holeToScad(feature: HoleFeature): string {
+export function holeToScad(feature: HoleFeature, hostThickness?: number): string {
   const cx = formatNum(feature.center.x);
   const cy = formatNum(feature.center.y);
   const epsilon = 0.01;
+
+  if (hostThickness !== undefined && (!Number.isFinite(hostThickness) || hostThickness <= 0)) {
+    throw new Error(`hole host thickness must be positive, got: ${hostThickness}`);
+  }
+
+  // Legacy standalone emission keeps its historical z=0 origin. Host-aware
+  // emission places the cutter at the live parent's top face and overshoots
+  // both faces, so a one-sided parent [0, thickness] is actually pierced.
+  const topZ = hostThickness ?? 0;
+  const overlap = hostThickness === undefined ? epsilon : 2 * epsilon;
+  const through = feature.terminationMode === 'through' ||
+    (feature.terminationMode === undefined || feature.terminationMode === 'auto') && hostThickness !== undefined;
+  const boreDepth = through ? (hostThickness ?? feature.depth) : feature.depth;
 
   const bores: string[] = [];
 
@@ -219,24 +235,24 @@ export function holeToScad(feature: HoleFeature): string {
     const tipAngle = feature.drillTipAngleDegrees ?? 118;
     const tipHeight = (feature.diameter / 2) / Math.tan((tipAngle * Math.PI) / 360);
     if (feature.depth <= tipHeight) throw new Error(`hole depth must exceed drill tip height ${formatNum(tipHeight)} mm`);
-    const shoulderZ = -feature.depth + tipHeight;
+    const shoulderZ = topZ - feature.depth + tipHeight;
     bores.push(
       `translate([0, 0, ${formatNum(shoulderZ)}]) cylinder(h=${formatNum(feature.depth - tipHeight + epsilon)}, d=${boreD}, $fn=64);`,
-      `translate([0, 0, -${formatNum(feature.depth)}]) cylinder(h=${formatNum(tipHeight)}, d1=0, d2=${boreD}, $fn=64);`,
+      `translate([0, 0, ${formatNum(topZ - feature.depth)}]) cylinder(h=${formatNum(tipHeight)}, d1=0, d2=${boreD}, $fn=64);`,
     );
   } else {
-    const boreH = formatNum(feature.depth + epsilon);
+    const boreH = formatNum(boreDepth + overlap);
     bores.push(
-      `translate([0, 0, -${formatNum(feature.depth)}]) cylinder(h=${boreH}, d=${boreD}, $fn=64);`,
+      `translate([0, 0, ${formatNum(topZ - boreDepth - epsilon)}]) cylinder(h=${boreH}, d=${boreD}, $fn=64);`,
     );
   }
 
   if (feature.holeType === 'counterbore') {
     const cbD = formatNum(feature.counterboreDiameter!);
-    const cbH = formatNum(feature.counterboreDepth! + epsilon);
+    const cbH = formatNum(feature.counterboreDepth! + 2 * epsilon);
     // Counterbore sits flush with the top face, depth downward.
     bores.push(
-      `translate([0, 0, -${formatNum(feature.counterboreDepth!)}]) cylinder(h=${cbH}, d=${cbD}, $fn=64);`,
+      `translate([0, 0, ${formatNum(topZ - feature.counterboreDepth! - epsilon)}]) cylinder(h=${cbH}, d=${cbD}, $fn=64);`,
     );
   }
 
@@ -250,9 +266,9 @@ export function holeToScad(feature: HoleFeature): string {
     const topD = feature.diameter + 2 * csinkDepth * Math.tan(halfAngleRad);
     const d1 = formatNum(feature.diameter);
     const d2 = formatNum(topD);
-    const csinkH = formatNum(csinkDepth + epsilon);
+    const csinkH = formatNum(csinkDepth + 2 * epsilon);
     bores.push(
-      `translate([0, 0, -${formatNum(csinkDepth)}]) cylinder(h=${csinkH}, d1=${d1}, d2=${d2}, $fn=64);`,
+      `translate([0, 0, ${formatNum(topZ - csinkDepth - epsilon)}]) cylinder(h=${csinkH}, d1=${d1}, d2=${d2}, $fn=64);`,
     );
   }
 

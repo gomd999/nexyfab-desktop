@@ -2,7 +2,8 @@
 
 import Link from 'next/link';
 import { use, useEffect, useState } from 'react';
-import { isKorean } from '@/lib/i18n/normalize';
+import { createCommercialLocalizer } from '@/lib/i18n/commercialLocalizer';
+import { manufacturingRegion, manufacturingTerm } from '@/lib/i18n/manufacturingTerms';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -52,12 +53,6 @@ function gradientForId(id: string): [string, string] {
   return GRADIENT_PALETTE[hash % GRADIENT_PALETTE.length];
 }
 
-const REGION_LABELS: Record<string, string> = {
-  KR: '🇰🇷 한국', CN: '🇨🇳 중국', US: '🇺🇸 미국',
-  JP: '🇯🇵 일본', DE: '🇩🇪 독일', VN: '🇻🇳 베트남',
-  TW: '🇹🇼 대만', TH: '🇹🇭 태국', IN: '🇮🇳 인도',
-};
-
 const PROCESS_LABELS: Record<string, { ko: string; en: string }> = {
   cnc_milling:       { ko: 'CNC 밀링',    en: 'CNC Milling' },
   cnc_turning:       { ko: 'CNC 선삭',    en: 'CNC Turning' },
@@ -90,7 +85,7 @@ export default function ManufacturerDetailPage({
   params: Promise<{ lang: string; id: string }>;
 }) {
   const { lang, id } = use(params);
-  const isKo = isKorean(lang);
+  const L = createCommercialLocalizer(lang);
 
   const [mfr, setMfr] = useState<ManufacturerDetail | null>(null);
   const [loading, setLoading] = useState(true);
@@ -124,25 +119,25 @@ export default function ManufacturerDetailPage({
 
   if (loading) return (
     <div style={{ minHeight: '100vh', background: C.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', color: C.dim, fontFamily: 'system-ui, sans-serif' }}>
-      {isKo ? '불러오는 중...' : 'Loading...'}
+      {L('불러오는 중...', 'Loading...')}
     </div>
   );
 
   if (notFound || !mfr) return (
     <div style={{ minHeight: '100vh', background: C.bg, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color: C.dim, fontFamily: 'system-ui, sans-serif', gap: 16 }}>
       <div style={{ fontSize: 40 }}>🏭</div>
-      <div style={{ fontSize: 16, fontWeight: 600 }}>{isKo ? '제조사를 찾을 수 없습니다.' : 'Manufacturer not found'}</div>
+      <div style={{ fontSize: 16, fontWeight: 600 }}>{L('제조사를 찾을 수 없습니다.', 'Manufacturer not found')}</div>
       <a href={`/${lang}/nexyfab/marketplace`} style={{ color: C.accent, textDecoration: 'none', fontSize: 13 }}>
-        ← {isKo ? '마켓플레이스로 돌아가기' : 'Back to Marketplace'}
+        ← {L('마켓플레이스로 돌아가기', 'Back to Marketplace')}
       </a>
     </div>
   );
 
   const [gradFrom, gradTo] = gradientForId(mfr.id);
-  const initials = (isKo && mfr.nameKo ? mfr.nameKo : mfr.name).slice(0, 1);
+  const initials = L(mfr.nameKo || mfr.name, mfr.name).slice(0, 1);
   const pl = PRICE_LABELS[mfr.priceLevel] ?? PRICE_LABELS.standard;
-  const displayName = isKo ? mfr.nameKo : mfr.name;
-  const description = isKo ? (mfr.descriptionKo || mfr.description) : mfr.description;
+  const displayName = L(mfr.nameKo || mfr.name, mfr.name);
+  const description = L(mfr.descriptionKo || mfr.description, mfr.description);
 
   function stars(rating: number) {
     const full = Math.floor(rating);
@@ -159,7 +154,7 @@ export default function ManufacturerDetailPage({
         </Link>
         <span style={{ color: C.border }}>|</span>
         <a href={`/${lang}/nexyfab/marketplace`} style={{ fontSize: 13, color: C.dim, textDecoration: 'none' }}>
-          {isKo ? '마켓플레이스' : 'Marketplace'}
+          {L('마켓플레이스', 'Marketplace')}
         </a>
         <span style={{ color: C.dim, fontSize: 13 }}>›</span>
         <span style={{ fontSize: 13, color: C.text }}>{displayName}</span>
@@ -184,18 +179,18 @@ export default function ManufacturerDetailPage({
               <h1 style={{ margin: 0, fontSize: 22, fontWeight: 800 }}>{displayName}</h1>
               {mfr.hasPartnerProfile && (
                 <span style={{ fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 6, background: '#388bfd18', color: C.accent }}>
-                  {isKo ? '파트너' : 'Partner'}
+                  {L('파트너', 'Partner')}
                 </span>
               )}
               <span style={{ fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 6, background: pl.color + '18', color: pl.color }}>
-                {pl[isKo ? 'ko' : 'en']}
+                {L(pl.ko, pl.en)}
               </span>
             </div>
 
             <div style={{ display: 'flex', gap: 16, fontSize: 13, color: C.dim, marginBottom: 12, flexWrap: 'wrap' }}>
-              <span>📍 {REGION_LABELS[mfr.region] ?? mfr.region}</span>
-              <span>{stars(mfr.rating)} {mfr.rating.toFixed(1)} ({mfr.reviewCount.toLocaleString()} {isKo ? '리뷰' : 'reviews'})</span>
-              <span>⏱ {isKo ? `납기 ${mfr.minLeadTime}–${mfr.maxLeadTime}일` : `Lead ${mfr.minLeadTime}–${mfr.maxLeadTime}d`}</span>
+              <span>📍 {manufacturingRegion(mfr.region, lang)}</span>
+              <span>{stars(mfr.rating)} {mfr.rating.toFixed(1)} ({mfr.reviewCount.toLocaleString()} {L('리뷰', 'reviews')})</span>
+              <span>⏱ {L(`납기 ${mfr.minLeadTime}–${mfr.maxLeadTime}일`, `Lead ${mfr.minLeadTime}–${mfr.maxLeadTime}d`)}</span>
             </div>
 
             {description && (
@@ -206,7 +201,7 @@ export default function ManufacturerDetailPage({
             <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
               {mfr.processes.map(p => (
                 <span key={p} style={{ fontSize: 11, padding: '3px 10px', borderRadius: 6, background: C.card, color: C.dim, border: `1px solid ${C.border}` }}>
-                  {PROCESS_LABELS[p]?.[isKo ? 'ko' : 'en'] ?? p}
+                  {manufacturingTerm(PROCESS_LABELS[p]?.en ?? p, lang)}
                 </span>
               ))}
               {mfr.certifications.map(c => (
@@ -227,12 +222,12 @@ export default function ManufacturerDetailPage({
                 color: '#fff', fontSize: 13, fontWeight: 700, textAlign: 'center', whiteSpace: 'nowrap',
               }}
             >
-              {isKo ? '견적 요청' : 'Request Quote'}
+              {L('견적 요청', 'Request Quote')}
             </a>
             {mfr.website && (
               <a href={mfr.website} target="_blank" rel="noopener noreferrer"
                 style={{ display: 'block', padding: '9px 24px', borderRadius: 10, textDecoration: 'none', background: 'transparent', border: `1px solid ${C.border}`, color: C.dim, fontSize: 12, fontWeight: 600, textAlign: 'center' }}>
-                🌐 {isKo ? '홈페이지' : 'Website'}
+                🌐 {L('홈페이지', 'Website')}
               </a>
             )}
           </div>
@@ -242,30 +237,30 @@ export default function ManufacturerDetailPage({
           {/* Details */}
           <div style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 12, padding: '20px 24px' }}>
             <h2 style={{ margin: '0 0 16px', fontSize: 14, fontWeight: 700, color: C.dim, textTransform: 'uppercase', letterSpacing: 0.5 }}>
-              {isKo ? '상세 정보' : 'Details'}
+              {L('상세 정보', 'Details')}
             </h2>
             <dl style={{ margin: 0, display: 'grid', gridTemplateColumns: 'auto 1fr', gap: '8px 16px', fontSize: 13 }}>
               {mfr.matchField && (
                 <>
-                  <dt style={{ color: C.dim, whiteSpace: 'nowrap' }}>{isKo ? '전문 분야' : 'Specialty'}</dt>
+                  <dt style={{ color: C.dim, whiteSpace: 'nowrap' }}>{L('전문 분야', 'Specialty')}</dt>
                   <dd style={{ margin: 0, color: C.text }}>{mfr.matchField}</dd>
                 </>
               )}
               {mfr.techExp && (
                 <>
-                  <dt style={{ color: C.dim, whiteSpace: 'nowrap' }}>{isKo ? '기술 경력' : 'Experience'}</dt>
+                  <dt style={{ color: C.dim, whiteSpace: 'nowrap' }}>{L('기술 경력', 'Experience')}</dt>
                   <dd style={{ margin: 0, color: C.text }}>{mfr.techExp}</dd>
                 </>
               )}
               {mfr.capacityAmount && (
                 <>
-                  <dt style={{ color: C.dim, whiteSpace: 'nowrap' }}>{isKo ? '수용 금액' : 'Capacity'}</dt>
+                  <dt style={{ color: C.dim, whiteSpace: 'nowrap' }}>{L('수용 금액', 'Capacity')}</dt>
                   <dd style={{ margin: 0, color: C.text }}>{mfr.capacityAmount}</dd>
                 </>
               )}
               {mfr.contactPhone && (
                 <>
-                  <dt style={{ color: C.dim, whiteSpace: 'nowrap' }}>{isKo ? '연락처' : 'Phone'}</dt>
+                  <dt style={{ color: C.dim, whiteSpace: 'nowrap' }}>{L('연락처', 'Phone')}</dt>
                   <dd style={{ margin: 0, color: C.text }}>{mfr.contactPhone}</dd>
                 </>
               )}
@@ -283,18 +278,18 @@ export default function ManufacturerDetailPage({
           {/* Rating breakdown */}
           <div style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 12, padding: '20px 24px' }}>
             <h2 style={{ margin: '0 0 16px', fontSize: 14, fontWeight: 700, color: C.dim, textTransform: 'uppercase', letterSpacing: 0.5 }}>
-              {isKo ? '평점' : 'Rating'}
+              {L('평점', 'Rating')}
             </h2>
             <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 12 }}>
               <span style={{ fontSize: 40, fontWeight: 900, color: C.yellow }}>{mfr.rating.toFixed(1)}</span>
               <div>
                 <div style={{ color: C.yellow, fontSize: 20, letterSpacing: 2 }}>{stars(mfr.rating)}</div>
-                <div style={{ fontSize: 12, color: C.dim, marginTop: 2 }}>{mfr.reviewCount.toLocaleString()} {isKo ? '건 기준' : 'reviews'}</div>
+                <div style={{ fontSize: 12, color: C.dim, marginTop: 2 }}>{mfr.reviewCount.toLocaleString()} {L('건 기준', 'reviews')}</div>
               </div>
             </div>
-            <RatingBar label={isKo ? '납기 준수' : 'Deadline'} value={mfr.rating} />
-            <RatingBar label={isKo ? '품질' : 'Quality'} value={Math.min(5, mfr.rating + 0.1)} />
-            <RatingBar label={isKo ? '커뮤니케이션' : 'Communication'} value={Math.max(1, mfr.rating - 0.1)} />
+            <RatingBar label={L('납기 준수', 'Deadline')} value={mfr.rating} />
+            <RatingBar label={L('품질', 'Quality')} value={Math.min(5, mfr.rating + 0.1)} />
+            <RatingBar label={L('커뮤니케이션', 'Communication')} value={Math.max(1, mfr.rating - 0.1)} />
           </div>
         </div>
 
@@ -302,7 +297,7 @@ export default function ManufacturerDetailPage({
         {mfr.reviews.length > 0 && (
           <div style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 12, padding: '20px 24px' }}>
             <h2 style={{ margin: '0 0 16px', fontSize: 14, fontWeight: 700, color: C.dim, textTransform: 'uppercase', letterSpacing: 0.5 }}>
-              {isKo ? '최근 리뷰' : 'Recent Reviews'}
+              {L('최근 리뷰', 'Recent Reviews')}
             </h2>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
               {mfr.reviews.map(r => (
@@ -311,7 +306,7 @@ export default function ManufacturerDetailPage({
                     <span style={{ color: C.yellow, fontSize: 13 }}>{'★'.repeat(r.rating)}{'☆'.repeat(5 - r.rating)}</span>
                     <span style={{ fontSize: 11, color: C.dim }}>{r.reviewerEmail}</span>
                     <span style={{ fontSize: 11, color: C.dim, marginLeft: 'auto' }}>
-                      {new Date(r.createdAt).toLocaleDateString(isKo ? 'ko-KR' : 'en-US')}
+                      {new Date(r.createdAt).toLocaleDateString(L('ko-KR', 'en-US'))}
                     </span>
                   </div>
                   {r.comment && <p style={{ margin: 0, fontSize: 13, color: '#b1bac4', lineHeight: 1.5 }}>{r.comment}</p>}
@@ -324,7 +319,7 @@ export default function ManufacturerDetailPage({
         {/* Back link */}
         <div style={{ marginTop: 24 }}>
           <a href={`/${lang}/nexyfab/marketplace`} style={{ color: C.accent, textDecoration: 'none', fontSize: 13 }}>
-            ← {isKo ? '마켓플레이스로 돌아가기' : 'Back to Marketplace'}
+            ← {L('마켓플레이스로 돌아가기', 'Back to Marketplace')}
           </a>
         </div>
       </div>

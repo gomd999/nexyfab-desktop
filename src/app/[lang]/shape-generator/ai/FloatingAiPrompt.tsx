@@ -22,7 +22,8 @@
  */
 
 import React, { useEffect, useRef, useState } from 'react';
-import { toIsoLang } from '@/lib/i18n/normalize';
+import { langDir, toIsoLang, type IsoLang } from '@/lib/i18n/normalize';
+import { loc } from '@/lib/i18n/loc';
 
 export interface FloatingAiPromptProps {
   lang: string;
@@ -99,6 +100,115 @@ const COPY = {
   },
 } as const;
 
+type DetailCopy = {
+  ko: string;
+  en: string;
+  ja: string;
+  zh: string;
+  es: string;
+  ar: string;
+};
+
+/** Secondary labels that used to be Korean/English-only in this surface. */
+const DETAIL_COPY: Record<string, DetailCopy> = {
+  imageAttached: {
+    ko: '사진 첨부됨 — 보내면 사진에서 모델을 만듭니다',
+    en: 'Photo attached — send to build a model from it',
+    ja: '写真を添付しました — 送信すると写真からモデルを作成します',
+    zh: '已附加照片 — 发送后将从照片创建模型',
+    es: 'Foto adjunta — envíala para crear un modelo a partir de ella',
+    ar: 'تم إرفاق صورة — أرسلها لإنشاء نموذج منها',
+  },
+  removeImage: {
+    ko: '첨부 사진 제거',
+    en: 'Remove attached photo',
+    ja: '添付写真を削除',
+    zh: '移除附加照片',
+    es: 'Quitar la foto adjunta',
+    ar: 'إزالة الصورة المرفقة',
+  },
+  attachPhoto: {
+    ko: '사진 첨부',
+    en: 'Attach photo',
+    ja: '写真を添付',
+    zh: '附加照片',
+    es: 'Adjuntar foto',
+    ar: 'إرفاق صورة',
+  },
+  imageInputLabel: {
+    ko: 'AI 설계 참조 사진',
+    en: 'AI design reference image',
+    ja: 'AI設計の参照画像',
+    zh: 'AI 设计参考图片',
+    es: 'Imagen de referencia para el diseño con IA',
+    ar: 'صورة مرجعية لتصميم الذكاء الاصطناعي',
+  },
+  promptLabel: {
+    ko: 'AI 설계 요청',
+    en: 'AI design request',
+    ja: 'AI設計リクエスト',
+    zh: 'AI 设计请求',
+    es: 'Solicitud de diseño con IA',
+    ar: 'طلب تصميم بالذكاء الاصطناعي',
+  },
+  photoPrompt: {
+    ko: '사진 설명(선택) — 그냥 보내도 됩니다',
+    en: 'Describe the photo (optional) — or just send',
+    ja: '写真の説明（任意）— そのまま送信もできます',
+    zh: '描述照片（可选）— 也可以直接发送',
+    es: 'Describe la foto (opcional) — o envíala directamente',
+    ar: 'صف الصورة (اختياري) — أو أرسلها مباشرة',
+  },
+  imageTooLarge: {
+    ko: '이미지가 너무 커요 (최대 8MB)',
+    en: 'Image too large (max 8MB)',
+    ja: '画像が大きすぎます（最大8MB）',
+    zh: '图片过大（最大 8MB）',
+    es: 'La imagen es demasiado grande (máximo 8 MB)',
+    ar: 'الصورة كبيرة جدًا (الحد الأقصى 8 ميجابايت)',
+  },
+  undoHint: {
+    ko: '마지막 AI 변경을 한 번에 되돌릴 수 있습니다.',
+    en: 'The last AI transaction can be undone atomically.',
+    ja: '最後のAI変更を一度に元に戻せます。',
+    zh: '可以一次撤销上一次 AI 更改。',
+    es: 'Puedes deshacer de una vez la última transacción de IA.',
+    ar: 'يمكن التراجع عن آخر تعديل للذكاء الاصطناعي دفعة واحدة.',
+  },
+  undoDone: {
+    ko: 'AI 변경을 되돌렸습니다.',
+    en: 'The AI edit was undone.',
+    ja: 'AIの変更を元に戻しました。',
+    zh: '已撤销 AI 更改。',
+    es: 'Se deshizo el cambio de IA.',
+    ar: 'تم التراجع عن تعديل الذكاء الاصطناعي.',
+  },
+  undoAction: {
+    ko: 'AI 변경 되돌리기',
+    en: 'Undo AI edit',
+    ja: 'AI変更を元に戻す',
+    zh: '撤销 AI 更改',
+    es: 'Deshacer cambio de IA',
+    ar: 'التراجع عن تعديل الذكاء الاصطناعي',
+  },
+  templatesHint: {
+    ko: '예시로 시작 (눌러서 채우고 수정):',
+    en: 'Start from a template (click to fill, then edit):',
+    ja: 'テンプレートから開始（クリックして入力後に編集）:',
+    zh: '从模板开始（点击填充，然后编辑）：',
+    es: 'Empieza con una plantilla (haz clic para rellenar y editar):',
+    ar: 'ابدأ بقالب (انقر للتعبئة ثم عدّل):',
+  },
+  failed: {
+    ko: '실패했습니다',
+    en: 'Failed',
+    ja: '失敗しました',
+    zh: '失败',
+    es: 'Falló',
+    ar: 'فشلت العملية',
+  },
+};
+
 /** One-click starting points — clicking fills the input with a ready, editable
  *  prompt so a beginner designs by tweaking an example instead of facing a blank
  *  box (and never needs the hard manual sketch→extrude flow). */
@@ -111,6 +221,45 @@ const TEMPLATES: { icon: string; ko: string; en: string; promptKo: string; promp
   { icon: '🔩', ko: '스탠드오프', en: 'Standoff', promptKo: '스탠드오프 높이 15, 외경 8, ⌀3.2 보어', promptEn: 'Standoff, 15mm tall, ⌀8 outer, ⌀3.2 bore' },
 ];
 
+type TemplateText = { label: string; prompt: string };
+
+const TEMPLATE_COPY: Record<IsoLang, TemplateText[]> = {
+  ko: TEMPLATES.map(t => ({ label: t.ko, prompt: t.promptKo })),
+  en: TEMPLATES.map(t => ({ label: t.en, prompt: t.promptEn })),
+  ja: [
+    { label: 'ブラケット', prompt: 'L字ブラケット、脚60mm、幅30mm、厚さ5mm、⌀6穴' },
+    { label: 'ボックス/ケース', prompt: '80×60×30ケース、壁厚2mm、角R3mm' },
+    { label: 'ギア', prompt: '平歯車、24歯、厚さ10mm、⌀8ボア' },
+    { label: 'フランジ', prompt: 'フランジ、外径⌀80、ボア⌀30、厚さ8mm、PCD60に⌀8ボルト6個' },
+    { label: 'カップ', prompt: 'カップ、⌀50、高さ80mm、壁厚2mm' },
+    { label: 'スペーサー', prompt: 'スペーサー、高さ15、外径⌀8、ボア⌀3.2' },
+  ],
+  zh: [
+    { label: '支架', prompt: 'L 形支架，支腿 60mm，宽 30mm，厚 5mm，⌀6 孔' },
+    { label: '盒子/外壳', prompt: '80×60×30 外壳，壁厚 2mm，圆角 3mm' },
+    { label: '齿轮', prompt: '直齿轮，24 齿，厚 10mm，⌀8 轴孔' },
+    { label: '法兰', prompt: '法兰，外径⌀80，孔⌀30，厚 8mm，PCD 60 上 6 个⌀8 螺栓' },
+    { label: '杯子', prompt: '杯子，⌀50，高 80mm，壁厚 2mm' },
+    { label: '支柱', prompt: '支柱，高 15，外径⌀8，孔⌀3.2' },
+  ],
+  es: [
+    { label: 'Soporte', prompt: 'Soporte en L, patas de 60 mm, ancho 30 mm, grosor 5 mm, agujeros ⌀6' },
+    { label: 'Caja/carcasa', prompt: 'Carcasa 80×60×30, paredes de 2 mm, esquinas redondeadas 3 mm' },
+    { label: 'Engranaje', prompt: 'Engranaje recto, 24 dientes, grosor 10 mm, taladro ⌀8' },
+    { label: 'Brida', prompt: 'Brida, exterior ⌀80, taladro ⌀30, grosor 8 mm, 6 pernos ⌀8 en PCD 60' },
+    { label: 'Vaso', prompt: 'Vaso, ⌀50, altura 80 mm, paredes de 2 mm' },
+    { label: 'Separador', prompt: 'Separador, altura 15, exterior ⌀8, taladro ⌀3,2' },
+  ],
+  ar: [
+    { label: 'حامل L', prompt: 'حامل L، ساقان 60 مم، عرض 30 مم، سماكة 5 مم، ثقوب ⌀6' },
+    { label: 'صندوق/غلاف', prompt: 'غلاف 80×60×30، جدران 2 مم، زوايا مستديرة 3 مم' },
+    { label: 'ترس', prompt: 'ترس مستقيم، 24 سنًا، سماكة 10 مم، تجويف ⌀8' },
+    { label: 'شفة', prompt: 'شفة، قطر خارجي ⌀80، تجويف ⌀30، سماكة 8 مم، 6 مسامير ⌀8 على PCD 60' },
+    { label: 'كوب', prompt: 'كوب، ⌀50، ارتفاع 80 مم، جدران 2 مم' },
+    { label: 'مباعد', prompt: 'مباعد، ارتفاع 15، قطر خارجي ⌀8، تجويف ⌀3.2' },
+  ],
+};
+
 export default function FloatingAiPrompt({
   lang, onSubmit, onImageGenerate, onOpenFullChat, disabled = false, onUndo,
 }: FloatingAiPromptProps) {
@@ -121,9 +270,14 @@ export default function FloatingAiPrompt({
   const [image, setImage] = useState<string | null>(null); // data URL of an attached photo
   const inputRef = useRef<HTMLInputElement | null>(null);
 
-  const ko = lang === 'ko' || lang === 'kr';
-  // ⚠ 260802: 2분기라 ja·zh·es·ar 이 영어로 떨어졌다.
-  const t = COPY[toIsoLang(lang)] ?? COPY.en;
+  const locale = toIsoLang(lang);
+  const rtl = langDir(lang) === 'rtl';
+  // Keep every visible secondary label on the same six-locale path as the
+  // primary prompt copy; this also handles legacy /ko and /zh route values.
+  const t = COPY[locale] ?? COPY.en;
+  const detail = Object.fromEntries(
+    Object.entries(DETAIL_COPY).map(([key, value]) => [key, loc(lang, value)]),
+  ) as Record<keyof typeof DETAIL_COPY, string>;
 
   // Restore last open state. On a FIRST visit (no stored preference) open it, so
   // new users meet the "just describe it" front door instead of the full ribbon.
@@ -166,7 +320,7 @@ export default function FloatingAiPrompt({
       setText('');
       setImage(null);
     } catch (err) {
-      setResponse((err as Error)?.message ?? 'Failed');
+      setResponse((err as Error)?.message ?? detail.failed);
     } finally {
       setStreaming(false);
     }
@@ -174,7 +328,7 @@ export default function FloatingAiPrompt({
 
   const onPickImage = (file: File | undefined) => {
     if (!file || !file.type.startsWith('image/')) return;
-    if (file.size > 8 * 1024 * 1024) { setResponse(lang === 'ko' ? '이미지가 너무 커요 (최대 8MB)' : 'Image too large (max 8MB)'); return; }
+    if (file.size > 8 * 1024 * 1024) { setResponse(detail.imageTooLarge); return; }
     const r = new FileReader();
     r.onload = () => { if (typeof r.result === 'string') setImage(r.result); };
     r.readAsDataURL(file);
@@ -184,12 +338,14 @@ export default function FloatingAiPrompt({
     return (
       <button
         type="button"
+        dir={rtl ? 'rtl' : 'ltr'}
         onClick={() => { setOpen(true); setTimeout(() => inputRef.current?.focus(), 50); }}
         aria-label={t.pill}
         style={{
           position: 'fixed',
           bottom: 28,
-          right: 28,
+          insetInlineEnd: 28,
+          direction: rtl ? 'rtl' : 'ltr',
           zIndex: 850,
           background: 'linear-gradient(135deg, #8b5cf6, #3b82f6)',
           color: 'white',
@@ -224,11 +380,13 @@ export default function FloatingAiPrompt({
   return (
     <div
       role="dialog"
+      dir={rtl ? 'rtl' : 'ltr'}
       aria-label={t.pill}
       style={{
         position: 'fixed',
         bottom: 24,
-        right: 24,
+        insetInlineEnd: 24,
+        direction: rtl ? 'rtl' : 'ltr',
         zIndex: 850,
         width: 'min(440px, calc(100vw - 48px))',
         background: 'var(--nx-panel)',
@@ -243,25 +401,28 @@ export default function FloatingAiPrompt({
       {image && (
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
           { }
-          <img src={image} alt="attached" style={{ height: 40, width: 40, objectFit: 'cover', borderRadius: 6, border: '1px solid var(--nx-border)' }} />
-          <span style={{ fontSize: 11, color: 'var(--nx-text-2)', flex: 1 }}>{ko ? '사진 첨부됨 — 보내면 사진에서 모델을 만듭니다' : 'Photo attached — send to build a model from it'}</span>
-          <button type="button" onClick={() => setImage(null)} style={{ background: 'none', border: 'none', color: 'var(--nx-text-2)', cursor: 'pointer', fontSize: 14 }}>✕</button>
+          <img src={image} alt={detail.imageAttached} style={{ height: 40, width: 40, objectFit: 'cover', borderRadius: 6, border: '1px solid var(--nx-border)' }} />
+          <span style={{ fontSize: 11, color: 'var(--nx-text-2)', flex: 1 }}>{detail.imageAttached}</span>
+          <button type="button" aria-label={detail.removeImage} onClick={() => setImage(null)} style={{ background: 'none', border: 'none', color: 'var(--nx-text-2)', cursor: 'pointer', fontSize: 14 }}>✕</button>
         </div>
       )}
       <div style={{ display: 'flex', gap: 8 }}>
         {onImageGenerate && (
-          <label title={ko ? '사진 첨부' : 'Attach photo'} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 38, background: 'var(--nx-panel-2)', border: '1px solid var(--nx-border)', borderRadius: 8, cursor: streaming || disabled ? 'default' : 'pointer', fontSize: 16, flexShrink: 0 }}>
-            <input type="file" accept="image/*" style={{ display: 'none' }} disabled={streaming || disabled} onChange={e => { onPickImage(e.target.files?.[0]); e.currentTarget.value = ''; }} />
+          <label htmlFor="floating-ai-image-input" title={detail.attachPhoto} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 38, background: 'var(--nx-panel-2)', border: '1px solid var(--nx-border)', borderRadius: 8, cursor: streaming || disabled ? 'default' : 'pointer', fontSize: 16, flexShrink: 0 }}>
+            <input id="floating-ai-image-input" name="floatingAiImage" aria-label={detail.imageInputLabel} type="file" accept="image/*" style={{ display: 'none' }} disabled={streaming || disabled} onChange={e => { onPickImage(e.target.files?.[0]); e.currentTarget.value = ''; }} />
             📎
           </label>
         )}
         <input
           ref={inputRef}
+          id="floating-ai-prompt-input"
+          name="floatingAiPrompt"
+          aria-label={detail.promptLabel}
           type="text"
           value={text}
           onChange={e => setText(e.target.value)}
           onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) handleSubmit(); }}
-          placeholder={image ? (ko ? '사진 설명(선택) — 그냥 보내도 됩니다' : 'Describe the photo (optional) — or just send') : t.placeholder}
+          placeholder={image ? detail.photoPrompt : t.placeholder}
           disabled={streaming || disabled}
           style={{
             flex: 1,
@@ -293,26 +454,53 @@ export default function FloatingAiPrompt({
         </button>
       </div>
 
+      {onUndo && !streaming && !response && (
+        <div style={{
+          marginTop: 8, padding: '7px 9px', borderRadius: 7,
+          border: '1px solid var(--nx-border)', background: 'var(--nx-panel-2)',
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8,
+          fontSize: 11, color: 'var(--nx-text-2)',
+        }}>
+          <span>{detail.undoHint}</span>
+          <button
+            type="button"
+            onClick={async () => {
+              await onUndo();
+              setResponse(detail.undoDone);
+            }}
+            style={{
+              flexShrink: 0, background: 'transparent', border: '1px solid var(--nx-border)',
+              borderRadius: 6, padding: '5px 9px', color: 'var(--nx-text)', cursor: 'pointer',
+            }}
+          >
+            ↶ {detail.undoAction}
+          </button>
+        </div>
+      )}
+
       {!streaming && !response && (
         <div style={{ marginTop: 8 }}>
           <div style={{ fontSize: 10, color: 'var(--nx-text-2)', marginBottom: 5 }}>
-            {ko ? '예시로 시작 (눌러서 채우고 수정):' : 'Start from a template (click to fill, then edit):'}
+            {detail.templatesHint}
           </div>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-            {TEMPLATES.map(tpl => (
+            {TEMPLATES.map((tpl, index) => {
+              const template = (TEMPLATE_COPY[locale] ?? TEMPLATE_COPY.en)[index]!;
+              return (
               <button
                 key={tpl.en}
                 type="button"
-                onClick={() => { setText(ko ? tpl.promptKo : tpl.promptEn); setTimeout(() => inputRef.current?.focus(), 0); }}
+                onClick={() => { setText(template.prompt); setTimeout(() => inputRef.current?.focus(), 0); }}
                 style={{
                   background: 'var(--nx-panel-2)', border: '1px solid var(--nx-border)',
                   borderRadius: 999, padding: '4px 10px', fontSize: 11,
                   color: 'var(--nx-text)', cursor: 'pointer', whiteSpace: 'nowrap',
                 }}
               >
-                {tpl.icon} {ko ? tpl.ko : tpl.en}
+                {tpl.icon} {template.label}
               </button>
-            ))}
+              );
+            })}
           </div>
         </div>
       )}
@@ -338,14 +526,14 @@ export default function FloatingAiPrompt({
               type="button"
               onClick={async () => {
                 await onUndo();
-                setResponse(ko ? 'AI 변경을 되돌렸습니다.' : 'The AI edit was undone.');
+                setResponse(detail.undoDone);
               }}
               style={{
                 marginTop: 8, background: 'transparent', border: '1px solid var(--nx-border)',
                 borderRadius: 6, padding: '5px 9px', color: 'var(--nx-text)', cursor: 'pointer',
               }}
             >
-              ↶ {ko ? 'AI 변경 되돌리기' : 'Undo AI edit'}
+              ↶ {detail.undoAction}
             </button>
           )}
         </div>

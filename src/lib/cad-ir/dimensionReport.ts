@@ -23,6 +23,7 @@
  * 건너뛴 검사를 「이상 없음」으로 읽히게 두면, 이 저장소가 반복해 온 그 착각이 그대로 재현된다.
  */
 import type { GateCheck } from './gate';
+import { loc } from '@/lib/i18n/loc';
 
 export type DimVerdict = 'ok' | 'failed' | 'unchecked';
 
@@ -57,6 +58,27 @@ const LABEL_EN: Record<string, string> = {
   body_count: 'Separate bodies', render: 'Geometry measurement',
   volume_fill_plausible_weak: 'Volume fill ratio', evidence_sufficient: 'Evidence sufficiency',
 };
+const LABEL_JA: Record<string, string> = {
+  bbox_x: 'X軸長', bbox_y: 'Y軸長', bbox_z: 'Z軸長', bbox_sorted: '3軸長（向きに依存しない）',
+  volume: '体積', watertight: '水密ソリッド', genus: '貫通穴', genus_max: '貫通穴上限', body_count: '分離ボディ', render: '形状測定',
+  volume_fill_plausible_weak: '体積充填率', evidence_sufficient: '根拠の十分性',
+};
+const LABEL_ZH: Record<string, string> = {
+  bbox_x: 'X 轴长度', bbox_y: 'Y 轴长度', bbox_z: 'Z 轴长度', bbox_sorted: '三轴长度（不考虑方向）',
+  volume: '体积', watertight: '水密实体', genus: '贯穿孔', genus_max: '贯穿孔上限', body_count: '独立实体', render: '几何测量',
+  volume_fill_plausible_weak: '体积填充率', evidence_sufficient: '证据充分性',
+};
+const LABEL_ES: Record<string, string> = {
+  bbox_x: 'Longitud X', bbox_y: 'Longitud Y', bbox_z: 'Longitud Z', bbox_sorted: 'Longitudes de 3 ejes (sin orientación)',
+  volume: 'Volumen', watertight: 'Sólido estanco', genus: 'Agujeros pasantes', genus_max: 'Límite de agujeros', body_count: 'Cuerpos separados', render: 'Medición geométrica',
+  volume_fill_plausible_weak: 'Proporción de relleno de volumen', evidence_sufficient: 'Suficiencia de evidencia',
+};
+const LABEL_AR: Record<string, string> = {
+  bbox_x: 'طول X', bbox_y: 'طول Y', bbox_z: 'طول Z', bbox_sorted: 'أطوال المحاور الثلاثة (بلا اتجاه)',
+  volume: 'الحجم', watertight: 'جسم محكم', genus: 'ثقوب نافذة', genus_max: 'حد الثقوب النافذة', body_count: 'أجسام منفصلة', render: 'قياس الشكل',
+  volume_fill_plausible_weak: 'نسبة ملء الحجم', evidence_sufficient: 'كفاية الأدلة',
+};
+const LABELS_BY_LANG = { ko: LABEL_KO, en: LABEL_EN, ja: LABEL_JA, zh: LABEL_ZH, es: LABEL_ES, ar: LABEL_AR } as const;
 
 /** 숫자를 사람이 읽는 자리수로. 지어낸 정밀도를 붙이지 않는다. */
 function num(v: unknown): string | null {
@@ -76,7 +98,7 @@ const withUnit = (s: string | null, unit: string | null): string | null =>
   s === null ? null : unit ? `${s}${unit}` : s;
 
 export interface DimReportOptions {
-  lang?: 'ko' | 'en';
+  lang?: 'ko' | 'en' | 'ja' | 'zh' | 'es' | 'ar';
   /**
    * 길이 단위(예 `'mm'`). **단위를 모르면 넘기지 않는다** — 넘기지 않으면 숫자만 나간다.
    * ⚠ 기본값을 `'mm'` 로 두지 않는 이유: 기본값은 곧 「모를 때도 mm 라고 쓴다」가 된다.
@@ -94,8 +116,7 @@ export function dimensionSentences(checks: readonly GateCheck[] | null | undefin
   if (!Array.isArray(checks)) return [];
   const lang = opts.lang ?? 'ko';
   const unit = opts.unit ?? null;
-  const ko = lang === 'ko';
-  const labels = ko ? LABEL_KO : LABEL_EN;
+  const labels = LABELS_BY_LANG[lang];
   const out: DimSentence[] = [];
 
   for (const c of checks) {
@@ -103,14 +124,14 @@ export function dimensionSentences(checks: readonly GateCheck[] | null | undefin
     const advisory = c.advisory === true;
     if (advisory && opts.includeAdvisory === false) continue;
     const label = labels[c.name] ?? c.name;
-    const tag = advisory ? (ko ? ' (참고)' : ' (advisory)') : '';
+    const tag = advisory ? loc(lang, { ko: ' (참고)', en: ' (advisory)', ja: '（参考）', zh: '（参考）', es: ' (referencia)', ar: ' (مرجعي)' }) : '';
 
     // ① 수행하지 않은 검사 — ✓ 도 ✗ 도 붙이지 않는다
     if (c.passed === null || c.status === 'skipped' || c.status === 'error') {
-      const why = c.reason || c.note || (ko ? '사유 기록 없음' : 'no reason recorded');
+      const why = c.reason || c.note || loc(lang, { ko: '사유 기록 없음', en: 'no reason recorded', ja: '理由の記録なし', zh: '未记录原因', es: 'sin motivo registrado', ar: 'لا يوجد سبب مسجل' });
       out.push({
         name: c.name, verdict: 'unchecked', advisory,
-        text: ko ? `${label}${tag}: 검사 안 함 — ${why}` : `${label}${tag}: not checked — ${why}`,
+        text: `${label}${tag}: ${loc(lang, { ko: `검사 안 함 — ${why}`, en: `not checked — ${why}`, ja: `未検査 — ${why}`, zh: `未检查 — ${why}`, es: `no comprobado — ${why}`, ar: `لم يُفحص — ${why}` })}`,
       });
       continue;
     }
@@ -124,22 +145,20 @@ export function dimensionSentences(checks: readonly GateCheck[] | null | undefin
     if (exp === null || act === null) {
       const mark = c.passed ? '✓' : '✗';
       const body = exp !== null && act === null
-        ? (ko ? `요청 ${exp} → 측정 못 함` : `requested ${exp} → not measured`)
+        ? loc(lang, { ko: `요청 ${exp} → 측정 못 함`, en: `requested ${exp} → not measured`, ja: `要求 ${exp} → 未測定`, zh: `请求 ${exp} → 未测量`, es: `solicitado ${exp} → no medido`, ar: `المطلوب ${exp} ← لم يُقَس` })
         : act !== null
-          ? (ko ? `측정 ${act}` : `measured ${act}`)
-          : (ko ? '비교값 없음' : 'no comparable value');
+          ? loc(lang, { ko: `측정 ${act}`, en: `measured ${act}`, ja: `測定値 ${act}`, zh: `测量值 ${act}`, es: `medido ${act}`, ar: `المقاس ${act}` })
+          : loc(lang, { ko: '비교값 없음', en: 'no comparable value', ja: '比較値なし', zh: '无可比值', es: 'sin valor comparable', ar: 'لا توجد قيمة قابلة للمقارنة' });
       out.push({ name: c.name, verdict: c.passed ? 'ok' : 'failed', advisory, text: `${label}${tag}: ${body} ${mark}` });
       continue;
     }
 
-    const diff = d === null ? '' : ko ? ` (${d}% 차이` : ` (${d}% off`;
-    const tolPart = d === null ? '' : tol !== null && !c.passed ? (ko ? `, 허용 ${tol}%)` : `, tolerance ${tol}%)`) : ')';
+    const diff = d === null ? '' : loc(lang, { ko: ` (${d}% 차이`, en: ` (${d}% off`, ja: ` (${d}%差`, zh: `（相差 ${d}%`, es: ` (${d}% de diferencia`, ar: ` (فرق ${d}%` });
+    const tolPart = d === null ? '' : tol !== null && !c.passed ? loc(lang, { ko: `, 허용 ${tol}%)`, en: `, tolerance ${tol}%)`, ja: `、許容 ${tol}%)`, zh: `，容差 ${tol}%）`, es: `, tolerancia ${tol}%)`, ar: `، سماحية ${tol}%)` }) : ')';
     const mark = c.passed ? '✓' : '✗';
     out.push({
       name: c.name, verdict: c.passed ? 'ok' : 'failed', advisory,
-      text: ko
-        ? `${label}${tag}: 요청 ${exp} → 실제 ${act}${diff}${tolPart} ${mark}`
-        : `${label}${tag}: requested ${exp} → actual ${act}${diff}${tolPart} ${mark}`,
+      text: `${label}${tag}: ${loc(lang, { ko: `요청 ${exp} → 실제 ${act}${diff}${tolPart} ${mark}`, en: `requested ${exp} → actual ${act}${diff}${tolPart} ${mark}`, ja: `要求 ${exp} → 実測 ${act}${diff}${tolPart} ${mark}`, zh: `请求 ${exp} → 实际 ${act}${diff}${tolPart} ${mark}`, es: `solicitado ${exp} → real ${act}${diff}${tolPart} ${mark}`, ar: `المطلوب ${exp} → الفعلي ${act}${diff}${tolPart} ${mark}` })}`,
     });
   }
 
@@ -153,17 +172,17 @@ export function dimensionSentences(checks: readonly GateCheck[] | null | undefin
  * ⚠ **미검사를 통과 수에 넣지 않는다.** 「8개 중 8개 통과」로 적으면서 그중 3개를 안 쟀다면
  *   그건 통계가 아니라 거짓말이다. 세 수를 따로 적는다.
  */
-export function dimensionSummary(sentences: readonly DimSentence[], lang: 'ko' | 'en' = 'ko'): string {
+export function dimensionSummary(sentences: readonly DimSentence[], lang: DimReportOptions['lang'] = 'ko'): string {
   const ok = sentences.filter((s) => s.verdict === 'ok').length;
   const bad = sentences.filter((s) => s.verdict === 'failed').length;
   const un = sentences.filter((s) => s.verdict === 'unchecked').length;
-  if (!sentences.length) return lang === 'ko' ? '치수 대조를 수행하지 않았습니다.' : 'No dimension comparison was performed.';
-  if (lang === 'en') {
-    const head = bad ? `${bad} dimension(s) off` : un && !ok ? 'nothing verified' : 'all checked dimensions match';
-    return `${head} · ${ok} ok / ${bad} off / ${un} not checked`;
-  }
-  const head = bad ? `치수 ${bad}개가 요청과 다릅니다`
-    : un && !ok ? '확인된 치수가 없습니다'
-      : '검사한 치수는 모두 요청과 일치합니다';
-  return `${head} · 일치 ${ok} / 불일치 ${bad} / 미검사 ${un}`;
+  const language = lang ?? 'ko';
+  if (!sentences.length) return loc(language, { ko: '치수 대조를 수행하지 않았습니다.', en: 'No dimension comparison was performed.', ja: '寸法比較は実行されませんでした。', zh: '未执行尺寸比较。', es: 'No se realizó ninguna comparación de dimensiones.', ar: 'لم تتم مقارنة أي أبعاد.' });
+  const head = bad
+    ? loc(language, { ko: `치수 ${bad}개가 요청과 다릅니다`, en: `${bad} dimension(s) off`, ja: `${bad}個の寸法が不一致`, zh: `${bad} 个尺寸不一致`, es: `${bad} dimensión(es) no coinciden`, ar: `${bad} من الأبعاد غير مطابقة` })
+    : un && !ok
+      ? loc(language, { ko: '확인된 치수가 없습니다', en: 'nothing verified', ja: '確認された寸法はありません', zh: '没有已验证的尺寸', es: 'no se verificó ninguna dimensión', ar: 'لم يتم التحقق من أي أبعاد' })
+      : loc(language, { ko: '검사한 치수는 모두 요청과 일치합니다', en: 'all checked dimensions match', ja: '確認した寸法はすべて一致', zh: '所有已检查尺寸均匹配', es: 'todas las dimensiones comprobadas coinciden', ar: 'جميع الأبعاد المفحوصة مطابقة' });
+  const counts = loc(language, { ko: `일치 ${ok} / 불일치 ${bad} / 미검사 ${un}`, en: `${ok} ok / ${bad} off / ${un} not checked`, ja: `一致 ${ok} / 不一致 ${bad} / 未検査 ${un}`, zh: `匹配 ${ok} / 不匹配 ${bad} / 未检查 ${un}`, es: `${ok} correctas / ${bad} no coinciden / ${un} sin comprobar`, ar: `مطابق ${ok} / غير مطابق ${bad} / لم يُفحص ${un}` });
+  return `${head} · ${counts}`;
 }

@@ -49,6 +49,8 @@ export interface FeatureTreeExactCadEvidence {
   stepRoundTripVolumeRelError: number;
   stepRoundTripFreeBoundaryEdgeCount: 0;
   stepRoundTripNonManifoldEdgeCount: 0;
+  /** Exact kernel-provided face names used as the persisted topology history. */
+  topologyRefs: string[];
 }
 
 export interface CollisionGeometryOptions {
@@ -221,6 +223,9 @@ async function collisionGeometryFromOcct(
       [Math.max(...xs), Math.max(...ys), Math.max(...zs)],
     ];
     const bodyId = plan.finalResultId;
+    const topologyRefs = bridge.listFaceRefs
+      ? [...new Set((await bridge.listFaceRefs(executed.finalShape)).filter((ref) => typeof ref === 'string' && ref.length > 0))].sort()
+      : [];
     const seed = fallbackPart.bodies[0]?.feature ?? dummyFeature();
     const part: PlanPart = { partId, name: partId, bodies: [{ bodyId, feature: seed }] };
     const geometry: PartGeometry = {
@@ -251,6 +256,7 @@ async function collisionGeometryFromOcct(
       stepRoundTripVolumeRelError: roundTripVolumeRelError,
       stepRoundTripFreeBoundaryEdgeCount: 0,
       stepRoundTripNonManifoldEdgeCount: 0,
+      topologyRefs,
     };
     return { part, geometry, source: 'occt-exact', available: true, exactCad };
   } catch (error) {

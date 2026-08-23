@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import { toIsoLang, type IsoLang } from '@/lib/i18n/normalize';
 
 interface Notification {
   id: string;
@@ -11,6 +12,15 @@ interface Notification {
   createdAt: string;
   read: boolean;
 }
+
+const COPY: Record<IsoLang, { label: string; markAll: string; clearAll: string; empty: string; hint: string; delete: string; refresh: string; now: string; minute: string; hour: string; day: string; locale: string }> = {
+  ko: { label: '알림', markAll: '모두 읽음', clearAll: '모두 삭제', empty: '알림이 없습니다', hint: '새 알림이 오면 여기에 표시됩니다', delete: '삭제', refresh: '새로고침', now: '방금 전', minute: '분 전', hour: '시간 전', day: '일 전', locale: 'ko-KR' },
+  en: { label: 'Notifications', markAll: 'Mark all read', clearAll: 'Delete all', empty: 'No notifications', hint: 'New notifications will appear here', delete: 'Delete', refresh: 'Refresh', now: 'Just now', minute: 'm ago', hour: 'h ago', day: 'd ago', locale: 'en-US' },
+  ja: { label: '通知', markAll: 'すべて既読', clearAll: 'すべて削除', empty: '通知はありません', hint: '新しい通知はここに表示されます', delete: '削除', refresh: '更新', now: 'たった今', minute: '分前', hour: '時間前', day: '日前', locale: 'ja-JP' },
+  zh: { label: '通知', markAll: '全部标为已读', clearAll: '全部删除', empty: '暂无通知', hint: '新通知会显示在这里', delete: '删除', refresh: '刷新', now: '刚刚', minute: '分钟前', hour: '小时前', day: '天前', locale: 'zh-CN' },
+  es: { label: 'Notificaciones', markAll: 'Marcar todo leído', clearAll: 'Eliminar todo', empty: 'No hay notificaciones', hint: 'Las nuevas notificaciones aparecerán aquí', delete: 'Eliminar', refresh: 'Actualizar', now: 'Ahora', minute: ' min', hour: ' h', day: ' d', locale: 'es-ES' },
+  ar: { label: 'الإشعارات', markAll: 'تحديد الكل كمقروء', clearAll: 'حذف الكل', empty: 'لا توجد إشعارات', hint: 'ستظهر الإشعارات الجديدة هنا', delete: 'حذف', refresh: 'تحديث', now: 'الآن', minute: ' د مضت', hour: ' س مضت', day: ' يوم مضى', locale: 'ar-SA' },
+};
 
 const TYPE_ICON: Record<string, string> = {
   contract_status: '📋',
@@ -25,17 +35,20 @@ const TYPE_ICON: Record<string, string> = {
   milestone_due: '🏁',
 };
 
-function timeAgo(iso: string): string {
+function timeAgo(iso: string, copy: typeof COPY[IsoLang]): string {
   const diff = Date.now() - new Date(iso).getTime();
   const m = Math.floor(diff / 60000);
-  if (m < 1) return '방금 전';
-  if (m < 60) return `${m}분 전`;
+  if (m < 1) return copy.now;
+  if (m < 60) return `${m}${copy.minute}`;
   const h = Math.floor(m / 60);
-  if (h < 24) return `${h}시간 전`;
-  return `${Math.floor(h / 24)}일 전`;
+  if (h < 24) return `${h}${copy.hour}`;
+  const d = Math.floor(h / 24);
+  if (d < 7) return `${d}${copy.day}`;
+  return new Date(iso).toLocaleDateString(copy.locale, { month: 'short', day: 'numeric' });
 }
 
-export default function PartnerNotificationBell({ session }: { session: string }) {
+export default function PartnerNotificationBell({ session, lang = 'ko' }: { session: string; lang?: string }) {
+  const copy = COPY[toIsoLang(lang)];
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -123,7 +136,7 @@ export default function PartnerNotificationBell({ session }: { session: string }
             </span>
           )}
         </span>
-        <span>알림</span>
+        <span>{copy.label}</span>
         {unread > 0 && (
           <span className="ml-auto text-xs font-bold text-red-500">{unread}</span>
         )}
@@ -138,7 +151,7 @@ export default function PartnerNotificationBell({ session }: { session: string }
           >
             <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between shrink-0">
               <div className="flex items-center gap-2">
-                <span className="font-black text-gray-900">알림</span>
+                <span className="font-black text-gray-900">{copy.label}</span>
                 {unread > 0 && (
                   <span className="px-2 py-0.5 bg-red-500 text-white text-xs font-bold rounded-full">{unread}</span>
                 )}
@@ -146,12 +159,12 @@ export default function PartnerNotificationBell({ session }: { session: string }
               <div className="flex items-center gap-2">
                 {unread > 0 && (
                   <button onClick={markAllRead} disabled={loading} className="text-xs text-blue-600 hover:underline font-semibold disabled:opacity-50">
-                    모두 읽음
+                    {copy.markAll}
                   </button>
                 )}
                 {notifications.length > 0 && (
                   <button onClick={clearAll} disabled={loading} className="text-xs text-gray-400 hover:text-red-500 hover:underline disabled:opacity-50">
-                    모두 삭제
+                    {copy.clearAll}
                   </button>
                 )}
                 <button onClick={() => setOpen(false)} className="p-1 rounded-lg hover:bg-gray-100 text-gray-400 text-lg leading-none">✕</button>
@@ -162,8 +175,8 @@ export default function PartnerNotificationBell({ session }: { session: string }
               {notifications.length === 0 ? (
                 <div className="flex flex-col items-center justify-center h-full text-center px-6 py-16">
                   <div className="text-5xl mb-4">🔔</div>
-                  <p className="text-sm font-semibold text-gray-500">알림이 없습니다</p>
-                  <p className="text-xs text-gray-400 mt-1">새 알림이 오면 여기에 표시됩니다</p>
+                  <p className="text-sm font-semibold text-gray-500">{copy.empty}</p>
+                  <p className="text-xs text-gray-400 mt-1">{copy.hint}</p>
                 </div>
               ) : (
                 notifications.map(n => (
@@ -181,12 +194,12 @@ export default function PartnerNotificationBell({ session }: { session: string }
                         {!n.read && <span className="shrink-0 w-2 h-2 bg-blue-500 rounded-full mt-1.5" />}
                       </div>
                       <p className="text-xs text-gray-500 mt-0.5 line-clamp-2">{n.message}</p>
-                      <p className="text-[10px] text-gray-400 mt-1.5">{timeAgo(n.createdAt)}</p>
+                      <p className="text-[10px] text-gray-400 mt-1.5">{timeAgo(n.createdAt, copy)}</p>
                     </div>
                     <button
                       onClick={(e) => deleteOne(n.id, e)}
                       className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 p-1 rounded text-gray-300 hover:text-red-400 hover:bg-red-50 transition-all text-xs"
-                      title="삭제"
+                      title={copy.delete}
                     >
                       ✕
                     </button>
@@ -197,7 +210,7 @@ export default function PartnerNotificationBell({ session }: { session: string }
 
             <div className="px-5 py-3 border-t border-gray-100 shrink-0">
               <button onClick={() => { setOpen(false); fetchNotifications(); }} className="w-full py-2 text-xs font-semibold text-gray-500 hover:bg-gray-50 rounded-lg transition">
-                새로고침
+                {copy.refresh}
               </button>
             </div>
           </div>

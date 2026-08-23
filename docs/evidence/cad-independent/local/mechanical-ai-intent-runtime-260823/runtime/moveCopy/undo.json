@@ -1,0 +1,41 @@
+{
+  "schema": "nexyfab.mechanical-core-feature-local-runtime.v1",
+  "feature": "moveCopy",
+  "axis": "undo",
+  "status": "PASS",
+  "executedAt": "2026-08-23T06:51:51.379Z",
+  "restoredPayload": {
+    "id": "runtime-feature",
+    "enabled": true,
+    "type": "moveCopy",
+    "params": {
+      "offsetX": 15,
+      "offsetY": 0,
+      "offsetZ": 0,
+      "operation": 1
+    }
+  },
+  "restoredExact": {
+    "handle": "occt:143",
+    "kernelKind": "Solid",
+    "nativeShapeType": 0,
+    "solidCount": 1,
+    "singleSolid": true,
+    "volumeMm3": 55200,
+    "edgeCount": 12,
+    "faceCount": 6,
+    "boundsMm": [
+      [
+        -50.0000001,
+        -4.000000100000004,
+        -30.000000100000005
+      ],
+      [
+        65.00000010000001,
+        4.000000100000004,
+        30.000000100000005
+      ]
+    ]
+  },
+  "futureDepth": 1
+}

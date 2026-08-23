@@ -3,8 +3,11 @@ import { getDbAdapter, toBool } from '@/lib/db-adapter';
 import { signJWT } from '@/lib/jwt';
 import { createHash, randomBytes } from 'crypto';
 import { SERVICE_NAME } from '@/lib/service-config';
-import { accessTokenCookie, refreshTokenCookie } from '@/lib/cookie-config';
+import { accessTokenCookie, browserSessionCookie, clearAuthCookies, refreshTokenCookie } from '@/lib/cookie-config';
 import { parseUserStageColumn } from '@/lib/stage-engine';
+import { boundedJsonError, readBoundedJson } from '@/lib/boundedJsonBody';
+
+const MAX_REFRESH_BODY_BYTES = 16 * 1024;
 
 export const dynamic = 'force-dynamic';
 
@@ -12,7 +15,17 @@ const REFRESH_TOKEN_TTL = 30 * 24 * 3600 * 1000; // 30일 (ms)
 
 export async function POST(req: NextRequest) {
   try {
-    const body = await req.json() as { refreshToken?: string };
+    if (req.cookies.get('nf_refresh_token')?.value && req.cookies.get('nf_browser_session')?.value !== 'v1') {
+      const response = NextResponse.json({ error: 'Browser session expired' }, { status: 401 });
+      clearAuthCookies(response);
+      return response;
+    }
+    let body: { refreshToken?: string };
+    try { body = await readBoundedJson(req, MAX_REFRESH_BODY_BYTES); }
+    catch (error) {
+      if (boundedJsonError(error)?.code === 'PAYLOAD_TOO_LARGE') return NextResponse.json({ error: 'Request too large', code: 'PAYLOAD_TOO_LARGE' }, { status: 413 });
+      throw error;
+    }
     // body 우선, 없으면 쿠키에서 읽기
     const rawToken = body.refreshToken
       || req.cookies.get('nf_refresh_token')?.value;
@@ -97,6 +110,8 @@ export async function POST(req: NextRequest) {
     response.cookies.set(rc.name, rc.value, rc.options);
     const ac = accessTokenCookie(accessToken);
     response.cookies.set(ac.name, ac.value, ac.options);
+    const bs = browserSessionCookie();
+    response.cookies.set(bs.name, bs.value, bs.options);
 
     return response;
   } catch (err) {

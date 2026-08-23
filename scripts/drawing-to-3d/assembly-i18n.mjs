@@ -23,6 +23,7 @@ export const LANGS = ['ko', 'en', 'zh', 'ja', 'es', 'ar'];
  * ⚠ `en` 은 `domain-assemblies.mjs` 의 `labelEn` 과 **같아야 한다**. 커버리지 테스트가 대조한다.
  */
 export const TEMPLATE_LABELS = {
+  '축류 터보제트 개념 조립체 (블레이드·환형 연소기·유로)': { en: 'Axial turbojet concept assembly (blades, annular combustor & flow path)', zh: '轴流涡轮喷气概念组件（叶片、环形燃烧室与流道）', ja: '軸流ターボジェット概念アセンブリ（ブレード・環状燃焼器・流路）', es: 'Conjunto conceptual de turborreactor axial (álabes, cámara anular y flujo)', ar: 'تجميعة توربوجيت محورية مفاهيمية (ريش، غرفة احتراق حلقية ومسار تدفق)' },
   '데스크 거치대 (노트북·모니터, 높이·각도 조절)': { en: 'Desk stand (laptop/monitor, height & tilt)', zh: '桌面支架（笔记本/显示器，高度·角度可调）', ja: 'デスクスタンド（ノートPC・モニター、高さ/角度調節）', es: 'Soporte de escritorio (portátil/monitor, altura e inclinación)', ar: 'حامل مكتبي (حاسوب محمول/شاشة، ارتفاع وميل قابلان للضبط)' },
   '옹벽 연장 구간': { en: 'Retaining wall run', zh: '挡土墙延长段', ja: '擁壁の延長区間', es: 'Tramo de muro de contención', ar: 'امتداد جدار استنادي' },
   '박스 암거 (RC 1련)': { en: 'RC box culvert (single cell)', zh: '钢筋混凝土箱涵（单孔）', ja: 'RCボックスカルバート（1連）', es: 'Alcantarilla de cajón de HA (una celda)', ar: 'عبّارة صندوقية خرسانية (خلية واحدة)' },
@@ -90,6 +91,13 @@ export const TEMPLATE_LABELS = {
  *   「다 했다」를 주장이 아니라 **측정**으로 만들기 위해서다.
  */
 export const PARAM_LABELS = {
+  '전체 길이': { en: 'Overall length', zh: '总长度', ja: '全長', es: 'Longitud total', ar: 'الطول الكلي' },
+  '팬 직경': { en: 'Fan diameter', zh: '风扇直径', ja: 'ファン直径', es: 'Diámetro del ventilador', ar: 'قطر المروحة' },
+  '케이싱 두께': { en: 'Casing thickness', zh: '机匣厚度', ja: 'ケーシング厚さ', es: 'Espesor de la carcasa', ar: 'سماكة الغلاف' },
+  '축류 압축기 단수': { en: 'Axial compressor stages', zh: '轴流压气机级数', ja: '軸流圧縮機段数', es: 'Etapas del compresor axial', ar: 'مراحل الضاغط المحوري' },
+  '압축기 단당 블레이드 수': { en: 'Compressor blades per stage', zh: '每级压气机叶片数', ja: '圧縮機の各段ブレード数', es: 'Álabes del compresor por etapa', ar: 'عدد ريش الضاغط لكل مرحلة' },
+  '터빈 단수': { en: 'Turbine stages', zh: '涡轮级数', ja: 'タービン段数', es: 'Etapas de la turbina', ar: 'مراحل التوربين' },
+  '터빈 단당 블레이드 수': { en: 'Turbine blades per stage', zh: '每级涡轮叶片数', ja: 'タービンの各段ブレード数', es: 'Álabes de la turbina por etapa', ar: 'عدد ريش التوربين لكل مرحلة' },
   '받침판 폭': { en: 'Plate width', zh: '承板宽度', ja: '受け板の幅', es: 'Ancho de la bandeja', ar: 'عرض اللوح' },
   '받침판 깊이': { en: 'Plate depth', zh: '承板深度', ja: '受け板の奥行', es: 'Profundidad de la bandeja', ar: 'عمق اللوح' },
   '받침판 두께': { en: 'Plate thickness', zh: '承板厚度', ja: '受け板の厚さ', es: 'Espesor de la bandeja', ar: 'سماكة اللوح' },

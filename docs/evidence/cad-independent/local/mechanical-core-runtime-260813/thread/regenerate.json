@@ -1,0 +1,89 @@
+{
+  "schema": "nexyfab.mechanical-core-feature-local-runtime.v1",
+  "feature": "thread",
+  "axis": "regenerate",
+  "status": "PASS",
+  "executedAt": "2026-08-22T07:13:30.564Z",
+  "initial": {
+    "handle": "occt:187",
+    "kernelKind": "Solid",
+    "nativeShapeType": 0,
+    "solidCount": 1,
+    "singleSolid": true,
+    "volumeMm3": 2364.8897842716124,
+    "edgeCount": 25,
+    "faceCount": 11,
+    "boundsMm": [
+      [
+        -10.027878607474912,
+        -4.027931747984248,
+        -10.027931747984248
+      ],
+      [
+        10.027879058040494,
+        4.027931747984248,
+        10.027931747984248
+      ]
+    ]
+  },
+  "edited": {
+    "handle": "occt:191",
+    "kernelKind": "Solid",
+    "nativeShapeType": 0,
+    "solidCount": 1,
+    "singleSolid": true,
+    "volumeMm3": 2401.5543099959173,
+    "edgeCount": 22,
+    "faceCount": 10,
+    "boundsMm": [
+      [
+        -10.027906417051486,
+        -4.027915510709715,
+        -10.027915510709715
+      ],
+      [
+        10.027877440406863,
+        4.027915510709715,
+        10.027915510709715
+      ]
+    ]
+  },
+  "repeated": {
+    "handle": "occt:195",
+    "kernelKind": "Solid",
+    "nativeShapeType": 0,
+    "solidCount": 1,
+    "singleSolid": true,
+    "volumeMm3": 2401.5543099959173,
+    "edgeCount": 22,
+    "faceCount": 10,
+    "boundsMm": [
+      [
+        -10.027906417051486,
+        -4.027915510709715,
+        -10.027915510709715
+      ],
+      [
+        10.027877440406863,
+        4.027915510709715,
+        10.027915510709715
+      ]
+    ]
+  },
+  "featureMeaning": {
+    "assertion": "actual product thread registry path subtracted an exact triangular helical cutter while retaining the cylindrical host envelope",
+    "pitchMm": 2.5,
+    "depthMm": 1,
+    "includedAngleDeg": 60,
+    "turns": 3,
+    "baselineVolumeMm3": 2513.2741228718346,
+    "removedVolumeMm3": 111.71981287591734,
+    "actualVolumeMm3": 2401.5543099959173,
+    "radialSpansMm": [
+      20.05578385745835,
+      20.05583102141943
+    ],
+    "axialSpanMm": 8.05583102141943
+  },
+  "assertion": "edited parameter changed the exact signature and a fresh native regeneration reproduced topology, bounds, and volume"
+}

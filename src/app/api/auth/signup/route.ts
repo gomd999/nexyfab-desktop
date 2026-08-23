@@ -8,10 +8,13 @@ import bcrypt from 'bcryptjs';
 import { createHash, randomBytes } from 'crypto';
 import { z } from 'zod';
 import { SERVICE_NAME } from '@/lib/service-config';
-import { accessTokenCookie, refreshTokenCookie } from '@/lib/cookie-config';
+import { accessTokenCookie, browserSessionCookie, refreshTokenCookie } from '@/lib/cookie-config';
 import { tryClaimDemoOnAuth } from '@/lib/demo-session';
 import { parseUserStageColumn } from '@/lib/stage-engine';
 import { getTrustedClientIp } from '@/lib/client-ip';
+import { boundedJsonError, readBoundedJson } from '@/lib/boundedJsonBody';
+
+const MAX_SIGNUP_BODY_BYTES = 32 * 1024;
 
 const AUTH_URL = process.env.NEXYSYS_AUTH_URL || '';
 const ALLOWED_LANGS = new Set(['ko', 'en', 'ja', 'zh', 'es', 'ar']);
@@ -38,11 +41,16 @@ export async function POST(req: NextRequest) {
     }, { status: 403 });
   }
 
-  const body = await req.json() as {
+  let body: {
     email?: string; password?: string; name?: string; language?: string;
     country?: string; timezone?: string; company?: string;
     utm?: { source?: string; medium?: string; campaign?: string; term?: string; content?: string };
   };
+  try { body = await readBoundedJson(req, MAX_SIGNUP_BODY_BYTES); }
+  catch (error) {
+    if (boundedJsonError(error)?.code === 'PAYLOAD_TOO_LARGE') return NextResponse.json({ error: 'Request too large', code: 'PAYLOAD_TOO_LARGE' }, { status: 413 });
+    throw error;
+  }
 
   if (!AUTH_URL) {
     const signupSchema = z.object({
@@ -139,6 +147,8 @@ export async function POST(req: NextRequest) {
       }, { status: 200 });
       const lac = accessTokenCookie(token);
       linkedResponse.cookies.set(lac.name, lac.value, lac.options);
+      const lbs = browserSessionCookie();
+      linkedResponse.cookies.set(lbs.name, lbs.value, lbs.options);
       // 데모 데이터 이관 — 쿠키가 있으면 기존 계정으로 합류시킨다.
       await tryClaimDemoOnAuth(req, linkedResponse, existingUser.id);
       return linkedResponse;
@@ -246,6 +256,8 @@ export async function POST(req: NextRequest) {
     response.cookies.set(src.name, src.value, src.options);
     const sac = accessTokenCookie(token);
     response.cookies.set(sac.name, sac.value, sac.options);
+    const sbs = browserSessionCookie();
+    response.cookies.set(sbs.name, sbs.value, sbs.options);
     // 데모 모드에서 진입한 사용자: nf_dfm_check / nf_rfqs / nf_funnel_event
     // 의 임시 데이터를 갓 만든 user_id 로 일괄 이관 (단일 트랜잭션).
     await tryClaimDemoOnAuth(req, response, id);

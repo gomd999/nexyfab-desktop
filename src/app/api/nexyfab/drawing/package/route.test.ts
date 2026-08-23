@@ -10,7 +10,9 @@
  */
 import { describe, it, expect, vi } from 'vitest';
 import JSZip from 'jszip';
+import { createHash } from 'node:crypto';
 import { heavyTestBudgetMs } from '@/test/heavyTestBudget';
+import { designRevisionSha256 } from '@/lib/designArtifactBinding';
 
 vi.mock('@/lib/rate-limit', () => ({ rateLimit: vi.fn(() => ({ allowed: true })) }));
 vi.mock('@/lib/client-ip', () => ({ getTrustedClientIp: vi.fn(() => '127.0.0.1') }));
@@ -21,6 +23,15 @@ type PkgResponse = {
   ok: boolean;
   error?: string;
   rev?: string;
+  revisionSha256?: string;
+  artifactManifestSha256?: string;
+  artifactManifest?: {
+    schema: string;
+    revisionId: string;
+    revisionSha256: string;
+    releaseStatus: string;
+    manufacturingAllowed: boolean;
+  };
   fileNames?: string[];
   files?: Array<{ name: string; content: string }>;
   zipBase64?: string | null;
@@ -85,7 +96,9 @@ describe('POST /api/nexyfab/drawing/package — 입력 검증', () => {
 
 describe('POST /api/nexyfab/drawing/package — 발행 규약과 판정 도달', () => {
   it('정상 어셈블리 → 산출물 + REV + 정합 게이트 결과가 응답에 실린다', async () => {
-    const data = await call({ assembly: BASE_PLATE, options: { title: '테스트' } });
+    const options = { title: '테스트' };
+    const verifyParams = { usage: 'commercial-review' };
+    const data = await call({ assembly: BASE_PLATE, options, verifyParams });
     expect(data.ok).toBe(true);
     expect(data.rev).toMatch(/^[0-9a-f]{8}$/);
     const names = data.fileNames ?? [];
@@ -96,6 +109,23 @@ describe('POST /api/nexyfab/drawing/package — 발행 규약과 판정 도달',
     // 정합 게이트는 실행되어야 한다 — null 이면 "검사 안 함"과 구별되지 않는다
     expect(data.consistency).toBeTruthy();
     expect((data.consistency?.checks ?? []).length).toBeGreaterThan(0);
+    expect(data.revisionSha256).toMatch(/^[0-9a-f]{64}$/);
+    expect(data.revisionSha256).toBe(designRevisionSha256({
+      assembly: BASE_PLATE,
+      options,
+      verifyParams,
+      template: {},
+      domain: 'mech',
+    }));
+    expect(data.artifactManifestSha256).toMatch(/^[0-9a-f]{64}$/);
+    expect(data.artifactManifest).toMatchObject({
+      schema: 'nexyfab.design-artifact-manifest.v1',
+      revisionId: data.rev,
+      revisionSha256: data.revisionSha256,
+      releaseStatus: 'review_required',
+      manufacturingAllowed: false,
+    });
+    expect(data.fileNames ?? []).toContain('artifact-manifest.json');
   }, heavyTestBudgetMs(30_000));
 
   /**
@@ -114,6 +144,21 @@ describe('POST /api/nexyfab/drawing/package — 발행 규약과 판정 도달',
     expect(step!).toMatch(/^ISO-10303-21;/);
     expect(step!).toMatch(/END-ISO-10303-21;/);
     expect(step!.length).toBeGreaterThan(2000);
+    const manifestRaw = await readFile(data, 'artifact-manifest.json');
+    expect(manifestRaw, 'artifact manifest를 읽지 못했다').toBeTruthy();
+    const manifest = JSON.parse(manifestRaw!) as {
+      revisionSha256: string;
+      manufacturingAllowed: boolean;
+      artifacts: Array<{ name: string; sha256: string }>;
+    };
+    expect(manifest.revisionSha256).toBe(data.revisionSha256);
+    expect(manifest.manufacturingAllowed).toBe(false);
+    expect(manifest.artifacts.map(artifact => artifact.name)).toEqual(expect.arrayContaining([
+      'model.step', 'BOQ.html', 'GA_2D_drawing.html', 'summary.json',
+    ]));
+    expect(manifest.artifacts.find(artifact => artifact.name === 'model.step')?.sha256).toBe(
+      createHash('sha256').update(step!, 'utf8').digest('hex'),
+    );
   }, heavyTestBudgetMs(60_000));
 
   it('★안내문이 동봉되고 **근사 고지**를 담는다 — 파일 15개를 줘도 근거를 모르면 못 쓴다', async () => {
@@ -218,6 +263,16 @@ describe('POST /api/nexyfab/drawing/package — 산출물 언어 고지', () => 
     expect(parsed.documentLang!.coverage).toBe('partial');
     const guide = await readFile(data, '00_안내.html');
     expect(guide!).toContain('not a translated document');
+  }, heavyTestBudgetMs(60_000));
+
+  it('★ar 요청은 아랍어 RTL 고지와 언어 메타데이터를 보존한다', async () => {
+    const data = await call({ assembly: BASE_PLATE, options: { title: '테스트', lang: 'ar' } });
+    const guide = await readFile(data, '00_안내.html');
+    expect(guide).toContain('dir="rtl"');
+    const parsed = JSON.parse((await readFile(data, 'summary.json'))!) as { documentLang?: { requested?: string; content?: string; coverage?: string } };
+    expect(parsed.documentLang?.requested).toBe('ar');
+    expect(parsed.documentLang?.content).toBe('ko');
+    expect(parsed.documentLang?.coverage).toBe('none');
   }, heavyTestBudgetMs(60_000));
 
   it('언어를 안 주면 고지가 없다 — 할 말이 없을 때 만들어 내지 않는다', async () => {

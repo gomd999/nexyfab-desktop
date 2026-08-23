@@ -7,11 +7,10 @@
 // panels (FeatureTree, viewport canvas, Inspector) keep rendering inside
 // Shell's viewport slot so all real CAD behavior continues to work unchanged.
 //
-// Ribbon buttons are visual today; the existing CommandToolbar (now hidden)
-// is still wired to handlers. Connecting Ribbon → CommandToolbar action ids
-// is a follow-up PR.
+// Ribbon actions bridge into the existing command stack through
+// `nexyfab:tool`; ShapeGeneratorInner maps those ids to real CAD handlers.
 
-import React, { Suspense, useState, useEffect } from 'react';
+import React, { Suspense, useCallback, useMemo, useRef, useState, useEffect } from 'react';
 import dynamic from 'next/dynamic';
 import { useRouter } from 'next/navigation';
 import { WorkspaceLoading } from '../WorkspaceLoading';
@@ -35,8 +34,6 @@ import { ModelerLeftPane } from './sidebars/ModelerLeftPane';
 import { ModelerRightPane } from './sidebars/ModelerRightPane';
 import { SketchLeftPane } from './sidebars/SketchLeftPane';
 import { SketchRightPane } from './sidebars/SketchRightPane';
-import { AssemblyLeftPane } from './sidebars/AssemblyLeftPane';
-import { AssemblyRightPane } from './sidebars/AssemblyRightPane';
 import { BottomDrawer } from './BottomDrawer';
 import { MotionStudyPanel } from './MotionStudyPanel';
 import { OnboardingTutorial } from './OnboardingTutorial';
@@ -54,6 +51,24 @@ import type { AdaptiveComplexProductExecutionPlan } from '@/lib/ai/adaptiveCompl
 import { DomainWorkspaceBar } from './DomainWorkspaceBar';
 import { useDomainWorkspaceSelection } from './domainWorkspaceStore';
 import { loc } from '@/lib/i18n/loc';
+import { createCommercialLocalizer } from '@/lib/i18n/commercialLocalizer';
+import { useAssemblyState } from '../hooks/useAssemblyState';
+import { EmbeddedAssemblyWorkspace } from '../assembly/EmbeddedAssemblyWorkspace';
+import type { AssemblyBrowserLang } from '../assembly/AssemblyBrowserModal';
+import type { FeatureTree } from '@/lib/cad/featureTree';
+import {
+  featureTreeSignature,
+  placedPartGeometrySignature,
+  provisionPlacedPartFeatureTree,
+} from '../assembly/placedPartFeatureTreeProvisioning';
+import { dispatchAssemblyRibbonCommand } from '../assembly/assemblyRibbonCommands';
+import { generationDomainFor } from '@/lib/ai/domainGenerationRequest';
+import { SpatialCadWorkspace } from './spatial/SpatialCadWorkspace';
+import { spatialRibbonGroups, spatialRibbonTabs } from './spatial/spatialRibbon';
+import { CoordinationCadWorkspace } from './spatial/CoordinationCadWorkspace';
+import { dispatchSpatialCadCommand } from './spatial/spatialCadCommands';
+import type { StudioTruthState } from '@/lib/ai/studioTruthContract';
+import { saveSpatialAiInstruction, SPATIAL_AI_HANDOFF_REQUEST_EVENT } from '@/lib/ai/spatialDesignBriefHandoff';
 
 // Best-effort keyboard event dispatch so Shell's TitleBar buttons reach Inner's
 // existing keyboard shortcut handlers (Inner registers global Ctrl+Z / ⌘K /
@@ -117,10 +132,94 @@ export function ModelerShell() {
   const [fileMenuOpen, setFileMenuOpen] = useState(false);
   const [complexExecutionPlan, setComplexExecutionPlan] = useState<AdaptiveComplexProductExecutionPlan | null>(null);
   const [domainWorkspace] = useDomainWorkspaceSelection();
+  const [spatialVerification, setSpatialVerification] = useState<StudioTruthState>('NOT_RUN');
+  const [coordinationOpen, setCoordinationOpen] = useState(false);
+  const baseSpatialDomain = domainWorkspace.domain === 'mechanical' ? null : domainWorkspace.domain;
+  const spatialDomain = coordinationOpen ? 'coordination' as const : baseSpatialDomain;
+  const isSpatial = spatialDomain !== null;
+  const spatialTabs = useMemo(() => spatialDomain ? spatialRibbonTabs(spatialDomain) : undefined, [spatialDomain]);
+  const spatialGroups = useMemo(
+    () => spatialDomain ? spatialRibbonGroups(spatialDomain, domainWorkspace.experience, activeTab) : undefined,
+    [activeTab, domainWorkspace.experience, spatialDomain],
+  );
+  const { placedParts, setPlacedParts, assemblyMates, setAssemblyMates } = useAssemblyState();
+  const [assemblyFeatureTrees, setAssemblyFeatureTrees] = useState<Record<string, FeatureTree>>({});
+  const autoAssemblyTreesRef = useRef<Record<string, { partSignature: string; treeSignature: string }>>({});
+
+  const assemblyTreeProvisionIssues = useMemo(() => placedParts.flatMap(part => {
+    const provision = provisionPlacedPartFeatureTree(part);
+    return provision.status === 'unsupported'
+      ? [`${part.name} (${part.shapeId}): ${provision.reason}`]
+      : [];
+  }), [placedParts]);
+
+  // Promote losslessly representable legacy parts into the canonical feature-
+  // tree solver path. Auto-owned trees follow parameter edits; once a user
+  // edits a tree in the assembly workspace, ownership is released and their
+  // authored tree is never overwritten.
+  useEffect(() => {
+    setAssemblyFeatureTrees(current => {
+      const next = { ...current };
+      const liveIds = new Set(placedParts.map(part => part.id));
+      let changed = false;
+
+      for (const id of Object.keys(next)) {
+        if (!liveIds.has(id)) {
+          delete next[id];
+          delete autoAssemblyTreesRef.current[id];
+          changed = true;
+        }
+      }
+
+      for (const part of placedParts) {
+        const provision = provisionPlacedPartFeatureTree(part);
+        if (provision.status !== 'exact') continue;
+        const desiredPartSignature = placedPartGeometrySignature(part);
+        const desiredTreeSignature = featureTreeSignature(provision.tree);
+        const existingTreeSignature = featureTreeSignature(next[part.id]);
+        const owner = autoAssemblyTreesRef.current[part.id];
+        const canAutoUpdate = !next[part.id] || (
+          owner !== undefined && owner.treeSignature === existingTreeSignature
+        );
+        if (!canAutoUpdate) {
+          delete autoAssemblyTreesRef.current[part.id];
+          continue;
+        }
+        if (existingTreeSignature !== desiredTreeSignature) {
+          next[part.id] = provision.tree;
+          changed = true;
+        }
+        autoAssemblyTreesRef.current[part.id] = {
+          partSignature: desiredPartSignature,
+          treeSignature: desiredTreeSignature,
+        };
+      }
+      return changed ? next : current;
+    });
+  }, [placedParts]);
+
+  const handleAssemblyFeatureTreesChange = useCallback((next: Record<string, FeatureTree>) => {
+    setAssemblyFeatureTrees(current => {
+      for (const [partId, owner] of Object.entries(autoAssemblyTreesRef.current)) {
+        if (featureTreeSignature(next[partId]) !== owner.treeSignature) {
+          delete autoAssemblyTreesRef.current[partId];
+        }
+      }
+      const currentSignature = JSON.stringify(current);
+      const nextSignature = JSON.stringify(next);
+      return currentSignature === nextSignature ? current : next;
+    });
+  }, []);
 
   useEffect(() => {
     const accept = (value: unknown) => {
-      if (value && typeof value === 'object' && (value as { schema?: string }).schema === 'nexyfab.adaptive-complex-product-execution.v1') setComplexExecutionPlan(value as AdaptiveComplexProductExecutionPlan);
+      if (value && typeof value === 'object' && (value as { schema?: string }).schema === 'nexyfab.adaptive-complex-product-execution.v1') {
+        const plan = value as AdaptiveComplexProductExecutionPlan;
+        setComplexExecutionPlan(plan);
+        if (plan.nextAction === 'run_ai_managed_precision_cad') {
+          window.dispatchEvent(new CustomEvent('nexyfab:open-right-pane', { detail: { tab: 'ai' } }));
+        }
+      }
     };
     try { const stored = window.sessionStorage.getItem('nexyfab:ai-complex-execution-plan:v1'); if (stored) accept(JSON.parse(stored)); } catch { /* unavailable or invalid session data */ }
     const onPlan = (event: Event) => accept((event as CustomEvent<AdaptiveComplexProductExecutionPlan>).detail);
@@ -132,7 +231,16 @@ export function ModelerShell() {
   // Deferred sub-panels (Onboarding/EmailVerify/AccountType/Motion/Versions)
   // are still ko/en-binary — keep isKo for them only.
   const isKo = lang === 'ko';
+  const L = createCommercialLocalizer(lang);
   const langSeg = lang === 'ko' ? 'kr' : lang;
+  const openSpatialAi = useCallback((instruction?: string) => {
+    if (!spatialDomain || spatialDomain === 'coordination') return;
+    // Active spatial workspaces synchronously serialize only their current
+    // draft dimensions/truth state. No auth token or approval claim is sent.
+    saveSpatialAiInstruction(window.sessionStorage, spatialDomain, instruction ?? '');
+    window.dispatchEvent(new Event(SPATIAL_AI_HANDOFF_REQUEST_EVENT));
+    router.push(`/${langSeg}/nexyfab/design/?domain=${generationDomainFor(spatialDomain)}&handoff=1`);
+  }, [langSeg, router, spatialDomain]);
   const isMobile = useIsMobile();
   // Touch gestures (pinch/pan/orbit/long-press) — enabled only on touch-
   // primary devices to avoid double-firing with the desktop mouse path.
@@ -154,7 +262,7 @@ export function ModelerShell() {
   // Bottom drawer — surfaces DFM/FEA/Cost/Variants via custom event from
   // ModelerRightPane Inspector ANALYZE rows.
   const [drawerOpen, setDrawerOpen] = useState(false);
-  const [drawerTab, setDrawerTab] = useState<'dfm' | 'fea' | 'cost' | 'variants' | 'motion' | 'versions'>('dfm');
+  const [drawerTab, setDrawerTab] = useState<'jobs' | 'dfm' | 'fea' | 'cost' | 'variants' | 'motion' | 'versions'>('dfm');
   useEffect(() => {
     const onAnalyzeOpen = (e: Event) => {
       const ce = e as CustomEvent<{ drawer: 'dfm' | 'fea' | 'cost' | 'variants' | 'motion' | 'versions' }>;
@@ -305,6 +413,9 @@ export function ModelerShell() {
   })();
   const sp = useSearchParams();
   const projectId = sp?.get('project') ?? null;
+  useEffect(() => {
+    if (sp?.get('workspace') === 'coordination') setCoordinationOpen(true);
+  }, [sp]);
   const { sessions, mySessionId } = useCollabPolling(projectId, Boolean(user && projectId));
   const remoteAvatars = sessions
     .filter(s => s.sessionId !== mySessionId)
@@ -339,12 +450,40 @@ export function ModelerShell() {
   const bridgeSketchRedundant = useShellBridge(s => s.sketchRedundantCount);
   const bridgeDfmWarningCount = useShellBridge(s => s.dfmWarningCount);
 
+  useEffect(() => {
+    setSpatialVerification('NOT_RUN');
+  }, [spatialDomain]);
+  useEffect(() => {
+    const onVerification = (event: Event) => {
+      const state = (event as CustomEvent<{ state?: StudioTruthState }>).detail?.state;
+      if (state === 'NOT_RUN' || state === 'PREVIEW' || state === 'BLOCKED') setSpatialVerification(state);
+    };
+    window.addEventListener('nexyfab:spatial-verification-status', onVerification);
+    return () => window.removeEventListener('nexyfab:spatial-verification-status', onVerification);
+  }, []);
+
+  // A spatial discipline must never inherit the mechanical feature ribbon or
+  // a stale sketch/assembly state from the hidden product modeler.
+  useEffect(() => {
+    if (spatialDomain) {
+      const domainTabs = spatialRibbonTabs(spatialDomain);
+      setMode('modeling');
+      setTool(null);
+      setActiveTab(current => domainTabs.some(tab => tab.id === current)
+        ? current
+        : domainTabs[0]?.id ?? 'space.requirements');
+    } else {
+      setActiveTab(current => current.startsWith('space.') ? 'solid' : current);
+    }
+  }, [spatialDomain]);
+
   // Sync shell mode + active sketch tab to Inner's sketch state. When the
   // user toggles sketch mode in Inner, the shell ribbon switches to the
   // sketch tabs (Draw/Constrain/Finish); when they exit, we pop back to
   // 'solid'. Guard against echoing user clicks by only changing tab when
   // the current tab is for the wrong mode.
   useEffect(() => {
+    if (isSpatial) return;
     if (bridgeEditMode === 'sketch') {
       setMode('sketch');
       if (!activeTab.startsWith('sketch.')) setActiveTab('sketch.draw');
@@ -357,15 +496,15 @@ export function ModelerShell() {
         setActiveTab('solid');
       }
     }
-  }, [bridgeEditMode, activeTab]);
+  }, [bridgeEditMode, activeTab, isSpatial]);
 
   // Mode chip & hint reflect Inner's actual edit mode.
   const modeChip =
-    bridgeEditMode === 'sketch'
+    mode === 'assembly' || bridgeEditMode === 'assembly'
+      ? d.modeAssembly
+      : bridgeEditMode === 'sketch'
       ? d.modeSketch
-      : bridgeEditMode === 'assembly'
-        ? d.modeAssembly
-        : undefined;
+      : undefined;
   // Sketch solver indicator — SolidWorks-style 3-state: under-constrained /
   // fully constrained / over-defined-or-conflicting. Empty sketch → no pill.
   const sketchSolverLabel =
@@ -374,11 +513,11 @@ export function ModelerShell() {
       : undefined;
 
   const modeHint =
-    bridgeEditMode === 'sketch'
+    mode === 'assembly' || bridgeEditMode === 'assembly'
+      ? d.exitAssemblyHint
+      : bridgeEditMode === 'sketch'
       ? sketchSolverLabel ?? d.exitSketchHint
-      : bridgeEditMode === 'assembly'
-        ? d.exitAssemblyHint
-        : undefined;
+      : undefined;
 
   // Saved-at label for TitleBar.
   const savedAtMs = bridgeCloudSavedAt ?? bridgeAutosaveSavedAt;
@@ -394,7 +533,12 @@ export function ModelerShell() {
             : d.autosaveReady;
 
   // Status pills
-  const statusPills: { id: string; label: string; tone?: 'ok' | 'warn' | 'error' }[] = [];
+  const statusPills: {
+    id: string;
+    label: string;
+    tone?: 'ok' | 'warn' | 'error';
+    saveState?: 'ready' | 'saving' | 'saved' | 'error';
+  }[] = [];
   if (bridgeVolume !== null) {
     statusPills.push({ id: 'vol', label: `${bridgeVolume.toFixed(1)} cm³` });
   }
@@ -408,44 +552,61 @@ export function ModelerShell() {
       tone: bridgeFps >= 30 ? 'ok' : bridgeFps >= 15 ? 'warn' : 'error',
     });
   }
-  const cloudPill =
-    bridgeCloudStatus === 'saved'
-      ? { id: 'cloud', label: d.pillSynced, tone: 'ok' as const }
-      : bridgeCloudStatus === 'saving'
-        ? { id: 'cloud', label: d.pillSaving }
-        : bridgeCloudStatus === 'error'
-          ? { id: 'cloud', label: d.pillError, tone: 'error' as const }
-          : null;
-  if (cloudPill) statusPills.push(cloudPill);
+  if (bridgeCloudStatus === 'saved') {
+    statusPills.push({ id: 'cloud', label: d.pillSynced, tone: 'ok', saveState: 'saved' });
+  } else if (bridgeCloudStatus === 'saving') {
+    statusPills.push({ id: 'cloud', label: d.pillSaving, saveState: 'saving' });
+  } else if (bridgeCloudStatus === 'error' || bridgeCloudStatus === 'conflict') {
+    statusPills.push({ id: 'cloud', label: bridgeCloudStatus === 'conflict' ? d.versionConflict : d.pillError, tone: 'error', saveState: 'error' });
+  } else {
+    statusPills.push({ id: 'cloud', label: d.autosaveReady, saveState: 'ready' });
+  }
 
   return (
     <Shell
       mode={mode}
-      domainWorkspace={<DomainWorkspaceBar lang={langSeg} />}
-      workflow={
+      experienceLevel={domainWorkspace.experience}
+      viewportOnly={isMobile}
+      domainWorkspace={<div style={{ display: 'flex', alignItems: 'center', minWidth: 0 }}><DomainWorkspaceBar lang={langSeg} compact sessionVerification={isSpatial ? spatialVerification : undefined} />{baseSpatialDomain && <button type="button" data-testid="coordination-workspace-toggle" aria-pressed={coordinationOpen} onClick={() => setCoordinationOpen(current => !current)} style={{ height: 24, marginRight: 8, border: `1px solid ${coordinationOpen ? 'var(--nx-accent)' : 'var(--nx-border)'}`, borderRadius: 5, background: coordinationOpen ? 'var(--nx-accent)' : 'var(--nx-panel-2)', color: coordinationOpen ? 'var(--nx-on-accent, #071a17)' : 'var(--nx-text-2)', fontSize: 10, fontWeight: 800, whiteSpace: 'nowrap', cursor: 'pointer' }}>{langSeg === 'kr' ? '통합 조정' : 'Coordination'}</button>}</div>}
+      commandPaletteEnabled={!isSpatial}
+      workflow={(
         <CadWorkflowRail
+          compact
           lang={lang}
           domain={domainWorkspace.domain}
-          hasModel={bridgeFeatureCount > 0 || bridgeTriangleCount > 0}
-          dfmWarningCount={bridgeDfmWarningCount}
-          executionPlan={complexExecutionPlan}
-          onAiDesign={() => dispatchTool('ai.suggest')}
-          onPreciseCad={() => { setMode('modeling'); setActiveTab('solid'); }}
+          hasModel={isSpatial || bridgeFeatureCount > 0 || bridgeTriangleCount > 0}
+          dfmWarningCount={isSpatial
+            ? spatialVerification === 'BLOCKED' ? 1 : spatialVerification === 'PREVIEW' ? 0 : null
+            : bridgeDfmWarningCount}
+          executionPlan={isSpatial ? null : complexExecutionPlan}
+          onAiDesign={isSpatial ? openSpatialAi : () => dispatchTool('ai.suggest')}
+          onPreciseCad={isSpatial
+            ? () => dispatchSpatialCadCommand('spatial.plan')
+            : () => { setMode('modeling'); setActiveTab('solid'); }}
           onVerify={() => {
-            setDrawerTab('dfm');
-            setDrawerOpen(true);
+            if (isSpatial) {
+              dispatchSpatialCadCommand('spatial.verify');
+            } else {
+              setDrawerTab('dfm');
+              setDrawerOpen(true);
+            }
           }}
           onExportEvidencePackage={() => {
-            window.dispatchEvent(new CustomEvent('nexyfab:file-export', { detail: { format: 'step' } }));
+            // Spatial release stays disabled until a discipline-specific,
+            // authority-backed deliverable exists. Never route it to the
+            // mechanical STEP exporter.
+            if (!isSpatial) window.dispatchEvent(new CustomEvent('nexyfab:file-export', { detail: { format: 'step' } }));
           }}
         />
-      }
+      )}
       titleBar={{
-        filename: bridgeSelectedLabel
+        filename: isSpatial && spatialDomain
+          ? `${spatialDomain}-concept.nxspace`
+          : bridgeSelectedLabel
           ? `${bridgeSelectedLabel}.nxpart`
           : d.untitledFile,
-        savedAt: savedAtLabel,
-        breadcrumbs: ['Projects', bridgeSelectedLabel ?? d.untitled],
+        savedAt: isSpatial ? undefined : savedAtLabel,
+        breadcrumbs: isSpatial && spatialDomain ? ['Space Design Labs', `${spatialDomain} concept`] : ['Projects', bridgeSelectedLabel ?? d.untitled],
         // Leaving an active expert-modeler session — go to the Hub, NOT the
         // guest "Studio-first funnel" (the Hub auto-redirects a guest's first
         // visit to the free-form Studio). Mark the Hub visited so it stays put.
@@ -453,13 +614,15 @@ export function ModelerShell() {
           try { sessionStorage.setItem('nexyfab:hub-visited', '1'); } catch { /* ignore */ }
           router.push(`/${langSeg}/nexyfab/hub`);
         },
-        mode: modeChip,
-        modeHint,
-        onExitMode: modeChip
+        mode: isSpatial ? 'PREVIEW' : modeChip,
+        modeHint: isSpatial ? (L('실측·호스트 권한 미확인', 'field/host authority unconfirmed')) : modeHint,
+        onExitMode: !isSpatial && modeChip
           ? () => {
               if (bridgeEditMode === 'sketch') {
                 window.dispatchEvent(new CustomEvent('nexyfab:tool', { detail: { id: 'sketch.finish' } }));
-              } else if (bridgeEditMode === 'assembly') {
+              } else if (mode === 'assembly' || bridgeEditMode === 'assembly') {
+                setMode('modeling');
+                setActiveTab('solid');
                 // Toggle assembly panel via uiStore — fall back to no-op if listener not registered.
                 window.dispatchEvent(new CustomEvent('nexyfab:assembly-close'));
               }
@@ -469,26 +632,57 @@ export function ModelerShell() {
         // In sketch mode the Ctrl+Z we dispatch is consumed by the sketch
         // session's own stack (not commandHistory), whose depth isn't exposed
         // reactively — keep the buttons enabled there rather than lying.
-        canUndo: bridgeEditMode === 'sketch' ? true : canUndo,
-        canRedo: bridgeEditMode === 'sketch' ? true : canRedo,
-        onNew: () => setFileMenuOpen(v => !v),
-        onOpen: () => router.push(`/${langSeg}/nexyfab/projects`),
-        onSave: () => {
+        canUndo: !isSpatial && (bridgeEditMode === 'sketch' ? true : canUndo),
+        canRedo: !isSpatial && (bridgeEditMode === 'sketch' ? true : canRedo),
+        onNew: isSpatial ? undefined : () => setFileMenuOpen(v => !v),
+        onOpen: isSpatial ? undefined : () => router.push(`/${langSeg}/nexyfab/projects`),
+        onSave: isSpatial ? undefined : () => {
           // Inner runs autosave on a 30s debounce + saves on Ctrl+S.
           dispatchKey({ key: 's', code: 'KeyS', ctrl: true, meta: true });
         },
-        onUndo: () => dispatchKey({ key: 'z', code: 'KeyZ', ctrl: true, meta: true }),
-        onRedo: () => dispatchKey({ key: 'z', code: 'KeyZ', ctrl: true, meta: true, shift: true }),
-        onSearch: dispatchCmdPalette,
-        onShare: () => setShowShareModal(true),
+        onUndo: isSpatial ? undefined : () => dispatchKey({ key: 'z', code: 'KeyZ', ctrl: true, meta: true }),
+        onRedo: isSpatial ? undefined : () => dispatchKey({ key: 'z', code: 'KeyZ', ctrl: true, meta: true, shift: true }),
+        onSearch: isSpatial ? undefined : dispatchCmdPalette,
+        onShare: isSpatial ? undefined : () => setShowShareModal(true),
         shareLabel: d.share,
-        onPublish: () => {
+        onPublish: isSpatial ? undefined : () => {
           // Publish = persist current state and toast. Inner handles via Ctrl+S.
           dispatchKey({ key: 's', code: 'KeyS', ctrl: true, meta: true });
         },
         publishLabel: d.publish,
         rightExtras: (
           <>
+          {!isSpatial && (
+            <>
+              <button
+                type="button"
+                className="nx-pillbtn nx-title-utility"
+                data-testid="studio-open-ai"
+                onClick={() => window.dispatchEvent(new CustomEvent('nexyfab:open-right-pane', { detail: { tab: 'ai' } }))}
+              >
+                <I.ai size={12} /><span>AI</span>
+              </button>
+              <button
+                type="button"
+                className="nx-pillbtn nx-title-utility"
+                data-testid="studio-open-jobs"
+                onClick={() => { setDrawerTab('jobs'); setDrawerOpen(true); }}
+              >
+                <I.bolt size={12} /><span>{L('작업', 'Jobs')}</span>
+              </button>
+              <button
+                type="button"
+                className="nx-pillbtn nx-title-utility"
+                data-testid="shell-open-verify"
+                aria-label={L('제조 가능성 및 해석 검증 열기', 'Open manufacturability and analysis verification')}
+                onClick={() => { setDrawerTab('dfm'); setDrawerOpen(true); }}
+              >
+                <I.comments size={12} /><span>{L('검증', 'Verify')}</span>
+                {bridgeDfmWarningCount !== null && bridgeDfmWarningCount > 0 && <b>{bridgeDfmWarningCount}</b>}
+              </button>
+            </>
+          )}
+          {!isSpatial && (
           <button
             type="button"
             className="nx-pillbtn"
@@ -497,6 +691,7 @@ export function ModelerShell() {
           >
             Quote
           </button>
+          )}
           <button
             type="button"
             className="nx-pillbtn"
@@ -511,9 +706,19 @@ export function ModelerShell() {
         ),
       }}
       ribbon={{
+        tabs: spatialTabs,
+        groups: spatialGroups,
         activeTab,
         onTabChange: id => {
           setActiveTab(id);
+          if (isSpatial) {
+            if (id === 'space.layout') dispatchSpatialCadCommand('spatial.plan');
+            else if (id === 'space.furniture') dispatchSpatialCadCommand('spatial.furniture');
+            else if (id === 'space.requirements' || id === 'space.model' || id === 'space.evidence' || id === 'space.deliverables' || id === 'space.planting' || id === 'space.water') {
+              dispatchSpatialCadCommand(`spatial.section.${id.replace('space.', '')}`);
+            }
+            return;
+          }
           // Leaving sketch mode via a non-sketch top-tab — commit the
           // in-progress sketch first so the user doesn't lose work, then
           // fall through to the normal mode/route switch below.
@@ -543,10 +748,6 @@ export function ModelerShell() {
           }
           if (id === 'assembly') {
             setMode('assembly');
-            // Open Inner's assembly browser so the Mate / BOM controls
-            // become reachable. Routed through the same window event Inner
-            // listens for, so we don't depend on imports of Inner state.
-            dispatchTool('asm.insert');
             return;
           }
           // N10: Inspect → enter measure mode (most common Inspect first action).
@@ -569,6 +770,15 @@ export function ModelerShell() {
         },
         onTool: id => {
           setTool(id);
+          if (isSpatial) {
+            if (id === 'spatial.ai') openSpatialAi();
+            else dispatchSpatialCadCommand(id);
+            return;
+          }
+          // Assembly has its own embedded workspace. Route its ribbon into
+          // that visible surface instead of opening the now-hidden legacy
+          // AssemblyPanel inside ShapeGeneratorInner.
+          if (mode === 'assembly' && dispatchAssemblyRibbonCommand(id)) return;
           // Sheet Metal tools go through their own channel so Inner can
           // resolve them with sheet-specific parameters (thickness, K-factor).
           if (id.startsWith('sm.')) {
@@ -584,31 +794,62 @@ export function ModelerShell() {
       leftWidth={280}
       rightWidth={320}
       left={
-        mode === 'sketch' ? <SketchLeftPane lang={lang} />
-        : mode === 'assembly' ? <AssemblyLeftPane lang={lang} />
+        isSpatial ? undefined
+        : mode === 'sketch' ? <SketchLeftPane lang={lang} />
+        : mode === 'assembly' ? undefined
         : <ModelerLeftPane lang={lang} />
       }
       right={
-        mode === 'sketch' ? <SketchRightPane lang={lang} />
-        : mode === 'assembly' ? <AssemblyRightPane lang={lang} />
+        isSpatial ? undefined
+        : mode === 'sketch' ? <SketchRightPane lang={lang} />
+        : mode === 'assembly' ? undefined
         : <ModelerRightPane lang={lang} />
       }
       viewport={
         <Suspense fallback={<WorkspaceLoading variant="app" />}>
-          <ShapeGeneratorInner />
-          <ViewportChips lang={lang} />
-          <SelectionBubble lang={lang} />
-          <SolverInfoChip lang={lang} />
+          {isSpatial && spatialDomain ? (
+            spatialDomain === 'coordination'
+              ? <CoordinationCadWorkspace lang={langSeg} />
+              : <SpatialCadWorkspace domain={spatialDomain} lang={langSeg} experience={domainWorkspace.experience} onAiDesign={openSpatialAi} />
+          ) : (
+          <>
+          <div hidden={mode === 'assembly'} style={{ width: '100%', height: '100%' }}>
+            <ShapeGeneratorInner embeddedInShell />
+            {!isMobile && <ViewportChips lang={lang} />}
+            {!isMobile && <SelectionBubble lang={lang} />}
+            {!isMobile && <SolverInfoChip lang={lang} />}
+          </div>
+          {mode === 'assembly' && (
+            <EmbeddedAssemblyWorkspace
+              lang={(lang === 'cn' ? 'zh' : lang) as AssemblyBrowserLang}
+              placedParts={placedParts}
+              assemblyMates={assemblyMates}
+              featureTrees={assemblyFeatureTrees}
+              featureTreeProvisionIssues={assemblyTreeProvisionIssues}
+              onPlacedPartsChange={setPlacedParts}
+              onAssemblyMatesChange={setAssemblyMates}
+              onFeatureTreesChange={handleAssemblyFeatureTreesChange}
+              onClose={() => {
+                setMode('modeling');
+                setActiveTab('solid');
+                window.dispatchEvent(new CustomEvent('nexyfab:assembly-close'));
+              }}
+            />
+          )}
+          </>
+          )}
+          {!isSpatial && (
           <FileMenu
             open={fileMenuOpen}
             onClose={() => setFileMenuOpen(false)}
             items={fileMenuItems}
           />
-          <OnboardingTutorial isKo={isKo} />
-          <EmailVerifyBanner isKo={isKo} lang={lang} />
-          <AccountTypeCard isKo={isKo} lang={lang} />
-          <GuestExpiryBanner lang={lang} />
-          {showShareModal && (
+          )}
+          {!isSpatial && mode !== 'assembly' && <OnboardingTutorial isKo={isKo} />}
+          {!isSpatial && mode !== 'assembly' && <EmailVerifyBanner isKo={isKo} lang={lang} />}
+          {!isSpatial && mode !== 'assembly' && <AccountTypeCard isKo={isKo} lang={lang} />}
+          {!isSpatial && mode !== 'assembly' && !isMobile && <GuestExpiryBanner lang={lang} />}
+          {!isSpatial && showShareModal && (
             <ShareProjectModal lang={lang} onClose={() => setShowShareModal(false)} />
           )}
           <AuthModal
@@ -626,11 +867,12 @@ export function ModelerShell() {
           />
         </Suspense>
       }
-      bottomDrawer={
+      bottomDrawer={isSpatial || mode === 'assembly' ? undefined :
         <BottomDrawer
           open={drawerOpen}
           activeTab={drawerTab}
           tabs={[
+            { id: 'jobs', label: L('작업', 'Jobs') },
             { id: 'dfm', label: 'DFM' },
             { id: 'fea', label: 'FEA' },
             { id: 'cost', label: d.drawerCost },
@@ -641,15 +883,20 @@ export function ModelerShell() {
           onTabChange={(id) => setDrawerTab(id as typeof drawerTab)}
           onClose={() => setDrawerOpen(false)}
         >
-          {drawerTab === 'motion'
+          {drawerTab === 'jobs'
+            ? <JobsDrawerContent lang={lang} cloudStatus={bridgeCloudStatus} />
+            : drawerTab === 'motion'
             ? <MotionStudyPanel isKo={isKo} />
             : drawerTab === 'versions'
-              ? <VersionTreePanel isKo={isKo} />
+              ? <VersionTreePanel isKo={isKo} documentId={projectId} />
               : <DrawerContent tab={drawerTab as 'dfm' | 'fea' | 'cost' | 'variants'} d={d} lang={lang} />}
         </BottomDrawer>
       }
       statusBar={{
-        left: [
+        left: isSpatial && spatialDomain ? [
+          { id: 'domain', items: [`${spatialDomain} · ${spatialDomain === 'civil' || spatialDomain === 'landscape' ? 'm' : 'mm'}`, 'concept revision'] },
+          { id: 'authority', items: ['PREVIEW · NOT_RELEASED'] },
+        ] : [
           {
             id: 'units',
             items: [
@@ -661,9 +908,61 @@ export function ModelerShell() {
           },
           { id: 'view', items: [bridgeView] },
         ],
-        pills: statusPills,
+        pills: isSpatial ? [] : statusPills,
       }}
     />
+  );
+}
+
+function JobsDrawerContent({ lang, cloudStatus }: { lang: string; cloudStatus: string }) {
+  const L = createCommercialLocalizer(lang);
+  const dfmResults = useAnalysisStore(s => s.dfmResults);
+  const feaResult = useAnalysisStore(s => s.feaResult);
+  const rows = [
+    {
+      id: 'persistence',
+      label: L('모델 저장', 'Model persistence'),
+      state: cloudStatus === 'saving' ? 'RUNNING' : cloudStatus === 'saved' ? 'SAVED' : cloudStatus === 'error' || cloudStatus === 'conflict' ? 'BLOCKED' : 'NOT_RUN',
+      detail: L('현재 브라우저 세션의 저장 상태', 'Current browser-session save state'),
+    },
+    {
+      id: 'dfm',
+      label: 'DFM',
+      state: dfmResults === null ? 'NOT_RUN' : 'PREVIEW_RESULT',
+      detail: dfmResults === null ? (L('검사를 실행하지 않음', 'Check has not been run')) : (L('로컬 분석 결과가 있음 · 출시 검증 아님', 'Local result available · not release verification')),
+    },
+    {
+      id: 'fea',
+      label: 'FEA',
+      state: feaResult === null ? 'NOT_RUN' : 'PREVIEW_RESULT',
+      detail: feaResult === null ? (L('해석을 실행하지 않음', 'Solve has not been run')) : (L('세션 결과가 있음 · 출시 검증 아님', 'Session result available · not release verification')),
+    },
+    {
+      id: 'orchestrator',
+      label: L('Cloudflare 작업 오케스트레이터', 'Cloudflare job orchestrator'),
+      state: 'NOT_RUN',
+      detail: L('이 패널에서 실제 프로젝트 큐 조회를 실행하지 않음', 'Live project queue was not queried by this panel'),
+    },
+  ];
+
+  return (
+    <div data-testid="studio-jobs-drawer" style={{ display: 'grid', gap: 8, color: 'var(--nx-text)', fontSize: 11 }}>
+      <div>
+        <b style={{ fontSize: 13 }}>{L('현재 세션 작업', 'Current session jobs')}</b>
+        <div style={{ marginTop: 3, color: 'var(--nx-text-3)' }}>{L('실제 관측 상태만 표시합니다.', 'Only observed states are shown.')}</div>
+      </div>
+      {rows.map(row => (
+        <article key={row.id} style={{ display: 'grid', gridTemplateColumns: 'minmax(150px, 0.7fr) 120px minmax(220px, 1fr)', gap: 10, alignItems: 'center', minHeight: 36, padding: '6px 9px', border: '1px solid var(--nx-border)', borderRadius: 5, background: 'var(--nx-panel-2)' }}>
+          <b>{row.label}</b>
+          <span style={{ color: row.state === 'BLOCKED' ? 'var(--nx-danger)' : row.state === 'NOT_RUN' ? 'var(--nx-warn)' : 'var(--nx-accent)', fontFamily: 'var(--font-jetbrains-mono), monospace', fontSize: 10 }}>{row.state}</span>
+          <span style={{ color: 'var(--nx-text-2)' }}>{row.detail}</span>
+        </article>
+      ))}
+      <div style={{ display: 'flex', gap: 6 }}>
+        <button type="button" className="nx-pillbtn" onClick={() => window.dispatchEvent(new CustomEvent('nexyfab:analyze-open', { detail: { drawer: 'dfm' } }))}>{L('DFM 열기', 'Open DFM')}</button>
+        <button type="button" className="nx-pillbtn" onClick={() => window.dispatchEvent(new CustomEvent('nexyfab:analyze-open', { detail: { drawer: 'fea' } }))}>{L('FEA 열기', 'Open FEA')}</button>
+      </div>
+    </div>
   );
 }
 

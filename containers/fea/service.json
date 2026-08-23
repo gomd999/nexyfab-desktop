@@ -1,0 +1,11 @@
+{
+  "schema": "nexyfab.deployable-unit.v1",
+  "id": "fea",
+  "kind": "container",
+  "targetRuntime": "cloudflare-containers",
+  "sourceMode": "new-unit-with-legacy-solver",
+  "legacySource": ["services/fea-worker"],
+  "implementationState": "PARTIAL",
+  "deployEnabled": false,
+  "rollbackOwner": "railway-fea-worker"
+}

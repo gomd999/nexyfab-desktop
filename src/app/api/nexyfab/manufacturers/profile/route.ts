@@ -6,8 +6,10 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getAuthUser } from '@/lib/auth-middleware';
 import { getDbAdapter } from '@/lib/db-adapter';
 import { findFactoryForPartnerEmail } from '@/lib/partner-factory-access';
+import { boundedJsonError, readBoundedJson } from '@/lib/boundedJsonBody';
 
 export const dynamic = 'force-dynamic';
+const MANUFACTURER_PROFILE_JSON_BYTES = 256 * 1024;
 
 // ─── DB row type ──────────────────────────────────────────────────────────────
 
@@ -82,8 +84,12 @@ export async function PATCH(req: NextRequest) {
 
   let body: PatchBody;
   try {
-    body = (await req.json()) as PatchBody;
-  } catch {
+    body = await readBoundedJson(req, MANUFACTURER_PROFILE_JSON_BYTES);
+  } catch (error) {
+    const bodyError = boundedJsonError(error);
+    if (bodyError?.code === 'PAYLOAD_TOO_LARGE') {
+      return NextResponse.json({ error: 'Request body too large' }, { status: bodyError.status });
+    }
     return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 });
   }
 

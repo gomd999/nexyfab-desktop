@@ -11,6 +11,7 @@ import RfqCadFilesPanel from '@/components/nexyfab/RfqCadFilesPanel';
 import { QuoteAcceptSection } from './QuoteAcceptSection';
 import ThreadView from '@/components/nexyfab/ThreadView';
 import ConciergeProgressCard from '@/components/nexyfab/ConciergeProgressCard';
+import { createCommercialLocalizer } from '@/lib/i18n/commercialLocalizer';
 
 const QuoteNegotiatorPanel = dynamic(() => import('./QuoteNegotiatorPanel'), { ssr: false });
 
@@ -120,6 +121,7 @@ function RFQContent({ params }: { params: Promise<{ lang: string }> }) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const isKo = isKorean(lang);
+  const L = createCommercialLocalizer(lang);
   const { user } = useAuthStore();
 
   // 데모 모드 상태. 본 계정 인증이 없을 때 데모 세션 쿠키가 있으면 활성화.
@@ -177,17 +179,17 @@ function RFQContent({ params }: { params: Promise<{ lang: string }> }) {
       sessionStorage.removeItem('nexyfab_cots_rfq');
       const parts = JSON.parse(raw) as Array<{ name: string; nameKo: string; standard: string; qty: number; unitPriceKRW: number }>;
       if (!Array.isArray(parts) || parts.length === 0) return;
-      const header = isKo ? '표준 부품 견적 요청:' : 'Standard parts quote request:';
-      const lines = parts.map(p => `- ${isKo ? (p.nameKo || p.name) : p.name} (${p.standard}) ×${p.qty}`).join('\n');
+      const header = L('표준 부품 견적 요청:', 'Standard parts quote request:');
+      const lines = parts.map(p => `- ${L(p.nameKo || p.name, p.name)} (${p.standard}) ×${p.qty}`).join('\n');
       const block = `${header}\n${lines}`;
       setFormState(s => ({
         ...s,
         note: s.note ? `${s.note}\n${block}` : block,
-        shapeName: s.shapeName || (isKo ? '표준 부품 세트' : 'Standard parts set'),
+        shapeName: s.shapeName || (L('표준 부품 세트', 'Standard parts set')),
       }));
       setShowNewForm(true);
     } catch { /* ignore */ }
-  }, [isKo]);
+  }, [isKo, L]);
 
   // ── AI 자연어 파싱 ─────────────────────────────────────────────────────────
   const [aiText, setAiText] = useState('');
@@ -388,7 +390,7 @@ function RFQContent({ params }: { params: Promise<{ lang: string }> }) {
       });
       if (!res.ok) {
         const data = await res.json().catch(() => ({})) as { error?: string };
-        setFormErrors({ _submit: data.error || (isKo ? '제출에 실패했습니다.' : 'Submission failed.') });
+        setFormErrors({ _submit: data.error || (L('제출에 실패했습니다.', 'Submission failed.')) });
         return;
       }
       setSubmitSuccess(true);
@@ -398,7 +400,7 @@ function RFQContent({ params }: { params: Promise<{ lang: string }> }) {
       await loadRfqs(1, statusFilter);
       setPage(1);
     } catch {
-      setFormErrors({ _submit: isKo ? '네트워크 오류가 발생했습니다.' : 'Network error. Please try again.' });
+      setFormErrors({ _submit: L('네트워크 오류가 발생했습니다.', 'Network error. Please try again.') });
     } finally {
       setSubmitting(false);
     }
@@ -449,7 +451,7 @@ function RFQContent({ params }: { params: Promise<{ lang: string }> }) {
         </Link>
         <span style={{ color: C.border }}>/</span>
         <span style={{ fontSize: 14, color: C.textMuted }}>
-          {isKo ? '견적 요청' : 'Quote Requests'}
+          {L('견적 요청', 'Quote Requests')}
         </span>
         <div style={{ flex: 1 }} />
         <button
@@ -460,7 +462,7 @@ function RFQContent({ params }: { params: Promise<{ lang: string }> }) {
             color: '#fff', fontSize: 13, fontWeight: 700, cursor: 'pointer',
           }}
         >
-          {isKo ? '+ 새 형상 제작' : '+ New Design'}
+          {L('+ 새 형상 제작', '+ New Design')}
         </button>
       </div>
 
@@ -472,12 +474,10 @@ function RFQContent({ params }: { params: Promise<{ lang: string }> }) {
         <div style={{ marginBottom: 24, display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 }}>
           <div>
             <h1 style={{ margin: '0 0 6px', fontSize: 22, fontWeight: 800 }}>
-              {isKo ? '견적 요청 목록' : 'RFQ List'}
+              {L('견적 요청 목록', 'RFQ List')}
             </h1>
             <p style={{ margin: 0, fontSize: 13, color: C.textMuted }}>
-              {isKo
-                ? '제출한 견적 요청과 제조사의 응답을 확인하세요.'
-                : 'Track your submitted quote requests and manufacturer responses.'}
+              {L('제출한 견적 요청과 제조사의 응답을 확인하세요.', 'Track your submitted quote requests and manufacturer responses.')}
             </p>
           </div>
           {canRfq ? (
@@ -491,7 +491,7 @@ function RFQContent({ params }: { params: Promise<{ lang: string }> }) {
                 transition: 'all 0.15s',
               }}
             >
-              {showNewForm ? (isKo ? '✕ 닫기' : '✕ Close') : (isKo ? '+ 새 견적 요청' : '+ New RFQ')}
+              {showNewForm ? (L('✕ 닫기', '✕ Close')) : (L('+ 새 견적 요청', '+ New RFQ'))}
             </button>
           ) : !user ? (
             // 비로그인: 데모 진입 1차 CTA, Pro 안내는 2차로 강등.
@@ -508,8 +508,8 @@ function RFQContent({ params }: { params: Promise<{ lang: string }> }) {
                 }}
               >
                 {demoStarting
-                  ? (isKo ? '준비 중…' : 'Starting…')
-                  : (isKo ? '🎯 데모 모드 시작' : '🎯 Try Demo')}
+                  ? (L('준비 중…', 'Starting…'))
+                  : (L('🎯 데모 모드 시작', '🎯 Try Demo'))}
               </button>
               <a
                 href={`/${lang}/nexyfab/billing`}
@@ -519,7 +519,7 @@ function RFQContent({ params }: { params: Promise<{ lang: string }> }) {
                   color: C.textDim, cursor: 'pointer', textDecoration: 'none',
                 }}
               >
-                {isKo ? 'Pro 보기' : 'See Pro'}
+                {L('Pro 보기', 'See Pro')}
               </a>
             </div>
           ) : (
@@ -533,7 +533,7 @@ function RFQContent({ params }: { params: Promise<{ lang: string }> }) {
                 display: 'inline-flex', alignItems: 'center', gap: 6,
               }}
             >
-              ⬆ {isKo ? 'Pro에서 견적 요청' : 'Upgrade to Request RFQ'}
+              ⬆ {L('Pro에서 견적 요청', 'Upgrade to Request RFQ')}
             </a>
           )}
         </div>
@@ -550,7 +550,7 @@ function RFQContent({ params }: { params: Promise<{ lang: string }> }) {
           >
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4, flexWrap: 'wrap', gap: 8 }}>
               <h2 style={{ margin: 0, fontSize: 16, fontWeight: 700 }}>
-                {isKo ? '새 견적 요청' : 'New Quote Request'}
+                {L('새 견적 요청', 'New Quote Request')}
               </h2>
               <button
                 type="button"
@@ -562,13 +562,11 @@ function RFQContent({ params }: { params: Promise<{ lang: string }> }) {
                   color: showAiInput ? '#a78bfa' : C.textDim, cursor: 'pointer',
                 }}
               >
-                ✦ {isKo ? 'AI 자동 입력' : 'AI Auto-fill'}
+                ✦ {L('AI 자동 입력', 'AI Auto-fill')}
               </button>
             </div>
             <p style={{ margin: '0 0 16px', fontSize: 12, color: C.textMuted }}>
-              {isKo
-                ? '형상 설계 없이도 요청 가능합니다. 더 정확한 견적은 형상 생성기를 이용하세요.'
-                : 'You can request a quote without a 3D design. Use the shape generator for accurate quotes.'}
+              {L('형상 설계 없이도 요청 가능합니다. 더 정확한 견적은 형상 생성기를 이용하세요.', 'You can request a quote without a 3D design. Use the shape generator for accurate quotes.')}
             </p>
 
             {/* ── Phase B-2: DFM 컨텍스트 요약 카드 ──────────────────────────
@@ -592,21 +590,17 @@ function RFQContent({ params }: { params: Promise<{ lang: string }> }) {
                       background: tone.c, color: 'var(--nx-bg)', letterSpacing: 0.4,
                     }}>{grade}</span>
                     <span style={{ fontSize: 13, fontWeight: 700, color: C.text }}>
-                      {isKo ? 'DFM 검증 결과 동봉' : 'DFM check attached'}
+                      {L('DFM 검증 결과 동봉', 'DFM check attached')}
                     </span>
                   </div>
                   <div style={{ fontSize: 12, color: C.textDim, lineHeight: 1.5 }}>
-                    {isKo
-                      ? `에러 ${dfmContext.issues}건 · 경고 ${dfmContext.warnings}건 · 검증 ID ${dfmContext.id.slice(0, 8)}…`
-                      : `${dfmContext.issues} issues · ${dfmContext.warnings} warnings · check ${dfmContext.id.slice(0, 8)}…`}
+                    {L(`에러 ${dfmContext.issues}건 · 경고 ${dfmContext.warnings}건 · 검증 ID ${dfmContext.id.slice(0, 8)}…`, `${dfmContext.issues} issues · ${dfmContext.warnings} warnings · check ${dfmContext.id.slice(0, 8)}…`)}
                     {dfmContext.fileId && (
-                      <> · {isKo ? '파일' : 'file'} <code style={{ color: C.textMuted }}>{dfmContext.fileId.slice(0, 8)}…</code></>
+                      <> · {L('파일', 'file')} <code style={{ color: C.textMuted }}>{dfmContext.fileId.slice(0, 8)}…</code></>
                     )}
                   </div>
                   <div style={{ marginTop: 8, fontSize: 11, color: C.textMuted }}>
-                    {isKo
-                      ? '제조사가 견적을 낼 때 이 검증 결과를 참고합니다. 매칭 정확도가 향상됩니다.'
-                      : 'Manufacturers will see this check result when quoting — improves match accuracy.'}
+                    {L('제조사가 견적을 낼 때 이 검증 결과를 참고합니다. 매칭 정확도가 향상됩니다.', 'Manufacturers will see this check result when quoting — improves match accuracy.')}
                   </div>
                 </div>
               );
@@ -619,14 +613,12 @@ function RFQContent({ params }: { params: Promise<{ lang: string }> }) {
                 background: '#a78bfa0e', border: '1px solid #a78bfa40',
               }}>
                 <p style={{ margin: '0 0 8px', fontSize: 12, color: '#a78bfa', fontWeight: 700 }}>
-                  ✦ {isKo ? 'AI가 자연어를 분석해 아래 양식을 자동으로 채웁니다.' : 'AI will parse your description and auto-fill the form below.'}
+                  ✦ {L('AI가 자연어를 분석해 아래 양식을 자동으로 채웁니다.', 'AI will parse your description and auto-fill the form below.')}
                 </p>
                 <textarea
                   value={aiText}
                   onChange={e => setAiText(e.target.value)}
-                  placeholder={isKo
-                    ? '예) 알루미늄 6061 브라켓, CNC 밀링, 500개, 공차 ±0.05mm, 4주 안에 납기'
-                    : 'e.g. Aluminum 6061 bracket, CNC milling, 500 pcs, ±0.05mm tolerance, 4 week lead time'}
+                  placeholder={L('예) 알루미늄 6061 브라켓, CNC 밀링, 500개, 공차 ±0.05mm, 4주 안에 납기', 'e.g. Aluminum 6061 bracket, CNC milling, 500 pcs, ±0.05mm tolerance, 4 week lead time')}
                   rows={3}
                   style={{
                     width: '100%', boxSizing: 'border-box', padding: '9px 12px',
@@ -648,13 +640,13 @@ function RFQContent({ params }: { params: Promise<{ lang: string }> }) {
                       color: aiParsing || !aiText.trim() ? C.textMuted : '#fff',
                     }}
                   >
-                    {aiParsing ? (isKo ? '분석 중...' : 'Parsing...') : (isKo ? '분석하기' : 'Parse')}
+                    {aiParsing ? (L('분석 중...', 'Parsing...')) : (L('분석하기', 'Parse'))}
                   </button>
                   {aiResult && (
                     <span style={{ fontSize: 11, color: aiResult.confidence >= 60 ? C.green : C.yellow }}>
                       {aiResult.fallback
-                        ? (isKo ? '⚠ 기본 파싱 적용됨' : '⚠ Basic parsing applied')
-                        : (isKo ? `✓ 신뢰도 ${aiResult.confidence}%` : `✓ Confidence ${aiResult.confidence}%`)}
+                        ? (L('⚠ 기본 파싱 적용됨', '⚠ Basic parsing applied'))
+                        : (L(`✓ 신뢰도 ${aiResult.confidence}%`, `✓ Confidence ${aiResult.confidence}%`))}
                     </span>
                   )}
                 </div>
@@ -671,12 +663,10 @@ function RFQContent({ params }: { params: Promise<{ lang: string }> }) {
                 fontSize: 12, lineHeight: 1.55,
               }}>
                 <div style={{ fontWeight: 700, marginBottom: 4 }}>
-                  {isKo ? '📞 NexyFab 컨시어지 매칭' : '📞 NexyFab concierge matching'}
+                  {L('📞 NexyFab 컨시어지 매칭', '📞 NexyFab concierge matching')}
                 </div>
                 <div style={{ color: C.textDim }}>
-                  {isKo
-                    ? '제출 후 운영팀이 적합한 제조사를 직접 컨택합니다. 진행 상황은 RFQ 상세 페이지에서 회사명 블러 + 상태 칩으로 실시간 확인할 수 있습니다.'
-                    : 'After submission, our team contacts suitable factories on your behalf. You can track progress in real-time on the RFQ detail page (company names masked until quote arrives).'}
+                  {L('제출 후 운영팀이 적합한 제조사를 직접 컨택합니다. 진행 상황은 RFQ 상세 페이지에서 회사명 블러 + 상태 칩으로 실시간 확인할 수 있습니다.', 'After submission, our team contacts suitable factories on your behalf. You can track progress in real-time on the RFQ detail page (company names masked until quote arrives).')}
                 </div>
               </div>
             )}
@@ -689,9 +679,7 @@ function RFQContent({ params }: { params: Promise<{ lang: string }> }) {
               }}>
                 <span>🏭</span>
                 <span style={{ flex: 1 }}>
-                  {isKo
-                    ? `마켓플레이스에서 선택한 제조사(ID: ${formState.preferredFactoryId.slice(0, 8)})로 견적을 요청합니다.`
-                    : `Requesting quote for manufacturer selected from marketplace (ID: ${formState.preferredFactoryId.slice(0, 8)}).`}
+                  {L(`마켓플레이스에서 선택한 제조사(ID: ${formState.preferredFactoryId.slice(0, 8)})로 견적을 요청합니다.`, `Requesting quote for manufacturer selected from marketplace (ID: ${formState.preferredFactoryId.slice(0, 8)}).`)}
                 </span>
                 <button
                   type="button"
@@ -708,12 +696,10 @@ function RFQContent({ params }: { params: Promise<{ lang: string }> }) {
                 lineHeight: 1.55,
               }}>
                 <div style={{ fontWeight: 700, marginBottom: 4 }}>
-                  {isKo ? '✓ 견적 요청이 제출됐습니다.' : '✓ RFQ submitted successfully.'}
+                  {L('✓ 견적 요청이 제출됐습니다.', '✓ RFQ submitted successfully.')}
                 </div>
                 <div style={{ color: C.textDim, fontSize: 12 }}>
-                  {isKo
-                    ? '운영팀이 적합한 제조사를 직접 컨택하기 시작합니다. 진행 상황은 RFQ 상세 페이지에서 실시간으로 확인할 수 있어요. (보통 영업일 기준 1-2일 내 첫 응답)'
-                    : 'Our team will reach out to suitable manufacturers directly. Track progress on the RFQ detail page (typically 1-2 business days for the first response).'}
+                  {L('운영팀이 적합한 제조사를 직접 컨택하기 시작합니다. 진행 상황은 RFQ 상세 페이지에서 실시간으로 확인할 수 있어요. (보통 영업일 기준 1-2일 내 첫 응답)', 'Our team will reach out to suitable manufacturers directly. Track progress on the RFQ detail page (typically 1-2 business days for the first response).')}
                 </div>
               </div>
             )}
@@ -730,13 +716,13 @@ function RFQContent({ params }: { params: Promise<{ lang: string }> }) {
               {/* Part name (optional) */}
               <div>
                 <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: C.textDim, marginBottom: 6 }}>
-                  {isKo ? '부품명 (선택)' : 'Part name (optional)'}
+                  {L('부품명 (선택)', 'Part name (optional)')}
                 </label>
                 <input
                   type="text"
                   value={formState.shapeName}
                   onChange={e => setFormState(s => ({ ...s, shapeName: e.target.value }))}
-                  placeholder={isKo ? '예: 브라켓 A' : 'e.g. Bracket A'}
+                  placeholder={L('예: 브라켓 A', 'e.g. Bracket A')}
                   style={{
                     width: '100%', padding: '9px 12px', borderRadius: 8, fontSize: 13, boxSizing: 'border-box',
                     background: C.card, color: C.text, border: `1px solid ${C.border}`, outline: 'none',
@@ -747,13 +733,13 @@ function RFQContent({ params }: { params: Promise<{ lang: string }> }) {
               {/* Quantity */}
               <div>
                 <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: C.textDim, marginBottom: 6 }}>
-                  {isKo ? '수량 *' : 'Quantity *'}
+                  {L('수량 *', 'Quantity *')}
                 </label>
                 <input
                   type="number" min={1}
                   value={formState.quantity}
                   onChange={e => { setFormState(s => ({ ...s, quantity: e.target.value })); setFormErrors(s => ({ ...s, quantity: '' })); }}
-                  placeholder={isKo ? '예: 100' : 'e.g. 100'}
+                  placeholder={L('예: 100', 'e.g. 100')}
                   style={{
                     width: '100%', padding: '9px 12px', borderRadius: 8, fontSize: 13, boxSizing: 'border-box',
                     background: C.card, color: C.text, outline: 'none',
@@ -761,8 +747,8 @@ function RFQContent({ params }: { params: Promise<{ lang: string }> }) {
                   }}
                 />
                 {formErrors.quantity && <p style={{ margin: '4px 0 0', fontSize: 11, color: C.red }}>
-                  {formErrors.quantity === 'QTY_REQUIRED' ? (isKo ? '수량을 입력하세요.' : 'Quantity is required.') :
-                   formErrors.quantity === 'QTY_MIN' ? (isKo ? '수량은 1 이상이어야 합니다.' : 'Quantity must be at least 1.') :
+                  {formErrors.quantity === 'QTY_REQUIRED' ? (L('수량을 입력하세요.', 'Quantity is required.')) :
+                   formErrors.quantity === 'QTY_MIN' ? (L('수량은 1 이상이어야 합니다.', 'Quantity must be at least 1.')) :
                    formErrors.quantity}
                 </p>}
               </div>
@@ -770,7 +756,7 @@ function RFQContent({ params }: { params: Promise<{ lang: string }> }) {
               {/* Material */}
               <div>
                 <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: C.textDim, marginBottom: 6 }}>
-                  {isKo ? '재질 *' : 'Material *'}
+                  {L('재질 *', 'Material *')}
                 </label>
                 <select
                   value={formState.material}
@@ -782,22 +768,22 @@ function RFQContent({ params }: { params: Promise<{ lang: string }> }) {
                     border: `1px solid ${formErrors.material ? C.red : C.border}`,
                   }}
                 >
-                  <option value="">{isKo ? '재질 선택...' : 'Select material...'}</option>
+                  <option value="">{L('재질 선택...', 'Select material...')}</option>
                   {MATERIAL_OPTIONS.map(opt => (
                     <option key={opt.value} value={opt.value}>
-                      {isKo ? opt.labelKo : opt.labelEn}
+                      {L(opt.labelKo, opt.labelEn)}
                     </option>
                   ))}
                 </select>
                 {formErrors.material && <p style={{ margin: '4px 0 0', fontSize: 11, color: C.red }}>
-                  {formErrors.material === 'MAT_REQUIRED' ? (isKo ? '재질을 선택하세요.' : 'Material is required.') : formErrors.material}
+                  {formErrors.material === 'MAT_REQUIRED' ? (L('재질을 선택하세요.', 'Material is required.')) : formErrors.material}
                 </p>}
               </div>
 
               {/* Deadline (optional) */}
               <div>
                 <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: C.textDim, marginBottom: 6 }}>
-                  {isKo ? '납기 희망일 (선택)' : 'Desired deadline (optional)'}
+                  {L('납기 희망일 (선택)', 'Desired deadline (optional)')}
                 </label>
                 <input
                   type="date"
@@ -812,7 +798,7 @@ function RFQContent({ params }: { params: Promise<{ lang: string }> }) {
                   }}
                 />
                 {formErrors.deadline && <p style={{ margin: '4px 0 0', fontSize: 11, color: C.red }}>
-                  {formErrors.deadline === 'DEADLINE_PAST' ? (isKo ? '마감기한은 오늘 이후여야 합니다.' : 'Deadline must be today or later.') : formErrors.deadline}
+                  {formErrors.deadline === 'DEADLINE_PAST' ? (L('마감기한은 오늘 이후여야 합니다.', 'Deadline must be today or later.')) : formErrors.deadline}
                 </p>}
               </div>
             </div>
@@ -820,12 +806,12 @@ function RFQContent({ params }: { params: Promise<{ lang: string }> }) {
             {/* Note */}
             <div style={{ marginTop: 16 }}>
               <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: C.textDim, marginBottom: 6 }}>
-                {isKo ? '메모 (선택)' : 'Note (optional)'}
+                {L('메모 (선택)', 'Note (optional)')}
               </label>
               <textarea
                 value={formState.note}
                 onChange={e => setFormState(s => ({ ...s, note: e.target.value }))}
-                placeholder={isKo ? '추가 요구사항이나 참고사항을 입력하세요...' : 'Add any special requirements or notes...'}
+                placeholder={L('추가 요구사항이나 참고사항을 입력하세요...', 'Add any special requirements or notes...')}
                 rows={3}
                 style={{
                   width: '100%', padding: '9px 12px', borderRadius: 8, fontSize: 13, boxSizing: 'border-box',
@@ -844,7 +830,7 @@ function RFQContent({ params }: { params: Promise<{ lang: string }> }) {
                   border: `1px solid ${C.border}`, background: 'transparent', color: C.textDim, cursor: 'pointer',
                 }}
               >
-                {isKo ? '취소' : 'Cancel'}
+                {L('취소', 'Cancel')}
               </button>
               <button
                 type="submit"
@@ -856,7 +842,7 @@ function RFQContent({ params }: { params: Promise<{ lang: string }> }) {
                   color: '#fff',
                 }}
               >
-                {submitting ? (isKo ? '제출 중...' : 'Submitting...') : (isKo ? '견적 요청 제출' : 'Submit RFQ')}
+                {submitting ? (L('제출 중...', 'Submitting...')) : (L('견적 요청 제출', 'Submit RFQ'))}
               </button>
             </div>
           </form>
@@ -876,16 +862,16 @@ function RFQContent({ params }: { params: Promise<{ lang: string }> }) {
                 transition: 'all 0.12s',
               }}
             >
-              {isKo ? opt.labelKo : opt.labelEn}
+              {L(opt.labelKo, opt.labelEn)}
             </button>
           ))}
         </div>
 
         {/* ── List ────────────────────────────────────────────────────────── */}
         {loading ? (
-          <LoadingState isKo={isKo} />
+          <LoadingState lang={lang} isKo={isKo} />
         ) : error ? (
-          <ErrorState message={error} isKo={isKo} onRetry={() => loadRfqs(page, statusFilter)} />
+          <ErrorState message={error} lang={lang} isKo={isKo} onRetry={() => loadRfqs(page, statusFilter)} />
         ) : rfqs.length === 0 ? (
           <EmptyState isKo={isKo} lang={lang} router={router} hasFilter={!!statusFilter} />
         ) : (
@@ -921,7 +907,7 @@ function RFQContent({ params }: { params: Promise<{ lang: string }> }) {
               disabled={!pagination.hasPrev}
               style={{ ...selectStyle, padding: '7px 14px', opacity: pagination.hasPrev ? 1 : 0.4, cursor: pagination.hasPrev ? 'pointer' : 'not-allowed' }}
             >
-              ← {isKo ? '이전' : 'Prev'}
+              ← {L('이전', 'Prev')}
             </button>
             <span style={{ fontSize: 12, color: C.textMuted }}>
               {page} / {pagination.totalPages}
@@ -931,7 +917,7 @@ function RFQContent({ params }: { params: Promise<{ lang: string }> }) {
               disabled={!pagination.hasNext}
               style={{ ...selectStyle, padding: '7px 14px', opacity: pagination.hasNext ? 1 : 0.4, cursor: pagination.hasNext ? 'pointer' : 'not-allowed' }}
             >
-              {isKo ? '다음' : 'Next'} →
+              {L('다음', 'Next')} →
             </button>
           </div>
         )}
@@ -941,6 +927,7 @@ function RFQContent({ params }: { params: Promise<{ lang: string }> }) {
           <QuoteCompareModal
             rfqId={compareRfq.id}
             rfqName={compareRfq.name}
+            lang={lang}
             isKo={isKo}
             onClose={() => setCompareRfq(null)}
           />
@@ -968,7 +955,8 @@ const STATUS_ORDER: Record<RFQEntry['status'], number> = {
   pending: 0, assigned: 1, quoted: 2, accepted: 3, rejected: -1,
 };
 
-function RFQTimeline({ rfq, isKo }: { rfq: RFQEntry; isKo: boolean }) {
+function RFQTimeline({ rfq, lang, isKo }: { rfq: RFQEntry; lang: string; isKo: boolean }) {
+  const L = createCommercialLocalizer(lang);
   const currentOrder = STATUS_ORDER[rfq.status] ?? 0;
   const isRejected = rfq.status === 'rejected';
 
@@ -1009,7 +997,7 @@ function RFQTimeline({ rfq, isKo }: { rfq: RFQEntry; isKo: boolean }) {
                 fontSize: 10, fontWeight: active ? 700 : 500,
                 color: active ? C.accent : done ? C.text : C.textMuted, whiteSpace: 'nowrap',
               }}>
-                {isKo ? step.labelKo : step.labelEn}
+                {L(step.labelKo, step.labelEn)}
               </span>
             </div>
           );
@@ -1020,7 +1008,7 @@ function RFQTimeline({ rfq, isKo }: { rfq: RFQEntry; isKo: boolean }) {
             padding: '3px 10px', borderRadius: 12, background: `${C.red}20`,
             border: `1px solid ${C.red}40`, color: C.red, fontSize: 10, fontWeight: 700, zIndex: 3,
           }}>
-            {isKo ? '취소됨' : 'Cancelled'}
+            {L('취소됨', 'Cancelled')}
           </div>
         )}
       </div>
@@ -1030,16 +1018,18 @@ function RFQTimeline({ rfq, isKo }: { rfq: RFQEntry; isKo: boolean }) {
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
 
-function LoadingState({ isKo }: { isKo: boolean }) {
+function LoadingState({ lang, isKo }: { lang: string; isKo: boolean }) {
+  const L = createCommercialLocalizer(lang);
   return (
     <div style={{ textAlign: 'center', padding: '60px 0', color: C.textMuted }}>
       <div style={{ fontSize: 32, marginBottom: 12, opacity: 0.4 }}>⏳</div>
-      <p style={{ margin: 0 }}>{isKo ? '불러오는 중...' : 'Loading...'}</p>
+      <p style={{ margin: 0 }}>{L('불러오는 중...', 'Loading...')}</p>
     </div>
   );
 }
 
-function ErrorState({ message, isKo, onRetry }: { message: string; isKo: boolean; onRetry: () => void }) {
+function ErrorState({ message, lang, isKo, onRetry }: { message: string; lang: string; isKo: boolean; onRetry: () => void }) {
+  const L = createCommercialLocalizer(lang);
   return (
     <div style={{
       textAlign: 'center', padding: '60px 0', color: C.red,
@@ -1047,7 +1037,7 @@ function ErrorState({ message, isKo, onRetry }: { message: string; isKo: boolean
     }}>
       <div style={{ fontSize: 32, marginBottom: 12 }}>⚠️</div>
       <p style={{ margin: '0 0 12px' }}>
-        {message === 'LOAD_FAILED' ? (isKo ? '데이터를 불러오지 못했습니다.' : 'Failed to load RFQs.') : message}
+        {message === 'LOAD_FAILED' ? (L('데이터를 불러오지 못했습니다.', 'Failed to load RFQs.')) : message}
       </p>
       <button
         onClick={onRetry}
@@ -1056,7 +1046,7 @@ function ErrorState({ message, isKo, onRetry }: { message: string; isKo: boolean
           border: `1px solid ${C.red}`, background: 'transparent', color: C.red,
         }}
       >
-        {isKo ? '다시 시도' : 'Retry'}
+        {L('다시 시도', 'Retry')}
       </button>
     </div>
   );
@@ -1070,12 +1060,13 @@ function EmptyState({
   router: ReturnType<typeof useRouter>;
   hasFilter: boolean;
 }) {
+  const L = createCommercialLocalizer(lang);
   if (hasFilter) {
     return (
       <div style={{ textAlign: 'center', padding: '60px 0', color: C.textMuted }}>
         <div style={{ fontSize: 40, marginBottom: 12, opacity: 0.4 }}>🔍</div>
         <p style={{ margin: 0, fontSize: 14 }}>
-          {isKo ? '해당 상태의 견적 요청이 없습니다.' : 'No RFQs match the selected filter.'}
+          {L('해당 상태의 견적 요청이 없습니다.', 'No RFQs match the selected filter.')}
         </p>
       </div>
     );
@@ -1084,12 +1075,10 @@ function EmptyState({
     <div style={{ textAlign: 'center', padding: '80px 0' }}>
       <div style={{ fontSize: 52, marginBottom: 16, opacity: 0.5 }}>📋</div>
       <h2 style={{ margin: '0 0 10px', fontSize: 18, color: C.text }}>
-        {isKo ? '아직 견적 요청이 없습니다' : 'No quote requests yet'}
+        {L('아직 견적 요청이 없습니다', 'No quote requests yet')}
       </h2>
       <p style={{ margin: '0 0 24px', fontSize: 13, color: C.textMuted }}>
-        {isKo
-          ? '형상 생성기에서 형상을 설계한 뒤 견적을 요청하세요.'
-          : 'Design a shape in the shape generator and submit an RFQ.'}
+        {L('형상 생성기에서 형상을 설계한 뒤 견적을 요청하세요.', 'Design a shape in the shape generator and submit an RFQ.')}
       </p>
       <div style={{ display: 'flex', gap: 8, justifyContent: 'center', flexWrap: 'wrap' }}>
         <button
@@ -1100,7 +1089,7 @@ function EmptyState({
             color: '#fff', fontSize: 14, fontWeight: 700, cursor: 'pointer',
           }}
         >
-          {isKo ? '형상 생성기로 이동' : 'Go to Shape Generator'}
+          {L('형상 생성기로 이동', 'Go to Shape Generator')}
         </button>
         {/* G3 — Empty-state guide link */}
         <button
@@ -1111,7 +1100,7 @@ function EmptyState({
             color: 'var(--nx-text-3)', fontSize: 13, fontWeight: 600, cursor: 'pointer',
           }}
         >
-          {isKo ? '📖 처음이세요? 가이드' : '📖 New here? Guide'}
+          {L('📖 처음이세요? 가이드', '📖 New here? Guide')}
         </button>
       </div>
     </div>
@@ -1135,8 +1124,9 @@ interface RFQCardProps {
 }
 
 function RFQCard({ rfq, isKo, lang, expanded, onToggle, onCompare, onCancel, isCancelling, onAccept, showCadFiles = true }: RFQCardProps) {
+  const L = createCommercialLocalizer(lang);
   const meta = STATUS_META[rfq.status];
-  const date = new Date(rfq.createdAt).toLocaleDateString(isKo ? 'ko-KR' : 'en-US', {
+  const date = new Date(rfq.createdAt).toLocaleDateString(L('ko-KR', 'en-US'), {
     year: 'numeric', month: 'short', day: 'numeric',
   });
   const bestEst = rfq.costEstimates?.[0];
@@ -1166,14 +1156,14 @@ function RFQCard({ rfq, isKo, lang, expanded, onToggle, onCompare, onCancel, isC
         </div>
         <div style={{ flex: 1, minWidth: 0 }}>
           <p style={{ margin: '0 0 2px', fontWeight: 700, fontSize: 14, color: C.text }}>
-            {rfq.shapeName || (isKo ? '부품명 미입력' : 'Unnamed part')}
+            {rfq.shapeName || (L('부품명 미입력', 'Unnamed part'))}
           </p>
           <p style={{ margin: 0, fontSize: 12, color: C.textMuted }}>
-            {isKo ? '소재: ' : 'Material: '}{rfq.materialId}
+            {L('소재: ', 'Material: ')}{rfq.materialId}
             {' · '}
-            {isKo ? '수량: ' : 'Qty: '}{rfq.quantity.toLocaleString()}
+            {L('수량: ', 'Qty: ')}{rfq.quantity.toLocaleString()}
             {rfq.volume_cm3 > 0 && ` · ${rfq.volume_cm3.toFixed(1)} cm³`}
-            {rfq.deadline && ` · ${isKo ? '납기: ' : 'Deadline: '}${rfq.deadline}`}
+            {rfq.deadline && ` · ${L('납기: ', 'Deadline: ')}${rfq.deadline}`}
           </p>
         </div>
         {bestEst && (
@@ -1182,7 +1172,7 @@ function RFQCard({ rfq, isKo, lang, expanded, onToggle, onCompare, onCancel, isC
               ${(bestEst.unitCost * rfq.quantity).toLocaleString()}
             </p>
             <p style={{ margin: 0, fontSize: 11, color: C.textMuted }}>
-              {isKo ? '예상 금액' : 'Est. total'}
+              {L('예상 금액', 'Est. total')}
             </p>
           </div>
         )}
@@ -1190,7 +1180,7 @@ function RFQCard({ rfq, isKo, lang, expanded, onToggle, onCompare, onCancel, isC
           padding: '4px 10px', borderRadius: 20, background: meta.bg, color: meta.color,
           fontSize: 11, fontWeight: 700, flexShrink: 0, whiteSpace: 'nowrap',
         }}>
-          {isKo ? meta.labelKo : meta.labelEn}
+          {L(meta.labelKo, meta.labelEn)}
         </div>
         <div style={{ fontSize: 11, color: C.textMuted, flexShrink: 0 }}>{date}</div>
         <div style={{
@@ -1220,21 +1210,21 @@ function RFQCard({ rfq, isKo, lang, expanded, onToggle, onCompare, onCancel, isC
           borderTop: `1px solid ${C.border}`, padding: '16px 20px',
           display: 'flex', flexDirection: 'column', gap: 14,
         }}>
-          <RFQTimeline rfq={rfq} isKo={isKo} />
+          <RFQTimeline rfq={rfq} lang={lang} isKo={isKo} />
 
           {showCadFiles && (
             <div>
               <p style={{ margin: '0 0 8px', fontSize: 12, fontWeight: 700, color: C.textDim }}>
-                {isKo ? 'CAD 파일 (버전 관리)' : 'CAD files (version history)'}
+                {L('CAD 파일 (버전 관리)', 'CAD files (version history)')}
               </p>
-              <RfqCadFilesPanel rfqId={rfq.rfqId} isKo={isKo} compact />
+              <RfqCadFilesPanel rfqId={rfq.rfqId} lang={lang} compact />
             </div>
           )}
 
           {rfq.costEstimates && rfq.costEstimates.length > 0 && (
             <div>
               <p style={{ margin: '0 0 8px', fontSize: 12, fontWeight: 700, color: C.textDim }}>
-                {isKo ? '공정별 예상 비용' : 'Cost Estimates by Process'}
+                {L('공정별 예상 비용', 'Cost Estimates by Process')}
               </p>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                 {rfq.costEstimates.map((est, i) => {
@@ -1245,10 +1235,10 @@ function RFQCard({ rfq, isKo, lang, expanded, onToggle, onCompare, onCancel, isC
                       background: C.card, borderRadius: 8, padding: '8px 12px',
                     }}>
                       <span style={{ fontSize: 12, color: C.text, flex: 1 }}>
-                        {pLabel ? (isKo ? pLabel.ko : pLabel.en) : est.process}
+                        {pLabel ? L(pLabel.ko, pLabel.en) : est.process}
                       </span>
                       <span style={{ fontSize: 12, color: C.textMuted }}>
-                        ${est.unitCost.toFixed(2)}{isKo ? '/개' : '/unit'}
+                        ${est.unitCost.toFixed(2)}{L('/개', '/unit')}
                       </span>
                       <span style={{ fontSize: 12, color: C.textMuted }}>{est.leadTime}</span>
                       <ConfidenceBadge confidence={est.confidence} />
@@ -1272,7 +1262,7 @@ function RFQCard({ rfq, isKo, lang, expanded, onToggle, onCompare, onCancel, isC
                once a partner is assigned (preferred or via accepted quote). */}
           {(rfq.status === 'quoted' || rfq.status === 'accepted' || rfq.status === 'assigned') && (
             <ThreadView
-              lang={isKo ? 'ko' : 'en'}
+              lang={L('ko', 'en')}
               threadKind="rfq"
               threadId={rfq.rfqId}
               asRole="buyer"
@@ -1284,7 +1274,7 @@ function RFQCard({ rfq, isKo, lang, expanded, onToggle, onCompare, onCancel, isC
                is reaching out to the recommended directory factories. */}
           {rfq.status !== 'rejected' && (
             <ConciergeProgressCard
-              lang={isKo ? 'ko' : 'en'}
+              lang={L('ko', 'en')}
               rfqId={rfq.rfqId}
             />
           )}
@@ -1294,15 +1284,13 @@ function RFQCard({ rfq, isKo, lang, expanded, onToggle, onCompare, onCancel, isC
               background: '#a78bfa15', border: '1px solid #a78bfa30', borderRadius: 8, padding: '10px 14px',
             }}>
               <p style={{ margin: '0 0 4px', fontSize: 12, fontWeight: 700, color: '#a78bfa' }}>
-                {isKo ? '담당 제조사' : 'Assigned Manufacturer'}
+                {L('담당 제조사', 'Assigned Manufacturer')}
               </p>
               <p style={{ margin: 0, fontSize: 14, fontWeight: 600, color: C.text }}>
                 {rfq.assignedFactoryName}
               </p>
               <p style={{ margin: '4px 0 0', fontSize: 11, color: C.textMuted }}>
-                {isKo
-                  ? '제조사가 배정됐습니다. 견적서 작성 중입니다.'
-                  : 'A manufacturer has been assigned and is preparing your quote.'}
+                {L('제조사가 배정됐습니다. 견적서 작성 중입니다.', 'A manufacturer has been assigned and is preparing your quote.')}
               </p>
             </div>
           )}
@@ -1312,7 +1300,7 @@ function RFQCard({ rfq, isKo, lang, expanded, onToggle, onCompare, onCancel, isC
               background: '#3fb95015', border: '1px solid #3fb95030', borderRadius: 8, padding: '10px 14px',
             }}>
               <p style={{ margin: '0 0 4px', fontSize: 12, fontWeight: 700, color: C.green }}>
-                {isKo ? '제조사 견적가' : 'Manufacturer Quote'}
+                {L('제조사 견적가', 'Manufacturer Quote')}
               </p>
               <p style={{ margin: 0, fontSize: 18, fontWeight: 800, color: C.text }}>
                 ${rfq.quoteAmount.toLocaleString()}
@@ -1323,7 +1311,7 @@ function RFQCard({ rfq, isKo, lang, expanded, onToggle, onCompare, onCancel, isC
           {rfq.manufacturerNote && (
             <div style={{ background: C.card, borderRadius: 8, padding: '10px 14px' }}>
               <p style={{ margin: '0 0 4px', fontSize: 11, fontWeight: 700, color: C.textMuted }}>
-                {isKo ? '제조사 메모' : 'Manufacturer Note'}
+                {L('제조사 메모', 'Manufacturer Note')}
               </p>
               <p style={{ margin: 0, fontSize: 13, color: C.text }}>{rfq.manufacturerNote}</p>
             </div>
@@ -1332,7 +1320,7 @@ function RFQCard({ rfq, isKo, lang, expanded, onToggle, onCompare, onCancel, isC
           {rfq.note && (
             <div>
               <p style={{ margin: '0 0 4px', fontSize: 11, fontWeight: 700, color: C.textMuted }}>
-                {isKo ? '요청 메모' : 'Request Note'}
+                {L('요청 메모', 'Request Note')}
               </p>
               <p style={{ margin: 0, fontSize: 13, color: C.text }}>{rfq.note}</p>
             </div>
@@ -1358,7 +1346,7 @@ function RFQCard({ rfq, isKo, lang, expanded, onToggle, onCompare, onCancel, isC
                     opacity: isCancelling ? 0.5 : 1,
                   }}
                 >
-                  {isCancelling ? '...' : (isKo ? '요청 취소' : 'Cancel RFQ')}
+                  {isCancelling ? '...' : (L('요청 취소', 'Cancel RFQ'))}
                 </button>
               )}
               {(rfq.status === 'quoted' || rfq.status === 'accepted') && onCompare && (
@@ -1373,11 +1361,11 @@ function RFQCard({ rfq, isKo, lang, expanded, onToggle, onCompare, onCancel, isC
                   onMouseEnter={e => { e.currentTarget.style.background = C.accent; e.currentTarget.style.color = '#fff'; }}
                   onMouseLeave={e => { e.currentTarget.style.background = `${C.accent}15`; e.currentTarget.style.color = C.accent; }}
                 >
-                  {isKo ? '견적 비교' : 'Compare Quotes'}
+                  {L('견적 비교', 'Compare Quotes')}
                 </button>
               )}
               <span style={{ fontSize: 10, color: C.textMuted }}>
-                {isKo ? '응답 예정: 24-48시간' : 'Est. response: 24-48h'}
+                {L('응답 예정: 24-48시간', 'Est. response: 24-48h')}
               </span>
             </div>
           </div>
@@ -1399,10 +1387,11 @@ interface QuoteForRFQ {
 }
 
 function QuoteCompareModal({
-  rfqId, rfqName, isKo, onClose,
+  rfqId, rfqName, lang, isKo, onClose,
 }: {
-  rfqId: string; rfqName: string; isKo: boolean; onClose: () => void;
+  rfqId: string; rfqName: string; lang: string; isKo: boolean; onClose: () => void;
 }) {
+  const L = createCommercialLocalizer(lang);
   const [quotes, setQuotes] = useState<QuoteForRFQ[]>([]);
   const [loading, setLoading] = useState(true);
   const [selected, setSelected] = useState<string | null>(null);
@@ -1439,7 +1428,7 @@ function QuoteCompareModal({
         }}>
           <div style={{ flex: 1 }}>
             <p style={{ margin: 0, fontSize: 15, fontWeight: 800, color: C.text }}>
-              {isKo ? '견적 비교' : 'Quote Comparison'}
+              {L('견적 비교', 'Quote Comparison')}
             </p>
             <p style={{ margin: 0, fontSize: 12, color: C.textMuted }}>{rfqName}</p>
           </div>
@@ -1452,7 +1441,7 @@ function QuoteCompareModal({
                 fontSize: 11, fontWeight: 700, cursor: 'pointer',
               }}
             >
-              ⚖️ {isKo ? 'AI 협상' : 'AI Negotiate'}
+              ⚖️ {L('AI 협상', 'AI Negotiate')}
             </button>
           )}
           <button
@@ -1464,20 +1453,20 @@ function QuoteCompareModal({
         <div style={{ flex: 1, overflowY: 'auto', padding: '16px 20px' }}>
           {loading ? (
             <p style={{ textAlign: 'center', color: C.textMuted, padding: '40px 0' }}>
-              {isKo ? '불러오는 중...' : 'Loading...'}
+              {L('불러오는 중...', 'Loading...')}
             </p>
           ) : quotes.length === 0 ? (
             <p style={{ textAlign: 'center', color: C.textMuted, padding: '40px 0' }}>
-              {isKo ? '아직 수신된 견적이 없습니다' : 'No quotes received yet'}
+              {L('아직 수신된 견적이 없습니다', 'No quotes received yet')}
             </p>
           ) : (
             <>
               <div style={{ display: 'flex', gap: 10, marginBottom: 14 }}>
                 {[
-                  { label: isKo ? '총 견적 수' : 'Quotes',   value: quotes.length.toString(), color: C.accent },
-                  { label: isKo ? '최저가' : 'Lowest',        value: `$${min.toLocaleString()}`, color: C.green },
-                  { label: isKo ? '최고가' : 'Highest',       value: `$${max.toLocaleString()}`, color: C.red },
-                  { label: isKo ? '차이' : 'Spread',          value: `$${(max - min).toLocaleString()}`, color: C.yellow },
+                  { label: L('총 견적 수', 'Quotes'),   value: quotes.length.toString(), color: C.accent },
+                  { label: L('최저가', 'Lowest'),        value: `$${min.toLocaleString()}`, color: C.green },
+                  { label: L('최고가', 'Highest'),       value: `$${max.toLocaleString()}`, color: C.red },
+                  { label: L('차이', 'Spread'),          value: `$${(max - min).toLocaleString()}`, color: C.yellow },
                 ].map((s, i) => (
                   <div key={i} style={{
                     flex: 1, background: C.card, borderRadius: 8, padding: '8px 10px', textAlign: 'center',
@@ -1511,12 +1500,12 @@ function QuoteCompareModal({
                         <span style={{ flex: 1, fontSize: 13, fontWeight: 700, color: C.text }}>{q.factoryName}</span>
                         {isLowest && (
                           <span style={{ fontSize: 10, padding: '2px 7px', borderRadius: 10, background: `${C.green}22`, color: C.green, fontWeight: 700 }}>
-                            {isKo ? '최저가' : 'BEST'}
+                            {L('최저가', 'BEST')}
                           </span>
                         )}
                         {expired && (
                           <span style={{ fontSize: 10, padding: '2px 7px', borderRadius: 10, background: `${C.red}22`, color: C.red, fontWeight: 700 }}>
-                            {isKo ? '만료' : 'EXPIRED'}
+                            {L('만료', 'EXPIRED')}
                           </span>
                         )}
                         <span style={{ fontSize: 16, fontWeight: 800, color: isLowest ? C.green : C.text }}>
@@ -1530,10 +1519,10 @@ function QuoteCompareModal({
                         }} />
                       </div>
                       <div style={{ display: 'flex', gap: 12, fontSize: 11, color: C.textMuted }}>
-                        {!isLowest && vsMin > 0 && <span style={{ color: C.yellow }}>+{vsMin}% {isKo ? '대비 최저가' : 'vs lowest'}</span>}
-                        {q.estimatedDays && <span>⏱ {q.estimatedDays}{isKo ? '일' : 'd'}</span>}
+                        {!isLowest && vsMin > 0 && <span style={{ color: C.yellow }}>+{vsMin}% {L('대비 최저가', 'vs lowest')}</span>}
+                        {q.estimatedDays && <span>⏱ {q.estimatedDays}{L('일', 'd')}</span>}
                         {q.validUntil && (
-                          <span>📅 {new Date(q.validUntil).toLocaleDateString(isKo ? 'ko-KR' : 'en-US', { month: 'short', day: 'numeric' })}</span>
+                          <span>📅 {new Date(q.validUntil).toLocaleDateString(L('ko-KR', 'en-US'), { month: 'short', day: 'numeric' })}</span>
                         )}
                       </div>
                       {selected === q.id && q.note && (
