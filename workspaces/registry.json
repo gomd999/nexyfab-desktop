@@ -21,6 +21,7 @@
     "workspaces/CLEANUP_POLICY.md",
     "workspaces/PROJECT_AUDIT.md",
     "workspaces/DEPLOYMENT_BOUNDARIES.md",
+    "workspaces/dev-profiles.json",
     "workspaces/*/EVALUATION.md",
     "workspaces/registry.json",
     "src/lib/db*",

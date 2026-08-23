@@ -19,6 +19,23 @@ tracked path to one Scope or to the shared integration boundary.
 4. Keep shared contract or root configuration changes for a separate integration
    commit.
 
+### Run three sessions without local collisions
+
+Run each command inside its matching Scope worktree:
+
+| Scope | Command | URL | Default local state |
+| --- | --- | --- | --- |
+| Platform | `npm run dev:platform` | `http://127.0.0.1:3100` | `.runtime/scopes/platform` |
+| Precision CAD | `npm run dev:precision-cad` | `http://127.0.0.1:3200` | `.runtime/scopes/precision-cad` |
+| AI Design | `npm run dev:ai-design` | `http://127.0.0.1:3300` | `.runtime/scopes/ai-design` |
+
+The launcher refuses a mismatched branch and isolates `NEXYFAB_DB_PATH`,
+`DATA_ROOT`, `NEXT_DIST_DIR`, site origin, and port. It clears an inherited
+`DATABASE_URL` by default so three sessions cannot accidentally share a mutable
+database. Inspect a profile without starting Next with
+`npm run workspace:dev -- <scope> --print`. Use `--inherit-database` only for an
+intentional shared integration test; it is not the normal Scope workflow.
+
 ## Save and hand off
 
 1. Update the Scope's `CURRENT.md`.

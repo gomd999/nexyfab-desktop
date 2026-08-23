@@ -58,6 +58,7 @@ admin-settings.json
 # Local validation/runtime scratch spaces (never release inputs)
 /.tmp/
 /.runtime-wp20/
+/.runtime/
 /.codex-runtime/
 /.codex-dev*
 /.rtl-test*

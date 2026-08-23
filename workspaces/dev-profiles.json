@@ -1,0 +1,30 @@
+{
+  "schema": "nexyfab.workspace-dev-profiles.v1",
+  "host": "127.0.0.1",
+  "profiles": [
+    {
+      "scope": "platform",
+      "branch": "scope/platform",
+      "port": 3100,
+      "stateDirectory": ".runtime/scopes/platform",
+      "nextDistDirectory": ".next-scope-platform",
+      "databaseMode": "isolated-sqlite"
+    },
+    {
+      "scope": "precision-cad",
+      "branch": "scope/precision-cad",
+      "port": 3200,
+      "stateDirectory": ".runtime/scopes/precision-cad",
+      "nextDistDirectory": ".next-scope-precision-cad",
+      "databaseMode": "isolated-sqlite"
+    },
+    {
+      "scope": "ai-design",
+      "branch": "scope/ai-design",
+      "port": 3300,
+      "stateDirectory": ".runtime/scopes/ai-design",
+      "nextDistDirectory": ".next-scope-ai-design",
+      "databaseMode": "isolated-sqlite"
+    }
+  ]
+}
