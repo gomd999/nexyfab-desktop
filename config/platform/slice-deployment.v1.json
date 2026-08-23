@@ -4,7 +4,10 @@
     "default": "NO_DEPLOY",
     "automaticPromotion": false,
     "requireStagingReceipt": true,
-    "requireRollbackReceipt": true
+    "requireRollbackReceipt": true,
+    "localEvidenceMaxAgeHours": 168,
+    "stagingEvidenceMaxAgeHours": 168,
+    "rollbackEvidenceMaxAgeHours": 168
   },
   "slices": [
     {
