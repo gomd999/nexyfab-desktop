@@ -7,6 +7,7 @@
 - 일반 검증: typecheck PASS, architecture check PASS
 - capability descriptor는 `LEGACY_COMPATIBILITY`; target capability 폴더는 경계/문서 중심이고 legacy source가 아직 authoritative다.
 - release gates `mechanical:contracts:check`, `mechanical:scope:check`는 외부 evidence가 stale/pending하여 BLOCKED다.
+- 첫 vertical slice: single-part candidate 계약을 `capabilities/precision-cad/single-part-candidate` adapter로 분리함
 
 ## 강점
 

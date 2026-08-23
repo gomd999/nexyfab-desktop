@@ -5,6 +5,7 @@
 - 평가: **기반 안정 / 전환 진행 중**
 - 담당 경계: `apps/**`, `services/**`, `workers/**`, `collab-worker/**`, `cron-worker/**`
 - 검증: architecture check PASS, typecheck PASS, lint PASS
+- 첫 vertical slice: `GET /api/health/live` 로직을 `apps/core-api` 경계로 추출하고 `platform-status` 화면을 추가함
 - `apps/core-api`: legacy-route compatibility boundary, deploy disabled
 - `apps/studio-web`: legacy-root compatibility, migration pending, deploy disabled
 

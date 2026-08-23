@@ -6,6 +6,7 @@
 - 담당 경계: `src/lib/ai/**`, AI·SCAD·design API, architecture/interior AI routes
 - `npm run test:accuracy:common`: PASS (Vitest 60 tests + Node 7 tests)
 - capability descriptor는 `LEGACY_COMPATIBILITY`; target 폴더는 메타데이터 중심이고 legacy source가 authoritative다.
+- 첫 vertical slice: domain accuracy 평가 계약을 `capabilities/ai-design/domain-accuracy` adapter로 분리함
 
 ## 강점
 
