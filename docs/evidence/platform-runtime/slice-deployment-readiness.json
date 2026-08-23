@@ -1,7 +1,26 @@
 {
-  "schema": "nexyfab.slice-deployment-readiness-receipt.v1",
-  "generatedAt": "2026-08-23T14:56:45.072Z",
-  "gitHead": "b2c81d78c4ee2367d98934a51553af59c20aec7d",
+  "schema": "nexyfab.slice-deployment-readiness-receipt.v2",
+  "generatedAt": "2026-08-23T16:22:24.587Z",
+  "gitHead": "b3e30dae63d7539f96aea3567cc7611e97b31440",
+  "verification": {
+    "sourceBinding": "PASS",
+    "imageBinding": "PASS",
+    "contexts": {
+      "platform": {
+        "sha256": "1f33bd2aef0239f1c95681b1d349e3831131bff6968d26f9b187c4ac2191e601",
+        "fileCount": 8
+      },
+      "precision-cad": {
+        "sha256": "5f7c0573e5aadc75656c1031041ef070824842c0cc76591b98cfd0acf715019c",
+        "fileCount": 11
+      },
+      "ai-design": {
+        "sha256": "f1da86a97627ef5c1f8d142b307ec285b4f29d50dac9698d9865bf74ebf700cd",
+        "fileCount": 11
+      }
+    },
+    "issues": []
+  },
   "local": {
     "ok": true,
     "issues": [],
@@ -37,19 +56,22 @@
       {
         "scope": "platform",
         "unit": "core-api",
-        "imageId": "sha256:36f18f46efe9188ecec416a87da3a5356b7a104c99b1cfe9cc02162abbfa1bce",
+        "imageId": "sha256:8cfae686366fd45de7c679673286a9d43d78ad937940c545106474ff55e105e6",
+        "sourceTreeSha256": "1f33bd2aef0239f1c95681b1d349e3831131bff6968d26f9b187c4ac2191e601",
         "state": "PASS_WITH_RELEASE_HOLD"
       },
       {
         "scope": "precision-cad",
         "unit": "precision-single-part-candidate",
-        "imageId": "sha256:db0d0827b1c179f110fa5e80140e8db0f552382e6c54dc04aeafff0d2699f1a0",
+        "imageId": "sha256:4db11a373c99a3e8becfe8e5f4cd094b09892edae26c00afc6d948c54a705d36",
+        "sourceTreeSha256": "5f7c0573e5aadc75656c1031041ef070824842c0cc76591b98cfd0acf715019c",
         "state": "PASS_WITH_RELEASE_HOLD"
       },
       {
         "scope": "ai-design",
         "unit": "ai-domain-accuracy",
-        "imageId": "sha256:ccc3b820414a2b3f2ccecdb1f125b7b074bafdf0b6d9c1e8bd7ec1fecf79c075",
+        "imageId": "sha256:5c2d7cc54d66bb9c49d49f51aae1c647e7d1d8c73252720a16daac5f206980de",
+        "sourceTreeSha256": "f1da86a97627ef5c1f8d142b307ec285b4f29d50dac9698d9865bf74ebf700cd",
         "state": "PASS_WITH_RELEASE_HOLD"
       }
     ],
@@ -96,11 +118,15 @@
     "evidenceFile": "docs/evidence/platform-runtime/slice-deployment-staging.json"
   },
   "rollback": {
-    "state": "READY_DASHBOARD_ONLY",
-    "execution": "NOT_RUN",
-    "mechanism": "RAILWAY_DASHBOARD_PREVIOUS_DEPLOYMENT",
+    "ok": true,
+    "state": "READY_NOT_EXECUTED",
+    "issues": [],
+    "holds": [
+      "native_staging_rollback_not_executed"
+    ],
     "targetCount": 7,
-    "reason": "Railway CLI cannot select an arbitrary previous deployment; native rollback requires the dashboard. Targets were captured before deployment but their cross-service compatibility still requires an executed drill."
+    "evidenceFile": "docs/evidence/platform-runtime/slice-rollback-execution.json",
+    "mechanism": "RAILWAY_DASHBOARD_PREVIOUS_DEPLOYMENT"
   },
   "status": "HOLD"
 }
