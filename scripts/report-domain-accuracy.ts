@@ -4,7 +4,7 @@ import { pathToFileURL } from 'node:url';
 import {
   DOMAIN_ACCURACY_DOMAINS,
   type DomainAccuracyDomain,
-} from '../src/lib/ai/domainAccuracyProgram';
+} from '../capabilities/ai-design/domain-accuracy';
 import {
   buildDomainAccuracyEvidence,
   type DomainAccuracyCase,
@@ -58,4 +58,3 @@ const isMain = process.argv[1] && import.meta.url === pathToFileURL(process.argv
 // "module") where it is a transform error — found 260808 via the review-
 // packets CLI; the vitest ESM import path had hidden it.
 if (isMain) void main().then(code => { process.exitCode = code; });
-
