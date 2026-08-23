@@ -1,0 +1,119 @@
+{
+  "schema": "nexyfab.workspace-registry.v1",
+  "integrationBranch": "integration/nexyfab",
+  "baselineRef": "baseline/pre-scope-20260823",
+  "defaultOwner": "platform",
+  "sharedPaths": [
+    ".github/**",
+    ".husky/**",
+    ".gitignore",
+    "AGENTS.md",
+    "package.json",
+    "package-lock.json",
+    "tsconfig.json",
+    "vitest.config.mts",
+    "next.config.ts",
+    "middleware.ts",
+    "config/**",
+    "packages/**",
+    "scripts/workspaces/**",
+    "workspaces/registry.json",
+    "src/lib/db*",
+    "src/lib/platform/**",
+    "src/lib/security/**",
+    "src/proxy*",
+    "src-tauri/**"
+  ],
+  "scopes": [
+    {
+      "id": "platform",
+      "label": "Backend + Frontend Platform",
+      "branch": "scope/platform",
+      "worktreeDirectory": "platform",
+      "defaultOwner": true,
+      "ownedPaths": [
+        "apps/**",
+        "services/**",
+        "workers/**",
+        "collab-worker/**",
+        "cron-worker/**",
+        "workspaces/platform/**"
+      ],
+      "checks": [
+        "npm run lint:ci",
+        "npm run typecheck"
+      ]
+    },
+    {
+      "id": "precision-cad",
+      "label": "Precision CAD",
+      "branch": "scope/precision-cad",
+      "worktreeDirectory": "precision-cad",
+      "ownedPaths": [
+        "capabilities/precision-cad/**",
+        "domains/**",
+        "src/app/[lang]/shape-generator/**",
+        "src/app/api/cad/**",
+        "src/app/api/internal/precision-cad-commercial/**",
+        "src/app/api/internal/cad-job-artifacts/**",
+        "src/app/api/internal/cad-job-orchestrator/**",
+        "src/app/api/internal/commercial-verifier/**",
+        "src/app/api/internal/spatial-cad/**",
+        "src/app/api/nexyfab/projects/*/precision-cad-agent/**",
+        "src/app/api/nexyfab/projects/*/spatial-cad/**",
+        "src/app/api/nexyfab/cad-*/**",
+        "src/app/api/nexyfab/brep/**",
+        "src/app/api/nexyfab/drawing/**",
+        "src/app/api/nexyfab/rfq/*/cad-files/**",
+        "src/lib/precision-cad-agent/**",
+        "src/lib/cad/**",
+        "src/lib/cad-ir/**",
+        "src/lib/occt/**",
+        "src/lib/sketch/**",
+        "src/lib/assembly/**",
+        "scripts/drawing-to-3d/**",
+        "scripts/engineering-core/**",
+        "occt-worker/**",
+        "occt-collab-worker/**",
+        "docker-solvers/**",
+        "containers/occt-*/**",
+        "containers/openscad/**",
+        "containers/fea/**",
+        "containers/ifc-step/**",
+        "containers/native-fallback/**",
+        "workspaces/precision-cad/**"
+      ],
+      "checks": [
+        "npm run typecheck",
+        "npm run mechanical:contracts:check",
+        "npm run mechanical:scope:check"
+      ]
+    },
+    {
+      "id": "ai-design",
+      "label": "AI Design",
+      "branch": "scope/ai-design",
+      "worktreeDirectory": "ai-design",
+      "ownedPaths": [
+        "capabilities/ai-design/**",
+        "src/lib/ai/**",
+        "src/app/api/nexyfab/ai/**",
+        "src/app/api/nexyfab/ai-*/**",
+        "src/app/api/nexyfab/scad-*/**",
+        "src/app/api/nexyfab/scad-agent/**",
+        "src/app/api/nexyfab/design-*/**",
+        "src/app/api/nexyfab/dfm-explainer/**",
+        "src/app/api/nexyfab/jscad-gen/**",
+        "src/app/api/nexyfab/openscad-gen/**",
+        "src/app/api/nexyfab/shape-to-jscad/**",
+        "src/app/api/nexyfab/projects/*/architecture-interior-ai-design/**",
+        "src/app/api/nexyfab/projects/*/architecture-interior-agent/**",
+        "workspaces/ai-design/**"
+      ],
+      "checks": [
+        "npm run typecheck",
+        "npm run test:accuracy:common"
+      ]
+    }
+  ]
+}
