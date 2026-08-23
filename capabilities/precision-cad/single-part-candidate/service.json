@@ -10,8 +10,19 @@
   "implementationState": "PARTIAL",
   "verificationState": "NOT_RUN",
   "deployEnabled": false,
-  "build": { "context": ".", "dockerfile": "Dockerfile", "mode": "shared-monorepo-compatibility" },
-  "health": { "mode": "contract", "test": "scripts/build-mechanical-single-part-candidates.test.ts" },
+  "build": {
+    "context": "capabilities/precision-cad/single-part-candidate",
+    "dockerfile": "Dockerfile",
+    "mode": "isolated-candidate"
+  },
+  "health": {
+    "mode": "http-and-contract",
+    "live": "/health/live",
+    "ready": "/health/ready",
+    "release": "/health/release",
+    "test": "capabilities/precision-cad/single-part-candidate/test/server.test.mjs"
+  },
+  "runtimeBindings": ["EXACT_CAD_URL", "JOB_CONTROL_URL", "EXACT_KERNEL_IDENTITY", "NEXYFAB_BUILD_ID"],
   "staging": { "required": true, "evidencePath": "docs/evidence/platform-runtime/slice-deployment-readiness.json" },
   "rollback": { "strategy": "previous-release", "owner": "exact-cad-job-blocked", "requiredBuildBinding": true }
 }

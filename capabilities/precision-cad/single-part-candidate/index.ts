@@ -1,9 +1,9 @@
 /**
  * Precision CAD capability boundary for the first single-part slice.
  *
- * The implementation remains in the legacy library until the OCCT runtime is
- * moved behind a worker. Keeping this adapter stable lets the script and the
- * future job worker share the same fail-closed source contract.
+ * The fail-closed source contract is executable from this isolated slice. The
+ * expensive OCCT inspector remains in the legacy runtime until it is moved
+ * behind the Exact CAD and Job Control boundary.
  */
 export {
   MECHANICAL_SINGLE_PART_CANDIDATE_RECEIPT_SCHEMA,
@@ -11,7 +11,7 @@ export {
   MECHANICAL_SINGLE_PART_REQUIRED_AXES,
   evaluateMechanicalSinglePartSourceRuns,
   mechanicalSinglePartDimensionsMm,
-} from '../../../src/lib/cad/mechanicalSinglePartCandidate';
+} from './src/contract.mjs';
 
 export type {
   MechanicalSinglePartAxis,
