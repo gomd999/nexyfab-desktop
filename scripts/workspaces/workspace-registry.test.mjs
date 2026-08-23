@@ -25,13 +25,19 @@ test('shared ownership takes precedence over explicit or default ownership', () 
     file: 'packages/cad-contracts/src/index.ts',
     shared: true,
     explicitOwners: [],
+    defaulted: false,
+    classification: 'shared',
     owner: null,
   });
 });
 
 test('explicit and default ownership resolve deterministically', () => {
-  assert.equal(resolveOwnership('src/lib/ai/provider.ts', registry).owner, 'ai-design');
-  assert.equal(resolveOwnership('src/app/page.tsx', registry).owner, 'platform');
+  assert.deepEqual(resolveOwnership('src/lib/ai/provider.ts', registry), {
+    file: 'src/lib/ai/provider.ts', shared: false, explicitOwners: ['ai-design'], defaulted: false, classification: 'explicit', owner: 'ai-design',
+  });
+  assert.deepEqual(resolveOwnership('src/app/page.tsx', registry), {
+    file: 'src/app/page.tsx', shared: false, explicitOwners: [], defaulted: true, classification: 'default', owner: 'platform',
+  });
 });
 
 test('registry validation rejects duplicate scope ids', () => {

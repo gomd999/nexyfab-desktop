@@ -192,6 +192,7 @@
     "workspace:status": "node scripts/workspaces/status.mjs",
     "workspace:check": "node scripts/workspaces/check.mjs",
     "workspace:handoff": "node scripts/workspaces/handoff.mjs",
+    "workspace:handoff:check": "node scripts/workspaces/handoff-check.mjs",
     "workspace:integration-status": "node scripts/workspaces/integration-status.mjs",
     "workspace:dev": "node scripts/workspaces/dev.mjs",
     "dev:platform": "node scripts/workspaces/dev.mjs platform",

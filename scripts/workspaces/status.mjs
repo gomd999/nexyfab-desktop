@@ -1,10 +1,11 @@
 #!/usr/bin/env node
-import { collectChangedPaths, currentBranch, currentHead, getScope, readRegistry, resolveOwnership } from './workspace-registry.mjs';
+import { collectChangedPaths, collectUntrackedPaths, currentBranch, currentHead, getScope, readRegistry, resolveOwnership } from './workspace-registry.mjs';
 
 const registry = readRegistry();
 const scope = getScope(registry, process.argv[2]);
 const changedPaths = collectChangedPaths(registry);
 const classified = changedPaths.map(file => resolveOwnership(file, registry));
+const untracked = new Set(collectUntrackedPaths());
 console.log(JSON.stringify({
   scope: scope.id,
   expectedBranch: scope.branch,
@@ -14,4 +15,5 @@ console.log(JSON.stringify({
   ownedChanges: classified.filter(item => !item.shared && item.owner === scope.id).map(item => item.file),
   sharedChanges: classified.filter(item => item.shared).map(item => item.file),
   foreignChanges: classified.filter(item => !item.shared && item.owner !== scope.id).map(item => ({ file: item.file, owner: item.owner })),
+  unclassifiedNewPaths: classified.filter(item => item.defaulted && untracked.has(item.file)).map(item => item.file),
 }, null, 2));

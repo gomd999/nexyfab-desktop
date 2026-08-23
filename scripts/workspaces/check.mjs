@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import { collectChangedPaths, currentBranch, getScope, readRegistry, resolveOwnership } from './workspace-registry.mjs';
+import { collectChangedPaths, collectUntrackedPaths, currentBranch, getScope, readRegistry, resolveOwnership } from './workspace-registry.mjs';
 import { executeScopeChecks, notRunScopeChecks } from './workspace-guardrails.mjs';
 
 const registry = readRegistry();
@@ -11,7 +11,9 @@ const sharedViolations = ownership.filter(item => item.shared).map(item => item.
 const foreignViolations = ownership
   .filter(item => !item.shared && item.owner !== scope.id)
   .map(item => ({ file: item.file, owner: item.owner }));
-const structuralOk = branch === scope.branch && sharedViolations.length === 0 && foreignViolations.length === 0;
+const untracked = new Set(collectUntrackedPaths());
+const unclassifiedNewPaths = ownership.filter(item => item.defaulted && untracked.has(item.file)).map(item => item.file);
+const structuralOk = branch === scope.branch && sharedViolations.length === 0 && foreignViolations.length === 0 && unclassifiedNewPaths.length === 0;
 const checkResults = structuralOk
   ? executeScopeChecks(scope.checks)
   : notRunScopeChecks(scope.checks, 'scope_preflight_failed');
@@ -23,6 +25,7 @@ const result = {
   changedFiles: changedPaths.length,
   sharedViolations,
   foreignViolations,
+  unclassifiedNewPaths,
   structuralOk,
   checks: checkResults,
 };

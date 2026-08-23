@@ -14,6 +14,7 @@ const registry = readRegistry();
 const trackedFiles = parseNul(runGit(['ls-files', '-z']));
 const collisions = [];
 let sharedFiles = 0;
+let defaultOwnedFiles = 0;
 const ownedCounts = Object.fromEntries(registry.scopes.map(scope => [scope.id, 0]));
 
 for (const file of trackedFiles) {
@@ -22,6 +23,7 @@ for (const file of trackedFiles) {
     sharedFiles += 1;
     continue;
   }
+  if (ownership.defaulted) defaultOwnedFiles += 1;
   if (ownership.explicitOwners.length > 1) collisions.push(ownership);
   ownedCounts[ownership.owner] += 1;
 }
@@ -99,6 +101,7 @@ const result = {
   integrationBranch: registry.integrationBranch,
   trackedFiles: trackedFiles.length,
   sharedFiles,
+  defaultOwnedFiles,
   ownedFiles: ownedCounts,
   collisions,
   descriptorIssues,

@@ -41,7 +41,8 @@ intentional shared integration test; it is not the normal Scope workflow.
 1. Update the Scope's `CURRENT.md`.
 2. Run `npm run workspace:check -- <scope>`.
 3. Run `npm run workspace:handoff -- <scope> <slug>`, complete the generated
-   verification and risk sections, then commit on the Scope branch.
+   verification and risk sections, then run
+   `npm run workspace:handoff:check -- <scope>` and commit on the Scope branch.
 
 ## Integrate completed Scope work
 

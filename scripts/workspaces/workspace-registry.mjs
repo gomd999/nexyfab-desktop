@@ -82,10 +82,13 @@ export function resolveOwnership(file, registry) {
   const explicitOwners = registry.scopes
     .filter(scope => scope.ownedPaths.some(pattern => matchesPattern(normalized, pattern)))
     .map(scope => scope.id);
+  const defaulted = !shared && explicitOwners.length === 0;
   return {
     file: normalized,
     shared,
     explicitOwners,
+    defaulted,
+    classification: shared ? 'shared' : defaulted ? 'default' : 'explicit',
     owner: shared ? null : explicitOwners[0] ?? registry.defaultOwner,
   };
 }
@@ -124,6 +127,10 @@ export function collectChangedPaths(registry) {
   add(parseNul(runGit(['diff', '--cached', '--name-only', '-z'])));
   add(parseNul(runGit(['ls-files', '--others', '--exclude-standard', '-z'])));
   return [...paths].sort();
+}
+
+export function collectUntrackedPaths() {
+  return parseNul(runGit(['ls-files', '--others', '--exclude-standard', '-z'])).sort();
 }
 
 export function workspaceDirectory(scope) {
