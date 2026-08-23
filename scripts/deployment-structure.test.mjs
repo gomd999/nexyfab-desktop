@@ -48,6 +48,11 @@ test('web Railway service has a single-purpose start command', () => {
   assert.doesNotMatch(railwayJson.deploy.startCommand, /NEXYFAB_PROCESS_ROLE|openscad-worker/);
 });
 
+test('runner image preserves the exact build identity used by health and rollback checks', () => {
+  assert.match(rootDockerfile, /FROM node:22-slim AS runner[\s\S]+ARG NEXYFAB_BUILD_ID/);
+  assert.match(rootDockerfile, /ENV NEXYFAB_BUILD_TAG=\$\{CACHEBUST\}[\s\S]+NEXYFAB_BUILD_ID=\$\{NEXYFAB_BUILD_ID\}/);
+});
+
 test('production preflight enforces external CAD workers without requiring Docker in the web image', () => {
   assert.match(preflightCheck, /commercialReadinessIssues\(process\.env\)/);
   assert.doesNotMatch(preflightCheck, /process\.env\.OPENSCAD_USE_DOCKER/);

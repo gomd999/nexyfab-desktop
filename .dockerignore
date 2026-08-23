@@ -1,6 +1,10 @@
 node_modules
 .next
 .git
+.tmp/
+.claude/
+src-tauri/
+backups/
 .gitignore
 README.md
 *.md

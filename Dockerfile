@@ -66,7 +66,9 @@ FROM node:22-slim AS runner
 #   → 빌드 스테이지와 **같은 기본값**을 둔다. 인자가 오면 그것이 이긴다.
 #   ⚠ 두 곳을 함께 올려야 한다 — 갈리면 표시가 실제와 달라진다.
 ARG CACHEBUST=20260822-001
-ENV NEXYFAB_BUILD_TAG=${CACHEBUST}
+ARG NEXYFAB_BUILD_ID
+ENV NEXYFAB_BUILD_TAG=${CACHEBUST} \
+    NEXYFAB_BUILD_ID=${NEXYFAB_BUILD_ID}
 WORKDIR /app
 
 ENV NODE_ENV=production
