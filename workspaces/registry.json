@@ -18,6 +18,7 @@
     "packages/**",
     "scripts/workspaces/**",
     "workspaces/README.md",
+    "workspaces/CLEANUP_POLICY.md",
     "workspaces/registry.json",
     "src/lib/db*",
     "src/lib/platform/**",
