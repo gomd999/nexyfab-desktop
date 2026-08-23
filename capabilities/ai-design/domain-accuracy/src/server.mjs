@@ -30,13 +30,13 @@ async function readJson(request) {
   return JSON.parse(Buffer.concat(chunks).toString('utf8'));
 }
 
-export function createAiServer(env = process.env, now = () => new Date()) {
+export function createAiServer(env = process.env, now = () => new Date(), fetcher = globalThis.fetch) {
   return http.createServer(async (request, response) => {
     const method = request.method ?? 'GET';
     const pathname = new URL(request.url ?? '/', 'http://slice.local').pathname.replace(/\/$/, '') || '/';
     const phase = HEALTH_ROUTES.get(pathname);
     if (phase && (method === 'GET' || method === 'HEAD')) {
-      const payload = buildAiHealth(phase, env, now());
+      const payload = await buildAiHealth(phase, env, now(), fetcher);
       sendJson(response, payload.status === 'ok' ? 200 : 503, payload, method === 'HEAD');
       return;
     }
