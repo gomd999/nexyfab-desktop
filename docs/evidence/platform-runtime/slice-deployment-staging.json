@@ -24,6 +24,13 @@
     "verificationMode": "deploy-railway-verified --verify-only",
     "state": "BLOCKED_BY_RELEASE_GATE",
     "sourceChanged": false,
+    "localCandidate": {
+      "image": "nexyfab/core-api:6b9feb55",
+      "digest": "sha256:f00a9b07d95f5844ee1c71725244c5600f927e48efe9658f1a8a6fdf5dd78a77",
+      "buildId": "6b9feb555e12fcfd69d8cd35d5113aba71f71a7b",
+      "liveHealth": "PASS",
+      "platformStatusRoute": "PASS"
+    },
     "blockers": [
       "mechanical_feature_receipt_missing_or_invalid",
       "mechanical_interoperability_targets_missing",

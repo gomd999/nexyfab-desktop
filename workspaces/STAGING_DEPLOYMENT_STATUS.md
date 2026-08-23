@@ -30,4 +30,6 @@ This is a runtime-topology pass, not yet a direct deployment of the three NexyFa
 4. Analysis intentionally reports `MODEL_NOT_RUN`; live AI admission remains disabled.
 5. A verify-only deployment check against the existing `nexyfab.com` staging service was blocked by missing/current-revision mechanical feature and interoperability receipts. The service remained on `candidate-20260822-006`; no bypass deploy was attempted.
 
+The blocked direct deploy is not a Docker failure. `nexyfab/core-api:6b9feb55` was built locally with immutable digest `sha256:f00a9b07d95f5844ee1c71725244c5600f927e48efe9658f1a8a6fdf5dd78a77`; its live health returned the complete `6b9feb555e12fcfd69d8cd35d5113aba71f71a7b` build ID and `/platform-status/` returned HTTP 200.
+
 Do not enable automatic promotion or any production `deployEnabled` flag while these holds remain.
