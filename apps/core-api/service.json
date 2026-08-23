@@ -18,6 +18,11 @@
     "release": "/api/health/release",
     "timeoutSeconds": 30
   },
+  "dependencyProbe": {
+    "mode": "active-by-default",
+    "timeoutEnv": "NEXYFAB_DEPENDENCY_PROBE_TIMEOUT_MS",
+    "targets": [{ "binding": "LEGACY_NEXT_ORIGIN", "path": "/api/health/ready", "expectedStatus": "ok" }]
+  },
   "runtimeBindings": ["LEGACY_NEXT_ORIGIN", "NEXYFAB_BUILD_ID"],
   "staging": { "required": true, "evidencePath": "docs/evidence/platform-runtime/slice-deployment-readiness.json" },
   "rollback": { "strategy": "previous-release", "verifyCommand": "npm run rollback:verify", "requiredBuildBinding": true }
