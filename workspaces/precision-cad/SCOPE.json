@@ -1,5 +1,13 @@
 {
   "schema": "nexyfab.workspace-scope.v1",
   "id": "precision-cad",
-  "registry": "../registry.json"
+  "registry": "../registry.json",
+  "targetRoots": ["capabilities/precision-cad", "domains"],
+  "legacySourceRoots": [
+    "src/app/[lang]/shape-generator",
+    "src/lib/cad",
+    "src/lib/precision-cad-agent"
+  ],
+  "migrationState": "LEGACY_COMPATIBILITY",
+  "integrationMode": "contracts-and-handoffs"
 }
