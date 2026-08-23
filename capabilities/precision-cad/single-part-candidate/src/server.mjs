@@ -1,4 +1,5 @@
 import http from 'node:http';
+import { timingSafeEqual } from 'node:crypto';
 import { pathToFileURL } from 'node:url';
 import { evaluateMechanicalSinglePartSourceRuns } from './contract.mjs';
 import { buildPrecisionHealth } from './health.mjs';
@@ -30,8 +31,21 @@ async function readJson(request) {
   return JSON.parse(Buffer.concat(chunks).toString('utf8'));
 }
 
+function authenticated(request, env) {
+  const token = env.INTERNAL_AUTH_TOKEN?.trim() ?? '';
+  if (token.length < 32) return 'UNCONFIGURED';
+  const expected = Buffer.from(`Bearer ${token}`);
+  const actual = Buffer.from(request.headers.authorization ?? '');
+  return expected.length === actual.length && timingSafeEqual(expected, actual) ? 'PASS' : 'DENY';
+}
+
+function requestTimeout(env) {
+  const value = Number.parseInt(env.NEXYFAB_REQUEST_TIMEOUT_MS ?? '5000', 10);
+  return Number.isInteger(value) && value >= 1000 && value <= 30000 ? value : 5000;
+}
+
 export function createPrecisionServer(env = process.env, now = () => new Date(), fetcher = globalThis.fetch) {
-  return http.createServer(async (request, response) => {
+  const server = http.createServer(async (request, response) => {
     const method = request.method ?? 'GET';
     const pathname = new URL(request.url ?? '/', 'http://slice.local').pathname.replace(/\/$/, '') || '/';
     const phase = HEALTH_ROUTES.get(pathname);
@@ -41,6 +55,13 @@ export function createPrecisionServer(env = process.env, now = () => new Date(),
       return;
     }
     if (pathname === '/contract/source-runs' && method === 'POST') {
+      const authentication = authenticated(request, env);
+      if (authentication !== 'PASS') {
+        sendJson(response, authentication === 'UNCONFIGURED' ? 503 : 401, {
+          error: authentication === 'UNCONFIGURED' ? 'internal_auth_not_configured' : 'internal_auth_failed',
+        });
+        return;
+      }
       try {
         const input = await readJson(request);
         if (typeof input.feature !== 'string' || !Array.isArray(input.runs)) throw new Error('contract_input_invalid');
@@ -54,6 +75,9 @@ export function createPrecisionServer(env = process.env, now = () => new Date(),
       error: phase || pathname === '/contract/source-runs' ? 'method_not_allowed' : 'not_found',
     });
   });
+  server.requestTimeout = requestTimeout(env);
+  server.headersTimeout = requestTimeout(env);
+  return server;
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
