@@ -1,0 +1,67 @@
+{
+  "schema": "nexyfab.slice-rollback-execution.v1",
+  "recordedAt": "2026-08-23T16:20:00.000Z",
+  "environment": { "provider": "Railway", "name": "staging" },
+  "mechanism": "RAILWAY_DASHBOARD_PREVIOUS_DEPLOYMENT",
+  "stagingEvidenceSha256": "2f893e6616339c31b3dde895e1a0d70890ae3bb778ea929ed7494cdf6ffb31cb",
+  "execution": "NOT_RUN",
+  "reason": "Native staging rollback drill has not been executed. Use the captured immutable targets, verify rollback health, then restore and verify the current deployment.",
+  "targets": [
+    {
+      "service": "nexycad-source-ingestion-preview",
+      "execution": "NOT_RUN",
+      "currentDeployment": { "deploymentId": "30576d20-337d-4394-b338-22eb6d4d6df2", "imageDigest": "sha256:c42e5e37892b6c7a398e46a18adc0a7767eca4a641e30483aabcaf82c65280c0" },
+      "rollbackTarget": { "deploymentId": "4dd3cd41-59d2-4176-9a84-bd073355d954", "imageDigest": "sha256:ca9dbab67173f2b986862da0ca3d8d381a3ce11e37024f16d50ce588afb6bbff" },
+      "rollbackObservation": null,
+      "restoreObservation": null
+    },
+    {
+      "service": "nexycad-exact-cad-preview",
+      "execution": "NOT_RUN",
+      "currentDeployment": { "deploymentId": "8054423f-1760-41c8-9c3d-585a3695e478", "imageDigest": "sha256:16735b40cf44c538573608097bba5888403306b067522a9f22faa181d26ef727" },
+      "rollbackTarget": { "deploymentId": "ba69733f-ae34-4167-9f84-e467cee16072", "imageDigest": "sha256:4f868547ab4c3120f640cde3fca3c8be74e0764b7153f7602a856f3a92849479" },
+      "rollbackObservation": null,
+      "restoreObservation": null
+    },
+    {
+      "service": "nexycad-analysis-preview",
+      "execution": "NOT_RUN",
+      "currentDeployment": { "deploymentId": "a09eaddb-731a-4e18-a23d-65852c60f10c", "imageDigest": "sha256:89b7e0bb022864ff7d547660f4b7e3196e4aeed293d9a67208f0db63877c9da2" },
+      "rollbackTarget": { "deploymentId": "6a3aec16-8529-4c10-a68b-68d4fa377e92", "imageDigest": "sha256:48410b47652388dc5da7ccd082e54b500b8ac10f02e7ab7cf6305e1eb482ebdf" },
+      "rollbackObservation": null,
+      "restoreObservation": null
+    },
+    {
+      "service": "nexycad-job-control-preview",
+      "execution": "NOT_RUN",
+      "currentDeployment": { "deploymentId": "8f05eac5-0477-4f1d-a4f1-b7f4bff10e9f", "imageDigest": "sha256:9eabc09a03f4cbf3e0925f48594dcc73d09efcc8d63f1b59bc5fa2b9b7e13425" },
+      "rollbackTarget": { "deploymentId": "a00a1a86-0689-42d7-89cd-9b53587962bc", "imageDigest": "sha256:da919df4a4b78b8557cc24f5dd5631482012e1aceafcb7c310d664511b6776cf" },
+      "rollbackObservation": null,
+      "restoreObservation": null
+    },
+    {
+      "service": "nexycad-core-api-preview",
+      "execution": "NOT_RUN",
+      "currentDeployment": { "deploymentId": "abcf6365-f42a-4032-9514-cc12c7c655bd", "imageDigest": "sha256:a0a528028066b4e19ad8c4b357706e7e12074d26f9f98a177e17c0f3d64182c6" },
+      "rollbackTarget": { "deploymentId": "236dd103-fc0b-44d3-b3a1-15fd27f1b861", "imageDigest": "sha256:283562d44a3d3c27a1ff24d0b5791ffd178e7f9a30b5fd5624597f2f1fab270b" },
+      "rollbackObservation": null,
+      "restoreObservation": null
+    },
+    {
+      "service": "nexycad-collaboration-preview",
+      "execution": "NOT_RUN",
+      "currentDeployment": { "deploymentId": "c469c1ec-1f31-498e-a21e-eee1d745c540", "imageDigest": "sha256:c63924d197b811694346f9e96b2f49ac473a3526e11cf3ff4133a54608da3010" },
+      "rollbackTarget": { "deploymentId": "162c3d72-ea9c-463f-bdbf-157778b77c9f", "imageDigest": "sha256:3800f5d0578e0138531f6c4391b769e76b0cf6308c3dc958211f771127f238f2" },
+      "rollbackObservation": null,
+      "restoreObservation": null
+    },
+    {
+      "service": "nexycad-studio-preview",
+      "execution": "NOT_RUN",
+      "currentDeployment": { "deploymentId": "88f4e33f-81f9-4ceb-8bda-818aae6dd2db", "imageDigest": "sha256:5fcb01f3a814982aa96c2e7aa8013b750caa5ec1099f7983756341ebb6b61f46" },
+      "rollbackTarget": { "deploymentId": "11ac7973-776d-4dff-8194-ed10dbef7441", "imageDigest": "sha256:cc0894b64af162c6a84d7931990bd71fdaf18b22585529e89fad4fbb8873bd03" },
+      "rollbackObservation": null,
+      "restoreObservation": null
+    }
+  ]
+}

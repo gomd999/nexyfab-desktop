@@ -59,6 +59,8 @@ jobs:
       - run: npm ci --legacy-peer-deps
       - run: npm run platform:architecture:check
       - run: npm run test:slices
+      - run: npm run platform:slices:readiness
+      - run: npm run platform:slices:rollback:check
       - run: node --test scripts/platform/validate-platform-architecture.test.mjs
       - run: node --test scripts/platform/evaluate-runtime-placement-readiness.test.mjs
       - run: node scripts/platform/evaluate-runtime-placement-readiness.mjs --allow-hold

@@ -15,6 +15,7 @@
     "next.config.ts",
     "middleware.ts",
     "config/**",
+    "docs/evidence/platform-runtime/**",
     "packages/**",
     "scripts/workspaces/**",
     "workspaces/README.md",
