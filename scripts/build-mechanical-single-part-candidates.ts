@@ -8,7 +8,7 @@ import {
   MECHANICAL_SINGLE_PART_CANDIDATE_SCHEMA,
   evaluateMechanicalSinglePartSourceRuns,
   mechanicalSinglePartDimensionsMm,
-} from '../src/lib/cad/mechanicalSinglePartCandidate';
+} from '../capabilities/precision-cad/single-part-candidate';
 import { detectStepUnits } from '../src/lib/brep-bridge/stepRead';
 import {
   ensureOcctReady,
