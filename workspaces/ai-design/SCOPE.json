@@ -1,5 +1,12 @@
 {
   "schema": "nexyfab.workspace-scope.v1",
   "id": "ai-design",
-  "registry": "../registry.json"
+  "registry": "../registry.json",
+  "targetRoots": ["capabilities/ai-design"],
+  "legacySourceRoots": [
+    "src/lib/ai",
+    "src/app/api/nexyfab/projects/[id]/architecture-interior-ai-design"
+  ],
+  "migrationState": "LEGACY_COMPATIBILITY",
+  "integrationMode": "contracts-and-handoffs"
 }
