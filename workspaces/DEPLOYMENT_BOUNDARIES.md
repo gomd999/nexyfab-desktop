@@ -39,6 +39,9 @@ shape-generator 또는 CAD job 중 하나만 선택해 `cad-api → job → occt
 - architecture validator: PASS
 - 실제 runtime 배포 readiness: HOLD (`docs/evidence/platform-runtime/live-observation-current.json` 부재)
 - 따라서 현재는 배포 활성화 단계가 아니라 분리·검증 단계다.
+- slice별 로컬 readiness receipt: `docs/evidence/platform-runtime/slice-deployment-readiness.json`
+- 재현 명령: `npm run platform:slices:receipt`, `npm run platform:slices:readiness`
+- receipt의 staging/rollback 상태는 외부 환경이 없을 때 반드시 `NOT_RUN/HOLD`로 유지한다.
 
 ## 변경 허용 기준
 
