@@ -49,3 +49,9 @@ test('registry validation separates ordinary checks from optional release gates'
   invalidReleaseGates.scopes[1].releaseGates = 'npm run release';
   assert.throws(() => validateRegistry(invalidReleaseGates), /workspace_scope_release_gates_invalid/);
 });
+
+test('registry validation rejects checks containing shell operators', () => {
+  const invalid = structuredClone(registry);
+  invalid.scopes[0].checks = ['npm run typecheck && echo bypass'];
+  assert.throws(() => validateRegistry(invalid), /workspace_check_command_unsafe/);
+});

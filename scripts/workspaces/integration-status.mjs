@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 import { currentBranch, currentHead, readRegistry, runGit } from './workspace-registry.mjs';
+import { evaluateIntegrationState } from './workspace-guardrails.mjs';
 
 const registry = readRegistry();
 const worktreeOutput = runGit(['worktree', 'list', '--porcelain']);
@@ -34,10 +35,22 @@ const scopes = registry.scopes.map(scope => {
   };
 });
 
-console.log(JSON.stringify({
-  ok: currentBranch() === registry.integrationBranch,
-  integrationBranch: registry.integrationBranch,
-  branch: currentBranch(),
-  head: currentHead(),
+const branch = currentBranch();
+const allowReady = process.argv.includes('--allow-ready');
+const evaluation = evaluateIntegrationState({
+  expectedBranch: registry.integrationBranch,
+  branch,
   scopes,
-}, null, 2));
+  allowReady,
+});
+const result = {
+  ok: evaluation.ok,
+  integrationBranch: registry.integrationBranch,
+  branch,
+  head: currentHead(),
+  mode: allowReady ? 'ALLOW_READY' : 'STRICTLY_INTEGRATED',
+  scopes,
+  issues: evaluation.issues,
+};
+console.log(JSON.stringify(result, null, 2));
+if (!result.ok) process.exitCode = 1;

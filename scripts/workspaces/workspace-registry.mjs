@@ -2,6 +2,7 @@ import { spawnSync } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { parseCheckCommand } from './workspace-guardrails.mjs';
 
 const scriptDirectory = path.dirname(fileURLToPath(import.meta.url));
 export const repositoryRoot = path.resolve(scriptDirectory, '../..');
@@ -61,9 +62,11 @@ export function validateRegistry(registry) {
     if (!Array.isArray(scope.checks) || scope.checks.length === 0) {
       throw new Error(`workspace_scope_checks_invalid:${scope.id}`);
     }
+    for (const command of scope.checks) parseCheckCommand(command);
     if (scope.releaseGates !== undefined && !Array.isArray(scope.releaseGates)) {
       throw new Error(`workspace_scope_release_gates_invalid:${scope.id}`);
     }
+    for (const command of scope.releaseGates ?? []) parseCheckCommand(command);
   }
 }
 
