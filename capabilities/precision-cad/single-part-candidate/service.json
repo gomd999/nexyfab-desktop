@@ -30,7 +30,7 @@
       { "binding": "JOB_CONTROL_URL", "path": "/healthz", "expectedService": "job-control" }
     ]
   },
-  "runtimeBindings": ["EXACT_KERNEL_URL", "EXACT_KERNEL_AUTH_TOKEN", "JOB_CONTROL_URL", "JOB_CONTROL_AUTH_TOKEN", "EXACT_KERNEL_IDENTITY", "NEXYFAB_BUILD_ID"],
+  "runtimeBindings": ["EXACT_KERNEL_URL", "EXACT_KERNEL_AUTH_TOKEN", "JOB_CONTROL_URL", "JOB_CONTROL_AUTH_TOKEN", "EXACT_KERNEL_IDENTITY", "INTERNAL_AUTH_TOKEN", "NEXYFAB_BUILD_ID"],
   "staging": { "required": true, "evidencePath": "docs/evidence/platform-runtime/slice-deployment-readiness.json" },
   "rollback": { "strategy": "previous-release", "owner": "exact-cad-job-blocked", "requiredBuildBinding": true }
 }

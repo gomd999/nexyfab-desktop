@@ -54,6 +54,7 @@ export async function evaluatePrecisionReadiness(env = process.env, fetcher = gl
     jobControl: isHttpUrl(env.JOB_CONTROL_URL ?? ''),
     jobControlAuthToken: secretBound(env.JOB_CONTROL_AUTH_TOKEN),
     kernelIdentity: Boolean(env.EXACT_KERNEL_IDENTITY?.trim()),
+    internalAuthToken: secretBound(env.INTERNAL_AUTH_TOKEN),
   };
   const blockers = Object.entries(bindings)
     .filter(([, bound]) => !bound)
@@ -99,6 +100,7 @@ export async function buildPrecisionHealth(phase, env = process.env, now = new D
           jobControl: isHttpUrl(env.JOB_CONTROL_URL ?? ''),
           jobControlAuthToken: secretBound(env.JOB_CONTROL_AUTH_TOKEN),
           kernelIdentity: Boolean(env.EXACT_KERNEL_IDENTITY?.trim()),
+          internalAuthToken: secretBound(env.INTERNAL_AUTH_TOKEN),
         },
         dependencies: {
           exactKernel: { state: 'NOT_RUN', reason: 'live_probe_skipped' },

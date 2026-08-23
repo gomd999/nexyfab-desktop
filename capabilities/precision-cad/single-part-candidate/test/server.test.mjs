@@ -4,6 +4,8 @@ import test from 'node:test';
 import { MECHANICAL_SINGLE_PART_REQUIRED_AXES } from '../src/contract.mjs';
 import { createPrecisionServer } from '../src/server.mjs';
 
+const INTERNAL_TOKEN = 'precision-internal-auth-token-0001';
+
 async function withServer(env, callback) {
   const server = createPrecisionServer(env, () => new Date('2026-08-23T00:00:00.000Z'));
   await new Promise((resolve, reject) => {
@@ -40,10 +42,10 @@ async function withHealthService(payload, callback) {
 }
 
 test('source-run contract passes only the complete seven-axis receipt', async () => {
-  await withServer({}, async baseUrl => {
+  await withServer({ INTERNAL_AUTH_TOKEN: INTERNAL_TOKEN }, async baseUrl => {
     const response = await fetch(`${baseUrl}/contract/source-runs`, {
       method: 'POST',
-      headers: { 'content-type': 'application/json' },
+      headers: { 'content-type': 'application/json', authorization: `Bearer ${INTERNAL_TOKEN}` },
       body: JSON.stringify({
         feature: 'fixture',
         runs: MECHANICAL_SINGLE_PART_REQUIRED_AXES.map(axis => ({ feature: 'fixture', axis, status: 'PASS' })),
@@ -55,16 +57,25 @@ test('source-run contract passes only the complete seven-axis receipt', async ()
 });
 
 test('source-run contract fails closed for a missing axis', async () => {
-  await withServer({}, async baseUrl => {
+  await withServer({ INTERNAL_AUTH_TOKEN: INTERNAL_TOKEN }, async baseUrl => {
     const response = await fetch(`${baseUrl}/contract/source-runs`, {
       method: 'POST',
-      headers: { 'content-type': 'application/json' },
+      headers: { 'content-type': 'application/json', authorization: `Bearer ${INTERNAL_TOKEN}` },
       body: JSON.stringify({ feature: 'fixture', runs: [] }),
     });
     const payload = await response.json();
     assert.equal(response.status, 200);
     assert.equal(payload.eligible, false);
     assert.ok(payload.reasons.includes('axis_missing:create'));
+  });
+});
+
+test('source-run contract denies missing or invalid internal authentication', async () => {
+  await withServer({}, async baseUrl => {
+    assert.equal((await fetch(`${baseUrl}/contract/source-runs`, { method: 'POST' })).status, 503);
+  });
+  await withServer({ INTERNAL_AUTH_TOKEN: INTERNAL_TOKEN }, async baseUrl => {
+    assert.equal((await fetch(`${baseUrl}/contract/source-runs`, { method: 'POST' })).status, 401);
   });
 });
 
@@ -87,6 +98,7 @@ test('ready requires canonical Exact Kernel and Job Control bindings plus active
         JOB_CONTROL_URL: jobControlUrl,
         JOB_CONTROL_AUTH_TOKEN: 'j'.repeat(32),
         EXACT_KERNEL_IDENTITY: kernelIdentity,
+        INTERNAL_AUTH_TOKEN: INTERNAL_TOKEN,
       }, async baseUrl => {
         const ready = await fetch(`${baseUrl}/health/ready`);
         const payload = await ready.json();
@@ -114,6 +126,7 @@ test('ready rejects a kernel identity mismatch', async () => {
         JOB_CONTROL_URL: jobControlUrl,
         JOB_CONTROL_AUTH_TOKEN: 'j'.repeat(32),
         EXACT_KERNEL_IDENTITY: 'expected-kernel',
+        INTERNAL_AUTH_TOKEN: INTERNAL_TOKEN,
       }, async baseUrl => {
         const response = await fetch(`${baseUrl}/health/ready`);
         const payload = await response.json();
