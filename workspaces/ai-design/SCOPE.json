@@ -1,0 +1,5 @@
+{
+  "schema": "nexyfab.workspace-scope.v1",
+  "id": "ai-design",
+  "registry": "../registry.json"
+}

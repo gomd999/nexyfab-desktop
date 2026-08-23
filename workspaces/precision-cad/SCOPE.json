@@ -1,0 +1,5 @@
+{
+  "schema": "nexyfab.workspace-scope.v1",
+  "id": "precision-cad",
+  "registry": "../registry.json"
+}
