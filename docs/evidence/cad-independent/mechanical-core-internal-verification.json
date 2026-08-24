@@ -1,12 +1,12 @@
 {
   "schema": "nexyfab.mechanical-core-internal-verification.v1",
-  "generatedAt": "2026-08-22T22:32:40.135Z",
+  "generatedAt": "2026-08-24T14:34:36.851Z",
   "releaseChannel": "mechanical-core",
   "ok": true,
   "git": {
-    "head": "3d6ba1ec461169d9d331b939e432483c3953b752",
-    "branch": "release/2026-08-10",
-    "workingTreeClean": false
+    "head": "68b220ea308cc3d86b40b418b0b87f8ba9847baf",
+    "branch": "integration/nexyfab",
+    "workingTreeClean": true
   },
   "checks": {
     "losslessDesignGraph": true,
@@ -27,52 +27,52 @@
         "RUN_OCCT_FEASIBILITY": "1"
       },
       "exitCode": 0,
-      "durationMs": 74878
+      "durationMs": 71091
     },
     {
       "name": "mechanical-accuracy",
       "command": "npm run test:accuracy:mechanical",
       "environment": {},
       "exitCode": 0,
-      "durationMs": 23044
+      "durationMs": 22650
     },
     {
       "name": "intent-qualification",
       "command": "npm run mechanical:intents:local:check",
       "environment": {},
       "exitCode": 0,
-      "durationMs": 823
+      "durationMs": 909
     },
     {
       "name": "intent-runtime",
       "command": "npm run mechanical:intents:runtime:check",
       "environment": {},
       "exitCode": 0,
-      "durationMs": 1085
+      "durationMs": 1165
     },
     {
       "name": "assembly-handoff-readiness",
       "command": "npm run assembly-handoff:readiness:check",
       "environment": {},
       "exitCode": 0,
-      "durationMs": 6608
+      "durationMs": 7472
     },
     {
       "name": "typecheck",
       "command": "npm run typecheck",
       "environment": {},
       "exitCode": 0,
-      "durationMs": 23808
+      "durationMs": 20327
     }
   ],
   "sourceBindings": [
     {
       "path": "package.json",
-      "sha256": "446cd34404211bd41f70cb4d78e293a9298c93653a85b88e9288ddd578bb3121"
+      "sha256": "4375aed0f3fd045d23121c305a5556d2d7acc083d18683e3898da33b7765bd3c"
     },
     {
       "path": "package-lock.json",
-      "sha256": "d27bddc997f10ade5cf94722b17c70a4e958b1e8f631f1e807a3ac4c51289f26"
+      "sha256": "d5bd18e9f6648828af26925e4b914a9af4cafb700b8b58a8daeb7300099110e3"
     },
     {
       "path": "scripts/run-mechanical-core-internal-verification.mjs",
@@ -140,7 +140,7 @@
     },
     {
       "path": "scripts/verify-mechanical-ai-intent-runtime-receipt.test.ts",
-      "sha256": "878a58f5c882086ac095a001f27383d8fae0d03e07b30d5fb57f2737905881a2"
+      "sha256": "3912374cedc3b59c34a1e6b91e777c9e8272e45eb7e7fc2b989d40039dadb557"
     },
     {
       "path": "scripts/build-assembly-drawing-handoff-readiness.mjs",
@@ -244,11 +244,11 @@
     },
     {
       "path": "src/app/[lang]/shape-generator/assembly/drawingHandoff.ts",
-      "sha256": "4716832985c4c61f2964598e36f321c674100f63350717417a6e302c34f7f6fb"
+      "sha256": "eefb52dea8f99537078a7d62aac7ca7a28e48b37f6f7f85b41a4de69921b6314"
     },
     {
       "path": "src/app/[lang]/shape-generator/assembly/drawingHandoff.test.ts",
-      "sha256": "28cb580f155b5a87e1086ed0c00051ae207fd4c3326acbefc56fbf38f56b49cf"
+      "sha256": "f3e9115a691282f6da68be9c196a2ac914b15213bf45023e82185552aab82780"
     },
     {
       "path": "src/app/[lang]/shape-generator/io/manufacturingPackage.ts",
@@ -272,7 +272,7 @@
     },
     {
       "path": "src/app/[lang]/shape-generator/features/occtEngine.ts",
-      "sha256": "32ff70b38fe4634f1a1058319fbe0a782057df0aee95975ac1c6bdac41eb3084"
+      "sha256": "9447d4ab9e5bc20f47b90bddcfa5a9c51d80aea8e993b431846dd58d368ebbd9"
     },
     {
       "path": "src/app/[lang]/shape-generator/__tests__/geometrySignature.ts",
