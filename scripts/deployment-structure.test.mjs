@@ -85,8 +85,15 @@ test('postbuild prunes mutable state and repairs the standalone runtime', () => 
   assert.match(packageJson.scripts.postbuild, /prune-standalone-artifacts\.mjs/);
   assert.match(packageJson.scripts.postbuild, /sync-standalone-static\.mjs/);
   assert.match(standaloneSync, /node_modules.*next.*dist.*lib/s);
+  assert.match(railwayIgnore, /^docs\/\*\*$/m);
+  assert.match(railwayIgnore, /^!docs\/evidence\/$/m);
+  assert.match(railwayIgnore, /^docs\/evidence\/\*\*$/m);
+  assert.match(railwayIgnore, /^!docs\/evidence\/release\/$/m);
+  assert.match(railwayIgnore, /^docs\/evidence\/release\/\*\*$/m);
   assert.match(railwayIgnore, /^!docs\/evidence\/release\/commercial-i18n-release-receipt\.json$/m);
   assert.match(railwayIgnore, /^!docs\/evidence\/release\/seven-day-operations-receipt\.json$/m);
+  assert.match(railwayIgnore, /^!docs\/evidence\/operations\/$/m);
+  assert.match(railwayIgnore, /^docs\/evidence\/operations\/\*\*$/m);
   assert.match(railwayIgnore, /^!docs\/evidence\/operations\/\*\*\/\*\.json$/m);
   assert.doesNotMatch(railwayIgnore, /^!docs\/?$/m);
   assert.match(releaseHealthPackaging, /OPERATIONS_EVIDENCE_PREFIX = 'docs\/evidence\/operations\/'/);
