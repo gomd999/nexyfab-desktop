@@ -68,7 +68,9 @@ function stableHash(input: string): string {
   for (let index = 0; index < input.length; index += 1) hash = Math.imul(hash ^ input.charCodeAt(index), 16777619);
   return (hash >>> 0).toString(16).padStart(8, '0');
 }
-function nodeId(kind: string, key: string, suffix = ''): string { return `intent:${kind}:${key}:${stableHash(`${kind}:${key}:${suffix}`)}`; }
+function serialized(value: unknown): string { try { return JSON.stringify(value); } catch { return '[unserializable]'; } }
+function safeFragment(value: string): string { return value.replace(/[^A-Za-z0-9._:-]/g, '_').slice(0, 48) || 'unnamed'; }
+function nodeId(kind: string, key: string, suffix = ''): string { return `intent:${kind}:${safeFragment(key)}:${stableHash(`${kind}:${key}:${suffix}`)}`; }
 function unique(values: string[]): string[] { return [...new Set(values)].sort(); }
 function impactFor(key: string, highImpact: Set<string>): number { return highImpact.has(key) ? 1 : /material|overall|dimension|tolerance|load|safety|manufactur/i.test(key) ? 0.8 : 0.5; }
 function authorityConfidence(authority: DesignIntentAuthority): number { return authority === 'user_confirmed' ? 1 : authority === 'imported_authority' ? 0.8 : 0.35; }
@@ -82,7 +84,7 @@ export function createAiDesignIntentGraph(checkpoint: DesignIntentCheckpointV1, 
   const facts = [...checkpoint.userConfirmedFacts, ...checkpoint.importedAuthority, ...checkpoint.aiAssumptions];
   for (const fact of facts) {
     const kind: AiDesignIntentNodeKind = fact.authority === 'ai_assumption' ? 'assumption' : 'fact';
-    add({ id: nodeId(kind, fact.key, JSON.stringify(fact.value)), kind, key: fact.key, value: fact.value, category: fact.category, confidence: authorityConfidence(fact.authority), impact: impactFor(fact.key, highImpact), status: 'active', provenance: { sourceIds: unique(fact.sourceIds), sourceHashes: unique(fact.sourceHashes), authority: fact.authority } });
+    add({ id: nodeId(kind, fact.key, serialized(fact.value)), kind, key: fact.key, value: fact.value, category: fact.category, confidence: authorityConfidence(fact.authority), impact: impactFor(fact.key, highImpact), status: 'active', provenance: { sourceIds: unique(fact.sourceIds), sourceHashes: unique(fact.sourceHashes), authority: fact.authority } });
   }
   for (const conflict of checkpoint.conflicts) {
     const conflictNode: AiDesignIntentNode = { id: nodeId('conflict', conflict.key), kind: 'conflict', key: conflict.key, category: conflict.category, confidence: 0, impact: impactFor(conflict.key, highImpact), status: 'active', provenance: { sourceIds: unique(conflict.values.flatMap(value => value.sourceIds)), sourceHashes: unique(conflict.values.flatMap(value => value.sourceHashes)), authority: 'ai_assumption' }, alternatives: conflict.values.map(value => ({ ...value, sourceIds: unique(value.sourceIds), sourceHashes: unique(value.sourceHashes) })) };
@@ -91,7 +93,7 @@ export function createAiDesignIntentGraph(checkpoint: DesignIntentCheckpointV1, 
   for (const missing of checkpoint.missingFields) add({ id: nodeId('missing', missing.key), kind: 'missing', key: missing.key, category: missing.category, confidence: 0, impact: impactFor(missing.key, highImpact), status: 'active', provenance: { sourceIds: [], sourceHashes: [], authority: 'ai_assumption' } });
   const edges: AiDesignIntentEdge[] = [];
   const edgeKeys = new Set<string>();
-  const addEdge = (kind: AiDesignIntentEdgeKind, from: string, to: string, label?: string) => { if (edges.length >= AI_DESIGN_GRAPH_MAX_EDGES || from === to || !nodes.some(node => node.id === from) || !nodes.some(node => node.id === to)) return; const id = `${kind}:${from}:${to}`; if (edgeKeys.has(id)) return; edgeKeys.add(id); edges.push({ id, kind, from, to, ...(label ? { label } : {}) }); };
+  const addEdge = (kind: AiDesignIntentEdgeKind, from: string, to: string, label?: string) => { if (edges.length >= AI_DESIGN_GRAPH_MAX_EDGES || from === to || !nodes.some(node => node.id === from) || !nodes.some(node => node.id === to)) return; const relation = `${kind}:${from}:${to}`; if (edgeKeys.has(relation)) return; edgeKeys.add(relation); const id = `edge:${kind}:${stableHash(relation)}:${stableHash(`${to}:${from}:${kind}`)}`; edges.push({ id, kind, from, to, ...(label ? { label } : {}) }); };
   for (const conflict of checkpoint.conflicts) {
     const conflictNode = byKey.get(conflict.key)?.find(node => node.kind === 'conflict');
     if (!conflictNode) continue;
@@ -116,7 +118,7 @@ export function validateAiDesignIntentGraph(value: unknown): string[] {
   if (!SAFE_ID.test(graph.projectId ?? '') || !Number.isSafeInteger(graph.revision) || graph.revision < 0 || !SHA256.test(graph.projectContentHash ?? '') || !SAFE_ID.test(graph.checkpointId ?? '')) issues.push('project_binding_invalid');
   if (!Array.isArray(graph.nodes) || graph.nodes.length > AI_DESIGN_GRAPH_MAX_NODES) issues.push('node_count_out_of_bounds');
   if (!Array.isArray(graph.edges) || graph.edges.length > AI_DESIGN_GRAPH_MAX_EDGES) issues.push('edge_count_out_of_bounds');
-  const ids = new Set<string>(); for (const node of graph.nodes ?? []) { if (!node || !SAFE_ID.test(node.id) || ids.has(node.id) || !KINDS.includes(node.kind) || typeof node.key !== 'string' || !Number.isFinite(node.confidence) || node.confidence < 0 || node.confidence > 1 || !Number.isFinite(node.impact) || node.impact < 0 || node.impact > 1 || !['active', 'invalidated'].includes(node.status) || !node.provenance || !Array.isArray(node.provenance.sourceIds) || !Array.isArray(node.provenance.sourceHashes)) issues.push(`node_invalid:${String(node?.id ?? 'unknown')}`); ids.add(node?.id ?? ''); }
+  const ids = new Set<string>(); for (const node of graph.nodes ?? []) { if (!node || !SAFE_ID.test(node.id) || ids.has(node.id) || !KINDS.includes(node.kind) || typeof node.key !== 'string' || !node.key.trim() || !Number.isFinite(node.confidence) || node.confidence < 0 || node.confidence > 1 || !Number.isFinite(node.impact) || node.impact < 0 || node.impact > 1 || !['active', 'invalidated'].includes(node.status) || !node.provenance || !Array.isArray(node.provenance.sourceIds) || node.provenance.sourceIds.some(id => !SAFE_ID.test(id)) || !Array.isArray(node.provenance.sourceHashes) || node.provenance.sourceHashes.some(hash => !SHA256.test(hash)) || !['user_confirmed', 'imported_authority', 'ai_assumption'].includes(node.provenance.authority)) issues.push(`node_invalid:${String(node?.id ?? 'unknown')}`); ids.add(node?.id ?? ''); }
   const edgeIds = new Set<string>(); for (const edge of graph.edges ?? []) { if (!edge || !SAFE_ID.test(edge.id) || edgeIds.has(edge.id) || !EDGE_KINDS.includes(edge.kind) || !ids.has(edge.from) || !ids.has(edge.to) || edge.from === edge.to) issues.push(`edge_invalid:${String(edge?.id ?? 'unknown')}`); edgeIds.add(edge?.id ?? ''); }
   return [...new Set(issues)];
 }
