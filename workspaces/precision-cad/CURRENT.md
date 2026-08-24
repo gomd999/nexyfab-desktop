@@ -1,5 +1,28 @@
 # Precision CAD current session
 
+## 2026-08-24 AP242 semantic identity re-export closure
+
+- Status: `LOCAL_AP242_SEMANTIC_ROUNDTRIP_PASS / RELEASE_HOLD`.
+- Source implementation commit: `f727a3dc` (`[P0] fix(cad): preserve STEP assembly identity on re-export`).
+- Imported STEP PRODUCT, part number, PRODUCT_DEFINITION, and NAUO occurrence
+  identity is now captured independently from the OCCT shape handle. Re-export
+  rebinds those fields only when the returned product tree has the identical
+  fail-closed structure; unsupported or changed trees block export instead of
+  silently replacing product identity with translator defaults.
+- The implementation changes no geometry or placement entities. It ignores
+  comment-contained fake entities, escapes STEP strings, and verifies the
+  rebound semantic graph before returning bytes.
+- Verification: pure parser/rebinder tests `4/4`, actual OCCT WASM AP242
+  open-export semantic roundtrip `1/1`, existing STEP hierarchy regression
+  `32 PASS / 6 conditional skip`, TypeScript PASS, ESLint PASS, and Precision
+  workspace ownership/architecture PASS at the source tree.
+- Boundary: this closes the previously observed local name/part-number/
+  occurrence-label loss. It does not claim XCAF reader availability,
+  independent native CAD interoperability, signed external operation, or
+  commercial release.
+- Immutable handoff:
+  `HANDOFFS/20260824T145321Z-ap242-semantic-identity-reexport.md`.
+
 ## 2026-08-24 AI exact bridge execution closure
 
 - Status: `EXACT_BRIDGE_RUNTIME_CONNECTED_LOCAL / RELEASE_HOLD`.
