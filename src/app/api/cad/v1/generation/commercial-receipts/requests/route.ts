@@ -10,6 +10,7 @@ import { createDbExternalCommercialEvidenceStore } from '@/lib/ai/externalCommer
 import { createDbExternalCommercialVerificationRequestStore, createExternalVerificationRequest, externalVerificationRequestSha } from '@/lib/ai/externalCommercialVerificationRequest';
 import { decodeAgenticCommercialReceiptEnvelope } from '@/lib/ai/agenticCommercialReceiptCodec';
 import { createDbCommercialGenerationStateStore } from '@/lib/ai/commercialGenerationStateStore';
+import { commercialPostgresMigrationAtLeast } from '@/lib/commercial-readiness';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -22,7 +23,7 @@ export async function POST(request: NextRequest) {
     if (body.registry !== undefined || body.verifierUrl !== undefined || body.rawEvidence !== undefined || body.clock !== undefined || body.mode !== undefined) return NextResponse.json({ ok: false, status: 'HOLD', code: 'PUBLIC_VERIFIER_INPUT_REJECTED' }, { status: 400 });
     if (typeof body.receiptId !== 'string' || typeof body.projectId !== 'string' || !ID.test(body.receiptId) || !ID.test(body.projectId) || !Number.isSafeInteger(body.revision) || (body.revision as number) < 0 || typeof body.modelContentHash !== 'string' || !/^[a-f0-9]{64}$/.test(body.modelContentHash) || !Array.isArray(body.evidenceIds) || body.evidenceIds.length !== 6 || body.evidenceIds.some(id => typeof id !== 'string' || !ID.test(id))) return NextResponse.json({ ok: false, status: 'HOLD', code: 'STORED_BINDING_AND_EVIDENCE_IDS_REQUIRED' }, { status: 400 });
     const auth = await getAuthUser(request); if (!auth) return NextResponse.json({ ok: false, status: 'HOLD', code: 'UNAUTHORIZED' }, { status: 401 });
-    if (process.env.NEXYFAB_COMMERCIAL_MODE === '1' && process.env.POSTGRES_MIGRATION_VERSION !== '2026082208') return NextResponse.json({ ok: false, status: 'HOLD', code: 'COMMERCIAL_GENERATION_MIGRATION_REQUIRED' }, { status: 503 });
+    if (process.env.NEXYFAB_COMMERCIAL_MODE === '1' && !commercialPostgresMigrationAtLeast(process.env, 2026082208)) return NextResponse.json({ ok: false, status: 'HOLD', code: 'COMMERCIAL_GENERATION_MIGRATION_REQUIRED' }, { status: 503 });
     const db = getDbAdapter(); const access = await resolveProjectAccess(db, body.projectId, auth); if (!access || !access.canEdit) return NextResponse.json({ ok: false, status: 'HOLD', code: 'PROJECT_EDITOR_REQUIRED' }, { status: 403 });
     const tenantId = resolveArtifactTenantId(access.row.org_id, access.ownerUserId);
     const receipt = await getAgenticCommercialReceipt(db, getStorage(), tenantId, body.projectId, body.receiptId);

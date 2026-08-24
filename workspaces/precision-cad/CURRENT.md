@@ -1,5 +1,28 @@
 # Precision CAD current session
 
+## 2026-08-25 commercial migration compatibility closure
+
+- Status: `CURRENT_MIGRATION_COMPATIBLE / RELEASE_HOLD`.
+- Source implementation commit: `06ef2d63` (`[P0] fix(cad): accept current
+  commercial migrations`).
+- All six commercial generation and verifier entry points now use the shared,
+  ordered PostgreSQL migration contract. They still fail closed below required
+  migration `2026082208` and for unknown versions, while accepting registered
+  later authority migrations through the current target `2026082403`.
+- This removes the production incompatibility where a correctly upgraded
+  service advertised `2026082403` but Precision routes required literal
+  equality with the older `2026082208` value and returned HTTP 503.
+- Verification: focused commercial readiness and Precision route regression
+  `43/43` PASS, including real OCCT STEP writes; `workspace:check --
+  precision-cad` PASS with TypeScript, architecture, ownership, and
+  classification checks clean.
+- Boundary: the source path is migration-compatible, but commercial release
+  remains `HOLD` until staging is migrated, configured, deployed, and proven by
+  authenticated multi-instance and recovery exercises plus independent CAD
+  interoperability, expert review, and manufacturing pilots.
+- Immutable handoff:
+  `HANDOFFS/20260824T154924Z-commercial-migration-compatibility.md`.
+
 ## 2026-08-24 AP242 semantic identity re-export closure
 
 - Status: `LOCAL_AP242_SEMANTIC_ROUNDTRIP_PASS / RELEASE_HOLD`.
