@@ -1,6 +1,6 @@
 {
   "schema": "nexyfab.assembly-drawing-handoff-local-readiness.v1",
-  "generatedAt": "2026-08-22T21:59:10.270Z",
+  "generatedAt": "2026-08-24T14:32:26.694Z",
   "status": "HOLD",
   "commercialReady": false,
   "localVerification": {
@@ -8,7 +8,7 @@
     "status": "PASS",
     "command": "npx vitest run src/app/api/nexyfab/projects/[id]/drawing-handoffs/route.sqlite.integration.test.ts src/app/api/cron/assembly-drawing-handoff-prune/route.test.ts src/lib/cad/assemblyDrawingHandoffStore.test.ts --reporter=dot",
     "exitCode": 0,
-    "durationMs": 7033,
+    "durationMs": 6895,
     "testFiles": [
       "src/app/api/nexyfab/projects/[id]/drawing-handoffs/route.sqlite.integration.test.ts",
       "src/app/api/cron/assembly-drawing-handoff-prune/route.test.ts",
@@ -110,7 +110,7 @@
   "sourceBindings": [
     {
       "path": "package-lock.json",
-      "sha256": "d27bddc997f10ade5cf94722b17c70a4e958b1e8f631f1e807a3ac4c51289f26"
+      "sha256": "d5bd18e9f6648828af26925e4b914a9af4cafb700b8b58a8daeb7300099110e3"
     },
     {
       "path": "scripts/build-assembly-drawing-handoff-readiness.mjs",
@@ -130,11 +130,11 @@
     },
     {
       "path": "src/app/[lang]/shape-generator/assembly/drawingHandoff.ts",
-      "sha256": "4716832985c4c61f2964598e36f321c674100f63350717417a6e302c34f7f6fb"
+      "sha256": "eefb52dea8f99537078a7d62aac7ca7a28e48b37f6f7f85b41a4de69921b6314"
     },
     {
       "path": "src/app/[lang]/shape-generator/assembly/drawingHandoff.test.ts",
-      "sha256": "28cb580f155b5a87e1086ed0c00051ae207fd4c3326acbefc56fbf38f56b49cf"
+      "sha256": "f3e9115a691282f6da68be9c196a2ac914b15213bf45023e82185552aab82780"
     },
     {
       "path": "src/app/[lang]/shape-generator/assembly/serverDrawingHandoff.ts",
@@ -202,7 +202,7 @@
     },
     {
       "path": "src/lib/db-adapter.ts",
-      "sha256": "65d39a20667b05c0e593a4ca248ffd9777ecf0e72ca424c14439aee0eeb18502"
+      "sha256": "5d9fb10de96735ed4559c313c78a6c2930e7029d36bd0e4b2247b5ab168a2282"
     },
     {
       "path": "docs/strategy/RAILWAY_CRON_SETUP.md",
@@ -227,5 +227,5 @@
     "src/lib/db-migrations-wave-2-sqlite.sql",
     "src/lib/db-postgres-migrations.sql"
   ],
-  "evidenceRootSha256": "a72f2e24b87031105aa5dee863b35f938d6957f8a29dd2358ade40d0903a2a3e"
+  "evidenceRootSha256": "dd0e2446a5d66435b4e8686d7d57e26213ae4b42eda08f9a62f95c679dd95a3b"
 }
