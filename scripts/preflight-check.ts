@@ -84,6 +84,7 @@ const REQUIRED_COLUMNS: Array<[string, string]> = [
   ['nf_orders', 'quote_id'],
   ['nf_orders', 'payment_status'],
   ['nf_orders', 'toss_order_id'],
+  ['nf_orders', 'updated_at'],
   ['nf_orders', 'lineage_id'],
   ['nf_orders', 'artifact_sha256'],
   ['nf_rfqs', 'lineage_id'],

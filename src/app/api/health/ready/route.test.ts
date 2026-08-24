@@ -64,6 +64,7 @@ describe('GET /api/health/ready', () => {
     vi.stubEnv('CANONICAL_CAD_REVISION_MIGRATION_CHECKSUM', '1'.repeat(64));
     vi.stubEnv('POSTGRES_MIGRATION_CHECKSUM_2026082402', '2'.repeat(64));
     vi.stubEnv('POSTGRES_MIGRATION_CHECKSUM_2026082403', '3'.repeat(64));
+    vi.stubEnv('POSTGRES_MIGRATION_CHECKSUM_2026082501', '1'.repeat(64));
     vi.stubEnv('OBJECT_STORAGE_PRIVATE_BUCKET', 'receipts');
     vi.stubEnv('S3_BUCKET', 'receipts');
     vi.stubEnv('GENERATION_EVIDENCE_SIGNING_SECRET', 'g'.repeat(32));
