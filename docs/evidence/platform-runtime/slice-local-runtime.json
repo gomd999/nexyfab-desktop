@@ -1,7 +1,7 @@
 {
   "schema": "nexyfab.slice-local-runtime-evidence.v1",
-  "generatedAt": "2026-08-23T19:26:19.205Z",
-  "integrationHeadAtVerification": "4b38f98c47dff86dd9cc866e4f4f981d5a1389e2",
+  "generatedAt": "2026-08-24T02:52:00.567Z",
+  "integrationHeadAtVerification": "2af70be5ef4c8807d0cc25a47409915d9559af99",
   "environment": {
     "provider": "Docker Desktop",
     "engineVersion": "29.3.1",
@@ -20,7 +20,7 @@
         "dockerfile": "apps/core-api/Dockerfile",
         "buildId": "1f33bd2aef02",
         "image": "nexyfab/core-api-slice:1f33bd2aef02",
-        "imageId": "sha256:58e8cd5a3c441358e673a0a6313add84ac96f4011ff66d51d819b2d917842c2d",
+        "imageId": "sha256:24eb2ec208ebd53829a0caed7137fab9075efab8aa3a201d93d8feca2b0e531d",
         "state": "PASS"
       },
       "health": {
@@ -54,16 +54,16 @@
     {
       "scope": "precision-cad",
       "unit": "precision-single-part-candidate",
-      "sourceCommit": "66ad3c1dbe43a84a40f9091ea616eda85e93ea75",
-      "sourceTreeSha256": "1fd44c23e7b2b66a20bcd55fd835924067129d2669385eb82cb33719992c3dca",
+      "sourceCommit": "d7cf566cbef788e2b4f29727e2c1bebb44f2135d",
+      "sourceTreeSha256": "041edc787b71ca6a54fcbfb5ac9d9b26fc037c14b5d912a3123ca908d21b9326",
       "sourceFileCount": 11,
       "status": "PASS_WITH_RELEASE_HOLD",
       "build": {
         "context": "capabilities/precision-cad/single-part-candidate",
         "dockerfile": "capabilities/precision-cad/single-part-candidate/Dockerfile",
-        "buildId": "1fd44c23e7b2",
-        "image": "nexyfab/precision-single-part:1fd44c23e7b2",
-        "imageId": "sha256:59e8387a5dec4f9ac3e696f607a411b1c9c09ea196a12b382fe5f4f2d1903c96",
+        "buildId": "041edc787b71",
+        "image": "nexyfab/precision-single-part:041edc787b71",
+        "imageId": "sha256:4c5f378501d019e503941b83254a47d2a3536b0cb27f4800a4e2daefc4a93cf0",
         "state": "PASS"
       },
       "health": {
@@ -73,20 +73,20 @@
           "path": "/health/live",
           "statusCode": 200,
           "state": "ok",
-          "build": "1fd44c23e7b2"
+          "build": "041edc787b71"
         },
         "ready": {
           "path": "/health/ready",
           "statusCode": 503,
           "state": "HOLD",
-          "build": "1fd44c23e7b2",
-          "reason": "dependency_probe_failed:exactKernel:active_probe_required"
+          "build": "041edc787b71",
+          "reason": "runtime_binding_missing_or_invalid:kernelIdentity"
         },
         "release": {
           "path": "/health/release",
           "statusCode": 503,
           "state": "HOLD",
-          "build": "1fd44c23e7b2",
+          "build": "041edc787b71",
           "reason": "deploy_disabled"
         }
       },
@@ -97,16 +97,16 @@
     {
       "scope": "ai-design",
       "unit": "ai-domain-accuracy",
-      "sourceCommit": "482620ceb3483004e0e9cdcff911063d0d5b8026",
-      "sourceTreeSha256": "ac72fb5c846ff4e01730c06a20b8ad1167243410fd1e1cb1921def80b5357e49",
+      "sourceCommit": "bbcf694d12e6d9e596345f3a9704f90552708bf6",
+      "sourceTreeSha256": "2ab17981e4025b1134763f457ebfd8956fa13885a90981108d754237c5840c18",
       "sourceFileCount": 11,
       "status": "PASS_WITH_RELEASE_HOLD",
       "build": {
         "context": "capabilities/ai-design/domain-accuracy",
         "dockerfile": "capabilities/ai-design/domain-accuracy/Dockerfile",
-        "buildId": "ac72fb5c846f",
-        "image": "nexyfab/ai-domain-accuracy:ac72fb5c846f",
-        "imageId": "sha256:481e57dcf554d3b30c04f4c2737fcf894081f28db60639c1661cae83b8513098",
+        "buildId": "2ab17981e402",
+        "image": "nexyfab/ai-domain-accuracy:2ab17981e402",
+        "imageId": "sha256:d893d02d7781a23ff708c2ab307e84a2cfa5bfd85b1f5e412e5a5639080cb630",
         "state": "PASS"
       },
       "health": {
@@ -116,20 +116,20 @@
           "path": "/health/live",
           "statusCode": 200,
           "state": "ok",
-          "build": "ac72fb5c846f"
+          "build": "2ab17981e402"
         },
         "ready": {
           "path": "/health/ready",
           "statusCode": 503,
           "state": "HOLD",
-          "build": "ac72fb5c846f",
+          "build": "2ab17981e402",
           "reason": "dependency_probe_failed:analysis:active_probe_required"
         },
         "release": {
           "path": "/health/release",
           "statusCode": 503,
           "state": "HOLD",
-          "build": "ac72fb5c846f",
+          "build": "2ab17981e402",
           "reason": "deploy_disabled"
         }
       },
