@@ -106,7 +106,7 @@ const ACTION_POLICY: Record<AiDesignChatActionId, {
   OPEN_COMPARISON: { command: 'OPEN_CANDIDATE_COMPARISON', boundary: 'local-ui', mutation: 'none', explicitCommitRequired: false, reference: null },
   PREVIEW_CHANGE: { command: 'PREVIEW_CONCEPT_CHANGE', boundary: 'ai-design-runtime', mutation: 'preview-only', explicitCommitRequired: false, reference: 'gaugeId' },
   APPLY_CONCEPT_CHANGE: { command: 'APPLY_CONCEPT_CHANGE_TO_SESSION', boundary: 'ai-design-runtime', mutation: 'session-only', explicitCommitRequired: true, reference: 'proposalId' },
-  REJECT_PREVIEW: { command: 'REJECT_CONCEPT_PREVIEW', boundary: 'ai-design-runtime', mutation: 'session-only', explicitCommitRequired: false, reference: 'proposalId' },
+  REJECT_PREVIEW: { command: 'REJECT_CONCEPT_PREVIEW', boundary: 'local-ui', mutation: 'none', explicitCommitRequired: false, reference: 'proposalId' },
   UNDO_AI_VIEW_CHANGE: { command: 'UNDO_AI_VIEW_STATE', boundary: 'local-ui', mutation: 'none', explicitCommitRequired: false, reference: null },
   REDO_AI_VIEW_CHANGE: { command: 'REDO_AI_VIEW_STATE', boundary: 'local-ui', mutation: 'none', explicitCommitRequired: false, reference: null },
   REQUEST_PRECISION: { command: 'REQUEST_PRECISION_CAD', boundary: 'precision-cad', mutation: 'exact-cad-request', explicitCommitRequired: true, reference: 'candidateId' },

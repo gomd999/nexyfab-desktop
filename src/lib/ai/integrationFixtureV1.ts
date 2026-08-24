@@ -59,7 +59,7 @@ const OFFLINE: AiDesignUnifiedRecoveryV9 = {
 
 type Region = AiDesignUnifiedWorkspaceSourceV9['workspace']['base']['layout']['primaryRegion'];
 
-function source(kind: IntegrationFixtureKindV1): AiDesignUnifiedWorkspaceSourceV9 {
+export function createIntegrationFixtureSourceV1(kind: IntegrationFixtureKindV1): AiDesignUnifiedWorkspaceSourceV9 {
   const mobile = kind === 'offline-mobile';
   const region: Region = kind === 'empty' ? 'understanding'
     : kind === 'needs-question' ? 'understanding'
@@ -99,9 +99,9 @@ function source(kind: IntegrationFixtureKindV1): AiDesignUnifiedWorkspaceSourceV
 }
 
 export function createIntegrationFixtureV1(kind: IntegrationFixtureKindV1): IntegrationFixtureV1 {
-  const workspace = createAiDesignUnifiedWorkspaceV9(source(kind), { recovery: kind === 'stale' ? STALE : kind === 'offline-mobile' ? OFFLINE : ONLINE, locale: 'en', activeCanvasMode: kind === 'offline-mobile' ? '3d' : undefined });
+  const workspace = createAiDesignUnifiedWorkspaceV9(createIntegrationFixtureSourceV1(kind), { recovery: kind === 'stale' ? STALE : kind === 'offline-mobile' ? OFFLINE : ONLINE, locale: 'en', activeCanvasMode: kind === 'offline-mobile' ? '3d' : undefined });
   const precisionReceipt = kind === 'precision-pass-receipt' ? { receiptId: 'precision-receipt-v1', status: 'PASS' as const, signer: 'precision-cad-server' as const, signatureStatus: 'server-signed-fixture-only' as const, fixtureOnly: true as const, nonRelease: true as const, browserAuthored: false as const } : null;
-  return Object.freeze({ schema: INTEGRATION_FIXTURE_V1_SCHEMA, fixtureId: `integration-v1:${kind}`, kind, deterministic: true, rendererNeutral: true, bounded: true, containsUserContent: false, containsRawGeometry: false, containsSecrets: false, browserAuthoredPass: false, nonRelease: true, precision: { status: source(kind).precision.status, requestId: kind === 'precision-pending' || kind === 'precision-pass-receipt' ? 'precision-request-v1' : null, receiptId: kind === 'precision-pass-receipt' ? 'precision-receipt-v1' : null }, workspace, precisionReceipt });
+  return Object.freeze({ schema: INTEGRATION_FIXTURE_V1_SCHEMA, fixtureId: `integration-v1:${kind}`, kind, deterministic: true, rendererNeutral: true, bounded: true, containsUserContent: false, containsRawGeometry: false, containsSecrets: false, browserAuthoredPass: false, nonRelease: true, precision: { status: createIntegrationFixtureSourceV1(kind).precision.status, requestId: kind === 'precision-pending' || kind === 'precision-pass-receipt' ? 'precision-request-v1' : null, receiptId: kind === 'precision-pass-receipt' ? 'precision-receipt-v1' : null }, workspace, precisionReceipt });
 }
 
 export const INTEGRATION_FIXTURE_KINDS_V1: readonly IntegrationFixtureKindV1[] = ['empty', 'needs-question', 'generating', 'three-candidate-review', 'gauge-preview', 'stale', 'offline-mobile', 'model-fallback', 'precision-pending', 'precision-pass-receipt'];
