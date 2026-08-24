@@ -488,3 +488,23 @@ authorization evidence, localization review, support/SLA evidence, or a
 manufactured pilot. Product qualification and commercial release remain `HOLD`
 until those current, independently reviewed receipts bind to the same canonical
 revision.
+
+## 2026-08-24 AI exact bridge integration addendum
+
+Integration head `920e660d` closes the local request/execution/receipt path that
+was still pending when this ADR was written. The bridge now has a PostgreSQL
+transactional outbox and append-only receipt ledger, pre-dispatch current-head
+revalidation, real `buildCurrentCanonicalMechanicalArtifactBundle` execution,
+private content-addressed artifact persistence, signed request/revision/manifest
+receipts, AI aggregate recording, and a fail-closed read-model refresh.
+
+This addendum does not broaden GP-10's bounded feature semantics. It also does
+not change `authoritativeCommit: false`, `commercialReleaseReady: false`,
+`release: HOLD`, or `manufacturingRelease: BLOCKED`. A lease-uncertain dispatch
+is quarantined as `VERIFIED_UNKNOWN` and may be reconciled only from an existing
+immutable receipt; it is never automatically rerun through OCCT.
+
+The resulting maturity is `RUNTIME_CONNECTED_LOCAL`. Staging infrastructure,
+third-party interchange, long-running and topology-survival campaigns,
+independent expert review, manufacturing, and field evidence remain required
+for `EVIDENCE_COMPLETE` or `COMMERCIAL_READY`.
