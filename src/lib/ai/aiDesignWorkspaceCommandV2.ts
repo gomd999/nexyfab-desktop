@@ -84,7 +84,10 @@ function commandBase(value: Record<string, unknown>): string[] {
   if (!boundedString(value.issuedAt) || !Number.isFinite(Date.parse(String(value.issuedAt)))) issues.push('issued_at_invalid');
   // The envelope itself intentionally contains expectedRuntimeRevision. Only
   // user-controlled payload fields are scanned for authority claims.
-  if (hasForbiddenKey(value.payload)) issues.push('forbidden_authority_field');
+  // Multimodal extracted fields are data and may legitimately describe
+  // geometry/evidence. The server input adapter still assigns their actual
+  // authority; recursive authority-key rejection applies to control payloads.
+  if (value.type !== 'INGEST_INPUTS' && hasForbiddenKey(value.payload)) issues.push('forbidden_authority_field');
   return issues;
 }
 function safeText(value: unknown, max = 200): value is string { return typeof value === 'string' && value.length <= max; }

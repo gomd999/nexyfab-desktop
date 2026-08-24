@@ -170,7 +170,10 @@ export function createAiDesignWorkspaceRuntime(input: {
   if (blockers.length || checkpoints.length !== input.inputs.length) return { ok: false, issues: [...new Set(blockers.length ? blockers : ['input_adapter_failed'])] };
   const checkpoint = composeAiDesignCheckpoints(...checkpoints);
   if (checkpoint.projectId !== input.projectId) return { ok: false, issues: ['runtime_project_binding_mismatch'] };
-  if (!checkpoint.readiness.ready) return { ok: false, issues: checkpoint.readiness.blockers };
+  // A structurally valid, rights-cleared checkpoint may still contain missing
+  // values or explicit conflicts. Keep it in UNDERSTANDING so the server can
+  // move to NEEDS_INPUT and the question planner can resolve it. Malformed or
+  // provenance-blocked sources were already rejected by the adapters above.
   const initial = createAiDesignWorkflowState({ revision: checkpoint.revision });
   const received = workflowTransition(initial, { type: 'RECEIVE_INPUT', checkpoint: { id: checkpoint.checkpointId, revision: checkpoint.revision, digest: checkpoint.projectContentHash } });
   if (typeof received === 'string') return { ok: false, issues: [received] };

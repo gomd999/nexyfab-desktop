@@ -24,5 +24,6 @@ describe('AiDesignWorkspaceCommandV2', () => {
     expect(isAiDesignWorkspaceClientCommandV2({ ...base, type: 'CANCEL', payload: { reason: 'x', extra: true } })).toBe(false);
     expect(isAiDesignWorkspaceClientCommandV2({ ...base, type: 'INGEST_INPUTS', payload: { inputs: [] } })).toBe(false);
     expect(isAiDesignWorkspaceClientCommandV2({ ...base, type: 'SELECT_CANDIDATE', payload: { candidateId: 'x', nested: { evidence: 'PASS' } } })).toBe(false);
+    expect(isAiDesignWorkspaceClientCommandV2({ ...base, type: 'INGEST_INPUTS', payload: { inputs: [{ fields: [{ key: 'geometry.note', value: { rawGeometryLabel: 'user supplied description' } }] }] } })).toBe(true);
   });
 });

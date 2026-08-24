@@ -6,6 +6,7 @@ import { validateDesignIntentCheckpoint, type DesignIntentCheckpointV1 } from '.
 import { serverEvidenceSha256 } from './serverEvidence';
 import type { AiDesignGenerationWorker, AiDesignGenerationWorkerInput, AiDesignGenerationStage } from './aiDesignGenerationOrchestrator';
 import type { ChatCompletionRequest, ChatCompletionResponse } from './types';
+import { assessAiDesignCandidateQuality } from './aiDesignCandidateQuality';
 
 export const AI_DESIGN_GENERATED_STAGE_OUTPUT_SCHEMA = 'nexyfab.ai-design-generated-stage-output.v1' as const;
 
@@ -72,6 +73,7 @@ export interface AiDesignServerGenerationWorkerOptions {
 
 const SAFE_ID = /^[A-Za-z0-9][A-Za-z0-9._:/-]{0,199}$/;
 const FORBIDDEN_TEXT = /(?:https?:\/\/|file:\/\/|[A-Za-z]:\\|(?:api[_-]?key|secret|bearer|password|token|credential)|sk-[A-Za-z0-9])/i;
+const FORBIDDEN_AUTHORITY_CLAIM = /(?:exact\s+(?:geometry|cad|verification)\s+(?:pass|verified)|manufacturing\s+(?:release|ready|verified)|release\s+(?:ready|approved|pass)|compliance\s+(?:pass|verified)|정밀.{0,12}(?:검증\s*통과|완료)|제조.{0,12}(?:준비\s*완료|검증\s*통과)|출시.{0,12}(?:준비\s*완료|승인))/i;
 const MAX_OUTPUT_BYTES = 512 * 1024;
 const MAX_SUMMARY = 4_000;
 const MAX_ITEMS = 32;
@@ -79,7 +81,7 @@ const MAX_KEYS = 64;
 
 function record(value: unknown): value is Record<string, unknown> { return !!value && typeof value === 'object' && !Array.isArray(value); }
 function keysOnly(value: Record<string, unknown>, keys: readonly string[]): boolean { return Object.keys(value).every(key => keys.includes(key)); }
-function safeText(value: unknown, max: number): value is string { return typeof value === 'string' && value.trim().length > 0 && value.length <= max && !FORBIDDEN_TEXT.test(value); }
+function safeText(value: unknown, max: number): value is string { return typeof value === 'string' && value.trim().length > 0 && value.length <= max && !FORBIDDEN_TEXT.test(value) && !FORBIDDEN_AUTHORITY_CLAIM.test(value); }
 function safeIds(value: unknown, max = MAX_KEYS): value is string[] { return Array.isArray(value) && value.length <= max && value.every(item => typeof item === 'string' && SAFE_ID.test(item)); }
 
 type ModelPayload = Pick<AiDesignGeneratedStageOutputV1, 'summary' | 'decisions' | 'unresolvedQuestions' | 'candidateBlueprints'>;
@@ -99,6 +101,7 @@ function parseModelPayload(text: string, stage: AiDesignGenerationStage): ModelP
     && safeText(item.title, 200) && safeText(item.summary, 2_000) && safeIds(item.parameterKeys) && safeIds(item.featureKeys)
     && (!['candidate_generation', 'candidate_validation'].includes(stage) || (item.featureKeys as unknown[]).length > 0))) return null;
   if ((stage === 'candidate_generation' || stage === 'candidate_validation') && value.candidateBlueprints.length === 0) return null;
+  if ((stage === 'candidate_generation' || stage === 'candidate_validation') && !assessAiDesignCandidateQuality(value.candidateBlueprints as ModelPayload['candidateBlueprints']).conceptPublishable) return null;
   return value as unknown as ModelPayload;
 }
 

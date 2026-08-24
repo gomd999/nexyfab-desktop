@@ -22,7 +22,7 @@ describe('AI Design server generation worker', () => {
 
   it('fails closed for checkpoint drift, provider fallback, or malformed model claims', async () => {
     const base = { plan: 'free', userId: 'user-1', artifactSink: { putImmutable: vi.fn(async () => undefined) }, resolveModel: async () => ({ ok: true as const, catalog: {} as never, provider: 'openai' as const, model: 'private-runtime-model', cacheProfile: 'provider-default' as const }) };
-    const complete = async () => ({ text: JSON.stringify({ summary: 'Exact release PASS', decisions: [], unresolvedQuestions: [], candidateBlueprints: [], evidence: { status: 'PASS' } }), provider: 'openai' as const, model: 'private-runtime-model', latencyMs: 1 });
+    const complete = async () => ({ text: JSON.stringify({ summary: 'Exact geometry verified', decisions: [], unresolvedQuestions: [], candidateBlueprints: [] }), provider: 'openai' as const, model: 'private-runtime-model', latencyMs: 1 });
     await expect(createAiDesignServerGenerationWorker({ ...base, loadCheckpoint: async () => ({ ...checkpoint, projectContentHash: hash('c') }), complete })(workerInput)).rejects.toThrow('checkpoint_binding_failed');
     await expect(createAiDesignServerGenerationWorker({ ...base, loadCheckpoint: async () => checkpoint, complete })(workerInput)).rejects.toThrow('output_invalid');
     await expect(createAiDesignServerGenerationWorker({ ...base, loadCheckpoint: async () => checkpoint, complete: async () => ({ ...(await complete()), text: JSON.stringify({ summary: 'Safe plan', decisions: [], unresolvedQuestions: [], candidateBlueprints: [] }), provider: 'qwen' as const }) })(workerInput)).rejects.toThrow('execution_binding_failed');
