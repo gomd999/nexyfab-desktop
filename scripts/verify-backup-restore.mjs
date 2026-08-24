@@ -340,6 +340,7 @@ export async function verifyBackupRestore({
     databaseUrl: restoreDatabaseUrl,
     sqlPath: migrationSqlPath,
   });
+  const migrationTarget = migration.version;
   const validationClient = new pg.Client({ connectionString: restoreDatabaseUrl });
   let constraintValidation;
   try {
@@ -393,7 +394,7 @@ export async function verifyBackupRestore({
     },
     migration,
     constraintValidation,
-    migrationTarget: 2026082208,
+    migrationTarget,
     migrated: {
       ...migrated,
       businessRowsPreserved: businessPreservation.ok,
@@ -413,8 +414,8 @@ export async function verifyBackupRestore({
       measurement: 'wall_clock',
     },
   };
-  receipt.migration.targetVersion = 2026082208;
-  receipt.migration.targetChecksum = receipt.migration.migrations.find(item => item.version === 2026082208)?.checksum ?? null;
+  receipt.migration.targetVersion = migrationTarget;
+  receipt.migration.targetChecksum = receipt.migration.migrations.find(item => item.version === migrationTarget)?.checksum ?? null;
   receipt.sha256 = sha256(JSON.stringify(receipt));
   mkdirSync(path.dirname(receiptPath), { recursive: true });
   writeFileSync(receiptPath, `${JSON.stringify(receipt, null, 2)}\n`, { flag: 'wx' });

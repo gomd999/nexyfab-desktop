@@ -68,7 +68,10 @@ const complexGroundTruthValidation = {
   byFamily: Object.fromEntries(complexFamilies.map(family => [family, { cases: 20, approved: 20 }])),
   results: complexHoldoutCases.map(item => ({ caseId: item.caseId, family: item.family, status: 'approved', scoreEligible: true })),
 };
-const commercialMigrations = [2026082202, 2026082203, 2026082204, 2026082205, 2026082206, 2026082207, 2026082208];
+const commercialMigrations = [
+  2026082202, 2026082203, 2026082204, 2026082205, 2026082206, 2026082207, 2026082208,
+  2026082301, 2026082401, 2026082402, 2026082403,
+];
 const expertCorpusHash = 'c'.repeat(64);
 const expertRelease = { buildId: 'b', gitHead: '1'.repeat(40) };
 const expertExpectedRelease = { buildId: 'b', head: expertRelease.gitHead };
@@ -410,8 +413,8 @@ const restoreReceipt = bindReceipt({
   backup: { file: 'backups/restore.sql.gz', bytes: 100, sha256: 'f'.repeat(64), objectSha256: 'f'.repeat(64), sourceSnapshotSha256: 'a'.repeat(64), completedAt: new Date(restoreNow - 2_000).toISOString() },
   source: { tableContentSha256: 'a'.repeat(64) },
   restored: { tableContentSha256: 'a'.repeat(64), exactSourceMatch: true, businessDataSha256: 'a'.repeat(64) },
-  migration: { targetVersion: 2026082208, migrations: [{ version: 2026082208, checksum: 'b'.repeat(64), decision: 'already_applied' }] },
-  migrationTarget: 2026082208,
+  migration: { targetVersion: 2026082403, migrations: [{ version: 2026082403, checksum: 'b'.repeat(64), decision: 'already_applied' }] },
+  migrationTarget: 2026082403,
   migrated: { tableContentSha256: 'a'.repeat(64), businessRowsPreserved: true, businessDataSha256: 'a'.repeat(64) },
   timing: {
     drillStartedAt: new Date(restoreNow - 3_000).toISOString(), backupCapturedAt: new Date(restoreNow - 2_000).toISOString(),
@@ -866,7 +869,7 @@ const passingReleaseBaseline = {
   release: {
     branch: 'release/test', head: '1'.repeat(40), baselineStatus: 'committed', workingTreeChanges: 0,
     deploymentId: 'd', buildId: 'b', rollbackDeploymentId: 'r', dockerImageDigest: 'sha256:x',
-    dbSchemaVersion: 2026082208, railwayIgnore: { missing: [] },
+    dbSchemaVersion: 2026082403, railwayIgnore: { missing: [] },
   },
 };
 const passingReleaseBaselinePath = writeEvidence('fixtures/commercial-release-baseline.json', passingReleaseBaseline);
@@ -1247,7 +1250,7 @@ test('requires a fresh production-bound isolated restore drill through migration
 
   const wrongMigration = rebindReceipt({
     ...restoreReceipt,
-    migration: { ...restoreReceipt.migration, targetVersion: 2026082207 },
+    migration: { ...restoreReceipt.migration, targetVersion: 2026082402 },
   });
   assert.equal(restoreReceiptEligible(wrongMigration, expectedReleaseBinding), false);
 });
@@ -1648,7 +1651,7 @@ test('requires all product receipts for an explicit full-product release scope',
   assert.deepEqual(blocked.release, {
     branch: 'release/test', gitHead: '1'.repeat(40), baselineStatus: 'committed', workingTreeChanges: 0,
     deploymentId: 'd', buildId: 'b', rollbackDeploymentId: 'r', dockerImageDigest: 'sha256:x',
-    dbSchemaVersion: 2026082208,
+    dbSchemaVersion: 2026082403,
   });
 
   const complete = structuredClone(passing);

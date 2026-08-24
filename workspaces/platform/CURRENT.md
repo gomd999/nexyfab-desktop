@@ -1,5 +1,24 @@
 # Platform current session
 
+## 2026-08-24 migration 2403 recovery and release evidence
+
+- Status: `LOCAL_EVIDENCE_CONTRACT_CURRENT / STAGING_MIGRATION_PENDING / RELEASE_HOLD`
+- Source head: `b4c47109`.
+- Production migration receipts, isolated restore receipts, commercialization
+  eligibility, rollback verification, and `/api/health/release` now require
+  the complete commercial migration set through `2026082403`.
+- Restore evidence derives its target version and checksum from the actual
+  versioned runner result instead of reporting the obsolete `2026082208`.
+- A shared compatibility helper accepts only known applied migration versions
+  at or above a feature's required version; this is the integration contract
+  for Precision routes that depend on the 2208 generation schema.
+- Verification: Node deployment/migration/restore/commercialization/rollback
+  contracts `64/64`, Vitest readiness/release contracts `27/27`, focused and
+  full source ESLint, TypeScript, and platform workspace check passed.
+- Handoff: `HANDOFFS/20260824T154321Z-migration-2403-evidence-alignment.md`.
+- Next action: integrate, update Precision route guards to the shared helper,
+  then perform isolated staging restore and migration before any web deploy.
+
 ## 2026-08-24 commercial PostgreSQL readiness contract
 
 - Status: `LOCAL_GATE_HARDENED / STAGING_DEPLOYMENT_STALE / RELEASE_HOLD`

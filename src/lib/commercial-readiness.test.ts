@@ -4,6 +4,7 @@ import {
   COMMERCIAL_POSTGRES_HARDENING_TRIGGERS,
   COMMERCIAL_POSTGRES_MIGRATIONS,
   COMMERCIAL_POSTGRES_TABLES,
+  commercialPostgresMigrationAtLeast,
   commercialPostgresMigrationChecksumEnvKey,
   commercialReadinessIssues,
 } from './commercial-readiness';
@@ -154,5 +155,20 @@ describe('commercial PostgreSQL readiness contract', () => {
       .toBe('CANONICAL_CAD_REVISION_MIGRATION_CHECKSUM');
     expect(commercialPostgresMigrationChecksumEnvKey(2026082403))
       .toBe('POSTGRES_MIGRATION_CHECKSUM_2026082403');
+  });
+
+  it('accepts only known applied versions at or beyond a feature requirement', () => {
+    expect(commercialPostgresMigrationAtLeast(
+      { POSTGRES_MIGRATION_VERSION: '2026082403' },
+      2026082208,
+    )).toBe(true);
+    expect(commercialPostgresMigrationAtLeast(
+      { POSTGRES_MIGRATION_VERSION: '2026082207' },
+      2026082208,
+    )).toBe(false);
+    expect(commercialPostgresMigrationAtLeast(
+      { POSTGRES_MIGRATION_VERSION: '99999999' },
+      2026082208,
+    )).toBe(false);
   });
 });
