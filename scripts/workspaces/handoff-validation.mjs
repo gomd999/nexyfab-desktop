@@ -44,3 +44,17 @@ export function evaluateHandoffDocument(markdown, scope, registry, resolveOwners
   if (!risks || !risks.split(/\r?\n/).some(line => line.startsWith('- ')) || /\bTODO\b/i.test(risks)) issues.push('handoff_risks_incomplete');
   return { ok: issues.length === 0, issues, branch, head, integrationTarget, changedPaths };
 }
+
+/**
+ * Pick the newest handoff that actually passes validation. A timestamp-shaped
+ * planning/contract document may live beside canonical handoffs, so filename
+ * ordering alone is not sufficient.
+ */
+export function selectLatestValidHandoff(candidates, evaluate) {
+  const ordered = [...candidates].sort((a, b) => b.name.localeCompare(a.name));
+  for (const candidate of ordered) {
+    const result = evaluate(candidate.markdown);
+    if (result.ok) return { candidate, result };
+  }
+  return null;
+}
