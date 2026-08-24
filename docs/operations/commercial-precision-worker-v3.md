@@ -1,6 +1,6 @@
 # Commercial Precision worker v3 deployment contract
 
-Status: `SOURCE_READY / EXTERNAL_RUNTIME_NOT_RUN / RELEASE_HOLD`
+Status: `CORE_STAGING_DEPLOYED / WORKER_RUNTIME_NOT_RUN / RELEASE_HOLD`
 
 This runbook covers the isolated worker for
 `nexyfab.precision-cad-commercial-execution.v3`. It does not authorize
@@ -18,6 +18,27 @@ Do not place a private worker signing key in the web service. Do not place the
 server trust registry or database credentials in the worker. Staging and
 production must use different secrets, worker identities, storage namespaces,
 and signing keys.
+
+## Current staging evidence (2026-08-25)
+
+- Core source `674c54f59ec908891962591314366afe0c8eea30` is deployed to the
+  isolated Railway staging web service as deployment
+  `e9286b9d-7d9b-4f45-8404-e4ec838fdbd2`.
+- Railway reports two running deployment instances, no attached service volume,
+  and runtime image digest
+  `sha256:64f2f0f1ee84bc2dd42e6e16993c4b9f12be3ac1b90f455b084799094fd94569`.
+- PostgreSQL migration `2026082502` is applied with source checksum
+  `69c830cb4fa11fb7637f325098d0c0b1a920caeba9802fbbe4a8658f00055f30`.
+- Liveness and non-commercial readiness return HTTP 200; PostgreSQL and Redis
+  are `ok`. A forged lease against the v3 artifact gateway is rejected with
+  HTTP 403 `LEASE_CAPABILITY_INVALID`.
+- Commercial mode remains disabled and the channel remains `staging-hold`.
+  Release health returns HTTP 503 `HOLD`; its migration evidence is `PASS`,
+  while runtime, i18n, seven-day operations, and external registry evidence do
+  not qualify the release.
+- No real native adapter, isolated worker, signing key, registry, or canary was
+  created. This section is core deployment evidence, not worker or CAD-engine
+  qualification evidence. Production was not modified.
 
 ## Core service configuration
 

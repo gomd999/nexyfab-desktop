@@ -553,3 +553,47 @@ production 배포·변수·데이터, 원격 push/merge, provider credential, Gi
    독립 CAD/전문가/파일럿/법무 증거를 닫는다.
 4. 모든 증거가 같은 release binding으로 통과한 뒤에만 commercial mode와 production을
    별도 승인한다.
+
+## 2026-08-25 commercial worker v3 staging 배포 결속
+
+이 절은 위의 v3 소스 폐쇄에서 `NOT_RUN`으로 남겨 둔 core staging migration/build/deploy를
+후속 증거로 닫는다. 현재 판정은
+**`CORE_STAGING_DEPLOYED / WORKER_RUNTIME_NOT_RUN / RELEASE_HOLD`**다.
+
+### 배포 및 데이터 증거
+
+- 배포 source/build/git은 `674c54f59ec908891962591314366afe0c8eea30`이다.
+- Railway staging web deployment는
+  `e9286b9d-7d9b-4f45-8404-e4ec838fdbd2`, 상태 `SUCCESS`다. 현재 runtime metadata image
+  digest는 `sha256:64f2f0f1ee84bc2dd42e6e16993c4b9f12be3ac1b90f455b084799094fd94569`이고,
+  두 deployment instance가 `RUNNING`이며 서비스 연결 volume은 0개다.
+- staging PostgreSQL에 migration `2026082502`를 checksum
+  `69c830cb4fa11fb7637f325098d0c0b1a920caeba9802fbbe4a8658f00055f30`으로
+  적용했다.
+- staging은 `NEXYFAB_COMMERCIAL_MODE=0`, release channel `staging-hold`를 유지한다.
+  `NEXYFAB_BUILD_ID`와 `RELEASE_GIT_HEAD`는 배포 source와 exact-match한다.
+
+### 공개 런타임 재검증
+
+- `/api/health/live/`: HTTP 200 `ok`, build ID exact-match.
+- `/api/health/ready/`: HTTP 200 `ok`, PostgreSQL `ok`, Redis `ok`, commercial boundary
+  `skipped`/not required.
+- `/api/health/release/`: HTTP 503 `HOLD`; build/deployment/git가 새 release에 결속되고
+  migration version `2026082502`와 migration evidence `PASS`를 보고한다. runtime,
+  i18n 및 7-day evidence는 `HOLD`, external verifier registry role은 0이다.
+- forged `jobId`/`artifactId`와 lease 없는 v3 artifact gateway 요청은 HTTP 403
+  `LEASE_CAPABILITY_INVALID`로 거부됐다.
+
+### 변경하지 않은 경계와 다음 차단
+
+- production에는 변수, migration, 데이터, 배포를 쓰지 않았다. 읽기 확인 시 기존
+  2026-08-21 deployment `cf509f59-dfc8-49cb-8e19-09ddcf3cd5e8`가 유지됐고 v3 build,
+  migration, worker health/key, external verifier registry 구성은 없었다.
+- 실제 production-class native adapter, 격리 worker service, 실제 private signing key,
+  public registry, fresh canary/self-test receipt는 생성하거나 배포하지 않았다. 따라서 core
+  staging 배포를 worker runtime PASS 또는 commercial CAD qualification으로 승격하지 않는다.
+- 다음 실행은 `docs/operations/commercial-precision-worker-v3.md`의 순서대로 실제 adapter와
+  별도 키 보유 worker를 배포하고 canary, 위변조/replay/rotation,
+  crash/restart/lease recovery를 닫는 것이다. 그 뒤 server 3-role/external verifier,
+  provider, i18n 사람 검토, 7일 운영, 독립 CAD/전문가/pilot/법무 증거를 같은 release에
+  결속해야 한다.

@@ -1,5 +1,20 @@
 # AI Design current session
 
+## 2026-08-25 integrated AI-to-Precision staging baseline
+
+- Status: `AI_CONCEPT_RUNTIME_CONNECTED / PRECISION_V3_CORE_STAGING_DEPLOYED /
+  EXTERNAL_EVIDENCE_HOLD`.
+- All three scopes are integrated on the source line that produced staging build
+  `674c54f59ec908891962591314366afe0c8eea30`. The Precision commercial v3 core
+  path and migration `2026082502` are deployed in non-commercial staging.
+- AI Design V10 remains the chat-first, synchronized 2D/3D producer and sends
+  revision-bound Precision requests through the server-authoritative bridge.
+  AI output remains `CONCEPT` or `DESIGN_CANDIDATE`; it cannot create an exact
+  PASS or manufacturing authority.
+- No real commercial native worker/canary or independent external qualification
+  exists. Staging release health is therefore HTTP 503 `HOLD`, and production
+  was not changed.
+
 ## 2026-08-24 AI-to-Precision exact round-trip integration
 
 - Status: `RUNTIME_CONNECTED_LOCAL / EXTERNAL_EVIDENCE_HOLD`

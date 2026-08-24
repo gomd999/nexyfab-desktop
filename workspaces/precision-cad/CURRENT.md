@@ -1,5 +1,22 @@
 # Precision CAD current session
 
+## 2026-08-25 commercial worker v3 core staging deployment
+
+- Status: `CORE_STAGING_DEPLOYED / WORKER_RUNTIME_NOT_RUN / RELEASE_HOLD`.
+- Integration source `674c54f59ec908891962591314366afe0c8eea30` is deployed to the
+  isolated staging web/core service as Railway deployment
+  `e9286b9d-7d9b-4f45-8404-e4ec838fdbd2`; migration `2026082502` is applied and
+  release evidence reports its migration as `PASS`.
+- Liveness and non-commercial readiness are HTTP 200 with PostgreSQL and Redis
+  `ok`; the v3 artifact gateway rejects a forged lease with HTTP 403
+  `LEASE_CAPABILITY_INVALID`. Release health remains HTTP 503 `HOLD`.
+- The commercial boundary is intentionally disabled and skipped. A real native
+  CAD adapter, isolated worker service, independent worker key holder, and fresh
+  canary/self-test receipt still do not exist, so no worker runtime or CAD-engine
+  qualification is claimed.
+- The exact deployment evidence and activation sequence are recorded in
+  `docs/operations/commercial-precision-worker-v3.md`.
+
 ## 2026-08-25 commercial worker v3 immutable I/O closure
 
 - Status: `SOURCE_CLOSED_LOOP_PASS / EXTERNAL_RUNTIME_NOT_RUN / RELEASE_HOLD`.
