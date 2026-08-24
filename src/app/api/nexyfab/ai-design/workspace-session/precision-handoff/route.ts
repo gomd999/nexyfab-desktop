@@ -6,9 +6,7 @@ import { getDbAdapter } from '@/lib/db-adapter';
 import { resolveProjectAccess } from '@/lib/nfProjectAccess';
 import { rateLimit } from '@/lib/rate-limit';
 import type { AiDesignPrecisionCadHandoffV1 } from '@/lib/ai/aiDesignChatActionCommandAdapterV1';
-import { aiDesignServerRuntimeArtifacts } from '@/lib/ai/aiDesignServerRuntimeArtifacts';
-import { executeAiDesignWorkspaceClientCommand } from '@/lib/ai/aiDesignWorkspaceActionService';
-import { parseAiDesignWorkspaceClientCommandV2 } from '@/lib/ai/aiDesignWorkspaceCommandV2';
+import { enqueueAiDesignPrecisionHandoff } from '@/lib/ai/aiDesignPrecisionHandoffCoordinator';
 import { loadAiDesignUnifiedWorkspaceServerV10 } from '@/lib/ai/aiDesignUnifiedWorkspaceServer';
 
 export const runtime = 'nodejs';
@@ -30,6 +28,13 @@ function validHandoff(value: unknown): value is AiDesignPrecisionCadHandoffV1 {
     && Object.keys(value).every(key => ['schema', 'kind', 'requestId', 'projectId', 'sessionId', 'expectedRuntimeRevision', 'expectedComplexRevision', 'candidateId', 'explicitCommitRequired', 'exactExecution', 'verificationPass', 'manufacturingReleaseReady'].includes(key));
 }
 
+function coordinatorStatus(code: string): number {
+  if (code.includes('REVISION_CONFLICT') || code.includes('HANDOFF_MISMATCH')
+    || code.includes('REPLAY_CONFLICT') || code.endsWith('_CONFLICT')) return 409;
+  if (code.startsWith('AI_PRECISION_') || code.startsWith('AI_DESIGN_COMPLEX_STRUCTURE')) return 422;
+  return 400;
+}
+
 export async function POST(req: NextRequest) {
   if (!checkOrigin(req)) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   const authUser = await getAuthUser(req);
@@ -49,27 +54,25 @@ export async function POST(req: NextRequest) {
   if (!access.canEdit) return NextResponse.json({ error: 'Editor role required' }, { status: 403 });
   const ownerKey = `${authUser.userId}:${handoff.projectId}`;
   try {
-    const current = await loadAiDesignUnifiedWorkspaceServerV10(ownerKey, handoff.projectId, handoff.sessionId, req.nextUrl.searchParams.get('locale') ?? 'en');
-    if (current.model.runtimeRevision !== handoff.expectedRuntimeRevision || current.model.complexRevision !== handoff.expectedComplexRevision
-      || current.model.staleAgainstRuntime || current.model.workspace.base.candidates.selectedCandidateId !== handoff.candidateId) {
-      return NextResponse.json({ error: 'AI_DESIGN_PRECISION_HANDOFF_MISMATCH' }, { status: 409 });
-    }
-    const parsed = parseAiDesignWorkspaceClientCommandV2({
-      schema: 'nexyfab.ai-design-workspace-command.v2', commandId: handoff.requestId,
-      projectId: handoff.projectId, sessionId: handoff.sessionId,
-      expectedRuntimeRevision: handoff.expectedRuntimeRevision, issuedAt: new Date().toISOString(),
-      type: 'REQUEST_PRECISION', payload: {},
-    });
-    if (!parsed.ok) return NextResponse.json({ error: 'AI_DESIGN_PRECISION_COMMAND_INVALID', issues: parsed.issues }, { status: 400 });
-    const result = await executeAiDesignWorkspaceClientCommand(ownerKey, authUser.plan, parsed.command, {
-      receiptSink: aiDesignServerRuntimeArtifacts,
+    const db = getDbAdapter();
+    const result = await enqueueAiDesignPrecisionHandoff({
+      ownerKey,
+      authenticatedPlan: authUser.plan,
+      handoff,
       signingSecret: process.env.GENERATION_EVIDENCE_SIGNING_SECRET ?? '',
-    });
-    if (!result.ok) return NextResponse.json({ error: result.code, issues: result.issues }, { status: result.code === 'AI_DESIGN_WORKSPACE_REVISION_CONFLICT' ? 409 : 400 });
+    }, { db });
+    if (!result.ok) return NextResponse.json(
+      { error: result.code, issues: result.issues },
+      { status: coordinatorStatus(result.code) },
+    );
     const payload = await loadAiDesignUnifiedWorkspaceServerV10(ownerKey, handoff.projectId, handoff.sessionId, req.nextUrl.searchParams.get('locale') ?? 'en');
     return NextResponse.json({
       completedRequestId: handoff.requestId,
       precisionRequestAccepted: true,
+      precisionBridgeJobId: result.record.job.jobId,
+      precisionBridgeStatus: result.record.status,
+      precisionRequestId: result.precisionRequestId,
+      replayed: result.replayed,
       exactExecution: false,
       verificationPass: false,
       manufacturingReleaseReady: false,
