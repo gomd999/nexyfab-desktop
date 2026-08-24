@@ -1,6 +1,6 @@
 {
   "schema": "nexyfab.commercial-security-evidence-receipt.v2",
-  "generatedAt": "2026-08-23T07:32:01.766Z",
+  "generatedAt": "2026-08-24T15:08:53.676Z",
   "ok": false,
   "status": "HOLD",
   "target": "production",
@@ -10,35 +10,35 @@
     "gitHead": null
   },
   "freshness": {
-    "generatedAt": "2026-08-23T07:32:01.766Z",
+    "generatedAt": "2026-08-24T15:08:53.676Z",
     "maxAgeMs": 86400000,
-    "expiresAt": "2026-08-24T07:32:01.766Z"
+    "expiresAt": "2026-08-25T15:08:53.676Z"
   },
   "sourceBindings": [
     {
       "path": "docs/evidence/security/route-security-matrix-260810.json",
-      "bytes": 551509,
-      "sha256": "7f875b55c87900ab85020155516cc369ac8c2d1f76f52d6ec4971bcfb7a1031a"
+      "bytes": 567768,
+      "sha256": "f8db832c5c78150292141ef0237c46b50805fc20318a8def97e6a4268ae0f2fc"
     },
     {
       "path": "docs/evidence/cad-independent/cad-api-control-evidence.json",
-      "bytes": 16134,
-      "sha256": "7d21526c4a7f6fb13be1b890b26d022422338397e91b9cce92d6d8b0ace16fff"
+      "bytes": 16297,
+      "sha256": "a0f2b00e879341f14c629142786b3d32580add8fd2a4473d1c6c50ec6e0027d4"
     },
     {
       "path": "docs/evidence/security/secret-scan-260810.json",
-      "bytes": 197,
-      "sha256": "721e6120dd9600d44532edc84b190fb140fe26651e314926610987cb393e122a"
+      "bytes": 301,
+      "sha256": "88a419b4e54fc3c4bffbdae64521aae98db248f2f38f9ef76124f34bb6012916"
     },
     {
       "path": "docs/evidence/security/dependency-audit-260810.json",
       "bytes": 514,
-      "sha256": "9191b3346444fdefc65893056a7b48d5d860231ce0cc3f8b734c4c002151dc63"
+      "sha256": "6c584055e6b2b369f7a07380fb3f6eb0d9749b1973bfd5c07cd76457b8a8d493"
     },
     {
       "path": "package-lock.json",
-      "bytes": 630857,
-      "sha256": "d27bddc997f10ade5cf94722b17c70a4e958b1e8f631f1e807a3ac4c51289f26"
+      "bytes": 631405,
+      "sha256": "d5bd18e9f6648828af26925e4b914a9af4cafb700b8b58a8daeb7300099110e3"
     }
   ],
   "evidence": {
@@ -47,16 +47,16 @@
       "schema": "nexyfab.route-security-matrix.v1",
       "status": "pass",
       "derived": {
-        "routeFiles": 607,
-        "exportedHandlers": 837,
+        "routeFiles": 624,
+        "exportedHandlers": 857,
         "routesWithGaps": 0,
         "gapCounts": {},
         "byClassification": {
           "public": 131,
-          "authenticated": 354,
-          "admin": 68,
+          "authenticated": 369,
+          "admin": 69,
           "webhook": 6,
-          "internal-worker": 35,
+          "internal-worker": 36,
           "disabled": 13
         },
         "unknownClassifications": 0,
@@ -80,8 +80,8 @@
       "status": "pass",
       "derived": {
         "findingCount": 0,
-        "filesScanned": 7657,
-        "bytesScanned": 88863058
+        "filesScanned": 10130,
+        "bytesScanned": 325465491
       },
       "blockers": []
     },
@@ -91,7 +91,7 @@
       "status": "pass",
       "derived": {
         "vulnerabilityTotal": 0,
-        "dependencyTotal": 1250
+        "dependencyTotal": 1251
       },
       "blockers": []
     }
@@ -111,5 +111,5 @@
     "release_deployment_id_missing",
     "release_git_head_invalid"
   ],
-  "receiptSha256": "d56f752176f011f342279f38822f4c5ac55184182080902243a414efe662da37"
+  "receiptSha256": "11f5212136e28c4ffd4ae140142ac2c060a87bdac091ddd8654cc31a35a6a3ff"
 }

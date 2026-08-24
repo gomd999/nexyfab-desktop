@@ -2,9 +2,9 @@
   "schema": "nexyfab.third-party-notices.v1",
   "title": "Open-source and third-party components",
   "notice": "Generated from package-lock.json for production dependencies. Legal review and corresponding-source delivery records remain separate release evidence.",
-  "packageLockSha256": "d27bddc997f10ade5cf94722b17c70a4e958b1e8f631f1e807a3ac4c51289f26",
+  "packageLockSha256": "d5bd18e9f6648828af26925e4b914a9af4cafb700b8b58a8daeb7300099110e3",
   "licenseOverridesSha256": "3daaa175bebe51d25b1a64d184dde6f287283d67fc63799eaff7c131b628f142",
-  "packageCount": 685,
+  "packageCount": 687,
   "criticalCopyleft": [
     {
       "name": "@salusoft89/planegcs",
@@ -1246,7 +1246,7 @@
     },
     {
       "name": "@next/third-parties",
-      "version": "16.2.4",
+      "version": "16.3.0",
       "license": "MIT",
       "url": "vercel/next.js",
       "direct": true
@@ -2844,7 +2844,7 @@
     },
     {
       "name": "@types/node",
-      "version": "20.19.33",
+      "version": "22.20.1",
       "license": "MIT",
       "url": "https://github.com/DefinitelyTyped/DefinitelyTyped",
       "direct": true,
@@ -6646,6 +6646,13 @@
       }
     },
     {
+      "name": "server-only",
+      "version": "0.0.1",
+      "license": "MIT",
+      "url": "https://reactjs.org/",
+      "direct": true
+    },
+    {
       "name": "set-blocking",
       "version": "2.0.0",
       "license": "ISC",
@@ -7088,7 +7095,7 @@
     },
     {
       "name": "terser",
-      "version": "5.49.0",
+      "version": "5.50.0",
       "license": "BSD-2-Clause",
       "url": "https://github.com/terser/terser",
       "direct": true,
@@ -7559,6 +7566,18 @@
         "file": "LICENSE",
         "sha256": "4ec3d4c66cd87f5c8d8ad911b10f99bf27cb00cdfcff82621956e379186b016b",
         "bytes": 765
+      }
+    },
+    {
+      "name": "ws",
+      "version": "8.21.0",
+      "license": "MIT",
+      "url": "https://github.com/websockets/ws",
+      "direct": true,
+      "licenseArtifact": {
+        "file": "LICENSE",
+        "sha256": "2b29dcfe0d6471f7e8c92c5fb38c9f93edee10330937055440192f1832b1ecef",
+        "bytes": 1183
       }
     },
     {

@@ -10,7 +10,7 @@
   },
   "dependencyLock": {
     "path": "package-lock.json",
-    "sha256": "d27bddc997f10ade5cf94722b17c70a4e958b1e8f631f1e807a3ac4c51289f26"
+    "sha256": "d5bd18e9f6648828af26925e4b914a9af4cafb700b8b58a8daeb7300099110e3"
   },
   "components": [
     {
@@ -76,14 +76,14 @@
     {
       "path": "src/app/[lang]/shape-generator/features/occtEngine.ts",
       "role": "semantic-and-release-policy",
-      "bytes": 133719,
-      "sha256": "32ff70b38fe4634f1a1058319fbe0a782057df0aee95975ac1c6bdac41eb3084"
+      "bytes": 136046,
+      "sha256": "5c24d7b27dc6709fa1f0e123dcd6c3fd0af1e428b6c5f11d8bf304ed313e5eaa"
     },
     {
       "path": "src/lib/occt/nodeOcctBridge.ts",
       "role": "semantic-and-release-policy",
-      "bytes": 87853,
-      "sha256": "f568e1db7dc03b4f1797c43fa3008b75e26c3fe45ea786c86f6366df366a5811"
+      "bytes": 127067,
+      "sha256": "49ea4f6f48034391470772783e5a816419522469fef82d5d5f6fb328fbdcc491"
     },
     {
       "path": "src/lib/occt/serverReplicad.ts",
@@ -142,8 +142,8 @@
     {
       "path": "src/lib/assembly/featureTreePreciseInterference.ts",
       "role": "semantic-and-release-policy",
-      "bytes": 26192,
-      "sha256": "d56c8889b02dec7a8eda5686f0fbd915847148693845b2cfe37553c596d27a6c"
+      "bytes": 27847,
+      "sha256": "128005fffb2da84f069346454a4010be34ea8e6afd3743bcec90f6625cdb2b36"
     },
     {
       "path": "src/lib/assembly/motionStudy.ts",
@@ -154,8 +154,8 @@
     {
       "path": "src/lib/occt/nodeOcctLoader.ts",
       "role": "semantic-and-release-policy",
-      "bytes": 4986,
-      "sha256": "36afbccf8d82713e8b38d586a992dd42a1dfcfe022042df58340aa42acb5df6c"
+      "bytes": 6366,
+      "sha256": "b707efd147bb72edff9602dbb11c0734ee240563ec246130774fcc133af8c71a"
     },
     {
       "path": "src/app/api/cad/v1/assembly/verify/route.ts",
@@ -460,8 +460,8 @@
     {
       "path": "src/content/third-party-notices.generated.json",
       "role": "semantic-and-release-policy",
-      "bytes": 224207,
-      "sha256": "563683e86c2f8e2fcac71447f2bb706e46d9cc10bf830dba0e0707b966623676"
+      "bytes": 224681,
+      "sha256": "ff02fbac383e641fc06f2944148be815a2c56bbcaf6ca229c770dfa274029d90"
     },
     {
       "path": "scripts/check-occt-readiness.js",
@@ -470,5 +470,5 @@
       "sha256": "50d0f0cd4bacadf24b337c8e36784d834a14cdeee175fc6b1850df12fe017c9f"
     }
   ],
-  "identitySha256": "4b98ca69bd1d7f373e90490ac083af6530e444bd700c3cff961f59ef7537fbe2"
+  "identitySha256": "4890b8d89ae060fa6eae1eee02b612c70f1f5c657ec714d9cf6b2564ab104caa"
 }

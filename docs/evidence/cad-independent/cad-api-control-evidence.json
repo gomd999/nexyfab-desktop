@@ -1,12 +1,12 @@
 {
   "schema": "nexyfab.cad-api-control-evidence.v1",
-  "generatedAt": "2026-08-23T07:02:16.770Z",
+  "generatedAt": "2026-08-24T15:06:24.327Z",
   "status": "pass",
   "externalCadRequired": false,
-  "routeFiles": 83,
-  "exportedHandlers": 85,
+  "routeFiles": 84,
+  "exportedHandlers": 86,
   "documentedCadOperations": 30,
-  "cadRouteTreeSha256": "c94548311295cb1f4c8c45dcdf2c1d8b0f9fe6b620b3472e504297612c7f4c82",
+  "cadRouteTreeSha256": "7405374cb86886234f0b35f1f82350212bdc68b69bdd7a5e207922ee9a1c933b",
   "unsafeRequestBodyParsers": [],
   "mutationRoutesMissingBoundedIngress": [],
   "publicExceptions": [
@@ -44,7 +44,7 @@
   "sources": [
     {
       "file": "src/proxy.ts",
-      "sha256": "5140f78afa9c0eda58b6018156a440ae89c96b18358c16f63c23871dd367cbc9"
+      "sha256": "cb86b613004118458f605fb8b92307fd298753f4042a9d1ead8766d54d504212"
     },
     {
       "file": "src/lib/cad-api-proxy-boundary.ts",
@@ -229,6 +229,10 @@
     {
       "file": "src/app/api/cad/v1/product-decomposition/route.ts",
       "sha256": "6d0c5ac8f38b6a4e987276d2b6ddeb852b844eb0b6af72035162ef4d42c579d4"
+    },
+    {
+      "file": "src/app/api/cad/v1/product-qualification/route.ts",
+      "sha256": "33b92db6946d4f1e24967cd06b6ea9f641e878df3b9bab9db875b929153f0ecd"
     },
     {
       "file": "src/app/api/cad/v1/project/verify/route.ts",
