@@ -1,12 +1,12 @@
 {
   "schema": "nexyfab.mechanical-ai-intent-runtime-receipt.v1",
-  "generatedAt": "2026-08-24T14:26:17.803Z",
-  "revision": "8ba225bd293484d89fb99e9ca60e04a8da2a014c8109b10235845b1eafd5432a",
+  "generatedAt": "2026-08-24T15:00:47.700Z",
+  "revision": "a361da8b50b3e4b840c04e7bdf7077467580a73242a109090dad13b8f5102e22",
   "sourceBindings": [
     {
       "path": "src/app/[lang]/shape-generator/features/occtEngine.ts",
-      "sha256": "9447d4ab9e5bc20f47b90bddcfa5a9c51d80aea8e993b431846dd58d368ebbd9",
-      "bytes": 134988
+      "sha256": "5c24d7b27dc6709fa1f0e123dcd6c3fd0af1e428b6c5f11d8bf304ed313e5eaa",
+      "bytes": 136046
     },
     {
       "path": "src/app/[lang]/shape-generator/features/topologyEdgeFinder.ts",
@@ -132,12 +132,12 @@
   "artifactBindings": [
     {
       "path": "docs/evidence/cad-independent/local/mechanical-ai-intent-runtime-260813/intent-runtime-results.json",
-      "sha256": "2d0c4d59b03e3b82120b65cde0156fc9f283759cf92716d6c734a7596c5cad96",
+      "sha256": "67d6dfa948183440589f3295ff10742f61ee887e4ac3191467f25d85208d380b",
       "bytes": 23579
     },
     {
       "path": "docs/evidence/cad-independent/local/mechanical-ai-intent-runtime-260813/runtime-axis-evidence.json",
-      "sha256": "eb33ac46bffe61bd58ac23c293092caeb05d18f76244611ac3310c8d39397c55",
+      "sha256": "c66a83d4c99781f50100a1cc7600b4fd8e40a275416491db8f1992b25bef8f37",
       "bytes": 117004
     }
   ],

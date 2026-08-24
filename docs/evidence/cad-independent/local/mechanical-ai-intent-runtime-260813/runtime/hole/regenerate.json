@@ -3,7 +3,7 @@
   "feature": "hole",
   "axis": "regenerate",
   "status": "PASS",
-  "executedAt": "2026-08-24T14:26:17.803Z",
+  "executedAt": "2026-08-24T15:00:47.700Z",
   "initial": {
     "handle": "occt:3",
     "kernelKind": "Solid",
@@ -78,7 +78,7 @@
   "intentBinding": {
     "caseId": "ko_practical-01-hole",
     "candidateId": "intent-runtime:ko_practical-01-hole",
-    "candidateBaseRevision": "8ba225bd293484d89fb99e9ca60e04a8da2a014c8109b10235845b1eafd5432a",
+    "candidateBaseRevision": "a361da8b50b3e4b840c04e7bdf7077467580a73242a109090dad13b8f5102e22",
     "promptSha256": "8e41f52aeb29df0d0db6a2cd2856af945033d319834c07c50b43326e4bce4d6a",
     "inputSha256": "b781befa692abcd8dd7e823391cfe7b63c657e07f588fa3c504b4a3873663538",
     "sourceUnits": [
