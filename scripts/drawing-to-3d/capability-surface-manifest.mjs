@@ -52,6 +52,7 @@ export const CAD_V1_ROUTE_EXPOSURE_HOLD = Object.freeze([
   '/api/cad/v1/interior/layout/edit',
   '/api/cad/v1/interior/verify',
   '/api/cad/v1/mep/route',
+  '/api/cad/v1/product-qualification',
   '/api/cad/v1/robot/cable/life',
   '/api/cad/v1/robot/catalog/admit',
   '/api/cad/v1/robot/catalog/housing-fit',
@@ -84,6 +85,7 @@ export const CAD_V1_ROUTE_EXPOSURE_HOLD_REASONS = Object.freeze({
   '/api/cad/v1/architecture/interior/edit': 'HOLD: project/interior mutation path requires bounded editor authorization and transaction parity.',
   '/api/cad/v1/architecture/service-openings/sync': 'HOLD: project service-opening mutation path requires bounded editor authorization and transaction parity.',
   '/api/cad/v1/interior/layout/edit': 'HOLD: project interior-layout mutation path requires bounded editor authorization and transaction parity.',
+  '/api/cad/v1/product-qualification': 'HOLD: evaluation requires an explicit Agent/MCP/CLI schema and parity contract before advertisement.',
   '/api/cad/v1/robot/integration/apply': 'HOLD: integration apply/export path requires write scope and bounded approval/parity.',
   '/api/cad/v1/robot/release/work-packet': 'HOLD: generated release work-packet/export path requires write scope and bounded parity.',
   '/api/cad/v1/spatial/command': 'HOLD: CAD draft mutation path requires bounded authorization and durable-state parity.',
@@ -91,7 +93,7 @@ export const CAD_V1_ROUTE_EXPOSURE_HOLD_REASONS = Object.freeze({
 });
 
 export const CAPABILITY_SURFACE_BASELINE = Object.freeze({
-  cadV1RouteFiles: 83,
+  cadV1RouteFiles: 84,
   advertisedCadV1Operations: 42,
   advertisedCadV1CliCommands: 34,
   localMcpTools: 90,
