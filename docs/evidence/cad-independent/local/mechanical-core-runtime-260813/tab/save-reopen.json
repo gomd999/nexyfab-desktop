@@ -3,9 +3,9 @@
   "feature": "tab",
   "axis": "save_reopen",
   "status": "PASS",
-  "executedAt": "2026-08-24T14:23:18.048Z",
+  "executedAt": "2026-08-24T21:27:38.377Z",
   "savedBytes": 1597,
-  "savedSha256": "3777e44343b53f7a9e9bb539d7854b770896c4f7fb4b61c55a212c5cf6f4c086",
+  "savedSha256": "ba9b06adb1bae6c0fde52fe4b202863e963e339f151a9dd5ab7dba18024848c8",
   "reopened": {
     "handle": "occt:287",
     "kernelKind": "Solid",

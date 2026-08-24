@@ -3,9 +3,9 @@
   "feature": "splitBody",
   "axis": "save_reopen",
   "status": "PASS",
-  "executedAt": "2026-08-24T14:23:18.048Z",
+  "executedAt": "2026-08-24T21:27:38.377Z",
   "savedBytes": 1609,
-  "savedSha256": "5b191768d3bb1b146024e3edb0053f7241a1807337048920078b92fdca41c212",
+  "savedSha256": "bee3c0807b9ab1cee0df17aec2205973e4c22dd2fa2da899616e485027b5fe16",
   "reopened": {
     "handle": "occt:453",
     "kernelKind": "Solid",

@@ -9,11 +9,13 @@ export async function GET() {
   const env = process.env;
   const i18nReceipt = await loadReleaseEvidenceFile(env.I18N_RELEASE_RECEIPT_PATH ?? 'docs/evidence/release/commercial-i18n-release-receipt.json');
   const sevenDayReceipt = await loadReleaseEvidenceFile(env.SEVEN_DAY_OPERATIONS_RECEIPT_PATH ?? 'docs/evidence/release/seven-day-operations-receipt.json');
+  const precisionRuntimeReceipt = await loadReleaseEvidenceFile(env.COMMERCIAL_PRECISION_RUNTIME_RECEIPT_PATH ?? 'docs/evidence/release/commercial-precision-runtime-evidence.json');
   const result = await buildReleaseEvidence({
     env,
     db: (() => { try { return getDbAdapter(); } catch { return undefined; } })(),
     i18nReceipt,
     sevenDayReceipt,
+    precisionRuntimeReceipt,
   });
   return NextResponse.json(result, {
     status: result.status === 'PASS' ? 200 : 503,

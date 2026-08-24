@@ -3,9 +3,9 @@
   "feature": "variableShell",
   "axis": "export",
   "status": "PASS",
-  "executedAt": "2026-08-24T14:23:18.048Z",
+  "executedAt": "2026-08-24T21:27:38.377Z",
   "stepBytes": 30053,
-  "stepSha256": "2c9281e0e91fd03af66a6d45ff7fa5bf24b8e6ab28cb5b1118d1e64c1ecf0db6",
+  "stepSha256": "be6d824972d4c0d90304234d5ff491cee6ea4b2018590a50cbcc4be914b07960",
   "before": {
     "handle": "occt:345",
     "kernelKind": "Solid",

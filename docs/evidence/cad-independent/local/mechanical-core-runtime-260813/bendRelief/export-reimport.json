@@ -3,9 +3,9 @@
   "feature": "bendRelief",
   "axis": "export",
   "status": "PASS",
-  "executedAt": "2026-08-24T14:23:18.048Z",
+  "executedAt": "2026-08-24T21:27:38.377Z",
   "stepBytes": 44797,
-  "stepSha256": "ae05152c2992e05b604e20e3531e9dbb520ab3df55ba1e87ef62520566f3ef30",
+  "stepSha256": "8aa1830dd343016f91aa2f3d3b590cb0eb57f5a8ddb29a625c2190cab1aaacac",
   "before": {
     "handle": "occt:313",
     "kernelKind": "Solid",

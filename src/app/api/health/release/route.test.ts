@@ -25,13 +25,23 @@ const ids = {
   RAILWAY_DEPLOYMENT_ID: 'cf509f59-dfc8-49cb-8e19-09ddcf3cd5e8',
 };
 
+const precisionRuntimeChecks = [
+  'postgresMigration', 'redisAvailability', 'immutableInputWriteReadback',
+  'transactionalOutboxEnqueue', 'leaseClaim', 'nativeExecution',
+  'threeOutputCommitReadback', 'workerReceiptSignature', 'signedCallback',
+  'authoritativePersistence', 'workspaceCasCommit', 'wrongWorkerRejected',
+  'inputSubstitutionRejected', 'outputSubstitutionRejected', 'callbackReplayRejected',
+  'multiInstanceClaimExclusion', 'expiredLeaseRecovery', 'crashAfterClaimRecovery',
+  'verifiedUnknownNoReplay', 'credentialRotation',
+];
+
 const canonical = (value: any): string => value === null || typeof value !== 'object'
   ? JSON.stringify(value)
   : Array.isArray(value)
     ? `[${value.map(canonical).join(',')}]`
     : `{${Object.keys(value).sort().map(key => `${JSON.stringify(key)}:${canonical(value[key])}`).join(',')}}`;
 
-function signReceipt(receipt: Record<string, any>, secret: string) {
+function signReceipt(receipt: Record<string, any>, secret: string): Record<string, any> {
   const unsigned = { ...receipt };
   delete unsigned.receiptSha256;
   delete unsigned.receiptHmacSha256;
@@ -40,11 +50,47 @@ function signReceipt(receipt: Record<string, any>, secret: string) {
   return { ...unsigned, receiptSha256, receiptHmacSha256 };
 }
 
+function precisionRuntimeReceipt(now: number, secret: string, checksum: string) {
+  return signReceipt({
+    schema: 'nexyfab.commercial-precision-runtime-evidence.v1',
+    generatedAt: new Date(now).toISOString(),
+    status: 'COMMERCIAL_GA_PASS',
+    environment: 'production',
+    release: {
+      buildId: ids.NEXYFAB_BUILD_ID,
+      gitHead: ids.RAILWAY_GIT_COMMIT_SHA,
+      productionDeploymentId: ids.RAILWAY_DEPLOYMENT_ID,
+      evidenceDeploymentId: ids.RAILWAY_DEPLOYMENT_ID,
+    },
+    execution: { contract: 'nexyfab.precision-cad-commercial-execution.v3' },
+    migration: { version: 2026082502, checksum },
+    migrationSource: { path: 'src/lib/db-postgres-migration-2026082502.sql', bytes: 5623, sha256: checksum },
+    observationBinding: { path: 'runtime/observation.json', bytes: 1000, sha256: '8'.repeat(64) },
+    evidenceBindings: Object.fromEntries([
+      'databaseSnapshot', 'objectStorageManifest', 'workerReceipt',
+      'negativeCampaign', 'recoveryCampaign',
+    ].map((role, index) => [role, { path: `runtime/${role}.json`, bytes: 100 + index, sha256: String(index + 3).repeat(64) }])),
+    checks: Object.fromEntries(precisionRuntimeChecks.map(key => [key, 'PASS'])),
+    decision: {
+      privateBeta: { eligible: true, blockers: [] },
+      commercialGa: { eligible: true, blockers: [] },
+    },
+    claimBoundary: {
+      sourceTestsAreRuntimeEvidence: false,
+      fixtureWorkerIsCommercialEvidence: false,
+      stagingCanQualifyCommercialGa: false,
+      productionRequiresSameDeployment: true,
+      independentCadOrManufacturingCertified: false,
+    },
+  }, secret);
+}
+
 beforeEach(() => {
   state.getDbAdapter.mockReset().mockReturnValue(undefined);
   state.registry.mockReset().mockReturnValue(undefined);
   vi.stubEnv('I18N_RELEASE_RECEIPT_PATH', 'missing-i18n.json');
   vi.stubEnv('SEVEN_DAY_OPERATIONS_RECEIPT_PATH', 'missing-seven-day.json');
+  vi.stubEnv('COMMERCIAL_PRECISION_RUNTIME_RECEIPT_PATH', 'missing-precision-runtime.json');
 });
 
 afterEach(() => vi.unstubAllEnvs());
@@ -218,8 +264,12 @@ describe('GET /api/health/release', () => {
       const version = Number(params[0]);
       return { version, checksum: String(version).slice(-1).repeat(64) } as T;
     };
+    const commercialPrecisionRuntimeReceipt = precisionRuntimeReceipt(
+      now, secret, env[commercialPostgresMigrationChecksumEnvKey(2026082502)],
+    );
     const result = await buildReleaseEvidence({
       env, now, evidenceRoot, i18nReceipt, sevenDayReceipt,
+      precisionRuntimeReceipt: commercialPrecisionRuntimeReceipt,
       db: { backend: 'postgres', queryOne },
       registry: { identities: ['a', 'b', 'c'].map(value => ({ role: 'external_verifier', fingerprintSha256: value.repeat(64) })) },
     });
@@ -227,6 +277,48 @@ describe('GET /api/health/release', () => {
     expect(result.release).toMatchObject({ migrationVersion: 2026082502, registryRoles: 3, registryFingerprintsUnique: true });
     expect(result.release.i18n.status).toBe('QUALIFIED');
     expect(result.release.sevenDay.status).toBe('QUALIFIED');
+    expect(result.release.precisionRuntime.status).toBe('QUALIFIED');
+  });
+
+  it('rejects a missing, tampered, or release-transplanted commercial Precision runtime receipt', async () => {
+    const now = Date.parse('2026-08-23T00:00:00.000Z');
+    const secret = 's'.repeat(32);
+    const checksum = '2'.repeat(64);
+    const env: Record<string, string> = {
+      ...ids,
+      RAILWAY_ENVIRONMENT_NAME: 'production',
+      NEXYFAB_COMMERCIAL_MODE: '1',
+      GENERATION_EVIDENCE_SIGNING_SECRET: secret,
+      [commercialPostgresMigrationChecksumEnvKey(2026082502)]: checksum,
+    };
+    const queryOne = async <T = Record<string, unknown>>(_sql: string, version: unknown): Promise<T | undefined> => ({
+      version: Number(version),
+      checksum: Number(version) === 2026082502 ? checksum : String(version).slice(-1).repeat(64),
+    }) as T;
+    for (const version of COMMERCIAL_POSTGRES_MIGRATIONS) {
+      env[commercialPostgresMigrationChecksumEnvKey(version)] = version === 2026082502
+        ? checksum : String(version).slice(-1).repeat(64);
+    }
+    const common = {
+      env, now,
+      db: { backend: 'postgres' as const, queryOne },
+      registry: { identities: ['a', 'b', 'c'].map(value => ({ role: 'external_verifier', fingerprintSha256: value.repeat(64) })) },
+    };
+
+    const missing = await buildReleaseEvidence(common);
+    expect(missing.release.precisionRuntime.status).toBe('NOT_RUN');
+    expect(missing.status).not.toBe('PASS');
+
+    const tampered = precisionRuntimeReceipt(now, secret, checksum);
+    tampered.checks.nativeExecution = 'FAIL';
+    const invalidSignature = await buildReleaseEvidence({ ...common, precisionRuntimeReceipt: tampered });
+    expect(invalidSignature.release.precisionRuntime.status).toBe('HOLD');
+
+    const transplanted = precisionRuntimeReceipt(now, secret, checksum);
+    transplanted.release.productionDeploymentId = '2f6a581e-e56c-4a71-99f0-c39df482cd52';
+    const resignedTransplant = signReceipt(transplanted, secret);
+    const wrongRelease = await buildReleaseEvidence({ ...common, precisionRuntimeReceipt: resignedTransplant });
+    expect(wrongRelease.release.precisionRuntime.status).toBe('HOLD');
   });
 
   it('returns sanitized HOLD and never includes connection secrets', async () => {

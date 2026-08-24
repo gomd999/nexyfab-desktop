@@ -1,0 +1,103 @@
+{
+  "schema": "nexyfab.commercial-precision-runtime-evidence.v1",
+  "generatedAt": "2026-08-24T21:42:38.418Z",
+  "status": "HOLD",
+  "release": null,
+  "environment": null,
+  "execution": null,
+  "migration": null,
+  "migrationSource": {
+    "path": "src/lib/db-postgres-migration-2026082502.sql",
+    "bytes": 5623,
+    "sha256": "07451ebcc671a837bb51c6fed94e6874068814a51c4da674aa0b89b7595f3ec9"
+  },
+  "observationBinding": null,
+  "evidenceBindings": {
+    "databaseSnapshot": null,
+    "objectStorageManifest": null,
+    "workerReceipt": null,
+    "negativeCampaign": null,
+    "recoveryCampaign": null
+  },
+  "checks": {
+    "postgresMigration": "NOT_RUN",
+    "redisAvailability": "NOT_RUN",
+    "immutableInputWriteReadback": "NOT_RUN",
+    "transactionalOutboxEnqueue": "NOT_RUN",
+    "leaseClaim": "NOT_RUN",
+    "nativeExecution": "NOT_RUN",
+    "threeOutputCommitReadback": "NOT_RUN",
+    "workerReceiptSignature": "NOT_RUN",
+    "signedCallback": "NOT_RUN",
+    "authoritativePersistence": "NOT_RUN",
+    "workspaceCasCommit": "NOT_RUN",
+    "wrongWorkerRejected": "NOT_RUN",
+    "inputSubstitutionRejected": "NOT_RUN",
+    "outputSubstitutionRejected": "NOT_RUN",
+    "callbackReplayRejected": "NOT_RUN",
+    "multiInstanceClaimExclusion": "NOT_RUN",
+    "expiredLeaseRecovery": "NOT_RUN",
+    "crashAfterClaimRecovery": "NOT_RUN",
+    "verifiedUnknownNoReplay": "NOT_RUN",
+    "credentialRotation": "NOT_RUN"
+  },
+  "decision": {
+    "privateBeta": {
+      "eligible": false,
+      "blockers": [
+        "runtime_observation_missing",
+        "private_beta_check_not_pass:postgresMigration",
+        "private_beta_check_not_pass:redisAvailability",
+        "private_beta_check_not_pass:immutableInputWriteReadback",
+        "private_beta_check_not_pass:transactionalOutboxEnqueue",
+        "private_beta_check_not_pass:leaseClaim",
+        "private_beta_check_not_pass:nativeExecution",
+        "private_beta_check_not_pass:threeOutputCommitReadback",
+        "private_beta_check_not_pass:workerReceiptSignature",
+        "private_beta_check_not_pass:signedCallback",
+        "private_beta_check_not_pass:authoritativePersistence",
+        "private_beta_check_not_pass:workspaceCasCommit",
+        "private_beta_check_not_pass:wrongWorkerRejected",
+        "private_beta_check_not_pass:inputSubstitutionRejected",
+        "private_beta_check_not_pass:outputSubstitutionRejected",
+        "private_beta_check_not_pass:callbackReplayRejected"
+      ]
+    },
+    "commercialGa": {
+      "eligible": false,
+      "blockers": [
+        "runtime_observation_missing",
+        "private_beta_check_not_pass:postgresMigration",
+        "private_beta_check_not_pass:redisAvailability",
+        "private_beta_check_not_pass:immutableInputWriteReadback",
+        "private_beta_check_not_pass:transactionalOutboxEnqueue",
+        "private_beta_check_not_pass:leaseClaim",
+        "private_beta_check_not_pass:nativeExecution",
+        "private_beta_check_not_pass:threeOutputCommitReadback",
+        "private_beta_check_not_pass:workerReceiptSignature",
+        "private_beta_check_not_pass:signedCallback",
+        "private_beta_check_not_pass:authoritativePersistence",
+        "private_beta_check_not_pass:workspaceCasCommit",
+        "private_beta_check_not_pass:wrongWorkerRejected",
+        "private_beta_check_not_pass:inputSubstitutionRejected",
+        "private_beta_check_not_pass:outputSubstitutionRejected",
+        "private_beta_check_not_pass:callbackReplayRejected",
+        "production_runtime_not_observed",
+        "commercial_ga_check_not_pass:multiInstanceClaimExclusion",
+        "commercial_ga_check_not_pass:expiredLeaseRecovery",
+        "commercial_ga_check_not_pass:crashAfterClaimRecovery",
+        "commercial_ga_check_not_pass:verifiedUnknownNoReplay",
+        "commercial_ga_check_not_pass:credentialRotation"
+      ]
+    }
+  },
+  "claimBoundary": {
+    "sourceTestsAreRuntimeEvidence": false,
+    "fixtureWorkerIsCommercialEvidence": false,
+    "stagingCanQualifyCommercialGa": false,
+    "productionRequiresSameDeployment": true,
+    "independentCadOrManufacturingCertified": false
+  },
+  "receiptSha256": "77def5750fce80c4272cc766e84768191b7f94ee968ff5c0af74aa49b7f61f14",
+  "receiptHmacSha256": null
+}
