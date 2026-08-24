@@ -13,6 +13,7 @@ import {
   createAiDesignConceptNodesV10,
   createAiDesignUnifiedWorkspaceSnapshotV10,
 } from '@/lib/ai/aiDesignWorkspaceIntegrationV10';
+import { getAiDesignWorkspaceCopy } from '@/lib/ai/aiDesignWorkspaceI18n';
 import { AiDesignWorkspaceSurface, type AiDesignSurfaceGaugeV10 } from './AiDesignWorkspaceSurface';
 import styles from './AiDesignWorkspace.module.css';
 
@@ -27,6 +28,7 @@ async function responseJson(response: Response): Promise<Record<string, unknown>
 }
 
 export default function AiDesignWorkspaceClient({ lang, projectId, sessionId }: { lang: string; projectId: string; sessionId: string }) {
+  const text = getAiDesignWorkspaceCopy(lang).client;
   const [controller, setController] = useState<AiDesignUnifiedWorkspaceControllerV1 | null>(null);
   const controllerRef = useRef<AiDesignUnifiedWorkspaceControllerV1 | null>(null);
   const [model, setModel] = useState<AiDesignComplexWorkspaceReadModelV4 | null>(null);
@@ -84,7 +86,7 @@ export default function AiDesignWorkspaceClient({ lang, projectId, sessionId }: 
     const current = controllerRef.current;
     if (!current || busy) return;
     if (card.actions.find(item => item.id === actionId)?.requiresConfirmation
-      && !window.confirm(lang === 'ko' || lang === 'kr' ? '현재 서버 revision에 이 요청을 적용할까요?' : 'Apply this request to the current server revision?')) return;
+      && !window.confirm(text.confirmApply)) return;
     setBusy(true);
     setNotice(null);
     try {
@@ -139,14 +141,14 @@ export default function AiDesignWorkspaceClient({ lang, projectId, sessionId }: 
         const snapshot = createAiDesignUnifiedWorkspaceSnapshotV10(payload);
         setModel(snapshot.source as AiDesignComplexWorkspaceReadModelV4);
         transition({ type: 'SERVER_SNAPSHOT_RECEIVED', snapshot, completedRequestId: pending.requestId });
-        setNotice(lang === 'ko' || lang === 'kr' ? 'Precision CAD 요청이 접수되었습니다. 정확 형상 실행과 PASS는 아직 아닙니다.' : 'Precision CAD request accepted. Exact execution and PASS have not occurred.');
+        setNotice(text.precisionRequested);
       }
     } catch (error) {
       setNotice(error instanceof Error ? error.message : 'AI_DESIGN_ACTION_FAILED');
     } finally {
       setBusy(false);
     }
-  }, [busy, gaugeDirection, gaugeMode, lang, loadWorkspace, model, post, transition]);
+  }, [busy, gaugeDirection, gaugeMode, lang, loadWorkspace, model, post, text, transition]);
 
   if (!controller || !model) return <div className={styles.loading} role="status">{notice ?? 'Loading synchronized AI Design workspace…'}</div>;
   const nodes = createAiDesignConceptNodesV10(model);

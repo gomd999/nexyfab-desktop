@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import type { AiDesignInputEvent } from '@/lib/ai/aiDesignInputAdapter';
+import { getAiDesignWorkspaceCopy } from '@/lib/ai/aiDesignWorkspaceI18n';
 import styles from './AiDesignWorkspace.module.css';
 
 function hex(bytes: ArrayBuffer): string {
@@ -44,7 +45,7 @@ export async function createAiDesignTextWorkspaceRequestV10(projectId: string, p
 
 export default function AiDesignWorkspaceLauncher({ lang, projectId }: { lang: string; projectId: string }) {
   const router = useRouter();
-  const ko = lang === 'ko' || lang === 'kr';
+  const text = getAiDesignWorkspaceCopy(lang).launcher;
   const [prompt, setPrompt] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -68,13 +69,13 @@ export default function AiDesignWorkspaceLauncher({ lang, projectId }: { lang: s
   return <main className={styles.launcher}>
     <div className={styles.launcherCard}>
       <p className={styles.eyebrow}>NEXYFAB AI DESIGN · V10</p>
-      <h1>{ko ? '무엇을 설계할까요?' : 'What would you like to design?'}</h1>
-      <p>{ko ? '첫 요청은 이 프로젝트와 새 설계 세션에 revision으로 묶입니다. 다음 화면에서 2D와 3D가 같은 선택 상태를 공유합니다.' : 'Your first request is revision-bound to this project and a new design session. The next screen keeps 2D and 3D selection synchronized.'}</p>
-      <label htmlFor="ai-design-request">{ko ? '설계 요청' : 'Design request'}</label>
-      <textarea id="ai-design-request" value={prompt} maxLength={4_000} rows={7} onChange={event => setPrompt(event.target.value)} placeholder={ko ? '예: 벽 두께 3mm, 폭 120mm의 센서 브래킷을 설계해줘.' : 'Example: Design a sensor bracket, 3 mm wall thickness and 120 mm wide.'} />
+      <h1>{text.title}</h1>
+      <p>{text.description}</p>
+      <label htmlFor="ai-design-request">{text.requestLabel}</label>
+      <textarea id="ai-design-request" value={prompt} maxLength={4_000} rows={7} onChange={event => setPrompt(event.target.value)} placeholder={text.requestPlaceholder} />
       <div className={styles.launcherMeta}><span>Project: {projectId}</span><span>Rights: user_owned</span><span>Exact CAD: NOT_RUN</span></div>
       {error && <p className={styles.notice} role="alert">{error}</p>}
-      <button type="button" className={styles.launchButton} disabled={busy || !prompt.trim()} onClick={start}>{busy ? (ko ? '세션 생성 중…' : 'Creating session…') : (ko ? '대화형 설계 시작' : 'Start conversational design')}</button>
+      <button type="button" className={styles.launchButton} disabled={busy || !prompt.trim()} onClick={start}>{busy ? text.creatingSession : text.startDesign}</button>
     </div>
   </main>;
 }

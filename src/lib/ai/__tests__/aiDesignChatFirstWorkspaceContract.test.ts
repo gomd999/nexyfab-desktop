@@ -39,4 +39,13 @@ describe('chat-first unified design workspace contract', () => {
     const fallback = createAiDesignChatFirstWorkspaceContract({ locale: 'fr' });
     expect(fallback.starterCards.every(card => card.locale === 'en')).toBe(true);
   });
+
+  it.each(['ko', 'en', 'ja', 'zh', 'es', 'ar'] as const)('uses native %s copy across starter, action, and authority boundaries', locale => {
+    const contract = createAiDesignChatFirstWorkspaceContract({ locale, stage: 'precision', receivedInputs: ['existing_3d'] });
+    expect(contract.starterCards.every(card => card.locale === locale)).toBe(true);
+    expect(contract.starterCards.every(card => card.title.trim() && card.description.trim() && card.examplePrompt.trim())).toBe(true);
+    expect(contract.nextRecommendedAction.label.trim()).not.toBe('');
+    expect(contract.authority.boundaryCopy.trim()).not.toBe('');
+    expect(validateAiDesignChatFirstWorkspaceContract(contract)).toEqual([]);
+  });
 });

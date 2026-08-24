@@ -3,6 +3,7 @@ import { createUnifiedWorkspaceClientStateV1, type UnifiedWorkspaceServerSnapsho
 import type { AiDesignComplexWorkspaceReadModelV4 } from './aiDesignComplexWorkspaceService';
 import type { AiDesignPreviewEvidenceV1 } from './aiDesignPreviewLifecycleV1';
 import type { AiDesignUnifiedWorkspaceV9 } from './aiDesignUnifiedWorkspaceV9';
+import { getAiDesignWorkspaceCopy } from './aiDesignWorkspaceI18n';
 
 export interface AiDesignComplexWorkspaceResponseV10 {
   model: AiDesignComplexWorkspaceReadModelV4;
@@ -68,17 +69,15 @@ export function createAiDesignPreviewDecisionCardV10(input: {
   evidence: AiDesignPreviewEvidenceV1;
   locale?: string;
 }): AiDesignChatActionCardV1 {
-  const ko = input.locale === 'ko' || input.locale === 'kr';
+  const text = getAiDesignWorkspaceCopy(input.locale).previewDecision;
   return createAiDesignChatActionCard({
     cardId: `preview-card:${input.evidence.proposalId}`,
     projectId: input.projectId,
     sessionId: input.sessionId,
     runtimeRevision: input.runtimeRevision,
     kind: 'change_preview',
-    title: ko ? '개념 변경 미리보기' : 'Concept change preview',
-    summary: ko
-      ? '2D와 3D에만 표시된 비영구 미리보기입니다. 형상·위상·제조 검증은 실행되지 않았습니다.'
-      : 'This is a nonpersistent 2D/3D preview. Geometry, topology, and manufacturing verification were not run.',
+    title: text.title,
+    summary: text.summary,
     status: 'attention',
     references: {
       questionId: null,
@@ -88,8 +87,8 @@ export function createAiDesignPreviewDecisionCardV10(input: {
       verificationReceiptId: null,
     },
     actions: [
-      { id: 'APPLY_CONCEPT_CHANGE', label: ko ? '세션에 적용' : 'Apply to session', enabled: true, reason: null, primary: true, requiresConfirmation: true },
-      { id: 'REJECT_PREVIEW', label: ko ? '미리보기 취소' : 'Discard preview', enabled: true, reason: null, primary: false, requiresConfirmation: false },
+      { id: 'APPLY_CONCEPT_CHANGE', label: text.apply, enabled: true, reason: null, primary: true, requiresConfirmation: true },
+      { id: 'REJECT_PREVIEW', label: text.discard, enabled: true, reason: null, primary: false, requiresConfirmation: false },
     ],
   });
 }

@@ -6,11 +6,13 @@ import type { AiDesignChatActionCardV1, AiDesignChatActionId } from '@/lib/ai/ai
 import type { AiDesignUnifiedWorkspaceControllerV1 } from '@/lib/ai/aiDesignUnifiedWorkspaceControllerV1';
 import type { AiDesignUnifiedWorkspaceV9 } from '@/lib/ai/aiDesignUnifiedWorkspaceV9';
 import type { AiDesignConceptNodeV10 } from '@/lib/ai/aiDesignWorkspaceIntegrationV10';
+import { getAiDesignWorkspaceCopy } from '@/lib/ai/aiDesignWorkspaceI18n';
+import { langDir } from '@/lib/i18n/normalize';
 import styles from './AiDesignWorkspace.module.css';
 
 const ConceptCanvas3d = dynamic(() => import('./AiDesignConceptCanvas3d'), {
   ssr: false,
-  loading: () => <div className={styles.canvasLoading}>Loading 3D concept view…</div>,
+  loading: () => <div className={styles.canvasLoading}>3D · …</div>,
 });
 
 export interface AiDesignSurfaceGaugeV10 {
@@ -59,7 +61,7 @@ export function AiDesignWorkspaceSurface({
   onGaugeDirection(direction: 1 | -1): void;
   onRefresh(): void;
 }) {
-  const ko = lang === 'ko' || lang === 'kr';
+  const text = getAiDesignWorkspaceCopy(lang).surface;
   const [inspectorOpen, setInspectorOpen] = useState(false);
   const cards = decisionCard ? [...workspace.cards, decisionCard] : workspace.cards;
   const selection = controller.client.localView.selection;
@@ -70,11 +72,11 @@ export function AiDesignWorkspaceSurface({
   const mappingNeedsInput = workspace.canvas.mappingStatus === 'awaiting_precision_binding';
 
   return (
-    <main className={styles.workspace} data-testid="ai-design-v10-workspace">
+    <main className={styles.workspace} data-testid="ai-design-v10-workspace" dir={langDir(lang)}>
       <header className={styles.header}>
         <div>
           <p className={styles.eyebrow}>NEXYFAB AI DESIGN · V10</p>
-          <h1>{ko ? '대화형 설계 워크스페이스' : 'Conversational design workspace'}</h1>
+          <h1>{text.title}</h1>
         </div>
         <div className={styles.revision} aria-label="Server revision">
           R{workspace.revisions.runtime} · C{workspace.revisions.complex}
@@ -82,10 +84,10 @@ export function AiDesignWorkspaceSurface({
         </div>
       </header>
 
-      <section className={styles.chatRail} aria-label={ko ? '설계 대화' : 'Design conversation'}>
+      <section className={styles.chatRail} aria-label={text.conversationAria}>
         <div className={styles.sectionHeading}>
-          <div><span>01</span><h2>{ko ? '대화' : 'Chat'}</h2></div>
-          <button type="button" onClick={onRefresh} disabled={busy}>{ko ? '새로고침' : 'Refresh'}</button>
+          <div><span>01</span><h2>{text.chat}</h2></div>
+          <button type="button" onClick={onRefresh} disabled={busy}>{text.refresh}</button>
         </div>
         <p className={styles.stage}>{workspace.chat.stage}</p>
         {cards.map(card => (
@@ -111,13 +113,13 @@ export function AiDesignWorkspaceSurface({
         ))}
         {notice && <p className={styles.notice} role="status" aria-live="polite">{notice}</p>}
         <div className={styles.authority}>
-          <strong>{ko ? '권한 경계' : 'Authority boundary'}</strong>
-          <span>{ko ? '현재 화면은 개념 설계·미리보기 전용입니다.' : 'This workspace is for concept orchestration and preview.'}</span>
+          <strong>{text.authorityBoundary}</strong>
+          <span>{text.conceptOnly}</span>
           <span>Exact CAD: Precision CAD · Release: false</span>
         </div>
       </section>
 
-      <section className={styles.canvasArea} aria-label={ko ? '연동 캔버스' : 'Linked canvas'}>
+      <section className={styles.canvasArea} aria-label={text.linkedCanvas}>
         <div className={styles.canvasToolbar}>
           <div role="group" aria-label="Canvas mode">
             {(['2d', '3d', 'split'] as const).map(item => (
@@ -125,7 +127,7 @@ export function AiDesignWorkspaceSurface({
             ))}
           </div>
           <button type="button" onClick={() => document.querySelector<HTMLElement>(`.${styles.canvasStage}`)?.requestFullscreen?.()}>
-            {ko ? '전체 화면' : 'Full screen'}
+            {text.fullScreen}
           </button>
         </div>
         <div className={`${styles.canvasStage} ${mode === 'split' ? styles.split : ''}`}>
@@ -156,7 +158,7 @@ export function AiDesignWorkspaceSurface({
                 : <div className={styles.canvasLoading}>3D renderer test boundary</div>}
             </div>
           )}
-          {!nodes.length && <div className={styles.emptyCanvas}>{ko ? '입력 또는 후보가 준비되면 연동 뷰가 표시됩니다.' : 'Linked views appear when input or a candidate is ready.'}</div>}
+          {!nodes.length && <div className={styles.emptyCanvas}>{text.emptyCanvas}</div>}
         </div>
         <div className={styles.syncBar}>
           <span>Linked selection: {selectedNode?.label ?? '—'}</span>
@@ -166,17 +168,17 @@ export function AiDesignWorkspaceSurface({
       </section>
 
       <button type="button" className={styles.inspectorToggle} aria-expanded={inspectorOpen} aria-controls="ai-design-inspector" onClick={() => setInspectorOpen(open => !open)}>
-        {ko ? '검사기' : 'Inspector'}
+        {text.inspector}
       </button>
-      <aside id="ai-design-inspector" className={`${styles.inspector} ${inspectorOpen ? styles.inspectorOpen : ''}`} aria-label={ko ? '검사기' : 'Inspector'}>
-        <div className={styles.sectionHeading}><div><span>03</span><h2>{ko ? '검사기' : 'Inspector'}</h2></div><button type="button" className={styles.inspectorClose} onClick={() => setInspectorOpen(false)}>{ko ? '닫기' : 'Close'}</button></div>
+      <aside id="ai-design-inspector" className={`${styles.inspector} ${inspectorOpen ? styles.inspectorOpen : ''}`} aria-label={text.inspector}>
+        <div className={styles.sectionHeading}><div><span>03</span><h2>{text.inspector}</h2></div><button type="button" className={styles.inspectorClose} onClick={() => setInspectorOpen(false)}>{text.close}</button></div>
         <section>
-          <h3>{ko ? '모델' : 'Model'}</h3>
+          <h3>{text.model}</h3>
           <dl><dt>ID</dt><dd>{workspace.model.publicModelId ?? 'not selected'}</dd><dt>Status</dt><dd>{workspace.model.selectionStatus}</dd></dl>
           {workspace.model.explanation.map(item => <code key={item}>{item}</code>)}
         </section>
         <section>
-          <h3>{ko ? '게이지 미리보기' : 'Gauge preview'}</h3>
+          <h3>{text.gaugePreview}</h3>
           {gauges.length ? gauges.slice(0, 8).map(gauge => <div className={styles.gauge} key={gauge.gaugeId}>
             <span>{gauge.label}</span><strong>{gauge.targetValue} {gauge.unit}</strong>
           </div>) : <p>—</p>}
@@ -188,7 +190,7 @@ export function AiDesignWorkspaceSurface({
           </div>
         </section>
         <section>
-          <h3>{ko ? '검증·Precision' : 'Validation · Precision'}</h3>
+          <h3>{text.validationPrecision}</h3>
           <dl><dt>Geometry</dt><dd>{preview ? 'NOT_RUN' : 'NOT_RUN'}</dd><dt>Precision</dt><dd>{precision.status}</dd><dt>Requests</dt><dd>{precision.requestIds.length}</dd><dt>Release</dt><dd>false</dd></dl>
         </section>
       </aside>

@@ -4,6 +4,7 @@ import { cleanup, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { createAiDesignUnifiedWorkspaceControllerV1 } from '@/lib/ai/aiDesignUnifiedWorkspaceControllerV1';
 import { createIntegrationFixtureSourceV1, createIntegrationFixtureV1, INTEGRATION_FIXTURE_KINDS_V1 } from '@/lib/ai/integrationFixtureV1';
+import { getAiDesignWorkspaceCopy } from '@/lib/ai/aiDesignWorkspaceI18n';
 import { AiDesignWorkspaceSurface } from './AiDesignWorkspaceSurface';
 
 afterEach(cleanup);
@@ -29,5 +30,23 @@ describe('AI Design V10 workspace surface', () => {
     expect(screen.getByText('Exact CAD: Precision CAD · Release: false')).toBeInTheDocument();
     expect(screen.getAllByRole('button').length).toBeGreaterThan(4);
     expect(document.body.textContent).toContain(fixture.workspace.chat.stage);
+  });
+
+  it.each(['ko', 'en', 'ja', 'zh', 'es', 'ar'] as const)('renders native %s shell copy and direction', lang => {
+    const fixture = createIntegrationFixtureV1('empty');
+    const source = createIntegrationFixtureSourceV1('empty');
+    const controller = createAiDesignUnifiedWorkspaceControllerV1({
+      projectId: source.projectId, sessionId: source.sessionId, runtimeRevision: source.runtimeRevision,
+      complexRevision: source.complexRevision, source, workspace: fixture.workspace,
+    });
+    render(<AiDesignWorkspaceSurface
+      lang={lang} workspace={fixture.workspace} controller={controller} nodes={[]} gauges={[]}
+      gaugeMode="fine" gaugeDirection={1} renderThree={false}
+      onAction={vi.fn()} onSelect={vi.fn()} onCanvasMode={vi.fn()}
+      onGaugeMode={vi.fn()} onGaugeDirection={vi.fn()} onRefresh={vi.fn()}
+    />);
+    expect(screen.getByRole('heading', { name: getAiDesignWorkspaceCopy(lang).surface.title })).toBeInTheDocument();
+    expect(screen.getByTestId('ai-design-v10-workspace')).toHaveAttribute('dir', lang === 'ar' ? 'rtl' : 'ltr');
+    cleanup();
   });
 });

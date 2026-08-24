@@ -5,6 +5,8 @@
  * geometry and cannot authorize manufacturing. A renderer (web, native, or
  * headless) may choose its own controls while preserving these semantics.
  */
+import { getAiDesignWorkspaceCopy, getAiDesignWorkspaceLocale } from './aiDesignWorkspaceI18n';
+
 export const AI_DESIGN_CHAT_FIRST_WORKSPACE_SCHEMA =
   'nexyfab.ai-design-chat-first-workspace.v1' as const;
 
@@ -93,44 +95,22 @@ export const AI_DESIGN_WORKSPACE_ACCEPTED_INPUTS: readonly AiDesignWorkspaceInpu
   'existing_3d',
 ];
 
-const DEFAULT_STARTER_CARDS: readonly AiDesignWorkspaceStarterCard[] = [
-  {
-    id: 'describe-idea-ko', locale: 'ko', title: '아이디어 설명하기',
-    description: '일상적인 말로 만들 제품이나 형상을 설명하세요.',
-    examplePrompt: '벽에 고정하는 소형 공구걸이를 후크 3개로 설계해 줘.',
-    inputKinds: ['text'],
-  },
-  {
-    id: 'bring-reference-ko', locale: 'ko', title: '참고 자료로 시작하기',
-    description: '2D 도면, 이미지·스케치 또는 기존 3D 모델을 올리세요.',
-    examplePrompt: '이 자료의 핵심 기능은 유지하고 더 단순하고 가볍게 바꿔 줘.',
-    inputKinds: ['drawing_2d', 'image_or_sketch', 'existing_3d'],
-  },
-  {
-    id: 'describe-idea', locale: 'en', title: 'Describe an idea',
-    description: 'Start with a plain-language product or shape idea.',
-    examplePrompt: 'Design a compact wall-mounted tool holder with three hooks.',
-    inputKinds: ['text'],
-  },
-  {
-    id: 'bring-reference', locale: 'en', title: 'Bring a reference',
-    description: 'Upload a 2D drawing, image, sketch, or existing 3D model.',
-    examplePrompt: 'Use this reference and make a simpler, lighter concept.',
-    inputKinds: ['drawing_2d', 'image_or_sketch', 'existing_3d'],
-  },
-];
+function defaultStarterCards(locale: string): readonly AiDesignWorkspaceStarterCard[] {
+  const resolvedLocale = getAiDesignWorkspaceLocale(locale);
+  const [describe, reference] = getAiDesignWorkspaceCopy(resolvedLocale).starterCards;
+  return [
+    { id: `describe-idea-${resolvedLocale}`, locale: resolvedLocale, ...describe, inputKinds: ['text'] },
+    { id: `bring-reference-${resolvedLocale}`, locale: resolvedLocale, ...reference, inputKinds: ['drawing_2d', 'image_or_sketch', 'existing_3d'] },
+  ];
+}
 
 function actionFor(stage: AiDesignWorkspaceStage, hasInput: boolean, locale: string): AiDesignWorkspaceNextAction {
-  const ko = locale === 'ko';
-  switch (stage) {
-    case 'intake': return { id: 'add_input', stage, label: ko ? '아이디어 또는 자료 추가' : 'Add an idea or reference', explanation: ko ? '설계할 내용을 말하거나 참고 자료를 첨부하세요.' : 'Tell the assistant what to design or attach a reference.', enabled: true };
-    case 'understanding': return { id: 'review_understanding', stage, label: ko ? '이해한 내용 확인' : 'Review the understanding', explanation: ko ? '후보를 만들기 전에 AI가 이해한 내용을 확인하세요.' : 'Check what the assistant inferred before candidates are made.', enabled: true };
-    case 'generation': return { id: 'generate_candidates', stage, label: ko ? '설계 후보 생성 계속' : 'Continue generating candidates', explanation: ko ? '현재 생성 단계를 진행하고 결과 근거를 확인하세요.' : 'Continue the current generation stage and review its evidence.', enabled: hasInput };
-    case 'candidates': return { id: 'choose_candidate', stage, label: ko ? '설계 후보 선택' : 'Choose a concept', explanation: ko ? '후보를 비교하고 다듬을 하나를 선택하세요.' : 'Compare the generated concepts and choose one to refine.', enabled: hasInput };
-    case 'edit': return { id: 'edit_concept', stage, label: ko ? '변경 미리보기' : 'Refine the concept', explanation: ko ? '변경을 설명하고 2D·3D 결과를 적용 전에 확인하세요.' : 'Describe a change and review the updated concept.', enabled: hasInput };
-    case 'precision': return { id: 'request_precision_cad', stage, label: ko ? 'Precision CAD 요청' : 'Open Precision CAD', explanation: ko ? '승인한 개념을 정확한 형상과 제조 검증을 위해 Precision CAD로 보내세요.' : 'Send the approved concept to Precision CAD for exact geometry and manufacturing checks.', enabled: hasInput };
-    case 'recovery': return { id: 'recover_session', stage, label: ko ? '서버 상태에서 복구' : 'Recover from server state', explanation: ko ? '최신 서버 버전을 확인한 뒤 안전하게 이어가세요.' : 'Refresh the authoritative server revision before continuing.', enabled: true };
-  }
+  const text = getAiDesignWorkspaceCopy(locale).stages[stage];
+  const id: Record<AiDesignWorkspaceStage, AiDesignWorkspaceActionId> = {
+    intake: 'add_input', understanding: 'review_understanding', generation: 'generate_candidates',
+    candidates: 'choose_candidate', edit: 'edit_concept', precision: 'request_precision_cad', recovery: 'recover_session',
+  };
+  return { id: id[stage], stage, ...text, enabled: stage === 'intake' || stage === 'understanding' || stage === 'recovery' || hasInput };
 }
 
 function localizedCards(locale: string, cards: readonly AiDesignWorkspaceStarterCard[]): readonly AiDesignWorkspaceStarterCard[] {
@@ -144,8 +124,9 @@ export function createAiDesignChatFirstWorkspaceContract(
   const locale = options.locale ?? 'en';
   const stage = options.stage ?? 'intake';
   const receivedInputs = [...new Set(options.receivedInputs ?? [])];
-  const cards = localizedCards(locale, options.starterCards ?? DEFAULT_STARTER_CARDS);
+  const cards = options.starterCards ? localizedCards(locale, options.starterCards) : defaultStarterCards(locale);
   const conceptStage = stage !== 'precision';
+  const boundary = getAiDesignWorkspaceCopy(locale).boundary;
   return {
     schema: AI_DESIGN_CHAT_FIRST_WORKSPACE_SCHEMA,
     locale,
@@ -160,9 +141,7 @@ export function createAiDesignChatFirstWorkspaceContract(
       conceptEditingAllowed: true,
       exactGeometryAuthority: 'precision-cad',
       manufacturingReleaseAllowed: false,
-      boundaryCopy: conceptStage
-        ? 'AI Design creates and edits concepts only. Exact geometry and manufacturing decisions belong to Precision CAD.'
-        : 'Precision CAD owns exact geometry and manufacturing checks. AI Design remains a concept assistant.',
+      boundaryCopy: conceptStage ? boundary.concept : boundary.precision,
     },
     regions: options.layout === 'mobile_chat_first'
       ? { chat: 'primary', visualWorkspace: 'supporting', candidates: 'supporting' }

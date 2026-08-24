@@ -8,6 +8,7 @@ import {
   createAiDesign2d3dSyncContract,
   type SyncMapping,
 } from './aiDesign2d3dSync';
+import { getAiDesignWorkspaceCopy } from './aiDesignWorkspaceI18n';
 import {
   createAiDesignChatActionCard,
   type AiDesignChatActionCardV1,
@@ -159,23 +160,7 @@ function action(id: AiDesignChatActionId, label: string, options: Partial<Pick<A
 }
 
 function copy(locale: string) {
-  return locale === 'ko' ? {
-    intakeTitle: '무엇을 설계할까요?', intakeSummary: '설명하거나 2D 도면, 이미지·스케치, 기존 3D를 추가하세요.', add: '입력 추가',
-    questionTitle: '이 항목만 확인해 주세요', confirmTitle: '이해한 내용 확인', confirm: '이대로 후보 만들기', answer: '답변하기',
-    generatingTitle: '설계 후보 준비', start: '후보 생성', continue: '계속 생성', generationSummary: '진행 상태와 모델 변경 이유를 채팅에서 확인할 수 있습니다.',
-    candidateTitle: '후보를 비교하고 선택하세요', candidateSummary: '2D와 3D를 함께 보며 변경 영향과 검증 상태를 비교합니다.', compare: '후보 비교', select: '이 후보 선택',
-    editTitle: '변경을 먼저 미리보세요', editSummary: '게이지 변경은 2D와 3D에 함께 미리보기되며 확인 전에는 저장되지 않습니다.', preview: '2D·3D 미리보기',
-    precisionTitle: '정밀 CAD로 넘길 준비', precisionSummary: '정확한 형상과 제조 검증은 Precision CAD에서 수행합니다.', precision: 'Precision CAD 요청', inspect: '검증 근거 보기',
-    recoveryTitle: '작업을 안전하게 복구하세요', refresh: '서버 상태 새로고침', resume: '이어하기',
-  } : {
-    intakeTitle: 'What would you like to design?', intakeSummary: 'Describe it or add a 2D drawing, image or sketch, or existing 3D model.', add: 'Add input',
-    questionTitle: 'Please confirm one detail', confirmTitle: 'Review the understanding', confirm: 'Generate from this understanding', answer: 'Answer',
-    generatingTitle: 'Prepare design candidates', start: 'Generate candidates', continue: 'Continue generation', generationSummary: 'Follow progress and model-change reasons in the conversation.',
-    candidateTitle: 'Compare and choose a candidate', candidateSummary: 'Review 2D and 3D together with change impact and verification state.', compare: 'Compare candidates', select: 'Choose this candidate',
-    editTitle: 'Preview the change first', editSummary: 'Gauge changes preview in 2D and 3D together and are not saved before confirmation.', preview: 'Preview in 2D and 3D',
-    precisionTitle: 'Ready for Precision CAD', precisionSummary: 'Precision CAD owns exact geometry and manufacturing verification.', precision: 'Request Precision CAD', inspect: 'View verification evidence',
-    recoveryTitle: 'Recover your work safely', refresh: 'Refresh server state', resume: 'Resume',
-  };
+  return getAiDesignWorkspaceCopy(locale).cards;
 }
 
 function cardsFor(source: AiDesignUnifiedWorkspaceSourceV9, locale: string, recovery: AiDesignUnifiedRecoveryV9): readonly AiDesignChatActionCardV1[] {
