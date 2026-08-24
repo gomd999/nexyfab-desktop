@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import Link from 'next/link';
 import { AdminSettings } from '@/lib/adminSettings';
 import { authBaseUrl } from '@/lib/auth-base-url';
 import { useClientLocale } from '@/lib/i18n/clientLocale';
@@ -357,9 +358,9 @@ export default function AdminLinkPage() {
                                 </p>
                             </div>
 
-                            <a
-                                href="/adminlink/index.php"
-                                target="_blank"
+                            <Link
+                                href="/admin/inquiries"
+                                prefetch={false}
                                 style={{
                                     display: 'inline-flex',
                                     alignItems: 'center',
@@ -376,7 +377,7 @@ export default function AdminLinkPage() {
                                 }}
                             >
                                 {L('문의 내역 관리자 열기', 'Open inquiry admin')}
-                            </a>
+                            </Link>
                         </div>
                     )}
                 </div>
