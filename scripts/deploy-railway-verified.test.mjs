@@ -11,8 +11,9 @@ const commercialRuntimeKeys = [
   'EXTERNAL_WORKER_ORCHESTRATOR_URL',
   'EXTERNAL_WORKER_ORCHESTRATOR_HEALTH_URL',
   'POSTGRES_MIGRATION_VERSION',
-  ...['2026082202', '2026082203', '2026082204', '2026082205', '2026082206', '2026082207', '2026082208']
+  ...['2026082202', '2026082203', '2026082204', '2026082205', '2026082206', '2026082207', '2026082208', '2026082301']
     .map(version => `POSTGRES_MIGRATION_CHECKSUM_${version}`),
+  'CANONICAL_CAD_REVISION_MIGRATION_CHECKSUM',
   'NEXYFAB_COMMERCIAL_WORKER_KEYS_JSON',
   'NEXYFAB_COMMERCIAL_WORKER_CLAIM_SECRET',
   'NEXYFAB_COMMERCIAL_TRANSPORT_SECRET',
@@ -26,7 +27,7 @@ const commercialRuntimeKeys = [
   'I18N_FULL_PRODUCT_EVIDENCE_ROOT',
 ];
 
-test('target runtime keys cover commercial readiness, workers, verifier, and all 2202-2208 checksums', () => {
+test('target runtime keys cover commercial readiness, workers, verifier, and all required migration checksums', () => {
   assert.equal(new Set(TARGET_RUNTIME_KEYS).size, TARGET_RUNTIME_KEYS.length);
   for (const key of commercialRuntimeKeys) assert.ok(TARGET_RUNTIME_KEYS.includes(key), `${key} is not target-scoped`);
   assert.equal(TARGET_RUNTIME_KEYS.includes('POSTGRES_MIGRATION_CHECKSUM'), false);

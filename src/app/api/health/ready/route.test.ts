@@ -60,6 +60,8 @@ describe('GET /api/health/ready', () => {
     vi.stubEnv('POSTGRES_MIGRATION_CHECKSUM_2026082206', '6'.repeat(64));
     vi.stubEnv('POSTGRES_MIGRATION_CHECKSUM_2026082207', '7'.repeat(64));
     vi.stubEnv('POSTGRES_MIGRATION_CHECKSUM_2026082208', '8'.repeat(64));
+    vi.stubEnv('POSTGRES_MIGRATION_CHECKSUM_2026082301', '1'.repeat(64));
+    vi.stubEnv('CANONICAL_CAD_REVISION_MIGRATION_CHECKSUM', '1'.repeat(64));
     vi.stubEnv('OBJECT_STORAGE_PRIVATE_BUCKET', 'receipts');
     vi.stubEnv('NEXYFAB_AGENT_APPROVAL_SECRET', 'a'.repeat(32));
     vi.stubEnv('EXTERNAL_WORKER_ORCHESTRATOR_HEALTH_URL', 'https://worker.example.test/ready');
@@ -70,7 +72,7 @@ describe('GET /api/health/ready', () => {
     vi.stubEnv('NEXYFAB_COMMERCIAL_CALLBACK_URL', 'https://core.example.test/callback');
     vi.stubEnv('NEXYFAB_EXTERNAL_VERIFIER_REGISTRY_JSON', '[]');
     vi.stubEnv('NEXYFAB_EXTERNAL_VERIFIER_INTERNAL_SECRET', 'v'.repeat(32));
-    const queryOne = vi.fn(async (sql: string, version?: number) => sql.includes('nf_schema_migrations') ? { version, checksum: String(version).slice(-1).repeat(64) } : sql.includes('information_schema.tables') ? { count: 22 } : sql.includes('pg_constraint') ? { count: 4 } : sql.includes('pg_trigger') ? { count: 8 } : { '?column?': 1 });
+    const queryOne = vi.fn(async (sql: string, version?: number) => sql.includes('nf_schema_migrations') ? { version, checksum: String(version).slice(-1).repeat(64) } : sql.includes('information_schema.tables') ? { count: 28 } : sql.includes('pg_constraint') ? { count: 8 } : sql.includes('pg_trigger') ? { count: 14 } : { '?column?': 1 });
     state.getDbAdapter.mockReturnValue({ backend: 'postgres', queryOne });
 
     const response = await GET();
@@ -85,6 +87,8 @@ describe('GET /api/health/ready', () => {
     const catalogSql = queryOne.mock.calls.map(([sql]) => String(sql)).join('\n');
     expect(catalogSql).toContain("r.relname = 'nf_agentic_commercial_receipts'");
     expect(catalogSql).toContain("r.relname = 'nf_precision_cad_execution_journal'");
+    expect(catalogSql).toContain("r.relname = 'nf_cad_canonical_v2_revisions'");
+    expect(catalogSql).toContain("t.tgname = 'nf_cad_v2_revisions_immutable'");
   });
 
   it('fails closed when production has no Redis configuration', async () => {

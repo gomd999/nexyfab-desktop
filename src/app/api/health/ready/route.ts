@@ -8,7 +8,10 @@ import { loadTrustedCommercialWorkers } from '@/lib/precision-cad-agent/commerci
 export const dynamic = 'force-dynamic';
 
 const REDIS_TIMEOUT_MS = 1_500;
-const COMMERCIAL_MIGRATIONS = [2026082202, 2026082203, 2026082204, 2026082205, 2026082206, 2026082207, 2026082208] as const;
+const COMMERCIAL_MIGRATIONS = [
+  2026082202, 2026082203, 2026082204, 2026082205, 2026082206,
+  2026082207, 2026082208, 2026082301, 2026082401,
+] as const;
 const COMMERCIAL_TABLES = [
   'nf_precision_cad_execution_journal', 'nf_precision_cad_execution_events',
   'nf_precision_cad_approval_challenges', 'nf_precision_cad_tool_claims',
@@ -21,12 +24,20 @@ const COMMERCIAL_TABLES = [
   'nf_precision_cad_commercial_workspace_commits', 'nf_agentic_commercial_verified_receipts',
   'nf_agentic_commercial_verified_ledger',
   'nf_commercial_generation_runs', 'nf_commercial_generation_revisions', 'nf_commercial_generation_receipt_bindings',
+  'nf_cad_canonical_brep_mappings',
+  'nf_cad_canonical_v2_revisions', 'nf_cad_canonical_v2_heads',
+  'nf_cad_canonical_v2_invalidations', 'nf_cad_canonical_v2_locks',
+  'nf_cad_canonical_v2_audit',
 ] as const;
 const COMMERCIAL_CONSTRAINTS = [
   ['nf_agentic_commercial_receipts', 'nf_agentic_commercial_receipts_execution_fk'],
   ['nf_precision_cad_commercial_worker_artifacts', 'nf_worker_artifact_private_key_ck'],
   ['nf_external_commercial_evidence', 'nf_external_evidence_private_key_ck'],
   ['nf_agentic_commercial_receipts', 'nf_agentic_receipt_private_key_ck'],
+  ['nf_cad_canonical_v2_revisions', 'nf_cad_v2_revision_identity_uq'],
+  ['nf_cad_canonical_v2_heads', 'nf_cad_v2_head_revision_fk'],
+  ['nf_cad_canonical_v2_invalidations', 'nf_cad_v2_invalidation_revision_fk'],
+  ['nf_cad_canonical_v2_audit', 'nf_cad_v2_audit_revision_fk'],
 ] as const;
 const COMMERCIAL_HARDENING_TRIGGERS = [
   ['nf_precision_cad_execution_journal', 'nf_precision_cad_execution_journal_identity_immutable'],
@@ -37,6 +48,12 @@ const COMMERCIAL_HARDENING_TRIGGERS = [
   ['nf_commercial_generation_receipt_bindings', 'nf_commercial_generation_receipt_binding_identity_immutable'],
   ['nf_external_commercial_verification_requests', 'nf_external_verification_request_identity_immutable'],
   ['nf_commercial_generation_runs', 'nf_commercial_generation_run_identity_immutable'],
+  ['nf_cad_canonical_brep_mappings', 'nf_cad_canonical_brep_mapping_identity_immutable'],
+  ['nf_cad_canonical_v2_revisions', 'nf_cad_v2_revisions_immutable'],
+  ['nf_cad_canonical_v2_invalidations', 'nf_cad_v2_invalidations_immutable'],
+  ['nf_cad_canonical_v2_audit', 'nf_cad_v2_audit_immutable'],
+  ['nf_cad_canonical_v2_heads', 'nf_cad_v2_head_identity_immutable'],
+  ['nf_cad_canonical_v2_locks', 'nf_cad_v2_lock_identity_immutable'],
 ] as const;
 
 type ComponentStatus = 'ok' | 'error' | 'skipped';
@@ -61,6 +78,12 @@ function productionCommercialModeRequired(): boolean {
   );
 }
 
+function expectedMigrationChecksum(version: typeof COMMERCIAL_MIGRATIONS[number]): string | undefined {
+  return version === 2026082401
+    ? process.env.CANONICAL_CAD_REVISION_MIGRATION_CHECKSUM?.trim()
+    : process.env[`POSTGRES_MIGRATION_CHECKSUM_${version}`]?.trim();
+}
+
 async function checkDatabase(): Promise<ComponentCheck & { backend?: string }> {
   const started = Date.now();
   try {
@@ -70,7 +93,7 @@ async function checkDatabase(): Promise<ComponentCheck & { backend?: string }> {
       if (db.backend !== 'postgres') throw new Error('postgres required');
       for (const version of COMMERCIAL_MIGRATIONS) {
         const migration = await db.queryOne<{ version: number; checksum: string }>('SELECT version, checksum FROM nf_schema_migrations WHERE version = ?', version);
-        const expected = process.env[`POSTGRES_MIGRATION_CHECKSUM_${version}`];
+        const expected = expectedMigrationChecksum(version);
         if (migration?.version !== version || !/^[a-f0-9]{64}$/.test(migration.checksum ?? '') || !expected || migration.checksum !== expected) throw new Error('migration mismatch');
       }
       const tableNames = COMMERCIAL_TABLES.map(name => `'${name}'`).join(',');
@@ -95,7 +118,7 @@ async function checkCommercialBoundary(): Promise<ComponentCheck> {
   // A production Railway service must never make the commercial checks
   // disappear merely because the mode flag was omitted or misspelled.
   if (process.env.NEXYFAB_COMMERCIAL_MODE !== '1') return { status: 'error', required: true };
-  const requiredValues = ['NEXYFAB_BUILD_ID', 'POSTGRES_MIGRATION_CHECKSUM_2026082202', 'POSTGRES_MIGRATION_CHECKSUM_2026082203', 'POSTGRES_MIGRATION_CHECKSUM_2026082204', 'POSTGRES_MIGRATION_CHECKSUM_2026082205', 'POSTGRES_MIGRATION_CHECKSUM_2026082206', 'POSTGRES_MIGRATION_CHECKSUM_2026082207', 'POSTGRES_MIGRATION_CHECKSUM_2026082208', 'OBJECT_STORAGE_PRIVATE_BUCKET', 'NEXYFAB_AGENT_APPROVAL_SECRET', 'EXTERNAL_WORKER_ORCHESTRATOR_HEALTH_URL', 'NEXYFAB_COMMERCIAL_WORKER_KEYS_JSON', 'NEXYFAB_COMMERCIAL_WORKER_CLAIM_SECRET', 'NEXYFAB_COMMERCIAL_TRANSPORT_SECRET', 'NEXYFAB_COMMERCIAL_CALLBACK_SECRET', 'NEXYFAB_COMMERCIAL_CALLBACK_URL', 'NEXYFAB_EXTERNAL_VERIFIER_REGISTRY_JSON', 'NEXYFAB_EXTERNAL_VERIFIER_INTERNAL_SECRET'];
+  const requiredValues = ['NEXYFAB_BUILD_ID', 'POSTGRES_MIGRATION_CHECKSUM_2026082202', 'POSTGRES_MIGRATION_CHECKSUM_2026082203', 'POSTGRES_MIGRATION_CHECKSUM_2026082204', 'POSTGRES_MIGRATION_CHECKSUM_2026082205', 'POSTGRES_MIGRATION_CHECKSUM_2026082206', 'POSTGRES_MIGRATION_CHECKSUM_2026082207', 'POSTGRES_MIGRATION_CHECKSUM_2026082208', 'POSTGRES_MIGRATION_CHECKSUM_2026082301', 'CANONICAL_CAD_REVISION_MIGRATION_CHECKSUM', 'OBJECT_STORAGE_PRIVATE_BUCKET', 'NEXYFAB_AGENT_APPROVAL_SECRET', 'EXTERNAL_WORKER_ORCHESTRATOR_HEALTH_URL', 'NEXYFAB_COMMERCIAL_WORKER_KEYS_JSON', 'NEXYFAB_COMMERCIAL_WORKER_CLAIM_SECRET', 'NEXYFAB_COMMERCIAL_TRANSPORT_SECRET', 'NEXYFAB_COMMERCIAL_CALLBACK_SECRET', 'NEXYFAB_COMMERCIAL_CALLBACK_URL', 'NEXYFAB_EXTERNAL_VERIFIER_REGISTRY_JSON', 'NEXYFAB_EXTERNAL_VERIFIER_INTERNAL_SECRET'];
   const commonTrust = loadServerAgenticCommercialTrust(); const workers = loadTrustedCommercialWorkers(); const verifiers = loadExternalCommercialVerifierRegistry();
   if (process.env.NEXYFAB_PRECISION_CAD_COMMERCIAL_MODE !== '1' || requiredValues.some(key => !process.env[key]?.trim()) || !commonTrust.ok || !workers || !verifiers) return { status: 'error', required: true };
   const workerFingerprints = new Set(Object.values(workers).map(item => item.fingerprintSha256));
