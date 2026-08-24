@@ -40,10 +40,25 @@ function runRailway(args, options = {}) {
   return run(railwayCommand, [...railwayPrefixArgs, ...args], options);
 }
 
+export function npmInvocation({
+  platform = process.platform,
+  execPath = process.execPath,
+  npmExecPath = process.env.npm_execpath,
+  fileExists = existsSync,
+} = {}) {
+  if (npmExecPath) return { command: execPath, prefixArgs: [npmExecPath] };
+  const bundledNpmCli = path.join(path.dirname(execPath), 'node_modules', 'npm', 'bin', 'npm-cli.js');
+  if (platform === 'win32' && fileExists(bundledNpmCli)) {
+    // Windows cannot spawn npm.cmd with shell:false (EINVAL). Invoke the npm
+    // JavaScript CLI through the same Node executable instead.
+    return { command: execPath, prefixArgs: [bundledNpmCli] };
+  }
+  return { command: 'npm', prefixArgs: [] };
+}
+
 function runNpmScript(script, env = process.env) {
-  const npmExecPath = process.env.npm_execpath;
-  if (npmExecPath) return run(process.execPath, [npmExecPath, 'run', script], { stream: true, env });
-  return run(process.platform === 'win32' ? 'npm.cmd' : 'npm', ['run', script], { stream: true, env });
+  const invocation = npmInvocation();
+  return run(invocation.command, [...invocation.prefixArgs, 'run', script], { stream: true, env });
 }
 
 export const TARGET_RUNTIME_KEYS = [

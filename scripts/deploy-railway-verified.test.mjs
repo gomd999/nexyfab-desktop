@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { TARGET_RUNTIME_KEYS, stagingHoldIssues, targetGateEnvironment } from './deploy-railway-verified.mjs';
+import { TARGET_RUNTIME_KEYS, npmInvocation, stagingHoldIssues, targetGateEnvironment } from './deploy-railway-verified.mjs';
 
 const commercialRuntimeKeys = [
   'NEXYFAB_COMMERCIAL_MODE',
@@ -75,4 +75,22 @@ test('staging HOLD deployment is restricted to an isolated non-commercial target
   assert.ok(stagingHoldIssues({ ...passing, target: { ...passing.target, NEXYFAB_PRECISION_CAD_COMMERCIAL_MODE: '1' } }).includes('staging_hold_precision_commercial_mode_must_not_be_1'));
   assert.ok(stagingHoldIssues({ ...passing, target: { ...passing.target, NEXYFAB_RELEASE_CHANNEL: 'production' } }).includes('staging_hold_release_channel_required'));
   assert.ok(stagingHoldIssues({ ...passing, expectedBuildId: 'b'.repeat(40) }).includes('staging_hold_build_id_mismatch'));
+});
+
+test('Windows invokes the npm JavaScript CLI without a command-shell dependency', () => {
+  assert.deepEqual(npmInvocation({
+    platform: 'win32',
+    execPath: 'C:\\Program Files\\nodejs\\node.exe',
+    npmExecPath: '',
+    fileExists: () => true,
+  }), {
+    command: 'C:\\Program Files\\nodejs\\node.exe',
+    prefixArgs: ['C:\\Program Files\\nodejs\\node_modules\\npm\\bin\\npm-cli.js'],
+  });
+  assert.deepEqual(npmInvocation({
+    platform: 'linux',
+    execPath: '/usr/bin/node',
+    npmExecPath: '',
+    fileExists: () => false,
+  }), { command: 'npm', prefixArgs: [] });
 });
