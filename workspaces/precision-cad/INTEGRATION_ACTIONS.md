@@ -4,6 +4,43 @@ These changes are required by the repository audit but target integration-owned
 paths. They must be applied from `integration/nexyfab`, not from this Scope
 branch.
 
+## 2026-08-24 exact bridge integration reconciliation
+
+The following previously open cross-scope implementation items are complete at
+integrated source head `920e660d`:
+
+- [x] Persist the AI-to-Precision handoff in a PostgreSQL transactional outbox
+  with immutable identity, lease, idempotency, and append-only receipts.
+- [x] Rebind the request to the server-owned current canonical head and stable
+  features before dispatch.
+- [x] Execute the real current-head Node OCCT bundle and bind STEP, HLR drawing,
+  dimensions, BOM, verification, and manifest to the same revision.
+- [x] Store exact artifacts under private content-addressed immutable keys and
+  reject differing overwrites.
+- [x] Issue and verify signed PASS/FAIL receipts and record only server-accepted
+  receipts into the AI aggregate/read model.
+- [x] Quarantine uncertain sent work as `VERIFIED_UNKNOWN` and reconcile from
+  persisted evidence without a second CAD execution.
+- [x] Add an authenticated scheduled worker route, Railway cron schedule,
+  readiness checks, migration/deploy contract tests, and scope ownership.
+- [x] Fast-forward all three scopes to the integrated head and pass integration
+  status, workspace audit, and all three scope checks.
+
+These source items do not close the operational or commercial actions below.
+The next integration sequence is:
+
+- [ ] apply and verify migration `2026082403` on staging PostgreSQL, then prove
+  restore and repeat application;
+- [ ] run the exact flow against the real private object bucket and verify
+  immutability, retention, access denial, and hash readback;
+- [ ] prove Redis/multi-instance behavior plus Railway cron/worker restart,
+  lease, alarm, and unknown-state reconciliation;
+- [ ] record authenticated browser E2E and hostile tenant/stale/tamper cases;
+- [ ] run third-party STEP interchange, OCCT burn-in, topology-survival, domain
+  campaign, expert, fabrication, and pilot evidence;
+- [ ] keep release and manufacturing authority on `HOLD` until those receipts
+  bind to the same committed revision.
+
 ## 2026-08-24 Precision GP-10 integration resumption gate
 
 This section is the operational entry point for the next integration session.

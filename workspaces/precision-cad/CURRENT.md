@@ -1,5 +1,27 @@
 # Precision CAD current session
 
+## 2026-08-24 AI exact bridge execution closure
+
+- Status: `EXACT_BRIDGE_RUNTIME_CONNECTED_LOCAL / RELEASE_HOLD`.
+- Integrated implementation base: `920e660d` on both `scope/precision-cad` and
+  `integration/nexyfab` before this documentation handoff.
+- The stable-reference prerequisite now continues through a durable bridge
+  worker that rechecks the current canonical head, executes the actual Node OCCT
+  current-head artifact bundle, stores STEP/HLR/dimensions/BOM/verification and
+  the canonical manifest immutably, and issues a revision-bound signed receipt.
+- Dispatch uncertainty does not cause automatic CAD replay. Expired sent work is
+  quarantined as `VERIFIED_UNKNOWN` and can close only from an already persisted
+  signed receipt and matching AI aggregate reference.
+- Verification: actual OCCT STEP bundle regression, bridge tamper/crash/reconcile
+  tests, TypeScript, production build, workspace audit, and all three scope
+  checks passed at the integrated source baseline.
+- Immutable handoff:
+  `HANDOFFS/20260824T134514Z-ai-precision-exact-round-trip.md`.
+- Remaining: live staging database/object store/Redis/Railway execution,
+  authenticated browser round trip, third-party STEP review, topology campaign,
+  experts, manufacturing pilots, and release authority. Exact bundle PASS still
+  does not imply authoritative CAD commit or manufacturing approval.
+
 ## 2026-08-24 commercial-readiness continuation
 
 - Source implementation commit: `5670cb85` (`[P0] feat(cad): bind AI stable refs to canonical head`).
@@ -17,9 +39,10 @@
   current-head bundle regression `13/13` PASS including a real OCCT STEP write.
 - Remaining bridge work is integration-owned: durable dispatch/outbox, exact
   bundle execution after rebind, Precision signing, immutable receipt storage,
-  AI aggregate CAS update, and read-model refresh. This commit intentionally
-  keeps `exactExecution: NOT_RUN`, `release: HOLD`, and
-  `manufacturingReleaseReady: false`.
+  AI aggregate CAS update, and read-model refresh. Those integration-owned
+  items are now implemented locally at `920e660d`; this historical source entry
+  still records the earlier `NOT_RUN` boundary and commercial release remains
+  `HOLD`.
 
 - Status: `SOURCE_FREEZE_READY / INTERNAL_30_OF_30_BOUNDED / RELEASE_HOLD`
 - Source branch: `scope/precision-cad`
