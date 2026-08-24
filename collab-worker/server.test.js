@@ -28,6 +28,7 @@
 
 const test = require('node:test');
 const assert = require('node:assert/strict');
+const { createHmac } = require('node:crypto');
 const WebSocket = require('ws');
 const Y = require('yjs');
 const { WebsocketProvider } = require('y-websocket');
@@ -36,6 +37,7 @@ const {
   createServer,
   parseRequest,
   authorize,
+  collabRuntimeSettings,
 } = require('./server.js');
 
 // ─── helpers ──────────────────────────────────────────────────────────────
@@ -45,9 +47,9 @@ const {
  * `close()` waits for the server to fully close — important for test
  * isolation since ws keeps the event loop alive.
  */
-function bootServer() {
+function bootServer(options = {}) {
   return new Promise((resolve, reject) => {
-    const server = createServer();
+    const server = createServer(options);
     server.on('error', reject);
     server.listen(0, '127.0.0.1', () => {
       const addr = server.address();
@@ -147,6 +149,42 @@ test('authorize: token → ok with tok- prefix', () => {
   assert.equal(a.userId, 'tok-abcdefgh');
 });
 
+function workerToken(payload, secret) {
+  const header = Buffer.from(JSON.stringify({ alg: 'HS256', typ: 'JWT' })).toString('base64url');
+  const body = Buffer.from(JSON.stringify(payload)).toString('base64url');
+  const signature = createHmac('sha256', secret).update(`${header}.${body}`).digest('base64url');
+  return `${header}.${body}.${signature}`;
+}
+
+test('authorize: strict mode verifies HS256, expiry, subject, and optional document binding', () => {
+  const secret = 'strict-collab-secret-that-is-32-chars';
+  const valid = workerToken({ sub: 'user-1', exp: 2_000, docId: 'doc1' }, secret);
+  assert.deepEqual(authorize(valid, 'doc1', { requireAuth: true, jwtSecret: secret, nowSeconds: 1_000 }), { ok: true, userId: 'user-1' });
+  assert.equal(authorize(valid, 'doc2', { requireAuth: true, jwtSecret: secret, nowSeconds: 1_000 }).reason, 'token_doc_mismatch');
+  assert.equal(authorize(valid, 'doc1', { requireAuth: true, jwtSecret: secret, nowSeconds: 2_000 }).reason, 'token_expired');
+  assert.equal(authorize(`${valid}x`, 'doc1', { requireAuth: true, jwtSecret: secret, nowSeconds: 1_000 }).reason, 'token_invalid');
+  const invalidDocClaim = workerToken({ sub: 'user-1', exp: 2_000, docId: 42 }, secret);
+  assert.equal(authorize(invalidDocClaim, 'doc1', { requireAuth: true, jwtSecret: secret, nowSeconds: 1_000 }).reason, 'token_doc_mismatch');
+});
+
+test('runtime settings require auth secret and origin allowlist in production', () => {
+  assert.deepEqual(collabRuntimeSettings({ NODE_ENV: 'production' }).issues, [
+    'jwt_secret_missing_or_short',
+    'allowed_origins_missing',
+  ]);
+  assert.deepEqual(collabRuntimeSettings({
+    NODE_ENV: 'production',
+    JWT_SECRET: 'strict-collab-secret-that-is-32-chars',
+    ALLOWED_ORIGINS: 'https://nexyfab.com',
+  }).issues, []);
+  assert.deepEqual(collabRuntimeSettings({
+    NODE_ENV: 'production',
+    JWT_SECRET: 'strict-collab-secret-that-is-32-chars',
+    ALLOWED_ORIGINS: 'http://nexyfab.com/path',
+  }).issues, ['allowed_origins_invalid']);
+  assert.throws(() => collabRuntimeSettings({ MAX_CLIENTS_PER_ROOM: 'NaN' }), /MAX_CLIENTS_PER_ROOM_INVALID/);
+});
+
 test('createServer: HTTP server is unbound by default', () => {
   const s = createServer();
   assert.equal(s.address(), null, 'server should not be listening yet');
@@ -170,6 +208,17 @@ test('GET /healthz: returns 200 JSON with room count', async () => {
   const body = await res.json();
   assert.equal(body.ok, true);
   assert.equal(typeof body.rooms, 'number');
+  await close();
+});
+
+test('GET /healthz: strict deployment fails closed when auth configuration is incomplete', async () => {
+  const { server, close } = await bootServer({ env: { NODE_ENV: 'production' } });
+  const port = server.address().port;
+  const res = await fetch(`http://127.0.0.1:${port}/healthz`);
+  assert.equal(res.status, 503);
+  const body = await res.json();
+  assert.equal(body.ok, false);
+  assert.deepEqual(body.issues, ['jwt_secret_missing_or_short', 'allowed_origins_missing']);
   await close();
 });
 

@@ -92,6 +92,32 @@ describe('Cloudflare Queue and Workflow CAD orchestrator', () => {
     expect(queueSend).toHaveBeenCalledTimes(1);
   });
 
+  it('does not release an enqueue reservation after the durable queue write succeeds', async () => {
+    const { environment, queueSend } = env();
+    const originalGet = environment.JOB_LEDGER.get.bind(environment.JOB_LEDGER);
+    const paths: string[] = [];
+    environment.JOB_LEDGER.get = id => {
+      const original = originalGet(id);
+      return {
+        async fetch(request: Request) {
+          const pathname = new URL(request.url).pathname;
+          paths.push(pathname);
+          if (pathname === '/mark-enqueued') return new Response('{}', { status: 503 });
+          return original.fetch(request);
+        },
+      };
+    };
+
+    const response = await handleJobOrchestratorFetch(ingest(message), environment);
+    expect(response.status).toBe(202);
+    await expect(response.json()).resolves.toMatchObject({
+      receipt: { transportState: 'QUEUE_PERSISTED', issues: ['ledger_confirmation_pending'] },
+    });
+    expect(queueSend).toHaveBeenCalledOnce();
+    expect(paths.filter(pathname => pathname === '/mark-enqueued')).toHaveLength(3);
+    expect(paths).not.toContain('/release');
+  });
+
   it('fails closed for missing ingress configuration and invalid contracts', async () => {
     const { environment } = env();
     expect((await handleJobOrchestratorFetch(ingest(message, 'wrong'), environment)).status).toBe(403);

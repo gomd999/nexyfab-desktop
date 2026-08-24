@@ -9,7 +9,8 @@ run in a memory-limited child process here.
 - Recommended service name: `nexyfab-fea-worker`
 - Dockerfile: `services/fea-worker/Dockerfile` (repository-root build context)
 - Start command: image default `node server.mjs`
-- Health: `GET /api/health/live`
+- Liveness: `GET /api/health/live` (process only; does not restart-loop on Redis outages)
+- Readiness: `GET /api/health/ready` or `GET /healthz` (requires Redis and an immutable build ID)
 - Metrics: `GET /metrics` (keep the service private to the Railway project)
 - Required variable: `REDIS_URL`
 - Required shared CAD-runtime boundary: `CAD_RUNTIME_EXTERNAL_WORKER=1`

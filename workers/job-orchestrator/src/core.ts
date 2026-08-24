@@ -193,12 +193,31 @@ export async function handleJobOrchestratorFetch(request: Request, env: JobOrche
     };
     try {
       await env.CAD_JOB_QUEUE.send(payload, { contentType: 'json' });
-      await ledgerRequest(env, message.jobId, '/mark-enqueued', { jobId: message.jobId, messageSha256, deliveryId });
     } catch {
       await ledgerRequest(env, message.jobId, '/release', { jobId: message.jobId, messageSha256, deliveryId }).catch(() => null);
       return json(503, { ok: false, code: 'QUEUE_UNAVAILABLE' });
     }
-    return json(202, { ok: true, receipt: transportReceipt(message.jobId, 'QUEUE_PERSISTED', { deliveryId, issues: [] }) });
+    let ledgerConfirmed = false;
+    for (let attempt = 0; attempt < 3 && !ledgerConfirmed; attempt += 1) {
+      try {
+        const confirmation = await ledgerRequest(env, message.jobId, '/mark-enqueued', {
+          jobId: message.jobId, messageSha256, deliveryId,
+        });
+        ledgerConfirmed = confirmation.ok;
+      } catch {
+        ledgerConfirmed = false;
+      }
+    }
+    // The queue write is already durable. Never release its reservation after
+    // that point or a client retry could enqueue the same payload a second time.
+    // The queue consumer will advance the ledger to WORKFLOW_STARTED.
+    return json(202, {
+      ok: true,
+      receipt: transportReceipt(message.jobId, 'QUEUE_PERSISTED', {
+        deliveryId,
+        issues: ledgerConfirmed ? [] : ['ledger_confirmation_pending'],
+      }),
+    });
   }
 
   const statusMatch = /^\/v1\/jobs\/([A-Za-z0-9][A-Za-z0-9._:-]{0,99})\/status$/.exec(url.pathname);
@@ -242,11 +261,22 @@ export async function handleCadJobQueue(batch: QueueBatchLike<CadJobQueuePayload
       // createBatch is used even for one item because Cloudflare documents it
       // as idempotent for a caller-provided instance ID.
       await env.CAD_JOB_WORKFLOW.createBatch([{ id: queueMessage.body.message.jobId, params: queueMessage.body.message }]);
-      await ledgerRequest(env, queueMessage.body.message.jobId, '/mark-workflow', {
-        jobId: queueMessage.body.message.jobId,
-        messageSha256: queueMessage.body.messageSha256,
-        deliveryId: queueMessage.body.deliveryId,
-      });
+      let ledgerConfirmed = false;
+      for (let attempt = 0; attempt < 3 && !ledgerConfirmed; attempt += 1) {
+        try {
+          const confirmation = await ledgerRequest(env, queueMessage.body.message.jobId, '/mark-workflow', {
+            jobId: queueMessage.body.message.jobId,
+            messageSha256: queueMessage.body.messageSha256,
+            deliveryId: queueMessage.body.deliveryId,
+          });
+          ledgerConfirmed = confirmation.ok;
+        } catch {
+          ledgerConfirmed = false;
+        }
+      }
+      // Workflow creation is already durable and idempotent by job ID. Ack the
+      // queue message even when the auxiliary ledger is temporarily unavailable
+      // so retries cannot amplify one job into repeated queue traffic.
       queueMessage.ack();
     } catch {
       queueMessage.retry({ delaySeconds: Math.min(900, 30 * (2 ** Math.max(0, queueMessage.attempts - 1))) });

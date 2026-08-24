@@ -1,11 +1,11 @@
 import { describe, expect, it, vi } from 'vitest';
-import { handleEdgeGatewayRequest, resolveGatewayRoute, type EdgeGatewayEnv } from './index';
+import { gatewayConfigurationIssues, handleEdgeGatewayRequest, resolveGatewayRoute, type EdgeGatewayEnv } from './index';
 
 const env: EdgeGatewayEnv = {
   CORE_API_ORIGIN: 'https://core.internal.example/base',
   STUDIO_ORIGIN: 'https://studio.internal.example',
   EDGE_HANDLER_ORIGIN: 'https://edge-handlers.internal.example',
-  GATEWAY_SHARED_SECRET: 'server-secret',
+  GATEWAY_SHARED_SECRET: 'server-secret-that-is-at-least-32-chars',
   ALLOWED_HOSTS: 'nexyfab.com,www.nexyfab.com',
   ENVIRONMENT: 'test',
   BUILD_ID: 'build-test',
@@ -29,7 +29,7 @@ describe('Cloudflare edge gateway', () => {
       expect(request.headers.get('x-forwarded-host')).toBe('nexyfab.com');
       expect(request.headers.get('x-forwarded-proto')).toBe('https');
       expect(request.headers.get('x-nexyfab-route-owner')).toBe('core-api');
-      expect(request.headers.get('x-nexyfab-gateway-secret')).toBe('server-secret');
+      expect(request.headers.get('x-nexyfab-gateway-secret')).toBe('server-secret-that-is-at-least-32-chars');
       return new Response('ok', { status: 201, headers: { 'x-nexyfab-gateway-secret': 'must-not-leak' } });
     });
     const response = await handleEdgeGatewayRequest(new Request('https://nexyfab.com/api/nexyfab/projects?limit=10', {
@@ -66,5 +66,45 @@ describe('Cloudflare edge gateway', () => {
     expect(response.status).toBe(200);
     await expect(response.json()).resolves.toMatchObject({ service: 'edge-gateway', buildId: 'build-test', deploymentState: 'RUNNING' });
     expect(fetcher).not.toHaveBeenCalled();
+  });
+
+  it('fails closed when an allowlist, shared secret, or build identity is missing', async () => {
+    expect(gatewayConfigurationIssues({ ...env, ALLOWED_HOSTS: undefined })).toContain('allowed_hosts_missing');
+    expect(gatewayConfigurationIssues({ ...env, GATEWAY_SHARED_SECRET: 'short' })).toContain('gateway_shared_secret_missing_or_short');
+    expect(gatewayConfigurationIssues({ ...env, BUILD_ID: 'NOT_DEPLOYED' })).toContain('build_id_missing_or_invalid');
+    expect(gatewayConfigurationIssues({ ...env, BUILD_ID: 'latest' })).toContain('build_id_missing_or_invalid');
+    expect(gatewayConfigurationIssues({ ...env, ENVIRONMENT: 'production', CORE_API_ORIGIN: 'http://core.internal' }))
+      .toContain('core_api_origin_missing_or_invalid');
+
+    const fetcher = vi.fn();
+    const response = await handleEdgeGatewayRequest(
+      new Request('https://nexyfab.com/api/nexyfab/projects'),
+      { ...env, GATEWAY_SHARED_SECRET: undefined },
+      fetcher,
+    );
+    expect(response.status).toBe(503);
+    await expect(response.json()).resolves.toMatchObject({ ok: false, code: 'GATEWAY_NOT_CONFIGURED' });
+    expect(fetcher).not.toHaveBeenCalled();
+  });
+
+  it('returns an unhealthy gateway response instead of claiming RUNNING when configuration is incomplete', async () => {
+    const response = await handleEdgeGatewayRequest(
+      new Request('https://nexyfab.com/healthz/gateway'),
+      { ...env, BUILD_ID: undefined },
+      vi.fn(),
+    );
+    expect(response.status).toBe(503);
+    await expect(response.json()).resolves.toMatchObject({
+      ok: false,
+      deploymentState: 'NOT_CONFIGURED',
+      issues: ['build_id_missing_or_invalid'],
+    });
+    const wrongHost = await handleEdgeGatewayRequest(
+      new Request('https://attacker.example/healthz/gateway'),
+      env,
+      vi.fn(),
+    );
+    expect(wrongHost.status).toBe(503);
+    await expect(wrongHost.json()).resolves.toMatchObject({ issues: ['request_host_not_allowed'] });
   });
 });

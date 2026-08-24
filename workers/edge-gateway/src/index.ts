@@ -13,6 +13,8 @@ type RouteOwner = 'core-api' | 'studio-web' | 'edge-handler';
 
 const BLOCKED_METHODS = new Set(['CONNECT', 'TRACE', 'TRACK']);
 const EDGE_HANDLER_API_GROUPS = new Set(['docs', 'og', 'webhooks']);
+const BUILD_ID_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$/;
+const BUILD_ID_PLACEHOLDERS = new Set(['not_configured', 'not_deployed', 'unknown', 'dev', 'local', 'latest']);
 const STRIPPED_REQUEST_HEADERS = [
   'connection',
   'forwarded',
@@ -36,9 +38,35 @@ function json(status: number, body: Record<string, unknown>, requestId?: string)
 }
 
 function allowedHost(requestHost: string, configured: string | undefined): boolean {
-  if (!configured?.trim()) return true;
+  if (!configured?.trim()) return false;
   const allowed = new Set(configured.split(',').map(value => value.trim().toLowerCase()).filter(Boolean));
   return allowed.has(requestHost.toLowerCase());
+}
+
+function validOrigin(value: string | undefined, environment: string | undefined): boolean {
+  if (!value?.trim()) return false;
+  try {
+    const url = new URL(value);
+    const allowHttp = ['development', 'test', 'local'].includes(environment?.toLowerCase() ?? '');
+    return (url.protocol === 'https:' || (allowHttp && url.protocol === 'http:')) && !url.username && !url.password;
+  } catch {
+    return false;
+  }
+}
+
+function validBuildId(value: string | undefined): boolean {
+  return BUILD_ID_PATTERN.test(value ?? '') && !BUILD_ID_PLACEHOLDERS.has(value!.toLowerCase());
+}
+
+export function gatewayConfigurationIssues(env: EdgeGatewayEnv): string[] {
+  const issues: string[] = [];
+  if (!validOrigin(env.CORE_API_ORIGIN, env.ENVIRONMENT)) issues.push('core_api_origin_missing_or_invalid');
+  if (!validOrigin(env.STUDIO_ORIGIN, env.ENVIRONMENT)) issues.push('studio_origin_missing_or_invalid');
+  if (!validOrigin(env.EDGE_HANDLER_ORIGIN, env.ENVIRONMENT)) issues.push('edge_handler_origin_missing_or_invalid');
+  if (!env.ALLOWED_HOSTS?.split(',').some(value => value.trim())) issues.push('allowed_hosts_missing');
+  if (!env.GATEWAY_SHARED_SECRET || env.GATEWAY_SHARED_SECRET.length < 32) issues.push('gateway_shared_secret_missing_or_short');
+  if (!validBuildId(env.BUILD_ID)) issues.push('build_id_missing_or_invalid');
+  return issues;
 }
 
 function apiGroup(pathname: string): string | null {
@@ -89,20 +117,30 @@ export async function handleEdgeGatewayRequest(
 ): Promise<Response> {
   const incoming = new URL(request.url);
   const requestId = requestIdFor(request);
+  const configurationIssues = gatewayConfigurationIssues(env);
   if (BLOCKED_METHODS.has(request.method.toUpperCase())) {
     return json(405, { ok: false, code: 'METHOD_NOT_ALLOWED' }, requestId);
   }
-  if (!allowedHost(incoming.hostname, env.ALLOWED_HOSTS)) {
-    return json(421, { ok: false, code: 'HOST_NOT_ALLOWED' }, requestId);
-  }
   if (incoming.pathname === '/.well-known/nexyfab-gateway-health' || incoming.pathname === '/healthz/gateway') {
-    return json(200, {
-      ok: true,
+    const hostAllowed = allowedHost(incoming.hostname, env.ALLOWED_HOSTS);
+    const healthIssues = [...configurationIssues, ...(hostAllowed ? [] : ['request_host_not_allowed'])];
+    const configured = healthIssues.length === 0;
+    return json(configured ? 200 : 503, {
+      ok: configured,
       service: 'edge-gateway',
       environment: env.ENVIRONMENT ?? 'unknown',
       buildId: env.BUILD_ID ?? 'NOT_CONFIGURED',
-      deploymentState: env.BUILD_ID === 'NOT_DEPLOYED' ? 'NOT_DEPLOYED' : 'RUNNING',
+      deploymentState: env.BUILD_ID === 'NOT_DEPLOYED'
+        ? 'NOT_DEPLOYED'
+        : configured ? 'RUNNING' : 'NOT_CONFIGURED',
+      issues: healthIssues,
     }, requestId);
+  }
+  if (configurationIssues.length) {
+    return json(503, { ok: false, code: 'GATEWAY_NOT_CONFIGURED', issues: configurationIssues }, requestId);
+  }
+  if (!allowedHost(incoming.hostname, env.ALLOWED_HOSTS)) {
+    return json(421, { ok: false, code: 'HOST_NOT_ALLOWED' }, requestId);
   }
 
   const route = resolveGatewayRoute(incoming.pathname, env);
@@ -119,7 +157,7 @@ export async function handleEdgeGatewayRequest(
   upstreamRequest.headers.set('x-forwarded-proto', incoming.protocol.slice(0, -1));
   upstreamRequest.headers.set('x-nexyfab-request-id', requestId);
   upstreamRequest.headers.set('x-nexyfab-route-owner', route.owner);
-  if (env.GATEWAY_SHARED_SECRET) upstreamRequest.headers.set('x-nexyfab-gateway-secret', env.GATEWAY_SHARED_SECRET);
+  upstreamRequest.headers.set('x-nexyfab-gateway-secret', env.GATEWAY_SHARED_SECRET!);
 
   try {
     const upstream = await upstreamFetch(upstreamRequest);

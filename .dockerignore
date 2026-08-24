@@ -21,6 +21,7 @@ nexyfab.db*
 scripts/knowledge-crawler/
 services/openscad-worker/
 adminlink/
+public/uploads/
 playwright-report/
 e2e/
 coverage/
