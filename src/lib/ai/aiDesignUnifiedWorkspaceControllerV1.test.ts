@@ -55,6 +55,19 @@ function previewReady(): AiDesignUnifiedWorkspaceControllerV1 {
 }
 
 describe('AI Design unified workspace controller V1', () => {
+  it('owns linked 2D/3D view, selection, and model fallback context', () => {
+    let state = createAiDesignUnifiedWorkspaceControllerV1(server());
+    state = step(state, { type: 'VIEW_CHANGED', canvasMode: 'split', panel: 'canvas' });
+    state = step(state, { type: 'SELECTION_CHANGED', selection: { kind: 'candidate', id: 'candidate-1' } });
+    state = step(state, { type: 'MODEL_FALLBACK_CONTEXT_SET', modelIds: ['model-1', 'fallback-model-1'] });
+    expect(state.client.localView).toEqual({
+      canvasMode: 'split', panel: 'canvas',
+      selection: { kind: 'candidate', id: 'candidate-1' },
+      modelFallbackContext: ['model-1', 'fallback-model-1'],
+    });
+    expect(validateAiDesignUnifiedWorkspaceControllerV1(state)).toEqual([]);
+  });
+
   it('coordinates a nonpersistent draft and exact-free preview', () => {
     const state = previewReady();
     expect(state).toMatchObject({ preview: { status: 'PREVIEW_READY', applyEnabled: true }, pending: null, capabilities: { conceptApplyEnabled: true, exactCadExecutionAllowed: false, browserCanAuthorVerificationPass: false, manufacturingReleaseReady: false } });
@@ -74,6 +87,12 @@ describe('AI Design unified workspace controller V1', () => {
   it('marks an active preview stale when another server revision arrives', () => {
     const state = step(previewReady(), { type: 'SERVER_SNAPSHOT_RECEIVED', snapshot: server(5, 2) });
     expect(state).toMatchObject({ preview: { status: 'STALE', preservedDraft: true, applyEnabled: false }, client: { previewDraft: null }, capabilities: { mutationEnabled: false } });
+  });
+
+  it('can discard a nonpersistent preview locally after connectivity is lost', () => {
+    const offline = step(previewReady(), { type: 'CONNECTIVITY_CHANGED', connectivity: 'offline', message: 'offline' });
+    const rejected = step(offline, { type: 'DISPATCH_CHAT_EFFECT', effect: effect('REJECT_PREVIEW', 'proposal') });
+    expect(rejected).toMatchObject({ preview: { status: 'REJECTED', preview: null }, client: { previewDraft: null }, pending: { kind: 'local-instruction', instruction: 'REJECT_CONCEPT_PREVIEW' } });
   });
 
   it('blocks mutations offline and emits only a revision-bound Precision handoff', () => {

@@ -77,7 +77,7 @@ export default function CookieBanner({ lang: langProp }: { lang?: string }) {
   // Hide on full-screen app surfaces (Studio + modeler) — the fixed bottom
   // banner otherwise covers the mobile tab bar / bottom controls. Consent is
   // still gathered on the marketing pages.
-  if (pathname?.includes('/shape-generator') || pathname?.includes('/studio')) return null;
+  if (pathname?.includes('/shape-generator') || pathname?.includes('/studio') || pathname?.includes('/nexyfab/ai')) return null;
 
   // 현재 언어 감지 (prop 우선, 없으면 pathname에서 파싱)
   const parts = pathname?.split('/').filter(Boolean) || [];

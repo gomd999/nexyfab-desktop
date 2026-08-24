@@ -15,8 +15,11 @@ import {
   createUnifiedWorkspaceClientStateV1,
   reduceUnifiedWorkspaceClientStateV1,
   type ClientConnectivityV1,
+  type ClientCanvasModeV1,
+  type ClientPanelV1,
   type UnifiedWorkspaceClientStateV1,
   type UnifiedWorkspacePreviewDraftV1,
+  type UnifiedWorkspaceSelectionV1,
   type UnifiedWorkspaceServerSnapshotV1,
 } from './aiDesignUnifiedWorkspaceClientStateV1';
 
@@ -41,6 +44,9 @@ export interface AiDesignUnifiedWorkspaceControllerV1 {
 }
 
 export type AiDesignUnifiedWorkspaceControllerEventV1 =
+  | { type: 'VIEW_CHANGED'; canvasMode?: ClientCanvasModeV1; panel?: ClientPanelV1 }
+  | { type: 'SELECTION_CHANGED'; selection: UnifiedWorkspaceSelectionV1 | null }
+  | { type: 'MODEL_FALLBACK_CONTEXT_SET'; modelIds: readonly string[] }
   | { type: 'BEGIN_GAUGE_DRAFT'; draft: Omit<UnifiedWorkspacePreviewDraftV1, 'dirty'> }
   | { type: 'UPDATE_GAUGE_DRAFT'; value: number }
   | { type: 'DISPATCH_CHAT_EFFECT'; effect: AiDesignChatActionEffectV1; options?: Omit<AiDesignChatActionCommandAdapterOptions, 'currentRuntimeRevision' | 'currentComplexRevision'>; explicitConfirmation?: boolean }
@@ -117,6 +123,13 @@ export function reduceAiDesignUnifiedWorkspaceControllerV1(
   if (currentIssues.length) return rejected(state, currentIssues[0]);
 
   switch (event.type) {
+    case 'VIEW_CHANGED':
+    case 'SELECTION_CHANGED':
+    case 'MODEL_FALLBACK_CONTEXT_SET': {
+      const client = reduceUnifiedWorkspaceClientStateV1(state.client, event);
+      if (!client.accepted) return rejected(state, `controller_client:${client.error}`);
+      return accepted({ ...state, client: client.state, lastError: null });
+    }
     case 'BEGIN_GAUGE_DRAFT': {
       const client = reduceUnifiedWorkspaceClientStateV1(state.client, { type: 'PREVIEW_STARTED', draft: event.draft });
       if (!client.accepted) return rejected(state, `controller_client:${client.error}`);

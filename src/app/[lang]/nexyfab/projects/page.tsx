@@ -667,6 +667,21 @@ function ProjectCard({
 
         {/* Actions */}
         <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+          {tab === 'active' && (
+            <Link
+              prefetch
+              href={`/${lang}/nexyfab/ai?projectId=${encodeURIComponent(project.id)}&new=1`}
+              style={{
+                flex: 1, padding: '7px 10px', borderRadius: 7,
+                background: '#1f6feb22', color: '#58a6ff',
+                border: '1px solid #388bfd66',
+                fontSize: 12, fontWeight: 700, textDecoration: 'none',
+                textAlign: 'center', minWidth: 88,
+              }}
+            >
+              {copy('AI 설계', 'AI Design')}
+            </Link>
+          )}
           {tab === 'active' && NEXYCAD_HANDOFF_ENABLED && (
             <button
               type="button"
