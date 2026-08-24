@@ -145,8 +145,8 @@ async function foreignKeyReport(client) {
       child.relname AS child_table,
       parent_ns.nspname AS parent_schema,
       parent.relname AS parent_table,
-      array_agg(child_att.attname ORDER BY keys.ordinality) AS child_columns,
-      array_agg(parent_att.attname ORDER BY keys.ordinality) AS parent_columns
+      array_agg(child_att.attname::text ORDER BY keys.ordinality) AS child_columns,
+      array_agg(parent_att.attname::text ORDER BY keys.ordinality) AS parent_columns
     FROM pg_constraint c
     JOIN pg_class child ON child.oid = c.conrelid
     JOIN pg_namespace child_ns ON child_ns.oid = child.relnamespace
