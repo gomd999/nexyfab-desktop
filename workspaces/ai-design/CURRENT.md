@@ -1,5 +1,20 @@
 # AI Design current session
 
+## 2026-08-25 Precision commercial evidence consumer closure
+
+- Status: `AI_CONCEPT_CONNECTED / PRECISION_RELEASE_AUTHORITY_FAIL_CLOSED /
+  EXTERNAL_EVIDENCE_HOLD`.
+- Integration merge `d22d2723` now prevents the AI-to-Precision path from
+  borrowing commercial readiness from source tests, local CAD campaigns, or a
+  commercial-mode flag. The exact consumer must present the release-bound
+  HMAC-attested Precision runtime receipt before release health can pass.
+- AI Design remains limited to `CONCEPT` and `DESIGN_CANDIDATE`. It cannot
+  author exact PASS, native worker identity, authoritative CAD persistence, or
+  manufacturing approval.
+- The bounded local Precision campaign passes 30/30 features and 210/210 axes,
+  but commercial runtime, independent CAD/expert evidence, and manufacturing
+  pilots remain `NOT_RUN`/`HOLD`.
+
 ## 2026-08-25 integrated AI-to-Precision staging baseline
 
 - Status: `AI_CONCEPT_RUNTIME_CONNECTED / PRECISION_V3_CORE_STAGING_DEPLOYED /

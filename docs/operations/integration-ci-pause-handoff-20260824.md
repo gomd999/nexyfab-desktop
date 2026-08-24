@@ -1,13 +1,30 @@
 # 통합 작업 기준 및 CI·릴리스 인계
 
 - 작성 시각: 2026-08-24 (KST)
-- 최종 갱신: 2026-08-24 (로컬 V10 통합 완료 기준)
+- 최종 갱신: 2026-08-25 (상용 Precision 런타임 출시 권한 결속 기준)
 - 기준 작업 디렉터리: `C:\Users\gomd9\Downloads\nexysys_1\nexyfab.com\new`
 - 통합 작업 브랜치: `integration/nexyfab`
 - PR 작업 브랜치: `fix/integration-ci-portability`
 - PR: <https://github.com/gomd999/nexyfab-desktop/pull/79>
-- 구현 HEAD: `dd32f4db` (`[P1] feat(ai-design): render V10 chat workspace`)
+- 구현 기준 merge HEAD: `d22d2723` (`[P1] chore(integration): merge precision runtime authority`)
 - CI 실행: <https://github.com/gomd999/nexyfab-desktop/actions/runs/32697624503>
+
+## 2026-08-25 상용 Precision 런타임 게이트 부록
+
+- 로컬 mechanical bounded 캠페인은 최신 소스에서 30/30 기능과 210/210 축이
+  PASS했으며 판정은 `LOCAL_CANDIDATE`다. 독립 CAD·전문가·제조 증거가 아니다.
+- integration merge `d22d2723`은 PostgreSQL/Redis/private object storage/outbox/lease,
+  native worker, 세 출력, 서명 receipt/callback, authoritative persistence,
+  negative/recovery/rotation 관측으로부터 HMAC 영수증을 파생한다.
+- mechanical Private Beta는 15개 실행·공격 체크, commercial GA는 추가 5개
+  production same-deployment 복구 체크를 모두 요구한다.
+- `/api/health/release`도 동일 영수증을 현재 build/head/deployment/migration checksum에
+  결박한다. `NEXYFAB_COMMERCIAL_MODE=1`만으로 runtime PASS가 되지 않는다.
+- 현재 실제 native worker/evidence root/signing secret/외부 증거는 없으므로 repository
+  receipt와 release는 의도대로 `HOLD`다. production은 변경하지 않는다.
+- 다음 실행은 `docs/operations/commercial-precision-worker-v3.md`의 순서대로 staging
+  canary·negative campaign을 수행하는 것이며, 이후 독립 CAD/전문가/제조·7일 운영·
+  보안·법무 증거가 별도로 닫혀야 한다.
 
 ## 현재 통합 결정
 

@@ -1,5 +1,24 @@
 # Precision CAD current session
 
+## 2026-08-25 commercial runtime evidence authority
+
+- Status: `LOCAL_30X7_CANDIDATE_PASS / COMMERCIAL_RUNTIME_NOT_RUN /
+  RELEASE_HOLD`.
+- Integration merge `d22d2723` adds an HMAC-attested commercial Precision
+  runtime receipt and requires it in both the offline commercialization gate
+  and live `/api/health/release`.
+- Private Beta now requires the 15 durable execution and negative-attack
+  checks; GA additionally requires five production same-deployment recovery,
+  exclusion, no-replay, and credential-rotation checks.
+- The current local mechanical campaign is fresh at 30/30 features and 210/210
+  axes PASS. Its authority is only `LOCAL_CANDIDATE`; it does not claim
+  independent STEP interoperability, expert qualification, or manufacturing
+  readiness.
+- The committed runtime receipt remains an honest `HOLD` because no real
+  native-worker observation/evidence root or evidence signing secret was
+  supplied. The next action is the isolated staging worker canary and negative
+  campaign described in `docs/operations/commercial-precision-worker-v3.md`.
+
 ## 2026-08-25 commercial worker v3 core staging deployment
 
 - Status: `CORE_STAGING_DEPLOYED / WORKER_RUNTIME_NOT_RUN / RELEASE_HOLD`.

@@ -115,6 +115,49 @@ SHA-256 values. A JavaScript geometry fallback is not permitted.
 8. Exercise forged lease, wrong worker, input substitution, output substitution,
    callback replay, expired lease, process crash, and restart recovery.
 
+## Evidence receipt and promotion commands
+
+Collect evidence outside the source tree and expose it read-only to the gate.
+Set `NEXYFAB_COMMERCIAL_PRECISION_EVIDENCE_ROOT` to that directory and
+`COMMERCIAL_PRECISION_RUNTIME_OBSERVATION` to a contained relative JSON path.
+The observation must use schema
+`nexyfab.commercial-precision-runtime-observation.v1` and be signed with
+`GENERATION_EVIDENCE_SIGNING_SECRET`; the secret must be at least 32 bytes and
+must not be stored in the receipt or repository.
+
+The observation references five distinct, contained JSON documents:
+
+- `nexyfab.commercial-precision-database-snapshot.v1`;
+- `nexyfab.commercial-precision-object-storage-manifest.v1`;
+- `nexyfab.precision-cad-commercial-execution.v3` worker receipt;
+- `nexyfab.commercial-precision-negative-campaign.v1`;
+- `nexyfab.commercial-precision-recovery-campaign.v1`.
+
+Set `RELEASE_BUILD_ID`, `RELEASE_GIT_HEAD`, and `RELEASE_DEPLOYMENT_ID` to the
+exact candidate, then run:
+
+```text
+npm run commercial:precision:runtime-evidence
+```
+
+That command may qualify only the Private Beta tier from staging. Production GA
+requires the same-deployment production observation and all five GA recovery
+checks:
+
+```text
+npm run commercial:precision:runtime-gate
+npm run commercial:release-gate
+```
+
+The derived receipt defaults to
+`docs/evidence/release/commercial-precision-runtime-evidence.json`. The live
+release endpoint loads that path, or the contained relative path configured by
+`COMMERCIAL_PRECISION_RUNTIME_RECEIPT_PATH`, and independently verifies its
+fresh HMAC, current release identity, migration `2026082502` checksum,
+execution contract, five evidence bindings, and all 20 checks. A copied,
+resigned-for-another-release, stale, incomplete, or unsigned receipt stays
+`HOLD`.
+
 ## Fail-closed release rules
 
 - `NOT_READY`, missing migration/checksum, missing immutable storage capability,
