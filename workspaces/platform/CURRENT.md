@@ -1,5 +1,27 @@
 # Platform current session
 
+## 2026-08-24 commercial PostgreSQL readiness contract
+
+- Status: `LOCAL_GATE_HARDENED / STAGING_DEPLOYMENT_STALE / RELEASE_HOLD`
+- Source head: `91decae6170cac62ec971728bee013d979658d77`.
+- Deploy preflight and live readiness now consume one PostgreSQL authority
+  contract through migration `2026082403`, including Canonical CAD V2, AI
+  Design V10 authority, and AI-to-Precision bridge tables, constraints, and
+  immutability triggers.
+- Read-only Railway isolation audit passed `30/30`; current staging live,
+  readiness, and anonymous-session probes returned HTTP `200`.
+- The current staging web deployment predates this source unit (created
+  `2026-08-21T21:42:58.476Z`) and has one replica, so it is not evidence for
+  the new bridge, restore, restart, or multi-instance behavior.
+- Verification: contract/readiness `18/18`, deployment structure `12/12`,
+  focused ESLint, full source ESLint, TypeScript, and platform workspace check
+  passed.
+- Handoff:
+  `HANDOFFS/20260824T152728Z-commercial-postgres-readiness-contract.md`.
+- Next action: integrate this unit, then apply/reapply migrations and deploy
+  the exact integrated HEAD to isolated staging before collecting signed
+  restore, multi-instance, worker-restart, alarm, tenant, and rollback proof.
+
 ## 2026-08-24 AI Precision bridge operations
 
 - Status: `LOCAL_RUNTIME_WIRED / STAGING_EVIDENCE_HOLD`

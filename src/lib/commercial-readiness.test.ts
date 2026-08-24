@@ -1,5 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { commercialReadinessIssues } from './commercial-readiness';
+import {
+  COMMERCIAL_POSTGRES_CONSTRAINTS,
+  COMMERCIAL_POSTGRES_HARDENING_TRIGGERS,
+  COMMERCIAL_POSTGRES_MIGRATIONS,
+  COMMERCIAL_POSTGRES_TABLES,
+  commercialPostgresMigrationChecksumEnvKey,
+  commercialReadinessIssues,
+} from './commercial-readiness';
 
 const base = {
   DATABASE_URL: 'postgres://db',
@@ -106,8 +113,46 @@ describe('commercialReadinessIssues', () => {
       'database.migration_2026082202_checksum_required',
       'database.migration_2026082203_checksum_required',
       'database.migration_2026082204_checksum_required',
+      'database.migration_2026082403_checksum_required',
       'worker.ed25519_registry_required',
       'verifier.ed25519_registry_required',
     ]));
+  });
+});
+
+describe('commercial PostgreSQL readiness contract', () => {
+  it('covers the canonical CAD, AI authority, and exact bridge migrations', () => {
+    expect(COMMERCIAL_POSTGRES_MIGRATIONS.slice(-4)).toEqual([
+      2026082301,
+      2026082401,
+      2026082402,
+      2026082403,
+    ]);
+    expect(COMMERCIAL_POSTGRES_TABLES).toEqual(expect.arrayContaining([
+      'nf_cad_canonical_v2_revisions',
+      'nf_ai_design_workspace_runtimes',
+      'nf_ai_design_artifacts',
+      'nf_ai_precision_bridge_outbox',
+      'nf_ai_precision_bridge_receipts',
+    ]));
+  });
+
+  it('keeps every hardening object bound to a required authority table', () => {
+    const tables = new Set(COMMERCIAL_POSTGRES_TABLES);
+    for (const [table] of [
+      ...COMMERCIAL_POSTGRES_CONSTRAINTS,
+      ...COMMERCIAL_POSTGRES_HARDENING_TRIGGERS,
+    ]) {
+      expect(tables.has(table), table).toBe(true);
+    }
+    expect(new Set(COMMERCIAL_POSTGRES_TABLES).size).toBe(COMMERCIAL_POSTGRES_TABLES.length);
+    expect(new Set(COMMERCIAL_POSTGRES_MIGRATIONS).size).toBe(COMMERCIAL_POSTGRES_MIGRATIONS.length);
+  });
+
+  it('uses the deployed canonical CAD checksum key and versioned keys elsewhere', () => {
+    expect(commercialPostgresMigrationChecksumEnvKey(2026082401))
+      .toBe('CANONICAL_CAD_REVISION_MIGRATION_CHECKSUM');
+    expect(commercialPostgresMigrationChecksumEnvKey(2026082403))
+      .toBe('POSTGRES_MIGRATION_CHECKSUM_2026082403');
   });
 });

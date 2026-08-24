@@ -5,6 +5,85 @@ export interface CommercialReadinessIssue {
 
 type Env = Record<string, string | undefined>;
 
+/** Shared PostgreSQL contract for deploy preflight and live readiness. */
+export const COMMERCIAL_POSTGRES_MIGRATIONS = [
+  2026082202, 2026082203, 2026082204, 2026082205, 2026082206,
+  2026082207, 2026082208, 2026082301, 2026082401, 2026082402, 2026082403,
+] as const;
+
+export type CommercialPostgresMigration = typeof COMMERCIAL_POSTGRES_MIGRATIONS[number];
+
+export const COMMERCIAL_POSTGRES_TABLES = [
+  'nf_precision_cad_execution_journal', 'nf_precision_cad_execution_events',
+  'nf_precision_cad_approval_challenges', 'nf_precision_cad_tool_claims',
+  'nf_precision_cad_worker_receipts', 'nf_agentic_commercial_receipts',
+  'nf_precision_cad_commercial_outbox', 'nf_precision_cad_commercial_callbacks',
+  'nf_external_commercial_evidence', 'nf_external_commercial_verification_requests',
+  'nf_external_commercial_verifier_claims', 'nf_external_commercial_verifier_callbacks',
+  'nf_precision_cad_commercial_artifact_snapshots', 'nf_precision_cad_commercial_worker_artifacts',
+  'nf_precision_cad_commercial_native_parser_receipts', 'nf_precision_cad_commercial_persistence_receipts',
+  'nf_precision_cad_commercial_workspace_commits', 'nf_agentic_commercial_verified_receipts',
+  'nf_agentic_commercial_verified_ledger',
+  'nf_commercial_generation_runs', 'nf_commercial_generation_revisions',
+  'nf_commercial_generation_receipt_bindings',
+  'nf_cad_canonical_brep_mappings',
+  'nf_cad_canonical_v2_revisions', 'nf_cad_canonical_v2_heads',
+  'nf_cad_canonical_v2_invalidations', 'nf_cad_canonical_v2_locks',
+  'nf_cad_canonical_v2_audit',
+  'nf_ai_design_workspace_runtimes', 'nf_ai_design_complex_workspaces',
+  'nf_ai_design_artifacts',
+  'nf_ai_precision_bridge_outbox', 'nf_ai_precision_bridge_receipts',
+] as const;
+
+export const COMMERCIAL_POSTGRES_CONSTRAINTS = [
+  ['nf_agentic_commercial_receipts', 'nf_agentic_commercial_receipts_execution_fk'],
+  ['nf_precision_cad_commercial_worker_artifacts', 'nf_worker_artifact_private_key_ck'],
+  ['nf_external_commercial_evidence', 'nf_external_evidence_private_key_ck'],
+  ['nf_agentic_commercial_receipts', 'nf_agentic_receipt_private_key_ck'],
+  ['nf_cad_canonical_v2_revisions', 'nf_cad_v2_revision_identity_uq'],
+  ['nf_cad_canonical_v2_heads', 'nf_cad_v2_head_revision_fk'],
+  ['nf_cad_canonical_v2_invalidations', 'nf_cad_v2_invalidation_revision_fk'],
+  ['nf_cad_canonical_v2_audit', 'nf_cad_v2_audit_revision_fk'],
+  ['nf_ai_design_workspace_runtimes', 'nf_ai_design_workspace_runtimes_pkey'],
+  ['nf_ai_design_complex_workspaces', 'nf_ai_design_complex_workspaces_pkey'],
+  ['nf_ai_design_artifacts', 'nf_ai_design_artifacts_pkey'],
+  ['nf_ai_precision_bridge_outbox', 'nf_ai_precision_bridge_handoff_uq'],
+  ['nf_ai_precision_bridge_receipts', 'nf_ai_precision_bridge_receipt_job_uq'],
+  ['nf_ai_precision_bridge_outbox', 'nf_ai_precision_bridge_json_binding_ck'],
+  ['nf_ai_precision_bridge_receipts', 'nf_ai_precision_bridge_receipt_authority_ck'],
+] as const satisfies ReadonlyArray<readonly [string, string]>;
+
+export const COMMERCIAL_POSTGRES_HARDENING_TRIGGERS = [
+  ['nf_precision_cad_execution_journal', 'nf_precision_cad_execution_journal_identity_immutable'],
+  ['nf_precision_cad_execution_events', 'nf_precision_cad_execution_events_immutable'],
+  ['nf_external_commercial_evidence', 'nf_external_commercial_evidence_immutable'],
+  ['nf_external_commercial_verifier_callbacks', 'nf_external_commercial_verifier_callbacks_immutable'],
+  ['nf_precision_cad_commercial_callbacks', 'nf_precision_cad_commercial_callbacks_immutable'],
+  ['nf_commercial_generation_receipt_bindings', 'nf_commercial_generation_receipt_binding_identity_immutable'],
+  ['nf_external_commercial_verification_requests', 'nf_external_verification_request_identity_immutable'],
+  ['nf_commercial_generation_runs', 'nf_commercial_generation_run_identity_immutable'],
+  ['nf_cad_canonical_brep_mappings', 'nf_cad_canonical_brep_mapping_identity_immutable'],
+  ['nf_cad_canonical_v2_revisions', 'nf_cad_v2_revisions_immutable'],
+  ['nf_cad_canonical_v2_invalidations', 'nf_cad_v2_invalidations_immutable'],
+  ['nf_cad_canonical_v2_audit', 'nf_cad_v2_audit_immutable'],
+  ['nf_cad_canonical_v2_heads', 'nf_cad_v2_head_identity_immutable'],
+  ['nf_cad_canonical_v2_locks', 'nf_cad_v2_lock_identity_immutable'],
+  ['nf_ai_design_workspace_runtimes', 'nf_ai_design_runtime_identity_immutable'],
+  ['nf_ai_design_complex_workspaces', 'nf_ai_design_complex_identity_immutable'],
+  ['nf_ai_design_artifacts', 'nf_ai_design_artifact_immutable'],
+  ['nf_ai_precision_bridge_outbox', 'nf_ai_precision_bridge_outbox_identity_immutable'],
+  ['nf_ai_precision_bridge_receipts', 'nf_ai_precision_bridge_receipt_immutable'],
+  ['nf_ai_precision_bridge_receipts', 'nf_ai_precision_bridge_receipt_binding_guard'],
+] as const satisfies ReadonlyArray<readonly [string, string]>;
+
+export function commercialPostgresMigrationChecksumEnvKey(
+  version: CommercialPostgresMigration,
+): string {
+  return version === 2026082401
+    ? 'CANONICAL_CAD_REVISION_MIGRATION_CHECKSUM'
+    : `POSTGRES_MIGRATION_CHECKSUM_${version}`;
+}
+
 function has(env: Env, key: string): boolean {
   return Boolean(env[key]?.trim());
 }
@@ -83,8 +162,15 @@ export function commercialReadinessIssues(env: Env): CommercialReadinessIssue[] 
     if (env.NEXYFAB_PRECISION_CAD_COMMERCIAL_MODE !== '1') issues.push({ code: 'agentic.execution_boundary_required', message: 'NEXYFAB_PRECISION_CAD_COMMERCIAL_MODE must be 1' });
     requireKey('EXTERNAL_WORKER_ORCHESTRATOR_URL', 'worker.orchestrator_required', 'external native worker/orchestrator is required');
     requireKey('EXTERNAL_WORKER_ORCHESTRATOR_HEALTH_URL', 'worker.health_required', 'readiness must probe the external worker independently');
-    if (env.POSTGRES_MIGRATION_VERSION !== '2026082208') issues.push({ code: 'database.migration_version_required', message: 'Postgres migrations through 2026082208 must be applied' });
-    for (const version of ['2026082202', '2026082203', '2026082204', '2026082205', '2026082206', '2026082207', '2026082208']) requireKey(`POSTGRES_MIGRATION_CHECKSUM_${version}`, `database.migration_${version}_checksum_required`, `migration ${version} checksum must be verified before GA`);
+    const latestMigration = COMMERCIAL_POSTGRES_MIGRATIONS.at(-1)!;
+    if (env.POSTGRES_MIGRATION_VERSION !== String(latestMigration)) issues.push({ code: 'database.migration_version_required', message: `Postgres migrations through ${latestMigration} must be applied` });
+    for (const version of COMMERCIAL_POSTGRES_MIGRATIONS) {
+      requireKey(
+        commercialPostgresMigrationChecksumEnvKey(version),
+        `database.migration_${version}_checksum_required`,
+        `migration ${version} checksum must be verified before GA`,
+      );
+    }
     requireKey('NEXYFAB_COMMERCIAL_WORKER_KEYS_JSON', 'worker.ed25519_registry_required', 'commercial worker Ed25519 public-key registry is required');
     requireKey('NEXYFAB_COMMERCIAL_WORKER_CLAIM_SECRET', 'worker.claim_secret_required', 'commercial worker claim transport must be isolated from other internal APIs');
     requireKey('NEXYFAB_COMMERCIAL_TRANSPORT_SECRET', 'worker.transport_secret_required', 'commercial job transport integrity is required');

@@ -8,6 +8,7 @@ const railwayJson = JSON.parse(await readFile(new URL('../railway.json', import.
 const packageJson = JSON.parse(await readFile(new URL('../package.json', import.meta.url), 'utf8'));
 const standaloneSync = await readFile(new URL('./sync-standalone-static.mjs', import.meta.url), 'utf8');
 const preflightCheck = await readFile(new URL('./preflight-check.ts', import.meta.url), 'utf8');
+const readyRoute = await readFile(new URL('../src/app/api/health/ready/route.ts', import.meta.url), 'utf8');
 const verifiedDeploy = await readFile(new URL('./deploy-railway-verified.mjs', import.meta.url), 'utf8');
 const railwayToml = await readFile(new URL('../railway.toml', import.meta.url), 'utf8');
 const railwayIgnore = await readFile(new URL('../.railwayignore', import.meta.url), 'utf8');
@@ -61,6 +62,16 @@ test('production preflight enforces external CAD workers without requiring Docke
   assert.match(preflightCheck, /r\.relname = \$1[\s\S]+t\.tgname = \$2/);
   assert.match(preflightCheck, /commercial trigger \$\{table\}\.\$\{trigger\} missing/);
   assert.doesNotMatch(preflightCheck, /\{ key: 'TOSS_SECRET_KEY'/);
+});
+
+test('deploy preflight and live readiness share one commercial PostgreSQL contract', () => {
+  for (const source of [preflightCheck, readyRoute]) {
+    assert.match(source, /commercial-readiness/);
+    assert.match(source, /COMMERCIAL_POSTGRES_MIGRATIONS/);
+    assert.match(source, /COMMERCIAL_POSTGRES_TABLES/);
+    assert.match(source, /COMMERCIAL_POSTGRES_CONSTRAINTS/);
+    assert.match(source, /COMMERCIAL_POSTGRES_HARDENING_TRIGGERS/);
+  }
 });
 
 test('postbuild prunes mutable state and repairs the standalone runtime', () => {

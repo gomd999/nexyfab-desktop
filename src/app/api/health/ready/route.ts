@@ -3,74 +3,19 @@ import IORedis, { type Redis } from 'ioredis';
 import { getDbAdapter } from '@/lib/db-adapter';
 import { loadServerAgenticCommercialTrust } from '@/lib/ai/serverAgenticCommercialTrust';
 import { loadExternalCommercialVerifierRegistry } from '@/lib/ai/externalCommercialVerifierRegistry';
+import {
+  COMMERCIAL_POSTGRES_CONSTRAINTS,
+  COMMERCIAL_POSTGRES_HARDENING_TRIGGERS,
+  COMMERCIAL_POSTGRES_MIGRATIONS,
+  COMMERCIAL_POSTGRES_TABLES,
+  commercialPostgresMigrationChecksumEnvKey,
+  type CommercialPostgresMigration,
+} from '@/lib/commercial-readiness';
 import { loadTrustedCommercialWorkers } from '@/lib/precision-cad-agent/commercialWorkerReceipt';
 
 export const dynamic = 'force-dynamic';
 
 const REDIS_TIMEOUT_MS = 1_500;
-const COMMERCIAL_MIGRATIONS = [
-  2026082202, 2026082203, 2026082204, 2026082205, 2026082206,
-  2026082207, 2026082208, 2026082301, 2026082401, 2026082402, 2026082403,
-] as const;
-const COMMERCIAL_TABLES = [
-  'nf_precision_cad_execution_journal', 'nf_precision_cad_execution_events',
-  'nf_precision_cad_approval_challenges', 'nf_precision_cad_tool_claims',
-  'nf_precision_cad_worker_receipts', 'nf_agentic_commercial_receipts',
-  'nf_precision_cad_commercial_outbox', 'nf_precision_cad_commercial_callbacks',
-  'nf_external_commercial_evidence', 'nf_external_commercial_verification_requests',
-  'nf_external_commercial_verifier_claims', 'nf_external_commercial_verifier_callbacks',
-  'nf_precision_cad_commercial_artifact_snapshots', 'nf_precision_cad_commercial_worker_artifacts',
-  'nf_precision_cad_commercial_native_parser_receipts', 'nf_precision_cad_commercial_persistence_receipts',
-  'nf_precision_cad_commercial_workspace_commits', 'nf_agentic_commercial_verified_receipts',
-  'nf_agentic_commercial_verified_ledger',
-  'nf_commercial_generation_runs', 'nf_commercial_generation_revisions', 'nf_commercial_generation_receipt_bindings',
-  'nf_cad_canonical_brep_mappings',
-  'nf_cad_canonical_v2_revisions', 'nf_cad_canonical_v2_heads',
-  'nf_cad_canonical_v2_invalidations', 'nf_cad_canonical_v2_locks',
-  'nf_cad_canonical_v2_audit',
-  'nf_ai_design_workspace_runtimes', 'nf_ai_design_complex_workspaces',
-  'nf_ai_design_artifacts',
-  'nf_ai_precision_bridge_outbox', 'nf_ai_precision_bridge_receipts',
-] as const;
-const COMMERCIAL_CONSTRAINTS = [
-  ['nf_agentic_commercial_receipts', 'nf_agentic_commercial_receipts_execution_fk'],
-  ['nf_precision_cad_commercial_worker_artifacts', 'nf_worker_artifact_private_key_ck'],
-  ['nf_external_commercial_evidence', 'nf_external_evidence_private_key_ck'],
-  ['nf_agentic_commercial_receipts', 'nf_agentic_receipt_private_key_ck'],
-  ['nf_cad_canonical_v2_revisions', 'nf_cad_v2_revision_identity_uq'],
-  ['nf_cad_canonical_v2_heads', 'nf_cad_v2_head_revision_fk'],
-  ['nf_cad_canonical_v2_invalidations', 'nf_cad_v2_invalidation_revision_fk'],
-  ['nf_cad_canonical_v2_audit', 'nf_cad_v2_audit_revision_fk'],
-  ['nf_ai_design_workspace_runtimes', 'nf_ai_design_workspace_runtimes_pkey'],
-  ['nf_ai_design_complex_workspaces', 'nf_ai_design_complex_workspaces_pkey'],
-  ['nf_ai_design_artifacts', 'nf_ai_design_artifacts_pkey'],
-  ['nf_ai_precision_bridge_outbox', 'nf_ai_precision_bridge_handoff_uq'],
-  ['nf_ai_precision_bridge_receipts', 'nf_ai_precision_bridge_receipt_job_uq'],
-  ['nf_ai_precision_bridge_outbox', 'nf_ai_precision_bridge_json_binding_ck'],
-  ['nf_ai_precision_bridge_receipts', 'nf_ai_precision_bridge_receipt_authority_ck'],
-] as const;
-const COMMERCIAL_HARDENING_TRIGGERS = [
-  ['nf_precision_cad_execution_journal', 'nf_precision_cad_execution_journal_identity_immutable'],
-  ['nf_precision_cad_execution_events', 'nf_precision_cad_execution_events_immutable'],
-  ['nf_external_commercial_evidence', 'nf_external_commercial_evidence_immutable'],
-  ['nf_external_commercial_verifier_callbacks', 'nf_external_commercial_verifier_callbacks_immutable'],
-  ['nf_precision_cad_commercial_callbacks', 'nf_precision_cad_commercial_callbacks_immutable'],
-  ['nf_commercial_generation_receipt_bindings', 'nf_commercial_generation_receipt_binding_identity_immutable'],
-  ['nf_external_commercial_verification_requests', 'nf_external_verification_request_identity_immutable'],
-  ['nf_commercial_generation_runs', 'nf_commercial_generation_run_identity_immutable'],
-  ['nf_cad_canonical_brep_mappings', 'nf_cad_canonical_brep_mapping_identity_immutable'],
-  ['nf_cad_canonical_v2_revisions', 'nf_cad_v2_revisions_immutable'],
-  ['nf_cad_canonical_v2_invalidations', 'nf_cad_v2_invalidations_immutable'],
-  ['nf_cad_canonical_v2_audit', 'nf_cad_v2_audit_immutable'],
-  ['nf_cad_canonical_v2_heads', 'nf_cad_v2_head_identity_immutable'],
-  ['nf_cad_canonical_v2_locks', 'nf_cad_v2_lock_identity_immutable'],
-  ['nf_ai_design_workspace_runtimes', 'nf_ai_design_runtime_identity_immutable'],
-  ['nf_ai_design_complex_workspaces', 'nf_ai_design_complex_identity_immutable'],
-  ['nf_ai_design_artifacts', 'nf_ai_design_artifact_immutable'],
-  ['nf_ai_precision_bridge_outbox', 'nf_ai_precision_bridge_outbox_identity_immutable'],
-  ['nf_ai_precision_bridge_receipts', 'nf_ai_precision_bridge_receipt_immutable'],
-  ['nf_ai_precision_bridge_receipts', 'nf_ai_precision_bridge_receipt_binding_guard'],
-] as const;
 
 type ComponentStatus = 'ok' | 'error' | 'skipped';
 
@@ -94,10 +39,8 @@ function productionCommercialModeRequired(): boolean {
   );
 }
 
-function expectedMigrationChecksum(version: typeof COMMERCIAL_MIGRATIONS[number]): string | undefined {
-  return version === 2026082401
-    ? process.env.CANONICAL_CAD_REVISION_MIGRATION_CHECKSUM?.trim()
-    : process.env[`POSTGRES_MIGRATION_CHECKSUM_${version}`]?.trim();
+function expectedMigrationChecksum(version: CommercialPostgresMigration): string | undefined {
+  return process.env[commercialPostgresMigrationChecksumEnvKey(version)]?.trim();
 }
 
 async function checkDatabase(): Promise<ComponentCheck & { backend?: string }> {
@@ -107,20 +50,20 @@ async function checkDatabase(): Promise<ComponentCheck & { backend?: string }> {
     await db.queryOne('SELECT 1');
     if (process.env.NEXYFAB_COMMERCIAL_MODE === '1') {
       if (db.backend !== 'postgres') throw new Error('postgres required');
-      for (const version of COMMERCIAL_MIGRATIONS) {
+      for (const version of COMMERCIAL_POSTGRES_MIGRATIONS) {
         const migration = await db.queryOne<{ version: number; checksum: string }>('SELECT version, checksum FROM nf_schema_migrations WHERE version = ?', version);
         const expected = expectedMigrationChecksum(version);
         if (migration?.version !== version || !/^[a-f0-9]{64}$/.test(migration.checksum ?? '') || !expected || migration.checksum !== expected) throw new Error('migration mismatch');
       }
-      const tableNames = COMMERCIAL_TABLES.map(name => `'${name}'`).join(',');
+      const tableNames = COMMERCIAL_POSTGRES_TABLES.map(name => `'${name}'`).join(',');
       const tables = await db.queryOne<{ count: number }>(`SELECT COUNT(*) AS count FROM information_schema.tables WHERE table_schema = 'public' AND table_name IN (${tableNames})`);
-      if (Number(tables?.count) !== COMMERCIAL_TABLES.length) throw new Error('commercial tables missing');
-      const constraintPairs = COMMERCIAL_CONSTRAINTS.map(([table, name]) => `(r.relname = '${table}' AND c.conname = '${name}')`).join(' OR ');
+      if (Number(tables?.count) !== COMMERCIAL_POSTGRES_TABLES.length) throw new Error('commercial tables missing');
+      const constraintPairs = COMMERCIAL_POSTGRES_CONSTRAINTS.map(([table, name]) => `(r.relname = '${table}' AND c.conname = '${name}')`).join(' OR ');
       const constraints = await db.queryOne<{ count: number }>(`SELECT COUNT(*) AS count FROM pg_constraint c JOIN pg_class r ON r.oid = c.conrelid WHERE r.relnamespace = 'public'::regnamespace AND (${constraintPairs})`);
-      if (Number(constraints?.count) !== COMMERCIAL_CONSTRAINTS.length) throw new Error('commercial hardening constraints missing');
-      const triggerPairs = COMMERCIAL_HARDENING_TRIGGERS.map(([table, name]) => `(r.relname = '${table}' AND t.tgname = '${name}')`).join(' OR ');
+      if (Number(constraints?.count) !== COMMERCIAL_POSTGRES_CONSTRAINTS.length) throw new Error('commercial hardening constraints missing');
+      const triggerPairs = COMMERCIAL_POSTGRES_HARDENING_TRIGGERS.map(([table, name]) => `(r.relname = '${table}' AND t.tgname = '${name}')`).join(' OR ');
       const triggers = await db.queryOne<{ count: number }>(`SELECT COUNT(*) AS count FROM pg_trigger t JOIN pg_class r ON r.oid = t.tgrelid WHERE r.relnamespace = 'public'::regnamespace AND NOT t.tgisinternal AND (${triggerPairs})`);
-      if (Number(triggers?.count) !== COMMERCIAL_HARDENING_TRIGGERS.length) throw new Error('commercial hardening triggers missing');
+      if (Number(triggers?.count) !== COMMERCIAL_POSTGRES_HARDENING_TRIGGERS.length) throw new Error('commercial hardening triggers missing');
     }
     return { status: 'ok', required: true, responseMs: Date.now() - started, backend: db.backend };
   } catch {
