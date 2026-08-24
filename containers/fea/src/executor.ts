@@ -1,5 +1,5 @@
 import type { CadComputeExecutor, ResolvedComputeInput } from '../../runtime/src/computeService';
-import { validateFeaJobRequest, type FeaJobRequest, type FeaJobResult } from '../../../src/lib/fea-jobs/contracts';
+import { validateFeaJobRequest, type FeaJobRequest, type FeaJobResult } from '../../../packages/fea-contracts/src/index';
 import { solveFeaJob } from '../../../services/fea-worker/solver';
 
 const SHA256 = /^[a-f0-9]{64}$/;

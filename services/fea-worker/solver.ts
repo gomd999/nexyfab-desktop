@@ -3,7 +3,7 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { feaFromStlAsync, feaReportHtml } from '../../src/app/[lang]/shape-generator/analysis/feaPackage';
-import { validateFeaJobRequest, type FeaJobRequest, type FeaJobResult, type FeaResultGrade } from '../../src/lib/fea-jobs/contracts';
+import { validateFeaJobRequest, type FeaJobRequest, type FeaJobResult, type FeaResultGrade } from '../../packages/fea-contracts/src/index';
 
 function progress(percent: number, stage: string, message?: string): void {
   process.stderr.write(`NEXYFAB_FEA_PROGRESS:${JSON.stringify({ percent, stage, message })}\n`);

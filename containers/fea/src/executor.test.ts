@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import { JOB_CONTRACT_VERSION, type CadJobMessage } from '../../../packages/job-contracts/src/index';
 import { createFeaComputeExecutor } from './executor';
-import type { FeaJobRequest, FeaJobResult } from '../../../src/lib/fea-jobs/contracts';
+import type { FeaJobRequest, FeaJobResult } from '../../../packages/fea-contracts/src/index';
 
 const hash = (char: string) => char.repeat(64);
 const message: CadJobMessage = {

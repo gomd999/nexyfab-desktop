@@ -14,7 +14,7 @@ import {
   type FeaJobProgress,
   type FeaJobResult,
   type SerializedFeaJob,
-} from '../../src/lib/fea-jobs/contracts';
+} from '../../packages/fea-contracts/src/index';
 
 const PORT = Math.max(1, Number(process.env.PORT ?? 8080));
 const CONCURRENCY = Math.min(2, Math.max(1, Number(process.env.FEA_WORKER_CONCURRENCY ?? 1)));
