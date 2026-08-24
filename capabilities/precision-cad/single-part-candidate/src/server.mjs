@@ -9,6 +9,14 @@ const HEALTH_ROUTES = new Map([
   ['/health/ready', 'ready'],
   ['/health/release', 'release'],
 ]);
+const MAX_JSON_BYTES = 256 * 1024;
+
+class RequestInputError extends Error {
+  constructor(code, statusCode) {
+    super(code);
+    this.statusCode = statusCode;
+  }
+}
 
 function sendJson(response, statusCode, payload, headOnly = false) {
   const body = `${JSON.stringify(payload)}\n`;
@@ -21,14 +29,25 @@ function sendJson(response, statusCode, payload, headOnly = false) {
 }
 
 async function readJson(request) {
+  const contentType = request.headers['content-type']?.split(';', 1)[0]?.trim().toLowerCase();
+  if (contentType !== 'application/json') throw new RequestInputError('content_type_must_be_application_json', 415);
+  const declaredBytes = Number.parseInt(request.headers['content-length'] ?? '', 10);
+  if (Number.isFinite(declaredBytes) && declaredBytes > MAX_JSON_BYTES) {
+    throw new RequestInputError('request_too_large', 413);
+  }
   const chunks = [];
   let bytes = 0;
   for await (const chunk of request) {
     bytes += chunk.length;
-    if (bytes > 262144) throw new Error('request_too_large');
+    if (bytes > MAX_JSON_BYTES) throw new RequestInputError('request_too_large', 413);
     chunks.push(chunk);
   }
-  return JSON.parse(Buffer.concat(chunks).toString('utf8'));
+  if (bytes === 0) throw new RequestInputError('request_body_required', 400);
+  try {
+    return JSON.parse(Buffer.concat(chunks).toString('utf8'));
+  } catch {
+    throw new RequestInputError('invalid_json', 400);
+  }
 }
 
 function authenticated(request, env) {
@@ -64,10 +83,14 @@ export function createPrecisionServer(env = process.env, now = () => new Date(),
       }
       try {
         const input = await readJson(request);
-        if (typeof input.feature !== 'string' || !Array.isArray(input.runs)) throw new Error('contract_input_invalid');
+        if (typeof input.feature !== 'string' || !Array.isArray(input.runs)) {
+          throw new RequestInputError('contract_input_invalid', 422);
+        }
         sendJson(response, 200, evaluateMechanicalSinglePartSourceRuns(input.feature, input.runs));
       } catch (error) {
-        sendJson(response, 400, { error: error instanceof Error ? error.message : 'contract_input_invalid' });
+        sendJson(response, error instanceof RequestInputError ? error.statusCode : 400, {
+          error: error instanceof RequestInputError ? error.message : 'contract_input_invalid',
+        });
       }
       return;
     }
