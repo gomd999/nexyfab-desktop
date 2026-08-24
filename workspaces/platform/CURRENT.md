@@ -1,5 +1,31 @@
 # Platform current session
 
+## 2026-08-25 commercial payment authority migration 2501
+
+- Status: `LOCAL_PAYMENT_AUTHORITY_CURRENT / STAGING_2501_PENDING / RELEASE_HOLD`.
+- Shared migration prerequisite: integration commit `50dca38b` adds checksum-
+  bound PostgreSQL migration `2026082501` for `nf_orders.payment_status`,
+  `toss_order_id`, and `updated_at`, with payment recovery and Toss identity
+  indexes. The SQL passed an actual transaction on the isolated staging restore
+  database after the first attempt correctly exposed the missing `updated_at`
+  dependency and rolled back.
+- Platform implementation commits: `b87a1ac3` advances runner, preflight, live
+  readiness, and checksum contracts; `d8b98f4f` advances deploy, migration
+  receipt, isolated restore, rollback, release-health, and commercialization
+  evidence to latest migration `2026082501`.
+- Live readiness now derives required checksum keys from the shared ordered
+  registry instead of maintaining a second hard-coded migration list.
+- Verification: Node migration/deploy/restore/rollback/commercialization
+  contracts `75/75` PASS; Vitest readiness/release/Precision compatibility
+  `34/34` PASS; commit-hook related suites `57/57` PASS; full Platform ESLint,
+  TypeScript, ownership, and classification checks PASS.
+- Boundary: staging currently has verified migrations through `2026082403` and
+  hardening blocker count zero, but `2026082501` must be proven through a fresh
+  isolated restore target and then applied to the staging source DB. External
+  SMTP, observability, payment credentials, trust registries, worker topology,
+  and final deployed release evidence remain `HOLD`.
+- Handoff: `HANDOFFS/20260824T162808Z-commercial-payment-authority-2501.md`.
+
 ## 2026-08-24 migration 2403 recovery and release evidence
 
 - Status: `LOCAL_EVIDENCE_CONTRACT_CURRENT / STAGING_MIGRATION_PENDING / RELEASE_HOLD`
