@@ -110,19 +110,19 @@ function scopesFromCommand(command: Extract<AiDesignWorkspaceClientCommandV3, { 
 }
 
 async function resolveSidecars(aggregate: AiDesignComplexWorkspaceAggregateV1, artifacts: AiDesignComplexArtifactRepository) {
-  const productArtifact = aggregate.productStructure ? artifacts.getProductStructureSidecar(aggregate.productStructure.artifactId) : null;
-  const crossDomainArtifact = aggregate.crossDomainGraph ? artifacts.getCrossDomainSidecar(aggregate.crossDomainGraph.artifactId) : null;
+  const productArtifact = aggregate.productStructure ? await artifacts.getProductStructureSidecar(aggregate.productStructure.artifactId) : null;
+  const crossDomainArtifact = aggregate.crossDomainGraph ? await artifacts.getCrossDomainSidecar(aggregate.crossDomainGraph.artifactId) : null;
   if (aggregate.productStructure && (!productArtifact || productArtifact.artifactDigest !== aggregate.productStructure.artifactDigest)) throw new Error('AI_DESIGN_COMPLEX_STRUCTURE_ARTIFACT_MISSING');
   if (aggregate.crossDomainGraph && (!crossDomainArtifact || crossDomainArtifact.artifactDigest !== aggregate.crossDomainGraph.artifactDigest)) throw new Error('AI_DESIGN_COMPLEX_CONSTRAINT_ARTIFACT_MISSING');
-  const resolutions = aggregate.resolutions.map(item => artifacts.getIntentResolution(item.artifactId));
+  const resolutions = await Promise.all(aggregate.resolutions.map(item => artifacts.getIntentResolution(item.artifactId)));
   if (resolutions.some(item => !item)) throw new Error('AI_DESIGN_COMPLEX_RESOLUTION_ARTIFACT_MISSING');
-  const criticBundles = aggregate.criticBundles.map(item => artifacts.getCriticBundle(item.artifactId));
+  const criticBundles = await Promise.all(aggregate.criticBundles.map(item => artifacts.getCriticBundle(item.artifactId)));
   if (criticBundles.some(item => !item)) throw new Error('AI_DESIGN_COMPLEX_CRITIC_ARTIFACT_MISSING');
-  const partitions = aggregate.partitions.map(item => artifacts.getGraphPartition(item.artifactId));
+  const partitions = await Promise.all(aggregate.partitions.map(item => artifacts.getGraphPartition(item.artifactId)));
   if (partitions.some((item, index) => !item || item.partitionDigest !== aggregate.partitions[index]!.artifactDigest)) throw new Error('AI_DESIGN_COMPLEX_PARTITION_ARTIFACT_MISSING');
-  const gaugeBindingsArtifact = aggregate.gaugeBindings ? artifacts.getGaugeBindings(aggregate.gaugeBindings.artifactId) : null;
+  const gaugeBindingsArtifact = aggregate.gaugeBindings ? await artifacts.getGaugeBindings(aggregate.gaugeBindings.artifactId) : null;
   if (aggregate.gaugeBindings && (!gaugeBindingsArtifact || gaugeBindingsArtifact.artifactDigest !== aggregate.gaugeBindings.artifactDigest)) throw new Error('AI_DESIGN_COMPLEX_GAUGE_BINDINGS_MISSING');
-  const constraintBindingsArtifact = aggregate.constraintBindings ? artifacts.getConstraintBindings(aggregate.constraintBindings.artifactId) : null;
+  const constraintBindingsArtifact = aggregate.constraintBindings ? await artifacts.getConstraintBindings(aggregate.constraintBindings.artifactId) : null;
   if (aggregate.constraintBindings && (!constraintBindingsArtifact || constraintBindingsArtifact.artifactDigest !== aggregate.constraintBindings.artifactDigest)) throw new Error('AI_DESIGN_COMPLEX_CONSTRAINT_BINDINGS_MISSING');
   return {
     productStructure: productArtifact?.graph ?? null,
@@ -195,7 +195,7 @@ export async function executeAiDesignComplexWorkspaceCommand(
     const artifact = createAiDesignCrossDomainSidecarArtifact(command.payload.crossDomainGraph, { artifactId: id, source: 'user_confirmed_concept', createdAt: now.toISOString() });
     let constraintBindingsArtifact = null;
     if (command.payload.constraintBindings?.length) {
-      const currentStructure = aggregate.productStructure ? artifacts.getProductStructureSidecar(aggregate.productStructure.artifactId) : null;
+      const currentStructure = aggregate.productStructure ? await artifacts.getProductStructureSidecar(aggregate.productStructure.artifactId) : null;
       if (!currentStructure) return reject('AI_DESIGN_COMPLEX_STRUCTURE_REQUIRED', aggregate);
       constraintBindingsArtifact = createAiDesignConstraintBindingsArtifact({ artifactId: artifactId('complex-constraint-bindings', commandDigest), productStructure: currentStructure.graph, crossDomainGraph: artifact.graph, bindings: command.payload.constraintBindings, createdAt: now.toISOString() });
     }
@@ -235,7 +235,7 @@ export async function executeAiDesignComplexWorkspaceCommand(
     const stateCandidates = runtime.candidates?.candidates ?? [];
     const requestedIds = command.payload.candidateIds ?? stateCandidates.map(item => item.candidateId);
     const requested = new Set(requestedIds);
-    const manifests = artifacts.listCandidateArtifacts({ projectId: command.projectId, sessionId: command.sessionId })
+    const manifests = (await artifacts.listCandidateArtifacts({ projectId: command.projectId, sessionId: command.sessionId }))
       .filter(item => requested.has(item.candidateId) && stateCandidates.some(candidate => candidate.candidateId === item.candidateId));
     if (manifests.length < 2 || manifests.length > 3 || manifests.length !== requested.size) return reject('AI_DESIGN_COMPLEX_CANDIDATE_SET_INVALID', aggregate);
     const bundles = await evaluateAiDesignComplexCandidateSet({
@@ -319,7 +319,7 @@ export async function recordAiDesignPrecisionReceipt(
   if (runtime.runtimeRevision !== command.expectedRuntimeRevision) return reject('AI_DESIGN_WORKSPACE_REVISION_CONFLICT', aggregate);
   if (aggregate.complexRevision !== command.expectedComplexRevision) return reject('AI_DESIGN_COMPLEX_REVISION_CONFLICT', aggregate);
   if (receipt.receiptId !== command.payload.receiptId || receipt.receiptDigest !== command.payload.receiptDigest) return reject('AI_DESIGN_PRECISION_RECEIPT_COMMAND_MISMATCH', aggregate);
-  const request = artifacts.getPrecisionRequest(receipt.requestId);
+  const request = await artifacts.getPrecisionRequest(receipt.requestId);
   if (!request) return reject('AI_DESIGN_PRECISION_REQUEST_NOT_FOUND', aggregate);
   const verification = verifyAiDesignPrecisionVerificationReceipt(receipt, request, {
     signingSecret: dependencies.signingSecret,

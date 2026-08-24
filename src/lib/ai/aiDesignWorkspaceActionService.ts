@@ -177,7 +177,7 @@ function candidatesFromStageArtifact(
   const artifacts: AiDesignCandidateArtifactV1[] = [];
   for (const blueprint of artifact.output.candidateBlueprints.slice(0, 3)) {
     const designDigest = serverEvidenceSha256(blueprint);
-    const artifactId = `candidate-artifact:${serverEvidenceSha256({ runId: artifact.runId, candidateId: blueprint.id, designDigest }).slice(0, 48)}`;
+    const artifactId = `candidate-artifact:${serverEvidenceSha256({ projectId: state.projectId, sessionId: state.session.sessionId, runId: artifact.runId, candidateId: blueprint.id, designDigest }).slice(0, 48)}`;
     const manifest = createAiDesignCandidateArtifact({
       trustedServer: true, artifactId, candidateId: blueprint.id, projectId: state.projectId, sessionId: state.session.sessionId,
       baseRevision: state.revisionToken, artifactRevision: 1, status: 'published', createdAt: artifact.createdAt,
