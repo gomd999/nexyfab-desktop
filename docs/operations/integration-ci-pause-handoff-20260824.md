@@ -307,3 +307,59 @@
 - `REDIS_URL`이 없는 상태의 rate limit은 인스턴스별이므로 production READY가 아니다.
 - 과거 노출 credential 회전, 원격 push/deploy, GitHub 전체 CI, production 승인과 release는 수행하지 않았다.
 - 기록 재작성과 force-push도 계속 금지한다.
+
+## 2026-08-24 AI Design–Precision CAD exact 폐루프 통합 결과
+
+최신 로컬 통합 HEAD `920e660d`에서 V10 Precision 요청 이후의 실제 exact
+실행 경로를 추가로 닫았다.
+
+### 완료된 소스 통합
+
+- PostgreSQL migration `2026082403`과 SQLite migration `91`에 AI–Precision
+  transactional outbox와 append-only receipt ledger를 추가했다.
+- AI handoff coordinator가 runtime/complex revision, candidate,
+  product-structure node, 현재 canonical CAD HEAD와 stable feature를 묶은 뒤
+  idempotent exact job을 적재한다.
+- 인증된 cron worker가 권위를 다시 확인하고 실제 Node OCCT current-head
+  bundle을 실행한다.
+- STEP, HLR SVG, dimension, BOM, verification, canonical manifest를 private
+  content-addressed immutable object로 저장하고 SHA readback을 검증한다.
+- 서명 PASS/FAIL 영수증만 AI aggregate와 읽기 모델에 반영된다. 브라우저와
+  AI는 PASS나 제조 권한을 생성할 수 없다.
+- post-dispatch 결과가 불확실하면 자동 CAD 재실행 대신
+  `VERIFIED_UNKNOWN`으로 격리하며, 기존 불변 영수증과 aggregate reference가
+  일치할 때만 재조정한다.
+- cron route 인증, Railway 1분 일정, readiness fail-closed 환경 조건, migration
+  checksum/deploy 검증을 연결했다.
+
+### 최신 로컬 검증
+
+- Production build: PASS, 정적 페이지 301개, bundle budget PASS.
+- TypeScript, focused ESLint, diff check: PASS.
+- 브리지/조정기/worker/route/PostgreSQL authority 집중 회귀: PASS.
+- 실제 Node OCCT STEP current-head bundle: PASS.
+- migration/deploy contract: 10 tests PASS.
+- worker/storage 관련 commit gate: 46 files / 341 tests PASS.
+- `workspace:integration-status`: `STRICTLY_INTEGRATED`; platform,
+  precision-cad, ai-design 모두 ahead/behind 0, dirty 0.
+- `workspace:audit`: collision 0, descriptor issue 0.
+- AI scope check: TypeScript, 62 common-accuracy tests, 7 candidate manifests
+  PASS.
+- Precision scope check: TypeScript와 platform architecture PASS.
+- Platform scope check: full source ESLint와 TypeScript PASS.
+
+### 현재 판정과 다음 게이트
+
+판정은 `RUNTIME_CONNECTED_LOCAL / PRODUCTION_HOLD`다. 구현과 로컬 결정론
+회귀가 닫혔다는 뜻이지 상용 운영 증거가 완성됐다는 뜻은 아니다.
+
+다음 순서는 staging PostgreSQL migration/restore, 실제 private object bucket,
+Redis 다중 인스턴스, Railway cron/worker 재시작·lease·alarm,
+`VERIFIED_UNKNOWN` 복구, authenticated browser read-model refresh, tenant/stale/
+tamper negative E2E다. 이후 전체 GitHub CI/E2E, OCCT burn-in, large assembly,
+독립 STEP 교환 검토, 전문가 리뷰, 실제 가공과 pilot 증거가 모두 같은 revision에
+결속돼야 한다.
+
+원격 push/deploy, production 승인, secret 공급자 회전, Git history rewrite는
+이번 로컬 통합에서 수행하지 않았다. 따라서 PR 병합·production·제조·상용
+release는 계속 `HOLD`다.
