@@ -31,10 +31,7 @@ import { checkUserBudget } from '@/lib/ai/userBudget';
 import {
   intentToScad,
   assemblyToScad,
-  SUPPORTED_SHAPES as SUPPORTED_SHAPES_SET,
-  SUPPORTED_FEATURES as SUPPORTED_FEATURES_SET,
   type IntentInput,
-  type IntentFeature,
   type AssemblyPartInput,
 } from '@/lib/openscad-render/intentToScad';
 import { detectShapeFromText } from '@/lib/openscad-render/shapeAliases';
@@ -43,79 +40,19 @@ import { getCachedIntent, setCachedIntent } from '@/lib/ai/intentCache';
 import { captureServerError } from '@/lib/error-capture';
 import { localizedApiMessage, resolveServerLocale } from '@/lib/i18n/serverLocale';
 import { readBoundedJson } from '@/lib/boundedJsonBody';
+import {
+  SUPPORTED_SHAPES,
+  looksLikeOpenScad,
+  normalizeFreeformScad,
+  numParams,
+  parseAssemblyParts,
+  parseFeatures,
+  parseProfile,
+} from './intentParsing';
 
 export const dynamic = 'force-dynamic';
 // Allows a 5 MiB-class reference image after base64 expansion plus prompt/context fields.
 const MAX_JSON_BODY_BYTES = 8 * 1024 * 1024;
-
-// Single-sourced from intentToScad so the runtime whitelist can never reject a
-// shape the converter actually supports (nor accept one it doesn't).
-const SUPPORTED_SHAPES: readonly string[] = [...SUPPORTED_SHAPES_SET];
-const SUPPORTED_FEATURES: readonly string[] = [...SUPPORTED_FEATURES_SET];
-
-function numParams(v: unknown): Record<string, number> {
-  const out: Record<string, number> = {};
-  if (v && typeof v === 'object' && !Array.isArray(v)) {
-    for (const [k, val] of Object.entries(v as Record<string, unknown>)) {
-      if (typeof val === 'number' && Number.isFinite(val)) out[k] = val;
-    }
-  }
-  return out;
-}
-
-function parseFeatures(v: unknown): IntentFeature[] {
-  const allowed = new Set<string>(SUPPORTED_FEATURES);
-  if (!Array.isArray(v)) return [];
-  return v.filter((f): f is IntentFeature => {
-    if (!f || typeof f !== 'object' || Array.isArray(f)) return false;
-    const t = (f as Record<string, unknown>).type;
-    return typeof t === 'string' && allowed.has(t);
-  });
-}
-
-function parseProfile(v: unknown): Array<{ x: number; y: number }> {
-  if (!Array.isArray(v)) return [];
-  return v
-    .filter((p): p is { x: number; y: number } =>
-      !!p && typeof p === 'object' &&
-      typeof (p as Record<string, unknown>).x === 'number' && Number.isFinite((p as Record<string, unknown>).x as number) &&
-      typeof (p as Record<string, unknown>).y === 'number' && Number.isFinite((p as Record<string, unknown>).y as number))
-    .map((p) => ({ x: p.x, y: p.y }));
-}
-
-function vec3(v: unknown): [number, number, number] | undefined {
-  if (!Array.isArray(v) || v.length !== 3) return undefined;
-  if (!v.every((n) => typeof n === 'number' && Number.isFinite(n))) return undefined;
-  return [v[0] as number, v[1] as number, v[2] as number];
-}
-
-/** Parse + whitelist-validate an assembly's parts list from LLM output. */
-function parseAssemblyParts(v: unknown): AssemblyPartInput[] {
-  if (!Array.isArray(v)) return [];
-  const allowed = new Set<string>([...SUPPORTED_SHAPES, 'sketch']);
-  const out: AssemblyPartInput[] = [];
-  for (const p of v) {
-    if (!p || typeof p !== 'object' || Array.isArray(p)) continue;
-    const o = p as Record<string, unknown>;
-    if (typeof o.shapeId !== 'string' || !allowed.has(o.shapeId)) continue;
-    const part: AssemblyPartInput = {
-      shapeId: o.shapeId,
-      params: numParams(o.params),
-      features: parseFeatures(o.features),
-    };
-    if (typeof o.name === 'string') part.name = o.name;
-    if (o.shapeId === 'sketch') {
-      const pr = parseProfile(o.profile);
-      if (pr.length >= 3) part.profile = pr;
-    }
-    const pos = vec3(o.position);
-    if (pos) part.position = pos;
-    const rot = vec3(o.rotation);
-    if (rot) part.rotation = rot;
-    out.push(part);
-  }
-  return out;
-}
 
 /** Fire-and-forget AI-usage measurement to the central auth-server (measure
  *  only, no cap). Skips guests (no token to attribute). Never blocks the
@@ -481,19 +418,15 @@ ${prompt ? 'User note: ' + prompt : ''}`;
   // markdown fences and hand the raw source back — the client parses its
   // Customizer annotations into sliders. No whitelist, no intent.
   if (freeform) {
-    let scad = raw.replace(/^```(?:openscad|scad|c)?\s*/i, '').replace(/```\s*$/i, '').trim();
+    const scad = normalizeFreeformScad(raw);
     // Some models still wrap mid-text; if fences remain, take the fenced block.
-    const fence = scad.match(/```(?:openscad|scad|c)?\s*([\s\S]*?)```/i);
-    if (fence) scad = fence[1]!.trim();
     // Normalise line endings: some models (e.g. Gemini) emit CRLF, and a stray
     // \r after `include <...>` makes OpenSCAD's parser throw "syntax error
     // line 1" — the render then fails entirely.
-    scad = scad.replace(/\r\n?/g, '\n');
     // Accept any plausible OpenSCAD program. The BOSL2 include is a definitive
     // signal; otherwise look for any primitive/operation (broad — BOSL2 uses
     // cyl/tube/prismoid/rotate_extrude that a narrow list would wrongly reject).
-    const looksLikeScad = /include\s*<BOSL2|\b(module|function|cube|cylinder|cyl|cuboid|sphere|spheroid|polyhedron|polygon|linear_extrude|rotate_extrude|hull|minkowski|union|difference|intersection|translate|rotate|scale|mirror|prismoid|tube|torus|wedge|text)\b/i.test(scad);
-    if (!looksLikeScad) {
+    if (!looksLikeOpenScad(scad)) {
       return NextResponse.json({ error: localizedApiMessage(locale, 'invalidAiResponse'), code: 'SCAD_FORMAT_INVALID' }, { status: 502 });
     }
     meterAiUsage(req); // measure AI usage (non-cached, real AI call)

@@ -81,6 +81,60 @@ test('assessment is deterministic and fail-closed', async () => {
   });
 });
 
+test('assessment rejects malformed runtime evidence instead of failing open', async () => {
+  await withServer({ INTERNAL_AUTH_TOKEN: INTERNAL_TOKEN }, async baseUrl => {
+    const valid = passingEvidence('mechanical');
+    const malformed = [
+      [{ domain: 'mechanical', axes: valid.axes }, 'approvedCases'],
+      [{ ...valid, approvedCases: '20' }, 'approvedCases'],
+      [{ ...valid, falseClear: -1 }, 'falseClear'],
+      [{ ...valid, axes: [...valid.axes, valid.axes[0]] }, 'axis_duplicate'],
+      [{ ...valid, axes: [{ ...valid.axes[0], axis: 'unknown_axis' }] }, 'axis'],
+    ];
+
+    for (const [input, expectedPath] of malformed) {
+      const response = await fetch(`${baseUrl}/contract/assess`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json', authorization: `Bearer ${INTERNAL_TOKEN}` },
+        body: JSON.stringify(input),
+      });
+      const payload = await response.json();
+      assert.equal(response.status, 400);
+      assert.match(payload.error, /^DOMAIN_ACCURACY_EVIDENCE_INVALID:/);
+      assert.match(payload.error, new RegExp(expectedPath));
+    }
+  });
+});
+
+test('assessment enforces JSON media type, syntax, and body size', async () => {
+  await withServer({ INTERNAL_AUTH_TOKEN: INTERNAL_TOKEN }, async baseUrl => {
+    const headers = { authorization: `Bearer ${INTERNAL_TOKEN}` };
+    const wrongType = await fetch(`${baseUrl}/contract/assess`, {
+      method: 'POST',
+      headers: { ...headers, 'content-type': 'text/plain' },
+      body: '{}',
+    });
+    assert.equal(wrongType.status, 415);
+    assert.equal((await wrongType.json()).error, 'content_type_must_be_application_json');
+
+    const malformed = await fetch(`${baseUrl}/contract/assess`, {
+      method: 'POST',
+      headers: { ...headers, 'content-type': 'application/json' },
+      body: '{',
+    });
+    assert.equal(malformed.status, 400);
+    assert.equal((await malformed.json()).error, 'contract_input_invalid');
+
+    const oversized = await fetch(`${baseUrl}/contract/assess`, {
+      method: 'POST',
+      headers: { ...headers, 'content-type': 'application/json' },
+      body: JSON.stringify({ payload: 'x'.repeat(1048576) }),
+    });
+    assert.equal(oversized.status, 413);
+    assert.equal((await oversized.json()).error, 'request_too_large');
+  });
+});
+
 test('assessment denies missing or invalid internal authentication', async () => {
   await withServer({}, async baseUrl => {
     assert.equal((await fetch(`${baseUrl}/contract/assess`, { method: 'POST' })).status, 503);
