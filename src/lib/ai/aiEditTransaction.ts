@@ -52,6 +52,25 @@ export type CadEditOperation =
       translationMm?: [number, number, number];
       rotationDeg?: [number, number, number];
     }
+  | {
+      kind: "transform_part_delta";
+      partId: string;
+      translationDeltaMm?: [number, number, number];
+      rotationDeltaDeg?: [number, number, number];
+    }
+  | {
+      kind: "offset_faces";
+      partId: string;
+      faceRefs: string[];
+      distanceMm: number;
+    }
+  | {
+      kind: "draft_faces";
+      partId: string;
+      faceRefs: string[];
+      angleDeg: number;
+      pullDirection: [number, number, number];
+    }
   | { kind: "set_part_suppressed"; partId: string; suppressed: boolean }
   | {
       kind: "set_mate_parameter";
@@ -120,7 +139,11 @@ export type CadEditImpact = {
 export function cadEditMutationScope(
   operation: CadEditOperation,
 ): CadEditMutationScope {
-  if (operation.kind === "transform_part") return "occurrence_transform";
+  if (
+    operation.kind === "transform_part" ||
+    operation.kind === "transform_part_delta"
+  )
+    return "occurrence_transform";
   if (
     operation.kind === "set_mate_parameter" ||
     operation.kind === "add_mate" ||
@@ -133,6 +156,40 @@ export function cadEditMutationScope(
 
 const operationPartId = (operation: CadEditOperation): string | null =>
   "partId" in operation ? operation.partId : null;
+
+const finiteTuple = (value: readonly number[] | undefined): boolean =>
+  value !== undefined && value.length > 0 && value.every(Number.isFinite);
+
+function validateOperationNumbers(operation: CadEditOperation): string[] {
+  const issue = (field: string) => [`invalid numeric edit value: ${operation.kind}.${field}`];
+  switch (operation.kind) {
+    case "set_feature_parameter":
+    case "set_sketch_dimension":
+    case "set_mate_parameter":
+      return Number.isFinite(operation.value) ? [] : issue("value");
+    case "add_fillet":
+      return Number.isFinite(operation.radiusMm) && operation.radiusMm > 0 ? [] : issue("radiusMm");
+    case "add_chamfer":
+      return Number.isFinite(operation.distanceMm) && operation.distanceMm > 0 ? [] : issue("distanceMm");
+    case "add_shell":
+      return Number.isFinite(operation.thicknessMm) && operation.thicknessMm > 0 ? [] : issue("thicknessMm");
+    case "offset_faces":
+      return Number.isFinite(operation.distanceMm) ? [] : issue("distanceMm");
+    case "draft_faces":
+      if (!Number.isFinite(operation.angleDeg)) return issue("angleDeg");
+      return finiteTuple(operation.pullDirection) ? [] : issue("pullDirection");
+    case "transform_part":
+      if (operation.translationMm === undefined && operation.rotationDeg === undefined) return issue("transform");
+      if (operation.translationMm !== undefined && !finiteTuple(operation.translationMm)) return issue("translationMm");
+      return operation.rotationDeg === undefined || finiteTuple(operation.rotationDeg) ? [] : issue("rotationDeg");
+    case "transform_part_delta":
+      if (operation.translationDeltaMm === undefined && operation.rotationDeltaDeg === undefined) return issue("transformDelta");
+      if (operation.translationDeltaMm !== undefined && !finiteTuple(operation.translationDeltaMm)) return issue("translationDeltaMm");
+      return operation.rotationDeltaDeg === undefined || finiteTuple(operation.rotationDeltaDeg) ? [] : issue("rotationDeltaDeg");
+    default:
+      return [];
+  }
+}
 
 export function buildCadEditImpact(
   transaction: AiEditTransaction,
@@ -199,6 +256,8 @@ export function evaluateAiEditTransaction(
     issues.push("rollback snapshot is required");
   if (transaction.operations.length === 0)
     issues.push("at least one edit operation is required");
+  for (const operation of transaction.operations)
+    issues.push(...validateOperationNumbers(operation));
   if (transaction.baseRevision !== currentRevision)
     issues.push("base revision is stale");
   if (transaction.selection.projectRevision !== transaction.baseRevision) {

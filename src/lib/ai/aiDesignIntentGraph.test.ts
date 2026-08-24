@@ -1,0 +1,11 @@
+import { describe, expect, it } from 'vitest';
+import { createDesignIntentCheckpoint } from './designIntentCheckpoint';
+import { createAiDesignIntentGraph, invalidateAiDesignIntentGraph, validateAiDesignIntentGraph } from './aiDesignIntentGraph';
+const hash = 'a'.repeat(64);
+const source = (id: string, key: string, value: unknown, authority: 'user_confirmed' | 'imported_authority' | 'ai_assumption' = 'user_confirmed') => ({ id, kind: 'text' as const, projectId: 'p-1', revision: 1, sourceHash: hash, authority, provenance: { rights: 'user_owned' as const, aiUseAllowed: true, derivativeUseAllowed: true }, fields: [{ key, value }] });
+describe('AI design intent graph', () => {
+  it('retains provenance and represents conflicts without selecting one', () => { const checkpoint = createDesignIntentCheckpoint({ checkpointId: 'c', projectId: 'p-1', revision: 1, projectContentHash: hash, sources: [source('a', 'material', 'steel'), source('b', 'material', 'aluminium')] }); const graph = createAiDesignIntentGraph(checkpoint); expect(graph.nodes.find(node => node.kind === 'conflict')?.alternatives).toHaveLength(2); expect(validateAiDesignIntentGraph(graph)).toEqual([]); });
+  it('propagates invalidation deterministically through dependencies', () => { const checkpoint = createDesignIntentCheckpoint({ checkpointId: 'c', projectId: 'p-1', revision: 1, projectContentHash: hash, sources: [source('a', 'purpose', 'bracket'), source('b', 'material', 'steel')] }); const graph = createAiDesignIntentGraph(checkpoint); const [first, second] = graph.nodes.filter(node => node.kind === 'fact'); const linked = createAiDesignIntentGraph(checkpoint, { edges: [{ kind: 'dependency', from: first!.id, to: second!.id }] }); const invalid = invalidateAiDesignIntentGraph(linked, [first!.id]); expect(invalid.nodes.find(node => node.id === second!.id)?.status).toBe('invalidated'); });
+  it('bounds graph relationships to known nodes', () => { const checkpoint = createDesignIntentCheckpoint({ checkpointId: 'c', projectId: 'p-1', revision: 1, projectContentHash: hash, sources: [source('a', 'purpose', 'bracket')] }); const graph = createAiDesignIntentGraph(checkpoint, { edges: [{ kind: 'dependency', from: 'unknown', to: 'also-unknown' }] }); expect(graph.edges).toHaveLength(0); });
+});
+

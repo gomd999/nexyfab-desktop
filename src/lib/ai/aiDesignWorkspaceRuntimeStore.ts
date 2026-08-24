@@ -1,0 +1,152 @@
+import { createHash } from 'node:crypto';
+import type { Redis } from 'ioredis';
+import { assertAiDesignWorkspaceRuntime, type AiDesignWorkspaceRuntimeV1 } from './aiDesignWorkspaceRuntime';
+import { evidenceHashMatches, serverEvidenceSha256 } from './serverEvidence';
+
+export const MAX_AI_DESIGN_WORKSPACE_RUNTIME_BYTES = 1024 * 1024;
+const DEFAULT_TTL_SECONDS = 7 * 24 * 60 * 60;
+
+interface StoredAiDesignWorkspaceRuntime {
+  schema: 'nexyfab.server-ai-design-workspace-runtime.v1';
+  ownerKey: string;
+  projectId: string;
+  sessionId: string;
+  runtimeRevision: number;
+  state: AiDesignWorkspaceRuntimeV1;
+  stateSha256: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+const memory = new Map<string, StoredAiDesignWorkspaceRuntime>();
+let redisClient: Redis | null | undefined;
+
+function key(ownerKey: string, projectId: string, sessionId: string): string {
+  return `nf:ai-design-workspace:v1:${createHash('sha256').update(`${ownerKey}\0${projectId}\0${sessionId}`).digest('hex')}`;
+}
+
+function clone<T>(value: T): T { return structuredClone(value); }
+
+function assertRuntimeSize(state: AiDesignWorkspaceRuntimeV1): string {
+  assertAiDesignWorkspaceRuntime(state);
+  let json: string;
+  try { json = JSON.stringify(state); } catch { throw new Error('AI_DESIGN_WORKSPACE_NOT_SERIALIZABLE'); }
+  if (Buffer.byteLength(json, 'utf8') > MAX_AI_DESIGN_WORKSPACE_RUNTIME_BYTES) throw new Error('AI_DESIGN_WORKSPACE_TOO_LARGE');
+  return serverEvidenceSha256(state);
+}
+
+async function redis(): Promise<Redis | null> {
+  if (redisClient !== undefined) return redisClient;
+  if (!process.env.REDIS_URL?.trim()) { redisClient = null; return null; }
+  const { default: IORedis } = await import('ioredis');
+  redisClient = new IORedis(process.env.REDIS_URL, {
+    lazyConnect: true,
+    maxRetriesPerRequest: 1,
+    connectTimeout: 3_000,
+    enableOfflineQueue: false,
+  });
+  return redisClient;
+}
+
+function requirePermittedStore(): void {
+  if (process.env.NEXYFAB_COMMERCIAL_MODE === '1') {
+    // The integration-owned PostgreSQL migration must provide tenant/project
+    // authority and durable CAS. Redis/in-memory state is never release proof.
+    throw new Error('AI_DESIGN_WORKSPACE_POSTGRES_AUTHORITATIVE_REQUIRED');
+  }
+}
+
+function parseStored(raw: string | null): StoredAiDesignWorkspaceRuntime | null {
+  if (!raw) return null;
+  if (Buffer.byteLength(raw, 'utf8') > MAX_AI_DESIGN_WORKSPACE_RUNTIME_BYTES * 2) throw new Error('AI_DESIGN_WORKSPACE_TOO_LARGE');
+  try {
+    const value = JSON.parse(raw) as Partial<StoredAiDesignWorkspaceRuntime>;
+    if (value.schema !== 'nexyfab.server-ai-design-workspace-runtime.v1' || !value.ownerKey || !value.projectId || !value.sessionId || !value.state || !value.stateSha256) return null;
+    if (!evidenceHashMatches(value.state, value.stateSha256)) throw new Error('AI_DESIGN_WORKSPACE_INTEGRITY_FAILED');
+    assertRuntimeSize(value.state);
+    if (value.runtimeRevision !== value.state.runtimeRevision || value.projectId !== value.state.projectId || value.sessionId !== value.state.session.sessionId) throw new Error('AI_DESIGN_WORKSPACE_BINDING_MISMATCH');
+    return value as StoredAiDesignWorkspaceRuntime;
+  } catch (error) {
+    if (error instanceof Error && error.message.startsWith('AI_DESIGN_WORKSPACE_')) throw error;
+    return null;
+  }
+}
+
+function makeRecord(ownerKey: string, state: AiDesignWorkspaceRuntimeV1, createdAt: string, updatedAt: string): StoredAiDesignWorkspaceRuntime {
+  return {
+    schema: 'nexyfab.server-ai-design-workspace-runtime.v1',
+    ownerKey,
+    projectId: state.projectId,
+    sessionId: state.session.sessionId,
+    runtimeRevision: state.runtimeRevision,
+    state: clone(state),
+    stateSha256: assertRuntimeSize(state),
+    createdAt,
+    updatedAt,
+  };
+}
+
+export async function createServerAiDesignWorkspaceRuntime(ownerKey: string, state: AiDesignWorkspaceRuntimeV1): Promise<AiDesignWorkspaceRuntimeV1> {
+  requirePermittedStore();
+  const now = new Date().toISOString();
+  const storageKey = key(ownerKey, state.projectId, state.session.sessionId);
+  const record = makeRecord(ownerKey, state, now, now);
+  const client = await redis();
+  if (client) {
+    const result = await client.set(storageKey, JSON.stringify(record), 'EX', DEFAULT_TTL_SECONDS, 'NX');
+    if (result !== 'OK') throw new Error('AI_DESIGN_WORKSPACE_ALREADY_EXISTS');
+  } else {
+    if (memory.has(storageKey)) throw new Error('AI_DESIGN_WORKSPACE_ALREADY_EXISTS');
+    memory.set(storageKey, record);
+  }
+  return clone(state);
+}
+
+export async function loadServerAiDesignWorkspaceRuntime(ownerKey: string, projectId: string, sessionId: string): Promise<AiDesignWorkspaceRuntimeV1> {
+  requirePermittedStore();
+  const storageKey = key(ownerKey, projectId, sessionId);
+  const client = await redis();
+  const stored = client ? parseStored(await client.get(storageKey)) : memory.get(storageKey) ?? null;
+  if (!stored || stored.ownerKey !== ownerKey || stored.projectId !== projectId || stored.sessionId !== sessionId) throw new Error('AI_DESIGN_WORKSPACE_NOT_FOUND');
+  if (!evidenceHashMatches(stored.state, stored.stateSha256)) throw new Error('AI_DESIGN_WORKSPACE_INTEGRITY_FAILED');
+  assertRuntimeSize(stored.state);
+  return clone(stored.state);
+}
+
+export async function saveServerAiDesignWorkspaceRuntime(
+  ownerKey: string,
+  state: AiDesignWorkspaceRuntimeV1,
+  expectedRevision: number,
+): Promise<AiDesignWorkspaceRuntimeV1> {
+  requirePermittedStore();
+  if (!Number.isSafeInteger(expectedRevision) || expectedRevision < 0 || state.runtimeRevision <= expectedRevision) throw new Error('AI_DESIGN_WORKSPACE_REVISION_TRANSITION_INVALID');
+  const storageKey = key(ownerKey, state.projectId, state.session.sessionId);
+  const client = await redis();
+  if (client) {
+    const current = parseStored(await client.get(storageKey));
+    if (!current || current.ownerKey !== ownerKey) throw new Error('AI_DESIGN_WORKSPACE_NOT_FOUND');
+    if (current.runtimeRevision !== expectedRevision) throw new Error('AI_DESIGN_WORKSPACE_REVISION_CONFLICT');
+    const next = makeRecord(ownerKey, state, current.createdAt, new Date().toISOString());
+    const result = await client.eval(
+      `local current=redis.call('GET',KEYS[1]); if not current then return 0 end; local decoded=cjson.decode(current); if decoded.runtimeRevision~=tonumber(ARGV[1]) then return -1 end; redis.call('SET',KEYS[1],ARGV[2],'EX',ARGV[3]); return 1`,
+      1,
+      storageKey,
+      String(expectedRevision),
+      JSON.stringify(next),
+      String(DEFAULT_TTL_SECONDS),
+    );
+    if (result === -1) throw new Error('AI_DESIGN_WORKSPACE_REVISION_CONFLICT');
+    if (result !== 1) throw new Error('AI_DESIGN_WORKSPACE_NOT_FOUND');
+  } else {
+    const current = memory.get(storageKey);
+    if (!current || current.ownerKey !== ownerKey) throw new Error('AI_DESIGN_WORKSPACE_NOT_FOUND');
+    if (current.runtimeRevision !== expectedRevision) throw new Error('AI_DESIGN_WORKSPACE_REVISION_CONFLICT');
+    memory.set(storageKey, makeRecord(ownerKey, state, current.createdAt, new Date().toISOString()));
+  }
+  return clone(state);
+}
+
+export function resetAiDesignWorkspaceRuntimeStoreForTests(): void {
+  memory.clear();
+  redisClient = undefined;
+}

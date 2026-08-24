@@ -86,6 +86,27 @@ describe("evaluateAiEditTransaction", () => {
     expect(result.issues).toContain("unresolved design inputs remain");
   });
 
+  it("rejects non-finite numeric edit values", () => {
+    const result = evaluateAiEditTransaction(
+      {
+        ...transaction,
+        operations: [{
+          kind: "set_feature_parameter",
+          partId: "bracket-1",
+          featureId: "extrude-1",
+          parameter: "depth",
+          value: Number.NaN,
+          unit: "mm",
+        }],
+      },
+      "rev-7",
+    );
+    expect(result.applicable).toBe(false);
+    expect(result.issues).toContain(
+      "invalid numeric edit value: set_feature_parameter.value",
+    );
+  });
+
   it("requires confirmation for a derived topology reference or AI assumption", () => {
     const derived: AiEditTransaction = {
       ...transaction,

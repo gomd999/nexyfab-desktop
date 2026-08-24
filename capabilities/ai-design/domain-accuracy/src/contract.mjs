@@ -57,12 +57,93 @@ export const DEFAULT_DOMAIN_ACCURACY_POLICY = Object.freeze({
   maximumDestructivePartMerge: 0,
 });
 
+const EVIDENCE_COUNT_FIELDS = [
+  'approvedCases',
+  'independentReviewers',
+  'campaigns',
+  'minimumRepeatsPerCase',
+  'minimumRepeatsPerCampaign',
+  'requiredGateRuns',
+  'requiredGatePasses',
+  'falseVerified',
+  'falseClear',
+  'destructivePartMerge',
+];
+
+const POLICY_POSITIVE_INTEGER_FIELDS = [
+  'minimumCasesPerFamily',
+  'repeatsPerCampaign',
+  'consecutiveCampaigns',
+];
+
+const POLICY_NON_NEGATIVE_INTEGER_FIELDS = [
+  'maximumFalseVerified',
+  'maximumFalseClear',
+  'maximumDestructivePartMerge',
+];
+
+function isRecord(value) {
+  return value !== null && typeof value === 'object' && !Array.isArray(value);
+}
+
+function evidenceInvalid(path) {
+  throw new TypeError(`DOMAIN_ACCURACY_EVIDENCE_INVALID:${path}`);
+}
+
+function policyInvalid(path) {
+  throw new TypeError(`DOMAIN_ACCURACY_POLICY_INVALID:${path}`);
+}
+
+function assertDomainAccuracyEvidence(evidence) {
+  if (!isRecord(evidence)) evidenceInvalid('root');
+  const profile = DOMAIN_ACCURACY_PROFILES[evidence.domain];
+  if (!profile) throw new TypeError(`DOMAIN_ACCURACY_DOMAIN_INVALID:${evidence.domain ?? 'missing'}`);
+
+  for (const field of EVIDENCE_COUNT_FIELDS) {
+    if (!Number.isInteger(evidence[field]) || evidence[field] < 0) evidenceInvalid(field);
+  }
+  if (!Array.isArray(evidence.axes)) evidenceInvalid('axes');
+
+  const allowedAxes = new Set(profile.requiredAxes);
+  const seenAxes = new Set();
+  for (const [index, axis] of evidence.axes.entries()) {
+    if (!isRecord(axis)) evidenceInvalid(`axes[${index}]`);
+    if (typeof axis.axis !== 'string' || !allowedAxes.has(axis.axis)) {
+      evidenceInvalid(`axes[${index}].axis`);
+    }
+    if (seenAxes.has(axis.axis)) evidenceInvalid(`axes[${index}].axis_duplicate`);
+    seenAxes.add(axis.axis);
+    for (const field of ['expected', 'measured', 'passed']) {
+      if (!Number.isInteger(axis[field]) || axis[field] < 0) {
+        evidenceInvalid(`axes[${index}].${field}`);
+      }
+    }
+  }
+}
+
+function assertDomainAccuracyPolicy(policy) {
+  if (!isRecord(policy)) policyInvalid('root');
+  for (const field of POLICY_POSITIVE_INTEGER_FIELDS) {
+    if (!Number.isInteger(policy[field]) || policy[field] < 1) policyInvalid(field);
+  }
+  for (const field of POLICY_NON_NEGATIVE_INTEGER_FIELDS) {
+    if (!Number.isInteger(policy[field]) || policy[field] < 0) policyInvalid(field);
+  }
+  for (const field of ['minimumAccuracy', 'minimumCoverage']) {
+    if (!Number.isFinite(policy[field]) || policy[field] <= 0 || policy[field] > 1) {
+      policyInvalid(field);
+    }
+  }
+  if (policy.requiredGatePassRate !== 1) policyInvalid('requiredGatePassRate');
+}
+
 const ratio = (numerator, denominator) => denominator > 0 ? numerator / denominator : null;
 
 export function assessDomainAccuracy(evidence, policy = DEFAULT_DOMAIN_ACCURACY_POLICY) {
-  const profile = DOMAIN_ACCURACY_PROFILES[evidence?.domain];
-  if (!profile) throw new TypeError(`DOMAIN_ACCURACY_DOMAIN_INVALID:${evidence?.domain ?? 'missing'}`);
-  const byAxis = new Map((evidence.axes ?? []).map(axis => [axis.axis, axis]));
+  assertDomainAccuracyEvidence(evidence);
+  assertDomainAccuracyPolicy(policy);
+  const profile = DOMAIN_ACCURACY_PROFILES[evidence.domain];
+  const byAxis = new Map(evidence.axes.map(axis => [axis.axis, axis]));
   const blockers = [];
 
   if (evidence.approvedCases < policy.minimumCasesPerFamily) {

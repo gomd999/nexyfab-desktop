@@ -9,4 +9,4 @@ export type {
   DomainAccuracyDomain,
   DomainAccuracyEvidence,
   DomainAccuracyAssessment,
-} from '../../../src/lib/ai/domainAccuracyProgram';
+} from './src/contract.mjs';

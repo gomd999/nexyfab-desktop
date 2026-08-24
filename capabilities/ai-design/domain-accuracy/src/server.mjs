@@ -10,6 +10,13 @@ const HEALTH_ROUTES = new Map([
   ['/health/release', 'release'],
 ]);
 
+class HttpRequestError extends Error {
+  constructor(statusCode, code) {
+    super(code);
+    this.statusCode = statusCode;
+  }
+}
+
 function sendJson(response, statusCode, payload, headOnly = false) {
   const body = `${JSON.stringify(payload)}\n`;
   response.writeHead(statusCode, {
@@ -21,14 +28,35 @@ function sendJson(response, statusCode, payload, headOnly = false) {
 }
 
 async function readJson(request) {
+  const mediaType = String(request.headers['content-type'] ?? '')
+    .split(';', 1)[0]
+    .trim()
+    .toLowerCase();
+  if (mediaType !== 'application/json' && !mediaType.endsWith('+json')) {
+    throw new HttpRequestError(415, 'content_type_must_be_application_json');
+  }
   const chunks = [];
   let bytes = 0;
   for await (const chunk of request) {
     bytes += chunk.length;
-    if (bytes > 1048576) throw new Error('request_too_large');
+    if (bytes > 1048576) throw new HttpRequestError(413, 'request_too_large');
     chunks.push(chunk);
   }
-  return JSON.parse(Buffer.concat(chunks).toString('utf8'));
+  try {
+    return JSON.parse(Buffer.concat(chunks).toString('utf8'));
+  } catch {
+    throw new HttpRequestError(400, 'contract_input_invalid');
+  }
+}
+
+function contractErrorResponse(error) {
+  if (error instanceof HttpRequestError) {
+    return { statusCode: error.statusCode, code: error.message };
+  }
+  if (error instanceof TypeError && /^DOMAIN_ACCURACY_[A-Z_]+:/.test(error.message)) {
+    return { statusCode: 400, code: error.message };
+  }
+  return { statusCode: 400, code: 'contract_input_invalid' };
 }
 
 function authenticated(request, env) {
@@ -66,7 +94,8 @@ export function createAiServer(env = process.env, now = () => new Date(), fetche
         const input = await readJson(request);
         sendJson(response, 200, assessDomainAccuracy(input));
       } catch (error) {
-        sendJson(response, 400, { error: error instanceof Error ? error.message : 'contract_input_invalid' });
+        const failure = contractErrorResponse(error);
+        sendJson(response, failure.statusCode, { error: failure.code });
       }
       return;
     }

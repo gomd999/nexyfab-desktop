@@ -6,6 +6,7 @@ import {
   type DomainAccuracyDomain,
   type DomainAccuracyEvidence,
 } from './domainAccuracyProgram';
+import { DEFAULT_COMPLEX_BENCHMARK_POLICY_V2 } from './complexProductBenchmarkV2';
 
 function passingEvidence(domain: DomainAccuracyDomain): DomainAccuracyEvidence {
   return {
@@ -92,5 +93,38 @@ describe('parallel domain accuracy release contract', () => {
       ? { ...item, expected: 10, measured: 11, passed: 12 }
       : item);
     expect(assessDomainAccuracy(evidence).blockers).toContain('counts_invalid:storeys_grids');
+  });
+
+  it('rejects missing, coerced, negative, duplicate, or out-of-scope evidence', () => {
+    const evidence = passingEvidence('mechanical');
+    const invalid = [
+      [{ ...evidence, approvedCases: undefined }, 'approvedCases'],
+      [{ ...evidence, approvedCases: '20' }, 'approvedCases'],
+      [{ ...evidence, falseVerified: -1 }, 'falseVerified'],
+      [{ ...evidence, axes: [...evidence.axes, evidence.axes[0]] }, 'axis_duplicate'],
+      [{ ...evidence, axes: [{ ...evidence.axes[0], axis: 'unknown_axis' }] }, 'axis'],
+      [{ ...evidence, axes: [{ ...evidence.axes[0], measured: -1 }] }, 'measured'],
+    ] as const;
+
+    for (const [value, path] of invalid) {
+      expect(() => assessDomainAccuracy(value as unknown as DomainAccuracyEvidence))
+        .toThrow(`DOMAIN_ACCURACY_EVIDENCE_INVALID:`);
+      expect(() => assessDomainAccuracy(value as unknown as DomainAccuracyEvidence))
+        .toThrow(path);
+    }
+  });
+
+  it('rejects policies that could weaken the governed release contract', () => {
+    const evidence = passingEvidence('interior');
+    const invalidPolicies = [
+      { ...DEFAULT_COMPLEX_BENCHMARK_POLICY_V2, minimumCasesPerFamily: 0 },
+      { ...DEFAULT_COMPLEX_BENCHMARK_POLICY_V2, minimumAccuracy: Number.NaN },
+      { ...DEFAULT_COMPLEX_BENCHMARK_POLICY_V2, minimumCoverage: 1.1 },
+      { ...DEFAULT_COMPLEX_BENCHMARK_POLICY_V2, requiredGatePassRate: 0.95 },
+    ];
+    for (const policy of invalidPolicies) {
+      expect(() => assessDomainAccuracy(evidence, policy as typeof DEFAULT_COMPLEX_BENCHMARK_POLICY_V2))
+        .toThrow('DOMAIN_ACCURACY_POLICY_INVALID:');
+    }
   });
 });

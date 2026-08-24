@@ -43,4 +43,27 @@ describe('domain-accuracy slice compatibility', () => {
       expect(assessSlice(missingAxis)).toEqual(assessLegacy(missingAxis));
     }
   });
+
+  it('rejects malformed evidence with identical stable contract errors', () => {
+    const passing = passingEvidence('mechanical');
+    const invalid = [
+      { ...passing, approvedCases: undefined },
+      { ...passing, approvedCases: '20' },
+      { ...passing, axes: [...passing.axes, passing.axes[0]] },
+      { ...passing, axes: [{ ...passing.axes[0], expected: -1 }] },
+    ];
+
+    for (const value of invalid) {
+      const invoke = (assess: (evidence: DomainAccuracyEvidence) => unknown) => {
+        try {
+          assess(value as unknown as DomainAccuracyEvidence);
+          return null;
+        } catch (error) {
+          return error instanceof Error ? error.message : String(error);
+        }
+      };
+      expect(invoke(assessSlice)).toBe(invoke(assessLegacy));
+      expect(invoke(assessSlice)).toMatch(/^DOMAIN_ACCURACY_EVIDENCE_INVALID:/);
+    }
+  });
 });
