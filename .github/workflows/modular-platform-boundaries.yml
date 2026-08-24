@@ -13,6 +13,10 @@ on:
       - "domains/**"
       - "docs/evidence/platform-runtime/**"
       - "packages/**"
+      - "workers/**"
+      - "services/**"
+      - "collab-worker/**"
+      - "cron-worker/**"
       - "scripts/platform/**"
       - "scripts/workspaces/**"
       - "src/lib/platform/**"
@@ -32,6 +36,9 @@ on:
       - "docs/evidence/platform-runtime/**"
       - "packages/**"
       - "workers/**"
+      - "services/**"
+      - "collab-worker/**"
+      - "cron-worker/**"
       - "scripts/platform/**"
       - "scripts/workspaces/**"
       - "src/lib/platform/**"
@@ -51,18 +58,12 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
-          node-version: 22
+          node-version: '22.23.2'
           cache: npm
       - run: npm ci --legacy-peer-deps
-      - run: npm run platform:architecture:check
-      - run: npm run test:slices
-      - run: npm run platform:slices:readiness
-      - run: npm run platform:slices:rollback:check
-      - run: node --test scripts/platform/validate-platform-architecture.test.mjs
-      - run: node --test scripts/platform/evaluate-runtime-placement-readiness.test.mjs
-      - run: node scripts/platform/evaluate-runtime-placement-readiness.mjs --allow-hold
-      - run: npx vitest run src/lib/platform/contracts.test.ts --reporter=dot
+      - run: npm run ci:actions:check
+      - run: npm run test:platform
       - run: npm run typecheck
