@@ -1,7 +1,7 @@
 {
   "schema": "nexyfab.slice-deployment-readiness-receipt.v2",
-  "generatedAt": "2026-08-23T17:07:54.460Z",
-  "gitHead": "97e36dca31eec7c5a4d098848ecdef2510f5f083",
+  "generatedAt": "2026-08-23T19:26:34.439Z",
+  "gitHead": "4b38f98c47dff86dd9cc866e4f4f981d5a1389e2",
   "verification": {
     "sourceBinding": "PASS",
     "imageBinding": "PASS",
@@ -56,21 +56,21 @@
       {
         "scope": "platform",
         "unit": "core-api",
-        "imageId": "sha256:8cfae686366fd45de7c679673286a9d43d78ad937940c545106474ff55e105e6",
+        "imageId": "sha256:58e8cd5a3c441358e673a0a6313add84ac96f4011ff66d51d819b2d917842c2d",
         "sourceTreeSha256": "1f33bd2aef0239f1c95681b1d349e3831131bff6968d26f9b187c4ac2191e601",
         "state": "PASS_WITH_RELEASE_HOLD"
       },
       {
         "scope": "precision-cad",
         "unit": "precision-single-part-candidate",
-        "imageId": "sha256:5d1725bf8806b89c869bf9ccfe31efdd764bdf6e059ffa9008e189b7ba76f724",
+        "imageId": "sha256:59e8387a5dec4f9ac3e696f607a411b1c9c09ea196a12b382fe5f4f2d1903c96",
         "sourceTreeSha256": "1fd44c23e7b2b66a20bcd55fd835924067129d2669385eb82cb33719992c3dca",
         "state": "PASS_WITH_RELEASE_HOLD"
       },
       {
         "scope": "ai-design",
         "unit": "ai-domain-accuracy",
-        "imageId": "sha256:d5ecda58c0218534e57ad65ca64e96192142e0cba08d0d9a326a7f85e215914e",
+        "imageId": "sha256:481e57dcf554d3b30c04f4c2737fcf894081f28db60639c1661cae83b8513098",
         "sourceTreeSha256": "ac72fb5c846ff4e01730c06a20b8ad1167243410fd1e1cb1921def80b5357e49",
         "state": "PASS_WITH_RELEASE_HOLD"
       }

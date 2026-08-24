@@ -5,7 +5,7 @@ import localRuntimeEvidence from '../../docs/evidence/platform-runtime/slice-loc
 import stagingEvidence from '../../docs/evidence/platform-runtime/slice-deployment-staging.json' with { type: 'json' };
 import { evaluateLocalRuntimeEvidence, evaluateSliceDeploymentReadiness, evaluateStagingEvidence } from './verify-slice-deployment-readiness.mjs';
 
-const evidenceNow = new Date('2026-08-23T16:30:00.000Z');
+const evidenceNow = new Date(Date.parse(localRuntimeEvidence.generatedAt) + 60_000);
 const contextFingerprints = Object.fromEntries(localRuntimeEvidence.slices.map(slice => [slice.scope, {
   sha256: slice.sourceTreeSha256,
   fileCount: slice.sourceFileCount,
@@ -62,7 +62,7 @@ test('local runtime evidence fails closed when current source tree changes', () 
 test('local runtime evidence expires after the declared freshness window', () => {
   const result = evaluateLocalRuntimeEvidence(localRuntimeEvidence, manifest, {
     ...localOptions,
-    now: new Date('2026-09-01T00:00:00.000Z'),
+    now: new Date(Date.parse(localRuntimeEvidence.generatedAt) + 8 * 24 * 60 * 60_000),
   });
   assert.equal(result.ok, false);
   assert.match(result.issues.join(','), /local_runtime_evidence_stale/);

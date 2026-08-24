@@ -1,7 +1,7 @@
 {
   "schema": "nexyfab.slice-local-runtime-evidence.v1",
-  "generatedAt": "2026-08-23T16:28:35.000Z",
-  "integrationHeadAtVerification": "f24076d2366fdeaf2d14cab0dd2531adcc55cb27",
+  "generatedAt": "2026-08-23T19:26:19.205Z",
+  "integrationHeadAtVerification": "4b38f98c47dff86dd9cc866e4f4f981d5a1389e2",
   "environment": {
     "provider": "Docker Desktop",
     "engineVersion": "29.3.1",
@@ -20,17 +20,36 @@
         "dockerfile": "apps/core-api/Dockerfile",
         "buildId": "1f33bd2aef02",
         "image": "nexyfab/core-api-slice:1f33bd2aef02",
-        "imageId": "sha256:8cfae686366fd45de7c679673286a9d43d78ad937940c545106474ff55e105e6",
+        "imageId": "sha256:58e8cd5a3c441358e673a0a6313add84ac96f4011ff66d51d819b2d917842c2d",
         "state": "PASS"
       },
       "health": {
         "dockerStatus": "healthy",
         "readinessAssurance": "ISOLATED_BINDING_ONLY",
-        "live": { "path": "/api/health/live", "statusCode": 200, "state": "ok", "build": "1f33bd2aef02" },
-        "ready": { "path": "/api/health/ready", "statusCode": 503, "state": "HOLD", "reason": "active_probe_required" },
-        "release": { "path": "/api/health/release", "statusCode": 503, "state": "HOLD" }
+        "live": {
+          "path": "/api/health/live",
+          "statusCode": 200,
+          "state": "ok",
+          "build": "1f33bd2aef02"
+        },
+        "ready": {
+          "path": "/api/health/ready",
+          "statusCode": 503,
+          "state": "HOLD",
+          "build": "1f33bd2aef02",
+          "reason": "dependency_probe_failed:legacyNext:active_probe_required"
+        },
+        "release": {
+          "path": "/api/health/release",
+          "statusCode": 503,
+          "state": "HOLD",
+          "build": "1f33bd2aef02",
+          "reason": "deploy_disabled"
+        }
       },
-      "tests": { "state": "PASS", "passed": 4 }
+      "tests": {
+        "state": "PASS"
+      }
     },
     {
       "scope": "precision-cad",
@@ -44,17 +63,36 @@
         "dockerfile": "capabilities/precision-cad/single-part-candidate/Dockerfile",
         "buildId": "1fd44c23e7b2",
         "image": "nexyfab/precision-single-part:1fd44c23e7b2",
-        "imageId": "sha256:5d1725bf8806b89c869bf9ccfe31efdd764bdf6e059ffa9008e189b7ba76f724",
+        "imageId": "sha256:59e8387a5dec4f9ac3e696f607a411b1c9c09ea196a12b382fe5f4f2d1903c96",
         "state": "PASS"
       },
       "health": {
         "dockerStatus": "healthy",
         "readinessAssurance": "ISOLATED_BINDING_ONLY",
-        "live": { "path": "/health/live", "statusCode": 200, "state": "ok", "build": "1fd44c23e7b2" },
-        "ready": { "path": "/health/ready", "statusCode": 503, "state": "HOLD", "reason": "active_probe_required" },
-        "release": { "path": "/health/release", "statusCode": 503, "state": "HOLD" }
+        "live": {
+          "path": "/health/live",
+          "statusCode": 200,
+          "state": "ok",
+          "build": "1fd44c23e7b2"
+        },
+        "ready": {
+          "path": "/health/ready",
+          "statusCode": 503,
+          "state": "HOLD",
+          "build": "1fd44c23e7b2",
+          "reason": "dependency_probe_failed:exactKernel:active_probe_required"
+        },
+        "release": {
+          "path": "/health/release",
+          "statusCode": 503,
+          "state": "HOLD",
+          "build": "1fd44c23e7b2",
+          "reason": "deploy_disabled"
+        }
       },
-      "tests": { "state": "PASS", "passed": 5 }
+      "tests": {
+        "state": "PASS"
+      }
     },
     {
       "scope": "ai-design",
@@ -68,17 +106,36 @@
         "dockerfile": "capabilities/ai-design/domain-accuracy/Dockerfile",
         "buildId": "ac72fb5c846f",
         "image": "nexyfab/ai-domain-accuracy:ac72fb5c846f",
-        "imageId": "sha256:d5ecda58c0218534e57ad65ca64e96192142e0cba08d0d9a326a7f85e215914e",
+        "imageId": "sha256:481e57dcf554d3b30c04f4c2737fcf894081f28db60639c1661cae83b8513098",
         "state": "PASS"
       },
       "health": {
         "dockerStatus": "healthy",
         "readinessAssurance": "ISOLATED_BINDING_ONLY",
-        "live": { "path": "/health/live", "statusCode": 200, "state": "ok", "build": "ac72fb5c846f" },
-        "ready": { "path": "/health/ready", "statusCode": 503, "state": "HOLD", "reason": "active_probe_required" },
-        "release": { "path": "/health/release", "statusCode": 503, "state": "HOLD" }
+        "live": {
+          "path": "/health/live",
+          "statusCode": 200,
+          "state": "ok",
+          "build": "ac72fb5c846f"
+        },
+        "ready": {
+          "path": "/health/ready",
+          "statusCode": 503,
+          "state": "HOLD",
+          "build": "ac72fb5c846f",
+          "reason": "dependency_probe_failed:analysis:active_probe_required"
+        },
+        "release": {
+          "path": "/health/release",
+          "statusCode": 503,
+          "state": "HOLD",
+          "build": "ac72fb5c846f",
+          "reason": "deploy_disabled"
+        }
       },
-      "tests": { "state": "PASS", "passed": 4 }
+      "tests": {
+        "state": "PASS"
+      }
     }
   ],
   "cleanup": {

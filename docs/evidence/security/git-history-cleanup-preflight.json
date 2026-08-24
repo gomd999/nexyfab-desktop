@@ -1,0 +1,66 @@
+{
+  "schema": "nexyfab.git-history-cleanup-preflight.v1",
+  "generatedAt": "2026-08-23T19:31:13.046Z",
+  "integrationHead": "4b38f98c47dff86dd9cc866e4f4f981d5a1389e2",
+  "mutationPerformed": false,
+  "authorizationRequiredBeforeRewrite": true,
+  "backup": {
+    "file": "nexyfab-all-refs-before-history-rewrite.bundle",
+    "byteLength": 380043371,
+    "sha256": "cbdbb84914ac7cfa9dec985d7de43e8cd4f44383192a79f7a8758894ef00f98f",
+    "verification": "PASS"
+  },
+  "repository": {
+    "fsck": "PASS",
+    "refCount": 245,
+    "worktreeCount": 40,
+    "filterRepoAvailable": false
+  },
+  "candidatePaths": [
+    {
+      "path": "public/send-mail.php",
+      "reachableCommitCount": 12,
+      "trackedEntryCountAtHead": 1
+    },
+    {
+      "path": "public/uploads",
+      "reachableCommitCount": 12,
+      "trackedEntryCountAtHead": 15
+    }
+  ],
+  "dirtyWorktrees": [
+    {
+      "name": "new",
+      "branch": "integration/nexyfab",
+      "dirtyFileCount": 30
+    },
+    {
+      "name": "agent-ac8e1b72e7639fcdf",
+      "branch": "worktree-agent-ac8e1b72e7639fcdf",
+      "dirtyFileCount": 1
+    },
+    {
+      "name": "ai-design",
+      "branch": "scope/ai-design",
+      "dirtyFileCount": 26
+    },
+    {
+      "name": "platform",
+      "branch": "scope/platform",
+      "dirtyFileCount": 43
+    },
+    {
+      "name": "precision-cad",
+      "branch": "scope/precision-cad",
+      "dirtyFileCount": 28
+    }
+  ],
+  "requiredBeforeRewrite": [
+    "rotate every exposed credential before treating history removal as remediation",
+    "freeze pushes and collect or commit every dirty worktree",
+    "install git-filter-repo and agree the exact path and replacement rules",
+    "coordinate force-push timing and protected-branch overrides",
+    "re-clone or rebase every collaborator and CI checkout after the rewrite",
+    "repeat secret scanning, repository fsck, and bundle verification on rewritten refs"
+  ]
+}
