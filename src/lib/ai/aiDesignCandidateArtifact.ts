@@ -1,3 +1,4 @@
+import 'server-only';
 import { createHash } from 'node:crypto';
 
 export const AI_DESIGN_CANDIDATE_ARTIFACT_SCHEMA = 'nexyfab.ai-design-candidate-artifact.v1' as const;
@@ -5,7 +6,7 @@ export type AiDesignArtifactStatus = 'published' | 'superseded' | 'invalidated';
 export type AiDesignArtifactEvidenceStatus = 'verified' | 'failed' | 'unknown' | 'not_run' | 'invalidated';
 
 const SHA256 = /^[a-f0-9]{64}$/;
-const ID = /^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/;
+const ID = /^[A-Za-z0-9][A-Za-z0-9._:/-]{0,199}$/;
 const MAX = 100;
 
 export interface AiDesignCandidateEvidenceRef {
@@ -53,7 +54,7 @@ export interface AiDesignCandidateArtifactV1 {
 }
 
 export type CreateAiDesignCandidateArtifactInput = Omit<AiDesignCandidateArtifactV1, 'schema' | 'manifestDigest'> & {
-  /** A non-serializable trust marker is deliberately required by the factory. */
+  /** Runtime guard in addition to this module's server-only import. */
   trustedServer: true;
 };
 
@@ -111,6 +112,9 @@ export function validateAiDesignCandidateArtifact(value: unknown): string[] {
   const server = artifact.server;
   if (!server || !validId(server.generatorId) || !validId(server.modelId) || !validId(server.runtimeId) || !validDigest(server.workerBuildDigest) || !validId(server.generationRunId)) issues.push('server_metadata_invalid');
   if (artifact.supersedes !== null && !validId(artifact.supersedes)) issues.push('supersedes_invalid');
+  if (artifact.supersedes === artifact.artifactId) issues.push('artifact_cannot_supersede_itself');
+  if (artifact.artifactRevision === 1 && artifact.supersedes !== null) issues.push('artifact_initial_revision_cannot_supersede');
+  if ((artifact.artifactRevision ?? 0) > 1 && artifact.supersedes === null) issues.push('artifact_lineage_required');
   if (issues.length === 0 && artifact.manifestDigest !== digest(manifestMaterial(artifact as AiDesignCandidateArtifactV1))) issues.push('manifest_digest_mismatch');
   return [...new Set(issues)];
 }
@@ -136,11 +140,18 @@ export class InMemoryAiDesignCandidateArtifactStore implements AiDesignCandidate
     if (issues.length) return { ok: false as const, issues };
     const previous = this.values.get(artifact.artifactId);
     if (previous) return { ok: false as const, issues: previous.manifestDigest === artifact.manifestDigest ? ['artifact_already_appended'] : ['artifact_overwrite_forbidden'] };
+    if (artifact.supersedes) {
+      const prior = this.values.get(artifact.supersedes);
+      if (!prior) return { ok: false as const, issues: ['superseded_artifact_not_found'] };
+      if (prior.projectId !== artifact.projectId || prior.sessionId !== artifact.sessionId || prior.candidateId !== artifact.candidateId) return { ok: false as const, issues: ['artifact_lineage_scope_mismatch'] };
+      if (artifact.artifactRevision !== prior.artifactRevision + 1) return { ok: false as const, issues: ['artifact_lineage_revision_mismatch'] };
+    }
     this.values.set(artifact.artifactId, artifact);
     return { ok: true as const };
   }
   get(artifactId: string) { return this.values.get(artifactId); }
   list(scope: AiDesignArtifactOwnershipScope) { return [...this.values.values()].filter(item => validateAiDesignCandidateArtifactOwnership(item, scope).length === 0); }
+  reset(): void { this.values.clear(); }
 }
 
 export function aiDesignCandidateArtifactManifestDigest(artifact: AiDesignCandidateArtifactV1): string { return artifact.manifestDigest; }
