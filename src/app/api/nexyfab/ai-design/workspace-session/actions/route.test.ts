@@ -9,6 +9,7 @@ const mocks = vi.hoisted(() => ({
   advance: vi.fn(async () => ({ ok: true, state: { runtimeRevision: 2 }, replayed: false, receipts: [], generationRequested: true })),
   worker: vi.fn(() => vi.fn()),
   load: vi.fn(),
+  evaluate: vi.fn(),
 }));
 
 vi.mock('@/lib/auth-middleware', () => ({ getAuthUser: vi.fn(async () => mocks.auth) }));
@@ -20,6 +21,7 @@ vi.mock('@/lib/ai/aiDesignWorkspaceActionService', () => ({ executeAiDesignWorks
 vi.mock('@/lib/ai/aiDesignServerGenerationWorker', () => ({ createAiDesignServerGenerationWorker: mocks.worker }));
 vi.mock('@/lib/ai/aiDesignWorkspaceRuntimeStore', () => ({ loadServerAiDesignWorkspaceRuntime: mocks.load }));
 vi.mock('@/lib/ai/aiDesignServerRuntimeArtifacts', () => ({ aiDesignServerRuntimeArtifacts: {} }));
+vi.mock('@/lib/ai/aiDesignComplexEvaluationService', () => ({ evaluateAiDesignComplexCandidateSet: mocks.evaluate }));
 
 import { POST } from './route';
 
@@ -57,6 +59,6 @@ describe('AI Design workspace action route', () => {
     const response = await POST(post({ ...base, type: 'RUN_GENERATION_STAGE_REQUEST', payload: {} }));
     expect(response.status).toBe(202);
     expect(mocks.worker).toHaveBeenCalledWith(expect.objectContaining({ plan: 'free', userId: 'user-1' }));
-    expect(mocks.advance).toHaveBeenCalledWith('user-1:project-1', 'project-1', 'session-1', expect.objectContaining({ worker: expect.any(Function) }), 0);
+    expect(mocks.advance).toHaveBeenCalledWith('user-1:project-1', 'project-1', 'session-1', expect.objectContaining({ worker: expect.any(Function), evaluatePublishedConcepts: expect.any(Function) }), 0);
   });
 });

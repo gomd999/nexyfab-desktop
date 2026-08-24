@@ -96,12 +96,14 @@ describe('AI Design workspace action service', () => {
       });
       return { outputDigest, source: 'ai-design-worker-v2', codes: ['concept_only'] };
     });
+    const evaluatePublishedConcepts = vi.fn(async ({ candidates }: { candidates: readonly { candidateId: string }[] }) => candidates.map(candidate => ({ candidateId: candidate.candidateId, conceptReviewReady: true, status: 'INCOMPLETE' as const })));
     let advanced;
     for (let index = 0; index < 4; index += 1) {
       advanced = await advanceServerAiDesignGeneration('owner-1', 'project-1', 'session-1', {
         worker, receiptSink: sink, signingSecret: secret, now: () => now,
         loadStageArtifactByOutputDigest: digest => sink.getStageArtifactByOutputDigest(digest),
         putCandidateArtifactImmutable: artifact => sink.putCandidateArtifactImmutable(artifact),
+        evaluatePublishedConcepts,
       });
       if (!advanced.ok) throw new Error(`${advanced.code}:${advanced.issues?.join(',') ?? ''}`);
     }
@@ -111,5 +113,6 @@ describe('AI Design workspace action service', () => {
     expect(candidates).toHaveLength(2);
     expect(candidates?.every(candidate => candidate.evidence.every(item => item.status === 'unknown') && candidate.metrics.length === 0)).toBe(true);
     expect(sink.listCandidateArtifacts({ projectId: 'project-1', sessionId: 'session-1' })).toHaveLength(2);
+    expect(evaluatePublishedConcepts).toHaveBeenCalledTimes(1);
   });
 });
