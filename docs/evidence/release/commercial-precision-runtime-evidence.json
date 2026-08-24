@@ -1,6 +1,6 @@
 {
   "schema": "nexyfab.commercial-precision-runtime-evidence.v1",
-  "generatedAt": "2026-08-24T21:42:38.418Z",
+  "generatedAt": "2026-08-24T23:25:36.715Z",
   "status": "HOLD",
   "release": null,
   "environment": null,
@@ -8,8 +8,8 @@
   "migration": null,
   "migrationSource": {
     "path": "src/lib/db-postgres-migration-2026082502.sql",
-    "bytes": 5623,
-    "sha256": "07451ebcc671a837bb51c6fed94e6874068814a51c4da674aa0b89b7595f3ec9"
+    "bytes": 5508,
+    "sha256": "69c830cb4fa11fb7637f325098d0c0b1a920caeba9802fbbe4a8658f00055f30"
   },
   "observationBinding": null,
   "evidenceBindings": {
@@ -98,6 +98,6 @@
     "productionRequiresSameDeployment": true,
     "independentCadOrManufacturingCertified": false
   },
-  "receiptSha256": "77def5750fce80c4272cc766e84768191b7f94ee968ff5c0af74aa49b7f61f14",
+  "receiptSha256": "41d91fd8cef0f7cbf62f5fac27023639a114f222b93af7deac39939a63060d0e",
   "receiptHmacSha256": null
 }
