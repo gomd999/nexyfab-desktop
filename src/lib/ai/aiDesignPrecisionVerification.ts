@@ -155,7 +155,14 @@ export function issueAiDesignPrecisionVerificationReceipt(input: {
     manufacturingReleaseReady: false as const,
   };
   const receiptDigest = serverEvidenceSha256(base);
-  return Object.freeze({ ...base, receiptDigest, signature: signatureFor(receiptDigest, signingSecret) });
+  const receipt = Object.freeze({ ...base, receiptDigest, signature: signatureFor(receiptDigest, signingSecret) });
+  const verification = verifyAiDesignPrecisionVerificationReceipt(receipt, input.request, {
+    signingSecret, now: new Date(issuedAt),
+    expectedRuntimeRevision: input.request.runtimeRevision,
+    expectedComplexRevision: input.request.complexRevision,
+  });
+  if (!verification.ok) throw new Error(`AI_DESIGN_PRECISION_RECEIPT_INVALID:${verification.issues.join(',')}`);
+  return receipt;
 }
 
 export function verifyAiDesignPrecisionVerificationReceipt(
@@ -173,7 +180,12 @@ export function verifyAiDesignPrecisionVerificationReceipt(
   if (receipt.productStructureDigest !== request.productStructureDigest || receipt.crossDomainContentHash !== request.crossDomainContentHash) issues.push('precision_receipt_content_mismatch');
   if (!['PASS', 'FAIL'].includes(receipt.status) || receipt.manufacturingReleaseReady !== false) issues.push('precision_receipt_authority_invalid');
   if (!receipt.issuer || receipt.issuer.system !== 'precision-cad' || !ID.test(receipt.issuer.keyId ?? '')) issues.push('precision_receipt_issuer_invalid');
-  if (!timestamp(receipt.issuedAt) || !timestamp(receipt.expiresAt) || Date.parse(receipt.expiresAt) <= Date.parse(receipt.issuedAt) || now.getTime() > Date.parse(receipt.expiresAt)) issues.push('precision_receipt_expired');
+  if (!timestamp(receipt.issuedAt) || !timestamp(receipt.expiresAt)
+    || Date.parse(receipt.issuedAt) < Date.parse(request.requestedAt)
+    || Date.parse(receipt.issuedAt) >= Date.parse(request.expiresAt)
+    || Date.parse(receipt.expiresAt) <= Date.parse(receipt.issuedAt)
+    || Date.parse(receipt.expiresAt) > Date.parse(request.expiresAt)
+    || now.getTime() > Date.parse(receipt.expiresAt)) issues.push('precision_receipt_expired');
   if (!Array.isArray(receipt.scopeResults) || receipt.scopeResults.length !== request.scopes.length || !uniqueScopes(receipt.scopeResults) || receipt.scopeResults.some(item => !validScope(item) || !['PASS', 'FAIL'].includes(item.status) || (item.exactArtifactDigest !== null && !SHA256.test(item.exactArtifactDigest ?? '')) || !Array.isArray(item.codes) || item.codes.length > 64 || item.codes.some((code: unknown) => typeof code !== 'string' || !ID.test(code)))) issues.push('precision_receipt_scope_invalid');
   const requested = new Set(request.scopes.map(scopeKey));
   if (Array.isArray(receipt.scopeResults) && receipt.scopeResults.some(item => !requested.has(scopeKey(item)))) issues.push('precision_receipt_scope_mismatch');
