@@ -5,7 +5,7 @@ import { makeEnqueueFixture, NOW } from './commercialExecutionOutboxStore.testFi
 import { canonicalJson, DurableExecutionJournal, hashReceipt, type ExecutionJournalReceipt } from './executionJournal';
 
 describe('commercial enqueue PostgreSQL transaction contract', () => {
-  vi.stubEnv('POSTGRES_MIGRATION_CHECKSUM', 'f'.repeat(64)); vi.stubEnv('POSTGRES_MIGRATION_CHECKSUM_2026082203', 'f'.repeat(64)); vi.stubEnv('NEXYFAB_COMMERCIAL_MODE', '1');
+  vi.stubEnv('POSTGRES_MIGRATION_CHECKSUM', 'f'.repeat(64)); vi.stubEnv('POSTGRES_MIGRATION_CHECKSUM_2026082502', 'f'.repeat(64)); vi.stubEnv('NEXYFAB_COMMERCIAL_MODE', '1');
   it('atomically consumes approval, writes journal+claim+outbox, and never executes network/worker', async () => {
     const fixture = await makeEnqueueFixture(); const executor = vi.fn();
     const result = await enqueueCommercialExecutionTransaction(fixture.input);
@@ -15,6 +15,7 @@ describe('commercial enqueue PostgreSQL transaction contract', () => {
     expect(state.journal).toMatchObject({ execution_id: fixture.input.job.executionId, idempotency_key: fixture.input.journal.idempotencyKey, receipt_json: fixture.input.journal.receiptJson, receipt_hash: fixture.input.journal.receiptHash, approval_hash: fixture.input.journal.approvalHash });
     expect(state.claim).toMatchObject({ challenge_id: fixture.challenge.challengeId, call_id: fixture.input.job.callId, arguments_hash: fixture.input.job.argumentsHash });
     expect(state.outbox).toMatchObject({ job_id: fixture.input.job.jobId, job_hash: result.ok ? result.row.jobHash : '', job_json: canonicalCommercialExecution(fixture.input.job) });
+    expect(state.inputArtifact).toMatchObject({ job_id: fixture.input.job.jobId, artifact_id: fixture.input.job.inputArtifact?.artifactId, content_sha256: fixture.input.job.inputArtifact?.contentSha256 });
   });
 
   it('returns replay only for byte-exact job/journal/challenge/claim binding', async () => {

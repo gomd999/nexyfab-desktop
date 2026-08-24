@@ -1,5 +1,34 @@
 # Precision CAD current session
 
+## 2026-08-25 commercial worker v3 immutable I/O closure
+
+- Status: `SOURCE_CLOSED_LOOP_PASS / EXTERNAL_RUNTIME_NOT_RUN / RELEASE_HOLD`.
+- Integration foundation: `8673bd45` versions the execution contract to
+  `nexyfab.precision-cad-commercial-execution.v3` and migration `2026082502`.
+- A commercial request now stages one canonical, content-addressed private
+  input object and persists its exact identity in the same PostgreSQL
+  transaction as approval, journal, claim, and outbox. Exact replay includes
+  that input row and fails closed on absence or substitution.
+- The authenticated claim route rechecks the immutable input row and object
+  hash before returning an HMAC-bound transport. A lease-scoped artifact
+  gateway serves the input and accepts only fixed-identity, content-verified
+  `model`, `report`, and `verification` output commits.
+- `scripts/drawing-to-3d/commercial-precision-worker.mjs` is a deployable Node
+  client for claim, input readback, an explicitly configured native executable,
+  three immutable output commits, Ed25519 receipt signing, callback HMAC, and a
+  fail-closed health contract. It never substitutes a JavaScript geometry
+  fallback for the configured native executable.
+- Verification: TypeScript PASS; platform architecture PASS; focused worker
+  client, contract, route, transaction, and Precision regressions `216/216`
+  PASS. The worker test executes a separate native-process fixture, uploads
+  exactly three outputs, and independently verifies its Ed25519 PASS receipt.
+- Boundary: no real production-class native CAD executable, worker service,
+  registry key, or self-test job has been deployed or evidenced. Independent
+  STEP/native-CAD interoperability, topology/XCAF/GD&T review, sustained
+  recovery evidence, experts, and manufacturing pilots remain required.
+- Immutable handoff:
+  `HANDOFFS/20260824T202926Z-commercial-worker-v3-immutable-io.md`.
+
 ## 2026-08-25 commercial migration compatibility closure
 
 - Status: `CURRENT_MIGRATION_COMPATIBLE / RELEASE_HOLD`.

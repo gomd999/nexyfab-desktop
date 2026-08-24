@@ -7,6 +7,7 @@ const mocks = vi.hoisted(() => ({
   claim: vi.fn(), release: vi.fn(), catalog: vi.fn(), executeRemote: vi.fn(), worker: vi.fn(),
   persist: vi.fn(), ensureArtifacts: vi.fn(), storage: vi.fn(), tenant: vi.fn(), audit: vi.fn(),
   ensureBoundary: vi.fn(), issue: vi.fn(), consume: vi.fn(), token: vi.fn(), dispatch: vi.fn(), enqueue: vi.fn(), cadRef: vi.fn(),
+  stored: new Map<string, Buffer>(),
 }));
 vi.mock('@/lib/auth-middleware', () => ({ getAuthUser: mocks.auth }));
 vi.mock('@/lib/csrf', () => ({ checkOrigin: mocks.origin }));
@@ -22,18 +23,19 @@ vi.mock('@/lib/precision-cad-agent/remoteAgentApi', () => ({
 vi.mock('@/lib/precision-cad-agent/remoteCadContract', () => ({ REMOTE_PRECISION_CAD_CONTRACT_VERSION: 'nexyfab.remote-precision-cad.v1', validateRemotePrecisionCadToolCall: () => [] }));
 vi.mock('@/lib/precision-cad-agent/isolatedWorkerQueue', () => ({ executePrecisionCadToolInIsolatedWorker: mocks.worker, hasPrecisionCadWorkerCadReference: mocks.cadRef }));
 vi.mock('@/lib/precision-cad-agent/precisionCadResultPersistence', () => ({ persistPrecisionCadResult: mocks.persist, summarizePrecisionCadToolResult: (value: unknown) => value }));
-vi.mock('@/lib/artifacts/directArtifactUploadStore', () => ({ ensureDirectArtifactUploadTables: mocks.ensureArtifacts, resolveArtifactTenantId: mocks.tenant }));
+vi.mock('@/lib/artifacts/directArtifactUploadStore', async importOriginal => {
+  const actual = await importOriginal<typeof import('@/lib/artifacts/directArtifactUploadStore')>();
+  return { ...actual, ensureDirectArtifactUploadTables: mocks.ensureArtifacts, resolveArtifactTenantId: mocks.tenant };
+});
 vi.mock('@/lib/storage', () => ({ getStorage: mocks.storage }));
 vi.mock('@/lib/audit', () => ({ logAudit: mocks.audit }));
 vi.mock('@/lib/client-ip', () => ({ getTrustedClientIpOrUndefined: () => '127.0.0.1' }));
 vi.mock('@/lib/platform/jobOrchestratorClient', () => ({ dispatchCadJob: mocks.dispatch }));
 vi.mock('@/lib/platform/contracts', () => ({ JOB_CONTRACT_VERSION: 'job.v1' }));
-vi.mock('@/lib/precision-cad-agent/commercialAgentExecutionBoundary', () => ({
-  ensureApprovalChallengeTable: mocks.ensureBoundary,
-  issueDbApprovalChallenge: mocks.issue,
-  consumeDbApprovalChallenge: mocks.consume,
-  hashBoundaryArguments: (value: unknown) => `args:${JSON.stringify(value)}`,
-}));
+vi.mock('@/lib/precision-cad-agent/commercialAgentExecutionBoundary', async importOriginal => {
+  const actual = await importOriginal<typeof import('@/lib/precision-cad-agent/commercialAgentExecutionBoundary')>();
+  return { ...actual, ensureApprovalChallengeTable: mocks.ensureBoundary, issueDbApprovalChallenge: mocks.issue, consumeDbApprovalChallenge: mocks.consume };
+});
 vi.mock('@/lib/precision-cad-agent/commercialExecutionOutboxStore', () => ({ enqueueCommercialExecutionTransaction: mocks.enqueue }));
 
 import { POST } from './route';
@@ -54,7 +56,12 @@ beforeEach(() => {
   mocks.catalog.mockResolvedValue([{ name: 'build_assembly', description: 'build', parameters: { type: 'object' }, scope: 'apply' }]);
   mocks.issue.mockResolvedValue({ ok: true, challenge }); mocks.consume.mockResolvedValue({ ok: true, challenge });
   mocks.enqueue.mockResolvedValue({ ok: true, row: { job: { executionId: 'exec-commercial-1' } } });
-  mocks.claim.mockResolvedValue(true); mocks.token.mockReturnValue('legacy-token'); mocks.tenant.mockReturnValue('tenant-1'); mocks.storage.mockReturnValue({});
+  mocks.stored.clear();
+  mocks.claim.mockResolvedValue(true); mocks.token.mockReturnValue('legacy-token'); mocks.tenant.mockReturnValue('tenant-1'); mocks.storage.mockReturnValue({
+    uploadRawImmutable: async (bytes: Buffer, key: string) => { mocks.stored.set(key, Buffer.from(bytes)); return { replayed: false }; },
+    sha256: async (key: string) => { const bytes = mocks.stored.get(key); if (!bytes) throw new Error('missing'); return { size: bytes.byteLength, contentSha256: key.match(/\/([a-f0-9]{64})\.json$/)?.[1] ?? '' }; },
+    download: async (key: string) => { const bytes = mocks.stored.get(key); if (!bytes) throw new Error('missing'); return Buffer.from(bytes); },
+  });
   mocks.cadRef.mockReturnValue(false);
   mocks.executeRemote.mockImplementation(async ({ executor }: { executor: (value: { tool: string; arguments: Record<string, unknown> }) => Promise<unknown> }) => ({ ok: true, tool: 'build_assembly', scope: 'apply', result: await executor({ tool: 'build_assembly', arguments: { amount: 2 } }), auditId: 'audit-1' }));
   mocks.worker.mockResolvedValue({ id: 'worker-1', status: 'succeeded', result: { ok: true }, auditId: 'worker-audit' });
@@ -128,14 +135,25 @@ describe('commercial approval and persistence boundary', () => {
     expect(mocks.worker).not.toHaveBeenCalled();
   });
 
-  it('enqueues v2 atomically from a server generation binding without requiring a final receipt', async () => {
+  it('stages immutable v3 input and enqueues atomically from a server generation binding', async () => {
     process.env.NEXYFAB_PRECISION_CAD_COMMERCIAL_MODE = '1';
     mocks.db.queryOne.mockResolvedValue({ workspace_id: 'project-1', workspace_revision: 7, head_revision: 11, head_sha256: 'a'.repeat(64), generation_program_sha256: '8'.repeat(64) });
     const response = await POST(request({ generationRunId: 'run-1', approvalChallenge: challenge }), context);
     expect(response.status).toBe(202);
     await expect(response.json()).resolves.toMatchObject({ ok: true, status: 'QUEUED', workerStarted: false, releaseReady: false });
-    expect(mocks.enqueue).toHaveBeenCalledWith(expect.objectContaining({ job: expect.objectContaining({ generationRunId: 'run-1', generationStateRevision: 11, generationProgramSha256: '8'.repeat(64), workspaceRevision: 7 }) }));
+    expect(mocks.enqueue).toHaveBeenCalledWith(expect.objectContaining({ job: expect.objectContaining({ contractVersion: 'nexyfab.precision-cad-commercial-execution.v3', generationRunId: 'run-1', generationStateRevision: 11, generationProgramSha256: '8'.repeat(64), workspaceRevision: 7, inputArtifact: expect.objectContaining({ mediaType: 'application/json', contentSha256: expect.stringMatching(/^[a-f0-9]{64}$/) }) }) }));
+    expect(mocks.stored.size).toBe(1);
     expect(mocks.worker).not.toHaveBeenCalled();
+  });
+
+  it('holds before enqueue when immutable input readback is unavailable', async () => {
+    process.env.NEXYFAB_PRECISION_CAD_COMMERCIAL_MODE = '1';
+    mocks.db.queryOne.mockResolvedValue({ workspace_id: 'project-1', workspace_revision: 7, head_revision: 11, head_sha256: 'a'.repeat(64), generation_program_sha256: '8'.repeat(64) });
+    mocks.storage.mockReturnValue({});
+    const response = await POST(request({ generationRunId: 'run-1', approvalChallenge: challenge }), context);
+    expect(response.status).toBe(503);
+    await expect(response.json()).resolves.toMatchObject({ status: 'HOLD', releaseReady: false, error: { code: 'IMMUTABLE_INPUT_STAGE_FAILED' } });
+    expect(mocks.enqueue).not.toHaveBeenCalled();
   });
   it('issues a durable challenge and never executes before one-use consume', async () => {
     const response = await POST(request(), context);
