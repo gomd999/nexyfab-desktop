@@ -47,9 +47,8 @@ jobs:
         run: |
           npm run migrate -- up
           npm run migrate -- up
-      - name: Create backup and isolated restore target
+      - name: Create isolated restore target
         run: |
-          pg_dump "$DATABASE_URL" | gzip > "$BACKUP_FILE"
           # createdb takes a database NAME, not a URI — passing the URL would
           # create a DB literally named "postgres://…" (and connect over the
           # local socket, not the service container). Create via the CI URL.
