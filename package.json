@@ -2,8 +2,10 @@
   "name": "nexyfab-frontend",
   "version": "0.1.0",
   "private": true,
+  "packageManager": "npm@10.9.8",
   "engines": {
-    "node": ">=22"
+    "node": "22.23.2",
+    "npm": "10.9.8"
   },
   "bin": {
     "nexyfab": "scripts/cli/nexyfab.mjs"
@@ -19,6 +21,7 @@
     "lint": "eslint src",
     "lint:ci": "eslint src --quiet",
     "ci:check": "npm run typecheck && npm run lint:ci && npm run test && npm run test:slices",
+    "ci:actions:check": "node scripts/workspaces/pin-github-actions.mjs",
     "typecheck": "node scripts/typecheck.cjs",
     "platform:architecture:check": "node scripts/platform/validate-platform-architecture.mjs",
     "platform:runtime:gate": "node scripts/platform/evaluate-runtime-placement-readiness.mjs",
@@ -27,6 +30,7 @@
     "platform:slices:rollback:check": "node scripts/platform/verify-slice-rollback-evidence.mjs --check",
     "platform:slices:rollback:require-pass": "node scripts/platform/verify-slice-rollback-evidence.mjs --require-pass",
     "platform:slices:rollback:template": "node scripts/platform/verify-slice-rollback-evidence.mjs --print-template",
+    "test:platform": "node scripts/platform/run-platform-quality.mjs",
     "assembly-handoff:readiness:generate": "node scripts/build-assembly-drawing-handoff-readiness.mjs --write",
     "assembly-handoff:readiness:check": "node scripts/build-assembly-drawing-handoff-readiness.mjs --check",
     "mechanical:single-part-candidates:generate": "tsx scripts/build-mechanical-single-part-candidates.ts --write",
@@ -332,7 +336,7 @@
     "@cloudflare/containers": "^0.3.7",
     "@jscad/modeling": "^2.13.0",
     "@mlightcad/libredwg-web": "^0.7.8",
-    "@next/third-parties": "^16.2.4",
+    "@next/third-parties": "16.3.0",
     "@react-three/drei": "^10.7.7",
     "@react-three/fiber": "^9.5.0",
     "@react-three/postprocessing": "^3.0.4",
@@ -355,7 +359,7 @@
     "jose": "^6.2.2",
     "jspdf": "^4.2.1",
     "lucide-react": "^1.14.0",
-    "next": "^16.2.6",
+    "next": "16.3.0",
     "nodemailer": "^9.0.5",
     "occt-import-js": "^0.0.23",
     "opencascade.js": "^1.1.1",
@@ -376,6 +380,7 @@
     "y-protocols": "^1.0.7",
     "y-websocket": "^3.0.0",
     "yjs": "^13.6.30",
+    "ws": "8.21.0",
     "zod": "^4.3.6",
     "zustand": "^5.0.12"
   },
@@ -391,7 +396,7 @@
     "@testing-library/react": "^16.3.2",
     "@types/bcryptjs": "^2.4.6",
     "@types/better-sqlite3": "^7.6.13",
-    "@types/node": "^20",
+    "@types/node": "22.20.1",
     "@types/nodemailer": "^7.0.11",
     "@types/pg": "^8.20.0",
     "@types/qrcode": "^1.5.5",
@@ -401,7 +406,7 @@
     "axe-core": "^4.11.1",
     "cross-env": "^10.1.0",
     "eslint": "^9",
-    "eslint-config-next": "16.1.6",
+    "eslint-config-next": "16.3.0",
     "fake-indexeddb": "^6.2.5",
     "fast-check": "^4.8.0",
     "husky": "^9.1.7",
