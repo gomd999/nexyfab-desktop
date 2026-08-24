@@ -44,6 +44,9 @@
         "workers/**",
         "collab-worker/**",
         "cron-worker/**",
+        "docs/evidence/release/commercial-precision-runtime-evidence.json",
+        "scripts/build-commercial-precision-runtime-evidence.mjs",
+        "scripts/build-commercial-precision-runtime-evidence.test.mjs",
         "workspaces/platform/**"
       ],
       "checks": [
