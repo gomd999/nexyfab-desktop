@@ -1,0 +1,117 @@
+{
+  "schema": "nexyfab.staging-commercial-readiness-diagnostic.v1",
+  "generatedAt": "2026-08-25T03:53:03+09:00",
+  "status": "HOLD",
+  "releaseEligible": false,
+  "environment": "staging",
+  "productionMutated": false,
+  "source": {
+    "branch": "integration/nexyfab",
+    "gitHead": "a92c54632642dc7d05f47dec9cb7ecce060642e9",
+    "buildId": "a92c54632642dc7d05f47dec9cb7ecce060642e9"
+  },
+  "deployment": {
+    "service": "nexyfab.com",
+    "deploymentId": "7a5bc850-69ea-492a-a665-d47bb3b31417",
+    "imageDigest": "sha256:c4ce9994226e28238ed4fc7b65e8050ed5ad00c01b1429a2bb70a42e9e48a40a",
+    "status": "SUCCESS",
+    "runningInstances": 2,
+    "autoDeployEnabled": false,
+    "volumeMounts": [],
+    "detachedVolumeRetained": true
+  },
+  "checks": {
+    "workspaceAudit": {
+      "status": "PASS",
+      "collisions": 0,
+      "descriptorIssues": 0
+    },
+    "platformArchitecture": {
+      "status": "PASS",
+      "issues": 0
+    },
+    "reproducibleBuild": {
+      "status": "PASS",
+      "nextVersion": "16.3.0",
+      "staticPages": 301,
+      "sharedChunksKb": 723.6,
+      "worstFirstPaintKb": 1764.0
+    },
+    "readiness": {
+      "status": "PASS",
+      "httpStatus": 200,
+      "database": "postgres",
+      "databaseStatus": "ok",
+      "redisStatus": "ok"
+    },
+    "releaseHealth": {
+      "status": "HOLD",
+      "httpStatus": 503,
+      "build": "PASS",
+      "deployment": "PASS",
+      "git": "PASS",
+      "migration": "PASS",
+      "i18n": "HOLD",
+      "sevenDay": "HOLD"
+    },
+    "postgres": {
+      "status": "PASS",
+      "latestMigration": 2026082501,
+      "commercialPreflightBlockers": 0
+    },
+    "localI18nCatalog": {
+      "status": "PASS_LOCAL",
+      "sourcePairs": 2711,
+      "translatedPairs": 2711,
+      "missing": 0,
+      "invalid": 0,
+      "legacyDebt": 0,
+      "releaseReceiptUpdated": false,
+      "reason": "The deployed release receipt remains bound to the deployed source and reports 2699 pairs. A new build-bound automated receipt and independent full-product review are still required."
+    },
+    "privateServices": {
+      "exactCadHealth": "PASS",
+      "openscadWorkerHealth": "PASS",
+      "feaWorkerHealth": "PASS",
+      "jobControlUnauthenticatedRoot": "EXPECTED_401"
+    }
+  },
+  "commercialPreflight": {
+    "configuredTargetSimulation": true,
+    "realConfigurationBlockerCount": 15,
+    "excludedLocalTransportObservation": "The local SSH TCP forward was closed by the platform. Runtime Redis readiness passed inside both the deployed service boundary and the public readiness response, so this was not counted as a commercial blocker.",
+    "blockers": [
+      "smtp.host_missing",
+      "smtp.user_missing",
+      "smtp.password_missing",
+      "observability.sentry_missing",
+      "payments.complete_provider_missing",
+      "agentic.three_role_registry_missing",
+      "precision_cad.commercial_execution_disabled",
+      "worker.ed25519_registry_missing",
+      "worker.claim_secret_missing",
+      "worker.transport_secret_missing",
+      "worker.callback_secret_missing",
+      "worker.callback_url_missing",
+      "verifier.ed25519_registry_missing",
+      "verifier.transport_secret_missing",
+      "agentic.server_trust_invalid"
+    ]
+  },
+  "externalEvidenceHolds": [
+    "deployed_i18n_release_receipt_is_2699_while_local_catalog_is_2711_complete",
+    "signed_build_bound_i18n_automated_receipt_and_independent_full_product_review_missing",
+    "seven_day_operations_cost_and_alarm_receipt_missing",
+    "independent_step_and_native_cad_exchange_review_missing",
+    "independent_domain_expert_signatures_missing",
+    "fabrication_assembly_and_field_pilots_missing",
+    "provider_side_historical_credential_rotation_unconfirmed",
+    "commercial_worker_jobs_do_not_yet_carry_executable_input_artifact_locators",
+    "deployed_commercial_claim_callback_executor_not_found"
+  ],
+  "notes": [
+    "This is a sanitized diagnostic receipt, not a signed commercial release receipt.",
+    "No credentials, connection strings, private keys, customer data, or artifact bytes are included.",
+    "Production deployment, production variables, production data, and Git history were not modified."
+  ]
+}

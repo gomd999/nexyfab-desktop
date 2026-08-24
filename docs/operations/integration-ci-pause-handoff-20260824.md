@@ -363,3 +363,138 @@ tamper negative E2E다. 이후 전체 GitHub CI/E2E, OCCT burn-in, large assembl
 원격 push/deploy, production 승인, secret 공급자 회전, Git history rewrite는
 이번 로컬 통합에서 수행하지 않았다. 따라서 PR 병합·production·제조·상용
 release는 계속 `HOLD`다.
+
+## 2026-08-25 staging 상용화 기반선 및 통합 결속 결과
+
+이 절은 위의 2026-08-24 로컬 전용 상태보다 우선하는 최신 운영 인계다.
+AI Design V9/V10, Precision CAD GP10/GP11 및 exact bridge 구현은 현재
+integration 소스에 결속됐고, 격리된 Railway staging에서 플랫폼 기반선을
+실증했다. 전체 판정은 **`STAGING_RUNTIME_CONNECTED / COMMERCIAL_RELEASE_HOLD`**다.
+
+연결한 불변 문서:
+
+- `workspaces/ai-design/HANDOFFS/20260824T153232+0900-ai-design-chat-first-v9.md`
+- `workspaces/ai-design/HANDOFFS/20260824T170157+0900-ai-design-v9-v10-integration-addendum.md`
+- `workspaces/ai-design/CURRENT.md`
+- `workspaces/precision-cad/HANDOFFS/20260824T075706Z-gp10-mechanical-bounded-30-of-30.md`
+- `workspaces/precision-cad/GP_10_MECHANICAL_EXACT_CLOSED_LOOP_ADR.md`
+- `workspaces/precision-cad/INTEGRATION_ACTIONS.md`
+- `workspaces/precision-cad/CURRENT.md`
+- `C:\Users\gomd9\Downloads\nexysys_1\nexyfab.com\worktrees\NEXYFAB_MASTER_PLAN.md`
+
+### 배포 및 데이터 기반선
+
+- source/build/git: `a92c54632642dc7d05f47dec9cb7ecce060642e9`.
+- deployment: `7a5bc850-69ea-492a-a665-d47bb3b31417`, `SUCCESS`.
+- image: `sha256:c4ce9994226e28238ed4fc7b65e8050ed5ad00c01b1429a2bb70a42e9e48a40a`.
+- 실제로 서로 다른 두 web instance가 `RUNNING`이다.
+- 공개 readiness는 HTTP 200이고 PostgreSQL/Redis가 모두 `ok`다.
+- release-health는 build/deployment/git/migration을 `PASS`로 보고하고,
+  staging non-commercial boundary, i18n, seven-day evidence 때문에 HTTP 503
+  `HOLD`를 반환한다.
+- staging PostgreSQL은 migration `2026082501`과 등록된 source checksum,
+  commercial table/constraint/trigger 검사를 통과했다. 상용 preflight의 DB
+  blocker는 0이다.
+- 실제 staging private bucket, Redis, exact-CAD health, OpenSCAD worker, FEA
+  worker를 확인했다. production read-only source를 staging-owned isolated
+  target에 복원한 검증도 `2026082501`까지 통과했으며 production은 수정하지 않았다.
+
+정리된 진단 영수증:
+`docs/evidence/operations/staging-commercial-readiness-20260825.json`.
+이 JSON은 비밀값을 포함하지 않는 진단 기록이며 signed commercial release
+receipt가 아니다.
+
+### 다중 인스턴스와 stale source 재발 방지
+
+처음 2-replica 변경은 `/app/data` Railway volume 때문에
+`Replicas are not supported if you have a volume attached to your service.`로
+container 생성 전에 실패했다. 실제 volume 내부는 `lost+found`뿐이고 20 KB였으며,
+runtime은 PostgreSQL과 private S3를 사용하고 `NEXYFAB_DB_PATH`/`DATA_ROOT`를
+사용하지 않았다.
+
+staging에서만 volume을 detach했고 삭제하지 않은 리소스로 보존했다. detach와
+scale 과정에서 Railway가 연결된 오래된 GitHub `main`을 자동 배포하려는 동작을
+확인해 해당 deployment ID만 취소하고 검증 이미지를 복구했다. 이후 환경별
+auto-deploy를 staging에서만 `false`로 설정했으며 production은 기존 `true`를
+유지했다. 검증 배포 스크립트도 다음을 강제한다.
+
+- 환경명이 정확히 `staging`일 것;
+- commercial mode가 `0`, release channel이 `staging-hold`일 것;
+- `NEXYFAB_BUILD_ID`와 `RELEASE_GIT_HEAD`가 예상 commit과 일치할 것;
+- staging auto-deploy가 실제 Railway API에서 `false`일 것;
+- workspace audit, platform architecture, reproducible build가 통과할 것;
+- live health build ID가 target commit과 일치할 것.
+
+### 실제 상용 preflight 판정
+
+Railway 대상 변수와 실제 staging PostgreSQL을 사용해 commercial mode를
+프로세스 안에서만 시뮬레이션했다. staging 환경변수는 변경하지 않았다. 실제 구성
+blocker는 15개다.
+
+1. SMTP host/user/password 3개.
+2. Sentry DSN.
+3. 실제 결제 provider의 완전한 API/webhook 한 세트.
+4. exact 3-role server Ed25519 trust registry와 유효한 server trust.
+5. Precision CAD commercial execution mode.
+6. commercial worker의 Ed25519 registry, claim secret, transport secret,
+   callback secret, server-owned callback URL.
+7. 독립 external verifier의 Ed25519 registry와 transport secret.
+
+로컬 SSH TCP forward가 Railway에서 닫혀 preflight에 Redis 연결 오류 1개가
+추가됐지만 이는 blocker 수에서 제외했다. 동일 배포의 내부 Redis probe와 공개
+readiness가 실제 PONG 경로를 통과했기 때문이다.
+
+환경키만 채우는 것으로 worker 경계를 통과 처리하면 안 된다. 현재 commercial
+worker v2 job은 입력 hash를 갖지만 executor가 내려받을 수 있는 immutable input
+artifact locator가 없고, claim -> 실제 native execution -> signed callback을 수행하는
+배포된 client 구현도 확인되지 않았다. 이 두 구현이 생기기 전에는 임의 registry나
+secret을 생성하지 않는다.
+
+로컬 후속 점검에서 일반 CAD job 경로의 `inputArtifacts`와
+`/api/internal/cad-job-artifacts`에는 이미 private object key, SHA-256 readback 및
+worker 인증 다운로드 경계가 있음을 확인했다. 반면 commercial precision execution
+v2 계약은 이 경계를 사용하지 않고 hash만 전달하며, 저장소 어디에도 commercial
+claim을 소비해 installer/native tool을 실행하고 세 출력 역할을 업로드한 뒤 Ed25519
+영수증을 callback하는 배포 가능한 client가 없다. 그러므로 이 항목은 단순 설정 누락이
+아니라 **실행 계약과 worker 구현의 P0 코드 공백**이다.
+
+### i18n 로컬 카탈로그 후속 폐쇄
+
+- `src/app/admin/jobs/page.tsx`에서 새로 추출된 12개 source pair를 ja/zh/es/ar
+  카탈로그에 추가했다.
+- 현재 로컬 추출 결과는 2,711 source / 2,711 translated, missing 0, invalid 0,
+  legacy debt 0이며 공식 카탈로그·커버리지 회귀와 영수증 fail-closed 테스트가 통과했다.
+- 배포된 `a92c5463...` release receipt는 여전히 2,699 pair에 결속되어 있으므로 해당
+  스테이징 release-health 판정은 바꾸지 않았다. 다음 검증 배포에서 새 build/head에
+  결속된 자동화 영수증을 만들고, 별도의 사람 기반 visual/RTL/email/PDF/export 6언어
+  검토 영수증까지 있어야 i18n을 `QUALIFIED`로 올릴 수 있다.
+
+### AI Design 및 Precision CAD의 정확한 상용 수준
+
+- AI Design V10의 chat-first, 동기화된 2D/3D, preview/apply, revision-bound
+  Precision 요청은 실제 통합 화면과 서버 경로에 연결됐다. 그러나 권한은
+  `CONCEPT`/`DESIGN_CANDIDATE`이며 외부 exact/manufacturing 권위가 아니다.
+- Precision CAD의 GP10 30/30은 열거된 bounded mechanical handler 범위다. 실제 OCCT
+  STEP bundle과 bridge가 동작하지만 arbitrary CAD, stable topology edit survival,
+  full XCAF/GD&T/PMI, 독립 native CAD exchange 또는 manufacturing qualification을
+  의미하지 않는다.
+- 따라서 두 시스템 모두 **강한 bounded engineering implementation**이지만 아직
+  **전체 제품의 상용 자격을 획득하지 않았다**.
+
+### 남은 출시 순서
+
+1. commercial worker job에 immutable input artifact locator와 readback digest를
+   추가하고 실제 worker claim/execution/signed callback client를 배포한다.
+2. 서로 다른 실제 키 보유자가 관리하는 server 3-role, worker, external verifier
+   Ed25519 registry와 transport를 구성하고 negative/replay/rotation을 검증한다.
+3. 실제 SMTP, Sentry alert/on-call, 한 결제 provider와 webhook rehearsal을 연결한다.
+4. 로컬에서 닫힌 i18n 2,711/2,711을 다음 build-bound 자동화 영수증에 결속하고,
+   독립 6언어 visual/RTL/email/PDF/export 검토를 닫는다.
+5. 동일 release binding으로 7일 운영·비용·경보·restart/lease/dead-letter·rollback
+   영수증을 수집한다.
+6. 독립 STEP/native CAD 교환, topology campaign, 분야 전문가, 실제 가공·조립·현장
+   pilot과 권리·법무 승인을 결속한다.
+7. 이 모든 항목이 통과한 뒤에만 commercial mode와 production release를 별도 승인한다.
+
+production 배포·변수·데이터, 원격 push/merge, provider credential, Git history는
+이번 staging 작업에서 변경하지 않았다.
