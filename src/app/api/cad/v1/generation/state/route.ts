@@ -11,6 +11,7 @@ import { rateLimit } from '@/lib/rate-limit';
 import { boundedJsonError, readBoundedJson } from '@/lib/boundedJsonBody';
 import { getAuthUser } from '@/lib/auth-middleware';
 import { createCommercialGenerationRouteRun, loadCommercialGenerationRouteRun, resolveCommercialGenerationRouteContext, saveCommercialGenerationRouteRun } from '@/lib/ai/commercialGenerationRouteState';
+import { commercialPostgresMigrationAtLeast } from '@/lib/commercial-readiness';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -36,7 +37,7 @@ export async function POST(req: NextRequest) {
     if (process.env.NEXYFAB_COMMERCIAL_MODE === '1' && !(await getAuthUser(req))) {
       return NextResponse.json({ ok: false, status: 'HOLD', releaseReady: false, code: 'AUTHENTICATED_EDITOR_REQUIRED' }, { status: 401 });
     }
-    if (process.env.NEXYFAB_COMMERCIAL_MODE === '1' && process.env.POSTGRES_MIGRATION_VERSION !== '2026082208') {
+    if (process.env.NEXYFAB_COMMERCIAL_MODE === '1' && !commercialPostgresMigrationAtLeast(process.env, 2026082208)) {
       return NextResponse.json({ ok: false, status: 'HOLD', releaseReady: false, code: 'COMMERCIAL_GENERATION_MIGRATION_REQUIRED' }, { status: 503 });
     }
     if (process.env.NEXYFAB_COMMERCIAL_MODE === '1') {

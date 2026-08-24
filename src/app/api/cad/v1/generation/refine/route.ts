@@ -10,6 +10,7 @@ import { boundedJsonError, readBoundedJson } from '@/lib/boundedJsonBody';
 import { z } from 'zod';
 import { localizedApiMessage, resolveServerLocale } from '@/lib/i18n/serverLocale';
 import { loadCommercialGenerationRouteRun, saveCommercialGenerationRouteRun, type LoadedCommercialGenerationRun } from '@/lib/ai/commercialGenerationRouteState';
+import { commercialPostgresMigrationAtLeast } from '@/lib/commercial-readiness';
 
 export const runtime = 'nodejs'; export const dynamic = 'force-dynamic';
 const refineRequestSchema = z.object({
@@ -38,7 +39,7 @@ export async function POST(req: NextRequest) {
   const requestBody = checked.data;
   try {
     const commercial = process.env.NEXYFAB_COMMERCIAL_MODE === '1';
-  if (commercial && process.env.POSTGRES_MIGRATION_VERSION !== '2026082208') throw new Error('COMMERCIAL_GENERATION_MIGRATION_REQUIRED');
+    if (commercial && !commercialPostgresMigrationAtLeast(process.env, 2026082208)) throw new Error('COMMERCIAL_GENERATION_MIGRATION_REQUIRED');
     const owner = commercial ? '' : await generationRequestOwner(req, ip);
     const commercialCurrent: LoadedCommercialGenerationRun | undefined = commercial ? await loadCommercialGenerationRouteRun(req, requestBody.projectId ?? '', requestBody.state.runId, requestBody.state.revision) : undefined;
     const stored = commercialCurrent?.state ?? await loadServerGenerationState(owner, requestBody.state.runId);
