@@ -1,5 +1,31 @@
 # AI Design current session
 
+## 2026-08-24 AI-to-Precision exact round-trip integration
+
+- Status: `RUNTIME_CONNECTED_LOCAL / EXTERNAL_EVIDENCE_HOLD`
+- Implementation base: `920e660d` on both `scope/ai-design` and
+  `integration/nexyfab` before this documentation handoff.
+- Result: V10 Precision handoff now resolves the server-owned current canonical
+  CAD head and stable references, emits V2/V3 revision-bound requests, and
+  idempotently enqueues a PostgreSQL-backed exact bridge job.
+- Receipt boundary: the AI aggregate accepts only a server-verified signed
+  Precision PASS/FAIL receipt whose request, revision, artifact manifest, and
+  aggregate reference are digest-bound. Browser-authored PASS and manufacturing
+  authority remain impossible.
+- Recovery: an uncertain post-dispatch failure becomes `VERIFIED_UNKNOWN` and
+  is never automatically re-executed. Reconciliation succeeds only from an
+  already persisted immutable receipt plus the exact aggregate reference.
+- Validation: bridge/coordinator/worker/route and PostgreSQL authority tests,
+  actual Node OCCT current-head bundle execution, TypeScript, focused ESLint,
+  production build (301 pages), workspace audit, and all three scope checks
+  passed at the integrated source baseline.
+- Immutable handoff:
+  `HANDOFFS/20260824T134510Z-ai-precision-exact-round-trip.md`.
+- Next action: run the real staging PostgreSQL/S3/Redis/Railway round trip and
+  authenticated browser read-model refresh, then attach restore, alarm, tenant
+  isolation, and multi-instance receipts. External review and fabrication
+  evidence remain required before commercial release.
+
 - Status: `V3_V10_SOURCE_FREEZE_READY`
 - Branch: `scope/ai-design`
 - Baseline: `baseline/pre-scope-20260823`
