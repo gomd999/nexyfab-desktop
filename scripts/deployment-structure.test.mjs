@@ -13,6 +13,7 @@ const verifiedDeploy = await readFile(new URL('./deploy-railway-verified.mjs', i
 const railwayToml = await readFile(new URL('../railway.toml', import.meta.url), 'utf8');
 const railwayIgnore = await readFile(new URL('../.railwayignore', import.meta.url), 'utf8');
 const releaseHealthPackaging = await readFile(new URL('./package-release-health-evidence.mjs', import.meta.url), 'utf8');
+const backupRestoreDrill = await readFile(new URL('./verify-backup-restore.mjs', import.meta.url), 'utf8');
 
 test('public web image has no native CAD executable installation', () => {
   assert.doesNotMatch(rootDockerfile, /apt-get install[\s\S]{0,240}\b(?:openscad|gmsh)\b/i);
@@ -72,6 +73,12 @@ test('deploy preflight and live readiness share one commercial PostgreSQL contra
     assert.match(source, /COMMERCIAL_POSTGRES_CONSTRAINTS/);
     assert.match(source, /COMMERCIAL_POSTGRES_HARDENING_TRIGGERS/);
   }
+});
+
+test('restore evidence derives its target from the versioned migration runner', () => {
+  assert.match(backupRestoreDrill, /const migrationTarget = migration\.version/);
+  assert.match(backupRestoreDrill, /receipt\.migration\.targetVersion = migrationTarget/);
+  assert.doesNotMatch(backupRestoreDrill, /migrationTarget:\s*2026082208/);
 });
 
 test('postbuild prunes mutable state and repairs the standalone runtime', () => {

@@ -84,6 +84,15 @@ export function commercialPostgresMigrationChecksumEnvKey(
     : `POSTGRES_MIGRATION_CHECKSUM_${version}`;
 }
 
+export function commercialPostgresMigrationAtLeast(
+  env: Env,
+  required: CommercialPostgresMigration,
+): boolean {
+  const configured = Number(env.POSTGRES_MIGRATION_VERSION?.trim());
+  return COMMERCIAL_POSTGRES_MIGRATIONS.includes(configured as CommercialPostgresMigration)
+    && configured >= required;
+}
+
 function has(env: Env, key: string): boolean {
   return Boolean(env[key]?.trim());
 }

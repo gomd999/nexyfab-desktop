@@ -14,6 +14,10 @@ vi.mock('@/lib/ai/externalCommercialVerifierRegistry', () => ({ loadExternalComm
 
 import { GET } from './route';
 import { buildReleaseEvidence, loadReleaseEvidenceFile } from '@/lib/releaseHealthEvidence';
+import {
+  COMMERCIAL_POSTGRES_MIGRATIONS,
+  commercialPostgresMigrationChecksumEnvKey,
+} from '@/lib/commercial-readiness';
 
 const ids = {
   NEXYFAB_BUILD_ID: 'build-1',
@@ -192,7 +196,9 @@ describe('GET /api/health/release', () => {
     const env: Record<string, string> = {
       ...ids, RAILWAY_ENVIRONMENT_NAME: 'production', NEXYFAB_COMMERCIAL_MODE: '1', GENERATION_EVIDENCE_SIGNING_SECRET: secret,
     };
-    for (const version of [2026082202, 2026082203, 2026082204, 2026082205, 2026082206, 2026082207, 2026082208]) env[`POSTGRES_MIGRATION_CHECKSUM_${version}`] = String(version).slice(-1).repeat(64);
+    for (const version of COMMERCIAL_POSTGRES_MIGRATIONS) {
+      env[commercialPostgresMigrationChecksumEnvKey(version)] = String(version).slice(-1).repeat(64);
+    }
     const queryOne = async <T = Record<string, unknown>>(_sql: string, ...params: unknown[]): Promise<T | undefined> => {
       const version = Number(params[0]);
       return { version, checksum: String(version).slice(-1).repeat(64) } as T;
@@ -203,7 +209,7 @@ describe('GET /api/health/release', () => {
       registry: { identities: ['a', 'b', 'c'].map(value => ({ role: 'external_verifier', fingerprintSha256: value.repeat(64) })) },
     });
     expect(result.status).toBe('PASS');
-    expect(result.release).toMatchObject({ migrationVersion: 2026082208, registryRoles: 3, registryFingerprintsUnique: true });
+    expect(result.release).toMatchObject({ migrationVersion: 2026082403, registryRoles: 3, registryFingerprintsUnique: true });
     expect(result.release.i18n.status).toBe('QUALIFIED');
     expect(result.release.sevenDay.status).toBe('QUALIFIED');
   });

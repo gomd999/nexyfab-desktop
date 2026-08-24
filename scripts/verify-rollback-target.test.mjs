@@ -3,11 +3,16 @@ import http from 'node:http';
 import test from 'node:test';
 import { collectRollbackResponses, evaluateRollbackResponses } from './verify-rollback-target.mjs';
 
+const commercialMigrations = [
+  2026082202, 2026082203, 2026082204, 2026082205, 2026082206, 2026082207,
+  2026082208, 2026082301, 2026082401, 2026082402, 2026082403,
+];
+
 const healthy = {
   live: { status: 'ok', build: 'abc123' },
   ready: { status: 'ok', db: { status: 'ok', backend: 'postgres' } },
   occt: { ok: true, mode: 'wasm', wasm: { sha256: 'a'.repeat(64), sizeBytes: 65_000_000 } },
-  release: { migrationVersion: 2026082208, migrationChecksums: { 2026082202: '2'.repeat(64), 2026082203: '3'.repeat(64), 2026082204: '4'.repeat(64), 2026082205: '5'.repeat(64), 2026082206: '6'.repeat(64), 2026082207: '7'.repeat(64), 2026082208: '8'.repeat(64) }, registryRoles: 3, registryFingerprintsUnique: true, i18n: { status: 'QUALIFIED', sourcePairs: 2711, translatedPairs: 2711 }, sevenDay: { status: 'QUALIFIED' } },
+  release: { migrationVersion: 2026082403, migrationChecksums: Object.fromEntries(commercialMigrations.map(version => [version, 'a'.repeat(64)])), registryRoles: 3, registryFingerprintsUnique: true, i18n: { status: 'QUALIFIED', sourcePairs: 2711, translatedPairs: 2711 }, sevenDay: { status: 'QUALIFIED' } },
 };
 
 test('rollback verifier accepts matching healthy release', () => {
@@ -29,9 +34,9 @@ test('rollback verifier rejects wrong build, unavailable DB and stub OCCT', () =
 test('rollback verifier requires the exact append-only commercial migration set when release evidence is supplied', () => {
   const issues = evaluateRollbackResponses({
     ...healthy,
-    release: { migrationVersion: 2026082207, migrationChecksums: { 2026082202: '2'.repeat(64), 2026082203: '3'.repeat(64), 2026082204: '4'.repeat(64), 2026082205: '5'.repeat(64), 2026082206: '6'.repeat(64), 2026082207: '7'.repeat(64) }, registryRoles: 3, registryFingerprintsUnique: true, i18n: { status: 'QUALIFIED', sourcePairs: 2711, translatedPairs: 2711 }, sevenDay: { status: 'QUALIFIED' } },
+    release: { migrationVersion: 2026082402, migrationChecksums: Object.fromEntries(commercialMigrations.slice(0, -1).map(version => [version, 'a'.repeat(64)])), registryRoles: 3, registryFingerprintsUnique: true, i18n: { status: 'QUALIFIED', sourcePairs: 2711, translatedPairs: 2711 }, sevenDay: { status: 'QUALIFIED' } },
   }, 'abc123');
-  assert.ok(issues.some(issue => issue.includes('2026082208/checksum')));
+  assert.ok(issues.some(issue => issue.includes('2026082403/checksum')));
 });
 
 test('rollback verifier fails closed when the expected build ID is omitted', () => {

@@ -53,7 +53,11 @@ const SHA256 = /^[a-f0-9]{64}$/;
 const GIT_COMMIT_SHA = /^(?:[a-f0-9]{40}|[a-f0-9]{64})$/i;
 const OPERATIONS_SERVICES = ['web', 'openscad-worker', 'fea-worker'];
 const OPERATIONS_COST_SERVICES = ['nexyfab.com', 'nexyfab-openscad-worker', 'nexyfab-fea-worker', 'Postgres-KN2x', 'Redis-IrVt'];
-const COMMERCIAL_MIGRATION_VERSIONS = [2026082202, 2026082203, 2026082204, 2026082205, 2026082206, 2026082207, 2026082208];
+const COMMERCIAL_MIGRATION_VERSIONS = [
+  2026082202, 2026082203, 2026082204, 2026082205, 2026082206, 2026082207, 2026082208,
+  2026082301, 2026082401, 2026082402, 2026082403,
+];
+const LATEST_COMMERCIAL_MIGRATION = COMMERCIAL_MIGRATION_VERSIONS.at(-1);
 const PRODUCTION_TARGET = 'https://nexyfab.com';
 const LIVE_SMOKE_REQUIRED_CHECKS = ['live', 'ready', 'capabilities', 'scad-agent-route', 'openscad'];
 const AUTHENTICATED_E2E_REQUIRED_CHECKS = ['login', 'session', 'project_create', 'project_read', 'cad_verify', 'storage_state_reconnect', 'expert_workspace_visible', 'project_cleanup', 'logout'];
@@ -619,8 +623,8 @@ export function authenticatedE2EReceiptEligible(receipt, expectedRelease, now = 
 
 export function restoreReceiptEligible(receipt, expectedRelease, now = Date.now()) {
   const migration = receipt?.migration;
-  const migration2208 = Array.isArray(migration?.migrations)
-    ? migration.migrations.find(item => item?.version === 2026082208)
+  const latestMigration = Array.isArray(migration?.migrations)
+    ? migration.migrations.find(item => item?.version === LATEST_COMMERCIAL_MIGRATION)
     : null;
   const sourceHash = receipt?.source?.tableContentSha256;
   const restoredHash = receipt?.restored?.tableContentSha256;
@@ -656,9 +660,10 @@ export function restoreReceiptEligible(receipt, expectedRelease, now = Date.now(
     && receipt.restored.businessDataSha256 === restoredHash
     && receipt.migrated.businessRowsPreserved === true
     && receipt.migrated.businessDataSha256 === migratedHash
-    && receipt.migration.targetVersion === 2026082208
-    && migration2208?.decision && ['apply', 'already_applied'].includes(migration2208.decision)
-    && SHA256.test(String(migration2208.checksum ?? ''))
+    && receipt.migrationTarget === LATEST_COMMERCIAL_MIGRATION
+    && receipt.migration.targetVersion === LATEST_COMMERCIAL_MIGRATION
+    && latestMigration?.decision && ['apply', 'already_applied'].includes(latestMigration.decision)
+    && SHA256.test(String(latestMigration.checksum ?? ''))
     && Number.isFinite(drillStartedAt) && Number.isFinite(backupCapturedAt) && Number.isFinite(restoreStartedAt) && Number.isFinite(completedAt)
     && drillStartedAt <= completedAt && backupCapturedAt <= restoreStartedAt && restoreStartedAt <= completedAt
     && Number.isFinite(receipt.objectives?.rpoAgeAtDrillStartMs) && receipt.objectives.rpoAgeAtDrillStartMs >= 0

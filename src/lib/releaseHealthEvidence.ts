@@ -3,8 +3,11 @@ import { existsSync, lstatSync, readFileSync, realpathSync, statSync } from 'nod
 import path from 'node:path';
 import type { DbAdapter } from '@/lib/db-adapter';
 import { loadExternalCommercialVerifierRegistry } from '@/lib/ai/externalCommercialVerifierRegistry';
+import {
+  COMMERCIAL_POSTGRES_MIGRATIONS,
+  commercialPostgresMigrationChecksumEnvKey,
+} from '@/lib/commercial-readiness';
 
-const COMMERCIAL_MIGRATIONS = [2026082202, 2026082203, 2026082204, 2026082205, 2026082206, 2026082207, 2026082208] as const;
 const MAX_EVIDENCE_AGE_MS = 24 * 60 * 60 * 1000;
 const SHA256 = /^[a-f0-9]{64}$/;
 const GIT_COMMIT_SHA = /^(?:[a-f0-9]{40}|[a-f0-9]{64})$/i;
@@ -225,16 +228,16 @@ async function migrationEvidence(db: ReleaseEvidenceOptions['db'], env: Environm
   if (!db) return { status: 'NOT_RUN' as EvidenceStatus, migrationVersion: null, migrationChecksums };
   if (db.backend !== 'postgres') return { status: 'HOLD' as EvidenceStatus, migrationVersion: null, migrationChecksums };
   try {
-    const rows = await Promise.all(COMMERCIAL_MIGRATIONS.map(version => db.queryOne<{ version: number; checksum?: string }>('SELECT version, checksum FROM nf_schema_migrations WHERE version = ?', version)));
+    const rows = await Promise.all(COMMERCIAL_POSTGRES_MIGRATIONS.map(version => db.queryOne<{ version: number; checksum?: string }>('SELECT version, checksum FROM nf_schema_migrations WHERE version = ?', version)));
     let valid = true;
     for (const [index, row] of rows.entries()) {
-      const version = COMMERCIAL_MIGRATIONS[index];
+      const version = COMMERCIAL_POSTGRES_MIGRATIONS[index];
       const checksum = typeof row?.checksum === 'string' && SHA256.test(row.checksum) ? row.checksum : '';
-      const expected = env[`POSTGRES_MIGRATION_CHECKSUM_${version}`]?.trim() ?? '';
+      const expected = env[commercialPostgresMigrationChecksumEnvKey(version)]?.trim() ?? '';
       if (checksum) migrationChecksums[String(version)] = checksum;
       if (row?.version !== version || !checksum || !SHA256.test(expected) || checksum !== expected) valid = false;
     }
-    return { status: valid ? 'PASS' : 'HOLD' as EvidenceStatus, migrationVersion: valid ? COMMERCIAL_MIGRATIONS.at(-1)! : null, migrationChecksums };
+    return { status: valid ? 'PASS' : 'HOLD' as EvidenceStatus, migrationVersion: valid ? COMMERCIAL_POSTGRES_MIGRATIONS.at(-1)! : null, migrationChecksums };
   } catch {
     return { status: 'HOLD' as EvidenceStatus, migrationVersion: null, migrationChecksums };
   }
