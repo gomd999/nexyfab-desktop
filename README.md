@@ -1,36 +1,93 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# NexyFab
 
-## Getting Started
+NexyFab is a Next.js 16 manufacturing platform that combines quoting,
+production workflows, collaboration, CAD/AI tools, and supporting workers.
+This repository is organized as a workspace with independently owned scopes and
+an integration branch that controls shared release infrastructure.
 
-First, run the development server:
+## Prerequisites
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+- Node.js 22
+- npm
+- Docker for container and runtime checks
+- PostgreSQL and Redis for features that depend on persistent state or queues
+
+Install dependencies with the repository lockfile:
+
+```powershell
+npm ci --legacy-peer-deps
+Copy-Item .env.example .env.local
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Keep real credentials out of the repository. Customer uploads and generated
+manufacturing files must use private object storage; `public/uploads/` is not an
+approved storage location.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Local development
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```powershell
+npm run dev
+```
 
-## Learn More
+The main web application is available at `http://localhost:3000`. Individual
+services and workers document their own environment variables and health
+contracts in their local README files.
 
-To learn more about Next.js, take a look at the following resources:
+## Verification
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+Use the scope check before handing platform work to integration:
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+```powershell
+npm run workspace:check -- platform
+node workspaces/platform/run-quality.mjs
+```
 
-## Deploy on Vercel
+For a wider repository check, run the relevant lint, type, security, test, and
+build commands:
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+```powershell
+npm run lint:ci
+npm run typecheck
+npm run security:check
+npm run build
+```
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+The build succeeding does not mean a release is ready. Staging origins, immutable
+build identifiers, readiness probes, rollback evidence, and live runtime evidence
+must all pass before deployment is enabled.
+
+## Workspace ownership
+
+- `scope/platform`: web/backend platform, services, workers, and compatibility boundaries
+- `scope/precision-cad`: Precision CAD product implementation
+- `scope/ai-design`: AI Design product implementation
+- `integration/nexyfab`: shared configuration, packages, CI, release workflows, and final verification
+
+Read the matching `workspaces/<scope>/AGENTS.md` and `CURRENT.md` before making
+changes. Shared paths listed in `workspaces/registry.json` require an explicit
+integration decision.
+
+## Repository map
+
+- `src/`: legacy Next.js application and API routes
+- `apps/`: isolated application/runtime boundaries
+- `services/`: independently operated backend services
+- `workers/`: queue and edge workers
+- `collab-worker/`: real-time collaboration relay
+- `packages/`: shared, versioned contracts and libraries
+- `scripts/`: verification, security, migration, and operations tooling
+- `docs/evidence/`: generated audit and release evidence
+- `workspaces/`: scope ownership, current state, decisions, and handoffs
+
+## Deployment safety
+
+- Production gateways and relays fail closed when secrets, origins, or host
+  allowlists are missing.
+- Liveness reports process health; readiness includes required dependencies and
+  immutable build identity.
+- Deployment remains disabled while release-health evidence is `HOLD` or
+  `BLOCKED`.
+- Secrets discovered in tracked files require rotation and coordinated history
+  cleanup, even after the working-tree files are removed.
+- Generated reports are evidence, not substitutes for a staging restore and
+  rollback drill.
