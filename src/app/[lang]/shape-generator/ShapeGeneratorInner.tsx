@@ -18,7 +18,6 @@ import { useSceneStore } from './store/sceneStore';
 import { useResponsive } from './responsive/useResponsive';
 import { useTouchGestures } from './responsive/useTouchGestures';
 import { useRouter, usePathname } from 'next/navigation';
-import dynamic from 'next/dynamic';
 import {
   BufferGeometry,
   Float32BufferAttribute,
@@ -61,11 +60,8 @@ import { useViewportOverlays } from './hooks/useViewportOverlays';
 import { useAssemblyPartDisplay } from './hooks/useAssemblyPartDisplay';
 import { useSketchPaletteToggles } from './hooks/useSketchPaletteToggles';
 import { useSketchInteractionMode } from './hooks/useSketchInteractionMode';
-import { parseProject, NfabParseError, type NfabAssemblySnapshotV1, type NfabConfigurationV1, type NfabGlobalVariableV1, type NfabStudioViewV1 } from './io/nfabFormat';
-import { ConfigurationTable as ConfigurationTableRuntime } from './configurations/ConfigurationTable';
-import { migrateFromV1 as migrateConfigsFromV1 } from './configurations/migrateFromV1';
-import { ConfigStore, migrateToYjs as migrateConfigStoreToYjs, type ConfigStore as ConfigStoreType } from './configurations/ConfigStore';
-import { setConfigurationTable as setPipelineConfigurationTable, setEquationManager as setPipelineEquationManager } from './features/featureContext';
+import { parseProject, NfabParseError, type NfabAssemblySnapshotV1, type NfabGlobalVariableV1, type NfabStudioViewV1 } from './io/nfabFormat';
+import { setEquationManager as setPipelineEquationManager } from './features/featureContext';
 import { EquationManager } from './equations/equationManager';
 import {
   parseParamInput,
@@ -73,8 +69,8 @@ import {
   paramScopeFor,
   reevaluateFeatureParamExpressionsFixedPoint,
 } from './equations/featureParamExpressions';
-import type * as Y from 'yjs';
 import { useSceneAutoSaveWatchers } from './hooks/useSceneAutoSaveWatchers';
+import { useConfigurationsRuntime } from './hooks/useConfigurationsRuntime';
 import { applyBooleanAsync } from './features/boolean';
 import { useCsgWorker } from './workers/useCsgWorker';
 import { useFEAWorker } from './workers/useFEAWorker';
@@ -100,16 +96,8 @@ import {
   pendingWorkspaceRevisionVerification,
   type WorkspaceRevisionVerification,
 } from './design-brief/workspaceRevisionVerification';
-const LegacyHoleWizardModal = dynamic(() => import('./features/HoleWizardModal'), { ssr: false });
-const HoleWizardModalV2 = dynamic(() => import('./features/HoleWizardModalV2'), { ssr: false });
 import type { AvailableSketch } from './features/HoleWizardModalV2';
 import { holeArrayToFeaturePlacements } from './features/holeWizardRuntime';
-const FeatureParams = dynamic(() => import('./FeatureParams'), { ssr: false });
-const CommandToolbar = dynamic(() => import('./CommandToolbar'), { ssr: false });
-const ShapeCart = dynamic(() => import('./ShapeCart'), { ssr: false });
-const DesignFunnelBar = dynamic(() => import('./DesignFunnelBar'), { ssr: false });
-const TimelineBar = dynamic(() => import('./TimelineBar'), { ssr: false });
-const ShapeGeneratorToolbar = dynamic(() => import('./ShapeGeneratorToolbar'), { ssr: false });
 import type { BomPartResult } from './ShapePreview';
 // Sketch imports
 import type { SketchProfile, SketchConfig, SketchConstraint, SketchDimension, SketchSegment } from './sketch/types';
@@ -122,9 +110,6 @@ import {
   type SketchHistoryEntry,
   generateSketchThumbnail,
   saveSketchHistory } from './sketch/SketchHistory';
-const Sketch3DCanvas = dynamic(() => import('./sketch/Sketch3DCanvas'), { ssr: false });
-const DrawingView = dynamic(() => import('./sketch/DrawingView'), { ssr: false });
-const MobileModelViewer = dynamic(() => import('./responsive/MobileModelViewer'), { ssr: false });
 import { hasViewableGeometry, mobileViewerLabels } from './responsive/mobileViewer';
 // Editing imports
 import type { EditMode } from './editing/types';
@@ -159,8 +144,6 @@ import { saveDomainDesignHandoff } from '@/lib/ai/domainDesignHandoff';
 import type { UnifiedDesignProject } from '@/lib/ai/unifiedDesignProject';
 import { useIPShareFlow } from './hooks/useIPShareFlow';
 import { useShapeGeneratorUI } from './hooks/useShapeGeneratorUI';
-const QuoteWizard = dynamic(() => import('./onboarding/QuoteWizard'), { ssr: false });
-const DesktopFirstRunWizard = dynamic(() => import('./onboarding/DesktopFirstRunWizard'), { ssr: false });
 import { useAssemblyState, BODY_COLORS } from './hooks/useAssemblyState';
 import { applyCSG, makeToolGeometry } from './editing/CSGOperations';
 import type { CSGOperation, CSGToolParams } from './editing/CSGOperations';
@@ -187,7 +170,6 @@ import ManufacturingReadyCard from './analysis/ManufacturingReadyCard';
 // Auto-save imports
 import { useAutoSave } from './useAutoSave';
 import type { AutoSaveState } from './useAutoSave';
-const CommandPalette = dynamic(() => import('./CommandPalette'), { ssr: false });
 import type { Command } from './CommandPalette';
 import { buildPanelCommands } from './commandPaletteCommands';
 import { buildWorkspaceCommands } from './commandWorkspaceCommands';
@@ -218,14 +200,9 @@ import AwarenessPresencePanel from './collab/AwarenessPresencePanel';
 const CRDT_ENABLED = process.env.NEXT_PUBLIC_NEXYFAB_CRDT === '1';
 import CollabPresence from './collab/CollabPresence';
 import CollabReconnectBanner from './collab/CollabReconnectBanner';
-const CollabChat = dynamic(() => import('./collab/CollabChat'), { ssr: false });
-const DesignVariantsPanel = dynamic(() => import('./panels/DesignVariantsPanel'), { ssr: false });
 import { generateLinearSweep } from './panels/DesignVariantsPanel';
-const CopilotPanel = dynamic(() => import('./copilot/CopilotPanel'), { ssr: false });
 // Wave A · WA-D3 — AI design-brief entry + AiReviewQueuePanel (self-contained).
-const DesignBriefPanel = dynamic(() => import('./design-brief/DesignBriefPanel'), { ssr: false });
 // Wave A · WA-E / §GA3 — autonomy dashboard bound to autonomySessionStore.
-const AutonomyDashboardConnected = dynamic(() => import('./_shell/AutonomyDashboardConnected'), { ssr: false });
 
 import PipelineProgressOverlay from './PipelineProgressOverlay';
 import HeaderOverlays from './panels/HeaderOverlays';
@@ -271,12 +248,6 @@ import VersionDiffDock from './panels/VersionDiffDock';
 import ScadAgentPanel from './panels/ScadAgentPanel';
 import MobileAgentNotice from './panels/MobileAgentNotice';
 import ScadModeToggle from './panels/ScadModeToggle';
-const ConfigurationTable = dynamic(() => import('./panels/ConfigurationTable'), { ssr: false });
-const ConfigurationTableV2 = dynamic(() => import('./configurations/ui/ConfigurationTableV2'), { ssr: false });
-const DrcPanel = dynamic(() => import('./analysis/DrcPanel'), { ssr: false });
-const PlmConfigPanel = dynamic(() => import('./integrations/PlmConfigPanel'), { ssr: false });
-const SketchTextPanel = dynamic(() => import('./sketch/SketchTextPanel'), { ssr: false });
-const SmartFastenerPanel = dynamic(() => import('./assembly/SmartFastenerPanel'), { ssr: false });
 import type { AssemblyMate, MateType } from './assembly/AssemblyMates';
 import { generateMateId } from './assembly/AssemblyMates';
 import { useVersionHistory } from './history/useVersionHistory';
@@ -302,24 +273,13 @@ import { useCloudSaveFlow } from './useCloudSaveFlow';
 import { DEFAULT_RENDER_SETTINGS, type RenderSettings } from './rendering/RenderPanel';
 import { downloadScreenshot } from './rendering/useScreenshot';
 import { useTutorial } from './onboarding/useTutorial';
-const SketchContextTip = dynamic(() => import('./onboarding/SketchContextTip'), {
-  ssr: false,
-  loading: () => null });
 import { useContextHelp } from './onboarding/useContextHelp';
 import type { GeometryMetrics } from './estimation/CostEstimator';
 import { estimateCosts } from './estimation/CostEstimator';
-const ProcessRouterPanel = dynamic(() => import('./estimation/ProcessRouterPanel'), { ssr: false });
-const AISupplierPanel = dynamic(() => import('./analysis/AISupplierPanel'), { ssr: false });
-const CostCopilotPanel = dynamic(() => import('./analysis/CostCopilotPanel'), { ssr: false });
-const AIHistoryPanel = dynamic(() => import('./analysis/AIHistoryPanel'), { ssr: false });
-const OpenScadPanel = dynamic(() => import('./openscad/OpenScadPanel'), { ssr: false });
 // GD&T Annotation imports
 import type { GDTAnnotation, DimensionAnnotation } from './annotations/GDTTypes';
-const ShapePreview = dynamic(() => import('./ShapePreview'), { ssr: false });
-const MultiViewport = dynamic(() => import('./MultiViewport'), { ssr: false });
 import LeftPanel from './panels/LeftPanel';
 import { useSidebarLayout } from './hooks/useSidebarLayout';
-const GenDesignViewer = dynamic(() => import('./topology/GenDesignViewer'), { ssr: false });
 import { useAuthStore } from '@/hooks/useAuth';
 import { userMeetsBmMatrixFeatureStage } from '@/lib/bm-matrix-stage-ui';
 import type { Stage } from '@/lib/stage-engine';
@@ -328,50 +288,26 @@ import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts';
 import { getPlanLimits } from './freemium/planLimits';
 import { dfmAnalysisAllowed, consumeFreeDfmCreditIfUnpaid } from './freemium/freeDfmAllowance';
 import { useDfmWarnings } from './hooks/useDfmWarnings';
-const UpgradePrompt = dynamic(() => import('./freemium/UpgradePrompt'), { ssr: false });
-const COTSPanel = dynamic(() => import('./cots/COTSPanel'), { ssr: false });
-const CAMSimPanel = dynamic(() => import('./analysis/CAMSimPanel'), { ssr: false });
 import type { COTSPart } from './cots/cotsData';
 import { cotsToScad } from './cots/cotsGeometry';
 import { usePinComments } from './comments/PinComments';
-const CommentsPanel = dynamic(() => import('./comments/CommentsPanel'), { ssr: false });
 import type { ActivityEvent } from './comments/CommentsPanel';
 import WorkflowStepper from './WorkflowStepper';
-const ManufacturerMatch = dynamic(() => import('./analysis/ManufacturerMatch'), {
-  ssr: false,
-  loading: () => (
-    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', background: 'var(--nx-bg)', color: 'var(--nx-text-3)', fontSize: 13 }}>
-      Loading Manufacturer Match...
-    </div>
-  ) });
 import type { Manufacturer } from './analysis/ManufacturerMatch';
 import { useCollabPolling } from '@/hooks/useCollabPolling';
 import { useSessionKeepalive } from '@/hooks/useSessionKeepalive';
-const StatusBar = dynamic(() => import('./StatusBar'), { ssr: false });
-const BreadcrumbNav = dynamic(() => import('./BreadcrumbNav'), { ssr: false });
 import type { BreadcrumbItem } from './BreadcrumbNav';
 import SelectionFilterBar from './SelectionFilterBar';
 import type { SelectionFilter } from './SelectionFilterBar';
 import SelectionInfoBadge from './editing/SelectionInfoBadge';
 import MatePickerOverlay from './editing/MatePickerOverlay';
 import AIAssistantSidebar from './analysis/AIAssistantSidebar';
-const IntakeWizard = dynamic(() => import('./intake/IntakeWizard'), { ssr: false });
-const ComposeResultPanel = dynamic(() => import('./intake/ComposeResultPanel'), { ssr: false });
 import type { ComposeResponse } from './intake/ComposeResultPanel';
 import type { IntakeSpec } from './intake/intakeSpec';
 import { mapToPresetId } from './library/materialMapping';
-const PropertyManager = dynamic(() => import('./PropertyManager'), { ssr: false });
-const EmptyCanvasGuide = dynamic(() => import('./EmptyCanvasGuide'), { ssr: false });
 import FullscreenAutoHide from './FullscreenAutoHide';
 import { ErrorBoundary } from '@/components/nexyfab/ErrorBoundary';
 import { getToolCursor } from './hooks/useToolCursor';
-// Advanced analysis panels (still inline-mounted: ParametricSweep, AutoDrawing)
-const ParametricSweepPanel = dynamic(() => import('./analysis/ParametricSweepPanel'), { ssr: false });
-const AutoDrawingPanel = dynamic(() => import('./analysis/AutoDrawingPanel'), { ssr: false });
-const DrivingDimensionField = dynamic(() => import('./drawing/DrivingDimensionField'), { ssr: false });
-const ScadCodePanel = dynamic(() => import('./openscad/ScadCodePanel'), { ssr: false });
-const PushPullBanner = dynamic(() => import('./pushpull/PushPullBanner'), { ssr: false });
-const GdtPicker = dynamic(() => import('./drawing/GdtPicker'), { ssr: false });
 import type { PlacedPart } from './assembly/PartPlacementPanel';
 import { placedPartsToBomResults } from './assembly/PartPlacementPanel';
 import { inferAssemblyMates } from './assembly/inferAssemblyMates';
@@ -386,60 +322,63 @@ import CadWorkspaceSwitcher from './CadWorkspaceSwitcher';
 import { applyCadWorkspace, isCadWorkspaceId } from './cadWorkspace/applyCadWorkspace';
 import { useCadWorkspaceInference } from './hooks/useCadWorkspaceInference';
 import { useGeometryGC } from './hooks/useGeometryGC';
+import { shapeGeneratorRouteSegment } from './_shell/shapeGeneratorRouteSegment';
+import { geometryToStlBase64 } from './io/geometryToStlBase64';
+import {
+  AIHistoryPanel,
+  AISupplierPanel,
+  AutoDrawingPanel,
+  AutonomyDashboardConnected,
+  BreadcrumbNav,
+  CAMSimPanel,
+  COTSPanel,
+  CollabChat,
+  CommandPalette,
+  CommandToolbar,
+  CommentsPanel,
+  ComposeResultPanel,
+  ConfigurationTable,
+  ConfigurationTableV2,
+  CopilotPanel,
+  CostCopilotPanel,
+  DesignBriefPanel,
+  DesignFunnelBar,
+  DesignVariantsPanel,
+  DesktopFirstRunWizard,
+  DrawingView,
+  DrivingDimensionField,
+  DrcPanel,
+  EmptyCanvasGuide,
+  FeatureParams,
+  GdtPicker,
+  GenDesignViewer,
+  HoleWizardModalV2,
+  IntakeWizard,
+  LegacyHoleWizardModal,
+  ManufacturerMatch,
+  MobileModelViewer,
+  MultiViewport,
+  OpenScadPanel,
+  ParametricSweepPanel,
+  PlmConfigPanel,
+  ProcessRouterPanel,
+  PropertyManager,
+  PushPullBanner,
+  QuoteWizard,
+  ScadCodePanel,
+  ShapeCart,
+  ShapeGeneratorToolbar,
+  ShapePreview,
+  Sketch3DCanvas,
+  SketchContextTip,
+  SketchTextPanel,
+  SmartFastenerPanel,
+  StatusBar,
+  TimelineBar,
+  UpgradePrompt,
+} from './_shell/lazyShapeGeneratorComponents';
 
 // ─── Design tab: resizable 3D preview column (right) ───────────────────────────
-
-/** First segment after `shape-generator` for bookmarkable sub-routes. */
-function shapeGeneratorRouteSegment(pathname: string | null): 'sketch' | 'analysis' | '3d-edit' | null {
-  if (!pathname) return null;
-  const parts = pathname.split('/').filter(Boolean);
-  const i = parts.indexOf('shape-generator');
-  if (i === -1) return null;
-  const next = parts[i + 1];
-  if (next === 'sketch' || next === 'analysis' || next === '3d-edit') return next;
-  return null;
-}
-
-/**
- * Serialize a BufferGeometry to a binary-STL base64 string so an imported mesh
- * can be AI-edited: we wrap it as `import("model.stl")` in OpenSCAD and let the
- * model add operations around it (mirrors the Studio flow). Handles indexed and
- * non-indexed geometry; normals are left zero (viewers/OpenSCAD recompute).
- */
-function geometryToStlBase64(geo: BufferGeometry): string | null {
-  const posAttr = geo.attributes.position;
-  if (!posAttr) return null;
-  const pos = posAttr.array as ArrayLike<number>;
-  const idx = geo.index ? (geo.index.array as ArrayLike<number>) : null;
-  const triCount = idx ? Math.floor(idx.length / 3) : Math.floor(pos.length / 9);
-  if (triCount <= 0) return null;
-  const buf = new ArrayBuffer(84 + triCount * 50);
-  const dv = new DataView(buf);
-  dv.setUint32(80, triCount, true);
-  let off = 84;
-  for (let t = 0; t < triCount; t++) {
-    const ia = idx ? idx[t * 3] : t * 3;
-    const ib = idx ? idx[t * 3 + 1] : t * 3 + 1;
-    const ic = idx ? idx[t * 3 + 2] : t * 3 + 2;
-    off += 12; // normal left as (0,0,0)
-    for (const vi of [ia, ib, ic]) {
-      const b = vi * 3;
-      dv.setFloat32(off, pos[b], true);
-      dv.setFloat32(off + 4, pos[b + 1], true);
-      dv.setFloat32(off + 8, pos[b + 2], true);
-      off += 12;
-    }
-    off += 2; // attribute byte count
-  }
-  // Chunked base64 — avoids stack overflow from spreading a large Uint8Array.
-  const bytes = new Uint8Array(buf);
-  let bin = '';
-  const CHUNK = 0x8000;
-  for (let i = 0; i < bytes.length; i += CHUNK) {
-    bin += String.fromCharCode.apply(null, Array.from(bytes.subarray(i, i + CHUNK)));
-  }
-  return typeof btoa === 'function' ? btoa(bin) : null;
-}
 
 // ─── Component ───────────────────────────────────────────────────────────────
 
@@ -1671,243 +1610,26 @@ export function ShapeGeneratorInner(
   }, []);
 
   // ── Configurations (named variants: params + feature suppress) — .nfab [CAD-데이터] ──
-  const [configurations, setConfigurations] = useState<NfabConfigurationV1[]>([]);
-  const [activeConfigurationId, setActiveConfigurationId] = useState<string | null>(null);
-
-  // ── A3 (W3) flag-gated runtime — `?configs=v2` opts into the new
-  // ConfigurationTable pipeline integration. When OFF (default), behaviour
-  // is unchanged: the legacy state-mutating handlers stay as the
-  // authoritative path (kept for back-compat until v2 graduates from
-  // flag-gated to default in a later PR). When ON, a stable
-  // `ConfigurationTable` instance backs the same state — handlers
-  // dual-write so the panel UI (which still reads `configurations`) stays
-  // in sync, but the pipeline re-evaluates through `applyFeatureContext`
-  // → `ConfigurationTable.resolveActive` instead of through scene-store
-  // mutation.
-  //
-  // **W6 (Track A6) cleanup** — the in-session `masterSceneSnapshotRef`
-  // defensive layer (PR #42) was removed in this PR. A3 + A5 are the
-  // production path: the v2 runtime never mutates the master tree, and
-  // soak burn-in + CRDT divergence tests (W5) have validated that. The
-  // legacy mutation branch below is still here for users on the
-  // `?configs=v1`/default path; it remains the documented "save while a
-  // non-master config is active to lose your original master" footgun
-  // (configurations-spec §13.5), which users escape by switching to
-  // `?configs=v2`.
-  const useConfigurationTableRuntime = searchParams?.get('configs') === 'v2';
-  const configurationTableRef = useRef<ConfigurationTableRuntime | null>(null);
-  if (useConfigurationTableRuntime && configurationTableRef.current === null) {
-    // Lazy init — hot-swap from the legacy state so a mid-session flag
-    // flip preserves the user's variants.
-    configurationTableRef.current = migrateConfigsFromV1(configurations, activeConfigurationId);
-  }
-
-  // ── A5 (W5) — ConfigStore adapter ────────────────────────────────────────
-  // When a Y.Doc is available (collab session), we wrap the
-  // ConfigurationTable in a Yjs-backed adapter so mutations route through
-  // applyConfigOp + transact. The pipeline still reads through
-  // `setPipelineConfigurationTable` because A2's ConfigurationTable is the
-  // single resolver. In Yjs mode the adapter rebuilds the table from the
-  // doc on every Y update.
-  //
-  // The doc itself is null today — A5 only ships the adapter; the future
-  // collab session bridge (W7+) will populate this ref via useCollab once
-  // the host carries a Y.Doc. The adapter falls back to local mode and
-  // the behaviour is identical to the A3 path.
-  const configCollabDocRef = useRef<Y.Doc | null>(null);
-  const configStoreRef = useRef<ConfigStoreType | null>(null);
-  if (useConfigurationTableRuntime && configurationTableRef.current && configStoreRef.current === null) {
-    const doc = configCollabDocRef.current;
-    if (doc) {
-      // Collab pipeline — mutations route through applyConfigOp.
-      const localBootstrap = ConfigStore.local(configurationTableRef.current);
-      configStoreRef.current = migrateConfigStoreToYjs(localBootstrap, doc);
-    } else {
-      // Single-user — wraps the same ConfigurationTable instance.
-      configStoreRef.current = ConfigStore.local(configurationTableRef.current);
-    }
-  }
-
-  // Register / unregister the pipeline seam slot. This is the single
-  // wire that makes `applyFeatureContext` route through the new table
-  // (see features/featureContext.ts). The flag-off branch explicitly
-  // nulls the slot so a tab opened in v2 then refreshed without the
-  // flag drops back to the legacy path cleanly.
-  useEffect(() => {
-    if (useConfigurationTableRuntime && configurationTableRef.current) {
-      setPipelineConfigurationTable(configurationTableRef.current);
-    } else {
-      setPipelineConfigurationTable(null);
-    }
-    return () => {
-      setPipelineConfigurationTable(null);
-    };
-  }, [useConfigurationTableRuntime]);
-
-  const getConfigurationsBlock = useCallback(
-    () => ({
-      configurations,
-      activeConfigurationId,
-    }),
-    [configurations, activeConfigurationId],
-  );
-
-  const restoreConfigurationsSnapshot = useCallback(
-    (configs: NfabConfigurationV1[] | undefined, activeId: string | null | undefined) => {
-      setConfigurations(configs ?? []);
-      setActiveConfigurationId(activeId ?? null);
-    },
-    [],
-  );
-
-  const handleConfigurationSelect = useCallback(
-    (id: string | null) => {
-      // ── A3 v2 path — flag on: route through ConfigurationTable, do
-      //    NOT mutate sceneStore / node.enabled. The pipeline picks up
-      //    the change via `applyFeatureContext` on the next re-eval,
-      //    which `configurationsSig` (below) triggers when activeId
-      //    changes. The list UI still reads `configurations`, so we
-      //    only need to update activeConfigurationId.
-      if (useConfigurationTableRuntime && configurationTableRef.current) {
-        configurationTableRef.current.activate(id);
-        setActiveConfigurationId(id);
-        return;
-      }
-
-      // ── Legacy path (default) — scene-store mutation. ──
-      // Users staying on the default (`?configs=v1`) path keep the
-      // pre-W6 behaviour. The defensive masterSnapshot layer that used
-      // to wrap this branch was removed in W6 (A6) cleanup; users who
-      // need master-tree protection are expected to migrate to the v2
-      // runtime by opting into `?configs=v2`.
-      setActiveConfigurationId(id);
-
-      // Deactivate path: drop back to working master (caller's
-      // sceneStore is left as-is; legacy path has no in-session master
-      // snapshot to restore from).
-      if (id == null) {
-        return;
-      }
-
-      // Activate path: apply the config (unchanged from prior behavior).
-      const cfg = configurations.find(c => c.id === id);
-      if (!cfg) return;
-      useSceneStore.setState(s => ({
-        params: { ...cfg.params },
-        ...(cfg.paramExpressions !== undefined
-          ? { paramExpressions: { ...cfg.paramExpressions } }
-          : { paramExpressions: { ...s.paramExpressions } }),
-      }));
-      for (const [nodeId, en] of Object.entries(cfg.featureEnabled)) {
-        updateNode(nodeId, { enabled: en });
-      }
-      // Nodes added after this variant was saved: default to enabled
-      const nodes = getOrderedNodes();
-      for (const n of nodes) {
-        if (!featureHistory || n.id === featureHistory.rootId) continue;
-        if (n.type === 'baseShape') continue;
-        if (Object.prototype.hasOwnProperty.call(cfg.featureEnabled, n.id)) continue;
-        updateNode(n.id, { enabled: true });
-      }
-    },
-    [configurations, featureHistory, getOrderedNodes, updateNode, useConfigurationTableRuntime],
-  );
-
-  const handleConfigurationAdd = useCallback(
-    (name: string) => {
-      const trimmed = name.trim();
-      if (!trimmed) return;
-      const sc = useSceneStore.getState();
-      const nodes = getOrderedNodes();
-      const featureEnabled: Record<string, boolean> = {};
-      for (const n of nodes) {
-        if (!featureHistory || n.id === featureHistory.rootId) continue;
-        if (n.type === 'baseShape') continue;
-        featureEnabled[n.id] = n.enabled;
-      }
-      const id =
-        typeof crypto !== 'undefined' && crypto.randomUUID
-          ? crypto.randomUUID()
-          : `cfg-${Date.now()}`;
-      const pe = sc.paramExpressions;
-      const newCfg: NfabConfigurationV1 = {
-        id,
-        name: trimmed,
-        params: { ...sc.params },
-        ...(Object.keys(pe).length > 0 ? { paramExpressions: { ...pe } } : {}),
-        featureEnabled,
-      };
-
-      // ── A3 v2 path — mirror into the ConfigurationTable runtime so
-      //    the pipeline seam has the new entry. We still update the
-      //    legacy `configurations` state because the panel UI binds
-      //    to it; the table is the canonical source for the pipeline.
-      if (useConfigurationTableRuntime && configurationTableRef.current) {
-        const table = configurationTableRef.current;
-        // `migrateFromV1` is the canonical mapper. We piggy-back on
-        // it for a single-entry add so the mapping stays in one place.
-        const subTable = migrateConfigsFromV1([newCfg], id);
-        const entry = subTable.get(id);
-        if (entry) {
-          table.add(entry.name, { id: entry.id });
-          for (const [featureId, slot] of Object.entries(entry.overrides)) {
-            if (slot.suppressed) {
-              table.setSuppressed(id, featureId, true);
-            }
-          }
-          for (const [varName, value] of Object.entries(entry.expressionVars)) {
-            table.setExpressionVar(id, varName, value);
-          }
-        }
-        table.activate(id);
-      }
-
-      setConfigurations(prev => [...prev, newCfg]);
-      setActiveConfigurationId(id);
-    },
-    [featureHistory, getOrderedNodes, useConfigurationTableRuntime],
-  );
-
-  const handleConfigurationRename = useCallback(
-    (configId: string, name: string) => {
-      const n = name.trim();
-      if (!n) return;
-      if (useConfigurationTableRuntime && configurationTableRef.current) {
-        configurationTableRef.current.rename(configId, n);
-      }
-      setConfigurations(prev => prev.map(c => (c.id === configId ? { ...c, name: n } : c)));
-    },
-    [useConfigurationTableRuntime],
-  );
-
-  const handleConfigurationDelete = useCallback(
-    (id: string) => {
-      if (useConfigurationTableRuntime && configurationTableRef.current) {
-        configurationTableRef.current.remove(id);
-      }
-      setConfigurations(prev => prev.filter(c => c.id !== id));
-      setActiveConfigurationId(cur => (cur === id ? null : cur));
-    },
-    [useConfigurationTableRuntime],
-  );
-
-  const configurationsSig = useMemo(
-    () => JSON.stringify(configurations) + String(activeConfigurationId),
-    [configurations, activeConfigurationId],
-  );
-
-  /** Clear invalid variants when the design tree is reset to a single root (e.g. clear all). */
-  const configurationTreePurgeBootRef = useRef(true);
-  useEffect(() => {
-    if (configurationTreePurgeBootRef.current) {
-      configurationTreePurgeBootRef.current = false;
-      return;
-    }
-    if (featureHistory.nodes.length === 1 && configurations.length > 0) {
-      setConfigurations([]);
-      setActiveConfigurationId(null);
-    }
-  }, [featureHistory.nodes.length, featureHistory.rootId, configurations.length]);
+  const {
+    configurations,
+    setConfigurations,
+    activeConfigurationId,
+    setActiveConfigurationId,
+    useConfigurationTableRuntime,
+    configurationTableRef,
+    getConfigurationsBlock,
+    restoreConfigurationsSnapshot,
+    handleConfigurationSelect,
+    handleConfigurationAdd,
+    handleConfigurationRename,
+    handleConfigurationDelete,
+    configurationsSig,
+  } = useConfigurationsRuntime({
+    enabled: searchParams?.get('configs') === 'v2',
+    featureHistory,
+    getOrderedNodes,
+    updateNode,
+  });
 
   // ── Sketch result (overrides parametric result when sketch was generated) ──
   const sketchResult = useSceneStore(s => s.sketchResult);
