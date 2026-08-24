@@ -110,6 +110,21 @@ describe('GET /api/health/release', () => {
     expect(result.status).not.toBe('PASS');
   });
 
+  it('uses an explicit release git head for verified CLI uploads and prefers a valid Railway commit', async () => {
+    const explicit = await buildReleaseEvidence({
+      env: { ...ids, RAILWAY_GIT_COMMIT_SHA: undefined, RELEASE_GIT_HEAD: 'b'.repeat(40) },
+      now: Date.parse('2026-08-23T00:00:00.000Z'),
+    });
+    expect(explicit.release.gitHead).toBe('b'.repeat(40));
+    expect(explicit.evidence.git.status).toBe('PASS');
+
+    const managed = await buildReleaseEvidence({
+      env: { ...ids, RELEASE_GIT_HEAD: 'b'.repeat(40) },
+      now: Date.parse('2026-08-23T00:00:00.000Z'),
+    });
+    expect(managed.release.gitHead).toBe(ids.RAILWAY_GIT_COMMIT_SHA);
+  });
+
   it('rejects an evidence path that escapes through a directory link', async () => {
     const fixture = mkdtempSync(path.join(os.tmpdir(), 'nexyfab-release-link-'));
     const root = path.join(fixture, 'root');

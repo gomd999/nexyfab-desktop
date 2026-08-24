@@ -62,7 +62,7 @@ function runNpmScript(script, env = process.env) {
 }
 
 export const TARGET_RUNTIME_KEYS = [
-  'NEXYFAB_COMMERCIAL_MODE', 'NEXYFAB_RELEASE_CHANNEL', 'NEXYFAB_BUILD_ID',
+  'NEXYFAB_COMMERCIAL_MODE', 'NEXYFAB_RELEASE_CHANNEL', 'NEXYFAB_BUILD_ID', 'RELEASE_GIT_HEAD',
   'NEXYFAB_PRECISION_CAD_COMMERCIAL_MODE', 'NEXYFAB_AGENT_APPROVAL_SECRET',
   'NEXYFAB_AGENTIC_TRUST_REGISTRY_JSON', 'EXTERNAL_WORKER_ORCHESTRATOR_URL',
   'EXTERNAL_WORKER_ORCHESTRATOR_HEALTH_URL', 'POSTGRES_MIGRATION_VERSION',
@@ -131,13 +131,15 @@ export function targetGateEnvironment(target, baseEnvironment = process.env) {
   return env;
 }
 
-export function stagingHoldIssues({ environment, site, target, expectedBuildId }) {
+export function stagingHoldIssues({ environment, site, target, expectedBuildId, autoDeployEnabled }) {
   const issues = [];
   if (environment !== 'staging') issues.push('staging_hold_environment_must_be_staging');
+  if (autoDeployEnabled !== false) issues.push('staging_hold_auto_deploy_must_be_disabled');
   if (target.NEXYFAB_COMMERCIAL_MODE !== '0') issues.push('staging_hold_commercial_mode_must_be_0');
   if (target.NEXYFAB_PRECISION_CAD_COMMERCIAL_MODE === '1') issues.push('staging_hold_precision_commercial_mode_must_not_be_1');
   if (target.NEXYFAB_RELEASE_CHANNEL !== 'staging-hold') issues.push('staging_hold_release_channel_required');
   if (!expectedBuildId || target.NEXYFAB_BUILD_ID !== expectedBuildId) issues.push('staging_hold_build_id_mismatch');
+  if (!expectedBuildId || target.RELEASE_GIT_HEAD !== expectedBuildId) issues.push('staging_hold_release_git_head_mismatch');
   try {
     const hostname = new URL(site).hostname.toLowerCase();
     if (!hostname.includes('staging') || hostname === 'nexyfab.com' || hostname === 'www.nexyfab.com') {
@@ -147,6 +149,36 @@ export function stagingHoldIssues({ environment, site, target, expectedBuildId }
     issues.push('staging_hold_site_invalid');
   }
   return issues;
+}
+
+export function railwayTargetIds(value, targetEnvironment, targetService) {
+  const environmentNode = value?.environments?.edges
+    ?.map(edge => edge?.node)
+    .find(node => node?.name === targetEnvironment);
+  const serviceNode = environmentNode?.serviceInstances?.edges
+    ?.map(edge => edge?.node)
+    .find(node => node?.serviceName === targetService);
+  const projectId = typeof value?.id === 'string' ? value.id : '';
+  const environmentId = typeof environmentNode?.id === 'string' ? environmentNode.id : '';
+  const serviceId = typeof serviceNode?.serviceId === 'string' ? serviceNode.serviceId : '';
+  return projectId && environmentId && serviceId ? { projectId, environmentId, serviceId } : null;
+}
+
+async function targetAutoDeployEnabled() {
+  const status = await runRailway(['status', '--json']);
+  const ids = railwayTargetIds(JSON.parse(status.stdout), environment, service);
+  if (!ids) throw new Error(`unable to resolve Railway IDs for ${environment}/${service}`);
+  const query = 'query AutoDeploy($environmentId:String!,$projectId:String!,$serviceId:String!){serviceInstanceAutoDeployStatus(environmentId:$environmentId,projectId:$projectId,serviceId:$serviceId){enabled}}';
+  const result = await runRailway([
+    'api', query,
+    '--raw-var', `environmentId=${ids.environmentId}`,
+    '--raw-var', `projectId=${ids.projectId}`,
+    '--raw-var', `serviceId=${ids.serviceId}`,
+    '--compact',
+  ]);
+  const enabled = JSON.parse(result.stdout)?.data?.serviceInstanceAutoDeployStatus?.enabled;
+  if (typeof enabled !== 'boolean') throw new Error(`unable to read auto-deploy state for ${environment}/${service}`);
+  return enabled;
 }
 
 function deploymentRows(value) {
@@ -206,7 +238,8 @@ async function main() {
   // staging environment while external commercial evidence is still absent. It
   // cannot target production or turn either commercial execution flag on.
   if (stagingHold) {
-    const issues = stagingHoldIssues({ environment, site, target, expectedBuildId });
+    const autoDeployEnabled = await targetAutoDeployEnabled();
+    const issues = stagingHoldIssues({ environment, site, target, expectedBuildId, autoDeployEnabled });
     if (issues.length) throw new Error(`staging HOLD target rejected: ${issues.join(', ')}`);
     await runNpmScript('workspace:audit', gateEnvironment);
     await runNpmScript('platform:architecture:check', gateEnvironment);

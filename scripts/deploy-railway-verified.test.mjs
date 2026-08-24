@@ -1,10 +1,11 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { TARGET_RUNTIME_KEYS, npmInvocation, stagingHoldIssues, targetGateEnvironment } from './deploy-railway-verified.mjs';
+import { TARGET_RUNTIME_KEYS, npmInvocation, railwayTargetIds, stagingHoldIssues, targetGateEnvironment } from './deploy-railway-verified.mjs';
 
 const commercialRuntimeKeys = [
   'NEXYFAB_COMMERCIAL_MODE',
   'NEXYFAB_BUILD_ID',
+  'RELEASE_GIT_HEAD',
   'NEXYFAB_AGENT_APPROVAL_SECRET',
   'NEXYFAB_AGENTIC_TRUST_REGISTRY_JSON',
   'NEXYFAB_PRECISION_CAD_COMMERCIAL_MODE',
@@ -62,19 +63,43 @@ test('staging HOLD deployment is restricted to an isolated non-commercial target
     environment: 'staging',
     site: 'https://nexyfabcom-staging.up.railway.app',
     expectedBuildId: buildId,
+    autoDeployEnabled: false,
     target: {
       NEXYFAB_COMMERCIAL_MODE: '0',
       NEXYFAB_RELEASE_CHANNEL: 'staging-hold',
       NEXYFAB_BUILD_ID: buildId,
+      RELEASE_GIT_HEAD: buildId,
     },
   };
   assert.deepEqual(stagingHoldIssues(passing), []);
   assert.ok(stagingHoldIssues({ ...passing, environment: 'production' }).includes('staging_hold_environment_must_be_staging'));
+  assert.ok(stagingHoldIssues({ ...passing, autoDeployEnabled: true }).includes('staging_hold_auto_deploy_must_be_disabled'));
   assert.ok(stagingHoldIssues({ ...passing, site: 'https://nexyfab.com' }).includes('staging_hold_site_must_be_isolated_staging_host'));
   assert.ok(stagingHoldIssues({ ...passing, target: { ...passing.target, NEXYFAB_COMMERCIAL_MODE: '1' } }).includes('staging_hold_commercial_mode_must_be_0'));
   assert.ok(stagingHoldIssues({ ...passing, target: { ...passing.target, NEXYFAB_PRECISION_CAD_COMMERCIAL_MODE: '1' } }).includes('staging_hold_precision_commercial_mode_must_not_be_1'));
   assert.ok(stagingHoldIssues({ ...passing, target: { ...passing.target, NEXYFAB_RELEASE_CHANNEL: 'production' } }).includes('staging_hold_release_channel_required'));
   assert.ok(stagingHoldIssues({ ...passing, expectedBuildId: 'b'.repeat(40) }).includes('staging_hold_build_id_mismatch'));
+  assert.ok(stagingHoldIssues({ ...passing, target: { ...passing.target, RELEASE_GIT_HEAD: 'b'.repeat(40) } }).includes('staging_hold_release_git_head_mismatch'));
+});
+
+test('Railway target IDs resolve the exact named environment and service', () => {
+  const status = {
+    id: 'project-1',
+    environments: { edges: [
+      { node: { id: 'production-1', name: 'production', serviceInstances: { edges: [
+        { node: { serviceId: 'service-prod', serviceName: 'nexyfab.com' } },
+      ] } } },
+      { node: { id: 'staging-1', name: 'staging', serviceInstances: { edges: [
+        { node: { serviceId: 'service-web', serviceName: 'nexyfab.com' } },
+        { node: { serviceId: 'service-db', serviceName: 'Postgres-KN2x' } },
+      ] } } },
+    ] },
+  };
+  assert.deepEqual(railwayTargetIds(status, 'staging', 'nexyfab.com'), {
+    projectId: 'project-1', environmentId: 'staging-1', serviceId: 'service-web',
+  });
+  assert.equal(railwayTargetIds(status, 'staging', 'missing'), null);
+  assert.equal(railwayTargetIds(status, 'missing', 'nexyfab.com'), null);
 });
 
 test('Windows invokes the npm JavaScript CLI without a command-shell dependency', () => {

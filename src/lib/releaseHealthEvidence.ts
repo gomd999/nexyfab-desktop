@@ -246,7 +246,7 @@ async function migrationEvidence(db: ReleaseEvidenceOptions['db'], env: Environm
 export async function buildReleaseEvidence(options: ReleaseEvidenceOptions = {}) {
   const env = options.env ?? process.env;
   const now = options.now ?? Date.now();
-  const gitHead = gitCommitSha(env.RAILWAY_GIT_COMMIT_SHA);
+  const gitHead = gitCommitSha(env.RAILWAY_GIT_COMMIT_SHA) ?? gitCommitSha(env.RELEASE_GIT_HEAD);
   const buildId = cleanId(env.NEXYFAB_BUILD_ID);
   const deploymentId = railwayDeploymentId(env.RAILWAY_DEPLOYMENT_ID);
   const railwayEnvironment = env.RAILWAY_ENVIRONMENT_NAME?.trim().toLowerCase() ?? null;
