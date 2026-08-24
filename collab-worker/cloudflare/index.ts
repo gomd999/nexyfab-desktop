@@ -24,14 +24,14 @@
  *   2. Durable Object stub (`CollabRoomDO`) that accepts the upgrade,
  *      runs the same in-memory Y.Doc + Awareness model as server.js, and
  *      relays sync/awareness frames between connected clients in the room.
- *   3. Auth shim that mirrors authorize() in server.js (Phase 1: pass-through,
- *      Phase 2: HS256 verify + nfProjectAccess).
+ *   3. Fail-closed HS256 authentication with expiry, subject, origin, and
+ *      optional docId binding checks.
  *
  * What this scaffold does NOT do (Phase 2 wishlist):
  *   - KV snapshot loop (see CollabRoom.ts in occt-collab-worker).
  *   - Idle-room alarm eviction (DurableObject.state.storage.setAlarm).
  *   - Custom-domain route binding (configure in wrangler.toml).
- *   - JWT verification (just trusts ?token=).
+ *   - Main-app worker-token issuance bound to nfProjectAccess/docId.
  */
 
 // NOTE: This file is a Workers TypeScript module. It will not typecheck under
@@ -58,7 +58,7 @@ const MESSAGE_AWARENESS = 1;
 
 interface Env {
   COLLAB_ROOM: DurableObjectNamespace;
-  /** Phase 2: HS256 secret to verify the worker-token. */
+  /** HS256 secret shared with the worker-token issuer. */
   JWT_SECRET?: string;
   /** Optional CSV of origins allowed to open WebSocket connections. */
   ALLOWED_ORIGINS?: string;
@@ -71,7 +71,11 @@ export default {
     const url = new URL(request.url);
 
     if (url.pathname === '/healthz') {
-      return Response.json({ ok: true, transport: 'cloudflare-do' });
+      const issues = [];
+      if (!env.JWT_SECRET || env.JWT_SECRET.length < 32) issues.push('jwt_secret_missing_or_short');
+      const origins = allowedOrigins(env);
+      if (origins.length === 0) issues.push('allowed_origins_missing_or_invalid');
+      return Response.json({ ok: issues.length === 0, transport: 'cloudflare-do', issues }, { status: issues.length === 0 ? 200 : 503 });
     }
 
     // WebSocket upgrade — route by docId so each doc gets its own DO.
@@ -79,18 +83,20 @@ export default {
       // Path convention: /ws/<docId>. Anything else falls through to 404.
       const match = url.pathname.match(/^\/ws\/([^/]+)\/?$/);
       if (!match) return new Response('Not found', { status: 404 });
-      const docId = decodeURIComponent(match[1]);
+      let docId: string;
+      try { docId = decodeURIComponent(match[1]); }
+      catch { return new Response('Invalid docId', { status: 400 }); }
+      if (!/^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/.test(docId)) return new Response('Invalid docId', { status: 400 });
 
       // Origin allowlist (defence in depth on top of token auth).
-      const allowed = (env.ALLOWED_ORIGINS || '').split(',').filter(Boolean);
+      const allowed = allowedOrigins(env);
       const origin = request.headers.get('Origin') || '';
-      if (allowed.length > 0 && origin && !allowed.includes(origin)) {
+      if (!origin || !allowed.includes(origin)) {
         return new Response('Forbidden origin', { status: 403 });
       }
 
-      // Phase 1 auth: pass-through. Phase 2: verify ?token= against JWT_SECRET.
       const token = url.searchParams.get('token') || '';
-      const auth = authorize(token, docId, env);
+      const auth = await authorize(token, docId, env);
       if (!auth.ok) return new Response('Unauthorized', { status: 401 });
 
       // Route to per-doc DO. `idFromName(docId)` is deterministic so every
@@ -110,18 +116,59 @@ export default {
   },
 };
 
-// ─── Auth (Phase 1 pass-through; Phase 2 will HS256-verify) ───────────────
+// ─── Auth ────────────────────────────────────────────────────────────────
 
-function authorize(
+function base64urlDecode(value: string): Uint8Array {
+  const normalized = value.replace(/-/g, '+').replace(/_/g, '/');
+  const decoded = atob(normalized + '='.repeat((4 - normalized.length % 4) % 4));
+  return Uint8Array.from(decoded, char => char.charCodeAt(0));
+}
+
+function asArrayBuffer(bytes: Uint8Array): ArrayBuffer {
+  const copy = new Uint8Array(bytes.byteLength);
+  copy.set(bytes);
+  return copy.buffer;
+}
+
+function allowedOrigins(env: Env): string[] {
+  return (env.ALLOWED_ORIGINS || '').split(',').map(value => value.trim()).filter(value => {
+    if (!value) return false;
+    try {
+      const parsed = new URL(value);
+      return parsed.protocol === 'https:' && parsed.origin === value && !parsed.username && !parsed.password;
+    } catch {
+      return false;
+    }
+  });
+}
+
+async function authorize(
   token: string,
-  _docId: string,
-  _env: Env,
-): { ok: boolean; userId: string; reason?: string } {
-  if (!token) return { ok: true, userId: 'anonymous' };
-  // TODO Phase 2: jose.jwtVerify(token, secret) + check payload.sub/exp +
-  // check nfProjectAccess(payload.sub, docId). For now we just stash a
-  // short prefix as the userId.
-  return { ok: true, userId: 'tok-' + token.slice(0, 8) };
+  docId: string,
+  env: Env,
+): Promise<{ ok: boolean; userId: string; reason?: string }> {
+  if (!env.JWT_SECRET || env.JWT_SECRET.length < 32) return { ok: false, userId: '', reason: 'auth_not_configured' };
+  if (!token) return { ok: false, userId: '', reason: 'token_missing' };
+  try {
+    const parts = token.split('.');
+    if (parts.length !== 3) return { ok: false, userId: '', reason: 'token_invalid' };
+    const header = JSON.parse(new TextDecoder().decode(base64urlDecode(parts[0]))) as { alg?: string };
+    const payload = JSON.parse(new TextDecoder().decode(base64urlDecode(parts[1]))) as { sub?: string; exp?: number; docId?: string };
+    if (header.alg !== 'HS256') return { ok: false, userId: '', reason: 'token_invalid' };
+    const key = await crypto.subtle.importKey(
+      'raw', new TextEncoder().encode(env.JWT_SECRET), { name: 'HMAC', hash: 'SHA-256' }, false, ['verify'],
+    );
+    const signature = asArrayBuffer(base64urlDecode(parts[2]));
+    const signedPayload = asArrayBuffer(new TextEncoder().encode(`${parts[0]}.${parts[1]}`));
+    const verified = await crypto.subtle.verify('HMAC', key, signature, signedPayload);
+    if (!verified) return { ok: false, userId: '', reason: 'token_invalid' };
+    if (typeof payload.exp !== 'number' || payload.exp <= Date.now() / 1000) return { ok: false, userId: '', reason: 'token_expired' };
+    if (!payload.sub) return { ok: false, userId: '', reason: 'token_subject_invalid' };
+    if (payload.docId !== undefined && payload.docId !== docId) return { ok: false, userId: '', reason: 'token_doc_mismatch' };
+    return { ok: true, userId: payload.sub };
+  } catch {
+    return { ok: false, userId: '', reason: 'token_invalid' };
+  }
 }
 
 // ─── Durable Object: one instance per docId ───────────────────────────────

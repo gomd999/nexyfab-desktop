@@ -108,7 +108,11 @@ Text frames (JSON) carry a tiny control channel:
 | -------------- | ----------- | ---------------------------------------------------------------------------------------------- |
 | `COLLAB_PORT`  | `1234`      | TCP port the HTTP+WS server binds.                                                             |
 | `COLLAB_HOST`  | `0.0.0.0`   | Bind interface. Use `127.0.0.1` for local-only.                                                |
-| `JWT_SECRET`   | _(unset)_   | Phase 2: HS256 secret to verify the `?token=` query param against the main app's tokens.       |
+| `JWT_SECRET`   | _(unset)_   | Required in production; at least 32 characters for HS256 worker-token verification.           |
+| `ALLOWED_ORIGINS` | _(unset)_ | Required in production; comma-separated exact WebSocket browser origins.                      |
+| `MAX_CLIENTS_PER_ROOM` | `20` | Bounded to 1–100; upgrades above the room limit receive HTTP 429.                              |
+| `COLLAB_MAX_PAYLOAD_BYTES` | `1048576` | Bounded WebSocket frame limit (1 KiB–16 MiB).                                      |
+| `COLLAB_REQUIRE_AUTH` | `0` | Set to `1` to exercise production authentication outside `NODE_ENV=production`.                |
 
 ## Scripts
 
@@ -116,26 +120,18 @@ Defined in repo `package.json`:
 
 - `npm run collab:dev` — start the Node relay on `COLLAB_PORT` (default 1234).
 
-Deployment scripts are intentionally **wishlist** — see Phase 2 below.
+Deployment remains disabled by the service descriptor until persistence and external recovery evidence are complete.
 
 ## Authentication
 
-- **Phase 1 (current)**: the `?token=...` query param is accepted but NOT
-  validated. `server.js#authorize()` is a single function that returns
-  `{ ok: true, userId }` for any input. Anonymous connections (no token)
-  are also allowed. This is dev-mode only; do not expose to the public
-  internet without finishing Phase 2.
-- **Phase 2 path**: the main Next.js app already has `src/lib/jwt.ts`
-  (HS256, same shape `occt-collab-worker` uses). The plan:
-    1. Add `nfProjectAccess(userId, docId)` check inside the existing
-       `/api/nexyfab/worker-token` endpoint (or add the endpoint if
-       missing) — it issues a short-lived JWT only if the user has access
-       to the requested doc, optionally pinning `docId` in the payload.
-    2. In `authorize()` here: import `jose.jwtVerify`, verify against
-       `process.env.JWT_SECRET`, check `exp` + (optional) `payload.docId
-       === docId`.
-    3. On failure, send `HTTP/1.1 401 Unauthorized` during the upgrade
-       handshake (the code path is already there in `server.js#upgrade`).
+- **Development**: anonymous connections remain available unless
+  `COLLAB_REQUIRE_AUTH=1` is set.
+- **Production**: missing/short `JWT_SECRET` or an empty `ALLOWED_ORIGINS`
+  makes readiness return 503 and every upgrade fail closed. HS256 signature,
+  expiry, subject, exact origin, per-room connection cap, and an optional
+  `docId` claim are enforced.
+- **Remaining issuer work**: the main app's worker-token endpoint must verify
+  `nfProjectAccess(userId, docId)` and include the requested `docId` claim.
 
   See `../occt-collab-worker/src/auth.ts` for the exact verify shape we
   reuse.
@@ -175,7 +171,7 @@ external network.
 | Cold start                    | none                    | a few hundred ms per room first hit |
 | Memory ceiling                | single VM RAM           | unlimited (per-DO 128MB) |
 | Geo-distribution              | one region              | edge (always-near user)  |
-| Auth wiring                   | jose HS256 (Phase 2)    | same shim, already in occt-collab-worker |
+| Auth wiring                   | HS256 fail-closed       | HS256, already in occt-collab-worker |
 | Cost @ 10 active docs         | ~$5/mo on Railway       | ~$0 (within free tier)   |
 | Cost @ 10,000 active docs     | >$200/mo + sharding pain| ~$50/mo + auto-scales    |
 | Operational complexity        | low                     | high (DOs + KV + alarms) |
@@ -183,12 +179,9 @@ external network.
 
 ## Phase 2 todo (in order of expected impact)
 
-1. JWT verification in `authorize()` (Node) and `cloudflare/index.ts`.
+1. Bind worker-token issuance to an authorized `docId` claim.
 2. R2 snapshot loop in Node server (mirror `CollabRoom.ts` shape).
-3. Origin allowlist enforcement on Node side
-   (`ALLOWED_ORIGINS` env var; already done on the CF side).
-4. Per-room connection cap on Node side (`MAX_CLIENTS_PER_ROOM`).
-5. `/metrics` endpoint: active rooms + sockets per room (Prometheus
+3. `/metrics` endpoint: active rooms + sockets per room (Prometheus
    text format so Railway scrape works).
-6. Graceful shutdown: snapshot every dirty room on `SIGTERM` before
+4. Graceful shutdown: snapshot every dirty room on `SIGTERM` before
    closing the server.

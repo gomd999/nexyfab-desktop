@@ -19,15 +19,15 @@
  *   Text frames (JSON control):
  *     { type: 'ping' } → server replies { type: 'pong', ts }
  *
- * Scope (Phase 1):
+ * Scope:
  *   - In-memory per-room Y.Doc + Awareness. NO persistence — when the last
  *     client leaves a room, the room is destroyed and any unsaved state is
  *     gone. Reconnecting clients will rebuild state from THEIR local copy
  *     (CRDT merge keeps this safe), but a server restart with no clients
  *     online truly resets the room. Persistence (R2/D1) is Phase 2 wishlist.
- *   - Auth: query param `token` is accepted but NOT VALIDATED in Phase 1.
- *     Logged for observability. Phase 2 will HS256-verify against the
- *     main app's JWT secret + check `nfProjectAccess(userId, docId)`.
+ *   - Auth: development permits anonymous sessions; production or
+ *     COLLAB_REQUIRE_AUTH=1 requires HS256, expiry, subject, origin allowlist,
+ *     and an optional token docId binding.
  *   - URL routing: any path is treated as a docId after stripping the
  *     leading slash. Empty path → room id `default`. We could lock this
  *     down to `/ws/:docId` but the WebsocketProvider just appends the
@@ -48,6 +48,7 @@
 'use strict';
 
 const http = require('http');
+const { createHmac, timingSafeEqual } = require('crypto');
 const { WebSocketServer } = require('ws');
 const Y = require('yjs');
 const syncProtocol = require('y-protocols/sync');
@@ -57,6 +58,7 @@ const decoding = require('lib0/decoding');
 
 const MESSAGE_SYNC = 0;
 const MESSAGE_AWARENESS = 1;
+const DOC_ID_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/;
 
 /** Per-room state. Created lazily on first join, torn down on last leave. */
 class Room {
@@ -155,23 +157,40 @@ function safeSend(sock, payload) {
   }
 }
 
-/**
- * Phase 1 auth: log the token, don't validate.
- * Phase 2: HS256 verify against process.env.JWT_SECRET + check
- *   nfProjectAccess(payload.sub, docId).
- * Returns `{ ok: boolean, userId: string, reason?: string }`.
- */
-function authorize(token, _docId) {
-  if (!token) {
-    // Phase 1 still allows tokenless connections (dev convenience). Logged
-    // so an operator can spot prod traffic missing a token.
-    return { ok: true, userId: 'anonymous' };
+function base64urlJson(value) {
+  try {
+    return JSON.parse(Buffer.from(value, 'base64url').toString('utf8'));
+  } catch {
+    return null;
   }
-  // Phase 1: trust the token. We DO NOT decode it because that would imply
-  // we believe the contents; instead we generate a stable-ish userId from a
-  // short prefix so multi-tab dev sessions don't all collide on 'anonymous'.
-  const userId = 'tok-' + token.slice(0, 8);
-  return { ok: true, userId };
+}
+
+/** Verify an HS256 worker token. Development remains anonymous unless strict auth is requested. */
+function authorize(token, docId, options = {}) {
+  const requireAuth = options.requireAuth === true;
+  if (!requireAuth) {
+    if (!token) return { ok: true, userId: 'anonymous' };
+    return { ok: true, userId: 'tok-' + token.slice(0, 8) };
+  }
+  const secret = options.jwtSecret;
+  if (typeof secret !== 'string' || secret.length < 32) return { ok: false, userId: '', reason: 'auth_not_configured' };
+  if (!token) return { ok: false, userId: '', reason: 'token_missing' };
+  const parts = token.split('.');
+  if (parts.length !== 3) return { ok: false, userId: '', reason: 'token_invalid' };
+  const header = base64urlJson(parts[0]);
+  const payload = base64urlJson(parts[1]);
+  if (!header || header.alg !== 'HS256' || !payload) return { ok: false, userId: '', reason: 'token_invalid' };
+  let actual;
+  try { actual = Buffer.from(parts[2], 'base64url'); } catch { return { ok: false, userId: '', reason: 'token_invalid' }; }
+  const expected = createHmac('sha256', secret).update(`${parts[0]}.${parts[1]}`).digest();
+  if (actual.length !== expected.length || !timingSafeEqual(actual, expected)) {
+    return { ok: false, userId: '', reason: 'token_invalid' };
+  }
+  const nowSeconds = options.nowSeconds ?? Math.floor(Date.now() / 1000);
+  if (typeof payload.exp !== 'number' || payload.exp <= nowSeconds) return { ok: false, userId: '', reason: 'token_expired' };
+  if (typeof payload.sub !== 'string' || payload.sub.length === 0) return { ok: false, userId: '', reason: 'token_subject_invalid' };
+  if (payload.docId !== undefined && payload.docId !== docId) return { ok: false, userId: '', reason: 'token_doc_mismatch' };
+  return { ok: true, userId: payload.sub };
 }
 
 /**
@@ -194,11 +213,7 @@ function parseRequest(req) {
   try { docId = decodeURIComponent(docId); } catch {
     return { docId: null, token: null, reason: 'invalid-doc-id' };
   }
-  // Defensive: reject pathological docIds that include weird characters
-  // we'd never want as a key (control chars, path traversal). Length cap
-  // mirrors what the Cloudflare DO `idFromName` accepts cleanly.
-  // eslint-disable-next-line no-control-regex
-  if (docId.length > 256 || /[\x00-\x1f]/.test(docId)) {
+  if (!DOC_ID_PATTERN.test(docId)) {
     return { docId: null, token: null, reason: 'invalid-doc-id' };
   }
   const token = parsed.searchParams.get('token');
@@ -292,23 +307,62 @@ function handleText(sock, raw) {
   }
 }
 
+function boundedSetting(name, raw, fallback, minimum, maximum) {
+  if (raw === undefined || String(raw).trim() === '') return fallback;
+  const parsed = Number(raw);
+  if (!Number.isInteger(parsed) || parsed < minimum || parsed > maximum) throw new Error(`${name}_INVALID`);
+  return parsed;
+}
+
+function collabRuntimeSettings(env = process.env) {
+  const requireAuth = env.NODE_ENV === 'production' || env.COLLAB_REQUIRE_AUTH === '1';
+  const allowedOrigins = String(env.ALLOWED_ORIGINS || '').split(',').map(value => value.trim()).filter(Boolean);
+  const issues = [];
+  if (requireAuth && (!env.JWT_SECRET || env.JWT_SECRET.length < 32)) issues.push('jwt_secret_missing_or_short');
+  if (requireAuth && allowedOrigins.length === 0) issues.push('allowed_origins_missing');
+  if (requireAuth && allowedOrigins.some(value => {
+    try {
+      const parsed = new URL(value);
+      const protocolAllowed = parsed.protocol === 'https:' || (env.NODE_ENV !== 'production' && parsed.protocol === 'http:');
+      return !protocolAllowed || parsed.origin !== value || Boolean(parsed.username || parsed.password);
+    } catch {
+      return true;
+    }
+  })) issues.push('allowed_origins_invalid');
+  return {
+    requireAuth,
+    allowedOrigins,
+    issues,
+    maxClientsPerRoom: boundedSetting('MAX_CLIENTS_PER_ROOM', env.MAX_CLIENTS_PER_ROOM, 20, 1, 100),
+    maxPayloadBytes: boundedSetting('COLLAB_MAX_PAYLOAD_BYTES', env.COLLAB_MAX_PAYLOAD_BYTES, 1024 * 1024, 1024, 16 * 1024 * 1024),
+  };
+}
+
 /** Build (don't start) an HTTP + WebSocket server. Exported for tests. */
-function createServer() {
+function createServer(options = {}) {
+  const env = options.env || process.env;
+  const settings = collabRuntimeSettings(env);
   const registry = new RoomRegistry();
 
   const httpServer = http.createServer((req, res) => {
     // Tiny ops surface: /healthz so a Railway healthcheck or readiness probe
     // can hit something without speaking WebSocket.
-    if (req.url === '/healthz') {
-      res.writeHead(200, { 'content-type': 'application/json' });
-      res.end(JSON.stringify({ ok: true, rooms: registry.size() }));
+    if (req.url === '/api/health/live') {
+      res.writeHead(200, { 'content-type': 'application/json', 'cache-control': 'no-store' });
+      res.end(JSON.stringify({ ok: true, phase: 'live', rooms: registry.size() }));
+      return;
+    }
+    if (req.url === '/healthz' || req.url === '/api/health/ready') {
+      const ready = settings.issues.length === 0;
+      res.writeHead(ready ? 200 : 503, { 'content-type': 'application/json', 'cache-control': 'no-store' });
+      res.end(JSON.stringify({ ok: ready, phase: 'ready', rooms: registry.size(), issues: settings.issues }));
       return;
     }
     res.writeHead(404);
     res.end();
   });
 
-  const wss = new WebSocketServer({ noServer: true });
+  const wss = new WebSocketServer({ noServer: true, maxPayload: settings.maxPayloadBytes });
 
   httpServer.on('upgrade', (req, socket, head) => {
     const { docId, token, reason } = parseRequest(req);
@@ -318,7 +372,24 @@ function createServer() {
       console.error('[collab] reject:', reason || 'unknown');
       return;
     }
-    const auth = authorize(token, docId);
+    if (settings.issues.length) {
+      socket.write('HTTP/1.1 503 Service Unavailable\r\n\r\n');
+      socket.destroy();
+      return;
+    }
+    const origin = req.headers.origin || '';
+    if (settings.requireAuth && (!origin || !settings.allowedOrigins.includes(origin))) {
+      socket.write('HTTP/1.1 403 Forbidden\r\n\r\n');
+      socket.destroy();
+      return;
+    }
+    const existingRoom = registry.rooms.get(docId);
+    if (existingRoom && existingRoom.clients.size >= settings.maxClientsPerRoom) {
+      socket.write('HTTP/1.1 429 Too Many Requests\r\n\r\n');
+      socket.destroy();
+      return;
+    }
+    const auth = authorize(token, docId, { requireAuth: settings.requireAuth, jwtSecret: env.JWT_SECRET });
     if (!auth.ok) {
       socket.write('HTTP/1.1 401 Unauthorized\r\n\r\n');
       socket.destroy();
@@ -398,6 +469,7 @@ module.exports = {
   Room,
   RoomRegistry,
   authorize,
+  collabRuntimeSettings,
   parseRequest,
   MESSAGE_SYNC,
   MESSAGE_AWARENESS,
@@ -406,14 +478,11 @@ module.exports = {
 // Only auto-start if invoked directly (`node collab-worker/server.js`) —
 // importing the module from tests must NOT bind a port.
 if (require.main === module) {
-  const port = Number(process.env.COLLAB_PORT || 1234);
+  const port = boundedSetting('COLLAB_PORT', process.env.COLLAB_PORT, 1234, 1, 65_535);
   const host = process.env.COLLAB_HOST || '0.0.0.0';
-  const server = createServer();
+  const server = createServer({ env: process.env });
   server.listen(port, host, () => {
     console.log(`[collab] listening on ws://${host}:${port}`);
     console.log(`[collab] healthz at http://${host}:${port}/healthz`);
-    if (!process.env.JWT_SECRET) {
-      console.log('[collab] WARN: JWT_SECRET unset — auth is in Phase 1 (no validation).');
-    }
   });
 }

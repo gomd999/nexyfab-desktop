@@ -16,9 +16,35 @@ import {
   type SerializedFeaJob,
 } from '../../src/lib/fea-jobs/contracts';
 
-const PORT = Math.max(1, Number(process.env.PORT ?? 8080));
-const CONCURRENCY = Math.min(2, Math.max(1, Number(process.env.FEA_WORKER_CONCURRENCY ?? 1)));
-const LEASE_MS = Math.min(60_000, Math.max(10_000, Number(process.env.FEA_WORKER_LEASE_MS ?? 20_000)));
+function boundedInteger(
+  name: string,
+  value: string | undefined,
+  fallback: number,
+  minimum: number,
+  maximum: number,
+): number {
+  if (value === undefined || value.trim() === '') return fallback;
+  const parsed = Number(value);
+  if (!Number.isInteger(parsed) || parsed < minimum || parsed > maximum) {
+    throw new Error(`${name}_INVALID`);
+  }
+  return parsed;
+}
+
+export function resolveFeaWorkerRuntimeConfig(
+  env: Readonly<Record<string, string | undefined>> = process.env,
+): { port: number; concurrency: number; leaseMs: number } {
+  return {
+    port: boundedInteger('PORT', env.PORT, 8080, 1, 65_535),
+    concurrency: boundedInteger('FEA_WORKER_CONCURRENCY', env.FEA_WORKER_CONCURRENCY, 1, 1, 2),
+    leaseMs: boundedInteger('FEA_WORKER_LEASE_MS', env.FEA_WORKER_LEASE_MS, 20_000, 10_000, 60_000),
+  };
+}
+
+const runtimeConfig = resolveFeaWorkerRuntimeConfig();
+const PORT = runtimeConfig.port;
+const CONCURRENCY = runtimeConfig.concurrency;
+const LEASE_MS = runtimeConfig.leaseMs;
 const HEARTBEAT_MS = Math.max(1_000, Math.floor(LEASE_MS / 4));
 const RESULT_MAX_BYTES = 4 * 1024 * 1024;
 const SOLVER_PATH = join(dirname(fileURLToPath(import.meta.url)), 'solver.mjs');
@@ -325,6 +351,76 @@ async function recoverExpired(redis: Redis): Promise<void> {
   }
 }
 
+interface FeaHealthRedis {
+  ping(): Promise<string>;
+  llen(key: string): Promise<number>;
+}
+
+export function createFeaHealthServer(
+  redis: FeaHealthRedis,
+  env: Readonly<Record<string, string | undefined>> = process.env,
+): http.Server {
+  return http.createServer(async (req, res) => {
+    if (req.url === '/api/health/live') {
+      res.writeHead(200, { 'content-type': 'application/json', 'cache-control': 'no-store' });
+      res.end(JSON.stringify({
+        ok: true,
+        phase: 'live',
+        service: 'nexyfab-fea-worker',
+        buildId: feaWorkerBuildId(env),
+        active: state.active,
+        uptimeMs: Date.now() - state.startedAt,
+      }));
+      return;
+    }
+    if (req.url === '/api/health/ready' || req.url === '/healthz') {
+      try {
+        const pong = await redis.ping();
+        const buildId = feaWorkerBuildId(env);
+        const blockers = [
+          ...(pong === 'PONG' ? [] : ['redis_unavailable']),
+          ...(buildId === 'unknown' ? ['build_id_missing'] : []),
+        ];
+        res.writeHead(blockers.length === 0 ? 200 : 503, { 'content-type': 'application/json', 'cache-control': 'no-store' });
+        res.end(JSON.stringify({
+          ok: blockers.length === 0,
+          phase: 'ready',
+          service: 'nexyfab-fea-worker',
+          buildId,
+          blockers,
+          active: state.active,
+          uptimeMs: Date.now() - state.startedAt,
+        }));
+      } catch {
+        const buildId = feaWorkerBuildId(env);
+        const blockers = ['redis_unavailable', ...(buildId === 'unknown' ? ['build_id_missing'] : [])];
+        res.writeHead(503, { 'content-type': 'application/json', 'cache-control': 'no-store' });
+        res.end(JSON.stringify({ ok: false, phase: 'ready', service: 'nexyfab-fea-worker', buildId, blockers }));
+      }
+      return;
+    }
+    if (req.url === '/metrics') {
+      try {
+        const [queued, processing] = await Promise.all([redis.llen(FEA_QUEUE_KEY), redis.llen(FEA_PROCESSING_KEY)]);
+        res.writeHead(200, { 'content-type': 'application/json', 'cache-control': 'no-store' });
+        res.end(JSON.stringify({
+          service: 'nexyfab-fea-worker',
+          buildId: feaWorkerBuildId(env),
+          ...state,
+          queued,
+          processing,
+          uptimeMs: Date.now() - state.startedAt,
+        }));
+      } catch {
+        res.writeHead(503, { 'content-type': 'application/json', 'cache-control': 'no-store' });
+        res.end(JSON.stringify({ ok: false, service: 'nexyfab-fea-worker', code: 'METRICS_UNAVAILABLE' }));
+      }
+      return;
+    }
+    res.writeHead(404).end();
+  });
+}
+
 async function start(): Promise<void> {
   const redis = commandRedis();
   await redis.ping();
@@ -332,39 +428,7 @@ async function start(): Promise<void> {
   const recovery = setInterval(() => { void recoverExpired(redis).catch(() => undefined); }, LEASE_MS);
   recovery.unref?.();
 
-  const server = http.createServer(async (req, res) => {
-    if (req.url === '/api/health/live' || req.url === '/healthz') {
-      try {
-        const pong = await redis.ping();
-        res.writeHead(pong === 'PONG' ? 200 : 503, { 'content-type': 'application/json' });
-        res.end(JSON.stringify({
-          ok: pong === 'PONG',
-          service: 'nexyfab-fea-worker',
-          buildId: feaWorkerBuildId(),
-          active: state.active,
-          uptimeMs: Date.now() - state.startedAt,
-        }));
-      } catch {
-        res.writeHead(503, { 'content-type': 'application/json' });
-        res.end(JSON.stringify({ ok: false, service: 'nexyfab-fea-worker' }));
-      }
-      return;
-    }
-    if (req.url === '/metrics') {
-      const [queued, processing] = await Promise.all([redis.llen(FEA_QUEUE_KEY), redis.llen(FEA_PROCESSING_KEY)]);
-      res.writeHead(200, { 'content-type': 'application/json', 'cache-control': 'no-store' });
-      res.end(JSON.stringify({
-        service: 'nexyfab-fea-worker',
-        buildId: feaWorkerBuildId(),
-        ...state,
-        queued,
-        processing,
-        uptimeMs: Date.now() - state.startedAt,
-      }));
-      return;
-    }
-    res.writeHead(404).end();
-  });
+  const server = createFeaHealthServer(redis);
   server.listen(PORT, '0.0.0.0');
   for (let index = 0; index < CONCURRENCY; index += 1) void workerLoop(index);
 

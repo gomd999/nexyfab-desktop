@@ -4,6 +4,11 @@ This Worker is the fixed public ingress for the modular platform. It owns reques
 
 Deployment is intentionally disabled until a staging environment provides `CORE_API_ORIGIN`, `STUDIO_ORIGIN`, `EDGE_HANDLER_ORIGIN`, `ALLOWED_HOSTS`, `BUILD_ID`, and the `GATEWAY_SHARED_SECRET` secret. The committed Wrangler file contains no production origin or secret.
 
+The runtime fails closed when any required origin is invalid, the host allowlist
+is empty, `GATEWAY_SHARED_SECRET` is shorter than 32 characters, or the build ID
+is missing/placeholder. Gateway health returns 503 and lists only configuration
+field names; it never returns secret values.
+
 Route behavior:
 
 - pages and assets -> Studio Web
