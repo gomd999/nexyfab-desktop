@@ -3,9 +3,9 @@
   "feature": "bend",
   "axis": "save_reopen",
   "status": "PASS",
-  "executedAt": "2026-08-24T21:27:38.377Z",
+  "executedAt": "2026-08-24T22:37:45.371Z",
   "savedBytes": 1599,
-  "savedSha256": "6c8f606413a9bd1fed8fb39ee341acc1e63208720905dcfe3c9bfc6bbfcb4528",
+  "savedSha256": "962536c75385a2eb310fea033cbcd94a2ace549810b67bb7e97c7b855fb3447e",
   "reopened": {
     "handle": "occt:231",
     "kernelKind": "Solid",

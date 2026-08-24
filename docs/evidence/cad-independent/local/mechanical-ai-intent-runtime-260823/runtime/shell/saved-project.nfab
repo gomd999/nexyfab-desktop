@@ -1,8 +1,8 @@
 {
   "magic": "nfab",
   "version": 3,
-  "createdAt": 1787467913881,
-  "updatedAt": 1787467913881,
+  "createdAt": 1787611028496,
+  "updatedAt": 1787611028496,
   "name": "Mechanical runtime shell",
   "tree": {
     "nodes": [
@@ -71,6 +71,6 @@
     "exactKernel": "OCCT",
     "intentCaseId": "ko_practical-04-shell",
     "intentInputSha256": "e315ec859f4459bf7428df820f82a3f77efa3ebcc762be1f4a46db82ea0ed5fd",
-    "candidateBaseRevision": "3aabe87739ff99d1730c5375bad2e67c6be3fb8b482a4aa88e070328cf84915b"
+    "candidateBaseRevision": "a361da8b50b3e4b840c04e7bdf7077467580a73242a109090dad13b8f5102e22"
   }
 }

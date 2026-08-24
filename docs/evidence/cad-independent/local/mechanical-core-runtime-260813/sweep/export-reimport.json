@@ -3,9 +3,9 @@
   "feature": "sweep",
   "axis": "export",
   "status": "PASS",
-  "executedAt": "2026-08-24T21:27:38.377Z",
+  "executedAt": "2026-08-24T22:37:45.371Z",
   "stepBytes": 15462,
-  "stepSha256": "1304c044f6de96b78e83a533091ed29a505a8cddb04d2a8cee216afe0f2b1965",
+  "stepSha256": "362e70c9853261cb67f9491726a57b1a844542eace899708c82131ce7196ffb4",
   "before": {
     "handle": "occt:387",
     "kernelKind": "Solid",

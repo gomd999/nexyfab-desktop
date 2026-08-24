@@ -3,7 +3,7 @@
   "feature": "chamfer",
   "axis": "regenerate",
   "status": "PASS",
-  "executedAt": "2026-08-23T06:51:51.379Z",
+  "executedAt": "2026-08-24T22:37:05.669Z",
   "initial": {
     "handle": "occt:31",
     "kernelKind": "Solid",
@@ -78,7 +78,7 @@
   "intentBinding": {
     "caseId": "mixed_units-03-chamfer",
     "candidateId": "intent-runtime:mixed_units-03-chamfer",
-    "candidateBaseRevision": "3aabe87739ff99d1730c5375bad2e67c6be3fb8b482a4aa88e070328cf84915b",
+    "candidateBaseRevision": "a361da8b50b3e4b840c04e7bdf7077467580a73242a109090dad13b8f5102e22",
     "promptSha256": "50a5290d69b20f20f846644c5090aeab5a4a05032a8fdc661e7b8cc676c0b799",
     "inputSha256": "83e52ee531c466b6e6f9297def0e729cef34d3f5fe74724fdbcf3c9c9c100687",
     "sourceUnits": [

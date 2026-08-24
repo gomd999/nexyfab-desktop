@@ -3,9 +3,9 @@
   "feature": "offsetFace",
   "axis": "export",
   "status": "PASS",
-  "executedAt": "2026-08-24T21:27:38.377Z",
+  "executedAt": "2026-08-24T22:37:45.371Z",
   "stepBytes": 15579,
-  "stepSha256": "ed9898b38e323627ab79eb6da095b56703425e47ad2a878dfe0c27c232a1342a",
+  "stepSha256": "78d87b381bfa7fbf9275376f4aa0e7fe1080d846733ebb2b09d73874a00daa7f",
   "before": {
     "handle": "occt:173",
     "kernelKind": "Solid",

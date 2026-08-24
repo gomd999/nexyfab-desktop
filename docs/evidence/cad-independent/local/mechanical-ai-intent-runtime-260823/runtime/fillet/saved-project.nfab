@@ -1,8 +1,8 @@
 {
   "magic": "nfab",
   "version": 3,
-  "createdAt": 1787467912707,
-  "updatedAt": 1787467912707,
+  "createdAt": 1787611027157,
+  "updatedAt": 1787611027157,
   "name": "Mechanical runtime fillet",
   "tree": {
     "nodes": [
@@ -71,6 +71,6 @@
     "exactKernel": "OCCT",
     "intentCaseId": "en_practical-02-fillet",
     "intentInputSha256": "e82e0c1155c35c624e04e93a890b20cb00d4c85b2d2e694bcf701cde51c05c7f",
-    "candidateBaseRevision": "3aabe87739ff99d1730c5375bad2e67c6be3fb8b482a4aa88e070328cf84915b"
+    "candidateBaseRevision": "a361da8b50b3e4b840c04e7bdf7077467580a73242a109090dad13b8f5102e22"
   }
 }

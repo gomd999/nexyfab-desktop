@@ -3,9 +3,9 @@
   "feature": "moveCopy",
   "axis": "export",
   "status": "PASS",
-  "executedAt": "2026-08-23T06:51:51.379Z",
+  "executedAt": "2026-08-24T22:37:05.669Z",
   "stepBytes": 15552,
-  "stepSha256": "5be5976e7823f9d0b70624e24358685f24083b2625c57fead60f3d663a7e5563",
+  "stepSha256": "cb69458b160c16f010c16424a1231e13a69e641213f59051ac64fbd81d1d20e5",
   "before": {
     "handle": "occt:137",
     "kernelKind": "Solid",

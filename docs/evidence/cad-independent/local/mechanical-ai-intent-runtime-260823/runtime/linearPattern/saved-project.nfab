@@ -1,8 +1,8 @@
 {
   "magic": "nfab",
   "version": 3,
-  "createdAt": 1787467914412,
-  "updatedAt": 1787467914412,
+  "createdAt": 1787611029383,
+  "updatedAt": 1787611029383,
   "name": "Mechanical runtime linearPattern",
   "tree": {
     "nodes": [
@@ -73,6 +73,6 @@
     "exactKernel": "OCCT",
     "intentCaseId": "mixed_units-06-linearPattern",
     "intentInputSha256": "cfefb607d5bc6942325a7d5388e0edf2f50e7c2f5cb1a8aa12ed38eae9d209fe",
-    "candidateBaseRevision": "3aabe87739ff99d1730c5375bad2e67c6be3fb8b482a4aa88e070328cf84915b"
+    "candidateBaseRevision": "a361da8b50b3e4b840c04e7bdf7077467580a73242a109090dad13b8f5102e22"
   }
 }

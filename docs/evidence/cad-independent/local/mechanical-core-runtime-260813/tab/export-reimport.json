@@ -3,9 +3,9 @@
   "feature": "tab",
   "axis": "export",
   "status": "PASS",
-  "executedAt": "2026-08-24T21:27:38.377Z",
+  "executedAt": "2026-08-24T22:37:45.371Z",
   "stepBytes": 29317,
-  "stepSha256": "3701172c010f69b64b5d07076dbf50dde4b0ba94f0514470c841c0d3f6e292fc",
+  "stepSha256": "a63a2ca7beac4edfad250ee3c162c3026caa319e774a68181319caea7ab95b6e",
   "before": {
     "handle": "occt:283",
     "kernelKind": "Solid",

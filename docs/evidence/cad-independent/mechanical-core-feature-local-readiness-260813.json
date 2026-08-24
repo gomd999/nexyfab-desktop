@@ -1,6 +1,6 @@
 {
   "schema": "nexyfab.mechanical-core-feature-local-readiness.v1",
-  "assessedAt": "2026-08-24T21:27:38.377Z",
+  "assessedAt": "2026-08-24T22:37:45.371Z",
   "releaseChannel": "mechanical-core-local",
   "status": "LOCAL_CANDIDATE",
   "eligible": true,
@@ -12,7 +12,7 @@
   },
   "sourceEvidence": {
     "path": "docs/evidence/cad-independent/local/mechanical-core-feature-axis-evidence.json",
-    "sha256": "bfc2a57a445c5199030e9dde341ceed05e893eaea68ee37fcd8a6a67d3dfa649"
+    "sha256": "d592a83f044c34560134d69d4be75e6bb6a72e20047e93102813e04c660af2b9"
   },
   "inputErrors": [],
   "implementation": {
@@ -31,7 +31,7 @@
           {
             "path": "src/app/[lang]/shape-generator/features/hole.ts",
             "exists": true,
-            "sha256": "944e5d73b26728413a3629c9f9add7c09fd98996ccff1177edcbb4b83d2f2199"
+            "sha256": "3de68a4c838fb65a2358a4f9f541a81caa14ff56298b9cad645862a9860cbd14"
           }
         ],
         "candidateTests": [
@@ -150,7 +150,7 @@
           {
             "path": "src/app/[lang]/shape-generator/features/shell.ts",
             "exists": true,
-            "sha256": "2f7a7a7fd3973783ecb4d65ed1784ce8f109c934785fcf8f7be03d04dde3748d"
+            "sha256": "c52ad1b1f068a0a72b94914e084fca1448f49de51091f2715f8da44699ee5f87"
           }
         ],
         "candidateTests": [
@@ -204,7 +204,7 @@
           {
             "path": "src/app/[lang]/shape-generator/features/linearPattern.ts",
             "exists": true,
-            "sha256": "f78b20a8e5268f8d501378d9fcc33394112e8efb0f7d59ed799fbcc4280226ab"
+            "sha256": "e3136dad5e3df8d18cfca8770a100f416f3b2074f12488b1a9ef051b7c84dc88"
           }
         ],
         "candidateTests": [
@@ -228,7 +228,7 @@
           {
             "path": "src/app/[lang]/shape-generator/features/circularPattern.ts",
             "exists": true,
-            "sha256": "140e9e2e57a255e88779b217b629e7944c3ff487ea116a396255eeae2d8db4e2"
+            "sha256": "c9adebae0c316f74b224aeceaf107858ef4c5c13f91d0cac98fe41d77c0d2cfa"
           }
         ],
         "candidateTests": [
@@ -250,7 +250,7 @@
           {
             "path": "src/app/[lang]/shape-generator/features/draft.ts",
             "exists": true,
-            "sha256": "a02cc298d637d940429f55711421f2c92d35284448320c62a5c46c25970a34bf"
+            "sha256": "89a12fa2da80b4fcfec95fda420ae5ed754bc7e4093860fbb2514c86b4a7d3c5"
           }
         ],
         "candidateTests": [
@@ -346,7 +346,7 @@
           {
             "path": "src/app/[lang]/shape-generator/features/offsetFace.ts",
             "exists": true,
-            "sha256": "f9defb7678684854f609cd677b7710e689ea221112258cb47dbcbe5d89700f7a"
+            "sha256": "8ea98c75163f9476c30424bf555eea2377c96686fb9d79bd45f5ce140a1b86d7"
           }
         ],
         "candidateTests": [
@@ -366,7 +366,7 @@
           {
             "path": "src/app/[lang]/shape-generator/features/thread.ts",
             "exists": true,
-            "sha256": "1ea71ac091750e379cfde88890c4a4bc2b7cd40aa06c129c2d7470cbdd4842fc"
+            "sha256": "622e2b22146ebf24443550aede6b5c7ed220b6b3960149e3711321ba5d8ae59d"
           }
         ],
         "candidateTests": [
@@ -405,7 +405,7 @@
           {
             "path": "src/app/[lang]/shape-generator/features/helix.ts",
             "exists": true,
-            "sha256": "5a811ea76a94b75d4d2525087880beacaf72d36527a3526418f789544c8a0cfb"
+            "sha256": "718b3c8eea925c07f1d1329759b6e5523adb58574d580c1aa02cf2c2acc4fde6"
           }
         ],
         "candidateTests": [
@@ -429,7 +429,7 @@
           {
             "path": "src/app/[lang]/shape-generator/features/sheetMetal.ts",
             "exists": true,
-            "sha256": "f981bdae50c8a8847cabfe0ff76eed529b43ec0a97719efc39ffba43a2cf3480"
+            "sha256": "14c5dfd17c943887f237b166768e3be78a2299b7a35a03123a4022561ca18df4"
           }
         ],
         "candidateTests": [
@@ -462,7 +462,7 @@
           {
             "path": "src/app/[lang]/shape-generator/features/sheetMetal.ts",
             "exists": true,
-            "sha256": "f981bdae50c8a8847cabfe0ff76eed529b43ec0a97719efc39ffba43a2cf3480"
+            "sha256": "14c5dfd17c943887f237b166768e3be78a2299b7a35a03123a4022561ca18df4"
           }
         ],
         "candidateTests": [
@@ -488,7 +488,7 @@
           {
             "path": "src/app/[lang]/shape-generator/features/sheetMetal.ts",
             "exists": true,
-            "sha256": "f981bdae50c8a8847cabfe0ff76eed529b43ec0a97719efc39ffba43a2cf3480"
+            "sha256": "14c5dfd17c943887f237b166768e3be78a2299b7a35a03123a4022561ca18df4"
           }
         ],
         "candidateTests": [
@@ -508,7 +508,7 @@
           {
             "path": "src/app/[lang]/shape-generator/features/sheetMetal.ts",
             "exists": true,
-            "sha256": "f981bdae50c8a8847cabfe0ff76eed529b43ec0a97719efc39ffba43a2cf3480"
+            "sha256": "14c5dfd17c943887f237b166768e3be78a2299b7a35a03123a4022561ca18df4"
           }
         ],
         "candidateTests": [
@@ -528,7 +528,7 @@
           {
             "path": "src/app/[lang]/shape-generator/features/tab.ts",
             "exists": true,
-            "sha256": "f810ff1f57a5d6c6b7535671c6cc53c516b15fcfa9de4e5978c93201df20c6f6"
+            "sha256": "9dd870859810b41415dc39805ee735507ee77297af0894d54336ac24eeda9d2e"
           }
         ],
         "candidateTests": [
@@ -555,7 +555,7 @@
           {
             "path": "src/app/[lang]/shape-generator/features/cut.ts",
             "exists": true,
-            "sha256": "99b4f4950fb5388480279e3b12724623f93e7a6b745ac98c0a3b04e8a962a868"
+            "sha256": "115f96068beec6684e9ba861abf95ad862386d74958647a43f74e6a0973c4152"
           }
         ],
         "candidateTests": [
@@ -587,7 +587,7 @@
           {
             "path": "src/app/[lang]/shape-generator/features/reliefCuts.ts",
             "exists": true,
-            "sha256": "0872462cdb62f4511b3c11b3706fce15f65cf32c3549fb1a07d5c050b620d4df"
+            "sha256": "a9c566da3c3e48314b72df3e3a03f7eb662ee67b2cfb8a642e37e381c49a5a32"
           }
         ],
         "candidateTests": [
@@ -606,7 +606,7 @@
           {
             "path": "src/app/[lang]/shape-generator/features/reliefCuts.ts",
             "exists": true,
-            "sha256": "0872462cdb62f4511b3c11b3706fce15f65cf32c3549fb1a07d5c050b620d4df"
+            "sha256": "a9c566da3c3e48314b72df3e3a03f7eb662ee67b2cfb8a642e37e381c49a5a32"
           }
         ],
         "candidateTests": [
@@ -625,7 +625,7 @@
           {
             "path": "src/app/[lang]/shape-generator/features/variableShell.ts",
             "exists": true,
-            "sha256": "9dbf7b0ac01a062217e214c0efafa88b9f5ae5ded759a7211fdd44447da92b9a"
+            "sha256": "a4ed100cd7e56db936a8bb1362b301e29495cf6c5901a28306250b65e17d1d34"
           }
         ],
         "candidateTests": [
@@ -674,7 +674,7 @@
           {
             "path": "src/app/[lang]/shape-generator/features/revolve.ts",
             "exists": true,
-            "sha256": "83239fe165b5338becbd515b1b00040d1f104c6b146699b6b22e9c42b0b554e4"
+            "sha256": "24cb93461f736406d49172082dad7318c887e279ca596c8b820530f89a29539b"
           }
         ],
         "candidateTests": [
@@ -727,7 +727,7 @@
           {
             "path": "src/app/[lang]/shape-generator/features/loft.ts",
             "exists": true,
-            "sha256": "1d256b57cfe267bcb5e59fc7c9ca3ecbfba1edb0ece47e255072dfca51948890"
+            "sha256": "245a7392ef59774a532e1c7bc9272de223b95f05a630a3febca2cfbcf7cdc785"
           }
         ],
         "candidateTests": [

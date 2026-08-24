@@ -3,7 +3,7 @@
   "feature": "scale",
   "axis": "edit",
   "status": "PASS",
-  "executedAt": "2026-08-23T06:51:51.379Z",
+  "executedAt": "2026-08-24T22:37:05.669Z",
   "commandId": "scale-runtime-param-edit",
   "historyDepth": 1,
   "before": {
@@ -29,7 +29,7 @@
   "intentBinding": {
     "caseId": "mixed_units-09-scale",
     "candidateId": "intent-runtime:mixed_units-09-scale",
-    "candidateBaseRevision": "3aabe87739ff99d1730c5375bad2e67c6be3fb8b482a4aa88e070328cf84915b",
+    "candidateBaseRevision": "a361da8b50b3e4b840c04e7bdf7077467580a73242a109090dad13b8f5102e22",
     "promptSha256": "d7a5f4de842c9d485e4168cedb4dc8342495522d2f15d49676ad481353e1e2f2",
     "inputSha256": "99e1b875e09e80603921b25953c657c2b1fd685dd349a85b56545f24025d3048",
     "sourceUnits": [

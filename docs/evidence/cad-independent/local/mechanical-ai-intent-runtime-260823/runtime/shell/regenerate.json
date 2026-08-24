@@ -3,7 +3,7 @@
   "feature": "shell",
   "axis": "regenerate",
   "status": "PASS",
-  "executedAt": "2026-08-23T06:51:51.379Z",
+  "executedAt": "2026-08-24T22:37:05.669Z",
   "initial": {
     "handle": "occt:45",
     "kernelKind": "Solid",
@@ -78,7 +78,7 @@
   "intentBinding": {
     "caseId": "ko_practical-04-shell",
     "candidateId": "intent-runtime:ko_practical-04-shell",
-    "candidateBaseRevision": "3aabe87739ff99d1730c5375bad2e67c6be3fb8b482a4aa88e070328cf84915b",
+    "candidateBaseRevision": "a361da8b50b3e4b840c04e7bdf7077467580a73242a109090dad13b8f5102e22",
     "promptSha256": "52f0acadbaccba1af392291d411d56ba0d67064c973116a29151d164737a71e9",
     "inputSha256": "e315ec859f4459bf7428df820f82a3f77efa3ebcc762be1f4a46db82ea0ed5fd",
     "sourceUnits": [

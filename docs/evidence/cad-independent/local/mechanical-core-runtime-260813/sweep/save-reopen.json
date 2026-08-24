@@ -3,9 +3,9 @@
   "feature": "sweep",
   "axis": "save_reopen",
   "status": "PASS",
-  "executedAt": "2026-08-24T21:27:38.377Z",
+  "executedAt": "2026-08-24T22:37:45.371Z",
   "savedBytes": 1763,
-  "savedSha256": "622b46c22b94b0c0d9f53c3e7727a4c21cbf0789eb19e23ae9d32b7448226943",
+  "savedSha256": "0ad03ee31ed25a5ceb05099fcdb6d5fb9d9ca20c3b12ca7a8e2525c1bba99b76",
   "reopened": {
     "handle": "occt:391",
     "kernelKind": "Solid",

@@ -3,9 +3,9 @@
   "feature": "thread",
   "axis": "export",
   "status": "PASS",
-  "executedAt": "2026-08-24T21:27:38.377Z",
+  "executedAt": "2026-08-24T22:37:45.371Z",
   "stepBytes": 177766,
-  "stepSha256": "96a067b2735f2fd5553ed640cbdb60f0d06708f22f5e6e2efba521de5e08b27f",
+  "stepSha256": "ba38a334ef73203b8f23e6ee2b4006f9b14a12aebdaa76c0016c5d8f2ce120dd",
   "before": {
     "handle": "occt:191",
     "kernelKind": "Solid",

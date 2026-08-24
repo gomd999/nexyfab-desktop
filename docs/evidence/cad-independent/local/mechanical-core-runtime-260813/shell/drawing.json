@@ -3,7 +3,7 @@
   "feature": "shell",
   "axis": "drawing",
   "status": "PASS",
-  "executedAt": "2026-08-24T21:27:38.377Z",
+  "executedAt": "2026-08-24T22:37:45.371Z",
   "kernel": "OCCT HLRBRep via replicad drawProjection",
   "views": {
     "front": {

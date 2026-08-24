@@ -3,9 +3,9 @@
   "feature": "revolve",
   "axis": "export",
   "status": "PASS",
-  "executedAt": "2026-08-24T21:27:38.377Z",
+  "executedAt": "2026-08-24T22:37:45.371Z",
   "stepBytes": 16041,
-  "stepSha256": "9871c70b15887c1e043bfb45a9d16790d56f3ac44c86e2c425f8a6c0bf9d8df0",
+  "stepSha256": "21a0e61d24b207015431599319efbd5c8d4a78001ff0390cb28d1786edc02adf",
   "before": {
     "handle": "occt:373",
     "kernelKind": "Solid",

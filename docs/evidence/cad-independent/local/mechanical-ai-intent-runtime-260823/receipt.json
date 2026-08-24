@@ -1,12 +1,12 @@
 {
   "schema": "nexyfab.mechanical-ai-intent-runtime-receipt.v1",
-  "generatedAt": "2026-08-23T06:51:51.379Z",
-  "revision": "3aabe87739ff99d1730c5375bad2e67c6be3fb8b482a4aa88e070328cf84915b",
+  "generatedAt": "2026-08-24T22:37:05.669Z",
+  "revision": "a361da8b50b3e4b840c04e7bdf7077467580a73242a109090dad13b8f5102e22",
   "sourceBindings": [
     {
       "path": "src/app/[lang]/shape-generator/features/occtEngine.ts",
-      "sha256": "32ff70b38fe4634f1a1058319fbe0a782057df0aee95975ac1c6bdac41eb3084",
-      "bytes": 133719
+      "sha256": "5c24d7b27dc6709fa1f0e123dcd6c3fd0af1e428b6c5f11d8bf304ed313e5eaa",
+      "bytes": 136046
     },
     {
       "path": "src/app/[lang]/shape-generator/features/topologyEdgeFinder.ts",
@@ -95,8 +95,8 @@
     },
     {
       "path": "src/app/[lang]/shape-generator/features/pipelineManager.ts",
-      "sha256": "66284ece9ce6a6206f28e99b97b86be755669169e470a25462fbb8daae09201e",
-      "bytes": 31526
+      "sha256": "271baffbb5a28ed461d01801cd1c15022afa6eda284e7abe8655dab17f14b032",
+      "bytes": 36417
     },
     {
       "path": "src/app/[lang]/shape-generator/sketch/extrudeProfile.ts",
@@ -132,12 +132,12 @@
   "artifactBindings": [
     {
       "path": "docs/evidence/cad-independent/local/mechanical-ai-intent-runtime-260823/intent-runtime-results.json",
-      "sha256": "3b36d559ca0bd2af4d1d61a3afa865ea7e2edfa35c35c3a2030776213953cdd1",
+      "sha256": "f6ec96fd12d8f25041a3b9e26a8a70681cd4bf1c212de3b1d7c484f738cada82",
       "bytes": 23579
     },
     {
       "path": "docs/evidence/cad-independent/local/mechanical-ai-intent-runtime-260823/runtime-axis-evidence.json",
-      "sha256": "eb1909e0840c4e52e28dcb32cd7cc6b9696d2e6799f2c9a0873ec142a9017278",
+      "sha256": "22a5315f6044b644ad81d5c2b45eda5452cec1674dd8ded2f985c4a9d08c68b4",
       "bytes": 117004
     }
   ],

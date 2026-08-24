@@ -3,9 +3,9 @@
   "feature": "bend",
   "axis": "export",
   "status": "PASS",
-  "executedAt": "2026-08-24T21:27:38.377Z",
+  "executedAt": "2026-08-24T22:37:45.371Z",
   "stepBytes": 31981,
-  "stepSha256": "e059f75b3116ad453848721817732ad2857bb28a31501e5837302eb982eef122",
+  "stepSha256": "9867a81e1a71681fde92a92abe6c124e585c8c8fd8d3ecac2801fb83d9a54012",
   "before": {
     "handle": "occt:227",
     "kernelKind": "Solid",

@@ -1,8 +1,8 @@
 {
   "magic": "nfab",
   "version": 3,
-  "createdAt": 1787467915419,
-  "updatedAt": 1787467915419,
+  "createdAt": 1787611030756,
+  "updatedAt": 1787611030756,
   "name": "Mechanical runtime moveCopy",
   "tree": {
     "nodes": [
@@ -73,6 +73,6 @@
     "exactKernel": "OCCT",
     "intentCaseId": "ko_practical-10-moveCopy",
     "intentInputSha256": "fc7de2e197b29ed47e048022a7f8a4287309ee676fd5cee96d1c1ec299ec00fe",
-    "candidateBaseRevision": "3aabe87739ff99d1730c5375bad2e67c6be3fb8b482a4aa88e070328cf84915b"
+    "candidateBaseRevision": "a361da8b50b3e4b840c04e7bdf7077467580a73242a109090dad13b8f5102e22"
   }
 }

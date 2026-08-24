@@ -1,8 +1,8 @@
 {
   "magic": "nfab",
   "version": 3,
-  "createdAt": 1787467914801,
-  "updatedAt": 1787467914801,
+  "createdAt": 1787611029990,
+  "updatedAt": 1787611029990,
   "name": "Mechanical runtime circularPattern",
   "tree": {
     "nodes": [
@@ -73,6 +73,6 @@
     "exactKernel": "OCCT",
     "intentCaseId": "ko_practical-07-circularPattern",
     "intentInputSha256": "42856994be07c22070fd35921cfe82295db7042c543d308b01fd61a235a18b6d",
-    "candidateBaseRevision": "3aabe87739ff99d1730c5375bad2e67c6be3fb8b482a4aa88e070328cf84915b"
+    "candidateBaseRevision": "a361da8b50b3e4b840c04e7bdf7077467580a73242a109090dad13b8f5102e22"
   }
 }

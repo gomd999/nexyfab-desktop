@@ -3,7 +3,7 @@
   "feature": "moveCopy",
   "axis": "regenerate",
   "status": "PASS",
-  "executedAt": "2026-08-23T06:51:51.379Z",
+  "executedAt": "2026-08-24T22:37:05.669Z",
   "initial": {
     "handle": "occt:135",
     "kernelKind": "Solid",
@@ -78,7 +78,7 @@
   "intentBinding": {
     "caseId": "ko_practical-10-moveCopy",
     "candidateId": "intent-runtime:ko_practical-10-moveCopy",
-    "candidateBaseRevision": "3aabe87739ff99d1730c5375bad2e67c6be3fb8b482a4aa88e070328cf84915b",
+    "candidateBaseRevision": "a361da8b50b3e4b840c04e7bdf7077467580a73242a109090dad13b8f5102e22",
     "promptSha256": "f5686b7277618027daa29b9863b58c65dbf50839788f65065567e6829bd49fee",
     "inputSha256": "fc7de2e197b29ed47e048022a7f8a4287309ee676fd5cee96d1c1ec299ec00fe",
     "sourceUnits": [

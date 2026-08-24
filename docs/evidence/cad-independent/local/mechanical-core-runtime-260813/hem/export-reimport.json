@@ -3,9 +3,9 @@
   "feature": "hem",
   "axis": "export",
   "status": "PASS",
-  "executedAt": "2026-08-24T21:27:38.377Z",
+  "executedAt": "2026-08-24T22:37:45.371Z",
   "stepBytes": 31886,
-  "stepSha256": "221ea53624b279a0eb5d03e21d324d88e865cbcce396bc0e52371e0d9c836ec9",
+  "stepSha256": "544d5ceee2c2c7723cf9142db282e0aad60e49ff7e66a283472cb823eb70a2d9",
   "before": {
     "handle": "occt:255",
     "kernelKind": "Solid",
