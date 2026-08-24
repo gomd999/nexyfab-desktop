@@ -1,10 +1,13 @@
 # AI Design current session
 
-- Status: READY_FOR_HANDOFF
+- Status: `V3_V10_SOURCE_FREEZE_READY`
 - Branch: `scope/ai-design`
 - Baseline: `baseline/pre-scope-20260823`
-- Current task: Harden the domain-accuracy contract and extract deterministic SCAD model-output parsing.
-- Next action: Integrate this scope, rebuild the AI domain-accuracy image, bind the deterministic contract to Analysis while preserving `MODEL_NOT_RUN`, and recapture source, rollback, route-security, and secret-scan evidence.
+- Current integration base: `76a69c5d` on `integration/nexyfab`; the preserved V3-V10 work reapplied without conflicts.
+- Current task: Freeze the completed V3-V10 AI Design producer, chat-first V9 workspace, and Pre-Precision V10 controller as one scope-owned source commit before real React/Three consumption.
+- Integration baseline: V9 handoff `HANDOFFS/20260824T153232+0900-ai-design-chat-first-v9.md`, V10 handoff `HANDOFFS/20260824T164434+0900-ai-design-pre-precision-v10.md`, and integration addendum `HANDOFFS/20260824T170157+0900-ai-design-v9-v10-integration-addendum.md`.
+- Current verification: fixed Node.js 22.23.2/npm 10.9.8 `workspace:check -- ai-design` passed with 81 changed paths, zero ownership/classification violations, TypeScript PASS, 62 common-accuracy tests, and 7 candidate-manifest tests.
+- Next action: Commit the scope-owned source tree, generate a canonical UTC source-freeze handoff, merge once with `--no-ff`, then bind the real chat + synchronized 2D/3D UI to the V10 controller and run the deferred browser/mobile evidence suite.
 
 ## 2026-08-24 additive implementation
 
@@ -40,3 +43,68 @@
 - Validation: Runtime V2 focused suite 13 files / 37 tests; AI Design V1 + V2 regression suite 37 files / 153 tests; TypeScript typecheck and `npm run workspace:check -- ai-design` passed.
 - Consumer handoff: `HANDOFFS/20260824T112457+0900-ai-design-runtime-v2.md`
 - Next action: Precision CAD binds the V2 view-model/actions to its real React/Three.js UI and exact-verification receipt flow; integration supplies commercial PostgreSQL/artifact/job implementations.
+
+## 2026-08-24 AI Design complex-product v3
+
+- Status: READY_FOR_COMPLEX_PRODUCT_UI_AND_INTEGRATION_CONSUMERS
+- Task: Extend the AI Design workspace from flat concepts to complex assembly structure, cross-domain constraints, explicit conflict resolution, hierarchical artifacts/partitions, actual signed conceptual critics, durable job/outbox contracts, assembly gauge/change-heat UX, and executable complex-product scenarios.
+- Result: Product/session-bound structure and constraint sidecars, immutable resolution lineage, scalable partitions, seven server-run concept critics, candidate publication critic binding, responsive complex workspace view-model, and machine/tooling/electromechanical golden scenarios are complete. Exact CAD and manufacturing authority remain `NOT_RUN`; no Precision CAD file was modified.
+- Validation: 38 AI Design/API test files / 137 tests passed; TypeScript typecheck, workspace scope/ownership check, and diff check passed.
+- Consumer handoff: `HANDOFFS/20260824T121704+0900-ai-design-complex-product-v3.md`
+- Next action: Precision CAD consumes the V3 read-only view-model and returns separate exact receipts for structure/interface/partition/gauge bindings; integration supplies transactional PostgreSQL/job/outbox/artifact implementations and records round-trip E2E evidence under the three shared scenario IDs.
+
+## 2026-08-24 AI Design V4–V8 scoped roadmap
+
+- Status: PLANNED
+- Scope: Future implementation changes are limited to `worktrees/ai-design`; Precision CAD and integration work remain versioned MD dependencies only.
+- Master-plan update: `C:\Users\gomd9\Downloads\nexysys_1\nexyfab.com\worktrees\NEXYFAB_MASTER_PLAN.md` Part 0 and Part 16 now distinguish contracts, runtime connection, evidence, and commercial readiness.
+- Plan: V4 server-authoritative sidecar/resolution/critic/Precision-receipt loop → V5 rights-safe Concept Cards → V6 bounded MADR → V7 rights-cleared topology retrieval → V8 scale/mobile/accessibility/i18n/evidence.
+- Copyright boundary: concepts and independently written engineering rules only; unknown/restricted sources fail closed; no manual text, screenshot, proprietary geometry, or generated TypeScript rule injection.
+- Plan handoff: `HANDOFFS/20260824T134337+0900-ai-design-v4-v8-plan.md`
+- Planning validation: Master Plan UTF-8/required-section checks and `git diff --check` passed. Workspace check was attempted but preflight-blocked by pre-existing `platform`-owned PHP deletions; this task did not modify or revert them.
+- Next action: Verify and implement V4 Command V3 and the authoritative complex-workspace sidecar loop without modifying Precision CAD or integration-owned files.
+
+## 2026-08-24 AI Design V4-V8 implementation
+
+- Status: `AI_SCOPE_IMPLEMENTATION_COMPLETE_EXTERNAL_EVIDENCE_HOLD`
+- Scope: V4 server-authoritative complex workflow, V5 rights-safe knowledge, V6 bounded MADR, V7 rights-cleared topology retrieval, and V8 scale/mobile/accessibility/i18n/release-evidence gates are implemented in `worktrees/ai-design` only.
+- Runtime result: V4 command/CAS/immutable artifact loop and read API are connected; all three complex-product scenarios traverse the command path; the API returns the V4 model plus V8 renderer-neutral UX contract.
+- Copyright result: independent concept metadata and declarative rules only; unknown/restricted sources fail closed; no manual prose, screenshots, proprietary geometry, raw B-rep, or generated executable rule code is embedded.
+- Authority result: AI remains concept-only. Exact CAD is request/receipt-bound and otherwise `NOT_RUN`; manufacturing release is always `false`.
+- Validation: focused 10 files / 33 tests; full AI Design/API 48 files / 167 tests; typecheck; common accuracy 11 files / 62 tests plus 7 candidate-manifest tests; production build with 298 static pages and bundle budget; diff check all passed.
+- Workspace check: attempted and preflight-blocked only by the pre-existing platform-owned deletions `adminlink/index.php`, `public/search.php`, and `public/send-mail.php`; this task did not alter them. Nested checks were run separately and passed.
+- Consumer handoff: `HANDOFFS/20260824T145024+0900-ai-design-v4-v8-implementation.md`
+- Next action: Integration supplies PostgreSQL/object storage/Redis/durable workers and independent evidence; Precision CAD binds the actual React/Three UI and exact-receipt round trip. Commercial rollout remains `HOLD` until both consumer tracks and external holdouts/pilots are evidenced.
+
+## 2026-08-24 AI Design Chat-first Unified Workspace V9
+
+- Status: `AI_SCOPE_V9_COMPLETE_INTEGRATION_AND_BROWSER_TESTS_DEFERRED`
+- Scope: AI Design contracts, orchestration view-model, and owned API only; no Precision CAD or integration-owned React/Three files changed.
+- Result: The complex-workspace API now returns one V9 model combining chat-first guidance, executable action cards, model explanation, synchronized 2D/3D semantics, desktop/mobile layout, recovery, and authority boundaries.
+- Safety: 2D/3D ambiguity returns `NEEDS_INPUT`; previews do not persist exact CAD; browser-authored PASS and manufacturing release remain impossible.
+- Copyright: Independently written concepts/contracts and synthetic scenarios only; no manual prose, screenshots, proprietary geometry, or copied implementation.
+- Validation: AI Design/API 55 files / 193 tests; typecheck; common accuracy 11 files / 62 tests; candidate manifests 7/7; production build with 298 static pages and bundle budget; final adjustment typecheck plus 4 files / 15 tests all passed.
+- Workspace check: no shared violations or unclassified new paths; preflight blocked only by the existing platform-owned PHP deletions, which were not touched.
+- Consumer handoff: `HANDOFFS/20260824T153232+0900-ai-design-chat-first-v9.md`
+- Next action: Integrate the V9 producer, bind the actual chat + 2D/3D React/Three consumers, then run the deferred browser/mobile/Precision round-trip scenarios and adjust from evidence.
+
+## 2026-08-24 Pre-Precision Integration Readiness V10
+
+- Status: `AI_SCOPE_V10_COMPLETE_UI_AND_PRECISION_CONSUMERS_DEFERRED`
+- Scope: Only AI Design-owned contracts, client orchestration state, deterministic fixtures, and handoff documentation were changed. Precision CAD and integration-owned React/Three surfaces were not modified.
+- Result: V9 action cards now adapt into parser-validated V2 server requests, local instructions, nonpersistent concept-preview/apply requests, or a runtime+complex-revision-bound Precision handoff. A renderer-neutral client state and controller coordinate server snapshots, local view state, gauge drafts, preview/apply/reject, stale revisions, connectivity, and explicit server completion.
+- Preview boundary: Draft and preview never mutate the authoritative server snapshot. Applying requires explicit confirmation and a matching proposal/server completion. Preview evidence can only report `NOT_RUN`; exact CAD execution, browser-authored PASS, and manufacturing release remain false.
+- Consumer readiness: Server source and V9 renderer projection are bound in one validated snapshot. Ten deterministic bounded fixtures cover empty, clarification, generation, three-candidate review, gauge preview, stale, offline mobile, model fallback, Precision pending, and fixture-only non-release Precision PASS.
+- Validation: V3-V10 AI Design/API regression `59 files / 210 tests`; V10 focused `5 files / 19 tests`; TypeScript; focused ESLint; common accuracy `11 files / 62 tests`; candidate manifests `7 / 7`; production build `298` static pages and bundle budget all passed.
+- Workspace check: Correct branch; no shared violations or unclassified new paths. Preflight remains blocked only by the existing platform-owned deletions `adminlink/index.php`, `public/search.php`, and `public/send-mail.php`, which this task did not modify.
+- Consumer handoff: `HANDOFFS/20260824T164434+0900-ai-design-pre-precision-v10.md`
+- Next action: Integration binds the actual chat + synchronized 2D/3D React/Three UI to the V10 controller and fixtures, then records desktop/mobile/browser evidence. Precision CAD later consumes only the revision-bound handoff and returns separately signed exact receipts.
+
+## 2026-08-24 integration execution decision (updated after security preflight)
+
+- Status: `PLATFORM_PREFLIGHT_COMPLETE_AI_SOURCE_FREEZE_READY`
+- Decision: The immutable V9 handoff remains the chat-first/UI contract baseline. V10 is the required client-state, preview, recovery, and command-controller addendum; integration must consume both rather than implementing V9 alone.
+- Security preflight: Complete on integration. The three legacy PHP files are removed, the remaining admin inquiry caller routes to `/admin/inquiries`, and the proxy denies all retired PHP paths. Historical external credentials still require operator-side rotation.
+- Integration ownership: Actual React/Three files, preview transport, durable runtime adapters, browser/mobile evidence, and cross-scope wiring are now integration work. AI Design retains concept orchestration and non-exact preview authority; Precision CAD retains exact geometry and signed verification authority.
+- Ordered execution: AI V3-V10 source freeze and merge -> Precision CAD source freeze and merge -> V10 controller and ten-fixture UI binding -> preview/apply transport -> browser/mobile/accessibility evidence -> Precision CAD revision-bound round trip -> release-gate reassessment.
+- Integration addendum: `HANDOFFS/20260824T170157+0900-ai-design-v9-v10-integration-addendum.md`
