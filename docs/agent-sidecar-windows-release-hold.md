@@ -14,7 +14,7 @@ Reproduce the audit without installing or executing an installer:
 ```powershell
 node scripts/agent-sidecar/windows-sea-readiness.mjs --run-bundle-check
 node scripts/agent-sidecar/windows-sea-release-evidence.mjs --write
-node --test --test-isolation=none scripts/agent-sidecar/windows-sea-readiness.test.mjs scripts/agent-sidecar/windows-sea-release-evidence.test.mjs
+node --test scripts/agent-sidecar/windows-sea-readiness.test.mjs scripts/agent-sidecar/windows-sea-release-evidence.test.mjs
 ```
 
 The default release builder only reads local files and writes `NOT_RUN/HOLD` when

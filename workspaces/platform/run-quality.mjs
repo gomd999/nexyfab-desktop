@@ -4,7 +4,7 @@ import { pathToFileURL } from 'node:url';
 const checks = [
   {
     id: 'core-api-contract',
-    args: ['--test', '--test-isolation=none', 'apps/core-api/test/server.test.mjs'],
+    args: ['--test', 'apps/core-api/test/server.test.mjs'],
   },
   {
     id: 'platform-workers',

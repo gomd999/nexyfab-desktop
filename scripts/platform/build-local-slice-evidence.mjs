@@ -95,7 +95,7 @@ async function healthObservation(port, endpoint) {
 function runSliceTests(slice) {
   const test = slice.health?.test ?? (slice.scope === 'platform' ? 'apps/core-api/test/server.test.mjs' : '');
   if (!test) throw new Error(`No local test is configured for ${slice.scope}`);
-  run(process.execPath, ['--test', '--test-isolation=none', test], { stdio: 'inherit' });
+  run(process.execPath, ['--test', test], { stdio: 'inherit' });
   return { state: 'PASS' };
 }
 

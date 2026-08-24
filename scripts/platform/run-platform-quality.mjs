@@ -36,7 +36,7 @@ const VITEST_TESTS = [
 
 export function platformQualityCommands() {
   return [
-    { name: 'Node service and policy tests', args: ['--test', '--test-isolation=none', ...NODE_TESTS] },
+    { name: 'Node service and policy tests', args: ['--test', ...NODE_TESTS] },
     { name: 'Platform Vitest suite', args: ['node_modules/vitest/vitest.mjs', 'run', ...VITEST_TESTS, '--reporter=dot'] },
     { name: 'Architecture boundary', args: ['scripts/platform/validate-platform-architecture.mjs'] },
     { name: 'Runtime placement policy', args: ['scripts/platform/evaluate-runtime-placement-readiness.mjs', '--allow-hold'] },

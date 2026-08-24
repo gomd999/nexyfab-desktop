@@ -33,7 +33,7 @@ export const AGENT_MCP_CLI_COMMAND_SPECS = Object.freeze([
   }),
   Object.freeze({
     id: 'cli_offline_subprocess_roundtrip',
-    args: ['--test', '--test-isolation=none', 'scripts/cli/nexyfab.roundtrip.test.mjs'],
+    args: ['--test', 'scripts/cli/nexyfab.roundtrip.test.mjs'],
     timeoutMs: 30_000,
   }),
   Object.freeze({
@@ -44,7 +44,7 @@ export const AGENT_MCP_CLI_COMMAND_SPECS = Object.freeze([
   Object.freeze({
     id: 'windows_sea_fail_closed_contract',
     args: [
-      '--test', '--test-isolation=none',
+      '--test',
       'scripts/agent-sidecar/windows-sea-readiness.test.mjs',
       'scripts/agent-sidecar/windows-sea-release-evidence.test.mjs',
     ],

@@ -4,7 +4,7 @@ on:
   push:
     branches: [main, master, develop, integration/nexyfab]
   pull_request:
-    branches: [main, master]
+    branches: [main, master, integration/nexyfab]
 
 jobs:
   migration-restore:
@@ -27,7 +27,10 @@ jobs:
           --health-retries 10
     env:
       DATABASE_URL: postgres://postgres:postgres@127.0.0.1:5432/nexyfab_ci
+      SOURCE_DATABASE_URL: postgres://postgres:postgres@127.0.0.1:5432/nexyfab_ci
       RESTORE_DATABASE_URL: postgres://postgres:postgres@127.0.0.1:5432/nexyfab_restore_drill
+      RESTORE_DRILL_ENVIRONMENT: staging
+      RESTORE_DRILL_CONFIRM: NEXYFAB_ISOLATED_RESTORE_ONLY
       BACKUP_FILE: /tmp/nexyfab-ci.sql.gz
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4

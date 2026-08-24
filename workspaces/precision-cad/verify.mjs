@@ -27,7 +27,7 @@ const groups = [
   {
     name: 'isolated-single-part-contract',
     command: process.execPath,
-    args: ['--test', '--test-isolation=none', 'test/server.test.mjs'],
+    args: ['--test', 'test/server.test.mjs'],
     cwd: path.join(root, 'capabilities', 'precision-cad', 'single-part-candidate'),
   },
   {
