@@ -9,6 +9,7 @@ type Env = Record<string, string | undefined>;
 export const COMMERCIAL_POSTGRES_MIGRATIONS = [
   2026082202, 2026082203, 2026082204, 2026082205, 2026082206,
   2026082207, 2026082208, 2026082301, 2026082401, 2026082402, 2026082403,
+  2026082501,
 ] as const;
 
 export type CommercialPostgresMigration = typeof COMMERCIAL_POSTGRES_MIGRATIONS[number];
