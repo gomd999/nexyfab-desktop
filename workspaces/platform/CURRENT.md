@@ -1,5 +1,35 @@
 # Platform current session
 
+## 2026-08-25 commercial Precision runtime release authority
+
+- Status: `LOCAL_GATE_CURRENT / 30x7_LOCAL_CANDIDATE / COMMERCIAL_RUNTIME_HOLD`.
+- The commercialization gate and live `/api/health/release` no longer accept a
+  commercial-mode flag as evidence that the AI-to-Precision exact path is
+  commercially durable.
+- A new HMAC-attested, immutable receipt derives separate Private Beta and GA
+  decisions from release-bound PostgreSQL, Redis, private object storage,
+  transactional outbox, lease, native worker, exactly-three-output, signed
+  callback, authoritative persistence, negative-attack, recovery, and
+  credential-rotation observations.
+- The live GA endpoint additionally binds that receipt to the exact build,
+  commit, production deployment, migration `2026082502` checksum, execution
+  contract v3, all 20 required checks, and the same-deployment production
+  observation. Missing, tampered, stale, or transplanted receipts fail closed.
+- The local mechanical campaign was rerun against current source: 30/30
+  features and all 210 create/edit/regenerate/save-reopen/undo/export/drawing
+  axes pass, producing `LOCAL_CANDIDATE`. This is local closed-loop evidence,
+  not independent commercial CAD or manufacturing certification.
+- Current repository receipt intentionally remains `HOLD`: no externally
+  supplied commercial runtime observation, native deployed worker evidence,
+  credential-rotation campaign, or production same-deployment campaign was
+  provided.
+- Verification so far: commercial runtime and commercialization Node contracts
+  `40/40` PASS; release-health Vitest `10/10` PASS; TypeScript PASS; local
+  mechanical 30x7 gate PASS; Platform ownership, full source ESLint, and
+  TypeScript workspace check PASS.
+- Handoff:
+  `HANDOFFS/20260824T214459Z-commercial-precision-runtime-release-authority.md`.
+
 ## 2026-08-25 commercial payment authority migration 2501
 
 - Status: `LOCAL_PAYMENT_AUTHORITY_CURRENT / STAGING_2501_PENDING / RELEASE_HOLD`.
