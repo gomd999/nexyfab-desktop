@@ -58,6 +58,8 @@ export default defineConfig({
   resolve: {
     alias: {
       '@': path.resolve(import.meta.dirname, './src'),
+      /** Next replaces this marker during bundling; tests need a non-throwing server context. */
+      'server-only': path.resolve(import.meta.dirname, './src/test/server-only-stub.ts'),
       /** Prefer ESM src entries — avoids UMD `require` mixing with internal `src/` imports (fixes BVH undefined). */
       'three-mesh-bvh': path.resolve(import.meta.dirname, 'node_modules/three-mesh-bvh/src/index.js'),
       'three-bvh-csg': path.resolve(import.meta.dirname, 'node_modules/three-bvh-csg/src/index.js'),
