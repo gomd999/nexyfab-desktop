@@ -1,5 +1,26 @@
 # Precision CAD current session
 
+## 2026-08-24 commercial-readiness continuation
+
+- Source implementation commit: `5670cb85` (`[P0] feat(cad): bind AI stable refs to canonical head`).
+- Added `nexyfab.precision-cad.mechanical-stable-reference-binding.v1` as the
+  fail-closed bridge prerequisite for the AI Design V1 handoff. Precision now
+  discovers the matching document from server-owned canonical heads and binds
+  the exact revision ID, content SHA-256, rights receipt, FeatureTree, part, and
+  every requested stable feature ID. The browser/AI does not supply a document,
+  sequence, exact receipt, runtime identity, or PASS state.
+- Ambiguous document matches, stale/corrupt heads, unknown feature references,
+  malformed/extended contracts, and migration absence remain machine-coded
+  `HOLD` outcomes.
+- Verification: `workspace:check -- precision-cad` PASS (TypeScript and platform
+  architecture); focused stable-binding tests `2/2` PASS; canonical revision and
+  current-head bundle regression `13/13` PASS including a real OCCT STEP write.
+- Remaining bridge work is integration-owned: durable dispatch/outbox, exact
+  bundle execution after rebind, Precision signing, immutable receipt storage,
+  AI aggregate CAS update, and read-model refresh. This commit intentionally
+  keeps `exactExecution: NOT_RUN`, `release: HOLD`, and
+  `manufacturingReleaseReady: false`.
+
 - Status: `SOURCE_FREEZE_READY / INTERNAL_30_OF_30_BOUNDED / RELEASE_HOLD`
 - Source branch: `scope/precision-cad`
 - Integration target: `integration/nexyfab`
