@@ -13,7 +13,14 @@
 import path from 'path';
 import fs from 'fs';
 import { createHash } from 'crypto';
-import { commercialReadinessIssues } from '../src/lib/commercial-readiness';
+import {
+  COMMERCIAL_POSTGRES_CONSTRAINTS,
+  COMMERCIAL_POSTGRES_HARDENING_TRIGGERS,
+  COMMERCIAL_POSTGRES_MIGRATIONS,
+  COMMERCIAL_POSTGRES_TABLES,
+  commercialPostgresMigrationChecksumEnvKey,
+  commercialReadinessIssues,
+} from '../src/lib/commercial-readiness';
 import { loadServerAgenticCommercialTrust } from '../src/lib/ai/serverAgenticCommercialTrust';
 
 const ROOT = path.join(__dirname, '..');
@@ -69,45 +76,7 @@ const REQUIRED_TABLES = [
   'nf_escrow_transactions',
   'nf_payment_attempts',
   'nf_manufacturing_lineage',
-  'nf_precision_cad_execution_journal',
-  'nf_precision_cad_execution_events',
-  'nf_precision_cad_approval_challenges',
-  'nf_precision_cad_tool_claims',
-  'nf_precision_cad_worker_receipts',
-  'nf_agentic_commercial_receipts',
-  'nf_precision_cad_commercial_outbox',
-  'nf_precision_cad_commercial_callbacks',
-  'nf_external_commercial_evidence',
-  'nf_external_commercial_verification_requests',
-  'nf_external_commercial_verifier_claims',
-  'nf_external_commercial_verifier_callbacks',
-  'nf_precision_cad_commercial_artifact_snapshots',
-  'nf_precision_cad_commercial_worker_artifacts',
-  'nf_precision_cad_commercial_native_parser_receipts',
-  'nf_precision_cad_commercial_persistence_receipts',
-  'nf_precision_cad_commercial_workspace_commits',
-  'nf_agentic_commercial_verified_receipts',
-  'nf_agentic_commercial_verified_ledger',
-  'nf_commercial_generation_runs',
-  'nf_commercial_generation_revisions',
-  'nf_commercial_generation_receipt_bindings',
-];
-
-const REQUIRED_COMMERCIAL_CONSTRAINTS: Array<[string, string]> = [
-  ['nf_agentic_commercial_receipts', 'nf_agentic_commercial_receipts_execution_fk'],
-  ['nf_precision_cad_commercial_worker_artifacts', 'nf_worker_artifact_private_key_ck'],
-  ['nf_external_commercial_evidence', 'nf_external_evidence_private_key_ck'],
-  ['nf_agentic_commercial_receipts', 'nf_agentic_receipt_private_key_ck'],
-];
-const REQUIRED_COMMERCIAL_TRIGGERS: Array<[string, string]> = [
-  ['nf_precision_cad_execution_journal', 'nf_precision_cad_execution_journal_identity_immutable'],
-  ['nf_precision_cad_execution_events', 'nf_precision_cad_execution_events_immutable'],
-  ['nf_external_commercial_evidence', 'nf_external_commercial_evidence_immutable'],
-  ['nf_external_commercial_verifier_callbacks', 'nf_external_commercial_verifier_callbacks_immutable'],
-  ['nf_precision_cad_commercial_callbacks', 'nf_precision_cad_commercial_callbacks_immutable'],
-  ['nf_commercial_generation_receipt_bindings', 'nf_commercial_generation_receipt_binding_identity_immutable'],
-  ['nf_external_commercial_verification_requests', 'nf_external_verification_request_identity_immutable'],
-  ['nf_commercial_generation_runs', 'nf_commercial_generation_run_identity_immutable'],
+  ...COMMERCIAL_POSTGRES_TABLES,
 ];
 
 const REQUIRED_COLUMNS: Array<[string, string]> = [
@@ -187,15 +156,16 @@ async function checkMigrations(): Promise<Result> {
         if (!r.rows[0].exists) failures.push(`${table}.${col} column missing`);
       }
       if (process.env.NEXYFAB_COMMERCIAL_MODE === '1') {
-        for (const version of [2026082202, 2026082203, 2026082204, 2026082205, 2026082206, 2026082207, 2026082208]) {
+        for (const version of COMMERCIAL_POSTGRES_MIGRATIONS) {
           const migration = await client.query<{ version: number; checksum: string }>('SELECT version, checksum FROM nf_schema_migrations WHERE version = $1', [version]);
           if (migration.rows[0]?.version !== version) failures.push(`commercial migration ${version} missing`);
           const migrationSource = fs.readFileSync(path.join(ROOT, `src/lib/db-postgres-migration-${version}.sql`));
           const sourceChecksum = createHash('sha256').update(migrationSource).digest('hex');
           if (migration.rows[0]?.checksum !== sourceChecksum) failures.push(`commercial migration ${version} checksum does not match this build source`);
-          if (process.env[`POSTGRES_MIGRATION_CHECKSUM_${version}`] !== sourceChecksum) failures.push(`POSTGRES_MIGRATION_CHECKSUM_${version} does not match this build source`);
+          const checksumKey = commercialPostgresMigrationChecksumEnvKey(version);
+          if (process.env[checksumKey] !== sourceChecksum) failures.push(`${checksumKey} does not match this build source`);
         }
-        for (const [table, constraint] of REQUIRED_COMMERCIAL_CONSTRAINTS) {
+        for (const [table, constraint] of COMMERCIAL_POSTGRES_CONSTRAINTS) {
           const result = await client.query<{ exists: boolean; validated: boolean }>(
             `SELECT EXISTS (
                SELECT 1 FROM pg_constraint c
@@ -212,7 +182,7 @@ async function checkMigrations(): Promise<Result> {
           if (!result.rows[0]?.exists) failures.push(`commercial constraint ${table}.${constraint} missing`);
           else if (!result.rows[0]?.validated) warnings.push(`commercial constraint ${table}.${constraint} is NOT VALID and requires legacy-row validation`);
         }
-        for (const [table, trigger] of REQUIRED_COMMERCIAL_TRIGGERS) {
+        for (const [table, trigger] of COMMERCIAL_POSTGRES_HARDENING_TRIGGERS) {
           const triggerResult = await client.query<{ exists: boolean }>(
             `SELECT EXISTS (
                SELECT 1 FROM pg_trigger t
