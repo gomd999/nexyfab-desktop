@@ -2193,6 +2193,64 @@ const MIGRATIONS: SqliteMigration[] = [
         BEFORE DELETE ON nf_cad_canonical_v2_audit BEGIN SELECT RAISE(ABORT, 'canonical audit is append-only'); END;
     `,
   },
+  {
+    version: 90,
+    name: 'ai_design_v10_authority_state',
+    checksum: '66a5232ed469ff60b571f7332cd0c88049411b301c40aacbe68271eb17aadd29',
+    sql: `
+      CREATE TABLE IF NOT EXISTS nf_ai_design_workspace_runtimes (
+        owner_key_sha256 TEXT NOT NULL CHECK(length(owner_key_sha256) = 64),
+        project_id TEXT NOT NULL REFERENCES nf_projects(id) ON DELETE CASCADE,
+        session_id TEXT NOT NULL,
+        runtime_revision INTEGER NOT NULL CHECK(runtime_revision >= 0),
+        state_sha256 TEXT NOT NULL CHECK(length(state_sha256) = 64),
+        state_json TEXT NOT NULL CHECK(length(state_json) > 0),
+        created_at INTEGER NOT NULL,
+        updated_at INTEGER NOT NULL CHECK(updated_at >= created_at),
+        PRIMARY KEY(owner_key_sha256, project_id, session_id)
+      );
+      CREATE INDEX IF NOT EXISTS idx_nf_ai_design_runtime_project
+        ON nf_ai_design_workspace_runtimes(project_id, updated_at DESC);
+
+      CREATE TABLE IF NOT EXISTS nf_ai_design_complex_workspaces (
+        owner_key_sha256 TEXT NOT NULL CHECK(length(owner_key_sha256) = 64),
+        project_id TEXT NOT NULL REFERENCES nf_projects(id) ON DELETE CASCADE,
+        session_id TEXT NOT NULL,
+        complex_revision INTEGER NOT NULL CHECK(complex_revision >= 0),
+        aggregate_digest TEXT NOT NULL CHECK(length(aggregate_digest) = 64),
+        aggregate_json TEXT NOT NULL CHECK(length(aggregate_json) > 0),
+        created_at INTEGER NOT NULL,
+        updated_at INTEGER NOT NULL CHECK(updated_at >= created_at),
+        PRIMARY KEY(owner_key_sha256, project_id, session_id)
+      );
+      CREATE INDEX IF NOT EXISTS idx_nf_ai_design_complex_project
+        ON nf_ai_design_complex_workspaces(project_id, updated_at DESC);
+
+      CREATE TABLE IF NOT EXISTS nf_ai_design_artifacts (
+        artifact_id TEXT PRIMARY KEY,
+        project_id TEXT NOT NULL REFERENCES nf_projects(id) ON DELETE CASCADE,
+        session_id TEXT NOT NULL,
+        artifact_kind TEXT NOT NULL CHECK(artifact_kind IN (
+          'stage', 'evidence_receipt', 'candidate', 'critic_bundle',
+          'product_structure', 'cross_domain_graph', 'graph_partition',
+          'gauge_bindings', 'constraint_bindings', 'intent_resolution',
+          'precision_request', 'precision_receipt'
+        )),
+        content_sha256 TEXT NOT NULL CHECK(length(content_sha256) = 64),
+        value_json TEXT NOT NULL CHECK(length(value_json) > 0),
+        byte_length INTEGER NOT NULL CHECK(byte_length > 0 AND byte_length <= 8388608),
+        created_at INTEGER NOT NULL,
+        UNIQUE(project_id, session_id, artifact_kind, artifact_id)
+      );
+      CREATE INDEX IF NOT EXISTS idx_nf_ai_design_artifact_scope
+        ON nf_ai_design_artifacts(project_id, session_id, artifact_kind, created_at DESC);
+
+      CREATE TRIGGER IF NOT EXISTS nf_ai_design_artifact_no_update
+        BEFORE UPDATE ON nf_ai_design_artifacts BEGIN SELECT RAISE(ABORT, 'AI Design artifacts are append-only'); END;
+      CREATE TRIGGER IF NOT EXISTS nf_ai_design_artifact_no_delete
+        BEFORE DELETE ON nf_ai_design_artifacts BEGIN SELECT RAISE(ABORT, 'AI Design artifacts are append-only'); END;
+    `,
+  },
 ];
 
 function sqliteIdentifier(value: string): string {

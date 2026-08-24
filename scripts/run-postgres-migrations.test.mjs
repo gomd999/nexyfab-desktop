@@ -16,7 +16,7 @@ test('migration decision fails closed on changed applied SQL', () => {
 
 test('keeps immutable migrations ordered before the remote CAD agent state migration', () => {
   const migrations = orderedMigrationInputs('/trusted/immutable-2001.sql');
-  assert.deepEqual(migrations.map(item => item.version), [2026082001, 2026082002, 2026082101, 2026082102, 2026082201, 2026082202, 2026082203, 2026082204, 2026082205, 2026082206, 2026082207, 2026082208, 2026082301, 2026082401]);
+  assert.deepEqual(migrations.map(item => item.version), [2026082001, 2026082002, 2026082101, 2026082102, 2026082201, 2026082202, 2026082203, 2026082204, 2026082205, 2026082206, 2026082207, 2026082208, 2026082301, 2026082401, 2026082402]);
   assert.match(migrations[0].sqlPath, /immutable-2001\.sql$/);
   assert.match(migrations[1].sqlPath, /db-postgres-migration-2026082002\.sql$/);
   assert.match(migrations[2].sqlPath, /db-postgres-migration-2026082101\.sql$/);
@@ -31,18 +31,19 @@ test('keeps immutable migrations ordered before the remote CAD agent state migra
   assert.match(migrations[11].sqlPath, /db-postgres-migration-2026082208\.sql$/);
   assert.match(migrations[12].sqlPath, /db-postgres-migration-2026082301\.sql$/);
   assert.match(migrations[13].sqlPath, /db-postgres-migration-2026082401\.sql$/);
+  assert.match(migrations[14].sqlPath, /db-postgres-migration-2026082402\.sql$/);
 });
 
 test('2301 is an append-only mapping migration and does not rewrite prior SQL', () => {
   const migrations = orderedMigrationInputs();
-  assert.match(migrations.at(-2).sqlPath, /db-postgres-migration-2026082301\.sql$/);
-  assert.notEqual(migrations.at(-2).sqlPath, migrations.at(-3).sqlPath);
+  assert.match(migrations.at(-3).sqlPath, /db-postgres-migration-2026082301\.sql$/);
+  assert.notEqual(migrations.at(-3).sqlPath, migrations.at(-4).sqlPath);
 });
 
 test('2401 adds the authority-owned Canonical CAD V2 journal without rewriting prior SQL', () => {
   const migrations = orderedMigrationInputs();
-  const sql = readFileSync(migrations.at(-1).sqlPath, 'utf8');
-  assert.match(migrations.at(-1).sqlPath, /db-postgres-migration-2026082401\.sql$/);
+  const sql = readFileSync(migrations.at(-2).sqlPath, 'utf8');
+  assert.match(migrations.at(-2).sqlPath, /db-postgres-migration-2026082401\.sql$/);
   assert.match(sql, /CREATE TABLE IF NOT EXISTS nf_cad_canonical_v2_revisions/);
   assert.match(sql, /CREATE TABLE IF NOT EXISTS nf_cad_canonical_v2_heads/);
   assert.match(sql, /CREATE TABLE IF NOT EXISTS nf_cad_canonical_v2_invalidations/);
@@ -50,6 +51,17 @@ test('2401 adds the authority-owned Canonical CAD V2 journal without rewriting p
   assert.match(sql, /CREATE TABLE IF NOT EXISTS nf_cad_canonical_v2_audit/);
   assert.match(sql, /nf_cad_v2_revisions_immutable/);
   assert.match(sql, /nf_cad_v2_head_identity_immutable/);
+});
+
+test('2402 adds durable AI Design V10 CAS heads and immutable artifacts', () => {
+  const migrations = orderedMigrationInputs();
+  const sql = readFileSync(migrations.at(-1).sqlPath, 'utf8');
+  assert.match(migrations.at(-1).sqlPath, /db-postgres-migration-2026082402\.sql$/);
+  assert.match(sql, /CREATE TABLE IF NOT EXISTS nf_ai_design_workspace_runtimes/);
+  assert.match(sql, /CREATE TABLE IF NOT EXISTS nf_ai_design_complex_workspaces/);
+  assert.match(sql, /CREATE TABLE IF NOT EXISTS nf_ai_design_artifacts/);
+  assert.match(sql, /nf_ai_design_runtime_identity_immutable/);
+  assert.match(sql, /nf_ai_design_artifact_immutable/);
 });
 
 test('2208 adds safe hardening primitives without rewriting the 2202-2207 schema', () => {
