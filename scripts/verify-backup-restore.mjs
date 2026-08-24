@@ -187,6 +187,35 @@ async function foreignKeyReport(client) {
   return { count: constraints.length, orphanRows, failures, ok: failures.length === 0 };
 }
 
+export async function validateUnvalidatedConstraints(client) {
+  const constraints = (await client.query(`
+    SELECT
+      namespace.nspname AS table_schema,
+      relation.relname AS table_name,
+      constraint_record.conname AS constraint_name,
+      constraint_record.contype AS constraint_type
+    FROM pg_constraint constraint_record
+    JOIN pg_class relation ON relation.oid = constraint_record.conrelid
+    JOIN pg_namespace namespace ON namespace.oid = relation.relnamespace
+    WHERE namespace.nspname = 'public'
+      AND NOT constraint_record.convalidated
+      AND constraint_record.contype IN ('c', 'f')
+    ORDER BY relation.relname, constraint_record.conname
+  `)).rows;
+  const validated = [];
+  for (const constraint of constraints) {
+    await client.query(
+      `ALTER TABLE ${quoteIdentifier(constraint.table_schema)}.${quoteIdentifier(constraint.table_name)} VALIDATE CONSTRAINT ${quoteIdentifier(constraint.constraint_name)}`,
+    );
+    validated.push({
+      table: `${constraint.table_schema}.${constraint.table_name}`,
+      constraint: constraint.constraint_name,
+      type: constraint.constraint_type === 'f' ? 'foreign_key' : 'check',
+    });
+  }
+  return { count: validated.length, validated, ok: true };
+}
+
 export async function snapshotDatabase(databaseUrl) {
   const client = new pg.Client({ connectionString: databaseUrl });
   await client.connect();
@@ -311,6 +340,14 @@ export async function verifyBackupRestore({
     databaseUrl: restoreDatabaseUrl,
     sqlPath: migrationSqlPath,
   });
+  const validationClient = new pg.Client({ connectionString: restoreDatabaseUrl });
+  let constraintValidation;
+  try {
+    await validationClient.connect();
+    constraintValidation = await validateUnvalidatedConstraints(validationClient);
+  } finally {
+    await validationClient.end().catch(() => {});
+  }
   const migrated = await snapshotDatabase(restoreDatabaseUrl);
   const businessPreservation = compareDatabaseSnapshots(restored, migrated, {
     ignoreTables: ['nf_schema_migrations'],
@@ -355,6 +392,7 @@ export async function verifyBackupRestore({
       differences: exactRestore.differences,
     },
     migration,
+    constraintValidation,
     migrationTarget: 2026082208,
     migrated: {
       ...migrated,

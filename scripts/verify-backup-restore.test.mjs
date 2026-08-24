@@ -5,6 +5,7 @@ import {
   assertRestoreDrillSafety,
   compareDatabaseSnapshots,
   isBoundGitHead,
+  validateUnvalidatedConstraints,
 } from './verify-backup-restore.mjs';
 
 test('restore receipts accept Git SHA-1 and SHA-256 commit identifiers', () => {
@@ -61,4 +62,34 @@ test('snapshot comparison checks per-table row count and content fingerprint', (
   const withNewEmptyTable = structuredClone(base);
   withNewEmptyTable.tables.push({ table: 'nf_new_feature', rows: 0, contentHash: 'empty' });
   assert.equal(compareDatabaseSnapshots(base, withNewEmptyTable, { allowNewEmptyTables: true }).ok, true);
+});
+
+test('validates catalog-discovered constraints only on the isolated restore client', async () => {
+  const queries = [];
+  const client = {
+    async query(sql) {
+      queries.push(sql);
+      if (/^\s*SELECT\b/.test(sql)) {
+        return {
+          rows: [
+            { table_schema: 'public', table_name: 'child', constraint_name: 'child_parent_fk', constraint_type: 'f' },
+            { table_schema: 'public', table_name: 'artifact', constraint_name: 'private/key"check', constraint_type: 'c' },
+          ],
+        };
+      }
+      return { rows: [] };
+    },
+  };
+  const result = await validateUnvalidatedConstraints(client);
+  assert.deepEqual(result, {
+    count: 2,
+    validated: [
+      { table: 'public.child', constraint: 'child_parent_fk', type: 'foreign_key' },
+      { table: 'public.artifact', constraint: 'private/key"check', type: 'check' },
+    ],
+    ok: true,
+  });
+  assert.match(queries[0], /NOT constraint_record\.convalidated/);
+  assert.equal(queries[1], 'ALTER TABLE "public"."child" VALIDATE CONSTRAINT "child_parent_fk"');
+  assert.equal(queries[2], 'ALTER TABLE "public"."artifact" VALIDATE CONSTRAINT "private\/key""check"');
 });
