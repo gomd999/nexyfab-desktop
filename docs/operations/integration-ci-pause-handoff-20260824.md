@@ -1,12 +1,12 @@
 # 통합 작업 기준 및 CI·릴리스 인계
 
 - 작성 시각: 2026-08-24 (KST)
-- 최종 갱신: 2026-08-25 (상용 Precision 런타임 출시 권한 결속 기준)
+- 최종 갱신: 2026-08-25 (AI Design·Precision CAD 전체 로컬 회귀 결속 기준)
 - 기준 작업 디렉터리: `C:\Users\gomd9\Downloads\nexysys_1\nexyfab.com\new`
 - 통합 작업 브랜치: `integration/nexyfab`
 - PR 작업 브랜치: `fix/integration-ci-portability`
 - PR: <https://github.com/gomd999/nexyfab-desktop/pull/79>
-- 구현 기준 merge HEAD: `d22d2723` (`[P1] chore(integration): merge precision runtime authority`)
+- 구현 기준 소스 폐쇄 HEAD: `6e4c271e` (`[P1] test(cad): close full regression evidence drift`)
 - CI 실행: <https://github.com/gomd999/nexyfab-desktop/actions/runs/32697624503>
 
 ## 2026-08-25 상용 Precision 런타임 게이트 부록
@@ -25,6 +25,32 @@
 - 다음 실행은 `docs/operations/commercial-precision-worker-v3.md`의 순서대로 staging
   canary·negative campaign을 수행하는 것이며, 이후 독립 CAD/전문가/제조·7일 운영·
   보안·법무 증거가 별도로 닫혀야 한다.
+
+## 2026-08-25 AI Design·Precision CAD 전체 로컬 회귀 부록
+
+- AI Design 통합 화면의 한국어/영어 이분기 잔여를 제거하고
+  `ko/en/ja/zh/es/ar` 단일 카탈로그와 Arabic RTL 계약에 연결했다. 변경 commit은
+  `498ca375`이며 집중 검사는 `7 files / 59 tests`, 관련 pre-commit 검사는
+  `13 files / 76 tests` PASS다.
+- current-head Precision 증거 commit `575cfcfb`에서 bounded mechanical
+  `30/30 features`, `210/210 axes` 및 AI intent `10/10 cases`, `70/70 axes`가
+  PASS했다. 판정은 계속 `LOCAL_CANDIDATE`다.
+- 전체 회귀의 첫 실행에서 발견된 언어 분기 1건, runtime receipt source hash 1건,
+  Node 증거 최신성/기대값 3건을 모두 닫았다. 회귀 폐쇄 commit은 `6e4c271e`다.
+- 최종 Vitest는 `2,950 files / 30,188 tests` PASS, `10 files / 89 tests`
+  environment/feature gated skip, `1 todo`다. Node suite는 `616 PASS / 5 skip /
+  0 fail`이다. TypeScript와 production Next.js build도 PASS했고 `301/301`
+  static pages와 bundle budget이 통과했다.
+- 커널 identity는 현재 정책 소스와 WASM/worker bytes에 다시 결속됐고, secret scan은
+  Git 후보 `10,154`개 파일, `325,732,738` bytes를 검사해 findings `0`이다.
+- 로컬 빌드 중 `REDIS_URL` 미설정 경고가 확인됐다. 단일 프로세스 fallback은 상용
+  다중 인스턴스 제한 저장소가 아니므로 실제 배포에서는 isolated Redis quota 증거가
+  없으면 release를 계속 `HOLD`한다.
+- 장시간 collaboration soak, live AI/provider, OpenSCAD CLI, 일부 WASM/performance
+  캠페인은 환경 플래그/외부 실행기가 없어 의도적으로 skip됐다. 이를 PASS로 세지
+  않으며 staging/GA 운영 캠페인에서 별도 실행한다.
+- production 배포는 변경하지 않았다. 현재 결과는 소스·로컬 검증 폐쇄이며 상용 출시
+  승인이 아니다.
 
 ## 현재 통합 결정
 

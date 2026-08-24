@@ -1,5 +1,33 @@
 # AI Design current session
 
+## 2026-08-25 six-locale UI and current-head commercial closure
+
+- Status: `AI_DESIGN_SOURCE_CONNECTED / SIX_LOCALE_UI_PASS /
+  PRECISION_LOCAL_CANDIDATE_PASS / COMMERCIAL_RELEASE_HOLD`.
+- Commit `498ca375` replaces Korean/English-only branches in the unified AI
+  Design launcher, client, workspace surface, starter flows, V9 cards, and V10
+  integration copy with one `ko/en/ja/zh/es/ar` catalog. Arabic uses the RTL
+  surface contract. Focused verification passed `7 files / 59 tests`; the
+  related pre-commit suite passed `13 files / 76 tests`.
+- Precision evidence commit `575cfcfb` binds the current integration sources to
+  the bounded 30-feature/7-axis campaign (`30/30`, `210/210`) and the ten
+  AI-intent/7-axis campaign (`10/10`, `70/70`).
+- Regression closure `6e4c271e` refreshes the kernel identity and 10,154-file
+  secret scan (`0` findings), preserves the bounded STEP occurrence semantics,
+  detects semantic tampering, and prevents the topology spike test from
+  mutating a checked-in result on an ordinary test run.
+- Final local verification: Vitest `2,950` files and `30,188` tests passed;
+  Node auxiliary suite `616` passed with `5` environment-gated skips;
+  TypeScript and the production Next.js build passed with `301/301` static
+  pages and the bundle budget within limits.
+- Authority remains unchanged: AI output is `CONCEPT` or
+  `DESIGN_CANDIDATE`. No browser/model output can author exact CAD PASS,
+  manufacturing approval, or commercial release. Real native-worker staging,
+  independent CAD/expert evidence, manufacturing pilots, and operations
+  receipts remain required.
+- Immutable handoff:
+  `HANDOFFS/20260825T081348+0900-ai-design-commercial-source-closure.md`.
+
 ## 2026-08-25 Precision commercial evidence consumer closure
 
 - Status: `AI_CONCEPT_CONNECTED / PRECISION_RELEASE_AUTHORITY_FAIL_CLOSED /

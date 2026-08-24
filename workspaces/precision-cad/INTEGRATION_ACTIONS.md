@@ -4,6 +4,36 @@ These changes are required by the repository audit but target integration-owned
 paths. They must be applied from `integration/nexyfab`, not from this Scope
 branch.
 
+## 2026-08-25 current-head source integration closure
+
+The source-side actions are closed at commits `498ca375`, `575cfcfb`, and
+`6e4c271e`:
+
+- [x] Bind the six-locale AI Design workspace to the revision-bound Precision
+  handoff without granting AI exact or release authority.
+- [x] Refresh the 30-feature/7-axis (`210/210`) and ten-intent/7-axis (`70/70`)
+  evidence against the current integration implementation.
+- [x] Preserve bounded AP242 occurrence geometry and semantic identifiers and
+  retain an explicit XCAF reopen capability `HOLD`.
+- [x] Pass the complete local Vitest, Node, TypeScript, production build, and
+  bundle-budget verification.
+- [x] Refresh kernel identity and scan 10,154 Git candidate files with zero
+  secret findings.
+
+The remaining actions require external systems or independent people and are
+not satisfiable by another local source test:
+
+- [ ] deploy the exact current source to isolated non-commercial staging with
+  the real native CAD worker and separately held Ed25519/HMAC keys;
+- [ ] execute the 15 private-beta checks and five same-deployment GA recovery
+  checks, including replay, substitution, lease, crash, and rotation cases;
+- [ ] complete independent STEP/native-CAD/XCAF/GD&T review, 20 blind
+  challenges, three manufacturing pilots, and expert signatures;
+- [ ] bind distributed Redis quota, SMTP/Sentry/payment, restore/rollback,
+  security/legal, and seven-day operations/cost evidence to one release;
+- [ ] keep production commercial mode and manufacturing release disabled until
+  every required receipt passes for that exact release.
+
 ## 2026-08-24 exact bridge integration reconciliation
 
 The following previously open cross-scope implementation items are complete at

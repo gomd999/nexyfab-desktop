@@ -1,5 +1,33 @@
 # Precision CAD current session
 
+## 2026-08-25 current-head local evidence and regression closure
+
+- Status: `LOCAL_EXACT_CANDIDATE_PASS / EXTERNAL_QUALIFICATION_NOT_RUN /
+  COMMERCIAL_RELEASE_HOLD`.
+- Evidence commit `575cfcfb` reruns the bounded mechanical campaign on the
+  current integration sources: `30/30` exact features and `210/210` closed-loop
+  axes PASS. Its design revision SHA-256 is
+  `a361da8b50b3e4b840c04e7bdf7077467580a73242a109090dad13b8f5102e22` and
+  receipt SHA-256 is
+  `d592a83f044c34560134d69d4be75e6bb6a72e20047e93102813e04c660af2b9`.
+- The AI-intent runtime subset also passes `10/10` cases and `70/70` axes with
+  source hashes bound to the current `occtEngine.ts` and
+  `pipelineManager.ts`.
+- Regression commit `6e4c271e` proves the bounded AP242 two-occurrence
+  roundtrip preserves geometry, transforms, component names, part numbers, and
+  occurrence labels, and adds a negative semantic-loss test. Product identity
+  remains `HOLD` because the local binding still lacks
+  `STEPCAFControl_Reader` plus reopened XCAF traversal.
+- Full local verification passed: Vitest `30,188` tests, Node auxiliary suite
+  `616` tests (`5` environment-gated skips), TypeScript, production build,
+  `301/301` static pages, and bundle budget.
+- This is not independent native-CAD interoperability or manufacturing
+  qualification. The committed commercial runtime receipt remains `HOLD`
+  until a real isolated native worker, release-bound observations, independent
+  reviews, external CAD exchange, and three manufacturing pilots are supplied.
+- Immutable handoff:
+  `HANDOFFS/20260825T081348+0900-current-head-local-commercial-evidence.md`.
+
 ## 2026-08-25 commercial runtime evidence authority
 
 - Status: `LOCAL_30X7_CANDIDATE_PASS / COMMERCIAL_RUNTIME_NOT_RUN /
