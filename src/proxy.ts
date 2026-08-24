@@ -34,7 +34,7 @@ import { checkOrigin } from '@/lib/csrf';
  */
 
 const EXPERT_GATE_RE = /^\/(kr|en|ja|cn|es|ar)\/shape-generator(?:\/|$)/;
-const ALWAYS_BLOCKED_LEGACY_SCRIPT_RE = /^\/(?:send-mail\.php|search\.php)$/i;
+const ALWAYS_BLOCKED_LEGACY_SCRIPT_RE = /^\/(?:send-mail\.php|search\.php|adminlink\/index\.php)$/i;
 const OBSERVED_LEGACY_UPLOAD_RE = /^\/uploads(?:\/|$)/i;
 
 /**
@@ -73,7 +73,11 @@ const shadowLogStore = new Map<string, number>();
 const SHADOW_LOG_INTERVAL_MS = 5 * 60_000;
 
 function privacySafePathname(pathname: string): string {
-  if (pathname === '/send-mail.php' || pathname === '/search.php') return pathname;
+  if (
+    pathname === '/send-mail.php'
+    || pathname === '/search.php'
+    || pathname === '/adminlink/index.php'
+  ) return pathname;
   if (pathname.startsWith('/uploads/')) return '/uploads/:path*';
   return pathname
     .split('/')
@@ -350,6 +354,7 @@ export const config = {
     '/api/:path*',
     '/send-mail.php',
     '/search.php',
+    '/adminlink/index.php',
     '/uploads/:path*',
     // 관리자 전용 API — OTP 라우트(`/api/auth/admin-otp/*`)는 여기에 걸리지 않는다.
     '/api/admin/:path*',
