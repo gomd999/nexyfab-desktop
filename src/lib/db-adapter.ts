@@ -449,6 +449,8 @@ export const POSTGRES_REQUIRED_TABLES = [
   'nf_ai_design_workspace_runtimes',
   'nf_ai_design_complex_workspaces',
   'nf_ai_design_artifacts',
+  'nf_ai_precision_bridge_outbox',
+  'nf_ai_precision_bridge_receipts',
   'nf_cad_job_registry',
   'nf_cad_job_receipts',
   'nf_admin_access_emails',

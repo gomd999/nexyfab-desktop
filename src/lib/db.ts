@@ -2251,6 +2251,68 @@ const MIGRATIONS: SqliteMigration[] = [
         BEFORE DELETE ON nf_ai_design_artifacts BEGIN SELECT RAISE(ABORT, 'AI Design artifacts are append-only'); END;
     `,
   },
+  {
+    version: 91,
+    name: 'ai_precision_exact_bridge_outbox',
+    checksum: '6ca9f2a5156f0aa5ebffd39799cd6f93c6b470b30ba3a7b8caa189d7bcbf2ba0',
+    sql: `
+      CREATE TABLE IF NOT EXISTS nf_ai_precision_bridge_outbox (
+        job_id TEXT PRIMARY KEY,
+        owner_key_sha256 TEXT NOT NULL CHECK(length(owner_key_sha256) = 64),
+        project_id TEXT NOT NULL REFERENCES nf_projects(id) ON DELETE CASCADE,
+        session_id TEXT NOT NULL,
+        candidate_id TEXT NOT NULL,
+        handoff_request_id TEXT NOT NULL,
+        handoff_sha256 TEXT NOT NULL CHECK(length(handoff_sha256) = 64),
+        binding_sha256 TEXT NOT NULL CHECK(length(binding_sha256) = 64),
+        binding_json TEXT NOT NULL CHECK(length(binding_json) > 0),
+        precision_request_id TEXT NOT NULL,
+        precision_request_sha256 TEXT NOT NULL CHECK(length(precision_request_sha256) = 64),
+        runtime_revision INTEGER NOT NULL CHECK(runtime_revision >= 0),
+        complex_revision INTEGER NOT NULL CHECK(complex_revision >= 0),
+        job_sha256 TEXT NOT NULL CHECK(length(job_sha256) = 64),
+        job_json TEXT NOT NULL CHECK(length(job_json) > 0),
+        status TEXT NOT NULL CHECK(status IN ('PENDING', 'CLAIMED', 'SENT', 'COMPLETED', 'HOLD', 'VERIFIED_UNKNOWN')),
+        attempt INTEGER NOT NULL DEFAULT 0,
+        lease_generation INTEGER NOT NULL DEFAULT 0,
+        lease_owner TEXT,
+        lease_capability_sha256 TEXT,
+        lease_expires_at INTEGER,
+        available_at INTEGER NOT NULL,
+        last_error TEXT,
+        created_at INTEGER NOT NULL,
+        updated_at INTEGER NOT NULL CHECK(updated_at >= created_at),
+        UNIQUE(owner_key_sha256, project_id, session_id, handoff_request_id)
+      );
+      CREATE INDEX IF NOT EXISTS idx_nf_ai_precision_bridge_claim
+        ON nf_ai_precision_bridge_outbox(status, available_at, created_at);
+      CREATE INDEX IF NOT EXISTS idx_nf_ai_precision_bridge_scope
+        ON nf_ai_precision_bridge_outbox(project_id, session_id, updated_at DESC);
+      CREATE INDEX IF NOT EXISTS idx_nf_ai_precision_bridge_lease
+        ON nf_ai_precision_bridge_outbox(status, lease_expires_at);
+
+      CREATE TABLE IF NOT EXISTS nf_ai_precision_bridge_receipts (
+        receipt_id TEXT PRIMARY KEY,
+        job_id TEXT NOT NULL UNIQUE REFERENCES nf_ai_precision_bridge_outbox(job_id) ON DELETE RESTRICT,
+        project_id TEXT NOT NULL,
+        session_id TEXT NOT NULL,
+        precision_request_id TEXT NOT NULL REFERENCES nf_ai_design_artifacts(artifact_id) ON DELETE RESTRICT,
+        precision_request_sha256 TEXT NOT NULL CHECK(length(precision_request_sha256) = 64),
+        exact_artifact_sha256 TEXT CHECK(exact_artifact_sha256 IS NULL OR length(exact_artifact_sha256) = 64),
+        receipt_sha256 TEXT NOT NULL UNIQUE CHECK(length(receipt_sha256) = 64),
+        receipt_json TEXT NOT NULL CHECK(length(receipt_json) > 0),
+        artifact_manifest_json TEXT NOT NULL CHECK(length(artifact_manifest_json) > 0),
+        accepted_at INTEGER NOT NULL
+      );
+      CREATE INDEX IF NOT EXISTS idx_nf_ai_precision_bridge_receipt_scope
+        ON nf_ai_precision_bridge_receipts(project_id, session_id, accepted_at DESC);
+
+      CREATE TRIGGER IF NOT EXISTS nf_ai_precision_bridge_receipt_no_update
+        BEFORE UPDATE ON nf_ai_precision_bridge_receipts BEGIN SELECT RAISE(ABORT, 'AI Precision bridge receipts are append-only'); END;
+      CREATE TRIGGER IF NOT EXISTS nf_ai_precision_bridge_receipt_no_delete
+        BEFORE DELETE ON nf_ai_precision_bridge_receipts BEGIN SELECT RAISE(ABORT, 'AI Precision bridge receipts are append-only'); END;
+    `,
+  },
 ];
 
 function sqliteIdentifier(value: string): string {

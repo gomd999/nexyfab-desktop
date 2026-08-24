@@ -12,7 +12,7 @@ describe('SQLite migrations', () => {
     process.env.NEXYFAB_DB_PATH = databasePath;
     const db = getDb();
     const latest = db.prepare('SELECT MAX(version) AS version FROM nf_schema_migrations').get() as { version: number };
-    expect(latest.version).toBe(90);
+    expect(latest.version).toBe(91);
 
     const canonicalMigration = db.prepare('SELECT checksum FROM nf_schema_migrations WHERE version = 89').get() as { checksum: string };
     expect(canonicalMigration.checksum).toMatch(/^[a-f0-9]{64}$/);
@@ -25,6 +25,12 @@ describe('SQLite migrations', () => {
     const aiMigration = db.prepare('SELECT checksum FROM nf_schema_migrations WHERE version = 90').get() as { checksum: string };
     expect(aiMigration.checksum).toMatch(/^[a-f0-9]{64}$/);
     for (const table of ['nf_ai_design_workspace_runtimes', 'nf_ai_design_complex_workspaces', 'nf_ai_design_artifacts']) {
+      expect(db.prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name = ?").get(table)).toBeTruthy();
+    }
+
+    const bridgeMigration = db.prepare('SELECT checksum FROM nf_schema_migrations WHERE version = 91').get() as { checksum: string };
+    expect(bridgeMigration.checksum).toMatch(/^[a-f0-9]{64}$/);
+    for (const table of ['nf_ai_precision_bridge_outbox', 'nf_ai_precision_bridge_receipts']) {
       expect(db.prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name = ?").get(table)).toBeTruthy();
     }
 
