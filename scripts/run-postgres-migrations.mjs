@@ -27,6 +27,7 @@ export const ORDERED_MIGRATION_DESCRIPTORS = Object.freeze([
   Object.freeze({ version: 2026082402, name: 'ai_design_v10_authority_state_20260824', sqlFile: 'src/lib/db-postgres-migration-2026082402.sql' }),
   Object.freeze({ version: 2026082403, name: 'ai_precision_exact_bridge_outbox_20260824', sqlFile: 'src/lib/db-postgres-migration-2026082403.sql' }),
   Object.freeze({ version: 2026082501, name: 'commercial_payment_authority_20260825', sqlFile: 'src/lib/db-postgres-migration-2026082501.sql' }),
+  Object.freeze({ version: 2026082502, name: 'commercial_precision_worker_io_20260825', sqlFile: 'src/lib/db-postgres-migration-2026082502.sql' }),
 ]);
 export const ADVISORY_LOCK_KEY = 70658910420260820n;
 

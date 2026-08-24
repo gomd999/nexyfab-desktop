@@ -21,7 +21,7 @@ import { GET } from './route';
 const commercialWorkerHealth = (overrides: Record<string, unknown> = {}) => ({
   schema: 'nexyfab.precision-cad-commercial-worker-health.v1',
   status: 'READY',
-  executionContract: 'nexyfab.precision-cad-commercial-execution.v2',
+  executionContract: 'nexyfab.precision-cad-commercial-execution.v3',
   claimConsumer: 'ACTIVE',
   inputArtifactReadback: 'PASS',
   nativeExecution: 'PASS',
@@ -83,6 +83,7 @@ describe('GET /api/health/ready', () => {
     vi.stubEnv('POSTGRES_MIGRATION_CHECKSUM_2026082402', '2'.repeat(64));
     vi.stubEnv('POSTGRES_MIGRATION_CHECKSUM_2026082403', '3'.repeat(64));
     vi.stubEnv('POSTGRES_MIGRATION_CHECKSUM_2026082501', '1'.repeat(64));
+    vi.stubEnv('POSTGRES_MIGRATION_CHECKSUM_2026082502', '2'.repeat(64));
     vi.stubEnv('OBJECT_STORAGE_PRIVATE_BUCKET', 'receipts');
     vi.stubEnv('S3_BUCKET', 'receipts');
     vi.stubEnv('GENERATION_EVIDENCE_SIGNING_SECRET', 'g'.repeat(32));
@@ -96,7 +97,7 @@ describe('GET /api/health/ready', () => {
     vi.stubEnv('NEXYFAB_COMMERCIAL_CALLBACK_URL', 'https://core.example.test/callback');
     vi.stubEnv('NEXYFAB_EXTERNAL_VERIFIER_REGISTRY_JSON', '[]');
     vi.stubEnv('NEXYFAB_EXTERNAL_VERIFIER_INTERNAL_SECRET', 'v'.repeat(32));
-    const queryOne = vi.fn(async (sql: string, version?: number) => sql.includes('nf_schema_migrations') ? { version, checksum: String(version).slice(-1).repeat(64) } : sql.includes('information_schema.tables') ? { count: 33 } : sql.includes('pg_constraint') ? { count: 15 } : sql.includes('pg_trigger') ? { count: 20 } : { '?column?': 1 });
+    const queryOne = vi.fn(async (sql: string, version?: number) => sql.includes('nf_schema_migrations') ? { version, checksum: String(version).slice(-1).repeat(64) } : sql.includes('information_schema.tables') ? { count: 35 } : sql.includes('pg_constraint') ? { count: 17 } : sql.includes('pg_trigger') ? { count: 22 } : { '?column?': 1 });
     state.getDbAdapter.mockReturnValue({ backend: 'postgres', queryOne });
 
     const response = await GET();

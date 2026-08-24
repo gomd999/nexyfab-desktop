@@ -9,7 +9,7 @@ type Env = Record<string, string | undefined>;
 export const COMMERCIAL_POSTGRES_MIGRATIONS = [
   2026082202, 2026082203, 2026082204, 2026082205, 2026082206,
   2026082207, 2026082208, 2026082301, 2026082401, 2026082402, 2026082403,
-  2026082501,
+  2026082501, 2026082502,
 ] as const;
 
 export type CommercialPostgresMigration = typeof COMMERCIAL_POSTGRES_MIGRATIONS[number];
@@ -34,6 +34,8 @@ export const COMMERCIAL_POSTGRES_TABLES = [
   'nf_ai_design_workspace_runtimes', 'nf_ai_design_complex_workspaces',
   'nf_ai_design_artifacts',
   'nf_ai_precision_bridge_outbox', 'nf_ai_precision_bridge_receipts',
+  'nf_precision_cad_commercial_input_artifacts',
+  'nf_precision_cad_commercial_output_intents',
 ] as const;
 
 export const COMMERCIAL_POSTGRES_CONSTRAINTS = [
@@ -52,6 +54,8 @@ export const COMMERCIAL_POSTGRES_CONSTRAINTS = [
   ['nf_ai_precision_bridge_receipts', 'nf_ai_precision_bridge_receipt_job_uq'],
   ['nf_ai_precision_bridge_outbox', 'nf_ai_precision_bridge_json_binding_ck'],
   ['nf_ai_precision_bridge_receipts', 'nf_ai_precision_bridge_receipt_authority_ck'],
+  ['nf_precision_cad_commercial_input_artifacts', 'nf_precision_cad_input_private_key_ck'],
+  ['nf_precision_cad_commercial_output_intents', 'nf_precision_cad_output_private_key_ck'],
 ] as const satisfies ReadonlyArray<readonly [string, string]>;
 
 export const COMMERCIAL_POSTGRES_HARDENING_TRIGGERS = [
@@ -75,6 +79,8 @@ export const COMMERCIAL_POSTGRES_HARDENING_TRIGGERS = [
   ['nf_ai_precision_bridge_outbox', 'nf_ai_precision_bridge_outbox_identity_immutable'],
   ['nf_ai_precision_bridge_receipts', 'nf_ai_precision_bridge_receipt_immutable'],
   ['nf_ai_precision_bridge_receipts', 'nf_ai_precision_bridge_receipt_binding_guard'],
+  ['nf_precision_cad_commercial_input_artifacts', 'nf_precision_cad_commercial_input_immutable'],
+  ['nf_precision_cad_commercial_output_intents', 'nf_precision_cad_commercial_output_identity_guard'],
 ] as const satisfies ReadonlyArray<readonly [string, string]>;
 
 export function commercialPostgresMigrationChecksumEnvKey(

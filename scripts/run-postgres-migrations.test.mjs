@@ -16,7 +16,7 @@ test('migration decision fails closed on changed applied SQL', () => {
 
 test('keeps immutable migrations ordered before the remote CAD agent state migration', () => {
   const migrations = orderedMigrationInputs('/trusted/immutable-2001.sql');
-  assert.deepEqual(migrations.map(item => item.version), [2026082001, 2026082002, 2026082101, 2026082102, 2026082201, 2026082202, 2026082203, 2026082204, 2026082205, 2026082206, 2026082207, 2026082208, 2026082301, 2026082401, 2026082402, 2026082403, 2026082501]);
+  assert.deepEqual(migrations.map(item => item.version), [2026082001, 2026082002, 2026082101, 2026082102, 2026082201, 2026082202, 2026082203, 2026082204, 2026082205, 2026082206, 2026082207, 2026082208, 2026082301, 2026082401, 2026082402, 2026082403, 2026082501, 2026082502]);
   assert.match(migrations[0].sqlPath, /immutable-2001\.sql$/);
   assert.match(migrations[1].sqlPath, /db-postgres-migration-2026082002\.sql$/);
   assert.match(migrations[2].sqlPath, /db-postgres-migration-2026082101\.sql$/);
@@ -34,6 +34,7 @@ test('keeps immutable migrations ordered before the remote CAD agent state migra
   assert.match(migrations[14].sqlPath, /db-postgres-migration-2026082402\.sql$/);
   assert.match(migrations[15].sqlPath, /db-postgres-migration-2026082403\.sql$/);
   assert.match(migrations[16].sqlPath, /db-postgres-migration-2026082501\.sql$/);
+  assert.match(migrations[17].sqlPath, /db-postgres-migration-2026082502\.sql$/);
 });
 
 test('2301 is an append-only mapping migration and does not rewrite prior SQL', () => {
@@ -94,6 +95,17 @@ test('2501 moves commercial payment order columns out of request-time DDL', () =
   assert.match(sql, /ADD COLUMN IF NOT EXISTS toss_order_id TEXT/);
   assert.match(sql, /ADD COLUMN IF NOT EXISTS updated_at BIGINT/);
   assert.match(sql, /uq_orders_toss_order_id/);
+});
+
+test('2502 binds immutable commercial worker input and committed output roles', () => {
+  const migration = orderedMigrationInputs().find(item => item.version === 2026082502);
+  const sql = readFileSync(migration.sqlPath, 'utf8');
+  assert.match(migration.sqlPath, /db-postgres-migration-2026082502\.sql$/);
+  assert.match(sql, /nf_precision_cad_commercial_input_artifacts/);
+  assert.match(sql, /nf_precision_cad_commercial_output_intents/);
+  assert.match(sql, /commercial_execution_v3_input_required/);
+  assert.match(sql, /nf_precision_cad_commercial_input_immutable/);
+  assert.match(sql, /nf_precision_cad_commercial_output_identity_guard/);
 });
 
 test('2208 adds safe hardening primitives without rewriting the 2202-2207 schema', () => {

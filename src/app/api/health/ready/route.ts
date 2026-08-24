@@ -17,7 +17,7 @@ export const dynamic = 'force-dynamic';
 
 const REDIS_TIMEOUT_MS = 1_500;
 const COMMERCIAL_WORKER_HEALTH_SCHEMA = 'nexyfab.precision-cad-commercial-worker-health.v1';
-const COMMERCIAL_EXECUTION_CONTRACT = 'nexyfab.precision-cad-commercial-execution.v2';
+const COMMERCIAL_EXECUTION_CONTRACT = 'nexyfab.precision-cad-commercial-execution.v3';
 const COMMERCIAL_WORKER_SELF_TEST_MAX_AGE_MS = 24 * 60 * 60 * 1000;
 const SHA256 = /^[a-f0-9]{64}$/;
 

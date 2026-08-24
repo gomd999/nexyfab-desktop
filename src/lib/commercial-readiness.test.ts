@@ -116,6 +116,7 @@ describe('commercialReadinessIssues', () => {
       'database.migration_2026082204_checksum_required',
       'database.migration_2026082403_checksum_required',
       'database.migration_2026082501_checksum_required',
+      'database.migration_2026082502_checksum_required',
       'worker.ed25519_registry_required',
       'verifier.ed25519_registry_required',
     ]));
@@ -123,13 +124,13 @@ describe('commercialReadinessIssues', () => {
 });
 
 describe('commercial PostgreSQL readiness contract', () => {
-  it('covers canonical CAD, AI authority, exact bridge, and payment authority migrations', () => {
+  it('covers canonical CAD, AI authority, exact bridge, payment, and worker I/O migrations', () => {
     expect(COMMERCIAL_POSTGRES_MIGRATIONS.slice(-5)).toEqual([
-      2026082301,
       2026082401,
       2026082402,
       2026082403,
       2026082501,
+      2026082502,
     ]);
     expect(COMMERCIAL_POSTGRES_TABLES).toEqual(expect.arrayContaining([
       'nf_cad_canonical_v2_revisions',
@@ -137,6 +138,8 @@ describe('commercial PostgreSQL readiness contract', () => {
       'nf_ai_design_artifacts',
       'nf_ai_precision_bridge_outbox',
       'nf_ai_precision_bridge_receipts',
+      'nf_precision_cad_commercial_input_artifacts',
+      'nf_precision_cad_commercial_output_intents',
     ]));
   });
 
@@ -159,6 +162,8 @@ describe('commercial PostgreSQL readiness contract', () => {
       .toBe('POSTGRES_MIGRATION_CHECKSUM_2026082403');
     expect(commercialPostgresMigrationChecksumEnvKey(2026082501))
       .toBe('POSTGRES_MIGRATION_CHECKSUM_2026082501');
+    expect(commercialPostgresMigrationChecksumEnvKey(2026082502))
+      .toBe('POSTGRES_MIGRATION_CHECKSUM_2026082502');
   });
 
   it('accepts only known applied versions at or beyond a feature requirement', () => {
@@ -167,7 +172,7 @@ describe('commercial PostgreSQL readiness contract', () => {
       2026082208,
     )).toBe(true);
     expect(commercialPostgresMigrationAtLeast(
-      { POSTGRES_MIGRATION_VERSION: '2026082501' },
+      { POSTGRES_MIGRATION_VERSION: '2026082502' },
       2026082403,
     )).toBe(true);
     expect(commercialPostgresMigrationAtLeast(

@@ -5,14 +5,14 @@ import { collectRollbackResponses, evaluateRollbackResponses } from './verify-ro
 
 const commercialMigrations = [
   2026082202, 2026082203, 2026082204, 2026082205, 2026082206, 2026082207,
-  2026082208, 2026082301, 2026082401, 2026082402, 2026082403, 2026082501,
+  2026082208, 2026082301, 2026082401, 2026082402, 2026082403, 2026082501, 2026082502,
 ];
 
 const healthy = {
   live: { status: 'ok', build: 'abc123' },
   ready: { status: 'ok', db: { status: 'ok', backend: 'postgres' } },
   occt: { ok: true, mode: 'wasm', wasm: { sha256: 'a'.repeat(64), sizeBytes: 65_000_000 } },
-  release: { migrationVersion: 2026082501, migrationChecksums: Object.fromEntries(commercialMigrations.map(version => [version, 'a'.repeat(64)])), registryRoles: 3, registryFingerprintsUnique: true, i18n: { status: 'QUALIFIED', sourcePairs: 2711, translatedPairs: 2711 }, sevenDay: { status: 'QUALIFIED' } },
+  release: { migrationVersion: 2026082502, migrationChecksums: Object.fromEntries(commercialMigrations.map(version => [version, 'a'.repeat(64)])), registryRoles: 3, registryFingerprintsUnique: true, i18n: { status: 'QUALIFIED', sourcePairs: 2711, translatedPairs: 2711 }, sevenDay: { status: 'QUALIFIED' } },
 };
 
 test('rollback verifier accepts matching healthy release', () => {
@@ -36,7 +36,7 @@ test('rollback verifier requires the exact append-only commercial migration set 
     ...healthy,
     release: { migrationVersion: 2026082402, migrationChecksums: Object.fromEntries(commercialMigrations.slice(0, -1).map(version => [version, 'a'.repeat(64)])), registryRoles: 3, registryFingerprintsUnique: true, i18n: { status: 'QUALIFIED', sourcePairs: 2711, translatedPairs: 2711 }, sevenDay: { status: 'QUALIFIED' } },
   }, 'abc123');
-  assert.ok(issues.some(issue => issue.includes('2026082501/checksum')));
+  assert.ok(issues.some(issue => issue.includes('2026082502/checksum')));
 });
 
 test('rollback verifier fails closed when the expected build ID is omitted', () => {

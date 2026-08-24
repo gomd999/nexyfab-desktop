@@ -224,7 +224,7 @@ describe('GET /api/health/release', () => {
       registry: { identities: ['a', 'b', 'c'].map(value => ({ role: 'external_verifier', fingerprintSha256: value.repeat(64) })) },
     });
     expect(result.status).toBe('PASS');
-    expect(result.release).toMatchObject({ migrationVersion: 2026082501, registryRoles: 3, registryFingerprintsUnique: true });
+    expect(result.release).toMatchObject({ migrationVersion: 2026082502, registryRoles: 3, registryFingerprintsUnique: true });
     expect(result.release.i18n.status).toBe('QUALIFIED');
     expect(result.release.sevenDay.status).toBe('QUALIFIED');
   });

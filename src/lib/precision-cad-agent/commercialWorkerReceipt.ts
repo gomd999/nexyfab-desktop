@@ -3,7 +3,7 @@ import { canonicalCommercialExecution, unsignedCommercialWorkerReceipt, validate
 
 const SHA256 = /^[a-f0-9]{64}$/;
 export type TrustedCommercialWorker = { workerIdentity: string; publicKeyPem: string; fingerprintSha256: string };
-export type CommercialReceiptBinding = { tenantId: string; projectId: string; executionId: string; generationRunId: string; generationStateRevision: number; generationProgramSha256: string; workspaceId: string; workspaceRevision: number; workspaceContentHash: string; journalVersion: number; leaseGeneration: number; leaseCapabilityHash: string; attempt: number; jobId: string; commandHash: string; targetHash: string };
+export type CommercialReceiptBinding = { tenantId: string; projectId: string; executionId: string; generationRunId: string; generationStateRevision: number; generationProgramSha256: string; workspaceId: string; workspaceRevision: number; workspaceContentHash: string; journalVersion: number; leaseGeneration: number; leaseCapabilityHash: string; attempt: number; jobId: string; commandHash: string; targetHash: string; inputArtifactSha256: string };
 export type CommercialReceiptVerification = { ok: true; receiptHash: string } | { ok: false; issues: string[] };
 
 function hash(value: string): string { return createHash('sha256').update(value, 'utf8').digest('hex'); }
@@ -27,7 +27,7 @@ export function commercialWorkerReceiptHash(receipt: CommercialWorkerReceipt): s
 export function verifyCommercialWorkerReceipt(input: { receipt: CommercialWorkerReceipt; expected: CommercialReceiptBinding; trustedWorkers: Readonly<Record<string, TrustedCommercialWorker>>; now?: number; maxAgeMs?: number }): CommercialReceiptVerification {
   const issues = validateCommercialWorkerReceipt(input.receipt);
   const receipt = input.receipt; const expected = input.expected;
-  for (const key of ['tenantId', 'projectId', 'executionId', 'generationRunId', 'generationStateRevision', 'generationProgramSha256', 'workspaceId', 'workspaceRevision', 'workspaceContentHash', 'journalVersion', 'leaseGeneration', 'leaseCapabilityHash', 'attempt', 'jobId', 'commandHash', 'targetHash'] as const) if (receipt[key] !== expected[key]) issues.push(`binding_mismatch:${key}`);
+  for (const key of ['tenantId', 'projectId', 'executionId', 'generationRunId', 'generationStateRevision', 'generationProgramSha256', 'workspaceId', 'workspaceRevision', 'workspaceContentHash', 'journalVersion', 'leaseGeneration', 'leaseCapabilityHash', 'attempt', 'jobId', 'commandHash', 'targetHash', 'inputArtifactSha256'] as const) if (receipt[key] !== expected[key]) issues.push(`binding_mismatch:${key}`);
   const worker = input.trustedWorkers[receipt.workerIdentity];
   if (!worker) issues.push('worker_not_trusted');
   if (!SHA256.test(receipt.workerPublicKeyFingerprint) || receipt.workerPublicKeyFingerprint !== worker?.fingerprintSha256 || (worker && commercialWorkerFingerprint(worker.publicKeyPem) !== worker.fingerprintSha256) || worker?.workerIdentity !== receipt.workerIdentity) issues.push('worker_key_fingerprint_invalid');
