@@ -16,6 +16,10 @@ import { loadTrustedCommercialWorkers } from '@/lib/precision-cad-agent/commerci
 export const dynamic = 'force-dynamic';
 
 const REDIS_TIMEOUT_MS = 1_500;
+const COMMERCIAL_WORKER_HEALTH_SCHEMA = 'nexyfab.precision-cad-commercial-worker-health.v1';
+const COMMERCIAL_EXECUTION_CONTRACT = 'nexyfab.precision-cad-commercial-execution.v2';
+const COMMERCIAL_WORKER_SELF_TEST_MAX_AGE_MS = 24 * 60 * 60 * 1000;
+const SHA256 = /^[a-f0-9]{64}$/;
 
 type ComponentStatus = 'ok' | 'error' | 'skipped';
 
@@ -41,6 +45,30 @@ function productionCommercialModeRequired(): boolean {
 
 function expectedMigrationChecksum(version: CommercialPostgresMigration): string | undefined {
   return process.env[commercialPostgresMigrationChecksumEnvKey(version)]?.trim();
+}
+
+function validCommercialWorkerHealth(
+  value: unknown,
+  registeredWorkers: ReadonlySet<string>,
+  now = Date.now(),
+): boolean {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
+  const health = value as Record<string, unknown>;
+  const selfTestAt = Date.parse(String(health.lastSelfTestAt ?? ''));
+  return health.schema === COMMERCIAL_WORKER_HEALTH_SCHEMA
+    && health.status === 'READY'
+    && health.executionContract === COMMERCIAL_EXECUTION_CONTRACT
+    && health.claimConsumer === 'ACTIVE'
+    && health.inputArtifactReadback === 'PASS'
+    && health.nativeExecution === 'PASS'
+    && health.artifactUpload === 'PASS'
+    && health.signedCallback === 'PASS'
+    && typeof health.workerIdentity === 'string'
+    && registeredWorkers.has(health.workerIdentity)
+    && SHA256.test(String(health.selfTestReceiptSha256 ?? ''))
+    && Number.isFinite(selfTestAt)
+    && selfTestAt <= now + 5 * 60 * 1000
+    && now - selfTestAt <= COMMERCIAL_WORKER_SELF_TEST_MAX_AGE_MS;
 }
 
 async function checkDatabase(): Promise<ComponentCheck & { backend?: string }> {
@@ -95,6 +123,10 @@ async function checkCommercialBoundary(): Promise<ComponentCheck> {
   try {
     const response = await fetch(process.env.EXTERNAL_WORKER_ORCHESTRATOR_HEALTH_URL!, { method: 'GET', headers: { 'cache-control': 'no-cache' }, signal: AbortSignal.timeout(REDIS_TIMEOUT_MS) });
     if (!response.ok) throw new Error('worker unavailable');
+    const raw = await response.text();
+    if (new TextEncoder().encode(raw).byteLength > 32 * 1024) throw new Error('worker health oversized');
+    const health = JSON.parse(raw) as unknown;
+    if (!validCommercialWorkerHealth(health, new Set(Object.keys(workers)))) throw new Error('worker self-test unavailable');
     return { status: 'ok', required: true, responseMs: Date.now() - started };
   } catch { return { status: 'error', required: true, responseMs: Date.now() - started }; }
 }

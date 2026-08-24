@@ -16342,5 +16342,77 @@
     "zh": "取消采用协作方式，可阻止结果提交，但不会强制终止外部进程。",
     "es": "La cancelación es cooperativa: impide guardar resultados, pero no termina un proceso externo.",
     "ar": "الإلغاء تعاوني؛ يمنع حفظ النتائج لكنه لا ينهي عملية خارجية قسرًا."
+  },
+  "AI → Precision CAD exact bridge": {
+    "ja": "AI → 精密CAD正確実行ブリッジ",
+    "zh": "AI → 精密 CAD 精确执行桥接",
+    "es": "Puente de ejecución exacta de IA → CAD de precisión",
+    "ar": "جسر التنفيذ الدقيق من الذكاء الاصطناعي إلى CAD الدقيق"
+  },
+  "Monitors backlog SLA, leases, HOLD, and uncertain executions. It never grants manufacturing approval.": {
+    "ja": "バックログSLA、リース、HOLD、不確実な実行を監視します。製造承認は付与しません。",
+    "zh": "监控积压 SLA、租约、HOLD 和不确定执行。绝不授予制造批准。",
+    "es": "Supervisa el SLA de la cola, los arrendamientos, HOLD y las ejecuciones inciertas. Nunca concede la aprobación de fabricación.",
+    "ar": "يراقب اتفاقية مستوى خدمة قائمة الانتظار وعقود الإيجار وحالات HOLD وعمليات التنفيذ غير المؤكدة. ولا يمنح أبدًا اعتماد التصنيع."
+  },
+  "Oldest": {
+    "ja": "最も古い",
+    "zh": "最早",
+    "es": "Más antiguo",
+    "ar": "الأقدم"
+  },
+  "Completed 24h": {
+    "ja": "24時間の完了",
+    "zh": "24 小时内已完成",
+    "es": "Completados en 24 h",
+    "ar": "المكتملة خلال 24 ساعة"
+  },
+  "HOLD 24h": {
+    "ja": "24時間のHOLD",
+    "zh": "24 小时内 HOLD",
+    "es": "HOLD en 24 h",
+    "ar": "حالات HOLD خلال 24 ساعة"
+  },
+  "Accepted receipts": {
+    "ja": "受理済みレシート",
+    "zh": "已接受的回执",
+    "es": "Recibos aceptados",
+    "ar": "الإيصالات المقبولة"
+  },
+  "Active leases": {
+    "ja": "アクティブなリース",
+    "zh": "活跃租约",
+    "es": "Arrendamientos activos",
+    "ar": "عقود الإيجار النشطة"
+  },
+  "Expired leases": {
+    "ja": "期限切れリース",
+    "zh": "已过期租约",
+    "es": "Arrendamientos vencidos",
+    "ar": "عقود الإيجار المنتهية"
+  },
+  "Count": {
+    "ja": "件数",
+    "zh": "数量",
+    "es": "Cantidad",
+    "ar": "العدد"
+  },
+  "Attempt": {
+    "ja": "試行",
+    "zh": "尝试",
+    "es": "Intento",
+    "ar": "المحاولة"
+  },
+  "Age": {
+    "ja": "経過時間",
+    "zh": "时长",
+    "es": "Antigüedad",
+    "ar": "المدة"
+  },
+  "Error code": {
+    "ja": "エラーコード",
+    "zh": "错误代码",
+    "es": "Código de error",
+    "ar": "رمز الخطأ"
   }
 }

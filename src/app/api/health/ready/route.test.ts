@@ -18,6 +18,21 @@ vi.mock('@/lib/precision-cad-agent/commercialWorkerReceipt', () => ({ loadTruste
 
 import { GET } from './route';
 
+const commercialWorkerHealth = (overrides: Record<string, unknown> = {}) => ({
+  schema: 'nexyfab.precision-cad-commercial-worker-health.v1',
+  status: 'READY',
+  executionContract: 'nexyfab.precision-cad-commercial-execution.v2',
+  claimConsumer: 'ACTIVE',
+  inputArtifactReadback: 'PASS',
+  nativeExecution: 'PASS',
+  artifactUpload: 'PASS',
+  signedCallback: 'PASS',
+  workerIdentity: 'worker',
+  selfTestReceiptSha256: 'a'.repeat(64),
+  lastSelfTestAt: new Date().toISOString(),
+  ...overrides,
+});
+
 beforeEach(() => {
   vi.stubEnv('NODE_ENV', 'development');
   vi.stubEnv('NEXYFAB_COMMERCIAL_MODE', '0');
@@ -29,7 +44,10 @@ beforeEach(() => {
   state.redisClient.connect.mockReset().mockResolvedValue(undefined);
   state.redisClient.ping.mockReset().mockResolvedValue('PONG');
   state.redisClient.disconnect.mockReset();
-  vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true }));
+  vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+    ok: true,
+    text: vi.fn().mockResolvedValue(JSON.stringify(commercialWorkerHealth())),
+  }));
 });
 
 afterEach(() => {
@@ -48,7 +66,7 @@ describe('GET /api/health/ready', () => {
     expect(state.redisConstructor).not.toHaveBeenCalled();
   });
 
-  it('requires and pings Redis in commercial mode, then disconnects the probe', async () => {
+  it('requires Redis and a recent registered-worker end-to-end self-test in commercial mode', async () => {
     vi.stubEnv('NEXYFAB_COMMERCIAL_MODE', '1');
     vi.stubEnv('NEXYFAB_PRECISION_CAD_COMMERCIAL_MODE', '1');
     vi.stubEnv('REDIS_URL', 'redis://user:secret@example.test:6379');
@@ -96,6 +114,28 @@ describe('GET /api/health/ready', () => {
     expect(catalogSql).toContain("r.relname = 'nf_cad_canonical_v2_revisions'");
     expect(catalogSql).toContain("t.tgname = 'nf_cad_v2_revisions_immutable'");
     expect(catalogSql).toContain("t.tgname = 'nf_ai_design_artifact_immutable'");
+
+    vi.mocked(fetch).mockResolvedValueOnce({
+      ok: true,
+      text: vi.fn().mockResolvedValue(JSON.stringify({ ok: true })),
+    } as unknown as Response);
+    const genericHealth = await GET();
+    expect(genericHealth.status).toBe(503);
+    await expect(genericHealth.json()).resolves.toMatchObject({
+      commercialBoundary: { status: 'error', required: true },
+    });
+
+    vi.mocked(fetch).mockResolvedValueOnce({
+      ok: true,
+      text: vi.fn().mockResolvedValue(JSON.stringify(commercialWorkerHealth({
+        lastSelfTestAt: new Date(Date.now() - 25 * 60 * 60 * 1000).toISOString(),
+      }))),
+    } as unknown as Response);
+    const staleSelfTest = await GET();
+    expect(staleSelfTest.status).toBe(503);
+    await expect(staleSelfTest.json()).resolves.toMatchObject({
+      commercialBoundary: { status: 'error', required: true },
+    });
   });
 
   it('fails closed when production has no Redis configuration', async () => {
