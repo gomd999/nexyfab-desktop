@@ -1,12 +1,11 @@
 {
   "schema": "nexyfab.agent-mcp-cli-local-command-result.v1",
-  "generatedAt": "2026-08-23T07:01:30.126Z",
+  "generatedAt": "2026-08-24T03:10:31.226Z",
   "id": "windows_sea_fail_closed_contract",
   "command": {
     "executable": "node",
     "args": [
       "--test",
-      "--test-isolation=none",
       "scripts/agent-sidecar/windows-sea-readiness.test.mjs",
       "scripts/agent-sidecar/windows-sea-release-evidence.test.mjs"
     ],
@@ -15,6 +14,6 @@
   "exitCode": 0,
   "signal": null,
   "error": null,
-  "stdout": "✔ fails closed when SEA injection, binary, signature and installer evidence are absent (9.3906ms)\n✔ verifies a contained PE hash manifest and detects binary tampering (5.1042ms)\n✔ rejects receipt/source tampering and invented signing claims (39.4967ms)\n✔ builds a default NOT_RUN/HOLD receipt without inventing release evidence or trust (101.0432ms)\n✔ accepts a structured packet only with an allowlisted Ed25519 CI attestation (204.4933ms)\n✔ rejects the former claim-only fake certificate table even when the packet is attested (129.8669ms)\n✔ re-derives transcript hashes, rejects duplicate transcript and validates VM stage bytes (371.0622ms)\n✔ fails closed on attestation tamper, binary tamper, short parity and release transplant (505.8939ms)\nℹ tests 8\nℹ suites 0\nℹ pass 8\nℹ fail 0\nℹ cancelled 0\nℹ skipped 0\nℹ todo 0\nℹ duration_ms 1390.1129\n",
+  "stdout": "✔ fails closed when SEA injection, binary, signature and installer evidence are absent (14.1033ms)\n✔ verifies a contained PE hash manifest and detects binary tampering (7.0531ms)\n✔ rejects receipt/source tampering and invented signing claims (49.6351ms)\n✔ builds a default NOT_RUN/HOLD receipt without inventing release evidence or trust (151.5471ms)\n✔ accepts a structured packet only with an allowlisted Ed25519 CI attestation (297.911ms)\n✔ rejects the former claim-only fake certificate table even when the packet is attested (200.5094ms)\n✔ re-derives transcript hashes, rejects duplicate transcript and validates VM stage bytes (397.0552ms)\n✔ fails closed on attestation tamper, binary tamper, short parity and release transplant (501.5867ms)\nℹ tests 8\nℹ suites 0\nℹ pass 8\nℹ fail 0\nℹ cancelled 0\nℹ skipped 0\nℹ todo 0\nℹ duration_ms 1674.4139\n",
   "stderr": ""
 }

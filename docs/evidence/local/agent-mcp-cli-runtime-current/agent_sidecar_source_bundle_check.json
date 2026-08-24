@@ -1,6 +1,6 @@
 {
   "schema": "nexyfab.agent-mcp-cli-local-command-result.v1",
-  "generatedAt": "2026-08-23T07:01:30.126Z",
+  "generatedAt": "2026-08-24T03:10:31.226Z",
   "id": "agent_sidecar_source_bundle_check",
   "command": {
     "executable": "node",

@@ -1,6 +1,6 @@
 {
   "schema": "nexyfab.agent-mcp-cli-local-command-result.v1",
-  "generatedAt": "2026-08-23T07:01:30.126Z",
+  "generatedAt": "2026-08-24T03:10:31.226Z",
   "id": "focused_mcp_cli_parity",
   "command": {
     "executable": "node",
@@ -23,6 +23,6 @@
   "exitCode": 0,
   "signal": null,
   "error": null,
-  "stdout": "\n RUN  v4.1.2 C:/Users/gomd9/Downloads/nexysys_1/nexyfab.com/new\n\n·················································································································································\n\n Test Files  9 passed (9)\n      Tests  145 passed (145)\n   Start at  16:01:30\n   Duration  6.01s (transform 5.29s, setup 6.07s, import 5.88s, tests 7.65s, environment 1ms)\n\n",
+  "stdout": "\n RUN  v4.1.2 C:/Users/gomd9/Downloads/nexysys_1/nexyfab.com/new\n\n·················································································································································\n\n Test Files  9 passed (9)\n      Tests  145 passed (145)\n   Start at  12:10:32\n   Duration  7.73s (transform 8.68s, setup 9.03s, import 7.76s, tests 8.85s, environment 1ms)\n\n",
   "stderr": ""
 }

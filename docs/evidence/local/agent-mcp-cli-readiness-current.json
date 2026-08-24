@@ -1,6 +1,6 @@
 {
   "schema": "nexyfab.agent-mcp-cli-local-readiness.v1",
-  "generatedAt": "2026-08-23T07:01:30.126Z",
+  "generatedAt": "2026-08-24T03:10:31.226Z",
   "status": "PASS_LOCAL",
   "localReady": true,
   "commercialReleaseEligible": false,
@@ -11,7 +11,7 @@
       "evidence": {
         "path": "docs/evidence/local/agent-mcp-cli-runtime-current/focused_mcp_cli_parity.json",
         "bytes": 1410,
-        "sha256": "063739858475f06058cebc89d0c5094b21b38036d3433969e6968f07252fc191"
+        "sha256": "45a3d94f47bdb485c094e698622ad118fab815c60db1613fcee32b1a16b07adf"
       }
     },
     {
@@ -19,8 +19,8 @@
       "status": "PASSED_LOCAL",
       "evidence": {
         "path": "docs/evidence/local/agent-mcp-cli-runtime-current/cli_offline_subprocess_roundtrip.json",
-        "bytes": 637,
-        "sha256": "c2d3cb029b865b1d62ab17e3c8b489e92ac6445cffa33d5332067a902f852661"
+        "bytes": 607,
+        "sha256": "b2673b21876bfb4361a0ad1126b57ebc611437bad7b61029afc4d1e0dbac0b21"
       }
     },
     {
@@ -29,7 +29,7 @@
       "evidence": {
         "path": "docs/evidence/local/agent-mcp-cli-runtime-current/agent_sidecar_source_bundle_check.json",
         "bytes": 847,
-        "sha256": "13b5a3dbacb468ac1f4c3bc3d2042be36174e94338504397731f75b1e5ea78fa"
+        "sha256": "ea45f71c0423366f1e23fba0bc68ad0d6d4ef08e97ee75952cf69d96dfe57d62"
       }
     },
     {
@@ -37,8 +37,8 @@
       "status": "PASSED_LOCAL",
       "evidence": {
         "path": "docs/evidence/local/agent-mcp-cli-runtime-current/windows_sea_fail_closed_contract.json",
-        "bytes": 1397,
-        "sha256": "820af7d50e2fdc22039587fb1005a444b7616111db3e65d74472df3dc5722ed2"
+        "bytes": 1366,
+        "sha256": "7772626b95d465a8c8f4e19c2024bc73c5d4cbaa67d55064a7fe6b2e56947f02"
       }
     }
   ],
@@ -99,13 +99,13 @@
   "sourceBindings": [
     {
       "path": "package.json",
-      "bytes": 38323,
-      "sha256": "1d615e4db6253c1b1f0a9593c46e99329ac25f591f57d79c3353aa5c814b7cc9"
+      "bytes": 40313,
+      "sha256": "4375aed0f3fd045d23121c305a5556d2d7acc083d18683e3898da33b7765bd3c"
     },
     {
       "path": "scripts/build-agent-mcp-cli-local-readiness.mjs",
-      "bytes": 17186,
-      "sha256": "78b80f5d5f1834cc53a5d254bb31d4959131dedcef067027749043295cb2ec39"
+      "bytes": 17136,
+      "sha256": "497c0e28c40772805b73d832406ebed99a9188c9a9e19825de159cfb0e4a42d0"
     },
     {
       "path": "scripts/build-agent-sidecar.mjs",
@@ -124,8 +124,8 @@
     },
     {
       "path": "scripts/drawing-to-3d/capability-surface-manifest.mjs",
-      "bytes": 4251,
-      "sha256": "041263ec9be851426416a074d4196d153a051410fbede6cd65bbf59f23c56f45"
+      "bytes": 4433,
+      "sha256": "36ebf4b82ea093e6332a53ac90fd29946249b7b6040c43e82b1fa57175790381"
     },
     {
       "path": "scripts/drawing-to-3d/agent-mcp-server.mjs",
@@ -215,24 +215,24 @@
     {
       "path": "docs/evidence/local/agent-mcp-cli-runtime-current/focused_mcp_cli_parity.json",
       "bytes": 1410,
-      "sha256": "063739858475f06058cebc89d0c5094b21b38036d3433969e6968f07252fc191"
+      "sha256": "45a3d94f47bdb485c094e698622ad118fab815c60db1613fcee32b1a16b07adf"
     },
     {
       "path": "docs/evidence/local/agent-mcp-cli-runtime-current/cli_offline_subprocess_roundtrip.json",
-      "bytes": 637,
-      "sha256": "c2d3cb029b865b1d62ab17e3c8b489e92ac6445cffa33d5332067a902f852661"
+      "bytes": 607,
+      "sha256": "b2673b21876bfb4361a0ad1126b57ebc611437bad7b61029afc4d1e0dbac0b21"
     },
     {
       "path": "docs/evidence/local/agent-mcp-cli-runtime-current/agent_sidecar_source_bundle_check.json",
       "bytes": 847,
-      "sha256": "13b5a3dbacb468ac1f4c3bc3d2042be36174e94338504397731f75b1e5ea78fa"
+      "sha256": "ea45f71c0423366f1e23fba0bc68ad0d6d4ef08e97ee75952cf69d96dfe57d62"
     },
     {
       "path": "docs/evidence/local/agent-mcp-cli-runtime-current/windows_sea_fail_closed_contract.json",
-      "bytes": 1397,
-      "sha256": "820af7d50e2fdc22039587fb1005a444b7616111db3e65d74472df3dc5722ed2"
+      "bytes": 1366,
+      "sha256": "7772626b95d465a8c8f4e19c2024bc73c5d4cbaa67d55064a7fe6b2e56947f02"
     }
   ],
   "blockers": [],
-  "receiptSha256": "4eb1c52392afc4f472e3a1d260679d2ff9111b7b139b797a37c5710412a312b4"
+  "receiptSha256": "172c19638ceb1703fa04ab4d73bb3b6878bbd0cdf67592861abeed749c2800c5"
 }

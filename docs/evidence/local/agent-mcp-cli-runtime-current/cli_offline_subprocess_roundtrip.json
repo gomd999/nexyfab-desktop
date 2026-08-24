@@ -1,12 +1,11 @@
 {
   "schema": "nexyfab.agent-mcp-cli-local-command-result.v1",
-  "generatedAt": "2026-08-23T07:01:30.126Z",
+  "generatedAt": "2026-08-24T03:10:31.226Z",
   "id": "cli_offline_subprocess_roundtrip",
   "command": {
     "executable": "node",
     "args": [
       "--test",
-      "--test-isolation=none",
       "scripts/cli/nexyfab.roundtrip.test.mjs"
     ],
     "timeoutMs": 30000
@@ -14,6 +13,6 @@
   "exitCode": 0,
   "signal": null,
   "error": null,
-  "stdout": "✔ offline CLI help -> capabilities -> geometry/verify roundtrip is deterministic (46.5377ms)\nℹ tests 1\nℹ suites 0\nℹ pass 1\nℹ fail 0\nℹ cancelled 0\nℹ skipped 0\nℹ todo 0\nℹ duration_ms 61.2956\n",
+  "stdout": "✔ offline CLI help -> capabilities -> geometry/verify roundtrip is deterministic (62.8634ms)\nℹ tests 1\nℹ suites 0\nℹ pass 1\nℹ fail 0\nℹ cancelled 0\nℹ skipped 0\nℹ todo 0\nℹ duration_ms 164.6943\n",
   "stderr": ""
 }
