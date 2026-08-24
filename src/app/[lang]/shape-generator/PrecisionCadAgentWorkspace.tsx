@@ -9,6 +9,7 @@ import { createTauriPrecisionCadExecutor, type PrecisionCadAgentExecutor } from 
 import type { RemotePrecisionCadProjectBinding } from '@/lib/precision-cad-agent/remoteCadContract';
 import { usePrecisionCadAgentController } from '@/lib/precision-cad-agent/usePrecisionCadAgentController';
 import PrecisionCadAgentPanel from '../nexyfab/design/PrecisionCadAgentPanel';
+import AgenticCadContractSummary from './AgenticCadContractSummary';
 
 type DesktopProvider = 'openai' | 'anthropic';
 
@@ -187,6 +188,7 @@ function PrecisionCadAgentControllerMount({
 
   return (
     <div dir={langDir(lang)} data-testid="precision-cad-agent-workspace" style={styles.workspace}>
+      <AgenticCadContractSummary lang={lang} result={controller.run.result} />
       <PrecisionCadAgentPanel lang={lang} controller={controller} />
     </div>
   );

@@ -1,6 +1,12 @@
 import * as THREE from 'three';
 import type { FeatureDefinition, FeatureInstance, FeatureType, MapBackedFeatureType } from './types';
-import { runPipeline, runPipelineAsync, type PipelineResult, type PipelineOptions } from './pipelineManager';
+import {
+  runPipeline,
+  runPipelineAsync,
+  type PipelineResult,
+  type PipelineOptions,
+  type PipelineExecutionMode,
+} from './pipelineManager';
 import { applyFeatureContext } from './featureContext';
 
 // ─── Import actual feature implementations ───────────────────────────────────
@@ -99,7 +105,8 @@ export { classifyFeatureError } from './featureDiagnostics';
 
 // ─── Pipeline executor ───────────────────────────────────────────────────────
 
-export type { PipelineResult, PipelineOptions };
+export type { PipelineResult, PipelineOptions, PipelineExecutionMode };
+export { EXACT_OCCT_REQUIRED_ERROR } from './pipelineManager';
 
 export function applyFeaturePipeline(
   baseGeometry: THREE.BufferGeometry,

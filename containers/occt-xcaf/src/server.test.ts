@@ -48,4 +48,27 @@ describe('OCCT XCAF HTTP contract', () => {
     expect(malformed.status).toBe(400);
     expect(await malformed.json()).toMatchObject({ ok: false, code: 'REQUEST_JSON_INVALID' });
   });
+
+  it('keeps liveness public but protects capabilities and inspection with a bounded service token', async () => {
+    const worker = createXcafWorker({ nativeCommand: { file: process.execPath, args: [mock] }, maxBytes: 1024 * 1024 });
+    const token = 't'.repeat(32);
+    const server = createServer(createXcafRequestHandler(worker, 1024 * 1024, token));
+    servers.push(server);
+    await new Promise<void>(resolve => server.listen(0, '127.0.0.1', () => resolve()));
+    const address = server.address();
+    if (!address || typeof address === 'string') throw new Error('test_server_address_missing');
+    const base = `http://127.0.0.1:${address.port}`;
+    expect((await fetch(`${base}/health/live`)).status).toBe(200);
+    expect((await fetch(`${base}/capabilities`)).status).toBe(401);
+    expect((await fetch(`${base}/capabilities`, { headers: { authorization: 'Bearer wrong' } })).status).toBe(401);
+    const headers = { authorization: `Bearer ${token}` };
+    expect((await fetch(`${base}/capabilities`, { headers })).status).toBe(200);
+    const inspect = await fetch(`${base}/v1/inspect`, {
+      method: 'POST', headers: { ...headers, 'content-type': 'application/json' },
+      body: JSON.stringify({ inputBase64: source.toString('base64') }),
+    });
+    expect(inspect.status).toBe(200);
+    expect(await inspect.json()).toMatchObject({ status: 'PASS_NATIVE' });
+    expect(() => createXcafRequestHandler(worker, 1024 * 1024, 'short')).toThrow('serviceToken_invalid');
+  });
 });

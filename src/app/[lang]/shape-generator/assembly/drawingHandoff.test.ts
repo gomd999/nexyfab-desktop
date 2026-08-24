@@ -4,6 +4,7 @@ import type { FeatureTree } from '@/lib/cad/featureTree';
 import {
   buildAssemblyDrawingHandoff,
   readAssemblyDrawingHandoff,
+  validateAssemblyDrawingHandoff,
   writeAssemblyDrawingHandoff,
 } from './drawingHandoff';
 
@@ -90,6 +91,26 @@ describe('assembly drawing handoff', () => {
     expect(real.verification.solver.sha256).toBe(real.source.stateSha256);
     expect(stub.verification.solver.status).toBe('FAIL');
     expect(stub.verification.solver.reason).toMatch(/not authoritative/i);
+  });
+
+  it('preserves a server-loaded canonical revision triplet without deriving another revision id', async () => {
+    const canonicalRevision = {
+      schema: 'nexyfab.precision-cad.canonical-drawing-revision-binding.v1' as const,
+      documentId: 'document-1', revisionId: 'revision-7', sequence: 7, contentSha256: 'a'.repeat(64),
+    };
+    const handoff = await buildAssemblyDrawingHandoff({
+      state, featureTrees: { 'part-1': tree }, projectId: 'project-1', canonicalRevision,
+    });
+    expect(handoff.source).toMatchObject({
+      projectId: 'project-1', revisionId: 'revision-7', workspaceRevision: 7,
+      workspaceContentSha256: 'a'.repeat(64), canonicalRevision,
+    });
+    expect(await validateAssemblyDrawingHandoff(handoff)).toEqual({ ok: true, handoff });
+    const tampered = structuredClone(handoff);
+    tampered.source.canonicalRevision!.sequence = 8;
+    expect(await validateAssemblyDrawingHandoff(tampered)).toMatchObject({
+      ok: false, reason: 'ASSEMBLY_DRAWING_HANDOFF_SCHEMA_INVALID',
+    });
   });
 
   it('rejects storage tampering instead of reopening a different revision', async () => {

@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto';
 import { constants, createReadStream } from 'node:fs';
-import { access, lstat, mkdtemp, readFile, realpath, rm, stat, writeFile } from 'node:fs/promises';
+import { access, lstat, mkdtemp, realpath, rm, stat, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { spawn } from 'node:child_process';
@@ -10,6 +10,15 @@ const STEP_HEADER = 'ISO-10303-21';
 const DEFAULT_MAX_BYTES = 64 * 1024 * 1024;
 const DEFAULT_TIMEOUT_MS = 120_000;
 const MAX_NATIVE_OUTPUT_BYTES = 4 * 1024 * 1024;
+const MAX_NATIVE_BINARY_BYTES = 512 * 1024 * 1024;
+// Keep the worker ceiling aligned with the canonical consumer's nested-value
+// budget. The native executable may inspect more, but this commercial boundary
+// must not emit a PASS receipt the canonical adapter cannot consume.
+const MAX_NATIVE_PRODUCTS = 128;
+const MAX_TOPOLOGY_COUNT = 2_000_000;
+const MAX_NATIVE_TEXT_BYTES = 8_192;
+const MAX_JSON_DEPTH = 32;
+const MAX_JSON_NODES = 500_000;
 
 export type XcafRequest = {
   inputBytes?: Buffer;
@@ -94,21 +103,207 @@ async function readSafePath(inputPath: string, root: string | undefined, maximum
 }
 
 async function nativeSha256(file: string): Promise<string> {
-  const bytes = await readFile(file).catch(() => null);
-  if (!bytes) throw new XcafWorkerError('NATIVE_UNAVAILABLE', 'native XCAF binary is unavailable', 503);
-  return sha256(bytes);
+  const information = await stat(file).catch(() => null);
+  if (!information?.isFile() || information.size < 1 || information.size > MAX_NATIVE_BINARY_BYTES) {
+    throw new XcafWorkerError('NATIVE_UNAVAILABLE', 'native XCAF binary is unavailable or outside the binary size bound', 503);
+  }
+  const digest = createHash('sha256');
+  let total = 0;
+  try {
+    for await (const chunk of createReadStream(file, { highWaterMark: 1024 * 1024 })) {
+      const bytes = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk);
+      total += bytes.length;
+      if (total > MAX_NATIVE_BINARY_BYTES) throw new Error('native_binary_size_changed');
+      digest.update(bytes);
+    }
+  } catch {
+    throw new XcafWorkerError('NATIVE_UNAVAILABLE', 'native XCAF binary could not be hashed safely', 503);
+  }
+  if (total !== information.size) throw new XcafWorkerError('NATIVE_UNAVAILABLE', 'native XCAF binary changed while hashing', 503);
+  return digest.digest('hex');
+}
+
+async function nativeInvocationSha256(command: NativeCommand, executableSha256: string): Promise<string> {
+  const argumentsBound: Array<{ kind: 'FILE'; sha256: string } | { kind: 'LITERAL'; value: string }> = [];
+  for (const argument of command.args ?? []) {
+    const information = await stat(argument).catch(() => null);
+    if (information?.isFile()) argumentsBound.push({ kind: 'FILE', sha256: await nativeSha256(argument) });
+    else argumentsBound.push({ kind: 'LITERAL', value: argument });
+  }
+  return createHash('sha256')
+    .update('nexyfab.occt-xcaf.native-invocation.v1\n')
+    .update(JSON.stringify({ executableSha256, arguments: argumentsBound }))
+    .digest('hex');
+}
+
+function malformed(message: string): never {
+  throw new XcafWorkerError('NATIVE_OUTPUT_STRUCTURE_INVALID', message);
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return !!value && typeof value === 'object' && !Array.isArray(value);
+}
+
+function exactKeys(value: Record<string, unknown>, expected: readonly string[]): boolean {
+  const actual = Object.keys(value).sort();
+  const wanted = [...expected].sort();
+  return actual.length === wanted.length && actual.every((key, index) => key === wanted[index]);
+}
+
+function boundedString(value: unknown, field: string, nullable = false): string | null {
+  if (nullable && value === null) return null;
+  if (typeof value !== 'string' || value.length < 1 || Buffer.byteLength(value, 'utf8') > MAX_NATIVE_TEXT_BYTES) {
+    return malformed(`${field} must be a non-empty bounded string${nullable ? ' or null' : ''}`);
+  }
+  return value;
+}
+
+function finiteNumber(value: unknown, field: string): number {
+  if (typeof value !== 'number' || !Number.isFinite(value)) return malformed(`${field} must be finite`);
+  return value;
+}
+
+function boundedCount(value: unknown, field: string): number {
+  const number = finiteNumber(value, field);
+  if (!Number.isSafeInteger(number) || number < 0 || number > MAX_TOPOLOGY_COUNT) {
+    return malformed(`${field} is outside the topology count bound`);
+  }
+  return number;
+}
+
+function numericTuple(value: unknown, length: number, field: string): number[] {
+  if (!Array.isArray(value) || value.length !== length) return malformed(`${field} must have ${length} values`);
+  return value.map((item, index) => finiteNumber(item, `${field}[${index}]`));
+}
+
+function validateBoundedJson(root: unknown): void {
+  const pending: Array<{ value: unknown; depth: number }> = [{ value: root, depth: 0 }];
+  let nodes = 0;
+  while (pending.length > 0) {
+    const current = pending.pop()!;
+    if (++nodes > MAX_JSON_NODES) malformed('native output exceeds the JSON node bound');
+    if (current.depth > MAX_JSON_DEPTH) malformed('native output exceeds the JSON depth bound');
+    if (typeof current.value === 'number' && !Number.isFinite(current.value)) malformed('native output contains a non-finite number');
+    if (typeof current.value === 'string' && Buffer.byteLength(current.value, 'utf8') > MAX_NATIVE_TEXT_BYTES) {
+      malformed('native output contains an oversized string');
+    }
+    if (Array.isArray(current.value)) {
+      if (current.value.length > MAX_NATIVE_PRODUCTS) malformed('native output contains an oversized array');
+      for (const value of current.value) pending.push({ value, depth: current.depth + 1 });
+    } else if (isRecord(current.value)) {
+      const entries = Object.entries(current.value);
+      if (entries.length > 128) malformed('native output object contains too many fields');
+      for (const [key, value] of entries) {
+        if (Buffer.byteLength(key, 'utf8') > 128) malformed('native output contains an oversized field name');
+        pending.push({ value, depth: current.depth + 1 });
+      }
+    }
+  }
+}
+
+function validateIdentity(result: Record<string, unknown>): void {
+  const hasProgram = result.programIdentity !== undefined;
+  const hasKernel = result.kernelIdentity !== undefined;
+  if (!hasProgram || !hasKernel || !isRecord(result.programIdentity) || !isRecord(result.kernelIdentity)) {
+    malformed('native identity fields must be supplied as a complete pair');
+  }
+  const program = result.programIdentity;
+  const kernel = result.kernelIdentity;
+  if (!exactKeys(program, ['name', 'version', 'buildIdentity']) || !exactKeys(kernel, ['name', 'version', 'buildIdentity'])) {
+    malformed('native identity fields contain an unknown or missing key');
+  }
+  if (program.name !== 'occt-xcaf-inspect') malformed('native program identity is invalid');
+  if (boundedString(program.version, 'programIdentity.version') !== '2') malformed('native program version is incompatible');
+  boundedString(program.buildIdentity, 'programIdentity.buildIdentity');
+  if (kernel.name !== 'OpenCASCADE') malformed('native kernel identity is invalid');
+  boundedString(kernel.version, 'kernelIdentity.version');
+  boundedString(kernel.buildIdentity, 'kernelIdentity.buildIdentity');
+}
+
+function validateShape(value: unknown, index: number): void {
+  const keys = [
+    'solidCount', 'shellCount', 'faceCount', 'edgeCount', 'nonManifoldEdgeCount',
+    'brepValid', 'volumeMm3', 'surfaceAreaMm2', 'maxToleranceMm', 'bboxMm',
+    'centroidMm', 'massPropertiesBasis', 'inertiaTensor', 'inertiaUnit',
+  ] as const;
+  if (!isRecord(value) || !exactKeys(value, keys)) malformed(`products[${index}].shape must match the complete native v2 schema`);
+  boundedCount(value.solidCount, `products[${index}].shape.solidCount`);
+  boundedCount(value.shellCount, `products[${index}].shape.shellCount`);
+  boundedCount(value.faceCount, `products[${index}].shape.faceCount`);
+  const edges = boundedCount(value.edgeCount, `products[${index}].shape.edgeCount`);
+  finiteNumber(value.volumeMm3, `products[${index}].shape.volumeMm3`);
+  if (value.bboxMm !== null) {
+    const bounds = numericTuple(value.bboxMm, 6, `products[${index}].shape.bboxMm`);
+    if (bounds[0] > bounds[3] || bounds[1] > bounds[4] || bounds[2] > bounds[5]) malformed('native bounding box is inverted');
+  }
+
+  if (typeof value.brepValid !== 'boolean') malformed('brepValid must be boolean');
+  const nonManifoldEdges = boundedCount(value.nonManifoldEdgeCount, `products[${index}].shape.nonManifoldEdgeCount`);
+  if (nonManifoldEdges > edges) malformed('non-manifold edge count exceeds edge count');
+  const area = finiteNumber(value.surfaceAreaMm2, `products[${index}].shape.surfaceAreaMm2`);
+  const tolerance = finiteNumber(value.maxToleranceMm, `products[${index}].shape.maxToleranceMm`);
+  if (area < 0 || tolerance < 0) malformed('surface area and tolerance must be non-negative');
+  const hasCentroid = value.centroidMm !== null;
+  if (!hasCentroid) {
+    if (value.massPropertiesBasis !== null || value.inertiaTensor !== null || value.inertiaUnit !== null) {
+      malformed('empty mass properties must use a complete null tuple');
+    }
+  } else {
+    numericTuple(value.centroidMm, 3, `products[${index}].shape.centroidMm`);
+    if (value.massPropertiesBasis !== 'volume' && value.massPropertiesBasis !== 'surface') malformed('mass properties basis is invalid');
+    numericTuple(value.inertiaTensor, 9, `products[${index}].shape.inertiaTensor`);
+    const expectedUnit = value.massPropertiesBasis === 'volume' ? 'mm5' : 'mm4';
+    if (value.inertiaUnit !== expectedUnit) malformed('inertia unit does not match its basis');
+  }
+}
+
+function validateProduct(value: unknown, index: number, paths: Set<string>): void {
+  const keys = ['entry', 'role', 'occurrencePath', 'referredEntry', 'name', 'partNumber', 'partNumberStatus', 'label', 'transformScope', 'transform', 'color', 'shape'] as const;
+  if (!isRecord(value) || !exactKeys(value, keys)) malformed(`products[${index}] must match the complete native v2 schema`);
+  boundedString(value.entry, `products[${index}].entry`);
+  boundedString(value.label, `products[${index}].label`);
+  if (!['assembly', 'product', 'assembly_occurrence', 'occurrence'].includes(String(value.role))) malformed('native product role is invalid');
+  boundedString(value.name, `products[${index}].name`, true);
+  boundedString(value.partNumber, `products[${index}].partNumber`, true);
+  const occurrencePath = boundedString(value.occurrencePath, `products[${index}].occurrencePath`)!;
+  if (paths.has(occurrencePath)) malformed('native occurrence paths must be unique');
+  paths.add(occurrencePath);
+  boundedString(value.referredEntry, `products[${index}].referredEntry`, true);
+  if (value.partNumberStatus !== 'NOT_EXPOSED_BY_BINDING') malformed('native part-number status is invalid');
+  if (value.partNumber !== null) malformed('native part number must remain null while the binding does not expose it');
+  if (value.transformScope !== 'local_to_parent') malformed('native transform scope is invalid');
+  if (!isRecord(value.transform) || !exactKeys(value.transform, ['matrix3x3', 'translationMm'])) malformed('native transform must match the complete schema');
+  numericTuple(value.transform.matrix3x3, 9, `products[${index}].transform.matrix3x3`);
+  numericTuple(value.transform.translationMm, 3, `products[${index}].transform.translationMm`);
+  if (value.color !== null) {
+    const color = numericTuple(value.color, 3, `products[${index}].color`);
+    if (color.some(channel => channel < 0 || channel > 1)) malformed('native color is outside the normalized range');
+  }
+  validateShape(value.shape, index);
 }
 
 function parseNative(stdout: string, inputDigest: string): Record<string, unknown> {
   let value: unknown;
   try { value = JSON.parse(stdout.trim()); } catch { throw new XcafWorkerError('NATIVE_OUTPUT_MALFORMED', 'native output is not valid JSON'); }
   if (!value || typeof value !== 'object' || Array.isArray(value)) throw new XcafWorkerError('NATIVE_OUTPUT_MALFORMED', 'native output must be a JSON object');
+  validateBoundedJson(value);
   const result = value as Record<string, unknown>;
+  if (!exactKeys(result, ['schema', 'status', 'inputSha256', 'unit', 'programIdentity', 'kernelIdentity', 'productIdentitySource', 'products'])) {
+    malformed('native output must match the complete native v2 schema');
+  }
   if (result.schema !== 'nexyfab.occt-xcaf.inspect.v1' || result.status !== 'PASS_NATIVE') {
     throw new XcafWorkerError('NATIVE_OUTPUT_NOT_PASS', 'native output did not provide a PASS_NATIVE receipt');
   }
   if (result.inputSha256 !== inputDigest) throw new XcafWorkerError('NATIVE_OUTPUT_HASH_MISMATCH', 'native output is not bound to this input');
-  if (!Array.isArray(result.products) || result.products.length < 1) throw new XcafWorkerError('NATIVE_OUTPUT_STRUCTURE_INVALID', 'native output contains no XCAF products');
+  if (result.unit !== 'MM' || result.productIdentitySource !== 'STEPCAFControl_Reader+XCAFDoc_ShapeTool') {
+    malformed('native output does not prove the configured XCAF millimetre boundary');
+  }
+  if (!Array.isArray(result.products) || result.products.length < 1 || result.products.length > MAX_NATIVE_PRODUCTS) {
+    malformed('native output contains an invalid XCAF product count');
+  }
+  validateIdentity(result);
+  const occurrencePaths = new Set<string>();
+  result.products.forEach((product, index) => validateProduct(product, index, occurrencePaths));
   return result;
 }
 
@@ -182,6 +377,13 @@ export function createXcafWorker(options: XcafWorkerOptions) {
   const defaultTimeout = options.defaultTimeoutMs ?? DEFAULT_TIMEOUT_MS;
   if (!Number.isSafeInteger(maximum) || maximum < 1024 || maximum > DEFAULT_MAX_BYTES) throw new Error('maxBytes_invalid');
   if (!Number.isSafeInteger(defaultTimeout) || defaultTimeout < 100 || defaultTimeout > 15 * 60_000) throw new Error('defaultTimeoutMs_invalid');
+  if (typeof options.nativeCommand.file !== 'string' || options.nativeCommand.file.length < 1
+    || options.nativeCommand.file.length > 4096 || options.nativeCommand.file.includes('\0')) throw new Error('nativeCommand_file_invalid');
+  if (options.nativeCommand.args !== undefined && (!Array.isArray(options.nativeCommand.args)
+    || options.nativeCommand.args.length > 32
+    || options.nativeCommand.args.some(argument => typeof argument !== 'string' || argument.length > 4096 || argument.includes('\0')))) {
+    throw new Error('nativeCommand_args_invalid');
+  }
 
   return {
     async capabilities() {
@@ -190,6 +392,7 @@ export function createXcafWorker(options: XcafWorkerOptions) {
       return {
         schema: 'nexyfab.occt-xcaf.capabilities.v1',
         status: available ? 'READY' : 'HOLD',
+        inspectionStatus: 'NOT_RUN' as const,
         nativeAvailable: available,
         productIdentity: available ? 'STEPCAFControl_Reader+XCAFDoc_ShapeTool' : 'NOT_RUN',
         maxInputBytes: maximum,
@@ -209,6 +412,7 @@ export function createXcafWorker(options: XcafWorkerOptions) {
       const timeout = request.timeoutMs ?? defaultTimeout;
       if (!Number.isSafeInteger(timeout) || timeout < 100 || timeout > 15 * 60_000) throw new XcafWorkerError('TIMEOUT_INVALID', 'timeout is outside the configured bounds', 400);
       const nativeDigest = await nativeSha256(options.nativeCommand.file);
+      const nativeInvocationDigest = await nativeInvocationSha256(options.nativeCommand, nativeDigest);
       const directory = await mkdtemp(path.join(os.tmpdir(), 'nexyfab-occt-xcaf-'));
       const temporary = path.join(directory, 'input.step');
       try {
@@ -216,8 +420,10 @@ export function createXcafWorker(options: XcafWorkerOptions) {
         const native = await runNative(options.nativeCommand, temporary, digest, timeout);
         return {
           schema: 'nexyfab.occt-xcaf.inspect-result.v1',
+          status: 'PASS_NATIVE' as const,
           inputSha256: digest,
           nativeBinarySha256: nativeDigest,
+          nativeInvocationSha256: nativeInvocationDigest,
           native,
         };
       } finally {

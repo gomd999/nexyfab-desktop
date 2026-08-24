@@ -19,6 +19,10 @@ import type {
   OcctDetailedShapeInspection,
   OcctFaceAdjacencySummary,
   OcctTypeHistogram,
+  OcctLoftSection,
+  OcctOrthogonalPolylineSweep,
+  OcctSingleRectangularSheetBend,
+  OcctBlindHoleDeleteFaceRepair,
 } from "./bridge";
 import { ANALYTIC_CIRCULAR_PRISM_WARNING, ANALYTIC_CYLINDER_WARNING } from "./bridge";
 import type {
@@ -1635,6 +1639,756 @@ export function createNodeOcctBridge(oc: OcctModule): OcctBridge {
     }
   }
 
+  /**
+   * Uniform positive scale about the global origin.  This deliberately uses
+   * OCCT's analytic B-Rep transform (never tessellation or browser geometry),
+   * and is kept optional so runtimes without these bindings cannot claim exact
+   * scale support.
+   */
+  function uniformScaleImpl(shape: OcctShape, factor: number): OcctOperationResult {
+    if (!(factor > 0) || !Number.isFinite(factor)) {
+      return { ok: false, error: `uniformScale: factor must be positive finite, got ${factor}`, warnings: [] };
+    }
+    const live = lookup(shape, "uniformScale");
+    let origin: OcctInstance | undefined;
+    let trsf: OcctInstance | undefined;
+    let transform: OcctInstance | undefined;
+    try {
+      origin = m.inst("gp_Pnt_3", 0, 0, 0);
+      trsf = m.inst("gp_Trsf_1");
+      trsf.SetScale(origin, factor);
+      transform = m.inst("BRepBuilderAPI_Transform_2", live, trsf, true);
+      if (typeof transform.IsDone === "function" && !(transform.IsDone() as boolean)) {
+        return { ok: false, error: "uniformScale: OCCT transform did not complete", warnings: [] };
+      }
+      const scaled = transform.Shape() as OcctInstance;
+      return result(scaled, [`uniform-scaled B-Rep by ${factor}`]);
+    } catch (e) {
+      return { ok: false, error: `uniformScale: ${e instanceof Error ? e.message : String(e)}`, warnings: [] };
+    } finally {
+      if (transform) deleteNative(transform);
+      if (trsf) deleteNative(trsf);
+      if (origin) deleteNative(origin);
+    }
+  }
+
+  /** Translate one analytic B-Rep copy by a finite vector. */
+  function translateImpl(shape: OcctShape, offset: readonly [number, number, number]): OcctOperationResult {
+    if (offset.length !== 3 || !offset.every(Number.isFinite)) {
+      return { ok: false, error: "translate: offset must be three finite numbers", warnings: [] };
+    }
+    const live = lookup(shape, "translate");
+    let vector: OcctInstance | undefined;
+    let trsf: OcctInstance | undefined;
+    let transform: OcctInstance | undefined;
+    try {
+      vector = m.inst("gp_Vec_4", offset[0], offset[1], offset[2]);
+      trsf = m.inst("gp_Trsf_1");
+      trsf.SetTranslation_1(vector);
+      transform = m.inst("BRepBuilderAPI_Transform_2", live, trsf, true);
+      if (typeof transform.IsDone === "function" && !(transform.IsDone() as boolean)) {
+        return { ok: false, error: "translate: OCCT transform did not complete", warnings: [] };
+      }
+      return result(transform.Shape() as OcctInstance, [`translated B-Rep by [${offset.join(", ")}]`]);
+    } catch (e) {
+      return { ok: false, error: `translate: ${e instanceof Error ? e.message : String(e)}`, warnings: [] };
+    } finally {
+      if (transform) deleteNative(transform);
+      if (trsf) deleteNative(trsf);
+      if (vector) deleteNative(vector);
+    }
+  }
+
+  /** Rotate one analytic B-Rep copy around a bounded native axis. */
+  function rotateImpl(
+    shape: OcctShape,
+    axisPoint: readonly [number, number, number],
+    axisDirection: readonly [number, number, number],
+    angleDeg: number,
+  ): OcctOperationResult {
+    const coordinateBound = 1_000_000;
+    if (axisPoint.length !== 3 || axisDirection.length !== 3
+      || !axisPoint.every(value => Number.isFinite(value) && Math.abs(value) <= coordinateBound)
+      || !axisDirection.every(value => Number.isFinite(value))) {
+      return { ok: false, error: "rotate: axis point/direction must be finite and bounded", warnings: [] };
+    }
+    const directionLength = Math.hypot(axisDirection[0], axisDirection[1], axisDirection[2]);
+    if (!(directionLength > 1e-12) || !Number.isFinite(directionLength)) {
+      return { ok: false, error: "rotate: axis direction must be non-zero", warnings: [] };
+    }
+    if (!Number.isFinite(angleDeg) || angleDeg === 0 || Math.abs(angleDeg) > 360) {
+      return { ok: false, error: "rotate: angle must be non-zero and bounded to ±360 degrees", warnings: [] };
+    }
+    const live = lookup(shape, "rotate");
+    let origin: OcctInstance | undefined;
+    let direction: OcctInstance | undefined;
+    let axis: OcctInstance | undefined;
+    let trsf: OcctInstance | undefined;
+    let transform: OcctInstance | undefined;
+    try {
+      origin = m.inst("gp_Pnt_3", axisPoint[0], axisPoint[1], axisPoint[2]);
+      direction = m.inst("gp_Dir_4", axisDirection[0] / directionLength, axisDirection[1] / directionLength, axisDirection[2] / directionLength);
+      axis = m.inst("gp_Ax1_2", origin, direction);
+      trsf = m.inst("gp_Trsf_1");
+      trsf.SetRotation_1(axis, angleDeg * Math.PI / 180);
+      transform = m.inst("BRepBuilderAPI_Transform_2", live, trsf, true);
+      if (typeof transform.IsDone === "function" && !(transform.IsDone() as boolean)) {
+        return { ok: false, error: "rotate: OCCT transform did not complete", warnings: [] };
+      }
+      return result(transform.Shape() as OcctInstance, [`rotated B-Rep around [${axisPoint.join(", ")}] by ${angleDeg} degrees`]);
+    } catch (e) {
+      return { ok: false, error: `rotate: ${e instanceof Error ? e.message : String(e)}`, warnings: [] };
+    } finally {
+      if (transform) deleteNative(transform);
+      if (trsf) deleteNative(trsf);
+      if (axis) deleteNative(axis);
+      if (direction) deleteNative(direction);
+      if (origin) deleteNative(origin);
+    }
+  }
+
+  /** Build a native solid loft through two or three strict convex sections. */
+  function buildLoftSectionsImpl(sections: ReadonlyArray<OcctLoftSection>): OcctOperationResult {
+    const bound = 1_000_000;
+    try {
+      if (!Array.isArray(sections) || (sections.length !== 2 && sections.length !== 3)) {
+        return { ok: false, error: "buildLoftSections: requires two or three sections", warnings: [] };
+      }
+      let vertexCount: number | undefined;
+      let previousZ = -Infinity;
+      let windingSign: number | undefined;
+      for (const section of sections) {
+        if (!section || !Number.isFinite(section.z) || Math.abs(section.z) > bound || !(section.z > previousZ)) {
+          return { ok: false, error: "buildLoftSections: section heights must be finite, bounded, and strictly increasing", warnings: [] };
+        }
+        previousZ = section.z;
+        if (!Array.isArray(section.loop) || section.loop.length < 3 || section.loop.length > 32) {
+          return { ok: false, error: "buildLoftSections: loops must contain three to thirty-two vertices", warnings: [] };
+        }
+        if (vertexCount === undefined) vertexCount = section.loop.length;
+        if (section.loop.length !== vertexCount) {
+          return { ok: false, error: "buildLoftSections: all loops must have the same vertex count", warnings: [] };
+        }
+        let sign = 0;
+        let area2 = 0;
+        for (let i = 0; i < section.loop.length; i += 1) {
+          const a = section.loop[i];
+          const b = section.loop[(i + 1) % section.loop.length];
+          if (!a || !b || !Number.isFinite(a.x) || !Number.isFinite(a.y)
+            || !Number.isFinite(b.x) || !Number.isFinite(b.y)
+            || Math.abs(a.x) > bound || Math.abs(a.y) > bound
+            || Math.abs(b.x) > bound || Math.abs(b.y) > bound) {
+            return { ok: false, error: "buildLoftSections: loop coordinates must be finite and bounded", warnings: [] };
+          }
+          const dx = b.x - a.x;
+          const dy = b.y - a.y;
+          if (!(Math.hypot(dx, dy) > 1e-9)) {
+            return { ok: false, error: "buildLoftSections: loops cannot contain duplicate or zero-length edges", warnings: [] };
+          }
+          const c = section.loop[(i + 2) % section.loop.length];
+          if (!c || !Number.isFinite(c.x) || !Number.isFinite(c.y)) {
+            return { ok: false, error: "buildLoftSections: loop coordinates must be finite", warnings: [] };
+          }
+          const cross = dx * (c.y - b.y) - dy * (c.x - b.x);
+          if (!(Math.abs(cross) > 1e-9)) {
+            return { ok: false, error: "buildLoftSections: loops must be strictly convex", warnings: [] };
+          }
+          const currentSign = cross > 0 ? 1 : -1;
+          if (sign === 0) sign = currentSign;
+          if (sign !== currentSign) {
+            return { ok: false, error: "buildLoftSections: loops must be strictly convex", warnings: [] };
+          }
+          area2 += a.x * b.y - b.x * a.y;
+        }
+        if (!(Math.abs(area2) > 1e-9)) {
+          return { ok: false, error: "buildLoftSections: loops must have nonzero area", warnings: [] };
+        }
+        const sectionWinding = area2 > 0 ? 1 : -1;
+        if (windingSign === undefined) windingSign = sectionWinding;
+        if (windingSign !== sectionWinding) {
+          return { ok: false, error: "buildLoftSections: all loops must use the same winding", warnings: [] };
+        }
+      }
+
+      const loft = m.inst("BRepOffsetAPI_ThruSections", true, true, 1e-7);
+      const polygons: OcctInstance[] = [];
+      const wires: OcctInstance[] = [];
+      const points: OcctInstance[] = [];
+      try {
+        const addWire = loft.AddWire ?? loft.AddWire_1;
+        if (typeof addWire !== "function") throw new Error("BRepOffsetAPI_ThruSections AddWire binding unavailable");
+        for (const section of sections) {
+          const polygon = m.inst("BRepBuilderAPI_MakePolygon_1");
+          polygons.push(polygon);
+          for (const point of section.loop) {
+            const nativePoint = m.inst("gp_Pnt_3", point.x, point.y, section.z);
+            points.push(nativePoint);
+            polygon.Add_1(nativePoint);
+          }
+          polygon.Close();
+          const wire = polygon.Wire() as OcctInstance;
+          wires.push(wire);
+          addWire.call(loft, wire);
+        }
+        loft.Build();
+        if (typeof loft.IsDone === "function" && !(loft.IsDone() as boolean)) {
+          return { ok: false, error: "buildLoftSections: OCCT loft did not complete", warnings: [] };
+        }
+        return result(loft.Shape() as OcctInstance, [], undefined, "solid");
+      } finally {
+        for (const wire of wires) deleteNative(wire);
+        for (const polygon of polygons) deleteNative(polygon);
+        for (const point of points) deleteNative(point);
+        deleteNative(loft);
+      }
+    } catch (e) {
+      return { ok: false, error: `buildLoftSections: ${e instanceof Error ? e.message : String(e)}`, warnings: [] };
+    }
+  }
+
+  /**
+   * True non-straight sweep: a rectangular face is piped along an open
+   * two-segment orthogonal wire. The narrow contract avoids presenting a
+   * straight extrusion or an arbitrary self-intersecting spine as sweep.
+   */
+  function buildOrthogonalPolylineSweepImpl(
+    input: OcctOrthogonalPolylineSweep,
+  ): OcctOperationResult {
+    const bound = 1_000_000;
+    const finitePoint = (point: readonly number[]): point is readonly [number, number, number] =>
+      point.length === 3 && point.every(value => Number.isFinite(value) && Math.abs(value) <= bound);
+    try {
+      if (!input || !Array.isArray(input.path) || input.path.length !== 3
+        || !input.path.every(finitePoint)
+        || !Number.isFinite(input.widthMm) || !Number.isFinite(input.heightMm)
+        || !(input.widthMm > 0) || !(input.heightMm > 0)
+        || input.widthMm > bound || input.heightMm > bound) {
+        return { ok: false, error: "buildOrthogonalPolylineSweep: invalid bounded input", warnings: [] };
+      }
+      const [start, elbow, end] = input.path;
+      const first: V3 = [elbow[0] - start[0], elbow[1] - start[1], elbow[2] - start[2]];
+      const second: V3 = [end[0] - elbow[0], end[1] - elbow[1], end[2] - elbow[2]];
+      const firstLength = Math.hypot(...first);
+      const secondLength = Math.hypot(...second);
+      if (!(firstLength >= 0.001) || !(secondLength >= 0.001)
+        || firstLength > bound || secondLength > bound) {
+        return { ok: false, error: "buildOrthogonalPolylineSweep: path segments must be positive and bounded", warnings: [] };
+      }
+      const firstDirection = norm3(first);
+      const secondDirection = norm3(second);
+      const dot = firstDirection[0] * secondDirection[0]
+        + firstDirection[1] * secondDirection[1]
+        + firstDirection[2] * secondDirection[2];
+      if (Math.abs(dot) > 1e-10) {
+        return { ok: false, error: "buildOrthogonalPolylineSweep: path segments must be orthogonal", warnings: [] };
+      }
+      const halfDiagonal = Math.hypot(input.widthMm, input.heightMm) / 2;
+      if (!(halfDiagonal < Math.min(firstLength, secondLength) / 4)) {
+        return { ok: false, error: "buildOrthogonalPolylineSweep: section is too large for the path", warnings: [] };
+      }
+
+      const reference: V3 = Math.abs(firstDirection[2]) < 0.9 ? [0, 0, 1] : [0, 1, 0];
+      const u = norm3(cross3(reference, firstDirection));
+      const v = cross3(firstDirection, u);
+      const halfWidth = input.widthMm / 2;
+      const halfHeight = input.heightMm / 2;
+      const section: ReadonlyArray<readonly [number, number]> = [
+        [-halfWidth, -halfHeight],
+        [halfWidth, -halfHeight],
+        [halfWidth, halfHeight],
+        [-halfWidth, halfHeight],
+      ];
+
+      const nativePoints: OcctInstance[] = [];
+      let spineBuilder: OcctInstance | undefined;
+      let profileBuilder: OcctInstance | undefined;
+      let spine: OcctInstance | undefined;
+      let profileWire: OcctInstance | undefined;
+      let pipe: OcctInstance | undefined;
+      try {
+        spineBuilder = m.inst("BRepBuilderAPI_MakePolygon_1");
+        for (const point of input.path) {
+          const nativePoint = m.inst("gp_Pnt_3", point[0], point[1], point[2]);
+          nativePoints.push(nativePoint);
+          spineBuilder.Add_1(nativePoint);
+        }
+        spine = spineBuilder.Wire() as OcctInstance;
+
+        profileBuilder = m.inst("BRepBuilderAPI_MakePolygon_1");
+        for (const [sectionU, sectionV] of section) {
+          const nativePoint = m.inst(
+            "gp_Pnt_3",
+            start[0] + sectionU * u[0] + sectionV * v[0],
+            start[1] + sectionU * u[1] + sectionV * v[1],
+            start[2] + sectionU * u[2] + sectionV * v[2],
+          );
+          nativePoints.push(nativePoint);
+          profileBuilder.Add_1(nativePoint);
+        }
+        profileBuilder.Close();
+        profileWire = profileBuilder.Wire() as OcctInstance;
+        pipe = m.inst("BRepOffsetAPI_MakePipeShell", spine);
+        const transitionModes = oc.BRepBuilderAPI_TransitionMode as unknown as {
+          BRepBuilderAPI_RightCorner: unknown;
+        };
+        pipe.SetTransitionMode(transitionModes.BRepBuilderAPI_RightCorner);
+        pipe.Add_1(profileWire, false, true);
+        pipe.Build();
+        if (typeof pipe.IsDone === "function" && !(pipe.IsDone() as boolean)) {
+          return { ok: false, error: "buildOrthogonalPolylineSweep: OCCT pipe did not complete", warnings: [] };
+        }
+        if (!(pipe.MakeSolid() as boolean)) {
+          return { ok: false, error: "buildOrthogonalPolylineSweep: OCCT pipe shell could not close a solid", warnings: [] };
+        }
+        const shape = pipe.Shape() as OcctInstance;
+        const analyzer = buildAnalyzer(oc, shape);
+        try {
+          if (!(analyzer.IsValid_2() as boolean)) {
+            return { ok: false, error: "buildOrthogonalPolylineSweep: OCCT produced an invalid pipe", warnings: [] };
+          }
+        } finally {
+          deleteNative(analyzer);
+        }
+        return result(shape, ["exact OCCT non-straight orthogonal polyline sweep"], undefined, "solid");
+      } finally {
+        if (pipe) deleteNative(pipe);
+        if (profileWire) deleteNative(profileWire);
+        if (profileBuilder) deleteNative(profileBuilder);
+        if (spine) deleteNative(spine);
+        if (spineBuilder) deleteNative(spineBuilder);
+        for (const point of nativePoints) deleteNative(point);
+      }
+    } catch (e) {
+      return {
+        ok: false,
+        error: `buildOrthogonalPolylineSweep: ${e instanceof Error ? e.message : String(e)}`,
+        warnings: [],
+      };
+    }
+  }
+
+  /**
+   * Analytic sheet bend generated from an eight-edge planar section: two
+   * straight panels joined by concentric circular arcs of radii R and R+T.
+   * Extrusion across Z supplies the constant bend-line width.
+   */
+  function buildSingleRectangularSheetBendImpl(
+    input: OcctSingleRectangularSheetBend,
+  ): OcctOperationResult {
+    const bound = 1_000_000;
+    try {
+      const values = [
+        input?.fixedLengthMm, input?.straightLengthMm, input?.widthMm,
+        input?.thicknessMm, input?.innerRadiusMm, input?.angleDeg,
+      ];
+      if (!input || !values.every(Number.isFinite)
+        || !(input.fixedLengthMm >= 0.001) || !(input.straightLengthMm >= 0.001)
+        || !(input.widthMm >= 0.001) || !(input.thicknessMm >= 0.001)
+        || !(input.innerRadiusMm >= 0.001)
+        || !(input.angleDeg > 0 && input.angleDeg <= 180)
+        || values.slice(0, 5).some(value => Math.abs(value!) > bound)) {
+        return { ok: false, error: "buildSingleRectangularSheetBend: invalid bounded input", warnings: [] };
+      }
+      const angle = input.angleDeg * Math.PI / 180;
+      const half = angle / 2;
+      const outerRadius = input.innerRadiusMm + input.thicknessMm;
+      const centerY = outerRadius;
+      const outerAt = (a: number): V3 => [
+        outerRadius * Math.sin(a), centerY - outerRadius * Math.cos(a), 0,
+      ];
+      const innerAt = (a: number): V3 => [
+        input.innerRadiusMm * Math.sin(a), centerY - input.innerRadiusMm * Math.cos(a), 0,
+      ];
+      const outerEnd = outerAt(angle);
+      const innerEnd = innerAt(angle);
+      const tangent: V3 = [Math.cos(angle), Math.sin(angle), 0];
+      const outerLeg: V3 = [
+        outerEnd[0] + tangent[0] * input.straightLengthMm,
+        outerEnd[1] + tangent[1] * input.straightLengthMm,
+        0,
+      ];
+      const innerLeg: V3 = [
+        innerEnd[0] + tangent[0] * input.straightLengthMm,
+        innerEnd[1] + tangent[1] * input.straightLengthMm,
+        0,
+      ];
+      const coordinates = [outerAt(half), outerEnd, innerAt(half), innerEnd, outerLeg, innerLeg].flat();
+      if (coordinates.some(value => !Number.isFinite(value) || Math.abs(value) > bound)) {
+        return { ok: false, error: "buildSingleRectangularSheetBend: result exceeds coordinate bounds", warnings: [] };
+      }
+
+      const native: OcctInstance[] = [];
+      const point = (value: V3): OcctInstance => {
+        const created = m.inst("gp_Pnt_3", value[0], value[1], value[2]);
+        native.push(created);
+        return created;
+      };
+      const lineEdge = (start: V3, end: V3): OcctInstance => {
+        const builder = m.inst("BRepBuilderAPI_MakeEdge_3", point(start), point(end));
+        native.push(builder);
+        const edge = builder.Edge() as OcctInstance;
+        native.push(edge);
+        return edge;
+      };
+      const arcEdge = (start: V3, middle: V3, end: V3): OcctInstance => {
+        const arc = m.inst("GC_MakeArcOfCircle_4", point(start), point(middle), point(end));
+        native.push(arc);
+        const trimmed = arc.Value() as OcctInstance;
+        native.push(trimmed);
+        const curve = m.inst("Handle_Geom_Curve_2", trimmed.get());
+        native.push(curve);
+        const builder = m.inst("BRepBuilderAPI_MakeEdge_24", curve);
+        native.push(builder);
+        const edge = builder.Edge() as OcctInstance;
+        native.push(edge);
+        return edge;
+      };
+
+      let wireBuilder: OcctInstance | undefined;
+      let wire: OcctInstance | undefined;
+      let faceBuilder: OcctInstance | undefined;
+      let face: OcctInstance | undefined;
+      let vector: OcctInstance | undefined;
+      let prism: OcctInstance | undefined;
+      try {
+        const fixedLower: V3 = [-input.fixedLengthMm, 0, 0];
+        const outerStart: V3 = [0, 0, 0];
+        const innerStart: V3 = [0, input.thicknessMm, 0];
+        const fixedUpper: V3 = [-input.fixedLengthMm, input.thicknessMm, 0];
+        const edges = [
+          lineEdge(fixedLower, outerStart),
+          arcEdge(outerStart, outerAt(half), outerEnd),
+          lineEdge(outerEnd, outerLeg),
+          lineEdge(outerLeg, innerLeg),
+          lineEdge(innerLeg, innerEnd),
+          arcEdge(innerEnd, innerAt(half), innerStart),
+          lineEdge(innerStart, fixedUpper),
+          lineEdge(fixedUpper, fixedLower),
+        ];
+        wireBuilder = m.inst("BRepBuilderAPI_MakeWire_1");
+        for (const edge of edges) wireBuilder.Add_1(edge);
+        if (typeof wireBuilder.IsDone === "function" && !(wireBuilder.IsDone() as boolean)) {
+          return { ok: false, error: "buildSingleRectangularSheetBend: OCCT wire did not close", warnings: [] };
+        }
+        wire = wireBuilder.Wire() as OcctInstance;
+        faceBuilder = m.inst("BRepBuilderAPI_MakeFace_15", wire, false);
+        face = faceBuilder.Face() as OcctInstance;
+        vector = m.inst("gp_Vec_4", 0, 0, input.widthMm);
+        prism = m.inst("BRepPrimAPI_MakePrism_1", face, vector, false, true);
+        const shape = prism.Shape() as OcctInstance;
+        const analyzer = buildAnalyzer(oc, shape);
+        try {
+          if (!(analyzer.IsValid_2() as boolean)) {
+            return { ok: false, error: "buildSingleRectangularSheetBend: OCCT produced an invalid solid", warnings: [] };
+          }
+        } finally {
+          deleteNative(analyzer);
+        }
+        return result(shape, ["exact OCCT idealized constant-thickness circular sheet bend"], undefined, "solid");
+      } finally {
+        if (prism) deleteNative(prism);
+        if (vector) deleteNative(vector);
+        if (face) deleteNative(face);
+        if (faceBuilder) deleteNative(faceBuilder);
+        if (wire) deleteNative(wire);
+        if (wireBuilder) deleteNative(wireBuilder);
+        for (const value of native.reverse()) deleteNative(value);
+      }
+    } catch (e) {
+      return {
+        ok: false,
+        error: `buildSingleRectangularSheetBend: ${e instanceof Error ? e.message : String(e)}`,
+        warnings: [],
+      };
+    }
+  }
+
+  /**
+   * Bounded delete-face repair. The input shape is expected to be the result
+   * of subtracting one strict-interior blind Z cylinder from the rectangular
+   * host. We retain the five untouched host faces, discard the cylindrical
+   * wall, circular floor, and perforated top face, then sew in a new full top
+   * cap from the deleted top face's original outer wire, assemble a shell, and
+   * solidify it. Reusing that wire keeps the cap and side faces on the same
+   * topological edges without depending on the packaged Sewing binding's
+   * unavailable Message_ProgressRange type. Returning a regenerated host would
+   * hide a failed delete operation, so the retained faces are taken directly
+   * from the supplied B-rep.
+   */
+  function deleteBlindHoleFacesAndCapImpl(
+    shape: OcctShape,
+    input: OcctBlindHoleDeleteFaceRepair,
+  ): OcctOperationResult {
+    const bound = 1_000_000;
+    const tolerance = 1e-6;
+    const finitePoint = (point: { x: number; y: number }): boolean =>
+      Number.isFinite(point.x) && Number.isFinite(point.y)
+      && Math.abs(point.x) <= bound && Math.abs(point.y) <= bound;
+    try {
+      if (!input || !Array.isArray(input.hostLoop) || input.hostLoop.length !== 4
+        || !input.hostLoop.every(finitePoint)
+        || !Number.isFinite(input.hostDepthMm) || !(input.hostDepthMm >= 0.001)
+        || input.hostDepthMm > bound
+        || !Array.isArray(input.holeCenter) || input.holeCenter.length !== 2
+        || !input.holeCenter.every(value => Number.isFinite(value) && Math.abs(value) <= bound)
+        || !Number.isFinite(input.holeRadiusMm) || !(input.holeRadiusMm >= 0.001)
+        || input.holeRadiusMm > bound
+        || !Number.isFinite(input.holeDepthMm) || !(input.holeDepthMm >= 0.001)
+        || !(input.holeDepthMm < input.hostDepthMm - tolerance)) {
+        return { ok: false, error: "deleteBlindHoleFacesAndCap: invalid bounded input", warnings: [] };
+      }
+
+      const xs = [...new Set(input.hostLoop.map(point => point.x))];
+      const ys = [...new Set(input.hostLoop.map(point => point.y))];
+      if (xs.length !== 2 || ys.length !== 2
+        || input.hostLoop.some((point, index) => {
+          const next = input.hostLoop[(index + 1) % input.hostLoop.length]!;
+          return !((point.x === next.x && point.y !== next.y)
+            || (point.y === next.y && point.x !== next.x));
+        })) {
+        return { ok: false, error: "deleteBlindHoleFacesAndCap: host must be an axis-aligned rectangle", warnings: [] };
+      }
+      const minX = Math.min(...xs);
+      const maxX = Math.max(...xs);
+      const minY = Math.min(...ys);
+      const maxY = Math.max(...ys);
+      const clearance = input.holeRadiusMm + tolerance;
+      if (!(input.holeCenter[0] > minX + clearance)
+        || !(input.holeCenter[0] < maxX - clearance)
+        || !(input.holeCenter[1] > minY + clearance)
+        || !(input.holeCenter[1] < maxY - clearance)) {
+        return { ok: false, error: "deleteBlindHoleFacesAndCap: hole must be strictly inside the host", warnings: [] };
+      }
+
+      const live = lookup(shape, "deleteBlindHoleFacesAndCap");
+      const inspection = inspectDetailed(oc, live);
+      const expectedBbox = [minX, minY, 0, maxX, maxY, input.hostDepthMm] as const;
+      const measuredBbox = [
+        inspection.bbox.min.x, inspection.bbox.min.y, inspection.bbox.min.z,
+        inspection.bbox.max.x, inspection.bbox.max.y, inspection.bbox.max.z,
+      ] as const;
+      const bboxError = Math.max(...expectedBbox.map((value, index) =>
+        Math.abs(measuredBbox[index]! - value)));
+      const expectedVolume = (maxX - minX) * (maxY - minY) * input.hostDepthMm
+        - Math.PI * input.holeRadiusMm ** 2 * input.holeDepthMm;
+      const volumeError = Math.abs(inspection.absoluteVolume - expectedVolume)
+        / Math.max(expectedVolume, 1e-12);
+      if (!inspection.valid || inspection.solidCount !== 1
+        || inspection.faceCount !== 8
+        || inspection.surfaceTypes.status !== "available"
+        || inspection.surfaceTypes.counts.cylinder !== 1
+        || inspection.surfaceTypes.counts.plane !== 7
+        || Object.keys(inspection.surfaceTypes.counts).length !== 2
+        || inspection.cylindricalRadii?.length !== 1
+        || Math.abs(inspection.cylindricalRadii[0]! - input.holeRadiusMm) > tolerance
+        || bboxError > tolerance || volumeError > 1e-6) {
+        return {
+          ok: false,
+          error: "deleteBlindHoleFacesAndCap: supplied B-rep is not the bounded one-blind-hole topology",
+          warnings: [],
+        };
+      }
+
+      const faces = uniqueFaces(oc, live);
+      const retained: OcctInstance[] = [];
+      const removed: OcctInstance[] = [];
+      const holeFloorZ = input.hostDepthMm - input.holeDepthMm;
+      let cylinderCount = 0;
+      let topCount = 0;
+      let floorCount = 0;
+      let removedTopFace: OcctInstance | undefined;
+      try {
+        for (const face of faces) {
+          const adaptor = m.inst("BRepAdaptor_Surface_2", face, true);
+          try {
+            const type = mapOcctGeomAbsEnumName(adaptor.GetType(), oc.GeomAbs_SurfaceType);
+            if (type === "cylinder") {
+              cylinderCount += 1;
+              removed.push(face);
+              continue;
+            }
+            const bbox = bboxOf(oc, face);
+            const planarZ = bbox && Math.abs(bbox.max.z - bbox.min.z) <= tolerance
+              ? (bbox.min.z + bbox.max.z) / 2
+              : null;
+            if (type === "plane" && planarZ !== null
+              && Math.abs(planarZ - input.hostDepthMm) <= tolerance) {
+              topCount += 1;
+              removedTopFace = face;
+              removed.push(face);
+              continue;
+            }
+            if (type === "plane" && planarZ !== null
+              && Math.abs(planarZ - holeFloorZ) <= tolerance) {
+              const floorBox = bbox!;
+              const expectedMinX = input.holeCenter[0] - input.holeRadiusMm;
+              const expectedMaxX = input.holeCenter[0] + input.holeRadiusMm;
+              const expectedMinY = input.holeCenter[1] - input.holeRadiusMm;
+              const expectedMaxY = input.holeCenter[1] + input.holeRadiusMm;
+              if (Math.abs(floorBox.min.x - expectedMinX) <= tolerance
+                && Math.abs(floorBox.max.x - expectedMaxX) <= tolerance
+                && Math.abs(floorBox.min.y - expectedMinY) <= tolerance
+                && Math.abs(floorBox.max.y - expectedMaxY) <= tolerance) {
+                floorCount += 1;
+                removed.push(face);
+                continue;
+              }
+            }
+            retained.push(face);
+          } finally {
+            deleteNative(adaptor);
+          }
+        }
+
+        if (cylinderCount !== 1 || topCount !== 1 || floorCount !== 1
+          || removed.length !== 3 || retained.length !== 5) {
+          return {
+            ok: false,
+            error: "deleteBlindHoleFacesAndCap: exact removable face set was not found",
+            warnings: [],
+          };
+        }
+
+        if (!removedTopFace) {
+          return { ok: false, error: "deleteBlindHoleFacesAndCap: perforated top face is unavailable", warnings: [] };
+        }
+        const outerWire = m.stat("BRepTools").OuterWire(removedTopFace) as OcctInstance;
+        const capBuilder = m.inst("BRepBuilderAPI_MakeFace_15", outerWire, false);
+        const cap = capBuilder.Face() as OcctInstance;
+        let shell: OcctInstance | undefined;
+        let shellBuilder: OcctInstance | undefined;
+        let solidBuilder: OcctInstance | undefined;
+        try {
+          shell = m.inst("TopoDS_Shell");
+          shellBuilder = m.inst("TopoDS_Builder");
+          shellBuilder.MakeShell(shell);
+          for (const face of retained) shellBuilder.Add(shell, face);
+          shellBuilder.Add(shell, cap);
+          solidBuilder = m.inst("BRepBuilderAPI_MakeSolid_3", shell);
+          if (typeof solidBuilder.IsDone === "function" && !(solidBuilder.IsDone() as boolean)) {
+            return { ok: false, error: "deleteBlindHoleFacesAndCap: shell could not be solidified", warnings: [] };
+          }
+          const solid = solidBuilder.Solid() as OcctInstance;
+          const analyzer = buildAnalyzer(oc, solid);
+          try {
+            if (!(analyzer.IsValid_2() as boolean)) {
+              return { ok: false, error: "deleteBlindHoleFacesAndCap: repaired solid is invalid", warnings: [] };
+            }
+          } finally {
+            deleteNative(analyzer);
+          }
+          return result(
+            solid,
+            ["exact OCCT blind-hole face removal, topology-preserving planar cap, and solidification"],
+            undefined,
+            "solid",
+          );
+        } finally {
+          deleteNative(solidBuilder);
+          deleteNative(shellBuilder);
+          deleteNative(shell);
+          deleteNative(cap);
+          deleteNative(capBuilder);
+          deleteNative(outerWire);
+        }
+      } finally {
+        for (const face of faces) deleteNative(face);
+      }
+    } catch (e) {
+      return {
+        ok: false,
+        error: `deleteBlindHoleFacesAndCap: ${e instanceof Error ? e.message : String(e)}`,
+        warnings: [],
+      };
+    }
+  }
+
+  /** Preserve each input solid as a separate body inside one native compound. */
+  function makeCompoundImpl(shapes: ReadonlyArray<OcctShape>): OcctOperationResult {
+    try {
+      if (!Array.isArray(shapes) || shapes.length < 2 || shapes.length > 128
+        || new Set(shapes.map(shape => shape.id)).size !== shapes.length) {
+        return { ok: false, error: "makeCompound: requires 2..128 distinct live shapes", warnings: [] };
+      }
+      const compound = m.inst("TopoDS_Compound");
+      const builder = m.inst("TopoDS_Builder");
+      let registered = false;
+      try {
+        builder.MakeCompound(compound);
+        for (const shape of shapes) builder.Add(compound, lookup(shape, "makeCompound"));
+        const analyzer = buildAnalyzer(oc, compound);
+        try {
+          if (!(analyzer.IsValid_2() as boolean)) {
+            return { ok: false, error: "makeCompound: OCCT produced an invalid compound", warnings: [] };
+          }
+        } finally {
+          deleteNative(analyzer);
+        }
+        const output = result(
+          compound,
+          ["exact OCCT multi-solid compound; member solids were not fused"],
+          undefined,
+          "compound",
+        );
+        registered = true;
+        return output;
+      } finally {
+        deleteNative(builder);
+        if (!registered) deleteNative(compound);
+      }
+    } catch (e) {
+      return {
+        ok: false,
+        error: `makeCompound: ${e instanceof Error ? e.message : String(e)}`,
+        warnings: [],
+      };
+    }
+  }
+
+  /** Reflect one analytic B-Rep through a plane defined by point + normal. */
+  function mirrorImpl(
+    shape: OcctShape,
+    planeOrigin: readonly [number, number, number],
+    planeNormal: readonly [number, number, number],
+  ): OcctOperationResult {
+    if (planeOrigin.length !== 3 || planeNormal.length !== 3
+      || !planeOrigin.every(Number.isFinite) || !planeNormal.every(Number.isFinite)) {
+      return { ok: false, error: "mirror: plane origin and normal must be finite 3-vectors", warnings: [] };
+    }
+    const normalLength = Math.hypot(planeNormal[0], planeNormal[1], planeNormal[2]);
+    if (!(normalLength > 1e-12)) {
+      return { ok: false, error: "mirror: plane normal must be non-zero", warnings: [] };
+    }
+    const live = lookup(shape, "mirror");
+    let origin: OcctInstance | undefined;
+    let normal: OcctInstance | undefined;
+    let plane: OcctInstance | undefined;
+    let trsf: OcctInstance | undefined;
+    let transform: OcctInstance | undefined;
+    try {
+      origin = m.inst("gp_Pnt_3", planeOrigin[0], planeOrigin[1], planeOrigin[2]);
+      normal = m.inst("gp_Dir_4", planeNormal[0] / normalLength, planeNormal[1] / normalLength, planeNormal[2] / normalLength);
+      plane = m.inst("gp_Ax2_3", origin, normal);
+      trsf = m.inst("gp_Trsf_1");
+      trsf.SetMirror_3(plane);
+      transform = m.inst("BRepBuilderAPI_Transform_2", live, trsf, true);
+      if (typeof transform.IsDone === "function" && !(transform.IsDone() as boolean)) {
+        return { ok: false, error: "mirror: OCCT transform did not complete", warnings: [] };
+      }
+      return result(transform.Shape() as OcctInstance, [
+        `mirrored B-Rep through plane origin [${planeOrigin.join(", ")}] normal [${planeNormal.join(", ")}]`,
+      ]);
+    } catch (e) {
+      return { ok: false, error: `mirror: ${e instanceof Error ? e.message : String(e)}`, warnings: [] };
+    } finally {
+      if (transform) deleteNative(transform);
+      if (trsf) deleteNative(trsf);
+      if (plane) deleteNative(plane);
+      if (normal) deleteNative(normal);
+      if (origin) deleteNative(origin);
+    }
+  }
+
   /** Outward unit normal of a planar face (null for non-planar / failure). */
   function planarFaceNormal(face: OcctInstance): Vec3 | null {
     try {
@@ -2376,6 +3130,33 @@ export function createNodeOcctBridge(oc: OcctModule): OcctBridge {
     },
     async draft(shape, opts) {
       return draftImpl(shape, opts);
+    },
+    async uniformScale(shape, factor) {
+      return uniformScaleImpl(shape, factor);
+    },
+    async translate(shape, offset) {
+      return translateImpl(shape, offset);
+    },
+    async rotate(shape, axisPoint, axisDirection, angleDeg) {
+      return rotateImpl(shape, axisPoint, axisDirection, angleDeg);
+    },
+    async buildLoftSections(sections) {
+      return buildLoftSectionsImpl(sections);
+    },
+    async buildOrthogonalPolylineSweep(input) {
+      return buildOrthogonalPolylineSweepImpl(input);
+    },
+    async buildSingleRectangularSheetBend(input) {
+      return buildSingleRectangularSheetBendImpl(input);
+    },
+    async makeCompound(shapes) {
+      return makeCompoundImpl(shapes);
+    },
+    async deleteBlindHoleFacesAndCap(shape, input) {
+      return deleteBlindHoleFacesAndCapImpl(shape, input);
+    },
+    async mirror(shape, planeOrigin, planeNormal) {
+      return mirrorImpl(shape, planeOrigin, planeNormal);
     },
     async solidShell(shape, closingFaceIds, thickness) {
       return solidShellImpl(shape, closingFaceIds, thickness);

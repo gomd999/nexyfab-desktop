@@ -1,8 +1,15 @@
 # Precision CAD current session
 
-- Status: READY_FOR_HANDOFF_INTERNAL_VERTICALS_EXTERNAL_HOLD
-- Branch: `scope/precision-cad`
+- Status: `SOURCE_FREEZE_READY / INTERNAL_30_OF_30_BOUNDED / RELEASE_HOLD`
+- Source branch: `scope/precision-cad`
+- Integration target: `integration/nexyfab`
 - Baseline: `baseline/pre-scope-20260823`
-- Current task: Implemented clean-room, fail-closed product verticals for mechanical, building, interior, civil, and landscape, including native artifacts, domain verification, common qualification, connected-project invalidation, and a bounded product-qualification API. Existing single-part hardening and Shape Generator extraction work was preserved.
-- Next action: Integrate the versioned AI Design candidate envelope on `integration/nexyfab`, connect the legacy spatial authoring UI to the new Precision product API, and collect the external authority, exchange, reviewer, campaign, fabrication, and field-pilot evidence listed in `MULTI_DOMAIN_PRODUCT_PLAN.md`.
-- Release: HOLD (internal code and synthetic fixtures pass, but no domain has the required 20 rights-cleared independent cases, three deterministic campaigns, two independent reviewers, three real pilots, and current discipline-specific external authority/round-trip evidence).
+- Current integration base: `bd200378` on `integration/nexyfab`; the preserved GP-02 through GP-11 work reapplied without conflicts after the AI V3-V10 merge and awaits its implementation commit.
+- Delivered boundary: the clean-room mechanical candidate set is implemented as 30/30 bounded exact handlers. The closing slices are the topology-preserving bounded blind-hole delete/cap repair, the versioned three-point orthogonal rectangular sweep path, and the two-member unfused weldment compound with a hash-bound millimetre cut list. These contracts do not claim general delete-face, sweep, weldment, manufacturing, or commercial completeness.
+- Source verification: fixed Node.js 22.23.2/npm 10.9.8 `workspace:check -- precision-cad` passed with zero ownership/classification violations, TypeScript PASS, and architecture PASS. The focused native/registry/sketch/sheet-metal/weldment suite passed 93 tests with one conditional external-corpus skip. The earlier production build result remains pre-integration and must be rerun at the final integrated HEAD.
+- Scope preflight: the platform-owned legacy PHP changes are now committed on integration. A generated `mechanical-core-internal-verification.json` containing only sandbox `EPERM` failures was excluded from the source freeze and retained in recovery checkpoints; it is not success evidence.
+- Immediate action: freeze and commit only the intended Precision-owned tree, generate a canonical UTC handoff pointing to that implementation commit, validate it, then merge the clean Scope branch once with `--no-ff`.
+- Integration acceptance: retain literal v1/v2 schema routing, server-loaded current-head and rights bindings, stable machine tokens, fail-closed unsupported forms, and `authoritativeCommit: false`/`commercialReleaseReady: false`. AI Design may emit only versioned intent and provenance references; it may not manufacture Precision receipts, revisions, artifacts, runtime identity, XCAF results, or release state.
+- CI sequencing: run focused Precision tests after the Scope merge, then workspace audit, architecture, type, build, security and database gates. Run the full GitHub CI/E2E only after all planned integration edits are complete. The previously cancelled E2E is not completion evidence.
+- Deferred Precision action: begin GP-12 authority-owned CAS commit, stable topology edit/replay survival, and expanded XCAF provenance only after this GP-10 integration intake is frozen and verified; do not mix those new semantics into the GP-10 merge.
+- Release: `HOLD` (`authoritativeCommit: false`, `commercialReleaseReady: false`). Integration is development `GO`, but immediate PR merge, staging promotion, production deployment, and Git history rewrite remain `NO-GO` until their independent gates pass.

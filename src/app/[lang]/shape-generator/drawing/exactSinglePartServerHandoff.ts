@@ -8,8 +8,9 @@ import {
 import { detectStepUnits } from '@/lib/brep-bridge/stepRead';
 import { featureTreeToOcctPlan } from '@/lib/occt/featurePlan';
 import { executeOcctPlan } from '@/lib/occt/planExecutor';
-import { loadOcctNode } from '@/lib/occt/nodeOcctLoader';
-import { createNodeOcctBridge } from '@/lib/occt/nodeOcctBridge';
+import { FEATURE_REGISTRY_HASH } from '@/lib/cad/featureRegistry';
+import { preflightCommercialFeatureTree } from '@/lib/occt/commercialFeaturePreflight';
+import { loadNodeOcctCommercialRuntime } from '@/lib/occt/nodeOcctCommercialRuntime';
 import { loadServerReplicad } from '@/lib/occt/serverReplicad';
 import { projectReplicadShapeExact } from '@/lib/drawing/replicadExactProjection';
 import type { OcctDetailedShapeInspection } from '@/lib/occt/bridge';
@@ -109,21 +110,17 @@ export async function enrichServerDrawingHandoffWithExactSinglePart(
   const part = handoff.assembly.state.parts[0]!;
   const tree = handoff.assembly.featureTrees[part.id];
   if (!tree?.nodes.length) return notRun(handoff, 'FEATURE_TREE_MISSING');
-  const active = tree.nodes.filter(node => !node.suppressed);
-  const consumed = new Set(active.flatMap(node => node.dependencies));
-  const terminals = active.filter(node => !consumed.has(node.id));
-  let plan;
-  try { plan = featureTreeToOcctPlan(tree); }
-  catch (error) { return notRun(handoff, `OCCT_PLAN_INVALID:${error instanceof Error ? error.message : String(error)}`); }
-  if (!plan.finalResultId || plan.unsupported.length > 0) {
-    return notRun(handoff, `OCCT_FEATURE_UNSUPPORTED:${plan.unsupported.map(item => `${item.resultId}:${item.kind}`).join(',') || 'NO_FINAL_SOLID'}`);
+  const runtime = await loadNodeOcctCommercialRuntime();
+  if (!runtime.ok) return notRun(handoff, runtime.reason);
+  const preflight = preflightCommercialFeatureTree(tree, runtime.capabilities);
+  if (preflight.status !== 'PRECHECK_PASS') {
+    return notRun(handoff, `OCCT_FEATURE_UNSUPPORTED:COMMERCIAL_PREFLIGHT_HOLD:${preflight.issues.map(item => `${item.code}:${item.nodeId ?? 'tree'}`).join(',')}`);
   }
-  if (terminals.length !== 1 || terminals[0]!.id !== plan.finalResultId) return notRun(handoff, 'ONE_EXPLICIT_TERMINAL_SOLID_REQUIRED');
-  if (plan.embeddedChildNodes.length > 0) return notRun(handoff, `EMBEDDED_CHILD_SNAPSHOT_FORBIDDEN:${plan.embeddedChildNodes.join(',')}`);
-
-  const loaded = await loadOcctNode();
-  if (!loaded.ok || !loaded.oc) return notRun(handoff, `OCCT_NODE_UNAVAILABLE:${loaded.reason ?? 'unknown'}`);
-  const bridge = createNodeOcctBridge(loaded.oc);
+  const activeTree = { nodes: tree.nodes.filter(node => node.suppressed !== true) };
+  let plan;
+  try { plan = featureTreeToOcctPlan(activeTree); }
+  catch (error) { return notRun(handoff, `OCCT_PLAN_INVALID:${error instanceof Error ? error.message : String(error)}`); }
+  const bridge = runtime.bridge;
   const executed = await executeOcctPlan(plan, bridge);
   if (!executed.ok || !executed.finalShape) return notRun(handoff, `OCCT_EXECUTION_FAILED:${executed.error ?? 'NO_FINAL_SHAPE'}`);
   let imported = undefined as typeof executed.finalShape | undefined;
@@ -176,6 +173,9 @@ export async function enrichServerDrawingHandoffWithExactSinglePart(
     const dimensionReceipt = serializeAssemblyDrawingHandoff({
       schema: 'nexyfab.overall-dimension-receipt.v1',
       partRevisionId: handoff.source.revisionId,
+      ...(handoff.source.canonicalRevision
+        ? { canonicalRevision: structuredClone(handoff.source.canonicalRevision) }
+        : {}),
       partId: part.id,
       sourceStepSha256: sha256(step),
       units: 'mm',
@@ -186,6 +186,9 @@ export async function enrichServerDrawingHandoffWithExactSinglePart(
     const bomReceipt = serializeAssemblyDrawingHandoff({
       schema: 'nexyfab.single-part-bom-receipt.v1',
       partRevisionId: handoff.source.revisionId,
+      ...(handoff.source.canonicalRevision
+        ? { canonicalRevision: structuredClone(handoff.source.canonicalRevision) }
+        : {}),
       sourceStepSha256: sha256(step),
       units: 'mm',
       items: [{ partId: part.id, description: part.name, quantity: 1, dimensionsMm: overall }],
@@ -198,6 +201,9 @@ export async function enrichServerDrawingHandoffWithExactSinglePart(
         projectId: handoff.source.projectId,
         workspaceRevision: handoff.source.workspaceRevision,
         workspaceContentSha256: handoff.source.workspaceContentSha256,
+        ...(handoff.source.canonicalRevision
+          ? { canonicalRevision: structuredClone(handoff.source.canonicalRevision) }
+          : {}),
         stateSha256: handoff.source.stateSha256,
         featureTreesSha256: handoff.source.featureTreesSha256,
         partFeatureTreeSha256: sha256(serializeAssemblyDrawingHandoff(tree)),
@@ -206,6 +212,9 @@ export async function enrichServerDrawingHandoffWithExactSinglePart(
       step: { text: step, sha256: sha256(step), bytes: stepBytes, units: 'mm' },
       verification: {
         kernel: 'OCCT_NODE', valid: true, solidCount: 1,
+        preflight: 'PRECHECK_PASS', registrySha256: FEATURE_REGISTRY_HASH,
+        runtimeIdentitySha256: runtime.identity.runtimeIdentitySha256,
+        glueSha256: runtime.identity.glueSha256, wasmSha256: runtime.identity.wasmSha256,
         faceCount: original.faceCount, edgeCount: original.edgeCount,
         volumeMm3: original.absoluteVolume, surfaceAreaMm2: original.surfaceArea,
         bboxMm: { min: bboxMin, max: bboxMax },

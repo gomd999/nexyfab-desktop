@@ -14,8 +14,12 @@
  * Proven: loads + builds real B-rep in ~700 ms (probe, 2026-06-04).
  */
 
-import fs from 'node:fs';
 import path from 'node:path';
+import {
+  assertNodeOcctRuntimeSnapshotUnchanged,
+  readNodeOcctRuntimeSnapshot,
+  type NodeOcctRuntimeIdentity,
+} from './nodeOcctRuntimeIdentity';
 
 /** Minimal surface we touch; the real embind module has thousands of symbols. */
 export type OcctModule = Record<string, unknown>;
@@ -25,10 +29,16 @@ export interface NodeOcctLoadResult {
   oc?: OcctModule;
   reason?: string;
   loadMs?: number;
+  identity?: NodeOcctRuntimeIdentity;
 }
 
-let cached: OcctModule | null = null;
-let pending: Promise<NodeOcctLoadResult> | null = null;
+let cached: { oc: OcctModule; identity: NodeOcctRuntimeIdentity; distKey: string } | null = null;
+let pending: { distKey: string; promise: Promise<NodeOcctLoadResult> } | null = null;
+
+function distKey(distDir: string): string {
+  const resolved = path.resolve(distDir);
+  return process.platform === 'win32' ? resolved.toLowerCase() : resolved;
+}
 
 /**
  * Load (and cache) the real OCCT module in Node. Returns `{ ok:false }` with a
@@ -36,21 +46,29 @@ let pending: Promise<NodeOcctLoadResult> | null = null;
  * back to the worker bridge or the stub.
  */
 export async function loadOcctNode(opts: { distDir?: string } = {}): Promise<NodeOcctLoadResult> {
-  if (cached) return { ok: true, oc: cached, loadMs: 0 };
   const isNode = typeof process === 'object' && !!process.versions?.node;
   if (!isNode) return { ok: false, reason: 'not a Node runtime (use the worker bridge in the browser)' };
+  const requestedDist = opts.distDir ?? path.join(process.cwd(), 'node_modules', 'opencascade.js', 'dist');
+  const requestedKey = distKey(requestedDist);
+  if (cached) {
+    if (cached.distKey !== requestedKey) return { ok: false, reason: 'OCCT_RUNTIME_DIST_MISMATCH' };
+    return { ok: true, oc: cached.oc, identity: cached.identity, loadMs: 0 };
+  }
   // Exact assembly verification builds every part in parallel. Without an
   // in-flight cache, the first request instantiated one ~65 MB Emscripten
   // runtime per part before any caller could populate `cached`, leaking
   // process listeners and wasting memory. All concurrent first loads must
   // share the same factory promise.
-  if (pending) return pending;
-  pending = loadOcctNodeUncached(opts);
-  try { return await pending; }
+  if (pending) {
+    if (pending.distKey !== requestedKey) return { ok: false, reason: 'OCCT_RUNTIME_DIST_MISMATCH' };
+    return pending.promise;
+  }
+  pending = { distKey: requestedKey, promise: loadOcctNodeUncached({ distDir: requestedDist }, requestedKey) };
+  try { return await pending.promise; }
   finally { pending = null; }
 }
 
-async function loadOcctNodeUncached(opts: { distDir?: string }): Promise<NodeOcctLoadResult> {
+async function loadOcctNodeUncached(opts: { distDir: string }, requestedKey: string): Promise<NodeOcctLoadResult> {
   const t0 = Date.now();
   try {
     // Do not use createRequire(...).resolve here. Next's production optimizer
@@ -58,23 +76,17 @@ async function loadOcctNodeUncached(opts: { distDir?: string }): Promise<NodeOcc
     // an undefined receiver only in the standalone server chunk. The runtime
     // package is deliberately copied to this fixed application-root location
     // by Dockerfile, which is also where npm installs it for local/CI runs.
-    const distDir =
-      opts.distDir ??
-      path.join(process.cwd(), 'node_modules', 'opencascade.js', 'dist');
+    const distDir = opts.distDir;
 
-    const gluePath = path.join(distDir, 'opencascade.wasm.js');
-    const wasmPath = path.join(distDir, 'opencascade.wasm.wasm');
-    if (!fs.existsSync(gluePath) || !fs.existsSync(wasmPath)) {
-      return {
-        ok: false,
-        reason: `opencascade.js runtime is incomplete at ${distDir}`,
-      };
-    }
+    const snapshot = readNodeOcctRuntimeSnapshot(distDir);
+    assertNodeOcctRuntimeSnapshotUnchanged(snapshot);
 
     // The old Emscripten glue reads __dirname during module initialization.
     // `require` is not needed because wasmBinary bypasses its Node fs loader.
     const g = globalThis as unknown as { __dirname?: string };
-    if (g.__dirname === undefined) g.__dirname = distDir;
+    const hadGlobalDirname = Object.hasOwn(g, '__dirname');
+    const previousGlobalDirname = g.__dirname;
+    g.__dirname = path.dirname(snapshot.gluePath);
 
     // Dynamic import (server-only module — never bundled for the browser, which
     // uses the worker bridge). A plain import() works under both Node and the
@@ -85,15 +97,22 @@ async function loadOcctNodeUncached(opts: { distDir?: string }): Promise<NodeOcc
     // At runtime nothing changes: Node resolves the bare specifier from
     // node_modules, and when the package is absent this returns { ok:false }
     // exactly as before (webpack could never bundle a variable request either).
-    const specifier = 'opencascade.js/dist/opencascade.wasm.js';
-    const mod = (await import(/* webpackIgnore: true */ /* @vite-ignore */ specifier)) as { default?: (cfg: unknown) => Promise<OcctModule> };
-    const glue = mod.default;
-    if (typeof glue !== 'function') return { ok: false, reason: 'opencascade.js dist glue has no default factory' };
-
-    const wasmBinary = fs.readFileSync(wasmPath);
-    const oc = await glue({ wasmBinary, locateFile: (p: string) => p });
-    cached = oc;
-    return { ok: true, oc, loadMs: Date.now() - t0 };
+    try {
+      // Import the exact bytes already hashed above. Importing the source path
+      // would leave a check/use race where a same-path swap could execute bytes
+      // different from the recorded identity.
+      const specifier = `data:text/javascript;base64,${snapshot.glueSource.toString('base64')}`;
+      const mod = (await import(/* webpackIgnore: true */ /* @vite-ignore */ specifier)) as { default?: (cfg: unknown) => Promise<OcctModule> };
+      const glue = mod.default;
+      if (typeof glue !== 'function') return { ok: false, reason: 'opencascade.js dist glue has no default factory' };
+      assertNodeOcctRuntimeSnapshotUnchanged(snapshot);
+      const oc = await glue({ wasmBinary: Buffer.from(snapshot.wasmBinary), locateFile: (p: string) => p });
+      cached = { oc, identity: snapshot.identity, distKey: requestedKey };
+      return { ok: true, oc, identity: snapshot.identity, loadMs: Date.now() - t0 };
+    } finally {
+      if (hadGlobalDirname) g.__dirname = previousGlobalDirname;
+      else delete g.__dirname;
+    }
   } catch (err) {
     return { ok: false, reason: err instanceof Error ? err.message : String(err) };
   }

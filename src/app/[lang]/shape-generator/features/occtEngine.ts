@@ -279,6 +279,17 @@ export function occtNearestTopoName(
 }
 
 export function resetShapeRegistry(): void {
+  const released = new Set<unknown>();
+  for (const shape of shapeRegistry.values()) {
+    if (released.has(shape)) continue;
+    released.add(shape);
+    try {
+      if (shape !== null && typeof shape === 'object' && 'delete' in shape
+        && typeof (shape as { delete?: unknown }).delete === 'function') {
+        (shape as { delete: () => void }).delete();
+      }
+    } catch { /* already consumed/deleted wrappers are safe to ignore */ }
+  }
   shapeRegistry.clear();
   edgeTopoNameRegistry.clear();
 }

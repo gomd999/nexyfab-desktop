@@ -24,6 +24,8 @@ describe('loadOcctNode (real OCCT headless)', () => {
     }
     expect(load.oc).toBeDefined();
     expect(typeof (oc as Record<string, unknown>).BRepPrimAPI_MakeBox_3).toBe('function');
+    expect(load.identity).toMatchObject({ packageName: 'opencascade.js', packageVersion: '1.1.1' });
+    expect(load.identity?.runtimeIdentitySha256).toMatch(/^[a-f0-9]{64}$/);
   });
 
   it('builds a 10×20×30 box and measures its volume = 6000 mm³', () => {
@@ -47,6 +49,7 @@ describe('loadOcctNode (real OCCT headless)', () => {
     const again = await loadOcctNode();
     expect(again.ok).toBe(true);
     expect(again.loadMs).toBe(0);
+    expect(again.identity).toEqual(load.identity);
   });
 
   it('coalesces concurrent first loads into one Emscripten runtime', async () => {
