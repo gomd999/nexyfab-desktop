@@ -1,8 +1,8 @@
 {
   "magic": "nfab",
   "version": 3,
-  "createdAt": 1787382784068,
-  "updatedAt": 1787382784068,
+  "createdAt": 1787581580176,
+  "updatedAt": 1787581580176,
   "name": "Mechanical runtime chamfer",
   "tree": {
     "nodes": [
@@ -72,6 +72,6 @@
     "exactKernel": "OCCT",
     "intentCaseId": "mixed_units-03-chamfer",
     "intentInputSha256": "83e52ee531c466b6e6f9297def0e729cef34d3f5fe74724fdbcf3c9c9c100687",
-    "candidateBaseRevision": "7c3a02e2da7fbee88dac5533efea39eac2ec0114cde1b70936d41992d83dbbe1"
+    "candidateBaseRevision": "8ba225bd293484d89fb99e9ca60e04a8da2a014c8109b10235845b1eafd5432a"
   }
 }

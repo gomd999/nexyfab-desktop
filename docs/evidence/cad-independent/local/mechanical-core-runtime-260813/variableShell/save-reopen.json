@@ -3,9 +3,9 @@
   "feature": "variableShell",
   "axis": "save_reopen",
   "status": "PASS",
-  "executedAt": "2026-08-22T07:13:30.564Z",
+  "executedAt": "2026-08-24T14:23:18.048Z",
   "savedBytes": 1648,
-  "savedSha256": "9511f5eeb9c3e68835ca87f42d8b349680f8bba61aa37c33cfe3b70d68fe7fa1",
+  "savedSha256": "56e6f0be7c9be2a0fa0f3c43c6eb4de11f15ea4072663d6805ea65eaf699179b",
   "reopened": {
     "handle": "occt:349",
     "kernelKind": "Solid",

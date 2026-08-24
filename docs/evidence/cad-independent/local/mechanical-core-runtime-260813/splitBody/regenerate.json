@@ -3,7 +3,7 @@
   "feature": "splitBody",
   "axis": "regenerate",
   "status": "PASS",
-  "executedAt": "2026-08-22T07:13:30.564Z",
+  "executedAt": "2026-08-24T14:23:18.048Z",
   "initial": {
     "handle": "occt:447",
     "kernelKind": "Solid",

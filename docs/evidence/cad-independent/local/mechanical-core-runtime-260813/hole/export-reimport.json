@@ -3,9 +3,9 @@
   "feature": "hole",
   "axis": "export",
   "status": "PASS",
-  "executedAt": "2026-08-22T07:13:30.564Z",
+  "executedAt": "2026-08-24T14:23:18.048Z",
   "stepBytes": 19782,
-  "stepSha256": "f5ad3b9d1a202310bc1e61cfe14ab96de7958aa69c611b0769652dd5124d2643",
+  "stepSha256": "0ce424bb0b222c336959d8389540ef6fe5a986a372b130dc798c9a74d6510cdb",
   "before": {
     "handle": "occt:5",
     "kernelKind": "Solid",

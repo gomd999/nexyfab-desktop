@@ -3,9 +3,9 @@
   "feature": "mirror",
   "axis": "export",
   "status": "PASS",
-  "executedAt": "2026-08-22T07:13:30.564Z",
+  "executedAt": "2026-08-24T14:23:18.048Z",
   "stepBytes": 15551,
-  "stepSha256": "a3934dfc4c5f8611085550876691fabd046b8e1ed784c3897c9d8629381e04ed",
+  "stepSha256": "c95f703cccf95f9bc0283ee2eb952c9085aad612f9898e5c7c6c434100b1dbbd",
   "before": {
     "handle": "occt:417",
     "kernelKind": "Solid",

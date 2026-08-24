@@ -3,9 +3,9 @@
   "feature": "cut",
   "axis": "export",
   "status": "PASS",
-  "executedAt": "2026-08-22T07:13:30.564Z",
+  "executedAt": "2026-08-24T14:23:18.048Z",
   "stepBytes": 30242,
-  "stepSha256": "d861703c0eb0d4663300e8ce2cea72bc341e33609dfff7610a082857f954faa0",
+  "stepSha256": "782dcb414977ea1291d21d3c87fa1ff060bb386b0288f836188c0c63c7bc50de",
   "before": {
     "handle": "occt:297",
     "kernelKind": "Solid",

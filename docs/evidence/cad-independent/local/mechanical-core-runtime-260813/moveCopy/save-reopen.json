@@ -3,9 +3,9 @@
   "feature": "moveCopy",
   "axis": "save_reopen",
   "status": "PASS",
-  "executedAt": "2026-08-22T07:13:30.564Z",
+  "executedAt": "2026-08-24T14:23:18.048Z",
   "savedBytes": 1612,
-  "savedSha256": "f98cf03c244ec740d4e44d08c4c2df7cb20c0b6e152275cf7f287bdce7f517ff",
+  "savedSha256": "99efc010fab0e3cb06196893794ecc4f4ec15c6bc83ca9a838c0a6e892baa350",
   "reopened": {
     "handle": "occt:141",
     "kernelKind": "Solid",

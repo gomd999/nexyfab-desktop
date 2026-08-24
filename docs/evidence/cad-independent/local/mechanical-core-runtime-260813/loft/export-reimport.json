@@ -3,9 +3,9 @@
   "feature": "loft",
   "axis": "export",
   "status": "PASS",
-  "executedAt": "2026-08-22T07:13:30.564Z",
+  "executedAt": "2026-08-24T14:23:18.048Z",
   "stepBytes": 142885,
-  "stepSha256": "ea59479961961f6568afa7866b8618c62164d88d59a839bac61cf993b9caf150",
+  "stepSha256": "ebf0ed5c2969e76377d253a36be3ae5cdd3bb6fcdf34e1970a7066052491931d",
   "before": {
     "handle": "occt:401",
     "kernelKind": "Solid",

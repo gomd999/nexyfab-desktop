@@ -1,12 +1,12 @@
 {
   "schema": "nexyfab.mechanical-ai-intent-runtime-receipt.v1",
-  "generatedAt": "2026-08-22T07:13:00.871Z",
-  "revision": "7c3a02e2da7fbee88dac5533efea39eac2ec0114cde1b70936d41992d83dbbe1",
+  "generatedAt": "2026-08-24T14:26:17.803Z",
+  "revision": "8ba225bd293484d89fb99e9ca60e04a8da2a014c8109b10235845b1eafd5432a",
   "sourceBindings": [
     {
       "path": "src/app/[lang]/shape-generator/features/occtEngine.ts",
-      "sha256": "32ff70b38fe4634f1a1058319fbe0a782057df0aee95975ac1c6bdac41eb3084",
-      "bytes": 133719
+      "sha256": "9447d4ab9e5bc20f47b90bddcfa5a9c51d80aea8e993b431846dd58d368ebbd9",
+      "bytes": 134988
     },
     {
       "path": "src/app/[lang]/shape-generator/features/topologyEdgeFinder.ts",
@@ -40,8 +40,8 @@
     },
     {
       "path": "src/app/[lang]/shape-generator/features/sheetMetal.ts",
-      "sha256": "bec21b1a37183a6a12fb4bb1a2f4bb17ffb0dd2a2fdecbc0f3083bf8b480b614",
-      "bytes": 49431
+      "sha256": "14c5dfd17c943887f237b166768e3be78a2299b7a35a03123a4022561ca18df4",
+      "bytes": 50188
     },
     {
       "path": "src/app/[lang]/shape-generator/features/tab.ts",
@@ -95,8 +95,8 @@
     },
     {
       "path": "src/app/[lang]/shape-generator/features/pipelineManager.ts",
-      "sha256": "66284ece9ce6a6206f28e99b97b86be755669169e470a25462fbb8daae09201e",
-      "bytes": 31526
+      "sha256": "271baffbb5a28ed461d01801cd1c15022afa6eda284e7abe8655dab17f14b032",
+      "bytes": 36417
     },
     {
       "path": "src/app/[lang]/shape-generator/sketch/extrudeProfile.ts",
@@ -132,12 +132,12 @@
   "artifactBindings": [
     {
       "path": "docs/evidence/cad-independent/local/mechanical-ai-intent-runtime-260813/intent-runtime-results.json",
-      "sha256": "0cd4c96d4b7382a77615b90eb8514f2594266f5a802e8f8c7a153581b781ee58",
+      "sha256": "2d0c4d59b03e3b82120b65cde0156fc9f283759cf92716d6c734a7596c5cad96",
       "bytes": 23579
     },
     {
       "path": "docs/evidence/cad-independent/local/mechanical-ai-intent-runtime-260813/runtime-axis-evidence.json",
-      "sha256": "1ff1e846938e47673fe62b7f3568c05f91fd213c7a9eaee64bdab79bb83a700f",
+      "sha256": "eb33ac46bffe61bd58ac23c293092caeb05d18f76244611ac3310c8d39397c55",
       "bytes": 117004
     }
   ],

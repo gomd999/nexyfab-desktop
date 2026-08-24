@@ -3,9 +3,9 @@
   "feature": "variableFillet",
   "axis": "save_reopen",
   "status": "PASS",
-  "executedAt": "2026-08-22T07:13:30.564Z",
+  "executedAt": "2026-08-24T14:23:18.048Z",
   "savedBytes": 1633,
-  "savedSha256": "39a6d854cd92bc954a7382367d53daf1ff49a78f2cc45abecf7a2082b1116de9",
+  "savedSha256": "e511f6f4590df7f3f7a277a9ab5ecbaf97d170c326ff33b77bdc2207e7e5d0fd",
   "reopened": {
     "handle": "occt:163",
     "kernelKind": "Solid",

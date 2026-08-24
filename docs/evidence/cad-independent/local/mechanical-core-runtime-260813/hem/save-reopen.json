@@ -3,9 +3,9 @@
   "feature": "hem",
   "axis": "save_reopen",
   "status": "PASS",
-  "executedAt": "2026-08-22T07:13:30.564Z",
+  "executedAt": "2026-08-24T14:23:18.048Z",
   "savedBytes": 1572,
-  "savedSha256": "e2b08706fd53820c20e86581102593847f7df59b614c103babc48878d686ab06",
+  "savedSha256": "319effe17a29848482aa420d99ba002ff208501f4a3064224b9ad8e1e197befe",
   "reopened": {
     "handle": "occt:259",
     "kernelKind": "Solid",

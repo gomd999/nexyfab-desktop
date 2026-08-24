@@ -3,9 +3,9 @@
   "feature": "rib",
   "axis": "save_reopen",
   "status": "PASS",
-  "executedAt": "2026-08-22T07:13:00.871Z",
+  "executedAt": "2026-08-24T14:26:17.803Z",
   "savedBytes": 1898,
-  "savedSha256": "405cb32c9b8eddcdb915a79842ed47aee67f83050dc868f53d97a38367e0ba83",
+  "savedSha256": "8de89fc8d55b171c1465447fbb7ab2f13a2b24acc59ab8fdd566137f70a7701c",
   "reopened": {
     "handle": "occt:65",
     "kernelKind": "Solid",

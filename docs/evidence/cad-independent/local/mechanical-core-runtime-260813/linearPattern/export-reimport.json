@@ -3,9 +3,9 @@
   "feature": "linearPattern",
   "axis": "export",
   "status": "PASS",
-  "executedAt": "2026-08-22T07:13:30.564Z",
+  "executedAt": "2026-08-24T14:23:18.048Z",
   "stepBytes": 15554,
-  "stepSha256": "0ee62ecb7b54452b47d1860dc110ed43f17f290e51fdfcb1a22c1e34a2031559",
+  "stepSha256": "834caacff3f844513941e9b0c9428a6195510b3dda1d5d6fcb9d9c0f892a9215",
   "before": {
     "handle": "occt:75",
     "kernelKind": "Solid",

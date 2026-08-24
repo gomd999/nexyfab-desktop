@@ -3,7 +3,7 @@
   "feature": "hole",
   "axis": "edit",
   "status": "PASS",
-  "executedAt": "2026-08-22T07:13:00.871Z",
+  "executedAt": "2026-08-24T14:26:17.803Z",
   "commandId": "hole-runtime-param-edit",
   "historyDepth": 1,
   "before": {
@@ -37,7 +37,7 @@
   "intentBinding": {
     "caseId": "ko_practical-01-hole",
     "candidateId": "intent-runtime:ko_practical-01-hole",
-    "candidateBaseRevision": "7c3a02e2da7fbee88dac5533efea39eac2ec0114cde1b70936d41992d83dbbe1",
+    "candidateBaseRevision": "8ba225bd293484d89fb99e9ca60e04a8da2a014c8109b10235845b1eafd5432a",
     "promptSha256": "8e41f52aeb29df0d0db6a2cd2856af945033d319834c07c50b43326e4bce4d6a",
     "inputSha256": "b781befa692abcd8dd7e823391cfe7b63c657e07f588fa3c504b4a3873663538",
     "sourceUnits": [

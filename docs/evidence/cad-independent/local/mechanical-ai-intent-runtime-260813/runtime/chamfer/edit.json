@@ -3,7 +3,7 @@
   "feature": "chamfer",
   "axis": "edit",
   "status": "PASS",
-  "executedAt": "2026-08-22T07:13:00.871Z",
+  "executedAt": "2026-08-24T14:26:17.803Z",
   "commandId": "chamfer-runtime-param-edit",
   "historyDepth": 1,
   "before": {
@@ -29,7 +29,7 @@
   "intentBinding": {
     "caseId": "mixed_units-03-chamfer",
     "candidateId": "intent-runtime:mixed_units-03-chamfer",
-    "candidateBaseRevision": "7c3a02e2da7fbee88dac5533efea39eac2ec0114cde1b70936d41992d83dbbe1",
+    "candidateBaseRevision": "8ba225bd293484d89fb99e9ca60e04a8da2a014c8109b10235845b1eafd5432a",
     "promptSha256": "50a5290d69b20f20f846644c5090aeab5a4a05032a8fdc661e7b8cc676c0b799",
     "inputSha256": "83e52ee531c466b6e6f9297def0e729cef34d3f5fe74724fdbcf3c9c9c100687",
     "sourceUnits": [

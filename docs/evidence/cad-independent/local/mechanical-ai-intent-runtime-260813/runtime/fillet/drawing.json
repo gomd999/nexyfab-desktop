@@ -3,7 +3,7 @@
   "feature": "fillet",
   "axis": "drawing",
   "status": "PASS",
-  "executedAt": "2026-08-22T07:13:00.871Z",
+  "executedAt": "2026-08-24T14:26:17.803Z",
   "kernel": "OCCT HLRBRep via replicad drawProjection",
   "views": {
     "front": {

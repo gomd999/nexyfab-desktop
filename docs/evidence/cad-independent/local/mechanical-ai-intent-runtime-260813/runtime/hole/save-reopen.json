@@ -3,9 +3,9 @@
   "feature": "hole",
   "axis": "save_reopen",
   "status": "PASS",
-  "executedAt": "2026-08-22T07:13:00.871Z",
+  "executedAt": "2026-08-24T14:26:17.803Z",
   "savedBytes": 1903,
-  "savedSha256": "0304c7b07f2e3735e13a320629849e243856f730359abb0f7b5a00c4921ee584",
+  "savedSha256": "28795db385fe7e867a0981cd40e4c45f7f9fcd3b9264161fb2d9f0746af6478c",
   "reopened": {
     "handle": "occt:9",
     "kernelKind": "Solid",

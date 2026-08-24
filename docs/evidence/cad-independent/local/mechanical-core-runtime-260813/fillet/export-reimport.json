@@ -3,9 +3,9 @@
   "feature": "fillet",
   "axis": "export",
   "status": "PASS",
-  "executedAt": "2026-08-22T07:13:30.564Z",
+  "executedAt": "2026-08-24T14:23:18.048Z",
   "stepBytes": 63606,
-  "stepSha256": "0553cd0fe3d3070c13f46af552fac06ebb4ebfa3370a95544c8178ebbca4e757",
+  "stepSha256": "d7856f882f0b4fac850f1e067970a677a591bf6e95d5e1801f73e8cc06337dc0",
   "before": {
     "handle": "occt:19",
     "kernelKind": "Solid",

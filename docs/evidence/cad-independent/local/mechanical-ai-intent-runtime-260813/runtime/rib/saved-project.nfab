@@ -1,8 +1,8 @@
 {
   "magic": "nfab",
   "version": 3,
-  "createdAt": 1787382784593,
-  "updatedAt": 1787382784593,
+  "createdAt": 1787581580708,
+  "updatedAt": 1787581580708,
   "name": "Mechanical runtime rib",
   "tree": {
     "nodes": [
@@ -76,6 +76,6 @@
     "exactKernel": "OCCT",
     "intentCaseId": "en_practical-05-rib",
     "intentInputSha256": "f0c66336a3aeeab7b421962865bc27faa3efda9cc58778e67518179c178d2563",
-    "candidateBaseRevision": "7c3a02e2da7fbee88dac5533efea39eac2ec0114cde1b70936d41992d83dbbe1"
+    "candidateBaseRevision": "8ba225bd293484d89fb99e9ca60e04a8da2a014c8109b10235845b1eafd5432a"
   }
 }
