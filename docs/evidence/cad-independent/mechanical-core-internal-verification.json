@@ -1,10 +1,10 @@
 {
   "schema": "nexyfab.mechanical-core-internal-verification.v1",
-  "generatedAt": "2026-08-24T14:34:36.851Z",
+  "generatedAt": "2026-08-24T15:02:16.796Z",
   "releaseChannel": "mechanical-core",
   "ok": true,
   "git": {
-    "head": "68b220ea308cc3d86b40b418b0b87f8ba9847baf",
+    "head": "438d30d00402641833c543c942aca7afd287c877",
     "branch": "integration/nexyfab",
     "workingTreeClean": true
   },
@@ -27,42 +27,42 @@
         "RUN_OCCT_FEASIBILITY": "1"
       },
       "exitCode": 0,
-      "durationMs": 71091
+      "durationMs": 71427
     },
     {
       "name": "mechanical-accuracy",
       "command": "npm run test:accuracy:mechanical",
       "environment": {},
       "exitCode": 0,
-      "durationMs": 22650
+      "durationMs": 22222
     },
     {
       "name": "intent-qualification",
       "command": "npm run mechanical:intents:local:check",
       "environment": {},
       "exitCode": 0,
-      "durationMs": 909
+      "durationMs": 833
     },
     {
       "name": "intent-runtime",
       "command": "npm run mechanical:intents:runtime:check",
       "environment": {},
       "exitCode": 0,
-      "durationMs": 1165
+      "durationMs": 1162
     },
     {
       "name": "assembly-handoff-readiness",
       "command": "npm run assembly-handoff:readiness:check",
       "environment": {},
       "exitCode": 0,
-      "durationMs": 7472
+      "durationMs": 7539
     },
     {
       "name": "typecheck",
       "command": "npm run typecheck",
       "environment": {},
       "exitCode": 0,
-      "durationMs": 20327
+      "durationMs": 21277
     }
   ],
   "sourceBindings": [
@@ -272,7 +272,7 @@
     },
     {
       "path": "src/app/[lang]/shape-generator/features/occtEngine.ts",
-      "sha256": "9447d4ab9e5bc20f47b90bddcfa5a9c51d80aea8e993b431846dd58d368ebbd9"
+      "sha256": "5c24d7b27dc6709fa1f0e123dcd6c3fd0af1e428b6c5f11d8bf304ed313e5eaa"
     },
     {
       "path": "src/app/[lang]/shape-generator/__tests__/geometrySignature.ts",
