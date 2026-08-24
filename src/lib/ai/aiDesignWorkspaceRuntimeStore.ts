@@ -110,6 +110,23 @@ function parsePostgresRuntime(row: RuntimeRow | undefined, ownerKey: string): St
   }
 }
 
+function parsePostgresRuntimeByOwnerHash(
+  row: RuntimeRow | undefined,
+  ownerKeySha256: string,
+): AiDesignWorkspaceRuntimeV1 | null {
+  if (!row || row.owner_key_sha256 !== ownerKeySha256) return null;
+  let state: AiDesignWorkspaceRuntimeV1;
+  try { state = JSON.parse(row.state_json) as AiDesignWorkspaceRuntimeV1; }
+  catch { throw new Error('AI_DESIGN_WORKSPACE_INTEGRITY_FAILED'); }
+  const stateSha256 = assertRuntimeSize(state);
+  if (stateSha256 !== row.state_sha256 || state.projectId !== row.project_id
+    || state.session.sessionId !== row.session_id
+    || state.runtimeRevision !== Number(row.runtime_revision)) {
+    throw new Error('AI_DESIGN_WORKSPACE_INTEGRITY_FAILED');
+  }
+  return clone(state);
+}
+
 async function postgresDb(): Promise<DbAdapter> {
   const db = getDbAdapter();
   await assertAiDesignPostgresAuthority(db);
@@ -172,6 +189,26 @@ export async function loadServerAiDesignWorkspaceRuntime(ownerKey: string, proje
   if (!evidenceHashMatches(stored.state, stored.stateSha256)) throw new Error('AI_DESIGN_WORKSPACE_INTEGRITY_FAILED');
   assertRuntimeSize(stored.state);
   return clone(stored.state);
+}
+
+/** Commercial worker read path that keeps the raw tenant owner key out of durable jobs. */
+export async function loadServerAiDesignWorkspaceRuntimeByOwnerHash(
+  db: DbAdapter,
+  ownerKeySha256: string,
+  projectId: string,
+  sessionId: string,
+): Promise<AiDesignWorkspaceRuntimeV1> {
+  if (!/^[a-f0-9]{64}$/.test(ownerKeySha256)) throw new Error('AI_DESIGN_OWNER_HASH_INVALID');
+  await assertAiDesignPostgresAuthority(db);
+  const row = await db.queryOne<RuntimeRow>(
+    `SELECT owner_key_sha256, project_id, session_id, runtime_revision, state_sha256, state_json, created_at, updated_at
+     FROM nf_ai_design_workspace_runtimes
+     WHERE owner_key_sha256 = ? AND project_id = ? AND session_id = ?`,
+    ownerKeySha256, projectId, sessionId,
+  );
+  const state = parsePostgresRuntimeByOwnerHash(row, ownerKeySha256);
+  if (!state) throw new Error('AI_DESIGN_WORKSPACE_NOT_FOUND');
+  return state;
 }
 
 export async function saveServerAiDesignWorkspaceRuntime(

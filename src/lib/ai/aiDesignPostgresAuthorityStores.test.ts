@@ -11,12 +11,14 @@ vi.mock('@/lib/db-adapter', async importOriginal => {
 
 import { advanceAiDesignComplexWorkspaceAggregate } from './aiDesignComplexWorkspaceAggregate';
 import { PostgresAiDesignComplexWorkspaceStore } from './aiDesignComplexWorkspaceStore';
+import { aiDesignOwnerKeySha256 } from './aiDesignPostgresAuthority';
 import { issueAiDesignServerEvidenceReceipt } from './aiDesignServerEvidenceReceipt';
 import { PostgresAiDesignServerRuntimeArtifacts } from './aiDesignServerRuntimeArtifacts';
 import { createAiDesignWorkspaceRuntime, dispatchAiDesignWorkspaceAction } from './aiDesignWorkspaceRuntime';
 import {
   createServerAiDesignWorkspaceRuntime,
   loadServerAiDesignWorkspaceRuntime,
+  loadServerAiDesignWorkspaceRuntimeByOwnerHash,
   saveServerAiDesignWorkspaceRuntime,
 } from './aiDesignWorkspaceRuntimeStore';
 import { serverEvidenceSha256 } from './serverEvidence';
@@ -123,6 +125,9 @@ describe('AI Design PostgreSQL authority stores', () => {
     if (!transitioned.ok) throw new Error(transitioned.error);
     await saveServerAiDesignWorkspaceRuntime('owner-1', transitioned.state, 0);
     expect((await loadServerAiDesignWorkspaceRuntime('owner-1', 'project-1', 'session-1')).runtimeRevision).toBe(1);
+    expect((await loadServerAiDesignWorkspaceRuntimeByOwnerHash(
+      db, aiDesignOwnerKeySha256('owner-1'), 'project-1', 'session-1',
+    )).runtimeRevision).toBe(1);
     await expect(saveServerAiDesignWorkspaceRuntime('owner-1', { ...transitioned.state, runtimeRevision: 2 }, 0)).rejects.toThrow('AI_DESIGN_WORKSPACE_REVISION_CONFLICT');
     rows.runtimes.values().next().value!.state_sha256 = hash('f');
     await expect(loadServerAiDesignWorkspaceRuntime('owner-1', 'project-1', 'session-1')).rejects.toThrow('AI_DESIGN_WORKSPACE_INTEGRITY_FAILED');
@@ -136,6 +141,9 @@ describe('AI Design PostgreSQL authority stores', () => {
       runtimeRevision: 0, now: '2026-08-24T00:01:00.000Z', patch: {},
     });
     await expect(store.save('owner-1', next, 0)).resolves.toEqual(next);
+    await expect(store.loadByOwnerHash({
+      ownerKeySha256: aiDesignOwnerKeySha256('owner-1'), projectId: 'project-1', sessionId: 'session-1',
+    })).resolves.toEqual(next);
     await expect(store.save('owner-1', { ...next, complexRevision: 2, aggregateDigest: serverEvidenceSha256({ bad: true }) }, 1)).rejects.toThrow('AI_DESIGN_COMPLEX_AGGREGATE_INVALID');
     const concurrent = advanceAiDesignComplexWorkspaceAggregate(initial, {
       commandId: 'command-2', commandDigest: hash('b'), expectedComplexRevision: 0,

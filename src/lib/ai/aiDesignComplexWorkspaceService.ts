@@ -8,8 +8,10 @@ import {
 } from './aiDesignComplexWorkspaceAggregate';
 import {
   aiDesignComplexWorkspaceStore,
+  PostgresAiDesignComplexWorkspaceStore,
   type AiDesignComplexWorkspaceStore,
 } from './aiDesignComplexWorkspaceStore';
+import type { DbAdapter } from '@/lib/db-adapter';
 import {
   aiDesignWorkspaceCommandV3Digest,
   isAiDesignWorkspaceServerCommandV3,
@@ -26,7 +28,10 @@ import {
   aiDesignServerRuntimeArtifacts,
   type AiDesignComplexArtifactRepository,
 } from './aiDesignServerRuntimeArtifacts';
-import { loadServerAiDesignWorkspaceRuntime } from './aiDesignWorkspaceRuntimeStore';
+import {
+  loadServerAiDesignWorkspaceRuntime,
+  loadServerAiDesignWorkspaceRuntimeByOwnerHash,
+} from './aiDesignWorkspaceRuntimeStore';
 import { createAiDesignIntentResolutionArtifact } from './aiDesignIntentResolution';
 import { evaluateAiDesignComplexCandidateSet } from './aiDesignComplexEvaluationService';
 import {
@@ -51,6 +56,14 @@ const MAX_FUTURE_SKEW_MS = 30_000;
 export interface AiDesignComplexWorkspaceServiceDependencies {
   loadRuntime?: typeof loadServerAiDesignWorkspaceRuntime;
   store?: AiDesignComplexWorkspaceStore;
+  artifacts?: AiDesignComplexArtifactRepository;
+  signingSecret: string;
+  now?: () => Date;
+}
+
+export interface AiDesignPrecisionReceiptByOwnerHashDependencies {
+  db: DbAdapter;
+  store?: PostgresAiDesignComplexWorkspaceStore;
   artifacts?: AiDesignComplexArtifactRepository;
   signingSecret: string;
   now?: () => Date;
@@ -298,21 +311,19 @@ export async function executeAiDesignComplexWorkspaceCommand(
   }
 }
 
-/** Records only a server-supplied, cryptographically verified Precision receipt. */
-export async function recordAiDesignPrecisionReceipt(
-  ownerKey: string,
+async function recordAiDesignPrecisionReceiptOnResolvedAuthority(
   command: AiDesignWorkspaceServerCommandV3,
   receipt: AiDesignPrecisionVerificationReceiptV1,
-  dependencies: AiDesignComplexWorkspaceServiceDependencies,
+  input: {
+    runtime: AiDesignWorkspaceRuntimeV1;
+    aggregate: AiDesignComplexWorkspaceAggregateV1;
+    artifacts: AiDesignComplexArtifactRepository;
+    signingSecret: string;
+    now: Date;
+    save: (next: AiDesignComplexWorkspaceAggregateV1, expectedComplexRevision: number) => Promise<AiDesignComplexWorkspaceAggregateV1>;
+  },
 ): Promise<AiDesignComplexWorkspaceServiceResult> {
-  if (!isAiDesignWorkspaceServerCommandV3(command)) return reject('AI_DESIGN_PRECISION_SERVER_COMMAND_INVALID');
-  const now = dependencies.now?.() ?? new Date();
-  if (!fresh(command.issuedAt, now)) return reject('AI_DESIGN_COMPLEX_COMMAND_EXPIRED');
-  const loadRuntime = dependencies.loadRuntime ?? loadServerAiDesignWorkspaceRuntime;
-  const store = dependencies.store ?? aiDesignComplexWorkspaceStore;
-  const artifacts = dependencies.artifacts ?? aiDesignServerRuntimeArtifacts;
-  const runtime = await loadRuntime(ownerKey, command.projectId, command.sessionId);
-  const aggregate = await store.loadOrCreate({ ownerKey, projectId: command.projectId, sessionId: command.sessionId, runtimeRevision: runtime.runtimeRevision, now: now.toISOString() });
+  const { runtime, aggregate, artifacts, now } = input;
   const commandDigest = serverEvidenceSha256(command);
   const applied = findAppliedAiDesignComplexCommand(aggregate, command.commandId);
   if (applied) return applied.commandDigest === commandDigest ? { ok: true, aggregate, replayed: true, createdArtifactIds: [] } : reject('AI_DESIGN_COMPLEX_COMMAND_REPLAY_CONFLICT', aggregate);
@@ -322,7 +333,7 @@ export async function recordAiDesignPrecisionReceipt(
   const request = await artifacts.getPrecisionRequest(receipt.requestId);
   if (!request) return reject('AI_DESIGN_PRECISION_REQUEST_NOT_FOUND', aggregate);
   const verification = verifyAiDesignPrecisionVerificationReceipt(receipt, request, {
-    signingSecret: dependencies.signingSecret,
+    signingSecret: input.signingSecret,
     now,
     expectedRuntimeRevision: runtime.runtimeRevision,
     expectedComplexRevision: aggregate.complexRevision,
@@ -341,10 +352,55 @@ export async function recordAiDesignPrecisionReceipt(
     },
   });
   try {
-    return { ok: true, aggregate: await store.save(ownerKey, next, aggregate.complexRevision), replayed: false, createdArtifactIds: [receipt.receiptId] };
+    return { ok: true, aggregate: await input.save(next, aggregate.complexRevision), replayed: false, createdArtifactIds: [receipt.receiptId] };
   } catch (error) {
     return reject(error instanceof Error ? error.message : 'AI_DESIGN_COMPLEX_SAVE_FAILED', aggregate);
   }
+}
+
+/** Records only a server-supplied, cryptographically verified Precision receipt. */
+export async function recordAiDesignPrecisionReceipt(
+  ownerKey: string,
+  command: AiDesignWorkspaceServerCommandV3,
+  receipt: AiDesignPrecisionVerificationReceiptV1,
+  dependencies: AiDesignComplexWorkspaceServiceDependencies,
+): Promise<AiDesignComplexWorkspaceServiceResult> {
+  if (!isAiDesignWorkspaceServerCommandV3(command)) return reject('AI_DESIGN_PRECISION_SERVER_COMMAND_INVALID');
+  const now = dependencies.now?.() ?? new Date();
+  if (!fresh(command.issuedAt, now)) return reject('AI_DESIGN_COMPLEX_COMMAND_EXPIRED');
+  const loadRuntime = dependencies.loadRuntime ?? loadServerAiDesignWorkspaceRuntime;
+  const store = dependencies.store ?? aiDesignComplexWorkspaceStore;
+  const artifacts = dependencies.artifacts ?? aiDesignServerRuntimeArtifacts;
+  const runtime = await loadRuntime(ownerKey, command.projectId, command.sessionId);
+  const aggregate = await store.loadOrCreate({ ownerKey, projectId: command.projectId, sessionId: command.sessionId, runtimeRevision: runtime.runtimeRevision, now: now.toISOString() });
+  return recordAiDesignPrecisionReceiptOnResolvedAuthority(command, receipt, {
+    runtime, aggregate, artifacts, signingSecret: dependencies.signingSecret, now,
+    save: (next, expected) => store.save(ownerKey, next, expected),
+  });
+}
+
+/** Postgres worker path that records the receipt without persisting a raw tenant owner key in the outbox. */
+export async function recordAiDesignPrecisionReceiptByOwnerHash(
+  ownerKeySha256: string,
+  command: AiDesignWorkspaceServerCommandV3,
+  receipt: AiDesignPrecisionVerificationReceiptV1,
+  dependencies: AiDesignPrecisionReceiptByOwnerHashDependencies,
+): Promise<AiDesignComplexWorkspaceServiceResult> {
+  if (!isAiDesignWorkspaceServerCommandV3(command)) return reject('AI_DESIGN_PRECISION_SERVER_COMMAND_INVALID');
+  const now = dependencies.now?.() ?? new Date();
+  if (!fresh(command.issuedAt, now)) return reject('AI_DESIGN_COMPLEX_COMMAND_EXPIRED');
+  const store = dependencies.store ?? new PostgresAiDesignComplexWorkspaceStore(dependencies.db);
+  const artifacts = dependencies.artifacts ?? aiDesignServerRuntimeArtifacts;
+  const runtime = await loadServerAiDesignWorkspaceRuntimeByOwnerHash(
+    dependencies.db, ownerKeySha256, command.projectId, command.sessionId,
+  );
+  const aggregate = await store.loadByOwnerHash({
+    ownerKeySha256, projectId: command.projectId, sessionId: command.sessionId,
+  });
+  return recordAiDesignPrecisionReceiptOnResolvedAuthority(command, receipt, {
+    runtime, aggregate, artifacts, signingSecret: dependencies.signingSecret, now,
+    save: (next, expected) => store.saveByOwnerHash(ownerKeySha256, next, expected),
+  });
 }
 
 export async function loadAiDesignComplexWorkspaceReadModel(

@@ -63,7 +63,11 @@ type ComplexRow = {
 };
 
 function parseRow(row: ComplexRow | undefined, ownerKey: string): AiDesignComplexWorkspaceAggregateV1 | null {
-  if (!row || row.owner_key_sha256 !== aiDesignOwnerKeySha256(ownerKey)) return null;
+  return parseRowByOwnerHash(row, aiDesignOwnerKeySha256(ownerKey));
+}
+
+function parseRowByOwnerHash(row: ComplexRow | undefined, ownerKeySha256: string): AiDesignComplexWorkspaceAggregateV1 | null {
+  if (!row || row.owner_key_sha256 !== ownerKeySha256) return null;
   let aggregate: AiDesignComplexWorkspaceAggregateV1;
   try { aggregate = JSON.parse(row.aggregate_json) as AiDesignComplexWorkspaceAggregateV1; }
   catch { throw new Error('AI_DESIGN_COMPLEX_AGGREGATE_INTEGRITY_FAILED'); }
@@ -112,6 +116,31 @@ export class PostgresAiDesignComplexWorkspaceStore implements AiDesignComplexWor
   }
 
   async save(ownerKey: string, aggregate: AiDesignComplexWorkspaceAggregateV1, expectedComplexRevision: number): Promise<AiDesignComplexWorkspaceAggregateV1> {
+    return this.saveByOwnerHash(aiDesignOwnerKeySha256(ownerKey), aggregate, expectedComplexRevision);
+  }
+
+  /** Commercial worker path: the outbox retains only the tenant owner hash. */
+  async loadByOwnerHash(input: {
+    ownerKeySha256: string; projectId: string; sessionId: string;
+  }): Promise<AiDesignComplexWorkspaceAggregateV1> {
+    if (!/^[a-f0-9]{64}$/.test(input.ownerKeySha256)) throw new Error('AI_DESIGN_OWNER_HASH_INVALID');
+    await this.ready();
+    const aggregate = parseRowByOwnerHash(await this.db.queryOne<ComplexRow>(
+      `SELECT owner_key_sha256, project_id, session_id, complex_revision, aggregate_digest, aggregate_json, created_at, updated_at
+       FROM nf_ai_design_complex_workspaces
+       WHERE owner_key_sha256 = ? AND project_id = ? AND session_id = ?`,
+      input.ownerKeySha256, input.projectId, input.sessionId,
+    ), input.ownerKeySha256);
+    if (!aggregate) throw new Error('AI_DESIGN_COMPLEX_WORKSPACE_NOT_FOUND');
+    return aggregate;
+  }
+
+  async saveByOwnerHash(
+    ownerKeySha256: string,
+    aggregate: AiDesignComplexWorkspaceAggregateV1,
+    expectedComplexRevision: number,
+  ): Promise<AiDesignComplexWorkspaceAggregateV1> {
+    if (!/^[a-f0-9]{64}$/.test(ownerKeySha256)) throw new Error('AI_DESIGN_OWNER_HASH_INVALID');
     await this.ready();
     const issues = validateAiDesignComplexWorkspaceAggregate(aggregate);
     if (issues.length) throw new Error(`AI_DESIGN_COMPLEX_AGGREGATE_INVALID:${issues.join(',')}`);
@@ -119,15 +148,15 @@ export class PostgresAiDesignComplexWorkspaceStore implements AiDesignComplexWor
     const changed = await this.db.execute(
       `UPDATE nf_ai_design_complex_workspaces
        SET complex_revision = ?, aggregate_digest = ?, aggregate_json = ?, updated_at = ?
-       WHERE owner_key_sha256 = ? AND project_id = ? AND session_id = ? AND complex_revision = ?`,
+      WHERE owner_key_sha256 = ? AND project_id = ? AND session_id = ? AND complex_revision = ?`,
       aggregate.complexRevision, aggregate.aggregateDigest, JSON.stringify(aggregate), Date.now(),
-      aiDesignOwnerKeySha256(ownerKey), aggregate.projectId, aggregate.sessionId, expectedComplexRevision,
+      ownerKeySha256, aggregate.projectId, aggregate.sessionId, expectedComplexRevision,
     );
     if (changed.changes !== 1) {
       const existing = await this.db.queryOne<{ complex_revision: number }>(
         `SELECT complex_revision FROM nf_ai_design_complex_workspaces
          WHERE owner_key_sha256 = ? AND project_id = ? AND session_id = ?`,
-        aiDesignOwnerKeySha256(ownerKey), aggregate.projectId, aggregate.sessionId,
+        ownerKeySha256, aggregate.projectId, aggregate.sessionId,
       );
       throw new Error(existing ? 'AI_DESIGN_COMPLEX_REVISION_CONFLICT' : 'AI_DESIGN_COMPLEX_WORKSPACE_NOT_FOUND');
     }
