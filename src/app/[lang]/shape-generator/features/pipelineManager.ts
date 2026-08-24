@@ -16,7 +16,7 @@ import {
   getGeoId,
   type PipelineCacheKernel,
 } from './pipelineCache';
-import { resetShapeRegistry, ensureOcctReady, isOcctReady, isOcctGlobalMode, setOcctGlobalMode, occtExtrudeProfile, occtExtrudeProfileOnFrame, occtExtrudeCircleOnFrame, occtRevolveProfileOnFrame, occtExtrudeCircle, occtRevolveProfile, occtBaseSolid, occtEdgeSignatures, getShape, registerShape, composeTopoNamesAfterBoolean, occtRegisteredShapeEvidence } from './occtEngine';
+import { resetShapeRegistry, ensureOcctReady, isOcctReady, isOcctGlobalMode, setOcctGlobalMode, occtExtrudeProfile, occtExtrudeProfileOnFrame, occtExtrudeCircleOnFrame, occtRevolveProfileOnFrame, occtExtrudeCircle, occtRevolveProfile, occtBaseSolid, occtEdgeSignatures, getShape, registerShape, composeTopoNamesAfterBoolean, occtRegisteredShapeEvidence, type OcctRegisteredShapeEvidence } from './occtEngine';
 import { TopologyNamer } from './topologyRegistry';
 
 // Persistent across rebuilds within this module's lifetime (the worker reuses
@@ -54,6 +54,45 @@ import { TopologyRegistry } from './topologyTracker';
 export interface PipelineResult {
   geometry: THREE.BufferGeometry;
   errors: Record<string, string>;
+  /** Native-chain presence only. This is not a STEP, revision, or release PASS. */
+  status?: 'NATIVE_BREP_PASS' | 'HOLD';
+}
+
+export type PipelineExecutionMode = 'interactive-preview' | 'authoritative-exact';
+export const EXACT_OCCT_REQUIRED_ERROR = 'EXACT_OCCT_REQUIRED';
+
+export function exactRegisteredShapeEvidenceHold(
+  evidence: OcctRegisteredShapeEvidence | null,
+): string | null {
+  return evidence?.singleSolid === true
+    && evidence.nativeShapeType === 2
+    && evidence.solidCount === 1
+    && typeof evidence.volumeMm3 === 'number'
+    && Number.isFinite(evidence.volumeMm3)
+    && evidence.volumeMm3 > 0
+    ? null
+    : EXACT_OCCT_REQUIRED_ERROR;
+}
+
+export function exactExecutionHold(
+  geometry: THREE.BufferGeometry,
+  previousHandle?: unknown,
+): string | null {
+  const handle = geometry.userData?.occtHandle;
+  if (typeof handle !== 'string' || !handle) return EXACT_OCCT_REQUIRED_ERROR;
+  if (typeof previousHandle === 'string' && handle === previousHandle) return EXACT_OCCT_REQUIRED_ERROR;
+  try {
+    if (!getShape(handle)) return EXACT_OCCT_REQUIRED_ERROR;
+    return exactRegisteredShapeEvidenceHold(occtRegisteredShapeEvidence(handle));
+  } catch {
+    return EXACT_OCCT_REQUIRED_ERROR;
+  }
+}
+
+export function exactFeatureDefinitionHold(definition: FeatureDefinition | undefined): string | null {
+  return definition && typeof definition.applyAsync === 'function'
+    ? null
+    : EXACT_OCCT_REQUIRED_ERROR;
 }
 
 export interface PipelineOptions {
@@ -69,6 +108,8 @@ export interface PipelineOptions {
    *  occtHandle can't cross the worker boundary, hence we pass the spec, not a
    *  handle. */
   baseSpec?: { shapeId: string; params: Record<string, number> };
+  /** Exact mode fails closed instead of presenting a mesh downgrade as success. */
+  executionMode?: PipelineExecutionMode;
 }
 
 // The FEATURE_MAP is provided by the caller rather than imported here to keep
@@ -104,17 +145,18 @@ export async function runPipelineAsync(
   featureMap: FeatureMap,
   opts: PipelineOptions = {},
 ): Promise<PipelineResult> {
+  const exact = opts.executionMode === 'authoritative-exact';
+  const previousGlobalMode = isOcctGlobalMode();
+  try {
   if (opts.onProgress) opts.onProgress(0, 'Initializing Engine');
   // The worker owns a separate module graph, so the UI thread's global kernel
   // toggle cannot reach it. Mirror the requested mode in this execution
   // context before feature implementations consult shouldUseOcctEngine().
-  setOcctGlobalMode(Boolean(opts.occtMode));
-  if (opts.occtMode) {
+  setOcctGlobalMode(Boolean(opts.occtMode || exact));
+  if (opts.occtMode || exact) {
     try {
       await ensureOcctReady();
     } catch (err) {
-      // OCCT init failure is non-fatal — the features will silently fall
-      // back to their legacy mesh paths via isOcctReady() checks.
       const msg = err instanceof Error ? err.message : String(err);
       const ft = features.find(f => f.enabled)?.type ?? features[0]?.type ?? 'sketchExtrude';
       reportError('feature_pipeline', err, {
@@ -122,6 +164,7 @@ export async function runPipelineAsync(
         diagnosticCode: classifyFeatureError(ft, msg, { nodeId: features.find(f => f.enabled)?.id }).code,
         featureType: ft,
       });
+      if (exact) return { geometry: baseGeometry.clone(), errors: { _pipeline: EXACT_OCCT_REQUIRED_ERROR }, status: 'HOLD' };
     }
   }
   // OCCT cache entries carry registry-local handles. resetShapeRegistry()
@@ -129,19 +172,22 @@ export async function runPipelineAsync(
   // entry can turn a valid 1-feature run into a silent mesh fallback when the
   // next feature is appended. Clear the worker-local cache before an exact run;
   // the mesh cache remains available for preview-mode rebuilds.
-  if (opts.occtMode) cacheClear();
+  if (opts.occtMode || exact) cacheClear();
   resetShapeRegistry();
   // Seed a real B-rep base handle (this context's registry) so the chain starts
   // from the requested primitive instead of reconstructing it from a mesh.
   // Built AFTER the reset so it survives into the loop; display mesh untouched.
-  if (opts.occtMode && opts.baseSpec && isOcctReady()) {
+  if ((opts.occtMode || exact) && opts.baseSpec && isOcctReady()) {
     try {
       const base = occtBaseSolid(opts.baseSpec.shapeId, opts.baseSpec.params);
       if (base.handle) baseGeometry.userData = { ...baseGeometry.userData, occtHandle: base.handle };
-    } catch { /* mesh fallback — no handle */ }
+    } catch {
+      if (exact) return { geometry: baseGeometry.clone(), errors: { _pipeline: EXACT_OCCT_REQUIRED_ERROR }, status: 'HOLD' };
+    }
   }
-  const cacheKernel: PipelineCacheKernel = opts.occtMode ? 'occt' : 'mesh';
-  const pipelineResult = await runLoopAsync(baseGeometry, features, featureMap, cacheKernel, opts.onProgress);
+  if (exact && !isOcctReady()) return { geometry: baseGeometry.clone(), errors: { _pipeline: EXACT_OCCT_REQUIRED_ERROR }, status: 'HOLD' };
+  const cacheKernel: PipelineCacheKernel = opts.occtMode || exact ? 'occt' : 'mesh';
+  const pipelineResult = await runLoopAsync(baseGeometry, features, featureMap, cacheKernel, opts.onProgress, exact);
   const finalHandle = pipelineResult.geometry.userData?.occtHandle as string | undefined;
   if (finalHandle) {
     pipelineResult.geometry.userData = {
@@ -150,6 +196,9 @@ export async function runPipelineAsync(
     };
   }
   return pipelineResult;
+  } finally {
+    setOcctGlobalMode(previousGlobalMode);
+  }
 }
 
 // ─── Internal loop ──────────────────────────────────────────────────────────
@@ -266,6 +315,7 @@ async function runLoopAsync(
   featureMap: FeatureMap,
   cacheKernel: PipelineCacheKernel,
   onProgress?: (progress: number, label: string) => void,
+  exact = false,
 ): Promise<PipelineResult> {
   let geo = baseGeometry.clone();
   const baseId = getGeoId(baseGeometry) ?? stampGeoId(baseGeometry);
@@ -291,15 +341,28 @@ async function runLoopAsync(
     }
 
     if (f.type === 'sketchExtrude') {
+      const previousHandle = geo.userData?.occtHandle;
       geo = runSketchExtrude(f, geo, key, errors);
+      if (exact && exactExecutionHold(geo, previousHandle)) {
+        errors[f.id] = EXACT_OCCT_REQUIRED_ERROR;
+        return { geometry: geo, errors, status: 'HOLD' };
+      }
       computed++;
       continue;
     }
 
     const def = featureMap[f.type];
     if (!def) {
+      if (exact) {
+        errors[f.id] = EXACT_OCCT_REQUIRED_ERROR;
+        return { geometry: geo, errors, status: 'HOLD' };
+      }
       computed++;
       continue;
+    }
+    if (exact && exactFeatureDefinitionHold(def)) {
+      errors[f.id] = EXACT_OCCT_REQUIRED_ERROR;
+      return { geometry: geo, errors, status: 'HOLD' };
     }
     
     try {
@@ -330,6 +393,11 @@ async function runLoopAsync(
         computed++;
         continue;
       }
+      if (exact && exactExecutionHold(next, geo.userData?.occtHandle)) {
+        cacheDelete(key);
+        errors[f.id] = EXACT_OCCT_REQUIRED_ERROR;
+        return { geometry: prev, errors, status: 'HOLD' };
+      }
       next.computeVertexNormals();
       stampGeoId(next);
       // B1 (face provenance) — see sync loop for rationale.
@@ -356,6 +424,7 @@ async function runLoopAsync(
         error: e,
         forward: false,
       });
+      if (exact) return { geometry: geo, errors: { ...errors, [f.id]: EXACT_OCCT_REQUIRED_ERROR }, status: 'HOLD' };
     }
     computed++;
   }
@@ -376,7 +445,10 @@ async function runLoopAsync(
   } catch { /* topology naming is best-effort */ }
 
   if (onProgress) onProgress(100, 'Finishing Output');
-  return { geometry: geo, errors };
+  if (exact && exactExecutionHold(geo)) {
+    return { geometry: geo, errors: { ...errors, _pipeline: EXACT_OCCT_REQUIRED_ERROR }, status: 'HOLD' };
+  }
+  return { geometry: geo, errors, status: exact ? 'NATIVE_BREP_PASS' : undefined };
 }
 
 function runSketchExtrude(

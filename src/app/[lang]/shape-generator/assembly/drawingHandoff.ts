@@ -1,5 +1,6 @@
 import type { AssemblyState } from '@/lib/assembly/assemblyState';
 import type { FeatureTree } from '@/lib/cad/featureTree';
+import { FEATURE_REGISTRY_HASH } from '@/lib/cad/featureRegistry';
 import type { AssemblyBrowserSolveResult } from './AssemblyBrowserModal';
 
 export const ASSEMBLY_DRAWING_HANDOFF_SCHEMA =
@@ -7,6 +8,25 @@ export const ASSEMBLY_DRAWING_HANDOFF_SCHEMA =
 
 const STORAGE_PREFIX = 'nexyfab:assembly-drawing-handoff:';
 const SHA256 = /^[a-f0-9]{64}$/;
+const SAFE_ID = /^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/;
+const CANONICAL_REVISION_KEYS = ['schema', 'documentId', 'revisionId', 'sequence', 'contentSha256'] as const;
+
+function validCanonicalRevisionBinding(value: unknown): value is CanonicalDrawingRevisionBinding {
+  if (value === null || typeof value !== 'object' || Array.isArray(value)
+    || (Object.getPrototypeOf(value) !== Object.prototype && Object.getPrototypeOf(value) !== null)) return false;
+  const ownKeys = Reflect.ownKeys(value);
+  if (ownKeys.some(key => typeof key !== 'string' || !Object.getOwnPropertyDescriptor(value, key)?.enumerable
+    || !('value' in Object.getOwnPropertyDescriptor(value, key)!))) return false;
+  const keys = (ownKeys as string[]).sort();
+  const wanted = [...CANONICAL_REVISION_KEYS].sort();
+  if (keys.length !== wanted.length || keys.some((key, index) => key !== wanted[index])) return false;
+  const binding = value as Record<string, unknown>;
+  return binding.schema === 'nexyfab.precision-cad.canonical-drawing-revision-binding.v1'
+    && typeof binding.documentId === 'string' && SAFE_ID.test(binding.documentId)
+    && typeof binding.revisionId === 'string' && SAFE_ID.test(binding.revisionId)
+    && Number.isSafeInteger(binding.sequence) && Number(binding.sequence) >= 0
+    && typeof binding.contentSha256 === 'string' && SHA256.test(binding.contentSha256);
+}
 
 export type AssemblyDrawingHandoffStatus = 'PASS' | 'FAIL' | 'BLOCKED' | 'NOT_RUN';
 
@@ -14,6 +34,14 @@ export interface AssemblyDrawingHandoffArtifactState {
   status: AssemblyDrawingHandoffStatus;
   sha256: string | null;
   reason: string;
+}
+
+export interface CanonicalDrawingRevisionBinding {
+  schema: 'nexyfab.precision-cad.canonical-drawing-revision-binding.v1';
+  documentId: string;
+  revisionId: string;
+  sequence: number;
+  contentSha256: string;
 }
 
 export interface ExactSinglePartDrawingHandoffArtifact {
@@ -24,6 +52,7 @@ export interface ExactSinglePartDrawingHandoffArtifact {
     projectId: string;
     workspaceRevision: number;
     workspaceContentSha256: string;
+    canonicalRevision?: CanonicalDrawingRevisionBinding;
     stateSha256: string;
     featureTreesSha256: string;
     partFeatureTreeSha256: string;
@@ -34,6 +63,11 @@ export interface ExactSinglePartDrawingHandoffArtifact {
     kernel: 'OCCT_NODE';
     valid: true;
     solidCount: 1;
+    preflight: 'PRECHECK_PASS';
+    registrySha256: string;
+    runtimeIdentitySha256: string;
+    glueSha256: string;
+    wasmSha256: string;
     faceCount: number;
     edgeCount: number;
     volumeMm3: number;
@@ -91,6 +125,7 @@ export interface AssemblyDrawingHandoff {
     workspaceContentSha256: string | null;
     stateSha256: string;
     featureTreesSha256: string;
+    canonicalRevision?: CanonicalDrawingRevisionBinding;
   };
   assembly: {
     state: AssemblyState;
@@ -125,6 +160,8 @@ export interface BuildAssemblyDrawingHandoffInput {
   upstreamRevisionId?: string;
   workspaceRevision?: number;
   workspaceContentSha256?: string;
+  /** Server-loaded canonical head. When present it replaces legacy derived revision identity. */
+  canonicalRevision?: CanonicalDrawingRevisionBinding;
   now?: Date;
 }
 
@@ -184,6 +221,8 @@ async function validateExactSinglePartArtifact(
     || exact.source.projectId !== handoff.source.projectId
     || exact.source.workspaceRevision !== handoff.source.workspaceRevision
     || exact.source.workspaceContentSha256 !== handoff.source.workspaceContentSha256
+    || serializeAssemblyDrawingHandoff(exact.source.canonicalRevision ?? null)
+      !== serializeAssemblyDrawingHandoff(handoff.source.canonicalRevision ?? null)
     || exact.source.stateSha256 !== handoff.source.stateSha256
     || exact.source.featureTreesSha256 !== handoff.source.featureTreesSha256
     || exact.part.id !== part.id || exact.part.name !== part.name || exact.part.quantity !== 1
@@ -192,6 +231,11 @@ async function validateExactSinglePartArtifact(
     || exact.step.bytes !== utf8Bytes(exact.step.text)
     || exact.verification.kernel !== 'OCCT_NODE' || exact.verification.valid !== true
     || exact.verification.solidCount !== 1
+    || exact.verification.preflight !== 'PRECHECK_PASS'
+    || exact.verification.registrySha256 !== FEATURE_REGISTRY_HASH
+    || !SHA256.test(exact.verification.runtimeIdentitySha256)
+    || !SHA256.test(exact.verification.glueSha256)
+    || !SHA256.test(exact.verification.wasmSha256)
     || !Number.isSafeInteger(exact.verification.faceCount) || exact.verification.faceCount <= 0
     || !Number.isSafeInteger(exact.verification.edgeCount) || exact.verification.edgeCount <= 0
     || !finitePositive(exact.verification.volumeMm3)
@@ -240,6 +284,8 @@ async function validateExactSinglePartArtifact(
   const bomItem = Array.isArray(bomItems) ? bomItems[0] as Record<string, unknown> | undefined : undefined;
   if (dimensionReceipt.schema !== 'nexyfab.overall-dimension-receipt.v1'
     || dimensionReceipt.partRevisionId !== handoff.source.revisionId
+    || serializeAssemblyDrawingHandoff(dimensionReceipt.canonicalRevision ?? null)
+      !== serializeAssemblyDrawingHandoff(handoff.source.canonicalRevision ?? null)
     || dimensionReceipt.partId !== part.id
     || dimensionReceipt.sourceStepSha256 !== exact.step.sha256
     || dimensionReceipt.units !== 'mm'
@@ -248,6 +294,8 @@ async function validateExactSinglePartArtifact(
     || serializeAssemblyDrawingHandoff(dimensionReceipt.overall) !== serializeAssemblyDrawingHandoff(dimensions)
     || bomReceipt.schema !== 'nexyfab.single-part-bom-receipt.v1'
     || bomReceipt.partRevisionId !== handoff.source.revisionId
+    || serializeAssemblyDrawingHandoff(bomReceipt.canonicalRevision ?? null)
+      !== serializeAssemblyDrawingHandoff(handoff.source.canonicalRevision ?? null)
     || bomReceipt.sourceStepSha256 !== exact.step.sha256
     || bomReceipt.units !== 'mm'
     || !Array.isArray(bomItems) || bomItems.length !== 1
@@ -307,6 +355,14 @@ export async function buildAssemblyDrawingHandoff(
   input: BuildAssemblyDrawingHandoffInput,
 ): Promise<AssemblyDrawingHandoff> {
   validateAssemblyShape(input.state);
+  const canonical = input.canonicalRevision;
+  if (canonical && (!validCanonicalRevisionBinding(canonical)
+    || !input.projectId
+    || (input.upstreamRevisionId !== undefined && input.upstreamRevisionId !== canonical.revisionId)
+    || (input.workspaceRevision !== undefined && input.workspaceRevision !== canonical.sequence)
+    || (input.workspaceContentSha256 !== undefined && input.workspaceContentSha256 !== canonical.contentSha256))) {
+    throw new Error('CANONICAL_DRAWING_REVISION_BINDING_INVALID');
+  }
   const stateSha256 = await sha256(input.state);
   const featureTreesSha256 = await sha256(input.featureTrees);
   const missingFeatureTreePartIds = input.state.parts
@@ -335,7 +391,7 @@ export async function buildAssemblyDrawingHandoff(
   const sourcePrefix = input.upstreamRevisionId
     ?? input.projectId
     ?? 'assembly';
-  const revisionId = `${sourcePrefix}:${stateSha256.slice(0, 20)}`;
+  const revisionId = canonical?.revisionId ?? `${sourcePrefix}:${stateSha256.slice(0, 20)}`;
   const handoffId = `${stateSha256.slice(0, 20)}-${featureTreesSha256.slice(0, 12)}`;
   const treeStatus = missingFeatureTreePartIds.length === 0 ? 'PASS' : 'BLOCKED';
 
@@ -346,14 +402,16 @@ export async function buildAssemblyDrawingHandoff(
     source: {
       projectId: input.projectId ?? null,
       revisionId,
-      workspaceRevision: Number.isSafeInteger(input.workspaceRevision)
-        ? input.workspaceRevision ?? null
-        : null,
-      workspaceContentSha256: SHA256.test(input.workspaceContentSha256 ?? '')
-        ? input.workspaceContentSha256!
-        : null,
+      workspaceRevision: canonical
+        ? canonical.sequence
+        : Number.isSafeInteger(input.workspaceRevision)
+          ? input.workspaceRevision ?? null
+          : null,
+      workspaceContentSha256: canonical?.contentSha256
+        ?? (SHA256.test(input.workspaceContentSha256 ?? '') ? input.workspaceContentSha256! : null),
       stateSha256,
       featureTreesSha256,
+      ...(canonical ? { canonicalRevision: structuredClone(canonical) } : {}),
     },
     assembly: {
       state: input.state,
@@ -439,6 +497,13 @@ export async function validateAssemblyDrawingHandoff(
       || (parsed.source.workspaceContentSha256 !== null
         && !SHA256.test(parsed.source.workspaceContentSha256 ?? ''))
       || (parsed.source.workspaceRevision === null) !== (parsed.source.workspaceContentSha256 === null)
+      || (parsed.source.canonicalRevision !== undefined && (
+        !validCanonicalRevisionBinding(parsed.source.canonicalRevision)
+        || !parsed.source.projectId
+        || parsed.source.revisionId !== parsed.source.canonicalRevision.revisionId
+        || parsed.source.workspaceRevision !== parsed.source.canonicalRevision.sequence
+        || parsed.source.workspaceContentSha256 !== parsed.source.canonicalRevision.contentSha256
+      ))
     ) {
       return { ok: false, reason: 'ASSEMBLY_DRAWING_HANDOFF_SCHEMA_INVALID' };
     }

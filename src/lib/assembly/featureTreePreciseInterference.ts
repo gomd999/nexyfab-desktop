@@ -9,10 +9,11 @@ import type { MeshableFeature } from '@/lib/cad/featureMesh';
 import { buildPartGeometry, type PartGeometry } from '@/lib/ai/design-driver/geometryGate';
 import { preciseInterference, preciseSeparation } from '@/lib/ai/design-driver/interferencePrecise';
 import type { PlanPart } from '@/lib/ai/design-driver/types';
+import { FEATURE_REGISTRY_HASH } from '@/lib/cad/featureRegistry';
 import { featureTreeToOcctPlan } from '@/lib/occt/featurePlan';
 import { executeOcctPlan } from '@/lib/occt/planExecutor';
-import { loadOcctNode } from '@/lib/occt/nodeOcctLoader';
-import { createNodeOcctBridge } from '@/lib/occt/nodeOcctBridge';
+import { preflightCommercialFeatureTree } from '@/lib/occt/commercialFeaturePreflight';
+import { loadNodeOcctCommercialRuntime } from '@/lib/occt/nodeOcctCommercialRuntime';
 import { VertexWeld, triangleNormal } from '@/lib/occt/occtTessellate';
 import type { OcctDetailedShapeInspection } from '@/lib/occt/bridge';
 import type { OcctShape } from '@/lib/occt/types';
@@ -34,6 +35,11 @@ export interface FeatureTreeCollisionGeometry {
 export interface FeatureTreeExactCadEvidence {
   schema: 'nexyfab.feature-tree-exact-cad.v1';
   kernel: 'OCCT';
+  preflight: 'PRECHECK_PASS';
+  registrySha256: string;
+  runtimeIdentitySha256: string;
+  glueSha256: string;
+  wasmSha256: string;
   valid: true;
   solidCount: 1;
   faceCount: number;
@@ -159,8 +165,9 @@ async function collisionGeometryFromOcct(
   requireExact = false,
   terminalIds: readonly string[] = [],
 ): Promise<FeatureTreeCollisionGeometry> {
+  const activeTree: FeatureTree = { nodes: tree.nodes.filter(node => node.suppressed !== true) };
   let plan;
-  try { plan = featureTreeToOcctPlan(tree); }
+  try { plan = featureTreeToOcctPlan(activeTree); }
   catch (error) {
     return { part: fallbackPart, geometry: fallbackGeometry, source: 'occt-exact', available: false, reason: `${partId}: OCCT plan failed: ${error instanceof Error ? error.message : String(error)}` };
   }
@@ -176,11 +183,24 @@ async function collisionGeometryFromOcct(
       reason: `${partId}: OCCT unsupported feature(s): ${plan.unsupported.map(node => `${node.resultId}:${node.kind}`).join(', ') || 'no final solid'}`,
     };
   }
-  const loaded = await loadOcctNode();
-  if (!loaded.ok || !loaded.oc) {
-    return { part: fallbackPart, geometry: fallbackGeometry, source: 'occt-exact', available: false, reason: `${partId}: OCCT unavailable: ${loaded.reason ?? 'load failed'}` };
+  if (plan.embeddedChildNodes.length > 0) {
+    return {
+      part: fallbackPart, geometry: fallbackGeometry, source: 'occt-exact', available: false,
+      reason: `${partId}: embedded child snapshots are forbidden: ${plan.embeddedChildNodes.join(',')}`,
+    };
   }
-  const bridge = createNodeOcctBridge(loaded.oc);
+  const runtime = await loadNodeOcctCommercialRuntime();
+  if (!runtime.ok) {
+    return { part: fallbackPart, geometry: fallbackGeometry, source: 'occt-exact', available: false, reason: `${partId}: ${runtime.reason}` };
+  }
+  const preflight = preflightCommercialFeatureTree(tree, runtime.capabilities);
+  if (preflight.status !== 'PRECHECK_PASS') {
+    return {
+      part: fallbackPart, geometry: fallbackGeometry, source: 'occt-exact', available: false,
+      reason: `${partId}: commercial preflight HOLD: ${preflight.issues.map(item => `${item.code}:${item.nodeId ?? 'tree'}`).join(',')}`,
+    };
+  }
+  const bridge = runtime.bridge;
   const executed = await executeOcctPlan(plan, bridge);
   if (!executed.ok || !executed.finalShape) {
     return { part: fallbackPart, geometry: fallbackGeometry, source: 'occt-exact', available: false, reason: `${partId}: OCCT execution failed: ${executed.error ?? 'no final shape'}` };
@@ -238,6 +258,11 @@ async function collisionGeometryFromOcct(
     const exactCad: FeatureTreeExactCadEvidence = {
       schema: 'nexyfab.feature-tree-exact-cad.v1',
       kernel: 'OCCT',
+      preflight: 'PRECHECK_PASS',
+      registrySha256: FEATURE_REGISTRY_HASH,
+      runtimeIdentitySha256: runtime.identity.runtimeIdentitySha256,
+      glueSha256: runtime.identity.glueSha256,
+      wasmSha256: runtime.identity.wasmSha256,
       valid: true,
       solidCount: 1,
       faceCount: detail.faceCount,

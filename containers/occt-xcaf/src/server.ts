@@ -1,9 +1,16 @@
 import { createServer, type IncomingMessage, type ServerResponse } from 'node:http';
+import { timingSafeEqual } from 'node:crypto';
 import { createXcafWorker, XcafWorkerError } from './workerClient';
 
 const port = Number(process.env.PORT ?? 8080);
 const nativeFile = process.env.OCCT_XCAF_NATIVE_BIN ?? '/opt/occt-xcaf/bin/occt-xcaf-inspect';
 const maxBytes = Number(process.env.OCCT_XCAF_MAX_INPUT_BYTES ?? 64 * 1024 * 1024);
+const configuredServiceToken = process.env.OCCT_XCAF_SERVICE_TOKEN;
+const validServiceToken = (value: string | undefined): value is string =>
+  typeof value === 'string' && value.length >= 32 && value.length <= 512 && !/[\r\n]/.test(value);
+if (process.env.NODE_ENV === 'production' && !validServiceToken(configuredServiceToken)) {
+  throw new Error('OCCT_XCAF_SERVICE_TOKEN_REQUIRED');
+}
 const worker = createXcafWorker({
   nativeCommand: { file: nativeFile },
   inputRoot: process.env.OCCT_XCAF_INPUT_ROOT,
@@ -32,12 +39,30 @@ async function body(request: IncomingMessage, maximum: number): Promise<Record<s
   return parsed as Record<string, unknown>;
 }
 
-export function createXcafRequestHandler(activeWorker = worker, requestMaximum = maxBytes) {
+function authorized(request: IncomingMessage, token: string | undefined): boolean {
+  if (!token) return true;
+  const supplied = request.headers.authorization;
+  if (typeof supplied !== 'string' || !supplied.startsWith('Bearer ')) return false;
+  const actual = Buffer.from(supplied.slice('Bearer '.length), 'utf8');
+  const expected = Buffer.from(token, 'utf8');
+  return actual.length === expected.length && timingSafeEqual(actual, expected);
+}
+
+export function createXcafRequestHandler(
+  activeWorker = worker,
+  requestMaximum = maxBytes,
+  serviceToken = configuredServiceToken,
+) {
+  if (serviceToken !== undefined && !validServiceToken(serviceToken)) throw new Error('serviceToken_invalid');
   return async (request: IncomingMessage, response: ServerResponse): Promise<void> => {
     try {
       const requestUrl = new URL(request.url ?? '/', 'http://localhost');
       if (request.method === 'GET' && requestUrl.pathname === '/health/live') {
         json(response, 200, { ok: true, service: 'occt-xcaf', schema: 'nexyfab.occt-xcaf.health.v1' });
+        return;
+      }
+      if (!authorized(request, serviceToken)) {
+        json(response, 401, { ok: false, code: 'UNAUTHORIZED' });
         return;
       }
       if (request.method === 'GET' && requestUrl.pathname === '/capabilities') {

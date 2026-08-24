@@ -42,6 +42,7 @@ import { ArchitectureInteriorAiDesignPanel } from './ArchitectureInteriorAiDesig
 import { ArchitectureInteriorPrecisionWorkflowPanel } from './ArchitectureInteriorPrecisionWorkflowPanel';
 import { ArchitectureInteriorInspector } from './ArchitectureInteriorInspector';
 import { ArchitectureInteriorLiveInspector } from './ArchitectureInteriorLiveInspector';
+import { DomainProductQualificationPanel } from './DomainProductQualificationPanel';
 import type { ArchitectureInteriorSelection, ArchitectureInteriorSelectionSource, ResolvedArchitectureInteriorSelection } from '@/lib/ai/architectureInteriorSelection';
 
 const InteriorPlanEditor = dynamic(() => import('../../../nexyfab/design/InteriorPlanEditor'), { ssr: false });
@@ -710,6 +711,12 @@ export function SpatialCadWorkspace({ domain, lang, experience, onAiDesign, arch
   };
   return <div data-testid="spatial-workspace-shell" onDragOver={onDragOver} onDrop={onDrop} style={{ position: 'relative', width: '100%', height: '100%', minHeight: 0 }}>
     {workspace}
+    <aside
+      data-testid="spatial-product-qualification-layer"
+      style={{ position: 'absolute', insetBlockStart: 12, insetInlineEnd: 12, zIndex: 28, width: 'min(320px, calc(100% - 24px))', maxHeight: 'calc(100% - 96px)', overflow: 'auto', background: 'var(--nx-panel)', borderRadius: 8, boxShadow: '0 10px 28px rgba(0,0,0,.2)' }}
+    >
+      <DomainProductQualificationPanel lang={lang} projectId={projectId} domain={domain} />
+    </aside>
     <SpatialActionDock domain={domain} lang={lang} onAiDesign={onAiDesign} />
   </div>;
 }

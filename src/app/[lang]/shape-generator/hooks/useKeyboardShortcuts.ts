@@ -7,6 +7,10 @@ import type { TransformMode } from '../ShapePreview';
 import type { SketchTool } from '../sketch/types';
 import { loadCustomShortcuts, getEffectiveKey } from '../shortcutConfig';
 import { useMeasureStore } from '../MeasureTool';
+import {
+  canAccessShapeGeneratorAction,
+  SHAPE_GENERATOR_ACTION_IDS,
+} from '../controllers/shapeGeneratorAccessController';
 
 export interface KeyboardShortcutDeps {
   isPreviewMode: boolean;
@@ -103,6 +107,9 @@ export function useKeyboardShortcuts({
       if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || target?.isContentEditable) return;
 
       const k = e.key.toLowerCase();
+      const accessMode = isReadOnly ? 'readonly' : 'normal';
+      const canAccess = (actionId: (typeof SHAPE_GENERATOR_ACTION_IDS)[keyof typeof SHAPE_GENERATOR_ACTION_IDS]) =>
+        canAccessShapeGeneratorAction(actionId, accessMode);
 
       // Ctrl+K or 'S' — command palette
       if (((e.ctrlKey || e.metaKey) && k === 'k') || (!e.ctrlKey && !e.metaKey && !e.altKey && !e.shiftKey && k === 's')) {
@@ -113,32 +120,42 @@ export function useKeyboardShortcuts({
 
       // Ctrl+Shift+S — cloud save (.nfab) — must check before Ctrl+S
       if (e.ctrlKey && e.shiftKey && (e.key === 's' || e.key === 'S')) {
-        e.preventDefault(); void handleSaveNfabCloud(); return;
+        e.preventDefault();
+        if (canAccess(SHAPE_GENERATOR_ACTION_IDS.persistence)) void handleSaveNfabCloud();
+        return;
       }
       // Ctrl+S — local save (.nfab)
       if (e.ctrlKey && !e.shiftKey && (e.key === 's' || e.key === 'S')) {
-        e.preventDefault(); void handleSaveNfab(); return;
+        e.preventDefault();
+        if (canAccess(SHAPE_GENERATOR_ACTION_IDS.persistence)) void handleSaveNfab();
+        return;
       }
       // Ctrl+O — open .nfab
       if (e.ctrlKey && (e.key === 'o' || e.key === 'O')) {
-        e.preventDefault(); void handleLoadNfab(); return;
+        e.preventDefault();
+        if (canAccess(SHAPE_GENERATOR_ACTION_IDS.import)) void handleLoadNfab();
+        return;
       }
 
       // Ctrl+Z / Ctrl+Shift+Z / Ctrl+Y — undo/redo
       // In sketch mode, SketchCanvas handles Ctrl+Z (calls onUndo). Only intercept redo here.
       if (e.ctrlKey && k === 'z' && !e.shiftKey) {
         e.preventDefault();
-        if (!isSketchMode) handleHistoryUndo();
+        if (canAccess(SHAPE_GENERATOR_ACTION_IDS.documentMutation) && !isSketchMode) handleHistoryUndo();
         return;
       }
       if (e.ctrlKey && k === 'z' && e.shiftKey) {
         e.preventDefault();
-        if (isSketchMode) handleSketchRedo?.(); else handleHistoryRedo();
+        if (canAccess(SHAPE_GENERATOR_ACTION_IDS.documentMutation)) {
+          if (isSketchMode) handleSketchRedo?.(); else handleHistoryRedo();
+        }
         return;
       }
       if (e.ctrlKey && k === 'y') {
         e.preventDefault();
-        if (isSketchMode) handleSketchRedo?.(); else handleHistoryRedo();
+        if (canAccess(SHAPE_GENERATOR_ACTION_IDS.documentMutation)) {
+          if (isSketchMode) handleSketchRedo?.(); else handleHistoryRedo();
+        }
         return;
       }
 
@@ -164,6 +181,7 @@ export function useKeyboardShortcuts({
 
       // ── Sketch mode: tool hotkeys ──
       if (isSketchMode && !e.ctrlKey && !e.altKey && !e.metaKey) {
+        if (!canAccess(SHAPE_GENERATOR_ACTION_IDS.documentMutation)) return;
         // Build hotkey map dynamically from custom keys
         const sketchHotkeys: Record<string, SketchTool> = {
           [ck('sk_line')]:         'line',
@@ -195,9 +213,18 @@ export function useKeyboardShortcuts({
 
       // ── 3D viewport hotkeys (only outside sketch mode) ──
       // 1/2/3 — edit mode (Vertex / Edge / Face) — Blender style
-      if (e.key === '1' && !e.shiftKey) { setEditMode(editMode === 'vertex' ? 'none' : 'vertex'); return; }
-      if (e.key === '2' && !e.shiftKey) { setEditMode(editMode === 'edge' ? 'none' : 'edge'); return; }
-      if (e.key === '3' && !e.shiftKey) { setEditMode(editMode === 'face' ? 'none' : 'face'); return; }
+      if (e.key === '1' && !e.shiftKey) {
+        if (canAccess(SHAPE_GENERATOR_ACTION_IDS.documentMutation)) setEditMode(editMode === 'vertex' ? 'none' : 'vertex');
+        return;
+      }
+      if (e.key === '2' && !e.shiftKey) {
+        if (canAccess(SHAPE_GENERATOR_ACTION_IDS.documentMutation)) setEditMode(editMode === 'edge' ? 'none' : 'edge');
+        return;
+      }
+      if (e.key === '3' && !e.shiftKey) {
+        if (canAccess(SHAPE_GENERATOR_ACTION_IDS.documentMutation)) setEditMode(editMode === 'face' ? 'none' : 'face');
+        return;
+      }
 
       // Camera presets
       if (e.key === 'Home') { e.preventDefault(); dispatchView('fit'); return; }
@@ -255,12 +282,24 @@ export function useKeyboardShortcuts({
       }
 
       // Transform gizmos
-      if (k === ck('translate') && !e.ctrlKey) { setTransformMode(transformMode === 'translate' ? 'off' : 'translate'); return; }
-      if (k === ck('rotate')    && !e.ctrlKey) { setTransformMode(transformMode === 'rotate'    ? 'off' : 'rotate');    return; }
-      if (k === ck('scale')     && !e.ctrlKey) { setTransformMode(transformMode === 'scale'     ? 'off' : 'scale');     return; }
+      if (k === ck('translate') && !e.ctrlKey) {
+        if (canAccess(SHAPE_GENERATOR_ACTION_IDS.documentMutation)) setTransformMode(transformMode === 'translate' ? 'off' : 'translate');
+        return;
+      }
+      if (k === ck('rotate') && !e.ctrlKey) {
+        if (canAccess(SHAPE_GENERATOR_ACTION_IDS.documentMutation)) setTransformMode(transformMode === 'rotate' ? 'off' : 'rotate');
+        return;
+      }
+      if (k === ck('scale') && !e.ctrlKey) {
+        if (canAccess(SHAPE_GENERATOR_ACTION_IDS.documentMutation)) setTransformMode(transformMode === 'scale' ? 'off' : 'scale');
+        return;
+      }
 
       // Mode toggles
-      if (k === ck('sketch')  && !e.ctrlKey) { setIsSketchMode(!isSketchMode); return; }
+      if (k === ck('sketch') && !e.ctrlKey) {
+        if (canAccess(SHAPE_GENERATOR_ACTION_IDS.documentMutation)) setIsSketchMode(!isSketchMode);
+        return;
+      }
       if (k === ck('measure')) {
         if (toggleMeasure) toggleMeasure();
         else setMeasureActive(v => !v);
