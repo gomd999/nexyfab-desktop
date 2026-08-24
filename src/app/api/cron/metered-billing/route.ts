@@ -10,12 +10,13 @@ import { emailInvoicePdf } from '@/lib/invoice-pdf';
 import { denyIfPaymentCollectionDisabled } from '@/lib/payment-gate';
 
 export async function POST(req: NextRequest) {
-  const paymentDenied = denyIfPaymentCollectionDisabled();
-  if (paymentDenied) return paymentDenied;
   const cronSecret = req.headers.get('x-cron-secret');
   if (!cronSecret || cronSecret !== process.env.CRON_SECRET) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   }
+  // Do not disclose payment readiness to callers that fail cron authentication.
+  const paymentDenied = denyIfPaymentCollectionDisabled();
+  if (paymentDenied) return paymentDenied;
 
   const db = getDbAdapter();
   const now = Date.now();

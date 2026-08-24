@@ -71,7 +71,7 @@ test.describe('P0 two-hole worker HLR', () => {
     });
     // sessionStorage is origin-scoped. Establish the E2E origin first; writing
     // from the initial about:blank document is not reliable across browsers.
-    const bootstrap = await page.goto('/api/health', { waitUntil: 'domcontentloaded' });
+    const bootstrap = await page.goto('/api/health/live', { waitUntil: 'domcontentloaded' });
     expect(bootstrap?.status()).toBeLessThan(400);
     await page.evaluate(program => {
       sessionStorage.setItem('nexyfab:studio-handoff-program', JSON.stringify(program));
@@ -196,6 +196,9 @@ test.describe('P0 two-hole worker HLR', () => {
         && holes.length === 2 && holes.every(node => node.params.diameter === 12);
     }, undefined, { timeout: 90_000 });
 
+    const propertyManager = page.getByRole('region', { name: /hole (?:매개변수|parameters)/i });
+    await propertyManager.getByRole('button', { name: /닫기|close/i }).click();
+    await expect(propertyManager).toBeHidden();
     await page.getByTestId('drawing-view-toggle').click();
     const updatedHlrToggle = page.getByTestId('drawing-hlr-toggle');
     await expect(updatedHlrToggle).toBeVisible({ timeout: 30_000 });

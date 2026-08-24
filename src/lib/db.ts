@@ -41,7 +41,14 @@ export function getDb(): Database.Database {
 
 // ─── Schema migrations ────────────────────────────────────────────────────────
 
-const MIGRATIONS: Array<{ version: number; name: string; sql: string }> = [
+type SqliteMigration = {
+  version: number;
+  name: string;
+  sql: string;
+  prepare?: (db: Database.Database) => void;
+};
+
+const MIGRATIONS: SqliteMigration[] = [
   {
     version: 1,
     name: 'initial_schema',
@@ -488,7 +495,6 @@ const MIGRATIONS: Array<{ version: number; name: string; sql: string }> = [
       CREATE TABLE IF NOT EXISTS nf_usage_events (
         id          TEXT PRIMARY KEY,
         user_id     TEXT NOT NULL,
-        org_id      TEXT,
         product     TEXT NOT NULL,
         metric      TEXT NOT NULL,
         quantity    INTEGER NOT NULL DEFAULT 1,
@@ -503,7 +509,6 @@ const MIGRATIONS: Array<{ version: number; name: string; sql: string }> = [
       CREATE TABLE IF NOT EXISTS nf_ai_history (
         id          TEXT PRIMARY KEY,
         user_id     TEXT NOT NULL,
-        org_id      TEXT,
         feature     TEXT NOT NULL,
         project_id  TEXT,
         title       TEXT NOT NULL,
@@ -637,7 +642,6 @@ const MIGRATIONS: Array<{ version: number; name: string; sql: string }> = [
       CREATE TABLE IF NOT EXISTS nf_files (
         id           TEXT PRIMARY KEY,
         user_id      TEXT NOT NULL,
-        org_id       TEXT,
         storage_key  TEXT NOT NULL,
         filename     TEXT NOT NULL,
         mime_type    TEXT NOT NULL DEFAULT 'application/octet-stream',
@@ -1803,10 +1807,12 @@ const MIGRATIONS: Array<{ version: number; name: string; sql: string }> = [
   {
     version: 80,
     name: 'organization_scoped_usage_events',
+    prepare: (db) => {
+      addColumnIfMissing(db, 'nf_usage_events', 'org_id', 'TEXT');
+      addColumnIfMissing(db, 'nf_files', 'org_id', 'TEXT');
+      addColumnIfMissing(db, 'nf_ai_history', 'org_id', 'TEXT');
+    },
     sql: `
-      ALTER TABLE nf_usage_events ADD COLUMN org_id TEXT;
-      ALTER TABLE nf_files ADD COLUMN org_id TEXT;
-      ALTER TABLE nf_ai_history ADD COLUMN org_id TEXT;
       CREATE INDEX IF NOT EXISTS idx_usage_org_cycle
         ON nf_usage_events(org_id, product, cycle_start, metric);
       CREATE INDEX IF NOT EXISTS idx_usage_user_personal_cycle
@@ -2069,6 +2075,21 @@ const MIGRATIONS: Array<{ version: number; name: string; sql: string }> = [
   },
 ];
 
+function sqliteIdentifier(value: string): string {
+  if (!/^[A-Za-z_][A-Za-z0-9_]*$/.test(value)) {
+    throw new Error(`Unsafe SQLite identifier: ${value}`);
+  }
+  return `"${value}"`;
+}
+
+function addColumnIfMissing(db: Database.Database, table: string, column: string, definition: string): void {
+  const tableIdentifier = sqliteIdentifier(table);
+  const columnIdentifier = sqliteIdentifier(column);
+  const columns = db.prepare(`PRAGMA table_info(${tableIdentifier})`).all() as Array<{ name: string }>;
+  if (columns.some(item => item.name === column)) return;
+  db.exec(`ALTER TABLE ${tableIdentifier} ADD COLUMN ${columnIdentifier} ${definition}`);
+}
+
 function runMigrations(db: Database.Database): void {
   // migrations 테이블 보장
   db.exec(`
@@ -2079,22 +2100,19 @@ function runMigrations(db: Database.Database): void {
     );
   `);
 
-  const applied = new Set<number>(
-    (db.prepare('SELECT version FROM nf_schema_migrations').all() as { version: number }[])
-      .map((r) => r.version),
-  );
+  const applyMigration = db.transaction((migration: SqliteMigration) => {
+    const applied = db.prepare('SELECT 1 FROM nf_schema_migrations WHERE version = ?').get(migration.version);
+    if (applied) return;
+    migration.prepare?.(db);
+    if (migration.sql) db.exec(migration.sql);
+    db.prepare(
+      'INSERT INTO nf_schema_migrations (version, name, applied_at) VALUES (?, ?, ?)',
+    ).run(migration.version, migration.name, Date.now());
+  });
 
-  const insert = db.prepare(
-    'INSERT INTO nf_schema_migrations (version, name, applied_at) VALUES (?, ?, ?)',
-  );
-
-  for (const m of MIGRATIONS) {
-    if (applied.has(m.version)) continue;
-    if (m.sql) {
-      db.exec(m.sql);
-    }
-    insert.run(m.version, m.name, Date.now());
-  }
+  // Separately bundled route modules can initialize the same database. An
+  // IMMEDIATE transaction serializes each migration and rolls it back whole.
+  for (const migration of MIGRATIONS) applyMigration.immediate(migration);
 }
 
 function initSchema(db: Database.Database): void {

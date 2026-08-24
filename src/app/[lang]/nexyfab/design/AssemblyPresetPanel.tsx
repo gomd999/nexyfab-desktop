@@ -2854,7 +2854,7 @@ export default function AssemblyPresetPanel({
           >
             <div style={{ fontSize: 16, lineHeight: 1 }}>{DOMAIN_EMOJI[tp.domain] ?? '📐'}</div>
             <div style={{ fontSize: 11.5, fontWeight: 800, marginTop: 3 }}>{tp.label ?? (designPair(lang, tp.labelKo, tp.labelEn))}</div>
-            <div style={{ fontSize: 9.5, color: 'var(--nx-text-3, #6b7684)', marginTop: 2, lineHeight: 1.45, overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>
+            <div style={{ fontSize: 9.5, color: 'var(--nx-text-2, #46505e)', marginTop: 2, lineHeight: 1.45, overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>
               {tp.params.slice(0, 4).map((p) => `${p.label ?? p.labelKo} ${p.default}${p.unit}`).join(' · ')}
             </div>
           </button>
