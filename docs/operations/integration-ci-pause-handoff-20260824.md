@@ -384,10 +384,11 @@ integration 소스에 결속됐고, 격리된 Railway staging에서 플랫폼 �
 
 ### 배포 및 데이터 기반선
 
-- source/build/git: `a92c54632642dc7d05f47dec9cb7ecce060642e9`.
-- deployment: `7a5bc850-69ea-492a-a665-d47bb3b31417`, `SUCCESS`.
-- image: `sha256:c4ce9994226e28238ed4fc7b65e8050ed5ad00c01b1429a2bb70a42e9e48a40a`.
-- 실제로 서로 다른 두 web instance가 `RUNNING`이다.
+- source/build/git: `0210c8f9cbc4ccd0f97fbc3a6329317d0e510001`.
+- deployment: `15750b22-c835-4ba7-8d64-a0f8c032da0c`, `SUCCESS`.
+- image: `sha256:83d2a6118591e2c876d7e6103caf2865fcbc7c33d392244383a7eed87c378069`.
+- 실제로 서로 다른 두 web instance `2ec8fc92-e9a3-4e1e-9412-14357c147877`,
+  `6d6672f1-bd58-42b5-9db8-a5916f1c5a6b`가 `RUNNING`이다.
 - 공개 readiness는 HTTP 200이고 PostgreSQL/Redis가 모두 `ok`다.
 - release-health는 build/deployment/git/migration을 `PASS`로 보고하고,
   staging non-commercial boundary, i18n, seven-day evidence 때문에 HTTP 503
@@ -458,16 +459,23 @@ claim을 소비해 installer/native tool을 실행하고 세 출력 역할을 �
 영수증을 callback하는 배포 가능한 client가 없다. 그러므로 이 항목은 단순 설정 누락이
 아니라 **실행 계약과 worker 구현의 P0 코드 공백**이다.
 
-### i18n 로컬 카탈로그 후속 폐쇄
+### i18n 배포 소스 후속 폐쇄
 
 - `src/app/admin/jobs/page.tsx`에서 새로 추출된 12개 source pair를 ja/zh/es/ar
   카탈로그에 추가했다.
-- 현재 로컬 추출 결과는 2,711 source / 2,711 translated, missing 0, invalid 0,
+- 현재 배포 소스의 추출 결과는 2,711 source / 2,711 translated, missing 0, invalid 0,
   legacy debt 0이며 공식 카탈로그·커버리지 회귀와 영수증 fail-closed 테스트가 통과했다.
-- 배포된 `a92c5463...` release receipt는 여전히 2,699 pair에 결속되어 있으므로 해당
+- `0210c8f9...`에 패키징된 release receipt는 여전히 2,699 pair를 보고하므로 해당
   스테이징 release-health 판정은 바꾸지 않았다. 다음 검증 배포에서 새 build/head에
   결속된 자동화 영수증을 만들고, 별도의 사람 기반 visual/RTL/email/PDF/export 6언어
   검토 영수증까지 있어야 i18n을 `QUALIFIED`로 올릴 수 있다.
+
+commercial worker readiness도 같은 배포에 fail-closed로 강화했다. 이제 외부 health의
+단순 HTTP 200은 거부하며, 등록된 worker identity가 24시간 안에 claim consumer,
+immutable input readback, native execution, artifact upload, signed callback을 모두 PASS한
+self-test receipt를 보고해야 commercial readiness가 통과한다. staging은 non-commercial
+mode이므로 이 경계의 runtime 실행 상태는 의도대로 `skipped`; 실제 worker를 배포한 뒤
+상용 mode 사전 검증에서만 `ok`가 될 수 있다.
 
 ### AI Design 및 Precision CAD의 정확한 상용 수준
 

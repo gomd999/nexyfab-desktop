@@ -1,21 +1,25 @@
 {
   "schema": "nexyfab.staging-commercial-readiness-diagnostic.v1",
-  "generatedAt": "2026-08-25T03:53:03+09:00",
+  "generatedAt": "2026-08-25T04:23:01+09:00",
   "status": "HOLD",
   "releaseEligible": false,
   "environment": "staging",
   "productionMutated": false,
   "source": {
     "branch": "integration/nexyfab",
-    "gitHead": "a92c54632642dc7d05f47dec9cb7ecce060642e9",
-    "buildId": "a92c54632642dc7d05f47dec9cb7ecce060642e9"
+    "gitHead": "0210c8f9cbc4ccd0f97fbc3a6329317d0e510001",
+    "buildId": "0210c8f9cbc4ccd0f97fbc3a6329317d0e510001"
   },
   "deployment": {
     "service": "nexyfab.com",
-    "deploymentId": "7a5bc850-69ea-492a-a665-d47bb3b31417",
-    "imageDigest": "sha256:c4ce9994226e28238ed4fc7b65e8050ed5ad00c01b1429a2bb70a42e9e48a40a",
+    "deploymentId": "15750b22-c835-4ba7-8d64-a0f8c032da0c",
+    "imageDigest": "sha256:83d2a6118591e2c876d7e6103caf2865fcbc7c33d392244383a7eed87c378069",
     "status": "SUCCESS",
     "runningInstances": 2,
+    "instanceIds": [
+      "2ec8fc92-e9a3-4e1e-9412-14357c147877",
+      "6d6672f1-bd58-42b5-9db8-a5916f1c5a6b"
+    ],
     "autoDeployEnabled": false,
     "volumeMounts": [],
     "detachedVolumeRetained": true
@@ -35,7 +39,7 @@
       "nextVersion": "16.3.0",
       "staticPages": 301,
       "sharedChunksKb": 723.6,
-      "worstFirstPaintKb": 1764.0
+      "worstFirstPaintKb": 1766.1
     },
     "readiness": {
       "status": "PASS",
@@ -59,15 +63,30 @@
       "latestMigration": 2026082501,
       "commercialPreflightBlockers": 0
     },
-    "localI18nCatalog": {
-      "status": "PASS_LOCAL",
+    "deployedSourceI18nCatalog": {
+      "status": "PASS_SOURCE",
       "sourcePairs": 2711,
       "translatedPairs": 2711,
       "missing": 0,
       "invalid": 0,
       "legacyDebt": 0,
       "releaseReceiptUpdated": false,
-      "reason": "The deployed release receipt remains bound to the deployed source and reports 2699 pairs. A new build-bound automated receipt and independent full-product review are still required."
+      "reason": "The deployed source contains all 2711 translations, but the packaged release receipt still reports 2699 pairs. A new build-bound automated receipt and independent full-product review are still required."
+    },
+    "commercialWorkerReadinessGate": {
+      "status": "PASS_CODE_DEPLOYED_NOT_RUN",
+      "runtimeBoundary": "SKIPPED_NON_COMMERCIAL",
+      "requirements": [
+        "registered worker identity",
+        "claim consumer active",
+        "immutable input artifact readback pass",
+        "native execution pass",
+        "artifact upload pass",
+        "signed callback pass",
+        "fresh self-test receipt within 24 hours"
+      ],
+      "genericHttp200Rejected": true,
+      "staleSelfTestRejected": true
     },
     "privateServices": {
       "exactCadHealth": "PASS",
