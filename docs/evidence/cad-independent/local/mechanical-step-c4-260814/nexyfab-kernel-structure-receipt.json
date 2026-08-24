@@ -1,11 +1,11 @@
 {
   "schema": "nexyfab.mechanical-local-step-kernel-structure-readiness.v1",
-  "executedAt": "2026-08-22T07:21:27.762Z",
+  "executedAt": "2026-08-24T14:56:36.853Z",
   "status": "HOLD",
   "scope": "Bounded two-box AP242 product occurrence geometry, transform, and semantic identity after NexyFab OCCT reopen/export",
-  "localStatus": "FAIL_LOCAL",
+  "localStatus": "PASS_LOCAL",
   "geometryStructurePreserved": "PASS_LOCAL",
-  "semanticIdentityPreserved": "FAIL_LOCAL",
+  "semanticIdentityPreserved": "PASS_LOCAL",
   "productStructureCapability": {
     "status": "HOLD",
     "code": "XCAF_STEP_READER_UNAVAILABLE",
@@ -35,18 +35,18 @@
     },
     {
       "id": "component_names",
-      "status": "FAIL_LOCAL",
-      "actual": "base-plate|mount-block -> Open CASCADE STEP translator 7.6 1.1|Open CASCADE STEP translator 7.6 1.2"
+      "status": "PASS_LOCAL",
+      "actual": "base-plate|mount-block -> base-plate|mount-block"
     },
     {
       "id": "part_numbers",
-      "status": "FAIL_LOCAL",
-      "actual": "base-plate|mount-block -> Open CASCADE STEP translator 7.6 1.1|Open CASCADE STEP translator 7.6 1.2"
+      "status": "PASS_LOCAL",
+      "actual": "base-plate|mount-block -> base-plate|mount-block"
     },
     {
       "id": "occurrence_labels",
-      "status": "FAIL_LOCAL",
-      "actual": "Base Plate|Mount Block -> |"
+      "status": "PASS_LOCAL",
+      "actual": "Base Plate|Mount Block -> Base Plate|Mount Block"
     }
   ],
   "commerciallyVerified": false,
@@ -59,12 +59,12 @@
   },
   "returnedBinding": {
     "path": "docs/evidence/cad-independent/local/mechanical-step-c4-260814/nexyfab-kernel-returned.step",
-    "sha256": "7aae6b01843714e2eb074ae71497489a987a7b6455b03fb82841a21132659bd7",
-    "bytes": 32626
+    "sha256": "334116b472057a92ceb1fff06d403ab97ee928f3768f5cc69e97372147889caf",
+    "bytes": 32562
   },
   "kernelReceiptBinding": {
     "path": "docs/evidence/cad-independent/local/mechanical-step-c4-260814/nexyfab-kernel-receipt.json",
-    "sha256": "c0578599755b56c5de041550f4519286c2fec239e3f4f8e8cdc75efdb0bc3896",
+    "sha256": "7fc72bba3625c6bc9769f445b8bc8dc2abb6d447bee8fc4de51472ed4aea6419",
     "bytes": 2323
   },
   "sourceBindings": [
@@ -162,19 +162,19 @@
       "volume": 57600,
       "surfaceArea": 17600,
       "componentNames": [
-        "Open CASCADE STEP translator 7.6 1.1",
-        "Open CASCADE STEP translator 7.6 1.2"
+        "base-plate",
+        "mount-block"
       ],
       "partNumbers": [
-        "Open CASCADE STEP translator 7.6 1.1",
-        "Open CASCADE STEP translator 7.6 1.2"
+        "base-plate",
+        "mount-block"
       ],
       "parts": [
         {
-          "occurrence": "1",
-          "occurrenceLabel": "",
-          "name": "Open CASCADE STEP translator 7.6 1.1",
-          "partNumber": "Open CASCADE STEP translator 7.6 1.1",
+          "occurrence": "NexyFab_C4_Box_Assembly_1",
+          "occurrenceLabel": "Base Plate",
+          "name": "base-plate",
+          "partNumber": "base-plate",
           "dimensionsMm": [
             100,
             60,
@@ -189,10 +189,10 @@
           "surfaceAreaMm2": 14560
         },
         {
-          "occurrence": "2",
-          "occurrenceLabel": "",
-          "name": "Open CASCADE STEP translator 7.6 1.2",
-          "partNumber": "Open CASCADE STEP translator 7.6 1.2",
+          "occurrence": "NexyFab_C4_Box_Assembly_2",
+          "occurrenceLabel": "Mount Block",
+          "name": "mount-block",
+          "partNumber": "mount-block",
           "dimensionsMm": [
             40,
             20,
@@ -216,7 +216,6 @@
     }
   },
   "blockers": [
-    "component_name_part_number_and_occurrence_label_not_preserved",
     "product_identity_xcaf_reopen_hold",
     "external_native_cad_reopen_not_run",
     "signed_external_operator_receipt_not_run",
