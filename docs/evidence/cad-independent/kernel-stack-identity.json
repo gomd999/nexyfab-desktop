@@ -334,20 +334,20 @@
     {
       "path": "src/app/api/cad/v1/generation/state/route.ts",
       "role": "semantic-and-release-policy",
-      "bytes": 7063,
-      "sha256": "2692af6916cf3c7815ae6b800dc28b27684423a63577412c6f0547f34dc115d7"
+      "bytes": 7236,
+      "sha256": "b8e53c1543ad571dd0ca200c37c71891340269cd45bce44ffdd05373308e3756"
     },
     {
       "path": "src/app/api/cad/v1/generation/advance/route.ts",
       "role": "semantic-and-release-policy",
-      "bytes": 15679,
-      "sha256": "fc85d4088b625f15116f61e5c2e2ab4ec76d3e7e59b3694bc07c02e739cdcf82"
+      "bytes": 16060,
+      "sha256": "a7010185c965d2e440f9d2f471ac5decf9b3aec75f2d75a9e67b0ce8bff7fe0f"
     },
     {
       "path": "src/app/api/cad/v1/generation/finalize/route.ts",
       "role": "semantic-and-release-policy",
-      "bytes": 14207,
-      "sha256": "52924792c6aeb045dab536a33ef79807a7329bd515e7b7f902e8def7af911888"
+      "bytes": 14424,
+      "sha256": "b7896418486e441e90a4b49e221d27031c62285520e913131cb04523f2af9c37"
     },
     {
       "path": "src/app/[lang]/shape-generator/ai/generationSessionClient.ts",
@@ -436,8 +436,8 @@
     {
       "path": "src/lib/commercial-readiness.ts",
       "role": "semantic-and-release-policy",
-      "bytes": 7368,
-      "sha256": "a7a48ef1d5e65a9cdc497b24451bcb0e32f0b40c83cceea2d29f56d6e48bc19e"
+      "bytes": 13512,
+      "sha256": "1a9359edacd07a7c1d4e9b70db72362ed4107a8a3402f02339a32221fefd829b"
     },
     {
       "path": "src/app/api/docs/openapi/route.ts",
@@ -470,5 +470,5 @@
       "sha256": "50d0f0cd4bacadf24b337c8e36784d834a14cdeee175fc6b1850df12fe017c9f"
     }
   ],
-  "identitySha256": "4890b8d89ae060fa6eae1eee02b612c70f1f5c657ec714d9cf6b2564ab104caa"
+  "identitySha256": "4d0f2a93305108ad50aa5e35f68ae967c60ea92fec97ab51d10c22c58c7dd25c"
 }
