@@ -885,6 +885,14 @@ const passing = {
   evidenceRoot,
   windowsSeaTrustedKeyAllowlist,
   evidenceSigningSecret,
+  commercialPrecisionRuntimeEvidenceStatus: {
+    receiptVerified: true,
+    privateBetaEligible: true,
+    commercialGaEligible: true,
+    status: 'COMMERCIAL_GA_PASS',
+    receiptSha256: '9'.repeat(64),
+    blockers: [],
+  },
   currentRelease: { branch: 'release/test', head: '1'.repeat(40), workingTreeChanges: 0 },
   releaseBaseline: passingReleaseBaseline,
   releaseBaselineBinding: passingReleaseBaselineBinding,
@@ -1326,6 +1334,25 @@ test('passes both tiers only with complete evidence', () => {
   const result = evaluateCommercializationReadiness(passing);
   assert.equal(result.privateBeta.eligible, true);
   assert.equal(result.commercialGa.eligible, true);
+});
+
+test('requires bound commercial Precision runtime evidence for mechanical private beta and GA', () => {
+  const missing = structuredClone(passing);
+  delete missing.commercialPrecisionRuntimeEvidenceStatus;
+  const blocked = evaluateCommercializationReadiness(missing);
+  assert.equal(blocked.privateBeta.eligible, false);
+  assert.ok(blocked.privateBeta.blockers.includes('commercial_precision_runtime_private_beta_not_verified'));
+  assert.ok(blocked.commercialGa.blockers.includes('commercial_precision_runtime_ga_not_verified'));
+  assert.equal(blocked.commercialPrecisionRuntimeEvidence.required, true);
+
+  const stagingOnly = structuredClone(passing);
+  stagingOnly.commercialPrecisionRuntimeEvidenceStatus.commercialGaEligible = false;
+  stagingOnly.commercialPrecisionRuntimeEvidenceStatus.status = 'PRIVATE_BETA_PASS';
+  stagingOnly.commercialPrecisionRuntimeEvidenceStatus.blockers = ['production_runtime_not_observed'];
+  const staged = evaluateCommercializationReadiness(stagingOnly);
+  assert.equal(staged.privateBeta.eligible, true);
+  assert.equal(staged.commercialGa.eligible, false);
+  assert.ok(staged.commercialGa.blockers.includes('commercial_precision_runtime_ga_not_verified'));
 });
 
 test('keeps private beta and GA fail-closed independently', () => {

@@ -21,6 +21,11 @@ import { verifySpecialtyIndependentReleaseReceipt } from './verify-specialty-ind
 import { verifyEnterpriseSsoReadinessReceipt } from './build-enterprise-sso-readiness-receipt.mjs';
 import { verifyWindowsSeaReleaseReceipt } from './agent-sidecar/windows-sea-release-evidence.mjs';
 import { largeUploadStagingReceiptStatus } from './build-large-upload-staging-readiness-receipt.mjs';
+import {
+  COMMERCIAL_PRECISION_DEFAULT_OBSERVATION,
+  COMMERCIAL_PRECISION_DEFAULT_RECEIPT,
+  verifyCommercialPrecisionRuntimeEvidence,
+} from './build-commercial-precision-runtime-evidence.mjs';
 
 const MECHANICAL_COMPLEX_FAMILIES = ['robot', 'gearbox', 'pressure_vessel', 'turbomachinery', 'factory_equipment', 'machine_skid', 'welded_enclosure'];
 const verifiedFamily = family => Object.freeze({ domains: ['mechanical'], complexFamilies: [family], promotionFamily: family, mechanicalScope: true, complexScope: true });
@@ -998,6 +1003,13 @@ export function evaluateCommercializationReadiness(input) {
   }
 
   if (contract?.mechanicalScope) {
+    const runtimeEvidence = input.commercialPrecisionRuntimeEvidenceStatus;
+    if (runtimeEvidence?.privateBetaEligible !== true) {
+      blockPrivate('commercial_precision_runtime_private_beta_not_verified');
+    }
+    if (runtimeEvidence?.commercialGaEligible !== true) {
+      blockGa('commercial_precision_runtime_ga_not_verified');
+    }
     const mechanicalScope = input.mechanicalProductScope;
     const scopeStatus = mechanicalScopeContractStatus(mechanicalScope);
     if (!scopeStatus.valid) blockPrivate('mechanical_product_scope_contract_incomplete');
@@ -1151,6 +1163,15 @@ export function evaluateCommercializationReadiness(input) {
       receiptSha256: input.architectureInteriorRecovery?.sha256 ?? null,
       target: input.architectureInteriorRecovery?.target ?? null,
     } : { required: false, receiptVerified: false, receiptSha256: null, target: null },
+    commercialPrecisionRuntimeEvidence: {
+      required: contract?.mechanicalScope === true,
+      receiptVerified: input.commercialPrecisionRuntimeEvidenceStatus?.receiptVerified === true,
+      privateBetaEligible: input.commercialPrecisionRuntimeEvidenceStatus?.privateBetaEligible === true,
+      commercialGaEligible: input.commercialPrecisionRuntimeEvidenceStatus?.commercialGaEligible === true,
+      status: input.commercialPrecisionRuntimeEvidenceStatus?.status ?? 'HOLD',
+      receiptSha256: input.commercialPrecisionRuntimeEvidenceStatus?.receiptSha256 ?? null,
+      blockers: input.commercialPrecisionRuntimeEvidenceStatus?.blockers ?? ['runtime_evidence_not_evaluated'],
+    },
     privateBeta: { eligible: privateBetaBlockers.length === 0, blockers: [...new Set(privateBetaBlockers)] },
     commercialGa: { eligible: gaBlockers.length === 0, blockers: [...new Set(gaBlockers)] },
   };
@@ -1205,6 +1226,21 @@ async function main() {
   const releaseBaselineSource = readJsonWithBinding(process.env.RELEASE_BASELINE ?? 'docs/evidence/release/commercial-release-baseline-current.json');
   const releaseBaseline = releaseBaselineSource.document;
   const expectedRelease = releaseBaseline?.release ?? {};
+  const commercialPrecisionRuntimeReceipt = optionalJson(
+    process.env.COMMERCIAL_PRECISION_RUNTIME_RECEIPT ?? COMMERCIAL_PRECISION_DEFAULT_RECEIPT,
+  );
+  const commercialPrecisionRuntimeEvidenceStatus = verifyCommercialPrecisionRuntimeEvidence(
+    commercialPrecisionRuntimeReceipt,
+    {
+      sourceRoot: process.cwd(),
+      evidenceRoot: process.env.NEXYFAB_COMMERCIAL_PRECISION_EVIDENCE_ROOT ?? '',
+      observationPath: process.env.COMMERCIAL_PRECISION_RUNTIME_OBSERVATION
+        ?? COMMERCIAL_PRECISION_DEFAULT_OBSERVATION,
+      expectedRelease,
+      secret: process.env.GENERATION_EVIDENCE_SIGNING_SECRET,
+      now: Date.now(),
+    },
+  );
   const closedBetaVerification = verifyClosedBetaIntegrityReceipt(closedBetaReceipt, {
     root: process.cwd(),
     expectedRelease,
@@ -1245,6 +1281,7 @@ async function main() {
     complexGroundTruthValidation,
     complexProductScope,
     mechanicalProductScope,
+    commercialPrecisionRuntimeEvidenceStatus,
     liveSmoke: liveSmokeReceipt,
     liveSmokeReceiptVerified,
     openscadHttpSmoke: optionalJson(process.env.OPENSCAD_HTTP_SMOKE ?? 'docs/evidence/release/openscad-http-smoke-260810.json'),
@@ -1310,6 +1347,9 @@ async function main() {
       mechanicalRevisionConsistencyVerified: mechanicalProductScope?.evidence?.artifactRevisionConsistencyVerified === true,
       mechanicalBlindProductChallengeVerified: mechanicalProductScope?.evidence?.blindProductChallengeVerified === true,
       mechanicalManufacturingReceiptVerified: mechanicalProductScope?.evidence?.manufacturingReceiptVerified === true,
+      commercialPrecisionRuntimeReceiptVerified: result.commercialPrecisionRuntimeEvidence.receiptVerified,
+      commercialPrecisionRuntimePrivateBetaEligible: result.commercialPrecisionRuntimeEvidence.privateBetaEligible,
+      commercialPrecisionRuntimeGaEligible: result.commercialPrecisionRuntimeEvidence.commercialGaEligible,
       releaseChannel: result.releaseChannel,
       requiredDomains: result.requiredDomains,
       requiredComplexFamilies: result.requiredComplexFamilies,
