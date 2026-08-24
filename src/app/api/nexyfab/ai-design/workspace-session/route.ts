@@ -6,22 +6,21 @@ import { checkOrigin } from '@/lib/csrf';
 import { getDbAdapter } from '@/lib/db-adapter';
 import { resolveProjectAccess } from '@/lib/nfProjectAccess';
 import { rateLimit } from '@/lib/rate-limit';
-import type { AiDesignWorkspaceRuntimeV1 } from '@/lib/ai/aiDesignWorkspaceRuntime';
+import { createAiDesignWorkspaceRuntime } from '@/lib/ai/aiDesignWorkspaceRuntime';
 import {
   createServerAiDesignWorkspaceRuntime,
   loadServerAiDesignWorkspaceRuntime,
-  saveServerAiDesignWorkspaceRuntime,
 } from '@/lib/ai/aiDesignWorkspaceRuntimeStore';
 
 export const runtime = 'nodejs';
 const MAX_BODY_BYTES = 1024 * 1024;
 const SAFE_ID = /^[A-Za-z0-9][A-Za-z0-9._:/-]{0,199}$/;
 const requestSchema = z.object({
-  operation: z.enum(['create', 'save']),
+  operation: z.literal('create'),
   projectId: z.string().regex(SAFE_ID),
   sessionId: z.string().regex(SAFE_ID),
-  expectedRevision: z.number().int().nonnegative().optional(),
-  state: z.unknown(),
+  revisionToken: z.string().regex(SAFE_ID),
+  inputs: z.array(z.unknown()).min(1).max(20),
 }).strict();
 
 function errorResponse(error: unknown): NextResponse {
@@ -60,14 +59,19 @@ export async function POST(req: NextRequest) {
   }
   const parsed = requestSchema.safeParse(raw);
   if (!parsed.success) return NextResponse.json({ error: 'INVALID_WORKSPACE_SESSION_REQUEST' }, { status: 400 });
-  if (!await resolveProjectAccess(getDbAdapter(), parsed.data.projectId, authUser)) return NextResponse.json({ error: 'Project not found' }, { status: 404 });
-  const state = parsed.data.state as AiDesignWorkspaceRuntimeV1;
-  if (state?.projectId !== parsed.data.projectId || state?.session?.sessionId !== parsed.data.sessionId) return NextResponse.json({ error: 'WORKSPACE_SESSION_BINDING_MISMATCH' }, { status: 409 });
+  const access = await resolveProjectAccess(getDbAdapter(), parsed.data.projectId, authUser);
+  if (!access) return NextResponse.json({ error: 'Project not found' }, { status: 404 });
+  if (!access.canEdit) return NextResponse.json({ error: 'Editor role required' }, { status: 403 });
   const ownerKey = `${authUser.userId}:${parsed.data.projectId}`;
   try {
-    const saved = parsed.data.operation === 'create'
-      ? await createServerAiDesignWorkspaceRuntime(ownerKey, state)
-      : await saveServerAiDesignWorkspaceRuntime(ownerKey, state, parsed.data.expectedRevision ?? -1);
-    return NextResponse.json({ state: saved }, { status: parsed.data.operation === 'create' ? 201 : 200 });
+    const created = createAiDesignWorkspaceRuntime({
+      projectId: parsed.data.projectId,
+      sessionId: parsed.data.sessionId,
+      revisionToken: parsed.data.revisionToken,
+      inputs: parsed.data.inputs as Parameters<typeof createAiDesignWorkspaceRuntime>[0]['inputs'],
+    });
+    if (!created.ok) return NextResponse.json({ error: 'INVALID_AI_DESIGN_WORKSPACE_INPUT', issues: created.issues.slice(0, 32) }, { status: 400 });
+    const saved = await createServerAiDesignWorkspaceRuntime(ownerKey, created.state);
+    return NextResponse.json({ state: saved }, { status: 201 });
   } catch (error) { return errorResponse(error); }
 }
