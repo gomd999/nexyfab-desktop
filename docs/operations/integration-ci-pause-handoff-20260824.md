@@ -506,3 +506,50 @@ mode이므로 이 경계의 runtime 실행 상태는 의도대로 `skipped`; 실
 
 production 배포·변수·데이터, 원격 push/merge, provider credential, Git history는
 이번 staging 작업에서 변경하지 않았다.
+
+## 2026-08-25 commercial Precision worker v3 소스 폐쇄
+
+이 절은 위에서 P0 코드 공백으로 기록한 commercial worker v2 판정을 소스 수준에서
+대체한다. 공용 v3 계약·migration 기반은 `8673bd45`, Precision 구현은 `18a243c6`,
+통합 결속은 merge commit `414363a9`다. 판정은
+**`SOURCE_CLOSED_LOOP_PASS / EXTERNAL_RUNTIME_NOT_RUN / RELEASE_HOLD`**다.
+
+닫힌 소스 경계:
+
+- commercial 실행은 v3 계약과 migration `2026082502`를 사용한다. 요청 시 canonical
+  tool arguments와 job binding을 하나의 private content-addressed input object로 쓰고,
+  authoritative SHA-256 readback 뒤 approval/journal/claim/outbox와 같은 PostgreSQL
+  transaction에 exact identity를 기록한다.
+- registered worker claim은 입력 DB row와 object-store hash를 재확인한 뒤에만 HTTPS
+  input locator, artifact gateway, lease capability와 HMAC-bound transport를 반환한다.
+- artifact gateway는 lease owner/capability/expiry를 검증하고 `model`, `report`,
+  `verification` 세 역할만 fixed identity로 immutable upload 및 hash commit한다.
+- callback은 PASS 영수증의 세 출력과 실제 committed row가 모두 일치하기 전에는
+  `COMMITTED_OUTPUTS_REQUIRED`로 거부한다.
+- `scripts/drawing-to-3d/commercial-precision-worker.mjs`가 claim 소비, canonical input
+  검증, shell 없는 configured native process 실행, STEP/report 검사, 세 출력 commit,
+  Ed25519 receipt 및 callback HMAC을 수행한다. self-test 전 health는 `NOT_READY`다.
+- TypeScript와 architecture가 PASS했고, 관련 Precision/contract/route/worker 회귀는
+  34 files / 216 tests PASS했다. 별도 native-process fixture에서 세 출력과 Ed25519
+  서명도 검증했다.
+
+닫히지 않은 운영·외부 경계:
+
+- 실제 production-class native CAD adapter와 worker service는 아직 배포하지 않았다.
+  실제 private key/registry/self-test receipt도 없으며 fixture를 운영 증거로 승격하지
+  않는다.
+- 기존 staging 배포 `0210c8f9...`와 migration `2026082501`은 이 v3 소스보다 오래됐다.
+  새 통합 HEAD의 staging migration, build, deploy, canary 전까지 runtime 판정은
+  `NOT_RUN`이다.
+- 배포 절차와 secret 분리는
+  `docs/operations/commercial-precision-worker-v3.md`를 따른다.
+
+따라서 남은 출시 순서의 첫 항목은 "locator/client 구현"에서 다음으로 좁혀진다.
+
+1. 새 통합 HEAD와 migration `2026082502`를 비상용 staging에 배포·검증한다.
+2. 실제 native adapter와 별도 키 보유자가 관리하는 isolated worker를 배포하고 fresh
+   canary, negative/replay/rotation, crash/restart/lease recovery를 통과한다.
+3. server 3-role과 external verifier, SMTP/Sentry/payment, i18n human review, 7일 운영,
+   독립 CAD/전문가/파일럿/법무 증거를 닫는다.
+4. 모든 증거가 같은 release binding으로 통과한 뒤에만 commercial mode와 production을
+   별도 승인한다.

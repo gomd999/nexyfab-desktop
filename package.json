@@ -18,6 +18,7 @@
     "build:timed": "node scripts/build-with-timings.mjs",
     "postbuild": "node scripts/prune-standalone-artifacts.mjs && node scripts/sync-standalone-static.mjs && node scripts/bundle-budget.mjs",
     "start": "next start",
+    "start:commercial-precision-worker": "node scripts/drawing-to-3d/commercial-precision-worker.mjs",
     "lint": "eslint src",
     "lint:ci": "eslint src --quiet",
     "ci:check": "npm run typecheck && npm run lint:ci && npm run test && npm run test:slices",
