@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { TARGET_RUNTIME_KEYS, targetGateEnvironment } from './deploy-railway-verified.mjs';
+import { TARGET_RUNTIME_KEYS, stagingHoldIssues, targetGateEnvironment } from './deploy-railway-verified.mjs';
 
 const commercialRuntimeKeys = [
   'NEXYFAB_COMMERCIAL_MODE',
@@ -54,4 +54,25 @@ test('target environment cannot fall back to local process.env for omitted runti
     if (!Object.hasOwn(target, key)) assert.equal(Object.hasOwn(gateEnvironment, key), false, `${key} leaked from local env`);
   }
   assert.equal(gateEnvironment.LOCAL_ONLY_SENTINEL, 'preserve-me');
+});
+
+test('staging HOLD deployment is restricted to an isolated non-commercial target', () => {
+  const buildId = 'a'.repeat(40);
+  const passing = {
+    environment: 'staging',
+    site: 'https://nexyfabcom-staging.up.railway.app',
+    expectedBuildId: buildId,
+    target: {
+      NEXYFAB_COMMERCIAL_MODE: '0',
+      NEXYFAB_RELEASE_CHANNEL: 'staging-hold',
+      NEXYFAB_BUILD_ID: buildId,
+    },
+  };
+  assert.deepEqual(stagingHoldIssues(passing), []);
+  assert.ok(stagingHoldIssues({ ...passing, environment: 'production' }).includes('staging_hold_environment_must_be_staging'));
+  assert.ok(stagingHoldIssues({ ...passing, site: 'https://nexyfab.com' }).includes('staging_hold_site_must_be_isolated_staging_host'));
+  assert.ok(stagingHoldIssues({ ...passing, target: { ...passing.target, NEXYFAB_COMMERCIAL_MODE: '1' } }).includes('staging_hold_commercial_mode_must_be_0'));
+  assert.ok(stagingHoldIssues({ ...passing, target: { ...passing.target, NEXYFAB_PRECISION_CAD_COMMERCIAL_MODE: '1' } }).includes('staging_hold_precision_commercial_mode_must_not_be_1'));
+  assert.ok(stagingHoldIssues({ ...passing, target: { ...passing.target, NEXYFAB_RELEASE_CHANNEL: 'production' } }).includes('staging_hold_release_channel_required'));
+  assert.ok(stagingHoldIssues({ ...passing, expectedBuildId: 'b'.repeat(40) }).includes('staging_hold_build_id_mismatch'));
 });

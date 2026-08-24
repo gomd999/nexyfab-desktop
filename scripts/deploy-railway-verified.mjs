@@ -18,6 +18,7 @@ const timeoutMs = Number(arg('timeout-ms', '1200000'));
 const sourcePath = arg('source', '.');
 const pathAsRoot = process.argv.includes('--path-as-root');
 const verifyOnly = process.argv.includes('--verify-only');
+const stagingHold = process.argv.includes('--staging-hold');
 const windowsRailwayCli = process.platform === 'win32' && process.env.APPDATA
   ? path.join(process.env.APPDATA, 'npm', 'node_modules', '@railway', 'cli', 'bin', 'railway.js')
   : '';
@@ -115,6 +116,24 @@ export function targetGateEnvironment(target, baseEnvironment = process.env) {
   return env;
 }
 
+export function stagingHoldIssues({ environment, site, target, expectedBuildId }) {
+  const issues = [];
+  if (environment !== 'staging') issues.push('staging_hold_environment_must_be_staging');
+  if (target.NEXYFAB_COMMERCIAL_MODE !== '0') issues.push('staging_hold_commercial_mode_must_be_0');
+  if (target.NEXYFAB_PRECISION_CAD_COMMERCIAL_MODE === '1') issues.push('staging_hold_precision_commercial_mode_must_not_be_1');
+  if (target.NEXYFAB_RELEASE_CHANNEL !== 'staging-hold') issues.push('staging_hold_release_channel_required');
+  if (!expectedBuildId || target.NEXYFAB_BUILD_ID !== expectedBuildId) issues.push('staging_hold_build_id_mismatch');
+  try {
+    const hostname = new URL(site).hostname.toLowerCase();
+    if (!hostname.includes('staging') || hostname === 'nexyfab.com' || hostname === 'www.nexyfab.com') {
+      issues.push('staging_hold_site_must_be_isolated_staging_host');
+    }
+  } catch {
+    issues.push('staging_hold_site_invalid');
+  }
+  return issues;
+}
+
 function deploymentRows(value) {
   if (Array.isArray(value)) return value;
   for (const key of ['deployments', 'items', 'data']) if (Array.isArray(value?.[key])) return value[key];
@@ -168,13 +187,25 @@ async function main() {
 
   // Verify-only is a release verification mode, not a gate bypass. Evaluate the
   // exact target environment before trusting either an existing or new deploy.
-  await runNpmScript('commercial:release-gate', gateEnvironment);
+  // The staging-HOLD path exists only to validate current source in the isolated
+  // staging environment while external commercial evidence is still absent. It
+  // cannot target production or turn either commercial execution flag on.
+  if (stagingHold) {
+    const issues = stagingHoldIssues({ environment, site, target, expectedBuildId });
+    if (issues.length) throw new Error(`staging HOLD target rejected: ${issues.join(', ')}`);
+    await runNpmScript('workspace:audit', gateEnvironment);
+    await runNpmScript('platform:architecture:check', gateEnvironment);
+    await runNpmScript('ci:replicate-build', gateEnvironment);
+  } else {
+    await runNpmScript('commercial:release-gate', gateEnvironment);
+  }
 
   if (!verifyOnly) {
     const upArgs = ['up'];
     if (sourcePath && sourcePath !== '.') upArgs.push(sourcePath);
     if (pathAsRoot) upArgs.push('--path-as-root');
-    upArgs.push('--detach', '--json', '--service', service, '--environment', environment, '--message', `verified deploy ${new Date().toISOString()}`);
+    const deploymentKind = stagingHold ? 'verified staging HOLD deploy' : 'verified deploy';
+    upArgs.push('--detach', '--json', '--service', service, '--environment', environment, '--message', `${deploymentKind} ${new Date().toISOString()}`);
     await runRailway(upArgs, { stream: true });
   }
 
@@ -193,7 +224,7 @@ async function main() {
     }
     if (['SUCCESS', 'ACTIVE'].includes(status)) {
       await healthCheck();
-      console.log(JSON.stringify({ event: 'deployment-verified', service, deploymentId: targetId, status }));
+      console.log(JSON.stringify({ event: 'deployment-verified', service, deploymentId: targetId, status, releaseStatus: stagingHold ? 'HOLD' : 'PASS' }));
       verified = true;
       break;
     }
