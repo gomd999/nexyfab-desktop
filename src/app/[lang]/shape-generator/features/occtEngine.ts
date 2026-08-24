@@ -1802,6 +1802,7 @@ export function occtMirror(
 /** Face selector handed to replicad's `draft` — only the methods we call. */
 interface FaceFinderLike {
   atAngleWith: (direction: [number, number, number], angle?: number) => FaceFinderLike;
+  ofSurfaceType: (surfaceType: 'PLANE') => FaceFinderLike;
 }
 
 /** B-rep solid that supports replicad's native draft (OCCT BRepOffsetAPI_DraftAngle). */
@@ -1837,7 +1838,15 @@ export function occtDraft(
     return { geometry: new BufferGeometry(), handle: null };
   }
   const signed = direction === 0 ? angleDeg : -angleDeg;
-  const drafted = host.draft(signed, (f) => f.atAngleWith([0, 1, 0], 90), 'XZ');
+  // Cylindrical bore/flange faces can have a sampled normal perpendicular to
+  // the pull direction, but BRepOffsetAPI_DraftAngle cannot draft those faces
+  // together with the planar exterior walls. Restrict the global operation to
+  // planar side walls; holes and other analytic surfaces remain unchanged.
+  const drafted = host.draft(
+    signed,
+    (f) => f.ofSurfaceType('PLANE').atAngleWith([0, 1, 0], 90),
+    'XZ',
+  );
   return meshAndRegister(drafted, tessellation);
 }
 

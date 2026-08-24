@@ -630,9 +630,29 @@ function runSketchExtrude(
     const upstreamEmpty = !geo.attributes.position || (geo.attributes.position.count ?? 0) === 0;
     const faceFrameExtrude = !!faceFrame && config.mode === 'extrude';
     const faceFrameRevolve = !!faceFrame && config.mode === 'revolve';
+    // Global XZ/YZ sketches use the same exact on-frame builder as a face
+    // sketch.  The mesh convention is centred about the selected plane, so
+    // start the one-sided OCCT extrusion half a depth behind that plane.
+    const globalPlaneExtrude = !faceFrame && (config.mode === 'extrude' || config.mode === 'extrudeCut');
+    const globalPlaneFrame = globalPlaneExtrude && plane === 'xz'
+      ? {
+          origin: [0, (planeOffset ?? 0) + (config.depth ?? 0) / 2, 0] as [number, number, number],
+          normal: [0, -1, 0] as [number, number, number],
+          uAxis: [1, 0, 0] as [number, number, number],
+          vAxis: [0, 0, 1] as [number, number, number],
+        }
+      : globalPlaneExtrude && plane === 'yz'
+        ? {
+            origin: [(planeOffset ?? 0) - (config.depth ?? 0) / 2, 0, 0] as [number, number, number],
+            normal: [1, 0, 0] as [number, number, number],
+            uAxis: [0, 0, -1] as [number, number, number],
+            vAxis: [0, 1, 0] as [number, number, number],
+          }
+        : null;
     if (
       (faceFrameExtrude
         || faceFrameRevolve
+        || globalPlaneFrame
         || (!faceFrame
           && (plane === 'xy' || plane == null)
           && (config.mode === 'extrude' || config.mode === 'revolve')))
@@ -647,7 +667,16 @@ function runSketchExtrude(
         const depth = config.depth ?? 0;
         const off = planeOffset ?? 0;
         let tool: { geometry: THREE.BufferGeometry; handle: string | null };
-        if (faceFrameExtrude) {
+        if (globalPlaneFrame) {
+          if (segs.length === 1 && segs[0].type === 'circle') {
+            const c = segs[0].points[0], rim = segs[0].points[1];
+            const rr = Math.hypot(rim.x - c.x, rim.y - c.y);
+            tool = occtExtrudeCircleOnFrame(rr, c.x, c.y, depth, globalPlaneFrame);
+          } else {
+            const pts = brepContourPoints(profile);
+            tool = pts ? occtExtrudeProfileOnFrame(pts, depth, globalPlaneFrame) : { geometry: geo, handle: null };
+          }
+        } else if (faceFrameExtrude) {
           // Touching boss/host faces can remain two solids inside a Compound.
           // Give the hidden tool start a micron-scale overlap and extend by the
           // same amount, preserving the exact external design envelope while
