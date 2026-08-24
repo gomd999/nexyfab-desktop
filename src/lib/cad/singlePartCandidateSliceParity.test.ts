@@ -11,6 +11,12 @@ import {
 } from '../../../capabilities/precision-cad/single-part-candidate/src/contract.mjs';
 
 describe('single-part slice compatibility', () => {
+  it('keeps the legacy path as an identity-preserving adapter', () => {
+    expect(legacyAxes).toBe(sliceAxes);
+    expect(evaluateLegacy).toBe(evaluateSlice);
+    expect(dimensionsLegacy).toBe(dimensionsSlice);
+  });
+
   it('matches the legacy fail-closed source verdict', () => {
     const runs = legacyAxes.map(axis => ({ feature: 'fixture', axis, status: 'PASS' as const }));
     expect(sliceAxes).toEqual(legacyAxes);

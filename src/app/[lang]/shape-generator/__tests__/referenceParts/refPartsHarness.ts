@@ -7,6 +7,7 @@
  * constraintSolver, nfabFormat, matesSolver, drawingExport, ...). No mocks.
  */
 import * as THREE from 'three';
+import { afterEach, beforeEach } from 'vitest';
 import type { FeatureInstance } from '../../features/types';
 import { stampFaceFeatureIdAll } from '../../features/faceProvenance';
 import type { HistoryNode, FeatureHistory } from '../../useFeatureStack';
@@ -257,6 +258,21 @@ export interface Finding {
 }
 
 const FINDINGS: Finding[] = [];
+let testFindingStart = 0;
+
+beforeEach(() => {
+  testFindingStart = FINDINGS.length;
+});
+
+afterEach(() => {
+  if (process.env.NEXYFAB_REFERENCE_PART_FINDINGS_MODE === 'report') return;
+  const blocking = blockingFindings(FINDINGS.slice(testFindingStart));
+  if (blocking.length === 0) return;
+  const summary = blocking
+    .map(finding => `[${finding.severity}][${finding.part}] ${finding.title}`)
+    .join('\n');
+  throw new Error(`REFERENCE_PART_BLOCKING_FINDINGS\n${summary}`);
+});
 
 export function recordFinding(f: Finding): void {
   FINDINGS.push(f);
@@ -267,4 +283,8 @@ export function recordFinding(f: Finding): void {
 
 export function getFindings(): readonly Finding[] {
   return FINDINGS;
+}
+
+export function blockingFindings(findings: readonly Finding[]): Finding[] {
+  return findings.filter(finding => finding.severity === 'critical' || finding.severity === 'major');
 }

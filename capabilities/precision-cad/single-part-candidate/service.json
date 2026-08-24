@@ -8,7 +8,7 @@
   "sourceRoot": "capabilities/precision-cad/single-part-candidate",
   "legacySource": ["src/lib/cad/mechanicalSinglePartCandidate.ts", "scripts/build-mechanical-single-part-candidates.ts"],
   "implementationState": "PARTIAL",
-  "verificationState": "NOT_RUN",
+  "verificationState": "LOCAL_CONTRACT_PASS",
   "deployEnabled": false,
   "build": {
     "context": "capabilities/precision-cad/single-part-candidate",
@@ -20,14 +20,15 @@
     "live": "/health/live",
     "ready": "/health/ready",
     "release": "/health/release",
-    "test": "capabilities/precision-cad/single-part-candidate/test/server.test.mjs"
+    "test": "capabilities/precision-cad/single-part-candidate/test/server.test.mjs",
+    "actualDependencyContractTest": "containers/occt-exact/src/singlePartReadiness.integration.test.ts"
   },
   "dependencyProbe": {
     "mode": "active-by-default",
     "timeoutEnv": "NEXYFAB_DEPENDENCY_PROBE_TIMEOUT_MS",
     "targets": [
-      { "binding": "EXACT_KERNEL_URL", "path": "/healthz", "expectedService": "exact-cad-kernel", "identityBinding": "EXACT_KERNEL_IDENTITY" },
-      { "binding": "JOB_CONTROL_URL", "path": "/healthz", "expectedService": "job-control" }
+      { "binding": "EXACT_KERNEL_URL", "path": "/healthz", "expectedService": "occt-exact", "identityBinding": "EXACT_KERNEL_IDENTITY", "authenticatedCanary": "POST /v1/jobs -> COMPUTE_REQUEST_REJECTED" },
+      { "binding": "JOB_CONTROL_URL", "path": "/healthz", "expectedService": "job-orchestrator", "authenticatedCanary": "POST /v1/jobs -> JOB_CONTRACT_REJECTED" }
     ]
   },
   "runtimeBindings": ["EXACT_KERNEL_URL", "EXACT_KERNEL_AUTH_TOKEN", "JOB_CONTROL_URL", "JOB_CONTROL_AUTH_TOKEN", "EXACT_KERNEL_IDENTITY", "INTERNAL_AUTH_TOKEN", "NEXYFAB_BUILD_ID"],

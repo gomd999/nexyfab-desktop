@@ -17,4 +17,4 @@ export type {
   MechanicalSinglePartAxis,
   MechanicalSinglePartSourceRun,
   MechanicalSinglePartSourceVerdict,
-} from '../../../src/lib/cad/mechanicalSinglePartCandidate';
+} from './src/contract.mjs';

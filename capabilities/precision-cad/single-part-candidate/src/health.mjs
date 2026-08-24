@@ -1,6 +1,24 @@
 import { MECHANICAL_SINGLE_PART_CANDIDATE_SCHEMA } from './contract.mjs';
 
-const BUILD_ID_PATTERN = /^(?!unknown$)[A-Za-z0-9][A-Za-z0-9._-]{0,127}$/;
+const IMMUTABLE_BUILD_ID_PATTERN = /^(?:[a-f0-9]{7,64}|sha256:[a-f0-9]{64})$/i;
+const SHA256_PATTERN = /^[a-f0-9]{64}$/i;
+const INVALID_JOB_CANARY = Object.freeze({
+  contractVersion: 'readiness-canary.invalid',
+  jobId: '',
+  tenantId: '',
+  projectId: '',
+  kind: 'READINESS_CANARY',
+  inputArtifacts: [],
+  requestedAt: '',
+  requestedBy: '',
+});
+const INVALID_COMPUTE_CANARY = Object.freeze({
+  contractVersion: 'readiness-canary.invalid',
+  message: INVALID_JOB_CANARY,
+  authorizationToken: '',
+  artifactGatewayUrl: 'invalid:',
+  inputArtifacts: [],
+});
 
 function isHttpUrl(value) {
   try {
@@ -24,36 +42,80 @@ function probeMode(env) {
   return env.NEXYFAB_DEPENDENCY_PROBE_MODE?.trim().toLowerCase() || 'active';
 }
 
-async function probeHealth(baseUrl, env, fetcher, validate) {
-  if (!isHttpUrl(baseUrl ?? '')) return { state: 'NOT_RUN', reason: 'binding_invalid' };
-  if (probeMode(env) !== 'active') return { state: 'HOLD', reason: 'active_probe_required' };
+async function requestJson(baseUrl, pathname, env, fetcher, init = {}) {
   try {
-    const response = await fetcher(new URL('/healthz', baseUrl), {
-      method: 'GET',
-      headers: { accept: 'application/json', 'cache-control': 'no-cache' },
+    const response = await fetcher(new URL(pathname, baseUrl), {
+      ...init,
+      headers: {
+        accept: 'application/json',
+        'cache-control': 'no-cache',
+        ...init.headers,
+      },
       signal: AbortSignal.timeout(probeTimeout(env)),
     });
-    const payload = await response.json();
-    const reason = validate(payload);
-    if (!response.ok || reason) return { state: 'FAIL', reason: reason || 'health_response_invalid', httpStatus: response.status };
-    return { state: 'PASS', httpStatus: response.status };
+    let payload;
+    try {
+      payload = await response.json();
+    } catch {
+      return { ok: false, reason: 'response_invalid_json', httpStatus: response.status };
+    }
+    return { ok: response.ok, response, payload, httpStatus: response.status };
   } catch {
-    return { state: 'FAIL', reason: 'health_unreachable' };
+    return { ok: false, reason: 'dependency_unreachable' };
   }
+}
+
+async function probeDependency(baseUrl, authToken, env, fetcher, validateHealth, canaryCode, canaryBody) {
+  if (!isHttpUrl(baseUrl ?? '')) return { state: 'NOT_RUN', reason: 'binding_invalid' };
+  if (probeMode(env) !== 'active') return { state: 'HOLD', reason: 'active_probe_required' };
+  const health = await requestJson(baseUrl, '/healthz', env, fetcher, { method: 'GET' });
+  if (!health.ok) {
+    return { state: 'FAIL', reason: health.reason || 'health_response_invalid', httpStatus: health.httpStatus };
+  }
+  const healthReason = validateHealth(health.payload);
+  if (healthReason) return { state: 'FAIL', reason: healthReason, httpStatus: health.httpStatus };
+
+  // A deliberately invalid job is a side-effect-free authenticated canary:
+  // 403 means the token was rejected, while the contract-level 422 proves the
+  // request passed authentication without enqueueing or executing any work.
+  const canary = await requestJson(baseUrl, '/v1/jobs', env, fetcher, {
+    method: 'POST',
+    headers: {
+      authorization: `Bearer ${authToken}`,
+      'content-type': 'application/json',
+    },
+    body: JSON.stringify(canaryBody),
+  });
+  if (canary.httpStatus !== 422 || canary.payload?.code !== canaryCode) {
+    return {
+      state: 'FAIL',
+      reason: 'dependency_authentication_not_verified',
+      httpStatus: canary.httpStatus,
+    };
+  }
+  return { state: 'PASS', httpStatus: health.httpStatus, authentication: 'VERIFIED' };
 }
 
 function resolveBuildId(env) {
   return env.NEXYFAB_BUILD_ID || env.RAILWAY_GIT_COMMIT_SHA?.slice(0, 12) || 'unknown';
 }
 
+function immutableBuildBound(env) {
+  return IMMUTABLE_BUILD_ID_PATTERN.test(resolveBuildId(env));
+}
+
+function exactKernelIdentityBound(env) {
+  return SHA256_PATTERN.test(env.EXACT_KERNEL_IDENTITY?.trim() ?? '');
+}
+
 export async function evaluatePrecisionReadiness(env = process.env, fetcher = globalThis.fetch) {
   const bindings = {
-    buildId: BUILD_ID_PATTERN.test(resolveBuildId(env)),
+    buildId: immutableBuildBound(env),
     exactKernel: isHttpUrl(env.EXACT_KERNEL_URL ?? ''),
     exactKernelAuthToken: secretBound(env.EXACT_KERNEL_AUTH_TOKEN),
     jobControl: isHttpUrl(env.JOB_CONTROL_URL ?? ''),
     jobControlAuthToken: secretBound(env.JOB_CONTROL_AUTH_TOKEN),
-    kernelIdentity: Boolean(env.EXACT_KERNEL_IDENTITY?.trim()),
+    kernelIdentity: exactKernelIdentityBound(env),
     internalAuthToken: secretBound(env.INTERNAL_AUTH_TOKEN),
   };
   const blockers = Object.entries(bindings)
@@ -63,17 +125,18 @@ export async function evaluatePrecisionReadiness(env = process.env, fetcher = gl
   const bindingReady = blockers.length === 0;
   const [exactKernel, jobControl] = bindingReady
     ? await Promise.all([
-        probeHealth(env.EXACT_KERNEL_URL, env, fetcher, payload => {
-          if (payload?.service !== 'exact-cad-kernel') return 'service_identity_mismatch';
-          if (payload?.state !== 'ok' || payload?.exactExecution !== 'PASS') return 'exact_execution_not_ready';
-          if (payload?.kernelIdentity !== env.EXACT_KERNEL_IDENTITY) return 'kernel_identity_mismatch';
+        probeDependency(env.EXACT_KERNEL_URL, env.EXACT_KERNEL_AUTH_TOKEN, env, fetcher, payload => {
+          if (payload?.ok !== true || payload?.service !== 'occt-exact') return 'service_identity_mismatch';
+          if (payload?.execution !== 'NOT_RUN') return 'exact_health_contract_invalid';
+          if (payload?.kernelIdentitySha256 !== env.EXACT_KERNEL_IDENTITY) return 'kernel_identity_mismatch';
+          if (!SHA256_PATTERN.test(payload?.workerIdentitySha256 ?? '')) return 'worker_identity_invalid';
           return null;
-        }),
-        probeHealth(env.JOB_CONTROL_URL, env, fetcher, payload => (
-          payload?.service === 'job-control' && payload?.state === 'ok'
+        }, 'COMPUTE_REQUEST_REJECTED', INVALID_COMPUTE_CANARY),
+        probeDependency(env.JOB_CONTROL_URL, env.JOB_CONTROL_AUTH_TOKEN, env, fetcher, payload => (
+          payload?.ok === true && payload?.service === 'job-orchestrator' && payload?.deploymentState === 'RUNNING'
             ? null
             : 'job_control_not_ready'
-        )),
+        ), 'JOB_CONTRACT_REJECTED', INVALID_JOB_CANARY),
       ])
     : [
         { state: 'NOT_RUN', reason: 'binding_invalid' },
@@ -94,12 +157,12 @@ export async function buildPrecisionHealth(phase, env = process.env, now = new D
         ready: false,
         blockers: [],
         bindings: {
-          buildId: BUILD_ID_PATTERN.test(resolveBuildId(env)),
+          buildId: immutableBuildBound(env),
           exactKernel: isHttpUrl(env.EXACT_KERNEL_URL ?? ''),
           exactKernelAuthToken: secretBound(env.EXACT_KERNEL_AUTH_TOKEN),
           jobControl: isHttpUrl(env.JOB_CONTROL_URL ?? ''),
           jobControlAuthToken: secretBound(env.JOB_CONTROL_AUTH_TOKEN),
-          kernelIdentity: Boolean(env.EXACT_KERNEL_IDENTITY?.trim()),
+          kernelIdentity: exactKernelIdentityBound(env),
           internalAuthToken: secretBound(env.INTERNAL_AUTH_TOKEN),
         },
         dependencies: {

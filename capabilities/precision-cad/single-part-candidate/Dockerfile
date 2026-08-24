@@ -1,6 +1,6 @@
 FROM node:22-alpine
 
-ARG NEXYFAB_BUILD_ID=local
+ARG NEXYFAB_BUILD_ID=unknown
 
 ENV HOST=0.0.0.0 \
     PORT=8080 \
