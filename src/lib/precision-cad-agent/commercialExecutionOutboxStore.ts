@@ -4,8 +4,9 @@ import { canonicalCommercialExecution, validateCommercialExecutionJob, type Comm
 import { verifyCommercialWorkerReceipt, type TrustedCommercialWorker } from './commercialWorkerReceipt';
 import { consumeDbApprovalChallenge, fullBoundaryCommandHash, hashBoundaryArguments, type ApprovalConsumeInput } from './commercialAgentExecutionBoundary';
 import { canonicalJson, hashReceipt, verifyExecutionJournalChain, type ExecutionJournalReceipt } from './executionJournal';
+import { assertCommercialWorkerIoMigration } from './commercialWorkerIo';
 
-export const COMMERCIAL_OUTBOX_MIGRATION_VERSION = 2026082203;
+export const COMMERCIAL_OUTBOX_MIGRATION_VERSION = 2026082502;
 export type CommercialOutboxRow = { job: CommercialExecutionJob; jobHash: string; status: 'PENDING' | 'CLAIMED' | 'SENT' | 'HOLD' | 'DONE' | 'VERIFIED_UNKNOWN'; attempt: number; leaseGeneration: number; leaseOwner?: string; leaseExpiresAt?: number; capability: string; capabilityHash: string };
 export type OutboxResult = { ok: true; row: CommercialOutboxRow; replayed?: boolean } | { ok: false; code: 'MIGRATION_REQUIRED' | 'INVALID_JOB' | 'CONFLICT' | 'NOT_FOUND' | 'LEASE_HELD' | 'CAPABILITY_INVALID' | 'RECEIPT_INVALID' | 'RECEIPT_REPLAY' };
 const hash = (value: string): string => createHash('sha256').update(value, 'utf8').digest('hex');
@@ -49,7 +50,39 @@ function validApprovedJournal(input: { approval: ApprovalConsumeInput; job: Comm
       && Date.parse(receipt.updatedAt) === input.journal.updatedAt;
   } catch { return false; }
 }
-export async function assertCommercialOutboxMigration(db: DbAdapter): Promise<void> { if (db.backend !== 'postgres') throw new Error(`commercial_outbox_migration_required:v${COMMERCIAL_OUTBOX_MIGRATION_VERSION}`); const row = await db.queryOne<{ version: number; checksum?: string }>('SELECT version, checksum FROM nf_schema_migrations WHERE version = ?', COMMERCIAL_OUTBOX_MIGRATION_VERSION).catch(() => undefined); const expected = process.env.POSTGRES_MIGRATION_CHECKSUM_2026082203?.trim(); const commercial = process.env.NEXYFAB_COMMERCIAL_MODE === '1' || process.env.NEXYFAB_PRECISION_CAD_COMMERCIAL_MODE === '1'; if (!row || Number(row.version) !== COMMERCIAL_OUTBOX_MIGRATION_VERSION || !/^[a-f0-9]{64}$/.test(row.checksum ?? '') || (commercial && !expected) || (expected && row.checksum !== expected)) throw new Error(`commercial_outbox_migration_required:v${COMMERCIAL_OUTBOX_MIGRATION_VERSION}`); }
+export async function assertCommercialOutboxMigration(db: DbAdapter): Promise<void> {
+  try { await assertCommercialWorkerIoMigration(db); }
+  catch { throw new Error(`commercial_outbox_migration_required:v${COMMERCIAL_OUTBOX_MIGRATION_VERSION}`); }
+}
+
+async function insertCommercialInputArtifact(db: DbAdapter, job: CommercialExecutionJob, at: number): Promise<void> {
+  const input = job.inputArtifact;
+  if (!input) throw new Error('commercial_input_artifact_required');
+  const inserted = await db.execute(
+    'INSERT INTO nf_precision_cad_commercial_input_artifacts (job_id, execution_id, tenant_id, project_id, artifact_id, object_key, content_sha256, byte_length, media_type, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+    job.jobId, job.executionId, job.tenantId, job.projectId, input.artifactId,
+    input.objectKey, input.contentSha256, input.byteLength, input.mediaType, at,
+  );
+  if (inserted.changes !== 1) throw new Error('commercial_input_artifact_conflict');
+}
+
+async function exactCommercialInputArtifact(db: DbAdapter, job: CommercialExecutionJob): Promise<boolean> {
+  const input = job.inputArtifact;
+  if (!input) return false;
+  const row = await db.queryOne<Record<string, unknown>>(
+    'SELECT execution_id, tenant_id, project_id, artifact_id, object_key, content_sha256, byte_length, media_type FROM nf_precision_cad_commercial_input_artifacts WHERE job_id = ?',
+    job.jobId,
+  );
+  return !!row
+    && row.execution_id === job.executionId
+    && row.tenant_id === job.tenantId
+    && row.project_id === job.projectId
+    && row.artifact_id === input.artifactId
+    && row.object_key === input.objectKey
+    && row.content_sha256 === input.contentSha256
+    && Number(row.byte_length) === input.byteLength
+    && row.media_type === input.mediaType;
+}
 
 export class CommercialExecutionOutboxStore {
   constructor(private readonly db: DbAdapter) {}
@@ -58,14 +91,18 @@ export class CommercialExecutionOutboxStore {
     try { await assertCommercialOutboxMigration(this.db); } catch { return { ok: false, code: 'MIGRATION_REQUIRED' }; }
     const jobJson = canonicalCommercialExecution(job); const jobHash = hash(jobJson);
     const existing = await this.db.queryOne<Record<string, unknown>>('SELECT * FROM nf_precision_cad_commercial_outbox WHERE job_id = ?', job.jobId);
-    if (existing) { const row = rowFromDb(existing); return row.jobHash === jobHash ? { ok: true, row, replayed: true } : { ok: false, code: 'CONFLICT' }; }
+    if (existing) { const row = rowFromDb(existing); return row.jobHash === jobHash && await exactCommercialInputArtifact(this.db, job) ? { ok: true, row, replayed: true } : { ok: false, code: 'CONFLICT' }; }
     try {
-      await this.db.execute('INSERT INTO nf_precision_cad_commercial_outbox (job_id, tenant_id, project_id, execution_id, generation_run_id, job_hash, job_json, status, attempt, lease_generation, lease_owner, lease_expires_at, capability_hash, available_at, created_at, updated_at, last_error) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)', job.jobId, job.tenantId, job.projectId, job.executionId, job.generationRunId, jobHash, jobJson, 'PENDING', job.attempt, job.leaseGeneration, null, null, null, at, at, at, null);
+      await this.db.transaction(async tx => {
+        const inserted = await tx.execute('INSERT INTO nf_precision_cad_commercial_outbox (job_id, tenant_id, project_id, execution_id, generation_run_id, job_hash, job_json, status, attempt, lease_generation, lease_owner, lease_expires_at, capability_hash, available_at, created_at, updated_at, last_error) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)', job.jobId, job.tenantId, job.projectId, job.executionId, job.generationRunId, jobHash, jobJson, 'PENDING', job.attempt, job.leaseGeneration, null, null, null, at, at, at, null);
+        if (inserted.changes !== 1) throw new Error('outbox_conflict');
+        await insertCommercialInputArtifact(tx, job, at);
+      });
       const row = await this.db.queryOne<Record<string, unknown>>('SELECT * FROM nf_precision_cad_commercial_outbox WHERE job_id = ?', job.jobId); if (!row) return { ok: false, code: 'NOT_FOUND' }; return { ok: true, row: rowFromDb(row) };
-    } catch { const raced = await this.db.queryOne<Record<string, unknown>>('SELECT * FROM nf_precision_cad_commercial_outbox WHERE job_id = ?', job.jobId); return raced && rowFromDb(raced).jobHash === jobHash ? { ok: true, row: rowFromDb(raced), replayed: true } : { ok: false, code: 'CONFLICT' }; }
+    } catch { const raced = await this.db.queryOne<Record<string, unknown>>('SELECT * FROM nf_precision_cad_commercial_outbox WHERE job_id = ?', job.jobId); return raced && rowFromDb(raced).jobHash === jobHash && await exactCommercialInputArtifact(this.db, job) ? { ok: true, row: rowFromDb(raced), replayed: true } : { ok: false, code: 'CONFLICT' }; }
   }
-  async claim(owner: string, secret: string, at = nowMs(), leaseMs = 30_000): Promise<OutboxResult> {
-    if (!owner || !secret || leaseMs <= 0 || leaseMs > 300_000) return { ok: false, code: 'INVALID_JOB' };
+  async claim(owner: string, secret: string, at = nowMs(), leaseMs = 15 * 60_000): Promise<OutboxResult> {
+    if (!owner || !secret || leaseMs < 30_000 || leaseMs > 30 * 60_000) return { ok: false, code: 'INVALID_JOB' };
     await assertCommercialOutboxMigration(this.db);
     const candidate = await this.db.queryOne<Record<string, unknown>>('SELECT * FROM nf_precision_cad_commercial_outbox WHERE status = ? AND available_at <= ? ORDER BY available_at ASC LIMIT 1', 'PENDING', at);
     if (!candidate) return { ok: false, code: 'NOT_FOUND' };
@@ -82,7 +119,7 @@ export class CommercialExecutionOutboxStore {
   async read(jobId: string): Promise<CommercialOutboxRow | null> { const row = await this.db.queryOne<Record<string, unknown>>('SELECT * FROM nf_precision_cad_commercial_outbox WHERE job_id = ?', jobId); return row ? rowFromDb(row) : null; }
 }
 
-/** The only v2 enqueue path: approval consume, workspace CAS, claim, journal, and outbox share one DB transaction. */
+/** The only v3 enqueue path: approval consume, workspace CAS, claim, journal, immutable input, and outbox share one DB transaction. */
 export async function enqueueCommercialExecutionTransaction(input: { db: DbAdapter; approval: ApprovalConsumeInput; approvalSecret: string; job: CommercialExecutionJob; journal: { idempotencyKey: string; receiptJson: string; receiptHash: string; approvalHash: string; createdAt: number; updatedAt: number } }): Promise<OutboxResult> {
   if (validateCommercialExecutionJob(input.job).length) return { ok: false, code: 'INVALID_JOB' };
   try { await assertCommercialOutboxMigration(input.db); } catch { return { ok: false, code: 'MIGRATION_REQUIRED' }; }
@@ -94,7 +131,9 @@ export async function enqueueCommercialExecutionTransaction(input: { db: DbAdapt
     const journal = await db.queryOne<Record<string, unknown>>('SELECT * FROM nf_precision_cad_execution_journal WHERE execution_id = ?', replay.job.executionId);
     const claim = await db.queryOne<Record<string, unknown>>('SELECT * FROM nf_precision_cad_tool_claims WHERE execution_id = ?', replay.job.executionId);
     const challenge = await db.queryOne<Record<string, unknown>>('SELECT * FROM nf_precision_cad_approval_challenges WHERE challenge_id = ?', input.approval.challengeId);
-    const exact = replay.jobHash === jobHash
+    const exactInput = await exactCommercialInputArtifact(db, input.job);
+    const exact = exactInput
+      && replay.jobHash === jobHash
       && String(row.job_json) === jobJson
       && String(row.execution_id) === input.job.executionId
       && String(row.tenant_id) === input.job.tenantId
@@ -155,6 +194,7 @@ export async function enqueueCommercialExecutionTransaction(input: { db: DbAdapt
       if (claim.changes !== 1) throw new Error('claim_conflict');
       const outbox = await tx.execute('INSERT INTO nf_precision_cad_commercial_outbox (job_id, tenant_id, project_id, execution_id, generation_run_id, job_hash, job_json, status, attempt, lease_generation, available_at, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)', input.job.jobId, input.job.tenantId, input.job.projectId, input.job.executionId, input.job.generationRunId, jobHash, jobJson, 'PENDING', input.job.attempt, input.job.leaseGeneration, now, now, now);
       if (outbox.changes !== 1) throw new Error('outbox_conflict');
+      await insertCommercialInputArtifact(tx, input.job, now);
       return { ok: true, row: { job: input.job, jobHash, status: 'PENDING', attempt: input.job.attempt, leaseGeneration: input.job.leaseGeneration, capability: '', capabilityHash: '' } };
     });
   } catch {

@@ -16,6 +16,7 @@ import { dispatchCadJob } from '@/lib/platform/jobOrchestratorClient';
 import { JOB_CONTRACT_VERSION } from '@/lib/platform/contracts';
 import { consumeDbApprovalChallenge, ensureApprovalChallengeTable, hashBoundaryArguments, issueDbApprovalChallenge, type BoundaryRole } from '@/lib/precision-cad-agent/commercialAgentExecutionBoundary';
 import { enqueueCommercialExecutionTransaction } from '@/lib/precision-cad-agent/commercialExecutionOutboxStore';
+import { stageCommercialExecutionInput } from '@/lib/precision-cad-agent/commercialWorkerIo';
 import { DurableExecutionJournal, canonicalJson, hashReceipt } from '@/lib/precision-cad-agent/executionJournal';
 import { serverEvidenceSha256 } from '@/lib/ai/serverEvidence';
 import { boundedJsonError, readBoundedJson } from '@/lib/boundedJsonBody';
@@ -105,7 +106,13 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     if (!planned.ok) return NextResponse.json({ ok: false, status: 'HOLD', releaseReady: false, error: { code: 'JOURNAL_CONFLICT' } }, { status: 409 });
     const approved = journalEngine.approve(planned.receipt.executionId, { approvalId: `boundary:${approval.challengeId}`, actorId: auth.userId, approved: true, approvedAt: nowIso, commandHash: planned.receipt.commandHash, workspaceBindingHash: planned.receipt.workspaceBindingHash, userInitiated: true });
     if (!approved.ok || !approved.receipt.approvalHash) return NextResponse.json({ ok: false, status: 'HOLD', releaseReady: false, error: { code: 'JOURNAL_CONFLICT' } }, { status: 409 });
-    const job: CommercialExecutionJob = { contractVersion: 'nexyfab.precision-cad-commercial-execution.v2', jobId: `job-${serverEvidenceSha256({ executionId: approved.receipt.executionId, targetHash }).slice(0, 48)}`, tenantId, projectId, executionId: approved.receipt.executionId, generationRunId, generationStateRevision, generationProgramSha256, workspaceId: projectId, workspaceRevision: revision, workspaceContentHash, tool: typedCall.name, scope: typedCall.scope as 'apply' | 'export', callId: typedCall.callId, argumentsHash: hashBoundaryArguments(typedCall.arguments), commandHash: approved.receipt.commandHash, targetHash, journalVersion: approved.receipt.version, attempt: 1, leaseGeneration: 1 };
+    const jobBase: Omit<CommercialExecutionJob, 'inputArtifact'> = { contractVersion: 'nexyfab.precision-cad-commercial-execution.v3', jobId: `job-${serverEvidenceSha256({ executionId: approved.receipt.executionId, targetHash }).slice(0, 48)}`, tenantId, projectId, executionId: approved.receipt.executionId, generationRunId, generationStateRevision, generationProgramSha256, workspaceId: projectId, workspaceRevision: revision, workspaceContentHash, tool: typedCall.name, scope: typedCall.scope as 'apply' | 'export', callId: typedCall.callId, argumentsHash: hashBoundaryArguments(typedCall.arguments), commandHash: approved.receipt.commandHash, targetHash, journalVersion: approved.receipt.version, attempt: 1, leaseGeneration: 1 };
+    let job: CommercialExecutionJob;
+    try {
+      job = (await stageCommercialExecutionInput({ job: jobBase, arguments: typedCall.arguments, storage: getStorage() })).job;
+    } catch {
+      return NextResponse.json({ ok: false, status: 'HOLD', releaseReady: false, error: { code: 'IMMUTABLE_INPUT_STAGE_FAILED' } }, { status: 503, headers: { 'Cache-Control': 'private, no-store' } });
+    }
     const queued = await enqueueCommercialExecutionTransaction({ db, approval, approvalSecret, job, journal: { idempotencyKey, receiptJson: canonicalJson(approved.receipt), receiptHash: hashReceipt(approved.receipt), approvalHash: approved.receipt.approvalHash, createdAt: Date.parse(approved.receipt.createdAt), updatedAt: Date.parse(approved.receipt.updatedAt) } });
     if (!queued.ok) return NextResponse.json({ ok: false, status: 'HOLD', releaseReady: false, error: { code: queued.code } }, { status: queued.code === 'MIGRATION_REQUIRED' ? 503 : 409, headers: { 'Cache-Control': 'private, no-store' } });
     return NextResponse.json({ ok: true, status: queued.replayed ? 'REPLAY' : 'QUEUED', executionId: queued.row.job.executionId, workerStarted: false, releaseReady: false, targetSha256: targetHash }, { status: 202, headers: { 'Cache-Control': 'private, no-store' } });

@@ -7,7 +7,7 @@ import { canonicalJson, DurableExecutionJournal, hashReceipt } from './execution
 const SECRET = 's'.repeat(32);
 export const NOW = Date.now();
 
-type EnqueueState = { challenge: Record<string, unknown>; head: { revision: number; content_hash: string }; journal?: Record<string, unknown>; claim?: Record<string, unknown>; outbox?: Record<string, unknown> };
+type EnqueueState = { challenge: Record<string, unknown>; head: { revision: number; content_hash: string }; journal?: Record<string, unknown>; claim?: Record<string, unknown>; outbox?: Record<string, unknown>; inputArtifact?: Record<string, unknown> };
 
 export class EnqueuePostgresMock implements DbAdapter {
   readonly backend = 'postgres' as const;
@@ -25,12 +25,13 @@ export class EnqueuePostgresMock implements DbAdapter {
   async queryOne<T = Record<string, unknown>>(sql: string, ..._params: SqlParam[]): Promise<T | undefined> {
     const normalized = sql.replace(/\s+/g, ' ').trim();
     if (this.failOn && normalized.includes(this.failOn)) throw new Error(`injected_failure:${this.failOn}`);
-    if (normalized.includes('FROM nf_schema_migrations')) { const version = Number(_params[0]) === 2026082202 ? 2026082202 : 2026082203; return this.migrationAvailable ? { version, checksum: 'f'.repeat(64) } as T : undefined; }
+    if (normalized.includes('FROM nf_schema_migrations')) { const version = Number(_params[0]); return this.migrationAvailable ? { version, checksum: 'f'.repeat(64) } as T : undefined; }
     if (normalized.includes('FROM nf_cad_workspace_heads')) return this.state.head as T;
     if (normalized.includes('FROM nf_precision_cad_commercial_outbox') && normalized.includes('JOIN nf_precision_cad_execution_journal')) return this.state.journal?.idempotency_key === _params[0] ? this.state.outbox as T | undefined : undefined;
     if (normalized.includes('FROM nf_precision_cad_execution_journal')) return this.state.journal as T | undefined;
     if (normalized.includes('FROM nf_precision_cad_tool_claims')) return this.state.claim as T | undefined;
     if (normalized.includes('FROM nf_precision_cad_approval_challenges')) return this.state.challenge.challenge_id === _params[0] ? this.state.challenge as T : undefined;
+    if (normalized.includes('FROM nf_precision_cad_commercial_input_artifacts')) return this.state.inputArtifact?.job_id === _params[0] ? this.state.inputArtifact as T : undefined;
     if (normalized.includes('FROM nf_precision_cad_commercial_outbox')) {
       if (!this.state.outbox) return undefined;
       if (_params.length && String(_params[0]) !== String(this.state.outbox.job_id)) return undefined;
@@ -46,6 +47,7 @@ export class EnqueuePostgresMock implements DbAdapter {
     if (normalized.startsWith('INSERT INTO nf_precision_cad_execution_journal')) { if (this.state.journal) return { changes: 0 }; this.state.journal = { execution_id: params[0], idempotency_key: params[1], project_id: params[2], workspace_id: params[3], workspace_revision: params[4], workspace_content_hash: params[5], command_hash: params[6], approval_hash: params[7], lifecycle: params[8], version: params[9], receipt_json: params[10], receipt_hash: params[11], created_at: params[12], updated_at: params[13] }; return { changes: 1 }; }
     if (normalized.startsWith('INSERT INTO nf_precision_cad_tool_claims')) { if (this.state.claim) return { changes: 0 }; this.state.claim = { project_id: params[0], workspace_revision: params[1], call_id: params[2], arguments_hash: params[3], challenge_id: params[4], execution_id: params[5], claimed_at: params[6] }; return { changes: 1 }; }
     if (normalized.startsWith('INSERT INTO nf_precision_cad_commercial_outbox')) { if (this.state.outbox) return { changes: 0 }; this.state.outbox = { job_id: params[0], tenant_id: params[1], project_id: params[2], execution_id: params[3], generation_run_id: params[4], job_hash: params[5], job_json: params[6], status: params[7], attempt: params[8], lease_generation: params[9], available_at: params[10], created_at: params[11], updated_at: params[12] }; return { changes: 1 }; }
+    if (normalized.startsWith('INSERT INTO nf_precision_cad_commercial_input_artifacts')) { if (this.state.inputArtifact) return { changes: 0 }; this.state.inputArtifact = { job_id: params[0], execution_id: params[1], tenant_id: params[2], project_id: params[3], artifact_id: params[4], object_key: params[5], content_sha256: params[6], byte_length: params[7], media_type: params[8], created_at: params[9] }; return { changes: 1 }; }
     return { changes: 1 };
   }
   async executeRaw(_sql: string): Promise<void> { this.ddlCalls++; throw new Error('REQUEST_TIME_DDL_FORBIDDEN'); }
