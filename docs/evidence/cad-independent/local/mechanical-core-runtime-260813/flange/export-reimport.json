@@ -3,9 +3,9 @@
   "feature": "flange",
   "axis": "export",
   "status": "PASS",
-  "executedAt": "2026-08-24T14:23:18.048Z",
+  "executedAt": "2026-08-24T21:27:38.377Z",
   "stepBytes": 31999,
-  "stepSha256": "2cf9dd1081a3c0ae029262c01755bada9ff4d44f0279cc3e40111db96e13998a",
+  "stepSha256": "cb698c794897cf8f9576e8d72e552b6079610e874f22869d4a22113cae52c161",
   "before": {
     "handle": "occt:241",
     "kernelKind": "Solid",

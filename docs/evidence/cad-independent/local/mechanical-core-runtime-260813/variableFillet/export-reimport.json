@@ -3,9 +3,9 @@
   "feature": "variableFillet",
   "axis": "export",
   "status": "PASS",
-  "executedAt": "2026-08-24T14:23:18.048Z",
+  "executedAt": "2026-08-24T21:27:38.377Z",
   "stepBytes": 30963,
-  "stepSha256": "bdb0b10af8233f19905deeda9a1c43bb4c3fdd4f7c2dba8ea67c0a4e40ad3a1d",
+  "stepSha256": "163d704c6fbced2b693544c552115894efb97e7e6a2c01009cdad521351b12e4",
   "before": {
     "handle": "occt:155",
     "kernelKind": "Solid",

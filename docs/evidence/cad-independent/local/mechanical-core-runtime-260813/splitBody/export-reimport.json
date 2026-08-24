@@ -3,9 +3,9 @@
   "feature": "splitBody",
   "axis": "export",
   "status": "PASS",
-  "executedAt": "2026-08-24T14:23:18.048Z",
+  "executedAt": "2026-08-24T21:27:38.377Z",
   "stepBytes": 16154,
-  "stepSha256": "f0c2b7c736aafbd9599a15b0758abc40b61064a37d6502dd2eb4adf9a3119775",
+  "stepSha256": "057b371cffce41a611246e07a634df8187f40dcb2d5580f6b3cb8f1108b01c62",
   "before": {
     "handle": "occt:449",
     "kernelKind": "Solid",

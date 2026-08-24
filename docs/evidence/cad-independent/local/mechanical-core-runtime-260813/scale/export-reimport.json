@@ -3,9 +3,9 @@
   "feature": "scale",
   "axis": "export",
   "status": "PASS",
-  "executedAt": "2026-08-24T14:23:18.048Z",
+  "executedAt": "2026-08-24T21:27:38.377Z",
   "stepBytes": 15659,
-  "stepSha256": "cf024f03b3a486425284dc41f9f21779004a114b9fb59060f9057dba3f094fa0",
+  "stepSha256": "8b63770db28a50759eb4173bbf65a2b9050fd526f584021a294754457524a210",
   "before": {
     "handle": "occt:123",
     "kernelKind": "Solid",

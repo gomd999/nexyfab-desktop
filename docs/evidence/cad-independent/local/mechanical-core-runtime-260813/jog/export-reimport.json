@@ -3,9 +3,9 @@
   "feature": "jog",
   "axis": "export",
   "status": "PASS",
-  "executedAt": "2026-08-24T14:23:18.048Z",
+  "executedAt": "2026-08-24T21:27:38.377Z",
   "stepBytes": 47553,
-  "stepSha256": "ff4494ea1cd5162e2c45d676b3a1ec957d328e3ae23af496ff969a5be8cac1f8",
+  "stepSha256": "9a9c6c740e6aa445bd163f99c467b3f063445d03fffa37949845a02c69ae2e0b",
   "before": {
     "handle": "occt:269",
     "kernelKind": "Solid",

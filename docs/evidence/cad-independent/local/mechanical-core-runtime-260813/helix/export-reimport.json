@@ -3,9 +3,9 @@
   "feature": "helix",
   "axis": "export",
   "status": "PASS",
-  "executedAt": "2026-08-24T14:23:18.048Z",
+  "executedAt": "2026-08-24T21:27:38.377Z",
   "stepBytes": 178086,
-  "stepSha256": "3268d1c13a05af9ab21dd2af04fe14580bd3c9a0f6ddc5a5dde77c321fca2328",
+  "stepSha256": "a4b1c418f751183dd7c58206e8ec5f48361be394ca0076259831a294ca59e36f",
   "before": {
     "handle": "occt:213",
     "kernelKind": "Solid",

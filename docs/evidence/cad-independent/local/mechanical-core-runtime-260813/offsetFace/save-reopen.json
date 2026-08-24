@@ -3,9 +3,9 @@
   "feature": "offsetFace",
   "axis": "save_reopen",
   "status": "PASS",
-  "executedAt": "2026-08-24T14:23:18.048Z",
+  "executedAt": "2026-08-24T21:27:38.377Z",
   "savedBytes": 1544,
-  "savedSha256": "409e65146346c5b4f54c31a8d83c66a4e5a100e08272713d50309380ff1807a1",
+  "savedSha256": "4be497f022c9be1cb382588c41086f686f5cc9136e64d2847b5f83614eefb8e4",
   "reopened": {
     "handle": "occt:177",
     "kernelKind": "Solid",
