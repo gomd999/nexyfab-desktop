@@ -1,9 +1,12 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
 import manifest from '../../config/platform/slice-deployment.v1.json' with { type: 'json' };
 import localRuntimeEvidence from '../../docs/evidence/platform-runtime/slice-local-runtime.json' with { type: 'json' };
 import stagingEvidence from '../../docs/evidence/platform-runtime/slice-deployment-staging.json' with { type: 'json' };
-import { evaluateLocalRuntimeEvidence, evaluateSliceDeploymentReadiness, evaluateStagingEvidence } from './verify-slice-deployment-readiness.mjs';
+import { evaluateLocalRuntimeEvidence, evaluateSliceDeploymentReadiness, evaluateStagingEvidence, fingerprintFiles } from './verify-slice-deployment-readiness.mjs';
 
 const evidenceNow = new Date(Date.parse(localRuntimeEvidence.generatedAt) + 60_000);
 const contextFingerprints = Object.fromEntries(localRuntimeEvidence.slices.map(slice => [slice.scope, {
@@ -11,6 +14,20 @@ const contextFingerprints = Object.fromEntries(localRuntimeEvidence.slices.map(s
   fileCount: slice.sourceFileCount,
 }]));
 const localOptions = { now: evidenceNow, contextFingerprints, requireCurrentSource: true };
+
+test('slice fingerprints are stable across LF and CRLF checkouts', () => {
+  const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'nexyfab-slice-fingerprint-'));
+  try {
+    fs.mkdirSync(path.join(directory, 'slice'));
+    fs.writeFileSync(path.join(directory, 'slice', 'source.mjs'), 'line1\nline2\n');
+    const lf = fingerprintFiles(directory, ['slice/source.mjs'], 'slice');
+    fs.writeFileSync(path.join(directory, 'slice', 'source.mjs'), 'line1\r\nline2\r\n');
+    const crlf = fingerprintFiles(directory, ['slice/source.mjs'], 'slice');
+    assert.deepEqual(crlf, lf);
+  } finally {
+    fs.rmSync(directory, { recursive: true, force: true });
+  }
+});
 
 test('all three slices have local build, health, and rollback declarations', () => {
   const result = evaluateSliceDeploymentReadiness(manifest);

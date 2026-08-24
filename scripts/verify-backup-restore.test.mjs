@@ -4,7 +4,14 @@ import {
   assertDrillTarget,
   assertRestoreDrillSafety,
   compareDatabaseSnapshots,
+  isBoundGitHead,
 } from './verify-backup-restore.mjs';
+
+test('restore receipts accept Git SHA-1 and SHA-256 commit identifiers', () => {
+  assert.equal(isBoundGitHead('a'.repeat(40)), true);
+  assert.equal(isBoundGitHead('b'.repeat(64)), true);
+  assert.equal(isBoundGitHead('c'.repeat(39)), false);
+});
 
 test('restore drill only accepts explicitly isolated database names', () => {
   assert.deepEqual(

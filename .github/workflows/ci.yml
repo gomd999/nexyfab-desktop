@@ -31,6 +31,9 @@ jobs:
       RESTORE_DATABASE_URL: postgres://postgres:postgres@127.0.0.1:5432/nexyfab_restore_drill
       RESTORE_DRILL_ENVIRONMENT: staging
       RESTORE_DRILL_CONFIRM: NEXYFAB_ISOLATED_RESTORE_ONLY
+      RESTORE_RELEASE_BUILD_ID: ci-${{ github.run_id }}-${{ github.run_attempt }}
+      RESTORE_RELEASE_DEPLOYMENT_ID: github-actions-${{ github.run_id }}
+      RESTORE_RELEASE_GIT_HEAD: ${{ github.sha }}
       BACKUP_FILE: /tmp/nexyfab-ci.sql.gz
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4

@@ -12,6 +12,7 @@ import { runPostgresMigration } from './run-postgres-migrations.mjs';
 const CONFIRMATION = 'NEXYFAB_ISOLATED_RESTORE_ONLY';
 const quoteIdentifier = value => `"${String(value).replaceAll('"', '""')}"`;
 const sha256 = value => createHash('sha256').update(value).digest('hex');
+export const isBoundGitHead = value => /^(?:[a-f0-9]{40}|[a-f0-9]{64})$/.test(String(value));
 
 function parsePostgresUrl(databaseUrl, variableName) {
   const parsed = new URL(databaseUrl);
@@ -271,7 +272,7 @@ export async function verifyBackupRestore({
     deploymentId: process.env.RESTORE_RELEASE_DEPLOYMENT_ID?.trim() ?? '',
     gitHead: process.env.RESTORE_RELEASE_GIT_HEAD?.trim() ?? '',
   };
-  if (!release.buildId || !release.deploymentId || !/^[a-f0-9]{64}$/.test(release.gitHead)) {
+  if (!release.buildId || !release.deploymentId || !isBoundGitHead(release.gitHead)) {
     throw new Error('RESTORE_RELEASE_BUILD_ID, RESTORE_RELEASE_DEPLOYMENT_ID, and RESTORE_RELEASE_GIT_HEAD are required for a bound restore receipt');
   }
   const safety = assertRestoreDrillSafety({
