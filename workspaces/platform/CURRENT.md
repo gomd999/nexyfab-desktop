@@ -1,5 +1,35 @@
 # Platform current session
 
+## 2026-08-25 mechanical direct-design campaign preflight v1
+
+- Status: `CURRENT_WORKBOOK_30_VALID / REQUIRED_ARTIFACTS_0_OF_240 /
+  ROLE_SEPARATED_VERIFIERS_0_OF_3 / TRUSTED_ADAPTER_NOT_SUPPLIED /
+  COMMERCIAL_CAMPAIGN_HOLD`.
+- Implementation commit:
+  `0564bc7a5f681dc40ff1699ac6e9c66a5d1934ba`.
+- A fresh pending-only external evidence root now exists at
+  `C:\Users\gomd9\Downloads\nexysys_1\nexyfab-commercial-evidence-260825-v4`.
+  It contains exactly three workbooks: 30 direct designs, 20 blind challenges,
+  and three manufacturing pilots. No STEP, NFAB, drawing, BOM, measurement,
+  inspection, signature, state, or release receipt was fabricated.
+- `nexyfab.mechanical-direct-design-campaign-preflight.v1` validates the
+  current 30-case workbook, all eight artifact roles per case, safe regular
+  files under the evidence root, three distinct Ed25519 verifier roles, and an
+  explicitly supplied regular adapter file. It never imports or executes the
+  adapter and never creates campaign state, evidence, or release authority.
+- Current preflight is an intentional fail-closed HOLD: workbook 30/30 valid,
+  artifacts 0/240 present, trusted verifier roles 0/3, and adapter absent. The
+  preserved `260812` workbook fails current validation because it has no
+  `verificationReceipt` artifact path and must not be resumed.
+- Verification: direct-design contracts 10/10 PASS, focused script ESLint
+  PASS, Platform ownership PASS, full source ESLint PASS, and TypeScript PASS.
+  A positive contract also proves `readyToExecute` appears only with all 240
+  regular files, distinct role coverage, and an adapter file, without loading
+  that adapter.
+- Production and staging deployments were not changed.
+- Handoff:
+  `HANDOFFS/20260825T091525Z-mechanical-direct-design-campaign-preflight-v1.md`.
+
 ## 2026-08-25 mechanical intent evidence hierarchy v4
 
 - Status: `INTERNAL_MECHANICAL_CHAIN_BOUND / LOCAL_INTENT_STAGES_PASS /
