@@ -2,19 +2,23 @@
 
 ## 2026-08-25 교차 저장소 복구 v3 부록
 
-- Platform 구현 `2c79c2da`, 경로 비노출 보강 `f6496787`에서 기존 commercial
+- Platform 구현 `2c79c2da`, 경로 비노출 보강 `f6496787`, release-bound 백업
+  보호 `c54e6f60`에서 기존 commercial
   Precision 내구성 캠페인에 실제 PostgreSQL 덤프/격리 복원과 S3-compatible
   원본→백업→복원 전수 바이트 검증을 결속했습니다.
 - 현재 HEAD 결속 영수증은 로컬 내구성 29/29 PASS
-  (`91e37f5d83193c432bbf983d47888494f913b0aa870ac3959107002ffddcadf3`)와
+  (`67e1bafac0d4d747d0dd2d8ff1aa7b03d90bff64888a22e352cf714c6ad6d35a`)와
   교차 저장소 복구 v3 PASS
-  (`e3181adce4ddf2e4a3a79b812652ea2a7ab946a18782a3bbdcf8ac324696c292`)입니다.
+  (`575c30ebded3337f0cb9b50e24898bad30ddfd0746b1cb6fffb6c847b85a6b5d`)입니다.
 - 복구 실행은 164개 테이블/104개 행, 최종 FK 83개/고아 0, 객체 8개/8,580
   bytes, DB 바인딩 입력 2·출력 3·스냅샷 3을 정확히 대조했습니다. 로컬 RPO
-  age는 0 ms, 전체 RTO는 12,712 ms였습니다.
+  age는 0 ms, 전체 RTO는 13,029 ms였습니다.
 - 상용화 게이트는 v3 `release-bound` 영수증만 허용합니다. 체크인 영수증은
   `local-fixture`, Private Beta false, GA false이므로 실제 암호화 백업, provider/KMS,
   운영자·검토자, 인증 smoke, 파기 증거를 대체하지 않습니다.
+- Release-bound 실행은 기존 immutable provider DB backup, KMS key-version/provider
+  receipt 결속, 별도 endpoint/region object backup, versioning, Object Lock retention,
+  KMS readback이 모두 없으면 fail closed합니다.
 - CI는 `scripts/verify-backup-restore.mjs`와
   `scripts/verify-object-storage-restore*` 변경도 같은 digest-pinned 주간/경로 필터
   캠페인으로 재실행해야 합니다. Production과 staging은 변경하지 않았습니다.

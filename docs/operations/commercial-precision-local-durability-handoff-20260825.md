@@ -8,8 +8,9 @@ promotion.
 
 ## 2026-08-25 cross-store restore v3 addendum
 
-Platform commits `2c79c2da95e0ea32c25f6a3c83e058d50cc7f265` and
-`f649678730b18f4a22e3a8ec641ee33a067299be` extend the same disposable
+Platform commits `2c79c2da95e0ea32c25f6a3c83e058d50cc7f265`,
+`f649678730b18f4a22e3a8ec641ee33a067299be`, and
+`c54e6f607e13878b0adfcf7b64f9b8c0d9873975` extend the same disposable
 campaign with a real PostgreSQL plus S3-compatible backup/restore drill.
 PostgreSQL is dumped and restored into an isolated database, all public table
 content is compared, current migrations run, previously unvalidated
@@ -25,16 +26,23 @@ source stores are rechecked for changes.
 The checked-in cross-store receipt is
 `docs/evidence/cad-independent/commercial-precision-cross-store-restore-20260825.json`.
 It is schema `nexyfab.backup-isolated-restore-drill.v3`, bound to source HEAD
-`f649678730b18f4a22e3a8ec641ee33a067299be`, and has receipt SHA-256
-`e3181adce4ddf2e4a3a79b812652ea2a7ab946a18782a3bbdcf8ac324696c292`.
+`c54e6f607e13878b0adfcf7b64f9b8c0d9873975`, and has receipt SHA-256
+`575c30ebded3337f0cb9b50e24898bad30ddfd0746b1cb6fffb6c847b85a6b5d`.
 It matches 164 restored tables/104 rows and 8 source/backup/restored objects
 with 2 immutable-input, 3 committed-output, and 3 artifact-snapshot bindings.
-Measured local RPO age is 0 ms and end-to-end RTO is 12,712 ms.
+Measured local RPO age is 0 ms and end-to-end RTO is 13,029 ms.
 
 This receipt is explicitly `local-fixture`; release-bound observation, Private
 Beta, and GA remain false. Commercialization accepts only a fresh v3
 `release-bound` receipt tied to the exact release and rejects this local proof
 for promotion.
+
+Release-bound mode now also requires an existing immutable provider database
+backup with at-rest KMS key-version and provider-receipt bindings. The object
+backup must be in a distinct endpoint or region failure domain with bucket
+versioning, Object Lock default retention, and KMS encryption verified after
+readback. The local receipt records every one of these protection claims as
+false instead of borrowing a label-only PASS.
 
 ## Current crash-after-claim and service-restart closure
 
@@ -65,9 +73,9 @@ replays authoritative persistence through a read-only artifact store that
 throws on every attempted write; the only accepted outcome is exact `REPLAY`.
 
 The checked-in receipt is bound to source HEAD
-`f649678730b18f4a22e3a8ec641ee33a067299be`, was generated at
-`2026-08-25T12:42:44.315Z`, passes 29/29 checks, and has receipt SHA-256
-`91e37f5d83193c432bbf983d47888494f913b0aa870ac3959107002ffddcadf3`.
+`c54e6f607e13878b0adfcf7b64f9b8c0d9873975`, was generated at
+`2026-08-25T13:14:23.925Z`, passes 29/29 checks, and has receipt SHA-256
+`67e1bafac0d4d747d0dd2d8ff1aa7b03d90bff64888a22e352cf714c6ad6d35a`.
 The claim boundary remains explicit: this is a disposable deterministic
 fixture, not release runtime evidence; Private Beta and GA are false. No
 staging or production service was deployed, restarted, reconfigured, or
@@ -101,6 +109,7 @@ The separate operational handoff is
 - actual crash-after-claim campaign: `ad437dbf`;
 - cross-store restore drill v3: `2c79c2da`;
 - restore receipt path redaction: `f6496787`;
+- release-bound protected backup gate: `c54e6f60`;
 - execution contract: `nexyfab.precision-cad-commercial-execution.v3`;
 - immutable input: `nexyfab.precision-cad-commercial-input.v2`;
 - runtime receipt: `nexyfab.commercial-precision-runtime-evidence.v3`;
@@ -135,10 +144,10 @@ fresh-client recovery; and removed all containers, networks, and volumes.
 Receipt:
 `docs/evidence/cad-independent/commercial-precision-local-durability-20260825.json`
 
-- source Git head: `f649678730b18f4a22e3a8ec641ee33a067299be`;
-- generated: `2026-08-25T12:42:44.315Z`;
+- source Git head: `c54e6f607e13878b0adfcf7b64f9b8c0d9873975`;
+- generated: `2026-08-25T13:14:23.925Z`;
 - receipt SHA-256:
-  `91e37f5d83193c432bbf983d47888494f913b0aa870ac3959107002ffddcadf3`;
+  `67e1bafac0d4d747d0dd2d8ff1aa7b03d90bff64888a22e352cf714c6ad6d35a`;
 - result: 29/29 `PASS`, including multi-instance exclusion, immutable input and
   three-output readback, isolated native execution, Ed25519/HMAC verification,
   wrong-worker/input/output/conflicting-replay rejection, exact callback retry,

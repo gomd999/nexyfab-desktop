@@ -45,6 +45,16 @@ Release evaluation accepts only a fresh exact-release `release-bound` receipt;
 the disposable local campaign emits `local-fixture`, which is always rejected
 for promotion even when every restore check passes.
 
+For `release-bound`, the verifier additionally refuses an on-demand local
+`pg_dump`: it must reuse an existing immutable provider backup and bind its
+capture time, restore-payload hash/bytes, at-rest encryption mode, KMS key-
+version hash, provider receipt hash, and provider receipt-ID hash. The object
+backup endpoint or region must differ from the source failure domain. Its
+bucket must report versioning enabled, Object Lock enabled with a nonzero
+default `COMPLIANCE` or `GOVERNANCE` retention, and every restored backup object
+must report the requested KMS key on readback. Raw provider IDs and KMS key IDs
+are not written to the receipt.
+
 ## Release decision
 
 The local Docker campaign proves executable database/object restore mechanics,

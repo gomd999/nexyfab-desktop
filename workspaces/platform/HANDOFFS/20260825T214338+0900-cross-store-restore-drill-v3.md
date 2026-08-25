@@ -12,7 +12,9 @@ actual object-storage backup and restore verifier to the existing isolated
 PostgreSQL restore drill. Commit
 `f649678730b18f4a22e3a8ec641ee33a067299be` limits the receipt's backup file
 field to the filename and prevents a local temporary path from entering
-evidence. Shared registry commits `b22de945` and `e6c4e171` assign the new tool,
+evidence. Commit `c54e6f607e13878b0adfcf7b64f9b8c0d9873975` makes
+release-bound mode require protected database and object backups. Shared
+registry commits `b22de945` and `e6c4e171` assign the new tool,
 test, and receipt to Platform.
 
 `scripts/verify-backup-restore.mjs` now:
@@ -43,13 +45,13 @@ Raw keys and credentials are excluded from the cross-store receipt.
 - Durability schema/result: `nexyfab.commercial-precision-local-durability.v3`,
   29/29 `PASS`
 - Durability SHA-256:
-  `91e37f5d83193c432bbf983d47888494f913b0aa870ac3959107002ffddcadf3`
+  `67e1bafac0d4d747d0dd2d8ff1aa7b03d90bff64888a22e352cf714c6ad6d35a`
 - Restore receipt:
   `docs/evidence/cad-independent/commercial-precision-cross-store-restore-20260825.json`
 - Restore schema/SHA-256: `nexyfab.backup-isolated-restore-drill.v3`,
-  `e3181adce4ddf2e4a3a79b812652ea2a7ab946a18782a3bbdcf8ac324696c292`
+  `575c30ebded3337f0cb9b50e24898bad30ddfd0746b1cb6fffb6c847b85a6b5d`
 - Exact source HEAD for both:
-  `f649678730b18f4a22e3a8ec641ee33a067299be`
+  `c54e6f607e13878b0adfcf7b64f9b8c0d9873975`
 - PostgreSQL: 164 tables, 1,717 columns, 104 rows; exact restored content;
   migration `2026082502`; four constraints validated; 83 final foreign keys,
   zero orphan rows
@@ -57,7 +59,10 @@ Raw keys and credentials are excluded from the cross-store receipt.
   identical manifests; bindings `immutable_input=2`, `committed_output=3`,
   `artifact_snapshot=3`
 - Measured local objectives: RPO age 0 ms, end-to-end restore/migrate/object
-  validation RTO 12,712 ms, object restore validation 992 ms
+  validation RTO 13,029 ms, object restore validation 991 ms
+- The local receipt truthfully records database provider protection, object
+  versioning/Object Lock, KMS, and distinct failure-domain verification as
+  false. Those fields are mandatory and true only for release-bound evidence.
 
 The command was:
 
@@ -73,9 +78,12 @@ network were removed after the run.
 `restoreReceiptEligible` now requires schema v3, exact release binding,
 `target=production`, a `release-bound` claim, an unchanged source database,
 validated/orphan-free foreign keys, the exact current migration, valid timing,
-and the full object/database-binding contract. It rejects local fixtures,
-legacy receipts, manifest drift, missing artifact snapshots, and receipt hash
-tampering.
+and the full object/database-binding contract. It also requires a reused
+immutable provider DB backup with KMS key-version/provider-receipt hashes and a
+separate object-backup failure domain with versioning, Object Lock retention,
+and KMS-encrypted readback. It rejects local fixtures, legacy receipts,
+manifest drift, missing artifact snapshots, unprotected backups, and receipt
+hash tampering.
 
 The checked-in receipt deliberately says `target=local-fixture`,
 `releaseBoundObservation=false`, `privateBetaEligible=false`, and

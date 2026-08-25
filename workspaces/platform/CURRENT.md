@@ -7,7 +7,8 @@
   LOCAL_FIXTURE_ONLY / PRIVATE_BETA_FALSE / GA_FALSE`.
 - Platform implementation commits:
   `2c79c2da95e0ea32c25f6a3c83e058d50cc7f265` and
-  `f649678730b18f4a22e3a8ec641ee33a067299be`; shared ownership commits:
+  `f649678730b18f4a22e3a8ec641ee33a067299be`; release-bound protection
+  commit: `c54e6f607e13878b0adfcf7b64f9b8c0d9873975`; shared ownership commits:
   `b22de945` and `e6c4e171`.
 - `scripts/verify-backup-restore.mjs` now performs a v3 cross-store drill: an
   exact PostgreSQL dump/isolated restore, current migration application,
@@ -22,18 +23,21 @@
 - Checked-in restore evidence:
   `docs/evidence/cad-independent/commercial-precision-cross-store-restore-20260825.json`;
   schema `nexyfab.backup-isolated-restore-drill.v3`, source HEAD
-  `f649678730b18f4a22e3a8ec641ee33a067299be`, receipt SHA-256
-  `e3181adce4ddf2e4a3a79b812652ea2a7ab946a18782a3bbdcf8ac324696c292`.
+  `c54e6f607e13878b0adfcf7b64f9b8c0d9873975`, receipt SHA-256
+  `575c30ebded3337f0cb9b50e24898bad30ddfd0746b1cb6fffb6c847b85a6b5d`.
   The run restored 164 tables/104 rows, validated four constraints, finished
   with 83 foreign keys and zero orphans, and matched 8 objects/8,580 bytes with
   database bindings `immutable_input=2`, `committed_output=3`, and
-  `artifact_snapshot=3`. Measured RPO was 0 ms and end-to-end RTO was 12,712 ms.
+  `artifact_snapshot=3`. Measured RPO was 0 ms and end-to-end RTO was 13,029 ms.
 - The same source-bound local durability receipt remains 29/29 PASS, receipt
-  SHA-256 `91e37f5d83193c432bbf983d47888494f913b0aa870ac3959107002ffddcadf3`.
+  SHA-256 `67e1bafac0d4d747d0dd2d8ff1aa7b03d90bff64888a22e352cf714c6ad6d35a`.
 - Commercialization now rejects v1/v2, local-fixture, drifted object manifests,
   incomplete database bindings, unvalidated/orphaned foreign keys, and receipts
   not bound to the exact release. Only a fresh `release-bound` v3 observation
-  can satisfy the restore gate.
+  can satisfy the restore gate. Release-bound mode additionally requires an
+  existing immutable provider DB backup with KMS/provider receipt bindings and
+  an object backup in a distinct endpoint/region failure domain with versioning,
+  Object Lock default retention, and KMS encryption verified on readback.
 - Node contracts pass 46/46; the actual disposable campaign passes; Platform
   ownership, full source ESLint, and TypeScript pass. All local containers,
   networks, and volumes were removed. Staging and production were unchanged,
@@ -63,8 +67,8 @@
 - Checked-in evidence:
   `docs/evidence/cad-independent/commercial-precision-local-durability-20260825.json`;
   schema `nexyfab.commercial-precision-local-durability.v3`, source HEAD
-  `f649678730b18f4a22e3a8ec641ee33a067299be`, 29/29 PASS, receipt SHA-256
-  `91e37f5d83193c432bbf983d47888494f913b0aa870ac3959107002ffddcadf3`.
+  `c54e6f607e13878b0adfcf7b64f9b8c0d9873975`, 29/29 PASS, receipt SHA-256
+  `67e1bafac0d4d747d0dd2d8ff1aa7b03d90bff64888a22e352cf714c6ad6d35a`.
 - The same run also passes PostgreSQL/Redis AOF/object-storage restart recovery
   and exact post-restart replay. Focused outbox/journal tests 23/23, strict
   ESLint, Precision and Platform ownership checks, TypeScript, and architecture
