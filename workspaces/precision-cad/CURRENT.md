@@ -27,17 +27,21 @@
 
 - Status: `CORE_STAGING_HOLD_VERIFIED / NATIVE_WORKER_NOT_DEPLOYED /
   PRIVATE_BETA_FALSE / COMMERCIAL_RELEASE_HOLD`.
-- Source `7c73263973836bd036f93ef51ae920257ad7c175`, Railway staging
-  deployment `356947fe-2b45-453a-aba2-eeb57c33b91e`, is running 2/2 instances.
+- Source `d0ae60b6102e90bc0fcef1fa50c425d4d768a989`, Railway staging
+  deployment `1839657a-a2ac-4671-aea9-cea408a3811a`, is running 2/2 instances.
 - The redacted staging collector passed 11/11 exact release, PostgreSQL, Redis,
-  migration, packaged runtime HOLD, forged claim/lease, and callback
-  fail-closed checks. Receipt:
+  migration, packaged runtime evidence v3 HOLD, forged claim/lease, and
+  callback fail-closed checks. The deployed trust contract rejects either
+  native executable or invocation substitution even under a valid worker
+  signature. Receipt:
   `docs/evidence/release/commercial-precision-staging-hold-20260825.json`.
 - This is not a positive exact-worker run. A reviewed checksum-pinned native
   adapter, separately held worker key, positive canary, recovery campaign,
   independent CAD review, experts, and manufacturing pilots remain blockers.
 - Operational handoff:
   `docs/operations/commercial-precision-staging-hold-handoff-20260825.md`.
+- Workspace handoff:
+  `HANDOFFS/20260825T041106Z-adapter-bound-staging-hold.md`.
 
 ## 2026-08-25 real local durability and authoritative CAS closure
 

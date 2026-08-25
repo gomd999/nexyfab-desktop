@@ -4,8 +4,9 @@
 
 - AI Design remains revision-bound `CONCEPT`/`DESIGN_CANDIDATE` authority and
   hands immutable input v2 into the Precision commercial v3 boundary.
-- The exact core source `7c73263973836bd036f93ef51ae920257ad7c175` is verified
-  in isolated staging at deployment `356947fe-2b45-453a-aba2-eeb57c33b91e`.
+- The adapter-bound exact core source
+  `d0ae60b6102e90bc0fcef1fa50c425d4d768a989` is verified in isolated staging
+  at deployment `1839657a-a2ac-4671-aea9-cea408a3811a`.
   Exact release identity, PostgreSQL, Redis, migration, runtime HOLD packaging,
   and fail-closed forged worker paths passed 11/11.
 - This validates the downstream core boundary, not a positive native CAD
@@ -14,6 +15,8 @@
   evidenced.
 - Shared receipt:
   `docs/evidence/release/commercial-precision-staging-hold-20260825.json`.
+- Workspace handoff:
+  `HANDOFFS/20260825T041106Z-adapter-bound-downstream-staging-hold.md`.
 
 ## 2026-08-25 durable AI-to-Precision exact closure
 

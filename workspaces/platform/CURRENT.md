@@ -1,5 +1,25 @@
 # Platform current session
 
+## 2026-08-25 adapter-bound exact staging HOLD deployment
+
+- Status: `RUNTIME_EVIDENCE_V3_DEPLOYED / STAGING_HOLD_11_OF_11_PASS /
+  REAL_NATIVE_WORKER_NOT_RUN / PRIVATE_BETA_FALSE / GA_FALSE`.
+- Exact integration source/build/Git
+  `d0ae60b6102e90bc0fcef1fa50c425d4d768a989` is running in isolated Railway
+  `staging` as deployment `1839657a-a2ac-4671-aea9-cea408a3811a`.
+- The verified deployment path passed workspace audit, platform architecture,
+  a clean production build, exact live build identity, and readiness. The
+  redacted collector then passed all 11 release, PostgreSQL, Redis, migration,
+  packaged v3 HOLD, forged claim/lease, and callback fail-closed checks.
+- The deployed runtime receipt now carries the native executable and canonical
+  invocation trust contract. It intentionally contains no positive runtime
+  observation and keeps Private Beta and GA false.
+- Production was not deployed, restarted, reconfigured, or written. A reviewed
+  real adapter, separately held key, positive canary/recovery campaign,
+  independent CAD review, and manufacturing pilots remain required.
+- Handoff:
+  `HANDOFFS/20260825T041106Z-adapter-bound-staging-hold.md`.
+
 ## 2026-08-25 approved native adapter release binding
 
 - Status: `RUNTIME_EVIDENCE_V3_PASS / LOCAL_DURABLE_24_OF_24_PASS /
