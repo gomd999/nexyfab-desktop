@@ -9,8 +9,21 @@ import pg from 'pg';
 // allow-listed passwordless admin codes and revocable admin sessions.
 export const MIGRATION_VERSION = 2026082001;
 export const MIGRATION_NAME = 'spatial_cad_revision_identity_and_locks_20260820';
+// The production database recorded this checksum from a pre-baseline working
+// copy of the legacy monolithic migration. It is not present in Git history.
+// Keep the exception exact and local to v2026082001; the reconciliation
+// migration below replays the idempotent baseline under a new immutable
+// version instead of weakening checksum enforcement globally.
+export const LEGACY_2026082001_CHECKSUMS = Object.freeze([
+  '6a1c0d3ae98e7b13f6dff6d4c38071b61674b23027fd571553ce3a594e0b26cc',
+]);
 export const ORDERED_MIGRATION_DESCRIPTORS = Object.freeze([
-  Object.freeze({ version: MIGRATION_VERSION, name: MIGRATION_NAME, sqlFile: 'src/lib/db-postgres-migrations.sql' }),
+  Object.freeze({
+    version: MIGRATION_VERSION,
+    name: MIGRATION_NAME,
+    sqlFile: 'src/lib/db-postgres-migrations.sql',
+    acceptedAppliedChecksums: LEGACY_2026082001_CHECKSUMS,
+  }),
   Object.freeze({ version: 2026082002, name: 'interior_placement_documents_20260820', sqlFile: 'src/lib/db-postgres-migration-2026082002.sql' }),
   Object.freeze({ version: 2026082101, name: 'remote_precision_cad_agent_state_20260821', sqlFile: 'src/lib/db-postgres-migration-2026082101.sql' }),
   Object.freeze({ version: 2026082102, name: 'precision_cad_result_artifacts_20260821', sqlFile: 'src/lib/db-postgres-migration-2026082102.sql' }),
@@ -28,17 +41,25 @@ export const ORDERED_MIGRATION_DESCRIPTORS = Object.freeze([
   Object.freeze({ version: 2026082403, name: 'ai_precision_exact_bridge_outbox_20260824', sqlFile: 'src/lib/db-postgres-migration-2026082403.sql' }),
   Object.freeze({ version: 2026082501, name: 'commercial_payment_authority_20260825', sqlFile: 'src/lib/db-postgres-migration-2026082501.sql' }),
   Object.freeze({ version: 2026082502, name: 'commercial_precision_worker_io_20260825', sqlFile: 'src/lib/db-postgres-migration-2026082502.sql' }),
+  // v2026082001 incorrectly pointed at a monolithic SQL file that continued
+  // changing. Re-run its idempotent contents once under a new version so
+  // databases with any accepted legacy baseline converge on the current
+  // schema and future changes fail closed against this exact source.
+  Object.freeze({ version: 2026082601, name: 'postgres_schema_reconciliation_20260826', sqlFile: 'src/lib/db-postgres-migrations.sql' }),
 ]);
 export const ADVISORY_LOCK_KEY = 70658910420260820n;
 
 export function migrationChecksum(sql) {
-  return createHash('sha256').update(sql).digest('hex');
+  // Git may materialize the same SQL as LF on Linux and CRLF on Windows.
+  // Normalize only line endings so the content-bound checksum is portable.
+  return createHash('sha256').update(sql.replace(/\r\n?/g, '\n')).digest('hex');
 }
 
-export function migrationDecision(existing, checksum) {
+export function migrationDecision(existing, checksum, acceptedAppliedChecksums = []) {
   if (!existing) return 'apply';
-  if (existing.checksum !== checksum) return 'checksum_mismatch';
-  return 'already_applied';
+  if (existing.checksum === checksum) return 'already_applied';
+  if (acceptedAppliedChecksums.includes(existing.checksum)) return 'accepted_legacy_checksum';
+  return 'checksum_mismatch';
 }
 
 export function orderedMigrationInputs(sqlPath) {
@@ -73,7 +94,11 @@ export async function runPostgresMigration({ databaseUrl, sqlPath }) {
         'SELECT version, name, checksum FROM nf_schema_migrations WHERE version = $1',
         [migration.version],
       );
-      const decision = migrationDecision(result.rows[0], migration.checksum);
+      const decision = migrationDecision(
+        result.rows[0],
+        migration.checksum,
+        migration.acceptedAppliedChecksums,
+      );
       if (decision === 'checksum_mismatch') throw new Error(`migration_checksum_mismatch:v${migration.version}`);
       if (decision === 'apply') {
         await client.query(migration.sql);

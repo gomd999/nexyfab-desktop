@@ -1,22 +1,43 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
-import { migrationChecksum, migrationDecision, orderedMigrationInputs } from './run-postgres-migrations.mjs';
+import {
+  LEGACY_2026082001_CHECKSUMS,
+  migrationChecksum,
+  migrationDecision,
+  orderedMigrationInputs,
+} from './run-postgres-migrations.mjs';
 
 test('migration checksum is deterministic and content-bound', () => {
   assert.equal(migrationChecksum('SELECT 1'), migrationChecksum('SELECT 1'));
   assert.notEqual(migrationChecksum('SELECT 1'), migrationChecksum('SELECT 2'));
+  assert.equal(
+    migrationChecksum('SELECT 1;\r\nSELECT 2;\r\n'),
+    migrationChecksum('SELECT 1;\nSELECT 2;\n'),
+  );
 });
 
 test('migration decision fails closed on changed applied SQL', () => {
   assert.equal(migrationDecision(undefined, 'abc'), 'apply');
   assert.equal(migrationDecision({ checksum: 'abc' }, 'abc'), 'already_applied');
   assert.equal(migrationDecision({ checksum: 'old' }, 'new'), 'checksum_mismatch');
+  assert.equal(
+    migrationDecision(
+      { checksum: LEGACY_2026082001_CHECKSUMS[0] },
+      'new',
+      LEGACY_2026082001_CHECKSUMS,
+    ),
+    'accepted_legacy_checksum',
+  );
+  assert.equal(
+    migrationDecision({ checksum: 'unknown-legacy' }, 'new', LEGACY_2026082001_CHECKSUMS),
+    'checksum_mismatch',
+  );
 });
 
 test('keeps immutable migrations ordered before the remote CAD agent state migration', () => {
   const migrations = orderedMigrationInputs('/trusted/immutable-2001.sql');
-  assert.deepEqual(migrations.map(item => item.version), [2026082001, 2026082002, 2026082101, 2026082102, 2026082201, 2026082202, 2026082203, 2026082204, 2026082205, 2026082206, 2026082207, 2026082208, 2026082301, 2026082401, 2026082402, 2026082403, 2026082501, 2026082502]);
+  assert.deepEqual(migrations.map(item => item.version), [2026082001, 2026082002, 2026082101, 2026082102, 2026082201, 2026082202, 2026082203, 2026082204, 2026082205, 2026082206, 2026082207, 2026082208, 2026082301, 2026082401, 2026082402, 2026082403, 2026082501, 2026082502, 2026082601]);
   assert.match(migrations[0].sqlPath, /immutable-2001\.sql$/);
   assert.match(migrations[1].sqlPath, /db-postgres-migration-2026082002\.sql$/);
   assert.match(migrations[2].sqlPath, /db-postgres-migration-2026082101\.sql$/);
@@ -35,6 +56,20 @@ test('keeps immutable migrations ordered before the remote CAD agent state migra
   assert.match(migrations[15].sqlPath, /db-postgres-migration-2026082403\.sql$/);
   assert.match(migrations[16].sqlPath, /db-postgres-migration-2026082501\.sql$/);
   assert.match(migrations[17].sqlPath, /db-postgres-migration-2026082502\.sql$/);
+  assert.match(migrations[18].sqlPath, /db-postgres-migrations\.sql$/);
+  assert.deepEqual(migrations[0].acceptedAppliedChecksums, LEGACY_2026082001_CHECKSUMS);
+  assert.equal(migrations[18].acceptedAppliedChecksums, undefined);
+});
+
+test('2601 replays the idempotent legacy baseline under a new immutable version', () => {
+  const migration = orderedMigrationInputs().find(item => item.version === 2026082601);
+  const sql = readFileSync(migration.sqlPath, 'utf8');
+  assert.equal(migration.name, 'postgres_schema_reconciliation_20260826');
+  assert.match(sql, /CREATE TABLE IF NOT EXISTS nf_cad_job_registry/);
+  assert.match(sql, /ALTER TABLE nf_projects ADD COLUMN IF NOT EXISTS org_id TEXT/);
+  assert.doesNotMatch(sql, /\bDROP\s+(?:TABLE|COLUMN|DATABASE|SCHEMA)\b/i);
+  assert.doesNotMatch(sql, /\bTRUNCATE\b/i);
+  assert.doesNotMatch(sql, /\bDELETE\s+FROM\b/i);
 });
 
 test('2301 is an append-only mapping migration and does not rewrite prior SQL', () => {
