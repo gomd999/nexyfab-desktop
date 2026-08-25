@@ -1,0 +1,80 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://nexyfab.com/contracts/mechanical-blind-signing-request.schema.json",
+  "title": "NexyFab Mechanical Blind Review Signing Request v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "releaseChannel", "evidenceRootId", "generatedAt", "cases"],
+  "properties": {
+    "schema": { "const": "nexyfab.mechanical-blind-signing-request.v1" },
+    "releaseChannel": { "const": "mechanical-core" },
+    "evidenceRootId": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+    "generatedAt": { "type": "string", "format": "date-time" },
+    "cases": {
+      "type": "array",
+      "minItems": 20,
+      "maxItems": 20,
+      "minContains": 5,
+      "contains": {
+        "type": "object",
+        "required": ["risk"],
+        "properties": { "risk": { "const": "high" } }
+      },
+      "items": { "$ref": "#/$defs/case" }
+    }
+  },
+  "$defs": {
+    "relativePath": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "^(?![A-Za-z]:)(?![/\\\\])(?!.*(?:^|[/\\\\])\\.\\.(?:[/\\\\]|$)).+"
+    },
+    "reviewer": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["reviewerId", "reviewedAt"],
+      "properties": {
+        "reviewerId": { "type": "string", "minLength": 1 },
+        "reviewedAt": { "type": "string", "format": "date-time" }
+      }
+    },
+    "case": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "challengeId", "risk", "builderId", "requirementsLockedAt", "startedAt",
+        "completedAt", "designRevisionSha256", "artifactPaths", "reviewers"
+      ],
+      "properties": {
+        "challengeId": { "type": "string", "minLength": 1 },
+        "risk": { "enum": ["standard", "high"] },
+        "builderId": { "type": "string", "minLength": 1 },
+        "requirementsLockedAt": { "type": "string", "format": "date-time" },
+        "startedAt": { "type": "string", "format": "date-time" },
+        "completedAt": { "type": "string", "format": "date-time" },
+        "designRevisionSha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+        "artifactPaths": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["requirements", "releasePackage"],
+          "properties": {
+            "requirements": { "$ref": "#/$defs/relativePath" },
+            "releasePackage": { "$ref": "#/$defs/relativePath" }
+          }
+        },
+        "reviewers": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/reviewer" }
+        }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "risk": { "const": "high" } }, "required": ["risk"] },
+          "then": { "properties": { "reviewers": { "minItems": 2 } } }
+        }
+      ]
+    }
+  },
+  "$comment": "The runtime additionally enforces unique IDs, revisions, reviewers and artifact paths; chronological ordering; reviewer/builder separation; real non-symlink files inside the external evidence root; allowed extensions; and at least five high-risk cases."
+}

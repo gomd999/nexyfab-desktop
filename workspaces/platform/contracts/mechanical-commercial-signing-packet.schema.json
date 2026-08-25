@@ -1,0 +1,246 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://nexyfab.com/contracts/mechanical-commercial-signing-packet.schema.json",
+  "title": "NexyFab Mechanical Commercial Signing Packet v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema", "kind", "releaseChannel", "evidenceRootId", "generatedAt",
+    "sourceRequest", "items", "claimBoundary", "packetSha256"
+  ],
+  "properties": {
+    "schema": { "const": "nexyfab.mechanical-commercial-signing-packet.v1" },
+    "kind": { "enum": ["blind", "manufacturing"] },
+    "releaseChannel": { "const": "mechanical-core" },
+    "evidenceRootId": { "$ref": "#/$defs/sha256" },
+    "generatedAt": { "type": "string", "format": "date-time" },
+    "sourceRequest": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "bytes", "sha256"],
+      "properties": {
+        "path": { "type": "string", "minLength": 1 },
+        "bytes": { "type": "integer", "minimum": 1 },
+        "sha256": { "$ref": "#/$defs/sha256" }
+      }
+    },
+    "items": { "type": "array" },
+    "claimBoundary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["createsEvidence", "createsSignatures", "grantsCommercialRelease"],
+      "properties": {
+        "createsEvidence": { "const": false },
+        "createsSignatures": { "const": false },
+        "grantsCommercialRelease": { "const": false }
+      }
+    },
+    "packetSha256": { "$ref": "#/$defs/sha256" }
+  },
+  "allOf": [
+    {
+      "if": { "properties": { "kind": { "const": "blind" } }, "required": ["kind"] },
+      "then": {
+        "properties": {
+          "items": {
+            "minItems": 20,
+            "maxItems": 20,
+            "items": { "$ref": "#/$defs/blindItem" }
+          }
+        }
+      }
+    },
+    {
+      "if": { "properties": { "kind": { "const": "manufacturing" } }, "required": ["kind"] },
+      "then": {
+        "properties": {
+          "items": {
+            "minItems": 3,
+            "maxItems": 3,
+            "items": { "$ref": "#/$defs/manufacturingItem" }
+          }
+        }
+      }
+    }
+  ],
+  "$defs": {
+    "sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+    "binding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "sha256"],
+      "properties": {
+        "path": { "type": "string", "minLength": 1 },
+        "sha256": { "$ref": "#/$defs/sha256" }
+      }
+    },
+    "measurement": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["characteristic", "nominal", "actual", "minusTolerance", "plusTolerance", "unit", "result"],
+      "properties": {
+        "characteristic": { "type": "string", "minLength": 1 },
+        "nominal": { "type": "number" },
+        "actual": { "type": "number" },
+        "minusTolerance": { "type": "number", "minimum": 0 },
+        "plusTolerance": { "type": "number", "minimum": 0 },
+        "unit": { "type": "string", "minLength": 1 },
+        "result": { "const": "pass" }
+      }
+    },
+    "blindReviewTemplate": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["reviewerId", "decision", "independentFromBuild", "targetHash", "reviewedAt", "signature"],
+      "properties": {
+        "reviewerId": { "type": "string", "minLength": 1 },
+        "decision": { "const": "approved" },
+        "independentFromBuild": { "const": true },
+        "targetHash": { "$ref": "#/$defs/sha256" },
+        "reviewedAt": { "type": "string", "format": "date-time" },
+        "signature": { "const": "" }
+      }
+    },
+    "blindCaseTemplate": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "challengeId", "risk", "status", "internalRoleSeparated", "builderId",
+        "requirementsLockedAt", "startedAt", "completedAt", "designRevisionSha256",
+        "artifacts", "targetHash", "reviews"
+      ],
+      "properties": {
+        "challengeId": { "type": "string", "minLength": 1 },
+        "risk": { "enum": ["standard", "high"] },
+        "status": { "const": "pass" },
+        "internalRoleSeparated": { "const": true },
+        "builderId": { "type": "string", "minLength": 1 },
+        "requirementsLockedAt": { "type": "string", "format": "date-time" },
+        "startedAt": { "type": "string", "format": "date-time" },
+        "completedAt": { "type": "string", "format": "date-time" },
+        "designRevisionSha256": { "$ref": "#/$defs/sha256" },
+        "artifacts": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["requirements", "releasePackage"],
+          "properties": {
+            "requirements": { "$ref": "#/$defs/binding" },
+            "releasePackage": { "$ref": "#/$defs/binding" }
+          }
+        },
+        "targetHash": { "$ref": "#/$defs/sha256" },
+        "reviews": { "type": "array", "maxItems": 0 }
+      }
+    },
+    "blindReviewPacket": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["reviewerId", "reviewTemplate", "payload", "payloadSha256"],
+      "properties": {
+        "reviewerId": { "type": "string", "minLength": 1 },
+        "reviewTemplate": { "$ref": "#/$defs/blindReviewTemplate" },
+        "payload": { "type": "string", "minLength": 1 },
+        "payloadSha256": { "$ref": "#/$defs/sha256" }
+      }
+    },
+    "blindItem": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["challengeId", "targetHash", "caseTemplate", "reviewPackets"],
+      "properties": {
+        "challengeId": { "type": "string", "minLength": 1 },
+        "targetHash": { "$ref": "#/$defs/sha256" },
+        "caseTemplate": { "$ref": "#/$defs/blindCaseTemplate" },
+        "reviewPackets": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/blindReviewPacket" }
+        }
+      }
+    },
+    "manufacturer": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["facilityId", "independentFromNexyfab", "completedAt"],
+      "properties": {
+        "facilityId": { "type": "string", "minLength": 1 },
+        "independentFromNexyfab": { "const": true },
+        "completedAt": { "type": "string", "format": "date-time" }
+      }
+    },
+    "manufacturingInspector": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["reviewerId", "independentFromBuild", "inspectedAt", "targetHash", "signature"],
+      "properties": {
+        "reviewerId": { "type": "string", "minLength": 1 },
+        "independentFromBuild": { "const": true },
+        "inspectedAt": { "type": "string", "format": "date-time" },
+        "targetHash": { "$ref": "#/$defs/sha256" },
+        "signature": { "const": "" }
+      }
+    },
+    "manufacturingCaseTemplate": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "caseId", "process", "result", "designRevision", "noUnapprovedCadChanges",
+        "stepRoundtripVerified", "drawingReleased", "bomReconciled", "inspectionDisposition",
+        "artifacts", "manufacturer", "measurements", "inspector"
+      ],
+      "properties": {
+        "caseId": { "type": "string", "minLength": 1 },
+        "process": { "enum": ["cnc_machining", "sheet_metal", "additive_manufacturing"] },
+        "result": { "const": "pass" },
+        "designRevision": { "$ref": "#/$defs/sha256" },
+        "noUnapprovedCadChanges": { "const": true },
+        "stepRoundtripVerified": { "const": true },
+        "drawingReleased": { "const": true },
+        "bomReconciled": { "const": true },
+        "inspectionDisposition": { "const": "accepted" },
+        "artifacts": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["nfab", "step", "drawing", "bom", "manufacturingReceipt", "inspectionReport", "photoEvidence"],
+          "properties": {
+            "nfab": { "$ref": "#/$defs/binding" },
+            "step": { "$ref": "#/$defs/binding" },
+            "drawing": { "$ref": "#/$defs/binding" },
+            "bom": { "$ref": "#/$defs/binding" },
+            "manufacturingReceipt": { "$ref": "#/$defs/binding" },
+            "inspectionReport": { "$ref": "#/$defs/binding" },
+            "photoEvidence": { "$ref": "#/$defs/binding" }
+          }
+        },
+        "manufacturer": { "$ref": "#/$defs/manufacturer" },
+        "measurements": {
+          "type": "array",
+          "minItems": 3,
+          "items": { "$ref": "#/$defs/measurement" }
+        },
+        "inspector": { "$ref": "#/$defs/manufacturingInspector" }
+      }
+    },
+    "manufacturingInspectorPacket": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["reviewerId", "payload", "payloadSha256"],
+      "properties": {
+        "reviewerId": { "type": "string", "minLength": 1 },
+        "payload": { "type": "string", "minLength": 1 },
+        "payloadSha256": { "$ref": "#/$defs/sha256" }
+      }
+    },
+    "manufacturingItem": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["caseId", "targetHash", "caseTemplate", "inspectorPacket"],
+      "properties": {
+        "caseId": { "type": "string", "minLength": 1 },
+        "targetHash": { "$ref": "#/$defs/sha256" },
+        "caseTemplate": { "$ref": "#/$defs/manufacturingCaseTemplate" },
+        "inspectorPacket": { "$ref": "#/$defs/manufacturingInspectorPacket" }
+      }
+    }
+  }
+}
