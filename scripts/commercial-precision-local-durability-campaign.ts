@@ -15,6 +15,7 @@ import { verifyCommercialWorkerReceipt } from '@/lib/precision-cad-agent/commerc
 import { canonicalNativeParserReceipt, type NativeParserReceipt } from '@/lib/precision-cad-agent/commercialPersistenceReceipt';
 import { persistCommercialWorkerResult } from '@/lib/precision-cad-agent/commercialWorkerPersistenceCoordinator';
 import type { ImmutableArtifactStore } from '@/lib/precision-cad-agent/commercialWorkerArtifactSnapshot';
+import { verifyExecutionJournalChain, type ExecutionJournalReceipt } from '@/lib/precision-cad-agent/executionJournal';
 import { CAD_WORKSPACE_ENVELOPE_SCHEMA, hashCadPayload, hashCadWorkspaceEnvelope, type CadWorkspaceEnvelopeInput, type StoredCadWorkspaceEnvelope } from '@/lib/cad/workspaceRevisionStore';
 import { DESIGN_ARTIFACT_GRAPH_SCHEMA, type DesignArtifactGraph } from '@/lib/ai/designArtifactGraph';
 import { DESIGN_WORKSPACE_REVISION_SCHEMA, type DesignWorkspaceRevision } from '@/lib/ai/designWorkspaceRevision';
@@ -474,18 +475,84 @@ async function main() {
     throw new Error('native_adapter_binding_boundary_failed');
   }
 
-  // Exercise an expired in-flight lease after the authoritative callback is
-  // already present. Recovery must quarantine both outbox and journal and
-  // must never make the job claimable again.
-  await db.execute(
-    'UPDATE nf_precision_cad_commercial_outbox SET status = ?, lease_owner = ?, lease_expires_at = ?, updated_at = ? WHERE job_id = ?',
-    'CLAIMED', workerIdentity, Date.now() - 1, Date.now(), staged.job.jobId,
+  // Model a worker process that disappears immediately after a real claim.
+  // This uses a separate approved execution and never rewinds the completed
+  // job's database state. No callback, output intent, or worker artifact is
+  // created before the logical clock advances beyond the lease.
+  const crashFixture = await makeEnqueueFixture('-crash');
+  const crashAt = Date.now();
+  await seedAuthorityRows(db, crashFixture, crashAt);
+  const crashJobWithoutInput = { ...crashFixture.input.job };
+  delete crashJobWithoutInput.inputArtifact;
+  const crashStaged = await stageCommercialExecutionInput({
+    job: crashJobWithoutInput,
+    arguments: crashFixture.approvalBinding.arguments,
+    storage,
+  });
+  const crashEnqueued = await enqueueCommercialExecutionTransaction({ ...crashFixture.input, db, job: crashStaged.job });
+  if (!crashEnqueued.ok) throw new Error(`crash_after_claim_enqueue_failed:${crashEnqueued.code}`);
+  const crashClaim = await outbox.claim('local-worker-a', transportSecret, crashAt, 30_000);
+  if (!crashClaim.ok || crashClaim.row.job.jobId !== crashStaged.job.jobId || !crashClaim.row.capability) {
+    throw new Error('crash_after_claim_not_claimed');
+  }
+  const crashRecoveryAt = crashAt + 30_001;
+  const crashRecovered = await outbox.recoverExpiredClaims(crashRecoveryAt);
+  const crashRecoveredAgain = await outbox.recoverExpiredClaims(crashRecoveryAt + 1);
+  const crashRow = await outbox.read(crashStaged.job.jobId);
+  const crashJournalRow = await db.queryOne<{
+    lifecycle: string;
+    lease_owner_id: string | null;
+    lease_expires_at: number | null;
+    receipt_json: string;
+  }>('SELECT lifecycle, lease_owner_id, lease_expires_at, receipt_json FROM nf_precision_cad_execution_journal WHERE execution_id = ?', crashStaged.job.executionId);
+  const crashJournal = crashJournalRow ? JSON.parse(crashJournalRow.receipt_json) as ExecutionJournalReceipt : null;
+  const crashRecoveryEvent = await db.queryOne<{ event_type: string; data_json: string }>(
+    'SELECT event_type, data_json FROM nf_precision_cad_execution_events WHERE execution_id = ? ORDER BY sequence DESC LIMIT 1',
+    crashStaged.job.executionId,
   );
-  const recovered = await outbox.recoverExpiredClaims(Date.now());
-  const recoveredRow = await outbox.read(staged.job.jobId);
-  const noReplayClaim = await outbox.claim(workerIdentity, transportSecret, Date.now(), 60_000);
-  if (recovered !== 1 || recoveredRow?.status !== 'VERIFIED_UNKNOWN' || noReplayClaim.ok || noReplayClaim.code !== 'NOT_FOUND') {
-    throw new Error('expired_lease_verified_unknown_recovery_failed');
+  const crashSideEffects = await db.queryOne<{
+    output_count: number;
+    callback_count: number;
+    worker_artifact_count: number;
+    persistence_count: number;
+    workspace_commit_count: number;
+  }>(
+    'SELECT (SELECT COUNT(*) FROM nf_precision_cad_commercial_output_intents WHERE execution_id = ?) AS output_count, (SELECT COUNT(*) FROM nf_precision_cad_commercial_callbacks WHERE execution_id = ?) AS callback_count, (SELECT COUNT(*) FROM nf_precision_cad_commercial_worker_artifacts WHERE execution_id = ?) AS worker_artifact_count, (SELECT COUNT(*) FROM nf_precision_cad_commercial_persistence_receipts WHERE execution_id = ?) AS persistence_count, (SELECT COUNT(*) FROM nf_precision_cad_commercial_workspace_commits WHERE execution_id = ?) AS workspace_commit_count',
+    crashStaged.job.executionId, crashStaged.job.executionId, crashStaged.job.executionId,
+    crashStaged.job.executionId, crashStaged.job.executionId,
+  );
+  const crashHead = await db.queryOne<{ revision: number; content_hash: string }>(
+    'SELECT revision, content_hash FROM nf_cad_workspace_heads WHERE project_id = ?', crashStaged.job.projectId,
+  );
+  const noReplayClaim = await outbox.claim('local-worker-b', transportSecret, crashRecoveryAt + 2, 30_000);
+  const staleLeaseResponse = await artifactGet(request(
+    `https://core.local/api/internal/precision-cad-commercial/artifacts?jobId=${encodeURIComponent(crashStaged.job.jobId)}&artifactId=${encodeURIComponent(crashStaged.job.inputArtifact!.artifactId)}`,
+    { headers: { authorization: `Bearer ${crashClaim.row.capability}`, 'x-commercial-worker-identity': 'local-worker-a' } },
+  ));
+  const staleLeaseBody = await staleLeaseResponse.json() as { code?: string };
+  const recoveryEventData = crashRecoveryEvent ? JSON.parse(crashRecoveryEvent.data_json) as { reason?: string; hold?: boolean } : null;
+  if (crashRecovered !== 1 || crashRecoveredAgain !== 0
+    || crashRow?.status !== 'VERIFIED_UNKNOWN'
+    || crashRow.leaseOwner !== undefined || crashRow.leaseExpiresAt !== undefined
+    || crashJournalRow?.lifecycle !== 'VERIFIED_UNKNOWN'
+    || crashJournalRow.lease_owner_id !== null || crashJournalRow.lease_expires_at !== null
+    || !crashJournal || !verifyExecutionJournalChain(crashJournal)
+    || crashJournal.lifecycle !== 'VERIFIED_UNKNOWN'
+    || crashJournal.holdReason !== 'lease_expired_authoritative_receipt_required'
+    || crashJournal.lease !== undefined
+    || crashRecoveryEvent?.event_type !== 'VERIFIED_UNKNOWN'
+    || recoveryEventData?.reason !== 'lease_expired_authoritative_receipt_required'
+    || recoveryEventData?.hold !== true
+    || Number(crashSideEffects?.output_count) !== 0
+    || Number(crashSideEffects?.callback_count) !== 0
+    || Number(crashSideEffects?.worker_artifact_count) !== 0
+    || Number(crashSideEffects?.persistence_count) !== 0
+    || Number(crashSideEffects?.workspace_commit_count) !== 0
+    || Number(crashHead?.revision) !== crashStaged.job.workspaceRevision
+    || crashHead?.content_hash !== crashStaged.job.workspaceContentHash
+    || noReplayClaim.ok || noReplayClaim.code !== 'NOT_FOUND'
+    || staleLeaseResponse.status !== 403 || staleLeaseBody.code !== 'LEASE_CAPABILITY_INVALID') {
+    throw new Error('crash_after_claim_verified_unknown_recovery_failed');
   }
 
   if (!storage.download || !storage.uploadRawImmutable) throw new Error('immutable_artifact_store_required');
@@ -665,13 +732,14 @@ async function main() {
     nativeProcessExecution: 'PASS', threeOutputCommitReadback: 'PASS', workerReceiptSignature: 'PASS',
     signedCallback: 'PASS', wrongWorkerRejected: 'PASS', inputSubstitutionRejected: 'PASS',
     outputSubstitutionRejected: 'PASS', callbackExactRetryIdempotent: 'PASS',
-    callbackReplayConflictRejected: 'PASS', expiredLeaseRecovery: 'PASS', verifiedUnknownNoReplay: 'PASS',
+    callbackReplayConflictRejected: 'PASS', expiredLeaseRecovery: 'PASS', crashAfterClaimRecovery: 'PASS',
+    verifiedUnknownNoReplay: 'PASS',
     credentialRotationTrustBoundary: 'PASS', nativeAdapterBinding: 'PASS', authoritativePersistence: 'PASS', workspaceCasCommit: 'PASS',
     postgresRestartPersistence: 'PASS', redisAofRestartPersistence: 'PASS', objectStorageRestartPersistence: 'PASS',
     restartPersistenceExactReplay: 'PASS',
   } as const;
   const unsignedReceipt = {
-    schema: 'nexyfab.commercial-precision-local-durability.v2',
+    schema: 'nexyfab.commercial-precision-local-durability.v3',
     generatedAt,
     status: 'LOCAL_DURABLE_EXACT_CLOSED_LOOP_PASS',
     source: {
@@ -703,6 +771,7 @@ async function main() {
       authoritativeParserPersistenceExercised: true,
       workspaceCasCommitExercised: true,
       disposableServiceRestartExercised: true,
+      actualCrashAfterClaimRecoveryExercised: true,
       fixtureIsCommercialRuntimeEvidence: false,
       privateBetaEligible: false,
       commercialGaEligible: false,
