@@ -1,5 +1,33 @@
 # Precision CAD current session
 
+## 2026-08-25 cross-store recoverability boundary
+
+- Status: `COMMERCIAL_PRECISION_DB_OBJECT_BINDINGS_RESTORED /
+  EXACT_THREE_ROLE_MANIFEST_PASS / SOURCE_UNCHANGED /
+  LOCAL_FIXTURE_ONLY / COMMERCIAL_PRECISION_HOLD`.
+- Platform commits `2c79c2da` and `f6496787` extend the durable Precision
+  campaign through an exact PostgreSQL isolated restore and S3-compatible
+  source-to-backup-to-restore drill. CI commit `acd76c9f` reruns that combined
+  campaign for implementation, verifier, and gate changes and weekly.
+- Shared restore receipt:
+  `docs/evidence/cad-independent/commercial-precision-cross-store-restore-20260825.json`;
+  schema `nexyfab.backup-isolated-restore-drill.v3`, source
+  `f649678730b18f4a22e3a8ec641ee33a067299be`, self-hash
+  `e3181adce4ddf2e4a3a79b812652ea2a7ab946a18782a3bbdcf8ac324696c292`.
+- The run exactly restored 164 tables/104 rows, validated four constraints,
+  ended with 83 foreign keys and zero orphans, and matched 8 objects/8,580
+  bytes across source, backup, and restore. Database bindings were two
+  immutable inputs, three committed outputs, and three artifact snapshots.
+- This proves that the bounded commercial Precision execution state and its
+  immutable artifacts can be recovered together in a disposable local drill.
+  It does not prove production backup encryption, a deployed native CAD worker,
+  independent STEP/XCAF/GD&T quality, or manufacturing acceptance.
+- The receipt is `local-fixture` and explicitly Private Beta/GA false. The
+  release gate accepts only a fresh exact-release `release-bound` v3 receipt;
+  production and staging were unchanged.
+- Handoff:
+  `HANDOFFS/20260825T214338+0900-cross-store-recoverability-boundary.md`.
+
 ## 2026-08-25 fail-closed crash-after-claim recovery
 
 - Status: `SEPARATE_APPROVED_EXECUTION_CLAIMED /
@@ -20,9 +48,9 @@
   re-claim, unchanged workspace head, and no partial execution side effects.
 - Shared v3 receipt:
   `docs/evidence/cad-independent/commercial-precision-local-durability-20260825.json`;
-  source `ad437dbf341b6c9d7643bf4d2e742ba077d0acbf`, 29/29 PASS, receipt
+  source `f649678730b18f4a22e3a8ec641ee33a067299be`, 29/29 PASS, receipt
   SHA-256
-  `8c27da0ab28c80c0e226feb84fbea5549c3fd27180e55c0a3069a4e1529a4c38`.
+  `91e37f5d83193c432bbf983d47888494f913b0aa870ac3959107002ffddcadf3`.
 - The same campaign also passes actual disposable PostgreSQL, Redis AOF, and
   object-storage restart persistence and exact replay after restart.
 - This is a local deterministic infrastructure fixture, not a deployed

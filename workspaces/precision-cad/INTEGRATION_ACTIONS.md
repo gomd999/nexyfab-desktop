@@ -15,12 +15,17 @@ The integration-owned source/infrastructure gap is now closed locally:
 - [x] Run real versioned migrations and the complete v3 route/worker/persistence
   path against disposable PostgreSQL, Redis AOF, and immutable S3-compatible
   storage.
-- [x] Prove all 24 local durable checks, including authoritative parser
+- [x] Prove all 29 local durable checks, including authoritative parser
   persistence, workspace HEAD CAS, hostile substitutions/conflicting replay,
-  verified-unknown no-replay, key rotation, and exact persistence replay.
+  verified-unknown no-replay, actual crash-after-claim recovery, all three
+  persistence-service restarts, key rotation, and exact persistence replay.
+- [x] Restore the complete PostgreSQL state into an isolated database, validate
+  current migrations and constraints, and bind immutable inputs, three
+  committed outputs, and three snapshots to exact source/backup/restored object
+  bytes through a fail-closed v3 receipt.
 - [x] Add a path-filtered and weekly CI workflow for the same containerized
   campaign.
-- [x] Upgrade runtime receipt derivation to v2 with registry-bound Ed25519
+- [x] Upgrade runtime receipt derivation to v3 with registry-bound Ed25519
   verification and exact per-check assertion provenance.
 - [x] Canonicalize the migration SQL, runtime observation, and five supporting
   JSON bindings as UTF-8 CRLF-to-LF so one signed observation verifies across
@@ -31,7 +36,10 @@ The promotion work remains external and release-bound:
 - [ ] deploy the exact final commit to isolated staging with a reviewed,
   production-class native CAD adapter and separately held worker private key;
 - [ ] capture all five runtime evidence documents from that same deployment and
-  derive a fresh Private Beta receipt v2;
+  derive a fresh Private Beta receipt v3;
+- [ ] execute the v3 restore contract against a real encrypted protected backup
+  and retain provider/KMS, exact-release, operator/reviewer, smoke, alert,
+  rollback, and retention-destruction evidence;
 - [ ] repeat the GA recovery matrix on the same production deployment after
   explicit approval;
 - [ ] collect independent CAD/XCAF/GD&T, expert, three manufacturing-pilot,
