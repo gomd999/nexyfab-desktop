@@ -27,6 +27,15 @@ by the commercial security verifier. Nearby or similarly named files are not
 excluded. Importing the scanner no longer performs a repository scan or
 changes the importing test process's exit code.
 
+Windows worktrees can materialize the same Git text as CRLF or LF. Counting raw
+working-tree bytes made otherwise identical clean HEADs disagree by megabytes
+and caused an immediate `SECRET_SCAN_EVIDENCE_STALE` after integration. The
+scanner now canonicalizes decoded UTF-8 CRLF to LF before pattern matching and
+coverage-byte accounting. The receipt declares
+`textCanonicalization: utf8-crlf-to-lf`, and the commercial security verifier
+fails closed if that policy is missing or changed. Binary sniffing still runs
+on the original bytes and no path exclusion was broadened.
+
 ## Current machine evidence
 
 - route matrix: 625 route files, 860 exported handlers, 0 unknown classes,
@@ -37,6 +46,7 @@ changes the importing test process's exit code.
   only in the machine receipt to avoid documentation self-reference;
 - dependency audit: 0 info/low/moderate/high/critical vulnerabilities;
 - focused contracts: 57/57 PASS;
+- canonicalization/security/gate contracts: 46/46 PASS;
 - Railway release-baseline policy and deployment structure: 18/18 PASS.
 
 The generated commercial security v2 receipt verifies current source

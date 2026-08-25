@@ -12,6 +12,10 @@
   excludes exactly four derived mutable current receipts, declares that scope
   in machine evidence, and does not execute or set an exit code when imported
   by tests. The commercial security verifier rejects any changed exclusion set.
+- Commit `742db35a977d5504772ab743ace1fea07683c5a2` canonicalizes scanned
+  text from UTF-8 CRLF to LF before coverage accounting. The policy is embedded
+  in the scan and rejected if absent or changed, so the same clean HEAD can be
+  verified across Windows worktrees with different checkout line endings.
 - Current source evidence passes: route security `625 routes / 860 handlers /
   0 gaps`, CAD API controls `84 routes / 86 handlers / 0 issues`, secret scan
   of more than 10,000 Git candidates with `0 findings`, and dependency audit
@@ -24,6 +28,8 @@
 - No deployment or production configuration was changed by this unit.
 - Handoff:
   `HANDOFFS/20260825T044342Z-release-baseline-security-evidence-convergence.md`.
+- Cross-worktree determinism addendum:
+  `HANDOFFS/20260825T045114Z-cross-worktree-secret-scan-determinism.md`.
 
 ## 2026-08-25 adapter-bound exact staging HOLD deployment
 
