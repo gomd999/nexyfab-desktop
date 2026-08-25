@@ -1,5 +1,26 @@
 # Precision CAD current session
 
+## 2026-08-25 exact final-source staging HOLD verification
+
+- Status: `FINAL_SOURCE_STAGING_SUCCESS / CORE_AND_FAIL_CLOSED_CHECKS_11_OF_11_PASS /
+  POSITIVE_NATIVE_CLOSED_LOOP_NOT_RUN / COMMERCIAL_RELEASE_HOLD`.
+- Application source `32ff05ba3f1e7addc5cf6da95d6e94ff9b437fe7` is running in
+  Railway staging as deployment `c1e03352-5f95-47eb-a031-80847b22391c` with
+  2/2 instances `RUNNING` and image digest
+  `sha256:bc2688c5b3c7cc6a34d9cbab9ad0357a87d2b8356d39786319aaf109849fab2a`.
+- The exact-release collector passed 11/11 checks: build identity, readiness,
+  PostgreSQL, Redis, commercial boundary, HOLD identity, migration
+  `2026082502`, packaged runtime HOLD evidence, forged claim/lease rejection,
+  and fail-closed callback behavior.
+- This is conclusive core staging evidence, not a positive production-class
+  native CAD execution. Private Beta and GA remain false until the registered
+  worker, separately held keys, recovery campaign, independent CAD review, and
+  manufacturing pilots are supplied.
+- Receipt:
+  `docs/evidence/release/commercial-precision-staging-hold-20260825.json`.
+- Handoff:
+  `HANDOFFS/20260825T061000Z-final-source-staging-hold.md`.
+
 ## 2026-08-25 cross-worktree runtime evidence binding
 
 - Status: `RUNTIME_DERIVATION_DETERMINISTIC / REAL_OBSERVATION_NOT_RUN /
