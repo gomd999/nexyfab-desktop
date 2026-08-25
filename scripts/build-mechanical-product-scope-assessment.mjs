@@ -10,6 +10,7 @@ import {
 import {
   TEXT_BINDING_CANONICALIZATION,
   canonicalTextBinding,
+  canonicalTextEqual,
 } from './canonical-text-binding.mjs';
 import { EVIDENCE_BINDING_ROOTS } from './run-mechanical-core-internal-verification.mjs';
 
@@ -420,12 +421,13 @@ export function checkOrWriteMechanicalProductScopeAssessment({ root, write, path
     return { ok: true, output: paths.output, status: expectedValue.decision.status, blockers: expectedValue.blockers };
   }
   const actual = fs.existsSync(output) ? fs.readFileSync(output, 'utf8') : '';
+  const current = canonicalTextEqual(actual, expected);
   return {
-    ok: actual === expected,
+    ok: current,
     output: paths.output,
     status: expectedValue.decision.status,
     blockers: expectedValue.blockers,
-    error: actual === expected ? null : 'MECHANICAL_PRODUCT_SCOPE_ASSESSMENT_STALE',
+    error: current ? null : 'MECHANICAL_PRODUCT_SCOPE_ASSESSMENT_STALE',
   };
 }
 

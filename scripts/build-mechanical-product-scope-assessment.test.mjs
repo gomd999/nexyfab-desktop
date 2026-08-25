@@ -6,6 +6,7 @@ import path from 'node:path';
 import test from 'node:test';
 import {
   buildMechanicalProductScopeAssessment,
+  checkOrWriteMechanicalProductScopeAssessment,
   mechanicalManufacturingCaseTargetHash,
   mechanicalManufacturingInspectorPayload,
   validateMechanicalDualExpertReview,
@@ -115,6 +116,18 @@ test('published scope schema matches the emitted v4 evidence hierarchy', () => {
     assert.deepEqual(schema.properties.evidence.properties[key], { type: 'boolean' });
   }
   assert.equal(schema.properties.sources.items.required.includes('canonicalization'), true);
+});
+
+test('accepts the same emitted scope receipt through an LF or CRLF checkout', t => {
+  const fixture = fixtureRoot();
+  t.after(() => fs.rmSync(fixture.root, { recursive: true, force: true }));
+  const written = checkOrWriteMechanicalProductScopeAssessment({ root: fixture.root, write: true, paths: fixture.paths });
+  assert.equal(written.ok, true);
+  const output = path.join(fixture.root, ...fixture.paths.output.split('/'));
+  fs.writeFileSync(output, fs.readFileSync(output, 'utf8').replaceAll('\n', '\r\n'));
+  const checked = checkOrWriteMechanicalProductScopeAssessment({ root: fixture.root, write: false, paths: fixture.paths });
+  assert.equal(checked.ok, true);
+  assert.equal(checked.error, null);
 });
 
 test('invalidates internal evidence when any source binding has drifted', t => {
