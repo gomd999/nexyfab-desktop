@@ -1,6 +1,7 @@
 # NexyFab Route Security Matrix
 
 - Schema: `nexyfab.route-security-matrix.v1`
+- Text binding: `utf8-crlf-to-lf`
 - Status: **PASS**
 - Route files: 625
 - Exported handlers: 860

@@ -1,6 +1,6 @@
 {
   "schema": "nexyfab.commercial-security-evidence-receipt.v2",
-  "generatedAt": "2026-08-25T04:52:06.696Z",
+  "generatedAt": "2026-08-25T05:03:32.033Z",
   "ok": false,
   "status": "HOLD",
   "target": "production",
@@ -10,35 +10,40 @@
     "gitHead": null
   },
   "freshness": {
-    "generatedAt": "2026-08-25T04:52:06.696Z",
+    "generatedAt": "2026-08-25T05:03:32.033Z",
     "maxAgeMs": 86400000,
-    "expiresAt": "2026-08-26T04:52:06.696Z"
+    "expiresAt": "2026-08-26T05:03:32.033Z"
   },
   "sourceBindings": [
     {
       "path": "docs/evidence/security/route-security-matrix-260810.json",
-      "bytes": 568736,
-      "sha256": "4f72eeee558e5a8c720e100fbff4efbd8a38031a11ebf05e95c0bb8f8625b082"
+      "bytes": 568781,
+      "sha256": "03ced20802f6d31c588ac365ce77af494459a1a16164981628366d95def778eb",
+      "canonicalization": "utf8-crlf-to-lf"
     },
     {
       "path": "docs/evidence/cad-independent/cad-api-control-evidence.json",
-      "bytes": 16297,
-      "sha256": "5fe98c753fd23df1355fab501363319147dd0d481b8954ed6962a070c3da74cd"
+      "bytes": 16342,
+      "sha256": "54378c9d1729bd921d9701eca7496ccd6eeb5e4b9ab2913c12925ae50bef9b18",
+      "canonicalization": "utf8-crlf-to-lf"
     },
     {
       "path": "docs/evidence/security/secret-scan-260810.json",
       "bytes": 710,
-      "sha256": "a310168fd34cc1480f31d6170b4be294b36379da8caf44b1b3db40f0915878fb"
+      "sha256": "7fae6c90f24db04b1ba219828f7e0692b3263782e859d65e9fab1a2a84495080",
+      "canonicalization": "utf8-crlf-to-lf"
     },
     {
       "path": "docs/evidence/security/dependency-audit-260810.json",
-      "bytes": 514,
-      "sha256": "3220b07b20e0458154c995e0915d499cc305ed135e6e6ead552d7f7262bcb929"
+      "bytes": 559,
+      "sha256": "f6cacff734a737d274f186960417678346414bc19d32a35a2bc5f5b40aae0165",
+      "canonicalization": "utf8-crlf-to-lf"
     },
     {
       "path": "package-lock.json",
-      "bytes": 648963,
-      "sha256": "e52e2f5ea1cbf19227fdd6c73186666f769316c98574d8c8242bf5325f4173b6"
+      "bytes": 631405,
+      "sha256": "d5bd18e9f6648828af26925e4b914a9af4cafb700b8b58a8daeb7300099110e3",
+      "canonicalization": "utf8-crlf-to-lf"
     }
   ],
   "evidence": {
@@ -80,8 +85,8 @@
       "status": "pass",
       "derived": {
         "findingCount": 0,
-        "filesScanned": 10178,
-        "bytesScanned": 322734259,
+        "filesScanned": 10181,
+        "bytesScanned": 322743923,
         "excludedDerivedReceipts": 4,
         "textCanonicalization": "utf8-crlf-to-lf"
       },
@@ -113,5 +118,5 @@
     "release_deployment_id_missing",
     "release_git_head_invalid"
   ],
-  "receiptSha256": "5d178f3f90f90f93088ef9e5fb853fdb4f644bdd226ab8ce39c8f3091dc52508"
+  "receiptSha256": "c8dce633ed5e1f705a63ff9932f8730e1f8f53f78de02326f07dbb8173e77a3d"
 }
