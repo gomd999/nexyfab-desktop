@@ -1,0 +1,4336 @@
+{
+  "schema": "nexyfab.commercial-synthetic-campaign-source.v1",
+  "generatedAt": "2026-08-25T07:29:06.197Z",
+  "claimBoundary": {
+    "syntheticRegressionOnly": true,
+    "independentHoldout": false
+  },
+  "cases": [
+    {
+      "schema": "nexyfab.commercial-synthetic-campaign-case.v1",
+      "caseId": "mechanical-modular_conveyor_line-01",
+      "domain": "mechanical",
+      "sourceHash": "958fcb1a3851c47acc132893a2ba6dbae2c34a1b432d7329c34b63314b975f6e",
+      "split": "synthetic",
+      "templateId": "modular_conveyor_line",
+      "parameters": {
+        "modules": 3.2,
+        "moduleLen": 1600,
+        "width": 480,
+        "rollerPitch": 200
+      },
+      "artifactHash": "059e6036f5a066076df155fa02c2fa538ff575ad58b0349edf1f4ee635cf0c5b",
+      "artifactSummary": {
+        "name": "conveyor_line_3m",
+        "partCount": 39,
+        "pipeCount": 0,
+        "roles": [
+          "drive",
+          "leg",
+          "rail",
+          "roller"
+        ],
+        "alignmentErrors": [],
+        "unverifiedPartCount": 0,
+        "extents": [
+          5200,
+          480,
+          880
+        ],
+        "holeTotal": 0,
+        "occCount": 39
+      },
+      "syntheticRequiredAxes": [
+        "requirements",
+        "geometry",
+        "semantic_objects",
+        "relationships"
+      ]
+    },
+    {
+      "schema": "nexyfab.commercial-synthetic-campaign-case.v1",
+      "caseId": "mechanical-desk_stand-01",
+      "domain": "mechanical",
+      "sourceHash": "3d5a3762f7f2b7badfcf6d73b515024b99e3f076c954530f30d6c942d1119199",
+      "split": "synthetic",
+      "templateId": "desk_stand",
+      "parameters": {
+        "baseW": 208,
+        "baseD": 176,
+        "baseT": 4.8,
+        "plateW": 224,
+        "plateD": 192,
+        "plateT": 3.2,
+        "postH": 128,
+        "sliderH": 136,
+        "ventW": 144,
+        "ventD": 104,
+        "lipH": 12.8
+      },
+      "artifactHash": "3a183f27abc95562c0a6b21a5000e3665a17926526be98c3f1799eb5024b95b8",
+      "artifactSummary": {
+        "name": "데스크 거치대 208x176 (높이조절·각도조절)",
+        "partCount": 25,
+        "pipeCount": 0,
+        "roles": [
+          "deck",
+          "fastener",
+          "frame",
+          "mount",
+          "pad",
+          "stop"
+        ],
+        "alignmentErrors": [],
+        "unverifiedPartCount": 0,
+        "extents": [
+          224,
+          192,
+          259.8
+        ],
+        "holeTotal": 0,
+        "occCount": 0
+      },
+      "syntheticRequiredAxes": [
+        "requirements",
+        "geometry",
+        "semantic_objects",
+        "relationships"
+      ]
+    },
+    {
+      "schema": "nexyfab.commercial-synthetic-campaign-case.v1",
+      "caseId": "mechanical-tower_crane-01",
+      "domain": "mechanical",
+      "sourceHash": "95199255d60c8f8c06e2de8996bf5b85f50d1d4e202984692c85cfa8c015e80c",
+      "split": "synthetic",
+      "templateId": "tower_crane",
+      "parameters": {
+        "mastH": 24000,
+        "jibLen": 28000,
+        "mastW": 1280,
+        "hookDrop": 6400
+      },
+      "artifactHash": "c2e87f87de428ef2d4eb561de5ca57c1590d492ab3a92c4eafd371f763dd4344",
+      "artifactSummary": {
+        "name": "타워 크레인 H24m·지브 28m",
+        "partCount": 94,
+        "pipeCount": 0,
+        "roles": [
+          "base",
+          "cab",
+          "cable",
+          "chord",
+          "counterweight",
+          "deck",
+          "diagonal",
+          "hook",
+          "joint",
+          "stay",
+          "trolley",
+          "vertical"
+        ],
+        "alignmentErrors": [],
+        "unverifiedPartCount": 0,
+        "extents": [
+          37800,
+          2816,
+          31920
+        ],
+        "holeTotal": 0,
+        "occCount": 0
+      },
+      "syntheticRequiredAxes": [
+        "requirements",
+        "geometry",
+        "semantic_objects",
+        "relationships"
+      ]
+    },
+    {
+      "schema": "nexyfab.commercial-synthetic-campaign-case.v1",
+      "caseId": "mechanical-pump_unit-01",
+      "domain": "mechanical",
+      "sourceHash": "c92c08d2ad13380f103cbac7eabce98439d63661eaee91a5d714f2a7ae01d33a",
+      "split": "synthetic",
+      "templateId": "pump_unit",
+      "parameters": {
+        "suctionDia": 120,
+        "dischargeDia": 80,
+        "motorDia": 280
+      },
+      "artifactHash": "e8512b0ea035b3460888193266b9c4fa5307a743547ba71d6c177fe61f89987a",
+      "artifactSummary": {
+        "name": "원심 펌프 유닛 120/80",
+        "partCount": 9,
+        "pipeCount": 0,
+        "roles": [
+          "frame",
+          "guard",
+          "inlet",
+          "motor",
+          "outlet",
+          "pump"
+        ],
+        "alignmentErrors": [],
+        "unverifiedPartCount": 0,
+        "extents": [
+          1484,
+          584,
+          774
+        ],
+        "holeTotal": 0,
+        "occCount": 0
+      },
+      "syntheticRequiredAxes": [
+        "requirements",
+        "geometry",
+        "semantic_objects",
+        "relationships"
+      ]
+    },
+    {
+      "schema": "nexyfab.commercial-synthetic-campaign-case.v1",
+      "caseId": "mechanical-gate_valve-01",
+      "domain": "mechanical",
+      "sourceHash": "fad3d91cc5da88955505ae65cc6f01fb87307a0043ca2923559bfe5ac9d486a5",
+      "split": "synthetic",
+      "templateId": "gate_valve",
+      "parameters": {
+        "dn": 120,
+        "standH": 400
+      },
+      "artifactHash": "13bdf3a70346283a25ccdd3ef0a403035910f0b28a9c0e056a07df9305db0f8e",
+      "artifactSummary": {
+        "name": "게이트 밸브 DN120(전시 스탠드)",
+        "partCount": 9,
+        "pipeCount": 0,
+        "roles": [
+          "frame",
+          "joint",
+          "shaft",
+          "valve"
+        ],
+        "alignmentErrors": [],
+        "unverifiedPartCount": 0,
+        "extents": [
+          492,
+          250,
+          848
+        ],
+        "holeTotal": 0,
+        "occCount": 0
+      },
+      "syntheticRequiredAxes": [
+        "requirements",
+        "geometry",
+        "semantic_objects",
+        "relationships"
+      ]
+    },
+    {
+      "schema": "nexyfab.commercial-synthetic-campaign-case.v1",
+      "caseId": "mechanical-tank_silo-01",
+      "domain": "mechanical",
+      "sourceHash": "fc5ef0264af5071ca1913555c40e057989e7f086b9aa146583eff3ea1a334c72",
+      "split": "synthetic",
+      "templateId": "tank_silo",
+      "parameters": {
+        "diameter": 2400,
+        "shellH": 4800,
+        "hopper": "yes",
+        "wallThk": 4.8,
+        "legH": 2160
+      },
+      "artifactHash": "67801dd54419d1005e2c56ae7dee3656ceb253c4578c2ed5f1495fbf4e111618",
+      "artifactSummary": {
+        "name": "사일로 D2.4m+호퍼",
+        "partCount": 7,
+        "pipeCount": 0,
+        "roles": [
+          "column",
+          "roof",
+          "shell"
+        ],
+        "alignmentErrors": [],
+        "unverifiedPartCount": 0,
+        "extents": [
+          2400,
+          2400,
+          7396.8
+        ],
+        "holeTotal": 0,
+        "occCount": 0
+      },
+      "syntheticRequiredAxes": [
+        "requirements",
+        "geometry",
+        "semantic_objects",
+        "relationships"
+      ]
+    },
+    {
+      "schema": "nexyfab.commercial-synthetic-campaign-case.v1",
+      "caseId": "mechanical-pressure_vessel-01",
+      "domain": "mechanical",
+      "sourceHash": "f8081122c34d112e5fa908731e73412324f4d9be05a221370c23786cba5b152d",
+      "split": "synthetic",
+      "templateId": "pressure_vessel",
+      "parameters": {
+        "diameter": 1280,
+        "shellLen": 3200,
+        "wallThk": 9.6,
+        "saddleH": 480
+      },
+      "artifactHash": "3f51e895dbeec89cfcc78b46921e964516d2e54cf1bdc1d6628dfe3a4fa03763",
+      "artifactSummary": {
+        "name": "압력용기 D1280×L3200",
+        "partCount": 7,
+        "pipeCount": 0,
+        "roles": [
+          "head",
+          "nozzle",
+          "saddle_sup",
+          "shell"
+        ],
+        "alignmentErrors": [],
+        "unverifiedPartCount": 0,
+        "extents": [
+          1280,
+          3840,
+          2110
+        ],
+        "holeTotal": 0,
+        "occCount": 0
+      },
+      "syntheticRequiredAxes": [
+        "requirements",
+        "geometry",
+        "semantic_objects",
+        "relationships"
+      ]
+    },
+    {
+      "schema": "nexyfab.commercial-synthetic-campaign-case.v1",
+      "caseId": "mechanical-motor_mount-01",
+      "domain": "mechanical",
+      "sourceHash": "de019ed771fd465daf1b571498ea2646538b53736840ac369464d2ebdd608f87",
+      "split": "synthetic",
+      "templateId": "motor_mount",
+      "parameters": {
+        "baseW": 160,
+        "baseD": 112,
+        "baseT": 11.2,
+        "webH": 128,
+        "webT": 9.6,
+        "ribT": 8,
+        "filletR": 9.6,
+        "anchorDia": 11.2,
+        "anchorCbDia": 20.8,
+        "anchorCbDepth": 6.4,
+        "motorBcd": 72,
+        "motorHoleD": 7.2,
+        "motorBolts": 3.2,
+        "edgeDist": 32
+      },
+      "artifactHash": "5eee821f7f034b46dd12f7a12436a9a47c7dc8213b68ab8688565d467241d26a",
+      "artifactSummary": {
+        "name": "모터 마운트 브래킷 (복합·필렛·카운터보어·볼트패턴)",
+        "partCount": 1,
+        "pipeCount": 0,
+        "roles": [
+          "plate"
+        ],
+        "alignmentErrors": [],
+        "unverifiedPartCount": 0,
+        "extents": [
+          160,
+          112,
+          139.2
+        ],
+        "holeTotal": 0,
+        "occCount": 0
+      },
+      "syntheticRequiredAxes": [
+        "requirements",
+        "geometry",
+        "semantic_objects",
+        "relationships"
+      ]
+    },
+    {
+      "schema": "nexyfab.commercial-synthetic-campaign-case.v1",
+      "caseId": "mechanical-gusset_bracket-01",
+      "domain": "mechanical",
+      "sourceHash": "605247ea97724023f9beadcd73057824fa6141ba3ebef7e3d570f72d8e45d050",
+      "split": "synthetic",
+      "templateId": "gusset_bracket",
+      "parameters": {
+        "legA": 240,
+        "legB": 192,
+        "thickness": 9.6,
+        "chamfer": 32,
+        "boltDia": 14.4,
+        "edgeDist": 44,
+        "boltRows": 1.6,
+        "boltSpan": 0.4
+      },
+      "artifactHash": "accbe2823082bb00ec65f05bcf178f61c7c52d97419c43bfe8003d3a91831b31",
+      "artifactSummary": {
+        "name": "거셋 브래킷 판 (240×192×t9.6 · chamfer 32)",
+        "partCount": 1,
+        "pipeCount": 0,
+        "roles": [
+          "plate"
+        ],
+        "alignmentErrors": [],
+        "unverifiedPartCount": 0,
+        "extents": [
+          240,
+          192,
+          9.6
+        ],
+        "holeTotal": 3,
+        "occCount": 0
+      },
+      "syntheticRequiredAxes": [
+        "requirements",
+        "geometry",
+        "semantic_objects",
+        "relationships"
+      ]
+    },
+    {
+      "schema": "nexyfab.commercial-synthetic-campaign-case.v1",
+      "caseId": "mechanical-mold_cavity-01",
+      "domain": "mechanical",
+      "sourceHash": "0549359e15ed7ee584812e9d928f47ee1f9defefea3e35c5da1ebff750711352",
+      "split": "synthetic",
+      "templateId": "mold_cavity",
+      "parameters": {
+        "blockW": 240,
+        "blockD": 200,
+        "blockH": 96,
+        "cavityDia": 128
+      },
+      "artifactHash": "aed9fbcf469d551b0a76259b45a844bfdfc5aaecda15a91ef3a5db4c72ce3a8c",
+      "artifactSummary": {
+        "name": "금형 캐비티 240×200×96",
+        "partCount": 1,
+        "pipeCount": 0,
+        "roles": [
+          "mold"
+        ],
+        "alignmentErrors": [],
+        "unverifiedPartCount": 0,
+        "extents": [
+          240,
+          200,
+          96
+        ],
+        "holeTotal": 0,
+        "occCount": 0
+      },
+      "syntheticRequiredAxes": [
+        "requirements",
+        "geometry",
+        "semantic_objects",
+        "relationships"
+      ]
+    },
+    {
+      "schema": "nexyfab.commercial-synthetic-campaign-case.v1",
+      "caseId": "mechanical-gear_train-01",
+      "domain": "mechanical",
+      "sourceHash": "bd7ae07c6fcb5c8be26d43b2a1525346f88f5bdff58e0681354113b8e46a4c88",
+      "split": "synthetic",
+      "templateId": "gear_train",
+      "parameters": {
+        "module": 2.4,
+        "thickness": 20,
+        "shaftDia": 12
+      },
+      "artifactHash": "f934fc7b7d162b211e5e4c2c9e98db1a13cb6690e116fca4cc128b04141d9a2c",
+      "artifactSummary": {
+        "name": "기어 트레인 20-40-20-60 (m2.4)",
+        "partCount": 9,
+        "pipeCount": 0,
+        "roles": [
+          "frame",
+          "gear",
+          "shaft"
+        ],
+        "alignmentErrors": [],
+        "unverifiedPartCount": 0,
+        "extents": [
+          380.8,
+          188.8,
+          75
+        ],
+        "holeTotal": 4,
+        "occCount": 0
+      },
+      "syntheticRequiredAxes": [
+        "requirements",
+        "geometry",
+        "semantic_objects",
+        "relationships"
+      ]
+    },
+    {
+      "schema": "nexyfab.commercial-synthetic-campaign-case.v1",
+      "caseId": "mechanical-four_bar-01",
+      "domain": "mechanical",
+      "sourceHash": "70e6d2661ea389079eda171f236edc1a872d8e24f7070a6008436130a0e6e52b",
+      "split": "synthetic",
+      "templateId": "four_bar",
+      "parameters": {
+        "ground": 320,
+        "crank": 96,
+        "coupler": 280,
+        "rocker": 200,
+        "inputDeg": 48
+      },
+      "artifactHash": "10ea4bff222e33db175ace670b8e63efe352191e7ab37b81efa4382a205c5a0f",
+      "artifactSummary": {
+        "name": "4절 링크 g320/a96/b280/c200 @48°",
+        "partCount": 8,
+        "pipeCount": 0,
+        "roles": [
+          "frame",
+          "joint",
+          "link"
+        ],
+        "alignmentErrors": [],
+        "unverifiedPartCount": 0,
+        "extents": [
+          368.934141,
+          255.071901,
+          53
+        ],
+        "holeTotal": 8,
+        "occCount": 0
+      },
+      "syntheticRequiredAxes": [
+        "requirements",
+        "geometry",
+        "semantic_objects",
+        "relationships"
+      ]
+    },
+    {
+      "schema": "nexyfab.commercial-synthetic-campaign-case.v1",
+      "caseId": "mechanical-flanged_fitting-01",
+      "domain": "mechanical",
+      "sourceHash": "133e739ca01dfa1628983484e97d76c182d3dc069d16719bbce401016b702045",
+      "split": "synthetic",
+      "templateId": "flanged_fitting",
+      "parameters": {
+        "kind": "elbow90",
+        "od": 91.44,
+        "bendR": 136,
+        "wallThk": 4.8
+      },
+      "artifactHash": "8bd96ec5a50c0d36554db03ef74101cadf7d81c7177f49f57277acd25db93181",
+      "artifactSummary": {
+        "name": "플랜지 90° 엘보 OD91.44",
+        "partCount": 3,
+        "pipeCount": 0,
+        "roles": [
+          "mount",
+          "pipe"
+        ],
+        "alignmentErrors": [],
+        "unverifiedPartCount": 0,
+        "extents": [
+          245.22,
+          245.22,
+          186.44
+        ],
+        "holeTotal": 0,
+        "occCount": 0
+      },
+      "syntheticRequiredAxes": [
+        "requirements",
+        "geometry",
+        "semantic_objects",
+        "relationships"
+      ]
+    },
+    {
+      "schema": "nexyfab.commercial-synthetic-campaign-case.v1",
+      "caseId": "mechanical-heat_exchanger-01",
+      "domain": "mechanical",
+      "sourceHash": "9bf825652596800718166d2ed0bb8b789e8826bcff300334439a83c7b4ff67ca",
+      "split": "synthetic",
+      "templateId": "heat_exchanger",
+      "parameters": {
+        "shellID": 480,
+        "tubeLen": 2400,
+        "tubeOD": 15.2,
+        "baffles": 3.2,
+        "nozzleOD": 91.44
+      },
+      "artifactHash": "5d46ca7c0caebc61c94b947f53ec42648cc4bbb11a7c32453fb443e84ffad389",
+      "artifactSummary": {
+        "name": "셸튜브 열교환기 TEMA AEL 480×2400",
+        "partCount": 47,
+        "pipeCount": 0,
+        "roles": [
+          "mount",
+          "pipe",
+          "support",
+          "vessel"
+        ],
+        "alignmentErrors": [],
+        "unverifiedPartCount": 0,
+        "extents": [
+          2790,
+          500,
+          740
+        ],
+        "holeTotal": 0,
+        "occCount": 0
+      },
+      "syntheticRequiredAxes": [
+        "requirements",
+        "geometry",
+        "semantic_objects",
+        "relationships"
+      ]
+    },
+    {
+      "schema": "nexyfab.commercial-synthetic-campaign-case.v1",
+      "caseId": "mechanical-robot_arm-01",
+      "domain": "mechanical",
+      "sourceHash": "dd17f8012b8a35f86acd2aa0a4df7053b47e473104a69384fb1345d02a207363",
+      "split": "synthetic",
+      "templateId": "robot_arm",
+      "parameters": {
+        "upperArmLen": 560,
+        "forearmLen": 480,
+        "shoulderDeg": 28,
+        "elbowDeg": 44,
+        "linkW": 96
+      },
+      "artifactHash": "b39a1b0ba60f323d3deabc31dbadc0578b2c7e142923b72c058f517ce69ba509",
+      "artifactSummary": {
+        "name": "로봇 암 5-DOF (28°/44°)",
+        "partCount": 11,
+        "pipeCount": 0,
+        "roles": [
+          "base",
+          "gripper",
+          "joint",
+          "link"
+        ],
+        "alignmentErrors": [],
+        "unverifiedPartCount": 0,
+        "extents": [
+          979.411203,
+          340,
+          1062.778809
+        ],
+        "holeTotal": 0,
+        "occCount": 0
+      },
+      "syntheticRequiredAxes": [
+        "requirements",
+        "geometry",
+        "semantic_objects",
+        "relationships"
+      ]
+    },
+    {
+      "schema": "nexyfab.commercial-synthetic-campaign-case.v1",
+      "caseId": "mechanical-machine_line-01",
+      "domain": "mechanical",
+      "sourceHash": "da8d15e8738ca20e2657947ef0b65d60a6b72a8bae76c6ac332af9f1cb578703",
+      "split": "synthetic",
+      "templateId": "machine_line",
+      "parameters": {
+        "stations": 3.2,
+        "stationPitch": 1200,
+        "conveyorW": 400,
+        "frameH": 720,
+        "guard": "yes"
+      },
+      "artifactHash": "67767f7dcf3949d2bf8896e5872ff773d5a1820b361896502cbf84e0a336c79a",
+      "artifactSummary": {
+        "name": "산업기계 라인 3스테이션",
+        "partCount": 30,
+        "pipeCount": 0,
+        "roles": [
+          "conveyor",
+          "fence",
+          "frame",
+          "head",
+          "panel",
+          "station"
+        ],
+        "alignmentErrors": [],
+        "unverifiedPartCount": 0,
+        "extents": [
+          4800,
+          2280,
+          2780
+        ],
+        "holeTotal": 0,
+        "occCount": 0
+      },
+      "syntheticRequiredAxes": [
+        "requirements",
+        "geometry",
+        "semantic_objects",
+        "relationships"
+      ]
+    },
+    {
+      "schema": "nexyfab.commercial-synthetic-campaign-case.v1",
+      "caseId": "mechanical-conveyor-01",
+      "domain": "mechanical",
+      "sourceHash": "b86622408bb0c58f9f7e4b1fd6f53d0a843241de72e90ac68415c7be85d90c6a",
+      "split": "synthetic",
+      "templateId": "conveyor",
+      "parameters": {
+        "kind": "belt",
+        "length": 4800,
+        "width": 480,
+        "frameH": 600,
+        "legPitch": 1200,
+        "rollerPitch": 240
+      },
+      "artifactHash": "4499e28b2eb9873c565596c798d9e5ecc3863d45b925c06915c826dedca5926e",
+      "artifactSummary": {
+        "name": "벨트 컨베이어 4.8m",
+        "partCount": 41,
+        "pipeCount": 0,
+        "roles": [
+          "conveyor",
+          "frame",
+          "motor",
+          "mount"
+        ],
+        "alignmentErrors": [],
+        "unverifiedPartCount": 0,
+        "extents": [
+          4800,
+          950,
+          645
+        ],
+        "holeTotal": 0,
+        "occCount": 0
+      },
+      "syntheticRequiredAxes": [
+        "requirements",
+        "geometry",
+        "semantic_objects",
+        "relationships"
+      ]
+    },
+    {
+      "schema": "nexyfab.commercial-synthetic-campaign-case.v1",
+      "caseId": "mechanical-transmission_tower-01",
+      "domain": "mechanical",
+      "sourceHash": "107ae1d4ef44e246413d2637bf91035bff885d37dfe17a3aca54c1b29106e019",
+      "split": "synthetic",
+      "templateId": "transmission_tower",
+      "parameters": {
+        "height": 24000,
+        "baseW": 4800,
+        "topW": 1200,
+        "panels": 4.8,
+        "legSize": 96,
+        "braceSize": 60,
+        "armLen": 2000
+      },
+      "artifactHash": "ac8722c60d73076f3d2efd42322d4f3aa58be26dea604b2746faddfbce819ee8",
+      "artifactSummary": {
+        "name": "송전탑 24m×5패널",
+        "partCount": 83,
+        "pipeCount": 0,
+        "roles": [
+          "beam",
+          "brace",
+          "column"
+        ],
+        "alignmentErrors": [],
+        "unverifiedPartCount": 0,
+        "extents": [
+          5070.771712,
+          5920,
+          25500
+        ],
+        "holeTotal": 0,
+        "occCount": 0
+      },
+      "syntheticRequiredAxes": [
+        "requirements",
+        "geometry",
+        "semantic_objects",
+        "relationships"
+      ]
+    },
+    {
+      "schema": "nexyfab.commercial-synthetic-campaign-case.v1",
+      "caseId": "mechanical-excavator_bucket-01",
+      "domain": "mechanical",
+      "sourceHash": "ad0d4cedd6b6d7cee08ac0aa4372ee6affc74f368b7611450a3a0fe32feffb8b",
+      "split": "synthetic",
+      "templateId": "excavator_bucket",
+      "parameters": {
+        "width": 1200,
+        "depth": 960,
+        "height": 880,
+        "teeth": 4,
+        "shellThk": 20
+      },
+      "artifactHash": "62123da65ccf32d177c260cbcca9b101fe261416f5c34180d7722a4de54090d1",
+      "artifactSummary": {
+        "name": "굴착기 버킷 1.2m",
+        "partCount": 13,
+        "pipeCount": 0,
+        "roles": [
+          "boss",
+          "edge",
+          "shell",
+          "sideplate",
+          "tooth"
+        ],
+        "alignmentErrors": [],
+        "unverifiedPartCount": 0,
+        "extents": [
+          1360,
+          1200,
+          880
+        ],
+        "holeTotal": 0,
+        "occCount": 0
+      },
+      "syntheticRequiredAxes": [
+        "requirements",
+        "geometry",
+        "semantic_objects",
+        "relationships"
+      ]
+    },
+    {
+      "schema": "nexyfab.commercial-synthetic-campaign-case.v1",
+      "caseId": "mechanical-modular_conveyor_line-02",
+      "domain": "mechanical",
+      "sourceHash": "e9b147f47b463ee3353975fcb6ed9b1a03d43114ec95b6f6111bec5b6d85efe2",
+      "split": "synthetic",
+      "templateId": "modular_conveyor_line",
+      "parameters": {
+        "modules": 3.36,
+        "moduleLen": 1680,
+        "width": 504,
+        "rollerPitch": 210
+      },
+      "artifactHash": "0f23686e596dcd8287162bd229edc367093e9b07e481105f4934c74c7ad7c902",
+      "artifactSummary": {
+        "name": "conveyor_line_3m",
+        "partCount": 39,
+        "pipeCount": 0,
+        "roles": [
+          "drive",
+          "leg",
+          "rail",
+          "roller"
+        ],
+        "alignmentErrors": [],
+        "unverifiedPartCount": 0,
+        "extents": [
+          5440,
+          504,
+          880
+        ],
+        "holeTotal": 0,
+        "occCount": 39
+      },
+      "syntheticRequiredAxes": [
+        "requirements",
+        "geometry",
+        "semantic_objects",
+        "relationships"
+      ]
+    },
+    {
+      "schema": "nexyfab.commercial-synthetic-campaign-case.v1",
+      "caseId": "building-hi_rise_tower-01",
+      "domain": "building",
+      "sourceHash": "3a2fce9814b0780777ceb1fc5aa3a91aa9966c95ce9f709c146f8069d1969cf4",
+      "split": "synthetic",
+      "templateId": "hi_rise_tower",
+      "parameters": {
+        "floors": 8,
+        "baysX": 2.4,
+        "baysY": 1.6,
+        "bayX": 6400,
+        "bayY": 6400,
+        "floorH": 2800,
+        "withUnits": 0.8
+      },
+      "artifactHash": "c6ec52dd8f33e1691b930f890dd366384eb6038e70255da076e3f09ba250a83a",
+      "artifactSummary": {
+        "name": "tower_8f_2x2",
+        "partCount": 308,
+        "pipeCount": 0,
+        "roles": [
+          "beam",
+          "column",
+          "core_wall",
+          "furniture",
+          "parapet",
+          "slab"
+        ],
+        "alignmentErrors": [],
+        "unverifiedPartCount": 0,
+        "extents": [
+          13300,
+          13300,
+          24600
+        ],
+        "holeTotal": 0,
+        "occCount": 308
+      },
+      "syntheticRequiredAxes": [
+        "requirements",
+        "geometry",
+        "semantic_objects",
+        "relationships"
+      ]
+    },
+    {
+      "schema": "nexyfab.commercial-synthetic-campaign-case.v1",
+      "caseId": "building-water_tank-01",
+      "domain": "building",
+      "sourceHash": "c2d5b867570e219c120c32d1d9b8951e81018cf27bbae0693f70cca1ffd424bc",
+      "split": "synthetic",
+      "templateId": "water_tank",
+      "parameters": {
+        "innerWidth": 3200,
+        "innerDepth": 2400,
+        "wallHeight": 2000,
+        "wallThk": 240,
+        "baseThk": 320
+      },
+      "artifactHash": "1129e48dbf0e3beb343f013333cfeb18f087fdd0f30b32940486eb3afb6136d3",
+      "artifactSummary": {
+        "name": "RC 물탱크 (내공 3200×2400×2000)",
+        "partCount": 5,
+        "pipeCount": 0,
+        "roles": [
+          "slab",
+          "wall"
+        ],
+        "alignmentErrors": [],
+        "unverifiedPartCount": 0,
+        "extents": [
+          3680,
+          2880,
+          2320
+        ],
+        "holeTotal": 0,
+        "occCount": 0
+      },
+      "syntheticRequiredAxes": [
+        "requirements",
+        "geometry",
+        "semantic_objects",
+        "relationships"
+      ]
+    },
+    {
+      "schema": "nexyfab.commercial-synthetic-campaign-case.v1",
+      "caseId": "building-steel_canopy-01",
+      "domain": "building",
+      "sourceHash": "ce2a7dfa1792d34b74f867c903b4a63185bdacf298c81ea4a9027443e6f24eab",
+      "split": "synthetic",
+      "templateId": "steel_canopy",
+      "parameters": {
+        "baysX": 4.8,
+        "bayX": 4800,
+        "spanY": 9600,
+        "colH": 3200,
+        "pitchDeg": 9.6,
+        "purlinSpacing": 1200
+      },
+      "artifactHash": "f20b5ebf6f0ed8f747e45b1354135719ace382ea2f4ad8cbfb629e8571a36c48",
+      "artifactSummary": {
+        "name": "강구조 캐노피 24×9.6m",
+        "partCount": 33,
+        "pipeCount": 0,
+        "roles": [
+          "beam",
+          "column",
+          "purlin",
+          "rafter"
+        ],
+        "alignmentErrors": [],
+        "unverifiedPartCount": 0,
+        "extents": [
+          24250,
+          9600,
+          4256.889595
+        ],
+        "holeTotal": 0,
+        "occCount": 0
+      },
+      "syntheticRequiredAxes": [
+        "requirements",
+        "geometry",
+        "semantic_objects",
+        "relationships"
+      ]
+    },
+    {
+      "schema": "nexyfab.commercial-synthetic-campaign-case.v1",
+      "caseId": "building-rc_frame-01",
+      "domain": "building",
+      "sourceHash": "583c53bd83359a6fe4e8adf2d93aa45069e46a88ffb5f65656969fc7a462df20",
+      "split": "synthetic",
+      "templateId": "rc_frame",
+      "parameters": {
+        "baysX": 1,
+        "baysY": 1,
+        "floors": 1,
+        "bayX": 4800,
+        "bayY": 4800,
+        "storyH": 2640,
+        "colSize": 400,
+        "beamWidth": 240,
+        "beamHeight": 480,
+        "slabThk": 120
+      },
+      "artifactHash": "4f110334275aea2a567c3a896348d32730dd83ac1ed7f1c95baa5a00c08dc4a4",
+      "artifactSummary": {
+        "name": "RC 라멘 골조 (1×1베이 1층)",
+        "partCount": 9,
+        "pipeCount": 1,
+        "roles": [
+          "beam",
+          "column",
+          "slab"
+        ],
+        "alignmentErrors": [],
+        "unverifiedPartCount": 0,
+        "extents": [
+          5200,
+          5200,
+          2760
+        ],
+        "holeTotal": 0,
+        "occCount": 0
+      },
+      "syntheticRequiredAxes": [
+        "requirements",
+        "geometry",
+        "semantic_objects",
+        "relationships"
+      ]
+    },
+    {
+      "schema": "nexyfab.commercial-synthetic-campaign-case.v1",
+      "caseId": "building-industrial_stair-01",
+      "domain": "building",
+      "sourceHash": "e8aa765541fb0647a9ae7a8a5a847170d7895777360b7f723418ab2e1ce6661f",
+      "split": "synthetic",
+      "templateId": "industrial_stair",
+      "parameters": {
+        "totalRise": 3200,
+        "flights": 1,
+        "width": 720,
+        "treadDepth": 220,
+        "riserH": 144,
+        "handrailH": 960
+      },
+      "artifactHash": "c87c52f05d74c83fbdc0d8c0bbd15435a5c204dd62bd5a6d92cc31294e2bdaba",
+      "artifactSummary": {
+        "name": "산업 계단 H3.2m×22단",
+        "partCount": 39,
+        "pipeCount": 0,
+        "roles": [
+          "column",
+          "handrail",
+          "landing",
+          "post",
+          "stringer",
+          "tread"
+        ],
+        "alignmentErrors": [],
+        "unverifiedPartCount": 0,
+        "extents": [
+          5280,
+          720,
+          4065.369665
+        ],
+        "holeTotal": 0,
+        "occCount": 0
+      },
+      "syntheticRequiredAxes": [
+        "requirements",
+        "geometry",
+        "semantic_objects",
+        "relationships"
+      ]
+    },
+    {
+      "schema": "nexyfab.commercial-synthetic-campaign-case.v1",
+      "caseId": "building-masonry_wall-01",
+      "domain": "building",
+      "sourceHash": "6270e6ca1b30eced07a2ad37ca92cfd0f391153e914cb78e701d99cdf0911b44",
+      "split": "synthetic",
+      "templateId": "masonry_wall",
+      "parameters": {
+        "length": 3120,
+        "height": 1760,
+        "thickness": 152,
+        "blockL": 312,
+        "blockH": 152,
+        "joint": 8,
+        "coreCount": 1.6,
+        "coreW": 84,
+        "coreD": 92,
+        "openingW": 0,
+        "openingH": 1680,
+        "lintelH": 152
+      },
+      "artifactHash": "39a8758a2c4e2474362852a577acdaa37389a9d2d3e7e7b1d9c8f0d54cbcafdc",
+      "artifactSummary": {
+        "name": "조적 벽체 (블록 99장 · 11단)",
+        "partCount": 99,
+        "pipeCount": 0,
+        "roles": [
+          "wall"
+        ],
+        "alignmentErrors": [],
+        "unverifiedPartCount": 0,
+        "extents": [
+          3032,
+          152,
+          1752
+        ],
+        "holeTotal": 0,
+        "occCount": 0
+      },
+      "syntheticRequiredAxes": [
+        "requirements",
+        "geometry",
+        "semantic_objects",
+        "relationships"
+      ]
+    },
+    {
+      "schema": "nexyfab.commercial-synthetic-campaign-case.v1",
+      "caseId": "building-elevator_shaft-01",
+      "domain": "building",
+      "sourceHash": "9c37720a71359a6efd7a99e9e03ddd70039d49d6c9a2b7a38c33599c90c29f85",
+      "split": "synthetic",
+      "templateId": "elevator_shaft",
+      "parameters": {
+        "floors": 3.2,
+        "shape": "rect",
+        "floorH": 2640,
+        "carW": 1280,
+        "carD": 1200,
+        "doorW": 720
+      },
+      "artifactHash": "787468a5c2b5cc3afad77d9553769c993872a9f241a8d3a7a4f18d357f0ade4e",
+      "artifactSummary": {
+        "name": "엘리베이터 샤프트 3층",
+        "partCount": 19,
+        "pipeCount": 0,
+        "roles": [
+          "beam",
+          "buffer",
+          "car",
+          "guiderail",
+          "header",
+          "slab",
+          "wall"
+        ],
+        "alignmentErrors": [],
+        "unverifiedPartCount": 0,
+        "extents": [
+          1980,
+          1900,
+          12420
+        ],
+        "holeTotal": 0,
+        "occCount": 0
+      },
+      "syntheticRequiredAxes": [
+        "requirements",
+        "geometry",
+        "semantic_objects",
+        "relationships"
+      ]
+    },
+    {
+      "schema": "nexyfab.commercial-synthetic-campaign-case.v1",
+      "caseId": "building-plant_room-01",
+      "domain": "building",
+      "sourceHash": "1cf6e63ceadfe8409897aa57a394b88b29db3c431ba9091079453b9f4ece11ff",
+      "split": "synthetic",
+      "templateId": "plant_room",
+      "parameters": {
+        "width": 6400,
+        "depth": 4800,
+        "ceilingH": 2880,
+        "wallThk": 160,
+        "ductW": 640,
+        "ductH": 400,
+        "pipeDia": 120
+      },
+      "artifactHash": "64cef5f3548a6401f8c0757c5165eaa47e956d9c304bff76de166de2f1de3d22",
+      "artifactSummary": {
+        "name": "설비 기계실",
+        "partCount": 15,
+        "pipeCount": 0,
+        "roles": [
+          "duct",
+          "equipment",
+          "pad",
+          "pipe",
+          "slab",
+          "wall"
+        ],
+        "alignmentErrors": [],
+        "unverifiedPartCount": 0,
+        "extents": [
+          7360,
+          5520,
+          3380
+        ],
+        "holeTotal": 0,
+        "occCount": 0
+      },
+      "syntheticRequiredAxes": [
+        "requirements",
+        "geometry",
+        "semantic_objects",
+        "relationships"
+      ]
+    },
+    {
+      "schema": "nexyfab.commercial-synthetic-campaign-case.v1",
+      "caseId": "building-duct_run-01",
+      "domain": "building",
+      "sourceHash": "e175e077994087876d39d6f491116ae1862936fe8c1f1b592aad9582eb2834be",
+      "split": "synthetic",
+      "templateId": "duct_run",
+      "parameters": {
+        "length": 14400,
+        "trunkW": 640,
+        "trunkH": 320,
+        "branches": 3.2,
+        "ceilingH": 2880
+      },
+      "artifactHash": "9d883ebfa47b4e598e782383d14ec4d68c062fe0fef84faf164ce6039a3d5f3b",
+      "artifactSummary": {
+        "name": "HVAC 덕트런 14.4m·분기 3",
+        "partCount": 30,
+        "pipeCount": 0,
+        "roles": [
+          "column",
+          "duct",
+          "hanger",
+          "slab"
+        ],
+        "alignmentErrors": [],
+        "unverifiedPartCount": 0,
+        "extents": [
+          16400,
+          7640,
+          3080
+        ],
+        "holeTotal": 0,
+        "occCount": 0
+      },
+      "syntheticRequiredAxes": [
+        "requirements",
+        "geometry",
+        "semantic_objects",
+        "relationships"
+      ]
+    },
+    {
+      "schema": "nexyfab.commercial-synthetic-campaign-case.v1",
+      "caseId": "building-gable_house-01",
+      "domain": "building",
+      "sourceHash": "9e456d2a31f86e97eb0df4613d619c98e13b7b43ccd84e040bc4532e8d5a7de2",
+      "split": "synthetic",
+      "templateId": "gable_house",
+      "parameters": {
+        "width": 7200,
+        "depth": 5600,
+        "wallH": 2200,
+        "pitchDeg": 24
+      },
+      "artifactHash": "328e7b076e25ec44d213084cd1dd7b0b271e79bf3860600e94b1a49345f3d42d",
+      "artifactSummary": {
+        "name": "박공 주택 7.2×5.6m",
+        "partCount": 19,
+        "pipeCount": 0,
+        "roles": [
+          "beam",
+          "roof",
+          "slab",
+          "wall"
+        ],
+        "alignmentErrors": [],
+        "unverifiedPartCount": 0,
+        "extents": [
+          7800,
+          6200,
+          3783.672138
+        ],
+        "holeTotal": 0,
+        "occCount": 0
+      },
+      "syntheticRequiredAxes": [
+        "requirements",
+        "geometry",
+        "semantic_objects",
+        "relationships"
+      ]
+    },
+    {
+      "schema": "nexyfab.commercial-synthetic-campaign-case.v1",
+      "caseId": "building-commercial_massing-01",
+      "domain": "building",
+      "sourceHash": "4a958c03418f4c17d05e060f62890ff4f72799217facaa070a57107080a62c13",
+      "split": "synthetic",
+      "templateId": "commercial_massing",
+      "parameters": {
+        "width": 12000,
+        "depth": 9600,
+        "floors": 3.2,
+        "facade": "flat",
+        "balcony": "false",
+        "groundH": 3360,
+        "floorH": 2880
+      },
+      "artifactHash": "1b17d23bcfcd26e5420aea7c6afc1d5d8fffb3074fc5c8fd5f53892c21f4e723",
+      "artifactSummary": {
+        "name": "상가 매스 3층 12×9.6m",
+        "partCount": 51,
+        "pipeCount": 0,
+        "roles": [
+          "beam",
+          "column",
+          "parapet",
+          "pipe",
+          "slab",
+          "wall"
+        ],
+        "alignmentErrors": [],
+        "unverifiedPartCount": 0,
+        "extents": [
+          12000,
+          9600,
+          10470
+        ],
+        "holeTotal": 0,
+        "occCount": 0
+      },
+      "syntheticRequiredAxes": [
+        "requirements",
+        "geometry",
+        "semantic_objects",
+        "relationships"
+      ]
+    },
+    {
+      "schema": "nexyfab.commercial-synthetic-campaign-case.v1",
+      "caseId": "building-hi_rise_tower-02",
+      "domain": "building",
+      "sourceHash": "eba0923eeaf41ba9a8c2fb8927dd1b50dc63710455daba4e904255f6532d878a",
+      "split": "synthetic",
+      "templateId": "hi_rise_tower",
+      "parameters": {
+        "floors": 8.4,
+        "baysX": 2.52,
+        "baysY": 1.68,
+        "bayX": 6720,
+        "bayY": 6720,
+        "floorH": 2856,
+        "withUnits": 0.84
+      },
+      "artifactHash": "2d152b4e0c4f282b9a682dd985717635994c5ed012dfffb8153f753e42e102c9",
+      "artifactSummary": {
+        "name": "tower_8f_3x2",
+        "partCount": 436,
+        "pipeCount": 0,
+        "roles": [
+          "beam",
+          "column",
+          "core_wall",
+          "furniture",
+          "parapet",
+          "slab"
+        ],
+        "alignmentErrors": [],
+        "unverifiedPartCount": 0,
+        "extents": [
+          20660,
+          13940,
+          25048
+        ],
+        "holeTotal": 0,
+        "occCount": 436
+      },
+      "syntheticRequiredAxes": [
+        "requirements",
+        "geometry",
+        "semantic_objects",
+        "relationships"
+      ]
+    },
+    {
+      "schema": "nexyfab.commercial-synthetic-campaign-case.v1",
+      "caseId": "building-water_tank-02",
+      "domain": "building",
+      "sourceHash": "7fce32d8c6f4f5d567d112fcd1859221bbfd77a068adad4006664cd0e18057b7",
+      "split": "synthetic",
+      "templateId": "water_tank",
+      "parameters": {
+        "innerWidth": 3360,
+        "innerDepth": 2520,
+        "wallHeight": 2100,
+        "wallThk": 252,
+        "baseThk": 336
+      },
+      "artifactHash": "f9393c3a7769e64f32512a8dadc0b0d74fe840a1a7c039b644554d7a16d65a9d",
+      "artifactSummary": {
+        "name": "RC 물탱크 (내공 3360×2520×2100)",
+        "partCount": 5,
+        "pipeCount": 0,
+        "roles": [
+          "slab",
+          "wall"
+        ],
+        "alignmentErrors": [],
+        "unverifiedPartCount": 0,
+        "extents": [
+          3864,
+          3024,
+          2436
+        ],
+        "holeTotal": 0,
+        "occCount": 0
+      },
+      "syntheticRequiredAxes": [
+        "requirements",
+        "geometry",
+        "semantic_objects",
+        "relationships"
+      ]
+    },
+    {
+      "schema": "nexyfab.commercial-synthetic-campaign-case.v1",
+      "caseId": "building-steel_canopy-02",
+      "domain": "building",
+      "sourceHash": "c3b1fc0bb732ea7af96375862f4ccdd06d0de14229f9ed2cd8ab44a4db1e7ff1",
+      "split": "synthetic",
+      "templateId": "steel_canopy",
+      "parameters": {
+        "baysX": 5.04,
+        "bayX": 5040,
+        "spanY": 10080,
+        "colH": 3360,
+        "pitchDeg": 10.08,
+        "purlinSpacing": 1260
+      },
+      "artifactHash": "6c2c306cfe82824330b9cc22b07686e36838ceb954f6562426fd5007da613d70",
+      "artifactSummary": {
+        "name": "강구조 캐노피 25.2×10.08m",
+        "partCount": 33,
+        "pipeCount": 0,
+        "roles": [
+          "beam",
+          "column",
+          "purlin",
+          "rafter"
+        ],
+        "alignmentErrors": [],
+        "unverifiedPartCount": 0,
+        "extents": [
+          25450,
+          10080,
+          4498.171457
+        ],
+        "holeTotal": 0,
+        "occCount": 0
+      },
+      "syntheticRequiredAxes": [
+        "requirements",
+        "geometry",
+        "semantic_objects",
+        "relationships"
+      ]
+    },
+    {
+      "schema": "nexyfab.commercial-synthetic-campaign-case.v1",
+      "caseId": "building-rc_frame-02",
+      "domain": "building",
+      "sourceHash": "5491c8debb5082e30737383ac9f4ca6234eb091c46ae7beb85b90bfd1d5e89b5",
+      "split": "synthetic",
+      "templateId": "rc_frame",
+      "parameters": {
+        "baysX": 1,
+        "baysY": 1,
+        "floors": 1,
+        "bayX": 5040,
+        "bayY": 5040,
+        "storyH": 2772,
+        "colSize": 420,
+        "beamWidth": 252,
+        "beamHeight": 504,
+        "slabThk": 126
+      },
+      "artifactHash": "eb5f757aa83c3caec9aaa0c84d16b5699002a9850863a4bd3a5d6cd04e96a7ba",
+      "artifactSummary": {
+        "name": "RC 라멘 골조 (1×1베이 1층)",
+        "partCount": 9,
+        "pipeCount": 1,
+        "roles": [
+          "beam",
+          "column",
+          "slab"
+        ],
+        "alignmentErrors": [],
+        "unverifiedPartCount": 0,
+        "extents": [
+          5460,
+          5460,
+          2898
+        ],
+        "holeTotal": 0,
+        "occCount": 0
+      },
+      "syntheticRequiredAxes": [
+        "requirements",
+        "geometry",
+        "semantic_objects",
+        "relationships"
+      ]
+    },
+    {
+      "schema": "nexyfab.commercial-synthetic-campaign-case.v1",
+      "caseId": "building-industrial_stair-02",
+      "domain": "building",
+      "sourceHash": "c888811f836bf42619ac5e330fc69321bfe0d5adade7ed10c0dfe9bd3e8fad97",
+      "split": "synthetic",
+      "templateId": "industrial_stair",
+      "parameters": {
+        "totalRise": 3360,
+        "flights": 1,
+        "width": 756,
+        "treadDepth": 220,
+        "riserH": 151.2,
+        "handrailH": 1008
+      },
+      "artifactHash": "d53889be27e722ede212976ea872f81f4c94cc424bce6be8087c005048df6cd7",
+      "artifactSummary": {
+        "name": "산업 계단 H3.36m×22단",
+        "partCount": 39,
+        "pipeCount": 0,
+        "roles": [
+          "column",
+          "handrail",
+          "landing",
+          "post",
+          "stringer",
+          "tread"
+        ],
+        "alignmentErrors": [],
+        "unverifiedPartCount": 0,
+        "extents": [
+          5280,
+          756,
+          4266.242866
+        ],
+        "holeTotal": 0,
+        "occCount": 0
+      },
+      "syntheticRequiredAxes": [
+        "requirements",
+        "geometry",
+        "semantic_objects",
+        "relationships"
+      ]
+    },
+    {
+      "schema": "nexyfab.commercial-synthetic-campaign-case.v1",
+      "caseId": "building-masonry_wall-02",
+      "domain": "building",
+      "sourceHash": "c61aa9dd19eb77ec26b871a346725e700b73edf8cc1290d0ca0be4c0d7d385f4",
+      "split": "synthetic",
+      "templateId": "masonry_wall",
+      "parameters": {
+        "length": 3276,
+        "height": 1848,
+        "thickness": 159.6,
+        "blockL": 327.6,
+        "blockH": 159.6,
+        "joint": 8.4,
+        "coreCount": 1.68,
+        "coreW": 88.2,
+        "coreD": 96.6,
+        "openingW": 0,
+        "openingH": 1764,
+        "lintelH": 159.6
+      },
+      "artifactHash": "347157b8b16dc033a7e42a23ee1897dacad850be63d85b2265cc58a76f51721a",
+      "artifactSummary": {
+        "name": "조적 벽체 (블록 99장 · 11단)",
+        "partCount": 99,
+        "pipeCount": 0,
+        "roles": [
+          "wall"
+        ],
+        "alignmentErrors": [],
+        "unverifiedPartCount": 0,
+        "extents": [
+          3183.6,
+          159.6,
+          1839.6
+        ],
+        "holeTotal": 0,
+        "occCount": 0
+      },
+      "syntheticRequiredAxes": [
+        "requirements",
+        "geometry",
+        "semantic_objects",
+        "relationships"
+      ]
+    },
+    {
+      "schema": "nexyfab.commercial-synthetic-campaign-case.v1",
+      "caseId": "building-elevator_shaft-02",
+      "domain": "building",
+      "sourceHash": "6bfc36c3fe7388b7eee7535e1c3e46589fa995f0326e58d6ab3db702114cdb6d",
+      "split": "synthetic",
+      "templateId": "elevator_shaft",
+      "parameters": {
+        "floors": 3.36,
+        "shape": "rect",
+        "floorH": 2772,
+        "carW": 1344,
+        "carD": 1260,
+        "doorW": 756
+      },
+      "artifactHash": "f347e8bec6ca998a05880541010621276d5c0335ef850c4b56ae531c7ace6a41",
+      "artifactSummary": {
+        "name": "엘리베이터 샤프트 3층",
+        "partCount": 19,
+        "pipeCount": 0,
+        "roles": [
+          "beam",
+          "buffer",
+          "car",
+          "guiderail",
+          "header",
+          "slab",
+          "wall"
+        ],
+        "alignmentErrors": [],
+        "unverifiedPartCount": 0,
+        "extents": [
+          2044,
+          1960,
+          12816
+        ],
+        "holeTotal": 0,
+        "occCount": 0
+      },
+      "syntheticRequiredAxes": [
+        "requirements",
+        "geometry",
+        "semantic_objects",
+        "relationships"
+      ]
+    },
+    {
+      "schema": "nexyfab.commercial-synthetic-campaign-case.v1",
+      "caseId": "building-plant_room-02",
+      "domain": "building",
+      "sourceHash": "810626b7818cea67c201eccff2eb332cf4d26f64427b9f68215b8ba156bc4846",
+      "split": "synthetic",
+      "templateId": "plant_room",
+      "parameters": {
+        "width": 6720,
+        "depth": 5040,
+        "ceilingH": 3024,
+        "wallThk": 168,
+        "ductW": 672,
+        "ductH": 420,
+        "pipeDia": 126
+      },
+      "artifactHash": "31956b87f2ef5a098345c8e2ddb0d6ee0d42003fd577f320faa372fed8228641",
+      "artifactSummary": {
+        "name": "설비 기계실",
+        "partCount": 15,
+        "pipeCount": 0,
+        "roles": [
+          "duct",
+          "equipment",
+          "pad",
+          "pipe",
+          "slab",
+          "wall"
+        ],
+        "alignmentErrors": [],
+        "unverifiedPartCount": 0,
+        "extents": [
+          7688,
+          5776,
+          3524
+        ],
+        "holeTotal": 0,
+        "occCount": 0
+      },
+      "syntheticRequiredAxes": [
+        "requirements",
+        "geometry",
+        "semantic_objects",
+        "relationships"
+      ]
+    },
+    {
+      "schema": "nexyfab.commercial-synthetic-campaign-case.v1",
+      "caseId": "building-duct_run-02",
+      "domain": "building",
+      "sourceHash": "1ac54636ea0d052a1d817bfcfba4830dbac40e438ee8926e024b5ff5a3b0f1c9",
+      "split": "synthetic",
+      "templateId": "duct_run",
+      "parameters": {
+        "length": 15120,
+        "trunkW": 672,
+        "trunkH": 336,
+        "branches": 3.36,
+        "ceilingH": 3024
+      },
+      "artifactHash": "d02abc009424cdd53b319a543c2762f3a061e36778872b81596867dda3815432",
+      "artifactSummary": {
+        "name": "HVAC 덕트런 15.12m·분기 3",
+        "partCount": 30,
+        "pipeCount": 0,
+        "roles": [
+          "column",
+          "duct",
+          "hanger",
+          "slab"
+        ],
+        "alignmentErrors": [],
+        "unverifiedPartCount": 0,
+        "extents": [
+          17120,
+          7672,
+          3224
+        ],
+        "holeTotal": 0,
+        "occCount": 0
+      },
+      "syntheticRequiredAxes": [
+        "requirements",
+        "geometry",
+        "semantic_objects",
+        "relationships"
+      ]
+    },
+    {
+      "schema": "nexyfab.commercial-synthetic-campaign-case.v1",
+      "caseId": "civil-retaining_wall_run-01",
+      "domain": "civil",
+      "sourceHash": "15cdfdd4938281da2beb9f7e6b1e5a2c76c5f3536865072abaf2dbe460aa65b4",
+      "split": "synthetic",
+      "templateId": "retaining_wall_run",
+      "parameters": {
+        "H": 2400,
+        "baseWidth": 1600,
+        "baseThickness": 320,
+        "stemThickness": 240,
+        "toeLength": 480,
+        "length": 8000
+      },
+      "artifactHash": "ad8315745845ca5e65c9a3e520b727d0047c6b1b056caaecaca9f4d46fac26f8",
+      "artifactSummary": {
+        "name": "옹벽 연장 구간",
+        "partCount": 2,
+        "pipeCount": 0,
+        "roles": [
+          "base",
+          "wall"
+        ],
+        "alignmentErrors": [],
+        "unverifiedPartCount": 0,
+        "extents": [
+          1600,
+          8000,
+          2400
+        ],
+        "holeTotal": 0,
+        "occCount": 0
+      },
+      "syntheticRequiredAxes": [
+        "requirements",
+        "geometry",
+        "semantic_objects",
+        "relationships"
+      ]
+    },
+    {
+      "schema": "nexyfab.commercial-synthetic-campaign-case.v1",
+      "caseId": "civil-box_culvert-01",
+      "domain": "civil",
+      "sourceHash": "f75642a1046c2c2cf4ed7d0dd7c070bb58fddd7774fdfafe0b21c21432472da4",
+      "split": "synthetic",
+      "templateId": "box_culvert",
+      "parameters": {
+        "innerWidth": 2400,
+        "innerHeight": 2400,
+        "wallThk": 280,
+        "length": 8000
+      },
+      "artifactHash": "08d20ec831b555a9312c99efb3870c59b35cc416b0bb2522083e6b96d4d828b0",
+      "artifactSummary": {
+        "name": "박스 암거 (내공 2400×2400)",
+        "partCount": 4,
+        "pipeCount": 0,
+        "roles": [
+          "slab",
+          "wall"
+        ],
+        "alignmentErrors": [],
+        "unverifiedPartCount": 0,
+        "extents": [
+          2960,
+          8000,
+          2960
+        ],
+        "holeTotal": 0,
+        "occCount": 0
+      },
+      "syntheticRequiredAxes": [
+        "requirements",
+        "geometry",
+        "semantic_objects",
+        "relationships"
+      ]
+    },
+    {
+      "schema": "nexyfab.commercial-synthetic-campaign-case.v1",
+      "caseId": "civil-retaining_wall_alignment-01",
+      "domain": "civil",
+      "sourceHash": "843de96eb42f4bfc413ddba9ea86e5e0ec89ffae7350fbcaa2422e0726fa857d",
+      "split": "synthetic",
+      "templateId": "retaining_wall_alignment",
+      "parameters": {
+        "H": 2400,
+        "baseWidth": 1600,
+        "baseThickness": 320,
+        "stemThickness": 240,
+        "toeLength": 480,
+        "leg1": 96000,
+        "leg2": 80000,
+        "deflectionDeg": 24
+      },
+      "artifactHash": "ce255e59ca0238a6de45e8974b2ed4d74a879d1a12012c5f41ac272ea13d53e5",
+      "artifactSummary": {
+        "name": "옹벽 선형 구간",
+        "partCount": 4,
+        "pipeCount": 0,
+        "roles": [
+          "base",
+          "wall"
+        ],
+        "alignmentErrors": [],
+        "unverifiedPartCount": 0,
+        "extents": [
+          169409.025926,
+          34069.767812,
+          2400
+        ],
+        "holeTotal": 0,
+        "occCount": 0
+      },
+      "syntheticRequiredAxes": [
+        "requirements",
+        "geometry",
+        "semantic_objects",
+        "relationships"
+      ]
+    },
+    {
+      "schema": "nexyfab.commercial-synthetic-campaign-case.v1",
+      "caseId": "civil-retaining_wall_run-02",
+      "domain": "civil",
+      "sourceHash": "79435d1ef70a7cd3665ba88c72f7e73d94a0791902b38026704d3671c2bd0f25",
+      "split": "synthetic",
+      "templateId": "retaining_wall_run",
+      "parameters": {
+        "H": 2520,
+        "baseWidth": 1680,
+        "baseThickness": 336,
+        "stemThickness": 252,
+        "toeLength": 504,
+        "length": 8400
+      },
+      "artifactHash": "7ca93b1864e3fc1b80b1e9d16776a7a474760e4e6c734eb78fcaa8fbf82fe57e",
+      "artifactSummary": {
+        "name": "옹벽 연장 구간",
+        "partCount": 2,
+        "pipeCount": 0,
+        "roles": [
+          "base",
+          "wall"
+        ],
+        "alignmentErrors": [],
+        "unverifiedPartCount": 0,
+        "extents": [
+          1680,
+          8400,
+          2520
+        ],
+        "holeTotal": 0,
+        "occCount": 0
+      },
+      "syntheticRequiredAxes": [
+        "requirements",
+        "geometry",
+        "semantic_objects",
+        "relationships"
+      ]
+    },
+    {
+      "schema": "nexyfab.commercial-synthetic-campaign-case.v1",
+      "caseId": "civil-box_culvert-02",
+      "domain": "civil",
+      "sourceHash": "45d57094a1d345141d554093ef0c0611685914b06a49f3729191236d04f2efc4",
+      "split": "synthetic",
+      "templateId": "box_culvert",
+      "parameters": {
+        "innerWidth": 2520,
+        "innerHeight": 2520,
+        "wallThk": 294,
+        "length": 8400
+      },
+      "artifactHash": "cfc50bee758d369c7878006fd483f10a5ae279265230a38cbee2c09ac95648ef",
+      "artifactSummary": {
+        "name": "박스 암거 (내공 2520×2520)",
+        "partCount": 4,
+        "pipeCount": 0,
+        "roles": [
+          "slab",
+          "wall"
+        ],
+        "alignmentErrors": [],
+        "unverifiedPartCount": 0,
+        "extents": [
+          3108,
+          8400,
+          3108
+        ],
+        "holeTotal": 0,
+        "occCount": 0
+      },
+      "syntheticRequiredAxes": [
+        "requirements",
+        "geometry",
+        "semantic_objects",
+        "relationships"
+      ]
+    },
+    {
+      "schema": "nexyfab.commercial-synthetic-campaign-case.v1",
+      "caseId": "civil-retaining_wall_alignment-02",
+      "domain": "civil",
+      "sourceHash": "46d219e0c47d1fbc27704feaaef52f87b0f053f9a4a18ba838757b9e1215f8d4",
+      "split": "synthetic",
+      "templateId": "retaining_wall_alignment",
+      "parameters": {
+        "H": 2520,
+        "baseWidth": 1680,
+        "baseThickness": 336,
+        "stemThickness": 252,
+        "toeLength": 504,
+        "leg1": 100800,
+        "leg2": 84000,
+        "deflectionDeg": 25.2
+      },
+      "artifactHash": "2f9ec8130466640d47a8a22264c1f9b2ade69ba002b7bdb70a7123786a450497",
+      "artifactSummary": {
+        "name": "옹벽 선형 구간",
+        "partCount": 4,
+        "pipeCount": 0,
+        "roles": [
+          "base",
+          "wall"
+        ],
+        "alignmentErrors": [],
+        "unverifiedPartCount": 0,
+        "extents": [
+          177163.127012,
+          37365.515216,
+          2520
+        ],
+        "holeTotal": 0,
+        "occCount": 0
+      },
+      "syntheticRequiredAxes": [
+        "requirements",
+        "geometry",
+        "semantic_objects",
+        "relationships"
+      ]
+    },
+    {
+      "schema": "nexyfab.commercial-synthetic-campaign-case.v1",
+      "caseId": "civil-retaining_wall_run-03",
+      "domain": "civil",
+      "sourceHash": "9be0d6a8b612c4f43c53159ffe2c4a16e524e6999ce1435ba6006bb7a074747b",
+      "split": "synthetic",
+      "templateId": "retaining_wall_run",
+      "parameters": {
+        "H": 2640,
+        "baseWidth": 1760,
+        "baseThickness": 352,
+        "stemThickness": 264,
+        "toeLength": 528,
+        "length": 8800
+      },
+      "artifactHash": "78e4b814cb094b533b04e42b92472122c88fe53fc407289306b0c1efb2205dca",
+      "artifactSummary": {
+        "name": "옹벽 연장 구간",
+        "partCount": 2,
+        "pipeCount": 0,
+        "roles": [
+          "base",
+          "wall"
+        ],
+        "alignmentErrors": [],
+        "unverifiedPartCount": 0,
+        "extents": [
+          1760,
+          8800,
+          2640
+        ],
+        "holeTotal": 0,
+        "occCount": 0
+      },
+      "syntheticRequiredAxes": [
+        "requirements",
+        "geometry",
+        "semantic_objects",
+        "relationships"
+      ]
+    },
+    {
+      "schema": "nexyfab.commercial-synthetic-campaign-case.v1",
+      "caseId": "civil-box_culvert-03",
+      "domain": "civil",
+      "sourceHash": "8248d6f4cc79e29b8fcf5402e78762b29d21156bb9a759ec68e01c7d9dac2401",
+      "split": "synthetic",
+      "templateId": "box_culvert",
+      "parameters": {
+        "innerWidth": 2640,
+        "innerHeight": 2640,
+        "wallThk": 308,
+        "length": 8800
+      },
+      "artifactHash": "95583dce8649dd53c799ee4c6068bcd73f2eb61afce5f45508a99718ebfb4d81",
+      "artifactSummary": {
+        "name": "박스 암거 (내공 2640×2640)",
+        "partCount": 4,
+        "pipeCount": 0,
+        "roles": [
+          "slab",
+          "wall"
+        ],
+        "alignmentErrors": [],
+        "unverifiedPartCount": 0,
+        "extents": [
+          3256,
+          8800,
+          3256
+        ],
+        "holeTotal": 0,
+        "occCount": 0
+      },
+      "syntheticRequiredAxes": [
+        "requirements",
+        "geometry",
+        "semantic_objects",
+        "relationships"
+      ]
+    },
+    {
+      "schema": "nexyfab.commercial-synthetic-campaign-case.v1",
+      "caseId": "civil-retaining_wall_alignment-03",
+      "domain": "civil",
+      "sourceHash": "4fdd9eab05ef211667f285fd6eb9ff360e2a1493b8d10b13e6315cf53ecdc171",
+      "split": "synthetic",
+      "templateId": "retaining_wall_alignment",
+      "parameters": {
+        "H": 2640,
+        "baseWidth": 1760,
+        "baseThickness": 352,
+        "stemThickness": 264,
+        "toeLength": 528,
+        "leg1": 105600,
+        "leg2": 88000,
+        "deflectionDeg": 26.4
+      },
+      "artifactHash": "4887899449d8f34155926b38b8ae7e71c9dbaa7f6333a5b4d8eb8baa1f35b160",
+      "artifactSummary": {
+        "name": "옹벽 선형 구간",
+        "partCount": 4,
+        "pipeCount": 0,
+        "roles": [
+          "base",
+          "wall"
+        ],
+        "alignmentErrors": [],
+        "unverifiedPartCount": 0,
+        "extents": [
+          184813.913859,
+          40796.122117,
+          2640
+        ],
+        "holeTotal": 0,
+        "occCount": 0
+      },
+      "syntheticRequiredAxes": [
+        "requirements",
+        "geometry",
+        "semantic_objects",
+        "relationships"
+      ]
+    },
+    {
+      "schema": "nexyfab.commercial-synthetic-campaign-case.v1",
+      "caseId": "civil-retaining_wall_run-04",
+      "domain": "civil",
+      "sourceHash": "0cae3dd77ddde5df90fc65d099a08fa73eba0310e9c5a01486ca97ea5a3f3cb6",
+      "split": "synthetic",
+      "templateId": "retaining_wall_run",
+      "parameters": {
+        "H": 2760,
+        "baseWidth": 1840,
+        "baseThickness": 368,
+        "stemThickness": 276,
+        "toeLength": 552,
+        "length": 9200
+      },
+      "artifactHash": "25bca310d11167052e6fb6ba257bf1006a6890603ed0d8ae02504a41ef5f81b7",
+      "artifactSummary": {
+        "name": "옹벽 연장 구간",
+        "partCount": 2,
+        "pipeCount": 0,
+        "roles": [
+          "base",
+          "wall"
+        ],
+        "alignmentErrors": [],
+        "unverifiedPartCount": 0,
+        "extents": [
+          1840,
+          9200,
+          2760
+        ],
+        "holeTotal": 0,
+        "occCount": 0
+      },
+      "syntheticRequiredAxes": [
+        "requirements",
+        "geometry",
+        "semantic_objects",
+        "relationships"
+      ]
+    },
+    {
+      "schema": "nexyfab.commercial-synthetic-campaign-case.v1",
+      "caseId": "civil-box_culvert-04",
+      "domain": "civil",
+      "sourceHash": "1669d3edc7c67c375c1fc25cc8047ee8f0023794aaa0a10f393fb95bb68bcc02",
+      "split": "synthetic",
+      "templateId": "box_culvert",
+      "parameters": {
+        "innerWidth": 2760,
+        "innerHeight": 2760,
+        "wallThk": 322,
+        "length": 9200
+      },
+      "artifactHash": "65d56c967554f482cc5d4c3fafcd8120a344164065cd6b91919325dc67957b07",
+      "artifactSummary": {
+        "name": "박스 암거 (내공 2760×2760)",
+        "partCount": 4,
+        "pipeCount": 0,
+        "roles": [
+          "slab",
+          "wall"
+        ],
+        "alignmentErrors": [],
+        "unverifiedPartCount": 0,
+        "extents": [
+          3404,
+          9200,
+          3404
+        ],
+        "holeTotal": 0,
+        "occCount": 0
+      },
+      "syntheticRequiredAxes": [
+        "requirements",
+        "geometry",
+        "semantic_objects",
+        "relationships"
+      ]
+    },
+    {
+      "schema": "nexyfab.commercial-synthetic-campaign-case.v1",
+      "caseId": "civil-retaining_wall_alignment-04",
+      "domain": "civil",
+      "sourceHash": "195a02302e1061ac2461abd0ada684d874cdb55e6d3184699a1fbdfb4f5155c0",
+      "split": "synthetic",
+      "templateId": "retaining_wall_alignment",
+      "parameters": {
+        "H": 2760,
+        "baseWidth": 1840,
+        "baseThickness": 368,
+        "stemThickness": 276,
+        "toeLength": 552,
+        "leg1": 110400,
+        "leg2": 92000,
+        "deflectionDeg": 27.6
+      },
+      "artifactHash": "74b9c01dd46c9724b0a4988ab49cf29622e45f8210e2b62e12845e08c6b5bebf",
+      "artifactSummary": {
+        "name": "옹벽 선형 구간",
+        "partCount": 4,
+        "pipeCount": 0,
+        "roles": [
+          "base",
+          "wall"
+        ],
+        "alignmentErrors": [],
+        "unverifiedPartCount": 0,
+        "extents": [
+          192356.961642,
+          44358.542524,
+          2760
+        ],
+        "holeTotal": 0,
+        "occCount": 0
+      },
+      "syntheticRequiredAxes": [
+        "requirements",
+        "geometry",
+        "semantic_objects",
+        "relationships"
+      ]
+    },
+    {
+      "schema": "nexyfab.commercial-synthetic-campaign-case.v1",
+      "caseId": "civil-retaining_wall_run-05",
+      "domain": "civil",
+      "sourceHash": "a7f5acd0f85dde3617d03f7dff3df69c424cd0d30ad226cdf4b463fb732a978f",
+      "split": "synthetic",
+      "templateId": "retaining_wall_run",
+      "parameters": {
+        "H": 2880,
+        "baseWidth": 1920,
+        "baseThickness": 384,
+        "stemThickness": 288,
+        "toeLength": 576,
+        "length": 9600
+      },
+      "artifactHash": "2d779b4fb0360f307d2d960a5953f6f53ca3b16bb9de7213a2522d745ad08045",
+      "artifactSummary": {
+        "name": "옹벽 연장 구간",
+        "partCount": 2,
+        "pipeCount": 0,
+        "roles": [
+          "base",
+          "wall"
+        ],
+        "alignmentErrors": [],
+        "unverifiedPartCount": 0,
+        "extents": [
+          1920,
+          9600,
+          2880
+        ],
+        "holeTotal": 0,
+        "occCount": 0
+      },
+      "syntheticRequiredAxes": [
+        "requirements",
+        "geometry",
+        "semantic_objects",
+        "relationships"
+      ]
+    },
+    {
+      "schema": "nexyfab.commercial-synthetic-campaign-case.v1",
+      "caseId": "civil-box_culvert-05",
+      "domain": "civil",
+      "sourceHash": "5988f10cc1e3e09113b2523adb4372dead885800595cc581ef4039cd99c49105",
+      "split": "synthetic",
+      "templateId": "box_culvert",
+      "parameters": {
+        "innerWidth": 2880,
+        "innerHeight": 2880,
+        "wallThk": 336,
+        "length": 9600
+      },
+      "artifactHash": "31b602da23525e5ef6a5ac5de818fb888ddfb386cfe9fd3fd741a951ae135295",
+      "artifactSummary": {
+        "name": "박스 암거 (내공 2880×2880)",
+        "partCount": 4,
+        "pipeCount": 0,
+        "roles": [
+          "slab",
+          "wall"
+        ],
+        "alignmentErrors": [],
+        "unverifiedPartCount": 0,
+        "extents": [
+          3552,
+          9600,
+          3552
+        ],
+        "holeTotal": 0,
+        "occCount": 0
+      },
+      "syntheticRequiredAxes": [
+        "requirements",
+        "geometry",
+        "semantic_objects",
+        "relationships"
+      ]
+    },
+    {
+      "schema": "nexyfab.commercial-synthetic-campaign-case.v1",
+      "caseId": "civil-retaining_wall_alignment-05",
+      "domain": "civil",
+      "sourceHash": "b9c02351ff79b33de2c8c437c9d5ca7526bcf5c107b9b62eb34fb0b3c797084b",
+      "split": "synthetic",
+      "templateId": "retaining_wall_alignment",
+      "parameters": {
+        "H": 2880,
+        "baseWidth": 1920,
+        "baseThickness": 384,
+        "stemThickness": 288,
+        "toeLength": 576,
+        "leg1": 115200,
+        "leg2": 96000,
+        "deflectionDeg": 28.8
+      },
+      "artifactHash": "637147f7ec7b5465b0c2c8abbe8165f103806bcfe2e5cef436e86017341352a0",
+      "artifactSummary": {
+        "name": "옹벽 선형 구간",
+        "partCount": 4,
+        "pipeCount": 0,
+        "roles": [
+          "base",
+          "wall"
+        ],
+        "alignmentErrors": [],
+        "unverifiedPartCount": 0,
+        "extents": [
+          199787.924811,
+          48049.607127,
+          2880
+        ],
+        "holeTotal": 0,
+        "occCount": 0
+      },
+      "syntheticRequiredAxes": [
+        "requirements",
+        "geometry",
+        "semantic_objects",
+        "relationships"
+      ]
+    },
+    {
+      "schema": "nexyfab.commercial-synthetic-campaign-case.v1",
+      "caseId": "civil-retaining_wall_run-06",
+      "domain": "civil",
+      "sourceHash": "fb36b36cacfc1efc992bffe3977c2fc5c96e71706dc2ff8855af5342cbea5f0c",
+      "split": "synthetic",
+      "templateId": "retaining_wall_run",
+      "parameters": {
+        "H": 3000,
+        "baseWidth": 2000,
+        "baseThickness": 400,
+        "stemThickness": 300,
+        "toeLength": 600,
+        "length": 10000
+      },
+      "artifactHash": "bf4c197ad93b4ae262df577c5de78a25e32bbd7582f88b3f7448b5b825adadf3",
+      "artifactSummary": {
+        "name": "옹벽 연장 구간",
+        "partCount": 2,
+        "pipeCount": 0,
+        "roles": [
+          "base",
+          "wall"
+        ],
+        "alignmentErrors": [],
+        "unverifiedPartCount": 0,
+        "extents": [
+          2000,
+          10000,
+          3000
+        ],
+        "holeTotal": 0,
+        "occCount": 0
+      },
+      "syntheticRequiredAxes": [
+        "requirements",
+        "geometry",
+        "semantic_objects",
+        "relationships"
+      ]
+    },
+    {
+      "schema": "nexyfab.commercial-synthetic-campaign-case.v1",
+      "caseId": "civil-box_culvert-06",
+      "domain": "civil",
+      "sourceHash": "87850534929250fe7b2c60c0e4b58bee258ea67b268980ce38dc294bb1307718",
+      "split": "synthetic",
+      "templateId": "box_culvert",
+      "parameters": {
+        "innerWidth": 3000,
+        "innerHeight": 3000,
+        "wallThk": 350,
+        "length": 10000
+      },
+      "artifactHash": "4915cfc8be3f70d530daa8a07582e1a6dce8f439d9d2568c9174f3d3eb7a6ac0",
+      "artifactSummary": {
+        "name": "박스 암거 (내공 3000×3000)",
+        "partCount": 4,
+        "pipeCount": 0,
+        "roles": [
+          "slab",
+          "wall"
+        ],
+        "alignmentErrors": [],
+        "unverifiedPartCount": 0,
+        "extents": [
+          3700,
+          10000,
+          3700
+        ],
+        "holeTotal": 0,
+        "occCount": 0
+      },
+      "syntheticRequiredAxes": [
+        "requirements",
+        "geometry",
+        "semantic_objects",
+        "relationships"
+      ]
+    },
+    {
+      "schema": "nexyfab.commercial-synthetic-campaign-case.v1",
+      "caseId": "civil-retaining_wall_alignment-06",
+      "domain": "civil",
+      "sourceHash": "df6431fac5c958e263b8e277619add8e7b9972fcb53276dae020fcf01285c89f",
+      "split": "synthetic",
+      "templateId": "retaining_wall_alignment",
+      "parameters": {
+        "H": 3000,
+        "baseWidth": 2000,
+        "baseThickness": 400,
+        "stemThickness": 300,
+        "toeLength": 600,
+        "leg1": 120000,
+        "leg2": 100000,
+        "deflectionDeg": 30
+      },
+      "artifactHash": "073802383bfded853f4c71ab09e6dcb22b0b18c5876bb4326f9a995852584191",
+      "artifactSummary": {
+        "name": "옹벽 선형 구간",
+        "partCount": 4,
+        "pipeCount": 0,
+        "roles": [
+          "base",
+          "wall"
+        ],
+        "alignmentErrors": [],
+        "unverifiedPartCount": 0,
+        "extents": [
+          207102.540378,
+          51866.025404,
+          3000
+        ],
+        "holeTotal": 0,
+        "occCount": 0
+      },
+      "syntheticRequiredAxes": [
+        "requirements",
+        "geometry",
+        "semantic_objects",
+        "relationships"
+      ]
+    },
+    {
+      "schema": "nexyfab.commercial-synthetic-campaign-case.v1",
+      "caseId": "civil-retaining_wall_run-07",
+      "domain": "civil",
+      "sourceHash": "e16718f7af7e56651c84d82c2856b84eb78623333c53810357ef77984f8f8750",
+      "split": "synthetic",
+      "templateId": "retaining_wall_run",
+      "parameters": {
+        "H": 3120,
+        "baseWidth": 2080,
+        "baseThickness": 416,
+        "stemThickness": 312,
+        "toeLength": 624,
+        "length": 10400
+      },
+      "artifactHash": "8fdca3e7c5181a47a9c2035a8a5b17e32f1ee99fddaf8ec94ffe45e5d79a6b8c",
+      "artifactSummary": {
+        "name": "옹벽 연장 구간",
+        "partCount": 2,
+        "pipeCount": 0,
+        "roles": [
+          "base",
+          "wall"
+        ],
+        "alignmentErrors": [],
+        "unverifiedPartCount": 0,
+        "extents": [
+          2080,
+          10400,
+          3120
+        ],
+        "holeTotal": 0,
+        "occCount": 0
+      },
+      "syntheticRequiredAxes": [
+        "requirements",
+        "geometry",
+        "semantic_objects",
+        "relationships"
+      ]
+    },
+    {
+      "schema": "nexyfab.commercial-synthetic-campaign-case.v1",
+      "caseId": "civil-box_culvert-07",
+      "domain": "civil",
+      "sourceHash": "bc1331593da6c97bd980cc788c3a07ba6196a8ba27b5a953ddffe83314e3b375",
+      "split": "synthetic",
+      "templateId": "box_culvert",
+      "parameters": {
+        "innerWidth": 3120,
+        "innerHeight": 3120,
+        "wallThk": 364,
+        "length": 10400
+      },
+      "artifactHash": "bd4be573821f868b473b419bf28af43ab52917adde460f1341802a58d08cbdf5",
+      "artifactSummary": {
+        "name": "박스 암거 (내공 3120×3120)",
+        "partCount": 4,
+        "pipeCount": 0,
+        "roles": [
+          "slab",
+          "wall"
+        ],
+        "alignmentErrors": [],
+        "unverifiedPartCount": 0,
+        "extents": [
+          3848,
+          10400,
+          3848
+        ],
+        "holeTotal": 0,
+        "occCount": 0
+      },
+      "syntheticRequiredAxes": [
+        "requirements",
+        "geometry",
+        "semantic_objects",
+        "relationships"
+      ]
+    },
+    {
+      "schema": "nexyfab.commercial-synthetic-campaign-case.v1",
+      "caseId": "landscape-apartment_complex-01",
+      "domain": "landscape",
+      "sourceHash": "8d442a2faf43ace76447f767a1c0fcacad61921f22412bd757e2959ac9fce8a8",
+      "split": "synthetic",
+      "templateId": "apartment_complex",
+      "parameters": {
+        "towersX": 2.4,
+        "towersY": 1.6,
+        "floors": 12,
+        "towerW": 16000,
+        "towerD": 12000,
+        "gapX": 20000,
+        "gapY": 28000
+      },
+      "artifactHash": "23a98b769ddac613f96fce9b8e4d546b2d5d43ed5dfad5e127a9b92b1c4153c4",
+      "artifactSummary": {
+        "name": "아파트 단지 (4개동 12층)",
+        "partCount": 9,
+        "pipeCount": 0,
+        "roles": [
+          "building",
+          "green",
+          "ground"
+        ],
+        "alignmentErrors": [],
+        "unverifiedPartCount": 0,
+        "extents": [
+          92000,
+          108000,
+          35000
+        ],
+        "holeTotal": 0,
+        "occCount": 0
+      },
+      "syntheticRequiredAxes": [
+        "requirements",
+        "geometry",
+        "semantic_objects",
+        "relationships"
+      ]
+    },
+    {
+      "schema": "nexyfab.commercial-synthetic-campaign-case.v1",
+      "caseId": "landscape-pergola-01",
+      "domain": "landscape",
+      "sourceHash": "9aae3774b800b1ef27c671ccf382ffb712803052dc1f0616c90fa17e1ae57ba8",
+      "split": "synthetic",
+      "templateId": "pergola",
+      "parameters": {
+        "width": 2880,
+        "depth": 2400,
+        "height": 1920,
+        "postSize": 96,
+        "rafterCount": 5.6,
+        "irrigation": 0
+      },
+      "artifactHash": "e4966e7a947ce4aa89ab3353fa57ec4eb3056a692d1ad46ff49c198f27ed535a",
+      "artifactSummary": {
+        "name": "목재 파고라",
+        "partCount": 12,
+        "pipeCount": 0,
+        "roles": [
+          "beam",
+          "column",
+          "joist"
+        ],
+        "alignmentErrors": [],
+        "unverifiedPartCount": 0,
+        "extents": [
+          3480,
+          3000,
+          2220
+        ],
+        "holeTotal": 0,
+        "occCount": 0
+      },
+      "syntheticRequiredAxes": [
+        "requirements",
+        "geometry",
+        "semantic_objects",
+        "relationships"
+      ]
+    },
+    {
+      "schema": "nexyfab.commercial-synthetic-campaign-case.v1",
+      "caseId": "landscape-timber_deck-01",
+      "domain": "landscape",
+      "sourceHash": "bcdee2fc272b5b278cbd345162c0edde1c15656abb9da416e4680055b11a7386",
+      "split": "synthetic",
+      "templateId": "timber_deck",
+      "parameters": {
+        "width": 2880,
+        "depth": 1920,
+        "joistSpacing": 360,
+        "boardWidth": 96
+      },
+      "artifactHash": "0189f6439fa0a9099b1a06c99f6ec7c3f05eb92b35d6eef466d8ed6efcb0a964",
+      "artifactSummary": {
+        "name": "목재 데크",
+        "partCount": 28,
+        "pipeCount": 0,
+        "roles": [
+          "deck",
+          "joist"
+        ],
+        "alignmentErrors": [],
+        "unverifiedPartCount": 0,
+        "extents": [
+          2880,
+          1920,
+          161
+        ],
+        "holeTotal": 0,
+        "occCount": 0
+      },
+      "syntheticRequiredAxes": [
+        "requirements",
+        "geometry",
+        "semantic_objects",
+        "relationships"
+      ]
+    },
+    {
+      "schema": "nexyfab.commercial-synthetic-campaign-case.v1",
+      "caseId": "landscape-fence_run-01",
+      "domain": "landscape",
+      "sourceHash": "d039fc745f2a6e141f70e4f1f9cc3ee0a064d511ad1f8dda43dd8f2d985f7e42",
+      "split": "synthetic",
+      "templateId": "fence_run",
+      "parameters": {
+        "length": 9600,
+        "postPitch": 1600,
+        "height": 960,
+        "postSize": 80,
+        "railCount": 1.6,
+        "picketWidth": 72,
+        "picketGap": 24
+      },
+      "artifactHash": "44d3f2c20121989ae575b5d2944f912be433183bfd926a013c639b2ece5a6b2e",
+      "artifactSummary": {
+        "name": "목재 울타리 9.6m",
+        "partCount": 109,
+        "pipeCount": 0,
+        "roles": [
+          "beam",
+          "board",
+          "column"
+        ],
+        "alignmentErrors": [],
+        "unverifiedPartCount": 0,
+        "extents": [
+          9600,
+          140,
+          1060
+        ],
+        "holeTotal": 0,
+        "occCount": 0
+      },
+      "syntheticRequiredAxes": [
+        "requirements",
+        "geometry",
+        "semantic_objects",
+        "relationships"
+      ]
+    },
+    {
+      "schema": "nexyfab.commercial-synthetic-campaign-case.v1",
+      "caseId": "landscape-planter_wall-01",
+      "domain": "landscape",
+      "sourceHash": "ad53a600ac8dd9d8b2d9edef8d0a04be473d86783c6180fc03233ce7ae8dfd24",
+      "split": "synthetic",
+      "templateId": "planter_wall",
+      "parameters": {
+        "length": 4800,
+        "height": 720,
+        "stemThk": 160,
+        "baseWidth": 560,
+        "baseThk": 200,
+        "toeLength": 160,
+        "segLength": 2400,
+        "drainDia": 80
+      },
+      "artifactHash": "88f536a31c7a77ab5a94b79b28312f16a584fe71920d0eb2ef895a156b5e2e99",
+      "artifactSummary": {
+        "name": "화단 옹벽 4.8m (H720)",
+        "partCount": 7,
+        "pipeCount": 0,
+        "roles": [
+          "coping",
+          "pipe",
+          "slab",
+          "wall"
+        ],
+        "alignmentErrors": [],
+        "unverifiedPartCount": 0,
+        "extents": [
+          4900,
+          660,
+          1030
+        ],
+        "holeTotal": 0,
+        "occCount": 0
+      },
+      "syntheticRequiredAxes": [
+        "requirements",
+        "geometry",
+        "semantic_objects",
+        "relationships"
+      ]
+    },
+    {
+      "schema": "nexyfab.commercial-synthetic-campaign-case.v1",
+      "caseId": "landscape-parking_pavement-01",
+      "domain": "landscape",
+      "sourceHash": "7a3f8bcbdc1662f8522410ed98285ffdf2a0725eb76b09e4a5ece462afc5640f",
+      "split": "synthetic",
+      "templateId": "parking_pavement",
+      "parameters": {
+        "stalls": 4.8,
+        "stallWidth": 2300,
+        "stallLength": 4500,
+        "aisleWidth": 4800,
+        "subbaseThk": 120,
+        "baseThk": 80,
+        "surfaceThk": 40,
+        "curbHeight": 400,
+        "slopePct": 0
+      },
+      "artifactHash": "44d93e280306353e4d0b71b182cd7e7c0eec559d7ca269469adf44af5b4c774b",
+      "artifactSummary": {
+        "name": "주차장 포장 5면",
+        "partCount": 38,
+        "pipeCount": 0,
+        "roles": [
+          "curb",
+          "pavement",
+          "wheelstop"
+        ],
+        "alignmentErrors": [],
+        "unverifiedPartCount": 0,
+        "extents": [
+          11800,
+          9450,
+          400
+        ],
+        "holeTotal": 0,
+        "occCount": 0
+      },
+      "syntheticRequiredAxes": [
+        "requirements",
+        "geometry",
+        "semantic_objects",
+        "relationships"
+      ]
+    },
+    {
+      "schema": "nexyfab.commercial-synthetic-campaign-case.v1",
+      "caseId": "landscape-pavilion-01",
+      "domain": "landscape",
+      "sourceHash": "ed31fb602e4f00b5344a3b7c317deddce36cf115400b348d826fa944bf9d960e",
+      "split": "synthetic",
+      "templateId": "pavilion",
+      "parameters": {
+        "width": 2400,
+        "depth": 2400,
+        "postHeight": 1920,
+        "postSize": 120,
+        "girderHeight": 160,
+        "pitchDeg": 24,
+        "padThk": 120
+      },
+      "artifactHash": "32a39edd31cc390af6aa45f733f32f72cb77e65a90abba9d7d5b52915972b65f",
+      "artifactSummary": {
+        "name": "정자/쉼터 2.4×2.4m",
+        "partCount": 12,
+        "pipeCount": 0,
+        "roles": [
+          "beam",
+          "column",
+          "furniture",
+          "roof",
+          "slab"
+        ],
+        "alignmentErrors": [],
+        "unverifiedPartCount": 0,
+        "extents": [
+          3600,
+          3600,
+          2825.628968
+        ],
+        "holeTotal": 0,
+        "occCount": 0
+      },
+      "syntheticRequiredAxes": [
+        "requirements",
+        "geometry",
+        "semantic_objects",
+        "relationships"
+      ]
+    },
+    {
+      "schema": "nexyfab.commercial-synthetic-campaign-case.v1",
+      "caseId": "landscape-tree_planting-01",
+      "domain": "landscape",
+      "sourceHash": "cbeba791b2764d8a34550ae62eb6d3e29dac9dd51406a87cbaee0392420caac5",
+      "split": "synthetic",
+      "templateId": "tree_planting",
+      "parameters": {
+        "rows": 1.6,
+        "cols": 3.2,
+        "spacingX": 3200,
+        "spacingY": 3200,
+        "trunkDia": 120,
+        "trunkHeight": 1440,
+        "canopyDia": 2400
+      },
+      "artifactHash": "3a51fcb3bbb22841327f6b37e4ac29a62a4c9f2e3bcc4738a919ed84dfb0bb92",
+      "artifactSummary": {
+        "name": "식재 플랜 6주",
+        "partCount": 12,
+        "pipeCount": 0,
+        "roles": [
+          "canopy",
+          "trunk"
+        ],
+        "alignmentErrors": [],
+        "unverifiedPartCount": 0,
+        "extents": [
+          8800,
+          5600,
+          3840
+        ],
+        "holeTotal": 0,
+        "occCount": 0
+      },
+      "syntheticRequiredAxes": [
+        "requirements",
+        "geometry",
+        "semantic_objects",
+        "relationships"
+      ]
+    },
+    {
+      "schema": "nexyfab.commercial-synthetic-campaign-case.v1",
+      "caseId": "landscape-apartment_complex-02",
+      "domain": "landscape",
+      "sourceHash": "e3d5f315bde73c58dbeb66d2d9e66602afc099704a51ee7e8a0dd2230114f4dc",
+      "split": "synthetic",
+      "templateId": "apartment_complex",
+      "parameters": {
+        "towersX": 2.52,
+        "towersY": 1.68,
+        "floors": 12.6,
+        "towerW": 16800,
+        "towerD": 12600,
+        "gapX": 21000,
+        "gapY": 29400
+      },
+      "artifactHash": "7e84a1e890d7cfc838e7779c5fa5871165fefc62c7fbd6eeef716026ec7e77dd",
+      "artifactSummary": {
+        "name": "아파트 단지 (6개동 13층)",
+        "partCount": 14,
+        "pipeCount": 0,
+        "roles": [
+          "building",
+          "green",
+          "ground"
+        ],
+        "alignmentErrors": [],
+        "unverifiedPartCount": 0,
+        "extents": [
+          134400,
+          113400,
+          37900
+        ],
+        "holeTotal": 0,
+        "occCount": 0
+      },
+      "syntheticRequiredAxes": [
+        "requirements",
+        "geometry",
+        "semantic_objects",
+        "relationships"
+      ]
+    },
+    {
+      "schema": "nexyfab.commercial-synthetic-campaign-case.v1",
+      "caseId": "landscape-pergola-02",
+      "domain": "landscape",
+      "sourceHash": "cdcec073737f17eb62d32770cf213c0bcd8f8c7d52b75c1d7c508f88f866b536",
+      "split": "synthetic",
+      "templateId": "pergola",
+      "parameters": {
+        "width": 3024,
+        "depth": 2520,
+        "height": 2016,
+        "postSize": 100.8,
+        "rafterCount": 5.88,
+        "irrigation": 0
+      },
+      "artifactHash": "afb632bed3eb936fffc659d1d5cfce4a033c39c8b8bd9fa786f81cedb1b3e220",
+      "artifactSummary": {
+        "name": "목재 파고라",
+        "partCount": 12,
+        "pipeCount": 0,
+        "roles": [
+          "beam",
+          "column",
+          "joist"
+        ],
+        "alignmentErrors": [],
+        "unverifiedPartCount": 0,
+        "extents": [
+          3624,
+          3120,
+          2316
+        ],
+        "holeTotal": 0,
+        "occCount": 0
+      },
+      "syntheticRequiredAxes": [
+        "requirements",
+        "geometry",
+        "semantic_objects",
+        "relationships"
+      ]
+    },
+    {
+      "schema": "nexyfab.commercial-synthetic-campaign-case.v1",
+      "caseId": "landscape-timber_deck-02",
+      "domain": "landscape",
+      "sourceHash": "c0e2029d320469181d499773371033ece38a0a918c2b90b2cf07d95324c8f160",
+      "split": "synthetic",
+      "templateId": "timber_deck",
+      "parameters": {
+        "width": 3024,
+        "depth": 2016,
+        "joistSpacing": 378,
+        "boardWidth": 100.8
+      },
+      "artifactHash": "7d83daa0b5c9de4f296d4e59f1c23851e9b4432a81f24b76abb953185a2ea274",
+      "artifactSummary": {
+        "name": "목재 데크",
+        "partCount": 28,
+        "pipeCount": 0,
+        "roles": [
+          "deck",
+          "joist"
+        ],
+        "alignmentErrors": [],
+        "unverifiedPartCount": 0,
+        "extents": [
+          3024,
+          2016,
+          161
+        ],
+        "holeTotal": 0,
+        "occCount": 0
+      },
+      "syntheticRequiredAxes": [
+        "requirements",
+        "geometry",
+        "semantic_objects",
+        "relationships"
+      ]
+    },
+    {
+      "schema": "nexyfab.commercial-synthetic-campaign-case.v1",
+      "caseId": "landscape-fence_run-02",
+      "domain": "landscape",
+      "sourceHash": "f89f826d19a5d3c0e400d47adabc2e9ace474eb2bc80936bd935fe8de3f8a13e",
+      "split": "synthetic",
+      "templateId": "fence_run",
+      "parameters": {
+        "length": 10080,
+        "postPitch": 1680,
+        "height": 1008,
+        "postSize": 84,
+        "railCount": 1.68,
+        "picketWidth": 75.6,
+        "picketGap": 25.2
+      },
+      "artifactHash": "0b7fc2035f45d0e3db2c1b45c95d7687e74ed0a9fe9f95db018297f1dd3816d7",
+      "artifactSummary": {
+        "name": "목재 울타리 10.08m",
+        "partCount": 109,
+        "pipeCount": 0,
+        "roles": [
+          "beam",
+          "board",
+          "column"
+        ],
+        "alignmentErrors": [],
+        "unverifiedPartCount": 0,
+        "extents": [
+          10080,
+          144,
+          1108
+        ],
+        "holeTotal": 0,
+        "occCount": 0
+      },
+      "syntheticRequiredAxes": [
+        "requirements",
+        "geometry",
+        "semantic_objects",
+        "relationships"
+      ]
+    },
+    {
+      "schema": "nexyfab.commercial-synthetic-campaign-case.v1",
+      "caseId": "landscape-planter_wall-02",
+      "domain": "landscape",
+      "sourceHash": "900956152bfd0defb95bc88858936a734fcb4e04275d1a6a3ea4a51c1f725df3",
+      "split": "synthetic",
+      "templateId": "planter_wall",
+      "parameters": {
+        "length": 5040,
+        "height": 756,
+        "stemThk": 168,
+        "baseWidth": 588,
+        "baseThk": 210,
+        "toeLength": 168,
+        "segLength": 2520,
+        "drainDia": 84
+      },
+      "artifactHash": "14aee26c00a4bc01f9768105104e4d55474180ea5612eed9efdd29990be6ab8a",
+      "artifactSummary": {
+        "name": "화단 옹벽 5.04m (H756)",
+        "partCount": 7,
+        "pipeCount": 0,
+        "roles": [
+          "coping",
+          "pipe",
+          "slab",
+          "wall"
+        ],
+        "alignmentErrors": [],
+        "unverifiedPartCount": 0,
+        "extents": [
+          5140,
+          688,
+          1076
+        ],
+        "holeTotal": 0,
+        "occCount": 0
+      },
+      "syntheticRequiredAxes": [
+        "requirements",
+        "geometry",
+        "semantic_objects",
+        "relationships"
+      ]
+    },
+    {
+      "schema": "nexyfab.commercial-synthetic-campaign-case.v1",
+      "caseId": "landscape-parking_pavement-02",
+      "domain": "landscape",
+      "sourceHash": "473f26ebd192fe2580174f8e856490d2d93bc57309ece96e32e403315665d6e4",
+      "split": "synthetic",
+      "templateId": "parking_pavement",
+      "parameters": {
+        "stalls": 5.04,
+        "stallWidth": 2300,
+        "stallLength": 4500,
+        "aisleWidth": 5040,
+        "subbaseThk": 126,
+        "baseThk": 84,
+        "surfaceThk": 42,
+        "curbHeight": 420,
+        "slopePct": 0
+      },
+      "artifactHash": "f6804b78de7bb413f3d38f7d9ebcbe22f2ef829d7fa5fcc201cbf76012275ad9",
+      "artifactSummary": {
+        "name": "주차장 포장 5면",
+        "partCount": 40,
+        "pipeCount": 0,
+        "roles": [
+          "curb",
+          "pavement",
+          "wheelstop"
+        ],
+        "alignmentErrors": [],
+        "unverifiedPartCount": 0,
+        "extents": [
+          11800,
+          9690,
+          420
+        ],
+        "holeTotal": 0,
+        "occCount": 0
+      },
+      "syntheticRequiredAxes": [
+        "requirements",
+        "geometry",
+        "semantic_objects",
+        "relationships"
+      ]
+    },
+    {
+      "schema": "nexyfab.commercial-synthetic-campaign-case.v1",
+      "caseId": "landscape-pavilion-02",
+      "domain": "landscape",
+      "sourceHash": "c2a7f7751320d81649457dbf119cc9a924f1a0179ce35dc53b2eb6360fff1bd8",
+      "split": "synthetic",
+      "templateId": "pavilion",
+      "parameters": {
+        "width": 2520,
+        "depth": 2520,
+        "postHeight": 2016,
+        "postSize": 126,
+        "girderHeight": 168,
+        "pitchDeg": 25.2,
+        "padThk": 126
+      },
+      "artifactHash": "233f421ea90cd313e2190ce32ea948b5b6d1d78088b4380f1ff36ae1cfd741c1",
+      "artifactSummary": {
+        "name": "정자/쉼터 2.52×2.52m",
+        "partCount": 12,
+        "pipeCount": 0,
+        "roles": [
+          "beam",
+          "column",
+          "furniture",
+          "roof",
+          "slab"
+        ],
+        "alignmentErrors": [],
+        "unverifiedPartCount": 0,
+        "extents": [
+          3720,
+          3720,
+          2993.3937
+        ],
+        "holeTotal": 0,
+        "occCount": 0
+      },
+      "syntheticRequiredAxes": [
+        "requirements",
+        "geometry",
+        "semantic_objects",
+        "relationships"
+      ]
+    },
+    {
+      "schema": "nexyfab.commercial-synthetic-campaign-case.v1",
+      "caseId": "landscape-tree_planting-02",
+      "domain": "landscape",
+      "sourceHash": "12045c86ea6c2bc36f84c578b9df936947ed172b1037012fbd5d46dfe013d23c",
+      "split": "synthetic",
+      "templateId": "tree_planting",
+      "parameters": {
+        "rows": 1.68,
+        "cols": 3.36,
+        "spacingX": 3360,
+        "spacingY": 3360,
+        "trunkDia": 126,
+        "trunkHeight": 1512,
+        "canopyDia": 2520
+      },
+      "artifactHash": "ad04b93584be3e661018013b166e30644d0a199933f6d647ee961eb06dded837",
+      "artifactSummary": {
+        "name": "식재 플랜 6주",
+        "partCount": 12,
+        "pipeCount": 0,
+        "roles": [
+          "canopy",
+          "trunk"
+        ],
+        "alignmentErrors": [],
+        "unverifiedPartCount": 0,
+        "extents": [
+          9240,
+          5880,
+          4032
+        ],
+        "holeTotal": 0,
+        "occCount": 0
+      },
+      "syntheticRequiredAxes": [
+        "requirements",
+        "geometry",
+        "semantic_objects",
+        "relationships"
+      ]
+    },
+    {
+      "schema": "nexyfab.commercial-synthetic-campaign-case.v1",
+      "caseId": "landscape-apartment_complex-03",
+      "domain": "landscape",
+      "sourceHash": "d8ea0d349ac2155e25256f9d11759186e693d78cf0310ac4cb8ec210dc9dba2e",
+      "split": "synthetic",
+      "templateId": "apartment_complex",
+      "parameters": {
+        "towersX": 2.64,
+        "towersY": 1.76,
+        "floors": 13.2,
+        "towerW": 17600,
+        "towerD": 13200,
+        "gapX": 22000,
+        "gapY": 30800
+      },
+      "artifactHash": "605aaf4e3d9e100b486c1f9aae2e811cf21cb6fb3a20e4fc18ff562ec2b0eae5",
+      "artifactSummary": {
+        "name": "아파트 단지 (6개동 13층)",
+        "partCount": 14,
+        "pipeCount": 0,
+        "roles": [
+          "building",
+          "green",
+          "ground"
+        ],
+        "alignmentErrors": [],
+        "unverifiedPartCount": 0,
+        "extents": [
+          140800,
+          118800,
+          37900
+        ],
+        "holeTotal": 0,
+        "occCount": 0
+      },
+      "syntheticRequiredAxes": [
+        "requirements",
+        "geometry",
+        "semantic_objects",
+        "relationships"
+      ]
+    },
+    {
+      "schema": "nexyfab.commercial-synthetic-campaign-case.v1",
+      "caseId": "landscape-pergola-03",
+      "domain": "landscape",
+      "sourceHash": "efb93be96f1ea8d3ac45ed7dcea014d445d28848c1982e5a021ac28c0f09cb15",
+      "split": "synthetic",
+      "templateId": "pergola",
+      "parameters": {
+        "width": 3168,
+        "depth": 2640,
+        "height": 2112,
+        "postSize": 105.6,
+        "rafterCount": 6.16,
+        "irrigation": 0
+      },
+      "artifactHash": "2aa2c64fa2a21b3927f9182eddad3d91099b576840b06f940972edf8734c12c6",
+      "artifactSummary": {
+        "name": "목재 파고라",
+        "partCount": 12,
+        "pipeCount": 0,
+        "roles": [
+          "beam",
+          "column",
+          "joist"
+        ],
+        "alignmentErrors": [],
+        "unverifiedPartCount": 0,
+        "extents": [
+          3768,
+          3240,
+          2412
+        ],
+        "holeTotal": 0,
+        "occCount": 0
+      },
+      "syntheticRequiredAxes": [
+        "requirements",
+        "geometry",
+        "semantic_objects",
+        "relationships"
+      ]
+    },
+    {
+      "schema": "nexyfab.commercial-synthetic-campaign-case.v1",
+      "caseId": "landscape-timber_deck-03",
+      "domain": "landscape",
+      "sourceHash": "385242c67aaf0d7bebc4232704f3e1905adc545aaea99c1688c33312f84b0315",
+      "split": "synthetic",
+      "templateId": "timber_deck",
+      "parameters": {
+        "width": 3168,
+        "depth": 2112,
+        "joistSpacing": 396,
+        "boardWidth": 105.6
+      },
+      "artifactHash": "2cd7571058b02cb5f40738c8ef23764737467d53d47ca61935d9c26c5f04634f",
+      "artifactSummary": {
+        "name": "목재 데크",
+        "partCount": 28,
+        "pipeCount": 0,
+        "roles": [
+          "deck",
+          "joist"
+        ],
+        "alignmentErrors": [],
+        "unverifiedPartCount": 0,
+        "extents": [
+          3168,
+          2112,
+          161
+        ],
+        "holeTotal": 0,
+        "occCount": 0
+      },
+      "syntheticRequiredAxes": [
+        "requirements",
+        "geometry",
+        "semantic_objects",
+        "relationships"
+      ]
+    },
+    {
+      "schema": "nexyfab.commercial-synthetic-campaign-case.v1",
+      "caseId": "landscape-fence_run-03",
+      "domain": "landscape",
+      "sourceHash": "5de4205e6803a54b8fa9edcc70cc0963706ccf20e879f667ff836f534f1d50cd",
+      "split": "synthetic",
+      "templateId": "fence_run",
+      "parameters": {
+        "length": 10560,
+        "postPitch": 1760,
+        "height": 1056,
+        "postSize": 88,
+        "railCount": 1.76,
+        "picketWidth": 79.2,
+        "picketGap": 26.4
+      },
+      "artifactHash": "4bba391b7154e1d6816eb0de12c0903f70aff0702f97731eb482960177b546db",
+      "artifactSummary": {
+        "name": "목재 울타리 10.56m",
+        "partCount": 109,
+        "pipeCount": 0,
+        "roles": [
+          "beam",
+          "board",
+          "column"
+        ],
+        "alignmentErrors": [],
+        "unverifiedPartCount": 0,
+        "extents": [
+          10560,
+          148,
+          1156
+        ],
+        "holeTotal": 0,
+        "occCount": 0
+      },
+      "syntheticRequiredAxes": [
+        "requirements",
+        "geometry",
+        "semantic_objects",
+        "relationships"
+      ]
+    },
+    {
+      "schema": "nexyfab.commercial-synthetic-campaign-case.v1",
+      "caseId": "interior-interior_floor-01",
+      "domain": "interior",
+      "sourceHash": "47ebe098a0ac446709b499a528e495afbd6b623b03496d0524723791556d806e",
+      "split": "synthetic",
+      "templateId": "interior_floor",
+      "parameters": {
+        "unitsPerSide": 3.2,
+        "unitW": 4800,
+        "unitD": 3200,
+        "corridorW": 1440,
+        "doorW": 720
+      },
+      "artifactHash": "22b47e06955ab25f9f899cb1c121869b92f273b91f77b0c44b142fd8523509da",
+      "artifactSummary": {
+        "name": "interior_floor_3x2",
+        "partCount": 30,
+        "pipeCount": 0,
+        "roles": [
+          "counter",
+          "marker",
+          "table",
+          "wall"
+        ],
+        "alignmentErrors": [],
+        "unverifiedPartCount": 0,
+        "extents": [
+          14700,
+          8140,
+          2700
+        ],
+        "holeTotal": 0,
+        "occCount": 26
+      },
+      "syntheticRequiredAxes": [
+        "requirements",
+        "geometry",
+        "semantic_objects",
+        "relationships"
+      ]
+    },
+    {
+      "schema": "nexyfab.commercial-synthetic-campaign-case.v1",
+      "caseId": "interior-apartment_unit-01",
+      "domain": "interior",
+      "sourceHash": "44976469398aba5ac2f5d4bf20458229d4cbc7edc2fa87049fe8a2dc4502c894",
+      "split": "synthetic",
+      "templateId": "apartment_unit",
+      "parameters": {
+        "width": 7200,
+        "depth": 5760,
+        "bedZoneW": 2880,
+        "doorWidth": 800,
+        "innerDoorWidth": 700,
+        "bathW": 1440,
+        "bathD": 1280,
+        "windowWidth": 1200
+      },
+      "artifactHash": "b03d5fd44c8542c6964c47a51eb9237ee3c964783df73e4e3b7024017aaa1d21",
+      "artifactSummary": {
+        "name": "아파트 유닛",
+        "partCount": 18,
+        "pipeCount": 5,
+        "roles": [
+          "basin",
+          "bed",
+          "counter",
+          "floor",
+          "sink",
+          "sofa",
+          "stack",
+          "table",
+          "toilet",
+          "wall"
+        ],
+        "alignmentErrors": [],
+        "unverifiedPartCount": 0,
+        "extents": [
+          7500,
+          6060,
+          2800
+        ],
+        "holeTotal": 0,
+        "occCount": 0
+      },
+      "syntheticRequiredAxes": [
+        "requirements",
+        "geometry",
+        "semantic_objects",
+        "relationships"
+      ]
+    },
+    {
+      "schema": "nexyfab.commercial-synthetic-campaign-case.v1",
+      "caseId": "interior-studio_unit-01",
+      "domain": "interior",
+      "sourceHash": "87405ec33f8b183a8ea47c4412f1ad26d4b5f9fecf1886ae53656edaa40e6fea",
+      "split": "synthetic",
+      "templateId": "studio_unit",
+      "parameters": {
+        "width": 4800,
+        "depth": 3600,
+        "doorWidth": 800,
+        "windowWidth": 1200,
+        "bathW": 1400,
+        "bathD": 1200
+      },
+      "artifactHash": "f6937f2b84ea0e25a29796a7a3ab0623b2818c64dc34dbaf92ff6ff7710602f5",
+      "artifactSummary": {
+        "name": "원룸 유닛",
+        "partCount": 14,
+        "pipeCount": 5,
+        "roles": [
+          "basin",
+          "bed",
+          "counter",
+          "floor",
+          "sink",
+          "stack",
+          "table",
+          "toilet",
+          "wall"
+        ],
+        "alignmentErrors": [],
+        "unverifiedPartCount": 0,
+        "extents": [
+          5100,
+          3900,
+          2800
+        ],
+        "holeTotal": 0,
+        "occCount": 0
+      },
+      "syntheticRequiredAxes": [
+        "requirements",
+        "geometry",
+        "semantic_objects",
+        "relationships"
+      ]
+    },
+    {
+      "schema": "nexyfab.commercial-synthetic-campaign-case.v1",
+      "caseId": "interior-three_room_unit-01",
+      "domain": "interior",
+      "sourceHash": "51157ff66d641338faf49061d055d56cc1c11c967ef3cf2515308fc8ee8f6125",
+      "split": "synthetic",
+      "templateId": "three_room_unit",
+      "parameters": {
+        "width": 8800,
+        "depth": 6240,
+        "bedZoneW": 2880,
+        "room3W": 2400,
+        "room3D": 2640,
+        "doorWidth": 800,
+        "innerDoorWidth": 700,
+        "windowWidth": 1200,
+        "bathW": 1440,
+        "bathD": 1280
+      },
+      "artifactHash": "d5e29436bedcf83dcd1c85f140257e8873ae9a3ad4521091ea3bce15ca263bd7",
+      "artifactSummary": {
+        "name": "3룸 유닛",
+        "partCount": 22,
+        "pipeCount": 5,
+        "roles": [
+          "basin",
+          "bed",
+          "counter",
+          "floor",
+          "sink",
+          "sofa",
+          "stack",
+          "table",
+          "toilet",
+          "wall"
+        ],
+        "alignmentErrors": [],
+        "unverifiedPartCount": 0,
+        "extents": [
+          9100,
+          6540,
+          2800
+        ],
+        "holeTotal": 0,
+        "occCount": 0
+      },
+      "syntheticRequiredAxes": [
+        "requirements",
+        "geometry",
+        "semantic_objects",
+        "relationships"
+      ]
+    },
+    {
+      "schema": "nexyfab.commercial-synthetic-campaign-case.v1",
+      "caseId": "interior-two_room-01",
+      "domain": "interior",
+      "sourceHash": "76c3245c1cf0312c951dbe0955c9d2bb88b7aec935f0eb9b403a2c0710c8f17e",
+      "split": "synthetic",
+      "templateId": "two_room",
+      "parameters": {
+        "width": 9600,
+        "depth": 4800,
+        "room1W": 5600,
+        "doorWidth": 800,
+        "innerDoorWidth": 720
+      },
+      "artifactHash": "01654cfb9496ed54c9aaa61aacd564babe8e5d1735a71c0f2de271fe470695b3",
+      "artifactSummary": {
+        "name": "2실 평면",
+        "partCount": 16,
+        "pipeCount": 0,
+        "roles": [
+          "floor",
+          "table",
+          "wall"
+        ],
+        "alignmentErrors": [],
+        "unverifiedPartCount": 0,
+        "extents": [
+          9900,
+          5100,
+          2800
+        ],
+        "holeTotal": 0,
+        "occCount": 0
+      },
+      "syntheticRequiredAxes": [
+        "requirements",
+        "geometry",
+        "semantic_objects",
+        "relationships"
+      ]
+    },
+    {
+      "schema": "nexyfab.commercial-synthetic-campaign-case.v1",
+      "caseId": "interior-cafe_room-01",
+      "domain": "interior",
+      "sourceHash": "94f657b039770504a6161678059c08ddfd6946c1dc9eee76e91ab3974de5ddd9",
+      "split": "synthetic",
+      "templateId": "cafe_room",
+      "parameters": {
+        "width": 6400,
+        "depth": 4800,
+        "tableRows": 1.6,
+        "tableCols": 2.4,
+        "seatsPerTable": 3.2,
+        "doorWidth": 800,
+        "exitCount": 1
+      },
+      "artifactHash": "4df831d2f678b08eeb325741eba04393c20f00acd96ee8f17d91436b139112d5",
+      "artifactSummary": {
+        "name": "카페 레이아웃",
+        "partCount": 33,
+        "pipeCount": 4,
+        "roles": [
+          "basin",
+          "counter",
+          "floor",
+          "sink",
+          "stack",
+          "table",
+          "toilet",
+          "wall"
+        ],
+        "alignmentErrors": [],
+        "unverifiedPartCount": 0,
+        "extents": [
+          6700,
+          5100,
+          2800
+        ],
+        "holeTotal": 0,
+        "occCount": 0
+      },
+      "syntheticRequiredAxes": [
+        "requirements",
+        "geometry",
+        "semantic_objects",
+        "relationships"
+      ]
+    },
+    {
+      "schema": "nexyfab.commercial-synthetic-campaign-case.v1",
+      "caseId": "interior-built_in_closet-01",
+      "domain": "interior",
+      "sourceHash": "d4b4a97fcb0299804d8c5e2852b46dd56eb01732f3f67345d92cf91610453889",
+      "split": "synthetic",
+      "templateId": "built_in_closet",
+      "parameters": {
+        "width": 1920,
+        "depth": 480,
+        "height": 1920,
+        "bays": 1.6,
+        "shelfCount": 3.2,
+        "panelThk": 15,
+        "plinthHeight": 64
+      },
+      "artifactHash": "2ef79b6d318c1b2c2506e669b5fbf449e0d73ff61f193c47cd2954d898d8b358",
+      "artifactSummary": {
+        "name": "붙박이장 1.92m (2베이)",
+        "partCount": 12,
+        "pipeCount": 0,
+        "roles": [
+          "mount",
+          "panel",
+          "plinth"
+        ],
+        "alignmentErrors": [],
+        "unverifiedPartCount": 0,
+        "extents": [
+          1920,
+          495,
+          1920
+        ],
+        "holeTotal": 0,
+        "occCount": 0
+      },
+      "syntheticRequiredAxes": [
+        "requirements",
+        "geometry",
+        "semantic_objects",
+        "relationships"
+      ]
+    },
+    {
+      "schema": "nexyfab.commercial-synthetic-campaign-case.v1",
+      "caseId": "interior-counter_bar-01",
+      "domain": "interior",
+      "sourceHash": "49a716003d99d46534f17d3274eed96d4031891964bf02f049953ba0545ee73a",
+      "split": "synthetic",
+      "templateId": "counter_bar",
+      "parameters": {
+        "length": 1920,
+        "depth": 560,
+        "height": 840,
+        "topThk": 32,
+        "overhang": 200,
+        "footRailDia": 40,
+        "footRailHeight": 160
+      },
+      "artifactHash": "2094bcef8696c59f2b9eccbf3cb685f54fcb147152624b95e88929351eda0b7f",
+      "artifactSummary": {
+        "name": "카운터/바 1.92m",
+        "partCount": 10,
+        "pipeCount": 0,
+        "roles": [
+          "cabinet",
+          "countertop",
+          "mount",
+          "plinth",
+          "rail"
+        ],
+        "alignmentErrors": [],
+        "unverifiedPartCount": 0,
+        "extents": [
+          2000,
+          778,
+          840
+        ],
+        "holeTotal": 0,
+        "occCount": 0
+      },
+      "syntheticRequiredAxes": [
+        "requirements",
+        "geometry",
+        "semantic_objects",
+        "relationships"
+      ]
+    },
+    {
+      "schema": "nexyfab.commercial-synthetic-campaign-case.v1",
+      "caseId": "interior-partition_wall-01",
+      "domain": "interior",
+      "sourceHash": "542fe0379ee847cd8fbfe8e50d33a15dbc604dd4e75927e193bdf7d84b03a6cc",
+      "split": "synthetic",
+      "templateId": "partition_wall",
+      "parameters": {
+        "length": 3200,
+        "height": 2160,
+        "studWidth": 52,
+        "studPitch": 360,
+        "boardThk": 10,
+        "openingWidth": 720,
+        "openingHeight": 1800
+      },
+      "artifactHash": "13cfb706ff5dca1302b8f6eb03a642d63b2c34c06dbc14f286338069d95dcbcd",
+      "artifactSummary": {
+        "name": "경량 파티션 3.2m (개구 1)",
+        "partCount": 19,
+        "pipeCount": 0,
+        "roles": [
+          "header",
+          "mount",
+          "stud",
+          "track"
+        ],
+        "alignmentErrors": [],
+        "unverifiedPartCount": 0,
+        "extents": [
+          3200,
+          1862,
+          2160
+        ],
+        "holeTotal": 0,
+        "occCount": 0
+      },
+      "syntheticRequiredAxes": [
+        "requirements",
+        "geometry",
+        "semantic_objects",
+        "relationships"
+      ]
+    },
+    {
+      "schema": "nexyfab.commercial-synthetic-campaign-case.v1",
+      "caseId": "interior-ceiling_grid-01",
+      "domain": "interior",
+      "sourceHash": "7fc45b3e16cb372eb150f791408c92a9f8204fb8b37134850a37654fdd971073",
+      "split": "synthetic",
+      "templateId": "ceiling_grid",
+      "parameters": {
+        "width": 2880,
+        "depth": 2400,
+        "tileWidth": 480,
+        "tileDepth": 480,
+        "tileThk": 12,
+        "lightCount": 3.2,
+        "hangerHeight": 320
+      },
+      "artifactHash": "8c22e5d1b16ab522c8f9dd53065a1d598d55879ece36ea99302b9fde18986a26",
+      "artifactSummary": {
+        "name": "천장 그리드 2.88×2.4m",
+        "partCount": 89,
+        "pipeCount": 0,
+        "roles": [
+          "hanger",
+          "light",
+          "tee",
+          "tile"
+        ],
+        "alignmentErrors": [],
+        "unverifiedPartCount": 0,
+        "extents": [
+          2904,
+          2424,
+          358
+        ],
+        "holeTotal": 0,
+        "occCount": 0
+      },
+      "syntheticRequiredAxes": [
+        "requirements",
+        "geometry",
+        "semantic_objects",
+        "relationships"
+      ]
+    },
+    {
+      "schema": "nexyfab.commercial-synthetic-campaign-case.v1",
+      "caseId": "interior-interior_floor-02",
+      "domain": "interior",
+      "sourceHash": "51f8cc732f4fa161605c5088db7f7efcfdd4c7eedbd36dd1b38bed80fb6b7921",
+      "split": "synthetic",
+      "templateId": "interior_floor",
+      "parameters": {
+        "unitsPerSide": 3.36,
+        "unitW": 5040,
+        "unitD": 3360,
+        "corridorW": 1512,
+        "doorW": 756
+      },
+      "artifactHash": "deda5abb8bfc0a02af447f115ad64edd3680858dc95acc72d2ffdbd94a241829",
+      "artifactSummary": {
+        "name": "interior_floor_3x2",
+        "partCount": 30,
+        "pipeCount": 0,
+        "roles": [
+          "counter",
+          "marker",
+          "table",
+          "wall"
+        ],
+        "alignmentErrors": [],
+        "unverifiedPartCount": 0,
+        "extents": [
+          15420,
+          8532,
+          2700
+        ],
+        "holeTotal": 0,
+        "occCount": 26
+      },
+      "syntheticRequiredAxes": [
+        "requirements",
+        "geometry",
+        "semantic_objects",
+        "relationships"
+      ]
+    },
+    {
+      "schema": "nexyfab.commercial-synthetic-campaign-case.v1",
+      "caseId": "interior-apartment_unit-02",
+      "domain": "interior",
+      "sourceHash": "32e3921ebde8eee37d3509e5a266e71fad3e180f737d29712c2f50cf01c91510",
+      "split": "synthetic",
+      "templateId": "apartment_unit",
+      "parameters": {
+        "width": 7560,
+        "depth": 6048,
+        "bedZoneW": 3024,
+        "doorWidth": 840,
+        "innerDoorWidth": 700,
+        "bathW": 1512,
+        "bathD": 1344,
+        "windowWidth": 1260
+      },
+      "artifactHash": "70ddf0cd6e67c5e758027bf4f6b18b5aa3f201feb24851b59a752c68f05e8437",
+      "artifactSummary": {
+        "name": "아파트 유닛",
+        "partCount": 18,
+        "pipeCount": 5,
+        "roles": [
+          "basin",
+          "bed",
+          "counter",
+          "floor",
+          "sink",
+          "sofa",
+          "stack",
+          "table",
+          "toilet",
+          "wall"
+        ],
+        "alignmentErrors": [],
+        "unverifiedPartCount": 0,
+        "extents": [
+          7860,
+          6348,
+          2800
+        ],
+        "holeTotal": 0,
+        "occCount": 0
+      },
+      "syntheticRequiredAxes": [
+        "requirements",
+        "geometry",
+        "semantic_objects",
+        "relationships"
+      ]
+    },
+    {
+      "schema": "nexyfab.commercial-synthetic-campaign-case.v1",
+      "caseId": "interior-studio_unit-02",
+      "domain": "interior",
+      "sourceHash": "8ebedb848ba0570300d618fe2ffa76da01d5c671c0e28dbf7bef3aaa88f8c300",
+      "split": "synthetic",
+      "templateId": "studio_unit",
+      "parameters": {
+        "width": 5040,
+        "depth": 3780,
+        "doorWidth": 840,
+        "windowWidth": 1260,
+        "bathW": 1400,
+        "bathD": 1200
+      },
+      "artifactHash": "1fdaefa971467c120e0d5d886e0820e13063ac4aaf08fe46edafed92f29de2dc",
+      "artifactSummary": {
+        "name": "원룸 유닛",
+        "partCount": 14,
+        "pipeCount": 5,
+        "roles": [
+          "basin",
+          "bed",
+          "counter",
+          "floor",
+          "sink",
+          "stack",
+          "table",
+          "toilet",
+          "wall"
+        ],
+        "alignmentErrors": [],
+        "unverifiedPartCount": 0,
+        "extents": [
+          5340,
+          4080,
+          2800
+        ],
+        "holeTotal": 0,
+        "occCount": 0
+      },
+      "syntheticRequiredAxes": [
+        "requirements",
+        "geometry",
+        "semantic_objects",
+        "relationships"
+      ]
+    },
+    {
+      "schema": "nexyfab.commercial-synthetic-campaign-case.v1",
+      "caseId": "interior-three_room_unit-02",
+      "domain": "interior",
+      "sourceHash": "1a3dac6d95f1a43614deb64cd2368b926d3cee7e37e74aac9af58c843804c1e3",
+      "split": "synthetic",
+      "templateId": "three_room_unit",
+      "parameters": {
+        "width": 9240,
+        "depth": 6552,
+        "bedZoneW": 3024,
+        "room3W": 2520,
+        "room3D": 2772,
+        "doorWidth": 840,
+        "innerDoorWidth": 700,
+        "windowWidth": 1260,
+        "bathW": 1512,
+        "bathD": 1344
+      },
+      "artifactHash": "1af48eaa441c294b3a441c22cb6f760bbbada25c78cc8132a7c75237195a9e18",
+      "artifactSummary": {
+        "name": "3룸 유닛",
+        "partCount": 22,
+        "pipeCount": 5,
+        "roles": [
+          "basin",
+          "bed",
+          "counter",
+          "floor",
+          "sink",
+          "sofa",
+          "stack",
+          "table",
+          "toilet",
+          "wall"
+        ],
+        "alignmentErrors": [],
+        "unverifiedPartCount": 0,
+        "extents": [
+          9540,
+          6852,
+          2800
+        ],
+        "holeTotal": 0,
+        "occCount": 0
+      },
+      "syntheticRequiredAxes": [
+        "requirements",
+        "geometry",
+        "semantic_objects",
+        "relationships"
+      ]
+    },
+    {
+      "schema": "nexyfab.commercial-synthetic-campaign-case.v1",
+      "caseId": "interior-two_room-02",
+      "domain": "interior",
+      "sourceHash": "c8df32f6701552e858a818a870896193667f51e8dbf8ea70f25c75154736b22c",
+      "split": "synthetic",
+      "templateId": "two_room",
+      "parameters": {
+        "width": 10080,
+        "depth": 5040,
+        "room1W": 5880,
+        "doorWidth": 840,
+        "innerDoorWidth": 756
+      },
+      "artifactHash": "33615c5911b32b92f0f6da99e647e54fcfd69f7bea1c380760eaaa2f2ad2f6e2",
+      "artifactSummary": {
+        "name": "2실 평면",
+        "partCount": 16,
+        "pipeCount": 0,
+        "roles": [
+          "floor",
+          "table",
+          "wall"
+        ],
+        "alignmentErrors": [],
+        "unverifiedPartCount": 0,
+        "extents": [
+          10380,
+          5340,
+          2800
+        ],
+        "holeTotal": 0,
+        "occCount": 0
+      },
+      "syntheticRequiredAxes": [
+        "requirements",
+        "geometry",
+        "semantic_objects",
+        "relationships"
+      ]
+    },
+    {
+      "schema": "nexyfab.commercial-synthetic-campaign-case.v1",
+      "caseId": "interior-cafe_room-02",
+      "domain": "interior",
+      "sourceHash": "463318d4426e1fa0f106d50d832408b535ca2ecb65f5e40e89cce3f6991f263a",
+      "split": "synthetic",
+      "templateId": "cafe_room",
+      "parameters": {
+        "width": 6720,
+        "depth": 5040,
+        "tableRows": 1.68,
+        "tableCols": 2.52,
+        "seatsPerTable": 3.36,
+        "doorWidth": 840,
+        "exitCount": 1
+      },
+      "artifactHash": "8ac6c8e904c9fb21c93afe47bd6bc6603e3f8610ba1e3db4dacd8330a49ec1c8",
+      "artifactSummary": {
+        "name": "카페 레이아웃",
+        "partCount": 43,
+        "pipeCount": 4,
+        "roles": [
+          "basin",
+          "counter",
+          "floor",
+          "sink",
+          "stack",
+          "table",
+          "toilet",
+          "wall"
+        ],
+        "alignmentErrors": [],
+        "unverifiedPartCount": 0,
+        "extents": [
+          7020,
+          5340,
+          2800
+        ],
+        "holeTotal": 0,
+        "occCount": 0
+      },
+      "syntheticRequiredAxes": [
+        "requirements",
+        "geometry",
+        "semantic_objects",
+        "relationships"
+      ]
+    },
+    {
+      "schema": "nexyfab.commercial-synthetic-campaign-case.v1",
+      "caseId": "interior-built_in_closet-02",
+      "domain": "interior",
+      "sourceHash": "16a19c55b94c2fb7c79e72b3876fcf74de79b05cd57db5ad0d05efb5ebec638c",
+      "split": "synthetic",
+      "templateId": "built_in_closet",
+      "parameters": {
+        "width": 2016,
+        "depth": 504,
+        "height": 2016,
+        "bays": 1.68,
+        "shelfCount": 3.36,
+        "panelThk": 15.12,
+        "plinthHeight": 67.2
+      },
+      "artifactHash": "f593a084accc57d69d937937b50e6813e9b77bf4a97fef60e8d18afb33244d3c",
+      "artifactSummary": {
+        "name": "붙박이장 2.016m (2베이)",
+        "partCount": 12,
+        "pipeCount": 0,
+        "roles": [
+          "mount",
+          "panel",
+          "plinth"
+        ],
+        "alignmentErrors": [],
+        "unverifiedPartCount": 0,
+        "extents": [
+          2016,
+          519.12,
+          2016
+        ],
+        "holeTotal": 0,
+        "occCount": 0
+      },
+      "syntheticRequiredAxes": [
+        "requirements",
+        "geometry",
+        "semantic_objects",
+        "relationships"
+      ]
+    },
+    {
+      "schema": "nexyfab.commercial-synthetic-campaign-case.v1",
+      "caseId": "interior-counter_bar-02",
+      "domain": "interior",
+      "sourceHash": "8303574afc8e6aa02c2530db86fccbdca1c0a97ad22b00ebbde3e04351a3eed0",
+      "split": "synthetic",
+      "templateId": "counter_bar",
+      "parameters": {
+        "length": 2016,
+        "depth": 588,
+        "height": 882,
+        "topThk": 33.6,
+        "overhang": 210,
+        "footRailDia": 42,
+        "footRailHeight": 168
+      },
+      "artifactHash": "af1b1213061976fe985766aa868ca217fd8ddf3d38ac13744ad765176732ff64",
+      "artifactSummary": {
+        "name": "카운터/바 2.016m",
+        "partCount": 10,
+        "pipeCount": 0,
+        "roles": [
+          "cabinet",
+          "countertop",
+          "mount",
+          "plinth",
+          "rail"
+        ],
+        "alignmentErrors": [],
+        "unverifiedPartCount": 0,
+        "extents": [
+          2096,
+          816,
+          882
+        ],
+        "holeTotal": 0,
+        "occCount": 0
+      },
+      "syntheticRequiredAxes": [
+        "requirements",
+        "geometry",
+        "semantic_objects",
+        "relationships"
+      ]
+    },
+    {
+      "schema": "nexyfab.commercial-synthetic-campaign-case.v1",
+      "caseId": "interior-partition_wall-02",
+      "domain": "interior",
+      "sourceHash": "7931e9bb879cb42ee4daad180bd020c0dedffb7da12099e0fc24592631cec717",
+      "split": "synthetic",
+      "templateId": "partition_wall",
+      "parameters": {
+        "length": 3360,
+        "height": 2268,
+        "studWidth": 54.6,
+        "studPitch": 378,
+        "boardThk": 10.5,
+        "openingWidth": 756,
+        "openingHeight": 1800
+      },
+      "artifactHash": "346a509a1df36d2415be17fedc9dc5e2e2898ceac4656ff702c63321aa3c042f",
+      "artifactSummary": {
+        "name": "경량 파티션 3.36m (개구 1)",
+        "partCount": 19,
+        "pipeCount": 0,
+        "roles": [
+          "header",
+          "mount",
+          "stud",
+          "track"
+        ],
+        "alignmentErrors": [],
+        "unverifiedPartCount": 0,
+        "extents": [
+          3360,
+          1865.1,
+          2268
+        ],
+        "holeTotal": 0,
+        "occCount": 0
+      },
+      "syntheticRequiredAxes": [
+        "requirements",
+        "geometry",
+        "semantic_objects",
+        "relationships"
+      ]
+    },
+    {
+      "schema": "nexyfab.commercial-synthetic-campaign-case.v1",
+      "caseId": "interior-ceiling_grid-02",
+      "domain": "interior",
+      "sourceHash": "832b07f0864c8671e1429be45fcccb375c6edfdb99be42ac20563609ac6d1ee4",
+      "split": "synthetic",
+      "templateId": "ceiling_grid",
+      "parameters": {
+        "width": 3024,
+        "depth": 2520,
+        "tileWidth": 504,
+        "tileDepth": 504,
+        "tileThk": 12.6,
+        "lightCount": 3.36,
+        "hangerHeight": 336
+      },
+      "artifactHash": "05712a53da2a69115396eac89db442a20108d66ddabebb5b6f72bddbde1010c0",
+      "artifactSummary": {
+        "name": "천장 그리드 3.024×2.52m",
+        "partCount": 89,
+        "pipeCount": 0,
+        "roles": [
+          "hanger",
+          "light",
+          "tee",
+          "tile"
+        ],
+        "alignmentErrors": [],
+        "unverifiedPartCount": 0,
+        "extents": [
+          3048,
+          2544,
+          374
+        ],
+        "holeTotal": 0,
+        "occCount": 0
+      },
+      "syntheticRequiredAxes": [
+        "requirements",
+        "geometry",
+        "semantic_objects",
+        "relationships"
+      ]
+    }
+  ]
+}
