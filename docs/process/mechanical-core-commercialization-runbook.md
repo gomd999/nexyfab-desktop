@@ -190,6 +190,44 @@ STEP은 vendor-native feature history 호환을 의미하지 않는다. 마케�
 
 최소 세 개의 critical measurement가 case별 허용 공차 안에 있어야 한다. 실물이 없으면 manufacturing release는 false다. 직접 제작과 직접 검사를 허용하지만 설계자와 최종 판정 역할은 분리한다.
 
+### 검증된 receipt promotion
+
+서명된 candidate receipt를 저장소에 손으로 복사하거나 PASS 필드를 수정하지 않는다. 먼저 외부 evidence root 안의 candidate와 모든 artifact bytes를 read-only로 검사한다.
+
+```powershell
+node workspaces/platform/tools/promote-mechanical-commercial-receipt.mjs `
+  --kind=blind `
+  --candidate=<external-blind-root>\blind-candidate.json `
+  --evidence-root=<external-blind-root> `
+  --check
+
+node workspaces/platform/tools/promote-mechanical-commercial-receipt.mjs `
+  --kind=manufacturing `
+  --candidate=<external-pilot-root>\manufacturing-candidate.json `
+  --evidence-root=<external-pilot-root> `
+  --check
+```
+
+Blind 검증에는 `NEXYFAB_BLIND_REVIEWER_KEYS`, 제조 검증에는 `NEXYFAB_MANUFACTURING_REVIEWER_KEYS`의 역할 제한 public key registry가 필요하다. candidate는 외부 root 내부의 비-symlink 정규 파일이어야 하며 root 자체도 저장소 밖의 비-symlink 디렉터리여야 한다.
+
+read-only 검사가 성공한 뒤 clean integration checkout에서만 canonical gate 경로로 승격한다.
+
+```powershell
+node workspaces/platform/tools/promote-mechanical-commercial-receipt.mjs `
+  --kind=blind `
+  --candidate=<external-blind-root>\blind-candidate.json `
+  --evidence-root=<external-blind-root> `
+  --output=docs/evidence/release/mechanical-blind-product-challenge-receipt.json
+
+node workspaces/platform/tools/promote-mechanical-commercial-receipt.mjs `
+  --kind=manufacturing `
+  --candidate=<external-pilot-root>\manufacturing-candidate.json `
+  --evidence-root=<external-pilot-root> `
+  --output=docs/evidence/release/mechanical-manufacturing-validation-receipt.json
+```
+
+도구는 기존 output을 덮어쓰지 않고, 임시 파일과 hard-link no-replace 방식으로 원자적으로 생성한다. candidate가 위조·만료·schema 불일치이거나 artifact가 drift했으면 종료 코드 4와 `candidate_receipt_invalid`를 반환하며 output을 만들지 않는다. 이 promotion은 evidence나 signature를 생성하지 않고 commercial release 권한도 부여하지 않는다.
+
 ## 8. 운영 및 릴리스
 
 private beta 전:
