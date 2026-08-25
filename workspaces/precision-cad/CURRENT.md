@@ -1,5 +1,22 @@
 # Precision CAD current session
 
+## 2026-08-25 synthetic campaign v3 exact-authority boundary
+
+- Status: `SYNTHETIC_REBUILD_1500_OF_1500_PASS /
+  NATIVE_CAD_NOT_EXECUTED / COMMERCIAL_PRECISION_HOLD`.
+- The synthetic campaign now binds 1,500 raw runs and 6,000 required-axis
+  observations to the corpus and six executor sources. Receipt self-hash:
+  `8b0b0f0f84332d752fe64329d562f2fa7d2769b9762b1a9e91504babd1feea4a`.
+- Mechanical synthetic cases pass internal template geometry, semantic-object,
+  and relationship determinism, while count-only PASS files and corpus/source
+  transplants fail closed.
+- This path does not execute the production-class native Precision worker,
+  independently reopen STEP/XCAF, or establish GD&T/manufacturing acceptance.
+  It cannot satisfy the 150 AI-intent, native runtime, independent review, or
+  pilot gates.
+- Handoff:
+  `HANDOFFS/20260825T080000Z-synthetic-v3-exact-authority-boundary.md`.
+
 ## 2026-08-25 release-gate-hardened exact-core staging evidence
 
 - Status: `EXACT_CORE_STAGING_SUCCESS / 11_OF_11_PASS /
