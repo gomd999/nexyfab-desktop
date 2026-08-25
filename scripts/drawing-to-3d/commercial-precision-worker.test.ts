@@ -30,7 +30,8 @@ describe('commercial precision worker client', () => {
         tool: 'build_assembly', scope: 'apply', callId: 'call-1', argumentsHash: sha256(Buffer.from(canonical(args), 'utf8')), commandHash: 'b'.repeat(64),
         targetHash: 'd'.repeat(64), journalVersion: 3, attempt: 1, leaseGeneration: 2,
       };
-      const inputBytes = Buffer.from(canonical({ schema: INPUT_SCHEMA, job: jobBase, arguments: args }), 'utf8');
+      const { attempt: _attempt, leaseGeneration: _leaseGeneration, ...immutableJobBinding } = jobBase;
+      const inputBytes = Buffer.from(canonical({ schema: INPUT_SCHEMA, job: immutableJobBinding, arguments: args }), 'utf8');
       const job: CommercialExecutionJob = { ...jobBase, inputArtifact: { artifactId: 'input-1', objectKey: 'private/commercial/input.json', contentSha256: sha256(inputBytes), byteLength: inputBytes.length, mediaType: 'application/json' } };
       const unsigned = {
         schema: EXECUTION_CONTRACT, job, issuedAt: new Date(Date.now() - 1_000).toISOString(), expiresAt: new Date(Date.now() + 120_000).toISOString(),

@@ -1,6 +1,6 @@
 export const COMMERCIAL_PRECISION_EXECUTION_VERSION = 'nexyfab.precision-cad-commercial-execution.v3' as const;
 export const COMMERCIAL_PRECISION_LEGACY_EXECUTION_VERSION = 'nexyfab.precision-cad-commercial-execution.v2' as const;
-export const COMMERCIAL_PRECISION_INPUT_SCHEMA = 'nexyfab.precision-cad-commercial-input.v1' as const;
+export const COMMERCIAL_PRECISION_INPUT_SCHEMA = 'nexyfab.precision-cad-commercial-input.v2' as const;
 export const COMMERCIAL_MAX_BODY_BYTES = 512 * 1024;
 export const COMMERCIAL_MAX_ARGUMENT_BYTES = 256 * 1024;
 export type CommercialExecutionScope = 'apply' | 'export';
@@ -37,7 +37,7 @@ export type CommercialExecutionJob = {
   leaseGeneration: number;
   inputArtifact?: CommercialInputArtifact;
 };
-export type CommercialExecutionJobBinding = Omit<CommercialExecutionJob, 'inputArtifact'>;
+export type CommercialExecutionJobBinding = Omit<CommercialExecutionJob, 'inputArtifact' | 'attempt' | 'leaseGeneration'>;
 export type CommercialExecutionInput = {
   schema: typeof COMMERCIAL_PRECISION_INPUT_SCHEMA;
   job: CommercialExecutionJobBinding;
@@ -100,7 +100,7 @@ function canonical(value: unknown, depth = 0): string {
 export function canonicalCommercialExecution(value: unknown): string { return canonical(value); }
 export async function sha256Commercial(value: unknown): Promise<string> { const bytes = new TextEncoder().encode(canonical(value)); const result = await crypto.subtle.digest('SHA-256', bytes); return [...new Uint8Array(result)].map(byte => byte.toString(16).padStart(2, '0')).join(''); }
 export function unsignedCommercialWorkerReceipt(receipt: CommercialWorkerReceipt): Omit<CommercialWorkerReceipt, 'signatureBase64'> { const unsigned = { ...receipt }; Reflect.deleteProperty(unsigned, 'signatureBase64'); return unsigned; }
-export function commercialExecutionJobBinding(job: CommercialExecutionJob): CommercialExecutionJobBinding { const { inputArtifact: _inputArtifact, ...binding } = job; return binding; }
+export function commercialExecutionJobBinding(job: CommercialExecutionJob): CommercialExecutionJobBinding { const { inputArtifact: _inputArtifact, attempt: _attempt, leaseGeneration: _leaseGeneration, ...binding } = job; return binding; }
 export function validateCommercialInputArtifact(artifact: CommercialInputArtifact | undefined): string[] {
   const issues: string[] = [];
   if (!artifact || typeof artifact !== 'object') return ['input_artifact_invalid'];

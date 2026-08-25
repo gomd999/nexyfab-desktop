@@ -8,7 +8,7 @@ import { spawn } from 'node:child_process';
 import { pathToFileURL } from 'node:url';
 
 export const EXECUTION_CONTRACT = 'nexyfab.precision-cad-commercial-execution.v3';
-export const INPUT_SCHEMA = 'nexyfab.precision-cad-commercial-input.v1';
+export const INPUT_SCHEMA = 'nexyfab.precision-cad-commercial-input.v2';
 export const HEALTH_SCHEMA = 'nexyfab.precision-cad-commercial-worker-health.v1';
 export const VERIFICATION_SCHEMA = 'nexyfab.precision-cad-commercial-native-verification.v1';
 const SHA256 = /^[a-f0-9]{64}$/;
@@ -126,7 +126,12 @@ async function downloadInput(transport, config) {
     || response.headers.get('x-content-sha256') !== expected.contentSha256) throw new Error('input_artifact_hash_mismatch');
   const text = new TextDecoder('utf-8', { fatal: true }).decode(bytes);
   const parsed = JSON.parse(text);
-  const { inputArtifact: _inputArtifact, ...jobBinding } = transport.job;
+  const {
+    inputArtifact: _inputArtifact,
+    attempt: _attempt,
+    leaseGeneration: _leaseGeneration,
+    ...jobBinding
+  } = transport.job;
   if (canonical(parsed) !== text || parsed.schema !== INPUT_SCHEMA
     || canonical(parsed.job) !== canonical(jobBinding)
     || digest(Buffer.from(canonical(parsed.arguments), 'utf8')) !== transport.job.argumentsHash) throw new Error('input_payload_binding_mismatch');
