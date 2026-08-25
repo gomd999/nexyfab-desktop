@@ -1,6 +1,6 @@
 {
   "schema": "nexyfab.commercial-security-evidence-receipt.v2",
-  "generatedAt": "2026-08-24T15:08:53.676Z",
+  "generatedAt": "2026-08-25T04:37:06.778Z",
   "ok": false,
   "status": "HOLD",
   "target": "production",
@@ -10,35 +10,35 @@
     "gitHead": null
   },
   "freshness": {
-    "generatedAt": "2026-08-24T15:08:53.676Z",
+    "generatedAt": "2026-08-25T04:37:06.778Z",
     "maxAgeMs": 86400000,
-    "expiresAt": "2026-08-25T15:08:53.676Z"
+    "expiresAt": "2026-08-26T04:37:06.778Z"
   },
   "sourceBindings": [
     {
       "path": "docs/evidence/security/route-security-matrix-260810.json",
-      "bytes": 567768,
-      "sha256": "f8db832c5c78150292141ef0237c46b50805fc20318a8def97e6a4268ae0f2fc"
+      "bytes": 568736,
+      "sha256": "4f72eeee558e5a8c720e100fbff4efbd8a38031a11ebf05e95c0bb8f8625b082"
     },
     {
       "path": "docs/evidence/cad-independent/cad-api-control-evidence.json",
       "bytes": 16297,
-      "sha256": "a0f2b00e879341f14c629142786b3d32580add8fd2a4473d1c6c50ec6e0027d4"
+      "sha256": "5fe98c753fd23df1355fab501363319147dd0d481b8954ed6962a070c3da74cd"
     },
     {
       "path": "docs/evidence/security/secret-scan-260810.json",
-      "bytes": 301,
-      "sha256": "88a419b4e54fc3c4bffbdae64521aae98db248f2f38f9ef76124f34bb6012916"
+      "bytes": 665,
+      "sha256": "4f7baf6ae203bd7272f501f148bdb65adac88603f9f447beb49bc49fb317542e"
     },
     {
       "path": "docs/evidence/security/dependency-audit-260810.json",
       "bytes": 514,
-      "sha256": "6c584055e6b2b369f7a07380fb3f6eb0d9749b1973bfd5c07cd76457b8a8d493"
+      "sha256": "3220b07b20e0458154c995e0915d499cc305ed135e6e6ead552d7f7262bcb929"
     },
     {
       "path": "package-lock.json",
-      "bytes": 631405,
-      "sha256": "d5bd18e9f6648828af26925e4b914a9af4cafb700b8b58a8daeb7300099110e3"
+      "bytes": 648963,
+      "sha256": "e52e2f5ea1cbf19227fdd6c73186666f769316c98574d8c8242bf5325f4173b6"
     }
   ],
   "evidence": {
@@ -47,8 +47,8 @@
       "schema": "nexyfab.route-security-matrix.v1",
       "status": "pass",
       "derived": {
-        "routeFiles": 624,
-        "exportedHandlers": 857,
+        "routeFiles": 625,
+        "exportedHandlers": 860,
         "routesWithGaps": 0,
         "gapCounts": {},
         "byClassification": {
@@ -56,7 +56,7 @@
           "authenticated": 369,
           "admin": 69,
           "webhook": 6,
-          "internal-worker": 36,
+          "internal-worker": 37,
           "disabled": 13
         },
         "unknownClassifications": 0,
@@ -80,8 +80,9 @@
       "status": "pass",
       "derived": {
         "findingCount": 0,
-        "filesScanned": 10130,
-        "bytesScanned": 325465491
+        "filesScanned": 10175,
+        "bytesScanned": 332113917,
+        "excludedDerivedReceipts": 4
       },
       "blockers": []
     },
@@ -111,5 +112,5 @@
     "release_deployment_id_missing",
     "release_git_head_invalid"
   ],
-  "receiptSha256": "11f5212136e28c4ffd4ae140142ac2c060a87bdac091ddd8654cc31a35a6a3ff"
+  "receiptSha256": "6523c5ee5f0a7fbf9b94db7cd85986d91711fa347ee55b15ba0e44ee6e48c6da"
 }

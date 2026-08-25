@@ -1,12 +1,12 @@
 {
   "schema": "nexyfab.cad-api-control-evidence.v1",
-  "generatedAt": "2026-08-24T15:06:24.327Z",
+  "generatedAt": "2026-08-25T04:32:36.173Z",
   "status": "pass",
   "externalCadRequired": false,
   "routeFiles": 84,
   "exportedHandlers": 86,
   "documentedCadOperations": 30,
-  "cadRouteTreeSha256": "7405374cb86886234f0b35f1f82350212bdc68b69bdd7a5e207922ee9a1c933b",
+  "cadRouteTreeSha256": "29927046983e916d6eeecdca64d2db0e4b2d5de358a7d32aa2c85a1078d9b33e",
   "unsafeRequestBodyParsers": [],
   "mutationRoutesMissingBoundedIngress": [],
   "publicExceptions": [
@@ -44,191 +44,191 @@
   "sources": [
     {
       "file": "src/proxy.ts",
-      "sha256": "cb86b613004118458f605fb8b92307fd298753f4042a9d1ead8766d54d504212"
+      "sha256": "e79d8a83933155cb4039bcc0bbe9419a26f70f614e88368e87c0052edef84d8e"
     },
     {
       "file": "src/lib/cad-api-proxy-boundary.ts",
-      "sha256": "a63f8b3aae6667978ad74cbaf3ba41f25257d75491140a978227ab4fe6ecbfd6"
+      "sha256": "90df3949699bb2a899e4c5fefd0f8ff95bad5eefd08c3a5b64c9d86ab5019ea7"
     },
     {
       "file": "src/app/api/docs/openapi/route.ts",
-      "sha256": "0d8c7cd4e3e49b303f02d2ac9ff6be015b7512a343d225d977145c4b94a823e1"
+      "sha256": "b120ae5857f37b7e00d91b99240064eb192c56e4f749a9f65619dd1309b99026"
     },
     {
       "file": "src/middleware.cad-security.test.ts",
-      "sha256": "a896bdff38f4b1df7e350ca1bb5e896a1e872826f3f40f21ba0457d3800cd2a0"
+      "sha256": "24b1fa75038edc858ac3669b0242c22a2a8610e4881f71d312b5abb0eeed0ac6"
     },
     {
       "file": "src/app/api/cad/v1/architecture/daylight/package/route.ts",
-      "sha256": "557fd4c26fcae12250638f1b25c5d0c523e199a276ba2fbfd1ac2e28a3b88ebb"
+      "sha256": "09e873827622c49e4514f6ca872d5022a6abc02585dc20bd1faf6de1f8688666"
     },
     {
       "file": "src/app/api/cad/v1/architecture/daylight/results/route.ts",
-      "sha256": "2be3159805737ea84c99cf120dfd1c33ee59d37a94238d45b5a3505f860668f0"
+      "sha256": "1d5a2b7446fe3932f0e61be298c9d1bfeb0d58e58f43367570684ed28f42741c"
     },
     {
       "file": "src/app/api/cad/v1/architecture/daylight/run/route.ts",
-      "sha256": "b1a5cc01d486b9c15f58ae96ab1e0568debad2ec35c50f835ba38b40c7eecc04"
+      "sha256": "64b08b8722c80ef2a0f08c9a03e1961b3347f99161e5814b96644ab71f755e12"
     },
     {
       "file": "src/app/api/cad/v1/architecture/daylight/status/route.ts",
-      "sha256": "7677cf1dfbeeb249f6a2140a91152393ff6e0c2d1b388e1aed0e3cbe16ee4430"
+      "sha256": "7a5f48adb54b2f44c534244cf07caf514171e7ef1254ea4622ae7a263e355c53"
     },
     {
       "file": "src/app/api/cad/v1/architecture/daylight/verify/route.ts",
-      "sha256": "66a5fc062f21d93c883e6b1165b3e0ed863b614cb5cc8aaa8a92cd4188cb96ba"
+      "sha256": "846ff2f9f02f407bc874def30f9b93975785f97a7b045e58ce1e4edc5047d873"
     },
     {
       "file": "src/app/api/cad/v1/architecture/interior/edit/route.ts",
-      "sha256": "74134676f309ad1b86d669849307e9dc292e768ba1cc241f738f308131ef3c61"
+      "sha256": "9fce371cf5e52ac23f16c0c12159c9c6f53a221c62deea4962ef7b16c436f1cc"
     },
     {
       "file": "src/app/api/cad/v1/architecture/service-openings/sync/route.ts",
-      "sha256": "d4e9ed65e8409cfea10d67e88ecd98987888be78907bb1e6e2e5eba9fdd4267b"
+      "sha256": "99c960b27cb790e0cfba24410299edefd0d0d000414f4454eaaac918bff5e908"
     },
     {
       "file": "src/app/api/cad/v1/architecture/verify/route.ts",
-      "sha256": "815802dd2ec101505f01818e1325240ed67b8be19ea0a430d90d2e3811d9346c"
+      "sha256": "a9bf6c5b93c8a89d50998b3c3d5456e0b8dffae314f2b1db9bb51dddce53863f"
     },
     {
       "file": "src/app/api/cad/v1/assembly/animation/command/route.ts",
-      "sha256": "8b7d553c6ffa877a40dfa4063af6ed75b650721d000a3f645a9f42402d914388"
+      "sha256": "388eab72afd477991610de20c46b6d1129563e2d32f14adff56218805fbf6e8d"
     },
     {
       "file": "src/app/api/cad/v1/assembly/animation/evaluate/route.ts",
-      "sha256": "ca4aa386c847be156dcad0b1dd5e25b5d3d9394ac81d6cb786e9e98ed16a02da"
+      "sha256": "730d383cb891addfac71dcb83818ed56e381c5f6bc11d1401394783bcca7eafa"
     },
     {
       "file": "src/app/api/cad/v1/assembly/animation/verify/route.ts",
-      "sha256": "1c8208843e34d71585477a09c81f250becc87da80463f04b79e9c70749185053"
+      "sha256": "c6c382a0ab932705b3bad03779366c72e1a0fbce7eb8597e0680b7d5c76f2fee"
     },
     {
       "file": "src/app/api/cad/v1/assembly/release/verify/route.ts",
-      "sha256": "5f0a29809094cca1a7e232c1384e91174ec13055ef48801e34c45d21f8ead171"
+      "sha256": "7158dd6ca83dbaf4501882cfad905f7964412901bb373539b8348f163d3bab2b"
     },
     {
       "file": "src/app/api/cad/v1/assembly/selection-edit/route.ts",
-      "sha256": "11200f11aa59adf1e3c441ffa657171c9844f7628181f2e5c177c7b70f4f0855"
+      "sha256": "49798b72a1edc19d07b298c50d10dca30feae99822427e4b29ad68c24e844412"
     },
     {
       "file": "src/app/api/cad/v1/assembly/verify/route.ts",
-      "sha256": "3f343e8c3a525a21b6f84431977da1c7262f44d8b5cd6a401fcac25b0a01bc24"
+      "sha256": "5f3fc5aa75fd595261dd292193e88e7bcf2860c5fd0d88ff8b4828fdff976f4a"
     },
     {
       "file": "src/app/api/cad/v1/brep/push-pull/route.ts",
-      "sha256": "d02a70be59b348879a0a6af7a5ef2b0589bb9a1872ab6efe0769274365fa4185"
+      "sha256": "1e1fe331748c9de1d8aa92b4b35385dedfff49cc695701406e85d53e52332603"
     },
     {
       "file": "src/app/api/cad/v1/capabilities/route.ts",
-      "sha256": "72937f9a24ccf9864b902dea39121eb5eaa70ffaab40a33bd88a27947f8d138e"
+      "sha256": "f10ceb671287da991dc772355d0f891eee07818673ec3bb94fe8d5103321e583"
     },
     {
       "file": "src/app/api/cad/v1/feature-program/route.ts",
-      "sha256": "a3d6a010f808ca01fcca306ce860962935955ff8ebeb855c6b31ca15bdb8afd7"
+      "sha256": "36f62e687150cae1acba54553409dbac8c055c0ee30d364681e5edd4adbefccf"
     },
     {
       "file": "src/app/api/cad/v1/feature-tree-mesh/route.ts",
-      "sha256": "471076fbf3eb92d8915db47889d3a431cbf2ca0e6f1f70ed740914f6626b504f"
+      "sha256": "1feba2db398c64d6b3ecf1ee6c5dc61033a911a1808b82b17aa4489dd7318e03"
     },
     {
       "file": "src/app/api/cad/v1/generation/advance/route.ts",
-      "sha256": "fc85d4088b625f15116f61e5c2e2ab4ec76d3e7e59b3694bc07c02e739cdcf82"
+      "sha256": "a7010185c965d2e440f9d2f471ac5decf9b3aec75f2d75a9e67b0ce8bff7fe0f"
     },
     {
       "file": "src/app/api/cad/v1/generation/commercial-receipts/requests/route.ts",
-      "sha256": "4215e2d26b5e8d5978dd13f72c6a85a82aae1c3430ce2ffff726914cb099fe63"
+      "sha256": "6c28de84bd39093a114f61e82ff68b3c4ae528ce57180c1e8c05f2d60ad79a81"
     },
     {
       "file": "src/app/api/cad/v1/generation/commercial-receipts/route.ts",
-      "sha256": "6c36a627b3aa373d5283841500df85a5684a54d3f726631a5df981bc2b082771"
+      "sha256": "649b6e118138777032fce685be5f022a9c169b2516e233c65b287c86fb907bc8"
     },
     {
       "file": "src/app/api/cad/v1/generation/finalize/route.ts",
-      "sha256": "52924792c6aeb045dab536a33ef79807a7329bd515e7b7f902e8def7af911888"
+      "sha256": "b7896418486e441e90a4b49e221d27031c62285520e913131cb04523f2af9c37"
     },
     {
       "file": "src/app/api/cad/v1/generation/refine/route.ts",
-      "sha256": "01bb3a0969625896bd083b5375a5dbc11f54f433e637ec03c94c9ea3e2ccd239"
+      "sha256": "c812f5d45ec83d50c3d38e31b7393729503c88a5883d13d672c2f0b9127e9e57"
     },
     {
       "file": "src/app/api/cad/v1/generation/state/route.ts",
-      "sha256": "2692af6916cf3c7815ae6b800dc28b27684423a63577412c6f0547f34dc115d7"
+      "sha256": "b8e53c1543ad571dd0ca200c37c71891340269cd45bce44ffdd05373308e3756"
     },
     {
       "file": "src/app/api/cad/v1/generation/verify/route.ts",
-      "sha256": "fa50255f0110c19d0347fd9b36b9ec989f7f71db67936de1ff3cbda4f24be095"
+      "sha256": "875aa77eb25c32cd33e926e5cdcf94e525dce12b80acc1641b1aee417acb91ce"
     },
     {
       "file": "src/app/api/cad/v1/ifc/deep-roundtrip/route.ts",
-      "sha256": "ae263ce9f465b86e771a9c0630ca5d2a989a0ed2904fe0615de1ee5e1743d6ce"
+      "sha256": "23c9f8892c1073a5775f2dc154daf919eebafcb5a85638dfaf6ae125b97ac78a"
     },
     {
       "file": "src/app/api/cad/v1/ifc/domain-ir/route.ts",
-      "sha256": "873e504a9f6afd78111b1ac2b89099867eae8ee537590017dabac3c6b361049e"
+      "sha256": "81ba495b396b1231648684af0c7534ed98ad4fd834200a68a7a73dd012f9da65"
     },
     {
       "file": "src/app/api/cad/v1/ifc/recover-geometry/route.ts",
-      "sha256": "8b84b118b53fc1e73f723b0662b01685231d02b5a4461f5aaafe48d50f0d37bd"
+      "sha256": "ea482fc23e4637effdb8a5a6d1727d5adc60c4b5071c67f35d62f735b1d6a7df"
     },
     {
       "file": "src/app/api/cad/v1/ifc/recovery-plan/route.ts",
-      "sha256": "0599f9a642545c169f5d9817ea3859d837fb5b4d8247e133adb35da903b4a210"
+      "sha256": "a663380bddfefa0fa1eb34b287ad746351d9d5024100787b232991748268172c"
     },
     {
       "file": "src/app/api/cad/v1/ifc/semantic-roundtrip/route.ts",
-      "sha256": "f329bd4b4362892d45bc18c499f995565e1f155f5d6e61f29f7ffa69a4650459"
+      "sha256": "294fbba76a63e50f3ac0dd3dc4121253f79cd7b526a104bb641edfb7aa0f6458"
     },
     {
       "file": "src/app/api/cad/v1/ifc/spatial-ir/route.ts",
-      "sha256": "bbae5f71ad94e05fa5af0038e46ba0f574ef96d85b668d857697535d2d921f02"
+      "sha256": "f108f14eb0525e7a9f90eafb2ac7ef6c9afd7eb4c5b66fabcfd7ed7f534f0e05"
     },
     {
       "file": "src/app/api/cad/v1/interior/door-swing/verify/route.ts",
-      "sha256": "326f1b42abd3ff14bdd6e8c5c69aba13a1bae534e396422496f91a96f6f2cae2"
+      "sha256": "02065e9aa9a1f1f489641ddf2b4937c3093112d07b2d514b67c2e2170680e147"
     },
     {
       "file": "src/app/api/cad/v1/interior/egress/verify/route.ts",
-      "sha256": "4938fecdf5f7919dbd30269229d354396f3bbb1ae4cbd02607777f5d10a43c95"
+      "sha256": "bd103635b6fbf93caa89d8d7f5fddbc7a0b295243979548af9c3a99d945e102b"
     },
     {
       "file": "src/app/api/cad/v1/interior/layout/edit/route.ts",
-      "sha256": "fca13eaff52d57f30d562e9ded282c9d3c60a90f76b1232a6433ad31ecd0e4db"
+      "sha256": "f741789328dcbe524db009ef7c439b7355a6ee665d5592aa8ef2380839de4a78"
     },
     {
       "file": "src/app/api/cad/v1/interior/mep-interference/verify/route.ts",
-      "sha256": "088e7f7d08341889a184606d243bb67c84668d6dea6515af4ae9ec940dc58959"
+      "sha256": "dddd9bba513da1984a07cc18a3ef607c977d111828a91b8544e1edc7d1d1bf4c"
     },
     {
       "file": "src/app/api/cad/v1/interior/space-boundary/verify/route.ts",
-      "sha256": "c88d1ed844cdb6e9d35a5b15ae80cdcc67bd4bc31bdc7f06cd67322ebc2ad93d"
+      "sha256": "ec35c8790439ff28dd3f3c664dded7fd56b2c8af7cc47ecb9435fe05b582aaa0"
     },
     {
       "file": "src/app/api/cad/v1/interior/verify/route.ts",
-      "sha256": "9c7dbd22fdaf4fe8ddedb3b97540350949781a0843592a7dad7c8fb52bf3cbf0"
+      "sha256": "b6c94852fa669168afa039bac5dfcfa2cfb75ca0432aacfc76cb366b0464a72b"
     },
     {
       "file": "src/app/api/cad/v1/manufacturing/verify/route.ts",
-      "sha256": "9c1a3fff6c9bf8c312ddd31333bded2a881112b412790c517aea3f45561f4398"
+      "sha256": "0662c9bfd936037447a7ee55453a3a6291a8816f6afc796ed50df13fd5f2fac4"
     },
     {
       "file": "src/app/api/cad/v1/mep/route/route.ts",
-      "sha256": "3bbd69a24f7904b1a0695efc29b509b8d1bf362e4db4c0b16129cc754fd960ed"
+      "sha256": "51de20451f3dc2b553fe9b6650ed83a4509649dc62ac0358e62e6cc916c6420b"
     },
     {
       "file": "src/app/api/cad/v1/part-step/route.ts",
-      "sha256": "79ca03f434a362ead0291d585d1e9bce106fc06279e91ccefc644623db1770cb"
+      "sha256": "7a0851987ecff827be7df9259c0a0096db77970cc192334ced6b95afe4d7e59a"
     },
     {
       "file": "src/app/api/cad/v1/physical-network/verify/route.ts",
-      "sha256": "e0b2a545cba55482af5674c1964fcd2d8cabf6925daa76da254ce9799190b858"
+      "sha256": "823d82816782d1acdbfa9442f27ea3e1603f09b5f204081af55e49692a0dd5d5"
     },
     {
       "file": "src/app/api/cad/v1/pmi/verify/route.ts",
-      "sha256": "9c6162846d30f00f03e78fe7f29dc67a8e44ce148b5dc90bcad00ebeee87ab75"
+      "sha256": "64ebb932a9a7e3b27bc51d9c4c4b0da81c957141149ba51ca1f2fd74bf8ac2e5"
     },
     {
       "file": "src/app/api/cad/v1/product-decomposition/route.ts",
-      "sha256": "6d0c5ac8f38b6a4e987276d2b6ddeb852b844eb0b6af72035162ef4d42c579d4"
+      "sha256": "decc738e40f86fbba49544229bbd0947b3afb8270a7894d40fb6a7a0fae2e268"
     },
     {
       "file": "src/app/api/cad/v1/product-qualification/route.ts",
@@ -236,171 +236,171 @@
     },
     {
       "file": "src/app/api/cad/v1/project/verify/route.ts",
-      "sha256": "81228c131f6b45d6b9b5bd32f44cab679d1ee4754ba55c0760f9b04d98011117"
+      "sha256": "bcb810a7291a27454bdad7de06593ce9d5b2dee0ca66ca1a58754feb5c16f9d3"
     },
     {
       "file": "src/app/api/cad/v1/reference/analyze/route.ts",
-      "sha256": "906995d69829e33867df621e1c32c767398c4f450513875dd55c492610c3a996"
+      "sha256": "03b257769e68ee4bee115ff9c579c8d2859098703482f5e23cdba1d1dd6f5685"
     },
     {
       "file": "src/app/api/cad/v1/release/decision/route.ts",
-      "sha256": "7e6d9724dd4c92ba739e86110df77b870e12e7cd727ef3b7d7687d0f04cbb854"
+      "sha256": "1a490dfc0daafaf12a218b99babbbc9c69811405c5b98ab11e462b5b4038f117"
     },
     {
       "file": "src/app/api/cad/v1/robot/cable/life/route.ts",
-      "sha256": "939a3b9f23b777fb9c837f25b29eebc9ecc290a0be7e924a761264f8dcbcc017"
+      "sha256": "c8bece10d4dc5e414307639ce7a2ccbf831be0a1d994d8c3eb62c7a309d70cc6"
     },
     {
       "file": "src/app/api/cad/v1/robot/catalog/admit/route.ts",
-      "sha256": "3a82f48b9f7f9cbd941668ed8c40144680e0cb071a33b9b3a67b8345c6d6b931"
+      "sha256": "21c9a15bec75196690c9c3d568f7f4d4294e4999b22e33e29423cde9d9e780de"
     },
     {
       "file": "src/app/api/cad/v1/robot/catalog/housing-fit/route.ts",
-      "sha256": "23c9e615fad86b072a2bded5d957da0d2d4ec0fee45253e8ded0f1bd655ddfba"
+      "sha256": "e0a03b8b2ade0138ca894cb7227136eae34aa6519498230c98657f9ccf1666e8"
     },
     {
       "file": "src/app/api/cad/v1/robot/catalog/select/route.ts",
-      "sha256": "666fd109f5a2d7b55c699ac31f660a4d06a208b3566b81a2393036614733d7ac"
+      "sha256": "72d7091d2dbfeaef9be769e7aa4512074c6eb4b476d246d0d7d8fa9e6ad0b3c1"
     },
     {
       "file": "src/app/api/cad/v1/robot/compliance/evaluate/route.ts",
-      "sha256": "b0352ec5e6ed6b6ecf91a85dcb63a35dd397c575f137a26c51ecb7434f89cdcb"
+      "sha256": "aff3fe1a224dc26d56ec86b16240b5b9db3b93c413e458501522ba3951ff997e"
     },
     {
       "file": "src/app/api/cad/v1/robot/dynamics/evaluate/route.ts",
-      "sha256": "ff1d8cd7d666321fb621877f220f05f046967d12b486d0916dbf383592caa7fc"
+      "sha256": "312ef4c7b1cf4e18934d27fb2abeb5c1f41a8df89aac3e36bcbe66380ee0651e"
     },
     {
       "file": "src/app/api/cad/v1/robot/engineering/analyze/route.ts",
-      "sha256": "f184ee2faa73c33cd5d204b1c95c335653cb1bfa47d6222b32bcc3438061395c"
+      "sha256": "5b80e0ce95dc713d47ba2421c754eba2a09932fc22990760fc4f70c44c2c65a8"
     },
     {
       "file": "src/app/api/cad/v1/robot/engineering/coverage/route.ts",
-      "sha256": "466e71d7596b32243910439175a0a626cb7f5746a6b2db119ab24e8f615f1b24"
+      "sha256": "ef3563f88faa4e995feb87cd66486f8a4ed7163003038ccda20325f5071e3c7d"
     },
     {
       "file": "src/app/api/cad/v1/robot/generate/route.ts",
-      "sha256": "1a0a2e38c3fbfc08bd2695f586089ff53deff9f22be81fed58e673ce78439a51"
+      "sha256": "5ce7a9894ee6aad60f96022e34f254f1d5d15382e7d39c2df6e9ea92a437c6ab"
     },
     {
       "file": "src/app/api/cad/v1/robot/integration/apply/route.ts",
-      "sha256": "149cf8cc511f6b446b98c143562c172943c7c86071dffb501df4deee9a21e958"
+      "sha256": "bbead9b0bf0cb9cfe1a62f0d4b5187b1aac5230563ba117b097f8a2ef9b933af"
     },
     {
       "file": "src/app/api/cad/v1/robot/integration/post-verify/route.ts",
-      "sha256": "3275de05b35baaee8fbd932e1ac4310685b99e4c32becc1689344e9c3ba135af"
+      "sha256": "015bdb01819fe4fe9b26bf0a43b966261bf85b6f9bce37be252b297df9f79551"
     },
     {
       "file": "src/app/api/cad/v1/robot/integration/prepare/route.ts",
-      "sha256": "a1b68e4c0eab71a30c3e3df2ac3af89762fd91ee28b9627aae3a812357eea353"
+      "sha256": "8d16f95a3dbed37a0c34c273f1ca7f4b4b314afe172eb5e364d850d5e71a2a4b"
     },
     {
       "file": "src/app/api/cad/v1/robot/integration/review/route.ts",
-      "sha256": "e78da64eeabdc5a3ff83ab192bb991d0f82ec34b57433151f70f8e1a2de142e2"
+      "sha256": "fc3bfcfe680d42df8117a5f5c36ff3c7f1b1dba4b6c9fad066bbd0919f66fee0"
     },
     {
       "file": "src/app/api/cad/v1/robot/life/evaluate/route.ts",
-      "sha256": "c6af826b57a38602366d0e4693ab7235bcb61bf3b54db3d254ec597adee1011f"
+      "sha256": "30cb4642256b0f4ae477ff15812d676c9189d0edd7243971c037d5ed91e702b1"
     },
     {
       "file": "src/app/api/cad/v1/robot/motion/coverage/route.ts",
-      "sha256": "9d183767f3461e30c8240f3ce17c538f6113e075e98530acb9eef83405af4cb2"
+      "sha256": "e953e5b981a4b7980019ab65998791799a9bda5dbc7bdf95dcdf900d09c46b83"
     },
     {
       "file": "src/app/api/cad/v1/robot/physical/verify/route.ts",
-      "sha256": "fc20b1cab36c02c9e0214b714ded335ca4cca6ad43a3fab235146bf50fabc454"
+      "sha256": "73cfa2623b57b4322e483ad105d7006e84f15b8d680368653c0ea4fd9d5faa8e"
     },
     {
       "file": "src/app/api/cad/v1/robot/precision/evaluate/route.ts",
-      "sha256": "2de1f2cc71d29584ca79c202fe7728de1b0b62943acec73585ff1093ad375d40"
+      "sha256": "d41b5bf0f065735cf109688e64a7605a15e125ed8ed84ba35e1aa189509cab0c"
     },
     {
       "file": "src/app/api/cad/v1/robot/release/audit/route.ts",
-      "sha256": "57ce012a1c071180dc10bab5e21367698a4bfb71ae01a4227f4e7100cd467145"
+      "sha256": "47b2d58e1e6859d94647db3b85595a5687af9c7a7041d927d6df7e5ddee5d575"
     },
     {
       "file": "src/app/api/cad/v1/robot/release/final-review/route.ts",
-      "sha256": "f8fb7c32310c3d00518ba6ee63cadebed5eeedccc1ce600fbf68b7e57b773417"
+      "sha256": "0a6c85d6ccfaadc5f8c37d057e5e81ca1c6fdc9c99d53053fa34a70950e71350"
     },
     {
       "file": "src/app/api/cad/v1/robot/release/verified-audit/route.ts",
-      "sha256": "5876ab87976ec59aeca8000c5c62cebf9c30a070435774fa46d330f51b2ee230"
+      "sha256": "37a33d2998ec4c905e1dd979fca7f69dc9ced3662f36beed4b471536a2ee8e18"
     },
     {
       "file": "src/app/api/cad/v1/robot/release/work-packet/route.ts",
-      "sha256": "f8c7c9aed38bbb5cfc57dc5a03dcfa1804ef29a3ce133b59c2d7efac890119e6"
+      "sha256": "0d268a1c41d39dc3187f0668ce3753851dd1ab89f234b1d2e325b34c2c6a33dc"
     },
     {
       "file": "src/app/api/cad/v1/robot/requirements/verify/route.ts",
-      "sha256": "85dc3446e08f4858a2d553b4bf9635b2b9bb25fed9c9a8fc879429986f7839e2"
+      "sha256": "821d2231d786cb7d3b9a5448280d93fe8f663d0f299f0ecd6c50ce25042406c1"
     },
     {
       "file": "src/app/api/cad/v1/robot/reverify/route.ts",
-      "sha256": "e4c3303bd63637bf129e410dab94153ad705316e848eca47c46b6d251c4b107f"
+      "sha256": "c41c01868ce4d857a28403d4b6e6a49510a6d182b4d17d5dd271f024a8bad14b"
     },
     {
       "file": "src/app/api/cad/v1/robot/safety/electrical/route.ts",
-      "sha256": "fc6a7330e8a0af6cad5fac2d5506c54b5d29cab189be2792c0793a1145063c52"
+      "sha256": "bb7c4527ca2b990abacd9bf41be0f6de8587ca8c5c02088b9c8df4fe7898387c"
     },
     {
       "file": "src/app/api/cad/v1/robot/thermal/evaluate/route.ts",
-      "sha256": "33dac53a1d02c41c8f0f9a570615702565950ea78cf59c0a3ef39fcc39fd8c75"
+      "sha256": "f5bd8f449f9a3152f8d9e37cf5a6d78e13b8f74c190cf1911adc92a119a1bf4e"
     },
     {
       "file": "src/app/api/cad/v1/sheet-metal/verify/route.ts",
-      "sha256": "ccd185d648fd97e834a3ba57e6951f78d17935c45bd363c14c6d818e3bb47148"
+      "sha256": "e8dbbb8bec47d1de17905826e440641e4f3165c10004a2c974d102e2d62d77dc"
     },
     {
       "file": "src/app/api/cad/v1/spatial/command/route.ts",
-      "sha256": "41b0e3c6dde62ef1b19d6ff7f9d7fa7e43476395227b4bc8c03c82d30192a90f"
+      "sha256": "dcb42d1fbdd6227f15017a8f3a7da924d7fc89506121f06ed279279bbf915637"
     },
     {
       "file": "src/app/api/cad/v1/step/mechanical-relations/route.ts",
-      "sha256": "63f8b7077f20a9349230cc3fc879b3ac63e33be19a433ef56d10e80312cf058f"
+      "sha256": "22a390a1613273bf35bffe3f4321adc953d2f3dfad512e9d1ba44faf0672aa1d"
     },
     {
       "file": "src/app/api/cad/v1/system/change-impact/verify/route.ts",
-      "sha256": "3cdf73340349a6f1a8492c2dac12d5225254102cffe2900a9692bbc3e6426e05"
+      "sha256": "b3ad64e8104dbaf05508c4d2c26b3353f9ee40fad11de35b30a4cc88ce820f00"
     },
     {
       "file": "src/app/api/cad/v1/system/gearbox/verify/route.ts",
-      "sha256": "5869db4d2c5aa883089e5b861237111c4d585cae1db850d1a182da1c6a6f4d10"
+      "sha256": "c3f574a9a1ef2720f319724d3ad8c05f025aabef78c928038362eda9828ad2bc"
     },
     {
       "file": "src/app/api/cad/v1/system/machine-skid/verify/route.ts",
-      "sha256": "41b6b9ed7a0e2e9fcf1931863a6314fc7aae5c53133349f597a23550844988cb"
+      "sha256": "441d7e0e7dbd88037ea7393446d5320e3f1c0e78094e6f1fb3fee98ebe35a364"
     },
     {
       "file": "src/app/api/cad/v1/system/scale/verify/route.ts",
-      "sha256": "a9a9df983c3c3e2d22e6d386c9625c2bdd762d6b3d91cae0eaa8d8a0f25fa1af"
+      "sha256": "85fe4829fea5ebf382d832aa2fdbdd4beb75f818bd8d5d106df1a66bbb538736"
     },
     {
       "file": "src/app/api/cad/v1/system/verify/route.ts",
-      "sha256": "c9af0eff8ae8d4d7b713741d479a7762a586f8168cfd6055511810bc4f4fabd3"
+      "sha256": "9c86086ad978475b64e0efee71510676f1bf43c3e2b65326eed0b53a0c013823"
     },
     {
       "file": "src/app/api/cad/v1/system/welded-enclosure/verify/route.ts",
-      "sha256": "90879f90174d1ef1a3b3ef6fe902461016d3544283b628c308ef54c4682a259a"
+      "sha256": "7895f41e692427aec73e6881fff9892fe96d54f16812a7991249694f414b4342"
     },
     {
       "file": "src/app/api/cad/v1/tolerance/analyze/route.ts",
-      "sha256": "355eb342666a5385c79965ee9a969aee381fd70cc1bc95cf5735abbfca68c10a"
+      "sha256": "fc808c308ade984232719d26cd79d4391dfa6c19ca3f4905997c1b6357531949"
     },
     {
       "file": "src/app/api/cad/v1/topology/reconcile/route.ts",
-      "sha256": "57721ceb6da41dd6987edb03988d9e798eb51a3fd3db07b0036389aaf4c546e4"
+      "sha256": "4c2e46bb778794d01297d7ba3f72083d718609e4e119d3534b0365d3f08133b5"
     },
     {
       "file": "src/app/api/cad/v1/weldment/verify/route.ts",
-      "sha256": "cd21cb3ce16797ebe7bb7737007d027698a8f64f6d12761e0478d6c1a2513570"
+      "sha256": "ae72b6b37174948c80881e80fd084c2a63b3da248b6b594cd35b1a386dbcaf3c"
     },
     {
       "file": "src/app/api/nexyfab/cad-feature-program/route.ts",
-      "sha256": "201786d10b42c80cb581b989b3e00773db76b55652815721deb0301f6cc4abe0"
+      "sha256": "0258f2758e2e9ea89a77d336c4d6704e5b5831b86109ff76c685219664424c1c"
     },
     {
       "file": "src/app/api/nexyfab/cad-feature-step/route.ts",
-      "sha256": "95209538e870d11d6bacea7d4df0c07b19663f701e5779ce2b7a51aafac256ec"
+      "sha256": "3900fa39ad1e08a1a972b2d63f98dabf261dd84adc29b63594de093395567e73"
     }
   ]
 }
