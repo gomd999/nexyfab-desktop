@@ -1,11 +1,11 @@
 {
   "schema": "nexyfab.mechanical-core-internal-verification.v1",
-  "generatedAt": "2026-08-25T08:38:06.701Z",
+  "generatedAt": "2026-08-25T14:07:26.704Z",
   "releaseChannel": "mechanical-core",
   "ok": true,
   "git": {
-    "head": "88ff000dcfc29275abad78887b0ddedd2645ab50",
-    "branch": "scope/platform",
+    "head": "bbcdc33876b6635443326dcf7b4ce8482863a5df",
+    "branch": "integration/nexyfab",
     "workingTreeClean": false
   },
   "bindingPolicy": {
@@ -36,49 +36,49 @@
         "RUN_OCCT_FEASIBILITY": "1"
       },
       "exitCode": 0,
-      "durationMs": 77083
+      "durationMs": 69594
     },
     {
       "name": "mechanical-accuracy",
       "command": "npm run test:accuracy:mechanical",
       "environment": {},
       "exitCode": 0,
-      "durationMs": 23221
+      "durationMs": 22272
     },
     {
       "name": "intent-qualification",
       "command": "npm run mechanical:intents:local:check",
       "environment": {},
       "exitCode": 0,
-      "durationMs": 1369
+      "durationMs": 811
     },
     {
       "name": "intent-runtime",
       "command": "npm run mechanical:intents:runtime:check",
       "environment": {},
       "exitCode": 0,
-      "durationMs": 1092
+      "durationMs": 951
     },
     {
       "name": "assembly-handoff-readiness",
       "command": "npm run assembly-handoff:readiness:check",
       "environment": {},
       "exitCode": 0,
-      "durationMs": 7726
+      "durationMs": 7392
     },
     {
       "name": "typecheck",
       "command": "npm run typecheck",
       "environment": {},
       "exitCode": 0,
-      "durationMs": 24543
+      "durationMs": 21697
     }
   ],
   "sourceBindings": [
     {
       "path": "package.json",
-      "bytes": 41170,
-      "sha256": "97c2c736299fefcb5e2a081e64cfd33479a48b9bade4574ab7aabc1f1169d874",
+      "bytes": 41246,
+      "sha256": "f682bc9a87a7cbd1ff5c5381319c64341a1958bbe5fa38c3666bb26d3dc0b83f",
       "canonicalization": "utf8-crlf-to-lf"
     },
     {
