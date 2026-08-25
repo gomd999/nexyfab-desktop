@@ -10,15 +10,15 @@
   AI candidate may become an immutable commercial Precision input, but AI still
   cannot author an exact CAD result, worker receipt, workspace commit,
   manufacturing approval, or release decision.
-- Shared Platform commits `2c79c2da` and `f6496787` now restore the complete
+- Shared Platform commits `2c79c2da`, `f6496787`, and `c54e6f60` now restore the complete
   downstream PostgreSQL state and copy every bounded commercial object through
   distinct source, backup, and restore roles. CI commit `acd76c9f` reruns this
   combined recovery campaign for relevant changes and weekly.
 - Shared restore receipt:
   `docs/evidence/cad-independent/commercial-precision-cross-store-restore-20260825.json`;
   schema `nexyfab.backup-isolated-restore-drill.v3`, source
-  `f649678730b18f4a22e3a8ec641ee33a067299be`, self-hash
-  `e3181adce4ddf2e4a3a79b812652ea2a7ab946a18782a3bbdcf8ac324696c292`.
+  `c54e6f607e13878b0adfcf7b64f9b8c0d9873975`, self-hash
+  `575c30ebded3337f0cb9b50e24898bad30ddfd0746b1cb6fffb6c847b85a6b5d`.
 - The local drill exactly restored 164 tables/104 rows and 8 objects/8,580
   bytes. Its DB bindings include two immutable inputs, three committed outputs,
   and three artifact snapshots; all source/backup/restored manifests match and
@@ -26,7 +26,10 @@
 - This verifies downstream recoverability only. It does not call or qualify an
   AI model, prove independent holdout accuracy, execute a production native CAD
   adapter, or certify manufacturing. The receipt is local-fixture and the
-  release gate refuses it for promotion; staging and production were unchanged.
+  release gate refuses it for promotion. Release-bound restore additionally
+  requires an immutable KMS/provider-bound DB backup and a distinct object-
+  backup failure domain with versioning, Object Lock retention, and KMS
+  readback; staging and production were unchanged.
 - Handoff:
   `HANDOFFS/20260825T214338+0900-ai-downstream-cross-store-recovery-boundary.md`.
 
@@ -48,7 +51,7 @@
 - Shared v3 durability receipt:
   `docs/evidence/cad-independent/commercial-precision-local-durability-20260825.json`;
   29/29 PASS, receipt SHA-256
-  `91e37f5d83193c432bbf983d47888494f913b0aa870ac3959107002ffddcadf3`.
+  `67e1bafac0d4d747d0dd2d8ff1aa7b03d90bff64888a22e352cf714c6ad6d35a`.
 - The same exact campaign proves actual disposable PostgreSQL, Redis AOF, and
   object-storage restart persistence plus exact replay with post-restart writes
   prohibited.

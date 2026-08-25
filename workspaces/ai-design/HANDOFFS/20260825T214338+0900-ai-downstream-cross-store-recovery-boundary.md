@@ -40,14 +40,14 @@ unchanged.
 - Restore receipt:
   `docs/evidence/cad-independent/commercial-precision-cross-store-restore-20260825.json`
 - Schema/source: `nexyfab.backup-isolated-restore-drill.v3`,
-  `f649678730b18f4a22e3a8ec641ee33a067299be`
+  `c54e6f607e13878b0adfcf7b64f9b8c0d9873975`
 - Receipt SHA-256:
-  `e3181adce4ddf2e4a3a79b812652ea2a7ab946a18782a3bbdcf8ac324696c292`
+  `575c30ebded3337f0cb9b50e24898bad30ddfd0746b1cb6fffb6c847b85a6b5d`
 - PostgreSQL: 164 tables, 104 rows, 83 final foreign keys, zero orphans
 - Object storage: 8/8/8 objects, 8,580 bytes, exact manifests and all DB
   bindings matched
 - Companion durable closed loop: 29/29 PASS, SHA-256
-  `91e37f5d83193c432bbf983d47888494f913b0aa870ac3959107002ffddcadf3`
+  `67e1bafac0d4d747d0dd2d8ff1aa7b03d90bff64888a22e352cf714c6ad6d35a`
 
 ## Claim boundary
 
@@ -56,6 +56,12 @@ does not evaluate a live AI provider or independent holdout, and it does not
 prove deployed native CAD quality, expert review, or manufacturing pilots.
 The receipt is `local-fixture`, `releaseBoundObservation=false`,
 `privateBetaEligible=false`, and `commercialGaEligible=false`.
+
+Release-bound restore cannot be obtained by changing that label. It requires
+an existing immutable provider database backup bound to KMS key-version and
+provider receipt hashes, plus an object backup in a distinct endpoint/region
+failure domain with versioning, Object Lock retention, and KMS-encrypted
+readback.
 
 The next valid promotion evidence must come from the exact reviewed release:
 real encrypted backup restore with provider/KMS and operator/reviewer records,
