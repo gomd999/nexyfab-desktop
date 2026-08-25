@@ -73,13 +73,16 @@ workbook은 폴더와 요구 artifact 경로만 만든다. 실제 STEP·NFAB·�
 호출해야 하며, fixture나 synthetic artifact를 상용 증거로 생성해서는 안 된다. 중단 후에는 같은 명령에
 `--resume`을 추가한다. 일부 case만 먼저 실행하려면 `--cases=design-01-hole,...`을 지정한다.
 
-실행 전 비파괴 preflight는 workbook, 240개 필수 파일 슬롯, 역할이 분리된 Ed25519 검증자, adapter 정규 파일과 승인된 SHA-256의 정확한 일치를 확인한다. adapter를 import하거나 실행하지 않고 state·receipt·evidence도 쓰지 않으며, 준비되지 않은 경우 blocker를 출력하고 종료 코드 4를 반환한다. 승인 hash는 `--adapter-sha256` 또는 `NEXYFAB_MECHANICAL_DESIGN_ADAPTER_SHA256`로 별도 공급한다.
+실행 전 비파괴 preflight는 workbook, 240개 필수 파일 슬롯의 현재 상태, 역할이 분리된 Ed25519 검증자, adapter 정규 파일과 운영자 pin SHA-256, 별도 release authority의 서명 승인을 확인한다. adapter를 import하거나 실행하지 않고 state·receipt·evidence도 쓰지 않는다. `readyToExecute`는 실제 adapter가 artifact를 만들기 전의 실행 신뢰 조건이고, `readyForFinalVerification`은 240개 파일까지 모두 존재하는 후속 검증 조건이다. 따라서 파일 240개가 아직 없는 것만으로 첫 campaign 실행을 순환 차단하지 않는다.
+
+운영자 pin은 `--adapter-sha256` 또는 `NEXYFAB_MECHANICAL_DESIGN_ADAPTER_SHA256`로 공급한다. 서명 승인 receipt는 `workspaces/platform/contracts/mechanical-design-adapter-approval.schema.json`을 따르고 adapter hash·version·workbook `evidenceRootId`·최대 30일 승인 기간을 결속한다. 승인자는 `NEXYFAB_MECHANICAL_ADAPTER_APPROVER_KEYS`의 `mechanical-adapter-release-approver` 역할을 가진 별도 Ed25519 public key여야 한다. private key는 repo, adapter host와 campaign 실행자 밖에 둔다. 승인 자체는 상용 release를 허가하지 않는다.
 
 ```powershell
 node scripts/run-mechanical-direct-design-campaign.mjs --preflight `
   --workbook=C:\Users\gomd9\Downloads\nexysys_1\nexyfab-commercial-evidence-260825-v4\direct-design\mechanical-direct-design-workbook.json `
   --adapter=<trusted-runtime-adapter.mjs> `
-  --adapter-sha256=<approved-sha256>
+  --adapter-sha256=<operator-pinned-sha256> `
+  --adapter-approval=<signed-adapter-approval.json>
 ```
 
 ```powershell
@@ -87,7 +90,8 @@ node scripts/run-mechanical-direct-design-campaign.mjs `
   --workbook=C:\Users\gomd9\Downloads\nexysys_1\nexyfab-commercial-evidence-260825-v4\direct-design\mechanical-direct-design-workbook.json `
   --state=C:\Users\gomd9\Downloads\nexysys_1\nexyfab-commercial-evidence-260825-v4\direct-design\campaign-state.json `
   --adapter=<trusted-runtime-adapter.mjs> `
-  --adapter-sha256=<approved-sha256> `
+  --adapter-sha256=<operator-pinned-sha256> `
+  --adapter-approval=<signed-adapter-approval.json> `
   --receipt=docs/evidence/release/mechanical-direct-design-campaign-receipt.json
 ```
 
