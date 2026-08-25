@@ -6,10 +6,8 @@ export type TrustedCommercialWorker = {
   workerIdentity: string;
   publicKeyPem: string;
   fingerprintSha256: string;
-  /** Runtime-required; optional only while existing source fixtures migrate. */
-  nativeExecutableSha256?: string;
-  /** Runtime-required; optional only while existing source fixtures migrate. */
-  nativeInvocationSha256?: string;
+  nativeExecutableSha256: string;
+  nativeInvocationSha256: string;
 };
 export type CommercialReceiptBinding = { tenantId: string; projectId: string; executionId: string; generationRunId: string; generationStateRevision: number; generationProgramSha256: string; workspaceId: string; workspaceRevision: number; workspaceContentHash: string; journalVersion: number; leaseGeneration: number; leaseCapabilityHash: string; attempt: number; jobId: string; commandHash: string; targetHash: string; inputArtifactSha256: string };
 export type CommercialReceiptVerification = { ok: true; receiptHash: string } | { ok: false; issues: string[] };
