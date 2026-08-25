@@ -31,6 +31,8 @@ const canonical = value => {
   if (value && typeof value === 'object') return `{${Object.entries(value).sort(([a], [b]) => a.localeCompare(b)).map(([key, item]) => `${JSON.stringify(key)}:${canonical(item)}`).join(',')}}`;
   return JSON.stringify(value);
 };
+const hasExactKeys = (value, keys) => Boolean(value && typeof value === 'object' && !Array.isArray(value)
+  && Object.keys(value).sort().join(',') === [...keys].sort().join(','));
 
 export const REQUIRED_MECHANICAL_PILOT_PROCESSES = Object.freeze([
   'cnc_machining',
@@ -227,7 +229,10 @@ export function validateMechanicalManufacturingReceipt(receipt, {
     ? fs.realpathSync(absoluteRoot)
     : null;
   const artifactValid = (role, binding) => {
-    if (!realRoot || typeof binding?.path !== 'string' || !SHA256.test(String(binding?.sha256 ?? ''))) return false;
+    if (!realRoot
+      || !hasExactKeys(binding, ['path', 'sha256'])
+      || typeof binding?.path !== 'string'
+      || !SHA256.test(String(binding?.sha256 ?? ''))) return false;
     const absolute = resolveInside(realRoot, binding.path);
     if (!absolute || !fs.existsSync(absolute) || !fs.statSync(absolute).isFile() || fs.lstatSync(absolute).isSymbolicLink()) return false;
     const real = fs.realpathSync(absolute);
@@ -240,8 +245,21 @@ export function validateMechanicalManufacturingReceipt(receipt, {
       && sha256(fs.readFileSync(real)) === binding.sha256;
   };
   const caseValid = item => {
+    if (!hasExactKeys(item, [
+      'caseId', 'process', 'result', 'designRevision', 'noUnapprovedCadChanges',
+      'stepRoundtripVerified', 'drawingReleased', 'bomReconciled',
+      'inspectionDisposition', 'artifacts', 'manufacturer', 'measurements', 'inspector',
+    ])
+      || !hasExactKeys(item?.artifacts, REQUIRED_PILOT_ARTIFACTS)
+      || !hasExactKeys(item?.manufacturer, ['facilityId', 'independentFromNexyfab', 'completedAt'])
+      || !hasExactKeys(item?.inspector, [
+        'reviewerId', 'independentFromBuild', 'inspectedAt', 'targetHash', 'signature',
+      ])) return false;
     const measurements = Array.isArray(item?.measurements) ? item.measurements : [];
-    const measurementValid = measurement => Number.isFinite(measurement?.nominal)
+    const measurementValid = measurement => hasExactKeys(measurement, [
+      'characteristic', 'nominal', 'actual', 'minusTolerance', 'plusTolerance', 'unit', 'result',
+    ])
+      && Number.isFinite(measurement?.nominal)
       && Number.isFinite(measurement?.actual)
       && Number.isFinite(measurement?.minusTolerance)
       && measurement.minusTolerance >= 0
@@ -261,12 +279,16 @@ export function validateMechanicalManufacturingReceipt(receipt, {
     const expectedTarget = mechanicalManufacturingCaseTargetHash(receipt, item);
     let signatureValid = false;
     try {
+      const publicKey = crypto.createPublicKey(registration?.publicKey);
+      const signature = Buffer.from(inspector.signature, 'base64');
       signatureValid = registration?.roles?.includes('manufacturing-inspector') === true
+        && publicKey.asymmetricKeyType === 'ed25519'
+        && signature.length === 64
         && crypto.verify(
           null,
           Buffer.from(mechanicalManufacturingInspectorPayload(receipt, item, inspector)),
-          registration.publicKey,
-          Buffer.from(inspector.signature, 'base64'),
+          publicKey,
+          signature,
         );
     } catch {
       signatureValid = false;
@@ -297,12 +319,17 @@ export function validateMechanicalManufacturingReceipt(receipt, {
       && bindingsValid;
   };
 
-  return receipt?.schema === 'nexyfab.mechanical-manufacturing-validation.v3'
+  const generatedAt = Date.parse(receipt?.generatedAt);
+  return hasExactKeys(receipt, [
+    'schema', 'releaseChannel', 'generatedAt', 'evidenceRootId', 'ok', 'summary', 'cases',
+  ])
+    && hasExactKeys(summary, ['cases', 'passed', 'failed', 'pending', 'measurements'])
+    && receipt?.schema === 'nexyfab.mechanical-manufacturing-validation.v3'
     && receipt?.releaseChannel === 'mechanical-core'
     && receipt?.ok === true
     && SHA256.test(String(receipt?.evidenceRootId ?? ''))
-    && Number.isFinite(Date.parse(receipt?.generatedAt))
-    && Date.parse(receipt.generatedAt) <= now
+    && Number.isFinite(generatedAt)
+    && generatedAt <= now
     && cases.length === 3
     && caseIds.size === cases.length
     && revisions.size === cases.length
@@ -310,6 +337,8 @@ export function validateMechanicalManufacturingReceipt(receipt, {
     && REQUIRED_MECHANICAL_PILOT_PROCESSES.every(process => processes.has(process))
     && facilities.size >= 2
     && inspectors.size >= 2
+    && cases.every(item => Date.parse(item?.manufacturer?.completedAt) <= generatedAt
+      && Date.parse(item?.inspector?.inspectedAt) <= generatedAt)
     && cases.every(caseValid)
     && summary.cases === cases.length
     && summary.passed === cases.length
