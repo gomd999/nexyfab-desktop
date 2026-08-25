@@ -1,5 +1,43 @@
 # Platform current session
 
+## 2026-08-25 deterministic mechanical commercial signing packets
+
+- Status: `PUBLIC_REQUEST_AND_PACKET_CONTRACTS / RAW_ARTIFACT_BYTES_BOUND /
+  CANONICAL_SIGNING_PAYLOADS / ZERO_SIGNATURES_CREATED /
+  REAL_REVIEW_AND_PILOT_EVIDENCE_ABSENT / COMMERCIAL_RELEASE_HOLD`.
+- Commits:
+  `0081a9923044d8b769f836d93ba0cc01d4b51223` contracts,
+  `934257b06afefd8cb8be73c37aaeba767325180e` tool, and
+  `867083df3c6ccf20d73b0c3cc240238678985012`
+  tests.
+- The Platform-owned signing-packet tool converts an exact external blind or
+  manufacturing request into deterministic target hashes, unsigned receipt
+  templates, and the exact canonical payload bytes an independent reviewer or
+  inspector must sign. It binds every raw artifact byte before review.
+- Blind packets require exactly 20 unique cases, at least five high-risk cases,
+  builder/reviewer separation, two distinct reviewers for each high-risk case,
+  chronology, and unique real artifact paths. Manufacturing packets require
+  exactly CNC, sheet-metal, and additive cases; distinct revisions/processes;
+  at least two facilities and inspectors; in-tolerance measurements; and seven
+  bound artifact roles per case.
+- External roots, requests, and artifacts must be regular non-symlink paths;
+  traversal and directory-link escape fail closed. `--check` is read-only and
+  `--output` is atomic hard-link no-replace. The packet explicitly creates no
+  evidence or signature and grants no commercial release.
+- Public contracts:
+  `contracts/mechanical-blind-signing-request.schema.json`,
+  `contracts/mechanical-manufacturing-signing-request.schema.json`, and
+  `contracts/mechanical-commercial-signing-packet.schema.json`.
+- Verification: signing-packet contracts 8/8 PASS; combined with receipt
+  promotion 13/13 PASS; focused ESLint warning 0; mechanical scope PASS and
+  remains `private_beta_evidence_pending`; full Platform ownership, source
+  ESLint, and TypeScript PASS.
+- Current external root still contains only three workbooks and no real case
+  artifacts, reviewer/inspector signatures, or candidate receipts. No packet
+  was falsely generated from missing evidence.
+- Handoff:
+  `HANDOFFS/20260825T103550Z-mechanical-commercial-signing-packets.md`.
+
 ## 2026-08-25 verified blind and manufacturing receipt promotion
 
 - Status: `READ_ONLY_CANDIDATE_CHECK / ATOMIC_NO_REPLACE_PROMOTION /
