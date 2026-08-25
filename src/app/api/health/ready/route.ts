@@ -37,10 +37,22 @@ function redisRequired(): boolean {
   );
 }
 
-function productionCommercialModeRequired(): boolean {
+function railwayProductionEnvironment(): boolean {
   return ['production', 'prod', 'live'].includes(
     process.env.RAILWAY_ENVIRONMENT_NAME?.trim().toLowerCase() ?? '',
   );
+}
+
+function explicitWebPublicNoPaymentMode(): boolean {
+  return railwayProductionEnvironment()
+    && process.env.NEXYFAB_RELEASE_CHANNEL === 'web-public'
+    && process.env.NEXYFAB_COMMERCIAL_MODE === '0'
+    && process.env.NEXYFAB_PRECISION_CAD_COMMERCIAL_MODE === '0'
+    && process.env.NEXYFAB_PAYMENTS_ENABLED === 'false';
+}
+
+function productionCommercialModeRequired(): boolean {
+  return railwayProductionEnvironment() && !explicitWebPublicNoPaymentMode();
 }
 
 function expectedMigrationChecksum(version: CommercialPostgresMigration): string | undefined {
@@ -108,7 +120,9 @@ async function checkCommercialBoundary(): Promise<ComponentCheck> {
   const required = process.env.NEXYFAB_COMMERCIAL_MODE === '1' || productionCommercialModeRequired();
   if (!required) return { status: 'skipped', required: false };
   // A production Railway service must never make the commercial checks
-  // disappear merely because the mode flag was omitted or misspelled.
+  // disappear merely because the mode flag was omitted or misspelled. The
+  // only non-commercial production exception is the exact web-public mode:
+  // payments and Precision CAD commerce are both explicitly disabled.
   if (process.env.NEXYFAB_COMMERCIAL_MODE !== '1') return { status: 'error', required: true };
   const requiredValues = [
     'NEXYFAB_BUILD_ID',

@@ -37,7 +37,11 @@ const commercialWorkerHealth = (overrides: Record<string, unknown> = {}) => ({
 
 beforeEach(() => {
   vi.stubEnv('NODE_ENV', 'development');
+  vi.stubEnv('RAILWAY_ENVIRONMENT_NAME', '');
   vi.stubEnv('NEXYFAB_COMMERCIAL_MODE', '0');
+  vi.stubEnv('NEXYFAB_PRECISION_CAD_COMMERCIAL_MODE', '');
+  vi.stubEnv('NEXYFAB_PAYMENTS_ENABLED', '');
+  vi.stubEnv('NEXYFAB_RELEASE_CHANNEL', '');
   vi.stubEnv('REDIS_URL', '');
   state.getDbAdapter.mockReset();
   state.getDbAdapter.mockReturnValue({ backend: 'sqlite', queryOne: vi.fn().mockResolvedValue({ '?column?': 1 }) });
@@ -180,6 +184,45 @@ describe('GET /api/health/ready', () => {
       commercialBoundary: { status: 'error', required: true },
     });
     expect(fetch).not.toHaveBeenCalled();
+  });
+
+  it('accepts only the exact production web-public mode with payments and precision commerce disabled', async () => {
+    vi.stubEnv('RAILWAY_ENVIRONMENT_NAME', 'production');
+    vi.stubEnv('NEXYFAB_RELEASE_CHANNEL', 'web-public');
+    vi.stubEnv('NEXYFAB_COMMERCIAL_MODE', '0');
+    vi.stubEnv('NEXYFAB_PRECISION_CAD_COMMERCIAL_MODE', '0');
+    vi.stubEnv('NEXYFAB_PAYMENTS_ENABLED', 'false');
+    vi.stubEnv('REDIS_URL', 'redis://example.test:6379');
+
+    const response = await GET();
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(body).toMatchObject({
+      status: 'ok',
+      redis: { status: 'ok', required: true },
+      commercialBoundary: { status: 'skipped', required: false },
+    });
+    expect(fetch).not.toHaveBeenCalled();
+
+    const nearMisses = [
+      ['NEXYFAB_RELEASE_CHANNEL', 'production'],
+      ['NEXYFAB_COMMERCIAL_MODE', ''],
+      ['NEXYFAB_PRECISION_CAD_COMMERCIAL_MODE', '1'],
+      ['NEXYFAB_PAYMENTS_ENABLED', 'true'],
+    ] as const;
+    for (const [key, value] of nearMisses) {
+      vi.stubEnv(key, value);
+      const rejected = await GET();
+      expect(rejected.status, `${key}=${value || '(empty)'}`).toBe(503);
+      await expect(rejected.json()).resolves.toMatchObject({
+        commercialBoundary: { status: 'error', required: true },
+      });
+      vi.stubEnv('NEXYFAB_RELEASE_CHANNEL', 'web-public');
+      vi.stubEnv('NEXYFAB_COMMERCIAL_MODE', '0');
+      vi.stubEnv('NEXYFAB_PRECISION_CAD_COMMERCIAL_MODE', '0');
+      vi.stubEnv('NEXYFAB_PAYMENTS_ENABLED', 'false');
+    }
   });
 
   it('returns sanitized 503 when the Redis ping fails', async () => {
