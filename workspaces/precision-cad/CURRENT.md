@@ -1,5 +1,32 @@
 # Precision CAD current session
 
+## 2026-08-25 exact deployment-source consumer boundary
+
+- Status: `PRECISION_RUNTIME_EVIDENCE_INCLUDED / CLEAN_GIT_SOURCE_REQUIRED /
+  REPOSITORY_EXTERNAL_ENV_IMPORTS_REJECTED / DEPLOYMENT_NOT_RUN /
+  COMMERCIAL_PRECISION_HOLD`.
+- Platform implementation commit
+  `cd196e04c88922982f0c34318e6974533fbe4e2b` makes every non-verify
+  `deploy:railway:verified` run validate the exact upload source before the
+  Railway build starts. Platform handoff commit: `5263a8f7`.
+- The preflight requires a clean Git root whose full HEAD matches the target
+  build ID; verifies that the Precision runtime HOLD receipt and every dynamic
+  seven-day source binding are tracked, included, schema-valid, byte-bounded,
+  and SHA-256 exact; and AST-scans all tracked JS/TS-family files for static
+  `.env*` module edges.
+- Actual clean-source verification passed at the implementation commit with
+  10,237 tracked files, 8,034 parsed source files, all three packaged receipts
+  bound, and zero forbidden environment-file imports. Focused Node tests pass
+  15/15; the Platform quality aggregate passes 65 Node plus 75 Vitest tests.
+- This prevents an incomplete commercial-Precision runtime receipt set from
+  reaching Docker `postbuild` and prevents local-parent `.env` dependencies
+  from entering the server bundle. It does not execute the production native
+  adapter, prove STEP/XCAF/GD&T interoperability, run blind challenges, or
+  authorize manufacturing. No deployment was performed; Private Beta/GA and
+  commercial release remain false/HOLD.
+- Handoff:
+  `HANDOFFS/20260825T225551+0900-deployment-source-consumer-boundary.md`.
+
 ## 2026-08-25 cross-store recoverability boundary
 
 - Status: `COMMERCIAL_PRECISION_DB_OBJECT_BINDINGS_RESTORED /
