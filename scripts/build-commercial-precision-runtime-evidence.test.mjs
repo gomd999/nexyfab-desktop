@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import crypto from 'node:crypto';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -18,6 +19,18 @@ import {
 import { canonicalJson, sha256 } from './immutable-receipt-binding.mjs';
 
 const secret = 'precision-runtime-evidence-secret-20260825-A!';
+const workerKeys = crypto.generateKeyPairSync('ed25519');
+const workerPublicKeyPem = workerKeys.publicKey.export({ type: 'spki', format: 'pem' }).toString();
+const workerFingerprint = crypto.createHash('sha256')
+  .update(workerKeys.publicKey.export({ type: 'spki', format: 'der' }))
+  .digest('hex');
+const workerRegistryRaw = JSON.stringify({
+  'commercial-worker-1': {
+    workerIdentity: 'commercial-worker-1',
+    publicKeyPem: workerPublicKeyPem,
+    fingerprintSha256: workerFingerprint,
+  },
+});
 const expectedRelease = {
   buildId: 'build-1',
   deploymentId: 'production-deployment-1',
@@ -32,7 +45,7 @@ function writeJson(root, relative, value) {
   return { path: relative, bytes: bytes.byteLength, sha256: sha256(bytes) };
 }
 
-function fixture({ environment = 'production', checkOverrides = {}, now = Date.now() } = {}) {
+function fixture({ environment = 'production', checkOverrides = {}, now = Date.now(), tamperWorkerSignature = false, omitAssertion = null } = {}) {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'nexyfab-precision-runtime-'));
   const sourceRoot = path.join(root, 'source');
   const evidenceRoot = path.join(root, 'evidence');
@@ -54,7 +67,7 @@ function fixture({ environment = 'production', checkOverrides = {}, now = Date.n
     jobId: 'canary-job-1',
     executionId: 'canary-execution-1',
     workerIdentity: 'commercial-worker-1',
-    workerPublicKeyFingerprint: 'a'.repeat(64),
+    workerPublicKeyFingerprint: workerFingerprint,
     inputArtifactSha256: 'b'.repeat(64),
   };
   const workerReceipt = {
@@ -89,36 +102,74 @@ function fixture({ environment = 'production', checkOverrides = {}, now = Date.n
       objectKey: `private/commercial/${execution.jobId}/${role}`,
     })),
     failureReasons: [],
-    signatureBase64: Buffer.alloc(64, 7).toString('base64'),
+    signatureBase64: '',
   };
+  const unsignedWorkerReceipt = structuredClone(workerReceipt);
+  delete unsignedWorkerReceipt.signatureBase64;
+  workerReceipt.signatureBase64 = crypto.sign(
+    null,
+    Buffer.from(canonicalJson({
+      schema: workerReceipt.schema,
+      purpose: 'worker-receipt',
+      receipt: unsignedWorkerReceipt,
+    }), 'utf8'),
+    workerKeys.privateKey,
+  ).toString('base64');
+  if (tamperWorkerSignature) {
+    const signature = Buffer.from(workerReceipt.signatureBase64, 'base64');
+    signature[0] ^= 0xff;
+    workerReceipt.signatureBase64 = signature.toString('base64');
+  }
   execution.workerReceiptSha256 = sha256(Buffer.from(canonicalJson(workerReceipt), 'utf8'));
   const sourceValues = {
     databaseSnapshot: {
       schema: COMMERCIAL_PRECISION_EVIDENCE_SOURCES.databaseSnapshot,
       status: 'PASS', capturedAt, release,
       jobId: execution.jobId, executionId: execution.executionId,
-      assertions: ['journal_committed', 'outbox_done', 'workspace_cas_committed'],
+      assertions: [
+        'postgres_migration_checksum_match', 'redis_ping_pass',
+        'transactional_outbox_enqueued', 'lease_claim_persisted',
+        'signed_callback_persisted', 'authoritative_persistence_committed',
+        'workspace_cas_committed',
+      ],
     },
     objectStorageManifest: {
       schema: COMMERCIAL_PRECISION_EVIDENCE_SOURCES.objectStorageManifest,
       status: 'PASS', capturedAt, release,
       jobId: execution.jobId, executionId: execution.executionId,
-      assertions: ['input_readback_hash_match', 'three_output_readback_hashes_match'],
+      assertions: [
+        'immutable_input_write_readback_hash_match',
+        'three_output_commit_readback_hash_match',
+      ],
     },
     workerReceipt,
     negativeCampaign: {
       schema: COMMERCIAL_PRECISION_EVIDENCE_SOURCES.negativeCampaign,
       status: 'PASS', capturedAt, release,
       jobId: execution.jobId, executionId: execution.executionId,
-      assertions: ['wrong_worker_rejected', 'substitution_rejected', 'replay_rejected'],
+      assertions: [
+        'wrong_worker_rejected', 'input_substitution_rejected',
+        'output_substitution_rejected', 'callback_replay_conflict_rejected',
+      ],
     },
     recoveryCampaign: {
       schema: COMMERCIAL_PRECISION_EVIDENCE_SOURCES.recoveryCampaign,
       status: 'PASS', capturedAt, release,
       jobId: execution.jobId, executionId: execution.executionId,
-      assertions: ['lease_recovered', 'crash_recovered', 'verified_unknown_not_replayed'],
+      assertions: [
+        'multi_instance_claim_exclusion', 'expired_lease_recovery',
+        'crash_after_claim_recovery', 'verified_unknown_no_replay',
+        'credential_rotation',
+      ],
     },
   };
+  if (omitAssertion) {
+    for (const document of Object.values(sourceValues)) {
+      if (Array.isArray(document?.assertions)) {
+        document.assertions = document.assertions.filter(value => value !== omitAssertion);
+      }
+    }
+  }
   const evidence = Object.fromEntries(Object.entries(sourceValues).map(([role, value]) => [
     role,
     writeJson(evidenceRoot, `sources/${role}.json`, value),
@@ -149,7 +200,7 @@ function fixture({ environment = 'production', checkOverrides = {}, now = Date.n
   const observationPath = 'commercial-precision-runtime-observation.json';
   writeJson(evidenceRoot, observationPath, observation);
   const build = options => buildCommercialPrecisionRuntimeEvidenceReceipt({
-    sourceRoot, evidenceRoot, observationPath, expectedRelease, secret,
+    sourceRoot, evidenceRoot, observationPath, expectedRelease, secret, workerRegistryRaw,
     generatedAt: new Date(now).toISOString(), now, ...options,
   });
   return { root, sourceRoot, evidenceRoot, observationPath, observation, build, now };
@@ -161,11 +212,18 @@ test('qualifies production only with the complete exact-runtime and durability m
   assert.equal(receipt.status, 'COMMERCIAL_GA_PASS');
   assert.equal(receipt.decision.privateBeta.eligible, true);
   assert.equal(receipt.decision.commercialGa.eligible, true);
+  assert.deepEqual(receipt.workerTrust, {
+    signatureVerified: true,
+    workerIdentity: 'commercial-worker-1',
+    fingerprintSha256: workerFingerprint,
+    registrySha256: sha256(JSON.parse(workerRegistryRaw)),
+  });
   const verification = verifyCommercialPrecisionRuntimeEvidence(receipt, {
     sourceRoot: value.sourceRoot,
     evidenceRoot: value.evidenceRoot,
     observationPath: value.observationPath,
     expectedRelease,
+    workerRegistryRaw,
     secret,
     now: value.now,
   });
@@ -173,6 +231,21 @@ test('qualifies production only with the complete exact-runtime and durability m
   assert.equal(verification.receiptVerified, true);
   assert.equal(verification.privateBetaEligible, true);
   assert.equal(verification.commercialGaEligible, true);
+});
+
+test('rejects a shape-valid worker receipt whose Ed25519 signature is forged', () => {
+  const value = fixture({ tamperWorkerSignature: true });
+  const receipt = value.build();
+  assert.equal(receipt.status, 'HOLD');
+  assert.equal(receipt.workerTrust, null);
+  assert.ok(receipt.decision.privateBeta.blockers.includes('evidence_document_invalid:workerReceipt'));
+});
+
+test('rejects a PASS check that lacks its exact supporting assertion', () => {
+  const value = fixture({ omitAssertion: 'workspace_cas_committed' });
+  const receipt = value.build();
+  assert.equal(receipt.status, 'HOLD');
+  assert.ok(receipt.decision.privateBeta.blockers.includes('check_evidence_missing:workspaceCasCommit'));
 });
 
 test('allows a complete staging canary to qualify only the private-beta tier', () => {

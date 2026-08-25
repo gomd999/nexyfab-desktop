@@ -12,7 +12,7 @@ const MAX_EVIDENCE_AGE_MS = 24 * 60 * 60 * 1000;
 const SHA256 = /^[a-f0-9]{64}$/;
 const GIT_COMMIT_SHA = /^(?:[a-f0-9]{40}|[a-f0-9]{64})$/i;
 const RAILWAY_DEPLOYMENT_ID = /^[a-f0-9]{8}-[a-f0-9]{4}-[1-8][a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/i;
-const COMMERCIAL_PRECISION_RUNTIME_SCHEMA = 'nexyfab.commercial-precision-runtime-evidence.v1';
+const COMMERCIAL_PRECISION_RUNTIME_SCHEMA = 'nexyfab.commercial-precision-runtime-evidence.v2';
 const COMMERCIAL_PRECISION_EXECUTION_CONTRACT = 'nexyfab.precision-cad-commercial-execution.v3';
 const COMMERCIAL_PRECISION_MIGRATION_VERSION = 2026082502;
 const COMMERCIAL_PRECISION_PRIVATE_BETA_CHECKS = [
@@ -242,10 +242,14 @@ function verifyCommercialPrecisionRuntime(
   const value = receipt && typeof receipt === 'object' && !Array.isArray(receipt) ? receipt as SignedReceipt & {
     schema?: unknown; status?: unknown; environment?: unknown;
     release?: { buildId?: unknown; gitHead?: unknown; productionDeploymentId?: unknown; evidenceDeploymentId?: unknown };
-    execution?: { contract?: unknown };
+    execution?: { contract?: unknown; workerIdentity?: unknown; workerPublicKeyFingerprint?: unknown };
     migration?: { version?: unknown; checksum?: unknown };
     migrationSource?: { sha256?: unknown };
     evidenceBindings?: Record<string, { path?: unknown; bytes?: unknown; sha256?: unknown } | null>;
+    workerTrust?: {
+      signatureVerified?: unknown; workerIdentity?: unknown;
+      fingerprintSha256?: unknown; registrySha256?: unknown;
+    };
     checks?: Record<string, unknown>;
     decision?: {
       privateBeta?: { eligible?: unknown; blockers?: unknown[] };
@@ -281,6 +285,10 @@ function verifyCommercialPrecisionRuntime(
     && deploymentId && value.release?.productionDeploymentId === deploymentId
     && value.release?.evidenceDeploymentId === deploymentId
     && value.execution?.contract === COMMERCIAL_PRECISION_EXECUTION_CONTRACT
+    && value.workerTrust?.signatureVerified === true
+    && value.workerTrust?.workerIdentity === value.execution?.workerIdentity
+    && value.workerTrust?.fingerprintSha256 === value.execution?.workerPublicKeyFingerprint
+    && SHA256.test(String(value.workerTrust?.registrySha256 ?? ''))
     && migration.migrationVersion === COMMERCIAL_PRECISION_MIGRATION_VERSION
     && SHA256.test(String(expectedMigrationChecksum ?? ''))
     && value.migration?.version === COMMERCIAL_PRECISION_MIGRATION_VERSION

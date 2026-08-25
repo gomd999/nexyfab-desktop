@@ -11,7 +11,7 @@ import {
 export const COMMERCIAL_PRECISION_RUNTIME_OBSERVATION_SCHEMA =
   'nexyfab.commercial-precision-runtime-observation.v1';
 export const COMMERCIAL_PRECISION_RUNTIME_RECEIPT_SCHEMA =
-  'nexyfab.commercial-precision-runtime-evidence.v1';
+  'nexyfab.commercial-precision-runtime-evidence.v2';
 export const COMMERCIAL_PRECISION_EXECUTION_CONTRACT =
   'nexyfab.precision-cad-commercial-execution.v3';
 export const COMMERCIAL_PRECISION_MIGRATION_VERSION = 2026082502;
@@ -55,6 +55,29 @@ export const COMMERCIAL_PRECISION_EVIDENCE_SOURCES = Object.freeze({
   workerReceipt: COMMERCIAL_PRECISION_EXECUTION_CONTRACT,
   negativeCampaign: 'nexyfab.commercial-precision-negative-campaign.v1',
   recoveryCampaign: 'nexyfab.commercial-precision-recovery-campaign.v1',
+});
+
+export const COMMERCIAL_PRECISION_CHECK_EVIDENCE = Object.freeze({
+  postgresMigration: ['databaseSnapshot', 'postgres_migration_checksum_match'],
+  redisAvailability: ['databaseSnapshot', 'redis_ping_pass'],
+  immutableInputWriteReadback: ['objectStorageManifest', 'immutable_input_write_readback_hash_match'],
+  transactionalOutboxEnqueue: ['databaseSnapshot', 'transactional_outbox_enqueued'],
+  leaseClaim: ['databaseSnapshot', 'lease_claim_persisted'],
+  nativeExecution: ['workerReceipt', null],
+  threeOutputCommitReadback: ['objectStorageManifest', 'three_output_commit_readback_hash_match'],
+  workerReceiptSignature: ['workerReceipt', null],
+  signedCallback: ['databaseSnapshot', 'signed_callback_persisted'],
+  authoritativePersistence: ['databaseSnapshot', 'authoritative_persistence_committed'],
+  workspaceCasCommit: ['databaseSnapshot', 'workspace_cas_committed'],
+  wrongWorkerRejected: ['negativeCampaign', 'wrong_worker_rejected'],
+  inputSubstitutionRejected: ['negativeCampaign', 'input_substitution_rejected'],
+  outputSubstitutionRejected: ['negativeCampaign', 'output_substitution_rejected'],
+  callbackReplayRejected: ['negativeCampaign', 'callback_replay_conflict_rejected'],
+  multiInstanceClaimExclusion: ['recoveryCampaign', 'multi_instance_claim_exclusion'],
+  expiredLeaseRecovery: ['recoveryCampaign', 'expired_lease_recovery'],
+  crashAfterClaimRecovery: ['recoveryCampaign', 'crash_after_claim_recovery'],
+  verifiedUnknownNoReplay: ['recoveryCampaign', 'verified_unknown_no_replay'],
+  credentialRotation: ['recoveryCampaign', 'credential_rotation'],
 });
 
 const SHA256 = /^[a-f0-9]{64}$/;
@@ -137,6 +160,83 @@ function strongEvidenceSecret(secret) {
   return new Set(secret).size >= 12;
 }
 
+function commercialWorkerFingerprint(publicKeyPem) {
+  try {
+    if (typeof publicKeyPem !== 'string' || /PRIVATE KEY/i.test(publicKeyPem)) return null;
+    const key = crypto.createPublicKey(publicKeyPem);
+    if (key.asymmetricKeyType !== 'ed25519') return null;
+    return crypto.createHash('sha256')
+      .update(key.export({ type: 'spki', format: 'der' }))
+      .digest('hex');
+  } catch {
+    return null;
+  }
+}
+
+export function loadCommercialPrecisionWorkerRegistry(raw) {
+  if (typeof raw !== 'string' || !raw || Buffer.byteLength(raw, 'utf8') > 64 * 1024) return null;
+  try {
+    const parsed = JSON.parse(raw);
+    if (!parsed || Array.isArray(parsed) || typeof parsed !== 'object') return null;
+    const entries = Object.entries(parsed);
+    if (entries.length < 1 || entries.length > 16) return null;
+    const normalized = {};
+    const fingerprints = new Set();
+    for (const [identity, worker] of entries.sort(([left], [right]) => left.localeCompare(right))) {
+      if (!worker || typeof worker !== 'object' || Array.isArray(worker)
+        || Object.keys(worker).sort().join(',') !== 'fingerprintSha256,publicKeyPem,workerIdentity'
+        || !ID.test(identity) || worker.workerIdentity !== identity
+        || !SHA256.test(String(worker.fingerprintSha256 ?? ''))
+        || commercialWorkerFingerprint(worker.publicKeyPem) !== worker.fingerprintSha256
+        || fingerprints.has(worker.fingerprintSha256)) return null;
+      fingerprints.add(worker.fingerprintSha256);
+      normalized[identity] = {
+        workerIdentity: identity,
+        publicKeyPem: worker.publicKeyPem,
+        fingerprintSha256: worker.fingerprintSha256,
+      };
+    }
+    return Object.freeze(normalized);
+  } catch {
+    return null;
+  }
+}
+
+function workerReceiptSignaturePayload(receipt) {
+  const unsigned = structuredClone(receipt ?? {});
+  delete unsigned.signatureBase64;
+  return canonicalJson({
+    schema: receipt?.schema,
+    purpose: 'worker-receipt',
+    receipt: unsigned,
+  });
+}
+
+function verifiedWorkerTrust(receipt, trustedWorkers) {
+  const worker = trustedWorkers?.[receipt?.workerIdentity];
+  if (!worker || receipt?.workerPublicKeyFingerprint !== worker.fingerprintSha256) return null;
+  const signature = typeof receipt?.signatureBase64 === 'string'
+    ? Buffer.from(receipt.signatureBase64, 'base64')
+    : Buffer.alloc(0);
+  if (signature.byteLength !== 64 || signature.toString('base64') !== receipt.signatureBase64) return null;
+  try {
+    if (!crypto.verify(
+      null,
+      Buffer.from(workerReceiptSignaturePayload(receipt), 'utf8'),
+      worker.publicKeyPem,
+      signature,
+    )) return null;
+  } catch {
+    return null;
+  }
+  return {
+    signatureVerified: true,
+    workerIdentity: worker.workerIdentity,
+    fingerprintSha256: worker.fingerprintSha256,
+    registrySha256: sha256(trustedWorkers),
+  };
+}
+
 export function commercialPrecisionRuntimeAttestationPayload(observation) {
   const value = structuredClone(observation ?? {});
   if (value.attestation && typeof value.attestation === 'object') {
@@ -201,7 +301,7 @@ function supportingTimeValid(value, observationTime) {
     && capturedAt >= observationTime - SUPPORTING_MAX_AGE_MS;
 }
 
-function workerReceiptValid(receipt, observation, observationTime) {
+function workerReceiptValid(receipt, observation, observationTime, trustedWorkers) {
   const execution = observation?.execution ?? {};
   const outputs = Array.isArray(receipt?.outputArtifacts) ? receipt.outputArtifacts : [];
   const roles = outputs.map(item => item?.role);
@@ -215,9 +315,7 @@ function workerReceiptValid(receipt, observation, observationTime) {
     && SHA256.test(String(execution.workerReceiptSha256 ?? ''))
     && SHA256.test(String(receipt?.workerPublicKeyFingerprint ?? ''))
     && SHA256.test(String(receipt?.inputArtifactSha256 ?? ''))
-    && typeof receipt?.signatureBase64 === 'string'
-    && /^[A-Za-z0-9+/]+={0,2}$/.test(receipt.signatureBase64)
-    && receipt.signatureBase64.length >= 80
+    && verifiedWorkerTrust(receipt, trustedWorkers) !== null
     && supportingTimeValid(receipt?.completedAt, observationTime)
     && outputs.length === OUTPUT_ROLES.length
     && new Set(roles).size === OUTPUT_ROLES.length
@@ -230,8 +328,8 @@ function workerReceiptValid(receipt, observation, observationTime) {
     && sha256(Buffer.from(canonicalJson(receipt), 'utf8')) === execution.workerReceiptSha256;
 }
 
-function supportingDocumentValid(role, document, observation, observationTime) {
-  if (role === 'workerReceipt') return workerReceiptValid(document, observation, observationTime);
+function supportingDocumentValid(role, document, observation, observationTime, trustedWorkers) {
+  if (role === 'workerReceipt') return workerReceiptValid(document, observation, observationTime, trustedWorkers);
   return document?.schema === COMMERCIAL_PRECISION_EVIDENCE_SOURCES[role]
     && document?.status === 'PASS'
     && document?.jobId === observation?.execution?.jobId
@@ -289,10 +387,12 @@ function observationShapeBlockers(observation, expectedRelease, sourceMigration,
   return blockers;
 }
 
-function readObservationEvidence(evidenceRoot, observation, observationTime) {
+function readObservationEvidence(evidenceRoot, observation, observationTime, trustedWorkers) {
   const bindings = {};
+  const documents = {};
   const blockers = [];
   const paths = new Set();
+  let workerTrust = null;
   for (const role of Object.keys(COMMERCIAL_PRECISION_EVIDENCE_SOURCES)) {
     const claimed = observation?.evidence?.[role];
     const loaded = readJsonFile(evidenceRoot, claimed?.path);
@@ -302,16 +402,34 @@ function readObservationEvidence(evidenceRoot, observation, observationTime) {
       continue;
     }
     bindings[role] = loaded.binding;
+    documents[role] = loaded.document;
     if (paths.has(loaded.binding.path)) blockers.push(`evidence_path_reused:${role}`);
     paths.add(loaded.binding.path);
     if (!SHA256.test(String(claimed?.sha256 ?? ''))
       || claimed?.sha256 !== loaded.binding.sha256
       || claimed?.bytes !== loaded.binding.bytes) blockers.push(`evidence_binding_mismatch:${role}`);
-    if (!supportingDocumentValid(role, loaded.document, observation, observationTime)) {
+    if (!supportingDocumentValid(role, loaded.document, observation, observationTime, trustedWorkers)) {
       blockers.push(`evidence_document_invalid:${role}`);
     }
+    if (role === 'workerReceipt') workerTrust = verifiedWorkerTrust(loaded.document, trustedWorkers);
   }
-  return { bindings, blockers };
+  return { bindings, blockers, documents, workerTrust };
+}
+
+function checkEvidenceBlockers(checks, evidence) {
+  const blockers = [];
+  for (const [check, [role, assertion]] of Object.entries(COMMERCIAL_PRECISION_CHECK_EVIDENCE)) {
+    if (checks?.[check] !== 'PASS') continue;
+    if (role === 'workerReceipt') {
+      if (!evidence.workerTrust?.signatureVerified) blockers.push(`check_evidence_missing:${check}`);
+      continue;
+    }
+    const assertions = evidence.documents?.[role]?.assertions;
+    if (!Array.isArray(assertions) || !assertions.includes(assertion)) {
+      blockers.push(`check_evidence_missing:${check}`);
+    }
+  }
+  return blockers;
 }
 
 function defaultChecks() {
@@ -328,6 +446,7 @@ export function buildCommercialPrecisionRuntimeEvidenceReceipt({
     ?? COMMERCIAL_PRECISION_DEFAULT_OBSERVATION,
   expectedRelease = null,
   secret = process.env.GENERATION_EVIDENCE_SIGNING_SECRET,
+  workerRegistryRaw = process.env.NEXYFAB_COMMERCIAL_WORKER_KEYS_JSON,
   generatedAt = new Date().toISOString(),
   now = Date.now(),
 } = {}) {
@@ -336,18 +455,21 @@ export function buildCommercialPrecisionRuntimeEvidenceReceipt({
   const loaded = readJsonFile(evidenceRoot, observationPath);
   const observation = loaded?.document ?? null;
   const observationTime = Date.parse(observation?.capturedAt);
+  const trustedWorkers = loadCommercialPrecisionWorkerRegistry(workerRegistryRaw);
   const commonBlockers = [
     ...(!Number.isFinite(generated) || generated > now + 5 * 60_000 ? ['generated_at_invalid'] : []),
     ...(!migrationSource ? ['migration_source_unavailable'] : []),
     ...(!loaded ? ['runtime_observation_missing'] : []),
+    ...(observation && !trustedWorkers ? ['worker_registry_invalid'] : []),
     ...(observation ? observationShapeBlockers(observation, expectedRelease, migrationSource, now) : []),
     ...(observation && !hmacVerified(observation, secret) ? ['runtime_attestation_invalid'] : []),
   ];
   const evidence = observation
-    ? readObservationEvidence(evidenceRoot, observation, observationTime)
-    : { bindings: Object.fromEntries(Object.keys(COMMERCIAL_PRECISION_EVIDENCE_SOURCES).map(key => [key, null])), blockers: [] };
+    ? readObservationEvidence(evidenceRoot, observation, observationTime, trustedWorkers)
+    : { bindings: Object.fromEntries(Object.keys(COMMERCIAL_PRECISION_EVIDENCE_SOURCES).map(key => [key, null])), blockers: [], documents: {}, workerTrust: null };
   commonBlockers.push(...evidence.blockers);
   const checks = observation?.checks ?? defaultChecks();
+  commonBlockers.push(...checkEvidenceBlockers(checks, evidence));
   const privateBetaBlockers = [
     ...commonBlockers,
     ...COMMERCIAL_PRECISION_PRIVATE_BETA_CHECKS
@@ -376,6 +498,7 @@ export function buildCommercialPrecisionRuntimeEvidenceReceipt({
     migrationSource,
     observationBinding: loaded?.binding ?? null,
     evidenceBindings: evidence.bindings,
+    workerTrust: evidence.workerTrust,
     checks,
     decision: {
       privateBeta: { eligible: privateBetaEligible, blockers: [...new Set(privateBetaBlockers)] },

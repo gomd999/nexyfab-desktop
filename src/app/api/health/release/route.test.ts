@@ -52,7 +52,7 @@ function signReceipt(receipt: Record<string, any>, secret: string): Record<strin
 
 function precisionRuntimeReceipt(now: number, secret: string, checksum: string) {
   return signReceipt({
-    schema: 'nexyfab.commercial-precision-runtime-evidence.v1',
+    schema: 'nexyfab.commercial-precision-runtime-evidence.v2',
     generatedAt: new Date(now).toISOString(),
     status: 'COMMERCIAL_GA_PASS',
     environment: 'production',
@@ -62,7 +62,10 @@ function precisionRuntimeReceipt(now: number, secret: string, checksum: string) 
       productionDeploymentId: ids.RAILWAY_DEPLOYMENT_ID,
       evidenceDeploymentId: ids.RAILWAY_DEPLOYMENT_ID,
     },
-    execution: { contract: 'nexyfab.precision-cad-commercial-execution.v3' },
+    execution: {
+      contract: 'nexyfab.precision-cad-commercial-execution.v3',
+      workerIdentity: 'commercial-worker-1', workerPublicKeyFingerprint: '7'.repeat(64),
+    },
     migration: { version: 2026082502, checksum },
     migrationSource: { path: 'src/lib/db-postgres-migration-2026082502.sql', bytes: 5623, sha256: checksum },
     observationBinding: { path: 'runtime/observation.json', bytes: 1000, sha256: '8'.repeat(64) },
@@ -70,6 +73,10 @@ function precisionRuntimeReceipt(now: number, secret: string, checksum: string) 
       'databaseSnapshot', 'objectStorageManifest', 'workerReceipt',
       'negativeCampaign', 'recoveryCampaign',
     ].map((role, index) => [role, { path: `runtime/${role}.json`, bytes: 100 + index, sha256: String(index + 3).repeat(64) }])),
+    workerTrust: {
+      signatureVerified: true, workerIdentity: 'commercial-worker-1',
+      fingerprintSha256: '7'.repeat(64), registrySha256: '6'.repeat(64),
+    },
     checks: Object.fromEntries(precisionRuntimeChecks.map(key => [key, 'PASS'])),
     decision: {
       privateBeta: { eligible: true, blockers: [] },
