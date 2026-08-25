@@ -1,5 +1,42 @@
 # Platform current session
 
+## 2026-08-25 verified signature response to candidate assembly
+
+- Status: `PACKET_REBUILT_FROM_CURRENT_BYTES / ED25519_RESPONSE_VERIFIED /
+  EXACT_CANDIDATE_ASSEMBLED / CANONICAL_VALIDATOR_REUSED /
+  ZERO_SIGNATURES_CREATED / REAL_EXTERNAL_RESPONSES_ABSENT /
+  COMMERCIAL_RELEASE_HOLD`.
+- Commits:
+  `b00bfb63f4f00c5c2dc95c46e2b4a50d45d9db1f` implementation and
+  `af03a5cd4434e82d075b6d30c437a648ac713c3f` tests.
+- A Platform-owned candidate assembler removes manual signature copying. It
+  rebuilds the supplied packet from the current source request and artifact
+  bytes, requires exact packet equality, verifies a closed signature-response
+  contract against packet/target/payload hashes and role-scoped Ed25519 public
+  keys, then assembles an exact blind or manufacturing candidate receipt.
+- The in-memory candidate must pass the same canonical blind/manufacturing
+  validator used by product scope and verified promotion before any output is
+  written. `--check` is read-only; `--output` is constrained inside the
+  external evidence root and uses atomic hard-link no-replace.
+- Forged, missing, duplicate, transplanted, or extra-claim responses fail;
+  packet claim/target mutation, source request drift, artifact drift,
+  outside-root response/output, invalid trust role, and existing output also
+  fail closed. Invalid cryptographic/evidence input exits 4 with zero output.
+- The tool assembles a candidate record but creates no underlying artifact or
+  signature and grants no commercial release. A candidate still requires the
+  separate verified promotion gate before any canonical repository path.
+- Public contract:
+  `contracts/mechanical-commercial-signature-response.schema.json`.
+- Verification: assembler contracts 7/7 PASS; exact blind/manufacturing
+  candidates pass existing canonical validators and promotion checks; focused
+  ESLint warning 0; mechanical scope remains
+  `private_beta_evidence_pending`; full Platform ownership, source ESLint, and
+  TypeScript PASS.
+- Current external root still has no real packet, signature response,
+  candidate, artifact, or pilot evidence. No fixture was promoted as evidence.
+- Handoff:
+  `HANDOFFS/20260825T105726Z-verified-signature-response-candidate-assembly.md`.
+
 ## 2026-08-25 deterministic mechanical commercial signing packets
 
 - Status: `PUBLIC_REQUEST_AND_PACKET_CONTRACTS / RAW_ARTIFACT_BYTES_BOUND /
