@@ -78,6 +78,8 @@ export type CommercialWorkerReceipt = {
   workerPublicKeyFingerprint: string;
   /** Required by runtime validation; optional only for source migration compatibility. */
   nativeExecutableSha256?: string;
+  /** SHA-256 over the canonical executable hash plus configured native arguments. */
+  nativeInvocationSha256?: string;
   status: CommercialExecutionStatus;
   startedAt: string;
   completedAt: string;
