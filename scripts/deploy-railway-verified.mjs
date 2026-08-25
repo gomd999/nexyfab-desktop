@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 import { spawn } from 'node:child_process';
+import { randomUUID } from 'node:crypto';
 import { existsSync } from 'node:fs';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
@@ -20,6 +21,10 @@ const sourcePath = arg('source', '.');
 const pathAsRoot = process.argv.includes('--path-as-root');
 const verifyOnly = process.argv.includes('--verify-only');
 const stagingHold = process.argv.includes('--staging-hold');
+const expectedDeploymentId = arg(
+  'expected-deployment-id',
+  process.env.NEXYFAB_EXPECTED_DEPLOYMENT_ID || '',
+).trim();
 const windowsRailwayCli = process.platform === 'win32' && process.env.APPDATA
   ? path.join(process.env.APPDATA, 'npm', 'node_modules', '@railway', 'cli', 'bin', 'railway.js')
   : '';
@@ -57,9 +62,17 @@ export function npmInvocation({
   return { command: 'npm', prefixArgs: [] };
 }
 
-export function deploymentMessage({ stagingHold, expectedBuildId, now = new Date().toISOString() }) {
+export function deploymentMessage({
+  stagingHold,
+  expectedBuildId,
+  attemptId,
+  now = new Date().toISOString(),
+}) {
   const deploymentKind = stagingHold ? 'verified staging HOLD deploy' : 'verified deploy';
-  return `${deploymentKind} build=${expectedBuildId} source=clean-git-v1 at=${now}`;
+  if (typeof attemptId !== 'string' || !attemptId.trim()) {
+    throw new Error('deployment attempt ID is required');
+  }
+  return `${deploymentKind} build=${expectedBuildId} source=clean-git-v1 attempt=${attemptId.trim()} at=${now}`;
 }
 
 function runNpmScript(script, env = process.env) {
@@ -202,6 +215,35 @@ function deploymentStatus(row) {
   return String(row?.status || row?.latestStatus || row?.deployment?.status || '').toUpperCase();
 }
 
+export function deploymentCliMessage(row) {
+  const message = row?.meta?.cliMessage ?? row?.deployment?.meta?.cliMessage;
+  return typeof message === 'string' ? message : '';
+}
+
+/**
+ * Bind polling to the deployment created by this exact upload attempt. A set
+ * difference alone is unsafe because another operator or automation can create
+ * a deployment between the before/after list calls.
+ */
+export function selectDeploymentTarget(rows, {
+  verifyOnly,
+  expectedDeploymentId,
+  attemptMessage,
+  beforeIds = new Set(),
+}) {
+  if (verifyOnly) {
+    return rows.find(row => deploymentId(row) === expectedDeploymentId) ?? null;
+  }
+  const matches = rows.filter(row => {
+    const id = deploymentId(row);
+    return id && !beforeIds.has(id) && deploymentCliMessage(row) === attemptMessage;
+  });
+  if (matches.length > 1) {
+    throw new Error(`multiple Railway deployments matched exact upload attempt: ${matches.map(deploymentId).join(', ')}`);
+  }
+  return matches[0] ?? null;
+}
+
 async function list() {
   const result = await runRailway(['deployment', 'list', '--service', service, '--environment', environment, '--limit', '20', '--json']);
   return deploymentRows(JSON.parse(result.stdout));
@@ -225,6 +267,13 @@ async function healthCheck() {
 }
 
 async function main() {
+  if (verifyOnly && !expectedDeploymentId) {
+    throw new Error('--verify-only requires --expected-deployment-id (or NEXYFAB_EXPECTED_DEPLOYMENT_ID)');
+  }
+  if (!verifyOnly && expectedDeploymentId) {
+    throw new Error('--expected-deployment-id is valid only with --verify-only');
+  }
+
   const target = await targetVariables();
   const gateEnvironment = targetGateEnvironment(target);
   const targetBuildId = String(target.NEXYFAB_BUILD_ID ?? '').trim();
@@ -246,6 +295,14 @@ async function main() {
 
   const before = await list();
   const beforeIds = new Set(before.map(deploymentId).filter(Boolean));
+  if (verifyOnly && !selectDeploymentTarget(before, {
+    verifyOnly,
+    expectedDeploymentId,
+    attemptMessage: '',
+    beforeIds,
+  })) {
+    throw new Error(`expected deployment ${expectedDeploymentId} is not present in the latest Railway deployment list`);
+  }
 
   // Verify-only is a release verification mode, not a gate bypass. Evaluate the
   // exact target environment before trusting either an existing or new deploy.
@@ -263,20 +320,34 @@ async function main() {
     await runNpmScript('commercial:release-gate', gateEnvironment);
   }
 
+  const attemptId = verifyOnly ? null : randomUUID();
+  const attemptMessage = verifyOnly ? null : deploymentMessage({
+    stagingHold,
+    expectedBuildId,
+    attemptId,
+  });
   if (!verifyOnly) {
     const upArgs = ['up'];
     if (sourcePath && sourcePath !== '.') upArgs.push(sourcePath);
     if (pathAsRoot) upArgs.push('--path-as-root');
-    upArgs.push('--detach', '--json', '--service', service, '--environment', environment, '--message', deploymentMessage({ stagingHold, expectedBuildId }));
+    upArgs.push('--detach', '--json', '--service', service, '--environment', environment, '--message', attemptMessage);
     await runRailway(upArgs, { stream: true });
+    console.log(JSON.stringify({ event: 'deployment-submitted', service, environment, attemptId, message: attemptMessage }));
   }
 
   const deadline = Date.now() + timeoutMs;
-  let targetId = verifyOnly ? deploymentId(before[0]) : null;
+  let targetId = verifyOnly ? expectedDeploymentId : null;
   let verified = false;
   while (Date.now() < deadline) {
     const rows = await list();
-    if (!targetId) targetId = deploymentId(rows.find(row => !beforeIds.has(deploymentId(row))));
+    if (!targetId) {
+      targetId = deploymentId(selectDeploymentTarget(rows, {
+        verifyOnly,
+        expectedDeploymentId,
+        attemptMessage,
+        beforeIds,
+      }));
+    }
     const target = rows.find(row => deploymentId(row) === targetId);
     const status = deploymentStatus(target);
     console.log(JSON.stringify({ event: 'deployment-status', service, deploymentId: targetId, status: status || 'PENDING' }));
@@ -286,7 +357,15 @@ async function main() {
     }
     if (['SUCCESS', 'ACTIVE'].includes(status)) {
       await healthCheck();
-      console.log(JSON.stringify({ event: 'deployment-verified', service, deploymentId: targetId, status, releaseStatus: stagingHold ? 'HOLD' : 'PASS' }));
+      console.log(JSON.stringify({
+        event: 'deployment-verified',
+        service,
+        deploymentId: targetId,
+        status,
+        releaseStatus: stagingHold ? 'HOLD' : 'PASS',
+        attemptId,
+        message: deploymentCliMessage(target) || null,
+      }));
       verified = true;
       break;
     }

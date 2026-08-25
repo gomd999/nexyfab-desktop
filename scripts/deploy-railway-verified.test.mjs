@@ -2,9 +2,11 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
   TARGET_RUNTIME_KEYS,
+  deploymentCliMessage,
   deploymentMessage,
   npmInvocation,
   railwayTargetIds,
+  selectDeploymentTarget,
   stagingHoldIssues,
   targetGateEnvironment,
 } from './deploy-railway-verified.mjs';
@@ -130,11 +132,63 @@ test('Windows invokes the npm JavaScript CLI without a command-shell dependency'
 test('deployment metadata binds the exact clean Git source identity', () => {
   const buildId = 'b'.repeat(40);
   assert.equal(
-    deploymentMessage({ stagingHold: true, expectedBuildId: buildId, now: '2026-08-25T00:00:00.000Z' }),
-    `verified staging HOLD deploy build=${buildId} source=clean-git-v1 at=2026-08-25T00:00:00.000Z`,
+    deploymentMessage({ stagingHold: true, expectedBuildId: buildId, attemptId: 'attempt-1', now: '2026-08-25T00:00:00.000Z' }),
+    `verified staging HOLD deploy build=${buildId} source=clean-git-v1 attempt=attempt-1 at=2026-08-25T00:00:00.000Z`,
   );
   assert.equal(
-    deploymentMessage({ stagingHold: false, expectedBuildId: buildId, now: '2026-08-25T00:00:00.000Z' }),
-    `verified deploy build=${buildId} source=clean-git-v1 at=2026-08-25T00:00:00.000Z`,
+    deploymentMessage({ stagingHold: false, expectedBuildId: buildId, attemptId: 'attempt-2', now: '2026-08-25T00:00:00.000Z' }),
+    `verified deploy build=${buildId} source=clean-git-v1 attempt=attempt-2 at=2026-08-25T00:00:00.000Z`,
   );
+  assert.throws(() => deploymentMessage({ stagingHold: false, expectedBuildId: buildId }), /attempt ID is required/);
+});
+
+test('deployment polling selects only the exact upload-attempt message', () => {
+  const beforeIds = new Set(['before-1']);
+  const rows = [
+    { id: 'other-new', status: 'BUILDING', meta: { cliMessage: 'someone else deployed concurrently' } },
+    { id: 'before-1', status: 'SUCCESS', meta: { cliMessage: 'old attempt' } },
+    { id: 'ours', status: 'BUILDING', meta: { cliMessage: 'exact-attempt-message' } },
+  ];
+  assert.equal(deploymentCliMessage(rows[2]), 'exact-attempt-message');
+  assert.equal(selectDeploymentTarget(rows, {
+    verifyOnly: false,
+    expectedDeploymentId: '',
+    attemptMessage: 'exact-attempt-message',
+    beforeIds,
+  })?.id, 'ours');
+  assert.equal(selectDeploymentTarget(rows, {
+    verifyOnly: false,
+    expectedDeploymentId: '',
+    attemptMessage: 'missing',
+    beforeIds,
+  }), null);
+});
+
+test('deployment polling rejects duplicate exact attempt messages', () => {
+  assert.throws(() => selectDeploymentTarget([
+    { id: 'ours-1', meta: { cliMessage: 'exact-attempt-message' } },
+    { id: 'ours-2', meta: { cliMessage: 'exact-attempt-message' } },
+  ], {
+    verifyOnly: false,
+    expectedDeploymentId: '',
+    attemptMessage: 'exact-attempt-message',
+    beforeIds: new Set(),
+  }), /multiple Railway deployments matched exact upload attempt/);
+});
+
+test('verify-only selects the explicit deployment ID instead of list order', () => {
+  const rows = [
+    { id: 'newest-unrelated', meta: { cliMessage: 'other' } },
+    { id: 'expected-deployment', meta: { cliMessage: 'verified source' } },
+  ];
+  assert.equal(selectDeploymentTarget(rows, {
+    verifyOnly: true,
+    expectedDeploymentId: 'expected-deployment',
+    attemptMessage: '',
+  })?.id, 'expected-deployment');
+  assert.equal(selectDeploymentTarget(rows, {
+    verifyOnly: true,
+    expectedDeploymentId: 'missing',
+    attemptMessage: '',
+  }), null);
 });
