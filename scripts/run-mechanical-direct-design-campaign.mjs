@@ -90,10 +90,29 @@ function inspectTrustedVerifiers(trustedDesignVerifiers) {
   };
 }
 
+function inspectTrustedAdapter(adapterPath, trustedAdapterSha256) {
+  const resolvedPath = adapterPath ? path.resolve(adapterPath) : null;
+  const regularFile = Boolean(resolvedPath
+    && fs.existsSync(resolvedPath)
+    && fs.statSync(resolvedPath).isFile()
+    && !fs.lstatSync(resolvedPath).isSymbolicLink());
+  const sha256 = regularFile ? hash(fs.readFileSync(resolvedPath)) : null;
+  const trustedSha256Configured = SHA256.test(String(trustedAdapterSha256 ?? ''));
+  return {
+    configured: Boolean(adapterPath),
+    regularFile,
+    sha256,
+    trustedSha256Configured,
+    digestMatches: Boolean(regularFile && trustedSha256Configured && sha256 === trustedAdapterSha256),
+    loadedOrExecuted: false,
+  };
+}
+
 export function inspectMechanicalDirectDesignCampaignPrerequisites({
   workbook,
   evidenceRoot,
   adapterPath,
+  trustedAdapterSha256 = process.env.NEXYFAB_MECHANICAL_DESIGN_ADAPTER_SHA256,
   trustedDesignVerifiers = parseTrustedMechanicalDesignVerifiers(),
 }) {
   let workbookError = null;
@@ -140,11 +159,7 @@ export function inspectMechanicalDirectDesignCampaignPrerequisites({
     invalid: Object.values(byRole).reduce((count, item) => count + item.invalid, 0),
     byRole,
   };
-  const resolvedAdapter = adapterPath ? path.resolve(adapterPath) : null;
-  const adapterRegularFile = Boolean(resolvedAdapter
-    && fs.existsSync(resolvedAdapter)
-    && fs.statSync(resolvedAdapter).isFile()
-    && !fs.lstatSync(resolvedAdapter).isSymbolicLink());
+  const adapter = inspectTrustedAdapter(adapterPath, trustedAdapterSha256);
   const verifiers = inspectTrustedVerifiers(trustedDesignVerifiers);
   const blockers = [];
   if (workbookError) blockers.push('direct_design_workbook_invalid');
@@ -153,14 +168,16 @@ export function inspectMechanicalDirectDesignCampaignPrerequisites({
   if (!workbookError && artifacts.invalid > 0) blockers.push('required_artifacts_invalid');
   if (!verifiers.roleSeparated) blockers.push('role_separated_trusted_verifiers_missing');
   if (!adapterPath) blockers.push('trusted_runtime_adapter_not_supplied');
-  else if (!adapterRegularFile) blockers.push('trusted_runtime_adapter_not_regular_file');
+  else if (!adapter.regularFile) blockers.push('trusted_runtime_adapter_not_regular_file');
+  if (!adapter.trustedSha256Configured) blockers.push('trusted_runtime_adapter_sha256_not_supplied_or_invalid');
+  else if (adapter.regularFile && !adapter.digestMatches) blockers.push('trusted_runtime_adapter_sha256_mismatch');
   return {
     schema: 'nexyfab.mechanical-direct-design-campaign-preflight.v1',
     releaseChannel: 'mechanical-core',
     readyToExecute: blockers.length === 0,
     workbook: { valid: !workbookError, error: workbookError, cases: workbookError ? 0 : workbook.cases.length },
     evidenceRoot: { path: resolvedRoot, exists: rootExists },
-    adapter: { configured: Boolean(adapterPath), regularFile: adapterRegularFile, loadedOrExecuted: false },
+    adapter,
     verifiers,
     artifacts,
     blockers,
@@ -346,20 +363,22 @@ async function main(args = process.argv.slice(2)) {
   const workbookPath = option(args, 'workbook');
   const statePath = option(args, 'state');
   const adapterPath = option(args, 'adapter');
+  const trustedAdapterSha256 = option(args, 'adapter-sha256') ?? process.env.NEXYFAB_MECHANICAL_DESIGN_ADAPTER_SHA256;
   if (args.includes('--preflight')) {
-    if (!workbookPath) throw new Error('Usage: --preflight --workbook=<workbook.json> [--adapter=<adapter.mjs>]');
+    if (!workbookPath) throw new Error('Usage: --preflight --workbook=<workbook.json> [--adapter=<adapter.mjs>] [--adapter-sha256=<approved-sha256>]');
     const resolvedWorkbook = path.resolve(workbookPath);
     const workbook = JSON.parse(fs.readFileSync(resolvedWorkbook, 'utf8'));
     const result = inspectMechanicalDirectDesignCampaignPrerequisites({
       workbook,
       evidenceRoot: path.dirname(resolvedWorkbook),
       adapterPath,
+      trustedAdapterSha256,
     });
     process.stdout.write(`${JSON.stringify(result)}\n`);
     if (!result.readyToExecute) process.exitCode = 4;
     return;
   }
-  if (!workbookPath || !statePath || !adapterPath) throw new Error('Usage: --workbook=<workbook.json> --state=<state.json> --adapter=<adapter.mjs> [--receipt=<receipt.json>] [--cases=id,id] [--resume]');
+  if (!workbookPath || !statePath || !adapterPath) throw new Error('Usage: --workbook=<workbook.json> --state=<state.json> --adapter=<adapter.mjs> --adapter-sha256=<approved-sha256> [--receipt=<receipt.json>] [--cases=id,id] [--resume]');
   const resolvedWorkbook = path.resolve(workbookPath);
   const workbook = JSON.parse(fs.readFileSync(resolvedWorkbook, 'utf8'));
   const evidenceRoot = path.dirname(resolvedWorkbook);
@@ -368,6 +387,10 @@ async function main(args = process.argv.slice(2)) {
   const state = args.includes('--resume')
     ? JSON.parse(fs.readFileSync(resolvedState, 'utf8'))
     : createMechanicalDirectDesignState(workbook);
+  const adapterTrust = inspectTrustedAdapter(adapterPath, trustedAdapterSha256);
+  if (!adapterTrust.regularFile) throw new Error('DIRECT_DESIGN_CAMPAIGN_ADAPTER_NOT_REGULAR_FILE');
+  if (!adapterTrust.trustedSha256Configured) throw new Error('DIRECT_DESIGN_CAMPAIGN_ADAPTER_SHA256_REQUIRED');
+  if (!adapterTrust.digestMatches) throw new Error('DIRECT_DESIGN_CAMPAIGN_ADAPTER_SHA256_MISMATCH');
   const adapter = await import(pathToFileURL(path.resolve(adapterPath)).href);
   if (typeof adapter.executeMechanicalDesignCase !== 'function') throw new Error('DIRECT_DESIGN_CAMPAIGN_ADAPTER_EXPORT_MISSING');
   const next = await runMechanicalDirectDesignCampaign({

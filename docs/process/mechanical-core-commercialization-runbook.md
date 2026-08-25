@@ -73,12 +73,13 @@ workbook은 폴더와 요구 artifact 경로만 만든다. 실제 STEP·NFAB·�
 호출해야 하며, fixture나 synthetic artifact를 상용 증거로 생성해서는 안 된다. 중단 후에는 같은 명령에
 `--resume`을 추가한다. 일부 case만 먼저 실행하려면 `--cases=design-01-hole,...`을 지정한다.
 
-실행 전 비파괴 preflight는 workbook, 240개 필수 파일 슬롯, 역할이 분리된 Ed25519 검증자, adapter 파일 존재를 확인한다. adapter를 import하거나 실행하지 않고 state·receipt·evidence도 쓰지 않으며, 준비되지 않은 경우 blocker를 출력하고 종료 코드 4를 반환한다.
+실행 전 비파괴 preflight는 workbook, 240개 필수 파일 슬롯, 역할이 분리된 Ed25519 검증자, adapter 정규 파일과 승인된 SHA-256의 정확한 일치를 확인한다. adapter를 import하거나 실행하지 않고 state·receipt·evidence도 쓰지 않으며, 준비되지 않은 경우 blocker를 출력하고 종료 코드 4를 반환한다. 승인 hash는 `--adapter-sha256` 또는 `NEXYFAB_MECHANICAL_DESIGN_ADAPTER_SHA256`로 별도 공급한다.
 
 ```powershell
 node scripts/run-mechanical-direct-design-campaign.mjs --preflight `
   --workbook=C:\Users\gomd9\Downloads\nexysys_1\nexyfab-commercial-evidence-260825-v4\direct-design\mechanical-direct-design-workbook.json `
-  --adapter=<trusted-runtime-adapter.mjs>
+  --adapter=<trusted-runtime-adapter.mjs> `
+  --adapter-sha256=<approved-sha256>
 ```
 
 ```powershell
@@ -86,6 +87,7 @@ node scripts/run-mechanical-direct-design-campaign.mjs `
   --workbook=C:\Users\gomd9\Downloads\nexysys_1\nexyfab-commercial-evidence-260825-v4\direct-design\mechanical-direct-design-workbook.json `
   --state=C:\Users\gomd9\Downloads\nexysys_1\nexyfab-commercial-evidence-260825-v4\direct-design\campaign-state.json `
   --adapter=<trusted-runtime-adapter.mjs> `
+  --adapter-sha256=<approved-sha256> `
   --receipt=docs/evidence/release/mechanical-direct-design-campaign-receipt.json
 ```
 

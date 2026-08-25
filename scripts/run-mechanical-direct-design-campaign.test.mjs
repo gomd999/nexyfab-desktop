@@ -179,7 +179,10 @@ test('preflight reports a fresh pending scaffold without creating state or evide
     assert.equal(result.artifacts.missing, 240);
     assert.equal(result.adapter.loadedOrExecuted, false);
     assert.equal(result.verifiers.roleSeparated, true);
-    assert.deepEqual(result.blockers, ['required_artifacts_missing']);
+    assert.deepEqual(result.blockers, [
+      'required_artifacts_missing',
+      'trusted_runtime_adapter_sha256_not_supplied_or_invalid',
+    ]);
     assert.equal(result.readyToExecute, false);
     assert.deepEqual(fs.readdirSync(root), ['adapter.mjs']);
   } finally { fs.rmSync(root, { recursive: true, force: true }); }
@@ -191,8 +194,9 @@ test('preflight becomes execution-ready only when all files, role-separated keys
     const book = workbook();
     for (const item of book.cases) writeCase(root, item);
     const adapterPath = path.join(root, 'adapter.mjs'); fs.writeFileSync(adapterPath, 'throw new Error("must not load");\n');
+    const trustedAdapterSha256 = hash(fs.readFileSync(adapterPath));
     const result = inspectMechanicalDirectDesignCampaignPrerequisites({
-      workbook: book, evidenceRoot: root, adapterPath, trustedDesignVerifiers,
+      workbook: book, evidenceRoot: root, adapterPath, trustedAdapterSha256, trustedDesignVerifiers,
     });
     assert.equal(result.artifacts.expected, 240);
     assert.equal(result.artifacts.present, 240);
@@ -200,9 +204,28 @@ test('preflight becomes execution-ready only when all files, role-separated keys
     assert.equal(result.artifacts.invalid, 0);
     assert.equal(result.verifiers.roleSeparated, true);
     assert.equal(result.adapter.regularFile, true);
+    assert.equal(result.adapter.digestMatches, true);
     assert.equal(result.adapter.loadedOrExecuted, false);
     assert.deepEqual(result.blockers, []);
     assert.equal(result.readyToExecute, true);
+  } finally { fs.rmSync(root, { recursive: true, force: true }); }
+});
+
+test('preflight rejects adapter byte substitution before import or execution', () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'nexyfab-direct-design-adapter-'));
+  try {
+    const book = workbook();
+    for (const item of book.cases) writeCase(root, item);
+    const adapterPath = path.join(root, 'adapter.mjs'); fs.writeFileSync(adapterPath, 'export const executeMechanicalDesignCase = true;\n');
+    const result = inspectMechanicalDirectDesignCampaignPrerequisites({
+      workbook: book, evidenceRoot: root, adapterPath,
+      trustedAdapterSha256: 'c'.repeat(64), trustedDesignVerifiers,
+    });
+    assert.equal(result.adapter.regularFile, true);
+    assert.equal(result.adapter.digestMatches, false);
+    assert.equal(result.adapter.loadedOrExecuted, false);
+    assert.deepEqual(result.blockers, ['trusted_runtime_adapter_sha256_mismatch']);
+    assert.equal(result.readyToExecute, false);
   } finally { fs.rmSync(root, { recursive: true, force: true }); }
 });
 
@@ -218,6 +241,7 @@ test('preflight rejects a stale workbook that omits the signed verification rece
     assert.equal(result.artifacts.expected, 0);
     assert.ok(result.blockers.includes('direct_design_workbook_invalid'));
     assert.ok(result.blockers.includes('trusted_runtime_adapter_not_supplied'));
+    assert.ok(result.blockers.includes('trusted_runtime_adapter_sha256_not_supplied_or_invalid'));
     assert.equal(result.readyToExecute, false);
   } finally { fs.rmSync(root, { recursive: true, force: true }); }
 });
