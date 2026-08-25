@@ -1,22 +1,163 @@
 {
-  "schema": "nexyfab.commercial-synthetic-campaign-receipt.v1",
-  "generatedAt": "2026-08-10T03:36:00.000Z",
+  "schema": "nexyfab.commercial-synthetic-campaign-receipt.v3",
+  "generatedAt": "2026-08-25T07:37:56.242Z",
   "ok": true,
   "certificationEvidence": false,
-  "purpose": "internal regression and release-toolchain drill",
-  "domains": {
-    "mechanical": { "cases": 20, "campaigns": 3, "repeats": 5, "runs": 300, "gatePasses": 300, "checks": "14/14" },
-    "building": { "cases": 20, "campaigns": 3, "repeats": 5, "runs": 300, "gatePasses": 300, "checks": "14/14" },
-    "civil": { "cases": 20, "campaigns": 3, "repeats": 5, "runs": 300, "gatePasses": 300, "checks": "14/14" },
-    "landscape": { "cases": 20, "campaigns": 3, "repeats": 5, "runs": 300, "gatePasses": 300, "checks": "14/14" },
-    "interior": { "cases": 20, "campaigns": 3, "repeats": 5, "runs": 300, "gatePasses": 300, "checks": "14/14" }
+  "release": {
+    "buildId": "4731d3bc669bed442132e56b3afd28496014c02b",
+    "deploymentId": "local-synthetic-campaign-20260825",
+    "gitHead": "4731d3bc669bed442132e56b3afd28496014c02b"
   },
-  "totalCases": 100,
+  "inputs": {
+    "campaignResults": [
+      "docs/evidence/cad-independent/local/commercial-synthetic-campaign-20260825/campaign-runs.json"
+    ],
+    "sourceCases": [
+      "docs/evidence/cad-independent/local/commercial-synthetic-campaign-20260825/source-cases.json"
+    ],
+    "executorSources": [
+      "scripts/build-commercial-synthetic-campaign-receipt.mjs",
+      "scripts/build-domain-accuracy-candidates.mjs",
+      "scripts/domain-accuracy-validator.mjs",
+      "scripts/drawing-to-3d/assembly.mjs",
+      "scripts/drawing-to-3d/domain-assemblies.mjs",
+      "scripts/run-commercial-synthetic-campaign.mjs"
+    ]
+  },
+  "sourceBindings": [
+    {
+      "path": "docs/evidence/cad-independent/local/commercial-synthetic-campaign-20260825/campaign-runs.json",
+      "bytes": 1592277,
+      "sha256": "611f648572629a920b328cdb08858344394edec86be09d6022577a33389a685a"
+    },
+    {
+      "path": "docs/evidence/cad-independent/local/commercial-synthetic-campaign-20260825/source-cases.json",
+      "bytes": 114744,
+      "sha256": "739168c3a5fdbea35866639d61e549ff9f51f52f0e6786bf2b58b5e9629eb801"
+    },
+    {
+      "path": "scripts/build-commercial-synthetic-campaign-receipt.mjs",
+      "bytes": 21719,
+      "sha256": "cef188b5e0c9e7a76410588152dbf3a076a8115f55a585d5a2b000e54eab5670"
+    },
+    {
+      "path": "scripts/build-domain-accuracy-candidates.mjs",
+      "bytes": 5508,
+      "sha256": "e07ad569112d2bc3ca062f91423192fd4f2a0d035270b9a336310c67b41fe62e"
+    },
+    {
+      "path": "scripts/domain-accuracy-validator.mjs",
+      "bytes": 21308,
+      "sha256": "86966f297d0ddf05c63b02f5c13c39388623faeab157fe6d4fe7d8006f0000a6"
+    },
+    {
+      "path": "scripts/drawing-to-3d/assembly.mjs",
+      "bytes": 117167,
+      "sha256": "9f4f61b71846bbab2eca2653c1ad0a4c7bfc21f11dae2b7c38e5c3c8b97038c7"
+    },
+    {
+      "path": "scripts/drawing-to-3d/domain-assemblies.mjs",
+      "bytes": 333208,
+      "sha256": "7ceb44e929a9f0efaed741799eb2e495cd6bd7f76d55858185cdf5c878d83b1c"
+    },
+    {
+      "path": "scripts/run-commercial-synthetic-campaign.mjs",
+      "bytes": 7839,
+      "sha256": "f866c6a3b5094732b4ae1f1a8c4f486de6e6b5d41ef742505e1298f1b977c2d1"
+    }
+  ],
+  "executor": {
+    "subject": "template_rebuild",
+    "requiredAxes": [
+      "requirements",
+      "geometry",
+      "semantic_objects",
+      "relationships"
+    ],
+    "rawAssertionsRequired": true,
+    "sourceBindings": [
+      {
+        "path": "scripts/build-commercial-synthetic-campaign-receipt.mjs",
+        "bytes": 21719,
+        "sha256": "cef188b5e0c9e7a76410588152dbf3a076a8115f55a585d5a2b000e54eab5670"
+      },
+      {
+        "path": "scripts/build-domain-accuracy-candidates.mjs",
+        "bytes": 5508,
+        "sha256": "e07ad569112d2bc3ca062f91423192fd4f2a0d035270b9a336310c67b41fe62e"
+      },
+      {
+        "path": "scripts/domain-accuracy-validator.mjs",
+        "bytes": 21308,
+        "sha256": "86966f297d0ddf05c63b02f5c13c39388623faeab157fe6d4fe7d8006f0000a6"
+      },
+      {
+        "path": "scripts/drawing-to-3d/assembly.mjs",
+        "bytes": 117167,
+        "sha256": "9f4f61b71846bbab2eca2653c1ad0a4c7bfc21f11dae2b7c38e5c3c8b97038c7"
+      },
+      {
+        "path": "scripts/drawing-to-3d/domain-assemblies.mjs",
+        "bytes": 333208,
+        "sha256": "7ceb44e929a9f0efaed741799eb2e495cd6bd7f76d55858185cdf5c878d83b1c"
+      },
+      {
+        "path": "scripts/run-commercial-synthetic-campaign.mjs",
+        "bytes": 7839,
+        "sha256": "f866c6a3b5094732b4ae1f1a8c4f486de6e6b5d41ef742505e1298f1b977c2d1"
+      }
+    ],
+    "identitySha256": "86510a680a4f337a018c0df7e16051f28df993c1a43d0a09cffd41437704df01"
+  },
+  "corpus": {
+    "path": "docs/evidence/release/commercial-validation-corpus-260810.json",
+    "bytes": 129271,
+    "sha256": "aa9638370d0d1a03c6a36aa4aadbfcdaaab218674399f3f5a9257ef43c7aa82f"
+  },
+  "domains": {
+    "mechanical": {
+      "cases": 20,
+      "campaigns": 3,
+      "repeats": 5,
+      "runs": 300,
+      "gatePasses": 300
+    },
+    "building": {
+      "cases": 20,
+      "campaigns": 3,
+      "repeats": 5,
+      "runs": 300,
+      "gatePasses": 300
+    },
+    "civil": {
+      "cases": 20,
+      "campaigns": 3,
+      "repeats": 5,
+      "runs": 300,
+      "gatePasses": 300
+    },
+    "landscape": {
+      "cases": 20,
+      "campaigns": 3,
+      "repeats": 5,
+      "runs": 300,
+      "gatePasses": 300
+    },
+    "interior": {
+      "cases": 20,
+      "campaigns": 3,
+      "repeats": 5,
+      "runs": 300,
+      "gatePasses": 300
+    }
+  },
   "totalRuns": 1500,
   "totalGatePasses": 1500,
-  "promotionPolicy": {
-    "scoreEligible": 0,
-    "independentHoldoutRequired": true,
-    "virtualReviewerApprovalRejected": true
-  }
+  "claimBoundary": {
+    "syntheticRegressionOnly": true,
+    "certifiesCommercialAccuracy": false,
+    "substitutesForIndependentHoldout": false,
+    "substitutesForNativeCadReview": false
+  },
+  "receiptSha256": "8b0b0f0f84332d752fe64329d562f2fa7d2769b9762b1a9e91504babd1feea4a"
 }

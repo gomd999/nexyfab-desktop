@@ -63,3 +63,15 @@ The checked receipt is therefore useful for closing the raw synthetic
 regression evidence gap only. It cannot by itself authorize Private Beta or
 GA, and the production release gate must still require an exact same-release
 receipt plus every independent/external qualification receipt.
+
+The checked local receipt is
+`docs/evidence/release/commercial-synthetic-campaign-receipt-260810.json`.
+It binds source/raw-evidence commit
+`4731d3bc669bed442132e56b3afd28496014c02b`, local observation identity
+`local-synthetic-campaign-20260825`, receipt SHA-256
+`8b0b0f0f84332d752fe64329d562f2fa7d2769b9762b1a9e91504babd1feea4a`,
+and executor identity
+`86510a680a4f337a018c0df7e16051f28df993c1a43d0a09cffd41437704df01`.
+The local verifier returns eligible only for that exact local identity. A
+production release has a different deployment identity and must recollect the
+receipt for its own exact release.

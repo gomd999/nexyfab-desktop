@@ -1,5 +1,27 @@
 # Platform current session
 
+## 2026-08-25 raw synthetic campaign v3 closure
+
+- Status: `RAW_SYNTHETIC_1500_OF_1500_VERIFIED /
+  BOOLEAN_ONLY_EVIDENCE_REJECTED / COMMERCIAL_CERTIFICATION_FALSE`.
+- The release gate no longer accepts a results file made of repeated
+  `requiredGatesPassed: true` booleans. Schema v3 requires exact source/corpus
+  identity, four ordered raw assertions per run, complete consecutive campaign
+  slots, executor-source bindings, and the immutable receipt hash.
+- The real deterministic template-rebuild evaluator ran 100 cases across five
+  domains, 3 campaigns, and 5 repeats: 1,500/1,500 runs and 6,000/6,000 raw
+  required-axis observations passed.
+- Bound source/raw-evidence commit:
+  `4731d3bc669bed442132e56b3afd28496014c02b`; receipt self-hash:
+  `8b0b0f0f84332d752fe64329d562f2fa7d2769b9762b1a9e91504babd1feea4a`;
+  executor identity:
+  `86510a680a4f337a018c0df7e16051f28df993c1a43d0a09cffd41437704df01`.
+- This closes a local raw-evidence weakness only. The receipt explicitly cannot
+  certify commercial accuracy or replace independent holdout/native-CAD review,
+  and its local deployment identity cannot satisfy an exact production release.
+- Handoff:
+  `HANDOFFS/20260825T074500Z-raw-synthetic-campaign-v3.md`.
+
 ## 2026-08-25 release-gate-hardened staging success
 
 - Status: `EXACT_HARDENED_SOURCE_STAGING_SUCCESS /
