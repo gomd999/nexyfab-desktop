@@ -1,5 +1,38 @@
 # Platform current session
 
+## 2026-08-25 actual crash-after-claim recovery closure
+
+- Status: `SEPARATE_APPROVED_EXECUTION_CLAIMED / WORKER_DISAPPEARANCE_MODELED /
+  LEASE_AUTHORITY_ATOMICALLY_CLEARED / VERIFIED_UNKNOWN_QUARANTINE_PASS /
+  STALE_CAPABILITY_REJECTED / ZERO_EXECUTION_SIDE_EFFECTS /
+  LOCAL_FIXTURE_ONLY / PRIVATE_BETA_FALSE / GA_FALSE`.
+- Precision implementation commit:
+  `94ad99b6eae22ab5b69f91992785aab8caa97e88`; Platform campaign commit:
+  `ad437dbf341b6c9d7643bf4d2e742ba077d0acbf`.
+- Expired-claim recovery now clears `lease_owner`, `lease_expires_at`, and
+  `capability_hash` in the same PostgreSQL transaction that moves the outbox
+  and execution journal to `VERIFIED_UNKNOWN`.
+- The local campaign no longer rewinds a completed execution to simulate
+  expiry. It enqueues and claims a second fully approved execution, produces no
+  callback/output/persistence record, advances the logical clock past its
+  lease, and proves exact quarantine, journal hash-chain integrity, idempotent
+  recovery, stale-capability HTTP 403, no re-claim, unchanged workspace head,
+  and zero output/callback/artifact/persistence/workspace-commit side effects.
+- Checked-in evidence:
+  `docs/evidence/cad-independent/commercial-precision-local-durability-20260825.json`;
+  schema `nexyfab.commercial-precision-local-durability.v3`, source HEAD
+  `ad437dbf341b6c9d7643bf4d2e742ba077d0acbf`, 29/29 PASS, receipt SHA-256
+  `8c27da0ab28c80c0e226feb84fbea5549c3fd27180e55c0a3069a4e1529a4c38`.
+- The same run also passes PostgreSQL/Redis AOF/object-storage restart recovery
+  and exact post-restart replay. Focused outbox/journal tests 23/23, strict
+  ESLint, Precision and Platform ownership checks, TypeScript, and architecture
+  checks pass.
+- This proves a disposable local fail-closed crash boundary only. The receipt
+  explicitly keeps release-runtime evidence, Private Beta, GA, and independent
+  CAD/manufacturing certification false; staging and production were unchanged.
+- Handoff:
+  `HANDOFFS/20260825T115612Z-crash-after-claim-recovery.md`.
+
 ## 2026-08-25 actual service-restart durability closure
 
 - Status: `POSTGRES_RESTART_PERSISTENCE_PASS / REDIS_AOF_RESTART_PASS /

@@ -1,9 +1,9 @@
 {
-  "schema": "nexyfab.commercial-precision-local-durability.v2",
-  "generatedAt": "2026-08-25T11:29:54.200Z",
+  "schema": "nexyfab.commercial-precision-local-durability.v3",
+  "generatedAt": "2026-08-25T11:55:43.740Z",
   "status": "LOCAL_DURABLE_EXACT_CLOSED_LOOP_PASS",
   "source": {
-    "gitHead": "9819aa13dd4dc9759416b1ac23406cd2b877564e",
+    "gitHead": "ad437dbf341b6c9d7643bf4d2e742ba077d0acbf",
     "migrationVersion": 2026082502,
     "migrationSourceSha256": "07451ebcc671a837bb51c6fed94e6874068814a51c4da674aa0b89b7595f3ec9",
     "imageDigests": {
@@ -16,12 +16,12 @@
     "jobId": "job-1",
     "executionId": "exec-b41d3fca676d7343d431b87d",
     "workerIdentity": "local-worker-b",
-    "workerFingerprintSha256": "da2340e59e5e3a511634e1207ed118b7604420b25a29d42e08d914cfc7721b11",
+    "workerFingerprintSha256": "75ff6be5a4d56443986c72569ee69ff799136fef5c1ac79090131a6ea453d9b5",
     "nativeExecutableSha256": "91ec09dda8f20556f366110859f106ab189d45f8f6a2bd092e6785174ad4a0fa",
-    "nativeInvocationSha256": "20faf13343e09d4543820785564e145c1665a18153da511375b4b341724a182b",
+    "nativeInvocationSha256": "950a3210887b86823c697c14a8797802d25eb48e212fa48130cc3a6fe5d0980c",
     "inputArtifactSha256": "1102d5aa81e5fd39eb9cd4bf461d2eb159dd2352772d2f7c73d65a57745f840d",
-    "workerReceiptSha256": "1bc214aea050d381475f4ad5ac95bfa248edaca39a0c8bfb730a2d3d84e37883",
-    "persistenceReceiptSha256": "fab519164658c3aac788dbf50dacb96942dd5b9bbaa078f14e4124a1b91b2533",
+    "workerReceiptSha256": "8b284738094ca281418749561dbddd9cabccf94f9fece5658cd5cc4dd1f3cc9d",
+    "persistenceReceiptSha256": "33571c7bb07d4c477381d3edca6fcb2bee2102eed1e3cefe562f6570e4f100dd",
     "workspaceAfterRevision": 8,
     "workspaceAfterContentHash": "986d805d219649580923ea1be36a38b7f9fd26e7cd572da5dfbc11b676d97595",
     "outputArtifacts": [
@@ -40,10 +40,10 @@
         "byteLength": 2477
       },
       {
-        "artifactId": "verification-dbef7c29983f683031fcbf651a3bd25c732a21943b6026c3",
+        "artifactId": "verification-4373e46e6450e249fb522cf0bf4e7e9adbdd662f3add320d",
         "role": "verification",
-        "objectKey": "private/commercial-precision-outputs/org-tenant-1/projects/project-1/jobs/job-1/verification/verification-dbef7c29983f683031fcbf651a3bd25c732a21943b6026c3-dbef7c29983f683031fcbf651a3bd25c732a21943b6026c39311ac2fafea3753.json",
-        "contentSha256": "dbef7c29983f683031fcbf651a3bd25c732a21943b6026c39311ac2fafea3753",
+        "objectKey": "private/commercial-precision-outputs/org-tenant-1/projects/project-1/jobs/job-1/verification/verification-4373e46e6450e249fb522cf0bf4e7e9adbdd662f3add320d-4373e46e6450e249fb522cf0bf4e7e9adbdd662f3add320d8b1a18a86a0b48f4.json",
+        "contentSha256": "4373e46e6450e249fb522cf0bf4e7e9adbdd662f3add320d8b1a18a86a0b48f4",
         "byteLength": 795
       }
     ]
@@ -68,6 +68,7 @@
     "callbackExactRetryIdempotent": "PASS",
     "callbackReplayConflictRejected": "PASS",
     "expiredLeaseRecovery": "PASS",
+    "crashAfterClaimRecovery": "PASS",
     "verifiedUnknownNoReplay": "PASS",
     "credentialRotationTrustBoundary": "PASS",
     "nativeAdapterBinding": "PASS",
@@ -86,10 +87,11 @@
     "authoritativeParserPersistenceExercised": true,
     "workspaceCasCommitExercised": true,
     "disposableServiceRestartExercised": true,
+    "actualCrashAfterClaimRecoveryExercised": true,
     "fixtureIsCommercialRuntimeEvidence": false,
     "privateBetaEligible": false,
     "commercialGaEligible": false,
     "independentCadOrManufacturingCertified": false
   },
-  "receiptSha256": "6946c7c70124bfce1dd9b99c00617e55176684cfeca817c60b315387ab948c23"
+  "receiptSha256": "8c27da0ab28c80c0e226feb84fbea5549c3fd27180e55c0a3069a4e1529a4c38"
 }

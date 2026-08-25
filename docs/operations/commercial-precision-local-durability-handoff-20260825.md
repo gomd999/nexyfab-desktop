@@ -6,10 +6,23 @@ This handoff records the source/infrastructure closure shared by AI Design,
 Precision CAD, and integration. It does not authorize a staging or production
 promotion.
 
-## Current service-restart closure
+## Current crash-after-claim and service-restart closure
 
-Commit `9819aa13dd4dc9759416b1ac23406cd2b877564e` advances the local
-receipt to `nexyfab.commercial-precision-local-durability.v2`. The campaign now
+Precision commit `94ad99b6eae22ab5b69f91992785aab8caa97e88` clears expired
+`lease_owner`, `lease_expires_at`, and `capability_hash` in the same PostgreSQL
+transaction that quarantines the outbox and journal. Platform commit
+`ad437dbf341b6c9d7643bf4d2e742ba077d0acbf` advances the local receipt to
+`nexyfab.commercial-precision-local-durability.v3`.
+
+The campaign now creates a second fully approved execution, enqueues and claims
+it normally, then models worker disappearance by producing no callback, output,
+or persistence record before advancing the logical clock beyond the lease. It
+requires outbox and journal `VERIFIED_UNKNOWN`, a valid journal hash chain, the
+exact recovery reason, cleared lease authority, idempotent recovery, stale
+capability HTTP 403, no re-claim, an unchanged workspace head, and zero output,
+callback, worker-artifact, persistence, or workspace-commit side effects.
+
+The campaign also
 closes the database, Redis, and object-storage clients; actually restarts all
 three disposable services; waits for health; rediscovers their published ports;
 and reconnects using fresh clients.
@@ -22,9 +35,9 @@ replays authoritative persistence through a read-only artifact store that
 throws on every attempted write; the only accepted outcome is exact `REPLAY`.
 
 The checked-in receipt is bound to source HEAD
-`9819aa13dd4dc9759416b1ac23406cd2b877564e`, was generated at
-`2026-08-25T11:29:54.200Z`, passes 28/28 checks, and has receipt SHA-256
-`6946c7c70124bfce1dd9b99c00617e55176684cfeca817c60b315387ab948c23`.
+`ad437dbf341b6c9d7643bf4d2e742ba077d0acbf`, was generated at
+`2026-08-25T11:55:43.740Z`, passes 29/29 checks, and has receipt SHA-256
+`8c27da0ab28c80c0e226feb84fbea5549c3fd27180e55c0a3069a4e1529a4c38`.
 The claim boundary remains explicit: this is a disposable deterministic
 fixture, not release runtime evidence; Private Beta and GA are false. No
 staging or production service was deployed, restarted, reconfigured, or
@@ -54,6 +67,8 @@ The separate operational handoff is
 - live-gate missing-worker-trust regression: `f42aee1c`;
 - date-stable spatial receipt regression: `eb04248d`;
 - actual service-restart durability: `9819aa13`;
+- expired-lease authority clearing: `94ad99b6`;
+- actual crash-after-claim campaign: `ad437dbf`;
 - execution contract: `nexyfab.precision-cad-commercial-execution.v3`;
 - immutable input: `nexyfab.precision-cad-commercial-input.v2`;
 - runtime receipt: `nexyfab.commercial-precision-runtime-evidence.v3`;
@@ -88,14 +103,15 @@ fresh-client recovery; and removed all containers, networks, and volumes.
 Receipt:
 `docs/evidence/cad-independent/commercial-precision-local-durability-20260825.json`
 
-- source Git head: `9819aa13dd4dc9759416b1ac23406cd2b877564e`;
-- generated: `2026-08-25T11:29:54.200Z`;
+- source Git head: `ad437dbf341b6c9d7643bf4d2e742ba077d0acbf`;
+- generated: `2026-08-25T11:55:43.740Z`;
 - receipt SHA-256:
-  `6946c7c70124bfce1dd9b99c00617e55176684cfeca817c60b315387ab948c23`;
-- result: 28/28 `PASS`, including multi-instance exclusion, immutable input and
+  `8c27da0ab28c80c0e226feb84fbea5549c3fd27180e55c0a3069a4e1529a4c38`;
+- result: 29/29 `PASS`, including multi-instance exclusion, immutable input and
   three-output readback, isolated native execution, Ed25519/HMAC verification,
   wrong-worker/input/output/conflicting-replay rejection, exact callback retry,
-  expired-lease quarantine and no-replay, credential rotation, approved native
+  a separate real claim followed by worker-disappearance quarantine, expired-
+  lease authority clearing and no-replay, credential rotation, approved native
   executable/invocation substitution rejection, artifact
   snapshots, signed parser persistence, workspace HEAD CAS, actual PostgreSQL,
   Redis AOF, and object-storage restart persistence, and exact persistence
