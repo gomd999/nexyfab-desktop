@@ -456,7 +456,7 @@ export async function verifyBackupRestore({
       productionRestorePerformed: false,
     },
     backup: {
-      file: path.relative(process.cwd(), backupFile),
+      file: path.basename(backupFile),
       reused: backup.reused,
       bytes: backupBytes,
       sha256: backupSha256,
