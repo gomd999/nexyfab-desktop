@@ -5,7 +5,10 @@ import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
 import { authenticatedE2EReceiptEligible, closedBetaIntegrityReceiptEligible, enterpriseSsoReadinessStatus, evaluateCommercializationReadiness, expertReviewReceiptEligible, expertReviewSignoffPayload, largeUploadStagingReadinessStatus, liveSmokeReceiptEligible, productReleaseScopeFor, productionMigrationReceiptEligible, productionProtectedStateReceiptEligible, releaseContractFor, resourceBaselineReceiptEligible, restoreReceiptEligible, sevenDayOperationsReceiptEligible, syntheticCampaignReceiptEligible, windowsSeaReleaseStatus } from './commercialization-readiness-gate.mjs';
-import { buildCommercialSyntheticCampaignReceipt } from './build-commercial-synthetic-campaign-receipt.mjs';
+import {
+  COMMERCIAL_SYNTHETIC_REQUIRED_AXES,
+  buildCommercialSyntheticCampaignReceipt,
+} from './build-commercial-synthetic-campaign-receipt.mjs';
 import { buildRailwayResourceBaseline } from './build-railway-resource-baseline-v2.mjs';
 import { buildOpenScadHttpSmokeReceipt } from './build-openscad-http-smoke-v2.mjs';
 import { buildRailwayStagingIsolationEvidenceV2 } from './build-railway-staging-isolation-evidence-v2.mjs';
@@ -188,15 +191,45 @@ const resourceBaselineReceipt = buildRailwayResourceBaseline({
   now: fixtureNow,
 });
 const syntheticCases = [];
+const syntheticCorpusCases = [];
 const syntheticRuns = [];
 for (const domain of Object.keys(syntheticDomains)) {
   for (let caseIndex = 1; caseIndex <= 20; caseIndex++) {
     const caseId = `${domain}-case-${caseIndex}`;
     const sourceHash = createHash('sha256').update(`${domain}:${caseIndex}`).digest('hex');
-    syntheticCases.push({ caseId, domain, sourceHash, split: 'candidate' });
+    const identity = {
+      caseId,
+      domain,
+      sourceHash,
+      templateId: `template-${caseIndex}`,
+      parameters: { caseIndex },
+      artifactHash: createHash('sha256').update(`artifact:${domain}:${caseIndex}`).digest('hex'),
+      artifactSummary: { partCount: caseIndex, roles: ['fixture'] },
+    };
+    syntheticCorpusCases.push({ schema: 'nexyfab.domain-accuracy-candidate.v1', split: 'candidate', ...identity });
+    syntheticCases.push({
+      schema: 'nexyfab.commercial-synthetic-campaign-case.v1',
+      split: 'synthetic',
+      syntheticRequiredAxes: [...COMMERCIAL_SYNTHETIC_REQUIRED_AXES],
+      ...identity,
+    });
     for (let campaign = 1; campaign <= 3; campaign++) {
       for (let repeat = 1; repeat <= 5; repeat++) {
-        syntheticRuns.push({ caseId, domain, sourceHash, campaign, repeat, usedForTuning: false, requiredGatesPassed: true });
+        syntheticRuns.push({
+          schema: 'nexyfab.commercial-synthetic-campaign-run.v1',
+          subject: 'template_rebuild',
+          caseId,
+          domain,
+          sourceHash,
+          campaign,
+          repeat,
+          usedForTuning: false,
+          requiredGatesPassed: true,
+          falseVerified: false,
+          falseClear: false,
+          destructivePartMerge: false,
+          assertions: COMMERCIAL_SYNTHETIC_REQUIRED_AXES.map(axis => ({ axis, status: 'pass', reason: `${axis}_measured` })),
+        });
       }
     }
   }
@@ -205,12 +238,14 @@ const syntheticSourcePath = writeEvidence('synthetic-source.json', { cases: synt
 const syntheticResultsPath = writeEvidence('synthetic-results.json', { results: syntheticRuns });
 const syntheticCorpusPath = writeEvidence('synthetic-corpus.json', {
   schema: 'nexyfab.commercial-validation-corpus.v1',
-  lanes: { synthetic: { cases: syntheticCases } },
+  lanes: { synthetic: { cases: syntheticCorpusCases } },
 });
+const syntheticExecutorPath = writeEvidence('synthetic-executor.mjs', { source: 'bound executor fixture' });
 const syntheticCampaignReceipt = buildCommercialSyntheticCampaignReceipt({
   root: evidenceRoot,
   sourcePath: syntheticSourcePath,
   resultPath: syntheticResultsPath,
+  executorSourcePaths: [syntheticExecutorPath],
   corpusPath: syntheticCorpusPath,
   release: releaseBinding,
   generatedAt: new Date(fixtureNow).toISOString(),
@@ -221,17 +256,19 @@ function scopedSyntheticCampaignReceipt(requiredDomains) {
   const key = [...requiredDomains].sort().join('-');
   if (scopedSyntheticReceipts.has(key)) return scopedSyntheticReceipts.get(key);
   const selectedCases = syntheticCases.filter(item => requiredDomains.includes(item.domain));
+  const selectedCorpusCases = syntheticCorpusCases.filter(item => requiredDomains.includes(item.domain));
   const selectedRuns = syntheticRuns.filter(item => requiredDomains.includes(item.domain));
   const sourcePath = writeEvidence(`synthetic-source-${key}.json`, { cases: selectedCases });
   const resultPath = writeEvidence(`synthetic-results-${key}.json`, { results: selectedRuns });
   const corpusPath = writeEvidence(`synthetic-corpus-${key}.json`, {
     schema: 'nexyfab.commercial-validation-corpus.v1',
-    lanes: { synthetic: { cases: selectedCases } },
+    lanes: { synthetic: { cases: selectedCorpusCases } },
   });
   const receipt = buildCommercialSyntheticCampaignReceipt({
     root: evidenceRoot,
     sourcePath,
     resultPath,
+    executorSourcePaths: [syntheticExecutorPath],
     corpusPath,
     release: releaseBinding,
     requiredDomains,

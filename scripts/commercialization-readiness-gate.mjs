@@ -8,7 +8,11 @@ import { parseTrustedIndependentReviewers, validateIndependentDomainReviewKit } 
 import { verifySevenDayOperationsReceiptBindings, verifySevenDayOperationsReceiptSignature } from './build-seven-day-operations-receipt.mjs';
 import { SHA256 as IMMUTABLE_SHA256, sha256 as immutableSha256, verifyReceiptSha256 } from './immutable-receipt-binding.mjs';
 import { verifyRailwayResourceBaselineDerivation } from './build-railway-resource-baseline-v2.mjs';
-import { verifyCommercialSyntheticCampaignReceiptDerivation } from './build-commercial-synthetic-campaign-receipt.mjs';
+import {
+  COMMERCIAL_SYNTHETIC_CAMPAIGN_RECEIPT_SCHEMA,
+  COMMERCIAL_SYNTHETIC_REQUIRED_AXES,
+  verifyCommercialSyntheticCampaignReceiptDerivation,
+} from './build-commercial-synthetic-campaign-receipt.mjs';
 import { verifyOpenScadHttpSmokeReceipt } from './build-openscad-http-smoke-v2.mjs';
 import { verifyRailwayStagingIsolationEvidenceV2 } from './build-railway-staging-isolation-evidence-v2.mjs';
 import { verifyCommercialSecurityEvidenceReceipt } from './build-commercial-security-evidence-receipt-v2.mjs';
@@ -523,9 +527,16 @@ export function syntheticCampaignReceiptEligible(receipt, expectedRelease, {
   const totalRuns = domainNames.reduce((sum, domain) => sum + domains?.[domain]?.runs, 0);
   const totalGatePasses = domainNames.reduce((sum, domain) => sum + domains?.[domain]?.gatePasses, 0);
   const corpus = receipt?.corpus;
-  return releaseBoundLocalEvidence(receipt, expectedRelease, now, 'nexyfab.commercial-synthetic-campaign-receipt.v2', root)
+  return releaseBoundLocalEvidence(receipt, expectedRelease, now, COMMERCIAL_SYNTHETIC_CAMPAIGN_RECEIPT_SCHEMA, root)
     && receipt?.ok === true
     && receipt?.certificationEvidence === false
+    && receipt?.executor?.subject === 'template_rebuild'
+    && receipt?.executor?.rawAssertionsRequired === true
+    && JSON.stringify(receipt?.executor?.requiredAxes) === JSON.stringify(COMMERCIAL_SYNTHETIC_REQUIRED_AXES)
+    && receipt?.claimBoundary?.syntheticRegressionOnly === true
+    && receipt?.claimBoundary?.certifiesCommercialAccuracy === false
+    && receipt?.claimBoundary?.substitutesForIndependentHoldout === false
+    && receipt?.claimBoundary?.substitutesForNativeCadReview === false
     && domainRowsValid
     && receipt.totalRuns === totalRuns
     && receipt.totalGatePasses === totalGatePasses

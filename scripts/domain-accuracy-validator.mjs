@@ -40,8 +40,9 @@ import { placedAabb } from './drawing-to-3d/assembly.mjs';
 /** 판정 축 = 케이스가 실어온 ground truth 축 그대로 — 프로파일 필수축은
  *  evidence 계층이 케이스 승인 시 완전성 검증하므로(도메인별 10~14축 상이),
  *  여기서 목록을 중복 하드코딩하면 드리프트 함정이다. */
-const axesOfCase = caseValue =>
-  [...new Set((caseValue.groundTruthAssertions ?? []).map(truth => truth.axis))];
+const axesOfCase = caseValue => caseValue?.split === 'synthetic'
+  ? [...new Set(caseValue.syntheticRequiredAxes ?? [])]
+  : [...new Set((caseValue?.groundTruthAssertions ?? []).map(truth => truth.axis))];
 
 const MEASURED_AXES = new Set(['requirements', 'geometry', 'semantic_objects', 'relationships', 'output_consistency', 'structures']);
 

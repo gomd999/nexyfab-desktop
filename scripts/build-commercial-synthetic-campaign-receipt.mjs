@@ -5,13 +5,19 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 export const COMMERCIAL_SYNTHETIC_CAMPAIGN_RECEIPT_SCHEMA =
-  'nexyfab.commercial-synthetic-campaign-receipt.v2';
+  'nexyfab.commercial-synthetic-campaign-receipt.v3';
 export const COMMERCIAL_DOMAINS = Object.freeze([
   'mechanical',
   'building',
   'civil',
   'landscape',
   'interior',
+]);
+export const COMMERCIAL_SYNTHETIC_REQUIRED_AXES = Object.freeze([
+  'requirements',
+  'geometry',
+  'semantic_objects',
+  'relationships',
 ]);
 
 const SHA256 = /^[a-f0-9]{64}$/;
@@ -169,6 +175,41 @@ function indexCases(cases, domains) {
   return byDomain;
 }
 
+function sameStringArray(actual, expected) {
+  return Array.isArray(actual)
+    && actual.length === expected.length
+    && actual.every((value, index) => value === expected[index]);
+}
+
+function assertSyntheticSourceCase(item) {
+  if (item?.schema !== 'nexyfab.commercial-synthetic-campaign-case.v1'
+    || item?.split !== 'synthetic'
+    || typeof item?.templateId !== 'string'
+    || !item.templateId.trim()
+    || !item?.parameters
+    || typeof item.parameters !== 'object'
+    || Array.isArray(item.parameters)
+    || !SHA256.test(String(item?.artifactHash ?? ''))
+    || !item?.artifactSummary
+    || typeof item.artifactSummary !== 'object'
+    || Array.isArray(item.artifactSummary)
+    || !sameStringArray(item.syntheticRequiredAxes, COMMERCIAL_SYNTHETIC_REQUIRED_AXES)) {
+    throw new Error(`source_case_contract_invalid:${String(item?.caseId ?? '')}`);
+  }
+}
+
+function corpusIdentity(item) {
+  return {
+    caseId: item?.caseId,
+    domain: item?.domain,
+    sourceHash: item?.sourceHash,
+    templateId: item?.templateId,
+    parameters: item?.parameters,
+    artifactHash: item?.artifactHash,
+    artifactSummary: item?.artifactSummary,
+  };
+}
+
 function assertCasesMatchCorpus(casesByDomain, corpus, domains) {
   const corpusCases = recordsIn(corpus?.lanes?.synthetic, ['cases'], 'corpus_synthetic');
   const corpusByDomain = indexCases(corpusCases.filter(item => domains.includes(item?.domain)), domains);
@@ -178,7 +219,7 @@ function assertCasesMatchCorpus(casesByDomain, corpus, domains) {
     if (sourceCases.size !== boundCorpusCases.size) throw new Error(`source_corpus_case_set_mismatch:${domain}`);
     for (const [caseId, sourceCase] of sourceCases) {
       const corpusCase = boundCorpusCases.get(caseId);
-      if (!corpusCase || corpusCase.sourceHash !== sourceCase.sourceHash) {
+      if (!corpusCase || sha256(corpusIdentity(corpusCase)) !== sha256(corpusIdentity(sourceCase))) {
         throw new Error(`source_corpus_case_mismatch:${domain}:${caseId}`);
       }
     }
@@ -199,6 +240,22 @@ function deriveDomain(domain, cases, runs) {
     }
     if (run.usedForTuning !== false || typeof run.requiredGatesPassed !== 'boolean') {
       throw new Error(`campaign_run_contract_invalid:${domain}:${run.caseId}`);
+    }
+    if (run.schema !== 'nexyfab.commercial-synthetic-campaign-run.v1'
+      || run.subject !== 'template_rebuild'
+      || run.falseVerified !== false
+      || run.falseClear !== false
+      || run.destructivePartMerge !== false
+      || !Array.isArray(run.assertions)) {
+      throw new Error(`campaign_run_observation_invalid:${domain}:${run.caseId}`);
+    }
+    const assertionAxes = run.assertions.map(assertion => assertion?.axis);
+    if (!sameStringArray(assertionAxes, COMMERCIAL_SYNTHETIC_REQUIRED_AXES)
+      || run.assertions.some(assertion => assertion?.status !== 'pass'
+        || typeof assertion?.reason !== 'string'
+        || !assertion.reason.trim())
+      || run.requiredGatesPassed !== true) {
+      throw new Error(`campaign_run_assertions_invalid:${domain}:${run.caseId}`);
     }
     if (!SHA256.test(String(run.sourceHash ?? '')) || run.sourceHash !== cases.get(run.caseId).sourceHash) {
       throw new Error(`campaign_run_source_mismatch:${domain}:${run.caseId}`);
@@ -221,7 +278,10 @@ function deriveDomain(domain, cases, runs) {
   const first = sets[0];
   const expectedCampaigns = first.campaigns;
   const expectedRepeats = first.repeatsByCampaign.get(expectedCampaigns[0]);
-  if (!expectedRepeats?.length || expectedCampaigns.some(campaign => {
+  if (!expectedRepeats?.length
+    || expectedCampaigns.some((value, index) => value !== index + 1)
+    || expectedRepeats.some((value, index) => value !== index + 1)
+    || expectedCampaigns.some(campaign => {
     const repeats = first.repeatsByCampaign.get(campaign);
     return !repeats || repeats.length !== expectedRepeats.length
       || repeats.some((value, repeatIndex) => value !== expectedRepeats[repeatIndex]);
@@ -268,6 +328,8 @@ export function buildCommercialSyntheticCampaignReceipt({
   sourceFiles,
   campaignResults,
   sourceCases,
+  executorSourcePaths,
+  executorSources,
   corpusPath,
   corpusFile,
   commercialValidationCorpusPath,
@@ -283,16 +345,19 @@ export function buildCommercialSyntheticCampaignReceipt({
     ?? pathsFrom({ campaignResults }, ['campaignResults']);
   const sourceJsonInputPaths = sourcePaths ?? sourceJsonPaths ?? sourceFiles ?? (sourcePath ? [sourcePath] : undefined)
     ?? pathsFrom({ sourceCases }, ['sourceCases']);
+  const executorInputPaths = executorSourcePaths ?? pathsFrom({ executorSources }, ['executorSources']);
   if (!Array.isArray(resultPaths) || !resultPaths.length) throw new Error('campaign_result_paths_missing');
   if (!Array.isArray(sourceJsonInputPaths) || !sourceJsonInputPaths.length) throw new Error('source_paths_missing');
+  if (!Array.isArray(executorInputPaths) || !executorInputPaths.length) throw new Error('executor_source_paths_missing');
   const corpusInputPath = corpusPath ?? corpusFile ?? commercialValidationCorpusPath;
   if (typeof corpusInputPath !== 'string' || !corpusInputPath.trim()) throw new Error('corpus_path_missing');
   assertFresh(generatedAt, now);
   const releaseBinding = assertRelease(release);
   const resultBindings = resultPaths.map(file => relativeFile(root, file, 'campaign_result'));
   const sourceBindings = sourceJsonInputPaths.map(file => relativeFile(root, file, 'source'));
+  const executorBindings = executorInputPaths.map(file => relativeFile(root, file, 'executor_source'));
   const corpusBinding = relativeFile(root, corpusInputPath, 'corpus');
-  assertBindingUniqueness([...resultBindings, ...sourceBindings, corpusBinding]);
+  assertBindingUniqueness([...resultBindings, ...sourceBindings, ...executorBindings, corpusBinding]);
   if (corpusBytes !== undefined
     && !Buffer.from(corpusBytes).equals(corpusBinding.bytesValue)) throw new Error('corpus_bytes_mismatch');
   const corpus = parseJson(corpusBinding, 'corpus');
@@ -301,6 +366,7 @@ export function buildCommercialSyntheticCampaignReceipt({
   const cases = sourceBindings.flatMap(binding => recordsIn(parseJson(binding, 'source'), ['cases', 'sourceCases', 'items'], 'source'));
   const runs = resultBindings.flatMap(binding => recordsIn(parseJson(binding, 'campaign_result'), ['results', 'runs', 'campaignResults', 'items'], 'campaign_result'));
   const casesByDomain = indexCases(cases, domains);
+  cases.forEach(assertSyntheticSourceCase);
   assertCasesMatchCorpus(casesByDomain, corpus, domains);
   const runsByDomain = Object.fromEntries(domains.map(domain => [domain, []]));
   for (const run of runs) {
@@ -322,14 +388,32 @@ export function buildCommercialSyntheticCampaignReceipt({
     inputs: {
       campaignResults: resultBindings.map(binding => binding.path).sort(),
       sourceCases: sourceBindings.map(binding => binding.path).sort(),
+      executorSources: executorBindings.map(binding => binding.path).sort(),
     },
-    sourceBindings: [...resultBindings, ...sourceBindings]
+    sourceBindings: [...resultBindings, ...sourceBindings, ...executorBindings]
       .map(binding => Object.fromEntries(Object.entries(binding).filter(([key]) => key !== 'bytesValue')))
       .sort((left, right) => left.path.localeCompare(right.path)),
+    executor: {
+      subject: 'template_rebuild',
+      requiredAxes: [...COMMERCIAL_SYNTHETIC_REQUIRED_AXES],
+      rawAssertionsRequired: true,
+      sourceBindings: executorBindings
+        .map(binding => Object.fromEntries(Object.entries(binding).filter(([key]) => key !== 'bytesValue')))
+        .sort((left, right) => left.path.localeCompare(right.path)),
+      identitySha256: sha256(executorBindings
+        .map(binding => ({ path: binding.path, bytes: binding.bytes, sha256: binding.sha256 }))
+        .sort((left, right) => left.path.localeCompare(right.path))),
+    },
     corpus: Object.fromEntries(Object.entries(corpusBinding).filter(([key]) => key !== 'bytesValue')),
     domains: domainRows,
     totalRuns,
     totalGatePasses,
+    claimBoundary: {
+      syntheticRegressionOnly: true,
+      certifiesCommercialAccuracy: false,
+      substitutesForIndependentHoldout: false,
+      substitutesForNativeCadReview: false,
+    },
   };
   return withReceiptSha256(unsigned);
 }
@@ -345,17 +429,21 @@ export function verifyCommercialSyntheticCampaignReceiptDerivation(receipt, {
   try {
     const campaignResultPaths = receipt?.inputs?.campaignResults;
     const sourcePaths = receipt?.inputs?.sourceCases;
+    const executorSourcePaths = receipt?.inputs?.executorSources;
     const corpusPath = receipt?.corpus?.path;
     const requiredDomains = receipt?.domains && typeof receipt.domains === 'object' && !Array.isArray(receipt.domains)
       ? Object.keys(receipt.domains)
       : [];
     if (!Array.isArray(campaignResultPaths) || !campaignResultPaths.length
       || !Array.isArray(sourcePaths) || !sourcePaths.length
+      || !Array.isArray(executorSourcePaths) || !executorSourcePaths.length
       || campaignResultPaths.some(item => typeof item !== 'string' || !item)
-      || sourcePaths.some(item => typeof item !== 'string' || !item)) return false;
+      || sourcePaths.some(item => typeof item !== 'string' || !item)
+      || executorSourcePaths.some(item => typeof item !== 'string' || !item)) return false;
     const rebuilt = buildCommercialSyntheticCampaignReceipt({
       campaignResultPaths,
       sourcePaths,
+      executorSourcePaths,
       corpusPath,
       release: receipt.release,
       generatedAt: receipt.generatedAt,
@@ -373,6 +461,7 @@ export function main(args = process.argv.slice(2)) {
   const root = path.resolve(option(args, 'root', process.cwd()));
   const resultPaths = optionList(args, ['campaign-result', 'campaign-results', 'results']);
   const sourcePaths = optionList(args, ['source', 'source-json', 'source-case']);
+  const executorSourcePaths = optionList(args, ['executor-source', 'executor-sources']);
   const corpusPath = option(args, 'corpus');
   const out = option(args, 'out');
   const release = {
@@ -383,6 +472,7 @@ export function main(args = process.argv.slice(2)) {
   const receipt = buildCommercialSyntheticCampaignReceipt({
     campaignResultPaths: resultPaths,
     sourcePaths,
+    executorSourcePaths,
     corpusPath,
     release,
     generatedAt: option(args, 'generated-at', new Date().toISOString()),
