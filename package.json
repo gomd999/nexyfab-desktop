@@ -64,6 +64,8 @@
     "commercialization:gate": "node scripts/commercialization-readiness-gate.mjs",
     "commercial:precision:runtime-evidence": "node scripts/build-commercial-precision-runtime-evidence.mjs",
     "commercial:precision:runtime-gate": "node scripts/build-commercial-precision-runtime-evidence.mjs --require-ga",
+    "commercial:precision:local-durability": "node scripts/run-commercial-precision-local-durability.mjs",
+    "commercial:precision:local-durability:generate": "node scripts/run-commercial-precision-local-durability.mjs --write",
     "commercialization:gate:full-product": "node scripts/run-full-product-commercialization-report.mjs",
     "agent:mcp-cli:local-readiness": "node scripts/build-agent-mcp-cli-local-readiness.mjs",
     "agent:mcp-cli:local-readiness:check": "node scripts/build-agent-mcp-cli-local-readiness.mjs --check",

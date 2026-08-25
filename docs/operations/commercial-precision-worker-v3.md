@@ -1,10 +1,43 @@
 # Commercial Precision worker v3 deployment contract
 
-Status: `CORE_STAGING_DEPLOYED / WORKER_RUNTIME_NOT_RUN / RELEASE_HOLD`
+Status: `LOCAL_DURABLE_EXACT_CLOSED_LOOP_PASS / REAL_WORKER_RUNTIME_NOT_RUN / RELEASE_HOLD`
 
 This runbook covers the isolated worker for
 `nexyfab.precision-cad-commercial-execution.v3`. It does not authorize
 production deployment, generate keys, or qualify a CAD engine.
+
+## Local durable exact campaign (2026-08-25)
+
+`npm run commercial:precision:local-durability` now runs the complete source
+path against disposable, loopback-only PostgreSQL, Redis AOF, and S3-compatible
+containers pinned by image digest. It applies the real versioned migrations,
+stages immutable input v2, performs two-instance claim exclusion, executes a
+separate native fixture process without a shell, commits and reads back exactly
+three immutable outputs, verifies Ed25519/HMAC receipts, snapshots the artifacts,
+persists the signed native-parser receipt, and advances the authoritative CAD
+workspace HEAD with compare-and-swap.
+
+The same campaign proves wrong-worker, input/output substitution, conflicting
+callback replay, lease expiry, `VERIFIED_UNKNOWN` no-replay, key rotation trust
+boundary, exact callback retry, exact persistence replay without recopy, and
+atomic outbox/journal/workspace completion. Worker claim and expired-lease
+recovery now advance the execution journal in the same PostgreSQL transaction;
+an `APPROVED` journal can no longer become a claimed job while remaining
+ineligible for authoritative persistence.
+
+The checked-in receipt is
+`docs/evidence/cad-independent/commercial-precision-local-durability-20260825.json`.
+All 24 checks are `PASS`, including `authoritativePersistence` and
+`workspaceCasCommit`. The dedicated
+`.github/workflows/commercial-precision-durability.yml` gate reruns the campaign
+for affected changes and weekly.
+
+This remains a source/infrastructure regression campaign. Its native executable
+is an isolated deterministic fixture, its credentials are ephemeral, and its
+objects and database are deleted after the run. It is explicitly not a
+release-bound staging/production observation, a production-class CAD engine
+qualification, independent CAD interoperability, expert approval, or
+manufacturing evidence; Private Beta and GA therefore remain false.
 
 ## Runtime split
 
@@ -89,6 +122,14 @@ The adapter is invoked without a shell as:
 <executable> <configured args> --input <canonical-input.json> --output-dir <empty-dir>
 ```
 
+The downloaded canonical input uses
+`nexyfab.precision-cad-commercial-input.v2`. It binds the immutable job,
+workspace, command, target, and argument identities, but deliberately excludes
+`attempt` and `leaseGeneration`: those two values are server-owned claim state
+that advances after the input object is written. The signed transport and worker
+receipt still bind their exact claimed values. Input v1 is rejected; changing
+any non-lease job field or the arguments still fails before native execution.
+
 It must exit zero and create regular, non-symlink files named `model.step` and
 `report.json`. The STEP file must contain the ISO-10303-21 envelope. The JSON
 report must contain `"status":"PASS"`. The worker creates the third
@@ -113,7 +154,8 @@ SHA-256 values. A JavaScript geometry fallback is not permitted.
    the registered identity, all four PASS checks, a receipt SHA-256, and a fresh
    self-test timestamp.
 8. Exercise forged lease, wrong worker, input substitution, output substitution,
-   callback replay, expired lease, process crash, and restart recovery.
+   conflicting callback replay, exact callback retry, expired lease, process
+   crash, and restart recovery.
 
 ## Evidence receipt and promotion commands
 
@@ -132,6 +174,24 @@ The observation references five distinct, contained JSON documents:
 - `nexyfab.precision-cad-commercial-execution.v3` worker receipt;
 - `nexyfab.commercial-precision-negative-campaign.v1`;
 - `nexyfab.commercial-precision-recovery-campaign.v1`.
+
+Receipt schema `nexyfab.commercial-precision-runtime-evidence.v2` also requires
+the current `NEXYFAB_COMMERCIAL_WORKER_KEYS_JSON` registry. The evidence builder
+parses the registered Ed25519 public key, recomputes its SPKI fingerprint, and
+cryptographically verifies the worker receipt signature. A base64-shaped value,
+a fingerprint-only receipt, an absent registry, or a receipt signed by a key
+outside the current registry remains `HOLD`. The derived receipt records only
+the public worker identity, fingerprint, registry SHA-256, and verification
+result; it never copies a private key.
+
+The v2 derivation also refuses free-form check promotion. Every `PASS` in the
+20-check matrix must have its exact machine assertion in the bound source:
+PostgreSQL/Redis/outbox/lease/callback/persistence/CAS in the database snapshot,
+immutable input and three-output hash readback in the object manifest, native
+execution and Ed25519 verification in the worker receipt, substitution/replay
+denials in the negative campaign, and exclusion/lease/crash/unknown/rotation in
+the recovery campaign. A missing or merely similar assertion produces
+`check_evidence_missing:<check>` and keeps both tiers `HOLD`.
 
 Set `RELEASE_BUILD_ID`, `RELEASE_GIT_HEAD`, and `RELEASE_DEPLOYMENT_ID` to the
 exact candidate, then run:
