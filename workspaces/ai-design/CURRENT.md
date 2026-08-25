@@ -1,5 +1,20 @@
 # AI Design current session
 
+## 2026-08-25 synthetic v3 cross-worktree evidence closure
+
+- Status: `RAW_SYNTHETIC_EVIDENCE_PORTABLE / AI_ACCURACY_AUTHORITY_UNCHANGED`.
+- The first v3 receipt exposed LF/CRLF checkout drift after integration. All
+  raw run, source, corpus, and executor bindings now use the exact
+  `utf8-crlf-to-lf` policy and verify identically across worktrees.
+- Current receipt self-hash:
+  `632fd435b31c8f65cd07a1080bf3b02e79588b65a0e3523209043f036648da26`;
+  executor identity:
+  `b31882c8619eb3908838bde4ed087582600f234ea5307d8c3437da838f18ecd0`.
+- Semantic or executor mutation remains rejected. AI-model, independent
+  holdout, exact-CAD, and manufacturing authority remain unchanged and HOLD.
+- Handoff:
+  `HANDOFFS/20260825T082500Z-synthetic-v3-cross-worktree-ai-boundary.md`.
+
 ## 2026-08-25 raw synthetic campaign v3 downstream boundary
 
 - Status: `SYNTHETIC_TEMPLATE_REGRESSION_1500_OF_1500_PASS /
