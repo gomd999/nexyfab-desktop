@@ -1,5 +1,24 @@
 # Precision CAD current session
 
+## 2026-08-25 cross-worktree runtime evidence binding
+
+- Status: `RUNTIME_DERIVATION_DETERMINISTIC / REAL_OBSERVATION_NOT_RUN /
+  COMMERCIAL_RELEASE_HOLD`.
+- Commercial Precision runtime evidence now canonicalizes UTF-8 CRLF to LF for
+  the migration SQL, runtime observation, and all five supporting JSON evidence
+  documents before recording byte counts and SHA-256 bindings.
+- The signed observation must declare the same canonicalization for its
+  migration and evidence manifest. Missing, broadened, raw-byte, or altered
+  bindings fail closed.
+- A replay contract converts the complete valid runtime evidence set from LF to
+  CRLF after receipt creation and verifies the unchanged receipt; semantic
+  tampering remains rejected.
+- This removes checkout-specific `receipt_derivation_mismatch` only. The local
+  checked-in receipt remains an honest HOLD without a separately held HMAC key,
+  same-release native worker observation, independent CAD review, or pilots.
+- Handoff:
+  `HANDOFFS/20260825T051154Z-runtime-evidence-text-binding.md`.
+
 ## 2026-08-25 approved native adapter identity closure
 
 - Status: `SOURCE_TRUST_BOUNDARY_PASS / REAL_ADAPTER_NOT_SUPPLIED /

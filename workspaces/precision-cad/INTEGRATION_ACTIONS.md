@@ -22,6 +22,9 @@ The integration-owned source/infrastructure gap is now closed locally:
   campaign.
 - [x] Upgrade runtime receipt derivation to v2 with registry-bound Ed25519
   verification and exact per-check assertion provenance.
+- [x] Canonicalize the migration SQL, runtime observation, and five supporting
+  JSON bindings as UTF-8 CRLF-to-LF so one signed observation verifies across
+  Windows worktrees without accepting semantic changes.
 
 The promotion work remains external and release-bound:
 
@@ -219,9 +222,10 @@ mail requests use only environment-bound credentials.
   `SECRET_SCAN_EVIDENCE_STALE`, `DEPENDENCY_AUDIT_INCOMPLETE:UNKNOWN`, and
   `THIRD_PARTY_NOTICES_STALE` (685 expected packages). Regenerate evidence only
   after the underlying scans/audits/notices genuinely pass.
-- [ ] In `scripts/build-dependency-audit-evidence.mjs`, preserve a stale/missing
+- [x] In `scripts/build-dependency-audit-evidence.mjs`, preserve a stale/missing
   evidence failure. The final `report.status` assignment currently overwrites
-  `process.exitCode = 1` from the freshness check.
+  `process.exitCode = 1` from the freshness check. Closed 2026-08-25 by
+  combining evidence freshness and live audit status in the final exit code.
 - [ ] Refresh dependency, secret, supply-chain, and route-security receipts only
   after the scanners pass. Do not change timestamps by hand.
 - [ ] Run both production-only and complete dependency audits in integration CI.
