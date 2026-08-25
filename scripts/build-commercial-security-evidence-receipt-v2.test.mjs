@@ -9,7 +9,11 @@ import {
   SECURITY_SOURCE_SPECS,
   verifyCommercialSecurityEvidenceReceipt,
 } from './build-commercial-security-evidence-receipt-v2.mjs';
-import { SECRET_SCAN_EXCLUDED_DERIVED_RECEIPTS, SECRET_SCAN_SCOPE } from './scan-secrets.mjs';
+import {
+  SECRET_SCAN_EXCLUDED_DERIVED_RECEIPTS,
+  SECRET_SCAN_SCOPE,
+  SECRET_SCAN_TEXT_CANONICALIZATION,
+} from './scan-secrets.mjs';
 
 const hash = value => crypto.createHash('sha256').update(value).digest('hex');
 const release = { buildId: 'security-build', deploymentId: 'security-deployment', gitHead: 'a'.repeat(40) };
@@ -48,6 +52,7 @@ function fixtureDocuments() {
     secretScan: {
       schema: 'nexyfab-secret-scan-v1', generatedAt, status: 'pass', filesScanned: 1, bytesScanned: 10,
       scope: SECRET_SCAN_SCOPE,
+      textCanonicalization: SECRET_SCAN_TEXT_CANONICALIZATION,
       excludedDerivedReceipts: [...SECRET_SCAN_EXCLUDED_DERIVED_RECEIPTS],
       findingCount: 0, findings: [],
     },
@@ -144,6 +149,19 @@ test('fails closed when a secret scan broadens or omits the exact derived receip
     const receipt = buildCommercialSecurityEvidenceReceipt({ root, release });
     assert.equal(receipt.ok, false);
     assert.ok(receipt.blockers.includes('secretScan:derived_receipt_exclusions_invalid'));
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test('fails closed when secret scan text canonicalization is missing or changed', () => {
+  const documents = fixtureDocuments();
+  documents.secretScan.textCanonicalization = 'raw-working-tree-bytes';
+  const root = fixtureRoot(documents);
+  try {
+    const receipt = buildCommercialSecurityEvidenceReceipt({ root, release });
+    assert.equal(receipt.ok, false);
+    assert.ok(receipt.blockers.includes('secretScan:text_canonicalization_invalid'));
   } finally {
     fs.rmSync(root, { recursive: true, force: true });
   }

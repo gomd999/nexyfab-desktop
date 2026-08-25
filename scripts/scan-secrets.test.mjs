@@ -4,10 +4,12 @@ import path from 'node:path';
 import test from 'node:test';
 
 import {
+  canonicalizeSecretScanText,
   filterSecretScanCandidates,
   isProbablyText,
   scanText,
   SECRET_SCAN_EXCLUDED_DERIVED_RECEIPTS,
+  SECRET_SCAN_TEXT_CANONICALIZATION,
 } from './scan-secrets.mjs';
 
 test('secret evidence never contains the matched secret value', () => {
@@ -51,4 +53,10 @@ test('scanner excludes only the exact derived current receipts that would create
     'src/app/page.tsx',
   ]);
   assert.deepEqual(candidates, [nearbySource, 'src/app/page.tsx']);
+});
+
+test('scanner canonicalizes checkout line endings before coverage accounting', () => {
+  assert.equal(SECRET_SCAN_TEXT_CANONICALIZATION, 'utf8-crlf-to-lf');
+  assert.equal(canonicalizeSecretScanText('first\r\nsecond\r\n'), 'first\nsecond\n');
+  assert.equal(canonicalizeSecretScanText('first\nsecond\n'), 'first\nsecond\n');
 });

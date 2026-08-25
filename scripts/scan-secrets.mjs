@@ -9,6 +9,7 @@ const OUTPUT = path.join(ROOT, 'docs', 'evidence', 'security', 'secret-scan-2608
 const MAX_TEXT_BYTES = 32 * 1024 * 1024;
 const TEXT_SAMPLE_BYTES = 8 * 1024;
 export const SECRET_SCAN_SCOPE = 'git-versioned-candidates-text-excluding-derived-current-receipts';
+export const SECRET_SCAN_TEXT_CANONICALIZATION = 'utf8-crlf-to-lf';
 export const SECRET_SCAN_EXCLUDED_DERIVED_RECEIPTS = Object.freeze([
   'docs/evidence/release/commercial-release-baseline-current.json',
   'docs/evidence/release/commercial-security-evidence-receipt.json',
@@ -46,6 +47,10 @@ export function filterSecretScanCandidates(relativeFiles) {
   return [...new Set(relativeFiles.map(file => String(file).replaceAll('\\', '/').replace(/^\.\//, '')))]
     .filter(file => file && !excluded.has(file))
     .sort();
+}
+
+export function canonicalizeSecretScanText(content) {
+  return String(content).replaceAll('\r\n', '\n');
 }
 
 function isProbablyText(content) {
@@ -100,14 +105,15 @@ function scan(relativeFiles = versionedCandidateFiles()) {
       binaryFilesSkipped += 1;
       continue;
     }
-    const content = buffer.toString('utf8');
-    bytesScanned += buffer.length;
+    const content = canonicalizeSecretScanText(buffer.toString('utf8'));
+    bytesScanned += Buffer.byteLength(content, 'utf8');
     findings.push(...scanText(path.relative(ROOT, file), content));
   }
   return {
     schema: 'nexyfab-secret-scan-v1',
     generatedAt: new Date().toISOString(),
     scope: SECRET_SCAN_SCOPE,
+    textCanonicalization: SECRET_SCAN_TEXT_CANONICALIZATION,
     excludedDerivedReceipts: [...SECRET_SCAN_EXCLUDED_DERIVED_RECEIPTS],
     status: findings.length === 0 && oversizedFilesSkipped === 0 ? 'pass' : 'fail',
     filesScanned: files.length,

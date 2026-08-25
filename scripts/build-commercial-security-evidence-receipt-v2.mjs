@@ -3,7 +3,11 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { attachReceiptSha256, sha256, verifyReceiptSha256 } from './immutable-receipt-binding.mjs';
-import { SECRET_SCAN_EXCLUDED_DERIVED_RECEIPTS, SECRET_SCAN_SCOPE } from './scan-secrets.mjs';
+import {
+  SECRET_SCAN_EXCLUDED_DERIVED_RECEIPTS,
+  SECRET_SCAN_SCOPE,
+  SECRET_SCAN_TEXT_CANONICALIZATION,
+} from './scan-secrets.mjs';
 
 export const COMMERCIAL_SECURITY_RECEIPT_SCHEMA = 'nexyfab.commercial-security-evidence-receipt.v2';
 export const COMMERCIAL_SECURITY_TARGET = 'production';
@@ -168,6 +172,7 @@ function evaluateSecretScan(source) {
   if (source?.schema !== 'nexyfab-secret-scan-v1') blockers.push('schema_invalid');
   if (source?.status !== 'pass') blockers.push('status_invalid');
   if (source?.scope !== SECRET_SCAN_SCOPE) blockers.push('scope_invalid');
+  if (source?.textCanonicalization !== SECRET_SCAN_TEXT_CANONICALIZATION) blockers.push('text_canonicalization_invalid');
   if (!sameJson(source?.excludedDerivedReceipts, SECRET_SCAN_EXCLUDED_DERIVED_RECEIPTS)) blockers.push('derived_receipt_exclusions_invalid');
   const findings = Array.isArray(source?.findings) ? source.findings : [];
   if (findings.length > 0) blockers.push('secret_findings_present');
@@ -182,6 +187,7 @@ function evaluateSecretScan(source) {
       filesScanned: source?.filesScanned ?? null,
       bytesScanned: source?.bytesScanned ?? null,
       excludedDerivedReceipts: Array.isArray(source?.excludedDerivedReceipts) ? source.excludedDerivedReceipts.length : null,
+      textCanonicalization: source?.textCanonicalization ?? null,
     },
     blockers,
   };
