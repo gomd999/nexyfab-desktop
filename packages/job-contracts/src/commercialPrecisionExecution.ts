@@ -76,10 +76,9 @@ export type CommercialWorkerReceipt = {
   inputArtifactSha256: string;
   workerIdentity: string;
   workerPublicKeyFingerprint: string;
-  /** Required by runtime validation; optional only for source migration compatibility. */
-  nativeExecutableSha256?: string;
+  nativeExecutableSha256: string;
   /** SHA-256 over the canonical executable hash plus configured native arguments. */
-  nativeInvocationSha256?: string;
+  nativeInvocationSha256: string;
   status: CommercialExecutionStatus;
   startedAt: string;
   completedAt: string;
@@ -159,7 +158,7 @@ export function validateCommercialWorkerReceipt(receipt: CommercialWorkerReceipt
   const issues: string[] = [];
   if (receipt.schema !== COMMERCIAL_PRECISION_EXECUTION_VERSION) issues.push('receipt_schema_invalid');
   for (const key of ['tenantId', 'projectId', 'executionId', 'generationRunId', 'workspaceId', 'jobId', 'workerIdentity'] as const) if (!id(receipt[key])) issues.push(`${key}_invalid`);
-  for (const key of ['workspaceContentHash', 'generationProgramSha256', 'commandHash', 'targetHash', 'inputArtifactSha256', 'workerPublicKeyFingerprint', 'leaseCapabilityHash'] as const) if (!hash(receipt[key])) issues.push(`${key}_invalid`);
+  for (const key of ['workspaceContentHash', 'generationProgramSha256', 'commandHash', 'targetHash', 'inputArtifactSha256', 'workerPublicKeyFingerprint', 'nativeExecutableSha256', 'nativeInvocationSha256', 'leaseCapabilityHash'] as const) if (!hash(receipt[key])) issues.push(`${key}_invalid`);
   if (!Number.isSafeInteger(receipt.generationStateRevision) || receipt.generationStateRevision < 0) issues.push('generation_state_revision_invalid');
   if (!Number.isSafeInteger(receipt.workspaceRevision) || receipt.workspaceRevision < 0) issues.push('workspace_revision_invalid');
   if (!Number.isSafeInteger(receipt.journalVersion) || receipt.journalVersion < 0) issues.push('journal_version_invalid');

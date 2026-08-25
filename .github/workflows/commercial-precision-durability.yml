@@ -12,10 +12,12 @@ on:
     paths:
       - '.github/workflows/commercial-precision-durability.yml'
       - 'containers/commercial-precision-durability/**'
+      - 'containers/occt-commercial-worker/**'
       - 'packages/job-contracts/src/commercialPrecisionExecution*'
       - 'scripts/commercial-precision-local-durability-campaign.ts'
       - 'scripts/run-commercial-precision-local-durability.mjs'
       - 'scripts/drawing-to-3d/commercial-precision-worker*'
+      - 'scripts/drawing-to-3d/build-commercial-precision-worker-image*'
       - 'src/app/api/internal/precision-cad-commercial/**'
       - 'src/lib/db-postgres-migration-*.sql'
       - 'src/lib/precision-cad-agent/commercial*'
@@ -25,10 +27,12 @@ on:
     paths:
       - '.github/workflows/commercial-precision-durability.yml'
       - 'containers/commercial-precision-durability/**'
+      - 'containers/occt-commercial-worker/**'
       - 'packages/job-contracts/src/commercialPrecisionExecution*'
       - 'scripts/commercial-precision-local-durability-campaign.ts'
       - 'scripts/run-commercial-precision-local-durability.mjs'
       - 'scripts/drawing-to-3d/commercial-precision-worker*'
+      - 'scripts/drawing-to-3d/build-commercial-precision-worker-image*'
       - 'src/app/api/internal/precision-cad-commercial/**'
       - 'src/lib/db-postgres-migration-*.sql'
       - 'src/lib/precision-cad-agent/commercial*'
@@ -59,5 +63,7 @@ jobs:
       - run: npm ci --legacy-peer-deps
       - name: Verify Docker Compose
         run: docker compose version
+      - name: Verify fail-closed commercial worker image contract
+        run: npm run test:commercial:precision:worker-image
       - name: Run durable exact closed-loop campaign
         run: npm run commercial:precision:local-durability
