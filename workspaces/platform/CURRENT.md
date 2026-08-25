@@ -1,5 +1,31 @@
 # Platform current session
 
+## 2026-08-25 release-gate-hardened staging success
+
+- Status: `EXACT_HARDENED_SOURCE_STAGING_SUCCESS /
+  IMMUTABLE_STAGING_RECEIPT_VERIFIED / PRIVATE_BETA_FALSE / GA_FALSE /
+  PRODUCTION_UNCHANGED`.
+- Exact application source/build/Git
+  `3797ad6d75f02ad750e746199eb8c041e5d52d9f` is deployed to isolated Railway
+  `staging` as `d4718236-06ca-4b56-81c8-5c271b2e8976`, image
+  `sha256:bd1364d1121916016d91a19919486d39a053a9ce38db008a05c197f9a20ce2bf`.
+  Railway reports `SUCCESS` with 2/2 instances `RUNNING`.
+- The same-build immutable receipt passed all 11 exact release, PostgreSQL,
+  Redis, migration, runtime-HOLD, forged-claim/lease, and callback fail-closed
+  checks. Canonical receipt self-hash:
+  `59485c350d6aeaa45881ef7e06032836bec330ce2be49c46331fcac9ca03731e`.
+- The commercialization gate independently verified the receipt and removed
+  `core_staging_hold_not_verified`. Private Beta remains false with 18 honest
+  blockers because production release identity, recovery/operations evidence,
+  a production-class native worker, independent CAD review, and pilots are not
+  present.
+- The receipt and handoff are post-deployment evidence. Their Git commit will
+  be newer than application source `3797ad6d`; that evidence-only commit is not
+  a different deployed application binary and must not be relabelled as one.
+- Production was not deployed, restarted, reconfigured, or written.
+- Handoff:
+  `HANDOFFS/20260825T071500Z-release-gate-hardening-staging-success.md`.
+
 ## 2026-08-25 production identity and immutable staging receipt gate
 
 - Status: `RELEASE_TARGET_BOUND / STAGING_RECEIPT_IMMUTABLE /
@@ -14,12 +40,11 @@
   `core_staging_hold_not_verified` when it is missing, stale, edited, or from a
   different build. A valid staging HOLD is a prerequisite only; it never grants
   Private Beta or GA.
-- Live source `32ff05ba` was recollected successfully: 11/11 PASS, receipt
+- Historical source `32ff05ba` was recollected successfully: 11/11 PASS, receipt
   self-hash
   `b6cba9a6b285eb0f42564e0471470d942745b0609ce83d39c57e496de607392c`.
-- Because this source hardening is newer than the running application source,
-  the next clean integrated HEAD must be redeployed to staging and recollected
-  before promotion evaluation. Production remains unchanged.
+- The hardened integrated source was subsequently deployed and recollected as
+  recorded in the current section above. Production remains unchanged.
 - Handoff:
   `HANDOFFS/20260825T063500Z-release-environment-staging-receipt-binding.md`.
 

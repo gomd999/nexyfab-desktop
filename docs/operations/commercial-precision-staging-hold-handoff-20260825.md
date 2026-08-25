@@ -5,10 +5,10 @@ Status: `CORE_STAGING_HOLD_VERIFIED / PRIVATE_BETA_FALSE / GA_FALSE`
 ## Exact deployed release
 
 - environment: isolated Railway `staging`;
-- source/build/Git: `32ff05ba3f1e7addc5cf6da95d6e94ff9b437fe7`;
-- deployment: `c1e03352-5f95-47eb-a031-80847b22391c`;
+- source/build/Git: `3797ad6d75f02ad750e746199eb8c041e5d52d9f`;
+- deployment: `d4718236-06ca-4b56-81c8-5c271b2e8976`;
 - image digest:
-  `sha256:bc2688c5b3c7cc6a34d9cbab9ad0357a87d2b8356d39786319aaf109849fab2a`;
+  `sha256:bd1364d1121916016d91a19919486d39a053a9ce38db008a05c197f9a20ce2bf`;
 - replicas: 2 configured, 2 running, 0 crashed;
 - commercial mode: `0`;
 - release channel: `staging-hold`;
@@ -35,10 +35,11 @@ npm run commercial:precision:staging-hold-evidence -- \
 It refuses a production/non-HTTPS origin and persists only selected non-secret
 fields, HTTP status codes, and response-body SHA-256 bindings. The checked-in
 receipt is
-`docs/evidence/release/commercial-precision-staging-hold-20260825.json`, file
-SHA-256 `bd270eeecc6feee22d3e1d30769e0d85df44c3badcbdbb296cba62a03c9d40a0`
-and canonical self-hash
-`b6cba9a6b285eb0f42564e0471470d942745b0609ce83d39c57e496de607392c`.
+`docs/evidence/release/commercial-precision-staging-hold-20260825.json`.
+The collector-output raw-byte SHA-256 at collection time was
+`da737dc2e97d23d54b6afff48adadf1fd32117140f4221cfe363bf9fe9dbcb16`;
+the cross-worktree authority is the canonical self-hash
+`59485c350d6aeaa45881ef7e06032836bec330ce2be49c46331fcac9ca03731e`.
 The verifier independently rechecks that self-hash, freshness, isolated
 staging origin, exact 11-check set, response bindings, release identity, and
 the non-promoting HOLD boundary.
@@ -62,8 +63,8 @@ Schema v3 requires the signed worker receipt, trusted-worker registry,
 readiness, and release evidence to agree on both the native executable SHA-256
 and canonical invocation SHA-256. A valid worker signature cannot substitute
 adapter bytes or arguments. Source closure is carried by shared commit
-`918cfa0f`, Precision commit `7e01ba14`, Platform commit `f2656283`, and exact
-deployed integration HEAD `32ff05ba`. Standalone packaging and Railway upload-
+`918cfa0f`, Precision commit `7e01ba14`, Platform hardening commit `99387e27`,
+and exact deployed integration HEAD `3797ad6d`. Standalone packaging and Railway upload-
 context regressions remain closed by commits `34b167fc` and `7c732639`.
 
 ## Honest release boundary
