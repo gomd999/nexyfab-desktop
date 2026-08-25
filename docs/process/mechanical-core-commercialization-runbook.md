@@ -197,6 +197,7 @@ STEP은 vendor-native feature history 호환을 의미하지 않는다. 마케�
 - `workspaces/platform/contracts/mechanical-blind-signing-request.schema.json`
 - `workspaces/platform/contracts/mechanical-manufacturing-signing-request.schema.json`
 - `workspaces/platform/contracts/mechanical-commercial-signing-packet.schema.json`
+- `workspaces/platform/contracts/mechanical-commercial-signature-response.schema.json`
 
 먼저 read-only 검사를 수행한다.
 
@@ -224,7 +225,38 @@ node workspaces/platform/tools/build-mechanical-signing-packet.mjs `
   --output=<external-root>\packets\blind-signing-packet.json
 ```
 
-독립 검토자 또는 검사자는 packet SHA-256, artifact, 본인 identity, target hash와 canonical payload를 확인하고 도구 밖에서 해당 payload bytes에 Ed25519 서명한다. 운영자는 반환된 서명만 packet의 unsigned receipt template과 일치하는 candidate receipt에 넣는다. private key는 저장소, adapter host 또는 campaign 운영자에게 전달하지 않는다.
+독립 검토자 또는 검사자는 packet SHA-256, artifact, 본인 identity, target hash와 canonical payload를 확인하고 도구 밖에서 해당 payload bytes에 Ed25519 서명한다. private key는 저장소, adapter host 또는 campaign 운영자에게 전달하지 않는다.
+
+반환 signature를 사람이 candidate JSON에 복사하지 않는다. 역할 제한 public key registry를 환경에 공급하고 response 조립기를 먼저 read-only로 실행한다. Blind는 `NEXYFAB_BLIND_REVIEWER_KEYS`, 제조는 `NEXYFAB_MANUFACTURING_REVIEWER_KEYS`를 사용한다.
+
+```powershell
+node workspaces/platform/tools/assemble-mechanical-commercial-candidate.mjs `
+  --kind=blind `
+  --packet=<external-root>\packets\blind-signing-packet.json `
+  --response=<external-root>\responses\blind-signature-response.json `
+  --evidence-root=<external-root> `
+  --check
+
+node workspaces/platform/tools/assemble-mechanical-commercial-candidate.mjs `
+  --kind=manufacturing `
+  --packet=<external-root>\packets\manufacturing-signing-packet.json `
+  --response=<external-root>\responses\manufacturing-signature-response.json `
+  --evidence-root=<external-root> `
+  --check
+```
+
+조립기는 source request와 현재 artifact bytes에서 packet을 다시 만들고 exact packet 일치, 모든 서명 slot, target/payload hash, Ed25519 signature와 최종 receipt validator를 재검증한다. 검사가 성공한 경우에만 같은 외부 root 안의 새 candidate 이름을 사용한다.
+
+```powershell
+node workspaces/platform/tools/assemble-mechanical-commercial-candidate.mjs `
+  --kind=blind `
+  --packet=<external-root>\packets\blind-signing-packet.json `
+  --response=<external-root>\responses\blind-signature-response.json `
+  --evidence-root=<external-root> `
+  --output=<external-root>\candidates\blind-candidate.json
+```
+
+위조·누락·중복·이식 signature, packet 추가 claim, request/artifact drift와 외부 output은 zero-output으로 실패한다. 조립기는 candidate receipt만 구성하며 원본 evidence나 signature를 만들지 않고 commercial release 권한도 부여하지 않는다.
 
 이 도구는 외부 root 밖으로 나가는 경로, symlink와 directory-link 탈출, 중복 artifact, 역할 충돌, 시간 역전, 공차 밖 측정과 기존 output 덮어쓰기를 거부한다. packet은 `createsEvidence=false`, `createsSignatures=false`, `grantsCommercialRelease=false`이며 그 자체로 상용 PASS가 아니다.
 
