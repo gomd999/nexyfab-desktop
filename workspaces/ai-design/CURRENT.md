@@ -1,5 +1,34 @@
 # AI Design current session
 
+## 2026-08-25 durable downstream crash-recovery boundary
+
+- Status: `AI_CONCEPT_AUTHORITY_CONNECTED /
+  PRECISION_SEPARATE_CLAIM_CRASH_QUARANTINE_PASS /
+  THREE_STORE_RESTART_PERSISTENCE_PASS / LOCAL_FIXTURE_ONLY /
+  AI_ACCURACY_UNCHANGED / PRIVATE_BETA_FALSE / GA_FALSE`.
+- The revision-bound AI handoff remains immutable input to the commercial
+  Precision v3 boundary. AI can request Precision execution but cannot author a
+  worker receipt, exact CAD PASS, workspace commit, manufacturing approval, or
+  commercial release.
+- Precision commit `94ad99b6eae22ab5b69f91992785aab8caa97e88` clears expired
+  lease owner, expiry, and capability hash atomically with
+  `VERIFIED_UNKNOWN` quarantine. Platform campaign commit
+  `ad437dbf341b6c9d7643bf4d2e742ba077d0acbf` proves the boundary using a
+  second approved and claimed execution with no callback/output side effects.
+- Shared v3 durability receipt:
+  `docs/evidence/cad-independent/commercial-precision-local-durability-20260825.json`;
+  29/29 PASS, receipt SHA-256
+  `8c27da0ab28c80c0e226feb84fbea5549c3fd27180e55c0a3069a4e1529a4c38`.
+- The same exact campaign proves actual disposable PostgreSQL, Redis AOF, and
+  object-storage restart persistence plus exact replay with post-restart writes
+  prohibited.
+- This is downstream source/infrastructure evidence, not AI-model accuracy,
+  independent holdout quality, deployed native CAD recovery, external expert
+  review, or manufacturing qualification. AI authority remains
+  `CONCEPT`/`DESIGN_CANDIDATE`; staging and production were unchanged.
+- Handoff:
+  `HANDOFFS/20260825T120440Z-ai-to-precision-crash-recovery-boundary.md`.
+
 ## 2026-08-25 synthetic v3 cross-worktree evidence closure
 
 - Status: `RAW_SYNTHETIC_EVIDENCE_PORTABLE / AI_ACCURACY_AUTHORITY_UNCHANGED`.
@@ -99,12 +128,14 @@
   `nexyfab.precision-cad-commercial-input.v2`. The immutable payload binds job,
   workspace, command, target, and arguments while claim-owned attempt and lease
   generation remain in the signed transport and worker receipt.
-- A disposable real PostgreSQL/Redis-AOF/S3-compatible campaign passed all 24
-  checks: transactional enqueue, multi-instance exclusion, isolated native
+- A disposable real PostgreSQL/Redis-AOF/S3-compatible campaign now passes all
+  29 checks: transactional enqueue, multi-instance exclusion, isolated native
   process, three immutable outputs, worker/callback signatures, hostile
-  substitutions and conflicting replay, lease recovery/no-replay, key rotation,
-  signed parser persistence, and authoritative CAD workspace CAS. Exact
-  persistence retry performed no second copy or execution.
+  substitutions and conflicting replay, a separate approved claim followed by
+  worker-disappearance quarantine, lease recovery/no-replay, key rotation,
+  signed parser persistence, authoritative CAD workspace CAS, actual
+  persistence-service restart recovery, and exact replay without a second copy
+  or execution.
 - Claim and expired-lease recovery now update outbox and execution journal in
   one PostgreSQL transaction. This closes the prior impossible state where a
   claimed worker job left its journal `APPROVED` and could never satisfy the
