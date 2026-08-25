@@ -4,6 +4,7 @@ import {
   assertDrillTarget,
   assertRestoreDrillSafety,
   compareDatabaseSnapshots,
+  databaseBackupProtection,
   isBoundGitHead,
   validateUnvalidatedConstraints,
 } from './verify-backup-restore.mjs';
@@ -52,6 +53,49 @@ test('restore drill requires staging confirmation and distinct database identity
     environment: 'staging',
     evidenceClass: 'local-fixture',
   }), /local-fixture/);
+});
+
+test('release-bound restore requires an immutable existing KMS provider backup', () => {
+  const local = databaseBackupProtection({
+    evidenceClass: 'local-fixture',
+    backup: { reused: false },
+    backupBytes: 100,
+    backupSha256: 'a'.repeat(64),
+    env: {},
+  });
+  assert.equal(local.releaseBoundRequired, false);
+  const valid = {
+    USE_EXISTING_BACKUP: '1',
+    RESTORE_DATABASE_BACKUP_ENCRYPTION_MODE: 'customer-managed-kms',
+    RESTORE_DATABASE_BACKUP_KMS_KEY_VERSION_SHA256: 'b'.repeat(64),
+    RESTORE_DATABASE_BACKUP_PROVIDER_RECEIPT_SHA256: 'c'.repeat(64),
+    RESTORE_DATABASE_BACKUP_PROVIDER_RECEIPT_ID: 'provider-receipt-1',
+    RESTORE_DATABASE_BACKUP_CAPTURED_AT: '2026-08-25T12:00:00.000Z',
+    RESTORE_DATABASE_BACKUP_IMMUTABLE: '1',
+  };
+  const protectedBackup = databaseBackupProtection({
+    evidenceClass: 'release-bound',
+    backup: { reused: true },
+    backupBytes: 100,
+    backupSha256: 'a'.repeat(64),
+    env: valid,
+  });
+  assert.equal(protectedBackup.atRestEncryptionVerified, true);
+  assert.equal(protectedBackup.restorePayloadSha256, 'a'.repeat(64));
+  assert.throws(() => databaseBackupProtection({
+    evidenceClass: 'release-bound',
+    backup: { reused: false },
+    backupBytes: 100,
+    backupSha256: 'a'.repeat(64),
+    env: valid,
+  }), /existing_provider_backup/);
+  assert.throws(() => databaseBackupProtection({
+    evidenceClass: 'release-bound',
+    backup: { reused: true },
+    backupBytes: 100,
+    backupSha256: 'a'.repeat(64),
+    env: { ...valid, RESTORE_DATABASE_BACKUP_IMMUTABLE: '0' },
+  }), /IMMUTABLE/);
 });
 
 test('snapshot comparison checks per-table row count and content fingerprint', () => {

@@ -508,7 +508,17 @@ const restoreReceipt = bindReceipt({
     restoreDatabase: 'nexyfab_restore_drill_260823', isolatedDatabaseIdentity: true, sourceWasReadOnly: true,
     sourceUnchangedDuringDrill: true, productionRestorePerformed: false,
   },
-  backup: { file: 'backups/restore.sql.gz', bytes: 100, sha256: 'f'.repeat(64), sourceSnapshotSha256: 'a'.repeat(64), completedAt: new Date(restoreNow - 2_000).toISOString() },
+  backup: {
+    file: 'restore.sql.gz', bytes: 100, sha256: 'f'.repeat(64), sourceSnapshotSha256: 'a'.repeat(64),
+    completedAt: new Date(restoreNow - 2_000).toISOString(),
+    protectedSource: {
+      releaseBoundRequired: true, providerArtifactReused: true, atRestEncryptionVerified: true,
+      encryptionMode: 'customer-managed-kms', kmsKeyVersionSha256: '9'.repeat(64),
+      providerReceiptBound: true, providerReceiptSha256: '8'.repeat(64), providerReceiptIdSha256: '7'.repeat(64),
+      artifactImmutable: true, capturedAt: new Date(restoreNow - 2_000).toISOString(),
+      restorePayloadBytes: 100, restorePayloadSha256: 'f'.repeat(64),
+    },
+  },
   source: { tableContentSha256: 'a'.repeat(64), schemaSha256: 'c'.repeat(64), afterObjectRestoreTableContentSha256: 'a'.repeat(64), afterObjectRestoreSchemaSha256: 'c'.repeat(64) },
   restored: { tableContentSha256: 'a'.repeat(64), exactSourceMatch: true, businessDataSha256: 'a'.repeat(64), foreignKeys: { integrityOk: true, orphanRows: 0 } },
   migration: { targetVersion: 2026082502, migrations: [{ version: 2026082502, checksum: 'b'.repeat(64), decision: 'already_applied' }] },
@@ -519,6 +529,11 @@ const restoreReceipt = bindReceipt({
     schema: 'nexyfab.object-storage-isolated-restore-drill.v1', status: 'PASS',
     safety: { sourceWasReadOnly: true, sourceUnchanged: true, backupPrefixInitiallyEmpty: true, restorePrefixInitiallyEmpty: true, roleIdentitiesDistinct: true, noOverwriteWrites: true },
     databaseBindings: { count: 8, byKind: { immutable_input: 2, committed_output: 3, artifact_snapshot: 3 }, manifestSha256: 'd'.repeat(64), allMatched: true },
+    protection: {
+      releaseBoundRequired: true, failureDomainDistinct: true, versioningEnabled: true,
+      objectLockEnabled: true, defaultRetentionMode: 'COMPLIANCE', defaultRetentionDays: 30,
+      defaultRetentionYears: null, kmsEncryptionVerified: true, kmsKeyIdSha256: '6'.repeat(64),
+    },
     source: restoredObjectRole('nexyfab-source', 'private/', '1'),
     backup: restoredObjectRole('nexyfab-backup', 'backup/release-1/', '2', true),
     restored: restoredObjectRole('nexyfab-restore-drill', 'restore-drill/release-1/', '3', true),
@@ -1396,6 +1411,21 @@ test('requires a fresh release-bound cross-store restore drill through migration
     },
   });
   assert.equal(restoreReceiptEligible(missingCommercialBinding, expectedReleaseBinding), false);
+
+  const unprotectedDatabaseBackup = rebindReceipt({
+    ...restoreReceipt,
+    backup: { ...restoreReceipt.backup, protectedSource: { ...restoreReceipt.backup.protectedSource, artifactImmutable: false } },
+  });
+  assert.equal(restoreReceiptEligible(unprotectedDatabaseBackup, expectedReleaseBinding), false);
+
+  const unprotectedObjectBackup = rebindReceipt({
+    ...restoreReceipt,
+    objectStorage: {
+      ...restoreReceipt.objectStorage,
+      protection: { ...restoreReceipt.objectStorage.protection, objectLockEnabled: false },
+    },
+  });
+  assert.equal(restoreReceiptEligible(unprotectedObjectBackup, expectedReleaseBinding), false);
 });
 
 test('accepts only trusted Ed25519 expert signoffs bound to the release and corpus', () => {

@@ -70,3 +70,22 @@ test('rejects traversal-like prefixes and unbounded campaigns', () => {
     RESTORE_OBJECT_MAX_OBJECTS: '100001',
   }), /MAX_OBJECTS_invalid/);
 });
+
+test('release-bound object backup requires KMS and a distinct failure domain', () => {
+  const valid = {
+    ...validEnvironment(),
+    RESTORE_OBJECT_BACKUP_KMS_KEY_ID: 'arn:aws:kms:ap-northeast-2:123456789012:key/recovery',
+  };
+  const config = loadObjectStorageRestoreConfig(valid, { evidenceClass: 'release-bound' });
+  assert.equal(config.backupFailureDomainDistinct, true);
+  assert.equal(config.backupKmsKeyId, valid.RESTORE_OBJECT_BACKUP_KMS_KEY_ID);
+  const missingKms = { ...valid };
+  delete missingKms.RESTORE_OBJECT_BACKUP_KMS_KEY_ID;
+  assert.throws(() => loadObjectStorageRestoreConfig(missingKms, { evidenceClass: 'release-bound' }), /KMS_KEY_ID/);
+  const sameFailureDomain = {
+    ...valid,
+    RESTORE_OBJECT_BACKUP_ENDPOINT: valid.RESTORE_OBJECT_SOURCE_ENDPOINT,
+    RESTORE_OBJECT_BACKUP_REGION: valid.RESTORE_OBJECT_SOURCE_REGION,
+  };
+  assert.throws(() => loadObjectStorageRestoreConfig(sameFailureDomain, { evidenceClass: 'release-bound' }), /failure_domain/);
+});

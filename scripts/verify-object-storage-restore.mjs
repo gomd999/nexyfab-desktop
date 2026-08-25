@@ -1,7 +1,9 @@
 #!/usr/bin/env node
 import { createHash } from 'node:crypto';
 import {
+  GetBucketVersioningCommand,
   GetObjectCommand,
+  GetObjectLockConfigurationCommand,
   HeadBucketCommand,
   ListObjectsV2Command,
   PutObjectCommand,
@@ -12,6 +14,7 @@ const SHA256 = /^[a-f0-9]{64}$/;
 const BUCKET = /^[a-z0-9](?:[a-z0-9.-]{1,61}[a-z0-9])?$/;
 const CONFIRMATION = 'NEXYFAB_ISOLATED_OBJECT_RESTORE_ONLY';
 const ROLE_NAMES = Object.freeze(['SOURCE', 'BACKUP', 'TARGET']);
+const EVIDENCE_CLASSES = new Set(['local-fixture', 'release-bound']);
 
 const sha256 = value => createHash('sha256').update(value).digest('hex');
 
@@ -82,10 +85,11 @@ function roleConfig(env, role) {
   };
 }
 
-export function loadObjectStorageRestoreConfig(env = process.env) {
+export function loadObjectStorageRestoreConfig(env = process.env, { evidenceClass = 'local-fixture' } = {}) {
   if (env.RESTORE_OBJECT_DRILL_CONFIRM !== CONFIRMATION) {
     throw new Error(`RESTORE_OBJECT_DRILL_CONFIRM_must_equal_${CONFIRMATION}`);
   }
+  if (!EVIDENCE_CLASSES.has(evidenceClass)) throw new Error('RESTORE_EVIDENCE_CLASS_invalid');
   const roles = Object.fromEntries(ROLE_NAMES.map(role => [role.toLowerCase(), roleConfig(env, role)]));
   if (!roles.backup.bucket.includes('backup') || !roles.backup.prefix.includes('backup')) {
     throw new Error('restore_object_backup_identity_invalid');
@@ -99,8 +103,19 @@ export function loadObjectStorageRestoreConfig(env = process.env) {
   if (new Set(Object.values(roles).map(role => role.identity)).size !== ROLE_NAMES.length) {
     throw new Error('restore_object_role_identity_collision');
   }
+  const backupFailureDomainDistinct = roles.source.endpoint !== roles.backup.endpoint
+    || roles.source.region !== roles.backup.region;
+  let backupKmsKeyId = null;
+  if (evidenceClass === 'release-bound') {
+    if (!backupFailureDomainDistinct) throw new Error('restore_object_backup_failure_domain_not_distinct');
+    backupKmsKeyId = required(env, 'RESTORE_OBJECT_BACKUP_KMS_KEY_ID');
+    if (backupKmsKeyId.length > 2048) throw new Error('RESTORE_OBJECT_BACKUP_KMS_KEY_ID_invalid');
+  }
   return {
     ...roles,
+    evidenceClass,
+    backupFailureDomainDistinct,
+    backupKmsKeyId,
     maxObjects: positiveLimit(env, 'RESTORE_OBJECT_MAX_OBJECTS', 10_000, 100_000),
     maxTotalBytes: positiveLimit(env, 'RESTORE_OBJECT_MAX_TOTAL_BYTES', 10 * 1024 ** 3, 100 * 1024 ** 3),
     maxObjectBytes: positiveLimit(env, 'RESTORE_OBJECT_MAX_OBJECT_BYTES', 128 * 1024 ** 2, 5 * 1024 ** 3),
@@ -182,7 +197,14 @@ async function scanRole(client, role, limits, requireNonEmpty) {
     if (bytes.byteLength !== item.listedBytes) {
       throw new Error(`restore_object_list_read_size_mismatch:${role.role}:${sha256(item.relativeKey)}`);
     }
-    entries.push({ ...item, bytes: bytes.byteLength, contentSha256: sha256(bytes), body: bytes });
+    entries.push({
+      ...item,
+      bytes: bytes.byteLength,
+      contentSha256: sha256(bytes),
+      body: bytes,
+      serverSideEncryption: result.ServerSideEncryption ?? null,
+      sseKmsKeyId: result.SSEKMSKeyId ?? null,
+    });
   }
   return { entries, manifest: publicManifest(entries) };
 }
@@ -194,7 +216,7 @@ function sameEntries(expected, actual) {
     && item.contentSha256 === actual[index]?.contentSha256);
 }
 
-async function writeSnapshot(client, role, entries) {
+async function writeSnapshot(client, role, entries, { kmsKeyId = null } = {}) {
   for (const item of entries) {
     await client.send(new PutObjectCommand({
       Bucket: role.bucket,
@@ -204,8 +226,52 @@ async function writeSnapshot(client, role, entries) {
       ContentType: 'application/octet-stream',
       IfNoneMatch: '*',
       Metadata: { 'nexyfab-content-sha256': item.contentSha256 },
+      ...(kmsKeyId ? {
+        ServerSideEncryption: 'aws:kms',
+        SSEKMSKeyId: kmsKeyId,
+        ChecksumSHA256: Buffer.from(item.contentSha256, 'hex').toString('base64'),
+      } : {}),
     }));
   }
+}
+
+async function backupProtection(client, config) {
+  if (config.evidenceClass !== 'release-bound') {
+    return {
+      releaseBoundRequired: false,
+      failureDomainDistinct: config.backupFailureDomainDistinct,
+      versioningEnabled: false,
+      objectLockEnabled: false,
+      defaultRetentionMode: null,
+      defaultRetentionDays: null,
+      defaultRetentionYears: null,
+      kmsEncryptionVerified: false,
+      kmsKeyIdSha256: null,
+    };
+  }
+  const [versioning, objectLock] = await Promise.all([
+    client.send(new GetBucketVersioningCommand({ Bucket: config.backup.bucket })),
+    client.send(new GetObjectLockConfigurationCommand({ Bucket: config.backup.bucket })),
+  ]);
+  const lock = objectLock.ObjectLockConfiguration;
+  const retention = lock?.Rule?.DefaultRetention;
+  const retentionValue = Number(retention?.Days ?? retention?.Years ?? 0);
+  if (versioning.Status !== 'Enabled') throw new Error('restore_object_backup_versioning_required');
+  if (lock?.ObjectLockEnabled !== 'Enabled') throw new Error('restore_object_backup_object_lock_required');
+  if (!['COMPLIANCE', 'GOVERNANCE'].includes(retention?.Mode) || !Number.isSafeInteger(retentionValue) || retentionValue < 1) {
+    throw new Error('restore_object_backup_default_retention_required');
+  }
+  return {
+    releaseBoundRequired: true,
+    failureDomainDistinct: true,
+    versioningEnabled: true,
+    objectLockEnabled: true,
+    defaultRetentionMode: retention.Mode,
+    defaultRetentionDays: retention.Days ?? null,
+    defaultRetentionYears: retention.Years ?? null,
+    kmsEncryptionVerified: true,
+    kmsKeyIdSha256: sha256(config.backupKmsKeyId),
+  };
 }
 
 function bindingSummary(bindings) {
@@ -266,6 +332,7 @@ export async function verifyObjectStorageRestoreDrill({ config, requiredBindings
     maxObjectBytes: config.maxObjectBytes,
   };
   try {
+    const protection = await backupProtection(backupClient, config);
     const sourceBefore = await scanRole(sourceClient, config.source, limits, true);
     assertDatabaseBindings(sourceBefore, config.source, requiredBindings);
     const backupBefore = await scanRole(backupClient, config.backup, limits, false);
@@ -273,9 +340,13 @@ export async function verifyObjectStorageRestoreDrill({ config, requiredBindings
     if (backupBefore.entries.length !== 0) throw new Error('restore_object_backup_prefix_not_empty');
     if (targetBefore.entries.length !== 0) throw new Error('restore_object_target_prefix_not_empty');
 
-    await writeSnapshot(backupClient, config.backup, sourceBefore.entries);
+    await writeSnapshot(backupClient, config.backup, sourceBefore.entries, { kmsKeyId: config.backupKmsKeyId });
     const backupAfter = await scanRole(backupClient, config.backup, limits, true);
     if (!sameEntries(sourceBefore.entries, backupAfter.entries)) throw new Error('restore_object_backup_mismatch');
+    if (config.evidenceClass === 'release-bound' && backupAfter.entries.some(item =>
+      item.serverSideEncryption !== 'aws:kms' || item.sseKmsKeyId !== config.backupKmsKeyId)) {
+      throw new Error('restore_object_backup_kms_encryption_mismatch');
+    }
 
     await writeSnapshot(targetClient, config.target, backupAfter.entries);
     const targetAfter = await scanRole(targetClient, config.target, limits, true);
@@ -296,6 +367,7 @@ export async function verifyObjectStorageRestoreDrill({ config, requiredBindings
         noOverwriteWrites: true,
       },
       databaseBindings: bindingSummary(requiredBindings),
+      protection,
       source: receiptRole(config.source, sourceBefore.manifest),
       backup: receiptRole(config.backup, backupAfter.manifest, { exactSourceMatch: true }),
       restored: receiptRole(config.target, targetAfter.manifest, { exactSourceMatch: true }),

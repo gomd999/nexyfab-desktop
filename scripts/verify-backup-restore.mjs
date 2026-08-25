@@ -15,6 +15,8 @@ import {
 
 const CONFIRMATION = 'NEXYFAB_ISOLATED_RESTORE_ONLY';
 const EVIDENCE_CLASSES = new Set(['local-fixture', 'release-bound']);
+const DATABASE_BACKUP_ENCRYPTION_MODES = new Set(['provider-managed-kms', 'customer-managed-kms']);
+const SHA256 = /^[a-f0-9]{64}$/;
 const quoteIdentifier = value => `"${String(value).replaceAll('"', '""')}"`;
 const sha256 = value => createHash('sha256').update(value).digest('hex');
 export const isBoundGitHead = value => /^(?:[a-f0-9]{40}|[a-f0-9]{64})$/.test(String(value));
@@ -324,6 +326,66 @@ export function compareDatabaseSnapshots(expected, actual, {
   return { ok: differences.length === 0, differences };
 }
 
+export function databaseBackupProtection({
+  evidenceClass,
+  backup,
+  backupBytes,
+  backupSha256,
+  env = process.env,
+}) {
+  if (evidenceClass === 'local-fixture') {
+    return {
+      releaseBoundRequired: false,
+      providerArtifactReused: backup.reused,
+      atRestEncryptionVerified: false,
+      providerReceiptBound: false,
+      artifactImmutable: false,
+    };
+  }
+  if (evidenceClass !== 'release-bound') throw new Error('RESTORE_EVIDENCE_CLASS_invalid');
+  if (env.USE_EXISTING_BACKUP !== '1' || backup.reused !== true) {
+    throw new Error('release_bound_restore_requires_existing_provider_backup');
+  }
+  const encryptionMode = env.RESTORE_DATABASE_BACKUP_ENCRYPTION_MODE?.trim() ?? '';
+  const kmsKeyVersionSha256 = env.RESTORE_DATABASE_BACKUP_KMS_KEY_VERSION_SHA256?.trim() ?? '';
+  const providerReceiptSha256 = env.RESTORE_DATABASE_BACKUP_PROVIDER_RECEIPT_SHA256?.trim() ?? '';
+  const providerReceiptId = env.RESTORE_DATABASE_BACKUP_PROVIDER_RECEIPT_ID?.trim() ?? '';
+  const capturedAt = env.RESTORE_DATABASE_BACKUP_CAPTURED_AT?.trim() ?? '';
+  const capturedAtMs = Date.parse(capturedAt);
+  if (!DATABASE_BACKUP_ENCRYPTION_MODES.has(encryptionMode)) {
+    throw new Error('RESTORE_DATABASE_BACKUP_ENCRYPTION_MODE_invalid');
+  }
+  if (!SHA256.test(kmsKeyVersionSha256)) {
+    throw new Error('RESTORE_DATABASE_BACKUP_KMS_KEY_VERSION_SHA256_invalid');
+  }
+  if (!SHA256.test(providerReceiptSha256)) {
+    throw new Error('RESTORE_DATABASE_BACKUP_PROVIDER_RECEIPT_SHA256_invalid');
+  }
+  if (!providerReceiptId || providerReceiptId.length > 512) {
+    throw new Error('RESTORE_DATABASE_BACKUP_PROVIDER_RECEIPT_ID_invalid');
+  }
+  if (!Number.isFinite(capturedAtMs) || capturedAtMs > Date.now() + 5 * 60_000) {
+    throw new Error('RESTORE_DATABASE_BACKUP_CAPTURED_AT_invalid');
+  }
+  if (env.RESTORE_DATABASE_BACKUP_IMMUTABLE !== '1') {
+    throw new Error('RESTORE_DATABASE_BACKUP_IMMUTABLE_required');
+  }
+  return {
+    releaseBoundRequired: true,
+    providerArtifactReused: true,
+    atRestEncryptionVerified: true,
+    encryptionMode,
+    kmsKeyVersionSha256,
+    providerReceiptBound: true,
+    providerReceiptSha256,
+    providerReceiptIdSha256: sha256(providerReceiptId),
+    artifactImmutable: true,
+    capturedAt: new Date(capturedAtMs).toISOString(),
+    restorePayloadBytes: backupBytes,
+    restorePayloadSha256: backupSha256,
+  };
+}
+
 export async function commercialObjectBindings(databaseUrl) {
   const client = new pg.Client({ connectionString: databaseUrl });
   await client.connect();
@@ -389,6 +451,12 @@ export async function verifyBackupRestore({
     stream.once('error', reject);
     stream.once('end', () => resolve(hash.digest('hex')));
   });
+  const protectedBackup = databaseBackupProtection({
+    evidenceClass,
+    backup,
+    backupBytes,
+    backupSha256,
+  });
 
   // The source is read-only. This snapshot is captured adjacent to pg_dump;
   // an active write during the interval correctly makes the exact match fail.
@@ -427,7 +495,7 @@ export async function verifyBackupRestore({
   const objectRestoreStartedAtMs = Date.now();
   const requiredBindings = await commercialObjectBindings(sourceDatabaseUrl);
   const objectStorage = await verifyObjectStorageRestoreDrill({
-    config: loadObjectStorageRestoreConfig(process.env),
+    config: loadObjectStorageRestoreConfig(process.env, { evidenceClass }),
     requiredBindings,
   });
   const sourceAfterObjectRestore = await snapshotDatabase(sourceDatabaseUrl);
@@ -437,7 +505,8 @@ export async function verifyBackupRestore({
   }
 
   const completedAtMs = Date.now();
-  const backupCapturedAtMs = Date.parse(backup.completedAt);
+  const backupCapturedAt = protectedBackup.capturedAt ?? backup.completedAt;
+  const backupCapturedAtMs = Date.parse(backupCapturedAt);
   const receipt = {
     schema: 'nexyfab.backup-isolated-restore-drill.v3',
     generatedAt: new Date(completedAtMs).toISOString(),
@@ -462,6 +531,7 @@ export async function verifyBackupRestore({
       sha256: backupSha256,
       sourceSnapshotSha256: source.tableContentSha256,
       completedAt: backup.completedAt,
+      protectedSource: protectedBackup,
     },
     source: {
       ...source,
@@ -486,7 +556,7 @@ export async function verifyBackupRestore({
     objectStorage,
     timing: {
       drillStartedAt: new Date(startedAtMs).toISOString(),
-      backupCapturedAt: backup.completedAt,
+      backupCapturedAt,
       restoreStartedAt: new Date(restoreStartedAtMs).toISOString(),
       objectRestoreStartedAt: new Date(objectRestoreStartedAtMs).toISOString(),
       completedAt: new Date(completedAtMs).toISOString(),

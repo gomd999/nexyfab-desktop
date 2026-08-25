@@ -680,6 +680,7 @@ function objectStorageRestoreEligible(value) {
   const restored = value?.restored;
   const bindings = value?.databaseBindings;
   const limits = value?.limits;
+  const protection = value?.protection;
   const identities = [source, backup, restored].map(role =>
     `${role?.endpointSha256 ?? ''}\0${role?.region ?? ''}\0${role?.bucket ?? ''}\0${role?.prefix ?? ''}`);
   return value?.schema === 'nexyfab.object-storage-isolated-restore-drill.v1'
@@ -694,6 +695,7 @@ function objectStorageRestoreEligible(value) {
     && objectRestoreRoleEligible(backup)
     && objectRestoreRoleEligible(restored)
     && new Set(identities).size === 3
+    && (source.endpointSha256 !== backup.endpointSha256 || source.region !== backup.region)
     && !source.bucket.includes('backup') && !source.bucket.includes('restore-drill')
     && backup.bucket.includes('backup') && backup.prefix.includes('backup')
     && restored.bucket.includes('restore-drill') && restored.prefix.includes('restore-drill')
@@ -714,7 +716,16 @@ function objectStorageRestoreEligible(value) {
     && Number.isInteger(limits?.maxObjects) && source.objectCount <= limits.maxObjects
     && Number.isSafeInteger(limits?.maxTotalBytes) && source.totalBytes <= limits.maxTotalBytes
     && Number.isSafeInteger(limits?.maxObjectBytes)
-    && source.objects.every(item => item.bytes <= limits.maxObjectBytes);
+    && source.objects.every(item => item.bytes <= limits.maxObjectBytes)
+    && protection?.releaseBoundRequired === true
+    && protection.failureDomainDistinct === true
+    && protection.versioningEnabled === true
+    && protection.objectLockEnabled === true
+    && ['COMPLIANCE', 'GOVERNANCE'].includes(protection.defaultRetentionMode)
+    && ((Number.isSafeInteger(protection.defaultRetentionDays) && protection.defaultRetentionDays >= 1)
+      || (Number.isSafeInteger(protection.defaultRetentionYears) && protection.defaultRetentionYears >= 1))
+    && protection.kmsEncryptionVerified === true
+    && SHA256.test(String(protection.kmsKeyIdSha256 ?? ''));
 }
 
 export function restoreReceiptEligible(receipt, expectedRelease, now = Date.now()) {
@@ -731,6 +742,7 @@ export function restoreReceiptEligible(receipt, expectedRelease, now = Date.now(
   const restoreStartedAt = Date.parse(timing?.restoreStartedAt);
   const completedAt = Date.parse(timing?.completedAt);
   const objectRestoreStartedAt = Date.parse(timing?.objectRestoreStartedAt);
+  const backupProtection = receipt?.backup?.protectedSource;
   return receipt?.schema === 'nexyfab.backup-isolated-restore-drill.v3'
     && receipt?.ok === true
     && receipt?.target === 'production'
@@ -748,6 +760,18 @@ export function restoreReceiptEligible(receipt, expectedRelease, now = Date.now(
     && SHA256.test(String(receipt?.backup?.sha256 ?? ''))
     && Number.isInteger(receipt.backup.bytes) && receipt.backup.bytes > 0
     && SHA256.test(String(receipt?.backup?.sourceSnapshotSha256 ?? ''))
+    && backupProtection?.releaseBoundRequired === true
+    && backupProtection.providerArtifactReused === true
+    && backupProtection.atRestEncryptionVerified === true
+    && ['provider-managed-kms', 'customer-managed-kms'].includes(backupProtection.encryptionMode)
+    && SHA256.test(String(backupProtection.kmsKeyVersionSha256 ?? ''))
+    && backupProtection.providerReceiptBound === true
+    && SHA256.test(String(backupProtection.providerReceiptSha256 ?? ''))
+    && SHA256.test(String(backupProtection.providerReceiptIdSha256 ?? ''))
+    && backupProtection.artifactImmutable === true
+    && backupProtection.capturedAt === timing.backupCapturedAt
+    && backupProtection.restorePayloadBytes === receipt.backup.bytes
+    && backupProtection.restorePayloadSha256 === receipt.backup.sha256
     && SHA256.test(String(sourceHash ?? ''))
     && SHA256.test(String(restoredHash ?? ''))
     && SHA256.test(String(migratedHash ?? ''))
