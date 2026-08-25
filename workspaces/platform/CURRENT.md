@@ -1,5 +1,34 @@
 # Platform current session
 
+## 2026-08-25 signed adapter authority and preflight v2
+
+- Status: `PREFLIGHT_V2_EXECUTION_EVIDENCE_SPLIT /
+  ED25519_ADAPTER_APPROVAL_REQUIRED / EXECUTION_BLOCKERS_5 /
+  EVIDENCE_BLOCKERS_1 / COMMERCIAL_CAMPAIGN_HOLD`.
+- Implementation commit:
+  `68934b7768a37f3ab1ad7bdc798cd79d824fbbac`.
+- Preflight v2 separates `readyToExecute` from
+  `readyForFinalVerification`. Missing output artifacts no longer create a
+  circular prerequisite before the approved adapter can generate them; unsafe
+  existing paths still block execution.
+- Adapter import now requires both an operator-pinned SHA-256 and a valid
+  Ed25519 approval from a separately registered
+  `mechanical-adapter-release-approver`. The approval binds adapter bytes and
+  version to the exact workbook `evidenceRootId`, expires within at most 30
+  days, and explicitly grants no commercial release.
+- Current external root result: workbook 30/30 valid; execution blockers are
+  missing three design-verifier roles, adapter, operator pin, release approver,
+  and signed approval; the separate evidence blocker is 240 missing case
+  files. `readyToExecute=false`, `readyForFinalVerification=false`.
+- Verification: direct-design runner/preflight contracts 15/15 PASS, including
+  forged/expired/transplanted approval rejection and proof that invalid
+  approval prevents adapter import and state creation. Focused script ESLint,
+  full Platform ownership, source ESLint, and TypeScript PASS.
+- Public contract:
+  `contracts/mechanical-design-adapter-approval.schema.json`.
+- Handoff:
+  `HANDOFFS/20260825T094608Z-signed-adapter-authority-preflight-v2.md`.
+
 ## 2026-08-25 mechanical direct-design adapter byte binding
 
 - Status: `ADAPTER_IMPORT_SHA256_BOUND / BYTE_SUBSTITUTION_REJECTED /
