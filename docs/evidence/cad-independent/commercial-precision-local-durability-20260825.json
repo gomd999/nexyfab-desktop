@@ -1,9 +1,9 @@
 {
   "schema": "nexyfab.commercial-precision-local-durability.v3",
-  "generatedAt": "2026-08-25T12:42:44.315Z",
+  "generatedAt": "2026-08-25T13:14:23.925Z",
   "status": "LOCAL_DURABLE_EXACT_CLOSED_LOOP_PASS",
   "source": {
-    "gitHead": "f649678730b18f4a22e3a8ec641ee33a067299be",
+    "gitHead": "c54e6f607e13878b0adfcf7b64f9b8c0d9873975",
     "migrationVersion": 2026082502,
     "migrationSourceSha256": "07451ebcc671a837bb51c6fed94e6874068814a51c4da674aa0b89b7595f3ec9",
     "imageDigests": {
@@ -15,13 +15,13 @@
   "execution": {
     "jobId": "job-1",
     "executionId": "exec-b41d3fca676d7343d431b87d",
-    "workerIdentity": "local-worker-b",
-    "workerFingerprintSha256": "df6595094308dc467ed54699f406d0d79bea22d640c48b264ba1fafe85a9f14e",
+    "workerIdentity": "local-worker-a",
+    "workerFingerprintSha256": "acde54755855d0127266c5ce17e4f6ebffb5979ba20bf51214c33bed58d1fac0",
     "nativeExecutableSha256": "91ec09dda8f20556f366110859f106ab189d45f8f6a2bd092e6785174ad4a0fa",
-    "nativeInvocationSha256": "0478fb09d5913bcec53d91f21583ca367a219c7dcdc055cac6658a8eba1a390f",
+    "nativeInvocationSha256": "c5d26bdfef20f6dd692c35804eafaf6db54b395197e82a5dc6bef286ec5e8c2d",
     "inputArtifactSha256": "1102d5aa81e5fd39eb9cd4bf461d2eb159dd2352772d2f7c73d65a57745f840d",
-    "workerReceiptSha256": "b17bb479d93a372826e5464014a690653186cb6ca5227832608eacab20583c77",
-    "persistenceReceiptSha256": "23f3740994d754f21feddfdc3a90f4256f51e486c1b67a8ddfc5696de8a0edb3",
+    "workerReceiptSha256": "8165aee6d07f27ff26cec50d94d6b57b3b68b9d7fdbc30a113dfa8e440e39b75",
+    "persistenceReceiptSha256": "5ba462eb25a221c2472ea66ff97903acd021ee91746f741515441c72dc3459e6",
     "workspaceAfterRevision": 8,
     "workspaceAfterContentHash": "986d805d219649580923ea1be36a38b7f9fd26e7cd572da5dfbc11b676d97595",
     "outputArtifacts": [
@@ -40,10 +40,10 @@
         "byteLength": 2477
       },
       {
-        "artifactId": "verification-44c9d23b8e3b429517cbbae98ecd1dce7214f091fd2ddcca",
+        "artifactId": "verification-35344cad1b44498914413f7242360a22c40344d3edba4059",
         "role": "verification",
-        "objectKey": "private/commercial-precision-outputs/org-tenant-1/projects/project-1/jobs/job-1/verification/verification-44c9d23b8e3b429517cbbae98ecd1dce7214f091fd2ddcca-44c9d23b8e3b429517cbbae98ecd1dce7214f091fd2ddccab1ae7d86cde15387.json",
-        "contentSha256": "44c9d23b8e3b429517cbbae98ecd1dce7214f091fd2ddccab1ae7d86cde15387",
+        "objectKey": "private/commercial-precision-outputs/org-tenant-1/projects/project-1/jobs/job-1/verification/verification-35344cad1b44498914413f7242360a22c40344d3edba4059-35344cad1b44498914413f7242360a22c40344d3edba4059072470b52ba09095.json",
+        "contentSha256": "35344cad1b44498914413f7242360a22c40344d3edba4059072470b52ba09095",
         "byteLength": 795
       }
     ]
@@ -93,5 +93,5 @@
     "commercialGaEligible": false,
     "independentCadOrManufacturingCertified": false
   },
-  "receiptSha256": "91e37f5d83193c432bbf983d47888494f913b0aa870ac3959107002ffddcadf3"
+  "receiptSha256": "67e1bafac0d4d747d0dd2d8ff1aa7b03d90bff64888a22e352cf714c6ad6d35a"
 }

@@ -1,12 +1,12 @@
 {
   "schema": "nexyfab.backup-isolated-restore-drill.v3",
-  "generatedAt": "2026-08-25T12:43:14.521Z",
+  "generatedAt": "2026-08-25T13:14:54.664Z",
   "ok": true,
   "target": "local-fixture",
   "release": {
-    "buildId": "local-cross-store-f649678730b1",
-    "deploymentId": "nexyfab-precision-durability-33280",
-    "gitHead": "f649678730b18f4a22e3a8ec641ee33a067299be"
+    "buildId": "local-cross-store-c54e6f607e13",
+    "deploymentId": "nexyfab-precision-durability-19384",
+    "gitHead": "c54e6f607e13878b0adfcf7b64f9b8c0d9873975"
   },
   "safety": {
     "environment": "local-fixture",
@@ -22,18 +22,25 @@
   "backup": {
     "file": "postgres.sql.gz",
     "reused": false,
-    "bytes": 42272,
-    "sha256": "8d41a4697a00389e67a79b3b47e65219385ff85bbe9606182dc810410867069d",
-    "sourceSnapshotSha256": "796755320682556f2435634dd9526131685b5f36baf8efa7f62136dac73f5d7b",
-    "completedAt": "2026-08-25T12:43:01.262Z"
+    "bytes": 42258,
+    "sha256": "d2ee0312daaed62303a63fe7eb7e56b1bb75feb6a80b31a8acbbd959f55bf57e",
+    "sourceSnapshotSha256": "abf7248f91a28a1ab185e92c15cd3043a44626072ca27657a8360fb4409c278e",
+    "completedAt": "2026-08-25T13:14:41.102Z",
+    "protectedSource": {
+      "releaseBoundRequired": false,
+      "providerArtifactReused": false,
+      "atRestEncryptionVerified": false,
+      "providerReceiptBound": false,
+      "artifactImmutable": false
+    }
   },
   "source": {
-    "capturedAt": "2026-08-25T12:43:01.767Z",
+    "capturedAt": "2026-08-25T13:14:41.594Z",
     "tableCount": 164,
     "columnCount": 1717,
     "rowCount": 104,
     "schemaSha256": "1ec201cb4d7a0c7ec1feb8b89ed146a947cda0a8e0898606164abae2a80b4c5b",
-    "tableContentSha256": "796755320682556f2435634dd9526131685b5f36baf8efa7f62136dac73f5d7b",
+    "tableContentSha256": "abf7248f91a28a1ab185e92c15cd3043a44626072ca27657a8360fb4409c278e",
     "tables": [
       {
         "table": "nf_admin_access_emails",
@@ -113,7 +120,7 @@
       {
         "table": "nf_api_usage",
         "rows": 31,
-        "contentHash": "00862b550ca1f80aa969dd4ecfe73142"
+        "contentHash": "322615e799f95e7abfe9d41247e6b869"
       },
       {
         "table": "nf_architecture_interior_artifact_bundle_heads",
@@ -258,12 +265,12 @@
       {
         "table": "nf_cad_workspace_heads",
         "rows": 2,
-        "contentHash": "7cc55e6b9e5730428d4c8e356f014903"
+        "contentHash": "989b6b6eb3b26398abcca9a1cf342abb"
       },
       {
         "table": "nf_cad_workspace_revisions",
         "rows": 1,
-        "contentHash": "25965c43efda2cd21803cd3cdfd11a1f"
+        "contentHash": "d1a1775d0be379c58c35c21dbeced52b"
       },
       {
         "table": "nf_cbam_log",
@@ -288,12 +295,12 @@
       {
         "table": "nf_commercial_generation_revisions",
         "rows": 4,
-        "contentHash": "0fa153967b9a35441ab1e6971d2f9cd1"
+        "contentHash": "9200473eb272e627d073b01a78216580"
       },
       {
         "table": "nf_commercial_generation_runs",
         "rows": 2,
-        "contentHash": "156604779cf47db3dc3f3cbb249c25d8"
+        "contentHash": "2ed03ea5e2358022da0842ae085e7126"
       },
       {
         "table": "nf_concierge_status",
@@ -558,62 +565,62 @@
       {
         "table": "nf_precision_cad_approval_challenges",
         "rows": 2,
-        "contentHash": "3be83d57188ba7a8fb21f79ff6668fbc"
+        "contentHash": "194a4017233a2d279f5a2cf1728dee8e"
       },
       {
         "table": "nf_precision_cad_commercial_artifact_snapshots",
         "rows": 3,
-        "contentHash": "f28e94670ec4a499d8b2f8de991b783e"
+        "contentHash": "aa89061b006c3239ee0d75f255e88998"
       },
       {
         "table": "nf_precision_cad_commercial_callbacks",
         "rows": 1,
-        "contentHash": "506ee88e74c116330d1ea2dc0e5c124b"
+        "contentHash": "0273b07c26b9166c35cc52bbb674fde6"
       },
       {
         "table": "nf_precision_cad_commercial_input_artifacts",
         "rows": 2,
-        "contentHash": "85ad171fdb2fe51ef9bd7a869a9d7093"
+        "contentHash": "85fcd30a6865607cd8e4adacc1808cd3"
       },
       {
         "table": "nf_precision_cad_commercial_native_parser_receipts",
         "rows": 1,
-        "contentHash": "0ca9593a506e2efee759d2a1ab54bcb9"
+        "contentHash": "1c575ee75367b1015c81377dadce6242"
       },
       {
         "table": "nf_precision_cad_commercial_outbox",
         "rows": 2,
-        "contentHash": "a2c88f8895123068366542f1b9608b4a"
+        "contentHash": "8725b9fe44714c13eaa58c8cbb5abec5"
       },
       {
         "table": "nf_precision_cad_commercial_output_intents",
         "rows": 3,
-        "contentHash": "64fa9510144238d05f36bd801c73f507"
+        "contentHash": "a4490586caa1bf82266db3aae72c5132"
       },
       {
         "table": "nf_precision_cad_commercial_persistence_receipts",
         "rows": 1,
-        "contentHash": "43e10aaef03763ed53887c3309d7cb9c"
+        "contentHash": "1d3fff557b7962d2119c3254e37f0534"
       },
       {
         "table": "nf_precision_cad_commercial_worker_artifacts",
         "rows": 3,
-        "contentHash": "17d328d15abfd3f6b1a7f4838851b748"
+        "contentHash": "622a63a936983936fd7b9e106a3d83b2"
       },
       {
         "table": "nf_precision_cad_commercial_workspace_commits",
         "rows": 1,
-        "contentHash": "48d9f07fdb2493c2f039a170a4bfbf4c"
+        "contentHash": "7f139e71058a4db97c0e83b1f00f0a3f"
       },
       {
         "table": "nf_precision_cad_execution_events",
         "rows": 4,
-        "contentHash": "90fd5a544fa9e0ed81baa24a6eff4e2c"
+        "contentHash": "9fc87be90512ba91f13c3678ab0dd9c5"
       },
       {
         "table": "nf_precision_cad_execution_journal",
         "rows": 2,
-        "contentHash": "a3b6a2880e5ca2374a41f6037ac85d27"
+        "contentHash": "f8909a1e74046a38e32cbfd0ad233733"
       },
       {
         "table": "nf_precision_cad_result_artifacts",
@@ -623,12 +630,12 @@
       {
         "table": "nf_precision_cad_tool_claims",
         "rows": 2,
-        "contentHash": "e7c933440973bdb543e396820e2fb089"
+        "contentHash": "8541ccd3fdd066a0c01b6fde230b5684"
       },
       {
         "table": "nf_precision_cad_worker_receipts",
         "rows": 1,
-        "contentHash": "a8b5bb3c0659fc5f26381aa74c21f72a"
+        "contentHash": "bc928079e0375891523e5fd95c0d7328"
       },
       {
         "table": "nf_project_invites",
@@ -698,7 +705,7 @@
       {
         "table": "nf_schema_migrations",
         "rows": 18,
-        "contentHash": "958bf176e53d5f75e05156f94b5b6b0a"
+        "contentHash": "6d3a2d8a007757649499e8700d2a6aa5"
       },
       {
         "table": "nf_security_alerts",
@@ -813,7 +820,7 @@
       {
         "table": "nf_users",
         "rows": 1,
-        "contentHash": "bf6a929edb174b556290ed41dd81c188"
+        "contentHash": "b051b22f3f89cb10a010ab25ca4a27c9"
       },
       {
         "table": "nf_verification_codes",
@@ -870,16 +877,16 @@
       "integrityOk": true,
       "ok": false
     },
-    "afterObjectRestoreTableContentSha256": "796755320682556f2435634dd9526131685b5f36baf8efa7f62136dac73f5d7b",
+    "afterObjectRestoreTableContentSha256": "abf7248f91a28a1ab185e92c15cd3043a44626072ca27657a8360fb4409c278e",
     "afterObjectRestoreSchemaSha256": "1ec201cb4d7a0c7ec1feb8b89ed146a947cda0a8e0898606164abae2a80b4c5b"
   },
   "restored": {
-    "capturedAt": "2026-08-25T12:43:12.953Z",
+    "capturedAt": "2026-08-25T13:14:53.087Z",
     "tableCount": 164,
     "columnCount": 1717,
     "rowCount": 104,
     "schemaSha256": "1ec201cb4d7a0c7ec1feb8b89ed146a947cda0a8e0898606164abae2a80b4c5b",
-    "tableContentSha256": "796755320682556f2435634dd9526131685b5f36baf8efa7f62136dac73f5d7b",
+    "tableContentSha256": "abf7248f91a28a1ab185e92c15cd3043a44626072ca27657a8360fb4409c278e",
     "tables": [
       {
         "table": "nf_admin_access_emails",
@@ -959,7 +966,7 @@
       {
         "table": "nf_api_usage",
         "rows": 31,
-        "contentHash": "00862b550ca1f80aa969dd4ecfe73142"
+        "contentHash": "322615e799f95e7abfe9d41247e6b869"
       },
       {
         "table": "nf_architecture_interior_artifact_bundle_heads",
@@ -1104,12 +1111,12 @@
       {
         "table": "nf_cad_workspace_heads",
         "rows": 2,
-        "contentHash": "7cc55e6b9e5730428d4c8e356f014903"
+        "contentHash": "989b6b6eb3b26398abcca9a1cf342abb"
       },
       {
         "table": "nf_cad_workspace_revisions",
         "rows": 1,
-        "contentHash": "25965c43efda2cd21803cd3cdfd11a1f"
+        "contentHash": "d1a1775d0be379c58c35c21dbeced52b"
       },
       {
         "table": "nf_cbam_log",
@@ -1134,12 +1141,12 @@
       {
         "table": "nf_commercial_generation_revisions",
         "rows": 4,
-        "contentHash": "0fa153967b9a35441ab1e6971d2f9cd1"
+        "contentHash": "9200473eb272e627d073b01a78216580"
       },
       {
         "table": "nf_commercial_generation_runs",
         "rows": 2,
-        "contentHash": "156604779cf47db3dc3f3cbb249c25d8"
+        "contentHash": "2ed03ea5e2358022da0842ae085e7126"
       },
       {
         "table": "nf_concierge_status",
@@ -1404,62 +1411,62 @@
       {
         "table": "nf_precision_cad_approval_challenges",
         "rows": 2,
-        "contentHash": "3be83d57188ba7a8fb21f79ff6668fbc"
+        "contentHash": "194a4017233a2d279f5a2cf1728dee8e"
       },
       {
         "table": "nf_precision_cad_commercial_artifact_snapshots",
         "rows": 3,
-        "contentHash": "f28e94670ec4a499d8b2f8de991b783e"
+        "contentHash": "aa89061b006c3239ee0d75f255e88998"
       },
       {
         "table": "nf_precision_cad_commercial_callbacks",
         "rows": 1,
-        "contentHash": "506ee88e74c116330d1ea2dc0e5c124b"
+        "contentHash": "0273b07c26b9166c35cc52bbb674fde6"
       },
       {
         "table": "nf_precision_cad_commercial_input_artifacts",
         "rows": 2,
-        "contentHash": "85ad171fdb2fe51ef9bd7a869a9d7093"
+        "contentHash": "85fcd30a6865607cd8e4adacc1808cd3"
       },
       {
         "table": "nf_precision_cad_commercial_native_parser_receipts",
         "rows": 1,
-        "contentHash": "0ca9593a506e2efee759d2a1ab54bcb9"
+        "contentHash": "1c575ee75367b1015c81377dadce6242"
       },
       {
         "table": "nf_precision_cad_commercial_outbox",
         "rows": 2,
-        "contentHash": "a2c88f8895123068366542f1b9608b4a"
+        "contentHash": "8725b9fe44714c13eaa58c8cbb5abec5"
       },
       {
         "table": "nf_precision_cad_commercial_output_intents",
         "rows": 3,
-        "contentHash": "64fa9510144238d05f36bd801c73f507"
+        "contentHash": "a4490586caa1bf82266db3aae72c5132"
       },
       {
         "table": "nf_precision_cad_commercial_persistence_receipts",
         "rows": 1,
-        "contentHash": "43e10aaef03763ed53887c3309d7cb9c"
+        "contentHash": "1d3fff557b7962d2119c3254e37f0534"
       },
       {
         "table": "nf_precision_cad_commercial_worker_artifacts",
         "rows": 3,
-        "contentHash": "17d328d15abfd3f6b1a7f4838851b748"
+        "contentHash": "622a63a936983936fd7b9e106a3d83b2"
       },
       {
         "table": "nf_precision_cad_commercial_workspace_commits",
         "rows": 1,
-        "contentHash": "48d9f07fdb2493c2f039a170a4bfbf4c"
+        "contentHash": "7f139e71058a4db97c0e83b1f00f0a3f"
       },
       {
         "table": "nf_precision_cad_execution_events",
         "rows": 4,
-        "contentHash": "90fd5a544fa9e0ed81baa24a6eff4e2c"
+        "contentHash": "9fc87be90512ba91f13c3678ab0dd9c5"
       },
       {
         "table": "nf_precision_cad_execution_journal",
         "rows": 2,
-        "contentHash": "a3b6a2880e5ca2374a41f6037ac85d27"
+        "contentHash": "f8909a1e74046a38e32cbfd0ad233733"
       },
       {
         "table": "nf_precision_cad_result_artifacts",
@@ -1469,12 +1476,12 @@
       {
         "table": "nf_precision_cad_tool_claims",
         "rows": 2,
-        "contentHash": "e7c933440973bdb543e396820e2fb089"
+        "contentHash": "8541ccd3fdd066a0c01b6fde230b5684"
       },
       {
         "table": "nf_precision_cad_worker_receipts",
         "rows": 1,
-        "contentHash": "a8b5bb3c0659fc5f26381aa74c21f72a"
+        "contentHash": "bc928079e0375891523e5fd95c0d7328"
       },
       {
         "table": "nf_project_invites",
@@ -1544,7 +1551,7 @@
       {
         "table": "nf_schema_migrations",
         "rows": 18,
-        "contentHash": "958bf176e53d5f75e05156f94b5b6b0a"
+        "contentHash": "6d3a2d8a007757649499e8700d2a6aa5"
       },
       {
         "table": "nf_security_alerts",
@@ -1659,7 +1666,7 @@
       {
         "table": "nf_users",
         "rows": 1,
-        "contentHash": "bf6a929edb174b556290ed41dd81c188"
+        "contentHash": "b051b22f3f89cb10a010ab25ca4a27c9"
       },
       {
         "table": "nf_verification_codes",
@@ -1717,7 +1724,7 @@
       "ok": false
     },
     "exactSourceMatch": true,
-    "businessDataSha256": "796755320682556f2435634dd9526131685b5f36baf8efa7f62136dac73f5d7b",
+    "businessDataSha256": "abf7248f91a28a1ab185e92c15cd3043a44626072ca27657a8360fb4409c278e",
     "differences": []
   },
   "migration": {
@@ -1867,12 +1874,12 @@
   },
   "migrationTarget": 2026082502,
   "migrated": {
-    "capturedAt": "2026-08-25T12:43:13.522Z",
+    "capturedAt": "2026-08-25T13:14:53.665Z",
     "tableCount": 164,
     "columnCount": 1717,
     "rowCount": 104,
     "schemaSha256": "1ec201cb4d7a0c7ec1feb8b89ed146a947cda0a8e0898606164abae2a80b4c5b",
-    "tableContentSha256": "796755320682556f2435634dd9526131685b5f36baf8efa7f62136dac73f5d7b",
+    "tableContentSha256": "abf7248f91a28a1ab185e92c15cd3043a44626072ca27657a8360fb4409c278e",
     "tables": [
       {
         "table": "nf_admin_access_emails",
@@ -1952,7 +1959,7 @@
       {
         "table": "nf_api_usage",
         "rows": 31,
-        "contentHash": "00862b550ca1f80aa969dd4ecfe73142"
+        "contentHash": "322615e799f95e7abfe9d41247e6b869"
       },
       {
         "table": "nf_architecture_interior_artifact_bundle_heads",
@@ -2097,12 +2104,12 @@
       {
         "table": "nf_cad_workspace_heads",
         "rows": 2,
-        "contentHash": "7cc55e6b9e5730428d4c8e356f014903"
+        "contentHash": "989b6b6eb3b26398abcca9a1cf342abb"
       },
       {
         "table": "nf_cad_workspace_revisions",
         "rows": 1,
-        "contentHash": "25965c43efda2cd21803cd3cdfd11a1f"
+        "contentHash": "d1a1775d0be379c58c35c21dbeced52b"
       },
       {
         "table": "nf_cbam_log",
@@ -2127,12 +2134,12 @@
       {
         "table": "nf_commercial_generation_revisions",
         "rows": 4,
-        "contentHash": "0fa153967b9a35441ab1e6971d2f9cd1"
+        "contentHash": "9200473eb272e627d073b01a78216580"
       },
       {
         "table": "nf_commercial_generation_runs",
         "rows": 2,
-        "contentHash": "156604779cf47db3dc3f3cbb249c25d8"
+        "contentHash": "2ed03ea5e2358022da0842ae085e7126"
       },
       {
         "table": "nf_concierge_status",
@@ -2397,62 +2404,62 @@
       {
         "table": "nf_precision_cad_approval_challenges",
         "rows": 2,
-        "contentHash": "3be83d57188ba7a8fb21f79ff6668fbc"
+        "contentHash": "194a4017233a2d279f5a2cf1728dee8e"
       },
       {
         "table": "nf_precision_cad_commercial_artifact_snapshots",
         "rows": 3,
-        "contentHash": "f28e94670ec4a499d8b2f8de991b783e"
+        "contentHash": "aa89061b006c3239ee0d75f255e88998"
       },
       {
         "table": "nf_precision_cad_commercial_callbacks",
         "rows": 1,
-        "contentHash": "506ee88e74c116330d1ea2dc0e5c124b"
+        "contentHash": "0273b07c26b9166c35cc52bbb674fde6"
       },
       {
         "table": "nf_precision_cad_commercial_input_artifacts",
         "rows": 2,
-        "contentHash": "85ad171fdb2fe51ef9bd7a869a9d7093"
+        "contentHash": "85fcd30a6865607cd8e4adacc1808cd3"
       },
       {
         "table": "nf_precision_cad_commercial_native_parser_receipts",
         "rows": 1,
-        "contentHash": "0ca9593a506e2efee759d2a1ab54bcb9"
+        "contentHash": "1c575ee75367b1015c81377dadce6242"
       },
       {
         "table": "nf_precision_cad_commercial_outbox",
         "rows": 2,
-        "contentHash": "a2c88f8895123068366542f1b9608b4a"
+        "contentHash": "8725b9fe44714c13eaa58c8cbb5abec5"
       },
       {
         "table": "nf_precision_cad_commercial_output_intents",
         "rows": 3,
-        "contentHash": "64fa9510144238d05f36bd801c73f507"
+        "contentHash": "a4490586caa1bf82266db3aae72c5132"
       },
       {
         "table": "nf_precision_cad_commercial_persistence_receipts",
         "rows": 1,
-        "contentHash": "43e10aaef03763ed53887c3309d7cb9c"
+        "contentHash": "1d3fff557b7962d2119c3254e37f0534"
       },
       {
         "table": "nf_precision_cad_commercial_worker_artifacts",
         "rows": 3,
-        "contentHash": "17d328d15abfd3f6b1a7f4838851b748"
+        "contentHash": "622a63a936983936fd7b9e106a3d83b2"
       },
       {
         "table": "nf_precision_cad_commercial_workspace_commits",
         "rows": 1,
-        "contentHash": "48d9f07fdb2493c2f039a170a4bfbf4c"
+        "contentHash": "7f139e71058a4db97c0e83b1f00f0a3f"
       },
       {
         "table": "nf_precision_cad_execution_events",
         "rows": 4,
-        "contentHash": "90fd5a544fa9e0ed81baa24a6eff4e2c"
+        "contentHash": "9fc87be90512ba91f13c3678ab0dd9c5"
       },
       {
         "table": "nf_precision_cad_execution_journal",
         "rows": 2,
-        "contentHash": "a3b6a2880e5ca2374a41f6037ac85d27"
+        "contentHash": "f8909a1e74046a38e32cbfd0ad233733"
       },
       {
         "table": "nf_precision_cad_result_artifacts",
@@ -2462,12 +2469,12 @@
       {
         "table": "nf_precision_cad_tool_claims",
         "rows": 2,
-        "contentHash": "e7c933440973bdb543e396820e2fb089"
+        "contentHash": "8541ccd3fdd066a0c01b6fde230b5684"
       },
       {
         "table": "nf_precision_cad_worker_receipts",
         "rows": 1,
-        "contentHash": "a8b5bb3c0659fc5f26381aa74c21f72a"
+        "contentHash": "bc928079e0375891523e5fd95c0d7328"
       },
       {
         "table": "nf_project_invites",
@@ -2537,7 +2544,7 @@
       {
         "table": "nf_schema_migrations",
         "rows": 18,
-        "contentHash": "958bf176e53d5f75e05156f94b5b6b0a"
+        "contentHash": "6d3a2d8a007757649499e8700d2a6aa5"
       },
       {
         "table": "nf_security_alerts",
@@ -2652,7 +2659,7 @@
       {
         "table": "nf_users",
         "rows": 1,
-        "contentHash": "bf6a929edb174b556290ed41dd81c188"
+        "contentHash": "b051b22f3f89cb10a010ab25ca4a27c9"
       },
       {
         "table": "nf_verification_codes",
@@ -2703,7 +2710,7 @@
       "ok": true
     },
     "businessRowsPreserved": true,
-    "businessDataSha256": "796755320682556f2435634dd9526131685b5f36baf8efa7f62136dac73f5d7b",
+    "businessDataSha256": "abf7248f91a28a1ab185e92c15cd3043a44626072ca27657a8360fb4409c278e",
     "businessDifferences": []
   },
   "objectStorage": {
@@ -2724,17 +2731,28 @@
         "committed_output": 3,
         "immutable_input": 2
       },
-      "manifestSha256": "80cf17c9e00f04f8620de44707bb329ed087fa13323e39981ce485ab78959aab",
+      "manifestSha256": "f4c1275d00550d9708e748dd3752a0868d5577fcefec0958aa2b241b8bc15d2e",
       "allMatched": true
     },
+    "protection": {
+      "releaseBoundRequired": false,
+      "failureDomainDistinct": false,
+      "versioningEnabled": false,
+      "objectLockEnabled": false,
+      "defaultRetentionMode": null,
+      "defaultRetentionDays": null,
+      "defaultRetentionYears": null,
+      "kmsEncryptionVerified": false,
+      "kmsKeyIdSha256": null
+    },
     "source": {
-      "endpointSha256": "8dc9799d2b717dbe012efc75e27a35406a03ec61a9c396fbd01575d488934266",
+      "endpointSha256": "0e64bf3d20ec731df61ecfd8b55ac19848ea54d3b0e31fbf7e4c0e770dcdeceb",
       "region": "us-east-1",
       "bucket": "nexyfab-local-durability",
       "prefix": "private/",
       "objectCount": 8,
       "totalBytes": 8580,
-      "manifestSha256": "655f474f7c359684e99af346885cb88817b4571bc03bf91fb0f29dc46adfa1d3",
+      "manifestSha256": "f016160b7e9b77a5f2019c37d041d181b4942bc0541ad213a2107705e5690f7c",
       "objects": [
         {
           "keySha256": "8447eadb4c52414030db9a8aa82f09601acaf6236e2656cb6ffac727d806072e",
@@ -2757,35 +2775,35 @@
           "contentSha256": "0557a3ae70ebc99868726fdb15d58a81af50f1b8965733eaedae28007b8dff52"
         },
         {
-          "keySha256": "d807fc47a510e6132e9667aea89bb23fe32526f4ea520df1a0bac88cff299be8",
+          "keySha256": "2114413839b5e3ee096df13c6b21e6477c093a231e9bd935c299b7a75d387689",
           "bytes": 795,
-          "contentSha256": "44c9d23b8e3b429517cbbae98ecd1dce7214f091fd2ddccab1ae7d86cde15387"
+          "contentSha256": "35344cad1b44498914413f7242360a22c40344d3edba4059072470b52ba09095"
         },
         {
-          "keySha256": "322f2026733d010a276bbc8ba78402f6a114eeb36a02541d6f31a32336dc3a6e",
+          "keySha256": "4827d8a0fde90823315fc00a3034081d5b228310487b6bd2e40387ec133c300c",
           "bytes": 119,
           "contentSha256": "169486a45e08fdb533a04d3f1f6eb1be697e94e2589e4764292a95610a542af8"
         },
         {
-          "keySha256": "7f0819506073807ca68945a11b392dd75520af09f85596cf4c2bc643a88b7577",
+          "keySha256": "6e33896b721ba6731f06ec41b4b412f0631e4e66063dade3363464adcefcebc1",
           "bytes": 2477,
           "contentSha256": "0557a3ae70ebc99868726fdb15d58a81af50f1b8965733eaedae28007b8dff52"
         },
         {
-          "keySha256": "18fbd7f99a75d735ee1d277c6a70619cd2cb454fb1e0b1a091a008f2e462703a",
+          "keySha256": "ad81906ec4d42e7c9593c47b44160a659e5b1bb9dce6ae45a4bafd25e758137c",
           "bytes": 795,
-          "contentSha256": "44c9d23b8e3b429517cbbae98ecd1dce7214f091fd2ddccab1ae7d86cde15387"
+          "contentSha256": "35344cad1b44498914413f7242360a22c40344d3edba4059072470b52ba09095"
         }
       ]
     },
     "backup": {
-      "endpointSha256": "8dc9799d2b717dbe012efc75e27a35406a03ec61a9c396fbd01575d488934266",
+      "endpointSha256": "0e64bf3d20ec731df61ecfd8b55ac19848ea54d3b0e31fbf7e4c0e770dcdeceb",
       "region": "us-east-1",
       "bucket": "nexyfab-local-backup",
-      "prefix": "backup/f649678730b18f4a22e3a8ec641ee33a067299be/",
+      "prefix": "backup/c54e6f607e13878b0adfcf7b64f9b8c0d9873975/",
       "objectCount": 8,
       "totalBytes": 8580,
-      "manifestSha256": "655f474f7c359684e99af346885cb88817b4571bc03bf91fb0f29dc46adfa1d3",
+      "manifestSha256": "f016160b7e9b77a5f2019c37d041d181b4942bc0541ad213a2107705e5690f7c",
       "objects": [
         {
           "keySha256": "8447eadb4c52414030db9a8aa82f09601acaf6236e2656cb6ffac727d806072e",
@@ -2808,36 +2826,36 @@
           "contentSha256": "0557a3ae70ebc99868726fdb15d58a81af50f1b8965733eaedae28007b8dff52"
         },
         {
-          "keySha256": "d807fc47a510e6132e9667aea89bb23fe32526f4ea520df1a0bac88cff299be8",
+          "keySha256": "2114413839b5e3ee096df13c6b21e6477c093a231e9bd935c299b7a75d387689",
           "bytes": 795,
-          "contentSha256": "44c9d23b8e3b429517cbbae98ecd1dce7214f091fd2ddccab1ae7d86cde15387"
+          "contentSha256": "35344cad1b44498914413f7242360a22c40344d3edba4059072470b52ba09095"
         },
         {
-          "keySha256": "322f2026733d010a276bbc8ba78402f6a114eeb36a02541d6f31a32336dc3a6e",
+          "keySha256": "4827d8a0fde90823315fc00a3034081d5b228310487b6bd2e40387ec133c300c",
           "bytes": 119,
           "contentSha256": "169486a45e08fdb533a04d3f1f6eb1be697e94e2589e4764292a95610a542af8"
         },
         {
-          "keySha256": "7f0819506073807ca68945a11b392dd75520af09f85596cf4c2bc643a88b7577",
+          "keySha256": "6e33896b721ba6731f06ec41b4b412f0631e4e66063dade3363464adcefcebc1",
           "bytes": 2477,
           "contentSha256": "0557a3ae70ebc99868726fdb15d58a81af50f1b8965733eaedae28007b8dff52"
         },
         {
-          "keySha256": "18fbd7f99a75d735ee1d277c6a70619cd2cb454fb1e0b1a091a008f2e462703a",
+          "keySha256": "ad81906ec4d42e7c9593c47b44160a659e5b1bb9dce6ae45a4bafd25e758137c",
           "bytes": 795,
-          "contentSha256": "44c9d23b8e3b429517cbbae98ecd1dce7214f091fd2ddccab1ae7d86cde15387"
+          "contentSha256": "35344cad1b44498914413f7242360a22c40344d3edba4059072470b52ba09095"
         }
       ],
       "exactSourceMatch": true
     },
     "restored": {
-      "endpointSha256": "8dc9799d2b717dbe012efc75e27a35406a03ec61a9c396fbd01575d488934266",
+      "endpointSha256": "0e64bf3d20ec731df61ecfd8b55ac19848ea54d3b0e31fbf7e4c0e770dcdeceb",
       "region": "us-east-1",
       "bucket": "nexyfab-local-restore-drill",
-      "prefix": "restore-drill/f649678730b18f4a22e3a8ec641ee33a067299be/",
+      "prefix": "restore-drill/c54e6f607e13878b0adfcf7b64f9b8c0d9873975/",
       "objectCount": 8,
       "totalBytes": 8580,
-      "manifestSha256": "655f474f7c359684e99af346885cb88817b4571bc03bf91fb0f29dc46adfa1d3",
+      "manifestSha256": "f016160b7e9b77a5f2019c37d041d181b4942bc0541ad213a2107705e5690f7c",
       "objects": [
         {
           "keySha256": "8447eadb4c52414030db9a8aa82f09601acaf6236e2656cb6ffac727d806072e",
@@ -2860,24 +2878,24 @@
           "contentSha256": "0557a3ae70ebc99868726fdb15d58a81af50f1b8965733eaedae28007b8dff52"
         },
         {
-          "keySha256": "d807fc47a510e6132e9667aea89bb23fe32526f4ea520df1a0bac88cff299be8",
+          "keySha256": "2114413839b5e3ee096df13c6b21e6477c093a231e9bd935c299b7a75d387689",
           "bytes": 795,
-          "contentSha256": "44c9d23b8e3b429517cbbae98ecd1dce7214f091fd2ddccab1ae7d86cde15387"
+          "contentSha256": "35344cad1b44498914413f7242360a22c40344d3edba4059072470b52ba09095"
         },
         {
-          "keySha256": "322f2026733d010a276bbc8ba78402f6a114eeb36a02541d6f31a32336dc3a6e",
+          "keySha256": "4827d8a0fde90823315fc00a3034081d5b228310487b6bd2e40387ec133c300c",
           "bytes": 119,
           "contentSha256": "169486a45e08fdb533a04d3f1f6eb1be697e94e2589e4764292a95610a542af8"
         },
         {
-          "keySha256": "7f0819506073807ca68945a11b392dd75520af09f85596cf4c2bc643a88b7577",
+          "keySha256": "6e33896b721ba6731f06ec41b4b412f0631e4e66063dade3363464adcefcebc1",
           "bytes": 2477,
           "contentSha256": "0557a3ae70ebc99868726fdb15d58a81af50f1b8965733eaedae28007b8dff52"
         },
         {
-          "keySha256": "18fbd7f99a75d735ee1d277c6a70619cd2cb454fb1e0b1a091a008f2e462703a",
+          "keySha256": "ad81906ec4d42e7c9593c47b44160a659e5b1bb9dce6ae45a4bafd25e758137c",
           "bytes": 795,
-          "contentSha256": "44c9d23b8e3b429517cbbae98ecd1dce7214f091fd2ddccab1ae7d86cde15387"
+          "contentSha256": "35344cad1b44498914413f7242360a22c40344d3edba4059072470b52ba09095"
         }
       ],
       "exactSourceMatch": true
@@ -2889,17 +2907,17 @@
     }
   },
   "timing": {
-    "drillStartedAt": "2026-08-25T12:43:00.797Z",
-    "backupCapturedAt": "2026-08-25T12:43:01.262Z",
-    "restoreStartedAt": "2026-08-25T12:43:01.809Z",
-    "objectRestoreStartedAt": "2026-08-25T12:43:13.529Z",
-    "completedAt": "2026-08-25T12:43:14.521Z"
+    "drillStartedAt": "2026-08-25T13:14:40.652Z",
+    "backupCapturedAt": "2026-08-25T13:14:41.102Z",
+    "restoreStartedAt": "2026-08-25T13:14:41.635Z",
+    "objectRestoreStartedAt": "2026-08-25T13:14:53.673Z",
+    "completedAt": "2026-08-25T13:14:54.664Z"
   },
   "objectives": {
     "rpoAgeAtDrillStartMs": 0,
-    "rtoRestoreMigrateValidateMs": 12712,
-    "rtoObjectRestoreValidateMs": 992,
-    "totalDrillMs": 13724,
+    "rtoRestoreMigrateValidateMs": 13029,
+    "rtoObjectRestoreValidateMs": 991,
+    "totalDrillMs": 14012,
     "measurement": "wall_clock"
   },
   "claimBoundary": {
@@ -2910,5 +2928,5 @@
     "privateBetaEligible": false,
     "commercialGaEligible": false
   },
-  "sha256": "e3181adce4ddf2e4a3a79b812652ea2a7ab946a18782a3bbdcf8ac324696c292"
+  "sha256": "575c30ebded3337f0cb9b50e24898bad30ddfd0746b1cb6fffb6c847b85a6b5d"
 }
