@@ -1,6 +1,6 @@
 {
   "schema": "nexyfab.commercial-security-evidence-receipt.v2",
-  "generatedAt": "2026-08-25T05:32:16.301Z",
+  "generatedAt": "2026-08-25T06:14:06.721Z",
   "ok": false,
   "status": "HOLD",
   "target": "production",
@@ -10,9 +10,9 @@
     "gitHead": null
   },
   "freshness": {
-    "generatedAt": "2026-08-25T05:32:16.301Z",
+    "generatedAt": "2026-08-25T06:14:06.721Z",
     "maxAgeMs": 86400000,
-    "expiresAt": "2026-08-26T05:32:16.301Z"
+    "expiresAt": "2026-08-26T06:14:06.721Z"
   },
   "sourceBindings": [
     {
@@ -30,7 +30,7 @@
     {
       "path": "docs/evidence/security/secret-scan-260810.json",
       "bytes": 710,
-      "sha256": "89fcc5a4438ee1e6b10b7ad801552684b7df85a038a6fe1e8c58673f1987054f",
+      "sha256": "282aa6de8175a42340b318245a325dda526d3718ca1f13d7bede1031b9f65396",
       "canonicalization": "utf8-crlf-to-lf"
     },
     {
@@ -85,8 +85,8 @@
       "status": "pass",
       "derived": {
         "findingCount": 0,
-        "filesScanned": 10183,
-        "bytesScanned": 322752074,
+        "filesScanned": 10186,
+        "bytesScanned": 322760969,
         "excludedDerivedReceipts": 4,
         "textCanonicalization": "utf8-crlf-to-lf"
       },
@@ -118,5 +118,5 @@
     "release_deployment_id_missing",
     "release_git_head_invalid"
   ],
-  "receiptSha256": "d28c4248ecf655ecf2119384114764eaf7ce9fd7c0c9f696e6a2ce80878c8cb3"
+  "receiptSha256": "c9d23a108c50af89d7b9fcd2a6842a8887bec9594e34c3df935772c74c6995c1"
 }
