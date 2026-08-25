@@ -655,6 +655,68 @@ export function authenticatedE2EReceiptEligible(receipt, expectedRelease, now = 
     && receiptSha256(receipt);
 }
 
+function objectRestoreRoleEligible(role) {
+  const objects = Array.isArray(role?.objects) ? role.objects : [];
+  const keys = objects.map(item => item?.keySha256);
+  return SHA256.test(String(role?.endpointSha256 ?? ''))
+    && typeof role?.region === 'string' && role.region.length > 0
+    && typeof role?.bucket === 'string' && role.bucket.length > 0
+    && typeof role?.prefix === 'string' && role.prefix.length > 0 && role.prefix.endsWith('/')
+    && Number.isInteger(role?.objectCount) && role.objectCount > 0
+    && Number.isSafeInteger(role?.totalBytes) && role.totalBytes > 0
+    && role.objectCount === objects.length
+    && new Set(keys).size === keys.length
+    && objects.every(item => SHA256.test(String(item?.keySha256 ?? ''))
+      && Number.isSafeInteger(item?.bytes) && item.bytes >= 0
+      && SHA256.test(String(item?.contentSha256 ?? '')))
+    && objects.reduce((sum, item) => sum + item.bytes, 0) === role.totalBytes
+    && SHA256.test(String(role?.manifestSha256 ?? ''))
+    && crypto.createHash('sha256').update(JSON.stringify(objects)).digest('hex') === role.manifestSha256;
+}
+
+function objectStorageRestoreEligible(value) {
+  const source = value?.source;
+  const backup = value?.backup;
+  const restored = value?.restored;
+  const bindings = value?.databaseBindings;
+  const limits = value?.limits;
+  const identities = [source, backup, restored].map(role =>
+    `${role?.endpointSha256 ?? ''}\0${role?.region ?? ''}\0${role?.bucket ?? ''}\0${role?.prefix ?? ''}`);
+  return value?.schema === 'nexyfab.object-storage-isolated-restore-drill.v1'
+    && value?.status === 'PASS'
+    && value?.safety?.sourceWasReadOnly === true
+    && value.safety.sourceUnchanged === true
+    && value.safety.backupPrefixInitiallyEmpty === true
+    && value.safety.restorePrefixInitiallyEmpty === true
+    && value.safety.roleIdentitiesDistinct === true
+    && value.safety.noOverwriteWrites === true
+    && objectRestoreRoleEligible(source)
+    && objectRestoreRoleEligible(backup)
+    && objectRestoreRoleEligible(restored)
+    && new Set(identities).size === 3
+    && !source.bucket.includes('backup') && !source.bucket.includes('restore-drill')
+    && backup.bucket.includes('backup') && backup.prefix.includes('backup')
+    && restored.bucket.includes('restore-drill') && restored.prefix.includes('restore-drill')
+    && backup.exactSourceMatch === true && restored.exactSourceMatch === true
+    && source.objectCount === backup.objectCount && backup.objectCount === restored.objectCount
+    && source.totalBytes === backup.totalBytes && backup.totalBytes === restored.totalBytes
+    && source.manifestSha256 === backup.manifestSha256
+    && backup.manifestSha256 === restored.manifestSha256
+    && JSON.stringify(source.objects) === JSON.stringify(backup.objects)
+    && JSON.stringify(backup.objects) === JSON.stringify(restored.objects)
+    && Number.isInteger(bindings?.count) && bindings.count >= 7
+    && bindings.count <= source.objectCount
+    && Number.isInteger(bindings?.byKind?.immutable_input) && bindings.byKind.immutable_input >= 1
+    && Number.isInteger(bindings?.byKind?.committed_output) && bindings.byKind.committed_output >= 3
+    && Number.isInteger(bindings?.byKind?.artifact_snapshot) && bindings.byKind.artifact_snapshot >= 3
+    && SHA256.test(String(bindings?.manifestSha256 ?? ''))
+    && bindings?.allMatched === true
+    && Number.isInteger(limits?.maxObjects) && source.objectCount <= limits.maxObjects
+    && Number.isSafeInteger(limits?.maxTotalBytes) && source.totalBytes <= limits.maxTotalBytes
+    && Number.isSafeInteger(limits?.maxObjectBytes)
+    && source.objects.every(item => item.bytes <= limits.maxObjectBytes);
+}
+
 export function restoreReceiptEligible(receipt, expectedRelease, now = Date.now()) {
   const migration = receipt?.migration;
   const latestMigration = Array.isArray(migration?.migrations)
@@ -668,7 +730,8 @@ export function restoreReceiptEligible(receipt, expectedRelease, now = Date.now(
   const backupCapturedAt = Date.parse(timing?.backupCapturedAt);
   const restoreStartedAt = Date.parse(timing?.restoreStartedAt);
   const completedAt = Date.parse(timing?.completedAt);
-  return receipt?.schema === 'nexyfab.backup-isolated-restore-drill.v2'
+  const objectRestoreStartedAt = Date.parse(timing?.objectRestoreStartedAt);
+  return receipt?.schema === 'nexyfab.backup-isolated-restore-drill.v3'
     && receipt?.ok === true
     && receipt?.target === 'production'
     && releaseBindingMatches(receipt, expectedRelease)
@@ -678,11 +741,11 @@ export function restoreReceiptEligible(receipt, expectedRelease, now = Date.now(
     && receipt.safety.restoredEnvironment === 'staging'
     && receipt.safety.isolatedDatabaseIdentity === true
     && receipt.safety.sourceWasReadOnly === true
+    && receipt.safety.sourceUnchangedDuringDrill === true
     && receipt.safety.productionRestorePerformed === false
     && typeof receipt.safety.sourceDatabase === 'string' && receipt.safety.sourceDatabase.length > 0
     && typeof receipt.safety.restoreDatabase === 'string' && /_restore_drill(?:_|$)/i.test(receipt.safety.restoreDatabase)
     && SHA256.test(String(receipt?.backup?.sha256 ?? ''))
-    && receipt.backup.sha256 === receipt.backup.objectSha256
     && Number.isInteger(receipt.backup.bytes) && receipt.backup.bytes > 0
     && SHA256.test(String(receipt?.backup?.sourceSnapshotSha256 ?? ''))
     && SHA256.test(String(sourceHash ?? ''))
@@ -690,20 +753,38 @@ export function restoreReceiptEligible(receipt, expectedRelease, now = Date.now(
     && SHA256.test(String(migratedHash ?? ''))
     && receipt.backup.sourceSnapshotSha256 === sourceHash
     && sourceHash === restoredHash && restoredHash === migratedHash
+    && receipt.source.afterObjectRestoreTableContentSha256 === sourceHash
+    && receipt.source.afterObjectRestoreSchemaSha256 === receipt.source.schemaSha256
     && receipt.restored.exactSourceMatch === true
     && receipt.restored.businessDataSha256 === restoredHash
+    && receipt.restored.foreignKeys?.integrityOk === true
+    && receipt.restored.foreignKeys.orphanRows === 0
+    && receipt.constraintValidation?.ok === true
     && receipt.migrated.businessRowsPreserved === true
     && receipt.migrated.businessDataSha256 === migratedHash
+    && receipt.migrated.foreignKeys?.ok === true
+    && receipt.migrated.foreignKeys.orphanRows === 0
     && receipt.migrationTarget === LATEST_COMMERCIAL_MIGRATION
     && receipt.migration.targetVersion === LATEST_COMMERCIAL_MIGRATION
     && latestMigration?.decision && ['apply', 'already_applied'].includes(latestMigration.decision)
     && SHA256.test(String(latestMigration.checksum ?? ''))
-    && Number.isFinite(drillStartedAt) && Number.isFinite(backupCapturedAt) && Number.isFinite(restoreStartedAt) && Number.isFinite(completedAt)
-    && drillStartedAt <= completedAt && backupCapturedAt <= restoreStartedAt && restoreStartedAt <= completedAt
+    && objectStorageRestoreEligible(receipt.objectStorage)
+    && receipt?.claimBoundary?.evidenceClass === 'release-bound'
+    && receipt.claimBoundary.localFixture === false
+    && receipt.claimBoundary.releaseBoundObservation === true
+    && receipt.claimBoundary.crossStorePointInTimeConsistencyVerified === true
+    && receipt.claimBoundary.privateBetaEligible === true
+    && receipt.claimBoundary.commercialGaEligible === false
+    && Number.isFinite(drillStartedAt) && Number.isFinite(backupCapturedAt)
+    && Number.isFinite(restoreStartedAt) && Number.isFinite(objectRestoreStartedAt) && Number.isFinite(completedAt)
+    && drillStartedAt <= completedAt && backupCapturedAt <= restoreStartedAt
+    && restoreStartedAt <= objectRestoreStartedAt && objectRestoreStartedAt <= completedAt
     && Number.isFinite(receipt.objectives?.rpoAgeAtDrillStartMs) && receipt.objectives.rpoAgeAtDrillStartMs >= 0
     && Number.isFinite(receipt.objectives?.rtoRestoreMigrateValidateMs) && receipt.objectives.rtoRestoreMigrateValidateMs >= 0
+    && Number.isFinite(receipt.objectives?.rtoObjectRestoreValidateMs) && receipt.objectives.rtoObjectRestoreValidateMs >= 0
     && receipt.objectives.rpoAgeAtDrillStartMs === Math.max(0, drillStartedAt - backupCapturedAt)
     && receipt.objectives.rtoRestoreMigrateValidateMs === completedAt - restoreStartedAt
+    && receipt.objectives.rtoObjectRestoreValidateMs === completedAt - objectRestoreStartedAt
     && receiptSha256(receipt);
 }
 

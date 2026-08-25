@@ -42,6 +42,16 @@ test('restore drill requires staging confirmation and distinct database identity
     ...valid,
     restoreDatabaseUrl: valid.sourceDatabaseUrl,
   }), /target database name|identical/);
+  assert.equal(assertRestoreDrillSafety({
+    ...valid,
+    environment: 'local-fixture',
+    evidenceClass: 'local-fixture',
+  }).target.database, 'nexyfab_restore_drill_260810');
+  assert.throws(() => assertRestoreDrillSafety({
+    ...valid,
+    environment: 'staging',
+    evidenceClass: 'local-fixture',
+  }), /local-fixture/);
 });
 
 test('snapshot comparison checks per-table row count and content fingerprint', () => {

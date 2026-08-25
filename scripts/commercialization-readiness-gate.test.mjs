@@ -487,24 +487,50 @@ const architectureInteriorRecoveryReceipt = writeArchitectureInteriorRecoveryEvi
 });
 const restoreNow = Date.now();
 const migrationGeneratedAt = new Date().toISOString();
+const restoredObjectEntries = Array.from({ length: 8 }, (_, index) => ({
+  keySha256: (index + 1).toString(16).repeat(64),
+  bytes: 100 + index,
+  contentSha256: (index + 8).toString(16).repeat(64),
+}));
+const restoredObjectBytes = restoredObjectEntries.reduce((sum, item) => sum + item.bytes, 0);
+const restoredObjectManifestSha256 = createHash('sha256').update(JSON.stringify(restoredObjectEntries)).digest('hex');
+const restoredObjectRole = (bucket, prefix, endpointSeed, exactSourceMatch) => ({
+  endpointSha256: endpointSeed.repeat(64), region: 'ap-northeast-2', bucket, prefix,
+  objectCount: restoredObjectEntries.length, totalBytes: restoredObjectBytes,
+  manifestSha256: restoredObjectManifestSha256, objects: structuredClone(restoredObjectEntries),
+  ...(exactSourceMatch === undefined ? {} : { exactSourceMatch }),
+});
 const restoreReceipt = bindReceipt({
-  schema: 'nexyfab.backup-isolated-restore-drill.v2', generatedAt: new Date(restoreNow).toISOString(), ok: true, target: 'production',
+  schema: 'nexyfab.backup-isolated-restore-drill.v3', generatedAt: new Date(restoreNow).toISOString(), ok: true, target: 'production',
   release: releaseBinding,
   safety: {
     environment: 'staging', sourceEnvironment: 'production', restoredEnvironment: 'staging', sourceDatabase: 'nexyfab',
-    restoreDatabase: 'nexyfab_restore_drill_260823', isolatedDatabaseIdentity: true, sourceWasReadOnly: true, productionRestorePerformed: false,
+    restoreDatabase: 'nexyfab_restore_drill_260823', isolatedDatabaseIdentity: true, sourceWasReadOnly: true,
+    sourceUnchangedDuringDrill: true, productionRestorePerformed: false,
   },
-  backup: { file: 'backups/restore.sql.gz', bytes: 100, sha256: 'f'.repeat(64), objectSha256: 'f'.repeat(64), sourceSnapshotSha256: 'a'.repeat(64), completedAt: new Date(restoreNow - 2_000).toISOString() },
-  source: { tableContentSha256: 'a'.repeat(64) },
-  restored: { tableContentSha256: 'a'.repeat(64), exactSourceMatch: true, businessDataSha256: 'a'.repeat(64) },
+  backup: { file: 'backups/restore.sql.gz', bytes: 100, sha256: 'f'.repeat(64), sourceSnapshotSha256: 'a'.repeat(64), completedAt: new Date(restoreNow - 2_000).toISOString() },
+  source: { tableContentSha256: 'a'.repeat(64), schemaSha256: 'c'.repeat(64), afterObjectRestoreTableContentSha256: 'a'.repeat(64), afterObjectRestoreSchemaSha256: 'c'.repeat(64) },
+  restored: { tableContentSha256: 'a'.repeat(64), exactSourceMatch: true, businessDataSha256: 'a'.repeat(64), foreignKeys: { integrityOk: true, orphanRows: 0 } },
   migration: { targetVersion: 2026082502, migrations: [{ version: 2026082502, checksum: 'b'.repeat(64), decision: 'already_applied' }] },
   migrationTarget: 2026082502,
-  migrated: { tableContentSha256: 'a'.repeat(64), businessRowsPreserved: true, businessDataSha256: 'a'.repeat(64) },
+  constraintValidation: { ok: true, count: 1, validated: [{ constraint: 'fixture' }] },
+  migrated: { tableContentSha256: 'a'.repeat(64), businessRowsPreserved: true, businessDataSha256: 'a'.repeat(64), foreignKeys: { ok: true, orphanRows: 0 } },
+  objectStorage: {
+    schema: 'nexyfab.object-storage-isolated-restore-drill.v1', status: 'PASS',
+    safety: { sourceWasReadOnly: true, sourceUnchanged: true, backupPrefixInitiallyEmpty: true, restorePrefixInitiallyEmpty: true, roleIdentitiesDistinct: true, noOverwriteWrites: true },
+    databaseBindings: { count: 8, byKind: { immutable_input: 2, committed_output: 3, artifact_snapshot: 3 }, manifestSha256: 'd'.repeat(64), allMatched: true },
+    source: restoredObjectRole('nexyfab-source', 'private/', '1'),
+    backup: restoredObjectRole('nexyfab-backup', 'backup/release-1/', '2', true),
+    restored: restoredObjectRole('nexyfab-restore-drill', 'restore-drill/release-1/', '3', true),
+    limits: { maxObjects: 10_000, maxTotalBytes: 10 * 1024 ** 3, maxObjectBytes: 128 * 1024 ** 2 },
+  },
   timing: {
     drillStartedAt: new Date(restoreNow - 3_000).toISOString(), backupCapturedAt: new Date(restoreNow - 2_000).toISOString(),
-    restoreStartedAt: new Date(restoreNow - 1_000).toISOString(), completedAt: new Date(restoreNow).toISOString(),
+    restoreStartedAt: new Date(restoreNow - 1_000).toISOString(), objectRestoreStartedAt: new Date(restoreNow - 500).toISOString(),
+    completedAt: new Date(restoreNow).toISOString(),
   },
-  objectives: { rpoAgeAtDrillStartMs: 0, rtoRestoreMigrateValidateMs: 1_000, totalDrillMs: 3_000, measurement: 'wall_clock' },
+  objectives: { rpoAgeAtDrillStartMs: 0, rtoRestoreMigrateValidateMs: 1_000, rtoObjectRestoreValidateMs: 500, totalDrillMs: 3_000, measurement: 'wall_clock' },
+  claimBoundary: { evidenceClass: 'release-bound', localFixture: false, releaseBoundObservation: true, crossStorePointInTimeConsistencyVerified: true, privateBetaEligible: true, commercialGaEligible: false },
 });
 const productReceiptGeneratedAt = new Date(fixtureNow).toISOString();
 const seaCanonicalSha256 = value => createHash('sha256').update(Buffer.from(canonicalJson(value), 'utf8')).digest('hex');
@@ -1326,7 +1352,7 @@ test('requires source-bound architecture/interior recovery only for affected rel
   assert.equal(mechanicalResult.privateBeta.blockers.includes('architecture_interior_recovery_not_passed'), false);
 });
 
-test('requires a fresh production-bound isolated restore drill through migration 2501', () => {
+test('requires a fresh release-bound cross-store restore drill through migration 2502', () => {
   assert.equal(restoreReceiptEligible(restoreReceipt, expectedReleaseBinding), true);
   assert.equal(restoreReceiptEligible({ ok: true }, expectedReleaseBinding), false);
 
@@ -1350,6 +1376,26 @@ test('requires a fresh production-bound isolated restore drill through migration
     migration: { ...restoreReceipt.migration, targetVersion: 2026082402 },
   });
   assert.equal(restoreReceiptEligible(wrongMigration, expectedReleaseBinding), false);
+
+  const localFixture = rebindReceipt({
+    ...restoreReceipt,
+    target: 'local-fixture',
+    claimBoundary: { ...restoreReceipt.claimBoundary, evidenceClass: 'local-fixture', localFixture: true, releaseBoundObservation: false, privateBetaEligible: false },
+  });
+  assert.equal(restoreReceiptEligible(localFixture, expectedReleaseBinding), false);
+
+  const objectDrift = structuredClone(restoreReceipt);
+  objectDrift.objectStorage.restored.objects[0].contentSha256 = '0'.repeat(64);
+  assert.equal(restoreReceiptEligible(rebindReceipt(objectDrift), expectedReleaseBinding), false);
+
+  const missingCommercialBinding = rebindReceipt({
+    ...restoreReceipt,
+    objectStorage: {
+      ...restoreReceipt.objectStorage,
+      databaseBindings: { ...restoreReceipt.objectStorage.databaseBindings, byKind: { ...restoreReceipt.objectStorage.databaseBindings.byKind, artifact_snapshot: 2 } },
+    },
+  });
+  assert.equal(restoreReceiptEligible(missingCommercialBinding, expectedReleaseBinding), false);
 });
 
 test('accepts only trusted Ed25519 expert signoffs bound to the release and corpus', () => {
