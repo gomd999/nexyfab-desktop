@@ -321,6 +321,12 @@ describe('GET /api/health/release', () => {
     const invalidSignature = await buildReleaseEvidence({ ...common, precisionRuntimeReceipt: tampered });
     expect(invalidSignature.release.precisionRuntime.status).toBe('HOLD');
 
+    const missingWorkerTrust = precisionRuntimeReceipt(now, secret, checksum);
+    delete missingWorkerTrust.workerTrust;
+    const resignedMissingWorkerTrust = signReceipt(missingWorkerTrust, secret);
+    const untrustedWorker = await buildReleaseEvidence({ ...common, precisionRuntimeReceipt: resignedMissingWorkerTrust });
+    expect(untrustedWorker.release.precisionRuntime.status).toBe('HOLD');
+
     const transplanted = precisionRuntimeReceipt(now, secret, checksum);
     transplanted.release.productionDeploymentId = '2f6a581e-e56c-4a71-99f0-c39df482cd52';
     const resignedTransplant = signReceipt(transplanted, secret);
