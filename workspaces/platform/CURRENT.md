@@ -1,5 +1,30 @@
 # Platform current session
 
+## 2026-08-25 release baseline and security evidence convergence
+
+- Status: `CURRENT_SOURCE_EVIDENCE_PASS / PRODUCTION_RELEASE_IDENTITY_MISSING /
+  COMMERCIAL_SECURITY_HOLD`.
+- Commit `c99aeab4881ae73236f190ae0d6f16f261faec16` repairs release-baseline
+  generation after the runtime evidence packaging fix. It validates the exact,
+  ordered deny-by-default `docs/**` Railway policy and rejects missing,
+  reordered, or broadened evidence exceptions such as `!docs`.
+- Commit `54599352` removes a real evidence hash cycle: secret scanning now
+  excludes exactly four derived mutable current receipts, declares that scope
+  in machine evidence, and does not execute or set an exit code when imported
+  by tests. The commercial security verifier rejects any changed exclusion set.
+- Current source evidence passes: route security `625 routes / 860 handlers /
+  0 gaps`, CAD API controls `84 routes / 86 handlers / 0 issues`, secret scan
+  of more than 10,000 Git candidates with `0 findings`, and dependency audit
+  with `0 vulnerabilities`. Exact scan counts remain authoritative only in the
+  machine receipt so documentation cannot create another self-reference.
+- The v2 commercial security receipt has valid source bindings, derivation,
+  freshness, package-lock binding, and declared source integrity. It remains
+  honest `HOLD` only for missing production build, deployment, and Git
+  identities; staging evidence is not relabeled as production evidence.
+- No deployment or production configuration was changed by this unit.
+- Handoff:
+  `HANDOFFS/20260825T044342Z-release-baseline-security-evidence-convergence.md`.
+
 ## 2026-08-25 adapter-bound exact staging HOLD deployment
 
 - Status: `RUNTIME_EVIDENCE_V3_DEPLOYED / STAGING_HOLD_11_OF_11_PASS /

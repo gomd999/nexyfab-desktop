@@ -1,6 +1,6 @@
 {
   "schema": "nexyfab.commercial-security-evidence-receipt.v2",
-  "generatedAt": "2026-08-25T04:37:06.778Z",
+  "generatedAt": "2026-08-25T04:45:56.819Z",
   "ok": false,
   "status": "HOLD",
   "target": "production",
@@ -10,9 +10,9 @@
     "gitHead": null
   },
   "freshness": {
-    "generatedAt": "2026-08-25T04:37:06.778Z",
+    "generatedAt": "2026-08-25T04:45:56.819Z",
     "maxAgeMs": 86400000,
-    "expiresAt": "2026-08-26T04:37:06.778Z"
+    "expiresAt": "2026-08-26T04:45:56.819Z"
   },
   "sourceBindings": [
     {
@@ -28,7 +28,7 @@
     {
       "path": "docs/evidence/security/secret-scan-260810.json",
       "bytes": 665,
-      "sha256": "4f7baf6ae203bd7272f501f148bdb65adac88603f9f447beb49bc49fb317542e"
+      "sha256": "d251cfa91bc50d3fb4d0e8de1e405f19b1f0088abc243dca8b4d99d10517c21f"
     },
     {
       "path": "docs/evidence/security/dependency-audit-260810.json",
@@ -80,8 +80,8 @@
       "status": "pass",
       "derived": {
         "findingCount": 0,
-        "filesScanned": 10175,
-        "bytesScanned": 332113917,
+        "filesScanned": 10177,
+        "bytesScanned": 332120422,
         "excludedDerivedReceipts": 4
       },
       "blockers": []
@@ -112,5 +112,5 @@
     "release_deployment_id_missing",
     "release_git_head_invalid"
   ],
-  "receiptSha256": "6523c5ee5f0a7fbf9b94db7cd85986d91711fa347ee55b15ba0e44ee6e48c6da"
+  "receiptSha256": "0e9776629d35e30774170861a51825cec84432455aa603c6f5f1d7a4a03c11b9"
 }
