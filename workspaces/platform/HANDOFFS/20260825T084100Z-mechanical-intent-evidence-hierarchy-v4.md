@@ -5,7 +5,9 @@ Date: 2026-08-25 08:41 UTC
 ## Result
 
 Implementation and regenerated evidence are committed at
-`077e20c6f3399fa135dba2086ae69d94dd2fccc0`.
+`077e20c6f3399fa135dba2086ae69d94dd2fccc0`; final cross-worktree scope-file
+comparison portability is committed at
+`7e91fc08c078d4780ec0ad2a85ac6873fe7f9d20`.
 
 The checked mechanical chain is now portable across LF/CRLF worktrees and
 fail-closed against evidence drift. The internal receipt binds 171 files,
@@ -53,6 +55,7 @@ and three independently inspected manufacturing pilots.
 - mechanical accuracy: 49/49 PASS;
 - assembly handoff: 11/11 PASS;
 - scope/gate/tamper contracts: 46/46 PASS;
+- final scope-file LF/CRLF contracts: 8/8 PASS;
 - commit-related Vitest: 38/38 PASS;
 - qualification: 150/150 checked with zero issues;
 - representative runtime: 10/10 designs and 70/70 axes with zero issues;

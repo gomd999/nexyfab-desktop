@@ -4,8 +4,9 @@
 
 - Status: `INTERNAL_MECHANICAL_CHAIN_BOUND / LOCAL_INTENT_STAGES_PASS /
   COMMERCIAL_DIRECT_DESIGN_NOT_RUN / PRIVATE_BETA_FALSE / GA_FALSE`.
-- Implementation/evidence commit:
-  `077e20c6f3399fa135dba2086ae69d94dd2fccc0`.
+- Implementation/evidence commits:
+  `077e20c6f3399fa135dba2086ae69d94dd2fccc0` and final scope-file
+  canonical comparison fix `7e91fc08c078d4780ec0ad2a85ac6873fe7f9d20`.
 - Every text binding in the 150-case qualification, 10-design/70-axis exact
   runtime, and assembly drawing handoff receipts now uses
   `utf8-crlf-to-lf`. Dedicated CRLF replay tests prove cross-worktree
@@ -33,7 +34,8 @@
   `95d449dd39c5c2d002c2c3681726ba015a447dd949cd69255683040e434d226f`.
 - Verification: full internal CAD 137/137, accuracy 49/49, assembly handoff
   11/11, v4/gate/tamper contracts 46/46, commit-related Vitest 38/38,
-  Platform full ESLint and TypeScript PASS.
+  final scope portability contracts 8/8, Platform full ESLint and TypeScript
+  PASS.
 - Deployment note: NexyFab's current staging deployment remains green. The
   historical NexyFab failure was a postbuild failure caused by a missing
   packaged commercial Precision evidence file; release-health HTTP 503 remains
