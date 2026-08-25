@@ -25,6 +25,7 @@ import type { FeatureRoute } from '../../featureCatalog/registry';
 import { fmtShell, pickShellDict, type ShellDict } from '../shellDict';
 import { toIsoLang } from '@/lib/i18n/normalize';
 import { useDomainWorkspaceSelection } from '../domainWorkspaceStore';
+import { DIRECT_PRECISION_ENTRY_DRAFT_KEY, parsePrecisionEntryDraft } from '@/lib/precisionEntryDraft';
 
 export interface ModelerRightPaneProps {
   lang: string;
@@ -90,6 +91,10 @@ export function ModelerRightPane({ lang }: ModelerRightPaneProps) {
   useEffect(() => {
     setActiveTab(domainWorkspace.experience === 'guided' ? 'ai' : 'inspector');
   }, [domainWorkspace.experience]);
+
+  useEffect(() => {
+    if (parsePrecisionEntryDraft(window.sessionStorage.getItem(DIRECT_PRECISION_ENTRY_DRAFT_KEY), 'precision-cad')) setActiveTab('ai');
+  }, []);
 
   useEffect(() => {
     const openPane = (event: Event) => {

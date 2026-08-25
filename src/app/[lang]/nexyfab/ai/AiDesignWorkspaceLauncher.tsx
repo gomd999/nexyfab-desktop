@@ -2,46 +2,11 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import type { AiDesignInputEvent } from '@/lib/ai/aiDesignInputAdapter';
+import { createAiDesignTextWorkspaceRequestV10 } from '@/lib/ai/aiDesignWorkspaceBootstrap';
 import { getAiDesignWorkspaceCopy } from '@/lib/ai/aiDesignWorkspaceI18n';
 import styles from './AiDesignWorkspace.module.css';
 
-function hex(bytes: ArrayBuffer): string {
-  return [...new Uint8Array(bytes)].map(value => value.toString(16).padStart(2, '0')).join('');
-}
-
-export async function createAiDesignTextWorkspaceRequestV10(projectId: string, prompt: string) {
-  const normalized = prompt.trim();
-  if (!normalized || normalized.length > 4_000) throw new Error('AI_DESIGN_PROMPT_LENGTH_INVALID');
-  const bytes = new TextEncoder().encode(normalized);
-  const sourceHash = hex(await crypto.subtle.digest('SHA-256', bytes));
-  const sessionId = `ai:${crypto.randomUUID()}`;
-  const input: AiDesignInputEvent = {
-    projectId,
-    revision: 0,
-    sourceId: `input:${crypto.randomUUID()}`,
-    sourceHash,
-    projectContentHash: sourceHash,
-    kind: 'text',
-    mimeType: 'text/plain',
-    sizeBytes: bytes.byteLength,
-    fields: [{ key: 'design_request', category: 'requirement', value: normalized }],
-    authority: 'user_confirmed',
-    provenance: { rights: 'user_owned', origin: 'nexyfab.ai-design.v10', aiUseAllowed: true, derivativeUseAllowed: true },
-    label: 'AI Design request',
-    extractionKind: 'user',
-  };
-  return {
-    sessionId,
-    body: {
-      operation: 'create' as const,
-      projectId,
-      sessionId,
-      revisionToken: `rev:${sourceHash.slice(0, 48)}`,
-      inputs: [input],
-    },
-  };
-}
+export { createAiDesignTextWorkspaceRequestV10 } from '@/lib/ai/aiDesignWorkspaceBootstrap';
 
 export default function AiDesignWorkspaceLauncher({ lang, projectId }: { lang: string; projectId: string }) {
   const router = useRouter();

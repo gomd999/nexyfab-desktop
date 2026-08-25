@@ -6,6 +6,7 @@ import type { AiDesignChatActionCardV1, AiDesignChatActionId } from '@/lib/ai/ai
 import type { AiDesignUnifiedWorkspaceControllerV1 } from '@/lib/ai/aiDesignUnifiedWorkspaceControllerV1';
 import type { AiDesignUnifiedWorkspaceV9 } from '@/lib/ai/aiDesignUnifiedWorkspaceV9';
 import type { AiDesignConceptNodeV10 } from '@/lib/ai/aiDesignWorkspaceIntegrationV10';
+import { getComplexProductCommercialScopeCopy } from '@/lib/ai/complexProductCommercialScope';
 import { getAiDesignWorkspaceCopy } from '@/lib/ai/aiDesignWorkspaceI18n';
 import { langDir } from '@/lib/i18n/normalize';
 import styles from './AiDesignWorkspace.module.css';
@@ -62,6 +63,7 @@ export function AiDesignWorkspaceSurface({
   onRefresh(): void;
 }) {
   const text = getAiDesignWorkspaceCopy(lang).surface;
+  const complexScope = getComplexProductCommercialScopeCopy(lang);
   const [inspectorOpen, setInspectorOpen] = useState(false);
   const cards = decisionCard ? [...workspace.cards, decisionCard] : workspace.cards;
   const selection = controller.client.localView.selection;
@@ -117,6 +119,12 @@ export function AiDesignWorkspaceSurface({
           <span>{text.conceptOnly}</span>
           <span>Exact CAD: Precision CAD · Release: false</span>
         </div>
+        <section className={styles.complexScope} data-testid="complex-product-commercial-scope">
+          <strong>{complexScope.badge}</strong>
+          <span>{complexScope.families}</span>
+          <span>{complexScope.boundary}</span>
+          <ol>{complexScope.gates.map((gate, index) => <li key={gate}><b>{index + 1}</b>{gate}</li>)}</ol>
+        </section>
       </section>
 
       <section className={styles.canvasArea} aria-label={text.linkedCanvas}>

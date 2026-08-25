@@ -1,9 +1,9 @@
 #!/usr/bin/env node
 import { spawn } from 'node:child_process';
-import { randomUUID } from 'node:crypto';
-import { existsSync } from 'node:fs';
+import { createHash, randomUUID } from 'node:crypto';
+import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
-import { pathToFileURL } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 import { verifyDeploymentSource } from './verify-deployment-source.mjs';
 
 function arg(name, fallback) {
@@ -31,6 +31,12 @@ const windowsRailwayCli = process.platform === 'win32' && process.env.APPDATA
   : '';
 const railwayCommand = windowsRailwayCli && existsSync(windowsRailwayCli) ? process.execPath : 'railway';
 const railwayPrefixArgs = windowsRailwayCli && existsSync(windowsRailwayCli) ? [windowsRailwayCli] : [];
+const scriptDirectory = path.dirname(fileURLToPath(import.meta.url));
+const aiDesignSourceMigrationBytes = readFileSync(path.join(scriptDirectory, '..', 'src', 'lib', 'db-postgres-migration-2026082602.sql'), 'utf8')
+  .replace(/\r\n?/g, '\n');
+export const WEB_PUBLIC_AI_DESIGN_SOURCE_MIGRATION_CHECKSUM = createHash('sha256')
+  .update(aiDesignSourceMigrationBytes)
+  .digest('hex');
 
 function run(command, args, options = {}) {
   return new Promise((resolve, reject) => {
@@ -98,6 +104,7 @@ export const TARGET_RUNTIME_KEYS = [
   'POSTGRES_MIGRATION_CHECKSUM_2026082402', 'POSTGRES_MIGRATION_CHECKSUM_2026082403',
   'POSTGRES_MIGRATION_CHECKSUM_2026082501',
   'POSTGRES_MIGRATION_CHECKSUM_2026082502',
+  'POSTGRES_MIGRATION_CHECKSUM_2026082602',
   'NEXYFAB_COMMERCIAL_WORKER_KEYS_JSON', 'NEXYFAB_COMMERCIAL_WORKER_CLAIM_SECRET',
   'NEXYFAB_COMMERCIAL_TRANSPORT_SECRET', 'NEXYFAB_COMMERCIAL_CALLBACK_SECRET',
   'NEXYFAB_COMMERCIAL_CALLBACK_URL', 'NEXYFAB_EXTERNAL_VERIFIER_REGISTRY_JSON',
@@ -183,6 +190,7 @@ const WEB_PUBLIC_REQUIRED_KEYS = [
   'CRON_SECRET', 'SMTP_HOST', 'SMTP_USER', 'SMTP_PASS', 'SENTRY_DSN',
   'NEXT_PUBLIC_AUTH_URL', 'RECAPTCHA_SECRET_KEY', 'NEXT_PUBLIC_RECAPTCHA_SITE_KEY',
   'RECAPTCHA_ALLOWED_HOSTNAMES', 'JWT_SECRET', 'NEXT_SERVER_ACTIONS_ENCRYPTION_KEY',
+  'POSTGRES_MIGRATION_CHECKSUM_2026082602',
 ];
 
 export function webPublicIssues({ environment, service, site, target, expectedBuildId, autoDeployEnabled }) {
@@ -203,6 +211,10 @@ export function webPublicIssues({ environment, service, site, target, expectedBu
   }
   for (const key of WEB_PUBLIC_REQUIRED_KEYS) {
     if (!target[key]?.trim()) issues.push(`web_public_required_variable_missing:${key}`);
+  }
+  if (target.POSTGRES_MIGRATION_CHECKSUM_2026082602?.trim()
+      && target.POSTGRES_MIGRATION_CHECKSUM_2026082602.trim() !== WEB_PUBLIC_AI_DESIGN_SOURCE_MIGRATION_CHECKSUM) {
+    issues.push('web_public_ai_design_source_migration_checksum_mismatch');
   }
   if (target.S3_BUCKET?.trim() && target.OBJECT_STORAGE_PRIVATE_BUCKET?.trim()
       && target.S3_BUCKET.trim() !== target.OBJECT_STORAGE_PRIVATE_BUCKET.trim()) {

@@ -9,7 +9,8 @@ const ROBOT_REL = 'docs/evidence/ai-robot6axis-demonstrator-260809/report.json';
 const EXECUTION_POLICY_REL = 'src/lib/ai/adaptiveComplexProductExecution.ts';
 const OUTPUT_REL = 'docs/evidence/cad-independent/complex-product-scope-assessment.json';
 
-const sha256 = bytes => crypto.createHash('sha256').update(bytes).digest('hex');
+export const canonicalText = value => value.toString('utf8').replace(/\r\n?/g, '\n');
+export const canonicalTextSha256 = value => crypto.createHash('sha256').update(canonicalText(value), 'utf8').digest('hex');
 const readEvidence = (root, relative) => {
   const bytes = fs.readFileSync(path.join(root, ...relative.split('/')));
   return { bytes, value: JSON.parse(bytes.toString('utf8')) };
@@ -58,9 +59,9 @@ export function buildComplexProductScopeAssessment(root) {
     schema: 'nexyfab.complex-product-scope-assessment.v1',
     assessedAt: [pilot.value.generatedAt, robot.value.generatedAt].filter(Boolean).sort().at(-1) ?? null,
     sources: [
-      { path: PILOT_REL, sha256: sha256(pilot.bytes) },
-      { path: ROBOT_REL, sha256: sha256(robot.bytes) },
-      { path: EXECUTION_POLICY_REL, sha256: sha256(executionPolicyBytes) },
+      { path: PILOT_REL, sha256: canonicalTextSha256(pilot.bytes) },
+      { path: ROBOT_REL, sha256: canonicalTextSha256(robot.bytes) },
+      { path: EXECUTION_POLICY_REL, sha256: canonicalTextSha256(executionPolicyBytes) },
     ],
     externalCadInstallationRequired: false,
     platformExecutionContract: {
@@ -144,7 +145,7 @@ export function checkOrWriteComplexProductScopeAssessment({ root, write }) {
     fs.writeFileSync(output, expected);
     return { ok: true, output: OUTPUT_REL };
   }
-  const actual = fs.existsSync(output) ? fs.readFileSync(output, 'utf8') : '';
+  const actual = fs.existsSync(output) ? canonicalText(fs.readFileSync(output)) : '';
   return { ok: actual === expected, output: OUTPUT_REL, error: actual === expected ? null : 'COMPLEX_PRODUCT_SCOPE_ASSESSMENT_STALE' };
 }
 

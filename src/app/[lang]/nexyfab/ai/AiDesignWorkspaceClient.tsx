@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
+import Link from 'next/link';
 import { dispatchAiDesignChatAction, type AiDesignChatActionCardV1, type AiDesignChatActionId } from '@/lib/ai/aiDesignChatActionCards';
 import {
   createAiDesignUnifiedWorkspaceControllerV1,
@@ -37,6 +38,7 @@ export default function AiDesignWorkspaceClient({ lang, projectId, sessionId }: 
   const [notice, setNotice] = useState<string | null>(null);
   const [gaugeMode, setGaugeMode] = useState<'fine' | 'coarse'>('fine');
   const [gaugeDirection, setGaugeDirection] = useState<1 | -1>(1);
+  const [precisionBridge, setPrecisionBridge] = useState<{ jobId: string; status: string } | null>(null);
 
   const publish = useCallback((next: AiDesignUnifiedWorkspaceControllerV1) => {
     controllerRef.current = next;
@@ -141,6 +143,9 @@ export default function AiDesignWorkspaceClient({ lang, projectId, sessionId }: 
         const snapshot = createAiDesignUnifiedWorkspaceSnapshotV10(payload);
         setModel(snapshot.source as AiDesignComplexWorkspaceReadModelV4);
         transition({ type: 'SERVER_SNAPSHOT_RECEIVED', snapshot, completedRequestId: pending.requestId });
+        if (typeof payload.precisionBridgeJobId === 'string' && typeof payload.precisionBridgeStatus === 'string') {
+          setPrecisionBridge({ jobId: payload.precisionBridgeJobId, status: payload.precisionBridgeStatus });
+        }
         setNotice(text.precisionRequested);
       }
     } catch (error) {
@@ -156,14 +161,20 @@ export default function AiDesignWorkspaceClient({ lang, projectId, sessionId }: 
     ? model.workspace.assemblyGauges
     : model.workspace.base.gauges.map(item => ({ ...item, fineStep: 1, coarseStep: 5 }));
 
-  return <AiDesignWorkspaceSurface
-    lang={lang} workspace={controller.client.server.workspace} controller={controller}
-    nodes={nodes} gauges={gauges} decisionCard={decisionCard} busy={busy} notice={notice}
-    gaugeMode={gaugeMode} gaugeDirection={gaugeDirection}
-    onAction={handleAction}
-    onSelect={(id, kind) => transition({ type: 'SELECTION_CHANGED', selection: { kind, id } })}
-    onCanvasMode={mode => transition({ type: 'VIEW_CHANGED', canvasMode: mode, panel: 'canvas' })}
-    onGaugeMode={setGaugeMode} onGaugeDirection={setGaugeDirection}
-    onRefresh={() => { setBusy(true); loadWorkspace().catch(error => setNotice(error instanceof Error ? error.message : 'AI_DESIGN_WORKSPACE_LOAD_FAILED')).finally(() => setBusy(false)); }}
-  />;
+  return <>
+    <AiDesignWorkspaceSurface
+      lang={lang} workspace={controller.client.server.workspace} controller={controller}
+      nodes={nodes} gauges={gauges} decisionCard={decisionCard} busy={busy} notice={notice}
+      gaugeMode={gaugeMode} gaugeDirection={gaugeDirection}
+      onAction={handleAction}
+      onSelect={(id, kind) => transition({ type: 'SELECTION_CHANGED', selection: { kind, id } })}
+      onCanvasMode={mode => transition({ type: 'VIEW_CHANGED', canvasMode: mode, panel: 'canvas' })}
+      onGaugeMode={setGaugeMode} onGaugeDirection={setGaugeDirection}
+      onRefresh={() => { setBusy(true); loadWorkspace().catch(error => setNotice(error instanceof Error ? error.message : 'AI_DESIGN_WORKSPACE_LOAD_FAILED')).finally(() => setBusy(false)); }}
+    />
+    {precisionBridge && <aside className={styles.bridgeResume} aria-label="Precision CAD handoff">
+      <span>{precisionBridge.status} · {precisionBridge.jobId.slice(0, 24)}… · Exact PASS is not implied.</span>
+      <Link href={`/${encodeURIComponent(lang)}/shape-generator?expert=1&mode=expert&experience=expert&workMode=precision_cad&agent=1&projectId=${encodeURIComponent(projectId)}`}>Open governed Precision CAD</Link>
+    </aside>}
+  </>;
 }

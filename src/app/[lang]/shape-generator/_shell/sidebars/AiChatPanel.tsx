@@ -32,6 +32,7 @@ import { RequirementConfirmationGate } from './RequirementConfirmationGate';
 import { GENERATION_EXECUTION_PLAN_KEY } from '../../ai/generationSessionClient';
 import { parsePrecisionCadAgentTask } from '@/lib/ai/precisionCadAgentTask';
 import type { AgentSession } from '@/lib/ai/scad-agent/types';
+import { DIRECT_PRECISION_ENTRY_DRAFT_KEY, parsePrecisionEntryDraft } from '@/lib/precisionEntryDraft';
 
 interface Message {
   id: string;
@@ -230,6 +231,25 @@ export function AiChatPanel({ isKo: _isKo }: AiChatPanelProps) {
     if (typeof panel.scrollTo === 'function') panel.scrollTo({ top: panel.scrollHeight });
     else panel.scrollTop = panel.scrollHeight;
   }, [messages]);
+
+  useEffect(() => {
+    const draft = parsePrecisionEntryDraft(window.sessionStorage.getItem(DIRECT_PRECISION_ENTRY_DRAFT_KEY), 'precision-cad');
+    if (!draft) return;
+    setInput(draft.prompt);
+    setMessages(previous => [...previous, {
+      id: `precision-entry-${Date.now()}`,
+      role: 'assistant',
+      content: loc(lang, {
+        ko: '랜딩 요청을 복원했습니다. 아직 실행하거나 모델을 변경하지 않았습니다. 요청을 검토한 뒤 전송하세요.',
+        en: 'The landing request was restored. Nothing has run and the model has not changed. Review it before sending.',
+        ja: 'ランディングの依頼を復元しました。まだ実行されておらず、モデルも変更されていません。確認してから送信してください。',
+        zh: '已恢复入口请求。尚未执行，模型也未更改。请检查后再发送。',
+        es: 'Se restauró la solicitud inicial. Aún no se ejecutó nada ni se cambió el modelo. Revísala antes de enviarla.',
+        ar: 'تمت استعادة طلب البداية. لم يتم تشغيل أي شيء ولم يتغير النموذج. راجعه قبل الإرسال.',
+      }),
+    }]);
+    window.sessionStorage.removeItem(DIRECT_PRECISION_ENTRY_DRAFT_KEY);
+  }, [lang]);
 
   const send = async (prompt: string, executionModeOverride?: ScadAgentExecutionMode) => {
     if (!prompt.trim() || busy) return;

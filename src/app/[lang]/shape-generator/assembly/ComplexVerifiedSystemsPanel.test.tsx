@@ -34,6 +34,8 @@ describe('ComplexVerifiedSystemsPanel', () => {
   it('uses Korean copy for the canonical kr route locale', () => {
     const view = render(<ComplexVerifiedSystemsPanel lang="kr" />);
     expect(view.getByTestId('complex-verified-systems').textContent).toContain('복잡 제품');
+    expect(view.getByTestId('complex-commercial-scope').textContent).toContain('폐쇄형 베타');
+    expect(view.getByTestId('complex-commercial-scope').textContent).toContain('제조 출시는 보장되지 않습니다');
   });
 
   it('surfaces HTTP status for a non-JSON proxy failure', async () => {

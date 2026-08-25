@@ -10,6 +10,7 @@ import type { RemotePrecisionCadProjectBinding } from '@/lib/precision-cad-agent
 import { usePrecisionCadAgentController } from '@/lib/precision-cad-agent/usePrecisionCadAgentController';
 import PrecisionCadAgentPanel from '../nexyfab/design/PrecisionCadAgentPanel';
 import AgenticCadContractSummary from './AgenticCadContractSummary';
+import { AGENTIC_PRECISION_ENTRY_DRAFT_KEY, parsePrecisionEntryDraft } from '@/lib/precisionEntryDraft';
 
 type DesktopProvider = 'openai' | 'anthropic';
 
@@ -161,15 +162,19 @@ function Notice({ lang, message }: { lang: string; message: string }) {
 function PrecisionCadAgentControllerMount({
   projectRoot,
   binding,
+  generationRunId,
   provider,
   model,
   lang,
+  initialRequest,
 }: {
   projectRoot?: string;
   binding?: RemotePrecisionCadProjectBinding;
+  generationRunId?: string;
   provider: DesktopProvider;
   model: string;
   lang: string;
+  initialRequest?: string;
 }) {
   const executor = useMemo<PrecisionCadAgentExecutor | undefined>(() => {
     if (binding) return createRemotePrecisionCadExecutor();
@@ -179,6 +184,7 @@ function PrecisionCadAgentControllerMount({
   const controller = usePrecisionCadAgentController({
     ...(projectRoot ? { projectRoot } : {}),
     ...(binding ? { binding } : {}),
+    ...(generationRunId?.trim() ? { generationRunId: generationRunId.trim() } : {}),
     provider,
     model,
     lang,
@@ -189,7 +195,7 @@ function PrecisionCadAgentControllerMount({
   return (
     <div dir={langDir(lang)} data-testid="precision-cad-agent-workspace" style={styles.workspace}>
       <AgenticCadContractSummary lang={lang} result={controller.run.result} />
-      <PrecisionCadAgentPanel lang={lang} controller={controller} />
+      <PrecisionCadAgentPanel lang={lang} controller={controller} initialRequest={initialRequest} />
     </div>
   );
 }
@@ -200,6 +206,8 @@ export default function PrecisionCadAgentWorkspace({
   aiModelId,
   projectBinding,
   cloudProjectId,
+  generationRunId,
+  autoOpen = false,
 }: {
   lang: string;
   desktopFilePath: string | null;
@@ -208,6 +216,10 @@ export default function PrecisionCadAgentWorkspace({
   projectBinding?: RemotePrecisionCadProjectBinding | null;
   /** Cloud identity used to load authoritative project/CAD revision tokens. */
   cloudProjectId?: string | null;
+  /** Optional server-issued generation plan identity for commercial apply/export. */
+  generationRunId?: string | null;
+  /** Deep links may reveal the panel, but never start a run automatically. */
+  autoOpen?: boolean;
 }) {
   const desktopReady = isTauriApp()
     && hasDesktopPower('nativeFilesystem')
@@ -253,7 +265,12 @@ export default function PrecisionCadAgentWorkspace({
       ? selectedModel.model
       : PROVIDER_MODELS[initialProvider][0]?.model ?? '',
   );
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(autoOpen);
+  const [initialRequest] = useState(() => {
+    if (typeof window === 'undefined') return '';
+    const draft = parsePrecisionEntryDraft(window.sessionStorage.getItem(AGENTIC_PRECISION_ENTRY_DRAFT_KEY), 'agentic-cad');
+    return !draft || draft.projectId !== cloudProjectId ? '' : draft.prompt;
+  });
   const copy = COPY[toIsoLang(lang)];
 
   // Browser mode is remote only when an authoritative binding exists. Native
@@ -264,7 +281,7 @@ export default function PrecisionCadAgentWorkspace({
   const authorityKey = remoteBinding
     ? `${remoteBinding.projectId}\u0000${remoteBinding.revision}\u0000${remoteBinding.updatedAt}`
     : projectRoot ?? 'no-project-root';
-  const controllerKey = `${authorityKey}\u0000${projectRoot ?? ''}\u0000${provider}\u0000${model}`;
+  const controllerKey = `${authorityKey}\u0000${generationRunId ?? ''}\u0000${projectRoot ?? ''}\u0000${provider}\u0000${model}`;
   return (
     <div dir={langDir(lang)} style={styles.dock}>
       <button type="button" onClick={() => setOpen(current => !current)} aria-expanded={open} style={styles.launcher}>
@@ -290,9 +307,9 @@ export default function PrecisionCadAgentWorkspace({
             </label>
           </div>
           {remoteBinding
-            ? <PrecisionCadAgentControllerMount key={controllerKey} binding={remoteBinding} projectRoot={projectRoot ?? undefined} provider={provider} model={model} lang={lang} />
+            ? <PrecisionCadAgentControllerMount key={controllerKey} binding={remoteBinding} generationRunId={generationRunId?.trim() || undefined} projectRoot={projectRoot ?? undefined} provider={provider} model={model} lang={lang} initialRequest={initialRequest} />
             : localReady
-              ? <PrecisionCadAgentControllerMount key={controllerKey} projectRoot={projectRoot ?? undefined} provider={provider} model={model} lang={lang} />
+              ? <PrecisionCadAgentControllerMount key={controllerKey} projectRoot={projectRoot ?? undefined} provider={provider} model={model} lang={lang} initialRequest={initialRequest} />
               : <Notice
                   lang={lang}
                   message={bindingState === 'loading'

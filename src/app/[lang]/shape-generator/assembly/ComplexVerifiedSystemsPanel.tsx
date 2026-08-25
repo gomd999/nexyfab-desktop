@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { downloadBlob } from '@/lib/platform';
+import { getComplexProductCommercialScopeCopy } from '@/lib/ai/complexProductCommercialScope';
 import { toIsoLang, type IsoLang } from '@/lib/i18n/normalize';
 
 type StageId = 'graph' | 'gearbox' | 'machine-skid' | 'welded-enclosure';
@@ -135,6 +136,7 @@ function validateScaleReport(report: ScaleReport) {
 
 export default function ComplexVerifiedSystemsPanel({ lang, verify = defaultVerify, verifyImpact = defaultVerifyImpact, verifyScale = defaultVerifyScale }: { lang: string; verify?: VerifyStage; verifyImpact?: VerifyImpact; verifyScale?: VerifyScale }) {
   const copy = COPY[toIsoLang(lang)];
+  const commercialScope = getComplexProductCommercialScopeCopy(lang);
   const [graph, setGraph] = useState<File | null>(null);
   const [artifacts, setArtifacts] = useState<File[]>([]);
   const [contracts, setContracts] = useState<Partial<Record<StageId, File>>>({});
@@ -252,7 +254,13 @@ export default function ComplexVerifiedSystemsPanel({ lang, verify = defaultVeri
           {scaleReport && <div data-testid="complex-verified-scale-report" style={{ color: '#166534' }}><b>passed</b> · tiers {scaleReport.tierSummaries.map(item => item.occurrenceCount).join('/')} · SLA pass · independent approval pending · release false<button data-testid="complex-verified-scale-download" type="button" onClick={() => downloadScale(scaleReport)}>{copy.scaleDownload}</button></div>}
         </div>
       </details>
-      <div style={{ color: '#92400e', fontSize: 10.5 }}>{copy.supported}</div>
+      <div data-testid="complex-commercial-scope" style={{ display: 'grid', gap: 3, padding: 7, border: '1px solid #b7791f', borderRadius: 5, color: '#92400e', fontSize: 10.5 }}>
+        <b>{commercialScope.badge}</b>
+        <span>{commercialScope.families}</span>
+        <span>{commercialScope.boundary}</span>
+        <span>{commercialScope.gates.join(' → ')}</span>
+        <span>{copy.supported}</span>
+      </div>
     </div>
   </details>;
 }

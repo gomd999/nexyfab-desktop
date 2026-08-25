@@ -29,16 +29,18 @@ export type RemotePrecisionCadErrorCode =
 
 export class RemotePrecisionCadError extends Error {
   readonly code: RemotePrecisionCadErrorCode;
+  readonly serverCode?: string;
 
-  constructor(code: RemotePrecisionCadErrorCode) {
+  constructor(code: RemotePrecisionCadErrorCode, serverCode?: string) {
     super(code);
     this.name = 'RemotePrecisionCadError';
     this.code = code;
+    this.serverCode = serverCode;
   }
 }
 
 export type RemoteFetch = (input: RequestInfo | URL, init?: RequestInit) => Promise<Response>;
-type RemoteEnvelope = { ok?: unknown; tools?: unknown; assistant_text?: unknown; tool_calls?: unknown; provider_state?: unknown; finish_status?: unknown; tool?: unknown; scope?: unknown; result?: unknown; error?: unknown; approvalToken?: unknown };
+type RemoteEnvelope = { ok?: unknown; tools?: unknown; assistant_text?: unknown; tool_calls?: unknown; provider_state?: unknown; finish_status?: unknown; tool?: unknown; scope?: unknown; result?: unknown; error?: unknown; approvalChallenge?: unknown };
 
 function bindingOf(context: PrecisionCadExecutionContext): RemotePrecisionCadProjectBinding {
   const binding = context.binding;
@@ -60,6 +62,17 @@ function httpCode(response: Response): RemotePrecisionCadErrorCode {
   return 'REMOTE_REQUEST_FAILED';
 }
 
+function serverErrorCode(envelope: RemoteEnvelope): string | undefined {
+  const error = envelope.error;
+  if (!error || typeof error !== 'object' || Array.isArray(error)) return undefined;
+  const code = (error as { code?: unknown }).code;
+  return typeof code === 'string' && /^[A-Z0-9_:-]{1,128}$/.test(code) ? code : undefined;
+}
+
+function responseError(response: Response, envelope: RemoteEnvelope): RemotePrecisionCadError {
+  return new RemotePrecisionCadError(httpCode(response), serverErrorCode(envelope));
+}
+
 async function parseEnvelope(response: Response): Promise<RemoteEnvelope> {
   let text: string;
   try { text = await response.text(); } catch { throw new RemotePrecisionCadError('REMOTE_INVALID_RESPONSE'); }
@@ -71,27 +84,22 @@ async function parseEnvelope(response: Response): Promise<RemoteEnvelope> {
 }
 
 async function readEnvelope(response: Response): Promise<RemoteEnvelope> {
-  if (!response.ok) throw new RemotePrecisionCadError(httpCode(response));
   const envelope = await parseEnvelope(response);
+  if (!response.ok) throw responseError(response, envelope);
   if (envelope.ok !== true) throw new RemotePrecisionCadError('REMOTE_INVALID_RESPONSE');
   return envelope;
 }
 
-function secretFreeBody(body: Record<string, unknown>, allowApprovalToken: boolean): boolean {
-  if (!allowApprovalToken) return isAgentBridgeInputSecretFree(body);
-  const { approvalToken, ...publicBody } = body;
-  return typeof approvalToken === 'string'
-    && /^[A-Za-z0-9_-]{32,128}$/.test(approvalToken)
-    && isAgentBridgeInputSecretFree(publicBody);
+function secretFreeBody(body: Record<string, unknown>): boolean {
+  return isAgentBridgeInputSecretFree(body);
 }
 
 async function requestRemote(
   url: string,
   body: Record<string, unknown>,
   fetcher: RemoteFetch,
-  allowApprovalToken = false,
 ): Promise<{ response: Response; envelope: RemoteEnvelope }> {
-  if (!secretFreeBody(body, allowApprovalToken)) throw new RemotePrecisionCadError('REMOTE_INPUT_REJECTED');
+  if (!secretFreeBody(body)) throw new RemotePrecisionCadError('REMOTE_INPUT_REJECTED');
   let serialized: string;
   try { serialized = JSON.stringify(body); } catch { throw new RemotePrecisionCadError('REMOTE_INPUT_REJECTED'); }
   if (new TextEncoder().encode(serialized).byteLength > MAX_REQUEST_BYTES) throw new RemotePrecisionCadError('REMOTE_INPUT_REJECTED');
@@ -112,7 +120,7 @@ async function postRemote(
   fetcher: RemoteFetch,
 ): Promise<RemoteEnvelope> {
   const { response, envelope } = await requestRemote(url, body, fetcher);
-  if (!response.ok) throw new RemotePrecisionCadError(httpCode(response));
+  if (!response.ok) throw responseError(response, envelope);
   if (envelope.ok !== true) throw new RemotePrecisionCadError('REMOTE_INVALID_RESPONSE');
   return envelope;
 }
@@ -142,6 +150,14 @@ function turnValue(envelope: RemoteEnvelope): AiAgentTurnOutput {
 function toolValue(input: AgentToolCallInput, envelope: RemoteEnvelope): AgentToolCallOutput {
   if (typeof envelope.tool !== 'string' || typeof envelope.scope !== 'string' || !('result' in envelope)) throw new RemotePrecisionCadError('REMOTE_INVALID_RESPONSE');
   return { runId: input.runId, callId: input.call.callId, ok: true, result: envelope.result };
+}
+
+function validApprovalChallenge(value: unknown): value is Record<string, unknown> {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
+  const challenge = value as Record<string, unknown>;
+  return typeof challenge.challengeId === 'string' && /^[A-Za-z0-9._:-]{1,128}$/.test(challenge.challengeId)
+    && typeof challenge.nonce === 'string' && challenge.nonce.length >= 8 && challenge.nonce.length <= 256
+    && typeof challenge.mac === 'string' && /^[A-Za-z0-9_-]{32,128}$/.test(challenge.mac);
 }
 
 export function createRemotePrecisionCadExecutor(fetcher: RemoteFetch = defaultFetch): PrecisionCadAgentExecutor {
@@ -197,6 +213,7 @@ export function createRemotePrecisionCadExecutor(fetcher: RemoteFetch = defaultF
         contractVersion: REMOTE_PRECISION_CAD_CONTRACT_VERSION,
         binding,
         continuationId: context.continuationId,
+        ...(context.generationRunId?.trim() ? { generationRunId: context.generationRunId.trim() } : {}),
         call: {
           callId: input.call.callId,
           name: input.call.toolName,
@@ -211,22 +228,22 @@ export function createRemotePrecisionCadExecutor(fetcher: RemoteFetch = defaultF
       } else {
         // The controller's immutable local approval proves that the user
         // clicked Approve. It is never sent as a server credential. Request a
-        // short, server-bound HMAC challenge and immediately redeem it for the
-        // exact project/revision/tool/arguments tuple.
+        // one-use server-bound challenge and immediately redeem the exact
+        // challenge object for the same project/revision/tool/arguments tuple.
         if (!input.approvalBinding) throw new RemotePrecisionCadError('REMOTE_INPUT_REJECTED');
         const challenged = await requestRemote(url, { ...baseBody, approved: false }, fetcher);
         const error = challenged.envelope.error as { code?: unknown } | undefined;
         if (challenged.response.status !== 409
           || error?.code !== 'APPROVAL_REQUIRED'
-          || typeof challenged.envelope.approvalToken !== 'string') {
-          throw new RemotePrecisionCadError(httpCode(challenged.response));
+          || !validApprovalChallenge(challenged.envelope.approvalChallenge)) {
+          throw responseError(challenged.response, challenged.envelope);
         }
         const redeemed = await requestRemote(url, {
           ...baseBody,
           approved: true,
-          approvalToken: challenged.envelope.approvalToken,
-        }, fetcher, true);
-        if (!redeemed.response.ok) throw new RemotePrecisionCadError(httpCode(redeemed.response));
+          approvalChallenge: challenged.envelope.approvalChallenge,
+        }, fetcher);
+        if (!redeemed.response.ok) throw responseError(redeemed.response, redeemed.envelope);
         if (redeemed.envelope.ok !== true) throw new RemotePrecisionCadError('REMOTE_INVALID_RESPONSE');
         envelope = redeemed.envelope;
       }

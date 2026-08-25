@@ -37,7 +37,7 @@ test('migration decision fails closed on changed applied SQL', () => {
 
 test('keeps immutable migrations ordered before the remote CAD agent state migration', () => {
   const migrations = orderedMigrationInputs('/trusted/immutable-2001.sql');
-  assert.deepEqual(migrations.map(item => item.version), [2026082001, 2026082002, 2026082101, 2026082102, 2026082201, 2026082202, 2026082203, 2026082204, 2026082205, 2026082206, 2026082207, 2026082208, 2026082301, 2026082401, 2026082402, 2026082403, 2026082501, 2026082502, 2026082601]);
+  assert.deepEqual(migrations.map(item => item.version), [2026082001, 2026082002, 2026082101, 2026082102, 2026082201, 2026082202, 2026082203, 2026082204, 2026082205, 2026082206, 2026082207, 2026082208, 2026082301, 2026082401, 2026082402, 2026082403, 2026082501, 2026082502, 2026082601, 2026082602]);
   assert.match(migrations[0].sqlPath, /immutable-2001\.sql$/);
   assert.match(migrations[1].sqlPath, /db-postgres-migration-2026082002\.sql$/);
   assert.match(migrations[2].sqlPath, /db-postgres-migration-2026082101\.sql$/);
@@ -57,8 +57,17 @@ test('keeps immutable migrations ordered before the remote CAD agent state migra
   assert.match(migrations[16].sqlPath, /db-postgres-migration-2026082501\.sql$/);
   assert.match(migrations[17].sqlPath, /db-postgres-migration-2026082502\.sql$/);
   assert.match(migrations[18].sqlPath, /db-postgres-migrations\.sql$/);
+  assert.match(migrations[19].sqlPath, /db-postgres-migration-2026082602\.sql$/);
   assert.deepEqual(migrations[0].acceptedAppliedChecksums, LEGACY_2026082001_CHECKSUMS);
   assert.equal(migrations[18].acceptedAppliedChecksums, undefined);
+});
+
+test('2602 adds immutable private AI Design source artifacts', () => {
+  const migration = orderedMigrationInputs().find(item => item.version === 2026082602);
+  const sql = readFileSync(migration.sqlPath, 'utf8');
+  assert.match(sql, /CREATE TABLE IF NOT EXISTS nf_ai_design_source_artifacts/);
+  assert.match(sql, /object_key LIKE 'private\/%'/);
+  assert.match(sql, /nf_ai_design_source_artifact_immutable/);
 });
 
 test('2601 replays the idempotent legacy baseline under a new immutable version', () => {

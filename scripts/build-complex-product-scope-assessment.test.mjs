@@ -1,6 +1,17 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { buildComplexProductScopeAssessment } from './build-complex-product-scope-assessment.mjs';
+import {
+  buildComplexProductScopeAssessment,
+  canonicalText,
+  canonicalTextSha256,
+} from './build-complex-product-scope-assessment.mjs';
+
+test('complex-product evidence text is stable across LF and CRLF checkouts', () => {
+  const lf = '{\n  "status": "pass"\n}\n';
+  const crlf = lf.replace(/\n/g, '\r\n');
+  assert.equal(canonicalText(crlf), lf);
+  assert.equal(canonicalTextSha256(crlf), canonicalTextSha256(lf));
+});
 
 test('complex-product scope evidence stays fail-closed and CAD-independent', () => {
   const result = buildComplexProductScopeAssessment(process.cwd());

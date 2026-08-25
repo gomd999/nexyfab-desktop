@@ -4,6 +4,7 @@ export const AGENT_STATES = [
   'running_tool',
   'awaiting_approval',
   'revalidating',
+  'queued',
   'completed',
   'failed',
   'cancelled',
@@ -37,6 +38,7 @@ export type AgentRunEvent = {
     | 'approval_granted'
     | 'approval_rejected'
     | 'tool_result'
+    | 'run_queued'
     | 'run_failed'
     | 'run_cancelled'
     | 'run_resumed'
@@ -88,7 +90,7 @@ export type RunErrorCode =
 export type RunFailure = { code: RunErrorCode; message: string };
 export type RunResult = { ok: true; run: AgentRun } | { ok: false; run: AgentRun; error: RunFailure };
 
-const TERMINAL_STATES = new Set<AgentRunState>(['completed', 'failed', 'cancelled']);
+const TERMINAL_STATES = new Set<AgentRunState>(['queued', 'completed', 'failed', 'cancelled']);
 const SECRET_KEY = /(?:api[-_]?key|access[-_]?token|refresh[-_]?token|token|private[-_]?key|secret|password|authorization|bearer|credential)/i;
 
 function freeze<T>(value: T): T {
@@ -212,6 +214,16 @@ export function recordToolResult(run: AgentRun, result: unknown): RunResult {
   const secretKey = containsSecretKey(result);
   if (secretKey) return failure(run, 'SECRET_INPUT_REJECTED', `Secret-like result field '${secretKey}' is not retained.`);
   return { ok: true, run: withEvent(run, { state: 'planning', result: copy(result), pendingApproval: undefined }, 'tool_result', 'Tool result received') };
+}
+
+/** Stops browser continuation while an approved commercial mutation is owned
+ * by the durable server queue. A fresh authoritative revision must be loaded
+ * before another agent run can begin. */
+export function queueRun(run: AgentRun, result: unknown): RunResult {
+  if (run.state !== 'running_tool') return failure(run, 'INVALID_TRANSITION', `Cannot queue from ${run.state}.`);
+  const secretKey = containsSecretKey(result);
+  if (secretKey) return failure(run, 'SECRET_INPUT_REJECTED', `Secret-like result field '${secretKey}' is not retained.`);
+  return { ok: true, run: withEvent(run, { state: 'queued', result: copy(result), pendingApproval: undefined }, 'run_queued', 'Commercial execution queued') };
 }
 
 export function beginRevalidation(run: AgentRun): RunResult {

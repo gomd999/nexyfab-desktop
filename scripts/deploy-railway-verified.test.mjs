@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
   TARGET_RUNTIME_KEYS,
+  WEB_PUBLIC_AI_DESIGN_SOURCE_MIGRATION_CHECKSUM,
   deploymentCliMessage,
   deploymentMessage,
   npmInvocation,
@@ -22,7 +23,7 @@ const commercialRuntimeKeys = [
   'EXTERNAL_WORKER_ORCHESTRATOR_URL',
   'EXTERNAL_WORKER_ORCHESTRATOR_HEALTH_URL',
   'POSTGRES_MIGRATION_VERSION',
-  ...['2026082202', '2026082203', '2026082204', '2026082205', '2026082206', '2026082207', '2026082208', '2026082301', '2026082402', '2026082403', '2026082501', '2026082502']
+  ...['2026082202', '2026082203', '2026082204', '2026082205', '2026082206', '2026082207', '2026082208', '2026082301', '2026082402', '2026082403', '2026082501', '2026082502', '2026082602']
     .map(version => `POSTGRES_MIGRATION_CHECKSUM_${version}`),
   'CANONICAL_CAD_REVISION_MIGRATION_CHECKSUM',
   'NEXYFAB_COMMERCIAL_WORKER_KEYS_JSON',
@@ -122,6 +123,7 @@ test('web-public deployment is restricted to production with payments and precis
     RECAPTCHA_ALLOWED_HOSTNAMES: 'nexyfab.com,www.nexyfab.com',
     JWT_SECRET: 'jwt-secret',
     NEXT_SERVER_ACTIONS_ENCRYPTION_KEY: 'actions-secret',
+    POSTGRES_MIGRATION_CHECKSUM_2026082602: WEB_PUBLIC_AI_DESIGN_SOURCE_MIGRATION_CHECKSUM,
   };
   const passing = {
     environment: 'production',
@@ -147,6 +149,7 @@ test('web-public deployment is restricted to production with payments and precis
   assert.ok(webPublicIssues({ ...passing, target: { ...target, OBJECT_STORAGE_PRIVATE_BUCKET: 'unverified' } }).includes('web_public_private_bucket_must_match_verified_s3_bucket'));
   assert.ok(webPublicIssues({ ...passing, target: { ...target, NEXT_PUBLIC_AUTH_URL: 'http://localhost:3000' } }).includes('web_public_auth_url_must_be_canonical_production_host'));
   assert.ok(webPublicIssues({ ...passing, target: { ...target, RECAPTCHA_ALLOWED_HOSTNAMES: 'nexyfab.com' } }).includes('web_public_recaptcha_hosts_must_cover_canonical_hosts'));
+  assert.ok(webPublicIssues({ ...passing, target: { ...target, POSTGRES_MIGRATION_CHECKSUM_2026082602: '0'.repeat(64) } }).includes('web_public_ai_design_source_migration_checksum_mismatch'));
 });
 
 test('Railway target IDs resolve the exact named environment and service', () => {

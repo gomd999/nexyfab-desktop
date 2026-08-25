@@ -193,6 +193,11 @@ describe('GET /api/health/ready', () => {
     vi.stubEnv('NEXYFAB_PRECISION_CAD_COMMERCIAL_MODE', '0');
     vi.stubEnv('NEXYFAB_PAYMENTS_ENABLED', 'false');
     vi.stubEnv('REDIS_URL', 'redis://example.test:6379');
+    vi.stubEnv('POSTGRES_MIGRATION_CHECKSUM_2026082602', 'a'.repeat(64));
+    const queryOne = vi.fn(async (sql: string) => sql.includes('nf_schema_migrations')
+      ? { version: 2026082602, checksum: 'a'.repeat(64) }
+      : { '?column?': 1 });
+    state.getDbAdapter.mockReturnValue({ backend: 'postgres', queryOne });
 
     const response = await GET();
     const body = await response.json();
@@ -204,6 +209,11 @@ describe('GET /api/health/ready', () => {
       commercialBoundary: { status: 'skipped', required: false },
     });
     expect(fetch).not.toHaveBeenCalled();
+
+    queryOne.mockImplementationOnce(async () => ({ '?column?': 1 })).mockImplementationOnce(async () => ({ version: 2026082602, checksum: 'b'.repeat(64) }));
+    const migrationMismatch = await GET();
+    expect(migrationMismatch.status).toBe(503);
+    await expect(migrationMismatch.json()).resolves.toMatchObject({ db: { status: 'error', required: true } });
 
     const nearMisses = [
       ['NEXYFAB_RELEASE_CHANNEL', 'production'],

@@ -46,6 +46,7 @@ export const ORDERED_MIGRATION_DESCRIPTORS = Object.freeze([
   // databases with any accepted legacy baseline converge on the current
   // schema and future changes fail closed against this exact source.
   Object.freeze({ version: 2026082601, name: 'postgres_schema_reconciliation_20260826', sqlFile: 'src/lib/db-postgres-migrations.sql' }),
+  Object.freeze({ version: 2026082602, name: 'ai_design_private_source_artifacts_20260826', sqlFile: 'src/lib/db-postgres-migration-2026082602.sql' }),
 ]);
 export const ADVISORY_LOCK_KEY = 70658910420260820n;
 

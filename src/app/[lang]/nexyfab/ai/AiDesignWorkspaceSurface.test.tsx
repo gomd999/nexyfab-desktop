@@ -27,6 +27,8 @@ describe('AI Design V10 workspace surface', () => {
       onGaugeMode={vi.fn()} onGaugeDirection={vi.fn()} onRefresh={vi.fn()}
     />);
     expect(screen.getByTestId('ai-design-v10-workspace')).toBeInTheDocument();
+    expect(screen.getByTestId('complex-product-commercial-scope')).toHaveTextContent('Complex product · Closed beta');
+    expect(screen.getByTestId('complex-product-commercial-scope')).toHaveTextContent('manufacturing release are not guaranteed');
     expect(screen.getByText('Exact CAD: Precision CAD · Release: false')).toBeInTheDocument();
     expect(screen.getAllByRole('button').length).toBeGreaterThan(4);
     expect(document.body.textContent).toContain(fixture.workspace.chat.stage);

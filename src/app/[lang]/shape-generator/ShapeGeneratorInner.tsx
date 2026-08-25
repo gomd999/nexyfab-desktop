@@ -11611,6 +11611,8 @@ export function ShapeGeneratorInner(
         desktopFilePath={desktopFilePath}
         aiModelId={aiModelId}
         cloudProjectId={cloudProjectId}
+        generationRunId={searchParams?.get('generationRunId')}
+        autoOpen={searchParams?.get('agent') === '1'}
       />
 
       {/* ═══ Phase 5 bridges (flag-gated, minimal-invasive host wire) ═══

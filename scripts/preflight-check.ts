@@ -160,8 +160,8 @@ async function checkMigrations(): Promise<Result> {
         for (const version of COMMERCIAL_POSTGRES_MIGRATIONS) {
           const migration = await client.query<{ version: number; checksum: string }>('SELECT version, checksum FROM nf_schema_migrations WHERE version = $1', [version]);
           if (migration.rows[0]?.version !== version) failures.push(`commercial migration ${version} missing`);
-          const migrationSource = fs.readFileSync(path.join(ROOT, `src/lib/db-postgres-migration-${version}.sql`));
-          const sourceChecksum = createHash('sha256').update(migrationSource).digest('hex');
+          const migrationSource = fs.readFileSync(path.join(ROOT, `src/lib/db-postgres-migration-${version}.sql`), 'utf8');
+          const sourceChecksum = createHash('sha256').update(migrationSource.replace(/\r\n?/g, '\n')).digest('hex');
           if (migration.rows[0]?.checksum !== sourceChecksum) failures.push(`commercial migration ${version} checksum does not match this build source`);
           const checksumKey = commercialPostgresMigrationChecksumEnvKey(version);
           if (process.env[checksumKey] !== sourceChecksum) failures.push(`${checksumKey} does not match this build source`);

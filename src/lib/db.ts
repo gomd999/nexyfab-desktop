@@ -2313,6 +2313,34 @@ const MIGRATIONS: SqliteMigration[] = [
         BEFORE DELETE ON nf_ai_precision_bridge_receipts BEGIN SELECT RAISE(ABORT, 'AI Precision bridge receipts are append-only'); END;
     `,
   },
+  {
+    version: 92,
+    name: 'ai_design_private_source_artifacts',
+    checksum: 'ai-design-private-source-artifacts-v1',
+    sql: `
+      CREATE TABLE IF NOT EXISTS nf_ai_design_source_artifacts (
+        artifact_id TEXT PRIMARY KEY,
+        project_id TEXT NOT NULL REFERENCES nf_projects(id) ON DELETE CASCADE,
+        session_id TEXT NOT NULL,
+        user_id TEXT NOT NULL,
+        object_key TEXT NOT NULL UNIQUE,
+        filename TEXT NOT NULL,
+        mime_type TEXT NOT NULL,
+        input_kind TEXT NOT NULL CHECK(input_kind IN ('image','drawing_2d')),
+        content_sha256 TEXT NOT NULL CHECK(length(content_sha256) = 64),
+        byte_length INTEGER NOT NULL CHECK(byte_length > 0 AND byte_length <= 6291456),
+        classification_json TEXT,
+        created_at INTEGER NOT NULL,
+        UNIQUE(project_id, session_id, artifact_id)
+      );
+      CREATE INDEX IF NOT EXISTS idx_nf_ai_design_source_scope
+        ON nf_ai_design_source_artifacts(project_id, session_id, created_at DESC);
+      CREATE TRIGGER IF NOT EXISTS nf_ai_design_source_artifact_no_update
+        BEFORE UPDATE ON nf_ai_design_source_artifacts BEGIN SELECT RAISE(ABORT, 'AI Design source artifacts are append-only'); END;
+      CREATE TRIGGER IF NOT EXISTS nf_ai_design_source_artifact_no_delete
+        BEFORE DELETE ON nf_ai_design_source_artifacts BEGIN SELECT RAISE(ABORT, 'AI Design source artifacts are append-only'); END;
+    `,
+  },
 ];
 
 function sqliteIdentifier(value: string): string {

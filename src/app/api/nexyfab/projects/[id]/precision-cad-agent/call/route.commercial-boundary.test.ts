@@ -140,7 +140,18 @@ describe('commercial approval and persistence boundary', () => {
     mocks.db.queryOne.mockResolvedValue({ workspace_id: 'project-1', workspace_revision: 7, head_revision: 11, head_sha256: 'a'.repeat(64), generation_program_sha256: '8'.repeat(64) });
     const response = await POST(request({ generationRunId: 'run-1', approvalChallenge: challenge }), context);
     expect(response.status).toBe(202);
-    await expect(response.json()).resolves.toMatchObject({ ok: true, status: 'QUEUED', workerStarted: false, releaseReady: false });
+    await expect(response.json()).resolves.toMatchObject({
+      ok: true,
+      status: 'QUEUED',
+      tool: 'build_assembly',
+      scope: 'apply',
+      workerStarted: false,
+      releaseReady: false,
+      result: {
+        execution: { mode: 'durable_commercial_queue', status: 'queued', workerStarted: false },
+        persistence: { ok: false, code: 'PENDING', releaseReady: false },
+      },
+    });
     expect(mocks.enqueue).toHaveBeenCalledWith(expect.objectContaining({ job: expect.objectContaining({ contractVersion: 'nexyfab.precision-cad-commercial-execution.v3', generationRunId: 'run-1', generationStateRevision: 11, generationProgramSha256: '8'.repeat(64), workspaceRevision: 7, inputArtifact: expect.objectContaining({ mediaType: 'application/json', contentSha256: expect.stringMatching(/^[a-f0-9]{64}$/) }) }) }));
     expect(mocks.stored.size).toBe(1);
     expect(mocks.worker).not.toHaveBeenCalled();

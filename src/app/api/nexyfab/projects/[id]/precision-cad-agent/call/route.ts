@@ -115,7 +115,35 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     }
     const queued = await enqueueCommercialExecutionTransaction({ db, approval, approvalSecret, job, journal: { idempotencyKey, receiptJson: canonicalJson(approved.receipt), receiptHash: hashReceipt(approved.receipt), approvalHash: approved.receipt.approvalHash, createdAt: Date.parse(approved.receipt.createdAt), updatedAt: Date.parse(approved.receipt.updatedAt) } });
     if (!queued.ok) return NextResponse.json({ ok: false, status: 'HOLD', releaseReady: false, error: { code: queued.code } }, { status: queued.code === 'MIGRATION_REQUIRED' ? 503 : 409, headers: { 'Cache-Control': 'private, no-store' } });
-    return NextResponse.json({ ok: true, status: queued.replayed ? 'REPLAY' : 'QUEUED', executionId: queued.row.job.executionId, workerStarted: false, releaseReady: false, targetSha256: targetHash }, { status: 202, headers: { 'Cache-Control': 'private, no-store' } });
+    return NextResponse.json({
+      ok: true,
+      tool: typedCall.name,
+      scope: typedCall.scope,
+      result: {
+        ok: true,
+        toolResult: { status: queued.replayed ? 'REPLAY' : 'QUEUED', releaseReady: false },
+        execution: {
+          mode: 'durable_commercial_queue',
+          status: queued.replayed ? 'replay' : 'queued',
+          executionId: queued.row.job.executionId,
+          workerStarted: false,
+          targetSha256: targetHash,
+        },
+        persistence: {
+          ok: false,
+          code: 'PENDING',
+          releaseReady: false,
+          promotionStatus: 'commercial_queue_pending',
+          artifacts: [],
+        },
+        exactPromotion: { status: 'not_requested', releaseReady: false },
+      },
+      status: queued.replayed ? 'REPLAY' : 'QUEUED',
+      executionId: queued.row.job.executionId,
+      workerStarted: false,
+      releaseReady: false,
+      targetSha256: targetHash,
+    }, { status: 202, headers: { 'Cache-Control': 'private, no-store' } });
   }
   let boundaryConsumed = false;
   if (needsApproval) {

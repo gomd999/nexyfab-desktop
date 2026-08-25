@@ -12,6 +12,7 @@ import {
   type CommercialPostgresMigration,
 } from '@/lib/commercial-readiness';
 import { loadTrustedCommercialWorkers } from '@/lib/precision-cad-agent/commercialWorkerReceipt';
+import { assertAiDesignSourceArtifactSchema } from '@/lib/ai/aiDesignSourceArtifactStore';
 
 export const dynamic = 'force-dynamic';
 
@@ -93,6 +94,7 @@ async function checkDatabase(): Promise<ComponentCheck & { backend?: string }> {
   try {
     const db = getDbAdapter();
     await db.queryOne('SELECT 1');
+    if (explicitWebPublicNoPaymentMode()) await assertAiDesignSourceArtifactSchema(db);
     if (process.env.NEXYFAB_COMMERCIAL_MODE === '1') {
       if (db.backend !== 'postgres') throw new Error('postgres required');
       for (const version of COMMERCIAL_POSTGRES_MIGRATIONS) {

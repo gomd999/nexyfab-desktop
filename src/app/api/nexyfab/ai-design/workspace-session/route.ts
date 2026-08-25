@@ -11,6 +11,7 @@ import {
   createServerAiDesignWorkspaceRuntime,
   loadServerAiDesignWorkspaceRuntime,
 } from '@/lib/ai/aiDesignWorkspaceRuntimeStore';
+import { verifyAiDesignSourceBinding } from '@/lib/ai/aiDesignSourceArtifactStore';
 
 export const runtime = 'nodejs';
 const MAX_BODY_BYTES = 1024 * 1024;
@@ -22,6 +23,10 @@ const requestSchema = z.object({
   revisionToken: z.string().regex(SAFE_ID),
   inputs: z.array(z.unknown()).min(1).max(20),
 }).strict();
+
+function record(value: unknown): value is Record<string, unknown> {
+  return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
+}
 
 function errorResponse(error: unknown): NextResponse {
   const code = error instanceof Error ? error.message : 'AI_DESIGN_WORKSPACE_STORE_FAILED';
@@ -62,6 +67,21 @@ export async function POST(req: NextRequest) {
   const access = await resolveProjectAccess(getDbAdapter(), parsed.data.projectId, authUser);
   if (!access) return NextResponse.json({ error: 'Project not found' }, { status: 404 });
   if (!access.canEdit) return NextResponse.json({ error: 'Editor role required' }, { status: 403 });
+  const db = getDbAdapter();
+  for (const input of parsed.data.inputs) {
+    if (!record(input) || (input.kind !== 'image' && input.kind !== 'drawing_2d')) continue;
+    const valid = typeof input.sourceId === 'string' && typeof input.sourceHash === 'string'
+      && typeof input.mimeType === 'string' && Number.isSafeInteger(input.sizeBytes)
+      && await verifyAiDesignSourceBinding(db, {
+        projectId: parsed.data.projectId,
+        sessionId: parsed.data.sessionId,
+        artifactId: String(input.sourceId ?? ''),
+        sourceHash: String(input.sourceHash ?? ''),
+        mimeType: String(input.mimeType ?? ''),
+        byteLength: Number(input.sizeBytes),
+      });
+    if (!valid) return NextResponse.json({ error: 'AI_DESIGN_SOURCE_BINDING_INVALID' }, { status: 400 });
+  }
   const ownerKey = `${authUser.userId}:${parsed.data.projectId}`;
   try {
     const created = createAiDesignWorkspaceRuntime({

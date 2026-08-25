@@ -7,6 +7,7 @@ import {
   completeRun,
   createAgentRun,
   planRun,
+  queueRun,
   recordToolResult,
   requestToolCall,
   resumeRun,
@@ -100,5 +101,18 @@ describe('precision CAD agent run state machine', () => {
     expect(validation.ok).toBe(true);
     if (!validation.ok) return;
     expect(completeRun(validation.run, { verdict: 'pass' }).ok).toBe(true);
+  });
+
+  it('stops browser continuation after durable commercial queue ownership transfers', () => {
+    const requested = requestToolCall(planned(), applyCall);
+    if (!requested.ok) return;
+    const approved = approveToolCall(requested.run, requested.run.pendingApproval!.token);
+    if (!approved.ok) return;
+    const queued = queueRun(approved.run, { execution: { status: 'queued', executionId: 'execution-1' } });
+    expect(queued.ok && queued.run.state).toBe('queued');
+    if (!queued.ok) return;
+    expect(queued.run.events.at(-1)?.type).toBe('run_queued');
+    expect(cancelRun(queued.run).ok).toBe(false);
+    expect(planRun(queued.run).ok).toBe(false);
   });
 });

@@ -140,4 +140,23 @@ describe('usePrecisionCadAgentController', () => {
     await act(async () => { await result.current.start('preview'); });
     expect(result.current.run.state).toBe('awaiting_approval');
   });
+
+  it('stops continuation when a durable commercial execution owns the mutation', async () => {
+    const executor = {
+      catalog: vi.fn().mockResolvedValue(catalog),
+      turn: vi.fn().mockResolvedValue(output('build_assembly')),
+      tool: vi.fn().mockResolvedValue({ runId: 'run', callId: 'call-1', ok: true, result: {
+        execution: { mode: 'durable_commercial_queue', status: 'queued', executionId: 'execution-1' },
+        persistence: { ok: false, code: 'PENDING', releaseReady: false, artifacts: [] },
+      } }),
+    };
+    const { result } = renderHook(() => usePrecisionCadAgentController({ ...options(makeInvoke([])), executor }));
+    await load(result);
+    await act(async () => { await result.current.start('commercial edit'); });
+    const token = result.current.run.pendingApproval!.token;
+    await act(async () => { await result.current.approve(token); });
+    expect(result.current.run.state).toBe('queued');
+    expect(result.current.run.result).toMatchObject({ execution: { executionId: 'execution-1' } });
+    expect(executor.turn).toHaveBeenCalledTimes(1);
+  });
 });
