@@ -1,5 +1,28 @@
 # Platform current session
 
+## 2026-08-25 mechanical direct-design adapter byte binding
+
+- Status: `ADAPTER_IMPORT_SHA256_BOUND / BYTE_SUBSTITUTION_REJECTED /
+  APPROVED_ADAPTER_NOT_SUPPLIED / COMMERCIAL_CAMPAIGN_HOLD`.
+- Implementation commit:
+  `8347390cd851c0b035f22415f300f499fd0e1b61`.
+- Preflight and actual campaign execution now require the regular adapter file
+  to match an explicitly approved SHA-256 supplied through
+  `--adapter-sha256` or
+  `NEXYFAB_MECHANICAL_DESIGN_ADAPTER_SHA256`. The runner verifies the bytes
+  before dynamic import, so a path-preserving replacement fails closed.
+- Preflight remains non-mutating and does not import the adapter. Its machine
+  result now reports actual digest presence, approved-digest configuration,
+  and exact match without disclosing verifier private material.
+- Current root remains honest HOLD: artifacts 0/240, verifier roles 0/3,
+  adapter absent, and approved adapter digest absent. Nothing was synthesized
+  to satisfy the new blocker.
+- Verification: runner/preflight contracts 11/11 PASS including adapter-byte
+  substitution rejection; focused script ESLint PASS; full Platform ownership,
+  source ESLint, and TypeScript PASS.
+- Handoff:
+  `HANDOFFS/20260825T092644Z-mechanical-direct-design-adapter-byte-binding.md`.
+
 ## 2026-08-25 mechanical direct-design campaign preflight v1
 
 - Status: `CURRENT_WORKBOOK_30_VALID / REQUIRED_ARTIFACTS_0_OF_240 /
