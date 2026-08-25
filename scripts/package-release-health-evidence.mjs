@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Copy the two receipts consumed by /api/health/release into a standalone
+ * Copy the fixed receipts consumed by /api/health/release into a standalone
  * image. A qualified seven-day receipt is useful only when its exact source
  * bytes are also available for runtime re-verification, so those bindings are
  * copied from one narrow operations-evidence prefix. Do not turn this into a
@@ -32,6 +32,10 @@ export const RELEASE_HEALTH_EVIDENCE = Object.freeze([
       'nexyfab.seven-day-operations-receipt.v1',
       'nexyfab.seven-day-operations-receipt.v3',
     ]),
+  }),
+  Object.freeze({
+    relativePath: 'docs/evidence/release/commercial-precision-runtime-evidence.json',
+    schema: 'nexyfab.commercial-precision-runtime-evidence.v2',
   }),
 ]);
 

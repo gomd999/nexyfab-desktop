@@ -28,6 +28,10 @@ test('copies exactly the allowlisted receipts and verifies byte identity', () =>
       assert.deepEqual(destination, source);
     }
     assert.equal(readFileSync(path.join(root, '.next', 'standalone', 'docs', 'evidence', 'release', 'commercial-i18n-release-receipt.json'), 'utf8').includes('safe'), true);
+    assert.equal(
+      readFileSync(path.join(root, '.next', 'standalone', 'docs', 'evidence', 'release', 'commercial-precision-runtime-evidence.json'), 'utf8').includes('safe'),
+      true,
+    );
   } finally {
     rmSync(root, { recursive: true, force: true });
   }
