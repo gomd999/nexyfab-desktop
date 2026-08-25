@@ -5,15 +5,15 @@
 - Status: `COMMERCIAL_PRECISION_DB_OBJECT_BINDINGS_RESTORED /
   EXACT_THREE_ROLE_MANIFEST_PASS / SOURCE_UNCHANGED /
   LOCAL_FIXTURE_ONLY / COMMERCIAL_PRECISION_HOLD`.
-- Platform commits `2c79c2da` and `f6496787` extend the durable Precision
+- Platform commits `2c79c2da`, `f6496787`, and `c54e6f60` extend the durable Precision
   campaign through an exact PostgreSQL isolated restore and S3-compatible
   source-to-backup-to-restore drill. CI commit `acd76c9f` reruns that combined
   campaign for implementation, verifier, and gate changes and weekly.
 - Shared restore receipt:
   `docs/evidence/cad-independent/commercial-precision-cross-store-restore-20260825.json`;
   schema `nexyfab.backup-isolated-restore-drill.v3`, source
-  `f649678730b18f4a22e3a8ec641ee33a067299be`, self-hash
-  `e3181adce4ddf2e4a3a79b812652ea2a7ab946a18782a3bbdcf8ac324696c292`.
+  `c54e6f607e13878b0adfcf7b64f9b8c0d9873975`, self-hash
+  `575c30ebded3337f0cb9b50e24898bad30ddfd0746b1cb6fffb6c847b85a6b5d`.
 - The run exactly restored 164 tables/104 rows, validated four constraints,
   ended with 83 foreign keys and zero orphans, and matched 8 objects/8,580
   bytes across source, backup, and restore. Database bindings were two
@@ -24,7 +24,9 @@
   independent STEP/XCAF/GD&T quality, or manufacturing acceptance.
 - The receipt is `local-fixture` and explicitly Private Beta/GA false. The
   release gate accepts only a fresh exact-release `release-bound` v3 receipt;
-  production and staging were unchanged.
+  it additionally requires an immutable KMS/provider-bound DB backup and an
+  object backup in a distinct endpoint/region failure domain with versioning,
+  Object Lock retention, and KMS readback. Production and staging were unchanged.
 - Handoff:
   `HANDOFFS/20260825T214338+0900-cross-store-recoverability-boundary.md`.
 
@@ -48,9 +50,9 @@
   re-claim, unchanged workspace head, and no partial execution side effects.
 - Shared v3 receipt:
   `docs/evidence/cad-independent/commercial-precision-local-durability-20260825.json`;
-  source `f649678730b18f4a22e3a8ec641ee33a067299be`, 29/29 PASS, receipt
+  source `c54e6f607e13878b0adfcf7b64f9b8c0d9873975`, 29/29 PASS, receipt
   SHA-256
-  `91e37f5d83193c432bbf983d47888494f913b0aa870ac3959107002ffddcadf3`.
+  `67e1bafac0d4d747d0dd2d8ff1aa7b03d90bff64888a22e352cf714c6ad6d35a`.
 - The same campaign also passes actual disposable PostgreSQL, Redis AOF, and
   object-storage restart persistence and exact replay after restart.
 - This is a local deterministic infrastructure fixture, not a deployed

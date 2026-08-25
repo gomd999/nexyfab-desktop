@@ -27,16 +27,16 @@ and object state must remain unchanged.
 - Restore receipt:
   `docs/evidence/cad-independent/commercial-precision-cross-store-restore-20260825.json`
 - Schema: `nexyfab.backup-isolated-restore-drill.v3`
-- Source HEAD: `f649678730b18f4a22e3a8ec641ee33a067299be`
+- Source HEAD: `c54e6f607e13878b0adfcf7b64f9b8c0d9873975`
 - Receipt SHA-256:
-  `e3181adce4ddf2e4a3a79b812652ea2a7ab946a18782a3bbdcf8ac324696c292`
+  `575c30ebded3337f0cb9b50e24898bad30ddfd0746b1cb6fffb6c847b85a6b5d`
 - PostgreSQL: 164 tables, 104 rows, current migration `2026082502`, four
   constraints validated, 83 final foreign keys, zero orphans
 - Object storage: 8/8/8 objects, 8,580 bytes, exact manifests and all eight DB
   bindings matched
-- Local objectives: RPO age 0 ms, full RTO 12,712 ms
+- Local objectives: RPO age 0 ms, full RTO 13,029 ms
 - Companion durability receipt: 29/29 PASS, SHA-256
-  `91e37f5d83193c432bbf983d47888494f913b0aa870ac3959107002ffddcadf3`
+  `67e1bafac0d4d747d0dd2d8ff1aa7b03d90bff64888a22e352cf714c6ad6d35a`
 
 ## Authority boundary
 
@@ -48,7 +48,9 @@ or certify CNC/sheet/additive manufacturing output.
 The receipt says `target=local-fixture`, `releaseBoundObservation=false`,
 `privateBetaEligible=false`, and `commercialGaEligible=false`. The
 commercialization gate refuses it for promotion. A real encrypted protected
-backup restore, exact-release operator/reviewer evidence, authenticated smoke,
+backup restore must reuse an immutable provider DB backup with KMS/receipt
+bindings and use a distinct object-backup failure domain with versioning,
+Object Lock retention, and KMS readback. Exact-release operator/reviewer evidence, authenticated smoke,
 rollback/alert evidence, deployed worker recovery, independent CAD review, and
 manufacturing pilots remain required.
 
