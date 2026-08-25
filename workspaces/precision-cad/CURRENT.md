@@ -1,5 +1,37 @@
 # Precision CAD current session
 
+## 2026-08-25 fail-closed crash-after-claim recovery
+
+- Status: `SEPARATE_APPROVED_EXECUTION_CLAIMED /
+  EXPIRED_LEASE_AUTHORITY_ATOMICALLY_CLEARED /
+  VERIFIED_UNKNOWN_HASH_CHAIN_PASS / STALE_CAPABILITY_REJECTED /
+  ZERO_PARTIAL_EXECUTION_SIDE_EFFECTS / LOCAL_FIXTURE_ONLY /
+  COMMERCIAL_PRECISION_HOLD`.
+- Precision commit:
+  `94ad99b6eae22ab5b69f91992785aab8caa97e88`; shared Platform campaign
+  commit: `ad437dbf341b6c9d7643bf4d2e742ba077d0acbf`.
+- `recoverExpiredClaims` now clears outbox lease owner, expiry, and capability
+  hash in the same PostgreSQL transaction that quarantines the outbox and
+  execution journal as `VERIFIED_UNKNOWN`.
+- The durability campaign uses a second independently approved and enqueued
+  execution. It claims that execution, produces no worker callback or output,
+  advances beyond the lease, and proves exact recovery once, idempotent recovery
+  thereafter, valid journal chain/reason, stale-capability HTTP 403, no
+  re-claim, unchanged workspace head, and no partial execution side effects.
+- Shared v3 receipt:
+  `docs/evidence/cad-independent/commercial-precision-local-durability-20260825.json`;
+  source `ad437dbf341b6c9d7643bf4d2e742ba077d0acbf`, 29/29 PASS, receipt
+  SHA-256
+  `8c27da0ab28c80c0e226feb84fbea5549c3fd27180e55c0a3069a4e1529a4c38`.
+- The same campaign also passes actual disposable PostgreSQL, Redis AOF, and
+  object-storage restart persistence and exact replay after restart.
+- This is a local deterministic infrastructure fixture, not a deployed
+  production-class native CAD worker crash. Private Beta and GA remain false;
+  staging/production, independent CAD review, and manufacturing pilots remain
+  unchanged.
+- Handoff:
+  `HANDOFFS/20260825T120234Z-crash-after-claim-recovery.md`.
+
 ## 2026-08-25 synthetic v3 portable exact-boundary evidence
 
 - Status: `CROSS_WORKTREE_RECEIPT_VERIFIED /
