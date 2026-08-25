@@ -4,9 +4,9 @@ import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import Redis from 'ioredis';
-import { CreateBucketCommand, S3Client } from '@aws-sdk/client-s3';
+import { CreateBucketCommand, GetObjectCommand, HeadBucketCommand, S3Client } from '@aws-sdk/client-s3';
 import { NextRequest } from 'next/server';
-import { getDbAdapter } from '@/lib/db-adapter';
+import { getDbAdapter, resetDbAdapter } from '@/lib/db-adapter';
 import { getStorage } from '@/lib/storage';
 import { enqueueCommercialExecutionTransaction, CommercialExecutionOutboxStore } from '@/lib/precision-cad-agent/commercialExecutionOutboxStore';
 import { makeEnqueueFixture } from '@/lib/precision-cad-agent/commercialExecutionOutboxStore.testFixture';
@@ -18,7 +18,11 @@ import type { ImmutableArtifactStore } from '@/lib/precision-cad-agent/commercia
 import { CAD_WORKSPACE_ENVELOPE_SCHEMA, hashCadPayload, hashCadWorkspaceEnvelope, type CadWorkspaceEnvelopeInput, type StoredCadWorkspaceEnvelope } from '@/lib/cad/workspaceRevisionStore';
 import { DESIGN_ARTIFACT_GRAPH_SCHEMA, type DesignArtifactGraph } from '@/lib/ai/designArtifactGraph';
 import { DESIGN_WORKSPACE_REVISION_SCHEMA, type DesignWorkspaceRevision } from '@/lib/ai/designWorkspaceRevision';
-import type { CommercialExecutionJob, CommercialOutputArtifact } from '../packages/job-contracts/src/commercialPrecisionExecution';
+import type {
+  CommercialExecutionJob,
+  CommercialOutputArtifact,
+  CommercialTransportEnvelope,
+} from '../packages/job-contracts/src/commercialPrecisionExecution';
 import { canonical, executeTransport, nativeInvocationSha256 } from './drawing-to-3d/commercial-precision-worker.mjs';
 import { POST as claimPost } from '@/app/api/internal/precision-cad-commercial/claim/route';
 import { GET as artifactGet, POST as artifactPost, PUT as artifactPut } from '@/app/api/internal/precision-cad-commercial/artifacts/route';
@@ -40,6 +44,69 @@ function required(name: string): string {
 
 function sha256(bytes: string | Uint8Array): string {
   return createHash('sha256').update(bytes).digest('hex');
+}
+
+function restartDisposableDurabilityServices(): {
+  databaseUrl: string;
+  redisUrl: string;
+  s3Endpoint: string;
+} {
+  const project = required('LOCAL_DURABILITY_COMPOSE_PROJECT');
+  if (!/^nexyfab-precision-durability-\d+$/.test(project)) {
+    throw new Error('local_durability_compose_project_invalid');
+  }
+  const composeFile = path.resolve(process.cwd(), 'containers', 'commercial-precision-durability', 'compose.yml');
+  const compose = (...args: string[]) => execFileSync('docker', [
+    'compose', '--project-name', project, '--file', composeFile, ...args,
+  ], { cwd: process.cwd(), stdio: 'inherit' });
+  const publishedPort = (service: string, containerPort: number): number => {
+    const value = execFileSync('docker', [
+      'compose', '--project-name', project, '--file', composeFile, 'port', service, String(containerPort),
+    ], { cwd: process.cwd(), encoding: 'utf8' }).trim();
+    const match = value.match(/:(\d+)\s*$/);
+    if (!match) throw new Error(`restarted_service_port_unavailable:${service}:${containerPort}`);
+    return Number(match[1]);
+  };
+  compose('restart', 'postgres', 'redis', 'object-storage');
+  compose('up', '--detach', '--wait');
+  const databasePort = publishedPort('postgres', 5432);
+  const redisPort = publishedPort('redis', 6379);
+  const objectStoragePort = publishedPort('object-storage', 9000);
+  return {
+    databaseUrl: `postgresql://nexyfab:local-durability-only@127.0.0.1:${databasePort}/nexyfab`,
+    redisUrl: `redis://127.0.0.1:${redisPort}`,
+    s3Endpoint: `http://127.0.0.1:${objectStoragePort}`,
+  };
+}
+
+async function connectRedisWithRetry(url: string, attempts = 40): Promise<Redis> {
+  let lastError: unknown = null;
+  for (let attempt = 1; attempt <= attempts; attempt += 1) {
+    const client = new Redis(url, {
+      lazyConnect: true,
+      maxRetriesPerRequest: 1,
+      retryStrategy: () => null,
+    });
+    // Connection refusal is expected for a short interval while Docker
+    // republishes the restarted container port. The campaign still fails if a
+    // fresh application client cannot reconnect within the bounded window.
+    client.on('error', () => {});
+    try {
+      await client.connect();
+      if (await client.ping() === 'PONG') return client;
+    } catch (error) {
+      lastError = error;
+    }
+    client.disconnect(false);
+    await new Promise(resolve => setTimeout(resolve, 250));
+  }
+  throw new Error(`redis_reconnect_timeout:${lastError instanceof Error ? lastError.message : String(lastError)}`);
+}
+
+async function readS3Object(client: S3Client, bucket: string, objectKey: string): Promise<Buffer> {
+  const result = await client.send(new GetObjectCommand({ Bucket: bucket, Key: objectKey }));
+  if (!result.Body) throw new Error(`restarted_object_body_missing:${objectKey}`);
+  return Buffer.from(await result.Body.transformToByteArray());
 }
 
 function publicWorker(
@@ -153,9 +220,9 @@ async function seedAuthorityRows(db: ReturnType<typeof getDbAdapter>, fixture: A
 }
 
 async function main() {
-  const databaseUrl = required('LOCAL_DURABILITY_DATABASE_URL');
-  const redisUrl = required('LOCAL_DURABILITY_REDIS_URL');
-  const s3Endpoint = required('LOCAL_DURABILITY_S3_ENDPOINT');
+  let databaseUrl = required('LOCAL_DURABILITY_DATABASE_URL');
+  let redisUrl = required('LOCAL_DURABILITY_REDIS_URL');
+  let s3Endpoint = required('LOCAL_DURABILITY_S3_ENDPOINT');
   const generatedAt = new Date().toISOString();
   const claimSecret = 'local-claim-secret-20260825-only-0001';
   const transportSecret = 'local-transport-secret-20260825-001';
@@ -190,7 +257,7 @@ async function main() {
   const workers = Object.fromEntries(Object.entries(workerPairs).map(([identity, pair]) => [identity, publicWorker(identity, pair, nativeExecutableSha256, nativeInvocationSha256Value)]));
   process.env.NEXYFAB_COMMERCIAL_WORKER_KEYS_JSON = JSON.stringify(workers);
 
-  const s3 = new S3Client({
+  let s3 = new S3Client({
     region: 'us-east-1', endpoint: s3Endpoint, forcePathStyle: true,
     credentials: { accessKeyId: 'nexyfab-local', secretAccessKey: 'local-durability-secret-only' },
   });
@@ -204,10 +271,8 @@ async function main() {
     process.env[`POSTGRES_MIGRATION_CHECKSUM_${item.version}`] = item.checksum;
   }
 
-  const redisA = new Redis(redisUrl, { lazyConnect: true, maxRetriesPerRequest: 1 });
-  const redisB = new Redis(redisUrl, { lazyConnect: true, maxRetriesPerRequest: 1 });
-  await Promise.all([redisA.connect(), redisB.connect()]);
-  if (await redisA.ping() !== 'PONG' || await redisB.ping() !== 'PONG') throw new Error('redis_ping_failed');
+  let redisA = await connectRedisWithRetry(redisUrl);
+  let redisB = await connectRedisWithRetry(redisUrl);
   const redisKey = 'nexyfab:local-durability:lease';
   const redisFirst = await redisA.set(redisKey, 'instance-a', 'PX', 150, 'NX');
   const redisExcluded = await redisB.set(redisKey, 'instance-b', 'PX', 150, 'NX');
@@ -215,12 +280,13 @@ async function main() {
   const redisRecovered = await redisB.set(redisKey, 'instance-b', 'PX', 1000, 'NX');
   if (redisFirst !== 'OK' || redisExcluded !== null || redisRecovered !== 'OK') throw new Error('redis_lease_exclusion_failed');
 
-  const db = getDbAdapter();
+  let db = getDbAdapter();
   const storage = getStorage();
   const fixture = await makeEnqueueFixture();
   const at = Date.now();
   await seedAuthorityRows(db, fixture, at);
-  const { inputArtifact: _discardedInput, ...jobWithoutInput } = fixture.input.job;
+  const jobWithoutInput = { ...fixture.input.job };
+  delete jobWithoutInput.inputArtifact;
   const staged = await stageCommercialExecutionInput({
     job: jobWithoutInput,
     arguments: fixture.approvalBinding.arguments,
@@ -247,8 +313,10 @@ async function main() {
   const claimResponses = await Promise.all([claimRequest('local-worker-a'), claimRequest('local-worker-b')]);
   const successfulClaims = claimResponses.filter(response => response.status === 200);
   if (successfulClaims.length !== 1) throw new Error(`multi_instance_claim_exclusion_failed:${claimResponses.map(value => value.status).join(',')}`);
-  const claimBody = await successfulClaims[0]!.json() as { transport: Record<string, any> };
+  const claimBody = await successfulClaims[0]!.json() as { transport: CommercialTransportEnvelope };
   const transport = claimBody.transport;
+  if (!transport.inputDownloadUrl) throw new Error('claimed_input_download_url_missing');
+  const inputDownloadUrl = transport.inputDownloadUrl;
   const outbox = new CommercialExecutionOutboxStore(db);
   const claimedRow = await outbox.read(staged.job.jobId);
   const workerIdentity = claimedRow?.leaseOwner;
@@ -258,10 +326,10 @@ async function main() {
     authorization: `Bearer ${transport.leaseCapability}`,
     'x-commercial-worker-identity': workerIdentity,
   };
-  const wrongWorkerResponse = await artifactGet(request(transport.inputDownloadUrl, {
+  const wrongWorkerResponse = await artifactGet(request(inputDownloadUrl, {
     headers: { ...authHeaders, 'x-commercial-worker-identity': workerIdentity === 'local-worker-a' ? 'local-worker-b' : 'local-worker-a' },
   }));
-  const substitutedInputUrl = new URL(transport.inputDownloadUrl);
+  const substitutedInputUrl = new URL(inputDownloadUrl);
   substitutedInputUrl.searchParams.set('artifactId', 'substituted-input');
   const inputSubstitutionResponse = await artifactGet(request(substitutedInputUrl.toString(), { headers: authHeaders }));
   if (wrongWorkerResponse.status !== 403 || inputSubstitutionResponse.status !== 403) {
@@ -278,7 +346,11 @@ async function main() {
       if ((init.method ?? 'GET') === 'PUT') return artifactPut(nextRequest);
       if ((init.method ?? 'GET') === 'POST') {
         const response = await artifactPost(nextRequest);
-        const body = typeof init.body === 'string' ? JSON.parse(init.body) as Record<string, any> : null;
+        const body = typeof init.body === 'string' ? JSON.parse(init.body) as {
+          action?: string;
+          intent?: { role?: string; contentSha256?: string };
+          [key: string]: unknown;
+        } : null;
         if (response.ok && body?.action === 'commit-output' && body?.intent?.role === 'model' && outputSubstitutionStatus === null) {
           const substituted = {
             ...body,
@@ -495,6 +567,97 @@ async function main() {
     || Number(authoritativeRows.after_revision) !== workspaceEnvelope.workspace.revision
     || authoritativeRows.after_content_hash !== workspaceEnvelope.contentHash) throw new Error('authoritative_commit_readback_failed');
 
+  // Prove that the declared PostgreSQL volume, Redis AOF, and object-storage
+  // volume survive an actual service restart. Close application connections
+  // first so the second readback comes from fresh clients rather than a live
+  // socket or process cache.
+  const redisPersistenceKey = `nexyfab:local-durability:persistence:${staged.job.executionId}`;
+  const redisPersistenceValue = sha256(`redis-aof:${persistence.persistenceReceiptHash}`);
+  if (await redisA.set(redisPersistenceKey, redisPersistenceValue) !== 'OK') {
+    throw new Error('redis_restart_sentinel_write_failed');
+  }
+  await Promise.all([redisA.quit(), redisB.quit(), db.close()]);
+  s3.destroy();
+  resetDbAdapter();
+  const restartedEndpoints = restartDisposableDurabilityServices();
+  databaseUrl = restartedEndpoints.databaseUrl;
+  redisUrl = restartedEndpoints.redisUrl;
+  s3Endpoint = restartedEndpoints.s3Endpoint;
+  process.env.DATABASE_URL = databaseUrl;
+  process.env.REDIS_URL = redisUrl;
+  process.env.S3_ENDPOINT = s3Endpoint;
+
+  db = getDbAdapter();
+  redisA = await connectRedisWithRetry(redisUrl);
+  redisB = await connectRedisWithRetry(redisUrl);
+  s3 = new S3Client({
+    region: 'us-east-1', endpoint: s3Endpoint, forcePathStyle: true,
+    credentials: { accessKeyId: 'nexyfab-local', secretAccessKey: 'local-durability-secret-only' },
+  });
+  await s3.send(new HeadBucketCommand({ Bucket: bucket }));
+
+  if (await redisA.ping() !== 'PONG'
+    || await redisB.ping() !== 'PONG'
+    || await redisA.get(redisPersistenceKey) !== redisPersistenceValue) {
+    throw new Error('redis_aof_restart_persistence_failed');
+  }
+  const restartedMigration = await db.queryOne<{ checksum: string }>(
+    'SELECT checksum FROM nf_schema_migrations WHERE version = ?', latestMigration.version,
+  );
+  const restartedHead = await db.queryOne<Record<string, unknown>>(
+    'SELECT revision, content_hash FROM nf_cad_workspace_heads WHERE project_id = ?', staged.job.projectId,
+  );
+  const restartedRows = await db.queryOne<Record<string, unknown>>(
+    'SELECT o.status AS outbox_status, j.lifecycle AS journal_lifecycle, p.persistence_receipt_hash, c.after_revision, c.after_content_hash FROM nf_precision_cad_commercial_outbox o JOIN nf_precision_cad_execution_journal j ON j.execution_id = o.execution_id JOIN nf_precision_cad_commercial_persistence_receipts p ON p.execution_id = o.execution_id JOIN nf_precision_cad_commercial_workspace_commits c ON c.execution_id = o.execution_id WHERE o.execution_id = ?',
+    staged.job.executionId,
+  );
+  const restartedOutbox = await new CommercialExecutionOutboxStore(db).read(staged.job.jobId);
+  if (restartedMigration?.checksum !== latestMigration.checksum
+    || !restartedHead
+    || Number(restartedHead.revision) !== workspaceEnvelope.workspace.revision
+    || restartedHead.content_hash !== workspaceEnvelope.contentHash
+    || restartedRows?.outbox_status !== 'DONE'
+    || restartedRows.journal_lifecycle !== 'COMMITTED'
+    || restartedRows.persistence_receipt_hash !== persistence.persistenceReceiptHash
+    || Number(restartedRows.after_revision) !== workspaceEnvelope.workspace.revision
+    || restartedRows.after_content_hash !== workspaceEnvelope.contentHash
+    || restartedOutbox?.status !== 'DONE') {
+    throw new Error('postgres_restart_persistence_failed');
+  }
+
+  const restartBindings = [
+    { objectKey: staged.job.inputArtifact!.objectKey, contentSha256: staged.job.inputArtifact!.contentSha256, byteLength: staged.job.inputArtifact!.byteLength },
+    ...committedOutputs.map(row => ({ objectKey: String(row.object_key), contentSha256: String(row.content_sha256), byteLength: Number(row.byte_length) })),
+    ...snapshots.map((row: { objectKey: string; contentSha256: string; byteLength: number }) => ({
+      objectKey: row.objectKey,
+      contentSha256: row.contentSha256,
+      byteLength: row.byteLength,
+    })),
+  ];
+  for (const binding of restartBindings) {
+    const bytes = await readS3Object(s3, bucket, binding.objectKey);
+    if (bytes.byteLength !== binding.byteLength || sha256(bytes) !== binding.contentSha256) {
+      throw new Error(`object_storage_restart_persistence_failed:${binding.objectKey}`);
+    }
+  }
+  const restartedArtifactStore: ImmutableArtifactStore = {
+    read: async key => new Uint8Array(await readS3Object(s3, bucket, key)),
+    putImmutable: async () => { throw new Error('restart_replay_attempted_artifact_write'); },
+  };
+  const restartReplay = await persistCommercialWorkerResult({
+    db,
+    artifactStore: restartedArtifactStore,
+    receipt: workerResult.receipt,
+    expected: expectedReceipt,
+    trustedWorkers: workers,
+    metadata: workerResult.receipt.outputArtifacts,
+    parserReceipt,
+    trustedParser: { parserIdentity: parserReceipt.parserIdentity, publicKeyPem: parserPublicKeyPem, fingerprintSha256: parserFingerprint },
+  });
+  if (!restartReplay.ok || restartReplay.status !== 'REPLAY' || restartReplay.snapshots.length !== 0) {
+    throw new Error('restart_persistence_exact_replay_failed');
+  }
+
   const checks = {
     postgresMigration: 'PASS', redisPing: 'PASS', redisLeaseExclusion: 'PASS', redisExpiryRecovery: 'PASS',
     immutableInputWriteReadback: 'PASS', immutableInputSubstitutionRejected: 'PASS',
@@ -504,9 +667,11 @@ async function main() {
     outputSubstitutionRejected: 'PASS', callbackExactRetryIdempotent: 'PASS',
     callbackReplayConflictRejected: 'PASS', expiredLeaseRecovery: 'PASS', verifiedUnknownNoReplay: 'PASS',
     credentialRotationTrustBoundary: 'PASS', nativeAdapterBinding: 'PASS', authoritativePersistence: 'PASS', workspaceCasCommit: 'PASS',
+    postgresRestartPersistence: 'PASS', redisAofRestartPersistence: 'PASS', objectStorageRestartPersistence: 'PASS',
+    restartPersistenceExactReplay: 'PASS',
   } as const;
   const unsignedReceipt = {
-    schema: 'nexyfab.commercial-precision-local-durability.v1',
+    schema: 'nexyfab.commercial-precision-local-durability.v2',
     generatedAt,
     status: 'LOCAL_DURABLE_EXACT_CLOSED_LOOP_PASS',
     source: {
@@ -537,6 +702,7 @@ async function main() {
       usesIsolatedNativeFixtureProcess: true,
       authoritativeParserPersistenceExercised: true,
       workspaceCasCommitExercised: true,
+      disposableServiceRestartExercised: true,
       fixtureIsCommercialRuntimeEvidence: false,
       privateBetaEligible: false,
       commercialGaEligible: false,
