@@ -1,5 +1,47 @@
 # Platform current session
 
+## 2026-08-25 mechanical intent evidence hierarchy v4
+
+- Status: `INTERNAL_MECHANICAL_CHAIN_BOUND / LOCAL_INTENT_STAGES_PASS /
+  COMMERCIAL_DIRECT_DESIGN_NOT_RUN / PRIVATE_BETA_FALSE / GA_FALSE`.
+- Implementation/evidence commit:
+  `077e20c6f3399fa135dba2086ae69d94dd2fccc0`.
+- Every text binding in the 150-case qualification, 10-design/70-axis exact
+  runtime, and assembly drawing handoff receipts now uses
+  `utf8-crlf-to-lf`. Dedicated CRLF replay tests prove cross-worktree
+  portability while semantic or byte-content tampering still fails closed.
+- The internal mechanical receipt now binds 171 code, binary, and checked
+  evidence files. Product-scope verification rehashes them, requires all six
+  commands and all nine internal checks, and invalidates every internal stage
+  if one checked evidence byte drifts.
+- `mechanical-product-scope-assessment.v4` separates local stages from
+  commercial authority. Current PASS: internal regression, 150-input
+  qualification, representative 10-design/70-axis exact runtime, local
+  assembly handoff, and artifact revision consistency. Current HOLD: signed
+  commercial 30-feature closed loop, 10/30 direct design packages, 150-intent
+  commercial campaign, standard STEP conformance, 20 blind product challenges,
+  and three manufactured pilots.
+- Canonical hashes: qualification
+  `cb00232c065b50b92a4e82bec220e5395ec86a585151cf07c4dee786f141fee8`;
+  current representative runtime
+  `d0d70305f6e7575dfa09d4187c7f5f23733619a5df9a889794d95d632937e950`;
+  assembly handoff
+  `b4d42c43218de614952354cb45b7fa7c69103e827afc4771d3a55e394827633c`;
+  internal receipt
+  `b179f7f761fd5ee73399ee51550c81152fff443e4fcea63173650b678d5edb6b`;
+  v4 scope receipt
+  `95d449dd39c5c2d002c2c3681726ba015a447dd949cd69255683040e434d226f`.
+- Verification: full internal CAD 137/137, accuracy 49/49, assembly handoff
+  11/11, v4/gate/tamper contracts 46/46, commit-related Vitest 38/38,
+  Platform full ESLint and TypeScript PASS.
+- Deployment note: NexyFab's current staging deployment remains green. The
+  historical NexyFab failure was a postbuild failure caused by a missing
+  packaged commercial Precision evidence file; release-health HTTP 503 remains
+  an intentional commercial HOLD, not a deployment crash. Production was not
+  changed.
+- Handoff:
+  `HANDOFFS/20260825T084100Z-mechanical-intent-evidence-hierarchy-v4.md`.
+
 ## 2026-08-25 synthetic receipt cross-worktree closure
 
 - Status: `V3_RAW_CAMPAIGN_VERIFIED / LF_CRLF_DETERMINISTIC /
