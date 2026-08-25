@@ -1,6 +1,6 @@
 {
   "schema": "nexyfab.commercial-security-evidence-receipt.v2",
-  "generatedAt": "2026-08-25T07:12:04.619Z",
+  "generatedAt": "2026-08-25T07:46:24.980Z",
   "ok": false,
   "status": "HOLD",
   "target": "production",
@@ -12,33 +12,33 @@
     "service": null
   },
   "freshness": {
-    "generatedAt": "2026-08-25T07:12:04.619Z",
+    "generatedAt": "2026-08-25T07:46:24.980Z",
     "maxAgeMs": 86400000,
-    "expiresAt": "2026-08-26T07:12:04.619Z"
+    "expiresAt": "2026-08-26T07:46:24.980Z"
   },
   "sourceBindings": [
     {
       "path": "docs/evidence/security/route-security-matrix-260810.json",
       "bytes": 568781,
-      "sha256": "d4792f09ff169bbb815285fbf5f63c795732329840000d180f3629d20b13731e",
+      "sha256": "c0172df30f9624d580532c66819da19b315681ce7524db1b67d3e43562a4cde2",
       "canonicalization": "utf8-crlf-to-lf"
     },
     {
       "path": "docs/evidence/cad-independent/cad-api-control-evidence.json",
       "bytes": 16342,
-      "sha256": "0e32bd0a8f6783512451a826943330681481eb2b6c37a8835e91e353fd1f4480",
+      "sha256": "a809f84ce44759372e0885c4a529c705b38e5be027d976f35368803a8afab4f7",
       "canonicalization": "utf8-crlf-to-lf"
     },
     {
       "path": "docs/evidence/security/secret-scan-260810.json",
       "bytes": 710,
-      "sha256": "ff9126069f86908a0d252264ba7ff082f85ac0cac71b07c12f761403a52516c5",
+      "sha256": "15cf79e5203b54afd59fe71934381ac77adb5a598d9f5adc08758f5ee6fad162",
       "canonicalization": "utf8-crlf-to-lf"
     },
     {
       "path": "docs/evidence/security/dependency-audit-260810.json",
       "bytes": 559,
-      "sha256": "e407a874ad4dc02d205f45f7dbab7c997ed2f1c596a517018f5204e36ece650a",
+      "sha256": "0404635a9ebdfd0ef7e90af2e90893a28b69d697e8b36cbcd2dfe7931515dd53",
       "canonicalization": "utf8-crlf-to-lf"
     },
     {
@@ -87,8 +87,8 @@
       "status": "pass",
       "derived": {
         "findingCount": 0,
-        "filesScanned": 10190,
-        "bytesScanned": 322789159,
+        "filesScanned": 10198,
+        "bytesScanned": 324530372,
         "excludedDerivedReceipts": 4,
         "textCanonicalization": "utf8-crlf-to-lf"
       },
@@ -122,5 +122,5 @@
     "release_environment_not_production",
     "release_service_not_nexyfab"
   ],
-  "receiptSha256": "0261acfc1ba9c1323fb1c55f2eccdf466933af82b071b06e2b87e837bcf0e24a"
+  "receiptSha256": "07d717aece7b0002f9485c40224c4394321647a503b19ccc007177104f0613ed"
 }
