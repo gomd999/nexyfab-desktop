@@ -1,5 +1,28 @@
 # Precision CAD current session
 
+## 2026-08-25 release-gate-hardened exact-core staging evidence
+
+- Status: `EXACT_CORE_STAGING_SUCCESS / 11_OF_11_PASS /
+  POSITIVE_NATIVE_CLOSED_LOOP_NOT_RUN / COMMERCIAL_RELEASE_HOLD`.
+- Exact application source/build/Git
+  `3797ad6d75f02ad750e746199eb8c041e5d52d9f` is deployed as Railway staging
+  deployment `d4718236-06ca-4b56-81c8-5c271b2e8976`, image
+  `sha256:bd1364d1121916016d91a19919486d39a053a9ce38db008a05c197f9a20ce2bf`,
+  with 2/2 instances `RUNNING`.
+- The immutable same-build receipt passed 11/11 exact release, PostgreSQL,
+  Redis, migration `2026082502`, packaged runtime-HOLD, forged worker/lease,
+  and callback fail-closed checks. Receipt self-hash:
+  `59485c350d6aeaa45881ef7e06032836bec330ce2be49c46331fcac9ca03731e`.
+- The hardened commercialization gate accepts this as verified staging
+  prerequisite evidence and still refuses Private Beta. It cannot replace a
+  registered production-class native adapter, separately keyed positive
+  closed loop, recovery campaign, independent CAD review, or pilots.
+- AI Design remains candidate authority only; only signed, verified Precision
+  results may cross the exact-CAD boundary, and manufacturing approval remains
+  disabled.
+- Handoff:
+  `HANDOFFS/20260825T072000Z-release-gate-hardened-staging-evidence.md`.
+
 ## 2026-08-25 exact final-source staging HOLD verification
 
 - Status: `FINAL_SOURCE_STAGING_SUCCESS / CORE_AND_FAIL_CLOSED_CHECKS_11_OF_11_PASS /
