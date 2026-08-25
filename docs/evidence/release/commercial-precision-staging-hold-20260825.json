@@ -1,6 +1,6 @@
 {
   "schema": "nexyfab.commercial-precision-staging-hold-evidence.v1",
-  "generatedAt": "2026-08-25T04:11:06.808Z",
+  "generatedAt": "2026-08-25T06:00:47.198Z",
   "status": "STAGING_HOLD_VERIFIED",
   "ok": true,
   "target": {
@@ -8,11 +8,11 @@
     "origin": "https://nexyfabcom-staging.up.railway.app"
   },
   "release": {
-    "buildId": "d0ae60b6102e90bc0fcef1fa50c425d4d768a989",
-    "deploymentId": "1839657a-a2ac-4671-aea9-cea408a3811a",
-    "gitHead": "d0ae60b6102e90bc0fcef1fa50c425d4d768a989",
+    "buildId": "32ff05ba3f1e7addc5cf6da95d6e94ff9b437fe7",
+    "deploymentId": "c1e03352-5f95-47eb-a031-80847b22391c",
+    "gitHead": "32ff05ba3f1e7addc5cf6da95d6e94ff9b437fe7",
     "migrationVersion": 2026082502,
-    "precisionRuntimeReceiptSha256": "c65e0ef8d99faca3b80aa9f89dc2d4584b4ba9c3929e458d140dfdf99aac334a"
+    "precisionRuntimeReceiptSha256": "bd12ecba3301f192b2e070acf553001ed2595c4b4bfcff1530ab759430da66a6"
   },
   "checks": [
     {
@@ -74,15 +74,15 @@
   "responseBindings": {
     "live": {
       "status": 200,
-      "bodySha256": "0bb75f2dcacf7727c1617d0b577823aafac0f9991d4f750d3a467eb4497fd927"
+      "bodySha256": "202a2f43944f9e2dcc8492f195e1112c9511fcbc5ea4b23004ba58f3b4c0c068"
     },
     "ready": {
       "status": 200,
-      "bodySha256": "d5a3eff23461eea3f2cb2d6021792f2e3036856feb26d62520c2338de4c7471b"
+      "bodySha256": "9a36b85335f088d9b63c6660179c1c01bec773a393d25514abbca7172b9c2fcb"
     },
     "release": {
       "status": 503,
-      "bodySha256": "f07c2872d44e858afe0fe0726c3122549e93354c44c69d1c1c1b5cbdfdb4774b"
+      "bodySha256": "2b6fb463d37cfd539fa81b99914f95da7fa2b4e65178dcf553e4399d400f600b"
     },
     "forgedClaim": {
       "status": 403,

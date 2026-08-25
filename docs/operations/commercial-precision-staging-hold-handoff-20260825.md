@@ -5,8 +5,10 @@ Status: `CORE_STAGING_HOLD_VERIFIED / PRIVATE_BETA_FALSE / GA_FALSE`
 ## Exact deployed release
 
 - environment: isolated Railway `staging`;
-- source/build/Git: `d0ae60b6102e90bc0fcef1fa50c425d4d768a989`;
-- deployment: `1839657a-a2ac-4671-aea9-cea408a3811a`;
+- source/build/Git: `32ff05ba3f1e7addc5cf6da95d6e94ff9b437fe7`;
+- deployment: `c1e03352-5f95-47eb-a031-80847b22391c`;
+- image digest:
+  `sha256:bc2688c5b3c7cc6a34d9cbab9ad0357a87d2b8356d39786319aaf109849fab2a`;
 - replicas: 2 configured, 2 running, 0 crashed;
 - commercial mode: `0`;
 - release channel: `staging-hold`;
@@ -34,7 +36,7 @@ It refuses a production/non-HTTPS origin and persists only selected non-secret
 fields, HTTP status codes, and response-body SHA-256 bindings. The checked-in
 receipt is
 `docs/evidence/release/commercial-precision-staging-hold-20260825.json`, file
-SHA-256 `8a520364b2ada1220bd8a6c3031f2f14db3ea491e1f9d87d8c8834822c74316d`.
+SHA-256 `25af13c64c07992988a7a115dd73c36e97cb6eb7cef25b8e9300c6418062ccff`.
 
 All 11 checks passed:
 
@@ -50,13 +52,13 @@ All 11 checks passed:
 - unconfigured callback is HTTP 503 `CALLBACK_NOT_CONFIGURED`.
 
 The packaged precision runtime receipt SHA-256 is
-`c65e0ef8d99faca3b80aa9f89dc2d4584b4ba9c3929e458d140dfdf99aac334a`.
+`bd12ecba3301f192b2e070acf553001ed2595c4b4bfcff1530ab759430da66a6`.
 Schema v3 requires the signed worker receipt, trusted-worker registry,
 readiness, and release evidence to agree on both the native executable SHA-256
 and canonical invocation SHA-256. A valid worker signature cannot substitute
 adapter bytes or arguments. Source closure is carried by shared commit
 `918cfa0f`, Precision commit `7e01ba14`, Platform commit `f2656283`, and exact
-deployed integration HEAD `d0ae60b6`. Standalone packaging and Railway upload-
+deployed integration HEAD `32ff05ba`. Standalone packaging and Railway upload-
 context regressions remain closed by commits `34b167fc` and `7c732639`.
 
 ## Honest release boundary

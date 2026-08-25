@@ -1,5 +1,24 @@
 # Platform current session
 
+## 2026-08-25 final integrated HEAD staging verification
+
+- Status: `FINAL_HEAD_STAGING_SUCCESS / STAGING_HOLD_11_OF_11_PASS /
+  PRIVATE_BETA_FALSE / GA_FALSE / PRODUCTION_UNCHANGED`.
+- Final integrated source/build/Git
+  `32ff05ba3f1e7addc5cf6da95d6e94ff9b437fe7` is deployed to isolated Railway
+  `staging` as `c1e03352-5f95-47eb-a031-80847b22391c`, image digest
+  `sha256:bc2688c5b3c7cc6a34d9cbab9ad0357a87d2b8356d39786319aaf109849fab2a`.
+- Two instances are RUNNING. `/ready` passes and `/live` reports the exact final
+  HEAD. The verified deployment path passed workspace audit, architecture,
+  production build, TypeScript, 301/301 static generation, and bundle budget.
+- The redacted collector passed all 11 PostgreSQL, Redis, migration, exact
+  release identity, packaged runtime HOLD, forged claim/lease, and callback
+  fail-closed checks. Commercial mode remains off and release health remains
+  intentional HTTP 503 `HOLD`.
+- Production was not deployed, restarted, reconfigured, or written.
+- Handoff:
+  `HANDOFFS/20260825T060034Z-final-head-staging-hold.md`.
+
 ## 2026-08-25 commercial Precision receipt determinism
 
 - Status: `RUNTIME_DERIVATION_DETERMINISTIC / REAL_OBSERVATION_NOT_RUN /
