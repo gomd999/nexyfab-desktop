@@ -47,7 +47,7 @@ npm run mechanical:scope:check
 4. 절삭·판금·적층의 실제 제조 3건은 유지한다.
 5. 외부 기관 대신 구현자에서 분리된 내부 검토자와 위험 기반 이중 승인을 허용한다.
 
-`mechanical-product-scope-assessment.v3`와 commercialization gate에는 이 정책이 반영됐다. 제품별 상용 CAD 검증은 기본 blocker가 아니며, `twenty_blind_product_challenges_required`는 외부 기관 20건이 아니라 요구사항이 사전 동결되고 구현자와 검토자가 분리된 내부 blind challenge 20건을 뜻한다. 현재 blocker는 schema 전환 대기가 아니라 실제 artifact가 0건이라는 사실이다.
+`mechanical-product-scope-assessment.v4`와 commercialization gate에는 이 정책이 반영됐다. v4는 150개 로컬 의도 입력 자격 검증, 10개 대표 설계·70개 정확 런타임 축, 조립도면 로컬 인계를 상용 30개 설계·150개 의도 캠페인과 별도 필드로 기록하며, 앞의 내부 PASS가 뒤의 상용 검증을 대신하지 못하게 한다. 제품별 상용 CAD 검증은 기본 blocker가 아니며, `twenty_blind_product_challenges_required`는 외부 기관 20건이 아니라 요구사항이 사전 동결되고 구현자와 검토자가 분리된 내부 blind challenge 20건을 뜻한다. 현재 blocker는 schema 전환 대기가 아니라 실제 artifact가 0건이라는 사실이다.
 
 2026-08-12 공식 scaffold로 다음 저장소 외부 작업공간을 생성했다.
 

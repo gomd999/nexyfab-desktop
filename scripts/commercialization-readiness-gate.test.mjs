@@ -1012,12 +1012,15 @@ const passing = {
   complexGroundTruthValidation,
   complexProductScope: { decision: { broadComplexProductSelfServiceEligible: true, manufacturingReleaseGuaranteed: true }, families: Object.fromEntries(complexFamilies.filter(family => family !== 'interior').map(family => [family, { selfServiceEligible: true, manufacturingReleaseVerified: true }])) },
   mechanicalProductScope: {
-    schema: 'nexyfab.mechanical-product-scope-assessment.v3',
+    schema: 'nexyfab.mechanical-product-scope-assessment.v4',
     releaseChannel: 'mechanical-core',
     assessedAt: '2026-08-11T00:00:00.000Z',
-    sources: [{ path: 'evidence.json', sha256: 'a'.repeat(64) }],
+    sources: [{ path: 'evidence.json', sha256: 'a'.repeat(64), bytes: 1, canonicalization: 'utf8-crlf-to-lf' }],
     evidence: {
       internalRegressionVerified: true,
+      intentQualification150Verified: true,
+      intentRuntimeRepresentativeVerified: true,
+      assemblyDrawingHandoffLocalVerified: true,
       coreThirtyFeatureClosedLoopVerified: true,
       directDesignCandidateVerified: true,
       directDesignThirtyVerified: true,
@@ -1678,6 +1681,9 @@ test('mechanical-core reports precise direct-design evidence gaps for a valid pe
   input.syntheticCampaignCorpusSha256 = input.syntheticCampaignReceipt.corpus.sha256;
   input.mechanicalProductScope.evidence = {
     internalRegressionVerified: true,
+    intentQualification150Verified: true,
+    intentRuntimeRepresentativeVerified: true,
+    assemblyDrawingHandoffLocalVerified: true,
     coreThirtyFeatureClosedLoopVerified: true,
     directDesignCandidateVerified: true,
     directDesignThirtyVerified: false,
@@ -1718,10 +1724,10 @@ test('mechanical-core reports precise direct-design evidence gaps for a valid pe
   assert.equal(result.commercialGa.blockers.includes('mechanical_scope_revision_consistency_incomplete'), false);
 });
 
-test('mechanical-core refuses legacy v2 scope receipts instead of reinterpreting them under v3 policy', () => {
+test('mechanical-core refuses legacy v3 scope receipts instead of reinterpreting them under v4 policy', () => {
   const input = structuredClone(passing);
   input.releaseChannel = 'mechanical-core';
-  input.mechanicalProductScope.schema = 'nexyfab.mechanical-product-scope-assessment.v2';
+  input.mechanicalProductScope.schema = 'nexyfab.mechanical-product-scope-assessment.v3';
   const result = evaluateCommercializationReadiness(input);
   assert.equal(result.privateBeta.eligible, false);
   assert.ok(result.privateBeta.blockers.includes('mechanical_product_scope_contract_incomplete'));

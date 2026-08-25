@@ -1,6 +1,6 @@
 {
   "schema": "nexyfab.mechanical-core-feature-local-runtime.v1",
-  "generatedAt": "2026-08-24T15:00:47.700Z",
+  "generatedAt": "2026-08-25T08:20:38.363Z",
   "exactKernelOnly": true,
   "meshFallbackAccepted": false,
   "bundle": [
@@ -44,132 +44,157 @@
     "export",
     "drawing"
   ],
-  "designRevisionSha256": "a361da8b50b3e4b840c04e7bdf7077467580a73242a109090dad13b8f5102e22",
+  "designRevisionSha256": "a0a108d123eb01b22a05bbf4355f6811b124b7f3f12053c4dc371dc83ef3b3d3",
   "sources": [
     {
       "path": "src/app/[lang]/shape-generator/features/occtEngine.ts",
-      "sha256": "5c24d7b27dc6709fa1f0e123dcd6c3fd0af1e428b6c5f11d8bf304ed313e5eaa",
-      "bytes": 136046
+      "bytes": 133090,
+      "sha256": "13f520d73e4059d3157f4982fc45f2945e62006bf0e30dcae0ec2e3fad1ac30a",
+      "canonicalization": "utf8-crlf-to-lf"
     },
     {
       "path": "src/app/[lang]/shape-generator/features/topologyEdgeFinder.ts",
-      "sha256": "c1fb7eefc6462dd83ec1c146f4a432a87d200cd3f35ac8ca013f198a5a9a53dd",
-      "bytes": 21231
+      "bytes": 20766,
+      "sha256": "93360df5410ac04b111d62e0624b8200e7a27096ccac5e4e62e4d67dc054e8c1",
+      "canonicalization": "utf8-crlf-to-lf"
     },
     {
       "path": "src/app/[lang]/shape-generator/features/variableFillet.ts",
-      "sha256": "afe690a2b7bcfb006760de09e609f25a124113ec8cc1b0901a80726b3916fe0b",
-      "bytes": 8461
+      "bytes": 8253,
+      "sha256": "7da21bd1532f2373ac37d3b9f953b0b7166de820913e5460312582b947452a4c",
+      "canonicalization": "utf8-crlf-to-lf"
     },
     {
       "path": "src/app/[lang]/shape-generator/features/offsetFace.ts",
+      "bytes": 7702,
       "sha256": "8ea98c75163f9476c30424bf555eea2377c96686fb9d79bd45f5ce140a1b86d7",
-      "bytes": 7702
+      "canonicalization": "utf8-crlf-to-lf"
     },
     {
       "path": "src/app/[lang]/shape-generator/features/thread.ts",
+      "bytes": 7898,
       "sha256": "622e2b22146ebf24443550aede6b5c7ed220b6b3960149e3711321ba5d8ae59d",
-      "bytes": 7898
+      "canonicalization": "utf8-crlf-to-lf"
     },
     {
       "path": "src/app/[lang]/shape-generator/features/threads/applyThreadOcct.ts",
+      "bytes": 4890,
       "sha256": "cec5f01414564bec7da93c36ba515a61ce11424eb189a7a5c9b69b282aea30f3",
-      "bytes": 4890
+      "canonicalization": "utf8-crlf-to-lf"
     },
     {
       "path": "src/app/[lang]/shape-generator/features/helix.ts",
+      "bytes": 6057,
       "sha256": "718b3c8eea925c07f1d1329759b6e5523adb58574d580c1aa02cf2c2acc4fde6",
-      "bytes": 6057
+      "canonicalization": "utf8-crlf-to-lf"
     },
     {
       "path": "src/app/[lang]/shape-generator/features/sheetMetal.ts",
-      "sha256": "14c5dfd17c943887f237b166768e3be78a2299b7a35a03123a4022561ca18df4",
-      "bytes": 50188
+      "bytes": 49280,
+      "sha256": "6c415331819092400a18bdf3c36c64c9ca7a4cf42627aff7ac2fa146a65711a0",
+      "canonicalization": "utf8-crlf-to-lf"
     },
     {
       "path": "src/app/[lang]/shape-generator/features/tab.ts",
-      "sha256": "9dd870859810b41415dc39805ee735507ee77297af0894d54336ac24eeda9d2e",
-      "bytes": 9611
+      "bytes": 9465,
+      "sha256": "bdac480f308ba1cd1e90a4042f1965e2befc01b3cb982d4fdbe0569e0cad5e2a",
+      "canonicalization": "utf8-crlf-to-lf"
     },
     {
       "path": "src/app/[lang]/shape-generator/features/cut.ts",
+      "bytes": 13619,
       "sha256": "115f96068beec6684e9ba861abf95ad862386d74958647a43f74e6a0973c4152",
-      "bytes": 13619
+      "canonicalization": "utf8-crlf-to-lf"
     },
     {
       "path": "src/app/[lang]/shape-generator/features/reliefCuts.ts",
-      "sha256": "a9c566da3c3e48314b72df3e3a03f7eb662ee67b2cfb8a642e37e381c49a5a32",
-      "bytes": 20581
+      "bytes": 20289,
+      "sha256": "321c87a232bc79c525aa15bf95c380b9804b74cea9513feb4491367626083ca6",
+      "canonicalization": "utf8-crlf-to-lf"
     },
     {
       "path": "src/app/[lang]/shape-generator/features/variableShell.ts",
+      "bytes": 6478,
       "sha256": "a4ed100cd7e56db936a8bb1362b301e29495cf6c5901a28306250b65e17d1d34",
-      "bytes": 6478
+      "canonicalization": "utf8-crlf-to-lf"
     },
     {
       "path": "src/app/[lang]/shape-generator/features/revolve.ts",
+      "bytes": 4834,
       "sha256": "24cb93461f736406d49172082dad7318c887e279ca596c8b820530f89a29539b",
-      "bytes": 4834
+      "canonicalization": "utf8-crlf-to-lf"
     },
     {
       "path": "src/app/[lang]/shape-generator/features/sweep.ts",
-      "sha256": "0cdaf7ae7e8bc67c32be47db6267d46049b0f4e76da1a571ccebd099ae3bfc8a",
-      "bytes": 20456
+      "bytes": 19999,
+      "sha256": "8200ce87ced5f3cb0f2ad9fb3a97d500163f56f26bc3f823ceba025acd37d777",
+      "canonicalization": "utf8-crlf-to-lf"
     },
     {
       "path": "src/app/[lang]/shape-generator/features/loft.ts",
+      "bytes": 19628,
       "sha256": "245a7392ef59774a532e1c7bc9272de223b95f05a630a3febca2cfbcf7cdc785",
-      "bytes": 19628
+      "canonicalization": "utf8-crlf-to-lf"
     },
     {
       "path": "src/app/[lang]/shape-generator/features/mirror.ts",
-      "sha256": "d1c0d22acba7205bd95a47504b3628a6e721334c9c9771b0f31b6345ce621209",
-      "bytes": 2312
+      "bytes": 2252,
+      "sha256": "f4eff43748de076b001413e3fcde5703fb34526dff5e6ac613ac77aea533e89d",
+      "canonicalization": "utf8-crlf-to-lf"
     },
     {
       "path": "src/app/[lang]/shape-generator/features/boolean.ts",
-      "sha256": "3c35a39072725586df6e2a761acc8a04084d5818666ed3e7121322a90f802e9f",
-      "bytes": 14981
+      "bytes": 14610,
+      "sha256": "f05c8123e591adc94dafd885c71ded51eaa373f5b64b36fa4d9170d278c77667",
+      "canonicalization": "utf8-crlf-to-lf"
     },
     {
       "path": "src/app/[lang]/shape-generator/features/splitBody.ts",
-      "sha256": "753229973784c9de8181d2d4791f8ae151bbdb71f55d7dadbf5dd8cff4faecd7",
-      "bytes": 4015
+      "bytes": 3889,
+      "sha256": "0c5070696f0d90a3ddf5b3faff08aa6cd87fc1ff9207e5d6c63aa71aa53eb74d",
+      "canonicalization": "utf8-crlf-to-lf"
     },
     {
       "path": "src/app/[lang]/shape-generator/features/pipelineManager.ts",
-      "sha256": "271baffbb5a28ed461d01801cd1c15022afa6eda284e7abe8655dab17f14b032",
-      "bytes": 36417
+      "bytes": 35621,
+      "sha256": "d65b0b4f73610364195b7c1e6c97d62a64de1ea494c1ef0d37b27f0cfebbf427",
+      "canonicalization": "utf8-crlf-to-lf"
     },
     {
       "path": "src/app/[lang]/shape-generator/sketch/extrudeProfile.ts",
-      "sha256": "2f134635d6bd2b1c924f45d7226d56746ba907592987cf8f0fe97a865731dcb6",
-      "bytes": 20871
+      "bytes": 20356,
+      "sha256": "be7b3a46a5be88f42d8e4e20b388bf5e71f396aa2c8fd223688c72359a51c4dd",
+      "canonicalization": "utf8-crlf-to-lf"
     },
     {
       "path": "src/app/[lang]/shape-generator/io/nfabFormat.ts",
-      "sha256": "6c0422cec5d7524a263a543b94eb30cb0917837c9ec912a2acd12de037544f4d",
-      "bytes": 29671
+      "bytes": 28957,
+      "sha256": "525b411c888e495b42cb0298aee58459436da6c77518865e2dbd95a53b580133",
+      "canonicalization": "utf8-crlf-to-lf"
     },
     {
       "path": "src/app/[lang]/shape-generator/history/CommandHistory.ts",
+      "bytes": 2357,
       "sha256": "97438d50d8e20e93040b423b70bc6a5898bd90ecaedccd3fd44f9d359fef0c50",
-      "bytes": 2357
+      "canonicalization": "utf8-crlf-to-lf"
     },
     {
       "path": "src/app/[lang]/shape-generator/features/types.ts",
-      "sha256": "a8fcce84df76c47fc3cb4f1f35888485ab1f88105b35491a2773d8655790c255",
-      "bytes": 6204
+      "bytes": 6043,
+      "sha256": "d19682720e0a793d127b019e232ae18bcd17db010205ebbebe294faeee7599e1",
+      "canonicalization": "utf8-crlf-to-lf"
     },
     {
       "path": "src/lib/ai/mechanicalCoreFeatureContract.ts",
+      "bytes": 16839,
       "sha256": "a53d59fde828bca93ac903e961970be256fe83223733517dcef2bfb5b5f2bbfe",
-      "bytes": 16839
+      "canonicalization": "utf8-crlf-to-lf"
     },
     {
       "path": "scripts/mechanical-core-feature-local-runtime.ts",
-      "sha256": "e6633a788f34892ac95bb18b77b3abef2eb03d01e90cd45827e12f8cbb3ee760",
-      "bytes": 81487
+      "bytes": 81570,
+      "sha256": "03ed03e34224429267507f054d2518d24b53ab0b5e73cf95b58344bd35329c7e",
+      "canonicalization": "utf8-crlf-to-lf"
     }
   ],
   "runs": [
@@ -177,12 +202,13 @@
       "feature": "hole",
       "axis": "create",
       "status": "PASS",
-      "executedAt": "2026-08-24T15:00:47.700Z",
+      "executedAt": "2026-08-25T08:20:38.363Z",
       "evidence": [
         {
           "path": "docs/evidence/cad-independent/local/mechanical-ai-intent-runtime-260813/runtime/hole/create.json",
-          "sha256": "61ebb614a20e05b7051e5e76d8f901eae03a552cb8ae4eb9f698a592da072ee5",
           "bytes": 2371,
+          "sha256": "63a876a1a30f8bd5329f6647b294d6aefc7d06d1372c8e41495e4cbf736f7d5a",
+          "canonicalization": "utf8-crlf-to-lf",
           "assertionId": "hole.create.exact-solid"
         }
       ],
@@ -194,18 +220,19 @@
         "preserved": true,
         "topologySilentRemapCount": 0
       },
-      "designRevisionSha256": "a361da8b50b3e4b840c04e7bdf7077467580a73242a109090dad13b8f5102e22"
+      "designRevisionSha256": "a0a108d123eb01b22a05bbf4355f6811b124b7f3f12053c4dc371dc83ef3b3d3"
     },
     {
       "feature": "hole",
       "axis": "edit",
       "status": "PASS",
-      "executedAt": "2026-08-24T15:00:47.700Z",
+      "executedAt": "2026-08-25T08:20:38.363Z",
       "evidence": [
         {
           "path": "docs/evidence/cad-independent/local/mechanical-ai-intent-runtime-260813/runtime/hole/edit.json",
-          "sha256": "e6f08b944a9f55ca14457a447961b8d89f5ec61f9cb46a74adfec7c69bfdb29e",
           "bytes": 1544,
+          "sha256": "080734955371551a6ce51e6c67d4234fd136847cff98319656284dfc4e1c23a0",
+          "canonicalization": "utf8-crlf-to-lf",
           "assertionId": "hole.edit.history-transition"
         }
       ],
@@ -217,18 +244,19 @@
         "preserved": true,
         "topologySilentRemapCount": 0
       },
-      "designRevisionSha256": "a361da8b50b3e4b840c04e7bdf7077467580a73242a109090dad13b8f5102e22"
+      "designRevisionSha256": "a0a108d123eb01b22a05bbf4355f6811b124b7f3f12053c4dc371dc83ef3b3d3"
     },
     {
       "feature": "hole",
       "axis": "regenerate",
       "status": "PASS",
-      "executedAt": "2026-08-24T15:00:47.700Z",
+      "executedAt": "2026-08-25T08:20:38.363Z",
       "evidence": [
         {
           "path": "docs/evidence/cad-independent/local/mechanical-ai-intent-runtime-260813/runtime/hole/regenerate.json",
-          "sha256": "2dff940252f9753e3733bb7fa0c7ec046226504f64eb1ca62b6deca8fd24e3ec",
           "bytes": 2360,
+          "sha256": "e7434b8a89ae169c620b513c38a259b74a78bbee805ae2f8432756df46873cfc",
+          "canonicalization": "utf8-crlf-to-lf",
           "assertionId": "hole.regenerate.native-repeat"
         }
       ],
@@ -240,24 +268,26 @@
         "preserved": true,
         "topologySilentRemapCount": 0
       },
-      "designRevisionSha256": "a361da8b50b3e4b840c04e7bdf7077467580a73242a109090dad13b8f5102e22"
+      "designRevisionSha256": "a0a108d123eb01b22a05bbf4355f6811b124b7f3f12053c4dc371dc83ef3b3d3"
     },
     {
       "feature": "hole",
       "axis": "save_reopen",
       "status": "PASS",
-      "executedAt": "2026-08-24T15:00:47.700Z",
+      "executedAt": "2026-08-25T08:20:38.363Z",
       "evidence": [
         {
           "path": "docs/evidence/cad-independent/local/mechanical-ai-intent-runtime-260813/runtime/hole/saved-project.nfab",
-          "sha256": "6ed616dff893914bdd221e82034b96defbd8cb41d14994e65697fa9f54be0e83",
           "bytes": 1903,
+          "sha256": "b5d05816ce0b55ee1abc8b364cfa57c9c27df15b43b1c11046c725a6c89ae916",
+          "canonicalization": "utf8-crlf-to-lf",
           "assertionId": "hole.save_reopen.saved-bytes"
         },
         {
           "path": "docs/evidence/cad-independent/local/mechanical-ai-intent-runtime-260813/runtime/hole/save-reopen.json",
-          "sha256": "3f7d235b61cd624664b277211107424be69a7acbfd7ace681c825404aa6fd416",
           "bytes": 725,
+          "sha256": "2b645f2c2e396e394185bd5f7e89beefbea9520a4c974024d6e663307c476cae",
+          "canonicalization": "utf8-crlf-to-lf",
           "assertionId": "hole.save_reopen.exact-roundtrip"
         }
       ],
@@ -269,18 +299,19 @@
         "preserved": true,
         "topologySilentRemapCount": 0
       },
-      "designRevisionSha256": "a361da8b50b3e4b840c04e7bdf7077467580a73242a109090dad13b8f5102e22"
+      "designRevisionSha256": "a0a108d123eb01b22a05bbf4355f6811b124b7f3f12053c4dc371dc83ef3b3d3"
     },
     {
       "feature": "hole",
       "axis": "undo",
       "status": "PASS",
-      "executedAt": "2026-08-24T15:00:47.700Z",
+      "executedAt": "2026-08-25T08:20:38.363Z",
       "evidence": [
         {
           "path": "docs/evidence/cad-independent/local/mechanical-ai-intent-runtime-260813/runtime/hole/undo.json",
-          "sha256": "42263832d4c333b249dadd014da241ffd6b6580d7a5af7ab1bb16809855193e4",
           "bytes": 898,
+          "sha256": "42155bd6d0d76f8b2fec3f40a435687dda6fab04c35d9aeb6df5c7ba6fc5a4e4",
+          "canonicalization": "utf8-crlf-to-lf",
           "assertionId": "hole.undo.exact-restore"
         }
       ],
@@ -292,24 +323,26 @@
         "preserved": true,
         "topologySilentRemapCount": 0
       },
-      "designRevisionSha256": "a361da8b50b3e4b840c04e7bdf7077467580a73242a109090dad13b8f5102e22"
+      "designRevisionSha256": "a0a108d123eb01b22a05bbf4355f6811b124b7f3f12053c4dc371dc83ef3b3d3"
     },
     {
       "feature": "hole",
       "axis": "export",
       "status": "PASS",
-      "executedAt": "2026-08-24T15:00:47.700Z",
+      "executedAt": "2026-08-25T08:20:38.363Z",
       "evidence": [
         {
           "path": "docs/evidence/cad-independent/local/mechanical-ai-intent-runtime-260813/runtime/hole/hole-edited.step",
-          "sha256": "b5cfe423943cf5811f05d3085c741ab1c15301e7e9aa578418eb0653b7654653",
           "bytes": 19745,
+          "sha256": "99035edaadfd3470463a389bad6f08040e3ca26c1da228a35cd4f33f0fe46e58",
+          "canonicalization": "utf8-crlf-to-lf",
           "assertionId": "hole.export.native-step"
         },
         {
           "path": "docs/evidence/cad-independent/local/mechanical-ai-intent-runtime-260813/runtime/hole/export-reimport.json",
-          "sha256": "ceeb9890b3efa2a83dd20180c1d784396266472d3459aaeb8e669f20abf5c384",
           "bytes": 1203,
+          "sha256": "295dac9624d0d1c83415141e70bcbf6f89ff907f92fd25b27bccf834b063b8f7",
+          "canonicalization": "utf8-crlf-to-lf",
           "assertionId": "hole.export.step-reimport"
         }
       ],
@@ -321,24 +354,26 @@
         "preserved": true,
         "topologySilentRemapCount": 0
       },
-      "designRevisionSha256": "a361da8b50b3e4b840c04e7bdf7077467580a73242a109090dad13b8f5102e22"
+      "designRevisionSha256": "a0a108d123eb01b22a05bbf4355f6811b124b7f3f12053c4dc371dc83ef3b3d3"
     },
     {
       "feature": "hole",
       "axis": "drawing",
       "status": "PASS",
-      "executedAt": "2026-08-24T15:00:47.700Z",
+      "executedAt": "2026-08-25T08:20:38.363Z",
       "evidence": [
         {
           "path": "docs/evidence/cad-independent/local/mechanical-ai-intent-runtime-260813/runtime/hole/hole-exact-hlr.svg",
-          "sha256": "d6314a6127b3e703a8291840ff0c50957272cb47b55438f156b8d3379a642fbe",
           "bytes": 4778,
+          "sha256": "d6314a6127b3e703a8291840ff0c50957272cb47b55438f156b8d3379a642fbe",
+          "canonicalization": "utf8-crlf-to-lf",
           "assertionId": "hole.drawing.exact-hlr-svg"
         },
         {
           "path": "docs/evidence/cad-independent/local/mechanical-ai-intent-runtime-260813/runtime/hole/drawing.json",
-          "sha256": "44b2a4c90cd488f976024df1e647c816bc0dd2e7c1da4de2f73ed9b2a0707477",
           "bytes": 713,
+          "sha256": "434051230edeab3a0d656563298a6faa275d31a45c363fe4ae548085a6f4412e",
+          "canonicalization": "utf8-crlf-to-lf",
           "assertionId": "hole.drawing.three-view-hlr"
         }
       ],
@@ -350,18 +385,19 @@
         "preserved": true,
         "topologySilentRemapCount": 0
       },
-      "designRevisionSha256": "a361da8b50b3e4b840c04e7bdf7077467580a73242a109090dad13b8f5102e22"
+      "designRevisionSha256": "a0a108d123eb01b22a05bbf4355f6811b124b7f3f12053c4dc371dc83ef3b3d3"
     },
     {
       "feature": "fillet",
       "axis": "create",
       "status": "PASS",
-      "executedAt": "2026-08-24T15:00:47.700Z",
+      "executedAt": "2026-08-25T08:20:38.363Z",
       "evidence": [
         {
           "path": "docs/evidence/cad-independent/local/mechanical-ai-intent-runtime-260813/runtime/fillet/create.json",
-          "sha256": "79dc7ca679c1755d81f3f69abda665a4f9571607c9e7b56fbe9470b4c846b179",
           "bytes": 2294,
+          "sha256": "aa1606d3cb826a58c330adbee1adb7a7f69ee04179682b792c1c1423b63d14aa",
+          "canonicalization": "utf8-crlf-to-lf",
           "assertionId": "fillet.create.exact-solid"
         }
       ],
@@ -373,18 +409,19 @@
         "preserved": true,
         "topologySilentRemapCount": 0
       },
-      "designRevisionSha256": "a361da8b50b3e4b840c04e7bdf7077467580a73242a109090dad13b8f5102e22"
+      "designRevisionSha256": "a0a108d123eb01b22a05bbf4355f6811b124b7f3f12053c4dc371dc83ef3b3d3"
     },
     {
       "feature": "fillet",
       "axis": "edit",
       "status": "PASS",
-      "executedAt": "2026-08-24T15:00:47.700Z",
+      "executedAt": "2026-08-25T08:20:38.363Z",
       "evidence": [
         {
           "path": "docs/evidence/cad-independent/local/mechanical-ai-intent-runtime-260813/runtime/fillet/edit.json",
-          "sha256": "02369de32e8b8c1d64f1eb503d67ee450b1f93b78edf07688dd0b4e548daa6c2",
           "bytes": 1371,
+          "sha256": "0895a215a13908d694275eeadc3dfab781877792e102b5ea24f1fef401f90828",
+          "canonicalization": "utf8-crlf-to-lf",
           "assertionId": "fillet.edit.history-transition"
         }
       ],
@@ -396,18 +433,19 @@
         "preserved": true,
         "topologySilentRemapCount": 0
       },
-      "designRevisionSha256": "a361da8b50b3e4b840c04e7bdf7077467580a73242a109090dad13b8f5102e22"
+      "designRevisionSha256": "a0a108d123eb01b22a05bbf4355f6811b124b7f3f12053c4dc371dc83ef3b3d3"
     },
     {
       "feature": "fillet",
       "axis": "regenerate",
       "status": "PASS",
-      "executedAt": "2026-08-24T15:00:47.700Z",
+      "executedAt": "2026-08-25T08:20:38.363Z",
       "evidence": [
         {
           "path": "docs/evidence/cad-independent/local/mechanical-ai-intent-runtime-260813/runtime/fillet/regenerate.json",
-          "sha256": "7cf975777ff2d19aa0aa9000d18aab901569181f724257f4b744bdf4e12d22ff",
           "bytes": 2378,
+          "sha256": "fc1b44c8b65dcd572728fd93c55bfbee47b75c34ad4d2e5a10dc435f81d7fbe0",
+          "canonicalization": "utf8-crlf-to-lf",
           "assertionId": "fillet.regenerate.native-repeat"
         }
       ],
@@ -419,24 +457,26 @@
         "preserved": true,
         "topologySilentRemapCount": 0
       },
-      "designRevisionSha256": "a361da8b50b3e4b840c04e7bdf7077467580a73242a109090dad13b8f5102e22"
+      "designRevisionSha256": "a0a108d123eb01b22a05bbf4355f6811b124b7f3f12053c4dc371dc83ef3b3d3"
     },
     {
       "feature": "fillet",
       "axis": "save_reopen",
       "status": "PASS",
-      "executedAt": "2026-08-24T15:00:47.700Z",
+      "executedAt": "2026-08-25T08:20:38.363Z",
       "evidence": [
         {
           "path": "docs/evidence/cad-independent/local/mechanical-ai-intent-runtime-260813/runtime/fillet/saved-project.nfab",
-          "sha256": "71842c6deb2ec6db11a35106ebc263064abe7c2986c865b5a84d73843947b886",
           "bytes": 1798,
+          "sha256": "169aa113b5cfcb262db772d4f7a3f57cafdfa50498673ca6b358b5030f3dc232",
+          "canonicalization": "utf8-crlf-to-lf",
           "assertionId": "fillet.save_reopen.saved-bytes"
         },
         {
           "path": "docs/evidence/cad-independent/local/mechanical-ai-intent-runtime-260813/runtime/fillet/save-reopen.json",
-          "sha256": "560b8f9ae90ead88172aac964822df3e90e43f30839373ef5760d24753fb0fb8",
           "bytes": 731,
+          "sha256": "5fdef17e3013f2e209c03817c06e2c13ab1dbacddb4deb1d9d82696e7b3b78bd",
+          "canonicalization": "utf8-crlf-to-lf",
           "assertionId": "fillet.save_reopen.exact-roundtrip"
         }
       ],
@@ -448,18 +488,19 @@
         "preserved": true,
         "topologySilentRemapCount": 0
       },
-      "designRevisionSha256": "a361da8b50b3e4b840c04e7bdf7077467580a73242a109090dad13b8f5102e22"
+      "designRevisionSha256": "a0a108d123eb01b22a05bbf4355f6811b124b7f3f12053c4dc371dc83ef3b3d3"
     },
     {
       "feature": "fillet",
       "axis": "undo",
       "status": "PASS",
-      "executedAt": "2026-08-24T15:00:47.700Z",
+      "executedAt": "2026-08-25T08:20:38.363Z",
       "evidence": [
         {
           "path": "docs/evidence/cad-independent/local/mechanical-ai-intent-runtime-260813/runtime/fillet/undo.json",
-          "sha256": "6f471b7b15dab3aab4bf5705a680a105c95e5ccc2212130e9162c0fa96a41057",
           "bytes": 813,
+          "sha256": "ccb6046d75710a23db1f353c300996bd270da28ae23f06eb629212d33390eaab",
+          "canonicalization": "utf8-crlf-to-lf",
           "assertionId": "fillet.undo.exact-restore"
         }
       ],
@@ -471,24 +512,26 @@
         "preserved": true,
         "topologySilentRemapCount": 0
       },
-      "designRevisionSha256": "a361da8b50b3e4b840c04e7bdf7077467580a73242a109090dad13b8f5102e22"
+      "designRevisionSha256": "a0a108d123eb01b22a05bbf4355f6811b124b7f3f12053c4dc371dc83ef3b3d3"
     },
     {
       "feature": "fillet",
       "axis": "export",
       "status": "PASS",
-      "executedAt": "2026-08-24T15:00:47.700Z",
+      "executedAt": "2026-08-25T08:20:38.363Z",
       "evidence": [
         {
           "path": "docs/evidence/cad-independent/local/mechanical-ai-intent-runtime-260813/runtime/fillet/fillet-edited.step",
-          "sha256": "e2622cb5ebdaade7ed9f60a9568a6f5d52b4759540cb0973c4cc07926accb0b3",
           "bytes": 63796,
+          "sha256": "36828f447b238be986f91913237dbf5d1e558ac7f57fa038cc416ee9abe40526",
+          "canonicalization": "utf8-crlf-to-lf",
           "assertionId": "fillet.export.native-step"
         },
         {
           "path": "docs/evidence/cad-independent/local/mechanical-ai-intent-runtime-260813/runtime/fillet/export-reimport.json",
-          "sha256": "8edbbde56ba5db0897df87bf79517b8c8ce4b6e29021fc374480043c8817c68b",
           "bytes": 1215,
+          "sha256": "f9a8779ecd3035eea1dc0282c53fb6c36df11deb84237f19c6e6a79fc024aa0d",
+          "canonicalization": "utf8-crlf-to-lf",
           "assertionId": "fillet.export.step-reimport"
         }
       ],
@@ -500,24 +543,26 @@
         "preserved": true,
         "topologySilentRemapCount": 0
       },
-      "designRevisionSha256": "a361da8b50b3e4b840c04e7bdf7077467580a73242a109090dad13b8f5102e22"
+      "designRevisionSha256": "a0a108d123eb01b22a05bbf4355f6811b124b7f3f12053c4dc371dc83ef3b3d3"
     },
     {
       "feature": "fillet",
       "axis": "drawing",
       "status": "PASS",
-      "executedAt": "2026-08-24T15:00:47.700Z",
+      "executedAt": "2026-08-25T08:20:38.363Z",
       "evidence": [
         {
           "path": "docs/evidence/cad-independent/local/mechanical-ai-intent-runtime-260813/runtime/fillet/fillet-exact-hlr.svg",
-          "sha256": "87043012bcedf44a0ae7f20e396ac0004713166623864b5366073682dd884b88",
           "bytes": 19796,
+          "sha256": "87043012bcedf44a0ae7f20e396ac0004713166623864b5366073682dd884b88",
+          "canonicalization": "utf8-crlf-to-lf",
           "assertionId": "fillet.drawing.exact-hlr-svg"
         },
         {
           "path": "docs/evidence/cad-independent/local/mechanical-ai-intent-runtime-260813/runtime/fillet/drawing.json",
-          "sha256": "88ba2f9ccece74316e58cbe37bff99bc09fb8834bf23591af7d7f4eb0ba47e3f",
           "bytes": 722,
+          "sha256": "3d95e317f74ee1ecfdc90755ea3e272a056207c99da0126ac36eba1d77d348ed",
+          "canonicalization": "utf8-crlf-to-lf",
           "assertionId": "fillet.drawing.three-view-hlr"
         }
       ],
@@ -529,18 +574,19 @@
         "preserved": true,
         "topologySilentRemapCount": 0
       },
-      "designRevisionSha256": "a361da8b50b3e4b840c04e7bdf7077467580a73242a109090dad13b8f5102e22"
+      "designRevisionSha256": "a0a108d123eb01b22a05bbf4355f6811b124b7f3f12053c4dc371dc83ef3b3d3"
     },
     {
       "feature": "chamfer",
       "axis": "create",
       "status": "PASS",
-      "executedAt": "2026-08-24T15:00:47.700Z",
+      "executedAt": "2026-08-25T08:20:38.363Z",
       "evidence": [
         {
           "path": "docs/evidence/cad-independent/local/mechanical-ai-intent-runtime-260813/runtime/chamfer/create.json",
-          "sha256": "227f17eaf60357752ae2a6280c7b95485af2cfda4a2dfa7670ad778ab5334f64",
           "bytes": 2363,
+          "sha256": "d1a019991263793dc3333af4b71633d62e68b911b58ac228b31371317a3ca7a9",
+          "canonicalization": "utf8-crlf-to-lf",
           "assertionId": "chamfer.create.exact-solid"
         }
       ],
@@ -552,18 +598,19 @@
         "preserved": true,
         "topologySilentRemapCount": 0
       },
-      "designRevisionSha256": "a361da8b50b3e4b840c04e7bdf7077467580a73242a109090dad13b8f5102e22"
+      "designRevisionSha256": "a0a108d123eb01b22a05bbf4355f6811b124b7f3f12053c4dc371dc83ef3b3d3"
     },
     {
       "feature": "chamfer",
       "axis": "edit",
       "status": "PASS",
-      "executedAt": "2026-08-24T15:00:47.700Z",
+      "executedAt": "2026-08-25T08:20:38.363Z",
       "evidence": [
         {
           "path": "docs/evidence/cad-independent/local/mechanical-ai-intent-runtime-260813/runtime/chamfer/edit.json",
-          "sha256": "3c85033ff0a5ca95113e15844fa1427b1e1b4b40e2e3b3fb5e29ad59cd56adc7",
           "bytes": 1499,
+          "sha256": "5e228014e1ec86ba6e3ade99d9b6f32cd09b9a9376556cc429a620d70cb84801",
+          "canonicalization": "utf8-crlf-to-lf",
           "assertionId": "chamfer.edit.history-transition"
         }
       ],
@@ -575,18 +622,19 @@
         "preserved": true,
         "topologySilentRemapCount": 0
       },
-      "designRevisionSha256": "a361da8b50b3e4b840c04e7bdf7077467580a73242a109090dad13b8f5102e22"
+      "designRevisionSha256": "a0a108d123eb01b22a05bbf4355f6811b124b7f3f12053c4dc371dc83ef3b3d3"
     },
     {
       "feature": "chamfer",
       "axis": "regenerate",
       "status": "PASS",
-      "executedAt": "2026-08-24T15:00:47.700Z",
+      "executedAt": "2026-08-25T08:20:38.363Z",
       "evidence": [
         {
           "path": "docs/evidence/cad-independent/local/mechanical-ai-intent-runtime-260813/runtime/chamfer/regenerate.json",
-          "sha256": "b4b1d2f1e9e6b09ca9445c6d4304c845b7e88a5ea0bdb41e77e85ef46868ab55",
           "bytes": 2399,
+          "sha256": "a96fb6c006c73b07ed8e1ecea5803f85e8f05dcdcfdf4d572d326a4adb2a34d9",
+          "canonicalization": "utf8-crlf-to-lf",
           "assertionId": "chamfer.regenerate.native-repeat"
         }
       ],
@@ -598,24 +646,26 @@
         "preserved": true,
         "topologySilentRemapCount": 0
       },
-      "designRevisionSha256": "a361da8b50b3e4b840c04e7bdf7077467580a73242a109090dad13b8f5102e22"
+      "designRevisionSha256": "a0a108d123eb01b22a05bbf4355f6811b124b7f3f12053c4dc371dc83ef3b3d3"
     },
     {
       "feature": "chamfer",
       "axis": "save_reopen",
       "status": "PASS",
-      "executedAt": "2026-08-24T15:00:47.700Z",
+      "executedAt": "2026-08-25T08:20:38.363Z",
       "evidence": [
         {
           "path": "docs/evidence/cad-independent/local/mechanical-ai-intent-runtime-260813/runtime/chamfer/saved-project.nfab",
-          "sha256": "f1ce26c49b2730d6d5737a0f4c7532afb1c94e1e5f86d61f0c65b0b9a0abde9d",
           "bytes": 1861,
+          "sha256": "7e8ab8f88f10374fd0344d82f8263445a6abbff947595d9f952daa3216512007",
+          "canonicalization": "utf8-crlf-to-lf",
           "assertionId": "chamfer.save_reopen.saved-bytes"
         },
         {
           "path": "docs/evidence/cad-independent/local/mechanical-ai-intent-runtime-260813/runtime/chamfer/save-reopen.json",
-          "sha256": "84dfab732568624f2c6c218508d819860750e2fd74a783f571561c1f912752d8",
           "bytes": 736,
+          "sha256": "e7aa3e7f610f74bda88836c08b76fab50e0106bc0c5f28195d0c363a32255d53",
+          "canonicalization": "utf8-crlf-to-lf",
           "assertionId": "chamfer.save_reopen.exact-roundtrip"
         }
       ],
@@ -627,18 +677,19 @@
         "preserved": true,
         "topologySilentRemapCount": 0
       },
-      "designRevisionSha256": "a361da8b50b3e4b840c04e7bdf7077467580a73242a109090dad13b8f5102e22"
+      "designRevisionSha256": "a0a108d123eb01b22a05bbf4355f6811b124b7f3f12053c4dc371dc83ef3b3d3"
     },
     {
       "feature": "chamfer",
       "axis": "undo",
       "status": "PASS",
-      "executedAt": "2026-08-24T15:00:47.700Z",
+      "executedAt": "2026-08-25T08:20:38.363Z",
       "evidence": [
         {
           "path": "docs/evidence/cad-independent/local/mechanical-ai-intent-runtime-260813/runtime/chamfer/undo.json",
-          "sha256": "ec58d3e92fd5346d2cd7b79a19f84b47ffe80c4f059d7c9099b71646bd00ebfe",
           "bytes": 865,
+          "sha256": "4e227b028ce7125b7918aed388106b6dbd4e85adb10d8b13f5f313cea169a9bb",
+          "canonicalization": "utf8-crlf-to-lf",
           "assertionId": "chamfer.undo.exact-restore"
         }
       ],
@@ -650,24 +701,26 @@
         "preserved": true,
         "topologySilentRemapCount": 0
       },
-      "designRevisionSha256": "a361da8b50b3e4b840c04e7bdf7077467580a73242a109090dad13b8f5102e22"
+      "designRevisionSha256": "a0a108d123eb01b22a05bbf4355f6811b124b7f3f12053c4dc371dc83ef3b3d3"
     },
     {
       "feature": "chamfer",
       "axis": "export",
       "status": "PASS",
-      "executedAt": "2026-08-24T15:00:47.700Z",
+      "executedAt": "2026-08-25T08:20:38.363Z",
       "evidence": [
         {
           "path": "docs/evidence/cad-independent/local/mechanical-ai-intent-runtime-260813/runtime/chamfer/chamfer-edited.step",
-          "sha256": "284eb0489c885821c680e7d16a3a4f6b5d31e6690aeff02cc7ca1c838d06590a",
           "bytes": 63074,
+          "sha256": "3bd04f93b35ab2181a91462e7e127f8dc89cf515c918705b20babc7e51418cfa",
+          "canonicalization": "utf8-crlf-to-lf",
           "assertionId": "chamfer.export.native-step"
         },
         {
           "path": "docs/evidence/cad-independent/local/mechanical-ai-intent-runtime-260813/runtime/chamfer/export-reimport.json",
-          "sha256": "b890a5d79eeea0c589f05aa4572e1a281b933582e522c9bdd107d6c77af26a3f",
           "bytes": 1200,
+          "sha256": "3f1698c33ceec71dcd7793d9ead18599966337a9fe4b6b8ab1a27b6cb25a8db0",
+          "canonicalization": "utf8-crlf-to-lf",
           "assertionId": "chamfer.export.step-reimport"
         }
       ],
@@ -679,24 +732,26 @@
         "preserved": true,
         "topologySilentRemapCount": 0
       },
-      "designRevisionSha256": "a361da8b50b3e4b840c04e7bdf7077467580a73242a109090dad13b8f5102e22"
+      "designRevisionSha256": "a0a108d123eb01b22a05bbf4355f6811b124b7f3f12053c4dc371dc83ef3b3d3"
     },
     {
       "feature": "chamfer",
       "axis": "drawing",
       "status": "PASS",
-      "executedAt": "2026-08-24T15:00:47.700Z",
+      "executedAt": "2026-08-25T08:20:38.363Z",
       "evidence": [
         {
           "path": "docs/evidence/cad-independent/local/mechanical-ai-intent-runtime-260813/runtime/chamfer/chamfer-exact-hlr.svg",
-          "sha256": "b00b01a626d38b352277e1132dc5f3957465ee867931feb1fba34d5a17177fa8",
           "bytes": 9261,
+          "sha256": "b00b01a626d38b352277e1132dc5f3957465ee867931feb1fba34d5a17177fa8",
+          "canonicalization": "utf8-crlf-to-lf",
           "assertionId": "chamfer.drawing.exact-hlr-svg"
         },
         {
           "path": "docs/evidence/cad-independent/local/mechanical-ai-intent-runtime-260813/runtime/chamfer/drawing.json",
-          "sha256": "f67aed53252ac09525bc0b532f2b31db93b8875f2cc0c95092a2c764f7558f43",
           "bytes": 758,
+          "sha256": "05322a5741fa99e1e8b288492ffd61ec9d9ecd49b7f965a910785ee98b0e3987",
+          "canonicalization": "utf8-crlf-to-lf",
           "assertionId": "chamfer.drawing.three-view-hlr"
         }
       ],
@@ -708,18 +763,19 @@
         "preserved": true,
         "topologySilentRemapCount": 0
       },
-      "designRevisionSha256": "a361da8b50b3e4b840c04e7bdf7077467580a73242a109090dad13b8f5102e22"
+      "designRevisionSha256": "a0a108d123eb01b22a05bbf4355f6811b124b7f3f12053c4dc371dc83ef3b3d3"
     },
     {
       "feature": "shell",
       "axis": "create",
       "status": "PASS",
-      "executedAt": "2026-08-24T15:00:47.700Z",
+      "executedAt": "2026-08-25T08:20:38.363Z",
       "evidence": [
         {
           "path": "docs/evidence/cad-independent/local/mechanical-ai-intent-runtime-260813/runtime/shell/create.json",
-          "sha256": "137a6661b2009a4306a0389b897a90cae0cb62654de25570906bb11c1a11af2c",
           "bytes": 2285,
+          "sha256": "cc5fbb8631f922c9e570018321587434d0c04c573f54bf7afcec3052bdae23b2",
+          "canonicalization": "utf8-crlf-to-lf",
           "assertionId": "shell.create.exact-solid"
         }
       ],
@@ -731,18 +787,19 @@
         "preserved": true,
         "topologySilentRemapCount": 0
       },
-      "designRevisionSha256": "a361da8b50b3e4b840c04e7bdf7077467580a73242a109090dad13b8f5102e22"
+      "designRevisionSha256": "a0a108d123eb01b22a05bbf4355f6811b124b7f3f12053c4dc371dc83ef3b3d3"
     },
     {
       "feature": "shell",
       "axis": "edit",
       "status": "PASS",
-      "executedAt": "2026-08-24T15:00:47.700Z",
+      "executedAt": "2026-08-25T08:20:38.363Z",
       "evidence": [
         {
           "path": "docs/evidence/cad-independent/local/mechanical-ai-intent-runtime-260813/runtime/shell/edit.json",
-          "sha256": "10f90a9faea89b4fc03295199d2ca7e3c5bd1563fc0c4f6d96a2e3d0a4545aea",
           "bytes": 1362,
+          "sha256": "05093e9683893fa2813f38b4334b6d1ba3e14176321353184f9e9062dc71c608",
+          "canonicalization": "utf8-crlf-to-lf",
           "assertionId": "shell.edit.history-transition"
         }
       ],
@@ -754,18 +811,19 @@
         "preserved": true,
         "topologySilentRemapCount": 0
       },
-      "designRevisionSha256": "a361da8b50b3e4b840c04e7bdf7077467580a73242a109090dad13b8f5102e22"
+      "designRevisionSha256": "a0a108d123eb01b22a05bbf4355f6811b124b7f3f12053c4dc371dc83ef3b3d3"
     },
     {
       "feature": "shell",
       "axis": "regenerate",
       "status": "PASS",
-      "executedAt": "2026-08-24T15:00:47.700Z",
+      "executedAt": "2026-08-25T08:20:38.363Z",
       "evidence": [
         {
           "path": "docs/evidence/cad-independent/local/mechanical-ai-intent-runtime-260813/runtime/shell/regenerate.json",
-          "sha256": "2f1978a50532a64db549030667c30c6913e8bd694718479cb0a5cd41f17a3fc1",
           "bytes": 2343,
+          "sha256": "5b62b94fdcd841af16d766a86823b6349a42322afda5f352b4333cbf9c9b0e9e",
+          "canonicalization": "utf8-crlf-to-lf",
           "assertionId": "shell.regenerate.native-repeat"
         }
       ],
@@ -777,24 +835,26 @@
         "preserved": true,
         "topologySilentRemapCount": 0
       },
-      "designRevisionSha256": "a361da8b50b3e4b840c04e7bdf7077467580a73242a109090dad13b8f5102e22"
+      "designRevisionSha256": "a0a108d123eb01b22a05bbf4355f6811b124b7f3f12053c4dc371dc83ef3b3d3"
     },
     {
       "feature": "shell",
       "axis": "save_reopen",
       "status": "PASS",
-      "executedAt": "2026-08-24T15:00:47.700Z",
+      "executedAt": "2026-08-25T08:20:38.363Z",
       "evidence": [
         {
           "path": "docs/evidence/cad-independent/local/mechanical-ai-intent-runtime-260813/runtime/shell/saved-project.nfab",
-          "sha256": "4f8a4331606cc98bf8df23dcc34caa8d4fdcbea4756b69faaab70639c0d93682",
           "bytes": 1792,
+          "sha256": "4474e84b212b3c0aa67a75bc4fbc97975ba62e0a2e642a30795c1a92499bbedf",
+          "canonicalization": "utf8-crlf-to-lf",
           "assertionId": "shell.save_reopen.saved-bytes"
         },
         {
           "path": "docs/evidence/cad-independent/local/mechanical-ai-intent-runtime-260813/runtime/shell/save-reopen.json",
-          "sha256": "2e805c097e662dbc02f46d39dcb0f6e75b3649fb34d1722ebcb8b1ab2ba199dd",
           "bytes": 720,
+          "sha256": "b30122d305d2fe6413d0a4ef632230aae27b7399c3199307b43d4ca7fc78c303",
+          "canonicalization": "utf8-crlf-to-lf",
           "assertionId": "shell.save_reopen.exact-roundtrip"
         }
       ],
@@ -806,18 +866,19 @@
         "preserved": true,
         "topologySilentRemapCount": 0
       },
-      "designRevisionSha256": "a361da8b50b3e4b840c04e7bdf7077467580a73242a109090dad13b8f5102e22"
+      "designRevisionSha256": "a0a108d123eb01b22a05bbf4355f6811b124b7f3f12053c4dc371dc83ef3b3d3"
     },
     {
       "feature": "shell",
       "axis": "undo",
       "status": "PASS",
-      "executedAt": "2026-08-24T15:00:47.700Z",
+      "executedAt": "2026-08-25T08:20:38.363Z",
       "evidence": [
         {
           "path": "docs/evidence/cad-independent/local/mechanical-ai-intent-runtime-260813/runtime/shell/undo.json",
-          "sha256": "0f3fa6bab677f4df89718008f1de433fb625c5da7d62af03d54d3f31c3e9303a",
           "bytes": 806,
+          "sha256": "9213653e7bfca583d6ac2554d7fd952af899e1933698dc832dcbc643602eb4ad",
+          "canonicalization": "utf8-crlf-to-lf",
           "assertionId": "shell.undo.exact-restore"
         }
       ],
@@ -829,24 +890,26 @@
         "preserved": true,
         "topologySilentRemapCount": 0
       },
-      "designRevisionSha256": "a361da8b50b3e4b840c04e7bdf7077467580a73242a109090dad13b8f5102e22"
+      "designRevisionSha256": "a0a108d123eb01b22a05bbf4355f6811b124b7f3f12053c4dc371dc83ef3b3d3"
     },
     {
       "feature": "shell",
       "axis": "export",
       "status": "PASS",
-      "executedAt": "2026-08-24T15:00:47.700Z",
+      "executedAt": "2026-08-25T08:20:38.363Z",
       "evidence": [
         {
           "path": "docs/evidence/cad-independent/local/mechanical-ai-intent-runtime-260813/runtime/shell/shell-edited.step",
-          "sha256": "a6edd2ff5c33732fb8992d9608795a018509f5ed339c82b6e7d1c1cf83bdeffa",
           "bytes": 30494,
+          "sha256": "ed8f77ba1b0602393608f7c9cf9400b9d55740d76c44661e73b0156b9f5ee0c2",
+          "canonicalization": "utf8-crlf-to-lf",
           "assertionId": "shell.export.native-step"
         },
         {
           "path": "docs/evidence/cad-independent/local/mechanical-ai-intent-runtime-260813/runtime/shell/export-reimport.json",
-          "sha256": "ec3b41b4674b2e3d5e8520a1fa696bb5822cc0218976e896dd4253ddb5034969",
           "bytes": 1172,
+          "sha256": "527ed852129ac05b6a68b50051ee1d8ece71cf1013c017713d751ef0d7795448",
+          "canonicalization": "utf8-crlf-to-lf",
           "assertionId": "shell.export.step-reimport"
         }
       ],
@@ -858,24 +921,26 @@
         "preserved": true,
         "topologySilentRemapCount": 0
       },
-      "designRevisionSha256": "a361da8b50b3e4b840c04e7bdf7077467580a73242a109090dad13b8f5102e22"
+      "designRevisionSha256": "a0a108d123eb01b22a05bbf4355f6811b124b7f3f12053c4dc371dc83ef3b3d3"
     },
     {
       "feature": "shell",
       "axis": "drawing",
       "status": "PASS",
-      "executedAt": "2026-08-24T15:00:47.700Z",
+      "executedAt": "2026-08-25T08:20:38.363Z",
       "evidence": [
         {
           "path": "docs/evidence/cad-independent/local/mechanical-ai-intent-runtime-260813/runtime/shell/shell-exact-hlr.svg",
-          "sha256": "60a3d594a83830f7dc0bbff3850fe12c2893349295f3cdd8b46a8ad47a6e3632",
           "bytes": 3299,
+          "sha256": "60a3d594a83830f7dc0bbff3850fe12c2893349295f3cdd8b46a8ad47a6e3632",
+          "canonicalization": "utf8-crlf-to-lf",
           "assertionId": "shell.drawing.exact-hlr-svg"
         },
         {
           "path": "docs/evidence/cad-independent/local/mechanical-ai-intent-runtime-260813/runtime/shell/drawing.json",
-          "sha256": "8c766cc1006eab3b53ad826bb0beb1d7e6b6b2cd564b10cb294ced111c45f7b2",
           "bytes": 714,
+          "sha256": "2bd1decf54eb1f35dab1fdf967746b7cdb14b5e914b102331d4cb71a8b9a5eaf",
+          "canonicalization": "utf8-crlf-to-lf",
           "assertionId": "shell.drawing.three-view-hlr"
         }
       ],
@@ -887,18 +952,19 @@
         "preserved": true,
         "topologySilentRemapCount": 0
       },
-      "designRevisionSha256": "a361da8b50b3e4b840c04e7bdf7077467580a73242a109090dad13b8f5102e22"
+      "designRevisionSha256": "a0a108d123eb01b22a05bbf4355f6811b124b7f3f12053c4dc371dc83ef3b3d3"
     },
     {
       "feature": "rib",
       "axis": "create",
       "status": "PASS",
-      "executedAt": "2026-08-24T15:00:47.700Z",
+      "executedAt": "2026-08-25T08:20:38.363Z",
       "evidence": [
         {
           "path": "docs/evidence/cad-independent/local/mechanical-ai-intent-runtime-260813/runtime/rib/create.json",
-          "sha256": "21eb378e27d68b8f1abfd00922e7581d850f5a8334260014d1c306faf11bacf5",
           "bytes": 2333,
+          "sha256": "5ad3da89e4a9df02201e40fd9c7bf9416e5a184ad1ee1e1d27cc93ca0148258e",
+          "canonicalization": "utf8-crlf-to-lf",
           "assertionId": "rib.create.exact-solid"
         }
       ],
@@ -910,18 +976,19 @@
         "preserved": true,
         "topologySilentRemapCount": 0
       },
-      "designRevisionSha256": "a361da8b50b3e4b840c04e7bdf7077467580a73242a109090dad13b8f5102e22"
+      "designRevisionSha256": "a0a108d123eb01b22a05bbf4355f6811b124b7f3f12053c4dc371dc83ef3b3d3"
     },
     {
       "feature": "rib",
       "axis": "edit",
       "status": "PASS",
-      "executedAt": "2026-08-24T15:00:47.700Z",
+      "executedAt": "2026-08-25T08:20:38.363Z",
       "evidence": [
         {
           "path": "docs/evidence/cad-independent/local/mechanical-ai-intent-runtime-260813/runtime/rib/edit.json",
-          "sha256": "057e52c9c80138691d903d2c74d793292710a0ca4aef9eddff936b092ee2ab26",
           "bytes": 1537,
+          "sha256": "912d9be68e8225f2591eb87247b9ea41a6fe9e8a51141ea527fcd99c103c6dd5",
+          "canonicalization": "utf8-crlf-to-lf",
           "assertionId": "rib.edit.history-transition"
         }
       ],
@@ -933,18 +1000,19 @@
         "preserved": true,
         "topologySilentRemapCount": 0
       },
-      "designRevisionSha256": "a361da8b50b3e4b840c04e7bdf7077467580a73242a109090dad13b8f5102e22"
+      "designRevisionSha256": "a0a108d123eb01b22a05bbf4355f6811b124b7f3f12053c4dc371dc83ef3b3d3"
     },
     {
       "feature": "rib",
       "axis": "regenerate",
       "status": "PASS",
-      "executedAt": "2026-08-24T15:00:47.700Z",
+      "executedAt": "2026-08-25T08:20:38.363Z",
       "evidence": [
         {
           "path": "docs/evidence/cad-independent/local/mechanical-ai-intent-runtime-260813/runtime/rib/regenerate.json",
-          "sha256": "e45ffac4ed2d5cb1bdb352a7b3aa574e970fd61065c811fa852f428951af5040",
           "bytes": 2315,
+          "sha256": "35b5c30da5bd5303723bc10f78427a4f6d6ad22ddefb224173a829d8267fa81a",
+          "canonicalization": "utf8-crlf-to-lf",
           "assertionId": "rib.regenerate.native-repeat"
         }
       ],
@@ -956,24 +1024,26 @@
         "preserved": true,
         "topologySilentRemapCount": 0
       },
-      "designRevisionSha256": "a361da8b50b3e4b840c04e7bdf7077467580a73242a109090dad13b8f5102e22"
+      "designRevisionSha256": "a0a108d123eb01b22a05bbf4355f6811b124b7f3f12053c4dc371dc83ef3b3d3"
     },
     {
       "feature": "rib",
       "axis": "save_reopen",
       "status": "PASS",
-      "executedAt": "2026-08-24T15:00:47.700Z",
+      "executedAt": "2026-08-25T08:20:38.363Z",
       "evidence": [
         {
           "path": "docs/evidence/cad-independent/local/mechanical-ai-intent-runtime-260813/runtime/rib/saved-project.nfab",
-          "sha256": "296be921d1a2a0559ff58b35c6e7f8f8b8ffb8fce529434fabda86c4b693d9ac",
           "bytes": 1898,
+          "sha256": "a63a886d6749b97340112f8a5d94c252fff7fe331226d71d26c6fb22d4b2f6d1",
+          "canonicalization": "utf8-crlf-to-lf",
           "assertionId": "rib.save_reopen.saved-bytes"
         },
         {
           "path": "docs/evidence/cad-independent/local/mechanical-ai-intent-runtime-260813/runtime/rib/save-reopen.json",
-          "sha256": "f3dbf3f0a2cabac744e62b124c3c511465eda73bda99363ad100fbd78c4aca0f",
           "bytes": 715,
+          "sha256": "faf77e6a406c521cec2e9ebcb407ea0f52555461cc682bb304d8f87a53b96955",
+          "canonicalization": "utf8-crlf-to-lf",
           "assertionId": "rib.save_reopen.exact-roundtrip"
         }
       ],
@@ -985,18 +1055,19 @@
         "preserved": true,
         "topologySilentRemapCount": 0
       },
-      "designRevisionSha256": "a361da8b50b3e4b840c04e7bdf7077467580a73242a109090dad13b8f5102e22"
+      "designRevisionSha256": "a0a108d123eb01b22a05bbf4355f6811b124b7f3f12053c4dc371dc83ef3b3d3"
     },
     {
       "feature": "rib",
       "axis": "undo",
       "status": "PASS",
-      "executedAt": "2026-08-24T15:00:47.700Z",
+      "executedAt": "2026-08-25T08:20:38.363Z",
       "evidence": [
         {
           "path": "docs/evidence/cad-independent/local/mechanical-ai-intent-runtime-260813/runtime/rib/undo.json",
-          "sha256": "9e5e8c983a865e58e796006584db49fbf97e5651d9d0c90deba6b47f5a286234",
           "bytes": 871,
+          "sha256": "40939e8f5bbb3ef9ab97ff8ac833bd8804b12e3bb1860ff910568020477e83d4",
+          "canonicalization": "utf8-crlf-to-lf",
           "assertionId": "rib.undo.exact-restore"
         }
       ],
@@ -1008,24 +1079,26 @@
         "preserved": true,
         "topologySilentRemapCount": 0
       },
-      "designRevisionSha256": "a361da8b50b3e4b840c04e7bdf7077467580a73242a109090dad13b8f5102e22"
+      "designRevisionSha256": "a0a108d123eb01b22a05bbf4355f6811b124b7f3f12053c4dc371dc83ef3b3d3"
     },
     {
       "feature": "rib",
       "axis": "export",
       "status": "PASS",
-      "executedAt": "2026-08-24T15:00:47.700Z",
+      "executedAt": "2026-08-25T08:20:38.363Z",
       "evidence": [
         {
           "path": "docs/evidence/cad-independent/local/mechanical-ai-intent-runtime-260813/runtime/rib/rib-edited.step",
-          "sha256": "6b473945d6db744a064973cebfeaa5725076fb9a716ac8bb9cc04e6f527c2103",
           "bytes": 29880,
+          "sha256": "409fd10c174f92fbe63c2498dde1d40141aa6c960b59501b36cd032c01ce6936",
+          "canonicalization": "utf8-crlf-to-lf",
           "assertionId": "rib.export.native-step"
         },
         {
           "path": "docs/evidence/cad-independent/local/mechanical-ai-intent-runtime-260813/runtime/rib/export-reimport.json",
-          "sha256": "5a6edad3e9e40e1384d62831e86a7686adbcb675a2fd2188ea74866ca76e89c7",
           "bytes": 1164,
+          "sha256": "64c036d9d4ba9f532aa8dc59dd7f65dbddd37adf1e986cede517e28f4e049e4d",
+          "canonicalization": "utf8-crlf-to-lf",
           "assertionId": "rib.export.step-reimport"
         }
       ],
@@ -1037,24 +1110,26 @@
         "preserved": true,
         "topologySilentRemapCount": 0
       },
-      "designRevisionSha256": "a361da8b50b3e4b840c04e7bdf7077467580a73242a109090dad13b8f5102e22"
+      "designRevisionSha256": "a0a108d123eb01b22a05bbf4355f6811b124b7f3f12053c4dc371dc83ef3b3d3"
     },
     {
       "feature": "rib",
       "axis": "drawing",
       "status": "PASS",
-      "executedAt": "2026-08-24T15:00:47.700Z",
+      "executedAt": "2026-08-25T08:20:38.363Z",
       "evidence": [
         {
           "path": "docs/evidence/cad-independent/local/mechanical-ai-intent-runtime-260813/runtime/rib/rib-exact-hlr.svg",
-          "sha256": "2d604762a154796d0025456f61ca19f0ba6cbe6396905bce1b518d6223538b7e",
           "bytes": 3345,
+          "sha256": "2d604762a154796d0025456f61ca19f0ba6cbe6396905bce1b518d6223538b7e",
+          "canonicalization": "utf8-crlf-to-lf",
           "assertionId": "rib.drawing.exact-hlr-svg"
         },
         {
           "path": "docs/evidence/cad-independent/local/mechanical-ai-intent-runtime-260813/runtime/rib/drawing.json",
-          "sha256": "f8ef37ff9c6b22844fc51c34ab78574215cb4fd379fb10cfaf8305f1f634e356",
           "bytes": 713,
+          "sha256": "cb10a69d2effa8d923501c4722802c7de3fd76a3027a16c541955a05ca03232c",
+          "canonicalization": "utf8-crlf-to-lf",
           "assertionId": "rib.drawing.three-view-hlr"
         }
       ],
@@ -1066,18 +1141,19 @@
         "preserved": true,
         "topologySilentRemapCount": 0
       },
-      "designRevisionSha256": "a361da8b50b3e4b840c04e7bdf7077467580a73242a109090dad13b8f5102e22"
+      "designRevisionSha256": "a0a108d123eb01b22a05bbf4355f6811b124b7f3f12053c4dc371dc83ef3b3d3"
     },
     {
       "feature": "linearPattern",
       "axis": "create",
       "status": "PASS",
-      "executedAt": "2026-08-24T15:00:47.700Z",
+      "executedAt": "2026-08-25T08:20:38.363Z",
       "evidence": [
         {
           "path": "docs/evidence/cad-independent/local/mechanical-ai-intent-runtime-260813/runtime/linearPattern/create.json",
-          "sha256": "5d6870921de6cce6a7a42ea463754644686ae7aaee437ae603fb252bc5ec757c",
           "bytes": 2298,
+          "sha256": "c8f21fc29a8e010604859569e36bf36e46813c540a2e6f4c4ef602f770a1cd41",
+          "canonicalization": "utf8-crlf-to-lf",
           "assertionId": "linearPattern.create.exact-solid"
         }
       ],
@@ -1089,18 +1165,19 @@
         "preserved": true,
         "topologySilentRemapCount": 0
       },
-      "designRevisionSha256": "a361da8b50b3e4b840c04e7bdf7077467580a73242a109090dad13b8f5102e22"
+      "designRevisionSha256": "a0a108d123eb01b22a05bbf4355f6811b124b7f3f12053c4dc371dc83ef3b3d3"
     },
     {
       "feature": "linearPattern",
       "axis": "edit",
       "status": "PASS",
-      "executedAt": "2026-08-24T15:00:47.700Z",
+      "executedAt": "2026-08-25T08:20:38.363Z",
       "evidence": [
         {
           "path": "docs/evidence/cad-independent/local/mechanical-ai-intent-runtime-260813/runtime/linearPattern/edit.json",
-          "sha256": "9eb6fdc6fc346d65f53d897a07ad68b3f6ac15422a8d1e3c06089595e97549ed",
           "bytes": 1499,
+          "sha256": "aa1c4b29a7e4f6d8643d1071c19cb1a6886ae8a5641c3f8687d67e0bf17f4dbb",
+          "canonicalization": "utf8-crlf-to-lf",
           "assertionId": "linearPattern.edit.history-transition"
         }
       ],
@@ -1112,18 +1189,19 @@
         "preserved": true,
         "topologySilentRemapCount": 0
       },
-      "designRevisionSha256": "a361da8b50b3e4b840c04e7bdf7077467580a73242a109090dad13b8f5102e22"
+      "designRevisionSha256": "a0a108d123eb01b22a05bbf4355f6811b124b7f3f12053c4dc371dc83ef3b3d3"
     },
     {
       "feature": "linearPattern",
       "axis": "regenerate",
       "status": "PASS",
-      "executedAt": "2026-08-24T15:00:47.700Z",
+      "executedAt": "2026-08-25T08:20:38.363Z",
       "evidence": [
         {
           "path": "docs/evidence/cad-independent/local/mechanical-ai-intent-runtime-260813/runtime/linearPattern/regenerate.json",
-          "sha256": "14779b86df2301db0d8cbcbf180900d0239d492a7cc7ed3594ebdd7cb00fb487",
           "bytes": 2312,
+          "sha256": "b92a43c8f851d9036ae6a6498dd54b89be593bafe46038d2da614491913303b7",
+          "canonicalization": "utf8-crlf-to-lf",
           "assertionId": "linearPattern.regenerate.native-repeat"
         }
       ],
@@ -1135,24 +1213,26 @@
         "preserved": true,
         "topologySilentRemapCount": 0
       },
-      "designRevisionSha256": "a361da8b50b3e4b840c04e7bdf7077467580a73242a109090dad13b8f5102e22"
+      "designRevisionSha256": "a0a108d123eb01b22a05bbf4355f6811b124b7f3f12053c4dc371dc83ef3b3d3"
     },
     {
       "feature": "linearPattern",
       "axis": "save_reopen",
       "status": "PASS",
-      "executedAt": "2026-08-24T15:00:47.700Z",
+      "executedAt": "2026-08-25T08:20:38.363Z",
       "evidence": [
         {
           "path": "docs/evidence/cad-independent/local/mechanical-ai-intent-runtime-260813/runtime/linearPattern/saved-project.nfab",
-          "sha256": "093ea4c918ff63272150c76d695837f0178731d42331b01222ce8aabf77d1c22",
           "bytes": 1871,
+          "sha256": "5e0a6a807d0b7d8c601952aaa7bec31aed89cbc6ae2ac9508cbe39c0e0913e99",
+          "canonicalization": "utf8-crlf-to-lf",
           "assertionId": "linearPattern.save_reopen.saved-bytes"
         },
         {
           "path": "docs/evidence/cad-independent/local/mechanical-ai-intent-runtime-260813/runtime/linearPattern/save-reopen.json",
-          "sha256": "9009958bd624985f6c721c77785f5a1d058c0cf187e01e782d6ef72a41b3a320",
           "bytes": 725,
+          "sha256": "cb446b2690d76f2e7777912d575bf4d707620314e06aae14da44fa1fe8a7e4c4",
+          "canonicalization": "utf8-crlf-to-lf",
           "assertionId": "linearPattern.save_reopen.exact-roundtrip"
         }
       ],
@@ -1164,18 +1244,19 @@
         "preserved": true,
         "topologySilentRemapCount": 0
       },
-      "designRevisionSha256": "a361da8b50b3e4b840c04e7bdf7077467580a73242a109090dad13b8f5102e22"
+      "designRevisionSha256": "a0a108d123eb01b22a05bbf4355f6811b124b7f3f12053c4dc371dc83ef3b3d3"
     },
     {
       "feature": "linearPattern",
       "axis": "undo",
       "status": "PASS",
-      "executedAt": "2026-08-24T15:00:47.700Z",
+      "executedAt": "2026-08-25T08:20:38.363Z",
       "evidence": [
         {
           "path": "docs/evidence/cad-independent/local/mechanical-ai-intent-runtime-260813/runtime/linearPattern/undo.json",
-          "sha256": "04383bad36bca9887a92909b12f39905c0b87645df15d9f3d2b07115e98aed32",
           "bytes": 800,
+          "sha256": "b062fe3ecb1117934c64358ce256f0e9f01466d0bb8dbdf5e4af4296b76aeda8",
+          "canonicalization": "utf8-crlf-to-lf",
           "assertionId": "linearPattern.undo.exact-restore"
         }
       ],
@@ -1187,24 +1268,26 @@
         "preserved": true,
         "topologySilentRemapCount": 0
       },
-      "designRevisionSha256": "a361da8b50b3e4b840c04e7bdf7077467580a73242a109090dad13b8f5102e22"
+      "designRevisionSha256": "a0a108d123eb01b22a05bbf4355f6811b124b7f3f12053c4dc371dc83ef3b3d3"
     },
     {
       "feature": "linearPattern",
       "axis": "export",
       "status": "PASS",
-      "executedAt": "2026-08-24T15:00:47.700Z",
+      "executedAt": "2026-08-25T08:20:38.363Z",
       "evidence": [
         {
           "path": "docs/evidence/cad-independent/local/mechanical-ai-intent-runtime-260813/runtime/linearPattern/linearPattern-edited.step",
-          "sha256": "689ff200d93f4494d058d1b023282411f984098d7afa6248abb12bb6a79cb164",
           "bytes": 15650,
+          "sha256": "c93bf3a0dcd3be068658bb662a0374c29d6b924531bfc71301163086687fdf17",
+          "canonicalization": "utf8-crlf-to-lf",
           "assertionId": "linearPattern.export.native-step"
         },
         {
           "path": "docs/evidence/cad-independent/local/mechanical-ai-intent-runtime-260813/runtime/linearPattern/export-reimport.json",
-          "sha256": "0774b8809ce5cbe87a40694ca506c36a2ff001c669d0a5d98d04a0ee8053fbf7",
           "bytes": 1174,
+          "sha256": "f7a18d53a568bc950e96fe69b488b9383ca20e9b10e0055529e713447784cc1d",
+          "canonicalization": "utf8-crlf-to-lf",
           "assertionId": "linearPattern.export.step-reimport"
         }
       ],
@@ -1216,24 +1299,26 @@
         "preserved": true,
         "topologySilentRemapCount": 0
       },
-      "designRevisionSha256": "a361da8b50b3e4b840c04e7bdf7077467580a73242a109090dad13b8f5102e22"
+      "designRevisionSha256": "a0a108d123eb01b22a05bbf4355f6811b124b7f3f12053c4dc371dc83ef3b3d3"
     },
     {
       "feature": "linearPattern",
       "axis": "drawing",
       "status": "PASS",
-      "executedAt": "2026-08-24T15:00:47.700Z",
+      "executedAt": "2026-08-25T08:20:38.363Z",
       "evidence": [
         {
           "path": "docs/evidence/cad-independent/local/mechanical-ai-intent-runtime-260813/runtime/linearPattern/linearPattern-exact-hlr.svg",
-          "sha256": "e060ccb70d9fee32072ece1df8a28bb09e72788753d68fa0582c43f3bc54bb4c",
           "bytes": 2471,
+          "sha256": "e060ccb70d9fee32072ece1df8a28bb09e72788753d68fa0582c43f3bc54bb4c",
+          "canonicalization": "utf8-crlf-to-lf",
           "assertionId": "linearPattern.drawing.exact-hlr-svg"
         },
         {
           "path": "docs/evidence/cad-independent/local/mechanical-ai-intent-runtime-260813/runtime/linearPattern/drawing.json",
-          "sha256": "fb5766fc4af9e06b2048640f49b03453c64ce68bd6a7023ae5ab1b520f23c7ed",
           "bytes": 722,
+          "sha256": "0c06fbeafd7ff0fd0f769bc349a59a13fcce6aacfa107a74f0e9f094b34a112c",
+          "canonicalization": "utf8-crlf-to-lf",
           "assertionId": "linearPattern.drawing.three-view-hlr"
         }
       ],
@@ -1245,18 +1330,19 @@
         "preserved": true,
         "topologySilentRemapCount": 0
       },
-      "designRevisionSha256": "a361da8b50b3e4b840c04e7bdf7077467580a73242a109090dad13b8f5102e22"
+      "designRevisionSha256": "a0a108d123eb01b22a05bbf4355f6811b124b7f3f12053c4dc371dc83ef3b3d3"
     },
     {
       "feature": "circularPattern",
       "axis": "create",
       "status": "PASS",
-      "executedAt": "2026-08-24T15:00:47.700Z",
+      "executedAt": "2026-08-25T08:20:38.363Z",
       "evidence": [
         {
           "path": "docs/evidence/cad-independent/local/mechanical-ai-intent-runtime-260813/runtime/circularPattern/create.json",
-          "sha256": "078aacb20997a7060b21cab9f083b1c18c4dc2573cdc4b2dff99d0489e6ee2f2",
           "bytes": 2363,
+          "sha256": "955d0f28e1f12f8b6516105eefbb7e9dfc81b26f283751c96bff9a3650187e36",
+          "canonicalization": "utf8-crlf-to-lf",
           "assertionId": "circularPattern.create.exact-solid"
         }
       ],
@@ -1268,18 +1354,19 @@
         "preserved": true,
         "topologySilentRemapCount": 0
       },
-      "designRevisionSha256": "a361da8b50b3e4b840c04e7bdf7077467580a73242a109090dad13b8f5102e22"
+      "designRevisionSha256": "a0a108d123eb01b22a05bbf4355f6811b124b7f3f12053c4dc371dc83ef3b3d3"
     },
     {
       "feature": "circularPattern",
       "axis": "edit",
       "status": "PASS",
-      "executedAt": "2026-08-24T15:00:47.700Z",
+      "executedAt": "2026-08-25T08:20:38.363Z",
       "evidence": [
         {
           "path": "docs/evidence/cad-independent/local/mechanical-ai-intent-runtime-260813/runtime/circularPattern/edit.json",
-          "sha256": "7668f22a327384e73321b58c387267621d4fa14dc4afb4161a70666f368ab664",
           "bytes": 1503,
+          "sha256": "f04a7c444603dc422dc8d26b09b7b33e63a406236b05642ca6e7b608db1dd739",
+          "canonicalization": "utf8-crlf-to-lf",
           "assertionId": "circularPattern.edit.history-transition"
         }
       ],
@@ -1291,18 +1378,19 @@
         "preserved": true,
         "topologySilentRemapCount": 0
       },
-      "designRevisionSha256": "a361da8b50b3e4b840c04e7bdf7077467580a73242a109090dad13b8f5102e22"
+      "designRevisionSha256": "a0a108d123eb01b22a05bbf4355f6811b124b7f3f12053c4dc371dc83ef3b3d3"
     },
     {
       "feature": "circularPattern",
       "axis": "regenerate",
       "status": "PASS",
-      "executedAt": "2026-08-24T15:00:47.700Z",
+      "executedAt": "2026-08-25T08:20:38.363Z",
       "evidence": [
         {
           "path": "docs/evidence/cad-independent/local/mechanical-ai-intent-runtime-260813/runtime/circularPattern/regenerate.json",
-          "sha256": "ee0fea2a752740a5282c5c1740d3298fad2584abb8cf22129ff2dadd4abd671e",
           "bytes": 2364,
+          "sha256": "4c197e2fbc0d052e72a7bf07b7f88213582d087033861f8f78d4e8ee0228e465",
+          "canonicalization": "utf8-crlf-to-lf",
           "assertionId": "circularPattern.regenerate.native-repeat"
         }
       ],
@@ -1314,24 +1402,26 @@
         "preserved": true,
         "topologySilentRemapCount": 0
       },
-      "designRevisionSha256": "a361da8b50b3e4b840c04e7bdf7077467580a73242a109090dad13b8f5102e22"
+      "designRevisionSha256": "a0a108d123eb01b22a05bbf4355f6811b124b7f3f12053c4dc371dc83ef3b3d3"
     },
     {
       "feature": "circularPattern",
       "axis": "save_reopen",
       "status": "PASS",
-      "executedAt": "2026-08-24T15:00:47.700Z",
+      "executedAt": "2026-08-25T08:20:38.363Z",
       "evidence": [
         {
           "path": "docs/evidence/cad-independent/local/mechanical-ai-intent-runtime-260813/runtime/circularPattern/saved-project.nfab",
-          "sha256": "44f3b4978eebf8242e689199e925ce38b9c4cf90a31b7575dbd231c7898ca266",
           "bytes": 1881,
+          "sha256": "86e7e1ad848e237d16630ccc82139f8d27f3e12de31b1a9744e2b96a8e437c35",
+          "canonicalization": "utf8-crlf-to-lf",
           "assertionId": "circularPattern.save_reopen.saved-bytes"
         },
         {
           "path": "docs/evidence/cad-independent/local/mechanical-ai-intent-runtime-260813/runtime/circularPattern/save-reopen.json",
-          "sha256": "f5125394967d0ad946fd62a27b8e14f55463bc74f9286177cf99aa5ecf129c8f",
           "bytes": 728,
+          "sha256": "1bd7fa43f237a036845409b97952ac508161270c952fa3cca46f11558ee3d39a",
+          "canonicalization": "utf8-crlf-to-lf",
           "assertionId": "circularPattern.save_reopen.exact-roundtrip"
         }
       ],
@@ -1343,18 +1433,19 @@
         "preserved": true,
         "topologySilentRemapCount": 0
       },
-      "designRevisionSha256": "a361da8b50b3e4b840c04e7bdf7077467580a73242a109090dad13b8f5102e22"
+      "designRevisionSha256": "a0a108d123eb01b22a05bbf4355f6811b124b7f3f12053c4dc371dc83ef3b3d3"
     },
     {
       "feature": "circularPattern",
       "axis": "undo",
       "status": "PASS",
-      "executedAt": "2026-08-24T15:00:47.700Z",
+      "executedAt": "2026-08-25T08:20:38.363Z",
       "evidence": [
         {
           "path": "docs/evidence/cad-independent/local/mechanical-ai-intent-runtime-260813/runtime/circularPattern/undo.json",
-          "sha256": "7df1f2aa511e47a6eed884d5a4bbc19dd6f482a26bcb69a504e106f9e161fd70",
           "bytes": 866,
+          "sha256": "3add4f751dc4c37171cf92112cc1c9c4cc32722265fe0779f15bfdcaec965988",
+          "canonicalization": "utf8-crlf-to-lf",
           "assertionId": "circularPattern.undo.exact-restore"
         }
       ],
@@ -1366,24 +1457,26 @@
         "preserved": true,
         "topologySilentRemapCount": 0
       },
-      "designRevisionSha256": "a361da8b50b3e4b840c04e7bdf7077467580a73242a109090dad13b8f5102e22"
+      "designRevisionSha256": "a0a108d123eb01b22a05bbf4355f6811b124b7f3f12053c4dc371dc83ef3b3d3"
     },
     {
       "feature": "circularPattern",
       "axis": "export",
       "status": "PASS",
-      "executedAt": "2026-08-24T15:00:47.700Z",
+      "executedAt": "2026-08-25T08:20:38.363Z",
       "evidence": [
         {
           "path": "docs/evidence/cad-independent/local/mechanical-ai-intent-runtime-260813/runtime/circularPattern/circularPattern-edited.step",
-          "sha256": "d4c1a5670083b63a73af483ec9b7b43d9ab9978cdd5e5317f4fbddd5cd20cc5b",
           "bytes": 43312,
+          "sha256": "7af8437b23a75407fb522b70a929631214c8aa243a2c0aa087711ac1b12d2057",
+          "canonicalization": "utf8-crlf-to-lf",
           "assertionId": "circularPattern.export.native-step"
         },
         {
           "path": "docs/evidence/cad-independent/local/mechanical-ai-intent-runtime-260813/runtime/circularPattern/export-reimport.json",
-          "sha256": "e5f9855f8161c00d19fc86e0aa9df80bec3f9c2ee8d80f86edffeee39269aa8c",
           "bytes": 1177,
+          "sha256": "7bd1936d14c49e3d683b387728cf4fda4887d502ea384359d8e4b7f60c811dd1",
+          "canonicalization": "utf8-crlf-to-lf",
           "assertionId": "circularPattern.export.step-reimport"
         }
       ],
@@ -1395,24 +1488,26 @@
         "preserved": true,
         "topologySilentRemapCount": 0
       },
-      "designRevisionSha256": "a361da8b50b3e4b840c04e7bdf7077467580a73242a109090dad13b8f5102e22"
+      "designRevisionSha256": "a0a108d123eb01b22a05bbf4355f6811b124b7f3f12053c4dc371dc83ef3b3d3"
     },
     {
       "feature": "circularPattern",
       "axis": "drawing",
       "status": "PASS",
-      "executedAt": "2026-08-24T15:00:47.700Z",
+      "executedAt": "2026-08-25T08:20:38.363Z",
       "evidence": [
         {
           "path": "docs/evidence/cad-independent/local/mechanical-ai-intent-runtime-260813/runtime/circularPattern/circularPattern-exact-hlr.svg",
-          "sha256": "1d85442597ca57d16b505682f6007e9af68f4dd50be97ae2444d3d561fe05587",
           "bytes": 5419,
+          "sha256": "1d85442597ca57d16b505682f6007e9af68f4dd50be97ae2444d3d561fe05587",
+          "canonicalization": "utf8-crlf-to-lf",
           "assertionId": "circularPattern.drawing.exact-hlr-svg"
         },
         {
           "path": "docs/evidence/cad-independent/local/mechanical-ai-intent-runtime-260813/runtime/circularPattern/drawing.json",
-          "sha256": "d26dcb3864df956e46d19d3135d91a9b882bb723cb2801ec4a51a3a2187d3f62",
           "bytes": 727,
+          "sha256": "d1609f50975eab6a45f83aa979bc0f7b33bbaea655c66f5002a701c3fb10ac85",
+          "canonicalization": "utf8-crlf-to-lf",
           "assertionId": "circularPattern.drawing.three-view-hlr"
         }
       ],
@@ -1424,18 +1519,19 @@
         "preserved": true,
         "topologySilentRemapCount": 0
       },
-      "designRevisionSha256": "a361da8b50b3e4b840c04e7bdf7077467580a73242a109090dad13b8f5102e22"
+      "designRevisionSha256": "a0a108d123eb01b22a05bbf4355f6811b124b7f3f12053c4dc371dc83ef3b3d3"
     },
     {
       "feature": "draft",
       "axis": "create",
       "status": "PASS",
-      "executedAt": "2026-08-24T15:00:47.700Z",
+      "executedAt": "2026-08-25T08:20:38.363Z",
       "evidence": [
         {
           "path": "docs/evidence/cad-independent/local/mechanical-ai-intent-runtime-260813/runtime/draft/create.json",
-          "sha256": "ca94a84fd6dbde15d21b5240f52f138cfbfd53023ccde7adb8a15e1273c87af7",
           "bytes": 2279,
+          "sha256": "9de734566be4714a3d37732ea7c25bb7b9a4f63b2cd20f7fe5bf9adecce73968",
+          "canonicalization": "utf8-crlf-to-lf",
           "assertionId": "draft.create.exact-solid"
         }
       ],
@@ -1447,18 +1543,19 @@
         "preserved": true,
         "topologySilentRemapCount": 0
       },
-      "designRevisionSha256": "a361da8b50b3e4b840c04e7bdf7077467580a73242a109090dad13b8f5102e22"
+      "designRevisionSha256": "a0a108d123eb01b22a05bbf4355f6811b124b7f3f12053c4dc371dc83ef3b3d3"
     },
     {
       "feature": "draft",
       "axis": "edit",
       "status": "PASS",
-      "executedAt": "2026-08-24T15:00:47.700Z",
+      "executedAt": "2026-08-25T08:20:38.363Z",
       "evidence": [
         {
           "path": "docs/evidence/cad-independent/local/mechanical-ai-intent-runtime-260813/runtime/draft/edit.json",
-          "sha256": "69749b25bc870caa04dbd647f3e077b5a90f4cba446b839e417495bd0bf37b10",
           "bytes": 1351,
+          "sha256": "828a977eee83a3125394f6c0e78a969844efd11d60522c867c90977c10abddf7",
+          "canonicalization": "utf8-crlf-to-lf",
           "assertionId": "draft.edit.history-transition"
         }
       ],
@@ -1470,18 +1567,19 @@
         "preserved": true,
         "topologySilentRemapCount": 0
       },
-      "designRevisionSha256": "a361da8b50b3e4b840c04e7bdf7077467580a73242a109090dad13b8f5102e22"
+      "designRevisionSha256": "a0a108d123eb01b22a05bbf4355f6811b124b7f3f12053c4dc371dc83ef3b3d3"
     },
     {
       "feature": "draft",
       "axis": "regenerate",
       "status": "PASS",
-      "executedAt": "2026-08-24T15:00:47.700Z",
+      "executedAt": "2026-08-25T08:20:38.363Z",
       "evidence": [
         {
           "path": "docs/evidence/cad-independent/local/mechanical-ai-intent-runtime-260813/runtime/draft/regenerate.json",
-          "sha256": "4770ba0e2905f3d18d0b2b8e213aa3fe4e3ead6d0e9e956959a91ce72416c293",
           "bytes": 2371,
+          "sha256": "61bdb0d88aa5112a5b61f4c922a0e71378d4b280f301169ea8367f3c3dd591d5",
+          "canonicalization": "utf8-crlf-to-lf",
           "assertionId": "draft.regenerate.native-repeat"
         }
       ],
@@ -1493,24 +1591,26 @@
         "preserved": true,
         "topologySilentRemapCount": 0
       },
-      "designRevisionSha256": "a361da8b50b3e4b840c04e7bdf7077467580a73242a109090dad13b8f5102e22"
+      "designRevisionSha256": "a0a108d123eb01b22a05bbf4355f6811b124b7f3f12053c4dc371dc83ef3b3d3"
     },
     {
       "feature": "draft",
       "axis": "save_reopen",
       "status": "PASS",
-      "executedAt": "2026-08-24T15:00:47.700Z",
+      "executedAt": "2026-08-25T08:20:38.363Z",
       "evidence": [
         {
           "path": "docs/evidence/cad-independent/local/mechanical-ai-intent-runtime-260813/runtime/draft/saved-project.nfab",
-          "sha256": "23fc21b6ae2bf26dbee423018698135b18f6950df47da6723588bd63e1ed9c6e",
           "bytes": 1787,
+          "sha256": "4cfa1c5995c9921bf6dc24c7d5c5a7be1366adb508dd4918ce013e843965a82e",
+          "canonicalization": "utf8-crlf-to-lf",
           "assertionId": "draft.save_reopen.saved-bytes"
         },
         {
           "path": "docs/evidence/cad-independent/local/mechanical-ai-intent-runtime-260813/runtime/draft/save-reopen.json",
-          "sha256": "ebb58564a9424e2dadee6eef8c59e451663aaefc21b4a90eea5bd48d03493d60",
           "bytes": 730,
+          "sha256": "25b2dae86958351adb5be7722d876a6f3a6ef66c3e4247640a91c99f35f4aa41",
+          "canonicalization": "utf8-crlf-to-lf",
           "assertionId": "draft.save_reopen.exact-roundtrip"
         }
       ],
@@ -1522,18 +1622,19 @@
         "preserved": true,
         "topologySilentRemapCount": 0
       },
-      "designRevisionSha256": "a361da8b50b3e4b840c04e7bdf7077467580a73242a109090dad13b8f5102e22"
+      "designRevisionSha256": "a0a108d123eb01b22a05bbf4355f6811b124b7f3f12053c4dc371dc83ef3b3d3"
     },
     {
       "feature": "draft",
       "axis": "undo",
       "status": "PASS",
-      "executedAt": "2026-08-24T15:00:47.700Z",
+      "executedAt": "2026-08-25T08:20:38.363Z",
       "evidence": [
         {
           "path": "docs/evidence/cad-independent/local/mechanical-ai-intent-runtime-260813/runtime/draft/undo.json",
-          "sha256": "5bbdf813ebc5a644ed2fa1708ded52a9124b3bf0e9175d653348fa8aadcc6215",
           "bytes": 800,
+          "sha256": "22e36e8ec69358195f7da0e28a4828b4d448d119da1ad5406b8d260c172f361d",
+          "canonicalization": "utf8-crlf-to-lf",
           "assertionId": "draft.undo.exact-restore"
         }
       ],
@@ -1545,24 +1646,26 @@
         "preserved": true,
         "topologySilentRemapCount": 0
       },
-      "designRevisionSha256": "a361da8b50b3e4b840c04e7bdf7077467580a73242a109090dad13b8f5102e22"
+      "designRevisionSha256": "a0a108d123eb01b22a05bbf4355f6811b124b7f3f12053c4dc371dc83ef3b3d3"
     },
     {
       "feature": "draft",
       "axis": "export",
       "status": "PASS",
-      "executedAt": "2026-08-24T15:00:47.700Z",
+      "executedAt": "2026-08-25T08:20:38.363Z",
       "evidence": [
         {
           "path": "docs/evidence/cad-independent/local/mechanical-ai-intent-runtime-260813/runtime/draft/draft-edited.step",
-          "sha256": "2cb80e73da48366db9d1d58deef004cd045a279808c06a3351305dec59f951df",
           "bytes": 19780,
+          "sha256": "32eac4962ad45963a3c2a50bf94eebc3ce978adbc913b35397993f837df5dfb0",
+          "canonicalization": "utf8-crlf-to-lf",
           "assertionId": "draft.export.native-step"
         },
         {
           "path": "docs/evidence/cad-independent/local/mechanical-ai-intent-runtime-260813/runtime/draft/export-reimport.json",
-          "sha256": "4f39cff2ce64e72a35c9d8677eaccac8a998d8e1b1ecd2e21203cfa67d1819e3",
           "bytes": 1211,
+          "sha256": "2cbd33d4c4ed3e3ba915f2f658536ef0c1d36d6fcc180f24fbbe99b4a892aa4d",
+          "canonicalization": "utf8-crlf-to-lf",
           "assertionId": "draft.export.step-reimport"
         }
       ],
@@ -1574,24 +1677,26 @@
         "preserved": true,
         "topologySilentRemapCount": 0
       },
-      "designRevisionSha256": "a361da8b50b3e4b840c04e7bdf7077467580a73242a109090dad13b8f5102e22"
+      "designRevisionSha256": "a0a108d123eb01b22a05bbf4355f6811b124b7f3f12053c4dc371dc83ef3b3d3"
     },
     {
       "feature": "draft",
       "axis": "drawing",
       "status": "PASS",
-      "executedAt": "2026-08-24T15:00:47.700Z",
+      "executedAt": "2026-08-25T08:20:38.363Z",
       "evidence": [
         {
           "path": "docs/evidence/cad-independent/local/mechanical-ai-intent-runtime-260813/runtime/draft/draft-exact-hlr.svg",
-          "sha256": "88e45f5ba914bbedc507c6a21f6e7160da2c7483ec566d512184cfd2bbe467d3",
           "bytes": 2714,
+          "sha256": "88e45f5ba914bbedc507c6a21f6e7160da2c7483ec566d512184cfd2bbe467d3",
+          "canonicalization": "utf8-crlf-to-lf",
           "assertionId": "draft.drawing.exact-hlr-svg"
         },
         {
           "path": "docs/evidence/cad-independent/local/mechanical-ai-intent-runtime-260813/runtime/draft/drawing.json",
-          "sha256": "d4abfa10eab4b833abb6678c442fce041299e6ebf58fbda5f7ff4f936409baff",
           "bytes": 799,
+          "sha256": "6cc273512e5cba3770c74a62d94eb4922cbcc4391337fcab2646755bfd2b2529",
+          "canonicalization": "utf8-crlf-to-lf",
           "assertionId": "draft.drawing.three-view-hlr"
         }
       ],
@@ -1603,18 +1708,19 @@
         "preserved": true,
         "topologySilentRemapCount": 0
       },
-      "designRevisionSha256": "a361da8b50b3e4b840c04e7bdf7077467580a73242a109090dad13b8f5102e22"
+      "designRevisionSha256": "a0a108d123eb01b22a05bbf4355f6811b124b7f3f12053c4dc371dc83ef3b3d3"
     },
     {
       "feature": "scale",
       "axis": "create",
       "status": "PASS",
-      "executedAt": "2026-08-24T15:00:47.700Z",
+      "executedAt": "2026-08-25T08:20:38.363Z",
       "evidence": [
         {
           "path": "docs/evidence/cad-independent/local/mechanical-ai-intent-runtime-260813/runtime/scale/create.json",
-          "sha256": "8e521d10e709921162c5326d8d8f4f47c2cd9cabf8ee28860579cacfb74e68de",
           "bytes": 2293,
+          "sha256": "e4efa89da87a242a699dad140b64de70a8fba4e2a2a54cadfd4c7b3f99bb7178",
+          "canonicalization": "utf8-crlf-to-lf",
           "assertionId": "scale.create.exact-solid"
         }
       ],
@@ -1626,18 +1732,19 @@
         "preserved": true,
         "topologySilentRemapCount": 0
       },
-      "designRevisionSha256": "a361da8b50b3e4b840c04e7bdf7077467580a73242a109090dad13b8f5102e22"
+      "designRevisionSha256": "a0a108d123eb01b22a05bbf4355f6811b124b7f3f12053c4dc371dc83ef3b3d3"
     },
     {
       "feature": "scale",
       "axis": "edit",
       "status": "PASS",
-      "executedAt": "2026-08-24T15:00:47.700Z",
+      "executedAt": "2026-08-25T08:20:38.363Z",
       "evidence": [
         {
           "path": "docs/evidence/cad-independent/local/mechanical-ai-intent-runtime-260813/runtime/scale/edit.json",
-          "sha256": "978c1a8499b1942e3cacf7cae5854ba242493cc4a34f15f9d0d6ff2e34e99a1a",
           "bytes": 1416,
+          "sha256": "c7ca5db4ae0756b67258d4bc297194c7e0ddc4eae876927b364f1808c780b246",
+          "canonicalization": "utf8-crlf-to-lf",
           "assertionId": "scale.edit.history-transition"
         }
       ],
@@ -1649,18 +1756,19 @@
         "preserved": true,
         "topologySilentRemapCount": 0
       },
-      "designRevisionSha256": "a361da8b50b3e4b840c04e7bdf7077467580a73242a109090dad13b8f5102e22"
+      "designRevisionSha256": "a0a108d123eb01b22a05bbf4355f6811b124b7f3f12053c4dc371dc83ef3b3d3"
     },
     {
       "feature": "scale",
       "axis": "regenerate",
       "status": "PASS",
-      "executedAt": "2026-08-24T15:00:47.700Z",
+      "executedAt": "2026-08-25T08:20:38.363Z",
       "evidence": [
         {
           "path": "docs/evidence/cad-independent/local/mechanical-ai-intent-runtime-260813/runtime/scale/regenerate.json",
-          "sha256": "b69902e57c9261b8bc9e490ea986b921678a87792b74c5c7a755a9ebae6b7174",
           "bytes": 2342,
+          "sha256": "ccaae7d3e9d408d9aa0bcdec4ce5d76c1ce29f5b952608c9909f8aa6eb7dfc44",
+          "canonicalization": "utf8-crlf-to-lf",
           "assertionId": "scale.regenerate.native-repeat"
         }
       ],
@@ -1672,24 +1780,26 @@
         "preserved": true,
         "topologySilentRemapCount": 0
       },
-      "designRevisionSha256": "a361da8b50b3e4b840c04e7bdf7077467580a73242a109090dad13b8f5102e22"
+      "designRevisionSha256": "a0a108d123eb01b22a05bbf4355f6811b124b7f3f12053c4dc371dc83ef3b3d3"
     },
     {
       "feature": "scale",
       "axis": "save_reopen",
       "status": "PASS",
-      "executedAt": "2026-08-24T15:00:47.700Z",
+      "executedAt": "2026-08-25T08:20:38.363Z",
       "evidence": [
         {
           "path": "docs/evidence/cad-independent/local/mechanical-ai-intent-runtime-260813/runtime/scale/saved-project.nfab",
-          "sha256": "d513386e2f4eec3712248bb09699b4157d0935408a5ac9e75021b6392e6ba3fb",
           "bytes": 1819,
+          "sha256": "d8b5c5760c5c3bd93fd4f41425cf5381529772236beeaaf034d3cd61dd22629e",
+          "canonicalization": "utf8-crlf-to-lf",
           "assertionId": "scale.save_reopen.saved-bytes"
         },
         {
           "path": "docs/evidence/cad-independent/local/mechanical-ai-intent-runtime-260813/runtime/scale/save-reopen.json",
-          "sha256": "4e9ccd14e93215ad2ae8310d11802fc93508e14094575303a014bdcc3202a47f",
           "bytes": 723,
+          "sha256": "77b38fb9a5d35170856c95b20ed4537e8269da42c17f033d3464293def79272f",
+          "canonicalization": "utf8-crlf-to-lf",
           "assertionId": "scale.save_reopen.exact-roundtrip"
         }
       ],
@@ -1701,18 +1811,19 @@
         "preserved": true,
         "topologySilentRemapCount": 0
       },
-      "designRevisionSha256": "a361da8b50b3e4b840c04e7bdf7077467580a73242a109090dad13b8f5102e22"
+      "designRevisionSha256": "a0a108d123eb01b22a05bbf4355f6811b124b7f3f12053c4dc371dc83ef3b3d3"
     },
     {
       "feature": "scale",
       "axis": "undo",
       "status": "PASS",
-      "executedAt": "2026-08-24T15:00:47.700Z",
+      "executedAt": "2026-08-25T08:20:38.363Z",
       "evidence": [
         {
           "path": "docs/evidence/cad-independent/local/mechanical-ai-intent-runtime-260813/runtime/scale/undo.json",
-          "sha256": "95bbef146e3b921856720e6725ee02805419d4b8ee28a79df7ad1962459ad810",
           "bytes": 802,
+          "sha256": "ec334836c5efafc3ec47a9f708bb0e3c3be17385a3801c6b25ca7ff6c7fd8893",
+          "canonicalization": "utf8-crlf-to-lf",
           "assertionId": "scale.undo.exact-restore"
         }
       ],
@@ -1724,24 +1835,26 @@
         "preserved": true,
         "topologySilentRemapCount": 0
       },
-      "designRevisionSha256": "a361da8b50b3e4b840c04e7bdf7077467580a73242a109090dad13b8f5102e22"
+      "designRevisionSha256": "a0a108d123eb01b22a05bbf4355f6811b124b7f3f12053c4dc371dc83ef3b3d3"
     },
     {
       "feature": "scale",
       "axis": "export",
       "status": "PASS",
-      "executedAt": "2026-08-24T15:00:47.700Z",
+      "executedAt": "2026-08-25T08:20:38.363Z",
       "evidence": [
         {
           "path": "docs/evidence/cad-independent/local/mechanical-ai-intent-runtime-260813/runtime/scale/scale-edited.step",
-          "sha256": "228fd1ae176b12cdec6af86660f7a2520a97d0878e6a74ab074d720897230362",
           "bytes": 15765,
+          "sha256": "a5d1ff94c3d8fb722b200cb2ab6bc4677ef86489146e9a689935e73ef54e3e1d",
+          "canonicalization": "utf8-crlf-to-lf",
           "assertionId": "scale.export.native-step"
         },
         {
           "path": "docs/evidence/cad-independent/local/mechanical-ai-intent-runtime-260813/runtime/scale/export-reimport.json",
-          "sha256": "d758eb06c81dda9e82d1a9febf4f7a5609e9f63085315850dc17bb809a613237",
           "bytes": 1150,
+          "sha256": "a11864443a978946986ce206abd52e4ababe86dd6633483c4cd8a3d6a12df238",
+          "canonicalization": "utf8-crlf-to-lf",
           "assertionId": "scale.export.step-reimport"
         }
       ],
@@ -1753,24 +1866,26 @@
         "preserved": true,
         "topologySilentRemapCount": 0
       },
-      "designRevisionSha256": "a361da8b50b3e4b840c04e7bdf7077467580a73242a109090dad13b8f5102e22"
+      "designRevisionSha256": "a0a108d123eb01b22a05bbf4355f6811b124b7f3f12053c4dc371dc83ef3b3d3"
     },
     {
       "feature": "scale",
       "axis": "drawing",
       "status": "PASS",
-      "executedAt": "2026-08-24T15:00:47.700Z",
+      "executedAt": "2026-08-25T08:20:38.363Z",
       "evidence": [
         {
           "path": "docs/evidence/cad-independent/local/mechanical-ai-intent-runtime-260813/runtime/scale/scale-exact-hlr.svg",
-          "sha256": "2e716de140e68652060bd79f1a72e17a77b21898f8030a9a993958f0e5336934",
           "bytes": 2377,
+          "sha256": "2e716de140e68652060bd79f1a72e17a77b21898f8030a9a993958f0e5336934",
+          "canonicalization": "utf8-crlf-to-lf",
           "assertionId": "scale.drawing.exact-hlr-svg"
         },
         {
           "path": "docs/evidence/cad-independent/local/mechanical-ai-intent-runtime-260813/runtime/scale/drawing.json",
-          "sha256": "59f73c733698c804127f9d085f5bf48864558c1bbe1cb4c3046271ff55f07e12",
           "bytes": 714,
+          "sha256": "d7ae6f83402226e11a63e460eede15af875c03a816cc64e694ba360dd7286e9a",
+          "canonicalization": "utf8-crlf-to-lf",
           "assertionId": "scale.drawing.three-view-hlr"
         }
       ],
@@ -1782,18 +1897,19 @@
         "preserved": true,
         "topologySilentRemapCount": 0
       },
-      "designRevisionSha256": "a361da8b50b3e4b840c04e7bdf7077467580a73242a109090dad13b8f5102e22"
+      "designRevisionSha256": "a0a108d123eb01b22a05bbf4355f6811b124b7f3f12053c4dc371dc83ef3b3d3"
     },
     {
       "feature": "moveCopy",
       "axis": "create",
       "status": "PASS",
-      "executedAt": "2026-08-24T15:00:47.700Z",
+      "executedAt": "2026-08-25T08:20:38.363Z",
       "evidence": [
         {
           "path": "docs/evidence/cad-independent/local/mechanical-ai-intent-runtime-260813/runtime/moveCopy/create.json",
-          "sha256": "a13d16a9bcb1a3eb2d25d58b67579368ae9ca1bf62631aa42e48a1d766287d23",
           "bytes": 2304,
+          "sha256": "a2960da87458ecef2f18629053ce7a49731608685c63f48228b0357793df93f9",
+          "canonicalization": "utf8-crlf-to-lf",
           "assertionId": "moveCopy.create.exact-solid"
         }
       ],
@@ -1805,18 +1921,19 @@
         "preserved": true,
         "topologySilentRemapCount": 0
       },
-      "designRevisionSha256": "a361da8b50b3e4b840c04e7bdf7077467580a73242a109090dad13b8f5102e22"
+      "designRevisionSha256": "a0a108d123eb01b22a05bbf4355f6811b124b7f3f12053c4dc371dc83ef3b3d3"
     },
     {
       "feature": "moveCopy",
       "axis": "edit",
       "status": "PASS",
-      "executedAt": "2026-08-24T15:00:47.700Z",
+      "executedAt": "2026-08-25T08:20:38.363Z",
       "evidence": [
         {
           "path": "docs/evidence/cad-independent/local/mechanical-ai-intent-runtime-260813/runtime/moveCopy/edit.json",
-          "sha256": "7d193d23f308d8d2e2aa4fef49fc63e5de8002cbdef81f0bd6d7cb05aa976c2d",
           "bytes": 1455,
+          "sha256": "95806989eb949dc7a3cf48af1170a8bc24fc79ac4327524e01ec8f8bb608e514",
+          "canonicalization": "utf8-crlf-to-lf",
           "assertionId": "moveCopy.edit.history-transition"
         }
       ],
@@ -1828,18 +1945,19 @@
         "preserved": true,
         "topologySilentRemapCount": 0
       },
-      "designRevisionSha256": "a361da8b50b3e4b840c04e7bdf7077467580a73242a109090dad13b8f5102e22"
+      "designRevisionSha256": "a0a108d123eb01b22a05bbf4355f6811b124b7f3f12053c4dc371dc83ef3b3d3"
     },
     {
       "feature": "moveCopy",
       "axis": "regenerate",
       "status": "PASS",
-      "executedAt": "2026-08-24T15:00:47.700Z",
+      "executedAt": "2026-08-25T08:20:38.363Z",
       "evidence": [
         {
           "path": "docs/evidence/cad-independent/local/mechanical-ai-intent-runtime-260813/runtime/moveCopy/regenerate.json",
-          "sha256": "e57e33a681734d0f2352b03bced7f2c1fd79431bed2b5819d158ec53ecb690d1",
           "bytes": 2322,
+          "sha256": "9e48592995267e30d327e7781b34a92c16bf92fe070a3c92982253d57a641ead",
+          "canonicalization": "utf8-crlf-to-lf",
           "assertionId": "moveCopy.regenerate.native-repeat"
         }
       ],
@@ -1851,24 +1969,26 @@
         "preserved": true,
         "topologySilentRemapCount": 0
       },
-      "designRevisionSha256": "a361da8b50b3e4b840c04e7bdf7077467580a73242a109090dad13b8f5102e22"
+      "designRevisionSha256": "a0a108d123eb01b22a05bbf4355f6811b124b7f3f12053c4dc371dc83ef3b3d3"
     },
     {
       "feature": "moveCopy",
       "axis": "save_reopen",
       "status": "PASS",
-      "executedAt": "2026-08-24T15:00:47.700Z",
+      "executedAt": "2026-08-25T08:20:38.363Z",
       "evidence": [
         {
           "path": "docs/evidence/cad-independent/local/mechanical-ai-intent-runtime-260813/runtime/moveCopy/saved-project.nfab",
-          "sha256": "9391d8386a9be065ad61cfac352f51cfa60965de0046d2a4e204a3fded4d11bc",
           "bytes": 1850,
+          "sha256": "f411cc0d41a988e439ff30e8d927987bc3b5181a00673c053dc0bdac73e18c11",
+          "canonicalization": "utf8-crlf-to-lf",
           "assertionId": "moveCopy.save_reopen.saved-bytes"
         },
         {
           "path": "docs/evidence/cad-independent/local/mechanical-ai-intent-runtime-260813/runtime/moveCopy/save-reopen.json",
-          "sha256": "de29eb75a6036cbfba5a187b23ddbcad4c7cc79aaa4d3d58c38594761e9b94db",
           "bytes": 719,
+          "sha256": "66c08692cd892c9f6db5f0b1769f3f20686c333fc5b4a268a510b491fbd94f41",
+          "canonicalization": "utf8-crlf-to-lf",
           "assertionId": "moveCopy.save_reopen.exact-roundtrip"
         }
       ],
@@ -1880,18 +2000,19 @@
         "preserved": true,
         "topologySilentRemapCount": 0
       },
-      "designRevisionSha256": "a361da8b50b3e4b840c04e7bdf7077467580a73242a109090dad13b8f5102e22"
+      "designRevisionSha256": "a0a108d123eb01b22a05bbf4355f6811b124b7f3f12053c4dc371dc83ef3b3d3"
     },
     {
       "feature": "moveCopy",
       "axis": "undo",
       "status": "PASS",
-      "executedAt": "2026-08-24T15:00:47.700Z",
+      "executedAt": "2026-08-25T08:20:38.363Z",
       "evidence": [
         {
           "path": "docs/evidence/cad-independent/local/mechanical-ai-intent-runtime-260813/runtime/moveCopy/undo.json",
-          "sha256": "dece3329b83c8090230036e5e4afd464192688bad5eb2f8cf0bc6efc27f2822f",
           "bytes": 831,
+          "sha256": "4040e6a0103820dcdb2c1d3bcce80e25f5cc76a81a14847dc6e266c7c4f9e120",
+          "canonicalization": "utf8-crlf-to-lf",
           "assertionId": "moveCopy.undo.exact-restore"
         }
       ],
@@ -1903,24 +2024,26 @@
         "preserved": true,
         "topologySilentRemapCount": 0
       },
-      "designRevisionSha256": "a361da8b50b3e4b840c04e7bdf7077467580a73242a109090dad13b8f5102e22"
+      "designRevisionSha256": "a0a108d123eb01b22a05bbf4355f6811b124b7f3f12053c4dc371dc83ef3b3d3"
     },
     {
       "feature": "moveCopy",
       "axis": "export",
       "status": "PASS",
-      "executedAt": "2026-08-24T15:00:47.700Z",
+      "executedAt": "2026-08-25T08:20:38.363Z",
       "evidence": [
         {
           "path": "docs/evidence/cad-independent/local/mechanical-ai-intent-runtime-260813/runtime/moveCopy/moveCopy-edited.step",
-          "sha256": "a0d6aac86f533d149039b641c897c845dfcd1ff793e6cd141719ac0985da5ea6",
           "bytes": 15552,
+          "sha256": "c3e459fb419a8d768124807d5e3f60e602ebbde6e84e19810170df040729760a",
+          "canonicalization": "utf8-crlf-to-lf",
           "assertionId": "moveCopy.export.native-step"
         },
         {
           "path": "docs/evidence/cad-independent/local/mechanical-ai-intent-runtime-260813/runtime/moveCopy/export-reimport.json",
-          "sha256": "601e91ad91176115f6ad2b15ab0510a81bfec0a40d993dd043d8368e410c0ebb",
           "bytes": 1167,
+          "sha256": "8dac13ba327fd1e085f413fc2f5ed7fd28c5fda78b83578cf21d835ba8fdb5fd",
+          "canonicalization": "utf8-crlf-to-lf",
           "assertionId": "moveCopy.export.step-reimport"
         }
       ],
@@ -1932,24 +2055,26 @@
         "preserved": true,
         "topologySilentRemapCount": 0
       },
-      "designRevisionSha256": "a361da8b50b3e4b840c04e7bdf7077467580a73242a109090dad13b8f5102e22"
+      "designRevisionSha256": "a0a108d123eb01b22a05bbf4355f6811b124b7f3f12053c4dc371dc83ef3b3d3"
     },
     {
       "feature": "moveCopy",
       "axis": "drawing",
       "status": "PASS",
-      "executedAt": "2026-08-24T15:00:47.700Z",
+      "executedAt": "2026-08-25T08:20:38.363Z",
       "evidence": [
         {
           "path": "docs/evidence/cad-independent/local/mechanical-ai-intent-runtime-260813/runtime/moveCopy/moveCopy-exact-hlr.svg",
-          "sha256": "bd2981c89ac2beb9b6348cfb32944f3ef12056111c720d8e2aaaf59090a4e941",
           "bytes": 2354,
+          "sha256": "bd2981c89ac2beb9b6348cfb32944f3ef12056111c720d8e2aaaf59090a4e941",
+          "canonicalization": "utf8-crlf-to-lf",
           "assertionId": "moveCopy.drawing.exact-hlr-svg"
         },
         {
           "path": "docs/evidence/cad-independent/local/mechanical-ai-intent-runtime-260813/runtime/moveCopy/drawing.json",
-          "sha256": "6fef304d279c71f7840f618b6d55b165516bfe5a3489c5523a959c39954dc352",
           "bytes": 717,
+          "sha256": "3a3c3f4167fded2af70030a75282808ef511323150f073e13c4b58efbb5e4607",
+          "canonicalization": "utf8-crlf-to-lf",
           "assertionId": "moveCopy.drawing.three-view-hlr"
         }
       ],
@@ -1961,7 +2086,7 @@
         "preserved": true,
         "topologySilentRemapCount": 0
       },
-      "designRevisionSha256": "a361da8b50b3e4b840c04e7bdf7077467580a73242a109090dad13b8f5102e22"
+      "designRevisionSha256": "a0a108d123eb01b22a05bbf4355f6811b124b7f3f12053c4dc371dc83ef3b3d3"
     },
     {
       "feature": "variableFillet",
@@ -1970,7 +2095,7 @@
       "executedAt": null,
       "evidence": [],
       "detail": "variableFillet:create:authoritative_intent_binding_missing",
-      "designRevisionSha256": "a361da8b50b3e4b840c04e7bdf7077467580a73242a109090dad13b8f5102e22"
+      "designRevisionSha256": "a0a108d123eb01b22a05bbf4355f6811b124b7f3f12053c4dc371dc83ef3b3d3"
     },
     {
       "feature": "variableFillet",
@@ -1979,7 +2104,7 @@
       "executedAt": null,
       "evidence": [],
       "detail": "variableFillet:edit:authoritative_intent_binding_missing",
-      "designRevisionSha256": "a361da8b50b3e4b840c04e7bdf7077467580a73242a109090dad13b8f5102e22"
+      "designRevisionSha256": "a0a108d123eb01b22a05bbf4355f6811b124b7f3f12053c4dc371dc83ef3b3d3"
     },
     {
       "feature": "variableFillet",
@@ -1988,7 +2113,7 @@
       "executedAt": null,
       "evidence": [],
       "detail": "variableFillet:regenerate:authoritative_intent_binding_missing",
-      "designRevisionSha256": "a361da8b50b3e4b840c04e7bdf7077467580a73242a109090dad13b8f5102e22"
+      "designRevisionSha256": "a0a108d123eb01b22a05bbf4355f6811b124b7f3f12053c4dc371dc83ef3b3d3"
     },
     {
       "feature": "variableFillet",
@@ -1997,7 +2122,7 @@
       "executedAt": null,
       "evidence": [],
       "detail": "variableFillet:save_reopen:authoritative_intent_binding_missing",
-      "designRevisionSha256": "a361da8b50b3e4b840c04e7bdf7077467580a73242a109090dad13b8f5102e22"
+      "designRevisionSha256": "a0a108d123eb01b22a05bbf4355f6811b124b7f3f12053c4dc371dc83ef3b3d3"
     },
     {
       "feature": "variableFillet",
@@ -2006,7 +2131,7 @@
       "executedAt": null,
       "evidence": [],
       "detail": "variableFillet:undo:authoritative_intent_binding_missing",
-      "designRevisionSha256": "a361da8b50b3e4b840c04e7bdf7077467580a73242a109090dad13b8f5102e22"
+      "designRevisionSha256": "a0a108d123eb01b22a05bbf4355f6811b124b7f3f12053c4dc371dc83ef3b3d3"
     },
     {
       "feature": "variableFillet",
@@ -2015,7 +2140,7 @@
       "executedAt": null,
       "evidence": [],
       "detail": "variableFillet:export:authoritative_intent_binding_missing",
-      "designRevisionSha256": "a361da8b50b3e4b840c04e7bdf7077467580a73242a109090dad13b8f5102e22"
+      "designRevisionSha256": "a0a108d123eb01b22a05bbf4355f6811b124b7f3f12053c4dc371dc83ef3b3d3"
     },
     {
       "feature": "variableFillet",
@@ -2024,7 +2149,7 @@
       "executedAt": null,
       "evidence": [],
       "detail": "variableFillet:drawing:authoritative_intent_binding_missing",
-      "designRevisionSha256": "a361da8b50b3e4b840c04e7bdf7077467580a73242a109090dad13b8f5102e22"
+      "designRevisionSha256": "a0a108d123eb01b22a05bbf4355f6811b124b7f3f12053c4dc371dc83ef3b3d3"
     },
     {
       "feature": "offsetFace",
@@ -2033,7 +2158,7 @@
       "executedAt": null,
       "evidence": [],
       "detail": "offsetFace:create:authoritative_intent_binding_missing",
-      "designRevisionSha256": "a361da8b50b3e4b840c04e7bdf7077467580a73242a109090dad13b8f5102e22"
+      "designRevisionSha256": "a0a108d123eb01b22a05bbf4355f6811b124b7f3f12053c4dc371dc83ef3b3d3"
     },
     {
       "feature": "offsetFace",
@@ -2042,7 +2167,7 @@
       "executedAt": null,
       "evidence": [],
       "detail": "offsetFace:edit:authoritative_intent_binding_missing",
-      "designRevisionSha256": "a361da8b50b3e4b840c04e7bdf7077467580a73242a109090dad13b8f5102e22"
+      "designRevisionSha256": "a0a108d123eb01b22a05bbf4355f6811b124b7f3f12053c4dc371dc83ef3b3d3"
     },
     {
       "feature": "offsetFace",
@@ -2051,7 +2176,7 @@
       "executedAt": null,
       "evidence": [],
       "detail": "offsetFace:regenerate:authoritative_intent_binding_missing",
-      "designRevisionSha256": "a361da8b50b3e4b840c04e7bdf7077467580a73242a109090dad13b8f5102e22"
+      "designRevisionSha256": "a0a108d123eb01b22a05bbf4355f6811b124b7f3f12053c4dc371dc83ef3b3d3"
     },
     {
       "feature": "offsetFace",
@@ -2060,7 +2185,7 @@
       "executedAt": null,
       "evidence": [],
       "detail": "offsetFace:save_reopen:authoritative_intent_binding_missing",
-      "designRevisionSha256": "a361da8b50b3e4b840c04e7bdf7077467580a73242a109090dad13b8f5102e22"
+      "designRevisionSha256": "a0a108d123eb01b22a05bbf4355f6811b124b7f3f12053c4dc371dc83ef3b3d3"
     },
     {
       "feature": "offsetFace",
@@ -2069,7 +2194,7 @@
       "executedAt": null,
       "evidence": [],
       "detail": "offsetFace:undo:authoritative_intent_binding_missing",
-      "designRevisionSha256": "a361da8b50b3e4b840c04e7bdf7077467580a73242a109090dad13b8f5102e22"
+      "designRevisionSha256": "a0a108d123eb01b22a05bbf4355f6811b124b7f3f12053c4dc371dc83ef3b3d3"
     },
     {
       "feature": "offsetFace",
@@ -2078,7 +2203,7 @@
       "executedAt": null,
       "evidence": [],
       "detail": "offsetFace:export:authoritative_intent_binding_missing",
-      "designRevisionSha256": "a361da8b50b3e4b840c04e7bdf7077467580a73242a109090dad13b8f5102e22"
+      "designRevisionSha256": "a0a108d123eb01b22a05bbf4355f6811b124b7f3f12053c4dc371dc83ef3b3d3"
     },
     {
       "feature": "offsetFace",
@@ -2087,7 +2212,7 @@
       "executedAt": null,
       "evidence": [],
       "detail": "offsetFace:drawing:authoritative_intent_binding_missing",
-      "designRevisionSha256": "a361da8b50b3e4b840c04e7bdf7077467580a73242a109090dad13b8f5102e22"
+      "designRevisionSha256": "a0a108d123eb01b22a05bbf4355f6811b124b7f3f12053c4dc371dc83ef3b3d3"
     },
     {
       "feature": "thread",
@@ -2096,7 +2221,7 @@
       "executedAt": null,
       "evidence": [],
       "detail": "thread:create:authoritative_intent_binding_missing",
-      "designRevisionSha256": "a361da8b50b3e4b840c04e7bdf7077467580a73242a109090dad13b8f5102e22"
+      "designRevisionSha256": "a0a108d123eb01b22a05bbf4355f6811b124b7f3f12053c4dc371dc83ef3b3d3"
     },
     {
       "feature": "thread",
@@ -2105,7 +2230,7 @@
       "executedAt": null,
       "evidence": [],
       "detail": "thread:edit:authoritative_intent_binding_missing",
-      "designRevisionSha256": "a361da8b50b3e4b840c04e7bdf7077467580a73242a109090dad13b8f5102e22"
+      "designRevisionSha256": "a0a108d123eb01b22a05bbf4355f6811b124b7f3f12053c4dc371dc83ef3b3d3"
     },
     {
       "feature": "thread",
@@ -2114,7 +2239,7 @@
       "executedAt": null,
       "evidence": [],
       "detail": "thread:regenerate:authoritative_intent_binding_missing",
-      "designRevisionSha256": "a361da8b50b3e4b840c04e7bdf7077467580a73242a109090dad13b8f5102e22"
+      "designRevisionSha256": "a0a108d123eb01b22a05bbf4355f6811b124b7f3f12053c4dc371dc83ef3b3d3"
     },
     {
       "feature": "thread",
@@ -2123,7 +2248,7 @@
       "executedAt": null,
       "evidence": [],
       "detail": "thread:save_reopen:authoritative_intent_binding_missing",
-      "designRevisionSha256": "a361da8b50b3e4b840c04e7bdf7077467580a73242a109090dad13b8f5102e22"
+      "designRevisionSha256": "a0a108d123eb01b22a05bbf4355f6811b124b7f3f12053c4dc371dc83ef3b3d3"
     },
     {
       "feature": "thread",
@@ -2132,7 +2257,7 @@
       "executedAt": null,
       "evidence": [],
       "detail": "thread:undo:authoritative_intent_binding_missing",
-      "designRevisionSha256": "a361da8b50b3e4b840c04e7bdf7077467580a73242a109090dad13b8f5102e22"
+      "designRevisionSha256": "a0a108d123eb01b22a05bbf4355f6811b124b7f3f12053c4dc371dc83ef3b3d3"
     },
     {
       "feature": "thread",
@@ -2141,7 +2266,7 @@
       "executedAt": null,
       "evidence": [],
       "detail": "thread:export:authoritative_intent_binding_missing",
-      "designRevisionSha256": "a361da8b50b3e4b840c04e7bdf7077467580a73242a109090dad13b8f5102e22"
+      "designRevisionSha256": "a0a108d123eb01b22a05bbf4355f6811b124b7f3f12053c4dc371dc83ef3b3d3"
     },
     {
       "feature": "thread",
@@ -2150,7 +2275,7 @@
       "executedAt": null,
       "evidence": [],
       "detail": "thread:drawing:authoritative_intent_binding_missing",
-      "designRevisionSha256": "a361da8b50b3e4b840c04e7bdf7077467580a73242a109090dad13b8f5102e22"
+      "designRevisionSha256": "a0a108d123eb01b22a05bbf4355f6811b124b7f3f12053c4dc371dc83ef3b3d3"
     },
     {
       "feature": "helix",
@@ -2159,7 +2284,7 @@
       "executedAt": null,
       "evidence": [],
       "detail": "helix:create:authoritative_intent_binding_missing",
-      "designRevisionSha256": "a361da8b50b3e4b840c04e7bdf7077467580a73242a109090dad13b8f5102e22"
+      "designRevisionSha256": "a0a108d123eb01b22a05bbf4355f6811b124b7f3f12053c4dc371dc83ef3b3d3"
     },
     {
       "feature": "helix",
@@ -2168,7 +2293,7 @@
       "executedAt": null,
       "evidence": [],
       "detail": "helix:edit:authoritative_intent_binding_missing",
-      "designRevisionSha256": "a361da8b50b3e4b840c04e7bdf7077467580a73242a109090dad13b8f5102e22"
+      "designRevisionSha256": "a0a108d123eb01b22a05bbf4355f6811b124b7f3f12053c4dc371dc83ef3b3d3"
     },
     {
       "feature": "helix",
@@ -2177,7 +2302,7 @@
       "executedAt": null,
       "evidence": [],
       "detail": "helix:regenerate:authoritative_intent_binding_missing",
-      "designRevisionSha256": "a361da8b50b3e4b840c04e7bdf7077467580a73242a109090dad13b8f5102e22"
+      "designRevisionSha256": "a0a108d123eb01b22a05bbf4355f6811b124b7f3f12053c4dc371dc83ef3b3d3"
     },
     {
       "feature": "helix",
@@ -2186,7 +2311,7 @@
       "executedAt": null,
       "evidence": [],
       "detail": "helix:save_reopen:authoritative_intent_binding_missing",
-      "designRevisionSha256": "a361da8b50b3e4b840c04e7bdf7077467580a73242a109090dad13b8f5102e22"
+      "designRevisionSha256": "a0a108d123eb01b22a05bbf4355f6811b124b7f3f12053c4dc371dc83ef3b3d3"
     },
     {
       "feature": "helix",
@@ -2195,7 +2320,7 @@
       "executedAt": null,
       "evidence": [],
       "detail": "helix:undo:authoritative_intent_binding_missing",
-      "designRevisionSha256": "a361da8b50b3e4b840c04e7bdf7077467580a73242a109090dad13b8f5102e22"
+      "designRevisionSha256": "a0a108d123eb01b22a05bbf4355f6811b124b7f3f12053c4dc371dc83ef3b3d3"
     },
     {
       "feature": "helix",
@@ -2204,7 +2329,7 @@
       "executedAt": null,
       "evidence": [],
       "detail": "helix:export:authoritative_intent_binding_missing",
-      "designRevisionSha256": "a361da8b50b3e4b840c04e7bdf7077467580a73242a109090dad13b8f5102e22"
+      "designRevisionSha256": "a0a108d123eb01b22a05bbf4355f6811b124b7f3f12053c4dc371dc83ef3b3d3"
     },
     {
       "feature": "helix",
@@ -2213,7 +2338,7 @@
       "executedAt": null,
       "evidence": [],
       "detail": "helix:drawing:authoritative_intent_binding_missing",
-      "designRevisionSha256": "a361da8b50b3e4b840c04e7bdf7077467580a73242a109090dad13b8f5102e22"
+      "designRevisionSha256": "a0a108d123eb01b22a05bbf4355f6811b124b7f3f12053c4dc371dc83ef3b3d3"
     },
     {
       "feature": "bend",
@@ -2222,7 +2347,7 @@
       "executedAt": null,
       "evidence": [],
       "detail": "bend:create:authoritative_intent_binding_missing",
-      "designRevisionSha256": "a361da8b50b3e4b840c04e7bdf7077467580a73242a109090dad13b8f5102e22"
+      "designRevisionSha256": "a0a108d123eb01b22a05bbf4355f6811b124b7f3f12053c4dc371dc83ef3b3d3"
     },
     {
       "feature": "bend",
@@ -2231,7 +2356,7 @@
       "executedAt": null,
       "evidence": [],
       "detail": "bend:edit:authoritative_intent_binding_missing",
-      "designRevisionSha256": "a361da8b50b3e4b840c04e7bdf7077467580a73242a109090dad13b8f5102e22"
+      "designRevisionSha256": "a0a108d123eb01b22a05bbf4355f6811b124b7f3f12053c4dc371dc83ef3b3d3"
     },
     {
       "feature": "bend",
@@ -2240,7 +2365,7 @@
       "executedAt": null,
       "evidence": [],
       "detail": "bend:regenerate:authoritative_intent_binding_missing",
-      "designRevisionSha256": "a361da8b50b3e4b840c04e7bdf7077467580a73242a109090dad13b8f5102e22"
+      "designRevisionSha256": "a0a108d123eb01b22a05bbf4355f6811b124b7f3f12053c4dc371dc83ef3b3d3"
     },
     {
       "feature": "bend",
@@ -2249,7 +2374,7 @@
       "executedAt": null,
       "evidence": [],
       "detail": "bend:save_reopen:authoritative_intent_binding_missing",
-      "designRevisionSha256": "a361da8b50b3e4b840c04e7bdf7077467580a73242a109090dad13b8f5102e22"
+      "designRevisionSha256": "a0a108d123eb01b22a05bbf4355f6811b124b7f3f12053c4dc371dc83ef3b3d3"
     },
     {
       "feature": "bend",
@@ -2258,7 +2383,7 @@
       "executedAt": null,
       "evidence": [],
       "detail": "bend:undo:authoritative_intent_binding_missing",
-      "designRevisionSha256": "a361da8b50b3e4b840c04e7bdf7077467580a73242a109090dad13b8f5102e22"
+      "designRevisionSha256": "a0a108d123eb01b22a05bbf4355f6811b124b7f3f12053c4dc371dc83ef3b3d3"
     },
     {
       "feature": "bend",
@@ -2267,7 +2392,7 @@
       "executedAt": null,
       "evidence": [],
       "detail": "bend:export:authoritative_intent_binding_missing",
-      "designRevisionSha256": "a361da8b50b3e4b840c04e7bdf7077467580a73242a109090dad13b8f5102e22"
+      "designRevisionSha256": "a0a108d123eb01b22a05bbf4355f6811b124b7f3f12053c4dc371dc83ef3b3d3"
     },
     {
       "feature": "bend",
@@ -2276,7 +2401,7 @@
       "executedAt": null,
       "evidence": [],
       "detail": "bend:drawing:authoritative_intent_binding_missing",
-      "designRevisionSha256": "a361da8b50b3e4b840c04e7bdf7077467580a73242a109090dad13b8f5102e22"
+      "designRevisionSha256": "a0a108d123eb01b22a05bbf4355f6811b124b7f3f12053c4dc371dc83ef3b3d3"
     },
     {
       "feature": "flange",
@@ -2285,7 +2410,7 @@
       "executedAt": null,
       "evidence": [],
       "detail": "flange:create:authoritative_intent_binding_missing",
-      "designRevisionSha256": "a361da8b50b3e4b840c04e7bdf7077467580a73242a109090dad13b8f5102e22"
+      "designRevisionSha256": "a0a108d123eb01b22a05bbf4355f6811b124b7f3f12053c4dc371dc83ef3b3d3"
     },
     {
       "feature": "flange",
@@ -2294,7 +2419,7 @@
       "executedAt": null,
       "evidence": [],
       "detail": "flange:edit:authoritative_intent_binding_missing",
-      "designRevisionSha256": "a361da8b50b3e4b840c04e7bdf7077467580a73242a109090dad13b8f5102e22"
+      "designRevisionSha256": "a0a108d123eb01b22a05bbf4355f6811b124b7f3f12053c4dc371dc83ef3b3d3"
     },
     {
       "feature": "flange",
@@ -2303,7 +2428,7 @@
       "executedAt": null,
       "evidence": [],
       "detail": "flange:regenerate:authoritative_intent_binding_missing",
-      "designRevisionSha256": "a361da8b50b3e4b840c04e7bdf7077467580a73242a109090dad13b8f5102e22"
+      "designRevisionSha256": "a0a108d123eb01b22a05bbf4355f6811b124b7f3f12053c4dc371dc83ef3b3d3"
     },
     {
       "feature": "flange",
@@ -2312,7 +2437,7 @@
       "executedAt": null,
       "evidence": [],
       "detail": "flange:save_reopen:authoritative_intent_binding_missing",
-      "designRevisionSha256": "a361da8b50b3e4b840c04e7bdf7077467580a73242a109090dad13b8f5102e22"
+      "designRevisionSha256": "a0a108d123eb01b22a05bbf4355f6811b124b7f3f12053c4dc371dc83ef3b3d3"
     },
     {
       "feature": "flange",
@@ -2321,7 +2446,7 @@
       "executedAt": null,
       "evidence": [],
       "detail": "flange:undo:authoritative_intent_binding_missing",
-      "designRevisionSha256": "a361da8b50b3e4b840c04e7bdf7077467580a73242a109090dad13b8f5102e22"
+      "designRevisionSha256": "a0a108d123eb01b22a05bbf4355f6811b124b7f3f12053c4dc371dc83ef3b3d3"
     },
     {
       "feature": "flange",
@@ -2330,7 +2455,7 @@
       "executedAt": null,
       "evidence": [],
       "detail": "flange:export:authoritative_intent_binding_missing",
-      "designRevisionSha256": "a361da8b50b3e4b840c04e7bdf7077467580a73242a109090dad13b8f5102e22"
+      "designRevisionSha256": "a0a108d123eb01b22a05bbf4355f6811b124b7f3f12053c4dc371dc83ef3b3d3"
     },
     {
       "feature": "flange",
@@ -2339,7 +2464,7 @@
       "executedAt": null,
       "evidence": [],
       "detail": "flange:drawing:authoritative_intent_binding_missing",
-      "designRevisionSha256": "a361da8b50b3e4b840c04e7bdf7077467580a73242a109090dad13b8f5102e22"
+      "designRevisionSha256": "a0a108d123eb01b22a05bbf4355f6811b124b7f3f12053c4dc371dc83ef3b3d3"
     },
     {
       "feature": "hem",
@@ -2348,7 +2473,7 @@
       "executedAt": null,
       "evidence": [],
       "detail": "hem:create:authoritative_intent_binding_missing",
-      "designRevisionSha256": "a361da8b50b3e4b840c04e7bdf7077467580a73242a109090dad13b8f5102e22"
+      "designRevisionSha256": "a0a108d123eb01b22a05bbf4355f6811b124b7f3f12053c4dc371dc83ef3b3d3"
     },
     {
       "feature": "hem",
@@ -2357,7 +2482,7 @@
       "executedAt": null,
       "evidence": [],
       "detail": "hem:edit:authoritative_intent_binding_missing",
-      "designRevisionSha256": "a361da8b50b3e4b840c04e7bdf7077467580a73242a109090dad13b8f5102e22"
+      "designRevisionSha256": "a0a108d123eb01b22a05bbf4355f6811b124b7f3f12053c4dc371dc83ef3b3d3"
     },
     {
       "feature": "hem",
@@ -2366,7 +2491,7 @@
       "executedAt": null,
       "evidence": [],
       "detail": "hem:regenerate:authoritative_intent_binding_missing",
-      "designRevisionSha256": "a361da8b50b3e4b840c04e7bdf7077467580a73242a109090dad13b8f5102e22"
+      "designRevisionSha256": "a0a108d123eb01b22a05bbf4355f6811b124b7f3f12053c4dc371dc83ef3b3d3"
     },
     {
       "feature": "hem",
@@ -2375,7 +2500,7 @@
       "executedAt": null,
       "evidence": [],
       "detail": "hem:save_reopen:authoritative_intent_binding_missing",
-      "designRevisionSha256": "a361da8b50b3e4b840c04e7bdf7077467580a73242a109090dad13b8f5102e22"
+      "designRevisionSha256": "a0a108d123eb01b22a05bbf4355f6811b124b7f3f12053c4dc371dc83ef3b3d3"
     },
     {
       "feature": "hem",
@@ -2384,7 +2509,7 @@
       "executedAt": null,
       "evidence": [],
       "detail": "hem:undo:authoritative_intent_binding_missing",
-      "designRevisionSha256": "a361da8b50b3e4b840c04e7bdf7077467580a73242a109090dad13b8f5102e22"
+      "designRevisionSha256": "a0a108d123eb01b22a05bbf4355f6811b124b7f3f12053c4dc371dc83ef3b3d3"
     },
     {
       "feature": "hem",
@@ -2393,7 +2518,7 @@
       "executedAt": null,
       "evidence": [],
       "detail": "hem:export:authoritative_intent_binding_missing",
-      "designRevisionSha256": "a361da8b50b3e4b840c04e7bdf7077467580a73242a109090dad13b8f5102e22"
+      "designRevisionSha256": "a0a108d123eb01b22a05bbf4355f6811b124b7f3f12053c4dc371dc83ef3b3d3"
     },
     {
       "feature": "hem",
@@ -2402,7 +2527,7 @@
       "executedAt": null,
       "evidence": [],
       "detail": "hem:drawing:authoritative_intent_binding_missing",
-      "designRevisionSha256": "a361da8b50b3e4b840c04e7bdf7077467580a73242a109090dad13b8f5102e22"
+      "designRevisionSha256": "a0a108d123eb01b22a05bbf4355f6811b124b7f3f12053c4dc371dc83ef3b3d3"
     },
     {
       "feature": "jog",
@@ -2411,7 +2536,7 @@
       "executedAt": null,
       "evidence": [],
       "detail": "jog:create:authoritative_intent_binding_missing",
-      "designRevisionSha256": "a361da8b50b3e4b840c04e7bdf7077467580a73242a109090dad13b8f5102e22"
+      "designRevisionSha256": "a0a108d123eb01b22a05bbf4355f6811b124b7f3f12053c4dc371dc83ef3b3d3"
     },
     {
       "feature": "jog",
@@ -2420,7 +2545,7 @@
       "executedAt": null,
       "evidence": [],
       "detail": "jog:edit:authoritative_intent_binding_missing",
-      "designRevisionSha256": "a361da8b50b3e4b840c04e7bdf7077467580a73242a109090dad13b8f5102e22"
+      "designRevisionSha256": "a0a108d123eb01b22a05bbf4355f6811b124b7f3f12053c4dc371dc83ef3b3d3"
     },
     {
       "feature": "jog",
@@ -2429,7 +2554,7 @@
       "executedAt": null,
       "evidence": [],
       "detail": "jog:regenerate:authoritative_intent_binding_missing",
-      "designRevisionSha256": "a361da8b50b3e4b840c04e7bdf7077467580a73242a109090dad13b8f5102e22"
+      "designRevisionSha256": "a0a108d123eb01b22a05bbf4355f6811b124b7f3f12053c4dc371dc83ef3b3d3"
     },
     {
       "feature": "jog",
@@ -2438,7 +2563,7 @@
       "executedAt": null,
       "evidence": [],
       "detail": "jog:save_reopen:authoritative_intent_binding_missing",
-      "designRevisionSha256": "a361da8b50b3e4b840c04e7bdf7077467580a73242a109090dad13b8f5102e22"
+      "designRevisionSha256": "a0a108d123eb01b22a05bbf4355f6811b124b7f3f12053c4dc371dc83ef3b3d3"
     },
     {
       "feature": "jog",
@@ -2447,7 +2572,7 @@
       "executedAt": null,
       "evidence": [],
       "detail": "jog:undo:authoritative_intent_binding_missing",
-      "designRevisionSha256": "a361da8b50b3e4b840c04e7bdf7077467580a73242a109090dad13b8f5102e22"
+      "designRevisionSha256": "a0a108d123eb01b22a05bbf4355f6811b124b7f3f12053c4dc371dc83ef3b3d3"
     },
     {
       "feature": "jog",
@@ -2456,7 +2581,7 @@
       "executedAt": null,
       "evidence": [],
       "detail": "jog:export:authoritative_intent_binding_missing",
-      "designRevisionSha256": "a361da8b50b3e4b840c04e7bdf7077467580a73242a109090dad13b8f5102e22"
+      "designRevisionSha256": "a0a108d123eb01b22a05bbf4355f6811b124b7f3f12053c4dc371dc83ef3b3d3"
     },
     {
       "feature": "jog",
@@ -2465,7 +2590,7 @@
       "executedAt": null,
       "evidence": [],
       "detail": "jog:drawing:authoritative_intent_binding_missing",
-      "designRevisionSha256": "a361da8b50b3e4b840c04e7bdf7077467580a73242a109090dad13b8f5102e22"
+      "designRevisionSha256": "a0a108d123eb01b22a05bbf4355f6811b124b7f3f12053c4dc371dc83ef3b3d3"
     },
     {
       "feature": "tab",
@@ -2474,7 +2599,7 @@
       "executedAt": null,
       "evidence": [],
       "detail": "tab:create:authoritative_intent_binding_missing",
-      "designRevisionSha256": "a361da8b50b3e4b840c04e7bdf7077467580a73242a109090dad13b8f5102e22"
+      "designRevisionSha256": "a0a108d123eb01b22a05bbf4355f6811b124b7f3f12053c4dc371dc83ef3b3d3"
     },
     {
       "feature": "tab",
@@ -2483,7 +2608,7 @@
       "executedAt": null,
       "evidence": [],
       "detail": "tab:edit:authoritative_intent_binding_missing",
-      "designRevisionSha256": "a361da8b50b3e4b840c04e7bdf7077467580a73242a109090dad13b8f5102e22"
+      "designRevisionSha256": "a0a108d123eb01b22a05bbf4355f6811b124b7f3f12053c4dc371dc83ef3b3d3"
     },
     {
       "feature": "tab",
@@ -2492,7 +2617,7 @@
       "executedAt": null,
       "evidence": [],
       "detail": "tab:regenerate:authoritative_intent_binding_missing",
-      "designRevisionSha256": "a361da8b50b3e4b840c04e7bdf7077467580a73242a109090dad13b8f5102e22"
+      "designRevisionSha256": "a0a108d123eb01b22a05bbf4355f6811b124b7f3f12053c4dc371dc83ef3b3d3"
     },
     {
       "feature": "tab",
@@ -2501,7 +2626,7 @@
       "executedAt": null,
       "evidence": [],
       "detail": "tab:save_reopen:authoritative_intent_binding_missing",
-      "designRevisionSha256": "a361da8b50b3e4b840c04e7bdf7077467580a73242a109090dad13b8f5102e22"
+      "designRevisionSha256": "a0a108d123eb01b22a05bbf4355f6811b124b7f3f12053c4dc371dc83ef3b3d3"
     },
     {
       "feature": "tab",
@@ -2510,7 +2635,7 @@
       "executedAt": null,
       "evidence": [],
       "detail": "tab:undo:authoritative_intent_binding_missing",
-      "designRevisionSha256": "a361da8b50b3e4b840c04e7bdf7077467580a73242a109090dad13b8f5102e22"
+      "designRevisionSha256": "a0a108d123eb01b22a05bbf4355f6811b124b7f3f12053c4dc371dc83ef3b3d3"
     },
     {
       "feature": "tab",
@@ -2519,7 +2644,7 @@
       "executedAt": null,
       "evidence": [],
       "detail": "tab:export:authoritative_intent_binding_missing",
-      "designRevisionSha256": "a361da8b50b3e4b840c04e7bdf7077467580a73242a109090dad13b8f5102e22"
+      "designRevisionSha256": "a0a108d123eb01b22a05bbf4355f6811b124b7f3f12053c4dc371dc83ef3b3d3"
     },
     {
       "feature": "tab",
@@ -2528,7 +2653,7 @@
       "executedAt": null,
       "evidence": [],
       "detail": "tab:drawing:authoritative_intent_binding_missing",
-      "designRevisionSha256": "a361da8b50b3e4b840c04e7bdf7077467580a73242a109090dad13b8f5102e22"
+      "designRevisionSha256": "a0a108d123eb01b22a05bbf4355f6811b124b7f3f12053c4dc371dc83ef3b3d3"
     },
     {
       "feature": "cut",
@@ -2537,7 +2662,7 @@
       "executedAt": null,
       "evidence": [],
       "detail": "cut:create:authoritative_intent_binding_missing",
-      "designRevisionSha256": "a361da8b50b3e4b840c04e7bdf7077467580a73242a109090dad13b8f5102e22"
+      "designRevisionSha256": "a0a108d123eb01b22a05bbf4355f6811b124b7f3f12053c4dc371dc83ef3b3d3"
     },
     {
       "feature": "cut",
@@ -2546,7 +2671,7 @@
       "executedAt": null,
       "evidence": [],
       "detail": "cut:edit:authoritative_intent_binding_missing",
-      "designRevisionSha256": "a361da8b50b3e4b840c04e7bdf7077467580a73242a109090dad13b8f5102e22"
+      "designRevisionSha256": "a0a108d123eb01b22a05bbf4355f6811b124b7f3f12053c4dc371dc83ef3b3d3"
     },
     {
       "feature": "cut",
@@ -2555,7 +2680,7 @@
       "executedAt": null,
       "evidence": [],
       "detail": "cut:regenerate:authoritative_intent_binding_missing",
-      "designRevisionSha256": "a361da8b50b3e4b840c04e7bdf7077467580a73242a109090dad13b8f5102e22"
+      "designRevisionSha256": "a0a108d123eb01b22a05bbf4355f6811b124b7f3f12053c4dc371dc83ef3b3d3"
     },
     {
       "feature": "cut",
@@ -2564,7 +2689,7 @@
       "executedAt": null,
       "evidence": [],
       "detail": "cut:save_reopen:authoritative_intent_binding_missing",
-      "designRevisionSha256": "a361da8b50b3e4b840c04e7bdf7077467580a73242a109090dad13b8f5102e22"
+      "designRevisionSha256": "a0a108d123eb01b22a05bbf4355f6811b124b7f3f12053c4dc371dc83ef3b3d3"
     },
     {
       "feature": "cut",
@@ -2573,7 +2698,7 @@
       "executedAt": null,
       "evidence": [],
       "detail": "cut:undo:authoritative_intent_binding_missing",
-      "designRevisionSha256": "a361da8b50b3e4b840c04e7bdf7077467580a73242a109090dad13b8f5102e22"
+      "designRevisionSha256": "a0a108d123eb01b22a05bbf4355f6811b124b7f3f12053c4dc371dc83ef3b3d3"
     },
     {
       "feature": "cut",
@@ -2582,7 +2707,7 @@
       "executedAt": null,
       "evidence": [],
       "detail": "cut:export:authoritative_intent_binding_missing",
-      "designRevisionSha256": "a361da8b50b3e4b840c04e7bdf7077467580a73242a109090dad13b8f5102e22"
+      "designRevisionSha256": "a0a108d123eb01b22a05bbf4355f6811b124b7f3f12053c4dc371dc83ef3b3d3"
     },
     {
       "feature": "cut",
@@ -2591,7 +2716,7 @@
       "executedAt": null,
       "evidence": [],
       "detail": "cut:drawing:authoritative_intent_binding_missing",
-      "designRevisionSha256": "a361da8b50b3e4b840c04e7bdf7077467580a73242a109090dad13b8f5102e22"
+      "designRevisionSha256": "a0a108d123eb01b22a05bbf4355f6811b124b7f3f12053c4dc371dc83ef3b3d3"
     },
     {
       "feature": "bendRelief",
@@ -2600,7 +2725,7 @@
       "executedAt": null,
       "evidence": [],
       "detail": "bendRelief:create:authoritative_intent_binding_missing",
-      "designRevisionSha256": "a361da8b50b3e4b840c04e7bdf7077467580a73242a109090dad13b8f5102e22"
+      "designRevisionSha256": "a0a108d123eb01b22a05bbf4355f6811b124b7f3f12053c4dc371dc83ef3b3d3"
     },
     {
       "feature": "bendRelief",
@@ -2609,7 +2734,7 @@
       "executedAt": null,
       "evidence": [],
       "detail": "bendRelief:edit:authoritative_intent_binding_missing",
-      "designRevisionSha256": "a361da8b50b3e4b840c04e7bdf7077467580a73242a109090dad13b8f5102e22"
+      "designRevisionSha256": "a0a108d123eb01b22a05bbf4355f6811b124b7f3f12053c4dc371dc83ef3b3d3"
     },
     {
       "feature": "bendRelief",
@@ -2618,7 +2743,7 @@
       "executedAt": null,
       "evidence": [],
       "detail": "bendRelief:regenerate:authoritative_intent_binding_missing",
-      "designRevisionSha256": "a361da8b50b3e4b840c04e7bdf7077467580a73242a109090dad13b8f5102e22"
+      "designRevisionSha256": "a0a108d123eb01b22a05bbf4355f6811b124b7f3f12053c4dc371dc83ef3b3d3"
     },
     {
       "feature": "bendRelief",
@@ -2627,7 +2752,7 @@
       "executedAt": null,
       "evidence": [],
       "detail": "bendRelief:save_reopen:authoritative_intent_binding_missing",
-      "designRevisionSha256": "a361da8b50b3e4b840c04e7bdf7077467580a73242a109090dad13b8f5102e22"
+      "designRevisionSha256": "a0a108d123eb01b22a05bbf4355f6811b124b7f3f12053c4dc371dc83ef3b3d3"
     },
     {
       "feature": "bendRelief",
@@ -2636,7 +2761,7 @@
       "executedAt": null,
       "evidence": [],
       "detail": "bendRelief:undo:authoritative_intent_binding_missing",
-      "designRevisionSha256": "a361da8b50b3e4b840c04e7bdf7077467580a73242a109090dad13b8f5102e22"
+      "designRevisionSha256": "a0a108d123eb01b22a05bbf4355f6811b124b7f3f12053c4dc371dc83ef3b3d3"
     },
     {
       "feature": "bendRelief",
@@ -2645,7 +2770,7 @@
       "executedAt": null,
       "evidence": [],
       "detail": "bendRelief:export:authoritative_intent_binding_missing",
-      "designRevisionSha256": "a361da8b50b3e4b840c04e7bdf7077467580a73242a109090dad13b8f5102e22"
+      "designRevisionSha256": "a0a108d123eb01b22a05bbf4355f6811b124b7f3f12053c4dc371dc83ef3b3d3"
     },
     {
       "feature": "bendRelief",
@@ -2654,7 +2779,7 @@
       "executedAt": null,
       "evidence": [],
       "detail": "bendRelief:drawing:authoritative_intent_binding_missing",
-      "designRevisionSha256": "a361da8b50b3e4b840c04e7bdf7077467580a73242a109090dad13b8f5102e22"
+      "designRevisionSha256": "a0a108d123eb01b22a05bbf4355f6811b124b7f3f12053c4dc371dc83ef3b3d3"
     },
     {
       "feature": "cornerRelief",
@@ -2663,7 +2788,7 @@
       "executedAt": null,
       "evidence": [],
       "detail": "cornerRelief:create:authoritative_intent_binding_missing",
-      "designRevisionSha256": "a361da8b50b3e4b840c04e7bdf7077467580a73242a109090dad13b8f5102e22"
+      "designRevisionSha256": "a0a108d123eb01b22a05bbf4355f6811b124b7f3f12053c4dc371dc83ef3b3d3"
     },
     {
       "feature": "cornerRelief",
@@ -2672,7 +2797,7 @@
       "executedAt": null,
       "evidence": [],
       "detail": "cornerRelief:edit:authoritative_intent_binding_missing",
-      "designRevisionSha256": "a361da8b50b3e4b840c04e7bdf7077467580a73242a109090dad13b8f5102e22"
+      "designRevisionSha256": "a0a108d123eb01b22a05bbf4355f6811b124b7f3f12053c4dc371dc83ef3b3d3"
     },
     {
       "feature": "cornerRelief",
@@ -2681,7 +2806,7 @@
       "executedAt": null,
       "evidence": [],
       "detail": "cornerRelief:regenerate:authoritative_intent_binding_missing",
-      "designRevisionSha256": "a361da8b50b3e4b840c04e7bdf7077467580a73242a109090dad13b8f5102e22"
+      "designRevisionSha256": "a0a108d123eb01b22a05bbf4355f6811b124b7f3f12053c4dc371dc83ef3b3d3"
     },
     {
       "feature": "cornerRelief",
@@ -2690,7 +2815,7 @@
       "executedAt": null,
       "evidence": [],
       "detail": "cornerRelief:save_reopen:authoritative_intent_binding_missing",
-      "designRevisionSha256": "a361da8b50b3e4b840c04e7bdf7077467580a73242a109090dad13b8f5102e22"
+      "designRevisionSha256": "a0a108d123eb01b22a05bbf4355f6811b124b7f3f12053c4dc371dc83ef3b3d3"
     },
     {
       "feature": "cornerRelief",
@@ -2699,7 +2824,7 @@
       "executedAt": null,
       "evidence": [],
       "detail": "cornerRelief:undo:authoritative_intent_binding_missing",
-      "designRevisionSha256": "a361da8b50b3e4b840c04e7bdf7077467580a73242a109090dad13b8f5102e22"
+      "designRevisionSha256": "a0a108d123eb01b22a05bbf4355f6811b124b7f3f12053c4dc371dc83ef3b3d3"
     },
     {
       "feature": "cornerRelief",
@@ -2708,7 +2833,7 @@
       "executedAt": null,
       "evidence": [],
       "detail": "cornerRelief:export:authoritative_intent_binding_missing",
-      "designRevisionSha256": "a361da8b50b3e4b840c04e7bdf7077467580a73242a109090dad13b8f5102e22"
+      "designRevisionSha256": "a0a108d123eb01b22a05bbf4355f6811b124b7f3f12053c4dc371dc83ef3b3d3"
     },
     {
       "feature": "cornerRelief",
@@ -2717,7 +2842,7 @@
       "executedAt": null,
       "evidence": [],
       "detail": "cornerRelief:drawing:authoritative_intent_binding_missing",
-      "designRevisionSha256": "a361da8b50b3e4b840c04e7bdf7077467580a73242a109090dad13b8f5102e22"
+      "designRevisionSha256": "a0a108d123eb01b22a05bbf4355f6811b124b7f3f12053c4dc371dc83ef3b3d3"
     },
     {
       "feature": "variableShell",
@@ -2726,7 +2851,7 @@
       "executedAt": null,
       "evidence": [],
       "detail": "variableShell:create:authoritative_intent_binding_missing",
-      "designRevisionSha256": "a361da8b50b3e4b840c04e7bdf7077467580a73242a109090dad13b8f5102e22"
+      "designRevisionSha256": "a0a108d123eb01b22a05bbf4355f6811b124b7f3f12053c4dc371dc83ef3b3d3"
     },
     {
       "feature": "variableShell",
@@ -2735,7 +2860,7 @@
       "executedAt": null,
       "evidence": [],
       "detail": "variableShell:edit:authoritative_intent_binding_missing",
-      "designRevisionSha256": "a361da8b50b3e4b840c04e7bdf7077467580a73242a109090dad13b8f5102e22"
+      "designRevisionSha256": "a0a108d123eb01b22a05bbf4355f6811b124b7f3f12053c4dc371dc83ef3b3d3"
     },
     {
       "feature": "variableShell",
@@ -2744,7 +2869,7 @@
       "executedAt": null,
       "evidence": [],
       "detail": "variableShell:regenerate:authoritative_intent_binding_missing",
-      "designRevisionSha256": "a361da8b50b3e4b840c04e7bdf7077467580a73242a109090dad13b8f5102e22"
+      "designRevisionSha256": "a0a108d123eb01b22a05bbf4355f6811b124b7f3f12053c4dc371dc83ef3b3d3"
     },
     {
       "feature": "variableShell",
@@ -2753,7 +2878,7 @@
       "executedAt": null,
       "evidence": [],
       "detail": "variableShell:save_reopen:authoritative_intent_binding_missing",
-      "designRevisionSha256": "a361da8b50b3e4b840c04e7bdf7077467580a73242a109090dad13b8f5102e22"
+      "designRevisionSha256": "a0a108d123eb01b22a05bbf4355f6811b124b7f3f12053c4dc371dc83ef3b3d3"
     },
     {
       "feature": "variableShell",
@@ -2762,7 +2887,7 @@
       "executedAt": null,
       "evidence": [],
       "detail": "variableShell:undo:authoritative_intent_binding_missing",
-      "designRevisionSha256": "a361da8b50b3e4b840c04e7bdf7077467580a73242a109090dad13b8f5102e22"
+      "designRevisionSha256": "a0a108d123eb01b22a05bbf4355f6811b124b7f3f12053c4dc371dc83ef3b3d3"
     },
     {
       "feature": "variableShell",
@@ -2771,7 +2896,7 @@
       "executedAt": null,
       "evidence": [],
       "detail": "variableShell:export:authoritative_intent_binding_missing",
-      "designRevisionSha256": "a361da8b50b3e4b840c04e7bdf7077467580a73242a109090dad13b8f5102e22"
+      "designRevisionSha256": "a0a108d123eb01b22a05bbf4355f6811b124b7f3f12053c4dc371dc83ef3b3d3"
     },
     {
       "feature": "variableShell",
@@ -2780,7 +2905,7 @@
       "executedAt": null,
       "evidence": [],
       "detail": "variableShell:drawing:authoritative_intent_binding_missing",
-      "designRevisionSha256": "a361da8b50b3e4b840c04e7bdf7077467580a73242a109090dad13b8f5102e22"
+      "designRevisionSha256": "a0a108d123eb01b22a05bbf4355f6811b124b7f3f12053c4dc371dc83ef3b3d3"
     },
     {
       "feature": "sketchExtrude",
@@ -2789,7 +2914,7 @@
       "executedAt": null,
       "evidence": [],
       "detail": "sketchExtrude:create:authoritative_intent_binding_missing",
-      "designRevisionSha256": "a361da8b50b3e4b840c04e7bdf7077467580a73242a109090dad13b8f5102e22"
+      "designRevisionSha256": "a0a108d123eb01b22a05bbf4355f6811b124b7f3f12053c4dc371dc83ef3b3d3"
     },
     {
       "feature": "sketchExtrude",
@@ -2798,7 +2923,7 @@
       "executedAt": null,
       "evidence": [],
       "detail": "sketchExtrude:edit:authoritative_intent_binding_missing",
-      "designRevisionSha256": "a361da8b50b3e4b840c04e7bdf7077467580a73242a109090dad13b8f5102e22"
+      "designRevisionSha256": "a0a108d123eb01b22a05bbf4355f6811b124b7f3f12053c4dc371dc83ef3b3d3"
     },
     {
       "feature": "sketchExtrude",
@@ -2807,7 +2932,7 @@
       "executedAt": null,
       "evidence": [],
       "detail": "sketchExtrude:regenerate:authoritative_intent_binding_missing",
-      "designRevisionSha256": "a361da8b50b3e4b840c04e7bdf7077467580a73242a109090dad13b8f5102e22"
+      "designRevisionSha256": "a0a108d123eb01b22a05bbf4355f6811b124b7f3f12053c4dc371dc83ef3b3d3"
     },
     {
       "feature": "sketchExtrude",
@@ -2816,7 +2941,7 @@
       "executedAt": null,
       "evidence": [],
       "detail": "sketchExtrude:save_reopen:authoritative_intent_binding_missing",
-      "designRevisionSha256": "a361da8b50b3e4b840c04e7bdf7077467580a73242a109090dad13b8f5102e22"
+      "designRevisionSha256": "a0a108d123eb01b22a05bbf4355f6811b124b7f3f12053c4dc371dc83ef3b3d3"
     },
     {
       "feature": "sketchExtrude",
@@ -2825,7 +2950,7 @@
       "executedAt": null,
       "evidence": [],
       "detail": "sketchExtrude:undo:authoritative_intent_binding_missing",
-      "designRevisionSha256": "a361da8b50b3e4b840c04e7bdf7077467580a73242a109090dad13b8f5102e22"
+      "designRevisionSha256": "a0a108d123eb01b22a05bbf4355f6811b124b7f3f12053c4dc371dc83ef3b3d3"
     },
     {
       "feature": "sketchExtrude",
@@ -2834,7 +2959,7 @@
       "executedAt": null,
       "evidence": [],
       "detail": "sketchExtrude:export:authoritative_intent_binding_missing",
-      "designRevisionSha256": "a361da8b50b3e4b840c04e7bdf7077467580a73242a109090dad13b8f5102e22"
+      "designRevisionSha256": "a0a108d123eb01b22a05bbf4355f6811b124b7f3f12053c4dc371dc83ef3b3d3"
     },
     {
       "feature": "sketchExtrude",
@@ -2843,7 +2968,7 @@
       "executedAt": null,
       "evidence": [],
       "detail": "sketchExtrude:drawing:authoritative_intent_binding_missing",
-      "designRevisionSha256": "a361da8b50b3e4b840c04e7bdf7077467580a73242a109090dad13b8f5102e22"
+      "designRevisionSha256": "a0a108d123eb01b22a05bbf4355f6811b124b7f3f12053c4dc371dc83ef3b3d3"
     },
     {
       "feature": "revolve",
@@ -2852,7 +2977,7 @@
       "executedAt": null,
       "evidence": [],
       "detail": "revolve:create:authoritative_intent_binding_missing",
-      "designRevisionSha256": "a361da8b50b3e4b840c04e7bdf7077467580a73242a109090dad13b8f5102e22"
+      "designRevisionSha256": "a0a108d123eb01b22a05bbf4355f6811b124b7f3f12053c4dc371dc83ef3b3d3"
     },
     {
       "feature": "revolve",
@@ -2861,7 +2986,7 @@
       "executedAt": null,
       "evidence": [],
       "detail": "revolve:edit:authoritative_intent_binding_missing",
-      "designRevisionSha256": "a361da8b50b3e4b840c04e7bdf7077467580a73242a109090dad13b8f5102e22"
+      "designRevisionSha256": "a0a108d123eb01b22a05bbf4355f6811b124b7f3f12053c4dc371dc83ef3b3d3"
     },
     {
       "feature": "revolve",
@@ -2870,7 +2995,7 @@
       "executedAt": null,
       "evidence": [],
       "detail": "revolve:regenerate:authoritative_intent_binding_missing",
-      "designRevisionSha256": "a361da8b50b3e4b840c04e7bdf7077467580a73242a109090dad13b8f5102e22"
+      "designRevisionSha256": "a0a108d123eb01b22a05bbf4355f6811b124b7f3f12053c4dc371dc83ef3b3d3"
     },
     {
       "feature": "revolve",
@@ -2879,7 +3004,7 @@
       "executedAt": null,
       "evidence": [],
       "detail": "revolve:save_reopen:authoritative_intent_binding_missing",
-      "designRevisionSha256": "a361da8b50b3e4b840c04e7bdf7077467580a73242a109090dad13b8f5102e22"
+      "designRevisionSha256": "a0a108d123eb01b22a05bbf4355f6811b124b7f3f12053c4dc371dc83ef3b3d3"
     },
     {
       "feature": "revolve",
@@ -2888,7 +3013,7 @@
       "executedAt": null,
       "evidence": [],
       "detail": "revolve:undo:authoritative_intent_binding_missing",
-      "designRevisionSha256": "a361da8b50b3e4b840c04e7bdf7077467580a73242a109090dad13b8f5102e22"
+      "designRevisionSha256": "a0a108d123eb01b22a05bbf4355f6811b124b7f3f12053c4dc371dc83ef3b3d3"
     },
     {
       "feature": "revolve",
@@ -2897,7 +3022,7 @@
       "executedAt": null,
       "evidence": [],
       "detail": "revolve:export:authoritative_intent_binding_missing",
-      "designRevisionSha256": "a361da8b50b3e4b840c04e7bdf7077467580a73242a109090dad13b8f5102e22"
+      "designRevisionSha256": "a0a108d123eb01b22a05bbf4355f6811b124b7f3f12053c4dc371dc83ef3b3d3"
     },
     {
       "feature": "revolve",
@@ -2906,7 +3031,7 @@
       "executedAt": null,
       "evidence": [],
       "detail": "revolve:drawing:authoritative_intent_binding_missing",
-      "designRevisionSha256": "a361da8b50b3e4b840c04e7bdf7077467580a73242a109090dad13b8f5102e22"
+      "designRevisionSha256": "a0a108d123eb01b22a05bbf4355f6811b124b7f3f12053c4dc371dc83ef3b3d3"
     },
     {
       "feature": "sweep",
@@ -2915,7 +3040,7 @@
       "executedAt": null,
       "evidence": [],
       "detail": "sweep:create:authoritative_intent_binding_missing",
-      "designRevisionSha256": "a361da8b50b3e4b840c04e7bdf7077467580a73242a109090dad13b8f5102e22"
+      "designRevisionSha256": "a0a108d123eb01b22a05bbf4355f6811b124b7f3f12053c4dc371dc83ef3b3d3"
     },
     {
       "feature": "sweep",
@@ -2924,7 +3049,7 @@
       "executedAt": null,
       "evidence": [],
       "detail": "sweep:edit:authoritative_intent_binding_missing",
-      "designRevisionSha256": "a361da8b50b3e4b840c04e7bdf7077467580a73242a109090dad13b8f5102e22"
+      "designRevisionSha256": "a0a108d123eb01b22a05bbf4355f6811b124b7f3f12053c4dc371dc83ef3b3d3"
     },
     {
       "feature": "sweep",
@@ -2933,7 +3058,7 @@
       "executedAt": null,
       "evidence": [],
       "detail": "sweep:regenerate:authoritative_intent_binding_missing",
-      "designRevisionSha256": "a361da8b50b3e4b840c04e7bdf7077467580a73242a109090dad13b8f5102e22"
+      "designRevisionSha256": "a0a108d123eb01b22a05bbf4355f6811b124b7f3f12053c4dc371dc83ef3b3d3"
     },
     {
       "feature": "sweep",
@@ -2942,7 +3067,7 @@
       "executedAt": null,
       "evidence": [],
       "detail": "sweep:save_reopen:authoritative_intent_binding_missing",
-      "designRevisionSha256": "a361da8b50b3e4b840c04e7bdf7077467580a73242a109090dad13b8f5102e22"
+      "designRevisionSha256": "a0a108d123eb01b22a05bbf4355f6811b124b7f3f12053c4dc371dc83ef3b3d3"
     },
     {
       "feature": "sweep",
@@ -2951,7 +3076,7 @@
       "executedAt": null,
       "evidence": [],
       "detail": "sweep:undo:authoritative_intent_binding_missing",
-      "designRevisionSha256": "a361da8b50b3e4b840c04e7bdf7077467580a73242a109090dad13b8f5102e22"
+      "designRevisionSha256": "a0a108d123eb01b22a05bbf4355f6811b124b7f3f12053c4dc371dc83ef3b3d3"
     },
     {
       "feature": "sweep",
@@ -2960,7 +3085,7 @@
       "executedAt": null,
       "evidence": [],
       "detail": "sweep:export:authoritative_intent_binding_missing",
-      "designRevisionSha256": "a361da8b50b3e4b840c04e7bdf7077467580a73242a109090dad13b8f5102e22"
+      "designRevisionSha256": "a0a108d123eb01b22a05bbf4355f6811b124b7f3f12053c4dc371dc83ef3b3d3"
     },
     {
       "feature": "sweep",
@@ -2969,7 +3094,7 @@
       "executedAt": null,
       "evidence": [],
       "detail": "sweep:drawing:authoritative_intent_binding_missing",
-      "designRevisionSha256": "a361da8b50b3e4b840c04e7bdf7077467580a73242a109090dad13b8f5102e22"
+      "designRevisionSha256": "a0a108d123eb01b22a05bbf4355f6811b124b7f3f12053c4dc371dc83ef3b3d3"
     },
     {
       "feature": "loft",
@@ -2978,7 +3103,7 @@
       "executedAt": null,
       "evidence": [],
       "detail": "loft:create:authoritative_intent_binding_missing",
-      "designRevisionSha256": "a361da8b50b3e4b840c04e7bdf7077467580a73242a109090dad13b8f5102e22"
+      "designRevisionSha256": "a0a108d123eb01b22a05bbf4355f6811b124b7f3f12053c4dc371dc83ef3b3d3"
     },
     {
       "feature": "loft",
@@ -2987,7 +3112,7 @@
       "executedAt": null,
       "evidence": [],
       "detail": "loft:edit:authoritative_intent_binding_missing",
-      "designRevisionSha256": "a361da8b50b3e4b840c04e7bdf7077467580a73242a109090dad13b8f5102e22"
+      "designRevisionSha256": "a0a108d123eb01b22a05bbf4355f6811b124b7f3f12053c4dc371dc83ef3b3d3"
     },
     {
       "feature": "loft",
@@ -2996,7 +3121,7 @@
       "executedAt": null,
       "evidence": [],
       "detail": "loft:regenerate:authoritative_intent_binding_missing",
-      "designRevisionSha256": "a361da8b50b3e4b840c04e7bdf7077467580a73242a109090dad13b8f5102e22"
+      "designRevisionSha256": "a0a108d123eb01b22a05bbf4355f6811b124b7f3f12053c4dc371dc83ef3b3d3"
     },
     {
       "feature": "loft",
@@ -3005,7 +3130,7 @@
       "executedAt": null,
       "evidence": [],
       "detail": "loft:save_reopen:authoritative_intent_binding_missing",
-      "designRevisionSha256": "a361da8b50b3e4b840c04e7bdf7077467580a73242a109090dad13b8f5102e22"
+      "designRevisionSha256": "a0a108d123eb01b22a05bbf4355f6811b124b7f3f12053c4dc371dc83ef3b3d3"
     },
     {
       "feature": "loft",
@@ -3014,7 +3139,7 @@
       "executedAt": null,
       "evidence": [],
       "detail": "loft:undo:authoritative_intent_binding_missing",
-      "designRevisionSha256": "a361da8b50b3e4b840c04e7bdf7077467580a73242a109090dad13b8f5102e22"
+      "designRevisionSha256": "a0a108d123eb01b22a05bbf4355f6811b124b7f3f12053c4dc371dc83ef3b3d3"
     },
     {
       "feature": "loft",
@@ -3023,7 +3148,7 @@
       "executedAt": null,
       "evidence": [],
       "detail": "loft:export:authoritative_intent_binding_missing",
-      "designRevisionSha256": "a361da8b50b3e4b840c04e7bdf7077467580a73242a109090dad13b8f5102e22"
+      "designRevisionSha256": "a0a108d123eb01b22a05bbf4355f6811b124b7f3f12053c4dc371dc83ef3b3d3"
     },
     {
       "feature": "loft",
@@ -3032,7 +3157,7 @@
       "executedAt": null,
       "evidence": [],
       "detail": "loft:drawing:authoritative_intent_binding_missing",
-      "designRevisionSha256": "a361da8b50b3e4b840c04e7bdf7077467580a73242a109090dad13b8f5102e22"
+      "designRevisionSha256": "a0a108d123eb01b22a05bbf4355f6811b124b7f3f12053c4dc371dc83ef3b3d3"
     },
     {
       "feature": "mirror",
@@ -3041,7 +3166,7 @@
       "executedAt": null,
       "evidence": [],
       "detail": "mirror:create:authoritative_intent_binding_missing",
-      "designRevisionSha256": "a361da8b50b3e4b840c04e7bdf7077467580a73242a109090dad13b8f5102e22"
+      "designRevisionSha256": "a0a108d123eb01b22a05bbf4355f6811b124b7f3f12053c4dc371dc83ef3b3d3"
     },
     {
       "feature": "mirror",
@@ -3050,7 +3175,7 @@
       "executedAt": null,
       "evidence": [],
       "detail": "mirror:edit:authoritative_intent_binding_missing",
-      "designRevisionSha256": "a361da8b50b3e4b840c04e7bdf7077467580a73242a109090dad13b8f5102e22"
+      "designRevisionSha256": "a0a108d123eb01b22a05bbf4355f6811b124b7f3f12053c4dc371dc83ef3b3d3"
     },
     {
       "feature": "mirror",
@@ -3059,7 +3184,7 @@
       "executedAt": null,
       "evidence": [],
       "detail": "mirror:regenerate:authoritative_intent_binding_missing",
-      "designRevisionSha256": "a361da8b50b3e4b840c04e7bdf7077467580a73242a109090dad13b8f5102e22"
+      "designRevisionSha256": "a0a108d123eb01b22a05bbf4355f6811b124b7f3f12053c4dc371dc83ef3b3d3"
     },
     {
       "feature": "mirror",
@@ -3068,7 +3193,7 @@
       "executedAt": null,
       "evidence": [],
       "detail": "mirror:save_reopen:authoritative_intent_binding_missing",
-      "designRevisionSha256": "a361da8b50b3e4b840c04e7bdf7077467580a73242a109090dad13b8f5102e22"
+      "designRevisionSha256": "a0a108d123eb01b22a05bbf4355f6811b124b7f3f12053c4dc371dc83ef3b3d3"
     },
     {
       "feature": "mirror",
@@ -3077,7 +3202,7 @@
       "executedAt": null,
       "evidence": [],
       "detail": "mirror:undo:authoritative_intent_binding_missing",
-      "designRevisionSha256": "a361da8b50b3e4b840c04e7bdf7077467580a73242a109090dad13b8f5102e22"
+      "designRevisionSha256": "a0a108d123eb01b22a05bbf4355f6811b124b7f3f12053c4dc371dc83ef3b3d3"
     },
     {
       "feature": "mirror",
@@ -3086,7 +3211,7 @@
       "executedAt": null,
       "evidence": [],
       "detail": "mirror:export:authoritative_intent_binding_missing",
-      "designRevisionSha256": "a361da8b50b3e4b840c04e7bdf7077467580a73242a109090dad13b8f5102e22"
+      "designRevisionSha256": "a0a108d123eb01b22a05bbf4355f6811b124b7f3f12053c4dc371dc83ef3b3d3"
     },
     {
       "feature": "mirror",
@@ -3095,7 +3220,7 @@
       "executedAt": null,
       "evidence": [],
       "detail": "mirror:drawing:authoritative_intent_binding_missing",
-      "designRevisionSha256": "a361da8b50b3e4b840c04e7bdf7077467580a73242a109090dad13b8f5102e22"
+      "designRevisionSha256": "a0a108d123eb01b22a05bbf4355f6811b124b7f3f12053c4dc371dc83ef3b3d3"
     },
     {
       "feature": "boolean",
@@ -3104,7 +3229,7 @@
       "executedAt": null,
       "evidence": [],
       "detail": "boolean:create:authoritative_intent_binding_missing",
-      "designRevisionSha256": "a361da8b50b3e4b840c04e7bdf7077467580a73242a109090dad13b8f5102e22"
+      "designRevisionSha256": "a0a108d123eb01b22a05bbf4355f6811b124b7f3f12053c4dc371dc83ef3b3d3"
     },
     {
       "feature": "boolean",
@@ -3113,7 +3238,7 @@
       "executedAt": null,
       "evidence": [],
       "detail": "boolean:edit:authoritative_intent_binding_missing",
-      "designRevisionSha256": "a361da8b50b3e4b840c04e7bdf7077467580a73242a109090dad13b8f5102e22"
+      "designRevisionSha256": "a0a108d123eb01b22a05bbf4355f6811b124b7f3f12053c4dc371dc83ef3b3d3"
     },
     {
       "feature": "boolean",
@@ -3122,7 +3247,7 @@
       "executedAt": null,
       "evidence": [],
       "detail": "boolean:regenerate:authoritative_intent_binding_missing",
-      "designRevisionSha256": "a361da8b50b3e4b840c04e7bdf7077467580a73242a109090dad13b8f5102e22"
+      "designRevisionSha256": "a0a108d123eb01b22a05bbf4355f6811b124b7f3f12053c4dc371dc83ef3b3d3"
     },
     {
       "feature": "boolean",
@@ -3131,7 +3256,7 @@
       "executedAt": null,
       "evidence": [],
       "detail": "boolean:save_reopen:authoritative_intent_binding_missing",
-      "designRevisionSha256": "a361da8b50b3e4b840c04e7bdf7077467580a73242a109090dad13b8f5102e22"
+      "designRevisionSha256": "a0a108d123eb01b22a05bbf4355f6811b124b7f3f12053c4dc371dc83ef3b3d3"
     },
     {
       "feature": "boolean",
@@ -3140,7 +3265,7 @@
       "executedAt": null,
       "evidence": [],
       "detail": "boolean:undo:authoritative_intent_binding_missing",
-      "designRevisionSha256": "a361da8b50b3e4b840c04e7bdf7077467580a73242a109090dad13b8f5102e22"
+      "designRevisionSha256": "a0a108d123eb01b22a05bbf4355f6811b124b7f3f12053c4dc371dc83ef3b3d3"
     },
     {
       "feature": "boolean",
@@ -3149,7 +3274,7 @@
       "executedAt": null,
       "evidence": [],
       "detail": "boolean:export:authoritative_intent_binding_missing",
-      "designRevisionSha256": "a361da8b50b3e4b840c04e7bdf7077467580a73242a109090dad13b8f5102e22"
+      "designRevisionSha256": "a0a108d123eb01b22a05bbf4355f6811b124b7f3f12053c4dc371dc83ef3b3d3"
     },
     {
       "feature": "boolean",
@@ -3158,7 +3283,7 @@
       "executedAt": null,
       "evidence": [],
       "detail": "boolean:drawing:authoritative_intent_binding_missing",
-      "designRevisionSha256": "a361da8b50b3e4b840c04e7bdf7077467580a73242a109090dad13b8f5102e22"
+      "designRevisionSha256": "a0a108d123eb01b22a05bbf4355f6811b124b7f3f12053c4dc371dc83ef3b3d3"
     },
     {
       "feature": "splitBody",
@@ -3167,7 +3292,7 @@
       "executedAt": null,
       "evidence": [],
       "detail": "splitBody:create:authoritative_intent_binding_missing",
-      "designRevisionSha256": "a361da8b50b3e4b840c04e7bdf7077467580a73242a109090dad13b8f5102e22"
+      "designRevisionSha256": "a0a108d123eb01b22a05bbf4355f6811b124b7f3f12053c4dc371dc83ef3b3d3"
     },
     {
       "feature": "splitBody",
@@ -3176,7 +3301,7 @@
       "executedAt": null,
       "evidence": [],
       "detail": "splitBody:edit:authoritative_intent_binding_missing",
-      "designRevisionSha256": "a361da8b50b3e4b840c04e7bdf7077467580a73242a109090dad13b8f5102e22"
+      "designRevisionSha256": "a0a108d123eb01b22a05bbf4355f6811b124b7f3f12053c4dc371dc83ef3b3d3"
     },
     {
       "feature": "splitBody",
@@ -3185,7 +3310,7 @@
       "executedAt": null,
       "evidence": [],
       "detail": "splitBody:regenerate:authoritative_intent_binding_missing",
-      "designRevisionSha256": "a361da8b50b3e4b840c04e7bdf7077467580a73242a109090dad13b8f5102e22"
+      "designRevisionSha256": "a0a108d123eb01b22a05bbf4355f6811b124b7f3f12053c4dc371dc83ef3b3d3"
     },
     {
       "feature": "splitBody",
@@ -3194,7 +3319,7 @@
       "executedAt": null,
       "evidence": [],
       "detail": "splitBody:save_reopen:authoritative_intent_binding_missing",
-      "designRevisionSha256": "a361da8b50b3e4b840c04e7bdf7077467580a73242a109090dad13b8f5102e22"
+      "designRevisionSha256": "a0a108d123eb01b22a05bbf4355f6811b124b7f3f12053c4dc371dc83ef3b3d3"
     },
     {
       "feature": "splitBody",
@@ -3203,7 +3328,7 @@
       "executedAt": null,
       "evidence": [],
       "detail": "splitBody:undo:authoritative_intent_binding_missing",
-      "designRevisionSha256": "a361da8b50b3e4b840c04e7bdf7077467580a73242a109090dad13b8f5102e22"
+      "designRevisionSha256": "a0a108d123eb01b22a05bbf4355f6811b124b7f3f12053c4dc371dc83ef3b3d3"
     },
     {
       "feature": "splitBody",
@@ -3212,7 +3337,7 @@
       "executedAt": null,
       "evidence": [],
       "detail": "splitBody:export:authoritative_intent_binding_missing",
-      "designRevisionSha256": "a361da8b50b3e4b840c04e7bdf7077467580a73242a109090dad13b8f5102e22"
+      "designRevisionSha256": "a0a108d123eb01b22a05bbf4355f6811b124b7f3f12053c4dc371dc83ef3b3d3"
     },
     {
       "feature": "splitBody",
@@ -3221,7 +3346,7 @@
       "executedAt": null,
       "evidence": [],
       "detail": "splitBody:drawing:authoritative_intent_binding_missing",
-      "designRevisionSha256": "a361da8b50b3e4b840c04e7bdf7077467580a73242a109090dad13b8f5102e22"
+      "designRevisionSha256": "a0a108d123eb01b22a05bbf4355f6811b124b7f3f12053c4dc371dc83ef3b3d3"
     }
   ]
 }

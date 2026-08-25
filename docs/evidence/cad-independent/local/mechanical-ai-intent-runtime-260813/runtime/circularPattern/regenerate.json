@@ -3,7 +3,7 @@
   "feature": "circularPattern",
   "axis": "regenerate",
   "status": "PASS",
-  "executedAt": "2026-08-24T15:00:47.700Z",
+  "executedAt": "2026-08-25T08:20:38.363Z",
   "initial": {
     "handle": "occt:88",
     "kernelKind": "Solid",
@@ -78,7 +78,7 @@
   "intentBinding": {
     "caseId": "ko_practical-07-circularPattern",
     "candidateId": "intent-runtime:ko_practical-07-circularPattern",
-    "candidateBaseRevision": "a361da8b50b3e4b840c04e7bdf7077467580a73242a109090dad13b8f5102e22",
+    "candidateBaseRevision": "a0a108d123eb01b22a05bbf4355f6811b124b7f3f12053c4dc371dc83ef3b3d3",
     "promptSha256": "84f55ad69bf21c90860c12e9206056ce47a7405104ba4caa2a8bcdb5173e589b",
     "inputSha256": "42856994be07c22070fd35921cfe82295db7042c543d308b01fd61a235a18b6d",
     "sourceUnits": [

@@ -3,9 +3,9 @@
   "feature": "draft",
   "axis": "export",
   "status": "PASS",
-  "executedAt": "2026-08-24T22:37:05.669Z",
+  "executedAt": "2026-08-25T08:21:07.337Z",
   "stepBytes": 19780,
-  "stepSha256": "fccd81af2a41ed3a666a17130374f26455b3f86667993844e9b075a530cf397c",
+  "stepSha256": "12f1585c298337a838e0697a0787617acd64672df9c1539c17527f4db92ca614",
   "before": {
     "handle": "occt:109",
     "kernelKind": "Solid",

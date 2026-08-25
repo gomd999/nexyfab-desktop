@@ -4,6 +4,10 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
+import {
+  TEXT_BINDING_CANONICALIZATION,
+  canonicalTextBinding,
+} from './canonical-text-binding.mjs';
 
 const OUTPUT_REL = 'docs/evidence/cad-independent/mechanical-core-internal-verification.json';
 const SOURCE_BINDINGS = Object.freeze([
@@ -67,6 +71,15 @@ const SOURCE_BINDINGS = Object.freeze([
   'src/lib/ai/domainAccuracyReleaseGate.test.ts',
   'public/replicad_single.wasm',
   'public/occt-import-js.wasm',
+]);
+const BINARY_SOURCE_BINDINGS = new Set([
+  'public/replicad_single.wasm',
+  'public/occt-import-js.wasm',
+]);
+export const EVIDENCE_BINDING_ROOTS = Object.freeze([
+  'docs/evidence/cad-independent/local/mechanical-ai-intent-qualification-260813',
+  'docs/evidence/cad-independent/local/mechanical-ai-intent-runtime-260813',
+  'docs/evidence/cad-independent/local/assembly-drawing-handoff-260813',
 ]);
 
 const DIRECT_TESTS = [
@@ -133,6 +146,24 @@ function gitValue(root, args) {
   return result.status === 0 ? String(result.stdout ?? '').trim() : null;
 }
 
+function boundEvidenceFiles(root) {
+  const files = [];
+  const visit = relative => {
+    const absolute = path.resolve(root, ...relative.split('/'));
+    if (!fs.existsSync(absolute) || !fs.statSync(absolute).isDirectory()) {
+      throw new Error(`MECHANICAL_INTERNAL_EVIDENCE_ROOT_MISSING:${relative}`);
+    }
+    for (const entry of fs.readdirSync(absolute, { withFileTypes: true })) {
+      if (entry.isSymbolicLink()) throw new Error(`MECHANICAL_INTERNAL_EVIDENCE_SYMLINK_REJECTED:${relative}/${entry.name}`);
+      const child = `${relative}/${entry.name}`;
+      if (entry.isDirectory()) visit(child);
+      else if (entry.isFile()) files.push(child);
+    }
+  };
+  for (const relative of EVIDENCE_BINDING_ROOTS) visit(relative);
+  return files.sort();
+}
+
 export function buildMechanicalInternalVerificationReceipt({
   root,
   runCommand = defaultRunCommand,
@@ -146,10 +177,14 @@ export function buildMechanicalInternalVerificationReceipt({
     'assembly-handoff-readiness',
     'typecheck',
   ].map(name => runCommand(root, name));
-  const sourceBindings = SOURCE_BINDINGS.map(relative => {
+  const evidenceFiles = boundEvidenceFiles(root);
+  const sourceBindings = [...SOURCE_BINDINGS, ...evidenceFiles].map(relative => {
     const absolute = path.resolve(root, ...relative.split('/'));
     if (!fs.existsSync(absolute)) throw new Error(`MECHANICAL_INTERNAL_SOURCE_MISSING:${relative}`);
-    return { path: relative, sha256: sha256(fs.readFileSync(absolute)) };
+    const bytes = fs.readFileSync(absolute);
+    return BINARY_SOURCE_BINDINGS.has(relative)
+      ? { path: relative, sha256: sha256(bytes), bytes: bytes.byteLength, canonicalization: 'raw' }
+      : { path: relative, ...canonicalTextBinding(bytes) };
   });
   const passed = name => commands.find(command => command.name === name)?.exitCode === 0;
   const checks = {
@@ -175,6 +210,11 @@ export function buildMechanicalInternalVerificationReceipt({
       head: gitValue(root, ['rev-parse', 'HEAD']),
       branch: gitValue(root, ['branch', '--show-current']),
       workingTreeClean: workingTree === '',
+    },
+    bindingPolicy: {
+      text: TEXT_BINDING_CANONICALIZATION,
+      binary: 'raw',
+      evidenceRoots: [...EVIDENCE_BINDING_ROOTS],
     },
     checks,
     commands,

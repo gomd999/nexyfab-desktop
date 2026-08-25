@@ -1,19 +1,26 @@
 {
-  "schema": "nexyfab.mechanical-product-scope-assessment.v3",
+  "schema": "nexyfab.mechanical-product-scope-assessment.v4",
   "releaseChannel": "mechanical-core",
-  "assessedAt": "2026-08-24T15:02:16.796Z",
+  "assessedAt": "2026-08-25T08:38:06.701Z",
   "sources": [
     {
       "path": "docs/evidence/cad-independent/mechanical-core-internal-verification.json",
-      "sha256": "d9ee507f36b7cfa717dc82650cd610e39c6118d9fa0b50ea1b172cee093cb472"
+      "sha256": "b179f7f761fd5ee73399ee51550c81152fff443e4fcea63173650b678d5edb6b",
+      "bytes": 48463,
+      "canonicalization": "utf8-crlf-to-lf"
     },
     {
       "path": "docs/evidence/cad-independent/mechanical-core-feature-closed-loop-assessment.json",
-      "sha256": "284fc80bd9fe9ffa62c832a2747d3873504bea82c054d9f60b551c85ad52b46c"
+      "sha256": "284fc80bd9fe9ffa62c832a2747d3873504bea82c054d9f60b551c85ad52b46c",
+      "bytes": 1340,
+      "canonicalization": "utf8-crlf-to-lf"
     }
   ],
   "evidence": {
     "internalRegressionVerified": true,
+    "intentQualification150Verified": true,
+    "intentRuntimeRepresentativeVerified": true,
+    "assemblyDrawingHandoffLocalVerified": true,
     "coreThirtyFeatureClosedLoopVerified": false,
     "directDesignCandidateVerified": false,
     "directDesignThirtyVerified": false,

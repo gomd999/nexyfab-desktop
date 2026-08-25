@@ -3,9 +3,9 @@
   "feature": "shell",
   "axis": "save_reopen",
   "status": "PASS",
-  "executedAt": "2026-08-24T22:37:05.669Z",
+  "executedAt": "2026-08-25T08:21:07.337Z",
   "savedBytes": 1792,
-  "savedSha256": "b8d2a615a231bc0525f4f45c1c4a386d4871140394984bb56ff0f8535e258460",
+  "savedSha256": "15c60cce21b04ec3c971044f572e2a7f227f8d1fd45752e984ab4ac075c9fc0d",
   "reopened": {
     "handle": "occt:51",
     "kernelKind": "Solid",

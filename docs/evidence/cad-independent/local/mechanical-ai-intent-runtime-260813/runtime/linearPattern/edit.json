@@ -3,7 +3,7 @@
   "feature": "linearPattern",
   "axis": "edit",
   "status": "PASS",
-  "executedAt": "2026-08-24T15:00:47.700Z",
+  "executedAt": "2026-08-25T08:20:38.363Z",
   "commandId": "linearPattern-runtime-param-edit",
   "historyDepth": 1,
   "before": {
@@ -31,7 +31,7 @@
   "intentBinding": {
     "caseId": "mixed_units-06-linearPattern",
     "candidateId": "intent-runtime:mixed_units-06-linearPattern",
-    "candidateBaseRevision": "a361da8b50b3e4b840c04e7bdf7077467580a73242a109090dad13b8f5102e22",
+    "candidateBaseRevision": "a0a108d123eb01b22a05bbf4355f6811b124b7f3f12053c4dc371dc83ef3b3d3",
     "promptSha256": "8f62155c6bb4727f10a578add32473dde34493692d51cfc850f7a13215f9741d",
     "inputSha256": "cfefb607d5bc6942325a7d5388e0edf2f50e7c2f5cb1a8aa12ed38eae9d209fe",
     "sourceUnits": [

@@ -4,6 +4,11 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
+  TEXT_BINDING_CANONICALIZATION,
+  canonicalTextBinding,
+  canonicalTextSha256,
+} from './canonical-text-binding.mjs';
+import {
   createAiCanonicalCandidate,
   guardAiCanonicalCandidate,
 } from '../src/lib/ai/aiCanonicalCandidate';
@@ -362,7 +367,7 @@ function repositoryPath(absolutePath: string): string {
 function sourceBinding(relativePath: string) {
   const absolutePath = path.resolve(process.cwd(), relativePath);
   const bytes = fs.readFileSync(absolutePath);
-  return { path: relativePath.replaceAll('\\', '/'), sha256: sha256Bytes(bytes), bytes: bytes.byteLength };
+  return { path: relativePath.replaceAll('\\', '/'), ...canonicalTextBinding(bytes) };
 }
 
 export function writeMechanicalAiIntentLocalQualification(
@@ -382,6 +387,7 @@ export function writeMechanicalAiIntentLocalQualification(
   const receipt = {
     schema: MECHANICAL_AI_INTENT_RECEIPT_SCHEMA,
     generatedAt,
+    textCanonicalization: TEXT_BINDING_CANONICALIZATION,
     qualificationClass: 'LOCAL_DETERMINISTIC_NO_GEOMETRY',
     sourceBindings: [
       sourceBinding('scripts/mechanical-ai-intent-local-qualification.ts'),
@@ -390,8 +396,8 @@ export function writeMechanicalAiIntentLocalQualification(
       sourceBinding('src/lib/ai/mechanicalCoreFeatureContract.ts'),
     ],
     artifactBindings: [
-      { path: repositoryPath(corpusPath), sha256: sha256Bytes(corpusText), bytes: Buffer.byteLength(corpusText) },
-      { path: repositoryPath(resultsPath), sha256: sha256Bytes(resultsText), bytes: Buffer.byteLength(resultsText) },
+      { path: repositoryPath(corpusPath), ...canonicalTextBinding(corpusText) },
+      { path: repositoryPath(resultsPath), ...canonicalTextBinding(resultsText) },
     ],
     summary: bundle.results.summary,
     localQualification: bundle.results.localQualification,
@@ -400,7 +406,7 @@ export function writeMechanicalAiIntentLocalQualification(
   };
   const receiptText = canonicalJson(receipt);
   fs.writeFileSync(receiptPath, receiptText);
-  fs.writeFileSync(path.join(output, 'receipt.sha256'), `${sha256Bytes(receiptText)}  receipt.json\n`);
+  fs.writeFileSync(path.join(output, 'receipt.sha256'), `${canonicalTextSha256(receiptText)}  receipt.json\n`);
   return { output, corpusPath, resultsPath, receiptPath, receipt };
 }
 

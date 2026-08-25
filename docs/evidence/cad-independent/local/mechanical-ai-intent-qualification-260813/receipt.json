@@ -1,39 +1,46 @@
 {
   "schema": "nexyfab.mechanical-ai-intent-local-qualification-receipt.v1",
-  "generatedAt": "2026-08-22T07:12:30.395Z",
+  "generatedAt": "2026-08-25T08:20:27.311Z",
+  "textCanonicalization": "utf8-crlf-to-lf",
   "qualificationClass": "LOCAL_DETERMINISTIC_NO_GEOMETRY",
   "sourceBindings": [
     {
       "path": "scripts/mechanical-ai-intent-local-qualification.ts",
-      "sha256": "ea2ff0f55df572573312a634d95fda78e83a464c8b8dcfd3b390d380baf85cd2",
-      "bytes": 18625
+      "bytes": 18728,
+      "sha256": "55ef34293b2976c0c434b3453e9a7f2959212afab33957a423f06ccf16a7f1dd",
+      "canonicalization": "utf8-crlf-to-lf"
     },
     {
       "path": "src/lib/ai/guidedDesignBrief.ts",
+      "bytes": 15251,
       "sha256": "da3b9994bc91cc66f1069b537ae5ef295dd0aebeb1618c477cc5c9fdab346c13",
-      "bytes": 15251
+      "canonicalization": "utf8-crlf-to-lf"
     },
     {
       "path": "src/lib/ai/aiCanonicalCandidate.ts",
+      "bytes": 12357,
       "sha256": "509cf8d2247ceb72d8d8ada2589ca4a4a67dca228a650895356fe63e90c6d760",
-      "bytes": 12357
+      "canonicalization": "utf8-crlf-to-lf"
     },
     {
       "path": "src/lib/ai/mechanicalCoreFeatureContract.ts",
+      "bytes": 16839,
       "sha256": "a53d59fde828bca93ac903e961970be256fe83223733517dcef2bfb5b5f2bbfe",
-      "bytes": 16839
+      "canonicalization": "utf8-crlf-to-lf"
     }
   ],
   "artifactBindings": [
     {
       "path": "docs/evidence/cad-independent/local/mechanical-ai-intent-qualification-260813/corpus.json",
+      "bytes": 48673,
       "sha256": "26df52ca13e69f3e3a3c413abb6fceafd3c6cb21711627bedd9deb6653b638ea",
-      "bytes": 48673
+      "canonicalization": "utf8-crlf-to-lf"
     },
     {
       "path": "docs/evidence/cad-independent/local/mechanical-ai-intent-qualification-260813/results.json",
-      "sha256": "3c1d07fe8ab0adf4b659e16df054595cd60a42124216d9d768e69a40cb100507",
-      "bytes": 168936
+      "bytes": 168936,
+      "sha256": "f78da050ffd72bf8f78f2acd8a170cf5e6c05b9b1c28c1faf1596870f968340b",
+      "canonicalization": "utf8-crlf-to-lf"
     }
   ],
   "summary": {

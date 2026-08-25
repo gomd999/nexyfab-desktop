@@ -6,6 +6,7 @@ import {
   parseAuthoritativeDimensions,
   selectRepresentativeMechanicalIntents,
 } from './mechanical-ai-intent-runtime-harness';
+import { TEXT_BINDING_CANONICALIZATION } from './canonical-text-binding.mjs';
 
 const root = process.cwd();
 const scratch = `.mechanical-intent-runtime-test-${process.pid}-${Date.now()}`;
@@ -47,6 +48,8 @@ describe('mechanical AI intent revision-bound runtime harness', () => {
     });
     expect(result.results.localIntegration.status).toBe('PASS');
     expect(result.results.commercialCampaign).toMatchObject({ status: 'NOT_RUN', releaseEligible: false });
+    expect(result.receipt.textCanonicalization).toBe(TEXT_BINDING_CANONICALIZATION);
+    expect(result.receipt.sourceBindings.every(binding => binding.canonicalization === TEXT_BINDING_CANONICALIZATION)).toBe(true);
     for (const item of result.results.cases) {
       expect(item.status).toBe('PASS');
       expect(item.artifactBindings).toHaveLength(4);

@@ -1,16 +1,12 @@
-import { createHash } from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { writeMechanicalAiIntentLocalQualification } from './mechanical-ai-intent-local-qualification';
 import { verifyMechanicalAiIntentLocalQualification } from './verify-mechanical-ai-intent-local-qualification';
+import { canonicalTextBinding, canonicalTextSha256 } from './canonical-text-binding.mjs';
 
 const GENERATED_AT = '2026-08-13T00:00:00.000Z';
 let fixtureRoot = '';
-
-function sha256(value: Buffer | string): string {
-  return createHash('sha256').update(value).digest('hex');
-}
 
 function rewriteReceipt(mutator: (receipt: Record<string, unknown>) => void): void {
   const receiptPath = path.join(fixtureRoot, 'receipt.json');
@@ -18,7 +14,7 @@ function rewriteReceipt(mutator: (receipt: Record<string, unknown>) => void): vo
   mutator(receipt);
   const text = `${JSON.stringify(receipt, null, 2)}\n`;
   fs.writeFileSync(receiptPath, text);
-  fs.writeFileSync(path.join(fixtureRoot, 'receipt.sha256'), `${sha256(text)}  receipt.json\n`);
+  fs.writeFileSync(path.join(fixtureRoot, 'receipt.sha256'), `${canonicalTextSha256(text)}  receipt.json\n`);
 }
 
 function rewriteResults(mutator: (results: Record<string, unknown>) => void): void {
@@ -30,8 +26,7 @@ function rewriteResults(mutator: (results: Record<string, unknown>) => void): vo
   rewriteReceipt(receipt => {
     const bindings = receipt.artifactBindings as Array<Record<string, unknown>>;
     const binding = bindings.find(item => item.path === path.relative(process.cwd(), resultsPath).replaceAll('\\', '/'))!;
-    binding.sha256 = sha256(text);
-    binding.bytes = Buffer.byteLength(text);
+    Object.assign(binding, canonicalTextBinding(text));
   });
 }
 
@@ -55,6 +50,15 @@ describe('mechanical AI intent qualification check-only verifier', () => {
       issues: [],
       remainingNotRun: { aiModelCall: 150, geometry: 150, verification: 150, commercialCampaign: true },
     });
+  });
+
+  it('verifies the same receipt after every bound JSON is materialized with CRLF', () => {
+    for (const file of ['corpus.json', 'results.json', 'receipt.json']) {
+      const absolute = path.join(fixtureRoot, file);
+      const crlf = fs.readFileSync(absolute, 'utf8').replaceAll('\r\n', '\n').replaceAll('\n', '\r\n');
+      fs.writeFileSync(absolute, crlf);
+    }
+    expect(verifyMechanicalAiIntentLocalQualification(fixtureRoot)).toMatchObject({ ok: true, issues: [] });
   });
 
   it('rejects missing and SHA-tampered artifacts', () => {

@@ -3,9 +3,9 @@
   "feature": "fillet",
   "axis": "save_reopen",
   "status": "PASS",
-  "executedAt": "2026-08-24T15:00:47.700Z",
+  "executedAt": "2026-08-25T08:20:38.363Z",
   "savedBytes": 1798,
-  "savedSha256": "71842c6deb2ec6db11a35106ebc263064abe7c2986c865b5a84d73843947b886",
+  "savedSha256": "169aa113b5cfcb262db772d4f7a3f57cafdfa50498673ca6b358b5030f3dc232",
   "reopened": {
     "handle": "occt:23",
     "kernelKind": "Solid",

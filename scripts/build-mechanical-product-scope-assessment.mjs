@@ -7,6 +7,11 @@ import {
   assessMechanicalDesignCampaign,
   validateMechanicalBlindChallenge,
 } from './mechanical-commercial-evidence-v3.mjs';
+import {
+  TEXT_BINDING_CANONICALIZATION,
+  canonicalTextBinding,
+} from './canonical-text-binding.mjs';
+import { EVIDENCE_BINDING_ROOTS } from './run-mechanical-core-internal-verification.mjs';
 
 export const MECHANICAL_SCOPE_PATHS = Object.freeze({
   internalVerification: 'docs/evidence/cad-independent/mechanical-core-internal-verification.json',
@@ -91,7 +96,7 @@ function readOptionalEvidence(root, relative) {
   const safe = safeFileInsideRoot(root, absolute);
   if (!safe) return null;
   const bytes = fs.readFileSync(safe);
-  return { path: relative, sha256: sha256(bytes), value: JSON.parse(bytes.toString('utf8')) };
+  return { path: relative, ...canonicalTextBinding(bytes), value: JSON.parse(bytes.toString('utf8')) };
 }
 
 /**
@@ -113,25 +118,44 @@ function safeFileInsideRoot(root, absolute) {
 
 function internalReceiptValid(root, receipt) {
   if (receipt?.schema !== 'nexyfab.mechanical-core-internal-verification.v1' || receipt?.ok !== true) return false;
+  if (receipt?.bindingPolicy?.text !== TEXT_BINDING_CANONICALIZATION
+    || receipt?.bindingPolicy?.binary !== 'raw'
+    || JSON.stringify(receipt?.bindingPolicy?.evidenceRoots) !== JSON.stringify(EVIDENCE_BINDING_ROOTS)) return false;
   const checks = receipt.checks ?? {};
   if (checks.losslessDesignGraph !== true
+    || checks.coreThirtyImplementationCoverage !== true
     || checks.threeCycleNfab !== true
     || checks.threeCycleStep !== true
     || checks.mechanicalAccuracy !== true
+    || checks.intentIntakeQualification !== true
+    || checks.intentExactRuntimeRepresentative !== true
+    || checks.assemblyDrawingHandoffLocalReadiness !== true
     || checks.typecheck !== true) return false;
-  if (!Array.isArray(receipt.commands) || receipt.commands.length < 3
+  if (!Array.isArray(receipt.commands) || receipt.commands.length < 6
     || receipt.commands.some(command => command?.exitCode !== 0)) return false;
   const commands = Object.fromEntries(receipt.commands.map(command => [command?.name, command]));
   if (commands['direct-cad']?.environment?.RUN_OCCT_FEASIBILITY !== '1'
     || !commands['mechanical-accuracy']
+    || !commands['intent-qualification']
+    || !commands['intent-runtime']
+    || !commands['assembly-handoff-readiness']
     || !commands.typecheck) return false;
   if (!Array.isArray(receipt.sourceBindings) || receipt.sourceBindings.length === 0) return false;
+  if (!EVIDENCE_BINDING_ROOTS.every(evidenceRoot => receipt.sourceBindings.some(binding =>
+    typeof binding?.path === 'string' && binding.path.startsWith(`${evidenceRoot}/`)))) return false;
 
   return receipt.sourceBindings.every(binding => {
     if (!SHA256.test(String(binding?.sha256 ?? ''))) return false;
     const absolute = resolveInside(root, binding?.path);
     const safe = safeFileInsideRoot(root, absolute);
-    return safe !== null && sha256(fs.readFileSync(safe)) === binding.sha256;
+    if (safe === null) return false;
+    const bytes = fs.readFileSync(safe);
+    const actual = binding?.canonicalization === TEXT_BINDING_CANONICALIZATION
+      ? canonicalTextBinding(bytes)
+      : binding?.canonicalization === 'raw'
+        ? { sha256: sha256(bytes), bytes: bytes.byteLength }
+        : null;
+    return actual !== null && actual.sha256 === binding.sha256 && actual.bytes === binding.bytes;
   });
 }
 
@@ -139,7 +163,15 @@ function sourceBindingValid(root, binding) {
   if (typeof binding?.path !== 'string' || !SHA256.test(String(binding?.sha256 ?? ''))) return false;
   const absolute = resolveInside(root, binding.path);
   const safe = safeFileInsideRoot(root, absolute);
-  return safe !== null && sha256(fs.readFileSync(safe)) === binding.sha256;
+  if (safe === null) return false;
+  const bytes = fs.readFileSync(safe);
+  if (binding?.canonicalization === TEXT_BINDING_CANONICALIZATION) {
+    const actual = canonicalTextBinding(bytes);
+    return actual.sha256 === binding.sha256 && (binding.bytes === undefined || actual.bytes === binding.bytes);
+  }
+  return binding?.canonicalization === 'raw'
+    && sha256(bytes) === binding.sha256
+    && (binding.bytes === undefined || bytes.byteLength === binding.bytes);
 }
 
 function featureClosedLoopAssessmentValid(root, assessment) {
@@ -299,6 +331,9 @@ export function buildMechanicalProductScopeAssessment(root, paths = MECHANICAL_S
 
   const evidence = {
     internalRegressionVerified: internalVerified,
+    intentQualification150Verified: internalVerified && internal.value.checks.intentIntakeQualification === true,
+    intentRuntimeRepresentativeVerified: internalVerified && internal.value.checks.intentExactRuntimeRepresentative === true,
+    assemblyDrawingHandoffLocalVerified: internalVerified && internal.value.checks.assemblyDrawingHandoffLocalReadiness === true,
     coreThirtyFeatureClosedLoopVerified,
     directDesignCandidateVerified: designCampaign.candidateVerified,
     directDesignThirtyVerified: designCampaign.completeVerified,
@@ -335,14 +370,14 @@ export function buildMechanicalProductScopeAssessment(root, paths = MECHANICAL_S
 
   const sources = [internal, featureClosedLoop, directDesignCampaign, blindProductChallenge, manufacturing]
     .filter(Boolean)
-    .map(item => ({ path: item.path, sha256: item.sha256 }));
+    .map(item => ({ path: item.path, sha256: item.sha256, bytes: item.bytes, canonicalization: item.canonicalization }));
   const assessedAt = [internal, featureClosedLoop, directDesignCampaign, blindProductChallenge, manufacturing]
     .map(item => item?.value?.generatedAt ?? item?.value?.assessedAt)
     .filter(value => typeof value === 'string')
     .sort()
     .at(-1) ?? null;
   return {
-    schema: 'nexyfab.mechanical-product-scope-assessment.v3',
+    schema: 'nexyfab.mechanical-product-scope-assessment.v4',
     releaseChannel: 'mechanical-core',
     assessedAt,
     sources,

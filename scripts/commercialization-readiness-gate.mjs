@@ -105,6 +105,9 @@ export function mechanicalScopeContractStatus(scope) {
   const decision = scope?.decision ?? {};
   const evidenceKeys = [
     'internalRegressionVerified',
+    'intentQualification150Verified',
+    'intentRuntimeRepresentativeVerified',
+    'assemblyDrawingHandoffLocalVerified',
     'coreThirtyFeatureClosedLoopVerified',
     'directDesignCandidateVerified',
     'directDesignThirtyVerified',
@@ -136,9 +139,12 @@ export function mechanicalScopeContractStatus(scope) {
     && scope.sources.length > 0
     && scope.sources.every(item => typeof item?.path === 'string'
       && item.path.length > 0
-      && SHA256.test(String(item?.sha256 ?? '')));
+      && SHA256.test(String(item?.sha256 ?? ''))
+      && Number.isSafeInteger(item?.bytes)
+      && item.bytes > 0
+      && (item?.canonicalization === 'utf8-crlf-to-lf' || item?.canonicalization === 'raw'));
   const boundary = scope?.claimBoundary ?? {};
-  const valid = scope?.schema === 'nexyfab.mechanical-product-scope-assessment.v3'
+  const valid = scope?.schema === 'nexyfab.mechanical-product-scope-assessment.v4'
     && scope?.releaseChannel === 'mechanical-core'
     && (scope?.assessedAt === null || typeof scope?.assessedAt === 'string')
     && sourcesValid
@@ -1395,6 +1401,9 @@ async function main() {
       complexManufacturingReleaseVerified: complexProductScope?.decision?.manufacturingReleaseGuaranteed === true,
       mechanicalScopeStatus: mechanicalProductScope?.decision?.status ?? null,
       mechanicalInternalRegressionVerified: mechanicalProductScope?.evidence?.internalRegressionVerified === true,
+      mechanicalIntentQualification150Verified: mechanicalProductScope?.evidence?.intentQualification150Verified === true,
+      mechanicalIntentRuntimeRepresentativeVerified: mechanicalProductScope?.evidence?.intentRuntimeRepresentativeVerified === true,
+      mechanicalAssemblyDrawingHandoffLocalVerified: mechanicalProductScope?.evidence?.assemblyDrawingHandoffLocalVerified === true,
       mechanicalCoreThirtyFeatureClosedLoopVerified: mechanicalProductScope?.evidence?.coreThirtyFeatureClosedLoopVerified === true,
       mechanicalDirectDesignCandidateVerified: mechanicalProductScope?.evidence?.directDesignCandidateVerified === true,
       mechanicalDirectDesignThirtyVerified: mechanicalProductScope?.evidence?.directDesignThirtyVerified === true,

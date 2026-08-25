@@ -1,8 +1,8 @@
 {
   "magic": "nfab",
   "version": 3,
-  "createdAt": 1787611026269,
-  "updatedAt": 1787611026269,
+  "createdAt": 1787646067943,
+  "updatedAt": 1787646067943,
   "name": "Mechanical runtime hole",
   "tree": {
     "nodes": [
@@ -76,6 +76,6 @@
     "exactKernel": "OCCT",
     "intentCaseId": "ko_practical-01-hole",
     "intentInputSha256": "b781befa692abcd8dd7e823391cfe7b63c657e07f588fa3c504b4a3873663538",
-    "candidateBaseRevision": "a361da8b50b3e4b840c04e7bdf7077467580a73242a109090dad13b8f5102e22"
+    "candidateBaseRevision": "a0a108d123eb01b22a05bbf4355f6811b124b7f3f12053c4dc371dc83ef3b3d3"
   }
 }

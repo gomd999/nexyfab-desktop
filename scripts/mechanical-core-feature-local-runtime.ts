@@ -66,6 +66,7 @@ import {
   type MechanicalCoreLocalEvidenceBindingV1,
   type MechanicalCoreLocalSelectionIdentityV1,
 } from '../src/lib/ai/mechanicalCoreFeatureContract';
+import { canonicalTextBinding } from './canonical-text-binding.mjs';
 
 export const MECHANICAL_CORE_FIRST_RUNTIME_BUNDLE = [
   'hole',
@@ -250,12 +251,12 @@ function writeArtifact(
   fs.mkdirSync(path.dirname(absolute), { recursive: true });
   fs.writeFileSync(absolute, bytes);
   const persisted = fs.readFileSync(absolute);
+  const canonical = canonicalTextBinding(persisted);
   return {
-    bytes: persisted.byteLength,
+    bytes: canonical.bytes,
     binding: {
       path: slash(relative),
-      sha256: hash(persisted),
-      bytes: persisted.byteLength,
+      ...canonical,
       assertionId,
     },
   };
@@ -1453,7 +1454,7 @@ function differentExactSignature(a: ExactSnapshot, b: ExactSnapshot): boolean {
   return !sameExactSignature(a, b);
 }
 
-export function mechanicalCoreRuntimeSourceRevision(root = process.cwd()): { designRevisionSha256: string; sources: Array<{ path: string; sha256: string; bytes: number }> } {
+export function mechanicalCoreRuntimeSourceRevision(root = process.cwd()): { designRevisionSha256: string; sources: Array<{ path: string; sha256: string; bytes: number; canonicalization: string }> } {
   const candidates = [
     'src/app/[lang]/shape-generator/features/occtEngine.ts',
     'src/app/[lang]/shape-generator/features/topologyEdgeFinder.ts',
@@ -1483,7 +1484,7 @@ export function mechanicalCoreRuntimeSourceRevision(root = process.cwd()): { des
   ];
   const sources = candidates.map(relative => {
     const bytes = fs.readFileSync(resolveInside(root, relative));
-    return { path: relative, sha256: hash(bytes), bytes: bytes.byteLength };
+    return { path: relative, ...canonicalTextBinding(bytes) };
   });
   return {
     designRevisionSha256: hash(sources.map(item => `${item.path}\0${item.sha256}\0${item.bytes}`).join('\n')),

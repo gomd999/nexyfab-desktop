@@ -1,23 +1,26 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://nexyfab.com/schemas/mechanical-product-scope-assessment.v2.json",
+  "$id": "https://nexyfab.com/schemas/mechanical-product-scope-assessment.v4.json",
   "title": "NexyFab mechanical-core product scope assessment",
   "type": "object",
   "additionalProperties": false,
   "required": ["schema", "releaseChannel", "assessedAt", "sources", "evidence", "decision", "blockers", "claimBoundary"],
   "properties": {
-    "schema": { "const": "nexyfab.mechanical-product-scope-assessment.v2" },
+    "schema": { "const": "nexyfab.mechanical-product-scope-assessment.v4" },
     "releaseChannel": { "const": "mechanical-core" },
     "assessedAt": { "type": ["string", "null"], "format": "date-time" },
     "sources": {
       "type": "array",
+      "minItems": 1,
       "items": {
         "type": "object",
         "additionalProperties": false,
-        "required": ["path", "sha256"],
+        "required": ["path", "sha256", "bytes", "canonicalization"],
         "properties": {
           "path": { "type": "string", "minLength": 1 },
-          "sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" }
+          "sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+          "bytes": { "type": "integer", "minimum": 1 },
+          "canonicalization": { "enum": ["utf8-crlf-to-lf", "raw"] }
         }
       }
     },
@@ -25,39 +28,45 @@
       "type": "object",
       "additionalProperties": false,
       "required": [
-        "independentHoldoutEligible",
+        "internalRegressionVerified",
+        "intentQualification150Verified",
+        "intentRuntimeRepresentativeVerified",
+        "assemblyDrawingHandoffLocalVerified",
         "coreThirtyFeatureClosedLoopVerified",
-        "commercialCadStepC4Verified",
-        "analyticStepRoundtripVerified",
+        "directDesignCandidateVerified",
+        "directDesignThirtyVerified",
+        "intentCampaign150Verified",
+        "standardStepConformanceVerified",
         "artifactRevisionConsistencyVerified",
-        "expertDualApprovalComplete",
+        "blindProductChallengeVerified",
         "manufacturingReceiptVerified"
       ],
       "properties": {
-        "independentHoldoutEligible": { "type": "boolean" },
+        "internalRegressionVerified": { "type": "boolean" },
+        "intentQualification150Verified": { "type": "boolean" },
+        "intentRuntimeRepresentativeVerified": { "type": "boolean" },
+        "assemblyDrawingHandoffLocalVerified": { "type": "boolean" },
         "coreThirtyFeatureClosedLoopVerified": { "type": "boolean" },
-        "commercialCadStepC4Verified": { "type": "boolean" },
-        "analyticStepRoundtripVerified": { "type": "boolean" },
+        "directDesignCandidateVerified": { "type": "boolean" },
+        "directDesignThirtyVerified": { "type": "boolean" },
+        "intentCampaign150Verified": { "type": "boolean" },
+        "standardStepConformanceVerified": { "type": "boolean" },
         "artifactRevisionConsistencyVerified": { "type": "boolean" },
-        "expertDualApprovalComplete": { "type": "boolean" },
+        "blindProductChallengeVerified": { "type": "boolean" },
         "manufacturingReceiptVerified": { "type": "boolean" }
       }
     },
     "decision": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["selfServiceEligible", "manufacturingReleaseVerified", "failClosed", "status"],
+      "required": ["privateBetaEligible", "selfServiceEligible", "manufacturingReleaseVerified", "failClosed", "status"],
       "properties": {
+        "privateBetaEligible": { "type": "boolean" },
         "selfServiceEligible": { "type": "boolean" },
         "manufacturingReleaseVerified": { "type": "boolean" },
         "failClosed": { "const": true },
         "status": {
-          "enum": [
-            "internal_validation_pending",
-            "external_validation_pending",
-            "self_service_verified",
-            "manufacturing_release_verified"
-          ]
+          "enum": ["private_beta_evidence_pending", "ga_evidence_pending", "self_service_verified", "manufacturing_release_verified"]
         }
       }
     },
@@ -71,7 +80,9 @@
         "stepExportAloneCertifiesManufacturability",
         "kernelSelfRoundtripCertifiesCommercialCadCompatibility",
         "featureRegistrationAloneCertifiesClosedLoop",
-        "spatialLabsEvidenceMaySatisfyMechanicalCore"
+        "spatialLabsEvidenceMaySatisfyMechanicalCore",
+        "vendorSpecificCadValidationRequiredForBaseRelease",
+        "internalRoleSeparatedReviewMayBeMarketedAsExternal"
       ],
       "properties": {
         "internalRegressionCertifiesCommercialAccuracy": { "const": false },
@@ -79,7 +90,9 @@
         "stepExportAloneCertifiesManufacturability": { "const": false },
         "kernelSelfRoundtripCertifiesCommercialCadCompatibility": { "const": false },
         "featureRegistrationAloneCertifiesClosedLoop": { "const": false },
-        "spatialLabsEvidenceMaySatisfyMechanicalCore": { "const": false }
+        "spatialLabsEvidenceMaySatisfyMechanicalCore": { "const": false },
+        "vendorSpecificCadValidationRequiredForBaseRelease": { "const": false },
+        "internalRoleSeparatedReviewMayBeMarketedAsExternal": { "const": false }
       }
     }
   }

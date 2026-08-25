@@ -3,9 +3,9 @@
   "feature": "draft",
   "axis": "save_reopen",
   "status": "PASS",
-  "executedAt": "2026-08-24T15:00:47.700Z",
+  "executedAt": "2026-08-25T08:20:38.363Z",
   "savedBytes": 1787,
-  "savedSha256": "23fc21b6ae2bf26dbee423018698135b18f6950df47da6723588bd63e1ed9c6e",
+  "savedSha256": "4cfa1c5995c9921bf6dc24c7d5c5a7be1366adb508dd4918ce013e843965a82e",
   "reopened": {
     "handle": "occt:113",
     "kernelKind": "Solid",

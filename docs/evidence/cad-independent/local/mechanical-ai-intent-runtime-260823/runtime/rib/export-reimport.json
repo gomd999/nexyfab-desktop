@@ -3,9 +3,9 @@
   "feature": "rib",
   "axis": "export",
   "status": "PASS",
-  "executedAt": "2026-08-24T22:37:05.669Z",
+  "executedAt": "2026-08-25T08:21:07.337Z",
   "stepBytes": 29880,
-  "stepSha256": "5328e6d5c113f4bc8d2c44ea5bde29a014ca6583da6c28dbb1a69ad670059bca",
+  "stepSha256": "5a16d0c117bff5b695f5f3c5240870d0c3275ae59d7fc2047096452d88cd7c97",
   "before": {
     "handle": "occt:61",
     "kernelKind": "Solid",

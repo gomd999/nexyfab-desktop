@@ -11,6 +11,8 @@ import {
   validateMechanicalDualExpertReview,
   validateMechanicalManufacturingReceipt,
 } from './build-mechanical-product-scope-assessment.mjs';
+import { TEXT_BINDING_CANONICALIZATION, canonicalTextBinding } from './canonical-text-binding.mjs';
+import { EVIDENCE_BINDING_ROOTS } from './run-mechanical-core-internal-verification.mjs';
 
 const hash = value => crypto.createHash('sha256').update(value).digest('hex');
 const writeJson = (root, relative, value) => {
@@ -32,17 +34,32 @@ function fixtureRoot() {
   const sourcePath = 'src/bound.ts';
   fs.mkdirSync(path.join(root, 'src'), { recursive: true });
   fs.writeFileSync(path.join(root, 'src', 'bound.ts'), 'export const bound = true;\n');
+  const evidenceBindings = EVIDENCE_BINDING_ROOTS.map((evidenceRoot, index) => {
+    const relative = `${evidenceRoot}/fixture-${index + 1}.json`;
+    const absolute = path.join(root, ...relative.split('/'));
+    fs.mkdirSync(path.dirname(absolute), { recursive: true });
+    fs.writeFileSync(absolute, `{"fixture":${index + 1}}\n`);
+    return { path: relative, ...canonicalTextBinding(`{"fixture":${index + 1}}\n`) };
+  });
   writeJson(root, paths.internalVerification, {
     schema: 'nexyfab.mechanical-core-internal-verification.v1',
     generatedAt: '2026-08-11T01:00:00.000Z',
     ok: true,
-    checks: { losslessDesignGraph: true, threeCycleNfab: true, threeCycleStep: true, mechanicalAccuracy: true, typecheck: true },
+    bindingPolicy: { text: TEXT_BINDING_CANONICALIZATION, binary: 'raw', evidenceRoots: [...EVIDENCE_BINDING_ROOTS] },
+    checks: {
+      losslessDesignGraph: true, coreThirtyImplementationCoverage: true, threeCycleNfab: true,
+      threeCycleStep: true, mechanicalAccuracy: true, intentIntakeQualification: true,
+      intentExactRuntimeRepresentative: true, assemblyDrawingHandoffLocalReadiness: true, typecheck: true,
+    },
     commands: [
       { name: 'direct-cad', exitCode: 0, environment: { RUN_OCCT_FEASIBILITY: '1' } },
       { name: 'mechanical-accuracy', exitCode: 0, environment: {} },
+      { name: 'intent-qualification', exitCode: 0, environment: {} },
+      { name: 'intent-runtime', exitCode: 0, environment: {} },
+      { name: 'assembly-handoff-readiness', exitCode: 0, environment: {} },
       { name: 'typecheck', exitCode: 0, environment: {} },
     ],
-    sourceBindings: [{ path: sourcePath, sha256: hash('export const bound = true;\n') }],
+    sourceBindings: [{ path: sourcePath, ...canonicalTextBinding('export const bound = true;\n') }, ...evidenceBindings],
   });
   return { root, paths };
 }
@@ -53,6 +70,9 @@ test('reports internal CAD verification separately from missing direct product e
   const result = buildMechanicalProductScopeAssessment(fixture.root, fixture.paths);
   assert.equal(result.evidence.artifactRevisionConsistencyVerified, true);
   assert.equal(result.evidence.internalRegressionVerified, true);
+  assert.equal(result.evidence.intentQualification150Verified, true);
+  assert.equal(result.evidence.intentRuntimeRepresentativeVerified, true);
+  assert.equal(result.evidence.assemblyDrawingHandoffLocalVerified, true);
   assert.equal(result.evidence.coreThirtyFeatureClosedLoopVerified, false);
   assert.equal(result.evidence.directDesignCandidateVerified, false);
   assert.equal(result.evidence.directDesignThirtyVerified, false);
@@ -73,6 +93,28 @@ test('reports internal CAD verification separately from missing direct product e
     'twenty_blind_product_challenges_required',
     'three_manufactured_pilot_receipts_required',
   ]);
+});
+
+test('invalidates every internal stage when checked intent evidence bytes drift', t => {
+  const fixture = fixtureRoot();
+  t.after(() => fs.rmSync(fixture.root, { recursive: true, force: true }));
+  const evidenceFile = path.join(fixture.root, ...EVIDENCE_BINDING_ROOTS[0].split('/'), 'fixture-1.json');
+  fs.appendFileSync(evidenceFile, 'tampered\n');
+  const result = buildMechanicalProductScopeAssessment(fixture.root, fixture.paths);
+  assert.equal(result.evidence.internalRegressionVerified, false);
+  assert.equal(result.evidence.intentQualification150Verified, false);
+  assert.equal(result.evidence.intentRuntimeRepresentativeVerified, false);
+  assert.equal(result.evidence.assemblyDrawingHandoffLocalVerified, false);
+});
+
+test('published scope schema matches the emitted v4 evidence hierarchy', () => {
+  const schema = JSON.parse(fs.readFileSync(new URL('../docs/process/mechanical-product-scope-assessment.schema.json', import.meta.url), 'utf8'));
+  assert.equal(schema.properties.schema.const, 'nexyfab.mechanical-product-scope-assessment.v4');
+  for (const key of ['intentQualification150Verified', 'intentRuntimeRepresentativeVerified', 'assemblyDrawingHandoffLocalVerified']) {
+    assert.equal(schema.properties.evidence.required.includes(key), true);
+    assert.deepEqual(schema.properties.evidence.properties[key], { type: 'boolean' });
+  }
+  assert.equal(schema.properties.sources.items.required.includes('canonicalization'), true);
 });
 
 test('invalidates internal evidence when any source binding has drifted', t => {

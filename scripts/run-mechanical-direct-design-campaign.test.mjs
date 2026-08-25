@@ -149,6 +149,14 @@ test('does not mark a package complete without a revision-bound verification rec
   } finally { fs.rmSync(root, { recursive: true, force: true }); }
 });
 
+test('published receipt schema requires the signed verification receipt accepted by the runner', () => {
+  const schema = JSON.parse(fs.readFileSync(new URL('../docs/process/mechanical-direct-design-campaign.schema.json', import.meta.url), 'utf8'));
+  const artifacts = schema.properties.cases.items.properties.artifacts;
+  assert.equal(artifacts.additionalProperties, false);
+  assert.equal(artifacts.required.includes('verificationReceipt'), true);
+  assert.deepEqual(artifacts.properties.verificationReceipt, { $ref: '#/$defs/artifact' });
+});
+
 test('rejects changed workbooks and artifact paths outside the evidence root', () => {
   const book = workbook(); const state = createMechanicalDirectDesignState(book); const changed = structuredClone(book); changed.cases[0].primaryFeature = 'changed';
   assert.throws(() => resumeMechanicalDirectDesignState(changed, state), /RESUME_MISMATCH/);

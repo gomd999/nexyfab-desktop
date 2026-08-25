@@ -1,6 +1,6 @@
 {
   "schema": "nexyfab.assembly-drawing-handoff-local-readiness.v1",
-  "generatedAt": "2026-08-24T14:32:26.694Z",
+  "generatedAt": "2026-08-25T08:30:16.925Z",
   "status": "HOLD",
   "commercialReady": false,
   "localVerification": {
@@ -8,7 +8,7 @@
     "status": "PASS",
     "command": "npx vitest run src/app/api/nexyfab/projects/[id]/drawing-handoffs/route.sqlite.integration.test.ts src/app/api/cron/assembly-drawing-handoff-prune/route.test.ts src/lib/cad/assemblyDrawingHandoffStore.test.ts --reporter=dot",
     "exitCode": 0,
-    "durationMs": 6895,
+    "durationMs": 8687,
     "testFiles": [
       "src/app/api/nexyfab/projects/[id]/drawing-handoffs/route.sqlite.integration.test.ts",
       "src/app/api/cron/assembly-drawing-handoff-prune/route.test.ts",
@@ -107,106 +107,157 @@
       }
     ]
   },
+  "textCanonicalization": "utf8-crlf-to-lf",
   "sourceBindings": [
     {
       "path": "package-lock.json",
-      "sha256": "d5bd18e9f6648828af26925e4b914a9af4cafb700b8b58a8daeb7300099110e3"
+      "bytes": 631405,
+      "sha256": "d5bd18e9f6648828af26925e4b914a9af4cafb700b8b58a8daeb7300099110e3",
+      "canonicalization": "utf8-crlf-to-lf"
     },
     {
       "path": "scripts/build-assembly-drawing-handoff-readiness.mjs",
-      "sha256": "e75116732ca02451b18f12bb24d694afa9fa1443e38af98ecf9fdb1ef747a82d"
+      "bytes": 14128,
+      "sha256": "28c7dce53bd78a8560520df20018cc01da054fe8f923c19bc337657f61a89c6b",
+      "canonicalization": "utf8-crlf-to-lf"
     },
     {
       "path": "scripts/build-assembly-drawing-handoff-readiness.test.mjs",
-      "sha256": "bbc271c6980e02176c3b86d0a33c21ac7518a6fa1a5ee0d8200152b571572e33"
+      "bytes": 4406,
+      "sha256": "f657a33fd05f3d2cc8417a89577e80fcb6559ef24f98fefc12fec884b722459d",
+      "canonicalization": "utf8-crlf-to-lf"
     },
     {
       "path": "config/platform/runtime-placement.v1.json",
-      "sha256": "ab94d6acd20541c8ae76928582c8f1a4a4792c680033f961c3abf8b39c7eb242"
+      "bytes": 2557,
+      "sha256": "ab94d6acd20541c8ae76928582c8f1a4a4792c680033f961c3abf8b39c7eb242",
+      "canonicalization": "utf8-crlf-to-lf"
     },
     {
       "path": "scripts/platform/evaluate-runtime-placement-readiness.mjs",
-      "sha256": "e0f59b56a25801710408f81e52c348b8f3fd69af1ca9c64098f13b1651775b1c"
+      "bytes": 5601,
+      "sha256": "e0f59b56a25801710408f81e52c348b8f3fd69af1ca9c64098f13b1651775b1c",
+      "canonicalization": "utf8-crlf-to-lf"
     },
     {
       "path": "src/app/[lang]/shape-generator/assembly/drawingHandoff.ts",
-      "sha256": "eefb52dea8f99537078a7d62aac7ca7a28e48b37f6f7f85b41a4de69921b6314"
+      "bytes": 24613,
+      "sha256": "0947e6b4885a49bb8fc61c3bbe5561bc5d18d89e46b7da4614534c8fc7ef04e4",
+      "canonicalization": "utf8-crlf-to-lf"
     },
     {
       "path": "src/app/[lang]/shape-generator/assembly/drawingHandoff.test.ts",
-      "sha256": "f3e9115a691282f6da68be9c196a2ac914b15213bf45023e82185552aab82780"
+      "bytes": 5218,
+      "sha256": "0911b2009191034b552eba3887d1a274178cd128d433209a950f8c5174b96be3",
+      "canonicalization": "utf8-crlf-to-lf"
     },
     {
       "path": "src/app/[lang]/shape-generator/assembly/serverDrawingHandoff.ts",
-      "sha256": "c325fa5bf66538e23e5508d1f04b44ddf6d049f3e078392a4dcaafd7e64b7fba"
+      "bytes": 3154,
+      "sha256": "c325fa5bf66538e23e5508d1f04b44ddf6d049f3e078392a4dcaafd7e64b7fba",
+      "canonicalization": "utf8-crlf-to-lf"
     },
     {
       "path": "src/app/[lang]/shape-generator/assembly/drawingHandoff.ui.test.tsx",
-      "sha256": "b9fef7aea2a1e23e88045606090f842b79aec97ba6457d2f0edc28eb382d931e"
+      "bytes": 4033,
+      "sha256": "b9fef7aea2a1e23e88045606090f842b79aec97ba6457d2f0edc28eb382d931e",
+      "canonicalization": "utf8-crlf-to-lf"
     },
     {
       "path": "src/app/[lang]/shape-generator/assembly/_content.tsx",
-      "sha256": "dd8cd4a6a3eb8a930289df2c77065008ed75703675f7dd119515ae453cd31096"
+      "bytes": 19665,
+      "sha256": "76fdaf19ce9ffed94d07da74b7e03b33f18fedf43ba617eba43bb295ac40c128",
+      "canonicalization": "utf8-crlf-to-lf"
     },
     {
       "path": "src/app/[lang]/shape-generator/drawing/_content.tsx",
-      "sha256": "1ae7cbe87e0c7372b796e7efb913617e04952853654a7dbd13c457547c66dad6"
+      "bytes": 199147,
+      "sha256": "0776966ec52cfb8f59a4c04e84477590352851c6dde2a2a27f8a215baddedca0",
+      "canonicalization": "utf8-crlf-to-lf"
     },
     {
       "path": "src/app/[lang]/shape-generator/drawing/assemblyHandoff.test.tsx",
-      "sha256": "6ca1133bcb754f5d3351c8cb21678ea386beb38d5dc4c77235b8f941d682d162"
+      "bytes": 5821,
+      "sha256": "6ca1133bcb754f5d3351c8cb21678ea386beb38d5dc4c77235b8f941d682d162",
+      "canonicalization": "utf8-crlf-to-lf"
     },
     {
       "path": "src/lib/cad/assemblyDrawingHandoffStore.ts",
-      "sha256": "d5d6486e3c991f6ef5e9e44c6132d75ed0c2d62e4b6d9fb392cde981a8c876b8"
+      "bytes": 11285,
+      "sha256": "d5d6486e3c991f6ef5e9e44c6132d75ed0c2d62e4b6d9fb392cde981a8c876b8",
+      "canonicalization": "utf8-crlf-to-lf"
     },
     {
       "path": "src/lib/cad/assemblyDrawingHandoffStore.test.ts",
-      "sha256": "95410d9772ea1c7b33439958013abe729a7cf229f548cf4d959296a34610fe52"
+      "bytes": 7183,
+      "sha256": "95410d9772ea1c7b33439958013abe729a7cf229f548cf4d959296a34610fe52",
+      "canonicalization": "utf8-crlf-to-lf"
     },
     {
       "path": "src/app/api/nexyfab/projects/[id]/drawing-handoffs/route.ts",
-      "sha256": "fd6930646309021e43af3c0b0b19582e8aaac3ede638d6baf5fe15d3e2b53e26"
+      "bytes": 5157,
+      "sha256": "fd6930646309021e43af3c0b0b19582e8aaac3ede638d6baf5fe15d3e2b53e26",
+      "canonicalization": "utf8-crlf-to-lf"
     },
     {
       "path": "src/app/api/nexyfab/projects/[id]/drawing-handoffs/route.test.ts",
-      "sha256": "45e686a1537ae6929ff7e366075244b4a5a5a775adc8773e3a34d052744b9566"
+      "bytes": 5872,
+      "sha256": "45e686a1537ae6929ff7e366075244b4a5a5a775adc8773e3a34d052744b9566",
+      "canonicalization": "utf8-crlf-to-lf"
     },
     {
       "path": "src/app/api/nexyfab/projects/[id]/drawing-handoffs/route.sqlite.integration.test.ts",
-      "sha256": "b9d0d49e9541ffd23417347aaf11d5f30cad284a48b67742b2e5ef3d5d3ddd61"
+      "bytes": 11012,
+      "sha256": "b9d0d49e9541ffd23417347aaf11d5f30cad284a48b67742b2e5ef3d5d3ddd61",
+      "canonicalization": "utf8-crlf-to-lf"
     },
     {
       "path": "src/app/api/nexyfab/projects/[id]/drawing-handoffs/[handoffId]/route.ts",
-      "sha256": "e23dca4efe61c826c5d22bdc1b3fa29ef313071397e0fd366cea06679e509173"
+      "bytes": 2524,
+      "sha256": "e23dca4efe61c826c5d22bdc1b3fa29ef313071397e0fd366cea06679e509173",
+      "canonicalization": "utf8-crlf-to-lf"
     },
     {
       "path": "src/app/api/nexyfab/projects/[id]/drawing-handoffs/[handoffId]/route.test.ts",
-      "sha256": "85f0657ee7f7be553505c1aa6195b18780d18be5be87590ccaadc9b8fa9bb802"
+      "bytes": 2593,
+      "sha256": "85f0657ee7f7be553505c1aa6195b18780d18be5be87590ccaadc9b8fa9bb802",
+      "canonicalization": "utf8-crlf-to-lf"
     },
     {
       "path": "src/app/api/cron/assembly-drawing-handoff-prune/route.ts",
-      "sha256": "2bb1a064610349d548cfd24e8c3abb76435a5486d9e90dcbec57e8ef18e13ddd"
+      "bytes": 2391,
+      "sha256": "2bb1a064610349d548cfd24e8c3abb76435a5486d9e90dcbec57e8ef18e13ddd",
+      "canonicalization": "utf8-crlf-to-lf"
     },
     {
       "path": "src/app/api/cron/assembly-drawing-handoff-prune/route.test.ts",
-      "sha256": "b325ca5c1d7913dd26b47496a3330e71576f8f05e19b17526376da424b38658d"
+      "bytes": 4083,
+      "sha256": "b325ca5c1d7913dd26b47496a3330e71576f8f05e19b17526376da424b38658d",
+      "canonicalization": "utf8-crlf-to-lf"
     },
     {
       "path": "src/lib/db-migrations-wave-2-sqlite.sql",
-      "sha256": "aaaeb45f18943f552491e5def362be260cb04c1b15c5af034184f12dd83ff30a"
+      "bytes": 15611,
+      "sha256": "6cc3fd57d856911dbbb8c8430618e6c357b0787595d8037b1091d5232cf69970",
+      "canonicalization": "utf8-crlf-to-lf"
     },
     {
       "path": "src/lib/db-postgres-migrations.sql",
-      "sha256": "6a1c0d3ae98e7b13f6dff6d4c38071b61674b23027fd571553ce3a594e0b26cc"
+      "bytes": 103178,
+      "sha256": "6108633cd7c73799b8292ec9b0c48e511b6ec4a4358fd3d0f6288ac43fec9403",
+      "canonicalization": "utf8-crlf-to-lf"
     },
     {
       "path": "src/lib/db-adapter.ts",
-      "sha256": "5d9fb10de96735ed4559c313c78a6c2930e7029d36bd0e4b2247b5ab168a2282"
+      "bytes": 19523,
+      "sha256": "5d9fb10de96735ed4559c313c78a6c2930e7029d36bd0e4b2247b5ab168a2282",
+      "canonicalization": "utf8-crlf-to-lf"
     },
     {
       "path": "docs/strategy/RAILWAY_CRON_SETUP.md",
-      "sha256": "60f37c075ff8b2836d0ef4815d0372e396d16d3ddae77103950be2c70b7755b5"
+      "bytes": 5246,
+      "sha256": "60f37c075ff8b2836d0ef4815d0372e396d16d3ddae77103950be2c70b7755b5",
+      "canonicalization": "utf8-crlf-to-lf"
     }
   ],
   "proposedInternalVerifierBindings": [
@@ -227,5 +278,5 @@
     "src/lib/db-migrations-wave-2-sqlite.sql",
     "src/lib/db-postgres-migrations.sql"
   ],
-  "evidenceRootSha256": "dd0e2446a5d66435b4e8686d7d57e26213ae4b42eda08f9a62f95c679dd95a3b"
+  "evidenceRootSha256": "2a16afa0d952e74873ccc060d99ea37b15e187b746495656c6e55bc8b1779b34"
 }

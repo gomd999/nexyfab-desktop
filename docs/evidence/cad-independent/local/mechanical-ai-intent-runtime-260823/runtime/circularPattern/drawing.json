@@ -3,7 +3,7 @@
   "feature": "circularPattern",
   "axis": "drawing",
   "status": "PASS",
-  "executedAt": "2026-08-24T22:37:05.669Z",
+  "executedAt": "2026-08-25T08:21:07.337Z",
   "kernel": "OCCT HLRBRep via replicad drawProjection",
   "views": {
     "front": {

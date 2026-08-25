@@ -1,6 +1,6 @@
 {
   "schema": "nexyfab.mechanical-ai-intent-local-results.v1",
-  "generatedAt": "2026-08-22T07:12:30.395Z",
+  "generatedAt": "2026-08-25T08:20:27.311Z",
   "executionBoundary": {
     "parser": "LOCAL_DETERMINISTIC",
     "aiModelCall": "NOT_RUN",

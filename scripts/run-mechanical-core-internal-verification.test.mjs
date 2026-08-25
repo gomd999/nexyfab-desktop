@@ -3,7 +3,11 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
-import { buildMechanicalInternalVerificationReceipt } from './run-mechanical-core-internal-verification.mjs';
+import {
+  EVIDENCE_BINDING_ROOTS,
+  buildMechanicalInternalVerificationReceipt,
+} from './run-mechanical-core-internal-verification.mjs';
+import { TEXT_BINDING_CANONICALIZATION } from './canonical-text-binding.mjs';
 
 const boundFiles = [
   'package.json',
@@ -68,21 +72,35 @@ const boundFiles = [
   'public/occt-import-js.wasm',
 ];
 
+const evidenceFiles = EVIDENCE_BINDING_ROOTS.map((root, index) => `${root}/fixture-${index + 1}.json`);
+
+function writeBoundFixture(root) {
+  for (const relative of [...boundFiles, ...evidenceFiles]) {
+    const absolute = path.join(root, ...relative.split('/'));
+    fs.mkdirSync(path.dirname(absolute), { recursive: true });
+    fs.writeFileSync(absolute, relative.endsWith('.wasm') ? Buffer.from([0, 13, 10, 255]) : `${relative}\n`);
+  }
+}
+
 test('receipt only passes when every required verification command passes', t => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'nexyfab-mechanical-internal-'));
   t.after(() => fs.rmSync(root, { recursive: true, force: true }));
-  for (const relative of boundFiles) {
-    const absolute = path.join(root, ...relative.split('/'));
-    fs.mkdirSync(path.dirname(absolute), { recursive: true });
-    fs.writeFileSync(absolute, `${relative}\n`);
-  }
+  writeBoundFixture(root);
   const pass = buildMechanicalInternalVerificationReceipt({
     root,
     generatedAt: '2026-08-11T00:00:00.000Z',
     runCommand: (_root, name) => ({ name, command: name, exitCode: 0, durationMs: 1, environment: name === 'direct-cad' ? { RUN_OCCT_FEASIBILITY: '1' } : {} }),
   });
   assert.equal(pass.ok, true);
-  assert.equal(pass.sourceBindings.length, boundFiles.length);
+  assert.equal(pass.sourceBindings.length, boundFiles.length + evidenceFiles.length);
+  assert.deepEqual(pass.bindingPolicy, {
+    text: TEXT_BINDING_CANONICALIZATION,
+    binary: 'raw',
+    evidenceRoots: [...EVIDENCE_BINDING_ROOTS],
+  });
+  assert.equal(pass.sourceBindings.filter(item => item.canonicalization === 'raw').length, 2);
+  assert.equal(pass.sourceBindings.filter(item => item.canonicalization === TEXT_BINDING_CANONICALIZATION).length, boundFiles.length + evidenceFiles.length - 2);
+  assert.ok(EVIDENCE_BINDING_ROOTS.every(rootPath => pass.sourceBindings.some(item => item.path.startsWith(`${rootPath}/`))));
   assert.equal(pass.checks.coreThirtyImplementationCoverage, true);
   assert.equal(pass.checks.intentIntakeQualification, true);
   assert.equal(pass.checks.intentExactRuntimeRepresentative, true);
@@ -97,4 +115,36 @@ test('receipt only passes when every required verification command passes', t =>
   assert.equal(fail.ok, false);
   assert.equal(fail.checks.mechanicalAccuracy, false);
   assert.equal(fail.checks.threeCycleStep, true);
+});
+
+test('text source bindings remain identical across LF and CRLF while WASM stays raw', t => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'nexyfab-mechanical-internal-eol-'));
+  t.after(() => fs.rmSync(root, { recursive: true, force: true }));
+  writeBoundFixture(root);
+  for (const relative of [...boundFiles, ...evidenceFiles].filter(item => !item.endsWith('.wasm'))) {
+    const absolute = path.join(root, ...relative.split('/'));
+    fs.appendFileSync(absolute, 'second\n');
+  }
+  const runCommand = (_root, name) => ({ name, command: name, exitCode: 0, durationMs: 1, environment: name === 'direct-cad' ? { RUN_OCCT_FEASIBILITY: '1' } : {} });
+  const lf = buildMechanicalInternalVerificationReceipt({ root, runCommand });
+  for (const relative of [...boundFiles, ...evidenceFiles].filter(item => !item.endsWith('.wasm'))) {
+    const absolute = path.join(root, ...relative.split('/'));
+    fs.writeFileSync(absolute, fs.readFileSync(absolute, 'utf8').replaceAll('\n', '\r\n'));
+  }
+  const crlf = buildMechanicalInternalVerificationReceipt({ root, runCommand });
+  assert.deepEqual(crlf.sourceBindings, lf.sourceBindings);
+});
+
+test('fails closed when a required checked-evidence directory is absent', t => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'nexyfab-mechanical-internal-missing-evidence-'));
+  t.after(() => fs.rmSync(root, { recursive: true, force: true }));
+  writeBoundFixture(root);
+  fs.rmSync(path.join(root, ...EVIDENCE_BINDING_ROOTS[0].split('/')), { recursive: true, force: true });
+  assert.throws(
+    () => buildMechanicalInternalVerificationReceipt({
+      root,
+      runCommand: (_root, name) => ({ name, command: name, exitCode: 0, durationMs: 1, environment: name === 'direct-cad' ? { RUN_OCCT_FEASIBILITY: '1' } : {} }),
+    }),
+    /MECHANICAL_INTERNAL_EVIDENCE_ROOT_MISSING/,
+  );
 });
