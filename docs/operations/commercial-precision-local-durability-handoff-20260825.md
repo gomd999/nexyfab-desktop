@@ -6,6 +6,36 @@ This handoff records the source/infrastructure closure shared by AI Design,
 Precision CAD, and integration. It does not authorize a staging or production
 promotion.
 
+## 2026-08-25 cross-store restore v3 addendum
+
+Platform commits `2c79c2da95e0ea32c25f6a3c83e058d50cc7f265` and
+`f649678730b18f4a22e3a8ec641ee33a067299be` extend the same disposable
+campaign with a real PostgreSQL plus S3-compatible backup/restore drill.
+PostgreSQL is dumped and restored into an isolated database, all public table
+content is compared, current migrations run, previously unvalidated
+constraints are validated, and final foreign-key integrity is required.
+
+Before cleanup, every bounded source object is read and hashed, copied with
+no-overwrite semantics to an initially empty backup prefix, read back, copied
+to a separate initially empty restore prefix, and read back again. The three
+manifests must match exactly. Source DB rows for immutable inputs, committed
+outputs, and artifact snapshots must bind to the exact object bytes, and both
+source stores are rechecked for changes.
+
+The checked-in cross-store receipt is
+`docs/evidence/cad-independent/commercial-precision-cross-store-restore-20260825.json`.
+It is schema `nexyfab.backup-isolated-restore-drill.v3`, bound to source HEAD
+`f649678730b18f4a22e3a8ec641ee33a067299be`, and has receipt SHA-256
+`e3181adce4ddf2e4a3a79b812652ea2a7ab946a18782a3bbdcf8ac324696c292`.
+It matches 164 restored tables/104 rows and 8 source/backup/restored objects
+with 2 immutable-input, 3 committed-output, and 3 artifact-snapshot bindings.
+Measured local RPO age is 0 ms and end-to-end RTO is 12,712 ms.
+
+This receipt is explicitly `local-fixture`; release-bound observation, Private
+Beta, and GA remain false. Commercialization accepts only a fresh v3
+`release-bound` receipt tied to the exact release and rejects this local proof
+for promotion.
+
 ## Current crash-after-claim and service-restart closure
 
 Precision commit `94ad99b6eae22ab5b69f91992785aab8caa97e88` clears expired
@@ -35,9 +65,9 @@ replays authoritative persistence through a read-only artifact store that
 throws on every attempted write; the only accepted outcome is exact `REPLAY`.
 
 The checked-in receipt is bound to source HEAD
-`ad437dbf341b6c9d7643bf4d2e742ba077d0acbf`, was generated at
-`2026-08-25T11:55:43.740Z`, passes 29/29 checks, and has receipt SHA-256
-`8c27da0ab28c80c0e226feb84fbea5549c3fd27180e55c0a3069a4e1529a4c38`.
+`f649678730b18f4a22e3a8ec641ee33a067299be`, was generated at
+`2026-08-25T12:42:44.315Z`, passes 29/29 checks, and has receipt SHA-256
+`91e37f5d83193c432bbf983d47888494f913b0aa870ac3959107002ffddcadf3`.
 The claim boundary remains explicit: this is a disposable deterministic
 fixture, not release runtime evidence; Private Beta and GA are false. No
 staging or production service was deployed, restarted, reconfigured, or
@@ -69,6 +99,8 @@ The separate operational handoff is
 - actual service-restart durability: `9819aa13`;
 - expired-lease authority clearing: `94ad99b6`;
 - actual crash-after-claim campaign: `ad437dbf`;
+- cross-store restore drill v3: `2c79c2da`;
+- restore receipt path redaction: `f6496787`;
 - execution contract: `nexyfab.precision-cad-commercial-execution.v3`;
 - immutable input: `nexyfab.precision-cad-commercial-input.v2`;
 - runtime receipt: `nexyfab.commercial-precision-runtime-evidence.v3`;
@@ -103,10 +135,10 @@ fresh-client recovery; and removed all containers, networks, and volumes.
 Receipt:
 `docs/evidence/cad-independent/commercial-precision-local-durability-20260825.json`
 
-- source Git head: `ad437dbf341b6c9d7643bf4d2e742ba077d0acbf`;
-- generated: `2026-08-25T11:55:43.740Z`;
+- source Git head: `f649678730b18f4a22e3a8ec641ee33a067299be`;
+- generated: `2026-08-25T12:42:44.315Z`;
 - receipt SHA-256:
-  `8c27da0ab28c80c0e226feb84fbea5549c3fd27180e55c0a3069a4e1529a4c38`;
+  `91e37f5d83193c432bbf983d47888494f913b0aa870ac3959107002ffddcadf3`;
 - result: 29/29 `PASS`, including multi-instance exclusion, immutable input and
   three-output readback, isolated native execution, Ed25519/HMAC verification,
   wrong-worker/input/output/conflicting-replay rejection, exact callback retry,
@@ -143,8 +175,8 @@ test determinism, not expiry enforcement in production.
 
 ## Release authority
 
-The committed runtime receipt is schema v2 and remains `HOLD`, receipt SHA-256
-`1c77d674b11cbdb4f94376865d20334e0ea1ad7be89685ecb73eaa0491037677`,
+The committed runtime receipt is schema v3 and remains `HOLD`, receipt SHA-256
+`bd12ecba3301f192b2e070acf553001ed2595c4b4bfcff1530ab759430da66a6`,
 because no release-bound runtime observation was supplied. V2 verifies the
 actual Ed25519 worker signature against the current public-key registry and
 requires the exact machine assertion mapped to every `PASS`; a shaped signature

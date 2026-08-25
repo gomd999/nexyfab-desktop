@@ -1,5 +1,47 @@
 # Platform current session
 
+## 2026-08-25 actual cross-store backup and restore closure
+
+- Status: `POSTGRES_EXACT_RESTORE_PASS / OBJECT_SOURCE_BACKUP_RESTORE_PASS /
+  DATABASE_OBJECT_BINDINGS_PASS / SOURCE_UNCHANGED / RPO_0MS /
+  LOCAL_FIXTURE_ONLY / PRIVATE_BETA_FALSE / GA_FALSE`.
+- Platform implementation commits:
+  `2c79c2da95e0ea32c25f6a3c83e058d50cc7f265` and
+  `f649678730b18f4a22e3a8ec641ee33a067299be`; shared ownership commits:
+  `b22de945` and `e6c4e171`.
+- `scripts/verify-backup-restore.mjs` now performs a v3 cross-store drill: an
+  exact PostgreSQL dump/isolated restore, current migration application,
+  validation of previously unvalidated constraints, and a byte-for-byte
+  S3-compatible source-to-backup-to-restore copy through
+  `scripts/verify-object-storage-restore.mjs`.
+- The object drill requires three distinct safe identities, initially empty
+  backup and restore prefixes, no-overwrite writes, bounded full-object reads,
+  exact byte and SHA-256 manifests, and unchanged source objects. Database rows
+  for immutable inputs, committed outputs, and artifact snapshots must bind to
+  those exact source bytes.
+- Checked-in restore evidence:
+  `docs/evidence/cad-independent/commercial-precision-cross-store-restore-20260825.json`;
+  schema `nexyfab.backup-isolated-restore-drill.v3`, source HEAD
+  `f649678730b18f4a22e3a8ec641ee33a067299be`, receipt SHA-256
+  `e3181adce4ddf2e4a3a79b812652ea2a7ab946a18782a3bbdcf8ac324696c292`.
+  The run restored 164 tables/104 rows, validated four constraints, finished
+  with 83 foreign keys and zero orphans, and matched 8 objects/8,580 bytes with
+  database bindings `immutable_input=2`, `committed_output=3`, and
+  `artifact_snapshot=3`. Measured RPO was 0 ms and end-to-end RTO was 12,712 ms.
+- The same source-bound local durability receipt remains 29/29 PASS, receipt
+  SHA-256 `91e37f5d83193c432bbf983d47888494f913b0aa870ac3959107002ffddcadf3`.
+- Commercialization now rejects v1/v2, local-fixture, drifted object manifests,
+  incomplete database bindings, unvalidated/orphaned foreign keys, and receipts
+  not bound to the exact release. Only a fresh `release-bound` v3 observation
+  can satisfy the restore gate.
+- Node contracts pass 46/46; the actual disposable campaign passes; Platform
+  ownership, full source ESLint, and TypeScript pass. All local containers,
+  networks, and volumes were removed. Staging and production were unchanged,
+  so release-bound encrypted backup, smoke, operator/reviewer, and retention
+  evidence remain `HOLD`.
+- Handoff:
+  `HANDOFFS/20260825T214338+0900-cross-store-restore-drill-v3.md`.
+
 ## 2026-08-25 actual crash-after-claim recovery closure
 
 - Status: `SEPARATE_APPROVED_EXECUTION_CLAIMED / WORKER_DISAPPEARANCE_MODELED /
@@ -21,8 +63,8 @@
 - Checked-in evidence:
   `docs/evidence/cad-independent/commercial-precision-local-durability-20260825.json`;
   schema `nexyfab.commercial-precision-local-durability.v3`, source HEAD
-  `ad437dbf341b6c9d7643bf4d2e742ba077d0acbf`, 29/29 PASS, receipt SHA-256
-  `8c27da0ab28c80c0e226feb84fbea5549c3fd27180e55c0a3069a4e1529a4c38`.
+  `f649678730b18f4a22e3a8ec641ee33a067299be`, 29/29 PASS, receipt SHA-256
+  `91e37f5d83193c432bbf983d47888494f913b0aa870ac3959107002ffddcadf3`.
 - The same run also passes PostgreSQL/Redis AOF/object-storage restart recovery
   and exact post-restart replay. Focused outbox/journal tests 23/23, strict
   ESLint, Precision and Platform ownership checks, TypeScript, and architecture
@@ -49,11 +91,12 @@
   persistence receipt, workspace CAS head, Redis AOF sentinel, immutable input,
   all three output objects, and every persisted snapshot. Exact replay must
   return `REPLAY` while a read-only artifact store rejects any attempted write.
-- Checked-in evidence:
+- Historical v2 evidence at this implementation milestone was:
   `docs/evidence/cad-independent/commercial-precision-local-durability-20260825.json`;
   schema `nexyfab.commercial-precision-local-durability.v2`, source HEAD
   `9819aa13dd4dc9759416b1ac23406cd2b877564e`, 28/28 PASS, receipt SHA-256
   `6946c7c70124bfce1dd9b99c00617e55176684cfeca817c60b315387ab948c23`.
+  The checked-in path is now superseded by the current v3 29/29 receipt above.
 - The path-filtered and weekly CI workflow runs the same restart campaign.
   Platform ownership, full source ESLint, and TypeScript checks pass.
 - This remains a digest-pinned disposable fixture campaign. It explicitly sets
