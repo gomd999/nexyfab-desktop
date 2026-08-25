@@ -1,5 +1,22 @@
 # Precision CAD current session
 
+## 2026-08-25 synthetic v3 portable exact-boundary evidence
+
+- Status: `CROSS_WORKTREE_RECEIPT_VERIFIED /
+  NATIVE_PRECISION_AUTHORITY_UNCHANGED`.
+- The raw synthetic receipt now canonicalizes every JSON/MJS binding with
+  `utf8-crlf-to-lf`; the same receipt passes in Platform and integration
+  worktrees and still rejects semantic/executor changes.
+- Receipt self-hash:
+  `632fd435b31c8f65cd07a1080bf3b02e79588b65a0e3523209043f036648da26`;
+  executor identity:
+  `b31882c8619eb3908838bde4ed087582600f234ea5307d8c3437da838f18ecd0`.
+- This fixes evidence portability only. Production native execution,
+  STEP/XCAF/GD&T interoperability, 150 AI intents, experts, and pilots remain
+  HOLD.
+- Handoff:
+  `HANDOFFS/20260825T083000Z-synthetic-v3-portable-exact-boundary.md`.
+
 ## 2026-08-25 synthetic campaign v3 exact-authority boundary
 
 - Status: `SYNTHETIC_REBUILD_1500_OF_1500_PASS /
