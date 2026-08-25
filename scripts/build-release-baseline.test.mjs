@@ -5,7 +5,19 @@ import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
 import { fileURLToPath } from 'node:url';
-import { buildReleaseBaseline, classifyReleasePath } from './build-release-baseline.mjs';
+import {
+  buildReleaseBaseline,
+  classifyReleasePath,
+  RAILWAY_DOCS_EVIDENCE_POLICY,
+  verifyRailwayIgnoreLines,
+} from './build-release-baseline.mjs';
+
+const requiredRailwayIgnoreRules = [
+  'node_modules', '.next', '.git', '.env.local', '.env', '*.log', '*.db', '*.zip',
+  'data', 'scripts/knowledge-crawler', 'validation-reports', 'test-results',
+  '.tmp', '/.codex-runtime', '/artifacts', '/backups', 'src-tauri',
+  'occt-collab-worker', 'out', 'out2', '.claude',
+];
 
 test('classifies protected and runtime-excluded release paths fail-closed', () => {
   assert.equal(classifyReleasePath('.env.production'), 'protected');
@@ -80,15 +92,37 @@ test('quarantines the stale historical receipt while retaining its STALE marker'
   }
 });
 
+test('accepts only the ordered deny-by-default Railway docs evidence policy', () => {
+  const rules = [...requiredRailwayIgnoreRules, ...RAILWAY_DOCS_EVIDENCE_POLICY];
+  const result = verifyRailwayIgnoreLines(rules);
+  assert.equal(result.docsEvidencePolicy.mode, 'deny-by-default-exact-evidence-exceptions');
+  assert.deepEqual(result.docsEvidencePolicy.rules, RAILWAY_DOCS_EVIDENCE_POLICY);
+  assert.throws(
+    () => verifyRailwayIgnoreLines([...rules, '!docs']),
+    /unexpected_negation:!docs/,
+  );
+  assert.throws(
+    () => verifyRailwayIgnoreLines([
+      ...requiredRailwayIgnoreRules,
+      ...RAILWAY_DOCS_EVIDENCE_POLICY.slice(1),
+      RAILWAY_DOCS_EVIDENCE_POLICY[0],
+    ]),
+    /out_of_order/,
+  );
+  assert.throws(
+    () => verifyRailwayIgnoreLines(rules.filter(rule => !rule.endsWith('commercial-precision-runtime-evidence.json'))),
+    /commercial-precision-runtime-evidence/,
+  );
+});
+
 test('current receipts are excluded from cleanliness and their own baseline hash', () => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'nexyfab-release-receipts-'));
   const script = fileURLToPath(new URL('./build-release-baseline.mjs', import.meta.url));
   try {
     fs.mkdirSync(path.join(root, 'docs/evidence/release'), { recursive: true });
     fs.writeFileSync(path.join(root, '.railwayignore'), [
-      'node_modules', '.next', '.git', '.env.local', '.env', '*.log', '*.db', '*.zip',
-      'data', 'docs', 'scripts/knowledge-crawler', 'validation-reports', 'test-results',
-      '.tmp', '/.codex-runtime', '/artifacts', '/backups', 'src-tauri', 'occt-collab-worker', 'out', 'out2', '.claude',
+      ...requiredRailwayIgnoreRules,
+      ...RAILWAY_DOCS_EVIDENCE_POLICY,
     ].join('\n'), 'utf8');
     fs.writeFileSync(path.join(root, 'app.js'), 'release-code', 'utf8');
     for (const name of [

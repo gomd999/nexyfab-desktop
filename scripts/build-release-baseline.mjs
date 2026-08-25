@@ -101,20 +101,64 @@ export function readReleaseWorkingTreeChanges() {
   ])].sort();
 }
 
-function verifyRailwayIgnore() {
-  const ignore = fs.readFileSync(path.join(ROOT, '.railwayignore'), 'utf8')
-    .split(/\r?\n/).map(line => line.trim()).filter(line => line && !line.startsWith('#'));
+export const RAILWAY_DOCS_EVIDENCE_POLICY = Object.freeze([
+  'docs/**',
+  '!docs/evidence/',
+  'docs/evidence/**',
+  '!docs/evidence/release/',
+  'docs/evidence/release/**',
+  '!docs/evidence/release/commercial-i18n-release-receipt.json',
+  '!docs/evidence/release/seven-day-operations-receipt.json',
+  '!docs/evidence/release/commercial-precision-runtime-evidence.json',
+  '!docs/evidence/operations/',
+  'docs/evidence/operations/**',
+  '!docs/evidence/operations/**/*.json',
+]);
+
+export function verifyRailwayIgnoreLines(lines) {
+  const ignore = lines.map(line => line.trim()).filter(line => line && !line.startsWith('#'));
   const required = [
     'node_modules', '.next', '.git', '.env.local', '.env', '*.log', '*.db', '*.zip',
-    'data', 'docs', 'scripts/knowledge-crawler', 'validation-reports', 'test-results',
+    'data', 'scripts/knowledge-crawler', 'validation-reports', 'test-results',
     '.tmp', '/.codex-runtime', '/artifacts', '/backups', 'src-tauri',
     // occt-worker is source for the browser worker copied into public/ by
     // scripts/copy-occt.js; it must remain in the Docker build context.
     'occt-collab-worker', 'out', 'out2', '.claude',
   ];
   const missing = required.filter(item => !ignore.includes(item));
-  if (missing.length) throw new Error(`railwayignore_required_entries_missing:${missing.join(',')}`);
-  return { path: '.railwayignore', requiredEntries: required.length, missing: [] };
+  const allowedDocsNegations = new Set(RAILWAY_DOCS_EVIDENCE_POLICY.filter(rule => rule.startsWith('!')));
+  const unexpectedDocsNegations = ignore.filter(rule => rule.startsWith('!docs') && !allowedDocsNegations.has(rule));
+  let previousIndex = -1;
+  const docsPolicyIssues = [];
+  for (const rule of RAILWAY_DOCS_EVIDENCE_POLICY) {
+    const index = ignore.indexOf(rule);
+    if (index < 0) docsPolicyIssues.push(`missing:${rule}`);
+    else if (index <= previousIndex) docsPolicyIssues.push(`out_of_order:${rule}`);
+    previousIndex = index;
+  }
+  if (unexpectedDocsNegations.length) {
+    docsPolicyIssues.push(...unexpectedDocsNegations.map(rule => `unexpected_negation:${rule}`));
+  }
+  if (missing.length || docsPolicyIssues.length) {
+    throw new Error([
+      ...(missing.length ? [`required_entries_missing:${missing.join(',')}`] : []),
+      ...(docsPolicyIssues.length ? [`docs_policy_invalid:${docsPolicyIssues.join(',')}`] : []),
+    ].join(';'));
+  }
+  return {
+    requiredEntries: required.length + RAILWAY_DOCS_EVIDENCE_POLICY.length,
+    missing: [],
+    docsEvidencePolicy: {
+      mode: 'deny-by-default-exact-evidence-exceptions',
+      rules: [...RAILWAY_DOCS_EVIDENCE_POLICY],
+      unexpectedNegations: [],
+    },
+  };
+}
+
+function verifyRailwayIgnore() {
+  const result = verifyRailwayIgnoreLines(fs.readFileSync(path.join(ROOT, '.railwayignore'), 'utf8').split(/\r?\n/));
+  return { path: '.railwayignore', ...result };
 }
 
 export function buildReleaseBaseline({ files, root = ROOT, metadata = {} }) {
