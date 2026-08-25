@@ -1,5 +1,24 @@
 # Precision CAD current session
 
+## 2026-08-25 approved native adapter identity closure
+
+- Status: `SOURCE_TRUST_BOUNDARY_PASS / REAL_ADAPTER_NOT_SUPPLIED /
+  STAGING_WORKER_NOT_DEPLOYED / COMMERCIAL_RELEASE_HOLD`.
+- Commit `7e01ba140bda3daa9f48aa79af76eb59e3dce8a9` binds every signed worker
+  receipt to both the native executable SHA-256 and the canonical invocation
+  SHA-256 (executable hash plus ordered arguments). The core worker registry
+  rejects a valid Ed25519 signature when either approved value differs.
+- The worker now verifies the executable bytes before every native process
+  launch, carries both bindings in its verification artifact, signed receipt,
+  and health response, and separates HTTP 200 `/live` from self-test-gated
+  `/health` (`503 NOT_READY` until a canary succeeds).
+- `containers/occt-commercial-worker/` is a non-root, fail-closed OCI/Railway
+  wrapper. It requires an exact adapter-image digest, executable checksum, and
+  worker-source checksum; it does not contain a CAD engine or runtime secret.
+- This closes a source-level substitution gap only. No external adapter image,
+  worker private key, positive canary, recovery observation, independent CAD
+  review, or manufacturing pilot was created.
+
 ## 2026-08-25 exact core staging HOLD verification
 
 - Status: `CORE_STAGING_HOLD_VERIFIED / NATIVE_WORKER_NOT_DEPLOYED /
