@@ -11,6 +11,7 @@ export const EXECUTION_CONTRACT = 'nexyfab.precision-cad-commercial-execution.v3
 export const INPUT_SCHEMA = 'nexyfab.precision-cad-commercial-input.v2';
 export const HEALTH_SCHEMA = 'nexyfab.precision-cad-commercial-worker-health.v1';
 export const VERIFICATION_SCHEMA = 'nexyfab.precision-cad-commercial-native-verification.v1';
+export const NATIVE_INVOCATION_SCHEMA = 'nexyfab.precision-cad-native-invocation.v1';
 const SHA256 = /^[a-f0-9]{64}$/;
 const SAFE_ID = /^[A-Za-z0-9][A-Za-z0-9._:-]{0,255}$/;
 const MAX_INPUT_BYTES = 512 * 1024;
@@ -49,7 +50,8 @@ function readConfig(env = process.env) {
     'NEXYFAB_COMMERCIAL_CORE_URL', 'NEXYFAB_COMMERCIAL_WORKER_IDENTITY',
     'NEXYFAB_COMMERCIAL_WORKER_CLAIM_SECRET', 'NEXYFAB_COMMERCIAL_TRANSPORT_SECRET',
     'NEXYFAB_COMMERCIAL_CALLBACK_SECRET', 'NEXYFAB_COMMERCIAL_WORKER_PRIVATE_KEY_PEM',
-    'NEXYFAB_COMMERCIAL_NATIVE_EXECUTABLE',
+    'NEXYFAB_COMMERCIAL_NATIVE_EXECUTABLE', 'NEXYFAB_COMMERCIAL_NATIVE_EXECUTABLE_SHA256',
+    'NEXYFAB_COMMERCIAL_NATIVE_INVOCATION_SHA256',
   ];
   if (required.some(key => !env[key]?.trim())) throw new Error('worker_configuration_incomplete');
   const coreUrl = env.NEXYFAB_COMMERCIAL_CORE_URL.replace(/\/$/, '');
@@ -58,6 +60,8 @@ function readConfig(env = process.env) {
     if (Buffer.byteLength(env[key], 'utf8') < 32) throw new Error('worker_secret_weak');
   }
   if (!isAbsolute(env.NEXYFAB_COMMERCIAL_NATIVE_EXECUTABLE)) throw new Error('native_executable_absolute_path_required');
+  if (!SHA256.test(env.NEXYFAB_COMMERCIAL_NATIVE_EXECUTABLE_SHA256)
+    || !SHA256.test(env.NEXYFAB_COMMERCIAL_NATIVE_INVOCATION_SHA256)) throw new Error('native_binding_sha256_invalid');
   let nativeArgs = [];
   if (env.NEXYFAB_COMMERCIAL_NATIVE_ARGS_JSON) {
     const parsed = JSON.parse(env.NEXYFAB_COMMERCIAL_NATIVE_ARGS_JSON);
@@ -77,6 +81,8 @@ function readConfig(env = process.env) {
     transportSecret: env.NEXYFAB_COMMERCIAL_TRANSPORT_SECRET,
     callbackSecret: env.NEXYFAB_COMMERCIAL_CALLBACK_SECRET,
     nativeExecutable: env.NEXYFAB_COMMERCIAL_NATIVE_EXECUTABLE,
+    nativeExecutableSha256: env.NEXYFAB_COMMERCIAL_NATIVE_EXECUTABLE_SHA256,
+    nativeInvocationSha256: env.NEXYFAB_COMMERCIAL_NATIVE_INVOCATION_SHA256,
     nativeArgs,
     nativeTimeoutMs: timeoutMs,
     privateKey,
@@ -138,10 +144,27 @@ async function downloadInput(transport, config) {
   return { bytes, parsed };
 }
 
-async function runNative(config, inputPath, outputDirectory) {
+export function nativeInvocationSha256(nativeExecutableSha256, nativeArgs) {
+  if (!SHA256.test(nativeExecutableSha256) || !Array.isArray(nativeArgs)) throw new Error('native_invocation_invalid');
+  return digest(Buffer.from(canonical({
+    schema: NATIVE_INVOCATION_SCHEMA,
+    nativeExecutableSha256,
+    nativeArgs,
+  }), 'utf8'));
+}
+
+async function verifyNativeBinding(config) {
   const executableStat = await stat(config.nativeExecutable);
   if (!executableStat.isFile()) throw new Error('native_executable_not_file');
   const executableSha256 = digest(await readFile(config.nativeExecutable));
+  if (executableSha256 !== config.nativeExecutableSha256) throw new Error('native_executable_hash_mismatch');
+  const invocationSha256 = nativeInvocationSha256(executableSha256, config.nativeArgs);
+  if (invocationSha256 !== config.nativeInvocationSha256) throw new Error('native_invocation_hash_mismatch');
+  return { nativeExecutableSha256: executableSha256, nativeInvocationSha256: invocationSha256 };
+}
+
+async function runNative(config, inputPath, outputDirectory) {
+  const nativeBinding = await verifyNativeBinding(config);
   const args = [...config.nativeArgs, '--input', inputPath, '--output-dir', outputDirectory];
   await new Promise((resolve, reject) => {
     const child = spawn(config.nativeExecutable, args, { cwd: outputDirectory, shell: false, windowsHide: true, stdio: ['ignore', 'ignore', 'ignore'] });
@@ -151,7 +174,7 @@ async function runNative(config, inputPath, outputDirectory) {
     child.once('error', () => finish(() => reject(new Error('native_execution_failed'))));
     child.once('close', code => finish(() => code === 0 ? resolve() : reject(new Error('native_execution_failed'))));
   });
-  return executableSha256;
+  return nativeBinding;
 }
 
 async function boundedRegularFile(pathname, maximumBytes) {
@@ -169,7 +192,7 @@ async function nativeOutputs(config, transport, input, directory, startedAt) {
     mkdir(outputDirectory, { recursive: false }),
     writeFile(inputPath, input.bytes, { flag: 'wx' }),
   ]);
-  const nativeExecutableSha256 = await runNative(config, inputPath, outputDirectory);
+  const nativeBinding = await runNative(config, inputPath, outputDirectory);
   const model = await boundedRegularFile(join(outputDirectory, 'model.step'), MAX_OUTPUT_BYTES);
   const report = await boundedRegularFile(join(outputDirectory, 'report.json'), MAX_OUTPUT_BYTES);
   const modelText = model.subarray(0, Math.min(model.length, 1024 * 1024)).toString('utf8');
@@ -182,18 +205,21 @@ async function nativeOutputs(config, transport, input, directory, startedAt) {
     jobId: transport.job.jobId,
     executionId: transport.job.executionId,
     inputArtifactSha256: transport.job.inputArtifact.contentSha256,
-    nativeExecutableSha256,
+    ...nativeBinding,
     nativeProcessExitCode: 0,
     startedAt,
     completedAt: new Date().toISOString(),
     outputs: { modelSha256: digest(model), reportSha256: digest(report) },
     checks: { inputArtifactReadback: 'PASS', nativeExecution: 'PASS', stepEnvelope: 'PASS', reportStatus: 'PASS' },
   }), 'utf8');
-  return [
-    { role: 'model', mediaType: 'application/step', bytes: model },
-    { role: 'report', mediaType: 'application/json', bytes: report },
-    { role: 'verification', mediaType: 'application/json', bytes: verification },
-  ];
+  return {
+    nativeBinding,
+    outputs: [
+      { role: 'model', mediaType: 'application/step', bytes: model },
+      { role: 'report', mediaType: 'application/json', bytes: report },
+      { role: 'verification', mediaType: 'application/json', bytes: verification },
+    ],
+  };
 }
 
 async function gatewayJson(transport, config, body) {
@@ -256,6 +282,8 @@ function signedReceipt(config, transport, values) {
     inputArtifactSha256: transport.job.inputArtifact.contentSha256,
     workerIdentity: config.workerIdentity,
     workerPublicKeyFingerprint: config.publicKeyFingerprint,
+    nativeExecutableSha256: values.nativeExecutableSha256,
+    nativeInvocationSha256: values.nativeInvocationSha256,
     status: values.status,
     startedAt: values.startedAt,
     completedAt: values.completedAt,
@@ -291,13 +319,13 @@ export async function executeTransport(config, transport) {
   try {
     const input = await downloadInput(transport, config);
     directory = await mkdtemp(join(tmpdir(), 'nexyfab-commercial-worker-'));
-    const outputs = await nativeOutputs(config, transport, input, directory, startedAt);
-    const outputArtifacts = await uploadOutputs(transport, config, outputs);
-    const receipt = signedReceipt(config, transport, { status: 'PASS', startedAt, completedAt: new Date().toISOString(), outputArtifacts, failureReasons: [] });
+    const native = await nativeOutputs(config, transport, input, directory, startedAt);
+    const outputArtifacts = await uploadOutputs(transport, config, native.outputs);
+    const receipt = signedReceipt(config, transport, { status: 'PASS', startedAt, completedAt: new Date().toISOString(), outputArtifacts, failureReasons: [], ...native.nativeBinding });
     return await postReceipt(config, transport, receipt);
   } catch (error) {
     const reason = error instanceof Error ? error.message.slice(0, 256) : 'worker_execution_failed';
-    const receipt = signedReceipt(config, transport, { status: 'HOLD', startedAt, completedAt: new Date().toISOString(), outputArtifacts: [], failureReasons: [reason] });
+    const receipt = signedReceipt(config, transport, { status: 'HOLD', startedAt, completedAt: new Date().toISOString(), outputArtifacts: [], failureReasons: [reason], nativeExecutableSha256: config.nativeExecutableSha256, nativeInvocationSha256: config.nativeInvocationSha256 });
     await postReceipt(config, transport, receipt).catch(() => undefined);
     throw error;
   } finally {
@@ -318,7 +346,7 @@ export async function claimOnce(config) {
   return value.transport;
 }
 
-function healthBody(config, state) {
+export function healthBody(config, state) {
   if (!state.selfTest) return {
     schema: HEALTH_SCHEMA,
     status: 'NOT_READY',
@@ -329,6 +357,8 @@ function healthBody(config, state) {
     artifactUpload: 'NOT_RUN',
     signedCallback: 'NOT_RUN',
     workerIdentity: config.workerIdentity,
+    nativeExecutableSha256: config.nativeExecutableSha256,
+    nativeInvocationSha256: config.nativeInvocationSha256,
     selfTestReceiptSha256: null,
     lastSelfTestAt: null,
   };
@@ -342,6 +372,8 @@ function healthBody(config, state) {
     artifactUpload: 'PASS',
     signedCallback: 'PASS',
     workerIdentity: config.workerIdentity,
+    nativeExecutableSha256: config.nativeExecutableSha256,
+    nativeInvocationSha256: config.nativeInvocationSha256,
     selfTestReceiptSha256: state.selfTest.receiptSha256,
     lastSelfTestAt: state.selfTest.completedAt,
   };
@@ -349,11 +381,18 @@ function healthBody(config, state) {
 
 export async function runService(env = process.env) {
   const config = readConfig(env);
+  await verifyNativeBinding(config);
   const state = { claimConsumer: 'ACTIVE', selfTest: null, stopping: false };
   const server = createServer((req, res) => {
-    if (req.method !== 'GET' || (req.url !== '/' && req.url !== '/health')) { res.writeHead(404).end(); return; }
+    if (req.method !== 'GET' || !['/', '/health', '/live'].includes(req.url)) { res.writeHead(404).end(); return; }
+    if (req.url === '/live') {
+      const live = Buffer.from(JSON.stringify({ schema: HEALTH_SCHEMA, status: 'LIVE', executionContract: EXECUTION_CONTRACT, workerIdentity: config.workerIdentity }), 'utf8');
+      res.writeHead(200, { 'content-type': 'application/json', 'content-length': String(live.length), 'cache-control': 'no-store' });
+      res.end(live);
+      return;
+    }
     const body = Buffer.from(JSON.stringify(healthBody(config, state)), 'utf8');
-    res.writeHead(200, { 'content-type': 'application/json', 'content-length': String(body.length), 'cache-control': 'no-store' });
+    res.writeHead(state.selfTest ? 200 : 503, { 'content-type': 'application/json', 'content-length': String(body.length), 'cache-control': 'no-store' });
     res.end(body);
   });
   await new Promise((resolve, reject) => { server.once('error', reject); server.listen(config.port, '0.0.0.0', resolve); });

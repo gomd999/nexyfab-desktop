@@ -1,9 +1,9 @@
 import { createHash, createHmac, createPublicKey, generateKeyPairSync, verify } from 'node:crypto';
-import { mkdtemp, rm, writeFile } from 'node:fs/promises';
+import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { canonical, executeTransport, EXECUTION_CONTRACT, INPUT_SCHEMA } from './commercial-precision-worker.mjs';
+import { canonical, executeTransport, EXECUTION_CONTRACT, INPUT_SCHEMA, nativeInvocationSha256 } from './commercial-precision-worker.mjs';
 import type { CommercialExecutionJob } from '../../packages/job-contracts/src/commercialPrecisionExecution';
 
 const sha256 = (bytes: string | Uint8Array) => createHash('sha256').update(bytes).digest('hex');
@@ -53,14 +53,18 @@ describe('commercial precision worker client', () => {
         if (target.endsWith('/callback')) { callbackBody = String(init.body); expect(init.headers['x-commercial-callback-hmac']).toBe(createHmac('sha256', callbackSecret).update(callbackBody, 'utf8').digest('base64url')); return responseJson({ ok: true }); }
         return responseJson({ ok: false }, 404);
       }));
-      const config = { workerIdentity, transportSecret, callbackSecret, nativeExecutable: process.execPath, nativeArgs: [executor], nativeTimeoutMs: 30_000, privateKey, publicKeyFingerprint: sha256(publicKey.export({ type: 'spki', format: 'der' })) };
+      const nativeExecutableSha256 = sha256(await readFile(process.execPath));
+      const nativeArgs = [executor];
+      const config = { workerIdentity, transportSecret, callbackSecret, nativeExecutable: process.execPath, nativeExecutableSha256, nativeInvocationSha256: nativeInvocationSha256(nativeExecutableSha256, nativeArgs), nativeArgs, nativeTimeoutMs: 30_000, privateKey, publicKeyFingerprint: sha256(publicKey.export({ type: 'spki', format: 'der' })) };
       const result = await executeTransport(config, transport);
       expect([...uploads.keys()].sort()).toEqual(['model', 'report', 'verification']);
-      expect(result.receipt).toMatchObject({ schema: EXECUTION_CONTRACT, status: 'PASS', workerIdentity, inputArtifactSha256: job.inputArtifact!.contentSha256 });
+      expect(result.receipt).toMatchObject({ schema: EXECUTION_CONTRACT, status: 'PASS', workerIdentity, inputArtifactSha256: job.inputArtifact!.contentSha256, nativeExecutableSha256, nativeInvocationSha256: config.nativeInvocationSha256 });
       expect(result.receipt.outputArtifacts.map((item: { role: string }) => item.role).sort()).toEqual(['model', 'report', 'verification']);
       expect(callbackBody).toBe(canonical(result.receipt));
       const unsignedReceipt = { ...result.receipt }; delete unsignedReceipt.signatureBase64;
       expect(verify(null, Buffer.from(canonical({ schema: EXECUTION_CONTRACT, purpose: 'worker-receipt', receipt: unsignedReceipt }), 'utf8'), publicKey, Buffer.from(result.receipt.signatureBase64, 'base64'))).toBe(true);
+      await expect(executeTransport({ ...config, nativeExecutableSha256: '0'.repeat(64) }, transport)).rejects.toThrow('native_executable_hash_mismatch');
+      expect(JSON.parse(callbackBody)).toMatchObject({ status: 'HOLD', failureReasons: ['native_executable_hash_mismatch'] });
     } finally {
       await rm(directory, { recursive: true, force: true });
     }
