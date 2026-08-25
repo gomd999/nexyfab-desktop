@@ -252,6 +252,7 @@
     "pmi:nist-baseline": "tsx scripts/reference/report-nist-pmi-baseline.ts",
     "pmi:nist-full-roundtrip": "tsx scripts/reference/report-nist-full-roundtrip.ts",
     "check:openscad-deploy": "node scripts/check-openscad-deploy.mjs",
+    "deploy:source:preflight": "node scripts/verify-deployment-source.mjs",
     "deploy:railway:verified": "node scripts/deploy-railway-verified.mjs",
     "audit:ai-cad-baseline": "node scripts/audit-ai-cad-baseline.mjs",
     "smoke:ai-cad-deploy": "node scripts/smoke-ai-cad-deployment.mjs",

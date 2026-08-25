@@ -6,10 +6,13 @@ const NODE_TESTS = [
   'apps/core-api/test/server.test.mjs',
   'collab-worker/server.test.js',
   'services/openscad-worker/server.test.mjs',
+  'scripts/deploy-railway-verified.test.mjs',
+  'scripts/package-release-health-evidence.test.mjs',
   'scripts/platform/validate-platform-architecture.test.mjs',
   'scripts/platform/evaluate-runtime-placement-readiness.test.mjs',
   'scripts/platform/verify-slice-deployment-readiness.test.mjs',
   'scripts/platform/verify-slice-rollback-evidence.test.mjs',
+  'scripts/verify-deployment-source.test.mjs',
 ];
 
 const VITEST_TESTS = [

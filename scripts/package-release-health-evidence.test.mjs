@@ -4,7 +4,11 @@ import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
 import { createHash } from 'node:crypto';
-import { packageReleaseHealthEvidence, RELEASE_HEALTH_EVIDENCE } from './package-release-health-evidence.mjs';
+import {
+  packageReleaseHealthEvidence,
+  RELEASE_HEALTH_EVIDENCE,
+  validateReleaseHealthEvidenceSource,
+} from './package-release-health-evidence.mjs';
 
 function fixtureRoot() {
   const root = mkdtempSync(path.join(os.tmpdir(), 'nexyfab-release-health-package-'));
@@ -68,6 +72,9 @@ test('copies the exact source bytes required by a qualified seven-day receipt', 
       evidenceBindings: { release, policy, samples: [sample], costSnapshots: [cost] },
     }));
 
+    const validation = validateReleaseHealthEvidenceSource({ projectRoot: root });
+    assert.equal(validation.files.length, RELEASE_HEALTH_EVIDENCE.length + 4);
+    assert.deepEqual(validation.files.slice(-4).map(item => item.relativePath), [release.file, policy.file, sample.file, cost.file]);
     const result = packageReleaseHealthEvidence({ projectRoot: root, standaloneRoot: path.join(root, '.next', 'standalone') });
     assert.equal(result.copied.length, RELEASE_HEALTH_EVIDENCE.length + 4);
     for (const binding of [release, policy, sample, cost]) {

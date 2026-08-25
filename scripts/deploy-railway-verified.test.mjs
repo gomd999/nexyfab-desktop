@@ -1,6 +1,13 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { TARGET_RUNTIME_KEYS, npmInvocation, railwayTargetIds, stagingHoldIssues, targetGateEnvironment } from './deploy-railway-verified.mjs';
+import {
+  TARGET_RUNTIME_KEYS,
+  deploymentMessage,
+  npmInvocation,
+  railwayTargetIds,
+  stagingHoldIssues,
+  targetGateEnvironment,
+} from './deploy-railway-verified.mjs';
 
 const commercialRuntimeKeys = [
   'NEXYFAB_COMMERCIAL_MODE',
@@ -118,4 +125,16 @@ test('Windows invokes the npm JavaScript CLI without a command-shell dependency'
     npmExecPath: '',
     fileExists: () => false,
   }), { command: 'npm', prefixArgs: [] });
+});
+
+test('deployment metadata binds the exact clean Git source identity', () => {
+  const buildId = 'b'.repeat(40);
+  assert.equal(
+    deploymentMessage({ stagingHold: true, expectedBuildId: buildId, now: '2026-08-25T00:00:00.000Z' }),
+    `verified staging HOLD deploy build=${buildId} source=clean-git-v1 at=2026-08-25T00:00:00.000Z`,
+  );
+  assert.equal(
+    deploymentMessage({ stagingHold: false, expectedBuildId: buildId, now: '2026-08-25T00:00:00.000Z' }),
+    `verified deploy build=${buildId} source=clean-git-v1 at=2026-08-25T00:00:00.000Z`,
+  );
 });

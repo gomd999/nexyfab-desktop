@@ -3,6 +3,7 @@ import { spawn } from 'node:child_process';
 import { existsSync } from 'node:fs';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
+import { verifyDeploymentSource } from './verify-deployment-source.mjs';
 
 function arg(name, fallback) {
   const prefix = `--${name}=`;
@@ -54,6 +55,11 @@ export function npmInvocation({
     return { command: execPath, prefixArgs: [bundledNpmCli] };
   }
   return { command: 'npm', prefixArgs: [] };
+}
+
+export function deploymentMessage({ stagingHold, expectedBuildId, now = new Date().toISOString() }) {
+  const deploymentKind = stagingHold ? 'verified staging HOLD deploy' : 'verified deploy';
+  return `${deploymentKind} build=${expectedBuildId} source=clean-git-v1 at=${now}`;
 }
 
 function runNpmScript(script, env = process.env) {
@@ -230,6 +236,14 @@ async function main() {
     throw new Error(`target ${environment}/${service} must define NEXYFAB_BUILD_ID (or pass --expected-build-id) for verified deployment`);
   }
 
+  if (!verifyOnly) {
+    const sourcePreflight = await verifyDeploymentSource({
+      sourceRoot: path.resolve(process.cwd(), sourcePath || '.'),
+      expectedBuildId,
+    });
+    console.log(JSON.stringify({ event: 'deployment-source-verified', ...sourcePreflight }));
+  }
+
   const before = await list();
   const beforeIds = new Set(before.map(deploymentId).filter(Boolean));
 
@@ -253,8 +267,7 @@ async function main() {
     const upArgs = ['up'];
     if (sourcePath && sourcePath !== '.') upArgs.push(sourcePath);
     if (pathAsRoot) upArgs.push('--path-as-root');
-    const deploymentKind = stagingHold ? 'verified staging HOLD deploy' : 'verified deploy';
-    upArgs.push('--detach', '--json', '--service', service, '--environment', environment, '--message', `${deploymentKind} ${new Date().toISOString()}`);
+    upArgs.push('--detach', '--json', '--service', service, '--environment', environment, '--message', deploymentMessage({ stagingHold, expectedBuildId }));
     await runRailway(upArgs, { stream: true });
   }
 

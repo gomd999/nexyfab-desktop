@@ -59,12 +59,12 @@ function inside(root, candidate, label) {
   return resolved;
 }
 
-function regularFile(file, label) {
+function regularFile(file, label, maxBytes = MAX_RECEIPT_BYTES) {
   if (!existsSync(file) || lstatSync(file).isSymbolicLink() || !statSync(file).isFile()) {
     throw new Error(`required release-health evidence is not a regular file (${label}): ${file}`);
   }
-  if (statSync(file).size > MAX_RECEIPT_BYTES) {
-    throw new Error(`release-health evidence exceeds ${MAX_RECEIPT_BYTES} bytes (${label}): ${file}`);
+  if (statSync(file).size > maxBytes) {
+    throw new Error(`release-health evidence exceeds ${maxBytes} bytes (${label}): ${file}`);
   }
 }
 
@@ -113,17 +113,64 @@ function sevenDaySourceBindings(receipt) {
 function copyVerifiedFile({ source, standalone, relativePath, expectedSha256 = null, maxBytes = MAX_RECEIPT_BYTES }) {
   const sourceFile = inside(source, path.join(source, ...relativePath.split('/')), 'release-health evidence source file');
   const destinationFile = inside(standalone, path.join(standalone, ...relativePath.split('/')), 'release-health evidence destination file');
-  regularFile(sourceFile, relativePath);
+  regularFile(sourceFile, relativePath, maxBytes);
   const sourceBytes = statSync(sourceFile).size;
   if (sourceBytes > maxBytes) throw new Error(`release-health bound evidence exceeds ${maxBytes} bytes: ${relativePath}`);
   const sourceSha256 = sha256(sourceFile);
   if (expectedSha256 && sourceSha256 !== expectedSha256) throw new Error(`release-health source binding hash mismatch: ${relativePath}`);
   mkdirSync(path.dirname(destinationFile), { recursive: true });
   copyFileSync(sourceFile, destinationFile);
-  regularFile(destinationFile, relativePath);
+  regularFile(destinationFile, relativePath, maxBytes);
   const destinationSha256 = sha256(destinationFile);
   if (sourceSha256 !== destinationSha256) throw new Error(`release-health evidence copy verification failed (${relativePath})`);
   return { relativePath, bytes: statSync(destinationFile).size, sha256: destinationSha256 };
+}
+
+function validateSourceFile({ source, relativePath, expectedSha256 = null, maxBytes = MAX_RECEIPT_BYTES }) {
+  const sourceFile = inside(source, path.join(source, ...relativePath.split('/')), 'release-health evidence source file');
+  regularFile(sourceFile, relativePath, maxBytes);
+  const bytes = statSync(sourceFile).size;
+  const actualSha256 = sha256(sourceFile);
+  if (expectedSha256 && actualSha256 !== expectedSha256) {
+    throw new Error(`release-health source binding hash mismatch: ${relativePath}`);
+  }
+  return { relativePath, bytes, sha256: actualSha256, maxBytes };
+}
+
+/**
+ * Validate every source byte consumed by standalone release-health packaging
+ * without creating a build artifact.
+ */
+export function validateReleaseHealthEvidenceSource({
+  projectRoot = process.cwd(),
+  sourceRoot = projectRoot,
+} = {}) {
+  const root = path.resolve(projectRoot);
+  const source = inside(root, sourceRoot, 'release-health evidence source root');
+  const receipts = [];
+  const files = [];
+  let sevenDayReceipt = null;
+  for (const entry of RELEASE_HEALTH_EVIDENCE) {
+    const sourceFile = inside(source, path.join(source, entry.relativePath), 'release-health evidence source file');
+    const receipt = validateReceipt(sourceFile, entry.schema, entry.allowedSchemas);
+    receipts.push({ path: entry.relativePath, schema: receipt.schema });
+    files.push(validateSourceFile({ source, relativePath: entry.relativePath }));
+    if (entry.relativePath.endsWith('/seven-day-operations-receipt.json')) sevenDayReceipt = receipt;
+  }
+
+  let boundBytes = 0;
+  for (const binding of sevenDaySourceBindings(sevenDayReceipt)) {
+    const file = validateSourceFile({
+      source,
+      relativePath: binding.relativePath,
+      expectedSha256: binding.sha256,
+      maxBytes: MAX_BOUND_EVIDENCE_BYTES,
+    });
+    boundBytes += file.bytes;
+    if (boundBytes > MAX_BOUND_EVIDENCE_BYTES) throw new Error('qualified seven-day evidence total bytes exceed limit');
+    files.push(file);
+  }
+  return { source, receipts, files, boundBytes };
 }
 
 /**
@@ -147,28 +194,16 @@ export function packageReleaseHealthEvidence({
     throw new Error(`refusing release-health evidence destination not named standalone: ${standalone}`);
   }
 
+  const validation = validateReleaseHealthEvidenceSource({ projectRoot: root, sourceRoot: source });
   const copied = [];
-  let sevenDayReceipt = null;
-  for (const entry of RELEASE_HEALTH_EVIDENCE) {
-    const sourceFile = inside(source, path.join(source, entry.relativePath), 'release-health evidence source file');
-    const receipt = validateReceipt(sourceFile, entry.schema, entry.allowedSchemas);
-    copied.push(copyVerifiedFile({ source, standalone, relativePath: entry.relativePath }));
-    validateReceipt(path.join(standalone, entry.relativePath), entry.schema, entry.allowedSchemas);
-    if (entry.relativePath.endsWith('/seven-day-operations-receipt.json')) sevenDayReceipt = receipt;
-  }
-
-  let boundBytes = 0;
-  for (const binding of sevenDaySourceBindings(sevenDayReceipt)) {
-    const copiedBinding = copyVerifiedFile({
+  for (const file of validation.files) {
+    copied.push(copyVerifiedFile({
       source,
       standalone,
-      relativePath: binding.relativePath,
-      expectedSha256: binding.sha256,
-      maxBytes: MAX_BOUND_EVIDENCE_BYTES,
-    });
-    boundBytes += copiedBinding.bytes;
-    if (boundBytes > MAX_BOUND_EVIDENCE_BYTES) throw new Error('qualified seven-day evidence total bytes exceed limit');
-    copied.push(copiedBinding);
+      relativePath: file.relativePath,
+      expectedSha256: file.sha256,
+      maxBytes: file.maxBytes,
+    }));
   }
   return { copied, standalone };
 }
