@@ -1,5 +1,24 @@
 # AI Design current session
 
+## 2026-08-25 exact downstream final-source staging HOLD
+
+- Status: `AI_CONCEPT_AUTHORITY_CONNECTED / FINAL_CORE_STAGING_11_OF_11_PASS /
+  POSITIVE_NATIVE_AND_EXTERNAL_QUALIFICATION_HOLD`.
+- Downstream application source
+  `32ff05ba3f1e7addc5cf6da95d6e94ff9b437fe7` is running in Railway staging as
+  deployment `c1e03352-5f95-47eb-a031-80847b22391c`, with 2/2 instances
+  `RUNNING` and exact live build identity.
+- The staging collector passed 11/11 release identity, PostgreSQL, Redis,
+  migration, packaged runtime HOLD, forged claim/lease, and callback
+  fail-closed checks.
+- This confirms that AI Design candidate input reaches the integrated core
+  boundary without gaining exact-CAD or manufacturing authority. AI output
+  remains `CONCEPT`/`DESIGN_CANDIDATE`; Private Beta and GA remain false.
+- Shared receipt:
+  `docs/evidence/release/commercial-precision-staging-hold-20260825.json`.
+- Handoff:
+  `HANDOFFS/20260825T061000Z-final-source-downstream-staging-hold.md`.
+
 ## 2026-08-25 downstream exact-core staging HOLD verification
 
 - AI Design remains revision-bound `CONCEPT`/`DESIGN_CANDIDATE` authority and
