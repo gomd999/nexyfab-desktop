@@ -1,5 +1,23 @@
 # Platform current session
 
+## 2026-08-25 synthetic receipt cross-worktree closure
+
+- Status: `V3_RAW_CAMPAIGN_VERIFIED / LF_CRLF_DETERMINISTIC /
+  COMMERCIAL_CERTIFICATION_FALSE`.
+- Integration replay exposed that the first v3 receipt hashed working-tree raw
+  bytes and failed after Git materialized LF evidence as CRLF. All campaign,
+  source, corpus, and executor bindings now require
+  `textCanonicalization=utf8-crlf-to-lf`.
+- A dedicated replay converts every bound file to CRLF and verifies the same
+  receipt. Semantic/corpus/executor tampering still fails closed.
+- Canonicalized source commit:
+  `6430d6a8f8b409c2c7d94d38ad02e0e2b77ff10d`; receipt self-hash:
+  `632fd435b31c8f65cd07a1080bf3b02e79588b65a0e3523209043f036648da26`;
+  executor identity:
+  `b31882c8619eb3908838bde4ed087582600f234ea5307d8c3437da838f18ecd0`.
+- Handoff:
+  `HANDOFFS/20260825T082000Z-synthetic-v3-cross-worktree-canonicalization.md`.
+
 ## 2026-08-25 raw synthetic campaign v3 closure
 
 - Status: `RAW_SYNTHETIC_1500_OF_1500_VERIFIED /

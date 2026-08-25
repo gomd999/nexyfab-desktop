@@ -66,12 +66,15 @@ receipt plus every independent/external qualification receipt.
 
 The checked local receipt is
 `docs/evidence/release/commercial-synthetic-campaign-receipt-260810.json`.
-It binds source/raw-evidence commit
-`4731d3bc669bed442132e56b3afd28496014c02b`, local observation identity
+Raw evidence is committed at `4731d3bc`; the canonicalized receipt binds source
+commit `6430d6a8f8b409c2c7d94d38ad02e0e2b77ff10d`, local observation identity
 `local-synthetic-campaign-20260825`, receipt SHA-256
-`8b0b0f0f84332d752fe64329d562f2fa7d2769b9762b1a9e91504babd1feea4a`,
+`632fd435b31c8f65cd07a1080bf3b02e79588b65a0e3523209043f036648da26`,
 and executor identity
-`86510a680a4f337a018c0df7e16051f28df993c1a43d0a09cffd41437704df01`.
+`b31882c8619eb3908838bde4ed087582600f234ea5307d8c3437da838f18ecd0`.
+Every bound JSON/MJS file declares `utf8-crlf-to-lf` canonicalization, so the
+same receipt verifies in LF and CRLF worktrees while semantic changes still
+fail closed.
 The local verifier returns eligible only for that exact local identity. A
 production release has a different deployment identity and must recollect the
 receipt for its own exact release.
