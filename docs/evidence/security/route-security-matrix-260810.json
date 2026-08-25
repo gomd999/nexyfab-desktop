@@ -1,7 +1,7 @@
 {
   "schema": "nexyfab.route-security-matrix.v1",
   "textCanonicalization": "utf8-crlf-to-lf",
-  "generatedAt": "2026-08-25T05:00:49.776Z",
+  "generatedAt": "2026-08-25T07:11:56.731Z",
   "status": "pass",
   "summary": {
     "routeFiles": 625,
