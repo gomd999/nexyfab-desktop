@@ -1,5 +1,33 @@
 # Platform current session
 
+## 2026-08-25 verified blind and manufacturing receipt promotion
+
+- Status: `READ_ONLY_CANDIDATE_CHECK / ATOMIC_NO_REPLACE_PROMOTION /
+  INVALID_EVIDENCE_WRITES_ZERO_FILES / REAL_SIGNED_RECEIPTS_ABSENT /
+  COMMERCIAL_RELEASE_HOLD`.
+- Implementation commit:
+  `b67d5347280e788b35a11b81ba75098054287f9d`.
+- A Platform-owned CLI now validates external blind or manufacturing candidate
+  receipts with the same exact product-scope validators before any canonical
+  receipt is written. Candidate files and roots must be external, regular, and
+  non-symlink; artifact bytes and trusted public-key registries are rechecked.
+- `--check` is read-only. `--output` writes canonical JSON only after complete
+  validation, uses a same-directory temporary plus hard-link no-replace
+  promotion, and refuses every existing output. Invalid candidates exit 4 with
+  `candidate_receipt_invalid` and create no output.
+- The tool creates neither evidence nor signatures and grants no commercial
+  release. Current external workbooks remain unchanged and contain no signed
+  blind or manufacturing candidate.
+- Verification: promotion contracts 5/5 PASS for valid blind/manufacturing,
+  forged claim, artifact drift, outside-root input, symlink input, overwrite,
+  read-only CLI, and invalid CLI no-output behavior. Focused ESLint warning 0,
+  mechanical scope PASS, and full Platform ownership, source ESLint, and
+  TypeScript PASS.
+- Tool:
+  `tools/promote-mechanical-commercial-receipt.mjs`.
+- Handoff:
+  `HANDOFFS/20260825T101549Z-verified-mechanical-receipt-promotion.md`.
+
 ## 2026-08-25 exact blind and manufacturing receipt gates
 
 - Status: `PUBLIC_SCHEMA_GATE_PARITY / EXTRA_CLAIMS_REJECTED /
