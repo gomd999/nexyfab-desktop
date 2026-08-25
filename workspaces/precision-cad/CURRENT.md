@@ -1,5 +1,35 @@
 # Precision CAD current session
 
+## 2026-08-25 current-source mechanical internal evidence refresh
+
+- Status: `MECHANICAL_INTERNAL_REGRESSION_PASS /
+  ARTIFACT_REVISION_CONSISTENCY_PASS / EXTERNAL_7_GATES_PENDING /
+  PRIVATE_BETA_EVIDENCE_PENDING / COMMERCIAL_PRECISION_HOLD`.
+- Evidence commit:
+  `2da7ba5940ef621058a76854c1602c6036305382`.
+- Adding the deployment-source preflight changed the source-bound
+  `package.json` bytes, so the internal mechanical receipt correctly became
+  stale. The complete six-command internal campaign was rerun rather than
+  copying its previous PASS claim.
+- Actual results: direct CAD 17 files/137 tests, mechanical accuracy 9/49,
+  local intent qualification 150 cases, representative exact runtime 10 cases
+  and 70 axes, assembly handoff 3 files/11 tests, and TypeScript all PASS.
+  AI model calls and the external commercial intent campaign remain NOT_RUN.
+- Internal receipt SHA-256:
+  `e4536c9671dfcbd046668b53052508953f3311496690ac580f4fd72e69bb92dd`;
+  current scope assessment SHA-256:
+  `5831bf3e2b3dc3989537692332c236bddca930addae71da54479b948b210965e`.
+- `mechanical:scope:check` is current and returns
+  `private_beta_evidence_pending`. Internal regression and artifact revision
+  consistency are verified; the exact remaining blockers are the external
+  30-feature closed loop, 10 and 30 direct-design packages, actual 150-intent
+  campaign, standard STEP conformance, 20 blind challenges, and three
+  manufactured pilot receipts.
+- No external feature/STEP receipt was synthesized and no staging or production
+  deployment was performed.
+- Handoff:
+  `HANDOFFS/20260825T231148+0900-current-source-mechanical-hold-refresh.md`.
+
 ## 2026-08-25 exact deployment-source consumer boundary
 
 - Status: `PRECISION_RUNTIME_EVIDENCE_INCLUDED / CLEAN_GIT_SOURCE_REQUIRED /
