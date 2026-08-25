@@ -175,7 +175,7 @@ export class CommercialExecutionOutboxStore {
             const eventInserted = await tx.execute('INSERT INTO nf_precision_cad_execution_events (execution_id, sequence, event_type, event_at, data_json, previous_hash, event_hash) VALUES (?, ?, ?, ?, ?, ?, ?)', unknown.executionId, event.sequence, event.type, event.at, canonicalJson(event.data), event.previousHash, event.hash);
             if (eventInserted.changes !== 1) throw new Error('journal_recovery_event_failed');
           }
-          const updated = await tx.execute('UPDATE nf_precision_cad_commercial_outbox SET status = ?, last_error = ?, updated_at = ? WHERE job_id = ? AND status = ? AND lease_expires_at <= ?', 'VERIFIED_UNKNOWN', 'lease_expired_authoritative_receipt_required', at, String(row.job_id), 'CLAIMED', at);
+          const updated = await tx.execute('UPDATE nf_precision_cad_commercial_outbox SET status = ?, last_error = ?, lease_owner = NULL, lease_expires_at = NULL, capability_hash = NULL, updated_at = ? WHERE job_id = ? AND status = ? AND lease_expires_at <= ?', 'VERIFIED_UNKNOWN', 'lease_expired_authoritative_receipt_required', at, String(row.job_id), 'CLAIMED', at);
           if (updated.changes !== 1) throw new Error('outbox_recovery_cas_failed');
           return 1;
         });
