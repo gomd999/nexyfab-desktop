@@ -3,13 +3,14 @@ import path from 'node:path';
 import { createHash } from 'node:crypto';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
+import { TEXT_BINDING_CANONICALIZATION, canonicalizeText } from './canonical-text-binding.mjs';
 
 const ROOT = process.cwd();
 const OUTPUT = path.join(ROOT, 'docs', 'evidence', 'security', 'secret-scan-260810.json');
 const MAX_TEXT_BYTES = 32 * 1024 * 1024;
 const TEXT_SAMPLE_BYTES = 8 * 1024;
 export const SECRET_SCAN_SCOPE = 'git-versioned-candidates-text-excluding-derived-current-receipts';
-export const SECRET_SCAN_TEXT_CANONICALIZATION = 'utf8-crlf-to-lf';
+export const SECRET_SCAN_TEXT_CANONICALIZATION = TEXT_BINDING_CANONICALIZATION;
 export const SECRET_SCAN_EXCLUDED_DERIVED_RECEIPTS = Object.freeze([
   'docs/evidence/release/commercial-release-baseline-current.json',
   'docs/evidence/release/commercial-security-evidence-receipt.json',
@@ -50,7 +51,7 @@ export function filterSecretScanCandidates(relativeFiles) {
 }
 
 export function canonicalizeSecretScanText(content) {
-  return String(content).replaceAll('\r\n', '\n');
+  return canonicalizeText(content);
 }
 
 function isProbablyText(content) {

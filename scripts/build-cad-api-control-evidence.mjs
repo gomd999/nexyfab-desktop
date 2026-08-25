@@ -1,17 +1,21 @@
 #!/usr/bin/env node
-import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
+import {
+  TEXT_BINDING_CANONICALIZATION,
+  canonicalTextEqual,
+  canonicalTextSha256,
+  canonicalizeText,
+} from './canonical-text-binding.mjs';
 
 const root = process.cwd();
 const write = process.argv.includes('--write');
 const outputRel = 'docs/evidence/cad-independent/cad-api-control-evidence.json';
 const outputPath = path.join(root, ...outputRel.split('/'));
 let storedGeneratedAt = null;
-try { storedGeneratedAt = JSON.parse(fs.readFileSync(outputPath, 'utf8')).generatedAt ?? null; } catch { /* missing/stale evidence */ }
+try { storedGeneratedAt = JSON.parse(canonicalizeText(fs.readFileSync(outputPath))).generatedAt ?? null; } catch { /* missing/stale evidence */ }
 const generatedAt = write || !storedGeneratedAt ? new Date().toISOString() : storedGeneratedAt;
-const sha256 = value => crypto.createHash('sha256').update(value).digest('hex');
-const read = rel => fs.readFileSync(path.join(root, ...rel.split('/')), 'utf8');
+const read = rel => canonicalizeText(fs.readFileSync(path.join(root, ...rel.split('/'))));
 
 const proxy = read('src/proxy.ts');
 const boundary = read('src/lib/cad-api-proxy-boundary.ts');
@@ -33,7 +37,7 @@ const routeFiles = walkRoutes(routeRoot).sort();
 const routeSources = routeFiles.map(file => ({
   file,
   relative: path.relative(root, file).replaceAll('\\', '/'),
-  source: fs.readFileSync(file, 'utf8'),
+  source: canonicalizeText(fs.readFileSync(file)),
 }));
 const delegatedIngressByRoute = new Map([
   ['src/app/api/cad/v1/feature-program/route.ts', 'src/app/api/nexyfab/cad-feature-program/route.ts'],
@@ -43,7 +47,7 @@ const delegatedIngressSources = [...new Set(delegatedIngressByRoute.values())]
   .map(relative => ({ relative, source: read(relative) }));
 const boundedReaderPattern = /\breadBounded(?:Json|MultipartForm|MultipartBody|RawBody)(?:\s*<[^()\r\n]{1,300}>)?\s*\(/;
 const handlerCount = routeFiles.reduce((sum, file) => {
-  const source = fs.readFileSync(file, 'utf8');
+  const source = canonicalizeText(fs.readFileSync(file));
   return sum + (source.match(/export\s+(?:async\s+function|const)\s+(?:GET|POST|PUT|PATCH|DELETE)\b/g) ?? []).length;
 }, 0);
 const unsafeRequestBodyParsers = routeSources.flatMap(({ relative, source }) => {
@@ -59,7 +63,7 @@ const mutationRoutesMissingBoundedIngress = routeSources
     return !boundedReaderPattern.test(delegatedIngressSources.find(item => item.relative === delegated)?.source ?? '');
   })
   .map(({ relative }) => relative);
-const cadRouteTreeSha256 = sha256(routeSources
+const cadRouteTreeSha256 = canonicalTextSha256(routeSources
   .map(({ relative, source }) => `${relative}\0${source}`)
   .join('\0'));
 const cadOpenApiPathCount = (openapi.match(/"\/api\/cad\/v1\//g) ?? []).length;
@@ -87,6 +91,7 @@ const checks = {
 const issues = Object.entries(checks).filter(([, pass]) => !pass).map(([name]) => name);
 const evidence = {
   schema: 'nexyfab.cad-api-control-evidence.v1',
+  textCanonicalization: TEXT_BINDING_CANONICALIZATION,
   generatedAt,
   status: issues.length === 0 ? 'pass' : 'fail',
   externalCadRequired: false,
@@ -112,16 +117,16 @@ const evidence = {
     'src/lib/cad-api-proxy-boundary.ts',
     'src/app/api/docs/openapi/route.ts',
     'src/middleware.cad-security.test.ts',
-  ].map(file => ({ file, sha256: sha256(read(file)) }))
-    .concat(routeSources.map(({ relative, source }) => ({ file: relative, sha256: sha256(source) })))
-    .concat(delegatedIngressSources.map(({ relative, source }) => ({ file: relative, sha256: sha256(source) }))),
+  ].map(file => ({ file, sha256: canonicalTextSha256(read(file)) }))
+    .concat(routeSources.map(({ relative, source }) => ({ file: relative, sha256: canonicalTextSha256(source) })))
+    .concat(delegatedIngressSources.map(({ relative, source }) => ({ file: relative, sha256: canonicalTextSha256(source) }))),
 };
 const serialized = `${JSON.stringify(evidence, null, 2)}\n`;
 
 if (write) {
   fs.mkdirSync(path.dirname(outputPath), { recursive: true });
   fs.writeFileSync(outputPath, serialized);
-} else if (!fs.existsSync(outputPath) || fs.readFileSync(outputPath, 'utf8') !== serialized) {
+} else if (!fs.existsSync(outputPath) || !canonicalTextEqual(fs.readFileSync(outputPath), serialized)) {
   console.error(JSON.stringify({ ok: false, code: 'CAD_API_CONTROL_EVIDENCE_STALE', output: outputRel }));
   process.exitCode = 1;
   process.exit();

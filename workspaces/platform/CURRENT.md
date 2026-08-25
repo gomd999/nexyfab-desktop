@@ -16,6 +16,11 @@
   text from UTF-8 CRLF to LF before coverage accounting. The policy is embedded
   in the scan and rejected if absent or changed, so the same clean HEAD can be
   verified across Windows worktrees with different checkout line endings.
+- The same canonical text-binding contract now covers route source hashes, CAD
+  API source hashes, the package-lock binding, stored evidence comparisons, and
+  every source binding in the commercial security v2 receipt. Dependency audit
+  checks also retain a nonzero exit after reporting stale evidence instead of
+  overwriting the failure with the vulnerability result.
 - Current source evidence passes: route security `625 routes / 860 handlers /
   0 gaps`, CAD API controls `84 routes / 86 handlers / 0 issues`, secret scan
   of more than 10,000 Git candidates with `0 findings`, and dependency audit
@@ -30,6 +35,8 @@
   `HANDOFFS/20260825T044342Z-release-baseline-security-evidence-convergence.md`.
 - Cross-worktree determinism addendum:
   `HANDOFFS/20260825T045114Z-cross-worktree-secret-scan-determinism.md`.
+- Complete security binding addendum:
+  `HANDOFFS/20260825T050229Z-cross-worktree-security-binding-convergence.md`.
 
 ## 2026-08-25 adapter-bound exact staging HOLD deployment
 

@@ -2,7 +2,12 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { attachReceiptSha256, sha256, verifyReceiptSha256 } from './immutable-receipt-binding.mjs';
+import { attachReceiptSha256, verifyReceiptSha256 } from './immutable-receipt-binding.mjs';
+import {
+  TEXT_BINDING_CANONICALIZATION,
+  canonicalTextBinding,
+  canonicalizeText,
+} from './canonical-text-binding.mjs';
 import {
   SECRET_SCAN_EXCLUDED_DERIVED_RECEIPTS,
   SECRET_SCAN_SCOPE,
@@ -59,18 +64,17 @@ function safeBinding(root, relativePath) {
   }
   const stat = fs.statSync(realFile);
   if (!stat.isFile() || stat.size <= 0) throw new Error(`security_source_not_regular_file:${relativePath}`);
-  const bytes = fs.readFileSync(realFile);
-  return { path: relative, bytes: bytes.byteLength, sha256: sha256(bytes) };
+  return { path: relative, ...canonicalTextBinding(fs.readFileSync(realFile)) };
 }
 
 function loadDocuments(root) {
   return Object.fromEntries(Object.entries(SECURITY_SOURCE_SPECS).map(([id, relativePath]) => {
     try {
       const binding = safeBinding(root, relativePath);
-      const document = JSON.parse(fs.readFileSync(path.resolve(root, relativePath), 'utf8'));
+      const document = JSON.parse(canonicalizeText(fs.readFileSync(path.resolve(root, relativePath))));
       return [id, { binding, document }];
     } catch (error) {
-      return [id, { binding: (() => { try { return safeBinding(root, relativePath); } catch { return { path: relativePath, bytes: null, sha256: null }; } })(), document: null, error: error instanceof Error ? error.message : String(error) }];
+      return [id, { binding: (() => { try { return safeBinding(root, relativePath); } catch { return { path: relativePath, bytes: null, sha256: null, canonicalization: null }; } })(), document: null, error: error instanceof Error ? error.message : String(error) }];
     }
   }));
 }
@@ -113,6 +117,7 @@ function verifyDeclaredSourceBindings(documents, root) {
 function evaluateRouteSecurityMatrix(source) {
   const blockers = [];
   if (source?.schema !== 'nexyfab.route-security-matrix.v1') blockers.push('schema_invalid');
+  if (source?.textCanonicalization !== TEXT_BINDING_CANONICALIZATION) blockers.push('text_canonicalization_invalid');
   if (source?.status !== 'pass') blockers.push('status_invalid');
   const routes = Array.isArray(source?.routes) ? source.routes : [];
   if (routes.length === 0) blockers.push('routes_missing');
@@ -147,6 +152,7 @@ function evaluateRouteSecurityMatrix(source) {
 function evaluateCadApiControls(source) {
   const blockers = [];
   if (source?.schema !== 'nexyfab.cad-api-control-evidence.v1') blockers.push('schema_invalid');
+  if (source?.textCanonicalization !== TEXT_BINDING_CANONICALIZATION) blockers.push('text_canonicalization_invalid');
   if (source?.status !== 'pass') blockers.push('status_invalid');
   if (source?.externalCadRequired !== false) blockers.push('external_cad_requirement_invalid');
   if (!Array.isArray(source?.issues) || source.issues.length !== 0) blockers.push('issues_present');
@@ -196,6 +202,7 @@ function evaluateSecretScan(source) {
 function evaluateDependencyAudit(source) {
   const blockers = [];
   if (source?.schema !== 'nexyfab-dependency-audit-v1') blockers.push('schema_invalid');
+  if (source?.textCanonicalization !== TEXT_BINDING_CANONICALIZATION) blockers.push('text_canonicalization_invalid');
   if (source?.status !== 'pass') blockers.push('status_invalid');
   if (source?.command !== 'npm audit --audit-level=low --json') blockers.push('audit_command_invalid');
   if (!validHash(source?.packageLockSha256)) blockers.push('lock_binding_invalid');
@@ -243,7 +250,7 @@ export function buildCommercialSecurityEvidenceReceipt({
   const loaded = loadDocuments(root);
   const sourceDocuments = Object.fromEntries(Object.entries(loaded).map(([id, value]) => [id, value.document]));
   const evidence = evaluateCommercialSecuritySources(sourceDocuments);
-  let packageLockBinding = { path: SECURITY_PACKAGE_LOCK_PATH, bytes: null, sha256: null };
+  let packageLockBinding = { path: SECURITY_PACKAGE_LOCK_PATH, bytes: null, sha256: null, canonicalization: null };
   try { packageLockBinding = safeBinding(root, SECURITY_PACKAGE_LOCK_PATH); } catch { /* blocker below */ }
   const packageLockVerified = packageLockBinding.sha256 === sourceDocuments.dependencyAudit?.packageLockSha256;
   const declaredSourcesVerified = verifyDeclaredSourceBindings(sourceDocuments, root);
@@ -296,7 +303,7 @@ export function verifyCommercialSecurityEvidenceReceipt(receipt, {
   const expectedGit = expectedRelease?.head ?? expectedRelease?.gitHead;
   if (expectedRelease && (release?.buildId !== expectedRelease.buildId || release?.deploymentId !== expectedRelease.deploymentId || release?.gitHead !== expectedGit)) fail('release_binding_mismatch');
   const loaded = loadDocuments(root);
-  let packageLockBinding = { path: SECURITY_PACKAGE_LOCK_PATH, bytes: null, sha256: null };
+  let packageLockBinding = { path: SECURITY_PACKAGE_LOCK_PATH, bytes: null, sha256: null, canonicalization: null };
   try { packageLockBinding = safeBinding(root, SECURITY_PACKAGE_LOCK_PATH); } catch { /* mismatch below */ }
   const expectedBindings = [...Object.values(loaded).map(value => value.binding), packageLockBinding];
   if (!sameJson(receipt?.sourceBindings, expectedBindings)) fail('source_bindings_mismatch');

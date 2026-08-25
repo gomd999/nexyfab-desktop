@@ -1,5 +1,4 @@
 import assert from 'node:assert/strict';
-import crypto from 'node:crypto';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -14,8 +13,8 @@ import {
   SECRET_SCAN_SCOPE,
   SECRET_SCAN_TEXT_CANONICALIZATION,
 } from './scan-secrets.mjs';
+import { TEXT_BINDING_CANONICALIZATION, canonicalTextSha256 } from './canonical-text-binding.mjs';
 
-const hash = value => crypto.createHash('sha256').update(value).digest('hex');
 const release = { buildId: 'security-build', deploymentId: 'security-deployment', gitHead: 'a'.repeat(40) };
 
 function fixtureDocuments() {
@@ -27,7 +26,8 @@ function fixtureDocuments() {
   };
   return {
     routeSecurityMatrix: {
-      schema: 'nexyfab.route-security-matrix.v1', generatedAt, status: 'pass',
+      schema: 'nexyfab.route-security-matrix.v1', textCanonicalization: TEXT_BINDING_CANONICALIZATION,
+      generatedAt, status: 'pass',
       summary: {
         routeFiles: 1, exportedHandlers: 1, classifiedRoutes: 1, unknownClassifications: 0,
         routesWithGaps: 0, gapCounts: {},
@@ -36,7 +36,8 @@ function fixtureDocuments() {
       }, routes: [route],
     },
     cadApiControls: {
-      schema: 'nexyfab.cad-api-control-evidence.v1', generatedAt, status: 'pass', externalCadRequired: false,
+      schema: 'nexyfab.cad-api-control-evidence.v1', textCanonicalization: TEXT_BINDING_CANONICALIZATION,
+      generatedAt, status: 'pass', externalCadRequired: false,
       routeFiles: 1, exportedHandlers: 1, documentedCadOperations: 1,
       publicExceptions: [{ method: 'GET', path: '/api/cad/v1/capabilities' }],
       commercialRuntimeRequirements: ['JWT_SECRET'],
@@ -57,7 +58,8 @@ function fixtureDocuments() {
       findingCount: 0, findings: [],
     },
     dependencyAudit: {
-      schema: 'nexyfab-dependency-audit-v1', generatedAt, status: 'pass', command: 'npm audit --audit-level=low --json',
+      schema: 'nexyfab-dependency-audit-v1', textCanonicalization: TEXT_BINDING_CANONICALIZATION,
+      generatedAt, status: 'pass', command: 'npm audit --audit-level=low --json',
       packageLockSha256: 'c'.repeat(64),
       vulnerabilities: { info: 0, low: 0, moderate: 0, high: 0, critical: 0, total: 0 },
       dependencies: { prod: 1, dev: 1, optional: 0, peer: 0, peerOptional: 0, total: 2 },
@@ -71,7 +73,7 @@ function fixtureRoot(documents) {
     const target = path.join(root, relative);
     fs.mkdirSync(path.dirname(target), { recursive: true });
     fs.writeFileSync(target, value);
-    return hash(Buffer.from(value));
+    return canonicalTextSha256(value);
   };
   documents.routeSecurityMatrix.routes[0].sourceSha256 = write('src/app/api/example/route.ts', 'export function GET() {}\n');
   documents.cadApiControls.sources[0].sha256 = write('src/proxy.ts', 'export const proxy = true;\n');
@@ -94,7 +96,8 @@ test('builds and verifies a fresh immutable receipt from all local source bindin
     assert.equal(receipt.status, 'PASS');
     assert.equal(receipt.target, 'production');
     assert.equal(receipt.sourceBindings.length, 5);
-    assert.ok(receipt.sourceBindings.every(item => Number.isInteger(item.bytes) && item.bytes > 0 && /^[a-f0-9]{64}$/.test(item.sha256)));
+    assert.ok(receipt.sourceBindings.every(item => Number.isInteger(item.bytes) && item.bytes > 0
+      && /^[a-f0-9]{64}$/.test(item.sha256) && item.canonicalization === TEXT_BINDING_CANONICALIZATION));
     assert.match(receipt.receiptSha256, /^[a-f0-9]{64}$/);
     assert.deepEqual(verifyCommercialSecurityEvidenceReceipt(receipt, {
       root, expectedRelease: { buildId: release.buildId, deploymentId: release.deploymentId, head: release.gitHead },
@@ -141,6 +144,29 @@ test('rejects source replay or tampering during verification', () => {
   }
 });
 
+test('receipt verification is stable when a Windows worktree checks out bound text as CRLF', () => {
+  const documents = fixtureDocuments();
+  const root = fixtureRoot(documents);
+  try {
+    const receipt = buildCommercialSecurityEvidenceReceipt({ root, release, generatedAt: new Date().toISOString() });
+    const boundTextPaths = [
+      ...Object.values(SECURITY_SOURCE_SPECS),
+      'src/app/api/example/route.ts',
+      'src/proxy.ts',
+      'package-lock.json',
+    ];
+    for (const relative of boundTextPaths) {
+      const target = path.join(root, relative);
+      fs.writeFileSync(target, fs.readFileSync(target, 'utf8').replaceAll('\r\n', '\n').replaceAll('\n', '\r\n'));
+    }
+    assert.deepEqual(verifyCommercialSecurityEvidenceReceipt(receipt, {
+      root, expectedRelease: { buildId: release.buildId, deploymentId: release.deploymentId, head: release.gitHead },
+    }), { ok: true, blockers: [] });
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+  }
+});
+
 test('fails closed when a secret scan broadens or omits the exact derived receipt exclusions', () => {
   const documents = fixtureDocuments();
   documents.secretScan.excludedDerivedReceipts = ['docs/evidence/release/commercial-security-evidence-receipt.json'];
@@ -164,5 +190,20 @@ test('fails closed when secret scan text canonicalization is missing or changed'
     assert.ok(receipt.blockers.includes('secretScan:text_canonicalization_invalid'));
   } finally {
     fs.rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test('fails closed when any source provenance omits the shared text canonicalization', () => {
+  for (const id of ['routeSecurityMatrix', 'cadApiControls', 'dependencyAudit']) {
+    const documents = fixtureDocuments();
+    delete documents[id].textCanonicalization;
+    const root = fixtureRoot(documents);
+    try {
+      const receipt = buildCommercialSecurityEvidenceReceipt({ root, release });
+      assert.equal(receipt.ok, false);
+      assert.ok(receipt.blockers.includes(`${id}:text_canonicalization_invalid`));
+    } finally {
+      fs.rmSync(root, { recursive: true, force: true });
+    }
   }
 });

@@ -36,6 +36,20 @@ coverage-byte accounting. The receipt declares
 fails closed if that policy is missing or changed. Binary sniffing still runs
 on the original bytes and no path exclusion was broadened.
 
+The same rule now binds every other text-derived security surface: route and
+forwarded-route source hashes, CAD route and boundary source hashes, the
+package-lock hash, stored JSON/Markdown evidence comparisons, and the five
+source bindings embedded in the commercial security v2 receipt. The receipt
+verifier recalculates all of those bindings from canonical text, so changing
+only checkout line endings is stable while any semantic byte change still
+fails closed. A dedicated CRLF replay test converts every bound source and
+evidence document after receipt creation and verifies the unchanged receipt.
+
+The dependency audit check also had an exit-code bug: it reported
+`DEPENDENCY_AUDIT_EVIDENCE_STALE`, then replaced the failure with exit code 0
+when the live vulnerability total was zero. Evidence freshness and audit
+status are now combined, so either failure returns nonzero.
+
 ## Current machine evidence
 
 - route matrix: 625 route files, 860 exported handlers, 0 unknown classes,
@@ -45,8 +59,8 @@ on the original bytes and no path exclusion was broadened.
   content-sniffed and skipped, 0 oversized files, 0 findings; exact counts live
   only in the machine receipt to avoid documentation self-reference;
 - dependency audit: 0 info/low/moderate/high/critical vulnerabilities;
-- focused contracts: 57/57 PASS;
-- canonicalization/security/gate contracts: 46/46 PASS;
+- focused canonicalization, dependency, security receipt, and commercialization
+  contracts: 46/46 PASS;
 - Railway release-baseline policy and deployment structure: 18/18 PASS.
 
 The generated commercial security v2 receipt verifies current source

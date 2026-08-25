@@ -15,6 +15,7 @@ import {
   SECRET_SCAN_SCOPE,
   SECRET_SCAN_TEXT_CANONICALIZATION,
 } from './scan-secrets.mjs';
+import { TEXT_BINDING_CANONICALIZATION } from './canonical-text-binding.mjs';
 import { attachReceiptSha256, sha256 } from './immutable-receipt-binding.mjs';
 import { SPECIALTY_RELEASE_CHANNELS, SPECIALTY_RELEASE_REVIEW_ROLES, attachSpecialtyIndependentReleaseReceiptSha256, specialtyIndependentReleaseCanonical, specialtyIndependentReleaseSha256, specialtyIndependentReleaseTargetSha256, specialtyIndependentReviewerPayload } from './verify-specialty-independent-release-receipt.mjs';
 import { writeArchitectureInteriorRecoveryEvidence } from '../e2e/architecture-interior-recovery-evidence.mjs';
@@ -252,7 +253,8 @@ const packageLockSource = writeRawEvidence('package-lock.json', '{"lockfileVersi
 const securityGeneratedAt = new Date(fixtureNow).toISOString();
 const securityDocuments = {
   routeSecurityMatrix: {
-    schema: 'nexyfab.route-security-matrix.v1', generatedAt: securityGeneratedAt, status: 'pass',
+    schema: 'nexyfab.route-security-matrix.v1', textCanonicalization: TEXT_BINDING_CANONICALIZATION,
+    generatedAt: securityGeneratedAt, status: 'pass',
     summary: {
       routeFiles: 1, exportedHandlers: 1, classifiedRoutes: 1, unknownClassifications: 0,
       routesWithGaps: 0, gapCounts: {},
@@ -265,7 +267,8 @@ const securityDocuments = {
     }],
   },
   cadApiControls: {
-    schema: 'nexyfab.cad-api-control-evidence.v1', generatedAt: securityGeneratedAt, status: 'pass', externalCadRequired: false,
+    schema: 'nexyfab.cad-api-control-evidence.v1', textCanonicalization: TEXT_BINDING_CANONICALIZATION,
+    generatedAt: securityGeneratedAt, status: 'pass', externalCadRequired: false,
     routeFiles: 1, exportedHandlers: 1, documentedCadOperations: 1,
     publicExceptions: [{ method: 'GET', path: '/api/cad/v1/capabilities' }], issues: [],
     checks: {
@@ -285,7 +288,8 @@ const securityDocuments = {
     filesScanned: 1, bytesScanned: 10, findingCount: 0, findings: [],
   },
   dependencyAudit: {
-    schema: 'nexyfab-dependency-audit-v1', generatedAt: securityGeneratedAt,
+    schema: 'nexyfab-dependency-audit-v1', textCanonicalization: TEXT_BINDING_CANONICALIZATION,
+    generatedAt: securityGeneratedAt,
     command: 'npm audit --audit-level=low --json', packageLockSha256: packageLockSource.sha256, status: 'pass',
     vulnerabilities: { info: 0, low: 0, moderate: 0, high: 0, critical: 0, total: 0 },
     dependencies: { prod: 1, dev: 1, optional: 0, peer: 0, peerOptional: 0, total: 2 },
