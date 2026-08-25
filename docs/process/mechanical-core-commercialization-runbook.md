@@ -190,6 +190,44 @@ STEP은 vendor-native feature history 호환을 의미하지 않는다. 마케�
 
 최소 세 개의 critical measurement가 case별 허용 공차 안에 있어야 한다. 실물이 없으면 manufacturing release는 false다. 직접 제작과 직접 검사를 허용하지만 설계자와 최종 판정 역할은 분리한다.
 
+### 검토자·검사자 signing packet
+
+실제 artifact가 모두 생성된 다음, 서명 전에 원본 bytes와 최종 검토 대상을 하나의 결정적 packet으로 결속한다. 입력과 출력 계약은 다음 공개 schema를 사용한다.
+
+- `workspaces/platform/contracts/mechanical-blind-signing-request.schema.json`
+- `workspaces/platform/contracts/mechanical-manufacturing-signing-request.schema.json`
+- `workspaces/platform/contracts/mechanical-commercial-signing-packet.schema.json`
+
+먼저 read-only 검사를 수행한다.
+
+```powershell
+node workspaces/platform/tools/build-mechanical-signing-packet.mjs `
+  --kind=blind `
+  --request=<external-root>\blind-signing-request.json `
+  --evidence-root=<external-root> `
+  --check
+
+node workspaces/platform/tools/build-mechanical-signing-packet.mjs `
+  --kind=manufacturing `
+  --request=<external-root>\manufacturing-signing-request.json `
+  --evidence-root=<external-root> `
+  --check
+```
+
+검사가 성공한 경우에만 새 output 이름으로 packet을 만든다.
+
+```powershell
+node workspaces/platform/tools/build-mechanical-signing-packet.mjs `
+  --kind=blind `
+  --request=<external-root>\blind-signing-request.json `
+  --evidence-root=<external-root> `
+  --output=<external-root>\packets\blind-signing-packet.json
+```
+
+독립 검토자 또는 검사자는 packet SHA-256, artifact, 본인 identity, target hash와 canonical payload를 확인하고 도구 밖에서 해당 payload bytes에 Ed25519 서명한다. 운영자는 반환된 서명만 packet의 unsigned receipt template과 일치하는 candidate receipt에 넣는다. private key는 저장소, adapter host 또는 campaign 운영자에게 전달하지 않는다.
+
+이 도구는 외부 root 밖으로 나가는 경로, symlink와 directory-link 탈출, 중복 artifact, 역할 충돌, 시간 역전, 공차 밖 측정과 기존 output 덮어쓰기를 거부한다. packet은 `createsEvidence=false`, `createsSignatures=false`, `grantsCommercialRelease=false`이며 그 자체로 상용 PASS가 아니다.
+
 ### 검증된 receipt promotion
 
 서명된 candidate receipt를 저장소에 손으로 복사하거나 PASS 필드를 수정하지 않는다. 먼저 외부 evidence root 안의 candidate와 모든 artifact bytes를 read-only로 검사한다.
