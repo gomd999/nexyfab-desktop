@@ -16,6 +16,9 @@ on:
       - 'packages/job-contracts/src/commercialPrecisionExecution*'
       - 'scripts/commercial-precision-local-durability-campaign.ts'
       - 'scripts/run-commercial-precision-local-durability.mjs'
+      - 'scripts/verify-backup-restore*'
+      - 'scripts/verify-object-storage-restore*'
+      - 'scripts/commercialization-readiness-gate*'
       - 'scripts/drawing-to-3d/commercial-precision-worker*'
       - 'scripts/drawing-to-3d/build-commercial-precision-worker-image*'
       - 'src/app/api/internal/precision-cad-commercial/**'
@@ -31,6 +34,9 @@ on:
       - 'packages/job-contracts/src/commercialPrecisionExecution*'
       - 'scripts/commercial-precision-local-durability-campaign.ts'
       - 'scripts/run-commercial-precision-local-durability.mjs'
+      - 'scripts/verify-backup-restore*'
+      - 'scripts/verify-object-storage-restore*'
+      - 'scripts/commercialization-readiness-gate*'
       - 'scripts/drawing-to-3d/commercial-precision-worker*'
       - 'scripts/drawing-to-3d/build-commercial-precision-worker-image*'
       - 'src/app/api/internal/precision-cad-commercial/**'
@@ -48,7 +54,7 @@ concurrency:
 
 jobs:
   durable-exact-closed-loop:
-    name: PostgreSQL Redis object-storage worker CAS
+    name: PostgreSQL Redis object-storage restart and cross-store restore
     runs-on: ubuntu-latest
     timeout-minutes: 25
     env:
@@ -65,5 +71,5 @@ jobs:
         run: docker compose version
       - name: Verify fail-closed commercial worker image contract
         run: npm run test:commercial:precision:worker-image
-      - name: Run durable exact closed-loop campaign
+      - name: Run durable exact closed-loop and cross-store restore campaign
         run: npm run commercial:precision:local-durability
