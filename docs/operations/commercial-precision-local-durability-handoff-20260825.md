@@ -6,6 +6,22 @@ This handoff records the source/infrastructure closure shared by AI Design,
 Precision CAD, and integration. It does not authorize a staging or production
 promotion.
 
+## Isolated staging HOLD follow-up
+
+The durable core was subsequently deployed to the isolated Railway `staging`
+environment at source `7c73263973836bd036f93ef51ae920257ad7c175`, deployment
+`356947fe-2b45-453a-aba2-eeb57c33b91e`. Two instances are running. Exact live,
+PostgreSQL, Redis, migration `2026082502`, runtime-HOLD packaging, forged claim,
+forged lease, and unconfigured callback checks passed 11/11. The redacted
+receipt is
+`docs/evidence/release/commercial-precision-staging-hold-20260825.json`.
+
+This proves the core deployment and fail-closed boundary only. The commercial
+boundary is deliberately disabled, so it does not replace the missing positive
+native-worker, recovery, independent CAD, expert, or manufacturing evidence.
+The separate operational handoff is
+`docs/operations/commercial-precision-staging-hold-handoff-20260825.md`.
+
 ## Bound implementation
 
 - immutable-input and journal lease fix: `90c707a5`;

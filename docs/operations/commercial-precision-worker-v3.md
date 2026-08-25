@@ -1,6 +1,6 @@
 # Commercial Precision worker v3 deployment contract
 
-Status: `LOCAL_DURABLE_EXACT_CLOSED_LOOP_PASS / REAL_WORKER_RUNTIME_NOT_RUN / RELEASE_HOLD`
+Status: `LOCAL_DURABLE_EXACT_CLOSED_LOOP_PASS / CORE_STAGING_HOLD_VERIFIED / REAL_WORKER_RUNTIME_NOT_RUN / RELEASE_HOLD`
 
 This runbook covers the isolated worker for
 `nexyfab.precision-cad-commercial-execution.v3`. It does not authorize
@@ -54,21 +54,36 @@ and signing keys.
 
 ## Current staging evidence (2026-08-25)
 
-- Core source `674c54f59ec908891962591314366afe0c8eea30` is deployed to the
-  isolated Railway staging web service as deployment
-  `e9286b9d-7d9b-4f45-8404-e4ec838fdbd2`.
-- Railway reports two running deployment instances, no attached service volume,
-  and runtime image digest
-  `sha256:64f2f0f1ee84bc2dd42e6e16993c4b9f12be3ac1b90f455b084799094fd94569`.
+- Core source `7c73263973836bd036f93ef51ae920257ad7c175` is deployed to the
+  isolated Railway `staging` environment as deployment
+  `356947fe-2b45-453a-aba2-eeb57c33b91e`. Railway reports two configured and
+  two running instances, zero crashed instances, and no attached web-service
+  volume.
+- The production and staging environment variables were compared only in
+  memory by the redacting isolation auditor: 30/30 checks passed for distinct
+  environment identity, PostgreSQL, Redis, S3 bucket/credentials, application
+  secrets, site origin, and disabled staging payments. Production was read for
+  comparison only and was not mutated.
 - PostgreSQL migration `2026082502` is applied with source checksum
   `69c830cb4fa11fb7637f325098d0c0b1a920caeba9802fbbe4a8658f00055f30`.
-- Liveness and non-commercial readiness return HTTP 200; PostgreSQL and Redis
-  are `ok`. A forged lease against the v3 artifact gateway is rejected with
-  HTTP 403 `LEASE_CAPABILITY_INVALID`.
+- Liveness and non-commercial readiness return HTTP 200 with the exact build
+  ID; authoritative PostgreSQL and required Redis are `ok`. A forged worker
+  claim and forged artifact lease are rejected with HTTP 403 `FORBIDDEN` and
+  `LEASE_CAPABILITY_INVALID`. The unconfigured callback remains HTTP 503
+  `CALLBACK_NOT_CONFIGURED`.
 - Commercial mode remains disabled and the channel remains `staging-hold`.
-  Release health returns HTTP 503 `HOLD`; its migration evidence is `PASS`,
-  while runtime, i18n, seven-day operations, and external registry evidence do
-  not qualify the release.
+  Release health returns HTTP 503 `HOLD`; migration is `PASS` and the packaged
+  precision runtime receipt is explicit `HOLD` with receipt SHA-256
+  `1c77d674b11cbdb4f94376865d20334e0ea1ad7be89685ecb73eaa0491037677`.
+  Commits `34b167fc` and `7c732639` closed the standalone and Railway-context
+  omissions that previously reduced this signal to `NOT_RUN` or failed the
+  remote build.
+- `npm run commercial:precision:staging-hold-evidence` repeats the exact
+  release and negative probes while refusing a production/non-HTTPS origin.
+  The checked-in receipt
+  `docs/evidence/release/commercial-precision-staging-hold-20260825.json` is
+  `STAGING_HOLD_VERIFIED`, 11/11 checks passed, and both Private Beta and GA
+  remain false.
 - No real native adapter, isolated worker, signing key, registry, or canary was
   created. This section is core deployment evidence, not worker or CAD-engine
   qualification evidence. Production was not modified.

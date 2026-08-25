@@ -1,5 +1,21 @@
 # Precision CAD current session
 
+## 2026-08-25 exact core staging HOLD verification
+
+- Status: `CORE_STAGING_HOLD_VERIFIED / NATIVE_WORKER_NOT_DEPLOYED /
+  PRIVATE_BETA_FALSE / COMMERCIAL_RELEASE_HOLD`.
+- Source `7c73263973836bd036f93ef51ae920257ad7c175`, Railway staging
+  deployment `356947fe-2b45-453a-aba2-eeb57c33b91e`, is running 2/2 instances.
+- The redacted staging collector passed 11/11 exact release, PostgreSQL, Redis,
+  migration, packaged runtime HOLD, forged claim/lease, and callback
+  fail-closed checks. Receipt:
+  `docs/evidence/release/commercial-precision-staging-hold-20260825.json`.
+- This is not a positive exact-worker run. A reviewed checksum-pinned native
+  adapter, separately held worker key, positive canary, recovery campaign,
+  independent CAD review, experts, and manufacturing pilots remain blockers.
+- Operational handoff:
+  `docs/operations/commercial-precision-staging-hold-handoff-20260825.md`.
+
 ## 2026-08-25 real local durability and authoritative CAS closure
 
 - Status: `LOCAL_DURABLE_EXACT_CLOSED_LOOP_PASS /

@@ -1,5 +1,20 @@
 # AI Design current session
 
+## 2026-08-25 downstream exact-core staging HOLD verification
+
+- AI Design remains revision-bound `CONCEPT`/`DESIGN_CANDIDATE` authority and
+  hands immutable input v2 into the Precision commercial v3 boundary.
+- The exact core source `7c73263973836bd036f93ef51ae920257ad7c175` is verified
+  in isolated staging at deployment `356947fe-2b45-453a-aba2-eeb57c33b91e`.
+  Exact release identity, PostgreSQL, Redis, migration, runtime HOLD packaging,
+  and fail-closed forged worker paths passed 11/11.
+- This validates the downstream core boundary, not a positive native CAD
+  result. AI output cannot authorize manufacturing; Private Beta and GA remain
+  false until the separately keyed real worker and external qualification are
+  evidenced.
+- Shared receipt:
+  `docs/evidence/release/commercial-precision-staging-hold-20260825.json`.
+
 ## 2026-08-25 durable AI-to-Precision exact closure
 
 - Status: `AI_CONCEPT_AUTHORITY_CONNECTED / LOCAL_DURABLE_EXACT_CLOSED_LOOP_PASS /

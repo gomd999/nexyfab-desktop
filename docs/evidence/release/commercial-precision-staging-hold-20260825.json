@@ -1,0 +1,118 @@
+{
+  "schema": "nexyfab.commercial-precision-staging-hold-evidence.v1",
+  "generatedAt": "2026-08-25T02:45:06.838Z",
+  "status": "STAGING_HOLD_VERIFIED",
+  "ok": true,
+  "target": {
+    "environment": "staging",
+    "origin": "https://nexyfabcom-staging.up.railway.app"
+  },
+  "release": {
+    "buildId": "7c73263973836bd036f93ef51ae920257ad7c175",
+    "deploymentId": "356947fe-2b45-453a-aba2-eeb57c33b91e",
+    "gitHead": "7c73263973836bd036f93ef51ae920257ad7c175",
+    "migrationVersion": 2026082502,
+    "precisionRuntimeReceiptSha256": "1c77d674b11cbdb4f94376865d20334e0ea1ad7be89685ecb73eaa0491037677"
+  },
+  "checks": [
+    {
+      "id": "live_exact_release",
+      "pass": true,
+      "detail": "Liveness must bind the exact expected build."
+    },
+    {
+      "id": "ready_postgres",
+      "pass": true,
+      "detail": "Readiness must observe authoritative PostgreSQL."
+    },
+    {
+      "id": "ready_redis",
+      "pass": true,
+      "detail": "Readiness must observe required Redis."
+    },
+    {
+      "id": "commercial_boundary_held",
+      "pass": true,
+      "detail": "Staging HOLD must not enable the commercial boundary before a real worker is registered."
+    },
+    {
+      "id": "release_exact_identity",
+      "pass": true,
+      "detail": "Release health must bind exact build, deployment, and Git identities."
+    },
+    {
+      "id": "release_is_hold",
+      "pass": true,
+      "detail": "The staging release must remain fail-closed HOLD."
+    },
+    {
+      "id": "migration_pass",
+      "pass": true,
+      "detail": "The durable execution migration must be current and verified."
+    },
+    {
+      "id": "precision_runtime_hold_packaged",
+      "pass": true,
+      "detail": "The runtime must package and expose the signed HOLD receipt instead of reporting NOT_RUN."
+    },
+    {
+      "id": "forged_claim_rejected",
+      "pass": true,
+      "detail": "A forged worker claim must be rejected."
+    },
+    {
+      "id": "forged_lease_rejected",
+      "pass": true,
+      "detail": "A forged artifact lease must be rejected."
+    },
+    {
+      "id": "callback_fail_closed",
+      "pass": true,
+      "detail": "Callback transport must remain unavailable until separately managed credentials exist."
+    }
+  ],
+  "responseBindings": {
+    "live": {
+      "status": 200,
+      "bodySha256": "b05e133d3655cb6949bdccc48c73d676a37893f077b5ff4dad20df6a8b1a05a7"
+    },
+    "ready": {
+      "status": 200,
+      "bodySha256": "17b7f7f6c37a3456174608e6faf150cd88ad102f8e91480b0387301b8e244e32"
+    },
+    "release": {
+      "status": 503,
+      "bodySha256": "382a414e6732815e43c2edfcde3b6682d81cd5b9d580e9e678d912467f471944"
+    },
+    "forgedClaim": {
+      "status": 403,
+      "bodySha256": "9ee636bc7f115af38fd20f19f06843bfd6496cae6bb257b1eaa579b45db7a181"
+    },
+    "forgedLease": {
+      "status": 403,
+      "bodySha256": "c20a21e41940bf02c7291eac2b8168c1909f1be3d8d96394e0b4a31f77738b9d"
+    },
+    "unconfiguredCallback": {
+      "status": 503,
+      "bodySha256": "7fb8a5d032cf1f3222d0f28e36a7f551c88b7c23f88f9b20fecacac357112172"
+    }
+  },
+  "decision": {
+    "privateBetaEligible": false,
+    "commercialGaEligible": false,
+    "blockers": [
+      "registered_production_class_native_worker_missing",
+      "positive_runtime_closed_loop_not_run",
+      "multi_instance_recovery_campaign_not_run",
+      "independent_cad_interoperability_review_missing",
+      "manufacturing_pilot_evidence_missing"
+    ]
+  },
+  "claimBoundary": {
+    "verifiesStagingHoldOnly": true,
+    "positiveWorkerExecutionObserved": false,
+    "productionRuntimeObserved": false,
+    "independentQualificationObserved": false
+  },
+  "redaction": "Only response status codes, selected non-secret fields, and body SHA-256 bindings are persisted."
+}

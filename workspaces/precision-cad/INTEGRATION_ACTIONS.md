@@ -737,3 +737,16 @@ and tampered preflight/numeric/native-geometry receipt tests, deterministic
 replay across supported Node builds, exact handler and STEP-hash parity,
 six-locale issue-code rendering, audit retention, and owner review. The current
 Precision-local tests are internal evidence only.
+## 2026-08-25 staging HOLD checkpoint
+
+- [x] Deploy exact durable core to isolated Railway staging with commercial
+  mode disabled (`7c732639` / `356947fe-2b45-453a-aba2-eeb57c33b91e`).
+- [x] Verify 2/2 instances, PostgreSQL, Redis, migration `2026082502`, packaged
+  runtime HOLD, forged worker claim, forged lease, and callback fail-closed.
+- [x] Add a repeatable collector that refuses production/non-HTTPS origins and
+  emits a redacted, exact-release-bound receipt.
+- [ ] Supply and review a checksum-pinned production-class native CAD adapter.
+- [ ] Deploy the separately keyed isolated commercial worker and run the
+  positive canary, negative substitution/replay, and recovery campaigns.
+- [ ] Obtain independent CAD/expert and manufacturing-pilot evidence before
+  changing Private Beta or GA eligibility.
