@@ -1,5 +1,32 @@
 # AI Design current session
 
+## 2026-08-25 exact downstream deployment-source boundary
+
+- Status: `AI_CANDIDATE_AUTHORITY_UNCHANGED / CLEAN_EXACT_HEAD_REQUIRED /
+  DOWNSTREAM_RELEASE_EVIDENCE_INCLUDED / DEPLOYMENT_NOT_RUN /
+  COMMERCIAL_ACCURACY_HOLD`.
+- Platform implementation
+  `cd196e04c88922982f0c34318e6974533fbe4e2b` and Precision handoff
+  `d2ff6e90` bind a future verified Railway upload to one clean full Git HEAD,
+  all fixed/dynamic release-health source bytes, and zero static module edges
+  to repository-external `.env*` files.
+- The actual clean-source preflight passed with 10,237 tracked files, 8,034
+  parsed JS/TS-family files, all three packaged receipts present and hashed,
+  and zero forbidden environment-file imports. Focused regressions pass 15/15;
+  Platform quality passes 65 Node and 75 Vitest tests.
+- This prevents an incomplete upload from dropping the downstream Precision
+  runtime HOLD receipt after an AI candidate is accepted, and prevents local
+  developer `.env` bytes from becoming an undeclared build dependency.
+  Deployment metadata now includes the exact build ID and
+  `source=clean-git-v1`.
+- AI authority is unchanged: chat/V9/V10 may create a revision-bound
+  `CONCEPT`/`DESIGN_CANDIDATE` and request Precision work, but cannot author
+  exact PASS, native worker identity, workspace commit, manufacturing approval,
+  or commercial release. No model/holdout campaign or deployment was run;
+  external AI accuracy, CAD review, and pilots remain HOLD.
+- Handoff:
+  `HANDOFFS/20260825T225806+0900-ai-downstream-deployment-source-boundary.md`.
+
 ## 2026-08-25 downstream cross-store recovery boundary
 
 - Status: `CHAT_FIRST_REVISION_BOUND_CANDIDATE_CONNECTED /
