@@ -7,6 +7,10 @@ import { readReleaseWorkingTreeChanges } from './build-release-baseline.mjs';
 import { parseTrustedIndependentReviewers, validateIndependentDomainReviewKit } from './validate-independent-domain-review-kit.mjs';
 import { verifySevenDayOperationsReceiptBindings, verifySevenDayOperationsReceiptSignature } from './build-seven-day-operations-receipt.mjs';
 import { SHA256 as IMMUTABLE_SHA256, sha256 as immutableSha256, verifyReceiptSha256 } from './immutable-receipt-binding.mjs';
+import {
+  TEXT_BINDING_CANONICALIZATION,
+  canonicalTextBinding,
+} from './canonical-text-binding.mjs';
 import { verifyRailwayResourceBaselineDerivation } from './build-railway-resource-baseline-v2.mjs';
 import {
   COMMERCIAL_SYNTHETIC_CAMPAIGN_RECEIPT_SCHEMA,
@@ -408,9 +412,15 @@ function verifyLocalFileBindings(bindings, root = process.cwd()) {
       if (!realRelative || realRelative.startsWith('..') || path.isAbsolute(realRelative) || seen.has(realFile)) return false;
       seen.add(realFile);
       const stat = fs.statSync(realFile);
-      return stat.isFile()
-        && stat.size === binding.bytes
-        && crypto.createHash('sha256').update(fs.readFileSync(realFile)).digest('hex') === binding.sha256;
+      if (!stat.isFile()) return false;
+      const bytes = fs.readFileSync(realFile);
+      if (binding.canonicalization !== undefined) {
+        if (binding.canonicalization !== TEXT_BINDING_CANONICALIZATION) return false;
+        const actual = canonicalTextBinding(bytes);
+        return actual.bytes === binding.bytes && actual.sha256 === binding.sha256;
+      }
+      return stat.size === binding.bytes
+        && crypto.createHash('sha256').update(bytes).digest('hex') === binding.sha256;
     } catch {
       return false;
     }
@@ -530,6 +540,7 @@ export function syntheticCampaignReceiptEligible(receipt, expectedRelease, {
   return releaseBoundLocalEvidence(receipt, expectedRelease, now, COMMERCIAL_SYNTHETIC_CAMPAIGN_RECEIPT_SCHEMA, root)
     && receipt?.ok === true
     && receipt?.certificationEvidence === false
+    && receipt?.textCanonicalization === TEXT_BINDING_CANONICALIZATION
     && receipt?.executor?.subject === 'template_rebuild'
     && receipt?.executor?.rawAssertionsRequired === true
     && JSON.stringify(receipt?.executor?.requiredAxes) === JSON.stringify(COMMERCIAL_SYNTHETIC_REQUIRED_AXES)

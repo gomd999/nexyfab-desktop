@@ -91,6 +91,7 @@ test('derives complete campaigns from source/result JSON and passes the v3 gate'
   const expectedRelease = { buildId: input.release.buildId, deploymentId: input.release.deploymentId, head: input.release.head };
   assert.equal(receipt.schema, 'nexyfab.commercial-synthetic-campaign-receipt.v3');
   assert.equal(receipt.certificationEvidence, false);
+  assert.equal(receipt.textCanonicalization, 'utf8-crlf-to-lf');
   assert.equal(receipt.totalRuns, 1500);
   assert.equal(receipt.totalGatePasses, 1500);
   assert.deepEqual(receipt.executor.requiredAxes, COMMERCIAL_SYNTHETIC_REQUIRED_AXES);
@@ -162,4 +163,26 @@ test('rejects boolean-only runs, corpus transplant, and executor tampering', () 
     now: bound.now,
     expectedCorpusSha256: receipt.corpus.sha256,
   }), false);
+});
+
+test('verifies the same receipt after every bound text file is checked out as CRLF', () => {
+  const input = fixture();
+  const receipt = buildCommercialSyntheticCampaignReceipt(input);
+  const paths = [
+    input.sourcePath,
+    input.resultPath,
+    input.corpusPath,
+    ...input.executorSourcePaths,
+  ];
+  for (const relative of paths) {
+    const file = path.join(input.root, relative);
+    const text = fs.readFileSync(file, 'utf8').replaceAll('\r\n', '\n');
+    fs.writeFileSync(file, text.replaceAll('\n', '\r\n'), 'utf8');
+  }
+  assert.equal(syntheticCampaignReceiptEligible(receipt, input.release, {
+    root: input.root,
+    now: input.now,
+    expectedCorpusSha256: receipt.corpus.sha256,
+  }), true);
+  assert.deepEqual(buildCommercialSyntheticCampaignReceipt(input), receipt);
 });

@@ -3,6 +3,11 @@ import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import {
+  TEXT_BINDING_CANONICALIZATION,
+  canonicalTextBinding,
+  canonicalTextBuffer,
+} from './canonical-text-binding.mjs';
 
 export const COMMERCIAL_SYNTHETIC_CAMPAIGN_RECEIPT_SCHEMA =
   'nexyfab.commercial-synthetic-campaign-receipt.v3';
@@ -84,11 +89,11 @@ function relativeFile(root, input, label) {
   }
   const stat = fs.statSync(realFile);
   if (!stat.isFile() || stat.size <= 0) throw new Error(`${label}_not_a_file`);
-  const bytes = fs.readFileSync(realFile);
+  const rawBytes = fs.readFileSync(realFile);
+  const bytes = canonicalTextBuffer(rawBytes);
   return {
     path: lexical,
-    bytes: bytes.length,
-    sha256: sha256(bytes),
+    ...canonicalTextBinding(rawBytes),
     bytesValue: bytes,
   };
 }
@@ -359,7 +364,7 @@ export function buildCommercialSyntheticCampaignReceipt({
   const corpusBinding = relativeFile(root, corpusInputPath, 'corpus');
   assertBindingUniqueness([...resultBindings, ...sourceBindings, ...executorBindings, corpusBinding]);
   if (corpusBytes !== undefined
-    && !Buffer.from(corpusBytes).equals(corpusBinding.bytesValue)) throw new Error('corpus_bytes_mismatch');
+    && !canonicalTextBuffer(corpusBytes).equals(corpusBinding.bytesValue)) throw new Error('corpus_bytes_mismatch');
   const corpus = parseJson(corpusBinding, 'corpus');
   if (corpus?.schema !== 'nexyfab.commercial-validation-corpus.v1') throw new Error('corpus_schema_invalid');
 
@@ -384,6 +389,7 @@ export function buildCommercialSyntheticCampaignReceipt({
     generatedAt,
     ok: true,
     certificationEvidence: false,
+    textCanonicalization: TEXT_BINDING_CANONICALIZATION,
     release: releaseBinding,
     inputs: {
       campaignResults: resultBindings.map(binding => binding.path).sort(),
@@ -401,7 +407,12 @@ export function buildCommercialSyntheticCampaignReceipt({
         .map(binding => Object.fromEntries(Object.entries(binding).filter(([key]) => key !== 'bytesValue')))
         .sort((left, right) => left.path.localeCompare(right.path)),
       identitySha256: sha256(executorBindings
-        .map(binding => ({ path: binding.path, bytes: binding.bytes, sha256: binding.sha256 }))
+        .map(binding => ({
+          path: binding.path,
+          bytes: binding.bytes,
+          sha256: binding.sha256,
+          canonicalization: binding.canonicalization,
+        }))
         .sort((left, right) => left.path.localeCompare(right.path))),
     },
     corpus: Object.fromEntries(Object.entries(corpusBinding).filter(([key]) => key !== 'bytesValue')),
