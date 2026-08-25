@@ -233,6 +233,8 @@ function releaseMetadata(release = {}, env = process.env) {
     buildId: release.buildId ?? env.RELEASE_BUILD_ID ?? env.NEXYFAB_BUILD_ID ?? null,
     deploymentId: release.deploymentId ?? env.RELEASE_DEPLOYMENT_ID ?? env.RAILWAY_DEPLOYMENT_ID ?? null,
     gitHead: release.gitHead ?? env.RELEASE_GIT_HEAD ?? env.RAILWAY_GIT_COMMIT_SHA ?? null,
+    environment: release.environment ?? env.RELEASE_ENVIRONMENT ?? null,
+    service: release.service ?? env.RELEASE_SERVICE ?? null,
   };
 }
 
@@ -241,6 +243,8 @@ function releaseBlockers(release) {
     ...(typeof release?.buildId === 'string' && release.buildId.trim() ? [] : ['release_build_id_missing']),
     ...(typeof release?.deploymentId === 'string' && release.deploymentId.trim() ? [] : ['release_deployment_id_missing']),
     ...(GIT_SHA.test(String(release?.gitHead ?? '')) ? [] : ['release_git_head_invalid']),
+    ...(release?.environment === COMMERCIAL_SECURITY_TARGET ? [] : ['release_environment_not_production']),
+    ...(release?.service === 'nexyfab.com' ? [] : ['release_service_not_nexyfab']),
   ];
 }
 
@@ -301,7 +305,11 @@ export function verifyCommercialSecurityEvidenceReceipt(receipt, {
   const release = receipt?.release;
   if (releaseBlockers(release).length) fail('release_metadata_invalid');
   const expectedGit = expectedRelease?.head ?? expectedRelease?.gitHead;
-  if (expectedRelease && (release?.buildId !== expectedRelease.buildId || release?.deploymentId !== expectedRelease.deploymentId || release?.gitHead !== expectedGit)) fail('release_binding_mismatch');
+  if (expectedRelease && (release?.buildId !== expectedRelease.buildId
+    || release?.deploymentId !== expectedRelease.deploymentId
+    || release?.gitHead !== expectedGit
+    || release?.environment !== expectedRelease.environment
+    || release?.service !== expectedRelease.service)) fail('release_binding_mismatch');
   const loaded = loadDocuments(root);
   let packageLockBinding = { path: SECURITY_PACKAGE_LOCK_PATH, bytes: null, sha256: null, canonicalization: null };
   try { packageLockBinding = safeBinding(root, SECURITY_PACKAGE_LOCK_PATH); } catch { /* mismatch below */ }
@@ -335,6 +343,8 @@ function main() {
       buildId: process.env.RELEASE_BUILD_ID ?? process.env.NEXYFAB_BUILD_ID,
       deploymentId: process.env.RELEASE_DEPLOYMENT_ID ?? process.env.RAILWAY_DEPLOYMENT_ID,
       gitHead: process.env.RELEASE_GIT_HEAD ?? process.env.RAILWAY_GIT_COMMIT_SHA,
+      environment: process.env.RELEASE_ENVIRONMENT,
+      service: process.env.RELEASE_SERVICE,
     },
   });
   fs.mkdirSync(path.dirname(output), { recursive: true });

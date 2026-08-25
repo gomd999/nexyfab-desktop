@@ -3,6 +3,7 @@ import { createHash } from 'node:crypto';
 import { mkdirSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
+import { attachReceiptSha256, verifyReceiptSha256 } from './immutable-receipt-binding.mjs';
 
 export const STAGING_HOLD_EVIDENCE_SCHEMA =
   'nexyfab.commercial-precision-staging-hold-evidence.v1';
@@ -10,6 +11,27 @@ export const STAGING_HOLD_EVIDENCE_SCHEMA =
 const GIT_SHA = /^[a-f0-9]{40}$/;
 const DEPLOYMENT_ID = /^[a-f0-9]{8}(?:-[a-f0-9]{4}){3}-[a-f0-9]{12}$/;
 const SHA256 = /^[a-f0-9]{64}$/;
+export const STAGING_HOLD_EVIDENCE_MAX_AGE_MS = 24 * 60 * 60_000;
+export const STAGING_HOLD_CHECK_IDS = Object.freeze([
+  'live_exact_release',
+  'ready_postgres',
+  'ready_redis',
+  'commercial_boundary_held',
+  'release_exact_identity',
+  'release_is_hold',
+  'migration_pass',
+  'precision_runtime_hold_packaged',
+  'forged_claim_rejected',
+  'forged_lease_rejected',
+  'callback_fail_closed',
+]);
+export const STAGING_HOLD_EXTERNAL_BLOCKERS = Object.freeze([
+  'registered_production_class_native_worker_missing',
+  'positive_runtime_closed_loop_not_run',
+  'multi_instance_recovery_campaign_not_run',
+  'independent_cad_interoperability_review_missing',
+  'manufacturing_pilot_evidence_missing',
+]);
 
 function option(name, fallback = '') {
   const prefix = `--${name}=`;
@@ -121,13 +143,9 @@ export async function collectCommercialPrecisionStagingHoldEvidence({
   const failedChecks = checks.filter(item => !item.pass).map(item => item.id);
   const blockers = [
     ...failedChecks.map(id => `staging_check_failed:${id}`),
-    'registered_production_class_native_worker_missing',
-    'positive_runtime_closed_loop_not_run',
-    'multi_instance_recovery_campaign_not_run',
-    'independent_cad_interoperability_review_missing',
-    'manufacturing_pilot_evidence_missing',
+    ...STAGING_HOLD_EXTERNAL_BLOCKERS,
   ];
-  return Object.freeze({
+  return Object.freeze(attachReceiptSha256({
     schema: STAGING_HOLD_EVIDENCE_SCHEMA,
     generatedAt,
     status: failedChecks.length ? 'HOLD_VERIFICATION_FAILED' : 'STAGING_HOLD_VERIFIED',
@@ -165,7 +183,76 @@ export async function collectCommercialPrecisionStagingHoldEvidence({
       independentQualificationObserved: false,
     },
     redaction: 'Only response status codes, selected non-secret fields, and body SHA-256 bindings are persisted.',
-  });
+  }));
+}
+
+export function verifyCommercialPrecisionStagingHoldEvidence(receipt, {
+  expectedRelease = null,
+  expectedOrigin = null,
+  now = Date.now(),
+  maxAgeMs = STAGING_HOLD_EVIDENCE_MAX_AGE_MS,
+} = {}) {
+  const blockers = [];
+  const fail = value => blockers.push(value);
+  if (receipt?.schema !== STAGING_HOLD_EVIDENCE_SCHEMA) fail('receipt_schema_invalid');
+  if (receipt?.ok !== true || receipt?.status !== 'STAGING_HOLD_VERIFIED') fail('receipt_status_invalid');
+  if (!verifyReceiptSha256(receipt)) fail('receipt_hash_invalid');
+
+  const generatedAt = Date.parse(receipt?.generatedAt);
+  if (!Number.isFinite(generatedAt) || generatedAt > now + 5 * 60_000 || generatedAt < now - maxAgeMs) {
+    fail('receipt_stale');
+  }
+  let normalizedOrigin = null;
+  try { normalizedOrigin = stagingOrigin(receipt?.target?.origin); } catch { fail('staging_origin_invalid'); }
+  if (receipt?.target?.environment !== 'staging') fail('target_environment_invalid');
+  if (expectedOrigin) {
+    try {
+      if (normalizedOrigin !== stagingOrigin(expectedOrigin)) fail('staging_origin_mismatch');
+    } catch { fail('expected_staging_origin_invalid'); }
+  }
+
+  const release = receipt?.release ?? {};
+  if (!GIT_SHA.test(String(release.buildId ?? '')) || !GIT_SHA.test(String(release.gitHead ?? ''))
+    || !DEPLOYMENT_ID.test(String(release.deploymentId ?? ''))
+    || release.migrationVersion !== 2026082502
+    || !SHA256.test(String(release.precisionRuntimeReceiptSha256 ?? ''))) fail('release_identity_invalid');
+  const expectedGitHead = expectedRelease?.head ?? expectedRelease?.gitHead;
+  if (expectedRelease && (release.buildId !== expectedRelease.buildId || release.gitHead !== expectedGitHead)) {
+    fail('release_binding_mismatch');
+  }
+  if (expectedRelease?.stagingDeploymentId
+    && release.deploymentId !== expectedRelease.stagingDeploymentId) fail('staging_deployment_mismatch');
+
+  const checks = Array.isArray(receipt?.checks) ? receipt.checks : [];
+  const checkIds = checks.map(item => item?.id);
+  if (checks.length !== STAGING_HOLD_CHECK_IDS.length
+    || new Set(checkIds).size !== STAGING_HOLD_CHECK_IDS.length
+    || STAGING_HOLD_CHECK_IDS.some(id => !checkIds.includes(id))
+    || checks.some(item => item?.pass !== true || typeof item?.detail !== 'string' || !item.detail)) {
+    fail('staging_checks_invalid');
+  }
+
+  const responseBindings = receipt?.responseBindings ?? {};
+  const responseStatuses = {
+    live: 200, ready: 200, release: 503, forgedClaim: 403,
+    forgedLease: 403, unconfiguredCallback: 503,
+  };
+  if (Object.entries(responseStatuses).some(([id, status]) => responseBindings[id]?.status !== status
+    || !SHA256.test(String(responseBindings[id]?.bodySha256 ?? '')))) fail('response_bindings_invalid');
+
+  const decisionBlockers = Array.isArray(receipt?.decision?.blockers) ? receipt.decision.blockers : [];
+  if (receipt?.decision?.privateBetaEligible !== false
+    || receipt?.decision?.commercialGaEligible !== false
+    || decisionBlockers.length !== STAGING_HOLD_EXTERNAL_BLOCKERS.length
+    || new Set(decisionBlockers).size !== STAGING_HOLD_EXTERNAL_BLOCKERS.length
+    || STAGING_HOLD_EXTERNAL_BLOCKERS.some(value => !decisionBlockers.includes(value))) {
+    fail('hold_decision_invalid');
+  }
+  if (receipt?.claimBoundary?.verifiesStagingHoldOnly !== true
+    || receipt?.claimBoundary?.positiveWorkerExecutionObserved !== false
+    || receipt?.claimBoundary?.productionRuntimeObserved !== false
+    || receipt?.claimBoundary?.independentQualificationObserved !== false) fail('claim_boundary_invalid');
+  return { ok: blockers.length === 0, blockers: [...new Set(blockers)] };
 }
 
 async function main() {

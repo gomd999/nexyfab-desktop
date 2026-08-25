@@ -223,6 +223,8 @@ if (process.argv[1] && path.resolve(process.argv[1]) === path.resolve(new URL(im
       rollbackDeploymentId: process.env.RELEASE_ROLLBACK_DEPLOYMENT_ID ?? null,
       dockerImageDigest: process.env.RELEASE_DOCKER_IMAGE_DIGEST ?? null,
       dbSchemaVersion: process.env.RELEASE_DB_SCHEMA_VERSION ?? null,
+      environment: process.env.RELEASE_ENVIRONMENT ?? null,
+      service: process.env.RELEASE_SERVICE ?? null,
     },
   });
   const changeGroups = { deployable: [], documentation: [], evidence: [], protected: [], temporary: [] };

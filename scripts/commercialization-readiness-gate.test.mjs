@@ -10,6 +10,7 @@ import { buildRailwayResourceBaseline } from './build-railway-resource-baseline-
 import { buildOpenScadHttpSmokeReceipt } from './build-openscad-http-smoke-v2.mjs';
 import { buildRailwayStagingIsolationEvidenceV2 } from './build-railway-staging-isolation-evidence-v2.mjs';
 import { buildCommercialSecurityEvidenceReceipt, SECURITY_SOURCE_SPECS } from './build-commercial-security-evidence-receipt-v2.mjs';
+import { STAGING_HOLD_CHECK_IDS, STAGING_HOLD_EXTERNAL_BLOCKERS } from './build-commercial-precision-staging-hold-evidence.mjs';
 import {
   SECRET_SCAN_EXCLUDED_DERIVED_RECEIPTS,
   SECRET_SCAN_SCOPE,
@@ -79,8 +80,8 @@ const commercialMigrations = [
   2026082301, 2026082401, 2026082402, 2026082403, 2026082501, 2026082502,
 ];
 const expertCorpusHash = 'c'.repeat(64);
-const expertRelease = { buildId: 'b', gitHead: '1'.repeat(40) };
-const expertExpectedRelease = { buildId: 'b', head: expertRelease.gitHead };
+const expertRelease = { buildId: 'b'.repeat(40), gitHead: '1'.repeat(40) };
+const expertExpectedRelease = { buildId: 'b'.repeat(40), head: expertRelease.gitHead };
 const expertReviewers = [
   ['reviewer-a', 'domain-reviewer'],
   ['reviewer-b', 'independent-reviewer'],
@@ -120,8 +121,11 @@ function rebindExpertReviewReceipt(releaseChannel) {
   });
   return receipt;
 }
-const releaseBinding = { buildId: 'b', deploymentId: 'd', gitHead: '1'.repeat(40) };
-const expectedReleaseBinding = { buildId: 'b', deploymentId: 'd', head: releaseBinding.gitHead };
+const releaseBinding = {
+  buildId: 'b'.repeat(40), deploymentId: 'd', gitHead: '1'.repeat(40),
+  environment: 'production', service: 'nexyfab.com',
+};
+const expectedReleaseBinding = { buildId: releaseBinding.buildId, deploymentId: 'd', head: releaseBinding.gitHead };
 const evidenceRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'nexyfab-commercial-gate-'));
 const writeEvidence = (name, value) => {
   const target = path.join(evidenceRoot, name);
@@ -141,6 +145,37 @@ const writeBoundEvidence = (name, value) => {
   return { ...binding, bytes: fs.statSync(path.join(evidenceRoot, name)).size };
 };
 const fixtureNow = Date.now();
+const coreStagingHoldReceipt = attachReceiptSha256({
+  schema: 'nexyfab.commercial-precision-staging-hold-evidence.v1',
+  generatedAt: new Date(fixtureNow).toISOString(),
+  status: 'STAGING_HOLD_VERIFIED',
+  ok: true,
+  target: { environment: 'staging', origin: 'https://nexyfab-staging.example.test' },
+  release: {
+    buildId: releaseBinding.buildId,
+    deploymentId: '11111111-2222-3333-4444-555555555555',
+    gitHead: releaseBinding.gitHead,
+    migrationVersion: 2026082502,
+    precisionRuntimeReceiptSha256: '9'.repeat(64),
+  },
+  checks: STAGING_HOLD_CHECK_IDS.map(id => ({ id, pass: true, detail: `${id} passed` })),
+  responseBindings: Object.fromEntries(Object.entries({
+    live: 200, ready: 200, release: 503, forgedClaim: 403,
+    forgedLease: 403, unconfiguredCallback: 503,
+  }).map(([id, status], index) => [id, { status, bodySha256: String(index + 1).repeat(64) }])),
+  decision: {
+    privateBetaEligible: false,
+    commercialGaEligible: false,
+    blockers: [...STAGING_HOLD_EXTERNAL_BLOCKERS],
+  },
+  claimBoundary: {
+    verifiesStagingHoldOnly: true,
+    positiveWorkerExecutionObserved: false,
+    productionRuntimeObserved: false,
+    independentQualificationObserved: false,
+  },
+  redaction: 'Only response status codes, selected non-secret fields, and body SHA-256 bindings are persisted.',
+});
 const resourceSourcePath = writeEvidence('resource-source.json', {
   capturedAt: new Date(fixtureNow - 1_000).toISOString(),
   samples: [{ memoryMb: 420, limitMb: 8192 }, { memoryMb: 488, limitMb: 8192 }],
@@ -242,7 +277,7 @@ const environmentIsolationReceipt = buildRailwayStagingIsolationEvidenceV2({
     variables: Object.fromEntries(Object.entries({ ...isolationCredentials, DATABASE_URL: 'postgres://stage@db-stage/nexyfab', REDIS_URL: 'redis://redis-stage', NEXT_PUBLIC_SITE_URL: 'https://nexyfab-staging.example.com' })
       .map(([key, value]) => [key, ['DATABASE_URL', 'REDIS_URL', 'NEXT_PUBLIC_SITE_URL', 'NEXYFAB_CAD_INDEPENDENT_MODE'].includes(key) ? value : `stage-${value}`])),
   },
-  release: { buildId: 'b', productionDeploymentId: 'd', evidenceDeploymentId: 'staging-d', gitHead: releaseBinding.gitHead },
+  release: { buildId: releaseBinding.buildId, productionDeploymentId: 'd', evidenceDeploymentId: 'staging-d', gitHead: releaseBinding.gitHead },
   generatedAt: new Date(fixtureNow).toISOString(),
   now: fixtureNow,
   signingSecret: evidenceSigningSecret,
@@ -880,8 +915,9 @@ const largeUploadStagingReceipt = buildLargeUploadStagingReadinessReceipt({
 const passingReleaseBaseline = {
   release: {
     branch: 'release/test', head: '1'.repeat(40), baselineStatus: 'committed', workingTreeChanges: 0,
-    deploymentId: 'd', buildId: 'b', rollbackDeploymentId: 'r', dockerImageDigest: 'sha256:x',
-    dbSchemaVersion: 2026082502, railwayIgnore: { missing: [] },
+    deploymentId: 'd', buildId: releaseBinding.buildId, rollbackDeploymentId: 'r', dockerImageDigest: 'sha256:x',
+    dbSchemaVersion: 2026082502, environment: 'production', service: 'nexyfab.com',
+    railwayIgnore: { missing: [] },
   },
 };
 const passingReleaseBaselinePath = writeEvidence('fixtures/commercial-release-baseline.json', passingReleaseBaseline);
@@ -908,6 +944,7 @@ const passing = {
   currentRelease: { branch: 'release/test', head: '1'.repeat(40), workingTreeChanges: 0 },
   releaseBaseline: passingReleaseBaseline,
   releaseBaselineBinding: passingReleaseBaselineBinding,
+  coreStagingHoldReceipt,
   closedBeta: closedBetaReceipt, closedBetaEvidenceVerified: true, closedBetaReceiptVerified: true, liveSmoke: liveSmokeReceipt, liveSmokeReceiptVerified: true,
   productionProtectedState: productionProtectedStateReceipt, productionProtectedStateReceiptVerified: true, openscadHttpSmoke: openscadHttpSmokeReceipt, authenticatedE2E: authenticatedE2EReceipt, authenticatedE2EReceiptVerified: true,
   architectureInteriorRecovery: architectureInteriorRecoveryReceipt, architectureInteriorRecoveryReceiptVerified: true,
@@ -920,7 +957,7 @@ const passing = {
       maxAgeMs: 24 * 60 * 60_000,
       expiresAt: new Date(Date.parse(migrationGeneratedAt) + 24 * 60 * 60_000).toISOString(),
     },
-    release: { buildId: 'b', deploymentId: 'd', gitHead: '1'.repeat(40) },
+    release: { buildId: releaseBinding.buildId, deploymentId: 'd', gitHead: '1'.repeat(40) },
     migrations: commercialMigrations.map(version => ({
       version, sourceSha256: String(version).padEnd(64, 'a'),
       databaseChecksum: String(version).padEnd(64, 'a'), decision: 'already_applied', checksumMatchesSource: true,
@@ -989,7 +1026,7 @@ const passing = {
       scopedServices: ['nexyfab.com', 'nexyfab-openscad-worker', 'nexyfab-fea-worker', 'Postgres-KN2x', 'Redis-IrVt'],
     },
     release: {
-      buildId: 'b', qualifyingFrom: '2026-08-01T00:00:00.000Z', environment: 'production',
+      buildId: releaseBinding.buildId, qualifyingFrom: '2026-08-01T00:00:00.000Z', environment: 'production',
       deployments: { web: 'd', 'openscad-worker': 'openscad-d', 'fea-worker': 'fea-d' },
     },
   },
@@ -1047,7 +1084,7 @@ function buildSpecialtyGateFixture(channel = 'verified-sheet-metal') {
   });
   const receipt = {
     schema: 'nexyfab.specialty-independent-release-receipt.v1', channel, track: definition.track,
-    release: { buildId: 'b', deploymentId: 'd', gitHead: '1'.repeat(40) }, generatedAt, expiresAt,
+    release: { buildId: releaseBinding.buildId, deploymentId: 'd', gitHead: '1'.repeat(40) }, generatedAt, expiresAt,
     qualificationArtifact: { relativePath: qualificationPath, bytes: qualificationBytes.byteLength, sha256: specialtyIndependentReleaseSha256(qualificationBytes) },
     evidenceArtifacts, reviewers: [],
   };
@@ -1308,7 +1345,7 @@ test('accepts only trusted Ed25519 expert signoffs bound to the release and corp
 });
 
 test('rejects stale, incomplete, or release-transplanted production migration receipts', () => {
-  const expected = { buildId: 'b', deploymentId: 'd', head: '1'.repeat(40) };
+  const expected = { buildId: releaseBinding.buildId, deploymentId: 'd', head: '1'.repeat(40) };
   assert.equal(productionMigrationReceiptEligible(passing.migrationReceipt, expected, Date.now(), true), true);
 
   const stale = structuredClone(passing.migrationReceipt);
@@ -1401,6 +1438,37 @@ test('does not trust an old clean baseline after release files become dirty', ()
   const result = evaluateCommercializationReadiness(input);
   assert.equal(result.privateBeta.eligible, false);
   assert.ok(result.privateBeta.blockers.includes('current_release_working_tree_dirty'));
+});
+
+test('does not accept staging or another Railway service as production release identity', () => {
+  const staging = structuredClone(passing);
+  staging.releaseBaseline.release.environment = 'staging';
+  let result = evaluateCommercializationReadiness(staging);
+  assert.equal(result.privateBeta.eligible, false);
+  assert.ok(result.privateBeta.blockers.includes('release_environment_not_production'));
+
+  const foreignService = structuredClone(passing);
+  foreignService.releaseBaseline.release.service = 'nexyflow-api';
+  result = evaluateCommercializationReadiness(foreignService);
+  assert.equal(result.privateBeta.eligible, false);
+  assert.ok(result.privateBeta.blockers.includes('release_service_not_nexyfab'));
+});
+
+test('requires an immutable same-build core staging HOLD receipt before promotion', () => {
+  const missing = structuredClone(passing);
+  missing.coreStagingHoldReceipt = null;
+  let result = evaluateCommercializationReadiness(missing);
+  assert.equal(result.privateBeta.eligible, false);
+  assert.ok(result.privateBeta.blockers.includes('core_staging_hold_not_verified'));
+  assert.equal(result.coreStagingHoldEvidence.receiptVerified, false);
+
+  const transplanted = structuredClone(passing);
+  transplanted.coreStagingHoldReceipt.release.buildId = 'f'.repeat(40);
+  result = evaluateCommercializationReadiness(transplanted);
+  assert.equal(result.privateBeta.eligible, false);
+  assert.ok(result.privateBeta.blockers.includes('core_staging_hold_not_verified'));
+  assert.ok(result.coreStagingHoldEvidence.blockers.includes('receipt_hash_invalid'));
+  assert.ok(result.coreStagingHoldEvidence.blockers.includes('release_binding_mismatch'));
 });
 
 test('commercial GA requires the complete complex-product corpus, dual approvals, and manufacturing scope', () => {
@@ -1689,8 +1757,8 @@ test('requires all product receipts for an explicit full-product release scope',
   assert.deepEqual(blocked.evaluatedReleaseBaseline, passingReleaseBaselineBinding);
   assert.deepEqual(blocked.release, {
     branch: 'release/test', gitHead: '1'.repeat(40), baselineStatus: 'committed', workingTreeChanges: 0,
-    deploymentId: 'd', buildId: 'b', rollbackDeploymentId: 'r', dockerImageDigest: 'sha256:x',
-    dbSchemaVersion: 2026082502,
+    deploymentId: 'd', buildId: releaseBinding.buildId, rollbackDeploymentId: 'r', dockerImageDigest: 'sha256:x',
+    dbSchemaVersion: 2026082502, environment: 'production', service: 'nexyfab.com',
   });
 
   const complete = structuredClone(passing);

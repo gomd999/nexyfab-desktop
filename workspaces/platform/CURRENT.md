@@ -1,5 +1,28 @@
 # Platform current session
 
+## 2026-08-25 production identity and immutable staging receipt gate
+
+- Status: `RELEASE_TARGET_BOUND / STAGING_RECEIPT_IMMUTABLE /
+  CURRENT_STAGING_SOURCE_HISTORICAL / COMMERCIAL_RELEASE_HOLD`.
+- Release baselines and commercial security receipts now bind
+  `environment=production` and `service=nexyfab.com`. Staging deployment IDs or
+  another Railway service can no longer satisfy production release identity.
+- The exact-core staging HOLD receipt now carries a canonical self-hash and has
+  an independent verifier for freshness, isolated origin, release identity,
+  the exact 11 checks, response bindings, and the non-promoting claim boundary.
+- The commercialization gate consumes that receipt and reports
+  `core_staging_hold_not_verified` when it is missing, stale, edited, or from a
+  different build. A valid staging HOLD is a prerequisite only; it never grants
+  Private Beta or GA.
+- Live source `32ff05ba` was recollected successfully: 11/11 PASS, receipt
+  self-hash
+  `b6cba9a6b285eb0f42564e0471470d942745b0609ce83d39c57e496de607392c`.
+- Because this source hardening is newer than the running application source,
+  the next clean integrated HEAD must be redeployed to staging and recollected
+  before promotion evaluation. Production remains unchanged.
+- Handoff:
+  `HANDOFFS/20260825T063500Z-release-environment-staging-receipt-binding.md`.
+
 ## 2026-08-25 final integrated HEAD staging verification
 
 - Status: `FINAL_HEAD_STAGING_SUCCESS / STAGING_HOLD_11_OF_11_PASS /

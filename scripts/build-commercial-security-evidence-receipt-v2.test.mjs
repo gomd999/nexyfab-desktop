@@ -15,7 +15,10 @@ import {
 } from './scan-secrets.mjs';
 import { TEXT_BINDING_CANONICALIZATION, canonicalTextSha256 } from './canonical-text-binding.mjs';
 
-const release = { buildId: 'security-build', deploymentId: 'security-deployment', gitHead: 'a'.repeat(40) };
+const release = {
+  buildId: 'security-build', deploymentId: 'security-deployment', gitHead: 'a'.repeat(40),
+  environment: 'production', service: 'nexyfab.com',
+};
 
 function fixtureDocuments() {
   const generatedAt = new Date().toISOString();
@@ -100,8 +103,28 @@ test('builds and verifies a fresh immutable receipt from all local source bindin
       && /^[a-f0-9]{64}$/.test(item.sha256) && item.canonicalization === TEXT_BINDING_CANONICALIZATION));
     assert.match(receipt.receiptSha256, /^[a-f0-9]{64}$/);
     assert.deepEqual(verifyCommercialSecurityEvidenceReceipt(receipt, {
-      root, expectedRelease: { buildId: release.buildId, deploymentId: release.deploymentId, head: release.gitHead },
+      root, expectedRelease: { ...release, head: release.gitHead },
     }), { ok: true, blockers: [] });
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test('rejects staging and foreign-service metadata before a security receipt can pass', () => {
+  const documents = fixtureDocuments();
+  const root = fixtureRoot(documents);
+  try {
+    const staging = buildCommercialSecurityEvidenceReceipt({
+      root, release: { ...release, environment: 'staging' },
+    });
+    assert.equal(staging.ok, false);
+    assert.ok(staging.blockers.includes('release_environment_not_production'));
+
+    const foreign = buildCommercialSecurityEvidenceReceipt({
+      root, release: { ...release, service: 'nexyflow-api' },
+    });
+    assert.equal(foreign.ok, false);
+    assert.ok(foreign.blockers.includes('release_service_not_nexyfab'));
   } finally {
     fs.rmSync(root, { recursive: true, force: true });
   }
@@ -160,7 +183,7 @@ test('receipt verification is stable when a Windows worktree checks out bound te
       fs.writeFileSync(target, fs.readFileSync(target, 'utf8').replaceAll('\r\n', '\n').replaceAll('\n', '\r\n'));
     }
     assert.deepEqual(verifyCommercialSecurityEvidenceReceipt(receipt, {
-      root, expectedRelease: { buildId: release.buildId, deploymentId: release.deploymentId, head: release.gitHead },
+      root, expectedRelease: { ...release, head: release.gitHead },
     }), { ok: true, blockers: [] });
   } finally {
     fs.rmSync(root, { recursive: true, force: true });

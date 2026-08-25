@@ -36,7 +36,12 @@ It refuses a production/non-HTTPS origin and persists only selected non-secret
 fields, HTTP status codes, and response-body SHA-256 bindings. The checked-in
 receipt is
 `docs/evidence/release/commercial-precision-staging-hold-20260825.json`, file
-SHA-256 `25af13c64c07992988a7a115dd73c36e97cb6eb7cef25b8e9300c6418062ccff`.
+SHA-256 `bd270eeecc6feee22d3e1d30769e0d85df44c3badcbdbb296cba62a03c9d40a0`
+and canonical self-hash
+`b6cba9a6b285eb0f42564e0471470d942745b0609ce83d39c57e496de607392c`.
+The verifier independently rechecks that self-hash, freshness, isolated
+staging origin, exact 11-check set, response bindings, release identity, and
+the non-promoting HOLD boundary.
 
 All 11 checks passed:
 

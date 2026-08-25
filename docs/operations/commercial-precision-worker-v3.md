@@ -70,9 +70,9 @@ and signing keys.
 
 ## Current staging evidence (2026-08-25)
 
-- Core source `7c73263973836bd036f93ef51ae920257ad7c175` is deployed to the
+- Core source `32ff05ba3f1e7addc5cf6da95d6e94ff9b437fe7` is deployed to the
   isolated Railway `staging` environment as deployment
-  `356947fe-2b45-453a-aba2-eeb57c33b91e`. Railway reports two configured and
+  `c1e03352-5f95-47eb-a031-80847b22391c`. Railway reports two configured and
   two running instances, zero crashed instances, and no attached web-service
   volume.
 - The production and staging environment variables were compared only in
@@ -90,7 +90,7 @@ and signing keys.
 - Commercial mode remains disabled and the channel remains `staging-hold`.
   Release health returns HTTP 503 `HOLD`; migration is `PASS` and the packaged
   precision runtime receipt is explicit `HOLD` with receipt SHA-256
-  `1c77d674b11cbdb4f94376865d20334e0ea1ad7be89685ecb73eaa0491037677`.
+  `bd12ecba3301f192b2e070acf553001ed2595c4b4bfcff1530ab759430da66a6`.
   Commits `34b167fc` and `7c732639` closed the standalone and Railway-context
   omissions that previously reduced this signal to `NOT_RUN` or failed the
   remote build.
@@ -98,8 +98,11 @@ and signing keys.
   release and negative probes while refusing a production/non-HTTPS origin.
   The checked-in receipt
   `docs/evidence/release/commercial-precision-staging-hold-20260825.json` is
-  `STAGING_HOLD_VERIFIED`, 11/11 checks passed, and both Private Beta and GA
-  remain false.
+  `STAGING_HOLD_VERIFIED`, 11/11 checks passed, and has canonical self-hash
+  `b6cba9a6b285eb0f42564e0471470d942745b0609ce83d39c57e496de607392c`.
+  The commercialization gate now verifies this receipt directly and rejects a
+  stale, edited, or different-build staging observation. Both Private Beta and
+  GA remain false.
 - No real native adapter, isolated worker, signing key, registry, or canary was
   created. This section is core deployment evidence, not worker or CAD-engine
   qualification evidence. Production was not modified.
@@ -236,6 +239,13 @@ exact candidate, then run:
 ```text
 npm run commercial:precision:runtime-evidence
 ```
+
+The product release baseline must additionally set
+`RELEASE_ENVIRONMENT=production` and `RELEASE_SERVICE=nexyfab.com`. The
+commercialization gate rejects a staging deployment ID or another Railway
+service even when its build, Git, and deployment identifiers are otherwise
+well formed. Staging runtime evidence may qualify the Precision Private Beta
+sub-gate, but it cannot impersonate the production product release identity.
 
 That command may qualify only the Private Beta tier from staging. Production GA
 requires the same-deployment production observation and all five GA recovery

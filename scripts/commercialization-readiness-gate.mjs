@@ -12,6 +12,7 @@ import { verifyCommercialSyntheticCampaignReceiptDerivation } from './build-comm
 import { verifyOpenScadHttpSmokeReceipt } from './build-openscad-http-smoke-v2.mjs';
 import { verifyRailwayStagingIsolationEvidenceV2 } from './build-railway-staging-isolation-evidence-v2.mjs';
 import { verifyCommercialSecurityEvidenceReceipt } from './build-commercial-security-evidence-receipt-v2.mjs';
+import { verifyCommercialPrecisionStagingHoldEvidence } from './build-commercial-precision-staging-hold-evidence.mjs';
 import { verifyClosedBetaIntegrityReceipt } from './closed-beta-integrity-compare.mjs';
 import { verifyProtectedStateReceipt } from './compare-production-protected-state.mjs';
 import { verifyCommercialLiveSmokeReceipt } from './build-commercial-live-smoke-receipt-v2.mjs';
@@ -869,10 +870,22 @@ export function evaluateCommercializationReadiness(input) {
   }
   if (release.baselineStatus !== 'committed' || release.workingTreeChanges !== 0) blockPrivate('release_candidate_not_committed');
   if (currentRelease.workingTreeChanges !== 0) blockPrivate('current_release_working_tree_dirty');
+  if (release.environment !== 'production') blockPrivate('release_environment_not_production');
+  if (release.service !== 'nexyfab.com') blockPrivate('release_service_not_nexyfab');
   for (const field of ['deploymentId', 'buildId', 'rollbackDeploymentId', 'dockerImageDigest']) {
     if (!release[field]) blockPrivate(`release_identity_missing:${field}`);
   }
   if (release.railwayIgnore?.missing?.length) blockPrivate('railway_deploy_exclusions_incomplete');
+  let coreStagingHoldVerification;
+  try {
+    coreStagingHoldVerification = verifyCommercialPrecisionStagingHoldEvidence(
+      input.coreStagingHoldReceipt,
+      { expectedRelease: { buildId: release.buildId, head: release.head } },
+    );
+  } catch {
+    coreStagingHoldVerification = { ok: false, blockers: ['staging_hold_verifier_error'] };
+  }
+  if (coreStagingHoldVerification.ok !== true) blockPrivate('core_staging_hold_not_verified');
 
   if (contract?.specialtyTrack) {
     try {
@@ -1051,7 +1064,13 @@ export function evaluateCommercializationReadiness(input) {
   try {
     securityReceiptVerification = verifyCommercialSecurityEvidenceReceipt(input.securityReceipt, {
       root: input.evidenceRoot ?? process.cwd(),
-      expectedRelease: { buildId: release.buildId, deploymentId: release.deploymentId, head: release.head },
+      expectedRelease: {
+        buildId: release.buildId,
+        deploymentId: release.deploymentId,
+        head: release.head,
+        environment: release.environment,
+        service: release.service,
+      },
     });
   } catch {
     // A missing/malformed external receipt is a normal HOLD state, not a gate
@@ -1137,9 +1156,18 @@ export function evaluateCommercializationReadiness(input) {
       rollbackDeploymentId: release.rollbackDeploymentId ?? null,
       dockerImageDigest: release.dockerImageDigest ?? null,
       dbSchemaVersion: release.dbSchemaVersion ?? null,
+      environment: release.environment ?? null,
+      service: release.service ?? null,
     },
     releaseChannel: contract?.channel ?? null,
     productReleaseScope: productScope,
+    coreStagingHoldEvidence: {
+      receiptVerified: coreStagingHoldVerification.ok === true,
+      receiptSha256: input.coreStagingHoldReceipt?.receiptSha256 ?? null,
+      buildId: input.coreStagingHoldReceipt?.release?.buildId ?? null,
+      deploymentId: input.coreStagingHoldReceipt?.release?.deploymentId ?? null,
+      blockers: coreStagingHoldVerification.blockers,
+    },
     productEvidence,
     requiredDomains,
     requiredComplexFamilies,
@@ -1210,6 +1238,10 @@ async function main() {
   const sevenDayOperationsReceipt = optionalJson(process.env.SEVEN_DAY_OPERATIONS_RECEIPT ?? 'docs/evidence/release/seven-day-operations-receipt.json');
   const migrationReceipt = optionalJson(process.env.PRODUCTION_MIGRATION_RECEIPT ?? 'docs/evidence/release/production-migration-receipt.json');
   const securityReceipt = optionalJson(process.env.COMMERCIAL_SECURITY_RECEIPT ?? 'docs/evidence/release/commercial-security-evidence-receipt.json');
+  const coreStagingHoldReceipt = optionalJson(
+    process.env.COMMERCIAL_PRECISION_STAGING_HOLD_RECEIPT
+      ?? 'docs/evidence/release/commercial-precision-staging-hold-20260825.json',
+  );
   const specialtyReleaseReceipt = optionalJson(process.env.SPECIALTY_RELEASE_RECEIPT ?? 'docs/evidence/release/specialty-independent-release-receipt.json');
   const specialtyReleaseTrustedReviewers = optionalJson(process.env.SPECIALTY_RELEASE_TRUSTED_REVIEWERS ?? 'docs/evidence/release/specialty-trusted-reviewers.json');
   const closedBetaReceipt = readJson(process.env.CLOSED_BETA_COMPARISON ?? 'docs/evidence/release/closed-beta-integrity-commercial-release-260810.json');
@@ -1269,6 +1301,7 @@ async function main() {
     currentRelease: { ...readGitIdentity(), workingTreeChanges: readReleaseWorkingTreeChanges().length },
     releaseBaseline,
     releaseBaselineBinding: releaseBaselineSource.binding,
+    coreStagingHoldReceipt,
     closedBeta: closedBetaReceipt,
     closedBetaEvidenceVerified: verifyReceiptSourceBindings(closedBetaReceipt),
     closedBetaReceiptVerified: closedBetaVerification.ok,
@@ -1331,6 +1364,7 @@ async function main() {
       secretFindings: secretScan.findingCount,
       dependencyVulnerabilities: dependencyAudit.vulnerabilities?.total,
       commercialSecurityReceipt: result.securityEvidence,
+      coreStagingHoldEvidence: result.coreStagingHoldEvidence,
       productReleaseScope: result.productReleaseScope,
       productEvidence: result.productEvidence,
       complexHoldoutCases: Array.isArray(complexHoldoutCases) ? complexHoldoutCases.length : null,

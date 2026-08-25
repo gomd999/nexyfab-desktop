@@ -3,6 +3,7 @@ import test from 'node:test';
 import {
   collectCommercialPrecisionStagingHoldEvidence,
   STAGING_HOLD_EVIDENCE_SCHEMA,
+  verifyCommercialPrecisionStagingHoldEvidence,
 } from './build-commercial-precision-staging-hold-evidence.mjs';
 
 const buildId = 'a'.repeat(40);
@@ -52,6 +53,12 @@ test('verifies an exact fail-closed staging deployment without qualifying beta o
   assert.equal(receipt.decision.privateBetaEligible, false);
   assert.equal(receipt.decision.commercialGaEligible, false);
   assert.equal(receipt.release.precisionRuntimeReceiptSha256, precisionReceiptSha256);
+  assert.match(receipt.receiptSha256, /^[a-f0-9]{64}$/);
+  assert.deepEqual(verifyCommercialPrecisionStagingHoldEvidence(receipt, {
+    expectedRelease: { buildId, head: buildId, stagingDeploymentId: deploymentId },
+    expectedOrigin: 'https://nexyfab-staging.example.test',
+    now: Date.parse('2026-08-25T00:01:00.000Z'),
+  }), { ok: true, blockers: [] });
 });
 
 test('fails closed on an exact release mismatch', async () => {
@@ -78,4 +85,37 @@ test('refuses a production or non-HTTPS origin', async () => {
       /isolated_staging_https_origin_required/,
     );
   }
+});
+
+test('verifier rejects tampering, release transplant, and stale evidence', async () => {
+  const receipt = await collectCommercialPrecisionStagingHoldEvidence({
+    baseUrl: 'https://nexyfab-staging.example.test',
+    expectedBuildId: buildId,
+    expectedDeploymentId: deploymentId,
+    fetchImpl: fixture(),
+    generatedAt: '2026-08-25T00:00:00.000Z',
+  });
+  const tampered = structuredClone(receipt);
+  tampered.checks[0].pass = false;
+  let result = verifyCommercialPrecisionStagingHoldEvidence(tampered, {
+    expectedRelease: { buildId, head: buildId },
+    now: Date.parse('2026-08-25T00:01:00.000Z'),
+  });
+  assert.equal(result.ok, false);
+  assert.ok(result.blockers.includes('receipt_hash_invalid'));
+  assert.ok(result.blockers.includes('staging_checks_invalid'));
+
+  result = verifyCommercialPrecisionStagingHoldEvidence(receipt, {
+    expectedRelease: { buildId: 'c'.repeat(40), head: 'c'.repeat(40) },
+    now: Date.parse('2026-08-25T00:01:00.000Z'),
+  });
+  assert.equal(result.ok, false);
+  assert.ok(result.blockers.includes('release_binding_mismatch'));
+
+  result = verifyCommercialPrecisionStagingHoldEvidence(receipt, {
+    expectedRelease: { buildId, head: buildId },
+    now: Date.parse('2026-08-27T00:00:01.000Z'),
+  });
+  assert.equal(result.ok, false);
+  assert.ok(result.blockers.includes('receipt_stale'));
 });

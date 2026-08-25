@@ -69,7 +69,9 @@ hashes, and freshness. Its only blockers are:
 
 - `release_build_id_missing`;
 - `release_deployment_id_missing`;
-- `release_git_head_invalid`.
+- `release_git_head_invalid`;
+- `release_environment_not_production`;
+- `release_service_not_nexyfab`.
 
 These are intentional because this unit did not deploy production. An isolated
 staging deployment cannot be promoted into a production-target security
@@ -92,5 +94,7 @@ npm run security:secrets:check
 ```
 
 `evidence:security:v2` is expected to exit non-zero while the three production
-release identity fields are absent. Treating that expected HOLD as PASS would
-be a release-boundary violation.
+release identity fields and the exact
+`RELEASE_ENVIRONMENT=production` / `RELEASE_SERVICE=nexyfab.com` binding are
+absent. Treating that expected HOLD as PASS, or supplying staging/another
+service identity, would be a release-boundary violation.
