@@ -1,5 +1,22 @@
 # AI Design current session
 
+## 2026-08-25 raw synthetic campaign v3 downstream boundary
+
+- Status: `SYNTHETIC_TEMPLATE_REGRESSION_1500_OF_1500_PASS /
+  AI_MODEL_NOT_CALLED / COMMERCIAL_ACCURACY_HOLD`.
+- The five-domain campaign now contains 1,500 real template-rebuild runs and
+  6,000 bound raw assertions instead of accepting repeated PASS booleans.
+  Source/raw-evidence commit: `4731d3bc`; receipt self-hash:
+  `8b0b0f0f84332d752fe64329d562f2fa7d2769b9762b1a9e91504babd1feea4a`.
+- The v3 gate rejects corpus transplants, missing/failed/not-run axes,
+  incomplete campaign slots, changed executor sources, stale evidence, and
+  release transplants.
+- No external AI model was called and no independent holdout was used. This
+  verifies deterministic downstream template regression only; it cannot be
+  marketed as AI design accuracy or satisfy commercial qualification.
+- Handoff:
+  `HANDOFFS/20260825T075500Z-raw-synthetic-v3-ai-boundary.md`.
+
 ## 2026-08-25 release-gate-hardened downstream staging evidence
 
 - Status: `AI_CONCEPT_AUTHORITY_CONNECTED / EXACT_DOWNSTREAM_STAGING_11_OF_11 /
