@@ -15,9 +15,13 @@
 - `containers/occt-commercial-worker/` is a non-root, fail-closed OCI/Railway
   wrapper. It requires an exact adapter-image digest, executable checksum, and
   worker-source checksum; it does not contain a CAD engine or runtime secret.
+- Follow-up commit `58a93bc7f820842a8a2edf4a82c539581ebf2add` removes the
+  cross-scope migration allowance: both adapter trust fields are now required
+  by the shared receipt contract and the typed trusted-worker registry.
 - This closes a source-level substitution gap only. No external adapter image,
   worker private key, positive canary, recovery observation, independent CAD
   review, or manufacturing pilot was created.
+
 
 ## 2026-08-25 exact core staging HOLD verification
 
