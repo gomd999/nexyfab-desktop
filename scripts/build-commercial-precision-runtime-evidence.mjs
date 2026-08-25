@@ -7,6 +7,11 @@ import {
   canonicalJson,
   sha256,
 } from './immutable-receipt-binding.mjs';
+import {
+  TEXT_BINDING_CANONICALIZATION,
+  canonicalTextBinding,
+  canonicalizeText,
+} from './canonical-text-binding.mjs';
 
 export const COMMERCIAL_PRECISION_RUNTIME_OBSERVATION_SCHEMA =
   'nexyfab.commercial-precision-runtime-observation.v1';
@@ -22,6 +27,7 @@ export const COMMERCIAL_PRECISION_DEFAULT_OBSERVATION =
   'commercial-precision-runtime-observation.json';
 export const COMMERCIAL_PRECISION_DEFAULT_RECEIPT =
   'docs/evidence/release/commercial-precision-runtime-evidence.json';
+export const COMMERCIAL_PRECISION_TEXT_CANONICALIZATION = TEXT_BINDING_CANONICALIZATION;
 
 export const COMMERCIAL_PRECISION_PRIVATE_BETA_CHECKS = Object.freeze([
   'postgresMigration',
@@ -137,18 +143,23 @@ function resolveRegularFile(root, relativePath) {
 function fileBinding(root, relativePath) {
   const absolute = resolveRegularFile(root, relativePath);
   if (!absolute) return null;
-  const bytes = fs.readFileSync(absolute);
-  return { path: relativePath.replaceAll('\\', '/'), bytes: bytes.byteLength, sha256: sha256(bytes) };
+  return {
+    path: relativePath.replaceAll('\\', '/'),
+    ...canonicalTextBinding(fs.readFileSync(absolute)),
+  };
 }
 
 function readJsonFile(root, relativePath) {
   const absolute = resolveRegularFile(root, relativePath);
   if (!absolute) return null;
   try {
-    const bytes = fs.readFileSync(absolute);
+    const text = canonicalizeText(fs.readFileSync(absolute));
     return {
-      document: JSON.parse(bytes.toString('utf8')),
-      binding: { path: relativePath.replaceAll('\\', '/'), bytes: bytes.byteLength, sha256: sha256(bytes) },
+      document: JSON.parse(text),
+      binding: {
+        path: relativePath.replaceAll('\\', '/'),
+        ...canonicalTextBinding(text),
+      },
     };
   } catch {
     return null;
@@ -383,6 +394,8 @@ function observationShapeBlockers(observation, expectedRelease, sourceMigration,
   }
   if (observation?.migration?.version !== COMMERCIAL_PRECISION_MIGRATION_VERSION
     || !SHA256.test(String(observation?.migration?.checksum ?? ''))
+    || observation?.migration?.canonicalization !== COMMERCIAL_PRECISION_TEXT_CANONICALIZATION
+    || sourceMigration?.canonicalization !== COMMERCIAL_PRECISION_TEXT_CANONICALIZATION
     || observation?.migration?.checksum !== sourceMigration?.sha256) block('migration_binding_invalid');
   const allChecks = [...COMMERCIAL_PRECISION_PRIVATE_BETA_CHECKS, ...COMMERCIAL_PRECISION_GA_CHECKS];
   const checkKeys = observation?.checks && typeof observation.checks === 'object' && !Array.isArray(observation.checks)
@@ -419,7 +432,11 @@ function readObservationEvidence(evidenceRoot, observation, observationTime, tru
     paths.add(loaded.binding.path);
     if (!SHA256.test(String(claimed?.sha256 ?? ''))
       || claimed?.sha256 !== loaded.binding.sha256
-      || claimed?.bytes !== loaded.binding.bytes) blockers.push(`evidence_binding_mismatch:${role}`);
+      || claimed?.bytes !== loaded.binding.bytes
+      || claimed?.canonicalization !== COMMERCIAL_PRECISION_TEXT_CANONICALIZATION
+      || loaded.binding.canonicalization !== COMMERCIAL_PRECISION_TEXT_CANONICALIZATION) {
+      blockers.push(`evidence_binding_mismatch:${role}`);
+    }
     if (!supportingDocumentValid(role, loaded.document, observation, observationTime, trustedWorkers)) {
       blockers.push(`evidence_document_invalid:${role}`);
     }

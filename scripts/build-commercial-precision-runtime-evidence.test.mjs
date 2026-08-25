@@ -12,11 +12,13 @@ import {
   COMMERCIAL_PRECISION_MIGRATION_VERSION,
   COMMERCIAL_PRECISION_PRIVATE_BETA_CHECKS,
   COMMERCIAL_PRECISION_RUNTIME_OBSERVATION_SCHEMA,
+  COMMERCIAL_PRECISION_TEXT_CANONICALIZATION,
   buildCommercialPrecisionRuntimeEvidenceReceipt,
   signCommercialPrecisionRuntimeObservation,
   verifyCommercialPrecisionRuntimeEvidence,
 } from './build-commercial-precision-runtime-evidence.mjs';
 import { canonicalJson, sha256 } from './immutable-receipt-binding.mjs';
+import { canonicalTextBinding, canonicalTextSha256 } from './canonical-text-binding.mjs';
 
 const secret = 'precision-runtime-evidence-secret-20260825-A!';
 const workerKeys = crypto.generateKeyPairSync('ed25519');
@@ -46,7 +48,7 @@ function writeJson(root, relative, value) {
   fs.mkdirSync(path.dirname(absolute), { recursive: true });
   const bytes = Buffer.from(`${JSON.stringify(value, null, 2)}\n`);
   fs.writeFileSync(absolute, bytes);
-  return { path: relative, bytes: bytes.byteLength, sha256: sha256(bytes) };
+  return { path: relative, ...canonicalTextBinding(bytes) };
 }
 
 function fixture({ environment = 'production', checkOverrides = {}, now = Date.now(), tamperWorkerSignature = false, omitAssertion = null } = {}) {
@@ -193,7 +195,8 @@ function fixture({ environment = 'production', checkOverrides = {}, now = Date.n
     release,
     migration: {
       version: COMMERCIAL_PRECISION_MIGRATION_VERSION,
-      checksum: sha256(migrationBytes),
+      checksum: canonicalTextSha256(migrationBytes),
+      canonicalization: COMMERCIAL_PRECISION_TEXT_CANONICALIZATION,
     },
     execution,
     checks,
@@ -324,6 +327,32 @@ test('invalidates a previously derived receipt when a bound runtime artifact cha
   assert.equal(verification.privateBetaEligible, false);
   assert.equal(verification.commercialGaEligible, false);
   assert.ok(verification.blockers.includes('receipt_derivation_mismatch'));
+});
+
+test('verifies the same runtime receipt after all bound text is checked out as CRLF', () => {
+  const value = fixture();
+  const receipt = value.build();
+  const textPaths = [
+    path.join(value.sourceRoot, ...COMMERCIAL_PRECISION_MIGRATION_SOURCE.split('/')),
+    path.join(value.evidenceRoot, value.observationPath),
+    ...Object.keys(COMMERCIAL_PRECISION_EVIDENCE_SOURCES)
+      .map(role => path.join(value.evidenceRoot, 'sources', `${role}.json`)),
+  ];
+  for (const target of textPaths) {
+    fs.writeFileSync(target, fs.readFileSync(target, 'utf8')
+      .replaceAll('\r\n', '\n').replaceAll('\n', '\r\n'));
+  }
+  const verification = verifyCommercialPrecisionRuntimeEvidence(receipt, {
+    sourceRoot: value.sourceRoot,
+    evidenceRoot: value.evidenceRoot,
+    observationPath: value.observationPath,
+    expectedRelease,
+    workerRegistryRaw,
+    secret,
+    now: value.now,
+  });
+  assert.equal(verification.receiptVerified, true);
+  assert.deepEqual(verification.blockers, []);
 });
 
 test('emits an honest HOLD receipt when no runtime observation exists', () => {

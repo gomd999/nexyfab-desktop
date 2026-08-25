@@ -1,5 +1,21 @@
 # Platform current session
 
+## 2026-08-25 commercial Precision receipt determinism
+
+- Status: `RUNTIME_DERIVATION_DETERMINISTIC / REAL_OBSERVATION_NOT_RUN /
+  COMMERCIAL_RELEASE_HOLD`.
+- The commercial Precision v3 receipt now uses the shared
+  `utf8-crlf-to-lf` contract for migration SQL, the signed runtime observation,
+  and all five supporting JSON evidence bindings.
+- Valid signed evidence remains stable across Windows worktrees, while missing
+  canonicalization, semantic changes, unsafe paths, forged signatures, and
+  release transplant still fail closed.
+- The checked-in no-observation receipt can now be re-derived cross-worktree;
+  without the separately held HMAC authority it remains HOLD with only
+  `receipt_attestation_invalid`, not a false derivation mismatch.
+- Handoff:
+  `HANDOFFS/20260825T051832Z-commercial-precision-receipt-determinism.md`.
+
 ## 2026-08-25 release baseline and security evidence convergence
 
 - Status: `CURRENT_SOURCE_EVIDENCE_PASS / PRODUCTION_RELEASE_IDENTITY_MISSING /
