@@ -9,6 +9,7 @@ import {
   SECURITY_SOURCE_SPECS,
   verifyCommercialSecurityEvidenceReceipt,
 } from './build-commercial-security-evidence-receipt-v2.mjs';
+import { SECRET_SCAN_EXCLUDED_DERIVED_RECEIPTS, SECRET_SCAN_SCOPE } from './scan-secrets.mjs';
 
 const hash = value => crypto.createHash('sha256').update(value).digest('hex');
 const release = { buildId: 'security-build', deploymentId: 'security-deployment', gitHead: 'a'.repeat(40) };
@@ -46,6 +47,8 @@ function fixtureDocuments() {
     },
     secretScan: {
       schema: 'nexyfab-secret-scan-v1', generatedAt, status: 'pass', filesScanned: 1, bytesScanned: 10,
+      scope: SECRET_SCAN_SCOPE,
+      excludedDerivedReceipts: [...SECRET_SCAN_EXCLUDED_DERIVED_RECEIPTS],
       findingCount: 0, findings: [],
     },
     dependencyAudit: {
@@ -128,6 +131,19 @@ test('rejects source replay or tampering during verification', () => {
     assert.equal(result.ok, false);
     assert.ok(result.blockers.includes('source_bindings_mismatch'));
     assert.ok(result.blockers.includes('evidence_derivation_mismatch'));
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test('fails closed when a secret scan broadens or omits the exact derived receipt exclusions', () => {
+  const documents = fixtureDocuments();
+  documents.secretScan.excludedDerivedReceipts = ['docs/evidence/release/commercial-security-evidence-receipt.json'];
+  const root = fixtureRoot(documents);
+  try {
+    const receipt = buildCommercialSecurityEvidenceReceipt({ root, release });
+    assert.equal(receipt.ok, false);
+    assert.ok(receipt.blockers.includes('secretScan:derived_receipt_exclusions_invalid'));
   } finally {
     fs.rmSync(root, { recursive: true, force: true });
   }

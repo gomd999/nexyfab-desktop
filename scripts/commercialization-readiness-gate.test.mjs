@@ -10,6 +10,7 @@ import { buildRailwayResourceBaseline } from './build-railway-resource-baseline-
 import { buildOpenScadHttpSmokeReceipt } from './build-openscad-http-smoke-v2.mjs';
 import { buildRailwayStagingIsolationEvidenceV2 } from './build-railway-staging-isolation-evidence-v2.mjs';
 import { buildCommercialSecurityEvidenceReceipt, SECURITY_SOURCE_SPECS } from './build-commercial-security-evidence-receipt-v2.mjs';
+import { SECRET_SCAN_EXCLUDED_DERIVED_RECEIPTS, SECRET_SCAN_SCOPE } from './scan-secrets.mjs';
 import { attachReceiptSha256, sha256 } from './immutable-receipt-binding.mjs';
 import { SPECIALTY_RELEASE_CHANNELS, SPECIALTY_RELEASE_REVIEW_ROLES, attachSpecialtyIndependentReleaseReceiptSha256, specialtyIndependentReleaseCanonical, specialtyIndependentReleaseSha256, specialtyIndependentReleaseTargetSha256, specialtyIndependentReviewerPayload } from './verify-specialty-independent-release-receipt.mjs';
 import { writeArchitectureInteriorRecoveryEvidence } from '../e2e/architecture-interior-recovery-evidence.mjs';
@@ -274,6 +275,8 @@ const securityDocuments = {
   },
   secretScan: {
     schema: 'nexyfab-secret-scan-v1', generatedAt: securityGeneratedAt, status: 'pass',
+    scope: SECRET_SCAN_SCOPE,
+    excludedDerivedReceipts: [...SECRET_SCAN_EXCLUDED_DERIVED_RECEIPTS],
     filesScanned: 1, bytesScanned: 10, findingCount: 0, findings: [],
   },
   dependencyAudit: {

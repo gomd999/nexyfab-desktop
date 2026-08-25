@@ -3,7 +3,12 @@ import fs from 'node:fs';
 import path from 'node:path';
 import test from 'node:test';
 
-import { isProbablyText, scanText } from './scan-secrets.mjs';
+import {
+  filterSecretScanCandidates,
+  isProbablyText,
+  scanText,
+  SECRET_SCAN_EXCLUDED_DERIVED_RECEIPTS,
+} from './scan-secrets.mjs';
 
 test('secret evidence never contains the matched secret value', () => {
   const source = fs.readFileSync(path.join(process.cwd(), 'scripts', 'scan-secrets.mjs'), 'utf8');
@@ -36,4 +41,14 @@ test('scanner does not classify a public reCAPTCHA site key as a server secret',
 test('content sniffing scans extensionless text and skips binary data', () => {
   assert.equal(isProbablyText(Buffer.from('RECAPTCHA_SECRET_KEY=example')), true);
   assert.equal(isProbablyText(Buffer.from([0x00, 0x01, 0x02, 0xff])), false);
+});
+
+test('scanner excludes only the exact derived current receipts that would create a hash cycle', () => {
+  const nearbySource = 'docs/evidence/release/commercial-security-evidence-receipt.fixture.json';
+  const candidates = filterSecretScanCandidates([
+    ...SECRET_SCAN_EXCLUDED_DERIVED_RECEIPTS,
+    nearbySource,
+    'src/app/page.tsx',
+  ]);
+  assert.deepEqual(candidates, [nearbySource, 'src/app/page.tsx']);
 });
