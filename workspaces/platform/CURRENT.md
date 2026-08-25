@@ -1,5 +1,34 @@
 # Platform current session
 
+## 2026-08-25 actual service-restart durability closure
+
+- Status: `POSTGRES_RESTART_PERSISTENCE_PASS / REDIS_AOF_RESTART_PASS /
+  OBJECT_STORAGE_RESTART_PASS / EXACT_REPLAY_AFTER_RESTART_PASS /
+  LOCAL_FIXTURE_ONLY / PRIVATE_BETA_FALSE / GA_FALSE`.
+- Implementation commit:
+  `9819aa13dd4dc9759416b1ac23406cd2b877564e`.
+- The disposable durability campaign now closes all application clients,
+  actually restarts PostgreSQL, Redis, and S3-compatible object storage, waits
+  for health, rediscovers Docker-published ports, and reconnects with fresh
+  clients. This models a new application process rather than reusing a live
+  socket or process cache.
+- Post-restart checks bind the migration checksum, completed outbox and journal,
+  persistence receipt, workspace CAS head, Redis AOF sentinel, immutable input,
+  all three output objects, and every persisted snapshot. Exact replay must
+  return `REPLAY` while a read-only artifact store rejects any attempted write.
+- Checked-in evidence:
+  `docs/evidence/cad-independent/commercial-precision-local-durability-20260825.json`;
+  schema `nexyfab.commercial-precision-local-durability.v2`, source HEAD
+  `9819aa13dd4dc9759416b1ac23406cd2b877564e`, 28/28 PASS, receipt SHA-256
+  `6946c7c70124bfce1dd9b99c00617e55176684cfeca817c60b315387ab948c23`.
+- The path-filtered and weekly CI workflow runs the same restart campaign.
+  Platform ownership, full source ESLint, and TypeScript checks pass.
+- This remains a digest-pinned disposable fixture campaign. It explicitly sets
+  `fixtureIsCommercialRuntimeEvidence=false`, `privateBetaEligible=false`, and
+  `commercialGaEligible=false`; no staging or production service was changed.
+- Handoff:
+  `HANDOFFS/20260825T113034Z-service-restart-durability.md`.
+
 ## 2026-08-25 verified signature response to candidate assembly
 
 - Status: `PACKET_REBUILT_FROM_CURRENT_BYTES / ED25519_RESPONSE_VERIFIED /

@@ -43,8 +43,11 @@ ineligible for authoritative persistence.
 
 The checked-in receipt is
 `docs/evidence/cad-independent/commercial-precision-local-durability-20260825.json`.
-All 24 checks are `PASS`, including `nativeAdapterBinding`,
-`authoritativePersistence`, and `workspaceCasCommit`. The dedicated
+All 28 checks are `PASS`, including `nativeAdapterBinding`,
+`authoritativePersistence`, `workspaceCasCommit`, actual PostgreSQL/Redis AOF/
+object-storage restart persistence, and exact replay after restart. The
+campaign closes every client before restart and reconnects with fresh clients.
+The dedicated
 `.github/workflows/commercial-precision-durability.yml` gate reruns the campaign
 for affected changes and weekly.
 

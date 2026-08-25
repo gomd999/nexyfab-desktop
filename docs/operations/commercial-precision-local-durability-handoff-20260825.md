@@ -6,6 +6,30 @@ This handoff records the source/infrastructure closure shared by AI Design,
 Precision CAD, and integration. It does not authorize a staging or production
 promotion.
 
+## Current service-restart closure
+
+Commit `9819aa13dd4dc9759416b1ac23406cd2b877564e` advances the local
+receipt to `nexyfab.commercial-precision-local-durability.v2`. The campaign now
+closes the database, Redis, and object-storage clients; actually restarts all
+three disposable services; waits for health; rediscovers their published ports;
+and reconnects using fresh clients.
+
+After restart it verifies the PostgreSQL migration checksum, completed outbox
+and execution journal, persistence receipt, and workspace CAS head. It reads
+the Redis AOF sentinel and every immutable input, output, and snapshot object
+from S3-compatible storage, rechecking byte length and SHA-256. Finally, it
+replays authoritative persistence through a read-only artifact store that
+throws on every attempted write; the only accepted outcome is exact `REPLAY`.
+
+The checked-in receipt is bound to source HEAD
+`9819aa13dd4dc9759416b1ac23406cd2b877564e`, was generated at
+`2026-08-25T11:29:54.200Z`, passes 28/28 checks, and has receipt SHA-256
+`6946c7c70124bfce1dd9b99c00617e55176684cfeca817c60b315387ab948c23`.
+The claim boundary remains explicit: this is a disposable deterministic
+fixture, not release runtime evidence; Private Beta and GA are false. No
+staging or production service was deployed, restarted, reconfigured, or
+written by this closure.
+
 ## Isolated staging HOLD follow-up
 
 The durable core was subsequently deployed to the isolated Railway `staging`
@@ -29,11 +53,12 @@ The separate operational handoff is
 - worker trust and evidence-provenance gate: `fc828fd2`;
 - live-gate missing-worker-trust regression: `f42aee1c`;
 - date-stable spatial receipt regression: `eb04248d`;
+- actual service-restart durability: `9819aa13`;
 - execution contract: `nexyfab.precision-cad-commercial-execution.v3`;
 - immutable input: `nexyfab.precision-cad-commercial-input.v2`;
 - runtime receipt: `nexyfab.commercial-precision-runtime-evidence.v3`;
-- PostgreSQL migration target: `2026082502`, source SHA-256
-  `69c830cb4fa11fb7637f325098d0c0b1a920caeba9802fbbe4a8658f00055f30`.
+- PostgreSQL migration target: `2026082502`, current source SHA-256
+  `07451ebcc671a837bb51c6fed94e6874068814a51c4da674aa0b89b7595f3ec9`.
 
 Input v2 binds the immutable job, workspace, command, target, and arguments.
 It intentionally excludes mutable `attempt` and `leaseGeneration`; those values
@@ -51,28 +76,30 @@ persistence coordinator without weakening its journal precondition.
 Command:
 
 ```text
-npm run commercial:precision:local-durability:generate
+npm run commercial:precision:local-durability -- --write
 ```
 
 The final run started disposable digest-pinned PostgreSQL, Redis AOF, and
 S3-compatible containers; applied the real migrations; ran the real internal
 claim/artifact/callback/persistence routes; executed a separate native fixture
-process without a shell; and removed all containers, networks, and volumes.
+process without a shell; restarted all three persistence services; verified
+fresh-client recovery; and removed all containers, networks, and volumes.
 
 Receipt:
 `docs/evidence/cad-independent/commercial-precision-local-durability-20260825.json`
 
-- source Git head: `f42aee1cf67820d29bcb187cc8a7486cb5bc0776`;
-- generated: `2026-08-25T00:18:53.872Z`;
+- source Git head: `9819aa13dd4dc9759416b1ac23406cd2b877564e`;
+- generated: `2026-08-25T11:29:54.200Z`;
 - receipt SHA-256:
-  `d394c2f51dfd6c30919f56e53b03b1bbbf0c5d111b5488e59ec2ac070e1d1cd3`;
-- result: 24/24 `PASS`, including multi-instance exclusion, immutable input and
+  `6946c7c70124bfce1dd9b99c00617e55176684cfeca817c60b315387ab948c23`;
+- result: 28/28 `PASS`, including multi-instance exclusion, immutable input and
   three-output readback, isolated native execution, Ed25519/HMAC verification,
   wrong-worker/input/output/conflicting-replay rejection, exact callback retry,
   expired-lease quarantine and no-replay, credential rotation, approved native
   executable/invocation substitution rejection, artifact
-  snapshots, signed parser persistence, workspace HEAD CAS, and exact
-  persistence replay without recopy or re-execution.
+  snapshots, signed parser persistence, workspace HEAD CAS, actual PostgreSQL,
+  Redis AOF, and object-storage restart persistence, and exact persistence
+  replay after restart without recopy or re-execution.
 
 The path-filtered and weekly GitHub Actions workflow
 `.github/workflows/commercial-precision-durability.yml` reruns the same campaign
