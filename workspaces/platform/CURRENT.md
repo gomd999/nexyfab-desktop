@@ -1,5 +1,23 @@
 # Platform current session
 
+## 2026-08-25 approved native adapter release binding
+
+- Status: `RUNTIME_EVIDENCE_V3_PASS / LOCAL_DURABLE_24_OF_24_PASS /
+  REAL_ADAPTER_AND_STAGING_CANARY_NOT_RUN / COMMERCIAL_RELEASE_HOLD`.
+- Commit `f26562832acb64a7d94a16f45fdc68b2292c24a6` upgrades commercial
+  Precision runtime evidence to v3 and binds readiness and live release health
+  to the registered native executable and canonical invocation SHA-256 values.
+  A valid worker signature with substituted adapter bytes or arguments remains
+  `HOLD`.
+- The real-container local campaign passed 24/24 checks after adding
+  `nativeAdapterBinding`; it still identifies the native process as a local
+  deterministic fixture and keeps Private Beta and GA false.
+- Worker liveness and commercial readiness are now distinct: `/live` proves
+  only the process is running, while `/health` stays HTTP 503 until a signed
+  canary self-test passes with matching adapter identity.
+- No production-class adapter image, release worker key, live canary, external
+  CAD review, or manufacturing pilot was supplied. Production was not changed.
+
 ## 2026-08-25 commercial Precision runtime release authority
 
 - Status: `LOCAL_GATE_CURRENT / 30x7_LOCAL_CANDIDATE / COMMERCIAL_RUNTIME_HOLD`.
