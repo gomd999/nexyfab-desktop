@@ -21,6 +21,7 @@ const sourcePath = arg('source', '.');
 const pathAsRoot = process.argv.includes('--path-as-root');
 const verifyOnly = process.argv.includes('--verify-only');
 const stagingHold = process.argv.includes('--staging-hold');
+const webPublic = process.argv.includes('--web-public');
 const expectedDeploymentId = arg(
   'expected-deployment-id',
   process.env.NEXYFAB_EXPECTED_DEPLOYMENT_ID || '',
@@ -64,11 +65,16 @@ export function npmInvocation({
 
 export function deploymentMessage({
   stagingHold,
+  webPublic = false,
   expectedBuildId,
   attemptId,
   now = new Date().toISOString(),
 }) {
-  const deploymentKind = stagingHold ? 'verified staging HOLD deploy' : 'verified deploy';
+  const deploymentKind = stagingHold
+    ? 'verified staging HOLD deploy'
+    : webPublic
+      ? 'verified web-public no-payment deploy'
+      : 'verified deploy';
   if (typeof attemptId !== 'string' || !attemptId.trim()) {
     throw new Error('deployment attempt ID is required');
   }
@@ -81,7 +87,7 @@ function runNpmScript(script, env = process.env) {
 }
 
 export const TARGET_RUNTIME_KEYS = [
-  'NEXYFAB_COMMERCIAL_MODE', 'NEXYFAB_RELEASE_CHANNEL', 'NEXYFAB_BUILD_ID', 'RELEASE_GIT_HEAD',
+  'NEXYFAB_COMMERCIAL_MODE', 'NEXYFAB_PAYMENTS_ENABLED', 'NEXYFAB_RELEASE_CHANNEL', 'NEXYFAB_BUILD_ID', 'RELEASE_GIT_HEAD',
   'NEXYFAB_PRECISION_CAD_COMMERCIAL_MODE', 'NEXYFAB_AGENT_APPROVAL_SECRET',
   'NEXYFAB_AGENTIC_TRUST_REGISTRY_JSON', 'EXTERNAL_WORKER_ORCHESTRATOR_URL',
   'EXTERNAL_WORKER_ORCHESTRATOR_HEALTH_URL', 'POSTGRES_MIGRATION_VERSION',
@@ -167,6 +173,65 @@ export function stagingHoldIssues({ environment, site, target, expectedBuildId, 
     }
   } catch {
     issues.push('staging_hold_site_invalid');
+  }
+  return issues;
+}
+
+const WEB_PUBLIC_REQUIRED_KEYS = [
+  'DATABASE_URL', 'REDIS_URL',
+  'S3_BUCKET', 'S3_ACCESS_KEY_ID', 'S3_SECRET_ACCESS_KEY', 'OBJECT_STORAGE_PRIVATE_BUCKET',
+  'CRON_SECRET', 'SMTP_HOST', 'SMTP_USER', 'SMTP_PASS', 'SENTRY_DSN',
+  'NEXT_PUBLIC_AUTH_URL', 'RECAPTCHA_SECRET_KEY', 'NEXT_PUBLIC_RECAPTCHA_SITE_KEY',
+  'RECAPTCHA_ALLOWED_HOSTNAMES', 'JWT_SECRET', 'NEXT_SERVER_ACTIONS_ENCRYPTION_KEY',
+];
+
+export function webPublicIssues({ environment, service, site, target, expectedBuildId, autoDeployEnabled }) {
+  const issues = [];
+  if (environment !== 'production') issues.push('web_public_environment_must_be_production');
+  if (service !== 'nexyfab.com') issues.push('web_public_service_must_be_nexyfab_com');
+  if (autoDeployEnabled !== false) issues.push('web_public_auto_deploy_must_be_disabled');
+  if (target.NEXYFAB_COMMERCIAL_MODE !== '0') issues.push('web_public_commercial_mode_must_be_0');
+  if (target.NEXYFAB_PRECISION_CAD_COMMERCIAL_MODE !== '0') issues.push('web_public_precision_commercial_mode_must_be_0');
+  if (target.NEXYFAB_PAYMENTS_ENABLED !== 'false') issues.push('web_public_payments_must_be_false');
+  if (target.NEXYFAB_RELEASE_CHANNEL !== 'web-public') issues.push('web_public_release_channel_required');
+  if (!expectedBuildId || target.NEXYFAB_BUILD_ID !== expectedBuildId) issues.push('web_public_build_id_mismatch');
+  if (!expectedBuildId || target.RELEASE_GIT_HEAD !== expectedBuildId) issues.push('web_public_release_git_head_mismatch');
+  if (target.OPENSCAD_EXTERNAL_WORKER !== '1') issues.push('web_public_openscad_external_worker_required');
+  if (target.NEXYFAB_CAD_INDEPENDENT_MODE !== '1') issues.push('web_public_cad_independent_mode_required');
+  if (!['enforce', 'strict'].includes(target.SECURITY_GATE_MODE?.trim().toLowerCase() ?? '')) {
+    issues.push('web_public_security_gate_must_be_enforced');
+  }
+  for (const key of WEB_PUBLIC_REQUIRED_KEYS) {
+    if (!target[key]?.trim()) issues.push(`web_public_required_variable_missing:${key}`);
+  }
+  if (target.S3_BUCKET?.trim() && target.OBJECT_STORAGE_PRIVATE_BUCKET?.trim()
+      && target.S3_BUCKET.trim() !== target.OBJECT_STORAGE_PRIVATE_BUCKET.trim()) {
+    issues.push('web_public_private_bucket_must_match_verified_s3_bucket');
+  }
+  try {
+    const hostname = new URL(site).hostname.toLowerCase();
+    if (!['nexyfab.com', 'www.nexyfab.com'].includes(hostname)) {
+      issues.push('web_public_site_must_be_canonical_production_host');
+    }
+  } catch {
+    issues.push('web_public_site_invalid');
+  }
+  try {
+    const authHostname = new URL(target.NEXT_PUBLIC_AUTH_URL).hostname.toLowerCase();
+    if (!['nexyfab.com', 'www.nexyfab.com'].includes(authHostname)) {
+      issues.push('web_public_auth_url_must_be_canonical_production_host');
+    }
+  } catch {
+    issues.push('web_public_auth_url_invalid');
+  }
+  const allowedRecaptchaHosts = new Set(
+    String(target.RECAPTCHA_ALLOWED_HOSTNAMES ?? '')
+      .split(',')
+      .map(value => value.trim().toLowerCase())
+      .filter(Boolean),
+  );
+  if (!allowedRecaptchaHosts.has('nexyfab.com') || !allowedRecaptchaHosts.has('www.nexyfab.com')) {
+    issues.push('web_public_recaptcha_hosts_must_cover_canonical_hosts');
   }
   return issues;
 }
@@ -266,7 +331,22 @@ async function healthCheck() {
   console.log(JSON.stringify({ event: 'health-verified', url, liveBuildId: liveBuildId || null }));
 }
 
+async function verifyPaymentsDisabled() {
+  if (!site || site === 'none') throw new Error('web-public verification requires a production site URL');
+  const url = `${site.replace(/\/$/, '')}/api/billing/beta-status`;
+  const response = await fetch(url, { headers: { 'cache-control': 'no-cache' }, signal: AbortSignal.timeout(20_000) });
+  if (!response.ok) throw new Error(`payment status check ${url} returned ${response.status}`);
+  const body = await response.json();
+  if (body?.paymentsEnabled !== false || body?.paymentStatus !== 'disabled') {
+    throw new Error(`payment collection is not confirmed disabled: ${JSON.stringify(body)}`);
+  }
+  console.log(JSON.stringify({ event: 'payments-disabled-verified', url }));
+}
+
 async function main() {
+  if (stagingHold && webPublic) {
+    throw new Error('--staging-hold and --web-public are mutually exclusive');
+  }
   if (verifyOnly && !expectedDeploymentId) {
     throw new Error('--verify-only requires --expected-deployment-id (or NEXYFAB_EXPECTED_DEPLOYMENT_ID)');
   }
@@ -316,6 +396,13 @@ async function main() {
     await runNpmScript('workspace:audit', gateEnvironment);
     await runNpmScript('platform:architecture:check', gateEnvironment);
     await runNpmScript('ci:replicate-build', gateEnvironment);
+  } else if (webPublic) {
+    const autoDeployEnabled = await targetAutoDeployEnabled();
+    const issues = webPublicIssues({ environment, service, site, target, expectedBuildId, autoDeployEnabled });
+    if (issues.length) throw new Error(`web-public target rejected: ${issues.join(', ')}`);
+    await runNpmScript('workspace:audit', gateEnvironment);
+    await runNpmScript('platform:architecture:check', gateEnvironment);
+    await runNpmScript('ci:replicate-build', gateEnvironment);
   } else {
     await runNpmScript('commercial:release-gate', gateEnvironment);
   }
@@ -323,6 +410,7 @@ async function main() {
   const attemptId = verifyOnly ? null : randomUUID();
   const attemptMessage = verifyOnly ? null : deploymentMessage({
     stagingHold,
+    webPublic,
     expectedBuildId,
     attemptId,
   });
@@ -357,12 +445,13 @@ async function main() {
     }
     if (['SUCCESS', 'ACTIVE'].includes(status)) {
       await healthCheck();
+      if (webPublic) await verifyPaymentsDisabled();
       console.log(JSON.stringify({
         event: 'deployment-verified',
         service,
         deploymentId: targetId,
         status,
-        releaseStatus: stagingHold ? 'HOLD' : 'PASS',
+        releaseStatus: stagingHold ? 'HOLD' : webPublic ? 'WEB_PUBLIC_NO_PAYMENT' : 'PASS',
         attemptId,
         message: deploymentCliMessage(target) || null,
       }));
