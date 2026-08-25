@@ -1,5 +1,26 @@
 # AI Design current session
 
+## 2026-08-25 release-gate-hardened downstream staging evidence
+
+- Status: `AI_CONCEPT_AUTHORITY_CONNECTED / EXACT_DOWNSTREAM_STAGING_11_OF_11 /
+  NATIVE_AND_EXTERNAL_QUALIFICATION_HOLD`.
+- Exact downstream application source/build/Git
+  `3797ad6d75f02ad750e746199eb8c041e5d52d9f` is deployed to isolated Railway
+  staging as `d4718236-06ca-4b56-81c8-5c271b2e8976`, image
+  `sha256:bd1364d1121916016d91a19919486d39a053a9ce38db008a05c197f9a20ce2bf`,
+  with 2/2 instances `RUNNING`.
+- The immutable same-build receipt passed 11/11 and is independently accepted
+  by the commercialization gate. Receipt self-hash:
+  `59485c350d6aeaa45881ef7e06032836bec330ce2be49c46331fcac9ca03731e`.
+- This proves the integrated AI-candidate-to-Precision core and fail-closed
+  staging boundary for this build. It does not promote AI output to exact CAD,
+  manufacturing approval, Private Beta, or GA.
+- A registered production-class native worker, separate key authority,
+  positive/recovery runtime campaign, independent CAD review, and pilots remain
+  honest external blockers.
+- Handoff:
+  `HANDOFFS/20260825T072500Z-release-gate-hardened-downstream-staging.md`.
+
 ## 2026-08-25 exact downstream final-source staging HOLD
 
 - Status: `AI_CONCEPT_AUTHORITY_CONNECTED / FINAL_CORE_STAGING_11_OF_11_PASS /
