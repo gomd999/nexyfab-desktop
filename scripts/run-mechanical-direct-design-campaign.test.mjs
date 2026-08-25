@@ -7,6 +7,7 @@ import test from 'node:test';
 import {
   buildMechanicalDirectDesignReceipt,
   createMechanicalDirectDesignState,
+  inspectMechanicalDirectDesignCampaignPrerequisites,
   resumeMechanicalDirectDesignState,
   runMechanicalDirectDesignCampaign,
 } from './run-mechanical-direct-design-campaign.mjs';
@@ -162,4 +163,61 @@ test('rejects changed workbooks and artifact paths outside the evidence root', (
   assert.throws(() => resumeMechanicalDirectDesignState(changed, state), /RESUME_MISMATCH/);
   const unsafe = workbook(); unsafe.cases[0].artifactPaths.step = '../outside.step';
   assert.throws(() => createMechanicalDirectDesignState(unsafe), /CASE_INVALID/);
+});
+
+test('preflight reports a fresh pending scaffold without creating state or evidence', () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'nexyfab-direct-design-preflight-'));
+  try {
+    const adapterPath = path.join(root, 'adapter.mjs'); fs.writeFileSync(adapterPath, 'throw new Error("must not load");\n');
+    const result = inspectMechanicalDirectDesignCampaignPrerequisites({
+      workbook: workbook(), evidenceRoot: root, adapterPath, trustedDesignVerifiers,
+    });
+    assert.equal(result.workbook.valid, true);
+    assert.equal(result.workbook.cases, 30);
+    assert.equal(result.artifacts.expected, 240);
+    assert.equal(result.artifacts.present, 0);
+    assert.equal(result.artifacts.missing, 240);
+    assert.equal(result.adapter.loadedOrExecuted, false);
+    assert.equal(result.verifiers.roleSeparated, true);
+    assert.deepEqual(result.blockers, ['required_artifacts_missing']);
+    assert.equal(result.readyToExecute, false);
+    assert.deepEqual(fs.readdirSync(root), ['adapter.mjs']);
+  } finally { fs.rmSync(root, { recursive: true, force: true }); }
+});
+
+test('preflight becomes execution-ready only when all files, role-separated keys, and adapter are present', () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'nexyfab-direct-design-ready-'));
+  try {
+    const book = workbook();
+    for (const item of book.cases) writeCase(root, item);
+    const adapterPath = path.join(root, 'adapter.mjs'); fs.writeFileSync(adapterPath, 'throw new Error("must not load");\n');
+    const result = inspectMechanicalDirectDesignCampaignPrerequisites({
+      workbook: book, evidenceRoot: root, adapterPath, trustedDesignVerifiers,
+    });
+    assert.equal(result.artifacts.expected, 240);
+    assert.equal(result.artifacts.present, 240);
+    assert.equal(result.artifacts.missing, 0);
+    assert.equal(result.artifacts.invalid, 0);
+    assert.equal(result.verifiers.roleSeparated, true);
+    assert.equal(result.adapter.regularFile, true);
+    assert.equal(result.adapter.loadedOrExecuted, false);
+    assert.deepEqual(result.blockers, []);
+    assert.equal(result.readyToExecute, true);
+  } finally { fs.rmSync(root, { recursive: true, force: true }); }
+});
+
+test('preflight rejects a stale workbook that omits the signed verification receipt path', () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'nexyfab-direct-design-stale-'));
+  try {
+    const stale = workbook(); delete stale.cases[0].artifactPaths.verificationReceipt;
+    const result = inspectMechanicalDirectDesignCampaignPrerequisites({
+      workbook: stale, evidenceRoot: root, trustedDesignVerifiers,
+    });
+    assert.equal(result.workbook.valid, false);
+    assert.match(result.workbook.error, /CASE_INVALID/);
+    assert.equal(result.artifacts.expected, 0);
+    assert.ok(result.blockers.includes('direct_design_workbook_invalid'));
+    assert.ok(result.blockers.includes('trusted_runtime_adapter_not_supplied'));
+    assert.equal(result.readyToExecute, false);
+  } finally { fs.rmSync(root, { recursive: true, force: true }); }
 });

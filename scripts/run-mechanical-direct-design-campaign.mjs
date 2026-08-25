@@ -14,6 +14,9 @@ const REQUIRED_CHECKS = Object.freeze([
   'kernelValid', 'nonEmpty', 'stableFeatureIds', 'lockedDimensionsPreserved',
   'nfabThreeCycles', 'stepThreeCycles', 'drawingReleased', 'bomReconciled', 'revisionBound',
 ]);
+const REQUIRED_VERIFIER_ROLES = Object.freeze([
+  'mechanical-step-verifier', 'mechanical-drawing-verifier', 'mechanical-bom-verifier',
+]);
 const SHA256 = /^[a-f0-9]{64}$/;
 
 const canonical = value => {
@@ -49,6 +52,125 @@ function assertWorkbook(workbook) {
       throw new Error(`DIRECT_DESIGN_WORKBOOK_CASE_INVALID:${item?.caseId ?? 'unknown'}`);
     }
   }
+}
+
+function isEd25519PublicKey(publicKey) {
+  try {
+    return crypto.createPublicKey(publicKey).asymmetricKeyType === 'ed25519';
+  } catch {
+    return false;
+  }
+}
+
+function hasDistinctVerifierAssignment(roleCoverage, roleIndex = 0, used = new Set()) {
+  if (roleIndex === REQUIRED_VERIFIER_ROLES.length) return true;
+  const role = REQUIRED_VERIFIER_ROLES[roleIndex];
+  return roleCoverage[role].some(verifierId => {
+    if (used.has(verifierId)) return false;
+    const next = new Set(used); next.add(verifierId);
+    return hasDistinctVerifierAssignment(roleCoverage, roleIndex + 1, next);
+  });
+}
+
+function inspectTrustedVerifiers(trustedDesignVerifiers) {
+  const configured = trustedDesignVerifiers && typeof trustedDesignVerifiers === 'object'
+    ? Object.entries(trustedDesignVerifiers)
+    : [];
+  const valid = configured.filter(([, value]) => isEd25519PublicKey(value?.publicKey));
+  const roleCoverage = Object.fromEntries(REQUIRED_VERIFIER_ROLES.map(role => [
+    role,
+    valid.filter(([, value]) => Array.isArray(value?.roles) && value.roles.includes(role)).map(([verifierId]) => verifierId),
+  ]));
+  return {
+    configuredKeys: configured.length,
+    validEd25519Keys: valid.length,
+    requiredRoles: REQUIRED_VERIFIER_ROLES,
+    roleCoverage: Object.fromEntries(Object.entries(roleCoverage).map(([role, ids]) => [role, ids.length])),
+    roleSeparated: hasDistinctVerifierAssignment(roleCoverage),
+  };
+}
+
+export function inspectMechanicalDirectDesignCampaignPrerequisites({
+  workbook,
+  evidenceRoot,
+  adapterPath,
+  trustedDesignVerifiers = parseTrustedMechanicalDesignVerifiers(),
+}) {
+  let workbookError = null;
+  try {
+    assertWorkbook(workbook);
+  } catch (error) {
+    workbookError = error instanceof Error ? error.message : String(error);
+  }
+
+  const resolvedRoot = path.resolve(evidenceRoot);
+  const rootExists = fs.existsSync(resolvedRoot)
+    && fs.statSync(resolvedRoot).isDirectory()
+    && !fs.lstatSync(resolvedRoot).isSymbolicLink();
+  const byRole = Object.fromEntries(ARTIFACT_ROLES.map(role => [
+    role,
+    { expected: workbookError ? 0 : 30, present: 0, missing: 0, invalid: 0 },
+  ]));
+  if (!workbookError) {
+    const realRoot = rootExists ? fs.realpathSync(resolvedRoot) : null;
+    for (const item of workbook.cases) {
+      for (const role of ARTIFACT_ROLES) {
+        const absolute = resolveInside(resolvedRoot, item.artifactPaths[role]);
+        if (!rootExists || !absolute || !fs.existsSync(absolute)) {
+          byRole[role].missing += 1;
+          continue;
+        }
+        if (!fs.statSync(absolute).isFile() || fs.lstatSync(absolute).isSymbolicLink()) {
+          byRole[role].invalid += 1;
+          continue;
+        }
+        const real = fs.realpathSync(absolute);
+        if (!real.startsWith(`${realRoot}${path.sep}`)) {
+          byRole[role].invalid += 1;
+          continue;
+        }
+        byRole[role].present += 1;
+      }
+    }
+  }
+  const artifacts = {
+    expected: workbookError ? 0 : workbook.cases.length * ARTIFACT_ROLES.length,
+    present: Object.values(byRole).reduce((count, item) => count + item.present, 0),
+    missing: Object.values(byRole).reduce((count, item) => count + item.missing, 0),
+    invalid: Object.values(byRole).reduce((count, item) => count + item.invalid, 0),
+    byRole,
+  };
+  const resolvedAdapter = adapterPath ? path.resolve(adapterPath) : null;
+  const adapterRegularFile = Boolean(resolvedAdapter
+    && fs.existsSync(resolvedAdapter)
+    && fs.statSync(resolvedAdapter).isFile()
+    && !fs.lstatSync(resolvedAdapter).isSymbolicLink());
+  const verifiers = inspectTrustedVerifiers(trustedDesignVerifiers);
+  const blockers = [];
+  if (workbookError) blockers.push('direct_design_workbook_invalid');
+  if (!rootExists) blockers.push('evidence_root_missing_or_unsafe');
+  if (!workbookError && artifacts.missing > 0) blockers.push('required_artifacts_missing');
+  if (!workbookError && artifacts.invalid > 0) blockers.push('required_artifacts_invalid');
+  if (!verifiers.roleSeparated) blockers.push('role_separated_trusted_verifiers_missing');
+  if (!adapterPath) blockers.push('trusted_runtime_adapter_not_supplied');
+  else if (!adapterRegularFile) blockers.push('trusted_runtime_adapter_not_regular_file');
+  return {
+    schema: 'nexyfab.mechanical-direct-design-campaign-preflight.v1',
+    releaseChannel: 'mechanical-core',
+    readyToExecute: blockers.length === 0,
+    workbook: { valid: !workbookError, error: workbookError, cases: workbookError ? 0 : workbook.cases.length },
+    evidenceRoot: { path: resolvedRoot, exists: rootExists },
+    adapter: { configured: Boolean(adapterPath), regularFile: adapterRegularFile, loadedOrExecuted: false },
+    verifiers,
+    artifacts,
+    blockers,
+    claimBoundary: {
+      createsCampaignState: false,
+      createsEvidence: false,
+      executesAdapter: false,
+      grantsCommercialRelease: false,
+    },
+  };
 }
 
 export function createMechanicalDirectDesignState(workbook, generatedAt = new Date().toISOString()) {
@@ -224,6 +346,19 @@ async function main(args = process.argv.slice(2)) {
   const workbookPath = option(args, 'workbook');
   const statePath = option(args, 'state');
   const adapterPath = option(args, 'adapter');
+  if (args.includes('--preflight')) {
+    if (!workbookPath) throw new Error('Usage: --preflight --workbook=<workbook.json> [--adapter=<adapter.mjs>]');
+    const resolvedWorkbook = path.resolve(workbookPath);
+    const workbook = JSON.parse(fs.readFileSync(resolvedWorkbook, 'utf8'));
+    const result = inspectMechanicalDirectDesignCampaignPrerequisites({
+      workbook,
+      evidenceRoot: path.dirname(resolvedWorkbook),
+      adapterPath,
+    });
+    process.stdout.write(`${JSON.stringify(result)}\n`);
+    if (!result.readyToExecute) process.exitCode = 4;
+    return;
+  }
   if (!workbookPath || !statePath || !adapterPath) throw new Error('Usage: --workbook=<workbook.json> --state=<state.json> --adapter=<adapter.mjs> [--receipt=<receipt.json>] [--cases=id,id] [--resume]');
   const resolvedWorkbook = path.resolve(workbookPath);
   const workbook = JSON.parse(fs.readFileSync(resolvedWorkbook, 'utf8'));

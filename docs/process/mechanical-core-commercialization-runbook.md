@@ -49,9 +49,9 @@ npm run mechanical:scope:check
 
 `mechanical-product-scope-assessment.v4`와 commercialization gate에는 이 정책이 반영됐다. v4는 150개 로컬 의도 입력 자격 검증, 10개 대표 설계·70개 정확 런타임 축, 조립도면 로컬 인계를 상용 30개 설계·150개 의도 캠페인과 별도 필드로 기록하며, 앞의 내부 PASS가 뒤의 상용 검증을 대신하지 못하게 한다. 제품별 상용 CAD 검증은 기본 blocker가 아니며, `twenty_blind_product_challenges_required`는 외부 기관 20건이 아니라 요구사항이 사전 동결되고 구현자와 검토자가 분리된 내부 blind challenge 20건을 뜻한다. 현재 blocker는 schema 전환 대기가 아니라 실제 artifact가 0건이라는 사실이다.
 
-2026-08-12 공식 scaffold로 다음 저장소 외부 작업공간을 생성했다.
+2026-08-25 현재 v4 정책과 8개 직접설계 artifact 역할을 반영한 새 공식 scaffold를 다음 저장소 외부 작업공간에 생성했다. 2026-08-12 루트는 `verificationReceipt` 경로가 없는 역사 자료이므로 보존하되 새 campaign 입력으로 사용하지 않는다.
 
-- 루트: `C:\Users\gomd9\Downloads\nexysys_1\nexyfab-commercial-evidence-260812`
+- 현재 루트: `C:\Users\gomd9\Downloads\nexysys_1\nexyfab-commercial-evidence-260825-v4`
 - 직접 설계: 30 case, eligible 0
 - blind challenge: 20 case, eligible 0
 - 제조 pilot: CNC·판금·적층 3 case, eligible 0
@@ -73,10 +73,18 @@ workbook은 폴더와 요구 artifact 경로만 만든다. 실제 STEP·NFAB·�
 호출해야 하며, fixture나 synthetic artifact를 상용 증거로 생성해서는 안 된다. 중단 후에는 같은 명령에
 `--resume`을 추가한다. 일부 case만 먼저 실행하려면 `--cases=design-01-hole,...`을 지정한다.
 
+실행 전 비파괴 preflight는 workbook, 240개 필수 파일 슬롯, 역할이 분리된 Ed25519 검증자, adapter 파일 존재를 확인한다. adapter를 import하거나 실행하지 않고 state·receipt·evidence도 쓰지 않으며, 준비되지 않은 경우 blocker를 출력하고 종료 코드 4를 반환한다.
+
+```powershell
+node scripts/run-mechanical-direct-design-campaign.mjs --preflight `
+  --workbook=C:\Users\gomd9\Downloads\nexysys_1\nexyfab-commercial-evidence-260825-v4\direct-design\mechanical-direct-design-workbook.json `
+  --adapter=<trusted-runtime-adapter.mjs>
+```
+
 ```powershell
 node scripts/run-mechanical-direct-design-campaign.mjs `
-  --workbook=C:\Users\gomd9\Downloads\nexysys_1\nexyfab-commercial-evidence-260812\direct-design\mechanical-direct-design-workbook.json `
-  --state=C:\Users\gomd9\Downloads\nexysys_1\nexyfab-commercial-evidence-260812\direct-design\campaign-state.json `
+  --workbook=C:\Users\gomd9\Downloads\nexysys_1\nexyfab-commercial-evidence-260825-v4\direct-design\mechanical-direct-design-workbook.json `
+  --state=C:\Users\gomd9\Downloads\nexysys_1\nexyfab-commercial-evidence-260825-v4\direct-design\campaign-state.json `
   --adapter=<trusted-runtime-adapter.mjs> `
   --receipt=docs/evidence/release/mechanical-direct-design-campaign-receipt.json
 ```
