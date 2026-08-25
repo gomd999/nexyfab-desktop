@@ -92,6 +92,7 @@ test('postbuild prunes mutable state and repairs the standalone runtime', () => 
   assert.match(railwayIgnore, /^docs\/evidence\/release\/\*\*$/m);
   assert.match(railwayIgnore, /^!docs\/evidence\/release\/commercial-i18n-release-receipt\.json$/m);
   assert.match(railwayIgnore, /^!docs\/evidence\/release\/seven-day-operations-receipt\.json$/m);
+  assert.match(railwayIgnore, /^!docs\/evidence\/release\/commercial-precision-runtime-evidence\.json$/m);
   assert.match(railwayIgnore, /^!docs\/evidence\/operations\/$/m);
   assert.match(railwayIgnore, /^docs\/evidence\/operations\/\*\*$/m);
   assert.match(railwayIgnore, /^!docs\/evidence\/operations\/\*\*\/\*\.json$/m);
