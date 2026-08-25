@@ -1,5 +1,42 @@
 # Precision CAD current session
 
+## 2026-08-25 real local durability and authoritative CAS closure
+
+- Status: `LOCAL_DURABLE_EXACT_CLOSED_LOOP_PASS /
+  PRODUCTION_CLASS_NATIVE_AND_EXTERNAL_QUALIFICATION_NOT_RUN /
+  COMMERCIAL_RELEASE_HOLD`.
+- The commercial v3 source path was executed against disposable real
+  PostgreSQL, Redis AOF, and S3-compatible storage with an isolated native
+  fixture process. All 24 checks passed, including migration checksum, immutable
+  input/output readback, multi-instance exclusion, Ed25519/HMAC verification,
+  negative substitution/replay cases, expired-lease quarantine/no-replay,
+  credential rotation, authoritative parser persistence, and workspace HEAD
+  compare-and-swap.
+- A real integration defect was closed: outbox claim previously advanced only
+  the job row while the execution journal remained `APPROVED`. Claim and lease
+  recovery now update both records and append their journal events atomically,
+  so the verified result can reach `COMMITTED`/`DONE` without weakening the
+  persistence preconditions.
+- Immutable input moved to
+  `nexyfab.precision-cad-commercial-input.v2`: mutable claim attempt/generation
+  are excluded from the staged object but remain exactly signed in the
+  transport/receipt. This removes a normal-flow binding contradiction while
+  retaining substitution protection for all immutable job fields.
+- The checked-in local receipt is
+  `docs/evidence/cad-independent/commercial-precision-local-durability-20260825.json`,
+  and `.github/workflows/commercial-precision-durability.yml` reruns the same
+  campaign for affected changes and weekly.
+- Runtime release evidence v2 additionally requires the registered worker's
+  real Ed25519 signature and exact per-check machine assertions. The committed
+  release receipt remains honest `HOLD` because there is no current
+  release-bound real-worker observation.
+- This closes the durable local exact loop, not product qualification. The
+  native campaign adapter is a deterministic fixture; independent native-CAD
+  exchange/XCAF/GD&T review, real production-class worker, experts, three
+  manufacturing pilots, and same-release operations evidence remain required.
+- Integration handoff:
+  `docs/operations/commercial-precision-local-durability-handoff-20260825.md`.
+
 ## 2026-08-25 current-head local evidence and regression closure
 
 - Status: `LOCAL_EXACT_CANDIDATE_PASS / EXTERNAL_QUALIFICATION_NOT_RUN /

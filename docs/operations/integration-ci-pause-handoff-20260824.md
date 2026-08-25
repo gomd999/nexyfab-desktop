@@ -1,5 +1,23 @@
 # 통합 작업 기준 및 CI·릴리스 인계
 
+## 2026-08-25 로컬 상용 내구성 폐쇄 부록
+
+- 구현 커밋 `90c707a5`, `5c063e5a`, `fc828fd2`, `f42aee1c`에서 commercial Precision
+  v3 경로를 immutable input v2, outbox/저널 원자적 claim·복구, 실제
+  PostgreSQL/Redis/object-store 실행, 서명된 parser 권위 저장, workspace CAS까지
+  닫았습니다.
+- digest-pinned 일회성 캠페인은 24/24 체크를 통과했습니다. 체크인 영수증은
+  `f42aee1cf67820d29bcb187cc8a7486cb5bc0776`에 결속되며 SHA-256은
+  `b56527378bac7377a58b63fc6bb2c008fa11e578824a162a854ea5dfa2e058b4`입니다.
+- 새 path-filtered/weekly CI workflow가 같은 캠페인을 반복합니다. Runtime
+  evidence v2는 등록 worker의 실제 Ed25519 서명과 승격되는 각 체크의 정확한
+  machine assertion provenance를 요구합니다.
+- 로컬 native process와 자격증명은 fixture입니다. 이 부록은 기존 staging,
+  production, credential rotation, 독립 검토, 제조 pilot, 보안·법무, 7일 운영
+  HOLD를 대체하지 않습니다. Production은 변경하지 않았습니다.
+- 기준 문서:
+  `commercial-precision-local-durability-handoff-20260825.md`.
+
 - 작성 시각: 2026-08-24 (KST)
 - 최종 갱신: 2026-08-25 (AI Design·Precision CAD 전체 로컬 회귀 결속 기준)
 - 기준 작업 디렉터리: `C:\Users\gomd9\Downloads\nexysys_1\nexyfab.com\new`

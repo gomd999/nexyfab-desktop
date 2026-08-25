@@ -1,6 +1,6 @@
 {
-  "schema": "nexyfab.commercial-precision-runtime-evidence.v1",
-  "generatedAt": "2026-08-24T23:25:36.715Z",
+  "schema": "nexyfab.commercial-precision-runtime-evidence.v2",
+  "generatedAt": "2026-08-25T00:19:11.499Z",
   "status": "HOLD",
   "release": null,
   "environment": null,
@@ -19,6 +19,7 @@
     "negativeCampaign": null,
     "recoveryCampaign": null
   },
+  "workerTrust": null,
   "checks": {
     "postgresMigration": "NOT_RUN",
     "redisAvailability": "NOT_RUN",
@@ -98,6 +99,6 @@
     "productionRequiresSameDeployment": true,
     "independentCadOrManufacturingCertified": false
   },
-  "receiptSha256": "41d91fd8cef0f7cbf62f5fac27023639a114f222b93af7deac39939a63060d0e",
+  "receiptSha256": "1c77d674b11cbdb4f94376865d20334e0ea1ad7be89685ecb73eaa0491037677",
   "receiptHmacSha256": null
 }

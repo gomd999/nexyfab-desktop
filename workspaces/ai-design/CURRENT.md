@@ -1,5 +1,37 @@
 # AI Design current session
 
+## 2026-08-25 durable AI-to-Precision exact closure
+
+- Status: `AI_CONCEPT_AUTHORITY_CONNECTED / LOCAL_DURABLE_EXACT_CLOSED_LOOP_PASS /
+  REAL_RUNTIME_AND_EXTERNAL_QUALIFICATION_HOLD`.
+- The revision-bound AI handoff now reaches the actual commercial Precision v3
+  path through immutable input schema
+  `nexyfab.precision-cad-commercial-input.v2`. The immutable payload binds job,
+  workspace, command, target, and arguments while claim-owned attempt and lease
+  generation remain in the signed transport and worker receipt.
+- A disposable real PostgreSQL/Redis-AOF/S3-compatible campaign passed all 24
+  checks: transactional enqueue, multi-instance exclusion, isolated native
+  process, three immutable outputs, worker/callback signatures, hostile
+  substitutions and conflicting replay, lease recovery/no-replay, key rotation,
+  signed parser persistence, and authoritative CAD workspace CAS. Exact
+  persistence retry performed no second copy or execution.
+- Claim and expired-lease recovery now update outbox and execution journal in
+  one PostgreSQL transaction. This closes the prior impossible state where a
+  claimed worker job left its journal `APPROVED` and could never satisfy the
+  authoritative persistence coordinator.
+- Runtime evidence is versioned to
+  `nexyfab.commercial-precision-runtime-evidence.v2`; it verifies the actual
+  Ed25519 worker signature against the current public registry and requires an
+  exact machine assertion for every promoted check. Local fixture evidence is
+  never accepted as staging or production release evidence.
+- AI authority is unchanged: AI produces `CONCEPT`/`DESIGN_CANDIDATE` and may
+  request Precision work, but cannot author exact PASS, workspace commits,
+  manufacturing approval, or commercial release. A real native-worker release,
+  independent CAD/expert review, manufacturing pilots, and operations evidence
+  remain `HOLD`.
+- Integration handoff:
+  `docs/operations/commercial-precision-local-durability-handoff-20260825.md`.
+
 ## 2026-08-25 six-locale UI and current-head commercial closure
 
 - Status: `AI_DESIGN_SOURCE_CONNECTED / SIX_LOCALE_UI_PASS /

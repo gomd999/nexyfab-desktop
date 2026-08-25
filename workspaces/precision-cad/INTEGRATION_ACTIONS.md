@@ -4,6 +4,39 @@ These changes are required by the repository audit but target integration-owned
 paths. They must be applied from `integration/nexyfab`, not from this Scope
 branch.
 
+## 2026-08-25 durable local closure and external promotion boundary
+
+The integration-owned source/infrastructure gap is now closed locally:
+
+- [x] Bind immutable input v2 to stable job/workspace/command/target/arguments
+  while keeping attempt and lease generation in signed claim state.
+- [x] Atomically advance outbox plus execution journal on worker claim and
+  expired-lease recovery.
+- [x] Run real versioned migrations and the complete v3 route/worker/persistence
+  path against disposable PostgreSQL, Redis AOF, and immutable S3-compatible
+  storage.
+- [x] Prove all 24 local durable checks, including authoritative parser
+  persistence, workspace HEAD CAS, hostile substitutions/conflicting replay,
+  verified-unknown no-replay, key rotation, and exact persistence replay.
+- [x] Add a path-filtered and weekly CI workflow for the same containerized
+  campaign.
+- [x] Upgrade runtime receipt derivation to v2 with registry-bound Ed25519
+  verification and exact per-check assertion provenance.
+
+The promotion work remains external and release-bound:
+
+- [ ] deploy the exact final commit to isolated staging with a reviewed,
+  production-class native CAD adapter and separately held worker private key;
+- [ ] capture all five runtime evidence documents from that same deployment and
+  derive a fresh Private Beta receipt v2;
+- [ ] repeat the GA recovery matrix on the same production deployment after
+  explicit approval;
+- [ ] collect independent CAD/XCAF/GD&T, expert, three manufacturing-pilot,
+  security/legal, restore/rollback, and seven-day operations evidence;
+- [ ] keep production commercial/manufacturing authority disabled until those
+  external receipts pass. The local fixture receipt is not eligible for
+  promotion.
+
 ## 2026-08-25 current-head source integration closure
 
 The source-side actions are closed at commits `498ca375`, `575cfcfb`, and
