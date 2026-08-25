@@ -1,5 +1,40 @@
 # Platform current session
 
+## 2026-08-25 exact Railway deployment-source preflight closure
+
+- Status: `CLEAN_GIT_SOURCE_BOUND / RELEASE_HEALTH_SOURCE_BYTES_BOUND /
+  EXTERNAL_ENV_MODULE_EDGES_0 / LOCAL_PREFLIGHT_PASS / DEPLOYMENT_NOT_RUN /
+  COMMERCIAL_RELEASE_HOLD`.
+- Implementation commit:
+  `cd196e04c88922982f0c34318e6974533fbe4e2b`.
+- `scripts/verify-deployment-source.mjs` now runs before every non-verify
+  `deploy:railway:verified` upload and rejects a non-root source directory,
+  dirty tracked or untracked bytes, expected-build/HEAD mismatch, missing or
+  untracked Docker/Railway build files, release-health evidence excluded by
+  `.railwayignore`/`.dockerignore`, invalid or drifted fixed/dynamic evidence,
+  and static JS/TS module edges to `.env*` files.
+- `scripts/package-release-health-evidence.mjs` exposes the same read-only
+  source validator used by standalone packaging. Qualified seven-day receipts
+  therefore validate every bound operations-evidence byte and SHA-256 before
+  upload instead of first failing in the remote Docker `postbuild` step.
+- Verified deployment metadata now contains the exact build ID and
+  `source=clean-git-v1`, so a future Railway deployment record can be tied to
+  the source preflight rather than only a CLI timestamp.
+- Actual clean-worktree preflight at the implementation commit passed with
+  10,237 tracked files, 8,034 parsed JS/TS source files, zero external `.env`
+  module imports, and all three packaged receipts present, tracked, included,
+  schema-valid, and byte-hashed. Focused Node tests pass 15/15; Platform quality
+  passes 65 Node tests and 75 Vitest tests; architecture remains 11 services,
+  5 stores, 69 API groups, 27 cron groups, 6 domains, and 4 packages.
+- This closes the two observed build-failure classes: the staging snapshot that
+  omitted `commercial-precision-runtime-evidence.json`, and the production
+  snapshot that statically imported `../../../../.env`. It does not claim that
+  the new commit is deployed. Staging/production were not changed, external
+  live observation/rollback and commercial qualification remain `HOLD`, and a
+  verified deploy must start from a clean exact-HEAD worktree.
+- Handoff:
+  `HANDOFFS/20260825T224828+0900-railway-deployment-source-preflight-v1.md`.
+
 ## 2026-08-25 actual cross-store backup and restore closure
 
 - Status: `POSTGRES_EXACT_RESTORE_PASS / OBJECT_SOURCE_BACKUP_RESTORE_PASS /
