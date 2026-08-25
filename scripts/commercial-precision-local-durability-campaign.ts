@@ -1,6 +1,6 @@
 import { createHash, createHmac, createPublicKey, generateKeyPairSync, sign } from 'node:crypto';
 import { execFileSync } from 'node:child_process';
-import { mkdtemp, rm, writeFile } from 'node:fs/promises';
+import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import Redis from 'ioredis';
@@ -19,7 +19,7 @@ import { CAD_WORKSPACE_ENVELOPE_SCHEMA, hashCadPayload, hashCadWorkspaceEnvelope
 import { DESIGN_ARTIFACT_GRAPH_SCHEMA, type DesignArtifactGraph } from '@/lib/ai/designArtifactGraph';
 import { DESIGN_WORKSPACE_REVISION_SCHEMA, type DesignWorkspaceRevision } from '@/lib/ai/designWorkspaceRevision';
 import type { CommercialExecutionJob, CommercialOutputArtifact } from '../packages/job-contracts/src/commercialPrecisionExecution';
-import { canonical, executeTransport } from './drawing-to-3d/commercial-precision-worker.mjs';
+import { canonical, executeTransport, nativeInvocationSha256 } from './drawing-to-3d/commercial-precision-worker.mjs';
 import { POST as claimPost } from '@/app/api/internal/precision-cad-commercial/claim/route';
 import { GET as artifactGet, POST as artifactPost, PUT as artifactPut } from '@/app/api/internal/precision-cad-commercial/artifacts/route';
 import { POST as callbackPost } from '@/app/api/internal/precision-cad-commercial/callback/route';
@@ -42,13 +42,20 @@ function sha256(bytes: string | Uint8Array): string {
   return createHash('sha256').update(bytes).digest('hex');
 }
 
-function publicWorker(identity: string, keyPair: ReturnType<typeof generateKeyPairSync>) {
+function publicWorker(
+  identity: string,
+  keyPair: ReturnType<typeof generateKeyPairSync>,
+  nativeExecutableSha256: string,
+  nativeInvocationSha256Value: string,
+) {
   const publicKey = createPublicKey(keyPair.privateKey);
   const publicKeyPem = publicKey.export({ type: 'spki', format: 'pem' }).toString();
   return {
     workerIdentity: identity,
     publicKeyPem,
     fingerprintSha256: sha256(publicKey.export({ type: 'spki', format: 'der' })),
+    nativeExecutableSha256,
+    nativeInvocationSha256: nativeInvocationSha256Value,
   };
 }
 
@@ -170,11 +177,17 @@ async function main() {
   process.env.NEXYFAB_COMMERCIAL_CALLBACK_URL = 'https://core.local/api/internal/precision-cad-commercial/callback';
   process.env.NEXYFAB_COMMERCIAL_WORKER_LEASE_MS = '60000';
 
+  const nativeDirectory = await mkdtemp(path.join(tmpdir(), 'nexyfab-local-durability-native-'));
+  const nativeExecutable = path.join(nativeDirectory, 'native-adapter.mjs');
+  const nativeArgs = [nativeExecutable];
+  const nativeExecutableSha256 = sha256(await readFile(process.execPath));
+  const nativeInvocationSha256Value = nativeInvocationSha256(nativeExecutableSha256, nativeArgs);
+
   const workerPairs = {
     'local-worker-a': generateKeyPairSync('ed25519'),
     'local-worker-b': generateKeyPairSync('ed25519'),
   };
-  const workers = Object.fromEntries(Object.entries(workerPairs).map(([identity, pair]) => [identity, publicWorker(identity, pair)]));
+  const workers = Object.fromEntries(Object.entries(workerPairs).map(([identity, pair]) => [identity, publicWorker(identity, pair, nativeExecutableSha256, nativeInvocationSha256Value)]));
   process.env.NEXYFAB_COMMERCIAL_WORKER_KEYS_JSON = JSON.stringify(workers);
 
   const s3 = new S3Client({
@@ -285,8 +298,6 @@ async function main() {
     return new Response(JSON.stringify({ ok: false, code: 'LOCAL_ROUTE_NOT_FOUND' }), { status: 404 });
   };
 
-  const nativeDirectory = await mkdtemp(path.join(tmpdir(), 'nexyfab-local-durability-native-'));
-  const nativeExecutable = path.join(nativeDirectory, 'native-adapter.mjs');
   const workspaceEnvelope = localWorkspaceEnvelope(transport.job as CommercialExecutionJob);
   const workspaceEnvelopeJson = canonical(workspaceEnvelope);
   await writeFile(nativeExecutable, [
@@ -305,7 +316,9 @@ async function main() {
       transportSecret,
       callbackSecret,
       nativeExecutable: process.execPath,
-      nativeArgs: [nativeExecutable],
+      nativeExecutableSha256,
+      nativeInvocationSha256: nativeInvocationSha256Value,
+      nativeArgs,
       nativeTimeoutMs: 30_000,
       privateKey: pair.privateKey,
       publicKeyFingerprint: workers[workerIdentity]!.fingerprintSha256,
@@ -367,13 +380,27 @@ async function main() {
     trustedWorkers: workers,
   });
   const rotatedPair = generateKeyPairSync('ed25519');
-  const rotatedWorker = publicWorker(workerIdentity, rotatedPair);
+  const rotatedWorker = publicWorker(workerIdentity, rotatedPair, nativeExecutableSha256, nativeInvocationSha256Value);
   const rotatedResult = verifyCommercialWorkerReceipt({
     receipt: workerResult.receipt,
     expected: expectedReceipt,
     trustedWorkers: { [workerIdentity]: rotatedWorker },
   });
+  const substitutedExecutableResult = verifyCommercialWorkerReceipt({
+    receipt: workerResult.receipt,
+    expected: expectedReceipt,
+    trustedWorkers: { [workerIdentity]: { ...workers[workerIdentity]!, nativeExecutableSha256: '0'.repeat(64) } },
+  });
+  const substitutedInvocationResult = verifyCommercialWorkerReceipt({
+    receipt: workerResult.receipt,
+    expected: expectedReceipt,
+    trustedWorkers: { [workerIdentity]: { ...workers[workerIdentity]!, nativeInvocationSha256: '0'.repeat(64) } },
+  });
   if (!trustedResult.ok || rotatedResult.ok) throw new Error('credential_rotation_boundary_failed');
+  if (substitutedExecutableResult.ok || !substitutedExecutableResult.issues.includes('native_executable_not_trusted')
+    || substitutedInvocationResult.ok || !substitutedInvocationResult.issues.includes('native_invocation_not_trusted')) {
+    throw new Error('native_adapter_binding_boundary_failed');
+  }
 
   // Exercise an expired in-flight lease after the authoritative callback is
   // already present. Recovery must quarantine both outbox and journal and
@@ -476,7 +503,7 @@ async function main() {
     signedCallback: 'PASS', wrongWorkerRejected: 'PASS', inputSubstitutionRejected: 'PASS',
     outputSubstitutionRejected: 'PASS', callbackExactRetryIdempotent: 'PASS',
     callbackReplayConflictRejected: 'PASS', expiredLeaseRecovery: 'PASS', verifiedUnknownNoReplay: 'PASS',
-    credentialRotationTrustBoundary: 'PASS', authoritativePersistence: 'PASS', workspaceCasCommit: 'PASS',
+    credentialRotationTrustBoundary: 'PASS', nativeAdapterBinding: 'PASS', authoritativePersistence: 'PASS', workspaceCasCommit: 'PASS',
   } as const;
   const unsignedReceipt = {
     schema: 'nexyfab.commercial-precision-local-durability.v1',
@@ -493,6 +520,8 @@ async function main() {
       executionId: workerResult.receipt.executionId,
       workerIdentity,
       workerFingerprintSha256: workers[workerIdentity]!.fingerprintSha256,
+      nativeExecutableSha256,
+      nativeInvocationSha256: nativeInvocationSha256Value,
       inputArtifactSha256: staged.job.inputArtifact!.contentSha256,
       workerReceiptSha256: sha256(Buffer.from(canonical(workerResult.receipt))),
       persistenceReceiptSha256: persistence.persistenceReceiptHash,

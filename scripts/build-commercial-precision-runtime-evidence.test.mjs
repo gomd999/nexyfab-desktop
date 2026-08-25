@@ -24,11 +24,15 @@ const workerPublicKeyPem = workerKeys.publicKey.export({ type: 'spki', format: '
 const workerFingerprint = crypto.createHash('sha256')
   .update(workerKeys.publicKey.export({ type: 'spki', format: 'der' }))
   .digest('hex');
+const nativeExecutableSha256 = '8'.repeat(64);
+const nativeInvocationSha256 = '9'.repeat(64);
 const workerRegistryRaw = JSON.stringify({
   'commercial-worker-1': {
     workerIdentity: 'commercial-worker-1',
     publicKeyPem: workerPublicKeyPem,
     fingerprintSha256: workerFingerprint,
+    nativeExecutableSha256,
+    nativeInvocationSha256,
   },
 });
 const expectedRelease = {
@@ -68,6 +72,8 @@ function fixture({ environment = 'production', checkOverrides = {}, now = Date.n
     executionId: 'canary-execution-1',
     workerIdentity: 'commercial-worker-1',
     workerPublicKeyFingerprint: workerFingerprint,
+    nativeExecutableSha256,
+    nativeInvocationSha256,
     inputArtifactSha256: 'b'.repeat(64),
   };
   const workerReceipt = {
@@ -91,6 +97,8 @@ function fixture({ environment = 'production', checkOverrides = {}, now = Date.n
     inputArtifactSha256: execution.inputArtifactSha256,
     workerIdentity: execution.workerIdentity,
     workerPublicKeyFingerprint: execution.workerPublicKeyFingerprint,
+    nativeExecutableSha256: execution.nativeExecutableSha256,
+    nativeInvocationSha256: execution.nativeInvocationSha256,
     status: 'PASS',
     startedAt: new Date(now - 90_000).toISOString(),
     completedAt: capturedAt,
@@ -216,6 +224,8 @@ test('qualifies production only with the complete exact-runtime and durability m
     signatureVerified: true,
     workerIdentity: 'commercial-worker-1',
     fingerprintSha256: workerFingerprint,
+    nativeExecutableSha256,
+    nativeInvocationSha256,
     registrySha256: sha256(JSON.parse(workerRegistryRaw)),
   });
   const verification = verifyCommercialPrecisionRuntimeEvidence(receipt, {
@@ -236,6 +246,16 @@ test('qualifies production only with the complete exact-runtime and durability m
 test('rejects a shape-valid worker receipt whose Ed25519 signature is forged', () => {
   const value = fixture({ tamperWorkerSignature: true });
   const receipt = value.build();
+  assert.equal(receipt.status, 'HOLD');
+  assert.equal(receipt.workerTrust, null);
+  assert.ok(receipt.decision.privateBeta.blockers.includes('evidence_document_invalid:workerReceipt'));
+});
+
+test('rejects a valid worker signature when the approved native adapter binding differs', () => {
+  const value = fixture();
+  const registry = JSON.parse(workerRegistryRaw);
+  registry['commercial-worker-1'].nativeExecutableSha256 = '7'.repeat(64);
+  const receipt = value.build({ workerRegistryRaw: JSON.stringify(registry) });
   assert.equal(receipt.status, 'HOLD');
   assert.equal(receipt.workerTrust, null);
   assert.ok(receipt.decision.privateBeta.blockers.includes('evidence_document_invalid:workerReceipt'));

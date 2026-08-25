@@ -1,11 +1,11 @@
 {
   "schema": "nexyfab.commercial-precision-local-durability.v1",
-  "generatedAt": "2026-08-25T00:18:53.872Z",
+  "generatedAt": "2026-08-25T03:31:21.058Z",
   "status": "LOCAL_DURABLE_EXACT_CLOSED_LOOP_PASS",
   "source": {
-    "gitHead": "f42aee1cf67820d29bcb187cc8a7486cb5bc0776",
+    "gitHead": "44cbd86d07df51e2ad908b950f87d89a96a3145a",
     "migrationVersion": 2026082502,
-    "migrationSourceSha256": "69c830cb4fa11fb7637f325098d0c0b1a920caeba9802fbbe4a8658f00055f30",
+    "migrationSourceSha256": "07451ebcc671a837bb51c6fed94e6874068814a51c4da674aa0b89b7595f3ec9",
     "imageDigests": {
       "postgres": "sha256:32ebb7185baf2c9d38f91684417d140c0745aeff5082dfbb62edb330c2af6197",
       "redis": "sha256:8b81dd37ff027bec4e516d41acfbe9fe2460070dc6d4a4570a2ac5b9d59df065",
@@ -15,11 +15,13 @@
   "execution": {
     "jobId": "job-1",
     "executionId": "exec-b41d3fca676d7343d431b87d",
-    "workerIdentity": "local-worker-b",
-    "workerFingerprintSha256": "c6e2b62050e6410366778933f4104eb7b11be48fd379c904b4d5e2f176da028b",
+    "workerIdentity": "local-worker-a",
+    "workerFingerprintSha256": "9468e7c02c576d9abebeb1e72cab61d639c75bd79fd206a020430ad2426501ac",
+    "nativeExecutableSha256": "91ec09dda8f20556f366110859f106ab189d45f8f6a2bd092e6785174ad4a0fa",
+    "nativeInvocationSha256": "763b2b079215ec7394a661e21965f28eb9dd86df2a71d36af39f52daa2f009e7",
     "inputArtifactSha256": "1102d5aa81e5fd39eb9cd4bf461d2eb159dd2352772d2f7c73d65a57745f840d",
-    "workerReceiptSha256": "0d0b501939ed62f5de7034aa8699c27d14b802565742405e96ca7ea3857dbff3",
-    "persistenceReceiptSha256": "92948be40fd022599b60435119eb0b1e988e7113f6a08b7d3037845cce66beb5",
+    "workerReceiptSha256": "edccf9e881452a9de12e8dfce037053515ed491ac14ba2d6ff71cf576aed5924",
+    "persistenceReceiptSha256": "1b0d8c06ff0b8492f404e7f08d64766dc19307f3cf9a2a713ff36c86cf9ae5c5",
     "workspaceAfterRevision": 8,
     "workspaceAfterContentHash": "986d805d219649580923ea1be36a38b7f9fd26e7cd572da5dfbc11b676d97595",
     "outputArtifacts": [
@@ -38,11 +40,11 @@
         "byteLength": 2477
       },
       {
-        "artifactId": "verification-b7e76c767ab4bcb5a17e8c3fb1ade308ab700b1db3298d8a",
+        "artifactId": "verification-da0e44eb5a1127a05a57202bd0485335764d030c79613fa5",
         "role": "verification",
-        "objectKey": "private/commercial-precision-outputs/org-tenant-1/projects/project-1/jobs/job-1/verification/verification-b7e76c767ab4bcb5a17e8c3fb1ade308ab700b1db3298d8a-b7e76c767ab4bcb5a17e8c3fb1ade308ab700b1db3298d8ace5cc5961fed2515.json",
-        "contentSha256": "b7e76c767ab4bcb5a17e8c3fb1ade308ab700b1db3298d8ace5cc5961fed2515",
-        "byteLength": 703
+        "objectKey": "private/commercial-precision-outputs/org-tenant-1/projects/project-1/jobs/job-1/verification/verification-da0e44eb5a1127a05a57202bd0485335764d030c79613fa5-da0e44eb5a1127a05a57202bd0485335764d030c79613fa54e5d222a16dc0976.json",
+        "contentSha256": "da0e44eb5a1127a05a57202bd0485335764d030c79613fa54e5d222a16dc0976",
+        "byteLength": 795
       }
     ]
   },
@@ -68,6 +70,7 @@
     "expiredLeaseRecovery": "PASS",
     "verifiedUnknownNoReplay": "PASS",
     "credentialRotationTrustBoundary": "PASS",
+    "nativeAdapterBinding": "PASS",
     "authoritativePersistence": "PASS",
     "workspaceCasCommit": "PASS"
   },
@@ -83,5 +86,5 @@
     "commercialGaEligible": false,
     "independentCadOrManufacturingCertified": false
   },
-  "receiptSha256": "b56527378bac7377a58b63fc6bb2c008fa11e578824a162a854ea5dfa2e058b4"
+  "receiptSha256": "e05948b51a0453024a7a67dd24551ae656b5934c33d66ec63aac86821617b28d"
 }

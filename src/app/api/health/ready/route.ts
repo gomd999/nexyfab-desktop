@@ -49,12 +49,14 @@ function expectedMigrationChecksum(version: CommercialPostgresMigration): string
 
 function validCommercialWorkerHealth(
   value: unknown,
-  registeredWorkers: ReadonlySet<string>,
+  registeredWorkers: Readonly<Record<string, { nativeExecutableSha256?: string; nativeInvocationSha256?: string }>>,
   now = Date.now(),
 ): boolean {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
   const health = value as Record<string, unknown>;
   const selfTestAt = Date.parse(String(health.lastSelfTestAt ?? ''));
+  const workerIdentity = typeof health.workerIdentity === 'string' ? health.workerIdentity : '';
+  const registered = registeredWorkers[workerIdentity];
   return health.schema === COMMERCIAL_WORKER_HEALTH_SCHEMA
     && health.status === 'READY'
     && health.executionContract === COMMERCIAL_EXECUTION_CONTRACT
@@ -63,8 +65,11 @@ function validCommercialWorkerHealth(
     && health.nativeExecution === 'PASS'
     && health.artifactUpload === 'PASS'
     && health.signedCallback === 'PASS'
-    && typeof health.workerIdentity === 'string'
-    && registeredWorkers.has(health.workerIdentity)
+    && Boolean(registered)
+    && SHA256.test(String(health.nativeExecutableSha256 ?? ''))
+    && health.nativeExecutableSha256 === registered?.nativeExecutableSha256
+    && SHA256.test(String(health.nativeInvocationSha256 ?? ''))
+    && health.nativeInvocationSha256 === registered?.nativeInvocationSha256
     && SHA256.test(String(health.selfTestReceiptSha256 ?? ''))
     && Number.isFinite(selfTestAt)
     && selfTestAt <= now + 5 * 60 * 1000
@@ -126,7 +131,7 @@ async function checkCommercialBoundary(): Promise<ComponentCheck> {
     const raw = await response.text();
     if (new TextEncoder().encode(raw).byteLength > 32 * 1024) throw new Error('worker health oversized');
     const health = JSON.parse(raw) as unknown;
-    if (!validCommercialWorkerHealth(health, new Set(Object.keys(workers)))) throw new Error('worker self-test unavailable');
+    if (!validCommercialWorkerHealth(health, workers)) throw new Error('worker self-test unavailable');
     return { status: 'ok', required: true, responseMs: Date.now() - started };
   } catch { return { status: 'error', required: true, responseMs: Date.now() - started }; }
 }

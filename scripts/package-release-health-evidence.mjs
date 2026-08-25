@@ -35,7 +35,7 @@ export const RELEASE_HEALTH_EVIDENCE = Object.freeze([
   }),
   Object.freeze({
     relativePath: 'docs/evidence/release/commercial-precision-runtime-evidence.json',
-    schema: 'nexyfab.commercial-precision-runtime-evidence.v2',
+    schema: 'nexyfab.commercial-precision-runtime-evidence.v3',
   }),
 ]);
 

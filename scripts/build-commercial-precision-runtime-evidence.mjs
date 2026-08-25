@@ -11,7 +11,7 @@ import {
 export const COMMERCIAL_PRECISION_RUNTIME_OBSERVATION_SCHEMA =
   'nexyfab.commercial-precision-runtime-observation.v1';
 export const COMMERCIAL_PRECISION_RUNTIME_RECEIPT_SCHEMA =
-  'nexyfab.commercial-precision-runtime-evidence.v2';
+  'nexyfab.commercial-precision-runtime-evidence.v3';
 export const COMMERCIAL_PRECISION_EXECUTION_CONTRACT =
   'nexyfab.precision-cad-commercial-execution.v3';
 export const COMMERCIAL_PRECISION_MIGRATION_VERSION = 2026082502;
@@ -184,9 +184,11 @@ export function loadCommercialPrecisionWorkerRegistry(raw) {
     const fingerprints = new Set();
     for (const [identity, worker] of entries.sort(([left], [right]) => left.localeCompare(right))) {
       if (!worker || typeof worker !== 'object' || Array.isArray(worker)
-        || Object.keys(worker).sort().join(',') !== 'fingerprintSha256,publicKeyPem,workerIdentity'
+        || Object.keys(worker).sort().join(',') !== 'fingerprintSha256,nativeExecutableSha256,nativeInvocationSha256,publicKeyPem,workerIdentity'
         || !ID.test(identity) || worker.workerIdentity !== identity
         || !SHA256.test(String(worker.fingerprintSha256 ?? ''))
+        || !SHA256.test(String(worker.nativeExecutableSha256 ?? ''))
+        || !SHA256.test(String(worker.nativeInvocationSha256 ?? ''))
         || commercialWorkerFingerprint(worker.publicKeyPem) !== worker.fingerprintSha256
         || fingerprints.has(worker.fingerprintSha256)) return null;
       fingerprints.add(worker.fingerprintSha256);
@@ -194,6 +196,8 @@ export function loadCommercialPrecisionWorkerRegistry(raw) {
         workerIdentity: identity,
         publicKeyPem: worker.publicKeyPem,
         fingerprintSha256: worker.fingerprintSha256,
+        nativeExecutableSha256: worker.nativeExecutableSha256,
+        nativeInvocationSha256: worker.nativeInvocationSha256,
       };
     }
     return Object.freeze(normalized);
@@ -214,7 +218,9 @@ function workerReceiptSignaturePayload(receipt) {
 
 function verifiedWorkerTrust(receipt, trustedWorkers) {
   const worker = trustedWorkers?.[receipt?.workerIdentity];
-  if (!worker || receipt?.workerPublicKeyFingerprint !== worker.fingerprintSha256) return null;
+  if (!worker || receipt?.workerPublicKeyFingerprint !== worker.fingerprintSha256
+    || receipt?.nativeExecutableSha256 !== worker.nativeExecutableSha256
+    || receipt?.nativeInvocationSha256 !== worker.nativeInvocationSha256) return null;
   const signature = typeof receipt?.signatureBase64 === 'string'
     ? Buffer.from(receipt.signatureBase64, 'base64')
     : Buffer.alloc(0);
@@ -233,6 +239,8 @@ function verifiedWorkerTrust(receipt, trustedWorkers) {
     signatureVerified: true,
     workerIdentity: worker.workerIdentity,
     fingerprintSha256: worker.fingerprintSha256,
+    nativeExecutableSha256: worker.nativeExecutableSha256,
+    nativeInvocationSha256: worker.nativeInvocationSha256,
     registrySha256: sha256(trustedWorkers),
   };
 }
@@ -311,9 +319,13 @@ function workerReceiptValid(receipt, observation, observationTime, trustedWorker
     && receipt?.executionId === execution.executionId
     && receipt?.workerIdentity === execution.workerIdentity
     && receipt?.workerPublicKeyFingerprint === execution.workerPublicKeyFingerprint
+    && receipt?.nativeExecutableSha256 === execution.nativeExecutableSha256
+    && receipt?.nativeInvocationSha256 === execution.nativeInvocationSha256
     && receipt?.inputArtifactSha256 === execution.inputArtifactSha256
     && SHA256.test(String(execution.workerReceiptSha256 ?? ''))
     && SHA256.test(String(receipt?.workerPublicKeyFingerprint ?? ''))
+    && SHA256.test(String(receipt?.nativeExecutableSha256 ?? ''))
+    && SHA256.test(String(receipt?.nativeInvocationSha256 ?? ''))
     && SHA256.test(String(receipt?.inputArtifactSha256 ?? ''))
     && verifiedWorkerTrust(receipt, trustedWorkers) !== null
     && supportingTimeValid(receipt?.completedAt, observationTime)
@@ -366,7 +378,7 @@ function observationShapeBlockers(observation, expectedRelease, sourceMigration,
   for (const key of ['jobId', 'executionId', 'workerIdentity']) {
     if (!ID.test(String(observation?.execution?.[key] ?? ''))) block(`execution_${key}_invalid`);
   }
-  for (const key of ['workerPublicKeyFingerprint', 'workerReceiptSha256', 'inputArtifactSha256']) {
+  for (const key of ['workerPublicKeyFingerprint', 'nativeExecutableSha256', 'nativeInvocationSha256', 'workerReceiptSha256', 'inputArtifactSha256']) {
     if (!SHA256.test(String(observation?.execution?.[key] ?? ''))) block(`execution_${key}_invalid`);
   }
   if (observation?.migration?.version !== COMMERCIAL_PRECISION_MIGRATION_VERSION

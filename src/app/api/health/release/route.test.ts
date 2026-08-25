@@ -52,7 +52,7 @@ function signReceipt(receipt: Record<string, any>, secret: string): Record<strin
 
 function precisionRuntimeReceipt(now: number, secret: string, checksum: string) {
   return signReceipt({
-    schema: 'nexyfab.commercial-precision-runtime-evidence.v2',
+    schema: 'nexyfab.commercial-precision-runtime-evidence.v3',
     generatedAt: new Date(now).toISOString(),
     status: 'COMMERCIAL_GA_PASS',
     environment: 'production',
@@ -65,6 +65,7 @@ function precisionRuntimeReceipt(now: number, secret: string, checksum: string) 
     execution: {
       contract: 'nexyfab.precision-cad-commercial-execution.v3',
       workerIdentity: 'commercial-worker-1', workerPublicKeyFingerprint: '7'.repeat(64),
+      nativeExecutableSha256: '9'.repeat(64), nativeInvocationSha256: 'a'.repeat(64),
     },
     migration: { version: 2026082502, checksum },
     migrationSource: { path: 'src/lib/db-postgres-migration-2026082502.sql', bytes: 5623, sha256: checksum },
@@ -75,7 +76,8 @@ function precisionRuntimeReceipt(now: number, secret: string, checksum: string) 
     ].map((role, index) => [role, { path: `runtime/${role}.json`, bytes: 100 + index, sha256: String(index + 3).repeat(64) }])),
     workerTrust: {
       signatureVerified: true, workerIdentity: 'commercial-worker-1',
-      fingerprintSha256: '7'.repeat(64), registrySha256: '6'.repeat(64),
+      fingerprintSha256: '7'.repeat(64), nativeExecutableSha256: '9'.repeat(64),
+      nativeInvocationSha256: 'a'.repeat(64), registrySha256: '6'.repeat(64),
     },
     checks: Object.fromEntries(precisionRuntimeChecks.map(key => [key, 'PASS'])),
     decision: {
@@ -326,6 +328,12 @@ describe('GET /api/health/release', () => {
     const resignedMissingWorkerTrust = signReceipt(missingWorkerTrust, secret);
     const untrustedWorker = await buildReleaseEvidence({ ...common, precisionRuntimeReceipt: resignedMissingWorkerTrust });
     expect(untrustedWorker.release.precisionRuntime.status).toBe('HOLD');
+
+    const substitutedAdapter = precisionRuntimeReceipt(now, secret, checksum);
+    substitutedAdapter.workerTrust.nativeExecutableSha256 = 'b'.repeat(64);
+    const resignedSubstitutedAdapter = signReceipt(substitutedAdapter, secret);
+    const untrustedAdapter = await buildReleaseEvidence({ ...common, precisionRuntimeReceipt: resignedSubstitutedAdapter });
+    expect(untrustedAdapter.release.precisionRuntime.status).toBe('HOLD');
 
     const transplanted = precisionRuntimeReceipt(now, secret, checksum);
     transplanted.release.productionDeploymentId = '2f6a581e-e56c-4a71-99f0-c39df482cd52';

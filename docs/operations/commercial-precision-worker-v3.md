@@ -6,6 +6,22 @@ This runbook covers the isolated worker for
 `nexyfab.precision-cad-commercial-execution.v3`. It does not authorize
 production deployment, generate keys, or qualify a CAD engine.
 
+## Approved adapter identity boundary (2026-08-25)
+
+The worker trust registry now binds each Ed25519 identity to an approved
+`nativeExecutableSha256` and `nativeInvocationSha256`. The latter is SHA-256
+over canonical schema `nexyfab.precision-cad-native-invocation.v1`, the
+executable hash, and the exact ordered native argument array. A valid worker
+signature with a different executable or invocation remains untrusted.
+
+`containers/occt-commercial-worker/` provides the deployment wrapper. Its
+build plan requires a private adapter image by exact OCI digest, verifies the
+adapter executable and worker source bytes by SHA-256, runs as numeric non-root
+user `65532`, and carries no runtime secret. `/live` is process liveness;
+`/health` is HTTP 503 `NOT_READY` until a signed canary completes. This closes
+the source/deployment identity boundary but does not supply or qualify the real
+adapter image.
+
 ## Local durable exact campaign (2026-08-25)
 
 `npm run commercial:precision:local-durability` now runs the complete source
@@ -27,8 +43,8 @@ ineligible for authoritative persistence.
 
 The checked-in receipt is
 `docs/evidence/cad-independent/commercial-precision-local-durability-20260825.json`.
-All 24 checks are `PASS`, including `authoritativePersistence` and
-`workspaceCasCommit`. The dedicated
+All 24 checks are `PASS`, including `nativeAdapterBinding`,
+`authoritativePersistence`, and `workspaceCasCommit`. The dedicated
 `.github/workflows/commercial-precision-durability.yml` gate reruns the campaign
 for affected changes and weekly.
 
@@ -102,9 +118,11 @@ Required when commercial mode is enabled:
 - PostgreSQL migration and checksum through `2026082502`;
 - private object storage with immutable upload, download, and SHA-256 readback.
 
-The registry contains public keys only. Its fingerprint must equal SHA-256 over
-the Ed25519 SPKI DER bytes, and it must be disjoint from external-verifier
-fingerprints.
+The registry contains public trust material only: worker identity, Ed25519
+public key and SPKI fingerprint, approved executable SHA-256, and approved
+invocation SHA-256. It contains no private key. The worker fingerprint must
+equal SHA-256 over the Ed25519 SPKI DER bytes and be disjoint from
+external-verifier fingerprints.
 
 ## Worker service configuration
 
@@ -124,7 +142,10 @@ Required variables:
 - `NEXYFAB_COMMERCIAL_WORKER_PRIVATE_KEY_PEM`: Ed25519 private PEM available
   only to this worker;
 - `NEXYFAB_COMMERCIAL_NATIVE_EXECUTABLE`: absolute path to the pinned native
-  adapter executable.
+  adapter executable;
+- `NEXYFAB_COMMERCIAL_NATIVE_EXECUTABLE_SHA256`: approved executable bytes;
+- `NEXYFAB_COMMERCIAL_NATIVE_INVOCATION_SHA256`: approved canonical binding of
+  that executable hash and `NEXYFAB_COMMERCIAL_NATIVE_ARGS_JSON`.
 
 Optional variables are `NEXYFAB_COMMERCIAL_NATIVE_ARGS_JSON`,
 `NEXYFAB_COMMERCIAL_NATIVE_TIMEOUT_MS`,
@@ -159,8 +180,8 @@ SHA-256 values. A JavaScript geometry fallback is not permitted.
 3. Configure the public worker key and core transport secrets in staging core.
 4. Configure the matching private key and transport secrets in the isolated
    staging worker.
-5. Keep commercial mode disabled and verify `/health` reports `NOT_READY` and
-   `NOT_RUN` checks before a canary.
+5. Keep commercial mode disabled and verify `/live` returns HTTP 200 while
+   `/health` returns HTTP 503 `NOT_READY` with `NOT_RUN` checks before a canary.
 6. Enqueue a server-owned canary whose job ID uses the configured self-test
    prefix. Confirm claim, input readback, native execution, three immutable
    commits, signed callback, and core receipt acceptance.
@@ -190,13 +211,14 @@ The observation references five distinct, contained JSON documents:
 - `nexyfab.commercial-precision-negative-campaign.v1`;
 - `nexyfab.commercial-precision-recovery-campaign.v1`.
 
-Receipt schema `nexyfab.commercial-precision-runtime-evidence.v2` also requires
+Receipt schema `nexyfab.commercial-precision-runtime-evidence.v3` also requires
 the current `NEXYFAB_COMMERCIAL_WORKER_KEYS_JSON` registry. The evidence builder
 parses the registered Ed25519 public key, recomputes its SPKI fingerprint, and
-cryptographically verifies the worker receipt signature. A base64-shaped value,
-a fingerprint-only receipt, an absent registry, or a receipt signed by a key
-outside the current registry remains `HOLD`. The derived receipt records only
-the public worker identity, fingerprint, registry SHA-256, and verification
+cryptographically verifies the worker receipt signature and exact executable
+and invocation hashes. A base64-shaped value, a fingerprint-only receipt, an
+adapter mismatch, an absent registry, or a receipt signed by a key outside the
+current registry remains `HOLD`. The derived receipt records only public worker
+identity, fingerprint, adapter hashes, registry SHA-256, and verification
 result; it never copies a private key.
 
 The v2 derivation also refuses free-form check promotion. Every `PASS` in the

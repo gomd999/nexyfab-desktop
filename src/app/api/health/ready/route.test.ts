@@ -14,7 +14,7 @@ vi.mock('@/lib/db-adapter', () => ({ getDbAdapter: state.getDbAdapter }));
 vi.mock('ioredis', () => ({ default: state.redisConstructor }));
 vi.mock('@/lib/ai/serverAgenticCommercialTrust', () => ({ loadServerAgenticCommercialTrust: () => ({ ok: true, context: {}, identities: [] }) }));
 vi.mock('@/lib/ai/externalCommercialVerifierRegistry', () => ({ loadExternalCommercialVerifierRegistry: () => ({ identities: [{ fingerprintSha256: 'v'.repeat(64) }] }) }));
-vi.mock('@/lib/precision-cad-agent/commercialWorkerReceipt', () => ({ loadTrustedCommercialWorkers: () => ({ worker: { fingerprintSha256: 'w'.repeat(64) } }) }));
+vi.mock('@/lib/precision-cad-agent/commercialWorkerReceipt', () => ({ loadTrustedCommercialWorkers: () => ({ worker: { fingerprintSha256: 'w'.repeat(64), nativeExecutableSha256: 'a'.repeat(64), nativeInvocationSha256: 'b'.repeat(64) } }) }));
 
 import { GET } from './route';
 
@@ -28,6 +28,8 @@ const commercialWorkerHealth = (overrides: Record<string, unknown> = {}) => ({
   artifactUpload: 'PASS',
   signedCallback: 'PASS',
   workerIdentity: 'worker',
+  nativeExecutableSha256: 'a'.repeat(64),
+  nativeInvocationSha256: 'b'.repeat(64),
   selfTestReceiptSha256: 'a'.repeat(64),
   lastSelfTestAt: new Date().toISOString(),
   ...overrides,
@@ -135,6 +137,18 @@ describe('GET /api/health/ready', () => {
     const staleSelfTest = await GET();
     expect(staleSelfTest.status).toBe(503);
     await expect(staleSelfTest.json()).resolves.toMatchObject({
+      commercialBoundary: { status: 'error', required: true },
+    });
+
+    vi.mocked(fetch).mockResolvedValueOnce({
+      ok: true,
+      text: vi.fn().mockResolvedValue(JSON.stringify(commercialWorkerHealth({
+        nativeExecutableSha256: 'c'.repeat(64),
+      }))),
+    } as unknown as Response);
+    const substitutedAdapter = await GET();
+    expect(substitutedAdapter.status).toBe(503);
+    await expect(substitutedAdapter.json()).resolves.toMatchObject({
       commercialBoundary: { status: 'error', required: true },
     });
   });

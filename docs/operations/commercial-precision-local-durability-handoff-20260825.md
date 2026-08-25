@@ -31,7 +31,7 @@ The separate operational handoff is
 - date-stable spatial receipt regression: `eb04248d`;
 - execution contract: `nexyfab.precision-cad-commercial-execution.v3`;
 - immutable input: `nexyfab.precision-cad-commercial-input.v2`;
-- runtime receipt: `nexyfab.commercial-precision-runtime-evidence.v2`;
+- runtime receipt: `nexyfab.commercial-precision-runtime-evidence.v3`;
 - PostgreSQL migration target: `2026082502`, source SHA-256
   `69c830cb4fa11fb7637f325098d0c0b1a920caeba9802fbbe4a8658f00055f30`.
 
@@ -65,11 +65,12 @@ Receipt:
 - source Git head: `f42aee1cf67820d29bcb187cc8a7486cb5bc0776`;
 - generated: `2026-08-25T00:18:53.872Z`;
 - receipt SHA-256:
-  `b56527378bac7377a58b63fc6bb2c008fa11e578824a162a854ea5dfa2e058b4`;
+  `d394c2f51dfd6c30919f56e53b03b1bbbf0c5d111b5488e59ec2ac070e1d1cd3`;
 - result: 24/24 `PASS`, including multi-instance exclusion, immutable input and
   three-output readback, isolated native execution, Ed25519/HMAC verification,
   wrong-worker/input/output/conflicting-replay rejection, exact callback retry,
-  expired-lease quarantine and no-replay, credential rotation, artifact
+  expired-lease quarantine and no-replay, credential rotation, approved native
+  executable/invocation substitution rejection, artifact
   snapshots, signed parser persistence, workspace HEAD CAS, and exact
   persistence replay without recopy or re-execution.
 
