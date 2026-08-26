@@ -1,5 +1,22 @@
 # Platform current session
 
+## 2026-08-27 integrated artifact-trace security evidence
+
+- Status: `INTEGRATED_HEAD_BOUND / ROUTES_627_HANDLERS_862 /
+  SECURITY_GAPS_0 / SECRET_FINDINGS_0 / PLATFORM_CHECK_PASS`.
+- The Platform artifact-trace consumer and Precision CAD GA exact-byte receipt
+  are integrated at `e03717eed2dbd9b038baa1ba7cd95838e0a69ee0` with both
+  original scope source commits preserved in history.
+- The current route matrix covers 627 route files and 862 exported handlers
+  with zero classification gaps, unknown classifications, or policy issues.
+- Secret scanning covers 10,321 Git candidates / 325,476,052 bytes with zero
+  findings. CAD API controls remain 84 routes / 86 handlers / zero issues.
+- The complete integrated Platform check passes ESLint (241.7s), TypeScript
+  (26.8s), and ownership with zero violations.
+- Source head: `e03717eed2dbd9b038baa1ba7cd95838e0a69ee0`.
+- Handoff:
+  `HANDOFFS/20260826T160325Z-integrated-artifact-trace-security-evidence.md`.
+
 ## 2026-08-27 v150 artifact-trace adoption
 
 - Status: `V150_SELECTIVE_ADOPTION / THREE_ROWS_PRESERVED /

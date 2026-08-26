@@ -1,7 +1,7 @@
 {
   "schema": "nexyfab.route-security-matrix.v1",
   "textCanonicalization": "utf8-crlf-to-lf",
-  "generatedAt": "2026-08-26T14:37:42.310Z",
+  "generatedAt": "2026-08-26T15:58:22.542Z",
   "status": "pass",
   "summary": {
     "routeFiles": 627,
@@ -11984,7 +11984,7 @@
       },
       "gaps": [],
       "file": "src/app/api/nexyfab/drawing/render-html/route.ts",
-      "sourceSha256": "8aa74bc56fada57cad31d3c38039490e51130a4c62ead14becd5097352db85a7",
+      "sourceSha256": "464011eb80eb7d2457adbbba895659b2218d8e60fe2557ec0474991becaed227",
       "securityDependencies": []
     },
     {
