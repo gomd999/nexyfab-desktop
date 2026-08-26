@@ -1,5 +1,32 @@
 # Platform current session
 
+## 2026-08-26 no-payment commercial i18n closure
+
+- Status: `SIX_LOCALE_UI_EMAIL_EXPORT_PASS / I18N_2711_CONTRACT_BOUND /
+  NO_PAYMENT_COMMERCIAL_READINESS_PASS / HUMAN_RELEASE_REVIEW_HOLD`.
+- The Japanese home dictionary no longer contains mixed Korean fragments, and
+  a dictionary-wide regression test now rejects future Hangul leakage in every
+  non-Korean home locale.
+- The Nexysys product switcher and AI model selector accessibility layer now
+  use the active six-locale route, including Arabic RTL-safe close copy.
+- Quote-expiry customer and partner emails now derive language from persisted
+  users, format dates/money with `Intl`, use canonical localized links, and
+  default an unknown partner locale to English instead of Korean.
+- Quote-accuracy AI requests and deterministic fallback narratives now use the
+  partner locale across Korean, English, Japanese, Chinese, Spanish, and
+  Arabic. Contracts, quotes, audit logs, and ERP CSV/XLSX exports localize
+  headers, sheet names, statuses, and dates while JSON schemas remain stable.
+- Commercial readiness now requires a payment provider only when
+  `NEXYFAB_PAYMENTS_ENABLED=true`; explicit `false` suppresses irrelevant
+  payment startup warnings without weakening database, Redis, storage,
+  worker, security, migration, observability, or evidence gates.
+- The current source extractor proves `2711/2711`; receipt generation, release
+  health, and rollback verification consume one checked catalog contract.
+  The deployed `2699` receipt remains correctly stale and cannot qualify.
+- Source commits: `0ec4e772`, `04aee3b6`, `172ffd43`, and `6421d1f7`.
+- Handoff:
+  `HANDOFFS/20260826T093528Z-no-payment-commercial-i18n-closure.md`.
+
 ## 2026-08-26 guided AI production request boundary
 
 - Status: `PRODUCTION_ROUTE_OBSERVED / TRAILING_SLASH_BOUND /
