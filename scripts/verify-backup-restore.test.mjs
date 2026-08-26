@@ -2,12 +2,22 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
   assertDrillTarget,
+  assertPostgresOnlyLocalFixture,
   assertRestoreDrillSafety,
   compareDatabaseSnapshots,
   databaseBackupProtection,
   isBoundGitHead,
   validateUnvalidatedConstraints,
 } from './verify-backup-restore.mjs';
+
+test('PostgreSQL-only restore mode is restricted to an explicit local fixture', () => {
+  assert.equal(assertPostgresOnlyLocalFixture({ enabled: true, evidenceClass: 'local-fixture' }), true);
+  assert.equal(assertPostgresOnlyLocalFixture({ enabled: false, evidenceClass: 'release-bound' }), false);
+  assert.throws(
+    () => assertPostgresOnlyLocalFixture({ enabled: true, evidenceClass: 'release-bound' }),
+    /postgres_only_restore_requires_local_fixture/,
+  );
+});
 
 test('restore receipts accept Git SHA-1 and SHA-256 commit identifiers', () => {
   assert.equal(isBoundGitHead('a'.repeat(40)), true);

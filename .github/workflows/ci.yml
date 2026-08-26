@@ -13,7 +13,7 @@ jobs:
     timeout-minutes: 15
     services:
       postgres:
-        image: postgres:16
+        image: postgres@sha256:e17e86066e5ef83e0952a9347f5c792b7ece00972e2aa787a6986f471b3dd3d5 # 16.15
         env:
           POSTGRES_USER: postgres
           POSTGRES_PASSWORD: postgres
@@ -58,7 +58,7 @@ jobs:
           # local socket, not the service container). Create via the CI URL.
           psql "$DATABASE_URL" -X -v ON_ERROR_STOP=1 -c 'CREATE DATABASE nexyfab_restore_drill'
       - name: Restore drill and integrity check
-        run: npm run backup:verify-restore
+        run: npm run backup:verify-restore -- --postgres-only-local-fixture
 
   typecheck:
     name: TypeScript Check

@@ -1,12 +1,22 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
+import path from 'node:path';
 import test from 'node:test';
+import { pathToFileURL } from 'node:url';
 import {
+  isDirectInvocation,
   LEGACY_2026082001_CHECKSUMS,
   migrationChecksum,
   migrationDecision,
   orderedMigrationInputs,
 } from './run-postgres-migrations.mjs';
+
+test('detects the CLI entrypoint through a canonical cross-platform file URL', () => {
+  const entryPath = path.resolve('scripts/run-postgres-migrations.mjs');
+  assert.equal(isDirectInvocation(pathToFileURL(entryPath).href, entryPath), true);
+  assert.equal(isDirectInvocation(import.meta.url, entryPath), false);
+  assert.equal(isDirectInvocation(import.meta.url, undefined), false);
+});
 
 test('migration checksum is deterministic and content-bound', () => {
   assert.equal(migrationChecksum('SELECT 1'), migrationChecksum('SELECT 1'));

@@ -2,6 +2,7 @@
 import { createHash } from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
+import { pathToFileURL } from 'node:url';
 import pg from 'pg';
 
 // Never reuse an applied version after db-postgres-migrations.sql changes.
@@ -123,7 +124,13 @@ export async function runPostgresMigration({ databaseUrl, sqlPath }) {
   }
 }
 
-if (import.meta.url === new URL(`file:///${process.argv[1]?.replaceAll('\\', '/')}`).href) {
+export function isDirectInvocation(moduleUrl, entryPath) {
+  return typeof entryPath === 'string'
+    && entryPath.length > 0
+    && moduleUrl === pathToFileURL(path.resolve(entryPath)).href;
+}
+
+if (isDirectInvocation(import.meta.url, process.argv[1])) {
   const sqlPath = path.resolve(process.env.POSTGRES_MIGRATION_SQL ?? 'src/lib/db-postgres-migrations.sql');
   runPostgresMigration({ databaseUrl: process.env.DATABASE_URL, sqlPath })
     .then(result => process.stdout.write(`${JSON.stringify(result)}\n`))

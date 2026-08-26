@@ -21,6 +21,13 @@ const quoteIdentifier = value => `"${String(value).replaceAll('"', '""')}"`;
 const sha256 = value => createHash('sha256').update(value).digest('hex');
 export const isBoundGitHead = value => /^(?:[a-f0-9]{40}|[a-f0-9]{64})$/.test(String(value));
 
+export function assertPostgresOnlyLocalFixture({ enabled, evidenceClass }) {
+  if (enabled && evidenceClass !== 'local-fixture') {
+    throw new Error('postgres_only_restore_requires_local_fixture');
+  }
+  return enabled;
+}
+
 function parsePostgresUrl(databaseUrl, variableName) {
   const parsed = new URL(databaseUrl);
   if (!['postgres:', 'postgresql:'].includes(parsed.protocol)) {
@@ -419,10 +426,12 @@ export async function verifyBackupRestore({
   restoreDatabaseUrl,
   migrationSqlPath,
   receiptPath,
+  postgresOnlyLocalFixture = false,
 }) {
   const startedAtMs = Date.now();
   const evidenceClass = process.env.RESTORE_EVIDENCE_CLASS?.trim() ?? '';
   if (!EVIDENCE_CLASSES.has(evidenceClass)) throw new Error('RESTORE_EVIDENCE_CLASS_required');
+  assertPostgresOnlyLocalFixture({ enabled: postgresOnlyLocalFixture, evidenceClass });
   const release = {
     buildId: process.env.RESTORE_RELEASE_BUILD_ID?.trim() ?? '',
     deploymentId: process.env.RESTORE_RELEASE_DEPLOYMENT_ID?.trim() ?? '',
@@ -489,15 +498,20 @@ export async function verifyBackupRestore({
     allowNewEmptyTables: true,
   });
   if (!businessPreservation.ok || !migrated.foreignKeys.ok) {
-    throw new Error(`Post-migration verification failed: data differences=${businessPreservation.differences.length}, FK failures=${JSON.stringify(migrated.foreignKeys.failures).slice(0, 2000)}`);
+    const changedTables = businessPreservation.differences.map(item => item.table).slice(0, 50);
+    throw new Error(`Post-migration verification failed: data differences=${businessPreservation.differences.length}, changed tables=${JSON.stringify(changedTables)}, FK failures=${JSON.stringify(migrated.foreignKeys.failures).slice(0, 2000)}`);
   }
 
-  const objectRestoreStartedAtMs = Date.now();
-  const requiredBindings = await commercialObjectBindings(sourceDatabaseUrl);
-  const objectStorage = await verifyObjectStorageRestoreDrill({
-    config: loadObjectStorageRestoreConfig(process.env, { evidenceClass }),
-    requiredBindings,
-  });
+  const objectRestoreStartedAtMs = postgresOnlyLocalFixture ? null : Date.now();
+  const objectStorage = postgresOnlyLocalFixture
+    ? {
+        status: 'NOT_RUN',
+        reason: 'postgres_only_local_fixture_cross_store_is_a_separate_durability_gate',
+      }
+    : await verifyObjectStorageRestoreDrill({
+        config: loadObjectStorageRestoreConfig(process.env, { evidenceClass }),
+        requiredBindings: await commercialObjectBindings(sourceDatabaseUrl),
+      });
   const sourceAfterObjectRestore = await snapshotDatabase(sourceDatabaseUrl);
   const sourceStable = compareDatabaseSnapshots(source, sourceAfterObjectRestore);
   if (!sourceStable.ok || source.schemaSha256 !== sourceAfterObjectRestore.schemaSha256) {
@@ -508,7 +522,9 @@ export async function verifyBackupRestore({
   const backupCapturedAt = protectedBackup.capturedAt ?? backup.completedAt;
   const backupCapturedAtMs = Date.parse(backupCapturedAt);
   const receipt = {
-    schema: 'nexyfab.backup-isolated-restore-drill.v3',
+    schema: postgresOnlyLocalFixture
+      ? 'nexyfab.postgres-isolated-restore-drill.v1'
+      : 'nexyfab.backup-isolated-restore-drill.v3',
     generatedAt: new Date(completedAtMs).toISOString(),
     ok: true,
     target: evidenceClass === 'release-bound' ? 'production' : 'local-fixture',
@@ -558,13 +574,17 @@ export async function verifyBackupRestore({
       drillStartedAt: new Date(startedAtMs).toISOString(),
       backupCapturedAt,
       restoreStartedAt: new Date(restoreStartedAtMs).toISOString(),
-      objectRestoreStartedAt: new Date(objectRestoreStartedAtMs).toISOString(),
+      objectRestoreStartedAt: objectRestoreStartedAtMs === null
+        ? null
+        : new Date(objectRestoreStartedAtMs).toISOString(),
       completedAt: new Date(completedAtMs).toISOString(),
     },
     objectives: {
       rpoAgeAtDrillStartMs: Math.max(0, startedAtMs - backupCapturedAtMs),
       rtoRestoreMigrateValidateMs: completedAtMs - restoreStartedAtMs,
-      rtoObjectRestoreValidateMs: completedAtMs - objectRestoreStartedAtMs,
+      rtoObjectRestoreValidateMs: objectRestoreStartedAtMs === null
+        ? null
+        : completedAtMs - objectRestoreStartedAtMs,
       totalDrillMs: completedAtMs - startedAtMs,
       measurement: 'wall_clock',
     },
@@ -572,7 +592,7 @@ export async function verifyBackupRestore({
       evidenceClass,
       localFixture: evidenceClass === 'local-fixture',
       releaseBoundObservation: evidenceClass === 'release-bound',
-      crossStorePointInTimeConsistencyVerified: true,
+      crossStorePointInTimeConsistencyVerified: !postgresOnlyLocalFixture,
       privateBetaEligible: evidenceClass === 'release-bound',
       commercialGaEligible: false,
     },
@@ -594,12 +614,14 @@ async function main() {
   const backupFile = path.resolve(process.env.BACKUP_FILE ?? 'backups/restore-drill.sql.gz');
   const migrationSqlPath = path.resolve(process.env.POSTGRES_MIGRATION_SQL ?? 'src/lib/db-postgres-migrations.sql');
   const receiptPath = path.resolve(process.env.BACKUP_RESTORE_RECEIPT ?? 'validation-reports/backup-restore-drill.json');
+  const postgresOnlyLocalFixture = process.argv.includes('--postgres-only-local-fixture');
   const result = await verifyBackupRestore({
     backupFile,
     sourceDatabaseUrl,
     restoreDatabaseUrl,
     migrationSqlPath,
     receiptPath,
+    postgresOnlyLocalFixture,
   });
   process.stdout.write(`${JSON.stringify({
     ok: result.ok,
