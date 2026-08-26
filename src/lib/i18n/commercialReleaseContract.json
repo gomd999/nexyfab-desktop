@@ -1,0 +1,6 @@
+{
+  "schema": "nexyfab.commercial-i18n-catalog-contract.v1",
+  "version": "2026-08-26",
+  "sourcePairs": 2711,
+  "locales": ["kr", "en", "ja", "cn", "es", "ar"]
+}

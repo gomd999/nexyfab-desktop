@@ -3,6 +3,7 @@ import { getDbAdapter } from '@/lib/db-adapter';
 import { getAuthUser } from '@/lib/auth-middleware';
 import { rowsToCsv, sheetsToXlsxBuffer } from '@/lib/tabular-export';
 import { resolveRequestOrgContext } from '@/lib/org-context';
+import { buildLocalizedTabularExport } from '../../export/i18n';
 
 export const dynamic = 'force-dynamic';
 
@@ -21,6 +22,7 @@ export async function GET(req: NextRequest) {
   const to   = sp.get('to')   ? parseInt(sp.get('to')!,   10) : Date.now();
 
   const db = getDbAdapter();
+  const user = await db.queryOne<{ language: string | null }>('SELECT language FROM nf_users WHERE id = ?', authUser.userId);
   await db.execute('ALTER TABLE nf_rfqs ADD COLUMN org_id TEXT').catch(() => {});
   await db.execute('ALTER TABLE nf_orders ADD COLUMN org_id TEXT').catch(() => {});
   const rfqScope = context.orgId ? 'r.org_id = ?' : 'r.user_id = ? AND r.org_id IS NULL';
@@ -59,7 +61,7 @@ export async function GET(req: NextRequest) {
   }
 
   // Format timestamps as ISO strings
-  const formatted = rows.map(r => ({
+  const jsonRows = rows.map(r => ({
     ...r,
     created_at: r.created_at ? new Date(r.created_at as number).toISOString() : null,
     updated_at: r.updated_at ? new Date(r.updated_at as number).toISOString() : null,
@@ -67,13 +69,16 @@ export async function GET(req: NextRequest) {
   }));
 
   if (format === 'json') {
-    return NextResponse.json({ type, count: formatted.length, data: formatted });
+    return NextResponse.json({ type, count: jsonRows.length, data: jsonRows });
   }
+
+  const exportKind = type === 'rfqs' ? 'rfqs' : type === 'quotes' ? 'erp-quotes' : 'orders';
+  const localized = buildLocalizedTabularExport(exportKind, rows, user?.language);
 
   const filename = `nexyfab_${type}_${new Date().toISOString().slice(0, 10)}`;
 
   if (format === 'csv') {
-    const csv = rowsToCsv(formatted);
+    const csv = rowsToCsv(localized.rows);
     return new NextResponse(csv, {
       headers: {
         'Content-Type': 'text/csv; charset=utf-8',
@@ -82,7 +87,7 @@ export async function GET(req: NextRequest) {
     });
   }
 
-  const excelBuf = await sheetsToXlsxBuffer([{ name: type, rows: formatted }]);
+  const excelBuf = await sheetsToXlsxBuffer([{ name: localized.sheetName, rows: localized.rows }]);
   return new NextResponse(Buffer.from(excelBuf), {
     headers: {
       'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',

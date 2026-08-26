@@ -52,6 +52,7 @@ describe('AiModelSelector', () => {
 
     expect(screen.getByRole('listbox', { name: 'AI 모델 선택' })).toBeInTheDocument();
     expect(screen.getByText('결제 없는 운영 베타: 모든 모델 선택 가능')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '닫기' })).toBeInTheDocument();
   });
 
   it('renders the Arabic selector copy without forcing physical left/right positioning', () => {
@@ -62,6 +63,7 @@ describe('AiModelSelector', () => {
 
     const listbox = screen.getByRole('listbox');
     expect(listbox.getAttribute('aria-label')).toContain('اختيار');
+    expect(screen.getByRole('button', { name: 'إغلاق' })).toBeInTheDocument();
     expect((listbox as HTMLElement).style.insetInlineEnd).toBe('0');
     expect(container.querySelector('[dir="rtl"]')).toBeTruthy();
   });

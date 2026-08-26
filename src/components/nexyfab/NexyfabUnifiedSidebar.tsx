@@ -437,7 +437,7 @@ export default function NexyfabUnifiedSidebar({ lang }: UnifiedSidebarProps) {
           </button>
           <div className="nf-uni-label" style={{ display: 'flex', gap: 4 }}>
             {isAuthenticated && token && <NotificationBell token={token} lang={routeLang} />}
-            <NexysysAppSwitcher />
+            <NexysysAppSwitcher lang={routeLang} />
           </div>
 
           {menuOpen && (

@@ -1,6 +1,12 @@
 #!/usr/bin/env node
 
+import { readFileSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
+
+const COMMERCIAL_I18N_CONTRACT = JSON.parse(readFileSync(
+  new URL('../src/lib/i18n/commercialReleaseContract.json', import.meta.url),
+  'utf8',
+));
 
 const COMMERCIAL_MIGRATIONS = [
   '2026082202', '2026082203', '2026082204', '2026082205', '2026082206',
@@ -40,7 +46,7 @@ export function evaluateRollbackResponses(responses, expectedBuild) {
     const i18n = responses.release.i18n;
     if (i18n?.status !== 'QUALIFIED'
       || !Number.isInteger(i18n.sourcePairs)
-      || i18n.sourcePairs < 2711
+      || i18n.sourcePairs !== COMMERCIAL_I18N_CONTRACT.sourcePairs
       || i18n.translatedPairs !== i18n.sourcePairs) {
       issues.push('release i18n receipt does not qualify the complete translated catalog');
     }

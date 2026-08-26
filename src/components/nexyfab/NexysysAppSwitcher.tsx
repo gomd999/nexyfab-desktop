@@ -1,5 +1,7 @@
 'use client';
 
+import { toIsoLang, type IsoLang } from '@/lib/i18n/normalize';
+
 /**
  * NexysysAppSwitcher
  * Subtle product-family indicator at the bottom of the NexyFab sidebar.
@@ -11,7 +13,7 @@ interface Product {
   id: string;
   short: string;       // 2-3 char abbreviation shown in pill
   name: string;
-  tagline: string;     // shown in hover tooltip
+  tagline: Record<IsoLang, string>; // shown in hover tooltip
   color: string;       // accent color
   url: string;         // external URL
   current?: boolean;
@@ -22,7 +24,10 @@ const PRODUCTS: Product[] = [
     id: 'nexyflow',
     short: 'NF',
     name: 'NexyFlow',
-    tagline: '협업 그룹웨어',
+    tagline: {
+      ko: '협업 그룹웨어', en: 'Collaboration groupware', ja: 'コラボレーション・グループウェア',
+      zh: '协作群件', es: 'Suite de colaboración', ar: 'منصة تعاون جماعي',
+    },
     color: '#22d3ee',
     url: process.env.NEXT_PUBLIC_NEXYFLOW_URL ?? 'https://nexyflow.nexysys.com',
   },
@@ -30,7 +35,10 @@ const PRODUCTS: Product[] = [
     id: 'nexyfab',
     short: 'FAB',
     name: 'NexyFab',
-    tagline: '제조 견적 플랫폼',
+    tagline: {
+      ko: '제조 견적 플랫폼', en: 'Manufacturing quotation platform', ja: '製造見積プラットフォーム',
+      zh: '制造报价平台', es: 'Plataforma de cotización de fabricación', ar: 'منصة عروض أسعار التصنيع',
+    },
     color: '#8b9cf4',
     url: '#',
     current: true,
@@ -39,13 +47,17 @@ const PRODUCTS: Product[] = [
     id: 'nexywise',
     short: 'NW',
     name: 'NexyWise',
-    tagline: '비즈니스 인텔리전스',
+    tagline: {
+      ko: '비즈니스 인텔리전스', en: 'Business intelligence', ja: 'ビジネスインテリジェンス',
+      zh: '商业智能', es: 'Inteligencia empresarial', ar: 'ذكاء الأعمال',
+    },
     color: '#34d399',
     url: process.env.NEXT_PUBLIC_NEXYWISE_URL ?? 'https://nexywise.nexysys.com',
   },
 ];
 
-export default function NexysysAppSwitcher({ collapsed }: { collapsed?: boolean }) {
+export default function NexysysAppSwitcher({ collapsed, lang = 'en' }: { collapsed?: boolean; lang?: string }) {
+  const locale = toIsoLang(lang);
   return (
     <>
       <style precedence="default" href="nxs-app-switcher">{`
@@ -99,7 +111,7 @@ export default function NexysysAppSwitcher({ collapsed }: { collapsed?: boolean 
               {/* Tooltip */}
               <div className="nxs-tooltip">
                 <p style={{ margin: 0, fontSize: 11, fontWeight: 700, color: p.color }}>{p.name}</p>
-                <p style={{ margin: 0, fontSize: 10, color: '#8b949e' }}>{p.tagline}</p>
+                <p style={{ margin: 0, fontSize: 10, color: '#8b949e' }}>{p.tagline[locale]}</p>
               </div>
 
               {/* Pill button */}
