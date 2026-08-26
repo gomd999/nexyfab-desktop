@@ -6,11 +6,15 @@ import { fileURLToPath } from 'node:url';
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
 const STAGING = path.join(ROOT, 'docs/evidence/platform-runtime/slice-deployment-staging.json');
 const EVIDENCE = path.join(ROOT, 'docs/evidence/platform-runtime/slice-rollback-execution.json');
+export const SLICE_ROLLBACK_SCHEMA = 'nexyfab.slice-rollback-execution.v2';
+export const STAGING_EVIDENCE_CANONICALIZATION = 'utf8-crlf-to-lf';
 
 function readJson(file) { return JSON.parse(fs.readFileSync(file, 'utf8')); }
 
 export function sha256File(file) {
-  return createHash('sha256').update(fs.readFileSync(file)).digest('hex');
+  const bytes = fs.readFileSync(file);
+  const canonical = Buffer.from(bytes.toString('utf8').replaceAll('\r\n', '\n'));
+  return createHash('sha256').update(canonical).digest('hex');
 }
 
 function validObservation(observation, expected, prefix, issues) {
@@ -23,11 +27,12 @@ function validObservation(observation, expected, prefix, issues) {
 export function buildRollbackTemplate(staging, stagingSha256, now = new Date()) {
   const current = new Map((staging.scopes ?? []).flatMap(scope => scope.services ?? []).map(service => [service.name, service]));
   return {
-    schema: 'nexyfab.slice-rollback-execution.v1',
+    schema: SLICE_ROLLBACK_SCHEMA,
     recordedAt: now.toISOString(),
     environment: { provider: staging.environment?.provider, name: staging.environment?.name },
     mechanism: staging.rollback?.mechanism,
     stagingEvidenceSha256: stagingSha256,
+    stagingEvidenceCanonicalization: STAGING_EVIDENCE_CANONICALIZATION,
     execution: 'NOT_RUN',
     reason: 'Native staging rollback drill has not been executed. Use the captured immutable targets, verify rollback health, then restore and verify the current deployment.',
     targets: (staging.rollback?.targets ?? []).map(target => {
@@ -46,10 +51,11 @@ export function buildRollbackTemplate(staging, stagingSha256, now = new Date()) 
 
 export function evaluateSliceRollbackEvidence(evidence, staging, options = {}) {
   const issues = [];
-  if (evidence?.schema !== 'nexyfab.slice-rollback-execution.v1') issues.push('rollback_evidence_schema_invalid');
+  if (evidence?.schema !== SLICE_ROLLBACK_SCHEMA) issues.push('rollback_evidence_schema_invalid');
   if (evidence?.environment?.provider !== staging?.environment?.provider || evidence?.environment?.name !== staging?.environment?.name) issues.push('rollback_environment_mismatch');
   if (evidence?.mechanism !== staging?.rollback?.mechanism) issues.push('rollback_mechanism_mismatch');
   if (!/^[a-f0-9]{64}$/.test(evidence?.stagingEvidenceSha256 ?? '')) issues.push('rollback_staging_digest_invalid');
+  if (evidence?.stagingEvidenceCanonicalization !== STAGING_EVIDENCE_CANONICALIZATION) issues.push('rollback_staging_canonicalization_invalid');
   if (options.stagingSha256 && evidence?.stagingEvidenceSha256 !== options.stagingSha256) issues.push('rollback_staging_digest_mismatch');
   if (!['NOT_RUN', 'PASS'].includes(evidence?.execution)) issues.push('rollback_execution_state_invalid');
   const current = new Map((staging?.scopes ?? []).flatMap(scope => scope.services ?? []).map(service => [service.name, service]));
