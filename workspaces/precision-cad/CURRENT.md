@@ -1,5 +1,24 @@
 # Precision CAD current session
 
+## 2026-08-26 DFM PDF locale consumer binding
+
+- Status: `EXPLICIT_PDF_LOCALE_BOUND / SIX_LOCALE_ERROR_COPY_PASS /
+  PLATFORM_CONTRACT_SYNCED / PDF_GLYPH_ARTIFACT_REVIEW_PENDING`.
+- The Precision CAD DFM panel now sends its resolved product locale to the
+  bounded Platform PDF endpoint instead of relying only on browser headers.
+- Stable server errors for authentication, payload size, and invalid analysis
+  state are mapped to actionable copy in Korean, English, Japanese, Chinese,
+  Spanish, and Arabic. Unknown server details are not reflected into the UI.
+- Combined client/server PDF locale and contract regression passes 3 files /
+  22 tests. The official Precision CAD workspace check passes TypeScript,
+  Platform architecture, and zero ownership violations for 1 commit / 3
+  changed paths.
+- Authenticated six-language PDF artifacts and visual glyph/layout review are
+  still pending; this consumer binding does not promote the commercial i18n
+  receipt or the external precision/manufacturing qualification.
+- Handoff:
+  `HANDOFFS/20260826T111921Z-dfm-pdf-locale-consumer.md`.
+
 ## 2026-08-26 commercial workspace UI and i18n closure
 
 - Status: `SIX_LOCALE_COMMERCIAL_UI_PASS / PRODUCTION_DEV_MOCK_BLOCKED /
