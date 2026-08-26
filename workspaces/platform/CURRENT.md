@@ -1,5 +1,30 @@
 # Platform current session
 
+## 2026-08-27 v150 artifact-trace adoption
+
+- Status: `V150_SELECTIVE_ADOPTION / THREE_ROWS_PRESERVED /
+  REAL_RECEIPTS_ONLY / SIX_LOCALE_PASS / MOBILE_GRID_REPAIRED`.
+- The V150 bespoke/human-made reference was compared against the active chat,
+  split 3D workspace, trust panel, and result-sharing tray. The useful gap was
+  a persistent `conversation -> gate -> artifact` trace, not another card or a
+  replacement shell.
+- Each of the three result rows now exposes its real lifecycle and, after
+  generation, the returned revision, exact file SHA-256, manifest SHA-256,
+  and manufacturing-review boundary. Missing generation evidence remains
+  `not run`; no fake activity or approval is rendered.
+- `GA_3D.html` remains the first/default row and its default label is localized
+  in all six product languages. The mobile grid now keeps the file identity
+  and actions on the first line and moves description/status below it.
+- Focused chat/trust/i18n/receipt regression passes 4 files / 36 tests. The
+  complete Platform check passes ESLint (233.5s), TypeScript (30.5s), and
+  ownership with zero violations. Current secret scanning covers 10,317 Git
+  candidates / 325,466,130 bytes with zero findings.
+- Source commit: `19986c727bdf3b2c1be1af7179ffac1d68cd6e2c`.
+- Companion Precision CAD source commit:
+  `384ee856a6c899a8b6cbeb09b7d009a682a72bfc`.
+- Handoff:
+  `HANDOFFS/20260826T155157Z-v150-artifact-trace-adoption.md`.
+
 ## 2026-08-27 release-gate cross-platform repair
 
 - Status: `WINDOWS_NPM_PATH_PASS / SYMLINK_RECEIPT_TEST_CURRENT /
