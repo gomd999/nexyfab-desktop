@@ -1,5 +1,24 @@
 # Platform current session
 
+## 2026-08-26 current-head security and license convergence
+
+- Status: `ROUTE_SECURITY_PASS / SECRET_FINDINGS_0 /
+  DEPENDENCY_VULNERABILITIES_0 / SBOM_CURRENT / KERNEL_IDENTITY_CURRENT`.
+- Route security now follows both Next route HTTP-method re-exports into
+  sibling core modules and wrapper delegation into parent route modules. This
+  prevents an authenticated implementation from being reported as an
+  unreviewed public mutation when the framework route is intentionally thin.
+- The obsolete public-mutation entries for authenticated drawing assemble and
+  compose routes were removed. Current evidence covers 627 route files and 862
+  exported handlers with zero gaps, zero unknown classifications, and zero
+  policy configuration issues.
+- Secret scanning covers 10,311 Git candidates / 325,383,797 bytes with zero
+  findings. Dependency audit and CycloneDX evidence report zero vulnerabilities;
+  kernel identity and 687-package third-party notices are current.
+- Source/evidence commit: `c922ed81882662325c90129bd4111e6271daf448`.
+- Handoff:
+  `HANDOFFS/20260826T144442Z-current-head-security-license-convergence.md`.
+
 ## 2026-08-26 current mechanical product-scope HOLD
 
 - Status: `ASSESSMENT_CURRENT / INTERNAL_REGRESSION_PASS /
