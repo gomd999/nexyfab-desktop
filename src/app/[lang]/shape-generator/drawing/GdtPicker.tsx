@@ -70,7 +70,7 @@ export default function GdtPicker({ open, isKo: _isKo, onClose }: Props) {
     <div
       role="dialog"
       aria-modal
-      aria-label="GD&T picker"
+      aria-label={loc(lang, { ko: 'GD&T 선택기', en: 'GD&T picker', ja: 'GD&T ピッカー', zh: 'GD&T 选择器', es: 'Selector de GD&T', ar: 'منتقي GD&T' })}
       style={{
         position: 'fixed', inset: 0, zIndex: 9999,
         background: 'rgba(0,0,0,0.4)',

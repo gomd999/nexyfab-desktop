@@ -12,6 +12,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { toIsoLang } from '@/lib/i18n/normalize';
 import type * as THREE from 'three';
 import type { RfqOptions, ToleranceClass, SurfaceFinish, DeliveryUrgency } from '../io/rfqPackage';
+import { loc } from '@/lib/i18n/loc';
 
 // ─── i18n ────────────────────────────────────────────────────────────────────
 
@@ -301,7 +302,7 @@ export default function RfqPanel({
           <label style={labelStyle}>{t.material}</label>
           <input type="text" value={opts.materialSpec}
             onChange={e => set('materialSpec', e.target.value)}
-            style={inputStyle} placeholder="e.g. Al 6061-T6, Steel 304, ABS" />
+            style={inputStyle} placeholder={loc(lang, { ko: '예: Al 6061-T6, Steel 304, ABS', en: 'e.g. Al 6061-T6, Steel 304, ABS', ja: '例: Al 6061-T6、Steel 304、ABS', zh: '例如：Al 6061-T6、Steel 304、ABS', es: 'p. ej., Al 6061-T6, Steel 304, ABS', ar: 'مثال: Al 6061-T6، Steel 304، ABS' })} />
         </div>
 
         {/* Tolerance */}
@@ -350,7 +351,7 @@ export default function RfqPanel({
             <label style={labelStyle}>{t.company}</label>
             <input type="text" value={opts.buyerCompany}
               onChange={e => set('buyerCompany', e.target.value)}
-              style={inputStyle} placeholder="Acme Corp" />
+              style={inputStyle} placeholder={loc(lang, { ko: '예: 넥시팹 주식회사', en: 'e.g. Acme Corp', ja: '例: Acme 株式会社', zh: '例如：Acme 公司', es: 'p. ej., Acme S. A.', ar: 'مثال: شركة Acme' })} />
           </div>
           <div>
             <label style={labelStyle}>{t.currency}</label>
@@ -363,7 +364,7 @@ export default function RfqPanel({
           <label style={labelStyle}>{t.email}</label>
           <input type="email" value={opts.buyerEmail}
             onChange={e => set('buyerEmail', e.target.value)}
-            style={inputStyle} placeholder="buyer@company.com" />
+            style={inputStyle} placeholder={loc(lang, { ko: '예: buyer@company.com', en: 'e.g. buyer@company.com', ja: '例: buyer@company.com', zh: '例如：buyer@company.com', es: 'p. ej., buyer@company.com', ar: 'مثال: buyer@company.com' })} />
         </div>
 
         {/* Notes */}
@@ -372,7 +373,7 @@ export default function RfqPanel({
           <textarea value={opts.notes} rows={3}
             onChange={e => set('notes', e.target.value)}
             style={{ ...inputStyle, resize: 'vertical', fontFamily: 'inherit' }}
-            placeholder="Special requirements, finish colour, etc." />
+            placeholder={loc(lang, { ko: '특별 요구사항, 마감 색상 등', en: 'Special requirements, finish colour, etc.', ja: '特別要件、仕上げ色など', zh: '特殊要求、表面处理颜色等', es: 'Requisitos especiales, color del acabado, etc.', ar: 'المتطلبات الخاصة ولون التشطيب وغير ذلك' })} />
         </div>
 
         {/* Cost estimate */}

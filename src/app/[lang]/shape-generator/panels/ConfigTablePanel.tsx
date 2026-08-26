@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { usePathname } from 'next/navigation';
 import { resolveAll } from '../ExpressionEngine';
+import { loc } from '@/lib/i18n/loc';
 
 // ─── i18n dict ────────────────────────────────────────────────────────────────
 
@@ -468,7 +469,7 @@ export default function ConfigTablePanel({ params, onApply, onClose, lang: _lang
           <button
             onClick={onClose}
             style={{ ...btnBase, padding: '2px 8px', fontSize: 14, lineHeight: 1 }}
-            title="Close"
+            title={loc(seg, { ko: '닫기', en: 'Close', ja: '閉じる', zh: '关闭', es: 'Cerrar', ar: 'إغلاق' })}
           >
             ×
           </button>

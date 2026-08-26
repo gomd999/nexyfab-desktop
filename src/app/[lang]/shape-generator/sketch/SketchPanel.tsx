@@ -9,6 +9,7 @@ import type {
 import { useSketchStore } from './useSketchStore';
 // Z5 — sketch peer-cursor overlay; mounted unconditionally and gracefully no-ops without a <CollabProvider>.
 import SketchPeerCursors from './SketchPeerCursors';
+import { loc } from '@/lib/i18n/loc';
 
 // ─── i18n dict (6 languages) ────────────────────────────────────────────────
 const dict = {
@@ -842,8 +843,8 @@ export default function SketchPanel({
                   <div style={{ width: 1, background: 'var(--nx-border)', margin: '2px 1px', flexShrink: 0 }} />
                   <button
                     onClick={onOpenTextPanel}
-                    title="Sketch Text (engrave / emboss)"
-                    aria-label="Sketch text"
+                    title={loc(seg, { ko: '스케치 문자(음각/양각)', en: 'Sketch text (engrave / emboss)', ja: 'スケッチ文字（彫刻／浮き彫り）', zh: '草图文字（雕刻/浮雕）', es: 'Texto de boceto (grabar / realzar)', ar: 'نص الرسم (نقش / بروز)' })}
+                    aria-label={loc(seg, { ko: '스케치 문자', en: 'Sketch text', ja: 'スケッチ文字', zh: '草图文字', es: 'Texto de boceto', ar: 'نص الرسم' })}
                     style={{ ...toolBtnBase, position: 'relative' }}
                   >
                     🅰️

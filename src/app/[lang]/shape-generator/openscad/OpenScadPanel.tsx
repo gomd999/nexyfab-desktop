@@ -18,6 +18,7 @@ import { downloadBlob } from '@/lib/platform';
 import VerifySpecPanel from './VerifySpecPanel';
 import { useAnalysisStore } from '../store/analysisStore';
 import type { SpecVerificationResult } from '@/lib/ai/scad-agent/specVerification';
+import { loc } from '@/lib/i18n/loc';
 
 function errorMessageFromUnknown(e: unknown): string {
   return e instanceof Error ? e.message : String(e);
@@ -2606,7 +2607,7 @@ export default function OpenScadPanel({ onGeometryReady, modelId, selectedElemen
                 <button
                   onClick={() => setScadNlBudgetAdvisory(null)}
                   className="text-amber-400 hover:text-amber-200 px-1"
-                  aria-label="dismiss"
+                  aria-label={loc(seg, { ko: '알림 닫기', en: 'Dismiss notice', ja: '通知を閉じる', zh: '关闭通知', es: 'Cerrar aviso', ar: 'إغلاق الإشعار' })}
                 >✕</button>
               </div>
             )}
@@ -2628,7 +2629,7 @@ export default function OpenScadPanel({ onGeometryReady, modelId, selectedElemen
               >
                 {scadNlBusy ? t.scadNlBusy : t.scadNlBtn}
               </button>
-              <label className="flex items-center gap-1 text-[11px] text-gray-300 cursor-pointer select-none" title="Free-form: the AI writes a full OpenSCAD program (cars, vases, anything) instead of catalog shapes">
+              <label className="flex items-center gap-1 text-[11px] text-gray-300 cursor-pointer select-none" title={loc(seg, { ko: '자유 형식: 카탈로그 형상 대신 AI가 자동차, 꽃병 등 전체 OpenSCAD 프로그램을 작성합니다', en: 'Free-form: the AI writes a complete OpenSCAD program instead of using catalog shapes', ja: '自由形式：カタログ形状を使わず、AI が完全な OpenSCAD プログラムを作成します', zh: '自由形式：AI 不使用目录形状，而是编写完整的 OpenSCAD 程序', es: 'Formato libre: la IA escribe un programa OpenSCAD completo en lugar de usar formas de catálogo', ar: 'نمط حر: يكتب الذكاء الاصطناعي برنامج OpenSCAD كاملاً بدلاً من استخدام أشكال الكتالوج' })}>
                 <input
                   type="checkbox"
                   checked={scadNlFreeform}
@@ -2637,18 +2638,18 @@ export default function OpenScadPanel({ onGeometryReady, modelId, selectedElemen
                 />
                 {t.freeformLabel}
               </label>
-              <label className="flex items-center gap-1 text-[11px] text-emerald-300 cursor-pointer select-none" title="Image → 3D: upload a reference photo/sketch; the vision model writes parametric OpenSCAD from it">
+              <label className="flex items-center gap-1 text-[11px] text-emerald-300 cursor-pointer select-none" title={loc(seg, { ko: '이미지 → 3D: 참조 사진이나 스케치를 올리면 비전 모델이 파라메트릭 OpenSCAD를 작성합니다', en: 'Image → 3D: upload a reference photo or sketch and the vision model writes parametric OpenSCAD', ja: '画像 → 3D：参照写真またはスケッチからビジョンモデルがパラメトリック OpenSCAD を作成します', zh: '图像 → 3D：上传参考照片或草图，由视觉模型编写参数化 OpenSCAD', es: 'Imagen → 3D: suba una foto o boceto de referencia y el modelo visual escribirá OpenSCAD paramétrico', ar: 'صورة ← ثلاثي الأبعاد: ارفع صورة أو رسماً مرجعياً ليكتب نموذج الرؤية OpenSCAD بارامترياً' })}>
                 <input type="file" accept="image/*" className="hidden" onChange={e => onPickScadImage(e.target.files?.[0])} />
                 🖼️ {t.imageLabel}
               </label>
               {scadNlImage && (
                 <span className="flex items-center gap-1 text-[11px] text-emerald-200/80">
                   <span className="truncate max-w-[100px]" title={scadNlImageName ?? ''}>{scadNlImageName}</span>
-                  <button type="button" className="text-gray-400 hover:text-gray-200" onClick={() => { setScadNlImage(null); setScadNlImageName(null); }} aria-label="remove image">✕</button>
+                  <button type="button" className="text-gray-400 hover:text-gray-200" onClick={() => { setScadNlImage(null); setScadNlImageName(null); }} aria-label={loc(seg, { ko: '이미지 제거', en: 'Remove image', ja: '画像を削除', zh: '移除图像', es: 'Quitar imagen', ar: 'إزالة الصورة' })}>✕</button>
                 </span>
               )}
               {lastScadIntent != null && !scadNlFreeform && (
-                <label className="flex items-center gap-1 text-[11px] text-gray-300 cursor-pointer select-none" title="Treat the prompt as a change to the last result">
+                <label className="flex items-center gap-1 text-[11px] text-gray-300 cursor-pointer select-none" title={loc(seg, { ko: '프롬프트를 이전 결과의 변경 요청으로 처리합니다', en: 'Treat the prompt as a change to the previous result', ja: 'プロンプトを前の結果への変更として扱います', zh: '将提示词视为对上次结果的修改', es: 'Tratar la instrucción como un cambio del resultado anterior', ar: 'اعتبار المطالبة تعديلاً للنتيجة السابقة' })}>
                   <input
                     type="checkbox"
                     checked={scadNlRefine}
