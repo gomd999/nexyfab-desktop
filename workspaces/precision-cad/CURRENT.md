@@ -1,5 +1,30 @@
 # Precision CAD current session
 
+## 2026-08-27 v150 chat safety and recovery convergence
+
+- Status: `STARTER_FILL_ONLY / ZERO_CALL_BEFORE_SEND / EXPLICIT_RETRY /
+  SIX_LOCALE_COPY / FOCUSED_12_PASS`.
+- The Precision CAD AI starter buttons now populate and focus the message input
+  without starting an AI request. This aligns the embedded workspace with the
+  main chat entry and prevents an example click from creating an unintended
+  provider call.
+- A failed governed AI run retains only its visible request text and exposes an
+  explicit localized retry action. The existing fail-closed boundary remains:
+  no deterministic substitute is presented as AI output and no CAD mutation is
+  applied on failure.
+- The v150 audit also confirmed that version diff/branch compare, autosave crash
+  recovery with 3D comparison, feature-state semantics, and a truthful session
+  jobs drawer already exist. They were not duplicated into a parallel shell.
+- The main `ChatHero` already has the requested six-locale 2D drawing, image,
+  and complex-product starters; starter clicks fill the textarea; attachment
+  paste/drop/picker is wired; and the three-row result share tray sits directly
+  below the composer.
+- Focused regression passes 1 file / 12 tests. Precision CAD TypeScript,
+  architecture, and ownership checks pass with zero violations.
+- Source commit: `e57c2e5771c15563a9e3258f53dac5eea2432166`.
+- Handoff:
+  `HANDOFFS/20260826T162332Z-v150-chat-safety-recovery.md`.
+
 ## 2026-08-27 ShapeGenerator first safe module slice
 
 - Status: `BOM_EXPORT_BOUNDARY_EXTRACTED / BEHAVIOR_PRESERVED /
