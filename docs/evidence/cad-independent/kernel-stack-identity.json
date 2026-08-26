@@ -364,8 +364,8 @@
     {
       "path": "src/app/[lang]/shape-generator/_shell/ModelerShell.tsx",
       "role": "semantic-and-release-policy",
-      "bytes": 53363,
-      "sha256": "ea3a70fe4b4a2b677a98683c3c102a93f0999c0b7b10bd4794cfcd82bfef47d1"
+      "bytes": 53500,
+      "sha256": "d5c0e1e06d731fbcbca42472a27765e0ab10c1832e0fcb89a44ab0815e7eda8e"
     },
     {
       "path": "src/app/[lang]/shape-generator/ShapeGeneratorClientPage.tsx",
@@ -436,8 +436,8 @@
     {
       "path": "src/lib/commercial-readiness.ts",
       "role": "semantic-and-release-policy",
-      "bytes": 13321,
-      "sha256": "4e8e270ee4aaf34dbd82c2466aa42333aa923dd5cff3acc35caaf5a47d62f6c7"
+      "bytes": 13450,
+      "sha256": "742b45d2bfdef2af6683b299074625d6abe6e291c9164f77c14beaec311a5ab5"
     },
     {
       "path": "src/app/api/docs/openapi/route.ts",
@@ -476,5 +476,5 @@
       "sha256": "50d0f0cd4bacadf24b337c8e36784d834a14cdeee175fc6b1850df12fe017c9f"
     }
   ],
-  "identitySha256": "80b6962ad6d70b442d9270366ec67c57dc7e8bfe031b627a43ddfcf6dcc2129f"
+  "identitySha256": "94b86569adf5b1a0a3ad243cbb76afb083ba2ba02f293883b0292c7a44a6e81c"
 }

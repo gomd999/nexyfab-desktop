@@ -69,6 +69,16 @@ test('does not mistake a swallowed optional identity lookup for an auth gate', (
   assert.deepEqual(result.gaps, []);
 });
 
+test('recognizes the plan guard as an auth gate', () => {
+  const result = analyzeRouteSecurity(
+    '/api/plan-ai',
+    "export async function POST(req) { const plan = await checkPlan(req, 'free'); return Response.json({ plan }); }",
+  );
+  assert.equal(result.classification, 'authenticated');
+  assert.equal(result.controls.authentication, true);
+  assert.deepEqual(result.gaps, []);
+});
+
 test('recognizes an enforced identity lookup as an auth gate', () => {
   const result = analyzeRouteSecurity(
     '/api/private-ai',

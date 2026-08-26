@@ -1,24 +1,24 @@
 {
   "schema": "nexyfab.route-security-matrix.v1",
   "textCanonicalization": "utf8-crlf-to-lf",
-  "generatedAt": "2026-08-25T07:56:36.759Z",
+  "generatedAt": "2026-08-26T14:37:42.310Z",
   "status": "pass",
   "summary": {
-    "routeFiles": 625,
-    "exportedHandlers": 860,
-    "classifiedRoutes": 625,
+    "routeFiles": 627,
+    "exportedHandlers": 862,
+    "classifiedRoutes": 627,
     "unknownClassifications": 0,
     "routesWithGaps": 0,
     "gapCounts": {},
     "byClassification": {
-      "public": 131,
-      "authenticated": 369,
+      "public": 130,
+      "authenticated": 372,
       "admin": 69,
       "webhook": 6,
       "internal-worker": 37,
       "disabled": 13
     },
-    "publicMutationPolicies": 93,
+    "publicMutationPolicies": 91,
     "policyConfigIssues": []
   },
   "routes": [
@@ -1501,7 +1501,7 @@
       },
       "gaps": [],
       "file": "src/app/api/admin/settings/route.ts",
-      "sourceSha256": "8047e4f95b0e7b03ea66a832a0704f5e93bdeca5e5cb3cd45cb07205cfcf86f0",
+      "sourceSha256": "72c8af4973765dae0d5120e3fa61665709549ecbc71669f5c547b8377d84f525",
       "securityDependencies": []
     },
     {
@@ -7578,7 +7578,7 @@
       },
       "gaps": [],
       "file": "src/app/api/eng-chat/action/route.ts",
-      "sourceSha256": "906b415c965d7c8c51666155714728445188c753527c2a85b36b2da48cdb3893",
+      "sourceSha256": "6f64694b6118420f77d5343f0099d765d31c2a95c159578fcdfcc87cf160747e",
       "securityDependencies": []
     },
     {
@@ -7607,7 +7607,7 @@
       },
       "gaps": [],
       "file": "src/app/api/eng-chat/route.ts",
-      "sourceSha256": "299305811fecaf29b5c4bdd379465884b78d088505fdf341c7d38e69970dab5b",
+      "sourceSha256": "7c3e6691a7139f3d49a09dbda7519bc9064a33873ed7d60a1f16ad72fa54fde0",
       "securityDependencies": []
     },
     {
@@ -7930,7 +7930,7 @@
       },
       "gaps": [],
       "file": "src/app/api/health/ready/route.ts",
-      "sourceSha256": "67405817b51cf4f50003507e7eff1184d29e799ef5abf07f3ae3832fdcaa7078",
+      "sourceSha256": "b30471ef16bc8b4ac7e99fab91dd5ccb73d0dfc1d9de1ccff8480f67acf3d4bd",
       "securityDependencies": []
     },
     {
@@ -8670,7 +8670,7 @@
       },
       "gaps": [],
       "file": "src/app/api/jobs/quote-expiry-remind/route.ts",
-      "sourceSha256": "a98a5a081cc8273d894bb1d332d82c6bebe3884ea14b6105f3cfa90fe9d1ba3d",
+      "sourceSha256": "754d4fb4c36067c324f7d23c404cc7d9d6aafc8bb22335eba334287a4c4e6f11",
       "securityDependencies": []
     },
     {
@@ -9496,6 +9496,35 @@
       "securityDependencies": []
     },
     {
+      "route": "/api/nexyfab/ai-design/sources",
+      "methods": [
+        "POST"
+      ],
+      "mutation": true,
+      "classification": "authenticated",
+      "classificationBasis": "route-local-auth-signal",
+      "controls": {
+        "authentication": true,
+        "objectAcl": true,
+        "csrfOrigin": true,
+        "schema": true,
+        "size": true,
+        "rateLimit": true,
+        "audit": true,
+        "idempotency": false,
+        "webhookSignature": false,
+        "boundedRequestBody": true,
+        "activeProxyRateLimit": true,
+        "activeProxyCookieOrigin": true,
+        "activeProxyEnvelopeSize": true,
+        "publicMutationPolicy": null
+      },
+      "gaps": [],
+      "file": "src/app/api/nexyfab/ai-design/sources/route.ts",
+      "sourceSha256": "733317eeda0cf782eb0f8ea5450ff7aadcfc70bc6b5ab2c42789026d625dd0e5",
+      "securityDependencies": []
+    },
+    {
       "route": "/api/nexyfab/ai-design/workspace-session/actions",
       "methods": [
         "POST"
@@ -9696,7 +9725,7 @@
       },
       "gaps": [],
       "file": "src/app/api/nexyfab/ai-design/workspace-session/route.ts",
-      "sourceSha256": "a87a8b31ebe2f9b6bee485d89c37f2576bd0f5987175e962e29b5508bff82287",
+      "sourceSha256": "22789bc2903c3c2152589ee9e55fcbbfce565de2f2ac5524f5febddf06c5e697",
       "securityDependencies": []
     },
     {
@@ -9727,6 +9756,35 @@
       "gaps": [],
       "file": "src/app/api/nexyfab/ai-history/route.ts",
       "sourceSha256": "a160232980ce87c154b51c322a7bcb14046928876423930be30fe2fbbbc7e07a",
+      "securityDependencies": []
+    },
+    {
+      "route": "/api/nexyfab/ai-model-access",
+      "methods": [
+        "GET"
+      ],
+      "mutation": false,
+      "classification": "public",
+      "classificationBasis": "effective-no-auth-signal",
+      "controls": {
+        "authentication": false,
+        "objectAcl": false,
+        "csrfOrigin": false,
+        "schema": false,
+        "size": false,
+        "rateLimit": false,
+        "audit": false,
+        "idempotency": false,
+        "webhookSignature": false,
+        "boundedRequestBody": false,
+        "activeProxyRateLimit": true,
+        "activeProxyCookieOrigin": false,
+        "activeProxyEnvelopeSize": false,
+        "publicMutationPolicy": null
+      },
+      "gaps": [],
+      "file": "src/app/api/nexyfab/ai-model-access/route.ts",
+      "sourceSha256": "4ad7cf23171af920ec16e19897f3c5e97658d14ca9497afee5337ac19469b179",
       "securityDependencies": []
     },
     {
@@ -10972,10 +11030,10 @@
         "POST"
       ],
       "mutation": true,
-      "classification": "public",
-      "classificationBasis": "effective-no-auth-signal",
+      "classification": "authenticated",
+      "classificationBasis": "route-local-auth-signal",
       "controls": {
-        "authentication": false,
+        "authentication": true,
         "objectAcl": false,
         "csrfOrigin": false,
         "schema": false,
@@ -10988,11 +11046,11 @@
         "activeProxyRateLimit": true,
         "activeProxyCookieOrigin": true,
         "activeProxyEnvelopeSize": true,
-        "publicMutationPolicy": "public-design-compute"
+        "publicMutationPolicy": null
       },
       "gaps": [],
       "file": "src/app/api/nexyfab/drawing/assemble/route.ts",
-      "sourceSha256": "4f81124bc3561932fe3fdd1eccd9ead8c400093ccc3e1da359776c52e6a9ef1c",
+      "sourceSha256": "35b8c48d7c5d637d3f7c63e55610cac3b199f08ce487272990b92d0b3a81b6d1",
       "securityDependencies": []
     },
     {
@@ -11060,10 +11118,10 @@
         "POST"
       ],
       "mutation": true,
-      "classification": "public",
-      "classificationBasis": "effective-no-auth-signal",
+      "classification": "authenticated",
+      "classificationBasis": "route-local-auth-signal",
       "controls": {
-        "authentication": false,
+        "authentication": true,
         "objectAcl": false,
         "csrfOrigin": false,
         "schema": false,
@@ -11076,11 +11134,11 @@
         "activeProxyRateLimit": true,
         "activeProxyCookieOrigin": true,
         "activeProxyEnvelopeSize": true,
-        "publicMutationPolicy": "public-design-compute"
+        "publicMutationPolicy": null
       },
       "gaps": [],
       "file": "src/app/api/nexyfab/drawing/compose/route.ts",
-      "sourceSha256": "0024549b51a899557252e01e705978ee33ab9a99fd41f097b27867e2acb39bdd",
+      "sourceSha256": "caa9c9bc19b9341fbe9ecc39970b45237c573a279e9fccb22502d18e789dbcb3",
       "securityDependencies": []
     },
     {
@@ -12219,7 +12277,7 @@
       },
       "gaps": [],
       "file": "src/app/api/nexyfab/erp/export/route.ts",
-      "sourceSha256": "9eac5eb7cb3dbca43774db68021f9d2ef2d5f42a8c8c582e863e8aa43f783193",
+      "sourceSha256": "fcc5bd536aa6cfee8fe425c9b4411b0f285ef0a5ce562f86d5130831db280834",
       "securityDependencies": []
     },
     {
@@ -12395,7 +12453,7 @@
       },
       "gaps": [],
       "file": "src/app/api/nexyfab/export/audit/route.ts",
-      "sourceSha256": "4cfd1f92b69e11f602c6762e5cc20abdf5d791924d6d5a3bea728df855b3de91",
+      "sourceSha256": "93ebce3492a8b7d3e4d720dc4b744ef47fa2ea0b2e80b4b87bccb862d1ab9bb6",
       "securityDependencies": []
     },
     {
@@ -12424,7 +12482,7 @@
       },
       "gaps": [],
       "file": "src/app/api/nexyfab/export/contracts/route.ts",
-      "sourceSha256": "90babb9cc57643c02144430fc4bab799cbac7d390633bd92b841028756e906e4",
+      "sourceSha256": "aff1c319887ac1c4b141bfc6bc64912318874fb7def1a33b8535450a53e4c78a",
       "securityDependencies": []
     },
     {
@@ -12453,7 +12511,7 @@
       },
       "gaps": [],
       "file": "src/app/api/nexyfab/export/quotes/route.ts",
-      "sourceSha256": "fb68ca2b63c75986295532abfe7b49c4370546ae416c7e0b9e66080d00dcfe12",
+      "sourceSha256": "66afaa185e0ccc04b799791729fbd1fae75b55b9bae42e511b67b069b70ebe1f",
       "securityDependencies": []
     },
     {
@@ -14487,7 +14545,7 @@
       },
       "gaps": [],
       "file": "src/app/api/nexyfab/projects/[id]/precision-cad-agent/call/route.ts",
-      "sourceSha256": "bb4d5d6c87d9bcb41c50f37f71cfe157595ec7e401d13ccdbdf9e24ec206e2dc",
+      "sourceSha256": "654f4bd8433b14bdac820c5cbf6a39c2829f5f8417c5352d94b92586b6943774",
       "securityDependencies": []
     },
     {
@@ -14880,8 +14938,13 @@
       },
       "gaps": [],
       "file": "src/app/api/nexyfab/quote-accuracy/route.ts",
-      "sourceSha256": "59a512102b76ec2f16aaeb3ce7ce67458e56927ee3a70346e16f0ba9b43e0d89",
-      "securityDependencies": []
+      "sourceSha256": "04d2b0efd27016a74abf532641ac4cbbc682b39397e3e51e7f6860e33f583650",
+      "securityDependencies": [
+        {
+          "file": "src/app/api/nexyfab/quote-accuracy/quoteAccuracyCore.ts",
+          "sha256": "b7f358bd176a22457a372a8ed21acca60e55ef09dbbb3a1b5347ecc4eaa773db"
+        }
+      ]
     },
     {
       "route": "/api/nexyfab/quote-negotiator",
@@ -15703,7 +15766,7 @@
       },
       "gaps": [],
       "file": "src/app/api/nexyfab/shape-generator/dfm-pdf/route.ts",
-      "sourceSha256": "2b6ceaf9c57461cdd555f5c290012c188a389021be3177239a6653ff34ce2579",
+      "sourceSha256": "ad75b402afd8d0bd5d723377723858d321aedddeb83e3b04467ba3997ad48367",
       "securityDependencies": []
     },
     {
