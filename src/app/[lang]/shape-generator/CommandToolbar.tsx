@@ -1899,7 +1899,7 @@ export default function CommandToolbar(props: CommandToolbarProps) {
         <Separator />
         <ToolButton tool={{ id: 'expStl', icon: '💾', label: tt.exportSTL, action: onExportSTL, disabled: !resultMesh }} openSub={null} onOpenSub={() => {}} onClose={() => {}} />
         <div style={{ flex: 1 }} />
-        <button style={S.smallBtn(showChat)} onClick={onToggleChat}>🤖 AI Chat</button>
+        <button style={S.smallBtn(showChat)} onClick={onToggleChat}>🤖 {loc(seg, { ko: 'AI 채팅', en: 'AI Chat', ja: 'AI チャット', zh: 'AI 聊天', es: 'Chat de IA', ar: 'دردشة الذكاء الاصطناعي' })}</button>
       </div>
     );
   }
@@ -2335,19 +2335,19 @@ export default function CommandToolbar(props: CommandToolbarProps) {
                 onMouseEnter={e => { if (hasResult) e.currentTarget.style.background = C_DARK.hover; }}
                 onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}>
                 <span style={{ fontSize: 15, width: 18, textAlign: 'center' }}>💾</span>
-                <span>Export STL</span>
+                <span>{loc(seg, { ko: 'STL 내보내기', en: 'Export STL', ja: 'STL をエクスポート', zh: '导出 STL', es: 'Exportar STL', ar: 'تصدير STL' })}</span>
               </button>
               <button style={{ ...S.dropItem, opacity: hasResult ? 1 : 0.4 }} disabled={!hasResult} onClick={() => { if (hasResult) { onExportOBJ?.(); closeSub(); } }}
                 onMouseEnter={e => { if (hasResult) e.currentTarget.style.background = C_DARK.hover; }}
                 onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}>
                 <span style={{ fontSize: 15, width: 18, textAlign: 'center' }}>💾</span>
-                <span>Export OBJ</span>
+                <span>{loc(seg, { ko: 'OBJ 내보내기', en: 'Export OBJ', ja: 'OBJ をエクスポート', zh: '导出 OBJ', es: 'Exportar OBJ', ar: 'تصدير OBJ' })}</span>
               </button>
               <button style={{ ...S.dropItem, opacity: hasResult ? 1 : 0.4 }} disabled={!hasResult} onClick={() => { if (hasResult) { onExportPLY?.(); closeSub(); } }}
                 onMouseEnter={e => { if (hasResult) e.currentTarget.style.background = C_DARK.hover; }}
                 onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}>
                 <span style={{ fontSize: 15, width: 18, textAlign: 'center' }}>💾</span>
-                <span>Export PLY</span>
+                <span>{loc(seg, { ko: 'PLY 내보내기', en: 'Export PLY', ja: 'PLY をエクスポート', zh: '导出 PLY', es: 'Exportar PLY', ar: 'تصدير PLY' })}</span>
               </button>
               <button style={{ ...S.dropItem, opacity: hasResult ? 1 : 0.4 }} disabled={!hasResult} onClick={() => { if (hasResult) { onExport3MF?.(); closeSub(); } }}
                 onMouseEnter={e => { if (hasResult) e.currentTarget.style.background = C_DARK.hover; }}

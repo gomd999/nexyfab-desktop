@@ -10191,8 +10191,8 @@ export function ShapeGeneratorInner(
               {editMode === 'none' && effectiveResult && (
                 <>
                   <div style={{ width: 1, height: 14, background: 'var(--nx-border)', margin: '0 2px' }} />
-                  <span style={{ color: theme.textMuted, fontSize: 9, fontWeight: 700 }}>Transform:</span>
-                  {([['translate', 'T', 'Translate (T)'], ['rotate', 'R', 'Rotate (R)'], ['scale', 'G', 'Scale (G)']] as const).map(([mode, key, title]) => (
+                  <span style={{ color: theme.textMuted, fontSize: 9, fontWeight: 700 }}>{loc(lang, { ko: '변환', en: 'Transform', ja: '変形', zh: '变换', es: 'Transformar', ar: 'تحويل' })}:</span>
+                  {([['translate', 'T', loc(lang, { ko: '이동 (T)', en: 'Translate (T)', ja: '移動 (T)', zh: '移动 (T)', es: 'Trasladar (T)', ar: 'نقل (T)' })], ['rotate', 'R', loc(lang, { ko: '회전 (R)', en: 'Rotate (R)', ja: '回転 (R)', zh: '旋转 (R)', es: 'Rotar (R)', ar: 'تدوير (R)' })], ['scale', 'G', loc(lang, { ko: '크기 조절 (G)', en: 'Scale (G)', ja: '拡大縮小 (G)', zh: '缩放 (G)', es: 'Escalar (G)', ar: 'تحجيم (G)' })]] as const).map(([mode, key, title]) => (
                     <button
                       key={mode}
                       onClick={() => setTransformMode(transformMode === mode ? 'off' : mode)}
@@ -10799,7 +10799,7 @@ export function ShapeGeneratorInner(
                       padding: '3px 12px', borderRadius: 6,
                       fontSize: 10, fontWeight: 700, fontFamily: 'monospace',
                       display: 'flex', gap: 8, alignItems: 'center', color: 'var(--nx-border-strong)' }}>
-                      <span style={{ color: 'var(--nx-text-3)' }}>Center:</span>
+                      <span style={{ color: 'var(--nx-text-3)' }}>{loc(lang, { ko: '중심', en: 'Center', ja: '中心', zh: '中心', es: 'Centro', ar: 'المركز' })}:</span>
                       <span style={{ color: 'var(--nx-error)' }}>X</span><span style={{ color: 'var(--nx-text)' }}>{(res.bbox.w / 2).toFixed(1)}</span>
                       <span style={{ color: 'var(--nx-ok)' }}>Y</span><span style={{ color: 'var(--nx-text)' }}>{(res.bbox.h / 2).toFixed(1)}</span>
                       <span style={{ color: 'var(--nx-accent)' }}>Z</span><span style={{ color: 'var(--nx-text)' }}>{(res.bbox.d / 2).toFixed(1)}</span>
@@ -10870,10 +10870,9 @@ export function ShapeGeneratorInner(
                     flex: 1, minHeight: 0, background: 'var(--nx-bg)', color: 'var(--nx-text)',
                     flexDirection: 'column', gap: 12, padding: 24, textAlign: 'center' }}>
                     <div style={{ fontSize: 48 }}>⚠️</div>
-                    <h3 style={{ margin: 0, fontSize: 18, fontWeight: 700 }}>WebGL Not Supported</h3>
+                    <h3 style={{ margin: 0, fontSize: 18, fontWeight: 700 }}>{loc(lang, { ko: 'WebGL을 지원하지 않는 브라우저입니다', en: 'WebGL Not Supported', ja: 'WebGL はサポートされていません', zh: '不支持 WebGL', es: 'WebGL no es compatible', ar: 'WebGL غير مدعوم' })}</h3>
                     <p style={{ margin: 0, fontSize: 14, color: 'var(--nx-text-2)', maxWidth: 400 }}>
-                      Your browser does not support WebGL, which is required for the 3D modeler.
-                      Please try Chrome, Firefox, or Edge with hardware acceleration enabled.
+                      {loc(lang, { ko: '3D 모델러에 필요한 WebGL을 이 브라우저에서 지원하지 않습니다. 하드웨어 가속을 켠 Chrome, Firefox 또는 Edge를 사용해 주세요.', en: 'Your browser does not support WebGL, which is required for the 3D modeler. Try Chrome, Firefox, or Edge with hardware acceleration enabled.', ja: 'このブラウザーは 3D モデラーに必要な WebGL をサポートしていません。ハードウェアアクセラレーションを有効にした Chrome、Firefox、または Edge をお試しください。', zh: '您的浏览器不支持 3D 建模器所需的 WebGL。请启用硬件加速后使用 Chrome、Firefox 或 Edge。', es: 'Su navegador no admite WebGL, necesario para el modelador 3D. Pruebe Chrome, Firefox o Edge con la aceleración por hardware activada.', ar: 'لا يدعم متصفحك WebGL المطلوب للنمذجة ثلاثية الأبعاد. جرّب Chrome أو Firefox أو Edge مع تفعيل تسريع الأجهزة.' })}
                     </p>
                   </div>
                 ) : multiView ? (
@@ -11116,7 +11115,7 @@ export function ShapeGeneratorInner(
                   ) : null}
                 </div>
                 <div style={{ padding: '8px 12px', background: 'var(--nx-panel-2)', borderTop: '1px solid #d0d7de', display: 'flex', justifyContent: 'flex-end' }}>
-                  <button onClick={() => finishEditing?.()} style={{ padding: '6px 16px', borderRadius: 6, border: '1px solid var(--nx-border)', background: 'var(--nx-accent)', color: '#fff', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>OK</button>
+                  <button onClick={() => finishEditing?.()} style={{ padding: '6px 16px', borderRadius: 6, border: '1px solid var(--nx-border)', background: 'var(--nx-accent)', color: '#fff', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>{loc(lang, { ko: '확인', en: 'OK', ja: 'OK', zh: '确定', es: 'Aceptar', ar: 'موافق' })}</button>
                 </div>
               </div>
             );

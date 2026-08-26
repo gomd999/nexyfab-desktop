@@ -8,6 +8,7 @@ import { COTS_PARTS, type COTSPart } from './cots/cotsData';
 import { getShapeCategory, getCategoryLabel, type ShapeCategory } from './shapes/categories';
 import { getShapeUsageHint } from './shapes/usageHints';
 import { createCommercialLocalizer } from '@/lib/i18n/commercialLocalizer';
+import { loc } from '@/lib/i18n/loc';
 
 // ─── i18n dict (6 languages) ───────────────────────────────────────────────
 const dict = {
@@ -555,7 +556,7 @@ export default function GalleryView({ lang, t, onEnterWorkspace, onChatDesign, o
         <h1 style={{ margin: 0, fontSize: 36, fontWeight: 900, color: 'var(--nx-text)', letterSpacing: '-0.03em' }}>
           <span style={{ background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>NexyFab</span>
           {' '}
-          <span style={{ color: 'var(--nx-text)' }}>Shape Generator</span>
+          <span style={{ color: 'var(--nx-text)' }}>{loc(lang, { ko: '형상 생성기', en: 'Shape Generator', ja: '形状ジェネレーター', zh: '形状生成器', es: 'Generador de formas', ar: 'مولّد الأشكال' })}</span>
         </h1>
         <p style={{ color: 'var(--nx-text-2)', fontSize: 15, marginTop: 8, fontWeight: 500 }}>
           {tt.subtitle}
@@ -1025,15 +1026,15 @@ export default function GalleryView({ lang, t, onEnterWorkspace, onChatDesign, o
                 {liveResult && (
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginTop: 8, padding: 10, background: 'rgba(102,126,234,0.08)', borderRadius: 10 }}>
                     <div style={{ fontSize: 11 }}>
-                      <span style={{ color: 'var(--nx-text-3)' }}>Volume</span>
+                      <span style={{ color: 'var(--nx-text-3)' }}>{loc(lang, { ko: '부피', en: 'Volume', ja: '体積', zh: '体积', es: 'Volumen', ar: 'الحجم' })}</span>
                       <div style={{ fontWeight: 700, color: 'var(--nx-text)' }}>{liveResult.volume_cm3.toFixed(2)} cm³</div>
                     </div>
                     <div style={{ fontSize: 11 }}>
-                      <span style={{ color: 'var(--nx-text-3)' }}>Surface</span>
+                      <span style={{ color: 'var(--nx-text-3)' }}>{loc(lang, { ko: '표면적', en: 'Surface', ja: '表面積', zh: '表面积', es: 'Superficie', ar: 'مساحة السطح' })}</span>
                       <div style={{ fontWeight: 700, color: 'var(--nx-text)' }}>{liveResult.surface_area_cm2.toFixed(2)} cm²</div>
                     </div>
                     <div style={{ fontSize: 11, gridColumn: 'span 2' }}>
-                      <span style={{ color: 'var(--nx-text-3)' }}>Size</span>
+                      <span style={{ color: 'var(--nx-text-3)' }}>{loc(lang, { ko: '크기', en: 'Size', ja: 'サイズ', zh: '尺寸', es: 'Tamaño', ar: 'الحجم الكلي' })}</span>
                       <div style={{ fontWeight: 700, color: 'var(--nx-accent-2)' }}>{liveResult.bbox.w.toFixed(1)} × {liveResult.bbox.h.toFixed(1)} × {liveResult.bbox.d.toFixed(1)} mm</div>
                     </div>
                   </div>
