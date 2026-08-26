@@ -29,7 +29,11 @@ jobs:
       DATABASE_URL: postgres://postgres:postgres@127.0.0.1:5432/nexyfab_ci
       SOURCE_DATABASE_URL: postgres://postgres:postgres@127.0.0.1:5432/nexyfab_ci
       RESTORE_DATABASE_URL: postgres://postgres:postgres@127.0.0.1:5432/nexyfab_restore_drill
-      RESTORE_DRILL_ENVIRONMENT: staging
+      # This job creates both databases and the backup inside the disposable
+      # CI service. It is useful restore coverage, but it is not release-bound
+      # production/staging evidence.
+      RESTORE_DRILL_ENVIRONMENT: local-fixture
+      RESTORE_EVIDENCE_CLASS: local-fixture
       RESTORE_DRILL_CONFIRM: NEXYFAB_ISOLATED_RESTORE_ONLY
       RESTORE_RELEASE_BUILD_ID: ci-${{ github.run_id }}-${{ github.run_attempt }}
       RESTORE_RELEASE_DEPLOYMENT_ID: github-actions-${{ github.run_id }}
