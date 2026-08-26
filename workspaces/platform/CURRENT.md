@@ -1,5 +1,27 @@
 # Platform current session
 
+## 2026-08-27 main-chat result sharing tray
+
+- Status: `THREE_ARTIFACT_ROWS / GA_3D_DEFAULT / FILE_SHARE_PRIVATE /
+  SIX_LOCALE_PASS`.
+- The main chat now keeps a compact result-sharing tray directly below the
+  composer. It exposes exactly three rows: the default self-contained
+  `GA_3D.html`, `model.step`, and either the assembly design package or the
+  editable `model.scad` source for a single-part result.
+- The tray consumes the existing render-html, export-step, and drawing-package
+  production routes. It does not invent a placeholder result or upload a
+  design to obtain a public URL.
+- Open, native file share, and download actions create the requested artifact
+  on demand and reuse it during the current result. Unsupported native sharing
+  falls back visibly to a local download; popup, generation, and unavailable
+  states are explicit.
+- Korean, English, Japanese, Chinese, Spanish, and Arabic copy is complete.
+  Focused regression passes 2 files / 29 tests. Platform ownership, full
+  ESLint (217.3s), and TypeScript (28.0s) pass with zero violations.
+- Source commit: `3919af9d3b38f7770242d953d7604cd504aa4b30`.
+- Handoff:
+  `HANDOFFS/20260826T151205Z-main-chat-result-sharing-tray.md`.
+
 ## 2026-08-26 current-head automated i18n evidence
 
 - Status: `CATALOG_2711_OF_2711 / OFFICIAL_40_OF_40 /
