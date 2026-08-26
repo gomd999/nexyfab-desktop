@@ -34,10 +34,10 @@ test('V10 chat-first workspace links stable selection across real 2D and Three c
   await expect(page.getByTestId('ai-design-v10-workspace')).toBeVisible();
   await expect(page.getByTestId('concept-2d-view')).toBeVisible();
   await expect(page.getByTestId('concept-3d-view')).toBeVisible();
-  await expect(page.getByText('Exact CAD: Precision CAD · Release: false')).toBeVisible();
+  await expect(page.getByText('Exact CAD: Precision CAD · Release: no')).toBeVisible();
   await page.getByRole('button', { name: 'Sensor bracket' }).click();
   await expect(page.getByText('Linked selection: Sensor bracket')).toBeVisible();
-  await expect(page.getByText('NEEDS_INPUT · Precision mapping required')).toBeVisible();
+  await expect(page.getByText('Needs input · Precision mapping required')).toBeVisible();
 
   const touchTargets = await page.getByTestId('ai-design-v10-workspace').locator('button:visible').evaluateAll(items => items.map(item => item.getBoundingClientRect().height));
   expect(Math.min(...touchTargets)).toBeGreaterThanOrEqual(44);
