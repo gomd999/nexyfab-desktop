@@ -1,5 +1,24 @@
 # Precision CAD current session
 
+## 2026-08-27 GA_3D exact-byte artifact receipt
+
+- Status: `GA_REVISION_BOUND / EXACT_BYTES_SHA256 / MANIFEST_BOUND /
+  REVIEW_REQUIRED_FAIL_CLOSED`.
+- The render-html route now binds each generated `GA_3D.html` byte sequence to
+  its canonical intent or assembly revision with the existing governed design
+  artifact manifest.
+- The API returns revision ID/hash, exact artifact SHA-256, manifest SHA-256,
+  release status, and manufacturing permission. A successful browser render
+  remains `review_required` with `manufacturingAllowed: false`.
+- Exact UTF-8 byte length replaces JavaScript character count in the response.
+  Focused artifact-binding regression passes 2 files / 5 tests; Precision CAD
+  TypeScript, architecture, and ownership checks pass with zero violations.
+- Source commit: `384ee856a6c899a8b6cbeb09b7d009a682a72bfc`.
+- Companion Platform consumer commit:
+  `19986c727bdf3b2c1be1af7179ffac1d68cd6e2c`.
+- Handoff:
+  `HANDOFFS/20260826T155200Z-ga-3d-exact-byte-artifact-receipt.md`.
+
 ## 2026-08-26 DFM PDF locale consumer binding
 
 - Status: `EXPLICIT_PDF_LOCALE_BOUND / SIX_LOCALE_ERROR_COPY_PASS /
