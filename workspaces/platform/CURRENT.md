@@ -1,5 +1,32 @@
 # Platform current session
 
+## 2026-08-26 AI surface and DFM PDF locale consumption
+
+- Status: `AI_V10_LOCALE_CONSUMER_PASS / MODEL_NOTES_SIX_LOCALES /
+  DFM_PDF_CONTRACT_BOUNDED / PDF_GLYPH_ARTIFACT_REVIEW_PENDING`.
+- Platform-owned AI Design V10 launcher and workspace surfaces now consume the
+  six-language AI scope contract for metadata, failures, accessibility,
+  linked-canvas state, gauge controls, validation labels, and authority
+  boundaries. The shared model selector displays localized descriptions for
+  all six governed OpenAI/Qwen/DeepSeek choices.
+- The DFM PDF endpoint now resolves an explicit request locale with browser
+  locale fallback and localizes report headings, dates, numbers, geometry
+  facts, feasibility, difficulty, severity, empty state, free watermark, and
+  footer. Responses expose `Content-Language` and a diagnostic PDF locale.
+- PDF input now fails closed for empty/oversized result sets, non-finite or
+  out-of-range scores, invalid issue fields, invalid timestamps, and invalid
+  geometry bounds. Error responses use stable machine codes.
+- Focused AI consumer tests pass 5 files / 34 tests; the staged regression hook
+  passes 7 files / 66 tests. DFM PDF contract/i18n passes 2 files / 15 tests.
+  The official Platform workspace check passes full lint, TypeScript, and zero
+  ownership violations for 2 commits / 11 changed files.
+- Authenticated PDF artifact generation and glyph inspection for every
+  language were not run. The existing embedded Nanum font is not yet accepted
+  as evidence for complete Japanese, Chinese, and Arabic glyph coverage, so
+  the signed commercial i18n release receipt remains HOLD.
+- Handoff:
+  `HANDOFFS/20260826T111347Z-ai-surface-dfm-pdf-i18n.md`.
+
 ## 2026-08-26 no-payment commercial i18n closure
 
 - Status: `SIX_LOCALE_UI_EMAIL_EXPORT_PASS / I18N_2711_CONTRACT_BOUND /

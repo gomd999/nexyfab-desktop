@@ -52,7 +52,16 @@ describe('AiModelSelector', () => {
 
     expect(screen.getByRole('listbox', { name: 'AI 모델 선택' })).toBeInTheDocument();
     expect(screen.getByText('결제 없는 운영 베타: 모든 모델 선택 가능')).toBeInTheDocument();
+    expect(screen.getByText('무료 · 빠른 설계 · 이미지 자동 분석')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: '닫기' })).toBeInTheDocument();
+  });
+
+  it('localizes model descriptions for non-Korean product routes', () => {
+    render(<AiModelSelector modelId="gpt-luna" onChange={vi.fn()} plan="free" lang="es" />);
+    fireEvent.click(screen.getByRole('button', { name: /gpt-5\.6 luna/i }));
+
+    expect(screen.getByText('Gratis · diseño rápido · análisis automático de imágenes')).toBeInTheDocument();
+    expect(screen.queryByText(/빠른 설계/)).not.toBeInTheDocument();
   });
 
   it('renders the Arabic selector copy without forcing physical left/right positioning', () => {

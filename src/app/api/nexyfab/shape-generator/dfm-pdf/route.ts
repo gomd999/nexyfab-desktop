@@ -17,6 +17,16 @@ import { checkPlan } from '@/lib/plan-guard';
 import fs from 'fs';
 import path from 'path';
 import { boundedJsonError, readBoundedJson } from '@/lib/boundedJsonBody';
+import { validateDfmPdfBody } from './dfmPdfContract';
+import {
+  dfmPdfSeverityLabel,
+  formatDfmPdfDate,
+  formatDfmPdfDifficulty,
+  formatDfmPdfFacts,
+  formatDfmPdfNumber,
+  getDfmPdfCopy,
+  resolveDfmPdfLocale,
+} from './dfmPdfI18n';
 
 const MAX_BODY_BYTES = 2 * 1024 * 1024;
 
@@ -35,47 +45,6 @@ function getKoreanFontBase64(): string | null {
   }
 }
 
-interface DFMIssueIn {
-  process: string;
-  type: string;
-  severity: 'error' | 'warning' | 'info';
-  description: string;
-  suggestion: string;
-}
-
-interface DFMResultIn {
-  process: string;
-  score: number;
-  feasible: boolean;
-  estimatedDifficulty: string;
-  issues: DFMIssueIn[];
-}
-
-interface PdfRequestBody {
-  projectName?: string;
-  results: DFMResultIn[];
-  geometry?: {
-    volume_cm3?: number;
-    surface_area_cm2?: number;
-    bbox?: { w: number; h: number; d: number };
-    triangleCount?: number;
-  };
-  generatedAt?: string;
-}
-
-function validateBody(body: unknown): body is PdfRequestBody {
-  if (!body || typeof body !== 'object') return false;
-  const b = body as Record<string, unknown>;
-  if (!Array.isArray(b.results)) return false;
-  for (const r of b.results) {
-    if (!r || typeof r !== 'object') return false;
-    const rr = r as Record<string, unknown>;
-    if (typeof rr.process !== 'string' || typeof rr.score !== 'number') return false;
-    if (!Array.isArray(rr.issues)) return false;
-  }
-  return true;
-}
-
 export async function POST(req: NextRequest) {
   const auth = await getAuthUser(req);
   if (!auth) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -88,15 +57,19 @@ export async function POST(req: NextRequest) {
   try {
     body = await readBoundedJson<unknown>(req, MAX_BODY_BYTES);
   } catch (error) {
-    if (boundedJsonError(error)?.code === 'PAYLOAD_TOO_LARGE') return NextResponse.json({ error: 'request too large' }, { status: 413 });
-    return NextResponse.json({ error: 'invalid JSON' }, { status: 400 });
+    if (boundedJsonError(error)?.code === 'PAYLOAD_TOO_LARGE') return NextResponse.json({ error: 'PAYLOAD_TOO_LARGE' }, { status: 413 });
+    return NextResponse.json({ error: 'INVALID_JSON' }, { status: 400 });
   }
-  if (!validateBody(body)) {
-    return NextResponse.json({ error: 'invalid body shape' }, { status: 400 });
+  if (!validateDfmPdfBody(body)) {
+    return NextResponse.json({ error: 'INVALID_DFM_PDF_REQUEST' }, { status: 400 });
   }
+
+  const locale = resolveDfmPdfLocale(body.lang, req.headers.get('accept-language'));
+  const copy = getDfmPdfCopy(locale);
 
   const { jsPDF } = await import('jspdf');
   const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+  doc.setProperties({ title: `${body.projectName ?? copy.untitledProject} · ${copy.reportTitle}`, subject: copy.reportTitle, creator: 'NexyFab' });
 
   const koreanFont = getKoreanFontBase64();
   if (koreanFont) {
@@ -122,11 +95,11 @@ export async function POST(req: NextRequest) {
   doc.setFontSize(10);
   setFont();
   doc.setTextColor(148, 163, 184);
-  doc.text('DFM Analysis Report / 제조 가능성 보고서', margin, 25);
+  doc.text(copy.reportTitle, margin, 25);
   doc.setTextColor(255, 255, 255);
   doc.setFontSize(8);
-  doc.text(new Date(body.generatedAt ?? Date.now()).toLocaleString('ko-KR'), pageW - margin, 16, { align: 'right' });
-  doc.text(`User: ${auth.userId.slice(0, 8)}…`, pageW - margin, 22, { align: 'right' });
+  doc.text(formatDfmPdfDate(body.generatedAt, locale), pageW - margin, 16, { align: 'right' });
+  doc.text(`${copy.user}: ${auth.userId.slice(0, 8)}…`, pageW - margin, 22, { align: 'right' });
 
   let y = 48;
 
@@ -134,20 +107,14 @@ export async function POST(req: NextRequest) {
   doc.setTextColor(15, 23, 42);
   doc.setFontSize(13);
   setFont('bold');
-  doc.text(body.projectName ?? 'Untitled Project', margin, y);
+  doc.text(body.projectName ?? copy.untitledProject, margin, y);
   y += 8;
 
   if (body.geometry) {
     doc.setFontSize(9);
     doc.setTextColor(100, 116, 139);
     setFont();
-    const g = body.geometry;
-    const facts = [
-      g.bbox && `BBox: ${g.bbox.w.toFixed(1)} × ${g.bbox.h.toFixed(1)} × ${g.bbox.d.toFixed(1)} mm`,
-      typeof g.volume_cm3 === 'number' && `Volume: ${g.volume_cm3.toFixed(2)} cm³`,
-      typeof g.surface_area_cm2 === 'number' && `Surface: ${g.surface_area_cm2.toFixed(2)} cm²`,
-      typeof g.triangleCount === 'number' && `${g.triangleCount.toLocaleString()} triangles`,
-    ].filter(Boolean) as string[];
+    const facts = formatDfmPdfFacts(body.geometry, locale);
     doc.text(facts.join('  ·  '), margin, y);
     y += 8;
   }
@@ -177,12 +144,12 @@ export async function POST(req: NextRequest) {
     doc.roundedRect(margin + 60, y - 5, 28, 7, 1.5, 1.5, 'F');
     doc.setTextColor(255, 255, 255);
     doc.setFontSize(9);
-    doc.text(`${result.score.toFixed(0)} / 100`, margin + 74, y, { align: 'center' });
+    doc.text(`${formatDfmPdfNumber(result.score, locale, 0)} / 100`, margin + 74, y, { align: 'center' });
 
     doc.setFontSize(9);
     setFont();
     doc.setTextColor(100, 116, 139);
-    doc.text(`${result.feasible ? '✓ Feasible' : '✕ Not feasible'} · ${result.estimatedDifficulty}`, margin + 95, y);
+    doc.text(`${result.feasible ? `✓ ${copy.feasible}` : `✕ ${copy.notFeasible}`} · ${formatDfmPdfDifficulty(result.estimatedDifficulty, locale)}`, margin + 95, y);
 
     y += 8;
 
@@ -190,7 +157,7 @@ export async function POST(req: NextRequest) {
       doc.setFontSize(9);
       setFont();
       doc.setTextColor(34, 197, 94);
-      doc.text('  No issues detected.', margin, y);
+      doc.text(`  ${copy.noIssues}`, margin, y);
       y += 8;
     } else {
       for (const issue of result.issues) {
@@ -207,7 +174,7 @@ export async function POST(req: NextRequest) {
         doc.setFontSize(9);
         setFont('bold');
         doc.setTextColor(15, 23, 42);
-        doc.text(`[${issue.severity}] ${issue.type}`, margin + 6, y);
+        doc.text(`[${dfmPdfSeverityLabel(issue.severity, locale)}] ${issue.type}`, margin + 6, y);
         y += 5;
 
         setFont();
@@ -230,7 +197,7 @@ export async function POST(req: NextRequest) {
     doc.setTextColor(200, 200, 200);
     doc.setFontSize(40);
     setFont('bold');
-    doc.text('FREE PLAN', pageW / 2, 150, {
+    doc.text(copy.freePlan.toUpperCase(), pageW / 2, 150, {
       align: 'center',
       angle: 30,
     });
@@ -243,7 +210,7 @@ export async function POST(req: NextRequest) {
     doc.setFontSize(7);
     setFont();
     doc.setTextColor(148, 163, 184);
-    doc.text(`Page ${i} / ${pageCount}  ·  Generated by NexyFab`, pageW / 2, 290, { align: 'center' });
+    doc.text(`${copy.page} ${i} / ${pageCount}  ·  ${copy.generatedBy}`, pageW / 2, 290, { align: 'center' });
   }
 
   const pdfBytes = doc.output('arraybuffer');
@@ -253,6 +220,8 @@ export async function POST(req: NextRequest) {
       'Content-Type': 'application/pdf',
       'Content-Disposition': `attachment; filename="dfm-${Date.now()}.pdf"`,
       'Cache-Control': 'no-store',
+      'Content-Language': locale,
+      'X-NexyFab-PDF-Locale': locale,
     },
   });
 }

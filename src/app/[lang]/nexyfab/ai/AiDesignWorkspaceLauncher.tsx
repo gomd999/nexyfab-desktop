@@ -25,8 +25,8 @@ export default function AiDesignWorkspaceLauncher({ lang, projectId }: { lang: s
       const payload = await response.json().catch(() => ({})) as { error?: string };
       if (!response.ok) throw new Error(payload.error ?? `HTTP_${response.status}`);
       router.push(`/${encodeURIComponent(lang)}/nexyfab/ai?projectId=${encodeURIComponent(projectId)}&sessionId=${encodeURIComponent(request.sessionId)}`);
-    } catch (cause) {
-      setError(cause instanceof Error ? cause.message : 'AI_DESIGN_WORKSPACE_CREATE_FAILED');
+    } catch {
+      setError(text.createFailed);
       setBusy(false);
     }
   }
@@ -38,7 +38,11 @@ export default function AiDesignWorkspaceLauncher({ lang, projectId }: { lang: s
       <p>{text.description}</p>
       <label htmlFor="ai-design-request">{text.requestLabel}</label>
       <textarea id="ai-design-request" value={prompt} maxLength={4_000} rows={7} onChange={event => setPrompt(event.target.value)} placeholder={text.requestPlaceholder} />
-      <div className={styles.launcherMeta}><span>Project: {projectId}</span><span>Rights: user_owned</span><span>Exact CAD: NOT_RUN</span></div>
+      <div className={styles.launcherMeta}>
+        <span>{text.project}: {projectId}</span>
+        <span>{text.rights}: {text.userOwned}</span>
+        <span>{text.exactCad}: {text.notRun}</span>
+      </div>
       {error && <p className={styles.notice} role="alert">{error}</p>}
       <button type="button" className={styles.launchButton} disabled={busy || !prompt.trim()} onClick={start}>{busy ? text.creatingSession : text.startDesign}</button>
     </div>
