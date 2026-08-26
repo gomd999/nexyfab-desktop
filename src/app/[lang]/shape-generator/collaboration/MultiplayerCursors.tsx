@@ -5,11 +5,14 @@ import { useFrame } from '@react-three/fiber';
 import { useMultiplayer } from './MultiplayerProvider';
 import * as THREE from 'three';
 import { Html } from '@react-three/drei';
+import { useLang } from '../hooks/useLang';
+import { loc } from '@/lib/i18n/loc';
 
 /**
  * Renders the 3D cursors of other connected engineers in the shared CAD workspace.
  */
 export default function MultiplayerCursors() {
+  const lang = useLang();
   const { cursors, myId } = useMultiplayer();
   
   return (
@@ -24,6 +27,7 @@ export default function MultiplayerCursors() {
             color={cursor.color}
             name={cursor.name}
             state={cursor.state}
+            lang={lang}
           />
         );
       })}
@@ -31,7 +35,7 @@ export default function MultiplayerCursors() {
   );
 }
 
-function CursorMesh({ position, color, name, state }: { position: THREE.Vector3, color: string, name: string, state: string }) {
+function CursorMesh({ position, color, name, state, lang }: { position: THREE.Vector3, color: string, name: string, state: string, lang: string }) {
   const groupRef = useRef<THREE.Group>(null);
   const targetPos = useRef(new THREE.Vector3().copy(position));
 
@@ -66,8 +70,8 @@ function CursorMesh({ position, color, name, state }: { position: THREE.Vector3,
           gap: '6px'
         }}>
           {name}
-          {state === 'sketching' && <span style={{ fontSize: '10px', opacity: 0.8 }}>(Sketching ✏️)</span>}
-          {state === 'editing_feature' && <span style={{ fontSize: '10px', opacity: 0.8 }}>(Editing 🔧)</span>}
+          {state === 'sketching' && <span style={{ fontSize: '10px', opacity: 0.8 }}>({loc(lang, { ko: '스케치 중', en: 'Sketching', ja: 'スケッチ中', zh: '草绘中', es: 'Dibujando', ar: 'قيد الرسم' })} ✏️)</span>}
+          {state === 'editing_feature' && <span style={{ fontSize: '10px', opacity: 0.8 }}>({loc(lang, { ko: '편집 중', en: 'Editing', ja: '編集中', zh: '编辑中', es: 'Editando', ar: 'قيد التحرير' })} 🔧)</span>}
         </div>
       </Html>
     </group>

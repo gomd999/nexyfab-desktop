@@ -144,7 +144,7 @@ export default function CollabPresence({
 
         {/* Avatar circles */}
         {users.map(u => (
-          <AvatarCircle key={u.id} user={u} now={now} />
+          <AvatarCircle key={u.id} user={u} now={now} lang={lang} />
         ))}
       </div>
 
@@ -190,7 +190,7 @@ export default function CollabPresence({
 
 // ─── AvatarCircle ─────────────────────────────────────────────────────────────
 
-function AvatarCircle({ user, now }: { user: CollabUser; now: number }) {
+function AvatarCircle({ user, now, lang }: { user: CollabUser; now: number; lang: string }) {
   const [hover, setHover] = useState(false);
   const stale = now - user.lastSeen > 10_000;
 
@@ -243,7 +243,7 @@ function AvatarCircle({ user, now }: { user: CollabUser; now: number }) {
           }}
         >
           {user.name}
-          {stale && <span style={{ color: 'var(--nx-text-3)', marginLeft: 4 }}>(away)</span>}
+          {stale && <span style={{ color: 'var(--nx-text-3)', marginLeft: 4 }}>({loc(lang, { ko: '자리 비움', en: 'away', ja: '離席中', zh: '离开', es: 'ausente', ar: 'بعيد' })})</span>}
         </div>
       )}
     </div>
