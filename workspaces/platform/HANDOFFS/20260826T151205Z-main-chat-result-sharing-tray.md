@@ -33,6 +33,8 @@ without file-share support receives an explicit local-download fallback.
 - [x] Single-part result contract: `GA_3D.html`, `model.step`, `model.scad`.
 - [x] Assembly result contract: `GA_3D.html`, `model.step`,
   `design_package_<lang>.zip`.
+- [x] `npm run lint:ci` — full source PASS (217.3s).
+- [x] `npm run typecheck` — project TypeScript PASS (28.0s).
 - [x] `npm run workspace:check -- platform`: ownership and classification
   clean, full ESLint PASS (217.3s), TypeScript PASS (28.0s).
 - [x] Current secret scan: 10,315 candidates / 325,451,578 bytes / zero
