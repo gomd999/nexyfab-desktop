@@ -369,6 +369,7 @@ export function Shell({
       {!viewportOnly && statusBar && <StatusBar {...statusBar} />}
       {!viewportOnly && commandPaletteEnabled && (
         <CommandPaletteShell
+          lang={lang}
           open={paletteOpen}
           onClose={() => setPaletteOpen(false)}
           onActivate={handleCommandPick}

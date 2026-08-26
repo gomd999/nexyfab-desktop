@@ -1709,6 +1709,36 @@ export default function AssemblyBrowserModal({
 }: AssemblyBrowserModalProps): React.ReactElement {
   const t = dict[lang];
   const L = createCommercialLocalizer(lang);
+  const ux = {
+    completionStages: loc(lang, { ko: '정밀 어셈블리 완료 단계', en: 'Precision assembly completion stages', ja: '精密アセンブリの完了段階', zh: '精密装配完成阶段', es: 'Etapas de finalización del ensamblaje de precisión', ar: 'مراحل إكمال التجميع الدقيق' }),
+    selectionEditCommand: loc(lang, { ko: '선택 형상 편집 명령', en: 'Selected geometry edit command', ja: '選択ジオメトリの編集コマンド', zh: '所选几何体编辑命令', es: 'Comando de edición de la geometría seleccionada', ar: 'أمر تحرير الهندسة المحددة' }),
+    preview: loc(lang, { ko: '미리보기', en: 'Preview', ja: 'プレビュー', zh: '预览', es: 'Vista previa', ar: 'معاينة' }),
+    topologyPick: loc(lang, { ko: '3D 위상 선택 모드', en: '3D topology pick mode', ja: '3Dトポロジ選択モード', zh: '3D 拓扑选择模式', es: 'Modo de selección de topología 3D', ar: 'نمط اختيار طوبولوجيا ثلاثية الأبعاد' }),
+    pick: loc(lang, { ko: '선택', en: 'Pick', ja: '選択', zh: '拾取', es: 'Seleccionar', ar: 'اختيار' }),
+    part: loc(lang, { ko: '부품', en: 'Part', ja: '部品', zh: '零件', es: 'Pieza', ar: 'جزء' }),
+    face: loc(lang, { ko: '면', en: 'Face', ja: '面', zh: '面', es: 'Cara', ar: 'وجه' }),
+    edge: loc(lang, { ko: '에지', en: 'Edge', ja: 'エッジ', zh: '边', es: 'Arista', ar: 'حافة' }),
+    point: loc(lang, { ko: '점', en: 'Point', ja: '点', zh: '点', es: 'Punto', ar: 'نقطة' }),
+    end: loc(lang, { ko: '끝', en: 'End', ja: '終了', zh: '结束', es: 'Fin', ar: 'النهاية' }),
+    animationEndFrame: loc(lang, { ko: '애니메이션 종료 프레임', en: 'Animation end frame', ja: 'アニメーション終了フレーム', zh: '动画结束帧', es: 'Fotograma final de la animación', ar: 'إطار نهاية الحركة' }),
+    animationFps: loc(lang, { ko: '애니메이션 FPS', en: 'Animation FPS', ja: 'アニメーション FPS', zh: '动画 FPS', es: 'FPS de animación', ar: 'إطارات الحركة في الثانية' }),
+    animationCommand: loc(lang, { ko: '애니메이션 명령', en: 'Animation command', ja: 'アニメーションコマンド', zh: '动画命令', es: 'Comando de animación', ar: 'أمر الحركة' }),
+    aiTimeline: loc(lang, { ko: 'AI 타임라인', en: 'AI timeline', ja: 'AIタイムライン', zh: 'AI 时间线', es: 'Línea de tiempo con IA', ar: 'الخط الزمني بالذكاء الاصطناعي' }),
+    transformSpace: loc(lang, { ko: '변환 공간', en: 'Transform space', ja: '変換空間', zh: '变换空间', es: 'Espacio de transformación', ar: 'فضاء التحويل' }),
+    world: loc(lang, { ko: '월드', en: 'World', ja: 'ワールド', zh: '世界', es: 'Global', ar: 'عالمي' }),
+    local: loc(lang, { ko: '로컬', en: 'Local', ja: 'ローカル', zh: '局部', es: 'Local', ar: 'محلي' }),
+    transformSnap: loc(lang, { ko: '변환 스냅', en: 'Transform snap', ja: '変換スナップ', zh: '变换捕捉', es: 'Ajuste de transformación', ar: 'التقاط التحويل' }),
+    snap: loc(lang, { ko: '스냅', en: 'Snap', ja: 'スナップ', zh: '捕捉', es: 'Ajuste', ar: 'التقاط' }),
+    mateMovePolicy: loc(lang, { ko: '메이트 이동 정책', en: 'Mate move policy', ja: '合致移動ポリシー', zh: '配合移动策略', es: 'Política de movimiento de relaciones', ar: 'سياسة تحريك العلاقات' }),
+    cancelOnMates: loc(lang, { ko: '메이트가 있으면 취소', en: 'Cancel on mates', ja: '合致がある場合はキャンセル', zh: '存在配合时取消', es: 'Cancelar si hay relaciones', ar: 'إلغاء عند وجود علاقات' }),
+    keepMates: loc(lang, { ko: '메이트 유지', en: 'Keep mates', ja: '合致を維持', zh: '保留配合', es: 'Mantener relaciones', ar: 'الحفاظ على العلاقات' }),
+    suppressMates: loc(lang, { ko: '메이트 억제', en: 'Suppress mates', ja: '合致を抑制', zh: '抑制配合', es: 'Suprimir relaciones', ar: 'تعطيل العلاقات' }),
+    removeMates: loc(lang, { ko: '메이트 제거', en: 'Remove mates', ja: '合致を削除', zh: '移除配合', es: 'Eliminar relaciones', ar: 'إزالة العلاقات' }),
+    bulkValue: loc(lang, { ko: '일괄 값', en: 'Bulk value', ja: '一括値', zh: '批量值', es: 'Valor masivo', ar: 'القيمة المجمعة' }),
+    commercialAllowedDof: loc(lang, { ko: '상용 허용 자유도', en: 'Commercial allowed DoF', ja: '商用許容自由度', zh: '商业允许自由度', es: 'Grados de libertad permitidos para uso comercial', ar: 'درجات الحرية التجارية المسموح بها' }),
+    groupDelta: loc(lang, { ko: '그룹 이동량', en: 'Group delta', ja: 'グループ移動量', zh: '组位移量', es: 'Desplazamiento del grupo', ar: 'إزاحة المجموعة' }),
+    groupRotation: loc(lang, { ko: '그룹 회전', en: 'Group rotation', ja: 'グループ回転', zh: '组旋转', es: 'Rotación del grupo', ar: 'دوران المجموعة' }),
+  };
 
   // Persistence + history (Phase 4 + 4.2): all assembly-state I/O now flows
   // through `useAssemblyHistory`, which internally delegates persistence to
@@ -3811,7 +3841,7 @@ export default function AssemblyBrowserModal({
           <>
             <div
               data-testid="solver-assembly-process-rail"
-              aria-label="Precision assembly completion stages"
+              aria-label={ux.completionStages}
               style={{ display: 'grid', gridTemplateColumns: 'repeat(5, minmax(0, 1fr))', gap: 6 }}
             >
               <div
@@ -4331,7 +4361,7 @@ export default function AssemblyBrowserModal({
                 onClear={onClearSelection}
               />
               <div data-testid="solver-assembly-selection-edit" style={{display:'flex',flexDirection:'column',gap:5,paddingTop:5,borderTop:'1px dashed var(--nx-border)'}}>
-                <div style={{display:'flex',gap:5}}><input aria-label="Selected geometry edit command" value={selectionEditCommand} onChange={event=>{setSelectionEditCommand(event.target.value);setSelectionEditPreview(null);}} placeholder={loc(lang, { ko: '홀 직경 8mm / 면 오프셋 2mm / 메이트 거리 10mm', en: 'Hole diameter 8mm / face offset 2mm / mate distance 10mm', ja: '穴径8mm／面オフセット2mm／メイト距離10mm', zh: '孔径8mm／面偏移2mm／配合距离10mm', es: 'Diámetro de orificio 8 mm / desfase de cara 2 mm / distancia de relación 10 mm', ar: 'قطر الثقب 8 مم / إزاحة السطح 2 مم / مسافة العلاقة 10 مم' })} style={{flex:1}}/><button type="button" disabled={selection.length===0&&selectedMateIds.size===0} onClick={previewSelectionEdit}>Preview</button></div>
+                <div style={{display:'flex',gap:5}}><input aria-label={ux.selectionEditCommand} value={selectionEditCommand} onChange={event=>{setSelectionEditCommand(event.target.value);setSelectionEditPreview(null);}} placeholder={loc(lang, { ko: '홀 직경 8mm / 면 오프셋 2mm / 메이트 거리 10mm', en: 'Hole diameter 8mm / face offset 2mm / mate distance 10mm', ja: '穴径8mm／面オフセット2mm／メイト距離10mm', zh: '孔径8mm／面偏移2mm／配合距离10mm', es: 'Diámetro de orificio 8 mm / desfase de cara 2 mm / distancia de relación 10 mm', ar: 'قطر الثقب 8 مم / إزاحة السطح 2 مم / مسافة العلاقة 10 مم' })} style={{flex:1}}/><button type="button" disabled={selection.length===0&&selectedMateIds.size===0} onClick={previewSelectionEdit}>{ux.preview}</button></div>
                 {selectionEditPreview&&<div data-testid="solver-assembly-selection-edit-preview" style={{padding:6,background:'var(--nx-panel-2)',borderRadius:4,fontSize:11}}><div><strong>Plan:</strong> {selectionEditPreview.summary}</div><div>Operations: {selectionEditPreview.transaction.operations.map(operation=>operation.kind).join(', ')}</div><div>Revision: {selectionEditPreview.transaction.baseRevision}</div>{selectionEditPreview.transaction.selection.topology.some(ref=>ref.referenceQuality!=='persistent')&&<label><input type="checkbox" checked={confirmDerivedSelection} onChange={event=>setConfirmDerivedSelection(event.target.checked)}/> Confirm derived topology reference</label>}<div style={{display:'flex',gap:5,marginTop:4}}><button type="button" onClick={applySelectionEdit}>Apply atomically</button><button type="button" onClick={()=>{setSelectionEditPreview(null);setSelectionEditError(null);}}>Cancel</button></div></div>}
                 {selectionEditPreview?.evidence&&<div data-testid="solver-assembly-selection-edit-evidence" style={{fontSize:11,color:'var(--nx-text-muted)'}}>FeatureTree estimate: ΔV {selectionEditPreview.evidence.deltaVolumeMm3.toFixed(3)} mm³ · changed {selectionEditPreview.evidence.changedFeatureIds.join(', ')||'none'} · topology {selectionEditPreview.evidence.topologyValidation}</div>}
                 {selectionEditUndo&&<button type="button" onClick={undoSelectionEdit}>Undo last selection edit</button>}
@@ -4369,13 +4399,13 @@ export default function AssemblyBrowserModal({
                 lang={lang}
                 onViewportReady={setViewerViewport}
               />
-              <label style={{fontSize:11}}>Pick <select aria-label="3D topology pick mode" value={viewportPickMode} onChange={event=>setViewportPickMode(event.target.value as ViewportPickMode)}><option value="part">Part</option><option value="face">Face</option><option value="edge">Edge</option><option value="point">Point</option></select></label>
-              <AssemblyAnimationTimeline animation={animation} frame={animationFrame} playing={animationPlaying} onFrameChange={setAnimationFrame} onPlayingChange={setAnimationPlaying} verification={animationVerification} timeOfImpact={preciseTimeOfImpact}/>
+              <label style={{fontSize:11}}>{ux.pick} <select aria-label={ux.topologyPick} value={viewportPickMode} onChange={event=>setViewportPickMode(event.target.value as ViewportPickMode)}><option value="part">{ux.part}</option><option value="face">{ux.face}</option><option value="edge">{ux.edge}</option><option value="point">{ux.point}</option></select></label>
+              <AssemblyAnimationTimeline lang={lang} animation={animation} frame={animationFrame} playing={animationPlaying} onFrameChange={setAnimationFrame} onPlayingChange={setAnimationPlaying} verification={animationVerification} timeOfImpact={preciseTimeOfImpact}/>
               <div style={{display:'flex',gap:6,alignItems:'center'}}>
                 <button type="button" data-testid="solver-assembly-add-keyframe" disabled={!selectedPartId} onClick={addSelectedPoseKeyframe}>◆ Keyframe</button>
                 <button type="button" data-testid="solver-assembly-precise-animation-verify" disabled={preciseAnimationBusy||!animation.tracks.length} onClick={()=>void runPreciseAnimationVerification()}>{preciseAnimationBusy?'Verifying…':(L('상용 운동 검증', 'Manufacturing motion'))}</button>
-                <label style={{fontSize:11}}>End <input aria-label="Animation end frame" type="number" min={1} max={100000} value={animation.endFrame} onChange={event=>setAnimation(previous=>({...previous,endFrame:Math.max(previous.startFrame+1,Number(event.target.value)||1)}))} style={{width:70}}/></label>
-                <label style={{fontSize:11}}>FPS <input aria-label="Animation FPS" type="number" min={1} max={240} value={animation.fps} onChange={event=>setAnimation(previous=>({...previous,fps:Math.max(1,Math.min(240,Number(event.target.value)||30))}))} style={{width:55}}/></label>
+                <label style={{fontSize:11}}>{ux.end} <input aria-label={ux.animationEndFrame} type="number" min={1} max={100000} value={animation.endFrame} onChange={event=>setAnimation(previous=>({...previous,endFrame:Math.max(previous.startFrame+1,Number(event.target.value)||1)}))} style={{width:70}}/></label>
+                <label style={{fontSize:11}}>FPS <input aria-label={ux.animationFps} type="number" min={1} max={240} value={animation.fps} onChange={event=>setAnimation(previous=>({...previous,fps:Math.max(1,Math.min(240,Number(event.target.value)||30))}))} style={{width:55}}/></label>
                 <button type="button" onClick={exportAnimation}>Export JSON</button><button type="button" onClick={exportAnimationHtml}>Export HTML</button><button type="button" onClick={()=>void exportAnimationGlb()}>Export GLB</button><button type="button" onClick={()=>animationImportRef.current?.click()}>Import JSON</button><input ref={animationImportRef} type="file" accept="application/json,.json" hidden onChange={event=>{const file=event.target.files?.[0];if(file)void importAnimation(file);event.target.value='';}}/>
                 <button type="button" data-testid="solver-assembly-joint-evidence-import" onClick={()=>jointEvidenceImportRef.current?.click()}>{jointEvidence?(L('조인트 증거 로드됨', 'Joint evidence loaded')):(L('서명 조인트 증거', 'Signed joint evidence'))}</button><input data-testid="solver-assembly-joint-evidence-file" ref={jointEvidenceImportRef} type="file" accept="application/json,.json" hidden onChange={event=>{const file=event.target.files?.[0];if(file)void importJointEvidence(file);event.target.value='';}}/>
               </div>
@@ -4388,7 +4418,7 @@ export default function AssemblyBrowserModal({
                 <button type="button" data-testid="solver-assembly-motion-review-download" onClick={()=>void downloadMotionReviewPacket()}>{L('전문가 검토 패킷', 'Expert review packet')}</button>
               </div>}
               {animationPackageError&&<div role="alert" style={{fontSize:11,color:'#dc2626'}}>{animationPackageError}</div>}
-              <div style={{display:'flex',gap:6}}><input aria-label="Animation command" value={animationCommand} onChange={event=>setAnimationCommand(event.target.value)} placeholder={loc(lang, { ko: '0~100프레임 arm X축 100mm 이동', en: 'Move arm 100mm on X from frames 0–100', ja: '0～100フレームでarmをX軸方向に100mm移動', zh: '在0～100帧内将arm沿X轴移动100mm', es: 'Mover arm 100 mm en X entre los fotogramas 0–100', ar: 'حرّك arm مسافة 100 مم على المحور X خلال الإطارات 0–100' })} style={{flex:1}}/><button type="button" onClick={runAnimationCommand}>AI timeline</button></div>
+              <div style={{display:'flex',gap:6}}><input aria-label={ux.animationCommand} value={animationCommand} onChange={event=>setAnimationCommand(event.target.value)} placeholder={loc(lang, { ko: '0~100프레임 arm X축 100mm 이동', en: 'Move arm 100mm on X from frames 0–100', ja: '0～100フレームでarmをX軸方向に100mm移動', zh: '在0～100帧内将arm沿X轴移动100mm', es: 'Mover arm 100 mm en X entre los fotogramas 0–100', ar: 'حرّك arm مسافة 100 مم على المحور X خلال الإطارات 0–100' })} style={{flex:1}}/><button type="button" onClick={runAnimationCommand}>{ux.aiTimeline}</button></div>
               {/* ── RRRRR Agent: PartManipulatorGizmo integration ──
                   Only when a part is selected. The gizmo's render gate is
                   Boolean(selectedPart && scene); we pass a stub scene so
@@ -4448,11 +4478,11 @@ export default function AssemblyBrowserModal({
                   </div>
                   <div data-testid="solver-assembly-multi-transform" style={{display:'flex',gap:4,alignItems:'center',fontSize:11}}>
                     <span>{selectedPartIds.size} selected · Δ mm</span>
-                    {(['x','y','z'] as const).map(axis=><label key={axis}>{axis.toUpperCase()} <input aria-label={`Group delta ${axis.toUpperCase()}`} type="number" value={groupDelta[axis]} onChange={event=>setGroupDelta(previous=>({...previous,[axis]:Number(event.target.value)||0}))} style={{width:55}}/></label>)}
-                    <select aria-label="Transform space" value={transformSpace} onChange={event=>setTransformSpace(event.target.value as TransformSpace)}><option value="world">World</option><option value="local">Local</option></select>
-                    {(['x','y','z'] as const).map(axis=><label key={`r${axis}`}>R{axis.toUpperCase()}° <input aria-label={`Group rotation ${axis.toUpperCase()}`} type="number" value={groupRotation[axis]} onChange={event=>setGroupRotation(previous=>({...previous,[axis]:Number(event.target.value)||0}))} style={{width:55}}/></label>)}
-                    <label>Snap <input aria-label="Transform snap" type="number" min={0} value={transformSnap} onChange={event=>setTransformSnap(Math.max(0,Number(event.target.value)||0))} style={{width:48}}/></label>
-                    <select aria-label="Mate move policy" value={mateMovePolicy} onChange={event=>setMateMovePolicy(event.target.value as MateMovePolicy)}><option value="cancel">Cancel on mates</option><option value="constrained">Keep mates</option><option value="suppress">Suppress mates</option><option value="remove">Remove mates</option></select>
+                    {(['x','y','z'] as const).map(axis=><label key={axis}>{axis.toUpperCase()} <input aria-label={`${ux.groupDelta} ${axis.toUpperCase()}`} type="number" value={groupDelta[axis]} onChange={event=>setGroupDelta(previous=>({...previous,[axis]:Number(event.target.value)||0}))} style={{width:55}}/></label>)}
+                    <select aria-label={ux.transformSpace} value={transformSpace} onChange={event=>setTransformSpace(event.target.value as TransformSpace)}><option value="world">{ux.world}</option><option value="local">{ux.local}</option></select>
+                    {(['x','y','z'] as const).map(axis=><label key={`r${axis}`}>R{axis.toUpperCase()}° <input aria-label={`${ux.groupRotation} ${axis.toUpperCase()}`} type="number" value={groupRotation[axis]} onChange={event=>setGroupRotation(previous=>({...previous,[axis]:Number(event.target.value)||0}))} style={{width:55}}/></label>)}
+                    <label>{ux.snap} <input aria-label={ux.transformSnap} type="number" min={0} value={transformSnap} onChange={event=>setTransformSnap(Math.max(0,Number(event.target.value)||0))} style={{width:48}}/></label>
+                    <select aria-label={ux.mateMovePolicy} value={mateMovePolicy} onChange={event=>setMateMovePolicy(event.target.value as MateMovePolicy)}><option value="cancel">{ux.cancelOnMates}</option><option value="constrained">{ux.keepMates}</option><option value="suppress">{ux.suppressMates}</option><option value="remove">{ux.removeMates}</option></select>
                     <button type="button" onClick={()=>void applyGroupTransform()}>Apply</button>
                     <button type="button" disabled={selection.length!==2} onClick={snapSelectedReferences}>Snap refs</button>
                   </div>
@@ -4753,7 +4783,7 @@ export default function AssemblyBrowserModal({
                       <input
                         type="number"
                         value={bulkValueRaw}
-                        aria-label="bulk value"
+                        aria-label={ux.bulkValue}
                         aria-invalid={bulkInvalid || undefined}
                         data-testid="solver-assembly-mate-bulk-input"
                         data-bulk-invalid={bulkInvalid ? 'true' : undefined}
@@ -5926,7 +5956,7 @@ export default function AssemblyBrowserModal({
           )}
           <label style={{display:'inline-flex',alignItems:'center',gap:4,fontSize:11,color:'var(--nx-text-2)'}}>
             {L('허용 DoF', 'Allowed DoF')}
-            <input data-testid="solver-assembly-commercial-allowed-dof" aria-label="Commercial allowed DoF" type="number" min={0} max={100} step={1} value={commercialAllowedDoF} onChange={event=>setCommercialAllowedDoF(Math.max(0,Math.min(100,Math.floor(Number(event.target.value)||0))))} style={{width:52,padding:'4px 5px'}}/>
+            <input data-testid="solver-assembly-commercial-allowed-dof" aria-label={ux.commercialAllowedDof} type="number" min={0} max={100} step={1} value={commercialAllowedDoF} onChange={event=>setCommercialAllowedDoF(Math.max(0,Math.min(100,Math.floor(Number(event.target.value)||0))))} style={{width:52,padding:'4px 5px'}}/>
           </label>
           {commercialAllowedDoF>0&&<>
             <button type="button" data-testid="solver-assembly-commercial-joint-evidence-import" onClick={()=>commercialJointEvidenceImportRef.current?.click()} style={{padding:'7px 10px',fontSize:11}}>
