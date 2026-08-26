@@ -59,6 +59,7 @@ import { useContextMenu } from './hooks/useContextMenu';
 import { useSketchRadialMenu } from './hooks/useSketchRadialMenu';
 import { useViewportOverlays } from './hooks/useViewportOverlays';
 import { useAssemblyPartDisplay } from './hooks/useAssemblyPartDisplay';
+import { useBomExportActions } from './hooks/useBomExportActions';
 import { useSketchPaletteToggles } from './hooks/useSketchPaletteToggles';
 import { useSketchInteractionMode } from './hooks/useSketchInteractionMode';
 import { parseProject, NfabParseError, type NfabStudioViewV1 } from './io/nfabFormat';
@@ -84,7 +85,6 @@ import { usePipelineWorker } from './workers/usePipelineWorker';
 import { useInterferenceWorker } from './workers/useInterferenceWorker';
 import { useFeatureStack, type FeatureHistory, type HistoryNode } from './useFeatureStack';
 import { useShapeCart } from './useShapeCart';
-import { exportBomCSV, exportBomExcel, estimateWeight, type BomRow } from './io/bomExport';
 import { canExportStepViaBridge } from './io/stepExporter';
 import { useToast } from './useToast';
 import ToastContainer from './ToastContainer';
@@ -5538,42 +5538,22 @@ export function ShapeGeneratorInner(
   // ── Export loading state ──
   const [exportingFormat, setExportingFormat] = React.useState<string | null>(null);
 
-  // ── BOM Export ──
-  // (showBomExportMenu moved to useShapeGeneratorUI)
-  const buildBomRows = useCallback((): BomRow[] => {
-    const rows: BomRow[] = [];
-    if (bomParts.length > 0) {
-      bomParts.forEach((part) => {
-        const r = part.result;
-        const mat = materialId;
-        rows.push({ no: rows.length + 1, name: part.name, shape: part.name, material: mat, dimensions: `${r.bbox.w.toFixed(1)}\u00d7${r.bbox.h.toFixed(1)}\u00d7${r.bbox.d.toFixed(1)} mm`, volume_cm3: r.volume_cm3, surface_area_cm2: r.surface_area_cm2, weight_g: estimateWeight(r.volume_cm3, mat), quantity: 1 });
-      });
-    }
-    if (cartItems.length > 0) {
-      cartItems.forEach((item) => {
-        const mat = materialId;
-        rows.push({ no: rows.length + 1, name: item.shapeName, shape: item.shapeId, material: mat, dimensions: `${item.bbox.w.toFixed(1)}\u00d7${item.bbox.h.toFixed(1)}\u00d7${item.bbox.d.toFixed(1)} mm`, volume_cm3: item.volume_cm3, surface_area_cm2: item.surface_area_cm2, weight_g: estimateWeight(item.volume_cm3, mat), quantity: 1 });
-      });
-    }
-    if (rows.length === 0 && effectiveResult) {
-      const sn = sketchResult ? 'Custom Sketch' : (shapeLabels[`shapeName_${selectedId}`] || selectedId);
-      const mat = materialId;
-      rows.push({ no: 1, name: sn, shape: sketchResult ? 'sketch' : selectedId, material: mat, dimensions: `${effectiveResult.bbox.w.toFixed(1)}\u00d7${effectiveResult.bbox.h.toFixed(1)}\u00d7${effectiveResult.bbox.d.toFixed(1)} mm`, volume_cm3: effectiveResult.volume_cm3, surface_area_cm2: effectiveResult.surface_area_cm2, weight_g: estimateWeight(effectiveResult.volume_cm3, mat), quantity: 1 });
-    }
-    return rows;
-  }, [bomParts, cartItems, effectiveResult, sketchResult, selectedId, t, materialId]);
-  const handleExportBomCSV = useCallback(async () => {
-    const rows = buildBomRows();
-    if (rows.length === 0) return;
-    await exportBomCSV(rows, `BOM_${bomLabel || 'export'}.csv`);
-    setShowBomExportMenu(false);
-  }, [buildBomRows, bomLabel]);
-  const handleExportBomExcel = useCallback(async () => {
-    const rows = buildBomRows();
-    if (rows.length === 0) return;
-    await exportBomExcel(rows, `BOM_${bomLabel || 'export'}.xls`);
-    setShowBomExportMenu(false);
-  }, [buildBomRows, bomLabel]);
+  // ── BOM Export (work-object assembly moved behind a tested hook boundary) ──
+  const closeBomExportMenu = useCallback(() => setShowBomExportMenu(false), [setShowBomExportMenu]);
+  const bomExportSource = useMemo(() => ({
+    bomParts,
+    cartItems,
+    effectiveResult,
+    isSketchResult: Boolean(sketchResult),
+    selectedId,
+    selectedShapeName: sketchResult ? 'Custom Sketch' : (shapeLabels[`shapeName_${selectedId}`] || selectedId),
+    materialId,
+  }), [bomParts, cartItems, effectiveResult, sketchResult, selectedId, shapeLabels, materialId]);
+  const { buildBomRows, handleExportBomCSV, handleExportBomExcel } = useBomExportActions({
+    source: bomExportSource,
+    bomLabel,
+    closeMenu: closeBomExportMenu,
+  });
 
   // ══════════════════════════════════════════════════════════════════════════
   // SKETCH HANDLERS
