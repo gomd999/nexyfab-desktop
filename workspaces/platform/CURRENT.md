@@ -1,5 +1,24 @@
 # Platform current session
 
+## 2026-08-26 Next.js quote route export closure
+
+- Status: `PRODUCTION_BUILD_FAILURE_REPRODUCED / ROUTE_EXPORT_ISOLATED /
+  I18N_FALLBACK_TEST_PASS / REBUILD_REQUIRED`.
+- The integration production build exposed a Next.js 16-only type failure:
+  `quote-accuracy/route.ts` exported the testable `ruleBasedResult` helper in
+  addition to an HTTP handler. Plain TypeScript did not catch this route-module
+  export restriction.
+- The full request handler and deterministic fallback now live in the sibling
+  `quoteAccuracyCore.ts`; the framework route re-exports only `POST`. The
+  existing six-locale fallback test imports the core module directly.
+- Focused i18n regression passes 1 file / 6 tests. The official Platform
+  workspace check passes full lint, TypeScript, and zero ownership violations
+  for 1 commit / 3 changed paths.
+- The full integration production build must be rerun after merge; this
+  handoff records the diagnosed fix but does not claim the rebuild has passed.
+- Handoff:
+  `HANDOFFS/20260826T113634Z-next-route-export-closure.md`.
+
 ## 2026-08-26 AI surface and DFM PDF locale consumption
 
 - Status: `AI_V10_LOCALE_CONSUMER_PASS / MODEL_NOTES_SIX_LOCALES /
