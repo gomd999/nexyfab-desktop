@@ -8,7 +8,7 @@ import {
   findCodegenModel,
   type AiAccessPlan,
 } from '@/lib/ai/codegenModels';
-import { aiModelBetaAccessEnabled } from '@/lib/ai/aiModelBetaAccess';
+import { useAiModelBetaAccess } from '@/lib/ai/useAiModelBetaAccess';
 
 export const AI_MODEL_STORAGE_KEY = 'nexyfab:ai-model';
 
@@ -37,6 +37,7 @@ function copyFor(lang: string) {
 }
 
 export function useAiModelPreference(plan: AiAccessPlan | string | null | undefined) {
+  const betaAccess = useAiModelBetaAccess();
   const fallback = defaultCodegenModelForPlan(plan);
   const [modelId, setModelId] = useState(fallback);
 
@@ -47,24 +48,24 @@ export function useAiModelPreference(plan: AiAccessPlan | string | null | undefi
       const saved = localStorage.getItem(AI_MODEL_STORAGE_KEY)
         ?? localStorage.getItem('nexyfab:studio-model');
       const model = findCodegenModel(saved);
-      nextModelId = model && canUseCodegenModel(model, plan) ? model.id : fallback;
+      nextModelId = model && canUseCodegenModel(model, plan, betaAccess) ? model.id : fallback;
     } catch { /* storage may be unavailable */ }
     queueMicrotask(() => {
       if (active) setModelId(nextModelId);
     });
     return () => { active = false; };
-  }, [fallback, plan]);
+  }, [betaAccess, fallback, plan]);
 
   const pickModel = useCallback((id: string) => {
     const model = findCodegenModel(id);
-    if (!model || !canUseCodegenModel(model, plan)) return false;
+    if (!model || !canUseCodegenModel(model, plan, betaAccess)) return false;
     setModelId(model.id);
     try {
       localStorage.setItem(AI_MODEL_STORAGE_KEY, model.id);
       localStorage.removeItem('nexyfab:studio-model');
     } catch { /* storage may be unavailable */ }
     return true;
-  }, [plan]);
+  }, [betaAccess, plan]);
 
   return { modelId, pickModel };
 }
@@ -84,7 +85,7 @@ export function AiModelSelector({
 }) {
   const [open, setOpen] = useState(false);
   const copy = copyFor(lang);
-  const betaAccess = aiModelBetaAccessEnabled();
+  const betaAccess = useAiModelBetaAccess();
   const current = useMemo(
     () => findCodegenModel(modelId) ?? findCodegenModel(defaultCodegenModelForPlan(plan))!,
     [modelId, plan],
@@ -141,7 +142,7 @@ export function AiModelSelector({
             }}
           >
             {CODEGEN_MODELS.map(model => {
-              const allowed = canUseCodegenModel(model, plan);
+              const allowed = canUseCodegenModel(model, plan, betaAccess);
               const selected = model.id === current.id;
               return (
                 <button
