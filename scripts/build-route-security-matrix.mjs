@@ -146,9 +146,26 @@ export function analyzeRouteSecurity(route, source, publicMutationPolicy = null)
 
 function forwardedRouteDependencies(file, source, appApiRoot, seen = new Set()) {
   const dependencies = [];
-  for (const match of source.matchAll(/\bfrom\s+['"](\.{1,2}\/[^'"]*route)['"]/g)) {
-    const unresolved = path.resolve(path.dirname(file), match[1]);
-    const candidates = [unresolved, `${unresolved}.ts`, path.join(unresolved, 'route.ts')];
+  // Next route wrappers often re-export a supported HTTP method from a
+  // sibling core module so business logic remains testable without violating
+  // the framework's route-module export contract. Follow only those explicit
+  // HTTP-method re-exports; scanning every relative import would incorrectly
+  // inherit dormant security signals from unrelated helpers.
+  const dependencySpecifiers = new Set([
+    ...[...source.matchAll(/export\s*\{[^}]*\b(?:GET|POST|PUT|PATCH|DELETE|OPTIONS|HEAD)\b[^}]*\}\s*from\s*['"](\.{1,2}\/[^'"]+)['"]/g)].map(match => match[1]),
+    // Wrapper routes may import a parent route handler under an alias and
+    // call it from their own framework-supported export.
+    ...[...source.matchAll(/\bfrom\s+['"](\.{1,2}\/[^'"]*route)['"]/g)].map(match => match[1]),
+  ]);
+  for (const specifier of dependencySpecifiers) {
+    const unresolved = path.resolve(path.dirname(file), specifier);
+    const candidates = [
+      unresolved,
+      `${unresolved}.ts`,
+      `${unresolved}.tsx`,
+      path.join(unresolved, 'route.ts'),
+      path.join(unresolved, 'index.ts'),
+    ];
     const dependency = candidates.find(candidate => fs.existsSync(candidate) && fs.statSync(candidate).isFile());
     if (!dependency || seen.has(dependency)) continue;
     const relative = path.relative(appApiRoot, dependency);

@@ -1,7 +1,7 @@
 {
   "schema": "nexyfab-dependency-audit-v1",
   "textCanonicalization": "utf8-crlf-to-lf",
-  "generatedAt": "2026-08-25T07:56:39.662Z",
+  "generatedAt": "2026-08-26T14:37:44.556Z",
   "command": "npm audit --audit-level=low --json",
   "packageLockSha256": "d5bd18e9f6648828af26925e4b914a9af4cafb700b8b58a8daeb7300099110e3",
   "status": "pass",
