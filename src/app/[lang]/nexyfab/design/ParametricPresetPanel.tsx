@@ -344,7 +344,7 @@ export default function ParametricPresetPanel({
             }}
           >
             <div style={{ fontSize: 11.5, fontWeight: 800 }}>{designPair(lang, tp.labelKo, tp.labelEn)}</div>
-            <div style={{ fontSize: 9.5, color: 'var(--nx-text-3, #6b7684)', marginTop: 2, lineHeight: 1.45, overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>
+            <div style={{ fontSize: 9.5, color: 'var(--nx-text, #1a2230)', marginTop: 2, lineHeight: 1.45, overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>
               {tp.params.slice(0, 4).map((p) => `${p.labelKo} ${p.default}${p.unit}`).join(' · ')}
             </div>
           </button>

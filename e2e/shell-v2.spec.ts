@@ -20,26 +20,12 @@ test.describe('Shell v2 — gating', () => {
     await expect(liveSurface).toBeVisible({ timeout: 15000 }).catch(() => {});
   });
 
-  test('?dev-shell=v2 mounts the ShellPreview sandbox', async ({ page }) => {
+  test('?dev-shell=v2 cannot expose the mock preview in a production build', async ({ page }) => {
     await page.goto('/en/shape-generator?expert=1&dev-shell=v2');
-    await expect(page.locator('text=Shell v2 Preview')).toBeVisible({ timeout: 8000 });
-    await expect(page.locator('.nx-title')).toBeVisible();
+    await expect(page.getByText('Shell v2 Preview', { exact: true })).toHaveCount(0);
+    await expect(page.locator('.nx-title')).toBeVisible({ timeout: 8000 });
     await expect(page.locator('.nx-ribbon')).toBeVisible();
-  });
-
-  test('mode switch swaps ribbon and chip', async ({ page }) => {
-    await page.goto('/en/shape-generator?expert=1&dev-shell=v2');
-    await page.waitForSelector('.nx-title', { timeout: 8000 });
-
-    // Click the "sketch" pill button in the mock viewport.
-    const sketchPill = page.locator('button.nx-pillbtn', { hasText: 'sketch' }).first();
-    await sketchPill.click();
-    await expect(page.locator('text=SKETCH MODE')).toBeVisible({ timeout: 3000 });
-
-    // Assembly switch — explode slider appears.
-    const asmPill = page.locator('button.nx-pillbtn', { hasText: 'assembly' }).first();
-    await asmPill.click();
-    await expect(page.locator('text=Explode')).toBeVisible({ timeout: 3000 });
+    await expect(page.getByTestId('shape-generator-workspace')).toBeVisible({ timeout: 30_000 });
   });
 });
 
