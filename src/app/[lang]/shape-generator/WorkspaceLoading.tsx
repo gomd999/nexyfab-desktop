@@ -1,6 +1,8 @@
 'use client';
 
 import React from 'react';
+import { useLang } from './hooks/useLang';
+import { loc } from '@/lib/i18n/loc';
 
 export type WorkspaceLoadingVariant = 'page' | 'app';
 
@@ -8,6 +10,7 @@ export type WorkspaceLoadingVariant = 'page' | 'app';
  * Shared splash while the shape-generator bundle or geometry stack loads.
  */
 export function WorkspaceLoading({ variant = 'page' }: { variant?: WorkspaceLoadingVariant }) {
+  const lang = useLang();
   if (variant === 'app') {
     return (
       <div
@@ -55,7 +58,7 @@ export function WorkspaceLoading({ variant = 'page' }: { variant?: WorkspaceLoad
           </svg>
         </div>
         <h2 style={{ fontSize: 20, fontWeight: 600, margin: 0, letterSpacing: '0.05em' }}>NexyFab CAD</h2>
-        <p style={{ fontSize: 13, color: 'var(--nx-text-2)', marginTop: 8 }}>Loading geometry engine & workspace...</p>
+        <p style={{ fontSize: 13, color: 'var(--nx-text-2)', marginTop: 8 }}>{loc(lang, { ko: '형상 엔진과 작업공간을 불러오는 중…', en: 'Loading geometry engine and workspace…', ja: '形状エンジンとワークスペースを読み込み中…', zh: '正在加载几何引擎和工作区…', es: 'Cargando el motor geométrico y el espacio de trabajo…', ar: 'جارٍ تحميل محرك الهندسة ومساحة العمل…' })}</p>
         <style>{`@keyframes nf-wl-spin-app { 100% { transform: rotate(360deg); } }`}</style>
       </div>
     );
@@ -83,7 +86,7 @@ export function WorkspaceLoading({ variant = 'page' }: { variant?: WorkspaceLoad
           animation: 'nf-wl-spin-page 0.7s linear infinite',
         }}
       />
-      <p style={{ color: 'var(--nx-text-2)', fontSize: '14px', fontWeight: 500 }}>Loading 3D workspace...</p>
+      <p style={{ color: 'var(--nx-text-2)', fontSize: '14px', fontWeight: 500 }}>{loc(lang, { ko: '3D 작업공간을 불러오는 중…', en: 'Loading 3D workspace…', ja: '3D ワークスペースを読み込み中…', zh: '正在加载 3D 工作区…', es: 'Cargando el espacio de trabajo 3D…', ar: 'جارٍ تحميل مساحة العمل ثلاثية الأبعاد…' })}</p>
       <style>{`@keyframes nf-wl-spin-page { to { transform: rotate(360deg); } }`}</style>
     </div>
   );

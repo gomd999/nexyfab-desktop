@@ -252,7 +252,7 @@ function AIAssistantSidebar(props: AIAssistantSidebarProps) {
       }}>
         <button
           onClick={onToggleCollapse}
-          aria-label="Expand"
+          aria-label={loc(lang, { ko: '펼치기', en: 'Expand', ja: '展開', zh: '展开', es: 'Expandir', ar: 'توسيع' })}
           title={loc(lang, { ko: '펼치기', en: 'Expand', ja: '展開', zh: '展开', es: 'Expandir', ar: 'توسيع' })}
           style={{
             width: 32, height: 32, borderRadius: 6, border: `1px solid ${theme.border}`,
@@ -302,7 +302,7 @@ function AIAssistantSidebar(props: AIAssistantSidebarProps) {
       {onToggleCollapse && !isTablet && !isViewportMode && (
         <button
           onClick={onToggleCollapse}
-          aria-label="Collapse"
+          aria-label={loc(lang, { ko: '접기', en: 'Collapse', ja: '折りたたむ', zh: '折叠', es: 'Contraer', ar: 'طي' })}
           title={loc(lang, { ko: '접기', en: 'Collapse', ja: '折りたたむ', zh: '折叠', es: 'Contraer', ar: 'طي' })}
           style={{
             position: 'absolute', top: 4,

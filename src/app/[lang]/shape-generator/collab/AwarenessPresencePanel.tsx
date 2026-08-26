@@ -3,6 +3,8 @@
 import { useMemo } from 'react';
 import type { PresenceState } from './yjsDoc';
 import { useNowMs } from './useNowMs';
+import { useLang } from '../hooks/useLang';
+import { loc } from '@/lib/i18n/loc';
 
 /**
  * Presence sidebar — small floating list of who's currently in the room.
@@ -41,6 +43,7 @@ function relativeAge(ts: number | undefined, now: number): string {
 }
 
 export default function AwarenessPresencePanel({ presences, localClientId, localName }: Props) {
+  const lang = useLang();
   const now = useNowMs(500);
   const entries = useMemo(() => {
     const list: Array<{
@@ -57,7 +60,7 @@ export default function AwarenessPresencePanel({ presences, localClientId, local
     presences.forEach((s, clientId) => {
       list.push({
         id: clientId,
-        name: s.name ?? (clientId === localClientId ? (localName ?? 'You') : `User ${clientId}`),
+        name: s.name ?? (clientId === localClientId ? (localName ?? loc(lang, { ko: '나', en: 'You', ja: '自分', zh: '你', es: 'Tú', ar: 'أنت' })) : `${loc(lang, { ko: '사용자', en: 'User', ja: 'ユーザー', zh: '用户', es: 'Usuario', ar: 'مستخدم' })} ${clientId}`),
         color: s.color ?? fallbackColor(clientId),
         editingNodeId: s.editingNodeId,
         selectedFeatureId: s.selectedFeatureId,
@@ -70,7 +73,7 @@ export default function AwarenessPresencePanel({ presences, localClientId, local
     // Local user pinned to the top.
     list.sort((a, b) => Number(b.isLocal) - Number(a.isLocal) || a.name.localeCompare(b.name));
     return list;
-  }, [presences, localClientId, localName]);
+  }, [presences, localClientId, localName, lang]);
 
   // Hide when there's nobody to show beyond yourself.
   if (entries.filter(e => !e.isLocal).length === 0) return null;
@@ -81,7 +84,7 @@ export default function AwarenessPresencePanel({ presences, localClientId, local
       style={{ minWidth: 180, maxWidth: 240, zIndex: 30 }}
     >
       <div className="text-[10px] uppercase tracking-wide text-gray-500 px-1 pb-1 select-none">
-        In this room ({entries.length})
+        {loc(lang, { ko: '이 룸의 사용자', en: 'In this room', ja: 'このルーム', zh: '此房间', es: 'En esta sala', ar: 'في هذه الغرفة' })} ({entries.length})
       </div>
       <ul className="space-y-1">
         {entries.map(e => {
@@ -93,7 +96,7 @@ export default function AwarenessPresencePanel({ presences, localClientId, local
                 className="inline-block rounded-full relative"
                 style={{ width: 8, height: 8, background: e.color, flexShrink: 0 }}
                 aria-hidden
-                title={e.activity === 'idle' ? 'idle' : 'active'}
+                title={e.activity === 'idle' ? loc(lang, { ko: '대기', en: 'idle', ja: '待機', zh: '空闲', es: 'inactivo', ar: 'خامل' }) : loc(lang, { ko: '활동 중', en: 'active', ja: 'アクティブ', zh: '活动中', es: 'activo', ar: 'نشط' })}
               >
                 {e.activity === 'idle' && (
                   <span
@@ -104,7 +107,7 @@ export default function AwarenessPresencePanel({ presences, localClientId, local
               </span>
               <span className="text-xs text-gray-100 truncate flex-1">
                 {e.name}
-                {e.isLocal && <span className="text-gray-500 text-[10px] ml-1">· you</span>}
+                {e.isLocal && <span className="text-gray-500 text-[10px] ml-1">· {loc(lang, { ko: '나', en: 'you', ja: '自分', zh: '你', es: 'tú', ar: 'أنت' })}</span>}
                 {e.viewportMode && e.viewportMode !== '3d' && (
                   <span
                     className="text-[10px] ml-1 px-1 rounded bg-indigo-500/20 text-indigo-200 font-mono"
@@ -112,7 +115,7 @@ export default function AwarenessPresencePanel({ presences, localClientId, local
                   >{e.viewportMode}</span>
                 )}
                 {e.activity === 'idle' && (
-                  <span className="text-[10px] ml-1 text-gray-500">idle</span>
+                  <span className="text-[10px] ml-1 text-gray-500">{loc(lang, { ko: '대기', en: 'idle', ja: '待機', zh: '空闲', es: 'inactivo', ar: 'خامل' })}</span>
                 )}
               </span>
               {e.editingNodeId ? (

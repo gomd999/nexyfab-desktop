@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { downloadBlob } from '@/lib/platform';
 import { getComplexProductCommercialScopeCopy } from '@/lib/ai/complexProductCommercialScope';
 import { toIsoLang, type IsoLang } from '@/lib/i18n/normalize';
+import { loc } from '@/lib/i18n/loc';
 
 type StageId = 'graph' | 'gearbox' | 'machine-skid' | 'welded-enclosure';
 type StageReport = {
@@ -251,7 +252,7 @@ export default function ComplexVerifiedSystemsPanel({ lang, verify = defaultVeri
           <label style={{ display: 'grid', gap: 2, fontSize: 10.5 }}>{copy.scaleArtifacts}<input data-testid="complex-verified-scale-artifacts" type="file" multiple onChange={event => { setScaleArtifacts(Array.from(event.target.files ?? [])); setScaleReport(null); setScaleError(null); }} /></label>
           <button data-testid="complex-verified-scale-run" type="button" disabled={busy !== null || !scaleBenchmark || scaleArtifacts.length === 0} onClick={runScale}>{busy === 'scale' ? copy.verifyingScale : copy.verifyScale}</button>
           {scaleError && <div data-testid="complex-verified-scale-error" role="alert" style={{ color: '#b91c1c' }}>{scaleError}</div>}
-          {scaleReport && <div data-testid="complex-verified-scale-report" style={{ color: '#166534' }}><b>passed</b> · tiers {scaleReport.tierSummaries.map(item => item.occurrenceCount).join('/')} · SLA pass · independent approval pending · release false<button data-testid="complex-verified-scale-download" type="button" onClick={() => downloadScale(scaleReport)}>{copy.scaleDownload}</button></div>}
+      {scaleReport && <div data-testid="complex-verified-scale-report" style={{ color: '#166534' }}><b>{loc(lang, { ko: '통과', en: 'passed', ja: '合格', zh: '通过', es: 'aprobado', ar: 'ناجح' })}</b> · {loc(lang, { ko: '단계', en: 'tiers', ja: '段階', zh: '层级', es: 'niveles', ar: 'المستويات' })} {scaleReport.tierSummaries.map(item => item.occurrenceCount).join('/')} · {loc(lang, { ko: 'SLA 통과 · 독립 승인 대기 · 출시 불가', en: 'SLA pass · independent approval pending · release false', ja: 'SLA 合格 · 独立承認待ち · リリース不可', zh: 'SLA 通过 · 等待独立批准 · 不可发布', es: 'SLA aprobado · aprobación independiente pendiente · sin publicación', ar: 'اجتاز SLA · الموافقة المستقلة معلّقة · الإصدار غير متاح' })}<button data-testid="complex-verified-scale-download" type="button" onClick={() => downloadScale(scaleReport)}>{copy.scaleDownload}</button></div>}
         </div>
       </details>
       <div data-testid="complex-commercial-scope" style={{ display: 'grid', gap: 3, padding: 7, border: '1px solid #b7791f', borderRadius: 5, color: '#92400e', fontSize: 10.5 }}>

@@ -15,6 +15,7 @@
 import { useState } from 'react';
 import { useAuthStore } from '@/hooks/useAuth';
 import { pickShellDict } from './shellDict';
+import { shellChromeText } from './shellChromeI18n';
 
 export interface GuestExpiryBannerProps {
   lang: string;
@@ -81,7 +82,7 @@ export function GuestExpiryBanner({ lang }: GuestExpiryBannerProps) {
       </button>
       <button
         onClick={() => setDismissed(true)}
-        aria-label="Dismiss"
+        aria-label={shellChromeText(lang, 'dismiss')}
         style={{
           width: 22, height: 22, padding: 0, border: 0, background: 'transparent',
           color: '#e2e8f0', fontSize: 16, cursor: 'pointer', opacity: 0.7,

@@ -37,6 +37,7 @@ import React, {
   useState,
 } from 'react';
 import dynamic from 'next/dynamic';
+import { loc } from '@/lib/i18n/loc';
 import {
   createSketchSolver,
   type SketchSolver,
@@ -3028,7 +3029,7 @@ export default function SolverSketchEditor({
       </div>
 
       {/* Entity toolbar + snap toggles */}
-      <div role="toolbar" aria-label="entity tools" style={{ display: 'flex', gap: 4, alignItems: 'center', flexWrap: 'wrap' }}>
+      <div role="toolbar" aria-label={loc(lang, { ko: '스케치 요소 도구', en: 'Entity tools', ja: 'エンティティツール', zh: '实体工具', es: 'Herramientas de entidad', ar: 'أدوات العناصر' })} style={{ display: 'flex', gap: 4, alignItems: 'center', flexWrap: 'wrap' }}>
         {ENTITY_TOOLS.map((b) => {
           const active = tool === b.id;
           return (
@@ -3097,7 +3098,7 @@ export default function SolverSketchEditor({
       </div>
 
       {/* Constraint toolbar (enabled only when selection matches requires) */}
-      <div role="toolbar" aria-label="constraint tools" style={{ display: 'flex', gap: 4 }}>
+      <div role="toolbar" aria-label={loc(lang, { ko: '스케치 구속조건 도구', en: 'Constraint tools', ja: '拘束ツール', zh: '约束工具', es: 'Herramientas de restricción', ar: 'أدوات القيود' })} style={{ display: 'flex', gap: 4 }}>
         {CONSTRAINT_TOOLS.map((c) => {
           const enabled = constraintEligible(c);
           return (

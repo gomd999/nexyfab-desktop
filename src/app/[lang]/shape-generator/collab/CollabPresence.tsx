@@ -4,10 +4,12 @@ import { useState, useCallback } from 'react';
 import { useNowMs } from './useNowMs';
 import type { CollabUser } from './CollabTypes';
 import type { CollabMode } from './useCollab';
+import { loc } from '@/lib/i18n/loc';
 
 // ─── CollabPresence: avatar overlay showing online users ─────────────────────
 
 interface CollabPresenceProps {
+  lang?: string;
   users: CollabUser[];
   mode?: CollabMode;
   isConnected?: boolean;
@@ -24,6 +26,7 @@ interface CollabPresenceProps {
 }
 
 export default function CollabPresence({
+  lang = 'en',
   users,
   mode = 'off',
   isConnected = false,
@@ -81,7 +84,7 @@ export default function CollabPresence({
         {onSetMode && (
           <button
             onClick={toggleMode}
-            title={mode === 'realtime' ? t.collabLive : mode === 'demo' ? t.collabDemo : 'Off'}
+            title={mode === 'realtime' ? t.collabLive : mode === 'demo' ? t.collabDemo : loc(lang, { ko: '꺼짐', en: 'Off', ja: 'オフ', zh: '关闭', es: 'Desactivado', ar: 'متوقف' })}
             style={{
               fontSize: 10,
               fontWeight: 700,
@@ -102,14 +105,14 @@ export default function CollabPresence({
               transition: 'background 0.2s, color 0.2s',
             }}
           >
-            {mode === 'realtime' ? t.collabLive : mode === 'demo' ? t.collabDemo : 'Off'}
+            {mode === 'realtime' ? t.collabLive : mode === 'demo' ? t.collabDemo : loc(lang, { ko: '꺼짐', en: 'Off', ja: 'オフ', zh: '关闭', es: 'Desactivado', ar: 'متوقف' })}
           </button>
         )}
 
         {/* Connection status dot */}
         {mode !== 'off' && (
           <span
-            title={connected ? t.collabConnected : 'Disconnected'}
+            title={connected ? t.collabConnected : loc(lang, { ko: '연결 끊김', en: 'Disconnected', ja: '未接続', zh: '未连接', es: 'Desconectado', ar: 'غير متصل' })}
             style={{
               display: 'inline-block',
               width: 8,
@@ -141,7 +144,7 @@ export default function CollabPresence({
 
         {/* Avatar circles */}
         {users.map(u => (
-          <AvatarCircle key={u.id} user={u} now={now} />
+          <AvatarCircle key={u.id} user={u} now={now} lang={lang} />
         ))}
       </div>
 
@@ -166,7 +169,7 @@ export default function CollabPresence({
           </span>
           <button
             onClick={copyRoom}
-            title="Copy room ID"
+            title={loc(lang, { ko: '룸 ID 복사', en: 'Copy room ID', ja: 'ルーム ID をコピー', zh: '复制房间 ID', es: 'Copiar ID de sala', ar: 'نسخ معرّف الغرفة' })}
             style={{
               fontSize: 10,
               background: 'none',
@@ -187,7 +190,7 @@ export default function CollabPresence({
 
 // ─── AvatarCircle ─────────────────────────────────────────────────────────────
 
-function AvatarCircle({ user, now }: { user: CollabUser; now: number }) {
+function AvatarCircle({ user, now, lang }: { user: CollabUser; now: number; lang: string }) {
   const [hover, setHover] = useState(false);
   const stale = now - user.lastSeen > 10_000;
 
@@ -240,7 +243,7 @@ function AvatarCircle({ user, now }: { user: CollabUser; now: number }) {
           }}
         >
           {user.name}
-          {stale && <span style={{ color: 'var(--nx-text-3)', marginLeft: 4 }}>(away)</span>}
+          {stale && <span style={{ color: 'var(--nx-text-3)', marginLeft: 4 }}>({loc(lang, { ko: '자리 비움', en: 'away', ja: '離席中', zh: '离开', es: 'ausente', ar: 'بعيد' })})</span>}
         </div>
       )}
     </div>

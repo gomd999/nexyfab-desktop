@@ -205,6 +205,7 @@ function InspectorTab({
               bullet="●"
               label={edge.id}
               meta={edge.meta}
+              removeLabel={d.remove}
               onRemove={featureEdges.length > 1 ? () => {
                 if (typeof window === 'undefined') return;
                 window.dispatchEvent(new CustomEvent('nexyfab:remove-feature-edge', {

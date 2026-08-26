@@ -2,11 +2,12 @@
 
 import { I } from './Icons';
 import { useEffect, useState, type ReactNode } from 'react';
+import { shellChromeText } from './shellChromeI18n';
 
 // Self-contained immersive-mode toggle. Lives top-right next to Publish; a
 // real click is a valid user gesture for the Fullscreen API (browsers block
 // auto-fullscreen), so no popup is needed. (2026-06-09)
-function FullscreenToggle() {
+function FullscreenToggle({ lang }: { lang?: string }) {
   const [isFs, setIsFs] = useState(false);
   useEffect(() => {
     const on = () => setIsFs(!!document.fullscreenElement);
@@ -21,13 +22,14 @@ function FullscreenToggle() {
       document.exitFullscreen().catch(() => {});
     }
   };
+  const label = shellChromeText(lang, isFs ? 'exitFullscreen' : 'fullscreen');
   return (
     <button
       type="button"
       className="nx-pillbtn"
       onClick={toggle}
-      title={isFs ? 'Exit fullscreen' : 'Fullscreen'}
-      aria-label={isFs ? 'Exit fullscreen' : 'Fullscreen'}
+      title={label}
+      aria-label={label}
       style={{ padding: '0 8px' }}
     >
       <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -53,6 +55,7 @@ export interface Avatar {
 }
 
 export interface TitleBarProps {
+  lang?: string;
   filename?: string;
   savedAt?: string;
   breadcrumbs?: string[];
@@ -81,14 +84,15 @@ export interface TitleBarProps {
 }
 
 export function TitleBar({
-  filename = 'Untitled.nxpart',
+  lang,
+  filename,
   savedAt,
   breadcrumbs,
   mode,
   modeHint,
   onExitMode,
   avatars = [],
-  searchPlaceholder = 'Search commands, features…',
+  searchPlaceholder,
   searchShortcut = '⌘K',
   onNew,
   onOpen,
@@ -98,13 +102,14 @@ export function TitleBar({
   onSearch,
   onShare,
   onPublish,
-  shareLabel = 'Share',
-  publishLabel = 'Publish',
+  shareLabel,
+  publishLabel,
   canUndo = true,
   canRedo = false,
   rightExtras,
   onBrandClick,
 }: TitleBarProps) {
+  const t = (key: Parameters<typeof shellChromeText>[1]) => shellChromeText(lang, key);
   return (
     <div className="nx-title">
       <div
@@ -113,7 +118,7 @@ export function TitleBar({
         role={onBrandClick ? 'button' : undefined}
         tabIndex={onBrandClick ? 0 : undefined}
         onKeyDown={onBrandClick ? (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onBrandClick(); } } : undefined}
-        title={onBrandClick ? 'Hub' : undefined}
+        title={onBrandClick ? t('hub') : undefined}
         style={onBrandClick ? { cursor: 'pointer' } : undefined}
       >
         <span>NEXYFAB</span>
@@ -125,27 +130,27 @@ export function TitleBar({
       {(onNew || onOpen || onSave || onUndo || onRedo) && (
         <div className="quick">
           {onNew && (
-            <button type="button" title="New" onClick={onNew}>
+            <button type="button" title={t('new')} aria-label={t('new')} onClick={onNew}>
               <I.file size={14} />
             </button>
           )}
           {onOpen && (
-            <button type="button" title="Open" onClick={onOpen}>
+            <button type="button" title={t('open')} aria-label={t('open')} onClick={onOpen}>
               <I.folder size={14} />
             </button>
           )}
           {onSave && (
-            <button type="button" title="Save" onClick={onSave}>
+            <button type="button" title={t('save')} aria-label={t('save')} onClick={onSave}>
               <I.save size={14} />
             </button>
           )}
           {onUndo && (
-            <button type="button" title="Undo" disabled={!canUndo} onClick={onUndo}>
+            <button type="button" title={t('undo')} aria-label={t('undo')} disabled={!canUndo} onClick={onUndo}>
               <I.undo size={14} />
             </button>
           )}
           {onRedo && (
-            <button type="button" title="Redo" disabled={!canRedo} onClick={onRedo}>
+            <button type="button" title={t('redo')} aria-label={t('redo')} disabled={!canRedo} onClick={onRedo}>
               <I.redo size={14} />
             </button>
           )}
@@ -161,7 +166,7 @@ export function TitleBar({
             </span>
           ))
         ) : (
-          <b>{filename}</b>
+          <b>{filename ?? t('untitledFile')}</b>
         )}
         {savedAt && <span className="saved">{savedAt}</span>}
       </div>
@@ -181,7 +186,7 @@ export function TitleBar({
               style={{ height: 22, padding: '0 8px', fontSize: 10 }}
               onClick={onExitMode}
             >
-              <I.x size={10} /> Exit
+              <I.x size={10} /> {t('exit')}
             </button>
           )}
         </span>
@@ -191,7 +196,7 @@ export function TitleBar({
       {onSearch && (
         <div className="nx-search" onClick={onSearch} role="button" tabIndex={0}>
           <I.search size={12} />
-          <span>{searchPlaceholder}</span>
+          <span>{searchPlaceholder ?? t('searchCommands')}</span>
           <span className="kbd">{searchShortcut}</span>
         </div>
       )}
@@ -209,15 +214,15 @@ export function TitleBar({
         {rightExtras}
         {onShare && (
           <button type="button" className="nx-pillbtn" onClick={onShare}>
-            <I.share size={12} /> {shareLabel}
+            <I.share size={12} /> {shareLabel ?? t('share')}
           </button>
         )}
         {onPublish && (
           <button type="button" className="nx-pillbtn primary" onClick={onPublish}>
-            <I.bolt size={12} /> {publishLabel}
+            <I.bolt size={12} /> {publishLabel ?? t('publish')}
           </button>
         )}
-        <FullscreenToggle />
+        <FullscreenToggle lang={lang} />
       </div>
     </div>
   );

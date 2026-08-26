@@ -15,6 +15,7 @@ export type Lang = 'ko' | 'en' | 'ja' | 'zh' | 'es' | 'ar';
 
 export interface ConfigUiDict {
   title: string;
+  close: string;
   master: string;
   add: string;
   rename: string;
@@ -57,6 +58,7 @@ export interface ConfigUiDict {
 
 const ko: ConfigUiDict = {
   title: '구성 테이블 v2',
+  close: '닫기',
   master: '마스터',
   add: '+ 구성 추가',
   rename: '이름 변경',
@@ -99,6 +101,7 @@ const ko: ConfigUiDict = {
 
 const en: ConfigUiDict = {
   title: 'Configuration Table v2',
+  close: 'Close',
   master: 'Master',
   add: '+ Add Configuration',
   rename: 'Rename',
@@ -141,6 +144,7 @@ const en: ConfigUiDict = {
 
 const ja: ConfigUiDict = {
   title: '構成テーブル v2',
+  close: '閉じる',
   master: 'マスター',
   add: '+ 構成追加',
   rename: '名前変更',
@@ -183,6 +187,7 @@ const ja: ConfigUiDict = {
 
 const zh: ConfigUiDict = {
   title: '配置表 v2',
+  close: '关闭',
   master: '主版本',
   add: '+ 添加配置',
   rename: '重命名',
@@ -225,6 +230,7 @@ const zh: ConfigUiDict = {
 
 const es: ConfigUiDict = {
   title: 'Tabla de Configuración v2',
+  close: 'Cerrar',
   master: 'Maestro',
   add: '+ Añadir configuración',
   rename: 'Renombrar',
@@ -267,6 +273,7 @@ const es: ConfigUiDict = {
 
 const ar: ConfigUiDict = {
   title: 'جدول التكوين v2',
+  close: 'إغلاق',
   master: 'الرئيسي',
   add: '+ إضافة تكوين',
   rename: 'إعادة تسمية',

@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react';
+import { loc } from '@/lib/i18n/loc';
 import { usePathname } from 'next/navigation';
 import * as THREE from 'three';
 import {
@@ -1327,7 +1328,7 @@ export default function AutoDrawingPanel({
               border: '1px solid var(--nx-accent)', background: 'var(--nx-accent)22',
               color: 'var(--nx-accent)', fontSize: 11, fontWeight: 600, cursor: 'pointer',
             }}
-          >+ Detail View</button>
+          >+ {loc(lang, { ko: '상세도', en: 'Detail View', ja: '詳細図', zh: '详图', es: 'Vista de detalle', ar: 'عرض تفصيلي' })}</button>
           <button
             onClick={() => {
               const idx = sectionSpecs.length;
@@ -1352,7 +1353,7 @@ export default function AutoDrawingPanel({
               border: '1px solid var(--nx-warn)', background: 'var(--nx-warn)22',
               color: 'var(--nx-warn)', fontSize: 11, fontWeight: 600, cursor: 'pointer',
             }}
-          >+ Section View</button>
+          >+ {loc(lang, { ko: '단면도', en: 'Section View', ja: '断面図', zh: '剖视图', es: 'Vista de sección', ar: 'عرض مقطعي' })}</button>
           {(detailSpecs.length > 0 || sectionSpecs.length > 0) && (
             <button
               onClick={() => { setDetailSpecs([]); setSectionSpecs([]); }}
@@ -1361,7 +1362,7 @@ export default function AutoDrawingPanel({
                 border: '1px solid var(--nx-border)', background: 'transparent',
                 color: 'var(--nx-text-2)', fontSize: 11, cursor: 'pointer',
               }}
-            >Clear extras</button>
+            >{loc(lang, { ko: '추가 뷰 지우기', en: 'Clear extra views', ja: '追加ビューを消去', zh: '清除附加视图', es: 'Borrar vistas adicionales', ar: 'مسح العروض الإضافية' })}</button>
           )}
         </div>
       )}
@@ -1371,7 +1372,7 @@ export default function AutoDrawingPanel({
           quick-add defaults. Same look + feel as the GD&T row list. */}
       {drawing && sectionSpecs.length > 0 && (
         <div style={{ padding: '4px 12px 8px', borderTop: '1px solid var(--nx-panel-2)', fontSize: 11 }}>
-          <div style={{ color: 'var(--nx-text-2)', marginBottom: 4 }}>Section views</div>
+          <div style={{ color: 'var(--nx-text-2)', marginBottom: 4 }}>{loc(lang, { ko: '단면도', en: 'Section views', ja: '断面図', zh: '剖视图', es: 'Vistas de sección', ar: 'العروض المقطعية' })}</div>
           {sectionSpecs.map((spec, i) => (
             <div key={`sec-edit-${i}`} data-testid={`section-edit-${i}`} style={{
               display: 'flex', flexWrap: 'wrap', gap: 4, alignItems: 'center', marginBottom: 4,
@@ -1403,7 +1404,7 @@ export default function AutoDrawingPanel({
               <button
                 onClick={() => setSectionSpecs(prev => prev.filter((_, j) => j !== i))}
                 data-testid={`section-delete-${i}`}
-                title="delete this section view"
+                        title={loc(lang, { ko: '이 단면도 삭제', en: 'Delete this section view', ja: 'この断面図を削除', zh: '删除此剖视图', es: 'Eliminar esta vista de sección', ar: 'حذف هذا العرض المقطعي' })}
                 style={{
                   marginLeft: 4, padding: '1px 6px', borderRadius: 3,
                   border: '1px solid var(--nx-border)', background: 'transparent',
@@ -1417,7 +1418,7 @@ export default function AutoDrawingPanel({
 
       {drawing && detailSpecs.length > 0 && (
         <div style={{ padding: '4px 12px 8px', borderTop: '1px solid var(--nx-panel-2)', fontSize: 11 }}>
-          <div style={{ color: 'var(--nx-text-2)', marginBottom: 4 }}>Detail views</div>
+          <div style={{ color: 'var(--nx-text-2)', marginBottom: 4 }}>{loc(lang, { ko: '상세도', en: 'Detail views', ja: '詳細図', zh: '详图', es: 'Vistas de detalle', ar: 'العروض التفصيلية' })}</div>
           {detailSpecs.map((spec, i) => (
             <div key={`det-edit-${i}`} data-testid={`detail-edit-${i}`} style={{
               display: 'flex', flexWrap: 'wrap', gap: 4, alignItems: 'center', marginBottom: 4,
@@ -1450,7 +1451,7 @@ export default function AutoDrawingPanel({
               <button
                 onClick={() => setDetailSpecs(prev => prev.filter((_, j) => j !== i))}
                 data-testid={`detail-delete-${i}`}
-                title="delete this detail view"
+                        title={loc(lang, { ko: '이 상세도 삭제', en: 'Delete this detail view', ja: 'この詳細図を削除', zh: '删除此详图', es: 'Eliminar esta vista de detalle', ar: 'حذف هذا العرض التفصيلي' })}
                 style={{
                   marginLeft: 4, padding: '1px 6px', borderRadius: 3,
                   border: '1px solid var(--nx-border)', background: 'transparent',

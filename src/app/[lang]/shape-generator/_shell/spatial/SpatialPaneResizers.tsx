@@ -10,6 +10,7 @@ import {
   type PointerEvent as ReactPointerEvent,
   type ReactNode,
 } from 'react';
+import { shellChromeText } from '../shellChromeI18n';
 
 const MIN_LEFT = 190;
 const MAX_LEFT = 420;
@@ -22,6 +23,7 @@ function clamp(value: number, min: number, max: number): number {
 
 function GridHandle({
   side,
+  lang,
   value,
   min,
   max,
@@ -29,6 +31,7 @@ function GridHandle({
   onReset,
 }: {
   side: 'left' | 'right';
+  lang?: string;
   value: number;
   min: number;
   max: number;
@@ -66,13 +69,13 @@ function GridHandle({
       className={`nx-spatial-pane-resizer ${side}`}
       data-testid={`spatial-${side}-panel-resizer`}
       role="separator"
-      aria-label={`${side === 'left' ? 'Spatial browser' : 'Spatial inspector'} panel width`}
+      aria-label={shellChromeText(lang, side === 'left' ? 'spatialBrowserPanelWidth' : 'spatialInspectorPanelWidth')}
       aria-orientation="vertical"
       aria-valuemin={min}
       aria-valuemax={max}
       aria-valuenow={value}
       tabIndex={0}
-      title="Drag to resize · Arrow keys adjust · Double-click resets"
+      title={shellChromeText(lang, 'resizePanel')}
       style={edgeStyle}
       onPointerDown={event => {
         if (event.button !== 0) return;
@@ -98,10 +101,12 @@ function GridHandle({
 }
 
 export function SpatialPaneResizers({
+  lang,
   storageKey,
   leftDefault = 230,
   rightDefault = 310,
 }: {
+  lang?: string;
   storageKey: string;
   leftDefault?: number;
   rightDefault?: number;
@@ -137,18 +142,20 @@ export function SpatialPaneResizers({
 
   return (
     <div ref={hostRef} className="nx-spatial-pane-resizers" aria-hidden="false">
-      <GridHandle side="left" value={left} min={MIN_LEFT} max={MAX_LEFT} onChange={value => apply('left', value)} onReset={() => apply('left', leftDefault)} />
-      <GridHandle side="right" value={right} min={MIN_RIGHT} max={MAX_RIGHT} onChange={value => apply('right', value)} onReset={() => apply('right', rightDefault)} />
+      <GridHandle lang={lang} side="left" value={left} min={MIN_LEFT} max={MAX_LEFT} onChange={value => apply('left', value)} onReset={() => apply('left', leftDefault)} />
+      <GridHandle lang={lang} side="right" value={right} min={MIN_RIGHT} max={MAX_RIGHT} onChange={value => apply('right', value)} onReset={() => apply('right', rightDefault)} />
     </div>
   );
 }
 
 export function SpatialResizableHost({
+  lang,
   storageKey,
   leftDefault = 220,
   rightDefault = 292,
   children,
 }: {
+  lang?: string;
   storageKey: string;
   leftDefault?: number;
   rightDefault?: number;
@@ -160,7 +167,7 @@ export function SpatialResizableHost({
       style={{ '--nx-spatial-left': `${leftDefault}px`, '--nx-spatial-right': `${rightDefault}px` } as CSSProperties}
     >
       {children}
-      <SpatialPaneResizers storageKey={storageKey} leftDefault={leftDefault} rightDefault={rightDefault} />
+      <SpatialPaneResizers lang={lang} storageKey={storageKey} leftDefault={leftDefault} rightDefault={rightDefault} />
     </div>
   );
 }

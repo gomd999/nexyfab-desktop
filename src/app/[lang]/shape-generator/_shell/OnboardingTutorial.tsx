@@ -238,7 +238,7 @@ export function OnboardingTutorial({ isKo: _isKo }: OnboardingTutorialProps) {
           <h2 id="nx-onboarding-title" style={{ flex: 1, margin: 0, fontSize: 16, fontWeight: 700 }}>{text.title}</h2>
           <button
             onClick={dismiss}
-            aria-label="Close"
+            aria-label={loc(lang, { ko: '닫기', en: 'Close', ja: '閉じる', zh: '关闭', es: 'Cerrar', ar: 'إغلاق' })}
             style={{
               width: 24, height: 24, border: 0, background: 'transparent',
               color: 'var(--nx-text-3)', fontSize: 18, cursor: 'pointer',

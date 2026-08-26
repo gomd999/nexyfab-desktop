@@ -1,5 +1,32 @@
 # Precision CAD current session
 
+## 2026-08-26 commercial workspace UI and i18n closure
+
+- Status: `SIX_LOCALE_COMMERCIAL_UI_PASS / PRODUCTION_DEV_MOCK_BLOCKED /
+  TYPECHECK_ARCHITECTURE_PASS / EXTERNAL_PRECISION_QUALIFICATION_HOLD`.
+- Ten source commits localize the active Precision CAD shell, workspace,
+  drawing handoff, viewport and authoring commands, CAM, assembly,
+  collaboration, loading, fallback, accessibility, and status flows for the
+  six supported product locales.
+- The `?dev-shell=v2` mock workspace can no longer be reached in a production
+  build. Expected loading, WebGL fallback, export, drawing, CAM, awareness,
+  assembly, and collaboration states now use locale-aware product copy while
+  technical CAD identifiers remain unchanged where translation would alter
+  their meaning.
+- The official workspace check passes with zero ownership violations, zero
+  commits behind `integration/nexyfab`, 10 commits ready to integrate, and 79
+  changed Precision-owned paths. TypeScript and the Platform architecture
+  boundary both pass.
+- Focused regression coverage passes for workspace entry, six-locale drawing
+  handoff, viewport and authoring controls, CAM, awareness, assembly,
+  collaboration, loading, and the production dev-shell guard.
+- No native external CAD provider, independent STEP/XCAF/GD&T qualification,
+  manufacturing pilot, staging deployment, or production deployment was run.
+  Those external evidence gates remain HOLD and are not implied by this UI
+  closure.
+- Handoff:
+  `HANDOFFS/20260826T104320Z-commercial-workspace-i18n-closure.md`.
+
 ## 2026-08-26 AI authentication feedback closure
 
 - Status: `GUEST_AI_AUTH_BOUNDARY_EXPLICIT / SIX_LOCALES_PASS /

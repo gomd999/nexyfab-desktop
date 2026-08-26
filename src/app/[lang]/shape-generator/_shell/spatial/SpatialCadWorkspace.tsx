@@ -565,7 +565,7 @@ function InteriorWorkspace({ lang, experience, architectureInteriorInspector }: 
       <main style={{ minWidth: 0, minHeight: 0, padding: 10, overflow: 'auto', background: 'var(--nx-bg)' }}>
         <div className="nx-spatial-mobile-notice" style={{ display: 'none', marginBottom: 8, padding: 8, border: '1px solid var(--nx-warn, #d97706)', borderRadius: 6, color: 'var(--nx-warn, #d97706)', background: 'var(--nx-panel)', fontSize: 10.5, fontWeight: 700 }}>{t.mobile}</div>
         <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, alignItems: 'center', marginBottom: 8 }}>
-          <div role="group" aria-label="Spatial view" style={{ display: 'inline-flex', border: '1px solid var(--nx-border)', borderRadius: 6, overflow: 'hidden' }}>
+          <div role="group" aria-label={t.tree} style={{ display: 'inline-flex', border: '1px solid var(--nx-border)', borderRadius: 6, overflow: 'hidden' }}>
             <button type="button" aria-pressed={view === 'plan'} onClick={() => setView('plan')} style={{ ...fieldStyle, width: 'auto', border: 0, borderRadius: 0, background: view === 'plan' ? 'var(--nx-accent)' : 'var(--nx-panel)' }}>{t.plan}</button>
             <button type="button" aria-pressed={view === '3d'} onClick={() => setView('3d')} style={{ ...fieldStyle, width: 'auto', border: 0, borderLeft: '1px solid var(--nx-border)', borderRadius: 0, background: view === '3d' ? 'var(--nx-accent)' : 'var(--nx-panel)' }}>{t.view3d}</button>
           </div>
@@ -678,7 +678,7 @@ function InteriorWorkspace({ lang, experience, architectureInteriorInspector }: 
           </section>
         )}
       </aside>
-      <SpatialPaneResizers storageKey="interior" leftDefault={220} rightDefault={292} />
+      <SpatialPaneResizers lang={lang} storageKey="interior" leftDefault={220} rightDefault={292} />
       <style>{`@media (max-width: 800px) { .nx-spatial-workbench { grid-template-columns: minmax(0, 1fr) !important; } .nx-spatial-side { display: none !important; } .nx-spatial-mobile-notice { display: block !important; } }`}</style>
     </div>
   );
@@ -692,7 +692,7 @@ export function SpatialCadWorkspace({ domain, lang, experience, onAiDesign, arch
       ? <BuildingCadWorkspace lang={lang} projectId={projectId} onAiDesign={onAiDesign} />
       : domain === 'landscape'
         ? <LandscapeCadWorkspace lang={lang} onAiDesign={onAiDesign} />
-        : <div dir={locale(lang) === 'ar' ? 'rtl' : 'ltr'} data-spatial-drop-zone style={{ width: '100%', height: '100%', minHeight: 0 }}><SpatialResizableHost storageKey="civil"><CivilCadWorkspaceTyped lang={lang} onAiDesign={onAiDesign} /></SpatialResizableHost></div>;
+        : <div dir={locale(lang) === 'ar' ? 'rtl' : 'ltr'} data-spatial-drop-zone style={{ width: '100%', height: '100%', minHeight: 0 }}><SpatialResizableHost lang={lang} storageKey="civil"><CivilCadWorkspaceTyped lang={lang} onAiDesign={onAiDesign} /></SpatialResizableHost></div>;
   const allowedObjects: Record<SpatialDomain, string[]> = {
     building: ['storey', 'window'], civil: ['inlet'], landscape: ['tree-row', 'tree-column'], interior: ['table2', 'table4', 'sofa'],
   };

@@ -19,10 +19,14 @@ const ShapeGeneratorInner = dynamic(
 // Default → ModelerShell (new chrome around the real Inner).
 // `?classic=1`     → bare ShapeGeneratorInner (legacy entry, link-only).
 // `?dev-shell=v2`  → ShellPreview with mock data (dev visual sandbox).
+export function isDevShellAllowed(nodeEnv: string | undefined): boolean {
+  return nodeEnv !== 'production';
+}
+
 function ShellGate() {
   const sp = useSearchParams();
   if (sp?.get('classic') === '1') return <ShapeGeneratorInner />;
-  if (sp?.get('dev-shell') === 'v2') return <ShellPreview />;
+  if (isDevShellAllowed(process.env.NODE_ENV) && sp?.get('dev-shell') === 'v2') return <ShellPreview />;
   return <ModelerShell />;
 }
 

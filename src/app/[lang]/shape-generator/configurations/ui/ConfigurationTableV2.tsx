@@ -597,7 +597,7 @@ function PanelHeader({
             data-testid="config-close"
             onClick={onClose}
             style={closeButtonStyle}
-            aria-label="Close"
+            aria-label={t.close}
           >
             ×
           </button>

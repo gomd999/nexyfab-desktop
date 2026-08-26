@@ -2,6 +2,7 @@
 
 import React from 'react';
 import { usePathname } from 'next/navigation';
+import { loc } from '@/lib/i18n/loc';
 
 export interface StatusBarProps {
   lang: string;
@@ -230,7 +231,7 @@ export default function StatusBar({
 
       {/* Live part readout — size · volume · mass (always-on, no panel needed) */}
       {modelStats && (
-        <div style={S.coordWrap} title="Bounding size · Volume · Mass">
+        <div style={S.coordWrap} title={loc(seg, { ko: '경계 크기 · 부피 · 질량', en: 'Bounding size · Volume · Mass', ja: '境界サイズ · 体積 · 質量', zh: '边界尺寸 · 体积 · 质量', es: 'Tamaño límite · Volumen · Masa', ar: 'حجم الحدود · الحجم · الكتلة' })}>
           <span style={S.statKey}>SIZE</span>
           <span style={S.coordVal}>{fmt(modelStats.sx)}×{fmt(modelStats.sy)}×{fmt(modelStats.sz)}</span>
           {modelStats.volumeCm3 != null && (
@@ -265,10 +266,10 @@ export default function StatusBar({
           data-testid="smart-snap-toggle"
           onClick={onToggleSmartSnap}
           style={S.snapBtn(smartSnapEnabled)}
-          title="Smart Snap (edge-to-edge)"
+          title={loc(seg, { ko: '스마트 스냅(모서리 간)', en: 'Smart Snap (edge-to-edge)', ja: 'スマートスナップ（エッジ間）', zh: '智能捕捉（边到边）', es: 'Ajuste inteligente (borde a borde)', ar: 'المحاذاة الذكية (من حافة إلى حافة)' })}
           aria-pressed={smartSnapEnabled}
         >
-          ◈ Smart: {smartSnapEnabled ? 'ON' : 'OFF'}
+          ◈ {loc(seg, { ko: '스마트', en: 'Smart', ja: 'スマート', zh: '智能', es: 'Inteligente', ar: 'ذكي' })}: {smartSnapEnabled ? 'ON' : 'OFF'}
         </button>
       )}
       {snapEnabled && typeof snapSize === 'number' && onSnapSizeChange && (

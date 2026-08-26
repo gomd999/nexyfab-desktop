@@ -208,9 +208,14 @@ export function DrawingFrame({ lang, isKo, projectId }: DrawingFrameProps) {
       <Shell
         mode="drawing"
         titleBar={{
+          lang,
           filename: loc(lang, { ko: '도면 — 무제 파트', en: 'Drawing — Untitled Part', ja: '図面 — 無題パート', zh: '图纸 — 未命名零件', es: 'Plano — Pieza sin título', ar: 'رسم — قطعة بدون عنوان' }),
           savedAt: loc(lang, { ko: '자동 저장됨', en: 'Auto-saved', ja: '自動保存済み', zh: '已自动保存', es: 'Guardado automáticamente', ar: 'تم الحفظ تلقائيًا' }),
-          breadcrumbs: ['Projects', 'Drawing', loc(lang, { ko: '도면 1', en: 'Sheet 1', ja: 'シート 1', zh: '图框 1', es: 'Hoja 1', ar: 'الورقة 1' })],
+          breadcrumbs: [
+            loc(lang, { ko: '프로젝트', en: 'Projects', ja: 'プロジェクト', zh: '项目', es: 'Proyectos', ar: 'المشاريع' }),
+            loc(lang, { ko: '도면', en: 'Drawing', ja: '図面', zh: '工程图', es: 'Plano', ar: 'الرسم' }),
+            loc(lang, { ko: '도면 1', en: 'Sheet 1', ja: 'シート 1', zh: '图框 1', es: 'Hoja 1', ar: 'الورقة 1' }),
+          ],
           onBrandClick: () => { try { sessionStorage.setItem('nexyfab:hub-visited', '1'); } catch { /* ignore */ } router.push(`/${langSeg}/nexyfab/hub`); },
           mode: loc(lang, { ko: '도면 모드', en: 'DRAWING MODE', ja: '図面モード', zh: '图纸模式', es: 'MODO PLANO', ar: 'وضع الرسم' }),
           // No file/undo/share plumbing on this surface yet — TitleBar hides

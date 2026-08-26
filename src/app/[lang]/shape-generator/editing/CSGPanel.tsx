@@ -293,7 +293,7 @@ export default function CSGPanel({ lang, onApply, onClose }: CSGPanelProps) {
             lineHeight: 1,
             padding: 2,
           }}
-          aria-label="close"
+          aria-label={t.cancel}
         >
           ×
         </button>

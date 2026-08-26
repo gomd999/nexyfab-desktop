@@ -21,4 +21,10 @@ describe('AssemblyAnimationTimeline continuous evidence', () => {
     expect(render({ ...base, verified: false, collisionFree: false, continuous: { checked: true, candidates: [interval], unresolved: [interval] }, errors: ['unresolved'] })).toContain('1 unresolved rotational interval(s)');
   });
   it('shows the conservative first-contact bracket from precise verification',()=>{const toi:PreciseCollisionTimeEvidence[]=[{partA:'arm',partB:'guard',status:'collision_bracket',searchStartFrame:0,searchEndFrame:10,firstPossibleFrame:2.449,confirmedCollisionFrame:2.45,bracketWidthFrames:.001,evaluations:20,clearIntervals:8}];const html=renderToStaticMarkup(<AssemblyAnimationTimeline animation={animation} frame={0} playing={false} onFrameChange={vi.fn()} onPlayingChange={vi.fn()} verification={base} timeOfImpact={toi}/>);expect(html).toContain('First collision arm/guard: frames 2.449–2.450');expect(html).toContain('assembly-animation-jump-to-toi');});
+  it('localizes controls and evidence for Arabic routes', () => {
+    const html = renderToStaticMarkup(<AssemblyAnimationTimeline lang="ar" animation={animation} frame={0} playing={false} onFrameChange={vi.fn()} onPlayingChange={vi.fn()} verification={base}/>);
+    expect(html).toContain('aria-label="تشغيل"');
+    expect(html).toContain('جميع الفواصل المأخوذة والمستمرة خالية');
+    expect(html).not.toContain('aria-label="Play"');
+  });
 });

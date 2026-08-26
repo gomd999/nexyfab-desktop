@@ -14,10 +14,16 @@ import {
   type AssemblyBridgeIssue,
 } from './canonicalAssemblyBridge';
 import { loc } from '../lib/loc';
+import { useLang } from '../hooks/useLang';
+
+function AssemblyWorkspaceLoading() {
+  const lang = useLang();
+  return <div className="nx-assembly-loading" aria-busy="true">{loc(lang, { ko: '어셈블리 작업공간을 불러오는 중…', en: 'Loading assembly workspace…', ja: 'アセンブリワークスペースを読み込み中…', zh: '正在加载装配工作区…', es: 'Cargando el espacio de trabajo de ensamblaje…', ar: 'جارٍ تحميل مساحة عمل التجميع…' })}</div>;
+}
 
 const AssemblyBrowserModal = dynamic(() => import('./AssemblyBrowserModal'), {
   ssr: false,
-  loading: () => <div className="nx-assembly-loading" aria-busy="true">Loading assembly workspace…</div>,
+  loading: () => <AssemblyWorkspaceLoading />,
 });
 
 export interface EmbeddedAssemblyWorkspaceProps {

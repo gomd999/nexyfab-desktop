@@ -9,6 +9,12 @@ import { useState } from 'react';
 import { Grp, Ribbon, Tool, type RibbonTabDef } from './Ribbon';
 import type { IconName } from './Icons';
 import type { UserExperienceLevel } from '@/lib/ai/domainProfile';
+import {
+  localizeRibbonAction,
+  localizeRibbonGroup,
+  localizeRibbonTabs,
+  shellChromeText,
+} from './shellChromeI18n';
 
 export type ShellMode = 'modeling' | 'sketch' | 'assembly' | 'drawing' | 'render' | 'sheetmetal';
 
@@ -33,6 +39,7 @@ export type RibbonHandler = (id: string) => void;
 export type RibbonActiveCheck = (id: string) => boolean;
 
 export interface ModeRibbonProps {
+  lang?: string;
   mode: ShellMode;
   experienceLevel?: UserExperienceLevel;
   /** Domain-specific, already-tiered actions. Supplying these prevents the
@@ -365,7 +372,7 @@ const SKETCH_TAB_GROUPS: Record<string, string[]> = {
   'sketch.finish': ['Project', 'Body', 'Finish'],
 };
 
-export function ModeRibbon({ mode, experienceLevel = 'standard', groups: suppliedGroups, tabs, activeTab, onTabChange, onTool, isActive }: ModeRibbonProps) {
+export function ModeRibbon({ lang, mode, experienceLevel = 'standard', groups: suppliedGroups, tabs, activeTab, onTabChange, onTool, isActive }: ModeRibbonProps) {
   const [showAdvanced, setShowAdvanced] = useState(false);
   let groups = suppliedGroups ?? GROUPS_BY_MODE[mode];
   if (!suppliedGroups && mode === 'sketch' && SKETCH_TAB_GROUPS[activeTab]) {
@@ -388,16 +395,16 @@ export function ModeRibbon({ mode, experienceLevel = 'standard', groups: supplie
         .filter(g => g.rows.length > 0)
       : groups;
   return (
-    <Ribbon tabs={tabs} activeTab={activeTab} onTabChange={onTabChange}>
+    <Ribbon tabs={localizeRibbonTabs(tabs, lang)} activeTab={activeTab} onTabChange={onTabChange}>
       {shown.map(g => (
-        <Grp key={g.title} title={g.title}>
+        <Grp key={g.title} title={localizeRibbonGroup(g.title, lang)}>
           {g.rows.map((row, ri) => {
             const isCol = row.every(a => a.big === false);
             const inner = row.map(a => (
               <Tool
                 key={a.id}
                 ico={a.ico}
-                lbl={a.lbl}
+                lbl={localizeRibbonAction(a.id, a.lbl, lang)}
                 big={a.big ?? true}
                 hasCaret={a.hasCaret}
                 active={isActive?.(a.id)}
@@ -416,10 +423,10 @@ export function ModeRibbon({ mode, experienceLevel = 'standard', groups: supplie
         </Grp>
       ))}
       {!suppliedGroups && mode === 'modeling' && experienceLevel === 'standard' && (
-        <Grp key="__tier" title={showAdvanced ? 'Less' : 'More'}>
+        <Grp key="__tier" title={shellChromeText(lang, showAdvanced ? 'less' : 'more')}>
           <Tool
             ico="plus"
-            lbl={showAdvanced ? 'Essentials' : 'All tools'}
+            lbl={shellChromeText(lang, showAdvanced ? 'essentials' : 'allTools')}
             big
             active={showAdvanced}
             onClick={() => setShowAdvanced(s => !s)}
