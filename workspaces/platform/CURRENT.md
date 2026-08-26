@@ -1,5 +1,26 @@
 # Platform current session
 
+## 2026-08-26 current-source mechanical internal receipt
+
+- Status: `MECHANICAL_INTERNAL_REGRESSION_PASS /
+  ASSEMBLY_DRAWING_LOCAL_PASS / EXTERNAL_COMMERCIAL_EVIDENCE_HOLD`.
+- The source-bound assembly-to-drawing receipt was rebuilt after the current
+  Platform source invalidated its previous hash. Its three focused suites pass
+  11/11 tests and the recalculated receipt reports `localStatus: PASS` while
+  deliberately retaining the overall `HOLD` claim boundary.
+- The complete internal mechanical campaign passes 17 files/137 direct-CAD
+  tests, 9 files/49 accuracy tests, 150 bounded intent cases, 10 representative
+  runtime cases/70 axes, the 11 assembly-handoff tests, and TypeScript.
+- The internal receipt SHA-256 is
+  `836d985c3d84aa80637533bf377c50ad999d08625dbed1ae159035b0f6d0cc26`;
+  the assembly receipt SHA-256 is
+  `9642395a132daf6a4060923ecaee252e3ec9d123aa977ba0a5bcbaca02a00972`.
+- This refresh does not manufacture an external native-CAD, STEP/XCAF/GD&T,
+  independent expert, or manufacturing-pilot receipt. Commercial Precision
+  authority remains disabled/HOLD.
+- Handoff:
+  `HANDOFFS/20260826T130403Z-current-source-mechanical-internal-receipt.md`.
+
 ## 2026-08-26 Next.js quote route export closure
 
 - Status: `PRODUCTION_BUILD_FAILURE_REPRODUCED / ROUTE_EXPORT_ISOLATED /
