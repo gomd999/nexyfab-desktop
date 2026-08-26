@@ -8,6 +8,7 @@ const NODE_TESTS = [
   'services/openscad-worker/server.test.mjs',
   'scripts/deploy-railway-verified.test.mjs',
   'scripts/package-release-health-evidence.test.mjs',
+  'scripts/platform/verify-ci-migration-contract.test.mjs',
   'scripts/platform/validate-platform-architecture.test.mjs',
   'scripts/platform/evaluate-runtime-placement-readiness.test.mjs',
   'scripts/platform/verify-slice-deployment-readiness.test.mjs',

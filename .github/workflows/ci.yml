@@ -49,8 +49,8 @@ jobs:
       - run: npm ci --legacy-peer-deps
       - name: Apply migrations twice (idempotency gate)
         run: |
-          npm run migrate -- up
-          npm run migrate -- up
+          npm run migrate:postgres:versioned
+          npm run migrate:postgres:versioned
       - name: Create isolated restore target
         run: |
           # createdb takes a database NAME, not a URI — passing the URL would
