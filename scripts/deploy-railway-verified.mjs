@@ -67,7 +67,11 @@ export function npmInvocation({
   fileExists = existsSync,
 } = {}) {
   if (npmExecPath) return { command: execPath, prefixArgs: [npmExecPath] };
-  const bundledNpmCli = path.join(path.dirname(execPath), 'node_modules', 'npm', 'bin', 'npm-cli.js');
+  // Use the target platform's path rules when a non-Windows CI runner tests
+  // the Windows invocation contract. The runtime path module follows the host
+  // runner, which otherwise turns C:\\... into a relative POSIX path.
+  const targetPath = platform === 'win32' ? path.win32 : path;
+  const bundledNpmCli = targetPath.join(targetPath.dirname(execPath), 'node_modules', 'npm', 'bin', 'npm-cli.js');
   if (platform === 'win32' && fileExists(bundledNpmCli)) {
     // Windows cannot spawn npm.cmd with shell:false (EINVAL). Invoke the npm
     // JavaScript CLI through the same Node executable instead.

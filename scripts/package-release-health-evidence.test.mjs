@@ -119,7 +119,7 @@ test('rejects symlinked source receipts and never copies outside the standalone 
     // regular-file guard remains covered by the missing-file assertion above.
     try {
       symlinkSync(target, source, 'file');
-      assert.throws(() => packageReleaseHealthEvidence({ projectRoot: root, standaloneRoot: path.join(root, '.next', 'standalone') }), /regular file/);
+      assert.throws(() => packageReleaseHealthEvidence({ projectRoot: root, standaloneRoot: path.join(root, '.next', 'standalone') }), /through symlink/);
     } catch (error) {
       if (error?.code !== 'EPERM') throw error;
     }
