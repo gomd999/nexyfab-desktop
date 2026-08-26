@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
   TARGET_RUNTIME_KEYS,
+  WEB_PUBLIC_AI_DESIGN_AUTHORITY_MIGRATION_CHECKSUM,
   WEB_PUBLIC_AI_DESIGN_SOURCE_MIGRATION_CHECKSUM,
   deploymentCliMessage,
   deploymentMessage,
@@ -15,6 +16,7 @@ import {
 
 const commercialRuntimeKeys = [
   'NEXYFAB_COMMERCIAL_MODE',
+  'NEXYFAB_AI_DESIGN_DURABLE_MODE',
   'NEXYFAB_BUILD_ID',
   'RELEASE_GIT_HEAD',
   'NEXYFAB_AGENT_APPROVAL_SECRET',
@@ -98,6 +100,7 @@ test('web-public deployment is restricted to production with payments and precis
   const buildId = 'c'.repeat(40);
   const target = {
     NEXYFAB_COMMERCIAL_MODE: '0',
+    NEXYFAB_AI_DESIGN_DURABLE_MODE: '1',
     NEXYFAB_PRECISION_CAD_COMMERCIAL_MODE: '0',
     NEXYFAB_PAYMENTS_ENABLED: 'false',
     NEXYFAB_RELEASE_CHANNEL: 'web-public',
@@ -123,6 +126,7 @@ test('web-public deployment is restricted to production with payments and precis
     RECAPTCHA_ALLOWED_HOSTNAMES: 'nexyfab.com,www.nexyfab.com',
     JWT_SECRET: 'jwt-secret',
     NEXT_SERVER_ACTIONS_ENCRYPTION_KEY: 'actions-secret',
+    POSTGRES_MIGRATION_CHECKSUM_2026082402: WEB_PUBLIC_AI_DESIGN_AUTHORITY_MIGRATION_CHECKSUM,
     POSTGRES_MIGRATION_CHECKSUM_2026082602: WEB_PUBLIC_AI_DESIGN_SOURCE_MIGRATION_CHECKSUM,
   };
   const passing = {
@@ -141,6 +145,7 @@ test('web-public deployment is restricted to production with payments and precis
   assert.ok(webPublicIssues({ ...passing, site: 'https://staging.nexyfab.com' }).includes('web_public_site_must_be_canonical_production_host'));
   assert.ok(webPublicIssues({ ...passing, target: { ...target, NEXYFAB_COMMERCIAL_MODE: '1' } }).includes('web_public_commercial_mode_must_be_0'));
   assert.ok(webPublicIssues({ ...passing, target: { ...target, NEXYFAB_PRECISION_CAD_COMMERCIAL_MODE: '1' } }).includes('web_public_precision_commercial_mode_must_be_0'));
+  assert.ok(webPublicIssues({ ...passing, target: { ...target, NEXYFAB_AI_DESIGN_DURABLE_MODE: '0' } }).includes('web_public_ai_design_durable_mode_required'));
   assert.ok(webPublicIssues({ ...passing, target: { ...target, NEXYFAB_PAYMENTS_ENABLED: 'true' } }).includes('web_public_payments_must_be_false'));
   assert.ok(webPublicIssues({ ...passing, target: { ...target, NEXYFAB_RELEASE_CHANNEL: 'production' } }).includes('web_public_release_channel_required'));
   assert.ok(webPublicIssues({ ...passing, target: { ...target, NEXYFAB_BUILD_ID: 'wrong' } }).includes('web_public_build_id_mismatch'));
@@ -149,6 +154,7 @@ test('web-public deployment is restricted to production with payments and precis
   assert.ok(webPublicIssues({ ...passing, target: { ...target, OBJECT_STORAGE_PRIVATE_BUCKET: 'unverified' } }).includes('web_public_private_bucket_must_match_verified_s3_bucket'));
   assert.ok(webPublicIssues({ ...passing, target: { ...target, NEXT_PUBLIC_AUTH_URL: 'http://localhost:3000' } }).includes('web_public_auth_url_must_be_canonical_production_host'));
   assert.ok(webPublicIssues({ ...passing, target: { ...target, RECAPTCHA_ALLOWED_HOSTNAMES: 'nexyfab.com' } }).includes('web_public_recaptcha_hosts_must_cover_canonical_hosts'));
+  assert.ok(webPublicIssues({ ...passing, target: { ...target, POSTGRES_MIGRATION_CHECKSUM_2026082402: '0'.repeat(64) } }).includes('web_public_ai_design_authority_migration_checksum_mismatch'));
   assert.ok(webPublicIssues({ ...passing, target: { ...target, POSTGRES_MIGRATION_CHECKSUM_2026082602: '0'.repeat(64) } }).includes('web_public_ai_design_source_migration_checksum_mismatch'));
 });
 

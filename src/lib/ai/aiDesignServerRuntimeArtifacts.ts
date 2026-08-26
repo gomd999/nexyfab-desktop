@@ -31,6 +31,7 @@ import {
   type AiDesignArtifactOwnershipScope,
 } from './aiDesignCandidateArtifact';
 import { assertAiDesignPostgresAuthority } from './aiDesignPostgresAuthority';
+import { aiDesignDurablePersistenceEnabled } from './aiDesignDeploymentMode';
 
 const MAX_ITEM_BYTES = 1024 * 1024;
 const MAX_COMPLEX_ITEM_BYTES = 8 * 1024 * 1024;
@@ -334,7 +335,7 @@ class AiDesignServerRuntimeArtifactRouter implements RuntimeArtifactStore {
   private readonly reference = new InMemoryAiDesignServerRuntimeArtifacts();
   private commercial: PostgresAiDesignServerRuntimeArtifacts | null = null;
   private selected(): RuntimeArtifactStore {
-    if (process.env.NEXYFAB_COMMERCIAL_MODE !== '1') return this.reference;
+    if (!aiDesignDurablePersistenceEnabled()) return this.reference;
     this.commercial ??= new PostgresAiDesignServerRuntimeArtifacts();
     return this.commercial;
   }

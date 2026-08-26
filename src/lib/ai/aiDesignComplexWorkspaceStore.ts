@@ -5,6 +5,7 @@ import {
 } from './aiDesignComplexWorkspaceAggregate';
 import { getDbAdapter, type DbAdapter } from '@/lib/db-adapter';
 import { aiDesignOwnerKeySha256, assertAiDesignPostgresAuthority } from './aiDesignPostgresAuthority';
+import { aiDesignDurablePersistenceEnabled } from './aiDesignDeploymentMode';
 
 export interface AiDesignComplexWorkspaceStore {
   loadOrCreate(input: { ownerKey: string; projectId: string; sessionId: string; runtimeRevision: number; now?: string }): Promise<AiDesignComplexWorkspaceAggregateV1>;
@@ -22,7 +23,7 @@ export class InMemoryAiDesignComplexWorkspaceStore implements AiDesignComplexWor
   constructor(private readonly mode: 'reference' | 'commercial' = 'reference') {}
 
   private ensure(): void {
-    if (this.mode === 'commercial' || process.env.NEXYFAB_COMMERCIAL_MODE === '1') throw new Error('AI_DESIGN_COMPLEX_POSTGRES_AUTHORITATIVE_REQUIRED');
+    if (this.mode === 'commercial' || aiDesignDurablePersistenceEnabled()) throw new Error('AI_DESIGN_COMPLEX_POSTGRES_AUTHORITATIVE_REQUIRED');
   }
 
   async loadOrCreate(input: { ownerKey: string; projectId: string; sessionId: string; runtimeRevision: number; now?: string }): Promise<AiDesignComplexWorkspaceAggregateV1> {
@@ -170,7 +171,7 @@ class AiDesignComplexWorkspaceStoreRouter implements AiDesignComplexWorkspaceSto
   private readonly reference = new InMemoryAiDesignComplexWorkspaceStore();
   private commercial: PostgresAiDesignComplexWorkspaceStore | null = null;
   private selected(): AiDesignComplexWorkspaceStore {
-    if (process.env.NEXYFAB_COMMERCIAL_MODE !== '1') return this.reference;
+    if (!aiDesignDurablePersistenceEnabled()) return this.reference;
     this.commercial ??= new PostgresAiDesignComplexWorkspaceStore();
     return this.commercial;
   }

@@ -32,6 +32,11 @@ const windowsRailwayCli = process.platform === 'win32' && process.env.APPDATA
 const railwayCommand = windowsRailwayCli && existsSync(windowsRailwayCli) ? process.execPath : 'railway';
 const railwayPrefixArgs = windowsRailwayCli && existsSync(windowsRailwayCli) ? [windowsRailwayCli] : [];
 const scriptDirectory = path.dirname(fileURLToPath(import.meta.url));
+const aiDesignAuthorityMigrationBytes = readFileSync(path.join(scriptDirectory, '..', 'src', 'lib', 'db-postgres-migration-2026082402.sql'), 'utf8')
+  .replace(/\r\n?/g, '\n');
+export const WEB_PUBLIC_AI_DESIGN_AUTHORITY_MIGRATION_CHECKSUM = createHash('sha256')
+  .update(aiDesignAuthorityMigrationBytes)
+  .digest('hex');
 const aiDesignSourceMigrationBytes = readFileSync(path.join(scriptDirectory, '..', 'src', 'lib', 'db-postgres-migration-2026082602.sql'), 'utf8')
   .replace(/\r\n?/g, '\n');
 export const WEB_PUBLIC_AI_DESIGN_SOURCE_MIGRATION_CHECKSUM = createHash('sha256')
@@ -93,7 +98,7 @@ function runNpmScript(script, env = process.env) {
 }
 
 export const TARGET_RUNTIME_KEYS = [
-  'NEXYFAB_COMMERCIAL_MODE', 'NEXYFAB_PAYMENTS_ENABLED', 'NEXYFAB_RELEASE_CHANNEL', 'NEXYFAB_BUILD_ID', 'RELEASE_GIT_HEAD',
+  'NEXYFAB_COMMERCIAL_MODE', 'NEXYFAB_AI_DESIGN_DURABLE_MODE', 'NEXYFAB_PAYMENTS_ENABLED', 'NEXYFAB_RELEASE_CHANNEL', 'NEXYFAB_BUILD_ID', 'RELEASE_GIT_HEAD',
   'NEXYFAB_PRECISION_CAD_COMMERCIAL_MODE', 'NEXYFAB_AGENT_APPROVAL_SECRET',
   'NEXYFAB_AGENTIC_TRUST_REGISTRY_JSON', 'EXTERNAL_WORKER_ORCHESTRATOR_URL',
   'EXTERNAL_WORKER_ORCHESTRATOR_HEALTH_URL', 'POSTGRES_MIGRATION_VERSION',
@@ -190,6 +195,7 @@ const WEB_PUBLIC_REQUIRED_KEYS = [
   'CRON_SECRET', 'SMTP_HOST', 'SMTP_USER', 'SMTP_PASS', 'SENTRY_DSN',
   'NEXT_PUBLIC_AUTH_URL', 'RECAPTCHA_SECRET_KEY', 'NEXT_PUBLIC_RECAPTCHA_SITE_KEY',
   'RECAPTCHA_ALLOWED_HOSTNAMES', 'JWT_SECRET', 'NEXT_SERVER_ACTIONS_ENCRYPTION_KEY',
+  'POSTGRES_MIGRATION_CHECKSUM_2026082402',
   'POSTGRES_MIGRATION_CHECKSUM_2026082602',
 ];
 
@@ -200,6 +206,7 @@ export function webPublicIssues({ environment, service, site, target, expectedBu
   if (autoDeployEnabled !== false) issues.push('web_public_auto_deploy_must_be_disabled');
   if (target.NEXYFAB_COMMERCIAL_MODE !== '0') issues.push('web_public_commercial_mode_must_be_0');
   if (target.NEXYFAB_PRECISION_CAD_COMMERCIAL_MODE !== '0') issues.push('web_public_precision_commercial_mode_must_be_0');
+  if (target.NEXYFAB_AI_DESIGN_DURABLE_MODE !== '1') issues.push('web_public_ai_design_durable_mode_required');
   if (target.NEXYFAB_PAYMENTS_ENABLED !== 'false') issues.push('web_public_payments_must_be_false');
   if (target.NEXYFAB_RELEASE_CHANNEL !== 'web-public') issues.push('web_public_release_channel_required');
   if (!expectedBuildId || target.NEXYFAB_BUILD_ID !== expectedBuildId) issues.push('web_public_build_id_mismatch');
@@ -211,6 +218,10 @@ export function webPublicIssues({ environment, service, site, target, expectedBu
   }
   for (const key of WEB_PUBLIC_REQUIRED_KEYS) {
     if (!target[key]?.trim()) issues.push(`web_public_required_variable_missing:${key}`);
+  }
+  if (target.POSTGRES_MIGRATION_CHECKSUM_2026082402?.trim()
+      && target.POSTGRES_MIGRATION_CHECKSUM_2026082402.trim() !== WEB_PUBLIC_AI_DESIGN_AUTHORITY_MIGRATION_CHECKSUM) {
+    issues.push('web_public_ai_design_authority_migration_checksum_mismatch');
   }
   if (target.POSTGRES_MIGRATION_CHECKSUM_2026082602?.trim()
       && target.POSTGRES_MIGRATION_CHECKSUM_2026082602.trim() !== WEB_PUBLIC_AI_DESIGN_SOURCE_MIGRATION_CHECKSUM) {

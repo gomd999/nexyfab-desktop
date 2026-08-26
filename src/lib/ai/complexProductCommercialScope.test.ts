@@ -18,8 +18,10 @@ describe('complex product commercial scope', () => {
     for (const locale of ['ko', 'en', 'ja', 'zh', 'es', 'ar']) {
       const copy = getComplexProductCommercialScopeCopy(locale);
       expect(copy.badge.length).toBeGreaterThan(5);
+      expect(copy.availability.length).toBeGreaterThan(20);
       expect(copy.gates).toHaveLength(COMPLEX_PRODUCT_COMMERCIAL_SCOPE.requiredGates.length);
       expect(copy.boundary.length).toBeGreaterThan(20);
     }
+    expect(getComplexProductCommercialScopeCopy('kr').availability).toContain('자동 저장');
   });
 });

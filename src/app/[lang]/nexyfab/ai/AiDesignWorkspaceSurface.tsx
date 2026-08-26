@@ -121,6 +121,7 @@ export function AiDesignWorkspaceSurface({
         </div>
         <section className={styles.complexScope} data-testid="complex-product-commercial-scope">
           <strong>{complexScope.badge}</strong>
+          <span><b>{complexScope.availability}</b></span>
           <span>{complexScope.families}</span>
           <span>{complexScope.boundary}</span>
           <ol>{complexScope.gates.map((gate, index) => <li key={gate}><b>{index + 1}</b>{gate}</li>)}</ol>

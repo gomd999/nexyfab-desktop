@@ -10,10 +10,10 @@ vi.mock('@/lib/db-adapter', async importOriginal => {
 });
 
 import { advanceAiDesignComplexWorkspaceAggregate } from './aiDesignComplexWorkspaceAggregate';
-import { PostgresAiDesignComplexWorkspaceStore } from './aiDesignComplexWorkspaceStore';
+import { aiDesignComplexWorkspaceStore, PostgresAiDesignComplexWorkspaceStore } from './aiDesignComplexWorkspaceStore';
 import { aiDesignOwnerKeySha256 } from './aiDesignPostgresAuthority';
 import { issueAiDesignServerEvidenceReceipt } from './aiDesignServerEvidenceReceipt';
-import { PostgresAiDesignServerRuntimeArtifacts } from './aiDesignServerRuntimeArtifacts';
+import { aiDesignServerRuntimeArtifacts } from './aiDesignServerRuntimeArtifacts';
 import { createAiDesignWorkspaceRuntime, dispatchAiDesignWorkspaceAction } from './aiDesignWorkspaceRuntime';
 import {
   createServerAiDesignWorkspaceRuntime,
@@ -94,7 +94,8 @@ function runtime() {
 }
 
 beforeEach(() => {
-  vi.stubEnv('NEXYFAB_COMMERCIAL_MODE', '1');
+  vi.stubEnv('NEXYFAB_COMMERCIAL_MODE', '0');
+  vi.stubEnv('NEXYFAB_AI_DESIGN_DURABLE_MODE', '1');
   vi.stubEnv('POSTGRES_MIGRATION_CHECKSUM_2026082402', migrationChecksum);
   rows = { runtimes: new Map(), complex: new Map(), artifacts: new Map() };
   db = adapter();
@@ -102,11 +103,22 @@ beforeEach(() => {
 });
 
 afterEach(async () => {
+  aiDesignComplexWorkspaceStore.reset();
+  aiDesignServerRuntimeArtifacts.reset();
   vi.unstubAllEnvs();
   await db.close();
 });
 
 describe('AI Design PostgreSQL authority stores', () => {
+  it('routes public beta runtime, complex work, and evidence to PostgreSQL', async () => {
+    await createServerAiDesignWorkspaceRuntime('owner-beta', runtime());
+    await aiDesignComplexWorkspaceStore.loadOrCreate({
+      ownerKey: 'owner-beta', projectId: 'project-1', sessionId: 'session-1', runtimeRevision: 0,
+    });
+    expect(rows.runtimes.size).toBe(1);
+    expect(rows.complex.size).toBe(1);
+  });
+
   it('fails closed when the immutable 2402 checksum is not configured', async () => {
     vi.stubEnv('POSTGRES_MIGRATION_CHECKSUM_2026082402', '');
     const store = new PostgresAiDesignComplexWorkspaceStore(adapter());
@@ -153,7 +165,7 @@ describe('AI Design PostgreSQL authority stores', () => {
   });
 
   it('stores immutable content-bound artifacts and rejects conflicting replay', async () => {
-    const store = new PostgresAiDesignServerRuntimeArtifacts(db);
+    const store = aiDesignServerRuntimeArtifacts;
     const receipt = issueAiDesignServerEvidenceReceipt({
       projectId: 'project-1', sessionId: 'session-1', commandId: 'command-1', checkpointId: 'checkpoint-1',
       checkpointDigest: hash('a'), runtimeRevision: 0, generationRevision: null, stage: 'understanding',

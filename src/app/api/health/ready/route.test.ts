@@ -39,6 +39,7 @@ beforeEach(() => {
   vi.stubEnv('NODE_ENV', 'development');
   vi.stubEnv('RAILWAY_ENVIRONMENT_NAME', '');
   vi.stubEnv('NEXYFAB_COMMERCIAL_MODE', '0');
+  vi.stubEnv('NEXYFAB_AI_DESIGN_DURABLE_MODE', '0');
   vi.stubEnv('NEXYFAB_PRECISION_CAD_COMMERCIAL_MODE', '');
   vi.stubEnv('NEXYFAB_PAYMENTS_ENABLED', '');
   vi.stubEnv('NEXYFAB_RELEASE_CHANNEL', '');
@@ -190,13 +191,20 @@ describe('GET /api/health/ready', () => {
     vi.stubEnv('RAILWAY_ENVIRONMENT_NAME', 'production');
     vi.stubEnv('NEXYFAB_RELEASE_CHANNEL', 'web-public');
     vi.stubEnv('NEXYFAB_COMMERCIAL_MODE', '0');
+    vi.stubEnv('NEXYFAB_AI_DESIGN_DURABLE_MODE', '1');
     vi.stubEnv('NEXYFAB_PRECISION_CAD_COMMERCIAL_MODE', '0');
     vi.stubEnv('NEXYFAB_PAYMENTS_ENABLED', 'false');
     vi.stubEnv('REDIS_URL', 'redis://example.test:6379');
+    vi.stubEnv('POSTGRES_MIGRATION_CHECKSUM_2026082402', '2'.repeat(64));
     vi.stubEnv('POSTGRES_MIGRATION_CHECKSUM_2026082602', 'a'.repeat(64));
-    const queryOne = vi.fn(async (sql: string) => sql.includes('nf_schema_migrations')
-      ? { version: 2026082602, checksum: 'a'.repeat(64) }
-      : { '?column?': 1 });
+    const queryOne = vi.fn(async (sql: string, version?: number) => {
+      if (sql.includes('nf_schema_migrations')) {
+        return version === 2026082402
+          ? { version, checksum: '2'.repeat(64) }
+          : { version: 2026082602, checksum: 'a'.repeat(64) };
+      }
+      return { '?column?': 1 };
+    });
     state.getDbAdapter.mockReturnValue({ backend: 'postgres', queryOne });
 
     const response = await GET();
@@ -205,6 +213,7 @@ describe('GET /api/health/ready', () => {
     expect(response.status).toBe(200);
     expect(body).toMatchObject({
       status: 'ok',
+      db: { aiDesignPersistence: 'postgres_authoritative' },
       redis: { status: 'ok', required: true },
       commercialBoundary: { status: 'skipped', required: false },
     });
@@ -218,6 +227,7 @@ describe('GET /api/health/ready', () => {
     const nearMisses = [
       ['NEXYFAB_RELEASE_CHANNEL', 'production'],
       ['NEXYFAB_COMMERCIAL_MODE', ''],
+      ['NEXYFAB_AI_DESIGN_DURABLE_MODE', '0'],
       ['NEXYFAB_PRECISION_CAD_COMMERCIAL_MODE', '1'],
       ['NEXYFAB_PAYMENTS_ENABLED', 'true'],
     ] as const;
@@ -230,6 +240,7 @@ describe('GET /api/health/ready', () => {
       });
       vi.stubEnv('NEXYFAB_RELEASE_CHANNEL', 'web-public');
       vi.stubEnv('NEXYFAB_COMMERCIAL_MODE', '0');
+      vi.stubEnv('NEXYFAB_AI_DESIGN_DURABLE_MODE', '1');
       vi.stubEnv('NEXYFAB_PRECISION_CAD_COMMERCIAL_MODE', '0');
       vi.stubEnv('NEXYFAB_PAYMENTS_ENABLED', 'false');
     }

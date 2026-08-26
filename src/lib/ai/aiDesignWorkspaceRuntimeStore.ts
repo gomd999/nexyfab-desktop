@@ -2,6 +2,7 @@ import { createHash } from 'node:crypto';
 import type { Redis } from 'ioredis';
 import { getDbAdapter, type DbAdapter } from '@/lib/db-adapter';
 import { aiDesignOwnerKeySha256, assertAiDesignPostgresAuthority } from './aiDesignPostgresAuthority';
+import { aiDesignDurablePersistenceEnabled } from './aiDesignDeploymentMode';
 import { assertAiDesignWorkspaceRuntime, type AiDesignWorkspaceRuntimeV1 } from './aiDesignWorkspaceRuntime';
 import { evidenceHashMatches, serverEvidenceSha256 } from './serverEvidence';
 
@@ -49,8 +50,6 @@ async function redis(): Promise<Redis | null> {
   });
   return redisClient;
 }
-
-function commercialMode(): boolean { return process.env.NEXYFAB_COMMERCIAL_MODE === '1'; }
 
 function parseStored(raw: string | null): StoredAiDesignWorkspaceRuntime | null {
   if (!raw) return null;
@@ -135,7 +134,7 @@ async function postgresDb(): Promise<DbAdapter> {
 
 export async function createServerAiDesignWorkspaceRuntime(ownerKey: string, state: AiDesignWorkspaceRuntimeV1): Promise<AiDesignWorkspaceRuntimeV1> {
   const now = new Date().toISOString();
-  if (commercialMode()) {
+  if (aiDesignDurablePersistenceEnabled()) {
     const db = await postgresDb();
     const stateSha256 = assertRuntimeSize(state);
     try {
@@ -170,7 +169,7 @@ export async function createServerAiDesignWorkspaceRuntime(ownerKey: string, sta
 }
 
 export async function loadServerAiDesignWorkspaceRuntime(ownerKey: string, projectId: string, sessionId: string): Promise<AiDesignWorkspaceRuntimeV1> {
-  if (commercialMode()) {
+  if (aiDesignDurablePersistenceEnabled()) {
     const db = await postgresDb();
     const row = await db.queryOne<RuntimeRow>(
       `SELECT owner_key_sha256, project_id, session_id, runtime_revision, state_sha256, state_json, created_at, updated_at
@@ -217,7 +216,7 @@ export async function saveServerAiDesignWorkspaceRuntime(
   expectedRevision: number,
 ): Promise<AiDesignWorkspaceRuntimeV1> {
   if (!Number.isSafeInteger(expectedRevision) || expectedRevision < 0 || state.runtimeRevision <= expectedRevision) throw new Error('AI_DESIGN_WORKSPACE_REVISION_TRANSITION_INVALID');
-  if (commercialMode()) {
+  if (aiDesignDurablePersistenceEnabled()) {
     const db = await postgresDb();
     const changed = await db.execute(
       `UPDATE nf_ai_design_workspace_runtimes

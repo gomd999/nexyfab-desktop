@@ -13,6 +13,8 @@ import {
 } from '@/lib/commercial-readiness';
 import { loadTrustedCommercialWorkers } from '@/lib/precision-cad-agent/commercialWorkerReceipt';
 import { assertAiDesignSourceArtifactSchema } from '@/lib/ai/aiDesignSourceArtifactStore';
+import { assertAiDesignPostgresAuthority } from '@/lib/ai/aiDesignPostgresAuthority';
+import { aiDesignDurablePersistenceEnabled } from '@/lib/ai/aiDesignDeploymentMode';
 
 export const dynamic = 'force-dynamic';
 
@@ -49,6 +51,7 @@ function explicitWebPublicNoPaymentMode(): boolean {
     && process.env.NEXYFAB_RELEASE_CHANNEL === 'web-public'
     && process.env.NEXYFAB_COMMERCIAL_MODE === '0'
     && process.env.NEXYFAB_PRECISION_CAD_COMMERCIAL_MODE === '0'
+    && process.env.NEXYFAB_AI_DESIGN_DURABLE_MODE === '1'
     && process.env.NEXYFAB_PAYMENTS_ENABLED === 'false';
 }
 
@@ -89,12 +92,16 @@ function validCommercialWorkerHealth(
     && now - selfTestAt <= COMMERCIAL_WORKER_SELF_TEST_MAX_AGE_MS;
 }
 
-async function checkDatabase(): Promise<ComponentCheck & { backend?: string }> {
+async function checkDatabase(): Promise<ComponentCheck & {
+  backend?: string;
+  aiDesignPersistence?: 'postgres_authoritative' | 'reference';
+}> {
   const started = Date.now();
   try {
     const db = getDbAdapter();
     await db.queryOne('SELECT 1');
     if (explicitWebPublicNoPaymentMode()) await assertAiDesignSourceArtifactSchema(db);
+    if (aiDesignDurablePersistenceEnabled()) await assertAiDesignPostgresAuthority(db);
     if (process.env.NEXYFAB_COMMERCIAL_MODE === '1') {
       if (db.backend !== 'postgres') throw new Error('postgres required');
       for (const version of COMMERCIAL_POSTGRES_MIGRATIONS) {
@@ -112,7 +119,10 @@ async function checkDatabase(): Promise<ComponentCheck & { backend?: string }> {
       const triggers = await db.queryOne<{ count: number }>(`SELECT COUNT(*) AS count FROM pg_trigger t JOIN pg_class r ON r.oid = t.tgrelid WHERE r.relnamespace = 'public'::regnamespace AND NOT t.tgisinternal AND (${triggerPairs})`);
       if (Number(triggers?.count) !== COMMERCIAL_POSTGRES_HARDENING_TRIGGERS.length) throw new Error('commercial hardening triggers missing');
     }
-    return { status: 'ok', required: true, responseMs: Date.now() - started, backend: db.backend };
+    return {
+      status: 'ok', required: true, responseMs: Date.now() - started, backend: db.backend,
+      aiDesignPersistence: aiDesignDurablePersistenceEnabled() ? 'postgres_authoritative' : 'reference',
+    };
   } catch {
     return { status: 'error', required: true, responseMs: Date.now() - started };
   }
