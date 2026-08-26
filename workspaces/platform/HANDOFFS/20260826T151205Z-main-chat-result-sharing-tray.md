@@ -2,7 +2,7 @@
 
 - Created: `2026-08-26T15:12:05Z`
 - Branch: `scope/platform`
-- Source commit: `3919af9d3b38f7770242d953d7604cd504aa4b30`
+- Head: `3919af9d3b38f7770242d953d7604cd504aa4b30`
 - Integration target: `integration/nexyfab`
 
 ## Summary
