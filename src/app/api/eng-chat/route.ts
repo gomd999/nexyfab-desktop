@@ -14,6 +14,7 @@ import {
   GUEST_ENGINEERING_CHAT_DAILY_LIMIT,
 } from '@/lib/ai/engineeringChatGuestQuota';
 import { resolveRuntimeCodegenModel } from '@/lib/ai/codegenModelRuntime';
+import { selectedModelTimeoutMs } from '@/lib/ai/modelRequestTimeout';
 
 /* ══════════════════════════════════════════════════════════════════════════════
    /api/eng-chat — 랜딩 채팅-우선 히어로의 도메인 인식 대화 엔드포인트.
@@ -247,7 +248,7 @@ export async function POST(req: NextRequest) {
         messages,
         maxTokens,
         temperature: 0.5,
-        timeoutMs: 30_000,
+        timeoutMs: selectedModelTimeoutMs(selectedModel.provider),
         task: 'eng-chat',
         provider: selectedModel.provider,
         model: selectedModel.model,

@@ -45,6 +45,15 @@ describe('AiModelSelector', () => {
     expect(onChange).toHaveBeenCalledWith('qwen-3.7-max');
   });
 
+  it('uses Korean selector copy for the public kr route code', () => {
+    vi.stubEnv('NEXT_PUBLIC_NEXYFAB_AI_MODEL_BETA_ACCESS', '1');
+    render(<AiModelSelector modelId="gpt-luna" onChange={vi.fn()} plan="free" lang="kr" />);
+    fireEvent.click(screen.getByRole('button', { name: /gpt-5\.6 luna/i }));
+
+    expect(screen.getByRole('listbox', { name: 'AI 모델 선택' })).toBeInTheDocument();
+    expect(screen.getByText('결제 없는 운영 베타: 모든 모델 선택 가능')).toBeInTheDocument();
+  });
+
   it('renders the Arabic selector copy without forcing physical left/right positioning', () => {
     const { container } = render(
       <div dir="rtl"><AiModelSelector modelId="gpt-luna" onChange={vi.fn()} plan="free" lang="ar" /></div>,

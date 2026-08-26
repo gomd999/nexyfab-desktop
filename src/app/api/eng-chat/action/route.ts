@@ -17,6 +17,7 @@ import { mechanicalVocabularyPrompt } from '@/lib/ai/mechanicalVocabulary';
 import { buildCadActionPlan } from '@/lib/ai/cadActionPlan';
 import { boundedJsonError, readBoundedJson } from '@/lib/boundedJsonBody';
 import { resolveRuntimeCodegenModel } from '@/lib/ai/codegenModelRuntime';
+import { selectedModelTimeoutMs } from '@/lib/ai/modelRequestTimeout';
 
 const MAX_BODY_BYTES = 512 * 1024;
 
@@ -234,7 +235,7 @@ export async function POST(req: NextRequest) {
         messages,
         maxTokens: 600,
         temperature: 0.2,
-        timeoutMs: 30_000,
+        timeoutMs: selectedModelTimeoutMs(selectedModel.provider),
         task: 'eng-chat-action',
         provider: selectedModel.provider,
         model: selectedModel.model,

@@ -33,7 +33,11 @@ const BETA_ACCESS_COPY: Record<string, string> = {
 };
 
 function copyFor(lang: string) {
-  return COPY[lang] ?? COPY.en;
+  return COPY[lang === 'kr' ? 'ko' : lang] ?? COPY.en;
+}
+
+function betaAccessCopyFor(lang: string) {
+  return BETA_ACCESS_COPY[lang === 'kr' ? 'ko' : lang] ?? BETA_ACCESS_COPY.en;
 }
 
 export function useAiModelPreference(plan: AiAccessPlan | string | null | undefined) {
@@ -181,7 +185,7 @@ export function AiModelSelector({
               );
             })}
             <div style={{ margin: '5px 5px 2px', paddingTop: 7, borderTop: '1px solid var(--nx-border, #334155)', color: 'var(--nx-text-3, #94a3b8)', fontSize: 9.5, lineHeight: 1.4 }}>
-              {betaAccess && <><strong style={{ color: '#22c55e' }}>{BETA_ACCESS_COPY[lang] ?? BETA_ACCESS_COPY.en}</strong><br /></>}
+              {betaAccess && <><strong style={{ color: '#22c55e' }}>{betaAccessCopyFor(lang)}</strong><br /></>}
               ◉ {copy.autoVision}
               <br />↳ {copy.parallel}
             </div>
