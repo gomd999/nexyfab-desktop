@@ -157,7 +157,7 @@ export function forbiddenEnvironmentModuleImports(relativePath, source) {
   return findings;
 }
 
-export async function verifyDeploymentSource({ sourceRoot = process.cwd(), expectedBuildId = '' } = {}) {
+export async function verifyDeploymentSource({ sourceRoot = process.cwd(), expectedBuildId = '', requiredRef = '' } = {}) {
   if (!expectedBuildId) fail('deployment_source_expected_build_id_required');
   const requestedRoot = path.resolve(sourceRoot);
   let root;
@@ -173,6 +173,17 @@ export async function verifyDeploymentSource({ sourceRoot = process.cwd(), expec
   const gitHead = (await git(root, ['rev-parse', 'HEAD'])).trim().toLowerCase();
   if (gitHead !== expectedBuildId.trim().toLowerCase()) {
     fail('deployment_source_head_mismatch', `expected=${expectedBuildId},actual=${gitHead}`);
+  }
+  let canonicalHead = null;
+  if (requiredRef) {
+    try {
+      canonicalHead = (await git(root, ['rev-parse', '--verify', `${requiredRef}^{commit}`])).trim().toLowerCase();
+    } catch {
+      fail('deployment_source_canonical_ref_missing', requiredRef);
+    }
+    if (canonicalHead !== gitHead) {
+      fail('deployment_source_not_canonical_ref', `ref=${requiredRef},canonical=${canonicalHead},actual=${gitHead}`);
+    }
   }
 
   const status = (await git(root, ['status', '--porcelain=v1', '--untracked-files=all'])).trim();
@@ -217,6 +228,8 @@ export async function verifyDeploymentSource({ sourceRoot = process.cwd(), expec
     status: 'PASS',
     sourceRoot: root,
     gitHead,
+    canonicalRef: requiredRef || null,
+    canonicalHead,
     clean: true,
     trackedFiles: tracked.size,
     scannedSourceFiles: scannedFiles,
@@ -235,6 +248,7 @@ if (invokedDirectly) {
   verifyDeploymentSource({
     sourceRoot: arg('source', '.'),
     expectedBuildId: arg('expected-build-id', process.env.NEXYFAB_EXPECTED_BUILD_ID || ''),
+    requiredRef: arg('required-ref', process.env.NEXYFAB_DEPLOYMENT_CANONICAL_REF || 'integration/nexyfab'),
   }).then(result => {
     process.stdout.write(`${JSON.stringify(result)}\n`);
   }).catch(error => {

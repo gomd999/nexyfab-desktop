@@ -5,6 +5,7 @@ import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { verifyDeploymentSource } from './verify-deployment-source.mjs';
+import { readRegistry } from './workspaces/workspace-registry.mjs';
 
 function arg(name, fallback) {
   const prefix = `--${name}=`;
@@ -18,6 +19,7 @@ const site = arg('site', 'https://nexyfab.com');
 let expectedBuildId = arg('expected-build-id', process.env.NEXYFAB_EXPECTED_BUILD_ID || '');
 const timeoutMs = Number(arg('timeout-ms', '1200000'));
 const sourcePath = arg('source', '.');
+const canonicalDeploymentRef = arg('canonical-ref', readRegistry().integrationBranch);
 const pathAsRoot = process.argv.includes('--path-as-root');
 const verifyOnly = process.argv.includes('--verify-only');
 const stagingHold = process.argv.includes('--staging-hold');
@@ -417,6 +419,7 @@ async function main() {
     const sourcePreflight = await verifyDeploymentSource({
       sourceRoot: path.resolve(process.cwd(), sourcePath || '.'),
       expectedBuildId,
+      requiredRef: canonicalDeploymentRef,
     });
     console.log(JSON.stringify({ event: 'deployment-source-verified', ...sourcePreflight }));
   }

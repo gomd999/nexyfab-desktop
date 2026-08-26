@@ -72,6 +72,34 @@ test('accepts an exact clean Git root with tracked, included release-health evid
   }
 });
 
+test('requires the deployment source to equal the canonical integration ref', async () => {
+  const root = fixture();
+  try {
+    const canonicalHead = git(root, 'rev-parse', 'HEAD');
+    git(root, 'branch', 'integration/nexyfab', canonicalHead);
+    const accepted = await verifyDeploymentSource({
+      sourceRoot: root,
+      expectedBuildId: canonicalHead,
+      requiredRef: 'integration/nexyfab',
+    });
+    assert.equal(accepted.canonicalHead, canonicalHead);
+
+    writeFileSync(path.join(root, 'scripts', 'safe.mjs'), 'export default "new release-only fix";\n');
+    git(root, 'add', 'scripts/safe.mjs');
+    git(root, '-c', 'user.name=NexyFab Test', '-c', 'user.email=test@nexyfab.invalid', 'commit', '--quiet', '-m', 'release only');
+    await assert.rejects(
+      verifyDeploymentSource({
+        sourceRoot: root,
+        expectedBuildId: git(root, 'rev-parse', 'HEAD'),
+        requiredRef: 'integration/nexyfab',
+      }),
+      /deployment_source_not_canonical_ref/,
+    );
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
 test('fails closed on dirty source, mismatched HEAD, omitted evidence, and static .env imports', async () => {
   const dirty = fixture();
   const mismatch = fixture();
