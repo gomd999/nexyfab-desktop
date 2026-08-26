@@ -1,5 +1,26 @@
 # Precision CAD current session
 
+## 2026-08-27 ShapeGenerator first safe module slice
+
+- Status: `BOM_EXPORT_BOUNDARY_EXTRACTED / BEHAVIOR_PRESERVED /
+  FOCUSED_3_PASS / TYPECHECK_ARCHITECTURE_PASS`.
+- BOM work-object row assembly and CSV/Excel export actions were moved out of
+  `ShapeGeneratorInner.tsx` into a typed hook with a separately testable pure
+  builder. Assembly rows, cart rows, active-sketch fallback, stable numbering,
+  dimensions, material density, and empty state are covered.
+- The host module retains its existing handler names and UI consumers. Its size
+  decreased from 657,337 to 655,715 bytes and from 12,390 to 12,370 physical
+  lines. The 500KB warning remains, so this is explicitly the first low-risk
+  slice rather than a false claim that the decomposition is complete.
+- Focused regression passes 1 file / 3 tests. Precision CAD TypeScript,
+  architecture, and ownership checks pass with zero violations.
+- A tracked-file cleanup audit found no safe deletion candidates: `copy-occt`,
+  coverage routes, and `lib/build` matches are active source/test names, not
+  generated trash, so nothing was deleted.
+- Source commit: `a7d9b98adf4c2b9a9e2123aab7ec99000f0e46d9`.
+- Handoff:
+  `HANDOFFS/20260826T161248Z-shape-generator-bom-export-slice.md`.
+
 ## 2026-08-27 GA_3D exact-byte artifact receipt
 
 - Status: `GA_REVISION_BOUND / EXACT_BYTES_SHA256 / MANIFEST_BOUND /
