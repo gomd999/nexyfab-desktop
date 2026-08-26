@@ -30,6 +30,8 @@ import {
 } from '@/lib/ai/domainGenerationRequest';
 import { assemblyUnifiedProject } from '@/lib/ai/assemblyUnifiedProjectAdapter';
 import { boundedJsonError, readBoundedJson } from '@/lib/boundedJsonBody';
+import { checkPlan } from '@/lib/plan-guard';
+import { resolveRuntimeCodegenModel } from '@/lib/ai/codegenModelRuntime';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -264,12 +266,10 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   const ip = getTrustedClientIp(req.headers);
   const rl = rateLimit(`drawing-assemble:${ip}`, 8, 60_000);
   if (!rl.allowed) return NextResponse.json({ ok: false, error: '요청이 너무 많습니다. 잠시 후 다시 시도하세요.' }, { status: 429 });
-  // 구독 정합(2026-07-16): 로그인=shape_chat 슬롯+예산, 익명=합산 리밋(게스트 데모 유지)
-  const planGuard = await guardStudioAi(req);
-  if (planGuard) return planGuard;
 
   let description: string;
   let requestedDomain: GenerationDomainId | null = null;
+  let requestedModelId: string | undefined;
   /**
    * ★진행 스트림(260803) — `stream:true` 면 SSE 로 **지금 무슨 작업 중인지**를 보낸다.
    *
@@ -281,8 +281,9 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
    */
   let wantStream = false;
   try {
-    const body = await readBoundedJson<{ description?: string; domain?: string; stream?: boolean }>(req, MAX_BODY_BYTES);
+    const body = await readBoundedJson<{ description?: string; domain?: string; stream?: boolean; modelId?: string }>(req, MAX_BODY_BYTES);
     description = (body.description ?? '').trim();
+    requestedModelId = typeof body.modelId === 'string' ? body.modelId : undefined;
     if (body.domain !== undefined) {
       requestedDomain = normalizeGenerationDomain(body.domain);
       if (!requestedDomain) {
@@ -300,6 +301,22 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   if (description.length > 2000) {
     return NextResponse.json({ ok: false, error: 'description이 너무 깁니다(2000자 이하).' }, { status: 400 });
   }
+
+  const planCheck = await checkPlan(req, 'free');
+  const selectedModel = await resolveRuntimeCodegenModel(requestedModelId, planCheck.ok ? planCheck.plan : 'free');
+  if (!selectedModel.ok) {
+    return NextResponse.json({
+      ok: false,
+      error: selectedModel.code === 'MODEL_NOT_FOUND' ? 'unsupported AI model' : 'AI model is not available for the current access policy',
+      code: selectedModel.code,
+      ...(selectedModel.requiredTier ? { requiredTier: selectedModel.requiredTier } : {}),
+    }, { status: selectedModel.code === 'MODEL_NOT_FOUND' ? 400 : 403 });
+  }
+  const requestAiOpts = { ...AI_OPTS, models: [selectedModel.model] };
+  const requestClaimsOpts = { ...CLAIMS_OPTS, models: [selectedModel.model] };
+  // Only a validated catalog selection may consume the shared AI slot/budget.
+  const planGuard = await guardStudioAi(req);
+  if (planGuard) return planGuard;
   const generationDescription = scopeDomainDescription(description, requestedDomain);
 
   let mods: { ft: FromTextModule; asm: AssemblyModule };
@@ -331,7 +348,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     try {
       const p2 = join(process.cwd(), 'scripts', 'drawing-to-3d', 'intent-match.mjs');
       const im = (await import(/* webpackIgnore: true */ pathToFileURL(p2).href)) as IMMod;
-      const { data: cd } = await mods2.ft.callAiJson(im.CLAIMS_PROMPT(description2), im.CLAIMS_SCHEMA, CLAIMS_OPTS as never);
+      const { data: cd } = await mods2.ft.callAiJson(im.CLAIMS_PROMPT(description2), im.CLAIMS_SCHEMA, requestClaimsOpts as never);
       const claims = (cd as { claims?: unknown[] })?.claims ?? [];
       if (!claims.length) return null;
       const base = im.verifyClaims(claims, asm2);
@@ -395,7 +412,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       emit(PROG.event('ai', { round: round + 1, deterministicTemplate: !!(round === 0 && deterministicTemplate) }));
       const data = round === 0 && deterministicTemplate
         ? deterministicTemplate
-        : (await mods.ft.callAiJson(prompt, null, AI_OPTS)).data;
+        : (await mods.ft.callAiJson(prompt, null, requestAiOpts)).data;
       const hasCA = !!(data && typeof (data as { civilAlignment?: unknown }).civilAlignment === 'object');
       const tpl = (data as { template?: { domain?: string; id?: string; params?: Record<string, unknown> } })?.template;
       const hasTpl = !!(tpl && typeof tpl === 'object' && typeof tpl.domain === 'string' && typeof tpl.id === 'string');
@@ -458,7 +475,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
               const notes = intentMatch.results.filter((q) => q.verdict === 'MISMATCH').map((q) => `${q.text} → ${q.note}`).slice(0, 8);
               const { data: fd } = await mods.ft.callAiJson(
                 `직전 template 선언(${tpl!.domain}/${tpl!.id})의 결과가 요청과 실측 대조에서 불일치했다. params 만 고친 {"template":{...}} JSON 하나만 다시 내라(키·범위는 카탈로그).\n[요청] "${generationDescription}"\n[불일치]\n${notes.map((m) => '- ' + m).join('\n')}\n직전: ${JSON.stringify(tpl)}\nJSON 하나만.`,
-                null, AI_OPTS);
+                null, requestAiOpts);
               const t2 = (fd as { template?: { domain?: string; id?: string; params?: Record<string, unknown> } })?.template;
               if (t2?.domain && t2?.id && (!requestedDomain || isTemplateDomainAllowed(requestedDomain, t2.domain))) {
                 const a2 = dm.buildAssemblyTemplate(t2.domain, t2.id, t2.params ?? {});
@@ -496,6 +513,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
             intentMatch,
             unifiedProject: canonical?.project ?? null, canonicalIssues: canonical?.issues ?? [],
             domain: tpl!.domain, template: tpl, gateErrors: [], rounds: round + 1,
+            modelId: selectedModel.catalog.id, provider: selectedModel.provider,
           });
         }
         assembly = { ...(assembly ?? {}), template: tpl } as Assembly;
@@ -522,7 +540,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
             try {
               const notes = intentMatch.results
                 .filter((q) => q.verdict === 'MISMATCH').map((q) => `${q.text} → ${q.note}`).slice(0, 8);
-              const { data: fd } = await mods.ft.callAiJson(INTENT_FIX_CA_PROMPT(generationDescription, notes, ca), null, AI_OPTS);
+              const { data: fd } = await mods.ft.callAiJson(INTENT_FIX_CA_PROMPT(generationDescription, notes, ca), null, requestAiOpts);
               const ca2 = (fd as { civilAlignment?: Record<string, unknown> })?.civilAlignment;
               if (ca2 && typeof ca2 === 'object' && Array.isArray((ca2 as { ips?: unknown[] }).ips)) {
                 const asm2 = dm.buildAssemblyTemplate('civil', 'retaining_wall_alignment', ca2);
@@ -555,6 +573,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
             intentMatch,
             unifiedProject: canonical.project, canonicalIssues: [],
             domain: 'civil', gateErrors: [], rounds: round + 1,
+            modelId: selectedModel.catalog.id, provider: selectedModel.provider,
           });
         }
         // FIX_PROMPT 의 prev 에 원 선언(civilAlignment)이 실리도록 — AI 가 값만 고쳐 재선언 가능
@@ -643,7 +662,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
           try {
             const notes = intentMatch.results
               .filter((q) => q.verdict === 'MISMATCH').map((q) => `${q.text} → ${q.note}`).slice(0, 8);
-            const { data: fd } = await mods.ft.callAiJson(INTENT_FIX_PROMPT(generationDescription, notes, assembly, vocab), null, AI_OPTS);
+            const { data: fd } = await mods.ft.callAiJson(INTENT_FIX_PROMPT(generationDescription, notes, assembly, vocab), null, requestAiOpts);
             if (fd && Array.isArray(fd.parts) && fd.parts.length) {
               const c2 = mods.asm.autoPlaceCorrect(fd);
               const b2 = mods.asm.buildAssembly(c2.assembly);
@@ -689,6 +708,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
           intentMatch, // 요청 정합(의도↔형상 실측 대조 — 불일치 노출 + 교정 라운드 내역)
           unifiedProject: canonical?.project ?? null, canonicalIssues: canonical?.issues ?? [],
           gateErrors: [], rounds: round + 1,
+          modelId: selectedModel.catalog.id, provider: selectedModel.provider,
           // ★ 과정을 같은 모양으로 — extract 라우트와 필드명을 맞춘다.
           ...(() => {
             trace.attempt(round + 1).mark('gate', 'ok');
@@ -714,11 +734,12 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       ok: false, stage: 'gate', assembly,
       gateErrors: lastErrors, interferences: built?.interferences ?? [], rounds: MAX_ROUNDS,
       pipeline: failTrace, pipelineSummary: traceSummary(failTrace),
+      modelId: selectedModel.catalog.id, provider: selectedModel.provider,
     }, { status: 200 });
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
     // 키 미설정은 503(설정 문제) — 백엔드를 Gemini↔OpenAI 로 바꿔도 맞게 남도록 둘 다 본다.
-    const status = /GEMINI_API_KEY|OPENAI_API_KEY/.test(msg) ? 503 : 502;
+    const status = /DEEPSEEK_API_KEY|GEMINI_API_KEY|OPENAI_API_KEY|QWEN_API_KEY|DASHSCOPE_API_KEY/.test(msg) ? 503 : 502;
     return NextResponse.json({ ok: false, error: 'assemble failed: ' + msg.slice(0, 200) }, { status });
   }
   };

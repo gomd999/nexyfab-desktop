@@ -53,6 +53,14 @@ describe('unified chat-first design entry', () => {
     expect(CHAT_HERO_SOURCE).toContain('if (pendingAttachment && !attached)');
     expect(CHAT_HERO_SOURCE.match(/fileRef\.current\?\.click\(\)/g)).toHaveLength(2);
   });
+
+  it('exposes the governed model selector and carries its stable ID through chat and CAD requests', () => {
+    expect(CHAT_HERO_SOURCE).toContain('<AiModelSelector');
+    expect(CHAT_HERO_SOURCE).toContain('const { modelId, pickModel } = useAiModelPreference(userPlan)');
+    expect(CHAT_HERO_SOURCE).toContain('message: text, domain: requestDomain, history, lang, modelId');
+    expect(CHAT_HERO_SOURCE).toContain('description: prompt, lang, modelId');
+    expect(CHAT_HERO_SOURCE).not.toContain('model: modelId');
+  });
 });
 
 describe('채팅 API 오류 안내', () => {

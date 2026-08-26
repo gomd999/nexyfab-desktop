@@ -17,6 +17,7 @@ import {
 const commercialRuntimeKeys = [
   'NEXYFAB_COMMERCIAL_MODE',
   'NEXYFAB_AI_DESIGN_DURABLE_MODE',
+  'NEXT_PUBLIC_NEXYFAB_AI_MODEL_BETA_ACCESS',
   'NEXYFAB_BUILD_ID',
   'RELEASE_GIT_HEAD',
   'NEXYFAB_AGENT_APPROVAL_SECRET',
@@ -46,6 +47,9 @@ test('target runtime keys cover commercial readiness, workers, verifier, and all
   for (const key of commercialRuntimeKeys) assert.ok(TARGET_RUNTIME_KEYS.includes(key), `${key} is not target-scoped`);
   assert.equal(TARGET_RUNTIME_KEYS.includes('POSTGRES_MIGRATION_CHECKSUM'), false);
   assert.equal(TARGET_RUNTIME_KEYS.includes('NEXYFAB_PAYMENTS_ENABLED'), true);
+  for (const key of ['AI_PROVIDER_PRIMARY', 'AI_PROVIDER_FALLBACKS', 'OPENAI_API_KEY', 'QWEN_API_KEY', 'QWEN_BASE_URL', 'DEEPSEEK_API_KEY']) {
+    assert.equal(TARGET_RUNTIME_KEYS.includes(key), true, `${key} is not target-scoped`);
+  }
 });
 
 test('target environment cannot fall back to local process.env for omitted runtime keys', () => {
@@ -101,6 +105,7 @@ test('web-public deployment is restricted to production with payments and precis
   const target = {
     NEXYFAB_COMMERCIAL_MODE: '0',
     NEXYFAB_AI_DESIGN_DURABLE_MODE: '1',
+    NEXT_PUBLIC_NEXYFAB_AI_MODEL_BETA_ACCESS: '1',
     NEXYFAB_PRECISION_CAD_COMMERCIAL_MODE: '0',
     NEXYFAB_PAYMENTS_ENABLED: 'false',
     NEXYFAB_RELEASE_CHANNEL: 'web-public',
@@ -109,6 +114,12 @@ test('web-public deployment is restricted to production with payments and precis
     OPENSCAD_EXTERNAL_WORKER: '1',
     NEXYFAB_CAD_INDEPENDENT_MODE: '1',
     SECURITY_GATE_MODE: 'enforce',
+    AI_PROVIDER_PRIMARY: 'openai',
+    AI_PROVIDER_FALLBACKS: 'qwen,deepseek,gemini,openrouter,local',
+    OPENAI_API_KEY: 'openai-secret',
+    QWEN_API_KEY: 'qwen-secret',
+    QWEN_BASE_URL: 'https://dashscope-intl.aliyuncs.com/compatible-mode/v1',
+    DEEPSEEK_API_KEY: 'deepseek-secret',
     DATABASE_URL: 'postgresql://private',
     REDIS_URL: 'redis://private',
     S3_BUCKET: 'nexyfab-private',
@@ -146,10 +157,15 @@ test('web-public deployment is restricted to production with payments and precis
   assert.ok(webPublicIssues({ ...passing, target: { ...target, NEXYFAB_COMMERCIAL_MODE: '1' } }).includes('web_public_commercial_mode_must_be_0'));
   assert.ok(webPublicIssues({ ...passing, target: { ...target, NEXYFAB_PRECISION_CAD_COMMERCIAL_MODE: '1' } }).includes('web_public_precision_commercial_mode_must_be_0'));
   assert.ok(webPublicIssues({ ...passing, target: { ...target, NEXYFAB_AI_DESIGN_DURABLE_MODE: '0' } }).includes('web_public_ai_design_durable_mode_required'));
+  assert.ok(webPublicIssues({ ...passing, target: { ...target, NEXT_PUBLIC_NEXYFAB_AI_MODEL_BETA_ACCESS: '0' } }).includes('web_public_ai_model_beta_access_required'));
   assert.ok(webPublicIssues({ ...passing, target: { ...target, NEXYFAB_PAYMENTS_ENABLED: 'true' } }).includes('web_public_payments_must_be_false'));
   assert.ok(webPublicIssues({ ...passing, target: { ...target, NEXYFAB_RELEASE_CHANNEL: 'production' } }).includes('web_public_release_channel_required'));
   assert.ok(webPublicIssues({ ...passing, target: { ...target, NEXYFAB_BUILD_ID: 'wrong' } }).includes('web_public_build_id_mismatch'));
   assert.ok(webPublicIssues({ ...passing, target: { ...target, SECURITY_GATE_MODE: 'shadow' } }).includes('web_public_security_gate_must_be_enforced'));
+  assert.ok(webPublicIssues({ ...passing, target: { ...target, AI_PROVIDER_PRIMARY: 'qwen' } }).includes('web_public_ai_primary_must_be_openai'));
+  assert.ok(webPublicIssues({ ...passing, target: { ...target, AI_PROVIDER_FALLBACKS: 'gemini,local' } }).includes('web_public_ai_fallbacks_must_include_qwen'));
+  assert.ok(webPublicIssues({ ...passing, target: { ...target, AI_PROVIDER_FALLBACKS: 'qwen,gemini,local' } }).includes('web_public_ai_fallbacks_must_include_deepseek'));
+  assert.ok(webPublicIssues({ ...passing, target: { ...target, QWEN_BASE_URL: 'https://example.com/v1' } }).includes('web_public_qwen_base_url_must_be_official_https'));
   assert.ok(webPublicIssues({ ...passing, target: { ...target, SMTP_PASS: '' } }).includes('web_public_required_variable_missing:SMTP_PASS'));
   assert.ok(webPublicIssues({ ...passing, target: { ...target, OBJECT_STORAGE_PRIVATE_BUCKET: 'unverified' } }).includes('web_public_private_bucket_must_match_verified_s3_bucket'));
   assert.ok(webPublicIssues({ ...passing, target: { ...target, NEXT_PUBLIC_AUTH_URL: 'http://localhost:3000' } }).includes('web_public_auth_url_must_be_canonical_production_host'));

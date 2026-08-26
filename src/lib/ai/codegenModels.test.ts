@@ -17,6 +17,10 @@ describe('NexyFab AI model entitlements', () => {
       ['qwen-3.8-max', 'enterprise'],
       ['gpt-terra', 'enterprise'],
     ]);
+    expect(findCodegenModel('deepseek-pro')).toMatchObject({
+      provider: 'deepseek',
+      model: 'deepseek-v4-pro',
+    });
   });
 
   it('uses Luna, DeepSeek Pro, and Terra as safe tier defaults', () => {
@@ -31,20 +35,33 @@ describe('NexyFab AI model entitlements', () => {
     const pro = findCodegenModel('deepseek-pro')!;
     const enterprise = findCodegenModel('gpt-terra')!;
 
-    expect(canUseCodegenModel(luna, 'free')).toBe(true);
-    expect(canUseCodegenModel(pro, 'free')).toBe(false);
-    expect(canUseCodegenModel(pro, 'team')).toBe(true);
-    expect(canUseCodegenModel(enterprise, 'pro')).toBe(false);
-    expect(canUseCodegenModel(enterprise, 'enterprise')).toBe(true);
+    expect(canUseCodegenModel(luna, 'free', false)).toBe(true);
+    expect(canUseCodegenModel(pro, 'free', false)).toBe(false);
+    expect(canUseCodegenModel(pro, 'team', false)).toBe(true);
+    expect(canUseCodegenModel(enterprise, 'pro', false)).toBe(false);
+    expect(canUseCodegenModel(enterprise, 'enterprise', false)).toBe(true);
+  });
+
+  it('unlocks the governed catalog for a no-payment beta without accepting raw model IDs', () => {
+    const enterprise = findCodegenModel('gpt-terra')!;
+    expect(canUseCodegenModel(enterprise, 'free', true)).toBe(true);
+    expect(authorizeCodegenModel('qwen-3.7-max', 'free', true)).toMatchObject({
+      ok: true,
+      model: { id: 'qwen-3.7-max', provider: 'qwen' },
+    });
+    expect(authorizeCodegenModel('raw-provider-model', 'free', true)).toMatchObject({
+      ok: false,
+      code: 'MODEL_NOT_FOUND',
+    });
   });
 
   it('returns explicit locked and unknown-model decisions for API routes', () => {
-    expect(authorizeCodegenModel('gpt-terra', 'free')).toMatchObject({
+    expect(authorizeCodegenModel('gpt-terra', 'free', false)).toMatchObject({
       ok: false,
       code: 'MODEL_PLAN_LOCKED',
       requiredTier: 'enterprise',
     });
-    expect(authorizeCodegenModel('raw-provider-model', 'enterprise')).toMatchObject({
+    expect(authorizeCodegenModel('raw-provider-model', 'enterprise', false)).toMatchObject({
       ok: false,
       code: 'MODEL_NOT_FOUND',
     });

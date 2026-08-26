@@ -132,7 +132,7 @@ export default function AdminSettingsPage() {
             <div style={mutedStyle}>{L('복잡/모호 요청만 1회 구조화 점검 · 설정:', 'One structured review for complex or ambiguous requests · setting:')} {lunaFlag?.source ?? L('미설정', 'Unset')}</div>
           </div>
           <div style={{ ...settingRowStyle, borderInlineStart: '3px solid #d29922' }}>
-            <strong style={{ color: '#f0b429', fontSize: 12 }}>Qwen 3.8 Max Preview</strong>
+            <strong style={{ color: '#f0b429', fontSize: 12 }}>Qwen 3.8 Max</strong>
             <div style={mutedStyle}>{L('Token Plan/계정별 가용성 검증 필요 · runtime mapping:', 'Token Plan/account availability must be verified · runtime mapping:')} {qwen38Setting?.source ?? L('기본 preview ID', 'Default preview ID')}</div>
           </div>
         </div>

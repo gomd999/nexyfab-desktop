@@ -13,6 +13,7 @@ import {
   consumeEngineeringChatGuestQuota,
   GUEST_ENGINEERING_CHAT_DAILY_LIMIT,
 } from '@/lib/ai/engineeringChatGuestQuota';
+import { resolveRuntimeCodegenModel } from '@/lib/ai/codegenModelRuntime';
 
 /* ══════════════════════════════════════════════════════════════════════════════
    /api/eng-chat — 랜딩 채팅-우선 히어로의 도메인 인식 대화 엔드포인트.
@@ -117,6 +118,18 @@ export async function POST(req: NextRequest) {
       }
     }
 
+    const selectedModel = await resolveRuntimeCodegenModel(
+      typeof body.modelId === 'string' ? body.modelId : undefined,
+      userPlan,
+    );
+    if (!selectedModel.ok) {
+      return NextResponse.json({
+        error: selectedModel.code === 'MODEL_NOT_FOUND' ? 'Unsupported AI model.' : 'This AI model is not available for the current access policy.',
+        code: selectedModel.code,
+        ...(selectedModel.requiredTier ? { requiredTier: selectedModel.requiredTier } : {}),
+      }, { status: selectedModel.code === 'MODEL_NOT_FOUND' ? 400 : 403 });
+    }
+
     if (!planCheck.ok) {
       const guestQuota = await consumeEngineeringChatGuestQuota(req, ip);
       if (!guestQuota.allowed) {
@@ -179,7 +192,7 @@ export async function POST(req: NextRequest) {
     } catch { /* breaker 조회 실패는 무시하고 진행 */ }
 
     // ── 스트리밍 경로 (DeepSeek 직접, OpenAI 호환 SSE) ──────────────────────────
-    if (wantStream) {
+    if (wantStream && selectedModel.provider === 'deepseek') {
       try {
         const apiKey = (await getSetting('deepseek.api_key')) || process.env.DEEPSEEK_API_KEY;
         if (apiKey) {
@@ -191,7 +204,7 @@ export async function POST(req: NextRequest) {
             // stays first; include the terminal usage chunk for cache
             // accounting as the stream pipeline evolves.
             body: JSON.stringify({
-              model: 'deepseek-chat',
+              model: selectedModel.model,
               messages,
               max_tokens: maxTokens,
               temperature: 0.5,
@@ -214,7 +227,13 @@ export async function POST(req: NextRequest) {
               },
             });
             return new Response(out, {
-              headers: { 'content-type': 'text/plain; charset=utf-8', 'x-stream': '1', 'cache-control': 'no-cache, no-transform' },
+              headers: {
+                'content-type': 'text/plain; charset=utf-8',
+                'x-stream': '1',
+                'x-ai-provider': selectedModel.provider,
+                'x-ai-model-id': selectedModel.catalog.id,
+                'cache-control': 'no-cache, no-transform',
+              },
             });
           }
           // upstream !ok → 아래 비스트리밍으로 폴백
@@ -224,8 +243,17 @@ export async function POST(req: NextRequest) {
 
     // ── 비스트리밍 (프로바이더 폴백 체인 포함) ──────────────────────────────────
     try {
-      const result = await chatCompletion({ messages, maxTokens, temperature: 0.5, timeoutMs: 30_000, task: 'eng-chat' });
-      return NextResponse.json({ reply: result.text, domain, provider: result.provider });
+      const result = await chatCompletion({
+        messages,
+        maxTokens,
+        temperature: 0.5,
+        timeoutMs: 30_000,
+        task: 'eng-chat',
+        provider: selectedModel.provider,
+        model: selectedModel.model,
+        allowProviderFallback: true,
+      });
+      return NextResponse.json({ reply: result.text, domain, provider: result.provider, modelId: selectedModel.catalog.id });
     } catch (e) {
       if (e instanceof AiNotConfiguredError) {
         return NextResponse.json({ error: localizedApiMessage(locale, 'providerNotConfigured'), code: 'AI_NOT_CONFIGURED' }, { status: 500 });

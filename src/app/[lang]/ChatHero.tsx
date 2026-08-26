@@ -30,6 +30,7 @@ import { type DesignStage, stageOf } from '@/lib/designStage';
 import { recommendDesignDomains } from '@/lib/ai/domainPromptClassifier';
 import { useAuthStore } from '@/hooks/useAuth';
 import { DesignStageBar } from '@/components/nexyfab/DesignStageBar';
+import { AiModelSelector, useAiModelPreference } from '@/components/nexyfab/AiModelSelector';
 import { createChatAiDesignWorkspace, ensureChatDesignProject } from '@/lib/ai/chatDesignWorkspacePromotion';
 import {
   clearPendingChatDesignDraft,
@@ -294,9 +295,9 @@ function summarizeParts(assembly: AssemblyPlan | undefined): string[] {
 }
 
 // 기계 멀티바디: 자연어 → drawing/assemble(AI 어셈블리 + 게이트-교정 + 간섭검사).
-async function runAssemblePipeline(prompt: string, lang: Lang, signal?: AbortSignal): Promise<CadResult> {
+async function runAssemblePipeline(prompt: string, lang: Lang, modelId: string, signal?: AbortSignal): Promise<CadResult> {
   const r = await fetch('/api/nexyfab/drawing/assemble/', {
-    method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ description: prompt, lang }),
+    method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ description: prompt, lang, modelId }),
     signal,
   });
   const j = await r.json().catch(() => ({}));
@@ -406,9 +407,9 @@ async function runExtractPipeline(att: Attached, lang: Lang): Promise<{ cad: Cad
 
 // 기계 스테이지1: 자연어 → drawing/compose(AI 조합 + 결정론 게이트) → intent+SCAD.
 // 체크포인트로 반환(정밀 3D/STEP은 사용자 승인 후 export-step).
-async function runComposePipeline(prompt: string, lang: Lang, signal?: AbortSignal): Promise<CadResult> {
+async function runComposePipeline(prompt: string, lang: Lang, modelId: string, signal?: AbortSignal): Promise<CadResult> {
   const r = await fetch('/api/nexyfab/drawing/compose/', {
-    method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ description: prompt, lang }),
+    method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ description: prompt, lang, modelId }),
     signal,
   });
   const j = await r.json().catch(() => ({}));
@@ -1767,6 +1768,8 @@ export default function ChatHero({ langCode, appMode = false }: { langCode: stri
     } catch { /* 손상 컨텍스트=무시(빈 상태가 정직) */ }
   }, []);
   const sessionStatus = useAuthStore(state => state.sessionStatus);
+  const userPlan = useAuthStore(state => state.user?.plan ?? 'free');
+  const { modelId, pickModel } = useAiModelPreference(userPlan);
   const authed = sessionStatus === 'unknown' ? null : sessionStatus === 'authenticated';
   const [threads, setThreads] = useState<Thread[]>([]);
   const [activeId, setActiveId] = useState<string | null>(null);
@@ -2144,7 +2147,7 @@ export default function ChatHero({ langCode, appMode = false }: { langCode: stri
         const res = await fetch('/api/eng-chat/action/', {
           method: 'POST', headers: { 'content-type': 'application/json' },
           body: JSON.stringify({
-            message: text, domain: requestDomain, history, lang,
+            message: text, domain: requestDomain, history, lang, modelId,
             // 증분 수정(2026-07-16): 직전 설계 스펙을 동봉 — "방금 그거 높이만 바꿔"가 동작
             lastSpec: (() => { const lc = [...messages].reverse().find((mm) => mm.cad && !mm.cad.error); const sp = lc?.cad?.spec; return Array.isArray(sp) ? sp.join('\n') : typeof sp === 'string' ? sp : undefined; })(),
           }),
@@ -2190,10 +2193,10 @@ export default function ChatHero({ langCode, appMode = false }: { langCode: stri
           });
           try {
             setCad(j.type === 'assembly'
-              ? await runAssemblePipeline(String(j.prompt), lang, ac.signal)
+              ? await runAssemblePipeline(String(j.prompt), lang, modelId, ac.signal)
               : cadCtx
                 ? protectedPrecisionCadEditResult(lang, cadCtx)
-                : await runComposePipeline(String(j.prompt), lang, ac.signal));
+                : await runComposePipeline(String(j.prompt), lang, modelId, ac.signal));
           } catch (e) {
             if ((e as Error)?.name === 'AbortError') {
               // 사용자가 "중단"을 눌렀다 — 진행 카드를 에러로 덮지 않고 그대로 둔다.
@@ -2221,7 +2224,7 @@ export default function ChatHero({ langCode, appMode = false }: { langCode: stri
       const res = await fetch('/api/eng-chat/', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ message: text, domain: requestDomain, history, stream: true, lang }),
+        body: JSON.stringify({ message: text, domain: requestDomain, history, stream: true, lang, modelId }),
         signal: ac.signal,
       });
       if (!res.ok) {
@@ -2272,7 +2275,7 @@ export default function ChatHero({ langCode, appMode = false }: { langCode: stri
       abortRef.current = null;
       autoscroll();
     }
-  }, [input, loading, messages, domain, domainLocked, t, lang, langCode, cadCtx, latestCad]);
+  }, [input, loading, messages, domain, domainLocked, t, lang, langCode, cadCtx, latestCad, modelId]);
 
   // 마지막 user 발화 이후를 걷어내고 재전송 — 히스토리에서 직전 답을 제외해 같은 답 재생산을 피한다
   const regen = () => {
@@ -2445,7 +2448,7 @@ export default function ChatHero({ langCode, appMode = false }: { langCode: stri
       } else {
         const cad = cadCtx
           ? protectedPrecisionCadEditResult(lang, cadCtx)
-          : await runComposePipeline(m.genSrc || '', lang);
+          : await runComposePipeline(m.genSrc || '', lang, modelId);
         setLast({ content: cad.error ? '' : t.cadSpecTitle, cad });
       }
     } catch (e) {
@@ -2454,7 +2457,7 @@ export default function ChatHero({ langCode, appMode = false }: { langCode: stri
       setLoading(false); autoscroll();
     }
 
-  }, [loading, t, lang, cadCtx]);
+  }, [loading, t, lang, cadCtx, modelId]);
 
   // 🎯 P1 픽킹 편집(260719): 우측 3D에서 부품 클릭=선택 → 다음 메시지는 그 부품만 수정
   // (edit-part — AI=패치 이해만, 적용·게이트=서버 결정론. 대상 외 부품 불변은 코드 보장)
@@ -2824,6 +2827,13 @@ export default function ChatHero({ langCode, appMode = false }: { langCode: stri
               }}>
                 📎<span style={{ display: started ? 'none' : 'inline' }}>{entryCopy.attach}</span>
               </button>
+              <AiModelSelector
+                modelId={modelId}
+                onChange={(id) => { pickModel(id); }}
+                plan={userPlan}
+                lang={lang}
+                compact
+              />
               {domain === 'mechanical' && (
                 <button onClick={() => { void sendGenImage(); }} disabled={loading || (!input.trim() && !attached)} title={t.genImg} aria-label={t.genImg} style={{
                   display: 'inline-flex', alignItems: 'center', gap: 6, padding: '6px 11px', borderRadius: 10,

@@ -52,11 +52,46 @@ function explicitWebPublicNoPaymentMode(): boolean {
     && process.env.NEXYFAB_COMMERCIAL_MODE === '0'
     && process.env.NEXYFAB_PRECISION_CAD_COMMERCIAL_MODE === '0'
     && process.env.NEXYFAB_AI_DESIGN_DURABLE_MODE === '1'
+    && process.env.NEXT_PUBLIC_NEXYFAB_AI_MODEL_BETA_ACCESS === '1'
     && process.env.NEXYFAB_PAYMENTS_ENABLED === 'false';
 }
 
 function productionCommercialModeRequired(): boolean {
   return railwayProductionEnvironment() && !explicitWebPublicNoPaymentMode();
+}
+
+type AiModelAccessCheck = ComponentCheck & {
+  mode?: 'plan_tiered' | 'no_payment_beta_all_models';
+  providers?: readonly ['openai', 'qwen', 'deepseek'];
+};
+
+function checkAiModelAccess(): AiModelAccessCheck {
+  const required = railwayProductionEnvironment()
+    && process.env.NEXYFAB_RELEASE_CHANNEL === 'web-public';
+  if (!required) return { status: 'skipped', required: false, mode: 'plan_tiered' };
+
+  const qwenKey = process.env.QWEN_API_KEY?.trim() || process.env.DASHSCOPE_API_KEY?.trim();
+  const qwenBaseUrl = process.env.QWEN_BASE_URL?.trim();
+  let officialQwenBaseUrl = false;
+  try {
+    const parsed = new URL(qwenBaseUrl ?? '');
+    officialQwenBaseUrl = parsed.protocol === 'https:'
+      && (parsed.hostname === 'aliyuncs.com' || parsed.hostname.endsWith('.aliyuncs.com'));
+  } catch { /* fail closed below */ }
+
+  if (process.env.NEXT_PUBLIC_NEXYFAB_AI_MODEL_BETA_ACCESS !== '1'
+      || !process.env.OPENAI_API_KEY?.trim()
+      || !qwenKey
+      || !process.env.DEEPSEEK_API_KEY?.trim()
+      || !officialQwenBaseUrl) {
+    return { status: 'error', required: true };
+  }
+  return {
+    status: 'ok',
+    required: true,
+    mode: 'no_payment_beta_all_models',
+    providers: ['openai', 'qwen', 'deepseek'],
+  };
 }
 
 function expectedMigrationChecksum(version: CommercialPostgresMigration): string | undefined {
@@ -199,7 +234,11 @@ export async function GET() {
     checkRedis(redisIsRequired),
     checkCommercialBoundary(),
   ]);
-  const ready = db.status === 'ok' && (redis.status === 'ok' || redis.status === 'skipped') && (commercialBoundary.status === 'ok' || commercialBoundary.status === 'skipped');
+  const aiModelAccess = checkAiModelAccess();
+  const ready = db.status === 'ok'
+    && (redis.status === 'ok' || redis.status === 'skipped')
+    && (commercialBoundary.status === 'ok' || commercialBoundary.status === 'skipped')
+    && (aiModelAccess.status === 'ok' || aiModelAccess.status === 'skipped');
 
   return NextResponse.json(
     {
@@ -208,6 +247,7 @@ export async function GET() {
       uptime: process.uptime(),
       db,
       redis,
+      aiModelAccess,
       commercialBoundary,
     },
     { status: ready ? 200 : 503 },

@@ -8,6 +8,7 @@ import {
   findCodegenModel,
   type AiAccessPlan,
 } from '@/lib/ai/codegenModels';
+import { aiModelBetaAccessEnabled } from '@/lib/ai/aiModelBetaAccess';
 
 export const AI_MODEL_STORAGE_KEY = 'nexyfab:ai-model';
 
@@ -19,6 +20,16 @@ const COPY: Record<string, { choose: string; autoVision: string; parallel: strin
   cn: { choose: '选择 AI 模型', autoVision: '所选模型支持视觉时直接使用；不支持时视觉阶段切换到 GPT-5.6 Luna。', parallel: '仅对复杂或含糊的设计，由 Luna 预检术语与需求。', locked: '需要套餐', recommended: '推荐' },
   es: { choose: 'Elegir modelo de IA', autoVision: 'Se usa la visión nativa cuando existe; si no, la etapa visual usa GPT-5.6 Luna.', parallel: 'Luna revisa terminología y requisitos solo en diseños complejos o ambiguos.', locked: 'Requiere plan', recommended: 'Recomendado' },
   ar: { choose: 'اختيار نموذج الذكاء الاصطناعي', autoVision: 'تُستخدم الرؤية الأصلية عند دعمها، وإلا تنتقل المرحلة المرئية إلى GPT-5.6 Luna.', parallel: 'يراجع Luna المصطلحات والمتطلبات فقط للتصاميم المعقدة أو الغامضة.', locked: 'تتطلب خطة', recommended: 'موصى به' },
+};
+
+const BETA_ACCESS_COPY: Record<string, string> = {
+  ko: '결제 없는 운영 베타: 모든 모델 선택 가능',
+  en: 'No-payment production beta: all models are selectable',
+  ja: '決済なしの運用ベータ: すべてのモデルを選択可能',
+  zh: '无付费运营测试：可选择所有模型',
+  cn: '无付费运营测试：可选择所有模型',
+  es: 'Beta de producción sin pago: todos los modelos están disponibles',
+  ar: 'نسخة تشغيلية تجريبية بدون دفع: جميع النماذج متاحة',
 };
 
 function copyFor(lang: string) {
@@ -73,6 +84,7 @@ export function AiModelSelector({
 }) {
   const [open, setOpen] = useState(false);
   const copy = copyFor(lang);
+  const betaAccess = aiModelBetaAccessEnabled();
   const current = useMemo(
     () => findCodegenModel(modelId) ?? findCodegenModel(defaultCodegenModelForPlan(plan))!,
     [modelId, plan],
@@ -168,6 +180,7 @@ export function AiModelSelector({
               );
             })}
             <div style={{ margin: '5px 5px 2px', paddingTop: 7, borderTop: '1px solid var(--nx-border, #334155)', color: 'var(--nx-text-3, #94a3b8)', fontSize: 9.5, lineHeight: 1.4 }}>
+              {betaAccess && <><strong style={{ color: '#22c55e' }}>{BETA_ACCESS_COPY[lang] ?? BETA_ACCESS_COPY.en}</strong><br /></>}
               ◉ {copy.autoVision}
               <br />↳ {copy.parallel}
             </div>

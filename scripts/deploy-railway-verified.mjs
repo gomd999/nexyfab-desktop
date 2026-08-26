@@ -98,7 +98,10 @@ function runNpmScript(script, env = process.env) {
 }
 
 export const TARGET_RUNTIME_KEYS = [
-  'NEXYFAB_COMMERCIAL_MODE', 'NEXYFAB_AI_DESIGN_DURABLE_MODE', 'NEXYFAB_PAYMENTS_ENABLED', 'NEXYFAB_RELEASE_CHANNEL', 'NEXYFAB_BUILD_ID', 'RELEASE_GIT_HEAD',
+  'NEXYFAB_COMMERCIAL_MODE', 'NEXYFAB_AI_DESIGN_DURABLE_MODE', 'NEXT_PUBLIC_NEXYFAB_AI_MODEL_BETA_ACCESS',
+  'NEXYFAB_PAYMENTS_ENABLED', 'NEXYFAB_RELEASE_CHANNEL', 'NEXYFAB_BUILD_ID', 'RELEASE_GIT_HEAD',
+  'AI_PROVIDER_PRIMARY', 'AI_PROVIDER_FALLBACKS', 'OPENAI_API_KEY', 'QWEN_API_KEY', 'DASHSCOPE_API_KEY', 'QWEN_BASE_URL',
+  'DEEPSEEK_API_KEY', 'DEEPSEEK_BASE_URL',
   'NEXYFAB_PRECISION_CAD_COMMERCIAL_MODE', 'NEXYFAB_AGENT_APPROVAL_SECRET',
   'NEXYFAB_AGENTIC_TRUST_REGISTRY_JSON', 'EXTERNAL_WORKER_ORCHESTRATOR_URL',
   'EXTERNAL_WORKER_ORCHESTRATOR_HEALTH_URL', 'POSTGRES_MIGRATION_VERSION',
@@ -191,6 +194,7 @@ export function stagingHoldIssues({ environment, site, target, expectedBuildId, 
 
 const WEB_PUBLIC_REQUIRED_KEYS = [
   'DATABASE_URL', 'REDIS_URL',
+  'OPENAI_API_KEY', 'QWEN_API_KEY', 'QWEN_BASE_URL', 'DEEPSEEK_API_KEY',
   'S3_BUCKET', 'S3_ACCESS_KEY_ID', 'S3_SECRET_ACCESS_KEY', 'OBJECT_STORAGE_PRIVATE_BUCKET',
   'CRON_SECRET', 'SMTP_HOST', 'SMTP_USER', 'SMTP_PASS', 'SENTRY_DSN',
   'NEXT_PUBLIC_AUTH_URL', 'RECAPTCHA_SECRET_KEY', 'NEXT_PUBLIC_RECAPTCHA_SITE_KEY',
@@ -207,6 +211,7 @@ export function webPublicIssues({ environment, service, site, target, expectedBu
   if (target.NEXYFAB_COMMERCIAL_MODE !== '0') issues.push('web_public_commercial_mode_must_be_0');
   if (target.NEXYFAB_PRECISION_CAD_COMMERCIAL_MODE !== '0') issues.push('web_public_precision_commercial_mode_must_be_0');
   if (target.NEXYFAB_AI_DESIGN_DURABLE_MODE !== '1') issues.push('web_public_ai_design_durable_mode_required');
+  if (target.NEXT_PUBLIC_NEXYFAB_AI_MODEL_BETA_ACCESS !== '1') issues.push('web_public_ai_model_beta_access_required');
   if (target.NEXYFAB_PAYMENTS_ENABLED !== 'false') issues.push('web_public_payments_must_be_false');
   if (target.NEXYFAB_RELEASE_CHANNEL !== 'web-public') issues.push('web_public_release_channel_required');
   if (!expectedBuildId || target.NEXYFAB_BUILD_ID !== expectedBuildId) issues.push('web_public_build_id_mismatch');
@@ -216,8 +221,28 @@ export function webPublicIssues({ environment, service, site, target, expectedBu
   if (!['enforce', 'strict'].includes(target.SECURITY_GATE_MODE?.trim().toLowerCase() ?? '')) {
     issues.push('web_public_security_gate_must_be_enforced');
   }
+  if (target.AI_PROVIDER_PRIMARY?.trim().toLowerCase() !== 'openai') {
+    issues.push('web_public_ai_primary_must_be_openai');
+  }
+  if (!(target.AI_PROVIDER_FALLBACKS ?? '').split(',').map(value => value.trim().toLowerCase()).includes('qwen')) {
+    issues.push('web_public_ai_fallbacks_must_include_qwen');
+  }
+  if (!(target.AI_PROVIDER_FALLBACKS ?? '').split(',').map(value => value.trim().toLowerCase()).includes('deepseek')) {
+    issues.push('web_public_ai_fallbacks_must_include_deepseek');
+  }
   for (const key of WEB_PUBLIC_REQUIRED_KEYS) {
     if (!target[key]?.trim()) issues.push(`web_public_required_variable_missing:${key}`);
+  }
+  if (target.QWEN_BASE_URL?.trim()) {
+    try {
+      const qwenBase = new URL(target.QWEN_BASE_URL.trim());
+      if (qwenBase.protocol !== 'https:'
+          || !(qwenBase.hostname === 'aliyuncs.com' || qwenBase.hostname.endsWith('.aliyuncs.com'))) {
+        issues.push('web_public_qwen_base_url_must_be_official_https');
+      }
+    } catch {
+      issues.push('web_public_qwen_base_url_must_be_official_https');
+    }
   }
   if (target.POSTGRES_MIGRATION_CHECKSUM_2026082402?.trim()
       && target.POSTGRES_MIGRATION_CHECKSUM_2026082402.trim() !== WEB_PUBLIC_AI_DESIGN_AUTHORITY_MIGRATION_CHECKSUM) {

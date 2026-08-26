@@ -41,7 +41,7 @@ const KNOWN_SETTINGS: Array<{
   { key: 'ai.model.qwen_3_7_plus',  scope: 'config', description: 'Pro Qwen 3.7 Plus provider model ID' },
   { key: 'ai.model.qwen_3_7_max',   scope: 'config', description: 'Pro Qwen 3.7 Max provider model ID' },
   { key: 'ai.model.deepseek_pro',   scope: 'config', description: 'Pro DeepSeek provider model ID' },
-  { key: 'ai.model.qwen_3_8_max',   scope: 'config', description: 'Enterprise Qwen 3.8 Max runtime ID. Preview/Token Plan availability is account-specific; default: qwen3.8-max-preview' },
+  { key: 'ai.model.qwen_3_8_max',   scope: 'config', description: 'Enterprise Qwen 3.8 Max runtime ID (default: qwen3.8-max)' },
   { key: 'ai.model.gpt_terra',      scope: 'config', description: 'Enterprise GPT Terra provider model ID (default: gpt-5.6-terra)' },
   // Payment
   { key: 'toss.secret_key',     scope: 'api_key', description: 'Toss Payments server-side secret' },

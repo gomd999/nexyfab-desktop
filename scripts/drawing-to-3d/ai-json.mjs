@@ -41,6 +41,7 @@ export function defaultJsonModels() {
 /** 모델 이름 → 백엔드. */
 function backendFor(model) {
   if (/^deepseek/i.test(String(model))) return 'deepseek';
+  if (/^qwen/i.test(String(model))) return 'qwen';
   return /^(gpt-|o\d)/i.test(String(model)) ? 'openai' : 'gemini';
 }
 
@@ -78,6 +79,22 @@ export function deepseekApiKey() {
     } catch { /* 다음 후보 */ }
   }
   throw new Error('DEEPSEEK_API_KEY 가 설정되지 않았다(환경변수 또는 parent .env)');
+}
+
+export function qwenApiKey() {
+  const envKey = process.env.QWEN_API_KEY || process.env.DASHSCOPE_API_KEY;
+  if (envKey) return envKey;
+  for (const p of [
+    process.env.NEXYFAB_ENV_PATH,
+    path.resolve(process.cwd(), '.env'),
+    path.resolve(process.cwd(), '..', '..', '.env'),
+  ].filter(Boolean)) {
+    try {
+      const m = readFileSync(p, 'utf8').match(/^(?:QWEN_API_KEY|DASHSCOPE_API_KEY)=(\S+)/m);
+      if (m) return m[1];
+    } catch { /* 다음 후보 */ }
+  }
+  throw new Error('QWEN_API_KEY 또는 DASHSCOPE_API_KEY 가 설정되지 않았다(환경변수 또는 parent .env)');
 }
 
 /**
@@ -211,6 +228,85 @@ export async function callDeepSeekJson(promptText, schema, { models = ['deepseek
       if (!res.ok) {
         const bodyText = await res.text().catch(() => '');
         lastErr = new Error(`${model} ${res.status}: ${bodyText.slice(0, 300)}`);
+        fallbackReasons.push(`${model}: HTTP ${res.status}`);
+        if (res.status === 429 || res.status >= 500) { await sleep(1500 * (attempt + 1)); continue; }
+        break;
+      }
+      const j = await res.json();
+      const choice = j.choices?.[0];
+      const raw = choice?.message?.content;
+      const finish = choice?.finish_reason;
+      if (!raw) {
+        lastErr = new Error(`${model} empty(${finish})`);
+        fallbackReasons.push(`${model}: empty(${finish})`);
+        break;
+      }
+      const cleaned = stripFences(raw);
+      const usage = { out: j.usage?.completion_tokens, total: j.usage?.total_tokens, schema: Boolean(schema) };
+      try { return { data: JSON.parse(cleaned), model, repaired: false, fallbackReasons, usage }; }
+      catch {
+        try {
+          const fixed = repairJsonNumbers(cleaned);
+          if (fixed !== cleaned) return { data: JSON.parse(fixed), model, repaired: true, fallbackReasons, usage };
+        } catch { /* 다음 모델 */ }
+        lastErr = new Error(`${model} bad JSON(${finish})`);
+        fallbackReasons.push(`${model}: bad JSON(${finish})`);
+        break;
+      }
+    }
+  }
+  const err = lastErr instanceof Error ? lastErr : new Error(String(lastErr));
+  err.fallbackReasons = fallbackReasons;
+  throw err;
+}
+
+// ─── Qwen/DashScope OpenAI 호환 배선 ───────────────────────────────────────
+
+export async function callQwenJson(promptText, schema, { models = ['qwen3.7-plus'], maxOutputTokens = 8192 } = {}) {
+  const schemaHint = schema
+    ? '\n\n⚠ 출력은 JSON 객체 하나만(마크다운 울타리·설명 문장 금지). 다음 필드를 채워라:\n' + schemaToHint(schema)
+    : '\n\n⚠ 출력은 JSON 객체 하나만. 마크다운 울타리·설명 문장을 붙이지 마라.';
+  const fullPrompt = promptText + schemaHint;
+  const fallbackReasons = [];
+  let lastErr;
+  const baseUrl = (process.env.QWEN_BASE_URL || 'https://dashscope-intl.aliyuncs.com/compatible-mode/v1').replace(/\/$/, '');
+
+  for (const model of models) {
+    let useResponseFormat = true;
+    let useTemperature = true;
+    for (let attempt = 0; attempt < 3; attempt++) {
+      let res;
+      try {
+        res = await fetch(`${baseUrl}/chat/completions`, {
+          method: 'POST',
+          headers: { 'content-type': 'application/json', authorization: `Bearer ${qwenApiKey()}` },
+          body: JSON.stringify({
+            model,
+            ...(useTemperature ? { temperature: 0 } : {}),
+            max_tokens: Math.min(16_384, Math.max(512, Number(maxOutputTokens) || 8192)),
+            ...(useResponseFormat ? { response_format: { type: 'json_object' } } : {}),
+            messages: [{ role: 'user', content: fullPrompt }],
+          }),
+        });
+      } catch (e) {
+        lastErr = e;
+        fallbackReasons.push(`${model}: network`);
+        await sleep(1000 * (attempt + 1));
+        continue;
+      }
+      if (!res.ok) {
+        const bodyText = await res.text().catch(() => '');
+        lastErr = new Error(`${model} ${res.status}: ${bodyText.slice(0, 300)}`);
+        if (res.status === 400 && useResponseFormat && /response.?format|json.?object/i.test(bodyText)) {
+          useResponseFormat = false;
+          fallbackReasons.push(`${model}: retry_without_response_format`);
+          continue;
+        }
+        if (res.status === 400 && useTemperature && /temperature/i.test(bodyText)) {
+          useTemperature = false;
+          fallbackReasons.push(`${model}: retry_without_temperature`);
+          continue;
+        }
         fallbackReasons.push(`${model}: HTTP ${res.status}`);
         if (res.status === 429 || res.status >= 500) { await sleep(1500 * (attempt + 1)); continue; }
         break;
@@ -404,7 +500,13 @@ export async function callAiJson(promptText, schema, opts = {}) {
   let lastErr;
   for (const model of list) {
     const backend = backendFor(model);
-    const call = backend === 'deepseek' ? callDeepSeekJson : backend === 'openai' ? callOpenAiJson : callGeminiJson;
+    const call = backend === 'deepseek'
+      ? callDeepSeekJson
+      : backend === 'qwen'
+        ? callQwenJson
+        : backend === 'openai'
+          ? callOpenAiJson
+          : callGeminiJson;
     try {
       const out = await call(promptText, schema, { ...rest, models: [model] });
       return { ...out, fallbackReasons: [...fallbackReasons, ...(out.fallbackReasons ?? [])] };

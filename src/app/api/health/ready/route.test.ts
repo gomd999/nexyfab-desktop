@@ -40,6 +40,7 @@ beforeEach(() => {
   vi.stubEnv('RAILWAY_ENVIRONMENT_NAME', '');
   vi.stubEnv('NEXYFAB_COMMERCIAL_MODE', '0');
   vi.stubEnv('NEXYFAB_AI_DESIGN_DURABLE_MODE', '0');
+  vi.stubEnv('NEXT_PUBLIC_NEXYFAB_AI_MODEL_BETA_ACCESS', '0');
   vi.stubEnv('NEXYFAB_PRECISION_CAD_COMMERCIAL_MODE', '');
   vi.stubEnv('NEXYFAB_PAYMENTS_ENABLED', '');
   vi.stubEnv('NEXYFAB_RELEASE_CHANNEL', '');
@@ -192,8 +193,13 @@ describe('GET /api/health/ready', () => {
     vi.stubEnv('NEXYFAB_RELEASE_CHANNEL', 'web-public');
     vi.stubEnv('NEXYFAB_COMMERCIAL_MODE', '0');
     vi.stubEnv('NEXYFAB_AI_DESIGN_DURABLE_MODE', '1');
+    vi.stubEnv('NEXT_PUBLIC_NEXYFAB_AI_MODEL_BETA_ACCESS', '1');
     vi.stubEnv('NEXYFAB_PRECISION_CAD_COMMERCIAL_MODE', '0');
     vi.stubEnv('NEXYFAB_PAYMENTS_ENABLED', 'false');
+    vi.stubEnv('OPENAI_API_KEY', 'openai-test-key');
+    vi.stubEnv('QWEN_API_KEY', 'qwen-test-key');
+    vi.stubEnv('QWEN_BASE_URL', 'https://dashscope-intl.aliyuncs.com/compatible-mode/v1');
+    vi.stubEnv('DEEPSEEK_API_KEY', 'deepseek-test-key');
     vi.stubEnv('REDIS_URL', 'redis://example.test:6379');
     vi.stubEnv('POSTGRES_MIGRATION_CHECKSUM_2026082402', '2'.repeat(64));
     vi.stubEnv('POSTGRES_MIGRATION_CHECKSUM_2026082602', 'a'.repeat(64));
@@ -215,6 +221,12 @@ describe('GET /api/health/ready', () => {
       status: 'ok',
       db: { aiDesignPersistence: 'postgres_authoritative' },
       redis: { status: 'ok', required: true },
+      aiModelAccess: {
+        status: 'ok',
+        required: true,
+        mode: 'no_payment_beta_all_models',
+        providers: ['openai', 'qwen', 'deepseek'],
+      },
       commercialBoundary: { status: 'skipped', required: false },
     });
     expect(fetch).not.toHaveBeenCalled();
@@ -228,6 +240,7 @@ describe('GET /api/health/ready', () => {
       ['NEXYFAB_RELEASE_CHANNEL', 'production'],
       ['NEXYFAB_COMMERCIAL_MODE', ''],
       ['NEXYFAB_AI_DESIGN_DURABLE_MODE', '0'],
+      ['NEXT_PUBLIC_NEXYFAB_AI_MODEL_BETA_ACCESS', '0'],
       ['NEXYFAB_PRECISION_CAD_COMMERCIAL_MODE', '1'],
       ['NEXYFAB_PAYMENTS_ENABLED', 'true'],
     ] as const;
@@ -241,8 +254,27 @@ describe('GET /api/health/ready', () => {
       vi.stubEnv('NEXYFAB_RELEASE_CHANNEL', 'web-public');
       vi.stubEnv('NEXYFAB_COMMERCIAL_MODE', '0');
       vi.stubEnv('NEXYFAB_AI_DESIGN_DURABLE_MODE', '1');
+      vi.stubEnv('NEXT_PUBLIC_NEXYFAB_AI_MODEL_BETA_ACCESS', '1');
       vi.stubEnv('NEXYFAB_PRECISION_CAD_COMMERCIAL_MODE', '0');
       vi.stubEnv('NEXYFAB_PAYMENTS_ENABLED', 'false');
+    }
+
+    for (const [key, value] of [
+      ['OPENAI_API_KEY', ''],
+      ['QWEN_API_KEY', ''],
+      ['DEEPSEEK_API_KEY', ''],
+      ['QWEN_BASE_URL', 'https://example.com/v1'],
+    ] as const) {
+      vi.stubEnv(key, value);
+      const rejected = await GET();
+      expect(rejected.status, `${key}=${value || '(empty)'}`).toBe(503);
+      await expect(rejected.json()).resolves.toMatchObject({
+        aiModelAccess: { status: 'error', required: true },
+      });
+      vi.stubEnv('OPENAI_API_KEY', 'openai-test-key');
+      vi.stubEnv('QWEN_API_KEY', 'qwen-test-key');
+      vi.stubEnv('QWEN_BASE_URL', 'https://dashscope-intl.aliyuncs.com/compatible-mode/v1');
+      vi.stubEnv('DEEPSEEK_API_KEY', 'deepseek-test-key');
     }
   });
 

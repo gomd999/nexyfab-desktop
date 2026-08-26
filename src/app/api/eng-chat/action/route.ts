@@ -16,6 +16,7 @@ import { localizedApiMessage, resolveServerLocale } from '@/lib/i18n/serverLocal
 import { mechanicalVocabularyPrompt } from '@/lib/ai/mechanicalVocabulary';
 import { buildCadActionPlan } from '@/lib/ai/cadActionPlan';
 import { boundedJsonError, readBoundedJson } from '@/lib/boundedJsonBody';
+import { resolveRuntimeCodegenModel } from '@/lib/ai/codegenModelRuntime';
 
 const MAX_BODY_BYTES = 512 * 1024;
 
@@ -162,6 +163,18 @@ export async function POST(req: NextRequest) {
       ? (domainRaw as ActionDomain)
       : 'civil';
 
+    const selectedModel = await resolveRuntimeCodegenModel(
+      typeof body.modelId === 'string' ? body.modelId : undefined,
+      userPlan,
+    );
+    if (!selectedModel.ok) {
+      return NextResponse.json({
+        error: selectedModel.code === 'MODEL_NOT_FOUND' ? 'Unsupported AI model.' : 'This AI model is not available for the current access policy.',
+        code: selectedModel.code,
+        ...(selectedModel.requiredTier ? { requiredTier: selectedModel.requiredTier } : {}),
+      }, { status: selectedModel.code === 'MODEL_NOT_FOUND' ? 400 : 403 });
+    }
+
     if (!planCheck.ok) {
       const guestQuota = await consumeEngineeringChatGuestQuota(req, _ip);
       if (!guestQuota.allowed) {
@@ -217,7 +230,16 @@ export async function POST(req: NextRequest) {
 
     let raw = '';
     try {
-      const result = await chatCompletion({ messages, maxTokens: 600, temperature: 0.2, timeoutMs: 30_000, task: 'eng-chat-action' });
+      const result = await chatCompletion({
+        messages,
+        maxTokens: 600,
+        temperature: 0.2,
+        timeoutMs: 30_000,
+        task: 'eng-chat-action',
+        provider: selectedModel.provider,
+        model: selectedModel.model,
+        allowProviderFallback: true,
+      });
       raw = result.text;
     } catch (e) {
       if (e instanceof AiNotConfiguredError) return NextResponse.json({ error: localizedApiMessage(locale, 'providerNotConfigured'), code: 'AI_NOT_CONFIGURED' }, { status: 500 });
