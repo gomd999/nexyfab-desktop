@@ -24,3 +24,8 @@ current observation for every service. A partial rollback, missing restore,
 changed digest, stale receipt, or failed health probe remains fail-closed. Do
 not place tokens, cookies, environment values, or dashboard URLs containing
 credentials in the receipt.
+
+The v2 receipt binds the staging JSON with the declared
+`utf8-crlf-to-lf` canonicalization. This keeps the exact logical staging
+evidence identity stable across Windows and Linux checkouts while semantic JSON
+changes still invalidate the SHA-256 binding.

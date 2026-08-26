@@ -3,7 +3,7 @@ import { test, expect } from '@playwright/test';
 test.describe('Responsive design', () => {
   test('guided design keeps progress and evidence summaries inside a phone viewport', async ({ page }) => {
     await page.setViewportSize({ width: 393, height: 852 });
-    await page.goto('/kr/nexyfab/design');
+    await page.goto('/kr/nexyfab/design?domain=building');
 
     const journey = page.getByTestId('domain-user-journey');
     const readiness = page.getByTestId('domain-readiness-summary');

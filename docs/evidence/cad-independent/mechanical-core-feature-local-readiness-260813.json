@@ -1,6 +1,6 @@
 {
   "schema": "nexyfab.mechanical-core-feature-local-readiness.v1",
-  "assessedAt": "2026-08-22T07:13:30.564Z",
+  "assessedAt": "2026-08-24T22:37:45.371Z",
   "releaseChannel": "mechanical-core-local",
   "status": "LOCAL_CANDIDATE",
   "eligible": true,
@@ -12,7 +12,7 @@
   },
   "sourceEvidence": {
     "path": "docs/evidence/cad-independent/local/mechanical-core-feature-axis-evidence.json",
-    "sha256": "2fce7ffc6cb769cd37ee480b7a5b41e31d1a51ca816933072e025aadc43a85a5"
+    "sha256": "d592a83f044c34560134d69d4be75e6bb6a72e20047e93102813e04c660af2b9"
   },
   "inputErrors": [],
   "implementation": {
@@ -31,7 +31,7 @@
           {
             "path": "src/app/[lang]/shape-generator/features/hole.ts",
             "exists": true,
-            "sha256": "511452668e7f8caad6f1c082caf00f8ebf3a564321ceaaf5af930424af61b8c7"
+            "sha256": "3de68a4c838fb65a2358a4f9f541a81caa14ff56298b9cad645862a9860cbd14"
           }
         ],
         "candidateTests": [
@@ -204,13 +204,14 @@
           {
             "path": "src/app/[lang]/shape-generator/features/linearPattern.ts",
             "exists": true,
-            "sha256": "bf16ce96132430868562d3dd35e754ba0240d1de7d9eade81a7b57a3e178dc7a"
+            "sha256": "e3136dad5e3df8d18cfca8770a100f416f3b2074f12488b1a9ef051b7c84dc88"
           }
         ],
         "candidateTests": [
           "src/app/[lang]/shape-generator/features/__tests__/registryCompleteness.test.ts",
           "src/app/[lang]/shape-generator/features/featureGuards.test.ts",
           "src/app/[lang]/shape-generator/features/featurePattern.test.ts",
+          "src/app/[lang]/shape-generator/features/hole.brep-chain.test.ts",
           "src/app/[lang]/shape-generator/features/meshFallbackHandleHygiene.test.ts",
           "src/app/[lang]/shape-generator/features/patternHelpers/__tests__/linearPattern.test.ts",
           "src/app/[lang]/shape-generator/features/pipelineChainCoverage.test.ts"
@@ -227,7 +228,7 @@
           {
             "path": "src/app/[lang]/shape-generator/features/circularPattern.ts",
             "exists": true,
-            "sha256": "95a5252fea241f31a36f5f1f5ac202e88284fc91db56acd4bbf7697680ad5302"
+            "sha256": "c9adebae0c316f74b224aeceaf107858ef4c5c13f91d0cac98fe41d77c0d2cfa"
           }
         ],
         "candidateTests": [
@@ -428,7 +429,7 @@
           {
             "path": "src/app/[lang]/shape-generator/features/sheetMetal.ts",
             "exists": true,
-            "sha256": "bec21b1a37183a6a12fb4bb1a2f4bb17ffb0dd2a2fdecbc0f3083bf8b480b614"
+            "sha256": "14c5dfd17c943887f237b166768e3be78a2299b7a35a03123a4022561ca18df4"
           }
         ],
         "candidateTests": [
@@ -461,12 +462,14 @@
           {
             "path": "src/app/[lang]/shape-generator/features/sheetMetal.ts",
             "exists": true,
-            "sha256": "bec21b1a37183a6a12fb4bb1a2f4bb17ffb0dd2a2fdecbc0f3083bf8b480b614"
+            "sha256": "14c5dfd17c943887f237b166768e3be78a2299b7a35a03123a4022561ca18df4"
           }
         ],
         "candidateTests": [
           "src/app/[lang]/shape-generator/features/__tests__/registryCompleteness.test.ts",
           "src/app/[lang]/shape-generator/features/bendSequence.test.ts",
+          "src/app/[lang]/shape-generator/features/hole.advanced.test.ts",
+          "src/app/[lang]/shape-generator/features/hole.brep-chain.test.ts",
           "src/app/[lang]/shape-generator/features/pipelineChainCoverage.test.ts",
           "src/app/[lang]/shape-generator/features/sheetMetal.test.ts",
           "src/app/[lang]/shape-generator/features/sheetMetalExtended.test.ts",
@@ -485,7 +488,7 @@
           {
             "path": "src/app/[lang]/shape-generator/features/sheetMetal.ts",
             "exists": true,
-            "sha256": "bec21b1a37183a6a12fb4bb1a2f4bb17ffb0dd2a2fdecbc0f3083bf8b480b614"
+            "sha256": "14c5dfd17c943887f237b166768e3be78a2299b7a35a03123a4022561ca18df4"
           }
         ],
         "candidateTests": [
@@ -505,7 +508,7 @@
           {
             "path": "src/app/[lang]/shape-generator/features/sheetMetal.ts",
             "exists": true,
-            "sha256": "bec21b1a37183a6a12fb4bb1a2f4bb17ffb0dd2a2fdecbc0f3083bf8b480b614"
+            "sha256": "14c5dfd17c943887f237b166768e3be78a2299b7a35a03123a4022561ca18df4"
           }
         ],
         "candidateTests": [
@@ -564,6 +567,7 @@
           "src/app/[lang]/shape-generator/features/endCondition.test.ts",
           "src/app/[lang]/shape-generator/features/featurePattern.test.ts",
           "src/app/[lang]/shape-generator/features/hole.advanced.test.ts",
+          "src/app/[lang]/shape-generator/features/pipelineExecutionPolicy.test.ts",
           "src/app/[lang]/shape-generator/features/reliefCuts.test.ts",
           "src/app/[lang]/shape-generator/features/reliefCuts.variableShell.product.test.ts",
           "src/app/[lang]/shape-generator/features/sheetMetalExtended.test.ts",
@@ -646,7 +650,7 @@
           {
             "path": "src/app/[lang]/shape-generator/features/pipelineManager.ts",
             "exists": true,
-            "sha256": "66284ece9ce6a6206f28e99b97b86be755669169e470a25462fbb8daae09201e"
+            "sha256": "271baffbb5a28ed461d01801cd1c15022afa6eda284e7abe8655dab17f14b032"
           }
         ],
         "candidateTests": [

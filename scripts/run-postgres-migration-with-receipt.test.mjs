@@ -80,11 +80,11 @@ test('holds when one migration was not applied or observed completely', () => {
   });
   assert.equal(receipt.ok, false);
   assert.equal(receipt.status, 'HOLD');
-  assert.ok(receipt.blockers.includes('migration_observation_missing:2026082208'));
+  assert.ok(receipt.blockers.includes('migration_observation_missing:2026082502'));
   const verification = verifyMigrationReceipt(receipt);
   assert.equal(verification.ok, false);
   assert.ok(verification.blockers.includes('receipt_not_pass'));
-  assert.ok(verification.blockers.includes('migration_binding_invalid:2026082208'));
+  assert.ok(verification.blockers.includes('migration_binding_invalid:2026082502'));
 });
 
 test('does not claim PASS for changed business rows or a non-production target', () => {

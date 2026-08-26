@@ -3,9 +3,9 @@
   "feature": "helix",
   "axis": "save_reopen",
   "status": "PASS",
-  "executedAt": "2026-08-22T07:13:30.564Z",
+  "executedAt": "2026-08-24T22:37:45.371Z",
   "savedBytes": 1649,
-  "savedSha256": "032237708cf9804aeb6398aca90aa2d10beb6762727cc9034e763746b859b419",
+  "savedSha256": "98fbf76961cb98b9b46a1f0e376f181c807c3506f203378f7224da8a9b2b0f2f",
   "reopened": {
     "handle": "occt:217",
     "kernelKind": "Solid",

@@ -24,11 +24,12 @@ const schema = z.object({
 });
 
 export const POST = withRateLimit({ key: 'billing-seats', ...RATE_LIMITS.billing_action }, async (req: NextRequest) => {
-  const paymentDenied = denyIfPaymentCollectionDisabled();
-  if (paymentDenied) return paymentDenied;
   if (!checkOrigin(req)) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   const authUser = await getAuthUser(req);
   if (!authUser) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  // Authenticate before revealing whether the payment backend is enabled.
+  const paymentDenied = denyIfPaymentCollectionDisabled();
+  if (paymentDenied) return paymentDenied;
 
   let raw: unknown = null;
   try { raw = await readBoundedJson(req, SUBSCRIPTION_SEATS_JSON_BYTES); }

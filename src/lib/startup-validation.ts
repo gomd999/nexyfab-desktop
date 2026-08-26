@@ -11,6 +11,7 @@ interface EnvCheck {
   required: boolean;
   validate?: (value: string) => boolean;
   hint?: string;
+  group?: 'payment';
 }
 
 const ENV_CHECKS: EnvCheck[] = [
@@ -42,17 +43,20 @@ const ENV_CHECKS: EnvCheck[] = [
     required: false,
     validate: (v) => v.startsWith('sk_'),
     hint: 'Must start with sk_. Required for billing features.',
+    group: 'payment',
   },
   {
     key: 'STRIPE_WEBHOOK_SECRET',
     required: false,
     validate: (v) => v.startsWith('whsec_'),
     hint: 'Must start with whsec_. Required for Stripe webhooks.',
+    group: 'payment',
   },
   {
     key: 'AIRWALLEX_WEBHOOK_SECRET',
     required: false,
     hint: 'Required for Airwallex payment webhooks. Without this, payment events are unverified.',
+    group: 'payment',
   },
   {
     key: 'DATABASE_URL',
@@ -86,8 +90,10 @@ export function validateStartup(): void {
 
   const errors: string[] = [];
   const warnings: string[] = [];
+  const paymentsEnabled = process.env.NEXYFAB_PAYMENTS_ENABLED?.trim().toLowerCase() === 'true';
 
   for (const check of ENV_CHECKS) {
+    if (check.group === 'payment' && !paymentsEnabled) continue;
     const value = process.env[check.key];
 
     if (!value) {

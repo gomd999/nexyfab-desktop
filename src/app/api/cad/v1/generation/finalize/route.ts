@@ -23,6 +23,7 @@ import { createDbVerifiedAgenticCommercialReceiptStore } from '@/lib/ai/verified
 import { loadVerifiedAgenticCommercialReceiptForGeneration } from '@/lib/ai/loadVerifiedAgenticCommercialReceiptForGeneration';
 import { loadServerAgenticCommercialTrust } from '@/lib/ai/serverAgenticCommercialTrust';
 import { loadCommercialGenerationRouteRun, saveCommercialGenerationRouteRun, type LoadedCommercialGenerationRun } from '@/lib/ai/commercialGenerationRouteState';
+import { commercialPostgresMigrationAtLeast } from '@/lib/commercial-readiness';
 
 export const runtime = 'nodejs'; export const dynamic = 'force-dynamic';
 type Body = {
@@ -42,7 +43,7 @@ export async function POST(req: NextRequest) {
   try { body = await readBoundedJson<Body>(req, 32 * 1024 * 1024); }
   catch (error) { const bounded = boundedJsonError(error); if (bounded) return NextResponse.json({ ok: false, code: bounded.code }, { status: bounded.status }); throw error; }
   if (body && (body.commercialReceipt !== undefined || body.registry !== undefined || body.clock !== undefined || body.mode !== undefined || body.rawReceiptBytes !== undefined)) return NextResponse.json({ ok: false, code: 'COMMERCIAL_RECEIPT_SERVER_ONLY', status: 'HOLD', releaseReady: false }, { status: 400 });
-  if (process.env.NEXYFAB_COMMERCIAL_MODE === '1' && process.env.POSTGRES_MIGRATION_VERSION !== '2026082208') return NextResponse.json({ ok: false, code: 'COMMERCIAL_GENERATION_MIGRATION_REQUIRED', status: 'HOLD', releaseReady: false }, { status: 503 });
+  if (process.env.NEXYFAB_COMMERCIAL_MODE === '1' && !commercialPostgresMigrationAtLeast(process.env, 2026082208)) return NextResponse.json({ ok: false, code: 'COMMERCIAL_GENERATION_MIGRATION_REQUIRED', status: 'HOLD', releaseReady: false }, { status: 503 });
   if (!body?.state || body.state.schema !== 'nexyfab.generation-run.v1' || !body.program || !body.motion || !Array.isArray(body.parts)) {
     return NextResponse.json({ ok: false, code: 'BAD_REQUEST', message: 'state, program, motion and parts are required' }, { status: 400 });
   }

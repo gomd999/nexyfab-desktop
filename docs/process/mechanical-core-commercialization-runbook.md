@@ -47,11 +47,11 @@ npm run mechanical:scope:check
 4. 절삭·판금·적층의 실제 제조 3건은 유지한다.
 5. 외부 기관 대신 구현자에서 분리된 내부 검토자와 위험 기반 이중 승인을 허용한다.
 
-`mechanical-product-scope-assessment.v3`와 commercialization gate에는 이 정책이 반영됐다. 제품별 상용 CAD 검증은 기본 blocker가 아니며, `twenty_blind_product_challenges_required`는 외부 기관 20건이 아니라 요구사항이 사전 동결되고 구현자와 검토자가 분리된 내부 blind challenge 20건을 뜻한다. 현재 blocker는 schema 전환 대기가 아니라 실제 artifact가 0건이라는 사실이다.
+`mechanical-product-scope-assessment.v4`와 commercialization gate에는 이 정책이 반영됐다. v4는 150개 로컬 의도 입력 자격 검증, 10개 대표 설계·70개 정확 런타임 축, 조립도면 로컬 인계를 상용 30개 설계·150개 의도 캠페인과 별도 필드로 기록하며, 앞의 내부 PASS가 뒤의 상용 검증을 대신하지 못하게 한다. 제품별 상용 CAD 검증은 기본 blocker가 아니며, `twenty_blind_product_challenges_required`는 외부 기관 20건이 아니라 요구사항이 사전 동결되고 구현자와 검토자가 분리된 내부 blind challenge 20건을 뜻한다. 현재 blocker는 schema 전환 대기가 아니라 실제 artifact가 0건이라는 사실이다.
 
-2026-08-12 공식 scaffold로 다음 저장소 외부 작업공간을 생성했다.
+2026-08-25 현재 v4 정책과 8개 직접설계 artifact 역할을 반영한 새 공식 scaffold를 다음 저장소 외부 작업공간에 생성했다. 2026-08-12 루트는 `verificationReceipt` 경로가 없는 역사 자료이므로 보존하되 새 campaign 입력으로 사용하지 않는다.
 
-- 루트: `C:\Users\gomd9\Downloads\nexysys_1\nexyfab-commercial-evidence-260812`
+- 현재 루트: `C:\Users\gomd9\Downloads\nexysys_1\nexyfab-commercial-evidence-260825-v4`
 - 직접 설계: 30 case, eligible 0
 - blind challenge: 20 case, eligible 0
 - 제조 pilot: CNC·판금·적층 3 case, eligible 0
@@ -73,11 +73,25 @@ workbook은 폴더와 요구 artifact 경로만 만든다. 실제 STEP·NFAB·�
 호출해야 하며, fixture나 synthetic artifact를 상용 증거로 생성해서는 안 된다. 중단 후에는 같은 명령에
 `--resume`을 추가한다. 일부 case만 먼저 실행하려면 `--cases=design-01-hole,...`을 지정한다.
 
+실행 전 비파괴 preflight는 workbook, 240개 필수 파일 슬롯의 현재 상태, 역할이 분리된 Ed25519 검증자, adapter 정규 파일과 운영자 pin SHA-256, 별도 release authority의 서명 승인을 확인한다. adapter를 import하거나 실행하지 않고 state·receipt·evidence도 쓰지 않는다. `readyToExecute`는 실제 adapter가 artifact를 만들기 전의 실행 신뢰 조건이고, `readyForFinalVerification`은 240개 파일까지 모두 존재하는 후속 검증 조건이다. 따라서 파일 240개가 아직 없는 것만으로 첫 campaign 실행을 순환 차단하지 않는다.
+
+운영자 pin은 `--adapter-sha256` 또는 `NEXYFAB_MECHANICAL_DESIGN_ADAPTER_SHA256`로 공급한다. 서명 승인 receipt는 `workspaces/platform/contracts/mechanical-design-adapter-approval.schema.json`을 따르고 adapter hash·version·workbook `evidenceRootId`·최대 30일 승인 기간을 결속한다. 승인자는 `NEXYFAB_MECHANICAL_ADAPTER_APPROVER_KEYS`의 `mechanical-adapter-release-approver` 역할을 가진 별도 Ed25519 public key여야 한다. private key는 repo, adapter host와 campaign 실행자 밖에 둔다. 승인 자체는 상용 release를 허가하지 않는다.
+
+```powershell
+node scripts/run-mechanical-direct-design-campaign.mjs --preflight `
+  --workbook=C:\Users\gomd9\Downloads\nexysys_1\nexyfab-commercial-evidence-260825-v4\direct-design\mechanical-direct-design-workbook.json `
+  --adapter=<trusted-runtime-adapter.mjs> `
+  --adapter-sha256=<operator-pinned-sha256> `
+  --adapter-approval=<signed-adapter-approval.json>
+```
+
 ```powershell
 node scripts/run-mechanical-direct-design-campaign.mjs `
-  --workbook=C:\Users\gomd9\Downloads\nexysys_1\nexyfab-commercial-evidence-260812\direct-design\mechanical-direct-design-workbook.json `
-  --state=C:\Users\gomd9\Downloads\nexysys_1\nexyfab-commercial-evidence-260812\direct-design\campaign-state.json `
+  --workbook=C:\Users\gomd9\Downloads\nexysys_1\nexyfab-commercial-evidence-260825-v4\direct-design\mechanical-direct-design-workbook.json `
+  --state=C:\Users\gomd9\Downloads\nexysys_1\nexyfab-commercial-evidence-260825-v4\direct-design\campaign-state.json `
   --adapter=<trusted-runtime-adapter.mjs> `
+  --adapter-sha256=<operator-pinned-sha256> `
+  --adapter-approval=<signed-adapter-approval.json> `
   --receipt=docs/evidence/release/mechanical-direct-design-campaign-receipt.json
 ```
 
@@ -175,6 +189,114 @@ STEP은 vendor-native feature history 호환을 의미하지 않는다. 마케�
 - 재작업과 승인되지 않은 CAD 변경 기록
 
 최소 세 개의 critical measurement가 case별 허용 공차 안에 있어야 한다. 실물이 없으면 manufacturing release는 false다. 직접 제작과 직접 검사를 허용하지만 설계자와 최종 판정 역할은 분리한다.
+
+### 검토자·검사자 signing packet
+
+실제 artifact가 모두 생성된 다음, 서명 전에 원본 bytes와 최종 검토 대상을 하나의 결정적 packet으로 결속한다. 입력과 출력 계약은 다음 공개 schema를 사용한다.
+
+- `workspaces/platform/contracts/mechanical-blind-signing-request.schema.json`
+- `workspaces/platform/contracts/mechanical-manufacturing-signing-request.schema.json`
+- `workspaces/platform/contracts/mechanical-commercial-signing-packet.schema.json`
+- `workspaces/platform/contracts/mechanical-commercial-signature-response.schema.json`
+
+먼저 read-only 검사를 수행한다.
+
+```powershell
+node workspaces/platform/tools/build-mechanical-signing-packet.mjs `
+  --kind=blind `
+  --request=<external-root>\blind-signing-request.json `
+  --evidence-root=<external-root> `
+  --check
+
+node workspaces/platform/tools/build-mechanical-signing-packet.mjs `
+  --kind=manufacturing `
+  --request=<external-root>\manufacturing-signing-request.json `
+  --evidence-root=<external-root> `
+  --check
+```
+
+검사가 성공한 경우에만 새 output 이름으로 packet을 만든다.
+
+```powershell
+node workspaces/platform/tools/build-mechanical-signing-packet.mjs `
+  --kind=blind `
+  --request=<external-root>\blind-signing-request.json `
+  --evidence-root=<external-root> `
+  --output=<external-root>\packets\blind-signing-packet.json
+```
+
+독립 검토자 또는 검사자는 packet SHA-256, artifact, 본인 identity, target hash와 canonical payload를 확인하고 도구 밖에서 해당 payload bytes에 Ed25519 서명한다. private key는 저장소, adapter host 또는 campaign 운영자에게 전달하지 않는다.
+
+반환 signature를 사람이 candidate JSON에 복사하지 않는다. 역할 제한 public key registry를 환경에 공급하고 response 조립기를 먼저 read-only로 실행한다. Blind는 `NEXYFAB_BLIND_REVIEWER_KEYS`, 제조는 `NEXYFAB_MANUFACTURING_REVIEWER_KEYS`를 사용한다.
+
+```powershell
+node workspaces/platform/tools/assemble-mechanical-commercial-candidate.mjs `
+  --kind=blind `
+  --packet=<external-root>\packets\blind-signing-packet.json `
+  --response=<external-root>\responses\blind-signature-response.json `
+  --evidence-root=<external-root> `
+  --check
+
+node workspaces/platform/tools/assemble-mechanical-commercial-candidate.mjs `
+  --kind=manufacturing `
+  --packet=<external-root>\packets\manufacturing-signing-packet.json `
+  --response=<external-root>\responses\manufacturing-signature-response.json `
+  --evidence-root=<external-root> `
+  --check
+```
+
+조립기는 source request와 현재 artifact bytes에서 packet을 다시 만들고 exact packet 일치, 모든 서명 slot, target/payload hash, Ed25519 signature와 최종 receipt validator를 재검증한다. 검사가 성공한 경우에만 같은 외부 root 안의 새 candidate 이름을 사용한다.
+
+```powershell
+node workspaces/platform/tools/assemble-mechanical-commercial-candidate.mjs `
+  --kind=blind `
+  --packet=<external-root>\packets\blind-signing-packet.json `
+  --response=<external-root>\responses\blind-signature-response.json `
+  --evidence-root=<external-root> `
+  --output=<external-root>\candidates\blind-candidate.json
+```
+
+위조·누락·중복·이식 signature, packet 추가 claim, request/artifact drift와 외부 output은 zero-output으로 실패한다. 조립기는 candidate receipt만 구성하며 원본 evidence나 signature를 만들지 않고 commercial release 권한도 부여하지 않는다.
+
+이 도구는 외부 root 밖으로 나가는 경로, symlink와 directory-link 탈출, 중복 artifact, 역할 충돌, 시간 역전, 공차 밖 측정과 기존 output 덮어쓰기를 거부한다. packet은 `createsEvidence=false`, `createsSignatures=false`, `grantsCommercialRelease=false`이며 그 자체로 상용 PASS가 아니다.
+
+### 검증된 receipt promotion
+
+서명된 candidate receipt를 저장소에 손으로 복사하거나 PASS 필드를 수정하지 않는다. 먼저 외부 evidence root 안의 candidate와 모든 artifact bytes를 read-only로 검사한다.
+
+```powershell
+node workspaces/platform/tools/promote-mechanical-commercial-receipt.mjs `
+  --kind=blind `
+  --candidate=<external-blind-root>\blind-candidate.json `
+  --evidence-root=<external-blind-root> `
+  --check
+
+node workspaces/platform/tools/promote-mechanical-commercial-receipt.mjs `
+  --kind=manufacturing `
+  --candidate=<external-pilot-root>\manufacturing-candidate.json `
+  --evidence-root=<external-pilot-root> `
+  --check
+```
+
+Blind 검증에는 `NEXYFAB_BLIND_REVIEWER_KEYS`, 제조 검증에는 `NEXYFAB_MANUFACTURING_REVIEWER_KEYS`의 역할 제한 public key registry가 필요하다. candidate는 외부 root 내부의 비-symlink 정규 파일이어야 하며 root 자체도 저장소 밖의 비-symlink 디렉터리여야 한다.
+
+read-only 검사가 성공한 뒤 clean integration checkout에서만 canonical gate 경로로 승격한다.
+
+```powershell
+node workspaces/platform/tools/promote-mechanical-commercial-receipt.mjs `
+  --kind=blind `
+  --candidate=<external-blind-root>\blind-candidate.json `
+  --evidence-root=<external-blind-root> `
+  --output=docs/evidence/release/mechanical-blind-product-challenge-receipt.json
+
+node workspaces/platform/tools/promote-mechanical-commercial-receipt.mjs `
+  --kind=manufacturing `
+  --candidate=<external-pilot-root>\manufacturing-candidate.json `
+  --evidence-root=<external-pilot-root> `
+  --output=docs/evidence/release/mechanical-manufacturing-validation-receipt.json
+```
+
+도구는 기존 output을 덮어쓰지 않고, 임시 파일과 hard-link no-replace 방식으로 원자적으로 생성한다. candidate가 위조·만료·schema 불일치이거나 artifact가 drift했으면 종료 코드 4와 `candidate_receipt_invalid`를 반환하며 output을 만들지 않는다. 이 promotion은 evidence나 signature를 생성하지 않고 commercial release 권한도 부여하지 않는다.
 
 ## 8. 운영 및 릴리스
 

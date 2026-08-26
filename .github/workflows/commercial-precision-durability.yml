@@ -1,0 +1,75 @@
+name: Commercial Precision durability
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '35 18 * * 1'
+  push:
+    branches:
+      - integration/nexyfab
+      - main
+      - master
+    paths:
+      - '.github/workflows/commercial-precision-durability.yml'
+      - 'containers/commercial-precision-durability/**'
+      - 'containers/occt-commercial-worker/**'
+      - 'packages/job-contracts/src/commercialPrecisionExecution*'
+      - 'scripts/commercial-precision-local-durability-campaign.ts'
+      - 'scripts/run-commercial-precision-local-durability.mjs'
+      - 'scripts/verify-backup-restore*'
+      - 'scripts/verify-object-storage-restore*'
+      - 'scripts/commercialization-readiness-gate*'
+      - 'scripts/drawing-to-3d/commercial-precision-worker*'
+      - 'scripts/drawing-to-3d/build-commercial-precision-worker-image*'
+      - 'src/app/api/internal/precision-cad-commercial/**'
+      - 'src/lib/db-postgres-migration-*.sql'
+      - 'src/lib/precision-cad-agent/commercial*'
+      - 'package.json'
+      - 'package-lock.json'
+  pull_request:
+    paths:
+      - '.github/workflows/commercial-precision-durability.yml'
+      - 'containers/commercial-precision-durability/**'
+      - 'containers/occt-commercial-worker/**'
+      - 'packages/job-contracts/src/commercialPrecisionExecution*'
+      - 'scripts/commercial-precision-local-durability-campaign.ts'
+      - 'scripts/run-commercial-precision-local-durability.mjs'
+      - 'scripts/verify-backup-restore*'
+      - 'scripts/verify-object-storage-restore*'
+      - 'scripts/commercialization-readiness-gate*'
+      - 'scripts/drawing-to-3d/commercial-precision-worker*'
+      - 'scripts/drawing-to-3d/build-commercial-precision-worker-image*'
+      - 'src/app/api/internal/precision-cad-commercial/**'
+      - 'src/lib/db-postgres-migration-*.sql'
+      - 'src/lib/precision-cad-agent/commercial*'
+      - 'package.json'
+      - 'package-lock.json'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: commercial-precision-durability-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  durable-exact-closed-loop:
+    name: PostgreSQL Redis object-storage restart and cross-store restore
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      CI: true
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+        with:
+          node-version: '22.23.2'
+          cache: npm
+          cache-dependency-path: package-lock.json
+      - run: npm ci --legacy-peer-deps
+      - name: Verify Docker Compose
+        run: docker compose version
+      - name: Verify fail-closed commercial worker image contract
+        run: npm run test:commercial:precision:worker-image
+      - name: Run durable exact closed-loop and cross-store restore campaign
+        run: npm run commercial:precision:local-durability

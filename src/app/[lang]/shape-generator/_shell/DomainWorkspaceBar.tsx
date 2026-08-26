@@ -159,7 +159,7 @@ export function DomainWorkspaceBar({ lang, readOnly = false, compact = false, se
       <span data-testid="domain-current-stage" title={journey.focus} style={{ padding: '2px 7px', borderRadius: 10, background: 'color-mix(in srgb, var(--nx-accent) 14%, transparent)', color: 'var(--nx-accent)', whiteSpace: 'nowrap', fontWeight: 750 }}>
         {copy.current}: {journey.stages[stageIndex].label}
       </span>
-      <WorkspaceTruthStrip domain={selection.domain} workMode={selection.workMode} dfmWarningCount={dfmWarningCount} compact={compact} sessionVerification={sessionVerification} />
+      <WorkspaceTruthStrip lang={lang} domain={selection.domain} workMode={selection.workMode} dfmWarningCount={dfmWarningCount} compact={compact} sessionVerification={sessionVerification} />
       <span aria-hidden={compact || undefined} style={{ display: compact ? 'none' : undefined, color: 'var(--nx-text-3)', whiteSpace: 'nowrap' }}>{copy.tools}</span>
       <div aria-live="polite" style={{ display: compact ? 'none' : 'flex', gap: 4, whiteSpace: 'nowrap' }}>
         {tools.map(tool => <span key={tool} style={{ padding: '2px 6px', borderRadius: 10, border: '1px solid var(--nx-border)', background: 'var(--nx-panel-2)', color: 'var(--nx-text-2)' }}>{tool}</span>)}

@@ -2,7 +2,7 @@
 import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import axe from 'axe-core';
-import { AI_RUN_FAILED_COPY, AI_RUN_FAILURE_DETAIL_COPY, PRECISION_CAD_AUTO_PROMPT_COPY, PRECISION_CAD_BOOTSTRAP_FAILED_COPY, PRECISION_CAD_PROJECT_REQUIRED_COPY, PRECISION_CAD_TASK_UNAVAILABLE_COPY, AiChatPanel } from './AiChatPanel';
+import { AI_AUTH_REQUIRED_COPY, AI_RETRY_COPY, AI_RUN_FAILED_COPY, AI_RUN_FAILURE_DETAIL_COPY, PRECISION_CAD_AUTO_PROMPT_COPY, PRECISION_CAD_BOOTSTRAP_FAILED_COPY, PRECISION_CAD_PROJECT_REQUIRED_COPY, PRECISION_CAD_TASK_UNAVAILABLE_COPY, AiChatPanel } from './AiChatPanel';
 import { GENERATION_EXECUTION_PLAN_KEY } from '../../ai/generationSessionClient';
 import { resetDomainWorkspaceSession, setDomainWorkspaceSelection } from '../domainWorkspaceStore';
 import { createAiCanonicalCandidate, markAiCanonicalCandidateApplied } from '@/lib/ai/aiCanonicalCandidate';
@@ -22,7 +22,7 @@ describe('AiChatPanel guided design intake', () => {
     expect(Object.values(AI_RUN_FAILED_COPY).every(value => value.trim().length > 0)).toBe(true);
     expect(Object.keys(PRECISION_CAD_AUTO_PROMPT_COPY).sort()).toEqual(['ar', 'en', 'es', 'ja', 'ko', 'zh']);
     expect(Object.values(PRECISION_CAD_AUTO_PROMPT_COPY).every(value => value.trim().length > 0)).toBe(true);
-    for (const dictionary of [PRECISION_CAD_PROJECT_REQUIRED_COPY, PRECISION_CAD_TASK_UNAVAILABLE_COPY, PRECISION_CAD_BOOTSTRAP_FAILED_COPY, AI_RUN_FAILURE_DETAIL_COPY]) {
+    for (const dictionary of [PRECISION_CAD_PROJECT_REQUIRED_COPY, PRECISION_CAD_TASK_UNAVAILABLE_COPY, PRECISION_CAD_BOOTSTRAP_FAILED_COPY, AI_RUN_FAILURE_DETAIL_COPY, AI_AUTH_REQUIRED_COPY, AI_RETRY_COPY]) {
       expect(Object.keys(dictionary).sort()).toEqual(['ar', 'en', 'es', 'ja', 'ko', 'zh']);
       expect(Object.values(dictionary).every(value => value.trim().length > 0)).toBe(true);
     }
@@ -51,13 +51,14 @@ describe('AiChatPanel guided design intake', () => {
     vi.stubGlobal('fetch', fetchMock);
     render(<AiChatPanel isKo={false} />);
 
-    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2));
-    const body = JSON.parse(String((fetchMock.mock.calls[1]![1] as RequestInit).body)) as Record<string, unknown>;
+    const agentCalls = () => fetchMock.mock.calls.filter(call => String(call[0]).includes('/scad-agent/'));
+    await waitFor(() => expect(agentCalls()).toHaveLength(1));
+    const body = JSON.parse(String((agentCalls()[0]![1] as RequestInit).body)) as Record<string, unknown>;
     expect(body.executionMode).toBe('precision_cad');
     expect(body.precisionTask).toMatchObject({ activeStage: 'assembly_solve', affectedPartIds: ['arm'] });
     window.dispatchEvent(new CustomEvent('nexyfab:complex-execution-plan', { detail: JSON.parse(window.sessionStorage.getItem(GENERATION_EXECUTION_PLAN_KEY)!) }));
     await new Promise(resolve => window.setTimeout(resolve, 0));
-    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(agentCalls()).toHaveLength(1);
   });
 
   it('does not invoke SCAD when a precision task is missing', async () => {
@@ -221,5 +222,49 @@ describe('AiChatPanel guided design intake', () => {
     expect(String(body.userPrompt)).toContain('mechanical.critical_dimensions [user_confirmed]');
     expect(screen.queryByTestId('guided-local-execution-truth')).toBeNull();
     expect((await axe.run(container, { rules: { 'color-contrast': { enabled: false } } })).violations).toEqual([]);
+  });
+
+  it('fills a starter into the input without starting a paid AI run', async () => {
+    const fetchMock = vi.fn();
+    vi.stubGlobal('fetch', fetchMock);
+    render(<AiChatPanel isKo={false} />);
+
+    fireEvent.click(screen.getByRole('button', { name: /Design an exact L-bracket/ }));
+
+    const input = screen.getByRole('textbox', { name: 'AI message input' });
+    expect((input as HTMLInputElement).value).toContain('Design an exact L-bracket');
+    expect(input).toHaveFocus();
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it('explains that authentication is required when the AI route returns 401', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+      ok: false,
+      status: 401,
+      json: async () => ({ error: 'Unauthorized' }),
+    }));
+    render(<AiChatPanel isKo={false} />);
+
+    send('Design an exact L-bracket with 100 mm × 50 mm legs, length 40 mm, thickness 5 mm, ±0.1 mm tolerance, 6061-T6 aluminum, CNC milling');
+
+    expect(await screen.findByText(/Sign in to run AI design, then try again\./)).toBeTruthy();
+  });
+
+  it('offers an explicit retry after a failed AI run', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: false,
+      status: 503,
+      json: async () => ({ error: 'provider unavailable' }),
+    });
+    vi.stubGlobal('fetch', fetchMock);
+    render(<AiChatPanel isKo={false} />);
+
+    send('Design an exact L-bracket with 100 mm × 50 mm legs, length 40 mm, thickness 5 mm, ±0.1 mm tolerance, 6061-T6 aluminum, CNC milling');
+    const retry = await screen.findByRole('button', { name: /Retry the same request/ });
+    await waitFor(() => expect(retry).toBeEnabled());
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+
+    fireEvent.click(retry);
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2));
   });
 });

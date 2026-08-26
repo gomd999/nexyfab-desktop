@@ -3,12 +3,20 @@ import path from 'node:path';
 import { createHash } from 'node:crypto';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
+import { TEXT_BINDING_CANONICALIZATION, canonicalizeText } from './canonical-text-binding.mjs';
 
 const ROOT = process.cwd();
 const OUTPUT = path.join(ROOT, 'docs', 'evidence', 'security', 'secret-scan-260810.json');
-const WRITE = process.argv.includes('--write');
 const MAX_TEXT_BYTES = 32 * 1024 * 1024;
 const TEXT_SAMPLE_BYTES = 8 * 1024;
+export const SECRET_SCAN_SCOPE = 'git-versioned-candidates-text-excluding-derived-current-receipts';
+export const SECRET_SCAN_TEXT_CANONICALIZATION = TEXT_BINDING_CANONICALIZATION;
+export const SECRET_SCAN_EXCLUDED_DERIVED_RECEIPTS = Object.freeze([
+  'docs/evidence/release/commercial-release-baseline-current.json',
+  'docs/evidence/release/commercial-security-evidence-receipt.json',
+  'docs/evidence/release/commercialization-readiness-current.json',
+  'docs/evidence/release/commercialization-readiness-full-product-current.json',
+]);
 
 const PATTERNS = [
   ['private_key', /-----BEGIN (?:RSA |EC |OPENSSH |DSA )?PRIVATE KEY-----/g],
@@ -33,6 +41,17 @@ function versionedCandidateFiles() {
   });
   if (git.status !== 0 || git.error) throw new Error(`SECRET_SCAN_GIT_FILES_UNAVAILABLE:${git.error?.code ?? git.status}`);
   return git.stdout.toString('utf8').split('\0').filter(Boolean);
+}
+
+export function filterSecretScanCandidates(relativeFiles) {
+  const excluded = new Set(SECRET_SCAN_EXCLUDED_DERIVED_RECEIPTS);
+  return [...new Set(relativeFiles.map(file => String(file).replaceAll('\\', '/').replace(/^\.\//, '')))]
+    .filter(file => file && !excluded.has(file))
+    .sort();
+}
+
+export function canonicalizeSecretScanText(content) {
+  return canonicalizeText(content);
 }
 
 function isProbablyText(content) {
@@ -68,7 +87,7 @@ function scanText(relativePath, content) {
 }
 
 function scan(relativeFiles = versionedCandidateFiles()) {
-  const files = [...new Set(relativeFiles)]
+  const files = filterSecretScanCandidates(relativeFiles)
     .map(file => path.resolve(ROOT, file))
     .filter(file => file !== OUTPUT && fs.existsSync(file))
     .sort();
@@ -87,14 +106,16 @@ function scan(relativeFiles = versionedCandidateFiles()) {
       binaryFilesSkipped += 1;
       continue;
     }
-    const content = buffer.toString('utf8');
-    bytesScanned += buffer.length;
+    const content = canonicalizeSecretScanText(buffer.toString('utf8'));
+    bytesScanned += Buffer.byteLength(content, 'utf8');
     findings.push(...scanText(path.relative(ROOT, file), content));
   }
   return {
     schema: 'nexyfab-secret-scan-v1',
     generatedAt: new Date().toISOString(),
-    scope: 'git-versioned-candidates-text',
+    scope: SECRET_SCAN_SCOPE,
+    textCanonicalization: SECRET_SCAN_TEXT_CANONICALIZATION,
+    excludedDerivedReceipts: [...SECRET_SCAN_EXCLUDED_DERIVED_RECEIPTS],
     status: findings.length === 0 && oversizedFilesSkipped === 0 ? 'pass' : 'fail',
     filesScanned: files.length,
     bytesScanned,
@@ -105,35 +126,38 @@ function scan(relativeFiles = versionedCandidateFiles()) {
   };
 }
 
-const report = scan();
-const serialized = `${JSON.stringify(report, null, 2)}\n`;
-if (WRITE) {
-  fs.mkdirSync(path.dirname(OUTPUT), { recursive: true });
-  fs.writeFileSync(OUTPUT, serialized);
-} else if (!fs.existsSync(OUTPUT)) {
-  console.error(JSON.stringify({ ok: false, code: 'SECRET_SCAN_EVIDENCE_MISSING' }));
-  process.exitCode = 1;
-} else {
-  const stored = JSON.parse(fs.readFileSync(OUTPUT, 'utf8'));
-  const comparable = { ...report, generatedAt: stored.generatedAt };
-  if (JSON.stringify(comparable) !== JSON.stringify(stored)) {
-    console.error(JSON.stringify({ ok: false, code: 'SECRET_SCAN_EVIDENCE_STALE' }));
-    process.exitCode = 1;
+export function main(args = process.argv.slice(2)) {
+  const write = args.includes('--write');
+  const report = scan();
+  const serialized = `${JSON.stringify(report, null, 2)}\n`;
+  let ok = report.status === 'pass';
+  if (write) {
+    fs.mkdirSync(path.dirname(OUTPUT), { recursive: true });
+    fs.writeFileSync(OUTPUT, serialized);
+  } else if (!fs.existsSync(OUTPUT)) {
+    console.error(JSON.stringify({ ok: false, code: 'SECRET_SCAN_EVIDENCE_MISSING' }));
+    ok = false;
+  } else {
+    const stored = JSON.parse(fs.readFileSync(OUTPUT, 'utf8'));
+    const comparable = { ...report, generatedAt: stored.generatedAt };
+    if (JSON.stringify(comparable) !== JSON.stringify(stored)) {
+      console.error(JSON.stringify({ ok: false, code: 'SECRET_SCAN_EVIDENCE_STALE' }));
+      ok = false;
+    }
   }
+  console.log(JSON.stringify({
+    ok,
+    scope: report.scope,
+    filesScanned: report.filesScanned,
+    bytesScanned: report.bytesScanned,
+    binaryFilesSkipped: report.binaryFilesSkipped,
+    oversizedFilesSkipped: report.oversizedFilesSkipped,
+    excludedDerivedReceipts: report.excludedDerivedReceipts.length,
+    findings: report.findingCount,
+  }));
+  return ok ? 0 : 1;
 }
-console.log(JSON.stringify({
-  ok: report.status === 'pass',
-  scope: report.scope,
-  filesScanned: report.filesScanned,
-  bytesScanned: report.bytesScanned,
-  binaryFilesSkipped: report.binaryFilesSkipped,
-  oversizedFilesSkipped: report.oversizedFilesSkipped,
-  findings: report.findingCount,
-}));
-if (report.status !== 'pass') process.exitCode = 1;
 
 export { isProbablyText, scan, scanText };
 
-if (process.argv[1] && fileURLToPath(import.meta.url) !== path.resolve(process.argv[1])) {
-  // Imported by tests: the top-level scan remains deterministic and read-only.
-}
+if (process.argv[1] && fileURLToPath(import.meta.url) === path.resolve(process.argv[1])) process.exitCode = main();

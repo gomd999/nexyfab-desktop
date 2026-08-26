@@ -3,9 +3,9 @@
   "feature": "scale",
   "axis": "save_reopen",
   "status": "PASS",
-  "executedAt": "2026-08-22T07:13:30.564Z",
+  "executedAt": "2026-08-24T22:37:45.371Z",
   "savedBytes": 1582,
-  "savedSha256": "ec9ac1df37484b95e5ecad7c4b28c9e35f9dfea48844be5e4a9d57cd247d0aeb",
+  "savedSha256": "8ec3f50b1145096ce2e58c92bd064c8e7948cf82dc1c83bb544e77bff7251752",
   "reopened": {
     "handle": "occt:127",
     "kernelKind": "Solid",

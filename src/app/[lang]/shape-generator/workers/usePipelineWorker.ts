@@ -42,6 +42,11 @@ export interface PipelineRunResult {
   errors: Record<string, string>;
 }
 
+// Cold exact-kernel initialization plus a multi-feature rebuild can exceed one
+// minute on software-rendered or low-power clients. Keep the operation bounded,
+// but do not discard a valid worker B-rep just before it reaches the UI.
+export const PIPELINE_WORKER_TIMEOUT_MS = 150_000;
+
 // ─── Geometry serialisation helpers ─────────────────────────────────────────
 
 function serializeGeometry(geo: THREE.BufferGeometry) {
@@ -233,8 +238,8 @@ export function usePipelineWorker() {
               setLoading(false);
               setProgress(0);
               setProgressLabel('');
-              reject(new Error('Pipeline worker timed out (60s)'));
-            }, 60_000);
+              reject(new Error(`Pipeline worker timed out (${PIPELINE_WORKER_TIMEOUT_MS / 1000}s)`));
+            }, PIPELINE_WORKER_TIMEOUT_MS);
 
           pendingRef.current = {
             resolve: (r) => { clearTimeout(timeoutId); resolve(r); },

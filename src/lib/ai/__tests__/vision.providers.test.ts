@@ -153,9 +153,9 @@ describe('Adapter request shapes', () => {
     const result = await visionCompletion({
       prompt: 'analyze',
       images: [{ bytes: pngStub(), mimeType: 'image/png' }],
-      selectedModel: { provider: 'qwen', model: 'qwen3.8-max-preview' },
+      selectedModel: { provider: 'qwen', model: 'qwen3.8-max' },
     });
-    expect(result).toMatchObject({ provider: 'qwen', model: 'qwen3.8-max-preview', visionAutoRouted: false });
+    expect(result).toMatchObject({ provider: 'qwen', model: 'qwen3.8-max', visionAutoRouted: false });
     expect(fetchSpy.mock.calls[0][0]).toContain('dashscope-intl.aliyuncs.com');
     const body = JSON.parse((fetchSpy.mock.calls[0][1] as RequestInit).body as string);
     expect(body.messages[1].content.some((part: { type: string }) => part.type === 'image_url')).toBe(true);
@@ -190,7 +190,7 @@ describe('Adapter request shapes', () => {
     const pending = visionCompletion({
       prompt: 'analyze',
       images: [{ bytes: pngStub() }],
-      selectedModel: { provider: 'qwen', model: 'qwen3.8-max-preview' },
+      selectedModel: { provider: 'qwen', model: 'qwen3.8-max' },
     });
     await vi.runAllTimersAsync();
     await expect(pending).resolves.toMatchObject({

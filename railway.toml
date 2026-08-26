@@ -129,3 +129,8 @@ command = "test -n \"$CRON_SECRET\" && curl --fail --silent --show-error -X POST
 name = "cancel-winback"
 schedule = "0 1 * * *"
 command = "test -n \"$CRON_SECRET\" && curl --fail --silent --show-error -X POST http://localhost:$PORT/api/cron/cancel-winback -H \"x-cron-secret: $CRON_SECRET\""
+
+[[cronJobs]]
+name = "ai-precision-exact-worker"
+schedule = "* * * * *"
+command = "test -n \"$CRON_SECRET\" && curl --fail --silent --show-error -X POST http://localhost:$PORT/api/cron/ai-precision-exact-worker -H \"Authorization: Bearer $CRON_SECRET\""

@@ -1,9 +1,14 @@
 #!/usr/bin/env node
 
-import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
+import {
+  TEXT_BINDING_CANONICALIZATION,
+  canonicalTextEqual,
+  canonicalTextSha256,
+  canonicalizeText,
+} from './canonical-text-binding.mjs';
 
 const HTTP_METHODS = ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS', 'HEAD'];
 const MUTATION_METHODS = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
@@ -14,7 +19,7 @@ const INTERNAL_PREFIXES = ['/api/cron/', '/api/internal/'];
 const WEBHOOK_PATTERN = /(?:\/webhook$|\/shipping-webhook$|\/ses-notifications$|\/webhooks\/(?:dodo|inbound-email)$)/i;
 const ADMIN_PATTERN = /^\/api\/(?:admin|nexyfab\/admin)(?:\/|$)/;
 
-const sha256 = value => crypto.createHash('sha256').update(value).digest('hex');
+const readText = file => canonicalizeText(fs.readFileSync(file));
 
 function walkRoutes(directory, result = []) {
   if (!fs.existsSync(directory)) return result;
@@ -141,15 +146,32 @@ export function analyzeRouteSecurity(route, source, publicMutationPolicy = null)
 
 function forwardedRouteDependencies(file, source, appApiRoot, seen = new Set()) {
   const dependencies = [];
-  for (const match of source.matchAll(/\bfrom\s+['"](\.{1,2}\/[^'"]*route)['"]/g)) {
-    const unresolved = path.resolve(path.dirname(file), match[1]);
-    const candidates = [unresolved, `${unresolved}.ts`, path.join(unresolved, 'route.ts')];
+  // Next route wrappers often re-export a supported HTTP method from a
+  // sibling core module so business logic remains testable without violating
+  // the framework's route-module export contract. Follow only those explicit
+  // HTTP-method re-exports; scanning every relative import would incorrectly
+  // inherit dormant security signals from unrelated helpers.
+  const dependencySpecifiers = new Set([
+    ...[...source.matchAll(/export\s*\{[^}]*\b(?:GET|POST|PUT|PATCH|DELETE|OPTIONS|HEAD)\b[^}]*\}\s*from\s*['"](\.{1,2}\/[^'"]+)['"]/g)].map(match => match[1]),
+    // Wrapper routes may import a parent route handler under an alias and
+    // call it from their own framework-supported export.
+    ...[...source.matchAll(/\bfrom\s+['"](\.{1,2}\/[^'"]*route)['"]/g)].map(match => match[1]),
+  ]);
+  for (const specifier of dependencySpecifiers) {
+    const unresolved = path.resolve(path.dirname(file), specifier);
+    const candidates = [
+      unresolved,
+      `${unresolved}.ts`,
+      `${unresolved}.tsx`,
+      path.join(unresolved, 'route.ts'),
+      path.join(unresolved, 'index.ts'),
+    ];
     const dependency = candidates.find(candidate => fs.existsSync(candidate) && fs.statSync(candidate).isFile());
     if (!dependency || seen.has(dependency)) continue;
     const relative = path.relative(appApiRoot, dependency);
     if (!relative || relative.startsWith('..') || path.isAbsolute(relative)) continue;
     seen.add(dependency);
-    const dependencySource = fs.readFileSync(dependency, 'utf8');
+    const dependencySource = readText(dependency);
     dependencies.push({ file: dependency, source: dependencySource });
     dependencies.push(...forwardedRouteDependencies(dependency, dependencySource, appApiRoot, seen));
   }
@@ -159,7 +181,7 @@ function forwardedRouteDependencies(file, source, appApiRoot, seen = new Set()) 
 export function buildRouteSecurityMatrix(root, generatedAt = new Date().toISOString()) {
   const appApiRoot = path.join(root, 'src', 'app', 'api');
   const policyPath = path.join(root, 'security', 'public-mutation-policy.json');
-  const policyDocument = JSON.parse(fs.readFileSync(policyPath, 'utf8'));
+  const policyDocument = JSON.parse(readText(policyPath));
   const policyByRoute = new Map();
   const policyConfigIssues = [];
   for (const policy of policyDocument.policies ?? []) {
@@ -180,7 +202,7 @@ export function buildRouteSecurityMatrix(root, generatedAt = new Date().toISOStr
   const routes = walkRoutes(appApiRoot)
     .sort((left, right) => left.localeCompare(right))
     .map(file => {
-      const source = fs.readFileSync(file, 'utf8');
+      const source = readText(file);
       const dependencies = forwardedRouteDependencies(file, source, appApiRoot);
       const securitySource = [source, ...dependencies.map(item => item.source)].join('\n');
       return {
@@ -190,10 +212,10 @@ export function buildRouteSecurityMatrix(root, generatedAt = new Date().toISOStr
           policyByRoute.get(routePathFromFile(file, appApiRoot)) ?? null,
         ),
         file: path.relative(root, file).replaceAll('\\', '/'),
-        sourceSha256: sha256(source),
+        sourceSha256: canonicalTextSha256(source),
         securityDependencies: dependencies.map(item => ({
           file: path.relative(root, item.file).replaceAll('\\', '/'),
-          sha256: sha256(item.source),
+          sha256: canonicalTextSha256(item.source),
         })),
       };
     });
@@ -213,6 +235,7 @@ export function buildRouteSecurityMatrix(root, generatedAt = new Date().toISOStr
   for (const route of routes) for (const gap of route.gaps) gapCounts[gap] = (gapCounts[gap] ?? 0) + 1;
   return {
     schema: 'nexyfab.route-security-matrix.v1',
+    textCanonicalization: TEXT_BINDING_CANONICALIZATION,
     generatedAt,
     status: routes.every(route => route.gaps.length === 0) && policyConfigIssues.length === 0 ? 'pass' : 'fail',
     summary: {
@@ -234,6 +257,7 @@ function markdown(report) {
   const lines = [
     '# NexyFab Route Security Matrix', '',
     `- Schema: \`${report.schema}\``,
+    `- Text binding: \`${report.textCanonicalization}\``,
     `- Status: **${report.status.toUpperCase()}**`,
     `- Route files: ${report.summary.routeFiles}`,
     `- Exported handlers: ${report.summary.exportedHandlers}`,
@@ -261,7 +285,7 @@ export function main(args = process.argv.slice(2)) {
   const jsonPath = path.join(root, 'docs', 'evidence', 'security', 'route-security-matrix-260810.json');
   const mdPath = path.join(root, 'docs', 'evidence', 'security', 'route-security-matrix-260810.md');
   let storedGeneratedAt = null;
-  try { storedGeneratedAt = JSON.parse(fs.readFileSync(jsonPath, 'utf8')).generatedAt ?? null; } catch { /* missing/stale evidence */ }
+  try { storedGeneratedAt = JSON.parse(readText(jsonPath)).generatedAt ?? null; } catch { /* missing/stale evidence */ }
   const report = buildRouteSecurityMatrix(root, write || !storedGeneratedAt ? new Date().toISOString() : storedGeneratedAt);
   const json = `${JSON.stringify(report, null, 2)}\n`;
   const md = `${markdown(report)}\n`;
@@ -270,7 +294,8 @@ export function main(args = process.argv.slice(2)) {
     fs.writeFileSync(jsonPath, json);
     fs.writeFileSync(mdPath, md);
   } else if (!fs.existsSync(jsonPath) || !fs.existsSync(mdPath)
-    || fs.readFileSync(jsonPath, 'utf8') !== json || fs.readFileSync(mdPath, 'utf8') !== md) {
+    || !canonicalTextEqual(fs.readFileSync(jsonPath), json)
+    || !canonicalTextEqual(fs.readFileSync(mdPath), md)) {
     console.error(JSON.stringify({ ok: false, code: 'ROUTE_SECURITY_MATRIX_STALE' }));
     return 1;
   }

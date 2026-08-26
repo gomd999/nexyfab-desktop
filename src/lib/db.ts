@@ -41,7 +41,15 @@ export function getDb(): Database.Database {
 
 // ─── Schema migrations ────────────────────────────────────────────────────────
 
-const MIGRATIONS: Array<{ version: number; name: string; sql: string }> = [
+type SqliteMigration = {
+  version: number;
+  name: string;
+  sql: string;
+  checksum?: string;
+  prepare?: (db: Database.Database) => void;
+};
+
+const MIGRATIONS: SqliteMigration[] = [
   {
     version: 1,
     name: 'initial_schema',
@@ -488,7 +496,6 @@ const MIGRATIONS: Array<{ version: number; name: string; sql: string }> = [
       CREATE TABLE IF NOT EXISTS nf_usage_events (
         id          TEXT PRIMARY KEY,
         user_id     TEXT NOT NULL,
-        org_id      TEXT,
         product     TEXT NOT NULL,
         metric      TEXT NOT NULL,
         quantity    INTEGER NOT NULL DEFAULT 1,
@@ -503,7 +510,6 @@ const MIGRATIONS: Array<{ version: number; name: string; sql: string }> = [
       CREATE TABLE IF NOT EXISTS nf_ai_history (
         id          TEXT PRIMARY KEY,
         user_id     TEXT NOT NULL,
-        org_id      TEXT,
         feature     TEXT NOT NULL,
         project_id  TEXT,
         title       TEXT NOT NULL,
@@ -637,7 +643,6 @@ const MIGRATIONS: Array<{ version: number; name: string; sql: string }> = [
       CREATE TABLE IF NOT EXISTS nf_files (
         id           TEXT PRIMARY KEY,
         user_id      TEXT NOT NULL,
-        org_id       TEXT,
         storage_key  TEXT NOT NULL,
         filename     TEXT NOT NULL,
         mime_type    TEXT NOT NULL DEFAULT 'application/octet-stream',
@@ -1803,10 +1808,12 @@ const MIGRATIONS: Array<{ version: number; name: string; sql: string }> = [
   {
     version: 80,
     name: 'organization_scoped_usage_events',
+    prepare: (db) => {
+      addColumnIfMissing(db, 'nf_usage_events', 'org_id', 'TEXT');
+      addColumnIfMissing(db, 'nf_files', 'org_id', 'TEXT');
+      addColumnIfMissing(db, 'nf_ai_history', 'org_id', 'TEXT');
+    },
     sql: `
-      ALTER TABLE nf_usage_events ADD COLUMN org_id TEXT;
-      ALTER TABLE nf_files ADD COLUMN org_id TEXT;
-      ALTER TABLE nf_ai_history ADD COLUMN org_id TEXT;
       CREATE INDEX IF NOT EXISTS idx_usage_org_cycle
         ON nf_usage_events(org_id, product, cycle_start, metric);
       CREATE INDEX IF NOT EXISTS idx_usage_user_personal_cycle
@@ -2067,7 +2074,289 @@ const MIGRATIONS: Array<{ version: number; name: string; sql: string }> = [
         ON nf_users(pro_grace_until) WHERE pro_grace_until IS NOT NULL;
     `,
   },
+  {
+    version: 89,
+    name: 'canonical_cad_v2_revision_journal',
+    checksum: '33d37a889ef39beb168a5b6aa484d72bc7d095a6f2949ac0dfc5de2a8010bd49',
+    prepare: db => addColumnIfMissing(db, 'nf_schema_migrations', 'checksum', 'TEXT'),
+    sql: `
+      CREATE TABLE IF NOT EXISTS nf_cad_canonical_v2_revisions (
+        id TEXT PRIMARY KEY,
+        project_id TEXT NOT NULL REFERENCES nf_projects(id) ON DELETE CASCADE,
+        document_id TEXT NOT NULL,
+        revision_id TEXT NOT NULL,
+        sequence INTEGER NOT NULL CHECK(sequence >= 0),
+        content_hash TEXT NOT NULL CHECK(length(content_hash) = 64),
+        parent_revision_id TEXT,
+        parent_sequence INTEGER,
+        parent_content_hash TEXT,
+        document_json TEXT NOT NULL,
+        command_id TEXT,
+        command_sha256 TEXT,
+        idempotency_key TEXT,
+        command_json TEXT,
+        compensation_for_command_id TEXT,
+        receipt_json TEXT,
+        receipt_sha256 TEXT,
+        created_by TEXT NOT NULL,
+        created_at INTEGER NOT NULL,
+        UNIQUE(project_id, document_id, revision_id),
+        UNIQUE(project_id, document_id, sequence),
+        UNIQUE(project_id, document_id, command_id),
+        UNIQUE(project_id, document_id, idempotency_key),
+        CHECK(
+          (parent_revision_id IS NULL AND parent_sequence IS NULL AND parent_content_hash IS NULL)
+          OR (parent_revision_id IS NOT NULL AND parent_sequence >= 0 AND length(parent_content_hash) = 64)
+        ),
+        CHECK(
+          (command_id IS NULL AND command_sha256 IS NULL AND idempotency_key IS NULL
+            AND command_json IS NULL AND receipt_json IS NULL AND receipt_sha256 IS NULL)
+          OR (command_id IS NOT NULL AND length(command_sha256) = 64
+            AND idempotency_key IS NOT NULL AND command_json IS NOT NULL
+            AND receipt_json IS NOT NULL AND length(receipt_sha256) = 64)
+        )
+      );
+      CREATE UNIQUE INDEX IF NOT EXISTS ux_nf_cad_v2_compensation_once
+        ON nf_cad_canonical_v2_revisions(project_id, document_id, compensation_for_command_id)
+        WHERE compensation_for_command_id IS NOT NULL;
+      CREATE INDEX IF NOT EXISTS idx_nf_cad_v2_revision_head_lookup
+        ON nf_cad_canonical_v2_revisions(project_id, document_id, sequence DESC);
+      CREATE INDEX IF NOT EXISTS idx_nf_cad_v2_revision_dependency
+        ON nf_cad_canonical_v2_revisions(project_id, document_id, command_id, sequence);
+
+      CREATE TABLE IF NOT EXISTS nf_cad_canonical_v2_heads (
+        project_id TEXT NOT NULL REFERENCES nf_projects(id) ON DELETE CASCADE,
+        document_id TEXT NOT NULL,
+        revision_id TEXT NOT NULL,
+        sequence INTEGER NOT NULL CHECK(sequence >= 0),
+        content_hash TEXT NOT NULL CHECK(length(content_hash) = 64),
+        updated_at INTEGER NOT NULL,
+        PRIMARY KEY(project_id, document_id),
+        FOREIGN KEY(project_id, document_id, revision_id)
+          REFERENCES nf_cad_canonical_v2_revisions(project_id, document_id, revision_id)
+          DEFERRABLE INITIALLY DEFERRED
+      );
+
+      CREATE TABLE IF NOT EXISTS nf_cad_canonical_v2_invalidations (
+        revision_id TEXT NOT NULL,
+        project_id TEXT NOT NULL REFERENCES nf_projects(id) ON DELETE CASCADE,
+        document_id TEXT NOT NULL,
+        scope TEXT NOT NULL CHECK(scope IN ('exact_geometry', 'native_document', 'analysis', 'drawing', 'quantity', 'exchange', 'qualification')),
+        reason_code TEXT NOT NULL,
+        created_at INTEGER NOT NULL,
+        PRIMARY KEY(project_id, document_id, revision_id, scope),
+        FOREIGN KEY(project_id, document_id, revision_id)
+          REFERENCES nf_cad_canonical_v2_revisions(project_id, document_id, revision_id) ON DELETE CASCADE
+      );
+      CREATE INDEX IF NOT EXISTS idx_nf_cad_v2_invalidation_delivery
+        ON nf_cad_canonical_v2_invalidations(project_id, document_id, created_at, scope);
+
+      CREATE TABLE IF NOT EXISTS nf_cad_canonical_v2_locks (
+        project_id TEXT NOT NULL REFERENCES nf_projects(id) ON DELETE CASCADE,
+        document_id TEXT NOT NULL,
+        lock_id TEXT NOT NULL,
+        scope TEXT NOT NULL CHECK(scope IN ('workspace', 'object', 'field')),
+        object_id TEXT,
+        field_path TEXT,
+        owner_actor_id TEXT NOT NULL,
+        source TEXT NOT NULL CHECK(source IN ('human', 'authority')),
+        PRIMARY KEY(project_id, document_id, lock_id),
+        CHECK((scope = 'field' AND field_path IS NOT NULL) OR (scope <> 'field' AND field_path IS NULL))
+      );
+      CREATE INDEX IF NOT EXISTS idx_nf_cad_v2_lock_loading
+        ON nf_cad_canonical_v2_locks(project_id, document_id, lock_id);
+
+      CREATE TABLE IF NOT EXISTS nf_cad_canonical_v2_audit (
+        receipt_sha256 TEXT PRIMARY KEY CHECK(length(receipt_sha256) = 64),
+        project_id TEXT NOT NULL REFERENCES nf_projects(id) ON DELETE CASCADE,
+        document_id TEXT NOT NULL,
+        revision_id TEXT NOT NULL,
+        event_json TEXT NOT NULL,
+        created_at INTEGER NOT NULL,
+        FOREIGN KEY(project_id, document_id, revision_id)
+          REFERENCES nf_cad_canonical_v2_revisions(project_id, document_id, revision_id) ON DELETE CASCADE
+      );
+      CREATE INDEX IF NOT EXISTS idx_nf_cad_v2_audit_review
+        ON nf_cad_canonical_v2_audit(project_id, document_id, created_at DESC);
+
+      CREATE TRIGGER IF NOT EXISTS nf_cad_v2_revisions_no_update
+        BEFORE UPDATE ON nf_cad_canonical_v2_revisions BEGIN SELECT RAISE(ABORT, 'canonical revisions are append-only'); END;
+      CREATE TRIGGER IF NOT EXISTS nf_cad_v2_revisions_no_delete
+        BEFORE DELETE ON nf_cad_canonical_v2_revisions BEGIN SELECT RAISE(ABORT, 'canonical revisions are append-only'); END;
+      CREATE TRIGGER IF NOT EXISTS nf_cad_v2_invalidations_no_update
+        BEFORE UPDATE ON nf_cad_canonical_v2_invalidations BEGIN SELECT RAISE(ABORT, 'canonical invalidations are append-only'); END;
+      CREATE TRIGGER IF NOT EXISTS nf_cad_v2_invalidations_no_delete
+        BEFORE DELETE ON nf_cad_canonical_v2_invalidations BEGIN SELECT RAISE(ABORT, 'canonical invalidations are append-only'); END;
+      CREATE TRIGGER IF NOT EXISTS nf_cad_v2_audit_no_update
+        BEFORE UPDATE ON nf_cad_canonical_v2_audit BEGIN SELECT RAISE(ABORT, 'canonical audit is append-only'); END;
+      CREATE TRIGGER IF NOT EXISTS nf_cad_v2_audit_no_delete
+        BEFORE DELETE ON nf_cad_canonical_v2_audit BEGIN SELECT RAISE(ABORT, 'canonical audit is append-only'); END;
+    `,
+  },
+  {
+    version: 90,
+    name: 'ai_design_v10_authority_state',
+    checksum: '66a5232ed469ff60b571f7332cd0c88049411b301c40aacbe68271eb17aadd29',
+    sql: `
+      CREATE TABLE IF NOT EXISTS nf_ai_design_workspace_runtimes (
+        owner_key_sha256 TEXT NOT NULL CHECK(length(owner_key_sha256) = 64),
+        project_id TEXT NOT NULL REFERENCES nf_projects(id) ON DELETE CASCADE,
+        session_id TEXT NOT NULL,
+        runtime_revision INTEGER NOT NULL CHECK(runtime_revision >= 0),
+        state_sha256 TEXT NOT NULL CHECK(length(state_sha256) = 64),
+        state_json TEXT NOT NULL CHECK(length(state_json) > 0),
+        created_at INTEGER NOT NULL,
+        updated_at INTEGER NOT NULL CHECK(updated_at >= created_at),
+        PRIMARY KEY(owner_key_sha256, project_id, session_id)
+      );
+      CREATE INDEX IF NOT EXISTS idx_nf_ai_design_runtime_project
+        ON nf_ai_design_workspace_runtimes(project_id, updated_at DESC);
+
+      CREATE TABLE IF NOT EXISTS nf_ai_design_complex_workspaces (
+        owner_key_sha256 TEXT NOT NULL CHECK(length(owner_key_sha256) = 64),
+        project_id TEXT NOT NULL REFERENCES nf_projects(id) ON DELETE CASCADE,
+        session_id TEXT NOT NULL,
+        complex_revision INTEGER NOT NULL CHECK(complex_revision >= 0),
+        aggregate_digest TEXT NOT NULL CHECK(length(aggregate_digest) = 64),
+        aggregate_json TEXT NOT NULL CHECK(length(aggregate_json) > 0),
+        created_at INTEGER NOT NULL,
+        updated_at INTEGER NOT NULL CHECK(updated_at >= created_at),
+        PRIMARY KEY(owner_key_sha256, project_id, session_id)
+      );
+      CREATE INDEX IF NOT EXISTS idx_nf_ai_design_complex_project
+        ON nf_ai_design_complex_workspaces(project_id, updated_at DESC);
+
+      CREATE TABLE IF NOT EXISTS nf_ai_design_artifacts (
+        artifact_id TEXT PRIMARY KEY,
+        project_id TEXT NOT NULL REFERENCES nf_projects(id) ON DELETE CASCADE,
+        session_id TEXT NOT NULL,
+        artifact_kind TEXT NOT NULL CHECK(artifact_kind IN (
+          'stage', 'evidence_receipt', 'candidate', 'critic_bundle',
+          'product_structure', 'cross_domain_graph', 'graph_partition',
+          'gauge_bindings', 'constraint_bindings', 'intent_resolution',
+          'precision_request', 'precision_receipt'
+        )),
+        content_sha256 TEXT NOT NULL CHECK(length(content_sha256) = 64),
+        value_json TEXT NOT NULL CHECK(length(value_json) > 0),
+        byte_length INTEGER NOT NULL CHECK(byte_length > 0 AND byte_length <= 8388608),
+        created_at INTEGER NOT NULL,
+        UNIQUE(project_id, session_id, artifact_kind, artifact_id)
+      );
+      CREATE INDEX IF NOT EXISTS idx_nf_ai_design_artifact_scope
+        ON nf_ai_design_artifacts(project_id, session_id, artifact_kind, created_at DESC);
+
+      CREATE TRIGGER IF NOT EXISTS nf_ai_design_artifact_no_update
+        BEFORE UPDATE ON nf_ai_design_artifacts BEGIN SELECT RAISE(ABORT, 'AI Design artifacts are append-only'); END;
+      CREATE TRIGGER IF NOT EXISTS nf_ai_design_artifact_no_delete
+        BEFORE DELETE ON nf_ai_design_artifacts BEGIN SELECT RAISE(ABORT, 'AI Design artifacts are append-only'); END;
+    `,
+  },
+  {
+    version: 91,
+    name: 'ai_precision_exact_bridge_outbox',
+    checksum: '6ca9f2a5156f0aa5ebffd39799cd6f93c6b470b30ba3a7b8caa189d7bcbf2ba0',
+    sql: `
+      CREATE TABLE IF NOT EXISTS nf_ai_precision_bridge_outbox (
+        job_id TEXT PRIMARY KEY,
+        owner_key_sha256 TEXT NOT NULL CHECK(length(owner_key_sha256) = 64),
+        project_id TEXT NOT NULL REFERENCES nf_projects(id) ON DELETE CASCADE,
+        session_id TEXT NOT NULL,
+        candidate_id TEXT NOT NULL,
+        handoff_request_id TEXT NOT NULL,
+        handoff_sha256 TEXT NOT NULL CHECK(length(handoff_sha256) = 64),
+        binding_sha256 TEXT NOT NULL CHECK(length(binding_sha256) = 64),
+        binding_json TEXT NOT NULL CHECK(length(binding_json) > 0),
+        precision_request_id TEXT NOT NULL,
+        precision_request_sha256 TEXT NOT NULL CHECK(length(precision_request_sha256) = 64),
+        runtime_revision INTEGER NOT NULL CHECK(runtime_revision >= 0),
+        complex_revision INTEGER NOT NULL CHECK(complex_revision >= 0),
+        job_sha256 TEXT NOT NULL CHECK(length(job_sha256) = 64),
+        job_json TEXT NOT NULL CHECK(length(job_json) > 0),
+        status TEXT NOT NULL CHECK(status IN ('PENDING', 'CLAIMED', 'SENT', 'COMPLETED', 'HOLD', 'VERIFIED_UNKNOWN')),
+        attempt INTEGER NOT NULL DEFAULT 0,
+        lease_generation INTEGER NOT NULL DEFAULT 0,
+        lease_owner TEXT,
+        lease_capability_sha256 TEXT,
+        lease_expires_at INTEGER,
+        available_at INTEGER NOT NULL,
+        last_error TEXT,
+        created_at INTEGER NOT NULL,
+        updated_at INTEGER NOT NULL CHECK(updated_at >= created_at),
+        UNIQUE(owner_key_sha256, project_id, session_id, handoff_request_id)
+      );
+      CREATE INDEX IF NOT EXISTS idx_nf_ai_precision_bridge_claim
+        ON nf_ai_precision_bridge_outbox(status, available_at, created_at);
+      CREATE INDEX IF NOT EXISTS idx_nf_ai_precision_bridge_scope
+        ON nf_ai_precision_bridge_outbox(project_id, session_id, updated_at DESC);
+      CREATE INDEX IF NOT EXISTS idx_nf_ai_precision_bridge_lease
+        ON nf_ai_precision_bridge_outbox(status, lease_expires_at);
+
+      CREATE TABLE IF NOT EXISTS nf_ai_precision_bridge_receipts (
+        receipt_id TEXT PRIMARY KEY,
+        job_id TEXT NOT NULL UNIQUE REFERENCES nf_ai_precision_bridge_outbox(job_id) ON DELETE RESTRICT,
+        project_id TEXT NOT NULL,
+        session_id TEXT NOT NULL,
+        precision_request_id TEXT NOT NULL REFERENCES nf_ai_design_artifacts(artifact_id) ON DELETE RESTRICT,
+        precision_request_sha256 TEXT NOT NULL CHECK(length(precision_request_sha256) = 64),
+        exact_artifact_sha256 TEXT CHECK(exact_artifact_sha256 IS NULL OR length(exact_artifact_sha256) = 64),
+        receipt_sha256 TEXT NOT NULL UNIQUE CHECK(length(receipt_sha256) = 64),
+        receipt_json TEXT NOT NULL CHECK(length(receipt_json) > 0),
+        artifact_manifest_json TEXT NOT NULL CHECK(length(artifact_manifest_json) > 0),
+        accepted_at INTEGER NOT NULL
+      );
+      CREATE INDEX IF NOT EXISTS idx_nf_ai_precision_bridge_receipt_scope
+        ON nf_ai_precision_bridge_receipts(project_id, session_id, accepted_at DESC);
+
+      CREATE TRIGGER IF NOT EXISTS nf_ai_precision_bridge_receipt_no_update
+        BEFORE UPDATE ON nf_ai_precision_bridge_receipts BEGIN SELECT RAISE(ABORT, 'AI Precision bridge receipts are append-only'); END;
+      CREATE TRIGGER IF NOT EXISTS nf_ai_precision_bridge_receipt_no_delete
+        BEFORE DELETE ON nf_ai_precision_bridge_receipts BEGIN SELECT RAISE(ABORT, 'AI Precision bridge receipts are append-only'); END;
+    `,
+  },
+  {
+    version: 92,
+    name: 'ai_design_private_source_artifacts',
+    checksum: 'ai-design-private-source-artifacts-v1',
+    sql: `
+      CREATE TABLE IF NOT EXISTS nf_ai_design_source_artifacts (
+        artifact_id TEXT PRIMARY KEY,
+        project_id TEXT NOT NULL REFERENCES nf_projects(id) ON DELETE CASCADE,
+        session_id TEXT NOT NULL,
+        user_id TEXT NOT NULL,
+        object_key TEXT NOT NULL UNIQUE,
+        filename TEXT NOT NULL,
+        mime_type TEXT NOT NULL,
+        input_kind TEXT NOT NULL CHECK(input_kind IN ('image','drawing_2d')),
+        content_sha256 TEXT NOT NULL CHECK(length(content_sha256) = 64),
+        byte_length INTEGER NOT NULL CHECK(byte_length > 0 AND byte_length <= 6291456),
+        classification_json TEXT,
+        created_at INTEGER NOT NULL,
+        UNIQUE(project_id, session_id, artifact_id)
+      );
+      CREATE INDEX IF NOT EXISTS idx_nf_ai_design_source_scope
+        ON nf_ai_design_source_artifacts(project_id, session_id, created_at DESC);
+      CREATE TRIGGER IF NOT EXISTS nf_ai_design_source_artifact_no_update
+        BEFORE UPDATE ON nf_ai_design_source_artifacts BEGIN SELECT RAISE(ABORT, 'AI Design source artifacts are append-only'); END;
+      CREATE TRIGGER IF NOT EXISTS nf_ai_design_source_artifact_no_delete
+        BEFORE DELETE ON nf_ai_design_source_artifacts BEGIN SELECT RAISE(ABORT, 'AI Design source artifacts are append-only'); END;
+    `,
+  },
 ];
+
+function sqliteIdentifier(value: string): string {
+  if (!/^[A-Za-z_][A-Za-z0-9_]*$/.test(value)) {
+    throw new Error(`Unsafe SQLite identifier: ${value}`);
+  }
+  return `"${value}"`;
+}
+
+function addColumnIfMissing(db: Database.Database, table: string, column: string, definition: string): void {
+  const tableIdentifier = sqliteIdentifier(table);
+  const columnIdentifier = sqliteIdentifier(column);
+  const columns = db.prepare(`PRAGMA table_info(${tableIdentifier})`).all() as Array<{ name: string }>;
+  if (columns.some(item => item.name === column)) return;
+  db.exec(`ALTER TABLE ${tableIdentifier} ADD COLUMN ${columnIdentifier} ${definition}`);
+}
 
 function runMigrations(db: Database.Database): void {
   // migrations 테이블 보장
@@ -2079,22 +2368,25 @@ function runMigrations(db: Database.Database): void {
     );
   `);
 
-  const applied = new Set<number>(
-    (db.prepare('SELECT version FROM nf_schema_migrations').all() as { version: number }[])
-      .map((r) => r.version),
-  );
-
-  const insert = db.prepare(
-    'INSERT INTO nf_schema_migrations (version, name, applied_at) VALUES (?, ?, ?)',
-  );
-
-  for (const m of MIGRATIONS) {
-    if (applied.has(m.version)) continue;
-    if (m.sql) {
-      db.exec(m.sql);
+  const applyMigration = db.transaction((migration: SqliteMigration) => {
+    const applied = db.prepare('SELECT 1 FROM nf_schema_migrations WHERE version = ?').get(migration.version);
+    if (applied) return;
+    migration.prepare?.(db);
+    if (migration.sql) db.exec(migration.sql);
+    if (migration.checksum) {
+      db.prepare(
+        'INSERT INTO nf_schema_migrations (version, name, applied_at, checksum) VALUES (?, ?, ?, ?)',
+      ).run(migration.version, migration.name, Date.now(), migration.checksum);
+    } else {
+      db.prepare(
+        'INSERT INTO nf_schema_migrations (version, name, applied_at) VALUES (?, ?, ?)',
+      ).run(migration.version, migration.name, Date.now());
     }
-    insert.run(m.version, m.name, Date.now());
-  }
+  });
+
+  // Separately bundled route modules can initialize the same database. An
+  // IMMEDIATE transaction serializes each migration and rolls it back whole.
+  for (const migration of MIGRATIONS) applyMigration.immediate(migration);
 }
 
 function initSchema(db: Database.Database): void {

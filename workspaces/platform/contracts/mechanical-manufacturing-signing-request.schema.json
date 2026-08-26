@@ -1,0 +1,100 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://nexyfab.com/contracts/mechanical-manufacturing-signing-request.schema.json",
+  "title": "NexyFab Mechanical Manufacturing Signing Request v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "releaseChannel", "evidenceRootId", "generatedAt", "cases"],
+  "properties": {
+    "schema": { "const": "nexyfab.mechanical-manufacturing-signing-request.v1" },
+    "releaseChannel": { "const": "mechanical-core" },
+    "evidenceRootId": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+    "generatedAt": { "type": "string", "format": "date-time" },
+    "cases": {
+      "type": "array",
+      "minItems": 3,
+      "maxItems": 3,
+      "items": { "$ref": "#/$defs/case" }
+    }
+  },
+  "$defs": {
+    "relativePath": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "^(?![A-Za-z]:)(?![/\\\\])(?!.*(?:^|[/\\\\])\\.\\.(?:[/\\\\]|$)).+"
+    },
+    "measurement": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["characteristic", "nominal", "actual", "minusTolerance", "plusTolerance", "unit", "result"],
+      "properties": {
+        "characteristic": { "type": "string", "minLength": 1 },
+        "nominal": { "type": "number" },
+        "actual": { "type": "number" },
+        "minusTolerance": { "type": "number", "minimum": 0 },
+        "plusTolerance": { "type": "number", "minimum": 0 },
+        "unit": { "type": "string", "minLength": 1 },
+        "result": { "const": "pass" }
+      }
+    },
+    "case": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "caseId", "process", "designRevision", "noUnapprovedCadChanges",
+        "stepRoundtripVerified", "drawingReleased", "bomReconciled",
+        "inspectionDisposition", "artifactPaths", "manufacturer", "measurements", "inspector"
+      ],
+      "properties": {
+        "caseId": { "type": "string", "minLength": 1 },
+        "process": { "enum": ["cnc_machining", "sheet_metal", "additive_manufacturing"] },
+        "designRevision": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+        "noUnapprovedCadChanges": { "const": true },
+        "stepRoundtripVerified": { "const": true },
+        "drawingReleased": { "const": true },
+        "bomReconciled": { "const": true },
+        "inspectionDisposition": { "const": "accepted" },
+        "artifactPaths": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["nfab", "step", "drawing", "bom", "manufacturingReceipt", "inspectionReport", "photoEvidence"],
+          "properties": {
+            "nfab": { "$ref": "#/$defs/relativePath" },
+            "step": { "$ref": "#/$defs/relativePath" },
+            "drawing": { "$ref": "#/$defs/relativePath" },
+            "bom": { "$ref": "#/$defs/relativePath" },
+            "manufacturingReceipt": { "$ref": "#/$defs/relativePath" },
+            "inspectionReport": { "$ref": "#/$defs/relativePath" },
+            "photoEvidence": { "$ref": "#/$defs/relativePath" }
+          }
+        },
+        "manufacturer": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["facilityId", "independentFromNexyfab", "completedAt"],
+          "properties": {
+            "facilityId": { "type": "string", "minLength": 1 },
+            "independentFromNexyfab": { "const": true },
+            "completedAt": { "type": "string", "format": "date-time" }
+          }
+        },
+        "measurements": {
+          "type": "array",
+          "minItems": 3,
+          "items": { "$ref": "#/$defs/measurement" }
+        },
+        "inspector": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["reviewerId", "independentFromBuild", "inspectedAt"],
+          "properties": {
+            "reviewerId": { "type": "string", "minLength": 1 },
+            "independentFromBuild": { "const": true },
+            "inspectedAt": { "type": "string", "format": "date-time" }
+          }
+        }
+      }
+    }
+  },
+  "$comment": "The runtime additionally enforces exactly one case for each required process, unique case/revision/measurement/artifact identities, at least two facilities and inspectors, timestamp ordering, measurements inside tolerance, and real non-symlink artifacts of the required extensions inside the external evidence root."
+}

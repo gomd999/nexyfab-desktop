@@ -31,7 +31,7 @@ import type { UniqueFace } from './useFaceEditing';
 
 const dict = {
   ko: {
-    faceEdit: '면 편집',
+    faceEdit: '면 편집', close: '닫기',
     faceId: '면 ID',
     normal: '법선',
     genGeomFirst: '형상을 먼저 생성하세요',
@@ -47,7 +47,7 @@ const dict = {
     applyShell: '쉘 적용',
   },
   en: {
-    faceEdit: 'Face Edit',
+    faceEdit: 'Face Edit', close: 'Close',
     faceId: 'Face ID',
     normal: 'Normal',
     genGeomFirst: 'Please generate geometry first',
@@ -63,7 +63,7 @@ const dict = {
     applyShell: 'Apply Shell',
   },
   ja: {
-    faceEdit: '面編集',
+    faceEdit: '面編集', close: '閉じる',
     faceId: '面ID',
     normal: '法線',
     genGeomFirst: '先に形状を生成してください',
@@ -79,7 +79,7 @@ const dict = {
     applyShell: 'シェル適用',
   },
   zh: {
-    faceEdit: '面编辑',
+    faceEdit: '面编辑', close: '关闭',
     faceId: '面ID',
     normal: '法线',
     genGeomFirst: '请先生成几何',
@@ -95,7 +95,7 @@ const dict = {
     applyShell: '应用抽壳',
   },
   es: {
-    faceEdit: 'Editar Cara',
+    faceEdit: 'Editar Cara', close: 'Cerrar',
     faceId: 'ID de Cara',
     normal: 'Normal',
     genGeomFirst: 'Genere la geometría primero',
@@ -111,7 +111,7 @@ const dict = {
     applyShell: 'Aplicar Vaciado',
   },
   ar: {
-    faceEdit: 'تحرير الوجه',
+    faceEdit: 'تحرير الوجه', close: 'إغلاق',
     faceId: 'معرف الوجه',
     normal: 'العمودي',
     genGeomFirst: 'يرجى إنشاء الهندسة أولاً',
@@ -297,7 +297,8 @@ export default function FaceContextPanel({
         <button
           style={closeBtnStyle}
           onClick={onClose}
-          title="Close"
+          title={t.close}
+          aria-label={t.close}
           data-testid="face-context-panel-close"
         >
           ×

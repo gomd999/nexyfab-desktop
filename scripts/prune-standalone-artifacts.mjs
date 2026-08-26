@@ -38,7 +38,7 @@ export function pruneStandaloneArtifacts({
     return { removed: [], freedBytes: 0, standalone, releaseHealthEvidence: null };
   }
 
-  // Next excludes docs from file tracing. Copy only the two fixed, runtime
+  // Next excludes docs from file tracing. Copy only the fixed, runtime
   // receipt files before pruning; never copy the docs tree or secret-bearing
   // local state. Missing/invalid receipts fail the build closed.
   const releaseHealthEvidence = packageReleaseHealthEvidence({

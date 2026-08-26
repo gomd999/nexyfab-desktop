@@ -1,8 +1,621 @@
 # Precision CAD current session
 
-- Status: READY_FOR_HANDOFF_INTERNAL_VERTICALS_EXTERNAL_HOLD
-- Branch: `scope/precision-cad`
+## 2026-08-27 v150 chat safety and recovery convergence
+
+- Status: `STARTER_FILL_ONLY / ZERO_CALL_BEFORE_SEND / EXPLICIT_RETRY /
+  SIX_LOCALE_COPY / FOCUSED_12_PASS`.
+- The Precision CAD AI starter buttons now populate and focus the message input
+  without starting an AI request. This aligns the embedded workspace with the
+  main chat entry and prevents an example click from creating an unintended
+  provider call.
+- A failed governed AI run retains only its visible request text and exposes an
+  explicit localized retry action. The existing fail-closed boundary remains:
+  no deterministic substitute is presented as AI output and no CAD mutation is
+  applied on failure.
+- The v150 audit also confirmed that version diff/branch compare, autosave crash
+  recovery with 3D comparison, feature-state semantics, and a truthful session
+  jobs drawer already exist. They were not duplicated into a parallel shell.
+- The main `ChatHero` already has the requested six-locale 2D drawing, image,
+  and complex-product starters; starter clicks fill the textarea; attachment
+  paste/drop/picker is wired; and the three-row result share tray sits directly
+  below the composer.
+- Focused regression passes 1 file / 12 tests. Precision CAD TypeScript,
+  architecture, and ownership checks pass with zero violations.
+- Source commit: `e57c2e5771c15563a9e3258f53dac5eea2432166`.
+- Handoff:
+  `HANDOFFS/20260826T162332Z-v150-chat-safety-recovery.md`.
+
+## 2026-08-27 ShapeGenerator first safe module slice
+
+- Status: `BOM_EXPORT_BOUNDARY_EXTRACTED / BEHAVIOR_PRESERVED /
+  FOCUSED_3_PASS / TYPECHECK_ARCHITECTURE_PASS`.
+- BOM work-object row assembly and CSV/Excel export actions were moved out of
+  `ShapeGeneratorInner.tsx` into a typed hook with a separately testable pure
+  builder. Assembly rows, cart rows, active-sketch fallback, stable numbering,
+  dimensions, material density, and empty state are covered.
+- The host module retains its existing handler names and UI consumers. Its size
+  decreased from 657,337 to 655,715 bytes and from 12,390 to 12,370 physical
+  lines. The 500KB warning remains, so this is explicitly the first low-risk
+  slice rather than a false claim that the decomposition is complete.
+- Focused regression passes 1 file / 3 tests. Precision CAD TypeScript,
+  architecture, and ownership checks pass with zero violations.
+- A tracked-file cleanup audit found no safe deletion candidates: `copy-occt`,
+  coverage routes, and `lib/build` matches are active source/test names, not
+  generated trash, so nothing was deleted.
+- Source commit: `a7d9b98adf4c2b9a9e2123aab7ec99000f0e46d9`.
+- Handoff:
+  `HANDOFFS/20260826T161248Z-shape-generator-bom-export-slice.md`.
+
+## 2026-08-27 GA_3D exact-byte artifact receipt
+
+- Status: `GA_REVISION_BOUND / EXACT_BYTES_SHA256 / MANIFEST_BOUND /
+  REVIEW_REQUIRED_FAIL_CLOSED`.
+- The render-html route now binds each generated `GA_3D.html` byte sequence to
+  its canonical intent or assembly revision with the existing governed design
+  artifact manifest.
+- The API returns revision ID/hash, exact artifact SHA-256, manifest SHA-256,
+  release status, and manufacturing permission. A successful browser render
+  remains `review_required` with `manufacturingAllowed: false`.
+- Exact UTF-8 byte length replaces JavaScript character count in the response.
+  Focused artifact-binding regression passes 2 files / 5 tests; Precision CAD
+  TypeScript, architecture, and ownership checks pass with zero violations.
+- Source commit: `384ee856a6c899a8b6cbeb09b7d009a682a72bfc`.
+- Companion Platform consumer commit:
+  `19986c727bdf3b2c1be1af7179ffac1d68cd6e2c`.
+- Handoff:
+  `HANDOFFS/20260826T155200Z-ga-3d-exact-byte-artifact-receipt.md`.
+
+## 2026-08-26 DFM PDF locale consumer binding
+
+- Status: `EXPLICIT_PDF_LOCALE_BOUND / SIX_LOCALE_ERROR_COPY_PASS /
+  PLATFORM_CONTRACT_SYNCED / PDF_GLYPH_ARTIFACT_REVIEW_PENDING`.
+- The Precision CAD DFM panel now sends its resolved product locale to the
+  bounded Platform PDF endpoint instead of relying only on browser headers.
+- Stable server errors for authentication, payload size, and invalid analysis
+  state are mapped to actionable copy in Korean, English, Japanese, Chinese,
+  Spanish, and Arabic. Unknown server details are not reflected into the UI.
+- Combined client/server PDF locale and contract regression passes 3 files /
+  22 tests. The official Precision CAD workspace check passes TypeScript,
+  Platform architecture, and zero ownership violations for 1 commit / 3
+  changed paths.
+- Authenticated six-language PDF artifacts and visual glyph/layout review are
+  still pending; this consumer binding does not promote the commercial i18n
+  receipt or the external precision/manufacturing qualification.
+- Handoff:
+  `HANDOFFS/20260826T111921Z-dfm-pdf-locale-consumer.md`.
+
+## 2026-08-26 commercial workspace UI and i18n closure
+
+- Status: `SIX_LOCALE_COMMERCIAL_UI_PASS / PRODUCTION_DEV_MOCK_BLOCKED /
+  TYPECHECK_ARCHITECTURE_PASS / EXTERNAL_PRECISION_QUALIFICATION_HOLD`.
+- Ten source commits localize the active Precision CAD shell, workspace,
+  drawing handoff, viewport and authoring commands, CAM, assembly,
+  collaboration, loading, fallback, accessibility, and status flows for the
+  six supported product locales.
+- The `?dev-shell=v2` mock workspace can no longer be reached in a production
+  build. Expected loading, WebGL fallback, export, drawing, CAM, awareness,
+  assembly, and collaboration states now use locale-aware product copy while
+  technical CAD identifiers remain unchanged where translation would alter
+  their meaning.
+- The official workspace check passes with zero ownership violations, zero
+  commits behind `integration/nexyfab`, 10 commits ready to integrate, and 79
+  changed Precision-owned paths. TypeScript and the Platform architecture
+  boundary both pass.
+- Focused regression coverage passes for workspace entry, six-locale drawing
+  handoff, viewport and authoring controls, CAM, awareness, assembly,
+  collaboration, loading, and the production dev-shell guard.
+- No native external CAD provider, independent STEP/XCAF/GD&T qualification,
+  manufacturing pilot, staging deployment, or production deployment was run.
+  Those external evidence gates remain HOLD and are not implied by this UI
+  closure.
+- Handoff:
+  `HANDOFFS/20260826T104320Z-commercial-workspace-i18n-closure.md`.
+
+## 2026-08-26 AI authentication feedback closure
+
+- Status: `GUEST_AI_AUTH_BOUNDARY_EXPLICIT / SIX_LOCALES_PASS /
+  MODEL_AND_PROJECT_UNCHANGED / AUTHENTICATED_RUN_NOT_EXECUTED`.
+- The Precision CAD AI panel now maps a `401` from the governed SCAD agent to
+  an explicit sign-in instruction instead of showing only an opaque provider
+  failure. The copy is complete for Korean, English, Japanese, Chinese,
+  Spanish, and Arabic.
+- Expected failures still fail closed: no local deterministic model is
+  substituted, and neither the selected model nor the CAD project is changed.
+- Focused transport and guided-panel regression passes 2 files / 13 tests,
+  including a stable assertion that the auto-run contract counts only actual
+  SCAD-agent calls rather than the independent runtime model-access request.
+- Handoff:
+  `HANDOFFS/20260826T075646Z-ai-authentication-feedback.md`.
+
+## 2026-08-25 current-source mechanical internal evidence refresh
+
+- Status: `MECHANICAL_INTERNAL_REGRESSION_PASS /
+  ARTIFACT_REVISION_CONSISTENCY_PASS / EXTERNAL_7_GATES_PENDING /
+  PRIVATE_BETA_EVIDENCE_PENDING / COMMERCIAL_PRECISION_HOLD`.
+- Evidence commit:
+  `2da7ba5940ef621058a76854c1602c6036305382`.
+- Adding the deployment-source preflight changed the source-bound
+  `package.json` bytes, so the internal mechanical receipt correctly became
+  stale. The complete six-command internal campaign was rerun rather than
+  copying its previous PASS claim.
+- Actual results: direct CAD 17 files/137 tests, mechanical accuracy 9/49,
+  local intent qualification 150 cases, representative exact runtime 10 cases
+  and 70 axes, assembly handoff 3 files/11 tests, and TypeScript all PASS.
+  AI model calls and the external commercial intent campaign remain NOT_RUN.
+- Internal receipt SHA-256:
+  `e4536c9671dfcbd046668b53052508953f3311496690ac580f4fd72e69bb92dd`;
+  current scope assessment SHA-256:
+  `5831bf3e2b3dc3989537692332c236bddca930addae71da54479b948b210965e`.
+- `mechanical:scope:check` is current and returns
+  `private_beta_evidence_pending`. Internal regression and artifact revision
+  consistency are verified; the exact remaining blockers are the external
+  30-feature closed loop, 10 and 30 direct-design packages, actual 150-intent
+  campaign, standard STEP conformance, 20 blind challenges, and three
+  manufactured pilot receipts.
+- No external feature/STEP receipt was synthesized and no staging or production
+  deployment was performed.
+- Handoff:
+  `HANDOFFS/20260825T231148+0900-current-source-mechanical-hold-refresh.md`.
+
+## 2026-08-25 exact deployment-source consumer boundary
+
+- Status: `PRECISION_RUNTIME_EVIDENCE_INCLUDED / CLEAN_GIT_SOURCE_REQUIRED /
+  REPOSITORY_EXTERNAL_ENV_IMPORTS_REJECTED / DEPLOYMENT_NOT_RUN /
+  COMMERCIAL_PRECISION_HOLD`.
+- Platform implementation commit
+  `cd196e04c88922982f0c34318e6974533fbe4e2b` makes every non-verify
+  `deploy:railway:verified` run validate the exact upload source before the
+  Railway build starts. Platform handoff commit: `5263a8f7`.
+- The preflight requires a clean Git root whose full HEAD matches the target
+  build ID; verifies that the Precision runtime HOLD receipt and every dynamic
+  seven-day source binding are tracked, included, schema-valid, byte-bounded,
+  and SHA-256 exact; and AST-scans all tracked JS/TS-family files for static
+  `.env*` module edges.
+- Actual clean-source verification passed at the implementation commit with
+  10,237 tracked files, 8,034 parsed source files, all three packaged receipts
+  bound, and zero forbidden environment-file imports. Focused Node tests pass
+  15/15; the Platform quality aggregate passes 65 Node plus 75 Vitest tests.
+- This prevents an incomplete commercial-Precision runtime receipt set from
+  reaching Docker `postbuild` and prevents local-parent `.env` dependencies
+  from entering the server bundle. It does not execute the production native
+  adapter, prove STEP/XCAF/GD&T interoperability, run blind challenges, or
+  authorize manufacturing. No deployment was performed; Private Beta/GA and
+  commercial release remain false/HOLD.
+- Handoff:
+  `HANDOFFS/20260825T225551+0900-deployment-source-consumer-boundary.md`.
+
+## 2026-08-25 cross-store recoverability boundary
+
+- Status: `COMMERCIAL_PRECISION_DB_OBJECT_BINDINGS_RESTORED /
+  EXACT_THREE_ROLE_MANIFEST_PASS / SOURCE_UNCHANGED /
+  LOCAL_FIXTURE_ONLY / COMMERCIAL_PRECISION_HOLD`.
+- Platform commits `2c79c2da`, `f6496787`, and `c54e6f60` extend the durable Precision
+  campaign through an exact PostgreSQL isolated restore and S3-compatible
+  source-to-backup-to-restore drill. CI commit `acd76c9f` reruns that combined
+  campaign for implementation, verifier, and gate changes and weekly.
+- Shared restore receipt:
+  `docs/evidence/cad-independent/commercial-precision-cross-store-restore-20260825.json`;
+  schema `nexyfab.backup-isolated-restore-drill.v3`, source
+  `c54e6f607e13878b0adfcf7b64f9b8c0d9873975`, self-hash
+  `575c30ebded3337f0cb9b50e24898bad30ddfd0746b1cb6fffb6c847b85a6b5d`.
+- The run exactly restored 164 tables/104 rows, validated four constraints,
+  ended with 83 foreign keys and zero orphans, and matched 8 objects/8,580
+  bytes across source, backup, and restore. Database bindings were two
+  immutable inputs, three committed outputs, and three artifact snapshots.
+- This proves that the bounded commercial Precision execution state and its
+  immutable artifacts can be recovered together in a disposable local drill.
+  It does not prove production backup encryption, a deployed native CAD worker,
+  independent STEP/XCAF/GD&T quality, or manufacturing acceptance.
+- The receipt is `local-fixture` and explicitly Private Beta/GA false. The
+  release gate accepts only a fresh exact-release `release-bound` v3 receipt;
+  it additionally requires an immutable KMS/provider-bound DB backup and an
+  object backup in a distinct endpoint/region failure domain with versioning,
+  Object Lock retention, and KMS readback. Production and staging were unchanged.
+- Handoff:
+  `HANDOFFS/20260825T214338+0900-cross-store-recoverability-boundary.md`.
+
+## 2026-08-25 fail-closed crash-after-claim recovery
+
+- Status: `SEPARATE_APPROVED_EXECUTION_CLAIMED /
+  EXPIRED_LEASE_AUTHORITY_ATOMICALLY_CLEARED /
+  VERIFIED_UNKNOWN_HASH_CHAIN_PASS / STALE_CAPABILITY_REJECTED /
+  ZERO_PARTIAL_EXECUTION_SIDE_EFFECTS / LOCAL_FIXTURE_ONLY /
+  COMMERCIAL_PRECISION_HOLD`.
+- Precision commit:
+  `94ad99b6eae22ab5b69f91992785aab8caa97e88`; shared Platform campaign
+  commit: `ad437dbf341b6c9d7643bf4d2e742ba077d0acbf`.
+- `recoverExpiredClaims` now clears outbox lease owner, expiry, and capability
+  hash in the same PostgreSQL transaction that quarantines the outbox and
+  execution journal as `VERIFIED_UNKNOWN`.
+- The durability campaign uses a second independently approved and enqueued
+  execution. It claims that execution, produces no worker callback or output,
+  advances beyond the lease, and proves exact recovery once, idempotent recovery
+  thereafter, valid journal chain/reason, stale-capability HTTP 403, no
+  re-claim, unchanged workspace head, and no partial execution side effects.
+- Shared v3 receipt:
+  `docs/evidence/cad-independent/commercial-precision-local-durability-20260825.json`;
+  source `c54e6f607e13878b0adfcf7b64f9b8c0d9873975`, 29/29 PASS, receipt
+  SHA-256
+  `67e1bafac0d4d747d0dd2d8ff1aa7b03d90bff64888a22e352cf714c6ad6d35a`.
+- The same campaign also passes actual disposable PostgreSQL, Redis AOF, and
+  object-storage restart persistence and exact replay after restart.
+- This is a local deterministic infrastructure fixture, not a deployed
+  production-class native CAD worker crash. Private Beta and GA remain false;
+  staging/production, independent CAD review, and manufacturing pilots remain
+  unchanged.
+- Handoff:
+  `HANDOFFS/20260825T120234Z-crash-after-claim-recovery.md`.
+
+## 2026-08-25 synthetic v3 portable exact-boundary evidence
+
+- Status: `CROSS_WORKTREE_RECEIPT_VERIFIED /
+  NATIVE_PRECISION_AUTHORITY_UNCHANGED`.
+- The raw synthetic receipt now canonicalizes every JSON/MJS binding with
+  `utf8-crlf-to-lf`; the same receipt passes in Platform and integration
+  worktrees and still rejects semantic/executor changes.
+- Receipt self-hash:
+  `632fd435b31c8f65cd07a1080bf3b02e79588b65a0e3523209043f036648da26`;
+  executor identity:
+  `b31882c8619eb3908838bde4ed087582600f234ea5307d8c3437da838f18ecd0`.
+- This fixes evidence portability only. Production native execution,
+  STEP/XCAF/GD&T interoperability, 150 AI intents, experts, and pilots remain
+  HOLD.
+- Handoff:
+  `HANDOFFS/20260825T083000Z-synthetic-v3-portable-exact-boundary.md`.
+
+## 2026-08-25 synthetic campaign v3 exact-authority boundary
+
+- Status: `SYNTHETIC_REBUILD_1500_OF_1500_PASS /
+  NATIVE_CAD_NOT_EXECUTED / COMMERCIAL_PRECISION_HOLD`.
+- The synthetic campaign now binds 1,500 raw runs and 6,000 required-axis
+  observations to the corpus and six executor sources. Receipt self-hash:
+  `8b0b0f0f84332d752fe64329d562f2fa7d2769b9762b1a9e91504babd1feea4a`.
+- Mechanical synthetic cases pass internal template geometry, semantic-object,
+  and relationship determinism, while count-only PASS files and corpus/source
+  transplants fail closed.
+- This path does not execute the production-class native Precision worker,
+  independently reopen STEP/XCAF, or establish GD&T/manufacturing acceptance.
+  It cannot satisfy the 150 AI-intent, native runtime, independent review, or
+  pilot gates.
+- Handoff:
+  `HANDOFFS/20260825T080000Z-synthetic-v3-exact-authority-boundary.md`.
+
+## 2026-08-25 release-gate-hardened exact-core staging evidence
+
+- Status: `EXACT_CORE_STAGING_SUCCESS / 11_OF_11_PASS /
+  POSITIVE_NATIVE_CLOSED_LOOP_NOT_RUN / COMMERCIAL_RELEASE_HOLD`.
+- Exact application source/build/Git
+  `3797ad6d75f02ad750e746199eb8c041e5d52d9f` is deployed as Railway staging
+  deployment `d4718236-06ca-4b56-81c8-5c271b2e8976`, image
+  `sha256:bd1364d1121916016d91a19919486d39a053a9ce38db008a05c197f9a20ce2bf`,
+  with 2/2 instances `RUNNING`.
+- The immutable same-build receipt passed 11/11 exact release, PostgreSQL,
+  Redis, migration `2026082502`, packaged runtime-HOLD, forged worker/lease,
+  and callback fail-closed checks. Receipt self-hash:
+  `59485c350d6aeaa45881ef7e06032836bec330ce2be49c46331fcac9ca03731e`.
+- The hardened commercialization gate accepts this as verified staging
+  prerequisite evidence and still refuses Private Beta. It cannot replace a
+  registered production-class native adapter, separately keyed positive
+  closed loop, recovery campaign, independent CAD review, or pilots.
+- AI Design remains candidate authority only; only signed, verified Precision
+  results may cross the exact-CAD boundary, and manufacturing approval remains
+  disabled.
+- Handoff:
+  `HANDOFFS/20260825T072000Z-release-gate-hardened-staging-evidence.md`.
+
+## 2026-08-25 exact final-source staging HOLD verification
+
+- Status: `FINAL_SOURCE_STAGING_SUCCESS / CORE_AND_FAIL_CLOSED_CHECKS_11_OF_11_PASS /
+  POSITIVE_NATIVE_CLOSED_LOOP_NOT_RUN / COMMERCIAL_RELEASE_HOLD`.
+- Application source `32ff05ba3f1e7addc5cf6da95d6e94ff9b437fe7` is running in
+  Railway staging as deployment `c1e03352-5f95-47eb-a031-80847b22391c` with
+  2/2 instances `RUNNING` and image digest
+  `sha256:bc2688c5b3c7cc6a34d9cbab9ad0357a87d2b8356d39786319aaf109849fab2a`.
+- The exact-release collector passed 11/11 checks: build identity, readiness,
+  PostgreSQL, Redis, commercial boundary, HOLD identity, migration
+  `2026082502`, packaged runtime HOLD evidence, forged claim/lease rejection,
+  and fail-closed callback behavior.
+- This is conclusive core staging evidence, not a positive production-class
+  native CAD execution. Private Beta and GA remain false until the registered
+  worker, separately held keys, recovery campaign, independent CAD review, and
+  manufacturing pilots are supplied.
+- Receipt:
+  `docs/evidence/release/commercial-precision-staging-hold-20260825.json`.
+- Handoff:
+  `HANDOFFS/20260825T061000Z-final-source-staging-hold.md`.
+
+## 2026-08-25 cross-worktree runtime evidence binding
+
+- Status: `RUNTIME_DERIVATION_DETERMINISTIC / REAL_OBSERVATION_NOT_RUN /
+  COMMERCIAL_RELEASE_HOLD`.
+- Commercial Precision runtime evidence now canonicalizes UTF-8 CRLF to LF for
+  the migration SQL, runtime observation, and all five supporting JSON evidence
+  documents before recording byte counts and SHA-256 bindings.
+- The signed observation must declare the same canonicalization for its
+  migration and evidence manifest. Missing, broadened, raw-byte, or altered
+  bindings fail closed.
+- A replay contract converts the complete valid runtime evidence set from LF to
+  CRLF after receipt creation and verifies the unchanged receipt; semantic
+  tampering remains rejected.
+- This removes checkout-specific `receipt_derivation_mismatch` only. The local
+  checked-in receipt remains an honest HOLD without a separately held HMAC key,
+  same-release native worker observation, independent CAD review, or pilots.
+- Handoff:
+  `HANDOFFS/20260825T051154Z-runtime-evidence-text-binding.md`.
+
+## 2026-08-25 approved native adapter identity closure
+
+- Status: `SOURCE_TRUST_BOUNDARY_PASS / REAL_ADAPTER_NOT_SUPPLIED /
+  STAGING_WORKER_NOT_DEPLOYED / COMMERCIAL_RELEASE_HOLD`.
+- Commit `7e01ba140bda3daa9f48aa79af76eb59e3dce8a9` binds every signed worker
+  receipt to both the native executable SHA-256 and the canonical invocation
+  SHA-256 (executable hash plus ordered arguments). The core worker registry
+  rejects a valid Ed25519 signature when either approved value differs.
+- The worker now verifies the executable bytes before every native process
+  launch, carries both bindings in its verification artifact, signed receipt,
+  and health response, and separates HTTP 200 `/live` from self-test-gated
+  `/health` (`503 NOT_READY` until a canary succeeds).
+- `containers/occt-commercial-worker/` is a non-root, fail-closed OCI/Railway
+  wrapper. It requires an exact adapter-image digest, executable checksum, and
+  worker-source checksum; it does not contain a CAD engine or runtime secret.
+- Follow-up commit `58a93bc7f820842a8a2edf4a82c539581ebf2add` removes the
+  cross-scope migration allowance: both adapter trust fields are now required
+  by the shared receipt contract and the typed trusted-worker registry.
+- This closes a source-level substitution gap only. No external adapter image,
+  worker private key, positive canary, recovery observation, independent CAD
+  review, or manufacturing pilot was created.
+
+
+## 2026-08-25 exact core staging HOLD verification
+
+- Status: `CORE_STAGING_HOLD_VERIFIED / NATIVE_WORKER_NOT_DEPLOYED /
+  PRIVATE_BETA_FALSE / COMMERCIAL_RELEASE_HOLD`.
+- Source `d0ae60b6102e90bc0fcef1fa50c425d4d768a989`, Railway staging
+  deployment `1839657a-a2ac-4671-aea9-cea408a3811a`, is running 2/2 instances.
+- The redacted staging collector passed 11/11 exact release, PostgreSQL, Redis,
+  migration, packaged runtime evidence v3 HOLD, forged claim/lease, and
+  callback fail-closed checks. The deployed trust contract rejects either
+  native executable or invocation substitution even under a valid worker
+  signature. Receipt:
+  `docs/evidence/release/commercial-precision-staging-hold-20260825.json`.
+- This is not a positive exact-worker run. A reviewed checksum-pinned native
+  adapter, separately held worker key, positive canary, recovery campaign,
+  independent CAD review, experts, and manufacturing pilots remain blockers.
+- Operational handoff:
+  `docs/operations/commercial-precision-staging-hold-handoff-20260825.md`.
+- Workspace handoff:
+  `HANDOFFS/20260825T041106Z-adapter-bound-staging-hold.md`.
+
+## 2026-08-25 real local durability and authoritative CAS closure
+
+- Status: `LOCAL_DURABLE_EXACT_CLOSED_LOOP_PASS /
+  PRODUCTION_CLASS_NATIVE_AND_EXTERNAL_QUALIFICATION_NOT_RUN /
+  COMMERCIAL_RELEASE_HOLD`.
+- The commercial v3 source path was executed against disposable real
+  PostgreSQL, Redis AOF, and S3-compatible storage with an isolated native
+  fixture process. All 24 checks passed, including migration checksum, immutable
+  input/output readback, multi-instance exclusion, Ed25519/HMAC verification,
+  negative substitution/replay cases, expired-lease quarantine/no-replay,
+  credential rotation, authoritative parser persistence, and workspace HEAD
+  compare-and-swap.
+- A real integration defect was closed: outbox claim previously advanced only
+  the job row while the execution journal remained `APPROVED`. Claim and lease
+  recovery now update both records and append their journal events atomically,
+  so the verified result can reach `COMMITTED`/`DONE` without weakening the
+  persistence preconditions.
+- Immutable input moved to
+  `nexyfab.precision-cad-commercial-input.v2`: mutable claim attempt/generation
+  are excluded from the staged object but remain exactly signed in the
+  transport/receipt. This removes a normal-flow binding contradiction while
+  retaining substitution protection for all immutable job fields.
+- The checked-in local receipt is
+  `docs/evidence/cad-independent/commercial-precision-local-durability-20260825.json`,
+  and `.github/workflows/commercial-precision-durability.yml` reruns the same
+  campaign for affected changes and weekly.
+- Runtime release evidence v2 additionally requires the registered worker's
+  real Ed25519 signature and exact per-check machine assertions. The committed
+  release receipt remains honest `HOLD` because there is no current
+  release-bound real-worker observation.
+- This closes the durable local exact loop, not product qualification. The
+  native campaign adapter is a deterministic fixture; independent native-CAD
+  exchange/XCAF/GD&T review, real production-class worker, experts, three
+  manufacturing pilots, and same-release operations evidence remain required.
+- Integration handoff:
+  `docs/operations/commercial-precision-local-durability-handoff-20260825.md`.
+
+## 2026-08-25 current-head local evidence and regression closure
+
+- Status: `LOCAL_EXACT_CANDIDATE_PASS / EXTERNAL_QUALIFICATION_NOT_RUN /
+  COMMERCIAL_RELEASE_HOLD`.
+- Evidence commit `575cfcfb` reruns the bounded mechanical campaign on the
+  current integration sources: `30/30` exact features and `210/210` closed-loop
+  axes PASS. Its design revision SHA-256 is
+  `a361da8b50b3e4b840c04e7bdf7077467580a73242a109090dad13b8f5102e22` and
+  receipt SHA-256 is
+  `d592a83f044c34560134d69d4be75e6bb6a72e20047e93102813e04c660af2b9`.
+- The AI-intent runtime subset also passes `10/10` cases and `70/70` axes with
+  source hashes bound to the current `occtEngine.ts` and
+  `pipelineManager.ts`.
+- Regression commit `6e4c271e` proves the bounded AP242 two-occurrence
+  roundtrip preserves geometry, transforms, component names, part numbers, and
+  occurrence labels, and adds a negative semantic-loss test. Product identity
+  remains `HOLD` because the local binding still lacks
+  `STEPCAFControl_Reader` plus reopened XCAF traversal.
+- Full local verification passed: Vitest `30,188` tests, Node auxiliary suite
+  `616` tests (`5` environment-gated skips), TypeScript, production build,
+  `301/301` static pages, and bundle budget.
+- This is not independent native-CAD interoperability or manufacturing
+  qualification. The committed commercial runtime receipt remains `HOLD`
+  until a real isolated native worker, release-bound observations, independent
+  reviews, external CAD exchange, and three manufacturing pilots are supplied.
+- Immutable handoff:
+  `HANDOFFS/20260825T081348+0900-current-head-local-commercial-evidence.md`.
+
+## 2026-08-25 commercial runtime evidence authority
+
+- Status: `LOCAL_30X7_CANDIDATE_PASS / COMMERCIAL_RUNTIME_NOT_RUN /
+  RELEASE_HOLD`.
+- Integration merge `d22d2723` adds an HMAC-attested commercial Precision
+  runtime receipt and requires it in both the offline commercialization gate
+  and live `/api/health/release`.
+- Private Beta now requires the 15 durable execution and negative-attack
+  checks; GA additionally requires five production same-deployment recovery,
+  exclusion, no-replay, and credential-rotation checks.
+- The current local mechanical campaign is fresh at 30/30 features and 210/210
+  axes PASS. Its authority is only `LOCAL_CANDIDATE`; it does not claim
+  independent STEP interoperability, expert qualification, or manufacturing
+  readiness.
+- The committed runtime receipt remains an honest `HOLD` because no real
+  native-worker observation/evidence root or evidence signing secret was
+  supplied. The next action is the isolated staging worker canary and negative
+  campaign described in `docs/operations/commercial-precision-worker-v3.md`.
+
+## 2026-08-25 commercial worker v3 core staging deployment
+
+- Status: `CORE_STAGING_DEPLOYED / WORKER_RUNTIME_NOT_RUN / RELEASE_HOLD`.
+- Integration source `674c54f59ec908891962591314366afe0c8eea30` is deployed to the
+  isolated staging web/core service as Railway deployment
+  `e9286b9d-7d9b-4f45-8404-e4ec838fdbd2`; migration `2026082502` is applied and
+  release evidence reports its migration as `PASS`.
+- Liveness and non-commercial readiness are HTTP 200 with PostgreSQL and Redis
+  `ok`; the v3 artifact gateway rejects a forged lease with HTTP 403
+  `LEASE_CAPABILITY_INVALID`. Release health remains HTTP 503 `HOLD`.
+- The commercial boundary is intentionally disabled and skipped. A real native
+  CAD adapter, isolated worker service, independent worker key holder, and fresh
+  canary/self-test receipt still do not exist, so no worker runtime or CAD-engine
+  qualification is claimed.
+- The exact deployment evidence and activation sequence are recorded in
+  `docs/operations/commercial-precision-worker-v3.md`.
+
+## 2026-08-25 commercial worker v3 immutable I/O closure
+
+- Status: `SOURCE_CLOSED_LOOP_PASS / EXTERNAL_RUNTIME_NOT_RUN / RELEASE_HOLD`.
+- Integration foundation: `8673bd45` versions the execution contract to
+  `nexyfab.precision-cad-commercial-execution.v3` and migration `2026082502`.
+- A commercial request now stages one canonical, content-addressed private
+  input object and persists its exact identity in the same PostgreSQL
+  transaction as approval, journal, claim, and outbox. Exact replay includes
+  that input row and fails closed on absence or substitution.
+- The authenticated claim route rechecks the immutable input row and object
+  hash before returning an HMAC-bound transport. A lease-scoped artifact
+  gateway serves the input and accepts only fixed-identity, content-verified
+  `model`, `report`, and `verification` output commits.
+- `scripts/drawing-to-3d/commercial-precision-worker.mjs` is a deployable Node
+  client for claim, input readback, an explicitly configured native executable,
+  three immutable output commits, Ed25519 receipt signing, callback HMAC, and a
+  fail-closed health contract. It never substitutes a JavaScript geometry
+  fallback for the configured native executable.
+- Verification: TypeScript PASS; platform architecture PASS; focused worker
+  client, contract, route, transaction, and Precision regressions `216/216`
+  PASS. The worker test executes a separate native-process fixture, uploads
+  exactly three outputs, and independently verifies its Ed25519 PASS receipt.
+- Boundary: no real production-class native CAD executable, worker service,
+  registry key, or self-test job has been deployed or evidenced. Independent
+  STEP/native-CAD interoperability, topology/XCAF/GD&T review, sustained
+  recovery evidence, experts, and manufacturing pilots remain required.
+- Immutable handoff:
+  `HANDOFFS/20260824T202926Z-commercial-worker-v3-immutable-io.md`.
+
+## 2026-08-25 commercial migration compatibility closure
+
+- Status: `CURRENT_MIGRATION_COMPATIBLE / RELEASE_HOLD`.
+- Source implementation commit: `06ef2d63` (`[P0] fix(cad): accept current
+  commercial migrations`).
+- All six commercial generation and verifier entry points now use the shared,
+  ordered PostgreSQL migration contract. They still fail closed below required
+  migration `2026082208` and for unknown versions, while accepting registered
+  later authority migrations through the current target `2026082403`.
+- This removes the production incompatibility where a correctly upgraded
+  service advertised `2026082403` but Precision routes required literal
+  equality with the older `2026082208` value and returned HTTP 503.
+- Verification: focused commercial readiness and Precision route regression
+  `43/43` PASS, including real OCCT STEP writes; `workspace:check --
+  precision-cad` PASS with TypeScript, architecture, ownership, and
+  classification checks clean.
+- Boundary: the source path is migration-compatible, but commercial release
+  remains `HOLD` until staging is migrated, configured, deployed, and proven by
+  authenticated multi-instance and recovery exercises plus independent CAD
+  interoperability, expert review, and manufacturing pilots.
+- Immutable handoff:
+  `HANDOFFS/20260824T154924Z-commercial-migration-compatibility.md`.
+
+## 2026-08-24 AP242 semantic identity re-export closure
+
+- Status: `LOCAL_AP242_SEMANTIC_ROUNDTRIP_PASS / RELEASE_HOLD`.
+- Source implementation commit: `f727a3dc` (`[P0] fix(cad): preserve STEP assembly identity on re-export`).
+- Imported STEP PRODUCT, part number, PRODUCT_DEFINITION, and NAUO occurrence
+  identity is now captured independently from the OCCT shape handle. Re-export
+  rebinds those fields only when the returned product tree has the identical
+  fail-closed structure; unsupported or changed trees block export instead of
+  silently replacing product identity with translator defaults.
+- The implementation changes no geometry or placement entities. It ignores
+  comment-contained fake entities, escapes STEP strings, and verifies the
+  rebound semantic graph before returning bytes.
+- Verification: pure parser/rebinder tests `4/4`, actual OCCT WASM AP242
+  open-export semantic roundtrip `1/1`, existing STEP hierarchy regression
+  `32 PASS / 6 conditional skip`, TypeScript PASS, ESLint PASS, and Precision
+  workspace ownership/architecture PASS at the source tree.
+- Boundary: this closes the previously observed local name/part-number/
+  occurrence-label loss. It does not claim XCAF reader availability,
+  independent native CAD interoperability, signed external operation, or
+  commercial release.
+- Immutable handoff:
+  `HANDOFFS/20260824T145321Z-ap242-semantic-identity-reexport.md`.
+
+## 2026-08-24 AI exact bridge execution closure
+
+- Status: `EXACT_BRIDGE_RUNTIME_CONNECTED_LOCAL / RELEASE_HOLD`.
+- Integrated implementation base: `920e660d` on both `scope/precision-cad` and
+  `integration/nexyfab` before this documentation handoff.
+- The stable-reference prerequisite now continues through a durable bridge
+  worker that rechecks the current canonical head, executes the actual Node OCCT
+  current-head artifact bundle, stores STEP/HLR/dimensions/BOM/verification and
+  the canonical manifest immutably, and issues a revision-bound signed receipt.
+- Dispatch uncertainty does not cause automatic CAD replay. Expired sent work is
+  quarantined as `VERIFIED_UNKNOWN` and can close only from an already persisted
+  signed receipt and matching AI aggregate reference.
+- Verification: actual OCCT STEP bundle regression, bridge tamper/crash/reconcile
+  tests, TypeScript, production build, workspace audit, and all three scope
+  checks passed at the integrated source baseline.
+- Immutable handoff:
+  `HANDOFFS/20260824T134514Z-ai-precision-exact-round-trip.md`.
+- Remaining: live staging database/object store/Redis/Railway execution,
+  authenticated browser round trip, third-party STEP review, topology campaign,
+  experts, manufacturing pilots, and release authority. Exact bundle PASS still
+  does not imply authoritative CAD commit or manufacturing approval.
+
+## 2026-08-24 commercial-readiness continuation
+
+- Source implementation commit: `5670cb85` (`[P0] feat(cad): bind AI stable refs to canonical head`).
+- Added `nexyfab.precision-cad.mechanical-stable-reference-binding.v1` as the
+  fail-closed bridge prerequisite for the AI Design V1 handoff. Precision now
+  discovers the matching document from server-owned canonical heads and binds
+  the exact revision ID, content SHA-256, rights receipt, FeatureTree, part, and
+  every requested stable feature ID. The browser/AI does not supply a document,
+  sequence, exact receipt, runtime identity, or PASS state.
+- Ambiguous document matches, stale/corrupt heads, unknown feature references,
+  malformed/extended contracts, and migration absence remain machine-coded
+  `HOLD` outcomes.
+- Verification: `workspace:check -- precision-cad` PASS (TypeScript and platform
+  architecture); focused stable-binding tests `2/2` PASS; canonical revision and
+  current-head bundle regression `13/13` PASS including a real OCCT STEP write.
+- Remaining bridge work is integration-owned: durable dispatch/outbox, exact
+  bundle execution after rebind, Precision signing, immutable receipt storage,
+  AI aggregate CAS update, and read-model refresh. Those integration-owned
+  items are now implemented locally at `920e660d`; this historical source entry
+  still records the earlier `NOT_RUN` boundary and commercial release remains
+  `HOLD`.
+
+- Status: `SOURCE_FREEZE_READY / INTERNAL_30_OF_30_BOUNDED / RELEASE_HOLD`
+- Source branch: `scope/precision-cad`
+- Integration target: `integration/nexyfab`
 - Baseline: `baseline/pre-scope-20260823`
-- Current task: Implemented clean-room, fail-closed product verticals for mechanical, building, interior, civil, and landscape, including native artifacts, domain verification, common qualification, connected-project invalidation, and a bounded product-qualification API. Existing single-part hardening and Shape Generator extraction work was preserved.
-- Next action: Integrate the versioned AI Design candidate envelope on `integration/nexyfab`, connect the legacy spatial authoring UI to the new Precision product API, and collect the external authority, exchange, reviewer, campaign, fabrication, and field-pilot evidence listed in `MULTI_DOMAIN_PRODUCT_PLAN.md`.
-- Release: HOLD (internal code and synthetic fixtures pass, but no domain has the required 20 rights-cleared independent cases, three deterministic campaigns, two independent reviewers, three real pilots, and current discipline-specific external authority/round-trip evidence).
+- Current integration base: `bd200378` on `integration/nexyfab`; the preserved GP-02 through GP-11 work reapplied without conflicts after the AI V3-V10 merge and awaits its implementation commit.
+- Delivered boundary: the clean-room mechanical candidate set is implemented as 30/30 bounded exact handlers. The closing slices are the topology-preserving bounded blind-hole delete/cap repair, the versioned three-point orthogonal rectangular sweep path, and the two-member unfused weldment compound with a hash-bound millimetre cut list. These contracts do not claim general delete-face, sweep, weldment, manufacturing, or commercial completeness.
+- Source verification: fixed Node.js 22.23.2/npm 10.9.8 `workspace:check -- precision-cad` passed with zero ownership/classification violations, TypeScript PASS, and architecture PASS. The focused native/registry/sketch/sheet-metal/weldment suite passed 93 tests with one conditional external-corpus skip. The earlier production build result remains pre-integration and must be rerun at the final integrated HEAD.
+- Scope preflight: the platform-owned legacy PHP changes are now committed on integration. A generated `mechanical-core-internal-verification.json` containing only sandbox `EPERM` failures was excluded from the source freeze and retained in recovery checkpoints; it is not success evidence.
+- Immediate action: freeze and commit only the intended Precision-owned tree, generate a canonical UTC handoff pointing to that implementation commit, validate it, then merge the clean Scope branch once with `--no-ff`.
+- Integration acceptance: retain literal v1/v2 schema routing, server-loaded current-head and rights bindings, stable machine tokens, fail-closed unsupported forms, and `authoritativeCommit: false`/`commercialReleaseReady: false`. AI Design may emit only versioned intent and provenance references; it may not manufacture Precision receipts, revisions, artifacts, runtime identity, XCAF results, or release state.
+- CI sequencing: run focused Precision tests after the Scope merge, then workspace audit, architecture, type, build, security and database gates. Run the full GitHub CI/E2E only after all planned integration edits are complete. The previously cancelled E2E is not completion evidence.
+- Deferred Precision action: begin GP-12 authority-owned CAS commit, stable topology edit/replay survival, and expanded XCAF provenance only after this GP-10 integration intake is frozen and verified; do not mix those new semantics into the GP-10 merge.
+- Release: `HOLD` (`authoritativeCommit: false`, `commercialReleaseReady: false`). Integration is development `GO`, but immediate PR merge, staging promotion, production deployment, and Git history rewrite remain `NO-GO` until their independent gates pass.

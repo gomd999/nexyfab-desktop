@@ -1,6 +1,6 @@
 {
   "schema": "nexyfab.mechanical-local-step-kernel-readiness.v1",
-  "executedAt": "2026-08-22T07:15:23.168Z",
+  "executedAt": "2026-08-24T14:56:27.793Z",
   "status": "PASS_LOCAL",
   "scope": "NexyFab OCCT open-export-reopen and three-view HLR for the bounded two-box AP242 assembly",
   "commerciallyVerified": false,
@@ -20,19 +20,19 @@
   },
   "returnedBinding": {
     "path": "nexyfab-kernel-returned.step",
-    "sha256": "7aae6b01843714e2eb074ae71497489a987a7b6455b03fb82841a21132659bd7",
-    "bytes": 32626
+    "sha256": "334116b472057a92ceb1fff06d403ab97ee928f3768f5cc69e97372147889caf",
+    "bytes": 32562
   },
   "sourceBindings": [
     {
       "path": "scripts/verify-mechanical-local-step-kernel.ts",
-      "sha256": "1866426f4199e520ee6692557cd6cc3befb2979c5a9fc131adf1dc019dd5a924",
+      "sha256": "1866426f4199e520ee6692557cd6ccb3efb2979c5a9fc131adf1dc019dd5a924",
       "bytes": 10760
     },
     {
       "path": "src/app/[lang]/shape-generator/features/occtEngine.ts",
-      "sha256": "32ff70b38fe4634f1a1058319fbe0a782057df0aee95975ac1c6bdac41eb3084",
-      "bytes": 133719
+      "sha256": "5c24d7b27dc6709fa1f0e123dcd6c3fd0af1e428b6c5f11d8bf304ed313e5eaa",
+      "bytes": 136046
     },
     {
       "path": "src/app/[lang]/shape-generator/io/assemblyStepHierarchy.ts",

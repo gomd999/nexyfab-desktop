@@ -2,7 +2,7 @@
  * e2e/quick-quote/step-extract.spec.ts
  *
  * Regression for the "빠른 견적 STEP 업로드 → 치수 자동 추출" fix.
- * Uploads a real SolidWorks STEP (스쿱 제품) to the quick-quote page and asserts
+ * Uploads the repository-owned independent STEP evidence fixture and asserts
  * the BROWSER OCCT/mesh pipeline extracts geometry (no server parser dependency),
  * so the "Could not extract geometry. Please provide dimensions." dead-end is gone.
  *
@@ -11,9 +11,14 @@
  * which ships in public/ via `npm run prebuild`.
  */
 import { test, expect } from '@playwright/test';
-import fs from 'fs';
+import fs from 'node:fs';
+import path from 'node:path';
 
-const STEP_PATH = 'C:/Users/gomd9/Downloads/스쿱 제품(금형 견적용).STEP';
+const STEP_NAME = 'nexyfab-c4-box-assembly.step';
+const STEP_PATH = path.resolve(
+  process.cwd(),
+  'docs/evidence/cad-independent/local/mechanical-step-c4-260814/source.step',
+);
 
 test('quick-quote: STEP upload auto-extracts dimensions in the browser', async ({ page }) => {
   test.setTimeout(180_000); // first dev compile of shape-generator (three+replicad) is heavy
@@ -29,7 +34,7 @@ test('quick-quote: STEP upload auto-extracts dimensions in the browser', async (
 
   const buffer = fs.readFileSync(STEP_PATH);
   await input.setInputFiles({
-    name: '스쿱 제품(금형 견적용).STEP',
+    name: STEP_NAME,
     mimeType: 'application/step',
     buffer,
   });
@@ -42,7 +47,7 @@ test('quick-quote: STEP upload auto-extracts dimensions in the browser', async (
   // The dead-end error must NOT be shown.
   await expect(page.getByText('Could not extract geometry')).toHaveCount(0);
 
-  // Extracted bbox should be the real part size (~65×45×219 mm). Assert the
+  // Extracted bbox should be the evidence fixture size (100×60×20 mm). Assert the
   // longest dimension shows up so we know it's real geometry, not a fallback box.
-  await expect(page.getByText(/219\s*mm|×\s*219/)).toBeVisible({ timeout: 5_000 });
+  await expect(page.getByText('100×60×20 mm')).toBeVisible({ timeout: 5_000 });
 });

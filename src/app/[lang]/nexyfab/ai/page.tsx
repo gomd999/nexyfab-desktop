@@ -6,6 +6,8 @@
 import type { Metadata } from 'next';
 import ChatHero from '../../ChatHero';
 import AiThemeLock from './AiThemeLock';
+import AiDesignWorkspaceClient from './AiDesignWorkspaceClient';
+import AiDesignWorkspaceLauncher from './AiDesignWorkspaceLauncher';
 import { buildMetadata } from '@/lib/metaHelper';
 
 export async function generateMetadata(
@@ -15,12 +17,21 @@ export async function generateMetadata(
   return buildMetadata(lang, 'nexyfab');
 }
 
-export default async function NexyfabAiPage({ params }: { params: Promise<{ lang: string }> }) {
+const SAFE_ID = /^[A-Za-z0-9][A-Za-z0-9._:/-]{0,199}$/;
+
+export default async function NexyfabAiPage({ params, searchParams }: { params: Promise<{ lang: string }>; searchParams: Promise<{ projectId?: string; sessionId?: string; new?: string }> }) {
   const { lang } = await params;
+  const query = await searchParams;
+  const synchronized = typeof query.projectId === 'string' && typeof query.sessionId === 'string'
+    && SAFE_ID.test(query.projectId) && SAFE_ID.test(query.sessionId);
   return (
     <div style={{ flex: 1, minWidth: 0, display: 'flex' }}>
       <AiThemeLock />
-      <ChatHero langCode={lang} appMode />
+      {synchronized
+        ? <AiDesignWorkspaceClient lang={lang} projectId={query.projectId!} sessionId={query.sessionId!} />
+        : typeof query.projectId === 'string' && SAFE_ID.test(query.projectId) && query.new === '1'
+          ? <AiDesignWorkspaceLauncher lang={lang} projectId={query.projectId} />
+          : <ChatHero langCode={lang} appMode />}
     </div>
   );
 }

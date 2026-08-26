@@ -1,9 +1,13 @@
 #!/usr/bin/env node
-import { createHash } from 'node:crypto';
 import fs from 'node:fs';
 import { isDeepStrictEqual } from 'node:util';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import {
+  TEXT_BINDING_CANONICALIZATION,
+  canonicalTextBinding,
+  canonicalTextSha256,
+} from './canonical-text-binding.mjs';
 
 const CORPUS_SCHEMA = 'nexyfab.mechanical-ai-intent-corpus.v1';
 const RESULTS_SCHEMA = 'nexyfab.mechanical-ai-intent-local-results.v1';
@@ -51,10 +55,6 @@ function record(value: unknown): Record<string, unknown> | null {
 
 function strings(value: unknown): string[] {
   return Array.isArray(value) ? value.filter((item): item is string => typeof item === 'string') : [];
-}
-
-function sha256(value: Buffer | string): string {
-  return createHash('sha256').update(value).digest('hex');
 }
 
 function within(root: string, target: string): boolean {
@@ -135,9 +135,11 @@ function verifyBinding(
     return;
   }
   const bytes = fs.readFileSync(absolutePath);
+  const canonical = canonicalTextBinding(bytes);
+  if (binding.canonicalization !== TEXT_BINDING_CANONICALIZATION) issues.push(`${label}_canonicalization_invalid`);
   if (!SHA256.test(String(binding.sha256 ?? ''))) issues.push(`${label}_sha256_invalid`);
-  if (binding.sha256 !== sha256(bytes)) issues.push(`${label}_sha256_mismatch`);
-  if (!Number.isSafeInteger(binding.bytes) || binding.bytes !== bytes.byteLength) issues.push(`${label}_bytes_mismatch`);
+  if (binding.sha256 !== canonical.sha256) issues.push(`${label}_sha256_mismatch`);
+  if (!Number.isSafeInteger(binding.bytes) || binding.bytes !== canonical.bytes) issues.push(`${label}_bytes_mismatch`);
 }
 
 function expectedSummary(cases: Record<string, unknown>[]) {
@@ -275,6 +277,7 @@ export function verifyMechanicalAiIntentLocalQualification(
 
   if (receipt) {
     if (receipt.schema !== RECEIPT_SCHEMA) issues.push('receipt_schema_invalid');
+    if (receipt.textCanonicalization !== TEXT_BINDING_CANONICALIZATION) issues.push('receipt_text_canonicalization_invalid');
     if (receipt.qualificationClass !== 'LOCAL_DETERMINISTIC_NO_GEOMETRY') issues.push('receipt_qualification_class_invalid');
     if (!Number.isFinite(Date.parse(String(receipt.generatedAt ?? ''))) || receipt.generatedAt !== results?.generatedAt) issues.push('receipt_generated_at_invalid');
     const sourceBindings = Array.isArray(receipt.sourceBindings) ? receipt.sourceBindings : [];
@@ -312,7 +315,7 @@ export function verifyMechanicalAiIntentLocalQualification(
     const manifest = fs.readFileSync(receiptShaPath, 'utf8').trim();
     const match = /^([a-f0-9]{64}) {2}receipt\.json$/.exec(manifest);
     if (!match) issues.push('receipt_sha256_format_invalid');
-    else if (!receiptBytes || match[1] !== sha256(receiptBytes)) issues.push('receipt_sha256_mismatch');
+    else if (!receiptBytes || match[1] !== canonicalTextSha256(receiptBytes)) issues.push('receipt_sha256_mismatch');
   }
 
   return {

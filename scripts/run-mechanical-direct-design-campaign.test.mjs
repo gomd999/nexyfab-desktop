@@ -1,14 +1,19 @@
 import assert from 'node:assert/strict';
+import { spawnSync } from 'node:child_process';
 import crypto, { generateKeyPairSync } from 'node:crypto';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
+import { fileURLToPath } from 'node:url';
 import {
   buildMechanicalDirectDesignReceipt,
   createMechanicalDirectDesignState,
+  inspectMechanicalDirectDesignCampaignPrerequisites,
+  mechanicalDesignAdapterApprovalPayload,
   resumeMechanicalDirectDesignState,
   runMechanicalDirectDesignCampaign,
+  validateMechanicalDesignAdapterApproval,
 } from './run-mechanical-direct-design-campaign.mjs';
 import { mechanicalDesignVerificationPayload } from './mechanical-commercial-evidence-v3.mjs';
 
@@ -19,6 +24,13 @@ const trustedDesignVerifiers = Object.fromEntries(['step', 'drawing', 'bom'].map
   publicKey: verifierKeys[role].publicKey.export({ type: 'spki', format: 'pem' }).toString(),
   roles: [`mechanical-${role}-verifier`],
 }]));
+const adapterApproverKeys = generateKeyPairSync('ed25519');
+const trustedAdapterApprovers = {
+  'adapter-release-approver': {
+    publicKey: adapterApproverKeys.publicKey.export({ type: 'spki', format: 'pem' }).toString(),
+    roles: ['mechanical-adapter-release-approver'],
+  },
+};
 const campaignOptions = { trustedDesignVerifiers, now: Date.parse('2026-08-12T02:00:00.000Z') };
 
 function workbook() {
@@ -31,6 +43,41 @@ function workbook() {
       return { caseId, family: index < 12 ? 'machined' : index < 20 ? 'sheet_metal' : index < 25 ? 'rotational_sweep_loft' : 'pattern_multibody_boolean', primaryFeature, status: 'evidence_required', artifactPaths: Object.fromEntries(Object.entries(names).map(([role, name]) => [role, `${caseId}/${name}`])), releaseEligible: false };
     }),
   };
+}
+
+function signedAdapterApproval(book, adapterSha256, {
+  privateKey = adapterApproverKeys.privateKey,
+  approvedAt = '2026-08-12T00:30:00.000Z',
+  expiresAt = '2026-08-20T00:30:00.000Z',
+  approverId = 'adapter-release-approver',
+} = {}) {
+  const receipt = {
+    schema: 'nexyfab.mechanical-design-adapter-approval.v1',
+    releaseChannel: 'mechanical-core',
+    evidenceRootId: book.evidenceRootId,
+    adapter: { sha256: adapterSha256, version: '1.0.0' },
+    approval: {
+      approverId,
+      role: 'mechanical-adapter-release-approver',
+      algorithm: 'Ed25519',
+      approvedAt,
+      expiresAt,
+      signature: '',
+    },
+    claimBoundary: { importsOnlyApprovedBytes: true, grantsCommercialRelease: false },
+  };
+  receipt.approval.signature = crypto.sign(
+    null,
+    Buffer.from(mechanicalDesignAdapterApprovalPayload(receipt)),
+    privateKey,
+  ).toString('base64');
+  return receipt;
+}
+
+function writeAdapterApproval(root, book, adapterSha256, options) {
+  const approvalPath = path.join(root, 'adapter-approval.json');
+  fs.writeFileSync(approvalPath, JSON.stringify(signedAdapterApproval(book, adapterSha256, options)));
+  return approvalPath;
 }
 
 function writeCase(root, item) {
@@ -149,9 +196,201 @@ test('does not mark a package complete without a revision-bound verification rec
   } finally { fs.rmSync(root, { recursive: true, force: true }); }
 });
 
+test('published receipt schema requires the signed verification receipt accepted by the runner', () => {
+  const schema = JSON.parse(fs.readFileSync(new URL('../docs/process/mechanical-direct-design-campaign.schema.json', import.meta.url), 'utf8'));
+  const artifacts = schema.properties.cases.items.properties.artifacts;
+  assert.equal(artifacts.additionalProperties, false);
+  assert.equal(artifacts.required.includes('verificationReceipt'), true);
+  assert.deepEqual(artifacts.properties.verificationReceipt, { $ref: '#/$defs/artifact' });
+});
+
 test('rejects changed workbooks and artifact paths outside the evidence root', () => {
   const book = workbook(); const state = createMechanicalDirectDesignState(book); const changed = structuredClone(book); changed.cases[0].primaryFeature = 'changed';
   assert.throws(() => resumeMechanicalDirectDesignState(changed, state), /RESUME_MISMATCH/);
   const unsafe = workbook(); unsafe.cases[0].artifactPaths.step = '../outside.step';
   assert.throws(() => createMechanicalDirectDesignState(unsafe), /CASE_INVALID/);
+});
+
+test('preflight reports a fresh pending scaffold without creating state or evidence', () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'nexyfab-direct-design-preflight-'));
+  try {
+    const adapterPath = path.join(root, 'adapter.mjs'); fs.writeFileSync(adapterPath, 'throw new Error("must not load");\n');
+    const result = inspectMechanicalDirectDesignCampaignPrerequisites({
+      workbook: workbook(), evidenceRoot: root, adapterPath, trustedDesignVerifiers,
+    });
+    assert.equal(result.schema, 'nexyfab.mechanical-direct-design-campaign-preflight.v2');
+    assert.equal(result.workbook.valid, true);
+    assert.equal(result.workbook.cases, 30);
+    assert.equal(result.artifacts.expected, 240);
+    assert.equal(result.artifacts.present, 0);
+    assert.equal(result.artifacts.missing, 240);
+    assert.equal(result.adapter.loadedOrExecuted, false);
+    assert.equal(result.verifiers.roleSeparated, true);
+    assert.deepEqual(result.blockers, [
+      'trusted_runtime_adapter_sha256_not_supplied_or_invalid',
+      'trusted_runtime_adapter_release_approver_missing',
+      'trusted_runtime_adapter_approval_not_supplied',
+      'required_artifacts_missing',
+    ]);
+    assert.equal(result.readyToExecute, false);
+    assert.equal(result.readyForFinalVerification, false);
+    assert.deepEqual(fs.readdirSync(root), ['adapter.mjs']);
+  } finally { fs.rmSync(root, { recursive: true, force: true }); }
+});
+
+test('preflight allows a trusted campaign to start before the adapter creates case artifacts', () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'nexyfab-direct-design-start-'));
+  try {
+    const book = workbook();
+    const adapterPath = path.join(root, 'adapter.mjs'); fs.writeFileSync(adapterPath, 'throw new Error("must not load");\n');
+    const trustedAdapterSha256 = hash(fs.readFileSync(adapterPath));
+    const adapterApprovalPath = writeAdapterApproval(root, book, trustedAdapterSha256);
+    const result = inspectMechanicalDirectDesignCampaignPrerequisites({
+      workbook: book, evidenceRoot: root, adapterPath, trustedAdapterSha256,
+      adapterApprovalPath, trustedAdapterApprovers, trustedDesignVerifiers,
+      now: campaignOptions.now,
+    });
+    assert.equal(result.artifacts.present, 0);
+    assert.equal(result.artifacts.missing, 240);
+    assert.equal(result.adapter.digestMatches, true);
+    assert.equal(result.adapter.approval.valid, true);
+    assert.equal(result.adapter.loadedOrExecuted, false);
+    assert.deepEqual(result.executionBlockers, []);
+    assert.deepEqual(result.evidenceBlockers, ['required_artifacts_missing']);
+    assert.deepEqual(result.blockers, ['required_artifacts_missing']);
+    assert.equal(result.readyToExecute, true);
+    assert.equal(result.readyForFinalVerification, false);
+  } finally { fs.rmSync(root, { recursive: true, force: true }); }
+});
+
+test('preflight becomes final-verification-ready only when all 240 files are present', () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'nexyfab-direct-design-ready-'));
+  try {
+    const book = workbook();
+    for (const item of book.cases) writeCase(root, item);
+    const adapterPath = path.join(root, 'adapter.mjs'); fs.writeFileSync(adapterPath, 'throw new Error("must not load");\n');
+    const trustedAdapterSha256 = hash(fs.readFileSync(adapterPath));
+    const adapterApprovalPath = writeAdapterApproval(root, book, trustedAdapterSha256);
+    const result = inspectMechanicalDirectDesignCampaignPrerequisites({
+      workbook: book, evidenceRoot: root, adapterPath, trustedAdapterSha256,
+      adapterApprovalPath, trustedAdapterApprovers, trustedDesignVerifiers,
+      now: campaignOptions.now,
+    });
+    assert.equal(result.artifacts.expected, 240);
+    assert.equal(result.artifacts.present, 240);
+    assert.equal(result.artifacts.missing, 0);
+    assert.equal(result.artifacts.invalid, 0);
+    assert.equal(result.verifiers.roleSeparated, true);
+    assert.equal(result.adapter.regularFile, true);
+    assert.equal(result.adapter.digestMatches, true);
+    assert.equal(result.adapter.approval.valid, true);
+    assert.equal(result.adapter.loadedOrExecuted, false);
+    assert.deepEqual(result.blockers, []);
+    assert.equal(result.readyToExecute, true);
+    assert.equal(result.readyForFinalVerification, true);
+  } finally { fs.rmSync(root, { recursive: true, force: true }); }
+});
+
+test('preflight rejects adapter byte substitution before import or execution', () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'nexyfab-direct-design-adapter-'));
+  try {
+    const book = workbook();
+    for (const item of book.cases) writeCase(root, item);
+    const adapterPath = path.join(root, 'adapter.mjs'); fs.writeFileSync(adapterPath, 'export const executeMechanicalDesignCase = true;\n');
+    const trustedAdapterSha256 = hash(fs.readFileSync(adapterPath));
+    const adapterApprovalPath = writeAdapterApproval(root, book, trustedAdapterSha256);
+    fs.appendFileSync(adapterPath, '// substituted\n');
+    const result = inspectMechanicalDirectDesignCampaignPrerequisites({
+      workbook: book, evidenceRoot: root, adapterPath,
+      trustedAdapterSha256, adapterApprovalPath, trustedAdapterApprovers, trustedDesignVerifiers,
+      now: campaignOptions.now,
+    });
+    assert.equal(result.adapter.regularFile, true);
+    assert.equal(result.adapter.digestMatches, false);
+    assert.equal(result.adapter.approval.valid, false);
+    assert.equal(result.adapter.loadedOrExecuted, false);
+    assert.deepEqual(result.blockers, [
+      'trusted_runtime_adapter_sha256_mismatch',
+      'trusted_runtime_adapter_approval_invalid',
+    ]);
+    assert.equal(result.readyToExecute, false);
+  } finally { fs.rmSync(root, { recursive: true, force: true }); }
+});
+
+test('adapter approval rejects forged, expired, or campaign-transplanted receipts', () => {
+  const book = workbook();
+  const adapterSha256 = 'd'.repeat(64);
+  const options = {
+    adapterSha256, evidenceRootId: book.evidenceRootId, trustedAdapterApprovers,
+    now: campaignOptions.now,
+  };
+  assert.equal(validateMechanicalDesignAdapterApproval(signedAdapterApproval(book, adapterSha256), options), true);
+  const attacker = generateKeyPairSync('ed25519');
+  assert.equal(validateMechanicalDesignAdapterApproval(signedAdapterApproval(book, adapterSha256, { privateKey: attacker.privateKey }), options), false);
+  assert.equal(validateMechanicalDesignAdapterApproval(signedAdapterApproval(book, adapterSha256, {
+    approvedAt: '2026-07-01T00:00:00.000Z', expiresAt: '2026-08-01T00:00:00.000Z',
+  }), options), false);
+  const transplanted = signedAdapterApproval(book, adapterSha256); transplanted.evidenceRootId = 'e'.repeat(64);
+  assert.equal(validateMechanicalDesignAdapterApproval(transplanted, options), false);
+});
+
+test('published adapter approval schema preserves exact authority and claim boundaries', () => {
+  const schema = JSON.parse(fs.readFileSync(new URL('../workspaces/platform/contracts/mechanical-design-adapter-approval.schema.json', import.meta.url), 'utf8'));
+  assert.equal(schema.additionalProperties, false);
+  assert.deepEqual(schema.properties.approval.properties.role, { const: 'mechanical-adapter-release-approver' });
+  assert.deepEqual(schema.properties.approval.properties.algorithm, { const: 'Ed25519' });
+  assert.deepEqual(schema.properties.claimBoundary.properties.importsOnlyApprovedBytes, { const: true });
+  assert.deepEqual(schema.properties.claimBoundary.properties.grantsCommercialRelease, { const: false });
+});
+
+test('CLI rejects an invalid adapter approval before module import or state creation', () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'nexyfab-direct-design-cli-'));
+  try {
+    const book = workbook();
+    const workbookPath = path.join(root, 'workbook.json'); fs.writeFileSync(workbookPath, JSON.stringify(book));
+    const adapterPath = path.join(root, 'adapter.mjs');
+    fs.writeFileSync(adapterPath, 'import fs from "node:fs"; fs.writeFileSync(new URL("./adapter-loaded", import.meta.url), "loaded"); export async function executeMechanicalDesignCase() {}\n');
+    const adapterSha256 = hash(fs.readFileSync(adapterPath));
+    const attacker = generateKeyPairSync('ed25519');
+    const approvalPath = writeAdapterApproval(root, book, adapterSha256, { privateKey: attacker.privateKey });
+    const statePath = path.join(root, 'campaign-state.json');
+    const runnerPath = fileURLToPath(new URL('./run-mechanical-direct-design-campaign.mjs', import.meta.url));
+    const result = spawnSync(process.execPath, [
+      runnerPath,
+      `--workbook=${workbookPath}`,
+      `--state=${statePath}`,
+      `--adapter=${adapterPath}`,
+      `--adapter-sha256=${adapterSha256}`,
+      `--adapter-approval=${approvalPath}`,
+    ], {
+      encoding: 'utf8',
+      env: {
+        ...process.env,
+        NEXYFAB_MECHANICAL_ADAPTER_APPROVER_KEYS: JSON.stringify(trustedAdapterApprovers),
+      },
+    });
+    assert.equal(result.status, 2, result.stderr);
+    assert.match(result.stderr, /ADAPTER_APPROVAL_INVALID/);
+    assert.equal(fs.existsSync(path.join(root, 'adapter-loaded')), false);
+    assert.equal(fs.existsSync(statePath), false);
+  } finally { fs.rmSync(root, { recursive: true, force: true }); }
+});
+
+test('preflight rejects a stale workbook that omits the signed verification receipt path', () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'nexyfab-direct-design-stale-'));
+  try {
+    const stale = workbook(); delete stale.cases[0].artifactPaths.verificationReceipt;
+    const result = inspectMechanicalDirectDesignCampaignPrerequisites({
+      workbook: stale, evidenceRoot: root, trustedDesignVerifiers,
+    });
+    assert.equal(result.workbook.valid, false);
+    assert.match(result.workbook.error, /CASE_INVALID/);
+    assert.equal(result.artifacts.expected, 0);
+    assert.ok(result.blockers.includes('direct_design_workbook_invalid'));
+    assert.ok(result.blockers.includes('trusted_runtime_adapter_not_supplied'));
+    assert.ok(result.blockers.includes('trusted_runtime_adapter_sha256_not_supplied_or_invalid'));
+    assert.ok(result.blockers.includes('trusted_runtime_adapter_release_approver_missing'));
+    assert.ok(result.blockers.includes('trusted_runtime_adapter_approval_not_supplied'));
+    assert.equal(result.readyToExecute, false);
+  } finally { fs.rmSync(root, { recursive: true, force: true }); }
 });

@@ -1360,6 +1360,29 @@ export function DrawingPageContent({
   const dict = pickDict(lang);
   const router = useRouter();
   const langSeg = lang === 'ko' ? 'kr' : lang;
+  const handoffCopy = {
+    loading: loc(lang, { ko: '리비전에 연결된 어셈블리 핸드오프를 불러오는 중…', en: 'Loading revision-bound assembly handoff…', ja: 'リビジョンに紐づくアセンブリ引き継ぎを読み込み中…', zh: '正在加载与修订版绑定的装配体交接数据…', es: 'Cargando la entrega del ensamblaje vinculada a la revisión…', ar: 'جارٍ تحميل تسليم التجميع المرتبط بالمراجعة…' }),
+    error: (detail: string) => loc(lang, { ko: `어셈블리 핸드오프 차단: ${detail}. 요청한 리비전을 샘플 데이터로 대체하지 않았습니다.`, en: `Assembly handoff BLOCKED: ${detail}. No sample data was substituted for the requested revision.`, ja: `アセンブリ引き継ぎがブロックされました: ${detail}。要求されたリビジョンをサンプルデータで置き換えていません。`, zh: `装配体交接已阻止：${detail}。未使用示例数据替换所请求的修订版。`, es: `Entrega del ensamblaje BLOQUEADA: ${detail}. No se sustituyó la revisión solicitada por datos de ejemplo.`, ar: `تم حظر تسليم التجميع: ${detail}. لم يتم استبدال المراجعة المطلوبة ببيانات نموذجية.` }),
+    statusAria: loc(lang, { ko: '어셈블리 도면 핸드오프 상태', en: 'Assembly drawing handoff status', ja: 'アセンブリ図面の引き継ぎ状態', zh: '装配图交接状态', es: 'Estado de entrega del plano de ensamblaje', ar: 'حالة تسليم رسم التجميع' }),
+    heading: loc(lang, { ko: '리비전에 연결된 어셈블리 핸드오프', en: 'Revision-bound assembly handoff', ja: 'リビジョンに紐づくアセンブリ引き継ぎ', zh: '与修订版绑定的装配体交接', es: 'Entrega del ensamblaje vinculada a la revisión', ar: 'تسليم التجميع المرتبط بالمراجعة' }),
+    serverPersistence: loc(lang, { ko: '서버 영속성', en: 'Server persistence', ja: 'サーバー永続化', zh: '服务器持久化', es: 'Persistencia del servidor', ar: 'استمرارية الخادم' }),
+    sessionOnly: loc(lang, { ko: '세션 전용', en: 'session-only', ja: 'セッション限定', zh: '仅限会话', es: 'solo sesión', ar: 'للجلسة فقط' }),
+    immutable: loc(lang, { ko: '변경 불가', en: 'immutable', ja: '不変', zh: '不可变', es: 'inmutable', ar: 'غير قابل للتغيير' }),
+    solver: loc(lang, { ko: '솔버', en: 'Solver', ja: 'ソルバー', zh: '求解器', es: 'Solucionador', ar: 'المحلّل' }),
+    drawing: loc(lang, { ko: '도면', en: 'Drawing', ja: '図面', zh: '图纸', es: 'Plano', ar: 'الرسم' }),
+    exactThreeView: loc(lang, { ko: '정확한 3면 HLR', en: 'exact 3-view HLR', ja: '正確な 3 面 HLR', zh: '精确三视图 HLR', es: 'HLR exacto de 3 vistas', ar: 'HLR دقيق لثلاثة مساقط' }),
+    revisionBound: loc(lang, { ko: '리비전 연결됨', en: 'revision-bound', ja: 'リビジョン紐付け済み', zh: '已绑定修订版', es: 'vinculada a la revisión', ar: 'مرتبط بالمراجعة' }),
+    geometryBlocked: (ids: string) => loc(lang, { ko: `다중 피처 또는 미지원 부품의 도면 형상이 차단되었습니다: ${ids}. 정확히 재생성된 산출물이 필요하며 프록시 박스는 사용하지 않습니다.`, en: `Drawing geometry BLOCKED for multi-feature or unsupported parts: ${ids}. Exact regenerated artifacts are required; proxy boxes are not used.`, ja: `複数フィーチャーまたは未対応部品の図面形状がブロックされました: ${ids}。正確に再生成された成果物が必要で、代理ボックスは使用しません。`, zh: `多特征或不受支持零件的图纸几何已阻止：${ids}。需要精确重新生成的产物，不使用代理框。`, es: `Geometría de plano BLOQUEADA para piezas con varias operaciones o no compatibles: ${ids}. Se requieren artefactos regenerados exactos; no se usan cajas sustitutas.`, ar: `تم حظر هندسة الرسم للأجزاء متعددة الميزات أو غير المدعومة: ${ids}. يلزم وجود مخرجات دقيقة معاد إنشاؤها، ولا تُستخدم صناديق بديلة.` }),
+    manufacturingPackage: loc(lang, { ko: '제조 패키지', en: 'Manufacturing package', ja: '製造パッケージ', zh: '制造包', es: 'Paquete de fabricación', ar: 'حزمة التصنيع' }),
+    exportUnavailable: loc(lang, { ko: '이 리비전에서는 제조 내보내기를 사용할 수 없어 패키지를 생성하지 않았습니다.', en: 'Manufacturing export is unavailable for this revision; no package was produced.', ja: 'このリビジョンでは製造エクスポートを利用できないため、パッケージは生成されませんでした。', zh: '此修订版无法执行制造导出，因此未生成任何包。', es: 'La exportación de fabricación no está disponible para esta revisión; no se produjo ningún paquete.', ar: 'تصدير التصنيع غير متاح لهذه المراجعة؛ لم يتم إنشاء أي حزمة.' }),
+    exactArtifactsAria: loc(lang, { ko: '정확한 단일 부품 산출물', en: 'Exact single-part artifacts', ja: '正確な単一部品成果物', zh: '精确单零件产物', es: 'Artefactos exactos de una sola pieza', ar: 'مخرجات دقيقة لجزء واحد' }),
+    exactCandidate: loc(lang, { ko: '정확한 단일 부품 도면 후보', en: 'Exact single-part drawing candidate', ja: '正確な単一部品図面候補', zh: '精确单零件图纸候选', es: 'Candidato exacto de plano de una sola pieza', ar: 'مرشح رسم دقيق لجزء واحد' }),
+    exactViewsAlt: loc(lang, { ko: '리비전에 연결된 정면·상면·우측면 은선 제거 뷰', en: 'Revision-bound front, top and right hidden-line views', ja: 'リビジョンに紐づく正面・上面・右側面の隠線処理ビュー', zh: '与修订版绑定的前视、顶视和右视消隐图', es: 'Vistas frontal, superior y derecha con líneas ocultas vinculadas a la revisión', ar: 'مساقط أمامية وعلوية ويمنى بخطوط مخفية مرتبطة بالمراجعة' }),
+    overallBbox: loc(lang, { ko: '전체 경계 상자(mm)', en: 'Overall bbox (mm)', ja: '全体境界ボックス（mm）', zh: '整体边界框（毫米）', es: 'Caja delimitadora total (mm)', ar: 'صندوق الإحاطة الكلي (مم)' }),
+    overallOnly: loc(lang, { ko: '범위: 전체 경계 상자만', en: 'scope OVERALL_BBOX_ONLY', ja: '範囲: 全体境界ボックスのみ', zh: '范围：仅整体边界框', es: 'alcance: solo caja delimitadora total', ar: 'النطاق: صندوق الإحاطة الكلي فقط' }),
+    quantityOne: loc(lang, { ko: '수량 1', en: 'qty 1', ja: '数量 1', zh: '数量 1', es: 'cant. 1', ar: 'الكمية 1' }),
+    receipt: loc(lang, { ko: '영수증', en: 'receipt', ja: 'レシート', zh: '回执', es: 'recibo', ar: 'الإيصال' }),
+  };
   const [assemblyHandoff, setAssemblyHandoff] = useState<AssemblyDrawingHandoff | null>(null);
   const [assemblyHandoffError, setAssemblyHandoffError] = useState<string | null>(null);
   const [assemblyHandoffLoading, setAssemblyHandoffLoading] = useState(Boolean(handoffId));
@@ -2909,60 +2932,60 @@ export function DrawingPageContent({
 
         {assemblyHandoffLoading ? (
           <div data-testid="drawing-handoff-loading" role="status" style={{ padding: 10, border: '1px solid #93c5fd', borderRadius: 6, background: '#eff6ff', color: '#1e3a8a', fontSize: 12 }}>
-            Loading revision-bound assembly handoff…
+            {handoffCopy.loading}
           </div>
         ) : null}
         {assemblyHandoffError ? (
           <div data-testid="drawing-handoff-error" role="alert" style={{ padding: 10, border: '1px solid #ef4444', borderRadius: 6, background: '#fef2f2', color: '#991b1b', fontSize: 12 }}>
-            Assembly handoff BLOCKED: {assemblyHandoffError}. No sample data was substituted for the requested revision.
+            {handoffCopy.error(assemblyHandoffError)}
           </div>
         ) : null}
         {assemblyHandoff ? (
-          <section data-testid="drawing-handoff-status" aria-label="Assembly drawing handoff status" style={{ display: 'grid', gap: 8, padding: 12, border: '1px solid #cbd5e1', borderRadius: 6, background: '#fff', fontSize: 12 }}>
+          <section data-testid="drawing-handoff-status" aria-label={handoffCopy.statusAria} style={{ display: 'grid', gap: 8, padding: 12, border: '1px solid #cbd5e1', borderRadius: 6, background: '#fff', fontSize: 12 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
-              <strong>Revision-bound assembly handoff</strong>
+              <strong>{handoffCopy.heading}</strong>
               <code>{assemblyHandoff.source.revisionId}</code>
             </div>
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
               <span data-testid="drawing-handoff-persistence-status">
-                Server persistence {handoffPersistence}{handoffPersistence === 'NOT_RUN' ? ' · session-only' : ' · immutable'}
+                {handoffCopy.serverPersistence} {handoffPersistence} · {handoffPersistence === 'NOT_RUN' ? handoffCopy.sessionOnly : handoffCopy.immutable}
               </span>
-              <span data-testid="drawing-handoff-solver-status">Solver {assemblyHandoff.verification.solver.status}</span>
+              <span data-testid="drawing-handoff-solver-status">{handoffCopy.solver} {assemblyHandoff.verification.solver.status}</span>
               <span>FeatureTree {assemblyHandoff.artifacts.editableFeatureTrees.status}</span>
               <span>Exact STEP {assemblyHandoff.artifacts.exactBrepStep.status}</span>
-              <span data-testid="drawing-handoff-exact-drawing-status">Drawing {handoffDrawingCandidateReady ? 'PASS · exact 3-view HLR' : 'NOT_RUN'}</span>
-              <span data-testid="drawing-handoff-exact-bom-status">BOM {handoffBomCandidateReady ? 'PASS · revision-bound' : 'NOT_RUN'}</span>
+              <span data-testid="drawing-handoff-exact-drawing-status">{handoffCopy.drawing} {handoffDrawingCandidateReady ? `PASS · ${handoffCopy.exactThreeView}` : 'NOT_RUN'}</span>
+              <span data-testid="drawing-handoff-exact-bom-status">BOM {handoffBomCandidateReady ? `PASS · ${handoffCopy.revisionBound}` : 'NOT_RUN'}</span>
               <span>GD&amp;T / PMI {assemblyHandoff.artifacts.gdtPmi.status}</span>
             </div>
             {assemblyGeometry.unresolvedPartIds.length > 0 && !handoffDrawingCandidateReady ? (
               <div data-testid="drawing-handoff-geometry-blockers" role="alert" style={{ color: '#991b1b' }}>
-                Drawing geometry BLOCKED for multi-feature or unsupported parts: {assemblyGeometry.unresolvedPartIds.join(', ')}. Exact regenerated artifacts are required; proxy boxes are not used.
+                {handoffCopy.geometryBlocked(assemblyGeometry.unresolvedPartIds.join(', '))}
               </div>
             ) : null}
             <div data-testid="drawing-manufacturing-readiness" role="status" style={{ color: '#92400e' }}>
-              Manufacturing package {manufacturingReadiness?.status}: {manufacturingReadiness?.blockers.join(', ')}
+              {handoffCopy.manufacturingPackage} {manufacturingReadiness?.status}: {manufacturingReadiness?.blockers.join(', ')}
             </div>
             <div
               data-testid="drawing-manufacturing-package-blocked"
               aria-disabled="true"
               style={{ justifySelf: 'start', padding: '7px 10px', border: '1px solid #d97706', borderRadius: 4, color: '#92400e', background: '#fffbeb' }}
             >
-              Manufacturing export is unavailable for this revision; no package was produced.
+              {handoffCopy.exportUnavailable}
             </div>
             {assemblyHandoff.exactSinglePart ? (
-              <section data-testid="drawing-handoff-exact-artifacts" aria-label="Exact single-part artifacts" style={{ display: 'grid', gap: 8, padding: 10, border: '1px solid #86efac', borderRadius: 6, background: '#f0fdf4' }}>
-                <strong>Exact single-part drawing candidate</strong>
+              <section data-testid="drawing-handoff-exact-artifacts" aria-label={handoffCopy.exactArtifactsAria} style={{ display: 'grid', gap: 8, padding: 10, border: '1px solid #86efac', borderRadius: 6, background: '#f0fdf4' }}>
+                <strong>{handoffCopy.exactCandidate}</strong>
                 <img
                   data-testid="drawing-handoff-exact-hlr-svg"
                   src={`data:image/svg+xml;charset=utf-8,${encodeURIComponent(assemblyHandoff.exactSinglePart.drawing.svg)}`}
-                  alt="Revision-bound front, top and right hidden-line views"
+                  alt={handoffCopy.exactViewsAlt}
                   style={{ width: '100%', maxHeight: 350, objectFit: 'contain', background: '#fff' }}
                 />
                 <div data-testid="drawing-handoff-overall-dimensions">
-                  Overall bbox (mm): X {assemblyHandoff.exactSinglePart.dimensions.overall.x.toFixed(3)} × Y {assemblyHandoff.exactSinglePart.dimensions.overall.y.toFixed(3)} × Z {assemblyHandoff.exactSinglePart.dimensions.overall.z.toFixed(3)} · scope OVERALL_BBOX_ONLY
+                  {handoffCopy.overallBbox}: X {assemblyHandoff.exactSinglePart.dimensions.overall.x.toFixed(3)} × Y {assemblyHandoff.exactSinglePart.dimensions.overall.y.toFixed(3)} × Z {assemblyHandoff.exactSinglePart.dimensions.overall.z.toFixed(3)} · {handoffCopy.overallOnly}
                 </div>
                 <div data-testid="drawing-handoff-one-part-bom">
-                  BOM: {assemblyHandoff.exactSinglePart.part.id} · qty 1 · receipt {assemblyHandoff.exactSinglePart.bom.sha256.slice(0, 12)}
+                  BOM: {assemblyHandoff.exactSinglePart.part.id} · {handoffCopy.quantityOne} · {handoffCopy.receipt} {assemblyHandoff.exactSinglePart.bom.sha256.slice(0, 12)}
                 </div>
               </section>
             ) : null}

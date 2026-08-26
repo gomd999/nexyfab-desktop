@@ -64,6 +64,7 @@ import { useFeatureTreeHistory } from '@/lib/cad/featureTreeHistory';
 import { useCrdtDoc } from '@/lib/collab/useCrdtDoc';
 import { CursorOverlay, colorForUserId } from '@/app/[lang]/shape-generator/_shared/CursorOverlay';
 import { CollabStatusBadge } from '@/app/[lang]/shape-generator/_shared/CollabStatusBadge';
+import { loc } from '@/lib/i18n/loc';
 
 // StlViewer pulls in Three.js + STLLoader; dynamic-loaded to keep the
 // Sketch editor bundle small for users who never click Extrude.
@@ -2171,8 +2172,8 @@ export default function SolverSketchEditorWithExtrude(
             onClick={toggleWrapperAi}
             data-testid="solver-wrapper-ai-constraints-toggle"
             aria-pressed={wrapperAiOn}
-            aria-label="Toggle sketch AI constraints panel default"
-            title="Toggle sketch AI constraints panel default"
+            aria-label={loc(editorProps.lang, { ko: '스케치 AI 구속조건 패널 기본 표시 전환', en: 'Toggle sketch AI constraints panel default', ja: 'スケッチ AI 拘束パネルの既定表示を切り替え', zh: '切换草图 AI 约束面板默认显示', es: 'Alternar la vista predeterminada del panel de restricciones de IA', ar: 'تبديل العرض الافتراضي للوحة قيود الرسم بالذكاء الاصطناعي' })}
+            title={loc(editorProps.lang, { ko: '스케치 AI 구속조건 패널 기본 표시 전환', en: 'Toggle sketch AI constraints panel default', ja: 'スケッチ AI 拘束パネルの既定表示を切り替え', zh: '切换草图 AI 约束面板默认显示', es: 'Alternar la vista predeterminada del panel de restricciones de IA', ar: 'تبديل العرض الافتراضي للوحة قيود الرسم بالذكاء الاصطناعي' })}
             style={{
               padding: '4px 10px',
               fontSize: 11,

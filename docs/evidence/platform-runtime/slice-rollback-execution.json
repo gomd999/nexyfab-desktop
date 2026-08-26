@@ -1,9 +1,10 @@
 {
-  "schema": "nexyfab.slice-rollback-execution.v1",
+  "schema": "nexyfab.slice-rollback-execution.v2",
   "recordedAt": "2026-08-23T16:20:00.000Z",
   "environment": { "provider": "Railway", "name": "staging" },
   "mechanism": "RAILWAY_DASHBOARD_PREVIOUS_DEPLOYMENT",
   "stagingEvidenceSha256": "2f893e6616339c31b3dde895e1a0d70890ae3bb778ea929ed7494cdf6ffb31cb",
+  "stagingEvidenceCanonicalization": "utf8-crlf-to-lf",
   "execution": "NOT_RUN",
   "reason": "Native staging rollback drill has not been executed. Use the captured immutable targets, verify rollback health, then restore and verify the current deployment.",
   "targets": [

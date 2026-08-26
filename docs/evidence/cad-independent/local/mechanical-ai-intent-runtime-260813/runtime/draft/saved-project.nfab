@@ -1,8 +1,8 @@
 {
   "magic": "nfab",
   "version": 3,
-  "createdAt": 1787382785520,
-  "updatedAt": 1787382785520,
+  "createdAt": 1787646042688,
+  "updatedAt": 1787646042688,
   "name": "Mechanical runtime draft",
   "tree": {
     "nodes": [
@@ -71,6 +71,6 @@
     "exactKernel": "OCCT",
     "intentCaseId": "en_practical-08-draft",
     "intentInputSha256": "d72ec0b4bd4d8a4349bb7df9adea28687d0ee293f3cd5bb29c63d2f9338e873a",
-    "candidateBaseRevision": "7c3a02e2da7fbee88dac5533efea39eac2ec0114cde1b70936d41992d83dbbe1"
+    "candidateBaseRevision": "a0a108d123eb01b22a05bbf4355f6811b124b7f3f12053c4dc371dc83ef3b3d3"
   }
 }

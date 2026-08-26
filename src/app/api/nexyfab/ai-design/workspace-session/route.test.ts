@@ -9,6 +9,7 @@ const mocks = vi.hoisted(() => ({
   create: vi.fn(async (_owner: string, state: unknown) => state),
   load: vi.fn(async () => ({ projectId: 'project-1', session: { sessionId: 'session-1' } })),
   make: vi.fn(() => ({ ok: true, state: { projectId: 'project-1', session: { sessionId: 'session-1' } } })),
+  sourceBinding: vi.fn(async () => true),
 }));
 
 vi.mock('@/lib/auth-middleware', () => ({ getAuthUser: vi.fn(async () => mocks.auth) }));
@@ -21,6 +22,7 @@ vi.mock('@/lib/ai/aiDesignWorkspaceRuntimeStore', () => ({
   loadServerAiDesignWorkspaceRuntime: mocks.load,
 }));
 vi.mock('@/lib/ai/aiDesignWorkspaceRuntime', () => ({ createAiDesignWorkspaceRuntime: mocks.make }));
+vi.mock('@/lib/ai/aiDesignSourceArtifactStore', () => ({ verifyAiDesignSourceBinding: mocks.sourceBinding }));
 
 import { GET, POST } from './route';
 
@@ -35,6 +37,8 @@ beforeEach(() => {
   mocks.create.mockClear();
   mocks.load.mockClear();
   mocks.make.mockClear();
+  mocks.sourceBinding.mockClear();
+  mocks.sourceBinding.mockResolvedValue(true);
 });
 
 describe('AI Design workspace session route', () => {
@@ -69,5 +73,15 @@ describe('AI Design workspace session route', () => {
     expect((await POST(post(request))).status).toBe(201);
     expect(mocks.make).toHaveBeenCalledWith(expect.objectContaining({ projectId: 'project-1', sessionId: 'session-1', revisionToken: 'rev-0', inputs: request.inputs }));
     expect(mocks.create).toHaveBeenCalledWith('user-1:project-1', { projectId: 'project-1', session: { sessionId: 'session-1' } });
+  });
+
+  it('requires a matching private server artifact for raster inputs', async () => {
+    const raster = { kind: 'drawing_2d', sourceId: 'ai-source:1', sourceHash: 'a'.repeat(64), mimeType: 'image/png', sizeBytes: 100 };
+    mocks.sourceBinding.mockResolvedValueOnce(false);
+    expect((await POST(post({ operation: 'create', projectId: 'project-1', sessionId: 'session-1', revisionToken: 'rev-0', inputs: [raster] }))).status).toBe(400);
+    expect(mocks.create).not.toHaveBeenCalled();
+    mocks.sourceBinding.mockResolvedValueOnce(true);
+    expect((await POST(post({ operation: 'create', projectId: 'project-1', sessionId: 'session-1', revisionToken: 'rev-0', inputs: [raster] }))).status).toBe(201);
+    expect(mocks.sourceBinding).toHaveBeenLastCalledWith(expect.anything(), expect.objectContaining({ artifactId: 'ai-source:1', sessionId: 'session-1' }));
   });
 });

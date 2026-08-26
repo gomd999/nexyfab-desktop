@@ -3,9 +3,9 @@
   "feature": "chamfer",
   "axis": "export",
   "status": "PASS",
-  "executedAt": "2026-08-23T06:51:51.379Z",
+  "executedAt": "2026-08-25T08:21:07.337Z",
   "stepBytes": 63074,
-  "stepSha256": "23a63d4c2f0050c7555957d32eacc0c57b657991d642a40363425215082887b4",
+  "stepSha256": "8b08e2fef28ab96dd1159c9581d63bd497a54c16d52bff0b44bc771299445f3c",
   "before": {
     "handle": "occt:33",
     "kernelKind": "Solid",

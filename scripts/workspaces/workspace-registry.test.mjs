@@ -5,6 +5,7 @@ import { globToRegExp, matchesPattern, resolveOwnership, validateRegistry } from
 const registry = {
   schema: 'nexyfab.workspace-registry.v1',
   integrationBranch: 'integration/nexyfab',
+  releaseBranch: 'release/web-public',
   defaultOwner: 'platform',
   sharedPaths: ['packages/**', 'workspaces/registry.json'],
   scopes: [
@@ -44,6 +45,15 @@ test('registry validation rejects duplicate scope ids', () => {
   const invalid = structuredClone(registry);
   invalid.scopes[2].id = 'precision-cad';
   assert.throws(() => validateRegistry(invalid), /scope_id_duplicate/);
+});
+
+test('registry validation requires distinct integration and release branches', () => {
+  const missing = structuredClone(registry);
+  delete missing.releaseBranch;
+  assert.throws(() => validateRegistry(missing), /workspace_registry_branch_invalid/);
+  const collided = structuredClone(registry);
+  collided.releaseBranch = collided.integrationBranch;
+  assert.throws(() => validateRegistry(collided), /workspace_registry_branch_collision/);
 });
 
 test('registry validation separates ordinary checks from optional release gates', () => {

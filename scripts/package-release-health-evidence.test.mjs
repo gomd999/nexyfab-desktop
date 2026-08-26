@@ -4,7 +4,11 @@ import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
 import { createHash } from 'node:crypto';
-import { packageReleaseHealthEvidence, RELEASE_HEALTH_EVIDENCE } from './package-release-health-evidence.mjs';
+import {
+  packageReleaseHealthEvidence,
+  RELEASE_HEALTH_EVIDENCE,
+  validateReleaseHealthEvidenceSource,
+} from './package-release-health-evidence.mjs';
 
 function fixtureRoot() {
   const root = mkdtempSync(path.join(os.tmpdir(), 'nexyfab-release-health-package-'));
@@ -28,6 +32,10 @@ test('copies exactly the allowlisted receipts and verifies byte identity', () =>
       assert.deepEqual(destination, source);
     }
     assert.equal(readFileSync(path.join(root, '.next', 'standalone', 'docs', 'evidence', 'release', 'commercial-i18n-release-receipt.json'), 'utf8').includes('safe'), true);
+    assert.equal(
+      readFileSync(path.join(root, '.next', 'standalone', 'docs', 'evidence', 'release', 'commercial-precision-runtime-evidence.json'), 'utf8').includes('safe'),
+      true,
+    );
   } finally {
     rmSync(root, { recursive: true, force: true });
   }
@@ -64,6 +72,9 @@ test('copies the exact source bytes required by a qualified seven-day receipt', 
       evidenceBindings: { release, policy, samples: [sample], costSnapshots: [cost] },
     }));
 
+    const validation = validateReleaseHealthEvidenceSource({ projectRoot: root });
+    assert.equal(validation.files.length, RELEASE_HEALTH_EVIDENCE.length + 4);
+    assert.deepEqual(validation.files.slice(-4).map(item => item.relativePath), [release.file, policy.file, sample.file, cost.file]);
     const result = packageReleaseHealthEvidence({ projectRoot: root, standaloneRoot: path.join(root, '.next', 'standalone') });
     assert.equal(result.copied.length, RELEASE_HEALTH_EVIDENCE.length + 4);
     for (const binding of [release, policy, sample, cost]) {
@@ -108,7 +119,7 @@ test('rejects symlinked source receipts and never copies outside the standalone 
     // regular-file guard remains covered by the missing-file assertion above.
     try {
       symlinkSync(target, source, 'file');
-      assert.throws(() => packageReleaseHealthEvidence({ projectRoot: root, standaloneRoot: path.join(root, '.next', 'standalone') }), /regular file/);
+      assert.throws(() => packageReleaseHealthEvidence({ projectRoot: root, standaloneRoot: path.join(root, '.next', 'standalone') }), /through symlink/);
     } catch (error) {
       if (error?.code !== 'EPERM') throw error;
     }

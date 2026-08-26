@@ -34,12 +34,19 @@ out
 # Runtime web image does not execute the reference corpus, crawler index, or
 # development evidence. Excluding these keeps Railway's Docker context small
 # while preserving the build/runtime scripts and the separate local MCP tools.
-docs
-# `/api/health/release` packages only these two receipts and the exact JSON
+docs/**
+# `/api/health/release` packages only these fixed receipts and the exact JSON
 # source bytes referenced by a qualified seven-day receipt. Railway supports
 # negation after an include rule; do not broaden these exceptions to `!docs`.
+!docs/evidence/
+docs/evidence/**
+!docs/evidence/release/
+docs/evidence/release/**
 !docs/evidence/release/commercial-i18n-release-receipt.json
 !docs/evidence/release/seven-day-operations-receipt.json
+!docs/evidence/release/commercial-precision-runtime-evidence.json
+!docs/evidence/operations/
+docs/evidence/operations/**
 !docs/evidence/operations/**/*.json
 scripts/knowledge-crawler
 services/openscad-worker

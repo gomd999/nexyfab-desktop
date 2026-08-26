@@ -3,8 +3,10 @@ import React, { useState, useCallback, useEffect } from 'react';
 import type { FeatureInstance } from './features/types';
 import { getFeatureDefinition } from './features';
 import { useTheme } from './ThemeContext';
+import { loc } from '@/lib/i18n/loc';
 
 interface TimelineBarProps {
+  lang?: string;
   features: FeatureInstance[];
   selectedId: string | null;
   onSelect: (id: string | null) => void;
@@ -27,6 +29,7 @@ interface TimelineBarProps {
 }
 
 export default function TimelineBar({
+  lang = 'en',
   features,
   selectedId,
   onSelect,
@@ -281,8 +284,8 @@ export default function TimelineBar({
           {analysisProgress.onCancel && (
             <button
               onClick={(e) => { e.stopPropagation(); analysisProgress.onCancel?.(); }}
-              title="Cancel"
-              aria-label="Cancel analysis"
+              title={loc(lang, { ko: '취소', en: 'Cancel', ja: 'キャンセル', zh: '取消', es: 'Cancelar', ar: 'إلغاء' })}
+              aria-label={loc(lang, { ko: '분석 취소', en: 'Cancel analysis', ja: '解析をキャンセル', zh: '取消分析', es: 'Cancelar análisis', ar: 'إلغاء التحليل' })}
               style={{
                 marginLeft: 4,
                 width: 18, height: 18, padding: 0,

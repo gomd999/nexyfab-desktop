@@ -12,6 +12,7 @@ import { pathToFileURL } from 'node:url';
 import { rateLimit } from '@/lib/rate-limit';
 import { getTrustedClientIp } from '@/lib/client-ip';
 import { boundedJsonError, readBoundedJson } from '@/lib/boundedJsonBody';
+import { buildRenderHtmlArtifactReceipt, type RenderSpec } from './artifactReceipt';
 
 const MAX_BODY_BYTES = 32 * 1024 * 1024;
 
@@ -40,13 +41,14 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     if (boundedJsonError(error)?.code === 'PAYLOAD_TOO_LARGE') return NextResponse.json({ ok: false, error: '렌더 입력이 너무 큽니다.' }, { status: 413 });
     return NextResponse.json({ ok: false, error: 'invalid json' }, { status: 400 });
   }
-  const spec = body.assembly ? { assembly: body.assembly } : body.intent ? { intent: body.intent } : null;
+  const spec: RenderSpec | null = body.assembly ? { assembly: body.assembly } : body.intent ? { intent: body.intent } : null;
   if (!spec) return NextResponse.json({ ok: false, error: 'intent 또는 assembly가 필요합니다.' }, { status: 400 });
 
   try {
     const mod = await loadHtml();
     const html = await mod.renderHtml(spec, { title: body.title ?? 'NexyFab 3D', subtitle: body.subtitle ?? '' });
-    return NextResponse.json({ ok: true, html, bytes: html.length });
+    const receipt = buildRenderHtmlArtifactReceipt(spec, html);
+    return NextResponse.json({ ok: true, html, bytes: Buffer.byteLength(html, 'utf8'), ...receipt });
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
     return NextResponse.json({ ok: false, error: 'HTML render failed: ' + msg.slice(0, 200) }, { status: 502 });

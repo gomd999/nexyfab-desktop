@@ -10,6 +10,9 @@ const baseURL = process.env.E2E_BASE_URL ?? defaultOrigin;
 
 export default defineConfig({
   testDir: './e2e',
+  // Keep Vitest unit tests colocated with their E2E helpers without letting
+  // Playwright load them through its CommonJS transform.
+  testMatch: '**/*.spec.ts',
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,

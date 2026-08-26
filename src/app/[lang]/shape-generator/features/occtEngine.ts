@@ -29,6 +29,13 @@ import { buildExtrudeTopo, namesOf, edgeMidpoint } from '@/lib/cad/topoNaming';
 import { composeBooleanTopo, isLegacySeamName } from '@/lib/cad/composedTopo';
 import { projectReplicadShapeExact } from '@/lib/drawing/replicadExactProjection';
 import type { EdgeSig, FaceSig } from './edgeCorrespondence';
+import {
+  captureStepSemanticIdentity,
+  rebindStepSemanticIdentity,
+  stepContainsSemanticIdentity,
+  StepSemanticIdentityError,
+  type StepSemanticIdentity,
+} from '../io/stepSemanticIdentity';
 
 let ocInstance: unknown = null;
 let initPromise: Promise<void> | null = null;
@@ -128,6 +135,11 @@ export interface OcctBooleanResult {
 // each pipeline run to cap memory — handles never outlive a single pass.
 
 const shapeRegistry = new Map<string, unknown>();
+const STEP_SEMANTIC_UNSUPPORTED = Symbol('STEP_SEMANTIC_UNSUPPORTED');
+const stepSemanticIdentityRegistry = new Map<
+  string,
+  StepSemanticIdentity | typeof STEP_SEMANTIC_UNSUPPORTED
+>();
 let nextHandleSeq = 0;
 
 // ─── Global engine mode flag (phase 2d-3) ──────────────────────────────────
@@ -279,8 +291,20 @@ export function occtNearestTopoName(
 }
 
 export function resetShapeRegistry(): void {
+  const released = new Set<unknown>();
+  for (const shape of shapeRegistry.values()) {
+    if (released.has(shape)) continue;
+    released.add(shape);
+    try {
+      if (shape !== null && typeof shape === 'object' && 'delete' in shape
+        && typeof (shape as { delete?: unknown }).delete === 'function') {
+        (shape as { delete: () => void }).delete();
+      }
+    } catch { /* already consumed/deleted wrappers are safe to ignore */ }
+  }
   shapeRegistry.clear();
   edgeTopoNameRegistry.clear();
+  stepSemanticIdentityRegistry.clear();
 }
 
 export async function exportOcctStep(handle: string | undefined | null): Promise<string | null> {
@@ -294,7 +318,12 @@ export async function exportOcctStep(handle: string | undefined | null): Promise
     return null;
   }
   const blob = (shape as { blobSTEP: () => Blob }).blobSTEP();
-  return await blob.text();
+  const stepText = await blob.text();
+  const identity = handle ? stepSemanticIdentityRegistry.get(handle) : null;
+  if (identity === STEP_SEMANTIC_UNSUPPORTED) {
+    throw new StepSemanticIdentityError('STEP_SEMANTIC_EXPORT_BLOCKED_UNSUPPORTED_SOURCE');
+  }
+  return identity ? rebindStepSemanticIdentity(stepText, identity) : stepText;
 }
 
 /**
@@ -1571,7 +1600,13 @@ export async function occtImportStepText(
   if (!mesh.vertices?.length || !mesh.triangles?.length) {
     return { geometry: new BufferGeometry(), handle: null };
   }
-  return { geometry: meshToBufferGeometry(mesh), handle: registerShape(shape) };
+  const handle = registerShape(shape);
+  const semanticIdentity = captureStepSemanticIdentity(stepText);
+  if (semanticIdentity) stepSemanticIdentityRegistry.set(handle, semanticIdentity);
+  else if (stepContainsSemanticIdentity(stepText)) {
+    stepSemanticIdentityRegistry.set(handle, STEP_SEMANTIC_UNSUPPORTED);
+  }
+  return { geometry: meshToBufferGeometry(mesh), handle };
 }
 
 /**
@@ -1791,6 +1826,7 @@ export function occtMirror(
 /** Face selector handed to replicad's `draft` — only the methods we call. */
 interface FaceFinderLike {
   atAngleWith: (direction: [number, number, number], angle?: number) => FaceFinderLike;
+  ofSurfaceType: (surfaceType: 'PLANE') => FaceFinderLike;
 }
 
 /** B-rep solid that supports replicad's native draft (OCCT BRepOffsetAPI_DraftAngle). */
@@ -1826,7 +1862,15 @@ export function occtDraft(
     return { geometry: new BufferGeometry(), handle: null };
   }
   const signed = direction === 0 ? angleDeg : -angleDeg;
-  const drafted = host.draft(signed, (f) => f.atAngleWith([0, 1, 0], 90), 'XZ');
+  // Cylindrical bore/flange faces can have a sampled normal perpendicular to
+  // the pull direction, but BRepOffsetAPI_DraftAngle cannot draft those faces
+  // together with the planar exterior walls. Restrict the global operation to
+  // planar side walls; holes and other analytic surfaces remain unchanged.
+  const drafted = host.draft(
+    signed,
+    (f) => f.ofSurfaceType('PLANE').atAngleWith([0, 1, 0], 90),
+    'XZ',
+  );
   return meshAndRegister(drafted, tessellation);
 }
 

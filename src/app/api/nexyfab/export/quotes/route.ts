@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getAuthUser } from '@/lib/auth-middleware';
 import { getDbAdapter } from '@/lib/db-adapter';
 import { rowsToCsv, sheetsToXlsxBuffer } from '@/lib/tabular-export';
+import { buildLocalizedTabularExport } from '../i18n';
 
 export const dynamic = 'force-dynamic';
 
@@ -11,6 +12,9 @@ export async function GET(req: NextRequest) {
 
   const format = req.nextUrl.searchParams.get('format') ?? 'xlsx';
   const db = getDbAdapter();
+  const user = await db.queryOne<{ language: string | null }>(
+    'SELECT language FROM nf_users WHERE id = ?', authUser.userId,
+  );
 
   const quotes = await db.queryAll<{
     id: string; project_name: string; factory_name: string; estimated_amount: number;
@@ -24,18 +28,7 @@ export async function GET(req: NextRequest) {
     authUser.userId,
   );
 
-  const rows = quotes.map(q => ({
-    'ID': q.id,
-    '프로젝트명': q.project_name,
-    '파트너명': q.factory_name,
-    '견적 금액 (KRW)': q.estimated_amount,
-    '상세 내용': q.details,
-    '유효 기간': q.valid_until ?? '',
-    '파트너 이메일': q.partner_email ?? '',
-    '상태': q.status,
-    '생성일': q.created_at,
-    '수정일': q.updated_at ?? '',
-  }));
+  const { rows, sheetName } = buildLocalizedTabularExport('quotes', quotes.map(quote => ({ ...quote })), user?.language);
 
   if (format === 'csv') {
     const csv = rowsToCsv(rows);
@@ -47,7 +40,7 @@ export async function GET(req: NextRequest) {
     });
   }
 
-  const buf = await sheetsToXlsxBuffer([{ name: '견적 목록', rows }]);
+  const buf = await sheetsToXlsxBuffer([{ name: sheetName, rows }]);
   return new NextResponse(buf, {
     headers: {
       'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',

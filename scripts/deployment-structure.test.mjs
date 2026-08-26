@@ -8,10 +8,12 @@ const railwayJson = JSON.parse(await readFile(new URL('../railway.json', import.
 const packageJson = JSON.parse(await readFile(new URL('../package.json', import.meta.url), 'utf8'));
 const standaloneSync = await readFile(new URL('./sync-standalone-static.mjs', import.meta.url), 'utf8');
 const preflightCheck = await readFile(new URL('./preflight-check.ts', import.meta.url), 'utf8');
+const readyRoute = await readFile(new URL('../src/app/api/health/ready/route.ts', import.meta.url), 'utf8');
 const verifiedDeploy = await readFile(new URL('./deploy-railway-verified.mjs', import.meta.url), 'utf8');
 const railwayToml = await readFile(new URL('../railway.toml', import.meta.url), 'utf8');
 const railwayIgnore = await readFile(new URL('../.railwayignore', import.meta.url), 'utf8');
 const releaseHealthPackaging = await readFile(new URL('./package-release-health-evidence.mjs', import.meta.url), 'utf8');
+const backupRestoreDrill = await readFile(new URL('./verify-backup-restore.mjs', import.meta.url), 'utf8');
 
 test('public web image has no native CAD executable installation', () => {
   assert.doesNotMatch(rootDockerfile, /apt-get install[\s\S]{0,240}\b(?:openscad|gmsh)\b/i);
@@ -63,12 +65,36 @@ test('production preflight enforces external CAD workers without requiring Docke
   assert.doesNotMatch(preflightCheck, /\{ key: 'TOSS_SECRET_KEY'/);
 });
 
+test('deploy preflight and live readiness share one commercial PostgreSQL contract', () => {
+  for (const source of [preflightCheck, readyRoute]) {
+    assert.match(source, /commercial-readiness/);
+    assert.match(source, /COMMERCIAL_POSTGRES_MIGRATIONS/);
+    assert.match(source, /COMMERCIAL_POSTGRES_TABLES/);
+    assert.match(source, /COMMERCIAL_POSTGRES_CONSTRAINTS/);
+    assert.match(source, /COMMERCIAL_POSTGRES_HARDENING_TRIGGERS/);
+  }
+});
+
+test('restore evidence derives its target from the versioned migration runner', () => {
+  assert.match(backupRestoreDrill, /const migrationTarget = migration\.version/);
+  assert.match(backupRestoreDrill, /receipt\.migration\.targetVersion = migrationTarget/);
+  assert.doesNotMatch(backupRestoreDrill, /migrationTarget:\s*2026082208/);
+});
+
 test('postbuild prunes mutable state and repairs the standalone runtime', () => {
   assert.match(packageJson.scripts.postbuild, /prune-standalone-artifacts\.mjs/);
   assert.match(packageJson.scripts.postbuild, /sync-standalone-static\.mjs/);
   assert.match(standaloneSync, /node_modules.*next.*dist.*lib/s);
+  assert.match(railwayIgnore, /^docs\/\*\*$/m);
+  assert.match(railwayIgnore, /^!docs\/evidence\/$/m);
+  assert.match(railwayIgnore, /^docs\/evidence\/\*\*$/m);
+  assert.match(railwayIgnore, /^!docs\/evidence\/release\/$/m);
+  assert.match(railwayIgnore, /^docs\/evidence\/release\/\*\*$/m);
   assert.match(railwayIgnore, /^!docs\/evidence\/release\/commercial-i18n-release-receipt\.json$/m);
   assert.match(railwayIgnore, /^!docs\/evidence\/release\/seven-day-operations-receipt\.json$/m);
+  assert.match(railwayIgnore, /^!docs\/evidence\/release\/commercial-precision-runtime-evidence\.json$/m);
+  assert.match(railwayIgnore, /^!docs\/evidence\/operations\/$/m);
+  assert.match(railwayIgnore, /^docs\/evidence\/operations\/\*\*$/m);
   assert.match(railwayIgnore, /^!docs\/evidence\/operations\/\*\*\/\*\.json$/m);
   assert.doesNotMatch(railwayIgnore, /^!docs\/?$/m);
   assert.match(releaseHealthPackaging, /OPERATIONS_EVIDENCE_PREFIX = 'docs\/evidence\/operations\/'/);

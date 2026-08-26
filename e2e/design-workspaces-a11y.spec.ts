@@ -33,8 +33,8 @@ function summary(violations: AxeViolation[]): string {
 }
 
 const cases = [
-  { name: 'guided design desktop', path: '/kr/nexyfab/design/', width: 1440, height: 900, scope: '[class*="DesignInner_root__"]' },
-  { name: 'guided design mobile', path: '/kr/nexyfab/design/', width: 393, height: 852, scope: '[class*="DesignInner_root__"]' },
+  { name: 'guided design desktop', path: '/kr/nexyfab/design/?domain=building', width: 1440, height: 900, scope: '[class*="DesignInner_root__"]' },
+  { name: 'guided design mobile', path: '/kr/nexyfab/design/?domain=building', width: 393, height: 852, scope: '[class*="DesignInner_root__"]' },
   { name: 'precision CAD desktop', path: '/kr/shape-generator/?expert=1', width: 1440, height: 900, scope: '.nx-app' },
   { name: 'precision CAD mobile', path: '/kr/shape-generator/?expert=1', width: 393, height: 852, scope: '.nx-app[data-viewport-only="true"]' },
 ] as const;

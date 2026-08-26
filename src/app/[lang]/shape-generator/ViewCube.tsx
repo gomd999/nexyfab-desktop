@@ -4,6 +4,7 @@ import React, { useRef, useCallback, useState, useEffect, useMemo } from 'react'
 
 import { useThree, useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
+import { loc } from '@/lib/i18n/loc';
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                             */
@@ -236,7 +237,7 @@ export default function ViewCube({ target = new THREE.Vector3() }: { target?: TH
 /*  ViewCubeOverlay — pure DOM component (place OUTSIDE <Canvas>)     */
 /* ------------------------------------------------------------------ */
 
-export function ViewCubeOverlay() {
+export function ViewCubeOverlay({ lang = 'en' }: { lang?: string }) {
   const cubeRef = useRef<HTMLDivElement>(null);
   const [hovered, setHovered] = useState<string | null>(null);
 
@@ -311,13 +312,13 @@ export function ViewCubeOverlay() {
 
   /* ---------- faces definition ---------- */
   const faces: { id: FaceId; label: string; transform: string }[] = useMemo(() => [
-    { id: 'front',  label: 'Front',  transform: `rotateY(0deg) translateZ(${HALF}px)` },
-    { id: 'back',   label: 'Back',   transform: `rotateY(180deg) translateZ(${HALF}px)` },
-    { id: 'left',   label: 'Left',   transform: `rotateY(-90deg) translateZ(${HALF}px)` },
-    { id: 'right',  label: 'Right',  transform: `rotateY(90deg) translateZ(${HALF}px)` },
-    { id: 'top',    label: 'Top',    transform: `rotateX(90deg) translateZ(${HALF}px)` },
-    { id: 'bottom', label: 'Bottom', transform: `rotateX(-90deg) translateZ(${HALF}px)` },
-  ], []);
+    { id: 'front', label: loc(lang, { ko: '정면', en: 'Front', ja: '正面', zh: '前视', es: 'Frente', ar: 'أمام' }), transform: `rotateY(0deg) translateZ(${HALF}px)` },
+    { id: 'back', label: loc(lang, { ko: '후면', en: 'Back', ja: '背面', zh: '后视', es: 'Atrás', ar: 'خلف' }), transform: `rotateY(180deg) translateZ(${HALF}px)` },
+    { id: 'left', label: loc(lang, { ko: '좌측', en: 'Left', ja: '左', zh: '左视', es: 'Izquierda', ar: 'يسار' }), transform: `rotateY(-90deg) translateZ(${HALF}px)` },
+    { id: 'right', label: loc(lang, { ko: '우측', en: 'Right', ja: '右', zh: '右视', es: 'Derecha', ar: 'يمين' }), transform: `rotateY(90deg) translateZ(${HALF}px)` },
+    { id: 'top', label: loc(lang, { ko: '상면', en: 'Top', ja: '上面', zh: '顶视', es: 'Arriba', ar: 'أعلى' }), transform: `rotateX(90deg) translateZ(${HALF}px)` },
+    { id: 'bottom', label: loc(lang, { ko: '하면', en: 'Bottom', ja: '下面', zh: '底视', es: 'Abajo', ar: 'أسفل' }), transform: `rotateX(-90deg) translateZ(${HALF}px)` },
+  ], [lang]);
 
   /* ---------- edges ---------- */
   const edges: { id: EdgeId; style: React.CSSProperties }[] = useMemo(() => [
@@ -376,7 +377,7 @@ export function ViewCubeOverlay() {
         {/* Home Button */}
         <button
           onClick={onHomeClick}
-          title="Home View"
+          title={loc(lang, { ko: '홈 뷰', en: 'Home View', ja: 'ホームビュー', zh: '主页视图', es: 'Vista inicial', ar: 'العرض الرئيسي' })}
           style={{
             position: 'absolute',
             top: -16,

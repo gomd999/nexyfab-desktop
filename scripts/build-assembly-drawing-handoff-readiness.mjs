@@ -5,6 +5,11 @@ import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { evaluateRuntimePlacementReadiness } from './platform/evaluate-runtime-placement-readiness.mjs';
+import {
+  TEXT_BINDING_CANONICALIZATION,
+  canonicalTextBinding,
+  canonicalTextSha256,
+} from './canonical-text-binding.mjs';
 
 export const OUTPUT_REL = 'docs/evidence/cad-independent/local/assembly-drawing-handoff-260813/receipt.json';
 export const OUTPUT_SHA_REL = 'docs/evidence/cad-independent/local/assembly-drawing-handoff-260813/receipt.sha256';
@@ -114,7 +119,7 @@ function boundFiles(root) {
   return SOURCE_BINDINGS.map(relative => {
     const absolute = path.resolve(root, ...relative.split('/'));
     if (!fs.existsSync(absolute)) throw new Error(`ASSEMBLY_HANDOFF_EVIDENCE_SOURCE_MISSING:${relative}`);
-    return { path: relative, sha256: sha256(fs.readFileSync(absolute)) };
+    return { path: relative, ...canonicalTextBinding(fs.readFileSync(absolute)) };
   });
 }
 
@@ -133,6 +138,7 @@ function evidenceRootTarget(receipt) {
     claims: receipt.claims,
     artifactStates: receipt.artifactStates,
     runtimePlacement: receipt.runtimePlacement,
+    textCanonicalization: receipt.textCanonicalization,
     sourceBindings: receipt.sourceBindings,
     proposedInternalVerifierBindings: receipt.proposedInternalVerifierBindings,
   };
@@ -185,6 +191,7 @@ export function buildAssemblyDrawingHandoffReadinessReceipt({
       liveEvidenceWritten: false,
       claims: placement.claims,
     },
+    textCanonicalization: TEXT_BINDING_CANONICALIZATION,
     sourceBindings,
     proposedInternalVerifierBindings: [...PROPOSED_INTERNAL_VERIFIER_BINDINGS],
   };
@@ -214,6 +221,9 @@ export function validateAssemblyDrawingHandoffReadinessReceipt(root, receipt) {
     || receipt.runtimePlacement.claims.some(claim => claim.state !== 'NOT_RUN')) {
     issues.push('runtime_placement_live_evidence_boundary_invalid');
   }
+  if (receipt?.textCanonicalization !== TEXT_BINDING_CANONICALIZATION) {
+    issues.push('text_canonicalization_mismatch');
+  }
   if (JSON.stringify(receipt?.proposedInternalVerifierBindings) !== JSON.stringify(PROPOSED_INTERNAL_VERIFIER_BINDINGS)) {
     issues.push('internal_verifier_binding_proposal_mismatch');
   }
@@ -233,8 +243,8 @@ export function writeReceipt(root, receipt) {
   fs.mkdirSync(path.dirname(output), { recursive: true });
   const bytes = `${JSON.stringify(receipt, null, 2)}\n`;
   fs.writeFileSync(output, bytes);
-  fs.writeFileSync(shaOutput, `${sha256(bytes)}  receipt.json\n`);
-  return { output: OUTPUT_REL, shaOutput: OUTPUT_SHA_REL, receiptSha256: sha256(bytes) };
+  fs.writeFileSync(shaOutput, `${canonicalTextSha256(bytes)}  receipt.json\n`);
+  return { output: OUTPUT_REL, shaOutput: OUTPUT_SHA_REL, receiptSha256: canonicalTextSha256(bytes) };
 }
 
 export function verifyWrittenReceipt(root) {
@@ -248,7 +258,7 @@ export function verifyWrittenReceipt(root) {
   catch { return { ok: false, issues: ['receipt_json_invalid'] }; }
   const validation = validateAssemblyDrawingHandoffReadinessReceipt(root, receipt);
   const issues = [...validation.issues];
-  if (!SHA256.test(expectedSha) || expectedSha !== sha256(bytes)) issues.push('receipt_file_hash_mismatch');
+  if (!SHA256.test(expectedSha) || expectedSha !== canonicalTextSha256(bytes)) issues.push('receipt_file_hash_mismatch');
   return { ok: issues.length === 0, issues: [...new Set(issues)], receipt };
 }
 

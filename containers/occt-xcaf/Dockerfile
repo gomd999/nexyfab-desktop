@@ -6,8 +6,8 @@ RUN apt-get update \
      libocct-data-exchange-dev libocct-ocaf-dev libocct-visualization-dev \
   && rm -rf /var/lib/apt/lists/*
 WORKDIR /src
-COPY CMakeLists.txt ./
-COPY native ./native
+COPY containers/occt-xcaf/CMakeLists.txt ./
+COPY containers/occt-xcaf/native ./native
 RUN cmake -S . -B build -DCMAKE_BUILD_TYPE=Release \
   && cmake --build build --parallel "$(nproc)" \
   && cmake --install build --prefix /opt/occt-xcaf

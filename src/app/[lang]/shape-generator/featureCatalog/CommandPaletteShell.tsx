@@ -23,8 +23,10 @@ import {
   type PaletteHit,
 } from './commandPalette';
 import type { FeatureLicense } from './registry';
+import { loc } from '@/lib/i18n/loc';
 
 export interface CommandPaletteShellProps {
+  lang?: string;
   /** True when the modal should be visible. */
   open: boolean;
   /** Close request from the modal (ESC / outside-click). */
@@ -40,6 +42,7 @@ export interface CommandPaletteShellProps {
 }
 
 export function CommandPaletteShell({
+  lang,
   open,
   onClose,
   onActivate,
@@ -47,6 +50,11 @@ export function CommandPaletteShell({
   frecency,
   maxResults = 10,
 }: CommandPaletteShellProps) {
+  const copy = {
+    dialog: loc(lang, { ko: '명령 팔레트', en: 'Command palette', ja: 'コマンドパレット', zh: '命令面板', es: 'Paleta de comandos', ar: 'لوحة الأوامر' }),
+    search: loc(lang, { ko: '기능 검색…  (⌘K)', en: 'Search features…  (⌘K)', ja: '機能を検索…  (⌘K)', zh: '搜索功能…  (⌘K)', es: 'Buscar funciones…  (⌘K)', ar: 'البحث في الميزات…  (⌘K)' }),
+    noMatches: loc(lang, { ko: '일치하는 기능이 없습니다', en: 'No matches', ja: '一致する機能はありません', zh: '没有匹配项', es: 'Sin coincidencias', ar: 'لا توجد نتائج مطابقة' }),
+  };
   const [query, setQuery] = useState('');
   const [navState, setNavState] = useState<PaletteNavState>(() => initPaletteNav([]));
   const inputRef = useRef<HTMLInputElement | null>(null);
@@ -107,7 +115,7 @@ export function CommandPaletteShell({
   return (
     <div
       role="dialog"
-      aria-label="Command palette"
+      aria-label={copy.dialog}
       style={{
         position: 'fixed', inset: 0, zIndex: 1000,
         background: 'rgba(0,0,0,0.4)',
@@ -130,7 +138,7 @@ export function CommandPaletteShell({
         <input
           ref={inputRef}
           type="text"
-          placeholder="Search features…  (⌘K)"
+          placeholder={copy.search}
           value={query}
           onChange={e => setQuery(e.target.value)}
           onKeyDown={handleKeyDown}
@@ -149,7 +157,7 @@ export function CommandPaletteShell({
           }}
         >
           {hits.length === 0 ? (
-            <li style={{ padding: 12, fontSize: 13, opacity: 0.6 }}>No matches</li>
+            <li style={{ padding: 12, fontSize: 13, opacity: 0.6 }}>{copy.noMatches}</li>
           ) : (
             hits.map((hit, i) => (
               <li

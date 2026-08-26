@@ -86,3 +86,19 @@ test('allow-ready mode permits clean ahead branches but still rejects drift', ()
   });
   assert.deepEqual(evaluation, { ok: true, issues: [] });
 });
+
+test('integration state requires the release mirror to match the integration head', () => {
+  const evaluation = evaluateIntegrationState({
+    expectedBranch: 'integration/nexyfab',
+    branch: 'integration/nexyfab',
+    scopes: [],
+    release: {
+      branch: 'release/web-public', worktree: 'release', dirtyFiles: 0,
+      commitsBehindIntegration: 2, commitsReadyToIntegrate: 1,
+    },
+  });
+  assert.deepEqual(evaluation.issues.map(issue => issue.code), [
+    'release_behind_integration',
+    'release_ahead_of_integration',
+  ]);
+});

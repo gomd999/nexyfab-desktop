@@ -12,6 +12,7 @@ import { dfmAnalysisAllowed } from './freemium/freeDfmAllowance';
 import { useAuthStore } from '@/hooks/useAuth';
 import { MATERIAL_PRESETS } from './materials';
 import type { CollabSession } from '@/hooks/useCollabPolling';
+import { loc } from '@/lib/i18n/loc';
 
 type TabMode = 'design' | 'optimize';
 
@@ -563,13 +564,13 @@ export default function ShapeGeneratorToolbar(props: ShapeGeneratorToolbarProps)
             background: canUndo ? theme.cardBg : 'transparent',
             color: canUndo ? theme.text : theme.textMuted,
             fontSize: 14, cursor: canUndo ? 'pointer' : 'default', transition: 'all 0.15s',
-          }} title="Undo (Ctrl+Z)">↩</button>
+          }} title={loc(lang, { ko: '실행 취소 (Ctrl+Z)', en: 'Undo (Ctrl+Z)', ja: '元に戻す (Ctrl+Z)', zh: '撤销 (Ctrl+Z)', es: 'Deshacer (Ctrl+Z)', ar: 'تراجع (Ctrl+Z)' })}>↩</button>
           <button onClick={onHistoryRedo} disabled={!canRedo} style={{
             padding: '4px 8px', borderRadius: 4, border: 'none',
             background: canRedo ? theme.cardBg : 'transparent',
             color: canRedo ? theme.text : theme.textMuted,
             fontSize: 14, cursor: canRedo ? 'pointer' : 'default', transition: 'all 0.15s',
-          }} title="Redo (Ctrl+Shift+Z)">↪</button>
+          }} title={loc(lang, { ko: '다시 실행 (Ctrl+Shift+Z)', en: 'Redo (Ctrl+Shift+Z)', ja: 'やり直し (Ctrl+Shift+Z)', zh: '重做 (Ctrl+Shift+Z)', es: 'Rehacer (Ctrl+Shift+Z)', ar: 'إعادة (Ctrl+Shift+Z)' })}>↪</button>
           <button onClick={() => setShowVersionPanel(!showVersionPanel)} style={{
             padding: '4px 8px', borderRadius: 4, border: 'none',
             background: showVersionPanel ? theme.accent : theme.cardBg,
@@ -993,7 +994,7 @@ export default function ShapeGeneratorToolbar(props: ShapeGeneratorToolbarProps)
           >➡</button>
           <button
             onClick={layoutControls.onToggleSwap}
-            title="Swap left/right panels"
+            title={loc(lang, { ko: '왼쪽/오른쪽 패널 바꾸기', en: 'Swap left/right panels', ja: '左右のパネルを入れ替え', zh: '交换左右面板', es: 'Intercambiar paneles izquierdo y derecho', ar: 'تبديل اللوحتين اليمنى واليسرى' })}
             style={{
               width: 28, height: 28, padding: 0, borderRadius: 4, border: 'none',
               background: layoutControls.swapSides ? theme.accent : theme.cardBg,

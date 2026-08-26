@@ -3,6 +3,7 @@
 import type { DesignDomainId } from '@/lib/ai/domainProfile';
 import type { DesignWorkMode } from '@/lib/ai/designWorkspaceRevision';
 import { getWorkspaceTruthSnapshot, type StudioTruthState } from '@/lib/ai/studioTruthContract';
+import { shellChromeText } from './shellChromeI18n';
 
 const TONE: Record<StudioTruthState, { color: string; background: string }> = {
   EXACT: { color: '#79d7ff', background: 'rgba(14,165,233,0.13)' },
@@ -26,12 +27,14 @@ function TruthChip({ label, state }: { label: string; state: StudioTruthState })
 
 export function WorkspaceTruthStrip({
   domain,
+  lang,
   workMode,
   dfmWarningCount,
   compact = false,
   sessionVerification,
 }: {
   domain: DesignDomainId;
+  lang?: string;
   workMode: DesignWorkMode;
   dfmWarningCount: number | null;
   compact?: boolean;
@@ -41,7 +44,7 @@ export function WorkspaceTruthStrip({
   return (
     <div
       data-testid="workspace-truth-strip"
-      aria-label="Workspace capability and verification status"
+      aria-label={shellChromeText(lang, 'workspaceTruth')}
       title={snapshot.note}
       style={{ display: 'inline-flex', alignItems: 'center', gap: 3, flexShrink: 0 }}
     >

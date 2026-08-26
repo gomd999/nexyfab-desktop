@@ -59,12 +59,13 @@
           "artifacts": {
             "type": "object",
             "additionalProperties": false,
-            "required": ["requirements", "nfab", "step", "drawing", "bom", "manifest", "intentEvaluation"],
+            "required": ["requirements", "nfab", "step", "drawing", "bom", "manifest", "intentEvaluation", "verificationReceipt"],
             "properties": {
               "requirements": { "$ref": "#/$defs/artifact" }, "nfab": { "$ref": "#/$defs/artifact" },
               "step": { "$ref": "#/$defs/artifact" }, "drawing": { "$ref": "#/$defs/artifact" },
               "bom": { "$ref": "#/$defs/artifact" }, "manifest": { "$ref": "#/$defs/artifact" },
-              "intentEvaluation": { "$ref": "#/$defs/artifact" }
+              "intentEvaluation": { "$ref": "#/$defs/artifact" },
+              "verificationReceipt": { "$ref": "#/$defs/artifact" }
             }
           }
         },

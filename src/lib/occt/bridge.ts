@@ -91,6 +91,45 @@ export interface OcctBooleanOps {
   intersect(a: OcctShape, b: OcctShape, ids?: BooleanOperandIds): Promise<OcctOperationResult>;
 }
 
+export interface OcctLoftSection {
+  z: number;
+  loop: ReadonlyArray<{ x: number; y: number }>;
+}
+
+export interface OcctOrthogonalPolylineSweep {
+  path: readonly [
+    readonly [number, number, number],
+    readonly [number, number, number],
+    readonly [number, number, number],
+  ];
+  widthMm: number;
+  heightMm: number;
+}
+
+/** One idealized constant-thickness rectangular sheet with one circular bend. */
+export interface OcctSingleRectangularSheetBend {
+  fixedLengthMm: number;
+  straightLengthMm: number;
+  widthMm: number;
+  thicknessMm: number;
+  innerRadiusMm: number;
+  angleDeg: number;
+}
+
+/**
+ * Narrow delete-face repair contract for one strict-interior blind cylindrical
+ * hole in an axis-aligned rectangular prism. The implementation must remove
+ * the hole wall, hole floor, and perforated top face from the supplied B-rep,
+ * then assemble a new full top cap with the retained original faces.
+ */
+export interface OcctBlindHoleDeleteFaceRepair {
+  hostLoop: ReadonlyArray<{ x: number; y: number }>;
+  hostDepthMm: number;
+  holeCenter: readonly [number, number];
+  holeRadiusMm: number;
+  holeDepthMm: number;
+}
+
 export type OcctTypeHistogram = Readonly<{
   status: 'available'; counts: Readonly<Record<string, number>>;
 }> | Readonly<{ status: 'not_run'; reason: string }>;
@@ -160,6 +199,33 @@ export interface OcctBridge {
     shape: OcctShape,
     opts: { angleDeg: number; pullDir?: [number, number, number]; neutralZ?: number },
   ): Promise<OcctOperationResult>;
+  /** Uniform positive scale about the global origin, using native B-Rep only. */
+  uniformScale?(shape: OcctShape, factor: number): Promise<OcctOperationResult>;
+  /** Translate one solid by a finite vector, using native B-Rep only. */
+  translate?(shape: OcctShape, offset: readonly [number, number, number]): Promise<OcctOperationResult>;
+  /** Rotate one solid around a bounded native axis, using native B-Rep only. */
+  rotate?(shape: OcctShape, axisPoint: readonly [number, number, number], axisDirection: readonly [number, number, number], angleDeg: number): Promise<OcctOperationResult>;
+  /** Build an exact solid through two or three bounded convex polygon sections. */
+  buildLoftSections?(sections: ReadonlyArray<OcctLoftSection>): Promise<OcctOperationResult>;
+  /**
+   * Build a constant rectangular-section native pipe along two orthogonal,
+   * non-collinear path segments. Straight-path extrusion aliases are excluded.
+   */
+  buildOrthogonalPolylineSweep?(input: OcctOrthogonalPolylineSweep): Promise<OcctOperationResult>;
+  /** Build one analytic annular-sector bend extruded across a constant width. */
+  buildSingleRectangularSheetBend?(input: OcctSingleRectangularSheetBend): Promise<OcctOperationResult>;
+  /** Assemble two or more live native shapes without fusing their solids. */
+  makeCompound?(shapes: ReadonlyArray<OcctShape>): Promise<OcctOperationResult>;
+  /**
+   * Delete and heal the three-face set of one bounded blind cylindrical hole.
+   * This is deliberately not a general face-delete or feature-suppression API.
+   */
+  deleteBlindHoleFacesAndCap?(
+    shape: OcctShape,
+    input: OcctBlindHoleDeleteFaceRepair,
+  ): Promise<OcctOperationResult>;
+  /** Mirror one solid through an explicit point/normal plane, using native B-Rep only. */
+  mirror?(shape: OcctShape, planeOrigin: readonly [number, number, number], planeNormal: readonly [number, number, number]): Promise<OcctOperationResult>;
   /**
    * Build a closed PRISM solid from a 2D loop placed at an ARBITRARY `z0`,
    * extruded `heightMm` along +Z. `buildFromExtrude` can only place a prism at

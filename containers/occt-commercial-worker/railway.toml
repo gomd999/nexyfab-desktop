@@ -1,0 +1,10 @@
+[build]
+builder = "DOCKERFILE"
+dockerfilePath = "containers/occt-commercial-worker/Dockerfile"
+
+[deploy]
+startCommand = "node /app/commercial-precision-worker.mjs"
+healthcheckPath = "/live"
+healthcheckTimeout = 300
+restartPolicyType = "ON_FAILURE"
+restartPolicyMaxRetries = 3

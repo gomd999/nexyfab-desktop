@@ -3,9 +3,9 @@
   "feature": "flange",
   "axis": "save_reopen",
   "status": "PASS",
-  "executedAt": "2026-08-22T07:13:30.564Z",
+  "executedAt": "2026-08-24T22:37:45.371Z",
   "savedBytes": 1603,
-  "savedSha256": "dbdeee80f85a35518379621d95c69a961af503fcda87a5301210b4fb5e75dfba",
+  "savedSha256": "28a18b6c4f1b857c7592bdf4924a6bb4dc08f9aaf690b26a1e2a4323b6aed3b7",
   "reopened": {
     "handle": "occt:245",
     "kernelKind": "Solid",

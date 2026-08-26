@@ -24,23 +24,11 @@
     "hits": 1
   },
   {
-    "file": "app/api/jobs/quote-expiry-remind/route.ts",
-    "hits": 2
-  },
-  {
     "file": "app/api/material-prices/route.ts",
     "hits": 2
   },
   {
     "file": "app/api/nexyfab/escrow/[orderId]/route.ts",
-    "hits": 1
-  },
-  {
-    "file": "app/api/nexyfab/export/audit/route.ts",
-    "hits": 1
-  },
-  {
-    "file": "app/api/nexyfab/export/contracts/route.ts",
     "hits": 1
   },
   {
@@ -60,10 +48,6 @@
     "hits": 1
   },
   {
-    "file": "app/api/nexyfab/shape-generator/dfm-pdf/route.ts",
-    "hits": 1
-  },
-  {
     "file": "app/api/partner/quotes/respond/route.ts",
     "hits": 1
   },
@@ -74,10 +58,6 @@
   {
     "file": "app/api/quotes/route.ts",
     "hits": 2
-  },
-  {
-    "file": "app/partner/quotes/QuoteAccuracyPanel.tsx",
-    "hits": 1
   },
   {
     "file": "lib/billing-engine.ts",

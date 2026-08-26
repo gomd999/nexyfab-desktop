@@ -10,6 +10,7 @@ import {
   createAgentRun,
   failRun,
   planRun,
+  queueRun,
   recordToolResult,
   rejectToolCall,
   requestToolCall,
@@ -53,11 +54,12 @@ export type AgentControllerErrorCode =
   | 'CANCELLED'
   | 'VALIDATION_REQUIRED';
 
-export type AgentControllerError = { code: AgentControllerErrorCode };
+export type AgentControllerError = { code: AgentControllerErrorCode; detailCode?: string };
 
 export type PrecisionCadAgentControllerOptions = {
   projectRoot?: string;
   binding?: RemotePrecisionCadProjectBinding;
+  generationRunId?: string;
   provider: Exclude<AgentRunRequest['provider'], 'local'>;
   model: string;
   lang: string;
@@ -126,6 +128,17 @@ function resultSucceeded(result: unknown): boolean {
   return candidate.ok !== false && candidate.pass !== false;
 }
 
+function durableCommercialQueueAccepted(result: unknown): boolean {
+  if (!result || typeof result !== 'object' || Array.isArray(result)) return false;
+  const execution = (result as { execution?: unknown }).execution;
+  if (!execution || typeof execution !== 'object' || Array.isArray(execution)) return false;
+  const value = execution as { mode?: unknown; status?: unknown; executionId?: unknown };
+  return value.mode === 'durable_commercial_queue'
+    && (value.status === 'queued' || value.status === 'replay')
+    && typeof value.executionId === 'string'
+    && value.executionId.length > 0;
+}
+
 function stableCode(error: unknown): AgentControllerErrorCode {
   if (error && typeof error === 'object' && 'code' in error && typeof (error as { code?: unknown }).code === 'string') {
     const code = (error as { code: string }).code;
@@ -135,17 +148,24 @@ function stableCode(error: unknown): AgentControllerErrorCode {
   return 'TURN_FAILED';
 }
 
+function stableDetailCode(error: unknown): string | undefined {
+  if (!error || typeof error !== 'object' || !('serverCode' in error)) return undefined;
+  const code = (error as { serverCode?: unknown }).serverCode;
+  return typeof code === 'string' && /^[A-Z0-9_:-]{1,128}$/.test(code) ? code : undefined;
+}
+
 export function usePrecisionCadAgentController(options: PrecisionCadAgentControllerOptions): PrecisionCadAgentController {
-  const { projectRoot, binding, provider, model, lang, invoke, executor: providedExecutor, autoLoadCatalog = true } = options;
+  const { projectRoot, binding, generationRunId, provider, model, lang, invoke, executor: providedExecutor, autoLoadCatalog = true } = options;
   const executor = useMemo(
     () => providedExecutor ?? createDefaultPrecisionCadExecutor({ projectRoot, binding, invoke }),
     [providedExecutor, binding, projectRoot, invoke],
   );
   const executionContext = useMemo<PrecisionCadExecutionContext>(() => ({
     ...(binding ? { binding } : {}),
+    ...(generationRunId?.trim() ? { generationRunId: generationRunId.trim() } : {}),
     ...(projectRoot?.trim() ? { projectRoot: projectRoot.trim() } : {}),
     locale: toIsoLang(lang),
-  }), [binding, lang, projectRoot]);
+  }), [binding, generationRunId, lang, projectRoot]);
   const locale = toIsoLang(lang);
   const initialRequest: AgentRunRequest = { request: '', provider, model };
   const [run, setRun] = useState<AgentRun>(() => createAgentRun(initialRequest));
@@ -163,11 +183,11 @@ export function usePrecisionCadAgentController(options: PrecisionCadAgentControl
 
   const isFresh = useCallback((generation: number) => generationRef.current === generation, []);
 
-  const setStableFailure = useCallback((current: AgentRun, code: AgentControllerErrorCode, generation?: number) => {
+  const setStableFailure = useCallback((current: AgentRun, code: AgentControllerErrorCode, generation?: number, detailCode?: string) => {
     if (generation !== undefined && !isFresh(generation)) return;
     const next = failRun(current, code);
     if (next.ok) setRun(next.run);
-    setError({ code });
+    setError({ code, ...(detailCode ? { detailCode } : {}) });
   }, [isFresh]);
 
   const loadCatalog = useCallback(async () => {
@@ -236,8 +256,8 @@ export function usePrecisionCadAgentController(options: PrecisionCadAgentControl
     let output: AiAgentTurnOutput;
     try {
       output = await executor.turn(turnInput, { ...executionContext, runId: current.runId });
-    } catch {
-      setStableFailure(current, 'TURN_FAILED', generation);
+    } catch (error) {
+      setStableFailure(current, stableCode(error), generation, stableDetailCode(error));
       return;
     }
     if (!isFresh(generation)) return;
@@ -305,12 +325,20 @@ export function usePrecisionCadAgentController(options: PrecisionCadAgentControl
         { runId: current.runId, call, projectRoot: executionContext.projectRoot ?? '', locale: executionContext.locale, ...(approvalToken ? { approvalBinding: approvalToken } : {}) },
         { ...executionContext, runId: current.runId, ...(providerStateRef.current?.handle ? { continuationId: providerStateRef.current.handle } : {}) },
       );
-    } catch {
-      setStableFailure(current, 'TOOL_FAILED', generation);
+    } catch (error) {
+      setStableFailure(current, 'TOOL_FAILED', generation, stableDetailCode(error));
       return;
     }
     if (!isFresh(generation)) return;
     executedToolsRef.current += 1;
+    if (nativeResult.ok && durableCommercialQueueAccepted(nativeResult.result)) {
+      validationSucceededRef.current = false;
+      lastToolResultRef.current = nativeResult.result;
+      const queued = queueRun(current, nativeResult.result);
+      if (queued.ok) setRun(queued.run);
+      else setStableFailure(current, 'TOOL_FAILED', generation);
+      return;
+    }
     lastToolResultRef.current = nativeResult.ok ? nativeResult.result : { ok: false, error: 'TOOL_FAILED' };
     if (VALIDATION_TOOLS.has(call.toolName) && nativeResult.ok && resultSucceeded(nativeResult.result)) validationSucceededRef.current = true;
     const recorded = recordToolResult(current, nativeResult.ok ? nativeResult.result : { ok: false, error: 'TOOL_FAILED' });

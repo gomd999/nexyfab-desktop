@@ -8,10 +8,25 @@ import { pipeline } from 'node:stream/promises';
 import { pathToFileURL } from 'node:url';
 import pg from 'pg';
 import { runPostgresMigration } from './run-postgres-migrations.mjs';
+import {
+  loadObjectStorageRestoreConfig,
+  verifyObjectStorageRestoreDrill,
+} from './verify-object-storage-restore.mjs';
 
 const CONFIRMATION = 'NEXYFAB_ISOLATED_RESTORE_ONLY';
+const EVIDENCE_CLASSES = new Set(['local-fixture', 'release-bound']);
+const DATABASE_BACKUP_ENCRYPTION_MODES = new Set(['provider-managed-kms', 'customer-managed-kms']);
+const SHA256 = /^[a-f0-9]{64}$/;
 const quoteIdentifier = value => `"${String(value).replaceAll('"', '""')}"`;
 const sha256 = value => createHash('sha256').update(value).digest('hex');
+export const isBoundGitHead = value => /^(?:[a-f0-9]{40}|[a-f0-9]{64})$/.test(String(value));
+
+export function assertPostgresOnlyLocalFixture({ enabled, evidenceClass }) {
+  if (enabled && evidenceClass !== 'local-fixture') {
+    throw new Error('postgres_only_restore_requires_local_fixture');
+  }
+  return enabled;
+}
 
 function parsePostgresUrl(databaseUrl, variableName) {
   const parsed = new URL(databaseUrl);
@@ -41,6 +56,7 @@ export function assertRestoreDrillSafety({
   restoreDatabaseUrl,
   environment,
   confirmation,
+  evidenceClass = 'release-bound',
 }) {
   const source = parsePostgresUrl(sourceDatabaseUrl, 'SOURCE_DATABASE_URL');
   const target = parsePostgresUrl(restoreDatabaseUrl, 'RESTORE_DATABASE_URL');
@@ -48,8 +64,10 @@ export function assertRestoreDrillSafety({
   if (source.identity === target.identity) {
     throw new Error('Refusing restore: source and target databases are identical');
   }
-  if (environment !== 'staging') {
-    throw new Error('RESTORE_DRILL_ENVIRONMENT must be staging');
+  if (!EVIDENCE_CLASSES.has(evidenceClass)) throw new Error('RESTORE_EVIDENCE_CLASS_invalid');
+  const expectedEnvironment = evidenceClass === 'release-bound' ? 'staging' : 'local-fixture';
+  if (environment !== expectedEnvironment) {
+    throw new Error(`RESTORE_DRILL_ENVIRONMENT must be ${expectedEnvironment}`);
   }
   if (confirmation !== CONFIRMATION) {
     throw new Error(`RESTORE_DRILL_CONFIRM must equal ${CONFIRMATION}`);
@@ -89,6 +107,28 @@ function command(binary, args, { stdin = 'ignore', env = process.env } = {}) {
   return { child, completion };
 }
 
+function postgresCommand(binary, args, { databaseUrl, stdin = 'ignore' }) {
+  const container = process.env.RESTORE_POSTGRES_CLIENT_CONTAINER?.trim();
+  if (!container) return command(binary, args, { stdin, env: postgresCommandEnv(databaseUrl) });
+  if (process.env.RESTORE_EVIDENCE_CLASS !== 'local-fixture'
+    || !/^nexyfab-precision-durability-\d+-postgres-1$/.test(container)) {
+    throw new Error('RESTORE_POSTGRES_CLIENT_CONTAINER_invalid');
+  }
+  const parsed = new URL(databaseUrl);
+  const containerEnvironment = [
+    'PGHOST=127.0.0.1',
+    'PGPORT=5432',
+    `PGDATABASE=${decodeURIComponent(parsed.pathname.replace(/^\//, ''))}`,
+    `PGUSER=${decodeURIComponent(parsed.username)}`,
+    `PGPASSWORD=${decodeURIComponent(parsed.password)}`,
+  ];
+  return command('docker', [
+    'exec', ...(stdin === 'pipe' ? ['-i'] : []),
+    ...containerEnvironment.flatMap(value => ['--env', value]),
+    container, binary, ...args,
+  ], { stdin });
+}
+
 async function createBackup(sourceDatabaseUrl, backupFile) {
   if (existsSync(backupFile)) {
     if (process.env.USE_EXISTING_BACKUP !== '1') {
@@ -97,11 +137,11 @@ async function createBackup(sourceDatabaseUrl, backupFile) {
     return { reused: true, completedAt: statSync(backupFile).mtime.toISOString() };
   }
   mkdirSync(path.dirname(backupFile), { recursive: true });
-  const dump = command('pg_dump', [
+  const dump = postgresCommand('pg_dump', [
     '--format=plain',
     '--no-owner',
     '--no-privileges',
-  ], { env: postgresCommandEnv(sourceDatabaseUrl) });
+  ], { databaseUrl: sourceDatabaseUrl });
   await Promise.all([
     pipeline(dump.child.stdout, createGzip({ level: 9 }), createWriteStream(backupFile, { flags: 'wx' })),
     dump.completion,
@@ -126,9 +166,9 @@ async function assertEmptyRestoreTarget(databaseUrl) {
 }
 
 async function restoreBackup(databaseUrl, backupFile) {
-  const restore = command('psql', ['-X', '-v', 'ON_ERROR_STOP=1'], {
+  const restore = postgresCommand('psql', ['-X', '-v', 'ON_ERROR_STOP=1'], {
     stdin: 'pipe',
-    env: postgresCommandEnv(databaseUrl),
+    databaseUrl,
   });
   const source = createReadStream(backupFile);
   const sql = backupFile.endsWith('.gz') ? source.pipe(createGunzip()) : source;
@@ -144,8 +184,8 @@ async function foreignKeyReport(client) {
       child.relname AS child_table,
       parent_ns.nspname AS parent_schema,
       parent.relname AS parent_table,
-      array_agg(child_att.attname ORDER BY keys.ordinality) AS child_columns,
-      array_agg(parent_att.attname ORDER BY keys.ordinality) AS parent_columns
+      array_agg(child_att.attname::text ORDER BY keys.ordinality) AS child_columns,
+      array_agg(parent_att.attname::text ORDER BY keys.ordinality) AS parent_columns
     FROM pg_constraint c
     JOIN pg_class child ON child.oid = c.conrelid
     JOIN pg_namespace child_ns ON child_ns.oid = child.relnamespace
@@ -183,7 +223,42 @@ async function foreignKeyReport(client) {
       });
     }
   }
-  return { count: constraints.length, orphanRows, failures, ok: failures.length === 0 };
+  return {
+    count: constraints.length,
+    orphanRows,
+    failures,
+    integrityOk: orphanRows === 0,
+    ok: failures.length === 0,
+  };
+}
+
+export async function validateUnvalidatedConstraints(client) {
+  const constraints = (await client.query(`
+    SELECT
+      namespace.nspname AS table_schema,
+      relation.relname AS table_name,
+      constraint_record.conname AS constraint_name,
+      constraint_record.contype AS constraint_type
+    FROM pg_constraint constraint_record
+    JOIN pg_class relation ON relation.oid = constraint_record.conrelid
+    JOIN pg_namespace namespace ON namespace.oid = relation.relnamespace
+    WHERE namespace.nspname = 'public'
+      AND NOT constraint_record.convalidated
+      AND constraint_record.contype IN ('c', 'f')
+    ORDER BY relation.relname, constraint_record.conname
+  `)).rows;
+  const validated = [];
+  for (const constraint of constraints) {
+    await client.query(
+      `ALTER TABLE ${quoteIdentifier(constraint.table_schema)}.${quoteIdentifier(constraint.table_name)} VALIDATE CONSTRAINT ${quoteIdentifier(constraint.constraint_name)}`,
+    );
+    validated.push({
+      table: `${constraint.table_schema}.${constraint.table_name}`,
+      constraint: constraint.constraint_name,
+      type: constraint.constraint_type === 'f' ? 'foreign_key' : 'check',
+    });
+  }
+  return { count: validated.length, validated, ok: true };
 }
 
 export async function snapshotDatabase(databaseUrl) {
@@ -258,20 +333,111 @@ export function compareDatabaseSnapshots(expected, actual, {
   return { ok: differences.length === 0, differences };
 }
 
+export function databaseBackupProtection({
+  evidenceClass,
+  backup,
+  backupBytes,
+  backupSha256,
+  env = process.env,
+}) {
+  if (evidenceClass === 'local-fixture') {
+    return {
+      releaseBoundRequired: false,
+      providerArtifactReused: backup.reused,
+      atRestEncryptionVerified: false,
+      providerReceiptBound: false,
+      artifactImmutable: false,
+    };
+  }
+  if (evidenceClass !== 'release-bound') throw new Error('RESTORE_EVIDENCE_CLASS_invalid');
+  if (env.USE_EXISTING_BACKUP !== '1' || backup.reused !== true) {
+    throw new Error('release_bound_restore_requires_existing_provider_backup');
+  }
+  const encryptionMode = env.RESTORE_DATABASE_BACKUP_ENCRYPTION_MODE?.trim() ?? '';
+  const kmsKeyVersionSha256 = env.RESTORE_DATABASE_BACKUP_KMS_KEY_VERSION_SHA256?.trim() ?? '';
+  const providerReceiptSha256 = env.RESTORE_DATABASE_BACKUP_PROVIDER_RECEIPT_SHA256?.trim() ?? '';
+  const providerReceiptId = env.RESTORE_DATABASE_BACKUP_PROVIDER_RECEIPT_ID?.trim() ?? '';
+  const capturedAt = env.RESTORE_DATABASE_BACKUP_CAPTURED_AT?.trim() ?? '';
+  const capturedAtMs = Date.parse(capturedAt);
+  if (!DATABASE_BACKUP_ENCRYPTION_MODES.has(encryptionMode)) {
+    throw new Error('RESTORE_DATABASE_BACKUP_ENCRYPTION_MODE_invalid');
+  }
+  if (!SHA256.test(kmsKeyVersionSha256)) {
+    throw new Error('RESTORE_DATABASE_BACKUP_KMS_KEY_VERSION_SHA256_invalid');
+  }
+  if (!SHA256.test(providerReceiptSha256)) {
+    throw new Error('RESTORE_DATABASE_BACKUP_PROVIDER_RECEIPT_SHA256_invalid');
+  }
+  if (!providerReceiptId || providerReceiptId.length > 512) {
+    throw new Error('RESTORE_DATABASE_BACKUP_PROVIDER_RECEIPT_ID_invalid');
+  }
+  if (!Number.isFinite(capturedAtMs) || capturedAtMs > Date.now() + 5 * 60_000) {
+    throw new Error('RESTORE_DATABASE_BACKUP_CAPTURED_AT_invalid');
+  }
+  if (env.RESTORE_DATABASE_BACKUP_IMMUTABLE !== '1') {
+    throw new Error('RESTORE_DATABASE_BACKUP_IMMUTABLE_required');
+  }
+  return {
+    releaseBoundRequired: true,
+    providerArtifactReused: true,
+    atRestEncryptionVerified: true,
+    encryptionMode,
+    kmsKeyVersionSha256,
+    providerReceiptBound: true,
+    providerReceiptSha256,
+    providerReceiptIdSha256: sha256(providerReceiptId),
+    artifactImmutable: true,
+    capturedAt: new Date(capturedAtMs).toISOString(),
+    restorePayloadBytes: backupBytes,
+    restorePayloadSha256: backupSha256,
+  };
+}
+
+export async function commercialObjectBindings(databaseUrl) {
+  const client = new pg.Client({ connectionString: databaseUrl });
+  await client.connect();
+  try {
+    const result = await client.query(`
+      SELECT 'immutable_input' AS kind, object_key, content_sha256, byte_length
+      FROM nf_precision_cad_commercial_input_artifacts
+      UNION ALL
+      SELECT 'committed_output' AS kind, object_key, content_sha256, byte_length
+      FROM nf_precision_cad_commercial_output_intents
+      WHERE status = 'COMMITTED'
+      UNION ALL
+      SELECT 'artifact_snapshot' AS kind, snapshot_object_key AS object_key, content_sha256, byte_length
+      FROM nf_precision_cad_commercial_artifact_snapshots
+      ORDER BY object_key
+    `);
+    return result.rows.map(row => ({
+      kind: String(row.kind),
+      objectKey: String(row.object_key),
+      contentSha256: String(row.content_sha256),
+      byteLength: Number(row.byte_length),
+    }));
+  } finally {
+    await client.end();
+  }
+}
+
 export async function verifyBackupRestore({
   backupFile,
   sourceDatabaseUrl,
   restoreDatabaseUrl,
   migrationSqlPath,
   receiptPath,
+  postgresOnlyLocalFixture = false,
 }) {
   const startedAtMs = Date.now();
+  const evidenceClass = process.env.RESTORE_EVIDENCE_CLASS?.trim() ?? '';
+  if (!EVIDENCE_CLASSES.has(evidenceClass)) throw new Error('RESTORE_EVIDENCE_CLASS_required');
+  assertPostgresOnlyLocalFixture({ enabled: postgresOnlyLocalFixture, evidenceClass });
   const release = {
     buildId: process.env.RESTORE_RELEASE_BUILD_ID?.trim() ?? '',
     deploymentId: process.env.RESTORE_RELEASE_DEPLOYMENT_ID?.trim() ?? '',
     gitHead: process.env.RESTORE_RELEASE_GIT_HEAD?.trim() ?? '',
   };
-  if (!release.buildId || !release.deploymentId || !/^[a-f0-9]{64}$/.test(release.gitHead)) {
+  if (!release.buildId || !release.deploymentId || !isBoundGitHead(release.gitHead)) {
     throw new Error('RESTORE_RELEASE_BUILD_ID, RESTORE_RELEASE_DEPLOYMENT_ID, and RESTORE_RELEASE_GIT_HEAD are required for a bound restore receipt');
   }
   const safety = assertRestoreDrillSafety({
@@ -279,6 +445,7 @@ export async function verifyBackupRestore({
     restoreDatabaseUrl,
     environment: process.env.RESTORE_DRILL_ENVIRONMENT,
     confirmation: process.env.RESTORE_DRILL_CONFIRM,
+    evidenceClass,
   });
   if (!existsSync(migrationSqlPath)) throw new Error(`Migration SQL not found: ${migrationSqlPath}`);
   if (existsSync(receiptPath)) throw new Error(`Refusing to overwrite restore receipt: ${receiptPath}`);
@@ -293,6 +460,12 @@ export async function verifyBackupRestore({
     stream.once('error', reject);
     stream.once('end', () => resolve(hash.digest('hex')));
   });
+  const protectedBackup = databaseBackupProtection({
+    evidenceClass,
+    backup,
+    backupBytes,
+    backupSha256,
+  });
 
   // The source is read-only. This snapshot is captured adjacent to pg_dump;
   // an active write during the interval correctly makes the exact match fail.
@@ -302,51 +475,85 @@ export async function verifyBackupRestore({
   await restoreBackup(restoreDatabaseUrl, backupFile);
   const restored = await snapshotDatabase(restoreDatabaseUrl);
   const exactRestore = compareDatabaseSnapshots(source, restored);
-  if (!exactRestore.ok || !restored.foreignKeys.ok) {
-    throw new Error(`Restore verification failed: data differences=${exactRestore.differences.length}, FK failures=${restored.foreignKeys.failures.length}`);
+  if (!exactRestore.ok || !restored.foreignKeys.integrityOk) {
+    throw new Error(`Restore verification failed: data differences=${exactRestore.differences.length}, FK failures=${JSON.stringify(restored.foreignKeys.failures).slice(0, 2000)}`);
   }
 
   const migration = await runPostgresMigration({
     databaseUrl: restoreDatabaseUrl,
     sqlPath: migrationSqlPath,
   });
+  const migrationTarget = migration.version;
+  const validationClient = new pg.Client({ connectionString: restoreDatabaseUrl });
+  let constraintValidation;
+  try {
+    await validationClient.connect();
+    constraintValidation = await validateUnvalidatedConstraints(validationClient);
+  } finally {
+    await validationClient.end().catch(() => {});
+  }
   const migrated = await snapshotDatabase(restoreDatabaseUrl);
   const businessPreservation = compareDatabaseSnapshots(restored, migrated, {
     ignoreTables: ['nf_schema_migrations'],
     allowNewEmptyTables: true,
   });
   if (!businessPreservation.ok || !migrated.foreignKeys.ok) {
-    throw new Error(`Post-migration verification failed: data differences=${businessPreservation.differences.length}, FK failures=${migrated.foreignKeys.failures.length}`);
+    const changedTables = businessPreservation.differences.map(item => item.table).slice(0, 50);
+    throw new Error(`Post-migration verification failed: data differences=${businessPreservation.differences.length}, changed tables=${JSON.stringify(changedTables)}, FK failures=${JSON.stringify(migrated.foreignKeys.failures).slice(0, 2000)}`);
+  }
+
+  const objectRestoreStartedAtMs = postgresOnlyLocalFixture ? null : Date.now();
+  const objectStorage = postgresOnlyLocalFixture
+    ? {
+        status: 'NOT_RUN',
+        reason: 'postgres_only_local_fixture_cross_store_is_a_separate_durability_gate',
+      }
+    : await verifyObjectStorageRestoreDrill({
+        config: loadObjectStorageRestoreConfig(process.env, { evidenceClass }),
+        requiredBindings: await commercialObjectBindings(sourceDatabaseUrl),
+      });
+  const sourceAfterObjectRestore = await snapshotDatabase(sourceDatabaseUrl);
+  const sourceStable = compareDatabaseSnapshots(source, sourceAfterObjectRestore);
+  if (!sourceStable.ok || source.schemaSha256 !== sourceAfterObjectRestore.schemaSha256) {
+    throw new Error(`Source changed during cross-store restore: data differences=${sourceStable.differences.length}`);
   }
 
   const completedAtMs = Date.now();
-  const backupCapturedAtMs = Date.parse(backup.completedAt);
+  const backupCapturedAt = protectedBackup.capturedAt ?? backup.completedAt;
+  const backupCapturedAtMs = Date.parse(backupCapturedAt);
   const receipt = {
-    schema: 'nexyfab.backup-isolated-restore-drill.v2',
+    schema: postgresOnlyLocalFixture
+      ? 'nexyfab.postgres-isolated-restore-drill.v1'
+      : 'nexyfab.backup-isolated-restore-drill.v3',
     generatedAt: new Date(completedAtMs).toISOString(),
     ok: true,
-    target: 'production',
+    target: evidenceClass === 'release-bound' ? 'production' : 'local-fixture',
     release,
     safety: {
-      environment: 'staging',
-      sourceEnvironment: 'production',
-      restoredEnvironment: 'staging',
+      environment: process.env.RESTORE_DRILL_ENVIRONMENT,
+      sourceEnvironment: evidenceClass === 'release-bound' ? 'production' : 'local-fixture',
+      restoredEnvironment: evidenceClass === 'release-bound' ? 'staging' : 'local-fixture',
       sourceDatabase: safety.source.database,
       restoreDatabase: safety.target.database,
       isolatedDatabaseIdentity: safety.source.identity !== safety.target.identity,
       sourceWasReadOnly: true,
+      sourceUnchangedDuringDrill: true,
       productionRestorePerformed: false,
     },
     backup: {
-      file: path.relative(process.cwd(), backupFile),
+      file: path.basename(backupFile),
       reused: backup.reused,
       bytes: backupBytes,
       sha256: backupSha256,
-      objectSha256: backupSha256,
       sourceSnapshotSha256: source.tableContentSha256,
       completedAt: backup.completedAt,
+      protectedSource: protectedBackup,
     },
-    source,
+    source: {
+      ...source,
+      afterObjectRestoreTableContentSha256: sourceAfterObjectRestore.tableContentSha256,
+      afterObjectRestoreSchemaSha256: sourceAfterObjectRestore.schemaSha256,
+    },
     restored: {
       ...restored,
       exactSourceMatch: exactRestore.ok,
@@ -354,28 +561,44 @@ export async function verifyBackupRestore({
       differences: exactRestore.differences,
     },
     migration,
-    migrationTarget: 2026082208,
+    constraintValidation,
+    migrationTarget,
     migrated: {
       ...migrated,
       businessRowsPreserved: businessPreservation.ok,
       businessDataSha256: migrated.tableContentSha256,
       businessDifferences: businessPreservation.differences,
     },
+    objectStorage,
     timing: {
       drillStartedAt: new Date(startedAtMs).toISOString(),
-      backupCapturedAt: backup.completedAt,
+      backupCapturedAt,
       restoreStartedAt: new Date(restoreStartedAtMs).toISOString(),
+      objectRestoreStartedAt: objectRestoreStartedAtMs === null
+        ? null
+        : new Date(objectRestoreStartedAtMs).toISOString(),
       completedAt: new Date(completedAtMs).toISOString(),
     },
     objectives: {
       rpoAgeAtDrillStartMs: Math.max(0, startedAtMs - backupCapturedAtMs),
       rtoRestoreMigrateValidateMs: completedAtMs - restoreStartedAtMs,
+      rtoObjectRestoreValidateMs: objectRestoreStartedAtMs === null
+        ? null
+        : completedAtMs - objectRestoreStartedAtMs,
       totalDrillMs: completedAtMs - startedAtMs,
       measurement: 'wall_clock',
     },
+    claimBoundary: {
+      evidenceClass,
+      localFixture: evidenceClass === 'local-fixture',
+      releaseBoundObservation: evidenceClass === 'release-bound',
+      crossStorePointInTimeConsistencyVerified: !postgresOnlyLocalFixture,
+      privateBetaEligible: evidenceClass === 'release-bound',
+      commercialGaEligible: false,
+    },
   };
-  receipt.migration.targetVersion = 2026082208;
-  receipt.migration.targetChecksum = receipt.migration.migrations.find(item => item.version === 2026082208)?.checksum ?? null;
+  receipt.migration.targetVersion = migrationTarget;
+  receipt.migration.targetChecksum = receipt.migration.migrations.find(item => item.version === migrationTarget)?.checksum ?? null;
   receipt.sha256 = sha256(JSON.stringify(receipt));
   mkdirSync(path.dirname(receiptPath), { recursive: true });
   writeFileSync(receiptPath, `${JSON.stringify(receipt, null, 2)}\n`, { flag: 'wx' });
@@ -391,12 +614,14 @@ async function main() {
   const backupFile = path.resolve(process.env.BACKUP_FILE ?? 'backups/restore-drill.sql.gz');
   const migrationSqlPath = path.resolve(process.env.POSTGRES_MIGRATION_SQL ?? 'src/lib/db-postgres-migrations.sql');
   const receiptPath = path.resolve(process.env.BACKUP_RESTORE_RECEIPT ?? 'validation-reports/backup-restore-drill.json');
+  const postgresOnlyLocalFixture = process.argv.includes('--postgres-only-local-fixture');
   const result = await verifyBackupRestore({
     backupFile,
     sourceDatabaseUrl,
     restoreDatabaseUrl,
     migrationSqlPath,
     receiptPath,
+    postgresOnlyLocalFixture,
   });
   process.stdout.write(`${JSON.stringify({
     ok: result.ok,

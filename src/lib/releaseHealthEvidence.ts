@@ -1,14 +1,36 @@
 import { createHash, createHmac } from 'node:crypto';
+import commercialI18nContract from './i18n/commercialReleaseContract.json';
 import { existsSync, lstatSync, readFileSync, realpathSync, statSync } from 'node:fs';
 import path from 'node:path';
 import type { DbAdapter } from '@/lib/db-adapter';
 import { loadExternalCommercialVerifierRegistry } from '@/lib/ai/externalCommercialVerifierRegistry';
+import {
+  COMMERCIAL_POSTGRES_MIGRATIONS,
+  commercialPostgresMigrationChecksumEnvKey,
+} from '@/lib/commercial-readiness';
 
-const COMMERCIAL_MIGRATIONS = [2026082202, 2026082203, 2026082204, 2026082205, 2026082206, 2026082207, 2026082208] as const;
 const MAX_EVIDENCE_AGE_MS = 24 * 60 * 60 * 1000;
 const SHA256 = /^[a-f0-9]{64}$/;
 const GIT_COMMIT_SHA = /^(?:[a-f0-9]{40}|[a-f0-9]{64})$/i;
 const RAILWAY_DEPLOYMENT_ID = /^[a-f0-9]{8}-[a-f0-9]{4}-[1-8][a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/i;
+const COMMERCIAL_PRECISION_RUNTIME_SCHEMA = 'nexyfab.commercial-precision-runtime-evidence.v3';
+const COMMERCIAL_PRECISION_EXECUTION_CONTRACT = 'nexyfab.precision-cad-commercial-execution.v3';
+const COMMERCIAL_PRECISION_MIGRATION_VERSION = 2026082502;
+const COMMERCIAL_PRECISION_PRIVATE_BETA_CHECKS = [
+  'postgresMigration', 'redisAvailability', 'immutableInputWriteReadback',
+  'transactionalOutboxEnqueue', 'leaseClaim', 'nativeExecution',
+  'threeOutputCommitReadback', 'workerReceiptSignature', 'signedCallback',
+  'authoritativePersistence', 'workspaceCasCommit', 'wrongWorkerRejected',
+  'inputSubstitutionRejected', 'outputSubstitutionRejected', 'callbackReplayRejected',
+] as const;
+const COMMERCIAL_PRECISION_GA_CHECKS = [
+  'multiInstanceClaimExclusion', 'expiredLeaseRecovery', 'crashAfterClaimRecovery',
+  'verifiedUnknownNoReplay', 'credentialRotation',
+] as const;
+const COMMERCIAL_PRECISION_EVIDENCE_ROLES = [
+  'databaseSnapshot', 'objectStorageManifest', 'workerReceipt',
+  'negativeCampaign', 'recoveryCampaign',
+] as const;
 
 type EvidenceStatus = 'PASS' | 'HOLD' | 'NOT_RUN';
 type Environment = Readonly<Record<string, string | undefined>>;
@@ -40,6 +62,7 @@ export interface ReleaseEvidenceOptions {
   db?: Pick<DbAdapter, 'backend' | 'queryOne'>;
   i18nReceipt?: unknown;
   sevenDayReceipt?: unknown;
+  precisionRuntimeReceipt?: unknown;
   registry?: { identities: readonly { role?: string; fingerprintSha256?: string }[] };
   evidenceRoot?: string;
 }
@@ -117,7 +140,7 @@ function verifyI18n(receipt: unknown, buildId: string | null, head: string | nul
     && value.status === 'QUALIFIED'
     && value.gaReady === true
     && catalog?.qualified === true
-    && sourcePairs !== null && sourcePairs >= 2711
+    && sourcePairs === commercialI18nContract.sourcePairs
     && translatedPairs === sourcePairs
     && buildId && value.buildId === buildId
     && head && value.head === head
@@ -208,6 +231,97 @@ function verifySevenDay(receipt: unknown, buildId: string | null, head: string |
   return { status: ok ? 'QUALIFIED' : (value ? 'HOLD' : 'NOT_RUN') as EvidenceStatus };
 }
 
+function verifyCommercialPrecisionRuntime(
+  receipt: unknown,
+  buildId: string | null,
+  head: string | null,
+  deploymentId: string | null,
+  migration: { migrationVersion: number | null; migrationChecksums: Record<string, string> },
+  env: Environment,
+  now: number,
+) {
+  const value = receipt && typeof receipt === 'object' && !Array.isArray(receipt) ? receipt as SignedReceipt & {
+    schema?: unknown; status?: unknown; environment?: unknown;
+    release?: { buildId?: unknown; gitHead?: unknown; productionDeploymentId?: unknown; evidenceDeploymentId?: unknown };
+    execution?: { contract?: unknown; workerIdentity?: unknown; workerPublicKeyFingerprint?: unknown; nativeExecutableSha256?: unknown; nativeInvocationSha256?: unknown };
+    migration?: { version?: unknown; checksum?: unknown };
+    migrationSource?: { sha256?: unknown };
+    evidenceBindings?: Record<string, { path?: unknown; bytes?: unknown; sha256?: unknown } | null>;
+    workerTrust?: {
+      signatureVerified?: unknown; workerIdentity?: unknown;
+      fingerprintSha256?: unknown; nativeExecutableSha256?: unknown;
+      nativeInvocationSha256?: unknown; registrySha256?: unknown;
+    };
+    checks?: Record<string, unknown>;
+    decision?: {
+      privateBeta?: { eligible?: unknown; blockers?: unknown[] };
+      commercialGa?: { eligible?: unknown; blockers?: unknown[] };
+    };
+    claimBoundary?: {
+      sourceTestsAreRuntimeEvidence?: unknown; fixtureWorkerIsCommercialEvidence?: unknown;
+      stagingCanQualifyCommercialGa?: unknown; productionRequiresSameDeployment?: unknown;
+      independentCadOrManufacturingCertified?: unknown;
+    };
+  } : null;
+  const allChecks = [...COMMERCIAL_PRECISION_PRIVATE_BETA_CHECKS, ...COMMERCIAL_PRECISION_GA_CHECKS];
+  const checkKeys = value?.checks && typeof value.checks === 'object' && !Array.isArray(value.checks)
+    ? Object.keys(value.checks).sort() : [];
+  const evidenceKeys = value?.evidenceBindings && typeof value.evidenceBindings === 'object'
+    && !Array.isArray(value.evidenceBindings) ? Object.keys(value.evidenceBindings).sort() : [];
+  const bindingsValid = JSON.stringify(evidenceKeys) === JSON.stringify([...COMMERCIAL_PRECISION_EVIDENCE_ROLES].sort())
+    && COMMERCIAL_PRECISION_EVIDENCE_ROLES.every(role => {
+      const binding = value?.evidenceBindings?.[role];
+      return Boolean(binding
+        && typeof binding.path === 'string' && binding.path.length > 0
+        && !path.isAbsolute(binding.path) && !binding.path.replaceAll('\\', '/').split('/').includes('..')
+        && typeof binding.bytes === 'number' && Number.isSafeInteger(binding.bytes) && binding.bytes > 0
+        && SHA256.test(String(binding.sha256 ?? '')));
+    });
+  const expectedMigrationChecksum = migration.migrationChecksums[String(COMMERCIAL_PRECISION_MIGRATION_VERSION)];
+  const ok = Boolean(value
+    && value.schema === COMMERCIAL_PRECISION_RUNTIME_SCHEMA
+    && value.status === 'COMMERCIAL_GA_PASS'
+    && value.environment === 'production'
+    && buildId && value.release?.buildId === buildId
+    && head && value.release?.gitHead === head
+    && deploymentId && value.release?.productionDeploymentId === deploymentId
+    && value.release?.evidenceDeploymentId === deploymentId
+    && value.execution?.contract === COMMERCIAL_PRECISION_EXECUTION_CONTRACT
+    && value.workerTrust?.signatureVerified === true
+    && value.workerTrust?.workerIdentity === value.execution?.workerIdentity
+    && value.workerTrust?.fingerprintSha256 === value.execution?.workerPublicKeyFingerprint
+    && value.workerTrust?.nativeExecutableSha256 === value.execution?.nativeExecutableSha256
+    && value.workerTrust?.nativeInvocationSha256 === value.execution?.nativeInvocationSha256
+    && SHA256.test(String(value.workerTrust?.nativeExecutableSha256 ?? ''))
+    && SHA256.test(String(value.workerTrust?.nativeInvocationSha256 ?? ''))
+    && SHA256.test(String(value.workerTrust?.registrySha256 ?? ''))
+    && migration.migrationVersion === COMMERCIAL_PRECISION_MIGRATION_VERSION
+    && SHA256.test(String(expectedMigrationChecksum ?? ''))
+    && value.migration?.version === COMMERCIAL_PRECISION_MIGRATION_VERSION
+    && value.migration?.checksum === expectedMigrationChecksum
+    && value.migrationSource?.sha256 === expectedMigrationChecksum
+    && JSON.stringify(checkKeys) === JSON.stringify([...allChecks].sort())
+    && allChecks.every(key => value.checks?.[key] === 'PASS')
+    && bindingsValid
+    && value.decision?.privateBeta?.eligible === true
+    && Array.isArray(value.decision.privateBeta.blockers) && value.decision.privateBeta.blockers.length === 0
+    && value.decision?.commercialGa?.eligible === true
+    && Array.isArray(value.decision.commercialGa.blockers) && value.decision.commercialGa.blockers.length === 0
+    && value.claimBoundary?.sourceTestsAreRuntimeEvidence === false
+    && value.claimBoundary?.fixtureWorkerIsCommercialEvidence === false
+    && value.claimBoundary?.stagingCanQualifyCommercialGa === false
+    && value.claimBoundary?.productionRequiresSameDeployment === true
+    && value.claimBoundary?.independentCadOrManufacturingCertified === false
+    && signedReceiptValid(value, env, now));
+  return {
+    status: ok ? 'QUALIFIED' : (value ? 'HOLD' : 'NOT_RUN') as EvidenceStatus,
+    receiptSha256: typeof value?.receiptSha256 === 'string' && SHA256.test(value.receiptSha256)
+      ? value.receiptSha256 : null,
+    environment: typeof value?.environment === 'string' ? value.environment : null,
+    executionContract: typeof value?.execution?.contract === 'string' ? value.execution.contract : null,
+  };
+}
+
 export async function loadReleaseEvidenceFile(file: string | undefined): Promise<unknown> {
   if (!file || path.isAbsolute(file) || file.replaceAll('\\', '/').split('/').includes('..')) return undefined;
   try {
@@ -225,16 +339,16 @@ async function migrationEvidence(db: ReleaseEvidenceOptions['db'], env: Environm
   if (!db) return { status: 'NOT_RUN' as EvidenceStatus, migrationVersion: null, migrationChecksums };
   if (db.backend !== 'postgres') return { status: 'HOLD' as EvidenceStatus, migrationVersion: null, migrationChecksums };
   try {
-    const rows = await Promise.all(COMMERCIAL_MIGRATIONS.map(version => db.queryOne<{ version: number; checksum?: string }>('SELECT version, checksum FROM nf_schema_migrations WHERE version = ?', version)));
+    const rows = await Promise.all(COMMERCIAL_POSTGRES_MIGRATIONS.map(version => db.queryOne<{ version: number; checksum?: string }>('SELECT version, checksum FROM nf_schema_migrations WHERE version = ?', version)));
     let valid = true;
     for (const [index, row] of rows.entries()) {
-      const version = COMMERCIAL_MIGRATIONS[index];
+      const version = COMMERCIAL_POSTGRES_MIGRATIONS[index];
       const checksum = typeof row?.checksum === 'string' && SHA256.test(row.checksum) ? row.checksum : '';
-      const expected = env[`POSTGRES_MIGRATION_CHECKSUM_${version}`]?.trim() ?? '';
+      const expected = env[commercialPostgresMigrationChecksumEnvKey(version)]?.trim() ?? '';
       if (checksum) migrationChecksums[String(version)] = checksum;
       if (row?.version !== version || !checksum || !SHA256.test(expected) || checksum !== expected) valid = false;
     }
-    return { status: valid ? 'PASS' : 'HOLD' as EvidenceStatus, migrationVersion: valid ? COMMERCIAL_MIGRATIONS.at(-1)! : null, migrationChecksums };
+    return { status: valid ? 'PASS' : 'HOLD' as EvidenceStatus, migrationVersion: valid ? COMMERCIAL_POSTGRES_MIGRATIONS.at(-1)! : null, migrationChecksums };
   } catch {
     return { status: 'HOLD' as EvidenceStatus, migrationVersion: null, migrationChecksums };
   }
@@ -243,7 +357,7 @@ async function migrationEvidence(db: ReleaseEvidenceOptions['db'], env: Environm
 export async function buildReleaseEvidence(options: ReleaseEvidenceOptions = {}) {
   const env = options.env ?? process.env;
   const now = options.now ?? Date.now();
-  const gitHead = gitCommitSha(env.RAILWAY_GIT_COMMIT_SHA);
+  const gitHead = gitCommitSha(env.RAILWAY_GIT_COMMIT_SHA) ?? gitCommitSha(env.RELEASE_GIT_HEAD);
   const buildId = cleanId(env.NEXYFAB_BUILD_ID);
   const deploymentId = railwayDeploymentId(env.RAILWAY_DEPLOYMENT_ID);
   const railwayEnvironment = env.RAILWAY_ENVIRONMENT_NAME?.trim().toLowerCase() ?? null;
@@ -257,6 +371,9 @@ export async function buildReleaseEvidence(options: ReleaseEvidenceOptions = {})
   const migration = await migrationEvidence(options.db, env);
   const i18n = verifyI18n(options.i18nReceipt, buildId, gitHead, env, now);
   const sevenDay = verifySevenDay(options.sevenDayReceipt, buildId, gitHead, deploymentId, env, now, options.evidenceRoot);
+  const precisionRuntime = verifyCommercialPrecisionRuntime(
+    options.precisionRuntimeReceipt, buildId, gitHead, deploymentId, migration, env, now,
+  );
   const registry = options.registry ?? loadExternalCommercialVerifierRegistry(env);
   const verifierIdentities = registry?.identities.filter(item => item.role === 'external_verifier') ?? [];
   const fingerprints = verifierIdentities.map(item => item.fingerprintSha256);
@@ -264,14 +381,14 @@ export async function buildReleaseEvidence(options: ReleaseEvidenceOptions = {})
   const registryFingerprintsUnique = fingerprints.length === 3
     && fingerprints.every(value => typeof value === 'string' && SHA256.test(value))
     && new Set(fingerprints).size === 3;
-  const statuses = [runtime.status, build.status, deployment.status, git.status, migration.status, i18n.status === 'QUALIFIED' ? 'PASS' : i18n.status, sevenDay.status === 'QUALIFIED' ? 'PASS' : sevenDay.status];
+  const statuses = [runtime.status, build.status, deployment.status, git.status, migration.status, i18n.status === 'QUALIFIED' ? 'PASS' : i18n.status, sevenDay.status === 'QUALIFIED' ? 'PASS' : sevenDay.status, precisionRuntime.status === 'QUALIFIED' ? 'PASS' : precisionRuntime.status];
   const allPass = statuses.every(status => status === 'PASS') && registryRoles === 3 && registryFingerprintsUnique;
   const hasHold = statuses.includes('HOLD') || (registryRoles > 0 && (registryRoles !== 3 || !registryFingerprintsUnique));
   const status = allPass ? 'PASS' : hasHold ? 'HOLD' : 'NOT_RUN';
   return {
     schema: 'nexyfab.health.release-evidence.v1', status,
     generatedAt: new Date(now).toISOString(),
-    release: { buildId, deploymentId, gitHead, migrationVersion: migration.migrationVersion, migrationChecksums: migration.migrationChecksums, registryRoles, registryFingerprintsUnique, i18n, sevenDay },
-    evidence: { runtime, build, deployment, git, migration: { status: migration.status }, i18n: { status: i18n.status }, sevenDay: { status: sevenDay.status } },
+    release: { buildId, deploymentId, gitHead, migrationVersion: migration.migrationVersion, migrationChecksums: migration.migrationChecksums, registryRoles, registryFingerprintsUnique, i18n, sevenDay, precisionRuntime },
+    evidence: { runtime, build, deployment, git, migration: { status: migration.status }, i18n: { status: i18n.status }, sevenDay: { status: sevenDay.status }, precisionRuntime: { status: precisionRuntime.status } },
   };
 }

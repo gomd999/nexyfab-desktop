@@ -4,6 +4,8 @@ import { useMemo } from 'react';
 import { Html } from '@react-three/drei';
 import type { PresenceState } from './yjsDoc';
 import { useNowMs } from './useNowMs';
+import { useLang } from '../hooks/useLang';
+import { loc } from '@/lib/i18n/loc';
 
 /**
  * Renders other users' cursors using the Yjs Awareness presence map (instead
@@ -27,13 +29,13 @@ function fallbackColor(clientId: number): string {
   return `hsl(${hue}, 70%, 55%)`;
 }
 
-function PresenceCursor({ clientId, state, now }: { clientId: number; state: PresenceState; now: number }) {
+function PresenceCursor({ clientId, state, now, lang }: { clientId: number; state: PresenceState; now: number; lang: string }) {
   const cursor = state.cursor;
   if (!cursor) return null;
   const stale = state.ts !== undefined && now - state.ts > STALE_AFTER_MS;
   const opacity = stale ? 0.25 : 1;
   const color = state.color ?? fallbackColor(clientId);
-  const name = state.name ?? `User ${clientId}`;
+  const name = state.name ?? `${loc(lang, { ko: '사용자', en: 'User', ja: 'ユーザー', zh: '用户', es: 'Usuario', ar: 'مستخدم' })} ${clientId}`;
 
   return (
     <group position={[cursor.x, cursor.y, cursor.z ?? 0]}>
@@ -67,13 +69,13 @@ function PresenceCursor({ clientId, state, now }: { clientId: number; state: Pre
         >
           {name}
           {state.editingNodeId && (
-            <span style={{ opacity: 0.7, marginLeft: 4 }}>· editing</span>
+            <span style={{ opacity: 0.7, marginLeft: 4 }}>· {loc(lang, { ko: '편집 중', en: 'editing', ja: '編集中', zh: '编辑中', es: 'editando', ar: 'قيد التحرير' })}</span>
           )}
           {state.viewportMode && state.viewportMode !== '3d' && (
             <span style={{ opacity: 0.7, marginLeft: 4 }}>· {state.viewportMode}</span>
           )}
           {state.activity === 'idle' && (
-            <span style={{ opacity: 0.55, marginLeft: 4 }}>· idle</span>
+            <span style={{ opacity: 0.55, marginLeft: 4 }}>· {loc(lang, { ko: '대기', en: 'idle', ja: '待機', zh: '空闲', es: 'inactivo', ar: 'خامل' })}</span>
           )}
         </div>
       </Html>
@@ -82,6 +84,7 @@ function PresenceCursor({ clientId, state, now }: { clientId: number; state: Pre
 }
 
 export default function AwarenessCursors({ presences, localClientId }: Props) {
+  const lang = useLang();
   const now = useNowMs(500);
   const remoteCursors = useMemo(() => {
     const out: Array<[number, PresenceState]> = [];
@@ -98,7 +101,7 @@ export default function AwarenessCursors({ presences, localClientId }: Props) {
   return (
     <group>
       {remoteCursors.map(([clientId, state]) => (
-        <PresenceCursor key={clientId} clientId={clientId} state={state} now={now} />
+        <PresenceCursor key={clientId} clientId={clientId} state={state} now={now} lang={lang} />
       ))}
     </group>
   );

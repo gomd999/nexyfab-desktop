@@ -12,16 +12,33 @@
 import React, { useState, useRef, useCallback, useEffect, useMemo } from 'react';
 import dynamic from 'next/dynamic';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import type * as ThreeNS from 'three';
 import { DomainIcon } from './_domainIcons';
 import Md from '@/components/nexyfab/Md';
 import { ACCEPT_RASTER, imageFromTransfer, isAcceptedRaster } from '@/lib/drawingInput';
+import {
+  DESIGN_ENTRY_COPY,
+  classifyRasterDataUrl,
+  recommendDesignExecutionLane,
+  type DesignExecutionLane,
+  type RasterDesignClassification,
+} from '@/lib/designEntryFlow';
 import { actionReplyRequiresConfirmation, normalizeEngChatActionPayload } from '@/lib/engChatActionPayload';
 
 import { type DesignStage, stageOf } from '@/lib/designStage';
 import { recommendDesignDomains } from '@/lib/ai/domainPromptClassifier';
 import { useAuthStore } from '@/hooks/useAuth';
 import { DesignStageBar } from '@/components/nexyfab/DesignStageBar';
+import { AiModelSelector, useAiModelPreference } from '@/components/nexyfab/AiModelSelector';
+import { createChatAiDesignWorkspace, ensureChatDesignProject } from '@/lib/ai/chatDesignWorkspacePromotion';
+import {
+  clearPendingChatDesignDraft,
+  readPendingChatDesignDraft,
+  savePendingChatDesignDraft,
+} from '@/lib/chatDesignDraft';
+import { AGENTIC_PRECISION_ENTRY_DRAFT_KEY, DIRECT_PRECISION_ENTRY_DRAFT_KEY } from '@/lib/precisionEntryDraft';
+import { ChatResultShareTray } from '@/components/nexyfab/ChatResultShareTray';
 // three/R3F 뷰어는 SSR 불가 → 클라이언트에서만 로드.
 const ChatCadViewer = dynamic(() => import('./ChatCadViewer'), {
   ssr: false,
@@ -79,7 +96,7 @@ type StructuralResult = {
 };
 type CableRow = { from?: unknown; to?: unknown; type?: unknown; cores?: unknown; mm2?: unknown; lengthM?: unknown; note?: unknown };
 type Msg = { role: 'user' | 'assistant'; content: string; calc?: CalcResult; cad?: CadResult; wiring?: CableRow[]; image?: string; calcId?: string; calcInput?: Record<string, unknown>; genImage?: string; genSrc?: string; genFromImage?: boolean };
-type Attached = { dataUrl: string; base64: string; mime: string; name: string };
+type Attached = { file?: File; dataUrl: string; base64: string; mime: string; name: string; classification?: RasterDesignClassification };
 // 챗 스레드 (좌측 사이드바 — 게스트 localStorage·회원 서버 동기화)
 type Thread = { id: string; title: string; domain: Domain; at: number; updated: number; pinned?: boolean; badge?: string | null; aiTitled?: boolean; msgs: Msg[] };
 const THREADS_KEY = 'nf_chat_threads_v1';
@@ -279,9 +296,9 @@ function summarizeParts(assembly: AssemblyPlan | undefined): string[] {
 }
 
 // 기계 멀티바디: 자연어 → drawing/assemble(AI 어셈블리 + 게이트-교정 + 간섭검사).
-async function runAssemblePipeline(prompt: string, lang: Lang, signal?: AbortSignal): Promise<CadResult> {
+async function runAssemblePipeline(prompt: string, lang: Lang, modelId: string, signal?: AbortSignal): Promise<CadResult> {
   const r = await fetch('/api/nexyfab/drawing/assemble/', {
-    method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ description: prompt, lang }),
+    method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ description: prompt, lang, modelId }),
     signal,
   });
   const j = await r.json().catch(() => ({}));
@@ -391,9 +408,9 @@ async function runExtractPipeline(att: Attached, lang: Lang): Promise<{ cad: Cad
 
 // 기계 스테이지1: 자연어 → drawing/compose(AI 조합 + 결정론 게이트) → intent+SCAD.
 // 체크포인트로 반환(정밀 3D/STEP은 사용자 승인 후 export-step).
-async function runComposePipeline(prompt: string, lang: Lang, signal?: AbortSignal): Promise<CadResult> {
+async function runComposePipeline(prompt: string, lang: Lang, modelId: string, signal?: AbortSignal): Promise<CadResult> {
   const r = await fetch('/api/nexyfab/drawing/compose/', {
-    method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ description: prompt, lang }),
+    method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ description: prompt, lang, modelId }),
     signal,
   });
   const j = await r.json().catch(() => ({}));
@@ -979,6 +996,39 @@ const SUGGEST: Record<Lang, Record<Domain, string[]>> = {
     landscape: ['نقاط تصميم العزل والتصريف لحديقة سطح', 'معايير تباعد أشجار الشوارع وعمق التربة', 'طرق تنسيق مواقع لاحتجاز مياه الأمطار'],
     interior: ['توزيع المقاعد ومسارات الحركة لمقهى 60م²', 'معايير اختيار تشطيبات المطبخ', 'ما يجب مراعاته عند تخطيط الإضاءة غير المباشرة'],
   },
+};
+
+const DESIGN_STARTERS: Record<Lang, string[]> = {
+  kr: [
+    '첨부한 2D 도면을 3D로 바꿔줘',
+    '첨부한 이미지를 3D 형상으로 구현해줘',
+    '복잡한 제품을 요구사항부터 부품 구조까지 설계해줘',
+  ],
+  en: [
+    'Turn the attached 2D drawing into 3D',
+    'Recreate the attached image as a 3D form',
+    'Design a complex product from requirements through its part structure',
+  ],
+  ja: [
+    '添付した2D図面を3Dに変換して',
+    '添付した画像を3D形状として再現して',
+    '複雑な製品を要件から部品構成まで設計して',
+  ],
+  cn: [
+    '把附加的2D图纸转换成3D',
+    '把附加的图像实现为3D形状',
+    '从需求到零部件结构设计复杂产品',
+  ],
+  es: [
+    'Convierte el plano 2D adjunto en 3D',
+    'Recrea la imagen adjunta como una forma 3D',
+    'Diseña un producto complejo desde los requisitos hasta su estructura de piezas',
+  ],
+  ar: [
+    'حوّل المخطط ثنائي الأبعاد المرفق إلى نموذج ثلاثي الأبعاد',
+    'نفّذ الصورة المرفقة كشكل ثلاثي الأبعاد',
+    'صمّم منتجًا معقدًا من المتطلبات حتى بنية الأجزاء',
+  ],
 };
 
 // 결정론 계산 결과 카드 (eng-api demo 응답 → PASS/FAIL + 검토항목 + 근거).
@@ -1690,17 +1740,22 @@ function WiringCard({ wiring, t, accent, isRtl }: { wiring: CableRow[]; t: (type
 // appMode(2026-07-16): /nexyfab/ai 전용 앱 창 — 통합 사이드바(채팅 섹션)가 스레드를 담당하므로
 // 내부 스레드 사이드바를 숨기고, 마케팅 헤더가 없는 만큼 패딩을 줄인다. 랜딩(/)은 기존 그대로.
 export default function ChatHero({ langCode, appMode = false }: { langCode: string; appMode?: boolean }) {
+  const router = useRouter();
   const lang = toLang(langCode);
   const t = DICT[lang];
   const pathLabels = DESIGN_PATH_I18N[lang];
+  const entryCopy = DESIGN_ENTRY_COPY[lang];
   const isRtl = lang === 'ar';
   const [domain, setDomain] = useState<Domain>('mechanical');
   const [domainLocked, setDomainLocked] = useState(false);
   const [input, setInput] = useState('');
+  const [laneOverride, setLaneOverride] = useState<DesignExecutionLane | null>(null);
   const [messages, setMessages] = useState<Msg[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [attached, setAttached] = useState<Attached | null>(null);
+  const [promoting, setPromoting] = useState(false);
+  const [entryNotice, setEntryNotice] = useState('');
   // P-2(260808b) — 역루프: 정밀 CAD가 넘긴 모델 컨텍스트(단발 소비, 탭 단위).
   const [cadCtx, setCadCtx] = useState<ReverseProgramResult | null>(null);
   useEffect(() => {
@@ -1714,6 +1769,8 @@ export default function ChatHero({ langCode, appMode = false }: { langCode: stri
     } catch { /* 손상 컨텍스트=무시(빈 상태가 정직) */ }
   }, []);
   const sessionStatus = useAuthStore(state => state.sessionStatus);
+  const userPlan = useAuthStore(state => state.user?.plan ?? 'free');
+  const { modelId, pickModel } = useAiModelPreference(userPlan);
   const authed = sessionStatus === 'unknown' ? null : sessionStatus === 'authenticated';
   const [threads, setThreads] = useState<Thread[]>([]);
   const [activeId, setActiveId] = useState<string | null>(null);
@@ -1722,12 +1779,102 @@ export default function ChatHero({ langCode, appMode = false }: { langCode: stri
   const syncTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
-  const attachModeRef = useRef<'drawing' | 'photo'>('drawing'); // §3 역할 분리(2026-07-16)
+  const promptRef = useRef<HTMLTextAreaElement>(null);
   const [scaleMm, setScaleMm] = useState(''); // #5 사진/시안 기준 치수(사용자 제공값 — 치수 날조 아님)
+  const [pendingAttachment, setPendingAttachment] = useState<{ name: string; mime: string } | null>(null);
 
   const accent = DOMAIN_ACCENT[domain];
   const started = messages.length > 0;
   const consultHref = `/${langCode}/contact/`;
+  const recommendedLane = useMemo(() => recommendDesignExecutionLane({
+    prompt: input,
+    hasRasterAttachment: Boolean(attached),
+    hasAuthoritativeCad: Boolean(cadCtx),
+  }), [attached, cadCtx, input]);
+  const executionLane = laneOverride ?? recommendedLane;
+  const fillPrompt = useCallback((value: string) => {
+    setInput(value);
+    requestAnimationFrame(() => promptRef.current?.focus());
+  }, []);
+
+  useEffect(() => {
+    const draft = readPendingChatDesignDraft(sessionStorage);
+    if (!draft) return;
+    setInput(draft.prompt);
+    setLaneOverride(draft.lane);
+    setDomain(draft.domain);
+    setDomainLocked(true);
+    setScaleMm(draft.scaleMm ?? '');
+    if (draft.attachment) {
+      setPendingAttachment({ name: draft.attachment.name, mime: draft.attachment.mime });
+      setEntryNotice(`${entryCopy.reattach} (${draft.attachment.name})`);
+    }
+  }, [entryCopy.reattach]);
+
+  const startSelectedPath = useCallback(async () => {
+    if (promoting) return;
+    if (pendingAttachment && !attached) {
+      const notice = `${entryCopy.reattach} (${pendingAttachment.name})`;
+      setEntryNotice(notice);
+      setError(notice);
+      fileRef.current?.click();
+      return;
+    }
+    const prompt = input.trim() || (attached
+      ? DESIGN_STARTERS[lang][attached.classification?.kind === 'drawing' ? 0 : 1]
+      : CHAT_UI_I18N[lang].cadContextLoaded);
+    if (!prompt) return;
+    const draft = {
+      version: 1 as const,
+      prompt,
+      lane: executionLane,
+      domain,
+      ...(scaleMm ? { scaleMm } : {}),
+      ...(attached ? { attachment: { name: attached.name, mime: attached.mime, classification: attached.classification, reattachRequired: true as const } } : {}),
+    };
+    if (authed !== true) {
+      try { savePendingChatDesignDraft(sessionStorage, draft); } catch { setError(entryCopy.reattach); return; }
+      const nextUrl = new URL(window.location.href);
+      nextUrl.searchParams.set('resumeDesign', '1');
+      router.push(`/login?lang=${encodeURIComponent(langCode)}&next=${encodeURIComponent(`${nextUrl.pathname}${nextUrl.search}`)}`);
+      return;
+    }
+    setPromoting(true);
+    setError('');
+    setEntryNotice('');
+    try {
+      if (executionLane === 'ai-design') {
+        const result = await createChatAiDesignWorkspace({
+          prompt,
+          ...(attached?.file ? { attachment: { file: attached.file, classification: attached.classification, ...(Number(scaleMm) > 0 ? { scaleMm: Number(scaleMm) } : {}) } } : {}),
+        });
+        clearPendingChatDesignDraft(sessionStorage);
+        router.push(`/${encodeURIComponent(langCode)}/nexyfab/ai?projectId=${encodeURIComponent(result.project.id)}&sessionId=${encodeURIComponent(result.sessionId)}`);
+        return;
+      }
+      const resolved = await ensureChatDesignProject(prompt);
+      sessionStorage.setItem(executionLane === 'agentic-cad' ? AGENTIC_PRECISION_ENTRY_DRAFT_KEY : DIRECT_PRECISION_ENTRY_DRAFT_KEY, JSON.stringify({
+        version: 1, prompt, lane: executionLane, projectId: resolved.project.id,
+        attachment: attached ? { name: attached.name, mime: attached.mime, reattachRequired: true } : undefined,
+      }));
+      clearPendingChatDesignDraft(sessionStorage);
+      const params = new URLSearchParams({
+        expert: '1', mode: 'expert', experience: 'expert', projectId: resolved.project.id,
+        workMode: executionLane === 'agentic-cad' ? 'precision_cad' : 'manual',
+      });
+      if (executionLane === 'agentic-cad') params.set('agent', '1'); else params.set('entry', 'ai');
+      router.push(`/${encodeURIComponent(langCode)}/shape-generator?${params.toString()}`);
+    } catch (cause) {
+      const message = cause instanceof Error ? cause.message : 'DESIGN_WORKSPACE_PROMOTION_FAILED';
+      if (message === 'AUTHENTICATION_REQUIRED') {
+        savePendingChatDesignDraft(sessionStorage, draft);
+        router.push(`/login?lang=${encodeURIComponent(langCode)}&next=${encodeURIComponent(window.location.pathname)}`);
+        return;
+      }
+      setError(message);
+      setPromoting(false);
+    }
+  }, [attached, authed, domain, entryCopy.reattach, executionLane, input, lang, langCode, pendingAttachment, promoting, router, scaleMm]);
 
   // 대화 시작 시 = 전용 채팅 화면. 랜딩 하위 마케팅 섹션을 숨겨 "별도 채팅창"처럼.
   useEffect(() => {
@@ -2001,7 +2148,7 @@ export default function ChatHero({ langCode, appMode = false }: { langCode: stri
         const res = await fetch('/api/eng-chat/action/', {
           method: 'POST', headers: { 'content-type': 'application/json' },
           body: JSON.stringify({
-            message: text, domain: requestDomain, history, lang,
+            message: text, domain: requestDomain, history, lang, modelId,
             // 증분 수정(2026-07-16): 직전 설계 스펙을 동봉 — "방금 그거 높이만 바꿔"가 동작
             lastSpec: (() => { const lc = [...messages].reverse().find((mm) => mm.cad && !mm.cad.error); const sp = lc?.cad?.spec; return Array.isArray(sp) ? sp.join('\n') : typeof sp === 'string' ? sp : undefined; })(),
           }),
@@ -2047,10 +2194,10 @@ export default function ChatHero({ langCode, appMode = false }: { langCode: stri
           });
           try {
             setCad(j.type === 'assembly'
-              ? await runAssemblePipeline(String(j.prompt), lang, ac.signal)
+              ? await runAssemblePipeline(String(j.prompt), lang, modelId, ac.signal)
               : cadCtx
                 ? protectedPrecisionCadEditResult(lang, cadCtx)
-                : await runComposePipeline(String(j.prompt), lang, ac.signal));
+                : await runComposePipeline(String(j.prompt), lang, modelId, ac.signal));
           } catch (e) {
             if ((e as Error)?.name === 'AbortError') {
               // 사용자가 "중단"을 눌렀다 — 진행 카드를 에러로 덮지 않고 그대로 둔다.
@@ -2078,7 +2225,7 @@ export default function ChatHero({ langCode, appMode = false }: { langCode: stri
       const res = await fetch('/api/eng-chat/', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ message: text, domain: requestDomain, history, stream: true, lang }),
+        body: JSON.stringify({ message: text, domain: requestDomain, history, stream: true, lang, modelId }),
         signal: ac.signal,
       });
       if (!res.ok) {
@@ -2129,7 +2276,7 @@ export default function ChatHero({ langCode, appMode = false }: { langCode: stri
       abortRef.current = null;
       autoscroll();
     }
-  }, [input, loading, messages, domain, domainLocked, t, lang, langCode, cadCtx, latestCad]);
+  }, [input, loading, messages, domain, domainLocked, t, lang, langCode, cadCtx, latestCad, modelId]);
 
   // 마지막 user 발화 이후를 걷어내고 재전송 — 히스토리에서 직전 답을 제외해 같은 답 재생산을 피한다
   const regen = () => {
@@ -2161,9 +2308,16 @@ export default function ChatHero({ langCode, appMode = false }: { langCode: stri
       return;
     }
     const reader = new FileReader();
-    reader.onload = () => {
+    reader.onload = async () => {
       const dataUrl = String(reader.result || '');
-      setAttached({ dataUrl, base64: dataUrl.replace(/^data:[^,]+,/, ''), mime: f.type, name: f.name });
+      const classification: RasterDesignClassification = await classifyRasterDataUrl(dataUrl).catch(() => ({
+        kind: 'photo' as const,
+        confidence: 0,
+        metrics: { brightRatio: 0, lowSaturationRatio: 0, edgeRatio: 0, luminanceVariance: 1 },
+      }));
+      setAttached({ file: f, dataUrl, base64: dataUrl.replace(/^data:[^,]+,/, ''), mime: f.type, name: f.name, classification });
+      setPendingAttachment(null);
+      setEntryNotice('');
       setError('');
     };
     reader.readAsDataURL(f);
@@ -2205,25 +2359,27 @@ export default function ChatHero({ langCode, appMode = false }: { langCode: stri
       return copy;
     });
     try {
-      if (attachModeRef.current === 'photo') {
-        // 사진 = 형태 힌트만(§3): 유형 분류만 받고 치수는 버린다 → 핵심 치수 되묻기
-        const rp = await fetch('/api/nexyfab/drawing/extract-preset/', {
-          method: 'POST', headers: { 'content-type': 'application/json' },
-          body: JSON.stringify({ imageBase64: att.base64, mimeType: att.mime, domain: STUDIO_DOMAIN[domain] ?? 'mech', lang }),
-        });
-        const jp = (await rp.json()) as { ok?: boolean; labelKo?: string; labelEn?: string; templateId?: string; error?: string };
-        const label = jp.ok ? (DRAWING_TYPE_I18N[String(jp.templateId ?? '')]?.[lang] ?? (lang === 'kr' ? jp.labelKo : jp.labelEn) ?? jp.templateId ?? '?') : '?';
-        setLast({ content: jp.ok ? t.photoHint.replace('{label}', String(label)) : '⚠️ ' + localizedApiError(lang, jp.error, t.error) });
-        // #5 기준 치수(사용자 제공값): 다음 생성 문장에 프리필 — 스케일이 실제 생성 텍스트에 실리게(투명)
-        if (jp.ok && scaleMm && parseFloat(scaleMm) > 0) { setInput(`${CHAT_UI_I18N[lang].scalePrefix} ${parseFloat(scaleMm)}mm — `); setScaleMm(''); }
-        return;
+      const shouldTryDrawing = domain === 'mechanical' && att.classification?.kind === 'drawing';
+      if (shouldTryDrawing) {
+        const { cad, recognized } = await runExtractPipeline(att, lang);
+        if (!cad.error) {
+          const line = recognized
+            ? `${t.imgRecognized}: **${recognized.label}** · ${t.imgConfidence} ${Math.round(recognized.confidence * 100)}%${uncertaintyLine(recognized, t)}`
+            : t.cadSpecTitle;
+          setLast({ content: line, cad });
+          return;
+        }
       }
-      const { cad, recognized } = await runExtractPipeline(att, lang);
-      // 성공/실패 모두 인식 결과를 노출(무엇을 읽었는지) — 실패 시 이유는 카드로.
-      const line = recognized
-        ? `${t.imgRecognized}: **${recognized.label}** · ${t.imgConfidence} ${Math.round(recognized.confidence * 100)}%${uncertaintyLine(recognized, t)}`
-        : (cad.error ? '' : t.cadSpecTitle);
-      setLast({ content: line, cad });
+
+      // Photo/reference fallback. It never treats visual proportions as exact dimensions.
+      const rp = await fetch('/api/nexyfab/drawing/extract-preset/', {
+        method: 'POST', headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ imageBase64: att.base64, mimeType: att.mime, domain: STUDIO_DOMAIN[domain] ?? 'mech', lang }),
+      });
+      const jp = (await rp.json()) as { ok?: boolean; labelKo?: string; labelEn?: string; templateId?: string; error?: string };
+      const label = jp.ok ? (DRAWING_TYPE_I18N[String(jp.templateId ?? '')]?.[lang] ?? (lang === 'kr' ? jp.labelKo : jp.labelEn) ?? jp.templateId ?? '?') : '?';
+      setLast({ content: jp.ok ? t.photoHint.replace('{label}', String(label)) : '⚠️ ' + localizedApiError(lang, jp.error, t.error) });
+      if (jp.ok && scaleMm && parseFloat(scaleMm) > 0) { setInput(`${CHAT_UI_I18N[lang].scalePrefix} ${parseFloat(scaleMm)}mm — `); setScaleMm(''); }
     } catch (e) {
       setLast({ content: '', cad: { error: e instanceof Error ? e.message : t.error } });
     } finally {
@@ -2293,7 +2449,7 @@ export default function ChatHero({ langCode, appMode = false }: { langCode: stri
       } else {
         const cad = cadCtx
           ? protectedPrecisionCadEditResult(lang, cadCtx)
-          : await runComposePipeline(m.genSrc || '', lang);
+          : await runComposePipeline(m.genSrc || '', lang, modelId);
         setLast({ content: cad.error ? '' : t.cadSpecTitle, cad });
       }
     } catch (e) {
@@ -2302,7 +2458,7 @@ export default function ChatHero({ langCode, appMode = false }: { langCode: stri
       setLoading(false); autoscroll();
     }
 
-  }, [loading, t, lang, cadCtx]);
+  }, [loading, t, lang, cadCtx, modelId]);
 
   // 🎯 P1 픽킹 편집(260719): 우측 3D에서 부품 클릭=선택 → 다음 메시지는 그 부품만 수정
   // (edit-part — AI=패치 이해만, 적용·게이트=서버 결정론. 대상 외 부품 불변은 코드 보장)
@@ -2569,7 +2725,7 @@ export default function ChatHero({ langCode, appMode = false }: { langCode: stri
               return (
                 <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', justifyContent: isRtl ? 'flex-end' : 'flex-start' }}>
                   {chips.map((c, ci) => (
-                    <button key={ci} onClick={() => send(c)} style={{
+                    <button key={ci} onClick={() => fillPrompt(c)} style={{
                       padding: '6px 13px', borderRadius: 999, fontSize: 12, cursor: 'pointer',
                       border: '1px solid rgba(255,255,255,0.14)', background: 'rgba(255,255,255,0.04)', color: 'rgba(203,213,225,0.9)',
                     }}>{c}</button>
@@ -2594,7 +2750,7 @@ export default function ChatHero({ langCode, appMode = false }: { langCode: stri
           borderRadius: 18, padding: 12, boxShadow: `0 12px 48px rgba(0,0,0,0.4)`,
           backdropFilter: 'blur(8px)', transition: 'border-color .3s', flexShrink: 0,
         }}>
-          <input id="nf-chat-reference-file" name="design-reference" aria-label={t.attachDrawing} ref={fileRef} type="file" accept={ACCEPT_RASTER} onChange={onPickFile} style={{ display: 'none' }} />
+          <input id="nf-chat-reference-file" name="design-reference" aria-label={entryCopy.attach} ref={fileRef} type="file" accept={ACCEPT_RASTER} onChange={onPickFile} style={{ display: 'none' }} />
 
           {/* 첨부 도면 미리보기 */}
           {cadCtx && (
@@ -2611,7 +2767,9 @@ export default function ChatHero({ langCode, appMode = false }: { langCode: stri
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '4px 6px 8px' }}>
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src={attached.dataUrl} alt="" style={{ width: 44, height: 44, objectFit: 'cover', borderRadius: 8, border: '1px solid rgba(255,255,255,0.18)' }} />
-              <span style={{ fontSize: 12, color: '#cbd5e1', maxWidth: 220, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{attached.name}</span>
+              <span style={{ fontSize: 12, color: '#cbd5e1', maxWidth: 220, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                {attached.name} · {attached.classification?.kind === 'drawing' ? entryCopy.drawing : entryCopy.photo}
+              </span>
               <input value={scaleMm} onChange={(e) => setScaleMm(e.target.value)} placeholder={CHAT_UI_I18N[lang].scalePlaceholder} inputMode="decimal"
                 title={CHAT_UI_I18N[lang].scaleTitle}
                 style={{ width: 140, padding: '4px 8px', borderRadius: 8, border: '1px solid rgba(148,163,184,0.35)', background: 'rgba(255,255,255,0.05)', color: '#e2e8f0', fontSize: 11.5 }} />
@@ -2619,7 +2777,29 @@ export default function ChatHero({ langCode, appMode = false }: { langCode: stri
             </div>
           )}
 
+          {!started && (Boolean(input.trim()) || Boolean(attached) || Boolean(cadCtx)) && (
+            <div data-testid="design-execution-lane-card" role="group" aria-label={entryCopy.recommended} style={{ display: 'flex', alignItems: 'center', gap: 7, flexWrap: 'wrap', padding: '5px 8px 7px' }}>
+              <span style={{ fontSize: 11, color: '#94a3b8', fontWeight: 700 }}>{entryCopy.recommended}</span>
+              {([
+                ['ai-design', entryCopy.ai],
+                ['precision-cad', entryCopy.precision],
+                ['agentic-cad', entryCopy.agentic],
+              ] as const).map(([lane, label]) => (
+                <button key={lane} type="button" aria-pressed={executionLane === lane} onClick={() => setLaneOverride(lane)} style={{
+                  padding: '4px 9px', borderRadius: 999, cursor: 'pointer', fontSize: 10.5, fontWeight: executionLane === lane ? 800 : 600,
+                  border: `1px solid ${executionLane === lane ? accent : 'rgba(148,163,184,0.28)'}`,
+                  background: executionLane === lane ? `${accent}25` : 'rgba(255,255,255,0.03)', color: executionLane === lane ? '#fff' : '#94a3b8',
+                }}>{label}</button>
+              ))}
+              <button data-testid="design-path-start" type="button" onClick={() => { void startSelectedPath(); }} disabled={promoting} style={{
+                marginInlineStart: 'auto', padding: '6px 12px', borderRadius: 9, cursor: promoting ? 'wait' : 'pointer', fontSize: 11, fontWeight: 800,
+                border: 'none', background: `linear-gradient(135deg, ${accent}, #6366f1)`, color: '#fff', opacity: promoting ? 0.65 : 1,
+              }}>{promoting ? entryCopy.opening : (authed === true ? entryCopy.continue : entryCopy.signIn)}</button>
+            </div>
+          )}
+
           <textarea
+            ref={promptRef}
             id="nf-chat-design-prompt"
             name="design-prompt"
             aria-label={t.placeholder}
@@ -2642,16 +2822,19 @@ export default function ChatHero({ langCode, appMode = false }: { langCode: stri
           />
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, padding: '4px 4px 2px' }}>
             <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-              {/* 도면·스케치 첨부 (입력 A) — 기계설계 전용(Vision 어휘가 기계부품). */}
-              {/* §3 역할 분리 — 📐도면(치수 판독, 기계 어휘)·📷사진(형태 힌트, 전 분야) */}
-              {domain === 'mechanical' && (
-                <button onClick={() => { attachModeRef.current = 'drawing'; fileRef.current?.click(); }} title={t.attachDrawing} aria-label={t.attachDrawing} style={{
-                  display: 'inline-flex', alignItems: 'center', gap: 6, padding: '6px 11px', borderRadius: 10, cursor: 'pointer',
-                  border: `1px solid ${accent}55`, background: 'rgba(255,255,255,0.05)', color: '#cbd5e1', fontSize: 12.5, fontWeight: 600,
-                }}>
-                  📐<span style={{ display: started ? 'none' : 'inline' }}>{t.attachDrawing}</span>
-                </button>
-              )}
+              <button onClick={() => fileRef.current?.click()} title={entryCopy.attach} aria-label={entryCopy.attach} style={{
+                display: 'inline-flex', alignItems: 'center', gap: 6, padding: '6px 11px', borderRadius: 10, cursor: 'pointer',
+                border: `1px solid ${accent}55`, background: 'rgba(255,255,255,0.05)', color: '#cbd5e1', fontSize: 12.5, fontWeight: 600,
+              }}>
+                📎<span style={{ display: started ? 'none' : 'inline' }}>{entryCopy.attach}</span>
+              </button>
+              <AiModelSelector
+                modelId={modelId}
+                onChange={(id) => { pickModel(id); }}
+                plan={userPlan}
+                lang={lang}
+                compact
+              />
               {domain === 'mechanical' && (
                 <button onClick={() => { void sendGenImage(); }} disabled={loading || (!input.trim() && !attached)} title={t.genImg} aria-label={t.genImg} style={{
                   display: 'inline-flex', alignItems: 'center', gap: 6, padding: '6px 11px', borderRadius: 10,
@@ -2662,12 +2845,6 @@ export default function ChatHero({ langCode, appMode = false }: { langCode: stri
                   ✨<span style={{ display: started ? 'none' : 'inline' }}>{t.genImg}</span>
                 </button>
               )}
-              <button onClick={() => { attachModeRef.current = 'photo'; fileRef.current?.click(); }} title={t.attachPhoto} aria-label={t.attachPhoto} style={{
-                display: 'inline-flex', alignItems: 'center', gap: 6, padding: '6px 11px', borderRadius: 10, cursor: 'pointer',
-                border: '1px solid rgba(148,163,184,0.35)', background: 'rgba(255,255,255,0.05)', color: '#cbd5e1', fontSize: 12.5, fontWeight: 600,
-              }}>
-                📷<span style={{ display: started ? 'none' : 'inline' }}>{t.attachPhoto}</span>
-              </button>
               <span style={{ color: accent, display: 'inline-flex' }}><DomainIcon name={domain} size={20} /></span>
               {pickedPart && (
                 <span title={t.pickSel.replace('{id}', pickedPart)} style={{
@@ -2697,6 +2874,8 @@ export default function ChatHero({ langCode, appMode = false }: { langCode: stri
           </div>
         </div>
 
+        <ChatResultShareTray cad={latestCad} langCode={lang} accent={accent} />
+
         {/* 업로드 안내 (대화 시작 전, 기계설계 전용) */}
         {!started && domain === 'mechanical' && (
           <p style={{ marginTop: 10, fontSize: 11.5, color: 'rgba(148,163,184,0.7)', lineHeight: 1.5, maxWidth: 560, margin: '10px auto 0', wordBreak: 'keep-all' }}>{t.uploadHint}</p>
@@ -2706,6 +2885,7 @@ export default function ChatHero({ langCode, appMode = false }: { langCode: stri
             ⚠️ {error}
           </div>
         )}
+        {entryNotice && !error && <p role="status" style={{ maxWidth: 640, margin: '8px auto 0', color: '#fbbf24', fontSize: 11.5 }}>{entryNotice}</p>}
 
         {/* 외부 제품 IA는 두 경로, 실제 검증 엔진은 분야별로 유지한다. */}
         {!started && <div role="group" aria-label={pathLabels.group} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, marginTop: 18 }}>
@@ -2749,8 +2929,8 @@ export default function ChatHero({ langCode, appMode = false }: { langCode: stri
         {/* 분야별 시작 예시 (대화 시작 전) */}
         {!started && (
           <div style={{ display: 'flex', gap: 8, justifyContent: 'center', flexWrap: 'wrap', marginTop: 14 }}>
-            {SUGGEST[lang][domain].map((s, i) => (
-              <button key={i} onClick={() => send(s)} disabled={loading} style={{
+            {(domain === 'mechanical' ? DESIGN_STARTERS[lang] : SUGGEST[lang][domain]).map((s, i) => (
+              <button key={i} data-testid="starter-prompt" onClick={() => fillPrompt(s)} disabled={loading} style={{
                 padding: '8px 14px', borderRadius: 12, cursor: loading ? 'wait' : 'pointer',
                 fontSize: 12.5, fontWeight: 500, textAlign: isRtl ? 'right' : 'left',
                 border: '1px solid rgba(255,255,255,0.12)', background: 'rgba(255,255,255,0.035)',

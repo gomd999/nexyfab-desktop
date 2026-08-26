@@ -12,6 +12,7 @@ import { loadServerAgenticCommercialTrust } from '@/lib/ai/serverAgenticCommerci
 import { createDbExternalCommercialVerificationRequestStore, externalVerifierCallbackSha256, verifyExternalVerifierCallback, type ExternalVerifierCallback } from '@/lib/ai/externalCommercialVerificationRequest';
 import { loadExternalCommercialVerifierRegistry } from '@/lib/ai/externalCommercialVerifierRegistry';
 import { createDbCommercialGenerationStateStore } from '@/lib/ai/commercialGenerationStateStore';
+import { commercialPostgresMigrationAtLeast } from '@/lib/commercial-readiness';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -20,7 +21,7 @@ function isCallback(value: unknown): value is ExternalVerifierCallback { return 
 export async function POST(request: NextRequest) {
   try {
     if (!authorized(request)) return NextResponse.json({ ok: false, status: 'HOLD', code: 'INTERNAL_VERIFIER_UNAUTHORIZED' }, { status: 403 });
-    if (process.env.NEXYFAB_COMMERCIAL_MODE === '1' && process.env.POSTGRES_MIGRATION_VERSION !== '2026082208') return NextResponse.json({ ok: false, status: 'HOLD', code: 'COMMERCIAL_GENERATION_MIGRATION_REQUIRED' }, { status: 503 });
+    if (process.env.NEXYFAB_COMMERCIAL_MODE === '1' && !commercialPostgresMigrationAtLeast(process.env, 2026082208)) return NextResponse.json({ ok: false, status: 'HOLD', code: 'COMMERCIAL_GENERATION_MIGRATION_REQUIRED' }, { status: 503 });
     const body = await readBoundedJson<unknown>(request, 256 * 1024); if (!isCallback(body)) return NextResponse.json({ ok: false, status: 'HOLD', code: 'CALLBACK_SCHEMA_INVALID' }, { status: 400 });
     const callback = body; const registry = loadExternalCommercialVerifierRegistry(); if (!registry) return NextResponse.json({ ok: false, status: 'HOLD', code: 'EXTERNAL_VERIFIER_REGISTRY_NOT_CONFIGURED' }, { status: 503 });
     const db = getDbAdapter(); const requestStore = createDbExternalCommercialVerificationRequestStore(db); const requestValue = await requestStore.get(callback.requestId); if (!requestValue) return NextResponse.json({ ok: false, status: 'HOLD', code: 'REQUEST_NOT_FOUND' }, { status: 404 });

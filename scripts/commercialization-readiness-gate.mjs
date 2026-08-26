@@ -7,11 +7,20 @@ import { readReleaseWorkingTreeChanges } from './build-release-baseline.mjs';
 import { parseTrustedIndependentReviewers, validateIndependentDomainReviewKit } from './validate-independent-domain-review-kit.mjs';
 import { verifySevenDayOperationsReceiptBindings, verifySevenDayOperationsReceiptSignature } from './build-seven-day-operations-receipt.mjs';
 import { SHA256 as IMMUTABLE_SHA256, sha256 as immutableSha256, verifyReceiptSha256 } from './immutable-receipt-binding.mjs';
+import {
+  TEXT_BINDING_CANONICALIZATION,
+  canonicalTextBinding,
+} from './canonical-text-binding.mjs';
 import { verifyRailwayResourceBaselineDerivation } from './build-railway-resource-baseline-v2.mjs';
-import { verifyCommercialSyntheticCampaignReceiptDerivation } from './build-commercial-synthetic-campaign-receipt.mjs';
+import {
+  COMMERCIAL_SYNTHETIC_CAMPAIGN_RECEIPT_SCHEMA,
+  COMMERCIAL_SYNTHETIC_REQUIRED_AXES,
+  verifyCommercialSyntheticCampaignReceiptDerivation,
+} from './build-commercial-synthetic-campaign-receipt.mjs';
 import { verifyOpenScadHttpSmokeReceipt } from './build-openscad-http-smoke-v2.mjs';
 import { verifyRailwayStagingIsolationEvidenceV2 } from './build-railway-staging-isolation-evidence-v2.mjs';
 import { verifyCommercialSecurityEvidenceReceipt } from './build-commercial-security-evidence-receipt-v2.mjs';
+import { verifyCommercialPrecisionStagingHoldEvidence } from './build-commercial-precision-staging-hold-evidence.mjs';
 import { verifyClosedBetaIntegrityReceipt } from './closed-beta-integrity-compare.mjs';
 import { verifyProtectedStateReceipt } from './compare-production-protected-state.mjs';
 import { verifyCommercialLiveSmokeReceipt } from './build-commercial-live-smoke-receipt-v2.mjs';
@@ -21,6 +30,11 @@ import { verifySpecialtyIndependentReleaseReceipt } from './verify-specialty-ind
 import { verifyEnterpriseSsoReadinessReceipt } from './build-enterprise-sso-readiness-receipt.mjs';
 import { verifyWindowsSeaReleaseReceipt } from './agent-sidecar/windows-sea-release-evidence.mjs';
 import { largeUploadStagingReceiptStatus } from './build-large-upload-staging-readiness-receipt.mjs';
+import {
+  COMMERCIAL_PRECISION_DEFAULT_OBSERVATION,
+  COMMERCIAL_PRECISION_DEFAULT_RECEIPT,
+  verifyCommercialPrecisionRuntimeEvidence,
+} from './build-commercial-precision-runtime-evidence.mjs';
 
 const MECHANICAL_COMPLEX_FAMILIES = ['robot', 'gearbox', 'pressure_vessel', 'turbomachinery', 'factory_equipment', 'machine_skid', 'welded_enclosure'];
 const verifiedFamily = family => Object.freeze({ domains: ['mechanical'], complexFamilies: [family], promotionFamily: family, mechanicalScope: true, complexScope: true });
@@ -53,7 +67,11 @@ const SHA256 = /^[a-f0-9]{64}$/;
 const GIT_COMMIT_SHA = /^(?:[a-f0-9]{40}|[a-f0-9]{64})$/i;
 const OPERATIONS_SERVICES = ['web', 'openscad-worker', 'fea-worker'];
 const OPERATIONS_COST_SERVICES = ['nexyfab.com', 'nexyfab-openscad-worker', 'nexyfab-fea-worker', 'Postgres-KN2x', 'Redis-IrVt'];
-const COMMERCIAL_MIGRATION_VERSIONS = [2026082202, 2026082203, 2026082204, 2026082205, 2026082206, 2026082207, 2026082208];
+const COMMERCIAL_MIGRATION_VERSIONS = [
+  2026082202, 2026082203, 2026082204, 2026082205, 2026082206, 2026082207, 2026082208,
+  2026082301, 2026082401, 2026082402, 2026082403, 2026082501, 2026082502,
+];
+const LATEST_COMMERCIAL_MIGRATION = COMMERCIAL_MIGRATION_VERSIONS.at(-1);
 const PRODUCTION_TARGET = 'https://nexyfab.com';
 const LIVE_SMOKE_REQUIRED_CHECKS = ['live', 'ready', 'capabilities', 'scad-agent-route', 'openscad'];
 const AUTHENTICATED_E2E_REQUIRED_CHECKS = ['login', 'session', 'project_create', 'project_read', 'cad_verify', 'storage_state_reconnect', 'expert_workspace_visible', 'project_cleanup', 'logout'];
@@ -87,6 +105,9 @@ export function mechanicalScopeContractStatus(scope) {
   const decision = scope?.decision ?? {};
   const evidenceKeys = [
     'internalRegressionVerified',
+    'intentQualification150Verified',
+    'intentRuntimeRepresentativeVerified',
+    'assemblyDrawingHandoffLocalVerified',
     'coreThirtyFeatureClosedLoopVerified',
     'directDesignCandidateVerified',
     'directDesignThirtyVerified',
@@ -118,9 +139,12 @@ export function mechanicalScopeContractStatus(scope) {
     && scope.sources.length > 0
     && scope.sources.every(item => typeof item?.path === 'string'
       && item.path.length > 0
-      && SHA256.test(String(item?.sha256 ?? '')));
+      && SHA256.test(String(item?.sha256 ?? ''))
+      && Number.isSafeInteger(item?.bytes)
+      && item.bytes > 0
+      && (item?.canonicalization === 'utf8-crlf-to-lf' || item?.canonicalization === 'raw'));
   const boundary = scope?.claimBoundary ?? {};
-  const valid = scope?.schema === 'nexyfab.mechanical-product-scope-assessment.v3'
+  const valid = scope?.schema === 'nexyfab.mechanical-product-scope-assessment.v4'
     && scope?.releaseChannel === 'mechanical-core'
     && (scope?.assessedAt === null || typeof scope?.assessedAt === 'string')
     && sourcesValid
@@ -394,9 +418,15 @@ function verifyLocalFileBindings(bindings, root = process.cwd()) {
       if (!realRelative || realRelative.startsWith('..') || path.isAbsolute(realRelative) || seen.has(realFile)) return false;
       seen.add(realFile);
       const stat = fs.statSync(realFile);
-      return stat.isFile()
-        && stat.size === binding.bytes
-        && crypto.createHash('sha256').update(fs.readFileSync(realFile)).digest('hex') === binding.sha256;
+      if (!stat.isFile()) return false;
+      const bytes = fs.readFileSync(realFile);
+      if (binding.canonicalization !== undefined) {
+        if (binding.canonicalization !== TEXT_BINDING_CANONICALIZATION) return false;
+        const actual = canonicalTextBinding(bytes);
+        return actual.bytes === binding.bytes && actual.sha256 === binding.sha256;
+      }
+      return stat.size === binding.bytes
+        && crypto.createHash('sha256').update(bytes).digest('hex') === binding.sha256;
     } catch {
       return false;
     }
@@ -513,9 +543,17 @@ export function syntheticCampaignReceiptEligible(receipt, expectedRelease, {
   const totalRuns = domainNames.reduce((sum, domain) => sum + domains?.[domain]?.runs, 0);
   const totalGatePasses = domainNames.reduce((sum, domain) => sum + domains?.[domain]?.gatePasses, 0);
   const corpus = receipt?.corpus;
-  return releaseBoundLocalEvidence(receipt, expectedRelease, now, 'nexyfab.commercial-synthetic-campaign-receipt.v2', root)
+  return releaseBoundLocalEvidence(receipt, expectedRelease, now, COMMERCIAL_SYNTHETIC_CAMPAIGN_RECEIPT_SCHEMA, root)
     && receipt?.ok === true
     && receipt?.certificationEvidence === false
+    && receipt?.textCanonicalization === TEXT_BINDING_CANONICALIZATION
+    && receipt?.executor?.subject === 'template_rebuild'
+    && receipt?.executor?.rawAssertionsRequired === true
+    && JSON.stringify(receipt?.executor?.requiredAxes) === JSON.stringify(COMMERCIAL_SYNTHETIC_REQUIRED_AXES)
+    && receipt?.claimBoundary?.syntheticRegressionOnly === true
+    && receipt?.claimBoundary?.certifiesCommercialAccuracy === false
+    && receipt?.claimBoundary?.substitutesForIndependentHoldout === false
+    && receipt?.claimBoundary?.substitutesForNativeCadReview === false
     && domainRowsValid
     && receipt.totalRuns === totalRuns
     && receipt.totalGatePasses === totalGatePasses
@@ -617,10 +655,83 @@ export function authenticatedE2EReceiptEligible(receipt, expectedRelease, now = 
     && receiptSha256(receipt);
 }
 
+function objectRestoreRoleEligible(role) {
+  const objects = Array.isArray(role?.objects) ? role.objects : [];
+  const keys = objects.map(item => item?.keySha256);
+  return SHA256.test(String(role?.endpointSha256 ?? ''))
+    && typeof role?.region === 'string' && role.region.length > 0
+    && typeof role?.bucket === 'string' && role.bucket.length > 0
+    && typeof role?.prefix === 'string' && role.prefix.length > 0 && role.prefix.endsWith('/')
+    && Number.isInteger(role?.objectCount) && role.objectCount > 0
+    && Number.isSafeInteger(role?.totalBytes) && role.totalBytes > 0
+    && role.objectCount === objects.length
+    && new Set(keys).size === keys.length
+    && objects.every(item => SHA256.test(String(item?.keySha256 ?? ''))
+      && Number.isSafeInteger(item?.bytes) && item.bytes >= 0
+      && SHA256.test(String(item?.contentSha256 ?? '')))
+    && objects.reduce((sum, item) => sum + item.bytes, 0) === role.totalBytes
+    && SHA256.test(String(role?.manifestSha256 ?? ''))
+    && crypto.createHash('sha256').update(JSON.stringify(objects)).digest('hex') === role.manifestSha256;
+}
+
+function objectStorageRestoreEligible(value) {
+  const source = value?.source;
+  const backup = value?.backup;
+  const restored = value?.restored;
+  const bindings = value?.databaseBindings;
+  const limits = value?.limits;
+  const protection = value?.protection;
+  const identities = [source, backup, restored].map(role =>
+    `${role?.endpointSha256 ?? ''}\0${role?.region ?? ''}\0${role?.bucket ?? ''}\0${role?.prefix ?? ''}`);
+  return value?.schema === 'nexyfab.object-storage-isolated-restore-drill.v1'
+    && value?.status === 'PASS'
+    && value?.safety?.sourceWasReadOnly === true
+    && value.safety.sourceUnchanged === true
+    && value.safety.backupPrefixInitiallyEmpty === true
+    && value.safety.restorePrefixInitiallyEmpty === true
+    && value.safety.roleIdentitiesDistinct === true
+    && value.safety.noOverwriteWrites === true
+    && objectRestoreRoleEligible(source)
+    && objectRestoreRoleEligible(backup)
+    && objectRestoreRoleEligible(restored)
+    && new Set(identities).size === 3
+    && (source.endpointSha256 !== backup.endpointSha256 || source.region !== backup.region)
+    && !source.bucket.includes('backup') && !source.bucket.includes('restore-drill')
+    && backup.bucket.includes('backup') && backup.prefix.includes('backup')
+    && restored.bucket.includes('restore-drill') && restored.prefix.includes('restore-drill')
+    && backup.exactSourceMatch === true && restored.exactSourceMatch === true
+    && source.objectCount === backup.objectCount && backup.objectCount === restored.objectCount
+    && source.totalBytes === backup.totalBytes && backup.totalBytes === restored.totalBytes
+    && source.manifestSha256 === backup.manifestSha256
+    && backup.manifestSha256 === restored.manifestSha256
+    && JSON.stringify(source.objects) === JSON.stringify(backup.objects)
+    && JSON.stringify(backup.objects) === JSON.stringify(restored.objects)
+    && Number.isInteger(bindings?.count) && bindings.count >= 7
+    && bindings.count <= source.objectCount
+    && Number.isInteger(bindings?.byKind?.immutable_input) && bindings.byKind.immutable_input >= 1
+    && Number.isInteger(bindings?.byKind?.committed_output) && bindings.byKind.committed_output >= 3
+    && Number.isInteger(bindings?.byKind?.artifact_snapshot) && bindings.byKind.artifact_snapshot >= 3
+    && SHA256.test(String(bindings?.manifestSha256 ?? ''))
+    && bindings?.allMatched === true
+    && Number.isInteger(limits?.maxObjects) && source.objectCount <= limits.maxObjects
+    && Number.isSafeInteger(limits?.maxTotalBytes) && source.totalBytes <= limits.maxTotalBytes
+    && Number.isSafeInteger(limits?.maxObjectBytes)
+    && source.objects.every(item => item.bytes <= limits.maxObjectBytes)
+    && protection?.releaseBoundRequired === true
+    && protection.failureDomainDistinct === true
+    && protection.versioningEnabled === true
+    && protection.objectLockEnabled === true
+    && ['COMPLIANCE', 'GOVERNANCE'].includes(protection.defaultRetentionMode)
+    && ((Number.isSafeInteger(protection.defaultRetentionDays) && protection.defaultRetentionDays >= 1)
+      || (Number.isSafeInteger(protection.defaultRetentionYears) && protection.defaultRetentionYears >= 1))
+    && protection.kmsEncryptionVerified === true
+    && SHA256.test(String(protection.kmsKeyIdSha256 ?? ''));
+}
+
 export function restoreReceiptEligible(receipt, expectedRelease, now = Date.now()) {
   const migration = receipt?.migration;
-  const migration2208 = Array.isArray(migration?.migrations)
-    ? migration.migrations.find(item => item?.version === 2026082208)
+  const latestMigration = Array.isArray(migration?.migrations)
+    ? migration.migrations.find(item => item?.version === LATEST_COMMERCIAL_MIGRATION)
     : null;
   const sourceHash = receipt?.source?.tableContentSha256;
   const restoredHash = receipt?.restored?.tableContentSha256;
@@ -630,7 +741,9 @@ export function restoreReceiptEligible(receipt, expectedRelease, now = Date.now(
   const backupCapturedAt = Date.parse(timing?.backupCapturedAt);
   const restoreStartedAt = Date.parse(timing?.restoreStartedAt);
   const completedAt = Date.parse(timing?.completedAt);
-  return receipt?.schema === 'nexyfab.backup-isolated-restore-drill.v2'
+  const objectRestoreStartedAt = Date.parse(timing?.objectRestoreStartedAt);
+  const backupProtection = receipt?.backup?.protectedSource;
+  return receipt?.schema === 'nexyfab.backup-isolated-restore-drill.v3'
     && receipt?.ok === true
     && receipt?.target === 'production'
     && releaseBindingMatches(receipt, expectedRelease)
@@ -640,31 +753,62 @@ export function restoreReceiptEligible(receipt, expectedRelease, now = Date.now(
     && receipt.safety.restoredEnvironment === 'staging'
     && receipt.safety.isolatedDatabaseIdentity === true
     && receipt.safety.sourceWasReadOnly === true
+    && receipt.safety.sourceUnchangedDuringDrill === true
     && receipt.safety.productionRestorePerformed === false
     && typeof receipt.safety.sourceDatabase === 'string' && receipt.safety.sourceDatabase.length > 0
     && typeof receipt.safety.restoreDatabase === 'string' && /_restore_drill(?:_|$)/i.test(receipt.safety.restoreDatabase)
     && SHA256.test(String(receipt?.backup?.sha256 ?? ''))
-    && receipt.backup.sha256 === receipt.backup.objectSha256
     && Number.isInteger(receipt.backup.bytes) && receipt.backup.bytes > 0
     && SHA256.test(String(receipt?.backup?.sourceSnapshotSha256 ?? ''))
+    && backupProtection?.releaseBoundRequired === true
+    && backupProtection.providerArtifactReused === true
+    && backupProtection.atRestEncryptionVerified === true
+    && ['provider-managed-kms', 'customer-managed-kms'].includes(backupProtection.encryptionMode)
+    && SHA256.test(String(backupProtection.kmsKeyVersionSha256 ?? ''))
+    && backupProtection.providerReceiptBound === true
+    && SHA256.test(String(backupProtection.providerReceiptSha256 ?? ''))
+    && SHA256.test(String(backupProtection.providerReceiptIdSha256 ?? ''))
+    && backupProtection.artifactImmutable === true
+    && backupProtection.capturedAt === timing.backupCapturedAt
+    && backupProtection.restorePayloadBytes === receipt.backup.bytes
+    && backupProtection.restorePayloadSha256 === receipt.backup.sha256
     && SHA256.test(String(sourceHash ?? ''))
     && SHA256.test(String(restoredHash ?? ''))
     && SHA256.test(String(migratedHash ?? ''))
     && receipt.backup.sourceSnapshotSha256 === sourceHash
     && sourceHash === restoredHash && restoredHash === migratedHash
+    && receipt.source.afterObjectRestoreTableContentSha256 === sourceHash
+    && receipt.source.afterObjectRestoreSchemaSha256 === receipt.source.schemaSha256
     && receipt.restored.exactSourceMatch === true
     && receipt.restored.businessDataSha256 === restoredHash
+    && receipt.restored.foreignKeys?.integrityOk === true
+    && receipt.restored.foreignKeys.orphanRows === 0
+    && receipt.constraintValidation?.ok === true
     && receipt.migrated.businessRowsPreserved === true
     && receipt.migrated.businessDataSha256 === migratedHash
-    && receipt.migration.targetVersion === 2026082208
-    && migration2208?.decision && ['apply', 'already_applied'].includes(migration2208.decision)
-    && SHA256.test(String(migration2208.checksum ?? ''))
-    && Number.isFinite(drillStartedAt) && Number.isFinite(backupCapturedAt) && Number.isFinite(restoreStartedAt) && Number.isFinite(completedAt)
-    && drillStartedAt <= completedAt && backupCapturedAt <= restoreStartedAt && restoreStartedAt <= completedAt
+    && receipt.migrated.foreignKeys?.ok === true
+    && receipt.migrated.foreignKeys.orphanRows === 0
+    && receipt.migrationTarget === LATEST_COMMERCIAL_MIGRATION
+    && receipt.migration.targetVersion === LATEST_COMMERCIAL_MIGRATION
+    && latestMigration?.decision && ['apply', 'already_applied'].includes(latestMigration.decision)
+    && SHA256.test(String(latestMigration.checksum ?? ''))
+    && objectStorageRestoreEligible(receipt.objectStorage)
+    && receipt?.claimBoundary?.evidenceClass === 'release-bound'
+    && receipt.claimBoundary.localFixture === false
+    && receipt.claimBoundary.releaseBoundObservation === true
+    && receipt.claimBoundary.crossStorePointInTimeConsistencyVerified === true
+    && receipt.claimBoundary.privateBetaEligible === true
+    && receipt.claimBoundary.commercialGaEligible === false
+    && Number.isFinite(drillStartedAt) && Number.isFinite(backupCapturedAt)
+    && Number.isFinite(restoreStartedAt) && Number.isFinite(objectRestoreStartedAt) && Number.isFinite(completedAt)
+    && drillStartedAt <= completedAt && backupCapturedAt <= restoreStartedAt
+    && restoreStartedAt <= objectRestoreStartedAt && objectRestoreStartedAt <= completedAt
     && Number.isFinite(receipt.objectives?.rpoAgeAtDrillStartMs) && receipt.objectives.rpoAgeAtDrillStartMs >= 0
     && Number.isFinite(receipt.objectives?.rtoRestoreMigrateValidateMs) && receipt.objectives.rtoRestoreMigrateValidateMs >= 0
+    && Number.isFinite(receipt.objectives?.rtoObjectRestoreValidateMs) && receipt.objectives.rtoObjectRestoreValidateMs >= 0
     && receipt.objectives.rpoAgeAtDrillStartMs === Math.max(0, drillStartedAt - backupCapturedAt)
     && receipt.objectives.rtoRestoreMigrateValidateMs === completedAt - restoreStartedAt
+    && receipt.objectives.rtoObjectRestoreValidateMs === completedAt - objectRestoreStartedAt
     && receiptSha256(receipt);
 }
 
@@ -859,10 +1003,22 @@ export function evaluateCommercializationReadiness(input) {
   }
   if (release.baselineStatus !== 'committed' || release.workingTreeChanges !== 0) blockPrivate('release_candidate_not_committed');
   if (currentRelease.workingTreeChanges !== 0) blockPrivate('current_release_working_tree_dirty');
+  if (release.environment !== 'production') blockPrivate('release_environment_not_production');
+  if (release.service !== 'nexyfab.com') blockPrivate('release_service_not_nexyfab');
   for (const field of ['deploymentId', 'buildId', 'rollbackDeploymentId', 'dockerImageDigest']) {
     if (!release[field]) blockPrivate(`release_identity_missing:${field}`);
   }
   if (release.railwayIgnore?.missing?.length) blockPrivate('railway_deploy_exclusions_incomplete');
+  let coreStagingHoldVerification;
+  try {
+    coreStagingHoldVerification = verifyCommercialPrecisionStagingHoldEvidence(
+      input.coreStagingHoldReceipt,
+      { expectedRelease: { buildId: release.buildId, head: release.head } },
+    );
+  } catch {
+    coreStagingHoldVerification = { ok: false, blockers: ['staging_hold_verifier_error'] };
+  }
+  if (coreStagingHoldVerification.ok !== true) blockPrivate('core_staging_hold_not_verified');
 
   if (contract?.specialtyTrack) {
     try {
@@ -993,6 +1149,13 @@ export function evaluateCommercializationReadiness(input) {
   }
 
   if (contract?.mechanicalScope) {
+    const runtimeEvidence = input.commercialPrecisionRuntimeEvidenceStatus;
+    if (runtimeEvidence?.privateBetaEligible !== true) {
+      blockPrivate('commercial_precision_runtime_private_beta_not_verified');
+    }
+    if (runtimeEvidence?.commercialGaEligible !== true) {
+      blockGa('commercial_precision_runtime_ga_not_verified');
+    }
     const mechanicalScope = input.mechanicalProductScope;
     const scopeStatus = mechanicalScopeContractStatus(mechanicalScope);
     if (!scopeStatus.valid) blockPrivate('mechanical_product_scope_contract_incomplete');
@@ -1034,7 +1197,13 @@ export function evaluateCommercializationReadiness(input) {
   try {
     securityReceiptVerification = verifyCommercialSecurityEvidenceReceipt(input.securityReceipt, {
       root: input.evidenceRoot ?? process.cwd(),
-      expectedRelease: { buildId: release.buildId, deploymentId: release.deploymentId, head: release.head },
+      expectedRelease: {
+        buildId: release.buildId,
+        deploymentId: release.deploymentId,
+        head: release.head,
+        environment: release.environment,
+        service: release.service,
+      },
     });
   } catch {
     // A missing/malformed external receipt is a normal HOLD state, not a gate
@@ -1120,9 +1289,18 @@ export function evaluateCommercializationReadiness(input) {
       rollbackDeploymentId: release.rollbackDeploymentId ?? null,
       dockerImageDigest: release.dockerImageDigest ?? null,
       dbSchemaVersion: release.dbSchemaVersion ?? null,
+      environment: release.environment ?? null,
+      service: release.service ?? null,
     },
     releaseChannel: contract?.channel ?? null,
     productReleaseScope: productScope,
+    coreStagingHoldEvidence: {
+      receiptVerified: coreStagingHoldVerification.ok === true,
+      receiptSha256: input.coreStagingHoldReceipt?.receiptSha256 ?? null,
+      buildId: input.coreStagingHoldReceipt?.release?.buildId ?? null,
+      deploymentId: input.coreStagingHoldReceipt?.release?.deploymentId ?? null,
+      blockers: coreStagingHoldVerification.blockers,
+    },
     productEvidence,
     requiredDomains,
     requiredComplexFamilies,
@@ -1146,6 +1324,15 @@ export function evaluateCommercializationReadiness(input) {
       receiptSha256: input.architectureInteriorRecovery?.sha256 ?? null,
       target: input.architectureInteriorRecovery?.target ?? null,
     } : { required: false, receiptVerified: false, receiptSha256: null, target: null },
+    commercialPrecisionRuntimeEvidence: {
+      required: contract?.mechanicalScope === true,
+      receiptVerified: input.commercialPrecisionRuntimeEvidenceStatus?.receiptVerified === true,
+      privateBetaEligible: input.commercialPrecisionRuntimeEvidenceStatus?.privateBetaEligible === true,
+      commercialGaEligible: input.commercialPrecisionRuntimeEvidenceStatus?.commercialGaEligible === true,
+      status: input.commercialPrecisionRuntimeEvidenceStatus?.status ?? 'HOLD',
+      receiptSha256: input.commercialPrecisionRuntimeEvidenceStatus?.receiptSha256 ?? null,
+      blockers: input.commercialPrecisionRuntimeEvidenceStatus?.blockers ?? ['runtime_evidence_not_evaluated'],
+    },
     privateBeta: { eligible: privateBetaBlockers.length === 0, blockers: [...new Set(privateBetaBlockers)] },
     commercialGa: { eligible: gaBlockers.length === 0, blockers: [...new Set(gaBlockers)] },
   };
@@ -1184,6 +1371,10 @@ async function main() {
   const sevenDayOperationsReceipt = optionalJson(process.env.SEVEN_DAY_OPERATIONS_RECEIPT ?? 'docs/evidence/release/seven-day-operations-receipt.json');
   const migrationReceipt = optionalJson(process.env.PRODUCTION_MIGRATION_RECEIPT ?? 'docs/evidence/release/production-migration-receipt.json');
   const securityReceipt = optionalJson(process.env.COMMERCIAL_SECURITY_RECEIPT ?? 'docs/evidence/release/commercial-security-evidence-receipt.json');
+  const coreStagingHoldReceipt = optionalJson(
+    process.env.COMMERCIAL_PRECISION_STAGING_HOLD_RECEIPT
+      ?? 'docs/evidence/release/commercial-precision-staging-hold-20260825.json',
+  );
   const specialtyReleaseReceipt = optionalJson(process.env.SPECIALTY_RELEASE_RECEIPT ?? 'docs/evidence/release/specialty-independent-release-receipt.json');
   const specialtyReleaseTrustedReviewers = optionalJson(process.env.SPECIALTY_RELEASE_TRUSTED_REVIEWERS ?? 'docs/evidence/release/specialty-trusted-reviewers.json');
   const closedBetaReceipt = readJson(process.env.CLOSED_BETA_COMPARISON ?? 'docs/evidence/release/closed-beta-integrity-commercial-release-260810.json');
@@ -1200,6 +1391,21 @@ async function main() {
   const releaseBaselineSource = readJsonWithBinding(process.env.RELEASE_BASELINE ?? 'docs/evidence/release/commercial-release-baseline-current.json');
   const releaseBaseline = releaseBaselineSource.document;
   const expectedRelease = releaseBaseline?.release ?? {};
+  const commercialPrecisionRuntimeReceipt = optionalJson(
+    process.env.COMMERCIAL_PRECISION_RUNTIME_RECEIPT ?? COMMERCIAL_PRECISION_DEFAULT_RECEIPT,
+  );
+  const commercialPrecisionRuntimeEvidenceStatus = verifyCommercialPrecisionRuntimeEvidence(
+    commercialPrecisionRuntimeReceipt,
+    {
+      sourceRoot: process.cwd(),
+      evidenceRoot: process.env.NEXYFAB_COMMERCIAL_PRECISION_EVIDENCE_ROOT ?? '',
+      observationPath: process.env.COMMERCIAL_PRECISION_RUNTIME_OBSERVATION
+        ?? COMMERCIAL_PRECISION_DEFAULT_OBSERVATION,
+      expectedRelease,
+      secret: process.env.GENERATION_EVIDENCE_SIGNING_SECRET,
+      now: Date.now(),
+    },
+  );
   const closedBetaVerification = verifyClosedBetaIntegrityReceipt(closedBetaReceipt, {
     root: process.cwd(),
     expectedRelease,
@@ -1228,6 +1434,7 @@ async function main() {
     currentRelease: { ...readGitIdentity(), workingTreeChanges: readReleaseWorkingTreeChanges().length },
     releaseBaseline,
     releaseBaselineBinding: releaseBaselineSource.binding,
+    coreStagingHoldReceipt,
     closedBeta: closedBetaReceipt,
     closedBetaEvidenceVerified: verifyReceiptSourceBindings(closedBetaReceipt),
     closedBetaReceiptVerified: closedBetaVerification.ok,
@@ -1240,6 +1447,7 @@ async function main() {
     complexGroundTruthValidation,
     complexProductScope,
     mechanicalProductScope,
+    commercialPrecisionRuntimeEvidenceStatus,
     liveSmoke: liveSmokeReceipt,
     liveSmokeReceiptVerified,
     openscadHttpSmoke: optionalJson(process.env.OPENSCAD_HTTP_SMOKE ?? 'docs/evidence/release/openscad-http-smoke-260810.json'),
@@ -1289,6 +1497,7 @@ async function main() {
       secretFindings: secretScan.findingCount,
       dependencyVulnerabilities: dependencyAudit.vulnerabilities?.total,
       commercialSecurityReceipt: result.securityEvidence,
+      coreStagingHoldEvidence: result.coreStagingHoldEvidence,
       productReleaseScope: result.productReleaseScope,
       productEvidence: result.productEvidence,
       complexHoldoutCases: Array.isArray(complexHoldoutCases) ? complexHoldoutCases.length : null,
@@ -1297,6 +1506,9 @@ async function main() {
       complexManufacturingReleaseVerified: complexProductScope?.decision?.manufacturingReleaseGuaranteed === true,
       mechanicalScopeStatus: mechanicalProductScope?.decision?.status ?? null,
       mechanicalInternalRegressionVerified: mechanicalProductScope?.evidence?.internalRegressionVerified === true,
+      mechanicalIntentQualification150Verified: mechanicalProductScope?.evidence?.intentQualification150Verified === true,
+      mechanicalIntentRuntimeRepresentativeVerified: mechanicalProductScope?.evidence?.intentRuntimeRepresentativeVerified === true,
+      mechanicalAssemblyDrawingHandoffLocalVerified: mechanicalProductScope?.evidence?.assemblyDrawingHandoffLocalVerified === true,
       mechanicalCoreThirtyFeatureClosedLoopVerified: mechanicalProductScope?.evidence?.coreThirtyFeatureClosedLoopVerified === true,
       mechanicalDirectDesignCandidateVerified: mechanicalProductScope?.evidence?.directDesignCandidateVerified === true,
       mechanicalDirectDesignThirtyVerified: mechanicalProductScope?.evidence?.directDesignThirtyVerified === true,
@@ -1305,6 +1517,9 @@ async function main() {
       mechanicalRevisionConsistencyVerified: mechanicalProductScope?.evidence?.artifactRevisionConsistencyVerified === true,
       mechanicalBlindProductChallengeVerified: mechanicalProductScope?.evidence?.blindProductChallengeVerified === true,
       mechanicalManufacturingReceiptVerified: mechanicalProductScope?.evidence?.manufacturingReceiptVerified === true,
+      commercialPrecisionRuntimeReceiptVerified: result.commercialPrecisionRuntimeEvidence.receiptVerified,
+      commercialPrecisionRuntimePrivateBetaEligible: result.commercialPrecisionRuntimeEvidence.privateBetaEligible,
+      commercialPrecisionRuntimeGaEligible: result.commercialPrecisionRuntimeEvidence.commercialGaEligible,
       releaseChannel: result.releaseChannel,
       requiredDomains: result.requiredDomains,
       requiredComplexFamilies: result.requiredComplexFamilies,

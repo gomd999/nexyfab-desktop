@@ -38,6 +38,31 @@ const FEATURE_KEYS = ['box', 'prism', 'hole', 'cylinder', 'sphere', 'cone', 'rev
 const HANGUL = /[가-힣]/;
 const CHAT_HERO_SOURCE = readFileSync(join(process.cwd(), 'src', 'app', '[lang]', 'ChatHero.tsx'), 'utf8');
 
+describe('unified chat-first design entry', () => {
+  it('fills starter and follow-up prompts without executing them', () => {
+    expect(CHAT_HERO_SOURCE).toContain('data-testid="starter-prompt" onClick={() => fillPrompt(s)}');
+    expect(CHAT_HERO_SOURCE).toContain('onClick={() => fillPrompt(c)}');
+    expect(CHAT_HERO_SOURCE).not.toContain('onClick={() => send(s)}');
+    expect(CHAT_HERO_SOURCE).not.toContain('onClick={() => send(c)}');
+  });
+
+  it('uses one attachment control and exposes a reviewable execution lane', () => {
+    expect(CHAT_HERO_SOURCE).toContain('data-testid="design-execution-lane-card"');
+    expect(CHAT_HERO_SOURCE).toContain('classifyRasterDataUrl(dataUrl)');
+    expect(CHAT_HERO_SOURCE).not.toContain('attachModeRef');
+    expect(CHAT_HERO_SOURCE).toContain('if (pendingAttachment && !attached)');
+    expect(CHAT_HERO_SOURCE.match(/fileRef\.current\?\.click\(\)/g)).toHaveLength(2);
+  });
+
+  it('exposes the governed model selector and carries its stable ID through chat and CAD requests', () => {
+    expect(CHAT_HERO_SOURCE).toContain('<AiModelSelector');
+    expect(CHAT_HERO_SOURCE).toContain('const { modelId, pickModel } = useAiModelPreference(userPlan)');
+    expect(CHAT_HERO_SOURCE).toContain('message: text, domain: requestDomain, history, lang, modelId');
+    expect(CHAT_HERO_SOURCE).toContain('description: prompt, lang, modelId');
+    expect(CHAT_HERO_SOURCE).not.toContain('model: modelId');
+  });
+});
+
 describe('채팅 API 오류 안내', () => {
   it('게스트 일일 한도를 한국어 행동 안내와 로그인 링크로 바꾼다', () => {
     const message = formatChatActionError('kr', 'kr', {

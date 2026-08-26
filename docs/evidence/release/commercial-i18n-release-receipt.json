@@ -15,8 +15,11 @@
     "ar"
   ],
   "catalog": {
-    "sourcePairs": 2699,
-    "translatedPairs": 2699,
+    "contractSchema": "nexyfab.commercial-i18n-catalog-contract.v1",
+    "contractVersion": "2026-08-26",
+    "expectedSourcePairs": 2711,
+    "sourcePairs": 2711,
+    "translatedPairs": 2711,
     "missing": [],
     "invalid": [],
     "legacyDebt": 0,
@@ -27,49 +30,49 @@
       "schema": "nexyfab.i18n-vitest-evidence.v1",
       "suite": "official",
       "command": "npx vitest run scripts/i18n/commercial-catalog.test.ts scripts/i18n/lang-coverage.test.ts scripts/i18n/locale-hardcode.test.ts src/lib/i18n/adminTranslations.test.ts src/lib/i18n/manufacturingTerms.test.ts src/lib/i18n/normalize.test.ts src/lib/i18n/serverLocale.test.ts --reporter=json",
-      "generatedAt": "2026-08-23T02:35:22.890Z",
-      "buildId": null,
-      "gitHead": null,
+      "generatedAt": "2026-08-26T14:50:23.281Z",
+      "buildId": "0fcda72ae36a514d4f4e2492680928167679efa0",
+      "gitHead": "0fcda72ae36a514d4f4e2492680928167679efa0",
       "rawOutput": {
         "path": "docs/evidence/local/i18n-official-vitest-raw-260823.json",
-        "bytes": 14362,
-        "sha256": "5a2bd5163ff8d4bda44d62f9e0232be45a97c276fd662489db87719cea334f62"
+        "bytes": 14479,
+        "sha256": "98e954ed9b23d36b32fb21f4335972cfe409bf74106616598f1f1d794f102cf3"
       },
       "sourceBindings": [
         {
           "path": "scripts/i18n/commercial-catalog.test.ts",
-          "bytes": 1157,
-          "sha256": "679fd1fee2b0d33627b7949e69174825afb91c5bec58743f6f7c7fd282d17f11"
+          "bytes": 1180,
+          "sha256": "7f1b5b01fc73202bdd4cf07a420f491471648276c2cc3e4752166526b671fc34"
         },
         {
           "path": "scripts/i18n/lang-coverage.test.ts",
-          "bytes": 7470,
-          "sha256": "b9ab669cf9fec3f79376fdaf1f8ab51d461c1ba70c9ae568acc9f5324435f3c4"
+          "bytes": 7513,
+          "sha256": "d620f8183626dabfbdb8152959a0301bc5dbacd0ab95c75392cbb957af07015b"
         },
         {
           "path": "scripts/i18n/locale-hardcode.test.ts",
-          "bytes": 4339,
-          "sha256": "2d5fdf1497b80c4f98b2b6a8b8adde05f37b15c7d7819bbd1bde31b49b1ffef3"
+          "bytes": 4427,
+          "sha256": "402974371a8f86b9de70ef519bedbb6a0e6fac6b2aadf8ba09c39e9c468dad80"
         },
         {
           "path": "src/lib/i18n/adminTranslations.test.ts",
-          "bytes": 705,
-          "sha256": "3df5312045692bf9ff4984ebc5bd64c78bbbbe6a8a45d3dddaa011c0f76cb1a8"
+          "bytes": 722,
+          "sha256": "52c31ba876225ca947789a77d769aa39ca2dc28816063fd3fdbad8e30e4347ab"
         },
         {
           "path": "src/lib/i18n/manufacturingTerms.test.ts",
-          "bytes": 2437,
-          "sha256": "7c1a9a5b3195987614ddd2252d4f0b074163a7b6cb8310aa18a80f39f6b81a6e"
+          "bytes": 2480,
+          "sha256": "385d6af2ed17815174d91fa70972930b0d96353ac55eee3e69f6cb3c8ebbab78"
         },
         {
           "path": "src/lib/i18n/normalize.test.ts",
-          "bytes": 1812,
-          "sha256": "fc050bbbb384be009f472a409b08fff15cd7243a96787b5aad343819a5977c2a"
+          "bytes": 1859,
+          "sha256": "81555ae3f250b4173a62a8ac9f1e1efc0adaa65b754bd6b03d87421b088dcc45"
         },
         {
           "path": "src/lib/i18n/serverLocale.test.ts",
-          "bytes": 1496,
-          "sha256": "dc2b9b690924d7aaf9b51259aa67388cd5cb95efe4c54592f84d0c3d1879c347"
+          "bytes": 1530,
+          "sha256": "edff40608c6fccc356a5e0f4f1a711ded2de463c704c8bad7047ae31e18c9d55"
         }
       ],
       "counts": {
@@ -82,155 +85,240 @@
       },
       "pass": true,
       "issues": [],
-      "evidenceSha256": "523b116368ecf3efbbd6ac884b62ac0568a632bd7730425d7e81cc2c35634a94"
+      "evidenceSha256": "a5009b83526f8137e88a5267f0c17bdcf5c3906597f88dc1538cd02f037aea87"
     },
     "expanded": {
       "schema": "nexyfab.i18n-vitest-evidence.v1",
       "suite": "expanded",
       "command": "npx vitest run i18n --reporter=json",
-      "generatedAt": "2026-08-23T02:35:22.905Z",
-      "buildId": null,
-      "gitHead": null,
+      "generatedAt": "2026-08-26T14:51:26.539Z",
+      "buildId": "0fcda72ae36a514d4f4e2492680928167679efa0",
+      "gitHead": "0fcda72ae36a514d4f4e2492680928167679efa0",
       "rawOutput": {
         "path": "docs/evidence/local/i18n-expanded-vitest-raw-260823.json",
-        "bytes": 86875,
-        "sha256": "8cd47cc6fb451d2e3ebab98822198815e14fa090495fa2e65b14876a97b9a8b4"
+        "bytes": 120847,
+        "sha256": "e44eaa8e5f33dc55c2061220b0c612090520705e6b25f0ef4ab09b87376b09e0"
       },
       "sourceBindings": [
         {
           "path": "scripts/i18n/acquire-full-product-review-packet.test.ts",
-          "bytes": 4125,
-          "sha256": "36c02ca6e3e1d7e8290c238dd69cf65565ce0b0f7ae17dcf78b4471802e17fc5"
+          "bytes": 4201,
+          "sha256": "51b7b8e1441c291e65bd8d08c9ba4ce3dec0d3ec5a8c53fd3a4c1268948d81d7"
         },
         {
           "path": "scripts/i18n/commercial-catalog.test.ts",
-          "bytes": 1157,
-          "sha256": "679fd1fee2b0d33627b7949e69174825afb91c5bec58743f6f7c7fd282d17f11"
+          "bytes": 1180,
+          "sha256": "7f1b5b01fc73202bdd4cf07a420f491471648276c2cc3e4752166526b671fc34"
         },
         {
           "path": "scripts/i18n/lang-coverage.test.ts",
-          "bytes": 7470,
-          "sha256": "b9ab669cf9fec3f79376fdaf1f8ab51d461c1ba70c9ae568acc9f5324435f3c4"
+          "bytes": 7513,
+          "sha256": "d620f8183626dabfbdb8152959a0301bc5dbacd0ab95c75392cbb957af07015b"
         },
         {
           "path": "scripts/i18n/locale-hardcode.test.ts",
-          "bytes": 4339,
-          "sha256": "2d5fdf1497b80c4f98b2b6a8b8adde05f37b15c7d7819bbd1bde31b49b1ffef3"
+          "bytes": 4427,
+          "sha256": "402974371a8f86b9de70ef519bedbb6a0e6fac6b2aadf8ba09c39e9c468dad80"
         },
         {
           "path": "src/app/[lang]/ChatHero.i18n.test.ts",
-          "bytes": 11970,
-          "sha256": "8f4e1c9c710f0e3720274ea37b274cf8e786a06b16e7e48432b07f41cad7440b"
+          "bytes": 13718,
+          "sha256": "1d76117752c6cf0c33b616f208a07977e997bf43aa31e00ac40d8a2aa907ad8f"
+        },
+        {
+          "path": "src/app/[lang]/homeDict.i18n.test.ts",
+          "bytes": 698,
+          "sha256": "b853a2b80bdc4b97f3f9a6a253281ec56d4e1b7ce200df4b0bd40fe49d0a03cf"
+        },
+        {
+          "path": "src/lib/ai/aiDesignWorkspaceI18n.test.ts",
+          "bytes": 1383,
+          "sha256": "b73353859ab3ede10519c0f2f06721fad817945cac23f172c83e0c413bbd9351"
+        },
+        {
+          "path": "src/lib/ai/codegenModelI18n.test.ts",
+          "bytes": 901,
+          "sha256": "129d489fa8d5a6ef208e1b5c930324774e563ff23712910a5572c7e3015d4c40"
         },
         {
           "path": "src/lib/i18n/adminTranslations.test.ts",
-          "bytes": 705,
-          "sha256": "3df5312045692bf9ff4984ebc5bd64c78bbbbe6a8a45d3dddaa011c0f76cb1a8"
+          "bytes": 722,
+          "sha256": "52c31ba876225ca947789a77d769aa39ca2dc28816063fd3fdbad8e30e4347ab"
         },
         {
           "path": "src/lib/i18n/catalogLocalizer.test.ts",
-          "bytes": 1039,
-          "sha256": "bbc8aeb66956d5f352f1989cc48b6a656efe12075146379b04b80a617f9fa0ed"
+          "bytes": 1065,
+          "sha256": "c7ee7c565f27b4a03817197dfc92955b173acbeaa46a8be3f7445f93f36eb175"
         },
         {
           "path": "src/lib/i18n/manufacturingTerms.test.ts",
-          "bytes": 2437,
-          "sha256": "7c1a9a5b3195987614ddd2252d4f0b074163a7b6cb8310aa18a80f39f6b81a6e"
+          "bytes": 2480,
+          "sha256": "385d6af2ed17815174d91fa70972930b0d96353ac55eee3e69f6cb3c8ebbab78"
         },
         {
           "path": "src/lib/i18n/normalize.test.ts",
-          "bytes": 1812,
-          "sha256": "fc050bbbb384be009f472a409b08fff15cd7243a96787b5aad343819a5977c2a"
+          "bytes": 1859,
+          "sha256": "81555ae3f250b4173a62a8ac9f1e1efc0adaa65b754bd6b03d87421b088dcc45"
         },
         {
           "path": "src/lib/i18n/serverLocale.test.ts",
-          "bytes": 1496,
-          "sha256": "dc2b9b690924d7aaf9b51259aa67388cd5cb95efe4c54592f84d0c3d1879c347"
+          "bytes": 1530,
+          "sha256": "edff40608c6fccc356a5e0f4f1a711ded2de463c704c8bad7047ae31e18c9d55"
         },
         {
           "path": "src/lib/i18n/spatialCadJobTranslations.test.ts",
-          "bytes": 507,
-          "sha256": "1d50321b2ac733faff0907e3abeb502eeea4e820464d3a623401cd2f865eb622"
+          "bytes": 517,
+          "sha256": "9cbb16c7ca4d5a0526c79bec591b4e354413cdf0870dcb70a10fa58c32823934"
         },
         {
           "path": "src/lib/i18n/ssoCommercialStatus.test.ts",
-          "bytes": 1196,
-          "sha256": "f65c7ce27ed59e736661dbfdb05d073fa2c6267ae1368137a8ac1d449f8a4498"
+          "bytes": 1227,
+          "sha256": "83a9fc161a50b8b2c92039aa2ba516a5b4af2ef00908f2b6ae3ab3020a832efd"
         },
         {
           "path": "src/app/[lang]/dashboard/page.i18n.test.tsx",
-          "bytes": 1910,
-          "sha256": "0b0b6c555b8727a2aec62a555b402897072a8ed6950afac38631e2b9c348f2b3"
+          "bytes": 1958,
+          "sha256": "692c8307444e1194406686f9b1cf096ab5c1ebed0bf28f720a90a0a1d531222f"
         },
         {
           "path": "src/app/[lang]/quick-quote/AutoQuoteCard.i18n.test.tsx",
-          "bytes": 1713,
-          "sha256": "32bc3897e50f69461781b04c453bc46e251686f68395de222e1a25b104090afd"
+          "bytes": 1751,
+          "sha256": "6015edb96c10e11c77aeb0ba5ee87ff61e5f8f31e1d9d6e4c6fa016920151929"
         },
         {
           "path": "src/app/[lang]/shape-generator/WorkflowStepper.i18n.test.tsx",
-          "bytes": 2440,
-          "sha256": "cc0d71bc35b88dd680e34833927004758dc099e1dd9be4c56138e5081054a11a"
+          "bytes": 2500,
+          "sha256": "be0ec94a8bc1e730e9b50b43e6a2047b5921102ffa0751d37909a1f6589798da"
+        },
+        {
+          "path": "src/app/[lang]/shape-generator/WorkspaceLoading.i18n.test.tsx",
+          "bytes": 949,
+          "sha256": "df6befacff041494aa8ae9e60488652081a5156798fd35c92cd6b0be68c0d34c"
+        },
+        {
+          "path": "src/lib/cad/i18n/canonicalSketchIssues.test.ts",
+          "bytes": 4393,
+          "sha256": "3ba2251f862c75ed8cbd3a578c251dc5a91f4a3b5fb272794467873b5f1e75a8"
+        },
+        {
+          "path": "src/lib/cad/i18n/catalog.test.ts",
+          "bytes": 2196,
+          "sha256": "d6848098eef1f83c35ba530d93a6ccd689a5b3a6eb4f1e1c4bb3561cc94dca3e"
+        },
+        {
+          "path": "src/lib/cad/i18n/format.test.ts",
+          "bytes": 2033,
+          "sha256": "f3c198d9395ba02f0385c8715b0978c443b2900dc8726520e004a8e0837771a3"
+        },
+        {
+          "path": "src/lib/cad/i18n/message.test.ts",
+          "bytes": 3230,
+          "sha256": "f05b51eca3187f8a6e6e25781f94e5ed9e0a6af8eaf79edb5d3fdb126a283dbe"
+        },
+        {
+          "path": "src/app/api/nexyfab/export/i18n.test.ts",
+          "bytes": 1871,
+          "sha256": "23bb170465b6dda39de27545dbed1548fc6b0f35c7a2d0f6f34a64ae77a0d245"
+        },
+        {
+          "path": "src/app/api/nexyfab/quote-accuracy/route.i18n.test.ts",
+          "bytes": 855,
+          "sha256": "e60571b149c546263d75ae2fd00724549e2a05d727700e68d0d130948f8f186c"
         },
         {
           "path": "src/app/[lang]/nexyfab/billing/page.i18n.test.tsx",
-          "bytes": 1977,
-          "sha256": "aec71a993e5eb55e8686b491dad7507a46c954df385bd9c06eebc62cb793a638"
+          "bytes": 2022,
+          "sha256": "ccdbfa65495955d886b51922ed9e19f2c417b4d105e015e83162eecb5736aaa1"
         },
         {
           "path": "src/app/[lang]/nexyfab/design/CodeCheckPanel.i18n.test.tsx",
-          "bytes": 3925,
-          "sha256": "a15406e4d8a97ad5c16b19e4e13971faf7e69e78ebedfd3136fee99dbdd4548b"
+          "bytes": 4010,
+          "sha256": "a7195fbbc37b375135c59e079d837690433349083e693a66fe1a3df85a8f9e3f"
         },
         {
           "path": "src/app/[lang]/nexyfab/design/DesignInner.i18n.test.ts",
-          "bytes": 664,
-          "sha256": "7bb4c9e6ce8b18de648e824714335398bc7c8e4fb5e0ff0e4dd05109b0f9062e"
+          "bytes": 681,
+          "sha256": "2529a679c09693794cae7db6f370b347822fd39753696bff2ebb9ca1ddb62392"
         },
         {
           "path": "src/app/[lang]/nexyfab/design/FabPanel.i18n.test.tsx",
-          "bytes": 4575,
-          "sha256": "e22b129b917df9c3b10dd20f926198f768fe0f5b769d015182c35886358acc8e"
+          "bytes": 4688,
+          "sha256": "f98e3538703610a5eda271e3a225454998f8dabbc4b6651be3f03d74f3a86071"
         },
         {
           "path": "src/app/[lang]/nexyfab/design/PrecisionCadAgentPanel.i18n.test.ts",
-          "bytes": 843,
-          "sha256": "58caff8c30a80b0c8fc5dc9557e2dbad0e56ef1400abfc0ad226d17b2fbfa2e9"
+          "bytes": 1145,
+          "sha256": "4689cc53030b6081ad6bcb7f8c56cce928f40fc50d3a9bccb4e4dcbb86850704"
         },
         {
           "path": "src/app/[lang]/nexyfab/dfm/page.i18n.test.ts",
-          "bytes": 1743,
-          "sha256": "cefda58d4cce73ebbcda26a6a452c4c7483c0c562c07ecbef33d476e9d0205d0"
+          "bytes": 1781,
+          "sha256": "a208f1bd598d6126131d97232c4f18d651c2c4c2a9b6b260848a6e16edfa70cd"
         },
         {
           "path": "src/app/[lang]/nexyfab/orders/page.i18n.test.tsx",
-          "bytes": 3745,
-          "sha256": "5924f50012b094fb3e27323d423e060839bc38fe5f35d36ac6d21f02e4a1a4c5"
+          "bytes": 3830,
+          "sha256": "1ef051aeeb65b2f4a6101e5cad9cdfea447315c60b08aac5c8cf7e0095add4b0"
         },
         {
           "path": "src/app/[lang]/nexyfab/rfq/page.i18n.test.tsx",
-          "bytes": 4623,
-          "sha256": "dcefba0833dfa47f6493b7ebe62e3249d3f34470044a49784b226e2f2eaa32fb"
+          "bytes": 4715,
+          "sha256": "009fb546dc2e04e6dc54f8da49e879468202b36dec303777010ce73935db3d9e"
+        },
+        {
+          "path": "src/app/[lang]/nexyfab/settings/page.i18n.test.tsx",
+          "bytes": 1403,
+          "sha256": "e66981f1ac4d95ebad532cc7be73350d2dca0ec455eb8c93c3349c6565306829"
         },
         {
           "path": "src/app/[lang]/shape-generator/ai/FloatingAiPrompt.i18n.test.tsx",
-          "bytes": 1513,
-          "sha256": "e93fac69519990ee5ec36ca292ebf17ff9b994329c15781ebc15279b031e3efa"
+          "bytes": 1556,
+          "sha256": "900c1f51bc333275d0c838e9f2fa93084b897efa5253d89d4b3875c65169e91d"
         },
         {
           "path": "src/app/[lang]/shape-generator/ai/useVoiceInput.i18n.test.ts",
-          "bytes": 1749,
-          "sha256": "151fd128b9b1c0a64a8916096e05a88f9cb69516c9fef1336b4c4f00c7d28840"
+          "bytes": 1809,
+          "sha256": "41737da875b3be685a0b3a9a5984ed21f7e48f9420e2b6cd95c882c9fd17ce31"
+        },
+        {
+          "path": "src/app/[lang]/shape-generator/analysis/dfmPdfClientI18n.test.ts",
+          "bytes": 1111,
+          "sha256": "91db56d4ed5b1353119bb17f1b1e6a41a11a3293bfd7e0fb05c66d430e3e60c0"
+        },
+        {
+          "path": "src/app/[lang]/shape-generator/collab/AwarenessPresencePanel.i18n.test.tsx",
+          "bytes": 1221,
+          "sha256": "d38c12d18bef3bd616dcd0cf4285838690bd3f8cdaf9fcc45e1a88157d142fbd"
+        },
+        {
+          "path": "src/app/[lang]/shape-generator/cam/CAMWorkspacePanel.i18n.test.tsx",
+          "bytes": 904,
+          "sha256": "f174d9af1086e2224c6754dff3c0c3f905f4aee039bacf99ebf8f2afb4696617"
+        },
+        {
+          "path": "src/app/[lang]/shape-generator/featureCatalog/CommandPaletteShell.i18n.test.tsx",
+          "bytes": 684,
+          "sha256": "e441becdc85640ab628380d9cd8418d7774f2a214e7a94bd3b6b6cb5a4155c69"
+        },
+        {
+          "path": "src/app/[lang]/shape-generator/i18n/adapter.test.ts",
+          "bytes": 1229,
+          "sha256": "f87a864c504a2e9946347ab5cdf507f53f89687b16098e20ec748d532ce94754"
         },
         {
           "path": "src/app/[lang]/shape-generator/topology/TopoPanel.i18n.test.tsx",
-          "bytes": 2073,
-          "sha256": "b50196c2328ba006552f21a4620c314375bce04f0f2014dc504f0409ae153ce7"
+          "bytes": 2126,
+          "sha256": "793ccd947899d595613d3a53d5ea9e8aa4d49b746c8f0d735254875d3c1fd707"
+        },
+        {
+          "path": "src/app/[lang]/shape-generator/_shell/shellChromeI18n.test.tsx",
+          "bytes": 2993,
+          "sha256": "19d9d381ebd952231882263e6a384b6d101647add4aae849c85cfcdf0713d9dd"
         },
         {
           "path": "src/app/[lang]/shape-generator/__tests__/multiViewportI18n.test.tsx",
-          "bytes": 2203,
-          "sha256": "b5785cd120877c4ce7ef9f0577c3e66fafd6f0b7dc67444639388f04254353bd"
+          "bytes": 2258,
+          "sha256": "19e871b1c5baf3fb8e69ffdbe3fb5bb4d19b8c8579122c5fe4c492bf10e49f9a"
         },
         {
           "path": "src/app/[lang]/shape-generator/__tests__/shapeDictI18n.test.ts",
@@ -239,8 +327,18 @@
         },
         {
           "path": "src/app/[lang]/shape-generator/__tests__/shapePreviewI18n.test.tsx",
-          "bytes": 2117,
-          "sha256": "bb4c92f5595ecf7483b1898a2e4d7ba7d6a786c08f07feca155802eb3ab96c32"
+          "bytes": 2178,
+          "sha256": "ff4c1eaf9c7a81e4320fa18e0c10064c64255c2fd8412ca1b71ef54019e39635"
+        },
+        {
+          "path": "src/app/api/nexyfab/export/contracts/i18n.test.ts",
+          "bytes": 1051,
+          "sha256": "3472abccf4c326bfd9eacec38528d190fd492c8fb39b3323153b710d3c9b3ab0"
+        },
+        {
+          "path": "src/app/api/nexyfab/shape-generator/dfm-pdf/dfmPdfI18n.test.ts",
+          "bytes": 1194,
+          "sha256": "db8797a4270e8e7d8280a6588091cb335cfc29ded12b4462dcf9ff53e3c5eab2"
         },
         {
           "path": "src/app/[lang]/shape-generator/referenceGeometry/__tests__/i18n.test.ts",
@@ -259,18 +357,18 @@
         }
       ],
       "counts": {
-        "files": 32,
-        "tests": 230,
-        "passed": 230,
+        "files": 51,
+        "tests": 330,
+        "passed": 330,
         "failed": 0,
         "skipped": 0,
         "todo": 0
       },
       "pass": true,
       "issues": [],
-      "evidenceSha256": "070c77c3a618db2a6c8fee7f757418649071735648213eda7cc51e552b57f216"
+      "evidenceSha256": "c10bc204871a18a75800cf03f01c4e0169ccbdbe94d10f2ebdfb1a87a202a078"
     },
-    "evidenceSha256": "cb9ad9c4ede5ba7ee0473965a12b72b607d0cce00b84905570b7043f6c191705",
+    "evidenceSha256": "cfcb666bc40f44ae6964e12a7b86ef903af67b035d38fcf460d1a81b614fb4c7",
     "validation": {
       "official": {
         "ok": true,
@@ -282,18 +380,17 @@
       }
     }
   },
-  "automatedStatus": "PASS_LOCAL",
+  "automatedStatus": "PASS",
   "fullProductReview": null,
   "fullProductReviewStatus": "HOLD",
   "gaReady": false,
   "blockers": [
-    "AUTOMATED_I18N_RELEASE_ID_MISSING",
     "full_product_review_missing"
   ],
   "measuredScope": "generated commercial catalog, bound automated tests, and signed/hashed full-product visual/RTL/email/PDF/export artifact review",
-  "buildId": null,
-  "head": null,
+  "buildId": "0fcda72ae36a514d4f4e2492680928167679efa0",
+  "head": "0fcda72ae36a514d4f4e2492680928167679efa0",
   "status": "HOLD",
-  "receiptSha256": "d5605ea3c7e1eff2d14618c04de328c5ca32cd90b3139943bd1b1f3046ef371d",
+  "receiptSha256": "c81b4ad4fb97768cceb81ac1c3f71bdccd0763b415c43149efb139166032aa95",
   "receiptHmacSha256": null
 }

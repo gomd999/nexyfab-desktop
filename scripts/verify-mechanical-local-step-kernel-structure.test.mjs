@@ -13,12 +13,22 @@ const EVIDENCE_ROOT = path.join(ROOT, 'docs/evidence/cad-independent/local/mecha
 const source = inspectStandaloneStep(fs.readFileSync(path.join(EVIDENCE_ROOT, 'source.step'), 'utf8'));
 const returned = inspectStandaloneStep(fs.readFileSync(path.join(EVIDENCE_ROOT, 'nexyfab-kernel-returned.step'), 'utf8'));
 
-test('separates preserved occurrence geometry from lost semantic identifiers', () => {
+test('preserves bounded occurrence geometry and semantic identifiers', () => {
   const assessment = assessKernelStructure(source, returned);
+  assert.equal(assessment.geometryStructurePreserved, 'PASS_LOCAL');
+  assert.equal(assessment.semanticIdentityPreserved, 'PASS_LOCAL');
+  assert.equal(assessment.localStatus, 'PASS_LOCAL');
+  assert.ok(assessment.checks.every(item => item.status === 'PASS_LOCAL'));
+});
+
+test('fails local semantics when a returned occurrence identifier is lost', () => {
+  const changed = structuredClone(returned);
+  changed.parts[0].occurrenceLabel = 'Body 1';
+  const assessment = assessKernelStructure(source, changed);
   assert.equal(assessment.geometryStructurePreserved, 'PASS_LOCAL');
   assert.equal(assessment.semanticIdentityPreserved, 'FAIL_LOCAL');
   assert.equal(assessment.localStatus, 'FAIL_LOCAL');
-  assert.equal(assessment.checks.filter(item => item.status === 'FAIL_LOCAL').length, 3);
+  assert.equal(assessment.checks.find(item => item.id === 'occurrence_labels')?.status, 'FAIL_LOCAL');
 });
 
 test('passes local structure and semantics only when both are independently equal', () => {

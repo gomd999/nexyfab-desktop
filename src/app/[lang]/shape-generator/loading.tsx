@@ -1,15 +1,5 @@
+import { WorkspaceLoading } from './WorkspaceLoading';
+
 export default function ShapeGeneratorLoading() {
-  return (
-    <div style={{
-      height: '100vh', background: 'var(--nx-bg)', display: 'flex',
-      alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: '16px',
-    }}>
-      <div style={{
-        width: '44px', height: '44px', border: '3px solid var(--nx-border-strong)',
-        borderTopColor: '#0b5cff', borderRadius: '50%',
-        animation: 'nf-spin 0.7s linear infinite',
-      }} />
-      <p style={{ color: 'var(--nx-text-2)', fontSize: '14px', fontWeight: 500 }}>Loading 3D workspace...</p>
-    </div>
-  );
+  return <WorkspaceLoading />;
 }

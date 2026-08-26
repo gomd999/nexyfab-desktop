@@ -1,6 +1,13 @@
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { NextRequest } from 'next/server';
 import { config, proxy } from './proxy';
+
+const adminlinkSource = readFileSync(
+  join(process.cwd(), 'src', 'app', 'adminlink', 'page.tsx'),
+  'utf8',
+);
 
 function request(
   path: string,
@@ -49,7 +56,7 @@ describe('Next 16 proxy closed-beta security boundary', () => {
     expect(response.status).toBe(413);
   });
 
-  it.each(['/send-mail.php', '/search.php'])(
+  it.each(['/send-mail.php', '/search.php', '/adminlink/index.php'])(
     'never serves non-executable legacy PHP source: %s',
     async (path) => {
       vi.stubEnv('SECURITY_GATE_MODE', 'off');
@@ -58,6 +65,11 @@ describe('Next 16 proxy closed-beta security boundary', () => {
       expect(response.headers.get('cache-control')).toBe('no-store');
     },
   );
+
+  it('routes the remaining admin inquiry caller away from the retired PHP surface', () => {
+    expect(adminlinkSource).toContain('href="/admin/inquiries"');
+    expect(adminlinkSource).not.toContain('/adminlink/index.php');
+  });
 
   it('blocks legacy upload paths only in enforce mode', async () => {
     vi.stubEnv('SECURITY_GATE_MODE', 'enforce');

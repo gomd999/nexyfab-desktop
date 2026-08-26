@@ -1,6 +1,7 @@
 {
   "schema": "nexyfab.workspace-registry.v1",
   "integrationBranch": "integration/nexyfab",
+  "releaseBranch": "release/web-public-2026-08-26",
   "baselineRef": "baseline/pre-scope-20260823",
   "defaultOwner": "platform",
   "sharedPaths": [
@@ -44,6 +45,19 @@
         "workers/**",
         "collab-worker/**",
         "cron-worker/**",
+        "src/app/[lang]/homeDict/**",
+        "src/app/[lang]/homeDict*.test.ts",
+        "src/app/api/jobs/**",
+        "src/app/api/nexyfab/export/**",
+        "src/app/api/nexyfab/quote-accuracy/**",
+        "src/components/**",
+        "src/lib/i18n/**",
+        "docs/evidence/release/commercial-precision-runtime-evidence.json",
+        "docs/evidence/cad-independent/commercial-precision-cross-store-restore-20260825.json",
+        "scripts/build-commercial-precision-runtime-evidence.mjs",
+        "scripts/build-commercial-precision-runtime-evidence.test.mjs",
+        "scripts/verify-object-storage-restore.mjs",
+        "scripts/verify-object-storage-restore.test.mjs",
         "workspaces/platform/**"
       ],
       "checks": [

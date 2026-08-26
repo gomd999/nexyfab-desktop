@@ -1,8 +1,19 @@
 #!/usr/bin/env node
 
+import { readFileSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
 
-const COMMERCIAL_MIGRATIONS = ['2026082202', '2026082203', '2026082204', '2026082205', '2026082206', '2026082207', '2026082208'];
+const COMMERCIAL_I18N_CONTRACT = JSON.parse(readFileSync(
+  new URL('../src/lib/i18n/commercialReleaseContract.json', import.meta.url),
+  'utf8',
+));
+
+const COMMERCIAL_MIGRATIONS = [
+  '2026082202', '2026082203', '2026082204', '2026082205', '2026082206',
+  '2026082207', '2026082208', '2026082301', '2026082401', '2026082402', '2026082403',
+  '2026082501', '2026082502',
+];
+const LATEST_COMMERCIAL_MIGRATION = Number(COMMERCIAL_MIGRATIONS.at(-1));
 const DEFAULT_RELEASE_ENDPOINT = '/api/health/release';
 
 export function evaluateRollbackResponses(responses, expectedBuild) {
@@ -25,7 +36,9 @@ export function evaluateRollbackResponses(responses, expectedBuild) {
   }
   if (!responses.release) issues.push('commercial release evidence is missing');
   else {
-    if (responses.release.migrationVersion !== 2026082208) issues.push('release latest migration is not 2026082208');
+    if (responses.release.migrationVersion !== LATEST_COMMERCIAL_MIGRATION) {
+      issues.push(`release latest migration is not ${LATEST_COMMERCIAL_MIGRATION}`);
+    }
     for (const version of COMMERCIAL_MIGRATIONS) {
       if (!/^[a-f0-9]{64}$/.test(responses.release.migrationChecksums?.[version] ?? '')) issues.push(`release migration ${version}/checksum is missing`);
     }
@@ -33,7 +46,7 @@ export function evaluateRollbackResponses(responses, expectedBuild) {
     const i18n = responses.release.i18n;
     if (i18n?.status !== 'QUALIFIED'
       || !Number.isInteger(i18n.sourcePairs)
-      || i18n.sourcePairs < 2711
+      || i18n.sourcePairs !== COMMERCIAL_I18N_CONTRACT.sourcePairs
       || i18n.translatedPairs !== i18n.sourcePairs) {
       issues.push('release i18n receipt does not qualify the complete translated catalog');
     }

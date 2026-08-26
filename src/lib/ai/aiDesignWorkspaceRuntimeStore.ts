@@ -1,5 +1,8 @@
 import { createHash } from 'node:crypto';
 import type { Redis } from 'ioredis';
+import { getDbAdapter, type DbAdapter } from '@/lib/db-adapter';
+import { aiDesignOwnerKeySha256, assertAiDesignPostgresAuthority } from './aiDesignPostgresAuthority';
+import { aiDesignDurablePersistenceEnabled } from './aiDesignDeploymentMode';
 import { assertAiDesignWorkspaceRuntime, type AiDesignWorkspaceRuntimeV1 } from './aiDesignWorkspaceRuntime';
 import { evidenceHashMatches, serverEvidenceSha256 } from './serverEvidence';
 
@@ -48,14 +51,6 @@ async function redis(): Promise<Redis | null> {
   return redisClient;
 }
 
-function requirePermittedStore(): void {
-  if (process.env.NEXYFAB_COMMERCIAL_MODE === '1') {
-    // The integration-owned PostgreSQL migration must provide tenant/project
-    // authority and durable CAS. Redis/in-memory state is never release proof.
-    throw new Error('AI_DESIGN_WORKSPACE_POSTGRES_AUTHORITATIVE_REQUIRED');
-  }
-}
-
 function parseStored(raw: string | null): StoredAiDesignWorkspaceRuntime | null {
   if (!raw) return null;
   if (Buffer.byteLength(raw, 'utf8') > MAX_AI_DESIGN_WORKSPACE_RUNTIME_BYTES * 2) throw new Error('AI_DESIGN_WORKSPACE_TOO_LARGE');
@@ -86,9 +81,80 @@ function makeRecord(ownerKey: string, state: AiDesignWorkspaceRuntimeV1, created
   };
 }
 
+type RuntimeRow = {
+  owner_key_sha256: string;
+  project_id: string;
+  session_id: string;
+  runtime_revision: number;
+  state_sha256: string;
+  state_json: string;
+  created_at: number;
+  updated_at: number;
+};
+
+function parsePostgresRuntime(row: RuntimeRow | undefined, ownerKey: string): StoredAiDesignWorkspaceRuntime | null {
+  if (!row || row.owner_key_sha256 !== aiDesignOwnerKeySha256(ownerKey)) return null;
+  try {
+    return parseStored(JSON.stringify({
+      schema: 'nexyfab.server-ai-design-workspace-runtime.v1', ownerKey,
+      projectId: row.project_id, sessionId: row.session_id,
+      runtimeRevision: Number(row.runtime_revision), state: JSON.parse(row.state_json),
+      stateSha256: row.state_sha256,
+      createdAt: new Date(Number(row.created_at)).toISOString(),
+      updatedAt: new Date(Number(row.updated_at)).toISOString(),
+    }));
+  } catch (error) {
+    if (error instanceof Error && error.message.startsWith('AI_DESIGN_WORKSPACE_')) throw error;
+    throw new Error('AI_DESIGN_WORKSPACE_INTEGRITY_FAILED');
+  }
+}
+
+function parsePostgresRuntimeByOwnerHash(
+  row: RuntimeRow | undefined,
+  ownerKeySha256: string,
+): AiDesignWorkspaceRuntimeV1 | null {
+  if (!row || row.owner_key_sha256 !== ownerKeySha256) return null;
+  let state: AiDesignWorkspaceRuntimeV1;
+  try { state = JSON.parse(row.state_json) as AiDesignWorkspaceRuntimeV1; }
+  catch { throw new Error('AI_DESIGN_WORKSPACE_INTEGRITY_FAILED'); }
+  const stateSha256 = assertRuntimeSize(state);
+  if (stateSha256 !== row.state_sha256 || state.projectId !== row.project_id
+    || state.session.sessionId !== row.session_id
+    || state.runtimeRevision !== Number(row.runtime_revision)) {
+    throw new Error('AI_DESIGN_WORKSPACE_INTEGRITY_FAILED');
+  }
+  return clone(state);
+}
+
+async function postgresDb(): Promise<DbAdapter> {
+  const db = getDbAdapter();
+  await assertAiDesignPostgresAuthority(db);
+  return db;
+}
+
 export async function createServerAiDesignWorkspaceRuntime(ownerKey: string, state: AiDesignWorkspaceRuntimeV1): Promise<AiDesignWorkspaceRuntimeV1> {
-  requirePermittedStore();
   const now = new Date().toISOString();
+  if (aiDesignDurablePersistenceEnabled()) {
+    const db = await postgresDb();
+    const stateSha256 = assertRuntimeSize(state);
+    try {
+      await db.execute(
+        `INSERT INTO nf_ai_design_workspace_runtimes
+         (owner_key_sha256, project_id, session_id, runtime_revision, state_sha256, state_json, created_at, updated_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+        aiDesignOwnerKeySha256(ownerKey), state.projectId, state.session.sessionId,
+        state.runtimeRevision, stateSha256, JSON.stringify(state), Date.parse(now), Date.parse(now),
+      );
+    } catch {
+      const existing = await db.queryOne<{ runtime_revision: number }>(
+        `SELECT runtime_revision FROM nf_ai_design_workspace_runtimes
+         WHERE owner_key_sha256 = ? AND project_id = ? AND session_id = ?`,
+        aiDesignOwnerKeySha256(ownerKey), state.projectId, state.session.sessionId,
+      );
+      throw new Error(existing ? 'AI_DESIGN_WORKSPACE_ALREADY_EXISTS' : 'AI_DESIGN_WORKSPACE_CREATE_FAILED');
+    }
+    return clone(state);
+  }
   const storageKey = key(ownerKey, state.projectId, state.session.sessionId);
   const record = makeRecord(ownerKey, state, now, now);
   const client = await redis();
@@ -103,7 +169,18 @@ export async function createServerAiDesignWorkspaceRuntime(ownerKey: string, sta
 }
 
 export async function loadServerAiDesignWorkspaceRuntime(ownerKey: string, projectId: string, sessionId: string): Promise<AiDesignWorkspaceRuntimeV1> {
-  requirePermittedStore();
+  if (aiDesignDurablePersistenceEnabled()) {
+    const db = await postgresDb();
+    const row = await db.queryOne<RuntimeRow>(
+      `SELECT owner_key_sha256, project_id, session_id, runtime_revision, state_sha256, state_json, created_at, updated_at
+       FROM nf_ai_design_workspace_runtimes
+       WHERE owner_key_sha256 = ? AND project_id = ? AND session_id = ?`,
+      aiDesignOwnerKeySha256(ownerKey), projectId, sessionId,
+    );
+    const stored = parsePostgresRuntime(row, ownerKey);
+    if (!stored || stored.projectId !== projectId || stored.sessionId !== sessionId) throw new Error('AI_DESIGN_WORKSPACE_NOT_FOUND');
+    return clone(stored.state);
+  }
   const storageKey = key(ownerKey, projectId, sessionId);
   const client = await redis();
   const stored = client ? parseStored(await client.get(storageKey)) : memory.get(storageKey) ?? null;
@@ -113,13 +190,51 @@ export async function loadServerAiDesignWorkspaceRuntime(ownerKey: string, proje
   return clone(stored.state);
 }
 
+/** Commercial worker read path that keeps the raw tenant owner key out of durable jobs. */
+export async function loadServerAiDesignWorkspaceRuntimeByOwnerHash(
+  db: DbAdapter,
+  ownerKeySha256: string,
+  projectId: string,
+  sessionId: string,
+): Promise<AiDesignWorkspaceRuntimeV1> {
+  if (!/^[a-f0-9]{64}$/.test(ownerKeySha256)) throw new Error('AI_DESIGN_OWNER_HASH_INVALID');
+  await assertAiDesignPostgresAuthority(db);
+  const row = await db.queryOne<RuntimeRow>(
+    `SELECT owner_key_sha256, project_id, session_id, runtime_revision, state_sha256, state_json, created_at, updated_at
+     FROM nf_ai_design_workspace_runtimes
+     WHERE owner_key_sha256 = ? AND project_id = ? AND session_id = ?`,
+    ownerKeySha256, projectId, sessionId,
+  );
+  const state = parsePostgresRuntimeByOwnerHash(row, ownerKeySha256);
+  if (!state) throw new Error('AI_DESIGN_WORKSPACE_NOT_FOUND');
+  return state;
+}
+
 export async function saveServerAiDesignWorkspaceRuntime(
   ownerKey: string,
   state: AiDesignWorkspaceRuntimeV1,
   expectedRevision: number,
 ): Promise<AiDesignWorkspaceRuntimeV1> {
-  requirePermittedStore();
   if (!Number.isSafeInteger(expectedRevision) || expectedRevision < 0 || state.runtimeRevision <= expectedRevision) throw new Error('AI_DESIGN_WORKSPACE_REVISION_TRANSITION_INVALID');
+  if (aiDesignDurablePersistenceEnabled()) {
+    const db = await postgresDb();
+    const changed = await db.execute(
+      `UPDATE nf_ai_design_workspace_runtimes
+       SET runtime_revision = ?, state_sha256 = ?, state_json = ?, updated_at = ?
+       WHERE owner_key_sha256 = ? AND project_id = ? AND session_id = ? AND runtime_revision = ?`,
+      state.runtimeRevision, assertRuntimeSize(state), JSON.stringify(state), Date.now(),
+      aiDesignOwnerKeySha256(ownerKey), state.projectId, state.session.sessionId, expectedRevision,
+    );
+    if (changed.changes !== 1) {
+      const existing = await db.queryOne<{ runtime_revision: number }>(
+        `SELECT runtime_revision FROM nf_ai_design_workspace_runtimes
+         WHERE owner_key_sha256 = ? AND project_id = ? AND session_id = ?`,
+        aiDesignOwnerKeySha256(ownerKey), state.projectId, state.session.sessionId,
+      );
+      throw new Error(existing ? 'AI_DESIGN_WORKSPACE_REVISION_CONFLICT' : 'AI_DESIGN_WORKSPACE_NOT_FOUND');
+    }
+    return clone(state);
+  }
   const storageKey = key(ownerKey, state.projectId, state.session.sessionId);
   const client = await redis();
   if (client) {

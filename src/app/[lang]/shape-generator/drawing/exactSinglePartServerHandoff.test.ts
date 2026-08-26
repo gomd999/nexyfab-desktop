@@ -12,9 +12,13 @@ import { enrichServerDrawingHandoffWithExactSinglePart } from './exactSinglePart
 const revisionHash = 'a'.repeat(64);
 const independentSha256 = (value: string) => createHash('sha256').update(value, 'utf8').digest('hex');
 
-async function fixture(kind: 'extrude' | 'sweep' = 'extrude') {
+async function fixture(kind: 'extrude' | 'sweep' = 'extrude', canonical = false) {
   return buildAssemblyDrawingHandoff({
     projectId: 'project-1', workspaceRevision: 7, workspaceContentSha256: revisionHash,
+    ...(canonical ? { canonicalRevision: {
+      schema: 'nexyfab.precision-cad.canonical-drawing-revision-binding.v1' as const,
+      documentId: 'document-1', revisionId: 'revision-7', sequence: 7, contentSha256: revisionHash,
+    } } : {}),
     state: {
       parts: [{
         id: 'part-1', name: 'Plate', partTemplateId: 'plate', fixed: true,
@@ -100,6 +104,25 @@ describe('server exact single-part drawing handoff', () => {
       bom: first.handoff.exactSinglePart!.bom.sha256,
       payload: serializeAssemblyDrawingHandoff(first.handoff),
     });
+  }, 60_000);
+
+  it('carries the full canonical head binding into STEP, drawing, dimensions, and BOM evidence', async () => {
+    const result = await enrichServerDrawingHandoffWithExactSinglePart(await fixture('extrude', true));
+    expect(result.status).toBe('PASS');
+    if (result.status !== 'PASS') return;
+    expect(result.handoff.source.revisionId).toBe('revision-7');
+    expect(result.handoff.exactSinglePart?.source.canonicalRevision).toEqual({
+      schema: 'nexyfab.precision-cad.canonical-drawing-revision-binding.v1',
+      documentId: 'document-1', revisionId: 'revision-7', sequence: 7, contentSha256: revisionHash,
+    });
+    expect(JSON.parse(result.handoff.exactSinglePart!.dimensions.receiptJson).partRevisionId).toBe('revision-7');
+    expect(JSON.parse(result.handoff.exactSinglePart!.bom.receiptJson).partRevisionId).toBe('revision-7');
+    expect(JSON.parse(result.handoff.exactSinglePart!.dimensions.receiptJson).canonicalRevision).toEqual(
+      result.handoff.source.canonicalRevision,
+    );
+    expect(JSON.parse(result.handoff.exactSinglePart!.bom.receiptJson).canonicalRevision).toEqual(
+      result.handoff.source.canonicalRevision,
+    );
   }, 60_000);
 
   it('keeps unsupported FeatureTrees NOT_RUN and manufacturing BLOCKED', async () => {

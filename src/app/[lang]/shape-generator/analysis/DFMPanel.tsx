@@ -9,6 +9,7 @@ import { useAnalysisStore } from '../store/analysisStore';
 import { useLang } from '../hooks/useLang';
 import { loc } from '../lib/loc';
 import { createCommercialLocalizer } from '@/lib/i18n/commercialLocalizer';
+import { formatDfmPdfExportError } from './dfmPdfClientI18n';
 
 /* ─── i18n dictionary ────────────────────────────────────────────────────── */
 
@@ -1212,6 +1213,7 @@ function PdfExportButton({ results, isKo }: { results: DFMResult[]; isKo: boolea
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
+          lang,
           projectName,
           generatedAt: new Date().toISOString(),
           results: results.map(r => ({
@@ -1231,7 +1233,7 @@ function PdfExportButton({ results, isKo }: { results: DFMResult[]; isKo: boolea
       });
       if (!res.ok) {
         const body = await res.json().catch(() => ({}));
-        throw new Error(body?.error ?? `HTTP ${res.status}`);
+        throw new Error(body?.error ?? `HTTP_${res.status}`);
       }
       const blob = await res.blob();
       const url = URL.createObjectURL(blob);
@@ -1241,7 +1243,7 @@ function PdfExportButton({ results, isKo }: { results: DFMResult[]; isKo: boolea
       a.click();
       setTimeout(() => URL.revokeObjectURL(url), 30_000);
     } catch (e) {
-      setErr((e as Error).message);
+      setErr(formatDfmPdfExportError(lang, (e as Error).message));
       void import('@/lib/client-error-capture').then(m => m.captureClientError(e, {
         source: 'dfm-pdf',
         tags: { action: 'export' },
@@ -1249,7 +1251,7 @@ function PdfExportButton({ results, isKo }: { results: DFMResult[]; isKo: boolea
     } finally {
       setBusy(false);
     }
-  }, [busy, results]);
+  }, [busy, lang, results]);
 
   return (
     <>

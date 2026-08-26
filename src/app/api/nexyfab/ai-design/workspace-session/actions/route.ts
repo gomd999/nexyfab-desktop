@@ -17,6 +17,7 @@ import {
 import { createAiDesignServerGenerationWorker } from '@/lib/ai/aiDesignServerGenerationWorker';
 import { aiDesignServerRuntimeArtifacts } from '@/lib/ai/aiDesignServerRuntimeArtifacts';
 import { loadServerAiDesignWorkspaceRuntime } from '@/lib/ai/aiDesignWorkspaceRuntimeStore';
+import { evaluateAiDesignComplexCandidateSet } from '@/lib/ai/aiDesignComplexEvaluationService';
 
 export const runtime = 'nodejs';
 
@@ -79,6 +80,19 @@ export async function POST(req: NextRequest) {
           worker, receiptSink: aiDesignServerRuntimeArtifacts, signingSecret,
           loadStageArtifactByOutputDigest: digest => aiDesignServerRuntimeArtifacts.getStageArtifactByOutputDigest(digest),
           putCandidateArtifactImmutable: artifact => aiDesignServerRuntimeArtifacts.putCandidateArtifactImmutable(artifact),
+          evaluatePublishedConcepts: async ({ state, candidates, artifacts }) => evaluateAiDesignComplexCandidateSet({
+            projectId: state.projectId,
+            sessionId: state.session.sessionId,
+            runId: state.generation!.runId,
+            checkpointDigest: state.checkpoint.projectContentHash,
+            candidates: artifacts.map(artifact => {
+              const candidate = candidates.find(item => item.candidateId === artifact.candidateId);
+              if (!candidate) throw new Error('AI_DESIGN_CANDIDATE_CRITIC_BINDING_FAILED');
+              return { artifact, title: candidate.title, summary: candidate.summary };
+            }),
+            productStructure: null,
+            crossDomainGraph: null,
+          }, { sink: aiDesignServerRuntimeArtifacts, signingSecret }),
         },
         parsed.command.expectedRuntimeRevision,
       ));

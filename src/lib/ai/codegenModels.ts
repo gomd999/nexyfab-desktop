@@ -1,4 +1,5 @@
 import type { ProviderName } from './types';
+import { aiModelBetaAccessEnabled } from './aiModelBetaAccess';
 
 export type AiModelTier = 'free' | 'pro' | 'enterprise';
 export type AiAccessPlan = 'free' | 'pro' | 'team' | 'enterprise';
@@ -31,7 +32,7 @@ export const CODEGEN_MODELS: readonly CodegenModel[] = [
     provider: 'openai',
     model: 'gpt-5.6-luna',
     tier: 'free',
-    note: 'Free · 빠른 설계 · 이미지 자동 분석',
+    note: 'Free · fast design · automatic image analysis',
     vision: true,
     recommended: true,
   },
@@ -41,7 +42,7 @@ export const CODEGEN_MODELS: readonly CodegenModel[] = [
     provider: 'qwen',
     model: 'qwen3.7-plus',
     tier: 'pro',
-    note: 'Pro · 빠른 반복 설계',
+    note: 'Pro · fast iterative design',
     vision: true,
   },
   {
@@ -50,26 +51,25 @@ export const CODEGEN_MODELS: readonly CodegenModel[] = [
     provider: 'qwen',
     model: 'qwen3.7-max',
     tier: 'pro',
-    note: 'Pro · 복잡 형상 추론',
+    note: 'Pro · complex geometry reasoning',
   },
   {
     id: 'deepseek-pro',
     label: 'DeepSeek Pro',
-    provider: 'qwen',
+    provider: 'deepseek',
     model: 'deepseek-v4-pro',
     tier: 'pro',
-    note: 'Pro · 정밀 설계 추론',
+    note: 'Pro · precision design reasoning',
     recommended: true,
   },
   {
     id: 'qwen-3.8-max',
-    label: 'Qwen 3.8 Max Preview',
+    label: 'Qwen 3.8 Max',
     provider: 'qwen',
-    model: 'qwen3.8-max-preview',
+    model: 'qwen3.8-max',
     tier: 'enterprise',
-    note: 'Enterprise · Token Plan/계정 가용성 확인 필요',
+    note: 'Enterprise · advanced multimodal design reasoning',
     vision: true,
-    availability: 'preview',
   },
   {
     id: 'gpt-terra',
@@ -77,7 +77,7 @@ export const CODEGEN_MODELS: readonly CodegenModel[] = [
     provider: 'openai',
     model: 'gpt-5.6-terra',
     tier: 'enterprise',
-    note: 'Enterprise · 고난도 정밀 설계',
+    note: 'Enterprise · advanced precision design',
     vision: true,
     recommended: true,
   },
@@ -94,7 +94,12 @@ export function modelTierForPlan(plan: string | null | undefined): AiModelTier {
   return 'free';
 }
 
-export function canUseCodegenModel(model: CodegenModel, plan: string | null | undefined): boolean {
+export function canUseCodegenModel(
+  model: CodegenModel,
+  plan: string | null | undefined,
+  betaAccess = aiModelBetaAccessEnabled(),
+): boolean {
+  if (betaAccess) return true;
   return TIER_RANK[modelTierForPlan(plan)] >= TIER_RANK[model.tier];
 }
 
@@ -117,11 +122,12 @@ export type CodegenModelAuthorization =
 export function authorizeCodegenModel(
   id: string | null | undefined,
   plan: string | null | undefined,
+  betaAccess = aiModelBetaAccessEnabled(),
 ): CodegenModelAuthorization {
   const requestedId = id?.trim() || defaultCodegenModelForPlan(plan);
   const model = findCodegenModel(requestedId);
   if (!model) return { ok: false, code: 'MODEL_NOT_FOUND', requestedId };
-  if (!canUseCodegenModel(model, plan)) {
+  if (!canUseCodegenModel(model, plan, betaAccess)) {
     return { ok: false, code: 'MODEL_PLAN_LOCKED', requestedId, requiredTier: model.tier };
   }
   return { ok: true, model };

@@ -527,7 +527,7 @@ function DrawingSvgCard({ meta }: { meta?: ToolResultMeta }): React.ReactElement
             </span>
           )}
           {svg && (
-            <button onClick={onOpenFull} style={openBtnStyle} title="Open SVG in new tab">↗ open</button>
+            <button onClick={onOpenFull} style={openBtnStyle} title={loc(lang, { ko: '새 탭에서 SVG 열기', en: 'Open SVG in new tab', ja: 'SVG を新しいタブで開く', zh: '在新标签页中打开 SVG', es: 'Abrir SVG en una pestaña nueva', ar: 'فتح SVG في علامة تبويب جديدة' })}>↗ {loc(lang, { ko: '열기', en: 'open', ja: '開く', zh: '打开', es: 'abrir', ar: 'فتح' })}</button>
           )}
         </div>
         {popupBlocked && (

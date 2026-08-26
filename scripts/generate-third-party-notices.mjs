@@ -2,6 +2,7 @@
 import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
+import { canonicalTextBytes } from './canonical-evidence-bytes.mjs';
 
 const root = process.cwd();
 const args = new Set(process.argv.slice(2));
@@ -12,10 +13,12 @@ const overridesPath = path.join(root, 'docs', 'legal', 'license-overrides.json')
 const criticalCopyleft = new Set(['opencascade.js', 'occt-import-js', '@salusoft89/planegcs']);
 
 if (!fs.existsSync(lockPath)) throw new Error('package-lock.json is required');
-const lock = JSON.parse(fs.readFileSync(lockPath, 'utf8'));
+const lockBytes = canonicalTextBytes(fs.readFileSync(lockPath));
+const lock = JSON.parse(lockBytes.toString('utf8'));
 if (lock.lockfileVersion !== 3 || !lock.packages) throw new Error('package-lock v3 packages map is required');
 if (!fs.existsSync(overridesPath)) throw new Error('docs/legal/license-overrides.json is required');
-const overridesDocument = JSON.parse(fs.readFileSync(overridesPath, 'utf8'));
+const overridesBytes = canonicalTextBytes(fs.readFileSync(overridesPath));
+const overridesDocument = JSON.parse(overridesBytes.toString('utf8'));
 if (overridesDocument.schema !== 'nexyfab.license-overrides.v1' || !Array.isArray(overridesDocument.overrides)) {
   throw new Error('license override document must use nexyfab.license-overrides.v1');
 }
@@ -40,7 +43,7 @@ const findLicense = packageDir => {
   if (!name) return null;
   const file = path.join(packageDir, name);
   if (!fs.statSync(file).isFile()) return null;
-  const bytes = fs.readFileSync(file);
+  const bytes = canonicalTextBytes(fs.readFileSync(file));
   return { file: name, sha256: sha256(bytes), bytes: bytes.length };
 };
 
@@ -79,7 +82,7 @@ for (const [packagePath, lockEntry] of Object.entries(lock.packages)) {
   let license = manifest?.license ?? lockEntry.license ?? inferredLicense;
   let licenseReview = null;
   if (!license && reviewedOverride) {
-    const bytes = fs.readFileSync(reviewedOverride.licenseFilePath);
+    const bytes = canonicalTextBytes(fs.readFileSync(reviewedOverride.licenseFilePath));
     license = reviewedOverride.license;
     licenseArtifact = {
       file: reviewedOverride.licenseFile,
@@ -129,8 +132,8 @@ const output = {
   schema: 'nexyfab.third-party-notices.v1',
   title: 'Open-source and third-party components',
   notice: 'Generated from package-lock.json for production dependencies. Legal review and corresponding-source delivery records remain separate release evidence.',
-  packageLockSha256: sha256(fs.readFileSync(lockPath)),
-  licenseOverridesSha256: sha256(fs.readFileSync(overridesPath)),
+  packageLockSha256: sha256(lockBytes),
+  licenseOverridesSha256: sha256(overridesBytes),
   packageCount: uniquePackages.length,
   criticalCopyleft: uniquePackages.filter(item => criticalCopyleft.has(item.name)),
   issues,

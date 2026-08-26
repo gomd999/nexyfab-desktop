@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { authBaseUrl, nexysysBaseUrl } from '@/lib/auth-base-url';
 import { toIsoLang, toRouteLang } from '@/lib/i18n/normalize';
+import { safeReturnPath } from '@/lib/safeReturnPath';
 
 const AUTH_BASE = authBaseUrl();
 
@@ -179,6 +180,11 @@ function detectLang(): Lang {
     return 'en';
 }
 
+function loginReturnPath(): string {
+    if (typeof window === 'undefined') return '/account';
+    return safeReturnPath(new URLSearchParams(window.location.search).get('next'));
+}
+
 const LOGIN_EXTRA: Record<Lang, {
     passkeyUnsupported: string; emailRequired: string; passkeyOptionsFailed: string;
     passkeyVerifyFailed: string; passkeyLoginFailed: string; codeRequired: string;
@@ -220,7 +226,7 @@ export default function LoginPage() {
         setLang(detectLang());
         const stored = sessionStorage.getItem('currentUser');
         if (stored) {
-            router.push('/account');
+            router.push(loginReturnPath());
         }
     }, [router]);
 
@@ -338,7 +344,7 @@ export default function LoginPage() {
             if (!verifyRes.ok) throw new Error(data.error || x.passkeyVerifyFailed);
             sessionStorage.setItem('currentUser', JSON.stringify(data.user));
             window.dispatchEvent(new Event('storage'));
-            router.push('/account');
+            router.push(loginReturnPath());
         } catch (e: unknown) {
             const err = e as { name?: string; message?: string };
             if (err.name !== 'NotAllowedError') setError(err.message ?? x.passkeyLoginFailed);
@@ -367,7 +373,7 @@ export default function LoginPage() {
             sessionStorage.setItem('currentUser', JSON.stringify(data.user));
             window.dispatchEvent(new Event('storage'));
             setStep('credentials'); setTotpCode(''); setTempToken('');
-            router.push('/account');
+            router.push(loginReturnPath());
         } catch (err: unknown) {
             setError(err instanceof Error ? err.message : t.failed);
         } finally {
@@ -402,7 +408,7 @@ export default function LoginPage() {
             sessionStorage.setItem('currentUser', JSON.stringify(data.user));
 
             window.dispatchEvent(new Event('storage'));
-            router.push('/account');
+            router.push(loginReturnPath());
         } catch (err: unknown) {
             // If network error (server not running), try client-side test account fallback
             if (err instanceof TypeError && err.message.includes('fetch')) {
@@ -410,7 +416,7 @@ export default function LoginPage() {
                 if (testAccount && testAccount.password === password) {
                     sessionStorage.setItem('currentUser', JSON.stringify(testAccount.user));
                     window.dispatchEvent(new Event('storage'));
-                    router.push('/account');
+                    router.push(loginReturnPath());
                     return;
                 }
             }

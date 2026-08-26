@@ -154,13 +154,17 @@ export interface AdvanceAiDesignGenerationDependencies extends AiDesignWorkspace
   timeoutMs?: number;
   loadStageArtifactByOutputDigest?(outputDigest: string): AiDesignGeneratedStageArtifactV1 | null | Promise<AiDesignGeneratedStageArtifactV1 | null>;
   putCandidateArtifactImmutable?(artifact: AiDesignCandidateArtifactV1): Promise<void>;
+  evaluatePublishedConcepts?(input: {
+    state: AiDesignWorkspaceRuntimeV1;
+    candidates: readonly DesignCandidate[];
+    artifacts: readonly AiDesignCandidateArtifactV1[];
+  }): Promise<readonly { candidateId: string; conceptReviewReady: boolean; status: 'PASS' | 'FAIL' | 'INCOMPLETE' }[]>;
 }
 
 function candidatesFromStageArtifact(
   state: AiDesignWorkspaceRuntimeV1,
   artifact: AiDesignGeneratedStageArtifactV1,
   stageReceipt: AiDesignServerEvidenceReceiptV1,
-  now: Date,
 ): { candidates: DesignCandidate[]; artifacts: AiDesignCandidateArtifactV1[]; digest: string } {
   const selectedModelId = state.generation?.modelReceipt.selectedModelId;
   if (!selectedModelId || artifact.projectId !== state.projectId || artifact.runId !== state.generation?.runId
@@ -173,10 +177,10 @@ function candidatesFromStageArtifact(
   const artifacts: AiDesignCandidateArtifactV1[] = [];
   for (const blueprint of artifact.output.candidateBlueprints.slice(0, 3)) {
     const designDigest = serverEvidenceSha256(blueprint);
-    const artifactId = `candidate-artifact:${serverEvidenceSha256({ runId: artifact.runId, candidateId: blueprint.id, designDigest }).slice(0, 48)}`;
+    const artifactId = `candidate-artifact:${serverEvidenceSha256({ projectId: state.projectId, sessionId: state.session.sessionId, runId: artifact.runId, candidateId: blueprint.id, designDigest }).slice(0, 48)}`;
     const manifest = createAiDesignCandidateArtifact({
       trustedServer: true, artifactId, candidateId: blueprint.id, projectId: state.projectId, sessionId: state.session.sessionId,
-      baseRevision: state.revisionToken, artifactRevision: 1, status: 'published', createdAt: now.toISOString(),
+      baseRevision: state.revisionToken, artifactRevision: 1, status: 'published', createdAt: artifact.createdAt,
       contentDigest: artifact.outputDigest, designDigest,
       dependencies: {
         intentNodeIds: [...new Set(artifact.output.decisions.flatMap(item => item.intentKeys))],
@@ -243,8 +247,14 @@ export async function advanceServerAiDesignGeneration(
     if (!dependencies.loadStageArtifactByOutputDigest || !dependencies.putCandidateArtifactImmutable) return reject('AI_DESIGN_CANDIDATE_ARTIFACT_REPOSITORY_REQUIRED', state);
     const stageArtifact = await dependencies.loadStageArtifactByOutputDigest(outputDigest);
     if (!stageArtifact || stageArtifact.outputDigest !== outputDigest) return reject('AI_DESIGN_CANDIDATE_ARTIFACT_NOT_FOUND', state);
-    const publication = candidatesFromStageArtifact(next, stageArtifact, receipt, now);
+    const publication = candidatesFromStageArtifact(next, stageArtifact, receipt);
     for (const candidateArtifact of publication.artifacts) await dependencies.putCandidateArtifactImmutable(candidateArtifact);
+    if (dependencies.evaluatePublishedConcepts) {
+      const evaluations = await dependencies.evaluatePublishedConcepts({ state: next, candidates: publication.candidates, artifacts: publication.artifacts });
+      const byCandidate = new Map(evaluations.map(item => [item.candidateId, item]));
+      const blocked = publication.candidates.filter(candidate => byCandidate.get(candidate.candidateId)?.conceptReviewReady !== true);
+      if (blocked.length) return reject('AI_DESIGN_CANDIDATE_CRITIC_BLOCKED', state, blocked.map(candidate => `concept_review_not_ready:${candidate.candidateId}`));
+    }
     const publicationCommandId = `${workerCommandId}:publish`;
     const publicationReceipt = issueAiDesignServerEvidenceReceipt({
       projectId, sessionId, commandId: publicationCommandId, checkpointId: generation.checkpointId, checkpointDigest: generation.checkpointDigest,

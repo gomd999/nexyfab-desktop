@@ -1,44 +1,51 @@
 {
   "schema": "nexyfab.commercial-security-evidence-receipt.v2",
-  "generatedAt": "2026-08-23T07:32:01.766Z",
+  "generatedAt": "2026-08-25T07:56:44.960Z",
   "ok": false,
   "status": "HOLD",
   "target": "production",
   "release": {
     "buildId": null,
     "deploymentId": null,
-    "gitHead": null
+    "gitHead": null,
+    "environment": null,
+    "service": null
   },
   "freshness": {
-    "generatedAt": "2026-08-23T07:32:01.766Z",
+    "generatedAt": "2026-08-25T07:56:44.960Z",
     "maxAgeMs": 86400000,
-    "expiresAt": "2026-08-24T07:32:01.766Z"
+    "expiresAt": "2026-08-26T07:56:44.960Z"
   },
   "sourceBindings": [
     {
       "path": "docs/evidence/security/route-security-matrix-260810.json",
-      "bytes": 551509,
-      "sha256": "7f875b55c87900ab85020155516cc369ac8c2d1f76f52d6ec4971bcfb7a1031a"
+      "bytes": 568781,
+      "sha256": "12ed3a92806d6047cdb67537ca733e225e66542cadb877e7cfd2700f8e0f0967",
+      "canonicalization": "utf8-crlf-to-lf"
     },
     {
       "path": "docs/evidence/cad-independent/cad-api-control-evidence.json",
-      "bytes": 16134,
-      "sha256": "7d21526c4a7f6fb13be1b890b26d022422338397e91b9cce92d6d8b0ace16fff"
+      "bytes": 16342,
+      "sha256": "6af95a06f7187b4456a1a872e8571a58cafcbc903fbdb932238fbb0e01d3304d",
+      "canonicalization": "utf8-crlf-to-lf"
     },
     {
       "path": "docs/evidence/security/secret-scan-260810.json",
-      "bytes": 197,
-      "sha256": "721e6120dd9600d44532edc84b190fb140fe26651e314926610987cb393e122a"
+      "bytes": 710,
+      "sha256": "17729a7378c19c8b4700764220bb8da709aba7cbc3af5d11c635ed80d4788921",
+      "canonicalization": "utf8-crlf-to-lf"
     },
     {
       "path": "docs/evidence/security/dependency-audit-260810.json",
-      "bytes": 514,
-      "sha256": "9191b3346444fdefc65893056a7b48d5d860231ce0cc3f8b734c4c002151dc63"
+      "bytes": 559,
+      "sha256": "32a0e46fa36f6d532982e6002925a1437a687bee107c54e25c849cdd2b07a65e",
+      "canonicalization": "utf8-crlf-to-lf"
     },
     {
       "path": "package-lock.json",
-      "bytes": 630857,
-      "sha256": "d27bddc997f10ade5cf94722b17c70a4e958b1e8f631f1e807a3ac4c51289f26"
+      "bytes": 631405,
+      "sha256": "d5bd18e9f6648828af26925e4b914a9af4cafb700b8b58a8daeb7300099110e3",
+      "canonicalization": "utf8-crlf-to-lf"
     }
   ],
   "evidence": {
@@ -47,16 +54,16 @@
       "schema": "nexyfab.route-security-matrix.v1",
       "status": "pass",
       "derived": {
-        "routeFiles": 607,
-        "exportedHandlers": 837,
+        "routeFiles": 625,
+        "exportedHandlers": 860,
         "routesWithGaps": 0,
         "gapCounts": {},
         "byClassification": {
           "public": 131,
-          "authenticated": 354,
-          "admin": 68,
+          "authenticated": 369,
+          "admin": 69,
           "webhook": 6,
-          "internal-worker": 35,
+          "internal-worker": 37,
           "disabled": 13
         },
         "unknownClassifications": 0,
@@ -80,8 +87,10 @@
       "status": "pass",
       "derived": {
         "findingCount": 0,
-        "filesScanned": 7657,
-        "bytesScanned": 88863058
+        "filesScanned": 10201,
+        "bytesScanned": 324539185,
+        "excludedDerivedReceipts": 4,
+        "textCanonicalization": "utf8-crlf-to-lf"
       },
       "blockers": []
     },
@@ -91,7 +100,7 @@
       "status": "pass",
       "derived": {
         "vulnerabilityTotal": 0,
-        "dependencyTotal": 1250
+        "dependencyTotal": 1251
       },
       "blockers": []
     }
@@ -109,7 +118,9 @@
   "blockers": [
     "release_build_id_missing",
     "release_deployment_id_missing",
-    "release_git_head_invalid"
+    "release_git_head_invalid",
+    "release_environment_not_production",
+    "release_service_not_nexyfab"
   ],
-  "receiptSha256": "d56f752176f011f342279f38822f4c5ac55184182080902243a414efe662da37"
+  "receiptSha256": "bad2a7687f6d3f1e396369ff9a130858304031f605ad9ce4c616886d9a797ad0"
 }

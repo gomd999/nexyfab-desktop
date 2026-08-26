@@ -21,6 +21,8 @@ export interface StorageAdapter {
   uploadPrivate(buffer: Buffer, filename: string, directory: string): Promise<StorageResult>;
   /** Upload directly at an exact key (no UUID prefix) */
   uploadRaw?(buffer: Buffer, key: string, contentType?: string): Promise<void>;
+  /** Create a content-addressed object once; an identical retry is allowed, replacement is not. */
+  uploadRawImmutable?(buffer: Buffer, key: string, contentType?: string): Promise<{ replayed: boolean }>;
   /** Download raw buffer by key */
   download?(key: string): Promise<Buffer>;
   getSignedUrl(key: string, expiresInSeconds?: number): Promise<string>;
@@ -104,6 +106,24 @@ function getLocalStorage(): StorageAdapter {
         : resolveUnder(publicRoot, key);
       fs.mkdirSync(path.dirname(filePath), { recursive: true });
       fs.writeFileSync(filePath, buffer, { flag: 'wx' });
+    },
+    async uploadRawImmutable(buffer, key) {
+      const filePath = key.startsWith('private/')
+        ? resolveUnder(privateRoot, key.slice('private/'.length))
+        : resolveUnder(publicRoot, key);
+      fs.mkdirSync(path.dirname(filePath), { recursive: true });
+      try {
+        fs.writeFileSync(filePath, buffer, { flag: 'wx' });
+        return { replayed: false };
+      } catch (error) {
+        try {
+          if (fs.readFileSync(filePath).equals(buffer)) return { replayed: true };
+          throw new Error('IMMUTABLE_OBJECT_CONFLICT');
+        } catch (readError) {
+          if (readError instanceof Error && readError.message === 'IMMUTABLE_OBJECT_CONFLICT') throw readError;
+          throw error;
+        }
+      }
     },
     async download(key) {
       const filePath = key.startsWith('private/')
@@ -223,6 +243,29 @@ function getS3Storage(): StorageAdapter {
       await withMeter('putObject', async () => {
         const { S3Client, PutObjectCommand } = await import('@aws-sdk/client-s3');
         await makeClient(S3Client).send(new PutObjectCommand({ Bucket: bucket, Key: key, Body: buffer, ContentType: contentType }));
+      });
+    },
+    async uploadRawImmutable(buffer, key, contentType = 'application/octet-stream') {
+      return withMeter('putImmutableObject', async () => {
+        const { GetObjectCommand, PutObjectCommand, S3Client } = await import('@aws-sdk/client-s3');
+        const client = makeClient(S3Client);
+        try {
+          await client.send(new PutObjectCommand({
+            Bucket: bucket, Key: key, Body: buffer, ContentType: contentType, IfNoneMatch: '*',
+          }));
+          return { replayed: false };
+        } catch (error) {
+          try {
+            const existing = await client.send(new GetObjectCommand({ Bucket: bucket, Key: key }));
+            const chunks: Buffer[] = [];
+            for await (const chunk of existing.Body as AsyncIterable<Uint8Array>) chunks.push(Buffer.from(chunk));
+            if (Buffer.concat(chunks).equals(buffer)) return { replayed: true };
+            throw new Error('IMMUTABLE_OBJECT_CONFLICT');
+          } catch (readError) {
+            if (readError instanceof Error && readError.message === 'IMMUTABLE_OBJECT_CONFLICT') throw readError;
+            throw error;
+          }
+        }
       });
     },
     async download(key) {

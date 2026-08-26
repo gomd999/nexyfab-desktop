@@ -250,6 +250,25 @@ test('requires 20 locked blind challenges with role-separated signed review', t 
   const conflicting = structuredClone(receipt);
   conflicting.cases[0].reviews = conflicting.cases[0].reviews.slice(0, 1);
   assert.equal(validateMechanicalBlindChallenge(conflicting, options), false);
+  const extraReceiptClaim = structuredClone(receipt);
+  extraReceiptClaim.commercialRelease = true;
+  assert.equal(validateMechanicalBlindChallenge(extraReceiptClaim, options), false);
+  const extraCaseClaim = structuredClone(receipt);
+  extraCaseClaim.cases[0].releaseApproved = true;
+  assert.equal(validateMechanicalBlindChallenge(extraCaseClaim, options), false);
+  const invalidExtraReview = structuredClone(receipt);
+  invalidExtraReview.cases[5].reviews.push({
+    reviewerId: 'reviewer-b', decision: 'approved', independentFromBuild: true,
+    targetHash: invalidExtraReview.cases[5].targetHash,
+    reviewedAt: '2026-08-11T03:00:00.000Z', signature: 'forged',
+  });
+  assert.equal(validateMechanicalBlindChallenge(invalidExtraReview, options), false);
+  const impossibleSummary = structuredClone(receipt);
+  impossibleSummary.summary.highRisk = 999;
+  assert.equal(validateMechanicalBlindChallenge(impossibleSummary, options), false);
+  const generatedBeforeReview = structuredClone(receipt);
+  generatedBeforeReview.generatedAt = '2026-08-11T02:30:00.000Z';
+  assert.equal(validateMechanicalBlindChallenge(generatedBeforeReview, options), false);
   fs.writeFileSync(path.join(root, 'challenge-1', 'release.zip'), 'tampered');
   assert.equal(validateMechanicalBlindChallenge(receipt, options), false);
 });

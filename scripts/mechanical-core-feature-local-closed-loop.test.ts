@@ -16,6 +16,7 @@ import {
   checkMechanicalCoreFeatureLocalReadiness,
   writeMechanicalCoreFeatureLocalReadiness,
 } from './mechanical-core-feature-local-closed-loop';
+import { canonicalTextBinding } from './canonical-text-binding.mjs';
 
 const paths = {
   evidenceInput: 'evidence/local-axis.json',
@@ -47,7 +48,7 @@ function fixtureRoot(): string {
   return root;
 }
 
-function oneAxisReceipt(artifact: { path: string; sha256: string }): MechanicalCoreLocalAxisEvidenceV1 {
+function oneAxisReceipt(artifact: { path: string; sha256: string; canonicalization: string }): MechanicalCoreLocalAxisEvidenceV1 {
   const selectionIdentity = {
     featureFamily: 'hole' as const,
     featureId: 'runtime-feature',
@@ -92,7 +93,7 @@ describe('mechanical core feature local closed-loop runner', () => {
   it('accepts one locally hashed axis while every unexecuted axis stays NOT_RUN', () => {
     const root = fixtureRoot();
     const bytes = Buffer.from('{"ok":true}\n');
-    const artifact = { path: 'artifacts/hole-create.json', sha256: sha256(bytes) };
+    const artifact = { path: 'artifacts/hole-create.json', ...canonicalTextBinding(bytes) };
     write(root, artifact.path, bytes);
     write(root, paths.evidenceInput, `${JSON.stringify(oneAxisReceipt(artifact))}\n`);
     const result = buildMechanicalCoreFeatureLocalReadiness(root, paths);
@@ -107,7 +108,7 @@ describe('mechanical core feature local closed-loop runner', () => {
   it('downgrades a claimed PASS after its bound artifact is changed', () => {
     const root = fixtureRoot();
     const bytes = Buffer.from('{"ok":true}\n');
-    const artifact = { path: 'artifacts/hole-create.json', sha256: sha256(bytes) };
+    const artifact = { path: 'artifacts/hole-create.json', ...canonicalTextBinding(bytes) };
     write(root, artifact.path, bytes);
     write(root, paths.evidenceInput, `${JSON.stringify(oneAxisReceipt(artifact))}\n`);
     expect(buildMechanicalCoreFeatureLocalReadiness(root, paths).closedLoop.axisTotals.PASS).toBe(1);

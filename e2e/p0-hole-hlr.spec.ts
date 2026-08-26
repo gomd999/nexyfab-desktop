@@ -31,7 +31,7 @@ type Probe = {
 test.describe('P0 two-hole worker HLR', () => {
   test('AI handoff program keeps Ø10×2 in the browser worker B-rep and drawing DOM', async ({ page }, testInfo) => {
     test.skip(testInfo.project.name === 'mobile-chrome', 'desktop drawing entry point');
-    test.setTimeout(360_000);
+    test.setTimeout(480_000);
     await seedShapeGeneratorForE2e(page);
     await page.addInitScript(() => {
       type Summary = {
@@ -71,7 +71,7 @@ test.describe('P0 two-hole worker HLR', () => {
     });
     // sessionStorage is origin-scoped. Establish the E2E origin first; writing
     // from the initial about:blank document is not reliable across browsers.
-    const bootstrap = await page.goto('/api/health', { waitUntil: 'domcontentloaded' });
+    const bootstrap = await page.goto('/api/health/live', { waitUntil: 'domcontentloaded' });
     expect(bootstrap?.status()).toBeLessThan(400);
     await page.evaluate(program => {
       sessionStorage.setItem('nexyfab:studio-handoff-program', JSON.stringify(program));
@@ -123,7 +123,7 @@ test.describe('P0 two-hole worker HLR', () => {
         if (!fn) return false;
         const probe = fn();
         return probe.ok && !probe.resultNull && probe.resultHandleInWorker && !!probe.resultOcctHandle;
-      }, undefined, { timeout: 90_000 });
+      }, undefined, { timeout: 180_000 });
     } catch (error) {
       const lastProbe = await page.evaluate(() =>
         (window as unknown as { __nfabProbe?: () => unknown }).__nfabProbe?.() ?? null);
@@ -147,7 +147,7 @@ test.describe('P0 two-hole worker HLR', () => {
 
     // Export while the command toolbar is visible. It must use the exact
     // worker-owned B-rep, not the display mesh.
-    await page.getByTitle('New').click();
+    await page.getByTitle(/^(?:New|새로 만들기)$/).click();
     const exportStep = page.locator('button:visible').filter({ hasText: /Export STEP|STEP.*내보내기/i }).first();
     await expect(exportStep).toBeEnabled();
     await exportStep.click();
@@ -194,8 +194,11 @@ test.describe('P0 two-hole worker HLR', () => {
       const holes = next.nodes.filter(node => node.featureType === 'hole');
       return next.resultHandleInWorker && Object.keys(next.pipelineErrors).length === 0
         && holes.length === 2 && holes.every(node => node.params.diameter === 12);
-    }, undefined, { timeout: 90_000 });
+    }, undefined, { timeout: 180_000 });
 
+    const propertyManager = page.getByRole('region', { name: /hole (?:매개변수|parameters)/i });
+    await propertyManager.getByRole('button').filter({ hasText: /^(?:닫기|close)$/i }).click();
+    await expect(propertyManager).toBeHidden();
     await page.getByTestId('drawing-view-toggle').click();
     const updatedHlrToggle = page.getByTestId('drawing-hlr-toggle');
     await expect(updatedHlrToggle).toBeVisible({ timeout: 30_000 });

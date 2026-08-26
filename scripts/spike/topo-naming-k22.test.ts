@@ -722,10 +722,18 @@ describe('ADR-017 K2.2 spike — measurement', () => {
     report.fidelity = { measurable: true, agree, disagree, disagreements, note: 'compares "does this NAME resolve to a kernel edge" between the replica and the shipping nodeOcctBridge' };
   }, 300_000);
 
-  it('write result json', () => {
+  it('matches the checked-in result json without mutating it by default', () => {
     const out = path.resolve(process.cwd(), 'scripts/spike/topo-naming-k22.result.json');
-    fs.writeFileSync(out, JSON.stringify(report, null, 2), 'utf8');
-    console.log(`\n[spike] wrote ${out}`);
+    if (process.env.NEXYFAB_WRITE_TOPO_SPIKE_RESULT === '1') {
+      fs.writeFileSync(out, JSON.stringify(report, null, 2), 'utf8');
+      console.log(`\n[spike] wrote ${out}`);
+    }
     expect(fs.existsSync(out)).toBe(true);
+    const checkedIn = JSON.parse(fs.readFileSync(out, 'utf8')) as Record<string, unknown>;
+    const comparable = structuredClone(report);
+    const checkedInMeta = checkedIn.meta as Record<string, unknown>;
+    const comparableMeta = comparable.meta as Record<string, unknown>;
+    comparableMeta.generatedAt = checkedInMeta.generatedAt;
+    expect(comparable).toEqual(checkedIn);
   });
 });

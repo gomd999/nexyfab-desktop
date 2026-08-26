@@ -21,6 +21,12 @@ session, run `git branch --show-current` and load the matching workspace files:
 - `integration/nexyfab` -> integration and verification only
 
 Run `npm run workspace:check -- <scope-id>` before handing off scope work.
+Before starting a Scope session, run
+`npm run workspace:sync -- <scope-id> --apply`; it only fast-forwards a clean,
+behind worktree and refuses dirty, ahead, or diverged branches. The
+`integration/nexyfab` branch is the canonical editable integration line and
+`release/web-public-2026-08-26` is a deploy-only mirror. Never implement a fix
+only on the release branch. Run `npm run workspace:sync:check` before a release.
 Shared paths in `workspaces/registry.json` are integration-owned and must not be
 changed from a scope branch without an explicit integration decision.
 

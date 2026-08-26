@@ -1,13 +1,16 @@
 import { createHmac } from 'node:crypto';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { NextRequest } from 'next/server';
-const mocks = vi.hoisted(() => ({ getDb: vi.fn(), read: vi.fn(), accept: vi.fn() }));
+import { canonicalCommercialExecution } from '../../../../../../packages/job-contracts/src/commercialPrecisionExecution';
+const mocks = vi.hoisted(() => ({ getDb: vi.fn(), read: vi.fn(), accept: vi.fn(), committedIssues: vi.fn(), workers: vi.fn() }));
 vi.mock('@/lib/db-adapter', () => ({ getDbAdapter: mocks.getDb }));
 vi.mock('@/lib/precision-cad-agent/commercialExecutionOutboxStore', () => ({ CommercialExecutionOutboxStore: class { read = mocks.read; acceptReceipt = mocks.accept; } }));
+vi.mock('@/lib/precision-cad-agent/commercialWorkerIo', () => ({ committedCommercialOutputIssues: mocks.committedIssues }));
+vi.mock('@/lib/precision-cad-agent/commercialWorkerReceipt', () => ({ loadTrustedCommercialWorkers: mocks.workers }));
 import { POST } from './route';
 const body = JSON.stringify({ schema: 'nexyfab.precision-cad-commercial-execution.v2', status: 'PASS' });
 const request = (value = body) => new NextRequest('https://local.test/api/internal/precision-cad-commercial/callback', { method: 'POST', headers: { 'x-commercial-callback-hmac': 'bad' }, body: value });
-beforeEach(() => { vi.stubEnv('NEXYFAB_COMMERCIAL_CALLBACK_SECRET', 'c'.repeat(32)); mocks.getDb.mockReturnValue({}); });
+beforeEach(() => { vi.clearAllMocks(); vi.stubEnv('NEXYFAB_COMMERCIAL_CALLBACK_SECRET', 'c'.repeat(32)); mocks.getDb.mockReturnValue({}); mocks.workers.mockReturnValue({ 'worker-1': { workerIdentity: 'worker-1' } }); });
 describe('commercial callback route', () => {
   it('rejects forged callback HMAC and oversized/noncanonical callback bodies', async () => { expect((await POST(request())).status).toBe(403); const oversized = new NextRequest('https://local.test', { method: 'POST', headers: { 'x-commercial-callback-hmac': 'bad' }, body: 'x'.repeat(513 * 1024) }); expect((await POST(oversized)).status).toBe(413); });
   it('verifies HMAC over exact raw bytes before rejecting invalid UTF-8', async () => {
@@ -18,4 +21,20 @@ describe('commercial callback route', () => {
     await expect(response.json()).resolves.toMatchObject({ ok: false, code: 'INVALID_JSON' });
   });
   it('holds when callback secret is not configured', async () => { vi.stubEnv('NEXYFAB_COMMERCIAL_CALLBACK_SECRET', ''); expect((await POST(request())).status).toBe(503); });
+  it('rejects PASS until all three signed outputs are committed to immutable storage', async () => {
+    const receipt = { schema: 'nexyfab.precision-cad-commercial-execution.v3', jobId: 'job-1', executionId: 'exec-1', workerIdentity: 'worker-1', status: 'PASS', outputArtifacts: [] };
+    const value = canonicalCommercialExecution(receipt);
+    const signature = createHmac('sha256', 'c'.repeat(32)).update(value, 'utf8').digest('base64url');
+    const signedRequest = () => new NextRequest('https://local.test/api/internal/precision-cad-commercial/callback', { method: 'POST', headers: { 'x-commercial-callback-hmac': signature }, body: value });
+    mocks.read.mockResolvedValue({ job: { inputArtifact: { contentSha256: 'e'.repeat(64) } }, capabilityHash: 'f'.repeat(64) });
+    mocks.committedIssues.mockResolvedValue(['committed_output_roles_incomplete']);
+    const held = await POST(signedRequest());
+    expect(held.status).toBe(409);
+    await expect(held.json()).resolves.toMatchObject({ code: 'COMMITTED_OUTPUTS_REQUIRED', issues: ['committed_output_roles_incomplete'], releaseReady: false });
+    expect(mocks.accept).not.toHaveBeenCalled();
+    mocks.committedIssues.mockResolvedValue([]); mocks.accept.mockResolvedValue({ ok: true, row: { status: 'VERIFIED_UNKNOWN' } });
+    const accepted = await POST(signedRequest());
+    expect(accepted.status).toBe(200);
+    await expect(accepted.json()).resolves.toMatchObject({ ok: true, status: 'VERIFIED_UNKNOWN', releaseReady: false });
+  });
 });

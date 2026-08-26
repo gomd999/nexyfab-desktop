@@ -69,6 +69,7 @@ export function SketchLeftPane({ lang }: SketchLeftPaneProps) {
               bullet={seg.type === 'circle' ? '○' : seg.type === 'rect' ? '■' : seg.type === 'arc' ? '⌒' : seg.construction ? '┊' : '✏'}
               label={seg.label}
               meta={seg.meta}
+              removeLabel={d.remove}
               onRemove={() => {
                 if (typeof window === 'undefined') return;
                 window.dispatchEvent(new CustomEvent('nexyfab:delete-sketch-entity', { detail: { id: seg.id } }));

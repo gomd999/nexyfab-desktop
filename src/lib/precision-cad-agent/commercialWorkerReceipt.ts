@@ -2,8 +2,14 @@ import { createHash, createPublicKey, verify as verifySignature } from 'node:cry
 import { canonicalCommercialExecution, unsignedCommercialWorkerReceipt, validateCommercialWorkerReceipt, type CommercialWorkerReceipt } from '../../../packages/job-contracts/src/commercialPrecisionExecution';
 
 const SHA256 = /^[a-f0-9]{64}$/;
-export type TrustedCommercialWorker = { workerIdentity: string; publicKeyPem: string; fingerprintSha256: string };
-export type CommercialReceiptBinding = { tenantId: string; projectId: string; executionId: string; generationRunId: string; generationStateRevision: number; generationProgramSha256: string; workspaceId: string; workspaceRevision: number; workspaceContentHash: string; journalVersion: number; leaseGeneration: number; leaseCapabilityHash: string; attempt: number; jobId: string; commandHash: string; targetHash: string };
+export type TrustedCommercialWorker = {
+  workerIdentity: string;
+  publicKeyPem: string;
+  fingerprintSha256: string;
+  nativeExecutableSha256: string;
+  nativeInvocationSha256: string;
+};
+export type CommercialReceiptBinding = { tenantId: string; projectId: string; executionId: string; generationRunId: string; generationStateRevision: number; generationProgramSha256: string; workspaceId: string; workspaceRevision: number; workspaceContentHash: string; journalVersion: number; leaseGeneration: number; leaseCapabilityHash: string; attempt: number; jobId: string; commandHash: string; targetHash: string; inputArtifactSha256: string };
 export type CommercialReceiptVerification = { ok: true; receiptHash: string } | { ok: false; issues: string[] };
 
 function hash(value: string): string { return createHash('sha256').update(value, 'utf8').digest('hex'); }
@@ -16,7 +22,7 @@ export function loadTrustedCommercialWorkers(raw = process.env.NEXYFAB_COMMERCIA
     const entries = Object.entries(parsed); if (entries.length < 1 || entries.length > 16) return undefined;
     const fingerprints = new Set<string>();
     for (const [key, worker] of entries) {
-      if (!worker || typeof worker !== 'object' || Object.keys(worker).sort().join(',') !== 'fingerprintSha256,publicKeyPem,workerIdentity' || worker.workerIdentity !== key || !/^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/.test(key) || !SHA256.test(worker.fingerprintSha256) || commercialWorkerFingerprint(worker.publicKeyPem) !== worker.fingerprintSha256 || fingerprints.has(worker.fingerprintSha256)) return undefined;
+      if (!worker || typeof worker !== 'object' || Object.keys(worker).sort().join(',') !== 'fingerprintSha256,nativeExecutableSha256,nativeInvocationSha256,publicKeyPem,workerIdentity' || worker.workerIdentity !== key || !/^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/.test(key) || !SHA256.test(worker.fingerprintSha256) || !SHA256.test(worker.nativeExecutableSha256 ?? '') || !SHA256.test(worker.nativeInvocationSha256 ?? '') || commercialWorkerFingerprint(worker.publicKeyPem) !== worker.fingerprintSha256 || fingerprints.has(worker.fingerprintSha256)) return undefined;
       fingerprints.add(worker.fingerprintSha256);
     }
     return Object.freeze(parsed);
@@ -27,10 +33,12 @@ export function commercialWorkerReceiptHash(receipt: CommercialWorkerReceipt): s
 export function verifyCommercialWorkerReceipt(input: { receipt: CommercialWorkerReceipt; expected: CommercialReceiptBinding; trustedWorkers: Readonly<Record<string, TrustedCommercialWorker>>; now?: number; maxAgeMs?: number }): CommercialReceiptVerification {
   const issues = validateCommercialWorkerReceipt(input.receipt);
   const receipt = input.receipt; const expected = input.expected;
-  for (const key of ['tenantId', 'projectId', 'executionId', 'generationRunId', 'generationStateRevision', 'generationProgramSha256', 'workspaceId', 'workspaceRevision', 'workspaceContentHash', 'journalVersion', 'leaseGeneration', 'leaseCapabilityHash', 'attempt', 'jobId', 'commandHash', 'targetHash'] as const) if (receipt[key] !== expected[key]) issues.push(`binding_mismatch:${key}`);
+  for (const key of ['tenantId', 'projectId', 'executionId', 'generationRunId', 'generationStateRevision', 'generationProgramSha256', 'workspaceId', 'workspaceRevision', 'workspaceContentHash', 'journalVersion', 'leaseGeneration', 'leaseCapabilityHash', 'attempt', 'jobId', 'commandHash', 'targetHash', 'inputArtifactSha256'] as const) if (receipt[key] !== expected[key]) issues.push(`binding_mismatch:${key}`);
   const worker = input.trustedWorkers[receipt.workerIdentity];
   if (!worker) issues.push('worker_not_trusted');
   if (!SHA256.test(receipt.workerPublicKeyFingerprint) || receipt.workerPublicKeyFingerprint !== worker?.fingerprintSha256 || (worker && commercialWorkerFingerprint(worker.publicKeyPem) !== worker.fingerprintSha256) || worker?.workerIdentity !== receipt.workerIdentity) issues.push('worker_key_fingerprint_invalid');
+  if (!SHA256.test(receipt.nativeExecutableSha256 ?? '') || receipt.nativeExecutableSha256 !== worker?.nativeExecutableSha256) issues.push('native_executable_not_trusted');
+  if (!SHA256.test(receipt.nativeInvocationSha256 ?? '') || receipt.nativeInvocationSha256 !== worker?.nativeInvocationSha256) issues.push('native_invocation_not_trusted');
   try { if (!worker || !verifySignature(null, Buffer.from(canonicalCommercialWorkerReceiptPayload(receipt), 'utf8'), worker.publicKeyPem, Buffer.from(receipt.signatureBase64, 'base64'))) issues.push('worker_signature_invalid'); } catch { issues.push('worker_signature_invalid'); }
   const now = input.now ?? Date.now(); const maxAge = input.maxAgeMs ?? 90 * 24 * 60 * 60 * 1000; const completed = Date.parse(receipt.completedAt); if (!Number.isFinite(completed) || completed > now || now - completed > maxAge) issues.push('worker_receipt_stale');
   return issues.length ? { ok: false, issues: [...new Set(issues)] } : { ok: true, receiptHash: commercialWorkerReceiptHash(receipt) };

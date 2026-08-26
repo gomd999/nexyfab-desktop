@@ -4,6 +4,10 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
+  TEXT_BINDING_CANONICALIZATION,
+  canonicalTextBinding,
+} from './canonical-text-binding.mjs';
+import {
   MECHANICAL_CORE_30_FEATURES,
   evaluateMechanicalCoreFeatureLocalClosedLoop,
   mechanicalCoreSelectionIdentityPayload,
@@ -201,8 +205,11 @@ export function verifyMechanicalCoreLocalBinding(
   const absolute = regularFile(root, binding.path);
   if (!absolute) return false;
   const bytes = fs.readFileSync(absolute);
-  return sha256(bytes) === binding.sha256
-    && (binding.bytes === undefined || binding.bytes === bytes.byteLength);
+  const canonical = canonicalTextBinding(bytes);
+  const declared = binding as typeof binding & { canonicalization?: string };
+  return declared.canonicalization === TEXT_BINDING_CANONICALIZATION
+    && canonical.sha256 === binding.sha256
+    && (binding.bytes === undefined || binding.bytes === canonical.bytes);
 }
 
 export function buildMechanicalCoreFeatureLocalReadiness(

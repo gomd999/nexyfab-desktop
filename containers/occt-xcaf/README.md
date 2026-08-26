@@ -15,6 +15,14 @@ for every request, binds the native result to the input SHA-256, kills timed-out
 children, and rejects malformed/non-zero native output. It never rewrites STEP
 text or infers product identity from topology.
 
+Production requires a secret-managed `OCCT_XCAF_SERVICE_TOKEN` between 32 and
+512 characters. `/capabilities` and `/v1/inspect` require
+`Authorization: Bearer <token>`; only `/health/live` is intentionally public.
+The application-side caller also requires `OCCT_XCAF_SERVICE_URL` and the same
+token. Keep the worker on a private service network and rotate the token through
+the deployment secret manager; do not place it in Docker build arguments,
+images, source, tests, or logs.
+
 Build locally (inside the Docker build image):
 
 ```sh

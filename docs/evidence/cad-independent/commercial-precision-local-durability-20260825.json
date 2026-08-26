@@ -1,0 +1,97 @@
+{
+  "schema": "nexyfab.commercial-precision-local-durability.v3",
+  "generatedAt": "2026-08-25T13:14:23.925Z",
+  "status": "LOCAL_DURABLE_EXACT_CLOSED_LOOP_PASS",
+  "source": {
+    "gitHead": "c54e6f607e13878b0adfcf7b64f9b8c0d9873975",
+    "migrationVersion": 2026082502,
+    "migrationSourceSha256": "07451ebcc671a837bb51c6fed94e6874068814a51c4da674aa0b89b7595f3ec9",
+    "imageDigests": {
+      "postgres": "sha256:32ebb7185baf2c9d38f91684417d140c0745aeff5082dfbb62edb330c2af6197",
+      "redis": "sha256:8b81dd37ff027bec4e516d41acfbe9fe2460070dc6d4a4570a2ac5b9d59df065",
+      "objectStorage": "sha256:14cea493d9a34af32f524e538b8346cf79f3321eff8e708c1e2960462bd8936e"
+    }
+  },
+  "execution": {
+    "jobId": "job-1",
+    "executionId": "exec-b41d3fca676d7343d431b87d",
+    "workerIdentity": "local-worker-a",
+    "workerFingerprintSha256": "acde54755855d0127266c5ce17e4f6ebffb5979ba20bf51214c33bed58d1fac0",
+    "nativeExecutableSha256": "91ec09dda8f20556f366110859f106ab189d45f8f6a2bd092e6785174ad4a0fa",
+    "nativeInvocationSha256": "c5d26bdfef20f6dd692c35804eafaf6db54b395197e82a5dc6bef286ec5e8c2d",
+    "inputArtifactSha256": "1102d5aa81e5fd39eb9cd4bf461d2eb159dd2352772d2f7c73d65a57745f840d",
+    "workerReceiptSha256": "8165aee6d07f27ff26cec50d94d6b57b3b68b9d7fdbc30a113dfa8e440e39b75",
+    "persistenceReceiptSha256": "5ba462eb25a221c2472ea66ff97903acd021ee91746f741515441c72dc3459e6",
+    "workspaceAfterRevision": 8,
+    "workspaceAfterContentHash": "986d805d219649580923ea1be36a38b7f9fd26e7cd572da5dfbc11b676d97595",
+    "outputArtifacts": [
+      {
+        "artifactId": "model-169486a45e08fdb533a04d3f1f6eb1be697e94e2589e4764",
+        "role": "model",
+        "objectKey": "private/commercial-precision-outputs/org-tenant-1/projects/project-1/jobs/job-1/model/model-169486a45e08fdb533a04d3f1f6eb1be697e94e2589e4764-169486a45e08fdb533a04d3f1f6eb1be697e94e2589e4764292a95610a542af8.step",
+        "contentSha256": "169486a45e08fdb533a04d3f1f6eb1be697e94e2589e4764292a95610a542af8",
+        "byteLength": 119
+      },
+      {
+        "artifactId": "report-0557a3ae70ebc99868726fdb15d58a81af50f1b8965733ea",
+        "role": "report",
+        "objectKey": "private/commercial-precision-outputs/org-tenant-1/projects/project-1/jobs/job-1/report/report-0557a3ae70ebc99868726fdb15d58a81af50f1b8965733ea-0557a3ae70ebc99868726fdb15d58a81af50f1b8965733eaedae28007b8dff52.json",
+        "contentSha256": "0557a3ae70ebc99868726fdb15d58a81af50f1b8965733eaedae28007b8dff52",
+        "byteLength": 2477
+      },
+      {
+        "artifactId": "verification-35344cad1b44498914413f7242360a22c40344d3edba4059",
+        "role": "verification",
+        "objectKey": "private/commercial-precision-outputs/org-tenant-1/projects/project-1/jobs/job-1/verification/verification-35344cad1b44498914413f7242360a22c40344d3edba4059-35344cad1b44498914413f7242360a22c40344d3edba4059072470b52ba09095.json",
+        "contentSha256": "35344cad1b44498914413f7242360a22c40344d3edba4059072470b52ba09095",
+        "byteLength": 795
+      }
+    ]
+  },
+  "checks": {
+    "postgresMigration": "PASS",
+    "redisPing": "PASS",
+    "redisLeaseExclusion": "PASS",
+    "redisExpiryRecovery": "PASS",
+    "immutableInputWriteReadback": "PASS",
+    "immutableInputSubstitutionRejected": "PASS",
+    "transactionalOutboxEnqueue": "PASS",
+    "exactOutboxReplay": "PASS",
+    "multiInstanceClaimExclusion": "PASS",
+    "nativeProcessExecution": "PASS",
+    "threeOutputCommitReadback": "PASS",
+    "workerReceiptSignature": "PASS",
+    "signedCallback": "PASS",
+    "wrongWorkerRejected": "PASS",
+    "inputSubstitutionRejected": "PASS",
+    "outputSubstitutionRejected": "PASS",
+    "callbackExactRetryIdempotent": "PASS",
+    "callbackReplayConflictRejected": "PASS",
+    "expiredLeaseRecovery": "PASS",
+    "crashAfterClaimRecovery": "PASS",
+    "verifiedUnknownNoReplay": "PASS",
+    "credentialRotationTrustBoundary": "PASS",
+    "nativeAdapterBinding": "PASS",
+    "authoritativePersistence": "PASS",
+    "workspaceCasCommit": "PASS",
+    "postgresRestartPersistence": "PASS",
+    "redisAofRestartPersistence": "PASS",
+    "objectStorageRestartPersistence": "PASS",
+    "restartPersistenceExactReplay": "PASS"
+  },
+  "claimBoundary": {
+    "usesRealEphemeralPostgres": true,
+    "usesRealEphemeralRedisAof": true,
+    "usesRealEphemeralS3CompatibleStorage": true,
+    "usesIsolatedNativeFixtureProcess": true,
+    "authoritativeParserPersistenceExercised": true,
+    "workspaceCasCommitExercised": true,
+    "disposableServiceRestartExercised": true,
+    "actualCrashAfterClaimRecoveryExercised": true,
+    "fixtureIsCommercialRuntimeEvidence": false,
+    "privateBetaEligible": false,
+    "commercialGaEligible": false,
+    "independentCadOrManufacturingCertified": false
+  },
+  "receiptSha256": "67e1bafac0d4d747d0dd2d8ff1aa7b03d90bff64888a22e352cf714c6ad6d35a"
+}

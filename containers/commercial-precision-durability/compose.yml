@@ -1,0 +1,51 @@
+services:
+  postgres:
+    image: postgres@sha256:32ebb7185baf2c9d38f91684417d140c0745aeff5082dfbb62edb330c2af6197
+    environment:
+      POSTGRES_USER: nexyfab
+      POSTGRES_PASSWORD: local-durability-only
+      POSTGRES_DB: nexyfab
+    ports:
+      - "127.0.0.1::5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U nexyfab -d nexyfab"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+
+  redis:
+    image: redis@sha256:8b81dd37ff027bec4e516d41acfbe9fe2460070dc6d4a4570a2ac5b9d59df065
+    command: ["redis-server", "--appendonly", "yes", "--appendfsync", "always", "--save", ""]
+    ports:
+      - "127.0.0.1::6379"
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+
+  object-storage:
+    # Isolated loopback-only S3 compatibility fixture; never a production image.
+    image: minio/minio@sha256:14cea493d9a34af32f524e538b8346cf79f3321eff8e708c1e2960462bd8936e
+    command: ["server", "/data", "--console-address", ":9001"]
+    environment:
+      MINIO_ROOT_USER: nexyfab-local
+      MINIO_ROOT_PASSWORD: local-durability-secret-only
+    ports:
+      - "127.0.0.1::9000"
+    volumes:
+      - object-storage-data:/data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://127.0.0.1:9000/minio/health/live"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+
+volumes:
+  postgres-data:
+  redis-data:
+  object-storage-data:

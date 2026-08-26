@@ -1,0 +1,67 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://nexyfab.com/contracts/mechanical-commercial-signature-response.schema.json",
+  "title": "NexyFab Mechanical Commercial Signature Response v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "kind", "packetSha256", "generatedAt", "signatures"],
+  "properties": {
+    "schema": { "const": "nexyfab.mechanical-commercial-signature-response.v1" },
+    "kind": { "enum": ["blind", "manufacturing"] },
+    "packetSha256": { "$ref": "#/$defs/sha256" },
+    "generatedAt": { "type": "string", "format": "date-time" },
+    "signatures": { "type": "array", "minItems": 1 }
+  },
+  "allOf": [
+    {
+      "if": { "properties": { "kind": { "const": "blind" } }, "required": ["kind"] },
+      "then": {
+        "properties": {
+          "signatures": { "items": { "$ref": "#/$defs/blindSignature" } }
+        }
+      }
+    },
+    {
+      "if": { "properties": { "kind": { "const": "manufacturing" } }, "required": ["kind"] },
+      "then": {
+        "properties": {
+          "signatures": { "items": { "$ref": "#/$defs/manufacturingSignature" } }
+        }
+      }
+    }
+  ],
+  "$defs": {
+    "sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+    "signature": {
+      "type": "string",
+      "minLength": 88,
+      "maxLength": 88,
+      "pattern": "^[A-Za-z0-9+/]{86}==$"
+    },
+    "blindSignature": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["challengeId", "reviewerId", "targetHash", "payloadSha256", "signature"],
+      "properties": {
+        "challengeId": { "type": "string", "minLength": 1 },
+        "reviewerId": { "type": "string", "minLength": 1 },
+        "targetHash": { "$ref": "#/$defs/sha256" },
+        "payloadSha256": { "$ref": "#/$defs/sha256" },
+        "signature": { "$ref": "#/$defs/signature" }
+      }
+    },
+    "manufacturingSignature": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["caseId", "reviewerId", "targetHash", "payloadSha256", "signature"],
+      "properties": {
+        "caseId": { "type": "string", "minLength": 1 },
+        "reviewerId": { "type": "string", "minLength": 1 },
+        "targetHash": { "$ref": "#/$defs/sha256" },
+        "payloadSha256": { "$ref": "#/$defs/sha256" },
+        "signature": { "$ref": "#/$defs/signature" }
+      }
+    }
+  },
+  "$comment": "The runtime requires one unique response per packet signing slot, exact packet/target/payload bindings, an Ed25519 64-byte signature, the required trusted-key role, response chronology, and a complete final receipt that passes the canonical product-scope validator."
+}

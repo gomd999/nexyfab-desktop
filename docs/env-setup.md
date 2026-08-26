@@ -119,7 +119,10 @@ DEEPSEEK_API_KEY=
 DEEPSEEK_BASE_URL=https://api.deepseek.com/v1
 
 QWEN_API_KEY=
-QWEN_BASE_URL=https://dashscope.aliyuncs.com/compatible-mode/v1
+QWEN_BASE_URL=https://dashscope-intl.aliyuncs.com/compatible-mode/v1
+
+# 1 = 결제와 분리된 운영 베타에서 검증된 전체 모델 카탈로그 선택 허용
+NEXT_PUBLIC_NEXYFAB_AI_MODEL_BETA_ACCESS=0
 ```
 
 ### reCAPTCHA v3

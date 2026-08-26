@@ -3,9 +3,9 @@
   "feature": "shell",
   "axis": "export",
   "status": "PASS",
-  "executedAt": "2026-08-22T07:13:00.871Z",
+  "executedAt": "2026-08-25T08:20:38.363Z",
   "stepBytes": 30494,
-  "stepSha256": "924bd31a22ed7c78f7f3b75b83cac701bd38f7bd680054e38f6bdb28d6a3d67e",
+  "stepSha256": "ed8f77ba1b0602393608f7c9cf9400b9d55740d76c44661e73b0156b9f5ee0c2",
   "before": {
     "handle": "occt:47",
     "kernelKind": "Solid",

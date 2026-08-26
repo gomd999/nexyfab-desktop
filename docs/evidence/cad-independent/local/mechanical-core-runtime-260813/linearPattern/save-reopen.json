@@ -3,9 +3,9 @@
   "feature": "linearPattern",
   "axis": "save_reopen",
   "status": "PASS",
-  "executedAt": "2026-08-22T07:13:30.564Z",
+  "executedAt": "2026-08-24T22:37:45.371Z",
   "savedBytes": 1626,
-  "savedSha256": "89b6c56666272a38bf258fad622d31605469692e5e7eab53e98b2da47eba62f0",
+  "savedSha256": "8543570cc3def2dd51feac0f135cae1b3d78cdf4f680604e4382e897888d3081",
   "reopened": {
     "handle": "occt:79",
     "kernelKind": "Solid",

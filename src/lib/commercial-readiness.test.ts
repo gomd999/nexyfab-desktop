@@ -1,7 +1,16 @@
 import { describe, expect, it } from 'vitest';
-import { commercialReadinessIssues } from './commercial-readiness';
+import {
+  COMMERCIAL_POSTGRES_CONSTRAINTS,
+  COMMERCIAL_POSTGRES_HARDENING_TRIGGERS,
+  COMMERCIAL_POSTGRES_MIGRATIONS,
+  COMMERCIAL_POSTGRES_TABLES,
+  commercialPostgresMigrationAtLeast,
+  commercialPostgresMigrationChecksumEnvKey,
+  commercialReadinessIssues,
+} from './commercial-readiness';
 
 const base = {
+  NEXYFAB_PAYMENTS_ENABLED: 'true',
   DATABASE_URL: 'postgres://db',
   REDIS_URL: 'redis://cache',
   UPSTASH_REDIS_REST_URL: 'https://redis.example.com',
@@ -94,6 +103,22 @@ describe('commercialReadinessIssues', () => {
     })).toEqual([]);
   });
 
+  it('accepts commercial operation without payment credentials when collection is explicitly disabled', () => {
+    expect(commercialReadinessIssues({
+      ...base,
+      NEXYFAB_PAYMENTS_ENABLED: 'false',
+      TOSS_SECRET_KEY: undefined,
+      TOSS_WEBHOOK_SECRET: undefined,
+      STRIPE_SECRET_KEY: undefined,
+      STRIPE_WEBHOOK_SECRET: undefined,
+      AIRWALLEX_CLIENT_ID: undefined,
+      AIRWALLEX_API_KEY: undefined,
+      AIRWALLEX_WEBHOOK_SECRET: undefined,
+      DODO_API_KEY: undefined,
+      DODO_WEBHOOK_SECRET: undefined,
+    })).toEqual([]);
+  });
+
   it('requires all append-only commercial migrations and both Ed25519 registries', () => {
     const issues = commercialReadinessIssues({
       ...base,
@@ -106,8 +131,74 @@ describe('commercialReadinessIssues', () => {
       'database.migration_2026082202_checksum_required',
       'database.migration_2026082203_checksum_required',
       'database.migration_2026082204_checksum_required',
+      'database.migration_2026082403_checksum_required',
+      'database.migration_2026082501_checksum_required',
+      'database.migration_2026082502_checksum_required',
       'worker.ed25519_registry_required',
       'verifier.ed25519_registry_required',
     ]));
+  });
+});
+
+describe('commercial PostgreSQL readiness contract', () => {
+  it('covers canonical CAD, AI authority, exact bridge, payment, and worker I/O migrations', () => {
+    expect(COMMERCIAL_POSTGRES_MIGRATIONS.slice(-5)).toEqual([
+      2026082401,
+      2026082402,
+      2026082403,
+      2026082501,
+      2026082502,
+    ]);
+    expect(COMMERCIAL_POSTGRES_TABLES).toEqual(expect.arrayContaining([
+      'nf_cad_canonical_v2_revisions',
+      'nf_ai_design_workspace_runtimes',
+      'nf_ai_design_artifacts',
+      'nf_ai_precision_bridge_outbox',
+      'nf_ai_precision_bridge_receipts',
+      'nf_precision_cad_commercial_input_artifacts',
+      'nf_precision_cad_commercial_output_intents',
+    ]));
+  });
+
+  it('keeps every hardening object bound to a required authority table', () => {
+    const tables = new Set(COMMERCIAL_POSTGRES_TABLES);
+    for (const [table] of [
+      ...COMMERCIAL_POSTGRES_CONSTRAINTS,
+      ...COMMERCIAL_POSTGRES_HARDENING_TRIGGERS,
+    ]) {
+      expect(tables.has(table), table).toBe(true);
+    }
+    expect(new Set(COMMERCIAL_POSTGRES_TABLES).size).toBe(COMMERCIAL_POSTGRES_TABLES.length);
+    expect(new Set(COMMERCIAL_POSTGRES_MIGRATIONS).size).toBe(COMMERCIAL_POSTGRES_MIGRATIONS.length);
+  });
+
+  it('uses the deployed canonical CAD checksum key and versioned keys elsewhere', () => {
+    expect(commercialPostgresMigrationChecksumEnvKey(2026082401))
+      .toBe('CANONICAL_CAD_REVISION_MIGRATION_CHECKSUM');
+    expect(commercialPostgresMigrationChecksumEnvKey(2026082403))
+      .toBe('POSTGRES_MIGRATION_CHECKSUM_2026082403');
+    expect(commercialPostgresMigrationChecksumEnvKey(2026082501))
+      .toBe('POSTGRES_MIGRATION_CHECKSUM_2026082501');
+    expect(commercialPostgresMigrationChecksumEnvKey(2026082502))
+      .toBe('POSTGRES_MIGRATION_CHECKSUM_2026082502');
+  });
+
+  it('accepts only known applied versions at or beyond a feature requirement', () => {
+    expect(commercialPostgresMigrationAtLeast(
+      { POSTGRES_MIGRATION_VERSION: '2026082403' },
+      2026082208,
+    )).toBe(true);
+    expect(commercialPostgresMigrationAtLeast(
+      { POSTGRES_MIGRATION_VERSION: '2026082502' },
+      2026082403,
+    )).toBe(true);
+    expect(commercialPostgresMigrationAtLeast(
+      { POSTGRES_MIGRATION_VERSION: '2026082207' },
+      2026082208,
+    )).toBe(false);
+    expect(commercialPostgresMigrationAtLeast(
+      { POSTGRES_MIGRATION_VERSION: '99999999' },
+      2026082208,
+    )).toBe(false);
   });
 });

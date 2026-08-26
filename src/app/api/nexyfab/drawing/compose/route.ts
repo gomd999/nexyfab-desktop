@@ -23,6 +23,8 @@ import { getTrustedClientIp } from '@/lib/client-ip';
 import { guardStudioAi } from '@/lib/studio-ai-guard';
 import { recordFailure } from '@/lib/failureLog';
 import { boundedJsonError, readBoundedJson } from '@/lib/boundedJsonBody';
+import { checkPlan } from '@/lib/plan-guard';
+import { resolveRuntimeCodegenModel } from '@/lib/ai/codegenModelRuntime';
 
 const MAX_BODY_BYTES = 64 * 1024;
 
@@ -37,7 +39,7 @@ type ComposeResult = {
   degraded?: boolean;
 };
 type ComposeModule = {
-  composeWithGate: (d: string, o?: { maxRounds?: number }) => Promise<ComposeResult>;
+  composeWithGate: (d: string, o?: { maxRounds?: number; models?: string[] }) => Promise<ComposeResult>;
 };
 
 let _mod: ComposeModule | null = null;
@@ -52,14 +54,13 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   const ip = getTrustedClientIp(req.headers);
   const rl = rateLimit(`drawing-compose:${ip}`, 12, 60_000);
   if (!rl.allowed) return NextResponse.json({ ok: false, error: '요청이 너무 많습니다. 잠시 후 다시 시도하세요.' }, { status: 429 });
-  // 구독 정합(2026-07-16): 로그인=shape_chat 슬롯+예산, 익명=합산 리밋(게스트 데모 유지)
-  const planGuard = await guardStudioAi(req);
-  if (planGuard) return planGuard;
 
   let description: string;
+  let requestedModelId: string | undefined;
   try {
-    const body = await readBoundedJson<{ description?: string }>(req, MAX_BODY_BYTES);
+    const body = await readBoundedJson<{ description?: string; modelId?: string }>(req, MAX_BODY_BYTES);
     description = (body.description ?? '').trim();
+    requestedModelId = typeof body.modelId === 'string' ? body.modelId : undefined;
   } catch (error) {
     if (boundedJsonError(error)?.code === 'PAYLOAD_TOO_LARGE') return NextResponse.json({ ok: false, error: 'description이 너무 깁니다(2000자 이하).' }, { status: 413 });
     return NextResponse.json({ ok: false, error: 'invalid json' }, { status: 400 });
@@ -71,6 +72,20 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     return NextResponse.json({ ok: false, error: 'description이 너무 깁니다(2000자 이하).' }, { status: 400 });
   }
 
+  const planCheck = await checkPlan(req, 'free');
+  const selectedModel = await resolveRuntimeCodegenModel(requestedModelId, planCheck.ok ? planCheck.plan : 'free');
+  if (!selectedModel.ok) {
+    return NextResponse.json({
+      ok: false,
+      error: selectedModel.code === 'MODEL_NOT_FOUND' ? 'unsupported AI model' : 'AI model is not available for the current access policy',
+      code: selectedModel.code,
+      ...(selectedModel.requiredTier ? { requiredTier: selectedModel.requiredTier } : {}),
+    }, { status: selectedModel.code === 'MODEL_NOT_FOUND' ? 400 : 403 });
+  }
+  // Only a validated catalog selection may consume the shared AI slot/budget.
+  const planGuard = await guardStudioAi(req);
+  if (planGuard) return planGuard;
+
   let compose: ComposeModule;
   try {
     compose = await loadCompose();
@@ -80,7 +95,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 
   try {
     // 교정 루프 포함: AI 조합 → 게이트 → 실패 시 오류 되먹여 수정 → 실렌더 검증.
-    const r = await compose.composeWithGate(description, { maxRounds: 2 });
+    const r = await compose.composeWithGate(description, { maxRounds: 2, models: [selectedModel.model] });
     if (!r.gatePassed) {
       /**
        * 여기까지 왔다는 것은 **피처를 빼도 형상이 성립하지 않는다**는 뜻이다
@@ -96,17 +111,19 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       return NextResponse.json({
         ok: false, stage: 'gate', intent: r.intent, gateErrors: r.gateErrors, rounds: r.rounds,
         dropped: r.dropped ?? [],
+        modelId: selectedModel.catalog.id, provider: selectedModel.provider,
       });
     }
     return NextResponse.json({
       ok: true, intent: r.intent, scad: r.scad, rounds: r.rounds, verify: r.verify,
       // ⚠ 부분 산출이면 질량 방향까지 실어 보낸다 — subtract 를 뺀 경우 **질량이 과대**다.
       dropped: r.dropped ?? [], degraded: r.degraded ?? false,
+      modelId: selectedModel.catalog.id, provider: selectedModel.provider,
     });
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
     // 키 미설정은 503(설정 문제) — 백엔드를 Gemini↔OpenAI 로 바꿔도 맞게 남도록 둘 다 본다.
-    const status = /DEEPSEEK_API_KEY|GEMINI_API_KEY|OPENAI_API_KEY/.test(msg) ? 503 : 502;
+    const status = /DEEPSEEK_API_KEY|GEMINI_API_KEY|OPENAI_API_KEY|QWEN_API_KEY|DASHSCOPE_API_KEY/.test(msg) ? 503 : 502;
     return NextResponse.json({ ok: false, error: 'compose failed: ' + msg.slice(0, 200) }, { status });
   }
 }

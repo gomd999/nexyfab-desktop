@@ -70,7 +70,7 @@ function pruneSlots(list: SaveSlotMeta[]): SaveSlotMeta[] {
 
 // ─── Hook ────────────────────────────────────────────────────────────────────
 
-export function useAutoSave() {
+export function useAutoSave(enabled = true) {
   const [hasRecovery, setHasRecovery] = useState(false);
   const [recoveryData, setRecoveryData] = useState<AutoSaveState | null>(null);
   /**
@@ -94,6 +94,7 @@ export function useAutoSave() {
 
   // On mount, check for existing saves; clean up debounce timer on unmount
   useEffect(() => {
+    if (!enabled) return;
     // Detect crash: if SESSION_FLAG_KEY exists from a previous session, the
     // tab died before our cleanup ran. The recovery banner is more urgent.
     let crashed = false;
@@ -130,10 +131,11 @@ export function useAutoSave() {
         clearTimeout(debounceTimer.current);
       }
     };
-  }, []);
+  }, [enabled]);
 
   /** Immediately persist current state to localStorage */
   const save = useCallback((state: AutoSaveState) => {
+    if (!enabled) return;
     if (isMounted.current) setIsSaving(true);
     try {
       const ts = Date.now();
@@ -177,10 +179,11 @@ export function useAutoSave() {
     } finally {
       if (isMounted.current) setIsSaving(false);
     }
-  }, []);
+  }, [enabled]);
 
   /** Schedule a debounced save (resets timer on each call) */
   const scheduleSave = useCallback((state: AutoSaveState) => {
+    if (!enabled) return;
     latestStateRef.current = state;
     if (debounceTimer.current) clearTimeout(debounceTimer.current);
     debounceTimer.current = setTimeout(() => {
@@ -189,16 +192,18 @@ export function useAutoSave() {
         save(latestStateRef.current);
       }
     }, DEBOUNCE_MS);
-  }, [save]);
+  }, [enabled, save]);
 
   /** Save immediately — for significant actions */
   const saveNow = useCallback((state: AutoSaveState) => {
+    if (!enabled) return;
     if (debounceTimer.current) clearTimeout(debounceTimer.current);
     save(state);
-  }, [save]);
+  }, [enabled, save]);
 
   /** Load the latest save from localStorage */
   const loadLatest = useCallback((): AutoSaveState | null => {
+    if (!enabled) return null;
     const meta = getMetaList();
     if (meta.length === 0) return null;
     const sorted = [...meta].sort((a, b) => b.timestamp - a.timestamp);
@@ -210,15 +215,17 @@ export function useAutoSave() {
     } catch {
       return null;
     }
-  }, []);
+  }, [enabled]);
 
   /** List all save slots with metadata */
   const listSaves = useCallback((): SaveSlotMeta[] => {
+    if (!enabled) return [];
     return [...getMetaList()].sort((a, b) => b.timestamp - a.timestamp);
-  }, []);
+  }, [enabled]);
 
   /** Delete a specific save by key */
   const deleteSave = useCallback((key: string) => {
+    if (!enabled) return;
     try { localStorage.removeItem(key); } catch { /* ignore */ }
     const meta = getMetaList().filter(m => m.key !== key);
     setMetaList(meta);
@@ -227,10 +234,11 @@ export function useAutoSave() {
       setHasRecovery(false);
       setRecoveryData(null);
     }
-  }, [recoveryData]);
+  }, [enabled, recoveryData]);
 
   /** Clear all auto-save data */
   const clearAllSaves = useCallback(() => {
+    if (!enabled) return;
     const meta = getMetaList();
     meta.forEach(m => {
       try { localStorage.removeItem(m.key); } catch { /* ignore */ }
@@ -238,7 +246,7 @@ export function useAutoSave() {
     try { localStorage.removeItem(META_KEY); } catch { /* ignore */ }
     setHasRecovery(false);
     setRecoveryData(null);
-  }, []);
+  }, [enabled]);
 
   /** Dismiss the recovery banner without restoring */
   const dismissRecovery = useCallback(() => {
@@ -261,6 +269,7 @@ export function useAutoSave() {
   // mobile. We also clear the session flag here so a clean exit doesn't
   // false-positive as a crash on next load.
   useEffect(() => {
+    if (!enabled) return;
     const flush = () => {
       try {
         if (latestStateRef.current) {
@@ -282,7 +291,7 @@ export function useAutoSave() {
       window.removeEventListener('pagehide', flush);
       window.removeEventListener('beforeunload', flush);
     };
-  }, [save]);
+  }, [enabled, save]);
 
   return {
     hasRecovery,

@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { evaluateHandoffDocument } from './handoff-validation.mjs';
+import { evaluateHandoffDocument, selectLatestValidHandoff } from './handoff-validation.mjs';
 import { resolveOwnership } from './workspace-registry.mjs';
 
 const registry = {
@@ -29,4 +29,26 @@ test('handoff rejects TODO text, unchecked required checks, and shared paths', (
   assert.match(result.issues.join(','), /summary_incomplete/);
   assert.match(result.issues.join(','), /required_check_not_verified/);
   assert.match(result.issues.join(','), /shared_path_forbidden/);
+});
+
+test('automatic selection skips a newer timestamp-shaped contract and picks the latest valid handoff', () => {
+  const valid = document();
+  const plannedContract = '# Cross-scope contract\n\n- Status: `PLANNED`\n';
+  const selected = selectLatestValidHandoff(
+    [
+      { name: '20260824T093325Z-source-freeze.md', markdown: valid },
+      { name: '20260824T120000Z-planned-contract.md', markdown: plannedContract },
+    ],
+    markdown => evaluateHandoffDocument(markdown, registry.scopes[0], registry, resolveOwnership),
+  );
+  assert.equal(selected?.candidate.name, '20260824T093325Z-source-freeze.md');
+  assert.equal(selected?.result.ok, true);
+});
+
+test('automatic selection returns null when no canonical handoff validates', () => {
+  const selected = selectLatestValidHandoff(
+    [{ name: '20260824T120000Z-planned-contract.md', markdown: '# Planned only' }],
+    markdown => evaluateHandoffDocument(markdown, registry.scopes[0], registry, resolveOwnership),
+  );
+  assert.equal(selected, null);
 });

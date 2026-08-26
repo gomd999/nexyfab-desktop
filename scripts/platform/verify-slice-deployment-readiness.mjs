@@ -46,7 +46,11 @@ export function fingerprintFiles(root, files, contextRoot) {
     if (!fs.existsSync(absolute)) throw new Error(`slice_context_file_missing:${file}`);
     hash.update(relative);
     hash.update('\0');
-    hash.update(fs.readFileSync(absolute));
+    const content = fs.readFileSync(absolute);
+    // Git checkouts use platform-specific working-tree line endings. Slice
+    // identity binds logical source content so Windows-built evidence verifies
+    // against the same committed files on Linux CI.
+    hash.update(content.includes(0) ? content : Buffer.from(content.toString('utf8').replaceAll('\r\n', '\n')));
     hash.update('\0');
   }
   return { sha256: hash.digest('hex'), fileCount: normalizedFiles.length };

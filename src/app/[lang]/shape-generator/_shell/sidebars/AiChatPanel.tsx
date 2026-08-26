@@ -32,6 +32,7 @@ import { RequirementConfirmationGate } from './RequirementConfirmationGate';
 import { GENERATION_EXECUTION_PLAN_KEY } from '../../ai/generationSessionClient';
 import { parsePrecisionCadAgentTask } from '@/lib/ai/precisionCadAgentTask';
 import type { AgentSession } from '@/lib/ai/scad-agent/types';
+import { DIRECT_PRECISION_ENTRY_DRAFT_KEY, parsePrecisionEntryDraft } from '@/lib/precisionEntryDraft';
 
 interface Message {
   id: string;
@@ -50,6 +51,8 @@ interface Message {
   executionPath?: 'cloud_ai' | 'local_deterministic';
   localUndoAvailable?: boolean;
   undoState?: 'WORKING' | 'UNDONE' | 'BLOCKED';
+  /** Original visible request retained only to support an explicit retry. */
+  retryPrompt?: string;
   loading?: boolean;
   aiExecution?: {
     selectedModelLabel?: string;
@@ -117,6 +120,24 @@ export const AI_RUN_FAILURE_DETAIL_COPY = {
   zh: 'AI 运行已被阻止。模型和项目未更改。',
   es: 'La ejecución de IA fue bloqueada. El modelo y el proyecto no cambiaron.',
   ar: 'تم حظر تشغيل الذكاء الاصطناعي. لم يتغير النموذج أو المشروع.',
+} as const;
+
+export const AI_AUTH_REQUIRED_COPY = {
+  ko: 'AI 설계 실행은 로그인이 필요합니다. 로그인한 뒤 다시 시도하세요.',
+  en: 'Sign in to run AI design, then try again.',
+  ja: 'AI 設計を実行するにはログインが必要です。ログインしてから再試行してください。',
+  zh: '运行 AI 设计需要登录。请登录后重试。',
+  es: 'Inicia sesión para ejecutar el diseño con IA y vuelve a intentarlo.',
+  ar: 'سجّل الدخول لتشغيل التصميم بالذكاء الاصطناعي، ثم حاول مرة أخرى.',
+} as const;
+
+export const AI_RETRY_COPY = {
+  ko: '같은 요청 다시 시도',
+  en: 'Retry the same request',
+  ja: '同じリクエストを再試行',
+  zh: '重试同一请求',
+  es: 'Reintentar la misma solicitud',
+  ar: 'إعادة محاولة الطلب نفسه',
 } as const;
 
 const PRECISION_CAD_AUTO_RUN_KEY = 'nexyfab:precision-cad-agent-auto-run:v1';
@@ -205,6 +226,7 @@ export function AiChatPanel({ isKo: _isKo }: AiChatPanelProps) {
   const [candidateBusyId, setCandidateBusyId] = useState<string | null>(null);
   const [requirementGate, setRequirementGate] = useState<GuidedRequirementGate | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
   const guidedBriefRef = useRef<GuidedDesignBrief | null>(null);
   const sendRef = useRef<((prompt: string, executionMode?: ScadAgentExecutionMode) => Promise<void>) | undefined>(undefined);
   const projects = useProjectsStore(state => state.projects);
@@ -230,6 +252,25 @@ export function AiChatPanel({ isKo: _isKo }: AiChatPanelProps) {
     if (typeof panel.scrollTo === 'function') panel.scrollTo({ top: panel.scrollHeight });
     else panel.scrollTop = panel.scrollHeight;
   }, [messages]);
+
+  useEffect(() => {
+    const draft = parsePrecisionEntryDraft(window.sessionStorage.getItem(DIRECT_PRECISION_ENTRY_DRAFT_KEY), 'precision-cad');
+    if (!draft) return;
+    setInput(draft.prompt);
+    setMessages(previous => [...previous, {
+      id: `precision-entry-${Date.now()}`,
+      role: 'assistant',
+      content: loc(lang, {
+        ko: '랜딩 요청을 복원했습니다. 아직 실행하거나 모델을 변경하지 않았습니다. 요청을 검토한 뒤 전송하세요.',
+        en: 'The landing request was restored. Nothing has run and the model has not changed. Review it before sending.',
+        ja: 'ランディングの依頼を復元しました。まだ実行されておらず、モデルも変更されていません。確認してから送信してください。',
+        zh: '已恢复入口请求。尚未执行，模型也未更改。请检查后再发送。',
+        es: 'Se restauró la solicitud inicial. Aún no se ejecutó nada ni se cambió el modelo. Revísala antes de enviarla.',
+        ar: 'تمت استعادة طلب البداية. لم يتم تشغيل أي شيء ولم يتغير النموذج. راجعه قبل الإرسال.',
+      }),
+    }]);
+    window.sessionStorage.removeItem(DIRECT_PRECISION_ENTRY_DRAFT_KEY);
+  }, [lang]);
 
   const send = async (prompt: string, executionModeOverride?: ScadAgentExecutionMode) => {
     if (!prompt.trim() || busy) return;
@@ -401,7 +442,8 @@ export function AiChatPanel({ isKo: _isKo }: AiChatPanelProps) {
       });
 
       if (!res.ok) {
-        const failure = await res.json().catch(() => null) as { error?: string } | null;
+        const failure = await res.json().catch(() => null) as { error?: string; code?: string } | null;
+        if (res.status === 401) precisionUserError = loc(lang, AI_AUTH_REQUIRED_COPY);
         throw new Error(failure?.error ?? `AI request failed (HTTP ${res.status})`);
       }
 
@@ -496,6 +538,7 @@ export function AiChatPanel({ isKo: _isKo }: AiChatPanelProps) {
         loading: false,
         content: loc(lang, AI_RUN_FAILED_COPY),
         diagnostics: [{ severity: 'error', message: safePrecisionMessage }],
+        retryPrompt: visiblePrompt,
       } : m));
     } finally {
       window.clearTimeout(requestTimeout);
@@ -640,6 +683,10 @@ export function AiChatPanel({ isKo: _isKo }: AiChatPanelProps) {
   };
 
   const suggestions = SUGGESTIONS[lang] ?? SUGGESTIONS.en;
+  const fillSuggestion = (suggestion: string) => {
+    setInput(suggestion);
+    inputRef.current?.focus();
+  };
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
@@ -718,6 +765,23 @@ export function AiChatPanel({ isKo: _isKo }: AiChatPanelProps) {
                       </div>
                     ))}
                   </div>
+                )}
+                {m.retryPrompt && (
+                  <button
+                    type="button"
+                    data-testid={`ai-run-retry-${m.id}`}
+                    disabled={busy}
+                    onClick={() => void send(m.retryPrompt!)}
+                    style={{
+                      marginTop: 7, minHeight: 27, padding: '4px 9px',
+                      border: '1px solid var(--nx-border)', borderRadius: 4,
+                      background: 'var(--nx-panel)', color: 'var(--nx-text)',
+                      fontSize: 9.5, fontWeight: 750, cursor: busy ? 'wait' : 'pointer',
+                      opacity: busy ? .5 : 1,
+                    }}
+                  >
+                    ↻ {loc(lang, AI_RETRY_COPY)}
+                  </button>
                 )}
                 {m.pattern && (
                   <div style={{ marginTop: 6, fontSize: 10, color: 'var(--nx-accent-2)' }}>
@@ -831,7 +895,8 @@ export function AiChatPanel({ isKo: _isKo }: AiChatPanelProps) {
           {suggestions.map(s => (
             <button
               key={s}
-              onClick={() => send(s)}
+              type="button"
+              onClick={() => fillSuggestion(s)}
               style={{
                 textAlign: 'left', padding: '6px 8px',
                 border: '1px dashed var(--nx-border)', borderRadius: 4,
@@ -851,6 +916,7 @@ export function AiChatPanel({ isKo: _isKo }: AiChatPanelProps) {
         style={{ display: 'flex', gap: 4, padding: 8, borderTop: '1px solid var(--nx-border)', background: 'var(--nx-panel)' }}
       >
         <input
+          ref={inputRef}
           id="nexy-ai-message"
           name="nexyAiMessage"
           type="text"

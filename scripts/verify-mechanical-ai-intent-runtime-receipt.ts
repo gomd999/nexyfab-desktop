@@ -4,6 +4,11 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { MECHANICAL_CORE_30_FEATURES } from '../src/lib/ai/mechanicalCoreFeatureContract';
+import {
+  TEXT_BINDING_CANONICALIZATION,
+  canonicalTextBinding,
+  canonicalTextSha256,
+} from './canonical-text-binding.mjs';
 
 const RECEIPT_SCHEMA = 'nexyfab.mechanical-ai-intent-runtime-receipt.v1';
 const RESULTS_SCHEMA = 'nexyfab.mechanical-ai-intent-runtime-integration.v1';
@@ -139,9 +144,11 @@ function verifyBinding(
     return binding;
   }
   const bytes = fs.readFileSync(absolute);
+  const canonical = canonicalTextBinding(bytes);
+  if (binding.canonicalization !== TEXT_BINDING_CANONICALIZATION) issues.push(`${label}_canonicalization_invalid`);
   if (!SHA256.test(String(binding.sha256 ?? ''))) issues.push(`${label}_sha256_invalid`);
-  if (binding.sha256 !== hash(bytes)) issues.push(`${label}_sha256_mismatch`);
-  if (!Number.isSafeInteger(binding.bytes) || binding.bytes !== bytes.byteLength) issues.push(`${label}_bytes_mismatch`);
+  if (binding.sha256 !== canonical.sha256) issues.push(`${label}_sha256_mismatch`);
+  if (!Number.isSafeInteger(binding.bytes) || binding.bytes !== canonical.bytes) issues.push(`${label}_bytes_mismatch`);
   return binding;
 }
 
@@ -270,6 +277,7 @@ export function verifyMechanicalAiIntentRuntimeReceipt(
   const axisReceipt = inside(root, input) ? readJson(root, axisPath, 'axis_receipt', issues) : null;
 
   if (receipt?.schema !== RECEIPT_SCHEMA) issues.push('receipt_schema_invalid');
+  if (receipt?.textCanonicalization !== TEXT_BINDING_CANONICALIZATION) issues.push('receipt_text_canonicalization_invalid');
   if (results?.schema !== RESULTS_SCHEMA) issues.push('results_schema_invalid');
   if (axisReceipt?.schema !== AXIS_SCHEMA) issues.push('axis_schema_invalid');
   const revision = String(receipt?.revision ?? '');
@@ -304,7 +312,7 @@ export function verifyMechanicalAiIntentRuntimeReceipt(
   else {
     const match = /^([a-f0-9]{64}) {2}receipt\.json$/.exec(fs.readFileSync(shaPath, 'utf8').trim());
     if (!match) issues.push('receipt_sha256_format_invalid');
-    else if (!fs.existsSync(receiptPath) || match[1] !== hash(fs.readFileSync(receiptPath))) issues.push('receipt_sha256_mismatch');
+    else if (!fs.existsSync(receiptPath) || match[1] !== canonicalTextSha256(fs.readFileSync(receiptPath))) issues.push('receipt_sha256_mismatch');
   }
 
   // Keep the complete submitted run set for validation. Filtering unknown

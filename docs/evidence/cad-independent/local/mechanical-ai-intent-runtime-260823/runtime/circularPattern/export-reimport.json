@@ -3,9 +3,9 @@
   "feature": "circularPattern",
   "axis": "export",
   "status": "PASS",
-  "executedAt": "2026-08-23T06:51:51.379Z",
+  "executedAt": "2026-08-25T08:21:07.337Z",
   "stepBytes": 43312,
-  "stepSha256": "ac51691e515b244eefb7c79b86cb6be4d19a6ec945d6934f1169ef6453248a5c",
+  "stepSha256": "d9622b379b07eb2a53d5207ef6f2df54e11810ec35b5d70f77659c91dbe9e37e",
   "before": {
     "handle": "occt:91",
     "kernelKind": "Solid",

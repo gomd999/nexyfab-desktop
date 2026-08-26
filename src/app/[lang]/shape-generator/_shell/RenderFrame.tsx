@@ -152,9 +152,13 @@ export function RenderFrame({ lang, projectId }: RenderFrameProps) {
       <Shell
         mode="render"
         titleBar={{
+          lang,
           filename: loc(lang, { ko: '렌더 — 무제 파트', en: 'Render — Untitled Part', ja: 'レンダリング — 無題パート', zh: '渲染 — 未命名零件', es: 'Render — Pieza sin título', ar: 'تصيير — قطعة بدون عنوان' }),
           savedAt: loc(lang, { ko: '자동 저장됨', en: 'Auto-saved', ja: '自動保存済み', zh: '已自动保存', es: 'Guardado automáticamente', ar: 'تم الحفظ تلقائيًا' }),
-          breadcrumbs: ['Projects', 'Render Studio'],
+          breadcrumbs: [
+            loc(lang, { ko: '프로젝트', en: 'Projects', ja: 'プロジェクト', zh: '项目', es: 'Proyectos', ar: 'المشاريع' }),
+            loc(lang, { ko: '렌더 스튜디오', en: 'Render Studio', ja: 'レンダースタジオ', zh: '渲染工作室', es: 'Estudio de render', ar: 'استوديو التصيير' }),
+          ],
           onBrandClick: () => { try { sessionStorage.setItem('nexyfab:hub-visited', '1'); } catch { /* ignore */ } router.push(`/${langSeg}/nexyfab/hub`); },
           mode: loc(lang, { ko: '렌더 모드', en: 'RENDER STUDIO', ja: 'レンダースタジオ', zh: '渲染工作室', es: 'ESTUDIO DE RENDER', ar: 'استوديو التصيير' }),
           // No file/undo/share plumbing on this surface yet — TitleBar hides

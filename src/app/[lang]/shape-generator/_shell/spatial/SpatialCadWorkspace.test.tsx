@@ -26,6 +26,9 @@ describe('SpatialCadWorkspace', () => {
     expect(screen.getByTestId('interior-section-view')).toBeInTheDocument();
     expect(screen.getByTestId('spatial-status-preview')).toHaveTextContent('field/host authority not confirmed');
     expect(screen.getByTestId('spatial-status-not_run')).toHaveTextContent('NOT_RUN');
+    expect(screen.getByTestId('spatial-product-qualification-layer')).toContainElement(screen.getByTestId('domain-product-qualification-panel'));
+    expect(screen.getByTestId('domain-product-qualification-panel')).toHaveAttribute('data-state', 'NOT_RUN');
+    expect(screen.getByTestId('domain-product-qualification-panel')).not.toHaveTextContent('PRODUCT_QUALIFIED');
     expect(screen.queryByText('Create Sketch')).toBeNull();
   });
 

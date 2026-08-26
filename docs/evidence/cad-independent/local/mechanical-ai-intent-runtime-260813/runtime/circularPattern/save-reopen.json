@@ -3,9 +3,9 @@
   "feature": "circularPattern",
   "axis": "save_reopen",
   "status": "PASS",
-  "executedAt": "2026-08-22T07:13:00.871Z",
+  "executedAt": "2026-08-25T08:20:38.363Z",
   "savedBytes": 1881,
-  "savedSha256": "77ab62f1084652d9d78ec584aa8537c26828b3ed4371ae47e2b0733796892815",
+  "savedSha256": "86e7e1ad848e237d16630ccc82139f8d27f3e12de31b1a9744e2b96a8e437c35",
   "reopened": {
     "handle": "occt:97",
     "kernelKind": "Solid",

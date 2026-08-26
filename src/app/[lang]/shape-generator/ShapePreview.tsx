@@ -3232,7 +3232,7 @@ export default function ShapePreview({
             </Canvas>
             </ErrorBoundary>
             {/* ViewCube overlay -- rendered outside Canvas to avoid R3F reconciler conflicts */}
-            <ViewCubeOverlay />
+            <ViewCubeOverlay lang={lang} />
             </>
           )}
 

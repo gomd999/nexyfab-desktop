@@ -262,7 +262,7 @@ export function ArchitectureInteriorLiveInspector({ lang, projectId }: { lang: s
     {!projectId ? <span role="status">{t.unavailable}</span> : <button type="button" data-testid="architecture-interior-live-reload" onClick={() => void load()} disabled={status === 'loading'}>{status === 'loading' ? t.loading : t.load}</button>}
     {message && <span role={status === 'error' ? 'alert' : 'status'}>{message}</span>}
     {workspace && <>
-      <div role="group" aria-label="Architecture interior history" style={{ display: 'flex', gap: 5 }}>
+      <div role="group" aria-label={`${t.title} · ${t.undo} / ${t.redo}`} style={{ display: 'flex', gap: 5 }}>
         <button type="button" data-testid="architecture-interior-history-undo" onClick={() => void applyHistoryAction('undo')} disabled={role === 'viewer' || !history?.canUndo || status === 'loading'}>{t.undo}</button>
         <button type="button" data-testid="architecture-interior-history-redo" onClick={() => void applyHistoryAction('redo')} disabled={role === 'viewer' || !history?.canRedo || status === 'loading'}>{t.redo}</button>
         {!history && status === 'loading' && <span role="status">{t.historyLoading}</span>}

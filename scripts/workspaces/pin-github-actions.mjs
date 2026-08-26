@@ -3,8 +3,8 @@ import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 
 const ACTION_PINS = new Map([
-  ['actions/checkout', { sha: '11d5960a326750d5838078e36cf38b85af677262', label: 'v4' }],
-  ['actions/setup-node', { sha: '49933ea5288caeca8642d1e84afbd3f7d6820020', label: 'v4' }],
+  ['actions/checkout', { sha: '3d3c42e5aac5ba805825da76410c181273ba90b1', label: 'v7' }],
+  ['actions/setup-node', { sha: '820762786026740c76f36085b0efc47a31fe5020', label: 'v7' }],
   ['actions/upload-artifact', { sha: 'ea165f8d65b6e75b540449e92b4886f43607fa02', label: 'v4' }],
   ['actions/download-artifact', { sha: 'd3f86a106a0bac45b974a628896c90dbdf5c8093', label: 'v4' }],
   ['docker/setup-buildx-action', { sha: '8d2750c68a42422c14e847fe6c8ac0403b4cbd6f', label: 'v3' }],

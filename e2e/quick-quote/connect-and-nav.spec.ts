@@ -6,9 +6,14 @@
  * Requires a server on the Playwright baseURL.
  */
 import { test, expect } from '@playwright/test';
-import fs from 'fs';
+import fs from 'node:fs';
+import path from 'node:path';
 
-const STEP_PATH = 'C:/Users/gomd9/Downloads/스쿱 제품(금형 견적용).STEP';
+const STEP_NAME = 'nexyfab-c4-box-assembly.step';
+const STEP_PATH = path.resolve(
+  process.cwd(),
+  'docs/evidence/cad-independent/local/mechanical-step-c4-260814/source.step',
+);
 
 test('① download nav tab is hidden', async ({ page }) => {
   test.setTimeout(60_000);
@@ -28,12 +33,12 @@ test('② evaluate auto-imports a handed-off STEP file', async ({ page }) => {
   // quick-quote's handoff button writes), then load evaluate.
   await page.addInitScript(([name, data]) => {
     sessionStorage.setItem('nexyfab:evaluate-file', JSON.stringify({ name, b64: data }));
-  }, ['스쿱 제품(금형 견적용).STEP', b64]);
+  }, [STEP_NAME, b64]);
 
   await page.goto('/kr/nexyfab/evaluate', { waitUntil: 'load' });
 
   // The file name should appear (import kicked off) …
-  await expect(page.getByText('스쿱 제품(금형 견적용).STEP')).toBeVisible({ timeout: 120_000 });
-  // … and the measured metrics (real bbox longest dim 219 mm) should render.
-  await expect(page.getByText(/219/)).toBeVisible({ timeout: 120_000 });
+  await expect(page.getByText(STEP_NAME)).toBeVisible({ timeout: 120_000 });
+  // … and the measured metrics (evidence fixture bbox longest dim 100 mm) should render.
+  await expect(page.getByText(/100/)).toBeVisible({ timeout: 120_000 });
 });

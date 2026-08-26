@@ -94,8 +94,14 @@ The drill performs, in order:
 5. compare every table's row count and order-independent content fingerprint;
 6. inspect every public foreign key for validation state and orphan rows;
 7. run the configured versioned migration on the isolated restore only;
-8. verify that business-table fingerprints did not change;
-9. write an immutable JSON receipt with measured wall-clock RPO age and RTO.
+8. validate every `NOT VALID` public foreign-key and check constraint on the
+   isolated restore copy, failing on any legacy-row violation;
+9. verify that business-table fingerprints did not change;
+10. write an immutable JSON receipt with measured wall-clock RPO age and RTO.
+
+Constraint validation is intentionally limited to the isolated restore target.
+The production migration remains non-blocking and the production read-only
+verifier continues to require a separately approved validation change window.
 
 `rpoAgeAtDrillStartMs` is the age of the backup when the drill began.
 `rtoRestoreMigrateValidateMs` measures restore through final validation. A

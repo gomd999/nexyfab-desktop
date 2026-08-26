@@ -90,17 +90,18 @@ describe('remote precision CAD executor', () => {
   });
 
   it('redeems a server-bound approval challenge only after local approval', async () => {
+    const approvalChallenge = { challengeId: 'challenge-1', nonce: 'nonce-value-1', mac: 'A'.repeat(43) };
     const fetcher = vi.fn(async (_input: RequestInfo | URL, init?: RequestInit) => {
       const body = JSON.parse(String(init?.body));
       if (body.approved !== true) {
-        expect(body.approvalToken).toBeUndefined();
+        expect(body.approvalChallenge).toBeUndefined();
         return new Response(JSON.stringify({
           ok: false,
           error: { code: 'APPROVAL_REQUIRED' },
-          approvalToken: 'A'.repeat(43),
+          approvalChallenge,
         }), { status: 409 });
       }
-      expect(body.approvalToken).toBe('A'.repeat(43));
+      expect(body.approvalChallenge).toEqual(approvalChallenge);
       return new Response(JSON.stringify({
         ok: true,
         tool: 'build_assembly',
@@ -119,6 +120,17 @@ describe('remote precision CAD executor', () => {
       .resolves.toMatchObject({ ok: true, result: { applied: true } });
     expect(fetcher).toHaveBeenCalledTimes(2);
     await expect(executor.tool(call, context)).rejects.toMatchObject({ code: 'REMOTE_INPUT_REJECTED' });
+  });
+
+  it('carries a verified generation id and preserves the server hold code', async () => {
+    const fetcher = vi.fn(async (_input: RequestInfo | URL, init?: RequestInit) => {
+      const body = JSON.parse(String(init?.body));
+      expect(body.generationRunId).toBe('generation-1');
+      return new Response(JSON.stringify({ ok: false, status: 'HOLD', error: { code: 'VERIFIED_GENERATION_BINDING_REQUIRED' } }), { status: 409 });
+    });
+    await expect(createRemotePrecisionCadExecutor(fetcher).tool({
+      runId: 'r', call: { callId: 'c', toolName: 'build_assembly', arguments: {}, scope: 'apply' }, projectRoot: '', locale: 'en', approvalBinding: 'local-approval',
+    }, { ...context, generationRunId: 'generation-1' })).rejects.toMatchObject({ code: 'REMOTE_REVISION_CONFLICT', serverCode: 'VERIFIED_GENERATION_BINDING_REQUIRED' });
   });
 
   it('maps revision conflicts to a stable error', async () => {

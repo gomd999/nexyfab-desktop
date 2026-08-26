@@ -30,13 +30,14 @@ const dict: Record<LangKey, {
   noShape: string;
   exportSheet: string;
   generatedAt: string;
+  close: string;
 }> = {
-  ko: { title: '시방',     shape: '형상',     material: '재질',  parameters: '파라미터', noShape: '아직 형상이 없습니다.', exportSheet: '시방 시트',         generatedAt: '생성' },
-  en: { title: 'Spec',     shape: 'Shape',    material: 'Material', parameters: 'Parameters', noShape: 'No shape selected yet.', exportSheet: 'Export sheet',   generatedAt: 'Generated' },
-  ja: { title: '仕様',     shape: '形状',     material: '材料',  parameters: 'パラメータ', noShape: '形状がまだありません。', exportSheet: '仕様書',             generatedAt: '生成日時' },
-  zh: { title: '规格',     shape: '形状',     material: '材料',  parameters: '参数',     noShape: '尚未选择形状。',         exportSheet: '导出规格',           generatedAt: '生成时间' },
-  es: { title: 'Espec.',   shape: 'Forma',    material: 'Material', parameters: 'Parámetros', noShape: 'Aún no hay forma.', exportSheet: 'Exportar ficha',  generatedAt: 'Generado' },
-  ar: { title: 'مواصفات',   shape: 'الشكل',    material: 'المادة', parameters: 'المعاملات', noShape: 'لم يتم اختيار شكل بعد.', exportSheet: 'تصدير ورقة',     generatedAt: 'تم التوليد' },
+  ko: { title: '시방',     shape: '형상',     material: '재질',  parameters: '파라미터', noShape: '아직 형상이 없습니다.', exportSheet: '시방 시트',         generatedAt: '생성', close: '닫기' },
+  en: { title: 'Spec',     shape: 'Shape',    material: 'Material', parameters: 'Parameters', noShape: 'No shape selected yet.', exportSheet: 'Export sheet',   generatedAt: 'Generated', close: 'Close' },
+  ja: { title: '仕様',     shape: '形状',     material: '材料',  parameters: 'パラメータ', noShape: '形状がまだありません。', exportSheet: '仕様書',             generatedAt: '生成日時', close: '閉じる' },
+  zh: { title: '规格',     shape: '形状',     material: '材料',  parameters: '参数',     noShape: '尚未选择形状。',         exportSheet: '导出规格',           generatedAt: '生成时间', close: '关闭' },
+  es: { title: 'Espec.',   shape: 'Forma',    material: 'Material', parameters: 'Parámetros', noShape: 'Aún no hay forma.', exportSheet: 'Exportar ficha',  generatedAt: 'Generado', close: 'Cerrar' },
+  ar: { title: 'مواصفات',   shape: 'الشكل',    material: 'المادة', parameters: 'المعاملات', noShape: 'لم يتم اختيار شكل بعد.', exportSheet: 'تصدير ورقة',     generatedAt: 'تم التوليد', close: 'إغلاق' },
 };
 
 interface Props {
@@ -132,7 +133,7 @@ export default function SplitSpecPanel({ lang = 'en', onClose }: Props) {
               fontSize: 12, color: 'var(--nx-text-2)', background: 'none',
               border: 'none', cursor: 'pointer', padding: 4,
             }}
-            aria-label="Close"
+            aria-label={t.close}
           >×</button>
         </span>
       </header>

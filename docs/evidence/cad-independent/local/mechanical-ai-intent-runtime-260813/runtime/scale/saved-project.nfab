@@ -1,8 +1,8 @@
 {
   "magic": "nfab",
   "version": 3,
-  "createdAt": 1787382785612,
-  "updatedAt": 1787382785612,
+  "createdAt": 1787646042810,
+  "updatedAt": 1787646042810,
   "name": "Mechanical runtime scale",
   "tree": {
     "nodes": [
@@ -72,6 +72,6 @@
     "exactKernel": "OCCT",
     "intentCaseId": "mixed_units-09-scale",
     "intentInputSha256": "99e1b875e09e80603921b25953c657c2b1fd685dd349a85b56545f24025d3048",
-    "candidateBaseRevision": "7c3a02e2da7fbee88dac5533efea39eac2ec0114cde1b70936d41992d83dbbe1"
+    "candidateBaseRevision": "a0a108d123eb01b22a05bbf4355f6811b124b7f3f12053c4dc371dc83ef3b3d3"
   }
 }

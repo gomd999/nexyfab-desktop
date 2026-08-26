@@ -13,7 +13,7 @@ jobs:
     timeout-minutes: 15
     services:
       postgres:
-        image: postgres:16
+        image: postgres@sha256:e17e86066e5ef83e0952a9347f5c792b7ece00972e2aa787a6986f471b3dd3d5 # 16.15
         env:
           POSTGRES_USER: postgres
           POSTGRES_PASSWORD: postgres
@@ -29,12 +29,19 @@ jobs:
       DATABASE_URL: postgres://postgres:postgres@127.0.0.1:5432/nexyfab_ci
       SOURCE_DATABASE_URL: postgres://postgres:postgres@127.0.0.1:5432/nexyfab_ci
       RESTORE_DATABASE_URL: postgres://postgres:postgres@127.0.0.1:5432/nexyfab_restore_drill
-      RESTORE_DRILL_ENVIRONMENT: staging
+      # This job creates both databases and the backup inside the disposable
+      # CI service. It is useful restore coverage, but it is not release-bound
+      # production/staging evidence.
+      RESTORE_DRILL_ENVIRONMENT: local-fixture
+      RESTORE_EVIDENCE_CLASS: local-fixture
       RESTORE_DRILL_CONFIRM: NEXYFAB_ISOLATED_RESTORE_ONLY
+      RESTORE_RELEASE_BUILD_ID: ci-${{ github.run_id }}-${{ github.run_attempt }}
+      RESTORE_RELEASE_DEPLOYMENT_ID: github-actions-${{ github.run_id }}
+      RESTORE_RELEASE_GIT_HEAD: ${{ github.sha }}
       BACKUP_FILE: /tmp/nexyfab-ci.sql.gz
     steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
-      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
         with:
           node-version: '22.23.2'
           cache: npm
@@ -42,24 +49,23 @@ jobs:
       - run: npm ci --legacy-peer-deps
       - name: Apply migrations twice (idempotency gate)
         run: |
-          npm run migrate -- up
-          npm run migrate -- up
-      - name: Create backup and isolated restore target
+          npm run migrate:postgres:versioned
+          npm run migrate:postgres:versioned
+      - name: Create isolated restore target
         run: |
-          pg_dump "$DATABASE_URL" | gzip > "$BACKUP_FILE"
           # createdb takes a database NAME, not a URI — passing the URL would
           # create a DB literally named "postgres://…" (and connect over the
           # local socket, not the service container). Create via the CI URL.
           psql "$DATABASE_URL" -X -v ON_ERROR_STOP=1 -c 'CREATE DATABASE nexyfab_restore_drill'
       - name: Restore drill and integrity check
-        run: npm run backup:verify-restore
+        run: npm run backup:verify-restore -- --postgres-only-local-fixture
 
   typecheck:
     name: TypeScript Check
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
-      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
         with:
           node-version: '22.23.2'
           cache: 'npm'
@@ -71,8 +77,8 @@ jobs:
     name: ESLint
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
-      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
         with:
           node-version: '22.23.2'
           cache: 'npm'
@@ -84,8 +90,8 @@ jobs:
     name: Unit Tests
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
-      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
         with:
           node-version: '22.23.2'
           cache: 'npm'
@@ -146,8 +152,8 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
-      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
         with:
           node-version: '22.23.2'
           cache: 'npm'
@@ -163,8 +169,8 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
-      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
         with:
           node-version: '22.23.2'
           cache: 'npm'
@@ -194,8 +200,8 @@ jobs:
           - domain: interior
             script: test:accuracy:interior
     steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
-      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
         with:
           node-version: '22.23.2'
           cache: 'npm'
@@ -218,8 +224,8 @@ jobs:
       NEXT_PUBLIC_RECAPTCHA_SITE_KEY: '6LeIxAcTAAAAAGG-vFI1TnRWxMZNFUojJ4WifJWe'
       RECAPTCHA_SECRET_KEY: '6LeIxAcTAAAAAGG-vFI1TnRWxMZNFUojJ4WifJWe'
     steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
-      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
         with:
           node-version: '22.23.2'
           cache: 'npm'
@@ -231,8 +237,8 @@ jobs:
     name: Security Audit
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
-      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
         with:
           node-version: '22.23.2'
           cache: 'npm'
@@ -253,10 +259,11 @@ jobs:
   e2e:
     name: E2E Tests
     runs-on: ubuntu-latest
+    timeout-minutes: 90
     needs: [build]
     steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
-      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
         with:
           node-version: '22.23.2'
           cache: 'npm'
@@ -285,7 +292,10 @@ jobs:
         if: failure()
         with:
           name: playwright-report
-          path: playwright-report/
+          path: |
+            playwright-report/
+            test-results/
+          if-no-files-found: warn
           retention-days: 7
 
   occt-burnin:
@@ -297,8 +307,8 @@ jobs:
     if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master')
     timeout-minutes: 20
     steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
-      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
         with:
           node-version: '22.23.2'
           cache: 'npm'
@@ -318,8 +328,8 @@ jobs:
     if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master')
     timeout-minutes: 15
     steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
-      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
         with:
           node-version: '22.23.2'
           cache: 'npm'
@@ -342,8 +352,8 @@ jobs:
       NEXYFAB_DB_PATH: /tmp/nexyfab-ci-verify-full.db
       NODE_ENV: test
     steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
-      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
         with:
           node-version: '22.23.2'
           cache: 'npm'
@@ -361,5 +371,8 @@ jobs:
         if: failure()
         with:
           name: playwright-report-verify-full
-          path: playwright-report/
+          path: |
+            playwright-report/
+            test-results/
+          if-no-files-found: warn
           retention-days: 7

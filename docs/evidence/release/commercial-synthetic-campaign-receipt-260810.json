@@ -1,22 +1,179 @@
 {
-  "schema": "nexyfab.commercial-synthetic-campaign-receipt.v1",
-  "generatedAt": "2026-08-10T03:36:00.000Z",
+  "schema": "nexyfab.commercial-synthetic-campaign-receipt.v3",
+  "generatedAt": "2026-08-25T07:52:16.224Z",
   "ok": true,
   "certificationEvidence": false,
-  "purpose": "internal regression and release-toolchain drill",
-  "domains": {
-    "mechanical": { "cases": 20, "campaigns": 3, "repeats": 5, "runs": 300, "gatePasses": 300, "checks": "14/14" },
-    "building": { "cases": 20, "campaigns": 3, "repeats": 5, "runs": 300, "gatePasses": 300, "checks": "14/14" },
-    "civil": { "cases": 20, "campaigns": 3, "repeats": 5, "runs": 300, "gatePasses": 300, "checks": "14/14" },
-    "landscape": { "cases": 20, "campaigns": 3, "repeats": 5, "runs": 300, "gatePasses": 300, "checks": "14/14" },
-    "interior": { "cases": 20, "campaigns": 3, "repeats": 5, "runs": 300, "gatePasses": 300, "checks": "14/14" }
+  "textCanonicalization": "utf8-crlf-to-lf",
+  "release": {
+    "buildId": "6430d6a8f8b409c2c7d94d38ad02e0e2b77ff10d",
+    "deploymentId": "local-synthetic-campaign-20260825",
+    "gitHead": "6430d6a8f8b409c2c7d94d38ad02e0e2b77ff10d"
   },
-  "totalCases": 100,
+  "inputs": {
+    "campaignResults": [
+      "docs/evidence/cad-independent/local/commercial-synthetic-campaign-20260825/campaign-runs.json"
+    ],
+    "sourceCases": [
+      "docs/evidence/cad-independent/local/commercial-synthetic-campaign-20260825/source-cases.json"
+    ],
+    "executorSources": [
+      "scripts/build-commercial-synthetic-campaign-receipt.mjs",
+      "scripts/build-domain-accuracy-candidates.mjs",
+      "scripts/domain-accuracy-validator.mjs",
+      "scripts/drawing-to-3d/assembly.mjs",
+      "scripts/drawing-to-3d/domain-assemblies.mjs",
+      "scripts/run-commercial-synthetic-campaign.mjs"
+    ]
+  },
+  "sourceBindings": [
+    {
+      "path": "docs/evidence/cad-independent/local/commercial-synthetic-campaign-20260825/campaign-runs.json",
+      "bytes": 1592277,
+      "sha256": "611f648572629a920b328cdb08858344394edec86be09d6022577a33389a685a",
+      "canonicalization": "utf8-crlf-to-lf"
+    },
+    {
+      "path": "docs/evidence/cad-independent/local/commercial-synthetic-campaign-20260825/source-cases.json",
+      "bytes": 114744,
+      "sha256": "739168c3a5fdbea35866639d61e549ff9f51f52f0e6786bf2b58b5e9629eb801",
+      "canonicalization": "utf8-crlf-to-lf"
+    },
+    {
+      "path": "scripts/build-commercial-synthetic-campaign-receipt.mjs",
+      "bytes": 21681,
+      "sha256": "28aaa4410ca8d472e156430f5c310d1b9bc279557eed3f80b6c4175279bd3989",
+      "canonicalization": "utf8-crlf-to-lf"
+    },
+    {
+      "path": "scripts/build-domain-accuracy-candidates.mjs",
+      "bytes": 5405,
+      "sha256": "9873916606cd645bc36dbe9e4ee70771d9bc220288214ff41fc4e4e3255c970c",
+      "canonicalization": "utf8-crlf-to-lf"
+    },
+    {
+      "path": "scripts/domain-accuracy-validator.mjs",
+      "bytes": 20916,
+      "sha256": "1e01cfbf02e34be1afb1f17f40c8f568ede7ed31c93ae4457f9173df795516fa",
+      "canonicalization": "utf8-crlf-to-lf"
+    },
+    {
+      "path": "scripts/drawing-to-3d/assembly.mjs",
+      "bytes": 115327,
+      "sha256": "976627069110d30c8f102cee5f8d444ff863b8605bc1a13a3f1d7b19c8ecf7ae",
+      "canonicalization": "utf8-crlf-to-lf"
+    },
+    {
+      "path": "scripts/drawing-to-3d/domain-assemblies.mjs",
+      "bytes": 328460,
+      "sha256": "4d36d76dcaf1165f3b858a71cdf3badbe1fa9aa12c8d4a3d160dc69a4dc329fd",
+      "canonicalization": "utf8-crlf-to-lf"
+    },
+    {
+      "path": "scripts/run-commercial-synthetic-campaign.mjs",
+      "bytes": 7839,
+      "sha256": "f866c6a3b5094732b4ae1f1a8c4f486de6e6b5d41ef742505e1298f1b977c2d1",
+      "canonicalization": "utf8-crlf-to-lf"
+    }
+  ],
+  "executor": {
+    "subject": "template_rebuild",
+    "requiredAxes": [
+      "requirements",
+      "geometry",
+      "semantic_objects",
+      "relationships"
+    ],
+    "rawAssertionsRequired": true,
+    "sourceBindings": [
+      {
+        "path": "scripts/build-commercial-synthetic-campaign-receipt.mjs",
+        "bytes": 21681,
+        "sha256": "28aaa4410ca8d472e156430f5c310d1b9bc279557eed3f80b6c4175279bd3989",
+        "canonicalization": "utf8-crlf-to-lf"
+      },
+      {
+        "path": "scripts/build-domain-accuracy-candidates.mjs",
+        "bytes": 5405,
+        "sha256": "9873916606cd645bc36dbe9e4ee70771d9bc220288214ff41fc4e4e3255c970c",
+        "canonicalization": "utf8-crlf-to-lf"
+      },
+      {
+        "path": "scripts/domain-accuracy-validator.mjs",
+        "bytes": 20916,
+        "sha256": "1e01cfbf02e34be1afb1f17f40c8f568ede7ed31c93ae4457f9173df795516fa",
+        "canonicalization": "utf8-crlf-to-lf"
+      },
+      {
+        "path": "scripts/drawing-to-3d/assembly.mjs",
+        "bytes": 115327,
+        "sha256": "976627069110d30c8f102cee5f8d444ff863b8605bc1a13a3f1d7b19c8ecf7ae",
+        "canonicalization": "utf8-crlf-to-lf"
+      },
+      {
+        "path": "scripts/drawing-to-3d/domain-assemblies.mjs",
+        "bytes": 328460,
+        "sha256": "4d36d76dcaf1165f3b858a71cdf3badbe1fa9aa12c8d4a3d160dc69a4dc329fd",
+        "canonicalization": "utf8-crlf-to-lf"
+      },
+      {
+        "path": "scripts/run-commercial-synthetic-campaign.mjs",
+        "bytes": 7839,
+        "sha256": "f866c6a3b5094732b4ae1f1a8c4f486de6e6b5d41ef742505e1298f1b977c2d1",
+        "canonicalization": "utf8-crlf-to-lf"
+      }
+    ],
+    "identitySha256": "b31882c8619eb3908838bde4ed087582600f234ea5307d8c3437da838f18ecd0"
+  },
+  "corpus": {
+    "path": "docs/evidence/release/commercial-validation-corpus-260810.json",
+    "bytes": 125216,
+    "sha256": "72443671a6d1942a59612837acdfa4e68c54fdb9a88002c27d5ad3cc4ff49a98",
+    "canonicalization": "utf8-crlf-to-lf"
+  },
+  "domains": {
+    "mechanical": {
+      "cases": 20,
+      "campaigns": 3,
+      "repeats": 5,
+      "runs": 300,
+      "gatePasses": 300
+    },
+    "building": {
+      "cases": 20,
+      "campaigns": 3,
+      "repeats": 5,
+      "runs": 300,
+      "gatePasses": 300
+    },
+    "civil": {
+      "cases": 20,
+      "campaigns": 3,
+      "repeats": 5,
+      "runs": 300,
+      "gatePasses": 300
+    },
+    "landscape": {
+      "cases": 20,
+      "campaigns": 3,
+      "repeats": 5,
+      "runs": 300,
+      "gatePasses": 300
+    },
+    "interior": {
+      "cases": 20,
+      "campaigns": 3,
+      "repeats": 5,
+      "runs": 300,
+      "gatePasses": 300
+    }
+  },
   "totalRuns": 1500,
   "totalGatePasses": 1500,
-  "promotionPolicy": {
-    "scoreEligible": 0,
-    "independentHoldoutRequired": true,
-    "virtualReviewerApprovalRejected": true
-  }
+  "claimBoundary": {
+    "syntheticRegressionOnly": true,
+    "certifiesCommercialAccuracy": false,
+    "substitutesForIndependentHoldout": false,
+    "substitutesForNativeCadReview": false
+  },
+  "receiptSha256": "632fd435b31c8f65cd07a1080bf3b02e79588b65a0e3523209043f036648da26"
 }

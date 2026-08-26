@@ -1,0 +1,2932 @@
+{
+  "schema": "nexyfab.backup-isolated-restore-drill.v3",
+  "generatedAt": "2026-08-25T13:14:54.664Z",
+  "ok": true,
+  "target": "local-fixture",
+  "release": {
+    "buildId": "local-cross-store-c54e6f607e13",
+    "deploymentId": "nexyfab-precision-durability-19384",
+    "gitHead": "c54e6f607e13878b0adfcf7b64f9b8c0d9873975"
+  },
+  "safety": {
+    "environment": "local-fixture",
+    "sourceEnvironment": "local-fixture",
+    "restoredEnvironment": "local-fixture",
+    "sourceDatabase": "nexyfab",
+    "restoreDatabase": "nexyfab_restore_drill_local",
+    "isolatedDatabaseIdentity": true,
+    "sourceWasReadOnly": true,
+    "sourceUnchangedDuringDrill": true,
+    "productionRestorePerformed": false
+  },
+  "backup": {
+    "file": "postgres.sql.gz",
+    "reused": false,
+    "bytes": 42258,
+    "sha256": "d2ee0312daaed62303a63fe7eb7e56b1bb75feb6a80b31a8acbbd959f55bf57e",
+    "sourceSnapshotSha256": "abf7248f91a28a1ab185e92c15cd3043a44626072ca27657a8360fb4409c278e",
+    "completedAt": "2026-08-25T13:14:41.102Z",
+    "protectedSource": {
+      "releaseBoundRequired": false,
+      "providerArtifactReused": false,
+      "atRestEncryptionVerified": false,
+      "providerReceiptBound": false,
+      "artifactImmutable": false
+    }
+  },
+  "source": {
+    "capturedAt": "2026-08-25T13:14:41.594Z",
+    "tableCount": 164,
+    "columnCount": 1717,
+    "rowCount": 104,
+    "schemaSha256": "1ec201cb4d7a0c7ec1feb8b89ed146a947cda0a8e0898606164abae2a80b4c5b",
+    "tableContentSha256": "abf7248f91a28a1ab185e92c15cd3043a44626072ca27657a8360fb4409c278e",
+    "tables": [
+      {
+        "table": "nf_admin_access_emails",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_admin_audit",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_admin_login_codes",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_admin_sessions",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_admin_settings",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_agentic_commercial_receipts",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_agentic_commercial_verified_ledger",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_agentic_commercial_verified_receipts",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_ai_design_artifacts",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_ai_design_complex_workspaces",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_ai_design_workspace_runtimes",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_ai_history",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_ai_precision_bridge_outbox",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_ai_precision_bridge_receipts",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_api_keys",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_api_usage",
+        "rows": 31,
+        "contentHash": "322615e799f95e7abfe9d41247e6b869"
+      },
+      {
+        "table": "nf_architecture_interior_artifact_bundle_heads",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_architecture_interior_artifact_bundle_revisions",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_architecture_interior_exact_artifact_manifests",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_architecture_interior_workspace_heads",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_architecture_interior_workspace_revisions",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_artifact_upload_sessions",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_assembly_drawing_handoffs",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_audit_log",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_aw_customers",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_aw_invoices",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_aw_payment_attempts",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_aw_subscriptions",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_billing_analytics",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_bom",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_bom_items",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_bundle_orders",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_bundles",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_cad_access_log",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_cad_artifacts",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_cad_canonical_brep_mappings",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_cad_canonical_v2_audit",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_cad_canonical_v2_heads",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_cad_canonical_v2_invalidations",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_cad_canonical_v2_locks",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_cad_canonical_v2_revisions",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_cad_job_output_intents",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_cad_job_receipts",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_cad_job_registry",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_cad_workspace_heads",
+        "rows": 2,
+        "contentHash": "989b6b6eb3b26398abcca9a1cf342abb"
+      },
+      {
+        "table": "nf_cad_workspace_revisions",
+        "rows": 1,
+        "contentHash": "d1a1775d0be379c58c35c21dbeced52b"
+      },
+      {
+        "table": "nf_cbam_log",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_collab_sessions",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_comments",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_commercial_generation_receipt_bindings",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_commercial_generation_revisions",
+        "rows": 4,
+        "contentHash": "9200473eb272e627d073b01a78216580"
+      },
+      {
+        "table": "nf_commercial_generation_runs",
+        "rows": 2,
+        "contentHash": "2ed03ea5e2358022da0842ae085e7126"
+      },
+      {
+        "table": "nf_concierge_status",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_contract_milestones",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_contracts",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_defects",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_dfm_check",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_document_locks",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_document_permissions",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_document_versions",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_documents",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_dodo_webhook_events",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_dpa_consent",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_embed_configs",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_enum_defect_cause",
+        "rows": 7,
+        "contentHash": "b381a883c81267ae84c676341e673f84"
+      },
+      {
+        "table": "nf_enum_process_step",
+        "rows": 7,
+        "contentHash": "c1a1fbaf48193a65f8cb0cb5a971b05c"
+      },
+      {
+        "table": "nf_enum_severity",
+        "rows": 3,
+        "contentHash": "dcb4d26078a90411663873e51df5044d"
+      },
+      {
+        "table": "nf_erp_field_mappings",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_erp_sync_log",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_escrow_transactions",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_esg_reports",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_external_commercial_evidence",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_external_commercial_verification_requests",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_external_commercial_verifier_callbacks",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_external_commercial_verifier_claims",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_factories_directory",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_files",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_funnel_event",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_inquiries",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_interior_placement_draft_heads",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_interior_placement_drafts",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_job_queue",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_login_history",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_manufacturing_inspection_receipts",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_manufacturing_lineage",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_manufacturing_lineage_invalidations",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_margin_breakdown",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_messages",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_nexyflow_integrations",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_nexyflow_sync_map",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_notifications",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_order_milestones",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_orders",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_org_invites",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_org_members",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_orgs",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_partner_agreement_consents",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_partner_invites",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_partner_metric_events",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_partner_sessions",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_partner_statuses",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_partner_tokens",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_password_reset_tokens",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_payment_attempts",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_precision_cad_approval_challenges",
+        "rows": 2,
+        "contentHash": "194a4017233a2d279f5a2cf1728dee8e"
+      },
+      {
+        "table": "nf_precision_cad_commercial_artifact_snapshots",
+        "rows": 3,
+        "contentHash": "aa89061b006c3239ee0d75f255e88998"
+      },
+      {
+        "table": "nf_precision_cad_commercial_callbacks",
+        "rows": 1,
+        "contentHash": "0273b07c26b9166c35cc52bbb674fde6"
+      },
+      {
+        "table": "nf_precision_cad_commercial_input_artifacts",
+        "rows": 2,
+        "contentHash": "85fcd30a6865607cd8e4adacc1808cd3"
+      },
+      {
+        "table": "nf_precision_cad_commercial_native_parser_receipts",
+        "rows": 1,
+        "contentHash": "1c575ee75367b1015c81377dadce6242"
+      },
+      {
+        "table": "nf_precision_cad_commercial_outbox",
+        "rows": 2,
+        "contentHash": "8725b9fe44714c13eaa58c8cbb5abec5"
+      },
+      {
+        "table": "nf_precision_cad_commercial_output_intents",
+        "rows": 3,
+        "contentHash": "a4490586caa1bf82266db3aae72c5132"
+      },
+      {
+        "table": "nf_precision_cad_commercial_persistence_receipts",
+        "rows": 1,
+        "contentHash": "1d3fff557b7962d2119c3254e37f0534"
+      },
+      {
+        "table": "nf_precision_cad_commercial_worker_artifacts",
+        "rows": 3,
+        "contentHash": "622a63a936983936fd7b9e106a3d83b2"
+      },
+      {
+        "table": "nf_precision_cad_commercial_workspace_commits",
+        "rows": 1,
+        "contentHash": "7f139e71058a4db97c0e83b1f00f0a3f"
+      },
+      {
+        "table": "nf_precision_cad_execution_events",
+        "rows": 4,
+        "contentHash": "9fc87be90512ba91f13c3678ab0dd9c5"
+      },
+      {
+        "table": "nf_precision_cad_execution_journal",
+        "rows": 2,
+        "contentHash": "f8909a1e74046a38e32cbfd0ad233733"
+      },
+      {
+        "table": "nf_precision_cad_result_artifacts",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_precision_cad_tool_claims",
+        "rows": 2,
+        "contentHash": "8541ccd3fdd066a0c01b6fde230b5684"
+      },
+      {
+        "table": "nf_precision_cad_worker_receipts",
+        "rows": 1,
+        "contentHash": "bc928079e0375891523e5fd95c0d7328"
+      },
+      {
+        "table": "nf_project_invites",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_project_members",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_projects",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_quote_reject_log",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_quotes",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_refresh_tokens",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_releases",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_remote_agent_states",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_remote_agent_tool_claims",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_reviews_data",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_rfq_templates",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_rfqs",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_rma",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_schema_migrations",
+        "rows": 18,
+        "contentHash": "6d3a2d8a007757649499e8700d2a6aa5"
+      },
+      {
+        "table": "nf_security_alerts",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_sessions",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_settlements",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_shares",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_shipments",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_slack_integrations",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_spatial_cad_draft_heads",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_spatial_cad_drafts",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_spatial_cad_issues",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_spatial_cad_jobs",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_sso_config",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_stage_event",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_support_tickets",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_tax_invoices_kr",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_team_invites",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_team_members",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_teams",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_thread_messages",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_toss_billing_keys",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_usage_events",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_user_billing_profile",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_user_roles",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_users",
+        "rows": 1,
+        "contentHash": "b051b22f3f89cb10a010ab25ca4a27c9"
+      },
+      {
+        "table": "nf_verification_codes",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_waitlist",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_webauthn_credentials",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_webhook_events",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_webhook_subscriptions",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_workspace_members",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_workspaces",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "partner_applications",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      }
+    ],
+    "foreignKeys": {
+      "count": 83,
+      "orphanRows": 0,
+      "failures": [
+        {
+          "constraint": "nf_agentic_commercial_receipts_execution_fk",
+          "table": "public.nf_agentic_commercial_receipts",
+          "validated": false,
+          "orphanRows": 0
+        }
+      ],
+      "integrityOk": true,
+      "ok": false
+    },
+    "afterObjectRestoreTableContentSha256": "abf7248f91a28a1ab185e92c15cd3043a44626072ca27657a8360fb4409c278e",
+    "afterObjectRestoreSchemaSha256": "1ec201cb4d7a0c7ec1feb8b89ed146a947cda0a8e0898606164abae2a80b4c5b"
+  },
+  "restored": {
+    "capturedAt": "2026-08-25T13:14:53.087Z",
+    "tableCount": 164,
+    "columnCount": 1717,
+    "rowCount": 104,
+    "schemaSha256": "1ec201cb4d7a0c7ec1feb8b89ed146a947cda0a8e0898606164abae2a80b4c5b",
+    "tableContentSha256": "abf7248f91a28a1ab185e92c15cd3043a44626072ca27657a8360fb4409c278e",
+    "tables": [
+      {
+        "table": "nf_admin_access_emails",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_admin_audit",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_admin_login_codes",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_admin_sessions",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_admin_settings",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_agentic_commercial_receipts",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_agentic_commercial_verified_ledger",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_agentic_commercial_verified_receipts",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_ai_design_artifacts",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_ai_design_complex_workspaces",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_ai_design_workspace_runtimes",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_ai_history",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_ai_precision_bridge_outbox",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_ai_precision_bridge_receipts",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_api_keys",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_api_usage",
+        "rows": 31,
+        "contentHash": "322615e799f95e7abfe9d41247e6b869"
+      },
+      {
+        "table": "nf_architecture_interior_artifact_bundle_heads",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_architecture_interior_artifact_bundle_revisions",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_architecture_interior_exact_artifact_manifests",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_architecture_interior_workspace_heads",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_architecture_interior_workspace_revisions",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_artifact_upload_sessions",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_assembly_drawing_handoffs",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_audit_log",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_aw_customers",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_aw_invoices",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_aw_payment_attempts",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_aw_subscriptions",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_billing_analytics",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_bom",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_bom_items",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_bundle_orders",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_bundles",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_cad_access_log",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_cad_artifacts",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_cad_canonical_brep_mappings",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_cad_canonical_v2_audit",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_cad_canonical_v2_heads",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_cad_canonical_v2_invalidations",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_cad_canonical_v2_locks",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_cad_canonical_v2_revisions",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_cad_job_output_intents",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_cad_job_receipts",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_cad_job_registry",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_cad_workspace_heads",
+        "rows": 2,
+        "contentHash": "989b6b6eb3b26398abcca9a1cf342abb"
+      },
+      {
+        "table": "nf_cad_workspace_revisions",
+        "rows": 1,
+        "contentHash": "d1a1775d0be379c58c35c21dbeced52b"
+      },
+      {
+        "table": "nf_cbam_log",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_collab_sessions",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_comments",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_commercial_generation_receipt_bindings",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_commercial_generation_revisions",
+        "rows": 4,
+        "contentHash": "9200473eb272e627d073b01a78216580"
+      },
+      {
+        "table": "nf_commercial_generation_runs",
+        "rows": 2,
+        "contentHash": "2ed03ea5e2358022da0842ae085e7126"
+      },
+      {
+        "table": "nf_concierge_status",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_contract_milestones",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_contracts",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_defects",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_dfm_check",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_document_locks",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_document_permissions",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_document_versions",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_documents",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_dodo_webhook_events",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_dpa_consent",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_embed_configs",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_enum_defect_cause",
+        "rows": 7,
+        "contentHash": "b381a883c81267ae84c676341e673f84"
+      },
+      {
+        "table": "nf_enum_process_step",
+        "rows": 7,
+        "contentHash": "c1a1fbaf48193a65f8cb0cb5a971b05c"
+      },
+      {
+        "table": "nf_enum_severity",
+        "rows": 3,
+        "contentHash": "dcb4d26078a90411663873e51df5044d"
+      },
+      {
+        "table": "nf_erp_field_mappings",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_erp_sync_log",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_escrow_transactions",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_esg_reports",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_external_commercial_evidence",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_external_commercial_verification_requests",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_external_commercial_verifier_callbacks",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_external_commercial_verifier_claims",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_factories_directory",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_files",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_funnel_event",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_inquiries",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_interior_placement_draft_heads",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_interior_placement_drafts",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_job_queue",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_login_history",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_manufacturing_inspection_receipts",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_manufacturing_lineage",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_manufacturing_lineage_invalidations",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_margin_breakdown",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_messages",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_nexyflow_integrations",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_nexyflow_sync_map",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_notifications",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_order_milestones",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_orders",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_org_invites",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_org_members",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_orgs",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_partner_agreement_consents",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_partner_invites",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_partner_metric_events",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_partner_sessions",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_partner_statuses",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_partner_tokens",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_password_reset_tokens",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_payment_attempts",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_precision_cad_approval_challenges",
+        "rows": 2,
+        "contentHash": "194a4017233a2d279f5a2cf1728dee8e"
+      },
+      {
+        "table": "nf_precision_cad_commercial_artifact_snapshots",
+        "rows": 3,
+        "contentHash": "aa89061b006c3239ee0d75f255e88998"
+      },
+      {
+        "table": "nf_precision_cad_commercial_callbacks",
+        "rows": 1,
+        "contentHash": "0273b07c26b9166c35cc52bbb674fde6"
+      },
+      {
+        "table": "nf_precision_cad_commercial_input_artifacts",
+        "rows": 2,
+        "contentHash": "85fcd30a6865607cd8e4adacc1808cd3"
+      },
+      {
+        "table": "nf_precision_cad_commercial_native_parser_receipts",
+        "rows": 1,
+        "contentHash": "1c575ee75367b1015c81377dadce6242"
+      },
+      {
+        "table": "nf_precision_cad_commercial_outbox",
+        "rows": 2,
+        "contentHash": "8725b9fe44714c13eaa58c8cbb5abec5"
+      },
+      {
+        "table": "nf_precision_cad_commercial_output_intents",
+        "rows": 3,
+        "contentHash": "a4490586caa1bf82266db3aae72c5132"
+      },
+      {
+        "table": "nf_precision_cad_commercial_persistence_receipts",
+        "rows": 1,
+        "contentHash": "1d3fff557b7962d2119c3254e37f0534"
+      },
+      {
+        "table": "nf_precision_cad_commercial_worker_artifacts",
+        "rows": 3,
+        "contentHash": "622a63a936983936fd7b9e106a3d83b2"
+      },
+      {
+        "table": "nf_precision_cad_commercial_workspace_commits",
+        "rows": 1,
+        "contentHash": "7f139e71058a4db97c0e83b1f00f0a3f"
+      },
+      {
+        "table": "nf_precision_cad_execution_events",
+        "rows": 4,
+        "contentHash": "9fc87be90512ba91f13c3678ab0dd9c5"
+      },
+      {
+        "table": "nf_precision_cad_execution_journal",
+        "rows": 2,
+        "contentHash": "f8909a1e74046a38e32cbfd0ad233733"
+      },
+      {
+        "table": "nf_precision_cad_result_artifacts",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_precision_cad_tool_claims",
+        "rows": 2,
+        "contentHash": "8541ccd3fdd066a0c01b6fde230b5684"
+      },
+      {
+        "table": "nf_precision_cad_worker_receipts",
+        "rows": 1,
+        "contentHash": "bc928079e0375891523e5fd95c0d7328"
+      },
+      {
+        "table": "nf_project_invites",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_project_members",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_projects",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_quote_reject_log",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_quotes",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_refresh_tokens",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_releases",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_remote_agent_states",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_remote_agent_tool_claims",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_reviews_data",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_rfq_templates",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_rfqs",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_rma",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_schema_migrations",
+        "rows": 18,
+        "contentHash": "6d3a2d8a007757649499e8700d2a6aa5"
+      },
+      {
+        "table": "nf_security_alerts",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_sessions",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_settlements",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_shares",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_shipments",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_slack_integrations",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_spatial_cad_draft_heads",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_spatial_cad_drafts",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_spatial_cad_issues",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_spatial_cad_jobs",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_sso_config",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_stage_event",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_support_tickets",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_tax_invoices_kr",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_team_invites",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_team_members",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_teams",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_thread_messages",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_toss_billing_keys",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_usage_events",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_user_billing_profile",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_user_roles",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_users",
+        "rows": 1,
+        "contentHash": "b051b22f3f89cb10a010ab25ca4a27c9"
+      },
+      {
+        "table": "nf_verification_codes",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_waitlist",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_webauthn_credentials",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_webhook_events",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_webhook_subscriptions",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_workspace_members",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_workspaces",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "partner_applications",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      }
+    ],
+    "foreignKeys": {
+      "count": 83,
+      "orphanRows": 0,
+      "failures": [
+        {
+          "constraint": "nf_agentic_commercial_receipts_execution_fk",
+          "table": "public.nf_agentic_commercial_receipts",
+          "validated": false,
+          "orphanRows": 0
+        }
+      ],
+      "integrityOk": true,
+      "ok": false
+    },
+    "exactSourceMatch": true,
+    "businessDataSha256": "abf7248f91a28a1ab185e92c15cd3043a44626072ca27657a8360fb4409c278e",
+    "differences": []
+  },
+  "migration": {
+    "ok": true,
+    "version": 2026082502,
+    "name": "commercial_precision_worker_io_20260825",
+    "checksum": "07451ebcc671a837bb51c6fed94e6874068814a51c4da674aa0b89b7595f3ec9",
+    "decision": "already_applied",
+    "migrations": [
+      {
+        "version": 2026082001,
+        "name": "spatial_cad_revision_identity_and_locks_20260820",
+        "checksum": "2035a992ee61b9362bda55f038af2f40c978def1d064d98c66a0d27b85fdb376",
+        "decision": "already_applied"
+      },
+      {
+        "version": 2026082002,
+        "name": "interior_placement_documents_20260820",
+        "checksum": "99192348ee2462bdff8a87f5f8955c727410c71ba9a39c53cc1919ddc9e6f020",
+        "decision": "already_applied"
+      },
+      {
+        "version": 2026082101,
+        "name": "remote_precision_cad_agent_state_20260821",
+        "checksum": "cbb1d4fa11becea70512e43fc39aa9ead88240674c87acdaca1998a2dd584bea",
+        "decision": "already_applied"
+      },
+      {
+        "version": 2026082102,
+        "name": "precision_cad_result_artifacts_20260821",
+        "checksum": "359833d083bb1c46e330290c079c2dcb57f7faa875aeea03d424aa72da475d87",
+        "decision": "already_applied"
+      },
+      {
+        "version": 2026082201,
+        "name": "architecture_interior_browser_workflow_20260822",
+        "checksum": "1cd607b0779c017602d106b39626101f529bdeb8b131c10def7a6cc6678c67b9",
+        "decision": "already_applied"
+      },
+      {
+        "version": 2026082202,
+        "name": "commercial_precision_cad_execution_boundary_20260822",
+        "checksum": "4ea4f0f5b6dab41b976f857fb65c302c741b7a984a2f95a30527a82ba5e717a3",
+        "decision": "already_applied"
+      },
+      {
+        "version": 2026082203,
+        "name": "commercial_precision_cad_external_execution_20260822",
+        "checksum": "d861dd24270b805da2b9ab561352ae276c90e231627e5bc8c142cdab86173754",
+        "decision": "already_applied"
+      },
+      {
+        "version": 2026082204,
+        "name": "external_commercial_verifier_exchange_20260822",
+        "checksum": "973776e4ee20f016d20076d2e441d49caae35152859fb1023e22fda0c112a7a6",
+        "decision": "already_applied"
+      },
+      {
+        "version": 2026082205,
+        "name": "commercial_worker_result_persistence_20260822",
+        "checksum": "da241448264ad5f814ff2833c25ac1acb7534eb53fc56d3066afe8eadc4f17ff",
+        "decision": "already_applied"
+      },
+      {
+        "version": 2026082206,
+        "name": "verified_agentic_commercial_receipts_20260822",
+        "checksum": "bb28eba6145acba875260899a7dd49b6ad206af6d393d6b078cca28af088ac48",
+        "decision": "already_applied"
+      },
+      {
+        "version": 2026082207,
+        "name": "commercial_generation_authoritative_state_20260822",
+        "checksum": "97c189ff68968d5008c5f7fd91760dd7309aedfe8b479263d7f1b540cd6d2302",
+        "decision": "already_applied"
+      },
+      {
+        "version": 2026082208,
+        "name": "commercial_database_hardening_20260823",
+        "checksum": "b1739cfbe4381debdf702483461a472c1dac00ec24abfef0f9449a2fc7493f01",
+        "decision": "already_applied"
+      },
+      {
+        "version": 2026082301,
+        "name": "precision_cad_canonical_brep_mapping_20260823",
+        "checksum": "2a7393a398c3ad017a157b0ea1d006a2bac36b789bcd9bd70e30a24530483389",
+        "decision": "already_applied"
+      },
+      {
+        "version": 2026082401,
+        "name": "canonical_cad_v2_revision_journal_20260824",
+        "checksum": "ac2bccace28a9ae8d5ce0c6a4b267f57774b493c7a2bd202894799f7ce806897",
+        "decision": "already_applied"
+      },
+      {
+        "version": 2026082402,
+        "name": "ai_design_v10_authority_state_20260824",
+        "checksum": "772688c5028f0eec6f2aacf2f7174c25c215581c2101e63087b374bc934572e9",
+        "decision": "already_applied"
+      },
+      {
+        "version": 2026082403,
+        "name": "ai_precision_exact_bridge_outbox_20260824",
+        "checksum": "77b11d9692154a7f0c6102440e1fbffbd759b412b1306ea27d3796df638182c1",
+        "decision": "already_applied"
+      },
+      {
+        "version": 2026082501,
+        "name": "commercial_payment_authority_20260825",
+        "checksum": "cec5f3802e8a0a055c2e96caeab46245291c5c1bbccebd4599d54135471ea065",
+        "decision": "already_applied"
+      },
+      {
+        "version": 2026082502,
+        "name": "commercial_precision_worker_io_20260825",
+        "checksum": "07451ebcc671a837bb51c6fed94e6874068814a51c4da674aa0b89b7595f3ec9",
+        "decision": "already_applied"
+      }
+    ],
+    "targetVersion": 2026082502,
+    "targetChecksum": "07451ebcc671a837bb51c6fed94e6874068814a51c4da674aa0b89b7595f3ec9"
+  },
+  "constraintValidation": {
+    "count": 4,
+    "validated": [
+      {
+        "table": "public.nf_agentic_commercial_receipts",
+        "constraint": "nf_agentic_commercial_receipts_execution_fk",
+        "type": "foreign_key"
+      },
+      {
+        "table": "public.nf_agentic_commercial_receipts",
+        "constraint": "nf_agentic_receipt_private_key_ck",
+        "type": "check"
+      },
+      {
+        "table": "public.nf_external_commercial_evidence",
+        "constraint": "nf_external_evidence_private_key_ck",
+        "type": "check"
+      },
+      {
+        "table": "public.nf_precision_cad_commercial_worker_artifacts",
+        "constraint": "nf_worker_artifact_private_key_ck",
+        "type": "check"
+      }
+    ],
+    "ok": true
+  },
+  "migrationTarget": 2026082502,
+  "migrated": {
+    "capturedAt": "2026-08-25T13:14:53.665Z",
+    "tableCount": 164,
+    "columnCount": 1717,
+    "rowCount": 104,
+    "schemaSha256": "1ec201cb4d7a0c7ec1feb8b89ed146a947cda0a8e0898606164abae2a80b4c5b",
+    "tableContentSha256": "abf7248f91a28a1ab185e92c15cd3043a44626072ca27657a8360fb4409c278e",
+    "tables": [
+      {
+        "table": "nf_admin_access_emails",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_admin_audit",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_admin_login_codes",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_admin_sessions",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_admin_settings",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_agentic_commercial_receipts",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_agentic_commercial_verified_ledger",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_agentic_commercial_verified_receipts",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_ai_design_artifacts",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_ai_design_complex_workspaces",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_ai_design_workspace_runtimes",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_ai_history",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_ai_precision_bridge_outbox",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_ai_precision_bridge_receipts",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_api_keys",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_api_usage",
+        "rows": 31,
+        "contentHash": "322615e799f95e7abfe9d41247e6b869"
+      },
+      {
+        "table": "nf_architecture_interior_artifact_bundle_heads",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_architecture_interior_artifact_bundle_revisions",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_architecture_interior_exact_artifact_manifests",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_architecture_interior_workspace_heads",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_architecture_interior_workspace_revisions",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_artifact_upload_sessions",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_assembly_drawing_handoffs",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_audit_log",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_aw_customers",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_aw_invoices",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_aw_payment_attempts",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_aw_subscriptions",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_billing_analytics",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_bom",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_bom_items",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_bundle_orders",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_bundles",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_cad_access_log",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_cad_artifacts",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_cad_canonical_brep_mappings",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_cad_canonical_v2_audit",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_cad_canonical_v2_heads",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_cad_canonical_v2_invalidations",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_cad_canonical_v2_locks",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_cad_canonical_v2_revisions",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_cad_job_output_intents",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_cad_job_receipts",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_cad_job_registry",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_cad_workspace_heads",
+        "rows": 2,
+        "contentHash": "989b6b6eb3b26398abcca9a1cf342abb"
+      },
+      {
+        "table": "nf_cad_workspace_revisions",
+        "rows": 1,
+        "contentHash": "d1a1775d0be379c58c35c21dbeced52b"
+      },
+      {
+        "table": "nf_cbam_log",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_collab_sessions",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_comments",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_commercial_generation_receipt_bindings",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_commercial_generation_revisions",
+        "rows": 4,
+        "contentHash": "9200473eb272e627d073b01a78216580"
+      },
+      {
+        "table": "nf_commercial_generation_runs",
+        "rows": 2,
+        "contentHash": "2ed03ea5e2358022da0842ae085e7126"
+      },
+      {
+        "table": "nf_concierge_status",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_contract_milestones",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_contracts",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_defects",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_dfm_check",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_document_locks",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_document_permissions",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_document_versions",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_documents",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_dodo_webhook_events",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_dpa_consent",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_embed_configs",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_enum_defect_cause",
+        "rows": 7,
+        "contentHash": "b381a883c81267ae84c676341e673f84"
+      },
+      {
+        "table": "nf_enum_process_step",
+        "rows": 7,
+        "contentHash": "c1a1fbaf48193a65f8cb0cb5a971b05c"
+      },
+      {
+        "table": "nf_enum_severity",
+        "rows": 3,
+        "contentHash": "dcb4d26078a90411663873e51df5044d"
+      },
+      {
+        "table": "nf_erp_field_mappings",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_erp_sync_log",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_escrow_transactions",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_esg_reports",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_external_commercial_evidence",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_external_commercial_verification_requests",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_external_commercial_verifier_callbacks",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_external_commercial_verifier_claims",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_factories_directory",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_files",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_funnel_event",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_inquiries",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_interior_placement_draft_heads",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_interior_placement_drafts",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_job_queue",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_login_history",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_manufacturing_inspection_receipts",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_manufacturing_lineage",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_manufacturing_lineage_invalidations",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_margin_breakdown",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_messages",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_nexyflow_integrations",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_nexyflow_sync_map",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_notifications",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_order_milestones",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_orders",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_org_invites",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_org_members",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_orgs",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_partner_agreement_consents",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_partner_invites",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_partner_metric_events",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_partner_sessions",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_partner_statuses",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_partner_tokens",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_password_reset_tokens",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_payment_attempts",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_precision_cad_approval_challenges",
+        "rows": 2,
+        "contentHash": "194a4017233a2d279f5a2cf1728dee8e"
+      },
+      {
+        "table": "nf_precision_cad_commercial_artifact_snapshots",
+        "rows": 3,
+        "contentHash": "aa89061b006c3239ee0d75f255e88998"
+      },
+      {
+        "table": "nf_precision_cad_commercial_callbacks",
+        "rows": 1,
+        "contentHash": "0273b07c26b9166c35cc52bbb674fde6"
+      },
+      {
+        "table": "nf_precision_cad_commercial_input_artifacts",
+        "rows": 2,
+        "contentHash": "85fcd30a6865607cd8e4adacc1808cd3"
+      },
+      {
+        "table": "nf_precision_cad_commercial_native_parser_receipts",
+        "rows": 1,
+        "contentHash": "1c575ee75367b1015c81377dadce6242"
+      },
+      {
+        "table": "nf_precision_cad_commercial_outbox",
+        "rows": 2,
+        "contentHash": "8725b9fe44714c13eaa58c8cbb5abec5"
+      },
+      {
+        "table": "nf_precision_cad_commercial_output_intents",
+        "rows": 3,
+        "contentHash": "a4490586caa1bf82266db3aae72c5132"
+      },
+      {
+        "table": "nf_precision_cad_commercial_persistence_receipts",
+        "rows": 1,
+        "contentHash": "1d3fff557b7962d2119c3254e37f0534"
+      },
+      {
+        "table": "nf_precision_cad_commercial_worker_artifacts",
+        "rows": 3,
+        "contentHash": "622a63a936983936fd7b9e106a3d83b2"
+      },
+      {
+        "table": "nf_precision_cad_commercial_workspace_commits",
+        "rows": 1,
+        "contentHash": "7f139e71058a4db97c0e83b1f00f0a3f"
+      },
+      {
+        "table": "nf_precision_cad_execution_events",
+        "rows": 4,
+        "contentHash": "9fc87be90512ba91f13c3678ab0dd9c5"
+      },
+      {
+        "table": "nf_precision_cad_execution_journal",
+        "rows": 2,
+        "contentHash": "f8909a1e74046a38e32cbfd0ad233733"
+      },
+      {
+        "table": "nf_precision_cad_result_artifacts",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_precision_cad_tool_claims",
+        "rows": 2,
+        "contentHash": "8541ccd3fdd066a0c01b6fde230b5684"
+      },
+      {
+        "table": "nf_precision_cad_worker_receipts",
+        "rows": 1,
+        "contentHash": "bc928079e0375891523e5fd95c0d7328"
+      },
+      {
+        "table": "nf_project_invites",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_project_members",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_projects",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_quote_reject_log",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_quotes",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_refresh_tokens",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_releases",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_remote_agent_states",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_remote_agent_tool_claims",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_reviews_data",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_rfq_templates",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_rfqs",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_rma",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_schema_migrations",
+        "rows": 18,
+        "contentHash": "6d3a2d8a007757649499e8700d2a6aa5"
+      },
+      {
+        "table": "nf_security_alerts",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_sessions",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_settlements",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_shares",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_shipments",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_slack_integrations",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_spatial_cad_draft_heads",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_spatial_cad_drafts",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_spatial_cad_issues",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_spatial_cad_jobs",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_sso_config",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_stage_event",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_support_tickets",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_tax_invoices_kr",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_team_invites",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_team_members",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_teams",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_thread_messages",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_toss_billing_keys",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_usage_events",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_user_billing_profile",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_user_roles",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_users",
+        "rows": 1,
+        "contentHash": "b051b22f3f89cb10a010ab25ca4a27c9"
+      },
+      {
+        "table": "nf_verification_codes",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_waitlist",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_webauthn_credentials",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_webhook_events",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_webhook_subscriptions",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_workspace_members",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "nf_workspaces",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "table": "partner_applications",
+        "rows": 0,
+        "contentHash": "d41d8cd98f00b204e9800998ecf8427e"
+      }
+    ],
+    "foreignKeys": {
+      "count": 83,
+      "orphanRows": 0,
+      "failures": [],
+      "integrityOk": true,
+      "ok": true
+    },
+    "businessRowsPreserved": true,
+    "businessDataSha256": "abf7248f91a28a1ab185e92c15cd3043a44626072ca27657a8360fb4409c278e",
+    "businessDifferences": []
+  },
+  "objectStorage": {
+    "schema": "nexyfab.object-storage-isolated-restore-drill.v1",
+    "status": "PASS",
+    "safety": {
+      "sourceWasReadOnly": true,
+      "sourceUnchanged": true,
+      "backupPrefixInitiallyEmpty": true,
+      "restorePrefixInitiallyEmpty": true,
+      "roleIdentitiesDistinct": true,
+      "noOverwriteWrites": true
+    },
+    "databaseBindings": {
+      "count": 8,
+      "byKind": {
+        "artifact_snapshot": 3,
+        "committed_output": 3,
+        "immutable_input": 2
+      },
+      "manifestSha256": "f4c1275d00550d9708e748dd3752a0868d5577fcefec0958aa2b241b8bc15d2e",
+      "allMatched": true
+    },
+    "protection": {
+      "releaseBoundRequired": false,
+      "failureDomainDistinct": false,
+      "versioningEnabled": false,
+      "objectLockEnabled": false,
+      "defaultRetentionMode": null,
+      "defaultRetentionDays": null,
+      "defaultRetentionYears": null,
+      "kmsEncryptionVerified": false,
+      "kmsKeyIdSha256": null
+    },
+    "source": {
+      "endpointSha256": "0e64bf3d20ec731df61ecfd8b55ac19848ea54d3b0e31fbf7e4c0e770dcdeceb",
+      "region": "us-east-1",
+      "bucket": "nexyfab-local-durability",
+      "prefix": "private/",
+      "objectCount": 8,
+      "totalBytes": 8580,
+      "manifestSha256": "f016160b7e9b77a5f2019c37d041d181b4942bc0541ad213a2107705e5690f7c",
+      "objects": [
+        {
+          "keySha256": "8447eadb4c52414030db9a8aa82f09601acaf6236e2656cb6ffac727d806072e",
+          "bytes": 917,
+          "contentSha256": "b5f13c0f3e9495254605a83dee98ed0e0c37c3e8d8016eb91bf118e0e93fbb26"
+        },
+        {
+          "keySha256": "4410e8806caa724b99b618b72b8362dd10588a5780e99a6621e2627c734dd9be",
+          "bytes": 881,
+          "contentSha256": "1102d5aa81e5fd39eb9cd4bf461d2eb159dd2352772d2f7c73d65a57745f840d"
+        },
+        {
+          "keySha256": "e18ce94c104cbb500fcfa15d28d1d1a2bdcfdd2d6b3550134d59ae7527d176d4",
+          "bytes": 119,
+          "contentSha256": "169486a45e08fdb533a04d3f1f6eb1be697e94e2589e4764292a95610a542af8"
+        },
+        {
+          "keySha256": "314c7f6f19bc54369c5ccbf02440c956a05713e15b45eb69474757117228bf90",
+          "bytes": 2477,
+          "contentSha256": "0557a3ae70ebc99868726fdb15d58a81af50f1b8965733eaedae28007b8dff52"
+        },
+        {
+          "keySha256": "2114413839b5e3ee096df13c6b21e6477c093a231e9bd935c299b7a75d387689",
+          "bytes": 795,
+          "contentSha256": "35344cad1b44498914413f7242360a22c40344d3edba4059072470b52ba09095"
+        },
+        {
+          "keySha256": "4827d8a0fde90823315fc00a3034081d5b228310487b6bd2e40387ec133c300c",
+          "bytes": 119,
+          "contentSha256": "169486a45e08fdb533a04d3f1f6eb1be697e94e2589e4764292a95610a542af8"
+        },
+        {
+          "keySha256": "6e33896b721ba6731f06ec41b4b412f0631e4e66063dade3363464adcefcebc1",
+          "bytes": 2477,
+          "contentSha256": "0557a3ae70ebc99868726fdb15d58a81af50f1b8965733eaedae28007b8dff52"
+        },
+        {
+          "keySha256": "ad81906ec4d42e7c9593c47b44160a659e5b1bb9dce6ae45a4bafd25e758137c",
+          "bytes": 795,
+          "contentSha256": "35344cad1b44498914413f7242360a22c40344d3edba4059072470b52ba09095"
+        }
+      ]
+    },
+    "backup": {
+      "endpointSha256": "0e64bf3d20ec731df61ecfd8b55ac19848ea54d3b0e31fbf7e4c0e770dcdeceb",
+      "region": "us-east-1",
+      "bucket": "nexyfab-local-backup",
+      "prefix": "backup/c54e6f607e13878b0adfcf7b64f9b8c0d9873975/",
+      "objectCount": 8,
+      "totalBytes": 8580,
+      "manifestSha256": "f016160b7e9b77a5f2019c37d041d181b4942bc0541ad213a2107705e5690f7c",
+      "objects": [
+        {
+          "keySha256": "8447eadb4c52414030db9a8aa82f09601acaf6236e2656cb6ffac727d806072e",
+          "bytes": 917,
+          "contentSha256": "b5f13c0f3e9495254605a83dee98ed0e0c37c3e8d8016eb91bf118e0e93fbb26"
+        },
+        {
+          "keySha256": "4410e8806caa724b99b618b72b8362dd10588a5780e99a6621e2627c734dd9be",
+          "bytes": 881,
+          "contentSha256": "1102d5aa81e5fd39eb9cd4bf461d2eb159dd2352772d2f7c73d65a57745f840d"
+        },
+        {
+          "keySha256": "e18ce94c104cbb500fcfa15d28d1d1a2bdcfdd2d6b3550134d59ae7527d176d4",
+          "bytes": 119,
+          "contentSha256": "169486a45e08fdb533a04d3f1f6eb1be697e94e2589e4764292a95610a542af8"
+        },
+        {
+          "keySha256": "314c7f6f19bc54369c5ccbf02440c956a05713e15b45eb69474757117228bf90",
+          "bytes": 2477,
+          "contentSha256": "0557a3ae70ebc99868726fdb15d58a81af50f1b8965733eaedae28007b8dff52"
+        },
+        {
+          "keySha256": "2114413839b5e3ee096df13c6b21e6477c093a231e9bd935c299b7a75d387689",
+          "bytes": 795,
+          "contentSha256": "35344cad1b44498914413f7242360a22c40344d3edba4059072470b52ba09095"
+        },
+        {
+          "keySha256": "4827d8a0fde90823315fc00a3034081d5b228310487b6bd2e40387ec133c300c",
+          "bytes": 119,
+          "contentSha256": "169486a45e08fdb533a04d3f1f6eb1be697e94e2589e4764292a95610a542af8"
+        },
+        {
+          "keySha256": "6e33896b721ba6731f06ec41b4b412f0631e4e66063dade3363464adcefcebc1",
+          "bytes": 2477,
+          "contentSha256": "0557a3ae70ebc99868726fdb15d58a81af50f1b8965733eaedae28007b8dff52"
+        },
+        {
+          "keySha256": "ad81906ec4d42e7c9593c47b44160a659e5b1bb9dce6ae45a4bafd25e758137c",
+          "bytes": 795,
+          "contentSha256": "35344cad1b44498914413f7242360a22c40344d3edba4059072470b52ba09095"
+        }
+      ],
+      "exactSourceMatch": true
+    },
+    "restored": {
+      "endpointSha256": "0e64bf3d20ec731df61ecfd8b55ac19848ea54d3b0e31fbf7e4c0e770dcdeceb",
+      "region": "us-east-1",
+      "bucket": "nexyfab-local-restore-drill",
+      "prefix": "restore-drill/c54e6f607e13878b0adfcf7b64f9b8c0d9873975/",
+      "objectCount": 8,
+      "totalBytes": 8580,
+      "manifestSha256": "f016160b7e9b77a5f2019c37d041d181b4942bc0541ad213a2107705e5690f7c",
+      "objects": [
+        {
+          "keySha256": "8447eadb4c52414030db9a8aa82f09601acaf6236e2656cb6ffac727d806072e",
+          "bytes": 917,
+          "contentSha256": "b5f13c0f3e9495254605a83dee98ed0e0c37c3e8d8016eb91bf118e0e93fbb26"
+        },
+        {
+          "keySha256": "4410e8806caa724b99b618b72b8362dd10588a5780e99a6621e2627c734dd9be",
+          "bytes": 881,
+          "contentSha256": "1102d5aa81e5fd39eb9cd4bf461d2eb159dd2352772d2f7c73d65a57745f840d"
+        },
+        {
+          "keySha256": "e18ce94c104cbb500fcfa15d28d1d1a2bdcfdd2d6b3550134d59ae7527d176d4",
+          "bytes": 119,
+          "contentSha256": "169486a45e08fdb533a04d3f1f6eb1be697e94e2589e4764292a95610a542af8"
+        },
+        {
+          "keySha256": "314c7f6f19bc54369c5ccbf02440c956a05713e15b45eb69474757117228bf90",
+          "bytes": 2477,
+          "contentSha256": "0557a3ae70ebc99868726fdb15d58a81af50f1b8965733eaedae28007b8dff52"
+        },
+        {
+          "keySha256": "2114413839b5e3ee096df13c6b21e6477c093a231e9bd935c299b7a75d387689",
+          "bytes": 795,
+          "contentSha256": "35344cad1b44498914413f7242360a22c40344d3edba4059072470b52ba09095"
+        },
+        {
+          "keySha256": "4827d8a0fde90823315fc00a3034081d5b228310487b6bd2e40387ec133c300c",
+          "bytes": 119,
+          "contentSha256": "169486a45e08fdb533a04d3f1f6eb1be697e94e2589e4764292a95610a542af8"
+        },
+        {
+          "keySha256": "6e33896b721ba6731f06ec41b4b412f0631e4e66063dade3363464adcefcebc1",
+          "bytes": 2477,
+          "contentSha256": "0557a3ae70ebc99868726fdb15d58a81af50f1b8965733eaedae28007b8dff52"
+        },
+        {
+          "keySha256": "ad81906ec4d42e7c9593c47b44160a659e5b1bb9dce6ae45a4bafd25e758137c",
+          "bytes": 795,
+          "contentSha256": "35344cad1b44498914413f7242360a22c40344d3edba4059072470b52ba09095"
+        }
+      ],
+      "exactSourceMatch": true
+    },
+    "limits": {
+      "maxObjects": 10000,
+      "maxTotalBytes": 10737418240,
+      "maxObjectBytes": 134217728
+    }
+  },
+  "timing": {
+    "drillStartedAt": "2026-08-25T13:14:40.652Z",
+    "backupCapturedAt": "2026-08-25T13:14:41.102Z",
+    "restoreStartedAt": "2026-08-25T13:14:41.635Z",
+    "objectRestoreStartedAt": "2026-08-25T13:14:53.673Z",
+    "completedAt": "2026-08-25T13:14:54.664Z"
+  },
+  "objectives": {
+    "rpoAgeAtDrillStartMs": 0,
+    "rtoRestoreMigrateValidateMs": 13029,
+    "rtoObjectRestoreValidateMs": 991,
+    "totalDrillMs": 14012,
+    "measurement": "wall_clock"
+  },
+  "claimBoundary": {
+    "evidenceClass": "local-fixture",
+    "localFixture": true,
+    "releaseBoundObservation": false,
+    "crossStorePointInTimeConsistencyVerified": true,
+    "privateBetaEligible": false,
+    "commercialGaEligible": false
+  },
+  "sha256": "575c30ebded3337f0cb9b50e24898bad30ddfd0746b1cb6fffb6c847b85a6b5d"
+}

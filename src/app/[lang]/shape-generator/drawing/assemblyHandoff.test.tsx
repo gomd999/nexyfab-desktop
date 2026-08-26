@@ -139,4 +139,32 @@ describe('drawing page assembly handoff', () => {
     expect(screen.queryByTestId('drawing-assembly-bom-canvas')).not.toBeInTheDocument();
     expect(screen.getByTestId('drawing-manufacturing-readiness')).toHaveTextContent('BLOCKED');
   });
+
+  it.each([
+    ['ko', '어셈블리 도면 핸드오프 상태', '리비전에 연결된 어셈블리 핸드오프'],
+    ['en', 'Assembly drawing handoff status', 'Revision-bound assembly handoff'],
+    ['ja', 'アセンブリ図面の引き継ぎ状態', 'リビジョンに紐づくアセンブリ引き継ぎ'],
+    ['zh', '装配图交接状态', '与修订版绑定的装配体交接'],
+    ['es', 'Estado de entrega del plano de ensamblaje', 'Entrega del ensamblaje vinculada a la revisión'],
+    ['ar', 'حالة تسليم رسم التجميع', 'تسليم التجميع المرتبط بالمراجعة'],
+  ] as const)('localizes the handoff status for %s', async (lang, ariaLabel, heading) => {
+    const state = {
+      parts: [{
+        id: 'housing', name: 'Housing', partTemplateId: 'housing',
+        position: { x: 0, y: 0, z: 0 }, orientation: IDENTITY_QUAT, fixed: true,
+      }],
+      mates: [],
+    };
+    const handoff = await buildAssemblyDrawingHandoff({
+      state,
+      featureTrees: { housing: tree },
+    });
+    writeAssemblyDrawingHandoff(handoff);
+
+    render(<DrawingPageContent lang={lang} handoffId={handoff.handoffId} />);
+
+    const status = await screen.findByTestId('drawing-handoff-status');
+    expect(status).toHaveAttribute('aria-label', ariaLabel);
+    expect(status).toHaveTextContent(heading);
+  });
 });

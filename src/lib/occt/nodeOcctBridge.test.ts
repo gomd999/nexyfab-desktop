@@ -528,6 +528,183 @@ describe("nodeOcctBridge (real OCCT)", () => {
     expect(r.error).toMatch(/\(0, 90\)/);
   });
 
+  it("K7: uniform scale is native analytic B-Rep and survives STEP roundtrip", async () => {
+    if (!okLoad || !bridge.uniformScale) return;
+    const box = await bridge.buildFromExtrude({
+      kind: "extrude",
+      loop: SQ(0, 10),
+      depth: 5,
+      direction: "one_sided",
+      mode: "add",
+    });
+    expect(box.ok).toBe(true);
+    const before = await bridge.inspectShapeDetailed!(box.shape!);
+    const scaled = await bridge.uniformScale(box.shape!, 2);
+    expect(scaled.ok).toBe(true);
+    const after = await bridge.inspectShapeDetailed!(scaled.shape!);
+    expect(after.valid).toBe(true);
+    expect(after.solidCount).toBe(1);
+    expect(after.absoluteVolume).toBeCloseTo(before.absoluteVolume * 8, 5);
+    expect(after.bbox.min.x).toBeCloseTo(before.bbox.min.x * 2, 5);
+    expect(after.bbox.max.x).toBeCloseTo(before.bbox.max.x * 2, 5);
+    expect(after.bbox.max.z).toBeCloseTo(before.bbox.max.z * 2, 5);
+    const step = await bridge.exportSTEP!(scaled.shape!);
+    expect(step).toContain("ADVANCED_BREP_SHAPE_REPRESENTATION");
+    const imported = await bridge.importSTEP!(step);
+    expect(imported.ok).toBe(true);
+    const roundtrip = await bridge.inspectShapeDetailed!(imported.shape!);
+    expect(roundtrip.valid).toBe(true);
+    expect(roundtrip.absoluteVolume).toBeCloseTo(after.absoluteVolume, 5);
+    expect(roundtrip.bbox.max.z).toBeCloseTo(after.bbox.max.z, 5);
+  });
+
+  it("K7: translated move-copy preserves analytic B-Rep and survives STEP roundtrip", async () => {
+    if (!okLoad || !bridge.translate) return;
+    const box = await bridge.buildFromExtrude({
+      kind: "extrude",
+      loop: SQ(0, 10),
+      depth: 5,
+      direction: "one_sided",
+      mode: "add",
+    });
+    const before = await bridge.inspectShapeDetailed!(box.shape!);
+    const moved = await bridge.translate(box.shape!, [25, -7, 11]);
+    expect(moved.ok).toBe(true);
+    const after = await bridge.inspectShapeDetailed!(moved.shape!);
+    expect(after.valid).toBe(true);
+    expect(after.solidCount).toBe(before.solidCount);
+    expect(after.faceCount).toBe(before.faceCount);
+    expect(after.edgeCount).toBe(before.edgeCount);
+    expect(after.absoluteVolume).toBeCloseTo(before.absoluteVolume, 6);
+    expect(after.bbox.min.x).toBeCloseTo(before.bbox.min.x + 25, 5);
+    expect(after.bbox.min.y).toBeCloseTo(before.bbox.min.y - 7, 5);
+    expect(after.bbox.min.z).toBeCloseTo(before.bbox.min.z + 11, 5);
+    const step = await bridge.exportSTEP!(moved.shape!);
+    expect(step).toContain("ADVANCED_BREP_SHAPE_REPRESENTATION");
+    const imported = await bridge.importSTEP!(step);
+    expect(imported.ok).toBe(true);
+    const roundtrip = await bridge.inspectShapeDetailed!(imported.shape!);
+    expect(roundtrip.valid).toBe(true);
+    expect(roundtrip.absoluteVolume).toBeCloseTo(after.absoluteVolume, 6);
+    expect(roundtrip.bbox.min.x).toBeCloseTo(after.bbox.min.x, 5);
+  });
+
+  it("K7: native Z-axis rotation preserves volume/topology and survives STEP roundtrip", async () => {
+    if (!okLoad || !bridge.rotate) return;
+    const box = await bridge.buildFromExtrude({
+      kind: "extrude", loop: SQ(0, 10), depth: 5, direction: "one_sided", mode: "add",
+    });
+    expect(box.ok).toBe(true);
+    const before = await bridge.inspectShapeDetailed!(box.shape!);
+    const rotated = await bridge.rotate(box.shape!, [0, 0, 0], [0, 0, 1], 90);
+    expect(rotated.ok).toBe(true);
+    const after = await bridge.inspectShapeDetailed!(rotated.shape!);
+    expect(after.valid).toBe(true);
+    expect(after.solidCount).toBe(before.solidCount);
+    expect(after.faceCount).toBe(before.faceCount);
+    expect(after.edgeCount).toBe(before.edgeCount);
+    expect(after.absoluteVolume).toBeCloseTo(before.absoluteVolume, 6);
+    expect(after.bbox.min.x).toBeCloseTo(-10, 5);
+    expect(after.bbox.max.x).toBeCloseTo(0, 5);
+    expect(after.bbox.min.y).toBeCloseTo(0, 5);
+    expect(after.bbox.max.y).toBeCloseTo(10, 5);
+    expect(after.bbox.min.z).toBeCloseTo(before.bbox.min.z, 5);
+    expect(after.bbox.max.z).toBeCloseTo(before.bbox.max.z, 5);
+    const step = await bridge.exportSTEP!(rotated.shape!);
+    expect(step).toContain("ADVANCED_BREP_SHAPE_REPRESENTATION");
+    const imported = await bridge.importSTEP!(step);
+    expect(imported.ok).toBe(true);
+    const roundtrip = await bridge.inspectShapeDetailed!(imported.shape!);
+    expect(roundtrip.valid).toBe(true);
+    expect(roundtrip.solidCount).toBe(1);
+    expect(roundtrip.absoluteVolume).toBeCloseTo(after.absoluteVolume, 6);
+    expect(roundtrip.bbox.min.x).toBeCloseTo(after.bbox.min.x, 5);
+    await expect(bridge.rotate(box.shape!, [0, 0, 0], [0, 0, 0], 90)).resolves.toMatchObject({ ok: false });
+    await expect(bridge.rotate(box.shape!, [0, 0, 0], [0, 0, 1], 0)).resolves.toMatchObject({ ok: false });
+    await expect(bridge.rotate(box.shape!, [0, 0, 0], [0, 0, 1], 361)).resolves.toMatchObject({ ok: false });
+    await expect(bridge.rotate(box.shape!, [1_000_001, 0, 0], [0, 0, 1], 90)).resolves.toMatchObject({ ok: false });
+  });
+
+  it("K8: native convex-section loft is one closed solid and survives STEP roundtrip", async () => {
+    if (!okLoad || !bridge.buildLoftSections) return;
+    const loft = await bridge.buildLoftSections([
+      { z: 0, loop: [{ x: 0, y: 0 }, { x: 10, y: 0 }, { x: 10, y: 8 }, { x: 0, y: 8 }] },
+      { z: 5, loop: [{ x: 2, y: 1 }, { x: 14, y: 1 }, { x: 14, y: 11 }, { x: 2, y: 11 }] },
+      { z: 10, loop: [{ x: 4, y: 2 }, { x: 12, y: 2 }, { x: 12, y: 9 }, { x: 4, y: 9 }] },
+    ]);
+    expect(loft.ok, loft.error).toBe(true);
+    expect(loft.shape?.kind).toBe("solid");
+    const detail = await bridge.inspectShapeDetailed!(loft.shape!);
+    expect(detail.valid).toBe(true);
+    expect(detail.solidCount).toBe(1);
+    expect(detail.absoluteVolume).toBeGreaterThan(0);
+    expect(detail.bbox.min.x).toBeCloseTo(0, 5);
+    expect(detail.bbox.max.x).toBeCloseTo(14, 5);
+    expect(detail.bbox.min.y).toBeCloseTo(0, 5);
+    expect(detail.bbox.max.y).toBeCloseTo(11, 5);
+    expect(detail.bbox.min.z).toBeCloseTo(0, 5);
+    expect(detail.bbox.max.z).toBeCloseTo(10, 5);
+    expect(detail.faceAdjacency.status).toBe("available");
+    if (detail.faceAdjacency.status === "available") {
+      expect(detail.faceAdjacency.boundaryEdgeCount).toBe(0);
+      expect(detail.faceAdjacency.nonManifoldEdgeCount).toBe(0);
+    }
+    const step = await bridge.exportSTEP!(loft.shape!);
+    const imported = await bridge.importSTEP!(step);
+    expect(imported.ok).toBe(true);
+    const roundtrip = await bridge.inspectShapeDetailed!(imported.shape!);
+    expect(roundtrip.valid).toBe(true);
+    expect(roundtrip.solidCount).toBe(1);
+    expect(roundtrip.absoluteVolume).toBeCloseTo(detail.absoluteVolume, 5);
+    expect(roundtrip.bbox.min.x).toBeCloseTo(detail.bbox.min.x, 5);
+    expect(roundtrip.bbox.max.z).toBeCloseTo(detail.bbox.max.z, 5);
+  });
+
+  it("K8: loft rejects unsafe or incompatible sections", async () => {
+    if (!okLoad || !bridge.buildLoftSections) return;
+    const square = [{ x: 0, y: 0 }, { x: 10, y: 0 }, { x: 10, y: 10 }, { x: 0, y: 10 }];
+    const valid = (sections: Parameters<NonNullable<OcctBridge["buildLoftSections"]>>[0]) => bridge.buildLoftSections!(sections);
+    await expect(valid([{ z: 0, loop: square }, { z: 0, loop: square }])).resolves.toMatchObject({ ok: false });
+    await expect(valid([{ z: 0, loop: [{ x: 0, y: 0 }, { x: 10, y: 0 }, { x: 2, y: 2 }, { x: 0, y: 10 }] }, { z: 1, loop: square }])).resolves.toMatchObject({ ok: false });
+    await expect(valid([{ z: 0, loop: square }, { z: 1, loop: [...square, { x: 3, y: 3 }] }])).resolves.toMatchObject({ ok: false });
+    await expect(valid([{ z: 0, loop: square }, { z: 1, loop: [...square].reverse() }])).resolves.toMatchObject({ ok: false });
+    await expect(valid([{ z: 0, loop: Array.from({ length: 33 }, (_, i) => ({ x: Math.cos(i), y: Math.sin(i) })) }, { z: 1, loop: Array.from({ length: 33 }, (_, i) => ({ x: Math.cos(i), y: Math.sin(i) })) }])).resolves.toMatchObject({ ok: false });
+    await expect(valid([{ z: Number.NaN, loop: square }, { z: 1, loop: square }])).resolves.toMatchObject({ ok: false });
+  });
+
+  it("K7: plane mirror is native analytic B-Rep and survives STEP roundtrip", async () => {
+    if (!okLoad || !bridge.mirror) return;
+    const box = await bridge.buildFromExtrude({
+      kind: "extrude",
+      loop: SQ(0, 10),
+      depth: 5,
+      direction: "one_sided",
+      mode: "add",
+    });
+    const before = await bridge.inspectShapeDetailed!(box.shape!);
+    const mirrored = await bridge.mirror(box.shape!, [20, 0, 0], [4, 0, 0]);
+    expect(mirrored.ok).toBe(true);
+    const after = await bridge.inspectShapeDetailed!(mirrored.shape!);
+    expect(after.valid).toBe(true);
+    expect(after.solidCount).toBe(before.solidCount);
+    expect(after.faceCount).toBe(before.faceCount);
+    expect(after.edgeCount).toBe(before.edgeCount);
+    expect(after.absoluteVolume).toBeCloseTo(before.absoluteVolume, 6);
+    expect(after.bbox.min.x).toBeCloseTo(30, 5);
+    expect(after.bbox.max.x).toBeCloseTo(40, 5);
+    expect(after.bbox.min.y).toBeCloseTo(before.bbox.min.y, 5);
+    expect(after.bbox.max.z).toBeCloseTo(before.bbox.max.z, 5);
+    const step = await bridge.exportSTEP!(mirrored.shape!);
+    expect(step).toContain("ADVANCED_BREP_SHAPE_REPRESENTATION");
+    const imported = await bridge.importSTEP!(step);
+    expect(imported.ok).toBe(true);
+    const roundtrip = await bridge.inspectShapeDetailed!(imported.shape!);
+    expect(roundtrip.valid).toBe(true);
+    expect(roundtrip.absoluteVolume).toBeCloseTo(after.absoluteVolume, 6);
+    expect(roundtrip.bbox.min.x).toBeCloseTo(after.bbox.min.x, 5);
+    await expect(bridge.mirror(box.shape!, [0, 0, 0], [0, 0, 0])).resolves.toMatchObject({ ok: false });
+  });
+
   it("K3: fillet sel:all rounds every edge", async () => {
     if (!okLoad) return;
     const box = await bridge.buildFromExtrude({
@@ -928,6 +1105,40 @@ describe("nodeOcctBridge (real OCCT)", () => {
     expect(sec.error).toMatch(/do not intersect/);
   });
 
+  it("K7: a top-face rectangular rib fuses into one analytic solid and round-trips STEP", async () => {
+    if (!okLoad || !bridge.buildPrismAt) return;
+    const host = await bridge.buildFromExtrude({
+      kind: "extrude",
+      loop: SQ(0, 20),
+      depth: 5,
+      direction: "one_sided",
+      mode: "add",
+    });
+    const rib = await bridge.buildPrismAt([
+      { x: 5, y: 11 }, { x: 15, y: 11 }, { x: 15, y: 9 }, { x: 5, y: 9 },
+    ], 5, 3);
+    expect(rib.ok, rib.error).toBe(true);
+    const fused = await bridge.boolean.union(host.shape!, rib.shape!, {
+      baseId: "rib-host", toolId: "rib-solid", opId: "rib-test",
+    });
+    expect(fused.ok, fused.error).toBe(true);
+    const inspection = await bridge.inspectShapeDetailed!(fused.shape!);
+    expect(inspection.valid).toBe(true);
+    expect(inspection.solidCount).toBe(1);
+    expect(inspection.absoluteVolume).toBeCloseTo(20 * 20 * 5 + 10 * 2 * 3, 5);
+    expect(inspection.bbox.min.z).toBeCloseTo(0, 5);
+    expect(inspection.bbox.max.z).toBeCloseTo(8, 5);
+    const step = await bridge.exportSTEP!(fused.shape!);
+    expect(step).toContain("ADVANCED_BREP_SHAPE_REPRESENTATION");
+    const imported = await bridge.importSTEP!(step);
+    expect(imported.ok, imported.error).toBe(true);
+    const roundtrip = await bridge.inspectShapeDetailed!(imported.shape!);
+    expect(roundtrip.valid).toBe(true);
+    expect(roundtrip.solidCount).toBe(1);
+    expect(roundtrip.absoluteVolume).toBeCloseTo(inspection.absoluteVolume, 5);
+    expect(roundtrip.bbox.max.z).toBeCloseTo(inspection.bbox.max.z, 5);
+  }, 60_000);
+
   it("K11: exact cylindrical helix sweep cuts a BREP thread and survives STEP export", async () => {
     if (!okLoad) return;
     expect(bridge.buildThreadHelixCutter).toBeTypeOf("function");
@@ -951,5 +1162,207 @@ describe("nodeOcctBridge (real OCCT)", () => {
     expect(threaded.shape!.volume).toBeLessThan(rod.shape!.volume!);
     const step = await bridge.exportSTEP(threaded.shape!);
     expect(step).toContain("ADVANCED_BREP_SHAPE_REPRESENTATION");
+  }, 60_000);
+
+  it("K12: a true orthogonal polyline sweep is a closed solid and survives STEP roundtrip", async () => {
+    if (!okLoad) return;
+    expect(bridge.buildOrthogonalPolylineSweep).toBeTypeOf("function");
+    const swept = await bridge.buildOrthogonalPolylineSweep!({
+      path: [[0, 0, 0], [20, 0, 0], [20, 0, 15]],
+      widthMm: 2,
+      heightMm: 2,
+    });
+    expect(swept.ok, swept.error).toBe(true);
+    expect(swept.shape?.kind).toBe("solid");
+    expect(swept.warnings).toContain("exact OCCT non-straight orthogonal polyline sweep");
+    const detail = await bridge.inspectShapeDetailed!(swept.shape!);
+    expect(detail.valid).toBe(true);
+    expect(detail.solidCount).toBe(1);
+    expect(detail.absoluteVolume).toBeGreaterThan(0);
+    expect(detail.faceAdjacency.status).toBe("available");
+    if (detail.faceAdjacency.status === "available") {
+      expect(detail.faceAdjacency.boundaryEdgeCount).toBe(0);
+      expect(detail.faceAdjacency.nonManifoldEdgeCount).toBe(0);
+    }
+    expect(detail.bbox.min.x).toBeGreaterThanOrEqual(-1.001);
+    expect(detail.bbox.max.x).toBeLessThanOrEqual(21.001);
+    expect(detail.bbox.min.z).toBeGreaterThanOrEqual(-1.001);
+    expect(detail.bbox.max.z).toBeLessThanOrEqual(16.001);
+    const step = await bridge.exportSTEP!(swept.shape!);
+    expect(step).toContain("ADVANCED_BREP_SHAPE_REPRESENTATION");
+    const imported = await bridge.importSTEP!(step);
+    expect(imported.ok, imported.error).toBe(true);
+    const roundtrip = await bridge.inspectShapeDetailed!(imported.shape!);
+    expect(roundtrip.valid).toBe(true);
+    expect(roundtrip.solidCount).toBe(1);
+    expect(roundtrip.absoluteVolume).toBeCloseTo(detail.absoluteVolume, 6);
+
+    await expect(bridge.buildOrthogonalPolylineSweep!({
+      path: [[0, 0, 0], [20, 0, 0], [30, 0, 0]],
+      widthMm: 2,
+      heightMm: 2,
+    })).resolves.toMatchObject({ ok: false });
+    await expect(bridge.buildOrthogonalPolylineSweep!({
+      path: [[0, 0, 0], [4, 0, 0], [4, 0, 4]],
+      widthMm: 4,
+      heightMm: 4,
+    })).resolves.toMatchObject({ ok: false });
+  }, 60_000);
+
+  it("K13: an idealized constant-thickness circular sheet bend is analytic and survives STEP roundtrip", async () => {
+    if (!okLoad) return;
+    expect(bridge.buildSingleRectangularSheetBend).toBeTypeOf("function");
+    const parameters = {
+      fixedLengthMm: 20,
+      straightLengthMm: 10,
+      widthMm: 30,
+      thicknessMm: 2,
+      innerRadiusMm: 3,
+      angleDeg: 90,
+    } as const;
+    const bent = await bridge.buildSingleRectangularSheetBend!(parameters);
+    expect(bent.ok, bent.error).toBe(true);
+    expect(bent.shape?.kind).toBe("solid");
+    expect(bent.warnings).toContain("exact OCCT idealized constant-thickness circular sheet bend");
+    const detail = await bridge.inspectShapeDetailed!(bent.shape!);
+    const neutralArcLength = Math.PI / 2 * (parameters.innerRadiusMm + parameters.thicknessMm / 2);
+    const expectedVolume = parameters.widthMm * parameters.thicknessMm
+      * (parameters.fixedLengthMm + parameters.straightLengthMm + neutralArcLength);
+    expect(detail.valid).toBe(true);
+    expect(detail.solidCount).toBe(1);
+    expect(detail.faceCount).toBe(10);
+    expect(detail.edgeCount).toBe(24);
+    expect(detail.absoluteVolume).toBeCloseTo(expectedVolume, 5);
+    expect(detail.bbox.min.x).toBeCloseTo(-20, 6);
+    expect(detail.bbox.min.y).toBeCloseTo(0, 6);
+    expect(detail.bbox.min.z).toBeCloseTo(0, 6);
+    expect(detail.bbox.max.x).toBeCloseTo(5, 6);
+    expect(detail.bbox.max.y).toBeCloseTo(15, 6);
+    expect(detail.bbox.max.z).toBeCloseTo(30, 6);
+    expect(detail.surfaceTypes).toEqual({ status: "available", counts: { cylinder: 2, plane: 8 } });
+    expect(detail.cylindricalRadii).toHaveLength(2);
+    expect(detail.cylindricalRadii?.[0]).toBeCloseTo(3, 9);
+    expect(detail.cylindricalRadii?.[1]).toBeCloseTo(5, 9);
+    expect(detail.faceAdjacency.status).toBe("available");
+    if (detail.faceAdjacency.status === "available") {
+      expect(detail.faceAdjacency.boundaryEdgeCount).toBe(0);
+      expect(detail.faceAdjacency.nonManifoldEdgeCount).toBe(0);
+    }
+    const step = await bridge.exportSTEP(bent.shape!);
+    expect(step).toContain("ADVANCED_BREP_SHAPE_REPRESENTATION");
+    const imported = await bridge.importSTEP!(step);
+    expect(imported.ok, imported.error).toBe(true);
+    const roundtrip = await bridge.inspectShapeDetailed!(imported.shape!);
+    expect(roundtrip.valid).toBe(true);
+    expect(roundtrip.solidCount).toBe(1);
+    expect(roundtrip.absoluteVolume).toBeCloseTo(detail.absoluteVolume, 6);
+    expect(roundtrip.surfaceTypes).toEqual(detail.surfaceTypes);
+    expect(roundtrip.cylindricalRadii).toHaveLength(2);
+    expect(roundtrip.cylindricalRadii?.[0]).toBeCloseTo(3, 9);
+    expect(roundtrip.cylindricalRadii?.[1]).toBeCloseTo(5, 9);
+
+    await expect(bridge.buildSingleRectangularSheetBend!({ ...parameters, straightLengthMm: 0 }))
+      .resolves.toMatchObject({ ok: false });
+    await expect(bridge.buildSingleRectangularSheetBend!({ ...parameters, angleDeg: 181 }))
+      .resolves.toMatchObject({ ok: false });
+  }, 60_000);
+
+  it("K14: bounded blind-hole faces are actually removed, capped, solidified, and round-tripped", async () => {
+    if (!okLoad) return;
+    expect(bridge.deleteBlindHoleFacesAndCap).toBeTypeOf("function");
+    const hostLoop = [
+      { x: 0, y: 0 }, { x: 40, y: 0 },
+      { x: 40, y: 30 }, { x: 0, y: 30 },
+    ] as const;
+    const host = await bridge.buildFromExtrude({
+      kind: "extrude", loop: hostLoop.map(point => ({ ...point })), depth: 10,
+      direction: "one_sided", mode: "add",
+    });
+    const cutter = await bridge.buildCylinderAt!([20, 15, 4], [0, 0, 1], 3, 6);
+    expect(cutter.ok, cutter.error).toBe(true);
+    const holed = await bridge.boolean.subtract(host.shape!, cutter.shape!, {
+      baseId: "delete-face-host", toolId: "delete-face-hole", opId: "delete-face-cut",
+    });
+    expect(holed.ok, holed.error).toBe(true);
+    const before = await bridge.inspectShapeDetailed!(holed.shape!);
+    expect(before.valid).toBe(true);
+    expect(before).toMatchObject({ solidCount: 1, faceCount: 8 });
+    expect(before.surfaceTypes).toEqual({ status: "available", counts: { cylinder: 1, plane: 7 } });
+    expect(before.absoluteVolume).toBeCloseTo(40 * 30 * 10 - Math.PI * 3 * 3 * 6, 5);
+
+    const repaired = await bridge.deleteBlindHoleFacesAndCap!(holed.shape!, {
+      hostLoop,
+      hostDepthMm: 10,
+      holeCenter: [20, 15],
+      holeRadiusMm: 3,
+      holeDepthMm: 6,
+    });
+    expect(repaired.ok, repaired.error).toBe(true);
+    expect(repaired.warnings).toContain(
+      "exact OCCT blind-hole face removal, topology-preserving planar cap, and solidification",
+    );
+    const after = await bridge.inspectShapeDetailed!(repaired.shape!);
+    expect(after.valid).toBe(true);
+    expect(after).toMatchObject({ solidCount: 1, faceCount: 6, edgeCount: 12 });
+    expect(after.absoluteVolume).toBeCloseTo(40 * 30 * 10, 5);
+    expect(after.surfaceTypes).toEqual({ status: "available", counts: { plane: 6 } });
+    expect(after.cylindricalRadii).toEqual([]);
+    expect(after.faceAdjacency.status).toBe("available");
+    if (after.faceAdjacency.status === "available") {
+      expect(after.faceAdjacency.boundaryEdgeCount).toBe(0);
+      expect(after.faceAdjacency.nonManifoldEdgeCount).toBe(0);
+    }
+
+    const step = await bridge.exportSTEP(repaired.shape!);
+    const imported = await bridge.importSTEP!(step);
+    expect(imported.ok, imported.error).toBe(true);
+    const roundtrip = await bridge.inspectShapeDetailed!(imported.shape!);
+    expect(roundtrip.valid).toBe(true);
+    expect(roundtrip).toMatchObject({ solidCount: 1, faceCount: 6, edgeCount: 12 });
+    expect(roundtrip.absoluteVolume).toBeCloseTo(after.absoluteVolume, 6);
+    expect(roundtrip.surfaceTypes).toEqual({ status: "available", counts: { plane: 6 } });
+
+    await expect(bridge.deleteBlindHoleFacesAndCap!(holed.shape!, {
+      hostLoop, hostDepthMm: 11, holeCenter: [20, 15], holeRadiusMm: 3, holeDepthMm: 6,
+    })).resolves.toMatchObject({ ok: false });
+    await expect(bridge.deleteBlindHoleFacesAndCap!(holed.shape!, {
+      hostLoop, hostDepthMm: 10, holeCenter: [3, 15], holeRadiusMm: 3, holeDepthMm: 6,
+    })).resolves.toMatchObject({ ok: false });
+    await expect(bridge.deleteBlindHoleFacesAndCap!(holed.shape!, {
+      hostLoop, hostDepthMm: 10, holeCenter: [20, 15], holeRadiusMm: 4, holeDepthMm: 6,
+    })).resolves.toMatchObject({ ok: false });
+  }, 60_000);
+
+  it("K15: a native compound preserves two unfused structural members through STEP", async () => {
+    if (!okLoad) return;
+    expect(bridge.makeCompound).toBeTypeOf("function");
+    const primary = await bridge.buildPrismAt!([
+      { x: 0, y: 0 }, { x: 40, y: 0 }, { x: 40, y: 4 }, { x: 0, y: 4 },
+    ], 0, 6);
+    const branch = await bridge.buildPrismAt!([
+      { x: 40, y: 0 }, { x: 45, y: 0 }, { x: 45, y: 30 }, { x: 40, y: 30 },
+    ], 0, 7);
+    expect(primary.ok, primary.error).toBe(true);
+    expect(branch.ok, branch.error).toBe(true);
+    const compound = await bridge.makeCompound!([primary.shape!, branch.shape!]);
+    expect(compound.ok, compound.error).toBe(true);
+    expect(compound.shape?.kind).toBe("compound");
+    expect(compound.warnings).toContain("exact OCCT multi-solid compound; member solids were not fused");
+    const detail = await bridge.inspectShapeDetailed!(compound.shape!);
+    expect(detail.valid).toBe(true);
+    expect(detail).toMatchObject({ solidCount: 2, faceCount: 12, edgeCount: 24 });
+    expect(detail.shapeTypeCounts).toMatchObject({ compound: 1, solid: 2, shell: 2 });
+    expect(detail.absoluteVolume).toBeCloseTo(40 * 4 * 6 + 5 * 30 * 7, 6);
+    expect(detail.surfaceTypes).toEqual({ status: "available", counts: { plane: 12 } });
+
+    const step = await bridge.exportSTEP(compound.shape!);
+    const imported = await bridge.importSTEP!(step);
+    expect(imported.ok, imported.error).toBe(true);
+    const roundtrip = await bridge.inspectShapeDetailed!(imported.shape!);
+    expect(roundtrip.valid).toBe(true);
+    expect(roundtrip.solidCount).toBe(2);
+    expect(roundtrip.absoluteVolume).toBeCloseTo(detail.absoluteVolume, 6);
+    await expect(bridge.makeCompound!([primary.shape!, primary.shape!]))
+      .resolves.toMatchObject({ ok: false });
   }, 60_000);
 });

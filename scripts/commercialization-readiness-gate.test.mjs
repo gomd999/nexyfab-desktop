@@ -5,11 +5,21 @@ import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
 import { authenticatedE2EReceiptEligible, closedBetaIntegrityReceiptEligible, enterpriseSsoReadinessStatus, evaluateCommercializationReadiness, expertReviewReceiptEligible, expertReviewSignoffPayload, largeUploadStagingReadinessStatus, liveSmokeReceiptEligible, productReleaseScopeFor, productionMigrationReceiptEligible, productionProtectedStateReceiptEligible, releaseContractFor, resourceBaselineReceiptEligible, restoreReceiptEligible, sevenDayOperationsReceiptEligible, syntheticCampaignReceiptEligible, windowsSeaReleaseStatus } from './commercialization-readiness-gate.mjs';
-import { buildCommercialSyntheticCampaignReceipt } from './build-commercial-synthetic-campaign-receipt.mjs';
+import {
+  COMMERCIAL_SYNTHETIC_REQUIRED_AXES,
+  buildCommercialSyntheticCampaignReceipt,
+} from './build-commercial-synthetic-campaign-receipt.mjs';
 import { buildRailwayResourceBaseline } from './build-railway-resource-baseline-v2.mjs';
 import { buildOpenScadHttpSmokeReceipt } from './build-openscad-http-smoke-v2.mjs';
 import { buildRailwayStagingIsolationEvidenceV2 } from './build-railway-staging-isolation-evidence-v2.mjs';
 import { buildCommercialSecurityEvidenceReceipt, SECURITY_SOURCE_SPECS } from './build-commercial-security-evidence-receipt-v2.mjs';
+import { STAGING_HOLD_CHECK_IDS, STAGING_HOLD_EXTERNAL_BLOCKERS } from './build-commercial-precision-staging-hold-evidence.mjs';
+import {
+  SECRET_SCAN_EXCLUDED_DERIVED_RECEIPTS,
+  SECRET_SCAN_SCOPE,
+  SECRET_SCAN_TEXT_CANONICALIZATION,
+} from './scan-secrets.mjs';
+import { TEXT_BINDING_CANONICALIZATION } from './canonical-text-binding.mjs';
 import { attachReceiptSha256, sha256 } from './immutable-receipt-binding.mjs';
 import { SPECIALTY_RELEASE_CHANNELS, SPECIALTY_RELEASE_REVIEW_ROLES, attachSpecialtyIndependentReleaseReceiptSha256, specialtyIndependentReleaseCanonical, specialtyIndependentReleaseSha256, specialtyIndependentReleaseTargetSha256, specialtyIndependentReviewerPayload } from './verify-specialty-independent-release-receipt.mjs';
 import { writeArchitectureInteriorRecoveryEvidence } from '../e2e/architecture-interior-recovery-evidence.mjs';
@@ -68,10 +78,13 @@ const complexGroundTruthValidation = {
   byFamily: Object.fromEntries(complexFamilies.map(family => [family, { cases: 20, approved: 20 }])),
   results: complexHoldoutCases.map(item => ({ caseId: item.caseId, family: item.family, status: 'approved', scoreEligible: true })),
 };
-const commercialMigrations = [2026082202, 2026082203, 2026082204, 2026082205, 2026082206, 2026082207, 2026082208];
+const commercialMigrations = [
+  2026082202, 2026082203, 2026082204, 2026082205, 2026082206, 2026082207, 2026082208,
+  2026082301, 2026082401, 2026082402, 2026082403, 2026082501, 2026082502,
+];
 const expertCorpusHash = 'c'.repeat(64);
-const expertRelease = { buildId: 'b', gitHead: '1'.repeat(40) };
-const expertExpectedRelease = { buildId: 'b', head: expertRelease.gitHead };
+const expertRelease = { buildId: 'b'.repeat(40), gitHead: '1'.repeat(40) };
+const expertExpectedRelease = { buildId: 'b'.repeat(40), head: expertRelease.gitHead };
 const expertReviewers = [
   ['reviewer-a', 'domain-reviewer'],
   ['reviewer-b', 'independent-reviewer'],
@@ -111,8 +124,11 @@ function rebindExpertReviewReceipt(releaseChannel) {
   });
   return receipt;
 }
-const releaseBinding = { buildId: 'b', deploymentId: 'd', gitHead: '1'.repeat(40) };
-const expectedReleaseBinding = { buildId: 'b', deploymentId: 'd', head: releaseBinding.gitHead };
+const releaseBinding = {
+  buildId: 'b'.repeat(40), deploymentId: 'd', gitHead: '1'.repeat(40),
+  environment: 'production', service: 'nexyfab.com',
+};
+const expectedReleaseBinding = { buildId: releaseBinding.buildId, deploymentId: 'd', head: releaseBinding.gitHead };
 const evidenceRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'nexyfab-commercial-gate-'));
 const writeEvidence = (name, value) => {
   const target = path.join(evidenceRoot, name);
@@ -132,6 +148,37 @@ const writeBoundEvidence = (name, value) => {
   return { ...binding, bytes: fs.statSync(path.join(evidenceRoot, name)).size };
 };
 const fixtureNow = Date.now();
+const coreStagingHoldReceipt = attachReceiptSha256({
+  schema: 'nexyfab.commercial-precision-staging-hold-evidence.v1',
+  generatedAt: new Date(fixtureNow).toISOString(),
+  status: 'STAGING_HOLD_VERIFIED',
+  ok: true,
+  target: { environment: 'staging', origin: 'https://nexyfab-staging.example.test' },
+  release: {
+    buildId: releaseBinding.buildId,
+    deploymentId: '11111111-2222-3333-4444-555555555555',
+    gitHead: releaseBinding.gitHead,
+    migrationVersion: 2026082502,
+    precisionRuntimeReceiptSha256: '9'.repeat(64),
+  },
+  checks: STAGING_HOLD_CHECK_IDS.map(id => ({ id, pass: true, detail: `${id} passed` })),
+  responseBindings: Object.fromEntries(Object.entries({
+    live: 200, ready: 200, release: 503, forgedClaim: 403,
+    forgedLease: 403, unconfiguredCallback: 503,
+  }).map(([id, status], index) => [id, { status, bodySha256: String(index + 1).repeat(64) }])),
+  decision: {
+    privateBetaEligible: false,
+    commercialGaEligible: false,
+    blockers: [...STAGING_HOLD_EXTERNAL_BLOCKERS],
+  },
+  claimBoundary: {
+    verifiesStagingHoldOnly: true,
+    positiveWorkerExecutionObserved: false,
+    productionRuntimeObserved: false,
+    independentQualificationObserved: false,
+  },
+  redaction: 'Only response status codes, selected non-secret fields, and body SHA-256 bindings are persisted.',
+});
 const resourceSourcePath = writeEvidence('resource-source.json', {
   capturedAt: new Date(fixtureNow - 1_000).toISOString(),
   samples: [{ memoryMb: 420, limitMb: 8192 }, { memoryMb: 488, limitMb: 8192 }],
@@ -144,15 +191,45 @@ const resourceBaselineReceipt = buildRailwayResourceBaseline({
   now: fixtureNow,
 });
 const syntheticCases = [];
+const syntheticCorpusCases = [];
 const syntheticRuns = [];
 for (const domain of Object.keys(syntheticDomains)) {
   for (let caseIndex = 1; caseIndex <= 20; caseIndex++) {
     const caseId = `${domain}-case-${caseIndex}`;
     const sourceHash = createHash('sha256').update(`${domain}:${caseIndex}`).digest('hex');
-    syntheticCases.push({ caseId, domain, sourceHash, split: 'candidate' });
+    const identity = {
+      caseId,
+      domain,
+      sourceHash,
+      templateId: `template-${caseIndex}`,
+      parameters: { caseIndex },
+      artifactHash: createHash('sha256').update(`artifact:${domain}:${caseIndex}`).digest('hex'),
+      artifactSummary: { partCount: caseIndex, roles: ['fixture'] },
+    };
+    syntheticCorpusCases.push({ schema: 'nexyfab.domain-accuracy-candidate.v1', split: 'candidate', ...identity });
+    syntheticCases.push({
+      schema: 'nexyfab.commercial-synthetic-campaign-case.v1',
+      split: 'synthetic',
+      syntheticRequiredAxes: [...COMMERCIAL_SYNTHETIC_REQUIRED_AXES],
+      ...identity,
+    });
     for (let campaign = 1; campaign <= 3; campaign++) {
       for (let repeat = 1; repeat <= 5; repeat++) {
-        syntheticRuns.push({ caseId, domain, sourceHash, campaign, repeat, usedForTuning: false, requiredGatesPassed: true });
+        syntheticRuns.push({
+          schema: 'nexyfab.commercial-synthetic-campaign-run.v1',
+          subject: 'template_rebuild',
+          caseId,
+          domain,
+          sourceHash,
+          campaign,
+          repeat,
+          usedForTuning: false,
+          requiredGatesPassed: true,
+          falseVerified: false,
+          falseClear: false,
+          destructivePartMerge: false,
+          assertions: COMMERCIAL_SYNTHETIC_REQUIRED_AXES.map(axis => ({ axis, status: 'pass', reason: `${axis}_measured` })),
+        });
       }
     }
   }
@@ -161,12 +238,14 @@ const syntheticSourcePath = writeEvidence('synthetic-source.json', { cases: synt
 const syntheticResultsPath = writeEvidence('synthetic-results.json', { results: syntheticRuns });
 const syntheticCorpusPath = writeEvidence('synthetic-corpus.json', {
   schema: 'nexyfab.commercial-validation-corpus.v1',
-  lanes: { synthetic: { cases: syntheticCases } },
+  lanes: { synthetic: { cases: syntheticCorpusCases } },
 });
+const syntheticExecutorPath = writeEvidence('synthetic-executor.mjs', { source: 'bound executor fixture' });
 const syntheticCampaignReceipt = buildCommercialSyntheticCampaignReceipt({
   root: evidenceRoot,
   sourcePath: syntheticSourcePath,
   resultPath: syntheticResultsPath,
+  executorSourcePaths: [syntheticExecutorPath],
   corpusPath: syntheticCorpusPath,
   release: releaseBinding,
   generatedAt: new Date(fixtureNow).toISOString(),
@@ -177,17 +256,19 @@ function scopedSyntheticCampaignReceipt(requiredDomains) {
   const key = [...requiredDomains].sort().join('-');
   if (scopedSyntheticReceipts.has(key)) return scopedSyntheticReceipts.get(key);
   const selectedCases = syntheticCases.filter(item => requiredDomains.includes(item.domain));
+  const selectedCorpusCases = syntheticCorpusCases.filter(item => requiredDomains.includes(item.domain));
   const selectedRuns = syntheticRuns.filter(item => requiredDomains.includes(item.domain));
   const sourcePath = writeEvidence(`synthetic-source-${key}.json`, { cases: selectedCases });
   const resultPath = writeEvidence(`synthetic-results-${key}.json`, { results: selectedRuns });
   const corpusPath = writeEvidence(`synthetic-corpus-${key}.json`, {
     schema: 'nexyfab.commercial-validation-corpus.v1',
-    lanes: { synthetic: { cases: selectedCases } },
+    lanes: { synthetic: { cases: selectedCorpusCases } },
   });
   const receipt = buildCommercialSyntheticCampaignReceipt({
     root: evidenceRoot,
     sourcePath,
     resultPath,
+    executorSourcePaths: [syntheticExecutorPath],
     corpusPath,
     release: releaseBinding,
     requiredDomains,
@@ -233,7 +314,7 @@ const environmentIsolationReceipt = buildRailwayStagingIsolationEvidenceV2({
     variables: Object.fromEntries(Object.entries({ ...isolationCredentials, DATABASE_URL: 'postgres://stage@db-stage/nexyfab', REDIS_URL: 'redis://redis-stage', NEXT_PUBLIC_SITE_URL: 'https://nexyfab-staging.example.com' })
       .map(([key, value]) => [key, ['DATABASE_URL', 'REDIS_URL', 'NEXT_PUBLIC_SITE_URL', 'NEXYFAB_CAD_INDEPENDENT_MODE'].includes(key) ? value : `stage-${value}`])),
   },
-  release: { buildId: 'b', productionDeploymentId: 'd', evidenceDeploymentId: 'staging-d', gitHead: releaseBinding.gitHead },
+  release: { buildId: releaseBinding.buildId, productionDeploymentId: 'd', evidenceDeploymentId: 'staging-d', gitHead: releaseBinding.gitHead },
   generatedAt: new Date(fixtureNow).toISOString(),
   now: fixtureNow,
   signingSecret: evidenceSigningSecret,
@@ -244,7 +325,8 @@ const packageLockSource = writeRawEvidence('package-lock.json', '{"lockfileVersi
 const securityGeneratedAt = new Date(fixtureNow).toISOString();
 const securityDocuments = {
   routeSecurityMatrix: {
-    schema: 'nexyfab.route-security-matrix.v1', generatedAt: securityGeneratedAt, status: 'pass',
+    schema: 'nexyfab.route-security-matrix.v1', textCanonicalization: TEXT_BINDING_CANONICALIZATION,
+    generatedAt: securityGeneratedAt, status: 'pass',
     summary: {
       routeFiles: 1, exportedHandlers: 1, classifiedRoutes: 1, unknownClassifications: 0,
       routesWithGaps: 0, gapCounts: {},
@@ -257,7 +339,8 @@ const securityDocuments = {
     }],
   },
   cadApiControls: {
-    schema: 'nexyfab.cad-api-control-evidence.v1', generatedAt: securityGeneratedAt, status: 'pass', externalCadRequired: false,
+    schema: 'nexyfab.cad-api-control-evidence.v1', textCanonicalization: TEXT_BINDING_CANONICALIZATION,
+    generatedAt: securityGeneratedAt, status: 'pass', externalCadRequired: false,
     routeFiles: 1, exportedHandlers: 1, documentedCadOperations: 1,
     publicExceptions: [{ method: 'GET', path: '/api/cad/v1/capabilities' }], issues: [],
     checks: {
@@ -271,10 +354,14 @@ const securityDocuments = {
   },
   secretScan: {
     schema: 'nexyfab-secret-scan-v1', generatedAt: securityGeneratedAt, status: 'pass',
+    scope: SECRET_SCAN_SCOPE,
+    textCanonicalization: SECRET_SCAN_TEXT_CANONICALIZATION,
+    excludedDerivedReceipts: [...SECRET_SCAN_EXCLUDED_DERIVED_RECEIPTS],
     filesScanned: 1, bytesScanned: 10, findingCount: 0, findings: [],
   },
   dependencyAudit: {
-    schema: 'nexyfab-dependency-audit-v1', generatedAt: securityGeneratedAt,
+    schema: 'nexyfab-dependency-audit-v1', textCanonicalization: TEXT_BINDING_CANONICALIZATION,
+    generatedAt: securityGeneratedAt,
     command: 'npm audit --audit-level=low --json', packageLockSha256: packageLockSource.sha256, status: 'pass',
     vulnerabilities: { info: 0, low: 0, moderate: 0, high: 0, critical: 0, total: 0 },
     dependencies: { prod: 1, dev: 1, optional: 0, peer: 0, peerOptional: 0, total: 2 },
@@ -400,24 +487,65 @@ const architectureInteriorRecoveryReceipt = writeArchitectureInteriorRecoveryEvi
 });
 const restoreNow = Date.now();
 const migrationGeneratedAt = new Date().toISOString();
+const restoredObjectEntries = Array.from({ length: 8 }, (_, index) => ({
+  keySha256: (index + 1).toString(16).repeat(64),
+  bytes: 100 + index,
+  contentSha256: (index + 8).toString(16).repeat(64),
+}));
+const restoredObjectBytes = restoredObjectEntries.reduce((sum, item) => sum + item.bytes, 0);
+const restoredObjectManifestSha256 = createHash('sha256').update(JSON.stringify(restoredObjectEntries)).digest('hex');
+const restoredObjectRole = (bucket, prefix, endpointSeed, exactSourceMatch) => ({
+  endpointSha256: endpointSeed.repeat(64), region: 'ap-northeast-2', bucket, prefix,
+  objectCount: restoredObjectEntries.length, totalBytes: restoredObjectBytes,
+  manifestSha256: restoredObjectManifestSha256, objects: structuredClone(restoredObjectEntries),
+  ...(exactSourceMatch === undefined ? {} : { exactSourceMatch }),
+});
 const restoreReceipt = bindReceipt({
-  schema: 'nexyfab.backup-isolated-restore-drill.v2', generatedAt: new Date(restoreNow).toISOString(), ok: true, target: 'production',
+  schema: 'nexyfab.backup-isolated-restore-drill.v3', generatedAt: new Date(restoreNow).toISOString(), ok: true, target: 'production',
   release: releaseBinding,
   safety: {
     environment: 'staging', sourceEnvironment: 'production', restoredEnvironment: 'staging', sourceDatabase: 'nexyfab',
-    restoreDatabase: 'nexyfab_restore_drill_260823', isolatedDatabaseIdentity: true, sourceWasReadOnly: true, productionRestorePerformed: false,
+    restoreDatabase: 'nexyfab_restore_drill_260823', isolatedDatabaseIdentity: true, sourceWasReadOnly: true,
+    sourceUnchangedDuringDrill: true, productionRestorePerformed: false,
   },
-  backup: { file: 'backups/restore.sql.gz', bytes: 100, sha256: 'f'.repeat(64), objectSha256: 'f'.repeat(64), sourceSnapshotSha256: 'a'.repeat(64), completedAt: new Date(restoreNow - 2_000).toISOString() },
-  source: { tableContentSha256: 'a'.repeat(64) },
-  restored: { tableContentSha256: 'a'.repeat(64), exactSourceMatch: true, businessDataSha256: 'a'.repeat(64) },
-  migration: { targetVersion: 2026082208, migrations: [{ version: 2026082208, checksum: 'b'.repeat(64), decision: 'already_applied' }] },
-  migrationTarget: 2026082208,
-  migrated: { tableContentSha256: 'a'.repeat(64), businessRowsPreserved: true, businessDataSha256: 'a'.repeat(64) },
+  backup: {
+    file: 'restore.sql.gz', bytes: 100, sha256: 'f'.repeat(64), sourceSnapshotSha256: 'a'.repeat(64),
+    completedAt: new Date(restoreNow - 2_000).toISOString(),
+    protectedSource: {
+      releaseBoundRequired: true, providerArtifactReused: true, atRestEncryptionVerified: true,
+      encryptionMode: 'customer-managed-kms', kmsKeyVersionSha256: '9'.repeat(64),
+      providerReceiptBound: true, providerReceiptSha256: '8'.repeat(64), providerReceiptIdSha256: '7'.repeat(64),
+      artifactImmutable: true, capturedAt: new Date(restoreNow - 2_000).toISOString(),
+      restorePayloadBytes: 100, restorePayloadSha256: 'f'.repeat(64),
+    },
+  },
+  source: { tableContentSha256: 'a'.repeat(64), schemaSha256: 'c'.repeat(64), afterObjectRestoreTableContentSha256: 'a'.repeat(64), afterObjectRestoreSchemaSha256: 'c'.repeat(64) },
+  restored: { tableContentSha256: 'a'.repeat(64), exactSourceMatch: true, businessDataSha256: 'a'.repeat(64), foreignKeys: { integrityOk: true, orphanRows: 0 } },
+  migration: { targetVersion: 2026082502, migrations: [{ version: 2026082502, checksum: 'b'.repeat(64), decision: 'already_applied' }] },
+  migrationTarget: 2026082502,
+  constraintValidation: { ok: true, count: 1, validated: [{ constraint: 'fixture' }] },
+  migrated: { tableContentSha256: 'a'.repeat(64), businessRowsPreserved: true, businessDataSha256: 'a'.repeat(64), foreignKeys: { ok: true, orphanRows: 0 } },
+  objectStorage: {
+    schema: 'nexyfab.object-storage-isolated-restore-drill.v1', status: 'PASS',
+    safety: { sourceWasReadOnly: true, sourceUnchanged: true, backupPrefixInitiallyEmpty: true, restorePrefixInitiallyEmpty: true, roleIdentitiesDistinct: true, noOverwriteWrites: true },
+    databaseBindings: { count: 8, byKind: { immutable_input: 2, committed_output: 3, artifact_snapshot: 3 }, manifestSha256: 'd'.repeat(64), allMatched: true },
+    protection: {
+      releaseBoundRequired: true, failureDomainDistinct: true, versioningEnabled: true,
+      objectLockEnabled: true, defaultRetentionMode: 'COMPLIANCE', defaultRetentionDays: 30,
+      defaultRetentionYears: null, kmsEncryptionVerified: true, kmsKeyIdSha256: '6'.repeat(64),
+    },
+    source: restoredObjectRole('nexyfab-source', 'private/', '1'),
+    backup: restoredObjectRole('nexyfab-backup', 'backup/release-1/', '2', true),
+    restored: restoredObjectRole('nexyfab-restore-drill', 'restore-drill/release-1/', '3', true),
+    limits: { maxObjects: 10_000, maxTotalBytes: 10 * 1024 ** 3, maxObjectBytes: 128 * 1024 ** 2 },
+  },
   timing: {
     drillStartedAt: new Date(restoreNow - 3_000).toISOString(), backupCapturedAt: new Date(restoreNow - 2_000).toISOString(),
-    restoreStartedAt: new Date(restoreNow - 1_000).toISOString(), completedAt: new Date(restoreNow).toISOString(),
+    restoreStartedAt: new Date(restoreNow - 1_000).toISOString(), objectRestoreStartedAt: new Date(restoreNow - 500).toISOString(),
+    completedAt: new Date(restoreNow).toISOString(),
   },
-  objectives: { rpoAgeAtDrillStartMs: 0, rtoRestoreMigrateValidateMs: 1_000, totalDrillMs: 3_000, measurement: 'wall_clock' },
+  objectives: { rpoAgeAtDrillStartMs: 0, rtoRestoreMigrateValidateMs: 1_000, rtoObjectRestoreValidateMs: 500, totalDrillMs: 3_000, measurement: 'wall_clock' },
+  claimBoundary: { evidenceClass: 'release-bound', localFixture: false, releaseBoundObservation: true, crossStorePointInTimeConsistencyVerified: true, privateBetaEligible: true, commercialGaEligible: false },
 });
 const productReceiptGeneratedAt = new Date(fixtureNow).toISOString();
 const seaCanonicalSha256 = value => createHash('sha256').update(Buffer.from(canonicalJson(value), 'utf8')).digest('hex');
@@ -865,8 +993,9 @@ const largeUploadStagingReceipt = buildLargeUploadStagingReadinessReceipt({
 const passingReleaseBaseline = {
   release: {
     branch: 'release/test', head: '1'.repeat(40), baselineStatus: 'committed', workingTreeChanges: 0,
-    deploymentId: 'd', buildId: 'b', rollbackDeploymentId: 'r', dockerImageDigest: 'sha256:x',
-    dbSchemaVersion: 2026082208, railwayIgnore: { missing: [] },
+    deploymentId: 'd', buildId: releaseBinding.buildId, rollbackDeploymentId: 'r', dockerImageDigest: 'sha256:x',
+    dbSchemaVersion: 2026082502, environment: 'production', service: 'nexyfab.com',
+    railwayIgnore: { missing: [] },
   },
 };
 const passingReleaseBaselinePath = writeEvidence('fixtures/commercial-release-baseline.json', passingReleaseBaseline);
@@ -882,9 +1011,18 @@ const passing = {
   evidenceRoot,
   windowsSeaTrustedKeyAllowlist,
   evidenceSigningSecret,
+  commercialPrecisionRuntimeEvidenceStatus: {
+    receiptVerified: true,
+    privateBetaEligible: true,
+    commercialGaEligible: true,
+    status: 'COMMERCIAL_GA_PASS',
+    receiptSha256: '9'.repeat(64),
+    blockers: [],
+  },
   currentRelease: { branch: 'release/test', head: '1'.repeat(40), workingTreeChanges: 0 },
   releaseBaseline: passingReleaseBaseline,
   releaseBaselineBinding: passingReleaseBaselineBinding,
+  coreStagingHoldReceipt,
   closedBeta: closedBetaReceipt, closedBetaEvidenceVerified: true, closedBetaReceiptVerified: true, liveSmoke: liveSmokeReceipt, liveSmokeReceiptVerified: true,
   productionProtectedState: productionProtectedStateReceipt, productionProtectedStateReceiptVerified: true, openscadHttpSmoke: openscadHttpSmokeReceipt, authenticatedE2E: authenticatedE2EReceipt, authenticatedE2EReceiptVerified: true,
   architectureInteriorRecovery: architectureInteriorRecoveryReceipt, architectureInteriorRecoveryReceiptVerified: true,
@@ -897,7 +1035,7 @@ const passing = {
       maxAgeMs: 24 * 60 * 60_000,
       expiresAt: new Date(Date.parse(migrationGeneratedAt) + 24 * 60 * 60_000).toISOString(),
     },
-    release: { buildId: 'b', deploymentId: 'd', gitHead: '1'.repeat(40) },
+    release: { buildId: releaseBinding.buildId, deploymentId: 'd', gitHead: '1'.repeat(40) },
     migrations: commercialMigrations.map(version => ({
       version, sourceSha256: String(version).padEnd(64, 'a'),
       databaseChecksum: String(version).padEnd(64, 'a'), decision: 'already_applied', checksumMatchesSource: true,
@@ -915,12 +1053,15 @@ const passing = {
   complexGroundTruthValidation,
   complexProductScope: { decision: { broadComplexProductSelfServiceEligible: true, manufacturingReleaseGuaranteed: true }, families: Object.fromEntries(complexFamilies.filter(family => family !== 'interior').map(family => [family, { selfServiceEligible: true, manufacturingReleaseVerified: true }])) },
   mechanicalProductScope: {
-    schema: 'nexyfab.mechanical-product-scope-assessment.v3',
+    schema: 'nexyfab.mechanical-product-scope-assessment.v4',
     releaseChannel: 'mechanical-core',
     assessedAt: '2026-08-11T00:00:00.000Z',
-    sources: [{ path: 'evidence.json', sha256: 'a'.repeat(64) }],
+    sources: [{ path: 'evidence.json', sha256: 'a'.repeat(64), bytes: 1, canonicalization: 'utf8-crlf-to-lf' }],
     evidence: {
       internalRegressionVerified: true,
+      intentQualification150Verified: true,
+      intentRuntimeRepresentativeVerified: true,
+      assemblyDrawingHandoffLocalVerified: true,
       coreThirtyFeatureClosedLoopVerified: true,
       directDesignCandidateVerified: true,
       directDesignThirtyVerified: true,
@@ -966,7 +1107,7 @@ const passing = {
       scopedServices: ['nexyfab.com', 'nexyfab-openscad-worker', 'nexyfab-fea-worker', 'Postgres-KN2x', 'Redis-IrVt'],
     },
     release: {
-      buildId: 'b', qualifyingFrom: '2026-08-01T00:00:00.000Z', environment: 'production',
+      buildId: releaseBinding.buildId, qualifyingFrom: '2026-08-01T00:00:00.000Z', environment: 'production',
       deployments: { web: 'd', 'openscad-worker': 'openscad-d', 'fea-worker': 'fea-d' },
     },
   },
@@ -1024,7 +1165,7 @@ function buildSpecialtyGateFixture(channel = 'verified-sheet-metal') {
   });
   const receipt = {
     schema: 'nexyfab.specialty-independent-release-receipt.v1', channel, track: definition.track,
-    release: { buildId: 'b', deploymentId: 'd', gitHead: '1'.repeat(40) }, generatedAt, expiresAt,
+    release: { buildId: releaseBinding.buildId, deploymentId: 'd', gitHead: '1'.repeat(40) }, generatedAt, expiresAt,
     qualificationArtifact: { relativePath: qualificationPath, bytes: qualificationBytes.byteLength, sha256: specialtyIndependentReleaseSha256(qualificationBytes) },
     evidenceArtifacts, reviewers: [],
   };
@@ -1226,7 +1367,7 @@ test('requires source-bound architecture/interior recovery only for affected rel
   assert.equal(mechanicalResult.privateBeta.blockers.includes('architecture_interior_recovery_not_passed'), false);
 });
 
-test('requires a fresh production-bound isolated restore drill through migration 2208', () => {
+test('requires a fresh release-bound cross-store restore drill through migration 2502', () => {
   assert.equal(restoreReceiptEligible(restoreReceipt, expectedReleaseBinding), true);
   assert.equal(restoreReceiptEligible({ ok: true }, expectedReleaseBinding), false);
 
@@ -1247,9 +1388,44 @@ test('requires a fresh production-bound isolated restore drill through migration
 
   const wrongMigration = rebindReceipt({
     ...restoreReceipt,
-    migration: { ...restoreReceipt.migration, targetVersion: 2026082207 },
+    migration: { ...restoreReceipt.migration, targetVersion: 2026082402 },
   });
   assert.equal(restoreReceiptEligible(wrongMigration, expectedReleaseBinding), false);
+
+  const localFixture = rebindReceipt({
+    ...restoreReceipt,
+    target: 'local-fixture',
+    claimBoundary: { ...restoreReceipt.claimBoundary, evidenceClass: 'local-fixture', localFixture: true, releaseBoundObservation: false, privateBetaEligible: false },
+  });
+  assert.equal(restoreReceiptEligible(localFixture, expectedReleaseBinding), false);
+
+  const objectDrift = structuredClone(restoreReceipt);
+  objectDrift.objectStorage.restored.objects[0].contentSha256 = '0'.repeat(64);
+  assert.equal(restoreReceiptEligible(rebindReceipt(objectDrift), expectedReleaseBinding), false);
+
+  const missingCommercialBinding = rebindReceipt({
+    ...restoreReceipt,
+    objectStorage: {
+      ...restoreReceipt.objectStorage,
+      databaseBindings: { ...restoreReceipt.objectStorage.databaseBindings, byKind: { ...restoreReceipt.objectStorage.databaseBindings.byKind, artifact_snapshot: 2 } },
+    },
+  });
+  assert.equal(restoreReceiptEligible(missingCommercialBinding, expectedReleaseBinding), false);
+
+  const unprotectedDatabaseBackup = rebindReceipt({
+    ...restoreReceipt,
+    backup: { ...restoreReceipt.backup, protectedSource: { ...restoreReceipt.backup.protectedSource, artifactImmutable: false } },
+  });
+  assert.equal(restoreReceiptEligible(unprotectedDatabaseBackup, expectedReleaseBinding), false);
+
+  const unprotectedObjectBackup = rebindReceipt({
+    ...restoreReceipt,
+    objectStorage: {
+      ...restoreReceipt.objectStorage,
+      protection: { ...restoreReceipt.objectStorage.protection, objectLockEnabled: false },
+    },
+  });
+  assert.equal(restoreReceiptEligible(unprotectedObjectBackup, expectedReleaseBinding), false);
 });
 
 test('accepts only trusted Ed25519 expert signoffs bound to the release and corpus', () => {
@@ -1285,7 +1461,7 @@ test('accepts only trusted Ed25519 expert signoffs bound to the release and corp
 });
 
 test('rejects stale, incomplete, or release-transplanted production migration receipts', () => {
-  const expected = { buildId: 'b', deploymentId: 'd', head: '1'.repeat(40) };
+  const expected = { buildId: releaseBinding.buildId, deploymentId: 'd', head: '1'.repeat(40) };
   assert.equal(productionMigrationReceiptEligible(passing.migrationReceipt, expected, Date.now(), true), true);
 
   const stale = structuredClone(passing.migrationReceipt);
@@ -1325,6 +1501,25 @@ test('passes both tiers only with complete evidence', () => {
   assert.equal(result.commercialGa.eligible, true);
 });
 
+test('requires bound commercial Precision runtime evidence for mechanical private beta and GA', () => {
+  const missing = structuredClone(passing);
+  delete missing.commercialPrecisionRuntimeEvidenceStatus;
+  const blocked = evaluateCommercializationReadiness(missing);
+  assert.equal(blocked.privateBeta.eligible, false);
+  assert.ok(blocked.privateBeta.blockers.includes('commercial_precision_runtime_private_beta_not_verified'));
+  assert.ok(blocked.commercialGa.blockers.includes('commercial_precision_runtime_ga_not_verified'));
+  assert.equal(blocked.commercialPrecisionRuntimeEvidence.required, true);
+
+  const stagingOnly = structuredClone(passing);
+  stagingOnly.commercialPrecisionRuntimeEvidenceStatus.commercialGaEligible = false;
+  stagingOnly.commercialPrecisionRuntimeEvidenceStatus.status = 'PRIVATE_BETA_PASS';
+  stagingOnly.commercialPrecisionRuntimeEvidenceStatus.blockers = ['production_runtime_not_observed'];
+  const staged = evaluateCommercializationReadiness(stagingOnly);
+  assert.equal(staged.privateBeta.eligible, true);
+  assert.equal(staged.commercialGa.eligible, false);
+  assert.ok(staged.commercialGa.blockers.includes('commercial_precision_runtime_ga_not_verified'));
+});
+
 test('keeps private beta and GA fail-closed independently', () => {
   const input = structuredClone(passing);
   input.liveSmoke.status = 'fail';
@@ -1359,6 +1554,37 @@ test('does not trust an old clean baseline after release files become dirty', ()
   const result = evaluateCommercializationReadiness(input);
   assert.equal(result.privateBeta.eligible, false);
   assert.ok(result.privateBeta.blockers.includes('current_release_working_tree_dirty'));
+});
+
+test('does not accept staging or another Railway service as production release identity', () => {
+  const staging = structuredClone(passing);
+  staging.releaseBaseline.release.environment = 'staging';
+  let result = evaluateCommercializationReadiness(staging);
+  assert.equal(result.privateBeta.eligible, false);
+  assert.ok(result.privateBeta.blockers.includes('release_environment_not_production'));
+
+  const foreignService = structuredClone(passing);
+  foreignService.releaseBaseline.release.service = 'nexyflow-api';
+  result = evaluateCommercializationReadiness(foreignService);
+  assert.equal(result.privateBeta.eligible, false);
+  assert.ok(result.privateBeta.blockers.includes('release_service_not_nexyfab'));
+});
+
+test('requires an immutable same-build core staging HOLD receipt before promotion', () => {
+  const missing = structuredClone(passing);
+  missing.coreStagingHoldReceipt = null;
+  let result = evaluateCommercializationReadiness(missing);
+  assert.equal(result.privateBeta.eligible, false);
+  assert.ok(result.privateBeta.blockers.includes('core_staging_hold_not_verified'));
+  assert.equal(result.coreStagingHoldEvidence.receiptVerified, false);
+
+  const transplanted = structuredClone(passing);
+  transplanted.coreStagingHoldReceipt.release.buildId = 'f'.repeat(40);
+  result = evaluateCommercializationReadiness(transplanted);
+  assert.equal(result.privateBeta.eligible, false);
+  assert.ok(result.privateBeta.blockers.includes('core_staging_hold_not_verified'));
+  assert.ok(result.coreStagingHoldEvidence.blockers.includes('receipt_hash_invalid'));
+  assert.ok(result.coreStagingHoldEvidence.blockers.includes('release_binding_mismatch'));
 });
 
 test('commercial GA requires the complete complex-product corpus, dual approvals, and manufacturing scope', () => {
@@ -1531,6 +1757,9 @@ test('mechanical-core reports precise direct-design evidence gaps for a valid pe
   input.syntheticCampaignCorpusSha256 = input.syntheticCampaignReceipt.corpus.sha256;
   input.mechanicalProductScope.evidence = {
     internalRegressionVerified: true,
+    intentQualification150Verified: true,
+    intentRuntimeRepresentativeVerified: true,
+    assemblyDrawingHandoffLocalVerified: true,
     coreThirtyFeatureClosedLoopVerified: true,
     directDesignCandidateVerified: true,
     directDesignThirtyVerified: false,
@@ -1571,10 +1800,10 @@ test('mechanical-core reports precise direct-design evidence gaps for a valid pe
   assert.equal(result.commercialGa.blockers.includes('mechanical_scope_revision_consistency_incomplete'), false);
 });
 
-test('mechanical-core refuses legacy v2 scope receipts instead of reinterpreting them under v3 policy', () => {
+test('mechanical-core refuses legacy v3 scope receipts instead of reinterpreting them under v4 policy', () => {
   const input = structuredClone(passing);
   input.releaseChannel = 'mechanical-core';
-  input.mechanicalProductScope.schema = 'nexyfab.mechanical-product-scope-assessment.v2';
+  input.mechanicalProductScope.schema = 'nexyfab.mechanical-product-scope-assessment.v3';
   const result = evaluateCommercializationReadiness(input);
   assert.equal(result.privateBeta.eligible, false);
   assert.ok(result.privateBeta.blockers.includes('mechanical_product_scope_contract_incomplete'));
@@ -1647,8 +1876,8 @@ test('requires all product receipts for an explicit full-product release scope',
   assert.deepEqual(blocked.evaluatedReleaseBaseline, passingReleaseBaselineBinding);
   assert.deepEqual(blocked.release, {
     branch: 'release/test', gitHead: '1'.repeat(40), baselineStatus: 'committed', workingTreeChanges: 0,
-    deploymentId: 'd', buildId: 'b', rollbackDeploymentId: 'r', dockerImageDigest: 'sha256:x',
-    dbSchemaVersion: 2026082208,
+    deploymentId: 'd', buildId: releaseBinding.buildId, rollbackDeploymentId: 'r', dockerImageDigest: 'sha256:x',
+    dbSchemaVersion: 2026082502, environment: 'production', service: 'nexyfab.com',
   });
 
   const complete = structuredClone(passing);

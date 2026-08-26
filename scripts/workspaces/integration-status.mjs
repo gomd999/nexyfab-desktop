@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import { currentBranch, currentHead, readRegistry, runGit } from './workspace-registry.mjs';
+import { branchDivergence, currentBranch, currentHead, readRegistry, runGit } from './workspace-registry.mjs';
 import { evaluateIntegrationState } from './workspace-guardrails.mjs';
 
 const registry = readRegistry();
@@ -14,26 +14,28 @@ for (const line of worktreeOutput.split(/\r?\n/)) {
   if (line === '') worktreePath = null;
 }
 
-const scopes = registry.scopes.map(scope => {
-  const [integrationOnly, scopeOnly] = runGit([
-    'rev-list',
-    '--left-right',
-    '--count',
-    `${registry.integrationBranch}...${scope.branch}`,
-  ]).trim().split(/\s+/).map(Number);
-  const directory = worktrees.get(scope.branch) ?? null;
+function branchState(branch) {
+  const { baseOnly, targetOnly } = branchDivergence(registry.integrationBranch, branch);
+  const directory = worktrees.get(branch) ?? null;
   const dirtyFiles = directory
     ? runGit(['-C', directory, 'status', '--porcelain']).trim().split(/\r?\n/).filter(Boolean).length
     : null;
   return {
-    id: scope.id,
-    branch: scope.branch,
+    branch,
     worktree: directory,
     dirtyFiles,
-    commitsBehindIntegration: integrationOnly,
-    commitsReadyToIntegrate: scopeOnly,
+    commitsBehindIntegration: baseOnly,
+    commitsReadyToIntegrate: targetOnly,
+  };
+}
+
+const scopes = registry.scopes.map(scope => {
+  return {
+    id: scope.id,
+    ...branchState(scope.branch),
   };
 });
+const release = branchState(registry.releaseBranch);
 
 const branch = currentBranch();
 const allowReady = process.argv.includes('--allow-ready');
@@ -41,6 +43,7 @@ const evaluation = evaluateIntegrationState({
   expectedBranch: registry.integrationBranch,
   branch,
   scopes,
+  release,
   allowReady,
 });
 const result = {
@@ -50,6 +53,7 @@ const result = {
   head: currentHead(),
   mode: allowReady ? 'ALLOW_READY' : 'STRICTLY_INTEGRATED',
   scopes,
+  release,
   issues: evaluation.issues,
 };
 console.log(JSON.stringify(result, null, 2));

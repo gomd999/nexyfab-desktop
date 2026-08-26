@@ -3,6 +3,10 @@ import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import {
+  TEXT_BINDING_CANONICALIZATION,
+  canonicalTextBinding,
+} from './canonical-text-binding.mjs';
 import { createAiCanonicalCandidate, guardAiCanonicalCandidate } from '../src/lib/ai/aiCanonicalCandidate';
 import { buildGuidedDesignBrief, buildGuidedRequirementGate, seedGuidedBriefInputs } from '../src/lib/ai/guidedDesignBrief';
 import { MECHANICAL_CORE_LOCAL_CLOSED_LOOP_AXES } from '../src/lib/ai/mechanicalCoreFeatureContract';
@@ -59,7 +63,7 @@ function writeBound(root: string, relative: string, value: string | Uint8Array) 
   fs.mkdirSync(path.dirname(absolute), { recursive: true });
   fs.writeFileSync(absolute, value);
   const bytes = fs.readFileSync(absolute);
-  return { path: slash(relative), sha256: hash(bytes), bytes: bytes.byteLength };
+  return { path: slash(relative), ...canonicalTextBinding(bytes) };
 }
 
 function normalizeTriple(values: [number, number, number], unit: 'mm' | 'in'): [number, number, number] {
@@ -203,7 +207,7 @@ function verifyFeatureArtifacts(
   if (meta?.intentInputSha256 !== binding.inputSha256 || meta.candidateBaseRevision !== binding.candidateBaseRevision) issues.push('feature_tree_revision_binding_mismatch');
   const artifactBindings = [relative('create.json'), relative('edit.json'), relative('regenerate.json'), nfabRelative].map(item => {
     const bytes = fs.existsSync(resolveInside(root, item)) ? fs.readFileSync(resolveInside(root, item)) : Buffer.alloc(0);
-    return { path: item, sha256: hash(bytes), bytes: bytes.byteLength };
+    return { path: item, ...canonicalTextBinding(bytes) };
   });
   if (artifactBindings.some(item => item.bytes <= 0 || !SHA256.test(item.sha256))) issues.push('artifact_bytes_or_sha_invalid');
   return { issues, artifactBindings };
@@ -273,11 +277,12 @@ export async function executeMechanicalAiIntentRuntimeHarness(
   const receipt = {
     schema: 'nexyfab.mechanical-ai-intent-runtime-receipt.v1',
     generatedAt: now.toISOString(),
+    textCanonicalization: TEXT_BINDING_CANONICALIZATION,
     revision: revision.designRevisionSha256,
     sourceBindings: revision.sources,
     artifactBindings: [
       resultsBinding,
-      { path: paths.receiptOutput, sha256: hash(runtimeReceiptBytes), bytes: runtimeReceiptBytes.byteLength },
+      { path: paths.receiptOutput, ...canonicalTextBinding(runtimeReceiptBytes) },
     ],
     summary,
     localIntegration: results.localIntegration,

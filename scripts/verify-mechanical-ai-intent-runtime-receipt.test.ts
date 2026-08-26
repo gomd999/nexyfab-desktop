@@ -1,16 +1,16 @@
-import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { verifyMechanicalAiIntentRuntimeReceipt } from './verify-mechanical-ai-intent-runtime-receipt';
+import {
+  TEXT_BINDING_CANONICALIZATION,
+  canonicalTextBinding,
+  canonicalTextSha256,
+} from './canonical-text-binding.mjs';
 
 const root = process.cwd();
 const sourceEvidence = path.join(root, 'docs', 'evidence', 'cad-independent', 'local', 'mechanical-ai-intent-runtime-260823');
 let fixture = '';
-
-function hash(value: Buffer | string): string {
-  return crypto.createHash('sha256').update(value).digest('hex');
-}
 
 function read(relative: string): Record<string, unknown> {
   return JSON.parse(fs.readFileSync(path.join(fixture, relative), 'utf8')) as Record<string, unknown>;
@@ -22,18 +22,18 @@ function write(relative: string, value: Record<string, unknown>): void {
 
 function refreshReceipt(): void {
   const receipt = read('receipt.json');
+  receipt.textCanonicalization = TEXT_BINDING_CANONICALIZATION;
   const artifacts = receipt.artifactBindings as Array<Record<string, unknown>>;
   for (const [relative, filename] of [['intent-runtime-results.json', 'intent-runtime-results.json'], ['runtime-axis-evidence.json', 'runtime-axis-evidence.json']] as const) {
     const absolute = path.join(fixture, relative);
     const binding = artifacts.find(item => String(item.path).endsWith(filename))!;
     const bytes = fs.readFileSync(absolute);
     binding.path = path.relative(root, absolute).replaceAll('\\', '/');
-    binding.sha256 = hash(bytes);
-    binding.bytes = bytes.byteLength;
+    Object.assign(binding, canonicalTextBinding(bytes));
   }
   write('receipt.json', receipt);
   const receiptBytes = fs.readFileSync(path.join(fixture, 'receipt.json'));
-  fs.writeFileSync(path.join(fixture, 'receipt.sha256'), `${hash(receiptBytes)}  receipt.json\n`);
+  fs.writeFileSync(path.join(fixture, 'receipt.sha256'), `${canonicalTextSha256(receiptBytes)}  receipt.json\n`);
 }
 
 function refreshCaseArtifact(feature: string, filename: string): void {
@@ -44,8 +44,7 @@ function refreshCaseArtifact(feature: string, filename: string): void {
   const item = (results.cases as Array<Record<string, unknown>>).find(candidate => candidate.feature === feature)!;
   const binding = (item.artifactBindings as Array<Record<string, unknown>>).find(candidate => String(candidate.path).endsWith(`/${feature}/${filename}`))!;
   binding.path = relative;
-  binding.sha256 = hash(bytes);
-  binding.bytes = bytes.byteLength;
+  Object.assign(binding, canonicalTextBinding(bytes));
   write('intent-runtime-results.json', results);
   const axisReceipt = read('runtime-axis-evidence.json');
   const runs = axisReceipt.runs as Array<Record<string, unknown>>;
@@ -53,8 +52,7 @@ function refreshCaseArtifact(feature: string, filename: string): void {
     for (const axisBinding of run.evidence as Array<Record<string, unknown>>) {
       if (String(axisBinding.path).endsWith(`/${feature}/${filename}`)) {
         axisBinding.path = relative;
-        axisBinding.sha256 = hash(bytes);
-        axisBinding.bytes = bytes.byteLength;
+        Object.assign(axisBinding, canonicalTextBinding(bytes));
       }
     }
   }
@@ -104,6 +102,22 @@ describe('mechanical AI intent runtime receipt check-only verifier', () => {
     });
   });
 
+  it('verifies the same immutable bundle after all bound artifacts are materialized with CRLF', () => {
+    const textExtensions = new Set(['.json', '.nfab', '.step', '.svg']);
+    const walk = (directory: string) => {
+      for (const entry of fs.readdirSync(directory, { withFileTypes: true })) {
+        const absolute = path.join(directory, entry.name);
+        if (entry.isDirectory()) walk(absolute);
+        else if (textExtensions.has(path.extname(entry.name).toLowerCase())) {
+          const crlf = fs.readFileSync(absolute, 'utf8').replaceAll('\r\n', '\n').replaceAll('\n', '\r\n');
+          fs.writeFileSync(absolute, crlf);
+        }
+      }
+    };
+    walk(fixture);
+    expect(verifyMechanicalAiIntentRuntimeReceipt(fixture)).toMatchObject({ ok: true, issues: [] });
+  });
+
   it('rejects tampered, missing, and stale source bindings', () => {
     fs.appendFileSync(path.join(fixture, 'runtime', 'hole', 'create.json'), 'tamper');
     let result = verifyMechanicalAiIntentRuntimeReceipt(fixture);
@@ -118,7 +132,7 @@ describe('mechanical AI intent runtime receipt check-only verifier', () => {
     (receipt.sourceBindings as Array<Record<string, unknown>>)[0]!.sha256 = '0'.repeat(64);
     write('receipt.json', receipt);
     const receiptBytes = fs.readFileSync(path.join(fixture, 'receipt.json'));
-    fs.writeFileSync(path.join(fixture, 'receipt.sha256'), `${hash(receiptBytes)}  receipt.json\n`);
+    fs.writeFileSync(path.join(fixture, 'receipt.sha256'), `${canonicalTextSha256(receiptBytes)}  receipt.json\n`);
     result = verifyMechanicalAiIntentRuntimeReceipt(fixture);
     expect(result.issues.some(issue => issue.includes('source_revision_stale_or_tampered') || issue.includes('source:'))).toBe(true);
   });
@@ -128,7 +142,7 @@ describe('mechanical AI intent runtime receipt check-only verifier', () => {
     (receipt.artifactBindings as Array<Record<string, unknown>>)[0]!.path = '../intent-runtime-results.json';
     write('receipt.json', receipt);
     const receiptBytes = fs.readFileSync(path.join(fixture, 'receipt.json'));
-    fs.writeFileSync(path.join(fixture, 'receipt.sha256'), `${hash(receiptBytes)}  receipt.json\n`);
+    fs.writeFileSync(path.join(fixture, 'receipt.sha256'), `${canonicalTextSha256(receiptBytes)}  receipt.json\n`);
     expect(verifyMechanicalAiIntentRuntimeReceipt(fixture).issues.some(issue => issue.includes('path_unsafe'))).toBe(true);
 
     const link = `${fixture}-link`;

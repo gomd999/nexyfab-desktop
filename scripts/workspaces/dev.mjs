@@ -7,7 +7,7 @@ import {
   publicDevProfile,
   readDevProfiles,
 } from './dev-profile.mjs';
-import { currentBranch } from './workspace-registry.mjs';
+import { branchDivergence, currentBranch, readRegistry } from './workspace-registry.mjs';
 
 const args = process.argv.slice(2);
 const scopeId = args.find(argument => !argument.startsWith('--'));
@@ -20,6 +20,11 @@ if (unknown.length > 0) throw new Error(`workspace_dev_argument_unknown:${unknow
 const profile = getDevProfile(readDevProfiles(), scopeId);
 const branch = currentBranch();
 if (branch !== profile.branch) throw new Error(`workspace_dev_branch_mismatch:${profile.branch}:${branch}`);
+const registry = readRegistry();
+const divergence = branchDivergence(registry.integrationBranch, profile.branch);
+if (divergence.baseOnly > 0) {
+  throw new Error(`workspace_dev_scope_behind_integration:${scopeId}:${divergence.baseOnly}:run_workspace_sync_first`);
+}
 
 const resolved = buildDevEnvironment(profile, { inheritDatabase });
 const publicProfile = publicDevProfile(profile, resolved, { inheritDatabase });

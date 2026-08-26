@@ -14,6 +14,8 @@ import type { RemotePrecisionCadProjectBinding } from './remoteCadContract';
 
 export type PrecisionCadExecutionContext = {
   binding?: RemotePrecisionCadProjectBinding;
+  /** Server-issued run id. The route rebinds it to project/head/program. */
+  generationRunId?: string;
   projectRoot?: string;
   locale: string;
   runId?: string;

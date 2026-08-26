@@ -3,9 +3,9 @@
   "feature": "boolean",
   "axis": "export",
   "status": "PASS",
-  "executedAt": "2026-08-22T07:13:30.564Z",
+  "executedAt": "2026-08-24T22:37:45.371Z",
   "stepBytes": 30242,
-  "stepSha256": "6afef3294ca22abcdc983db646bac86316d6e8ec7faecfb4acb31fd372f5448b",
+  "stepSha256": "8feb87b518b1befde03a76800a36d76af072c0d65edc6febb2d3f5197434f053",
   "before": {
     "handle": "occt:435",
     "kernelKind": "Solid",

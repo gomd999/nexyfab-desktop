@@ -718,7 +718,7 @@ function LeftPanel({
       }}>
         <button
           onClick={onToggleCollapse}
-          aria-label="Expand panel"
+          aria-label={loc(lang, { ko: '패널 펼치기', en: 'Expand panel', ja: 'パネルを展開', zh: '展开面板', es: 'Expandir panel', ar: 'توسيع اللوحة' })}
           title={loc(lang, { ko: '펼치기', en: 'Expand', ja: '展開', zh: '展开', es: 'Expandir', ar: 'توسيع' })}
           style={{
             width: 32, height: 32, borderRadius: 6, border: `1px solid ${theme.border}`,
@@ -758,7 +758,7 @@ function LeftPanel({
       {onToggleCollapse && !isTablet && !isMobile && (
         <button
           onClick={onToggleCollapse}
-          aria-label="Collapse panel"
+          aria-label={loc(lang, { ko: '패널 접기', en: 'Collapse panel', ja: 'パネルを折りたたむ', zh: '折叠面板', es: 'Contraer panel', ar: 'طي اللوحة' })}
           title={loc(lang, { ko: '접기', en: 'Collapse', ja: '折りたたむ', zh: '折叠', es: 'Contraer', ar: 'طي' })}
           style={{
             position: 'absolute', top: 4,
@@ -1400,7 +1400,7 @@ function LeftPanel({
                                     <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
                                       <button
                                         onClick={() => { const nv = Math.max(sp.min, val - sp.step); onParamChange(sp.key, nv); onParamCommit(); }}
-                                        aria-label="Decrease"
+                                        aria-label={loc(lang, { ko: '감소', en: 'Decrease', ja: '減らす', zh: '减少', es: 'Disminuir', ar: 'تقليل' })}
                                         style={{
                                           minWidth: 36, minHeight: 36, padding: 0,
                                           borderRadius: 6, border: `1px solid ${theme.border}`,
@@ -1426,7 +1426,7 @@ function LeftPanel({
                                     />
                                       <button
                                         onClick={() => { const nv = Math.min(sp.max, val + sp.step); onParamChange(sp.key, nv); onParamCommit(); }}
-                                        aria-label="Increase"
+                                        aria-label={loc(lang, { ko: '증가', en: 'Increase', ja: '増やす', zh: '增加', es: 'Aumentar', ar: 'زيادة' })}
                                         style={{
                                           minWidth: 36, minHeight: 36, padding: 0,
                                           borderRadius: 6, border: `1px solid ${theme.border}`,

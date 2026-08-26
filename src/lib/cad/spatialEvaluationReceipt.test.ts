@@ -9,6 +9,7 @@ import {
 } from './spatialEvaluationReceipt';
 
 const h = (s: string) => createHash('sha256').update(s).digest('hex');
+const RECEIPT_EVALUATION_TIME = new Date('2026-08-24T01:00:00Z');
 const base = (): SpatialEvaluationReceipt => ({
   schema: SPATIAL_EVALUATION_RECEIPT_SCHEMA, domain: 'interior', projectId: 'office-1',
   modelRevision: { id: 'rev-1', sha256: h('revision') }, inputSha256s: [h('survey'), h('program')], modelSha256: h('model'), resultSha256: h('result'),
@@ -36,14 +37,14 @@ describe('spatial evaluation receipt', () => {
 
   it('does not allow missing safety or authority gates to pass', () => {
     const r = { ...base(), safetyGate: null, authorityGate: null };
-    const result = evaluateSpatialEvaluationReceipt(r);
+    const result = evaluateSpatialEvaluationReceipt(r, {}, RECEIPT_EVALUATION_TIME);
     expect(result.status).toBe('HOLD');
     expect(result.blockers).toEqual(expect.arrayContaining(['safety_gate_not_pass', 'authority_gate_not_pass']));
   });
 
   it('preserves non-pass statuses and rejects unknown keys', () => {
     const r = { ...base(), status: 'NOT_RUN' as const };
-    expect(evaluateSpatialEvaluationReceipt(r)).toMatchObject({ status: 'NOT_RUN', blockers: ['status_not_run_reason_required'] });
+    expect(evaluateSpatialEvaluationReceipt(r, {}, RECEIPT_EVALUATION_TIME)).toMatchObject({ status: 'NOT_RUN', blockers: ['status_not_run_reason_required'] });
     expect(validateSpatialEvaluationReceipt({ ...r, extra: true })).toEqual(['receipt_keys_invalid']);
   });
 });

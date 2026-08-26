@@ -49,6 +49,8 @@ const canonical = value => {
   return JSON.stringify(value);
 };
 const sha256 = bytes => crypto.createHash('sha256').update(bytes).digest('hex');
+const hasExactKeys = (value, keys) => Boolean(value && typeof value === 'object' && !Array.isArray(value)
+  && Object.keys(value).sort().join(',') === [...keys].sort().join(','));
 
 export function parseTrustedMechanicalDesignVerifiers(raw = process.env.NEXYFAB_MECHANICAL_DESIGN_VERIFIER_KEYS) {
   if (!raw?.trim()) return {};
@@ -324,6 +326,14 @@ export function validateMechanicalBlindChallenge(receipt, {
   const realRoot = realEvidenceRoot(evidenceRoot);
   const usedPaths = new Set();
   const validCase = item => {
+    if (!hasExactKeys(item, [
+      'challengeId', 'risk', 'status', 'internalRoleSeparated', 'builderId',
+      'requirementsLockedAt', 'startedAt', 'completedAt', 'designRevisionSha256',
+      'artifacts', 'targetHash', 'reviews',
+    ])
+      || !hasExactKeys(item?.artifacts, ['requirements', 'releasePackage'])
+      || !hasExactKeys(item?.artifacts?.requirements, ['path', 'sha256'])
+      || !hasExactKeys(item?.artifacts?.releasePackage, ['path', 'sha256'])) return false;
     const requirements = readBinding(realRoot, item?.artifacts?.requirements, ['.json', '.md', '.txt'], usedPaths);
     const releasePackage = readBinding(realRoot, item?.artifacts?.releasePackage, ['.zip', '.json'], usedPaths);
     if (!requirements || !releasePackage || !SHA256.test(String(item?.designRevisionSha256 ?? ''))) return false;
@@ -333,17 +343,29 @@ export function validateMechanicalBlindChallenge(receipt, {
     const targetHash = blindChallengeTargetHash(receipt, item);
     const reviews = Array.isArray(item?.reviews) ? item.reviews : [];
     const validReviewerIds = new Set();
+    const requiredReviewers = item?.risk === 'high' ? 2 : 1;
+    let allReviewsValid = reviews.length >= requiredReviewers;
     for (const review of reviews) {
+      if (!hasExactKeys(review, [
+        'reviewerId', 'decision', 'independentFromBuild', 'targetHash', 'reviewedAt', 'signature',
+      ])) {
+        allReviewsValid = false;
+        continue;
+      }
       const registration = trustedReviewers[review?.reviewerId];
       const reviewedAt = Date.parse(review?.reviewedAt);
       let signatureValid = false;
       try {
+        const publicKey = crypto.createPublicKey(registration?.publicKey);
+        const signature = Buffer.from(review.signature, 'base64');
         signatureValid = registration?.roles?.includes('mechanical-blind-reviewer') === true
+          && publicKey.asymmetricKeyType === 'ed25519'
+          && signature.length === 64
           && crypto.verify(
             null,
             Buffer.from(blindChallengeReviewPayload(receipt, item, review)),
-            registration.publicKey,
-            Buffer.from(review.signature, 'base64'),
+            publicKey,
+            signature,
           );
       } catch {
         signatureValid = false;
@@ -356,8 +378,8 @@ export function validateMechanicalBlindChallenge(receipt, {
         && reviewedAt >= completedAt
         && reviewedAt <= now
         && signatureValid) validReviewerIds.add(review.reviewerId);
+      else allReviewsValid = false;
     }
-    const requiredReviewers = item?.risk === 'high' ? 2 : 1;
     return item?.status === 'pass'
       && ['standard', 'high'].includes(item?.risk)
       && item?.internalRoleSeparated === true
@@ -370,25 +392,35 @@ export function validateMechanicalBlindChallenge(receipt, {
       && startedAt <= completedAt
       && completedAt <= now
       && item?.targetHash === targetHash
-      && validReviewerIds.size >= requiredReviewers;
+      && allReviewsValid
+      && validReviewerIds.size === reviews.length;
   };
-  const structurallyValid = receipt?.schema === 'nexyfab.mechanical-blind-product-challenge.v1'
+  const generatedAt = Date.parse(receipt?.generatedAt);
+  const structurallyValid = hasExactKeys(receipt, [
+    'schema', 'releaseChannel', 'evidenceRootId', 'generatedAt', 'ok', 'cases', 'summary',
+  ])
+    && hasExactKeys(receipt?.summary, ['cases', 'passed', 'pending', 'failed', 'highRisk', 'falseVerified'])
+    && receipt?.schema === 'nexyfab.mechanical-blind-product-challenge.v1'
     && receipt?.releaseChannel === 'mechanical-core'
     && receipt?.ok === true
     && SHA256.test(String(receipt?.evidenceRootId ?? ''))
-    && Number.isFinite(Date.parse(receipt?.generatedAt))
-    && Date.parse(receipt.generatedAt) <= now
+    && Number.isFinite(generatedAt)
+    && generatedAt <= now
     && cases.length === 20
     && ids.size === 20
     && revisions.size === 20
-    && cases.filter(item => item?.risk === 'high').length >= 5;
+    && cases.filter(item => item?.risk === 'high').length >= 5
+    && cases.every(item => Date.parse(item?.completedAt) <= generatedAt
+      && Array.isArray(item?.reviews)
+      && item.reviews.every(review => Date.parse(review?.reviewedAt) <= generatedAt));
   const valid = structurallyValid && realRoot && cases.every(validCase);
   const summary = receipt?.summary ?? {};
+  const highRisk = cases.filter(item => item?.risk === 'high').length;
   return Boolean(valid
     && summary.cases === 20
     && summary.passed === 20
     && summary.pending === 0
     && summary.failed === 0
-    && summary.highRisk >= 5
+    && summary.highRisk === highRisk
     && summary.falseVerified === 0);
 }

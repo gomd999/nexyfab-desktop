@@ -26,4 +26,10 @@ describe('BottomDrawer accessibility', () => {
     fireEvent.keyDown(window, { key: 'Escape' });
     expect(onClose).toHaveBeenCalledOnce();
   });
+
+  it('localizes the close control for non-English routes', () => {
+    render(<BottomDrawer {...props} lang="ar" open />);
+    expect(screen.getByRole('button', { name: 'إغلاق الدرج' })).toBeEnabled();
+    expect(screen.queryByRole('button', { name: 'Close drawer' })).toBeNull();
+  });
 });

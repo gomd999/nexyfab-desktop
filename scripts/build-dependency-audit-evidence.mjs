@@ -1,8 +1,8 @@
 import fs from 'node:fs';
 import path from 'node:path';
-import { createHash } from 'node:crypto';
 import { spawnSync } from 'node:child_process';
 import { pathToFileURL } from 'node:url';
+import { TEXT_BINDING_CANONICALIZATION, canonicalTextSha256 } from './canonical-text-binding.mjs';
 
 const root = process.cwd();
 const output = path.join(root, 'docs', 'evidence', 'security', 'dependency-audit-260810.json');
@@ -29,9 +29,10 @@ export function buildDependencyAuditReport(audit, lockBytes, generatedAt = new D
   }
   return {
   schema: 'nexyfab-dependency-audit-v1',
+  textCanonicalization: TEXT_BINDING_CANONICALIZATION,
   generatedAt,
   command: 'npm audit --audit-level=low --json',
-  packageLockSha256: createHash('sha256').update(lockBytes).digest('hex'),
+  packageLockSha256: canonicalTextSha256(lockBytes),
   status: total === 0 ? 'pass' : 'fail',
   vulnerabilities: {
     info: Number(counts.info ?? 0), low: Number(counts.low ?? 0),
@@ -43,6 +44,7 @@ export function buildDependencyAuditReport(audit, lockBytes, generatedAt = new D
 }
 
 function main() {
+  let evidenceCurrent = true;
   const npmCli = process.env.npm_execpath
     || (process.platform === 'win32'
       ? path.join(path.dirname(process.execPath), 'node_modules', 'npm', 'bin', 'npm-cli.js')
@@ -76,17 +78,17 @@ function main() {
     fs.writeFileSync(output, `${JSON.stringify(report, null, 2)}\n`);
   } else if (!fs.existsSync(output)) {
     console.error(JSON.stringify({ ok: false, code: 'DEPENDENCY_AUDIT_EVIDENCE_MISSING' }));
-    process.exitCode = 1;
+    evidenceCurrent = false;
   } else {
     const stored = JSON.parse(fs.readFileSync(output, 'utf8'));
     const comparable = { ...report, generatedAt: stored.generatedAt };
     if (JSON.stringify(comparable) !== JSON.stringify(stored)) {
       console.error(JSON.stringify({ ok: false, code: 'DEPENDENCY_AUDIT_EVIDENCE_STALE' }));
-      process.exitCode = 1;
+      evidenceCurrent = false;
     }
   }
   console.log(JSON.stringify({ ok: report.status === 'pass', ...report.vulnerabilities }));
-  process.exitCode = report.status === 'pass' ? 0 : 1;
+  process.exitCode = report.status === 'pass' && evidenceCurrent ? 0 : 1;
 }
 
 if (import.meta.url === pathToFileURL(process.argv[1] ?? '').href) main();

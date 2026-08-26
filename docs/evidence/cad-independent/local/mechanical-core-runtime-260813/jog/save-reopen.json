@@ -3,9 +3,9 @@
   "feature": "jog",
   "axis": "save_reopen",
   "status": "PASS",
-  "executedAt": "2026-08-22T07:13:30.564Z",
+  "executedAt": "2026-08-24T22:37:45.371Z",
   "savedBytes": 1595,
-  "savedSha256": "dd8c367be3c07f3c43dce7e53949b564ac996300da58b7de1a113d5bba4e9525",
+  "savedSha256": "0995e5185c078e4da8f92fc085eb38ccfe91790b19182abb15ce05549a548591",
   "reopened": {
     "handle": "occt:273",
     "kernelKind": "Solid",

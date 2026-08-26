@@ -1,144 +1,172 @@
 {
   "schema": "nexyfab.mechanical-ai-intent-runtime-receipt.v1",
-  "generatedAt": "2026-08-22T07:13:00.871Z",
-  "revision": "7c3a02e2da7fbee88dac5533efea39eac2ec0114cde1b70936d41992d83dbbe1",
+  "generatedAt": "2026-08-25T08:20:38.363Z",
+  "textCanonicalization": "utf8-crlf-to-lf",
+  "revision": "a0a108d123eb01b22a05bbf4355f6811b124b7f3f12053c4dc371dc83ef3b3d3",
   "sourceBindings": [
     {
       "path": "src/app/[lang]/shape-generator/features/occtEngine.ts",
-      "sha256": "32ff70b38fe4634f1a1058319fbe0a782057df0aee95975ac1c6bdac41eb3084",
-      "bytes": 133719
+      "bytes": 133090,
+      "sha256": "13f520d73e4059d3157f4982fc45f2945e62006bf0e30dcae0ec2e3fad1ac30a",
+      "canonicalization": "utf8-crlf-to-lf"
     },
     {
       "path": "src/app/[lang]/shape-generator/features/topologyEdgeFinder.ts",
-      "sha256": "c1fb7eefc6462dd83ec1c146f4a432a87d200cd3f35ac8ca013f198a5a9a53dd",
-      "bytes": 21231
+      "bytes": 20766,
+      "sha256": "93360df5410ac04b111d62e0624b8200e7a27096ccac5e4e62e4d67dc054e8c1",
+      "canonicalization": "utf8-crlf-to-lf"
     },
     {
       "path": "src/app/[lang]/shape-generator/features/variableFillet.ts",
-      "sha256": "afe690a2b7bcfb006760de09e609f25a124113ec8cc1b0901a80726b3916fe0b",
-      "bytes": 8461
+      "bytes": 8253,
+      "sha256": "7da21bd1532f2373ac37d3b9f953b0b7166de820913e5460312582b947452a4c",
+      "canonicalization": "utf8-crlf-to-lf"
     },
     {
       "path": "src/app/[lang]/shape-generator/features/offsetFace.ts",
+      "bytes": 7702,
       "sha256": "8ea98c75163f9476c30424bf555eea2377c96686fb9d79bd45f5ce140a1b86d7",
-      "bytes": 7702
+      "canonicalization": "utf8-crlf-to-lf"
     },
     {
       "path": "src/app/[lang]/shape-generator/features/thread.ts",
+      "bytes": 7898,
       "sha256": "622e2b22146ebf24443550aede6b5c7ed220b6b3960149e3711321ba5d8ae59d",
-      "bytes": 7898
+      "canonicalization": "utf8-crlf-to-lf"
     },
     {
       "path": "src/app/[lang]/shape-generator/features/threads/applyThreadOcct.ts",
+      "bytes": 4890,
       "sha256": "cec5f01414564bec7da93c36ba515a61ce11424eb189a7a5c9b69b282aea30f3",
-      "bytes": 4890
+      "canonicalization": "utf8-crlf-to-lf"
     },
     {
       "path": "src/app/[lang]/shape-generator/features/helix.ts",
+      "bytes": 6057,
       "sha256": "718b3c8eea925c07f1d1329759b6e5523adb58574d580c1aa02cf2c2acc4fde6",
-      "bytes": 6057
+      "canonicalization": "utf8-crlf-to-lf"
     },
     {
       "path": "src/app/[lang]/shape-generator/features/sheetMetal.ts",
-      "sha256": "bec21b1a37183a6a12fb4bb1a2f4bb17ffb0dd2a2fdecbc0f3083bf8b480b614",
-      "bytes": 49431
+      "bytes": 49280,
+      "sha256": "6c415331819092400a18bdf3c36c64c9ca7a4cf42627aff7ac2fa146a65711a0",
+      "canonicalization": "utf8-crlf-to-lf"
     },
     {
       "path": "src/app/[lang]/shape-generator/features/tab.ts",
-      "sha256": "9dd870859810b41415dc39805ee735507ee77297af0894d54336ac24eeda9d2e",
-      "bytes": 9611
+      "bytes": 9465,
+      "sha256": "bdac480f308ba1cd1e90a4042f1965e2befc01b3cb982d4fdbe0569e0cad5e2a",
+      "canonicalization": "utf8-crlf-to-lf"
     },
     {
       "path": "src/app/[lang]/shape-generator/features/cut.ts",
+      "bytes": 13619,
       "sha256": "115f96068beec6684e9ba861abf95ad862386d74958647a43f74e6a0973c4152",
-      "bytes": 13619
+      "canonicalization": "utf8-crlf-to-lf"
     },
     {
       "path": "src/app/[lang]/shape-generator/features/reliefCuts.ts",
-      "sha256": "a9c566da3c3e48314b72df3e3a03f7eb662ee67b2cfb8a642e37e381c49a5a32",
-      "bytes": 20581
+      "bytes": 20289,
+      "sha256": "321c87a232bc79c525aa15bf95c380b9804b74cea9513feb4491367626083ca6",
+      "canonicalization": "utf8-crlf-to-lf"
     },
     {
       "path": "src/app/[lang]/shape-generator/features/variableShell.ts",
+      "bytes": 6478,
       "sha256": "a4ed100cd7e56db936a8bb1362b301e29495cf6c5901a28306250b65e17d1d34",
-      "bytes": 6478
+      "canonicalization": "utf8-crlf-to-lf"
     },
     {
       "path": "src/app/[lang]/shape-generator/features/revolve.ts",
+      "bytes": 4834,
       "sha256": "24cb93461f736406d49172082dad7318c887e279ca596c8b820530f89a29539b",
-      "bytes": 4834
+      "canonicalization": "utf8-crlf-to-lf"
     },
     {
       "path": "src/app/[lang]/shape-generator/features/sweep.ts",
-      "sha256": "0cdaf7ae7e8bc67c32be47db6267d46049b0f4e76da1a571ccebd099ae3bfc8a",
-      "bytes": 20456
+      "bytes": 19999,
+      "sha256": "8200ce87ced5f3cb0f2ad9fb3a97d500163f56f26bc3f823ceba025acd37d777",
+      "canonicalization": "utf8-crlf-to-lf"
     },
     {
       "path": "src/app/[lang]/shape-generator/features/loft.ts",
+      "bytes": 19628,
       "sha256": "245a7392ef59774a532e1c7bc9272de223b95f05a630a3febca2cfbcf7cdc785",
-      "bytes": 19628
+      "canonicalization": "utf8-crlf-to-lf"
     },
     {
       "path": "src/app/[lang]/shape-generator/features/mirror.ts",
-      "sha256": "d1c0d22acba7205bd95a47504b3628a6e721334c9c9771b0f31b6345ce621209",
-      "bytes": 2312
+      "bytes": 2252,
+      "sha256": "f4eff43748de076b001413e3fcde5703fb34526dff5e6ac613ac77aea533e89d",
+      "canonicalization": "utf8-crlf-to-lf"
     },
     {
       "path": "src/app/[lang]/shape-generator/features/boolean.ts",
-      "sha256": "3c35a39072725586df6e2a761acc8a04084d5818666ed3e7121322a90f802e9f",
-      "bytes": 14981
+      "bytes": 14610,
+      "sha256": "f05c8123e591adc94dafd885c71ded51eaa373f5b64b36fa4d9170d278c77667",
+      "canonicalization": "utf8-crlf-to-lf"
     },
     {
       "path": "src/app/[lang]/shape-generator/features/splitBody.ts",
-      "sha256": "753229973784c9de8181d2d4791f8ae151bbdb71f55d7dadbf5dd8cff4faecd7",
-      "bytes": 4015
+      "bytes": 3889,
+      "sha256": "0c5070696f0d90a3ddf5b3faff08aa6cd87fc1ff9207e5d6c63aa71aa53eb74d",
+      "canonicalization": "utf8-crlf-to-lf"
     },
     {
       "path": "src/app/[lang]/shape-generator/features/pipelineManager.ts",
-      "sha256": "66284ece9ce6a6206f28e99b97b86be755669169e470a25462fbb8daae09201e",
-      "bytes": 31526
+      "bytes": 35621,
+      "sha256": "d65b0b4f73610364195b7c1e6c97d62a64de1ea494c1ef0d37b27f0cfebbf427",
+      "canonicalization": "utf8-crlf-to-lf"
     },
     {
       "path": "src/app/[lang]/shape-generator/sketch/extrudeProfile.ts",
-      "sha256": "2f134635d6bd2b1c924f45d7226d56746ba907592987cf8f0fe97a865731dcb6",
-      "bytes": 20871
+      "bytes": 20356,
+      "sha256": "be7b3a46a5be88f42d8e4e20b388bf5e71f396aa2c8fd223688c72359a51c4dd",
+      "canonicalization": "utf8-crlf-to-lf"
     },
     {
       "path": "src/app/[lang]/shape-generator/io/nfabFormat.ts",
-      "sha256": "6c0422cec5d7524a263a543b94eb30cb0917837c9ec912a2acd12de037544f4d",
-      "bytes": 29671
+      "bytes": 28957,
+      "sha256": "525b411c888e495b42cb0298aee58459436da6c77518865e2dbd95a53b580133",
+      "canonicalization": "utf8-crlf-to-lf"
     },
     {
       "path": "src/app/[lang]/shape-generator/history/CommandHistory.ts",
+      "bytes": 2357,
       "sha256": "97438d50d8e20e93040b423b70bc6a5898bd90ecaedccd3fd44f9d359fef0c50",
-      "bytes": 2357
+      "canonicalization": "utf8-crlf-to-lf"
     },
     {
       "path": "src/app/[lang]/shape-generator/features/types.ts",
-      "sha256": "a8fcce84df76c47fc3cb4f1f35888485ab1f88105b35491a2773d8655790c255",
-      "bytes": 6204
+      "bytes": 6043,
+      "sha256": "d19682720e0a793d127b019e232ae18bcd17db010205ebbebe294faeee7599e1",
+      "canonicalization": "utf8-crlf-to-lf"
     },
     {
       "path": "src/lib/ai/mechanicalCoreFeatureContract.ts",
+      "bytes": 16839,
       "sha256": "a53d59fde828bca93ac903e961970be256fe83223733517dcef2bfb5b5f2bbfe",
-      "bytes": 16839
+      "canonicalization": "utf8-crlf-to-lf"
     },
     {
       "path": "scripts/mechanical-core-feature-local-runtime.ts",
-      "sha256": "e6633a788f34892ac95bb18b77b3abef2eb03d01e90cd45827e12f8cbb3ee760",
-      "bytes": 81487
+      "bytes": 81570,
+      "sha256": "03ed03e34224429267507f054d2518d24b53ab0b5e73cf95b58344bd35329c7e",
+      "canonicalization": "utf8-crlf-to-lf"
     }
   ],
   "artifactBindings": [
     {
       "path": "docs/evidence/cad-independent/local/mechanical-ai-intent-runtime-260813/intent-runtime-results.json",
-      "sha256": "0cd4c96d4b7382a77615b90eb8514f2594266f5a802e8f8c7a153581b781ee58",
-      "bytes": 23579
+      "bytes": 25539,
+      "sha256": "a580613a3595b55a7f145b841a48190e9e38167de4e519b0d946641dc986c009",
+      "canonicalization": "utf8-crlf-to-lf"
     },
     {
       "path": "docs/evidence/cad-independent/local/mechanical-ai-intent-runtime-260813/runtime-axis-evidence.json",
-      "sha256": "1ff1e846938e47673fe62b7f3568c05f91fd213c7a9eaee64bdab79bb83a700f",
-      "bytes": 117004
+      "bytes": 121904,
+      "sha256": "0416fd64ebcc5953a379b96546941db3c443a4eb0e3f8e903eeb1b90bf6b5b88",
+      "canonicalization": "utf8-crlf-to-lf"
     }
   ],
   "summary": {

@@ -7,6 +7,12 @@ import {
   assessMechanicalDesignCampaign,
   validateMechanicalBlindChallenge,
 } from './mechanical-commercial-evidence-v3.mjs';
+import {
+  TEXT_BINDING_CANONICALIZATION,
+  canonicalTextBinding,
+  canonicalTextEqual,
+} from './canonical-text-binding.mjs';
+import { EVIDENCE_BINDING_ROOTS } from './run-mechanical-core-internal-verification.mjs';
 
 export const MECHANICAL_SCOPE_PATHS = Object.freeze({
   internalVerification: 'docs/evidence/cad-independent/mechanical-core-internal-verification.json',
@@ -25,6 +31,8 @@ const canonical = value => {
   if (value && typeof value === 'object') return `{${Object.entries(value).sort(([a], [b]) => a.localeCompare(b)).map(([key, item]) => `${JSON.stringify(key)}:${canonical(item)}`).join(',')}}`;
   return JSON.stringify(value);
 };
+const hasExactKeys = (value, keys) => Boolean(value && typeof value === 'object' && !Array.isArray(value)
+  && Object.keys(value).sort().join(',') === [...keys].sort().join(','));
 
 export const REQUIRED_MECHANICAL_PILOT_PROCESSES = Object.freeze([
   'cnc_machining',
@@ -91,7 +99,7 @@ function readOptionalEvidence(root, relative) {
   const safe = safeFileInsideRoot(root, absolute);
   if (!safe) return null;
   const bytes = fs.readFileSync(safe);
-  return { path: relative, sha256: sha256(bytes), value: JSON.parse(bytes.toString('utf8')) };
+  return { path: relative, ...canonicalTextBinding(bytes), value: JSON.parse(bytes.toString('utf8')) };
 }
 
 /**
@@ -113,25 +121,44 @@ function safeFileInsideRoot(root, absolute) {
 
 function internalReceiptValid(root, receipt) {
   if (receipt?.schema !== 'nexyfab.mechanical-core-internal-verification.v1' || receipt?.ok !== true) return false;
+  if (receipt?.bindingPolicy?.text !== TEXT_BINDING_CANONICALIZATION
+    || receipt?.bindingPolicy?.binary !== 'raw'
+    || JSON.stringify(receipt?.bindingPolicy?.evidenceRoots) !== JSON.stringify(EVIDENCE_BINDING_ROOTS)) return false;
   const checks = receipt.checks ?? {};
   if (checks.losslessDesignGraph !== true
+    || checks.coreThirtyImplementationCoverage !== true
     || checks.threeCycleNfab !== true
     || checks.threeCycleStep !== true
     || checks.mechanicalAccuracy !== true
+    || checks.intentIntakeQualification !== true
+    || checks.intentExactRuntimeRepresentative !== true
+    || checks.assemblyDrawingHandoffLocalReadiness !== true
     || checks.typecheck !== true) return false;
-  if (!Array.isArray(receipt.commands) || receipt.commands.length < 3
+  if (!Array.isArray(receipt.commands) || receipt.commands.length < 6
     || receipt.commands.some(command => command?.exitCode !== 0)) return false;
   const commands = Object.fromEntries(receipt.commands.map(command => [command?.name, command]));
   if (commands['direct-cad']?.environment?.RUN_OCCT_FEASIBILITY !== '1'
     || !commands['mechanical-accuracy']
+    || !commands['intent-qualification']
+    || !commands['intent-runtime']
+    || !commands['assembly-handoff-readiness']
     || !commands.typecheck) return false;
   if (!Array.isArray(receipt.sourceBindings) || receipt.sourceBindings.length === 0) return false;
+  if (!EVIDENCE_BINDING_ROOTS.every(evidenceRoot => receipt.sourceBindings.some(binding =>
+    typeof binding?.path === 'string' && binding.path.startsWith(`${evidenceRoot}/`)))) return false;
 
   return receipt.sourceBindings.every(binding => {
     if (!SHA256.test(String(binding?.sha256 ?? ''))) return false;
     const absolute = resolveInside(root, binding?.path);
     const safe = safeFileInsideRoot(root, absolute);
-    return safe !== null && sha256(fs.readFileSync(safe)) === binding.sha256;
+    if (safe === null) return false;
+    const bytes = fs.readFileSync(safe);
+    const actual = binding?.canonicalization === TEXT_BINDING_CANONICALIZATION
+      ? canonicalTextBinding(bytes)
+      : binding?.canonicalization === 'raw'
+        ? { sha256: sha256(bytes), bytes: bytes.byteLength }
+        : null;
+    return actual !== null && actual.sha256 === binding.sha256 && actual.bytes === binding.bytes;
   });
 }
 
@@ -139,7 +166,15 @@ function sourceBindingValid(root, binding) {
   if (typeof binding?.path !== 'string' || !SHA256.test(String(binding?.sha256 ?? ''))) return false;
   const absolute = resolveInside(root, binding.path);
   const safe = safeFileInsideRoot(root, absolute);
-  return safe !== null && sha256(fs.readFileSync(safe)) === binding.sha256;
+  if (safe === null) return false;
+  const bytes = fs.readFileSync(safe);
+  if (binding?.canonicalization === TEXT_BINDING_CANONICALIZATION) {
+    const actual = canonicalTextBinding(bytes);
+    return actual.sha256 === binding.sha256 && (binding.bytes === undefined || actual.bytes === binding.bytes);
+  }
+  return binding?.canonicalization === 'raw'
+    && sha256(bytes) === binding.sha256
+    && (binding.bytes === undefined || bytes.byteLength === binding.bytes);
 }
 
 function featureClosedLoopAssessmentValid(root, assessment) {
@@ -194,7 +229,10 @@ export function validateMechanicalManufacturingReceipt(receipt, {
     ? fs.realpathSync(absoluteRoot)
     : null;
   const artifactValid = (role, binding) => {
-    if (!realRoot || typeof binding?.path !== 'string' || !SHA256.test(String(binding?.sha256 ?? ''))) return false;
+    if (!realRoot
+      || !hasExactKeys(binding, ['path', 'sha256'])
+      || typeof binding?.path !== 'string'
+      || !SHA256.test(String(binding?.sha256 ?? ''))) return false;
     const absolute = resolveInside(realRoot, binding.path);
     if (!absolute || !fs.existsSync(absolute) || !fs.statSync(absolute).isFile() || fs.lstatSync(absolute).isSymbolicLink()) return false;
     const real = fs.realpathSync(absolute);
@@ -207,8 +245,21 @@ export function validateMechanicalManufacturingReceipt(receipt, {
       && sha256(fs.readFileSync(real)) === binding.sha256;
   };
   const caseValid = item => {
+    if (!hasExactKeys(item, [
+      'caseId', 'process', 'result', 'designRevision', 'noUnapprovedCadChanges',
+      'stepRoundtripVerified', 'drawingReleased', 'bomReconciled',
+      'inspectionDisposition', 'artifacts', 'manufacturer', 'measurements', 'inspector',
+    ])
+      || !hasExactKeys(item?.artifacts, REQUIRED_PILOT_ARTIFACTS)
+      || !hasExactKeys(item?.manufacturer, ['facilityId', 'independentFromNexyfab', 'completedAt'])
+      || !hasExactKeys(item?.inspector, [
+        'reviewerId', 'independentFromBuild', 'inspectedAt', 'targetHash', 'signature',
+      ])) return false;
     const measurements = Array.isArray(item?.measurements) ? item.measurements : [];
-    const measurementValid = measurement => Number.isFinite(measurement?.nominal)
+    const measurementValid = measurement => hasExactKeys(measurement, [
+      'characteristic', 'nominal', 'actual', 'minusTolerance', 'plusTolerance', 'unit', 'result',
+    ])
+      && Number.isFinite(measurement?.nominal)
       && Number.isFinite(measurement?.actual)
       && Number.isFinite(measurement?.minusTolerance)
       && measurement.minusTolerance >= 0
@@ -228,12 +279,16 @@ export function validateMechanicalManufacturingReceipt(receipt, {
     const expectedTarget = mechanicalManufacturingCaseTargetHash(receipt, item);
     let signatureValid = false;
     try {
+      const publicKey = crypto.createPublicKey(registration?.publicKey);
+      const signature = Buffer.from(inspector.signature, 'base64');
       signatureValid = registration?.roles?.includes('manufacturing-inspector') === true
+        && publicKey.asymmetricKeyType === 'ed25519'
+        && signature.length === 64
         && crypto.verify(
           null,
           Buffer.from(mechanicalManufacturingInspectorPayload(receipt, item, inspector)),
-          registration.publicKey,
-          Buffer.from(inspector.signature, 'base64'),
+          publicKey,
+          signature,
         );
     } catch {
       signatureValid = false;
@@ -264,12 +319,17 @@ export function validateMechanicalManufacturingReceipt(receipt, {
       && bindingsValid;
   };
 
-  return receipt?.schema === 'nexyfab.mechanical-manufacturing-validation.v3'
+  const generatedAt = Date.parse(receipt?.generatedAt);
+  return hasExactKeys(receipt, [
+    'schema', 'releaseChannel', 'generatedAt', 'evidenceRootId', 'ok', 'summary', 'cases',
+  ])
+    && hasExactKeys(summary, ['cases', 'passed', 'failed', 'pending', 'measurements'])
+    && receipt?.schema === 'nexyfab.mechanical-manufacturing-validation.v3'
     && receipt?.releaseChannel === 'mechanical-core'
     && receipt?.ok === true
     && SHA256.test(String(receipt?.evidenceRootId ?? ''))
-    && Number.isFinite(Date.parse(receipt?.generatedAt))
-    && Date.parse(receipt.generatedAt) <= now
+    && Number.isFinite(generatedAt)
+    && generatedAt <= now
     && cases.length === 3
     && caseIds.size === cases.length
     && revisions.size === cases.length
@@ -277,6 +337,8 @@ export function validateMechanicalManufacturingReceipt(receipt, {
     && REQUIRED_MECHANICAL_PILOT_PROCESSES.every(process => processes.has(process))
     && facilities.size >= 2
     && inspectors.size >= 2
+    && cases.every(item => Date.parse(item?.manufacturer?.completedAt) <= generatedAt
+      && Date.parse(item?.inspector?.inspectedAt) <= generatedAt)
     && cases.every(caseValid)
     && summary.cases === cases.length
     && summary.passed === cases.length
@@ -299,6 +361,9 @@ export function buildMechanicalProductScopeAssessment(root, paths = MECHANICAL_S
 
   const evidence = {
     internalRegressionVerified: internalVerified,
+    intentQualification150Verified: internalVerified && internal.value.checks.intentIntakeQualification === true,
+    intentRuntimeRepresentativeVerified: internalVerified && internal.value.checks.intentExactRuntimeRepresentative === true,
+    assemblyDrawingHandoffLocalVerified: internalVerified && internal.value.checks.assemblyDrawingHandoffLocalReadiness === true,
     coreThirtyFeatureClosedLoopVerified,
     directDesignCandidateVerified: designCampaign.candidateVerified,
     directDesignThirtyVerified: designCampaign.completeVerified,
@@ -335,14 +400,14 @@ export function buildMechanicalProductScopeAssessment(root, paths = MECHANICAL_S
 
   const sources = [internal, featureClosedLoop, directDesignCampaign, blindProductChallenge, manufacturing]
     .filter(Boolean)
-    .map(item => ({ path: item.path, sha256: item.sha256 }));
+    .map(item => ({ path: item.path, sha256: item.sha256, bytes: item.bytes, canonicalization: item.canonicalization }));
   const assessedAt = [internal, featureClosedLoop, directDesignCampaign, blindProductChallenge, manufacturing]
     .map(item => item?.value?.generatedAt ?? item?.value?.assessedAt)
     .filter(value => typeof value === 'string')
     .sort()
     .at(-1) ?? null;
   return {
-    schema: 'nexyfab.mechanical-product-scope-assessment.v3',
+    schema: 'nexyfab.mechanical-product-scope-assessment.v4',
     releaseChannel: 'mechanical-core',
     assessedAt,
     sources,
@@ -385,12 +450,13 @@ export function checkOrWriteMechanicalProductScopeAssessment({ root, write, path
     return { ok: true, output: paths.output, status: expectedValue.decision.status, blockers: expectedValue.blockers };
   }
   const actual = fs.existsSync(output) ? fs.readFileSync(output, 'utf8') : '';
+  const current = canonicalTextEqual(actual, expected);
   return {
-    ok: actual === expected,
+    ok: current,
     output: paths.output,
     status: expectedValue.decision.status,
     blockers: expectedValue.blockers,
-    error: actual === expected ? null : 'MECHANICAL_PRODUCT_SCOPE_ASSESSMENT_STALE',
+    error: current ? null : 'MECHANICAL_PRODUCT_SCOPE_ASSESSMENT_STALE',
   };
 }
 

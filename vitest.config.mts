@@ -25,7 +25,7 @@ export default defineConfig({
     environment: 'node',
     globals: true,
     setupFiles: ['./src/test/setup.ts'],
-    include: ['src/**/*.test.ts', 'src/**/*.test.tsx', 'scripts/**/*.test.ts', 'workers/**/*.test.ts', 'containers/**/*.test.ts', 'packages/**/*.test.ts'],
+    include: ['src/**/*.test.ts', 'src/**/*.test.tsx', 'scripts/**/*.test.ts', 'workers/**/*.test.ts', 'containers/**/*.test.ts', 'packages/**/*.test.ts', 'e2e/**/*.test.ts'],
     /** Per-test 60s, hooks 30s, teardown 30s. A single test that exceeds 60s is a bug — fail loud, don't hang CI. */
     testTimeout: 60_000,
     hookTimeout: 30_000,

@@ -1,7 +1,7 @@
 {
   "schema": "nexyfab.mechanical-ai-intent-runtime-integration.v1",
-  "generatedAt": "2026-08-22T07:13:00.871Z",
-  "revision": "7c3a02e2da7fbee88dac5533efea39eac2ec0114cde1b70936d41992d83dbbe1",
+  "generatedAt": "2026-08-25T08:20:38.363Z",
+  "revision": "a0a108d123eb01b22a05bbf4355f6811b124b7f3f12053c4dc371dc83ef3b3d3",
   "executionBoundary": {
     "aiModelCall": "NOT_RUN",
     "canonicalCandidate": "EXECUTED",
@@ -16,13 +16,13 @@
       "feature": "hole",
       "candidate": {
         "id": "intent-runtime:ko_practical-01-hole",
-        "baseRevision": "7c3a02e2da7fbee88dac5533efea39eac2ec0114cde1b70936d41992d83dbbe1",
+        "baseRevision": "a0a108d123eb01b22a05bbf4355f6811b124b7f3f12053c4dc371dc83ef3b3d3",
         "status": "PASS"
       },
       "authoritativeInput": {
         "caseId": "ko_practical-01-hole",
         "candidateId": "intent-runtime:ko_practical-01-hole",
-        "candidateBaseRevision": "7c3a02e2da7fbee88dac5533efea39eac2ec0114cde1b70936d41992d83dbbe1",
+        "candidateBaseRevision": "a0a108d123eb01b22a05bbf4355f6811b124b7f3f12053c4dc371dc83ef3b3d3",
         "promptSha256": "8e41f52aeb29df0d0db6a2cd2856af945033d319834c07c50b43326e4bce4d6a",
         "inputSha256": "b781befa692abcd8dd7e823391cfe7b63c657e07f588fa3c504b4a3873663538",
         "sourceUnits": [
@@ -47,23 +47,27 @@
       "artifactBindings": [
         {
           "path": "docs/evidence/cad-independent/local/mechanical-ai-intent-runtime-260813/runtime/hole/create.json",
-          "sha256": "348589d9e5ca887b8356f49c395edd62bb2129c881a956b19ad904fed16cf74f",
-          "bytes": 2371
+          "bytes": 2371,
+          "sha256": "63a876a1a30f8bd5329f6647b294d6aefc7d06d1372c8e41495e4cbf736f7d5a",
+          "canonicalization": "utf8-crlf-to-lf"
         },
         {
           "path": "docs/evidence/cad-independent/local/mechanical-ai-intent-runtime-260813/runtime/hole/edit.json",
-          "sha256": "c13e80d2608b393db133ac198ae0b717333d6c2a472ea5089a332a346ba17386",
-          "bytes": 1544
+          "bytes": 1544,
+          "sha256": "080734955371551a6ce51e6c67d4234fd136847cff98319656284dfc4e1c23a0",
+          "canonicalization": "utf8-crlf-to-lf"
         },
         {
           "path": "docs/evidence/cad-independent/local/mechanical-ai-intent-runtime-260813/runtime/hole/regenerate.json",
-          "sha256": "170ded67fd19b4a4efc5b3f7cdbab32f19a83e34962c893b10a7aa300c3b896b",
-          "bytes": 2360
+          "bytes": 2360,
+          "sha256": "e7434b8a89ae169c620b513c38a259b74a78bbee805ae2f8432756df46873cfc",
+          "canonicalization": "utf8-crlf-to-lf"
         },
         {
           "path": "docs/evidence/cad-independent/local/mechanical-ai-intent-runtime-260813/runtime/hole/saved-project.nfab",
-          "sha256": "0304c7b07f2e3735e13a320629849e243856f730359abb0f7b5a00c4921ee584",
-          "bytes": 1903
+          "bytes": 1903,
+          "sha256": "b5d05816ce0b55ee1abc8b364cfa57c9c27df15b43b1c11046c725a6c89ae916",
+          "canonicalization": "utf8-crlf-to-lf"
         }
       ],
       "status": "PASS",
@@ -75,13 +79,13 @@
       "feature": "fillet",
       "candidate": {
         "id": "intent-runtime:en_practical-02-fillet",
-        "baseRevision": "7c3a02e2da7fbee88dac5533efea39eac2ec0114cde1b70936d41992d83dbbe1",
+        "baseRevision": "a0a108d123eb01b22a05bbf4355f6811b124b7f3f12053c4dc371dc83ef3b3d3",
         "status": "PASS"
       },
       "authoritativeInput": {
         "caseId": "en_practical-02-fillet",
         "candidateId": "intent-runtime:en_practical-02-fillet",
-        "candidateBaseRevision": "7c3a02e2da7fbee88dac5533efea39eac2ec0114cde1b70936d41992d83dbbe1",
+        "candidateBaseRevision": "a0a108d123eb01b22a05bbf4355f6811b124b7f3f12053c4dc371dc83ef3b3d3",
         "promptSha256": "f201d7d4315c1a3f806cd3f3af2b6ef975c3a4015ef94e2ae015837727f0d17b",
         "inputSha256": "e82e0c1155c35c624e04e93a890b20cb00d4c85b2d2e694bcf701cde51c05c7f",
         "sourceUnits": [
@@ -106,23 +110,27 @@
       "artifactBindings": [
         {
           "path": "docs/evidence/cad-independent/local/mechanical-ai-intent-runtime-260813/runtime/fillet/create.json",
-          "sha256": "10b691e46fd2e95bdf5d23cd9f5742ab96884475605d6fe8b81b11b3f92e3bde",
-          "bytes": 2294
+          "bytes": 2294,
+          "sha256": "aa1606d3cb826a58c330adbee1adb7a7f69ee04179682b792c1c1423b63d14aa",
+          "canonicalization": "utf8-crlf-to-lf"
         },
         {
           "path": "docs/evidence/cad-independent/local/mechanical-ai-intent-runtime-260813/runtime/fillet/edit.json",
-          "sha256": "e854a2dffb13e188b1f531b934b0f5270dd99607e5ef205c2b7769ab509d2c17",
-          "bytes": 1371
+          "bytes": 1371,
+          "sha256": "0895a215a13908d694275eeadc3dfab781877792e102b5ea24f1fef401f90828",
+          "canonicalization": "utf8-crlf-to-lf"
         },
         {
           "path": "docs/evidence/cad-independent/local/mechanical-ai-intent-runtime-260813/runtime/fillet/regenerate.json",
-          "sha256": "9cf832fab1fe1768e2cc95cb02815552a305751a7e31a13dba353fc028638d3a",
-          "bytes": 2378
+          "bytes": 2378,
+          "sha256": "fc1b44c8b65dcd572728fd93c55bfbee47b75c34ad4d2e5a10dc435f81d7fbe0",
+          "canonicalization": "utf8-crlf-to-lf"
         },
         {
           "path": "docs/evidence/cad-independent/local/mechanical-ai-intent-runtime-260813/runtime/fillet/saved-project.nfab",
-          "sha256": "e35e846ba9f672f24f2ac140b158d701f9551cd2c6b2c3e2eb7683361a769b2f",
-          "bytes": 1798
+          "bytes": 1798,
+          "sha256": "169aa113b5cfcb262db772d4f7a3f57cafdfa50498673ca6b358b5030f3dc232",
+          "canonicalization": "utf8-crlf-to-lf"
         }
       ],
       "status": "PASS",
@@ -134,13 +142,13 @@
       "feature": "chamfer",
       "candidate": {
         "id": "intent-runtime:mixed_units-03-chamfer",
-        "baseRevision": "7c3a02e2da7fbee88dac5533efea39eac2ec0114cde1b70936d41992d83dbbe1",
+        "baseRevision": "a0a108d123eb01b22a05bbf4355f6811b124b7f3f12053c4dc371dc83ef3b3d3",
         "status": "PASS"
       },
       "authoritativeInput": {
         "caseId": "mixed_units-03-chamfer",
         "candidateId": "intent-runtime:mixed_units-03-chamfer",
-        "candidateBaseRevision": "7c3a02e2da7fbee88dac5533efea39eac2ec0114cde1b70936d41992d83dbbe1",
+        "candidateBaseRevision": "a0a108d123eb01b22a05bbf4355f6811b124b7f3f12053c4dc371dc83ef3b3d3",
         "promptSha256": "50a5290d69b20f20f846644c5090aeab5a4a05032a8fdc661e7b8cc676c0b799",
         "inputSha256": "83e52ee531c466b6e6f9297def0e729cef34d3f5fe74724fdbcf3c9c9c100687",
         "sourceUnits": [
@@ -166,23 +174,27 @@
       "artifactBindings": [
         {
           "path": "docs/evidence/cad-independent/local/mechanical-ai-intent-runtime-260813/runtime/chamfer/create.json",
-          "sha256": "9cbe1869b1aa374d0579b5b421bdf6d777e2f379adb3aa19ffc9baae7f4d5864",
-          "bytes": 2363
+          "bytes": 2363,
+          "sha256": "d1a019991263793dc3333af4b71633d62e68b911b58ac228b31371317a3ca7a9",
+          "canonicalization": "utf8-crlf-to-lf"
         },
         {
           "path": "docs/evidence/cad-independent/local/mechanical-ai-intent-runtime-260813/runtime/chamfer/edit.json",
-          "sha256": "ae4bb1e34788c054cd6ec005c7dfbac2ba61182b9cdbb342ff8e2c8925818643",
-          "bytes": 1499
+          "bytes": 1499,
+          "sha256": "5e228014e1ec86ba6e3ade99d9b6f32cd09b9a9376556cc429a620d70cb84801",
+          "canonicalization": "utf8-crlf-to-lf"
         },
         {
           "path": "docs/evidence/cad-independent/local/mechanical-ai-intent-runtime-260813/runtime/chamfer/regenerate.json",
-          "sha256": "75430295d61d011930279f650148dbfd0de0c7d013432120aaa22d6c2b51006e",
-          "bytes": 2399
+          "bytes": 2399,
+          "sha256": "a96fb6c006c73b07ed8e1ecea5803f85e8f05dcdcfdf4d572d326a4adb2a34d9",
+          "canonicalization": "utf8-crlf-to-lf"
         },
         {
           "path": "docs/evidence/cad-independent/local/mechanical-ai-intent-runtime-260813/runtime/chamfer/saved-project.nfab",
-          "sha256": "6971e49507c11dfa49dae090841b5a9b52798afc6a5b51df7ad9662dece46655",
-          "bytes": 1861
+          "bytes": 1861,
+          "sha256": "7e8ab8f88f10374fd0344d82f8263445a6abbff947595d9f952daa3216512007",
+          "canonicalization": "utf8-crlf-to-lf"
         }
       ],
       "status": "PASS",
@@ -194,13 +206,13 @@
       "feature": "shell",
       "candidate": {
         "id": "intent-runtime:ko_practical-04-shell",
-        "baseRevision": "7c3a02e2da7fbee88dac5533efea39eac2ec0114cde1b70936d41992d83dbbe1",
+        "baseRevision": "a0a108d123eb01b22a05bbf4355f6811b124b7f3f12053c4dc371dc83ef3b3d3",
         "status": "PASS"
       },
       "authoritativeInput": {
         "caseId": "ko_practical-04-shell",
         "candidateId": "intent-runtime:ko_practical-04-shell",
-        "candidateBaseRevision": "7c3a02e2da7fbee88dac5533efea39eac2ec0114cde1b70936d41992d83dbbe1",
+        "candidateBaseRevision": "a0a108d123eb01b22a05bbf4355f6811b124b7f3f12053c4dc371dc83ef3b3d3",
         "promptSha256": "52f0acadbaccba1af392291d411d56ba0d67064c973116a29151d164737a71e9",
         "inputSha256": "e315ec859f4459bf7428df820f82a3f77efa3ebcc762be1f4a46db82ea0ed5fd",
         "sourceUnits": [
@@ -225,23 +237,27 @@
       "artifactBindings": [
         {
           "path": "docs/evidence/cad-independent/local/mechanical-ai-intent-runtime-260813/runtime/shell/create.json",
-          "sha256": "5c8596911745163bdeda1f22c1d92f2e35f5a20872193b2294863d92a5218e50",
-          "bytes": 2285
+          "bytes": 2285,
+          "sha256": "cc5fbb8631f922c9e570018321587434d0c04c573f54bf7afcec3052bdae23b2",
+          "canonicalization": "utf8-crlf-to-lf"
         },
         {
           "path": "docs/evidence/cad-independent/local/mechanical-ai-intent-runtime-260813/runtime/shell/edit.json",
-          "sha256": "1302b29656719500695c7fc33c384ce28692ca58c2dc710a403f0ceebb289f61",
-          "bytes": 1362
+          "bytes": 1362,
+          "sha256": "05093e9683893fa2813f38b4334b6d1ba3e14176321353184f9e9062dc71c608",
+          "canonicalization": "utf8-crlf-to-lf"
         },
         {
           "path": "docs/evidence/cad-independent/local/mechanical-ai-intent-runtime-260813/runtime/shell/regenerate.json",
-          "sha256": "d79f2d0eb1a283bd8f6ddf28a220fccbaf353049847c44e8b72fd7500b60d3ff",
-          "bytes": 2343
+          "bytes": 2343,
+          "sha256": "5b62b94fdcd841af16d766a86823b6349a42322afda5f352b4333cbf9c9b0e9e",
+          "canonicalization": "utf8-crlf-to-lf"
         },
         {
           "path": "docs/evidence/cad-independent/local/mechanical-ai-intent-runtime-260813/runtime/shell/saved-project.nfab",
-          "sha256": "a87dd1dccdd30d60d7a4719f45313da0ef074e398bdf9b440afcab297819d31c",
-          "bytes": 1792
+          "bytes": 1792,
+          "sha256": "4474e84b212b3c0aa67a75bc4fbc97975ba62e0a2e642a30795c1a92499bbedf",
+          "canonicalization": "utf8-crlf-to-lf"
         }
       ],
       "status": "PASS",
@@ -253,13 +269,13 @@
       "feature": "rib",
       "candidate": {
         "id": "intent-runtime:en_practical-05-rib",
-        "baseRevision": "7c3a02e2da7fbee88dac5533efea39eac2ec0114cde1b70936d41992d83dbbe1",
+        "baseRevision": "a0a108d123eb01b22a05bbf4355f6811b124b7f3f12053c4dc371dc83ef3b3d3",
         "status": "PASS"
       },
       "authoritativeInput": {
         "caseId": "en_practical-05-rib",
         "candidateId": "intent-runtime:en_practical-05-rib",
-        "candidateBaseRevision": "7c3a02e2da7fbee88dac5533efea39eac2ec0114cde1b70936d41992d83dbbe1",
+        "candidateBaseRevision": "a0a108d123eb01b22a05bbf4355f6811b124b7f3f12053c4dc371dc83ef3b3d3",
         "promptSha256": "c4ea8c3d434d83998a5f9a6d473de54c9e06c0dac36e64dfb376020ed920c847",
         "inputSha256": "f0c66336a3aeeab7b421962865bc27faa3efda9cc58778e67518179c178d2563",
         "sourceUnits": [
@@ -284,23 +300,27 @@
       "artifactBindings": [
         {
           "path": "docs/evidence/cad-independent/local/mechanical-ai-intent-runtime-260813/runtime/rib/create.json",
-          "sha256": "7b03c92c876c017b55e543e4a7d48a46886131848a64845ed85ec7ae4c74fa26",
-          "bytes": 2333
+          "bytes": 2333,
+          "sha256": "5ad3da89e4a9df02201e40fd9c7bf9416e5a184ad1ee1e1d27cc93ca0148258e",
+          "canonicalization": "utf8-crlf-to-lf"
         },
         {
           "path": "docs/evidence/cad-independent/local/mechanical-ai-intent-runtime-260813/runtime/rib/edit.json",
-          "sha256": "906facaa3f5f2aaf80294eca3bbaf0845c6ace190e6b24ad5712408ff7c08e14",
-          "bytes": 1537
+          "bytes": 1537,
+          "sha256": "912d9be68e8225f2591eb87247b9ea41a6fe9e8a51141ea527fcd99c103c6dd5",
+          "canonicalization": "utf8-crlf-to-lf"
         },
         {
           "path": "docs/evidence/cad-independent/local/mechanical-ai-intent-runtime-260813/runtime/rib/regenerate.json",
-          "sha256": "9bb1050b7d933ac1bde5d63c0a1b6e9c1d626b3975a341b175015c11daf74779",
-          "bytes": 2315
+          "bytes": 2315,
+          "sha256": "35b5c30da5bd5303723bc10f78427a4f6d6ad22ddefb224173a829d8267fa81a",
+          "canonicalization": "utf8-crlf-to-lf"
         },
         {
           "path": "docs/evidence/cad-independent/local/mechanical-ai-intent-runtime-260813/runtime/rib/saved-project.nfab",
-          "sha256": "405cb32c9b8eddcdb915a79842ed47aee67f83050dc868f53d97a38367e0ba83",
-          "bytes": 1898
+          "bytes": 1898,
+          "sha256": "a63a886d6749b97340112f8a5d94c252fff7fe331226d71d26c6fb22d4b2f6d1",
+          "canonicalization": "utf8-crlf-to-lf"
         }
       ],
       "status": "PASS",
@@ -312,13 +332,13 @@
       "feature": "linearPattern",
       "candidate": {
         "id": "intent-runtime:mixed_units-06-linearPattern",
-        "baseRevision": "7c3a02e2da7fbee88dac5533efea39eac2ec0114cde1b70936d41992d83dbbe1",
+        "baseRevision": "a0a108d123eb01b22a05bbf4355f6811b124b7f3f12053c4dc371dc83ef3b3d3",
         "status": "PASS"
       },
       "authoritativeInput": {
         "caseId": "mixed_units-06-linearPattern",
         "candidateId": "intent-runtime:mixed_units-06-linearPattern",
-        "candidateBaseRevision": "7c3a02e2da7fbee88dac5533efea39eac2ec0114cde1b70936d41992d83dbbe1",
+        "candidateBaseRevision": "a0a108d123eb01b22a05bbf4355f6811b124b7f3f12053c4dc371dc83ef3b3d3",
         "promptSha256": "8f62155c6bb4727f10a578add32473dde34493692d51cfc850f7a13215f9741d",
         "inputSha256": "cfefb607d5bc6942325a7d5388e0edf2f50e7c2f5cb1a8aa12ed38eae9d209fe",
         "sourceUnits": [
@@ -344,23 +364,27 @@
       "artifactBindings": [
         {
           "path": "docs/evidence/cad-independent/local/mechanical-ai-intent-runtime-260813/runtime/linearPattern/create.json",
-          "sha256": "3a29289fc1fe13063065b807de930e69ab06bf264f8bdc43a171d13a14f31a35",
-          "bytes": 2298
+          "bytes": 2298,
+          "sha256": "c8f21fc29a8e010604859569e36bf36e46813c540a2e6f4c4ef602f770a1cd41",
+          "canonicalization": "utf8-crlf-to-lf"
         },
         {
           "path": "docs/evidence/cad-independent/local/mechanical-ai-intent-runtime-260813/runtime/linearPattern/edit.json",
-          "sha256": "7e08cb4259bbb3bad7af57552da4c61efd5f263cfbe2640c039be69740b4a3ad",
-          "bytes": 1499
+          "bytes": 1499,
+          "sha256": "aa1c4b29a7e4f6d8643d1071c19cb1a6886ae8a5641c3f8687d67e0bf17f4dbb",
+          "canonicalization": "utf8-crlf-to-lf"
         },
         {
           "path": "docs/evidence/cad-independent/local/mechanical-ai-intent-runtime-260813/runtime/linearPattern/regenerate.json",
-          "sha256": "5ea7b32cdf3961fd5f790ad7d32ae809656409adb32b56e62784c527e86a22fd",
-          "bytes": 2312
+          "bytes": 2312,
+          "sha256": "b92a43c8f851d9036ae6a6498dd54b89be593bafe46038d2da614491913303b7",
+          "canonicalization": "utf8-crlf-to-lf"
         },
         {
           "path": "docs/evidence/cad-independent/local/mechanical-ai-intent-runtime-260813/runtime/linearPattern/saved-project.nfab",
-          "sha256": "a04137d26b3ee3f618e84a03d9ebd8bace1cebb1eefdcc26297a88dbae9475f9",
-          "bytes": 1871
+          "bytes": 1871,
+          "sha256": "5e0a6a807d0b7d8c601952aaa7bec31aed89cbc6ae2ac9508cbe39c0e0913e99",
+          "canonicalization": "utf8-crlf-to-lf"
         }
       ],
       "status": "PASS",
@@ -372,13 +396,13 @@
       "feature": "circularPattern",
       "candidate": {
         "id": "intent-runtime:ko_practical-07-circularPattern",
-        "baseRevision": "7c3a02e2da7fbee88dac5533efea39eac2ec0114cde1b70936d41992d83dbbe1",
+        "baseRevision": "a0a108d123eb01b22a05bbf4355f6811b124b7f3f12053c4dc371dc83ef3b3d3",
         "status": "PASS"
       },
       "authoritativeInput": {
         "caseId": "ko_practical-07-circularPattern",
         "candidateId": "intent-runtime:ko_practical-07-circularPattern",
-        "candidateBaseRevision": "7c3a02e2da7fbee88dac5533efea39eac2ec0114cde1b70936d41992d83dbbe1",
+        "candidateBaseRevision": "a0a108d123eb01b22a05bbf4355f6811b124b7f3f12053c4dc371dc83ef3b3d3",
         "promptSha256": "84f55ad69bf21c90860c12e9206056ce47a7405104ba4caa2a8bcdb5173e589b",
         "inputSha256": "42856994be07c22070fd35921cfe82295db7042c543d308b01fd61a235a18b6d",
         "sourceUnits": [
@@ -403,23 +427,27 @@
       "artifactBindings": [
         {
           "path": "docs/evidence/cad-independent/local/mechanical-ai-intent-runtime-260813/runtime/circularPattern/create.json",
-          "sha256": "e1c0082eef294c5bf33da4ca0c78b8bc8a00be34884e37aece1377f177f8a972",
-          "bytes": 2363
+          "bytes": 2363,
+          "sha256": "955d0f28e1f12f8b6516105eefbb7e9dfc81b26f283751c96bff9a3650187e36",
+          "canonicalization": "utf8-crlf-to-lf"
         },
         {
           "path": "docs/evidence/cad-independent/local/mechanical-ai-intent-runtime-260813/runtime/circularPattern/edit.json",
-          "sha256": "98f35c975593dd13957334f8b0c9607e3e5a8d33d3d04ffcd29afda33bd42d2f",
-          "bytes": 1503
+          "bytes": 1503,
+          "sha256": "f04a7c444603dc422dc8d26b09b7b33e63a406236b05642ca6e7b608db1dd739",
+          "canonicalization": "utf8-crlf-to-lf"
         },
         {
           "path": "docs/evidence/cad-independent/local/mechanical-ai-intent-runtime-260813/runtime/circularPattern/regenerate.json",
-          "sha256": "d926f9669589abfed11231f87521875e5a55e703ea9050d99f2ec81cb35bccf5",
-          "bytes": 2364
+          "bytes": 2364,
+          "sha256": "4c197e2fbc0d052e72a7bf07b7f88213582d087033861f8f78d4e8ee0228e465",
+          "canonicalization": "utf8-crlf-to-lf"
         },
         {
           "path": "docs/evidence/cad-independent/local/mechanical-ai-intent-runtime-260813/runtime/circularPattern/saved-project.nfab",
-          "sha256": "77ab62f1084652d9d78ec584aa8537c26828b3ed4371ae47e2b0733796892815",
-          "bytes": 1881
+          "bytes": 1881,
+          "sha256": "86e7e1ad848e237d16630ccc82139f8d27f3e12de31b1a9744e2b96a8e437c35",
+          "canonicalization": "utf8-crlf-to-lf"
         }
       ],
       "status": "PASS",
@@ -431,13 +459,13 @@
       "feature": "draft",
       "candidate": {
         "id": "intent-runtime:en_practical-08-draft",
-        "baseRevision": "7c3a02e2da7fbee88dac5533efea39eac2ec0114cde1b70936d41992d83dbbe1",
+        "baseRevision": "a0a108d123eb01b22a05bbf4355f6811b124b7f3f12053c4dc371dc83ef3b3d3",
         "status": "PASS"
       },
       "authoritativeInput": {
         "caseId": "en_practical-08-draft",
         "candidateId": "intent-runtime:en_practical-08-draft",
-        "candidateBaseRevision": "7c3a02e2da7fbee88dac5533efea39eac2ec0114cde1b70936d41992d83dbbe1",
+        "candidateBaseRevision": "a0a108d123eb01b22a05bbf4355f6811b124b7f3f12053c4dc371dc83ef3b3d3",
         "promptSha256": "7c5bdf3270f3e5bb30c2943b28d025504d89afeb536a178876a1c368dad23859",
         "inputSha256": "d72ec0b4bd4d8a4349bb7df9adea28687d0ee293f3cd5bb29c63d2f9338e873a",
         "sourceUnits": [
@@ -462,23 +490,27 @@
       "artifactBindings": [
         {
           "path": "docs/evidence/cad-independent/local/mechanical-ai-intent-runtime-260813/runtime/draft/create.json",
-          "sha256": "46d7a3220a9150ba9b961ab04dfb549f0f0ae7ee365c98ba40c0036be09b7b4a",
-          "bytes": 2279
+          "bytes": 2279,
+          "sha256": "9de734566be4714a3d37732ea7c25bb7b9a4f63b2cd20f7fe5bf9adecce73968",
+          "canonicalization": "utf8-crlf-to-lf"
         },
         {
           "path": "docs/evidence/cad-independent/local/mechanical-ai-intent-runtime-260813/runtime/draft/edit.json",
-          "sha256": "30e95e7bcdf4cad6c3aeb961f27bc44618d439cc07fe1398c669f70748a5759a",
-          "bytes": 1351
+          "bytes": 1351,
+          "sha256": "828a977eee83a3125394f6c0e78a969844efd11d60522c867c90977c10abddf7",
+          "canonicalization": "utf8-crlf-to-lf"
         },
         {
           "path": "docs/evidence/cad-independent/local/mechanical-ai-intent-runtime-260813/runtime/draft/regenerate.json",
-          "sha256": "280e0cea7d47cc3ac5623fb4011044c4d91a3407e186f96500d2255e28ace2d8",
-          "bytes": 2371
+          "bytes": 2371,
+          "sha256": "61bdb0d88aa5112a5b61f4c922a0e71378d4b280f301169ea8367f3c3dd591d5",
+          "canonicalization": "utf8-crlf-to-lf"
         },
         {
           "path": "docs/evidence/cad-independent/local/mechanical-ai-intent-runtime-260813/runtime/draft/saved-project.nfab",
-          "sha256": "cb7eb603d6974f6229da6a2837fa4213f504f156983a0d7c613ca6de6d813e4c",
-          "bytes": 1787
+          "bytes": 1787,
+          "sha256": "4cfa1c5995c9921bf6dc24c7d5c5a7be1366adb508dd4918ce013e843965a82e",
+          "canonicalization": "utf8-crlf-to-lf"
         }
       ],
       "status": "PASS",
@@ -490,13 +522,13 @@
       "feature": "scale",
       "candidate": {
         "id": "intent-runtime:mixed_units-09-scale",
-        "baseRevision": "7c3a02e2da7fbee88dac5533efea39eac2ec0114cde1b70936d41992d83dbbe1",
+        "baseRevision": "a0a108d123eb01b22a05bbf4355f6811b124b7f3f12053c4dc371dc83ef3b3d3",
         "status": "PASS"
       },
       "authoritativeInput": {
         "caseId": "mixed_units-09-scale",
         "candidateId": "intent-runtime:mixed_units-09-scale",
-        "candidateBaseRevision": "7c3a02e2da7fbee88dac5533efea39eac2ec0114cde1b70936d41992d83dbbe1",
+        "candidateBaseRevision": "a0a108d123eb01b22a05bbf4355f6811b124b7f3f12053c4dc371dc83ef3b3d3",
         "promptSha256": "d7a5f4de842c9d485e4168cedb4dc8342495522d2f15d49676ad481353e1e2f2",
         "inputSha256": "99e1b875e09e80603921b25953c657c2b1fd685dd349a85b56545f24025d3048",
         "sourceUnits": [
@@ -522,23 +554,27 @@
       "artifactBindings": [
         {
           "path": "docs/evidence/cad-independent/local/mechanical-ai-intent-runtime-260813/runtime/scale/create.json",
-          "sha256": "01710bb7d2ad53b3020980e9116d68d5eea6a2c669788a67702788035ff6978e",
-          "bytes": 2293
+          "bytes": 2293,
+          "sha256": "e4efa89da87a242a699dad140b64de70a8fba4e2a2a54cadfd4c7b3f99bb7178",
+          "canonicalization": "utf8-crlf-to-lf"
         },
         {
           "path": "docs/evidence/cad-independent/local/mechanical-ai-intent-runtime-260813/runtime/scale/edit.json",
-          "sha256": "38f4a8e56d11beddbb1c556f5d47082c6cf8be29fe3881d688c9e4ad7d7388d1",
-          "bytes": 1416
+          "bytes": 1416,
+          "sha256": "c7ca5db4ae0756b67258d4bc297194c7e0ddc4eae876927b364f1808c780b246",
+          "canonicalization": "utf8-crlf-to-lf"
         },
         {
           "path": "docs/evidence/cad-independent/local/mechanical-ai-intent-runtime-260813/runtime/scale/regenerate.json",
-          "sha256": "d27a14a04ea2b718803ecff2abaf9551749937f384429c8a070744f2d2369b6f",
-          "bytes": 2342
+          "bytes": 2342,
+          "sha256": "ccaae7d3e9d408d9aa0bcdec4ce5d76c1ce29f5b952608c9909f8aa6eb7dfc44",
+          "canonicalization": "utf8-crlf-to-lf"
         },
         {
           "path": "docs/evidence/cad-independent/local/mechanical-ai-intent-runtime-260813/runtime/scale/saved-project.nfab",
-          "sha256": "59d3e9dddeb6ee34387874e8dc32d6bed9bd44ebfc7a62d938083f5c42b321fb",
-          "bytes": 1819
+          "bytes": 1819,
+          "sha256": "d8b5c5760c5c3bd93fd4f41425cf5381529772236beeaaf034d3cd61dd22629e",
+          "canonicalization": "utf8-crlf-to-lf"
         }
       ],
       "status": "PASS",
@@ -550,13 +586,13 @@
       "feature": "moveCopy",
       "candidate": {
         "id": "intent-runtime:ko_practical-10-moveCopy",
-        "baseRevision": "7c3a02e2da7fbee88dac5533efea39eac2ec0114cde1b70936d41992d83dbbe1",
+        "baseRevision": "a0a108d123eb01b22a05bbf4355f6811b124b7f3f12053c4dc371dc83ef3b3d3",
         "status": "PASS"
       },
       "authoritativeInput": {
         "caseId": "ko_practical-10-moveCopy",
         "candidateId": "intent-runtime:ko_practical-10-moveCopy",
-        "candidateBaseRevision": "7c3a02e2da7fbee88dac5533efea39eac2ec0114cde1b70936d41992d83dbbe1",
+        "candidateBaseRevision": "a0a108d123eb01b22a05bbf4355f6811b124b7f3f12053c4dc371dc83ef3b3d3",
         "promptSha256": "f5686b7277618027daa29b9863b58c65dbf50839788f65065567e6829bd49fee",
         "inputSha256": "fc7de2e197b29ed47e048022a7f8a4287309ee676fd5cee96d1c1ec299ec00fe",
         "sourceUnits": [
@@ -581,23 +617,27 @@
       "artifactBindings": [
         {
           "path": "docs/evidence/cad-independent/local/mechanical-ai-intent-runtime-260813/runtime/moveCopy/create.json",
-          "sha256": "457dbb8f84f2e818c497c33c7bac87153d37630188b5192c49dd380632fd4da9",
-          "bytes": 2304
+          "bytes": 2304,
+          "sha256": "a2960da87458ecef2f18629053ce7a49731608685c63f48228b0357793df93f9",
+          "canonicalization": "utf8-crlf-to-lf"
         },
         {
           "path": "docs/evidence/cad-independent/local/mechanical-ai-intent-runtime-260813/runtime/moveCopy/edit.json",
-          "sha256": "ada5cde5cd8ce9efd328bbafee09e2b91744e9b7ff8aa318341df655f212b4b3",
-          "bytes": 1455
+          "bytes": 1455,
+          "sha256": "95806989eb949dc7a3cf48af1170a8bc24fc79ac4327524e01ec8f8bb608e514",
+          "canonicalization": "utf8-crlf-to-lf"
         },
         {
           "path": "docs/evidence/cad-independent/local/mechanical-ai-intent-runtime-260813/runtime/moveCopy/regenerate.json",
-          "sha256": "e08203772b9c4f1980ea217cdc61115a29936851a4d7e376c01c2aae73a27fb6",
-          "bytes": 2322
+          "bytes": 2322,
+          "sha256": "9e48592995267e30d327e7781b34a92c16bf92fe070a3c92982253d57a641ead",
+          "canonicalization": "utf8-crlf-to-lf"
         },
         {
           "path": "docs/evidence/cad-independent/local/mechanical-ai-intent-runtime-260813/runtime/moveCopy/saved-project.nfab",
-          "sha256": "3088a0cc2408203df805a46d77380a459ea35287f46054f6bfdda6b954cc9fd3",
-          "bytes": 1850
+          "bytes": 1850,
+          "sha256": "f411cc0d41a988e439ff30e8d927987bc3b5181a00673c053dc0bdac73e18c11",
+          "canonicalization": "utf8-crlf-to-lf"
         }
       ],
       "status": "PASS",

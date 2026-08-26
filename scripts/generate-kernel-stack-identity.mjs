@@ -3,6 +3,7 @@ import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { canonicalTextBytes } from './canonical-evidence-bytes.mjs';
 
 export const IDENTITY_SCHEMA = 'nexyfab.kernel-stack-identity.v1';
 export const OUTPUT_REL = 'docs/evidence/cad-independent/kernel-stack-identity.json';
@@ -87,6 +88,7 @@ const POLICIES = [
   'src/lib/commercial-readiness.ts',
   'src/app/api/docs/openapi/route.ts',
   'scripts/generate-third-party-notices.mjs',
+  'scripts/canonical-evidence-bytes.mjs',
   'docs/legal/license-overrides.json',
   'src/content/third-party-notices.generated.json',
   'scripts/check-occt-readiness.js',
@@ -111,13 +113,16 @@ function readPackageVersion(lock, name) {
 function fileEvidence(root, spec) {
   const absolute = path.join(root, ...spec.path.split('/'));
   if (!fs.existsSync(absolute)) throw new Error(`KERNEL_IDENTITY_FILE_MISSING:${spec.path}`);
-  const bytes = fs.readFileSync(absolute);
+  const rawBytes = fs.readFileSync(absolute);
+  const bytes = path.extname(spec.path).toLowerCase() === '.wasm'
+    ? rawBytes
+    : canonicalTextBytes(rawBytes);
   if (bytes.byteLength < spec.minimumBytes) throw new Error(`KERNEL_IDENTITY_FILE_TOO_SMALL:${spec.path}:${bytes.byteLength}`);
   return { path: spec.path, role: spec.role, bytes: bytes.byteLength, sha256: sha256(bytes) };
 }
 
 export function buildKernelStackIdentity(root) {
-  const lockBytes = fs.readFileSync(path.join(root, 'package-lock.json'));
+  const lockBytes = canonicalTextBytes(fs.readFileSync(path.join(root, 'package-lock.json')));
   const lock = JSON.parse(lockBytes.toString('utf8'));
   const identity = {
     schema: IDENTITY_SCHEMA,
