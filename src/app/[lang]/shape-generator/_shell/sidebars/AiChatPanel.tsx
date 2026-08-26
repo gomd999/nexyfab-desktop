@@ -51,6 +51,8 @@ interface Message {
   executionPath?: 'cloud_ai' | 'local_deterministic';
   localUndoAvailable?: boolean;
   undoState?: 'WORKING' | 'UNDONE' | 'BLOCKED';
+  /** Original visible request retained only to support an explicit retry. */
+  retryPrompt?: string;
   loading?: boolean;
   aiExecution?: {
     selectedModelLabel?: string;
@@ -127,6 +129,15 @@ export const AI_AUTH_REQUIRED_COPY = {
   zh: '运行 AI 设计需要登录。请登录后重试。',
   es: 'Inicia sesión para ejecutar el diseño con IA y vuelve a intentarlo.',
   ar: 'سجّل الدخول لتشغيل التصميم بالذكاء الاصطناعي، ثم حاول مرة أخرى.',
+} as const;
+
+export const AI_RETRY_COPY = {
+  ko: '같은 요청 다시 시도',
+  en: 'Retry the same request',
+  ja: '同じリクエストを再試行',
+  zh: '重试同一请求',
+  es: 'Reintentar la misma solicitud',
+  ar: 'إعادة محاولة الطلب نفسه',
 } as const;
 
 const PRECISION_CAD_AUTO_RUN_KEY = 'nexyfab:precision-cad-agent-auto-run:v1';
@@ -215,6 +226,7 @@ export function AiChatPanel({ isKo: _isKo }: AiChatPanelProps) {
   const [candidateBusyId, setCandidateBusyId] = useState<string | null>(null);
   const [requirementGate, setRequirementGate] = useState<GuidedRequirementGate | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
   const guidedBriefRef = useRef<GuidedDesignBrief | null>(null);
   const sendRef = useRef<((prompt: string, executionMode?: ScadAgentExecutionMode) => Promise<void>) | undefined>(undefined);
   const projects = useProjectsStore(state => state.projects);
@@ -526,6 +538,7 @@ export function AiChatPanel({ isKo: _isKo }: AiChatPanelProps) {
         loading: false,
         content: loc(lang, AI_RUN_FAILED_COPY),
         diagnostics: [{ severity: 'error', message: safePrecisionMessage }],
+        retryPrompt: visiblePrompt,
       } : m));
     } finally {
       window.clearTimeout(requestTimeout);
@@ -670,6 +683,10 @@ export function AiChatPanel({ isKo: _isKo }: AiChatPanelProps) {
   };
 
   const suggestions = SUGGESTIONS[lang] ?? SUGGESTIONS.en;
+  const fillSuggestion = (suggestion: string) => {
+    setInput(suggestion);
+    inputRef.current?.focus();
+  };
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
@@ -748,6 +765,23 @@ export function AiChatPanel({ isKo: _isKo }: AiChatPanelProps) {
                       </div>
                     ))}
                   </div>
+                )}
+                {m.retryPrompt && (
+                  <button
+                    type="button"
+                    data-testid={`ai-run-retry-${m.id}`}
+                    disabled={busy}
+                    onClick={() => void send(m.retryPrompt!)}
+                    style={{
+                      marginTop: 7, minHeight: 27, padding: '4px 9px',
+                      border: '1px solid var(--nx-border)', borderRadius: 4,
+                      background: 'var(--nx-panel)', color: 'var(--nx-text)',
+                      fontSize: 9.5, fontWeight: 750, cursor: busy ? 'wait' : 'pointer',
+                      opacity: busy ? .5 : 1,
+                    }}
+                  >
+                    ↻ {loc(lang, AI_RETRY_COPY)}
+                  </button>
                 )}
                 {m.pattern && (
                   <div style={{ marginTop: 6, fontSize: 10, color: 'var(--nx-accent-2)' }}>
@@ -861,7 +895,8 @@ export function AiChatPanel({ isKo: _isKo }: AiChatPanelProps) {
           {suggestions.map(s => (
             <button
               key={s}
-              onClick={() => send(s)}
+              type="button"
+              onClick={() => fillSuggestion(s)}
               style={{
                 textAlign: 'left', padding: '6px 8px',
                 border: '1px dashed var(--nx-border)', borderRadius: 4,
@@ -881,6 +916,7 @@ export function AiChatPanel({ isKo: _isKo }: AiChatPanelProps) {
         style={{ display: 'flex', gap: 4, padding: 8, borderTop: '1px solid var(--nx-border)', background: 'var(--nx-panel)' }}
       >
         <input
+          ref={inputRef}
           id="nexy-ai-message"
           name="nexyAiMessage"
           type="text"
