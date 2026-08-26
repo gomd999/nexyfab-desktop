@@ -178,7 +178,7 @@ export default function FamilyExportButton(props: FamilyExportButtonProps): Reac
                   setDeferredNotice(null);
                 }}
                 style={closeBtnStyle}
-                aria-label="Close"
+                aria-label={t.close}
               >
                 ×
               </button>

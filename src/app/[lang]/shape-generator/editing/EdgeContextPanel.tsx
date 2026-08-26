@@ -7,7 +7,7 @@ import { UniqueEdge } from './types';
 
 const dict = {
   ko: {
-    edgeEdit: '엣지 편집',
+    edgeEdit: '엣지 편집', close: '닫기',
     selected: '개 선택',
     edgeId: '엣지 ID',
     midpoint: '중점',
@@ -26,7 +26,7 @@ const dict = {
     applyChamferN: (n: number) => `챔퍼 적용 (${n}개)`,
   },
   en: {
-    edgeEdit: 'Edge Edit',
+    edgeEdit: 'Edge Edit', close: 'Close',
     selected: ' selected',
     edgeId: 'Edge ID',
     midpoint: 'Midpoint',
@@ -45,7 +45,7 @@ const dict = {
     applyChamferN: (n: number) => `Apply Chamfer (${n})`,
   },
   ja: {
-    edgeEdit: 'エッジ編集',
+    edgeEdit: 'エッジ編集', close: '閉じる',
     selected: '個選択',
     edgeId: 'エッジID',
     midpoint: '中点',
@@ -64,7 +64,7 @@ const dict = {
     applyChamferN: (n: number) => `Chamfer 適用 (${n} 個)`,
   },
   zh: {
-    edgeEdit: '边编辑',
+    edgeEdit: '边编辑', close: '关闭',
     selected: '已选',
     edgeId: '边ID',
     midpoint: '中点',
@@ -83,7 +83,7 @@ const dict = {
     applyChamferN: (n: number) => `应用 Chamfer (${n})`,
   },
   es: {
-    edgeEdit: 'Editar Arista',
+    edgeEdit: 'Editar Arista', close: 'Cerrar',
     selected: ' seleccionado(s)',
     edgeId: 'ID de Arista',
     midpoint: 'Punto medio',
@@ -102,7 +102,7 @@ const dict = {
     applyChamferN: (n: number) => `Aplicar Chamfer (${n})`,
   },
   ar: {
-    edgeEdit: 'تحرير الحافة',
+    edgeEdit: 'تحرير الحافة', close: 'إغلاق',
     selected: ' محدد',
     edgeId: 'معرف الحافة',
     midpoint: 'نقطة المنتصف',
@@ -302,7 +302,7 @@ export default function EdgeContextPanel({
           {edgeCount > 1 && (
             <span style={badgeStyle}>{edgeCount}{t.selected}</span>
           )}
-          <button style={closeBtnStyle} onClick={onClose} title="Close">×</button>
+          <button style={closeBtnStyle} onClick={onClose} title={t.close} aria-label={t.close}>×</button>
         </div>
       </div>
 

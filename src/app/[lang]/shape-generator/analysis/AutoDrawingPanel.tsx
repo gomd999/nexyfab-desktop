@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react';
+import { loc } from '@/lib/i18n/loc';
 import { usePathname } from 'next/navigation';
 import * as THREE from 'three';
 import {
@@ -1403,7 +1404,7 @@ export default function AutoDrawingPanel({
               <button
                 onClick={() => setSectionSpecs(prev => prev.filter((_, j) => j !== i))}
                 data-testid={`section-delete-${i}`}
-                title="delete this section view"
+                        title={loc(lang, { ko: '이 단면도 삭제', en: 'Delete this section view', ja: 'この断面図を削除', zh: '删除此剖视图', es: 'Eliminar esta vista de sección', ar: 'حذف هذا العرض المقطعي' })}
                 style={{
                   marginLeft: 4, padding: '1px 6px', borderRadius: 3,
                   border: '1px solid var(--nx-border)', background: 'transparent',
@@ -1450,7 +1451,7 @@ export default function AutoDrawingPanel({
               <button
                 onClick={() => setDetailSpecs(prev => prev.filter((_, j) => j !== i))}
                 data-testid={`detail-delete-${i}`}
-                title="delete this detail view"
+                        title={loc(lang, { ko: '이 상세도 삭제', en: 'Delete this detail view', ja: 'この詳細図を削除', zh: '删除此详图', es: 'Eliminar esta vista de detalle', ar: 'حذف هذا العرض التفصيلي' })}
                 style={{
                   marginLeft: 4, padding: '1px 6px', borderRadius: 3,
                   border: '1px solid var(--nx-border)', background: 'transparent',

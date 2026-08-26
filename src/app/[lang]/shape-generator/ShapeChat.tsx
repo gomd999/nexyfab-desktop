@@ -1123,7 +1123,7 @@ export default function ShapeChat({
                   background: 'none', border: 'none', color: 'var(--nx-text-2)',
                   cursor: 'pointer', fontSize: 14, padding: '0 4px',
                 }}
-                aria-label="dismiss"
+                aria-label={loc(seg, { ko: '닫기', en: 'Dismiss', ja: '閉じる', zh: '关闭', es: 'Descartar', ar: 'إغلاق' })}
               >✕</button>
             </div>
           )}

@@ -269,7 +269,7 @@ export default function HoleWizardModal({ open, lang, onClose, onApply }: Props)
           <button
             onClick={onClose}
             style={{ background: 'transparent', border: 'none', color: 'var(--nx-text-2)', fontSize: 20, cursor: 'pointer' }}
-            aria-label="Close"
+            aria-label={t.cancel}
           >
             ×
           </button>

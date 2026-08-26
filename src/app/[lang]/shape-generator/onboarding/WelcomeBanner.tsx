@@ -6,13 +6,13 @@ interface WelcomeBannerProps {
   onDismiss: () => void;
 }
 
-const COPY: Record<string, { heading: string; sub: string; start: string }> = {
-  ko: { heading: '첫 방문이시군요! 🚀', sub: '60초 안에 첫 부품 설계 + 견적까지 안내해 드릴게요', start: '안내 시작' },
-  en: { heading: 'First time here? 🚀', sub: 'We\'ll guide you to your first part design and quote in 60 seconds', start: 'Show me' },
-  ja: { heading: '初めてご利用ですか？🚀', sub: '60秒でパーツ設計から見積もりまでご案内します', start: 'ガイド開始' },
-  cn: { heading: '第一次来访？🚀', sub: '我们将在60秒内引导您完成零件设计和报价', start: '开始引导' },
-  es: { heading: '¿Primera visita? 🚀', sub: 'Le guiaremos en el diseño de su primera pieza y presupuesto en 60 segundos', start: 'Mostrarme' },
-  ar: { heading: 'زيارتك الأولى؟ 🚀', sub: 'سنرشدك لتصميم أول قطعة والحصول على عرض سعر في 60 ثانية', start: 'ابدأ الإرشاد' },
+const COPY: Record<string, { heading: string; sub: string; start: string; dismiss: string }> = {
+  ko: { heading: '첫 방문이시군요! 🚀', sub: '60초 안에 첫 부품 설계 + 견적까지 안내해 드릴게요', start: '안내 시작', dismiss: '닫기' },
+  en: { heading: 'First time here? 🚀', sub: 'We\'ll guide you to your first part design and quote in 60 seconds', start: 'Show me', dismiss: 'Dismiss' },
+  ja: { heading: '初めてご利用ですか？🚀', sub: '60秒でパーツ設計から見積もりまでご案内します', start: 'ガイド開始', dismiss: '閉じる' },
+  cn: { heading: '第一次来访？🚀', sub: '我们将在60秒内引导您完成零件设计和报价', start: '开始引导', dismiss: '关闭' },
+  es: { heading: '¿Primera visita? 🚀', sub: 'Le guiaremos en el diseño de su primera pieza y presupuesto en 60 segundos', start: 'Mostrarme', dismiss: 'Descartar' },
+  ar: { heading: 'زيارتك الأولى؟ 🚀', sub: 'سنرشدك لتصميم أول قطعة والحصول على عرض سعر في 60 ثانية', start: 'ابدأ الإرشاد', dismiss: 'إغلاق' },
 };
 
 export default function WelcomeBanner({ lang, onStartTutorial, onDismiss }: WelcomeBannerProps) {
@@ -62,7 +62,7 @@ export default function WelcomeBanner({ lang, onStartTutorial, onDismiss }: Welc
             border: '1px solid var(--nx-border)', background: 'transparent',
             color: 'var(--nx-text-3)', fontSize: 13, cursor: 'pointer', lineHeight: 1,
           }}
-          aria-label="Dismiss"
+          aria-label={copy.dismiss}
         >
           ✕
         </button>

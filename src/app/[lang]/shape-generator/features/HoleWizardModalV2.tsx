@@ -1360,7 +1360,7 @@ export default function HoleWizardModalV2({
               fontSize: 20,
               cursor: 'pointer',
             }}
-            aria-label="Close"
+            aria-label={t.cancel}
           >
             ×
           </button>

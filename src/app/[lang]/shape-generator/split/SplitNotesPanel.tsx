@@ -24,13 +24,13 @@ type LangKey = 'ko' | 'en' | 'ja' | 'zh' | 'es' | 'ar';
 const langMap: Record<string, LangKey> = {
   kr: 'ko', ko: 'ko', en: 'en', ja: 'ja', cn: 'zh', zh: 'zh', es: 'es', ar: 'ar',
 };
-const dict: Record<LangKey, { title: string; placeholder: string; saved: string }> = {
-  ko: { title: '메모',           placeholder: '설계 제약·계산·참고 링크를 적어두세요…',          saved: '저장됨' },
-  en: { title: 'Notes',         placeholder: 'Jot down constraints, calcs, reference links…',  saved: 'Saved' },
-  ja: { title: 'メモ',           placeholder: '設計制約・計算・参考リンクをメモ…',                saved: '保存済み' },
-  zh: { title: '便签',           placeholder: '记录设计约束、计算、参考链接…',                    saved: '已保存' },
-  es: { title: 'Notas',         placeholder: 'Anota restricciones, cálculos, enlaces…',         saved: 'Guardado' },
-  ar: { title: 'ملاحظات',        placeholder: 'سجّل القيود والحسابات والروابط…',                  saved: 'محفوظ' },
+const dict: Record<LangKey, { title: string; placeholder: string; saved: string; close: string }> = {
+  ko: { title: '메모',           placeholder: '설계 제약·계산·참고 링크를 적어두세요…',          saved: '저장됨', close: '닫기' },
+  en: { title: 'Notes',         placeholder: 'Jot down constraints, calcs, reference links…',  saved: 'Saved', close: 'Close' },
+  ja: { title: 'メモ',           placeholder: '設計制約・計算・参考リンクをメモ…',                saved: '保存済み', close: '閉じる' },
+  zh: { title: '便签',           placeholder: '记录设计约束、计算、参考链接…',                    saved: '已保存', close: '关闭' },
+  es: { title: 'Notas',         placeholder: 'Anota restricciones, cálculos, enlaces…',         saved: 'Guardado', close: 'Cerrar' },
+  ar: { title: 'ملاحظات',        placeholder: 'سجّل القيود والحسابات والروابط…',                  saved: 'محفوظ', close: 'إغلاق' },
 };
 
 interface Props {
@@ -96,7 +96,7 @@ export default function SplitNotesPanel({ userId, lang = 'en', onClose }: Props)
               fontSize: 12, color: 'var(--nx-text-2)', background: 'none',
               border: 'none', cursor: 'pointer', padding: 4,
             }}
-            aria-label="Close"
+            aria-label={t.close}
           >×</button>
         </span>
       </header>

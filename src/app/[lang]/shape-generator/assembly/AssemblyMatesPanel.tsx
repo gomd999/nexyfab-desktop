@@ -9,6 +9,7 @@ import React, { useState, useCallback, useEffect, useMemo } from 'react';
 import { diagnoseMateMobility, type MobilityDiagnosis } from './mateMobilityDiagnosis';
 import { sweepHingeMateClearance, type MotionSweepCertificate } from './mateMotionSweep';
 import { usePathname } from 'next/navigation';
+import { loc } from '@/lib/i18n/loc';
 import {
   solveAssembly,
   calculateDOF,
@@ -571,7 +572,7 @@ export default function AssemblyMatesPanel({
                 </div>
 
                 {isConflict && (
-                  <span style={{ fontSize: 10, color: 'var(--nx-error)', flexShrink: 0 }} title="Conflict">
+                  <span style={{ fontSize: 10, color: 'var(--nx-error)', flexShrink: 0 }} title={loc(lang, { ko: '충돌', en: 'Conflict', ja: '競合', zh: '冲突', es: 'Conflicto', ar: 'تعارض' })}>
                     &#x26A0;
                   </span>
                 )}
