@@ -32,7 +32,7 @@ export const CODEGEN_MODELS: readonly CodegenModel[] = [
     provider: 'openai',
     model: 'gpt-5.6-luna',
     tier: 'free',
-    note: 'Free · 빠른 설계 · 이미지 자동 분석',
+    note: 'Free · fast design · automatic image analysis',
     vision: true,
     recommended: true,
   },
@@ -42,7 +42,7 @@ export const CODEGEN_MODELS: readonly CodegenModel[] = [
     provider: 'qwen',
     model: 'qwen3.7-plus',
     tier: 'pro',
-    note: 'Pro · 빠른 반복 설계',
+    note: 'Pro · fast iterative design',
     vision: true,
   },
   {
@@ -51,7 +51,7 @@ export const CODEGEN_MODELS: readonly CodegenModel[] = [
     provider: 'qwen',
     model: 'qwen3.7-max',
     tier: 'pro',
-    note: 'Pro · 복잡 형상 추론',
+    note: 'Pro · complex geometry reasoning',
   },
   {
     id: 'deepseek-pro',
@@ -59,7 +59,7 @@ export const CODEGEN_MODELS: readonly CodegenModel[] = [
     provider: 'deepseek',
     model: 'deepseek-v4-pro',
     tier: 'pro',
-    note: 'Pro · 정밀 설계 추론',
+    note: 'Pro · precision design reasoning',
     recommended: true,
   },
   {
@@ -68,7 +68,7 @@ export const CODEGEN_MODELS: readonly CodegenModel[] = [
     provider: 'qwen',
     model: 'qwen3.8-max',
     tier: 'enterprise',
-    note: 'Enterprise · 고난도 멀티모달 설계 추론',
+    note: 'Enterprise · advanced multimodal design reasoning',
     vision: true,
   },
   {
@@ -77,7 +77,7 @@ export const CODEGEN_MODELS: readonly CodegenModel[] = [
     provider: 'openai',
     model: 'gpt-5.6-terra',
     tier: 'enterprise',
-    note: 'Enterprise · 고난도 정밀 설계',
+    note: 'Enterprise · advanced precision design',
     vision: true,
     recommended: true,
   },
