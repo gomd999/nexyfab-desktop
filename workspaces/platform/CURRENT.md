@@ -1,5 +1,21 @@
 # Platform current session
 
+## 2026-08-26 current-head automated i18n evidence
+
+- Status: `CATALOG_2711_OF_2711 / OFFICIAL_40_OF_40 /
+  EXPANDED_330_OF_330 / AUTOMATED_PASS / HUMAN_REVIEW_HOLD`.
+- Official and expanded Vitest JSON was recollected on integration source
+  `0fcda72ae36a514d4f4e2492680928167679efa0`, then converted into source-bound
+  evidence with raw-output hashes and per-test-file hashes.
+- The commercial catalog contains 2,711/2,711 translated pairs across the six
+  governed locales with zero legacy debt. Automated status is `PASS`.
+- The release receipt remains truthfully `HOLD` only for
+  `full_product_review_missing`; no visual/RTL/email/PDF/export approval or
+  signature was synthesized.
+- Evidence commit: `3a477f4b72b6bc8f588f833dc12fd609a9a68ea8`.
+- Handoff:
+  `HANDOFFS/20260826T145404Z-current-head-automated-i18n-evidence.md`.
+
 ## 2026-08-26 current-head security and license convergence
 
 - Status: `ROUTE_SECURITY_PASS / SECRET_FINDINGS_0 /
