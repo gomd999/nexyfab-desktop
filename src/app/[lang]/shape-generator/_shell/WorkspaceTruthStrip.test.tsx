@@ -23,4 +23,9 @@ describe('WorkspaceTruthStrip', () => {
     expect(screen.getByTestId('workspace-truth-strip')).toHaveTextContent('CHECK PREVIEW');
     expect(screen.getByTestId('workspace-truth-strip')).toHaveTextContent('RELEASE BLOCKED');
   });
+
+  it('localizes its accessible summary independently from technical state codes', () => {
+    render(<WorkspaceTruthStrip lang="ja" domain="mechanical" workMode="precision_cad" dfmWarningCount={null} />);
+    expect(screen.getByTestId('workspace-truth-strip')).toHaveAttribute('aria-label', 'ワークスペースの機能と検証状態');
+  });
 });

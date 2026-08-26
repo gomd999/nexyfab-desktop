@@ -6,6 +6,7 @@
 // Onshape/Fusion 360 conventions. Token-driven so light/dark works free.
 
 import React, { useEffect } from 'react';
+import { shellChromeText } from './shellChromeI18n';
 
 export interface BottomDrawerTab {
   id: string;
@@ -15,6 +16,7 @@ export interface BottomDrawerTab {
 }
 
 export interface BottomDrawerProps {
+  lang?: string;
   open: boolean;
   activeTab: string;
   tabs: BottomDrawerTab[];
@@ -27,7 +29,7 @@ export interface BottomDrawerProps {
 }
 
 export function BottomDrawer({
-  open, activeTab, tabs, onTabChange, onClose, children, height = 280,
+  lang, open, activeTab, tabs, onTabChange, onClose, children, height = 280,
 }: BottomDrawerProps) {
   // Esc to close.
   useEffect(() => {
@@ -95,7 +97,7 @@ export function BottomDrawer({
         <span style={{ flex: 1 }} />
         <button
           onClick={onClose}
-          aria-label="Close drawer"
+          aria-label={shellChromeText(lang, 'closeDrawer')}
           style={{
             width: 18, height: 18, padding: 0, border: 0, background: 'transparent',
             color: 'var(--nx-text-3)', cursor: 'pointer', fontSize: 14,

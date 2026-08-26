@@ -191,7 +191,7 @@ export function LandscapeCadWorkspace({ lang, onAiDesign }: { lang: string; onAi
       <div style={{ marginTop: 12, padding: 9, border: '1px solid var(--nx-warn, #d97706)', borderRadius: 6, fontSize: 10.5, lineHeight: 1.5 }}>{t.authority}</div><button type="button" data-testid="landscape-run-verify" onClick={run} style={{ marginTop: 10, minHeight: 36, width: '100%', border: 0, borderRadius: 6, background: 'var(--nx-accent)', fontWeight: 800 }}>{t.run}</button><button type="button" onClick={() => { invalidate(); setParams(DEFAULTS); transaction.commit(DEFAULTS); }} style={{ ...field, marginTop: 6 }}>{t.reset}</button>
       <section data-testid="landscape-verification" aria-live="polite" style={{ marginTop: 14, paddingTop: 10, borderTop: '1px solid var(--nx-border)', display: 'grid', gap: 5, fontSize: 10.5 }}><b>{t.gates}</b><span>{t.local}: <b>{state}</b></span><span>{t.terrain}: <b>NOT_RUN</b> · {t.notConnected}</span><span>{t.species}: <b>NOT_RUN</b> · {t.notConnected}</span><span>{t.irrigation}: <b>NOT_RUN</b> · {t.notConnected}</span>{issues.map(issue => <span key={issue} style={{ color: 'var(--nx-danger, #dc2626)' }}>{issue}</span>)}</section><button type="button" onClick={onAiDesign} style={{ ...field, marginTop: 10 }}>{t.ai}</button>
     </aside>
-    <SpatialPaneResizers storageKey="landscape" leftDefault={220} rightDefault={292} />
+    <SpatialPaneResizers lang={lang} storageKey="landscape" leftDefault={220} rightDefault={292} />
     <style>{`@media (max-width:800px){.nx-landscape-workbench{grid-template-columns:minmax(0,1fr)!important}.nx-landscape-side{display:none!important}.nx-landscape-mobile{display:block!important}}`}</style>
   </div>;
 }

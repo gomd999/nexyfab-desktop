@@ -129,7 +129,7 @@ export function ShareProjectModal({ lang, onClose }: ShareProjectModalProps) {
       >
         <div style={{ display: 'flex', alignItems: 'center', marginBottom: 14 }}>
           <h2 style={{ flex: 1, margin: 0, fontSize: 16, fontWeight: 700 }}>{t.title}</h2>
-          <button onClick={onClose} aria-label="Close" style={{ border: 0, background: 'transparent', color: 'var(--nx-text-3)', fontSize: 20, cursor: 'pointer' }}>×</button>
+          <button onClick={onClose} aria-label={t.close} style={{ border: 0, background: 'transparent', color: 'var(--nx-text-3)', fontSize: 20, cursor: 'pointer' }}>×</button>
         </div>
 
         {!projectId ? (

@@ -872,6 +872,7 @@ export function ModelerShell() {
       }
       bottomDrawer={isSpatial || mode === 'assembly' ? undefined :
         <BottomDrawer
+          lang={lang}
           open={drawerOpen}
           activeTab={drawerTab}
           tabs={[

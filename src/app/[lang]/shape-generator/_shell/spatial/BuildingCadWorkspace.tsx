@@ -364,7 +364,7 @@ export function BuildingCadWorkspace({ lang, projectId, onAiDesign }: { lang: st
         </section>
         <button type="button" onClick={onAiDesign} style={{ ...field, marginTop: 10 }}>{t.ai}</button>
       </aside>
-      <SpatialPaneResizers storageKey="architecture" leftDefault={220} rightDefault={292} />
+      <SpatialPaneResizers lang={lang} storageKey="architecture" leftDefault={220} rightDefault={292} />
       <style>{`@media (max-width: 800px){.nx-building-workbench{grid-template-columns:minmax(0,1fr)!important}.nx-building-side{display:none!important}.nx-building-mobile{display:block!important}}`}</style>
     </div>
   );

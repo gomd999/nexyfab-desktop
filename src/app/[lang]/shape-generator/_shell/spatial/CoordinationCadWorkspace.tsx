@@ -539,7 +539,7 @@ export function CoordinationCadWorkspace({ lang }: { lang: string }) {
           ))}
         </section>
       </aside>
-      <SpatialPaneResizers storageKey="coordination" leftDefault={230} rightDefault={310} />
+      <SpatialPaneResizers lang={lang} storageKey="coordination" leftDefault={230} rightDefault={310} />
     </div>
   );
 }
