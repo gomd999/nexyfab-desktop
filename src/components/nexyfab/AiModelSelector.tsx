@@ -8,6 +8,7 @@ import {
   findCodegenModel,
   type AiAccessPlan,
 } from '@/lib/ai/codegenModels';
+import { getCodegenModelNote } from '@/lib/ai/codegenModelI18n';
 import { useAiModelBetaAccess } from '@/lib/ai/useAiModelBetaAccess';
 
 export const AI_MODEL_STORAGE_KEY = 'nexyfab:ai-model';
@@ -179,7 +180,7 @@ export function AiModelSelector({
                     </span>
                   </span>
                   <span style={{ display: 'block', marginTop: 2, fontSize: 9.5, opacity: .78 }}>
-                    {allowed ? model.note : `${model.note} · ${copy.locked}`}
+                    {allowed ? getCodegenModelNote(model, lang) : `${getCodegenModelNote(model, lang)} · ${copy.locked}`}
                   </span>
                 </button>
               );
