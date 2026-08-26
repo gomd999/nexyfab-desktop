@@ -1,5 +1,23 @@
 # Platform current session
 
+## 2026-08-26 guided AI production request boundary
+
+- Status: `PRODUCTION_ROUTE_OBSERVED / TRAILING_SLASH_BOUND /
+  GUEST_401_FAIL_CLOSED / PRECISION_MODE_SWITCH_PASS`.
+- The Chromium production check now matches the canonical
+  `/api/nexyfab/scad-agent/` endpoint with or without its trailing slash,
+  binds the request body to `ai_design` plus the selected model and mechanical
+  domain, and explicitly verifies the unauthenticated `401` boundary.
+- The live run against `https://nexyfab.com` passed in 19.5 seconds after the
+  contract correction. It also proved no deterministic local candidate was
+  substituted and keyboard switching into Precision CAD still selects the
+  Inspector.
+- This is a guest authorization/routing check, not an authenticated provider
+  generation receipt. Authenticated AI execution remains a separate release
+  verification.
+- Handoff:
+  `HANDOFFS/20260826T075645Z-guided-ai-production-request-boundary.md`.
+
 ## 2026-08-26 slice rollback evidence canonicalization v2
 
 - Status: `SCOPE_SOURCE_COMPLETE / SHARED_EVIDENCE_INTEGRATION_OWNED /

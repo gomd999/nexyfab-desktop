@@ -3,7 +3,7 @@ import { expect, test } from '@playwright/test';
 const GUIDED_CAD_URL = '/en/shape-generator/?expert=1&domain=mechanical&experience=guided&workMode=ai_assisted';
 const BRACKET_PROMPT = 'Design an exact L-bracket with 100 mm × 50 mm legs, length 40 mm, thickness 5 mm, ±0.1 mm tolerance, 6061-T6 aluminum, CNC milling';
 
-test('guided mechanical design routes through the selected AI model without a local fallback', async ({ page }, testInfo) => {
+test('guided mechanical design routes the selected model and fails closed for a guest', async ({ page }, testInfo) => {
   test.skip(testInfo.project.name !== 'chromium', 'desktop guided CAD path');
   test.setTimeout(180_000);
   const modelRequests: string[] = [];
@@ -25,9 +25,12 @@ test('guided mechanical design routes through the selected AI model without a lo
 
   const input = page.getByRole('textbox', { name: 'AI message input' });
   await input.fill(BRACKET_PROMPT);
-  const agentRequest = page.waitForRequest(request => /\/api\/nexyfab\/scad-agent(?:\?|$)/.test(request.url()));
+  const matchesAgentRoute = (url: string) => /\/api\/nexyfab\/scad-agent\/?(?:\?|$)/.test(url);
+  const agentRequest = page.waitForRequest(request => matchesAgentRoute(request.url()));
+  const agentResponse = page.waitForResponse(response => matchesAgentRoute(response.url()));
   await input.press('Enter');
   const requestToAgent = await agentRequest;
+  expect((await agentResponse).status()).toBe(401);
   const requestBody = requestToAgent.postDataJSON() as Record<string, unknown>;
   expect(requestBody.executionMode).toBe('ai_design');
   expect(requestBody.designDomain).toBe('mechanical');
@@ -45,5 +48,5 @@ test('guided mechanical design routes through the selected AI model without a lo
   await expect(page.getByRole('tab', { name: 'Inspector' })).toHaveAttribute('aria-selected', 'true');
 
   expect(pageErrors).toEqual([]);
-  expect(consoleErrors).toEqual([]);
+  expect(consoleErrors.filter(message => !/Failed to load resource:.*401/.test(message))).toEqual([]);
 });
