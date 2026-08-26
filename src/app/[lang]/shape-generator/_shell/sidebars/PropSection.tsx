@@ -188,12 +188,13 @@ export function PropCheck({
 
 /** Item list row used by EDGES / DIMENSIONS / CONSTRAINTS sections. */
 export function PropItemRow({
-  bullet, label, meta, onRemove,
+  bullet, label, meta, onRemove, removeLabel = 'Remove',
 }: {
   bullet?: React.ReactNode;
   label: string;
   meta?: string;
   onRemove?: () => void;
+  removeLabel?: string;
 }) {
   return (
     <div
@@ -214,7 +215,7 @@ export function PropItemRow({
       {onRemove && (
         <button
           onClick={onRemove}
-          aria-label="Remove"
+          aria-label={removeLabel}
           style={{
             width: 16, height: 16, border: 0, background: 'transparent',
             color: 'var(--nx-text-3)', cursor: 'pointer', fontSize: 12,

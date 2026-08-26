@@ -565,7 +565,7 @@ function InteriorWorkspace({ lang, experience, architectureInteriorInspector }: 
       <main style={{ minWidth: 0, minHeight: 0, padding: 10, overflow: 'auto', background: 'var(--nx-bg)' }}>
         <div className="nx-spatial-mobile-notice" style={{ display: 'none', marginBottom: 8, padding: 8, border: '1px solid var(--nx-warn, #d97706)', borderRadius: 6, color: 'var(--nx-warn, #d97706)', background: 'var(--nx-panel)', fontSize: 10.5, fontWeight: 700 }}>{t.mobile}</div>
         <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, alignItems: 'center', marginBottom: 8 }}>
-          <div role="group" aria-label="Spatial view" style={{ display: 'inline-flex', border: '1px solid var(--nx-border)', borderRadius: 6, overflow: 'hidden' }}>
+            <div role="group" aria-label={t.browser} style={{ display: 'inline-flex', border: '1px solid var(--nx-border)', borderRadius: 6, overflow: 'hidden' }}>
             <button type="button" aria-pressed={view === 'plan'} onClick={() => setView('plan')} style={{ ...fieldStyle, width: 'auto', border: 0, borderRadius: 0, background: view === 'plan' ? 'var(--nx-accent)' : 'var(--nx-panel)' }}>{t.plan}</button>
             <button type="button" aria-pressed={view === '3d'} onClick={() => setView('3d')} style={{ ...fieldStyle, width: 'auto', border: 0, borderLeft: '1px solid var(--nx-border)', borderRadius: 0, background: view === '3d' ? 'var(--nx-accent)' : 'var(--nx-panel)' }}>{t.view3d}</button>
           </div>

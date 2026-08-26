@@ -300,7 +300,7 @@ export function BuildingCadWorkspace({ lang, projectId, onAiDesign }: { lang: st
       <main data-spatial-drop-zone style={{ minWidth: 0, minHeight: 0, padding: 10, overflow: 'auto' }}>
         <div className="nx-building-mobile" style={{ display: 'none', marginBottom: 8, padding: 8, border: '1px solid var(--nx-warn, #d97706)', borderRadius: 6, color: 'var(--nx-warn, #d97706)', fontSize: 10.5 }}>{t.mobile}</div>
         <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, marginBottom: 8 }}>
-          <div role="group" aria-label="Building view"><button type="button" aria-pressed={view === 'plan'} onClick={() => setView('plan')} style={field}>{t.plan}</button><button type="button" aria-pressed={view === '3d'} onClick={() => setView('3d')} style={field}>{t.view3d}</button></div>
+            <div role="group" aria-label={t.browser}><button type="button" aria-pressed={view === 'plan'} onClick={() => setView('plan')} style={field}>{t.plan}</button><button type="button" aria-pressed={view === '3d'} onClick={() => setView('3d')} style={field}>{t.view3d}</button></div>
           <small>{normalized.width} × {normalized.depth} mm · {normalized.storeyCount}F</small>
         </div>
         {view === 'plan' ? <svg data-testid="building-plan" role="img" aria-label={t.plan} viewBox={`-500 -500 ${normalized.width + 1000} ${normalized.depth + 1000}`} style={{ width: '100%', minHeight: 480, border: '1px solid var(--nx-border)', borderRadius: 8, background: 'var(--nx-panel)' }}>

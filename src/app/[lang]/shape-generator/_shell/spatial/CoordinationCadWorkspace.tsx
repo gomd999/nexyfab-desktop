@@ -13,6 +13,7 @@ import { SpatialCadTransactionStatus, useSpatialCadTransaction } from './useSpat
 import { SPATIAL_CAD_COMMAND_EVENT, type SpatialCadCommandDetail } from './spatialCadCommands';
 import { useAuthStore } from '@/hooks/useAuth';
 import { SpatialPaneResizers } from './SpatialPaneResizers';
+import { loc } from '@/lib/i18n/loc';
 
 const BASE_DOCUMENT: CoordinationDocument = {
   schema: 'nexyfab.coordination.v1', revision: 0, activeCoordinateSystem: 'CRS_NOT_CONNECTED', toleranceMm: 50,
@@ -411,7 +412,7 @@ export function CoordinationCadWorkspace({ lang }: { lang: string }) {
     const onCommand = (event: Event) => {
       const id = (event as CustomEvent<SpatialCadCommandDetail>).detail?.id;
       if (id === 'spatial.verify') runCheck();
-      else if (id === 'spatial.dimensions') globalThis.document.querySelector<HTMLInputElement>('[aria-label="EPSG code"]')?.focus();
+    else if (id === 'spatial.dimensions') globalThis.document.getElementById('coordination-epsg')?.focus();
       else if (id === 'spatial.issues') globalThis.document.querySelector<HTMLElement>('[data-testid="coordination-issue-list"]')?.focus();
       else if (id === 'spatial.exact-clash-job') void requestExactClashJob();
     };
@@ -450,7 +451,7 @@ export function CoordinationCadWorkspace({ lang }: { lang: string }) {
       <aside style={{ padding: 12, overflow: 'auto', borderLeft: '1px solid var(--nx-border)', background: 'var(--nx-panel)' }}>
         <b>{L('좌표·간섭 속성', 'Coordinates & clash properties')}</b>
         <SpatialCadTransactionStatus state={transaction.state} lang={lang} onUndo={transaction.undo} onRedo={transaction.redo} />
-        <label htmlFor="coordination-epsg" style={{ display: 'grid', gap: 4, marginTop: 10, fontSize: 10 }}>{L('EPSG 코드', 'EPSG code')}<input key={document.activeCoordinateSystem} id="coordination-epsg" name="coordination-epsg" aria-label="EPSG code" defaultValue={document.activeCoordinateSystem === 'CRS_NOT_CONNECTED' ? '' : document.activeCoordinateSystem.replace(/^EPSG:/i, '')} placeholder="5186" onBlur={event => updateCrs(event.target.value)} style={input}/></label>
+        <label htmlFor="coordination-epsg" style={{ display: 'grid', gap: 4, marginTop: 10, fontSize: 10 }}>{L('EPSG 코드', 'EPSG code')}<input key={document.activeCoordinateSystem} id="coordination-epsg" name="coordination-epsg" aria-label={loc(lang, { ko: 'EPSG 코드', en: 'EPSG code', ja: 'EPSG コード', zh: 'EPSG 代码', es: 'Código EPSG', ar: 'رمز EPSG' })} defaultValue={document.activeCoordinateSystem === 'CRS_NOT_CONNECTED' ? '' : document.activeCoordinateSystem.replace(/^EPSG:/i, '')} placeholder="5186" onBlur={event => updateCrs(event.target.value)} style={input}/></label>
         <label htmlFor="coordination-tolerance" style={{ display: 'grid', gap: 4, marginTop: 8, fontSize: 10 }}>
           {L('간섭 여유 (mm)', 'Clash tolerance (mm)')}
           <DraftNumberInput id="coordination-tolerance" label="Clash tolerance (mm)" min={0} max={100000} value={document.toleranceMm} onCommit={updateTolerance} />
