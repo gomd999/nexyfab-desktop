@@ -1,6 +1,9 @@
 import fs from 'node:fs';
 import path from 'node:path';
-import { createHash } from 'node:crypto';
+import {
+  TEXT_BINDING_CANONICALIZATION,
+  canonicalTextBinding,
+} from './canonical-text-binding.mjs';
 
 const root = process.cwd();
 const output = path.join(root, 'docs', 'evidence', 'security', 'supply-chain-manifest-260810.json');
@@ -13,11 +16,11 @@ const inputs = [
 ];
 
 function hashFile(relativePath) {
-  const bytes = fs.readFileSync(path.join(root, relativePath));
+  const binding = canonicalTextBinding(fs.readFileSync(path.join(root, relativePath)));
   return {
     path: relativePath,
-    bytes: bytes.length,
-    sha256: createHash('sha256').update(bytes).digest('hex'),
+    bytes: binding.bytes,
+    sha256: binding.sha256,
   };
 }
 
@@ -26,6 +29,7 @@ const sbom = JSON.parse(fs.readFileSync(path.join(root, inputs[1]), 'utf8').repl
 const audit = JSON.parse(fs.readFileSync(path.join(root, inputs[2]), 'utf8'));
 const report = {
   schema: 'nexyfab-supply-chain-manifest-v1',
+  textCanonicalization: TEXT_BINDING_CANONICALIZATION,
   generatedAt: new Date().toISOString(),
   status: sbom.bomFormat === 'CycloneDX'
     && sbom.specVersion === '1.5'

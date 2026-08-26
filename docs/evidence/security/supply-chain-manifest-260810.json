@@ -1,6 +1,7 @@
 {
   "schema": "nexyfab-supply-chain-manifest-v1",
-  "generatedAt": "2026-08-26T14:37:45.027Z",
+  "textCanonicalization": "utf8-crlf-to-lf",
+  "generatedAt": "2026-08-26T16:41:02.959Z",
   "status": "pass",
   "sbom": {
     "format": "CycloneDX",
@@ -19,28 +20,28 @@
   "artifacts": [
     {
       "path": "package-lock.json",
-      "bytes": 648963,
-      "sha256": "e52e2f5ea1cbf19227fdd6c73186666f769316c98574d8c8242bf5325f4173b6"
+      "bytes": 631405,
+      "sha256": "d5bd18e9f6648828af26925e4b914a9af4cafb700b8b58a8daeb7300099110e3"
     },
     {
       "path": "docs/evidence/security/sbom-cyclonedx-260810.json",
-      "bytes": 1331807,
-      "sha256": "a082805e95630b12916fd3e44413d21569480d676349a41ebdf1dab8efee0c67"
+      "bytes": 1285653,
+      "sha256": "3ab02ca574bf1213e54b7b539c27873f7370b3a38ed0102fa0655a77c756b6cc"
     },
     {
       "path": "docs/evidence/security/dependency-audit-260810.json",
       "bytes": 559,
-      "sha256": "c31f04d0ff2bb923f8558081543c7fb51ba07ab38c723f09ef5dceb6e53e948b"
+      "sha256": "0106a666bc6e82d53f6bbab8e00f4a59bf7d5331e8adbb46ad73491faf3580e4"
     },
     {
       "path": "docs/evidence/cad-independent/kernel-stack-identity.json",
       "bytes": 17365,
-      "sha256": "b8d994131f12b4e4aa29e7a038e0498be66f45f1534efe48d8364a1fbd24f158"
+      "sha256": "c7c77d195f58921574cabef8edc11b6923f176c6124f3541c7775b08cc3b98aa"
     },
     {
       "path": "src/content/third-party-notices.generated.json",
-      "bytes": 232464,
-      "sha256": "c7f8bbd976bcbb81b9197338cf7a17862075c37877994514a596ce3593a9d27a"
+      "bytes": 224710,
+      "sha256": "6fb4dfefa9b13534ff6f71e2bbe638b9a31edee046a6ec3265c8c424b86481ed"
     }
   ]
 }

@@ -466,8 +466,8 @@
     {
       "path": "src/content/third-party-notices.generated.json",
       "role": "semantic-and-release-policy",
-      "bytes": 224681,
-      "sha256": "0a476e8da3c570d536dcd40f8ce9d889ea17a97ad3b196880bdff601501f806f"
+      "bytes": 224710,
+      "sha256": "6fb4dfefa9b13534ff6f71e2bbe638b9a31edee046a6ec3265c8c424b86481ed"
     },
     {
       "path": "scripts/check-occt-readiness.js",
@@ -476,5 +476,5 @@
       "sha256": "50d0f0cd4bacadf24b337c8e36784d834a14cdeee175fc6b1850df12fe017c9f"
     }
   ],
-  "identitySha256": "94b86569adf5b1a0a3ad243cbb76afb083ba2ba02f293883b0292c7a44a6e81c"
+  "identitySha256": "59e0861c6f23393a0a154077eab6cf9ea1588c0d0764d6e88e2a644cef6f78c0"
 }
