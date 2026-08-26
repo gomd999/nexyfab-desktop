@@ -1,5 +1,27 @@
 # Platform current session
 
+## 2026-08-26 slice rollback evidence canonicalization v2
+
+- Status: `SCOPE_SOURCE_COMPLETE / SHARED_EVIDENCE_INTEGRATION_OWNED /
+  LF_CRLF_PORTABILITY_PASS / ROLLBACK_EXECUTION_NOT_RUN`.
+- The rollback verifier now hashes staging JSON with the declared
+  `utf8-crlf-to-lf` canonicalization and requires schema
+  `nexyfab.slice-rollback-execution.v2`. This prevents Windows/Linux checkout
+  line endings from changing the logical evidence identity while continuing to
+  reject semantic drift or a missing/broadened binding policy.
+- Scope-owned validation passes 5/5 Node tests, including LF/CRLF equivalence,
+  undeclared/raw-policy rejection, digest drift, and full rollback/restore
+  observation requirements. The current receipt remains honestly
+  `READY_NOT_EXECUTED` with seven targets.
+- `docs/evidence/platform-runtime/SLICE_ROLLBACK.md` and
+  `slice-rollback-execution.json` are shared integration-owned paths. Their v2
+  changes are intentionally excluded from the Platform source commit and must
+  be applied with the scope commit during integration intake.
+- No staging or production rollback was executed and no release authority is
+  claimed.
+- Handoff:
+  `HANDOFFS/20260826T071436Z-slice-rollback-evidence-canonicalization-v2.md`.
+
 ## 2026-08-25 exact Railway deployment-source preflight closure
 
 - Status: `CLEAN_GIT_SOURCE_BOUND / RELEASE_HEALTH_SOURCE_BYTES_BOUND /
