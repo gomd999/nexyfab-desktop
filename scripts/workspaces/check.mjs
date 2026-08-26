@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import { collectChangedPaths, collectUntrackedPaths, currentBranch, getScope, readRegistry, resolveOwnership } from './workspace-registry.mjs';
+import { branchDivergence, collectChangedPaths, collectUntrackedPaths, currentBranch, getScope, readRegistry, resolveOwnership } from './workspace-registry.mjs';
 import { executeScopeChecks, notRunScopeChecks } from './workspace-guardrails.mjs';
 
 const registry = readRegistry();
@@ -13,7 +13,9 @@ const foreignViolations = ownership
   .map(item => ({ file: item.file, owner: item.owner }));
 const untracked = new Set(collectUntrackedPaths());
 const unclassifiedNewPaths = ownership.filter(item => item.defaulted && untracked.has(item.file)).map(item => item.file);
-const structuralOk = branch === scope.branch && sharedViolations.length === 0 && foreignViolations.length === 0 && unclassifiedNewPaths.length === 0;
+const divergence = branchDivergence(registry.integrationBranch, scope.branch);
+const commitsBehindIntegration = divergence.baseOnly;
+const structuralOk = branch === scope.branch && commitsBehindIntegration === 0 && sharedViolations.length === 0 && foreignViolations.length === 0 && unclassifiedNewPaths.length === 0;
 const checkResults = structuralOk
   ? executeScopeChecks(scope.checks)
   : notRunScopeChecks(scope.checks, 'scope_preflight_failed');
@@ -22,6 +24,8 @@ const result = {
   scope: scope.id,
   expectedBranch: scope.branch,
   branch,
+  commitsBehindIntegration,
+  commitsReadyToIntegrate: divergence.targetOnly,
   changedFiles: changedPaths.length,
   sharedViolations,
   foreignViolations,

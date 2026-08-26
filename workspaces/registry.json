@@ -1,6 +1,7 @@
 {
   "schema": "nexyfab.workspace-registry.v1",
   "integrationBranch": "integration/nexyfab",
+  "releaseBranch": "release/web-public-2026-08-26",
   "baselineRef": "baseline/pre-scope-20260823",
   "defaultOwner": "platform",
   "sharedPaths": [

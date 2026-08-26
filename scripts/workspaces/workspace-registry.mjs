@@ -51,6 +51,8 @@ export function readRegistry() {
 
 export function validateRegistry(registry) {
   if (registry?.schema !== 'nexyfab.workspace-registry.v1') throw new Error('workspace_registry_schema_invalid');
+  if (!registry.integrationBranch || !registry.releaseBranch) throw new Error('workspace_registry_branch_invalid');
+  if (registry.integrationBranch === registry.releaseBranch) throw new Error('workspace_registry_branch_collision');
   if (!Array.isArray(registry.scopes) || registry.scopes.length !== 3) throw new Error('workspace_registry_scope_count_invalid');
   const ids = registry.scopes.map(scope => scope.id);
   if (new Set(ids).size !== ids.length) throw new Error('workspace_registry_scope_id_duplicate');
@@ -117,6 +119,16 @@ export function currentBranch() {
 
 export function currentHead() {
   return runGit(['rev-parse', 'HEAD']).trim();
+}
+
+export function branchDivergence(baseRef, targetRef, options = {}) {
+  const [baseOnly, targetOnly] = runGit([
+    'rev-list', '--left-right', '--count', `${baseRef}...${targetRef}`,
+  ], options).trim().split(/\s+/).map(Number);
+  if (!Number.isSafeInteger(baseOnly) || !Number.isSafeInteger(targetOnly)) {
+    throw new Error(`workspace_branch_distance_invalid:${baseRef}:${targetRef}`);
+  }
+  return { baseOnly, targetOnly };
 }
 
 export function collectChangedPaths(registry) {

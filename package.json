@@ -205,6 +205,8 @@
     "workspace:handoff": "node scripts/workspaces/handoff.mjs",
     "workspace:handoff:check": "node scripts/workspaces/handoff-check.mjs",
     "workspace:integration-status": "node scripts/workspaces/integration-status.mjs",
+    "workspace:sync": "node scripts/workspaces/sync.mjs",
+    "workspace:sync:check": "node scripts/workspaces/sync.mjs --check",
     "workspace:dev": "node scripts/workspaces/dev.mjs",
     "dev:platform": "node scripts/workspaces/dev.mjs platform",
     "dev:precision-cad": "node scripts/workspaces/dev.mjs precision-cad",

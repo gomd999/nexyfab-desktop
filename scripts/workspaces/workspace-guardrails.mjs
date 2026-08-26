@@ -71,7 +71,17 @@ export function notRunScopeChecks(commands, reason) {
   }));
 }
 
-export function evaluateIntegrationState({ expectedBranch, branch, scopes, allowReady = false }) {
+export function classifyBranchRelation({ baseOnly, targetOnly }) {
+  if (!Number.isSafeInteger(baseOnly) || baseOnly < 0 || !Number.isSafeInteger(targetOnly) || targetOnly < 0) {
+    throw new Error('workspace_branch_relation_invalid');
+  }
+  if (baseOnly === 0 && targetOnly === 0) return 'IN_SYNC';
+  if (baseOnly > 0 && targetOnly === 0) return 'BEHIND';
+  if (baseOnly === 0 && targetOnly > 0) return 'AHEAD';
+  return 'DIVERGED';
+}
+
+export function evaluateIntegrationState({ expectedBranch, branch, scopes, release = null, allowReady = false }) {
   const issues = [];
   if (branch !== expectedBranch) {
     issues.push({ code: 'integration_branch_mismatch', expected: expectedBranch, actual: branch });
@@ -88,6 +98,20 @@ export function evaluateIntegrationState({ expectedBranch, branch, scopes, allow
     }
     if (!allowReady && scope.commitsReadyToIntegrate > 0) {
       issues.push({ code: 'scope_not_integrated', scope: scope.id, commits: scope.commitsReadyToIntegrate });
+    }
+  }
+  if (release) {
+    if (!release.worktree) issues.push({ code: 'release_worktree_missing', branch: release.branch });
+    if (release.dirtyFiles === null) {
+      // The missing-worktree issue above is the actionable root cause.
+    } else if (release.dirtyFiles > 0) {
+      issues.push({ code: 'release_worktree_dirty', branch: release.branch, dirtyFiles: release.dirtyFiles });
+    }
+    if (release.commitsBehindIntegration > 0) {
+      issues.push({ code: 'release_behind_integration', branch: release.branch, commits: release.commitsBehindIntegration });
+    }
+    if (release.commitsReadyToIntegrate > 0) {
+      issues.push({ code: 'release_ahead_of_integration', branch: release.branch, commits: release.commitsReadyToIntegrate });
     }
   }
   return { ok: issues.length === 0, issues };
