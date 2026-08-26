@@ -38,6 +38,7 @@ import {
   savePendingChatDesignDraft,
 } from '@/lib/chatDesignDraft';
 import { AGENTIC_PRECISION_ENTRY_DRAFT_KEY, DIRECT_PRECISION_ENTRY_DRAFT_KEY } from '@/lib/precisionEntryDraft';
+import { ChatResultShareTray } from '@/components/nexyfab/ChatResultShareTray';
 // three/R3F 뷰어는 SSR 불가 → 클라이언트에서만 로드.
 const ChatCadViewer = dynamic(() => import('./ChatCadViewer'), {
   ssr: false,
@@ -2872,6 +2873,8 @@ export default function ChatHero({ langCode, appMode = false }: { langCode: stri
             )}
           </div>
         </div>
+
+        <ChatResultShareTray cad={latestCad} langCode={lang} accent={accent} />
 
         {/* 업로드 안내 (대화 시작 전, 기계설계 전용) */}
         {!started && domain === 'mechanical' && (
