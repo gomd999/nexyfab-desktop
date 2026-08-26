@@ -120,6 +120,15 @@ export const AI_RUN_FAILURE_DETAIL_COPY = {
   ar: 'تم حظر تشغيل الذكاء الاصطناعي. لم يتغير النموذج أو المشروع.',
 } as const;
 
+export const AI_AUTH_REQUIRED_COPY = {
+  ko: 'AI 설계 실행은 로그인이 필요합니다. 로그인한 뒤 다시 시도하세요.',
+  en: 'Sign in to run AI design, then try again.',
+  ja: 'AI 設計を実行するにはログインが必要です。ログインしてから再試行してください。',
+  zh: '运行 AI 设计需要登录。请登录后重试。',
+  es: 'Inicia sesión para ejecutar el diseño con IA y vuelve a intentarlo.',
+  ar: 'سجّل الدخول لتشغيل التصميم بالذكاء الاصطناعي، ثم حاول مرة أخرى.',
+} as const;
+
 const PRECISION_CAD_AUTO_RUN_KEY = 'nexyfab:precision-cad-agent-auto-run:v1';
 
 interface CandidateResponse {
@@ -421,7 +430,8 @@ export function AiChatPanel({ isKo: _isKo }: AiChatPanelProps) {
       });
 
       if (!res.ok) {
-        const failure = await res.json().catch(() => null) as { error?: string } | null;
+        const failure = await res.json().catch(() => null) as { error?: string; code?: string } | null;
+        if (res.status === 401) precisionUserError = loc(lang, AI_AUTH_REQUIRED_COPY);
         throw new Error(failure?.error ?? `AI request failed (HTTP ${res.status})`);
       }
 
