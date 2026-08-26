@@ -15,6 +15,8 @@ import { chatCompletion, AiNotConfiguredError, AiProviderError, type ChatMessage
 import { getPrompt } from '@/lib/ai/prompts';
 import { recordPromptCall, classifyAiError } from '@/lib/ai/telemetry';
 import { localizedApiMessage, resolveServerLocale } from '@/lib/i18n/serverLocale';
+import { formatNumber } from '@/lib/i18n/format';
+import type { IsoLang } from '@/lib/i18n/normalize';
 
 const MAX_JSON_BODY_BYTES = 4 * 1024 * 1024;
 
@@ -96,7 +98,75 @@ function biasDescription(bias: number): BiasCopy {
   return { en: 'Well-calibrated — maintain current pricing.', ko: '견적 정확도 양호 — 현행 단가 유지.', ja: '見積精度は良好 — 現行単価を維持。', zh: '报价校准良好 — 维持当前定价。', es: 'Bien calibrado: mantenga los precios actuales.', ar: 'التسعير مضبوط جيداً — يُنصح بالإبقاء على الأسعار الحالية.' };
 }
 
-function ruleBasedResult(body: RequestBody): QuoteAccuracyResult {
+type RuleCopy = {
+  other: string;
+  adjustTitle: (process: string, adjustment: string) => string;
+  detail: (count: string, process: string, direction: 'over' | 'under', bias: string, recommendation: string) => string;
+  emptyTitle: string;
+  emptyDetail: string;
+  emptySummary: string;
+  summary: (count: string, accuracy: string, bias: string) => string;
+};
+
+const RULE_COPY: Record<IsoLang, RuleCopy> = {
+  ko: {
+    other: '기타',
+    adjustTitle: (process, adjustment) => `${process}: 견적 ${adjustment}% 보정`,
+    detail: (count, process, direction, bias, recommendation) => `${count}건 이력 기준, ${process} 견적이 평균 ${bias}% ${direction === 'over' ? '높습니다' : '낮습니다'}. ${recommendation}`,
+    emptyTitle: '이력 데이터를 입력하면 보정 인사이트를 얻을 수 있습니다.',
+    emptyDetail: '수락 금액 또는 실제 원가가 있는 과거 견적을 1건 이상 입력하세요.',
+    emptySummary: '비교 가능한 데이터 없음. 수락 금액을 입력하면 정확도를 산출합니다.',
+    summary: (count, accuracy, bias) => `${count}건 분석 완료. 전체 정확도: ${accuracy}/100. 편향: ${bias}%.`,
+  },
+  en: {
+    other: 'Other',
+    adjustTitle: (process, adjustment) => `${process}: Adjust quotes by ${adjustment}%`,
+    detail: (count, process, direction, bias, recommendation) => `Based on ${count} historical quote(s), your ${process} quotes are ${direction}-priced by ${bias}% on average. ${recommendation}`,
+    emptyTitle: 'Add historical quote data to get calibration insights.',
+    emptyDetail: 'Enter at least one past quote with an accepted or actual cost amount.',
+    emptySummary: 'No comparable data. Add accepted amounts to calculate accuracy.',
+    summary: (count, accuracy, bias) => `Analysed ${count} quote(s). Overall accuracy: ${accuracy}/100. Bias: ${bias}%.`,
+  },
+  ja: {
+    other: 'その他',
+    adjustTitle: (process, adjustment) => `${process}: 見積を${adjustment}%補正`,
+    detail: (count, process, direction, bias, recommendation) => `過去${count}件を基準に、${process}の見積は平均${bias}%${direction === 'over' ? '高め' : '低め'}です。${recommendation}`,
+    emptyTitle: '過去の見積データを追加すると補正インサイトを確認できます。',
+    emptyDetail: '受注金額または実原価のある過去の見積を1件以上入力してください。',
+    emptySummary: '比較可能なデータがありません。受注金額を入力すると精度を計算します。',
+    summary: (count, accuracy, bias) => `${count}件を分析しました。総合精度: ${accuracy}/100、偏り: ${bias}%。`,
+  },
+  zh: {
+    other: '其他',
+    adjustTitle: (process, adjustment) => `${process}：报价调整 ${adjustment}%`,
+    detail: (count, process, direction, bias, recommendation) => `根据${count}条历史报价，${process}报价平均${direction === 'over' ? '偏高' : '偏低'}${bias}%。${recommendation}`,
+    emptyTitle: '添加历史报价数据以获得校准建议。',
+    emptyDetail: '请至少输入一条包含成交金额或实际成本的历史报价。',
+    emptySummary: '没有可比较的数据。输入成交金额后即可计算准确度。',
+    summary: (count, accuracy, bias) => `已分析${count}条报价。总体准确度：${accuracy}/100；偏差：${bias}%。`,
+  },
+  es: {
+    other: 'Otro',
+    adjustTitle: (process, adjustment) => `${process}: ajustar cotizaciones un ${adjustment}%`,
+    detail: (count, process, direction, bias, recommendation) => `Según ${count} cotización(es) histórica(s), las de ${process} están un ${bias}% ${direction === 'over' ? 'por encima' : 'por debajo'} de media. ${recommendation}`,
+    emptyTitle: 'Añada datos históricos para obtener recomendaciones de calibración.',
+    emptyDetail: 'Introduzca al menos una cotización anterior con importe aceptado o coste real.',
+    emptySummary: 'No hay datos comparables. Añada importes aceptados para calcular la precisión.',
+    summary: (count, accuracy, bias) => `Se analizaron ${count} cotización(es). Precisión general: ${accuracy}/100. Sesgo: ${bias}%.`,
+  },
+  ar: {
+    other: 'أخرى',
+    adjustTitle: (process, adjustment) => `${process}: تعديل عروض الأسعار بنسبة ${adjustment}%`,
+    detail: (count, process, direction, bias, recommendation) => `استنادًا إلى ${count} من عروض الأسعار السابقة، فإن أسعار ${process} ${direction === 'over' ? 'أعلى' : 'أقل'} من المتوسط بنسبة ${bias}%. ${recommendation}`,
+    emptyTitle: 'أضف بيانات عروض سابقة للحصول على إرشادات المعايرة.',
+    emptyDetail: 'أدخل عرض سعر سابقًا واحدًا على الأقل يتضمن مبلغًا مقبولًا أو تكلفة فعلية.',
+    emptySummary: 'لا توجد بيانات قابلة للمقارنة. أضف المبالغ المقبولة لحساب الدقة.',
+    summary: (count, accuracy, bias) => `تم تحليل ${count} من عروض الأسعار. الدقة الإجمالية: ${accuracy}/100. الانحياز: ${bias}%.`,
+  },
+};
+
+export function ruleBasedResult(body: RequestBody, locale: IsoLang = 'en'): QuoteAccuracyResult {
+  const copy = RULE_COPY[locale];
   const entries = body.entries.filter(e => e.draftAmount > 0);
 
   // 비교 기준: acceptedAmount 우선, 없으면 actualCost
@@ -107,7 +177,7 @@ function ruleBasedResult(body: RequestBody): QuoteAccuracyResult {
     const ref = e.acceptedAmount ?? e.actualCost ?? null;
     if (ref == null || ref <= 0) continue;
     scored.push({
-      process: e.process?.trim() || '기타',
+      process: e.process?.trim() || copy.other,
       bias: calcBias(e.draftAmount, ref),
       accuracy: calcAccuracy(e.draftAmount, ref),
     });
@@ -130,7 +200,7 @@ function ruleBasedResult(body: RequestBody): QuoteAccuracyResult {
       biasPercent: Math.round(avgBias * 10) / 10,
       avgAccuracy: Math.round(avgAcc),
       sampleCount: data.biases.length,
-      recommendation: desc.en,
+      recommendation: desc[locale],
       recommendationKo: desc.ko,
     };
   }).sort((a, b) => Math.abs(b.biasPercent) - Math.abs(a.biasPercent));
@@ -148,10 +218,13 @@ function ruleBasedResult(body: RequestBody): QuoteAccuracyResult {
   for (const pb of processBias) {
     if (Math.abs(pb.biasPercent) < 5) continue;
     const adj = -Math.round(pb.biasPercent);
+    const adjustment = `${adj > 0 ? '+' : ''}${formatNumber(adj, locale) ?? adj}`;
+    const bias = formatNumber(Math.abs(pb.biasPercent), locale, { minimumFractionDigits: 1, maximumFractionDigits: 1 }) ?? Math.abs(pb.biasPercent).toFixed(1);
+    const count = formatNumber(pb.sampleCount, locale) ?? String(pb.sampleCount);
     suggestions.push({
-      title: `${pb.process}: Adjust quotes by ${adj > 0 ? '+' : ''}${adj}%`,
+      title: copy.adjustTitle(pb.process, adjustment),
       titleKo: `${pb.process}: 견적 ${adj > 0 ? '+' : ''}${adj}% 보정`,
-      detail: `Based on ${pb.sampleCount} historical quote(s), your ${pb.process} quotes are ${pb.biasPercent > 0 ? 'over' : 'under'}-priced by ${Math.abs(pb.biasPercent).toFixed(1)}% on average. ${pb.recommendation}`,
+      detail: copy.detail(count, pb.process, pb.biasPercent > 0 ? 'over' : 'under', bias, pb.recommendation),
       detailKo: `${pb.sampleCount}건 이력 기준, ${pb.process} 견적이 평균 ${Math.abs(pb.biasPercent).toFixed(1)}% ${pb.biasPercent > 0 ? '높습니다' : '낮습니다'}. ${pb.recommendationKo}`,
       adjustmentPercent: adj,
     });
@@ -159,17 +232,22 @@ function ruleBasedResult(body: RequestBody): QuoteAccuracyResult {
 
   if (scored.length === 0) {
     suggestions.push({
-      title: 'Add historical quote data to get calibration insights.',
+      title: copy.emptyTitle,
       titleKo: '이력 데이터를 입력하면 보정 인사이트를 얻을 수 있습니다.',
-      detail: 'Enter at least one past quote with an accepted or actual cost amount.',
+      detail: copy.emptyDetail,
       detailKo: '수락 금액 또는 실제 원가가 있는 과거 견적을 1건 이상 입력하세요.',
       adjustmentPercent: 0,
     });
   }
 
+  const summaryBias = `${overallBias > 0 ? '+' : ''}${formatNumber(overallBias, locale, { minimumFractionDigits: 1, maximumFractionDigits: 1 }) ?? overallBias.toFixed(1)}`;
   const summary = scored.length === 0
-    ? 'No comparable data. Add accepted amounts to calculate accuracy.'
-    : `Analysed ${scored.length} quote(s). Overall accuracy: ${Math.round(overallAccuracy)}/100. Bias: ${overallBias > 0 ? '+' : ''}${overallBias.toFixed(1)}%.`;
+    ? copy.emptySummary
+    : copy.summary(
+      formatNumber(scored.length, locale) ?? String(scored.length),
+      formatNumber(Math.round(overallAccuracy), locale) ?? String(Math.round(overallAccuracy)),
+      summaryBias,
+    );
   const summaryKo = scored.length === 0
     ? '비교 가능한 데이터 없음. 수락 금액을 입력하면 정확도를 산출합니다.'
     : `${scored.length}건 분석 완료. 전체 정확도: ${Math.round(overallAccuracy)}/100. 편향: ${overallBias > 0 ? '+' : ''}${overallBias.toFixed(1)}%.`;
@@ -260,7 +338,7 @@ export async function POST(req: NextRequest) {
     });
     if (e instanceof AiNotConfiguredError) {
       recordUsageEvent(planCheck.userId, 'quote_accuracy', undefined, planCheck.orgId);
-      const fallback = ruleBasedResult(body);
+      const fallback = ruleBasedResult(body, locale.iso);
       recordAIHistory({ userId: planCheck.userId, orgId: planCheck.orgId, feature: 'quote_accuracy', title: historyTitle, payload: fallback, context: historyContext, projectId: body.projectId });
       return NextResponse.json({ ...fallback, outputLanguage: locale.route });
     }
@@ -269,7 +347,7 @@ export async function POST(req: NextRequest) {
       : (e instanceof Error ? e.message : String(e));
     console.warn('[quote-accuracy] fallback:', detail);
     recordUsageEvent(planCheck.userId, 'quote_accuracy', undefined, planCheck.orgId);
-    const fallback = ruleBasedResult(body);
+    const fallback = ruleBasedResult(body, locale.iso);
     recordAIHistory({ userId: planCheck.userId, orgId: planCheck.orgId, feature: 'quote_accuracy', title: historyTitle, payload: fallback, context: historyContext, projectId: body.projectId });
     return NextResponse.json({ ...fallback, outputLanguage: locale.route });
   }
@@ -294,7 +372,7 @@ export async function POST(req: NextRequest) {
   } catch (err) {
     console.warn('[quote-accuracy] parse fallback:', err);
     recordUsageEvent(planCheck.userId, 'quote_accuracy', undefined, planCheck.orgId);
-    const fallback = ruleBasedResult(body);
+    const fallback = ruleBasedResult(body, locale.iso);
     recordAIHistory({ userId: planCheck.userId, orgId: planCheck.orgId, feature: 'quote_accuracy', title: historyTitle, payload: fallback, context: historyContext, projectId: body.projectId });
     return NextResponse.json({ ...fallback, outputLanguage: locale.route });
   }

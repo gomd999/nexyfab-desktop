@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { analyzeQuoteAccuracy, type QuoteEntry, type QuoteAccuracyResult, type ProcessBias, type AccuracySuggestion } from './quoteAccuracy';
-import { usePartnerLang } from '../_lib/partnerLang';
+import { usePartnerLang, type PartnerLang } from '../_lib/partnerLang';
 import { quotePanelsDict, type QuotePanelsDict } from '../_lib/dicts/quotePanels';
 
 /** 입력 폼용 — draftAmount가 아직 미입력일 수 있어 null 허용 */
@@ -34,11 +34,6 @@ const EMPTY_ENTRY = (): InputEntry => ({
   acceptedAmount: null,
   actualCost: null,
 });
-
-function _won(n: number | null | undefined): string {
-  if (n == null || n === 0) return '—';
-  return n.toLocaleString('ko-KR') + '원';
-}
 
 function AccuracyGauge({ score, t }: { score: number; t: QuotePanelsDict }) {
   const color = score >= 75 ? C.green : score >= 50 ? C.yellow : C.red;
@@ -74,7 +69,7 @@ function BiasBadge({ bias, t }: { bias: number; t: QuotePanelsDict }) {
   );
 }
 
-function ProcessBiasRow({ pb, t }: { pb: ProcessBias; t: QuotePanelsDict }) {
+function ProcessBiasRow({ pb, t, lang }: { pb: ProcessBias; t: QuotePanelsDict; lang: PartnerLang }) {
   const color = Math.abs(pb.biasPercent) < 5 ? C.green : Math.abs(pb.biasPercent) < 15 ? C.yellow : C.red;
   const barW = Math.min(100, Math.abs(pb.biasPercent) * 2);
   return (
@@ -93,12 +88,12 @@ function ProcessBiasRow({ pb, t }: { pb: ProcessBias; t: QuotePanelsDict }) {
       <div style={{ height: 5, background: C.border, borderRadius: 3, overflow: 'hidden', marginBottom: 5 }}>
         <div style={{ height: '100%', width: `${barW}%`, background: color, borderRadius: 3, marginLeft: pb.biasPercent < 0 ? `${100 - barW}%` : 0 }} />
       </div>
-      <p style={{ margin: 0, fontSize: 11, color: C.textDim }}>{pb.recommendationKo}</p>
+      <p style={{ margin: 0, fontSize: 11, color: C.textDim }}>{lang === 'ko' ? pb.recommendationKo : pb.recommendation}</p>
     </div>
   );
 }
 
-function SuggestionCard({ s }: { s: AccuracySuggestion }) {
+function SuggestionCard({ s, lang }: { s: AccuracySuggestion; lang: PartnerLang }) {
   const color = s.adjustmentPercent > 0 ? C.green : s.adjustmentPercent < 0 ? C.red : C.textMuted;
   return (
     <div style={{ background: C.card, borderRadius: 9, padding: '10px 12px', border: `1px solid ${C.border}`, display: 'flex', gap: 10, alignItems: 'flex-start' }}>
@@ -110,8 +105,8 @@ function SuggestionCard({ s }: { s: AccuracySuggestion }) {
         {s.adjustmentPercent > 0 ? '+' : ''}{s.adjustmentPercent !== 0 ? `${s.adjustmentPercent}%` : '💡'}
       </div>
       <div style={{ flex: 1 }}>
-        <p style={{ margin: '0 0 3px', fontSize: 12, fontWeight: 700, color: C.text }}>{s.titleKo}</p>
-        <p style={{ margin: 0, fontSize: 11, color: C.textDim, lineHeight: 1.5 }}>{s.detailKo}</p>
+        <p style={{ margin: '0 0 3px', fontSize: 12, fontWeight: 700, color: C.text }}>{lang === 'ko' ? s.titleKo : s.title}</p>
+        <p style={{ margin: 0, fontSize: 11, color: C.textDim, lineHeight: 1.5 }}>{lang === 'ko' ? s.detailKo : s.detail}</p>
       </div>
     </div>
   );
@@ -173,10 +168,7 @@ export default function QuoteAccuracyPanel({ onClose, session, onResult }: Props
     setLoading(true);
     setError(null);
     try {
-      // 'lang' on the scoring engine is the response-language for engine
-      // narrative copy. We always request KR canonical so saved insights
-      // remain comparable; UI displays the KR strings under any lang.
-      const r = await analyzeQuoteAccuracy({ entries: valid, lang: 'ko' });
+      const r = await analyzeQuoteAccuracy({ entries: valid, lang });
       setResult(r);
       onResult?.(r.overallBiasPercent);
     } catch (e) {
@@ -302,7 +294,7 @@ export default function QuoteAccuracyPanel({ onClose, session, onResult }: Props
                   </div>
                 </div>
                 <p style={{ margin: 0, fontSize: 12, color: C.textDim, textAlign: 'center', lineHeight: 1.5 }}>
-                  {result.summaryKo}
+                  {lang === 'ko' ? result.summaryKo : result.summary}
                 </p>
               </div>
 
@@ -311,7 +303,7 @@ export default function QuoteAccuracyPanel({ onClose, session, onResult }: Props
                 <div>
                   <p style={{ margin: '0 0 8px', fontSize: 11, fontWeight: 700, color: C.textMuted, textTransform: 'uppercase' }}>{t.qaProcessBiasTitle}</p>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                    {result.processBias.map((pb, i) => <ProcessBiasRow key={i} pb={pb} t={t} />)}
+                    {result.processBias.map((pb, i) => <ProcessBiasRow key={i} pb={pb} t={t} lang={lang} />)}
                   </div>
                 </div>
               )}
@@ -321,7 +313,7 @@ export default function QuoteAccuracyPanel({ onClose, session, onResult }: Props
                 <div>
                   <p style={{ margin: '0 0 8px', fontSize: 11, fontWeight: 700, color: C.textMuted, textTransform: 'uppercase' }}>{t.qaSuggestionsTitle}</p>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                    {result.suggestions.map((s, i) => <SuggestionCard key={i} s={s} />)}
+                    {result.suggestions.map((s, i) => <SuggestionCard key={i} s={s} lang={lang} />)}
                   </div>
                 </div>
               )}
