@@ -23,6 +23,7 @@ import { CommandPaletteShell, useCommandPaletteShortcut } from '../featureCatalo
 import { FrecencyTracker } from '../featureCatalog/commandPalette';
 import type { FeatureLicense } from '../featureCatalog/registry';
 import type { UserExperienceLevel } from '@/lib/ai/domainProfile';
+import { shellChromeText } from './shellChromeI18n';
 
 export interface ShellProps {
   mode: ShellMode;
@@ -90,11 +91,13 @@ function usePersistedPanelWidth(storageKey: string, defaultWidth: number) {
 
 function PanelResizeHandle({
   side,
+  lang,
   width,
   onChange,
   onReset,
 }: {
   side: 'left' | 'right';
+  lang?: string;
   width: number;
   onChange: (width: number) => void;
   onReset: () => void;
@@ -139,13 +142,13 @@ function PanelResizeHandle({
       className={`nx-panel-resizer ${side}`}
       data-testid={`shell-${side}-panel-resizer`}
       role="separator"
-      aria-label={`${side === 'left' ? 'Browser' : 'Inspector'} panel width`}
+      aria-label={shellChromeText(lang, side === 'left' ? 'browserPanelWidth' : 'inspectorPanelWidth')}
       aria-orientation="vertical"
       aria-valuemin={PANEL_MIN}
       aria-valuemax={PANEL_MAX}
       aria-valuenow={width}
       tabIndex={0}
-      title="Drag to resize · Arrow keys adjust · Double-click resets"
+      title={shellChromeText(lang, 'resizePanel')}
       onPointerDown={onPointerDown}
       onPointerMove={onPointerMove}
       onPointerUp={endDrag}
@@ -179,6 +182,8 @@ export function Shell({
   layoutStorageKey = 'precision-cad',
 }: ShellProps) {
   const tabs = ribbon.tabs ?? MODE_DEFAULT_TABS[mode];
+  const lang = titleBar.lang;
+  const t = (key: Parameters<typeof shellChromeText>[1]) => shellChromeText(lang, key);
 
   // ⌘K command palette — registry-driven feature search.
   const [paletteOpen, setPaletteOpen] = useState(false);
@@ -257,6 +262,7 @@ export function Shell({
       )}
       {!viewportOnly && (
         <ModeRibbon
+          lang={lang}
           mode={mode}
           experienceLevel={experienceLevel}
           groups={ribbon.groups}
@@ -284,8 +290,8 @@ export function Shell({
             <button
               type="button"
               onClick={() => setLeftCollapsed(v => !v)}
-              aria-label={leftCollapsed ? 'Expand left panel' : 'Collapse left panel'}
-              title={leftCollapsed ? 'Expand' : 'Collapse'}
+              aria-label={t(leftCollapsed ? 'expandLeftPanel' : 'collapseLeftPanel')}
+              title={t(leftCollapsed ? 'expand' : 'collapse')}
               style={{
                 position: 'absolute',
                 top: 1,
@@ -304,7 +310,7 @@ export function Shell({
               {leftCollapsed ? '›' : '‹'}
             </button>
             {!leftCollapsed && (
-              <PanelResizeHandle side="left" width={leftPanel.width} onChange={leftPanel.update} onReset={leftPanel.reset} />
+              <PanelResizeHandle lang={lang} side="left" width={leftPanel.width} onChange={leftPanel.update} onReset={leftPanel.reset} />
             )}
             <div style={{ visibility: leftCollapsed ? 'hidden' : 'visible', height: '100%', overflow: 'hidden' }}>
               {left}
@@ -332,8 +338,8 @@ export function Shell({
             <button
               type="button"
               onClick={() => setRightCollapsed(v => !v)}
-              aria-label={rightCollapsed ? 'Expand right panel' : 'Collapse right panel'}
-              title={rightCollapsed ? 'Expand' : 'Collapse'}
+              aria-label={t(rightCollapsed ? 'expandRightPanel' : 'collapseRightPanel')}
+              title={t(rightCollapsed ? 'expand' : 'collapse')}
               style={{
                 position: 'absolute',
                 top: 1,
@@ -352,7 +358,7 @@ export function Shell({
               {rightCollapsed ? '‹' : '›'}
             </button>
             {!rightCollapsed && (
-              <PanelResizeHandle side="right" width={rightPanel.width} onChange={rightPanel.update} onReset={rightPanel.reset} />
+              <PanelResizeHandle lang={lang} side="right" width={rightPanel.width} onChange={rightPanel.update} onReset={rightPanel.reset} />
             )}
             <div style={{ visibility: rightCollapsed ? 'hidden' : 'visible', height: '100%', overflow: 'hidden' }}>
               {right}

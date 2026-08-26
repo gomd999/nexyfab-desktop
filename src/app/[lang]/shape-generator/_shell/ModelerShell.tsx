@@ -69,6 +69,7 @@ import { CoordinationCadWorkspace } from './spatial/CoordinationCadWorkspace';
 import { dispatchSpatialCadCommand } from './spatial/spatialCadCommands';
 import type { StudioTruthState } from '@/lib/ai/studioTruthContract';
 import { saveSpatialAiInstruction, SPATIAL_AI_HANDOFF_REQUEST_EVENT } from '@/lib/ai/spatialDesignBriefHandoff';
+import { shellChromeText } from './shellChromeI18n';
 
 // Best-effort keyboard event dispatch so Shell's TitleBar buttons reach Inner's
 // existing keyboard shortcut handlers (Inner registers global Ctrl+Z / ⌘K /
@@ -228,6 +229,7 @@ export function ModelerShell() {
   }, []);
 
   const d = pickShellDict(lang);
+  const tc = (key: Parameters<typeof shellChromeText>[1]) => shellChromeText(lang, key);
   // Deferred sub-panels (Onboarding/EmailVerify/AccountType/Motion/Versions)
   // are still ko/en-binary — keep isKo for them only.
   const isKo = lang === 'ko';
@@ -567,7 +569,7 @@ export function ModelerShell() {
       mode={mode}
       experienceLevel={domainWorkspace.experience}
       viewportOnly={isMobile}
-      domainWorkspace={<div style={{ display: 'flex', alignItems: 'center', minWidth: 0 }}><DomainWorkspaceBar lang={langSeg} compact sessionVerification={isSpatial ? spatialVerification : undefined} />{baseSpatialDomain && <button type="button" data-testid="coordination-workspace-toggle" aria-pressed={coordinationOpen} onClick={() => setCoordinationOpen(current => !current)} style={{ height: 24, marginRight: 8, border: `1px solid ${coordinationOpen ? 'var(--nx-accent)' : 'var(--nx-border)'}`, borderRadius: 5, background: coordinationOpen ? 'var(--nx-accent)' : 'var(--nx-panel-2)', color: coordinationOpen ? 'var(--nx-on-accent, #071a17)' : 'var(--nx-text-2)', fontSize: 10, fontWeight: 800, whiteSpace: 'nowrap', cursor: 'pointer' }}>{langSeg === 'kr' ? '통합 조정' : 'Coordination'}</button>}</div>}
+      domainWorkspace={<div style={{ display: 'flex', alignItems: 'center', minWidth: 0 }}><DomainWorkspaceBar lang={langSeg} compact sessionVerification={isSpatial ? spatialVerification : undefined} />{baseSpatialDomain && <button type="button" data-testid="coordination-workspace-toggle" aria-pressed={coordinationOpen} onClick={() => setCoordinationOpen(current => !current)} style={{ height: 24, marginRight: 8, border: `1px solid ${coordinationOpen ? 'var(--nx-accent)' : 'var(--nx-border)'}`, borderRadius: 5, background: coordinationOpen ? 'var(--nx-accent)' : 'var(--nx-panel-2)', color: coordinationOpen ? 'var(--nx-on-accent, #071a17)' : 'var(--nx-text-2)', fontSize: 10, fontWeight: 800, whiteSpace: 'nowrap', cursor: 'pointer' }}>{tc('coordination')}</button>}</div>}
       commandPaletteEnabled={!isSpatial}
       workflow={(
         <CadWorkflowRail
@@ -600,13 +602,14 @@ export function ModelerShell() {
         />
       )}
       titleBar={{
+        lang,
         filename: isSpatial && spatialDomain
           ? `${spatialDomain}-concept.nxspace`
           : bridgeSelectedLabel
           ? `${bridgeSelectedLabel}.nxpart`
           : d.untitledFile,
         savedAt: isSpatial ? undefined : savedAtLabel,
-        breadcrumbs: isSpatial && spatialDomain ? ['Space Design Labs', `${spatialDomain} concept`] : ['Projects', bridgeSelectedLabel ?? d.untitled],
+        breadcrumbs: isSpatial && spatialDomain ? [tc('spaceDesignLabs'), `${spatialDomain} ${tc('concept')}`] : [tc('projects'), bridgeSelectedLabel ?? d.untitled],
         // Leaving an active expert-modeler session — go to the Hub, NOT the
         // guest "Studio-first funnel" (the Hub auto-redirects a guest's first
         // visit to the free-form Studio). Mark the Hub visited so it stays put.
@@ -614,7 +617,7 @@ export function ModelerShell() {
           try { sessionStorage.setItem('nexyfab:hub-visited', '1'); } catch { /* ignore */ }
           router.push(`/${langSeg}/nexyfab/hub`);
         },
-        mode: isSpatial ? 'PREVIEW' : modeChip,
+        mode: isSpatial ? tc('preview') : modeChip,
         modeHint: isSpatial ? (L('실측·호스트 권한 미확인', 'field/host authority unconfirmed')) : modeHint,
         onExitMode: !isSpatial && modeChip
           ? () => {
@@ -668,7 +671,7 @@ export function ModelerShell() {
                 data-testid="studio-open-jobs"
                 onClick={() => { setDrawerTab('jobs'); setDrawerOpen(true); }}
               >
-                <I.bolt size={12} /><span>{L('작업', 'Jobs')}</span>
+                <I.bolt size={12} /><span>{tc('jobs')}</span>
               </button>
               <button
                 type="button"
@@ -677,7 +680,7 @@ export function ModelerShell() {
                 aria-label={L('제조 가능성 및 해석 검증 열기', 'Open manufacturability and analysis verification')}
                 onClick={() => { setDrawerTab('dfm'); setDrawerOpen(true); }}
               >
-                <I.comments size={12} /><span>{L('검증', 'Verify')}</span>
+                <I.comments size={12} /><span>{tc('verify')}</span>
                 {bridgeDfmWarningCount !== null && bridgeDfmWarningCount > 0 && <b>{bridgeDfmWarningCount}</b>}
               </button>
             </>
@@ -872,7 +875,7 @@ export function ModelerShell() {
           open={drawerOpen}
           activeTab={drawerTab}
           tabs={[
-            { id: 'jobs', label: L('작업', 'Jobs') },
+            { id: 'jobs', label: tc('jobs') },
             { id: 'dfm', label: 'DFM' },
             { id: 'fea', label: 'FEA' },
             { id: 'cost', label: d.drawerCost },
