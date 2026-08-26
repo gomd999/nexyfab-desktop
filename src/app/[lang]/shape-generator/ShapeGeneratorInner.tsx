@@ -6,6 +6,7 @@ import React, { useState, useMemo, useCallback, useRef, useEffect, useLayoutEffe
 import { isKorean } from '@/lib/i18n/normalize';
 import { createCommercialLocalizer } from '@/lib/i18n/commercialLocalizer';
 import { formatDate } from '@/lib/i18n/format';
+import { loc } from '@/lib/i18n/loc';
 import { useUIStore } from './store/uiStore';
 import { useSelectionStore } from './store/selectionStore';
 import { useCanvasSelectionHandlers } from './hooks/useCanvasSelectionHandlers';
@@ -10209,7 +10210,7 @@ export function ShapeGeneratorInner(
                   {transformMode !== 'off' && (
                     <button
                       onClick={() => setTransformMode('off')}
-                      title="Disable transform (Esc)"
+                      title={loc(lang, { ko: '변환 끄기 (Esc)', en: 'Disable transform (Esc)', ja: '変形を無効化 (Esc)', zh: '禁用变换 (Esc)', es: 'Desactivar transformación (Esc)', ar: 'تعطيل التحويل (Esc)' })}
                       style={{
                         padding: '1px 6px', borderRadius: 3, fontSize: 10, fontWeight: 600,
                         border: 'none', cursor: 'pointer', background: 'var(--nx-panel-2)', color: 'var(--nx-error)', height: 18 }}
@@ -10808,7 +10809,7 @@ export function ShapeGeneratorInner(
                 );
               })()}
               {collabUsers.length > 0 && (
-                  <CollabPresence users={collabUsers} />
+                  <CollabPresence users={collabUsers} lang={lang} />
                 )}
                 <div style={{ flex: 1, minHeight: 0, minWidth: 0, position: 'relative', display: 'flex', flexDirection: 'column' }}>
                 {/* ═══ AI Assistant — replaces 3D viewport when active ═══ */}
@@ -11124,6 +11125,7 @@ export function ShapeGeneratorInner(
           {/* Timeline bar */}
           {activeTab === 'design' && features.length > 0 && (
             <TimelineBar
+              lang={lang}
               features={features}
               selectedId={selectedFeatureId}
               onSelect={setSelectedFeatureId}

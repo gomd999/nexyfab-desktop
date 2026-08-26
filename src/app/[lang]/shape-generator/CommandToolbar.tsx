@@ -6,6 +6,7 @@ import { getRecentImportFiles } from '@/lib/platform';
 import { usePathname } from 'next/navigation';
 import type { FeatureType } from './features/types';
 import type { EditMode } from './editing/types';
+import { loc } from '@/lib/i18n/loc';
 
 const dict = {
   ko: {
@@ -2375,30 +2376,30 @@ export default function CommandToolbar(props: CommandToolbarProps) {
               </button>
               {/* W5-H — SAT/IGES/IFC (라이터 자체검증·거부는 핸들러 토스트로 표면화) */}
               <button data-testid="export-sat" style={{ ...S.dropItem, opacity: (!hasResult || exportingFormat === 'SAT') ? 0.4 : 1 }} disabled={!hasResult || exportingFormat === 'SAT'}
-                title="ACIS SAT (planar-face closed solids only — writer validates and refuses otherwise)"
+                title={loc(seg, { ko: 'ACIS SAT(평면으로 구성된 닫힌 솔리드만 지원하며, 내보내기 전에 검증합니다)', en: 'ACIS SAT (planar-face closed solids only; validated before export)', ja: 'ACIS SAT（平面で構成された閉じたソリッドのみ。エクスポート前に検証します）', zh: 'ACIS SAT（仅支持由平面构成的闭合实体，导出前会进行验证）', es: 'ACIS SAT (solo sólidos cerrados con caras planas; se valida antes de exportar)', ar: 'ACIS SAT (للأجسام الصلبة المغلقة ذات الأوجه المستوية فقط؛ يتم التحقق قبل التصدير)' })}
                 onClick={() => { onExportSAT?.(); closeSub(); }}
                 onMouseEnter={e => (e.currentTarget.style.background = C_DARK.hover)}
                 onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}>
                 <span style={{ fontSize: 15, width: 18, textAlign: 'center' }}>{exportingFormat === 'SAT' ? <span className="__nf_exporting">⟳</span> : '💾'}</span>
-                <span>Export SAT</span>
+                <span>{loc(seg, { ko: 'SAT 내보내기', en: 'Export SAT', ja: 'SAT をエクスポート', zh: '导出 SAT', es: 'Exportar SAT', ar: 'تصدير SAT' })}</span>
                 {lockedFormats.includes('sat') && <span style={{ marginLeft: 'auto', fontSize: 9, background: 'var(--nx-accent-2)', color: 'var(--nx-text)', padding: '1px 5px', borderRadius: 3, fontWeight: 700 }}>🔒 PRO</span>}
               </button>
               <button data-testid="export-iges" style={{ ...S.dropItem, opacity: (!hasResult || exportingFormat === 'IGES') ? 0.4 : 1 }} disabled={!hasResult || exportingFormat === 'IGES'}
-                title="IGES 5.x polyline wireframe — NOT a surface/solid B-Rep (declared in the file header)"
+                title={loc(seg, { ko: 'IGES 5.x 폴리라인 와이어프레임(서피스/솔리드 B-Rep이 아니며 파일 헤더에 명시됩니다)', en: 'IGES 5.x polyline wireframe (not a surface/solid B-Rep; declared in the file header)', ja: 'IGES 5.x ポリラインワイヤーフレーム（サーフェス／ソリッド B-Rep ではなく、ファイルヘッダーに明記）', zh: 'IGES 5.x 折线线框（不是曲面/实体 B-Rep，文件头中会注明）', es: 'Estructura alámbrica de polilíneas IGES 5.x (no es un B-Rep de superficie/sólido; se declara en la cabecera)', ar: 'إطار سلكي متعدد الخطوط IGES 5.x (ليس B-Rep لسطح/جسم صلب؛ يُذكر ذلك في ترويسة الملف)' })}
                 onClick={() => { onExportIGES?.(); closeSub(); }}
                 onMouseEnter={e => (e.currentTarget.style.background = C_DARK.hover)}
                 onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}>
                 <span style={{ fontSize: 15, width: 18, textAlign: 'center' }}>{exportingFormat === 'IGES' ? <span className="__nf_exporting">⟳</span> : '💾'}</span>
-                <span>Export IGES (wireframe)</span>
+                <span>{loc(seg, { ko: 'IGES 내보내기(와이어프레임)', en: 'Export IGES (wireframe)', ja: 'IGES をエクスポート（ワイヤーフレーム）', zh: '导出 IGES（线框）', es: 'Exportar IGES (alámbrico)', ar: 'تصدير IGES (إطار سلكي)' })}</span>
                 {lockedFormats.includes('iges') && <span style={{ marginLeft: 'auto', fontSize: 9, background: 'var(--nx-accent-2)', color: 'var(--nx-text)', padding: '1px 5px', borderRadius: 3, fontWeight: 700 }}>🔒 PRO</span>}
               </button>
               <button data-testid="export-ifc" style={{ ...S.dropItem, opacity: (!hasResult || exportingFormat === 'IFC') ? 0.4 : 1 }} disabled={!hasResult || exportingFormat === 'IFC'}
-                title="IFC2X3 IfcFacetedBrep (mm) — closed-shell validated by the writer"
+                title={loc(seg, { ko: 'IFC2X3 IfcFacetedBrep(mm) — 내보내기 전에 닫힌 셸을 검증합니다', en: 'IFC2X3 IfcFacetedBrep (mm) — closed shell validated before export', ja: 'IFC2X3 IfcFacetedBrep（mm）— エクスポート前に閉じたシェルを検証します', zh: 'IFC2X3 IfcFacetedBrep（毫米）— 导出前验证闭合壳体', es: 'IFC2X3 IfcFacetedBrep (mm): se valida la envolvente cerrada antes de exportar', ar: 'IFC2X3 IfcFacetedBrep (مم) — يتم التحقق من الغلاف المغلق قبل التصدير' })}
                 onClick={() => { onExportIFC?.(); closeSub(); }}
                 onMouseEnter={e => (e.currentTarget.style.background = C_DARK.hover)}
                 onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}>
                 <span style={{ fontSize: 15, width: 18, textAlign: 'center' }}>{exportingFormat === 'IFC' ? <span className="__nf_exporting">⟳</span> : '🏗️'}</span>
-                <span>Export IFC</span>
+                <span>{loc(seg, { ko: 'IFC 내보내기', en: 'Export IFC', ja: 'IFC をエクスポート', zh: '导出 IFC', es: 'Exportar IFC', ar: 'تصدير IFC' })}</span>
                 {lockedFormats.includes('ifc') && <span style={{ marginLeft: 'auto', fontSize: 9, background: 'var(--nx-accent-2)', color: 'var(--nx-text)', padding: '1px 5px', borderRadius: 3, fontWeight: 700 }}>🔒 PRO</span>}
               </button>
               <button style={{ ...S.dropItem, opacity: (!hasResult || exportingFormat === 'GLTF') ? 0.4 : 1 }} disabled={!hasResult || exportingFormat === 'GLTF'} onClick={() => { onExportGLTF?.(); closeSub(); }}
@@ -2636,7 +2637,7 @@ export default function CommandToolbar(props: CommandToolbarProps) {
             type="button"
             style={{ ...S.smallBtn(showChat), padding: '3px 10px', justifyContent: 'center', gap: 5 }}
             onClick={() => { onToggleChat(); closeSub(); }}
-            title="AI Chat"
+            title={loc(seg, { ko: 'AI 채팅', en: 'AI Chat', ja: 'AI チャット', zh: 'AI 聊天', es: 'Chat de IA', ar: 'دردشة الذكاء الاصطناعي' })}
           >
             🤖<span style={{ fontSize: 10, fontWeight: 700 }}>AI</span>
           </button>
