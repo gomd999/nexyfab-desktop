@@ -1,5 +1,25 @@
 # Platform current session
 
+## 2026-08-27 cross-platform supply-chain evidence
+
+- Status: `DEPENDENCY_VULNERABILITIES_0 / SECRET_FINDINGS_0 /
+  CRLF_LF_STABLE / PLATFORM_CHECK_PASS`.
+- Supply-chain artifact bindings now canonicalize text line endings before
+  measuring bytes and SHA-256. Windows CRLF and Linux LF checkouts therefore
+  produce the same commercial evidence without weakening semantic change
+  detection.
+- A fixture regression generates the receipt on LF inputs and validates it
+  after every bound input is rewritten as CRLF. Focused canonicalization tests
+  pass 3/3.
+- Current evidence reports npm dependency vulnerabilities 0, secret findings
+  0 across 10,327 Git candidates / 325,494,540 bytes, CycloneDX 1.5 with 1,005
+  components, 687 licensed production packages, and current CAD kernel identity.
+- The complete Platform check passes ESLint (221.2s), TypeScript (31.0s), and
+  ownership with zero violations.
+- Source/evidence commit: `5c0ffd2b2e141263d8d5dc0149a6bdb84e9d42e7`.
+- Handoff:
+  `HANDOFFS/20260826T164919Z-cross-platform-supply-chain-evidence.md`.
+
 ## 2026-08-27 integrated artifact-trace security evidence
 
 - Status: `INTEGRATED_HEAD_BOUND / ROUTES_627_HANDLERS_862 /
