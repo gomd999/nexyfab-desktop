@@ -1,5 +1,25 @@
 # Platform current session
 
+## 2026-08-27 release-gate cross-platform repair
+
+- Status: `WINDOWS_NPM_PATH_PASS / SYMLINK_RECEIPT_TEST_CURRENT /
+  PLATFORM_CHECK_PASS / SECRET_FINDINGS_0`.
+- Railway's verified deploy launcher now evaluates the Node/npm CLI path with
+  the target platform's path rules. Linux CI can therefore exercise the
+  Windows contract without corrupting a `C:\\...` path with POSIX semantics.
+- The release-health evidence regression now asserts the hardened
+  `through symlink` rejection emitted by the implementation instead of its
+  obsolete `regular file` wording.
+- Focused Node policy tests pass 15/15. The full Platform service/policy suite
+  passes 72/72, Platform Vitest passes 19 files / 75 tests, architecture passes,
+  and the complete workspace check passes ESLint (208.7s), TypeScript (23.4s),
+  and ownership with zero violations.
+- Current secret scanning covers 10,316 Git candidates / 325,455,377 bytes
+  with zero findings.
+- Source commit: `ba741d9067192b142f9e5a97fa28bda737345a15`.
+- Handoff:
+  `HANDOFFS/20260826T152813Z-release-gate-cross-platform-repair.md`.
+
 ## 2026-08-27 main-chat result sharing tray
 
 - Status: `THREE_ARTIFACT_ROWS / GA_3D_DEFAULT / FILE_SHARE_PRIVATE /
