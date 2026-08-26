@@ -14,6 +14,7 @@ import { buildCommercialI18nReleaseReceipt, signFullProductArtifactReviewReceipt
 
 const locales = ['kr', 'en', 'ja', 'cn', 'es', 'ar'];
 const completeCatalog = JSON.parse(readFileSync(new URL('../../src/lib/i18n/commercialTranslations.generated.json', import.meta.url), 'utf8'));
+const commercialContract = JSON.parse(readFileSync(new URL('../../src/lib/i18n/commercialReleaseContract.json', import.meta.url), 'utf8'));
 const evidenceRoot = mkdtempSync(path.join(os.tmpdir(), 'nexyfab-i18n-review-'));
 const automatedEvidenceRoot = mkdtempSync(path.join(os.tmpdir(), 'nexyfab-i18n-vitest-'));
 const expandedSourcePaths = Array.from({ length: 32 }, (_, index) => `tests/i18n/source-${String(index).padStart(2, '0')}.test.ts`);
@@ -104,7 +105,8 @@ test('separates real catalog pair coverage from 40/40 and 224/224 test counts an
   process.env.NEXYFAB_BUILD_ID = 'build-1'; process.env.RAILWAY_GIT_COMMIT_SHA = 'a'.repeat(40); process.env.GENERATION_EVIDENCE_SIGNING_SECRET = 'x'.repeat(32);
   process.env.I18N_AUTOMATED_EVIDENCE_ROOT = automatedEvidenceRoot;
   const receipt = buildCommercialI18nReleaseReceipt({}, { official: automatedEvidence('official'), expanded: automatedEvidence('expanded') });
-  assert.equal(receipt.catalog.sourcePairs > 40, true);
+  assert.equal(receipt.catalog.sourcePairs, commercialContract.sourcePairs);
+  assert.equal(receipt.catalog.expectedSourcePairs, commercialContract.sourcePairs);
   assert.notEqual(receipt.catalog.sourcePairs, 40);
   assert.equal(receipt.status, 'HOLD');
   assert.equal(receipt.automatedStatus, 'HOLD');

@@ -1,4 +1,5 @@
 import { createHash, createHmac } from 'node:crypto';
+import commercialI18nContract from './i18n/commercialReleaseContract.json';
 import { existsSync, lstatSync, readFileSync, realpathSync, statSync } from 'node:fs';
 import path from 'node:path';
 import type { DbAdapter } from '@/lib/db-adapter';
@@ -139,7 +140,7 @@ function verifyI18n(receipt: unknown, buildId: string | null, head: string | nul
     && value.status === 'QUALIFIED'
     && value.gaReady === true
     && catalog?.qualified === true
-    && sourcePairs !== null && sourcePairs >= 2711
+    && sourcePairs === commercialI18nContract.sourcePairs
     && translatedPairs === sourcePairs
     && buildId && value.buildId === buildId
     && head && value.head === head

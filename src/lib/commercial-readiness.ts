@@ -156,15 +156,16 @@ export function commercialReadinessIssues(env: Env): CommercialReadinessIssue[] 
     'rolling deployments need stable Server Action identifiers',
   );
 
+  const paymentsEnabled = env.NEXYFAB_PAYMENTS_ENABLED?.trim().toLowerCase() === 'true';
   const paymentReady =
     completeProvider(env, ['TOSS_SECRET_KEY', 'TOSS_WEBHOOK_SECRET']) ||
     completeProvider(env, ['STRIPE_SECRET_KEY', 'STRIPE_WEBHOOK_SECRET']) ||
     completeProvider(env, ['AIRWALLEX_CLIENT_ID', 'AIRWALLEX_API_KEY', 'AIRWALLEX_WEBHOOK_SECRET']) ||
     completeProvider(env, ['DODO_API_KEY', 'DODO_WEBHOOK_SECRET']);
-  if (!paymentReady) {
+  if (paymentsEnabled && !paymentReady) {
     issues.push({
       code: 'payments.provider_incomplete',
-      message: 'At least one payment provider must have both API credentials and webhook verification configured',
+      message: 'NEXYFAB_PAYMENTS_ENABLED=true requires at least one provider with API credentials and webhook verification configured',
     });
   }
 

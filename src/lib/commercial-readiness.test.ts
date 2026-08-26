@@ -10,6 +10,7 @@ import {
 } from './commercial-readiness';
 
 const base = {
+  NEXYFAB_PAYMENTS_ENABLED: 'true',
   DATABASE_URL: 'postgres://db',
   REDIS_URL: 'redis://cache',
   UPSTASH_REDIS_REST_URL: 'https://redis.example.com',
@@ -99,6 +100,22 @@ describe('commercialReadinessIssues', () => {
       ...env,
       DODO_API_KEY: 'dodo-key',
       DODO_WEBHOOK_SECRET: 'dodo-webhook',
+    })).toEqual([]);
+  });
+
+  it('accepts commercial operation without payment credentials when collection is explicitly disabled', () => {
+    expect(commercialReadinessIssues({
+      ...base,
+      NEXYFAB_PAYMENTS_ENABLED: 'false',
+      TOSS_SECRET_KEY: undefined,
+      TOSS_WEBHOOK_SECRET: undefined,
+      STRIPE_SECRET_KEY: undefined,
+      STRIPE_WEBHOOK_SECRET: undefined,
+      AIRWALLEX_CLIENT_ID: undefined,
+      AIRWALLEX_API_KEY: undefined,
+      AIRWALLEX_WEBHOOK_SECRET: undefined,
+      DODO_API_KEY: undefined,
+      DODO_WEBHOOK_SECRET: undefined,
     })).toEqual([]);
   });
 

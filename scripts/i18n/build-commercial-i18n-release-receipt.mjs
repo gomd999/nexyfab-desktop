@@ -10,6 +10,11 @@ import {
   verifyI18nVitestEvidence,
 } from './collect-i18n-vitest-evidence.mjs';
 
+const COMMERCIAL_I18N_CONTRACT = JSON.parse(readFileSync(
+  new URL('../../src/lib/i18n/commercialReleaseContract.json', import.meta.url),
+  'utf8',
+));
+
 export function canonical(value) {
   if (value === null || typeof value !== 'object') return JSON.stringify(value);
   if (Array.isArray(value)) return `[${value.map(canonical).join(',')}]`;
@@ -177,7 +182,9 @@ export function buildCommercialI18nReleaseReceipt(catalog, measurements = {}) {
   const expandedVerification = validMeasurement(measurements.expanded, 'expanded', buildId, head);
   const officialValid = officialVerification.ok;
   const expandedValid = expandedVerification.ok;
-  const catalogQualified = result.missing.length === 0 && result.invalid.length === 0 && result.legacyBilingualLiterals.length === 0 && sourcePairs > 0 && translatedPairs === sourcePairs;
+  const catalogContractQualified = sourcePairs === COMMERCIAL_I18N_CONTRACT.sourcePairs;
+  const catalogQualified = result.missing.length === 0 && result.invalid.length === 0 && result.legacyBilingualLiterals.length === 0
+    && catalogContractQualified && translatedPairs === sourcePairs;
   const automatedEvidenceValid = Boolean(catalogQualified && officialValid && expandedValid);
   const automatedQualified = Boolean(buildId && head && automatedEvidenceValid);
   const fullProductReview = measurements.fullProductReview
@@ -190,7 +197,13 @@ export function buildCommercialI18nReleaseReceipt(catalog, measurements = {}) {
   const qualified = automatedQualified && fullProductReviewVerification.ok;
   const payload = {
     schema: 'nexyfab.commercial-i18n-release-receipt.v2', locales, catalogLocales,
-    catalog: { sourcePairs, translatedPairs, missing: result.missing, invalid: result.invalid, legacyDebt: result.legacyBilingualLiterals.length, qualified: catalogQualified },
+    catalog: {
+      contractSchema: COMMERCIAL_I18N_CONTRACT.schema,
+      contractVersion: COMMERCIAL_I18N_CONTRACT.version,
+      expectedSourcePairs: COMMERCIAL_I18N_CONTRACT.sourcePairs,
+      sourcePairs, translatedPairs, missing: result.missing, invalid: result.invalid,
+      legacyDebt: result.legacyBilingualLiterals.length, qualified: catalogQualified,
+    },
     regression: {
       official: measurements.official ?? null,
       expanded: measurements.expanded ?? null,
@@ -202,6 +215,7 @@ export function buildCommercialI18nReleaseReceipt(catalog, measurements = {}) {
     fullProductReviewStatus: fullProductReviewVerification.ok ? 'QUALIFIED' : 'HOLD',
     gaReady: qualified,
     blockers: [
+      ...(!catalogContractQualified ? ['COMMERCIAL_I18N_CATALOG_CONTRACT_MISMATCH'] : []),
       ...(!automatedEvidenceValid ? ['AUTOMATED_I18N_EVIDENCE_MISSING_OR_MISMATCHED'] : []),
       ...(!buildId || !head ? ['AUTOMATED_I18N_RELEASE_ID_MISSING'] : []),
       ...(fullProductReviewVerification.ok ? [] : fullProductReviewVerification.issues),
