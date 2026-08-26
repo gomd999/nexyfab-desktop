@@ -10,6 +10,12 @@ export interface AiDesignWorkspaceCopy {
     requestPlaceholder: string;
     creatingSession: string;
     startDesign: string;
+    project: string;
+    rights: string;
+    userOwned: string;
+    exactCad: string;
+    notRun: string;
+    createFailed: string;
   }>;
   client: Readonly<{
     confirmApply: string;
@@ -31,6 +37,28 @@ export interface AiDesignWorkspaceCopy {
     model: string;
     gaugePreview: string;
     validationPrecision: string;
+    serverRevision: string;
+    exactCadBoundary: string;
+    canvasModeAria: string;
+    linked2dAria: string;
+    conceptView: string;
+    rendererTestBoundary: string;
+    linkedSelection: string;
+    precisionMappingRequired: string;
+    stableIdMappingReady: string;
+    preview: string;
+    previewNotRun: string;
+    notSelected: string;
+    identifier: string;
+    status: string;
+    gaugeStepAria: string;
+    fine: string;
+    coarse: string;
+    geometry: string;
+    precision: string;
+    requests: string;
+    release: string;
+    no: string;
   }>;
   starterCards: readonly [
     Readonly<{ title: string; description: string; examplePrompt: string }>,
@@ -64,6 +92,8 @@ const COPY: Readonly<Record<IsoLang, AiDesignWorkspaceCopy>> = {
       requestPlaceholder: '예: 벽 두께 3 mm, 폭 120 mm의 센서 브래킷을 설계해 줘.',
       creatingSession: '세션 생성 중…',
       startDesign: '대화형 설계 시작',
+      project: '프로젝트', rights: '권리', userOwned: '사용자 소유', exactCad: '정확 CAD', notRun: '미실행',
+      createFailed: 'AI 설계 워크스페이스를 만들지 못했습니다. 잠시 후 다시 시도해 주세요.',
     },
     client: {
       confirmApply: '현재 서버 revision에 이 요청을 적용할까요?',
@@ -74,6 +104,11 @@ const COPY: Readonly<Record<IsoLang, AiDesignWorkspaceCopy>> = {
       chat: '대화', refresh: '새로고침', authorityBoundary: '권한 경계', conceptOnly: '현재 화면은 개념 설계·미리보기 전용입니다.',
       linkedCanvas: '연동 캔버스', fullScreen: '전체 화면', emptyCanvas: '입력 또는 후보가 준비되면 연동 뷰가 표시됩니다.',
       inspector: '검사기', close: '닫기', model: '모델', gaugePreview: '게이지 미리보기', validationPrecision: '검증 · Precision',
+      serverRevision: '서버 리비전', exactCadBoundary: '정확 CAD: Precision CAD · 릴리스: 아니요', canvasModeAria: '캔버스 보기 방식',
+      linked2dAria: '연동된 2D 개념 구조', conceptView: '개념', rendererTestBoundary: '3D 렌더러 테스트 경계',
+      linkedSelection: '연동 선택', precisionMappingRequired: '입력 필요 · Precision 매핑 필요', stableIdMappingReady: '안정 ID 매핑 준비됨',
+      preview: '미리보기', previewNotRun: '미실행 · 저장되지 않음', notSelected: '선택 안 됨', identifier: 'ID', status: '상태',
+      gaugeStepAria: '게이지 조정 단계', fine: '미세', coarse: '큰 단계', geometry: '형상', precision: 'Precision', requests: '요청', release: '릴리스', no: '아니요',
     },
     starterCards: [
       { title: '아이디어 설명하기', description: '일상적인 말로 만들 제품이나 형상을 설명하세요.', examplePrompt: '벽에 고정하는 소형 공구걸이를 후크 3개로 설계해 줘.' },
@@ -112,6 +147,8 @@ const COPY: Readonly<Record<IsoLang, AiDesignWorkspaceCopy>> = {
       description: 'Your first request is revision-bound to this project and a new design session. The next screen keeps 2D and 3D selection synchronized.',
       requestLabel: 'Design request', requestPlaceholder: 'Example: Design a sensor bracket, 3 mm wall thickness and 120 mm wide.',
       creatingSession: 'Creating session…', startDesign: 'Start conversational design',
+      project: 'Project', rights: 'Rights', userOwned: 'User owned', exactCad: 'Exact CAD', notRun: 'Not run',
+      createFailed: 'The AI Design workspace could not be created. Please try again.',
     },
     client: {
       confirmApply: 'Apply this request to the current server revision?',
@@ -122,6 +159,11 @@ const COPY: Readonly<Record<IsoLang, AiDesignWorkspaceCopy>> = {
       chat: 'Chat', refresh: 'Refresh', authorityBoundary: 'Authority boundary', conceptOnly: 'This workspace is for concept orchestration and preview.',
       linkedCanvas: 'Linked canvas', fullScreen: 'Full screen', emptyCanvas: 'Linked views appear when input or a candidate is ready.',
       inspector: 'Inspector', close: 'Close', model: 'Model', gaugePreview: 'Gauge preview', validationPrecision: 'Validation · Precision',
+      serverRevision: 'Server revision', exactCadBoundary: 'Exact CAD: Precision CAD · Release: no', canvasModeAria: 'Canvas view mode',
+      linked2dAria: 'Linked 2D concept structure', conceptView: 'Concept', rendererTestBoundary: '3D renderer test boundary',
+      linkedSelection: 'Linked selection', precisionMappingRequired: 'Needs input · Precision mapping required', stableIdMappingReady: 'Stable ID mapping ready',
+      preview: 'Preview', previewNotRun: 'Not run · nonpersistent', notSelected: 'Not selected', identifier: 'ID', status: 'Status',
+      gaugeStepAria: 'Gauge adjustment step', fine: 'Fine', coarse: 'Coarse', geometry: 'Geometry', precision: 'Precision', requests: 'Requests', release: 'Release', no: 'No',
     },
     starterCards: [
       { title: 'Describe an idea', description: 'Start with a plain-language product or shape idea.', examplePrompt: 'Design a compact wall-mounted tool holder with three hooks.' },
@@ -158,12 +200,18 @@ const COPY: Readonly<Record<IsoLang, AiDesignWorkspaceCopy>> = {
     launcher: {
       title: '何を設計しますか？', description: '最初の依頼は、このプロジェクトと新しい設計セッションのリビジョンに結び付けられます。次の画面では2Dと3Dの選択が同期されます。',
       requestLabel: '設計依頼', requestPlaceholder: '例：肉厚3 mm、幅120 mmのセンサーブラケットを設計してください。', creatingSession: 'セッションを作成中…', startDesign: '対話型設計を開始',
+      project: 'プロジェクト', rights: '権利', userOwned: 'ユーザー所有', exactCad: '正確CAD', notRun: '未実行', createFailed: 'AI Designワークスペースを作成できませんでした。もう一度お試しください。',
     },
     client: { confirmApply: 'この依頼を現在のサーバーリビジョンに適用しますか？', precisionRequested: 'Precision CADへの依頼を受け付けました。正確な形状処理とPASS判定はまだ実行されていません。' },
     surface: {
       loading3d: '3Dコンセプトビューを読み込み中…', title: '対話型設計ワークスペース', conversationAria: '設計会話', chat: 'チャット', refresh: '更新',
       authorityBoundary: '権限の境界', conceptOnly: 'このワークスペースはコンセプト設計とプレビュー専用です。', linkedCanvas: '連動キャンバス', fullScreen: '全画面',
       emptyCanvas: '入力または候補が準備されると連動ビューが表示されます。', inspector: 'インスペクター', close: '閉じる', model: 'モデル', gaugePreview: 'ゲージプレビュー', validationPrecision: '検証 · Precision',
+      serverRevision: 'サーバーリビジョン', exactCadBoundary: '正確CAD: Precision CAD · リリース: いいえ', canvasModeAria: 'キャンバス表示モード',
+      linked2dAria: '連動した2Dコンセプト構造', conceptView: 'コンセプト', rendererTestBoundary: '3Dレンダラーのテスト境界',
+      linkedSelection: '連動選択', precisionMappingRequired: '入力が必要 · Precisionマッピングが必要', stableIdMappingReady: '安定IDマッピング準備完了',
+      preview: 'プレビュー', previewNotRun: '未実行 · 未保存', notSelected: '未選択', identifier: 'ID', status: '状態', gaugeStepAria: 'ゲージ調整ステップ',
+      fine: '微調整', coarse: '大きく調整', geometry: '形状', precision: 'Precision', requests: '依頼', release: 'リリース', no: 'いいえ',
     },
     starterCards: [
       { title: 'アイデアを説明', description: '作りたい製品や形状を普段の言葉で説明してください。', examplePrompt: '壁付けの小型工具ホルダーをフック3個で設計してください。' },
@@ -194,12 +242,18 @@ const COPY: Readonly<Record<IsoLang, AiDesignWorkspaceCopy>> = {
     launcher: {
       title: '您想设计什么？', description: '首次请求将绑定到此项目和新设计会话的修订版本。下一页会同步2D和3D选择。', requestLabel: '设计请求',
       requestPlaceholder: '示例：设计一个壁厚3 mm、宽120 mm的传感器支架。', creatingSession: '正在创建会话…', startDesign: '开始对话式设计',
+      project: '项目', rights: '权利', userOwned: '用户所有', exactCad: '精确CAD', notRun: '未运行', createFailed: '无法创建AI Design工作区。请重试。',
     },
     client: { confirmApply: '要将此请求应用到当前服务器修订版本吗？', precisionRequested: 'Precision CAD请求已受理。精确几何执行和PASS判定尚未发生。' },
     surface: {
       loading3d: '正在加载3D概念视图…', title: '对话式设计工作区', conversationAria: '设计对话', chat: '对话', refresh: '刷新', authorityBoundary: '权限边界',
       conceptOnly: '此工作区仅用于概念编排和预览。', linkedCanvas: '联动画布', fullScreen: '全屏', emptyCanvas: '输入或候选方案准备好后将显示联动视图。',
       inspector: '检查器', close: '关闭', model: '模型', gaugePreview: '参数预览', validationPrecision: '验证 · Precision',
+      serverRevision: '服务器修订版本', exactCadBoundary: '精确CAD：Precision CAD · 发布：否', canvasModeAria: '画布视图模式',
+      linked2dAria: '联动的2D概念结构', conceptView: '概念', rendererTestBoundary: '3D渲染器测试边界', linkedSelection: '联动选择',
+      precisionMappingRequired: '需要输入 · 需要Precision映射', stableIdMappingReady: '稳定ID映射已就绪', preview: '预览', previewNotRun: '未运行 · 不保存',
+      notSelected: '未选择', identifier: 'ID', status: '状态', gaugeStepAria: '参数调整步长', fine: '精细', coarse: '粗调', geometry: '几何',
+      precision: 'Precision', requests: '请求', release: '发布', no: '否',
     },
     starterCards: [
       { title: '描述想法', description: '用日常语言描述要制作的产品或形状。', examplePrompt: '设计一个带三个挂钩的紧凑型壁挂工具架。' },
@@ -230,12 +284,18 @@ const COPY: Readonly<Record<IsoLang, AiDesignWorkspaceCopy>> = {
     launcher: {
       title: '¿Qué le gustaría diseñar?', description: 'La primera solicitud queda vinculada a la revisión de este proyecto y de una nueva sesión de diseño. La siguiente pantalla sincroniza la selección 2D y 3D.',
       requestLabel: 'Solicitud de diseño', requestPlaceholder: 'Ejemplo: Diseña un soporte para sensor de 120 mm de ancho y pared de 3 mm.', creatingSession: 'Creando sesión…', startDesign: 'Iniciar diseño conversacional',
+      project: 'Proyecto', rights: 'Derechos', userOwned: 'Propiedad del usuario', exactCad: 'CAD exacto', notRun: 'No ejecutado', createFailed: 'No se pudo crear el espacio de AI Design. Inténtelo de nuevo.',
     },
     client: { confirmApply: '¿Aplicar esta solicitud a la revisión actual del servidor?', precisionRequested: 'Se aceptó la solicitud de Precision CAD. Aún no se han ejecutado la geometría exacta ni el resultado PASS.' },
     surface: {
       loading3d: 'Cargando vista conceptual 3D…', title: 'Espacio de diseño conversacional', conversationAria: 'Conversación de diseño', chat: 'Chat', refresh: 'Actualizar',
       authorityBoundary: 'Límite de autoridad', conceptOnly: 'Este espacio sirve para orquestar y previsualizar conceptos.', linkedCanvas: 'Lienzo vinculado', fullScreen: 'Pantalla completa',
       emptyCanvas: 'Las vistas vinculadas aparecen cuando hay una entrada o un candidato preparado.', inspector: 'Inspector', close: 'Cerrar', model: 'Modelo', gaugePreview: 'Vista previa del parámetro', validationPrecision: 'Validación · Precision',
+      serverRevision: 'Revisión del servidor', exactCadBoundary: 'CAD exacto: Precision CAD · Lanzamiento: no', canvasModeAria: 'Modo de vista del lienzo',
+      linked2dAria: 'Estructura conceptual 2D vinculada', conceptView: 'Concepto', rendererTestBoundary: 'Límite de prueba del renderizador 3D',
+      linkedSelection: 'Selección vinculada', precisionMappingRequired: 'Se necesita información · Requiere mapeo de Precision', stableIdMappingReady: 'Mapeo de ID estable listo',
+      preview: 'Vista previa', previewNotRun: 'No ejecutado · no persistente', notSelected: 'Sin seleccionar', identifier: 'ID', status: 'Estado',
+      gaugeStepAria: 'Paso de ajuste del parámetro', fine: 'Fino', coarse: 'Grueso', geometry: 'Geometría', precision: 'Precision', requests: 'Solicitudes', release: 'Lanzamiento', no: 'No',
     },
     starterCards: [
       { title: 'Describir una idea', description: 'Describa con palabras sencillas el producto o la forma que desea crear.', examplePrompt: 'Diseña un portaherramientas compacto de pared con tres ganchos.' },
@@ -266,12 +326,18 @@ const COPY: Readonly<Record<IsoLang, AiDesignWorkspaceCopy>> = {
     launcher: {
       title: 'ما الذي تريد تصميمه؟', description: 'يرتبط الطلب الأول بمراجعة هذا المشروع وجلسة تصميم جديدة. تحافظ الشاشة التالية على تزامن التحديد ثنائي وثلاثي الأبعاد.',
       requestLabel: 'طلب التصميم', requestPlaceholder: 'مثال: صمّم حاملاً لمستشعر بعرض 120 مم وسماكة جدار 3 مم.', creatingSession: 'جارٍ إنشاء الجلسة…', startDesign: 'بدء التصميم الحواري',
+      project: 'المشروع', rights: 'الحقوق', userOwned: 'مملوك للمستخدم', exactCad: 'CAD دقيق', notRun: 'لم يُشغّل', createFailed: 'تعذر إنشاء مساحة AI Design. حاول مرة أخرى.',
     },
     client: { confirmApply: 'هل تريد تطبيق هذا الطلب على مراجعة الخادم الحالية؟', precisionRequested: 'تم قبول طلب Precision CAD. لم يتم بعد تنفيذ الهندسة الدقيقة أو إصدار نتيجة PASS.' },
     surface: {
       loading3d: 'جارٍ تحميل عرض المفهوم ثلاثي الأبعاد…', title: 'مساحة عمل التصميم الحواري', conversationAria: 'محادثة التصميم', chat: 'المحادثة', refresh: 'تحديث',
       authorityBoundary: 'حدود الصلاحية', conceptOnly: 'مساحة العمل هذه مخصصة لتنظيم المفاهيم ومعاينتها.', linkedCanvas: 'لوحة مترابطة', fullScreen: 'ملء الشاشة',
       emptyCanvas: 'تظهر العروض المترابطة عند تجهيز إدخال أو مرشح.', inspector: 'أداة الفحص', close: 'إغلاق', model: 'النموذج', gaugePreview: 'معاينة المعلمة', validationPrecision: 'التحقق · Precision',
+      serverRevision: 'مراجعة الخادم', exactCadBoundary: 'CAD دقيق: Precision CAD · الإصدار: لا', canvasModeAria: 'وضع عرض اللوحة',
+      linked2dAria: 'بنية مفهوم ثنائي الأبعاد مترابطة', conceptView: 'مفهوم', rendererTestBoundary: 'حد اختبار عارض 3D', linkedSelection: 'التحديد المترابط',
+      precisionMappingRequired: 'إدخال مطلوب · يلزم ربط Precision', stableIdMappingReady: 'ربط المعرّفات المستقر جاهز', preview: 'المعاينة',
+      previewNotRun: 'لم يُشغّل · غير محفوظ', notSelected: 'غير محدد', identifier: 'المعرّف', status: 'الحالة', gaugeStepAria: 'خطوة ضبط المعلمة',
+      fine: 'دقيق', coarse: 'تقريبي', geometry: 'الهندسة', precision: 'Precision', requests: 'الطلبات', release: 'الإصدار', no: 'لا',
     },
     starterCards: [
       { title: 'صف فكرة', description: 'صف المنتج أو الشكل المطلوب بلغة بسيطة.', examplePrompt: 'صمّم حاملاً صغيراً للأدوات يثبت على الحائط وله ثلاثة خطافات.' },

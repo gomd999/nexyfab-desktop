@@ -1,5 +1,31 @@
 # AI Design current session
 
+## 2026-08-26 chat-first model and six-locale closure
+
+- Status: `CHAT_FIRST_ENTRY_CONFIRMED / OPENAI_QWEN_SELECTION_BOUND /
+  SIX_LOCALE_WORKSPACE_CONTRACT_PASS / LIVE_PROVIDER_CALL_NOT_RUN`.
+- The main design chat already exposes localized starter prompts for attached
+  2D drawing to 3D, attached image to 3D, and complex product design. Starter
+  and follow-up chips fill and focus the composer without auto-submitting.
+- The same entry owns one reviewable attachment control with picker, paste,
+  and drag/drop intake; a governed model selector carries its stable model ID
+  through chat and CAD requests. OpenAI, Qwen, and DeepSeek provider keys are
+  declared in the repository-external environment without exposing values.
+- AI Design V10 now has a complete six-language contract for launcher
+  metadata, canvas/accessibility labels, linked-selection state, inspector,
+  gauge controls, and Precision boundary status. All six selectable model
+  descriptions are localized; the provider catalog fallback is English rather
+  than leaking Korean into non-Korean clients.
+- Focused chat, selector, model policy, launcher, surface, and i18n regression
+  passes 7 files / 59 tests. The official scope check passes TypeScript,
+  11 files / 62 common-accuracy tests, 7 candidate-manifest tests, and zero
+  ownership violations.
+- No external model was called and no independent holdout or manufacturing
+  qualification was executed. This verifies routing and product behavior, not
+  commercial AI accuracy or exact-CAD release readiness.
+- Handoff:
+  `HANDOFFS/20260826T105555Z-chat-first-model-i18n-closure.md`.
+
 ## 2026-08-25 exact downstream deployment-source boundary
 
 - Status: `AI_CANDIDATE_AUTHORITY_UNCHANGED / CLEAN_EXACT_HEAD_REQUIRED /
