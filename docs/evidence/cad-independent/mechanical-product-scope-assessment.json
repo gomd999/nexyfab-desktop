@@ -1,12 +1,12 @@
 {
   "schema": "nexyfab.mechanical-product-scope-assessment.v4",
   "releaseChannel": "mechanical-core",
-  "assessedAt": "2026-08-25T14:07:26.704Z",
+  "assessedAt": "2026-08-26T13:01:22.166Z",
   "sources": [
     {
       "path": "docs/evidence/cad-independent/mechanical-core-internal-verification.json",
-      "sha256": "e4536c9671dfcbd046668b53052508953f3311496690ac580f4fd72e69bb92dd",
-      "bytes": 48466,
+      "sha256": "836d985c3d84aa80637533bf377c50ad999d08625dbed1ae159035b0f6d0cc26",
+      "bytes": 48463,
       "canonicalization": "utf8-crlf-to-lf"
     },
     {

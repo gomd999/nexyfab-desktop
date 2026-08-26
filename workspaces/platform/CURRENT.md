@@ -1,5 +1,21 @@
 # Platform current session
 
+## 2026-08-26 current mechanical product-scope HOLD
+
+- Status: `ASSESSMENT_CURRENT / INTERNAL_REGRESSION_PASS /
+  PRIVATE_BETA_EVIDENCE_PENDING / FAIL_CLOSED`.
+- The mechanical product-scope assessment now binds the current internal
+  verification receipt instead of reporting a stale source hash.
+- Internal regression, 150-case intake structure, representative runtime,
+  assembly/drawing handoff, and artifact revision consistency are verified.
+- The exact remaining blockers are the externally qualified 30-feature closed
+  loop, 10/30 direct-design packages, live 150-intent campaign, standard STEP
+  conformance, 20 blind product challenges, and three manufactured pilots.
+- No external evidence was synthesized and commercial Precision authority
+  remains disabled.
+- Handoff:
+  `HANDOFFS/20260826T131412Z-current-mechanical-scope-hold.md`.
+
 ## 2026-08-26 current-source mechanical internal receipt
 
 - Status: `MECHANICAL_INTERNAL_REGRESSION_PASS /
