@@ -1,5 +1,21 @@
 # Precision CAD current session
 
+## 2026-08-26 AI authentication feedback closure
+
+- Status: `GUEST_AI_AUTH_BOUNDARY_EXPLICIT / SIX_LOCALES_PASS /
+  MODEL_AND_PROJECT_UNCHANGED / AUTHENTICATED_RUN_NOT_EXECUTED`.
+- The Precision CAD AI panel now maps a `401` from the governed SCAD agent to
+  an explicit sign-in instruction instead of showing only an opaque provider
+  failure. The copy is complete for Korean, English, Japanese, Chinese,
+  Spanish, and Arabic.
+- Expected failures still fail closed: no local deterministic model is
+  substituted, and neither the selected model nor the CAD project is changed.
+- Focused transport and guided-panel regression passes 2 files / 13 tests,
+  including a stable assertion that the auto-run contract counts only actual
+  SCAD-agent calls rather than the independent runtime model-access request.
+- Handoff:
+  `HANDOFFS/20260826T075646Z-ai-authentication-feedback.md`.
+
 ## 2026-08-25 current-source mechanical internal evidence refresh
 
 - Status: `MECHANICAL_INTERNAL_REGRESSION_PASS /
