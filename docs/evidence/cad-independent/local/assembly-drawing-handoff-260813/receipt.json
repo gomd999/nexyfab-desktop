@@ -1,6 +1,6 @@
 {
   "schema": "nexyfab.assembly-drawing-handoff-local-readiness.v1",
-  "generatedAt": "2026-08-25T08:30:16.925Z",
+  "generatedAt": "2026-08-26T13:01:02.120Z",
   "status": "HOLD",
   "commercialReady": false,
   "localVerification": {
@@ -8,7 +8,7 @@
     "status": "PASS",
     "command": "npx vitest run src/app/api/nexyfab/projects/[id]/drawing-handoffs/route.sqlite.integration.test.ts src/app/api/cron/assembly-drawing-handoff-prune/route.test.ts src/lib/cad/assemblyDrawingHandoffStore.test.ts --reporter=dot",
     "exitCode": 0,
-    "durationMs": 8687,
+    "durationMs": 8513,
     "testFiles": [
       "src/app/api/nexyfab/projects/[id]/drawing-handoffs/route.sqlite.integration.test.ts",
       "src/app/api/cron/assembly-drawing-handoff-prune/route.test.ts",
@@ -171,14 +171,14 @@
     },
     {
       "path": "src/app/[lang]/shape-generator/drawing/_content.tsx",
-      "bytes": 199147,
-      "sha256": "0776966ec52cfb8f59a4c04e84477590352851c6dde2a2a27f8a215baddedca0",
+      "bytes": 206068,
+      "sha256": "9b903fe154bbea87054a43bf8dd82e8544d964c2891e8b5c22fdd78757801771",
       "canonicalization": "utf8-crlf-to-lf"
     },
     {
       "path": "src/app/[lang]/shape-generator/drawing/assemblyHandoff.test.tsx",
-      "bytes": 5821,
-      "sha256": "6ca1133bcb754f5d3351c8cb21678ea386beb38d5dc4c77235b8f941d682d162",
+      "bytes": 7177,
+      "sha256": "1985bb4bedc933d263168e470af2bea8cf1446122d2e0648d370224fda429f58",
       "canonicalization": "utf8-crlf-to-lf"
     },
     {
@@ -249,8 +249,8 @@
     },
     {
       "path": "src/lib/db-adapter.ts",
-      "bytes": 19523,
-      "sha256": "5d9fb10de96735ed4559c313c78a6c2930e7029d36bd0e4b2247b5ab168a2282",
+      "bytes": 19558,
+      "sha256": "4e93dbef2b6a3468655912b9fced4f4c42521972a8223483a781dc1604a7f7d4",
       "canonicalization": "utf8-crlf-to-lf"
     },
     {
@@ -278,5 +278,5 @@
     "src/lib/db-migrations-wave-2-sqlite.sql",
     "src/lib/db-postgres-migrations.sql"
   ],
-  "evidenceRootSha256": "2a16afa0d952e74873ccc060d99ea37b15e187b746495656c6e55bc8b1779b34"
+  "evidenceRootSha256": "03e48911b9a8f354b02653b50b0ff7f8af7ec95bf6e36f023f34cd4ade04f1c9"
 }

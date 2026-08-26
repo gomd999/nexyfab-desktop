@@ -1,11 +1,11 @@
 {
   "schema": "nexyfab.mechanical-core-internal-verification.v1",
-  "generatedAt": "2026-08-25T14:07:26.704Z",
+  "generatedAt": "2026-08-26T13:01:22.166Z",
   "releaseChannel": "mechanical-core",
   "ok": true,
   "git": {
-    "head": "bbcdc33876b6635443326dcf7b4ce8482863a5df",
-    "branch": "integration/nexyfab",
+    "head": "72a80214aa0ed9ca3f9e3ad404de29b13a5d31e5",
+    "branch": "scope/platform",
     "workingTreeClean": false
   },
   "bindingPolicy": {
@@ -36,49 +36,49 @@
         "RUN_OCCT_FEASIBILITY": "1"
       },
       "exitCode": 0,
-      "durationMs": 69594
+      "durationMs": 81894
     },
     {
       "name": "mechanical-accuracy",
       "command": "npm run test:accuracy:mechanical",
       "environment": {},
       "exitCode": 0,
-      "durationMs": 22272
+      "durationMs": 24727
     },
     {
       "name": "intent-qualification",
       "command": "npm run mechanical:intents:local:check",
       "environment": {},
       "exitCode": 0,
-      "durationMs": 811
+      "durationMs": 1374
     },
     {
       "name": "intent-runtime",
       "command": "npm run mechanical:intents:runtime:check",
       "environment": {},
       "exitCode": 0,
-      "durationMs": 951
+      "durationMs": 1517
     },
     {
       "name": "assembly-handoff-readiness",
       "command": "npm run assembly-handoff:readiness:check",
       "environment": {},
       "exitCode": 0,
-      "durationMs": 7392
+      "durationMs": 8691
     },
     {
       "name": "typecheck",
       "command": "npm run typecheck",
       "environment": {},
       "exitCode": 0,
-      "durationMs": 21697
+      "durationMs": 27822
     }
   ],
   "sourceBindings": [
     {
       "path": "package.json",
-      "bytes": 41246,
-      "sha256": "f682bc9a87a7cbd1ff5c5381319c64341a1958bbe5fa38c3666bb26d3dc0b83f",
+      "bytes": 41376,
+      "sha256": "1f254608c5f42c2b4b72cbb779cee3d878ad3862a73a61d85c44ff635c497289",
       "canonicalization": "utf8-crlf-to-lf"
     },
     {
@@ -438,13 +438,13 @@
     {
       "path": "docs/evidence/cad-independent/local/assembly-drawing-handoff-260813/receipt.json",
       "bytes": 10769,
-      "sha256": "b4d42c43218de614952354cb45b7fa7c69103e827afc4771d3a55e394827633c",
+      "sha256": "9642395a132daf6a4060923ecaee252e3ec9d123aa977ba0a5bcbaca02a00972",
       "canonicalization": "utf8-crlf-to-lf"
     },
     {
       "path": "docs/evidence/cad-independent/local/assembly-drawing-handoff-260813/receipt.sha256",
       "bytes": 79,
-      "sha256": "18732433c3649f74ca52f0fbca8b900e913b35d246d7b29fb2ff98b401aa669d",
+      "sha256": "03197db16847c408a6b4402220483d23696b84158ee500b87381f834ec22d159",
       "canonicalization": "utf8-crlf-to-lf"
     },
     {
