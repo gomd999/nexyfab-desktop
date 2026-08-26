@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { ruleBasedResult } from './route';
+import { ruleBasedResult } from './quoteAccuracyCore';
 import type { IsoLang } from '@/lib/i18n/normalize';
 
 const HANGUL = /[\u3131-\u318e\uac00-\ud7a3]/u;
